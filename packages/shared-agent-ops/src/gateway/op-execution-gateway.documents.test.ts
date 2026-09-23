@@ -248,6 +248,22 @@ describe('agent gateway surgical document edits', () => {
 		});
 	});
 
+	it('applies edits sent with update_strategy append instead of demanding content', async () => {
+		const result = await EXTERNAL_OP_HANDLERS['onto.document.update'](
+			buildContext(createAdmin([contract])),
+			{
+				document_id: contract.id,
+				update_strategy: 'append',
+				edits: [{ old_text: 'Body', new_text: 'Final body' }]
+			}
+		);
+
+		expect(writeDocumentHeadAndVersionMock.mock.calls[0]?.[0].update.content).toBe(
+			contract.content.replace('Body', 'Final body')
+		);
+		expect(result).toMatchObject({ document_change_status: 'changed' });
+	});
+
 	it('rejects unresolvable edits with actionable failures and writes nothing', async () => {
 		await expect(
 			EXTERNAL_OP_HANDLERS['onto.document.update'](buildContext(createAdmin([contract])), {
@@ -393,5 +409,28 @@ describe('agent gateway document update preview', () => {
 			title: 'Renamed'
 		});
 		expect(preview.document_change).toBeNull();
+		expect(preview.next_content).toBeNull();
+	});
+
+	it('previews a later batch call against the body the earlier calls leave', async () => {
+		const afterFirstCall = doc.content.replace('Body', 'Body\n\nNew paragraph.');
+		const args = {
+			document_id: doc.id,
+			edits: [{ old_text: 'New paragraph.', new_text: 'Newer paragraph.' }]
+		};
+
+		const preview = await previewDocumentUpdate(buildContext(createAdmin([doc])), args, {
+			base_content: afterFirstCall
+		});
+
+		expect(writeDocumentHeadAndVersionMock).not.toHaveBeenCalled();
+		expect(preview.document_change).toMatchObject({ lines_added: 1, lines_removed: 1 });
+		expect(preview.next_content).toBe(
+			afterFirstCall.replace('New paragraph.', 'Newer paragraph.')
+		);
+		// Against the stored body alone, the same call cannot apply.
+		await expect(
+			previewDocumentUpdate(buildContext(createAdmin([doc])), args)
+		).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
 	});
 });

@@ -88,7 +88,7 @@ export class DocumentPatchIntegrityError extends Error {
 	}
 }
 
-type HeadingEntry = {
+export type HeadingEntry = {
 	node: DocOutlineNode;
 	path: HeadingPathSegmentV1[];
 };
@@ -125,8 +125,17 @@ function listHeadingEntries(
 	return entries;
 }
 
-function selectedHeadingEntry(content: string, from: number, to: number): HeadingEntry | null {
-	const entries = listHeadingEntries(extractOutline(content).nodes);
+/** Every heading with its path, in document order. One outline parse per document. */
+export function listDocumentHeadingEntries(content: string): HeadingEntry[] {
+	return listHeadingEntries(extractOutline(content).nodes);
+}
+
+function selectedHeadingEntry(
+	entries: HeadingEntry[],
+	content: string,
+	from: number,
+	to: number
+): HeadingEntry | null {
 	let selected: HeadingEntry | null = null;
 	for (const entry of entries) {
 		const containsRange =
@@ -155,10 +164,12 @@ function assertSelectionRange(content: string, selection: DocumentPatchSelection
 
 export function captureDocumentPatchOperation(
 	content: string,
-	selection: DocumentPatchSelection
+	selection: DocumentPatchSelection,
+	/** Precomputed listDocumentHeadingEntries(content); pass it when capturing many operations. */
+	headingEntries: HeadingEntry[] = listDocumentHeadingEntries(content)
 ): DocumentPatchOperationV1 {
 	assertSelectionRange(content, selection);
-	const heading = selectedHeadingEntry(content, selection.from, selection.to);
+	const heading = selectedHeadingEntry(headingEntries, content, selection.from, selection.to);
 	const sectionStart = heading?.node.char_start ?? 0;
 	const beforeMarkdown = content.slice(selection.from, selection.to);
 
@@ -219,8 +230,11 @@ export function createDocumentPatchV1(input: {
 	}
 	if (input.selections.length === 0)
 		throw new Error('Document patch requires at least one operation.');
+	// Parse the outline once: capturing each operation against a fresh parse made
+	// large diffs (hundreds of changed runs) take tens of seconds.
+	const headingEntries = listDocumentHeadingEntries(content);
 	const operations = input.selections.map((selection) =>
-		captureDocumentPatchOperation(content, selection)
+		captureDocumentPatchOperation(content, selection, headingEntries)
 	);
 	if (new Set(operations.map((operation) => operation.op_id)).size !== operations.length) {
 		throw new Error('Document patch operation ids must be unique.');
@@ -244,9 +258,13 @@ export function assertDocumentPatchIntegrity(patch: DocumentPatchV1): void {
 	}
 }
 
-function resolveHeadingPath(content: string, path: HeadingPathSegmentV1[]): SectionRange | null {
-	if (path.length === 0) return { from: 0, to: content.length };
-	let siblings = extractOutline(content).nodes;
+function resolveHeadingPath(
+	outline: () => DocOutlineNode[],
+	contentLength: number,
+	path: HeadingPathSegmentV1[]
+): SectionRange | null {
+	if (path.length === 0) return { from: 0, to: contentLength };
+	let siblings = outline();
 	let resolved: DocOutlineNode | null = null;
 
 	for (const segment of path) {
@@ -272,6 +290,45 @@ function contextMatches(
 	if (anchor.suffix && content.slice(to, to + anchor.suffix.length) !== anchor.suffix)
 		return false;
 	return true;
+}
+
+/**
+ * The captured context nearest the target: back to the start of the closest
+ * non-blank line of the prefix, forward through the closest non-blank line of
+ * the suffix. Blank separator lines in between are included.
+ */
+function nearestContext(anchor: DocumentPatchAnchorV1): { before: string; after: string } {
+	const prefixLines = anchor.prefix.split('\n');
+	let first = prefixLines.length - 1;
+	while (first > 0 && !prefixLines[first]!.trim()) first -= 1;
+	const suffixLines = anchor.suffix.split('\n');
+	let last = 0;
+	while (last < suffixLines.length - 1 && !suffixLines[last]!.trim()) last += 1;
+	return {
+		before: prefixLines.slice(first).join('\n'),
+		after:
+			suffixLines.slice(0, last + 1).join('\n') + (last < suffixLines.length - 1 ? '\n' : '')
+	};
+}
+
+/**
+ * Strict re-anchoring: the target must still sit between the same neighbouring
+ * lines (or the same document boundary) it was captured between. A lone
+ * identical line elsewhere in the section is then never mistaken for it.
+ */
+function nearContextMatches(
+	content: string,
+	from: number,
+	to: number,
+	anchor: DocumentPatchAnchorV1
+): boolean {
+	if (!anchor.prefix && from !== 0) return false;
+	if (!anchor.suffix && to !== content.length) return false;
+	const { before, after } = nearestContext(anchor);
+	return (
+		content.slice(from - before.length, from) === before &&
+		content.slice(to, to + after.length) === after
+	);
 }
 
 function exactTargetMatches(
@@ -314,12 +371,19 @@ function insertionBoundaries(
 	return boundaries;
 }
 
+type ReanchorContext = {
+	/** Lazily parsed outline of the current content, shared by every operation. */
+	outline: () => DocOutlineNode[];
+	strict: boolean;
+};
+
 function resolveReanchoredOperation(
 	content: string,
-	operation: DocumentPatchOperationV1
+	operation: DocumentPatchOperationV1,
+	context: ReanchorContext
 ): ResolvedDocumentPatchOperation | Exclude<DocumentPatchConflictReason, 'WRITE_RACE'> {
 	const { anchor } = operation;
-	const section = resolveHeadingPath(content, anchor.heading_path);
+	const section = resolveHeadingPath(context.outline, content.length, anchor.heading_path);
 
 	if (anchor.before_markdown === '') {
 		if (!section) return 'ANCHOR_NOT_FOUND';
@@ -361,18 +425,31 @@ function resolveReanchoredOperation(
 		}
 
 		const occurrences = exactOccurrences(content, anchor.before_markdown, section);
-		const candidates =
-			occurrences.length <= 1
-				? occurrences
-				: occurrences.filter((from) =>
-						contextMatches(content, from, from + anchor.before_markdown.length, anchor)
-					);
+		const targetEnd = (from: number) => from + anchor.before_markdown.length;
+		let candidates: number[];
+		if (context.strict) {
+			candidates = occurrences.filter((from) =>
+				nearContextMatches(content, from, targetEnd(from), anchor)
+			);
+			if (candidates.length > 1) {
+				candidates = candidates.filter((from) =>
+					contextMatches(content, from, targetEnd(from), anchor)
+				);
+			}
+		} else {
+			candidates =
+				occurrences.length <= 1
+					? occurrences
+					: occurrences.filter((from) =>
+							contextMatches(content, from, targetEnd(from), anchor)
+						);
+		}
 		if (candidates.length === 1) {
 			const from = candidates[0]!;
 			return {
 				op_id: operation.op_id,
 				from,
-				to: from + anchor.before_markdown.length,
+				to: targetEnd(from),
 				before_markdown: anchor.before_markdown,
 				replacement_markdown: operation.replacement_markdown
 			};
@@ -418,8 +495,11 @@ function hasOverlappingOperations(operations: ResolvedDocumentPatchOperation[]):
 	return false;
 }
 
-function touchesManagedRegion(content: string, operation: ResolvedDocumentPatchOperation): boolean {
-	return findStartHereManagedRegionRanges(content).some((region) => {
+function touchesManagedRegion(
+	regions: Array<{ from: number; to: number }>,
+	operation: ResolvedDocumentPatchOperation
+): boolean {
+	return regions.some((region) => {
 		if (operation.from === operation.to)
 			return operation.from > region.from && operation.from < region.to;
 		return operation.from < region.to && operation.to > region.from;
@@ -430,20 +510,35 @@ export function applyResolvedDocumentPatch(
 	content: string,
 	operations: ResolvedDocumentPatchOperation[]
 ): string {
-	return [...operations]
-		.sort((left, right) => right.from - left.from || right.to - left.to)
-		.reduce(
-			(next, operation) =>
-				next.slice(0, operation.from) +
-				operation.replacement_markdown +
-				next.slice(operation.to),
-			content
-		);
+	// One pass over non-overlapping operations in document order; re-slicing the
+	// whole body per operation is quadratic for a replace_all with many matches.
+	const sorted = [...operations].sort(
+		(left, right) => left.from - right.from || left.to - right.to
+	);
+	const parts: string[] = [];
+	let cursor = 0;
+	for (const operation of sorted) {
+		parts.push(content.slice(cursor, operation.from), operation.replacement_markdown);
+		cursor = operation.to;
+	}
+	parts.push(content.slice(cursor));
+	return parts.join('');
 }
+
+export type ResolveDocumentPatchOptions = {
+	/**
+	 * Re-anchor only where the target still sits between the same neighbouring
+	 * lines it was captured between. One-click Undo uses this: undoing against a
+	 * document that changed must fail closed rather than hit an identical line
+	 * somewhere else in the section.
+	 */
+	strict_context?: boolean;
+};
 
 export function resolveDocumentPatch(
 	patch: DocumentPatchV1,
-	currentContent: string | null | undefined
+	currentContent: string | null | undefined,
+	options: ResolveDocumentPatchOptions = {}
 ): ResolveDocumentPatchResult {
 	assertDocumentPatchIntegrity(patch);
 	const content = currentContent ?? '';
@@ -455,6 +550,11 @@ export function resolveDocumentPatch(
 	}
 
 	const fastPath = hashDocumentContent(content) === patch.base_content_hash;
+	let outlineNodes: DocOutlineNode[] | null = null;
+	const reanchor: ReanchorContext = {
+		outline: () => (outlineNodes ??= extractOutline(content).nodes),
+		strict: options.strict_context === true
+	};
 	const resolved: ResolvedDocumentPatchOperation[] = [];
 
 	for (const operation of patch.operations) {
@@ -475,7 +575,7 @@ export function resolveDocumentPatch(
 			continue;
 		}
 
-		const reanchored = resolveReanchoredOperation(content, operation);
+		const reanchored = resolveReanchoredOperation(content, operation, reanchor);
 		if (typeof reanchored === 'string') return { status: 'conflict', reason: reanchored };
 		resolved.push(reanchored);
 	}
@@ -483,7 +583,8 @@ export function resolveDocumentPatch(
 	if (hasOverlappingOperations(resolved)) {
 		return { status: 'conflict', reason: 'OVERLAPPING_OPERATIONS' };
 	}
-	if (resolved.some((operation) => touchesManagedRegion(content, operation))) {
+	const managedRegions = findStartHereManagedRegionRanges(content);
+	if (resolved.some((operation) => touchesManagedRegion(managedRegions, operation))) {
 		return { status: 'conflict', reason: 'MANAGED_REGION_BOUNDARY' };
 	}
 

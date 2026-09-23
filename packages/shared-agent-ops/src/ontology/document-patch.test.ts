@@ -209,3 +209,32 @@ describe('resolveDocumentPatch', () => {
 		});
 	});
 });
+
+describe('strict re-anchoring', () => {
+	const base = '# Plan\n\n## Tasks\n- [ ] Call Sam\n- [ ] Draft deck\n- [ ] Book venue\n- [ ] Call Sam\n\n## Notes\nnotes\n';
+	// Remove the second "Call Sam" (the one after "Book venue").
+	const patch = patchFor(base, [selection(base, '- [ ] Call Sam\n', '', 'op-1', 1)]);
+
+	it('re-anchors between the same neighbouring lines after unrelated edits', () => {
+		const shifted = base
+			.replace('## Tasks\n', '## Tasks\n- [ ] New first\n')
+			.replace('notes', 'more notes');
+		expect(resolveDocumentPatch(patch, shifted, { strict_context: true })).toMatchObject({
+			status: 'resolved',
+			strategy: 'reanchored',
+			next_content: shifted.replace('- [ ] Book venue\n- [ ] Call Sam\n', '- [ ] Book venue\n')
+		});
+	});
+
+	it('never takes a lone identical line whose neighbours differ', () => {
+		const onlyOriginal = base
+			.replace('- [ ] Book venue\n- [ ] Call Sam\n', '- [ ] Book venue\n')
+			.replace('notes', 'more notes');
+		// The default mode accepts a single occurrence anywhere in the section.
+		expect(resolveDocumentPatch(patch, onlyOriginal).status).toBe('resolved');
+		expect(resolveDocumentPatch(patch, onlyOriginal, { strict_context: true })).toEqual({
+			status: 'conflict',
+			reason: 'BASE_TEXT_CHANGED'
+		});
+	});
+});

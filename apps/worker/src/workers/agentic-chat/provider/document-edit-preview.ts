@@ -26,7 +26,12 @@ export type DocumentEditPreviewV1 = {
 };
 
 export type DocumentEditPreviewOutcome =
-	| { status: 'previewed'; preview: DocumentEditPreviewV1 | null }
+	| {
+			status: 'previewed';
+			preview: DocumentEditPreviewV1 | null;
+			/** Body this call would store; the base for the next call on the same document. */
+			next_content?: string | null;
+	  }
 	/** The write would fail this way; the acting model should correct it. */
 	| { status: 'rejected'; message: string }
 	/** Preview could not run (infrastructure); review and execution proceed as before. */
@@ -37,6 +42,8 @@ export type AgenticChatDocumentEditPreviewPort = {
 		userId: string;
 		projectId: string | null;
 		args: Record<string, unknown>;
+		/** Body left by the earlier calls on this document in the same batch. */
+		baseContent?: string;
 	}): Promise<DocumentEditPreviewOutcome>;
 };
 
@@ -52,7 +59,7 @@ export function createGatewayDocumentEditPreviewPort(
 	client: SupabaseClient
 ): AgenticChatDocumentEditPreviewPort {
 	return {
-		async preview({ userId, projectId, args }) {
+		async preview({ userId, projectId, args, baseContent }) {
 			const scope: AgentCallScope = {
 				mode: 'read_write',
 				allowed_ops: ['onto.document.update'],
@@ -64,7 +71,8 @@ export function createGatewayDocumentEditPreviewPort(
 					admin: client as never,
 					userId,
 					scope,
-					args
+					args,
+					...(baseContent !== undefined ? { baseContent } : {})
 				});
 			} catch {
 				return { status: 'unavailable' };
@@ -75,7 +83,8 @@ export function createGatewayDocumentEditPreviewPort(
 					: { status: 'unavailable' };
 			}
 			const change = result.data.document_change;
-			if (!change) return { status: 'previewed', preview: null };
+			const nextContent = result.data.next_content;
+			if (!change) return { status: 'previewed', preview: null, next_content: nextContent };
 			const changedLines: string[] = [];
 			let truncated = change.hunks_truncated;
 			for (const hunk of change.hunks) {
@@ -97,7 +106,8 @@ export function createGatewayDocumentEditPreviewPort(
 					lines_removed: change.lines_removed,
 					changed_lines: changedLines,
 					changed_lines_truncated: truncated
-				}
+				},
+				next_content: nextContent
 			};
 		}
 	};
@@ -126,6 +136,12 @@ function changesDocumentBody(args: Record<string, unknown>): boolean {
 /**
  * Preview every body-changing update_onto_document call. Returns validation
  * issues for calls whose write would fail, and the verified previews by call id.
+ *
+ * A batch executes its calls in order, so calls on the same document are
+ * previewed in order, each against the body the earlier ones leave behind.
+ * Documents are independent and preview in parallel. Once a call on a document
+ * cannot be previewed (rejected or unavailable), the later calls on it are left
+ * unpreviewed rather than checked against a body they would never see.
  */
 export async function previewDocumentEditCalls(
 	port: AgenticChatDocumentEditPreviewPort,
@@ -142,28 +158,61 @@ export async function previewDocumentEditCalls(
 		const args = domainArguments(call);
 		return args && changesDocumentBody(args) ? [{ call, args }] : [];
 	});
-	const outcomes = await Promise.all(
-		targets.map(({ args }) =>
-			port
-				.preview({ userId: request.userId, projectId: request.projectId, args })
-				.catch((): DocumentEditPreviewOutcome => ({ status: 'unavailable' }))
-		)
+	const chains = new Map<string, typeof targets>();
+	for (const target of targets) {
+		const key =
+			typeof target.args.document_id === 'string'
+				? `document:${target.args.document_id}`
+				: `call:${target.call.id}`;
+		chains.set(key, [...(chains.get(key) ?? []), target]);
+	}
+
+	const outcomes = new Map<string, { outcome: DocumentEditPreviewOutcome; chained: boolean }>();
+	await Promise.all(
+		[...chains.values()].map(async (chain) => {
+			let baseContent: string | undefined;
+			let blocked = false;
+			for (const { call, args } of chain) {
+				if (blocked) continue;
+				const chained = baseContent !== undefined;
+				const outcome = await port
+					.preview({
+						userId: request.userId,
+						projectId: request.projectId,
+						args,
+						...(chained ? { baseContent } : {})
+					})
+					.catch((): DocumentEditPreviewOutcome => ({ status: 'unavailable' }));
+				outcomes.set(call.id, { outcome, chained });
+				if (outcome.status !== 'previewed') blocked = true;
+				else if (typeof outcome.next_content === 'string') baseContent = outcome.next_content;
+				// It changed the body without saying how: later calls cannot be previewed exactly.
+				else if (outcome.preview) blocked = true;
+			}
+		})
 	);
-	targets.forEach(({ call }, index) => {
-		const outcome = outcomes[index]!;
+
+	for (const { call } of targets) {
+		const entry = outcomes.get(call.id);
+		if (!entry) continue;
+		const { outcome, chained } = entry;
 		if (outcome.status === 'rejected') {
 			issues.push({
 				toolCall: completedProviderCallToChatToolCall(call),
 				toolName: call.name,
 				op: 'onto.document.update',
 				errors: [
-					`Checked against the stored document before review; nothing was written. ${outcome.message}`
+					`${
+						chained
+							? 'Checked before review against the document as the earlier update_onto_document calls in this batch leave it'
+							: 'Checked against the stored document before review'
+					}; nothing was written. ${outcome.message}`
 				]
 			});
 		} else if (outcome.status === 'previewed' && outcome.preview) {
 			previews.set(call.id, outcome.preview);
 		}
-	});
+	}
 	return { issues, previews };
 }
 
@@ -177,5 +226,5 @@ export function formatDocumentEditPreviewsForReview(
 		return preview ? [{ call: index + 1, ...preview }] : [];
 	});
 	if (entries.length === 0) return null;
-	return `Server preview of the held document changes (dry run against the stored document: every old_text and section resolved, nothing else in the document changes; this is the exact effect if approved): ${JSON.stringify(entries)}`;
+	return `Server preview of the held document changes (dry run against the stored document, with calls on the same document applied in order: every old_text and section resolved, nothing else in the document changes; this is the exact effect if approved): ${JSON.stringify(entries)}`;
 }

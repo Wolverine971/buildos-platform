@@ -2,6 +2,8 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+	createDocumentRevertPatch,
+	DOCUMENT_REPLACE_ALL_MAX,
 	findInDocument,
 	formatDocumentEditFailures,
 	largeDeletionRefusal,
@@ -468,5 +470,136 @@ describe('largeDeletionRefusal', () => {
 		expect(largeDeletionRefusal(long, 'x'.repeat(2_000))).toMatch(/82% removed/);
 		expect(largeDeletionRefusal(long, 'x'.repeat(9_000))).toBeNull();
 		expect(largeDeletionRefusal('short doc', '')).toBeNull();
+	});
+});
+
+describe('tasker 98 review fixes', () => {
+	function checklistDocument(sections: number): string {
+		const lines: string[] = [];
+		for (let section = 0; section < sections; section += 1) {
+			lines.push(`## Section ${section}`, '');
+			for (let item = 0; item < 25; item += 1) {
+				lines.push(`- item ${section}.${item} with some words to pad the line out a bit more`);
+			}
+			lines.push('');
+		}
+		return `${lines.join('\n')}\n`;
+	}
+
+	it('prepend leaves a blank line before the text that follows', () => {
+		const next = resolved(
+			resolve(
+				'# A\n## H\nexisting para\n\n## I\ni\n',
+				[],
+				[{ action: 'prepend', section: 'h', content: 'NEW LINE' }]
+			)
+		);
+		expect(next).toBe('# A\n## H\n\nNEW LINE\n\nexisting para\n\n## I\ni\n');
+	});
+
+	it('section edits on a CRLF document change the named section only', () => {
+		const crlf =
+			'# Title\r\nIntro line\r\n\r\n## Alpha\r\nalpha body\r\nmore alpha\r\n\r\n## Beta\r\nbeta body\r\n';
+		expect(resolved(resolve(crlf, [], [{ action: 'delete', section: 'alpha' }]))).toBe(
+			'# Title\r\nIntro line\r\n\r\n## Beta\r\nbeta body\r\n'
+		);
+		const replaced = resolved(
+			resolve(crlf, [], [{ action: 'replace', section: 'beta', content: 'NEW BETA' }])
+		);
+		expect(replaced).toContain(
+			'## Alpha\r\nalpha body\r\nmore alpha\r\n\r\n## Beta\r\n'
+		);
+		expect(replaced).toContain('NEW BETA');
+		expect(replaced).not.toContain('beta body');
+	});
+
+	it('refuses section edits when heading offsets cannot be trusted', () => {
+		const defs =
+			'# Doc\n\n[a]: http://x\n\n[a]: http://y\n\n## Alpha\nalpha body\n\n## Beta\nbeta body\n';
+		expect(
+			resolve(defs, [], [{ action: 'replace', section: 'beta', content: 'NEW' }])
+		).toMatchObject({ status: 'rejected', failures: [{ code: 'SECTION_NOT_FOUND' }] });
+		// Text edits still work, and Alpha's body is untouched.
+		expect(resolved(resolve(defs, [{ old_text: 'beta body', new_text: 'NEW' }]))).toBe(
+			defs.replace('beta body', 'NEW')
+		);
+	});
+
+	it('caps replace_all with an error the model can act on', () => {
+		const items = (count: number) =>
+			Array.from({ length: count }, (_, index) => `- item ${index} todo`).join('\n');
+		const edit = { old_text: 'todo', new_text: 'done', replace_all: true };
+		const over = resolve(items(DOCUMENT_REPLACE_ALL_MAX + 1), [edit]);
+		expect(over).toMatchObject({ status: 'rejected', failures: [{ code: 'INVALID_EDIT' }] });
+		expect(over.status === 'rejected' ? over.failures[0]!.message : '').toMatch(
+			/matches 201 places, more than the 200/
+		);
+		expect(resolved(resolve(items(DOCUMENT_REPLACE_ALL_MAX), [edit]))).not.toContain('todo');
+	});
+
+	it('summarizes a 180KB rewrite quickly and drops an Undo patch over the cap', () => {
+		const before = checklistDocument(120);
+		const after = before
+			.split('\n')
+			.map((line, index) => (index % 2 === 0 && line.startsWith('- ') ? `${line} (edited)` : line))
+			.join('\n');
+		expect(before.length).toBeGreaterThan(180_000);
+
+		// Before the fix this took ~25s: one full Markdown parse per changed run.
+		let started = performance.now();
+		const summary = summarizeDocumentChange({ ...IDS, before, after });
+		expect(performance.now() - started).toBeLessThan(2_000);
+		expect(summary?.lines_added).toBeGreaterThan(1_000);
+		expect(summary?.revert_patch).toBeNull();
+
+		started = performance.now();
+		expect(createDocumentRevertPatch({ ...IDS, before, after })).toBeNull();
+		expect(performance.now() - started).toBeLessThan(2_000);
+	});
+
+	it('still carries a working Undo patch for a small edit in a long document', () => {
+		const before = checklistDocument(40);
+		const after = before.replace('- item 20.3 with', '- item 20.3 (moved up) with');
+		const summary = summarizeDocumentChange({ ...IDS, before, after });
+		expect(summary?.revert_patch).toBeTruthy();
+		expect(resolveDocumentPatch(summary!.revert_patch!, after)).toMatchObject({
+			status: 'resolved',
+			next_content: before
+		});
+		expect(
+			summarizeDocumentChange({ ...IDS, before, after, include_revert_patch: false })
+				?.revert_patch
+		).toBeNull();
+	});
+
+	it('a second Undo refuses to delete the user’s identical line once the body moved on', () => {
+		const original =
+			'# Plan\n\n## Tasks\n- [ ] Call Sam\n- [ ] Draft deck\n- [ ] Book venue\n\n## Notes\nnotes here\n';
+		const edited = resolved(
+			resolve(original, [
+				{ old_text: '- [ ] Book venue', new_text: '- [ ] Book venue\n- [ ] Call Sam' }
+			])
+		);
+		const patch = summarizeDocumentChange({ ...IDS, before: original, after: edited })
+			?.revert_patch;
+		if (!patch) throw new Error('expected revert patch');
+		expect(resolveDocumentPatch(patch, edited, { strict_context: true })).toMatchObject({
+			status: 'resolved',
+			next_content: original
+		});
+		// Undo already ran, then the user edited Notes: the only "- [ ] Call Sam" left
+		// is the user's own line, between different neighbours.
+		const laterBody = original.replace('notes here', 'notes here, updated');
+		expect(resolveDocumentPatch(patch, laterBody, { strict_context: true })).toEqual({
+			status: 'conflict',
+			reason: 'BASE_TEXT_CHANGED'
+		});
+		// With the agent's line still present, strict Undo re-anchors past other edits.
+		const editedLater = edited.replace('notes here', 'notes here, updated');
+		expect(resolveDocumentPatch(patch, editedLater, { strict_context: true })).toMatchObject({
+			status: 'resolved',
+			strategy: 'reanchored',
+			next_content: laterBody
+		});
 	});
 });

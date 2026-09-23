@@ -200,3 +200,23 @@ describe('isOutlineStale', () => {
 		expect(isOutlineStale(outline, '# x\nbody edited')).toBe(true);
 	});
 });
+
+describe('extractOutline offsets (tasker 98 review)', () => {
+	it('maps offsets back to raw CRLF content', () => {
+		const md = '# Title\r\nIntro line\r\n\r\n## Alpha\r\nalpha body\r\n\r\n## Beta\r\nbeta body\r\n';
+		const flat = flatten(extractOutline(md).nodes);
+		expect(flat.map((node) => node.text)).toEqual(['Title', 'Alpha', 'Beta']);
+		for (const node of flat) {
+			expect(md.slice(node.char_start)).toMatch(/^#{1,2} /);
+		}
+		const alpha = flat.find((node) => node.text === 'Alpha')!;
+		expect(md.slice(alpha.char_start, alpha.char_end)).toBe('## Alpha\r\nalpha body\r\n\r\n');
+	});
+
+	it('returns no outline when marked drops a token and offsets would drift', () => {
+		// marked drops the duplicate link definition, so summed token lengths
+		// would put every later heading short of its real position.
+		const md = '# Doc\n\n[a]: http://x\n\n[a]: http://y\n\n## Alpha\nalpha body\n\n## Beta\nbeta body\n';
+		expect(extractOutline(md).nodes).toEqual([]);
+	});
+});

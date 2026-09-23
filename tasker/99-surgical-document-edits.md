@@ -2,7 +2,7 @@
 
 # Tasker 99 — Surgical document edits in chat (remove or replace a line without rewriting the doc)
 
-**Status:** p04 passed in prod; p05 follow-up (preview-before-review) built, UNCOMMITTED; p05 replay pending DJ approval · **Opened:** 2026-09-23 · **Source:** book loop on DJ's real project (prod),
+**Status:** p04 passed in prod; preview-before-review live since 4ebe44389 (no flag, not gated); 09-23 review fixes committed (Undo patch parses the outline once, section edits fail closed on offset drift, strict Undo re-anchoring, in-order batch previews, prepend spacing, legacy executor write guard); p05 replay + gate pending DJ approval; durable "Undone" card state still open · **Opened:** 2026-09-23 · **Source:** book loop on DJ's real project (prod),
 turn `p02-drop-exclusions` (`output/book-loop/p02-drop-exclusions.json`), session `55169006-cde9-487b-8b40-1468d83b02a4`.
 **Scope guard:** a general tool capability for any long document. Not book-specific; no lexical rules.
 

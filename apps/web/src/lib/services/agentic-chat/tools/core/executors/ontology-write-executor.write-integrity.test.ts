@@ -215,6 +215,107 @@ describe('OntologyWriteExecutor write-path integrity', () => {
 		});
 	});
 
+	describe('surgical edits — guarded write (tasker 98 review)', () => {
+		const storedDocument = (content: string | null, updatedAt: string) => ({
+			document: {
+				id: 'doc-1',
+				project_id: 'project-1',
+				content,
+				props: { body_markdown: 'Stale copy: Exclusions line.' },
+				updated_at: updatedAt
+			}
+		});
+
+		it('sends the read’s updated_at so a concurrent save is not overwritten', async () => {
+			const executor = new OntologyWriteExecutor(context);
+
+			await executor.updateOntoDocument(
+				{
+					document_id: 'doc-1',
+					edits: [{ old_text: 'Draft', new_text: 'Final' }]
+				} as any,
+				async () => storedDocument('Draft plan.', '2026-09-23T10:00:00.000Z')
+			);
+
+			expect(patchBodies).toEqual([
+				{
+					url: '/api/onto/documents/doc-1',
+					body: { content: 'Final plan.', expected_updated_at: '2026-09-23T10:00:00.000Z' }
+				}
+			]);
+		});
+
+		it('re-resolves once on the newer body after a 409, then writes', async () => {
+			const executor = new OntologyWriteExecutor(context);
+			const reads = [
+				storedDocument('Draft plan.', '2026-09-23T10:00:00.000Z'),
+				storedDocument('Draft plan.\n\nA line the user added.', '2026-09-23T10:00:05.000Z')
+			];
+			let patchCount = 0;
+			const defaultFetch = mockFetch.getMockImplementation()!;
+			mockFetch.mockImplementation((url, options) => {
+				if (options?.method === 'PATCH' && patchCount++ === 0) {
+					patchBodies.push({ url: String(url), body: JSON.parse(String(options.body)) });
+					return Promise.resolve({
+						ok: false,
+						status: 409,
+						statusText: 'Conflict',
+						headers: { get: () => 'application/json' },
+						json: async () => ({ error: 'Document was modified by another user.' }),
+						text: async () => ''
+					});
+				}
+				return defaultFetch(url, options);
+			});
+
+			await executor.updateOntoDocument(
+				{
+					document_id: 'doc-1',
+					edits: [{ old_text: 'Draft', new_text: 'Final' }]
+				} as any,
+				async () => reads.shift()!
+			);
+
+			expect(patchBodies.map((entry) => entry.body)).toEqual([
+				{ content: 'Final plan.', expected_updated_at: '2026-09-23T10:00:00.000Z' },
+				{
+					content: 'Final plan.\n\nA line the user added.',
+					expected_updated_at: '2026-09-23T10:00:05.000Z'
+				}
+			]);
+		});
+
+		it('treats an empty body as the body, never the stale props copy', async () => {
+			const executor = new OntologyWriteExecutor(context);
+
+			await expect(
+				executor.updateOntoDocument(
+					{
+						document_id: 'doc-1',
+						edits: [{ old_text: 'Exclusions line.', new_text: '' }]
+					} as any,
+					async () => storedDocument('', '2026-09-23T10:00:00.000Z')
+				)
+			).rejects.toThrow(/ANCHOR_NOT_FOUND/);
+			expect(patchBodies).toHaveLength(0);
+		});
+
+		it('applies edits sent with update_strategy append', async () => {
+			const executor = new OntologyWriteExecutor(context);
+
+			await executor.updateOntoDocument(
+				{
+					document_id: 'doc-1',
+					update_strategy: 'append',
+					edits: [{ old_text: 'Draft', new_text: 'Final' }]
+				} as any,
+				async () => storedDocument('Draft plan.', '2026-09-23T10:00:00.000Z')
+			);
+
+			expect(patchBodies[0]?.body.content).toBe('Final plan.');
+		});
+	});
+
 	describe('D2 — merge_llm scales tokens and rejects a truncated merge', () => {
 		const longExisting = 'E'.repeat(8000);
 

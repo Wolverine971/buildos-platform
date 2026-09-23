@@ -425,6 +425,17 @@ function calendarSyncReceiptFields(data: any): Partial<TaskWriteResult> {
 }
 
 /**
+ * A document's stored body. The legacy props.body_markdown copy is read only when
+ * the content column is absent: an empty body is a real body, not a reason to
+ * fall back to a stale copy.
+ */
+function storedDocumentBody(document: Record<string, any> | null | undefined): string {
+	const candidates = [document?.content, document?.props?.body_markdown, document?.body_markdown];
+	const body = candidates.find((value) => value !== null && value !== undefined);
+	return typeof body === 'string' ? body : '';
+}
+
+/**
  * Executor for ontology write operations.
  *
  * Handles create, update, and delete operations with proper validation
@@ -1736,27 +1747,34 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		// Support both content (new) and body_markdown (legacy) parameters
 		const documentContent = normalizedArgs.content ?? normalizedArgs.body_markdown;
 		const strategy = normalizedArgs.update_strategy ?? 'replace';
+		const editArgs = normalizedArgs as unknown as Record<string, unknown>;
+		const withEdits = hasDocumentEdits(editArgs);
+		if (withEdits && documentContent !== undefined) {
+			throw new Error(
+				'Pass either content (whole-body replace or append) or edits/section_edits, not both.'
+			);
+		}
+		// Edits carry their own text; update_strategy only shapes a content write.
 		if (
+			!withEdits &&
 			isAppendOrMergeUpdateStrategy(strategy) &&
-			!getDocumentUpdateContentCandidate(normalizedArgs as unknown as Record<string, unknown>)
+			!getDocumentUpdateContentCandidate(editArgs)
 		) {
 			throw new Error(`update_onto_document ${strategy} requires non-empty content.`);
 		}
-		const editArgs = normalizedArgs as unknown as Record<string, unknown>;
-		if (hasDocumentEdits(editArgs)) {
-			if (documentContent !== undefined) {
-				throw new Error(
-					'Pass either content (whole-body replace or append) or edits/section_edits, not both.'
-				);
-			}
+		// Edits resolve against the body just read, so the write is guarded on that
+		// read (expected_updated_at) like the gateway's: a concurrent save is never
+		// silently overwritten with a body computed from a stale copy.
+		const resolveEditedBody = async (): Promise<{
+			content: string;
+			expectedUpdatedAt: string | undefined;
+		}> => {
 			const existing = await getDocumentDetails(normalizedArgs.document_id);
+			const document = existing?.document as Record<string, any> | undefined;
 			const resolution = resolveDocumentEdits({
-				project_id: String(existing?.document?.project_id ?? ''),
+				project_id: String(document?.project_id ?? ''),
 				document_id: normalizedArgs.document_id,
-				content:
-					(existing?.document?.content as string) ||
-					(existing?.document?.props?.body_markdown as string) ||
-					'',
+				content: storedDocumentBody(document),
 				edits: Array.isArray(editArgs.edits)
 					? (editArgs.edits as DocumentTextEditV1[])
 					: [],
@@ -1769,7 +1787,16 @@ export class OntologyWriteExecutor extends BaseExecutor {
 					formatDocumentEditFailures(resolution.failures, resolution.matched_edits)
 				);
 			}
-			updateData.content = resolution.next_content;
+			return {
+				content: resolution.next_content,
+				expectedUpdatedAt:
+					typeof document?.updated_at === 'string' ? document.updated_at : undefined
+			};
+		};
+		if (withEdits) {
+			const edited = await resolveEditedBody();
+			updateData.content = edited.content;
+			if (edited.expectedUpdatedAt) updateData.expected_updated_at = edited.expectedUpdatedAt;
 		}
 		if (documentContent !== undefined) {
 			// Resolve content with strategy, then send as content (API handles backwards compat)
@@ -1780,13 +1807,8 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				entityLabel: `document:${normalizedArgs.document_id}`,
 				existingLoader: async () => {
 					const existing = await getDocumentDetails(normalizedArgs.document_id);
-					// Prefer content column, fall back to props.body_markdown for backwards compat
 					return {
-						text:
-							(existing?.document?.content as string) ||
-							(existing?.document?.props?.body_markdown as string) ||
-							(existing?.document?.body_markdown as string) ||
-							'',
+						text: storedDocumentBody(existing?.document),
 						projectId: existing?.document?.project_id as string | undefined
 					};
 				}
@@ -1802,10 +1824,33 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			throw new Error('No updates provided for ontology document');
 		}
 
-		const data = await this.apiRequest(`/api/onto/documents/${normalizedArgs.document_id}`, {
-			method: 'PATCH',
-			body: JSON.stringify(updateData)
-		});
+		const documentPath = `/api/onto/documents/${normalizedArgs.document_id}`;
+		let data: any;
+		try {
+			data = await this.apiRequest(documentPath, {
+				method: 'PATCH',
+				body: JSON.stringify(updateData)
+			});
+		} catch (error) {
+			// Like the gateway: an edits-only write re-resolves once on the newer body
+			// (edits re-anchor or fail closed). Anything else could overwrite a
+			// concurrent human change, so its conflict goes back to the model.
+			const editsOnly = Object.keys(updateData).every(
+				(key) => key === 'content' || key === 'expected_updated_at'
+			);
+			if (!(withEdits && editsOnly && error instanceof ApiRequestError && error.status === 409))
+				throw error;
+			const edited = await resolveEditedBody();
+			data = await this.apiRequest(documentPath, {
+				method: 'PATCH',
+				body: JSON.stringify({
+					content: edited.content,
+					...(edited.expectedUpdatedAt
+						? { expected_updated_at: edited.expectedUpdatedAt }
+						: {})
+				})
+			});
+		}
 
 		return {
 			document: data.document,

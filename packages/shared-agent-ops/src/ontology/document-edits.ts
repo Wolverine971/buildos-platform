@@ -17,6 +17,7 @@ import {
 } from '../utils/document-outline';
 import {
 	createDocumentPatchV1,
+	DOCUMENT_PATCH_CONTEXT_CHARS,
 	resolveDocumentPatch,
 	type DocumentPatchSelection,
 	type DocumentPatchV1
@@ -88,6 +89,9 @@ export type ResolveDocumentEditsInput = {
 };
 
 export const DOCUMENT_EDITS_MAX = 50;
+/** Most places one replace_all edit may change; beyond this the edit is refused. */
+export const DOCUMENT_REPLACE_ALL_MAX = 200;
+const AMBIGUOUS_LINES_LISTED = 20;
 const SUGGESTION_MIN_SCORE = 0.5;
 const SUGGESTION_LIMIT = 2;
 const SECTION_LIST_LIMIT = 40;
@@ -383,12 +387,23 @@ function planTextEdit(
 		};
 	}
 	if (ranges.length > 1 && edit.replace_all !== true) {
-		const lines = ranges.map((range) => lineNumberAt(content, range.from));
+		const lines = ranges
+			.slice(0, AMBIGUOUS_LINES_LISTED)
+			.map((range) => lineNumberAt(content, range.from));
+		const listed =
+			ranges.length > lines.length ? `${lines.join(', ')}, \u2026` : lines.join(', ');
 		return {
 			edit: label,
 			code: 'ANCHOR_AMBIGUOUS',
-			message: `old_text matches ${ranges.length} places (lines ${lines.join(', ')}). Include more surrounding text so it matches exactly once, or set replace_all: true to change every occurrence.`,
+			message: `old_text matches ${ranges.length} places (lines ${listed}). Include more surrounding text so it matches exactly once, or set replace_all: true to change every occurrence.`,
 			match_lines: lines
+		};
+	}
+	if (ranges.length > DOCUMENT_REPLACE_ALL_MAX) {
+		return {
+			edit: label,
+			code: 'INVALID_EDIT',
+			message: `old_text matches ${ranges.length} places, more than the ${DOCUMENT_REPLACE_ALL_MAX} one replace_all edit may change. Make old_text more specific so it matches only the places you mean, or split the change into edits that each name a narrower phrase.`
 		};
 	}
 
@@ -468,7 +483,7 @@ function findSection(
 		code: 'SECTION_NOT_FOUND',
 		message:
 			sections.length === 0
-				? 'This document has no headings. Use edits with old_text/new_text instead.'
+				? 'No headings could be located in this document, so section_edits cannot apply. Use edits with old_text/new_text instead.'
 				: `No heading matches "${reference}". Use an anchor from get_document_outline.`,
 		available_sections: available
 	};
@@ -542,11 +557,14 @@ function planSectionEdit(
 		case 'prepend': {
 			const at = section.heading_end;
 			const lead = content[at - 1] === '\n' ? '\n' : '\n\n';
+			// A blank line must separate the new block from the text that follows,
+			// or Markdown merges them into one paragraph (or continues a list).
+			const tail = at >= content.length || content[at] === '\n' ? '\n' : '\n\n';
 			return [
 				{
 					edit: label,
 					range: { from: at, to: at },
-					replacement: `${lead}${body.trim()}\n`,
+					replacement: `${lead}${body.trim()}${tail}`,
 					match: 'section'
 				}
 			];
@@ -964,6 +982,21 @@ export function createDocumentRevertPatch(input: {
 	if (input.before === input.after) return null;
 	const selections = revertSelections(input.before, input.after);
 	if (selections.length === 0) return null;
+	// Each operation carries the text it replaces, its replacement, up to
+	// DOCUMENT_PATCH_CONTEXT_CHARS of context per side, and a 64-char hash, so this
+	// sum is a lower bound on the patch's JSON size. A patch already over the cap
+	// would be discarded, so skip building it (large rewrites took tens of seconds).
+	let minimumChars = 0;
+	for (const selection of selections) {
+		minimumChars +=
+			selection.to -
+			selection.from +
+			selection.replacement_markdown.length +
+			Math.min(DOCUMENT_PATCH_CONTEXT_CHARS, selection.from) +
+			Math.min(DOCUMENT_PATCH_CONTEXT_CHARS, input.after.length - selection.to) +
+			64;
+		if (minimumChars > DOCUMENT_CHANGE_MAX_REVERT_CHARS) return null;
+	}
 	const patch = createDocumentPatchV1({
 		project_id: input.project_id,
 		document_id: input.document_id,
@@ -984,6 +1017,8 @@ export function summarizeDocumentChange(input: {
 	before: string | null | undefined;
 	after: string | null | undefined;
 	context_lines?: number;
+	/** False skips building the Undo patch (dry-run previews never carry one). */
+	include_revert_patch?: boolean;
 }): DocumentChangeSummaryV1 | null {
 	const before = input.before ?? '';
 	const after = input.after ?? '';
@@ -994,6 +1029,8 @@ export function summarizeDocumentChange(input: {
 	});
 	let linesAdded = 0;
 	let linesRemoved = 0;
+	// Text the Undo patch would have to carry (a lower bound on its size).
+	let changedChars = 0;
 	let budget = DOCUMENT_CHANGE_MAX_HUNK_LINES;
 	let truncated = false;
 	const hunks: DocumentChangeHunkV1[] = [];
@@ -1005,6 +1042,7 @@ export function summarizeDocumentChange(input: {
 			const kind = marker === '+' ? 'add' : marker === '-' ? 'remove' : 'context';
 			if (kind === 'add') linesAdded += 1;
 			if (kind === 'remove') linesRemoved += 1;
+			if (kind !== 'context') changedChars += raw.length - 1;
 			if (budget > 0) {
 				lines.push({ kind, text: clipLine(raw.slice(1)) });
 				budget -= 1;
@@ -1030,12 +1068,17 @@ export function summarizeDocumentChange(input: {
 		after_hash: hashDocumentContent(after),
 		hunks,
 		hunks_truncated: truncated,
-		revert_patch: createDocumentRevertPatch({
-			project_id: input.project_id,
-			document_id: input.document_id,
-			before,
-			after
-		})
+		// Skip the second diff entirely when the changed text alone exceeds the Undo cap.
+		revert_patch:
+			input.include_revert_patch === false ||
+			changedChars + 64 * patch.hunks.length > DOCUMENT_CHANGE_MAX_REVERT_CHARS
+				? null
+				: createDocumentRevertPatch({
+						project_id: input.project_id,
+						document_id: input.document_id,
+						before,
+						after
+					})
 	};
 }
 

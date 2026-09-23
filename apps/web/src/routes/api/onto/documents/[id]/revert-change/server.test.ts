@@ -221,6 +221,34 @@ describe('POST /api/onto/documents/[id]/revert-change', () => {
 		);
 	});
 
+	it('refuses a second Undo that would delete the user’s identical line after the body moved on', async () => {
+		const plan =
+			'# Plan\n\n## Tasks\n- [ ] Call Sam\n- [ ] Draft deck\n- [ ] Book venue\n\n## Notes\nnotes here\n';
+		// The agent appended a line that duplicates an existing one.
+		const change = summarize(
+			plan,
+			plan.replace('- [ ] Book venue\n', '- [ ] Book venue\n- [ ] Call Sam\n')
+		);
+		// Undo already ran, then the user edited Notes; after a reload the card offers Undo again.
+		const laterBody = plan.replace('notes here', 'notes here, updated');
+
+		const response = await POST(
+			createEvent(
+				{
+					revert_patch: change.revert_patch,
+					before_hash: change.before_hash,
+					expected_after_hash: change.after_hash
+				},
+				laterBody
+			) as never
+		);
+		const payload = await response.json();
+
+		expect(response.status).toBe(409);
+		expect(payload.code).toBe('BASE_TEXT_CHANGED');
+		expect(mocks.writeDocumentHeadAndVersion).not.toHaveBeenCalled();
+	});
+
 	it('reports an already-restored body as undone without writing', async () => {
 		const change = summarize(BEFORE, MIDDLE);
 

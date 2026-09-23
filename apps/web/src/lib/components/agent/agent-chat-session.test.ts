@@ -7,6 +7,7 @@ import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
 import { summarizeDocumentChange } from '@buildos/shared-agent-ops/ontology/document-edits';
+import { readRecordIdsByTurn } from './context-selection-chips';
 import {
 	buildAgentChatSessionSnapshot,
 	deriveSessionTitle,
@@ -386,6 +387,79 @@ describe('agent-chat-session helpers', () => {
 				revertPatches: [change!.revert_patch]
 			})
 		]);
+	});
+
+	it('stamps restored tool blocks with their turn run so "Working from" chips keep read ticks', () => {
+		const turnOne = '8d7c6b5a-4f3e-4d2c-9b1a-0f9e8d7c6b5a';
+		const turnTwo = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+		const docOne = 'aaaaaaaa-1111-4222-8333-444444444444';
+		const docTwo = 'bbbbbbbb-1111-4222-8333-444444444444';
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'What does the plan say?',
+					created_at: '2026-09-23T10:00:00.000Z',
+					metadata: {
+						client_turn_id: 'turn-1',
+						context_selection: { client_turn_id: 'turn-1', turn_run_id: turnOne }
+					}
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'It says ship in May.',
+					created_at: '2026-09-23T10:01:00.000Z',
+					metadata: { client_turn_id: 'turn-1' }
+				},
+				{
+					id: 'user-2',
+					role: 'user',
+					content: 'And the notes?',
+					created_at: '2026-09-23T10:02:00.000Z'
+				},
+				{
+					id: 'assistant-2',
+					role: 'assistant',
+					content: 'The notes are empty.',
+					created_at: '2026-09-23T10:03:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-1',
+					message_id: 'assistant-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'get_onto_document_details',
+					sequence_index: 1,
+					arguments: { document_id: docOne },
+					result: { document: { id: docOne, title: 'Plan' } },
+					success: true,
+					created_at: '2026-09-23T10:00:30.000Z'
+				},
+				{
+					id: 'exec-2',
+					message_id: 'assistant-2',
+					tool_name: 'get_onto_document_details',
+					sequence_index: 1,
+					arguments: { document_id: docTwo },
+					result: { document: { id: docTwo, title: 'Notes' } },
+					success: true,
+					created_at: '2026-09-23T10:02:30.000Z'
+				}
+			] as any,
+			turnRuns: [
+				{ id: turnTwo, status: 'completed', assistant_message_id: 'assistant-2' }
+			]
+		});
+
+		const blocks = snapshot.messages.filter((message) => message.type === 'thinking_block');
+		expect(blocks.map((block) => block.metadata?.turn_run_id)).toEqual([turnOne, turnTwo]);
+		const readIds = readRecordIdsByTurn(snapshot.messages);
+		expect([...(readIds.get(turnOne) ?? [])]).toEqual([docOne]);
+		expect([...(readIds.get(turnTwo) ?? [])]).toEqual([docTwo]);
 	});
 
 	it('buildAgentChatSessionSnapshot exposes active turn runs for restore polling', () => {

@@ -655,6 +655,8 @@ function buildRestoredToolBlock(params: {
 	idSuffix: string;
 	timestamp?: string | null;
 	sources: RestoredToolActivitySource[];
+	/** The turn these tool calls ran in; "Working from" chips key their read ticks on it. */
+	turnRunId?: string | null;
 }): ThinkingBlockMessage | null {
 	const sortedSources = uniqueToolSources(params.sources).sort(sortRestoredToolSources);
 	if (sortedSources.length === 0) return null;
@@ -703,6 +705,7 @@ function buildRestoredToolBlock(params: {
 				: `Restored ${activities.length} tool call${activities.length === 1 ? '' : 's'}`,
 		timestamp: new Date(timestamp),
 		created_at: timestamp,
+		...(params.turnRunId ? { metadata: { turn_run_id: params.turnRunId } } : {}),
 		activities,
 		status: 'completed',
 		isCollapsed: false
@@ -758,13 +761,56 @@ function restoredWorkflowBlock(
 	};
 }
 
+/**
+ * Turn-run id for a restored assistant turn: the id on the assistant row, else
+ * the id its client turn maps to (the turn's context selection, joined onto its
+ * user message, or a recent turn run), else the turn run that wrote this message.
+ */
+function createRestoredTurnRunResolver(
+	messages: LoadedChatMessage[],
+	turnRuns: LoadedChatTurnRun[]
+): (msg: LoadedChatMessage, sources: RestoredToolActivitySource[]) => string | null {
+	const byClientTurn = new Map<string, string>();
+	const byAssistantMessage = new Map<string, string>();
+	for (const run of turnRuns) {
+		if (run.client_turn_id) byClientTurn.set(run.client_turn_id, run.id);
+		if (run.assistant_message_id) byAssistantMessage.set(run.assistant_message_id, run.id);
+	}
+	for (const msg of messages) {
+		const selection = msg.metadata?.context_selection;
+		if (
+			isRecord(selection) &&
+			typeof selection.client_turn_id === 'string' &&
+			typeof selection.turn_run_id === 'string'
+		) {
+			byClientTurn.set(selection.client_turn_id, selection.turn_run_id);
+		}
+	}
+	return (msg, sources) => {
+		const clientTurnIds = [
+			stringValue(msg.metadata?.client_turn_id),
+			...sources.map((source) => source.clientTurnId)
+		];
+		return (
+			workflowMessageTurnId(msg.metadata) ??
+			clientTurnIds
+				.map((clientTurnId) => (clientTurnId ? byClientTurn.get(clientTurnId) : undefined))
+				.find((turnRunId): turnRunId is string => Boolean(turnRunId)) ??
+			byAssistantMessage.get(msg.id) ??
+			null
+		);
+	};
+}
+
 function mapLoadedMessagesToUI(
 	loadedMessages: LoadedChatMessage[] | undefined,
-	toolExecutions: LoadedChatToolExecution[] | undefined
+	toolExecutions: LoadedChatToolExecution[] | undefined,
+	turnRuns: LoadedChatTurnRun[] = []
 ): UIMessage[] {
 	const messages = (loadedMessages ?? []).filter(
 		(msg) => msg.role === 'user' || msg.role === 'assistant'
 	);
+	const restoredTurnRunId = createRestoredTurnRunResolver(messages, turnRuns);
 	const loadedMessageIds = new Set(messages.map((message) => message.id));
 	const toolSources = mapToolExecutionsToSources(toolExecutions).filter(
 		(source) => !source.messageId || loadedMessageIds.has(source.messageId)
@@ -822,7 +868,8 @@ function mapLoadedMessagesToUI(
 				const restoredBlock = buildRestoredToolBlock({
 					idSuffix: msg.id,
 					timestamp: msg.created_at,
-					sources: blockSources
+					sources: blockSources,
+					turnRunId: restoredTurnRunId(msg, blockSources)
 				});
 				if (restoredBlock) {
 					uiMessages.push(restoredBlock);
@@ -1005,7 +1052,7 @@ export function buildAgentChatSessionSnapshot(
 		}
 	}
 
-	let messages = mapLoadedMessagesToUI(loadedMessages, toolExecutions);
+	let messages = mapLoadedMessagesToUI(loadedMessages, toolExecutions, turnRuns);
 	const timelineItems = Array.isArray(loadedTimelineItems)
 		? loadedTimelineItems
 		: timelineItemsFromMessages(session.id, messages);

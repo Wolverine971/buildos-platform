@@ -53,6 +53,22 @@ export function hashDocumentContent(content: string | null | undefined): string 
 	return sha256(typeof content === 'string' ? content : '');
 }
 
+/**
+ * Map an offset in the lexer's CRLF-normalized text (`\r\n` → `\n`, lone `\r` →
+ * `\n`) back to the raw content. Identity for content without carriage returns.
+ */
+function rawOffsetMapper(text: string): (offset: number) => number {
+	if (!text.includes('\r')) return (offset) => offset;
+	const rawIndexes: number[] = [];
+	for (let index = 0; index < text.length; index += 1) {
+		// `\r\n` collapses to the `\n`; a lone `\r` stays one character.
+		if (text[index] === '\r' && text[index + 1] === '\n') continue;
+		rawIndexes.push(index);
+	}
+	rawIndexes.push(text.length);
+	return (offset) => rawIndexes[offset] ?? text.length;
+}
+
 function countWords(text: string): number {
 	const trimmed = text.trim();
 	if (!trimmed) return 0;
@@ -90,12 +106,24 @@ export function extractOutline(content: string | null | undefined): DocOutline {
 	}
 	const headingList = getHeadingList();
 
-	// Walk top-level block tokens to recover char offsets for each heading.
+	// Walk top-level block tokens to recover char offsets for each heading. The
+	// lexer works on a CRLF-normalized copy, so offsets are computed there and
+	// mapped back to the raw content below.
+	const normalized = text.replace(/\r\n|\r/g, '\n');
 	const tokens = marked.lexer(text);
 	const headingStarts: number[] = [];
 	let offset = 0;
 	for (const token of tokens) {
-		if (token.type === 'heading') headingStarts.push(offset);
+		if (token.type === 'heading') {
+			// Some tokens (e.g. a duplicate link definition) are dropped from the
+			// token list, which shifts every later offset. A heading whose raw text
+			// is not at its computed offset means the offsets cannot be trusted:
+			// return no outline rather than let section edits hit the wrong text.
+			if (!normalized.startsWith(token.raw, offset)) {
+				return { version: DOC_OUTLINE_VERSION, content_hash: contentHash, nodes: [] };
+			}
+			headingStarts.push(offset);
+		}
 		offset += token.raw.length;
 	}
 
@@ -103,6 +131,7 @@ export function extractOutline(content: string | null | undefined): DocOutline {
 	if (headingStarts.length !== headingList.length) {
 		return { version: DOC_OUTLINE_VERSION, content_hash: contentHash, nodes: [] };
 	}
+	const toRawOffset = rawOffsetMapper(text);
 
 	const flat: FlatHeading[] = [];
 	for (const [index, heading] of headingList.entries()) {
@@ -114,7 +143,7 @@ export function extractOutline(content: string | null | undefined): DocOutline {
 			level: heading.level,
 			text: heading.text,
 			anchor: heading.id,
-			char_start: charStart,
+			char_start: toRawOffset(charStart),
 			char_end: text.length, // filled below
 			word_count: 0 // filled below
 		});

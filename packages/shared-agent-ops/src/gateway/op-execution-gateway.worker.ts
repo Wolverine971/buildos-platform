@@ -230,6 +230,8 @@ export async function previewGatewayDocumentUpdate(params: {
 	userId: string;
 	scope: AgentCallScope;
 	args?: Record<string, unknown>;
+	/** Preview against this body instead of the stored one (chained batch calls). */
+	baseContent?: string;
 }): Promise<GatewayDocumentUpdatePreviewResult> {
 	const preparedArgs = normalizeAndValidateGatewayWriteArgs('onto.document.update', params.args);
 	if (!preparedArgs.ok) return { ok: false, error: preparedArgs.error };
@@ -240,7 +242,12 @@ export async function previewGatewayDocumentUpdate(params: {
 		scope: params.scope
 	};
 	try {
-		return { ok: true, data: await previewDocumentUpdate(context, preparedArgs.args) };
+		return {
+			ok: true,
+			data: await previewDocumentUpdate(context, preparedArgs.args, {
+				...(params.baseContent !== undefined ? { base_content: params.baseContent } : {})
+			})
+		};
 	} catch (error) {
 		const normalized = normalizeGatewayError(error);
 		return {

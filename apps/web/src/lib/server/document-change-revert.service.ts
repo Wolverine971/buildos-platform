@@ -3,8 +3,8 @@
 // One-click Undo for agent document edits. The client returns the inverse patches
 // from the edit's DocumentChangeSummaryV1 (newest edit first). They resolve against
 // the current body through the same DocumentPatchV1 kernel proposals use: fast path
-// when nothing changed since the edit, re-anchored when other text moved, conflict
-// when the edited passage itself changed. The result lands as one guarded head +
+// when nothing changed since the edit, re-anchored (strictly) when other text moved,
+// conflict when the edited passage or its neighbouring lines changed. The result lands as one guarded head +
 // version write, so a merged multi-edit card undoes all-or-nothing.
 
 import type { Database, Json } from '@buildos/shared-types';
@@ -55,13 +55,19 @@ type ResolvedRevert =
 	| { status: 'conflict'; reason: DocumentPatchConflictReason }
 	| { status: 'invalid_patch'; message: string };
 
-/** Apply the inverse patches in order (newest edit first) to the current body. */
+/**
+ * Apply the inverse patches in order (newest edit first) to the current body.
+ * Re-anchoring is strict: an edited passage must still sit between the same
+ * neighbouring lines. Otherwise a second Undo after the first already restored
+ * the text (and the body changed since) could remove an identical line the user
+ * owns, e.g. the original of a line the agent had duplicated.
+ */
 function resolveRevertPatches(patches: DocumentPatchV1[], content: string): ResolvedRevert {
 	let next = content;
 	let strategy: 'fast_path' | 'reanchored' = 'fast_path';
 	try {
 		for (const patch of patches) {
-			const resolved = resolveDocumentPatch(patch, next);
+			const resolved = resolveDocumentPatch(patch, next, { strict_context: true });
 			if (resolved.status === 'conflict') return resolved;
 			if (resolved.strategy === 'reanchored') strategy = 'reanchored';
 			next = resolved.next_content;

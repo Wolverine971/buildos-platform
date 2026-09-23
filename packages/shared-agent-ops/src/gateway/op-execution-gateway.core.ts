@@ -761,18 +761,22 @@ async function resolveDocumentBodyUpdate(params: {
 					: ''
 			: undefined;
 
-	if (isAppendOrMergeUpdateStrategy(strategy) && !getDocumentUpdateContentCandidate(args)) {
-		throw new ExternalToolGatewayError(
-			'VALIDATION_ERROR',
-			`update_onto_document ${strategy} requires non-empty content.`
-		);
-	}
-
 	const edits = readDocumentEditArgs(args);
 	if (edits && contentCandidate !== undefined) {
 		throw new ExternalToolGatewayError(
 			'VALIDATION_ERROR',
 			'Pass either content (whole-body replace or append) or edits/section_edits (change part of the document), not both.'
+		);
+	}
+	// Edits carry their own text; update_strategy only shapes a content write.
+	if (
+		!edits &&
+		isAppendOrMergeUpdateStrategy(strategy) &&
+		!getDocumentUpdateContentCandidate(args)
+	) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`update_onto_document ${strategy} requires non-empty content.`
 		);
 	}
 
@@ -832,12 +836,22 @@ async function resolveDocumentBodyUpdate(params: {
  */
 export async function previewDocumentUpdate(
 	context: ToolExecutionContext,
-	args: Record<string, unknown>
+	args: Record<string, unknown>,
+	options: {
+		/**
+		 * Resolve against this body instead of the stored one. A batch that updates
+		 * one document several times executes in order, so each later call is
+		 * previewed against the body the earlier calls leave behind.
+		 */
+		base_content?: string;
+	} = {}
 ): Promise<{
 	document_id: string;
 	title: string | null;
 	document_change: Omit<DocumentChangeSummaryV1, 'revert_patch'> | null;
 	edits_applied?: AppliedDocumentEdit[];
+	/** The body this call would store (the next chained preview's base); null when unchanged. */
+	next_content: string | null;
 }> {
 	const documentId = args.document_id;
 	if (typeof documentId !== 'string' || !isValidUUID(documentId)) {
@@ -859,9 +873,20 @@ export async function previewDocumentUpdate(
 	if (!existingDocument) throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
 	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
 	assertProjectWriteAccess(project, context.scope);
+	const baseDocument =
+		typeof options.base_content === 'string'
+			? {
+					...existingDocument,
+					content: options.base_content,
+					props: {
+						...((existingDocument.props as Record<string, unknown> | null) ?? {}),
+						body_markdown: options.base_content
+					}
+				}
+			: existingDocument;
 
 	const bodyUpdate = await resolveDocumentBodyUpdate({
-		existingDocument,
+		existingDocument: baseDocument,
 		documentId,
 		args,
 		strategy: normalizeDocumentUpdateStrategy(args.update_strategy),
@@ -878,8 +903,9 @@ export async function previewDocumentUpdate(
 					project_id: project.id,
 					document_id: documentId,
 					title,
-					before: documentBodyOf(existingDocument),
-					after: bodyUpdate.nextContent
+					before: documentBodyOf(baseDocument),
+					after: bodyUpdate.nextContent,
+					include_revert_patch: false
 				});
 	const documentChange = summary
 		? (({ revert_patch: _revertPatch, ...rest }) => rest)(summary)
@@ -888,7 +914,8 @@ export async function previewDocumentUpdate(
 		document_id: documentId,
 		title,
 		document_change: documentChange,
-		...(bodyUpdate.appliedEdits ? { edits_applied: bodyUpdate.appliedEdits } : {})
+		...(bodyUpdate.appliedEdits ? { edits_applied: bodyUpdate.appliedEdits } : {}),
+		next_content: summary ? (bodyUpdate.nextContent ?? null) : null
 	};
 }
 
