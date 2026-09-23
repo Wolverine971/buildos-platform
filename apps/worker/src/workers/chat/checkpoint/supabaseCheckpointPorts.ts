@@ -27,7 +27,12 @@ import {
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { ensureProjectStartHereDocument } from '@buildos/shared-agent-ops/ontology/start-here.service';
 import { supabase } from '../../../lib/supabase';
-import { type PromptEntity, type PromptMessage, savedChangesFromExecution } from './capturePrompts';
+import {
+	latestSavedChanges,
+	type PromptEntity,
+	type PromptMessage,
+	type PromptSavedChange
+} from './capturePrompts';
 import type {
 	CheckpointCapturePorts,
 	CheckpointDocument,
@@ -220,15 +225,7 @@ export function createSupabaseCheckpointPorts(options?: {
 				.order('id', { ascending: true })
 				.limit(NEW_MESSAGE_BATCH);
 			if (watermarkAt) newQuery = newQuery.gt('created_at', watermarkAt);
-			let receiptQuery = supabase
-				.from('chat_tool_executions')
-				.select('tool_name, tool_category, success, affected_entities, created_at')
-				.eq('session_id', session.id)
-				.eq('success', true)
-				.order('created_at', { ascending: true })
-				.limit(SAVED_CHANGE_ROWS);
-			if (watermarkAt) receiptQuery = receiptQuery.gt('created_at', watermarkAt);
-			const [fresh, prior, receipts] = await Promise.all([
+			const [fresh, prior] = await Promise.all([
 				newQuery,
 				watermarkAt
 					? supabase
@@ -239,12 +236,10 @@ export function createSupabaseCheckpointPorts(options?: {
 							.lte('created_at', watermarkAt)
 							.order('created_at', { ascending: false })
 							.limit(PRIOR_CONTEXT_MESSAGES)
-					: Promise.resolve({ data: [], error: null }),
-				receiptQuery
+					: Promise.resolve({ data: [], error: null })
 			]);
 			if (fresh.error) throw fresh.error;
 			if (prior.error) throw prior.error;
-			if (receipts.error) throw receipts.error;
 			const toPrompt = (rows: unknown[] | null): PromptMessage[] =>
 				((rows ?? []) as Array<Record<string, unknown>>).flatMap((row) =>
 					typeof row.id === 'string' &&
@@ -262,16 +257,28 @@ export function createSupabaseCheckpointPorts(options?: {
 				);
 			const newMessages = toPrompt(fresh.data);
 			// Receipts up to the last message in this batch, so a capped batch and
-			// its receipts cover the same stretch of the chat.
+			// its receipts cover the same stretch of the chat. Writes only, newest
+			// first: read executions carry no receipt and filled the row cap in long
+			// chats, so capture told the model "none" when saves had happened.
 			const through = newMessages[newMessages.length - 1]?.created_at ?? null;
-			const savedChanges = ((receipts.data ?? []) as Array<Record<string, unknown>>)
-				.filter(
-					(row) =>
-						through !== null &&
-						typeof row.created_at === 'string' &&
-						Date.parse(row.created_at) <= Date.parse(through)
-				)
-				.flatMap(savedChangesFromExecution);
+			let savedChanges: PromptSavedChange[] = [];
+			if (through) {
+				let receiptQuery = supabase
+					.from('chat_tool_executions')
+					.select('tool_name, tool_category, success, affected_entities, created_at')
+					.eq('session_id', session.id)
+					.eq('success', true)
+					.or('tool_category.is.null,tool_category.neq.read')
+					.lte('created_at', through)
+					.order('created_at', { ascending: false })
+					.limit(SAVED_CHANGE_ROWS);
+				if (watermarkAt) receiptQuery = receiptQuery.gt('created_at', watermarkAt);
+				const receipts = await receiptQuery;
+				if (receipts.error) throw receipts.error;
+				savedChanges = latestSavedChanges(
+					(receipts.data ?? []) as Array<Record<string, unknown>>
+				);
+			}
 			return {
 				newMessages,
 				priorMessages: toPrompt(prior.data).reverse(),
