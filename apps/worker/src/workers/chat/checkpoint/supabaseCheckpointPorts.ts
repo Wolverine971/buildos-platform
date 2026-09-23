@@ -28,10 +28,10 @@ import {
 import { ensureProjectStartHereDocument } from '@buildos/shared-agent-ops/ontology/start-here.service';
 import { supabase } from '../../../lib/supabase';
 import {
-	latestSavedChanges,
 	type PromptEntity,
 	type PromptMessage,
-	type PromptSavedChange
+	type PromptSavedChange,
+	latestSavedChanges
 } from './capturePrompts';
 import type {
 	CheckpointCapturePorts,
