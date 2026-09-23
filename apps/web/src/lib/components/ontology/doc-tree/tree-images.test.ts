@@ -1,6 +1,11 @@
 // apps/web/src/lib/components/ontology/doc-tree/tree-images.test.ts
 import { describe, expect, it } from 'vitest';
-import { groupTreeImages, treeImageTitle, type DocTreeImage } from './tree-images';
+import {
+	groupTreeImages,
+	treeImageTitle,
+	treeImageViewerOrder,
+	type DocTreeImage
+} from './tree-images';
 
 function image(id: string, overrides: Partial<DocTreeImage> = {}): DocTreeImage {
 	return {
@@ -76,5 +81,27 @@ describe('treeImageTitle', () => {
 		expect(treeImageTitle(image('a', { alt_text: 'Logo mark' }))).toBe('Logo mark');
 		expect(treeImageTitle(image('a'))).toBe('a.png');
 		expect(treeImageTitle(image('a', { original_filename: null }))).toBe('Untitled image');
+	});
+});
+
+describe('treeImageViewerOrder', () => {
+	it('walks the shelf, then documents in tree order, listing each image once', () => {
+		const grouped = groupTreeImages(
+			[image('shelf-a'), image('in-child'), image('in-both'), image('in-root')],
+			[
+				{ asset_id: 'in-root', document_id: 'doc-root' },
+				{ asset_id: 'in-both', document_id: 'doc-root' },
+				{ asset_id: 'in-both', document_id: 'doc-child' },
+				{ asset_id: 'in-child', document_id: 'doc-child' }
+			],
+			new Set(['doc-root', 'doc-child'])
+		);
+
+		expect(treeImageViewerOrder(grouped, ['doc-root', 'doc-child'])).toEqual([
+			'shelf-a',
+			'in-both',
+			'in-root',
+			'in-child'
+		]);
 	});
 });

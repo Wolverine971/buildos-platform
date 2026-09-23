@@ -11,7 +11,14 @@
 //   auto:     the worker ranks with Jev during preparation
 //   curated:  a Workflow Lab preview plan with one user edit, materialized without Jev
 // Answers are fact-graded by Jev against the eval's hand labels. Output (private project
-// text) goes to output/context-finder-pilot/<timestamp>/ with mode 0600.
+// text) goes to output/context-finder-pilot/<timestamp>/ with mode 0600: results, a report,
+// and per run (runs/) every provider call (timing, finish reason, hidden-reasoning tokens,
+// serving provider, visible text) joined to its dispatch, step and event rows.
+//
+// Env: CONTEXT_FINDER_PILOT_SCENARIOS (keys), CONTEXT_FINDER_PILOT_ARMS (baseline,auto,
+// curated), CONTEXT_FINDER_PILOT_REPS (default 1), CONTEXT_FINDER_PILOT_ROUTING
+// (`workflow`: the worker's workflow provider policy; `openrouter_default`: no provider
+// preferences, which is what the 2026-09-22 pilot ran), CONTEXT_FINDER_PILOT_BUDGET_USD.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -62,13 +69,29 @@ import {
 	buildAgenticChatWorkflowRoutesV1
 } from '../src/workers/agentic-chat/workflow/workflow-dispatch';
 import { createWorkflowContextFinder } from '../src/workers/agentic-chat/workflow/context-finder-port';
+import {
+	createProviderCapture,
+	providerCallTiming,
+	type CapturedProviderCallV1
+} from './helpers/providerCapture';
 
 const ENABLED = process.env.CONTEXT_FINDER_PILOT === '1';
 const ROOT = resolve(process.cwd(), '../..');
 /** Abort the remaining runs past this spend (model dispatches + Jev). */
 const BUDGET_USD = Number(process.env.CONTEXT_FINDER_PILOT_BUDGET_USD ?? '0.75');
-const ARMS = ['baseline', 'auto', 'curated'] as const;
-type Arm = (typeof ARMS)[number];
+const ALL_ARMS = ['baseline', 'auto', 'curated'] as const;
+type Arm = (typeof ALL_ARMS)[number];
+const ARMS: Arm[] = (process.env.CONTEXT_FINDER_PILOT_ARMS ?? ALL_ARMS.join(','))
+	.split(',')
+	.map((arm) => arm.trim() as Arm)
+	.filter((arm) => {
+		if (!ALL_ARMS.includes(arm)) throw new Error(`Unknown pilot arm ${arm}`);
+		return true;
+	});
+const REPS = Math.max(1, Number(process.env.CONTEXT_FINDER_PILOT_REPS ?? '1'));
+const ROUTING = process.env.CONTEXT_FINDER_PILOT_ROUTING ?? 'workflow';
+if (ROUTING !== 'workflow' && ROUTING !== 'openrouter_default')
+	throw new Error('CONTEXT_FINDER_PILOT_ROUTING must be workflow or openrouter_default');
 
 type Scenario = {
 	key: string;
@@ -106,6 +129,8 @@ function loadScenarios() {
 type Result = {
 	scenario: string;
 	arm: Arm;
+	rep: number;
+	routing: string;
 	turnRunId: string;
 	status: string | undefined;
 	outcome: string | undefined;
@@ -135,6 +160,35 @@ type Result = {
 	citableRecords: number;
 	edit: string | null;
 	mustLoadedInFull: number;
+	timeline: RunTimeline;
+};
+
+type RunTimeline = {
+	/** Admission to the planner's claim: queue pickup, preparation, context finder. */
+	preparationMs: number | null;
+	steps: {
+		step: string;
+		status: string;
+		failureCode: string | null;
+		attempts: number;
+		startMs: number | null;
+		durationMs: number | null;
+	}[];
+	calls: {
+		step: string | null;
+		role: string | null;
+		kind: string | null;
+		physicalAttempt: number | null;
+		startMs: number;
+		provider: string | null;
+		model: string | null;
+		maxTokens: unknown;
+		promptTokens: number | null;
+		finishReason: string | null;
+		error: string | null;
+		textChars: number;
+		timing: ReturnType<typeof providerCallTiming>;
+	}[];
 };
 
 (ENABLED && postgresAvailable ? describe : describe.skip)('context finder paid pilot', () => {
@@ -225,25 +279,32 @@ type Result = {
 				client: source as unknown as ContextFinderReadClient,
 				decider: meteredRanker
 			});
-			// The same workflow-only priced routes the worker builds.
+			// The same workflow-only priced routes the worker builds. The route's own model is
+			// replaced: workflow requests lead with the pinned V4.1 Flash, V4 Flash as fallback.
+			const routes = buildAgenticChatWorkflowRoutesV1([
+				{
+					id: 'openrouter',
+					kind: 'openrouter' as const,
+					baseUrl: 'https://openrouter.ai/api/v1',
+					apiKey: apiKey!,
+					model: 'deepseek/deepseek-v4-flash'
+				}
+			]).map((route) =>
+				ROUTING === 'openrouter_default' ? { ...route, providerRouting: undefined } : route
+			);
+			const capture = createProviderCapture();
 			const provider = new AgenticChatOpenRouterClient(
 				{ usage: { observe: () => undefined } },
 				{
-					routes: buildAgenticChatWorkflowRoutesV1([
-						{
-							id: 'openrouter',
-							kind: 'openrouter',
-							baseUrl: 'https://openrouter.ai/api/v1',
-							apiKey: apiKey!,
-							model: 'deepseek/deepseek-v4-flash'
-						}
-					]),
+					routes,
 					httpReferer: 'https://build-os.com',
 					appName: 'BuildOS Context Finder Pilot',
+					fetchImpl: capture.fetchImpl,
 					requestTimeoutMs: AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS,
 					responseHeadersTimeoutMs: AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS
 				}
 			);
+			mkdirSync(resolve(outDir, 'runs'), { recursive: true, mode: 0o700 });
 			const catalog = shim as unknown as SpecialistWorkbenchClient;
 			const draftId = randomUUID();
 			await saveSpecialistWorkbenchDraft(
@@ -293,209 +354,264 @@ type Result = {
 
 				for (const scenario of SCENARIOS.filter((s) => s.project === projectKey)) {
 					const must = scenario.must.map(resolveId).filter((id): id is string => !!id);
-					for (const arm of ARMS) {
-						if (spent > BUDGET_USD) {
-							console.warn(
-								`Budget $${BUDGET_USD} reached; skipping ${scenario.key}/${arm}`
-							);
-							continue;
-						}
-						let edit: string | null = null;
-						let previewJevUsd = 0;
-						let contextFinder:
-							| { version: 'context_finder_request_v1'; mode: 'auto' }
-							| {
-									version: 'context_finder_request_v1';
-									mode: 'curated';
-									plan: ContextPlanV1;
-							  }
-							| undefined;
-						if (arm === 'auto')
-							contextFinder = { version: 'context_finder_request_v1', mode: 'auto' };
-						if (arm === 'curated') {
-							// What Workflow Lab's preview returns, then one edit a user who knows the
-							// project would make: pin the first must-have record not loaded in full.
-							const preview = await findProjectContext({
-								project,
-								message: scenario.message,
-								decider: {
-									decide: async (...args: Parameters<JevClient['decide']>) => {
-										const result = await ranker.decide(...args);
-										previewJevUsd += result.receipt.costUsd ?? 0;
-										return result;
-									}
-								}
-							});
-							if (!preview.plan) {
-								spent += previewJevUsd;
+					for (let rep = 1; rep <= REPS; rep += 1)
+						for (const arm of ARMS) {
+							if (spent > BUDGET_USD) {
 								console.warn(
-									`Preview ranking unavailable; skipping ${scenario.key}/${arm}`
+									`Budget $${BUDGET_USD} reached; skipping ${scenario.key}/${arm}/r${rep}`
 								);
 								continue;
 							}
-							let plan = preview.plan;
-							const full = new Set(
-								plan.items
-									.filter((item) => item.tier === 'full')
-									.map((item) => item.id)
-							);
-							const missing = must.find((id) => !full.has(id));
-							if (missing) {
-								const candidate = contextFinderCandidates(
-									preview.entities,
-									preview.ranking
-								).find((x) => x.id === missing);
-								const inPlan = plan.items.some((item) => item.id === missing);
-								plan = applyContextPlanEdits(plan, {
-									pins: inPlan ? [missing] : [],
-									drops: [],
-									added: !inPlan && candidate ? [candidate] : []
+							let edit: string | null = null;
+							let previewJevUsd = 0;
+							let contextFinder:
+								| { version: 'context_finder_request_v1'; mode: 'auto' }
+								| {
+										version: 'context_finder_request_v1';
+										mode: 'curated';
+										plan: ContextPlanV1;
+								  }
+								| undefined;
+							if (arm === 'auto')
+								contextFinder = {
+									version: 'context_finder_request_v1',
+									mode: 'auto'
+								};
+							if (arm === 'curated') {
+								// What Workflow Lab's preview returns, then one edit a user who knows the
+								// project would make: pin the first must-have record not loaded in full.
+								const preview = await findProjectContext({
+									project,
+									message: scenario.message,
+									decider: {
+										decide: async (
+											...args: Parameters<JevClient['decide']>
+										) => {
+											const result = await ranker.decide(...args);
+											previewJevUsd += result.receipt.costUsd ?? 0;
+											return result;
+										}
+									}
 								});
-								edit = `pinned ${candidate?.title ?? missing}`;
-							} else edit = 'none (every must-have already loaded in full)';
-							contextFinder = {
-								version: 'context_finder_request_v1',
-								mode: 'curated',
-								plan
-							};
-						}
-						const args = await buildAgenticChatWorkflowV4AdmissionArgs({
-							userId: E2E_USER_ID,
-							command: {
-								clientTurnId: randomUUID(),
-								streamRunId: randomUUID(),
-								sessionId: null
-							},
-							eligibility: {
-								eligible: true,
-								projectId,
-								message: scenario.message,
-								profile: 'document_organization',
-								documentReadTools: true,
-								documentEvidenceHandoff: true
-							},
-							published: {
-								snapshot: published.snapshot,
-								snapshotHash: published.version.snapshotHash,
-								...(contextFinder ? { contextFinder } : {})
-							},
-							transportDecisionId: randomUUID()
-						});
-						const admitted = await admitAgenticChatWorkflowV4Turn({
-							client: shim as never,
-							args
-						});
-						expect(admitted.outcome).toBe('newly_admitted');
-						const turnRunId = args.p_turn_run_id as string;
-						const errors: { stage: string }[] = [];
-						const worker = buildE2EWorker({
-							shim,
-							client: provider,
-							specialistWorkflowsEnabled: true,
-							documentReadToolsEnabled: true,
-							documentEvidenceHandoffEnabled: true,
-							publishedSpecialistsEnabled: true,
-							findContext,
-							context: baselineContext,
-							onError: (report) => errors.push(report)
-						});
-						const finderBefore = finderJevUsd;
-						const started = Date.now();
-						try {
-							await worker.execute(await leaseAndClaimE2E(admin, shim, turnRunId));
-						} finally {
-							await worker.stop();
-						}
-						const durationMs = Date.now() - started;
-						const facts = await e2eFacts(admin, turnRunId);
-						const answer = String(
-							facts.run?.answer_text ?? facts.messages[0]?.content ?? ''
-						);
-						const modelUsd =
-							facts.dispatches.reduce(
-								(n, d) => n + (d.actual ?? d.reserved ?? 0),
-								0
-							) / 1e6;
-						const ctx = await admin.query(
-							`SELECT context_payload->'data'->'selected_evidence' AS evidence,
+								if (!preview.plan) {
+									spent += previewJevUsd;
+									console.warn(
+										`Preview ranking unavailable; skipping ${scenario.key}/${arm}`
+									);
+									continue;
+								}
+								let plan = preview.plan;
+								const full = new Set(
+									plan.items
+										.filter((item) => item.tier === 'full')
+										.map((item) => item.id)
+								);
+								const missing = must.find((id) => !full.has(id));
+								if (missing) {
+									const candidate = contextFinderCandidates(
+										preview.entities,
+										preview.ranking
+									).find((x) => x.id === missing);
+									const inPlan = plan.items.some((item) => item.id === missing);
+									plan = applyContextPlanEdits(plan, {
+										pins: inPlan ? [missing] : [],
+										drops: [],
+										added: !inPlan && candidate ? [candidate] : []
+									});
+									edit = `pinned ${candidate?.title ?? missing}`;
+								} else edit = 'none (every must-have already loaded in full)';
+								contextFinder = {
+									version: 'context_finder_request_v1',
+									mode: 'curated',
+									plan
+								};
+							}
+							const args = await buildAgenticChatWorkflowV4AdmissionArgs({
+								userId: E2E_USER_ID,
+								command: {
+									clientTurnId: randomUUID(),
+									streamRunId: randomUUID(),
+									sessionId: null
+								},
+								eligibility: {
+									eligible: true,
+									projectId,
+									message: scenario.message,
+									profile: 'document_organization',
+									documentReadTools: true,
+									documentEvidenceHandoff: true
+								},
+								published: {
+									snapshot: published.snapshot,
+									snapshotHash: published.version.snapshotHash,
+									...(contextFinder ? { contextFinder } : {})
+								},
+								transportDecisionId: randomUUID()
+							});
+							const admitted = await admitAgenticChatWorkflowV4Turn({
+								client: shim as never,
+								args
+							});
+							expect(admitted.outcome).toBe('newly_admitted');
+							const turnRunId = args.p_turn_run_id as string;
+							const errors: { stage: string }[] = [];
+							const worker = buildE2EWorker({
+								shim,
+								client: provider,
+								specialistWorkflowsEnabled: true,
+								documentReadToolsEnabled: true,
+								documentEvidenceHandoffEnabled: true,
+								publishedSpecialistsEnabled: true,
+								findContext,
+								context: baselineContext,
+								onError: (report) => errors.push(report)
+							});
+							const finderBefore = finderJevUsd;
+							const callMark = capture.calls.length;
+							const started = Date.now();
+							try {
+								await worker.execute(
+									await leaseAndClaimE2E(admin, shim, turnRunId)
+								);
+							} finally {
+								await worker.stop();
+							}
+							const durationMs = Date.now() - started;
+							await capture.settled();
+							const calls = capture.since(callMark);
+							const rows = await exportRunRows(turnRunId);
+							const timeline = buildTimeline(started, rows, calls);
+							writeFileSync(
+								resolve(outDir, 'runs', `${scenario.key}-${arm}-r${rep}.json`),
+								JSON.stringify(
+									{
+										scenario: scenario.key,
+										arm,
+										rep,
+										routing: ROUTING,
+										turnRunId,
+										timeline,
+										rows,
+										calls
+									},
+									null,
+									2
+								),
+								{ mode: 0o600 }
+							);
+							const facts = await e2eFacts(admin, turnRunId);
+							const answer = String(
+								facts.run?.answer_text ?? facts.messages[0]?.content ?? ''
+							);
+							const modelUsd =
+								facts.dispatches.reduce(
+									(n, d) => n + (d.actual ?? d.reserved ?? 0),
+									0
+								) / 1e6;
+							const ctx = await admin.query(
+								`SELECT context_payload->'data'->'selected_evidence' AS evidence,
 								jsonb_array_length(evidence_versions) AS citable
 							FROM public.chat_turn_workflow_runs WHERE turn_run_id = $1`,
-							[turnRunId]
-						);
-						const reads = await admin.query(
-							'SELECT document_ids FROM public.chat_turn_document_read_batches WHERE turn_run_id = $1',
-							[turnRunId]
-						);
-						const graded = answer
-							? await judgeFacts(judge, scenario, answer)
-							: { facts: [], cost: 0 };
-						const evidence = ctx.rows[0]?.evidence as Record<string, any> | null;
-						const fullIds = new Set<string>(
-							(evidence?.full ?? []).map((item: { id: string }) => item.id)
-						);
-						const jevUsd = graded.cost + previewJevUsd + (finderJevUsd - finderBefore);
-						spent += modelUsd + jevUsd;
-						const result: Result = {
-							scenario: scenario.key,
-							arm,
-							turnRunId,
-							status: facts.turn?.status,
-							outcome: facts.run?.terminal_outcome,
-							answer,
-							facts: graded.facts,
-							factsHit: graded.facts.filter((p) => p >= 0.5).length,
-							modelUsd,
-							jevUsd,
-							durationMs,
-							steps: Object.fromEntries(
-								facts.steps.map((s) => [s.step_key, s.status])
-							),
-							documentReads:
-								(reads.rows[0]?.document_ids as string[] | undefined) ?? [],
-							evidence: evidence
-								? {
-										status: evidence.status,
-										source: evidence.source,
-										ranker: evidence.ranker,
-										full: (evidence.full ?? []).map(
-											(item: Record<string, any>) => ({
-												id: item.id,
-												title: item.title,
-												p: item.p,
-												...(item.pinned ? { pinned: true } : {}),
-												sections: (item.excerpts ?? []).map(
-													(excerpt: { heading: string | null }) =>
-														excerpt.heading
-												)
-											})
-										),
-										summaries: (evidence.summaries ?? []).length,
-										missing: evidence.missing ?? [],
-										coverage: evidence.coverage
-									}
-								: null,
-							citableRecords: Number(ctx.rows[0]?.citable ?? 0),
-							edit,
-							mustLoadedInFull: must.filter((id) => fullIds.has(id)).length
-						};
-						results.push(result);
-						writeFileSync(
-							resolve(outDir, 'results.json'),
-							JSON.stringify(results, null, 2),
-							{
-								mode: 0o600
-							}
-						);
-						console.info(
-							`${scenario.key} ${arm}: ${result.status}/${result.outcome} facts ${result.factsHit}/${scenario.answerFacts!.length} · $${(modelUsd + jevUsd).toFixed(4)} · ${Math.round(durationMs / 1000)}s · errors ${errors.map((e) => e.stage).join(',') || 'none'}`
-						);
-					}
+								[turnRunId]
+							);
+							const reads = await admin.query(
+								'SELECT document_ids FROM public.chat_turn_document_read_batches WHERE turn_run_id = $1',
+								[turnRunId]
+							);
+							const graded = answer
+								? await judgeFacts(judge, scenario, answer)
+								: { facts: [], cost: 0 };
+							const evidence = ctx.rows[0]?.evidence as Record<string, any> | null;
+							const fullIds = new Set<string>(
+								(evidence?.full ?? []).map((item: { id: string }) => item.id)
+							);
+							const jevUsd =
+								graded.cost + previewJevUsd + (finderJevUsd - finderBefore);
+							spent += modelUsd + jevUsd;
+							const result: Result = {
+								scenario: scenario.key,
+								arm,
+								rep,
+								routing: ROUTING,
+								turnRunId,
+								status: facts.turn?.status,
+								outcome: facts.run?.terminal_outcome,
+								answer,
+								facts: graded.facts,
+								factsHit: graded.facts.filter((p) => p >= 0.5).length,
+								modelUsd,
+								jevUsd,
+								durationMs,
+								steps: Object.fromEntries(
+									facts.steps.map((s) => [s.step_key, s.status])
+								),
+								documentReads:
+									(reads.rows[0]?.document_ids as string[] | undefined) ?? [],
+								evidence: evidence
+									? {
+											status: evidence.status,
+											source: evidence.source,
+											ranker: evidence.ranker,
+											full: (evidence.full ?? []).map(
+												(item: Record<string, any>) => ({
+													id: item.id,
+													title: item.title,
+													p: item.p,
+													...(item.pinned ? { pinned: true } : {}),
+													sections: (item.excerpts ?? []).map(
+														(excerpt: { heading: string | null }) =>
+															excerpt.heading
+													)
+												})
+											),
+											summaries: (evidence.summaries ?? []).length,
+											missing: evidence.missing ?? [],
+											coverage: evidence.coverage
+										}
+									: null,
+								citableRecords: Number(ctx.rows[0]?.citable ?? 0),
+								edit,
+								mustLoadedInFull: must.filter((id) => fullIds.has(id)).length,
+								timeline
+							};
+							results.push(result);
+							writeFileSync(
+								resolve(outDir, 'results.json'),
+								JSON.stringify(results, null, 2),
+								{
+									mode: 0o600
+								}
+							);
+							console.info(
+								`${scenario.key} ${arm} r${rep}: ${result.status}/${result.outcome} facts ${result.factsHit}/${scenario.answerFacts!.length} · $${(modelUsd + jevUsd).toFixed(4)} · ${Math.round(durationMs / 1000)}s · steps ${timeline.steps.map((st) => `${st.step}=${st.status}${st.failureCode ? `(${st.failureCode})` : ''}`).join(' ')} · errors ${errors.map((e) => e.stage).join(',') || 'none'}`
+							);
+						}
 				}
 			}
 			expect(results.length).toBeGreaterThan(0);
 		},
 		60 * 60_000
 	);
+
+	/** Rows the disposable database would otherwise take with it. Heavy payloads dropped. */
+	async function exportRunRows(turnRunId: string) {
+		const q = async (sql: string) =>
+			(await admin.query(sql, [turnRunId])).rows.map((row) => row.j as Record<string, any>);
+		const [turn, run, steps, dispatches, events, reads] = await Promise.all([
+			q(`SELECT to_jsonb(t) AS j FROM public.chat_turn_runs t WHERE t.id = $1`),
+			q(`SELECT to_jsonb(r) - 'context_payload' - 'evidence_versions' - 'answer_text' - 'policy' AS j
+				FROM public.chat_turn_workflow_runs r WHERE r.turn_run_id = $1`),
+			q(`SELECT to_jsonb(s) - 'result' AS j FROM public.chat_turn_workflow_steps s
+				WHERE s.turn_run_id = $1 ORDER BY s.created_at`),
+			q(`SELECT to_jsonb(d) - 'pricing' AS j FROM public.chat_turn_workflow_dispatches d
+				WHERE d.turn_run_id = $1 ORDER BY d.reserved_at, d.physical_attempt`),
+			q(`SELECT to_jsonb(e) - 'payload' AS j FROM public.chat_turn_events e
+				WHERE e.turn_run_id = $1 ORDER BY e.execution_generation, e.sequence_index`),
+			q(`SELECT to_jsonb(b) - 'result' AS j FROM public.chat_turn_document_read_batches b
+				WHERE b.turn_run_id = $1`)
+		]);
+		return { turn: turn[0] ?? null, run: run[0] ?? null, steps, dispatches, events, reads };
+	}
 
 	async function ownerUserId(projectId: string): Promise<string> {
 		const project = await source
@@ -544,20 +660,89 @@ async function judgeFacts(judge: JevClient, scenario: Scenario, answer: string) 
 	};
 }
 
+function buildTimeline(
+	startedAtMs: number,
+	rows: {
+		steps: Record<string, any>[];
+		dispatches: Record<string, any>[];
+	},
+	calls: CapturedProviderCallV1[]
+): RunTimeline {
+	const ms = (value: unknown) =>
+		typeof value === 'string' ? Date.parse(value) - startedAtMs : null;
+	// A call is its dispatch when the serialized request bytes match (one row per request).
+	const unmatched = [...rows.dispatches];
+	const planner = rows.steps.find((step) => step.step_key === 'planner');
+	return {
+		preparationMs: ms(planner?.claimed_at ?? planner?.finished_at),
+		steps: rows.steps.map((step) => {
+			const start = ms(step.claimed_at);
+			const end = ms(step.finished_at);
+			return {
+				step: step.step_key,
+				status: step.status,
+				failureCode: step.failure_code ?? null,
+				attempts: step.attempts_used,
+				startMs: start,
+				durationMs: start !== null && end !== null ? end - start : null
+			};
+		}),
+		calls: calls.map((call) => {
+			const at = unmatched.findIndex(
+				(row) => row.serialized_request_bytes === call.requestBytes
+			);
+			const dispatch = at >= 0 ? unmatched.splice(at, 1)[0] : null;
+			return {
+				step: dispatch?.step_key ?? null,
+				role: call.request.role,
+				kind: dispatch?.dispatch_kind ?? null,
+				physicalAttempt: dispatch?.physical_attempt ?? null,
+				startMs: call.startedAtMs - startedAtMs,
+				provider: call.provider,
+				model: call.modelUsed,
+				maxTokens: call.request.maxTokens,
+				promptTokens: call.usage.promptTokens,
+				finishReason: call.finishReason,
+				error: call.error,
+				textChars: call.text.length,
+				timing: providerCallTiming(call)
+			};
+		})
+	};
+}
+
+function seconds(value: number | null | undefined): string {
+	return value === null || value === undefined ? '-' : (value / 1000).toFixed(1);
+}
+
 function report(results: Result[]): string {
 	const lines = [
 		'# Context finder pilot',
 		'',
-		'| Scenario | Arm | Facts | Must in full | Docs read | Model $ | Jev $ | Time |',
-		'| --- | --- | --- | --- | --- | --- | --- | --- |'
+		'| Scenario | Arm | Rep | Routing | Facts | Must in full | Docs read | Model $ | Jev $ | Time | Prep | Steps |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
 	];
 	for (const r of results)
 		lines.push(
-			`| ${r.scenario} | ${r.arm} | ${r.factsHit}/${r.facts.length || '?'} | ${r.evidence ? r.mustLoadedInFull : '-'} | ${r.documentReads.length} | ${r.modelUsd.toFixed(4)} | ${r.jevUsd.toFixed(4)} | ${Math.round(r.durationMs / 1000)}s |`
+			`| ${r.scenario} | ${r.arm} | ${r.rep} | ${r.routing} | ${r.factsHit}/${r.facts.length || '?'} | ${r.evidence ? r.mustLoadedInFull : '-'} | ${r.documentReads.length} | ${r.modelUsd.toFixed(4)} | ${r.jevUsd.toFixed(4)} | ${Math.round(r.durationMs / 1000)}s | ${seconds(r.timeline.preparationMs)}s | ${r.timeline.steps.map((s) => `${s.step} ${s.status}${s.failureCode ? ` (${s.failureCode})` : ''}`).join('; ')} |`
 		);
+	lines.push(
+		'',
+		'## Provider calls',
+		'',
+		'Times in seconds from the run start. First output = first visible token (hidden reasoning precedes it).',
+		'',
+		'| Scenario | Arm | Rep | Step | Kind | Provider | Start | Headers | First output | Total | Prompt tok | Completion | Reasoning | Visible | tok/s | Max | Finish | Error |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+	);
+	for (const r of results)
+		for (const c of r.timeline.calls)
+			lines.push(
+				`| ${r.scenario} | ${r.arm} | ${r.rep} | ${c.step ?? c.role ?? '?'} | ${c.kind ?? '-'} | ${c.provider ?? '-'} | ${seconds(c.startMs)} | ${seconds(c.timing.headersMs)} | ${seconds(c.timing.firstOutputMs)} | ${seconds(c.timing.totalMs)} | ${c.promptTokens ?? '-'} | ${c.timing.completionTokens ?? '-'} | ${c.timing.reasoningTokens ?? '-'} | ${c.timing.visibleTokens ?? '-'} | ${c.timing.tokensPerSecond ?? '-'} | ${c.maxTokens} | ${c.finishReason ?? '-'} | ${c.error ? c.error.slice(0, 80) : ''} |`
+			);
 	lines.push('');
 	for (const r of results) {
-		lines.push(`## ${r.scenario} · ${r.arm}`, '');
+		lines.push(`## ${r.scenario} · ${r.arm} · r${r.rep}`, '');
 		if (r.edit) lines.push(`Edit: ${r.edit}`, '');
 		if (r.evidence)
 			lines.push(

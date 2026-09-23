@@ -342,6 +342,7 @@
 	bind:isOpen={showAssetDetailModal}
 	{projectId}
 	assetId={activeAssetId}
+	assetIds={assets.map((asset) => asset.id)}
 	{entityKind}
 	{entityId}
 	{linkRole}

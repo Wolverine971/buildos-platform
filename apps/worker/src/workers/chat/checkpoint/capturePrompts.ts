@@ -20,6 +20,27 @@ export type PromptSection = {
 
 export type PromptEntity = { type: string; id: string; title: string | null };
 
+/** One project record the chat's tools saved in the captured window (a write receipt). */
+export type PromptSavedChange = { tool: string; kind: string; title: string | null };
+
+/**
+ * The project records one successful tool execution saved, from its
+ * affected_entities receipt. Reads carry no affected entities.
+ */
+export function savedChangesFromExecution(row: Record<string, unknown>): PromptSavedChange[] {
+	if (row.success !== true || row.tool_category === 'read') return [];
+	const tool = typeof row.tool_name === 'string' ? row.tool_name : null;
+	if (!tool || !Array.isArray(row.affected_entities)) return [];
+	return row.affected_entities.flatMap((raw) => {
+		const entity = asRecord(raw);
+		const kind = typeof entity?.kind === 'string' ? entity.kind : null;
+		if (!kind) return [];
+		const title =
+			typeof entity?.title === 'string' && entity.title.trim() ? entity.title : null;
+		return [{ tool, kind, title }];
+	});
+}
+
 export const THINKING_LOG_SYSTEM_PROMPT = `You keep a project's thinking log: the user's own reasoning in their own words, saved so it can be quoted later, for example while drafting.
 
 You get the new part of a chat. Pick the user messages where the user is thinking: explaining, arguing, deciding, describing what they want, or giving context, stories or examples. Skip user messages that only instruct the assistant, approve or acknowledge ("yes, do it"), or ask a question without adding their own view. Never log assistant text.
@@ -58,18 +79,19 @@ Headings:
 
 Section conventions:
 - Decisions: one bullet per decision, "- **Decision** — rationale." Do not write dates; code stamps them. Decisions are a permanent record: never remove one because it was carried out. Change one only when the user reversed it.
-- Current state: a short snapshot of right now; rewrite it instead of stacking states.
+- Current state: a short snapshot of right now; rewrite it instead of stacking states. Rewrite it only on evidence, and list that evidence in "evidence": the id of a user message that reports the change, or the [cN] id of a record under "Changes this chat saved". Assistant text is not evidence: its status descriptions read the old record, and work it says it did counts only when listed under "Changes this chat saved". A user's request is not its result either: without a saved change, record what they decided, not that it was done. When that is all the chat has, leave Current state alone. Keep it consistent with Decisions.
 - Vocabulary and mental model: one bullet per term, "- **Term** — meaning".
-- Open questions: remove questions the chat answered; add questions it opened.
+- Open questions: questions about the project itself, not about BuildOS or this document. Remove questions the chat answered or a decision in the document settles; add questions the chat opened.
 
 What counts:
 - Record what the user said, decided or explicitly accepted. An assistant suggestion counts only after the user accepted it.
+- Keep the user's certainty. An idea the user is unsure about, or a candidate they have not chosen, goes under Open questions, never into Decisions or settled prose.
 - Keep the user's wording for their ideas. Skip task chatter, tool output and private reasoning.
 - Link only with [[type:id|label]] using an id from the entity list. Never invent ids.
 - Text outside the sections is read-only. If the chat contradicts it, say so in one sentence in "outside_note".
 
 Return JSON only:
-{"edits": [{"heading": "<exact heading>", "add": [{"after": "b7", "restates": null, "markdown": "<one line>"}], "remove": ["b12"], "replace": [{"id": "b3", "markdown": "<new line>"}], "rewrite": "<complete body, only for Current state or a new section>", "rationale": "<what changed and why>"}], "outside_note": "<optional one sentence>"}
+{"edits": [{"heading": "<exact heading>", "add": [{"after": "b7", "restates": null, "markdown": "<one line>"}], "remove": ["b12"], "replace": [{"id": "b3", "markdown": "<new line>"}], "rewrite": "<complete body, only for Current state or a new section>", "evidence": ["<user message id or cN>"], "rationale": "<what changed and why>"}], "outside_note": "<optional one sentence>"}
 Return {"edits": []} when nothing durable changed.`;
 
 const USER_MESSAGE_PROMPT_MAX_CHARS = 6000;
@@ -78,6 +100,7 @@ const PRIOR_MESSAGE_PROMPT_MAX_CHARS = 600;
 const LOCKED_SECTION_PROMPT_MAX_CHARS = 600;
 const OUTSIDE_TEXT_PROMPT_MAX_CHARS = 1500;
 const ENTITY_PROMPT_LIMIT = 40;
+export const SAVED_CHANGE_PROMPT_LIMIT = 20;
 
 function truncate(value: string, maxChars: number): string {
 	const trimmed = value.trim();
@@ -141,8 +164,19 @@ export function buildStartHereSynthesisPrompt(params: {
 	entities: PromptEntity[];
 	priorMessages: PromptMessage[];
 	newMessages: PromptMessage[];
+	savedChanges: PromptSavedChange[];
 	stamp: (message: PromptMessage) => string | null;
 }): string {
+	// Tasker 96 Finding 10: capture copied a chat's stale status read ("Blueprint:
+	// not started") into Current state over a correct line. Write receipts are
+	// the chat's evidence of work done; the prompt states "none" outright so a
+	// read-only chat has nothing to mistake for news.
+	const savedChanges = params.savedChanges
+		.slice(0, SAVED_CHANGE_PROMPT_LIMIT)
+		.map(
+			(change, index) =>
+				`- [${savedChangeId(index)}] ${change.tool}: ${change.kind} "${change.title ?? '(untitled)'}"`
+		);
 	const sectionBlocks = params.sections.map((section) => {
 		if (!section.editable) {
 			const body = section.blocks.map((block) => block.markdown).join('\n');
@@ -185,10 +219,19 @@ export function buildStartHereSynthesisPrompt(params: {
 		...renderMessages(params.newMessages, params.stamp, {
 			user: USER_MESSAGE_PROMPT_MAX_CHARS,
 			assistant: ASSISTANT_MESSAGE_PROMPT_MAX_CHARS
-		})
+		}),
+		'',
+		savedChanges.length > 0
+			? `Changes this chat saved (tool receipts for the new messages):\n${savedChanges.join('\n')}`
+			: 'Changes this chat saved: none. These messages changed no project records.'
 	]
 		.filter((line): line is string => line !== null)
 		.join('\n');
+}
+
+/** The id a saved change carries in the prompt, so an edit can cite it as evidence. */
+export function savedChangeId(index: number): string {
+	return `c${index + 1}`;
 }
 
 export type ThinkingLogReply = {
@@ -224,6 +267,8 @@ export type SectionEdit = {
 	remove: string[];
 	replace: Array<{ id: string; markdown: string }>;
 	rewrite: string | null;
+	/** What the model cites for the edit: user message ids or saved-change ids (cN). */
+	evidence: string[];
 	rationale: string;
 };
 
@@ -279,6 +324,7 @@ export function normalizeSynthesisReply(reply: unknown): SynthesisReply {
 			remove: strings(edit.remove).map((id) => id.trim()),
 			replace,
 			rewrite,
+			evidence: strings(edit.evidence).map((id) => id.trim()),
 			rationale:
 				typeof edit.rationale === 'string' && edit.rationale.trim()
 					? truncate(edit.rationale, 300)

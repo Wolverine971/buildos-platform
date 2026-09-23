@@ -55,13 +55,6 @@
 	let PaymentWarning = $state<any>(undefined);
 	let NotificationStackManager = $state<any>(undefined);
 
-	// PERFORMANCE: Memoize route calculations to prevent unnecessary recalculations
-	let currentRouteId = $state('');
-	let routeBasedState = $state({
-		showNavigation: true,
-		showFooter: true
-	});
-
 	// Onboarding state — reactive to data changes, not just route changes
 	let forceOnboardingActive = $state(false);
 
@@ -243,30 +236,6 @@
 		}
 	});
 
-	// Route-gated effect: only recompute nav/footer visibility on route change
-	$effect(() => {
-		if ($page.route?.id !== currentRouteId && browser) {
-			untrack(() => {
-				currentRouteId = $page.route?.id || '';
-			});
-
-			const newShowNavigation = !currentRouteId.startsWith('/auth');
-			const newShowFooter = !currentRouteId.startsWith('/auth');
-
-			if (
-				routeBasedState.showNavigation !== newShowNavigation ||
-				routeBasedState.showFooter !== newShowFooter
-			) {
-				untrack(() => {
-					routeBasedState = {
-						showNavigation: newShowNavigation,
-						showFooter: newShowFooter
-					};
-				});
-			}
-		}
-	});
-
 	// Detect ?onboarding=true URL param and consume it into reactive state
 	$effect(() => {
 		if (browser && $page?.url?.searchParams.get('onboarding') === 'true') {
@@ -280,14 +249,17 @@
 	// Onboarding state — fully reactive to user/data changes (not route-gated)
 	let pathname = $derived($page.url.pathname);
 	let isAdminRoute = $derived(pathname === '/admin' || pathname.startsWith('/admin/'));
-	let showNavigation = $derived(routeBasedState.showNavigation);
-	let showFooter = $derived(routeBasedState.showFooter && !isAdminRoute);
+	// Auth screens bring their own focused chrome. Derived from the route (not set in an
+	// effect) so the server render already omits the app header/footer — no flash on load.
+	let isAuthRoute = $derived(($page.route?.id ?? '').startsWith('/auth'));
+	let showNavigation = $derived(!isAuthRoute);
+	let showFooter = $derived(!isAuthRoute && !isAdminRoute);
 	let mainContentClasses = $derived(
 		isAdminRoute
 			? 'relative flex flex-1 w-full min-h-0'
-			: `rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-7xl p-px ${
-					showNavigation ? '' : 'min-h-screen'
-				}`
+			: isAuthRoute
+				? 'relative flex flex-1 w-full flex-col'
+				: 'rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-7xl p-px'
 	);
 	let needsOnboarding = $derived(Boolean(user && !completedOnboarding));
 	let showOnboardingModal = $derived.by(() => {
@@ -672,19 +644,22 @@
 		resetResourceLoaders();
 		forceOnboardingActive = false;
 
-		// Always invalidate data on sign-out
-		await synchronizeAuthState(true);
-
 		if (!browser) return;
 
-		const currentRouteId = $page.route?.id ?? '';
-		const pathname = String($page.url.pathname);
-		const redirectTarget: string =
-			consumeLogoutRedirect() ||
-			(currentRouteId.startsWith('/auth') ? pathname : '/auth/login');
+		// An explicit sign-out goes straight to its destination in one navigation. Invalidating
+		// first would re-run the current page's load, and a protected page answers that with its
+		// own login redirect (e.g. /auth/login?redirect=%2Ftoday), hijacking the destination.
+		const logoutTarget = consumeLogoutRedirect();
+		if (logoutTarget) {
+			await goto(logoutTarget, { replaceState: true, invalidateAll: true });
+			return;
+		}
 
-		if (!currentRouteId.startsWith('/auth')) {
-			await goto(redirectTarget || '/auth/login', { replaceState: true });
+		// Session ended elsewhere (another tab, expiry): refresh data so protected pages send the
+		// user to sign in with a way back, then leave any remaining app page.
+		await synchronizeAuthState(true);
+		if (!($page.route?.id ?? '').startsWith('/auth')) {
+			await goto('/auth/login', { replaceState: true });
 		}
 	}
 

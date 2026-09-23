@@ -115,6 +115,24 @@ const slowSpecialists =
 			: happyScript(call));
 
 describe('AgenticChatWorkflowRunner — slice A: persistent runner', () => {
+	it('keeps an invalid plan and a planner provider failure apart; both install the fixed plan', async () => {
+		const cases = [
+			[
+				{ kind: 'text', text: 'Analyst first, then the reviewer.' },
+				'workflow_planner_invalid'
+			],
+			[{ kind: 'http_error', status: 400 }, 'workflow_planner_unavailable']
+		] as const;
+		for (const [reply, failureCode] of cases) {
+			const h = harness({
+				script: (call) => (call.role === 'planner' ? reply : happyScript(call))
+			});
+			await h.run();
+			expect(h.store.run.steps.planner).toMatchObject({ status: 'failed', failureCode });
+			expect(h.store.run.answer.status).toBe('accepted');
+		}
+	});
+
 	it('preserves deployed v1 specialist prompts and dispatch limits after definition extraction', async () => {
 		const h = harness();
 		await h.run();

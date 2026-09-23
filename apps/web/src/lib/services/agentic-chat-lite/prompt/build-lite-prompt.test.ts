@@ -344,12 +344,14 @@ describe('buildLitePromptEnvelope', () => {
 			'User-visible durable fields (titles, descriptions, document content'
 		);
 		// Postdeploy 2026-09-04: receipts, evidence scope, record navigation, and
-		// exact document text each have one bounded final-response rule.
+		// exact document text each have one bounded final-response rule. Tasker 97
+		// (2026-09-23) added two reply-shape rules: picking a project back up, and
+		// interviewing.
 		const contract = envelope.sections.find(
 			(section) => section.id === 'final_response_contract'
 		);
 		expect(contract?.content.split('\n').filter((line) => line.startsWith('- '))).toHaveLength(
-			5
+			7
 		);
 		expect(contract?.content).toContain('- Report only what tool results confirm');
 		expect(contract?.content).toContain('Calendar results belong only to their query_scope');
@@ -1113,6 +1115,65 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain('## Project Start Here');
 		expect(envelope.systemPrompt).toContain('## Current Focus and Purpose');
 		expect(envelope.systemPrompt).toContain('Workflow hints for project chat:');
+		// No document is newer than START HERE, so there is no freshness line.
+		expect(section?.content).not.toContain('Changed after this START HERE');
+	});
+
+	it('names documents saved after Start Here, in local time', () => {
+		// Tasker 97 (book loop t13): START HERE saved 22:11 local, the outline doc
+		// 22:31 local. The old header printed START HERE in UTC (next day) and the
+		// recent changes in local dates, so the stale summary looked newer.
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			projectId: 'project-1',
+			projectName: 'Book',
+			now: '2026-09-23T04:07:00Z',
+			timezone: 'America/New_York',
+			data: {
+				project: {
+					id: 'project-1',
+					name: 'Book',
+					state_key: 'planning',
+					description: null,
+					start_at: null,
+					end_at: null,
+					next_step_short: null,
+					updated_at: '2026-09-22T17:00:00Z'
+				},
+				start_here: {
+					id: 'start-here-1',
+					title: 'START HERE',
+					content: '# Book\n\n## Current state\n- **Blueprint:** not started.',
+					content_truncated: false,
+					updated_at: '2026-09-23T02:11:20Z'
+				},
+				doc_structure: null,
+				goals: [],
+				milestones: [],
+				plans: [],
+				tasks: [],
+				documents: [
+					{ id: 'start-here-1', title: 'START HERE', updated_at: '2026-09-23T02:11:20Z' },
+					{ id: 'doc-outline', title: 'Blueprint', updated_at: '2026-09-23T02:31:13Z' },
+					{
+						id: 'doc-rules',
+						title: 'Operating Rules',
+						updated_at: '2026-09-22T17:15:04Z'
+					}
+				],
+				events: [],
+				members: [],
+				context_meta: { generated_at: '2026-09-23T04:07:00Z', source: 'rpc' }
+			}
+		});
+
+		const section = envelope.sections.find((item) => item.id === 'project_start_here');
+		expect(section?.content).toContain('last updated 2026-09-22 22:11 America/New_York');
+		expect(section?.content).toContain(
+			'- Changed after this START HERE: "Blueprint" (2026-09-22 22:31 America/New_York).'
+		);
+		expect(section?.content).not.toContain('"Operating Rules"');
+		expect(section?.content).not.toContain('"START HERE" (');
 	});
 
 	it('renders project entity focus without hiding the focused context slots', () => {

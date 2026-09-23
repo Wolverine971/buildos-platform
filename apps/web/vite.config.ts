@@ -13,6 +13,16 @@ export const agenticChatRuntimeSourceAliases = createAgenticChatRuntimeSourceAli
 	new URL('../../packages/agentic-chat-runtime/', import.meta.url)
 );
 
+const workspacePackagesDir = fileURLToPath(new URL('../../packages/', import.meta.url));
+
+// Workspace packages such as @buildos/shared-types resolve to their built dist. Watch those
+// builds so a package rebuild reloads the running dev server; ignoring them left the browser
+// on a stale copy that lacked newly added exports and 500'd every page importing them.
+function isIgnoredDistPath(file: string): boolean {
+	const inDist = file.includes('/dist/') || file.endsWith('/dist');
+	return inDist && !file.startsWith(workspacePackagesDir);
+}
+
 export default defineConfig(({ mode }) => {
 	const isDev = mode === 'development';
 	const isProd = mode === 'production';
@@ -127,7 +137,7 @@ export default defineConfig(({ mode }) => {
 				ignored: [
 					'**/node_modules/**',
 					'**/.git/**',
-					'**/dist/**',
+					isIgnoredDistPath,
 					'**/.svelte-kit/**',
 					'**/coverage/**',
 					'**/scripts/**',

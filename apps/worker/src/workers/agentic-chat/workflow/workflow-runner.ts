@@ -569,10 +569,17 @@ class WorkflowExecution {
 				throw fencedStop(call.code);
 			}
 			// One planner attempt (Tasker 83): any failure installs the labeled fixed plan.
+			// A rejected plan and a provider failure keep separate codes, as the specialist
+			// and editor codes do, so diagnostics can tell the model from the transport.
 			await this.failAttempt(
 				'planner',
 				attemptId,
-				failureCodeOf(call, 'workflow_planner_invalid'),
+				failureCodeOf(
+					call,
+					call.kind === 'text'
+						? 'workflow_planner_invalid'
+						: 'workflow_planner_unavailable'
+				),
 				false
 			);
 		} finally {

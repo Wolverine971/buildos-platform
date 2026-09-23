@@ -150,6 +150,7 @@ const themeReplies = {
 				heading: 'Current state',
 				rewrite:
 					'- **Contract:** locked; Exclusions dropped.\n- **Theme:** social anti-fragility, bridges not defenses.',
+				evidence: [T05],
 				rationale: 'Snapshot.'
 			}
 		]
@@ -389,6 +390,115 @@ describe('chat checkpoint capture (tasker/95)', () => {
 		expect(completeJson.calls).toEqual([]);
 		expect(state.watermarks.get(THEME_SESSION)).toBe(raw.sessions[1]!.messages[3]!.id);
 	});
+
+	it("shows the synthesis model the chat's write receipts, or says it saved none", async () => {
+		// Tasker 96 Finding 10: a read-only status chat's "Blueprint: not started"
+		// overwrote a correct Current state. Receipts are the evidence of work done.
+		const prompts = new Map<string, string>();
+		const completeJson = (async ({ operation, userPrompt }) => {
+			prompts.set(operation, userPrompt);
+			return operation === 'thinking_log' ? { passages: [] } : { edits: [] };
+		}) as CheckpointCapturePorts['completeJson'];
+		const base = fixture();
+		const themeMessages = raw.sessions[1]!.messages;
+		const outline = {
+			tool: 'update_onto_document',
+			kind: 'document',
+			title: 'Book Contract & Chapter Blueprint Template'
+		};
+		base.sessions = base.sessions.map((session) =>
+			session.id === THEME_SESSION
+				? {
+						...session,
+						savedChanges: [
+							// Before the first message: an earlier stretch of the chat, not this one.
+							{ ...outline, title: 'Old write', at: '2026-01-01T00:00:00.000Z' },
+							{ ...outline, at: themeMessages[themeMessages.length - 1]!.created_at }
+						]
+					}
+				: session
+		);
+		const { ports, state } = createMemoryCheckpointPorts(base, completeJson);
+
+		state.watermarks.set(THEME_SESSION, themeMessages[0]!.id);
+		await runChatCheckpointCapture(ports, {
+			sessionId: THEME_SESSION,
+			userId: USER_ID,
+			trigger: 'idle',
+			now: NOW
+		});
+		const withWrite = prompts.get('start_here_synthesis')!;
+		expect(withWrite).toContain(
+			'- [c1] update_onto_document: document "Book Contract & Chapter Blueprint Template"'
+		);
+		expect(withWrite).not.toContain('Old write');
+
+		await runChatCheckpointCapture(ports, {
+			sessionId: raw.sessions[0]!.id,
+			userId: USER_ID,
+			trigger: 'idle',
+			now: NOW
+		});
+		expect(prompts.get('start_here_synthesis')).toContain(
+			'Changes this chat saved: none. These messages changed no project records.'
+		);
+	});
+
+	it('rewrites Current state only when the edit cites a user message or a saved change', async () => {
+		const snapshot = (evidence: string[]) => ({
+			log: { passages: [] },
+			synthesis: {
+				edits: [
+					{
+						heading: 'Current state',
+						rewrite: '- **Blueprint:** not started.',
+						evidence,
+						rationale: 'Status from the chat.'
+					}
+				]
+			}
+		});
+		const run = async (evidence: string[], savedChanges = false) => {
+			const base = fixture();
+			const messages = raw.sessions[1]!.messages;
+			base.sessions[1] = {
+				...base.sessions[1]!,
+				savedChanges: savedChanges
+					? [
+							{
+								tool: 'update_onto_document',
+								kind: 'document',
+								title: 'Blueprint',
+								at: messages[messages.length - 1]!.created_at
+							}
+						]
+					: []
+			};
+			const { ports, state } = createMemoryCheckpointPorts(base, canned(snapshot(evidence)));
+			const outcome = await runChatCheckpointCapture(ports, {
+				sessionId: THEME_SESSION,
+				userId: USER_ID,
+				trigger: 'idle',
+				now: NOW
+			});
+			return {
+				currentState: section(state.startHere.content, 'Current state'),
+				skipped: 'record' in outcome ? outcome.record.skipped : []
+			};
+		};
+
+		// Nothing cited, or an id that is not a user message or saved change here.
+		for (const evidence of [[], ['assistant-reply'], ['c1']]) {
+			const result = await run(evidence);
+			expect(result.currentState).toBe(section(raw.startHere.content, 'Current state'));
+			expect(result.skipped).toContainEqual({
+				heading: 'Current state',
+				reason: 'no_evidence'
+			});
+		}
+		expect((await run([T05])).currentState).toBe('- **Blueprint:** not started.');
+		expect((await run(['c1'], true)).currentState).toBe('- **Blueprint:** not started.');
+	});
 });
 
 describe('section edits', () => {
@@ -402,6 +512,7 @@ describe('section edits', () => {
 		remove: [],
 		replace: [],
 		rewrite: null,
+		evidence: [],
 		rationale: '',
 		...patch
 	});
@@ -502,6 +613,7 @@ describe('section edits', () => {
 				remove: ['b2'],
 				replace: [],
 				rewrite: null,
+				evidence: [],
 				rationale: 'Captured from chat.'
 			}
 		]);

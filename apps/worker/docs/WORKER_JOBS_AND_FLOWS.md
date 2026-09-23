@@ -122,6 +122,13 @@ Added 2026-09-23 (tasker/95). The full design is in
   `chat_capture_checkpoints`, and the sweep skips that session until a new message arrives.
 - The job writes the project's thinking log and START HERE. It stages review proposals as
   `agent_runs`, records a receipt row, and advances `chat_sessions.capture_watermark_at`.
+- It also reads the session's `chat_tool_executions` for the same message window. These are the
+  write receipts that ground START HERE's Current state; a status line the chat only repeated
+  never counts (tasker/96, 2026-09-23, uncommitted). The design doc has the details and the one
+  known gap.
+- Scripts must not import `supabaseCheckpointPorts.ts`: its `lib/supabase` client loads
+  `apps/worker/.env`, which points at production. Pure helpers such as `savedChangesFromExecution`
+  live in `capturePrompts.ts` for that reason.
 - Disable with `CHAT_CHECKPOINT_CAPTURE_ENABLED=false`. This stops the sweep and makes the job a
   no-op.
 - One-time backfill: `pnpm --filter @buildos/worker backfill:chat-checkpoints --user <id>`. It is

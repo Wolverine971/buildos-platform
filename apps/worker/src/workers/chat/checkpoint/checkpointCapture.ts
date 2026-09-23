@@ -22,6 +22,7 @@ import {
 	planStartHereCheckpointRewrites,
 	readStartHereDocumentSections,
 	splitStartHereSectionBlocks,
+	standardStartHereSectionName,
 	stripStartHereManagedRegions,
 	stripStartHereScaffolding
 } from '@buildos/shared-agent-ops/ontology/start-here';
@@ -29,15 +30,18 @@ import { resolveEntityReferences } from '@buildos/shared-agent-ops/utils/entity-
 import {
 	type PromptEntity,
 	type PromptMessage,
+	type PromptSavedChange,
 	type PromptSection,
+	SAVED_CHANGE_PROMPT_LIMIT,
 	START_HERE_SYNTHESIS_SYSTEM_PROMPT,
 	THINKING_LOG_SYSTEM_PROMPT,
 	applySectionEdit,
-	restatedAdditions,
 	buildStartHereSynthesisPrompt,
 	buildThinkingLogPrompt,
 	normalizeSynthesisReply,
-	normalizeThinkingLogReply
+	normalizeThinkingLogReply,
+	restatedAdditions,
+	savedChangeId
 } from './capturePrompts';
 import {
 	buildThinkingLogDocument,
@@ -100,10 +104,15 @@ export type CheckpointRecord = {
 
 export type CheckpointCapturePorts = {
 	loadSession(params: { sessionId: string; userId: string }): Promise<CheckpointSession | null>;
-	/** Messages after the session's watermark, and a few before it for context, oldest first. */
+	/**
+	 * Messages after the session's watermark, and a few before it for context,
+	 * oldest first, plus the project records the chat's tools saved over the new
+	 * messages (write receipts).
+	 */
 	loadMessages(session: CheckpointSession): Promise<{
 		newMessages: PromptMessage[];
 		priorMessages: PromptMessage[];
+		savedChanges: PromptSavedChange[];
 	}>;
 	loadProject(
 		session: CheckpointSession & { projectId: string }
@@ -211,7 +220,7 @@ export async function runChatCheckpointCapture(
 ): Promise<CheckpointOutcome> {
 	const session = await ports.loadSession({ sessionId: input.sessionId, userId: input.userId });
 	if (!session) return { status: 'skipped', reason: 'session_not_found' };
-	const { newMessages, priorMessages } = await ports.loadMessages(session);
+	const { newMessages, priorMessages, savedChanges } = await ports.loadMessages(session);
 	const last = newMessages[newMessages.length - 1];
 	if (!last) return { status: 'skipped', reason: 'nothing_new' };
 	// A backfill replays an older chat: its log entry and decisions are dated to
@@ -317,6 +326,7 @@ export async function runChatCheckpointCapture(
 				entities: project.entities,
 				priorMessages,
 				newMessages,
+				savedChanges,
 				stamp
 			}),
 			userId: session.userId,
@@ -360,6 +370,21 @@ export async function runChatCheckpointCapture(
 
 	// --- START HERE -----------------------------------------------------------
 	const synthesis = normalizeSynthesisReply(synthesisReply);
+	// Tasker 96 Finding 10: Current state changes only on cited evidence, a user
+	// message from this stretch of the chat or a saved change. Assistant
+	// messages carry no ids in the prompt, so a status read the assistant gave
+	// ("Blueprint: not started") cannot be cited as news.
+	const citable = new Set([
+		...userMessages.map((message) => message.id),
+		...savedChanges.slice(0, SAVED_CHANGE_PROMPT_LIMIT).map((_, index) => savedChangeId(index))
+	]);
+	const evidenceSkips: Array<{ heading: string; reason: string }> = [];
+	synthesis.edits = synthesis.edits.filter((edit) => {
+		if (standardStartHereSectionName(edit.heading) !== 'Current state') return true;
+		if (edit.evidence.some((id) => citable.has(id))) return true;
+		evidenceSkips.push({ heading: edit.heading, reason: 'no_evidence' });
+		return false;
+	});
 	const knownEntities = new Set(project.entities.map((entity) => `${entity.type}:${entity.id}`));
 	knownEntities.add(`project:${projectId}`);
 	const isKnown = (type: string, id: string) => knownEntities.has(`${type}:${id}`);
@@ -408,7 +433,7 @@ export async function runChatCheckpointCapture(
 		today,
 		lockedHeadings
 	});
-	record.skipped = plan.skipped;
+	record.skipped = [...evidenceSkips, ...plan.skipped];
 
 	const autoBodies: StartHereSectionBody[] = plan.plans.flatMap((section) =>
 		section.autoMarkdown === null

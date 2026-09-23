@@ -3,6 +3,8 @@ import { browser } from '$app/environment';
 import { clearOnboardingDrafts } from '$lib/utils/onboarding-state';
 
 export const LOGOUT_REDIRECT_STORAGE_KEY = 'buildos:auth:logout-redirect';
+/** Where an explicit sign-out lands: the login screen in its "you're signed out" state. */
+export const SIGNED_OUT_LOGIN_PATH = '/auth/login?signed_out=1';
 const PUSH_DEACTIVATION_TIMEOUT_MS = 1500;
 
 type BrowserSupabase = ReturnType<typeof import('$lib/supabase').createSupabaseBrowser>;
@@ -34,7 +36,7 @@ async function deactivateThisDevicePush(supabase: BrowserSupabase): Promise<void
  * Sign the current user out across browser and server contexts.
  * Relies on the root layout's auth listener to handle navigation and invalidation.
  */
-export async function logout(redirectTo: string = '/auth/login'): Promise<void> {
+export async function logout(redirectTo: string = SIGNED_OUT_LOGIN_PATH): Promise<void> {
 	if (!browser) return;
 	clearOnboardingDrafts();
 

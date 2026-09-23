@@ -63,13 +63,16 @@ function createUsersClient({
 
 function createLocals({
 	sessionClient,
-	signInUser
+	signInUser,
+	pendingInvites = []
 }: {
 	sessionClient: ReturnType<typeof createUsersClient>;
 	signInUser: Record<string, any>;
+	pendingInvites?: unknown[];
 }) {
 	return {
 		supabase: {
+			rpc: vi.fn().mockResolvedValue({ data: pendingInvites, error: null }),
 			auth: {
 				signInWithPassword: vi.fn().mockResolvedValue({
 					data: {
@@ -185,6 +188,75 @@ describe('POST /api/auth/login', () => {
 			expect.objectContaining({
 				operationType: 'auth_login_profile_insert'
 			})
+		);
+	});
+
+	it('tells the login page about pending invites so it can skip a second round trip', async () => {
+		const authUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			created_at: '2026-04-08T12:00:00.000Z',
+			user_metadata: { name: 'User' }
+		};
+		createAuthenticatedSupabaseClientMock.mockReturnValueOnce(
+			createUsersClient({ insertedUser: { id: 'user-1', email: 'user@example.com' } })
+		);
+		const locals = createLocals({
+			sessionClient: createUsersClient({}),
+			signInUser: authUser,
+			pendingInvites: [{ invite_id: 'invite-1' }]
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: 'user@example.com', password: 'Password123' })
+			}),
+			locals
+		} as any);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data.hasPendingInvites).toBe(true);
+		expect(locals.supabase.rpc).toHaveBeenCalledWith('list_pending_project_invites');
+	});
+
+	it('still signs in when the pending-invite check fails', async () => {
+		const authUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			created_at: '2026-04-08T12:00:00.000Z',
+			user_metadata: { name: 'User' }
+		};
+		createAuthenticatedSupabaseClientMock.mockReturnValueOnce(
+			createUsersClient({ insertedUser: { id: 'user-1', email: 'user@example.com' } })
+		);
+		const locals = createLocals({
+			sessionClient: createUsersClient({}),
+			signInUser: authUser
+		});
+		locals.supabase.rpc.mockResolvedValueOnce({
+			data: null,
+			error: { message: 'rpc unavailable' }
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: 'user@example.com', password: 'Password123' })
+			}),
+			locals
+		} as any);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.data.hasPendingInvites).toBe(false);
+		expect(logErrorMock).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'rpc unavailable' }),
+			expect.objectContaining({ operationType: 'auth_login_pending_invites' }),
+			'warning'
 		);
 	});
 

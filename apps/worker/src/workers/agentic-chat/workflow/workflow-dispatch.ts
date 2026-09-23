@@ -18,6 +18,7 @@ import {
 	type AgenticChatProviderDispatchRequestV1,
 	type AgenticChatProviderDispatchUsageV1
 } from '../provider/contracts';
+import type { AgenticChatOpenRouterProviderRoutingV1 } from '../provider/openrouter-client';
 import type { AgenticChatWorkflowFenceV1, AgenticChatWorkflowStorePortV1 } from './workflow-store';
 
 /**
@@ -85,12 +86,35 @@ export const AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS =
 export const AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 
 /**
- * Workflow routes reuse the configured OpenRouter credential and provider policy but
- * pin the priced workflow models, so no request can reach an unpriced model. Startup
- * fails closed if the configuration cannot satisfy that.
+ * Provider policy for the pinned workflow models. It is owned here, not inherited from
+ * the chat route: chat's policy is measured for chat's model (production runs V4
+ * Flash, whose `order` pool is a different endpoint set), and a route without one
+ * falls to OpenRouter's price-weighted default. On 2026-09-23 the cheapest V4.1 Flash
+ * endpoints ran 7–45 tok/s p50 (fp4) against 83–156 for the fastest. This is chat's
+ * measured V4.1 policy (config.ts `resolveProviderRouting`): throughput sorting, with
+ * the endpoints that stalled QA passes ignored.
+ */
+export const AGENTIC_CHAT_WORKFLOW_PROVIDER_ROUTING_V1: AgenticChatOpenRouterProviderRoutingV1 =
+	Object.freeze({
+		allow_fallbacks: true,
+		ignore: Object.freeze(['azure', 'morph', 'modal']),
+		sort: 'throughput'
+	});
+
+/**
+ * Workflow routes reuse the configured OpenRouter credential but pin the priced
+ * workflow models and their own provider policy, so no request can reach an unpriced
+ * model or a routing policy measured for another model. Startup fails closed if the
+ * configuration cannot satisfy that.
  */
 export function buildAgenticChatWorkflowRoutesV1<
-	Route extends { id: string; kind: string; model: string; fallbackModels?: readonly string[] }
+	Route extends {
+		id: string;
+		kind: string;
+		model: string;
+		fallbackModels?: readonly string[];
+		providerRouting?: AgenticChatOpenRouterProviderRoutingV1;
+	}
 >(
 	routes: readonly Route[],
 	pricing: Readonly<
@@ -114,7 +138,8 @@ export function buildAgenticChatWorkflowRoutesV1<
 			...openrouter,
 			id: `${openrouter.id}-workflow`,
 			model: AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1,
-			fallbackModels: [...AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1]
+			fallbackModels: [...AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1],
+			providerRouting: AGENTIC_CHAT_WORKFLOW_PROVIDER_ROUTING_V1
 		}
 	];
 }

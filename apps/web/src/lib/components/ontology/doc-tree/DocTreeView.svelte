@@ -36,7 +36,12 @@
 	import DocTreeImageShelf from './DocTreeImageShelf.svelte';
 	import AssetDetailModal from '$lib/components/ontology/AssetDetailModal.svelte';
 	import ImageUploadModal from '$lib/components/ontology/ImageUploadModal.svelte';
-	import { groupTreeImages, type DocTreeImage, type DocTreeImageLink } from './tree-images';
+	import {
+		groupTreeImages,
+		treeImageViewerOrder,
+		type DocTreeImage,
+		type DocTreeImageLink
+	} from './tree-images';
 	import { projectImageEvents } from '$lib/stores/projectImageEvents';
 	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { createDragDropState } from './useDragDrop.svelte';
@@ -364,6 +369,14 @@
 		traverse(enrichedTree);
 		return options;
 	});
+
+	/** The image viewer's arrows walk the tree's images top to bottom. */
+	const viewerImageIds = $derived(
+		treeImageViewerOrder(
+			groupedImages,
+			documentOptions.map((option) => option.id)
+		)
+	);
 
 	/**
 	 * Load project images and their document links. Parent snapshots and tree loads
@@ -904,6 +917,7 @@
 		bind:isOpen={viewerOpen}
 		{projectId}
 		assetId={viewerImageId}
+		assetIds={viewerImageIds}
 		{canEdit}
 		{documentOptions}
 		onUpdated={() => void fetchImages()}

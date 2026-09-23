@@ -35,6 +35,31 @@ function buildFallbackUser(authUser: User) {
 	};
 }
 
+/** Never fails the login: an unanswered invite check just means the default landing page. */
+async function checkPendingInvites(
+	supabase: App.Locals['supabase'],
+	errorLogger: ReturnType<typeof ErrorLoggerService.getInstance>,
+	requestId: string | undefined
+): Promise<boolean> {
+	try {
+		const { data, error } = await supabase.rpc('list_pending_project_invites');
+		if (error) throw error;
+		return Array.isArray(data) && data.length > 0;
+	} catch (error) {
+		await errorLogger.logError(
+			error,
+			{
+				endpoint: '/api/auth/login',
+				httpMethod: 'POST',
+				operationType: 'auth_login_pending_invites',
+				requestId
+			},
+			'warning'
+		);
+		return false;
+	}
+}
+
 export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	const { supabase } = locals;
 	const parsed = await parseJsonRequest(request, loginRequestSchema);
@@ -264,27 +289,33 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 			locals.user = profileUser as any;
 		}
 
-		await logSecurityEvent(
-			{
-				eventType: 'auth.login.succeeded',
-				category: 'auth',
-				outcome: 'success',
-				severity: 'info',
-				actorType: 'user',
-				actorUserId: data.user?.id ?? null,
-				...requestContext,
-				metadata: {
-					...attemptMetadata,
-					profileHydrated: Boolean(profileUser)
-				}
-			},
-			securityEventOptions
-		);
+		const [, hasPendingInvites] = await Promise.all([
+			logSecurityEvent(
+				{
+					eventType: 'auth.login.succeeded',
+					category: 'auth',
+					outcome: 'success',
+					severity: 'info',
+					actorType: 'user',
+					actorUserId: data.user?.id ?? null,
+					...requestContext,
+					metadata: {
+						...attemptMetadata,
+						profileHydrated: Boolean(profileUser)
+					}
+				},
+				securityEventOptions
+			),
+			// Answered here so the login page can route straight to /invites without a second
+			// round trip after sign-in.
+			checkPendingInvites(supabase, errorLogger, requestId)
+		]);
 
 		// Return success with user data
 		return ApiResponse.success(
 			{
-				user: profileUser
+				user: profileUser,
+				hasPendingInvites
 			},
 			'Logged in successfully'
 		);

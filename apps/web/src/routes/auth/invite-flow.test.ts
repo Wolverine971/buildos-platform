@@ -47,7 +47,9 @@ vi.mock('$app/stores', () => ({
 
 vi.mock('$app/navigation', () => ({
 	goto: gotoMock,
-	replaceState: replaceStateMock
+	replaceState: replaceStateMock,
+	preloadCode: vi.fn().mockResolvedValue(undefined),
+	afterNavigate: (callback: () => void) => callback()
 }));
 
 vi.mock('$env/static/public', () => ({
@@ -139,15 +141,8 @@ describe('Auth invite flow', () => {
 				return okJson({
 					success: true,
 					data: {
-						user: { id: 'user-1', email: 'invitee@example.com' }
-					}
-				});
-			}
-			if (url === '/api/onto/invites/pending') {
-				return okJson({
-					success: true,
-					data: {
-						invites: [{ invite_id: 'invite-1' }]
+						user: { id: 'user-1', email: 'invitee@example.com' },
+						hasPendingInvites: true
 					}
 				});
 			}
@@ -172,6 +167,26 @@ describe('Auth invite flow', () => {
 				}
 			);
 		});
+		// The login response answers the invite check; no second round trip before navigating.
+		expect(global.fetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows the signed-out state and URL errors inline, then clears them from the URL', async () => {
+		setPageUrl(
+			'http://localhost/auth/login?signed_out=1&error=Authentication%20failed&redirect=/today'
+		);
+
+		render(LoginPage);
+
+		expect(screen.getByRole('heading', { name: /you’re signed out/i })).toBeInTheDocument();
+		expect(screen.getByRole('alert')).toHaveTextContent('Authentication failed');
+		await waitFor(() => {
+			expect(replaceStateMock).toHaveBeenCalledWith(
+				'http://localhost/auth/login?redirect=%2Ftoday',
+				{}
+			);
+		});
+		expect(toastErrorMock).not.toHaveBeenCalled();
 	});
 
 	it('keeps the invite redirect on the sign-in link after registration requires email confirmation', async () => {

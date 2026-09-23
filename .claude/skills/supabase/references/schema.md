@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 250 tables, grouped by domain.
+Complete column listing for all 251 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-09-22T14:56:27.683Z
+**Schema generated:** 2026-09-23T17:13:56.659Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -17,7 +17,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [People & Contacts](#people--contacts) (6 tables)
 - [Ontology System](#ontology-system) (41 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
-- [Chat & Agents](#chat--agents) (33 tables)
+- [Chat & Agents](#chat--agents) (34 tables)
 - [Calendar](#calendar) (13 tables)
 - [Notifications](#notifications) (7 tables)
 - [SMS & Twilio](#sms--twilio) (7 tables)
@@ -406,6 +406,10 @@ allowed_ops `string[]?` · budgets `Json` · change_set `Json?` · commit_starte
 
 agent_run_id `string` · arguments `Json?` · created_at `string` · entity_id `string?` · entity_kind `string?` · error_message `string?` · execution_time_ms `number?` · gateway_op `string?` · id `string` · mutation_mode `string?` · proposed_change_id `string?` · result `Json?` · success `boolean` · tokens_consumed `number?` · tool_category `string?` · tool_name `string` · user_id `string`
 
+### chat_capture_checkpoints
+
+applied_sections `string[]` · created_at `string` · details `Json` · id `string` · project_id `string?` · review_run_id `string?` · review_sections `string[]` · session_id `string` · start_here_after_updated_at `string?` · start_here_before `string?` · start_here_document_id `string?` · status `string` · thinking_log_document_id `string?` · thinking_log_entry `string?` · through_message_at `string?` · through_message_id `string?` · trigger `string` · undone_at `string?` · user_id `string` · user_message_count `number`
+
 ### chat_compressions
 
 compressed_message_count `number` · compressed_tokens `number` · compression_ratio `number?` · created_at `string?` · first_message_id `string?` · id `string` · key_points `Json?` · last_message_id `string?` · original_message_count `number` · original_tokens `number` · session_id `string` · summary `string` · tool_usage_summary `Json?`
@@ -440,7 +444,7 @@ approx_prompt_tokens `number?` · context_payload `Json?` · created_at `string`
 
 ### chat_sessions
 
-agent_metadata `Json?` · archived_at `string?` · auto_accept_operations `boolean?` · auto_title `string?` · chat_topics `string[]?` · chat_type `string?` · compressed_at `string?` · context_type `string` · created_at `string?` · entity_id `string?` · extracted_entities `Json?` · id `string` · last_classified_at `string?` · last_message_at `string?` · message_count `number?` · preferences `Json?` · status `string` · summary `string?` · title `string?` · tool_call_count `number?` · total_tokens_used `number?` · updated_at `string?` · user_id `string`
+agent_metadata `Json?` · archived_at `string?` · auto_accept_operations `boolean?` · auto_title `string?` · capture_watermark_at `string?` · capture_watermark_message_id `string?` · chat_topics `string[]?` · chat_type `string?` · compressed_at `string?` · context_type `string` · created_at `string?` · entity_id `string?` · extracted_entities `Json?` · id `string` · last_classified_at `string?` · last_message_at `string?` · message_count `number?` · preferences `Json?` · status `string` · summary `string?` · title `string?` · tool_call_count `number?` · total_tokens_used `number?` · updated_at `string?` · user_id `string`
 
 ### chat_sessions_projects
 

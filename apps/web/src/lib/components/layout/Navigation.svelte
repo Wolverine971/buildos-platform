@@ -295,9 +295,7 @@
 		try {
 			toastService.info('Signing out...', { duration: TOAST_DURATION.QUICK });
 
-			await logout(
-				'/auth/login?message=' + encodeURIComponent('You have been signed out successfully')
-			);
+			await logout();
 		} catch (error) {
 			if (error instanceof Error) {
 				if (error.message.includes('network') || error.message.includes('fetch')) {

@@ -27,7 +27,7 @@ import {
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { ensureProjectStartHereDocument } from '@buildos/shared-agent-ops/ontology/start-here.service';
 import { supabase } from '../../../lib/supabase';
-import type { PromptEntity, PromptMessage } from './capturePrompts';
+import { type PromptEntity, type PromptMessage, savedChangesFromExecution } from './capturePrompts';
 import type {
 	CheckpointCapturePorts,
 	CheckpointDocument,
@@ -41,6 +41,7 @@ export const START_HERE_CAPTURE_RUN_LABEL = 'Update project START HERE';
 const THINKING_LOG_TITLE = 'Thinking log';
 const NEW_MESSAGE_BATCH = 60;
 const PRIOR_CONTEXT_MESSAGES = 4;
+const SAVED_CHANGE_ROWS = 200;
 
 type AgentRunInsert = Database['public']['Tables']['agent_runs']['Insert'];
 
@@ -219,7 +220,15 @@ export function createSupabaseCheckpointPorts(options?: {
 				.order('id', { ascending: true })
 				.limit(NEW_MESSAGE_BATCH);
 			if (watermarkAt) newQuery = newQuery.gt('created_at', watermarkAt);
-			const [fresh, prior] = await Promise.all([
+			let receiptQuery = supabase
+				.from('chat_tool_executions')
+				.select('tool_name, tool_category, success, affected_entities, created_at')
+				.eq('session_id', session.id)
+				.eq('success', true)
+				.order('created_at', { ascending: true })
+				.limit(SAVED_CHANGE_ROWS);
+			if (watermarkAt) receiptQuery = receiptQuery.gt('created_at', watermarkAt);
+			const [fresh, prior, receipts] = await Promise.all([
 				newQuery,
 				watermarkAt
 					? supabase
@@ -230,10 +239,12 @@ export function createSupabaseCheckpointPorts(options?: {
 							.lte('created_at', watermarkAt)
 							.order('created_at', { ascending: false })
 							.limit(PRIOR_CONTEXT_MESSAGES)
-					: Promise.resolve({ data: [], error: null })
+					: Promise.resolve({ data: [], error: null }),
+				receiptQuery
 			]);
 			if (fresh.error) throw fresh.error;
 			if (prior.error) throw prior.error;
+			if (receipts.error) throw receipts.error;
 			const toPrompt = (rows: unknown[] | null): PromptMessage[] =>
 				((rows ?? []) as Array<Record<string, unknown>>).flatMap((row) =>
 					typeof row.id === 'string' &&
@@ -249,9 +260,22 @@ export function createSupabaseCheckpointPorts(options?: {
 							]
 						: []
 				);
+			const newMessages = toPrompt(fresh.data);
+			// Receipts up to the last message in this batch, so a capped batch and
+			// its receipts cover the same stretch of the chat.
+			const through = newMessages[newMessages.length - 1]?.created_at ?? null;
+			const savedChanges = ((receipts.data ?? []) as Array<Record<string, unknown>>)
+				.filter(
+					(row) =>
+						through !== null &&
+						typeof row.created_at === 'string' &&
+						Date.parse(row.created_at) <= Date.parse(through)
+				)
+				.flatMap(savedChangesFromExecution);
 			return {
-				newMessages: toPrompt(fresh.data),
-				priorMessages: toPrompt(prior.data).reverse()
+				newMessages,
+				priorMessages: toPrompt(prior.data).reverse(),
+				savedChanges
 			};
 		},
 

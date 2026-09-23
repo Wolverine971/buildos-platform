@@ -322,7 +322,13 @@ describe('total assembled prompt size budget', () => {
 		// one concise bullet (9,849 chars) and RESTORED verbatim the same day
 		// after case 14 regressed to 3/6 on the Pareto route; measured with them
 		// back: system prompt 10,701 chars. Caps at measured + ~5%.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(11_250);
+		// RE-BASELINED 2026-09-23 (tasker 97): two Final Response Contract
+		// bullets, on picking a project back up and on interviewing (+419 chars,
+		// 11,020 → 11,439). Book-loop evidence: t13 answered "where are we?" with
+		// a task table and never named the book; t08/t09 asked 10-11 questions a
+		// turn. Cap at measured + ~2.5%; the payload cap below binds first (76,588
+		// of 76,600 measured).
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(11_700);
 		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
 		// endpoint references, plus the nested estimate schema. Keep the system
 		// prose cap unchanged; the worker defers the contract from opening passes.

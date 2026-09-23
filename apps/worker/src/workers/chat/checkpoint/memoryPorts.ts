@@ -5,7 +5,7 @@
 // eval harness uses them with a live model (scripts/book-loop/capture-eval).
 /* eslint-disable require-await -- in-memory fakes satisfy async ports without I/O */
 import { stripStartHereManagedRegions } from '@buildos/shared-agent-ops/ontology/start-here';
-import type { PromptEntity, PromptMessage } from './capturePrompts';
+import type { PromptEntity, PromptMessage, PromptSavedChange } from './capturePrompts';
 import type {
 	CheckpointCapturePorts,
 	CheckpointDocument,
@@ -23,6 +23,8 @@ export type MemoryCheckpointFixture = {
 		userId: string;
 		title: string | null;
 		messages: PromptMessage[];
+		/** Write receipts, each stamped with when the chat's tool saved it. */
+		savedChanges?: Array<PromptSavedChange & { at: string }>;
 	}>;
 };
 
@@ -94,9 +96,24 @@ export function createMemoryCheckpointPorts(
 			const start = watermark
 				? messages.findIndex((message) => message.id === watermark) + 1
 				: 0;
+			const newMessages = messages.slice(start);
+			const after = start > 0 ? messages[start - 1]!.created_at : null;
+			const through = newMessages[newMessages.length - 1]?.created_at ?? null;
+			const savedChanges = (
+				fixture.sessions.find((candidate) => candidate.id === session.id)?.savedChanges ??
+				[]
+			)
+				.filter(
+					(change) =>
+						through !== null &&
+						change.at <= through &&
+						(after === null || change.at > after)
+				)
+				.map(({ tool, kind, title }) => ({ tool, kind, title }));
 			return {
-				newMessages: messages.slice(start),
-				priorMessages: messages.slice(Math.max(0, start - PRIOR_CONTEXT_MESSAGES), start)
+				newMessages,
+				priorMessages: messages.slice(Math.max(0, start - PRIOR_CONTEXT_MESSAGES), start),
+				savedChanges
 			};
 		},
 		async loadProject() {

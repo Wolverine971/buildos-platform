@@ -6,6 +6,8 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import AuthShell from '$lib/components/auth/AuthShell.svelte';
+	import AnimatedBrainBolt from '$lib/components/layout/AnimatedBrainBolt.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 
 	let { form }: { form?: ActionData } = $props();
@@ -32,102 +34,91 @@
 	<title>Forgot Password - BuildOS</title>
 </svelte:head>
 
-<!-- Account for navbar height (h-16 = 4rem). Use 100dvh so iOS Safari's dynamic toolbar doesn't push content beyond the visible viewport. min-h-[calc(100vh-...)] is kept as a fallback for browsers without dvh support. -->
-<div
-	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background min-h-[calc(100vh-4rem)] min-h-[calc(100dvh-4rem)]"
->
-	<div class="max-w-md w-full space-y-8 py-12">
-		<!-- Logo/Brand Section -->
-		<div class="text-center">
-			<div class="flex justify-center mb-6">
-				<div
-					class="w-16 h-16 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink tx tx-bloom tx-weak"
-				>
-					<img src="/brain-bolt.webp" alt="BuildOS Icon" class="w-12 h-12" />
-				</div>
-			</div>
+<AuthShell>
+	<div class="text-center">
+		<AnimatedBrainBolt class="mx-auto w-12 rounded-lg" />
+		<h1 class="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+			Reset your password
+		</h1>
+		<p class="mt-2 text-sm text-muted-foreground sm:text-base">
+			Enter your email and we'll send you a link to reset your password.
+		</p>
+	</div>
 
-			<h1 class="text-3xl font-bold text-foreground mb-2">Reset your password</h1>
-			<p class="text-muted-foreground mb-8">
-				Enter your email address and we'll send you a link to reset your password.
-			</p>
-		</div>
-
-		<!-- Form Section -->
-		<div
-			class="rounded-lg border border-border bg-card py-8 px-6 shadow-ink tx tx-grain tx-weak"
+	<!-- Form Section -->
+	<div
+		class="mt-6 rounded-lg border border-border bg-card p-5 shadow-ink sm:p-6 tx tx-grain tx-weak"
+	>
+		<form
+			method="POST"
+			class="space-y-6"
+			use:enhance={() => {
+				loading = true;
+				return async ({ update }) => {
+					loading = false;
+					update();
+				};
+			}}
 		>
-			<form
-				method="POST"
-				class="space-y-6"
-				use:enhance={() => {
-					loading = true;
-					return async ({ update }) => {
-						loading = false;
-						update();
-					};
-				}}
-			>
-				{#if form?.error}
-					<div
-						class="rounded-lg border border-destructive/50 bg-destructive/10 text-foreground px-4 py-3"
-					>
-						{form.error}
-					</div>
-				{/if}
-
-				{#if form?.success}
-					<div
-						class="rounded-lg border border-success/50 bg-success/10 text-foreground px-4 py-3"
-					>
-						{form.message}
-					</div>
-				{/if}
-
-				<div class="space-y-5">
-					<FormField label="Email address" labelFor="email" required={true}>
-						<TextInput
-							id="email"
-							name="email"
-							type="email"
-							autocomplete="email"
-							inputmode="email"
-							enterkeyhint="send"
-							required
-							bind:value={email}
-							placeholder="Enter your email"
-							size="lg"
-							onblur={validateEmail}
-						/>
-						{#if emailError}
-							<p class="mt-1 text-sm text-destructive">{emailError}</p>
-						{/if}
-					</FormField>
-				</div>
-
-				<div>
-					<Button
-						type="submit"
-						disabled={loading}
-						{loading}
-						fullWidth={true}
-						variant="primary"
-						size="lg"
-					>
-						{loading ? 'Sending reset link...' : 'Send reset link'}
-					</Button>
-				</div>
-			</form>
-
-			<!-- Back to sign in link -->
-			<div class="mt-6 text-center">
-				<a
-					href="/auth/login"
-					class="text-sm font-medium text-accent hover:opacity-80 transition-opacity"
+			{#if form?.error}
+				<div
+					class="rounded-lg border border-destructive/50 bg-destructive/10 text-foreground px-4 py-3"
 				>
-					← Back to sign in
-				</a>
+					{form.error}
+				</div>
+			{/if}
+
+			{#if form?.success}
+				<div
+					class="rounded-lg border border-success/50 bg-success/10 text-foreground px-4 py-3"
+				>
+					{form.message}
+				</div>
+			{/if}
+
+			<div class="space-y-5">
+				<FormField label="Email address" labelFor="email" required={true}>
+					<TextInput
+						id="email"
+						name="email"
+						type="email"
+						autocomplete="email"
+						inputmode="email"
+						enterkeyhint="send"
+						required
+						bind:value={email}
+						placeholder="Enter your email"
+						size="lg"
+						onblur={validateEmail}
+					/>
+					{#if emailError}
+						<p class="mt-1 text-sm text-destructive">{emailError}</p>
+					{/if}
+				</FormField>
 			</div>
+
+			<div>
+				<Button
+					type="submit"
+					disabled={loading}
+					{loading}
+					fullWidth={true}
+					variant="primary"
+					size="lg"
+				>
+					{loading ? 'Sending reset link...' : 'Send reset link'}
+				</Button>
+			</div>
+		</form>
+
+		<!-- Back to sign in link -->
+		<div class="mt-6 text-center">
+			<a
+				href="/auth/login"
+				class="text-sm font-medium text-accent hover:opacity-80 transition-opacity"
+			>
+				← Back to sign in
+			</a>
 		</div>
 	</div>
-</div>
+</AuthShell>

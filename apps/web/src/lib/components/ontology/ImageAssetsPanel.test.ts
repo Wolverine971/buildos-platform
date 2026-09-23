@@ -183,38 +183,21 @@ describe('ImageAssetsPanel', () => {
 		);
 	});
 
-	it('persists manual OCR text edits from asset detail modal', async () => {
-		let capturedOcrBody: Record<string, unknown> | null = null;
-
+	it('opens the viewer on the clicked image and steps through the panel images', async () => {
+		const floorPlan = { ...assetRow('asset-2'), caption: 'Floor plan', alt_text: 'Floor plan' };
 		(global.fetch as any).mockImplementation(
 			async (input: RequestInfo | URL, init?: RequestInit) => {
 				const url = new URL(String(input), 'http://localhost');
 				const method = init?.method || 'GET';
 
 				if (url.pathname === '/api/onto/assets' && method === 'GET') {
-					return okJson({ data: { assets: [assetRow()] } });
+					return okJson({ data: { assets: [assetRow(), floorPlan] } });
 				}
-
 				if (url.pathname === '/api/onto/assets/asset-1' && method === 'GET') {
 					return okJson({ data: { asset: assetRow(), links: [] } });
 				}
-
-				if (url.pathname === '/api/onto/assets/asset-1' && method === 'PATCH') {
-					return okJson({ data: { asset: assetRow() } });
-				}
-
-				if (url.pathname === '/api/onto/assets/asset-1/ocr' && method === 'PATCH') {
-					const body: Record<string, unknown> = JSON.parse(String(init?.body || '{}'));
-					capturedOcrBody = body;
-					return okJson({
-						data: {
-							asset: {
-								...assetRow(),
-								extracted_text: body.extracted_text,
-								extraction_summary: body.extraction_summary
-							}
-						}
-					});
+				if (url.pathname === '/api/onto/assets/asset-2' && method === 'GET') {
+					return okJson({ data: { asset: floorPlan, links: [] } });
 				}
 
 				return errorJson(404, `Unhandled ${method} ${url.pathname}`);
@@ -232,18 +215,14 @@ describe('ImageAssetsPanel', () => {
 			expect(screen.getByText('Site photo')).toBeInTheDocument();
 		});
 
-		await fireEvent.click(screen.getByTitle('View image details'));
+		await fireEvent.click(screen.getAllByTitle('View image details')[0]!);
 
-		const extractedTextArea = await screen.findByLabelText('Extracted text');
-		await fireEvent.input(extractedTextArea, {
-			target: { value: 'Updated OCR text from reviewer' }
-		});
-		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+		expect(await screen.findByDisplayValue('Site photo')).toBeInTheDocument();
+		expect(screen.getByText('1 / 2')).toBeInTheDocument();
 
-		await waitFor(() => {
-			expect(capturedOcrBody).toMatchObject({
-				extracted_text: 'Updated OCR text from reviewer'
-			});
-		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Next image' }));
+
+		expect(await screen.findByDisplayValue('Floor plan')).toBeInTheDocument();
+		expect(screen.getByText('2 / 2')).toBeInTheDocument();
 	});
 });

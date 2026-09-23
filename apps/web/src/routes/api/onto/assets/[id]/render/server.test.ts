@@ -93,6 +93,69 @@ describe('/api/onto/assets/[id]/render', () => {
 		);
 	});
 
+	it('serves the original as a download named after the image', async () => {
+		ensureAssetAccessMock.mockResolvedValue({
+			asset: {
+				...BASE_ASSET,
+				caption: 'Redline: Logo / Final & #2',
+				original_filename: 'IMG_0042.PNG',
+				content_type: 'image/png'
+			},
+			actorId: 'actor-1'
+		});
+
+		const response = await GET({
+			params: { id: 'asset-1' },
+			url: new URL('http://localhost/api/onto/assets/asset-1/render?download=1&width=160'),
+			locals: createSessionLocals()
+		} as any);
+
+		expect(response.status).toBe(302);
+		expect(createSignedUrlMock).toHaveBeenCalledWith(
+			'projects/project-1/assets/asset-1/original.png',
+			1800,
+			{ download: 'Redline Logo Final 2.png' }
+		);
+	});
+
+	it('falls back to the uploaded filename, then the content type, for downloads', async () => {
+		ensureAssetAccessMock.mockResolvedValue({
+			asset: {
+				...BASE_ASSET,
+				caption: '  ',
+				original_filename: 'brand mark.webp',
+				content_type: 'image/webp'
+			},
+			actorId: 'actor-1'
+		});
+		await GET({
+			params: { id: 'asset-1' },
+			url: new URL('http://localhost/api/onto/assets/asset-1/render?download=1'),
+			locals: createSessionLocals()
+		} as any);
+		expect(createSignedUrlMock).toHaveBeenLastCalledWith(expect.any(String), 1800, {
+			download: 'brand mark.webp'
+		});
+
+		ensureAssetAccessMock.mockResolvedValue({
+			asset: {
+				...BASE_ASSET,
+				caption: null,
+				original_filename: null,
+				content_type: 'image/jpeg'
+			},
+			actorId: 'actor-1'
+		});
+		await GET({
+			params: { id: 'asset-1' },
+			url: new URL('http://localhost/api/onto/assets/asset-1/render?download=1'),
+			locals: createSessionLocals()
+		} as any);
+		expect(createSignedUrlMock).toHaveBeenLastCalledWith(expect.any(String), 1800, {
+			download: 'image.jpg'
+		});
+	});
+
 	it('keeps an explicit resize mode and omits the transform when no size is asked for', async () => {
 		await GET({
 			params: { id: 'asset-1' },

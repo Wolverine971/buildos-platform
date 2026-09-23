@@ -625,7 +625,12 @@ describe('workflow provider fallback (DeepSeek V4 Flash)', () => {
 		const fetchImpl = vi.fn(async () => sse(10));
 		// The configured route's own fallbacks are replaced by the priced workflow list.
 		const routes = buildAgenticChatWorkflowRoutesV1([
-			route({ model: 'provider/unpriced', fallbackModels: ['provider/also-unpriced'] })
+			route({
+				model: 'provider/unpriced',
+				fallbackModels: ['provider/also-unpriced'],
+				// Chat's endpoint order is measured for chat's model, not the workflow's.
+				providerRouting: { allow_fallbacks: true, order: ['deepinfra', 'gmicloud'] }
+			})
 		]);
 		const events = await collect(
 			client(fetchImpl as unknown as typeof fetch, routes).stream(
@@ -637,6 +642,12 @@ describe('workflow provider fallback (DeepSeek V4 Flash)', () => {
 		expect(body.model).toBe(AGENTIC_CHAT_WORKFLOW_PRIMARY_MODEL_V1);
 		expect(body.models).toEqual([FALLBACK]);
 		expect(body.provider.max_price).toEqual({ prompt: 0.3, completion: 1.2, request: 0 });
+		expect(body.provider).toMatchObject({
+			allow_fallbacks: true,
+			sort: 'throughput',
+			ignore: ['azure', 'morph', 'modal']
+		});
+		expect(body.provider.order).toBeUndefined();
 		expect(await meter.drain(1_000)).toBe(true);
 		// One HTTP request is one physical dispatch, priced by the model it leads with.
 		expect([...store.dispatches.values()]).toEqual([

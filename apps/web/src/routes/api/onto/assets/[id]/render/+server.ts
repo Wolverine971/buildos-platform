@@ -13,6 +13,37 @@ function parsePositiveNumber(value: string | null): number | undefined {
 	return Math.floor(parsed);
 }
 
+const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
+	'image/png': 'png',
+	'image/jpeg': 'jpg',
+	'image/webp': 'webp',
+	'image/gif': 'gif',
+	'image/svg+xml': 'svg',
+	'image/avif': 'avif',
+	'image/heic': 'heic'
+};
+
+/** "<image name>.<ext>", falling back to the uploaded filename. */
+function downloadFilename(asset: {
+	caption?: string | null;
+	original_filename?: string | null;
+	content_type?: string | null;
+}): string {
+	const original = asset.original_filename?.trim() || '';
+	const originalExt = /\.([a-z0-9]{2,5})$/i.exec(original)?.[1];
+	const ext =
+		originalExt?.toLowerCase() ??
+		EXTENSION_BY_CONTENT_TYPE[String(asset.content_type ?? '').toLowerCase()] ??
+		'png';
+	const name = (asset.caption?.trim() || original.replace(/\.[a-z0-9]{2,5}$/i, '') || 'image')
+		// Filesystem-unsafe characters, plus & # = + which encodeURI leaves raw in the query.
+		.replace(/[\\/:*?"<>|&#=+\u0000-\u001f]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, 120);
+	return `${name || 'image'}.${ext}`;
+}
+
 export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
@@ -30,6 +61,21 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 	}
 
 	const { asset } = accessResult;
+
+	// ?download=1 serves the original file as an attachment named after the image.
+	if (url.searchParams.has('download')) {
+		const { data, error } = await (createAdminSupabaseClient().storage as any)
+			.from(String(asset.storage_bucket))
+			.createSignedUrl(String(asset.storage_path), SIGNED_URL_TTL_SECONDS, {
+				// storage-js encodeURI()s the whole URL, so pass the name raw.
+				download: downloadFilename(asset)
+			});
+		if (error || !data?.signedUrl) {
+			return ApiResponse.internalError(error || new Error('Failed to generate download URL'));
+		}
+		return new Response(null, { status: 302, headers: { Location: data.signedUrl } });
+	}
+
 	const width = parsePositiveNumber(url.searchParams.get('width'));
 	const height = parsePositiveNumber(url.searchParams.get('height'));
 	const format = url.searchParams.get('format');

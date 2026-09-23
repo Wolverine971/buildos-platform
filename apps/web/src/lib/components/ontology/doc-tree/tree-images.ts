@@ -79,3 +79,28 @@ export function groupTreeImages(
 
 	return { shelf, byDocumentId };
 }
+
+/**
+ * Image ids in the order the tree shows them — shelf first, then each document's
+ * images in tree order — so the viewer's arrows walk the tree top to bottom. An
+ * image filed under several documents appears once, at its first spot.
+ */
+export function treeImageViewerOrder(
+	grouped: GroupedTreeImages,
+	documentIdsInTreeOrder: readonly string[]
+): string[] {
+	const ordered: string[] = [];
+	const seen = new Set<string>();
+	const add = (images: readonly DocTreeImage[] | undefined) => {
+		for (const image of images ?? []) {
+			if (seen.has(image.id)) continue;
+			seen.add(image.id);
+			ordered.push(image.id);
+		}
+	};
+	add(grouped.shelf);
+	for (const documentId of documentIdsInTreeOrder) {
+		add(grouped.byDocumentId.get(documentId));
+	}
+	return ordered;
+}

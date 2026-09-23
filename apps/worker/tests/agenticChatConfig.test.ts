@@ -5,6 +5,7 @@ import { loadAgenticChatConfig } from '../src/workers/agentic-chat/config';
 import {
 	AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1,
 	AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1,
+	AGENTIC_CHAT_WORKFLOW_PROVIDER_ROUTING_V1,
 	buildAgenticChatWorkflowRoutesV1
 } from '../src/workers/agentic-chat/workflow/workflow-dispatch';
 
@@ -178,6 +179,9 @@ describe('workflow v4 flag matrix (Tasker 86 preparation, Tasker 87 execution)',
 		for (const model of [route!.model, ...(route!.fallbackModels ?? [])]) {
 			expect(AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1[model]).toBeDefined();
 		}
+		// Chat's provider policy is measured for chat's model; the workflow owns its own.
+		expect(route!.providerRouting).toEqual(AGENTIC_CHAT_WORKFLOW_PROVIDER_ROUTING_V1);
+		expect(route!.providerRouting).not.toEqual(routes[0]!.providerRouting);
 		expect(() => buildAgenticChatWorkflowRoutesV1(routes, {})).toThrow(/pricing snapshots/);
 	});
 });
