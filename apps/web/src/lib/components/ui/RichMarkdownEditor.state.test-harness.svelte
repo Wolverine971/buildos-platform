@@ -15,8 +15,11 @@
 	bind:isTranscribing
 	bind:voiceError
 	bind:recordingDuration
+	voiceNoteLinkedEntityType="document"
+	voiceNoteLinkedEntityId="doc-1"
 />
 
+<output data-testid="value">{value}</output>
 <output data-testid="recording">{String(isRecording)}</output>
 <output data-testid="transcribing">{String(isTranscribing)}</output>
 <output data-testid="voice-error">{voiceError}</output>

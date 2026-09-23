@@ -159,9 +159,9 @@
 
 	const initialRows = 1;
 	const maxRows = 6;
-	const isVoiceBlocked = $derived(
-		isStreaming || isStartingStream || disabled || workflowSelected
-	);
+	// Talking mid-response works like typing: the transcript queues and sends
+	// when the response finishes.
+	const isVoiceBlocked = $derived(disabled || workflowSelected);
 	const composerHint = $derived.by(() => {
 		if (disabled) {
 			// Prefer the parent-supplied reason (e.g. "Loading session") over a
@@ -169,7 +169,7 @@
 			return disabledReason ? `${disabledReason}...` : 'Preparing chat...';
 		}
 		if ((isStreaming || isStartingStream) && !queuedMessage) {
-			return 'Keep typing — your next message sends when this one finishes';
+			return 'Keep typing or talking — your next message sends when this one finishes';
 		}
 		return undefined;
 	});

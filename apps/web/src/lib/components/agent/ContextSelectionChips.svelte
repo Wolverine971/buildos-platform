@@ -3,27 +3,44 @@
 	"Working from": the project records Jev ranked for this message, shown under the user's
 	message before the answer. Solid chips were selected in full (their best sections for
 	documents); dashed chips were summaries only. A tick means the model's tools read it.
-	Spec: docs/architecture/JEV_CONTEXT_RANKER_2026-09-22.md.
+	Global chat adds a "Looking in" row first: the projects Jev judged the message to be about,
+	each with a button that continues the chat inside that project.
+	Specs: docs/architecture/JEV_CONTEXT_RANKER_2026-09-22.md,
+	docs/architecture/JEV_GLOBAL_CONTEXT_2026-09-23.md.
 -->
 <script lang="ts">
 	import type { ContextSelectionChipV1, ContextSelectionEventV1 } from '@buildos/shared-types';
 	import {
+		ArrowRight,
 		Check,
 		ChevronDown,
 		ChevronUp,
 		FileText,
+		FolderOpen,
 		ListTodo,
 		Map as MapIcon,
 		Milestone,
 		Target,
 		TriangleAlert
 	} from '$lib/icons/lucide';
-	import { COLLAPSED_CHIP_COUNT, chipHref, orderedChips } from './context-selection-chips';
+	import {
+		COLLAPSED_CHIP_COUNT,
+		chipHref,
+		orderedChips,
+		projectHref,
+		projectsLabel
+	} from './context-selection-chips';
 
 	let {
 		selection,
-		readIds = new Set<string>()
-	}: { selection: ContextSelectionEventV1; readIds?: ReadonlySet<string> } = $props();
+		readIds = new Set<string>(),
+		onContinueInProject
+	}: {
+		selection: ContextSelectionEventV1;
+		readIds?: ReadonlySet<string>;
+		/** Global chat only: move this conversation into the project's focus. */
+		onContinueInProject?: (project: { id: string; name: string }) => void;
+	} = $props();
 
 	let expanded = $state(false);
 
@@ -55,7 +72,44 @@
 			.join(' · ');
 </script>
 
-<div class="w-full max-w-[88%] sm:max-w-[85%]" data-testid="context-selection-chips">
+<div class="w-full max-w-[88%] space-y-1 sm:max-w-[85%]" data-testid="context-selection-chips">
+	{#if selection.status === 'selected' && selection.projects.length > 0}
+		<div
+			class="flex flex-wrap items-center justify-end gap-1"
+			aria-label="Projects this message is about"
+			data-testid="context-selection-projects"
+		>
+			<span class="mr-0.5 text-2xs font-medium text-muted-foreground"
+				>{projectsLabel(selection)}</span
+			>
+			{#each selection.projects as project (project.id)}
+				<span
+					class="inline-flex max-w-[18rem] items-center overflow-hidden rounded-full border border-accent/40 bg-accent/10 text-2xs leading-4 text-foreground"
+				>
+					<a
+						href={projectHref(project.id)}
+						title={`${project.name}${project.p !== null ? ` · relevance ${percent(project.p)}` : ''}`}
+						class="inline-flex min-w-0 items-center gap-1 py-0.5 pl-2 pr-1.5 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+					>
+						<FolderOpen class="h-3 w-3 shrink-0" aria-hidden="true" />
+						<span class="truncate">{project.name}</span>
+					</a>
+					{#if onContinueInProject}
+						<button
+							type="button"
+							class="inline-flex min-h-6 items-center self-stretch border-l border-accent/30 px-1.5 text-muted-foreground hover:bg-accent/15 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+							title={`Continue this chat in ${project.name}`}
+							aria-label={`Continue this chat in ${project.name}`}
+							onclick={() =>
+								onContinueInProject({ id: project.id, name: project.name })}
+						>
+							<ArrowRight class="h-3 w-3" aria-hidden="true" />
+						</button>
+					{/if}
+				</span>
+			{/each}
+		</div>
+	{/if}
 	{#if selection.status === 'selected' && chips.length > 0}
 		<div
 			class="flex flex-wrap items-center justify-end gap-1"
@@ -121,7 +175,13 @@
 		{/if}
 	{:else if selection.status === 'unavailable'}
 		<p class="text-right text-2xs text-muted-foreground" role="status">
-			Working from the usual project context (relevance ranking unavailable)
+			{selection.workspace || !selection.project_id
+				? 'Working from the usual context (project matching unavailable)'
+				: 'Working from the usual project context (relevance ranking unavailable)'}
+		</p>
+	{:else if selection.status === 'empty' && selection.workspace}
+		<p class="text-right text-2xs text-muted-foreground" role="status">
+			Checked {selection.workspace.checked} projects · none clearly matches
 		</p>
 	{/if}
 </div>

@@ -499,3 +499,88 @@ describe('JevClient receipt and usage logging', () => {
 		expect(broken.logUsageToDatabase).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('JevClient hedging', () => {
+	/** Each call resolves after its scripted delay unless aborted first. */
+	function scriptedFetch(script: { delayMs: number; status?: number }[]) {
+		const calls: { aborted: boolean }[] = [];
+		const fetchImpl = vi.fn((_url: string, init?: RequestInit) => {
+			const step = script[calls.length] ?? script[script.length - 1]!;
+			const call = { aborted: false };
+			calls.push(call);
+			return new Promise<Response>((resolve, reject) => {
+				const timer = setTimeout(
+					() =>
+						resolve(
+							step.status && step.status !== 200
+								? jsonResponse({ error: 'x' }, step.status)
+								: jsonResponse(liveSmoke.response)
+						),
+					step.delayMs
+				);
+				init?.signal?.addEventListener('abort', () => {
+					call.aborted = true;
+					clearTimeout(timer);
+					reject(new DOMException('aborted', 'AbortError'));
+				});
+			});
+		});
+		return { fetchImpl: fetchImpl as unknown as typeof fetch, calls };
+	}
+
+	it('sends a second request when the first is slow and takes the first answer', async () => {
+		const { fetchImpl, calls } = scriptedFetch([{ delayMs: 400 }, { delayMs: 10 }]);
+		const client = new JevClient({
+			apiKey: 'k',
+			fetchImpl,
+			hedgeAfterMs: 30,
+			retryOnce: false
+		});
+		const started = Date.now();
+		const result = await client.decide({ state: STATE, questions: QUESTIONS });
+		expect(result.ok).toBe(true);
+		expect(Date.now() - started).toBeLessThan(300);
+		expect(result.receipt).toMatchObject({ attempts: 2, hedged: true });
+		expect(calls[0]!.aborted).toBe(true);
+	});
+
+	it('does not hedge a fast answer', async () => {
+		const { fetchImpl, calls } = scriptedFetch([{ delayMs: 5 }]);
+		const client = new JevClient({
+			apiKey: 'k',
+			fetchImpl,
+			hedgeAfterMs: 200,
+			retryOnce: false
+		});
+		const result = await client.decide({ state: STATE, questions: QUESTIONS });
+		expect(result.ok).toBe(true);
+		expect(calls).toHaveLength(1);
+		expect(result.receipt.hedged).toBeUndefined();
+	});
+
+	it('hedges at once when the first request fails fast, but never on a 4xx', async () => {
+		const fast5xx = scriptedFetch([{ delayMs: 5, status: 503 }, { delayMs: 5 }]);
+		const client = new JevClient({
+			apiKey: 'k',
+			fetchImpl: fast5xx.fetchImpl,
+			hedgeAfterMs: 1_000,
+			retryOnce: false
+		});
+		const started = Date.now();
+		const result = await client.decide({ state: STATE, questions: QUESTIONS });
+		expect(result.ok).toBe(true);
+		expect(Date.now() - started).toBeLessThan(500);
+		expect(fast5xx.calls).toHaveLength(2);
+
+		const bad = scriptedFetch([{ delayMs: 5, status: 400 }]);
+		const strict = new JevClient({
+			apiKey: 'k',
+			fetchImpl: bad.fetchImpl,
+			hedgeAfterMs: 1_000,
+			retryOnce: false
+		});
+		const rejected = await strict.decide({ state: STATE, questions: QUESTIONS });
+		expect(rejected).toMatchObject({ ok: false, error: 'jev_http_4xx' });
+		expect(bad.calls).toHaveLength(1);
+	});
+});

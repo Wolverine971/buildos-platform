@@ -7,36 +7,26 @@ import { createDocumentPatchV1 } from '@buildos/shared-agent-ops/ontology/docume
 import { hashDocumentContent } from '@buildos/shared-agent-ops/utils/document-outline';
 import { cleanupVoiceNoteGroups } from '$lib/services/voice-note-groups.service';
 import DocumentProposalReview from './DocumentProposalReview.svelte';
+import { deferred as voiceDeferred, installResizeObserverStub, voiceFake } from '$lib/voice/test-fakes';
 
-const voice = vi.hoisted(() => ({
-	callbacks: null as null | { onPhaseChange: (phase: 'idle' | 'transcribing') => void }
-}));
-vi.mock('$lib/services/voiceRecording.service', () => ({
-	voiceRecordingService: {
-		cleanup: vi.fn(),
-		getRecordingDuration: () => ({
-			subscribe: (cb: (n: number) => void) => {
-				cb(0);
-				return () => {};
-			}
-		}),
-		initialize: (callbacks: typeof voice.callbacks) => {
-			voice.callbacks = callbacks;
-		},
-		isLiveTranscriptSupported: () => false,
-		isVoiceSupported: () => true,
-		setVocabularyTerms: vi.fn(),
-		startRecording: async () => {},
-		stopRecording: async () => {}
-	}
-}));
+installResizeObserverStub();
+
+vi.mock('$lib/voice/audio-capture', async (orig) =>
+	(await import('$lib/voice/test-fakes')).fakeAudioCaptureModule(await orig())
+);
+vi.mock('$lib/voice/live-draft', async (orig) =>
+	(await import('$lib/voice/test-fakes')).fakeLiveDraftModule(await orig())
+);
+vi.mock('$lib/voice/transcribe-client', async (orig) =>
+	(await import('$lib/voice/test-fakes')).fakeTranscribeModule(await orig())
+);
 vi.mock('$lib/services/voice-note-groups.service', () => ({
 	cleanupVoiceNoteGroups: vi.fn(async () => ({ deletedGroupIds: [], deletedVoiceNotes: 0 })),
 	createVoiceNoteGroup: vi.fn()
 }));
 vi.mock('$lib/services/voice-notes.service', () => ({
-	uploadVoiceNote: vi.fn(),
-	updateVoiceNote: vi.fn()
+	uploadVoiceNote: vi.fn(async () => ({ id: 'note-1' })),
+	updateVoiceNote: vi.fn(async () => ({ id: 'note-1' }))
 }));
 
 const content = '# Plan\n\nDraft this paragraph.';
@@ -91,7 +81,7 @@ afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
 	vi.clearAllMocks();
-	voice.callbacks = null;
+	voiceFake.reset();
 });
 
 describe('Document proposal review', () => {
@@ -316,19 +306,21 @@ describe('Document proposal review', () => {
 		await waitFor(() =>
 			expect(screen.getByRole('button', { name: 'Record voice note' })).not.toBeDisabled()
 		);
+		voiceFake.transcription = voiceDeferred();
 		await fireEvent.click(screen.getByRole('button', { name: 'Record voice note' }));
 		await waitFor(() =>
-			expect(screen.getByRole('button', { name: 'Stop recording' })).toBeInTheDocument()
+			expect(screen.getByRole('button', { name: 'Stop and insert text' })).toBeInTheDocument()
 		);
 		expect(screen.getByRole('button', { name: 'Generate proposal' })).toBeDisabled();
-		voice.callbacks?.onPhaseChange('transcribing');
-		await fireEvent.click(screen.getByRole('button', { name: 'Stop recording' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop and insert text' }));
 		await tick();
 		expect(screen.getByRole('button', { name: 'Generate proposal' })).toBeDisabled();
-		voice.callbacks?.onPhaseChange('idle');
-		await tick();
+		voiceFake.transcription.resolve({ text: 'and shorter', model: null });
 		await waitFor(() =>
 			expect(screen.getByRole('button', { name: 'Generate proposal' })).not.toBeDisabled()
+		);
+		expect(screen.getByRole('textbox', { name: 'Proposal instruction' })).toHaveValue(
+			'Typed instruction and shorter'
 		);
 		expect(onVoiceStateChange).toHaveBeenLastCalledWith(false);
 	});

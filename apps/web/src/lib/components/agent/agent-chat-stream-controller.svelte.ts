@@ -234,6 +234,8 @@ export class AgentChatStreamController {
 	 * back to the composer instead so the user decides.
 	 */
 	queuedMessage = $state<string | null>(null);
+	/** Voice recording attached to the queued follow-up (dictated mid-response). */
+	queuedVoiceNoteGroupId: string | null = null;
 
 	// Run-guard tokens and timing telemetry. Deliberately NOT $state: nothing
 	// reads them reactively (templates/effects), and they're written in the
@@ -318,8 +320,10 @@ export class AgentChatStreamController {
 	async flushQueuedMessage(): Promise<void> {
 		const queued = this.queuedMessage;
 		if (!queued || this.isTurnBusy || this.#deps.getIsLoadingSession()) return;
+		const voiceNoteGroupId = this.queuedVoiceNoteGroupId;
 		this.queuedMessage = null;
-		await this.sendMessage(queued, { suppressInputClear: true });
+		this.queuedVoiceNoteGroupId = null;
+		await this.sendMessage(queued, { suppressInputClear: true, voiceNoteGroupId });
 	}
 
 	/** Cancel the queued follow-up and put its text back in the composer. */
@@ -327,6 +331,10 @@ export class AgentChatStreamController {
 		const queued = this.queuedMessage;
 		if (!queued) return;
 		this.queuedMessage = null;
+		if (this.queuedVoiceNoteGroupId && !this.#deps.voice.noteGroupId) {
+			this.#deps.voice.noteGroupId = this.queuedVoiceNoteGroupId;
+		}
+		this.queuedVoiceNoteGroupId = null;
 		const draft = this.#deps.getInputValue().trim();
 		this.#deps.setInputValue(draft ? `${queued}\n\n${draft}` : queued);
 	}
@@ -484,7 +492,11 @@ export class AgentChatStreamController {
 
 	async sendMessage(
 		contentOverride?: string,
-		options: { suppressInputClear?: boolean } = {}
+		options: {
+			suppressInputClear?: boolean;
+			/** Voice group to attach instead of the composer's (a queued follow-up's own). */
+			voiceNoteGroupId?: string | null;
+		} = {}
 	): Promise<void> {
 		const { suppressInputClear = false } = options;
 		const sendStartedAtMs = Date.now();
@@ -492,7 +504,10 @@ export class AgentChatStreamController {
 		const streamAttachmentRefs = this.#deps.attachments.buildReadyRefs(false);
 		const optimisticAttachmentRefs = this.#deps.attachments.buildReadyRefs(true);
 		const sentImageAttachments = this.#deps.attachments.getDraftSnapshot();
-		const activeVoiceNoteGroupId = this.#deps.voice.noteGroupId;
+		const activeVoiceNoteGroupId =
+			options.voiceNoteGroupId !== undefined
+				? options.voiceNoteGroupId
+				: this.#deps.voice.noteGroupId;
 		const selectedSpecialist = this.#deps.getPublishedSpecialist?.();
 		const reviewIntent =
 			this.#deps.getReviewIntent?.() ??
@@ -563,20 +578,23 @@ export class AgentChatStreamController {
 			return;
 		}
 		if (this.isTurnBusy) {
-			// A plain text follow-up waits its turn instead of being refused; it
-			// sends on its own the moment the active response finishes.
-			if (
-				!trimmed ||
-				reviewIntent ||
-				streamAttachmentRefs.length > 0 ||
-				activeVoiceNoteGroupId
-			) {
+			// A text or dictated follow-up waits its turn instead of being refused;
+			// it sends on its own the moment the active response finishes.
+			if (!trimmed || reviewIntent || streamAttachmentRefs.length > 0) {
 				this.error = 'BuildOS is still finishing the latest response.';
 				return;
 			}
 			this.queuedMessage = this.queuedMessage
 				? `${this.queuedMessage}\n\n${trimmed}`
 				: trimmed;
+			if (activeVoiceNoteGroupId) {
+				// One recording group rides with the queued message; a second
+				// recording's text still queues, its audio stays in Voice notes.
+				this.queuedVoiceNoteGroupId ??= activeVoiceNoteGroupId;
+				if (this.#deps.voice.noteGroupId === activeVoiceNoteGroupId) {
+					this.#deps.voice.noteGroupId = null;
+				}
+			}
 			if (!suppressInputClear) this.#deps.setInputValue('');
 			this.error = null;
 			this.#deps.haptic?.('light');
@@ -655,7 +673,7 @@ export class AgentChatStreamController {
 			this.#deps.attachments.clearDraft();
 			this.#deps.setExistingImagePickerOpen(false);
 		}
-		if (activeVoiceNoteGroupId) {
+		if (activeVoiceNoteGroupId && this.#deps.voice.noteGroupId === activeVoiceNoteGroupId) {
 			this.#deps.voice.noteGroupId = null;
 		}
 		this.error = null;
@@ -941,6 +959,7 @@ export class AgentChatStreamController {
 		this.lastCompletedStreamTiming = null;
 		this.lastCancelResult = null;
 		this.queuedMessage = null;
+		this.queuedVoiceNoteGroupId = null;
 	}
 
 	#isActiveWorkerHandle(

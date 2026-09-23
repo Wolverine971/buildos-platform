@@ -5,6 +5,7 @@ import {
 	buildWorkspaceFinderRequest,
 	capWorkspaceCards,
 	findWorkspaceContext,
+	loadWorkspaceFinderProjects,
 	renderWorkspaceContextBlock,
 	selectWorkspaceProjects,
 	workspaceZoomShare,
@@ -85,6 +86,8 @@ function fakeDecider(input: {
 	projectScores: Record<string, number>;
 	recordScores?: Record<string, number>;
 	hop1DelayMs?: number;
+	dig?: number;
+	hop2DelayMs?: number;
 }): WorkspaceFinderDecider & { calls: string[] } {
 	const calls: string[] = [];
 	return {
@@ -106,6 +109,7 @@ function fakeDecider(input: {
 					probabilities: { [input.scope]: 0.9 },
 					confidence: 0.9
 				};
+				answers.dig = { type: 'noul', noul: input.dig ?? 0.9 };
 				for (const card of state.projects ?? [])
 					answers[`p_${card.ref}`] = {
 						type: 'noul',
@@ -114,6 +118,7 @@ function fakeDecider(input: {
 				return { ok: true, answers, receipt };
 			}
 			calls.push(`records:${state.project?.name}`);
+			if (input.hop2DelayMs) await new Promise((r) => setTimeout(r, input.hop2DelayMs));
 			for (const key of Object.keys(request.questions)) {
 				const [, ref, heading] = key.split('_');
 				const packet = state.packets?.find((p) => p.ref === ref);
@@ -171,7 +176,7 @@ describe('workspace cards', () => {
 			message: 'what about Logan?',
 			previousFocus: [id(2), id(999)]
 		});
-		expect(Object.keys(request.questions)).toEqual(['scope', 'p_P0', 'p_P1']);
+		expect(Object.keys(request.questions)).toEqual(['scope', 'dig', 'p_P0', 'p_P1']);
 		expect(request.questions.scope).toMatchObject({ type: 'choice' });
 		expect(request.state.previous_focus).toEqual(['P1']);
 	});
@@ -185,6 +190,7 @@ describe('selectWorkspaceProjects', () => {
 		({
 			status: 'ranked',
 			scope: { choice, probabilities: {}, confidence: 0.9 },
+			dig: null,
 			projects: scores.map((p, i) => ({ id: id(i + 1), name: `P${i}`, ref: `P${i}`, p })),
 			titleCap: 40,
 			checked: scores.length,
@@ -204,8 +210,17 @@ describe('selectWorkspaceProjects', () => {
 	});
 
 	it('zooms a lone low-scoring match above the floor', () => {
-		expect(selectWorkspaceProjects(ranking('projects', [0.35, 0.1])).zoom).toHaveLength(1);
-		expect(selectWorkspaceProjects(ranking('projects', [0.2, 0.1])).zoom).toHaveLength(0);
+		expect(selectWorkspaceProjects(ranking('projects', [0.45, 0.1])).zoom).toHaveLength(1);
+		expect(selectWorkspaceProjects(ranking('projects', [0.35, 0.1])).zoom).toHaveLength(0);
+	});
+
+	it('digs only when Jev says the request looks for something specific', () => {
+		const specific = { ...ranking('projects', [0.9]), dig: 0.8 };
+		const status = { ...ranking('projects', [0.9]), dig: 0.2 };
+		expect(selectWorkspaceProjects(specific)).toMatchObject({ dig: true, zoom: [{ p: 0.9 }] });
+		expect(selectWorkspaceProjects(status)).toMatchObject({ dig: false, zoom: [{ p: 0.9 }] });
+		// A cached ranking from before the question existed keeps digging.
+		expect(selectWorkspaceProjects(ranking('projects', [0.9])).dig).toBe(true);
 	});
 
 	it('pulses on portfolio requests and loads nothing when no saved work is needed', () => {
@@ -316,6 +331,46 @@ describe('findWorkspaceContext', () => {
 		expect(renderWorkspaceContextBlock(skipped)).toBeNull();
 	});
 
+	it('gives a brief instead of hop 2 when the request only needs the project', async () => {
+		const loadProject = vi.fn(async (projectId: string) => byId.get(projectId)!);
+		const decider = fakeDecider({
+			scope: 'projects',
+			projectScores: { 'Project 2': 0.9 },
+			dig: 0.1
+		});
+		const context = await findWorkspaceContext({
+			projects,
+			loadProject,
+			decider,
+			message: "what's going on with project 2?"
+		});
+		expect(loadProject).not.toHaveBeenCalled();
+		expect(decider.calls).toEqual(['projects', 'projects:done']);
+		expect(context.zoom[0]).toMatchObject({ hop2: 'skipped', evidence: null });
+		const block = renderWorkspaceContextBlock(context)!;
+		expect(block).toContain('Shipping v2.');
+		expect(block).toContain(`- document ${id(202)} Notes 2`);
+		expect(block).toContain(`- task ${id(203)} Open task 2 [todo]`);
+		expect(block).not.toContain('Done task 2');
+	});
+
+	it('falls back to the brief when hop 2 misses its deadline', async () => {
+		const context = await findWorkspaceContext({
+			projects,
+			loadProject: async (projectId) => byId.get(projectId)!,
+			decider: fakeDecider({
+				scope: 'projects',
+				projectScores: { 'Project 3': 0.9 },
+				recordScores: { 'Notes 3': 0.9 },
+				hop2DelayMs: 200
+			}),
+			message: 'who runs project 3?',
+			hop2DeadlineMs: 20
+		});
+		expect(context.zoom[0]!.hop2).toBe('deadline');
+		expect(renderWorkspaceContextBlock(context)).toContain('Shipping v3.');
+	});
+
 	it('keeps the other projects when one zoomed project fails to load', async () => {
 		const context = await findWorkspaceContext({
 			projects,
@@ -332,6 +387,112 @@ describe('findWorkspaceContext', () => {
 		});
 		expect(context.zoom.map((entry) => entry.error)).toEqual(['Error', null]);
 		expect(context.status).toBe('selected');
-		expect(renderWorkspaceContextBlock(context)).toContain('unavailable; read it with tools');
+		expect(context.zoom.map((entry) => entry.hop2)).toEqual(['failed', 'ran']);
+		// The failed project still gets its brief, so the model can open its records directly.
+		expect(renderWorkspaceContextBlock(context)).toContain('Shipping v1.');
+	});
+});
+
+describe('loadWorkspaceFinderProjects', () => {
+	/** Chainable fake: every query resolves to its table's canned rows; calls are recorded. */
+	function fakeClient(tables: Record<string, unknown[]>, summaries: unknown[] | null) {
+		const calls: { table: string; ops: [string, ...unknown[]][] }[] = [];
+		const builder = (table: string) => {
+			const call = { table, ops: [] as [string, ...unknown[]][] };
+			calls.push(call);
+			const result = () => ({
+				data:
+					table === 'onto_actors' ? (tables[table]?.[0] ?? null) : (tables[table] ?? []),
+				error: null
+			});
+			const chain: Record<string, unknown> = {};
+			for (const op of ['select', 'eq', 'in', 'is', 'order', 'limit', 'abortSignal'])
+				chain[op] = (...args: unknown[]) => (call.ops.push([op, ...args]), chain);
+			chain.maybeSingle = async () => result();
+			chain.then = (resolve: (value: unknown) => unknown) =>
+				Promise.resolve(result()).then(resolve);
+			return chain;
+		};
+		return {
+			calls,
+			client: {
+				from: builder,
+				rpc: (fn: string, args: Record<string, unknown>) => ({
+					abortSignal: async () => {
+						calls.push({ table: `rpc:${fn}`, ops: [['args', args]] });
+						return summaries
+							? { data: summaries, error: null }
+							: { data: null, error: { message: 'x' } };
+					}
+				})
+			}
+		};
+	}
+
+	it('asks the accessible-projects RPC, then groups title rows and START HERE bodies by project', async () => {
+		const { client, calls } = fakeClient(
+			{
+				onto_actors: [{ id: 'actor-1' }],
+				onto_documents: [
+					{
+						id: 'd1',
+						project_id: 'p1',
+						title: 'START HERE',
+						type_key: 'document.context.project',
+						content: '## Current state\nLive.'
+					},
+					{ id: 'd2', project_id: 'p2', title: 'Notes', type_key: 'document.knowledge' },
+					{
+						id: 'dx',
+						project_id: 'other',
+						title: 'Not mine',
+						type_key: 'document.knowledge'
+					}
+				],
+				onto_tasks: [{ id: 't1', project_id: 'p1', title: 'Ship', state_key: 'todo' }]
+			},
+			[
+				{
+					id: 'p1',
+					name: 'Older',
+					state_key: 'active',
+					updated_at: '2026-09-01T00:00:00Z',
+					next_step_short: 'Ship it'
+				},
+				{ id: 'p2', name: 'Newer', state_key: 'active', updated_at: '2026-09-20T00:00:00Z' }
+			]
+		);
+		const projects = await loadWorkspaceFinderProjects(
+			client as never,
+			'user-1',
+			new AbortController().signal
+		);
+		expect(projects.map((p) => p.project.name)).toEqual(['Newer', 'Older']);
+		expect(calls.find((c) => c.table.startsWith('rpc:'))!.ops[0]).toEqual([
+			'args',
+			{ p_actor_id: 'actor-1' }
+		]);
+		const older = projects[1]!;
+		expect(older.tasks.map((t) => t.id)).toEqual(['t1']);
+		// The START HERE query's body rides on the matching title row (same id).
+		expect(older.documents[0]).toMatchObject({ id: 'd1', content: '## Current state\nLive.' });
+		// Rows of projects outside the RPC's answer are dropped.
+		expect(projects.flatMap((p) => p.documents.map((d) => d.id))).not.toContain('dx');
+		// Every family query is scoped to the accessible ids.
+		for (const call of calls.filter(
+			(c) => c.table.startsWith('onto_') && c.table !== 'onto_actors'
+		))
+			expect(call.ops).toContainEqual(['in', 'project_id', ['p2', 'p1']]);
+	});
+
+	it('fails when the user has no actor or the RPC fails', async () => {
+		const noActor = fakeClient({ onto_actors: [] }, []);
+		await expect(
+			loadWorkspaceFinderProjects(noActor.client as never, 'u', new AbortController().signal)
+		).rejects.toThrow('onto_actors');
+		const broken = fakeClient({ onto_actors: [{ id: 'a' }] }, null);
+		await expect(
+			loadWorkspaceFinderProjects(broken.client as never, 'u', new AbortController().signal)
+		).rejects.toThrow('get_onto_project_summaries_v1');
 	});
 });

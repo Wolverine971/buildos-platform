@@ -2,54 +2,19 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
-import { tick } from 'svelte';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import CommentTextareaWithVoiceHarness from './CommentTextareaWithVoice.test-harness.svelte';
+import { deferred, installResizeObserverStub, voiceFake } from '$lib/voice/test-fakes';
 
-type VoiceCallbacks = {
-	onError: (message: string) => void;
-	onPhaseChange: (phase: 'idle' | 'transcribing') => void;
-	onCapabilityUpdate?: (update: { canUseLiveTranscript: boolean }) => void;
-};
-
-function deferred() {
-	let resolve!: () => void;
-	const promise = new Promise<void>((resolvePromise) => {
-		resolve = resolvePromise;
-	});
-	return { promise, resolve };
-}
-
-const voiceMock = vi.hoisted(() => ({
-	callbacks: null as VoiceCallbacks | null,
-	durationSubscriber: null as ((duration: number) => void) | null,
-	start: null as ReturnType<typeof deferred> | null,
-	stop: null as ReturnType<typeof deferred> | null
-}));
-
-vi.mock('$lib/services/voiceRecording.service', () => ({
-	voiceRecordingService: {
-		cleanup: vi.fn(),
-		getRecordingDuration: vi.fn(() => ({
-			subscribe(callback: (duration: number) => void) {
-				voiceMock.durationSubscriber = callback;
-				callback(0);
-				return () => {
-					voiceMock.durationSubscriber = null;
-				};
-			}
-		})),
-		initialize: vi.fn((callbacks: VoiceCallbacks) => {
-			voiceMock.callbacks = callbacks;
-			callbacks.onCapabilityUpdate?.({ canUseLiveTranscript: true });
-		}),
-		isLiveTranscriptSupported: vi.fn(() => true),
-		isVoiceSupported: vi.fn(() => true),
-		setVocabularyTerms: vi.fn(),
-		startRecording: vi.fn(() => voiceMock.start?.promise ?? Promise.resolve()),
-		stopRecording: vi.fn(() => voiceMock.stop?.promise ?? Promise.resolve())
-	}
-}));
+vi.mock('$lib/voice/audio-capture', async (orig) =>
+	(await import('$lib/voice/test-fakes')).fakeAudioCaptureModule(await orig())
+);
+vi.mock('$lib/voice/live-draft', async (orig) =>
+	(await import('$lib/voice/test-fakes')).fakeLiveDraftModule(await orig())
+);
+vi.mock('$lib/voice/transcribe-client', async (orig) =>
+	(await import('$lib/voice/test-fakes')).fakeTranscribeModule(await orig())
+);
 
 vi.mock('$lib/services/voice-note-groups.service', () => ({
 	cleanupVoiceNoteGroups: vi.fn(() => Promise.resolve()),
@@ -57,29 +22,19 @@ vi.mock('$lib/services/voice-note-groups.service', () => ({
 }));
 
 vi.mock('$lib/services/voice-notes.service', () => ({
-	uploadVoiceNote: vi.fn(() => Promise.resolve()),
-	updateVoiceNote: vi.fn(() => Promise.resolve())
-}));
-
-vi.mock('$lib/utils/voice', () => ({
-	liveTranscript: {
-		subscribe(callback: (value: string) => void) {
-			callback('');
-			return () => {};
-		}
-	}
+	uploadVoiceNote: vi.fn(() => Promise.resolve({ id: 'note-1' })),
+	updateVoiceNote: vi.fn(() => Promise.resolve({ id: 'note-1' }))
 }));
 
 vi.mock('$lib/utils/haptic', () => ({
 	haptic: vi.fn()
 }));
 
-describe('CommentTextareaWithVoice state ownership', () => {
+beforeAll(() => installResizeObserverStub());
+
+describe('CommentTextareaWithVoice', () => {
 	beforeEach(() => {
-		voiceMock.callbacks = null;
-		voiceMock.durationSubscriber = null;
-		voiceMock.start = deferred();
-		voiceMock.stop = deferred();
+		voiceFake.reset();
 		vi.stubGlobal('requestIdleCallback', vi.fn());
 	});
 
@@ -103,27 +58,38 @@ describe('CommentTextareaWithVoice state ownership', () => {
 		expect(screen.getByTestId('input-count')).toHaveTextContent('1');
 	});
 
-	it('publishes voice state directly through the bindable state boundary', async () => {
+	it('inserts the server transcript (not the rough live draft) at the caret', async () => {
+		voiceFake.transcription = deferred();
 		render(CommentTextareaWithVoiceHarness);
+		const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 
+		await fireEvent.focus(textarea);
+		textarea.setSelectionRange(8, 8); // "Initial |comment"
 		await fireEvent.click(screen.getByRole('button', { name: 'Record voice note' }));
-		voiceMock.start?.resolve();
-		await waitFor(() => {
-			expect(screen.getByTestId('recording')).toHaveTextContent('true');
-		});
+		await waitFor(() => expect(screen.getByTestId('recording')).toHaveTextContent('true'));
+		expect(screen.getByTestId('voice-busy')).toHaveTextContent('true');
 
-		voiceMock.durationSubscriber?.(12);
-		voiceMock.callbacks?.onPhaseChange('transcribing');
-		await tick();
-		expect(screen.getByTestId('duration')).toHaveTextContent('12');
-		expect(screen.getByTestId('transcribing')).toHaveTextContent('true');
+		voiceFake.liveEvents?.onChange({ finalText: 'rough word', interimText: '' });
+		await waitFor(() => expect(textarea.value).toBe('Initial rough word comment'));
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Stop recording' }));
-		expect(screen.getByTestId('recording')).toHaveTextContent('false');
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop and insert text' }));
+		await waitFor(() => expect(screen.getByTestId('transcribing')).toHaveTextContent('true'));
+		expect(screen.getByTestId('voice-busy')).toHaveTextContent('true');
 
-		voiceMock.stop?.resolve();
-		voiceMock.callbacks?.onError('Microphone denied');
-		await tick();
-		expect(screen.getByTestId('voice-error')).toHaveTextContent('Microphone denied');
+		voiceFake.transcription.resolve({ text: 'Refined wording,', model: 'm' });
+		await waitFor(() => expect(textarea.value).toBe('Initial Refined wording, comment'));
+		expect(screen.getByTestId('value')).toHaveTextContent('Initial Refined wording, comment');
+		expect(screen.getByTestId('voice-busy')).toHaveTextContent('false');
+	});
+
+	it('shows mic errors in full, readable text', async () => {
+		const { VoiceCaptureError } = await import('$lib/voice/audio-capture');
+		voiceFake.start = deferred();
+		render(CommentTextareaWithVoiceHarness);
+		await fireEvent.click(screen.getByRole('button', { name: 'Record voice note' }));
+		voiceFake.start.reject(new VoiceCaptureError('device-busy'));
+		const alert = await screen.findByRole('alert');
+		expect(alert).toHaveTextContent('Your microphone is busy in another app');
+		expect(screen.getByTestId('voice-error')).toHaveTextContent('busy in another app');
 	});
 });

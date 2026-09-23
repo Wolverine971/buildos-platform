@@ -932,7 +932,7 @@ async function fetchVoiceNotes(
 			project_name: null,
 			actor: 'you',
 			actor_label: 'Voice note',
-			status: failed ? 'error' : row.transcription_status === 'completed' ? 'ok' : 'pending',
+			status: failed ? 'error' : row.transcription_status === 'complete' ? 'ok' : 'pending',
 			stats: seconds ? [{ label: 'Length', value: `${Math.round(seconds)}s` }] : [],
 			// /history has no voice-note view; the dedicated page is where they live.
 			href: '/voice-notes',

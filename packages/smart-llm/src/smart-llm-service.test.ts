@@ -2154,3 +2154,80 @@ describe('SmartLLMService transcription terminal error', () => {
 		expect(String((thrown as Error).message)).not.toContain('slow down');
 	});
 });
+
+describe('SmartLLMService dictation transcription', () => {
+	function transcriptionResponse(text: string) {
+		return new Response(JSON.stringify({ text, model: 'openai/gpt-transcribe' }), {
+			status: 200,
+			headers: { 'content-type': 'application/json' }
+		});
+	}
+
+	it('sends vocabulary and prior words to the model as a provider prompt', async () => {
+		const bodies: Record<string, any>[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			bodies.push(JSON.parse(String(init?.body)));
+			return transcriptionResponse('Call Marcus about Samos.');
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.transcribeAudio({
+			audio: { kind: 'buffer', data: new Uint8Array([1, 2, 3]), format: 'webm' },
+			userId: 'transcribe-prompt',
+			models: ['openai/gpt-transcribe'],
+			vocabularyTerms: 'Samos, Marcus',
+			context: 'so the bid desk needs a follow-up'
+		});
+
+		expect(result.text).toBe('Call Marcus about Samos.');
+		const prompt = bodies[0]?.provider?.options?.openai?.prompt as string;
+		expect(prompt).toContain('Samos, Marcus');
+		expect(prompt).toContain('so the bid desk needs a follow-up');
+		expect(bodies[0]?.provider?.data_collection).toBe('deny');
+	});
+
+	it('returns empty text for silence when allowed, without retrying', async () => {
+		const fetchMock = vi.fn(async () => transcriptionResponse(''));
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.transcribeAudio({
+			audio: { kind: 'buffer', data: new Uint8Array([1]), format: 'webm' },
+			userId: 'transcribe-empty',
+			models: ['openai/gpt-transcribe', 'openai/gpt-4o-mini-transcribe'],
+			allowEmptyTranscript: true
+		});
+
+		expect(result.text).toBe('');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops trying once the deadline cannot fit another attempt', async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response('{}', { status: 503, headers: { 'content-type': 'application/json' } })
+		);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.transcribeAudio({
+				audio: { kind: 'buffer', data: new Uint8Array([1]), format: 'webm' },
+				userId: 'transcribe-deadline',
+				models: ['openai/gpt-transcribe', 'openai/gpt-4o-mini-transcribe'],
+				maxRetries: 2,
+				initialRetryDelayMs: 1_000,
+				deadlineMs: 3_500
+			})
+		).rejects.toThrow();
+		// First attempt fits; a 1s backoff + 3s minimum attempt does not.
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});

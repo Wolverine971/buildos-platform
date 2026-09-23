@@ -1,36 +1,24 @@
 // apps/web/src/lib/components/ui/rich-markdown-editor-voice.ts
-export type InsertedVoiceRange = {
+import { spliceDictation } from '$lib/voice/dictation-text';
+
+export type DictationRange = {
 	from: number;
 	to: number;
-	text: string;
 };
 
-export function normalizeVoiceTranscript(text: string): string {
-	return text.trim().replace(/\s+/g, ' ');
-}
-
-export function preserveInsertedVoiceSpacing(insertedText: string, transcript: string): string {
-	const trimmedTranscript = transcript.trim();
-	if (!trimmedTranscript) return '';
-
-	const leadingWhitespace = insertedText.match(/^\s+/)?.[0] ?? '';
-	const trailingWhitespace = insertedText.match(/\s+$/)?.[0] ?? '';
-
-	return `${leadingWhitespace}${trimmedTranscript}${trailingWhitespace}`;
-}
-
-export function canReplaceInsertedVoiceRange(
+/**
+ * Lands dictated text in raw markdown when the editor isn't mounted (Preview
+ * mode, or the editor closed mid-transcription). A non-empty range is
+ * replaced; with no range the text is appended.
+ */
+export function spliceDictationIntoMarkdown(
 	value: string,
-	range: InsertedVoiceRange | null
-): range is InsertedVoiceRange {
-	if (!range) return false;
-	if (range.from < 0 || range.to < range.from || range.to > value.length) return false;
-	return value.slice(range.from, range.to) === range.text;
-}
-
-export function shouldInsertCapturedVoiceFallback(
-	capturedTranscript: string,
-	pendingRange: InsertedVoiceRange | null
-): boolean {
-	return normalizeVoiceTranscript(capturedTranscript).length > 0 && !pendingRange;
+	range: DictationRange | null,
+	text: string
+): string {
+	if (!text.trim()) return value;
+	const clamp = (offset: number) => Math.min(Math.max(offset, 0), value.length);
+	const from = range ? clamp(Math.min(range.from, range.to)) : value.length;
+	const to = range ? clamp(Math.max(range.from, range.to)) : value.length;
+	return spliceDictation(value.slice(0, from), text, value.slice(to)).value;
 }

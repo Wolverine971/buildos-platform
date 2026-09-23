@@ -9,6 +9,8 @@
 //                    scripts/jev-global-context-eval.ts --dump <file> --out <dir>
 //   Live (paid):   JEV_GLOBAL_EVAL_LIVE=1 ... --live --reps 3 [--max-usd 0.25]
 //   Replay (free): ... --replay
+//   Dig check (paid): ... --live --hop1-only --cache cache-dig --base-cache cache [--hedge 800]
+//                  (re-asks hop 1 only; hop 2 answers come from the base cache)
 //
 // The dump is `supabase db query -o json` output with one row per accessible project,
 // `data = {project, documents, tasks, goals, plans, milestones, risks}`. It holds private
@@ -25,6 +27,7 @@ import {
 	rankWorkspaceZoom,
 	renderWorkspaceContextBlock,
 	selectWorkspaceProjects,
+	workspaceProjectBrief,
 	workspacePulseText,
 	workspaceZoomShare,
 	type ContextFinderRankingV1,
@@ -48,6 +51,8 @@ type Scenario = {
 	must: Label[];
 	helpful: Label[];
 	control?: boolean;
+	/** Needs a search inside a project (hop 2); null when either answer is defensible. */
+	expectDig?: boolean | null;
 };
 type Resolved = { projectId: string; id: string; title: string };
 type Cached = {
@@ -217,7 +222,11 @@ async function live(
 	scenarios: Scenario[],
 	reps: number,
 	cacheDir: string,
-	maxUsd: number
+	maxUsd: number,
+	/** Re-ask hop 1 only; lean and hop-2 answers are copied from this cache. */
+	baseCacheDir?: string,
+	/** Measure real hedged latency (JevClient hedgeAfterMs). */
+	hedgeAfterMs = 0
 ) {
 	const apiKey = readKey();
 	if (!apiKey) throw new Error('No PRIVATE_OPENROUTER_API_KEY');
@@ -225,6 +234,7 @@ async function live(
 		apiKey,
 		timeoutMs: 20_000,
 		retryOnce: false,
+		hedgeAfterMs: hedgeAfterMs || undefined,
 		title: 'BuildOS Jev global context eval'
 	});
 	const byId = new Map(projects.map((p) => [p.project.id, p]));
@@ -242,6 +252,21 @@ async function live(
 				recentConversation: s.recent,
 				previousFocus: labels.previousFocus
 			};
+			if (baseCacheDir) {
+				const base = JSON.parse(
+					readFileSync(join(baseCacheDir, `${s.key}-${rep}.json`), 'utf8')
+				) as Cached;
+				const full = await rankWorkspaceProjects({ ...common, projects });
+				spent += full.costUsd ?? 0;
+				writeFileSync(file, JSON.stringify({ ...base, full }));
+				console.log(
+					`${s.key}#${rep} scope=${full.scope?.choice} dig=${full.dig} top=${full.projects
+						.slice(0, 2)
+						.map((p) => `${p.name.slice(0, 18)}:${p.p}`)
+						.join(', ')} hop1=${full.durationMs}ms (total $${spent.toFixed(4)})`
+				);
+				continue;
+			}
 			const [full, leanRanking] = await Promise.all([
 				rankWorkspaceProjects({ ...common, projects }),
 				rankWorkspaceProjects({ ...common, projects: lean(projects) })
@@ -282,9 +307,19 @@ async function live(
 // ---------------------------------------------------------------------------
 // Replay: policies over cached answers.
 
-type Policy = { name: string; floor?: number; relative?: number; maxZoom?: number };
+type Policy = {
+	name: string;
+	floor?: number;
+	relative?: number;
+	maxZoom?: number;
+	digThreshold?: number;
+};
 const POLICIES: Policy[] = [
-	{ name: 'workspace_v1 (floor .3, 60% of top, ≤3)' },
+	{ name: 'workspace_v1 (floor .4, 60% of top, ≤3, dig ≥ .5)' },
+	{ name: 'always hop 2 (no dig gate)', digThreshold: 0 },
+	{ name: 'dig ≥ .3', digThreshold: 0.3 },
+	{ name: 'dig ≥ .7', digThreshold: 0.7 },
+	{ name: 'floor .3', floor: 0.3 },
 	{ name: 'top-1 only', maxZoom: 1 },
 	{ name: '≤2 projects', maxZoom: 2 },
 	{ name: 'floor .4', floor: 0.4 },
@@ -297,6 +332,8 @@ type Row = {
 	rep: number;
 	scopeOk: boolean;
 	scope: string | null;
+	digOk: boolean | null;
+	hop2Ran: boolean;
 	projRecall: number | null;
 	zoomCount: number;
 	mustFull: number | null;
@@ -321,20 +358,27 @@ function evaluate(
 	const selection = selectWorkspaceProjects(ranking, policy);
 	const byId = new Map(projects.map((p) => [p.project.id, p]));
 	const zoom = selection.zoom.map((pick, i) => {
-		const scored = cached.zoom[pick.id];
-		if (!scored) return { project: pick, plan: null, evidence: null, error: 'not_cached' };
 		const project = byId.get(pick.id)!;
+		const base = {
+			project: pick,
+			brief: workspaceProjectBrief(project),
+			plan: null,
+			evidence: null,
+			error: null
+		};
+		if (!selection.dig) return { ...base, hop2: 'skipped' as const };
+		const scored = cached.zoom[pick.id];
+		if (!scored) return { ...base, hop2: 'failed' as const, error: 'not_cached' };
 		const planned = planWorkspaceZoom(
 			{ project, entities: buildContextFinderEntities(project), ranking: scored },
 			workspaceZoomShare(i, selection.zoom.length)
 		);
-		return { project: pick, ...planned, error: null };
+		return { ...base, ...planned, hop2: 'ran' as const };
 	});
 	const pulse = selection.pulse.map((pick) => {
 		const p = byId.get(pick.id)!;
 		return { ...pick, state: p.project.state_key ?? null, text: workspacePulseText(p) };
 	});
-	const loaded = zoom.some((z) => z.evidence?.status === 'selected');
 	const context: WorkspaceContextV1 = {
 		version: 'workspace_context_v1',
 		status:
@@ -342,7 +386,7 @@ function evaluate(
 				? 'unavailable'
 				: selection.scope === 'none'
 					? 'skipped'
-					: loaded || pulse.length
+					: zoom.length || pulse.length
 						? 'selected'
 						: 'empty',
 		ranking,
@@ -353,14 +397,20 @@ function evaluate(
 		costUsd: null
 	};
 	const full = new Set(zoom.flatMap((z) => z.evidence?.full.map((x) => x.id) ?? []));
+	// Without hop 2 a record is named when the project brief's index lists it.
+	const briefs = zoom
+		.filter((z) => z.hop2 !== 'ran')
+		.map((z) => z.brief)
+		.join('\n');
 	const named = new Set([
 		...full,
-		...zoom.flatMap((z) => z.evidence?.summaries.map((x) => x.id) ?? [])
+		...zoom.flatMap((z) => z.evidence?.summaries.map((x) => x.id) ?? []),
+		...[...labels.must, ...labels.helpful].filter((r) => briefs.includes(r.id)).map((r) => r.id)
 	]);
 	const zoomIds = new Set(selection.zoom.map((p) => p.id));
 	const frac = (xs: Resolved[], set: Set<string>) =>
 		xs.length ? xs.filter((x) => set.has(x.id)).length / xs.length : null;
-	const hop2 = selection.zoom.map((p) => cached.zoom[p.id]).filter(Boolean);
+	const hop2 = selection.dig ? selection.zoom.map((p) => cached.zoom[p.id]).filter(Boolean) : [];
 	const hop2Ms = Math.max(0, ...hop2.map((r) => r!.durationMs));
 	const guess = labels.previousFocus[0];
 	const guessed = guess && zoomIds.has(guess) ? cached.zoom[guess] : undefined;
@@ -376,6 +426,12 @@ function evaluate(
 		rep: cached.rep,
 		scopeOk: ranking.scope?.choice === scenario.expectScope,
 		scope: ranking.scope?.choice ?? null,
+		digOk:
+			typeof scenario.expectDig === 'boolean' && ranking.status === 'ranked'
+				? selection.dig === scenario.expectDig ||
+					(!scenario.expectDig && selection.zoom.length === 0)
+				: null,
+		hop2Ran: selection.dig,
 		projRecall: labels.mustProjects.length
 			? labels.mustProjects.filter((id) => zoomIds.has(id)).length /
 				labels.mustProjects.length
@@ -386,8 +442,8 @@ function evaluate(
 		helpfulNamed: frac(labels.helpful, named),
 		controlClean: scenario.control ? selection.zoom.length === 0 : null,
 		chars: renderWorkspaceContextBlock(context)?.length ?? 0,
-		latencyMs: ranking.durationMs + (selection.zoom.length ? hop2Ms : 0),
-		speculativeMs,
+		latencyMs: ranking.durationMs + (hop2.length ? hop2Ms : 0),
+		speculativeMs: selection.dig ? speculativeMs : null,
 		costUsd: (ranking.costUsd ?? 0) + hop2.reduce((n, r) => n + (r!.costUsd ?? 0), 0),
 		context
 	};
@@ -435,8 +491,8 @@ function replay(
 	out.push(
 		'### Policies (mean over scenarios × reps)',
 		'',
-		'| Policy | Scope right | Must project zoomed | Projects zoomed | Must records loaded | Must records named | Controls clean | Added chars | p50 / p95 latency | $/turn |',
-		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+		'| Policy | Scope right | Dig right | Hop 2 ran | Must project zoomed | Must records loaded | Must records named | Controls clean | Added chars | p50 / p95 latency | $/turn |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
 	);
 	const detail: Row[] = [];
 	for (const policy of POLICIES) {
@@ -450,7 +506,7 @@ function replay(
 					.map(Number)
 			);
 		out.push(
-			`| ${policy.name} | ${pct(avg((r) => r.scopeOk))} | ${pct(avg((r) => r.projRecall))} | ${avg((r) => r.zoomCount).toFixed(1)} | ${pct(avg((r) => r.mustFull))} | ${pct(avg((r) => r.mustNamed))} | ${pct(avg((r) => r.controlClean))} | ${Math.round(avg((r) => r.chars)).toLocaleString()} | ${quantile(
+			`| ${policy.name} | ${pct(avg((r) => r.scopeOk))} | ${pct(avg((r) => r.digOk))} | ${pct(avg((r) => r.hop2Ran))} | ${pct(avg((r) => r.projRecall))} | ${pct(avg((r) => r.mustFull))} | ${pct(avg((r) => r.mustNamed))} | ${pct(avg((r) => r.controlClean))} | ${Math.round(avg((r) => r.chars)).toLocaleString()} | ${quantile(
 				rows.map((r) => r.latencyMs),
 				0.5
 			)} / ${quantile(
@@ -555,7 +611,7 @@ async function main() {
 	const scenarios = JSON.parse(
 		readFileSync(arg('--scenarios', SCENARIOS)!, 'utf8')
 	) as Scenario[];
-	const cacheDir = join(outDir, 'cache');
+	const cacheDir = join(outDir, arg('--cache', 'cache')!);
 	mkdirSync(cacheDir, { recursive: true });
 	const out = [`# Jev global context eval (${new Date().toISOString()})`, ''];
 	dry(projects, scenarios, out);
@@ -567,7 +623,9 @@ async function main() {
 			scenarios,
 			Number(arg('--reps', '1')),
 			cacheDir,
-			Number(arg('--max-usd', '0.25'))
+			Number(arg('--max-usd', '0.25')),
+			argv.includes('--hop1-only') ? join(outDir, arg('--base-cache', 'cache')!) : undefined,
+			Number(arg('--hedge', '0'))
 		);
 		out.push(`Live spend by receipts this run: $${spent.toFixed(4)}.`, '');
 	}

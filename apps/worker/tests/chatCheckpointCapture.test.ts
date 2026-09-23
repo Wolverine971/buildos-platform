@@ -619,3 +619,51 @@ describe('section edits', () => {
 		]);
 	});
 });
+
+describe('global chats feed projects (JEV_GLOBAL_CONTEXT_2026-09-23)', () => {
+	/** The same chat, but as a global session whose turns Jev attributed (or not). */
+	function globalPorts(attributed: string | null) {
+		const memory = createMemoryCheckpointPorts(fixture(), canned(themeReplies));
+		const seen: string[][] = [];
+		const ports: CheckpointCapturePorts = {
+			...memory.ports,
+			loadSession: async (params) => {
+				const session = await memory.ports.loadSession(params);
+				return session ? { ...session, projectId: null } : null;
+			},
+			attributeProject: async (_session, userMessages) => {
+				seen.push(userMessages.map((message) => message.id));
+				return attributed;
+			}
+		};
+		return { ports, state: memory.state, seen };
+	}
+
+	it('captures into the project its turns were clearly about', async () => {
+		const projectId = fixture().project.id;
+		const { ports, state, seen } = globalPorts(projectId);
+		const outcome = await runChatCheckpointCapture(ports, {
+			sessionId: THEME_SESSION,
+			userId: USER_ID,
+			trigger: 'threshold',
+			now: NOW
+		});
+		expect(outcome.status).toBe('captured');
+		expect(seen).toHaveLength(1);
+		expect(state.records.at(-1)!.projectId).toBe(projectId);
+		expect(state.thinkingLog!.content).toContain('build bridges rather than defenses');
+	});
+
+	it('skips, as before, when the turns were mixed or unattributed', async () => {
+		const { ports, state } = globalPorts(null);
+		const outcome = await runChatCheckpointCapture(ports, {
+			sessionId: THEME_SESSION,
+			userId: USER_ID,
+			trigger: 'threshold',
+			now: NOW
+		});
+		expect(outcome.status).toBe('noop');
+		expect(state.writes).toBe(0);
+		expect(state.records.at(-1)!.projectId).toBeNull();
+	});
+});

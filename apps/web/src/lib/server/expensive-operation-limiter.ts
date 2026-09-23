@@ -79,10 +79,13 @@ const DEFAULT_POLICIES: Record<ExpensiveOperationPolicyKey, ExpensiveOperationPo
 	transcribe: {
 		key: 'transcribe',
 		startWindowMs: 10 * 60 * 1000,
-		maxStartsPerWindow: 20,
+		// Dictation transcribes a long recording in ~8-28s segments while the user
+		// talks (plus client retries), so starts are cheap; the byte budget is the
+		// real spend guard.
+		maxStartsPerWindow: 90,
 		budgetWindowMs: 60 * 60 * 1000,
 		maxBudgetPerWindow: 150 * 1024 * 1024,
-		maxConcurrent: 2,
+		maxConcurrent: 3,
 		defaultEstimatedCost: 2 * 1024 * 1024,
 		budgetMetric: 'bytes',
 		activeTtlMs: 15 * 60 * 1000

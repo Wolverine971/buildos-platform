@@ -1,79 +1,112 @@
 // apps/web/src/lib/components/ui/codemirror/voice-widget.ts
 /**
- * Voice Transcription Widget for CodeMirror 6
+ * Voice dictation widgets for CodeMirror 6.
  *
- * Supports two inline cursor widgets:
- * - Insert hint: shown on mic hover/focus ("Voice inserts here")
- * - Transcribing indicator: shown during active voice recording
+ * - Insert hint: shown on mic hover/focus ("Voice inserts here").
+ * - Dictation: while the user talks, the words appear inline at the insertion
+ *   point — server-confirmed words solid, live draft words muted, a pulsing
+ *   caret where new words arrive. A selection being dictated over is struck
+ *   through until the final text replaces it.
  *
- * The transcribing widget can display a live transcript preview that updates
- * as the Web Speech API produces partial results.
+ * Positions map through edits, so the user can keep typing elsewhere and the
+ * final transcript still lands where dictation started.
  *
  * Usage:
- *   - Add `voiceWidgetField` to your editor extensions
+ *   - Add `voiceWidgetExtension` to your editor extensions
  *   - Dispatch `showVoiceInsertHint` / `hideVoiceInsertHint` for hover/focus hinting
- *   - Dispatch `showVoiceWidget` / `updateVoicePreview` / `hideVoiceWidget` for recording UI
+ *   - Dispatch `showVoiceWidget` / `updateVoiceDictation` / `hideVoiceWidget` for dictation
+ *   - Read `getVoiceDictationTarget(state)` for the current mapped insertion point
  */
 
-import { type Extension, StateField, StateEffect, type Range } from '@codemirror/state';
+import { type EditorState, type Extension, StateField, StateEffect, type Range } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView, WidgetType } from '@codemirror/view';
+import { spliceDictation } from '$lib/voice/dictation-text';
 
 // ---------------------------------------------------------------------------
 // Effects
 // ---------------------------------------------------------------------------
 
-/** Show the transcribing widget at a specific position */
-export const showVoiceWidget = StateEffect.define<{ pos: number }>();
+/**
+ * Start inline dictation at `pos`. When `replaceFrom < replaceTo`, that range
+ * (the user's selection) is replaced by the final text.
+ */
+export const showVoiceWidget = StateEffect.define<{
+	pos: number;
+	replaceFrom?: number;
+	replaceTo?: number;
+}>();
 
 /** Show the insert hint widget at a specific position */
 export const showVoiceInsertHint = StateEffect.define<{ pos: number }>();
 
-/** Update the live transcript preview text */
-export const updateVoicePreview = StateEffect.define<{ text: string }>();
+/** Update the dictated words shown inline. */
+export const updateVoiceDictation = StateEffect.define<{
+	confirmed: string;
+	draft: string;
+	listening: boolean;
+}>();
 
-/** Remove the transcribing widget */
+/** Remove the dictation widget */
 export const hideVoiceWidget = StateEffect.define<null>();
 
 /** Remove the insert hint widget */
 export const hideVoiceInsertHint = StateEffect.define<null>();
 
 // ---------------------------------------------------------------------------
-// Widget
+// Widgets
 // ---------------------------------------------------------------------------
 
-class TranscribingWidget extends WidgetType {
-	constructor(readonly previewText: string) {
+class DictationWidget extends WidgetType {
+	constructor(
+		readonly confirmed: string,
+		readonly draft: string,
+		readonly listening: boolean,
+		readonly leadingSpace: boolean,
+		readonly trailingSpace: boolean
+	) {
 		super();
 	}
 
-	eq(other: TranscribingWidget) {
-		return this.previewText === other.previewText;
+	eq(other: DictationWidget) {
+		return (
+			this.confirmed === other.confirmed &&
+			this.draft === other.draft &&
+			this.listening === other.listening &&
+			this.leadingSpace === other.leadingSpace &&
+			this.trailingSpace === other.trailingSpace
+		);
 	}
 
 	toDOM() {
 		const wrapper = document.createElement('span');
-		wrapper.className = 'cm-voice-transcribing';
-		wrapper.setAttribute('aria-label', 'Voice transcription in progress');
+		wrapper.className = 'cm-voice-dictation';
+		wrapper.setAttribute(
+			'aria-label',
+			this.listening ? 'Voice dictation in progress' : 'Finishing voice dictation'
+		);
 
-		// Pulsing dot
-		const dot = document.createElement('span');
-		dot.className = 'cm-voice-dot';
-		wrapper.appendChild(dot);
+		const hasWords = Boolean(this.confirmed || this.draft);
+		if (hasWords && this.leadingSpace) wrapper.append(' ');
 
-		// Label
-		const label = document.createElement('span');
-		label.className = 'cm-voice-label';
-		label.textContent = this.previewText ? '' : 'Transcribing\u2026';
-		wrapper.appendChild(label);
-
-		// Preview text
-		if (this.previewText) {
-			const preview = document.createElement('span');
-			preview.className = 'cm-voice-preview';
-			preview.textContent = this.previewText;
-			wrapper.appendChild(preview);
+		if (this.confirmed) {
+			const confirmed = document.createElement('span');
+			confirmed.className = 'cm-voice-confirmed';
+			confirmed.textContent = this.confirmed;
+			wrapper.appendChild(confirmed);
+		}
+		if (this.confirmed && this.draft) wrapper.append(' ');
+		if (this.draft) {
+			const draft = document.createElement('span');
+			draft.className = 'cm-voice-draft';
+			draft.textContent = this.draft;
+			wrapper.appendChild(draft);
 		}
 
+		const caret = document.createElement('span');
+		caret.className = this.listening ? 'cm-voice-caret cm-voice-caret-live' : 'cm-voice-caret';
+		wrapper.appendChild(caret);
+
+		if (hasWords && this.trailingSpace) wrapper.append(' ');
 		return wrapper;
 	}
 
@@ -114,54 +147,79 @@ class InsertHintWidget extends WidgetType {
 // ---------------------------------------------------------------------------
 
 interface VoiceWidgetState {
+	/** Insertion point; follows text typed at it (assoc 1). */
 	pos: number | null;
-	previewText: string;
-	mode: 'none' | 'insert-hint' | 'transcribing';
+	/** Selection being dictated over, mapped so edits around it stay outside it. */
+	replaceFrom: number | null;
+	replaceTo: number | null;
+	confirmed: string;
+	draft: string;
+	listening: boolean;
+	mode: 'none' | 'insert-hint' | 'dictating';
 }
+
+const EMPTY_STATE: VoiceWidgetState = {
+	pos: null,
+	replaceFrom: null,
+	replaceTo: null,
+	confirmed: '',
+	draft: '',
+	listening: false,
+	mode: 'none'
+};
 
 const voiceWidgetStateField = StateField.define<VoiceWidgetState>({
 	create() {
-		return { pos: null, previewText: '', mode: 'none' };
+		return EMPTY_STATE;
 	},
 	update(state, tr) {
-		let { pos, previewText, mode } = state;
-
-		// Map position through document changes
-		if (pos !== null) {
-			pos = tr.changes.mapPos(pos, 1);
+		let next = state;
+		if (tr.docChanged && next.pos !== null) {
+			next = {
+				...next,
+				pos: tr.changes.mapPos(next.pos, 1),
+				replaceFrom:
+					next.replaceFrom === null ? null : tr.changes.mapPos(next.replaceFrom, 1),
+				replaceTo: next.replaceTo === null ? null : tr.changes.mapPos(next.replaceTo, -1)
+			};
 		}
 
 		for (const effect of tr.effects) {
 			if (effect.is(showVoiceWidget)) {
-				pos = effect.value.pos;
-				previewText = '';
-				mode = 'transcribing';
+				const { pos, replaceFrom, replaceTo } = effect.value;
+				const hasRange =
+					replaceFrom !== undefined && replaceTo !== undefined && replaceFrom < replaceTo;
+				next = {
+					...EMPTY_STATE,
+					pos,
+					replaceFrom: hasRange ? replaceFrom : null,
+					replaceTo: hasRange ? replaceTo : null,
+					listening: true,
+					mode: 'dictating'
+				};
 			} else if (effect.is(showVoiceInsertHint)) {
-				pos = effect.value.pos;
-				previewText = '';
-				mode = 'insert-hint';
-			} else if (effect.is(updateVoicePreview)) {
-				if (mode === 'transcribing') {
-					previewText = effect.value.text;
+				if (next.mode !== 'dictating') {
+					next = { ...EMPTY_STATE, pos: effect.value.pos, mode: 'insert-hint' };
 				}
+			} else if (effect.is(updateVoiceDictation)) {
+				if (next.mode === 'dictating') next = { ...next, ...effect.value };
 			} else if (effect.is(hideVoiceWidget)) {
-				if (mode === 'transcribing') {
-					pos = null;
-					previewText = '';
-					mode = 'none';
-				}
+				if (next.mode === 'dictating') next = EMPTY_STATE;
 			} else if (effect.is(hideVoiceInsertHint)) {
-				if (mode === 'insert-hint') {
-					pos = null;
-					previewText = '';
-					mode = 'none';
-				}
+				if (next.mode === 'insert-hint') next = EMPTY_STATE;
 			}
 		}
 
-		return { pos, previewText, mode };
+		return next;
 	}
 });
+
+function neighbors(state: EditorState, pos: number): { previous: string; next: string } {
+	return {
+		previous: pos > 0 ? state.doc.sliceString(pos - 1, pos) : '',
+		next: state.doc.sliceString(pos, pos + 1)
+	};
+}
 
 const voiceWidgetDecorations = StateField.define<DecorationSet>({
 	create() {
@@ -169,73 +227,140 @@ const voiceWidgetDecorations = StateField.define<DecorationSet>({
 	},
 	update(_, tr) {
 		const state = tr.state.field(voiceWidgetStateField);
-		if (state.pos === null) {
-			return Decoration.none;
+		if (state.pos === null || state.mode === 'none') return Decoration.none;
+
+		if (state.mode === 'insert-hint') {
+			return Decoration.set([
+				Decoration.widget({ widget: new InsertHintWidget(), side: 1 }).range(state.pos)
+			]);
 		}
 
-		if (state.mode === 'none') {
-			return Decoration.none;
-		}
+		const words = [state.confirmed, state.draft].filter(Boolean).join(' ');
+		const replacingAdjacent =
+			state.replaceFrom !== null &&
+			state.replaceTo !== null &&
+			state.replaceFrom < state.replaceTo &&
+			state.pos === state.replaceTo;
+		const { previous } = neighbors(tr.state, replacingAdjacent ? state.replaceFrom! : state.pos);
+		const { next } = neighbors(tr.state, state.pos);
+		const spacing = spliceDictation(previous, words || 'x', next);
+		const leadingSpace = spacing.start > previous.length;
+		const trailingSpace = spacing.value.length - spacing.end > next.length;
 
-		const widget = Decoration.widget(
-			state.mode === 'transcribing'
-				? {
-						widget: new TranscribingWidget(state.previewText),
-						side: 1 // after cursor
-					}
-				: {
-						widget: new InsertHintWidget(),
-						side: 1 // after cursor
-					}
+		const decorations: Range<Decoration>[] = [];
+		if (state.replaceFrom !== null && state.replaceTo !== null && state.replaceFrom < state.replaceTo) {
+			decorations.push(
+				Decoration.mark({ class: 'cm-voice-replaced' }).range(state.replaceFrom, state.replaceTo)
+			);
+		}
+		decorations.push(
+			Decoration.widget({
+				widget: new DictationWidget(
+					state.confirmed,
+					state.draft,
+					state.listening,
+					leadingSpace,
+					trailingSpace
+				),
+				side: 1
+			}).range(state.pos)
 		);
-
-		const decorations: Range<Decoration>[] = [widget.range(state.pos)];
-		return Decoration.set(decorations);
+		return Decoration.set(decorations, true);
 	},
 	provide: (field) => EditorView.decorations.from(field)
 });
 
 // ---------------------------------------------------------------------------
-// Theme for the widget
+// Reading the dictation target
+// ---------------------------------------------------------------------------
+
+export interface VoiceDictationTarget {
+	pos: number;
+	replaceFrom: number | null;
+	replaceTo: number | null;
+}
+
+/** Current (mapped) dictation insertion point, or null when not dictating. */
+export function getVoiceDictationTarget(state: EditorState): VoiceDictationTarget | null {
+	const field = state.field(voiceWidgetStateField, false);
+	if (!field || field.mode !== 'dictating' || field.pos === null) return null;
+	return { pos: field.pos, replaceFrom: field.replaceFrom, replaceTo: field.replaceTo };
+}
+
+/**
+ * The changes that land final dictated text at the target: replace the dictated-over
+ * selection (if any) and insert at the mapped point with natural spacing.
+ * Returns null when there is nothing to insert.
+ */
+export function buildDictationCommit(
+	state: EditorState,
+	target: VoiceDictationTarget,
+	text: string
+): { changes: Array<{ from: number; to?: number; insert: string }>; caret: number } | null {
+	const words = text.trim();
+	if (!words) return null;
+	const docLength = state.doc.length;
+	const clamp = (offset: number) => Math.min(Math.max(offset, 0), docLength);
+	const pos = clamp(target.pos);
+	const replaceFrom =
+		target.replaceFrom !== null ? Math.min(clamp(target.replaceFrom), pos) : pos;
+	const replaceTo = target.replaceTo !== null ? Math.min(clamp(target.replaceTo), pos) : pos;
+	const deleting = replaceFrom < replaceTo;
+	const adjacent = deleting && replaceTo === pos;
+
+	const previousAt = adjacent ? replaceFrom : pos;
+	const previous = previousAt > 0 ? state.doc.sliceString(previousAt - 1, previousAt) : '';
+	const next = state.doc.sliceString(pos, pos + 1);
+	const spliced = spliceDictation(previous, words, next);
+	const insert = spliced.value.slice(previous.length, spliced.value.length - next.length);
+	const caretOffset = spliced.end - previous.length;
+
+	if (adjacent) {
+		return {
+			changes: [{ from: replaceFrom, to: pos, insert }],
+			caret: replaceFrom + caretOffset
+		};
+	}
+	const changes: Array<{ from: number; to?: number; insert: string }> = [];
+	if (deleting) changes.push({ from: replaceFrom, to: replaceTo, insert: '' });
+	changes.push({ from: pos, insert });
+	const removed = deleting ? replaceTo - replaceFrom : 0;
+	return { changes, caret: pos - removed + caretOffset };
+}
+
+// ---------------------------------------------------------------------------
+// Theme for the widgets
 // ---------------------------------------------------------------------------
 
 const voiceWidgetTheme = EditorView.baseTheme({
-	'.cm-voice-transcribing': {
-		display: 'inline-flex',
-		alignItems: 'center',
-		gap: '4px',
-		padding: '1px 6px',
-		marginLeft: '4px',
-		borderRadius: '4px',
-		backgroundColor: 'hsl(var(--accent) / 0.1)',
-		borderLeft: '2px solid hsl(var(--accent))',
-		fontSize: '0.8em',
-		lineHeight: '1.4',
-		verticalAlign: 'baseline',
-		animation: 'cm-voice-fadein 200ms ease-out'
+	'.cm-voice-dictation': {
+		borderRadius: '3px',
+		backgroundColor: 'hsl(var(--accent) / 0.07)',
+		boxDecorationBreak: 'clone',
+		WebkitBoxDecorationBreak: 'clone'
 	},
-	'.cm-voice-dot': {
+	'.cm-voice-confirmed': {
+		color: 'hsl(var(--foreground))'
+	},
+	'.cm-voice-draft': {
+		color: 'hsl(var(--muted-foreground))'
+	},
+	'.cm-voice-caret': {
 		display: 'inline-block',
-		width: '6px',
-		height: '6px',
-		borderRadius: '50%',
-		backgroundColor: 'hsl(var(--accent))',
-		flexShrink: '0',
-		animation: 'cm-voice-pulse 1.5s ease-in-out infinite'
+		width: '2px',
+		height: '1.05em',
+		marginLeft: '2px',
+		verticalAlign: 'text-bottom',
+		borderRadius: '1px',
+		backgroundColor: 'hsl(var(--muted-foreground) / 0.5)'
 	},
-	'.cm-voice-label': {
-		color: 'hsl(var(--muted-foreground))',
-		fontStyle: 'italic',
-		fontSize: '0.85em',
-		whiteSpace: 'nowrap'
+	'.cm-voice-caret-live': {
+		backgroundColor: 'hsl(var(--destructive))',
+		animation: 'cm-voice-caret-pulse 1.1s ease-in-out infinite'
 	},
-	'.cm-voice-preview': {
-		color: 'hsl(var(--accent))',
-		fontStyle: 'normal',
-		maxWidth: '300px',
-		overflow: 'hidden',
-		textOverflow: 'ellipsis',
-		whiteSpace: 'nowrap'
+	'.cm-voice-replaced': {
+		textDecoration: 'line-through',
+		color: 'hsl(var(--muted-foreground))'
 	},
 	'.cm-voice-insert-hint': {
 		display: 'inline-flex',
@@ -266,13 +391,9 @@ const voiceWidgetTheme = EditorView.baseTheme({
 		fontSize: '0.85em',
 		whiteSpace: 'nowrap'
 	},
-	'@keyframes cm-voice-pulse': {
-		'0%, 100%': { opacity: '1', transform: 'scale(1)' },
-		'50%': { opacity: '0.4', transform: 'scale(0.8)' }
-	},
-	'@keyframes cm-voice-fadein': {
-		from: { opacity: '0', transform: 'translateX(-4px)' },
-		to: { opacity: '1', transform: 'translateX(0)' }
+	'@keyframes cm-voice-caret-pulse': {
+		'0%, 100%': { opacity: '1' },
+		'50%': { opacity: '0.25' }
 	},
 	'@keyframes cm-voice-hint-pulse': {
 		'0%, 100%': { opacity: '0.9', transform: 'scale(1)' },
@@ -281,6 +402,11 @@ const voiceWidgetTheme = EditorView.baseTheme({
 	'@keyframes cm-voice-hint-fadein': {
 		from: { opacity: '0', transform: 'translateX(-3px)' },
 		to: { opacity: '1', transform: 'translateX(0)' }
+	},
+	'@media (prefers-reduced-motion: reduce)': {
+		'.cm-voice-caret-live': { animation: 'none' },
+		'.cm-voice-insert-dot': { animation: 'none' },
+		'.cm-voice-insert-hint': { animation: 'none' }
 	}
 });
 
@@ -288,7 +414,7 @@ const voiceWidgetTheme = EditorView.baseTheme({
 // Public extension
 // ---------------------------------------------------------------------------
 
-/** Extension that enables the voice transcription widget. Add to editor extensions. */
+/** Extension that enables the voice dictation widgets. Add to editor extensions. */
 export const voiceWidgetExtension: Extension = [
 	voiceWidgetStateField,
 	voiceWidgetDecorations,

@@ -1,40 +1,25 @@
 <!-- apps/web/src/lib/components/ui/CommentTextareaWithVoice.svelte -->
 <!--
-  A compact textarea with voice transcription capability, optimized for comments.
-  Features:
-  - Voice recording button in footer
-  - Live transcript preview overlay
-  - Cursor-aware transcription insertion
-  - All voice button states (ready, recording, loading, prompt, disabled)
-  - Keyboard shortcuts (Enter/Space to stop recording)
+  Compact comment box with voice dictation. Spoken words land at the caret as
+  the user talks (confirmed solid, draft grey) and the server transcript
+  replaces them in place. Built on the shared engine in $lib/voice.
 -->
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
-	import { Mic, MicOff, LoaderCircle } from 'lucide-svelte';
+	import { onDestroy } from 'svelte';
 	import Textarea from './Textarea.svelte';
+	import DictationMirror from '$lib/components/voice/DictationMirror.svelte';
+	import VoiceMicButton from '$lib/components/voice/VoiceMicButton.svelte';
+	import VoiceStatusLine from '$lib/components/voice/VoiceStatusLine.svelte';
+	import { VoiceDictation } from '$lib/voice/dictation-session.svelte';
+	import { TextareaDictationAnchor } from '$lib/voice/textarea-dictation';
 	import {
-		voiceRecordingService,
-		type TranscriptionService
-	} from '$lib/services/voiceRecording.service';
-	import {
-		createVoiceNoteGroup,
-		cleanupVoiceNoteGroups
-	} from '$lib/services/voice-note-groups.service';
-	import { uploadVoiceNote, updateVoiceNote } from '$lib/services/voice-notes.service';
+		createVoiceNoteSink,
+		scheduleVoiceDraftCleanup,
+		type SavedRecording
+	} from '$lib/voice/voice-note-sink';
 	import type { VoiceNote } from '$lib/types/voice-notes';
-	import { liveTranscript } from '$lib/utils/voice';
 	import { browser } from '$app/environment';
 	import { haptic } from '$lib/utils/haptic';
-
-	type VoiceButtonVariant = 'muted' | 'loading' | 'prompt' | 'recording' | 'ready';
-
-	type VoiceButtonState = {
-		icon: typeof Mic;
-		label: string;
-		disabled: boolean;
-		isLoading: boolean;
-		variant: VoiceButtonVariant;
-	};
 
 	interface Props {
 		// Core textarea props
@@ -61,6 +46,8 @@
 		onVoiceNoteSegmentError?: (error: string) => void;
 
 		// Bindable state for parent
+		/** Recording or still firming up the transcript: hold submit until false. */
+		isVoiceBusy?: boolean;
 		isRecording?: boolean;
 		isTranscribing?: boolean;
 		voiceError?: string;
@@ -92,940 +79,184 @@
 		id,
 		class: className = '',
 
-		// Voice props
 		enableVoice = true,
 		voiceBlocked = false,
 		voiceBlockedLabel = 'Recording unavailable right now',
 		transcriptionEndpoint = '/api/transcribe',
 		vocabularyTerms = '',
 
-		// Voice note storage
 		voiceNoteSource = 'entity-comment',
 		voiceNoteGroupId = $bindable(null),
 		onVoiceNoteGroupReady,
 		onVoiceNoteSegmentSaved,
 		onVoiceNoteSegmentError,
 
-		// Bindable voice state
+		isVoiceBusy = $bindable(false),
 		isRecording = $bindable(false),
 		isTranscribing = $bindable(false),
 		voiceError = $bindable(''),
 		recordingDuration = $bindable(0),
 
-		// Events
 		oninput,
 
-		// Snippets
 		actions,
 		footer
 	}: Props = $props();
 
-	// Per-instance clientId so the singleton voiceRecordingService doesn't
-	// merge callbacks across two simultaneously-mounted comment composers.
-	const propsId = $props.id();
-	const voiceClientId = `cmtvoice-${propsId}`;
+	let textareaComponent = $state<Textarea | null>(null);
+	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	let userPlacedCaret = false;
+	let savedRecording: SavedRecording | null = null;
 
-	// AbortController shared by all in-flight fetches from this instance.
-	// Aborted on cleanup so resolved/rejected promises don't try to mutate
-	// state on a torn-down component.
-	let abortController: AbortController | null = null;
+	const anchor = new TextareaDictationAnchor();
+	let anchorVersion = $state(0);
 
-	// Internal voice state
-	let isVoiceSupported = $state(false);
-	let isInitializingRecording = $state(false);
-	let _canUseLiveTranscript = $state(false);
-	let liveTranscriptPreview = $state('');
-	let hadLiveTranscript = $state(false);
+	const sink = createVoiceNoteSink({
+		source: () => voiceNoteSource,
+		getGroupId: () => voiceNoteGroupId,
+		setGroupId: (groupId) => {
+			voiceNoteGroupId = groupId;
+			onVoiceNoteGroupReady?.(groupId);
+		},
+		onSaved: (note) => onVoiceNoteSegmentSaved?.(note),
+		onError: (message) => onVoiceNoteSegmentError?.(message)
+	});
 
-	let microphonePermissionGranted = $state(false);
-	let hasAttemptedVoice = $state(false);
-	let voiceInitialized = $state(false);
-
-	// Textarea component reference for cursor position and focus management
-	let textareaComponent = $state<{
-		focus: () => void;
-		blur: () => void;
-		setSelectionRange: (start: number, end: number) => void;
-		getSelectionRange: () => { start: number; end: number } | null;
-	} | null>(null);
-
-	// Cursor position tracking - CRITICAL for insertion at cursor
-	let cursorPositionBeforeRecording = $state<{ start: number; end: number } | null>(null);
-
-	// Voice service subscriptions
-	let durationUnsubscribe: (() => void) | null = null;
-	let transcriptUnsubscribe: (() => void) | null = null;
-
-	// Voice note storage state
-	type PendingTranscriptUpdate = {
-		transcript?: string;
-		transcriptionSource: 'audio' | 'live';
-		transcriptionStatus: 'complete' | 'failed';
-		transcriptionModel?: string | null;
-		transcriptionService?: string | null;
-		transcriptionError?: string | null;
-		latencyMs?: number;
-	};
-
-	type SegmentState = {
-		voiceNoteId?: string;
-		pendingTranscript?: PendingTranscriptUpdate;
-	};
-
-	type GroupState = {
-		segmentIndex: number;
-		segments: Map<number, SegmentState>;
-	};
-
-	let groupStates = new Map<string, GroupState>();
-	let groupCreatePromises = new Map<string, Promise<string>>();
-	let lastTranscriptionTarget: { groupId: string; segmentIndex: number } | null = null;
-	let hasScheduledDraftCleanup = $state(false);
-	let activeUploads = 0;
-	const uploadQueue: Array<() => Promise<void>> = [];
-	let capturedTranscriptForCallback = '';
-	const MAX_CONCURRENT_UPLOADS = 2;
-
-	// ============================================
-	// Derived State
-	// ============================================
-	const isLiveTranscribing = $derived(
-		isRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
-	);
-
-	const transcribingStatusLabel = $derived(
-		hadLiveTranscript ? 'Refining transcript...' : 'Transcribing...'
-	);
-
-	const voiceButtonState = $derived.by(() =>
-		buildVoiceButtonState({
-			enableVoice,
-			isVoiceSupported,
-			isRecording,
-			isInitializingRecording,
-			isTranscribing,
-			voiceBlocked,
-			hasAttemptedVoice,
-			voiceError,
-			microphonePermissionGranted,
-			disabled,
-			voiceBlockedLabel
-		})
-	);
-
-	const voiceButtonClasses = $derived(getVoiceButtonClasses(voiceButtonState.variant));
-
-	$effect(() => {
-		if (voiceInitialized) {
-			voiceRecordingService.setVocabularyTerms(vocabularyTerms, voiceClientId);
+	const dictation = new VoiceDictation({
+		vocabulary: () => vocabularyTerms,
+		endpoint: () => transcriptionEndpoint,
+		onAudio: ({ audio, durationSeconds }) => {
+			savedRecording = sink.save(audio, durationSeconds);
+		},
+		onCommit: (result) => {
+			const committed = anchor.commit(result.text);
+			setValue(committed.value);
+			savedRecording?.complete(result);
+			savedRecording = null;
+			placeCaret(committed.caret);
 		}
 	});
 
-	// ============================================
-	// Voice Button State Machine
-	// ============================================
-	function buildVoiceButtonState(params: {
-		enableVoice: boolean;
-		isVoiceSupported: boolean;
-		isRecording: boolean;
-		isInitializingRecording: boolean;
-		isTranscribing: boolean;
-		voiceBlocked: boolean;
-		hasAttemptedVoice: boolean;
-		voiceError: string;
-		microphonePermissionGranted: boolean;
-		disabled: boolean;
-		voiceBlockedLabel: string;
-	}): VoiceButtonState {
-		const {
-			enableVoice,
-			isVoiceSupported,
-			isRecording,
-			isInitializingRecording,
-			isTranscribing,
-			voiceBlocked,
-			hasAttemptedVoice,
-			voiceError,
-			microphonePermissionGranted,
-			disabled,
-			voiceBlockedLabel
-		} = params;
-
-		if (!enableVoice) {
-			return {
-				icon: MicOff,
-				label: 'Voice capture disabled',
-				disabled: true,
-				isLoading: false,
-				variant: 'muted'
-			};
-		}
-
-		if (!isVoiceSupported) {
-			return {
-				icon: MicOff,
-				label: 'Voice capture unavailable',
-				disabled: true,
-				isLoading: false,
-				variant: 'muted'
-			};
-		}
-
-		if (disabled) {
-			return {
-				icon: MicOff,
-				label: 'Input disabled',
-				disabled: true,
-				isLoading: false,
-				variant: 'muted'
-			};
-		}
-
-		if (voiceBlocked) {
-			return {
-				icon: Mic,
-				label: voiceBlockedLabel,
-				disabled: true,
-				isLoading: false,
-				variant: 'muted'
-			};
-		}
-
-		if (isRecording) {
-			return {
-				icon: MicOff,
-				label: 'Stop recording',
-				disabled: false,
-				isLoading: false,
-				variant: 'recording'
-			};
-		}
-
-		if (isInitializingRecording) {
-			return {
-				icon: LoaderCircle,
-				label: 'Preparing microphone...',
-				disabled: true,
-				isLoading: true,
-				variant: 'loading'
-			};
-		}
-
-		if (isTranscribing) {
-			return {
-				icon: LoaderCircle,
-				label: transcribingStatusLabel,
-				disabled: true,
-				isLoading: true,
-				variant: 'loading'
-			};
-		}
-
-		if (!microphonePermissionGranted && (hasAttemptedVoice || voiceError)) {
-			return {
-				icon: Mic,
-				label: 'Enable microphone',
-				disabled: false,
-				isLoading: false,
-				variant: 'prompt'
-			};
-		}
-
-		return {
-			icon: Mic,
-			label: 'Record voice note',
-			disabled: false,
-			isLoading: false,
-			variant: 'ready'
-		};
-	}
-
-	function getVoiceButtonClasses(variant: VoiceButtonVariant): string {
-		const base =
-			'shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background';
-
-		switch (variant) {
-			case 'recording':
-				return `${base} border-2 border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90`;
-			case 'loading':
-				return `${base} border border-border bg-muted/80 text-muted-foreground`;
-			case 'prompt':
-				return `${base} border-2 border-accent bg-accent/10 text-accent hover:bg-accent/20 dark:bg-accent/15 dark:hover:bg-accent/25`;
-			case 'muted':
-				return `border border-border bg-muted/60 text-muted-foreground/40 cursor-not-allowed`;
-			default:
-				return `${base} border border-foreground/20 bg-card text-foreground hover:border-foreground/40 hover:bg-muted/50 dark:border-foreground/15 dark:hover:border-foreground/30`;
-		}
-	}
-
-	function formatDuration(seconds: number): string {
-		const mins = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
-	}
-
-	// ============================================
-	// Transcription at Cursor Position
-	// ============================================
-	function insertTranscriptionAtCursor(transcript: string) {
-		if (!cursorPositionBeforeRecording) {
-			// Fallback: append to end
-			const separator = value.trim() ? ' ' : '';
-			value = value + separator + transcript.trim();
-			notifyValueChange();
-			return;
-		}
-
-		const { start, end } = cursorPositionBeforeRecording;
-		const hasSelection = start !== end;
-		const trimmedTranscript = transcript.trim();
-
-		// Determine spacing
-		let finalTranscript = trimmedTranscript;
-
-		if (!hasSelection) {
-			// Inserting at cursor position
-			const needsSpaceBefore = start > 0 && !/\s/.test(value[start - 1] || '');
-			const needsSpaceAfter = start < value.length && !/\s/.test(value[start] || '');
-
-			finalTranscript =
-				(needsSpaceBefore ? ' ' : '') + trimmedTranscript + (needsSpaceAfter ? ' ' : '');
-		}
-
-		// Insert or replace
-		const newValue = value.slice(0, start) + finalTranscript + value.slice(end);
-		value = newValue;
-
-		// Notify parent of value change (for controlled patterns)
-		notifyValueChange();
-
-		// Update cursor position to end of inserted text
-		const newCursorPos = start + finalTranscript.length;
-		queueMicrotask(() => {
-			textareaComponent?.focus();
-			textareaComponent?.setSelectionRange(newCursorPos, newCursorPos);
-		});
-
-		// Reset cursor tracking
-		cursorPositionBeforeRecording = null;
-	}
-
-	/**
-	 * Notify parent of value changes from voice transcription.
-	 * This enables controlled component patterns where parent uses oninput callbacks.
-	 */
-	function notifyValueChange() {
-		if (oninput) {
-			// Create a synthetic input event
-			const syntheticEvent = new InputEvent('input', { bubbles: true });
-			Object.defineProperty(syntheticEvent, 'target', {
-				value: { value },
-				enumerable: true
-			});
-			oninput(syntheticEvent);
-		}
-	}
-
-	// ============================================
-	// Voice Note Storage
-	// ============================================
-	function scheduleDraftCleanup() {
-		if (!browser || hasScheduledDraftCleanup) return;
-		hasScheduledDraftCleanup = true;
-
-		const runCleanup = () => {
-			cleanupVoiceNoteGroups({ maxAgeHours: 24 }).catch((error) => {
-				if (error instanceof Error) {
-					console.warn('[CommentVoice] Draft cleanup failed:', error.message);
-				}
-			});
-		};
-
-		if ('requestIdleCallback' in window) {
-			(
-				window as Window & { requestIdleCallback?: (cb: () => void) => void }
-			).requestIdleCallback?.(runCleanup);
-		} else {
-			setTimeout(runCleanup, 1500);
-		}
-	}
-
-	function buildGroupMetadata(): Record<string, unknown> {
-		const metadata: Record<string, unknown> = {};
-		if (voiceNoteSource) {
-			metadata.source_component = voiceNoteSource;
-		}
-		metadata.editor_type = 'comment-textarea';
-		return metadata;
-	}
-
-	function getOrCreateGroupState(groupId: string): GroupState {
-		const existing = groupStates.get(groupId);
-		if (existing) return existing;
-
-		const nextState: GroupState = {
-			segmentIndex: 0,
-			segments: new Map()
-		};
-		groupStates.set(groupId, nextState);
-		return nextState;
-	}
-
-	function startGroupCreation(groupId: string): Promise<string> {
-		const existing = groupCreatePromises.get(groupId);
-		if (existing) return existing;
-
-		const promise = createVoiceNoteGroup({ id: groupId, metadata: buildGroupMetadata() })
-			.then(() => groupId)
-			.catch((error) => {
-				groupCreatePromises.delete(groupId);
-				throw error;
-			});
-
-		groupCreatePromises.set(groupId, promise);
-		return promise;
-	}
-
-	function getOrCreateGroupId(): string {
-		if (voiceNoteGroupId) return voiceNoteGroupId;
-		const newGroupId = crypto.randomUUID();
-		voiceNoteGroupId = newGroupId;
-		onVoiceNoteGroupReady?.(newGroupId);
-		startGroupCreation(newGroupId).catch((error) => {
-			const message =
-				error instanceof Error ? error.message : 'Failed to create voice note group';
-			onVoiceNoteSegmentError?.(message);
-		});
-		return newGroupId;
-	}
-
-	function enqueueUpload(task: () => Promise<void>) {
-		uploadQueue.push(task);
-		void processUploadQueue();
-	}
-
-	async function processUploadQueue() {
-		while (activeUploads < MAX_CONCURRENT_UPLOADS && uploadQueue.length > 0) {
-			const task = uploadQueue.shift();
-			if (!task) return;
-			activeUploads += 1;
-			task()
-				.catch((error) => {
-					if (error instanceof Error) {
-						console.warn('[CommentVoice] Upload failed:', error.message);
-					}
-				})
-				.finally(() => {
-					activeUploads -= 1;
-					void processUploadQueue();
-				});
-		}
-	}
-
-	function queueTranscriptUpdate(update: PendingTranscriptUpdate) {
-		if (!lastTranscriptionTarget) return;
-		const { groupId, segmentIndex } = lastTranscriptionTarget;
-		const groupState = getOrCreateGroupState(groupId);
-		const segmentState = groupState.segments.get(segmentIndex) ?? {};
-
-		if (!segmentState.voiceNoteId) {
-			segmentState.pendingTranscript = update;
-			groupState.segments.set(segmentIndex, segmentState);
-			return;
-		}
-
-		void applyTranscriptUpdate(groupId, segmentIndex, update);
-	}
-
-	async function applyTranscriptUpdate(
-		groupId: string,
-		segmentIndex: number,
-		update: PendingTranscriptUpdate
-	) {
-		const groupState = getOrCreateGroupState(groupId);
-		const segmentState = groupState.segments.get(segmentIndex);
-
-		if (!segmentState?.voiceNoteId) {
-			const nextSegmentState = segmentState ?? {};
-			nextSegmentState.pendingTranscript = update;
-			groupState.segments.set(segmentIndex, nextSegmentState);
-			return;
-		}
-
-		const metadata: Record<string, unknown> = {};
-		if (typeof update.latencyMs === 'number') {
-			metadata.transcription_latency_ms = update.latencyMs;
-		}
-		if (update.transcriptionService) {
-			metadata.transcription_service = update.transcriptionService;
-		}
-
-		try {
-			const updated = await updateVoiceNote(segmentState.voiceNoteId, {
-				transcript: update.transcript ?? null,
-				transcriptionStatus: update.transcriptionStatus,
-				transcriptionSource: update.transcriptionSource,
-				transcriptionModel: update.transcriptionModel ?? null,
-				transcriptionError: update.transcriptionError ?? null,
-				metadata: Object.keys(metadata).length > 0 ? metadata : null
-			});
-			onVoiceNoteSegmentSaved?.(updated);
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Failed to update voice note transcript';
-			onVoiceNoteSegmentError?.(message);
-		}
-	}
-
-	async function uploadVoiceSegment(params: {
-		groupId: string;
-		segmentIndex: number;
-		audioBlob: Blob;
-		durationSeconds: number;
-		recordedAt: string;
-		transcript?: string;
-		transcriptionStatus?: string;
-		transcriptionSource?: string;
-	}) {
-		const {
-			groupId,
-			segmentIndex,
-			audioBlob,
-			durationSeconds,
-			recordedAt,
-			transcript,
-			transcriptionStatus,
-			transcriptionSource
-		} = params;
-
-		try {
-			const metadata: Record<string, unknown> = {};
-			if (voiceNoteSource) {
-				metadata.source_component = voiceNoteSource;
-			}
-			if (transcriptionSource === 'live') {
-				metadata.transcription_service = 'web-speech-api';
-			}
-			metadata.editor_type = 'comment-textarea';
-
-			await startGroupCreation(groupId);
-			const voiceNote = await uploadVoiceNote({
-				audioBlob,
-				durationSeconds,
-				groupId,
-				segmentIndex,
-				recordedAt,
-				transcript: transcript ?? null,
-				transcriptionStatus: transcriptionStatus ?? null,
-				transcriptionSource: transcriptionSource ?? null,
-				transcribe: false,
-				metadata: Object.keys(metadata).length > 0 ? metadata : null
-			});
-
-			const groupState = getOrCreateGroupState(groupId);
-			const segmentState = groupState.segments.get(segmentIndex) ?? {};
-			segmentState.voiceNoteId = voiceNote.id;
-			groupState.segments.set(segmentIndex, segmentState);
-			onVoiceNoteSegmentSaved?.(voiceNote);
-
-			if (segmentState.pendingTranscript) {
-				await applyTranscriptUpdate(groupId, segmentIndex, segmentState.pendingTranscript);
-				segmentState.pendingTranscript = undefined;
-			}
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Failed to save voice note segment';
-			onVoiceNoteSegmentError?.(message);
-		}
-	}
-
-	function handleAudioCaptured(audio: Blob | null, meta: { durationSeconds: number }) {
-		if (!audio || audio.size === 0) {
-			onVoiceNoteSegmentError?.('No audio captured. Please try again.');
-			return;
-		}
-
-		const groupId = getOrCreateGroupId();
-		const groupState = getOrCreateGroupState(groupId);
-		groupState.segmentIndex += 1;
-		const segmentIndex = groupState.segmentIndex;
-		groupState.segments.set(segmentIndex, {});
-
-		lastTranscriptionTarget = { groupId, segmentIndex };
-
-		const transcriptSnapshot = capturedTranscriptForCallback;
-		const hasTranscript = transcriptSnapshot.length > 0;
-		const recordedAt = new Date().toISOString();
-
-		enqueueUpload(() =>
-			uploadVoiceSegment({
-				groupId,
-				segmentIndex,
-				audioBlob: audio,
-				durationSeconds: meta.durationSeconds,
-				recordedAt,
-				transcript: hasTranscript ? transcriptSnapshot : undefined,
-				transcriptionStatus: hasTranscript ? 'complete' : 'pending',
-				transcriptionSource: hasTranscript ? 'live' : undefined
-			})
-		);
-	}
-
-	// ============================================
-	// Transcription Service
-	// ============================================
-	async function requestTranscription(
-		audioFile: File,
-		vocabTerms?: string
-	): Promise<{
-		transcript: string;
-		transcriptionModel?: string | null;
-		transcriptionService?: string | null;
-	}> {
-		const formData = new FormData();
-		formData.append('audio', audioFile);
-		if (vocabTerms) {
-			formData.append('vocabularyTerms', vocabTerms);
-		}
-
-		// Lazily allocate the AbortController; recreated after each cleanup.
-		if (!abortController) {
-			abortController = new AbortController();
-		}
-
-		const response = await fetch(transcriptionEndpoint, {
-			method: 'POST',
-			body: formData,
-			signal: abortController.signal
-		});
-
-		if (!response.ok) {
-			let errorMessage = `Transcription failed: ${response.status}`;
-			try {
-				const errorPayload = await response.json();
-				if (errorPayload?.error) {
-					errorMessage = errorPayload.error;
-				}
-			} catch {
-				// Ignore JSON parse errors
-			}
-			throw new Error(errorMessage);
-		}
-
-		const result = await response.json();
-		const payload = result?.success && result?.data ? result.data : result;
-		if (payload?.transcript) {
-			return {
-				transcript: payload.transcript,
-				transcriptionModel: payload.transcription_model ?? null,
-				transcriptionService: payload.transcription_service ?? null
-			};
-		}
-
-		throw new Error('No transcript returned from transcription service');
-	}
-
-	const transcriptionService: TranscriptionService = {
-		async transcribeAudio(audioFile: File, vocabTerms?: string) {
-			const startTime = performance.now();
-			try {
-				const {
-					transcript,
-					transcriptionModel,
-					transcriptionService: transcriptionServiceName
-				} = await requestTranscription(audioFile, vocabTerms);
-				queueTranscriptUpdate({
-					transcript,
-					transcriptionSource: 'audio',
-					transcriptionStatus: 'complete',
-					transcriptionModel,
-					transcriptionService: transcriptionServiceName,
-					latencyMs: Math.round(performance.now() - startTime)
-				});
-				return {
-					transcript,
-					transcriptionModel,
-					transcriptionService: transcriptionServiceName
-				};
-			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : 'Failed to transcribe audio';
-				queueTranscriptUpdate({
-					transcriptionSource: 'audio',
-					transcriptionStatus: 'failed',
-					transcriptionError: message
-				});
-				throw error;
-			}
-		}
-	};
-
-	// ============================================
-	// Voice Recording Lifecycle
-	// ============================================
-	async function initializeVoice() {
-		if (voiceInitialized) return;
-
-		isVoiceSupported = voiceRecordingService.isVoiceSupported();
-		_canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
-		microphonePermissionGranted = false;
-		hasAttemptedVoice = false;
-		voiceError = '';
-
-		if (!isVoiceSupported) {
-			voiceInitialized = true;
-			return;
-		}
-
-		voiceRecordingService.initialize(
-			{
-				onTextUpdate: (_text: string) => {
-					// We handle text insertion ourselves via insertTranscriptionAtCursor
-					voiceError = '';
-				},
-				onError: (errorMessage: string) => {
-					voiceError = errorMessage;
-					isRecording = false;
-					isInitializingRecording = false;
-				},
-				onPhaseChange: (phase: 'idle' | 'transcribing') => {
-					isTranscribing = phase === 'transcribing';
-					if (phase === 'idle') {
-						hadLiveTranscript = false;
-					}
-				},
-				onPermissionGranted: () => {
-					microphonePermissionGranted = true;
-					voiceError = '';
-				},
-				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
-					_canUseLiveTranscript = update.canUseLiveTranscript;
-				},
-				onAudioCaptured: handleAudioCaptured
-			},
-			transcriptionService,
-			voiceClientId
-		);
-
-		const durationStore = voiceRecordingService.getRecordingDuration(voiceClientId);
-		durationUnsubscribe = durationStore.subscribe((newDuration) => {
-			recordingDuration = newDuration;
-		});
-
-		transcriptUnsubscribe = liveTranscript.subscribe((text) => {
-			liveTranscriptPreview = text;
-		});
-
-		voiceInitialized = true;
-	}
-
-	async function startVoiceRecording() {
-		if (
-			!enableVoice ||
-			!isVoiceSupported ||
-			voiceBlocked ||
-			isInitializingRecording ||
-			isRecording ||
-			isTranscribing ||
-			disabled
-		) {
-			return;
-		}
-
-		hasAttemptedVoice = true;
-		voiceError = '';
-		isInitializingRecording = true;
-		hadLiveTranscript = false;
-
-		// CRITICAL: Capture cursor position BEFORE recording starts
-		const selectionRange = textareaComponent?.getSelectionRange();
-		if (selectionRange) {
-			cursorPositionBeforeRecording = selectionRange;
-		} else {
-			cursorPositionBeforeRecording = { start: value.length, end: value.length };
-		}
-
-		try {
-			// Pass empty string - we handle text insertion ourselves
-			await voiceRecordingService.startRecording('', voiceClientId);
-			isInitializingRecording = false;
-			isRecording = true;
-			microphonePermissionGranted = true;
-			// Focus textarea so Space/Enter can stop recording
-			textareaComponent?.focus();
-		} catch (error) {
-			console.error('Failed to start voice recording:', error);
-			const message =
-				error instanceof Error
-					? error.message
-					: 'Unable to access microphone. Please check permissions.';
-			voiceError = message;
-			microphonePermissionGranted = false;
-			isInitializingRecording = false;
-			isRecording = false;
-			cursorPositionBeforeRecording = null;
-		}
-	}
-
-	async function stopVoiceRecording() {
-		if (!isRecording && !isInitializingRecording) {
-			return;
-		}
-
-		// Capture live transcript BEFORE clearing for use in handleAudioCaptured callback
-		capturedTranscriptForCallback = liveTranscriptPreview.trim();
-		hadLiveTranscript = capturedTranscriptForCallback.length > 0;
-
-		// Store the transcript we'll use for insertion
-		const transcriptToInsert = capturedTranscriptForCallback;
-
-		// Clear recording states IMMEDIATELY so transcribing state can show
-		liveTranscriptPreview = '';
-		isRecording = false;
-		isInitializingRecording = false;
-
-		try {
-			// Pass empty string - we handle text ourselves
-			await voiceRecordingService.stopRecording('', undefined, voiceClientId);
-
-			// If we had a live transcript, insert it at cursor position now
-			if (transcriptToInsert) {
-				insertTranscriptionAtCursor(transcriptToInsert);
-			}
-		} catch (error) {
-			console.error('Failed to stop voice recording:', error);
-			const message =
-				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
-			voiceError = message;
-		} finally {
-			capturedTranscriptForCallback = '';
-		}
-	}
-
-	async function toggleVoiceRecording() {
-		if (!enableVoice || !isVoiceSupported) return;
-
-		haptic('light');
-
-		if (isRecording || isInitializingRecording) {
-			await stopVoiceRecording();
-		} else {
-			await startVoiceRecording();
-		}
-	}
-
-	async function stopRecordingInternal() {
-		if (isRecording || isInitializingRecording) {
-			await stopVoiceRecording();
-		}
-	}
-
-	function cleanupVoice() {
-		if (!voiceInitialized) return;
-
-		durationUnsubscribe?.();
-		transcriptUnsubscribe?.();
-		durationUnsubscribe = null;
-		transcriptUnsubscribe = null;
-
-		// Cancel any in-flight transcribe fetch so its promise doesn't resolve
-		// into our $state after the component has been torn down.
-		abortController?.abort();
-		abortController = null;
-
-		voiceRecordingService.cleanup(voiceClientId);
-
-		isRecording = false;
-		isInitializingRecording = false;
-		isTranscribing = false;
-		recordingDuration = 0;
-		liveTranscriptPreview = '';
-		hadLiveTranscript = false;
-		hasAttemptedVoice = false;
-		microphonePermissionGranted = false;
-		voiceInitialized = false;
-		cursorPositionBeforeRecording = null;
-	}
-
-	// ============================================
-	// Keyboard Shortcuts
-	// ============================================
-	function handleTextareaKeyDown(event: KeyboardEvent) {
-		// Stop recording on Space or Enter when recording is active
-		if (isRecording && (event.key === ' ' || event.key === 'Enter')) {
-			event.preventDefault();
-			event.stopPropagation();
-			stopVoiceRecording();
-		}
-	}
-
-	// Global keydown handler. Scoped so it does NOT intercept Space/Enter when
-	// the user is typing in a sibling input/textarea on the page (otherwise
-	// voice recording silently swallows every space the user types elsewhere).
-	function handleGlobalKeyDown(event: KeyboardEvent) {
-		if (!isRecording) return;
-		if (event.key !== ' ' && event.key !== 'Enter') return;
-
-		const active = document.activeElement;
-		const isTypingElsewhere =
-			active instanceof HTMLInputElement ||
-			active instanceof HTMLTextAreaElement ||
-			(active instanceof HTMLElement && active.isContentEditable);
-		if (isTypingElsewhere) return;
-
-		event.preventDefault();
-		stopVoiceRecording();
-	}
-
-	$effect(() => {
-		if (browser && isRecording) {
-			document.addEventListener('keydown', handleGlobalKeyDown);
-			return () => {
-				document.removeEventListener('keydown', handleGlobalKeyDown);
-			};
-		}
-	});
-
-	// ============================================
-	// Lifecycle
-	// ============================================
-	onMount(() => {
-		if (enableVoice) {
-			initializeVoice();
-		}
-		scheduleDraftCleanup();
+	const isTouchDevice = $derived(
+		browser &&
+			typeof navigator !== 'undefined' &&
+			('ontouchstart' in window || navigator.maxTouchPoints > 0)
+	);
+	const dictating = $derived(dictation.isBusy);
+	const pieces = $derived.by(() => {
+		void anchorVersion;
+		return anchor.pieces(dictation.confirmedText, dictation.draftText);
 	});
 
 	$effect(() => {
-		if (enableVoice && !voiceInitialized) {
-			initializeVoice();
-		}
+		isVoiceBusy = dictation.isBusy;
+		isRecording = dictation.isCapturing;
+		isTranscribing = dictation.phase === 'finishing';
+		voiceError =
+			dictation.error && dictation.error.code !== 'draft-fallback'
+				? dictation.error.message
+				: '';
+		recordingDuration = Math.floor(dictation.elapsedMs / 1000);
+	});
 
-		if (!enableVoice && voiceInitialized) {
-			stopRecordingInternal();
-			cleanupVoice();
-		}
+	$effect(() => {
+		if (!dictating) return;
+		setValue(anchor.write(dictation.confirmedText, dictation.draftText));
+	});
 
-		if ((voiceBlocked || disabled) && isRecording) {
-			stopRecordingInternal();
+	$effect.pre(() => {
+		if (dictating && anchor.observe(value)) anchorVersion += 1;
+	});
+
+	$effect(() => {
+		if ((voiceBlocked || disabled || !enableVoice) && dictation.isCapturing) {
+			void dictation.stop();
 		}
+	});
+
+	$effect(() => {
+		textareaElement = textareaComponent?.getElement() ?? null;
+	});
+
+	$effect(() => {
+		if (enableVoice) scheduleVoiceDraftCleanup();
 	});
 
 	onDestroy(() => {
-		stopRecordingInternal();
-		cleanupVoice();
+		dictation.destroy();
 	});
 
-	// ============================================
-	// Exported Functions
-	// ============================================
+	/** Hosts use a controlled value + oninput; keep them in sync with dictated text. */
+	function setValue(next: string) {
+		if (next === value) return;
+		value = next;
+		if (oninput) {
+			const event = new InputEvent('input', { bubbles: true });
+			Object.defineProperty(event, 'target', { value: { value: next }, enumerable: true });
+			oninput(event);
+		}
+	}
+
+	function placeCaret(offset: number) {
+		if (isTouchDevice || !textareaElement) return;
+		queueMicrotask(() => {
+			if (!textareaElement) return;
+			textareaElement.focus({ preventScroll: true });
+			textareaElement.setSelectionRange(offset, offset);
+		});
+	}
+
+	async function startDictation() {
+		if (!enableVoice || voiceBlocked || disabled || dictation.isBusy) return;
+		const selection = userPlacedCaret ? (textareaComponent?.getSelectionRange() ?? null) : null;
+		anchor.begin(value, selection);
+		anchorVersion += 1;
+		const started = await dictation.start();
+		if (started && !isTouchDevice) textareaComponent?.focus();
+	}
+
+	function toggleVoice() {
+		haptic('light');
+		if (dictation.phase === 'recording') void dictation.stop();
+		else if (dictation.phase === 'idle') void startDictation();
+	}
+
+	function handleTextareaKeyDown(event: KeyboardEvent) {
+		if (dictation.phase === 'recording' && (event.key === ' ' || event.key === 'Enter')) {
+			event.preventDefault();
+			event.stopPropagation();
+			void dictation.stop();
+		}
+	}
+
+	function handleGlobalKeyDown(event: KeyboardEvent) {
+		if (dictation.phase !== 'recording') return;
+		if (event.key !== ' ' && event.key !== 'Enter') return;
+		const active = document.activeElement;
+		if (active === textareaElement) return;
+		const typingElsewhere =
+			active instanceof HTMLInputElement ||
+			active instanceof HTMLTextAreaElement ||
+			(active instanceof HTMLElement && active.isContentEditable);
+		if (typingElsewhere) return;
+		event.preventDefault();
+		void dictation.stop();
+	}
+
+	$effect(() => {
+		if (!browser || dictation.phase !== 'recording') return;
+		document.addEventListener('keydown', handleGlobalKeyDown);
+		return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+	});
+
+	/** Stop and wait until the transcript is in the field. */
 	export async function stopRecording() {
-		await stopRecordingInternal();
+		if (dictation.phase === 'starting') dictation.cancel();
+		else await dictation.stop();
 	}
 
 	export async function cleanup() {
-		await stopRecordingInternal();
-		cleanupVoice();
+		await stopRecording();
 	}
 
 	export function focus() {
@@ -1034,28 +265,6 @@
 </script>
 
 <div class={`space-y-1.5 ${className}`}>
-	<!-- Live transcript preview: Positioned above textarea as floating box -->
-	{#if enableVoice && isLiveTranscribing}
-		<div
-			class="overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink"
-			aria-live="polite"
-			aria-atomic="true"
-		>
-			<div class="flex items-start gap-2 px-2.5 py-1.5">
-				<span
-					class="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-2xs font-medium text-accent"
-				>
-					<span class="h-1.5 w-1.5 animate-status-pulse rounded-full bg-accent"></span>
-					Live
-				</span>
-				<p class="m-0 line-clamp-2 flex-1 text-xs leading-relaxed text-foreground">
-					{liveTranscriptPreview}
-				</p>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Textarea -->
 	<div class="relative">
 		<Textarea
 			bind:this={textareaComponent}
@@ -1066,46 +275,25 @@
 			{disabled}
 			{size}
 			{oninput}
+			readonly={dictating}
+			class={dictating ? 'text-transparent caret-transparent placeholder:text-transparent' : ''}
+			onfocus={() => (userPlacedCaret = true)}
 			onkeydown={handleTextareaKeyDown}
 		/>
+		{#if dictating}
+			<DictationMirror
+				target={textareaElement}
+				{pieces}
+				listening={dictation.phase === 'recording'}
+			/>
+		{/if}
 	</div>
 
-	<!-- Footer: Status, hints, and action buttons -->
 	<div class="flex flex-wrap items-center justify-between gap-2">
-		<!-- Left side: Status indicators and hints -->
-		<div class="flex flex-wrap items-center gap-1.5 text-2xs text-muted-foreground/80">
-			{#if enableVoice && isRecording}
-				<!-- Recording indicator -->
-				<span class="flex items-center gap-1.5 text-destructive">
-					<span class="relative flex h-2 w-2 items-center justify-center">
-						<span
-							class="absolute inline-flex h-full w-full animate-status-ping rounded-full bg-destructive/60"
-						></span>
-						<span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"
-						></span>
-					</span>
-					<span class="font-semibold">Listening</span>
-					<span class="font-bold tabular-nums">{formatDuration(recordingDuration)}</span>
-					<kbd
-						class="hidden rounded border border-destructive/30 bg-destructive/10 px-1 py-0.5 font-mono text-2xs font-medium text-destructive md:inline-flex"
-					>
-						Enter
-					</kbd>
-				</span>
-			{:else if enableVoice && isInitializingRecording}
-				<!-- Initializing state -->
-				<span class="flex items-center gap-1.5 text-muted-foreground">
-					<LoaderCircle class="h-3 w-3 animate-spin" />
-					<span class="font-medium">Preparing...</span>
-				</span>
-			{:else if enableVoice && isTranscribing}
-				<!-- Transcribing state -->
-				<span class="flex items-center gap-1.5 text-accent">
-					<LoaderCircle class="h-3 w-3 animate-spin" />
-					<span class="font-semibold">{transcribingStatusLabel}</span>
-				</span>
+		<div class="min-w-0 flex-1 text-2xs text-muted-foreground/80" aria-live="polite">
+			{#if enableVoice && (dictation.isBusy || dictation.error)}
+				<VoiceStatusLine {dictation} showKeyHint={!isTouchDevice} />
 			{:else if footer}
-				<!-- Custom footer content -->
 				{@render footer({
 					isRecording,
 					isTranscribing,
@@ -1113,55 +301,22 @@
 					voiceError
 				})}
 			{:else}
-				<!-- Default: Mention hint -->
 				<span>
 					Mentions: <span class="font-mono bg-muted px-1 rounded">[[user:id|Name]]</span>
 				</span>
 			{/if}
-
-			<!-- Live transcript badge during recording -->
-			{#if enableVoice && _canUseLiveTranscript && isRecording}
-				<span
-					class="hidden rounded-md border border-accent/30 bg-accent/10 px-1 py-0.5 text-2xs font-bold uppercase tracking-wider text-accent xs:inline-flex"
-				>
-					Live
-				</span>
-			{/if}
 		</div>
 
-		<!-- Right side: Error, voice button, and action buttons -->
 		<div class="flex items-center gap-1.5">
-			{#if enableVoice && voiceError}
-				<span
-					role="alert"
-					class="max-w-[120px] truncate text-destructive text-2xs font-medium px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/20"
-				>
-					{voiceError}
-				</span>
+			{#if enableVoice}
+				<VoiceMicButton
+					{dictation}
+					{disabled}
+					blocked={voiceBlocked}
+					blockedLabel={voiceBlockedLabel}
+					onclick={toggleVoice}
+				/>
 			{/if}
-
-			<!-- Voice recording button -->
-			<!-- Sizing matches TEXTAREA_BUTTON_DESIGN_MOBILE.md: 40px on portrait phones (<xs), 36px from xs+. -->
-			{#if enableVoice && isVoiceSupported}
-				<button
-					type="button"
-					class={`flex h-10 w-10 xs:h-9 xs:w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
-					onclick={toggleVoiceRecording}
-					aria-label={voiceButtonState.label}
-					title={voiceButtonState.label}
-					aria-pressed={voiceButtonState.variant === 'recording' ? true : undefined}
-					disabled={voiceButtonState.disabled}
-				>
-					{#if voiceButtonState.isLoading}
-						<LoaderCircle class="h-4 w-4 xs:h-3.5 xs:w-3.5 animate-spin" />
-					{:else}
-						{@const VoiceIcon = voiceButtonState.icon}
-						<VoiceIcon class="h-4 w-4 xs:h-3.5 xs:w-3.5" />
-					{/if}
-				</button>
-			{/if}
-
-			<!-- Custom action buttons (e.g., Post button) -->
 			{#if actions}
 				{@render actions()}
 			{/if}

@@ -138,6 +138,24 @@ const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
 const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
 const OPENROUTER_TOOL_STREAM_REASONING = { effort: 'low', exclude: false } as const;
 const OPENROUTER_TRANSCRIPTION_API_URL = 'https://openrouter.ai/api/v1/audio/transcriptions';
+/** Don't start a transcription attempt with less time than this left on the deadline. */
+const MIN_TRANSCRIPTION_ATTEMPT_MS = 3_000;
+const MAX_TRANSCRIPTION_VOCABULARY_CHARS = 400;
+const MAX_TRANSCRIPTION_CONTEXT_CHARS = 500;
+
+/**
+ * Prompt for the transcription model: expected names/terms plus the words
+ * spoken just before this audio. Both steer spelling and keep a long
+ * dictation, transcribed in segments, reading as one piece.
+ */
+export function buildTranscriptionPrompt(vocabularyTerms?: string, context?: string): string {
+	const terms = vocabularyTerms?.replace(/\s+/g, ' ').trim().slice(0, MAX_TRANSCRIPTION_VOCABULARY_CHARS);
+	const previous = context?.replace(/\s+/g, ' ').trim().slice(-MAX_TRANSCRIPTION_CONTEXT_CHARS);
+	const parts: string[] = [];
+	if (terms) parts.push(`Names and terms that may appear: ${terms}.`);
+	if (previous) parts.push(previous);
+	return parts.join('\n\n');
+}
 const CANONICAL_MODEL_ALIASES: Record<string, string> = {
 	'kimi-k2.7-code': KIMI_CODING_MODEL,
 	'kimi-k2-7-code': KIMI_CODING_MODEL,
@@ -2119,15 +2137,38 @@ export class SmartLLMService {
 		const audioInput = coerceAudioInput(options.audio, options.audioFile);
 		const audioFormat = getAudioFormatForInput(audioInput);
 		const base64Audio = await encodeAudioToBase64(audioInput);
+		const prompt = buildTranscriptionPrompt(options.vocabularyTerms, options.context);
+		const provider = prompt
+			? {
+					...OPENROUTER_NO_DATA_COLLECTION_PROVIDER,
+					// Provider-specific fields ride in provider.options keyed by provider
+					// slug; only the serving provider's entry is forwarded.
+					options: { openai: { prompt }, groq: { prompt } }
+				}
+			: OPENROUTER_NO_DATA_COLLECTION_PROVIDER;
+		const deadlineAt =
+			options.deadlineMs && options.deadlineMs > 0
+				? performance.now() + options.deadlineMs
+				: Number.POSITIVE_INFINITY;
 
 		let lastError: Error | null = null;
+		let deadlineExceeded = false;
 
-		for (const model of models) {
+		outer: for (const model of models) {
 			for (let attempt = 0; attempt <= maxRetries; attempt++) {
 				try {
 					if (attempt > 0) {
 						const delay = initialRetryDelayMs * Math.pow(2, attempt - 1);
+						if (performance.now() + delay + MIN_TRANSCRIPTION_ATTEMPT_MS > deadlineAt) {
+							deadlineExceeded = true;
+							break outer;
+						}
 						await sleep(delay);
+					}
+					const remainingMs = deadlineAt - performance.now();
+					if (remainingMs < MIN_TRANSCRIPTION_ATTEMPT_MS) {
+						deadlineExceeded = true;
+						break outer;
 					}
 
 					const response = await this.openRouterClient.callOpenRouterTranscription({
@@ -2137,12 +2178,13 @@ export class SmartLLMService {
 							format: audioFormat
 						},
 						temperature: 0,
-						timeoutMs,
-						provider: OPENROUTER_NO_DATA_COLLECTION_PROVIDER
+						// Integer ms: AbortSignal.timeout rejects fractional delays in Node.
+						timeoutMs: Math.floor(Math.min(timeoutMs, remainingMs)),
+						provider
 					});
 
-					const transcript = response.text?.trim();
-					if (!transcript) {
+					const transcript = response.text?.trim() ?? '';
+					if (!transcript && !options.allowEmptyTranscript) {
 						throw new Error('OpenRouter returned empty transcript');
 					}
 
@@ -2162,6 +2204,14 @@ export class SmartLLMService {
 					}
 				}
 			}
+		}
+
+		if (deadlineExceeded && (!lastError || lastError.name === 'TranscriptionTimeoutError')) {
+			const timeoutError = new Error('Transcription ran out of time') as Error & {
+				name: string;
+			};
+			timeoutError.name = 'TranscriptionTimeoutError';
+			lastError = timeoutError;
 		}
 
 		if (this.errorLogger) {

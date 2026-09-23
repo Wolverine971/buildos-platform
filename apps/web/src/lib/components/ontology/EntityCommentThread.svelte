@@ -75,6 +75,10 @@
 		onEditBodyChange
 	}: Props = $props();
 
+	// Dictation in progress: the reply/edit text isn't final yet.
+	let editVoiceBusy = $state(false);
+	let replyVoiceBusy = $state(false);
+
 	function canEditComment(current: CommentNode) {
 		return Boolean(actorId && current.created_by === actorId && !current.deleted_at);
 	}
@@ -152,6 +156,7 @@
 			<div class="mt-1.5">
 				<CommentTextareaWithVoice
 					value={editingBody}
+					bind:isVoiceBusy={editVoiceBusy}
 					rows={3}
 					size="sm"
 					voiceBlocked={isEditing}
@@ -165,7 +170,7 @@
 							size="sm"
 							class="pressable"
 							onclick={() => onEditSubmit(comment.id)}
-							disabled={isEditing || !editingBody.trim()}
+							disabled={isEditing || editVoiceBusy || !editingBody.trim()}
 						>
 							{#if isEditing}
 								<LoaderCircle class="w-3 h-3 animate-spin" />
@@ -188,6 +193,7 @@
 			<div class="mt-2 border-t border-border pt-2">
 				<CommentTextareaWithVoice
 					value={replyBody}
+					bind:isVoiceBusy={replyVoiceBusy}
 					rows={2}
 					size="sm"
 					placeholder="Write a reply..."
@@ -202,7 +208,7 @@
 							size="sm"
 							class="pressable"
 							onclick={() => onReplySubmit(comment.id)}
-							disabled={isReplying || !replyBody.trim()}
+							disabled={isReplying || replyVoiceBusy || !replyBody.trim()}
 						>
 							{#if isReplying}
 								<LoaderCircle class="w-3 h-3 animate-spin" />

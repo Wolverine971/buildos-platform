@@ -93,6 +93,9 @@
 	let creationSessionId = $state<string | null>(savedCapture?.creationSessionId ?? null);
 	let submittedSource = $state(savedCapture?.submittedSource ?? '');
 	let captureVoiceRecording = $state(false);
+	let captureVoiceFinishing = $state(false);
+	// Recording or still firming up the transcript: the text isn't final yet.
+	const captureVoiceBusy = $derived(captureVoiceRecording || captureVoiceFinishing);
 	let captureLoading = $state(false);
 	let captureError = $state<string | null>(null);
 	let submittedCapture: { text: string; first: boolean } | null = null;
@@ -143,7 +146,7 @@
 			await resumeCreation();
 			return false;
 		}
-		if (!text || captureVoiceRecording || captureLoading || chatOpen) return false;
+		if (!text || captureVoiceBusy || captureLoading || chatOpen) return false;
 		captureLoading = true;
 		captureError = null;
 		try {
@@ -999,6 +1002,7 @@
 							<TextareaWithVoice
 								bind:value={captureText}
 								bind:isRecording={captureVoiceRecording}
+								bind:isTranscribing={captureVoiceFinishing}
 								placeholder="What are you working on? Dump it all here…"
 								onfocus={warmAgentChatModal}
 								rows={3}
@@ -1017,7 +1021,7 @@
 								icon={Send}
 								loading={captureLoading}
 								disabled={!captureText.trim() ||
-									captureVoiceRecording ||
+									captureVoiceBusy ||
 									captureLoading}
 							>
 								Structure my first project
@@ -1039,6 +1043,7 @@
 							<TextareaWithVoice
 								bind:value={captureText}
 								bind:isRecording={captureVoiceRecording}
+								bind:isTranscribing={captureVoiceFinishing}
 								aria-label="Quick update for your projects"
 								placeholder="What changed today?"
 								onfocus={warmAgentChatModal}
@@ -1053,7 +1058,7 @@
 							onclick={submitCapture}
 							loading={captureLoading}
 							disabled={!captureText.trim() ||
-								captureVoiceRecording ||
+								captureVoiceBusy ||
 								captureLoading}
 							variant="ghost"
 							size="sm"

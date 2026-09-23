@@ -25,11 +25,16 @@ import {
 	type AgenticChatProviderMutationCapabilitiesV1
 } from './mutationToolCatalog';
 import { createAgenticChatCompositionRoot } from './composition-root';
-import type { ContextFinderReadClient } from '@buildos/agentic-chat-runtime/context-finder';
+import type {
+	ContextFinderReadClient,
+	WorkspaceFinderReadClient
+} from '@buildos/agentic-chat-runtime/context-finder';
 import {
+	CHAT_CONTEXT_FINDER_HEDGE_MS,
 	CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
 	ChatContextFinder
 } from './provider/chat-context-finder';
+import { ChatWorkspaceFinder, composeContextFinders } from './provider/chat-workspace-finder';
 import { JevToolSelector } from './provider/jev-tool-selector';
 import {
 	WEB_NAVIGATE_DECISION_TIMEOUT_MS,
@@ -484,29 +489,51 @@ function createDefaultComposition(
 					onUsageError: input.onUsageError
 				});
 	// Ordinary project chat: Jev-ranked "Working from" chips (CONTEXT_FINDER_2026-09-22.md).
+	// Global chat: Jev picks the projects first, then digs (JEV_GLOBAL_CONTEXT_2026-09-23.md).
 	const contextFinderChatMode = input.config.contextFinderChat ?? 'off';
-	const contextFinder =
-		contextFinderChatMode === 'off' || !input.config.contextFinderChatUserIds?.length
-			? undefined
-			: new ChatContextFinder({
-					mode: contextFinderChatMode,
-					userIds: input.config.contextFinderChatUserIds,
-					// Service client; the turn's project access was checked at admission.
-					client: input.client as unknown as ContextFinderReadClient,
-					decider: new JevClient({
-						apiKey: (
-							input.config.provider.routes.find(
-								(route) => route.kind === 'openrouter'
-							) ?? input.config.provider.routes[0]!
-						).apiKey,
-						timeoutMs: CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
-						maxRequestBytes: 96_000,
-						retryOnce: false,
-						usage: usageLogger,
-						...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
-						title: 'BuildOS Context Finder (chat)'
-					})
-				});
+	const contextFinderGlobalMode = input.config.contextFinderGlobal ?? 'off';
+	const contextFinderUserIds = input.config.contextFinderChatUserIds ?? [];
+	const contextFinderJev =
+		contextFinderUserIds.length &&
+		(contextFinderChatMode !== 'off' || contextFinderGlobalMode !== 'off')
+			? new JevClient({
+					apiKey: (
+						input.config.provider.routes.find((route) => route.kind === 'openrouter') ??
+						input.config.provider.routes[0]!
+					).apiKey,
+					timeoutMs: CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
+					maxRequestBytes: 96_000,
+					retryOnce: false,
+					// About 26% of Jev calls land in a 2-3 s lane, independently; a hedge
+					// rescues most (48/48 hop-1 calls under 1.4 s hedged vs 7 timeouts unhedged).
+					hedgeAfterMs: CHAT_CONTEXT_FINDER_HEDGE_MS,
+					usage: usageLogger,
+					...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
+					title: 'BuildOS Context Finder (chat)'
+				})
+			: null;
+	const contextFinder = contextFinderJev
+		? composeContextFinders(
+				contextFinderChatMode === 'off'
+					? undefined
+					: new ChatContextFinder({
+							mode: contextFinderChatMode,
+							userIds: contextFinderUserIds,
+							// Service client; the turn's project access was checked at admission.
+							client: input.client as unknown as ContextFinderReadClient,
+							decider: contextFinderJev
+						}),
+				contextFinderGlobalMode === 'off'
+					? undefined
+					: new ChatWorkspaceFinder({
+							mode: contextFinderGlobalMode,
+							userIds: contextFinderUserIds,
+							// Service client; the loader scopes to the user's accessible projects.
+							client: input.client as unknown as WorkspaceFinderReadClient,
+							decider: contextFinderJev
+						})
+			)
+		: undefined;
 	// web_navigate: Jev picks links, code fetches politely, Tavily renders pages a
 	// plain fetch cannot read. Same OpenRouter credential as the acting route.
 	const webNavigator = createWorkerWebNavigatePort({

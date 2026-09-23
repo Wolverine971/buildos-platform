@@ -22,10 +22,13 @@ import {
 const DEFAULT_OPENROUTER_TRANSCRIPTION_MODEL = 'openai/gpt-transcribe';
 const DEFAULT_OPENROUTER_TRANSCRIPTION_FALLBACK_MODELS = ['openai/gpt-4o-mini-transcribe'];
 
-// Timeout and retry configuration
-const TRANSCRIPTION_TIMEOUT_MS = 30000; // 30 seconds timeout
-const MAX_RETRIES = 2; // Maximum retry attempts
-const INITIAL_RETRY_DELAY_MS = 1000; // 1 second initial delay
+// Timeout and retry configuration. Browser dictation sends short segments and
+// retries them itself, so the server tries each model at most twice and always
+// answers inside the function's maxDuration.
+const TRANSCRIPTION_TIMEOUT_MS = 30000; // per attempt
+const TRANSCRIPTION_DEADLINE_MS = 100000; // across models and retries (< maxDuration 120s)
+const MAX_RETRIES = 1;
+const INITIAL_RETRY_DELAY_MS = 1000;
 
 function parseModelList(value?: string | null): string[] {
 	if (!value) return [];
@@ -99,6 +102,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	const errorLogger = ErrorLoggerService.getInstance(supabase);
 	let audioFile: File | null = null;
 	let customVocabulary: string | null = null;
+	let context: string | null = null;
 	let userId: string | null = null;
 	let operationLease: ExpensiveOperationLease | null = null;
 	let transcriptionModel =
@@ -116,6 +120,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		const formData = await request.formData();
 		audioFile = formData.get('audio') as File;
 		customVocabulary = formData.get('vocabularyTerms') as string | null;
+		context = formData.get('context') as string | null;
+		const allowEmpty = formData.get('allowEmpty') === 'true';
 
 		if (!audioFile || audioFile.size === 0) {
 			return ApiResponse.badRequest('No audio data received');
@@ -175,6 +181,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			audio: { kind: 'file', file: transcriptionFile },
 			userId,
 			vocabularyTerms: customVocabulary || undefined,
+			context: context || undefined,
+			allowEmptyTranscript: allowEmpty,
+			deadlineMs: TRANSCRIPTION_DEADLINE_MS,
 			models: openrouterModels,
 			timeoutMs: TRANSCRIPTION_TIMEOUT_MS,
 			maxRetries: MAX_RETRIES,

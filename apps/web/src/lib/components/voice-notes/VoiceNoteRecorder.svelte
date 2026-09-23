@@ -1,20 +1,28 @@
 <!-- apps/web/src/lib/components/voice-notes/VoiceNoteRecorder.svelte -->
+<!-- Record → review → save a standalone voice note. Words appear as you talk; the transcript is final by the time you review. -->
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
-	import { AlertCircle, LoaderCircle, Mic, Square } from 'lucide-svelte';
+	import { onDestroy } from 'svelte';
+	import { AlertCircle, LoaderCircle, Mic, Square } from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { voiceRecordingService } from '$lib/services/voiceRecording.service';
+	import VoiceLevelMeter from '$lib/components/voice/VoiceLevelMeter.svelte';
+	import VoiceStatusLine from '$lib/components/voice/VoiceStatusLine.svelte';
 	import { uploadVoiceNote } from '$lib/services/voice-notes.service';
 	import type { VoiceNote } from '$lib/types/voice-notes';
-	import { isRecording, liveTranscript } from '$lib/utils/voice';
+	import {
+		VoiceDictation,
+		formatDictationDuration,
+		type DictationResult
+	} from '$lib/voice/dictation-session.svelte';
 
 	interface Props {
 		onSave: (voiceNote: VoiceNote) => void;
 		onError?: (error: string) => void;
+		/** Seconds; recording stops on its own at this length. */
 		maxDuration?: number;
 		showTranscript?: boolean;
 		linkedEntityType?: string;
 		linkedEntityId?: string;
+		/** Ask the server to transcribe on save if the recording has no transcript yet. */
 		transcribe?: boolean;
 	}
 
@@ -28,28 +36,33 @@
 		transcribe = false
 	}: Props = $props();
 
-	let isVoiceSupported = $state(false);
-	let canUseLiveTranscript = $state(false);
-	let isInitializing = $state(false);
+	let recording = $state<DictationResult | null>(null);
 	let isUploading = $state(false);
 	let uploadProgress = $state(0);
-	let recordingDuration = $state(0);
-	let recordedDuration = $state(0);
-	let recordingStartedAt = $state<number | null>(null);
-	let audioBlob = $state<Blob | null>(null);
-	let transcriptSnapshot = $state('');
 	let errorMessage = $state('');
 
-	let durationUnsubscribe: (() => void) | null = null;
+	const dictation = new VoiceDictation({
+		onCommit: (result) => {
+			if (!result.audio) {
+				setError('No audio captured. Please try again.');
+				return;
+			}
+			recording = result;
+		}
+	});
 
-	const isCurrentlyRecording = $derived($isRecording);
-	const liveTranscriptValue = $derived($liveTranscript);
+	const isCapturing = $derived(dictation.isCapturing);
+	const liveWords = $derived(dictation.text);
 
-	function formatDuration(seconds: number): string {
-		const mins = Math.floor(seconds / 60);
-		const secs = seconds % 60;
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
-	}
+	$effect(() => {
+		if (
+			maxDuration &&
+			dictation.phase === 'recording' &&
+			dictation.elapsedMs >= maxDuration * 1000
+		) {
+			void dictation.stop();
+		}
+	});
 
 	function setError(message: string) {
 		errorMessage = message;
@@ -57,69 +70,46 @@
 	}
 
 	function resetCapture() {
-		audioBlob = null;
-		transcriptSnapshot = '';
-		recordedDuration = 0;
+		recording = null;
 		uploadProgress = 0;
 		errorMessage = '';
 	}
 
 	async function startRecording() {
-		if (!isVoiceSupported || isCurrentlyRecording || isUploading) return;
+		if (!dictation.supported || dictation.isBusy || isUploading) return;
 		resetCapture();
-		isInitializing = true;
-		recordingStartedAt = Date.now();
-
-		try {
-			await voiceRecordingService.startRecording('');
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to start recording';
-			setError(message);
-			recordingStartedAt = null;
-		} finally {
-			isInitializing = false;
-		}
+		const started = await dictation.start();
+		if (!started && dictation.error) setError(dictation.error.message);
 	}
 
-	async function stopRecording() {
-		if (!isCurrentlyRecording) return;
-
-		const durationSnapshot = Math.max(
-			recordingDuration,
-			recordingStartedAt ? Math.floor((Date.now() - recordingStartedAt) / 1000) : 0
-		);
-		recordedDuration = durationSnapshot;
-		recordingStartedAt = null;
-		transcriptSnapshot = liveTranscriptValue.trim();
-
-		const blob = await voiceRecordingService.stopRecording('', { skipTranscription: true });
-		audioBlob = blob;
-
-		if (!blob) {
-			setError('No audio captured. Please try again.');
-		}
+	function stopRecording() {
+		void dictation.stop();
 	}
 
-	async function cancelRecording() {
-		if (isCurrentlyRecording) {
-			await voiceRecordingService.stopRecording('', { skipTranscription: true });
-		}
+	function cancelRecording() {
+		if (dictation.isBusy) dictation.cancel();
 		resetCapture();
 	}
 
 	async function saveRecording() {
-		if (!audioBlob || isUploading) return;
+		if (!recording?.audio || isUploading) return;
 		isUploading = true;
 		uploadProgress = 0;
 		errorMessage = '';
+		const hasTranscript = recording.text.length > 0;
 
 		try {
 			const voiceNote = await uploadVoiceNote({
-				audioBlob,
-				durationSeconds: recordedDuration || undefined,
+				audioBlob: recording.audio,
+				durationSeconds: recording.durationSeconds || undefined,
 				linkedEntityType,
 				linkedEntityId,
-				transcribe,
+				transcript: hasTranscript ? recording.text : null,
+				transcriptionStatus: hasTranscript ? 'complete' : null,
+				transcriptionSource: hasTranscript ? recording.transcriptionSource : null,
+				transcriptionModel: recording.transcriptionModel,
+				metadata: { source_component: 'voice-note-recorder' },
+				transcribe: transcribe && !hasTranscript,
 				onProgress: (progress) => {
 					uploadProgress = progress;
 				}
@@ -135,30 +125,9 @@
 		}
 	}
 
-	onMount(() => {
-		isVoiceSupported = voiceRecordingService.isVoiceSupported();
-		canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
-
-		voiceRecordingService.initialize({
-			onTextUpdate: () => {},
-			onError: (message) => setError(message),
-			onPhaseChange: () => {},
-			onCapabilityUpdate: (update) => {
-				canUseLiveTranscript = update.canUseLiveTranscript;
-			}
-		});
-
-		durationUnsubscribe = voiceRecordingService.getRecordingDuration().subscribe((value) => {
-			recordingDuration = value;
-			if (maxDuration && value >= maxDuration && isCurrentlyRecording) {
-				stopRecording();
-			}
-		});
-	});
-
 	onDestroy(() => {
-		durationUnsubscribe?.();
-		voiceRecordingService.cleanup();
+		// Leaving the page mid-recording discards it; nothing was saved yet.
+		if (dictation.isBusy) dictation.cancel();
 	});
 </script>
 
@@ -167,11 +136,13 @@
 		<div>
 			<p class="text-sm font-semibold text-foreground">Voice note</p>
 			<p class="text-xs text-muted-foreground">
-				{#if !isVoiceSupported}
+				{#if !dictation.supported}
 					Voice recording is not supported in this browser.
-				{:else if isCurrentlyRecording}
-					Recording... tap again to stop.
-				{:else if audioBlob}
+				{:else if isCapturing}
+					Recording… tap again to stop.
+				{:else if dictation.phase === 'finishing'}
+					Finishing the transcript…
+				{:else if recording}
 					Review and save your recording.
 				{:else}
 					Tap the mic to start a recording.
@@ -179,40 +150,47 @@
 			</p>
 		</div>
 		<div class="text-xs font-mono text-muted-foreground">
-			{formatDuration(isCurrentlyRecording ? recordingDuration : recordedDuration)}
+			{formatDictationDuration(
+				isCapturing ? dictation.elapsedMs : (recording?.durationSeconds ?? 0) * 1000
+			)}
 		</div>
 	</div>
 
 	<div class="mt-4 flex items-center gap-3">
 		<button
 			class={`relative flex h-12 w-12 items-center justify-center rounded-full border transition-all ${
-				isCurrentlyRecording
+				dictation.phase === 'recording'
 					? 'border-destructive bg-destructive text-destructive-foreground shadow-ink-strong'
 					: 'border-border bg-card text-foreground shadow-ink'
-			} ${!isVoiceSupported || isUploading ? 'opacity-50 cursor-not-allowed' : 'pressable'}`}
-			disabled={!isVoiceSupported || isUploading || isInitializing}
-			onclick={isCurrentlyRecording ? stopRecording : startRecording}
-			aria-label={isCurrentlyRecording ? 'Stop recording' : 'Start recording'}
+			} ${!dictation.supported || isUploading ? 'opacity-50 cursor-not-allowed' : 'pressable'}`}
+			disabled={!dictation.supported ||
+				isUploading ||
+				dictation.phase === 'starting' ||
+				dictation.phase === 'finishing'}
+			onclick={dictation.phase === 'recording' ? stopRecording : startRecording}
+			aria-label={dictation.phase === 'recording' ? 'Stop recording' : 'Start recording'}
 		>
-			{#if isInitializing}
-				<LoaderCircle class="h-5 w-5 animate-spin" />
-			{:else if isCurrentlyRecording}
-				<Square class="h-5 w-5" />
-				<span
-					class="absolute -right-1 -top-1 h-3 w-3 animate-status-ping rounded-full bg-destructive"
-				></span>
+			{#if dictation.phase === 'starting' || dictation.phase === 'finishing'}
+				<LoaderCircle class="h-5 w-5 animate-spin motion-reduce:animate-none" />
+			{:else if dictation.phase === 'recording'}
+				<Square class="h-5 w-5 fill-current" />
 			{:else}
 				<Mic class="h-5 w-5" />
 			{/if}
 		</button>
 
-		<div class="text-sm text-muted-foreground">
-			{#if isInitializing}
-				Preparing microphone...
-			{:else if isCurrentlyRecording}
-				{formatDuration(recordingDuration)} / {formatDuration(maxDuration)}
-			{:else if audioBlob}
-				Ready to upload
+		<div class="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+			{#if dictation.phase === 'recording'}
+				<VoiceLevelMeter levels={dictation.levels} />
+				<span class="tabular-nums">
+					{formatDictationDuration(dictation.elapsedMs)} / {formatDictationDuration(
+						maxDuration * 1000
+					)}
+				</span>
+			{:else if dictation.isBusy || dictation.error}
+				<VoiceStatusLine {dictation} showKeyHint={false} />
+			{:else if recording}
+				Ready to save
 			{:else}
 				Ready
 			{/if}
@@ -221,15 +199,23 @@
 
 	{#if showTranscript}
 		<div class="mt-4 rounded-lg border border-border bg-muted/50 p-3 text-sm text-foreground">
-			{#if isCurrentlyRecording && canUseLiveTranscript}
-				<p class="mb-1 text-xs text-muted-foreground">Live transcript</p>
-				<p>{liveTranscriptValue || 'Listening...'}</p>
-			{:else if transcriptSnapshot}
-				<p class="mb-1 text-xs text-muted-foreground">Transcript preview</p>
-				<p>{transcriptSnapshot}</p>
+			{#if dictation.isBusy}
+				<p class="mb-1 text-xs text-muted-foreground">Transcript</p>
+				{#if liveWords}
+					<p>
+						<span>{dictation.confirmedText}</span>
+						{#if dictation.confirmedText && dictation.draftText}{' '}{/if}
+						<span class="text-muted-foreground">{dictation.draftText}</span>
+					</p>
+				{:else}
+					<p class="text-muted-foreground">Listening…</p>
+				{/if}
+			{:else if recording?.text}
+				<p class="mb-1 text-xs text-muted-foreground">Transcript</p>
+				<p>{recording.text}</p>
 			{:else}
 				<p class="text-xs text-muted-foreground">
-					Transcript will appear here when available.
+					Your words appear here as you talk.
 				</p>
 			{/if}
 		</div>
@@ -249,7 +235,7 @@
 		</div>
 	{/if}
 
-	{#if !isCurrentlyRecording && audioBlob}
+	{#if !dictation.isBusy && recording}
 		<div class="mt-4 flex flex-wrap gap-2">
 			<Button onclick={saveRecording} loading={isUploading} variant="primary" size="sm">
 				Save voice note
@@ -258,7 +244,7 @@
 				Discard
 			</Button>
 		</div>
-	{:else if isCurrentlyRecording}
+	{:else if dictation.phase === 'recording'}
 		<div class="mt-4 flex flex-wrap gap-2">
 			<Button onclick={stopRecording} variant="warning" size="sm">Stop recording</Button>
 			<Button onclick={cancelRecording} variant="ghost" size="sm">Cancel</Button>

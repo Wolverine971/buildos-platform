@@ -5,6 +5,11 @@
 // regions are enforced exactly as for any other agent write. Each save re-checks
 // the document's updated_at first: a document edited since capture read it is a
 // conflict, and the queue job retries against the fresh copy.
+import {
+	attributeGlobalTurns,
+	globalCaptureUserIds,
+	receiptsForMessages
+} from './globalAttribution';
 import { randomUUID } from 'node:crypto';
 import type {
 	AgentCallScope,
@@ -212,6 +217,36 @@ export function createSupabaseCheckpointPorts(options?: {
 				projectId: data.context_type === 'project' ? data.entity_id : null,
 				title: data.title?.trim() || data.auto_title?.trim() || null
 			};
+		},
+
+		async attributeProject(session, userMessages) {
+			if (!globalCaptureUserIds().includes(session.userId.toLowerCase())) return null;
+			const ids = userMessages.map((message) => message.id);
+			const [messages, events] = await Promise.all([
+				supabase.from('chat_messages').select('id, metadata').in('id', ids),
+				supabase
+					.from('chat_turn_events')
+					.select('payload, created_at')
+					.eq('session_id', session.id)
+					.eq('event_type', 'context_selection')
+					.order('created_at', { ascending: true })
+					.limit(500)
+			]);
+			if (messages.error) throw messages.error;
+			if (events.error) throw events.error;
+			const clientTurns = new Map(
+				(messages.data ?? []).map((row) => {
+					const turn = (row.metadata as { client_turn_id?: unknown } | null)
+						?.client_turn_id;
+					return [row.id, typeof turn === 'string' ? turn : null] as const;
+				})
+			);
+			return attributeGlobalTurns(
+				receiptsForMessages(
+					ids.map((id) => ({ id, clientTurnId: clientTurns.get(id) ?? null })),
+					events.data ?? []
+				)
+			);
 		},
 
 		async loadMessages(session: CheckpointSession) {

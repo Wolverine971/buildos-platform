@@ -351,7 +351,7 @@ export class OpenRouterClient {
 						: { temperature: params.temperature }),
 					...(params.provider ? { provider: params.provider } : {})
 				}),
-				signal: AbortSignal.timeout(params.timeoutMs)
+				signal: AbortSignal.timeout(Math.max(1, Math.floor(params.timeoutMs)))
 			});
 
 			if (!response.ok) {

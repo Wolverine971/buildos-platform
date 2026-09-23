@@ -11,6 +11,7 @@
 // recorded against the session's newest message, and the sweep leaves that
 // session alone until a new message arrives, so a broken session cannot spend
 // on the model every minute.
+import { globalCaptureUserIds } from './globalAttribution';
 import type { CaptureChatCheckpointJobMetadata } from '@buildos/shared-types';
 import { supabase } from '../../../lib/supabase';
 import type { ProcessingJob } from '../../../lib/supabaseQueue';
@@ -93,15 +94,33 @@ export async function sweepChatCheckpoints(now = new Date()): Promise<{
 	enqueued: number;
 }> {
 	if (!chatCaptureEnabled()) return { scanned: 0, enqueued: 0 };
-	const { data: sessions, error } = await supabase
-		.from('chat_sessions')
-		.select('id, user_id, last_message_at, capture_watermark_at')
-		.eq('context_type', 'project')
-		.not('entity_id', 'is', null)
-		.gte('last_message_at', new Date(now.getTime() - SWEEP_LOOKBACK_MS).toISOString())
-		.order('last_message_at', { ascending: false })
-		.limit(SWEEP_SESSION_LIMIT);
-	if (error) throw error;
+	const since = new Date(now.getTime() - SWEEP_LOOKBACK_MS).toISOString();
+	// Global chats of allowlisted users feed projects too; capture attributes each batch to one
+	// project from the turns' Jev receipts, or skips it (globalAttribution.ts).
+	const globalUsers = globalCaptureUserIds();
+	const [projectSessions, globalSessions] = await Promise.all([
+		supabase
+			.from('chat_sessions')
+			.select('id, user_id, last_message_at, capture_watermark_at')
+			.eq('context_type', 'project')
+			.not('entity_id', 'is', null)
+			.gte('last_message_at', since)
+			.order('last_message_at', { ascending: false })
+			.limit(SWEEP_SESSION_LIMIT),
+		globalUsers.length
+			? supabase
+					.from('chat_sessions')
+					.select('id, user_id, last_message_at, capture_watermark_at')
+					.eq('context_type', 'global')
+					.in('user_id', globalUsers)
+					.gte('last_message_at', since)
+					.order('last_message_at', { ascending: false })
+					.limit(SWEEP_SESSION_LIMIT)
+			: Promise.resolve({ data: [], error: null })
+	]);
+	if (projectSessions.error) throw projectSessions.error;
+	if (globalSessions.error) throw globalSessions.error;
+	const sessions = [...(projectSessions.data ?? []), ...(globalSessions.data ?? [])];
 	const candidates = (sessions ?? []).filter(
 		(session) =>
 			session.last_message_at &&

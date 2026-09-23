@@ -53,6 +53,7 @@
 
 	let newComment = $state('');
 	let isSubmitting = $state(false);
+	let newCommentVoiceBusy = $state(false);
 
 	let replyingToId = $state<string | null>(null);
 	let replyBody = $state('');
@@ -219,7 +220,7 @@
 
 	async function submitComment(parentId: string | null) {
 		const bodyText = (parentId ? replyBody : newComment).trim();
-		if (!bodyText) return;
+		if (!bodyText || (!parentId && newCommentVoiceBusy)) return;
 
 		if (parentId) {
 			isReplying = true;
@@ -351,6 +352,7 @@
 			<CommentTextareaWithVoice
 				id="new-comment-input"
 				bind:value={newComment}
+				bind:isVoiceBusy={newCommentVoiceBusy}
 				rows={2}
 				placeholder="Share an update or ask a question..."
 				disabled={isSubmitting || !canWrite}
@@ -378,7 +380,10 @@
 						size="sm"
 						class="pressable"
 						onclick={() => submitComment(null)}
-						disabled={isSubmitting || !newComment.trim() || !canWrite}
+						disabled={isSubmitting ||
+							newCommentVoiceBusy ||
+							!newComment.trim() ||
+							!canWrite}
 					>
 						{#if isSubmitting}
 							<LoaderCircle class="w-3 h-3 animate-spin" />

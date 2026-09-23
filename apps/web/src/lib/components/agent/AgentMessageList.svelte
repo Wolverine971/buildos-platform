@@ -59,6 +59,8 @@
 		/** Freshness radar card "Draft in chat": pre-fill the composer with this text. */
 		onDraftInChat?: (text: string) => void;
 		onReviewDeeper?: (card: FreshnessCardPayloadV1) => void;
+		/** Global chat "Looking in" chip: continue this conversation inside that project. */
+		onContinueInProject?: (project: { id: string; name: string }) => void;
 		/** A document change card's Undo succeeded (refresh open views, persist "Undone"). */
 		onDocumentChangeUndone?: (
 			messageId: string,
@@ -87,6 +89,7 @@
 		onClientActionComplete,
 		onDraftInChat,
 		onReviewDeeper,
+		onContinueInProject,
 		onDocumentChangeUndone,
 		reviewProjectId = null,
 		reviewDisabled = false,
@@ -901,6 +904,9 @@
 								<ContextSelectionChips
 									{selection}
 									readIds={readIdsByTurn.get(selection.turn_run_id)}
+									onContinueInProject={resolvedProjectFocus
+										? undefined
+										: onContinueInProject}
 								/>
 							{/if}
 						{/if}

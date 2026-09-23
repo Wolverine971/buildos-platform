@@ -6,6 +6,8 @@ import {
 	chipHref,
 	contextSelectionOf,
 	orderedChips,
+	projectHref,
+	projectsLabel,
 	readRecordIdsByTurn
 } from './context-selection-chips';
 
@@ -130,5 +132,69 @@ describe('chip helpers', () => {
 		const byTurn = readRecordIdsByTurn(messages);
 		expect([...byTurn.get('turn-1')!].sort()).toEqual([DOC, TASK].sort());
 		expect(byTurn.get('turn-2')!.has(GOAL)).toBe(true);
+	});
+});
+
+describe('global (workspace) selections', () => {
+	const OTHER = '30000000-0000-4000-8000-000000000009';
+	const globalPayload = (overrides: Record<string, unknown> = {}) =>
+		payload({
+			project_id: null,
+			workspace: { scope: 'projects', dig: true, dig_p: 0.8, checked: 46 },
+			projects: [
+				{ id: PROJECT, name: 'Redline Training', p: 0.94, hop2: 'ran' },
+				{ id: OTHER, name: 'Tacemus', p: 0.55, hop2: 'deadline' },
+				{ id: 7, name: 'bad' },
+				{ id: OTHER, name: 'Tacemus', p: 0.5, hop2: 'teleported' }
+			],
+			items: [
+				{
+					kind: 'document',
+					id: DOC,
+					label: 'Discovery Notes',
+					tier: 'full',
+					p: 0.9,
+					sections: [],
+					project_id: OTHER
+				}
+			],
+			...overrides
+		});
+
+	it('parses the focused projects and the workspace summary', () => {
+		const parsed = parseContextSelectionEventV1(globalPayload())!;
+		expect(parsed.workspace).toEqual({ scope: 'projects', dig: true, checked: 46 });
+		expect(parsed.projects.map((p) => [p.name, p.hop2])).toEqual([
+			['Redline Training', 'ran'],
+			['Tacemus', 'deadline'],
+			['Tacemus', 'skipped']
+		]);
+		expect(parsed.items[0]!.project_id).toBe(OTHER);
+	});
+
+	it("links a global record to its own project, not the turn's", () => {
+		const parsed = parseContextSelectionEventV1(globalPayload())!;
+		expect(chipHref(parsed.items[0]!, parsed.project_id)).toBe(
+			`/projects/${OTHER}/documents/${DOC}`
+		);
+		expect(projectHref(PROJECT)).toBe(`/projects/${PROJECT}`);
+	});
+
+	it('labels portfolio selections "Across" and project selections "Looking in"', () => {
+		expect(projectsLabel(parseContextSelectionEventV1(globalPayload())!)).toBe('Looking in');
+		expect(
+			projectsLabel(
+				parseContextSelectionEventV1(
+					globalPayload({ workspace: { scope: 'portfolio', dig: false, checked: 46 } })
+				)!
+			)
+		).toBe('Across');
+	});
+
+	it('leaves project-turn selections without workspace fields', () => {
+		const parsed = parseContextSelectionEventV1(payload())!;
+		expect(parsed.workspace).toBeNull();
+		expect(parsed.projects).toEqual([]);
+		expect(parsed.items[0]!.project_id).toBeNull();
 	});
 });

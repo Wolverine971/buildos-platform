@@ -80,6 +80,8 @@ export type JevDecisionReceipt = {
 	requestBytes: number;
 	questionCount: number;
 	attempts: number;
+	/** A hedge request was sent because the first was slow or failed fast. */
+	hedged?: boolean;
 };
 export type JevDecisionResult<Qs extends JevQuestionSet> =
 	/** raw kept for ledger and backtest cache */
@@ -103,6 +105,14 @@ export interface JevClientOptions {
 	maxRequestBytes?: number;
 	/** Retry once on 429/5xx after 400–800 ms of jitter. Default true. */
 	retryOnce?: boolean;
+	/**
+	 * Tail-latency hedge: if no answer after this many ms, send the same request again and take
+	 * the first answer (the other is aborted). A request that fails fast is hedged at once.
+	 * Jev latency is bimodal and slow calls are independent (about 26% land in a 2-3 s lane;
+	 * docs/research/jev-global-context-2026-09-23), so one hedge rescues most of them.
+	 * Off by default. Pair with retryOnce: false.
+	 */
+	hedgeAfterMs?: number;
 	title?: string;
 	usage?: UsageLogger;
 }
@@ -346,7 +356,7 @@ export class JevClient implements JevDecider {
 			receipt.requestBytes = new TextEncoder().encode(serialized).byteLength;
 			if (receipt.requestBytes > this.maxRequestBytes) return fail('jev_input_limit');
 
-			const outcome = await this.send(serialized, receipt, started, opts);
+			const outcome = await this.sendHedged(serialized, receipt, started, opts);
 			if (!outcome.ok) return fail(outcome.error);
 
 			const body = outcome.body;
@@ -369,6 +379,67 @@ export class JevClient implements JevDecider {
 			return fail('jev_request_failed');
 		}
 	};
+
+	/** One request, or two racing ones when `hedgeAfterMs` is set; the first success wins. */
+	private sendHedged(
+		serialized: string,
+		receipt: JevDecisionReceipt,
+		started: number,
+		opts: { signal?: AbortSignal; timeoutMs?: number }
+	): Promise<{ ok: true; body: unknown } | { ok: false; error: JevErrorCode }> {
+		const hedgeAfterMs = this.options.hedgeAfterMs;
+		if (!hedgeAfterMs || hedgeAfterMs <= 0)
+			return this.send(serialized, receipt, started, opts);
+		const deadline = started + (opts.timeoutMs ?? this.timeoutMs);
+		type Outcome = Awaited<ReturnType<JevClient['send']>>;
+		return new Promise<Outcome>((resolve) => {
+			const lanes: AbortController[] = [];
+			let pending = 0;
+			let settled = false;
+			let hedgeTimer: ReturnType<typeof setTimeout> | undefined;
+			const finish = (outcome: Outcome) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(hedgeTimer);
+				receipt.attempts = lanes.length;
+				for (const lane of lanes) lane.abort();
+				resolve(outcome);
+			};
+			const canHedge = () =>
+				lanes.length === 1 &&
+				!opts.signal?.aborted &&
+				deadline - Date.now() > MIN_RETRY_BUDGET_MS;
+			const launch = () => {
+				const lane = new AbortController();
+				lanes.push(lane);
+				if (lanes.length > 1) receipt.hedged = true;
+				pending += 1;
+				const signal = opts.signal
+					? AbortSignal.any([opts.signal, lane.signal])
+					: lane.signal;
+				this.send(serialized, { ...receipt }, started, { ...opts, signal }).then(
+					(outcome) => {
+						pending -= 1;
+						if (outcome.ok) return finish(outcome);
+						// A fast retryable failure starts the hedge now instead of waiting.
+						if (outcome.error !== 'jev_http_4xx' && canHedge()) {
+							clearTimeout(hedgeTimer);
+							return launch();
+						}
+						if (pending === 0) finish(outcome);
+					},
+					() => {
+						pending -= 1;
+						if (pending === 0) finish({ ok: false, error: 'jev_request_failed' });
+					}
+				);
+			};
+			launch();
+			hedgeTimer = setTimeout(() => {
+				if (!settled && canHedge()) launch();
+			}, hedgeAfterMs);
+		});
+	}
 
 	private async send(
 		serialized: string,
@@ -488,6 +559,7 @@ export class JevClient implements JevDecider {
 								questionCount: receipt.questionCount,
 								requestBytes: receipt.requestBytes,
 								attempts: receipt.attempts,
+								hedged: receipt.hedged === true,
 								estimatedUsage: receipt.inputTokens === null
 							}
 						}

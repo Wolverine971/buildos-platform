@@ -256,6 +256,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			contextFinderEnabled: false,
 			contextFinderChat: 'off',
 			contextFinderChatUserIds: [],
+			contextFinderGlobal: 'off',
 			documentReadToolsEnabled: false,
 			documentEvidenceHandoffEnabled: false,
 			jevSpecialistSelection: 'off',

@@ -895,6 +895,32 @@ describe('AgentChatStreamController', () => {
 		expect(parseBody(h.admissionCalls[1]!).message).toBe('A second submit while waiting');
 	});
 
+	it('queues a dictated follow-up mid-response and sends it with its recording', async () => {
+		const voiceNoteGroupId = 'd6000000-0000-4000-8000-000000000009';
+		const h = createHarness({ inputValue: 'Dictated while it was answering' });
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+		h.voice.noteGroupId = voiceNoteGroupId;
+
+		await h.controller.sendMessage();
+
+		expect(h.controller.error).toBeNull();
+		expect(h.controller.queuedMessage).toBe('Dictated while it was answering');
+		expect(h.controller.queuedVoiceNoteGroupId).toBe(voiceNoteGroupId);
+		// The composer is free for the next recording.
+		expect(h.voice.noteGroupId).toBeNull();
+		expect(h.admissionCalls).toHaveLength(0);
+
+		h.controller.finishWorkerTurn(handle, 'completed');
+		await h.controller.flushQueuedMessage();
+
+		expect(h.admissionCalls).toHaveLength(1);
+		const body = parseBody(h.admissionCalls[0]!);
+		expect(body.message).toBe('Dictated while it was answering');
+		expect(body.voiceNoteGroupId).toBe(voiceNoteGroupId);
+		expect(h.controller.queuedVoiceNoteGroupId).toBeNull();
+	});
+
 	it('hands a queued follow-up back to the composer when the turn fails', () => {
 		const h = createHarness({ inputValue: 'draft in progress' });
 		const handle = workerHandle();

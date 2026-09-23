@@ -217,6 +217,11 @@
 		textareaElement?.blur();
 	}
 
+	/** The underlying element (voice dictation mirrors its box and typography). */
+	export function getElement(): HTMLTextAreaElement | null {
+		return textareaElement ?? null;
+	}
+
 	// Expose setSelectionRange for cursor manipulation (e.g., voice transcription)
 	export function setSelectionRange(start: number, end: number) {
 		textareaElement?.setSelectionRange(start, end);

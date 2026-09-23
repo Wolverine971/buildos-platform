@@ -3,8 +3,8 @@
 
 import { cleanup, render } from '@testing-library/svelte';
 import { tick } from 'svelte';
+import { undo } from '@codemirror/commands';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { shouldInsertCapturedVoiceFallback } from '../rich-markdown-editor-voice';
 import CodeMirrorEditor from './CodeMirrorEditor.svelte';
 
 afterEach(() => {
@@ -27,7 +27,7 @@ async function renderEditor(value: string) {
 	return { component, view };
 }
 
-describe('CodeMirrorEditor voice insertion behavior', () => {
+describe('CodeMirrorEditor inline dictation', () => {
 	it('inserts a no-position fallback at the active cursor instead of the document end', async () => {
 		const { component, view } = await renderEditor('Alpha omega');
 		view.dispatch({ selection: { anchor: 6 } });
@@ -37,15 +37,56 @@ describe('CodeMirrorEditor voice insertion behavior', () => {
 		expect(view.state.doc.toString()).toBe('Alpha bravo omega');
 	});
 
-	it('does not append the captured live transcript after the final transcript inserted', async () => {
+	it('lands the transcript where dictation started even after edits elsewhere', async () => {
 		const { component, view } = await renderEditor('Alpha omega');
-		const inserted = component.insertTextAt(6, 'bravo');
+		view.dispatch({ selection: { anchor: 5 } });
+		component.beginDictation();
+		component.updateDictation('bravo', 'charlie', true);
 
-		if (shouldInsertCapturedVoiceFallback('bravo', inserted)) {
-			component.insertAtCursor('bravo');
-		}
+		// The user keeps typing before the dictation point.
+		view.dispatch({ changes: { from: 0, insert: 'Note: ' } });
 
+		expect(component.commitDictation('bravo charlie')).toBe(true);
+		expect(view.state.doc.toString()).toBe('Note: Alpha bravo charlie omega');
+		expect(view.state.selection.main.head).toBe(25);
+		expect(component.getDictationTarget()).toBeNull();
+	});
+
+	it('does not throw when the document shrank below the original offset', async () => {
+		const { component, view } = await renderEditor('A long paragraph of text');
+		view.dispatch({ selection: { anchor: 24 } });
+		component.beginDictation();
+		view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'Short' } });
+
+		expect(() => component.commitDictation('tail words')).not.toThrow();
+		expect(view.state.doc.toString()).toBe('Short tail words');
+	});
+
+	it('commits as a single undo step', async () => {
+		const { component, view } = await renderEditor('Alpha omega');
+		view.dispatch({ selection: { anchor: 5 } });
+		component.beginDictation();
+		component.commitDictation('bravo');
 		expect(view.state.doc.toString()).toBe('Alpha bravo omega');
+
+		undo(view);
+		expect(view.state.doc.toString()).toBe('Alpha omega');
+	});
+
+	it('replaces a selection dictated over', async () => {
+		const { component, view } = await renderEditor('Alpha beta omega');
+		view.dispatch({ selection: { anchor: 6, head: 10 } });
+		component.beginDictation();
+		component.commitDictation('gamma');
+		expect(view.state.doc.toString()).toBe('Alpha gamma omega');
+	});
+
+	it('removes the widget without inserting when nothing was transcribed', async () => {
+		const { component, view } = await renderEditor('Alpha');
+		component.beginDictation({ from: 5, to: 5 });
+		expect(component.commitDictation('  ')).toBe(true);
+		expect(view.state.doc.toString()).toBe('Alpha');
+		expect(component.getDictationTarget()).toBeNull();
 	});
 
 	it('restores selection and scroll state after an external value refresh', async () => {

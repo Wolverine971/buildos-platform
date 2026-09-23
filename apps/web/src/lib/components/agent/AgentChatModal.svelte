@@ -123,6 +123,7 @@
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import {
+		buildProjectWideFocus,
 		deriveSessionTitle,
 		type AgentChatSessionSnapshot,
 		isProjectContext,
@@ -1119,8 +1120,8 @@
 
 	// Note: voice.isRecording is NOT included - clicking send while recording will
 	// stop the recording and auto-send after transcription completes.
-	// While a response is running, a plain text follow-up is queued (it sends on
-	// its own when the response finishes); images and voice wait for idle.
+	// While a response is running, a typed or dictated follow-up is queued (it
+	// sends on its own when the response finishes); images wait for idle.
 	const hasSendableImageAttachments = $derived(attachments.hasSendableImageAttachments);
 	const hasBlockedImageAttachments = $derived(attachments.hasPendingOrFailedImageAttachments);
 	const reviewDisabled = $derived(
@@ -1137,8 +1138,7 @@
 			isLoadingSession ||
 			hasBlockedImageAttachments ||
 			(!inputValue.trim() && !voice.isRecording && !hasSendableImageAttachments) || // Allow send if recording (will get transcribed text)
-			(stream.isTurnBusy &&
-				(hasSendableImageAttachments || voice.isRecording || voice.noteGroupId !== null)) ||
+			(stream.isTurnBusy && hasSendableImageAttachments) ||
 			voice.isInitializing ||
 			voice.isStopping ||
 			voice.isTranscribing ||
@@ -1239,6 +1239,26 @@
 		handleChatTabChange('chat');
 		haptic('light');
 		toastService.success('Project review ready in the composer');
+	}
+
+	/**
+	 * Global chat "Looking in" chip: continue this conversation inside the project. Mirrors a
+	 * server context shift; the next message carries the project context, so the session moves
+	 * there (resolveSession) and the project prompt, with START HERE, loads. History is kept.
+	 */
+	function handleContinueInProject(project: { id: string; name: string }) {
+		if (stream.isStreaming) return;
+		const { shiftedToNewProject } = shellRouter.setSelectedContext({
+			contextType: 'project',
+			entityId: project.id,
+			label: project.name
+		});
+		if (shiftedToNewProject) contextShiftPulse += 1;
+		shellRouter.projectFocus = buildProjectWideFocus(project.id, project.name);
+		if (currentSession)
+			currentSession = { ...currentSession, context_type: 'project', entity_id: project.id };
+		haptic('light');
+		toastService.success(`Continuing in ${project.name}`);
 	}
 
 	function handleAskAboutTimelineItem(item: AgentTimelineItem) {
@@ -2993,6 +3013,7 @@
 		onDraftInChat={handleFreshnessDraftInChat}
 		onDocumentChangeUndone={handleDocumentChangeUndone}
 		onReviewDeeper={projectReviewAvailable ? handleReviewDeeper : undefined}
+		onContinueInProject={handleContinueInProject}
 		{reviewProjectId}
 		{reviewDisabled}
 		{compact}

@@ -63,7 +63,17 @@ export function readRecordIdsByTurn(messages: readonly UIMessage[]): Map<string,
 
 export function chipHref(chip: ContextSelectionChipV1, projectId: string | null): string | null {
 	if (chip.kind !== 'task' && chip.kind !== 'document') return null;
-	return buildRecordHref(chip.kind, chip.id, projectId ?? undefined);
+	// Global turns carry each record's own project.
+	return buildRecordHref(chip.kind, chip.id, chip.project_id ?? projectId ?? undefined);
+}
+
+export function projectHref(projectId: string): string {
+	return buildRecordHref('project', projectId)!;
+}
+
+/** Global turns: the heading for the projects row ("Looking in" or, for the portfolio, "Across"). */
+export function projectsLabel(selection: ContextSelectionEventV1): string {
+	return selection.workspace?.scope === 'portfolio' ? 'Across' : 'Looking in';
 }
 
 /** Full items first, then summaries; each group keeps the ranker's order. */

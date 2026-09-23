@@ -39,6 +39,8 @@ export type AgenticChatContextFinderPort = {
  */
 export const CHAT_CONTEXT_FINDER_DEADLINE_MS = 2_500;
 export const CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS = 1_500;
+/** Send a duplicate Jev request when the first has not answered by then (JevClient hedge). */
+export const CHAT_CONTEXT_FINDER_HEDGE_MS = 700;
 const MAX_CHIPS = 30;
 
 export class ChatContextFinder implements AgenticChatContextFinderPort {
@@ -58,49 +60,28 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 	async find(request: AgenticChatTurnProviderRequestV1): Promise<ChatContextFinding | null> {
 		const projectId = request.projectId;
 		if (!projectId || !this.options.userIds.includes(request.userId.toLowerCase())) return null;
-		const conversation = request.messages.filter(
-			(m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'
-		);
-		let currentIndex = conversation.length - 1;
-		while (currentIndex >= 0 && conversation[currentIndex]!.role !== 'user') currentIndex--;
-		const message = conversation[currentIndex]?.content;
-		if (typeof message !== 'string' || !message.trim()) return null;
+		const turn = turnConversation(request);
+		if (!turn) return null;
 
 		const now = this.options.now ?? Date.now;
 		const started = now();
-		const deadline = new AbortController();
-		const onAbort = () => deadline.abort(request.signal.reason);
-		request.signal.addEventListener('abort', onAbort, { once: true });
-		const timer = setTimeout(
-			() => deadline.abort(new Error('context_finder_deadline')),
-			this.options.deadlineMs ?? CHAT_CONTEXT_FINDER_DEADLINE_MS
-		);
 		let evidence: ContextEvidenceV1;
 		let plan: ContextPlanV1 | null = null;
-		let failure: string | null = null;
-		// Race the work against the deadline too: a dependency that ignores the abort signal
-		// must not be able to hold the turn.
-		const expired = new Promise<never>((_, reject) => {
-			deadline.signal.addEventListener('abort', () => reject(deadline.signal.reason), {
-				once: true
-			});
-		});
-		expired.catch(() => undefined);
-		try {
-			const work = (async () => {
+		const outcome = await withFinderDeadline(
+			request,
+			this.options.deadlineMs ?? CHAT_CONTEXT_FINDER_DEADLINE_MS,
+			async (signal) => {
 				const project = await loadContextFinderProject(
 					this.options.client,
 					projectId,
-					deadline.signal
+					signal
 				);
 				return findProjectContext({
 					project,
-					message,
+					message: turn.message,
 					decider: this.options.decider,
-					recentConversation: conversation
-						.slice(Math.max(0, currentIndex - 6), currentIndex)
-						.map((m) => ({ role: m.role, content: String(m.content) })),
-					signal: deadline.signal,
+					recentConversation: turn.recent,
+					signal,
 					timeoutMs: this.options.jevTimeoutMs ?? CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
 					usage: {
 						operationType: 'agentic_chat_context_finder_chat',
@@ -109,21 +90,13 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 						chatSessionId: request.sessionId
 					}
 				});
-			})();
-			// When the deadline wins, the abandoned work may still reject later.
-			work.catch(() => undefined);
-			const result = await Promise.race([work, expired]);
-			evidence = result.evidence;
-			plan = result.plan;
-		} catch (error) {
-			// A cancelled turn still cancels; everything else keeps today's context.
-			if (request.signal.aborted) throw error;
-			failure = deadline.signal.aborted ? 'deadline' : 'load_or_rank_failed';
-			evidence = unavailableContextEvidence(null);
-		} finally {
-			clearTimeout(timer);
-			request.signal.removeEventListener('abort', onAbort);
-		}
+			}
+		);
+		const failure = outcome.ok ? null : outcome.failure;
+		if (outcome.ok) {
+			evidence = outcome.value.evidence;
+			plan = outcome.value.plan;
+		} else evidence = unavailableContextEvidence(null);
 
 		const injected = this.options.mode === 'on' && evidence.status === 'selected';
 		const payload = buildContextSelectionPayload({
@@ -146,6 +119,64 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			},
 			injection: injected ? renderContextEvidenceBlock(evidence) : null
 		};
+	}
+}
+
+/** The latest user message and up to six turns before it (Jev's recent_conversation). */
+export function turnConversation(
+	request: AgenticChatTurnProviderRequestV1
+): { message: string; recent: { role: string; content: string }[] } | null {
+	const conversation = request.messages.filter(
+		(m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'
+	);
+	let currentIndex = conversation.length - 1;
+	while (currentIndex >= 0 && conversation[currentIndex]!.role !== 'user') currentIndex--;
+	const message = conversation[currentIndex]?.content;
+	if (typeof message !== 'string' || !message.trim()) return null;
+	return {
+		message,
+		recent: conversation
+			.slice(Math.max(0, currentIndex - 6), currentIndex)
+			.map((m) => ({ role: m.role, content: String(m.content) }))
+	};
+}
+
+/**
+ * Runs finder work against a deadline and the turn's own cancellation. The work is also raced,
+ * so a dependency that ignores the abort signal cannot hold the turn. A cancelled turn still
+ * throws; every other failure is reported so the caller keeps today's context.
+ */
+export async function withFinderDeadline<T>(
+	request: AgenticChatTurnProviderRequestV1,
+	deadlineMs: number,
+	work: (signal: AbortSignal) => Promise<T>
+): Promise<{ ok: true; value: T } | { ok: false; failure: 'deadline' | 'load_or_rank_failed' }> {
+	// An already-cancelled turn spends nothing.
+	request.signal.throwIfAborted();
+	const deadline = new AbortController();
+	const onAbort = () => deadline.abort(request.signal.reason);
+	request.signal.addEventListener('abort', onAbort, { once: true });
+	const timer = setTimeout(
+		() => deadline.abort(new Error('context_finder_deadline')),
+		deadlineMs
+	);
+	const expired = new Promise<never>((_, reject) => {
+		deadline.signal.addEventListener('abort', () => reject(deadline.signal.reason), {
+			once: true
+		});
+	});
+	expired.catch(() => undefined);
+	try {
+		const running = work(deadline.signal);
+		// When the deadline wins, the abandoned work may still reject later.
+		running.catch(() => undefined);
+		return { ok: true, value: await Promise.race([running, expired]) };
+	} catch (error) {
+		if (request.signal.aborted) throw error;
+		return { ok: false, failure: deadline.signal.aborted ? 'deadline' : 'load_or_rank_failed' };
+	} finally {
+		clearTimeout(timer);
+		request.signal.removeEventListener('abort', onAbort);
 	}
 }
 

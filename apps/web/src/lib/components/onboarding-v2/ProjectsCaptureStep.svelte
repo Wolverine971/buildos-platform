@@ -139,6 +139,9 @@
 	);
 	let calendarNotificationId = $state<string | null>(restored?.notificationId ?? null);
 	let isVoiceRecording = $state(false);
+	let isVoiceFinishing = $state(false);
+	// Recording or still firming up the transcript: the text isn't final yet.
+	const isVoiceBusy = $derived(isVoiceRecording || isVoiceFinishing);
 	let captureStartedTracked = false;
 	let reviewedTracked = false;
 	let packet = $state<ActivationPacket | null>(null);
@@ -210,7 +213,7 @@
 	async function submitCapture() {
 		if (creationSessionId) return resumeCreation();
 		const text = draftText.trim();
-		if (!text || isVoiceRecording || isLoadingChat || showChatModal || busy) return;
+		if (!text || isVoiceBusy || isLoadingChat || showChatModal || busy) return;
 		try {
 			await ensureChatModal();
 		} catch (err) {
@@ -619,6 +622,7 @@
 			<TextareaWithVoice
 				bind:value={draftText}
 				bind:isRecording={isVoiceRecording}
+				bind:isTranscribing={isVoiceFinishing}
 				placeholder={v3Prompts?.placeholder ?? FIRST_PROJECT_PROMPT}
 				rows={6}
 				maxRows={14}
@@ -647,7 +651,7 @@
 				onclick={submitCapture}
 				disabled={Boolean(creationSessionId) ||
 					!draftText.trim() ||
-					isVoiceRecording ||
+					isVoiceBusy ||
 					isLoadingChat ||
 					busy}
 				loading={isLoadingChat}

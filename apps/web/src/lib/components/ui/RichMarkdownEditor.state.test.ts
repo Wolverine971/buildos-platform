@@ -2,85 +2,98 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
-import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RichMarkdownEditorStateHarness from './RichMarkdownEditor.state.test-harness.svelte';
 
-type VoiceCallbacks = {
-	onError: (message: string) => void;
-	onPhaseChange: (phase: 'idle' | 'transcribing') => void;
-	onCapabilityUpdate?: (update: { canUseLiveTranscript: boolean }) => void;
-};
-
-function deferred() {
-	let resolve!: () => void;
-	const promise = new Promise<void>((resolvePromise) => {
+function deferred<T = void>() {
+	let resolve!: (value: T) => void;
+	let reject!: (error: unknown) => void;
+	const promise = new Promise<T>((resolvePromise, rejectPromise) => {
 		resolve = resolvePromise;
+		reject = rejectPromise;
 	});
-	return { promise, resolve };
+	return { promise, resolve, reject };
 }
 
-const voiceMock = vi.hoisted(() => ({
-	callbacks: null as VoiceCallbacks | null,
-	durationSubscriber: null as ((duration: number) => void) | null,
-	start: null as ReturnType<typeof deferred> | null,
-	stop: null as ReturnType<typeof deferred> | null
+const captureMock = vi.hoisted(() => ({
+	events: null as null | {
+		onSegmentCut?: (index: number) => void;
+		onSegment: (segment: {
+			index: number;
+			blob: Blob;
+			startMs: number;
+			endMs: number;
+			speechMs: number;
+			hasSpeech: boolean;
+		}) => void;
+	},
+	start: null as null | { promise: Promise<void> },
+	elapsedMs: 0
 }));
 
-vi.mock('$lib/services/voiceRecording.service', () => ({
-	voiceRecordingService: {
-		cleanup: vi.fn(),
-		getRecordingDuration: vi.fn(() => ({
-			subscribe(callback: (duration: number) => void) {
-				voiceMock.durationSubscriber = callback;
-				callback(0);
-				return () => {
-					voiceMock.durationSubscriber = null;
-				};
-			}
-		})),
-		initialize: vi.fn((callbacks: VoiceCallbacks) => {
-			voiceMock.callbacks = callbacks;
-			callbacks.onCapabilityUpdate?.({ canUseLiveTranscript: true });
-		}),
-		isLiveTranscriptSupported: vi.fn(() => true),
-		isVoiceSupported: vi.fn(() => true),
-		setVocabularyTerms: vi.fn(),
-		startRecording: vi.fn(() => voiceMock.start?.promise ?? Promise.resolve()),
-		stopRecording: vi.fn(() => voiceMock.stop?.promise ?? Promise.resolve())
+vi.mock('$lib/voice/audio-capture', async (importOriginal) => {
+	const original = await importOriginal<typeof import('$lib/voice/audio-capture')>();
+	class FakeCapture {
+		constructor(events: NonNullable<typeof captureMock.events>) {
+			captureMock.events = events;
+		}
+		get elapsedMs() {
+			return captureMock.elapsedMs;
+		}
+		start() {
+			return captureMock.start?.promise ?? Promise.resolve();
+		}
+		async stop() {
+			const blob = new Blob(['audio'], { type: 'audio/webm' });
+			captureMock.events?.onSegmentCut?.(0);
+			captureMock.events?.onSegment({
+				index: 0,
+				blob,
+				startMs: 0,
+				endMs: 3_000,
+				speechMs: 2_000,
+				hasSpeech: true
+			});
+			return { fullAudio: blob, durationMs: 3_000 };
+		}
+		abort() {}
 	}
+	return { ...original, AudioCapture: FakeCapture, voiceCaptureSupported: () => true };
+});
+
+const services = vi.hoisted(() => ({
+	createVoiceNoteGroup: vi.fn(() => Promise.resolve()),
+	uploadVoiceNote: vi.fn(() => Promise.resolve({ id: 'note-1' })),
+	updateVoiceNote: vi.fn(() => Promise.resolve({ id: 'note-1' }))
 }));
 
 vi.mock('$lib/services/voice-note-groups.service', () => ({
 	cleanupVoiceNoteGroups: vi.fn(() => Promise.resolve()),
-	createVoiceNoteGroup: vi.fn(() => Promise.resolve())
+	createVoiceNoteGroup: services.createVoiceNoteGroup
 }));
 
 vi.mock('$lib/services/voice-notes.service', () => ({
-	uploadVoiceNote: vi.fn(() => Promise.resolve()),
-	updateVoiceNote: vi.fn(() => Promise.resolve())
-}));
-
-vi.mock('$lib/utils/voice', () => ({
-	liveTranscript: {
-		subscribe(callback: (value: string) => void) {
-			callback('');
-			return () => {};
-		}
-	}
+	uploadVoiceNote: services.uploadVoiceNote,
+	updateVoiceNote: services.updateVoiceNote
 }));
 
 vi.mock('$lib/utils/haptic', () => ({
 	haptic: vi.fn()
 }));
 
-describe('RichMarkdownEditor voice state ownership', () => {
+describe('RichMarkdownEditor inline dictation', () => {
+	let transcription: ReturnType<typeof deferred<Response>>;
+
 	beforeEach(() => {
-		voiceMock.callbacks = null;
-		voiceMock.durationSubscriber = null;
-		voiceMock.start = deferred();
-		voiceMock.stop = deferred();
+		captureMock.events = null;
+		captureMock.start = deferred();
+		captureMock.elapsedMs = 0;
+		transcription = deferred<Response>();
 		vi.stubGlobal('requestIdleCallback', vi.fn());
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => transcription.promise)
+		);
 	});
 
 	afterEach(() => {
@@ -89,27 +102,66 @@ describe('RichMarkdownEditor voice state ownership', () => {
 		vi.clearAllMocks();
 	});
 
-	it('publishes voice state directly through the bindable state boundary', async () => {
+	it('publishes voice state through the bindings and lands the transcript in the document', async () => {
 		render(RichMarkdownEditorStateHarness);
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Record voice note' }));
-		voiceMock.start?.resolve();
+		await fireEvent.click(screen.getByRole('button', { name: 'Dictate at cursor' }));
+		(captureMock.start as ReturnType<typeof deferred>).resolve();
 		await waitFor(() => {
 			expect(screen.getByTestId('recording')).toHaveTextContent('true');
 		});
 
-		voiceMock.durationSubscriber?.(12);
-		voiceMock.callbacks?.onPhaseChange('transcribing');
-		await tick();
-		expect(screen.getByTestId('duration')).toHaveTextContent('12');
-		expect(screen.getByTestId('transcribing')).toHaveTextContent('true');
+		captureMock.elapsedMs = 12_400;
+		await waitFor(() => expect(screen.getByTestId('duration')).toHaveTextContent('12'));
 
-		await fireEvent.click(screen.getByRole('button', { name: 'Stop recording' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Stop and insert text' }));
+		await waitFor(() => {
+			expect(screen.getByTestId('recording')).toHaveTextContent('false');
+			expect(screen.getByTestId('transcribing')).toHaveTextContent('true');
+		});
+
+		transcription.resolve(
+			new Response(JSON.stringify({ success: true, data: { transcript: 'Spoken words.' } }), {
+				status: 200
+			})
+		);
+		await waitFor(() => {
+			expect(screen.getByTestId('transcribing')).toHaveTextContent('false');
+			expect(screen.getByTestId('value')).toHaveTextContent('Spoken words. Initial document');
+		});
+
+		// Linked recordings are created "attached" so the 24h draft cleanup keeps them.
+		expect(services.createVoiceNoteGroup).toHaveBeenCalledWith(
+			expect.objectContaining({
+				linkedEntityType: 'document',
+				linkedEntityId: 'doc-1',
+				status: 'attached'
+			})
+		);
+		await waitFor(() =>
+			expect(services.updateVoiceNote).toHaveBeenCalledWith(
+				'note-1',
+				expect.objectContaining({
+					transcript: 'Spoken words.',
+					transcriptionStatus: 'complete'
+				})
+			)
+		);
+	});
+
+	it('shows a blocked microphone as a readable error', async () => {
+		render(RichMarkdownEditorStateHarness);
+		const { VoiceCaptureError } = await import('$lib/voice/audio-capture');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Dictate at cursor' }));
+		(captureMock.start as ReturnType<typeof deferred>).reject(
+			new VoiceCaptureError('permission-denied')
+		);
+
+		await waitFor(() => {
+			expect(screen.getByTestId('voice-error')).toHaveTextContent('Microphone access is blocked');
+		});
+		expect(screen.getByRole('alert')).toHaveTextContent('Microphone access is blocked');
 		expect(screen.getByTestId('recording')).toHaveTextContent('false');
-
-		voiceMock.stop?.resolve();
-		voiceMock.callbacks?.onError('Microphone denied');
-		await tick();
-		expect(screen.getByTestId('voice-error')).toHaveTextContent('Microphone denied');
 	});
 });

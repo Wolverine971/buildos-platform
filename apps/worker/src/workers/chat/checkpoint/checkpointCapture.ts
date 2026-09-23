@@ -150,6 +150,14 @@ export type CheckpointCapturePorts = {
 	}): Promise<void>;
 	/** Persist the checkpoint and advance the session watermark to its last message. */
 	finishCheckpoint(record: CheckpointRecord): Promise<void>;
+	/**
+	 * Global sessions only: the one project these user messages were clearly about, from the
+	 * turns' Jev receipts (globalAttribution.ts), or null to skip as before.
+	 */
+	attributeProject?(
+		session: CheckpointSession,
+		userMessages: readonly PromptMessage[]
+	): Promise<string | null>;
 };
 
 export type CheckpointOutcome =
@@ -250,7 +258,13 @@ export async function runChatCheckpointCapture(
 		restatedAdditions: 0,
 		error: null
 	};
-	const projectId = session.projectId;
+	// A global chat feeds a project only when its new turns were clearly about that one project.
+	const projectId =
+		session.projectId ??
+		(userMessages.length && ports.attributeProject
+			? await ports.attributeProject(session, userMessages)
+			: null);
+	record.projectId = projectId;
 	if (userMessages.length === 0 || !projectId) {
 		await ports.finishCheckpoint(record);
 		return { status: 'noop', record };

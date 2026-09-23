@@ -4,6 +4,7 @@
 
 	let value = $state('Initial comment');
 	let isRecording = $state(false);
+	let isVoiceBusy = $state(false);
 	let isTranscribing = $state(false);
 	let voiceError = $state('');
 	let recordingDuration = $state(0);
@@ -12,6 +13,7 @@
 
 <CommentTextareaWithVoice
 	bind:value
+	bind:isVoiceBusy
 	bind:isRecording
 	bind:isTranscribing
 	bind:voiceError
@@ -23,6 +25,7 @@
 
 <output data-testid="value">{value}</output>
 <output data-testid="input-count">{inputCount}</output>
+<output data-testid="voice-busy">{String(isVoiceBusy)}</output>
 <output data-testid="recording">{String(isRecording)}</output>
 <output data-testid="transcribing">{String(isTranscribing)}</output>
 <output data-testid="voice-error">{voiceError}</output>

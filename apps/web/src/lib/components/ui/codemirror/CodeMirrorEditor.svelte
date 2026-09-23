@@ -6,7 +6,7 @@
 	- Bidirectional value binding with loop prevention
 	- Markdown syntax highlighting with Inkprint theme
 	- Toolbar command methods (bold, italic, headings, lists, etc.)
-	- Voice transcription widget at cursor position
+	- Inline voice dictation at the cursor (see voice-widget.ts)
 	- Keyboard shortcuts (Cmd+B, Cmd+I, Cmd+K, Cmd+S)
 	- Fill-height mode for use inside flex containers
 -->
@@ -28,11 +28,14 @@
 	} from './extensions';
 	import {
 		voiceWidgetExtension,
+		buildDictationCommit,
+		getVoiceDictationTarget,
 		showVoiceWidget as showVoiceWidgetEffect,
 		showVoiceInsertHint as showVoiceInsertHintEffect,
-		updateVoicePreview,
+		updateVoiceDictation,
 		hideVoiceWidget as hideVoiceWidgetEffect,
-		hideVoiceInsertHint as hideVoiceInsertHintEffect
+		hideVoiceInsertHint as hideVoiceInsertHintEffect,
+		type VoiceDictationTarget
 	} from './voice-widget';
 
 	interface Props {
@@ -271,11 +274,64 @@
 	// Public API: Voice widget
 	// ---------------------------------------------------------------------------
 
-	/** Show the voice transcription indicator at a position, defaulting to the cursor */
-	export function showTranscribing(pos?: number) {
+	/**
+	 * Start inline dictation. Defaults to the current selection: a collapsed
+	 * cursor dictates there, a selection is replaced by the final text.
+	 */
+	export function beginDictation(range?: { from: number; to: number }): VoiceDictationTarget | null {
+		if (!view) return null;
+		const docLength = view.state.doc.length;
+		const clamp = (offset: number) => Math.min(Math.max(offset, 0), docLength);
+		const selection = range ?? view.state.selection.main;
+		const from = clamp(Math.min(selection.from, selection.to));
+		const to = clamp(Math.max(selection.from, selection.to));
+		view.dispatch({
+			effects: [
+				hideVoiceInsertHintEffect.of(null),
+				showVoiceWidgetEffect.of({ pos: to, replaceFrom: from, replaceTo: to })
+			]
+		});
+		return getVoiceDictationTarget(view.state);
+	}
+
+	/** Update the words shown inline while dictating. */
+	export function updateDictation(confirmed: string, draft: string, listening: boolean) {
 		if (!view) return;
-		const widgetPos = pos ?? view.state.selection.main.head;
-		view.dispatch({ effects: showVoiceWidgetEffect.of({ pos: widgetPos }) });
+		view.dispatch({ effects: updateVoiceDictation.of({ confirmed, draft, listening }) });
+	}
+
+	/** Where dictated text will land right now (mapped through edits), or null. */
+	export function getDictationTarget(): VoiceDictationTarget | null {
+		return view ? getVoiceDictationTarget(view.state) : null;
+	}
+
+	/**
+	 * Land the final text at the dictation point in one undoable transaction and
+	 * remove the inline widget. Returns false when no dictation is showing.
+	 */
+	export function commitDictation(text: string, options: { focus?: boolean } = {}): boolean {
+		if (!view) return false;
+		const target = getVoiceDictationTarget(view.state);
+		if (!target) return false;
+		const commit = buildDictationCommit(view.state, target, text);
+		if (!commit) {
+			view.dispatch({ effects: hideVoiceWidgetEffect.of(null) });
+			return true;
+		}
+		view.dispatch({
+			changes: commit.changes,
+			selection: { anchor: commit.caret },
+			effects: [hideVoiceWidgetEffect.of(null), EditorView.scrollIntoView(commit.caret)],
+			userEvent: 'input.dictation'
+		});
+		if (options.focus) view.focus();
+		return true;
+	}
+
+	/** Remove the inline dictation widget without inserting anything. */
+	export function cancelDictation() {
+		if (!view) return;
+		view.dispatch({ effects: hideVoiceWidgetEffect.of(null) });
 	}
 
 	/** Show the voice insertion hint at the current cursor position */
@@ -283,18 +339,6 @@
 		if (!view) return;
 		const pos = view.state.selection.main.head;
 		view.dispatch({ effects: showVoiceInsertHintEffect.of({ pos }) });
-	}
-
-	/** Update the live transcript preview inside the widget */
-	export function updateTranscriptPreview(text: string) {
-		if (!view) return;
-		view.dispatch({ effects: updateVoicePreview.of({ text }) });
-	}
-
-	/** Hide the voice transcription widget */
-	export function hideTranscribing() {
-		if (!view) return;
-		view.dispatch({ effects: hideVoiceWidgetEffect.of(null) });
 	}
 
 	/** Hide the voice insertion hint widget */

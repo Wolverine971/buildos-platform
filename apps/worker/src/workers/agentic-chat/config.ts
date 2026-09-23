@@ -144,6 +144,11 @@ type AgenticChatBaseConfig = {
 	contextFinderChat?: ChatContextFinderMode;
 	/** Users whose project chats are ranked; empty ranks nobody. */
 	contextFinderChatUserIds?: string[];
+	/**
+	 * Global chat (no project in focus): Jev picks the projects a message is about, and digs
+	 * into them only when it looks for something specific. Same user allowlist as project chat.
+	 */
+	contextFinderGlobal?: ChatContextFinderMode;
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
@@ -228,7 +233,14 @@ export function loadAgenticChatConfig(
 	const workflowReasoning = parseWorkflowReasoningOffSteps(
 		environment.AGENTIC_CHAT_WORKFLOW_REASONING_OFF_STEPS
 	);
-	const contextFinderChat = parseContextFinderChat(environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT);
+	const contextFinderChat = parseContextFinderChat(
+		environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT,
+		'AGENTIC_CHAT_CONTEXT_FINDER_CHAT'
+	);
+	const contextFinderGlobal = parseContextFinderChat(
+		environment.AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL,
+		'AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL'
+	);
 	const contextFinderChatUserIds = parseChatWorkflowPrototypeUsers(
 		environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS
 	);
@@ -333,6 +345,7 @@ export function loadAgenticChatConfig(
 		contextFinderEnabled,
 		workflowReasoning,
 		contextFinderChat,
+		contextFinderGlobal,
 		contextFinderChatUserIds,
 		liveVisionEnabled,
 		consumptionBillingEnabled,
@@ -456,10 +469,10 @@ function parseWorkflowReasoningOffSteps(
 	return Object.freeze(policy);
 }
 
-function parseContextFinderChat(value: string | undefined): ChatContextFinderMode {
+function parseContextFinderChat(value: string | undefined, name: string): ChatContextFinderMode {
 	const mode = value?.trim() || 'off';
 	if (mode === 'off' || mode === 'shadow' || mode === 'chips' || mode === 'on') return mode;
-	throw new Error('AGENTIC_CHAT_CONTEXT_FINDER_CHAT must be exactly off, shadow, chips, or on');
+	throw new Error(`${name} must be exactly off, shadow, chips, or on`);
 }
 
 function parseJevToolSelection(value: string | undefined): 'off' | JevToolSelectionMode {

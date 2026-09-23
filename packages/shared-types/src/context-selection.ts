@@ -1,8 +1,10 @@
 // packages/shared-types/src/context-selection.ts
 //
-// "Working from" chips: the worker's `context_selection` event for a project chat turn
-// (apps/worker/src/workers/agentic-chat/provider/chat-context-finder.ts). It carries record
-// ids, titles, tiers and section headings only; never record text.
+// "Working from" chips: the worker's `context_selection` event for a chat turn. Project turns
+// come from chat-context-finder.ts; global turns (no project in focus) from
+// chat-workspace-finder.ts, which adds the projects the message is about (`projects`,
+// `workspace`) and a project id per record. It carries ids, titles, tiers and section headings
+// only; never record text.
 
 export type ContextSelectionKindV1 = 'document' | 'task' | 'goal' | 'plan' | 'milestone' | 'risk';
 
@@ -15,6 +17,23 @@ export type ContextSelectionChipV1 = {
 	p: number | null;
 	pinned: boolean;
 	sections: string[];
+	/** Global turns: the project this record belongs to. */
+	project_id: string | null;
+};
+
+/** Global turns: a project the message is about, and whether hop 2 looked inside it. */
+export type ContextSelectionProjectV1 = {
+	id: string;
+	name: string;
+	p: number | null;
+	hop2: 'ran' | 'skipped' | 'deadline' | 'failed';
+};
+
+export type ContextSelectionWorkspaceV1 = {
+	scope: 'projects' | 'portfolio' | 'none' | null;
+	/** Jev judged the message to look for something specific inside the projects. */
+	dig: boolean;
+	checked: number;
 };
 
 export type ContextSelectionEventV1 = {
@@ -30,6 +49,9 @@ export type ContextSelectionEventV1 = {
 	client_turn_id: string;
 	turn_run_id: string;
 	project_id: string | null;
+	/** Present on global turns only. */
+	workspace: ContextSelectionWorkspaceV1 | null;
+	projects: ContextSelectionProjectV1[];
 	items: ContextSelectionChipV1[];
 	counts: { full: number; summary: number; checked: number };
 	elapsed_ms: number;
@@ -44,6 +66,9 @@ const KINDS = new Set<ContextSelectionKindV1>([
 	'risk'
 ]);
 const MAX_ITEMS = 30;
+const MAX_PROJECTS = 8;
+const HOP2 = new Set(['ran', 'skipped', 'deadline', 'failed']);
+const SCOPES = new Set(['projects', 'portfolio', 'none']);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -76,9 +101,35 @@ export function parseContextSelectionEventV1(value: unknown): ContextSelectionEv
 			pinned: raw.pinned === true,
 			sections: Array.isArray(raw.sections)
 				? raw.sections.filter((s): s is string => typeof s === 'string').slice(0, 8)
-				: []
+				: [],
+			project_id: typeof raw.project_id === 'string' ? raw.project_id : null
 		});
 	}
+	const projects: ContextSelectionProjectV1[] = [];
+	for (const raw of Array.isArray(value.projects) ? value.projects.slice(0, MAX_PROJECTS) : []) {
+		if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.name !== 'string') continue;
+		projects.push({
+			id: raw.id,
+			name: raw.name,
+			p: typeof raw.p === 'number' && Number.isFinite(raw.p) ? raw.p : null,
+			hop2: HOP2.has(raw.hop2 as string)
+				? (raw.hop2 as ContextSelectionProjectV1['hop2'])
+				: 'skipped'
+		});
+	}
+	const workspace = isRecord(value.workspace)
+		? {
+				scope: SCOPES.has(value.workspace.scope as string)
+					? (value.workspace.scope as ContextSelectionWorkspaceV1['scope'])
+					: null,
+				dig: value.workspace.dig === true,
+				checked:
+					typeof value.workspace.checked === 'number' &&
+					Number.isFinite(value.workspace.checked)
+						? value.workspace.checked
+						: 0
+			}
+		: null;
 	const counts = isRecord(value.counts) ? value.counts : {};
 	const count = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) ? n : 0);
 	return {
@@ -92,6 +143,8 @@ export function parseContextSelectionEventV1(value: unknown): ContextSelectionEv
 		client_turn_id: value.client_turn_id,
 		turn_run_id: value.turn_run_id,
 		project_id: typeof value.project_id === 'string' ? value.project_id : null,
+		workspace,
+		projects,
 		items,
 		counts: {
 			full: count(counts.full),

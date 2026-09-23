@@ -193,6 +193,12 @@ export interface TranscriptionOptions {
 	audioFile?: File; // Backwards compatibility (prefer `audio`)
 	userId?: string;
 	vocabularyTerms?: string;
+	/** Words spoken just before this audio (e.g. the previous segment), for continuity. */
+	context?: string;
+	/** Silence or noise can legitimately yield no words; return '' instead of failing. */
+	allowEmptyTranscript?: boolean;
+	/** Total time budget across models and retries; attempts stop when it runs out. */
+	deadlineMs?: number;
 	models?: string[]; // Ordered OpenRouter model list
 	timeoutMs?: number;
 	maxRetries?: number;
