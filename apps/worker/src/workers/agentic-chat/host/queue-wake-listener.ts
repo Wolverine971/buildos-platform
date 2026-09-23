@@ -1,5 +1,7 @@
 // apps/worker/src/workers/agentic-chat/host/queue-wake-listener.ts
 
+import { settleWithin } from '../shared/abortable-deadline';
+
 /**
  * Private Realtime Broadcast topic web admission publishes to after a turn is
  * durably admitted. Must match AGENTIC_CHAT_QUEUE_WAKE_TOPIC in
@@ -115,15 +117,7 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 		this.wakePending = false;
 		this.clearRetry();
 		this.detachChannel();
-		let timer: NodeJS.Timeout | null = null;
-		await Promise.race([
-			this.removal,
-			new Promise<void>((resolve) => {
-				timer = setTimeout(resolve, STOP_REMOVAL_WAIT_MS);
-				timer.unref?.();
-			})
-		]);
-		if (timer) clearTimeout(timer);
+		await settleWithin(this.removal, STOP_REMOVAL_WAIT_MS);
 	}
 
 	getHealth(): AgenticChatQueueWakeListenerHealthV1 {

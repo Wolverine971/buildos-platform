@@ -1,12 +1,12 @@
 // apps/worker/src/workers/agentic-chat/provider/review/controls.ts
 import type { JsonObject } from '@buildos/shared-types';
-import { TURN_CONTRACT_TOOL_DEFINITION } from '@buildos/agentic-chat-runtime/catalog';
-import type { AgenticChatTurnProviderToolV1 } from '../contracts';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	REQUEST_PROPOSAL_REVISION_TOOL_NAME
-} from '../../tools/execution-adapter';
+	REQUEST_PROPOSAL_REVISION_TOOL_NAME,
+	TURN_CONTRACT_TOOL_DEFINITION
+} from '@buildos/agentic-chat-runtime/catalog';
+import type { AgenticChatTurnProviderToolV1 } from '../contracts';
 
 /**
  * Reviewer-register commission guidance. Mounted only in the two reviewer

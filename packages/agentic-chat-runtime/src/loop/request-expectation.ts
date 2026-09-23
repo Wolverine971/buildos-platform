@@ -1,5 +1,6 @@
 // packages/agentic-chat-runtime/src/loop/request-expectation.ts
 import { canonicalizeAgenticChatJson } from '@buildos/shared-types';
+import { APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME } from '../catalog/definitions/controls';
 import type { MutationBatch } from './mutation-batch';
 import type { FastToolExecution } from './shared';
 import { isWriteLedgerToolExecution } from './tool-classification';
@@ -35,7 +36,7 @@ export function extractReviewedRequestExpectation(
 ): TurnContract | null {
 	for (const execution of executions ?? []) {
 		if (isWriteLedgerToolExecution(execution)) return null;
-		if (execution.toolCall.function.name !== 'approve_mutation_batch_review') continue;
+		if (execution.toolCall.function.name !== APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME) continue;
 		if (!execution.result.success) continue;
 		const result = execution.result.result;
 		if (result?.status !== 'mutation_batch_review_approved') continue;

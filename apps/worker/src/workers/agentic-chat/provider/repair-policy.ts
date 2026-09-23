@@ -1,13 +1,9 @@
 // apps/worker/src/workers/agentic-chat/provider/repair-policy.ts
 
+import { AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES } from '@buildos/agentic-chat-runtime/catalog';
 import type { WriteLedgerEntry } from '@buildos/agentic-chat-runtime/loop';
 import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from '../mutations/tool-catalog';
-import {
-	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	REQUEST_PROPOSAL_REVISION_TOOL_NAME,
-	isAgenticChatProductionReadToolNameV1
-} from '../tools/execution-adapter';
+import { isAgenticChatProductionReadToolNameV1 } from '../tools/execution-adapter';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from './contracts';
 import { appendSystemInstruction } from './request-builders';
 import { canRequirePreMutationSemanticDisposition } from './review/disposition';
@@ -15,11 +11,7 @@ import type { CompletedProviderToolCall } from './stream-tool-calls';
 import { type TurnPhase, surfaceFor } from './turn-phase';
 
 const UNAVAILABLE_SKILL_REPAIR_TOOL_NAMES = new Set(['skill_load', 'skill_search']);
-const REVIEWER_ONLY_CONTROL_TOOL_NAMES = new Set([
-	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	REQUEST_PROPOSAL_REVISION_TOOL_NAME
-]);
+const REVIEWER_ONLY_CONTROL_TOOL_NAMES = new Set<string>(AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES);
 const MAX_WITHHELD_CANDIDATE_CHARS = 1_500;
 
 /**

@@ -3,8 +3,7 @@ import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-	chatExecutorConstructor: vi.fn(),
-	executeTool: vi.fn(),
+	runGatewayWriteOp: vi.fn(),
 	createAdminSupabaseClient: vi.fn(),
 	syncInboxItemForProjectAudit: vi.fn(),
 	syncInboxItemForProjectSuggestion: vi.fn(),
@@ -15,13 +14,8 @@ const mocks = vi.hoisted(() => ({
 	captureServerEvent: vi.fn()
 }));
 
-vi.mock('$lib/services/agentic-chat/tools/core/tool-executor', () => ({
-	ChatToolExecutor: vi
-		.fn()
-		.mockImplementation(function (supabase, userId, sessionId, fetchFn, llm, options) {
-			mocks.chatExecutorConstructor(supabase, userId, sessionId, fetchFn, llm, options);
-			return { execute: mocks.executeTool };
-		})
+vi.mock('@buildos/shared-agent-ops/gateway/op-execution-gateway', () => ({
+	runGatewayWriteOp: mocks.runGatewayWriteOp
 }));
 
 vi.mock('$lib/supabase/admin', () => ({
@@ -50,7 +44,10 @@ vi.mock('$lib/server/posthog', () => ({
 	captureServerEvent: mocks.captureServerEvent
 }));
 
-import { decideProjectSuggestion } from './project-suggestion-actions.service';
+import {
+	decideProjectSuggestion,
+	replayLoopOperations
+} from './project-suggestion-actions.service';
 
 type QueryResult = { data: unknown; error: null | { message: string } };
 
@@ -120,7 +117,7 @@ describe('decideProjectSuggestion', () => {
 			}
 		});
 		mocks.quarantineProjectSuggestionInboxItem.mockResolvedValue(undefined);
-		mocks.executeTool.mockResolvedValue({ success: true });
+		mocks.runGatewayWriteOp.mockResolvedValue({ ok: true, data: { task: { id: 'task-1' } } });
 	});
 
 	afterEach(() => {
@@ -191,7 +188,7 @@ describe('decideProjectSuggestion', () => {
 				}
 			}
 		});
-		expect(mocks.executeTool).not.toHaveBeenCalled();
+		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
 	});
 
 	it('rejects approval when a suggestion has no executable operations', async () => {
@@ -350,7 +347,7 @@ describe('decideProjectSuggestion', () => {
 				]
 			}
 		});
-		expect(mocks.executeTool).not.toHaveBeenCalled();
+		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
 	});
 
 	it('fails closed and quarantines a proposal whose resolved entities do not match', async () => {
@@ -396,17 +393,20 @@ describe('decideProjectSuggestion', () => {
 			expect.objectContaining({ suggestion })
 		);
 		expect(mocks.isProjectSuggestionFresh).not.toHaveBeenCalled();
-		expect(mocks.executeTool).not.toHaveBeenCalled();
+		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
 		expect(updates).toHaveLength(0);
 	});
 
-	it('approves fresh suggestions without writing replay telemetry into the run chat session', async () => {
+	it('approves a fresh suggestion through the write gateway, fenced to its project', async () => {
 		mocks.isProjectSuggestionFresh.mockResolvedValue(true);
 		const operation = {
 			tool: 'update_onto_task',
 			args: {
 				task_id: 'task-1',
-				props: { loop_flagged_conflict: true }
+				project_id: 'project-1',
+				props: { loop_flagged_conflict: true },
+				// Not a field the legacy tool forwarded: a replay must drop it.
+				archived: true
 			}
 		};
 		const { supabase, updates } = makeSupabase({
@@ -423,12 +423,7 @@ describe('decideProjectSuggestion', () => {
 			],
 			project_loop_runs: [{ data: { chat_session_id: 'chat-1' }, error: null }]
 		});
-		const routeFetchMock = vi.fn().mockResolvedValue(
-			new Response(JSON.stringify({ data: { ok: true } }), {
-				status: 200,
-				headers: { 'content-type': 'application/json' }
-			})
-		);
+		const routeFetchMock = vi.fn();
 
 		const outcome = await decideProjectSuggestion({
 			supabase,
@@ -444,44 +439,57 @@ describe('decideProjectSuggestion', () => {
 			result: { ok: true, applied_operations: 1 }
 		});
 		expect(updates.map((update) => update.payload.status)).toEqual(['approved', 'applied']);
-		expect(mocks.chatExecutorConstructor).toHaveBeenCalledWith(
+		expect(mocks.runGatewayWriteOp).toHaveBeenCalledTimes(1);
+		expect(mocks.runGatewayWriteOp).toHaveBeenCalledWith({
+			admin: supabase,
+			userId: 'user-1',
+			scope: {
+				mode: 'read_write',
+				allowed_ops: ['onto.task.update'],
+				project_ids: ['project-1'],
+				write_project_ids: ['project-1']
+			},
+			op: 'onto.task.update',
+			args: {
+				task_id: 'task-1',
+				props: { loop_flagged_conflict: true },
+				calendar_sync: 'none'
+			},
+			chatSessionId: 'chat-1'
+		});
+		// No self-fetch of /api/onto routes any more.
+		expect(routeFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('refuses a tool outside the replay allowlist before claiming or writing', async () => {
+		mocks.isProjectSuggestionFresh.mockResolvedValue(true);
+		const operations = [
+			{
+				tool: 'update_onto_task',
+				args: { project_id: 'project-1', task_id: 'task-1', props: { flag: true } }
+			},
+			{ tool: 'delete_onto_project', args: { project_id: 'project-1' } }
+		];
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [{ data: pendingSuggestion({ operations }), error: null }]
+		});
+
+		const outcome = await decideProjectSuggestion({
 			supabase,
-			'user-1',
-			'chat-1',
-			expect.any(Function),
-			undefined,
-			{ logExecutions: false }
-		);
-		expect(mocks.executeTool).toHaveBeenCalledWith(
-			expect.objectContaining({
-				function: expect.objectContaining({ name: 'update_onto_task' })
-			})
-		);
-
-		const fetchFn = requireTestValue(
-			mocks.chatExecutorConstructor.mock.calls[0]
-		)[3] as typeof fetch;
-		await fetchFn('/api/test', {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ title: 'Updated task' })
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve'
 		});
 
-		expect(routeFetchMock).toHaveBeenCalledWith('/api/test', expect.any(Object));
-		const replayInit = requireTestValue(routeFetchMock.mock.calls[0])[1] as RequestInit;
-		const replayHeaders = new Headers(replayInit.headers);
-		expect(replayHeaders.get('Content-Type')).toBe('application/json');
-		expect(replayHeaders.get('X-Skip-Project-Loop-Burst')).toBeNull();
-		expect(JSON.parse(replayInit.body as string)).toEqual({
-			title: 'Updated task',
-			project_review_context: {
-				origin: 'project_suggestion_replay',
-				operation_kind: 'suggestion_apply',
-				review_policy: 'suppress',
-				operation_id: 'project_suggestion:suggestion-1',
-				entity_count: 1
-			}
+		expect(outcome).toMatchObject({
+			ok: false,
+			status: 422,
+			message: expect.stringContaining('delete_onto_project')
 		});
+		expect(updates).toHaveLength(0);
+		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		expect(mocks.isProjectSuggestionFresh).not.toHaveBeenCalled();
 	});
 
 	it('records the explicit partial-failure policy when a later operation fails', async () => {
@@ -495,9 +503,12 @@ describe('decideProjectSuggestion', () => {
 				args: { project_id: 'project-1', task_id: 'task-2', props: { priority: 'low' } }
 			}
 		];
-		mocks.executeTool
-			.mockResolvedValueOnce({ success: true })
-			.mockResolvedValueOnce({ success: false, error: 'Second update failed' });
+		mocks.runGatewayWriteOp
+			.mockResolvedValueOnce({ ok: true, data: { task: { id: 'task-1' } } })
+			.mockResolvedValueOnce({
+				ok: false,
+				error: { code: 'VALIDATION_ERROR', message: 'Second update failed' }
+			});
 		const { supabase, updates } = makeSupabase({
 			project_suggestions: [
 				{ data: pendingSuggestion({ operations }), error: null },
@@ -529,5 +540,209 @@ describe('decideProjectSuggestion', () => {
 			status: 'failed',
 			result: expect.objectContaining({ partial_failure: true })
 		});
+	});
+});
+
+describe('replayLoopOperations', () => {
+	const supabase = { from: vi.fn() };
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.runGatewayWriteOp.mockResolvedValue({ ok: true, data: { task: { id: 'task-1' } } });
+	});
+
+	it('undo replays each inverse operation through the gateway, fenced to the operations project', async () => {
+		// The shapes the freshness radar and doc-organization generator store as undo.
+		const operations = [
+			{
+				tool: 'update_onto_task',
+				args: {
+					task_id: 'task-1',
+					project_id: 'project-1',
+					due_at: '2026-09-01T16:00:00.000Z'
+				},
+				label: 'Restore the due date of "Send deck"'
+			},
+			{
+				tool: 'move_document_in_tree',
+				args: {
+					document_id: 'doc-1',
+					new_parent_id: null,
+					new_position: 0,
+					project_id: 'project-1'
+				},
+				label: 'Move document back to its previous parent'
+			}
+		];
+
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: 'session-1',
+			operations,
+			operationId: 'freshness_undo:flag-1',
+			operationKind: 'freshness_undo'
+		});
+
+		expect(replay).toEqual({ appliedCount: 2, errors: [], outcomes: [true, true] });
+		const calls = mocks.runGatewayWriteOp.mock.calls.map(([call]) => call);
+		expect(calls).toEqual([
+			{
+				admin: supabase,
+				userId: 'user-1',
+				scope: {
+					mode: 'read_write',
+					allowed_ops: ['onto.task.update'],
+					project_ids: ['project-1'],
+					write_project_ids: ['project-1']
+				},
+				op: 'onto.task.update',
+				args: {
+					task_id: 'task-1',
+					due_at: '2026-09-01T16:00:00.000Z',
+					calendar_sync: 'none'
+				},
+				chatSessionId: 'session-1'
+			},
+			{
+				admin: supabase,
+				userId: 'user-1',
+				scope: {
+					mode: 'read_write',
+					allowed_ops: ['onto.document.tree.move'],
+					project_ids: ['project-1'],
+					write_project_ids: ['project-1']
+				},
+				op: 'onto.document.tree.move',
+				args: {
+					project_id: 'project-1',
+					document_id: 'doc-1',
+					new_parent_id: null,
+					new_position: 0
+				},
+				chatSessionId: 'session-1'
+			}
+		]);
+	});
+
+	it('refuses the whole batch with no write when any tool is not replayable', async () => {
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: 'project-1',
+			operations: [
+				{ tool: 'update_onto_task', args: { task_id: 'task-1', state_key: 'done' } },
+				{ tool: 'call_corsair_mcp_tool', args: { tool: 'send_email' } }
+			],
+			operationId: 'freshness_undo:flag-2'
+		});
+
+		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		expect(replay.appliedCount).toBe(0);
+		expect(replay.outcomes).toEqual([false, false]);
+		expect(replay.errors).toEqual([
+			{ tool: 'call_corsair_mcp_tool', error: expect.stringContaining('cannot be replayed') }
+		]);
+	});
+
+	it('refuses an operation that targets a different project', async () => {
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: 'project-1',
+			operations: [
+				{
+					tool: 'update_onto_goal',
+					args: { goal_id: 'goal-1', project_id: 'project-2', state_key: 'achieved' }
+				}
+			],
+			operationId: 'project_suggestion:s-3'
+		});
+
+		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		expect(replay.errors[0]?.error).toContain('different project');
+	});
+
+	it('retries a doc-tree move once after a structure version conflict', async () => {
+		mocks.runGatewayWriteOp
+			.mockResolvedValueOnce({
+				ok: false,
+				error: {
+					code: 'INTERNAL',
+					message: 'Structure version conflict: expected 3, got 4'
+				}
+			})
+			.mockResolvedValueOnce({ ok: true, data: { document_id: 'doc-1' } });
+
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			operations: [
+				{
+					tool: 'move_document_in_tree',
+					args: {
+						project_id: 'project-1',
+						document_id: 'doc-1',
+						new_parent_id: 'doc-parent',
+						new_position: 2
+					}
+				}
+			],
+			operationId: 'project_suggestion:s-4'
+		});
+
+		expect(replay).toEqual({ appliedCount: 1, errors: [], outcomes: [true] });
+		expect(mocks.runGatewayWriteOp).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps the task_completed signal for a replay that marks a task done', async () => {
+		mocks.runGatewayWriteOp.mockResolvedValueOnce({
+			ok: true,
+			data: { task: { id: 'task-9', state_key: 'done' } }
+		});
+
+		await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: 'project-1',
+			operations: [
+				{ tool: 'update_onto_task', args: { task_id: 'task-9', state_key: 'done' } }
+			],
+			operationId: 'project_suggestion:s-5'
+		});
+
+		expect(mocks.captureServerEvent).toHaveBeenCalledWith('user-1', 'task_completed', {
+			task_id: 'task-9',
+			project_id: 'project-1'
+		});
+	});
+
+	it('refuses internal tool markup in replayed text without writing', async () => {
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: 'project-1',
+			operations: [
+				{
+					tool: 'update_onto_document',
+					args: {
+						document_id: 'doc-1',
+						props: {
+							loop_outdated_reason: '<tool_call>update_onto_document</tool_call>'
+						}
+					}
+				}
+			],
+			operationId: 'project_suggestion:s-6'
+		});
+
+		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		expect(replay.outcomes).toEqual([false]);
+		expect(replay.errors[0]?.error).toContain('internal tool-call markup');
 	});
 });

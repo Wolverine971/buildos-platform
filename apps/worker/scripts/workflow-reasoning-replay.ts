@@ -18,7 +18,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parse } from 'dotenv';
-import { parseWorkflowAssignments } from '../src/workers/agentic-chat/workflow/prototype-provider';
+import { parseWorkflowAssignments } from '../src/workers/agentic-chat/workflow/role-report';
 
 type Variant = 'low' | 'off' | 'default';
 const REASONING: Record<Variant, Record<string, unknown>> = {

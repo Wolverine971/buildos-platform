@@ -169,11 +169,6 @@ export function elapsedMs(startedAt: number): number {
 	return Math.min(2_147_483_647, Math.max(0, Date.now() - startedAt));
 }
 
-export function throwIfAborted(signal: AbortSignal): void {
-	if (!signal.aborted) return;
-	throw signal.reason instanceof Error ? signal.reason : new Error('Execution aborted');
-}
-
 /**
  * Queue provider text without serializing generation on durable delivery.
  * The publisher's soft limits provide bounded backpressure, while flushTurn

@@ -15,7 +15,7 @@ import {
 } from '../provider/openrouter-client';
 import type { ChatContextFinderMode } from '../provider/chat-context-finder';
 import type { JevToolSelectionMode } from '../provider/jev-tool-selector';
-import type { AgenticChatWorkflowReasoningPolicyV1 } from '../workflow/workflow-runner';
+import type { AgenticChatWorkflowReasoningPolicyV1 } from '../workflow/contracts';
 import {
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
@@ -122,6 +122,11 @@ export type AgenticChatProviderConfig = {
 };
 
 type AgenticChatBaseConfig = {
+	/**
+	 * AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: the durable project-review cohort. Web admission
+	 * applies it before writing a v4 turn; worker preparation re-checks it. The name predates
+	 * the retired `/workflow` prototype and is kept because web reads the same variable.
+	 */
 	workflowPrototypeUserIds?: string[];
 	/** Tasker 86: worker preparation for raw v4 review turns. Default off. */
 	workflowV4PreparationEnabled?: boolean;
@@ -133,8 +138,6 @@ type AgenticChatBaseConfig = {
 	publishedSpecialistsEnabled?: boolean;
 	projectReviewV2Enabled?: boolean;
 	projectReviewV3Enabled?: boolean;
-	/** Counterfactual specialist/tool selection only; never enables routing. */
-	jevSpecialistSelection?: 'off' | 'shadow';
 	/** Jev ranks project records and sections for published specialist reviews. Default off. */
 	contextFinderEnabled?: boolean;
 	/** Workflow steps whose hidden reasoning is off. Default: none (definitions' `low`). */
@@ -219,11 +222,8 @@ export function loadAgenticChatConfig(
 		false,
 		'AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED'
 	);
-	const jevSpecialistSelection =
-		environment.AGENTIC_CHAT_JEV_SPECIALIST_SELECTION?.trim() || 'off';
-	if (jevSpecialistSelection !== 'off' && jevSpecialistSelection !== 'shadow') {
-		throw new Error('AGENTIC_CHAT_JEV_SPECIALIST_SELECTION must be off or shadow');
-	}
+	// AGENTIC_CHAT_JEV_SPECIALIST_SELECTION (the retired specialist-selection shadow) is
+	// deliberately not read: a value left on a deployed service must not fail startup.
 	const contextFinderEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_CONTEXT_FINDER_ENABLED,
 		false,
@@ -340,7 +340,6 @@ export function loadAgenticChatConfig(
 		projectReviewV2Enabled,
 		projectReviewV3Enabled,
 		documentEvidenceHandoffEnabled,
-		jevSpecialistSelection,
 		contextFinderEnabled,
 		workflowReasoning,
 		contextFinderChat,

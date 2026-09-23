@@ -45,6 +45,44 @@ export const CHAT_WORKFLOW_DISPATCH_POLICY = {
 } as const;
 
 /**
+ * Planner assignments are specific on large projects: in the Tasker 98 pilot (2026-09-23)
+ * V4.1 Flash wrote valid 1,400–2,700-character assignments naming the right documents, and a
+ * 1,000-character bound failed the planner in 11 of 12 reviews. Storage allows 16 KiB per
+ * assignment object (`agentic_chat_workflow_planner_result_valid_v1`); the byte bound keeps
+ * any encoding well inside it.
+ */
+const ASSIGNMENT_MAX_CHARS = 4_000;
+const ASSIGNMENT_MAX_BYTES = 12_000;
+
+export type ChatWorkflowPlannerAssignments = { analyst: string; reviewer: string };
+
+/** The planner's two specialist assignments, or null when its reply is not usable JSON. */
+export function parseWorkflowAssignments(text: string): ChatWorkflowPlannerAssignments | null {
+	try {
+		const data = JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
+		if (!data || typeof data !== 'object') return null;
+		// Tasker 98 pilot: 1 of 14 plans nested each value as {"role", "assignment"}.
+		const assignmentOf = (value: unknown): string | null => {
+			const text =
+				value && typeof value === 'object'
+					? (value as { assignment?: unknown }).assignment
+					: value;
+			return typeof text === 'string' &&
+				text.trim().length >= 3 &&
+				text.length <= ASSIGNMENT_MAX_CHARS &&
+				Buffer.byteLength(text, 'utf8') <= ASSIGNMENT_MAX_BYTES
+				? text.trim()
+				: null;
+		};
+		const analyst = assignmentOf(data.analyst);
+		const reviewer = assignmentOf(data.reviewer);
+		return analyst && reviewer ? { analyst, reviewer } : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
  * Hard validator limits, byte-identical to the SQL report validator. Prompts ask for less so
  * ordinary overshoot still fits, and a report that runs past a limit by up to
  * REPORT_OVERRUN_FACTOR is fitted rather than rejected (see `fittedText`).

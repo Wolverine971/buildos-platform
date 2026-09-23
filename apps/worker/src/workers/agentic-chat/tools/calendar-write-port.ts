@@ -49,12 +49,6 @@ import {
 
 type WorkerGoogleCalendarServices = ReturnType<typeof createWorkerGoogleCalendarServices>;
 
-export type AgenticChatCalendarWriteToolNameV1 =
-	| 'create_calendar_event'
-	| 'update_calendar_event'
-	| 'delete_calendar_event'
-	| 'set_project_calendar';
-
 export type AgenticChatCalendarWriteRequestV1 = {
 	toolName: string;
 	userId: string;

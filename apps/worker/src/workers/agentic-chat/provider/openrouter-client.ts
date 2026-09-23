@@ -35,9 +35,9 @@ import {
 	canonicalProviderPassRole,
 	estimateTokens,
 	normalizeProviderSlug,
-	throwAbort,
-	throwIfAborted
+	throwAbort
 } from './openrouter/canonical';
+import { throwIfAborted } from '../shared/abortable-deadline';
 import { AgenticChatProviderNetworkError, AgenticChatSlowStreamError } from './openrouter/errors';
 import { type OpenRouteSettings, openProviderRoute, sentMaxTokens } from './openrouter/open-route';
 import { attributedProviderSlug, isRetryableUnknownError, routeFailure } from './openrouter/retry';

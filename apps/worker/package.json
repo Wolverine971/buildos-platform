@@ -37,7 +37,6 @@
 		"cycles:shadow-daily-brief": "tsx src/scripts/reportDailyBriefCycleShadow.ts",
 		"cost-reconciliation:report": "tsx src/scripts/reportAgentRunCostReconciliation.ts",
 		"libri:admission-audit": "tsx src/scripts/reportLibriOcrAdmission.ts",
-		"specialists:shadow-report": "node --conditions=development --import tsx scripts/report-specialist-shadow.ts",
 		"specialists:preview": "node --conditions=development --import tsx scripts/preview-specialists.ts"
 	},
 	"dependencies": {

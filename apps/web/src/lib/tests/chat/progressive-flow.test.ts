@@ -1,8 +1,6 @@
 // apps/web/src/lib/tests/chat/progressive-flow.test.ts
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { CHAT_TOOL_DEFINITIONS } from '@buildos/agentic-chat-runtime/catalog';
-import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
-import type { ChatToolCall } from '@buildos/shared-types';
 
 function getToolName(tool: unknown): string {
 	const candidate = tool as { name?: string; function?: { name?: string } };
@@ -43,66 +41,6 @@ describe('Progressive Disclosure Flow', () => {
 
 			expect(ontoSearch.length).toBeGreaterThan(0);
 			expect(ontoDetail.length).toBeGreaterThan(0);
-		});
-	});
-
-	describe('Error Handling and Fallbacks', () => {
-		const mockTable = {
-			insert: vi.fn().mockResolvedValue({ error: null })
-		};
-
-		const mockSupabase = {
-			from: vi.fn(() => mockTable),
-			rpc: vi.fn(),
-			auth: {
-				getSession: vi.fn().mockResolvedValue({
-					data: { session: { access_token: 'token' } }
-				})
-			}
-		} as any;
-
-		it('returns a clear error for unknown legacy tool names', async () => {
-			const executor = new ChatToolExecutor(
-				mockSupabase,
-				'user-1',
-				'session-1',
-				vi.fn() as any
-			);
-
-			const call: ChatToolCall = {
-				id: 'call-legacy',
-				type: 'function',
-				function: {
-					name: 'get_task_details',
-					arguments: JSON.stringify({ task_id: 'task-1' })
-				}
-			};
-
-			const result = await executor.execute(call);
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('Unknown tool');
-		});
-
-		it('rejects malformed tool arguments before execution', async () => {
-			const executor = new ChatToolExecutor(
-				mockSupabase,
-				'user-1',
-				'session-1',
-				vi.fn() as any
-			);
-
-			const call: ChatToolCall = {
-				id: 'call-invalid-json',
-				type: 'function',
-				function: {
-					name: 'list_onto_tasks',
-					arguments: '{"project_id": "proj-1"'
-				}
-			};
-
-			const result = await executor.execute(call);
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('Invalid JSON');
 		});
 	});
 });

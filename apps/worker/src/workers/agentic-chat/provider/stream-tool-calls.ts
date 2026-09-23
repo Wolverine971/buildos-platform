@@ -13,6 +13,7 @@ import {
 	type AgenticChatTurnProviderRequestV1,
 	type AgenticChatTurnProviderToolV1
 } from './contracts';
+import { stripSchedulingSidecar } from '../shared/tool-scheduling';
 import { canonicalRequiredText, providerError, requireRecord } from './protocol';
 
 const MAX_PROVIDER_TOOL_CALLS_PER_ROUND = 40;
@@ -304,11 +305,7 @@ export function completeToolCalls(
 		}
 		const canonicalProviderArguments = canonicalizeAgenticChatJson(parsed as JsonValue);
 		const scheduling = parseSchedulingMetadata(parsed as JsonObject);
-		const domainArguments = Object.fromEntries(
-			Object.entries(parsed as JsonObject).filter(
-				([name]) => name !== 'call_ref' && name !== 'after'
-			)
-		) as JsonObject;
+		const domainArguments = stripSchedulingSidecar(parsed as JsonObject);
 		const canonicalArguments = canonicalizeAgenticChatJson(domainArguments);
 		calls.push({
 			id: call.id,

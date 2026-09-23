@@ -1,5 +1,4 @@
 // apps/worker/src/workers/agentic-chat/provider/request-builders.ts
-import { createHash } from 'node:crypto';
 import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	type ContextUsageSnapshot,
@@ -15,6 +14,7 @@ import {
 	buildToolValidationRepairInstruction,
 	parseToolArguments
 } from '@buildos/agentic-chat-runtime/loop';
+import { sha256Hex } from '../shared/identity-hash';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import type { AgenticChatProviderMutationCapabilitiesV1 } from '../mutations/tool-catalog';
 import {
@@ -477,9 +477,9 @@ export function buildPromptSnapshot(
 		snapshotVersion: AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
 		modelMessages,
 		toolDefinitions,
-		systemPromptSha256: sha256(systemPrompt),
-		messagesSha256: sha256(canonical),
-		toolsSha256: sha256(canonicalTools),
+		systemPromptSha256: sha256Hex(systemPrompt),
+		messagesSha256: sha256Hex(canonical),
+		toolsSha256: sha256Hex(canonicalTools),
 		systemPromptChars: systemPrompt.length,
 		messageChars: modelMessages.reduce(
 			(total, message) =>
@@ -506,8 +506,4 @@ export function providerClientRequest(
 		...clientRequest
 	} = request;
 	return clientRequest;
-}
-
-function sha256(value: string): string {
-	return createHash('sha256').update(value, 'utf8').digest('hex');
 }

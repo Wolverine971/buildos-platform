@@ -5,7 +5,6 @@ import { workerSourceProvenance } from '../src/lib/sourceProvenance';
 // apps/worker/tests/agenticChatTurnExecutor.test.ts
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import {
-	CHAT_WORKFLOW_PROTOTYPE_VERSION,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION,
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
 	createAgentStreamEventIdV1
@@ -1660,26 +1659,9 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
-	it('suppresses automatic domain writes for a read-only workflow while persisting its answer', async () => {
-		const workflow = {
-			version: CHAT_WORKFLOW_PROTOTYPE_VERSION,
-			steps: ['context', 'plan', 'analyst', 'reviewer', 'answer'].map((id) => ({
-				id,
-				label: id,
-				status: 'completed',
-				result: 'Saved finding'
-			}))
-		};
+	it('suppresses automatic domain writes when the provider disables them while persisting its answer', async () => {
 		const harness = createHarness(
 			[
-				{
-					type: 'semantic',
-					transitionId: CALL_TRANSITION_ID,
-					phase: 'llm',
-					eventType: 'agent_state',
-					currentActivity: 'Review complete',
-					eventPayload: { type: 'agent_state', state: 'thinking', workflow }
-				},
 				{ type: 'text_delta', text: 'Recommendation: schedule the inspection tomorrow.' },
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
@@ -1694,12 +1676,13 @@ describe('AgenticChatTurnExecutor', () => {
 		});
 		expect(harness.researchCapture!.capture).not.toHaveBeenCalled();
 		expect(harness.statedFutureCapture!.capture).not.toHaveBeenCalled();
-		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({
-				status: 'completed',
-				assistantMetadata: expect.objectContaining({ chat_workflow_v1: workflow })
-			})
-		);
+		const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+		expect(terminalInput).toMatchObject({
+			status: 'completed',
+			assistantText: expect.stringContaining('schedule the inspection tomorrow')
+		});
+		// The retired `/workflow` prototype's progress capture is gone from ordinary turns.
+		expect(terminalInput?.assistantMetadata).not.toHaveProperty('chat_workflow_v1');
 		await harness.publisher.stop();
 	});
 

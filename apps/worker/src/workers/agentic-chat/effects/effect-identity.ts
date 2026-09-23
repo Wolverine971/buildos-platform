@@ -1,10 +1,10 @@
 // apps/worker/src/workers/agentic-chat/effects/effect-identity.ts
-import { createHash } from 'node:crypto';
 import {
 	type JsonObject,
 	canonicalizeAgenticChatJson,
 	normalizeAgenticChatText
 } from '@buildos/shared-types';
+import { sha256Hex, stableUuidFromSeed } from '../shared/identity-hash';
 
 export type StableAgenticChatEffectIdentityV1 = {
 	effectId: string;
@@ -25,7 +25,7 @@ export function createStableAgenticChatMutationLogicalOperationIdV1(input: {
 	canonicalUuid(input.turnRunId, 'turnRunId');
 	positiveInteger(input.providerRound, 'providerRound');
 	positiveInteger(input.callIndex, 'callIndex');
-	return uuidFromSha256(
+	return stableUuidFromSeed(
 		`agentic-chat-mutation-logical-operation-v1:${input.turnRunId}:${input.providerRound}:${input.callIndex}`
 	);
 }
@@ -46,30 +46,18 @@ export function createStableAgenticChatEffectIdentityV1(input: {
 	canonicalName(input.toolName, 'toolName');
 	canonicalName(input.operationName, 'operationName');
 	const canonicalArguments = canonicalizeAgenticChatJson(input.arguments);
-	const canonicalArgumentHash = sha256(canonicalArguments);
+	const canonicalArgumentHash = sha256Hex(canonicalArguments);
 	const identitySeed = canonicalizeAgenticChatJson({
 		version: 'agentic_chat_effect_identity_v1',
 		turnRunId: input.turnRunId,
 		logicalOperationId: input.logicalOperationId
 	});
-	const effectId = uuidFromSha256(identitySeed);
+	const effectId = stableUuidFromSeed(identitySeed);
 	return {
 		effectId,
 		canonicalArgumentHash,
 		downstreamIdempotencyKey: `chat-effect:${effectId}`
 	};
-}
-
-function uuidFromSha256(value: string): string {
-	const bytes = createHash('sha256').update(value, 'utf8').digest().subarray(0, 16);
-	bytes[6] = (bytes[6] & 0x0f) | 0x50;
-	bytes[8] = (bytes[8] & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-function sha256(value: string): string {
-	return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 function canonicalName(value: string, label: string): string {

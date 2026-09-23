@@ -15,7 +15,7 @@ import {
 	type AgenticChatReadToolExecutionV1,
 	createStableAgenticChatToolExecutionIdV1
 } from '../tools/tool-execution';
-import { abortable } from '../shared/abortable-deadline';
+import { abortable, throwIfAborted } from '../shared/abortable-deadline';
 import {
 	createStableAgenticChatReadToolProgressTransitionIdV1,
 	createStableAgenticChatReadToolTransitionIdV1
@@ -26,7 +26,7 @@ import {
 	type AgenticChatTurnExecutorPorts,
 	type AgenticChatTurnProviderStepV1
 } from './executor-contracts';
-import { canonicalText, canonicalUuid, elapsedMs, throwIfAborted } from './executor-helpers';
+import { canonicalText, canonicalUuid, elapsedMs } from './executor-helpers';
 import { executionErrorCode, logAgenticChatExecutionBoundary } from './executor-failures';
 import {
 	type AgenticChatReadPlanningContextV1,

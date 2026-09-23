@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	AgenticChatTurnActivityRegistry,
 	agenticChatDeliveryStateFromPublisherObservationV1,
-	agenticChatDeliveryStateFromPublisherV1,
 	projectAgenticChatTurnProgressHealthV1,
 	projectAgenticChatWorkerProgressHealthV1,
 	withAgenticChatTurnActivityV1,
@@ -185,15 +184,6 @@ describe('Agentic Chat per-turn progress health', () => {
 		);
 
 		expect(projection.durableProgress.lastEventType).toBeNull();
-	});
-
-	it('maps delivery outcomes without treating uncertain acknowledgement as connected', () => {
-		expect(agenticChatDeliveryStateFromPublisherV1('broadcast_acknowledged')).toBe('connected');
-		expect(agenticChatDeliveryStateFromPublisherV1('broadcast_sent_reconcile_pending')).toBe(
-			'uncertain'
-		);
-		expect(agenticChatDeliveryStateFromPublisherV1('reconcile_only')).toBe('disconnected');
-		expect(agenticChatDeliveryStateFromPublisherV1('already_persisted')).toBe('uncertain');
 	});
 
 	it('derives stream-level delivery state from sticky publisher evidence only', () => {

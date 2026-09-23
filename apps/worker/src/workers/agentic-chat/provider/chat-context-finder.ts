@@ -7,7 +7,6 @@
 //
 // Modes: shadow publishes a hidden receipt; chips publishes visible chips; on also injects the
 // evidence into the opening request. Every failure is fail-open: the turn runs as it does today.
-import { createHash } from 'node:crypto';
 import {
 	type ContextEvidenceV1,
 	type ContextFinderDecider,
@@ -18,6 +17,8 @@ import {
 	renderContextEvidenceBlock,
 	unavailableContextEvidence
 } from '@buildos/agentic-chat-runtime/context-finder';
+import { runWithAbortableDeadline, throwIfAborted } from '../shared/abortable-deadline';
+import { stableUuidFromSeed } from '../shared/identity-hash';
 import type { AgenticChatProviderStepV1, AgenticChatTurnProviderRequestV1 } from './contracts';
 
 export type ChatContextFinderMode = 'off' | 'shadow' | 'chips' | 'on';
@@ -152,31 +153,22 @@ export async function withFinderDeadline<T>(
 	work: (signal: AbortSignal) => Promise<T>
 ): Promise<{ ok: true; value: T } | { ok: false; failure: 'deadline' | 'load_or_rank_failed' }> {
 	// An already-cancelled turn spends nothing.
-	request.signal.throwIfAborted();
-	const deadline = new AbortController();
-	const onAbort = () => deadline.abort(request.signal.reason);
-	request.signal.addEventListener('abort', onAbort, { once: true });
-	const timer = setTimeout(
-		() => deadline.abort(new Error('context_finder_deadline')),
-		deadlineMs
-	);
-	const expired = new Promise<never>((_, reject) => {
-		deadline.signal.addEventListener('abort', () => reject(deadline.signal.reason), {
-			once: true
-		});
-	});
-	expired.catch(() => undefined);
+	throwIfAborted(request.signal);
+	let expired = false;
 	try {
-		const running = work(deadline.signal);
-		// When the deadline wins, the abandoned work may still reject later.
-		running.catch(() => undefined);
-		return { ok: true, value: await Promise.race([running, expired]) };
+		const value = await runWithAbortableDeadline({
+			parentSignal: request.signal,
+			timeoutMs: deadlineMs,
+			createTimeoutError() {
+				expired = true;
+				return new Error('context_finder_deadline');
+			},
+			run: work
+		});
+		return { ok: true, value };
 	} catch (error) {
 		if (request.signal.aborted) throw error;
-		return { ok: false, failure: deadline.signal.aborted ? 'deadline' : 'load_or_rank_failed' };
-	} finally {
-		clearTimeout(timer);
-		request.signal.removeEventListener('abort', onAbort);
+		return { ok: false, failure: expired ? 'deadline' : 'load_or_rank_failed' };
 	}
 }
 
@@ -240,12 +232,7 @@ export function buildContextSelectionPayload(input: {
  * transition conflict that would fail the turn. The UI keeps the latest selection.
  */
 export function contextSelectionTransitionId(turnRunId: string, payload: unknown): string {
-	const bytes = createHash('sha256')
-		.update(`agentic-chat-context-selection-v1:${turnRunId}:${JSON.stringify(payload)}`, 'utf8')
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return stableUuidFromSeed(
+		`agentic-chat-context-selection-v1:${turnRunId}:${JSON.stringify(payload)}`
+	);
 }

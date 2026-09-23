@@ -1,31 +1,27 @@
 // apps/worker/src/workers/agentic-chat/effects/read-planning-telemetry.ts
-import { createHash } from 'node:crypto';
-import { AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1 } from '@buildos/agentic-chat-runtime/catalog';
+import {
+	AGENTIC_CHAT_CONTROL_TOOL_NAMES,
+	AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES
+} from '@buildos/agentic-chat-runtime/catalog';
 import {
 	type JsonObject,
 	type JsonValue,
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
+import { sha256Hex } from '../shared/identity-hash';
+import { stripSchedulingSidecar } from '../shared/tool-scheduling';
 import type { AgenticChatControlDecisionAuthorV1 } from '../provider/contracts';
 
 const EXACT_READ_IDENTITY_VERSION = 'agentic_chat_exact_read_identity_v1';
 const RESOURCE_IDENTITY_VERSION = 'agentic_chat_read_resource_identity_v1';
 
-const REVIEW_TOOL_NAMES = new Set([
-	'approve_turn_contract_review',
-	'approve_mutation_batch_review',
-	'request_proposal_revision'
-]);
-const CONTROL_TOOL_NAMES = new Set<string>([
-	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
-	...REVIEW_TOOL_NAMES
-]);
+const REVIEW_TOOL_NAMES = new Set<string>(AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES);
+const CONTROL_TOOL_NAMES = new Set<string>(AGENTIC_CHAT_CONTROL_TOOL_NAMES);
 const REVIEW_DECISION_AUTHORS = new Set<AgenticChatControlDecisionAuthorV1>([
 	'contract_reviewer',
 	'mutation_batch_reviewer',
 	'harness_review_fallback'
 ]);
-const SCHEDULING_ARGUMENT_KEYS = new Set(['call_ref', 'after']);
 const RESOURCE_SCOPE_ID_KEYS = new Set([
 	'project_id',
 	'workspace_id',
@@ -53,10 +49,10 @@ export function deriveAgenticChatReadPlanningIdentityV1(input: {
 		return { executionClass, exactReadKey: null, resourceKey: null };
 	}
 
-	const domainArguments = stripSchedulingArguments(input.arguments);
+	const domainArguments = stripSchedulingSidecar(input.arguments);
 	return {
 		executionClass,
-		exactReadKey: sha256(
+		exactReadKey: sha256Hex(
 			`${EXACT_READ_IDENTITY_VERSION}:${toolName}:${canonicalizeAgenticChatJson(domainArguments as JsonValue)}`
 		),
 		resourceKey: deriveResourceKey(toolName, domainArguments)
@@ -71,12 +67,6 @@ function classifyReadExecution(
 		return 'review';
 	}
 	return CONTROL_TOOL_NAMES.has(toolName) ? 'control' : 'evidence_read';
-}
-
-function stripSchedulingArguments(arguments_: JsonObject): JsonObject {
-	return Object.fromEntries(
-		Object.entries(arguments_).filter(([key]) => !SCHEDULING_ARGUMENT_KEYS.has(key))
-	) as JsonObject;
 }
 
 function deriveResourceKey(toolName: string, arguments_: JsonObject): string | null {
@@ -123,11 +113,7 @@ function isSearchOperation(toolName: string): boolean {
 }
 
 function hashResourceDescriptor(descriptor: JsonObject): string {
-	return sha256(
+	return sha256Hex(
 		`${RESOURCE_IDENTITY_VERSION}:${canonicalizeAgenticChatJson(descriptor as JsonValue)}`
 	);
-}
-
-function sha256(value: string): string {
-	return createHash('sha256').update(value, 'utf8').digest('hex');
 }

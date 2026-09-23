@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/effects/prompt-snapshot.ts
-import { createHash } from 'node:crypto';
 import { type JsonValue, canonicalizeAgenticChatJson } from '@buildos/shared-types';
+import { sha256Hex, stableUuidFromSeed } from '../shared/identity-hash';
 import type { AgenticChatExecutionIdentityV1 } from '../turn/execution-control';
 import {
 	AGENTIC_CHAT_WORKER_PROMPT_SNAPSHOT_VERSION,
@@ -106,14 +106,7 @@ export class SupabaseAgenticChatPromptSnapshotAdapter implements AgenticChatProm
 
 export function createStableAgenticChatPromptSnapshotIdV1(turnRunId: string): string {
 	canonicalUuid(turnRunId, 'turnRunId');
-	const bytes = createHash('sha256')
-		.update(`${PROMPT_SNAPSHOT_IDENTITY_VERSION}:${turnRunId}`, 'utf8')
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return stableUuidFromSeed(`${PROMPT_SNAPSHOT_IDENTITY_VERSION}:${turnRunId}`);
 }
 
 function validateInput(input: AgenticChatPromptSnapshotPersistInputV1): void {
@@ -167,10 +160,10 @@ function validateInput(input: AgenticChatPromptSnapshotPersistInputV1): void {
 	if (typeof systemPrompt !== 'string' || systemPrompt.length === 0) {
 		throw protocolError('model messages have no system prompt');
 	}
-	if (sha256(systemPrompt) !== input.prompt.systemPromptSha256) {
+	if (sha256Hex(systemPrompt) !== input.prompt.systemPromptSha256) {
 		throw protocolError('system-prompt hash does not match the prepared prompt');
 	}
-	if (sha256(canonical) !== input.prompt.messagesSha256) {
+	if (sha256Hex(canonical) !== input.prompt.messagesSha256) {
 		throw protocolError('messages hash does not match the prepared prompt');
 	}
 	if (!Array.isArray(input.prompt.toolDefinitions)) {
@@ -215,7 +208,7 @@ function validateInput(input: AgenticChatPromptSnapshotPersistInputV1): void {
 	if (Buffer.byteLength(canonicalTools, 'utf8') > MAX_TOOL_DEFINITIONS_BYTES) {
 		throw protocolError('tool definitions exceed the snapshot bound');
 	}
-	if (sha256(canonicalTools) !== input.prompt.toolsSha256) {
+	if (sha256Hex(canonicalTools) !== input.prompt.toolsSha256) {
 		throw protocolError('tools hash does not match the prepared prompt');
 	}
 	const messageChars = input.prompt.modelMessages.reduce(
@@ -345,10 +338,6 @@ function isTimestamp(value: unknown): value is string {
 		DATABASE_TIMESTAMP_PATTERN.test(value) &&
 		Number.isFinite(Date.parse(value))
 	);
-}
-
-function sha256(value: string): string {
-	return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 function protocolError(message: string): AgenticChatPromptSnapshotProtocolError {

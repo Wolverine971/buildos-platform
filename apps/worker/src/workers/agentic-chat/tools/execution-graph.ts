@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import type { JsonObject } from '@buildos/shared-types';
 import { type JsonValue, canonicalizeAgenticChatJson } from '@buildos/shared-types';
+import { stripSchedulingSidecar } from '../shared/tool-scheduling';
 
 export const AGENTIC_CHAT_TOOL_EXECUTION_PLAN_VERSION_V1 =
 	'agentic_chat_tool_execution_plan_v1' as const;
@@ -472,9 +473,7 @@ function schedulingMetadata(arguments_: JsonObject): {
 			'Scheduling after must not contain duplicate references'
 		);
 	}
-	const domainArguments = Object.fromEntries(
-		Object.entries(arguments_).filter(([key]) => key !== 'call_ref' && key !== 'after')
-	) as JsonObject;
+	const domainArguments = stripSchedulingSidecar(arguments_);
 	return {
 		callRef: typeof rawCallRef === 'string' ? rawCallRef : null,
 		after: stringAfter,

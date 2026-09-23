@@ -5,13 +5,10 @@ const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
 const USER_ID = 'd1000000-0000-4000-8000-000000000001';
 const TURN_ID = 'd3000000-0000-4000-8000-000000000001';
 const DECISION_ID = 'd4000000-0000-4000-8000-000000000001';
-const SECRET = 'route-agentic-chat-worker-lease-secret-at-least-32-bytes';
+const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const mocks = vi.hoisted(() => ({
 	env: {
-		AGENTIC_CHAT_TRANSPORT_LEASE_SECRET:
-			'route-agentic-chat-worker-lease-secret-at-least-32-bytes',
-		AGENTIC_CHAT_WORKER_KILL_EPOCH: '0',
 		AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED: undefined as string | undefined,
 		AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED: undefined as string | undefined,
 		AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: undefined as string | undefined
@@ -56,7 +53,6 @@ vi.mock('$lib/utils/logger', () => ({
 	createLogger: () => ({ warn: mocks.loggerWarn, info: mocks.loggerInfo })
 }));
 
-import { issueAgenticChatTransportLease } from '$lib/services/agentic-chat-v2/transport-lease.server';
 import { resetAgenticChatTurnRateLimitForTests } from '$lib/server/agentic-chat-turn-rate-limit';
 import { AgenticChatWorkerAdmissionGatewayError } from '$lib/services/agentic-chat-v2/worker-turn-admission.server';
 import { GET, POST } from './+server';
@@ -73,23 +69,11 @@ function event(options: { userId?: string | null; query?: string } = {}) {
 }
 
 function admissionBody(overrides: Record<string, unknown> = {}) {
-	const context = { type: 'global' as const, entityId: null, projectId: null };
-	const lease = issueAgenticChatTransportLease({
-		secret: SECRET,
-		userId: USER_ID,
-		clientTurnId: 'client-turn-1',
-		streamRunId: 'stream-run-1',
-		context,
-		mode: 'worker_realtime',
-		decisionId: DECISION_ID,
-		killEpoch: 0
-	});
 	return {
-		leaseToken: lease.token,
 		clientTurnId: 'client-turn-1',
 		streamRunId: 'stream-run-1',
 		sessionId: SESSION_ID,
-		context,
+		context: { type: 'global' as const, entityId: null, projectId: null },
 		message: 'Ship the next worker slice',
 		attachments: [],
 		projectFocus: null,
@@ -114,12 +98,6 @@ function postEvent(options: { userId?: string | null; body?: unknown } = {}) {
 			}))
 		}
 	};
-}
-
-function leaselessBody(overrides: Record<string, unknown> = {}) {
-	const body: Record<string, unknown> = { ...admissionBody(), ...overrides };
-	if (!('leaseToken' in overrides)) delete body.leaseToken;
-	return body;
 }
 
 function ownedTurnRow(overrides: Record<string, unknown> = {}) {
@@ -213,8 +191,6 @@ describe('GET /api/agent/v2/turns', () => {
 	beforeEach(() => {
 		resetAgenticChatTurnRateLimitForTests();
 		vi.clearAllMocks();
-		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET = SECRET;
-		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
 		mocks.createAdminSupabaseClient.mockReturnValue({ from: vi.fn() });
 		mocks.listOwnedActiveAgenticChatWorkerTurns.mockResolvedValue([{ status: 'queued' }]);
 		mocks.prepareAgenticChatWorkerAdmission.mockResolvedValue({
@@ -275,9 +251,7 @@ describe('POST /api/agent/v2/turns', () => {
 	beforeEach(() => {
 		resetAgenticChatTurnRateLimitForTests();
 		vi.clearAllMocks();
-		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET = SECRET;
-		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
-		mocks.createAdminSupabaseClient.mockReturnValue({ from: vi.fn(), rpc: vi.fn() });
+		mocks.createAdminSupabaseClient.mockReturnValue(fakeAdminClient().client);
 		mocks.prepareAgenticChatWorkerAdmission.mockResolvedValue({
 			args: { p_user_id: USER_ID },
 			capacity: { available: true, retryAfterSeconds: 2, reason: 'open' },
@@ -302,118 +276,16 @@ describe('POST /api/agent/v2/turns', () => {
 			admissionBody({ requestHash: 'forged' }),
 			admissionBody({ capacityAvailable: true }),
 			admissionBody({ executionMode: 'worker_realtime' }),
-			admissionBody({ turnRunId: TURN_ID })
+			admissionBody({ turnRunId: TURN_ID }),
+			// The retired transport lease is refused like any other unknown field.
+			admissionBody({ leaseToken: 'actl1.retired-transport-lease' }),
+			admissionBody({ leaseToken: '' })
 		]) {
 			response = await POST(postEvent({ body }) as never);
 			expect(response.status).toBe(422);
 			expect(response.headers.get('cache-control')).toBe('private, no-store');
 		}
 		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
-	});
-
-	it('rejects tamper, expiry, future issuance, and cross-bound replay before preparation', async () => {
-		const base = admissionBody();
-		const context = base.context;
-		const tokens = [
-			`${base.leaseToken}x`,
-			issueAgenticChatTransportLease({
-				secret: SECRET,
-				userId: USER_ID,
-				clientTurnId: base.clientTurnId,
-				streamRunId: base.streamRunId,
-				context,
-				mode: 'worker_realtime',
-				nowMs: Date.now() - 120_000,
-				ttlMs: 60_000
-			}).token,
-			issueAgenticChatTransportLease({
-				secret: SECRET,
-				userId: USER_ID,
-				clientTurnId: base.clientTurnId,
-				streamRunId: base.streamRunId,
-				context,
-				mode: 'worker_realtime',
-				nowMs: Date.now() + 60_000
-			}).token,
-			issueAgenticChatTransportLease({
-				secret: SECRET,
-				userId: 'd1000000-0000-4000-8000-000000000099',
-				clientTurnId: base.clientTurnId,
-				streamRunId: base.streamRunId,
-				context,
-				mode: 'worker_realtime'
-			}).token,
-			issueAgenticChatTransportLease({
-				secret: SECRET,
-				userId: USER_ID,
-				clientTurnId: 'different-client',
-				streamRunId: base.streamRunId,
-				context,
-				mode: 'worker_realtime'
-			}).token,
-			issueAgenticChatTransportLease({
-				secret: SECRET,
-				userId: USER_ID,
-				clientTurnId: base.clientTurnId,
-				streamRunId: 'different-stream',
-				context,
-				mode: 'worker_realtime'
-			}).token,
-			issueAgenticChatTransportLease({
-				secret: SECRET,
-				userId: USER_ID,
-				clientTurnId: base.clientTurnId,
-				streamRunId: base.streamRunId,
-				context: { type: 'calendar', entityId: null, projectId: null },
-				mode: 'worker_realtime'
-			}).token
-		];
-
-		for (const leaseToken of tokens) {
-			const response = await POST(postEvent({ body: { ...base, leaseToken } }) as never);
-			expect(response.status).toBe(409);
-			expect(response.headers.get('cache-control')).toBe('private, no-store');
-		}
-		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
-		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
-	});
-
-	// A kill-epoch bump now means "re-admit on the worker": the stale lease is
-	// refused before any durable work, and a lease minted at the new epoch is
-	// admitted, so the client's single re-admission converges.
-	it('forces re-admission when the worker kill epoch advances', async () => {
-		const base = admissionBody();
-		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '2';
-		const stale = issueAgenticChatTransportLease({
-			secret: SECRET,
-			userId: USER_ID,
-			clientTurnId: base.clientTurnId,
-			streamRunId: base.streamRunId,
-			context: base.context,
-			mode: 'worker_realtime',
-			killEpoch: 1
-		});
-		const staleResponse = await POST(
-			postEvent({ body: { ...base, leaseToken: stale.token } }) as never
-		);
-		expect(staleResponse.status).toBe(409);
-		expect((await staleResponse.json()).code).toBe('TRANSPORT_RENEGOTIATE');
-		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
-
-		const reissued = issueAgenticChatTransportLease({
-			secret: SECRET,
-			userId: USER_ID,
-			clientTurnId: base.clientTurnId,
-			streamRunId: base.streamRunId,
-			context: base.context,
-			mode: 'worker_realtime',
-			killEpoch: 2
-		});
-		const readmitted = await POST(
-			postEvent({ body: { ...base, leaseToken: reissued.token } }) as never
-		);
-		expect(readmitted.status).toBe(202);
-		expect(mocks.createAdminSupabaseClient).toHaveBeenCalled();
 	});
 
 	it('prepares server-owned inputs once and returns a private immutable handle for new admission', async () => {
@@ -646,15 +518,10 @@ describe('POST /api/agent/v2/turns', () => {
 	});
 });
 
-describe('POST /api/agent/v2/turns without a lease (inline transport decision)', () => {
-	const CANONICAL_UUID =
-		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-
+describe('POST /api/agent/v2/turns inline transport decision', () => {
 	beforeEach(() => {
 		resetAgenticChatTurnRateLimitForTests();
 		vi.clearAllMocks();
-		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET = SECRET;
-		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
 		mocks.env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED = undefined;
 		mocks.env.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED = undefined;
 		mocks.env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS = undefined;
@@ -680,7 +547,7 @@ describe('POST /api/agent/v2/turns without a lease (inline transport decision)',
 		const admin = fakeAdminClient();
 		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
 
-		const response = await POST(postEvent({ body: leaselessBody() }) as never);
+		const response = await POST(postEvent({ body: admissionBody() }) as never);
 		const payload = await response.json();
 
 		expect(response.status).toBe(202);
@@ -728,27 +595,30 @@ describe('POST /api/agent/v2/turns without a lease (inline transport decision)',
 			})
 		);
 
-		const response = await POST(postEvent({ body: leaselessBody() }) as never);
+		const response = await POST(postEvent({ body: admissionBody() }) as never);
 
 		expect(response.status).toBe(200);
 		expect((await response.json()).data.outcome).toBe('matching_duplicate');
 		expect(preparedDecisionId()).toBe(DECISION_ID);
 	});
 
-	it('treats a null lease as absent but still rejects an empty one', async () => {
+	it('ignores a null retired lease field but rejects any lease token', async () => {
 		const admin = fakeAdminClient();
 		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
 		const accepted = await POST(
-			postEvent({ body: leaselessBody({ leaseToken: null }) }) as never
+			postEvent({ body: admissionBody({ leaseToken: null }) }) as never
 		);
 		expect(accepted.status).toBe(202);
+		expect(admin.turnLookups).toHaveLength(1);
 
-		vi.clearAllMocks();
-		const rejected = await POST(
-			postEvent({ body: leaselessBody({ leaseToken: '' }) }) as never
-		);
-		expect(rejected.status).toBe(422);
-		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
+		for (const leaseToken of ['', 'actl1.retired-transport-lease']) {
+			vi.clearAllMocks();
+			const rejected = await POST(
+				postEvent({ body: admissionBody({ leaseToken }) }) as never
+			);
+			expect(rejected.status).toBe(422);
+			expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
+		}
 	});
 
 	it('refuses a binding that conflicts with an existing owned turn before preparation', async () => {
@@ -761,7 +631,7 @@ describe('POST /api/agent/v2/turns without a lease (inline transport decision)',
 		]) {
 			resetAgenticChatTurnRateLimitForTests();
 			mocks.createAdminSupabaseClient.mockReturnValue(fakeAdminClient({ turnRows }).client);
-			const response = await POST(postEvent({ body: leaselessBody() }) as never);
+			const response = await POST(postEvent({ body: admissionBody() }) as never);
 			const payload = await response.json();
 			expect(response.status).toBe(409);
 			expect(payload.code).toBe('TRANSPORT_CONFLICT');
@@ -775,7 +645,7 @@ describe('POST /api/agent/v2/turns without a lease (inline transport decision)',
 		mocks.createAdminSupabaseClient.mockReturnValue(
 			fakeAdminClient({ turnError: { message: 'private database detail' } }).client
 		);
-		const response = await POST(postEvent({ body: leaselessBody() }) as never);
+		const response = await POST(postEvent({ body: admissionBody() }) as never);
 		const payload = await response.json();
 		expect(response.status).toBe(503);
 		expect(response.headers.get('retry-after')).toBe('2');
@@ -784,21 +654,12 @@ describe('POST /api/agent/v2/turns without a lease (inline transport decision)',
 		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 	});
 
-	it('keeps the leased path on the signed decision with no inline lookup', async () => {
-		const admin = fakeAdminClient({ turnRows: [ownedTurnRow({ stream_run_id: 'other' })] });
-		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
-		const response = await POST(postEvent() as never);
-		expect(response.status).toBe(202);
-		expect(admin.from).not.toHaveBeenCalled();
-		expect(preparedDecisionId()).toBe(DECISION_ID);
-	});
-
 	it('returns the admitted session row only when the send had no session', async () => {
 		const session = sessionRow();
 		let admin = fakeAdminClient({ session });
 		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
 		const created = await POST(
-			postEvent({ body: leaselessBody({ sessionId: null }) }) as never
+			postEvent({ body: admissionBody({ sessionId: null }) }) as never
 		);
 		const createdPayload = await created.json();
 		expect(created.status).toBe(202);
@@ -832,7 +693,7 @@ describe('POST /api/agent/v2/turns without a lease (inline transport decision)',
 			})
 		);
 		const duplicate = await POST(
-			postEvent({ body: leaselessBody({ sessionId: null }) }) as never
+			postEvent({ body: admissionBody({ sessionId: null }) }) as never
 		);
 		expect(duplicate.status).toBe(200);
 		expect((await duplicate.json()).data.session).toEqual(session);
@@ -841,7 +702,7 @@ describe('POST /api/agent/v2/turns without a lease (inline transport decision)',
 		resetAgenticChatTurnRateLimitForTests();
 		admin = fakeAdminClient({ session });
 		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
-		const existing = await POST(postEvent({ body: leaselessBody() }) as never);
+		const existing = await POST(postEvent({ body: admissionBody() }) as never);
 		const existingPayload = await existing.json();
 		expect(existing.status).toBe(202);
 		expect(existingPayload.data).not.toHaveProperty('session');
@@ -859,7 +720,7 @@ describe('POST /api/agent/v2/turns without a lease (inline transport decision)',
 			mocks.loggerWarn.mockClear();
 			mocks.createAdminSupabaseClient.mockReturnValue(fakeAdminClient(options).client);
 			const response = await POST(
-				postEvent({ body: leaselessBody({ sessionId: null }) }) as never
+				postEvent({ body: admissionBody({ sessionId: null }) }) as never
 			);
 			const payload = await response.json();
 			expect(response.status).toBe(202);
@@ -883,23 +744,11 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		projectId: PROJECT_ID
 	};
 	const rpc = vi.fn();
-	const adminFrom = vi.fn();
+	let admin: ReturnType<typeof fakeAdminClient>;
 
 	function reviewBody(overrides: Record<string, unknown> = {}) {
-		const context = (overrides.context as typeof projectContext | undefined) ?? projectContext;
-		const lease = issueAgenticChatTransportLease({
-			secret: SECRET,
-			userId: USER_ID,
-			clientTurnId: 'client-turn-1',
-			streamRunId: 'stream-run-1',
-			context,
-			mode: 'worker_realtime',
-			decisionId: DECISION_ID,
-			killEpoch: 0
-		});
 		return admissionBody({
-			leaseToken: lease.token,
-			context,
+			context: projectContext,
 			message: 'Review this project: what should we prioritize next?',
 			reviewIntent: 'project_review',
 			...overrides
@@ -943,13 +792,11 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		resetAgenticChatTurnRateLimitForTests();
 		vi.clearAllMocks();
 		rpc.mockReset();
-		mocks.env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET = SECRET;
-		mocks.env.AGENTIC_CHAT_WORKER_KILL_EPOCH = '0';
 		mocks.env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED = 'true';
 		mocks.env.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED = undefined;
 		mocks.env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS = USER_ID;
-		adminFrom.mockReset();
-		mocks.createAdminSupabaseClient.mockReturnValue({ from: adminFrom, rpc });
+		admin = fakeAdminClient({ rpc });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
 		mocks.prepareAgenticChatWorkerAdmission.mockResolvedValue({
 			args: { p_user_id: USER_ID },
 			capacity: { available: true, retryAfterSeconds: 2, reason: 'open' },
@@ -989,7 +836,7 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 	});
 
-	it('saves an eligible review raw in one RPC with no context, prompt, or lease work first', async () => {
+	it('saves an eligible review raw in one RPC with no context or prompt work first', async () => {
 		const request = postEvent({ body: reviewBody() });
 		const response = await POST(request as never);
 		const body = await response.json();
@@ -1015,7 +862,7 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 				p_user_id: USER_ID,
 				p_session_id: SESSION_ID,
 				p_project_id: PROJECT_ID,
-				p_transport_decision_id: DECISION_ID,
+				p_transport_decision_id: expect.stringMatching(CANONICAL_UUID),
 				p_message: 'Review this project: what should we prioritize next?',
 				p_cache_ref: null
 			})
@@ -1024,9 +871,10 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		// check, history, context load, prompt build, or ordinary admission.
 		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 		expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
-		// Exactly one database round trip before the queue: no table reads on the
-		// service client and nothing on the user-scoped client.
-		expect(adminFrom).not.toHaveBeenCalled();
+		// Besides the owned-turn transport-decision lookup, one database round
+		// trip before the queue: no other service-client table reads and nothing
+		// on the user-scoped client.
+		expect(admin.from.mock.calls).toEqual([['chat_turn_runs']]);
 		expect(request.locals.supabase.from).not.toHaveBeenCalled();
 		expect(request.locals.supabase.rpc).not.toHaveBeenCalled();
 		const serverTiming = response.headers.get('server-timing') ?? '';
@@ -1049,8 +897,8 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 			context_type: 'project',
 			entity_id: PROJECT_ID
 		});
-		const admin = fakeAdminClient({ session, rpc });
-		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		const withSession = fakeAdminClient({ session, rpc });
+		mocks.createAdminSupabaseClient.mockReturnValue(withSession.client);
 		respondWith(() => workflowReceipt({ session_created: true }));
 
 		const response = await POST(postEvent({ body: reviewBody({ sessionId: null }) }) as never);
@@ -1060,29 +908,27 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 		expect(body.data).toMatchObject({ reviewMode: 'project_review', session });
 		expect(rpc).toHaveBeenCalledWith(
 			'create_agentic_chat_workflow_turn_with_job_v1',
-			expect.objectContaining({ p_session_id: null, p_transport_decision_id: DECISION_ID })
+			expect.objectContaining({
+				p_session_id: null,
+				p_transport_decision_id: expect.stringMatching(CANONICAL_UUID)
+			})
 		);
-		expect(admin.from).toHaveBeenCalledTimes(1);
-		expect(admin.sessionLookups).toEqual([
+		expect(withSession.from.mock.calls).toEqual([['chat_turn_runs'], ['chat_sessions']]);
+		expect(withSession.sessionLookups).toEqual([
 			[
 				['id', SESSION_ID],
 				['user_id', USER_ID]
 			]
 		]);
-		const sessionQuery = admin.from.mock.results[0]?.value;
+		const sessionQuery = withSession.from.mock.results.at(-1)?.value;
 		expect(sessionQuery.maybeSingle.mock.invocationCallOrder[0]).toBeGreaterThan(
 			rpc.mock.invocationCallOrder[0]!
 		);
 		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
 	});
 
-	it('admits a lease-less review under an inline decision', async () => {
-		const admin = fakeAdminClient({ rpc });
-		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
-		const body: Record<string, unknown> = { ...reviewBody() };
-		delete body.leaseToken;
-
-		const response = await POST(postEvent({ body }) as never);
+	it('admits a review under a fresh inline decision bound to the authenticated owner', async () => {
+		const response = await POST(postEvent({ body: reviewBody() }) as never);
 
 		expect(response.status).toBe(202);
 		expect(admin.turnLookups).toEqual([
@@ -1092,7 +938,7 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 			]
 		]);
 		const decisionId = rpc.mock.calls[0]?.[1]?.p_transport_decision_id;
-		expect(decisionId).toMatch(/^[0-9a-f-]{36}$/);
+		expect(decisionId).toMatch(CANONICAL_UUID);
 		expect(decisionId).not.toBe(DECISION_ID);
 		expect((await response.json()).data).not.toHaveProperty('session');
 	});

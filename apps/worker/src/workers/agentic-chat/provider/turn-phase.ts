@@ -178,11 +178,6 @@ export function contractPending(phase: TurnPhase): boolean {
 	return phase === 'contract_declared' || phase === 'contract_reviewed';
 }
 
-/** A proposed batch is held awaiting review, or was approved and not yet run. */
-export function batchPending(phase: TurnPhase): boolean {
-	return phase === 'batch_withheld' || phase === 'batch_approved';
-}
-
 /** A mutation reached execution this turn (successful or not). */
 export function mutationReached(phase: TurnPhase): boolean {
 	return phase === 'mutating' || phase === 'completion';

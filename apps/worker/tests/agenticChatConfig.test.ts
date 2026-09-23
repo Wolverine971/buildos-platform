@@ -120,15 +120,12 @@ describe('workflow v4 flag matrix (Tasker 86 preparation, Tasker 87 execution)',
 		const config = load({});
 		expect(config.workflowV4PreparationEnabled).toBe(false);
 		expect(config.workflowV4ExecutionEnabled).toBe(false);
-		expect(config.jevSpecialistSelection).toBe('off');
 	});
-	it('supports shadow specialist selection but refuses an execution mode', () => {
-		expect(
-			load({ AGENTIC_CHAT_JEV_SPECIALIST_SELECTION: 'shadow' }).jevSpecialistSelection
-		).toBe('shadow');
-		expect(() => load({ AGENTIC_CHAT_JEV_SPECIALIST_SELECTION: 'on' })).toThrow(
-			'off or shadow'
-		);
+	it('ignores the retired specialist-selection shadow flag whatever its value', () => {
+		for (const value of ['shadow', 'on', 'nonsense']) {
+			const config = load({ AGENTIC_CHAT_JEV_SPECIALIST_SELECTION: value });
+			expect(config).not.toHaveProperty('jevSpecialistSelection');
+		}
 	});
 
 	it('allows preparation alone and preparation with execution', () => {

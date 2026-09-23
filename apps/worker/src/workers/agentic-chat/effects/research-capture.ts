@@ -1,5 +1,4 @@
 // apps/worker/src/workers/agentic-chat/effects/research-capture.ts
-import { createHash } from 'node:crypto';
 import {
 	type ResearchToolCall,
 	buildResearchEntryFromCalls,
@@ -11,6 +10,7 @@ import {
 	type JsonValue,
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
+import { sha256Hex, stableUuidFromSeed } from '../shared/identity-hash';
 import { runWithAbortableDeadline } from '../shared/abortable-deadline';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import { agenticChatGenerationWriteFenceArgsV1 } from '../turn/write-fence';
@@ -312,17 +312,9 @@ function createStableResearchCaptureIdentity(input: {
 		description: input.description
 	});
 	return {
-		effectId: uuidFromSha256(`${RESEARCH_CAPTURE_IDENTITY_VERSION}:${input.turnRunId}`),
-		canonicalArgumentHash: createHash('sha256').update(canonicalArguments, 'utf8').digest('hex')
+		effectId: stableUuidFromSeed(`${RESEARCH_CAPTURE_IDENTITY_VERSION}:${input.turnRunId}`),
+		canonicalArgumentHash: sha256Hex(canonicalArguments)
 	};
-}
-
-function uuidFromSha256(value: string): string {
-	const bytes = createHash('sha256').update(value, 'utf8').digest().subarray(0, 16);
-	bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 function requireRecord(value: unknown, label: string): JsonObject {

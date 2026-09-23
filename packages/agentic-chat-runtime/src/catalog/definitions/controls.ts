@@ -16,6 +16,42 @@ export const AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 export type AgenticChatStandardControlToolNameV1 =
 	(typeof AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1)[number];
 
+/**
+ * Reviewer-only decisions. Only the independent reviewer lanes may call these:
+ * approve a declared turn contract, approve a SHA-bound mutation batch, or
+ * return a flawed proposal to the acting model instead of the user. Their
+ * definitions stay with the worker's reviewer lanes; the names live here so
+ * every host classifies them the same way.
+ */
+export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
+export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_review';
+/**
+ * Reviewer-only exit that returns a flawed proposal to the acting model instead
+ * of the user. Before this existed, every defect a reviewer found in a model
+ * artifact (lumped targets, a cardinality typo, an invented value, a partial
+ * batch) had exactly one non-approving exit — ask the user — which is how
+ * "over-clarification" was born.
+ */
+export const REQUEST_PROPOSAL_REVISION_TOOL_NAME = 'request_proposal_revision';
+
+export const AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES = Object.freeze([
+	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
+	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
+	REQUEST_PROPOSAL_REVISION_TOOL_NAME
+] as const);
+
+export type AgenticChatReviewerControlToolName =
+	(typeof AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES)[number];
+
+/**
+ * Every harness control tool: the acting model's disposition declarations and
+ * the reviewer's decisions. They are turn machinery, never evidence or writes.
+ */
+export const AGENTIC_CHAT_CONTROL_TOOL_NAMES = Object.freeze([
+	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
+	...AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES
+] as const);
+
 export const TURN_CONTRACT_TOOL_DEFINITION: ChatToolDefinition = {
 	type: 'function',
 	function: {

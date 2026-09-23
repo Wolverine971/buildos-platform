@@ -1,113 +1,50 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-request.test.ts
 import { describe, expect, it } from 'vitest';
-import { parseFastAgentStreamRequestBody } from './stream-request';
-import { normalizeFastAgentStreamRequest } from './types';
+import { agenticChatProjectFocusSchema } from './stream-request';
 
-describe('parseFastAgentStreamRequestBody', () => {
-	it('accepts a minimal valid body', () => {
-		const result = parseFastAgentStreamRequestBody({
-			message: 'Hello',
-			context_type: 'global'
-		});
-		expect(result.ok).toBe(true);
-		if (result.ok) {
-			expect(result.input.message).toBe('Hello');
-		}
+const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
+
+function focus(overrides: Record<string, unknown> = {}) {
+	return {
+		focusType: 'task',
+		focusEntityId: '22222222-2222-4222-8222-222222222222',
+		focusEntityName: 'Task',
+		projectId: PROJECT_ID,
+		projectName: 'Project',
+		...overrides
+	};
+}
+
+describe('agenticChatProjectFocusSchema', () => {
+	it('accepts a valid focus and lowercases its identifiers', () => {
+		const result = agenticChatProjectFocusSchema.safeParse(
+			focus({ projectId: PROJECT_ID.toUpperCase() })
+		);
+		expect(result.success).toBe(true);
+		expect(result.data?.projectId).toBe(PROJECT_ID);
 	});
 
-	it('passes through unknown keys instead of rejecting them', () => {
-		const result = parseFastAgentStreamRequestBody({
-			message: 'Hello',
-			some_future_field: { nested: true }
-		});
-		expect(result.ok).toBe(true);
+	it('accepts a project-wide focus with no focused entity', () => {
+		expect(
+			agenticChatProjectFocusSchema.safeParse(
+				focus({ focusType: 'project-wide', focusEntityId: null, focusEntityName: null })
+			).success
+		).toBe(true);
 	});
 
-	it('accepts deprecated snake_case aliases', () => {
-		const result = parseFastAgentStreamRequestBody({
-			message: 'Hello',
-			prepared_prompt_key: 'pp_v1.abc.def',
-			voice_note_group_id: 'group-1',
-			last_turn_context: { summary: 'prior turn' },
-			prewarmed_context: { key: 'v2|global', version: 2 }
-		});
-		expect(result.ok).toBe(true);
+	it('rejects non-UUID project and focus identifiers', () => {
+		expect(
+			agenticChatProjectFocusSchema.safeParse(focus({ focusEntityId: 'not-a-uuid' })).success
+		).toBe(false);
+		expect(
+			agenticChatProjectFocusSchema.safeParse(focus({ projectId: 'project-1' })).success
+		).toBe(false);
 	});
 
-	it('accepts null voice note group ids as absent optional values', () => {
-		const result = parseFastAgentStreamRequestBody({
-			message: 'Hello',
-			voiceNoteGroupId: null,
-			voice_note_group_id: null
-		});
-		expect(result.ok).toBe(true);
-		if (result.ok) {
-			expect(result.input.voiceNoteGroupId).toBeNull();
-			expect(result.input.voice_note_group_id).toBeNull();
-			expect(normalizeFastAgentStreamRequest(result.input).voiceNoteGroupId).toBeUndefined();
-		}
-	});
-
-	it('rejects a non-object body with a path-labelled issue', () => {
-		const result = parseFastAgentStreamRequestBody('not an object');
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
-			expect(result.issues[0]).toContain('(root)');
-		}
-	});
-
-	it('rejects wrong field shapes (message as object, attachments as string)', () => {
-		const badMessage = parseFastAgentStreamRequestBody({ message: { text: 'hi' } });
-		expect(badMessage.ok).toBe(false);
-		if (!badMessage.ok) {
-			expect(badMessage.issues[0]).toContain('message');
-		}
-
-		const badAttachments = parseFastAgentStreamRequestBody({
-			message: 'hi',
-			attachments: 'nope'
-		});
-		expect(badAttachments.ok).toBe(false);
-		if (!badAttachments.ok) {
-			expect(badAttachments.issues[0]).toContain('attachments');
-		}
-	});
-
-	it('rejects non-UUID project and focus identifiers at the legacy boundary', () => {
-		const invalidProject = parseFastAgentStreamRequestBody({
-			message: 'Open this project',
-			context_type: 'project',
-			entity_id: 'project-1'
-		});
-		const invalidFocus = parseFastAgentStreamRequestBody({
-			message: 'Open this task',
-			context_type: 'ontology',
-			entity_id: '11111111-1111-4111-8111-111111111111',
-			projectFocus: {
-				focusType: 'task',
-				focusEntityId: 'not-a-uuid',
-				focusEntityName: 'Task',
-				projectId: '11111111-1111-4111-8111-111111111111',
-				projectName: 'Project'
-			}
-		});
-
-		expect(invalidProject.ok).toBe(false);
-		expect(invalidFocus.ok).toBe(false);
-	});
-
-	it('caps reported issues at five', () => {
-		const result = parseFastAgentStreamRequestBody({
-			message: 1,
-			session_id: 2,
-			context_type: 3,
-			entity_id: 4,
-			client_turn_id: 5,
-			voiceNoteGroupId: 6
-		});
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
-			expect(result.issues.length).toBeLessThanOrEqual(5);
-		}
+	it('rejects unknown focus types and extra keys', () => {
+		expect(
+			agenticChatProjectFocusSchema.safeParse(focus({ focusType: 'workspace' })).success
+		).toBe(false);
+		expect(agenticChatProjectFocusSchema.safeParse(focus({ extra: true })).success).toBe(false);
 	});
 });

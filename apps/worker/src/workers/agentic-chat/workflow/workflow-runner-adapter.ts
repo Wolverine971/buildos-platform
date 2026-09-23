@@ -1,4 +1,5 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-runner-adapter.ts
+import { settleWithin } from '../shared/abortable-deadline';
 import type {
 	AgenticChatCommittedSemanticEventReceiptV1,
 	AgenticChatRecoveryFailureClassV1,
@@ -214,15 +215,7 @@ class WorkflowLiveDelivery {
 	}
 
 	async drain(timeoutMs: number): Promise<void> {
-		let timer: NodeJS.Timeout | undefined;
-		await Promise.race([
-			this.tail,
-			new Promise<void>((resolve) => {
-				timer = setTimeout(resolve, timeoutMs);
-				timer.unref?.();
-			})
-		]);
-		if (timer) clearTimeout(timer);
+		await settleWithin(this.tail, timeoutMs);
 	}
 
 	private async publish(event: JsonObject): Promise<void> {

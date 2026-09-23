@@ -1,5 +1,4 @@
 // apps/worker/src/workers/agentic-chat/host/stalled-recovery.ts
-import { createHash } from 'node:crypto';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgenticChatRecoveryFailureClassV1,
@@ -8,6 +7,7 @@ import {
 	type AgenticChatTurnClaimResultV1,
 	type ChatTurnTerminalStatusV1
 } from '@buildos/shared-types';
+import { stableUuidFromSeed } from '../shared/identity-hash';
 import {
 	type AgenticChatExecutionControlPortV1,
 	AgenticChatExecutionControlRpcError,
@@ -745,14 +745,7 @@ function isTerminalStatus(value: unknown): value is ChatTurnTerminalStatusV1 {
 }
 
 function stableRecoveryMessageId(turnRunId: string, generation: number): string {
-	const bytes = createHash('sha256')
-		.update(`agentic-chat-stalled-message-v1:${turnRunId}:${generation}`, 'utf8')
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6] & 0x0f) | 0x50;
-	bytes[8] = (bytes[8] & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return stableUuidFromSeed(`agentic-chat-stalled-message-v1:${turnRunId}:${generation}`);
 }
 
 function recoveryResult(

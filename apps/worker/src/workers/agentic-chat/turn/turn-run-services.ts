@@ -18,7 +18,7 @@ import {
 } from '../tools/read-tool-fence';
 import { AgenticChatToolExecutionFenceError } from '../tools/tool-execution';
 import { createStableAgenticChatExecutionObservationKeyV1 } from '../effects/execution-observation';
-import { abortable } from '../shared/abortable-deadline';
+import { abortable, throwIfAborted } from '../shared/abortable-deadline';
 import type { AgenticChatExecutorEffects } from '../effects/executor-effects';
 import { AgenticChatSessionHandoffProtocolError } from './session-handoff';
 import { deriveAgenticChatReadPlanningIdentityV1 } from '../effects/read-planning-telemetry';
@@ -26,12 +26,7 @@ import type {
 	AgenticChatTurnExecutorPorts,
 	AgenticChatTurnProviderStepV1
 } from './executor-contracts';
-import {
-	type AgenticChatOverheadDeadline,
-	canonicalText,
-	canonicalUuid,
-	throwIfAborted
-} from './executor-helpers';
+import { type AgenticChatOverheadDeadline, canonicalText, canonicalUuid } from './executor-helpers';
 import {
 	type AgenticChatExecutableToolStepV1,
 	type AgenticChatReadPlanningContextV1,

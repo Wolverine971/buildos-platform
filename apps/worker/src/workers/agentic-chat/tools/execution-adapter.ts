@@ -12,7 +12,13 @@ import {
 	resolveUserCivilTimezone
 } from '@buildos/shared-agent-ops';
 import {
+	AGENTIC_CHAT_CONTROL_TOOL_NAMES,
+	AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES,
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
+	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
+	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
+	type AgenticChatReviewerControlToolName,
+	REQUEST_PROPOSAL_REVISION_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME,
 	TOOL_METADATA
 } from '@buildos/agentic-chat-runtime/catalog';
@@ -38,53 +44,41 @@ import {
 	searchTelemetryColumns,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
-import { runWithAbortableDeadline } from '../shared/abortable-deadline';
+import { runWithAbortableDeadline, throwIfAborted } from '../shared/abortable-deadline';
 import type { AgenticChatReadToolPortV1 } from '../turn/executor-contracts';
 import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import { WorkerAgenticChatToolAccessAdapter } from './worker-access-adapter';
 import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 import type { AgenticChatWebSearchReviewPort } from './web-search-review';
-import { type WebNavigatePort, describeWebNavigationStep } from './web-navigate';
+import {
+	WEB_NAVIGATE_TOOL_NAME,
+	type WebNavigatePort,
+	describeWebNavigationStep
+} from './web-navigate';
 import {
 	type AgentRunWebUrlCapabilityLedger,
 	createAgentRunWebUrlCapabilityLedger
 } from '../../agent-run/webUrlCapabilityLedger';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
-export const APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME = 'approve_turn_contract_review';
-export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME = 'approve_mutation_batch_review';
-/**
- * Reviewer-only exit that returns a flawed proposal to the acting model instead
- * of the user. Before this existed, every defect a reviewer found in a model
- * artifact (lumped targets, a cardinality typo, an invented value, a partial
- * batch) had exactly one non-approving exit — ask the user — which is how
- * "over-clarification" was born.
- */
-export const REQUEST_PROPOSAL_REVISION_TOOL_NAME = 'request_proposal_revision';
-/**
- * The reviewer-only control vocabulary the worker recognizes.
- * `approve_mutation_batch_review` is the approval of the SHA-bound batch lane
- * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1): the reviewer binds the
- * digest of the exact proposed calls and the worker then executes those held
- * calls unchanged. `buildReviewerMimicryRepairRequest` still intercepts an
- * ACTING model that imitates any of these names; only the reviewer lane can
- * reach the runners below.
- */
-const WORKER_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
-	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
+// The runtime catalog owns the reviewer control names; re-exported for existing importers.
+export {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	REQUEST_PROPOSAL_REVISION_TOOL_NAME
-] as const);
-const WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1 = Object.freeze([
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
-] as const);
-export const AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1 = Object.freeze([
-	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
-	...WORKER_REVIEW_CONTROL_TOOL_NAMES_V1
-] as const);
+};
+/**
+ * Every harness control the worker recognizes: the standard disposition
+ * declarations plus the reviewer-only decisions
+ * (`AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES`). `approve_mutation_batch_review`
+ * is the approval of the SHA-bound batch lane (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+ * Decision 1): the reviewer binds the digest of the exact proposed calls and the
+ * worker then executes those held calls unchanged. `buildReviewerMimicryRepairRequest`
+ * still intercepts an ACTING model that imitates a reviewer name; only the
+ * reviewer lane can reach the runners below.
+ */
+export const AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1 = AGENTIC_CHAT_CONTROL_TOOL_NAMES;
 const AGENTIC_CHAT_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1);
 
 export function isAgenticChatControlToolNameV1(value: unknown): value is string {
@@ -109,11 +103,10 @@ export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_TIMEOUT_MS = 60_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-type WorkerExecutableReviewControlToolNameV1 =
-	(typeof WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1)[number];
+type WorkerExecutableReviewControlToolNameV1 = AgenticChatReviewerControlToolName;
 type WorkerReviewControlToolRunnerV1 = (args: JsonObject) => Promise<Record<string, unknown>>;
 const WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAME_SET_V1 = new Set<string>(
-	WORKER_EXECUTABLE_REVIEW_CONTROL_TOOL_NAMES_V1
+	AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES
 );
 
 type TurnSecurityState = {
@@ -207,7 +200,7 @@ const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
 export const AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1 = Object.freeze([
 	'web_search',
 	'web_visit',
-	'web_navigate'
+	WEB_NAVIGATE_TOOL_NAME
 ] as const);
 
 /**
@@ -228,7 +221,7 @@ function contributesPrivateContentTaint(toolName: string): boolean {
 export const AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1 = Object.freeze([
 	...AGENTIC_CHAT_STANDARD_CONTROL_TOOL_NAMES_V1,
 	...AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
-	...WORKER_REVIEW_CONTROL_TOOL_NAMES_V1,
+	...AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES,
 	...AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1
 ]);
 
@@ -415,7 +408,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 				else throw providerError('read_tool_egress_provenance_required', 'permanent');
 			}
 		}
-		if (toolName === 'web_navigate') {
+		if (toolName === WEB_NAVIGATE_TOOL_NAME) {
 			// Only the start URL, goal, and page budget reach the navigator.
 			webArguments = { url: input.arguments.url ?? null, goal: input.arguments.goal ?? null };
 			if (typeof input.arguments.max_pages === 'number')
@@ -501,7 +494,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 					if (reviewControlTool) {
 						return WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1[toolName](input.arguments);
 					}
-					if (input.toolName === 'web_navigate') {
+					if (input.toolName === WEB_NAVIGATE_TOOL_NAME) {
 						if (!this.webNavigator) {
 							throw new AgenticChatProviderExecutionError(
 								'read_tool_execution_failed',
@@ -612,7 +605,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			turnSecurityState.webUrls.observeSearchResult(payload);
 		if (turnSecurityState && toolName === 'web_visit')
 			turnSecurityState.webUrls.observeVisitResult(payload);
-		if (turnSecurityState && toolName === 'web_navigate')
+		if (turnSecurityState && toolName === WEB_NAVIGATE_TOOL_NAME)
 			turnSecurityState.webUrls.observeNavigationResult(payload);
 		// Control decisions record their author on the durable row so a reviewer
 		// veto is never mistaken for acting-model hesitation after the fact.
@@ -877,11 +870,6 @@ function requireOptionalRecord(value: unknown): Record<string, unknown> | null {
 	return value && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: null;
-}
-
-function throwIfAborted(signal: AbortSignal): void {
-	if (!signal.aborted) return;
-	throw signal.reason instanceof Error ? signal.reason : new Error('Execution aborted');
 }
 
 function canonicalError(value: unknown): string {

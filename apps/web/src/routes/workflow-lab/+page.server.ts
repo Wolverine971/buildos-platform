@@ -18,15 +18,11 @@ import type { WorkbenchVersionSummary } from '$lib/types/specialist-workbench';
 export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) error(401, 'Sign in to use the workflow lab');
+	const inCohort = parseChatWorkflowPrototypeUsers(
+		env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS
+	).includes(user.id.toLowerCase());
 	// Local dev always opens the lab; starting a review still passes the admission gates.
-	if (
-		!dev &&
-		!parseChatWorkflowPrototypeUsers(env.AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS).includes(
-			user.id
-		)
-	) {
-		error(404, 'Not found');
-	}
+	if (!dev && !inCohort) error(404, 'Not found');
 	setHeaders({ 'Cache-Control': 'private, no-store' });
 	const publishedSpecialistsEnabled = [
 		env.AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED,
@@ -51,7 +47,11 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 			publishedSpecialistsEnabled &&
 			env.AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED?.trim() === 'true' &&
 			!!env.PRIVATE_OPENROUTER_API_KEY?.trim(),
-		publishedSpecialistsEnabled
+		publishedSpecialistsEnabled,
+		// Every Lab review is a durable review turn (the chat's Review project lane).
+		// Same rule as /api/agent/v2/capabilities; admission rechecks each submission.
+		projectReviewEnabled:
+			env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED?.trim() === 'true' && inCohort
 	};
 };
 

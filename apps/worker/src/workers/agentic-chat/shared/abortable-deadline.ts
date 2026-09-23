@@ -57,7 +57,35 @@ export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<
 	});
 }
 
-function throwIfAborted(signal: AbortSignal): void {
+/**
+ * Wait for `promise` to settle or for `timeoutMs` to pass, whichever comes
+ * first, and never reject. Resolves true when the promise settled in time. The
+ * timer is unref'd so a pending wait never holds the process open.
+ */
+export async function settleWithin(
+	promise: PromiseLike<unknown>,
+	timeoutMs: number
+): Promise<boolean> {
+	let timer: NodeJS.Timeout | null = null;
+	const deadline = new Promise<false>((resolve) => {
+		timer = setTimeout(() => resolve(false), timeoutMs);
+		timer.unref?.();
+	});
+	try {
+		return await Promise.race([
+			Promise.resolve(promise).then(
+				() => true,
+				() => true
+			),
+			deadline
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
+/** Throw the signal's own Error reason, or a generic one, once it has aborted. */
+export function throwIfAborted(signal: AbortSignal): void {
 	if (signal.aborted) throw abortReason(signal, 'Execution aborted');
 }
 

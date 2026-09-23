@@ -6,6 +6,8 @@
 // right before the terminal fence so every row still lands inside the turn's
 // execution generation (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F50).
 
+import { settleWithin } from '../shared/abortable-deadline';
+
 export class AgenticChatPendingEffects {
 	private readonly pending = new Set<Promise<void>>();
 
@@ -34,22 +36,9 @@ export class AgenticChatPendingEffects {
 		}
 		const snapshot = [...this.pending];
 		if (snapshot.length === 0) return true;
-		let timer: NodeJS.Timeout | null = null;
-		const deadline = new Promise<'deadline'>((resolve) => {
-			timer = setTimeout(() => resolve('deadline'), deadlineMs);
-			timer.unref?.();
-		});
-		try {
-			const outcome = await Promise.race([
-				Promise.allSettled(snapshot).then(() => 'settled' as const),
-				deadline
-			]);
-			if (outcome !== 'settled') return false;
-			for (const tracked of snapshot) this.pending.delete(tracked);
-			return true;
-		} finally {
-			if (timer) clearTimeout(timer);
-		}
+		if (!(await settleWithin(Promise.allSettled(snapshot), deadlineMs))) return false;
+		for (const tracked of snapshot) this.pending.delete(tracked);
+		return true;
 	}
 }
 

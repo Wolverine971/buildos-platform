@@ -93,8 +93,15 @@ describe('workflow lab published specialist picker', () => {
 			contextFinderEnabled: false,
 			jevRecommendationsEnabled: false,
 			publishedSpecialistsEnabled: true,
+			projectReviewEnabled: true,
 			specialistLoadError: null
 		});
+	});
+
+	it('starts Lab reviews only when durable review admission is on for this user', async () => {
+		expect(await load(event() as never)).toMatchObject({ projectReviewEnabled: true });
+		delete state.env.AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED;
+		expect(await load(event() as never)).toMatchObject({ projectReviewEnabled: false });
 	});
 
 	it('keeps the built-in review available and reports unavailable specialist storage', async () => {

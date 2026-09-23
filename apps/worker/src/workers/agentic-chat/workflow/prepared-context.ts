@@ -1,5 +1,5 @@
 // apps/worker/src/workers/agentic-chat/workflow/prepared-context.ts
-import { createHash } from 'node:crypto';
+import { sha256Hex } from '../shared/identity-hash';
 import {
 	AGENTIC_CHAT_PROJECT_REVIEW_PAYLOAD_V2,
 	AGENTIC_CHAT_PROJECT_REVIEW_PREPARATION_V2,
@@ -582,8 +582,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function utf8Bytes(value: string): number {
 	return Buffer.byteLength(value, 'utf8');
-}
-
-function sha256Hex(value: string): string {
-	return createHash('sha256').update(value, 'utf8').digest('hex');
 }

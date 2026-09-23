@@ -1,5 +1,5 @@
 // apps/worker/src/workers/agentic-chat/turn/lifecycle-identity.ts
-import { createHash } from 'node:crypto';
+import { stableUuidFromSeed } from '../shared/identity-hash';
 
 export type AgenticChatExecutorLifecycleStageV1 =
 	| 'acknowledged'
@@ -35,14 +35,9 @@ export function createStableAgenticChatLifecycleTransitionIdV1(input: {
 	) {
 		throw new Error('Agentic Chat lifecycle stage is invalid');
 	}
-	const bytes = createHash('sha256')
-		.update(`agentic-chat-lifecycle-transition-v1:${input.turnRunId}:${input.stage}`, 'utf8')
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6] & 0x0f) | 0x50;
-	bytes[8] = (bytes[8] & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return stableUuidFromSeed(
+		`agentic-chat-lifecycle-transition-v1:${input.turnRunId}:${input.stage}`
+	);
 }
 
 function canonicalUuid(value: string, label: string): void {

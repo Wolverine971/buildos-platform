@@ -1,10 +1,9 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-turn-inline-admission.server.ts
 //
 // The two things a send used to fetch in separate round trips before worker
-// admission, now resolved inside it: the transport decision (formerly only via
-// the /transport lease) and the session row a session-less send creates
-// (formerly a separate session bootstrap). The /transport route still uses the
-// same decision logic to sign leases for older bundles.
+// admission, now resolved inside it: the transport decision (formerly a signed
+// transport lease from a separate route) and the session row a session-less
+// send creates (formerly a separate session bootstrap).
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -26,7 +25,7 @@ const logger = createLogger('AgenticChat:WorkerInlineAdmission');
 export type AgenticChatWorkerTransportBinding = Pick<
 	AgentChatTransportLeaseRequestV1,
 	'clientTurnId' | 'streamRunId' | 'sessionId' | 'context'
-> & { priorDecisionId?: string | null };
+>;
 
 export type AgenticChatWorkerTransportDecision =
 	| { ok: true; decisionId: string }
@@ -36,7 +35,7 @@ export type AgenticChatWorkerTransportDecision =
  * Resolves the transport decision id for one owned turn binding. An existing
  * owned turn keeps its persisted id (a retry must not re-decide); otherwise the
  * server mints a fresh one. The user id must be the authenticated user; every
- * other binding field is the exact value the caller signs or admits.
+ * other binding field is the exact value the caller admits.
  */
 export async function resolveAgenticChatWorkerTransportDecision(input: {
 	client: SupabaseClient<Database>;
@@ -54,11 +53,10 @@ export async function resolveAgenticChatWorkerTransportDecision(input: {
 				context: input.binding.context,
 				supportedModes: ['worker_realtime'],
 				supportedContractVersions: [AGENTIC_CHAT_WORKER_CONTRACT_VERSION],
-				priorDecisionId: input.binding.priorDecisionId ?? null
+				priorDecisionId: null
 			}
 		});
-		// A prior id is only a lookup hint. It becomes authoritative only when an
-		// owned persisted turn proves it; otherwise the server mints a fresh id.
+		// An owned persisted turn keeps its id; otherwise the server mints one.
 		return { ok: true, decisionId: existing?.decisionId ?? randomUUID() };
 	} catch (error) {
 		logger.warn('Agentic Chat transport decision failed', {
@@ -70,8 +68,8 @@ export async function resolveAgenticChatWorkerTransportDecision(input: {
 	}
 }
 
-/** Maps a failed transport decision to the public response both routes share. */
-export function agenticChatTransportDecisionFailureResponse(error: unknown): Response {
+/** Maps a failed transport decision to its public admission response. */
+function agenticChatTransportDecisionFailureResponse(error: unknown): Response {
 	if (
 		error instanceof AgenticChatTransportDecisionError &&
 		(error.code === 'binding_mismatch' ||

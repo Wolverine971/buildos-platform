@@ -76,6 +76,11 @@
 	// The chat session that actually exists for this review, reported by the modal. Never
 	// guessed from the project or from "most recent"; cleared whenever a new review starts.
 	let sessionId = $state<string | null>(null);
+	// Why a review did not start. A Lab review never falls back to ordinary chat.
+	let reviewError = $state('');
+	// The in-chat toggle that starts the next review of the same kind. The selection
+	// clears once the session changes, so every later review is chosen again.
+	const nextReviewAction = $derived(review?.specialist ? 'Organize documents' : 'Review project');
 
 	function clearRecommendation() {
 		recommendationGeneration += 1;
@@ -173,7 +178,8 @@
 	function start(event: SubmitEvent) {
 		event.preventDefault();
 		const project = data.projects.find((project) => project.id === projectId);
-		if (project && question.trim().length >= 3) {
+		if (data.projectReviewEnabled && project && question.trim().length >= 3) {
+			reviewError = '';
 			sessionId = null;
 			review = {
 				projectId,
@@ -253,9 +259,15 @@
 					focusEntityId: null,
 					focusEntityName: null
 				}}
-				initialDraft={`/workflow ${review.question}`}
+				initialDraft={review.question}
+				initialReviewIntent={review.specialist ? 'document_organization' : 'project_review'}
 				publishedSpecialist={review.specialist}
 				autoSendInitialDraft={true}
+				onInitialReviewUnavailable={(message) => {
+					reviewError = message;
+					review = null;
+					sessionId = null;
+				}}
 				onSessionChange={(id) => {
 					sessionId = id;
 				}}
@@ -263,12 +275,13 @@
 					review = null;
 					sessionId = null;
 				}}
-				composerPlaceholder="Start another review with /workflow …"
+				composerPlaceholder={`Choose ${nextReviewAction} to run another review…`}
 			/>
 		</div>
 		<p class="text-xs text-muted-foreground">
-			Use /workflow for each review. Other messages use ordinary project chat. Leaving this
-			page does not cancel a running review; use Stop in chat.
+			For each later review, choose {nextReviewAction} above the message box. Other messages use
+			ordinary project chat, which can change this project. Leaving this page does not cancel a
+			running review; use Stop in chat.
 		</p>
 	{:else}
 		<form
@@ -438,9 +451,16 @@
 				Reads saved project context and shows both specialists’ findings. This review does
 				not edit your project or search the web.
 			</p>
+			{#if !data.projectReviewEnabled}
+				<p role="status" class="text-sm text-destructive">
+					Project review is not enabled for this account, so reviews cannot start here.
+				</p>
+			{:else if reviewError}
+				<p role="alert" class="text-sm text-destructive">{reviewError}</p>
+			{/if}
 			<button
 				type="submit"
-				disabled={!projectId || question.trim().length < 3}
+				disabled={!data.projectReviewEnabled || !projectId || question.trim().length < 3}
 				class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-40"
 				>{selectedSpecialist ? 'Run specialist review' : 'Start project review'}</button
 			>

@@ -94,11 +94,6 @@ export function providerError(
 	);
 }
 
-export function throwIfAborted(signal: AbortSignal): void {
-	if (!signal.aborted) return;
-	throw signal.reason instanceof Error ? signal.reason : new Error('Execution aborted');
-}
-
 function nonnegativeInteger(value: unknown): value is number {
 	return Number.isSafeInteger(value) && (value as number) >= 0;
 }

@@ -18,8 +18,7 @@ import {
 	type AgenticChatTerminalFinalizeRpcResultV1,
 	type ChatContextType,
 	type ChatTurnTerminalStatusV1,
-	type JsonObject,
-	readChatWorkflowProgress
+	type JsonObject
 } from '@buildos/shared-types';
 import type {
 	AgenticChatExecutionIdentityV1,
@@ -403,11 +402,6 @@ export class AgenticChatTurnFinalizer {
 		// are trustworthy; otherwise it safely falls back to the base terminal CAS.
 		const lastTurnContext =
 			status === 'cancelled' && timingDraft === null ? null : terminalLastTurnContext;
-		const workflowProgress = projection.semanticEvents
-			.slice()
-			.reverse()
-			.map((event) => readChatWorkflowProgress((event as unknown as JsonObject).workflow))
-			.find((value) => value !== null);
 		const terminalInput: AgenticChatTerminalFinalizeInputV1 = {
 			...envelope,
 			userId: claim.userId,
@@ -422,9 +416,6 @@ export class AgenticChatTurnFinalizer {
 				turn_run_id: claim.turnRunId,
 				execution_generation: claim.executionGeneration,
 				worker_runtime: 'agentic_chat_v1',
-				...(workflowProgress
-					? { chat_workflow_v1: workflowProgress as unknown as JsonObject }
-					: {}),
 				...(turnOutcome
 					? {
 							outcome_status:

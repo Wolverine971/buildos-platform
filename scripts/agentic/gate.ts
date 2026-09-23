@@ -245,7 +245,6 @@ async function main() {
 			CHAT_MUTATION_BATCH_LANE: 'true',
 			AGENTIC_CHAT_LOCAL_PROMPT_DUMPS: 'true',
 			AGENTIC_CHAT_LOCAL_PROMPT_DUMP_DIRECTORY: resolve(output, 'provider-passes'),
-			AGENTIC_CHAT_TRANSPORT_LEASE_SECRET: randomBytes(32).toString('hex'),
 			PRIVATE_RAILWAY_WORKER_TOKEN: randomBytes(32).toString('hex'),
 			PRIVATE_AGENTIC_CHAT_WORKER_URL: workerUrl,
 			AGENTIC_E2E_BASE_URL: baseUrl,

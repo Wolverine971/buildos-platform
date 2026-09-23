@@ -1,9 +1,12 @@
 // apps/worker/src/workers/agentic-chat/provider/turn-state.ts
 
 import {
+	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
+	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
+	REQUEST_PROPOSAL_REVISION_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
@@ -42,11 +45,6 @@ import {
 	type AgenticChatTurnProviderRequestV1 as ClientRequest
 } from './contracts';
 import type { AgenticChatProviderCapacityLeaseV1 } from './provider-capacity';
-import {
-	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	REQUEST_PROPOSAL_REVISION_TOOL_NAME
-} from '../tools/execution-adapter';
 import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
 import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
 import {

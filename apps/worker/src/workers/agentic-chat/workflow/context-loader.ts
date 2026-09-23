@@ -3,32 +3,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
 import { createFastChatContextLoader } from '@buildos/agentic-chat-runtime/context/loader';
-import { WorkerAgenticChatToolAccessAdapter } from '../tools/worker-access-adapter';
-
-/** Service-role reads require a fresh actor-explicit access check for each workflow. */
-export function createWorkflowContextLoader(client: SupabaseClient<Database>) {
-	const loader = createFastChatContextLoader({
-		logger: {
-			warn: (message) => console.warn(`[workflow-context] ${message}`)
-		}
-	});
-	return (userId: string, projectId: string, signal: AbortSignal) =>
-		boundedBySignal(signal, async () => {
-			await new WorkerAgenticChatToolAccessAdapter({ client, userId }).assertProjectAccess(
-				projectId,
-				'read'
-			);
-			signal.throwIfAborted();
-			const context = await loader.loadFastChatPromptContext({
-				supabase: client,
-				userId,
-				contextType: 'project',
-				entityId: projectId
-			});
-			signal.throwIfAborted();
-			return context;
-		});
-}
 
 export type AgenticChatWorkflowPreparationContextLoaderV1 = (input: {
 	userId: string;

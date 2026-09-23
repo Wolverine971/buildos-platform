@@ -6,6 +6,7 @@ import {
 	type AgenticChatCancellationObservationRpcResultV1,
 	type AgenticChatCancellationObservationV1
 } from '@buildos/shared-types';
+import { settleWithin } from '../shared/abortable-deadline';
 
 /**
  * One `observe_agentic_chat_turn_cancellations` RPC per worker per tick while
@@ -176,7 +177,7 @@ export class AgenticChatCancellationObserver {
 		}
 		this.stopPromise = (async () => {
 			if (this.inFlight) {
-				await waitForPromiseOrTimeout(this.inFlight, this.config.shutdownWaitMs);
+				await settleWithin(this.inFlight, this.config.shutdownWaitMs);
 			}
 			this.turns.clear();
 		})();
@@ -299,20 +300,4 @@ function isCancelReason(value: unknown): boolean {
 
 function isCancelSource(value: unknown): boolean {
 	return value === 'browser' || value === 'worker' || value === 'operator' || value === 'sweeper';
-}
-
-async function waitForPromiseOrTimeout(
-	promise: Promise<unknown>,
-	timeoutMs: number
-): Promise<void> {
-	let timer: NodeJS.Timeout | null = null;
-	const timeout = new Promise<void>((resolve) => {
-		timer = setTimeout(resolve, timeoutMs);
-		timer.unref();
-	});
-	try {
-		await Promise.race([promise.then(() => undefined).catch(() => undefined), timeout]);
-	} finally {
-		if (timer) clearTimeout(timer);
-	}
 }

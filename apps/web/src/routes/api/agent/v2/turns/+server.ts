@@ -10,10 +10,6 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { Database, LastTurnContext, ProjectFocus } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-	parseAgenticChatWorkerKillEpoch,
-	verifyAgenticChatTransportLease
-} from '$lib/services/agentic-chat-v2/transport-lease.server';
-import {
 	loadAdmittedWorkerSession,
 	resolveAgenticChatWorkerTransportDecision
 } from '$lib/services/agentic-chat-v2/worker-turn-inline-admission.server';
@@ -107,51 +103,14 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	});
 	if (!parsed.ok) return privateResponse(parsed.response);
 
-	let lease;
-	if (parsed.data.leaseToken !== null) {
-		try {
-			lease = verifyAgenticChatTransportLease({
-				secret: env.AGENTIC_CHAT_TRANSPORT_LEASE_SECRET ?? '',
-				token: parsed.data.leaseToken,
-				expected: {
-					userId: user.id,
-					clientTurnId: parsed.data.clientTurnId,
-					streamRunId: parsed.data.streamRunId,
-					context: parsed.data.context
-				},
-				currentKillEpoch: parseAgenticChatWorkerKillEpoch(
-					env.AGENTIC_CHAT_WORKER_KILL_EPOCH
-				)
-			});
-		} catch (error) {
-			// TRANSPORT_RENEGOTIATE now means exactly one thing: get a fresh worker
-			// lease and re-admit this turn on the worker. A kill-epoch bump is the
-			// deliberate way to force that for every in-flight lease.
-			logger.warn('Worker turn lease verification failed', {
-				error,
-				userId: user.id,
-				clientTurnId: parsed.data.clientTurnId
-			});
-			return privateResponse(
-				ApiResponse.error(
-					'The worker transport lease must be renegotiated',
-					HttpStatus.CONFLICT,
-					'TRANSPORT_RENEGOTIATE'
-				)
-			);
-		}
-	}
 	const serviceClient = createAdminSupabaseClient();
-	// Lease-less (current) clients skip /transport: the same owned-turn lookup
-	// runs here, bound to this authenticated user and the exact clientTurnId,
-	// streamRunId, session, and context this request admits.
-	const decision = lease
-		? { ok: true as const, decisionId: lease.decisionId }
-		: await resolveAgenticChatWorkerTransportDecision({
-				client: serviceClient,
-				userId: user.id,
-				binding: parsed.data
-			});
+	// The transport decision is resolved here, bound to this authenticated user
+	// and the exact clientTurnId, streamRunId, session, and context admitted.
+	const decision = await resolveAgenticChatWorkerTransportDecision({
+		client: serviceClient,
+		userId: user.id,
+		binding: parsed.data
+	});
 	if (!decision.ok) return privateResponse(decision.response);
 	// A session-less send gets its session inside the admission RPC; the row is
 	// returned so the client needs no separate session bootstrap round trip.

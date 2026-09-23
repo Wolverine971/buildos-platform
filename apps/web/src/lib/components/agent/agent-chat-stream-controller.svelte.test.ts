@@ -187,14 +187,9 @@ function createHarness(
 	};
 	const assistant = {
 		flushText: vi.fn(),
-		finalizeMessage: vi.fn(),
-		markInterrupted: vi.fn()
+		finalizeMessage: vi.fn()
 	};
 	const haptic = vi.fn();
-	const hydrateSessionFromEvent = vi.fn((session: ChatSession) => {
-		currentSession = session;
-	});
-	const reconcileTurnFromSession = vi.fn(async () => {});
 	const scheduleMessageOcrPoll = vi.fn();
 	const clearDraft = vi.fn(() => {
 		readyRefs = [];
@@ -262,11 +257,8 @@ function createHarness(
 		thinking,
 		assistant,
 		clearPendingToolState: vi.fn(),
-		handleSSEMessage: vi.fn(),
-		hydrateSessionFromEvent,
 		adoptWorkerAdmissionResponse,
 		discoverWorkerSession,
-		reconcileTurnFromSession,
 		setUserHasScrolled: vi.fn(),
 		setExistingImagePickerOpen: vi.fn(),
 		haptic,
@@ -290,8 +282,6 @@ function createHarness(
 		admissionCalls,
 		cancelFetchCalls,
 		defaultFetch,
-		hydrateSessionFromEvent,
-		reconcileTurnFromSession,
 		scheduleMessageOcrPoll,
 		clearDraft,
 		restoreDraft,
@@ -346,7 +336,7 @@ describe('AgentChatStreamController', () => {
 		};
 		const originalSelection = { ...selected };
 		const h = createHarness({
-			inputValue: '/workflow Review the launch documents.',
+			inputValue: 'Review the launch documents.',
 			admissionFetchImpl: async (_input, init) => {
 				// Simulate a host selection changing while admission is in flight.
 				selected.version = 2;
@@ -355,6 +345,7 @@ describe('AgentChatStreamController', () => {
 			}
 		});
 		h.deps.getPublishedSpecialist = () => selected;
+		h.deps.getReviewIntent = () => 'document_organization';
 		await h.controller.sendMessage();
 		expect(h.controller.error).toBeNull();
 		expect(h.admissionCalls).toHaveLength(1);
@@ -368,23 +359,63 @@ describe('AgentChatStreamController', () => {
 		if (!firstHandle || firstHandle.executionMode !== 'worker_realtime')
 			throw new Error('Expected an admitted worker turn');
 		h.controller.finishWorkerTurn(firstHandle, 'completed');
-		await h.controller.sendMessage('/workflow Review the updated launch documents.');
+		await h.controller.sendMessage('Review the updated launch documents.');
 		expect(parseBody(h.admissionCalls[1]!).publishedSpecialist).toEqual(selected);
 		expect(parseBody(h.admissionCalls[1]!).clientTurnId).not.toBe(
 			parseBody(h.admissionCalls[0]!).clientTurnId
 		);
-		const secondHandle = h.controller.activeTurnHandle;
-		if (!secondHandle || secondHandle.executionMode !== 'worker_realtime')
-			throw new Error('Expected the second admitted worker turn');
-		h.controller.finishWorkerTurn(secondHandle, 'completed');
-		h.deps.getPublishedSpecialist = () => null;
-		await h.controller.sendMessage('/workflow Use the built-in review now.');
-		expect(parseBody(h.admissionCalls[2]!)).not.toHaveProperty('publishedSpecialist');
-		expect(parseBody(h.admissionCalls[2]!)).not.toHaveProperty('reviewIntent');
-		expect(parseBody(h.admissionCalls[2]!).message).toBe(
-			'/workflow Use the built-in review now.'
-		);
 		expect(h.transportCalls).toHaveLength(0);
+	});
+
+	it('never infers a review from a /workflow prefix: without a selection it is ordinary chat, sent verbatim', async () => {
+		const h = createHarness({ inputValue: '/workflow Review the launch documents.' });
+		h.deps.getPublishedSpecialist = () => ({
+			draftId: 'd8000000-0000-4000-8000-000000000001',
+			version: 1,
+			snapshotHash: 'a'.repeat(64)
+		});
+		await h.controller.sendMessage();
+		const body = parseBody(h.admissionCalls[0]!);
+		expect(body).not.toHaveProperty('reviewIntent');
+		expect(body).not.toHaveProperty('publishedSpecialist');
+		expect(body.message).toBe('/workflow Review the launch documents.');
+	});
+
+	it('carries the recommendation and curated evidence only for the question they were made for', async () => {
+		const question = 'What should we prioritize next?';
+		const selected = {
+			draftId: 'd8000000-0000-4000-8000-000000000001',
+			version: 1,
+			snapshotHash: 'a'.repeat(64),
+			selectionDecisionId: 'd9000000-0000-4000-8000-000000000001',
+			selectionQuestion: question,
+			selectionProjectId: 'project-1',
+			contextPlan: { version: 'plan', items: [] },
+			contextPlanQuestion: question,
+			contextPlanProjectId: 'project-1'
+		};
+		const h = createHarness({ inputValue: question });
+		h.deps.getPublishedSpecialist = () => selected as never;
+		h.deps.getReviewIntent = () => 'document_organization';
+		await h.controller.sendMessage();
+		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
+			reviewIntent: 'document_organization',
+			message: question,
+			publishedSpecialist: {
+				draftId: selected.draftId,
+				selectionDecisionId: selected.selectionDecisionId,
+				contextPlan: selected.contextPlan
+			}
+		});
+		const handle = h.controller.activeTurnHandle;
+		if (!handle || handle.executionMode !== 'worker_realtime')
+			throw new Error('Expected an admitted worker turn');
+		h.controller.finishWorkerTurn(handle, 'completed');
+		await h.controller.sendMessage('A different question entirely.');
+		const second = parseBody(h.admissionCalls[1]!).publishedSpecialist;
+		expect(second).toMatchObject({ draftId: selected.draftId });
+		expect(second).not.toHaveProperty('selectionDecisionId');
+		expect(second).not.toHaveProperty('contextPlan');
 	});
 
 	it.each([null, 'project_review'] as const)(
@@ -405,7 +436,7 @@ describe('AgentChatStreamController', () => {
 	it('preserves the custom workflow draft and selection when publication admission is unavailable', async () => {
 		const h = createHarness({
 			currentSession: null,
-			inputValue: '/workflow Review our docs.',
+			inputValue: 'Review our docs.',
 			admissionFetchImpl: async () =>
 				Response.json(
 					{
@@ -422,9 +453,10 @@ describe('AgentChatStreamController', () => {
 			snapshotHash: 'a'.repeat(64)
 		};
 		h.deps.getPublishedSpecialist = () => selected;
+		h.deps.getReviewIntent = () => 'document_organization';
 		h.deps.onReviewAdmitted = vi.fn();
 		await h.controller.sendMessage();
-		expect(h.inputValue).toBe('/workflow Review our docs.');
+		expect(h.inputValue).toBe('Review our docs.');
 		expect(h.messages).toHaveLength(0);
 		expect(h.controller.error).toBe('Specialist unavailable');
 		expect(h.deps.getPublishedSpecialist()).toBe(selected);

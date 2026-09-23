@@ -178,7 +178,7 @@ describe('published specialist route admission', () => {
 	);
 	it('rejects custom references on ordinary chat and client-supplied definitions', async () => {
 		const f = await fixture();
-		const body = { ...f.input.command, leaseToken: 'valid-lease-token' };
+		const body = { ...f.input.command };
 		expect(workerAdmissionRequestSchema.safeParse(body).success).toBe(true);
 		expect(
 			workerAdmissionRequestSchema.safeParse({ ...body, reviewIntent: null }).success
@@ -239,7 +239,7 @@ describe('published specialist route admission', () => {
 			const f = await fixture();
 			Object.assign(f.input.environment, { AGENTIC_CHAT_CONTEXT_FINDER_ENABLED: 'true' });
 			Object.assign(f.input.command.publishedSpecialist, { contextPlan: plan() });
-			const body = { ...f.input.command, leaseToken: 'valid-lease-token' };
+			const body = { ...f.input.command };
 			expect(workerAdmissionRequestSchema.safeParse(body).success).toBe(true);
 			expect((await admitWorkflowReviewTurnIfEligible(f.input))?.status).toBe(202);
 			expect(snapshotOf(f).contextFinder).toEqual({

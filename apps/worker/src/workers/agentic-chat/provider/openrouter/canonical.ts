@@ -167,10 +167,6 @@ export function requireRecord(value: unknown, label: string): Record<string, unk
 	return value as Record<string, unknown>;
 }
 
-export function throwIfAborted(signal: AbortSignal): void {
-	if (signal.aborted) throwAbort(signal);
-}
-
 export function throwAbort(signal: AbortSignal): never {
 	throw signal.reason instanceof Error ? signal.reason : new Error('Execution aborted');
 }

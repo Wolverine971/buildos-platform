@@ -922,11 +922,9 @@ const MODEL_ROUTES = {
 			taskExtraction: OPENROUTER_JSON_ROUTE,
 			clarification: OPENROUTER_TEXT_ROUTE
 		},
-		// The live agentic-chat path still selects its ordinary lane from message
-		// shape. Its forced-synthesis recovery route is now an explicit, feature-
-		// flagged policy in apps/web/agentic-chat-v2/model-tiering.ts rather than a
-		// static recommendation here, so rollout/control attribution stays attached
-		// to the pass that actually used it.
+		// Agentic chat routing lives in the chat worker
+		// (apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts),
+		// not in a static recommendation here.
 		dailyBriefs: {
 			projectBrief: OPENROUTER_TEXT_ROUTE,
 			generation: OPENROUTER_TEXT_ROUTE,

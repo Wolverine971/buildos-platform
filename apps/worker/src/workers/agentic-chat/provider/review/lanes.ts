@@ -16,9 +16,9 @@ import {
 	canonicalError,
 	canonicalFinishedReason,
 	normalizeUsage,
-	providerError,
-	throwIfAborted
+	providerError
 } from '../protocol';
+import { throwIfAborted } from '../../shared/abortable-deadline';
 import { appendSystemInstruction, combineUsage } from '../request-builders';
 import {
 	buildPlanningStep,

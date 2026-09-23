@@ -1,5 +1,6 @@
 // packages/agentic-chat-runtime/src/loop/tool-classification.ts
 import type { ChatToolCall } from '@buildos/shared-types';
+import { AGENTIC_CHAT_CONTROL_TOOL_NAMES } from '../catalog/definitions/controls';
 import { TOOL_METADATA } from '../catalog/metadata';
 import { normalizeGatewayOpName } from '@buildos/shared-agent-ops/ops/gateway-op-aliases';
 import { getAgenticChatLoopToolCatalog } from './tool-catalog';
@@ -108,15 +109,9 @@ const READ_OP_SUFFIXES = ['.get', '.list', '.search', '.visit', '.read', '.find'
  * stop_and_answer before its first mutation (turn-executor audit 2026-09-02,
  * finding 8).
  */
-export const CONTROL_TOOL_NAMES: ReadonlySet<string> = new Set([
-	'declare_turn_contract',
-	'declare_read_only_turn',
-	'request_turn_clarification',
-	'cancel_turn_contract',
-	'approve_turn_contract_review',
-	'approve_mutation_batch_review',
-	'request_proposal_revision'
-]);
+export const CONTROL_TOOL_NAMES: ReadonlySet<string> = new Set<string>(
+	AGENTIC_CHAT_CONTROL_TOOL_NAMES
+);
 
 export function isControlToolName(name: string): boolean {
 	return CONTROL_TOOL_NAMES.has(name.trim().toLowerCase());

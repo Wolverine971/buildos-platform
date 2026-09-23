@@ -105,7 +105,6 @@ async function main() {
 		NODE_ENV: 'development',
 		NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --conditions=development`,
 		AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS: auth.user.id,
-		AGENTIC_CHAT_TRANSPORT_LEASE_SECRET: randomBytes(32).toString('hex'),
 		PRIVATE_RAILWAY_WORKER_TOKEN: randomBytes(32).toString('hex'),
 		PRIVATE_AGENTIC_CHAT_WORKER_URL: workerUrl,
 		CHAT_CONCURRENCY: '2',

@@ -12,7 +12,6 @@ import {
 } from '@buildos/agentic-chat-runtime/context-finder';
 import type { WorkflowContextFinderPortV1 } from './context-finder-port';
 import { specialistStepLabels } from './workflow-projection';
-import type { SpecialistShadowObserver } from './specialist-selection-shadow';
 // apps/worker/src/workers/agentic-chat/workflow/raw-turn-preparation.ts
 import { randomUUID } from 'node:crypto';
 import {
@@ -27,7 +26,7 @@ import {
 	type ChatTurnTerminalStatusV1,
 	type JsonObject
 } from '@buildos/shared-types';
-import { abortable, runWithAbortableDeadline } from '../shared/abortable-deadline';
+import { abortable, runWithAbortableDeadline, settleWithin } from '../shared/abortable-deadline';
 import { AgenticChatCancellationError } from '../turn/cancellation-observer';
 import type {
 	AgenticChatExecutionControlPortV1,
@@ -119,7 +118,6 @@ export type AgenticChatWorkflowTurnPreparerPortsV1 = {
 	publishedSpecialistsEnabled?: boolean;
 	projectReviewV2Enabled?: boolean;
 	projectReviewV3Enabled?: boolean;
-	observeSelection?: SpecialistShadowObserver;
 	/** Jev-selected evidence for published specialists that request it; absent when off. */
 	findContext?: WorkflowContextFinderPortV1;
 	loadSpecialistSnapshot?: (
@@ -419,43 +417,6 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 		state.trace.acceptedBytes = accepted.payloadBytes;
 		state.trace.acceptedEvidence = accepted.evidenceVersions.length;
 		await this.settleDelivery(state);
-		const shadowSnapshot = state.specialistSnapshot;
-		if (
-			this.ports.observeSelection &&
-			raw.input.request.policyRef !== AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF &&
-			raw.input.request.policyRef !== AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF &&
-			shadowSnapshot?.version !== PUBLISHED_SPECIALIST_SNAPSHOT_VERSION
-		) {
-			try {
-				await runWithAbortableDeadline({
-					parentSignal: state.signal,
-					timeoutMs: 2500,
-					createTimeoutError: () => new Error('specialist_shadow_timeout'),
-					run: (signal) =>
-						this.ports.observeSelection!({
-							prepared: {
-								envelope: state.envelope,
-								claim,
-								request: raw.input,
-								context: accepted,
-								deadlines: {
-									workflowDeadlineAt: run.deadlineAt,
-									invocationDeadlineAtMs: state.invocationDeadlineAtMs
-								}
-							},
-							snapshot: shadowSnapshot,
-							signal
-						})
-				});
-			} catch {
-				state.signal.throwIfAborted();
-				this.ports.onError?.({
-					stage: 'specialist_shadow',
-					turnRunId: claim.turnRunId,
-					error: new Error('specialist_shadow_unavailable')
-				});
-			}
-		}
 		state.signal.throwIfAborted();
 		const timing = this.emitTiming(state, 'provider_ready', null);
 		const prepared: AgenticChatWorkflowPreparedTurnV1 = {
@@ -1051,15 +1012,7 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 	private async settleDelivery(state: PreparationState): Promise<void> {
 		const pending = state.delivery;
 		if (!pending) return;
-		let timer: NodeJS.Timeout | undefined;
-		await Promise.race([
-			pending,
-			new Promise<void>((resolve) => {
-				timer = setTimeout(resolve, this.deliveryWaitMs);
-				timer.unref?.();
-			})
-		]);
-		if (timer) clearTimeout(timer);
+		await settleWithin(pending, this.deliveryWaitMs);
 		state.delivery = null;
 	}
 

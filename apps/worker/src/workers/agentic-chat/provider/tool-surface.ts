@@ -16,6 +16,7 @@ import {
 	canonicalizeAgenticChatJson,
 	decodeAgenticChatToolSurfaceV1
 } from '@buildos/shared-types';
+import { SCHEDULING_SIDECAR_KEYS } from '../shared/tool-scheduling';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import {
 	AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1,
@@ -26,6 +27,7 @@ import {
 	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
 	isAgenticChatProductionReadToolNameV1
 } from '../tools/execution-adapter';
+import { WEB_NAVIGATE_TOOL_NAME } from '../tools/web-navigate';
 import type { AgenticChatTurnProviderToolV1 } from './contracts';
 
 const WORKER_READ_LOOP_CATALOG_ENTRIES = AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.map(
@@ -223,8 +225,6 @@ export function productionToolsFor(
 	return tools;
 }
 
-const SCHEDULING_SIDECAR_PROPERTY_NAMES = ['call_ref', 'after'] as const;
-
 /**
  * Attach the `call_ref`/`after` scheduling sidecar to the mutation tools of a
  * multi-write pass. Until 2026-09-02 every tool on every pass carried it
@@ -251,9 +251,7 @@ export function hasSchedulingSidecar(tools: readonly AgenticChatTurnProviderTool
 			Boolean(properties) &&
 			typeof properties === 'object' &&
 			!Array.isArray(properties) &&
-			SCHEDULING_SIDECAR_PROPERTY_NAMES.every((name) =>
-				Object.hasOwn(properties as JsonObject, name)
-			)
+			SCHEDULING_SIDECAR_KEYS.every((name) => Object.hasOwn(properties as JsonObject, name))
 		);
 	});
 }
@@ -322,7 +320,7 @@ export function reviewedWorkerProviderToolDefinitionV1(
 			}
 		};
 	}
-	if (tool.function.name === 'web_navigate') {
+	if (tool.function.name === WEB_NAVIGATE_TOOL_NAME) {
 		const parameters = tool.function.parameters as Record<string, JsonValue>;
 		const properties = parameters.properties;
 		if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return null;

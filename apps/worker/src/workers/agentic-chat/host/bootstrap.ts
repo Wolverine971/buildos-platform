@@ -41,7 +41,6 @@ import {
 	WEB_NAVIGATE_MODEL,
 	createWorkerWebNavigatePort
 } from '../tools/web-navigate';
-import { SPECIALIST_SHADOW_POLICY } from '../workflow/specialist-selection-policy';
 import { WORKFLOW_CONTEXT_FINDER_TIMEOUT_MS } from '../workflow/context-finder-port';
 import {
 	AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS,
@@ -579,20 +578,6 @@ function createDefaultComposition(
 			projectReviewV2Enabled: input.config.projectReviewV2Enabled === true,
 			projectReviewV3Enabled: input.config.projectReviewV3Enabled === true,
 			documentEvidenceHandoffEnabled: input.config.documentEvidenceHandoffEnabled,
-			selectionDecider:
-				workflowExecutionEnabled && input.config.jevSpecialistSelection === 'shadow'
-					? new JevClient({
-							apiKey: input.config.provider.routes.find(
-								(route) => route.kind === 'openrouter'
-							)!.apiKey,
-							model: SPECIALIST_SHADOW_POLICY.model,
-							timeoutMs: SPECIALIST_SHADOW_POLICY.timeoutMs,
-							maxRequestBytes: SPECIALIST_SHADOW_POLICY.maxRequestBytes,
-							retryOnce: false,
-							fetchImpl: input.fetchImpl,
-							title: 'BuildOS Specialist Shadow'
-						})
-					: undefined,
 			contextFinderEnabled:
 				workflowExecutionEnabled && input.config.contextFinderEnabled === true,
 			contextFinderDecider:

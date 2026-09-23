@@ -13,19 +13,6 @@ import { AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT } from '$lib/services/posthog-ca
 // creates a first turn's session, so there is no separate lease endpoint.
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
 
-/**
- * Retained for callers' existing `instanceof` checks. This module no longer
- * throws it: it was the lease-negotiation failure, and that endpoint is gone.
- */
-export class AgenticChatWorkerUnavailableResponseError extends Error {
-	readonly code = 'worker_unavailable';
-
-	constructor() {
-		super('Worker chat is temporarily unavailable. Please try again shortly.');
-		this.name = 'AgenticChatWorkerUnavailableResponseError';
-	}
-}
-
 export type PublishedSpecialistReference = {
 	draftId: string;
 	version: number;

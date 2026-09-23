@@ -1,14 +1,20 @@
 // apps/web/src/lib/server/project-suggestion-actions.service.ts
-import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import type {
-	Json,
-	LoopOperation,
-	ProjectSuggestion,
-	ProjectSuggestionFeedback,
-	ProjectSuggestionResult
+import {
+	isValidUUID,
+	type BuildosAgentAllowedOp,
+	type Json,
+	type LoopOperation,
+	type ProjectSuggestion,
+	type ProjectSuggestionFeedback,
+	type ProjectSuggestionResult
 } from '@buildos/shared-types';
-import type { ChatToolCall } from '@buildos/shared-types';
+import {
+	runGatewayWriteOp,
+	type GatewayWriteOpResult,
+	type TaskSyncPort
+} from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+import { assertNoDurableTextViolations } from '@buildos/agentic-chat-runtime/loop';
 import {
 	quarantineProjectSuggestionInboxItem,
 	readProjectSuggestionStructuralFingerprint,
@@ -154,11 +160,6 @@ const UNRESOLVED_AUDIT_SUGGESTION_STATUSES = new Set([
 	'delegated',
 	'failed'
 ]);
-const PROJECT_SUGGESTION_REPLAY_REVIEW_CONTEXT = {
-	origin: 'project_suggestion_replay',
-	operation_kind: 'suggestion_apply',
-	review_policy: 'suppress'
-} as const;
 
 function sanitizeFeedback(value: unknown): ProjectSuggestionFeedback | null {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -199,57 +200,279 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isBinaryOrStreamBody(value: unknown): boolean {
+// ---------------------------------------------------------------------------
+// Loop operation replay (suggestion approval + freshness undo)
+// ---------------------------------------------------------------------------
+
+/**
+ * The only stored operations approval and undo may replay, each mapped to the
+ * reviewed gateway op it runs as. This is the complete set of tools the
+ * producers emit, inverses included:
+ *   - project-loop generators (apps/worker/src/workers/project-loop/generators.ts
+ *     `allowedTools` + `docMoveUndoOperations` / `outdatedFlagUndoOperations` /
+ *     `taskConflictUndoOperations`): move_document_in_tree, update_onto_document,
+ *     update_onto_task;
+ *   - freshness radar (apps/worker/src/workers/freshness-radar/combine.ts `toolFor`
+ *     + `undoPayloadFor` / `draftUndoOperation`): update_onto_task, update_onto_goal,
+ *     update_onto_milestone.
+ * It equals the set Project Review's integrity check can resolve
+ * (packages/shared-agent-ops/src/proposal-context/verify-operations.ts). No
+ * deletes, calendar, email, or external tools: anything else is refused before
+ * any write.
+ */
+export const REPLAYABLE_LOOP_OPERATION_OPS = Object.freeze({
+	update_onto_task: 'onto.task.update',
+	update_onto_document: 'onto.document.update',
+	update_onto_goal: 'onto.goal.update',
+	update_onto_milestone: 'onto.milestone.update',
+	move_document_in_tree: 'onto.document.tree.move'
+} as const satisfies Record<string, BuildosAgentAllowedOp>);
+
+export type ReplayableLoopOperationTool = keyof typeof REPLAYABLE_LOOP_OPERATION_OPS;
+
+export function isReplayableLoopOperationTool(tool: unknown): tool is ReplayableLoopOperationTool {
 	return (
-		(typeof FormData !== 'undefined' && value instanceof FormData) ||
-		(typeof URLSearchParams !== 'undefined' && value instanceof URLSearchParams) ||
-		(typeof Blob !== 'undefined' && value instanceof Blob) ||
-		(typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) ||
-		(typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value as ArrayBufferView)) ||
-		(typeof ReadableStream !== 'undefined' && value instanceof ReadableStream)
+		typeof tool === 'string' &&
+		Object.prototype.hasOwnProperty.call(REPLAYABLE_LOOP_OPERATION_OPS, tool)
 	);
 }
 
-function withProjectSuggestionReplayContext(
-	init: RequestInit,
-	params: { operationId: string; operationKind: string; operationCount: number }
-): RequestInit {
-	const rawBody = init.body;
-	const method = init.method?.toUpperCase();
-	if (method === 'GET' || method === 'HEAD' || (!method && rawBody == null)) return init;
-	if (isBinaryOrStreamBody(rawBody)) return init;
+function unreplayableToolMessage(tool: unknown): string {
+	const name = typeof tool === 'string' && tool.trim() ? tool.trim() : '(missing tool)';
+	return `Operation ${name} cannot be replayed from a review item; nothing was changed.`;
+}
 
-	let body: Record<string, unknown>;
-	if (rawBody === undefined || rawBody === null) {
-		body = {};
-	} else if (typeof rawBody === 'string') {
-		try {
-			const parsed = JSON.parse(rawBody);
-			if (!isJsonObject(parsed)) return init;
-			body = parsed;
-		} catch {
-			return init;
+// The fields each legacy tool forwarded to its /api/onto route, so a replay writes
+// exactly what approval wrote before. Anything else in stored args is ignored.
+const TASK_UPDATE_FIELDS = [
+	'task_id',
+	'title',
+	'description',
+	'type_key',
+	'state_key',
+	'priority',
+	'goal_id',
+	'supporting_milestone_id',
+	'start_at',
+	'due_at',
+	'props',
+	'assignee_actor_ids',
+	'assignee_handles'
+] as const;
+const GOAL_UPDATE_FIELDS = [
+	'goal_id',
+	'name',
+	'description',
+	'type_key',
+	'state_key',
+	'priority',
+	'target_date',
+	'measurement_criteria',
+	'props'
+] as const;
+const MILESTONE_UPDATE_FIELDS = [
+	'milestone_id',
+	'title',
+	'due_at',
+	'state_key',
+	'description',
+	'props'
+] as const;
+const DOCUMENT_UPDATE_FIELDS = [
+	'document_id',
+	'title',
+	'type_key',
+	'state_key',
+	'description',
+	'content',
+	'edits',
+	'section_edits',
+	'update_strategy',
+	'merge_instructions',
+	'props'
+] as const;
+
+function pickDefined(
+	source: Record<string, unknown>,
+	fields: readonly string[]
+): Record<string, unknown> {
+	const picked: Record<string, unknown> = {};
+	for (const field of fields) {
+		if (source[field] !== undefined) picked[field] = source[field];
+	}
+	return picked;
+}
+
+/** The legacy document tool accepted nested and renamed fields; keep reading them. */
+function documentUpdateArgs(args: Record<string, unknown>): Record<string, unknown> {
+	const merged: Record<string, unknown> = { ...args };
+	for (const nested of [args.document, args.updates, args.document_update]) {
+		if (!isJsonObject(nested)) continue;
+		for (const [key, value] of Object.entries(nested)) {
+			if (merged[key] === undefined) merged[key] = value;
 		}
-	} else {
-		return init;
+	}
+	if (merged.title === undefined && typeof merged.name === 'string') merged.title = merged.name;
+	if (merged.description === undefined && typeof merged.summary === 'string') {
+		merged.description = merged.summary;
+	}
+	if (merged.type_key === undefined && typeof merged.type === 'string') {
+		merged.type_key = merged.type;
+	}
+	if (merged.content === undefined) {
+		const body = [merged.body_markdown, merged.body, merged.text, merged.markdown].find(
+			(value) => typeof value === 'string'
+		);
+		if (body !== undefined) merged.content = body;
 	}
 
-	const headers = new Headers(init.headers);
-	headers.set('Content-Type', 'application/json');
+	const picked = pickDefined(merged, DOCUMENT_UPDATE_FIELDS);
+	// An empty or non-object props patch was never sent; the gateway would count it as a change.
+	if (!isJsonObject(picked.props) || Object.keys(picked.props).length === 0) delete picked.props;
+	return picked;
+}
+
+function documentTreeMoveArgs(
+	args: Record<string, unknown>,
+	projectId: string
+): Record<string, unknown> {
+	const nestedDocument = isJsonObject(args.document) ? args.document.id : undefined;
+	const documentId =
+		args.document_id ?? args.id ?? args.doc_id ?? args.documentId ?? nestedDocument;
+	const rawParentId = args.new_parent_id ?? args.parent_id ?? args.parentId;
+	const rawParentTitle = args.new_parent_title ?? args.parent_title ?? args.new_parent_name;
+	const rawPosition = args.new_position ?? args.position;
+
+	let newParentId: string | null = null;
+	let newParentTitle: string | null = null;
+	if (typeof rawParentId === 'string' && rawParentId.trim()) {
+		// A non-UUID parent was always treated as a grouping title.
+		if (isValidUUID(rawParentId.trim())) newParentId = rawParentId.trim();
+		else newParentTitle = rawParentId.trim();
+	}
+	if (!newParentId && !newParentTitle && typeof rawParentTitle === 'string') {
+		newParentTitle = rawParentTitle.trim() || null;
+	}
 
 	return {
-		...init,
-		headers,
-		body: JSON.stringify({
-			...body,
-			project_review_context: {
-				...PROJECT_SUGGESTION_REPLAY_REVIEW_CONTEXT,
-				operation_kind: params.operationKind,
-				operation_id: params.operationId,
-				entity_count: params.operationCount
-			}
+		project_id: projectId,
+		document_id: documentId,
+		new_parent_id: newParentId,
+		...(newParentTitle ? { new_parent_title: newParentTitle } : {}),
+		new_position: typeof rawPosition === 'number' ? rawPosition : 0
+	};
+}
+
+function gatewayArgsFor(
+	tool: ReplayableLoopOperationTool,
+	args: Record<string, unknown>,
+	projectId: string
+): Record<string, unknown> {
+	switch (tool) {
+		case 'update_onto_task':
+			return {
+				...pickDefined(args, TASK_UPDATE_FIELDS),
+				// A replay never creates calendar events unless the operation asked for it.
+				calendar_sync: args.calendar_sync === 'auto' ? 'auto' : 'none'
+			};
+		case 'update_onto_goal':
+			return pickDefined(args, GOAL_UPDATE_FIELDS);
+		case 'update_onto_milestone':
+			return pickDefined(args, MILESTONE_UPDATE_FIELDS);
+		case 'update_onto_document':
+			return documentUpdateArgs(args);
+		case 'move_document_in_tree':
+			return documentTreeMoveArgs(args, projectId);
+	}
+}
+
+type PreparedLoopOperation = {
+	tool: ReplayableLoopOperationTool;
+	op: BuildosAgentAllowedOp;
+	args: Record<string, unknown>;
+};
+
+/**
+ * Validate the whole batch before anything is written: every tool must be
+ * replayable and every operation must target one project, which becomes the
+ * gateway's read and write fence.
+ */
+function prepareLoopOperations(
+	operations: readonly LoopOperation[],
+	expectedProjectId: string | undefined
+):
+	| { ok: true; projectId: string; prepared: PreparedLoopOperation[] }
+	| { ok: false; tool: string; error: string } {
+	for (const operation of operations) {
+		if (!isReplayableLoopOperationTool(operation?.tool)) {
+			return {
+				ok: false,
+				tool: typeof operation?.tool === 'string' ? operation.tool : '(missing tool)',
+				error: unreplayableToolMessage(operation?.tool)
+			};
+		}
+		if (!isJsonObject(operation.args)) {
+			return {
+				ok: false,
+				tool: operation.tool,
+				error: `Operation ${operation.tool} has no arguments; nothing was changed.`
+			};
+		}
+	}
+
+	// The fence only narrows the gateway's project set; the gateway still resolves
+	// the project from the user's memberships and checks write access itself.
+	let projectId = expectedProjectId;
+	for (const operation of operations) {
+		const operationProjectId = operation.args.project_id;
+		if (operationProjectId === undefined || operationProjectId === null) continue;
+		if (typeof operationProjectId !== 'string' || !operationProjectId.trim()) {
+			return {
+				ok: false,
+				tool: operation.tool,
+				error: `Operation ${operation.tool} has an invalid project_id; nothing was changed.`
+			};
+		}
+		projectId ??= operationProjectId;
+		if (operationProjectId !== projectId) {
+			return {
+				ok: false,
+				tool: operation.tool,
+				error: `Operation ${operation.tool} targets a different project; nothing was changed.`
+			};
+		}
+	}
+	if (!projectId || !projectId.trim()) {
+		return {
+			ok: false,
+			tool: operations[0]?.tool ?? '(missing tool)',
+			error: 'Replayed operations must name their project; nothing was changed.'
+		};
+	}
+	const fence: string = projectId;
+
+	return {
+		ok: true,
+		projectId: fence,
+		prepared: operations.map((operation) => {
+			const tool = operation.tool as ReplayableLoopOperationTool;
+			return {
+				tool,
+				op: REPLAYABLE_LOOP_OPERATION_OPS[tool],
+				args: gatewayArgsFor(tool, operation.args, fence)
+			};
 		})
 	};
+}
+
+// A doc-tree move reloads the latest tree on every attempt, so one retry after a
+// concurrent structure edit is safe (the legacy move tool did the same).
+const STRUCTURE_VERSION_CONFLICT_PREFIX = 'Structure version conflict';
+
+async function createReplayTaskSync(supabase: AnySupabase): Promise<TaskSyncPort> {
+	// Loaded only when an operation opts into calendar sync, which no producer does today.
+	const { TaskEventSyncService } = await import('$lib/services/ontology/task-event-sync.service');
+	return new TaskEventSyncService(supabase);
 }
 
 export type LoopOperationReplayResult = {
@@ -260,9 +483,16 @@ export type LoopOperationReplayResult = {
 };
 
 /**
- * Replay stored loop operations through ChatToolExecutor (the agentic chat write path) with
- * the Project Review replay-suppression context, sequentially, never throwing. Used by
- * suggestion approval and by the freshness radar's undo (Tasker 88).
+ * Replay stored loop operations through the reviewed write gateway
+ * (`runGatewayWriteOp`, the path the worker's freshness auto-apply uses),
+ * sequentially, never throwing. Used by suggestion approval and by the freshness
+ * radar's undo (Tasker 88).
+ *
+ * The batch is refused before any write when a tool is outside
+ * REPLAYABLE_LOOP_OPERATION_OPS or the operations do not share one project. The
+ * gateway runs on the caller's user-scoped client, fenced to that project, and
+ * checks the user's write access itself. Gateway writes never queue a Project
+ * Review burst, so replays need no review-suppression context.
  */
 export async function replayLoopOperations(params: {
 	supabase: AnySupabase;
@@ -271,64 +501,101 @@ export async function replayLoopOperations(params: {
 	operations: LoopOperation[];
 	operationId: string;
 	operationKind?: string;
+	/** The project every operation must target. Derived from the operations when omitted. */
+	projectId?: string;
+	/** @deprecated Ignored: replays no longer self-fetch /api/onto routes. */
 	fetchFn?: typeof fetch;
 }): Promise<LoopOperationReplayResult> {
 	const { operations } = params;
-	const baseFetch = params.fetchFn ?? fetch;
-	const replayFetch: typeof fetch = (input, init = {}) => {
-		return baseFetch(
-			input,
-			withProjectSuggestionReplayContext(init, {
-				operationId: params.operationId,
-				operationKind:
-					params.operationKind ?? PROJECT_SUGGESTION_REPLAY_REVIEW_CONTEXT.operation_kind,
-				operationCount: operations.length
-			})
+	const batch = prepareLoopOperations(operations, params.projectId);
+	if (!batch.ok) {
+		console.warn(
+			`[ProjectSuggestions] Refused replay ${params.operationId} (${params.operationKind ?? 'suggestion_apply'}): ${batch.error}`
 		);
-	};
-	const executor = new ChatToolExecutor(
-		params.supabase,
-		params.userId,
-		params.chatSessionId ?? undefined,
-		replayFetch,
-		undefined,
-		{
-			// Replay is not a chat turn. The linked session can belong to a different project
-			// member, so a user-scoped ledger insert would either violate RLS or misattribute the
-			// replay. The durable audit is the caller's own record, not chat_tool_executions.
-			logExecutions: false
-		}
-	);
+		return {
+			appliedCount: 0,
+			errors: [{ tool: batch.tool, error: batch.error }],
+			outcomes: operations.map(() => false)
+		};
+	}
 
 	const errors: Array<{ tool: string; error: string }> = [];
 	const outcomes: boolean[] = [];
 	let appliedCount = 0;
+	let taskSync: TaskSyncPort | undefined;
 
-	for (const op of operations) {
-		const toolCall: ChatToolCall = {
-			id: globalThis.crypto.randomUUID(),
-			type: 'function',
-			function: { name: op.tool, arguments: JSON.stringify(op.args ?? {}) }
-		};
+	for (const operation of batch.prepared) {
 		try {
-			const result = await executor.execute(toolCall);
-			if (result.success) {
+			if (operation.tool !== 'move_document_in_tree') {
+				assertNoDurableTextViolations(operation.args, operation.tool);
+			}
+			if (operation.args.calendar_sync === 'auto') {
+				taskSync ??= await createReplayTaskSync(params.supabase);
+			}
+			const run = () =>
+				runGatewayWriteOp({
+					admin: params.supabase,
+					userId: params.userId,
+					scope: {
+						mode: 'read_write',
+						allowed_ops: [operation.op],
+						project_ids: [batch.projectId],
+						write_project_ids: [batch.projectId]
+					},
+					op: operation.op,
+					args: operation.args,
+					chatSessionId: params.chatSessionId ?? undefined,
+					...(operation.args.calendar_sync === 'auto' ? { taskSync } : {})
+				});
+			let result: GatewayWriteOpResult = await run();
+			if (
+				!result.ok &&
+				operation.tool === 'move_document_in_tree' &&
+				result.error?.message.startsWith(STRUCTURE_VERSION_CONFLICT_PREFIX)
+			) {
+				result = await run();
+			}
+
+			if (result.ok) {
 				appliedCount += 1;
 				outcomes.push(true);
+				emitReplayTaskCompleted(params.userId, batch.projectId, operation, result);
 			} else {
-				errors.push({ tool: op.tool, error: result.error ?? 'Tool execution failed' });
+				errors.push({
+					tool: operation.tool,
+					error: result.error?.message ?? 'Operation failed'
+				});
 				outcomes.push(false);
 			}
 		} catch (error) {
 			errors.push({
-				tool: op.tool,
-				error: error instanceof Error ? error.message : 'Tool execution threw'
+				tool: operation.tool,
+				error: error instanceof Error ? error.message : 'Operation threw'
 			});
 			outcomes.push(false);
 		}
 	}
 
 	return { appliedCount, errors, outcomes };
+}
+
+/** The task route emitted task_completed on a transition to done; keep that signal. */
+function emitReplayTaskCompleted(
+	userId: string,
+	projectId: string,
+	operation: PreparedLoopOperation,
+	result: GatewayWriteOpResult
+): void {
+	if (operation.tool !== 'update_onto_task' || operation.args.state_key === undefined) return;
+	const task = result.data?.task;
+	if (!isJsonObject(task) || task.state_key !== 'done') return;
+	runAfterResponse(
+		captureServerEvent(userId, 'task_completed', {
+			task_id: typeof task.id === 'string' ? task.id : operation.args.task_id,
+			project_id: projectId
+		}),
+		'replay task_completed telemetry'
+	);
 }
 
 export async function refreshLinkedAuditSuggestionCounts(params: {
@@ -421,6 +688,7 @@ export async function decideProjectSuggestion(params: {
 	suggestionId: string;
 	action: ProjectSuggestionDecisionAction;
 	feedback?: unknown;
+	/** @deprecated Ignored: approval replays through the write gateway, not /api/onto. */
 	fetchFn?: typeof fetch;
 }): Promise<ProjectSuggestionDecisionOutcome> {
 	const { supabase, userId, projectId, suggestionId, action } = params;
@@ -599,6 +867,22 @@ export async function decideProjectSuggestion(params: {
 		};
 	}
 
+	// Refuse any tool outside the replay allowlist before the claim or any entity
+	// write. The integrity check above should already reject these; this keeps the
+	// write boundary closed even if its resolvable-tool list ever grows.
+	const unreplayable = proposedOperations.find(
+		(operation) => !isReplayableLoopOperationTool(operation?.tool)
+	);
+	if (unreplayable) {
+		return {
+			ok: false,
+			status: 422,
+			message: `This proposal includes an operation BuildOS cannot apply (${
+				typeof unreplayable?.tool === 'string' ? unreplayable.tool : 'unknown'
+			}). Chat about it or dismiss it.`
+		};
+	}
+
 	const suggestionBeforeClaim = current as unknown as ProjectSuggestion;
 	if (!expectedStructuralFingerprint && suggestionBeforeClaim.source_fingerprint) {
 		let fresh: boolean;
@@ -703,7 +987,7 @@ export async function decideProjectSuggestion(params: {
 		chatSessionId,
 		operations,
 		operationId: `project_suggestion:${suggestionId}`,
-		fetchFn: params.fetchFn
+		projectId
 	});
 	const { appliedCount, errors } = replay;
 

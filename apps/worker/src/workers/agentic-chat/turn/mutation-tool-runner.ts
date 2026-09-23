@@ -12,13 +12,13 @@ import type {
 	AgenticChatProviderMutationSynthesisInputV1
 } from '../provider/contracts';
 import { createStableAgenticChatToolExecutionIdV1 } from '../tools/tool-execution';
-import { abortable } from '../shared/abortable-deadline';
+import { abortable, throwIfAborted } from '../shared/abortable-deadline';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../tools/read-tool-identity';
 import type {
 	AgenticChatTurnExecutorPorts,
 	AgenticChatTurnProviderStepV1
 } from './executor-contracts';
-import { canonicalText, canonicalUuid, elapsedMs, throwIfAborted } from './executor-helpers';
+import { canonicalText, canonicalUuid, elapsedMs } from './executor-helpers';
 import {
 	AgenticChatCommittedEffectPersistError,
 	errorMessage,

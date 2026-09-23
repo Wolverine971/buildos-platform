@@ -32,13 +32,8 @@ import {
 	streamTurnContractReview
 } from './review/lanes';
 import { streamForcedSynthesis } from './forced-synthesis';
-import {
-	canonicalError,
-	canonicalFinishedReason,
-	normalizeUsage,
-	providerError,
-	throwIfAborted
-} from './protocol';
+import { canonicalError, canonicalFinishedReason, normalizeUsage, providerError } from './protocol';
+import { throwIfAborted } from '../shared/abortable-deadline';
 import type { AgenticChatContextFinderPort } from './chat-context-finder';
 import {
 	type AgenticChatDocumentEditPreviewPort,

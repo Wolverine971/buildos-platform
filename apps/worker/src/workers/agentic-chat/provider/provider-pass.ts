@@ -6,7 +6,8 @@ import type {
 	AgenticChatTurnProviderClientPortV1,
 	AgenticChatTurnProviderRequestV1
 } from './contracts';
-import { canonicalFinishedReason, providerError, throwIfAborted } from './protocol';
+import { throwIfAborted } from '../shared/abortable-deadline';
+import { canonicalFinishedReason, providerError } from './protocol';
 import { providerClientRequest } from './request-builders';
 import {
 	appendToolCallDelta,

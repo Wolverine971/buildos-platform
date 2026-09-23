@@ -218,8 +218,7 @@ function script(call: ScriptedCall): ScriptedReply {
 					(await admitAgenticChatWorkflowV4Turn({ client: shim as never, args: changed }))
 						.outcome
 				).toBe('idempotency_conflict');
-				const provider = scriptedWorkflowProvider(script),
-					shadow = vi.fn();
+				const provider = scriptedWorkflowProvider(script);
 				const worker = buildE2EWorker({
 					shim,
 					client: provider.client,
@@ -227,7 +226,6 @@ function script(call: ScriptedCall): ScriptedReply {
 					documentReadToolsEnabled: true,
 					documentEvidenceHandoffEnabled: handoff,
 					publishedSpecialistsEnabled: true,
-					observeSelection: shadow,
 					context: context()
 				});
 				try {
@@ -237,7 +235,6 @@ function script(call: ScriptedCall): ScriptedReply {
 				} finally {
 					await worker.stop();
 				}
-				expect(shadow).not.toHaveBeenCalled();
 				const organizer = provider.callsFor('project_analyst');
 				expect(organizer).toHaveLength(2);
 				for (const call of organizer) {

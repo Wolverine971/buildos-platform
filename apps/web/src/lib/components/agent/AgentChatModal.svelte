@@ -83,6 +83,11 @@
 		PublishedSpecialistSelection
 	} from '$lib/services/agentic-chat-v2/worker-transport-client';
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
+	import {
+		resolveInitialReview,
+		type ChatReviewCapabilities,
+		type ChatReviewIntent
+	} from './agent-chat-initial-review';
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
 	import { mergeToolProgressStep, type ToolProgressStep } from './agent-chat-tool-progress';
 	import {
@@ -160,8 +165,7 @@
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
 	import {
 		createAgentChatStreamController,
-		type ClientTurnTimingSummary,
-		type StreamTurnReconcileRequest
+		type ClientTurnTimingSummary
 	} from './agent-chat-stream-controller.svelte';
 	import {
 		createAgenticChatWorkerRealtimeRuntime,
@@ -219,6 +223,13 @@
 		 * with a selector-free context — with 'global' the draft waits on the
 		 * context selector and sends after the user picks one. */
 		autoSendInitialDraft?: boolean;
+		/** Run initialDraft as this durable review (the same selection the in-chat
+		 * Review / Organize documents toggles make). The draft waits for the
+		 * capability check and is never sent as ordinary chat. Project context
+		 * with project-wide focus only. */
+		initialReviewIntent?: ChatReviewIntent | null;
+		/** Called instead of sending when initialReviewIntent cannot run here. */
+		onInitialReviewUnavailable?: (message: string) => void;
 		/** Submit a voice turn when the user stops recording from the composer. */
 		autoSendVoiceOnStop?: boolean;
 		embedded?: boolean;
@@ -252,6 +263,8 @@
 		initialProjectFocus = null,
 		initialDraft = null,
 		autoSendInitialDraft = false,
+		initialReviewIntent = null,
+		onInitialReviewUnavailable,
 		autoSendVoiceOnStop = false,
 		embedded = false,
 		conversationOnly = false,
@@ -609,6 +622,8 @@
 	let inputValue = $state('');
 	let projectReviewAvailable = $state(false);
 	let documentOrganizationAvailable = $state(false);
+	// Whether the two flags above are an answer yet; a launched review waits on it.
+	let reviewCapabilitiesStatus = $state<ChatReviewCapabilities['status']>('loading');
 	let reviewSelection = $state<{
 		projectId: string;
 		sessionId: string | null;
@@ -644,11 +659,13 @@
 				if (!active) return;
 				projectReviewAvailable = capabilities.projectReview;
 				documentOrganizationAvailable = capabilities.documentOrganization;
+				reviewCapabilitiesStatus = 'ready';
 			})
 			.catch(() => {
 				if (!active) return;
 				projectReviewAvailable = false;
 				documentOrganizationAvailable = false;
+				reviewCapabilitiesStatus = 'failed';
 			});
 		return () => {
 			active = false;
@@ -753,9 +770,6 @@
 
 	const ACTIVE_TURN_PROBE_BASE_MS = 2000;
 	const ACTIVE_TURN_PROBE_MAX_MS = 10_000;
-	const TURN_RECONCILE_RETRY_MS = 1200;
-	const TURN_RECONCILE_MAX_ATTEMPTS = 8;
-	let turnReconciliationRequestId = 0;
 	let activeTurnProbeAttempt = 0;
 
 	// Voice recording adapter — see agent-chat-voice.svelte.ts
@@ -816,8 +830,7 @@
 		},
 		assistant: {
 			flushText: () => flushAssistantText(),
-			finalizeMessage: () => finalizeAssistantMessage(),
-			markInterrupted: (reason, streamRunId) => markAssistantInterrupted(reason, streamRunId)
+			finalizeMessage: () => finalizeAssistantMessage()
 		},
 		clearPendingToolState: () => {
 			pendingToolResults.clear();
@@ -828,8 +841,6 @@
 			// entity chips would flush into the next turn's card.
 			handleSSEMessage.resetTurnState();
 		},
-		handleSSEMessage: (event) => handleSSEMessage(event),
-		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
 		adoptWorkerAdmissionResponse: async (value) => {
 			if (!workerAdoption) {
 				throw new Error('Worker admission runtime is unavailable');
@@ -854,7 +865,6 @@
 			if (!workerAdoption) return [];
 			return workerAdoption.discoverSession(sessionId);
 		},
-		reconcileTurnFromSession: (request) => reconcileTurnFromSession(request),
 		setUserHasScrolled: (value) => {
 			userHasScrolled = value;
 		},
@@ -1022,14 +1032,41 @@
 			draft,
 			initialChatSessionId ?? '',
 			_initialContextType,
-			_initialEntityId ?? ''
+			_initialEntityId ?? '',
+			initialReviewIntent ?? ''
 		].join('|');
 		if (appliedInitialDraftKey === draftKey) return;
 		if (inputValue.trim() || messages.length > 0 || stream.isStreaming || isLoadingSession)
 			return;
 
+		// A launched review runs as that review or not at all — never as ordinary chat.
+		const review = initialReviewIntent
+			? resolveInitialReview({
+					intent: initialReviewIntent,
+					capabilities:
+						reviewCapabilitiesStatus === 'ready'
+							? {
+									status: 'ready',
+									projectReview: projectReviewAvailable,
+									documentOrganization: documentOrganizationAvailable
+								}
+							: { status: reviewCapabilitiesStatus },
+					reviewProjectId
+				})
+			: null;
+		if (review?.kind === 'wait') return;
+		if (review?.kind === 'unavailable') {
+			// The composer stays empty so the question cannot go out as ordinary chat.
+			appliedInitialDraftKey = draftKey;
+			onInitialReviewUnavailable?.(review.message);
+			return;
+		}
+
 		inputValue = draft;
 		appliedInitialDraftKey = draftKey;
+		if (review?.kind === 'ready') {
+			reviewSelection = { ...review.selection, sessionId: currentSession?.id ?? null };
+		}
 
 		// The launching surface already collected the user's submit; sending here is
 		// the equivalent of them pressing Enter the moment the composer is ready.
@@ -1295,7 +1332,6 @@
 		reviewSelection = null;
 
 		voice.stop();
-		turnReconciliationRequestId += 1;
 
 		if (currentSession?.id) workerAdoption?.releaseSession(currentSession.id);
 		messages = [];
@@ -1548,89 +1584,6 @@
 		} else {
 			clearSessionRefreshTimeout();
 			stream.currentActivity = '';
-		}
-	}
-
-	function turnRunMatchesRequest(
-		run: { stream_run_id?: string | null; client_turn_id?: string | null },
-		request: StreamTurnReconcileRequest
-	): boolean {
-		return (
-			run.stream_run_id === request.handle.streamRunId ||
-			(Boolean(request.handle.clientTurnId) &&
-				run.client_turn_id === request.handle.clientTurnId)
-		);
-	}
-
-	function messageMatchesReconciledTurn(
-		message: UIMessage,
-		request: StreamTurnReconcileRequest
-	): boolean {
-		const metadata = message.metadata as Record<string, unknown> | undefined;
-		return (
-			metadata?.stream_run_id === request.handle.streamRunId ||
-			(Boolean(request.handle.clientTurnId) &&
-				metadata?.client_turn_id === request.handle.clientTurnId)
-		);
-	}
-
-	function snapshotHasReconciledTurnEvidence(
-		snapshot: AgentChatSessionSnapshot,
-		request: StreamTurnReconcileRequest
-	): boolean {
-		return snapshot.messages.some((message) => messageMatchesReconciledTurn(message, request));
-	}
-
-	async function reconcileTurnFromSession(
-		request: StreamTurnReconcileRequest,
-		attempt = 0,
-		requestId = ++turnReconciliationRequestId
-	): Promise<void> {
-		if (!browser || !isSurfaceActive) return;
-		if (requestId !== turnReconciliationRequestId) return;
-
-		activeRestoredTurnRunId = `reconcile:${request.handle.streamRunId}`;
-		stream.error = null;
-		stream.currentActivity = 'Restoring latest response...';
-
-		try {
-			const snapshot = await loadAgentChatSessionSnapshot(request.handle.sessionId);
-			if (requestId !== turnReconciliationRequestId || !isSurfaceActive) return;
-
-			const matchingTurnRun =
-				snapshot.turnRuns.find((run) => turnRunMatchesRequest(run, request)) ?? null;
-			const hasEvidence = snapshotHasReconciledTurnEvidence(snapshot, request);
-			const shouldHydrate = Boolean(matchingTurnRun || snapshot.activeTurnRun || hasEvidence);
-
-			if (!shouldHydrate && attempt < TURN_RECONCILE_MAX_ATTEMPTS) {
-				setTrackedTimeout(() => {
-					void reconcileTurnFromSession(request, attempt + 1, requestId);
-				}, TURN_RECONCILE_RETRY_MS);
-				return;
-			}
-
-			if (shouldHydrate) {
-				applyChatSessionSnapshot(request.handle.sessionId, snapshot);
-				return;
-			}
-
-			activeRestoredTurnRunId = null;
-			stream.currentActivity = '';
-			stream.error = 'Connection lost before the latest response could be restored.';
-		} catch (err) {
-			if (requestId !== turnReconciliationRequestId || !isSurfaceActive) return;
-			if (attempt < TURN_RECONCILE_MAX_ATTEMPTS) {
-				setTrackedTimeout(() => {
-					void reconcileTurnFromSession(request, attempt + 1, requestId);
-				}, TURN_RECONCILE_RETRY_MS);
-				return;
-			}
-			activeRestoredTurnRunId = null;
-			stream.currentActivity = '';
-			stream.error =
-				err instanceof Error
-					? err.message
-					: 'Connection lost before the latest response could be restored.';
 		}
 	}
 
@@ -2134,7 +2087,6 @@
 	function releaseSessionResources(reason: 'close' | 'destroy'): DataMutationSummary {
 		finalizeSession(reason);
 		voice.stop();
-		turnReconciliationRequestId += 1;
 		clearSessionRefreshTimeout();
 		activeRestoredTurnRunId = null;
 		if (sessionLoadController) {
@@ -2142,7 +2094,6 @@
 			sessionLoadController = null;
 		}
 		isLoadingSession = false;
-		stream.disposeActiveStream({ reconcile: false });
 		workerAdoption?.clear('teardown');
 		void workerRealtime?.stop();
 		voice.cleanup();
@@ -2957,26 +2908,6 @@
 		);
 	}
 
-	function markAssistantInterrupted(
-		reason: 'user_cancelled' | 'superseded' | 'error',
-		streamRunId: string | null
-	) {
-		if (!currentAssistantMessageId) return;
-		messages = messages.map((msg) =>
-			msg.id === currentAssistantMessageId
-				? {
-						...msg,
-						metadata: {
-							...msg.metadata,
-							interrupted: true,
-							interrupted_reason: reason,
-							...(streamRunId ? { stream_run_id: streamRunId } : {})
-						}
-					}
-				: msg
-		);
-	}
-
 	onDestroy(() => {
 		// Clear all pending timeouts to prevent memory leaks
 		pendingTimeouts.forEach((id) => clearTimeout(id));
@@ -3162,7 +3093,8 @@
 			<p class="mb-2 text-xs text-muted-foreground">
 				Document reviews use <strong class="font-medium text-foreground"
 					>{publishedSpecialist.name} · v{publishedSpecialist.version}</strong
-				>. Use /workflow or Organize documents to run it. Other messages use project chat.
+				>. Choose Organize documents for each document review. Other messages use project
+				chat.
 			</p>
 		{/if}
 		<AgentComposer

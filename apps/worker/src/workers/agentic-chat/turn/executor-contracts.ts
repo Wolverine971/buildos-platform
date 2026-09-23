@@ -61,7 +61,6 @@ export type TerminalClaim = Pick<
 
 export type AgenticChatTurnUsageV1 = AgenticChatProviderUsageV1;
 export type AgenticChatTurnProviderStepV1 = AgenticChatProviderStepV1;
-export type AgenticChatTurnProviderPortV1 = AgenticChatProviderPortV1;
 
 export type AgenticChatReadToolProgressV1 = {
 	/** One human-readable line, e.g. `Jev: not here (4%) → "Pricing" (91%)`. */

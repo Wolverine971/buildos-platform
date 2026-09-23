@@ -1,32 +1,10 @@
 // apps/web/src/lib/services/agentic-chat/tools/webvisit/types.ts
+//
+// Types for the HTML parser. The web_visit tool itself runs in the worker; this
+// parser stays only for the web-navigation research probes
+// (docs/research/web-navigation-2026-09-22/) that import parseHtmlToText.
 
-import type { NativeSearchEvidenceChunkReference } from '@buildos/shared-agent-ops/web/native-search';
-
-export type WebVisitMode = 'auto' | 'reader' | 'raw';
-export type WebVisitContentFormat = 'text' | 'markdown';
-// Requested output format. 'markdown' converts deterministically (Turndown);
-// 'llm_markdown' opts into the slower LLM-cleaned conversion and still yields
-// content_format 'markdown' in the result.
-export type WebVisitOutputFormat = 'text' | 'markdown' | 'llm_markdown';
 export type WebVisitExtractionStrategy = 'raw' | 'article' | 'main' | 'body' | 'html';
-
-export interface WebVisitArgs {
-	url: string;
-	mode?: WebVisitMode;
-	max_chars?: number;
-	max_html_chars?: number;
-	output_format?: WebVisitOutputFormat;
-	persist?: boolean;
-	force_refresh?: boolean;
-	include_links?: boolean;
-	allow_redirects?: boolean;
-	prefer_language?: string;
-}
-
-export interface WebVisitRevalidationOptions {
-	ifNoneMatch?: string;
-	ifModifiedSince?: string;
-}
 
 export interface WebVisitLink {
 	url: string;
@@ -41,77 +19,4 @@ export interface WebVisitStructuredDataItem {
 	url?: string;
 	description?: string;
 	[key: string]: unknown;
-}
-
-export interface WebVisitFetchPayload {
-	url: string;
-	final_url: string;
-	status_code: number;
-	content_type?: string | null;
-	title?: string;
-	text: string;
-	trimmed_html?: string;
-	meta?: Record<string, string>;
-	structured_data?: WebVisitStructuredDataItem[];
-	canonical_url?: string;
-	links?: WebVisitLink[];
-	message: string;
-	info: {
-		fetched_at: string;
-		mode: WebVisitMode;
-		bytes: number;
-		fetch_ms: number;
-		parser: WebVisitParser;
-		etag?: string;
-		last_modified?: string;
-		not_modified?: boolean;
-		extraction_strategy?: WebVisitExtractionStrategy;
-		html_chars?: number;
-	};
-}
-
-export interface WebVisitResultPayload {
-	url: string;
-	final_url: string;
-	status_code: number;
-	content_type?: string | null;
-	title?: string;
-	canonical_url?: string;
-	content_format: WebVisitContentFormat;
-	content: string;
-	excerpt?: string;
-	truncated: boolean;
-	links?: WebVisitLink[];
-	meta?: Record<string, string>;
-	structured_data?: WebVisitStructuredDataItem[];
-	visit_id?: string;
-	page_version_id?: string;
-	page_version_number?: number;
-	content_hash?: string;
-	evidence_chunks?: NativeSearchEvidenceChunkReference[];
-	stored?: boolean;
-	message: string;
-	info: {
-		fetched_at: string;
-		mode: WebVisitMode;
-		bytes: number;
-		fetch_ms: number;
-		parser: WebVisitParser;
-		extraction_strategy?: WebVisitExtractionStrategy;
-		html_chars?: number;
-		markdown_chars?: number;
-		conversion?: 'turndown' | 'llm';
-		conversion_ms?: number;
-		llm_model?: string;
-		llm_ms?: number;
-		llm_prompt_tokens?: number;
-		llm_completion_tokens?: number;
-		llm_total_tokens?: number;
-		etag?: string;
-		last_modified?: string;
-		cache_hit?: boolean;
-		cache_revalidated?: boolean;
-		cache_stale?: boolean;
-		cache_revalidation_failed?: boolean;
-	};
 }

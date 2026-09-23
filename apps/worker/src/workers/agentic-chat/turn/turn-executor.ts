@@ -31,7 +31,7 @@ import {
 	SYSTEM_AGENTIC_CHAT_MONOTONIC_CLOCK
 } from '../stream/runtime-timing';
 import { createStableAgenticChatPromptSnapshotIdV1 } from '../effects/prompt-snapshot';
-import { abortable } from '../shared/abortable-deadline';
+import { abortable, throwIfAborted } from '../shared/abortable-deadline';
 import { AgenticChatExecutorEffects } from '../effects/executor-effects';
 import { enforceAgenticChatTerminalTextIntegrityV1 } from './terminal-text-integrity';
 import {
@@ -64,7 +64,6 @@ import {
 	providerSchedulingArguments,
 	result,
 	safeAssistantText,
-	throwIfAborted,
 	validateClaimEnvelope,
 	validateFinish,
 	validateJobEnvelope
@@ -113,7 +112,6 @@ export type {
 	AgenticChatReadToolProgressV1,
 	AgenticChatTurnExecutionOutcomeV1,
 	AgenticChatTurnExecutionResultV1,
-	AgenticChatTurnProviderPortV1,
 	AgenticChatTurnProviderStepV1,
 	AgenticChatTurnUsageV1
 } from './executor-contracts';

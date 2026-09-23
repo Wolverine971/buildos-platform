@@ -1,5 +1,4 @@
 // apps/worker/src/workers/agentic-chat/effects/stated-future-capture.ts
-import { createHash } from 'node:crypto';
 import {
 	type FastToolExecution,
 	STATED_FUTURE_SOURCE,
@@ -15,6 +14,7 @@ import {
 	type JsonValue,
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
+import { stableUuidFromSeed } from '../shared/identity-hash';
 import { runWithAbortableDeadline } from '../shared/abortable-deadline';
 import type { AgenticChatEffectControlPortV1 } from './effect-control';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
@@ -427,14 +427,7 @@ function parseTaskReceipt(
 
 function createStableStatedFutureLogicalOperationId(turnRunId: string): string {
 	canonicalUuid(turnRunId, 'turnRunId');
-	const bytes = createHash('sha256')
-		.update(`${IDENTITY_VERSION}:${turnRunId}`, 'utf8')
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6] & 0x0f) | 0x50;
-	bytes[8] = (bytes[8] & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return stableUuidFromSeed(`${IDENTITY_VERSION}:${turnRunId}`);
 }
 
 function knownFailure(code: string, message: string): AgenticChatMutationAdapterError {

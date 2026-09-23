@@ -8,8 +8,7 @@ const mocks = vi.hoisted(() => ({
 	applyProjectAttentionBudget: vi.fn(),
 	quarantineProjectSuggestionInboxItem: vi.fn(),
 	syncInboxItemForProjectAudit: vi.fn(),
-	executeTool: vi.fn(),
-	chatExecutorConstructor: vi.fn(),
+	runGatewayWriteOp: vi.fn(),
 	createAdminSupabaseClient: vi.fn(),
 	isProjectSuggestionFresh: vi.fn(),
 	finalizeProjectLoopRunIfComplete: vi.fn(),
@@ -28,11 +27,8 @@ vi.mock('@buildos/shared-agent-ops', () => ({
 		return null;
 	})
 }));
-vi.mock('$lib/services/agentic-chat/tools/core/tool-executor', () => ({
-	ChatToolExecutor: vi.fn().mockImplementation(function (...args: unknown[]) {
-		mocks.chatExecutorConstructor(...args);
-		return { execute: mocks.executeTool };
-	})
+vi.mock('@buildos/shared-agent-ops/gateway/op-execution-gateway', () => ({
+	runGatewayWriteOp: mocks.runGatewayWriteOp
 }));
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: mocks.createAdminSupabaseClient
@@ -1012,7 +1008,7 @@ describe('decideProjectSuggestion with a freshness bundle', () => {
 			summary: { operation_count: 2 }
 		});
 		mocks.isProjectSuggestionFresh.mockResolvedValue(true);
-		mocks.executeTool.mockResolvedValue({ success: true });
+		mocks.runGatewayWriteOp.mockResolvedValue({ ok: true, data: {} });
 
 		const outcome = await decideProjectSuggestion({
 			supabase: db,
@@ -1024,7 +1020,11 @@ describe('decideProjectSuggestion with a freshness bundle', () => {
 		});
 
 		expect(outcome).toMatchObject({ ok: true, result: { ok: true, applied_operations: 2 } });
-		expect(mocks.chatExecutorConstructor.mock.calls[0]![2]).toBe('session-1');
+		expect(mocks.runGatewayWriteOp.mock.calls.map(([call]) => call.op)).toEqual([
+			'onto.task.update',
+			'onto.milestone.update'
+		]);
+		expect(mocks.runGatewayWriteOp.mock.calls[0]![0].chatSessionId).toBe('session-1');
 		expect(db.find('project_suggestions', 'bundle-1')?.status).toBe('applied');
 		expect(db.find('freshness_flags', 'f-task')?.status).toBe('applied');
 		expect(db.find('freshness_flags', 'f-ms')?.status).toBe('applied');

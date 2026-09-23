@@ -4,10 +4,7 @@ import type {
 	AgenticChatExecutionObservationInputV1,
 	AgenticChatExecutionObservationPortV1
 } from '../effects/execution-observation';
-import type {
-	AgenticChatPublisherDeliveryV1,
-	AgenticChatPublisherTurnProgressObservationV1
-} from '../stream/stream-publisher';
+import type { AgenticChatPublisherTurnProgressObservationV1 } from '../stream/stream-publisher';
 
 export const AGENTIC_CHAT_TURN_PROGRESS_HEALTH_VERSION =
 	'agentic_chat_turn_progress_health_v1' as const;
@@ -186,22 +183,6 @@ export function projectAgenticChatTurnProgressHealthV1(
 			thresholdMs: input.stallTimeoutMs
 		}
 	};
-}
-
-export function agenticChatDeliveryStateFromPublisherV1(
-	delivery: AgenticChatPublisherDeliveryV1
-): AgenticChatTurnDeliveryStateV1 {
-	switch (delivery) {
-		case 'broadcast_acknowledged':
-			return 'connected';
-		case 'broadcast_sent_reconcile_pending':
-		case 'already_persisted':
-			return 'uncertain';
-		case 'reconcile_only':
-			return 'disconnected';
-		case 'blocked':
-			return 'blocked';
-	}
 }
 
 /**

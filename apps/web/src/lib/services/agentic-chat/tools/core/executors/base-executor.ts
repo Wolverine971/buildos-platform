@@ -1,90 +1,29 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/base-executor.ts
 /**
- * Base Executor - Common Infrastructure for Tool Executors
- *
- * Provides shared functionality for all domain-specific executors:
- * - Authentication and authorization
- * - API request handling
- * - Error normalization
- * - Access assertions
- * - Search term preparation
+ * Base Executor - shared infrastructure for CalendarExecutor, the one executor
+ * left in this folder (the external tool gateway's CalendarPort):
+ * - actor id resolution and caching
+ * - admin Supabase client for explicit privileged calendar operations
+ * - project access assertions
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { AgenticChatToolAccessPortV1 } from '@buildos/agentic-chat-runtime/tools';
-import { normalizeAgenticChatProjectStateV1 } from '@buildos/agentic-chat-runtime/loop';
 import { createWebAgenticChatToolAccessAdapter } from './web-access-adapter';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { ExecutorContext } from './types';
-import { createLogger } from '$lib/utils/logger';
 import type { ActivityLogActorContext } from '$lib/services/async-activity-logger';
 
-const logger = createLogger('BaseExecutor');
-
-function formatApiErrorDetails(details: unknown): string {
-	if (!details) return '';
-	try {
-		return ` (${JSON.stringify(details)})`;
-	} catch {
-		return ` (${String(details)})`;
-	}
-}
-
-export class ApiRequestError extends Error {
-	readonly method: string;
-	readonly path: string;
-	readonly status: number;
-	readonly statusText: string;
-	readonly details: unknown;
-
-	constructor(params: {
-		method: string;
-		path: string;
-		status: number;
-		statusText: string;
-		message: string;
-		details?: unknown;
-	}) {
-		super(
-			`API ${params.method} ${params.path} failed: ${params.message}${formatApiErrorDetails(
-				params.details
-			)}`
-		);
-		this.name = 'ApiRequestError';
-		this.method = params.method;
-		this.path = params.path;
-		this.status = params.status;
-		this.statusText = params.statusText;
-		this.details = params.details;
-	}
-}
-
-/**
- * Base class providing common infrastructure for all tool executors.
- *
- * Responsibilities:
- * - Actor ID resolution and caching
- * - Admin Supabase client management
- * - Auth header generation
- * - API request helper with error handling
- * - Access assertions for projects and entities
- * - Search term sanitization
- */
 export class BaseExecutor {
 	protected readonly supabase: SupabaseClient;
 	protected readonly userId: string;
 	protected readonly sessionId?: string;
-	protected readonly fetchFn: typeof fetch;
-	protected readonly llmService?: SmartLLMService;
 	protected readonly activityLogActorContext?: ActivityLogActorContext;
-	protected readonly abortSignal?: AbortSignal;
 
 	private readonly actorIdProvider?: ExecutorContext['getActorId'];
 	private readonly adminSupabaseProvider?: ExecutorContext['getAdminSupabase'];
-	private readonly authHeadersProvider?: ExecutorContext['getAuthHeaders'];
 	private _actorId?: string;
 	private _adminSupabase?: TypedSupabaseClient;
 	/** Shared tools access port (S3-T3); preserves the legacy RLS semantics. */
@@ -94,22 +33,14 @@ export class BaseExecutor {
 		this.supabase = context.supabase;
 		this.userId = context.userId;
 		this.sessionId = context.sessionId;
-		this.fetchFn = context.fetchFn;
-		this.llmService = context.llmService;
 		this.activityLogActorContext = context.activityLogActorContext;
-		this.abortSignal = context.abortSignal;
 		this.actorIdProvider = context.getActorId;
 		this.adminSupabaseProvider = context.getAdminSupabase;
-		this.authHeadersProvider = context.getAuthHeaders;
 		this.accessAdapter = createWebAgenticChatToolAccessAdapter({
 			supabase: this.supabase as never,
 			getActorId: () => this.getActorId()
 		});
 	}
-
-	// ============================================
-	// ACTOR & AUTH
-	// ============================================
 
 	/**
 	 * Get or resolve the actor ID for the current user.
@@ -144,163 +75,6 @@ export class BaseExecutor {
 	}
 
 	/**
-	 * Get authorization headers for API requests.
-	 * Includes X-Change-Source header to identify agentic chat operations.
-	 */
-	protected async getAuthHeaders(): Promise<HeadersInit> {
-		const providedHeaders = await this.authHeadersProvider?.();
-		const headers = new Headers(providedHeaders ?? undefined);
-
-		if (!headers.has('Authorization')) {
-			const {
-				data: { session }
-			} = await this.supabase.auth.getSession();
-			headers.set(
-				'Authorization',
-				session?.access_token ? `Bearer ${session.access_token}` : ''
-			);
-		}
-
-		if (!headers.has('Content-Type')) {
-			headers.set('Content-Type', 'application/json');
-		}
-
-		if (!headers.has('X-Change-Source')) {
-			headers.set('X-Change-Source', 'chat');
-		}
-
-		if (this.sessionId && !headers.has('X-Chat-Session-Id')) {
-			headers.set('X-Chat-Session-Id', this.sessionId);
-		}
-
-		return Object.fromEntries(headers.entries());
-	}
-
-	// ============================================
-	// API REQUEST
-	// ============================================
-
-	/**
-	 * Make an authenticated API request with standardized error handling.
-	 *
-	 * @param path - API endpoint path
-	 * @param options - Fetch options
-	 * @param extra - Optional per-call extras. `idempotencyKey` attaches an
-	 *   `Idempotency-Key` header so create routes can dedupe a retried write
-	 *   (see D3). Omitting it is a no-op (backwards compatible).
-	 * @returns Parsed response data
-	 * @throws Error with detailed message on failure
-	 */
-	protected async apiRequest<T = any>(
-		path: string,
-		options: RequestInit = {},
-		extra: { idempotencyKey?: string } = {}
-	): Promise<T> {
-		const headers = await this.getAuthHeaders();
-		const method = options.method || 'GET';
-
-		// If the turn was already cancelled before the request left, fail fast with an
-		// abort so no write is issued at all.
-		if (this.abortSignal?.aborted) {
-			throw new DOMException('Tool execution aborted', 'AbortError');
-		}
-
-		const response = await this.fetchFn(path, {
-			...options,
-			// Thread the turn-scoped abort signal into fetch so a cancel actually aborts
-			// the in-flight request (and its write) instead of leaving it to complete.
-			// An explicit per-call signal on options still wins if provided.
-			signal: options.signal ?? this.abortSignal,
-			headers: {
-				...headers,
-				...(extra.idempotencyKey ? { 'Idempotency-Key': extra.idempotencyKey } : {}),
-				...(options.headers || {})
-			}
-		});
-
-		if (!response.ok) {
-			let errorMessage = `${response.status} ${response.statusText}`;
-			let errorDetails: any = null;
-
-			const contentType = response.headers?.get?.('content-type');
-			if (contentType?.includes('application/json')) {
-				try {
-					const errorPayload = await response.json();
-					errorMessage = errorPayload.error || errorPayload.message || errorMessage;
-					errorDetails = errorPayload.details;
-				} catch (jsonError) {
-					logger.warn('Failed to parse error response as JSON', {
-						path,
-						status: response.status,
-						contentType,
-						parseError:
-							jsonError instanceof Error ? jsonError.message : String(jsonError)
-					});
-				}
-			} else {
-				try {
-					const textBody = await response.text();
-					if (textBody.length > 0 && textBody.length < 500) {
-						errorMessage = `${errorMessage}: ${textBody}`;
-					}
-				} catch {
-					// Ignore text extraction failure
-				}
-			}
-
-			throw new ApiRequestError({
-				method,
-				path,
-				status: response.status,
-				statusText: response.statusText,
-				message: errorMessage,
-				details: errorDetails
-			});
-		}
-
-		// Validate Content-Type before parsing JSON response
-		const responseContentType = response.headers?.get?.('content-type');
-		if (!responseContentType?.includes('application/json')) {
-			logger.warn('Response is not JSON', {
-				path,
-				contentType: responseContentType
-			});
-
-			// Some test doubles and upstream proxies omit content-type but still return JSON.
-			try {
-				if (typeof (response as any).json === 'function') {
-					const payload = await response.json();
-					return payload?.data ?? payload;
-				}
-			} catch {
-				// Fall through to text parsing
-			}
-
-			if (typeof (response as any).text === 'function') {
-				const text = await response.text();
-				try {
-					return JSON.parse(text);
-				} catch {
-					return { data: text } as T;
-				}
-			}
-
-			return {} as T;
-		}
-
-		const payload = await response.json();
-		return payload?.data ?? payload;
-	}
-
-	protected isApiRequestStatus(error: unknown, status: number): boolean {
-		return error instanceof ApiRequestError && error.status === status;
-	}
-
-	// ============================================
-	// ACCESS ASSERTIONS
-	// ============================================
-
-	/**
 	 * Assert that the current user has project access at the required level.
 	 *
 	 * @param projectId - Project ID to check
@@ -312,71 +86,5 @@ export class BaseExecutor {
 		requiredAccess: 'read' | 'write' | 'admin' = 'write'
 	): Promise<void> {
 		await this.accessAdapter.assertProjectAccess(projectId, requiredAccess);
-	}
-
-	/**
-	 * Assert that the current user can access the project containing an entity.
-	 *
-	 * Project-scoped entities are authorized through project membership so shared
-	 * project collaborators can use agent tools with the same access level as the UI.
-	 */
-	protected async assertEntityAccess(
-		entityId: string,
-		requiredAccess: 'read' | 'write' | 'admin' = 'read'
-	): Promise<void> {
-		await this.accessAdapter.assertEntityAccess(entityId, requiredAccess);
-	}
-
-	// ============================================
-	// UTILITIES
-	// ============================================
-
-	/**
-	 * Prepare a search term by removing special characters.
-	 *
-	 * @param term - Raw search term
-	 * @returns Sanitized search term
-	 */
-	protected prepareSearchTerm(term?: string): string {
-		if (!term) return '';
-		return term.replace(/[%]/g, '').replace(/,/g, ' ').trim();
-	}
-
-	protected normalizeTaskState(state?: string | null): string | undefined {
-		if (!state) return undefined;
-
-		const normalized = state
-			.trim()
-			.toLowerCase()
-			.replace(/[\s-]+/g, '_');
-		if (!normalized) return undefined;
-
-		const stateMap: Record<string, string> = {
-			pending: 'todo',
-			not_started: 'todo',
-			backlog: 'todo',
-			inprogress: 'in_progress',
-			started: 'in_progress',
-			working: 'in_progress',
-			active: 'in_progress',
-			completed: 'done',
-			complete: 'done'
-		};
-
-		const candidate = stateMap[normalized] ?? normalized;
-		if (['todo', 'in_progress', 'blocked', 'done'].includes(candidate)) {
-			return candidate;
-		}
-
-		logger.warn('Invalid task state_key received; dropping value', {
-			state,
-			normalized,
-			candidate
-		});
-		return undefined;
-	}
-
-	protected normalizeProjectState(state?: string | null): string | undefined {
-		return normalizeAgenticChatProjectStateV1(state) ?? undefined;
 	}
 }

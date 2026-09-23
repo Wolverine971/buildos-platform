@@ -1,6 +1,5 @@
 // apps/worker/tests/helpers/workflowEndToEnd.ts
 import { loadSpecialistSnapshotV2 } from '../../src/workers/agentic-chat/workflow/specialist-snapshot-store';
-import type { SpecialistShadowObserver } from '../../src/workers/agentic-chat/workflow/specialist-selection-shadow';
 import type { WorkflowContextFinderPortV1 } from '../../src/workers/agentic-chat/workflow/context-finder-port';
 // apps/worker/tests/helpers/workflowEndToEnd.ts
 //
@@ -172,7 +171,6 @@ export function buildE2EWorker(input: {
 	publishedSpecialistsEnabled?: boolean;
 	projectReviewV2Enabled?: boolean;
 	projectReviewV3Enabled?: boolean;
-	observeSelection?: SpecialistShadowObserver;
 	findContext?: WorkflowContextFinderPortV1;
 	context?: MasterPromptContext;
 	onError?: (report: { stage: string; turnRunId: string; error: unknown }) => void;
@@ -225,7 +223,6 @@ export function buildE2EWorker(input: {
 		publishedSpecialistsEnabled: input.publishedSpecialistsEnabled,
 		projectReviewV2Enabled: input.projectReviewV2Enabled,
 		projectReviewV3Enabled: input.projectReviewV3Enabled,
-		observeSelection: input.observeSelection,
 		findContext: input.findContext,
 		loadSpecialistSnapshot: (identity) => loadSpecialistSnapshotV2(shim as never, identity),
 		onTiming: () => undefined,

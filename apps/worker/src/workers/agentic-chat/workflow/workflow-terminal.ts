@@ -1,5 +1,5 @@
 // apps/worker/src/workers/agentic-chat/workflow/workflow-terminal.ts
-import { createHash } from 'node:crypto';
+import { stableUuidFromSeed } from '../shared/identity-hash';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgenticChatWorkflowResultQualityV1,
@@ -215,14 +215,9 @@ export function stableAgenticChatWorkflowAnswerMessageIdV1(
 	turnRunId: string,
 	executionGeneration: number
 ): string {
-	const bytes = createHash('sha256')
-		.update(`agentic-chat-workflow-answer-v1:${turnRunId}:${executionGeneration}`, 'utf8')
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return stableUuidFromSeed(
+		`agentic-chat-workflow-answer-v1:${turnRunId}:${executionGeneration}`
+	);
 }
 
 /** The finished projection for a terminal write, from the latest durable run truth. */

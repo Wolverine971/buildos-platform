@@ -6,13 +6,10 @@ import {
 	AGENTIC_CHAT_DOCUMENT_EVIDENCE_PLAN_STEPS_V1,
 	AGENTIC_CHAT_WORKFLOW_PLAN_STEPS_V1
 } from '@buildos/shared-types';
-import { JevClient } from '@buildos/smart-llm';
-import { JevSpecialistSelectionShadow } from '../src/workers/agentic-chat/workflow/specialist-selection-shadow';
-import { SPECIALIST_SHADOW_POLICY } from '../src/workers/agentic-chat/workflow/specialist-selection-policy';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Client } from 'pg';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
 	buildAgenticChatWorkflowV4AdmissionArgs,
 	evaluateAgenticChatWorkflowV4Admission,
@@ -353,36 +350,6 @@ function documentReadSuite(sharedEvidence: boolean) {
 	it('recovers from a lost read receipt with the same saved content and no repeated read', async () => {
 		const id = await admit(3);
 		const lease = await leaseAndClaimE2E(admin, shim, id);
-		const fetchImpl = vi.fn(
-			async () =>
-				new Response(
-					JSON.stringify({
-						model: SPECIALIST_SHADOW_POLICY.model,
-						id: 'scripted-selection',
-						answers: {
-							bundle: {
-								type: 'choice',
-								choice: 'document_read',
-								confidence: 0.99,
-								probabilities: {
-									generalist: 0.01,
-									project_review: 0.01,
-									document_inventory: 0.03,
-									document_read: 0.95
-								}
-							}
-						},
-						usage: { input_tokens: 100, output_tokens: 10, cost: 0.0001 }
-					})
-				)
-		);
-		const observer = () =>
-			new JevSpecialistSelectionShadow({
-				client: shim,
-				decider: new JevClient({ apiKey: 'scripted', fetchImpl, retryOnce: false }),
-				specialistWorkflowsEnabled: true,
-				documentReadToolsEnabled: true
-			});
 		const firstProvider = scriptedWorkflowProvider(script);
 		const first = buildE2EWorker({
 			shim,
@@ -390,8 +357,7 @@ function documentReadSuite(sharedEvidence: boolean) {
 			specialistWorkflowsEnabled: true,
 			documentReadToolsEnabled: true,
 			documentEvidenceHandoffEnabled: sharedEvidence,
-			context: context(),
-			observeSelection: observer().observe
+			context: context()
 		});
 		let lost = false;
 		shim.intercept(async (name, _args, run) => {
@@ -435,8 +401,7 @@ function documentReadSuite(sharedEvidence: boolean) {
 			specialistWorkflowsEnabled: true,
 			documentReadToolsEnabled: true,
 			documentEvidenceHandoffEnabled: sharedEvidence,
-			context: context(),
-			observeSelection: observer().observe
+			context: context()
 		});
 		try {
 			expect(await second.execute(await leaseAndClaimE2E(admin, shim, id))).toMatchObject({
@@ -459,15 +424,6 @@ function documentReadSuite(sharedEvidence: boolean) {
 			);
 		}
 		expect((await e2eFacts(admin, id)).messages).toHaveLength(1);
-		expect(fetchImpl).toHaveBeenCalledTimes(1);
-		const shadowRow = (
-			await admin.query(
-				'SELECT input, result FROM public.chat_turn_specialist_selection_shadows WHERE turn_run_id=$1',
-				[id]
-			)
-		).rows[0];
-		expect(shadowRow.input.baseline).toBe('document_read');
-		expect(shadowRow.result.status).toBe('observed');
 	}, 60_000);
 
 	it.each(['duplicate_ids', 'extra_arguments', 'multiple_calls'])(

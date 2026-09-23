@@ -18,11 +18,13 @@ import {
 	documentIdsForSpecialistCall,
 	savedDocumentReadPrompt
 } from './document-read-tool';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { sha256Hex as sha256 } from '../shared/identity-hash';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
 	PROJECT_REVIEW_EDITOR_TASK_V2,
 	PROJECT_REVIEW_EDITOR_TASK_V3,
+	PROJECT_REVIEW_RULES_V1,
 	PROJECT_REVIEW_SPECIALISTS_V1,
 	PROJECT_REVIEW_SPECIALISTS_V2,
 	PROJECT_REVIEW_SPECIALISTS_V3,
@@ -58,7 +60,7 @@ import type {
 } from '../provider/provider-capacity';
 import { isTransientDatabaseFailureCode } from '../shared/postgres-failure';
 import type { AgenticChatWorkflowModelInputV1 } from './prepared-context';
-import { WORKFLOW_RULES, parseWorkflowAssignments } from './prototype-provider';
+import type { AgenticChatWorkflowReasoningPolicyV1 } from './contracts';
 import {
 	CHAT_WORKFLOW_DISPATCH_POLICY,
 	type ChatWorkflowDurableEvidenceIndex,
@@ -66,6 +68,7 @@ import {
 	durableEvidenceIndexFromModelInputV1,
 	durableEvidenceLabels,
 	fromDurableWorkflowRoleReport,
+	parseWorkflowAssignments,
 	parseWorkflowRoleReport,
 	toDurableWorkflowRoleReport,
 	workflowReportForEditor
@@ -155,16 +158,6 @@ export type AgenticChatWorkflowRunnerPortsV1 = {
 		acquire(turnRunId?: string): AgenticChatProviderCapacityLeaseV1;
 	};
 };
-
-/**
- * Host-owned hidden reasoning per step. `none` sends `reasoning: { enabled: false }`, which
- * DeepSeek V4.1 Flash honors (Tasker 98 replay, 2026-09-23: 0 reasoning tokens) where it ignores
- * `effort`. A step left out keeps its definition's frozen setting (`low`); definitions are not
- * edited because published snapshots must equal the host baseline.
- */
-export type AgenticChatWorkflowReasoningPolicyV1 = Readonly<
-	Partial<Record<AgenticChatWorkflowStepKeyV1, 'low' | 'none'>>
->;
 
 export type AgenticChatWorkflowRunnerOptionsV1 = {
 	now?: () => number;
@@ -1430,7 +1423,7 @@ class WorkflowExecution {
 			messages: [
 				{
 					role: 'system',
-					content: `${specialist?.instructions.system ?? WORKFLOW_RULES}\n\nROLE: ${args.role}\n${args.task}`
+					content: `${specialist?.instructions.system ?? PROJECT_REVIEW_RULES_V1}\n\nROLE: ${args.role}\n${args.task}`
 				},
 				{ role: 'user', content: args.userContent },
 				...(args.extraMessages ?? [])
@@ -1897,10 +1890,6 @@ function isAbort(error: unknown): boolean {
 
 function clone<T>(value: T): T {
 	return structuredClone(value);
-}
-
-function sha256(value: string): string {
-	return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 function errorText(value: unknown): string {

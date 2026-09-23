@@ -1,7 +1,5 @@
 // apps/worker/src/workers/agentic-chat/workflow/preparation-composition.ts
 import { loadSpecialistSnapshotV2 } from './specialist-snapshot-store';
-import type { JevDecider } from '@buildos/smart-llm';
-import { JevSpecialistSelectionShadow } from './specialist-selection-shadow';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { AgenticChatExecutionControlPortV1 } from '../turn/execution-control';
@@ -18,10 +16,8 @@ import {
 	SupabaseAgenticChatWorkflowPreparationStore
 } from './preparation-store';
 import { AgenticChatWorkflowTurnPreparer } from './raw-turn-preparation';
-import {
-	type AgenticChatWorkflowReasoningPolicyV1,
-	AgenticChatWorkflowRunner
-} from './workflow-runner';
+import type { AgenticChatWorkflowReasoningPolicyV1 } from './contracts';
+import { AgenticChatWorkflowRunner } from './workflow-runner';
 import { AgenticChatWorkflowRunnerAdapter } from './workflow-runner-adapter';
 import {
 	type AgenticChatWorkflowStoreClient,
@@ -41,7 +37,6 @@ export type AgenticChatWorkflowV4CompositionOptionsV1 = {
 	publishedSpecialistsEnabled?: boolean;
 	projectReviewV2Enabled?: boolean;
 	projectReviewV3Enabled?: boolean;
-	selectionDecider?: JevDecider;
 	/**
 	 * AGENTIC_CHAT_CONTEXT_FINDER_ENABLED: Jev-selected evidence for published specialists.
 	 * Off installs no port, so a run that requests evidence records it as unavailable.
@@ -94,16 +89,6 @@ export function createAgenticChatWorkflowTurnPreparerV1(input: {
 		publishedSpecialistsEnabled: input.options.publishedSpecialistsEnabled,
 		projectReviewV2Enabled: input.options.projectReviewV2Enabled,
 		projectReviewV3Enabled: input.options.projectReviewV3Enabled,
-		observeSelection:
-			input.options.executionEnabled && input.options.selectionDecider
-				? new JevSpecialistSelectionShadow({
-						client: input.client as unknown as AgenticChatWorkflowStoreClient,
-						decider: input.options.selectionDecider,
-						specialistWorkflowsEnabled: input.options.specialistWorkflowsEnabled,
-						documentReadToolsEnabled: input.options.documentReadToolsEnabled,
-						onError: (code) => console.warn(JSON.stringify({ event: code }))
-					}).observe
-				: undefined,
 		...(input.options.contextFinderEnabled
 			? {
 					findContext: createWorkflowContextFinder({

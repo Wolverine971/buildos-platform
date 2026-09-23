@@ -7,12 +7,12 @@ import {
 	parseDeclaredTurnContract,
 	resolveTurnContractFromExecutions
 } from '@buildos/agentic-chat-runtime/loop';
-import { DECLARE_TURN_CONTRACT_TOOL_NAME } from '@buildos/agentic-chat-runtime/catalog';
-import { contractSha256 } from '../provider/validation';
 import {
 	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
+	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME
-} from '../tools/execution-adapter';
+} from '@buildos/agentic-chat-runtime/catalog';
+import { contractSha256 } from '../provider/validation';
 
 /**
  * Replay the worker's typed-review correction path for terminal receipts and

@@ -108,12 +108,12 @@ const temporaryAttachmentSchema = z
 	);
 export const workerAdmissionRequestSchema = z
 	.object({
-		// Sent only by older bundles that still negotiate /transport first. When
-		// absent, admission resolves the transport decision inline.
-		leaseToken: canonicalText(8 * 1024)
-			.nullable()
-			.optional()
-			.default(null),
+		// Retired: nothing mints a transport lease any more, and admission always
+		// resolves the transport decision inline. A token is rejected like any
+		// unknown field; only an absent or null value parses (to null, unread).
+		// TODO: drop this key once worker-transport-client.test.ts and
+		// agentic-e2e/harness/worker-client.test.ts stop asserting it parses to null.
+		leaseToken: z.null().optional().default(null),
 		clientTurnId: canonicalText(256),
 		streamRunId: canonicalText(256),
 		sessionId: nullableUuid.optional().default(null),
@@ -192,7 +192,7 @@ export const workerAdmissionRequestSchema = z
 			context.addIssue({
 				code: z.ZodIssueCode.custom,
 				path: ['projectFocus', 'projectId'],
-				message: 'Project focus must match the leased context'
+				message: 'Project focus must match the admitted context'
 			});
 		}
 	});

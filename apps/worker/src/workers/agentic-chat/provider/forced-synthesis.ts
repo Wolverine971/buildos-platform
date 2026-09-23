@@ -14,13 +14,8 @@ import {
 	type AgenticChatTurnProviderRequestV1 as ClientRequest
 } from './contracts';
 import type { AgenticChatProviderCapacity } from './provider-capacity';
-import {
-	canonicalError,
-	canonicalFinishedReason,
-	normalizeUsage,
-	providerError,
-	throwIfAborted
-} from './protocol';
+import { canonicalError, canonicalFinishedReason, normalizeUsage, providerError } from './protocol';
+import { throwIfAborted } from '../shared/abortable-deadline';
 import { appendSystemInstruction, combineUsage, forceToolFreeRequest } from './request-builders';
 import {
 	type ClarificationRender,

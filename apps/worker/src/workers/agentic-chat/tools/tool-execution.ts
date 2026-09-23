@@ -1,11 +1,11 @@
 // apps/worker/src/workers/agentic-chat/tools/tool-execution.ts
-import { createHash } from 'node:crypto';
 import {
 	type JsonObject,
 	type JsonValue,
 	canonicalizeAgenticChatJson,
 	normalizeAgenticChatText
 } from '@buildos/shared-types';
+import { stableUuidFromSeed } from '../shared/identity-hash';
 import type { AgenticChatExecutionIdentityV1 } from '../turn/execution-control';
 import { runWithAbortableDeadline } from '../shared/abortable-deadline';
 import { agenticChatGenerationWriteFenceArgsV1 } from '../turn/write-fence';
@@ -245,14 +245,7 @@ export function createStableAgenticChatToolExecutionIdV1(input: {
 }): string {
 	canonicalUuid(input.turnRunId, 'turnRunId');
 	positiveInteger(input.sequenceIndex, 'sequenceIndex');
-	const bytes = createHash('sha256')
-		.update(`${IDENTITY_VERSION}:${input.turnRunId}:${input.sequenceIndex}`, 'utf8')
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return stableUuidFromSeed(`${IDENTITY_VERSION}:${input.turnRunId}:${input.sequenceIndex}`);
 }
 
 function validateInput(input: AgenticChatToolExecutionPersistInputV1): void {

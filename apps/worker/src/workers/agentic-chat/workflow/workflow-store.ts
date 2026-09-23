@@ -7,6 +7,13 @@ import {
 } from '@buildos/agentic-chat-runtime/specialists';
 import { loadSpecialistSnapshotV2 } from './specialist-snapshot-store';
 import {
+	type AgenticChatWorkflowRecoveryReceiptV1,
+	parseAgenticChatWorkflowRecoveryReceiptV1
+} from '../turn/execution-control';
+
+// The recovery receipt belongs to execution control; re-exported for existing importers.
+export { type AgenticChatWorkflowRecoveryReceiptV1, parseAgenticChatWorkflowRecoveryReceiptV1 };
+import {
 	AGENTIC_CHAT_DOCUMENT_EVIDENCE_POLICY_REF,
 	agenticChatWorkflowPlanVersionForRef
 } from '@buildos/shared-types';
@@ -23,7 +30,6 @@ import type {
 	AgenticChatWorkflowPhaseV1,
 	AgenticChatWorkflowPlanOutcomeV1,
 	AgenticChatWorkflowPricingSnapshotV1,
-	AgenticChatWorkflowRecoveryOutcomeV1,
 	AgenticChatWorkflowResultQualityV1,
 	AgenticChatWorkflowStepClaimOutcomeV1,
 	AgenticChatWorkflowStepFailureOutcomeV1,
@@ -185,13 +191,6 @@ export type AgenticChatWorkflowTextBatchReceiptV1 = {
 export type AgenticChatWorkflowSynthesisReceiptV1 = {
 	outcome: AgenticChatWorkflowSynthesisOutcomeV1;
 	event: AgenticChatWorkflowEventReceiptV1;
-};
-export type AgenticChatWorkflowRecoveryReceiptV1 = {
-	outcome: AgenticChatWorkflowRecoveryOutcomeV1;
-	executionMayRetry: boolean;
-	reason: string | null;
-	uncertainCostHeld: boolean;
-	raw: JsonObject;
 };
 
 export type AgenticChatWorkflowStorePortV1 = {
@@ -829,45 +828,6 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 			throw new AgenticChatWorkflowStoreProtocolError(`${name} returned no receipt`);
 		return data as Record<string, unknown>;
 	}
-}
-
-export function parseAgenticChatWorkflowRecoveryReceiptV1(
-	value: unknown
-): AgenticChatWorkflowRecoveryReceiptV1 {
-	if (!isObject(value))
-		throw new AgenticChatWorkflowStoreProtocolError('recovery receipt is missing');
-	const receipt = value as Record<string, unknown>;
-	const recovered = outcome(
-		receipt,
-		[
-			'retry_scheduled',
-			'already_requeued',
-			'terminal_reconciled',
-			'stale_generation',
-			'ownership_lost',
-			'cancel_requested',
-			'policy_denied',
-			'deadline_expired',
-			'finalize_failed',
-			'access_revoked',
-			'attempts_exhausted',
-			'budget_exhausted'
-		],
-		[]
-	) as AgenticChatWorkflowRecoveryOutcomeV1;
-	if (typeof receipt.execution_may_retry !== 'boolean') {
-		throw new AgenticChatWorkflowStoreProtocolError('recovery retry authority is missing');
-	}
-	if ((recovered === 'retry_scheduled') !== receipt.execution_may_retry) {
-		throw new AgenticChatWorkflowStoreProtocolError('recovery retry authority is inconsistent');
-	}
-	return {
-		outcome: recovered,
-		executionMayRetry: receipt.execution_may_retry,
-		reason: nullableString(receipt.reason) ?? nullableString(receipt.failure_code),
-		uncertainCostHeld: receipt.uncertain_cost_held === true,
-		raw: receipt as JsonObject
-	};
 }
 
 function parseRunState(

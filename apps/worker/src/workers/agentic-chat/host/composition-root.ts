@@ -3,8 +3,6 @@ import {
 	type AgenticChatPersistenceTraceSinkV1,
 	logAgenticChatPersistenceTrace
 } from '../effects/persistence-trace';
-import { ChatWorkflowPrototypeProvider } from '../workflow/prototype-provider';
-import { createWorkflowContextLoader } from '../workflow/context-loader';
 import {
 	type AgenticChatWorkflowV4CompositionOptionsV1,
 	createAgenticChatWorkflowTurnPreparerV1
@@ -200,6 +198,7 @@ export function createAgenticChatCompositionRoot(options: {
 	providerClient: AgenticChatTurnProviderClientPortV1;
 	semanticReviewerClient?: AgenticChatTurnProviderClientPortV1;
 	providerConfigured: boolean;
+	/** Durable review cohort (AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS); preparation re-checks it. */
 	workflowPrototypeUserIds?: readonly string[];
 	/** Tasker 86: default-off raw v4 review preparation (and Tasker 87's runner). */
 	workflowV4?: AgenticChatWorkflowV4CompositionOptionsV1;
@@ -345,7 +344,7 @@ export function createAgenticChatCompositionRoot(options: {
 		configured: options.providerConfigured,
 		concurrency: consumerConfig.concurrency
 	});
-	const directProvider = new AgenticChatTurnProviderAdapter(
+	const provider = new AgenticChatTurnProviderAdapter(
 		{
 			client: options.providerClient,
 			semanticReviewer: options.semanticReviewerClient,
@@ -362,13 +361,6 @@ export function createAgenticChatCompositionRoot(options: {
 		mutationCapabilities,
 		options.mutationBatchLaneEnabled ?? true
 	);
-	const provider = new ChatWorkflowPrototypeProvider({
-		direct: directProvider,
-		client: options.providerClient,
-		capacity: providerCapacity,
-		allowedUserIds: options.workflowPrototypeUserIds ?? [],
-		loadContext: createWorkflowContextLoader(options.client)
-	});
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),
 		...(options.webNavigator ? { webNavigator: options.webNavigator } : {}),

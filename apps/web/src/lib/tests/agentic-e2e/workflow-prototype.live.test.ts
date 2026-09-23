@@ -5,7 +5,6 @@ import { loginAndGetCookie } from './harness/auth';
 import { provisionTestUser } from './harness/test-user';
 import { createAgenticE2EWorkerClient } from './harness/worker-client';
 import { seedCedarHouse } from './scenarios/cedar-house/fixture';
-import { readChatWorkflowProgress } from '@buildos/shared-types';
 import { readDurableChatWorkflowProgress } from '$lib/components/agent/agent-chat-workflow';
 
 // These private workflow tables are newer than the generated public Database type.
@@ -26,10 +25,17 @@ type WorkflowSmokeReader = {
 	};
 };
 
-describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow prototype', () => {
-	it('queues a real review, publishes all five steps, and leaves project records unchanged', async () => {
+// The Workflow Lab's review is the durable project review (reviewIntent: 'project_review').
+// The older `/workflow` prototype lane no longer exists in the chat worker.
+describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow lab review', () => {
+	it('runs a real durable project review, accepts every step, and leaves project records unchanged', async () => {
 		if (process.env.AGENTIC_GATE_DATABASE_ISOLATED !== 'true')
 			throw new Error('Isolated database required');
+		const durableV3 = process.env.AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED === 'true';
+		if (!durableV3 && process.env.AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED !== 'true')
+			throw new Error(
+				'Set AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED or AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED.'
+			);
 		const baseUrl = process.env.AGENTIC_E2E_BASE_URL!;
 		const email = process.env.AGENTIC_TEST_USER_EMAIL!;
 		const password = process.env.AGENTIC_TEST_USER_PASSWORD!;
@@ -44,27 +50,20 @@ describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow p
 			}
 		);
 		const projectId = seed.projectId;
-		const durableV3 = process.env.AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED === 'true';
-		const durableV2 =
-			durableV3 || process.env.AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED === 'true';
-		let riskId: string | null = null;
-		if (durableV2) {
-			const { data, error } = await db.admin
-				.from('onto_risks')
-				.insert({
-					project_id: projectId,
-					created_by: db.actorId,
-					title: 'Permit filing fee unfunded',
-					content:
-						'Permit filing requires a $1,200 fee that has no approved funding source.',
-					state_key: 'identified',
-					impact: 'high'
-				})
-				.select('id')
-				.single();
-			if (error) throw error;
-			riskId = data.id;
-		}
+		const { data: risk, error: riskError } = await db.admin
+			.from('onto_risks')
+			.insert({
+				project_id: projectId,
+				created_by: db.actorId,
+				title: 'Permit filing fee unfunded',
+				content: 'Permit filing requires a $1,200 fee that has no approved funding source.',
+				state_key: 'identified',
+				impact: 'high'
+			})
+			.select('id')
+			.single();
+		if (riskError) throw riskError;
+		const riskId = risk.id;
 		async function snapshot() {
 			const tables = [
 				'onto_tasks',
@@ -107,22 +106,17 @@ describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow p
 			const result = await client.runTurn({
 				contextType: 'project',
 				entityId: projectId,
-				reviewIntent: durableV2 ? 'project_review' : undefined,
+				reviewIntent: 'project_review',
 				message: durableV3
 					? 'Assess the unfunded permit filing fee and count how many of all five saved tasks are overdue as of this review. Have both specialists inspect the fee risk and use the typed calculation for task timing. Include the fee evidence and the five-task count in the combined answer.'
-					: (durableV2 ? '' : '/workflow ') +
-						'What should we prioritize next? Have the analyst recommend the next steps and the reviewer challenge assumptions about permits and the budget, including saved risk-register entries. Give me one combined recommendation.'
+					: 'What should we prioritize next? Have the analyst recommend the next steps and the reviewer challenge assumptions about permits and the budget, including saved risk-register entries. Give me one combined recommendation.'
 			});
-			const states = result.rawEvents
-				.map((event) => readChatWorkflowProgress(event.workflow))
-				.filter((value) => value !== null);
 			const durableStates = result.rawEvents
 				.map((event) => readDurableChatWorkflowProgress(event.workflow))
 				.filter((value) => value !== null);
-			const answerCompleteEvent = result.rawEvents.find((event) =>
-				durableV2
-					? readDurableChatWorkflowProgress(event.workflow)?.answer.status === 'accepted'
-					: readChatWorkflowProgress(event.workflow)?.steps[4]?.status === 'completed'
+			const answerCompleteEvent = result.rawEvents.find(
+				(event) =>
+					readDurableChatWorkflowProgress(event.workflow)?.answer.status === 'accepted'
 			);
 			const answerCompleteMs = result.eventTimings.find(
 				(event) => event.sequenceIndex === answerCompleteEvent?.sequence_index
@@ -134,13 +128,6 @@ describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow p
 				.eq('session_id', result.sessionId!)
 				.eq('role', 'assistant');
 			if (savedError) throw savedError;
-			const savedWorkflow = savedMessages
-				?.map((message) =>
-					readChatWorkflowProgress(
-						(message.metadata as Record<string, unknown>)?.chat_workflow_v1
-					)
-				)
-				.find(Boolean);
 			const savedDurableWorkflow = savedMessages
 				?.map((message) =>
 					readDurableChatWorkflowProgress(
@@ -148,27 +135,24 @@ describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow p
 					)
 				)
 				.find(Boolean);
-			let durableRun: Record<string, unknown> | null = null;
+			const workflowDb = db.admin as unknown as WorkflowSmokeReader;
+			const runRead = await workflowDb
+				.from('chat_turn_workflow_runs')
+				.select(
+					'turn_run_id,policy_ref,phase,terminal_outcome,preparation_version,context_hash,context_payload'
+				)
+				.eq('session_id', result.sessionId!)
+				.maybeSingle();
+			if (runRead.error) throw runRead.error;
+			const durableRun = runRead.data;
 			let durableSteps: Array<Record<string, unknown>> = [];
-			if (durableV2) {
-				const workflowDb = db.admin as unknown as WorkflowSmokeReader;
-				const runRead = await workflowDb
-					.from('chat_turn_workflow_runs')
-					.select(
-						'turn_run_id,policy_ref,phase,terminal_outcome,preparation_version,context_hash,context_payload'
-					)
-					.eq('session_id', result.sessionId!)
-					.maybeSingle();
-				if (runRead.error) throw runRead.error;
-				durableRun = runRead.data;
-				if (durableRun) {
-					const stepRead = await workflowDb
-						.from('chat_turn_workflow_steps')
-						.select('step_key,status,attempts_used,quality,result')
-						.eq('turn_run_id', String(durableRun.turn_run_id));
-					if (stepRead.error) throw stepRead.error;
-					durableSteps = stepRead.data ?? [];
-				}
+			if (durableRun) {
+				const stepRead = await workflowDb
+					.from('chat_turn_workflow_steps')
+					.select('step_key,status,attempts_used,quality,result')
+					.eq('turn_run_id', String(durableRun.turn_run_id));
+				if (stepRead.error) throw stepRead.error;
+				durableSteps = stepRead.data ?? [];
 			}
 			writeFileSync(
 				process.env.WORKFLOW_PROTOTYPE_EVIDENCE!,
@@ -176,18 +160,14 @@ describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow p
 					{
 						validationMode: durableV3
 							? 'durable_project_review_v3'
-							: durableV2
-								? 'durable_project_review_v2'
-								: 'legacy_workflow_prototype',
+							: 'durable_project_review_v2',
 						riskId,
 						durableRun,
 						durableSteps,
 						projectId,
 						result,
-						states,
 						durableStates,
 						savedDurableWorkflow,
-						savedWorkflow,
 						answerCompleteMs,
 						unchanged: JSON.stringify(before) === JSON.stringify(after)
 					},
@@ -208,67 +188,54 @@ describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow p
 			expect(savedMessages?.some((message) => message.content === result.assistantText)).toBe(
 				true
 			);
-			if (durableV2) {
+			expect(durableStates.at(-1)?.steps.every((step) => step.status === 'accepted')).toBe(
+				true
+			);
+			expect(savedDurableWorkflow).toMatchObject({
+				phase: 'finished',
+				terminalOutcome: 'complete',
+				answer: { status: 'accepted' }
+			});
+			for (const key of ['project_analyst', 'risk_reviewer']) {
 				expect(
-					durableStates.at(-1)?.steps.every((step) => step.status === 'accepted')
-				).toBe(true);
-				expect(savedDurableWorkflow).toMatchObject({
-					phase: 'finished',
-					terminalOutcome: 'complete',
-					answer: { status: 'accepted' }
+					savedDurableWorkflow?.steps.find((step) => step.key === key)?.acceptedFinding
+				).toBeTruthy();
+			}
+			expect(durableRun).toMatchObject({
+				policy_ref: durableV3 ? 'internal-project-review:v3' : 'internal-project-review:v2',
+				preparation_version: 'agentic_chat_project_review_preparation_v2',
+				context_payload: { version: 'agentic_chat_project_review_payload_v2' }
+			});
+			expect(JSON.stringify(durableRun?.context_payload)).toContain(riskId);
+			for (const [id, version] of [
+				['project_analyst', durableV3 ? 3 : 2],
+				['risk_reviewer', durableV3 ? 4 : 3]
+			] as const) {
+				const step = durableSteps.find((item) => item.step_key === id);
+				expect(step).toMatchObject({
+					status: 'accepted',
+					result: {
+						version: durableV3
+							? 'chat_workflow_role_report_v3'
+							: 'chat_workflow_role_report_v2',
+						outcome: 'findings',
+						specialist: { id, version }
+					}
 				});
-				for (const key of ['project_analyst', 'risk_reviewer']) {
-					expect(
-						savedDurableWorkflow?.steps.find((step) => step.key === key)
-							?.acceptedFinding
-					).toBeTruthy();
-				}
-				expect(durableRun).toMatchObject({
-					policy_ref: durableV3
-						? 'internal-project-review:v3'
-						: 'internal-project-review:v2',
-					preparation_version: 'agentic_chat_project_review_preparation_v2',
-					context_payload: { version: 'agentic_chat_project_review_payload_v2' }
-				});
-				expect(JSON.stringify(durableRun?.context_payload)).toContain(riskId);
-				for (const [id, version] of [
-					['project_analyst', durableV3 ? 3 : 2],
-					['risk_reviewer', durableV3 ? 4 : 3]
-				] as const) {
-					const step = durableSteps.find((item) => item.step_key === id);
-					expect(step).toMatchObject({
-						status: 'accepted',
-						result: {
-							version: durableV3
-								? 'chat_workflow_role_report_v3'
-								: 'chat_workflow_role_report_v2',
-							outcome: 'findings',
-							specialist: { id, version }
-						}
-					});
-					expect(JSON.stringify(step?.result)).toContain(riskId);
-				}
-				expect(result.assistantText).toMatch(/1,?200/);
-				if (durableV3) {
-					expect(result.assistantText).toContain('2 of these 5 cited tasks');
-					expect(result.assistantText).not.toMatch(
-						/all (five|5) tasks are (past due|overdue)/i
-					);
-					for (const step of durableSteps.filter((item) =>
-						['project_analyst', 'risk_reviewer'].includes(String(item.step_key))
-					))
-						expect(step.result).toMatchObject({
-							contextHash: durableRun?.context_hash
-						});
-				}
-			} else {
-				expect(states.at(-1)?.steps.every((step) => step.status === 'completed')).toBe(
-					true
+				expect(JSON.stringify(step?.result)).toContain(riskId);
+			}
+			expect(result.assistantText).toMatch(/1,?200/);
+			if (durableV3) {
+				expect(result.assistantText).toContain('2 of these 5 cited tasks');
+				expect(result.assistantText).not.toMatch(
+					/all (five|5) tasks are (past due|overdue)/i
 				);
-				expect(states.at(-1)?.steps[2]?.result).toBeTruthy();
-				expect(states.at(-1)?.steps[3]?.result).toBeTruthy();
-				expect(savedWorkflow?.steps[2]?.result).toBeTruthy();
-				expect(savedWorkflow?.steps[3]?.result).toBeTruthy();
+				for (const step of durableSteps.filter((item) =>
+					['project_analyst', 'risk_reviewer'].includes(String(item.step_key))
+				))
+					expect(step.result).toMatchObject({
+						contextHash: durableRun?.context_hash
+					});
 			}
 		} finally {
 			await client.close();

@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/provider/openrouter/usage.ts
 // Pure usage normalization, cost resolution, and the stable usage-log identity.
-import { createHash } from 'node:crypto';
 import { resolveModelPricingProfile } from '@buildos/smart-llm';
+import { stableUuidFromSeed } from '../../shared/identity-hash';
 import type { AgenticChatProviderPassRoleV1 } from '../contracts';
 import type { AgenticChatProviderUsageObservationV1, ProviderUsage } from './types';
 import {
@@ -103,19 +103,11 @@ export function createStableAgenticChatProviderUsageLogIdV1(input: {
 	) {
 		throw new Error('Invalid Agentic Chat provider usage identity');
 	}
-	const bytes = createHash('sha256')
-		.update(
-			`${USAGE_LOG_IDENTITY_VERSION}:${input.turnRunId}:${input.executionGeneration}:` +
-				`${input.logicalProviderRound}:${passRole}:${input.routeId}` +
-				(providerAttempt === 1 ? '' : `:attempt:${providerAttempt}`),
-			'utf8'
-		)
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+	return stableUuidFromSeed(
+		`${USAGE_LOG_IDENTITY_VERSION}:${input.turnRunId}:${input.executionGeneration}:` +
+			`${input.logicalProviderRound}:${passRole}:${input.routeId}` +
+			(providerAttempt === 1 ? '' : `:attempt:${providerAttempt}`)
+	);
 }
 
 export function resolveProviderUsageCosts(input: {

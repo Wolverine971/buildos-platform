@@ -6,16 +6,13 @@ import {
 	type AgenticChatRecoveryRpcResultV1,
 	type AgenticChatTerminalFinalizeRpcResultV1,
 	type AgenticChatTurnClaimResultV1,
+	type AgenticChatWorkflowRecoveryOutcomeV1,
 	type ChatTurnStatusV1,
 	type JsonObject,
 	canonicalizeAgenticChatJson,
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
 import { agenticChatGenerationWriteFenceArgsV1 } from './write-fence';
-import {
-	type AgenticChatWorkflowRecoveryReceiptV1,
-	parseAgenticChatWorkflowRecoveryReceiptV1
-} from '../workflow/workflow-store';
 
 type RpcError = { code?: string; message: string };
 type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }> & {
@@ -31,6 +28,15 @@ export type AgenticChatExecutionIdentityV1 = {
 	turnRunId: string;
 	queueJobId: string;
 	processingToken: string;
+};
+
+/** Receipt of `recover_agentic_chat_workflow_turn_v1` (Tasker 85/87 workflow recovery). */
+export type AgenticChatWorkflowRecoveryReceiptV1 = {
+	outcome: AgenticChatWorkflowRecoveryOutcomeV1;
+	executionMayRetry: boolean;
+	reason: string | null;
+	uncertainCostHeld: boolean;
+	raw: JsonObject;
 };
 
 export type AgenticChatTerminalFinalizeInputV1 = AgenticChatExecutionIdentityV1 & {
@@ -487,6 +493,48 @@ function parseBeginReceipt(
 		return receipt as unknown as AgenticChatExecutionStartRpcResultV1;
 	}
 	throw protocolError('provider-start outcome is invalid');
+}
+
+const WORKFLOW_RECOVERY_OUTCOMES: ReadonlySet<string> = new Set([
+	'retry_scheduled',
+	'already_requeued',
+	'terminal_reconciled',
+	'stale_generation',
+	'ownership_lost',
+	'cancel_requested',
+	'policy_denied',
+	'deadline_expired',
+	'finalize_failed',
+	'access_revoked',
+	'attempts_exhausted',
+	'budget_exhausted'
+]);
+
+/** Shared by the control adapter and the workflow store, which both call the recovery RPC. */
+export function parseAgenticChatWorkflowRecoveryReceiptV1(
+	value: unknown
+): AgenticChatWorkflowRecoveryReceiptV1 {
+	if (value === null || typeof value !== 'object' || Array.isArray(value))
+		throw protocolError('recovery receipt is missing');
+	const receipt = value as Record<string, unknown>;
+	const recovered = receipt.outcome;
+	if (typeof recovered !== 'string' || !WORKFLOW_RECOVERY_OUTCOMES.has(recovered)) {
+		throw protocolError(`unexpected outcome ${String(recovered)}`);
+	}
+	if (typeof receipt.execution_may_retry !== 'boolean') {
+		throw protocolError('recovery retry authority is missing');
+	}
+	if ((recovered === 'retry_scheduled') !== receipt.execution_may_retry) {
+		throw protocolError('recovery retry authority is inconsistent');
+	}
+	const text = (field: unknown) => (typeof field === 'string' && field.length > 0 ? field : null);
+	return {
+		outcome: recovered as AgenticChatWorkflowRecoveryOutcomeV1,
+		executionMayRetry: receipt.execution_may_retry,
+		reason: text(receipt.reason) ?? text(receipt.failure_code),
+		uncertainCostHeld: receipt.uncertain_cost_held === true,
+		raw: receipt as JsonObject
+	};
 }
 
 function parseRecoveryReceipt(

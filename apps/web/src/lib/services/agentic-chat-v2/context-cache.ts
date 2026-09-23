@@ -139,32 +139,6 @@ export function normalizeFastChatContextSnapshot(
 	};
 }
 
-/**
- * Normalizes a client-supplied prewarmed context cache payload into the
- * canonical `FastChatContextCache` shape, or null when the payload is not a
- * usable cache entry.
- */
-export function normalizeFastChatContextCache(raw: unknown): FastChatContextCache | null {
-	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-	const record = raw as Record<string, unknown>;
-	const key = typeof record.key === 'string' ? record.key : null;
-	const createdAt = typeof record.created_at === 'string' ? record.created_at : null;
-	const version = typeof record.version === 'number' ? record.version : null;
-	if (!key || !createdAt || version === null) return null;
-
-	const context = normalizeFastChatContextSnapshot(record.context);
-	if (!context) return null;
-
-	return {
-		version,
-		key,
-		created_at: createdAt,
-		invalidation_token: readString(record, 'invalidationToken', 'invalidation_token'),
-		materialized_at: readString(record, 'materializedAt', 'materialized_at'),
-		context
-	};
-}
-
 export function buildFastChatContextCacheEntry(params: {
 	cacheKey: string;
 	context: FastChatPromptContextSnapshot;

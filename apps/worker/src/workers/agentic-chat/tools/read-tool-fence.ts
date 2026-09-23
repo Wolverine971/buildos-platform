@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/tools/read-tool-fence.ts
 import type { AgenticChatTurnClaimResultV1 } from '@buildos/shared-types';
-import { abortable } from '../shared/abortable-deadline';
+import { abortable, throwIfAborted } from '../shared/abortable-deadline';
 import type { AgenticChatExecutionIdentityV1 } from '../turn/execution-control';
 
 /**
@@ -153,11 +153,5 @@ export class AgenticChatSharedReadToolFenceV1 {
 		void entry.promise.catch(() => undefined);
 		this.inFlight.set(key, entry);
 		return entry;
-	}
-}
-
-function throwIfAborted(signal: AbortSignal): void {
-	if (signal.aborted) {
-		throw signal.reason instanceof Error ? signal.reason : new Error('Execution aborted');
 	}
 }

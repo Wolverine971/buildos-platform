@@ -197,12 +197,6 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 		anchor: 'resolves the prior owned decision before client-turn fallback'
 	},
 	{
-		id: 'transport_kill_epoch',
-		requirement: 'Emergency epoch invalidates every outstanding lease and forces re-admission.',
-		file: 'apps/web/src/lib/services/agentic-chat-v2/transport-lease.test.ts',
-		anchor: 'invalidates every lease across an emergency kill epoch'
-	},
-	{
 		id: 'transport_lost_admission_response',
 		requirement: 'Uncertain worker admission keeps the bubble and recovers from server truth.',
 		file: 'apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts',
@@ -243,13 +237,6 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 		requirement: 'Reload discovers and adopts the durable active worker handle.',
 		file: 'apps/web/src/lib/services/agentic-chat-v2/worker-phase2d-composed-flow.test.ts',
 		anchor: 'converges duplicate admission, reload discovery, reconnect, a sequence gap, and terminal wait'
-	},
-	{
-		id: 'kill_epoch_forced_readmission',
-		requirement:
-			'A kill-epoch bump forces any still-leased (older) bundle to renegotiate; current clients send lease-less and are decided fresh on every admission.',
-		file: 'apps/web/src/routes/api/agent/v2/turns/server.test.ts',
-		anchor: 'forces re-admission when the worker kill epoch advances'
 	},
 	{
 		id: 'kill_epoch_readmission_bounded',
