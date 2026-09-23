@@ -538,6 +538,7 @@ test('@live existing modal session consumes its prewarmed lease through the work
 		expect(body.clientTurnId).toMatch(/^[0-9a-f-]{36}$/i);
 		expect(body.streamRunId).toMatch(/^[0-9a-f-]{36}$/i);
 		expect(body).toHaveProperty('lastTurnContext');
+		expect(body).not.toHaveProperty('leaseToken');
 		expect(admissionResponse.ok()).toBe(true);
 		const serverTiming = admissionResponse.headers()['server-timing'] ?? '';
 		expect(serverTiming).toContain('prepared-admission');
@@ -780,8 +781,8 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 
 // ---------------------------------------------------------------------------
 // The four @wiring tests below replace the mocked-SSE originals deleted with the
-// legacy engine (stage S8). Each drives the real modal through the real
-// transport route (a genuine worker lease is minted and verified) and mocks only
+// legacy engine (stage S8). Each drives the real modal, which sends one
+// lease-less admission per turn exactly as production does, and mocks only
 // the worker-transport HTTP boundary — POST /api/agent/v2/turns, the owned-turn
 // cancel and discovery endpoints — so no model call is made. Realtime is the one
 // thing that cannot be faked over HTTP: it is a WebSocket, so a behavior whose
@@ -799,9 +800,9 @@ type AdmissionRecord = {
 
 /**
  * Answers POST /api/agent/v2/turns with a synthetic admitted handle (so no
- * model runs) while letting POST /api/agent/v2/transport hit the real route,
- * which mints and later verifies a genuine worker lease. GET
- * /api/agent/v2/turns?session_id=... (owned-turn discovery) is left alone.
+ * model runs). The client sends no lease: production admission resolves the
+ * transport decision inline. GET /api/agent/v2/turns?session_id=... (owned-turn
+ * discovery) is left alone.
  */
 async function stubWorkerAdmission(
 	page: Page,
@@ -1076,7 +1077,8 @@ test('@wiring modal uploads a temporary image and admits its canonical attachmen
 		expect(String((admission.body.attachments as any[])[0].checksumSha256)).toMatch(
 			/^[a-f0-9]{64}$/
 		);
-		expect(admission.body.leaseToken).toMatch(/^actl1\./);
+		// Production admits without a separate lease round trip.
+		expect(admission.body).not.toHaveProperty('leaseToken');
 		await legacyStreamRoute.assertNeverCalled();
 	} catch (error) {
 		testFailed = true;

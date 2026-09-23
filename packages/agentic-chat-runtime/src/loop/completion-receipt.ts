@@ -33,7 +33,7 @@ import {
  */
 export const AGENTIC_CHAT_COMPLETION_RECEIPT_VERSION = 1 as const;
 
-export const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME_V1 = 'approve_mutation_batch_review';
+const APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME_V1 = 'approve_mutation_batch_review';
 
 export type AgenticChatCompletionStageDispositionV1 =
 	| 'stage_approved'

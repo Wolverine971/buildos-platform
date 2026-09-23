@@ -101,8 +101,7 @@ describe.runIf(process.env.WORKFLOW_PROTOTYPE_SMOKE === 'true')('live workflow p
 			cookie,
 			email,
 			password,
-			userId,
-			admin: db.admin
+			userId
 		});
 		try {
 			const result = await client.runTurn({

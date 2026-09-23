@@ -138,5 +138,8 @@ export async function requestTranscript(
 
 	const data = payload?.success && payload?.data ? payload.data : payload;
 	const text = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
-	return { text, model: typeof data?.transcription_model === 'string' ? data.transcription_model : null };
+	return {
+		text,
+		model: typeof data?.transcription_model === 'string' ? data.transcription_model : null
+	};
 }

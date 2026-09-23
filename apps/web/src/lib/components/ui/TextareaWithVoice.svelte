@@ -181,13 +181,22 @@
 	);
 
 	const dictating = $derived(dictation.isBusy);
+	// Hand the text back from the mirror without the field's color transition
+	// fading it in (it would flash invisible for ~150ms).
+	let quietSwap = $state(false);
+	$effect(() => {
+		if (dictating) {
+			quietSwap = true;
+			return;
+		}
+		const timer = setTimeout(() => (quietSwap = false), 80);
+		return () => clearTimeout(timer);
+	});
 	const pieces = $derived.by(() => {
 		void anchorVersion;
 		return anchor.pieces(dictation.confirmedText, dictation.draftText);
 	});
-	const showVoiceStatus = $derived(
-		enableVoice && (dictation.isBusy || dictation.error !== null)
-	);
+	const showVoiceStatus = $derived(enableVoice && (dictation.isBusy || dictation.error !== null));
 
 	// Mirror engine state into the host bindings.
 	$effect(() => {
@@ -195,9 +204,10 @@
 		isInitializing = dictation.phase === 'starting';
 		isStopping = false;
 		isTranscribing = dictation.phase === 'finishing';
-		voiceError = dictation.error && dictation.error.code !== 'draft-fallback'
-			? dictation.error.message
-			: '';
+		voiceError =
+			dictation.error && dictation.error.code !== 'draft-fallback'
+				? dictation.error.message
+				: '';
 		recordingDuration = Math.floor(dictation.elapsedMs / 1000);
 		canUseLiveTranscript = dictation.liveDraftActive || dictation.liveDraftSupported;
 	});
@@ -332,8 +342,10 @@
 			{error}
 			{errorMessage}
 			class={dictating
-				? `${textareaClass} text-transparent caret-transparent placeholder:text-transparent`
-				: textareaClass}
+				? `${textareaClass} text-transparent caret-transparent placeholder:text-transparent transition-none`
+				: quietSwap
+					? `${textareaClass} transition-none`
+					: textareaClass}
 			readonly={dictating || restProps.readonly}
 			data-autofocus={autofocus ? '' : undefined}
 			{...restProps}
@@ -369,7 +381,9 @@
 				{:else if hintText}
 					<span class="text-xs text-muted-foreground">{hintText}</span>
 				{:else if showStatusRow}
-					<span class="hidden text-xs text-muted-foreground md:inline-flex md:items-center">
+					<span
+						class="hidden text-xs text-muted-foreground md:inline-flex md:items-center"
+					>
 						<kbd
 							class="rounded border border-border bg-background px-1 py-0.5 font-mono text-2xs font-medium text-foreground"
 							>Enter</kbd

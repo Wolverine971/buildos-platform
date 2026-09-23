@@ -149,7 +149,10 @@ const MAX_TRANSCRIPTION_CONTEXT_CHARS = 500;
  * dictation, transcribed in segments, reading as one piece.
  */
 export function buildTranscriptionPrompt(vocabularyTerms?: string, context?: string): string {
-	const terms = vocabularyTerms?.replace(/\s+/g, ' ').trim().slice(0, MAX_TRANSCRIPTION_VOCABULARY_CHARS);
+	const terms = vocabularyTerms
+		?.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, MAX_TRANSCRIPTION_VOCABULARY_CHARS);
 	const previous = context?.replace(/\s+/g, ' ').trim().slice(-MAX_TRANSCRIPTION_CONTEXT_CHARS);
 	const parts: string[] = [];
 	if (terms) parts.push(`Names and terms that may appear: ${terms}.`);
@@ -2138,14 +2141,17 @@ export class SmartLLMService {
 		const audioFormat = getAudioFormatForInput(audioInput);
 		const base64Audio = await encodeAudioToBase64(audioInput);
 		const prompt = buildTranscriptionPrompt(options.vocabularyTerms, options.context);
-		const provider = prompt
+		const promptProvider = prompt
 			? {
 					...OPENROUTER_NO_DATA_COLLECTION_PROVIDER,
 					// Provider-specific fields ride in provider.options keyed by provider
 					// slug; only the serving provider's entry is forwarded.
 					options: { openai: { prompt }, groq: { prompt } }
 				}
-			: OPENROUTER_NO_DATA_COLLECTION_PROVIDER;
+			: null;
+		// If a provider refuses the prompt option, fall back to plain transcription
+		// (today's behavior) rather than failing the request.
+		let sendPrompt = promptProvider !== null;
 		const deadlineAt =
 			options.deadlineMs && options.deadlineMs > 0
 				? performance.now() + options.deadlineMs
@@ -2180,7 +2186,10 @@ export class SmartLLMService {
 						temperature: 0,
 						// Integer ms: AbortSignal.timeout rejects fractional delays in Node.
 						timeoutMs: Math.floor(Math.min(timeoutMs, remainingMs)),
-						provider
+						provider:
+							sendPrompt && promptProvider
+								? promptProvider
+								: OPENROUTER_NO_DATA_COLLECTION_PROVIDER
 					});
 
 					const transcript = response.text?.trim() ?? '';
@@ -2198,6 +2207,12 @@ export class SmartLLMService {
 					};
 				} catch (error) {
 					lastError = error as Error;
+					const status = (error as { status?: number } | null)?.status;
+					if (sendPrompt && (status === 400 || status === 422)) {
+						sendPrompt = false;
+						attempt -= 1; // same attempt, no backoff, without the prompt
+						continue;
+					}
 
 					if (!isRetryableTranscriptionError(error) || attempt === maxRetries) {
 						break;

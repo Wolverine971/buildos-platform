@@ -278,7 +278,10 @@
 	 * Start inline dictation. Defaults to the current selection: a collapsed
 	 * cursor dictates there, a selection is replaced by the final text.
 	 */
-	export function beginDictation(range?: { from: number; to: number }): VoiceDictationTarget | null {
+	export function beginDictation(range?: {
+		from: number;
+		to: number;
+	}): VoiceDictationTarget | null {
 		if (!view) return null;
 		const docLength = view.state.doc.length;
 		const clamp = (offset: number) => Math.min(Math.max(offset, 0), docLength);

@@ -18,8 +18,10 @@ export function spliceDictation(before: string, spoken: string, after: string): 
 	if (!words) {
 		return { value: before + after, start: before.length, end: before.length };
 	}
-	const leading = before.length === 0 || /\s$/.test(before) || NO_SPACE_BEFORE.test(words) ? '' : ' ';
-	const trailing = after.length === 0 || /^\s/.test(after) || NO_SPACE_BEFORE.test(after) ? '' : ' ';
+	const leading =
+		before.length === 0 || /\s$/.test(before) || NO_SPACE_BEFORE.test(words) ? '' : ' ';
+	const trailing =
+		after.length === 0 || /^\s/.test(after) || NO_SPACE_BEFORE.test(after) ? '' : ' ';
 	const start = before.length + leading.length;
 	const end = start + words.length;
 	return { value: before + leading + words + trailing + after, start, end };

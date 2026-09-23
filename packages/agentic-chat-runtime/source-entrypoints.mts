@@ -8,7 +8,6 @@ export const AGENTIC_CHAT_RUNTIME_SOURCE_ENTRYPOINTS = {
 	'@buildos/agentic-chat-runtime/context': './src/context/index.ts',
 	'@buildos/agentic-chat-runtime/context/loader': './src/context/context-loader.ts',
 	'@buildos/agentic-chat-runtime/loop': './src/loop/index.ts',
-	'@buildos/agentic-chat-runtime/supervisor': './src/supervisor/index.ts',
 	'@buildos/agentic-chat-runtime/specialists': './src/specialists/index.ts',
 	'@buildos/agentic-chat-runtime/context-finder': './src/context-finder/index.ts',
 	'@buildos/agentic-chat-runtime/tools': './src/tools/index.ts',

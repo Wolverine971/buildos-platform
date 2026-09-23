@@ -10,10 +10,12 @@ function audio(label: string) {
 	return new Blob([label], { type: 'audio/webm' });
 }
 
-function harness(options: {
-	transcribe?: (blob: Blob) => Promise<{ text: string; model: string | null }>;
-	startError?: Error;
-} = {}) {
+function harness(
+	options: {
+		transcribe?: (blob: Blob) => Promise<{ text: string; model: string | null }>;
+		startError?: Error;
+	} = {}
+) {
 	let captureEvents!: AudioCaptureEvents;
 	let liveEvents!: LiveDraftEvents;
 	const commits: DictationResult[] = [];
@@ -113,7 +115,8 @@ describe('VoiceDictation', () => {
 		let failing = true;
 		const h = harness({
 			transcribe: async () => {
-				if (failing) throw new TranscriptionRequestError('down', { retryable: false, status: 400 });
+				if (failing)
+					throw new TranscriptionRequestError('down', { retryable: false, status: 400 });
 				return { text: 'Recovered.', model: null };
 			}
 		});

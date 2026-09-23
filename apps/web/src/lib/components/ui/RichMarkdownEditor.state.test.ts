@@ -159,7 +159,9 @@ describe('RichMarkdownEditor inline dictation', () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByTestId('voice-error')).toHaveTextContent('Microphone access is blocked');
+			expect(screen.getByTestId('voice-error')).toHaveTextContent(
+				'Microphone access is blocked'
+			);
 		});
 		expect(screen.getByRole('alert')).toHaveTextContent('Microphone access is blocked');
 		expect(screen.getByTestId('recording')).toHaveTextContent('false');

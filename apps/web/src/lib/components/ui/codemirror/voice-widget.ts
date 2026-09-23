@@ -18,7 +18,13 @@
  *   - Read `getVoiceDictationTarget(state)` for the current mapped insertion point
  */
 
-import { type EditorState, type Extension, StateField, StateEffect, type Range } from '@codemirror/state';
+import {
+	type EditorState,
+	type Extension,
+	StateField,
+	StateEffect,
+	type Range
+} from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView, WidgetType } from '@codemirror/view';
 import { spliceDictation } from '$lib/voice/dictation-text';
 
@@ -241,16 +247,26 @@ const voiceWidgetDecorations = StateField.define<DecorationSet>({
 			state.replaceTo !== null &&
 			state.replaceFrom < state.replaceTo &&
 			state.pos === state.replaceTo;
-		const { previous } = neighbors(tr.state, replacingAdjacent ? state.replaceFrom! : state.pos);
+		const { previous } = neighbors(
+			tr.state,
+			replacingAdjacent ? state.replaceFrom! : state.pos
+		);
 		const { next } = neighbors(tr.state, state.pos);
 		const spacing = spliceDictation(previous, words || 'x', next);
 		const leadingSpace = spacing.start > previous.length;
 		const trailingSpace = spacing.value.length - spacing.end > next.length;
 
 		const decorations: Range<Decoration>[] = [];
-		if (state.replaceFrom !== null && state.replaceTo !== null && state.replaceFrom < state.replaceTo) {
+		if (
+			state.replaceFrom !== null &&
+			state.replaceTo !== null &&
+			state.replaceFrom < state.replaceTo
+		) {
 			decorations.push(
-				Decoration.mark({ class: 'cm-voice-replaced' }).range(state.replaceFrom, state.replaceTo)
+				Decoration.mark({ class: 'cm-voice-replaced' }).range(
+					state.replaceFrom,
+					state.replaceTo
+				)
 			);
 		}
 		decorations.push(

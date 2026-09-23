@@ -225,7 +225,9 @@ export class AudioCapture {
 		}
 
 		this.#stream = stream;
-		stream.getAudioTracks().forEach((track) => track.addEventListener('ended', this.#onTrackEnded));
+		stream
+			.getAudioTracks()
+			.forEach((track) => track.addEventListener('ended', this.#onTrackEnded));
 		this.#mimeType = pickMimeType(this.#deps.MediaRecorder);
 
 		try {

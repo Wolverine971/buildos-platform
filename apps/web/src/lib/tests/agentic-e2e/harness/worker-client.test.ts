@@ -7,6 +7,18 @@ import {
 	requireAdvertisedMutationTools,
 	waitForWorkerTerminalWithRecovery
 } from './worker-client';
+import { workerAdmissionRequestSchema } from '../../../../routes/api/agent/v2/turns/worker-admission-schema';
+
+const PROJECT_ID = 'a1000000-0000-4000-8000-000000000001';
+const SESSION_ID = 'a2000000-0000-4000-8000-000000000001';
+
+function harnessClient(fetchImpl: typeof fetch): AgenticE2EWorkerClient {
+	return new AgenticE2EWorkerClient({
+		fetchImpl,
+		runtime: {},
+		realtimeClient: {}
+	} as never);
+}
 
 function healthResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
@@ -24,7 +36,7 @@ describe('agentic E2E worker client boundaries', () => {
 		delete process.env.AGENTIC_E2E_EXECUTION_MODE;
 	});
 
-	it('retains intake headers and includes prewarm and negotiation in the original total clock', async () => {
+	it('retains intake headers and includes prewarm and admission in the original total clock', async () => {
 		vi.stubEnv('AGENTIC_BATTERY', 'cedar-house');
 		let clock = 0;
 		vi.spyOn(performance, 'now').mockImplementation(() => clock);
@@ -38,41 +50,17 @@ describe('agentic E2E worker client boundaries', () => {
 					}
 				);
 			}
-			if (url === '/api/agent/v2/transport') {
-				clock += 30;
-				return Response.json(
-					{
-						success: true,
-						timestamp: '2026-09-13T00:00:00.000Z',
-						data: {
-							mode: 'worker_realtime',
-							contractVersion: 'agentic_chat_worker_v1',
-							decisionId: 'a0000000-0000-4000-8000-000000000001',
-							token: 'actl1.claims.signature',
-							expiresAt: '2030-01-01T00:00:00.000Z'
-						}
-					},
-					{ headers: { 'server-timing': 'request;dur=25' } }
-				);
-			}
 			clock += 110;
 			return new Response('admission unavailable', {
 				status: 503,
 				headers: { 'server-timing': 'worker-preparation;dur=80, worker-admission;dur=20' }
 			});
 		});
-		const client = new AgenticE2EWorkerClient({
-			userId: 'test-user',
-			fetchImpl,
-			admin: {},
-			runtime: {},
-			realtimeClient: {}
-		} as never);
-		const result = await client.runTurn({
+		const result = await harnessClient(fetchImpl).runTurn({
 			message: 'Read the saved task',
 			contextType: 'project',
-			entityId: 'project-1',
-			sessionId: 'session-1'
+			entityId: PROJECT_ID,
+			sessionId: SESSION_ID
 		});
 		expect(result.timing.intakeRequests).toEqual([
 			{
@@ -83,50 +71,129 @@ describe('agentic E2E worker client boundaries', () => {
 				serverTiming: 'request;dur=65'
 			},
 			{
-				phase: 'transport',
-				startedMs: 70,
-				responseHeadersMs: 100,
-				status: 200,
-				serverTiming: 'request;dur=25'
-			},
-			{
 				phase: 'admission',
-				startedMs: 100,
-				responseHeadersMs: 210,
+				startedMs: 70,
+				responseHeadersMs: 180,
 				status: 503,
 				serverTiming: 'worker-preparation;dur=80, worker-admission;dur=20'
 			}
 		]);
-		expect(result.timing.responseHeadersMs).toBe(210);
-		expect(result.timing.totalDurationMs).toBe(210);
+		expect(result.timing.responseHeadersMs).toBe(180);
+		expect(result.timing.totalDurationMs).toBe(180);
 		expect(result.errors).toHaveLength(1);
-		expect(fetchImpl).toHaveBeenCalledTimes(3);
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(fetchImpl.mock.calls[1]?.[0]).toBe('/api/agent/v2/turns');
+		const admissionBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body));
+		expect(admissionBody).not.toHaveProperty('leaseToken');
+		expect(admissionBody).toMatchObject({
+			sessionId: SESSION_ID,
+			preparedPromptKey: 'prepared-key'
+		});
 	});
 
-	it('requires a prepared key before a battery follow-up can negotiate admission', async () => {
+	it('admits a first turn exactly like the product client: one lease-less request, no pre-created session', async () => {
+		vi.stubEnv('AGENTIC_BATTERY', 'cedar-house');
+		const fetchImpl = vi.fn<typeof fetch>(
+			async () => new Response('admission unavailable', { status: 503 })
+		);
+		const result = await harnessClient(fetchImpl).runTurn({
+			message: 'Start a plan for the kitchen remodel',
+			contextType: 'project',
+			entityId: PROJECT_ID
+		});
+
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		const [url, init] = fetchImpl.mock.calls[0]!;
+		expect(url).toBe('/api/agent/v2/turns');
+		expect(init?.method).toBe('POST');
+		const body = JSON.parse(String(init?.body));
+		// The same body `requestAgenticChatWorkerAdmission` builds for the chat
+		// controller: no leaseToken, a null session the server creates inline.
+		expect(body).toEqual({
+			clientTurnId: result.clientTurnId,
+			streamRunId: result.streamRunId,
+			sessionId: null,
+			context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
+			message: 'Start a plan for the kitchen remodel',
+			attachments: [],
+			projectFocus: null,
+			lastTurnContext: null,
+			voiceNoteGroupId: null,
+			preparedPromptKey: null
+		});
+		const parsed = workerAdmissionRequestSchema.safeParse(body);
+		expect(parsed.success).toBe(true);
+		expect(parsed.data?.leaseToken).toBeNull();
+		expect(result.sessionId).toBeNull();
+		expect(result.errors).toEqual([
+			{ error: 'worker admission failed (503): admission unavailable' }
+		]);
+	});
+
+	it('skips the prepared prompt for an explicit review follow-up, as the product client does', async () => {
+		vi.stubEnv('AGENTIC_BATTERY', 'cedar-house');
+		const fetchImpl = vi.fn<typeof fetch>(
+			async () => new Response('admission unavailable', { status: 503 })
+		);
+		await harnessClient(fetchImpl).runTurn({
+			message: 'Review the project',
+			contextType: 'project',
+			entityId: PROJECT_ID,
+			sessionId: SESSION_ID,
+			reviewIntent: 'project_review'
+		});
+
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(fetchImpl.mock.calls[0]?.[0]).toBe('/api/agent/v2/turns');
+		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject({
+			sessionId: SESSION_ID,
+			preparedPromptKey: null,
+			reviewIntent: 'project_review'
+		});
+	});
+
+	it('preflights the admission route with a free owned-turn lookup', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			Response.json({ success: true, data: { turns: [] } })
+		);
+		await expect(
+			harnessClient(fetchImpl).requireWorkerAdmissionReachable()
+		).resolves.toBeUndefined();
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		const [url, init] = fetchImpl.mock.calls[0]!;
+		expect(String(url)).toMatch(/^\/api\/agent\/v2\/turns\?session_id=[0-9a-f-]{36}$/);
+		expect(init?.method).toBe('GET');
+	});
+
+	it('fails the preflight loudly when the admission route rejects the harness user', async () => {
+		for (const response of [
+			Response.json({ success: false, error: 'Unauthorized' }, { status: 401 }),
+			Response.json({ success: true, data: {} })
+		]) {
+			const fetchImpl = vi.fn<typeof fetch>(async () => response);
+			await expect(harnessClient(fetchImpl).requireWorkerAdmissionReachable()).rejects.toThrow(
+				'[agentic-e2e] worker admission route is not reachable for the harness user'
+			);
+		}
+	});
+
+	it('requires a prepared key before a battery follow-up can be admitted', async () => {
 		vi.stubEnv('AGENTIC_BATTERY', 'cedar-house');
 		const fetchImpl = vi.fn<typeof fetch>(async () =>
 			Response.json({ data: { prepared_prompt: null } })
 		);
-		const client = new AgenticE2EWorkerClient({
-			userId: 'test-user',
-			fetchImpl,
-			admin: {},
-			runtime: {},
-			realtimeClient: {}
-		} as never);
 		await expect(
-			client.runTurn({
+			harnessClient(fetchImpl).runTurn({
 				message: 'Read the saved task',
 				contextType: 'project',
-				entityId: 'project-1',
-				sessionId: 'session-1'
+				entityId: PROJECT_ID,
+				sessionId: SESSION_ID
 			})
 		).rejects.toThrow('refusing cold-path substitution');
 		expect(fetchImpl).toHaveBeenCalledOnce();
 		expect(fetchImpl.mock.calls[0]?.[0]).toBe('/api/agent/v2/prewarm');
 		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject({
-			session_id: 'session-1',
+			session_id: SESSION_ID,
 			prepare_prompt: true
 		});
 	});
@@ -144,14 +211,14 @@ describe('agentic E2E worker client boundaries', () => {
 			'sb-auth-token=secret-cookie'
 		);
 
-		await authenticatedFetch('/api/agent/v2/transport', {
+		await authenticatedFetch('/api/agent/v2/turns', {
 			method: 'POST',
 			headers: { Accept: 'application/json' }
 		});
 
 		expect(fetchMock).toHaveBeenCalledOnce();
 		const [url, init] = fetchMock.mock.calls[0]!;
-		expect(String(url)).toBe('https://build-os.example/api/agent/v2/transport');
+		expect(String(url)).toBe('https://build-os.example/api/agent/v2/turns');
 		const headers = new Headers(init?.headers);
 		expect(headers.get('accept')).toBe('application/json');
 		expect(headers.get('cookie')).toBe('sb-auth-token=secret-cookie');

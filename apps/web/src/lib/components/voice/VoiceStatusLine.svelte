@@ -60,7 +60,9 @@
 				<span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"></span>
 			</span>
 			{listeningLabel}
-			<span class="font-bold tabular-nums">{formatDictationDuration(dictation.elapsedMs)}</span>
+			<span class="font-bold tabular-nums"
+				>{formatDictationDuration(dictation.elapsedMs)}</span
+			>
 		</span>
 		<VoiceLevelMeter levels={dictation.levels} />
 		{#if showKeyHint}

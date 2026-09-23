@@ -5,7 +5,7 @@ import {
 	emitAgenticChatPersistenceTrace,
 	persistenceErrorCode
 } from '../effects/persistence-trace';
-
+import { isTransientDatabaseFailureCode } from '../shared/postgres-failure';
 import { randomUUID } from 'node:crypto';
 import {
 	AGENTIC_CHAT_REALTIME_RECONCILE_EVENT,
@@ -1000,7 +1000,8 @@ export class AgenticChatStreamPublisher {
 				return;
 			}
 			if (result.outcome === 'rejected') {
-				if (isRetryableDatabaseCode(result.error_code)) this.deferRetry(state);
+				if (result.error_code && isTransientDatabaseFailureCode(result.error_code))
+					this.deferRetry(state);
 				else this.blockTurn(state, `rejected:${result.error_code}`);
 				return;
 			}
@@ -1544,7 +1545,7 @@ export class AgenticChatStreamPublisher {
 			typeof error === 'object' && error !== null && 'code' in error
 				? String((error as { code?: unknown }).code ?? '')
 				: '';
-		if (!code || isRetryableDatabaseCode(code)) {
+		if (isTransientDatabaseFailureCode(code)) {
 			this.deferRetry(state);
 			return;
 		}
@@ -1874,18 +1875,4 @@ function utf8Bytes(value: string): number {
 function nonnegativeElapsed(startedAtMs: number, finishedAtMs: number): number {
 	if (!Number.isFinite(startedAtMs) || !Number.isFinite(finishedAtMs)) return 0;
 	return Math.max(0, finishedAtMs - startedAtMs);
-}
-
-function isRetryableDatabaseCode(code: string): boolean {
-	return (
-		code.startsWith('08') ||
-		code === '40001' ||
-		code === '40P01' ||
-		code === '55P03' ||
-		code === '57014' ||
-		code === '57P01' ||
-		code === '57P02' ||
-		code === '57P03' ||
-		code === '53300'
-	);
 }

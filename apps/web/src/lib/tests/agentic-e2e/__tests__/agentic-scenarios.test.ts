@@ -146,20 +146,20 @@ beforeAll(async () => {
 	const db = await provisionTestUser({ userId, email: env.testUserEmail });
 
 	// 2. Confirm the worker transport is reachable + authorized. This requires
-	// both the private Realtime subscription and an exact worker lease; the
-	// client never silently falls back.
+	// both the private Realtime subscription and an authenticated read of the
+	// same admission route the product client posts turns to; the client never
+	// silently falls back.
 	workerClient = await createAgenticE2EWorkerClient({
 		baseUrl: env.baseUrl,
 		cookie,
 		email: env.testUserEmail,
 		password: env.testUserPassword,
-		userId,
-		admin: db.admin
+		userId
 	});
-	await workerClient.requireWorkerLease();
+	await workerClient.requireWorkerAdmissionReachable();
 
-	// Fail-closed write-surface preflight: a valid transport lease only proves
-	// the worker is reachable, not that it advertises the write tools the
+	// Fail-closed write-surface preflight: a reachable admission route only
+	// proves transport, not that the worker advertises the write tools the
 	// selected scenarios need. Runs unconditionally (including
 	// AGENTIC_E2E_WORKER_PREFLIGHT_ONLY) so a preflight-only run proves both.
 	const requiredMutationTools = [
@@ -308,7 +308,7 @@ const batteryRecorder = BATTERY ? new BatteryRecorder(BATTERY, selectedScenarios
 
 describe('agentic chat e2e scenarios (real model + tools + DB)', () => {
 	if (WORKER_PREFLIGHT_ONLY) {
-		it('authenticates, subscribes, and obtains an exact worker transport lease without a model turn', () => {
+		it('authenticates, subscribes, and reaches the worker admission route without a model turn', () => {
 			expect(EXECUTION_MODE).toBe('worker_realtime');
 			expect(workerClient).not.toBeNull();
 		});

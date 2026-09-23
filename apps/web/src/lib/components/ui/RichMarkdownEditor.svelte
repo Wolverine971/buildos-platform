@@ -390,7 +390,9 @@
 		const target = editorRef?.getDictationTarget();
 		if (!target) return;
 		dictationRange =
-			target.replaceFrom !== null && target.replaceTo !== null && target.replaceTo === target.pos
+			target.replaceFrom !== null &&
+			target.replaceTo !== null &&
+			target.replaceTo === target.pos
 				? { from: target.replaceFrom, to: target.replaceTo }
 				: { from: target.pos, to: target.pos };
 	}
@@ -414,13 +416,7 @@
 	}
 
 	async function startDictation() {
-		if (
-			!enableVoice ||
-			voiceBlocked ||
-			disabled ||
-			mode === 'preview' ||
-			dictation.isBusy
-		) {
+		if (!enableVoice || voiceBlocked || disabled || mode === 'preview' || dictation.isBusy) {
 			return;
 		}
 		editorRef?.hideVoiceInsertHint();

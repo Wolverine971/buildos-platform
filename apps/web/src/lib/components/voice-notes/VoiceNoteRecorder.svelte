@@ -214,9 +214,7 @@
 				<p class="mb-1 text-xs text-muted-foreground">Transcript</p>
 				<p>{recording.text}</p>
 			{:else}
-				<p class="text-xs text-muted-foreground">
-					Your words appear here as you talk.
-				</p>
+				<p class="text-xs text-muted-foreground">Your words appear here as you talk.</p>
 			{/if}
 		</div>
 	{/if}

@@ -28,7 +28,11 @@
 
 	const view = $derived.by(() => {
 		if (!dictation.supported) {
-			return { kind: 'muted', label: "Voice isn't available in this browser", enabled: false };
+			return {
+				kind: 'muted',
+				label: "Voice isn't available in this browser",
+				enabled: false
+			};
 		}
 		if (dictation.phase === 'recording') {
 			return { kind: 'recording', label: 'Stop and insert text', enabled: true };
@@ -71,7 +75,7 @@
 	title={view.label}
 	aria-pressed={view.kind === 'recording' ? true : undefined}
 	disabled={!view.enabled}
-	onclick={onclick}
+	{onclick}
 >
 	{#if view.kind === 'loading'}
 		<LoaderCircle class="h-5 w-5 animate-spin motion-reduce:animate-none sm:h-4 sm:w-4" />

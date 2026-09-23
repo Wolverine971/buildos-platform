@@ -118,7 +118,9 @@ export function createVoiceNoteSink(options: VoiceNoteSinkOptions) {
 					transcriptionModel: result.transcriptionModel,
 					transcriptionError: result.text ? null : 'No speech was transcribed',
 					metadata:
-						result.failedSegments > 0 ? { failed_segments: result.failedSegments } : null
+						result.failedSegments > 0
+							? { failed_segments: result.failedSegments }
+							: null
 				});
 				options.onSaved?.(updated);
 			} catch (error) {

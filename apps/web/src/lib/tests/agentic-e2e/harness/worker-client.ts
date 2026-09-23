@@ -1,17 +1,16 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/worker-client.ts
 //
-// The single transport every agentic e2e entry point drives: exact transport
-// negotiation, durable worker admission, private Realtime delivery, and the
-// product reconciliation fallback. This client never falls back when worker
-// routing or capacity is unavailable — a run that cannot reach the worker
-// fails loudly instead of quietly grading a different engine.
+// The single transport every agentic e2e entry point drives. It admits a turn
+// exactly the way the product chat client does — one POST /api/agent/v2/turns
+// through `requestAgenticChatWorkerAdmission`, no lease, and no pre-created
+// session (admission decides the transport and creates a first turn's session
+// inline) — then follows private Realtime delivery and the product
+// reconciliation fallback. This client never falls back when worker routing or
+// capacity is unavailable — a run that cannot reach the worker fails loudly
+// instead of quietly grading a different engine.
 import { randomUUID } from 'node:crypto';
 import { env as publicEnv } from '$env/dynamic/public';
-import {
-	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
-	type AgentSSEMessage,
-	type Database
-} from '@buildos/shared-types';
+import type { AgentSSEMessage, Database } from '@buildos/shared-types';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createAgentChatWorkerUiAdapter } from '$lib/components/agent/agent-chat-worker-ui-adapter';
 import {
@@ -19,17 +18,13 @@ import {
 	type AgenticChatWorkerRealtimeRuntimeClient
 } from '$lib/services/agentic-chat-v2/worker-realtime-runtime';
 import { AgenticChatWorkerTurnAdoption } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
-import {
-	requestAgenticChatTransportLease,
-	requestAgenticChatWorkerAdmission
-} from '$lib/services/agentic-chat-v2/worker-transport-client';
+import { requestAgenticChatWorkerAdmission } from '$lib/services/agentic-chat-v2/worker-transport-client';
 import {
 	normalizeFastContextType,
 	resolveEffectiveEntityId,
 	resolveEffectiveProjectId
 } from '$lib/services/agentic-chat-v2/scope';
-import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { AgenticE2EExecutionMode, HarnessContextType, TurnResult } from './types';
+import type { AgenticE2EExecutionMode, TurnResult } from './types';
 import {
 	applyTurnEvent,
 	createEmptyTurnResult,
@@ -68,8 +63,9 @@ export interface AdvertisedMutationCapabilities {
 /**
  * Fail-closed write-surface preflight: proves the worker actually advertises the
  * mutation tools a scenario needs before spending on a turn against it. Unlike
- * `requireWorkerLease`, which only proves transport, this catches a worker that
- * negotiated fine but is read-only (or predates capability readback entirely).
+ * `requireWorkerAdmissionReachable`, which only proves the admission route, this
+ * catches a worker that is reachable but read-only (or predates capability
+ * readback entirely).
  */
 export async function requireAdvertisedMutationTools(params: {
 	healthUrl: string;
@@ -103,55 +99,49 @@ export async function requireAdvertisedMutationTools(params: {
 }
 
 type WorkerHarnessOptions = {
-	userId: string;
-	admin: TypedSupabaseClient;
 	runtime: AgenticChatWorkerRealtimeRuntime;
 	fetchImpl: typeof fetch;
 	realtimeClient: SupabaseClient<Database>;
 };
 
 export class AgenticE2EWorkerClient {
-	readonly #userId: string;
-	readonly #admin: TypedSupabaseClient;
 	readonly #runtime: AgenticChatWorkerRealtimeRuntime;
 	readonly #fetch: typeof fetch;
 	readonly #realtimeClient: SupabaseClient<Database>;
 
 	constructor(options: WorkerHarnessOptions) {
-		this.#userId = options.userId;
-		this.#admin = options.admin;
 		this.#runtime = options.runtime;
 		this.#fetch = options.fetchImpl;
 		this.#realtimeClient = options.realtimeClient;
 	}
 
-	async requireWorkerLease(): Promise<void> {
-		const lease = await requestAgenticChatTransportLease({
-			fetchImpl: this.#fetch,
-			request: {
-				clientTurnId: randomUUID(),
-				streamRunId: randomUUID(),
-				sessionId: null,
-				context: { type: 'global', entityId: null, projectId: null },
-				supportedModes: ['worker_realtime'],
-				supportedContractVersions: [AGENTIC_CHAT_WORKER_CONTRACT_VERSION],
-				priorDecisionId: null
-			}
-		});
-		if (
-			lease?.mode !== 'worker_realtime' ||
-			lease.contractVersion !== AGENTIC_CHAT_WORKER_CONTRACT_VERSION
-		) {
+	/**
+	 * Free, model-less preflight. The product has no separate negotiation step —
+	 * the first admission decides the transport inline — so this probes the same
+	 * admission route through its owned-turn lookup (the GET that turn adoption
+	 * uses for discovery). A bad cookie, a missing deploy, or a broken server
+	 * service client fails here, before any seeding or model spend.
+	 */
+	async requireWorkerAdmissionReachable(): Promise<void> {
+		const response = await this.#fetch(
+			`/api/agent/v2/turns?session_id=${encodeURIComponent(randomUUID())}`,
+			{ method: 'GET', headers: { Accept: 'application/json' } }
+		);
+		const body = (response.ok ? await response.json().catch(() => null) : null) as {
+			success?: unknown;
+			data?: { turns?: unknown };
+		} | null;
+		if (body?.success !== true || !Array.isArray(body.data?.turns)) {
 			throw new Error(
-				'[agentic-e2e] worker execution was required, but transport negotiation did not return a worker lease'
+				`[agentic-e2e] worker admission route is not reachable for the harness user (GET /api/agent/v2/turns -> ${response.status})`
 			);
 		}
 	}
 
 	async runTurn(params: RunTurnParams): Promise<TurnResult> {
-		const sessionId =
-			params.sessionId ??
-			(await this.#createSession(params.contextType, params.entityId ?? null));
+		// Like the product client, a first turn sends no session: admission
+		// creates it inline in the same request and returns it on the handle.
+		const requestedSessionId = params.sessionId ?? null;
 		const requestStartedAt = new Date().toISOString();
 		const requestStartedMs = performance.now();
 		const streamRunId = randomUUID();
@@ -161,19 +151,14 @@ export class AgenticE2EWorkerClient {
 			clientTurnId,
 			createTurnTiming(requestStartedAt)
 		);
-		result.sessionId = sessionId;
+		result.sessionId = requestedSessionId;
 		const intakeRequests: NonNullable<TurnResult['timing']['intakeRequests']> = [];
 		result.timing.intakeRequests = intakeRequests;
 		const intakeFetch: typeof fetch = async (input, init) => {
 			const startedMs = performance.now() - requestStartedMs;
 			const response = await this.#fetch(input, init);
 			intakeRequests.push({
-				phase:
-					input === '/api/agent/v2/prewarm'
-						? 'prewarm'
-						: input === '/api/agent/v2/transport'
-							? 'transport'
-							: 'admission',
+				phase: input === '/api/agent/v2/prewarm' ? 'prewarm' : 'admission',
 				startedMs,
 				responseHeadersMs: performance.now() - requestStartedMs,
 				status: response.status,
@@ -196,8 +181,10 @@ export class AgenticE2EWorkerClient {
 				projectFocus: null
 			})
 		};
+		// Prepared prompts are session-bound and the product skips them for an
+		// explicit review, so only a battery follow-up without one prewarms.
 		let preparedPromptKey: string | null = null;
-		if (process.env.AGENTIC_BATTERY && params.sessionId) {
+		if (process.env.AGENTIC_BATTERY && requestedSessionId && !params.reviewIntent) {
 			const prewarm = await intakeFetch('/api/agent/v2/prewarm', {
 				signal: AbortSignal.timeout(60_000),
 				method: 'POST',
@@ -205,7 +192,7 @@ export class AgenticE2EWorkerClient {
 				body: JSON.stringify({
 					context_type: normalizedContextType,
 					entity_id: params.entityId ?? null,
-					session_id: sessionId,
+					session_id: requestedSessionId,
 					prepare_prompt: true,
 					lastTurnContext: params.lastTurnContext ?? null
 				})
@@ -218,42 +205,24 @@ export class AgenticE2EWorkerClient {
 					'[agentic-e2e] follow-up prewarm did not produce a prepared prompt; refusing cold-path substitution'
 				);
 		}
-		const lease = await requestAgenticChatTransportLease({
-			fetchImpl: intakeFetch,
-			request: {
-				clientTurnId,
-				streamRunId,
-				sessionId,
-				context,
-				supportedModes: ['worker_realtime'],
-				supportedContractVersions: [AGENTIC_CHAT_WORKER_CONTRACT_VERSION],
-				priorDecisionId: null
-			}
-		});
-		if (
-			lease?.mode !== 'worker_realtime' ||
-			lease.contractVersion !== AGENTIC_CHAT_WORKER_CONTRACT_VERSION
-		) {
-			throw new Error(
-				'[agentic-e2e] worker execution was required, but this turn negotiated legacy SSE'
-			);
-		}
-
+		// One request per turn, the same command the product chat client sends
+		// (agent-chat-stream-controller): the server resolves the transport
+		// decision inline, so there is no lease round trip.
 		const admission = await requestAgenticChatWorkerAdmission({
 			fetchImpl: intakeFetch,
 			command: {
-				leaseToken: lease.token,
 				clientTurnId,
 				streamRunId,
-				sessionId,
+				sessionId: requestedSessionId,
 				context,
 				message: params.message,
-				reviewIntent: params.reviewIntent ?? null,
 				attachments: [],
 				projectFocus: null,
 				lastTurnContext: params.lastTurnContext ?? null,
 				voiceNoteGroupId: null,
-				preparedPromptKey
+				preparedPromptKey,
+				reviewIntent: params.reviewIntent ?? null,
+				publishedSpecialist: null
 			}
 		});
 		result.timing.responseHeadersMs = performance.now() - requestStartedMs;
@@ -314,10 +283,11 @@ export class AgenticE2EWorkerClient {
 			if (
 				descriptor.handle.streamRunId !== streamRunId ||
 				descriptor.handle.clientTurnId !== clientTurnId ||
-				descriptor.handle.sessionId !== sessionId
+				(requestedSessionId !== null && descriptor.handle.sessionId !== requestedSessionId)
 			) {
 				throw new Error('[agentic-e2e] worker admission returned the wrong turn identity');
 			}
+			result.sessionId = descriptor.handle.sessionId;
 			await waitForWorkerTerminalWithRecovery({
 				terminal,
 				turnRunId: descriptor.handle.turnRunId,
@@ -346,28 +316,6 @@ export class AgenticE2EWorkerClient {
 		}
 	}
 
-	async #createSession(
-		contextType: HarnessContextType,
-		entityId: string | null
-	): Promise<string> {
-		const { data, error } = await this.#admin
-			.from('chat_sessions')
-			.insert({
-				user_id: this.#userId,
-				context_type: normalizeFastContextType(contextType),
-				entity_id: entityId,
-				status: 'active'
-			})
-			.select('id')
-			.single();
-		if (error || !data?.id) {
-			throw new Error(
-				`[agentic-e2e] failed to create worker chat session: ${error?.message ?? 'missing id'}`
-			);
-		}
-		return data.id;
-	}
-
 	#recordSnapshotTiming(result: TurnResult, text: string, requestStartedMs: number): void {
 		if (!text) return;
 		const elapsedMs = performance.now() - requestStartedMs;
@@ -389,7 +337,6 @@ export async function createAgenticE2EWorkerClient(input: {
 	email: string;
 	password: string;
 	userId: string;
-	admin: TypedSupabaseClient;
 }): Promise<AgenticE2EWorkerClient> {
 	const supabaseUrl = requiredEnvironment('PUBLIC_SUPABASE_URL', publicEnv.PUBLIC_SUPABASE_URL);
 	const anonKey = requiredEnvironment(
@@ -428,8 +375,6 @@ export async function createAgenticE2EWorkerClient(input: {
 		throw error;
 	}
 	return new AgenticE2EWorkerClient({
-		userId: input.userId,
-		admin: input.admin,
 		runtime,
 		fetchImpl,
 		realtimeClient

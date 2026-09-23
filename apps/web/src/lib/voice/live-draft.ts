@@ -15,7 +15,13 @@ export interface LiveDraftEvents {
 	onUnavailable?: (reason: string) => void;
 }
 
-const FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported']);
+const FATAL_ERRORS = new Set([
+	'not-allowed',
+	'service-not-allowed',
+	'audio-capture',
+	'network',
+	'language-not-supported'
+]);
 const RESTART_DELAY_MS = 120;
 const MAX_RESTARTS_PER_WINDOW = 8;
 const RESTART_WINDOW_MS = 15_000;
@@ -45,7 +51,11 @@ export function appendFinalChunk(
 ): { text: string; lastChunk: string } {
 	const next = chunk.trim();
 	if (!next) return state;
-	if (state.lastChunk && next.startsWith(state.lastChunk) && state.text.endsWith(state.lastChunk)) {
+	if (
+		state.lastChunk &&
+		next.startsWith(state.lastChunk) &&
+		state.text.endsWith(state.lastChunk)
+	) {
 		return {
 			text: state.text.slice(0, state.text.length - state.lastChunk.length) + next,
 			lastChunk: next

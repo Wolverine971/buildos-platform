@@ -101,8 +101,7 @@ describe.runIf(process.env.BOOK_LOOP === 'true')('book dogfood loop', () => {
 			cookie,
 			email,
 			password,
-			userId,
-			admin: db.admin
+			userId
 		});
 		let result;
 		try {

@@ -143,6 +143,17 @@
 			('ontouchstart' in window || navigator.maxTouchPoints > 0)
 	);
 	const dictating = $derived(dictation.isBusy);
+	// Hand the text back from the mirror without the field's color transition
+	// fading it in (it would flash invisible for ~150ms).
+	let quietSwap = $state(false);
+	$effect(() => {
+		if (dictating) {
+			quietSwap = true;
+			return;
+		}
+		const timer = setTimeout(() => (quietSwap = false), 80);
+		return () => clearTimeout(timer);
+	});
 	const pieces = $derived.by(() => {
 		void anchorVersion;
 		return anchor.pieces(dictation.confirmedText, dictation.draftText);
@@ -276,7 +287,11 @@
 			{size}
 			{oninput}
 			readonly={dictating}
-			class={dictating ? 'text-transparent caret-transparent placeholder:text-transparent' : ''}
+			class={dictating
+				? 'text-transparent caret-transparent placeholder:text-transparent transition-none'
+				: quietSwap
+					? 'transition-none'
+					: ''}
 			onfocus={() => (userPlacedCaret = true)}
 			onkeydown={handleTextareaKeyDown}
 		/>

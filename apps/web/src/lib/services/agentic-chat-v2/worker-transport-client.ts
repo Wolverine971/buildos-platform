@@ -1,8 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-transport-client.ts
 import type { ContextPlanV1 } from '@buildos/agentic-chat-runtime/context-finder';
 import type {
-	AgentChatTransportLeaseRequestV1,
-	AgentChatTransportLeaseV1,
+	AgentChatTransportContextV1,
 	ChatAttachmentRef,
 	LastTurnContext,
 	ProjectFocus
@@ -10,16 +9,14 @@ import type {
 import { captureEvent } from '$lib/services/posthog';
 import { AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT } from '$lib/services/posthog-capture-receipt';
 
-const TRANSPORT_ENDPOINT = '/api/agent/v2/transport';
+// One request per turn: admission resolves the transport decision inline and
+// creates a first turn's session, so there is no separate lease endpoint.
 const WORKER_TURNS_ENDPOINT = '/api/agent/v2/turns';
-// The server may spend 5s on its first worker-capacity observation and another
-// 2.5s on the one permitted fresh observation. Keep the client alive beyond
-// that full bounded retry budget so it does not surface an outage while the
-// server is still making a valid admission decision.
-const TRANSPORT_TIMEOUT_MS = 10_000;
-const MAX_LEASE_TOKEN_LENGTH = 8 * 1024;
-const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
+/**
+ * Retained for callers' existing `instanceof` checks. This module no longer
+ * throws it: it was the lease-negotiation failure, and that endpoint is gone.
+ */
 export class AgenticChatWorkerUnavailableResponseError extends Error {
 	readonly code = 'worker_unavailable';
 
@@ -47,12 +44,10 @@ export type PublishedSpecialistSelection = PublishedSpecialistReference & {
 };
 
 export type AgenticChatWorkerCommand = {
-	/** Legacy lease; omitted by current clients so admission decides inline. */
-	leaseToken?: string | null;
 	clientTurnId: string;
 	streamRunId: string;
 	sessionId: string | null;
-	context: AgentChatTransportLeaseRequestV1['context'];
+	context: AgentChatTransportContextV1;
 	message: string;
 	attachments: ChatAttachmentRef[];
 	projectFocus: ProjectFocus | null;
@@ -62,42 +57,6 @@ export type AgenticChatWorkerCommand = {
 	reviewIntent?: 'project_review' | 'document_organization' | null;
 	publishedSpecialist?: PublishedSpecialistReference | null;
 };
-
-/**
- * One engine since one-engine stage S8: negotiation either yields a worker
- * lease or fails. There is no null "use the other transport" answer.
- * The chat client no longer calls this; admission resolves the decision inline.
- */
-export async function requestAgenticChatTransportLease(input: {
-	request: AgentChatTransportLeaseRequestV1;
-	fetchImpl?: typeof fetch;
-}): Promise<AgentChatTransportLeaseV1> {
-	const controller = new AbortController();
-	const timer = setTimeout(() => controller.abort(), TRANSPORT_TIMEOUT_MS);
-	try {
-		const response = await (input.fetchImpl ?? fetch)(TRANSPORT_ENDPOINT, {
-			method: 'POST',
-			headers: {
-				Accept: 'application/json',
-				'Content-Type': 'application/json'
-			},
-			credentials: 'same-origin',
-			cache: 'no-store',
-			signal: controller.signal,
-			body: JSON.stringify(input.request)
-		});
-		if (!response.ok) throw new AgenticChatWorkerUnavailableResponseError();
-		const value: unknown = await response.json();
-		const lease = parseTransportLeaseEnvelope(value);
-		if (!lease) throw new AgenticChatWorkerUnavailableResponseError();
-		return lease;
-	} catch (error) {
-		if (error instanceof AgenticChatWorkerUnavailableResponseError) throw error;
-		throw new AgenticChatWorkerUnavailableResponseError();
-	} finally {
-		clearTimeout(timer);
-	}
-}
 
 export async function requestAgenticChatWorkerAdmission(input: {
 	command: AgenticChatWorkerCommand;
@@ -204,7 +163,6 @@ function timingDescription(parameters: string[]): string | null {
 
 function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 	return {
-		...(command.leaseToken ? { leaseToken: command.leaseToken } : {}),
 		clientTurnId: command.clientTurnId,
 		streamRunId: command.streamRunId,
 		sessionId: command.sessionId,
@@ -273,42 +231,4 @@ function buildWorkerAttachmentBody(attachment: ChatAttachmentRef) {
 		};
 	}
 	throw new Error(`Unsupported worker attachment kind: ${attachment.attachment_kind}`);
-}
-
-function parseTransportLeaseEnvelope(value: unknown): AgentChatTransportLeaseV1 | null {
-	if (!isRecord(value) || value.success !== true || !isRecord(value.data)) return null;
-	const data = value.data;
-	if (
-		!hasExactKeys(data, ['mode', 'contractVersion', 'decisionId', 'token', 'expiresAt']) ||
-		!CANONICAL_UUID.test(String(data.decisionId)) ||
-		!canonicalLeaseToken(data.token) ||
-		typeof data.expiresAt !== 'string' ||
-		!Number.isFinite(Date.parse(data.expiresAt))
-	) {
-		return null;
-	}
-	if (data.mode === 'worker_realtime' && data.contractVersion === 'agentic_chat_worker_v1') {
-		return data as AgentChatTransportLeaseV1;
-	}
-	return null;
-}
-
-function canonicalLeaseToken(value: unknown): value is string {
-	return Boolean(
-		typeof value === 'string' &&
-			value.length > 0 &&
-			value.length <= MAX_LEASE_TOKEN_LENGTH &&
-			value === value.trim() &&
-			value.startsWith('actl1.') &&
-			/^[\x21-\x7e]+$/.test(value)
-	);
-}
-
-function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
-	const actual = Object.keys(value);
-	return actual.length === keys.length && keys.every((key) => actual.includes(key));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

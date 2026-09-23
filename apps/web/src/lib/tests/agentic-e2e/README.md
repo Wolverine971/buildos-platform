@@ -3,8 +3,9 @@
 # Agentic Chat API/Runtime E2E Stress Harness
 
 End-to-end quality tests for the **real** agentic chat. Each scenario drives the
-production worker transport (`harness/worker-client.ts`: transport lease →
-durable worker admission → private Realtime) against a running dev server,
+production worker transport (`harness/worker-client.ts`: the same lease-less
+`POST /api/agent/v2/turns` admission the chat client sends, with the first
+turn's session created inline → private Realtime) against a running dev server,
 exercising the full stack — prompt build → orchestrator loop → the production
 **cheap/weak model** → tool execution → immediate DB writes → telemetry — then
 asserts on three surfaces and (for fuzzy scenarios) scores quality with a strong

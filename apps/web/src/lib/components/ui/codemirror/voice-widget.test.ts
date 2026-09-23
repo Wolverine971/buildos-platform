@@ -132,11 +132,19 @@ describe('voice-widget inline dictation', () => {
 });
 
 describe('buildDictationCommit', () => {
-	function commit(doc: string, target: { pos: number; replaceFrom?: number; replaceTo?: number }, text: string) {
+	function commit(
+		doc: string,
+		target: { pos: number; replaceFrom?: number; replaceTo?: number },
+		text: string
+	) {
 		const state = EditorState.create({ doc });
 		const result = buildDictationCommit(
 			state,
-			{ pos: target.pos, replaceFrom: target.replaceFrom ?? null, replaceTo: target.replaceTo ?? null },
+			{
+				pos: target.pos,
+				replaceFrom: target.replaceFrom ?? null,
+				replaceTo: target.replaceTo ?? null
+			},
 			text
 		);
 		if (!result) return null;
@@ -153,16 +161,16 @@ describe('buildDictationCommit', () => {
 	});
 
 	it('replaces the selection it was dictated over', () => {
-		expect(commit('Alpha beta omega', { pos: 10, replaceFrom: 6, replaceTo: 10 }, 'gamma')).toEqual(
-			{ doc: 'Alpha gamma omega', caret: 11 }
-		);
+		expect(
+			commit('Alpha beta omega', { pos: 10, replaceFrom: 6, replaceTo: 10 }, 'gamma')
+		).toEqual({ doc: 'Alpha gamma omega', caret: 11 });
 	});
 
 	it('keeps text typed after the selection and replaces only the selection', () => {
 		// Selection "beta" (6..10); user typed "!" at 10, so the point moved to 11.
-		expect(commit('Alpha beta! omega', { pos: 11, replaceFrom: 6, replaceTo: 10 }, 'gamma')).toEqual(
-			{ doc: 'Alpha ! gamma omega', caret: 13 }
-		);
+		expect(
+			commit('Alpha beta! omega', { pos: 11, replaceFrom: 6, replaceTo: 10 }, 'gamma')
+		).toEqual({ doc: 'Alpha ! gamma omega', caret: 13 });
 	});
 
 	it('clamps a stale point instead of throwing and ignores empty text', () => {

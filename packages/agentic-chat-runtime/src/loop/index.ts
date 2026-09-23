@@ -12,7 +12,6 @@ export * from './context-gathering-ledger';
 export * from './context-shift';
 export * from './definition-types';
 export * from './durable-text-validation';
-export * from './entity-kind-repair';
 export * from './entity-result-materialization';
 export * from './completion-receipt';
 export * from './request-expectation';

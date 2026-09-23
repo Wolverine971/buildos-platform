@@ -476,10 +476,9 @@ controlDescribe('Open-brief cohort 1 — production v2 control lane (paid)', () 
 			cookie,
 			email: env.testUserEmail,
 			password: env.testUserPassword,
-			userId,
-			admin: db.admin
+			userId
 		});
-		await workerClient.requireWorkerLease();
+		await workerClient.requireWorkerAdmissionReachable();
 		await sweepStaleOrphanProjects(db);
 		ctx = { baseUrl: env.baseUrl, cookie, db, executionMode: HARNESS_EXECUTION_MODE };
 	}, 60_000);

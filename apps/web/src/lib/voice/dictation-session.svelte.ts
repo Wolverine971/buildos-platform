@@ -18,11 +18,7 @@ import {
 import { DraftAligner, joinSpoken } from './draft-alignment';
 import { LiveDraft, getRecognitionCtor, type LiveDraftEvents } from './live-draft';
 import { requestTranscript } from './transcribe-client';
-import {
-	TranscriptionQueue,
-	type QueuedSegment,
-	type SegmentOutcome
-} from './transcription-queue';
+import { TranscriptionQueue, type QueuedSegment, type SegmentOutcome } from './transcription-queue';
 
 export type DictationPhase = 'idle' | 'starting' | 'recording' | 'finishing';
 

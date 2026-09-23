@@ -1,4 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/transport-lease.server.ts
+//
+// Legacy. The /api/agent/v2/transport route that minted these leases is deleted
+// and no client sends one: admission decides the transport inline. Only the
+// leaseToken branch of POST /api/agent/v2/turns still verifies a token. Remove
+// that branch, then this file, its test (and the Phase 5 audit anchor naming it
+// in apps/worker/tests/agenticChatPhase5FailureMatrixAudit.test.ts), and the
+// AGENTIC_CHAT_TRANSPORT_LEASE_SECRET / AGENTIC_CHAT_WORKER_KILL_EPOCH variables.
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,

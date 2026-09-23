@@ -1,6 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-transport-client.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AgentChatTransportLeaseRequestV1 } from '@buildos/shared-types';
 
 const mocks = vi.hoisted(() => ({
 	captureEvent: vi.fn()
@@ -9,123 +8,19 @@ const mocks = vi.hoisted(() => ({
 vi.mock('$lib/services/posthog', () => ({
 	captureEvent: mocks.captureEvent
 }));
-import {
-	AgenticChatWorkerUnavailableResponseError,
-	requestAgenticChatTransportLease,
-	requestAgenticChatWorkerAdmission
-} from './worker-transport-client';
+import { requestAgenticChatWorkerAdmission } from './worker-transport-client';
 import { workerAdmissionRequestSchema } from '../../../routes/api/agent/v2/turns/worker-admission-schema';
 
 const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
-const DECISION_ID = 'd4000000-0000-4000-8000-000000000001';
-const request: AgentChatTransportLeaseRequestV1 = {
+const request = {
 	clientTurnId: 'client-turn-1',
 	streamRunId: 'stream-run-1',
-	sessionId: SESSION_ID,
-	context: { type: 'global', entityId: null, projectId: null },
-	supportedModes: ['worker_realtime'],
-	supportedContractVersions: ['agentic_chat_worker_v1'],
-	priorDecisionId: null
-};
-const workerLease = {
-	mode: 'worker_realtime' as const,
-	contractVersion: 'agentic_chat_worker_v1' as const,
-	decisionId: DECISION_ID,
-	token: 'actl1.claims.signature',
-	expiresAt: '2026-08-04T03:00:00.000Z'
+	context: { type: 'global', entityId: null, projectId: null }
 };
 
 describe('Agentic Chat worker transport client', () => {
 	beforeEach(() => {
 		mocks.captureEvent.mockReset();
-	});
-
-	it('requests a private server-selected lease and accepts an exact response', async () => {
-		const fetchImpl = vi.fn<typeof fetch>(async () =>
-			Response.json({ success: true, data: workerLease, timestamp: new Date().toISOString() })
-		);
-		await expect(requestAgenticChatTransportLease({ request, fetchImpl })).resolves.toEqual(
-			workerLease
-		);
-		expect(fetchImpl).toHaveBeenCalledWith(
-			'/api/agent/v2/transport',
-			expect.objectContaining({
-				method: 'POST',
-				credentials: 'same-origin',
-				cache: 'no-store'
-			})
-		);
-		expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual(request);
-	});
-
-	it('keeps negotiation alive through the server capacity retry budget', async () => {
-		vi.useFakeTimers();
-		try {
-			const fetchImpl = vi.fn<typeof fetch>(
-				async (_input, init) =>
-					await new Promise<Response>((resolve, reject) => {
-						const timer = setTimeout(
-							() =>
-								resolve(
-									Response.json({
-										success: true,
-										data: workerLease,
-										timestamp: new Date().toISOString()
-									})
-								),
-							7_501
-						);
-						init?.signal?.addEventListener(
-							'abort',
-							() => {
-								clearTimeout(timer);
-								reject(new DOMException('Aborted', 'AbortError'));
-							},
-							{ once: true }
-						);
-					})
-			);
-
-			const lease = requestAgenticChatTransportLease({ request, fetchImpl });
-			await vi.advanceTimersByTimeAsync(7_501);
-
-			await expect(lease).resolves.toEqual(workerLease);
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it('surfaces retryable unavailability for HTTP, transport, and malformed lease responses', async () => {
-		for (const fetchImpl of [
-			vi.fn<typeof fetch>(
-				async () => new Response('', { status: 503, headers: { 'Retry-After': '2' } })
-			),
-			vi.fn<typeof fetch>(async () => {
-				throw new Error('offline');
-			}),
-			vi.fn<typeof fetch>(async () =>
-				Response.json({ success: true, data: { ...workerLease, extra: true } })
-			),
-			vi.fn<typeof fetch>(async () =>
-				Response.json({
-					success: true,
-					data: { ...workerLease, contractVersion: 'legacy_internal_v1' }
-				})
-			)
-		]) {
-			await expect(
-				requestAgenticChatTransportLease({ request, fetchImpl })
-			).rejects.toBeInstanceOf(AgenticChatWorkerUnavailableResponseError);
-		}
-	});
-
-	it('never resolves without a worker lease, whatever the failure body says', async () => {
-		const fetchImpl = vi.fn<typeof fetch>(async () =>
-			Response.json({ code: 'TRANSPORT_UNAVAILABLE' }, { status: 503 })
-		);
-		await expect(
-			requestAgenticChatTransportLease({ request, fetchImpl })
-		).rejects.toBeInstanceOf(AgenticChatWorkerUnavailableResponseError);
 	});
 
 	it('submits text, attachment, and voice context to worker admission', async () => {
@@ -135,7 +30,6 @@ describe('Agentic Chat worker transport client', () => {
 		const result = await requestAgenticChatWorkerAdmission({
 			fetchImpl,
 			command: {
-				leaseToken: workerLease.token,
 				clientTurnId: request.clientTurnId,
 				streamRunId: request.streamRunId,
 				sessionId: SESSION_ID,
@@ -183,7 +77,6 @@ describe('Agentic Chat worker transport client', () => {
 		const submittedBody = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
 		expect(workerAdmissionRequestSchema.safeParse(submittedBody).success).toBe(true);
 		expect(submittedBody).toEqual({
-			leaseToken: workerLease.token,
 			clientTurnId: request.clientTurnId,
 			streamRunId: request.streamRunId,
 			sessionId: SESSION_ID,
@@ -250,7 +143,6 @@ describe('Agentic Chat worker transport client', () => {
 		await requestAgenticChatWorkerAdmission({
 			fetchImpl,
 			command: {
-				leaseToken: workerLease.token,
 				clientTurnId: request.clientTurnId,
 				streamRunId: request.streamRunId,
 				sessionId: null,
@@ -281,43 +173,37 @@ describe('Agentic Chat worker transport client', () => {
 		expect(workerAdmissionRequestSchema.safeParse(submittedBody).success).toBe(true);
 	});
 
-	it('omits the lease when none is given so admission decides the transport inline', async () => {
-		for (const leaseToken of [undefined, null]) {
-			const fetchImpl = vi.fn<typeof fetch>(async () =>
-				Response.json(
-					{ success: true, data: { outcome: 'newly_admitted' } },
-					{ status: 202 }
-				)
-			);
-			await requestAgenticChatWorkerAdmission({
-				fetchImpl,
-				command: {
-					...(leaseToken === null ? { leaseToken } : {}),
-					clientTurnId: request.clientTurnId,
-					streamRunId: request.streamRunId,
-					sessionId: null,
-					context: request.context,
-					message: 'First message in a new chat',
-					attachments: [],
-					projectFocus: null,
-					lastTurnContext: null,
-					voiceNoteGroupId: null,
-					preparedPromptKey: null
-				}
-			});
-			const submittedBody = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
-			expect(submittedBody).not.toHaveProperty('leaseToken');
-			expect(submittedBody).toMatchObject({
+	it('admits in one lease-less request so admission decides the transport inline', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			Response.json({ success: true, data: { outcome: 'newly_admitted' } }, { status: 202 })
+		);
+		await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command: {
 				clientTurnId: request.clientTurnId,
 				streamRunId: request.streamRunId,
-				sessionId: null
-			});
-			const parsed = workerAdmissionRequestSchema.safeParse(submittedBody);
-			expect(parsed.success).toBe(true);
-			expect(parsed.data?.leaseToken).toBeNull();
-			expect(fetchImpl).toHaveBeenCalledTimes(1);
-			expect(fetchImpl.mock.calls[0]?.[0]).toBe('/api/agent/v2/turns');
-		}
+				sessionId: null,
+				context: request.context,
+				message: 'First message in a new chat',
+				attachments: [],
+				projectFocus: null,
+				lastTurnContext: null,
+				voiceNoteGroupId: null,
+				preparedPromptKey: null
+			}
+		});
+		const submittedBody = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+		expect(submittedBody).not.toHaveProperty('leaseToken');
+		expect(submittedBody).toMatchObject({
+			clientTurnId: request.clientTurnId,
+			streamRunId: request.streamRunId,
+			sessionId: null
+		});
+		const parsed = workerAdmissionRequestSchema.safeParse(submittedBody);
+		expect(parsed.success).toBe(true);
+		expect(parsed.data?.leaseToken).toBeNull();
+		expect(fetchImpl).toHaveBeenCalledTimes(1);
+		expect(fetchImpl.mock.calls[0]?.[0]).toBe('/api/agent/v2/turns');
 	});
 
 	it('returns non-success admission responses without parsing them as authority', async () => {
@@ -325,7 +211,6 @@ describe('Agentic Chat worker transport client', () => {
 		const result = await requestAgenticChatWorkerAdmission({
 			fetchImpl: vi.fn<typeof fetch>(async () => response),
 			command: {
-				leaseToken: workerLease.token,
 				clientTurnId: request.clientTurnId,
 				streamRunId: request.streamRunId,
 				sessionId: SESSION_ID,
@@ -361,7 +246,6 @@ describe('Agentic Chat worker transport client', () => {
 			fetchImpl,
 			nowMs,
 			command: {
-				leaseToken: workerLease.token,
 				clientTurnId: request.clientTurnId,
 				streamRunId: request.streamRunId,
 				sessionId: SESSION_ID,

@@ -20,7 +20,7 @@ export interface TurnTiming {
 	totalDurationMs: number | null;
 	/** Request headers and elapsed offsets only; all intake remains in the total clock. */
 	intakeRequests?: Array<{
-		phase: 'prewarm' | 'transport' | 'admission';
+		phase: 'prewarm' | 'admission';
 		startedMs: number;
 		responseHeadersMs: number;
 		status: number;

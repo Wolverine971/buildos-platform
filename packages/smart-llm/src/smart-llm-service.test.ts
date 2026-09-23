@@ -2189,6 +2189,37 @@ describe('SmartLLMService dictation transcription', () => {
 		expect(bodies[0]?.provider?.data_collection).toBe('deny');
 	});
 
+	it('drops the prompt and retries once if the provider rejects it', async () => {
+		const bodies: Record<string, any>[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			bodies.push(JSON.parse(String(init?.body)));
+			return bodies.length === 1
+				? new Response('{}', {
+						status: 400,
+						headers: { 'content-type': 'application/json' }
+					})
+				: transcriptionResponse('Plain transcript.');
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const result = await llm.transcribeAudio({
+			audio: { kind: 'buffer', data: new Uint8Array([1]), format: 'webm' },
+			userId: 'transcribe-prompt-rejected',
+			models: ['openai/gpt-transcribe'],
+			maxRetries: 0,
+			vocabularyTerms: 'Samos'
+		});
+
+		expect(result.text).toBe('Plain transcript.');
+		expect(bodies).toHaveLength(2);
+		expect(bodies[0]?.provider?.options).toBeDefined();
+		expect(bodies[1]?.provider?.options).toBeUndefined();
+		expect(bodies[1]?.provider?.data_collection).toBe('deny');
+	});
+
 	it('returns empty text for silence when allowed, without retrying', async () => {
 		const fetchMock = vi.fn(async () => transcriptionResponse(''));
 		const llm = new SmartLLMService({

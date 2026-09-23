@@ -56,6 +56,7 @@ import type {
 	AgenticChatProviderCapacityLeaseV1,
 	AgenticChatProviderCapacitySnapshotV1
 } from '../provider/provider-capacity';
+import { isTransientDatabaseFailureCode } from '../shared/postgres-failure';
 import type { AgenticChatWorkflowModelInputV1 } from './prepared-context';
 import { WORKFLOW_RULES, parseWorkflowAssignments } from './prototype-provider';
 import {
@@ -276,7 +277,6 @@ const ATTEMPT_REASONS: Record<string, string> = {
 	workflow_report_invalid: 'the report did not pass validation'
 };
 const RETRYABLE_ATTEMPT_CODES = new Set(Object.keys(ATTEMPT_REASONS));
-const TRANSIENT_STORE_CODE = /^(|PGRST\d+|08\d{3}|57P0[1-3]|40001|40P01|53\d{3})$/;
 
 class WorkflowStop extends Error {
 	constructor(
@@ -1748,7 +1748,7 @@ class WorkflowExecution {
 			return { kind: 'aborted', reason: errorText(this.input.signal.reason) };
 		if (
 			error instanceof AgenticChatWorkflowStoreError &&
-			TRANSIENT_STORE_CODE.test(error.code)
+			isTransientDatabaseFailureCode(error.code)
 		) {
 			return { kind: 'requeue', failureClass: 'transient_infra', reason: error.operation };
 		}

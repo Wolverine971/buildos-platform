@@ -72,7 +72,8 @@ describe('TranscriptionQueue', () => {
 		const queue = new TranscriptionQueue({
 			transcribe: async () => {
 				calls += 1;
-				if (calls < 3) throw new TranscriptionRequestError('busy', { retryable: true, status: 503 });
+				if (calls < 3)
+					throw new TranscriptionRequestError('busy', { retryable: true, status: 503 });
 				return { text: 'hello there', model: 'm' };
 			},
 			contextFor: () => '',
@@ -129,7 +130,9 @@ describe('TranscriptionQueue', () => {
 
 describe('requestTranscript', () => {
 	function respond(status: number, body: unknown) {
-		return vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
+		return vi.fn(
+			async () => new Response(JSON.stringify(body), { status })
+		) as unknown as typeof fetch;
 	}
 
 	it('returns an empty transcript as empty text, not an error', async () => {
@@ -148,7 +151,10 @@ describe('requestTranscript', () => {
 			})
 		).rejects.toMatchObject({ retryable: true, status: 429, retryAfterMs: 3_000 });
 		await expect(
-			requestTranscript(blob(), { timeoutMs: 1_000, fetchImpl: respond(400, { error: 'nope' }) })
+			requestTranscript(blob(), {
+				timeoutMs: 1_000,
+				fetchImpl: respond(400, { error: 'nope' })
+			})
 		).rejects.toMatchObject({ retryable: false, status: 400, message: 'nope' });
 	});
 
@@ -291,7 +297,10 @@ describe('LiveDraft', () => {
 	it('gives up quietly when the browser refuses recognition', () => {
 		FakeRecognition.instances = [];
 		const onUnavailable = vi.fn();
-		const draft = new LiveDraft({ onChange: () => undefined, onUnavailable }, FakeRecognition as any);
+		const draft = new LiveDraft(
+			{ onChange: () => undefined, onUnavailable },
+			FakeRecognition as any
+		);
 		draft.start();
 		FakeRecognition.instances[0]!.onerror?.({ error: 'not-allowed' });
 		expect(onUnavailable).toHaveBeenCalledWith('not-allowed');

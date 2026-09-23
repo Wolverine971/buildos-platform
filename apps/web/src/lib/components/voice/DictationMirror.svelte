@@ -111,10 +111,7 @@
 <div bind:this={overlay} class="dictation-mirror" style={boxStyle} aria-hidden="true">
 	{pieces.prefix}<span class="text-foreground">{pieces.confirmed}</span>{pieces.separator}<span
 		class="text-muted-foreground">{pieces.draft}</span
-	><span
-		bind:this={caret}
-		class="dictation-caret"
-		class:dictation-caret-live={listening}
+	><span bind:this={caret} class="dictation-caret" class:dictation-caret-live={listening}
 	></span>{pieces.suffix}{'​'}
 </div>
 
