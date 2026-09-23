@@ -171,7 +171,9 @@ describe('agentic E2E worker client boundaries', () => {
 			Response.json({ success: true, data: {} })
 		]) {
 			const fetchImpl = vi.fn<typeof fetch>(async () => response);
-			await expect(harnessClient(fetchImpl).requireWorkerAdmissionReachable()).rejects.toThrow(
+			await expect(
+				harnessClient(fetchImpl).requireWorkerAdmissionReachable()
+			).rejects.toThrow(
 				'[agentic-e2e] worker admission route is not reachable for the harness user'
 			);
 		}

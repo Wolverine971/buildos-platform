@@ -44,7 +44,7 @@ import {
 import type {
 	AgenticChatTurnExecutionOutcomeV1,
 	AgenticChatTurnExecutionResultV1
-} from '../turn/turn-executor';
+} from '../turn/executor-contracts';
 import type { AgenticChatWorkflowPreparationContextLoaderV1 } from './context-loader';
 import {
 	AgenticChatWorkflowContextError,

@@ -7,7 +7,7 @@ import type {
 } from '@buildos/shared-types';
 import type { AgenticChatExecutionIdentityV1 } from '../turn/execution-control';
 import type { AgenticChatWorkerTimingBaselineV1 } from '../turn/execution-input';
-import type { AgenticChatTurnExecutionResultV1 } from '../turn/turn-executor';
+import type { AgenticChatTurnExecutionResultV1 } from '../turn/executor-contracts';
 import type { AgenticChatWorkflowDurableRunV1 } from './preparation-store';
 import type { AgenticChatWorkflowModelInputV1 } from './prepared-context';
 

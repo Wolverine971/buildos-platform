@@ -17,6 +17,10 @@ const E2E_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const EXCLUDED_DIRECTORIES = new Set(['browser', 'node_modules']);
 // Assembled, not written literally, so this guard never matches itself.
 const LEGACY_STREAM_ROUTE = ['', 'api', 'agent', 'v2', 'stream'].join('/');
+// Production admits a turn in one lease-less request; the lease endpoint and
+// its client are deleted, so the harness must never negotiate one either.
+const DELETED_LEASE_ROUTE = ['', 'api', 'agent', 'v2', 'transport'].join('/');
+const DELETED_LEASE_CLIENT = ['requestAgenticChat', 'TransportLease'].join('');
 
 function collectHarnessFiles(directory: string, found: string[] = []): string[] {
 	for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -41,6 +45,19 @@ describe('agentic e2e harness transport', () => {
 			.map((file) => relative(E2E_ROOT, file));
 
 		expect(offenders, `${LEGACY_STREAM_ROUTE} must not appear in the harness`).toEqual([]);
+	});
+
+	it('admits like the product client and never negotiates the deleted transport lease', () => {
+		const offenders = collectHarnessFiles(E2E_ROOT)
+			.filter((file) => {
+				const source = readFileSync(file, 'utf8');
+				return (
+					source.includes(DELETED_LEASE_ROUTE) || source.includes(DELETED_LEASE_CLIENT)
+				);
+			})
+			.map((file) => relative(E2E_ROOT, file));
+
+		expect(offenders, `${DELETED_LEASE_ROUTE} must not appear in the harness`).toEqual([]);
 	});
 
 	it('exposes no module that can drive a turn outside the worker client', () => {

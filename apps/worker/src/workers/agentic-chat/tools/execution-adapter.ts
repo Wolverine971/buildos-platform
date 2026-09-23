@@ -39,7 +39,7 @@ import {
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import { runWithAbortableDeadline } from '../shared/abortable-deadline';
-import type { AgenticChatReadToolPortV1 } from '../turn/turn-executor';
+import type { AgenticChatReadToolPortV1 } from '../turn/executor-contracts';
 import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import { WorkerAgenticChatToolAccessAdapter } from './worker-access-adapter';
 import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';

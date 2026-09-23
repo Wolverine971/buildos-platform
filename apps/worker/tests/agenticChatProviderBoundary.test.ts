@@ -10,6 +10,7 @@ const PROVIDER_ROOT = join(AGENTIC_CHAT_ROOT, 'provider');
 const EXTRACTED_PROVIDER_MODULES = [
 	'contracts.ts',
 	'feedback.ts',
+	'forced-synthesis.ts',
 	'provider-pass.ts',
 	'protocol.ts',
 	'repair-policy.ts',
@@ -17,12 +18,14 @@ const EXTRACTED_PROVIDER_MODULES = [
 	'steps.ts',
 	'stream-tool-calls.ts',
 	'tool-surface.ts',
+	'turn-state.ts',
 	'validation.ts',
 	join('review', 'contract-execution.ts'),
 	join('review', 'controls.ts'),
 	join('review', 'decision-completion.ts'),
 	join('review', 'decision-handling.ts'),
 	join('review', 'disposition.ts'),
+	join('review', 'lanes.ts'),
 	join('review', 'turn-contract.ts')
 ] as const;
 
@@ -60,7 +63,12 @@ describe('Agentic Chat provider boundaries', () => {
 			'function validateReadFeedback(',
 			'function completeTurnContractReviewDecision(',
 			'function streamBufferedProviderPass(',
-			'const TURN_CONTRACT_REVIEW_APPROVAL_TOOL'
+			'const TURN_CONTRACT_REVIEW_APPROVAL_TOOL',
+			'async *streamMutationBatchReview(',
+			'async *streamTurnContractReview(',
+			'async *streamForcedSynthesis(',
+			'function describeUnappliedWrites(',
+			'class ProviderTurnState'
 		] as const;
 
 		for (const declaration of extractedDeclarations) {

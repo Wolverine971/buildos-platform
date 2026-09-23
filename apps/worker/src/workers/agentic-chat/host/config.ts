@@ -21,7 +21,7 @@ import {
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY,
 	DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS,
 	DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS
-} from '../turn/turn-executor';
+} from '../turn/executor-contracts';
 import {
 	type AgenticChatPublisherConfig,
 	DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,

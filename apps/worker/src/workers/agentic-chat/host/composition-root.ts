@@ -49,10 +49,8 @@ import {
 	AgenticChatMutationExecutor,
 	type AgenticChatMutationSpanV1
 } from '../mutations/mutation-executor';
-import {
-	AgenticChatTurnExecutor,
-	DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS
-} from '../turn/turn-executor';
+import { AgenticChatTurnExecutor } from '../turn/turn-executor';
+import { DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS } from '../turn/executor-contracts';
 import {
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderPortV1,

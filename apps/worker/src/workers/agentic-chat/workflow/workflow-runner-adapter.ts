@@ -20,7 +20,7 @@ import {
 import type {
 	AgenticChatTurnExecutionOutcomeV1,
 	AgenticChatTurnExecutionResultV1
-} from '../turn/turn-executor';
+} from '../turn/executor-contracts';
 import { parseAgenticChatWorkflowEventReceiptV1 } from './preparation-store';
 import type {
 	AgenticChatWorkflowRunOutcomeV1,

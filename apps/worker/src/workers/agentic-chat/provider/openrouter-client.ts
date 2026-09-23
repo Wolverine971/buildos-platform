@@ -1,77 +1,84 @@
 // apps/worker/src/workers/agentic-chat/provider/openrouter-client.ts
-import { performance } from 'node:perf_hooks';
-import { DOCUMENT_READ_TOOL } from '@buildos/agentic-chat-runtime/specialists';
-import {
-	type AgenticChatPersistenceTraceSinkV1,
-	emitAgenticChatPersistenceTrace,
-	persistenceErrorCode
-} from '../effects/persistence-trace';
-import { createHash } from 'node:crypto';
-import {
-	buildOpenRouterChatCompletionBody,
-	normalizeStreamingContent,
-	resolveModelPricingProfile
-} from '@buildos/smart-llm';
-import type { UsageLogger } from '@buildos/smart-llm';
-import {
-	type JsonObject,
-	type JsonValue,
-	canonicalizeAgenticChatJson
-} from '@buildos/shared-types';
+// Entry point of the OpenRouter/OpenAI-compatible provider lane: the client
+// class and its `stream()` loop. Focused seams live in `./openrouter/`:
+// route opening and request bodies (open-route), per-turn route health
+// (route-health), SSE decoding (sse), usage normalization (usage), durable
+// side writes (telemetry), attempt deadlines (watchdog), route/tool-surface
+// validation (validation), and retry classification (retry).
+import type { JsonObject } from '@buildos/shared-types';
 import type {
-	AgenticChatProviderPassRoleV1,
 	AgenticChatTurnProviderClientEventV1,
-	AgenticChatTurnProviderClientPortV1,
-	AgenticChatTurnProviderMessageV1,
-	AgenticChatTurnProviderToolV1
+	AgenticChatTurnProviderClientPortV1
 } from './contracts';
-import {
-	AgenticChatProviderDispatchDeniedError,
-	type AgenticChatProviderDispatchPermitV1
-} from './contracts';
-import {
-	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1,
-	isAgenticChatProductionReadToolNameV1
-} from '../tools/execution-adapter';
-import {
-	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1,
-	reviewedAgenticChatMutationSpecV1
-} from '../mutations/tool-catalog';
-import { runWithAbortableDeadline } from '../shared/abortable-deadline';
-import {
-	type AgenticChatExecutionObservationPortV1,
-	createStableAgenticChatExecutionObservationKeyV1
-} from '../effects/execution-observation';
-import { isToolArgumentsTextTruncated } from './stream-tool-calls';
-import {
-	type LocalPromptDump,
-	localPromptDumpsEnabled,
-	startLocalPromptDump
-} from '../effects/prompt-dump';
+import { AgenticChatProviderDispatchDeniedError } from './contracts';
+import type { LocalPromptDump } from '../effects/prompt-dump';
 import {
 	AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY,
 	type AgenticChatPendingEffectsRegistry
 } from '../effects/pending-effects';
+import type {
+	ActiveResponse,
+	AgenticChatOpenAiCompatibleRouteV1,
+	AgenticChatProviderUsageObservationV1,
+	ClientInput,
+	ProviderUsage,
+	RouteFailure,
+	StreamState
+} from './openrouter/types';
+import {
+	boundedDuration,
+	boundedInteger,
+	canonicalError,
+	canonicalHeaderValue,
+	canonicalOptionalHeader,
+	canonicalProviderAttempt,
+	canonicalProviderPassRole,
+	estimateTokens,
+	normalizeProviderSlug,
+	throwAbort,
+	throwIfAborted
+} from './openrouter/canonical';
+import { AgenticChatProviderNetworkError, AgenticChatSlowStreamError } from './openrouter/errors';
+import { type OpenRouteSettings, openProviderRoute, sentMaxTokens } from './openrouter/open-route';
+import { attributedProviderSlug, isRetryableUnknownError, routeFailure } from './openrouter/retry';
+import { TurnRouteHealthTracker, responseIdentity } from './openrouter/route-health';
+import {
+	observedToolCallTruncation,
+	parseSseLine,
+	rejectedToolCallPayload
+} from './openrouter/sse';
+import {
+	type OpenRouterClientPorts,
+	type ProviderAttemptEventType,
+	persistProviderAttemptObservation,
+	persistProviderUsage
+} from './openrouter/telemetry';
+import {
+	createStableAgenticChatProviderUsageLogIdV1,
+	normalizeProviderUsage,
+	resolveProviderUsageCosts
+} from './openrouter/usage';
+import { validateRoutes, validateToolSurface } from './openrouter/validation';
+import {
+	abortableProviderRead,
+	isV41FlashModel,
+	providerAttemptTimingPayload,
+	watchStreamProgress
+} from './openrouter/watchdog';
+
+export type {
+	AgenticChatOpenAiCompatibleRouteV1,
+	AgenticChatOpenRouterProviderRoutingV1,
+	AgenticChatProviderUsageObservationV1,
+	AgenticChatProviderUsageObserverPortV1
+} from './openrouter/types';
+export { AgenticChatLlmUsageObserver } from './openrouter/telemetry';
+export { createStableAgenticChatProviderUsageLogIdV1 } from './openrouter/usage';
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 90_000;
 // Sep 13: 1,270/1,275 retained successful acting responses opened within 5s.
 // Bound opening separately; the full generation keeps its own deadline.
 export const DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS = 5_000;
-const FINAL_BUFFERED_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
-// A local progress heuristic, not a tokenizer or provider throughput guarantee.
-// Only buffered V4.1 acting passes with an unused retry may abandon a slow stream.
-const SLOW_STREAM_WINDOW_MS = 4_000;
-const SLOW_STREAM_MIN_BYTES_PER_SECOND = 240;
-/**
- * Every attempt keeps at least this long, and reserves this much of the turn
- * budget for the executor to finalize after the last provider pass. Below it a
- * request cannot realistically open a stream, so a nearly-spent budget fails
- * fast instead of being spread across a doomed attempt.
- */
-const MIN_ATTEMPT_TIMEOUT_MS = 5_000;
-const BUDGET_FINALIZATION_RESERVE_MS = 5_000;
-/** Bump when the reviewer prefix (system prompt or tool schemas) changes shape. */
-const REVIEWER_PROMPT_CACHE_KEY = 'agentic-chat-reviewer-v2';
 /**
  * Acting passes can spend hidden reasoning tokens before writing a tool call.
  *
@@ -91,204 +98,6 @@ const REVIEWER_PROMPT_CACHE_KEY = 'agentic-chat-reviewer-v2';
 export const AGENTIC_CHAT_ACTING_MAX_TOKENS = 12_000;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
-const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
-const TURN_ROUTE_HEALTH_TTL_MS = 10 * 60_000;
-const MAX_TURN_ROUTE_HEALTH_ENTRIES = 256;
-const USAGE_LOG_IDENTITY_VERSION = 'agentic_chat_provider_usage_v2';
-const REJECTED_TOOL_NAME_PATTERN = /^[A-Za-z0-9_.:-]{1,256}$/;
-// Mirrors the consumer's accumulator bounds; past them the consumer rejects the
-// pass without a name-level diagnostic, so the receipt must stay silent too.
-const MAX_OBSERVED_TOOL_CALLS = 40;
-const MAX_OBSERVED_TOOL_NAME_CHARS = 256;
-const MAX_OBSERVED_TOOL_ARGUMENT_BYTES = 64 * 1024;
-const MAX_REVIEWED_PROVIDER_TOOLS =
-	AGENTIC_CHAT_PRODUCTION_READ_TOOL_NAMES_V1.length +
-	AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames.length;
-
-export type AgenticChatOpenRouterProviderRoutingV1 = {
-	allow_fallbacks?: boolean;
-	require_parameters?: boolean;
-	data_collection?: 'allow' | 'deny';
-	zdr?: boolean;
-	sort?: 'price' | 'throughput' | 'latency';
-	order?: readonly string[];
-	only?: readonly string[];
-	ignore?: readonly string[];
-};
-
-export type AgenticChatOpenAiCompatibleRouteV1 = {
-	id: string;
-	kind: 'openrouter' | 'openai_compatible';
-	baseUrl: string;
-	apiKey: string;
-	model: string;
-	fallbackModels?: readonly string[];
-	providerRouting?: AgenticChatOpenRouterProviderRoutingV1;
-	headers?: Readonly<Record<string, string>>;
-};
-
-export type AgenticChatProviderUsageObservationV1 = {
-	localPromptDump?: { jsonFile: string; markdownFile: string };
-	usageLogId: string;
-	status: 'success' | 'failure' | 'aborted';
-	requestStartedAtMs: number;
-	observedAtMs: number;
-	userId: string;
-	sessionId: string;
-	turnRunId: string;
-	streamRunId: string;
-	clientTurnId: string;
-	contextType: string;
-	entityId: string | null;
-	projectId: string | null;
-	logicalProviderRound: number;
-	passRole: AgenticChatProviderPassRoleV1;
-	providerAttempt: number;
-	attemptedRouteIds: string[];
-	routeId: string | null;
-	modelRequested: string | null;
-	modelUsed: string | null;
-	provider: string | null;
-	requestId: string | null;
-	promptTokens: number;
-	completionTokens: number;
-	totalTokens: number;
-	reasoningTokens?: number;
-	cachedPromptTokens?: number;
-	cacheWriteTokens?: number;
-	cacheStatus?: string;
-	estimated: boolean;
-	providerCost: number | null;
-	providerInputCost: number;
-	providerOutputCost: number;
-	costSource: 'provider_reported' | 'catalog_estimate' | 'unknown';
-	providerByok?: boolean;
-	providerUpstreamInferenceCost?: number;
-	retryable: boolean;
-	error: string | null;
-};
-
-export type AgenticChatProviderUsageObserverPortV1 = {
-	observe(
-		observation: AgenticChatProviderUsageObservationV1,
-		signal?: AbortSignal
-	): void | Promise<void>;
-};
-
-type ClientInput = Parameters<AgenticChatTurnProviderClientPortV1['stream']>[0];
-
-type RouteFailure = {
-	routeId: string;
-	message: string;
-	retryable: boolean;
-};
-
-type ActiveResponse = {
-	promptDump: LocalPromptDump | null;
-	route: AgenticChatOpenAiCompatibleRouteV1;
-	response: Response;
-	requestId: string | null;
-	signal: AbortSignal;
-	/** Timeout this attempt was given, after the turn budget was applied. */
-	timeoutMs: number;
-	/** Workflow dispatch reservation for this physical request; null on the ordinary path. */
-	dispatchPermit: AgenticChatProviderDispatchPermitV1 | null;
-	cleanup(): void;
-	timedOut(): boolean;
-	timing(): ProviderAttemptTiming;
-	abort(reason: Error): void;
-};
-
-type ProviderAttemptTiming = {
-	networkStartedAtMs: number;
-	deadlineAtMs: number;
-	responseOpenedAtMs: number | null;
-	timeoutFiredAtMs: number | null;
-};
-
-type StreamState = {
-	rawUsage: unknown;
-	finishReason: string | null;
-	modelUsed: string | null;
-	provider: string | null;
-	providerSlug: string | null;
-	requestId: string | null;
-	inThinkingBlock: boolean;
-	completionChars: number;
-	/** Actual output bytes, excluding SSE/tool-delta envelopes and repeated IDs. */
-	generatedBytes: number;
-	toolCalls: Map<number, ObservedToolCall>;
-	toolCallsObservable: boolean;
-};
-
-/**
- * Name-level shadow of the consumer's tool-call accumulator. The consumer
- * (`turn-provider`) decides whether a streamed call is acceptable only after
- * this generator has closed, by which point the durable `provider_attempt_ended`
- * receipt is already written under a replay-locked key. So the receipt can name
- * a rejected tool only if this client recognises the rejection itself, from the
- * same inputs: the assembled name against the advertised surface, and whether
- * the assembled arguments form a JSON object. Argument text is held in memory
- * solely for that parse test and never leaves this module.
- */
-type ObservedToolCall = {
-	name: string;
-	argumentsText: string;
-	argumentsRejected: boolean;
-};
-
-type TurnRouteHealth = {
-	failedModels: Set<string>;
-	failedProviderSlugs: Set<string>;
-	preferredModels: string[];
-	/** First successful route in this turn; released as soon as that route fails. */
-	pin: {
-		model: string;
-		providerSlug: string | null;
-	} | null;
-	/** Exact completed response eligible for delayed semantic-validation feedback. */
-	lastResponse: { identity: string; model: string; providerSlug: string | null } | null;
-	updatedAtMs: number;
-};
-
-type ProviderUsage = {
-	promptTokens: number;
-	completionTokens: number;
-	totalTokens: number;
-	reasoningTokens: number;
-	cachedPromptTokens: number;
-	cacheWriteTokens: number;
-	cacheStatus: string;
-	cost: number | null;
-	byok: boolean | null;
-	upstreamInferenceCost: number | null;
-	upstreamPromptCost: number | null;
-	upstreamCompletionCost: number | null;
-};
-
-class AgenticChatProviderNetworkError extends Error {
-	constructor(
-		message: string,
-		readonly retryable: boolean,
-		/** Upstream endpoint the failing response named, when it named one. */
-		readonly providerSlug: string | null = null
-	) {
-		super(message);
-		this.name = 'AgenticChatProviderNetworkError';
-	}
-}
-
-class AgenticChatSlowStreamError extends AgenticChatProviderNetworkError {
-	constructor(
-		readonly windowMs: number,
-		readonly outputBytes: number
-	) {
-		super(
-			'Agentic Chat provider stream made insufficient progress; retrying the buffered pass',
-			true
-		);
-	}
-}
 
 /**
  * OpenAI-compatible network client for the production provider lane. Route fallback
@@ -297,27 +106,13 @@ class AgenticChatSlowStreamError extends AgenticChatProviderNetworkError {
  */
 export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClientPortV1 {
 	private readonly routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
-	private readonly fetchImpl: typeof fetch;
-	private readonly requestTimeoutMs: number;
-	private readonly responseHeadersTimeoutMs: number;
-	private readonly maxTokens: number;
-	private readonly temperature: number;
+	private readonly routeSettings: OpenRouteSettings;
 	private readonly maxSseBufferBytes: number;
-	private readonly turnRouteHealth = new Map<string, TurnRouteHealth>();
-	/** Every model id a request can name; the only ids a turn's routing state pins. */
-	private readonly configuredModels: ReadonlySet<string>;
+	private readonly routeHealth: TurnRouteHealthTracker;
 	private readonly pendingEffects: Pick<AgenticChatPendingEffectsRegistry, 'forTurn'>;
 
 	constructor(
-		private readonly ports: {
-			usage: AgenticChatProviderUsageObserverPortV1;
-			executionObservations?: AgenticChatExecutionObservationPortV1;
-			/** Shared with the executor, which drains a turn's set at finalization. */
-			pendingEffects?: Pick<AgenticChatPendingEffectsRegistry, 'forTurn'>;
-			onUsageError?: (error: unknown) => void;
-			onPersistenceTrace?: AgenticChatPersistenceTraceSinkV1;
-			onExecutionObservationError?: (error: unknown) => void;
-		},
+		private readonly ports: OpenRouterClientPorts,
 		options: {
 			routes: readonly AgenticChatOpenAiCompatibleRouteV1[];
 			httpReferer: string;
@@ -331,24 +126,24 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		}
 	) {
 		this.routes = validateRoutes(options.routes);
-		this.configuredModels = new Set(
-			this.routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])])
+		this.routeHealth = new TurnRouteHealthTracker(
+			new Set(this.routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])]))
 		);
 		this.pendingEffects = ports.pendingEffects ?? AGENTIC_CHAT_PENDING_EFFECTS_REGISTRY;
-		this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
-		this.requestTimeoutMs = boundedInteger(
+		const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+		const requestTimeoutMs = boundedInteger(
 			options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
 			'requestTimeoutMs',
 			1_000,
 			360_000
 		);
-		this.responseHeadersTimeoutMs = boundedInteger(
+		const responseHeadersTimeoutMs = boundedInteger(
 			options.responseHeadersTimeoutMs ?? DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS,
 			'responseHeadersTimeoutMs',
 			1_000,
 			360_000
 		);
-		this.maxTokens = boundedInteger(
+		const maxTokens = boundedInteger(
 			options.maxTokens ?? AGENTIC_CHAT_ACTING_MAX_TOKENS,
 			'maxTokens',
 			1,
@@ -360,27 +155,33 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			1_024,
 			1024 * 1024
 		);
-		this.temperature = options.temperature ?? DEFAULT_TEMPERATURE;
-		if (!Number.isFinite(this.temperature) || this.temperature < 0 || this.temperature > 2) {
+		const temperature = options.temperature ?? DEFAULT_TEMPERATURE;
+		if (!Number.isFinite(temperature) || temperature < 0 || temperature > 2) {
 			throw new Error('Agentic Chat provider temperature must be between 0 and 2');
 		}
-		this.httpReferer = canonicalHeaderValue(options.httpReferer, 'httpReferer');
-		this.appName = canonicalHeaderValue(options.appName, 'appName');
-		if (typeof this.fetchImpl !== 'function') {
+		const httpReferer = canonicalHeaderValue(options.httpReferer, 'httpReferer');
+		const appName = canonicalHeaderValue(options.appName, 'appName');
+		if (typeof fetchImpl !== 'function') {
 			throw new Error('Agentic Chat provider fetch implementation is unavailable');
 		}
+		this.routeSettings = {
+			fetchImpl,
+			httpReferer,
+			appName,
+			requestTimeoutMs,
+			responseHeadersTimeoutMs,
+			maxTokens,
+			temperature
+		};
 	}
 
-	private readonly httpReferer: string;
-	private readonly appName: string;
-
 	rejectRepeatedInvalidToolResponse(input: ClientInput): void {
-		const response = this.getTurnRouteHealth(input.turnRunId, false)?.lastResponse;
+		const response = this.routeHealth.get(input.turnRunId, false)?.lastResponse;
 		if (input.signal.aborted || !response || response.identity !== responseIdentity(input))
 			return;
 		// Transport success was already accounted for. Validation is recorded by
 		// the coordinator; this only steers its remaining repair and is idempotent.
-		this.observeTurnRouteFailure(input.turnRunId, response.model, response.providerSlug);
+		this.routeHealth.observeFailure(input.turnRunId, response.model, response.providerSlug);
 	}
 
 	async *stream(input: ClientInput): AsyncGenerator<AgenticChatTurnProviderClientEventV1> {
@@ -550,7 +351,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 
 		try {
 			for (const configuredRoute of this.routes) {
-				const route = this.applyTurnRouteHealth(configuredRoute, input.turnRunId);
+				const route = this.routeHealth.apply(configuredRoute, input.turnRunId);
 				lastAttemptedRoute = route;
 				attemptedRouteIds.push(route.id);
 				const attemptKind: 'primary' | 'retry' =
@@ -566,7 +367,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					model_requested: route.model
 				});
 				try {
-					active = await this.openRoute(route, input, (dump) => {
+					active = await openProviderRoute(this.routeSettings, route, input, (dump) => {
 						lastPromptDump = dump;
 					});
 					activeAttemptStartedAtMs = attemptStartedAtMs;
@@ -583,7 +384,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					// was ordered to — so the next attempt's `provider.ignore` routes
 					// around it instead of walking back into the same upstream.
 					if (!denied) {
-						this.observeTurnRouteFailure(
+						this.routeHealth.observeFailure(
 							input.turnRunId,
 							route.model,
 							attributedProviderSlug(route, error)
@@ -720,7 +521,8 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			// The cap is the `max_tokens` actually sent, including a smaller per-request
 			// ceiling; ordinary calls send none, so their cap stays the client maximum.
 			const finishedReason =
-				exactUsage && exactUsage.completionTokens >= this.sentMaxTokens(input)
+				exactUsage &&
+				exactUsage.completionTokens >= sentMaxTokens(this.routeSettings.maxTokens, input)
 					? 'length'
 					: (state.finishReason ?? 'stop');
 			const attemptEndedAtMs = Date.now();
@@ -770,9 +572,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					...rejectedToolCallPayload(state, input)
 				});
 				activeAttemptEnded = true;
-				this.observeTurnRouteFailure(
+				this.routeHealth.observeFailure(
 					input.turnRunId,
-					this.routingModel(state.modelUsed, active.route),
+					this.routeHealth.routingModel(state.modelUsed, active.route),
 					state.providerSlug ?? normalizeProviderSlug(state.provider)
 				);
 				const message = `Agentic Chat provider truncated a tool call (${toolCallTruncation}, finish_reason=${finishedReason})`;
@@ -818,9 +620,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			});
 			activeAttemptEnded = true;
 			if (toolsDisabledViolation) {
-				this.observeTurnRouteFailure(
+				this.routeHealth.observeFailure(
 					input.turnRunId,
-					this.routingModel(state.modelUsed, active.route),
+					this.routeHealth.routingModel(state.modelUsed, active.route),
 					state.providerSlug ?? normalizeProviderSlug(state.provider),
 					// The pin is what put this pass on this endpoint, and the
 					// endpoint ignored `tool_choice=none`. Retire the pin even when
@@ -834,15 +636,15 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					true
 				);
 			} else {
-				const routingModel = this.routingModel(state.modelUsed, active.route);
-				this.observeTurnRouteSuccess(
+				const routingModel = this.routeHealth.routingModel(state.modelUsed, active.route);
+				this.routeHealth.observeSuccess(
 					input.turnRunId,
 					routingModel,
 					active.route.model,
 					state.providerSlug,
 					active.route.kind === 'openrouter'
 				);
-				this.getTurnRouteHealth(input.turnRunId, true)!.lastResponse = {
+				this.routeHealth.get(input.turnRunId, true)!.lastResponse = {
 					identity: responseIdentity(input),
 					model: routingModel,
 					providerSlug: state.providerSlug
@@ -862,9 +664,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			};
 		} catch (error) {
 			if (active && !input.signal.aborted) {
-				this.observeTurnRouteFailure(
+				this.routeHealth.observeFailure(
 					input.turnRunId,
-					this.routingModel(state.modelUsed, active.route),
+					this.routeHealth.routingModel(state.modelUsed, active.route),
 					state.providerSlug ?? normalizeProviderSlug(state.provider)
 				);
 			}
@@ -948,448 +750,6 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		}
 	}
 
-	/**
-	 * Per-attempt timeout bounded by the turn's remaining wall-clock budget.
-	 * Without this, 90s × two attempts × every acting and reviewer pass composes
-	 * past the executor's 300s wall and the turn dies at the wall after
-	 * durable writes (turn-executor audit 2026-09-02, finding 14).
-	 */
-	private attemptTimeoutMs(input: ClientInput): number {
-		const deadlineAtMs = input.budget?.deadlineAtMs;
-		if (!Number.isFinite(deadlineAtMs)) return this.requestTimeoutMs;
-		const remaining = (deadlineAtMs as number) - Date.now() - BUDGET_FINALIZATION_RESERVE_MS;
-		return Math.max(
-			MIN_ATTEMPT_TIMEOUT_MS,
-			Math.min(this.requestTimeoutMs, Math.floor(remaining))
-		);
-	}
-
-	/** The `max_tokens` value this request sends. */
-	private sentMaxTokens(input: ClientInput): number {
-		return Math.min(this.maxTokens, input.maxOutputTokens ?? this.maxTokens);
-	}
-
-	private async openRoute(
-		route: AgenticChatOpenAiCompatibleRouteV1,
-		input: ClientInput,
-		onPromptDump: (dump: LocalPromptDump | null) => void
-	): Promise<ActiveResponse> {
-		const body = JSON.stringify(this.requestBody(route, input));
-		// Workflow requests reserve budget for this exact body before any network I/O.
-		// A refusal propagates as AgenticChatProviderDispatchDeniedError; nothing is sent.
-		const dispatchPermit = input.dispatchGate
-			? await input.dispatchGate.admit(
-					{
-						routeId: route.id,
-						routeKind: route.kind,
-						model: route.model,
-						fallbackModels: [...(route.fallbackModels ?? [])],
-						serializedRequestBytes: Buffer.byteLength(body, 'utf8'),
-						maxOutputTokens: this.sentMaxTokens(input)
-					},
-					input.signal
-				)
-			: null;
-		const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
-		const passRole = canonicalProviderPassRole(input.passRole);
-		const promptDump = localPromptDumpsEnabled()
-			? startLocalPromptDump(
-					{
-						sessionId: input.sessionId,
-						turnRunId: input.turnRunId,
-						streamRunId: input.streamRunId,
-						clientTurnId: input.clientTurnId,
-						executionGeneration: input.executionGeneration,
-						logicalProviderRound: input.logicalProviderRound,
-						providerRound: input.providerRound,
-						passRole,
-						providerAttempt,
-						routeId: route.id,
-						usageLogId: createStableAgenticChatProviderUsageLogIdV1({
-							turnRunId: input.turnRunId,
-							executionGeneration: input.executionGeneration,
-							logicalProviderRound: input.logicalProviderRound,
-							passRole,
-							providerAttempt,
-							routeId: route.id
-						})
-					},
-					body
-				)
-			: null;
-		onPromptDump(promptDump);
-		const timeoutMs = this.attemptTimeoutMs(input);
-		// The first header cutoff leaves a retry. On the buffer's final attempt,
-		// allow a slower connection instead of spending that last chance at the
-		// same speculative cutoff. The existing attempt/turn budget still wins.
-		const headersTimeoutMs = input.finalBufferedAttempt
-			? Math.max(this.responseHeadersTimeoutMs, FINAL_BUFFERED_RESPONSE_HEADERS_TIMEOUT_MS)
-			: this.responseHeadersTimeoutMs;
-		const attempt = createAttemptSignal(
-			input.signal,
-			timeoutMs,
-			Math.min(timeoutMs, headersTimeoutMs)
-		);
-		let httpStatus: number | null = null;
-		let requestId: string | null = null;
-		try {
-			const pendingResponse = this.fetchImpl(`${route.baseUrl}/chat/completions`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${route.apiKey}`,
-					'Content-Type': 'application/json',
-					Accept: 'text/event-stream',
-					'HTTP-Referer': this.httpReferer,
-					'X-Title': this.appName,
-					...(route.kind === 'openrouter' ? { 'X-OpenRouter-Metadata': 'enabled' } : {}),
-					...(route.headers ?? {})
-				},
-				body,
-				signal: attempt.signal
-			});
-			// Some fetch adapters ignore abort. Bound the await and dispose a late
-			// response without accepting any text or tools from an expired attempt.
-			void pendingResponse.then(
-				(response) => {
-					if (attempt.signal.aborted) void response.body?.cancel().catch(() => undefined);
-				},
-				() => undefined
-			);
-			const response = await abortableProviderRead(() => pendingResponse, attempt.signal);
-			attempt.markResponseOpened();
-			httpStatus = response.status;
-			requestId =
-				canonicalOptionalHeader(response.headers.get('x-request-id')) ??
-				canonicalOptionalHeader(response.headers.get('x-openrouter-request-id'));
-			if (!response.ok) {
-				const { message, providerSlug } = await responseError(response);
-				throw new AgenticChatProviderNetworkError(
-					`Agentic Chat provider start failed (${response.status}): ${message}`,
-					isRetryableStatus(response.status),
-					providerSlug
-				);
-			}
-			if (!response.body) {
-				throw new AgenticChatProviderNetworkError(
-					'Agentic Chat provider returned no response stream',
-					true
-				);
-			}
-			const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
-			const mediaType = contentType.split(';', 1)[0]?.trim();
-			if (mediaType !== 'text/event-stream') {
-				await response.body.cancel().catch(() => undefined);
-				throw new AgenticChatProviderNetworkError(
-					'Agentic Chat provider returned a non-SSE success response',
-					false
-				);
-			}
-			return {
-				promptDump,
-				route,
-				response,
-				requestId,
-				signal: attempt.signal,
-				timeoutMs,
-				dispatchPermit,
-				cleanup: attempt.cleanup,
-				timedOut: attempt.timedOut,
-				timing: attempt.timing,
-				abort: attempt.abort
-			};
-		} catch (error) {
-			// Only a non-2xx provider response proves the request was refused; anything
-			// else may have crossed the provider boundary and stays uncertain.
-			dispatchPermit?.settle({
-				kind:
-					httpStatus !== null && (httpStatus < 200 || httpStatus >= 300)
-						? 'provider_error_response'
-						: 'no_provider_receipt',
-				httpStatus,
-				requestId,
-				usage: null
-			});
-			promptDump?.complete({
-				status: input.signal.aborted ? 'aborted' : 'failure',
-				error: canonicalError(error),
-				httpStatus,
-				requestId,
-				timing: attempt.timing()
-			});
-			attempt.cleanup();
-			if (input.signal.aborted) throwAbort(input.signal);
-			if (attempt.timedOut()) {
-				// A request whose `order` names one endpoint went there first, so a
-				// timeout before any response is that endpoint holding the request.
-				// Only timeouts carry this attribution: fallbacks stay allowed, so a
-				// 4xx/5xx may have come from any endpoint and names nothing unless
-				// the gateway named it (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F76).
-				throw new AgenticChatProviderNetworkError(
-					`Agentic Chat provider request timed out after ${attempt.timing().deadlineAtMs - attempt.timing().networkStartedAtMs}ms`,
-					true,
-					orderedProviderSlug(route)
-				);
-			}
-			throw error;
-		}
-	}
-
-	private applyTurnRouteHealth(
-		route: AgenticChatOpenAiCompatibleRouteV1,
-		turnRunId: string
-	): AgenticChatOpenAiCompatibleRouteV1 {
-		const health = this.getTurnRouteHealth(turnRunId, false);
-		if (!health || route.kind !== 'openrouter') return route;
-		const models = [route.model, ...(route.fallbackModels ?? [])];
-		const preferred = models.filter((model) => health.preferredModels.includes(model));
-		const healthy = models.filter(
-			(model) => !health.preferredModels.includes(model) && !health.failedModels.has(model)
-		);
-		const failed = models.filter((model) => health.failedModels.has(model));
-		const reordered = [...preferred, ...healthy, ...failed];
-		const configuredIgnore = route.providerRouting?.ignore ?? [];
-		const orderedPool = route.providerRouting?.order ?? [];
-		const failedSlugs = Array.from(health.failedProviderSlugs);
-		const inPool = (slug: string) =>
-			orderedPool.some((member) => slug === member || slug.startsWith(`${member}/`));
-		// Remembered failures must never exclude the whole configured pool. For a
-		// single-provider model that turns one slow endpoint into a guaranteed
-		// 404 "All providers have been ignored" (2026-09-22 gate, case 5). When
-		// every ordered endpoint has failed, retry the pool instead of nothing.
-		const poolExhausted =
-			orderedPool.length > 0 &&
-			orderedPool.every(
-				(member) =>
-					configuredIgnore.includes(member) ||
-					failedSlugs.some((slug) => slug === member || slug.startsWith(`${member}/`))
-			);
-		const ignoredProviders = Array.from(
-			new Set([
-				...configuredIgnore,
-				...(poolExhausted ? failedSlugs.filter((slug) => !inPool(slug)) : failedSlugs)
-			])
-		);
-		const pin =
-			health.pin &&
-			!health.failedModels.has(health.pin.model) &&
-			(!health.pin.providerSlug || !ignoredProviders.includes(health.pin.providerSlug))
-				? health.pin
-				: null;
-		const modelPin =
-			pin ??
-			(health.pin && !health.failedModels.has(health.pin.model)
-				? { model: health.pin.model, providerSlug: null }
-				: null);
-		const preferredOrder = route.providerRouting?.order;
-		// A successful fallback is not automatically a preferred endpoint.
-		// Slow Wafer continuations in QA had no cache hits despite the pin.
-		// Respect explicit dynamic sorting, and keep unlisted fallbacks behind
-		// the configured pool instead of promoting them for the whole turn.
-		const providerPin =
-			pin?.providerSlug &&
-			!route.providerRouting?.sort &&
-			(!preferredOrder?.length ||
-				preferredOrder.some(
-					(slug) => pin.providerSlug === slug || pin.providerSlug!.startsWith(`${slug}/`)
-				))
-				? pin.providerSlug
-				: null;
-		return {
-			...route,
-			model: modelPin?.model ?? reordered[0] ?? route.model,
-			// Every pass resends the full accumulated prompt. Once a route succeeds,
-			// keep subsequent passes on the model/provider that owns that warm prefix.
-			// A real failure clears the pin below and restores this fallback list.
-			fallbackModels: modelPin ? [] : reordered.slice(1),
-			// The pin is a preference, not a constraint: `order` puts the warm
-			// endpoint first and the route's own `allow_fallbacks` stays in force.
-			// A hard pin (`allow_fallbacks: false`) turned every pass the pinned
-			// endpoint could not serve into a 404 round trip, a failed receipt,
-			// and a cold retry — 26 of 55 production turns in the audit window
-			// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F76).
-			providerRouting: {
-				...(route.providerRouting ?? {}),
-				...(ignoredProviders.length > 0 ? { ignore: ignoredProviders } : {}),
-				// Keep the measured fallback order behind the warm endpoint. A
-				// singleton order discarded it and allowed slow unpreferred routes
-				// to serve continuations whenever the warm endpoint was unavailable.
-				...(providerPin
-					? {
-							order: [
-								providerPin,
-								...(route.providerRouting?.order ?? []).filter(
-									(slug) =>
-										slug !== providerPin && !ignoredProviders.includes(slug)
-								)
-							].slice(0, 16)
-						}
-					: {})
-			}
-		};
-	}
-
-	/**
-	 * The model identity a turn's routing state keys on. Providers answer a
-	 * canonical request id with a weight snapshot (`deepseek/deepseek-v4-flash`
-	 * came back as `deepseek/deepseek-v4-flash-20260423`); re-requesting the
-	 * snapshot resolved to a different, slower endpoint set, so the pin holds a
-	 * configured id and receipts keep the reported one
-	 * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F77).
-	 */
-	private routingModel(
-		reportedModel: string | null,
-		route: AgenticChatOpenAiCompatibleRouteV1
-	): string {
-		return reportedModel && this.configuredModels.has(reportedModel)
-			? reportedModel
-			: route.model;
-	}
-
-	private observeTurnRouteFailure(
-		turnRunId: string,
-		model: string | null,
-		providerSlug: string | null,
-		options: { releasePin?: boolean } = {}
-	): void {
-		const health = this.getTurnRouteHealth(turnRunId, true)!;
-		health.lastResponse = null;
-		if (model) {
-			health.failedModels.add(model);
-			health.preferredModels = health.preferredModels.filter(
-				(candidate) => candidate !== model
-			);
-		}
-		if (providerSlug) health.failedProviderSlugs.add(providerSlug);
-		if (
-			health.pin &&
-			(options.releasePin === true ||
-				(model && health.pin.model === model) ||
-				(providerSlug && health.pin.providerSlug === providerSlug))
-		) {
-			// A caller that names the pin itself as the cause also retires the
-			// pinned endpoint, so `order: [slug]` cannot be rebuilt onto the same
-			// provider on the next pass.
-			if (options.releasePin === true && health.pin.providerSlug) {
-				health.failedProviderSlugs.add(health.pin.providerSlug);
-			}
-			health.pin = null;
-		}
-		health.updatedAtMs = Date.now();
-	}
-
-	private observeTurnRouteSuccess(
-		turnRunId: string,
-		model: string,
-		requestedModel: string,
-		providerSlug: string | null,
-		pinEligible: boolean
-	): void {
-		const health = this.getTurnRouteHealth(turnRunId, true)!;
-		health.updatedAtMs = Date.now();
-		if (pinEligible && !health.pin) health.pin = { model, providerSlug };
-		const recoveredFromFailure =
-			health.failedModels.size > 0 || health.failedProviderSlugs.size > 0;
-		const resolvedFallback = model !== requestedModel;
-		health.failedModels.delete(model);
-		if (!recoveredFromFailure && !resolvedFallback) return;
-		health.preferredModels = [
-			model,
-			...health.preferredModels.filter((candidate) => candidate !== model)
-		];
-	}
-
-	private getTurnRouteHealth(turnRunId: string, create: boolean): TurnRouteHealth | null {
-		const now = Date.now();
-		for (const [candidateTurnRunId, health] of this.turnRouteHealth) {
-			if (now - health.updatedAtMs > TURN_ROUTE_HEALTH_TTL_MS) {
-				this.turnRouteHealth.delete(candidateTurnRunId);
-			}
-		}
-		const existing = this.turnRouteHealth.get(turnRunId);
-		if (existing || !create) return existing ?? null;
-		while (this.turnRouteHealth.size >= MAX_TURN_ROUTE_HEALTH_ENTRIES) {
-			const oldestTurnRunId = this.turnRouteHealth.keys().next().value as string | undefined;
-			if (!oldestTurnRunId) break;
-			this.turnRouteHealth.delete(oldestTurnRunId);
-		}
-		const health: TurnRouteHealth = {
-			failedModels: new Set(),
-			failedProviderSlugs: new Set(),
-			preferredModels: [],
-			pin: null,
-			lastResponse: null,
-			updatedAtMs: now
-		};
-		this.turnRouteHealth.set(turnRunId, health);
-		return health;
-	}
-
-	private requestBody(
-		route: AgenticChatOpenAiCompatibleRouteV1,
-		input: ClientInput
-	): Record<string, unknown> {
-		const toolSurface =
-			input.toolChoice !== 'none'
-				? { tools: input.tools.map(copyTool), tool_choice: input.toolChoice }
-				: { tool_choice: 'none' as const };
-		// Reviewer passes share one byte-identical prefix (system prompt + tools)
-		// across every review, so their cache key is a constant and the prefix
-		// warms across sessions. Acting passes keep the per-session key because
-		// their prefix is the session's own prompt.
-		const contractReview =
-			input.passRole === 'contract_review' || input.passRole === 'mutation_review';
-		const promptCacheKey =
-			input.passRole === 'research_review'
-				? 'buildos:research-review:v1'
-				: contractReview
-					? REVIEWER_PROMPT_CACHE_KEY
-					: input.sessionId;
-		if (route.kind === 'openrouter') {
-			return buildOpenRouterChatCompletionBody({
-				model: route.model,
-				models: route.fallbackModels ? [...route.fallbackModels] : undefined,
-				messages: input.messages.map(copyMessage),
-				...toolSurface,
-				temperature: this.temperature,
-				max_tokens: Math.min(this.maxTokens, input.maxOutputTokens ?? this.maxTokens),
-				// A contract review is one bounded verdict over a filtered evidence
-				// set. At the provider default 52% of its completion tokens were
-				// hidden reasoning and calls ran p50 10.3 s; a verdict does not
-				// need a document's worth of thinking. Acting and research-review
-				// passes keep the provider default
-				// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F80).
-				reasoning:
-					input.reasoningEffort === 'none'
-						? { enabled: false }
-						: contractReview || input.reasoningEffort === 'low'
-							? { effort: 'low', exclude: true }
-							: { exclude: true },
-				provider: {
-					allow_fallbacks: true,
-					data_collection: 'deny',
-					...(route.providerRouting ?? {}),
-					...(input.dispatchGate
-						? { max_price: { ...input.dispatchGate.providerMaxPrice } }
-						: {})
-				},
-				stream: true,
-				stream_options: { include_usage: true },
-				session_id: input.sessionId,
-				prompt_cache_key: promptCacheKey
-			});
-		}
-		return {
-			model: route.model,
-			messages: input.messages.map(copyMessage),
-			...toolSurface,
-			temperature: this.temperature,
-			max_tokens: Math.min(this.maxTokens, input.maxOutputTokens ?? this.maxTokens),
-			stream: true,
-			stream_options: { include_usage: true },
-			prompt_cache_key: promptCacheKey
-		};
-	}
-
 	private enqueueUsage(
 		observation: AgenticChatProviderUsageObservationV1,
 		executionGeneration: number
@@ -1398,55 +758,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		// The executor joins this same bounded registry before billing and terminal truth.
 		this.pendingEffects
 			.forTurn(observation.turnRunId)
-			.enqueue(this.persistUsage(observation, executionGeneration));
-	}
-
-	private async persistUsage(
-		observation: AgenticChatProviderUsageObservationV1,
-		executionGeneration: number
-	): Promise<void> {
-		const startedAt = performance.now();
-		const base = {
-			event: 'agentic_chat_persistence_trace' as const,
-			lane: 'usage' as const,
-			turnRunId: observation.turnRunId,
-			executionGeneration,
-			operationId: observation.usageLogId,
-			rpc: 'llm_usage_logs.upsert',
-			passRole: observation.passRole,
-			logicalProviderRound: observation.logicalProviderRound,
-			attempt: observation.providerAttempt
-		};
-		const trace = (
-			outcome: 'started' | 'persisted' | 'failed' | 'timed_out',
-			errorCode: string | null = null
-		) =>
-			emitAgenticChatPersistenceTrace(this.ports.onPersistenceTrace, {
-				...base,
-				stage: outcome === 'started' ? 'attempt_started' : 'attempt_finished',
-				observedAt: new Date().toISOString(),
-				durationMs: Math.max(0, performance.now() - startedAt),
-				outcome,
-				errorCode
-			});
-		const timeoutError = new Error('Agentic Chat provider usage observation timed out');
-		trace('started');
-		try {
-			await runWithAbortableDeadline({
-				parentSignal: new AbortController().signal,
-				timeoutMs: PROVIDER_TELEMETRY_TIMEOUT_MS,
-				createTimeoutError: () => timeoutError,
-				run: (signal) => Promise.resolve(this.ports.usage.observe(observation, signal))
-			});
-			trace('persisted');
-		} catch (error) {
-			trace(error === timeoutError ? 'timed_out' : 'failed', persistenceErrorCode(error));
-			try {
-				this.ports.onUsageError?.(error);
-			} catch {
-				// Usage telemetry failures cannot alter the durable turn outcome.
-			}
-		}
+			.enqueue(persistProviderUsage(this.ports, observation, executionGeneration));
 	}
 
 	/**
@@ -1461,1261 +773,14 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 	private observeProviderAttempt(
 		input: ClientInput,
 		route: AgenticChatOpenAiCompatibleRouteV1,
-		eventType: 'provider_attempt_started' | 'provider_attempt_ended',
+		eventType: ProviderAttemptEventType,
 		payload: JsonObject
 	): void {
 		if (!this.ports.executionObservations) return;
 		this.pendingEffects
 			.forTurn(input.turnRunId)
-			.enqueue(this.persistProviderAttempt(input, route, eventType, payload));
-	}
-
-	/** Never rejects: observation failures are reported, not raised. */
-	private async persistProviderAttempt(
-		input: ClientInput,
-		route: AgenticChatOpenAiCompatibleRouteV1,
-		eventType: 'provider_attempt_started' | 'provider_attempt_ended',
-		payload: JsonObject
-	): Promise<void> {
-		try {
-			const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
-			const observationSignal = input.signal.aborted
-				? new AbortController().signal
-				: input.signal;
-			await runWithAbortableDeadline({
-				parentSignal: observationSignal,
-				timeoutMs: PROVIDER_TELEMETRY_TIMEOUT_MS,
-				createTimeoutError: () =>
-					new Error('Agentic Chat provider execution observation timed out'),
-				run: (deadlineSignal) =>
-					this.ports.executionObservations!.observe(
-						{
-							turnRunId: input.turnRunId,
-							queueJobId: input.queueJobId,
-							processingToken: input.processingToken,
-							userId: input.userId,
-							executionGeneration: input.executionGeneration,
-							observationKey: createStableAgenticChatExecutionObservationKeyV1({
-								turnRunId: input.turnRunId,
-								scope:
-									`provider:${input.logicalProviderRound}:` +
-									`${canonicalProviderPassRole(input.passRole)}:${input.providerRound}:` +
-									`${route.id}` +
-									(providerAttempt === 1 ? '' : `:attempt:${providerAttempt}`),
-								boundary: eventType
-							}),
-							phase: 'provider',
-							eventType,
-							payload
-						},
-						deadlineSignal
-					)
-			});
-		} catch (error) {
-			try {
-				this.ports.onExecutionObservationError?.(error);
-			} catch {
-				// Private observation failures remain bounded and cannot alter the turn.
-			}
-		}
-	}
-}
-
-/** Durable usage adapter for the existing `llm_usage_logs` writer. */
-export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObserverPortV1 {
-	constructor(private readonly logger: UsageLogger) {}
-
-	observe(
-		observation: AgenticChatProviderUsageObservationV1,
-		signal?: AbortSignal
-	): Promise<void> {
-		return this.logger.logUsageToDatabase(
-			{
-				id: observation.usageLogId,
-				userId: observation.userId,
-				operationType: 'agentic_chat_worker_stream',
-				modelRequested: observation.modelRequested ?? 'unknown',
-				modelUsed: observation.modelUsed ?? observation.modelRequested ?? 'unknown',
-				provider: observation.provider ?? undefined,
-				promptTokens: observation.promptTokens,
-				completionTokens: observation.completionTokens,
-				totalTokens: observation.totalTokens,
-				inputCost: observation.providerInputCost,
-				outputCost: observation.providerOutputCost,
-				totalCost: observation.providerCost ?? 0,
-				responseTimeMs: Math.max(
-					0,
-					observation.observedAtMs - observation.requestStartedAtMs
-				),
-				requestStartedAt: new Date(observation.requestStartedAtMs),
-				requestCompletedAt: new Date(observation.observedAtMs),
-				status: observation.status === 'success' ? 'success' : 'failure',
-				errorMessage: observation.error ?? undefined,
-				streaming: true,
-				projectId: observation.projectId ?? undefined,
-				chatSessionId: observation.sessionId,
-				turnRunId: observation.turnRunId,
-				streamRunId: observation.streamRunId,
-				clientTurnId: observation.clientTurnId,
-				openrouterRequestId: observation.requestId ?? undefined,
-				openrouterUsageCost: observation.providerCost ?? undefined,
-				openrouterCacheStatus: observation.cacheStatus,
-				openrouterByok: observation.providerByok,
-				openrouterUpstreamInferenceCost: observation.providerUpstreamInferenceCost,
-				reasoningTokens: observation.reasoningTokens,
-				cachedPromptTokens: observation.cachedPromptTokens,
-				cacheWriteTokens: observation.cacheWriteTokens,
-				metadata: {
-					...(observation.localPromptDump
-						? { localPromptDump: observation.localPromptDump }
-						: {}),
-					contextType: observation.contextType,
-					entityId: observation.entityId,
-					routeId: observation.routeId,
-					logicalProviderRound: observation.logicalProviderRound,
-					passRole: observation.passRole,
-					providerAttempt: observation.providerAttempt,
-					attemptedRouteIds: observation.attemptedRouteIds,
-					estimatedUsage: observation.estimated,
-					costSource: observation.costSource,
-					retryable: observation.retryable,
-					providerStatus: observation.status
-				}
-			},
-			signal
-		);
-	}
-}
-
-function parseSseLine(
-	line: string,
-	state: StreamState
-): { events: AgenticChatTurnProviderClientEventV1[]; done: boolean } {
-	const normalized = line.endsWith('\r') ? line.slice(0, -1) : line;
-	if (!normalized.trim() || normalized.startsWith(':')) return { events: [], done: false };
-	if (!normalized.startsWith('data:')) return { events: [], done: false };
-	const payload = normalized.slice(5).trimStart();
-	if (payload === '[DONE]') return { events: [], done: true };
-
-	let value: unknown;
-	try {
-		value = JSON.parse(payload);
-	} catch {
-		throw new AgenticChatProviderNetworkError(
-			'Agentic Chat provider returned malformed SSE JSON',
-			false
-		);
-	}
-	const chunk = requireRecord(value, 'provider chunk');
-	const routerAttempt = lastOpenRouterAttempt(chunk.openrouter_metadata);
-	state.requestId = canonicalOptionalText(chunk.id) ?? state.requestId;
-	state.modelUsed =
-		canonicalOptionalText(routerAttempt?.model) ??
-		canonicalOptionalText(chunk.model) ??
-		state.modelUsed;
-	state.provider =
-		canonicalOptionalText(routerAttempt?.provider) ??
-		canonicalOptionalText(chunk.provider) ??
-		state.provider;
-	state.providerSlug =
-		canonicalOptionalText(chunk.provider_slug) ??
-		normalizeProviderSlug(state.provider) ??
-		state.providerSlug;
-	if (chunk.error !== undefined && chunk.error !== null) {
-		const error = providerFrameError(chunk.error);
-		throw new AgenticChatProviderNetworkError(error.message, error.retryable);
-	}
-	if (chunk.usage !== undefined && chunk.usage !== null) state.rawUsage = chunk.usage;
-
-	const choices = chunk.choices;
-	if (choices === undefined || choices === null) return { events: [], done: false };
-	if (!Array.isArray(choices)) {
-		throw new AgenticChatProviderNetworkError(
-			'Agentic Chat provider choices payload is malformed',
-			false
-		);
-	}
-	if (choices.length > 1) {
-		throw new AgenticChatProviderNetworkError(
-			'Agentic Chat provider returned more than one streamed choice',
-			false
-		);
-	}
-	const choice = choices[0];
-	if (choice === undefined) return { events: [], done: false };
-	const record = requireRecord(choice, 'provider choice');
-	if (record.usage !== undefined && record.usage !== null) state.rawUsage = record.usage;
-	if (record.finish_reason !== undefined && record.finish_reason !== null) {
-		state.finishReason = canonicalRequiredText(record.finish_reason, 'finish reason', 256);
-	}
-
-	const events: AgenticChatTurnProviderClientEventV1[] = [];
-	if (record.delta !== undefined && record.delta !== null) {
-		const delta = requireRecord(record.delta, 'provider delta');
-		// Reasoning deltas are not surfaced: the request sends
-		// `reasoning.exclude`, and no consumer reads them. Their tokens are
-		// still accounted from the usage receipt.
-		if (delta.content !== undefined && delta.content !== null) {
-			const normalizedContent = normalizeStreamingContent(
-				delta.content,
-				state.inThinkingBlock
+			.enqueue(
+				persistProviderAttemptObservation(this.ports, input, route, eventType, payload)
 			);
-			state.inThinkingBlock = normalizedContent.inThinkingBlock;
-			if (normalizedContent.text) {
-				state.completionChars += normalizedContent.text.length;
-				state.generatedBytes += Buffer.byteLength(normalizedContent.text, 'utf8');
-				events.push({ type: 'text', content: normalizedContent.text });
-			}
-		}
-		if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
-			state.completionChars += JSON.stringify(delta.tool_calls).length;
-			for (const call of delta.tool_calls) {
-				if (typeof call?.function?.arguments === 'string') {
-					state.generatedBytes += Buffer.byteLength(call.function.arguments, 'utf8');
-				}
-			}
-			observeToolCallDelta(state, delta.tool_calls);
-			events.push({ type: 'tool_call', toolCall: delta.tool_calls });
-		}
 	}
-	return { events, done: false };
-}
-
-/**
- * Lenient mirror of the consumer's `appendToolCallDelta`. Anything the consumer
- * would reject without a name-level diagnostic (malformed delta, oversized name
- * or arguments, too many calls) makes the pass unobservable here rather than
- * guessing; a non-string arguments delta is the consumer's `delta_type`
- * rejection and is recorded against the call's name.
- */
-function observeToolCallDelta(state: StreamState, value: readonly unknown[]): void {
-	if (!state.toolCallsObservable) return;
-	const unobservable = (): void => {
-		state.toolCallsObservable = false;
-		state.toolCalls.clear();
-	};
-	for (let position = 0; position < value.length; position += 1) {
-		const delta = value[position];
-		if (!delta || typeof delta !== 'object' || Array.isArray(delta)) return unobservable();
-		const record = delta as Record<string, unknown>;
-		const index = record.index ?? (value.length === 1 ? 0 : position);
-		if (
-			typeof index !== 'number' ||
-			!Number.isSafeInteger(index) ||
-			index < 0 ||
-			index >= MAX_OBSERVED_TOOL_CALLS
-		) {
-			return unobservable();
-		}
-		const call = state.toolCalls.get(index) ?? {
-			name: '',
-			argumentsText: '',
-			argumentsRejected: false
-		};
-		if (record.function !== undefined) {
-			const fn = record.function;
-			if (!fn || typeof fn !== 'object' || Array.isArray(fn)) return unobservable();
-			const { name, arguments: argumentsDelta } = fn as Record<string, unknown>;
-			if (name !== undefined) {
-				if (typeof name !== 'string') return unobservable();
-				call.name += name;
-				if (call.name.length > MAX_OBSERVED_TOOL_NAME_CHARS) return unobservable();
-			}
-			if (argumentsDelta !== undefined) {
-				if (typeof argumentsDelta !== 'string') {
-					call.argumentsRejected = true;
-				} else if (!call.argumentsRejected) {
-					call.argumentsText += argumentsDelta;
-					if (
-						Buffer.byteLength(call.argumentsText, 'utf8') >
-						MAX_OBSERVED_TOOL_ARGUMENT_BYTES
-					) {
-						return unobservable();
-					}
-				}
-			}
-		}
-		state.toolCalls.set(index, call);
-	}
-}
-
-/**
- * The consumer accepts an assembled name that exactly matches an advertised
- * tool, or that is an exact repetition of one (some providers resend the whole
- * name per delta). Everything else is rejected as not allowlisted.
- */
-function isAdvertisedToolName(name: string, advertised: readonly string[]): boolean {
-	if (advertised.includes(name)) return true;
-	return advertised.some(
-		(candidate) =>
-			candidate.length > 0 &&
-			name.length > candidate.length &&
-			name.length % candidate.length === 0 &&
-			candidate.repeat(name.length / candidate.length) === name
-	);
-}
-
-/**
- * Mirror of the consumer's `detectToolCallPassTruncation` over the shadow
- * accumulator: streamed calls with a non-tool-call finish reason, or arguments
- * that end mid-object. Silent when the pass was unobservable or no tool
- * surface was offered (the consumer rejects those calls as disabled, which is
- * permanent and must not be retried).
- */
-function observedToolCallTruncation(
-	state: StreamState,
-	input: ClientInput,
-	finishedReason: string
-): 'finish_reason' | 'arguments' | null {
-	if (!state.toolCallsObservable || state.toolCalls.size === 0 || input.toolChoice === 'none') {
-		return null;
-	}
-	if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
-		return 'finish_reason';
-	}
-	for (const call of state.toolCalls.values()) {
-		if (call.argumentsRejected) continue;
-		if (isToolArgumentsTextTruncated(call.argumentsText)) return 'arguments';
-	}
-	return null;
-}
-
-function acceptsToolArguments(call: ObservedToolCall): boolean {
-	if (call.argumentsRejected) return false;
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(call.argumentsText || '{}');
-	} catch {
-		return false;
-	}
-	return Boolean(parsed) && typeof parsed === 'object' && !Array.isArray(parsed);
-}
-
-/**
- * Name-only receipt extension for a completed attempt whose streamed tool call
- * the consumer will reject: the first such call's name (when it is a bounded
- * identifier token) and the size of the advertised surface. Emits nothing when
- * every call is acceptable, when the pass could not be observed faithfully, or
- * when no tool surface was offered — that rejection is about the disabled
- * surface, not a name.
- */
-function rejectedToolCallPayload(state: StreamState, input: ClientInput): JsonObject {
-	if (!state.toolCallsObservable || state.toolCalls.size === 0 || input.toolChoice === 'none') {
-		return {};
-	}
-	const advertised = input.tools.map((tool) => tool.function.name);
-	const rejected = [...state.toolCalls.entries()]
-		.sort(([left], [right]) => left - right)
-		.map(([, call]) => call)
-		.find(
-			(call) => !isAdvertisedToolName(call.name, advertised) || !acceptsToolArguments(call)
-		);
-	if (!rejected) return {};
-	return {
-		rejected_tool_name: REJECTED_TOOL_NAME_PATTERN.test(rejected.name) ? rejected.name : null,
-		advertised_tool_count: input.tools.length
-	};
-}
-
-function normalizeProviderUsage(value: unknown): ProviderUsage | null {
-	if (value === null || value === undefined) return null;
-	const usage = requireRecord(value, 'provider usage');
-	const promptTokens = usage.prompt_tokens ?? usage.promptTokens;
-	const completionTokens = usage.completion_tokens ?? usage.completionTokens;
-	const totalTokens = usage.total_tokens ?? usage.totalTokens;
-	const promptTokenDetails = optionalRecord(
-		usage.prompt_tokens_details ?? usage.promptTokensDetails,
-		'provider prompt-token details'
-	);
-	const completionTokenDetails = optionalRecord(
-		usage.completion_tokens_details ?? usage.completionTokensDetails,
-		'provider completion-token details'
-	);
-	const costDetails = optionalRecord(
-		usage.cost_details ?? usage.costDetails,
-		'provider cost details'
-	);
-	if (promptTokens === undefined && completionTokens === undefined && totalTokens === undefined) {
-		return null;
-	}
-	if (
-		!nonnegativeInteger(promptTokens) ||
-		!nonnegativeInteger(completionTokens) ||
-		!nonnegativeInteger(totalTokens) ||
-		totalTokens !== promptTokens + completionTokens
-	) {
-		throw new AgenticChatProviderNetworkError(
-			'Agentic Chat provider usage payload is malformed',
-			false
-		);
-	}
-	const cachedPromptTokens = optionalNonnegativeInteger(
-		promptTokenDetails?.cached_tokens ?? promptTokenDetails?.cachedTokens,
-		'provider cached prompt tokens'
-	);
-	return {
-		promptTokens,
-		completionTokens,
-		totalTokens,
-		reasoningTokens: optionalNonnegativeInteger(
-			completionTokenDetails?.reasoning_tokens ?? completionTokenDetails?.reasoningTokens,
-			'provider reasoning tokens'
-		),
-		cachedPromptTokens,
-		cacheWriteTokens: optionalNonnegativeInteger(
-			promptTokenDetails?.cache_write_tokens ?? promptTokenDetails?.cacheWriteTokens,
-			'provider cache-write tokens'
-		),
-		cacheStatus: describePromptCacheStatus(promptTokens, cachedPromptTokens),
-		cost: finiteNonnegativeNumber(usage.cost) ? usage.cost : null,
-		byok: optionalBoolean(usage.is_byok ?? usage.isByok, 'provider BYOK flag'),
-		upstreamInferenceCost: optionalNonnegativeNumber(
-			costDetails?.upstream_inference_cost ?? costDetails?.upstreamInferenceCost,
-			'provider upstream inference cost'
-		),
-		upstreamPromptCost: optionalNonnegativeNumber(
-			costDetails?.upstream_inference_prompt_cost ?? costDetails?.upstreamInferencePromptCost,
-			'provider upstream prompt cost'
-		),
-		upstreamCompletionCost: optionalNonnegativeNumber(
-			costDetails?.upstream_inference_completions_cost ??
-				costDetails?.upstreamInferenceCompletionsCost,
-			'provider upstream completion cost'
-		)
-	};
-}
-
-export function createStableAgenticChatProviderUsageLogIdV1(input: {
-	turnRunId: string;
-	executionGeneration: number;
-	logicalProviderRound: number;
-	passRole?: AgenticChatProviderPassRoleV1;
-	providerAttempt?: number;
-	routeId: string;
-}): string {
-	const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
-	const passRole = canonicalProviderPassRole(input.passRole);
-	if (
-		!Number.isSafeInteger(input.executionGeneration) ||
-		input.executionGeneration < 1 ||
-		!Number.isSafeInteger(input.logicalProviderRound) ||
-		input.logicalProviderRound < 1 ||
-		!input.routeId ||
-		input.routeId !== input.routeId.trim()
-	) {
-		throw new Error('Invalid Agentic Chat provider usage identity');
-	}
-	const bytes = createHash('sha256')
-		.update(
-			`${USAGE_LOG_IDENTITY_VERSION}:${input.turnRunId}:${input.executionGeneration}:` +
-				`${input.logicalProviderRound}:${passRole}:${input.routeId}` +
-				(providerAttempt === 1 ? '' : `:attempt:${providerAttempt}`),
-			'utf8'
-		)
-		.digest()
-		.subarray(0, 16);
-	bytes[6] = (bytes[6]! & 0x0f) | 0x50;
-	bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-	const hex = bytes.toString('hex');
-	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-function resolveProviderUsageCosts(input: {
-	usage: ProviderUsage | null;
-	modelRequested: string | null;
-	modelUsed: string | null;
-	promptTokens: number;
-	completionTokens: number;
-}): {
-	inputCost: number;
-	outputCost: number;
-	source: AgenticChatProviderUsageObservationV1['costSource'];
-} {
-	const pricing = resolveModelPricingProfile(input.modelUsed ?? 'unknown', [
-		input.modelRequested ?? 'unknown'
-	])?.profile;
-	const estimatedInputCost = pricing ? (input.promptTokens / 1_000_000) * pricing.cost : 0;
-	const estimatedOutputCost = pricing
-		? (input.completionTokens / 1_000_000) * pricing.outputCost
-		: 0;
-	if (input.usage?.cost === undefined || input.usage.cost === null) {
-		return {
-			inputCost: estimatedInputCost,
-			outputCost: estimatedOutputCost,
-			source: pricing ? 'catalog_estimate' : 'unknown'
-		};
-	}
-	if (input.usage.upstreamPromptCost !== null || input.usage.upstreamCompletionCost !== null) {
-		return {
-			inputCost: input.usage.upstreamPromptCost ?? 0,
-			outputCost: input.usage.upstreamCompletionCost ?? 0,
-			source: 'provider_reported'
-		};
-	}
-	const estimatedTotalCost = estimatedInputCost + estimatedOutputCost;
-	if (estimatedTotalCost > 0) {
-		const scale = input.usage.cost / estimatedTotalCost;
-		return {
-			inputCost: estimatedInputCost * scale,
-			outputCost: estimatedOutputCost * scale,
-			source: 'provider_reported'
-		};
-	}
-	return { inputCost: 0, outputCost: 0, source: 'provider_reported' };
-}
-
-function describePromptCacheStatus(promptTokens: number, cachedPromptTokens: number): string {
-	if (cachedPromptTokens <= 0) return 'no cache';
-	if (promptTokens <= 0) return `cached ${cachedPromptTokens} prompt tokens`;
-	const hitRate = Math.round((cachedPromptTokens / promptTokens) * 1_000) / 10;
-	return `${hitRate}% cache hit`;
-}
-
-function optionalRecord(value: unknown, label: string): Record<string, unknown> | null {
-	if (value === undefined || value === null) return null;
-	if (typeof value !== 'object' || Array.isArray(value)) {
-		throw new AgenticChatProviderNetworkError(`${label} is malformed`, false);
-	}
-	return value as Record<string, unknown>;
-}
-
-function optionalNonnegativeInteger(value: unknown, label: string): number {
-	if (value === undefined || value === null) return 0;
-	if (!nonnegativeInteger(value)) {
-		throw new AgenticChatProviderNetworkError(`${label} is malformed`, false);
-	}
-	return value;
-}
-
-function optionalNonnegativeNumber(value: unknown, label: string): number | null {
-	if (value === undefined || value === null) return null;
-	if (!finiteNonnegativeNumber(value)) {
-		throw new AgenticChatProviderNetworkError(`${label} is malformed`, false);
-	}
-	return value;
-}
-
-function optionalBoolean(value: unknown, label: string): boolean | null {
-	if (value === undefined || value === null) return null;
-	if (typeof value !== 'boolean') {
-		throw new AgenticChatProviderNetworkError(`${label} is malformed`, false);
-	}
-	return value;
-}
-
-function providerFrameError(value: unknown): { message: string; retryable: boolean } {
-	if (typeof value === 'string') {
-		return { message: canonicalError(value), retryable: retryableMessage(value) };
-	}
-	const error = requireRecord(value, 'provider error');
-	const message = canonicalError(
-		error.message ?? 'Agentic Chat provider returned an error frame'
-	);
-	const status = numericStatus(error.code ?? error.status);
-	return {
-		message,
-		retryable: status === null ? retryableMessage(message) : isRetryableStatus(status)
-	};
-}
-
-function isV41FlashModel(model: string): boolean {
-	// OpenRouter can report a dated deployment in either headers or SSE frames.
-	// Both spellings must use the same policy; other models remain ineligible.
-	return /^deepseek\/deepseek-v4\.1-flash(?:-\d{8})?$/.test(model);
-}
-
-function watchStreamProgress(
-	active: ActiveResponse,
-	state: StreamState,
-	input: ClientInput
-): () => void {
-	let startedAtMs = Date.now();
-	let startedBytes = state.generatedBytes;
-	const check = () => {
-		if (active.signal.aborted || state.finishReason !== null) return;
-		if (!isV41FlashModel(state.modelUsed ?? active.route.model)) return;
-		const now = Date.now();
-		// Preserve enough time for the existing retry and terminal settlement.
-		if (
-			input.budget &&
-			input.budget.deadlineAtMs - now <
-				MIN_ATTEMPT_TIMEOUT_MS + BUDGET_FINALIZATION_RESERVE_MS
-		)
-			return;
-		// Reasoning is requested with `exclude: true`, so a thinking model emits
-		// nothing until its first text or tool call. Judge throughput only once
-		// output has begun; the attempt deadline still bounds a silent stream.
-		if (state.generatedBytes === 0) {
-			startedAtMs = now;
-			timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
-			timer.unref?.();
-			return;
-		}
-		const elapsed = now - startedAtMs;
-		const bytes = state.generatedBytes - startedBytes;
-		// A suspended host is not evidence of slow provider generation.
-		if (
-			elapsed <= SLOW_STREAM_WINDOW_MS * 2 &&
-			bytes * 1_000 < SLOW_STREAM_MIN_BYTES_PER_SECOND * elapsed
-		) {
-			active.abort(new AgenticChatSlowStreamError(elapsed, bytes));
-			return;
-		}
-		startedAtMs = now;
-		startedBytes = state.generatedBytes;
-		timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
-		timer.unref?.();
-	};
-	let timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
-	timer.unref?.();
-	return () => clearTimeout(timer);
-}
-
-function createAttemptSignal(
-	external: AbortSignal,
-	timeoutMs: number,
-	responseHeadersTimeoutMs: number
-): {
-	signal: AbortSignal;
-	cleanup(): void;
-	timedOut(): boolean;
-	markResponseOpened(): void;
-	timing(): ProviderAttemptTiming;
-	abort(reason: Error): void;
-} {
-	const controller = new AbortController();
-	const networkStartedAtMs = Date.now();
-	let deadlineAtMs = networkStartedAtMs + responseHeadersTimeoutMs;
-	let didTimeout = false;
-	let responseOpenedAtMs: number | null = null;
-	let timeoutFiredAtMs: number | null = null;
-	const onAbort = () => controller.abort(external.reason);
-	if (external.aborted) controller.abort(external.reason);
-	else external.addEventListener('abort', onAbort, { once: true });
-	const timeOut = () => {
-		didTimeout = true;
-		timeoutFiredAtMs = Date.now();
-		controller.abort(
-			new Error(`Agentic Chat provider timeout after ${deadlineAtMs - networkStartedAtMs}ms`)
-		);
-	};
-	let timer = setTimeout(timeOut, responseHeadersTimeoutMs);
-	timer.unref?.();
-	return {
-		signal: controller.signal,
-		abort: (reason) => controller.abort(reason),
-		cleanup: () => {
-			clearTimeout(timer);
-			external.removeEventListener('abort', onAbort);
-		},
-		timedOut: () => didTimeout,
-		markResponseOpened: () => {
-			if (responseOpenedAtMs !== null || controller.signal.aborted) return;
-			responseOpenedAtMs ??= Date.now();
-			clearTimeout(timer);
-			deadlineAtMs = networkStartedAtMs + timeoutMs;
-			timer = setTimeout(timeOut, Math.max(0, deadlineAtMs - Date.now()));
-			timer.unref?.();
-		},
-		timing: () => ({
-			networkStartedAtMs,
-			deadlineAtMs,
-			responseOpenedAtMs,
-			timeoutFiredAtMs
-		})
-	};
-}
-
-function providerAttemptTimingPayload(
-	timing: ProviderAttemptTiming,
-	endedAtMs: number
-): JsonObject {
-	return {
-		network_started_at_ms: timing.networkStartedAtMs,
-		deadline_at_ms: timing.deadlineAtMs,
-		response_opened_at_ms: timing.responseOpenedAtMs,
-		timeout_fired_at_ms: timing.timeoutFiredAtMs,
-		timeout_overshoot_ms:
-			timing.timeoutFiredAtMs === null
-				? null
-				: Math.max(0, timing.timeoutFiredAtMs - timing.deadlineAtMs),
-		post_timeout_cleanup_ms:
-			timing.timeoutFiredAtMs === null
-				? null
-				: Math.max(0, endedAtMs - timing.timeoutFiredAtMs),
-		network_boundary_ms: boundedDuration(timing.networkStartedAtMs, endedAtMs)
-	};
-}
-
-function abortableProviderRead<T>(read: () => Promise<T>, signal: AbortSignal): Promise<T> {
-	if (signal.aborted) {
-		return Promise.reject(
-			signal.reason instanceof Error ? signal.reason : new Error('Provider request aborted')
-		);
-	}
-	const pendingRead = read();
-	return new Promise<T>((resolve, reject) => {
-		const cleanup = () => signal.removeEventListener('abort', onAbort);
-		const onAbort = () => {
-			cleanup();
-			reject(
-				signal.reason instanceof Error
-					? signal.reason
-					: new Error('Provider request aborted')
-			);
-		};
-		signal.addEventListener('abort', onAbort, { once: true });
-		void pendingRead.then(
-			(value) => {
-				cleanup();
-				resolve(value);
-			},
-			(error) => {
-				cleanup();
-				reject(error);
-			}
-		);
-	});
-}
-
-function validateRoutes(
-	routes: readonly AgenticChatOpenAiCompatibleRouteV1[]
-): readonly AgenticChatOpenAiCompatibleRouteV1[] {
-	if (!Array.isArray(routes) || routes.length < 1 || routes.length > 4) {
-		throw new Error('Agentic Chat provider requires between one and four routes');
-	}
-	const ids = new Set<string>();
-	const validated = routes.map((route) => {
-		if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(route.id) || ids.has(route.id)) {
-			throw new Error('Agentic Chat provider route ids must be unique canonical identifiers');
-		}
-		ids.add(route.id);
-		if (route.kind !== 'openrouter' && route.kind !== 'openai_compatible') {
-			throw new Error('Agentic Chat provider route kind is invalid');
-		}
-		let url: URL;
-		try {
-			url = new URL(route.baseUrl);
-		} catch {
-			throw new Error('Agentic Chat provider route must use a clean HTTPS base URL');
-		}
-		if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) {
-			throw new Error('Agentic Chat provider route must use a clean HTTPS base URL');
-		}
-		const baseUrl = route.baseUrl.replace(/\/+$/, '');
-		const apiKey = canonicalSecret(route.apiKey);
-		const model = canonicalModel(route.model);
-		const fallbackModels = uniqueModels(route.fallbackModels ?? []).filter(
-			(candidate) => candidate !== model
-		);
-		if (fallbackModels.length > 3) {
-			throw new Error('Agentic Chat provider route supports at most three fallback models');
-		}
-		if (route.kind !== 'openrouter' && fallbackModels.length > 0) {
-			throw new Error('Direct Agentic Chat provider routes cannot declare fallback models');
-		}
-		if (route.kind !== 'openrouter' && route.providerRouting) {
-			throw new Error('Provider routing preferences are supported only for OpenRouter');
-		}
-		return Object.freeze({
-			...route,
-			baseUrl,
-			apiKey,
-			model,
-			fallbackModels: Object.freeze(fallbackModels),
-			providerRouting: validateProviderRouting(route.providerRouting),
-			headers: validateHeaders(route.headers)
-		});
-	});
-	return Object.freeze(validated);
-}
-
-function validateProviderRouting(
-	value: AgenticChatOpenRouterProviderRoutingV1 | undefined
-): AgenticChatOpenRouterProviderRoutingV1 | undefined {
-	if (!value) return undefined;
-	if (value.data_collection !== undefined && value.data_collection !== 'deny') {
-		throw new Error('Agentic Chat provider routing cannot allow data collection');
-	}
-	for (const key of ['allow_fallbacks', 'require_parameters', 'zdr'] as const) {
-		if (value[key] !== undefined && typeof value[key] !== 'boolean') {
-			throw new Error(`Agentic Chat provider routing ${key} must be boolean`);
-		}
-	}
-	if (
-		value.sort !== undefined &&
-		value.sort !== 'price' &&
-		value.sort !== 'throughput' &&
-		value.sort !== 'latency'
-	) {
-		throw new Error('Agentic Chat provider routing sort is invalid');
-	}
-	const result: AgenticChatOpenRouterProviderRoutingV1 = {};
-	if (value.allow_fallbacks !== undefined) result.allow_fallbacks = value.allow_fallbacks;
-	if (value.require_parameters !== undefined) {
-		result.require_parameters = value.require_parameters;
-	}
-	if (value.data_collection !== undefined) result.data_collection = value.data_collection;
-	if (value.zdr !== undefined) result.zdr = value.zdr;
-	if (value.sort !== undefined) result.sort = value.sort;
-	for (const key of ['order', 'only', 'ignore'] as const) {
-		if (value[key] === undefined) continue;
-		if (!Array.isArray(value[key]) || value[key].length > 16) {
-			throw new Error(`Agentic Chat provider routing ${key} is invalid`);
-		}
-		result[key] = Object.freeze(
-			Array.from(
-				new Set(
-					value[key].map((entry) =>
-						canonicalRoutingName(entry, `provider routing ${key}`)
-					)
-				)
-			)
-		) as string[];
-	}
-	return Object.freeze(result);
-}
-
-function validateHeaders(
-	headers: Readonly<Record<string, string>> | undefined
-): Readonly<Record<string, string>> | undefined {
-	if (!headers) return undefined;
-	const result: Record<string, string> = {};
-	for (const [key, value] of Object.entries(headers)) {
-		if (!/^[A-Za-z0-9-]{1,64}$/.test(key)) {
-			throw new Error('Agentic Chat provider route header name is invalid');
-		}
-		if (
-			[
-				'authorization',
-				'content-type',
-				'accept',
-				'http-referer',
-				'x-title',
-				'x-openrouter-metadata'
-			].includes(key.toLowerCase())
-		) {
-			throw new Error('Agentic Chat provider route cannot override protected headers');
-		}
-		result[key] = canonicalHeaderValue(value, `route header ${key}`);
-	}
-	return Object.freeze(result);
-}
-
-function copyMessage(message: AgenticChatTurnProviderMessageV1) {
-	return {
-		role: message.role,
-		content: message.content,
-		...(message.tool_calls ? { tool_calls: message.tool_calls } : {}),
-		...(message.tool_call_id ? { tool_call_id: message.tool_call_id } : {})
-	};
-}
-
-function copyTool(tool: AgenticChatTurnProviderToolV1) {
-	return {
-		type: 'function' as const,
-		function: {
-			name: tool.function.name,
-			description: tool.function.description,
-			parameters: tool.function.parameters
-		}
-	};
-}
-
-function validateToolSurface(input: ClientInput): void {
-	if (
-		input.reasoningEffort !== undefined &&
-		input.reasoningEffort !== 'low' &&
-		input.reasoningEffort !== 'none'
-	)
-		throw new Error('Invalid provider reasoning effort');
-	if (
-		input.maxOutputTokens !== undefined &&
-		(!Number.isSafeInteger(input.maxOutputTokens) || input.maxOutputTokens < 1)
-	) {
-		throw new Error('Provider output token ceiling must be a positive integer');
-	}
-	canonicalProviderAttempt(input.providerAttempt);
-	canonicalProviderPassRole(input.passRole);
-	if (!Array.isArray(input.tools)) {
-		throw new Error('Agentic Chat provider tool surface must be an array');
-	}
-	if (input.workflowToolPolicy !== undefined) {
-		if (
-			input.workflowToolPolicy !== 'bounded_document_read_v1' ||
-			!input.dispatchGate ||
-			input.passRole !== 'acting' ||
-			input.toolChoice !== 'auto' ||
-			canonicalizeAgenticChatJson(input.tools as unknown as JsonValue) !==
-				canonicalizeAgenticChatJson([DOCUMENT_READ_TOOL] as unknown as JsonValue)
-		) {
-			throw new Error('Invalid workflow document tool surface');
-		}
-		return;
-	}
-	if (input.toolChoice === 'none') {
-		if (input.tools.length !== 0) {
-			throw new Error('Agentic Chat toolChoice=none requires an empty tool surface');
-		}
-		return;
-	}
-	if (
-		(input.toolChoice !== 'auto' && input.toolChoice !== 'required') ||
-		input.tools.length < 1 ||
-		input.tools.length > MAX_REVIEWED_PROVIDER_TOOLS
-	) {
-		throw new Error(
-			'Agentic Chat toolChoice=auto|required requires a bounded reviewed tool surface'
-		);
-	}
-	const seen = new Set<string>();
-	for (const tool of input.tools) {
-		validateReadToolDefinition(tool, seen, input.passRole);
-	}
-}
-
-function responseIdentity(input: ClientInput): string {
-	// Physical retries belong to the same logical pass. The completed retry's
-	// actual route is retained, without retaining its prompt or tool arguments.
-	return JSON.stringify([
-		input.streamRunId,
-		input.processingToken,
-		input.executionGeneration,
-		input.logicalProviderRound,
-		input.providerRound,
-		input.passRole ?? 'acting'
-	]);
-}
-
-function canonicalProviderAttempt(value: number | undefined): number {
-	const attempt = value ?? 1;
-	if (!Number.isSafeInteger(attempt) || attempt < 1 || attempt > 8) {
-		throw new Error('Agentic Chat provider attempt must be between 1 and 8');
-	}
-	return attempt;
-}
-
-function canonicalProviderPassRole(
-	value: AgenticChatProviderPassRoleV1 | undefined
-): AgenticChatProviderPassRoleV1 {
-	const role = value ?? 'acting';
-	if (
-		role !== 'acting' &&
-		role !== 'contract_review' &&
-		role !== 'mutation_review' &&
-		role !== 'research_review' &&
-		role !== 'repair' &&
-		role !== 'final_response'
-	) {
-		throw new Error('Agentic Chat provider pass role is invalid');
-	}
-	return role;
-}
-
-function validateReadToolDefinition(
-	tool: AgenticChatTurnProviderToolV1 | undefined,
-	seen: Set<string>,
-	passRole?: AgenticChatProviderPassRoleV1
-): void {
-	if (
-		tool?.type !== 'function' ||
-		!tool.function ||
-		typeof tool.function.name !== 'string' ||
-		!tool.function.name ||
-		tool.function.name !== tool.function.name.trim() ||
-		(!isAgenticChatProductionReadToolNameV1(tool.function.name) &&
-			reviewedAgenticChatMutationSpecV1(tool.function.name) === null &&
-			!(passRole === 'research_review' && tool.function.name === 'review_web_search')) ||
-		seen.has(tool.function.name) ||
-		typeof tool.function.description !== 'string' ||
-		!tool.function.description.trim() ||
-		!tool.function.parameters ||
-		typeof tool.function.parameters !== 'object' ||
-		Array.isArray(tool.function.parameters) ||
-		tool.function.parameters.type !== 'object'
-	) {
-		throw new Error('Agentic Chat read tool definition is invalid');
-	}
-	try {
-		canonicalizeAgenticChatJson(tool as unknown as JsonValue);
-	} catch {
-		throw new Error('Agentic Chat read tool definition is invalid');
-	}
-	seen.add(tool.function.name);
-}
-
-/**
- * The failing response's message and, when the gateway reported it, the
- * upstream that produced the failure. OpenRouter names it as
- * `error.metadata.provider_name`; a direct OpenAI-compatible endpoint names
- * nothing, and the caller falls back to the endpoint the request was pinned to.
- */
-async function responseError(
-	response: Response
-): Promise<{ message: string; providerSlug: string | null }> {
-	const text = (await readBoundedResponseText(response, 16 * 1024)).trim().slice(0, 2_000);
-	if (!text) {
-		return {
-			message: response.statusText || 'provider request failed',
-			providerSlug: null
-		};
-	}
-	try {
-		const parsed = JSON.parse(text) as unknown;
-		if (parsed !== null && typeof parsed === 'object') {
-			const root = parsed as Record<string, unknown>;
-			const error =
-				root.error !== null && typeof root.error === 'object'
-					? (root.error as Record<string, unknown>)
-					: root;
-			const metadata =
-				error.metadata !== null && typeof error.metadata === 'object'
-					? (error.metadata as Record<string, unknown>)
-					: {};
-			const providerSlug =
-				normalizeProviderSlug(canonicalOptionalText(metadata.provider_slug)) ??
-				normalizeProviderSlug(canonicalOptionalText(metadata.provider_name)) ??
-				normalizeProviderSlug(canonicalOptionalText(metadata.provider)) ??
-				normalizeProviderSlug(canonicalOptionalText(root.provider_slug)) ??
-				normalizeProviderSlug(canonicalOptionalText(root.provider));
-			if (typeof error.message === 'string' && error.message.trim()) {
-				return { message: error.message.trim().slice(0, 2_000), providerSlug };
-			}
-			return { message: text, providerSlug };
-		}
-	} catch {
-		// Plain-text provider errors are returned below.
-	}
-	return { message: text, providerSlug: null };
-}
-
-/**
- * The endpoint a failed attempt can honestly be blamed for. Either the error
- * named it (the gateway's `provider_name`, or the ordered endpoint a timed-out
- * request went to first), or the request was constrained to exactly one
- * upstream and could have reached no other. An unconstrained request that
- * fails names nothing: ignoring a provider it may never have touched would
- * shrink the pool for the rest of the turn on no evidence.
- */
-function attributedProviderSlug(
-	route: AgenticChatOpenAiCompatibleRouteV1,
-	error: unknown
-): string | null {
-	if (error instanceof AgenticChatProviderNetworkError && error.providerSlug) {
-		return error.providerSlug;
-	}
-	if (route.kind !== 'openrouter') return null;
-	const only = route.providerRouting?.only;
-	return only?.length === 1 ? normalizeProviderSlug(only[0]) : null;
-}
-
-/** The single endpoint a request's `order` sends it to first, when it names one. */
-function orderedProviderSlug(route: AgenticChatOpenAiCompatibleRouteV1): string | null {
-	if (route.kind !== 'openrouter') return null;
-	const order = route.providerRouting?.order;
-	return order?.length === 1 ? normalizeProviderSlug(order[0]) : null;
-}
-
-async function readBoundedResponseText(response: Response, maximumBytes: number): Promise<string> {
-	const reader = response.body?.getReader();
-	if (!reader) return '';
-	const decoder = new TextDecoder();
-	let text = '';
-	let remaining = maximumBytes;
-	try {
-		while (remaining > 0) {
-			const chunk = await reader.read();
-			if (chunk.done) break;
-			const accepted = chunk.value.subarray(0, remaining);
-			remaining -= accepted.byteLength;
-			text += decoder.decode(accepted, { stream: true });
-			if (accepted.byteLength < chunk.value.byteLength) break;
-		}
-		text += decoder.decode();
-		return text;
-	} finally {
-		await reader.cancel().catch(() => undefined);
-	}
-}
-
-function routeFailure(routeId: string, error: unknown): RouteFailure {
-	return {
-		routeId,
-		message: canonicalError(error),
-		retryable:
-			error instanceof AgenticChatProviderNetworkError
-				? error.retryable
-				: isRetryableUnknownError(error)
-	};
-}
-
-function isRetryableUnknownError(error: unknown): boolean {
-	return error instanceof TypeError || retryableMessage(canonicalError(error));
-}
-
-function isRetryableStatus(status: number): boolean {
-	return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
-}
-
-function retryableMessage(message: string): boolean {
-	return /rate.?limit|temporar|timeout|timed out|overload|unavailable|connection|network/i.test(
-		message
-	);
-}
-
-function numericStatus(value: unknown): number | null {
-	const status = typeof value === 'string' && /^\d{3}$/.test(value) ? Number(value) : value;
-	return Number.isSafeInteger(status) && (status as number) >= 100 && (status as number) <= 599
-		? (status as number)
-		: null;
-}
-
-function estimateTokens(chars: number): number {
-	return Math.ceil(chars / 4);
-}
-
-function boundedDuration(startedAtMs: number, observedAtMs: number): number {
-	return Math.min(2_147_483_647, Math.max(0, Math.floor(observedAtMs - startedAtMs)));
-}
-
-function canonicalError(value: unknown): string {
-	const message = value instanceof Error ? value.message : String(value ?? '');
-	return message.trim().slice(0, 2_000) || 'Agentic Chat provider request failed';
-}
-
-function canonicalOptionalHeader(value: string | null): string | null {
-	const trimmed = value?.trim();
-	return trimmed ? trimmed.slice(0, 512) : null;
-}
-
-function canonicalOptionalText(value: unknown): string | null {
-	return typeof value === 'string' && value.trim() ? value.trim().slice(0, 512) : null;
-}
-
-const PROVIDER_DISPLAY_NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
-	'baidu qianfan': 'baidu',
-	'digital ocean': 'digitalocean',
-	'google vertex': 'google-vertex',
-	'moonshot ai': 'moonshotai',
-	nvidia: 'nvidia',
-	'weights & biases': 'wandb',
-	'z.ai': 'z-ai'
-});
-
-function normalizeProviderSlug(value: string | null | undefined): string | null {
-	const normalized = value?.trim().toLowerCase();
-	if (!normalized) return null;
-	const alias = PROVIDER_DISPLAY_NAME_ALIASES[normalized];
-	if (alias) return alias;
-	return /^[a-z0-9]+(?:[-/][a-z0-9]+)*$/.test(normalized) ? normalized : null;
-}
-
-function lastOpenRouterAttempt(value: unknown): Record<string, unknown> | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	const attempts = (value as Record<string, unknown>).attempts;
-	if (!Array.isArray(attempts)) return null;
-	const lastAttempt = attempts.at(-1);
-	return lastAttempt && typeof lastAttempt === 'object' && !Array.isArray(lastAttempt)
-		? (lastAttempt as Record<string, unknown>)
-		: null;
-}
-
-function canonicalRequiredText(value: unknown, label: string, maximum: number): string {
-	if (
-		typeof value !== 'string' ||
-		!value.trim() ||
-		value !== value.trim() ||
-		value.length > maximum
-	) {
-		throw new AgenticChatProviderNetworkError(
-			`Agentic Chat provider ${label} is invalid`,
-			false
-		);
-	}
-	return value;
-}
-
-function canonicalHeaderValue(value: string, label: string): string {
-	if (
-		typeof value !== 'string' ||
-		!value.trim() ||
-		value !== value.trim() ||
-		value.length > 512 ||
-		/[\r\n]/.test(value)
-	) {
-		throw new Error(`Agentic Chat provider ${label} is invalid`);
-	}
-	return value;
-}
-
-function canonicalSecret(value: string): string {
-	if (
-		typeof value !== 'string' ||
-		!value.trim() ||
-		value !== value.trim() ||
-		value.length > 2_048 ||
-		/[\r\n]/.test(value)
-	) {
-		throw new Error('Agentic Chat provider API key is invalid');
-	}
-	return value;
-}
-
-function canonicalModel(value: string): string {
-	if (
-		typeof value !== 'string' ||
-		!value.trim() ||
-		value !== value.trim() ||
-		value.length > 256
-	) {
-		throw new Error('Agentic Chat provider model is invalid');
-	}
-	return value;
-}
-
-function canonicalRoutingName(value: string, label: string): string {
-	if (
-		typeof value !== 'string' ||
-		!value.trim() ||
-		value !== value.trim() ||
-		value.length > 128 ||
-		!/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(value)
-	) {
-		throw new Error(`Agentic Chat ${label} contains an invalid name`);
-	}
-	return value;
-}
-
-function uniqueModels(values: readonly string[]): string[] {
-	return Array.from(new Set(values.map(canonicalModel)));
-}
-
-function boundedInteger(value: number, label: string, minimum: number, maximum: number): number {
-	if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
-		throw new Error(`Agentic Chat provider ${label} must be between ${minimum} and ${maximum}`);
-	}
-	return value;
-}
-
-function nonnegativeInteger(value: unknown): value is number {
-	return Number.isSafeInteger(value) && (value as number) >= 0;
-}
-
-function finiteNonnegativeNumber(value: unknown): value is number {
-	return typeof value === 'number' && Number.isFinite(value) && value >= 0;
-}
-
-function requireRecord(value: unknown, label: string): Record<string, unknown> {
-	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-		throw new AgenticChatProviderNetworkError(`Agentic Chat ${label} is malformed`, false);
-	}
-	return value as Record<string, unknown>;
-}
-
-function throwIfAborted(signal: AbortSignal): void {
-	if (signal.aborted) throwAbort(signal);
-}
-
-function throwAbort(signal: AbortSignal): never {
-	throw signal.reason instanceof Error ? signal.reason : new Error('Execution aborted');
 }
