@@ -4,6 +4,8 @@
 // with a canned model (free): real ports, gateway writes, review staging, receipts,
 // watermark, sweep and enqueue. Everything it writes is restored or deleted at the end.
 // Usage (repo root): scripts/book-loop/capture-eval/e2e-qa.sh
+import { readFileSync } from 'node:fs';
+
 if (process.env.AGENTIC_GATE_DATABASE_ISOLATED !== 'true')
 	throw new Error('Isolated database required');
 
@@ -43,7 +45,22 @@ const { data: doc } = await supabase
 	.single();
 if (!session || !doc) throw new Error('fixture rows missing');
 const userId = session.user_id;
-const beforeContent = doc.content ?? '';
+// Run against the frozen fixture doc, not whatever QA holds now (other runs,
+// e.g. a backfill, change it); the doc's own content is restored at the end.
+const originalContent = doc.content ?? '';
+const fixture = JSON.parse(
+	readFileSync(new URL('./fixtures/book-loop.json', import.meta.url), 'utf8')
+) as { startHere: { content: string } };
+const beforeContent = fixture.startHere.content;
+await supabase.from('onto_documents').update({ content: beforeContent }).eq('id', doc.id);
+// An existing thinking log is updated by the capture: restore it, never delete it.
+const { data: logBefore } = await supabase
+	.from('onto_documents')
+	.select('id, content')
+	.eq('project_id', PROJECT)
+	.eq('type_key', 'document.context.thinking_log')
+	.is('deleted_at', null)
+	.maybeSingle();
 const startedAt = new Date().toISOString();
 // Pending START HERE proposals the capture will supersede; restored at the end.
 const { data: pendingBefore } = await supabase
@@ -230,8 +247,15 @@ try {
 		if (restored)
 			await syncInboxItemForAgentRun({ supabase, run: restored as Record<string, unknown> });
 	}
-	await supabase.from('onto_documents').update({ content: beforeContent }).eq('id', doc.id);
-	if (logDocId) await supabase.from('onto_documents').delete().eq('id', logDocId);
+	await supabase.from('onto_documents').update({ content: originalContent }).eq('id', doc.id);
+	if (logBefore) {
+		await supabase
+			.from('onto_documents')
+			.update({ content: logBefore.content })
+			.eq('id', logBefore.id);
+	} else if (logDocId) {
+		await supabase.from('onto_documents').delete().eq('id', logDocId);
+	}
 	if (reviewRunId) await supabase.from('agent_runs').delete().eq('id', reviewRunId);
 	await supabase
 		.from('inbox_items')

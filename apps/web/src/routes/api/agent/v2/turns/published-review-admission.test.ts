@@ -193,4 +193,71 @@ describe('published specialist route admission', () => {
 			}).success
 		).toBe(false);
 	});
+	describe('context finder request', () => {
+		const docId = 'af000000-0000-4000-8000-0000000000d1';
+		const plan = () => ({
+			version: 'context_plan_v1',
+			policy: 'safe_v1',
+			source: 'curated',
+			items: [
+				{
+					kind: 'document',
+					id: docId,
+					title: 'Pricing memo',
+					tier: 'full',
+					p: 0.8,
+					pinned: true,
+					sections: [{ heading: 'Tiers', p: 0.7 }]
+				}
+			],
+			dropped: [],
+			topScore: 0.8,
+			checked: 12,
+			unchecked: 0
+		});
+		const snapshotOf = (f: Awaited<ReturnType<typeof fixture>>) =>
+			f.rpc.mock.calls[0]![1].p_specialist_snapshot;
+
+		it('adds nothing while the flag is off, even when a plan is sent', async () => {
+			const f = await fixture();
+			Object.assign(f.input.command.publishedSpecialist, { contextPlan: plan() });
+			expect((await admitWorkflowReviewTurnIfEligible(f.input))?.status).toBe(202);
+			expect(snapshotOf(f)).not.toHaveProperty('contextFinder');
+		});
+
+		it('asks the worker to rank when no plan is sent', async () => {
+			const f = await fixture();
+			Object.assign(f.input.environment, { AGENTIC_CHAT_CONTEXT_FINDER_ENABLED: 'true' });
+			expect((await admitWorkflowReviewTurnIfEligible(f.input))?.status).toBe(202);
+			expect(snapshotOf(f).contextFinder).toEqual({
+				version: 'context_finder_request_v1',
+				mode: 'auto'
+			});
+		});
+
+		it('freezes the user-edited plan into the admitted snapshot', async () => {
+			const f = await fixture();
+			Object.assign(f.input.environment, { AGENTIC_CHAT_CONTEXT_FINDER_ENABLED: 'true' });
+			Object.assign(f.input.command.publishedSpecialist, { contextPlan: plan() });
+			const body = { ...f.input.command, leaseToken: 'valid-lease-token' };
+			expect(workerAdmissionRequestSchema.safeParse(body).success).toBe(true);
+			expect((await admitWorkflowReviewTurnIfEligible(f.input))?.status).toBe(202);
+			expect(snapshotOf(f).contextFinder).toEqual({
+				version: 'context_finder_request_v1',
+				mode: 'curated',
+				plan: plan()
+			});
+		});
+
+		it('rejects a tampered plan before admission', async () => {
+			const f = await fixture();
+			Object.assign(f.input.environment, { AGENTIC_CHAT_CONTEXT_FINDER_ENABLED: 'true' });
+			const tampered = plan();
+			tampered.items[0]!.id = 'not-a-uuid';
+			Object.assign(f.input.command.publishedSpecialist, { contextPlan: tampered });
+			const response = await admitWorkflowReviewTurnIfEligible(f.input);
+			expect(response?.status).toBe(422);
+			expect(f.rpc).not.toHaveBeenCalled();
+		});
+	});
 });

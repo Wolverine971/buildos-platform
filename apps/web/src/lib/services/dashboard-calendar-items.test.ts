@@ -6,8 +6,10 @@ import {
 	BUILDOS_CALENDAR_SOURCE_ID,
 	decorateDashboardCalendarItems,
 	getCalendarSourceIds,
+	getDashboardCalendarItemTitle,
 	isConnectedGoogleCalendarItem,
 	isDashboardCalendarItemVisible,
+	isDashboardCalendarLayerVisible,
 	mapConnectedGoogleEvent,
 	mergeDashboardCalendarItems
 } from './dashboard-calendar-items';
@@ -176,5 +178,41 @@ describe('dashboard connected calendar items', () => {
 
 		expect(getCalendarSourceIds(provider)).toEqual(['source-b', 'source-c']);
 		expect(mergeDashboardCalendarItems([internal], [provider])).toHaveLength(2);
+	});
+});
+
+describe('dashboard calendar display helpers', () => {
+	it('drops the view-generated marker prefix only for that marker kind', () => {
+		expect(
+			getDashboardCalendarItemTitle(
+				item({ item_type: 'task', item_kind: 'due', title: 'Due: Ship deck' })
+			)
+		).toBe('Ship deck');
+		expect(
+			getDashboardCalendarItemTitle(
+				item({ item_type: 'task', item_kind: 'start', title: 'Start: Draft outline' })
+			)
+		).toBe('Draft outline');
+		// A task whose own title starts with "Due:" keeps it on a scheduled range.
+		expect(
+			getDashboardCalendarItemTitle(
+				item({ item_type: 'task', item_kind: 'range', title: 'Due: diligence call' })
+			)
+		).toBe('Due: diligence call');
+		expect(getDashboardCalendarItemTitle(item({ title: '   ' }))).toBe('(Untitled)');
+	});
+
+	it('filters each layer independently', () => {
+		const layers = { events: true, taskRange: false, taskStart: true, taskDue: false };
+		expect(isDashboardCalendarLayerVisible(item({ item_type: 'event' }), layers)).toBe(true);
+		expect(
+			isDashboardCalendarLayerVisible(item({ item_type: 'task', item_kind: 'range' }), layers)
+		).toBe(false);
+		expect(
+			isDashboardCalendarLayerVisible(item({ item_type: 'task', item_kind: 'start' }), layers)
+		).toBe(true);
+		expect(
+			isDashboardCalendarLayerVisible(item({ item_type: 'task', item_kind: 'due' }), layers)
+		).toBe(false);
 	});
 });

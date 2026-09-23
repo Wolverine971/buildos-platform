@@ -264,6 +264,23 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project'],
 		category: 'read'
 	},
+	search_onto_assets: {
+		summary:
+			'Find project images (logos, screenshots, photos) by caption, file name, or OCR text, with where each is filed.',
+		capabilities: [
+			'Returns asset_id, caption, and OCR summary',
+			"Shows the document each image is filed under, or the project's Images shelf"
+		],
+		contexts: ['project'],
+		category: 'read'
+	},
+	get_onto_asset: {
+		summary:
+			'Get one project image: caption, OCR text preview, and the document it is filed under.',
+		capabilities: ['Bounded OCR text preview', 'Current placement in the document tree'],
+		contexts: ['project'],
+		category: 'read'
+	},
 	get_document_outline: {
 		summary: 'Get a document’s heading outline (table of contents) without the full body.',
 		capabilities: [
@@ -452,6 +469,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	create_onto_risk: {
 		summary: 'Create a risk with impact/probability and mitigation context.',
 		capabilities: ['Supports impact/state/probability', 'Supports parent/connections'],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_asset: {
+		summary:
+			'Name or rename a project image (e.g. a logo attached in chat) and file it under a project document.',
+		capabilities: [
+			'Sets the display caption and alt text',
+			"Files the image under one document, or back on the project's Images shelf"
+		],
 		contexts: ['project'],
 		category: 'write'
 	},

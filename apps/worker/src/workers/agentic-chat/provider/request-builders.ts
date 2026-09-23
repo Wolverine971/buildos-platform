@@ -290,6 +290,13 @@ export function buildBaseProviderRequest(
 			passRole: 'acting',
 			signal,
 			...(budget ? { budget } : {}),
+			// A project image attached to this message may need naming or filing;
+			// keep that schema through relevance selection (structured, not text).
+			...(currentTurn?.attachments.some(
+				(attachment) => attachment.attachment_kind === 'onto_asset' && attachment.asset_id
+			)
+				? { toolSelectionPins: ['update_onto_asset'] }
+				: {}),
 			...(liveVisionEnabled && currentTurn?.liveVision?.requested
 				? {
 						liveVisionRequest: {
@@ -493,6 +500,7 @@ export function providerClientRequest(
 ): Parameters<AgenticChatTurnProviderClientPortV1['stream']>[0] {
 	const {
 		liveVisionRequest: _liveVisionRequest,
+		toolSelectionPins: _toolSelectionPins,
 		semanticDispositionGate: _semanticDispositionGate,
 		unavailableSkillRepairAttempted: _unavailableSkillRepairAttempted,
 		...clientRequest

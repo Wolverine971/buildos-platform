@@ -525,8 +525,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 									operationType: 'agentic_chat_web_navigation',
 									userId: claim.userId,
 									chatSessionId: claim.sessionId,
+									// UsageLogger lifts these ids onto the row, so
+									// navigation cost counts toward the turn.
 									metadata: {
 										turnRunId: claim.turnRunId,
+										streamRunId: input.executionInput.streamRunId,
+										clientTurnId: input.executionInput.clientTurnId,
 										providerToolCallId: input.providerToolCallId
 									}
 								}

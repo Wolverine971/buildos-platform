@@ -115,6 +115,9 @@ export type AgenticChatWorkflowPreparationTimingV1 = {
 	progressPublishMs: number | null;
 	accessCheckMs: number | null;
 	contextLoadMs: number | null;
+	/** Present only when a published specialist requested Jev-selected evidence. */
+	contextFinderMs?: number | null;
+	contextFinderStatus?: 'selected' | 'empty' | 'unavailable';
 	checkpointMs: number | null;
 	preparationMs: number;
 	checkpointOutcome: string | null;

@@ -507,6 +507,7 @@ export function createSupabaseCheckpointPorts(options?: {
 						skipped: record.skipped,
 						invariant_violations: record.invariantViolations,
 						dropped_links: record.droppedLinks,
+						restated_additions: record.restatedAdditions,
 						log_passages: record.thinkingLog?.passageCount ?? 0,
 						error: record.error
 					} as unknown as Json

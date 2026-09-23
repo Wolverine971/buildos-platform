@@ -13,6 +13,7 @@ import {
 	buildWorkflowAuditBundleFiles,
 	buildWorkflowAuditBundleZip,
 	buildWorkflowAuditMarkdown,
+	buildContextFinderLines,
 	buildWorkflowMermaid,
 	demoteMarkdownHeadings,
 	escapeMarkdownInline,
@@ -626,5 +627,53 @@ describe('whole-session export integration', () => {
 			'whole session (all workflow turns and ordinary conversation turns)'
 		);
 		expect(files['README.md']).toContain('## Session coverage');
+	});
+
+	it('renders what Jev selected from the frozen checkpoint, and nothing when absent', () => {
+		expect(buildContextFinderLines({ data: {} })).toEqual([]);
+		const lines = buildContextFinderLines({
+			data: {
+				selected_evidence: {
+					version: 'context_evidence_v1',
+					status: 'selected',
+					source: 'curated',
+					policy: 'safe_v1',
+					ranker: {
+						status: 'ranked',
+						checked: 40,
+						unchecked: 2,
+						durationMs: 1420,
+						costUsd: 0.0011
+					},
+					note: 'Selected for this question.',
+					full: [
+						{
+							kind: 'document',
+							id: 'doc-1',
+							title: 'Pricing | memo',
+							p: 0.91,
+							pinned: true,
+							partial: true,
+							excerpts: [
+								{ heading: 'Tiers', text: 'x' },
+								{ heading: null, text: 'y' }
+							]
+						}
+					],
+					summaries: [
+						{ kind: 'task', id: 'task-1', title: 'Call Sam', p: 0.3, line: 'Call Sam' }
+					],
+					missing: [{ kind: 'goal', id: 'goal-9' }],
+					coverage: { fullChars: 900, summaryChars: 40, budgetChars: 14000 }
+				}
+			}
+		}).join('\n');
+		expect(lines).toContain('### Context finder (Jev-selected evidence)');
+		expect(lines).toContain('curated (edited by the user)');
+		expect(lines).toContain('checked 40, unchecked 2');
+		expect(lines).toContain('Pricing \\| memo');
+		expect(lines).toContain('Tiers · opening');
+		expect(lines).toContain('Call Sam (0.30)');
+		expect(lines).toContain('Planned but no longer in the project: goal goal-9');
 	});
 });

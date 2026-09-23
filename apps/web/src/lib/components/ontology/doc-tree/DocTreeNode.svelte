@@ -24,7 +24,8 @@
 		Folder,
 		FolderOpen,
 		Globe,
-		GripVertical
+		GripVertical,
+		ImageIcon
 	} from '$lib/icons/lucide';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
@@ -33,6 +34,7 @@
 	import { buildAbsolutePublicPageUrl, copyTextToClipboard } from '$lib/utils/public-page-url';
 	import { formatRelativeTime } from '$lib/utils/date-utils';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
+	import { treeImageThumbnailUrl, treeImageTitle, type DocTreeImage } from './tree-images';
 
 	const recentlyCreated = getRecentlyCreatedContext();
 
@@ -53,6 +55,9 @@
 		// Cut/paste props
 		cutNodeId?: string | null;
 		onFocus?: (nodeId: string) => void;
+		// Images filed under documents (onto_asset_links), keyed by document id
+		imagesByDocumentId?: Map<string, DocTreeImage[]>;
+		onOpenImage?: (imageId: string, documentId: string) => void;
 	}
 
 	let {
@@ -69,7 +74,9 @@
 		onTouchStart,
 		canDrag = true,
 		cutNodeId = null,
-		onFocus
+		onFocus,
+		imagesByDocumentId,
+		onOpenImage
 	}: Props = $props();
 
 	async function handleCopyPublicLink(e: MouseEvent) {
@@ -92,6 +99,10 @@
 	let nodeElement: HTMLElement | null = $state(null);
 
 	const isFolder = $derived(node.type === 'folder');
+	const images = $derived(imagesByDocumentId?.get(node.id) ?? []);
+	const childDocs = $derived(isFolder ? (node.children ?? []) : []);
+	// A document with filed images expands like a folder; its images list after child docs.
+	const isExpandable = $derived(isFolder || images.length > 0);
 	const isExpanded = $derived(expandedIds.has(node.id));
 	const isSelected = $derived(selectedId === node.id);
 	const indent = $derived(node.depth * indentPx);
@@ -291,7 +302,7 @@
 		{/if}
 
 		<!-- Expand/collapse is a sibling control so interactive elements never nest. -->
-		{#if isFolder}
+		{#if isExpandable}
 			<button
 				type="button"
 				class="doc-tree-chevron flex min-h-[44px] min-w-[44px] flex-shrink-0 touch-manipulation items-center justify-center rounded-md transition-colors hover:bg-accent/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
@@ -336,6 +347,17 @@
 				{node.title}
 			</span>
 
+			<!-- Collapsed documents still show that they hold images. -->
+			{#if images.length > 0 && !isExpanded}
+				<span
+					class="inline-flex shrink-0 items-center gap-1 rounded-md bg-accent/10 px-1.5 py-0.5 text-2xs font-medium tabular-nums text-accent"
+					aria-label={`${images.length} ${images.length === 1 ? 'image' : 'images'}`}
+				>
+					<ImageIcon class="h-3 w-3" aria-hidden="true" />
+					{images.length}
+				</span>
+			{/if}
+
 			<!-- Freshness is useful at a glance, but stays out of the way on narrow screens. -->
 			<time
 				datetime={node.updated_at}
@@ -379,11 +401,11 @@
 		<div class="doc-tree-insertion-line" style="margin-left: {indent + 8}px"></div>
 	{/if}
 
-	<!-- Children (if expanded) -->
-	{#if isFolder && isExpanded && node.children && node.children.length > 0}
+	<!-- Children (if expanded): child documents, then images filed under this document -->
+	{#if isExpandable && isExpanded && childDocs.length + images.length > 0}
 		<div class="doc-tree-children" style="--tree-line-left: {indent + 16}px">
-			{#each node.children as child, i (child.id)}
-				{@const isLast = i === (node.children?.length ?? 0) - 1}
+			{#each childDocs as child, i (child.id)}
+				{@const isLast = images.length === 0 && i === childDocs.length - 1}
 				<div class="doc-tree-child-wrapper" class:doc-tree-child-wrapper--last={isLast}>
 					<DocTreeNode
 						node={child}
@@ -400,7 +422,37 @@
 						{canDrag}
 						{cutNodeId}
 						{onFocus}
+						{imagesByDocumentId}
+						{onOpenImage}
 					/>
+				</div>
+			{/each}
+			{#each images as image, i (image.id)}
+				{@const title = treeImageTitle(image)}
+				<div
+					class="doc-tree-child-wrapper"
+					class:doc-tree-child-wrapper--last={i === images.length - 1}
+				>
+					<button
+						type="button"
+						onclick={() => onOpenImage?.(image.id, node.id)}
+						class="doc-tree-image-row flex min-h-[44px] w-full items-center gap-2 rounded-md pr-2 text-left text-foreground transition-colors hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-reduce:transition-none pressable"
+						style="padding-left: {indent + indentPx + 4 + 44}px"
+						aria-label={`Open image ${title}`}
+					>
+						<span
+							class="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-muted/40"
+						>
+							<img
+								src={treeImageThumbnailUrl(image.id, 64)}
+								alt=""
+								loading="lazy"
+								decoding="async"
+								class="h-full w-full object-contain"
+							/>
+						</span>
+						<span class="min-w-0 flex-1 truncate text-sm">{title}</span>
+					</button>
 				</div>
 			{/each}
 		</div>

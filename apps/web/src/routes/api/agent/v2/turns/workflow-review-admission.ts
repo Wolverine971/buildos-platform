@@ -29,6 +29,9 @@ import {
 	SpecialistRecommendationError
 } from '$lib/services/agentic-chat-v2/specialist-recommendations.server';
 
+import { parseContextPlanV1 } from '@buildos/agentic-chat-runtime/context-finder';
+import type { PublishedSpecialistContextFinderV1 } from '@buildos/agentic-chat-runtime/specialists';
+
 const logger = createLogger('API:AgentWorkflowReviewTurns');
 
 const WORKFLOW_REVIEW_ENVIRONMENT_KEYS = [
@@ -38,6 +41,7 @@ const WORKFLOW_REVIEW_ENVIRONMENT_KEYS = [
 	'AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED',
 	'AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED',
 	'AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED',
+	'AGENTIC_CHAT_CONTEXT_FINDER_ENABLED',
 	'AGENTIC_CHAT_PROJECT_REVIEW_V2_ENABLED',
 	'AGENTIC_CHAT_PROJECT_REVIEW_V3_ENABLED',
 	'AGENTIC_CHAT_WORKFLOW_PROTOTYPE_USER_IDS'
@@ -133,7 +137,8 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 			published = {
 				snapshot: selected.snapshot,
 				snapshotHash: ref.snapshotHash,
-				...(recommendation ? { recommendation } : {})
+				...(recommendation ? { recommendation } : {}),
+				...contextFinderRequest(input.environment, ref.contextPlan)
 			};
 		}
 		const args = await buildAgenticChatWorkflowV4AdmissionArgs({
@@ -181,6 +186,34 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 			? await input.loadSession(result.sessionId)
 			: null;
 	return timed(outcomeResponse(result, session), preparationMs, admissionMs);
+}
+
+/**
+ * With the finder on, every published specialist review gets Jev-selected evidence: the plan
+ * the user edited in Workflow Lab, or a ranking the worker runs during preparation. Off, a sent
+ * plan is ignored and the review runs exactly as before.
+ */
+function contextFinderRequest(
+	environment: WorkflowReviewEnvironment,
+	plan: unknown
+): { contextFinder?: PublishedSpecialistContextFinderV1 } {
+	if (environment.AGENTIC_CHAT_CONTEXT_FINDER_ENABLED?.trim() !== 'true') return {};
+	if (plan === undefined)
+		return { contextFinder: { version: 'context_finder_request_v1', mode: 'auto' } };
+	try {
+		return {
+			contextFinder: {
+				version: 'context_finder_request_v1',
+				mode: 'curated',
+				plan: parseContextPlanV1(plan)
+			}
+		};
+	} catch {
+		throw new AgenticChatWorkflowV4AdmissionError(
+			'invalid_command',
+			'The selected evidence plan is invalid'
+		);
+	}
 }
 
 function outcomeResponse(

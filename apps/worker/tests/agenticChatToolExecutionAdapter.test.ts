@@ -1607,7 +1607,11 @@ describe('AgenticChatToolExecutionAdapter', () => {
 				max_pages: 4
 			});
 			expect(webNavigator.navigate.mock.calls[0]![1]).toMatchObject({
-				usage: { operationType: 'agentic_chat_web_navigation', userId: USER_ID }
+				usage: {
+					operationType: 'agentic_chat_web_navigation',
+					userId: USER_ID,
+					metadata: expect.objectContaining({ streamRunId: 'stream-1' })
+				}
 			});
 			expect(onProgress).toHaveBeenCalledWith(
 				expect.objectContaining({

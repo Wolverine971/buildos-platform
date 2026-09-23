@@ -114,6 +114,7 @@ The live source of truth is `queue.process(...)` registrations in
 | `schedule_daily_sms`             | `workers/dailySmsWorker.ts`                           |
 | `send_sms`                       | `workers/smsWorker.ts`                                |
 | `classify_chat_session`          | `workers/chat/chatSessionClassifier.ts`               |
+| `capture_chat_checkpoint`        | `workers/chat/checkpoint/checkpointJob.ts`            |
 | `process_onto_braindump`         | `workers/braindump/braindumpProcessor.ts`             |
 | `transcribe_voice_note`          | `workers/voice-notes/voiceNoteTranscriptionWorker.ts` |
 | `extract_onto_asset_ocr`         | `workers/assets/assetOcrWorker.ts`                    |
@@ -139,6 +140,8 @@ Defined in `apps/worker/src/scheduler.ts`:
 - `0 4 * * *`: enqueue scheduled project audits when project loops are on
 - `*/30 * * * *`: reclaim stalled project-loop runs when project loops are on
 - `*/5 * * * *`: schedule due Operatives as `agent_run` jobs
+- `* * * * *`: sweep project chats and enqueue `capture_chat_checkpoint` unless
+  `CHAT_CHECKPOINT_CAPTURE_ENABLED=false`
 - `QUEUE_RETENTION_CLEANUP_CRON` (default `30 3 * * *`): queue retention cleanup
 - Startup checks after 5 seconds for briefs and after 8 seconds for Operatives
 

@@ -148,6 +148,10 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// a Jev fallback or surface repair pays, not the typical pass: on the live
 		// eval (docs/research/jev-tool-selection-2026-09-18, 90 runs, 0 misses) the
 		// opening pass carried ~18.5k chars on average. Caps keep ~5% headroom.
+		// 2026-09-22: the project image tools (update_onto_asset plus the
+		// search_onto_assets/get_onto_asset reads) fit under the existing cap
+		// after trimming their descriptions: project 64 tools / 61,194 B. No
+		// headroom is left; the next project-surface addition must re-baseline.
 		expect(global.openingBytes).toBeLessThanOrEqual(51_200);
 		expect(project.openingBytes).toBeLessThanOrEqual(61_200);
 		expect(project.admittedBytes).toBeLessThanOrEqual(61_200);

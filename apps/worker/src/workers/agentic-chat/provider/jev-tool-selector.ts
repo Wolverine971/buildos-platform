@@ -103,6 +103,8 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 	delete_calendar_event: ['list_calendar_events', 'get_calendar_event_details'],
 	create_calendar_event: ['list_calendar_events', 'get_project_calendar'],
 	set_project_calendar: ['get_project_calendar'],
+	// Filing an image under a document needs the document found first.
+	update_onto_asset: [...DOCUMENT_READS, 'search_onto_assets', 'get_onto_asset'],
 	search_email_messages: ['list_email_accounts', 'get_email_message'],
 	get_email_message: ['list_email_accounts', 'search_email_messages'],
 	// A search's results are start points to read or click through.
@@ -114,14 +116,17 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 export function selectJevToolDefinitions(
 	tools: readonly AgenticChatTurnProviderToolV1[],
 	probabilities: Readonly<Record<string, number>>,
-	threshold = JEV_TOOL_INCLUSION_THRESHOLD
+	threshold = JEV_TOOL_INCLUSION_THRESHOLD,
+	pinnedToolNames: readonly string[] = []
 ): readonly AgenticChatTurnProviderToolV1[] {
 	const available = new Set(tools.map((t) => t.function.name));
+	const pinned = new Set(pinnedToolNames);
 	const selected = new Set(
 		tools
 			.filter(
 				(t) =>
 					REQUIRED_CONTROLS.has(t.function.name) ||
+					pinned.has(t.function.name) ||
 					probabilities[t.function.name]! >= threshold
 			)
 			.map((t) => t.function.name)
@@ -325,7 +330,12 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 			}
 			// Tool names and scores only: enough to re-tune the threshold offline.
 			receipt.probabilities = probabilities;
-			const tools = selectJevToolDefinitions(request.tools, probabilities);
+			const tools = selectJevToolDefinitions(
+				request.tools,
+				probabilities,
+				JEV_TOOL_INCLUSION_THRESHOLD,
+				request.toolSelectionPins ?? []
+			);
 			receipt.status = 'selected';
 			receipt.reason = 'classified';
 			receipt.selectedToolNames = tools.map((t) => t.function.name);

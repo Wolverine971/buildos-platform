@@ -21,6 +21,8 @@ import {
 	verifySpecialistRecommendationReceiptV1,
 	type SpecialistRecommendationReceiptV1
 } from './recommendations';
+import { parseContextPlanV1 } from '../context-finder/evidence';
+import type { ContextPlanV1 } from '../context-finder/select';
 
 export const PUBLISHED_SPECIALIST_SNAPSHOT_VERSION = 'agentic_chat_specialist_snapshot_v3';
 export type PublishedSpecialistRefV1 = {
@@ -40,7 +42,34 @@ export type PublishedSpecialistSnapshotV3 = Omit<
 	taskVersion?: 2;
 	published: { snapshotHash: string; snapshot: SpecialistWorkbenchVersionV1 };
 	recommendation?: SpecialistRecommendationReceiptV1;
+	/** Jev-selected project evidence: ranked in the worker (auto) or a plan the user edited. */
+	contextFinder?: PublishedSpecialistContextFinderV1;
 };
+export type PublishedSpecialistContextFinderV1 =
+	| { version: 'context_finder_request_v1'; mode: 'auto' }
+	| { version: 'context_finder_request_v1'; mode: 'curated'; plan: ContextPlanV1 };
+
+/** Strict: an unknown mode or a malformed plan never reaches preparation. */
+export function parsePublishedSpecialistContextFinderV1(
+	value: unknown
+): PublishedSpecialistContextFinderV1 {
+	const v = value as Record<string, unknown> | null;
+	if (!v || typeof v !== 'object' || v.version !== 'context_finder_request_v1') invalid();
+	if (v!.mode === 'auto' && Object.keys(v!).length === 2)
+		return { version: 'context_finder_request_v1', mode: 'auto' };
+	if (v!.mode === 'curated' && Object.keys(v!).length === 3) {
+		try {
+			return {
+				version: 'context_finder_request_v1',
+				mode: 'curated',
+				plan: parseContextPlanV1(v!.plan)
+			};
+		} catch {
+			invalid();
+		}
+	}
+	return invalid();
+}
 export type ExecutableSpecialistSnapshot = SpecialistSnapshotV2 | PublishedSpecialistSnapshotV3;
 const canonical = (value: unknown) => canonicalizeAgenticChatJson(value as JsonValue);
 const same = (a: unknown, b: unknown) => canonical(a) === canonical(b);
@@ -132,6 +161,7 @@ export async function buildPublishedSpecialistSnapshotV3(input: {
 	snapshotHash: string;
 	evidenceHandoff?: boolean;
 	recommendation?: SpecialistRecommendationReceiptV1;
+	contextFinder?: PublishedSpecialistContextFinderV1;
 }): Promise<PublishedSpecialistSnapshotV3> {
 	const version = await resolveExecutableVersion(input.snapshot, input.snapshotHash);
 	if (input.recommendation)
@@ -151,6 +181,9 @@ export async function buildPublishedSpecialistSnapshotV3(input: {
 		taskVersion: 2,
 		published: { snapshotHash: input.snapshotHash, snapshot: version },
 		...(input.recommendation ? { recommendation: input.recommendation } : {}),
+		...(input.contextFinder
+			? { contextFinder: parsePublishedSpecialistContextFinderV1(input.contextFinder) }
+			: {}),
 		slots: {
 			...base.slots,
 			project_analyst: {
@@ -196,6 +229,11 @@ export async function parseExecutableSpecialistSnapshot(
 			snapshotHash: s.published.snapshotHash
 		});
 	if (
+		s.contextFinder !== undefined &&
+		!same(s.contextFinder, parsePublishedSpecialistContextFinderV1(s.contextFinder))
+	)
+		invalid();
+	if (
 		!same(s.slots.project_analyst, {
 			definition: version.definition,
 			assignment: version.definition.instructions.defaultAssignment
@@ -216,7 +254,12 @@ export async function parseExecutableSpecialistSnapshot(
 			s.editorTask !== editorTaskV2)
 	)
 		invalid();
-	const { published: _published, recommendation: _recommendation, ...withoutCatalog } = s;
+	const {
+		published: _published,
+		recommendation: _recommendation,
+		contextFinder: _contextFinder,
+		...withoutCatalog
+	} = s;
 	const surrogate = {
 		...withoutCatalog,
 		version: base.version,

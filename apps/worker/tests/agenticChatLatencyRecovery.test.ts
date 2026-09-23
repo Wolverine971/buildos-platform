@@ -463,13 +463,36 @@ describe('buffered slow-provider recovery', () => {
 		vi.useFakeTimers();
 		const first = controllableResponse();
 		const second = controllableResponse('Venice', V41);
+		// Both attempts start output and then stall. Silence before the first
+		// output byte is hidden reasoning, not slowness (see the test below).
+		first.text('x');
+		second.text('x');
 		const test = harness([first.response, second.response], { timeoutMs: 10_000 });
 		const collecting = collect(test.stream());
-		await vi.advanceTimersByTimeAsync(14_000);
+		await vi.advanceTimersByTimeAsync(14_001);
 		const events = await collecting;
 		expect(events.at(-1)).toMatchObject({ type: 'error', retryable: true });
 		expect(events.some((event) => event.type === 'done')).toBe(false);
 		expect(test.fetchImpl).toHaveBeenCalledTimes(2);
 		expect(test.usage.map((row) => row.status)).toEqual(['failure', 'failure']);
+	});
+
+	it('does not judge a stream slow before its first output byte (hidden reasoning)', async () => {
+		// 2026-09-22 book loop: reasoning is requested with `exclude: true`, so a
+		// thinking model streams nothing until its first text or tool call. The
+		// watchdog used to abort every such attempt as "slow".
+		vi.useFakeTimers();
+		const thinking = controllableResponse();
+		const test = harness([thinking.response]);
+		const collecting = collect(test.stream());
+		await vi.advanceTimersByTimeAsync(8_000);
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
+		expect(thinking.cancel).not.toHaveBeenCalled();
+		thinking.text('Done thinking.');
+		thinking.finish();
+		const events = await collecting;
+		expect(events).toContainEqual({ type: 'text', content: 'Done thinking.' });
+		expect(events.at(-1)?.type).toBe('done');
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
 	});
 });

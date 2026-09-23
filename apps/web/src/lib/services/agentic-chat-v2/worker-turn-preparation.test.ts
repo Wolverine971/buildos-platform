@@ -2224,64 +2224,66 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
-	it('refuses attachment turns when worker live vision is disabled', async () => {
+	// 2026-09-22: this used to refuse, which silently blocked every image turn in
+	// prod while live vision was off. The worker runs these on OCR/metadata.
+	it('admits attachment turns on OCR context when worker live vision is disabled', async () => {
+		const projectId = 'a1000000-0000-4000-8000-000000000001';
+		const assetId = 'a2000000-0000-4000-8000-000000000002';
 		mocks.loadValidatedChatAttachments.mockResolvedValue({
 			assets: [],
 			attachments: [
 				{
-					attachment_kind: 'temporary_file',
+					attachment_kind: 'onto_asset',
 					media_type: 'image',
-					asset_id: null,
-					project_id: null,
+					asset_id: assetId,
+					project_id: projectId,
 					storage_bucket: 'onto-assets',
-					storage_path: `users/${USER_ID}/chat-temp/image.png`,
-					file_name: 'image.png',
+					storage_path: `projects/${projectId}/assets/${assetId}/original.png`,
+					file_name: 'logo.png',
 					content_type: 'image/png',
 					file_size_bytes: 1024,
 					width: 640,
 					height: 480,
-					checksum_sha256: null,
-					ocr_status: 'skipped',
-					extraction_summary: null,
-					extracted_text_preview: null,
+					checksum_sha256: 'a'.repeat(64),
+					ocr_status: 'complete',
+					extraction_summary: 'Company logo with a tagline',
+					extracted_text_preview: 'Setting New Standards',
 					role: 'analysis_target',
-					display_order: 0,
-					expires_at: new Date(NOW + 60_000).toISOString()
+					display_order: 0
 				}
 			]
 		});
 
-		await expect(
-			prepareAgenticChatWorkerAdmission({
-				userClient: {} as never,
-				serviceClient: {} as never,
-				userId: USER_ID,
-				command: command({
-					message: 'Review this image',
-					attachments: [
-						{
-							attachment_kind: 'temporary_file',
-							media_type: 'image',
-							storage_bucket: 'onto-assets',
-							storage_path: `users/${USER_ID}/chat-temp/image.png`,
-							file_name: 'image.png',
-							content_type: 'image/png',
-							file_size_bytes: 1024,
-							width: 640,
-							height: 480,
-							expires_at: new Date(NOW + 60_000).toISOString(),
-							display_order: 0
-						}
-					]
-				}) as never,
-				lease: {
-					decisionId: DECISION_ID,
-					mode: 'worker_realtime',
-					contractVersion: 'agentic_chat_worker_v1'
-				},
-				dependencies: { ...dependencies(), liveVisionEnabled: false }
-			})
-		).rejects.toMatchObject({ code: 'capability_unavailable' });
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: {} as never,
+			userId: USER_ID,
+			command: command({
+				context: { type: 'project', entityId: projectId, projectId },
+				message: 'This is our logo. Please save it.',
+				attachments: [
+					{ attachment_kind: 'onto_asset', media_type: 'image', asset_id: assetId }
+				]
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: { ...dependencies(), liveVisionEnabled: false }
+		});
+
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			currentTurn: {
+				message: 'This is our logo. Please save it.',
+				liveVision: { requested: false },
+				attachments: [expect.objectContaining({ asset_id: assetId })]
+			}
+		});
+		expect(result.args.p_user_message_metadata).toMatchObject({
+			live_vision_requested: false,
+			live_vision_attachment_count: 0
+		});
 	});
 	// Stage S6 (2026-09-04): the three stable surfaces, exercised through the
 	// real resolver rather than the surface stub the other cases use.

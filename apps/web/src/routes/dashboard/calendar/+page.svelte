@@ -4,19 +4,16 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { addDays, format, startOfDay } from 'date-fns';
+	import { format } from 'date-fns';
 	import {
 		ArrowLeft,
 		Ban,
-		CalendarDays,
 		CheckCircle2,
 		ChevronRight,
 		Circle,
 		CircleDot,
 		Clock,
 		ExternalLink,
-		Eye,
-		EyeOff,
 		FileText,
 		FolderOpen,
 		ListChecks,
@@ -25,36 +22,46 @@
 		Milestone,
 		Pause,
 		SlidersHorizontal,
-		Target,
-		X
+		Target
 	} from '$lib/icons/lucide';
 	import CalendarView from '$lib/components/scheduling/CalendarView.svelte';
 	import CalendarItemDrawer from '$lib/components/scheduling/CalendarItemDrawer.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { debounce } from '$lib/utils/performance-optimization';
-	import { getWeekDates, getMonthDates, parseLocalDate } from '$lib/utils/schedulingUtils';
-	import {
-		fetchCalendarItems,
-		fetchConnectedGoogleCalendarEvents
-	} from '$lib/services/calendar-items.service';
+	import { parseLocalDate } from '$lib/utils/schedulingUtils';
 	import {
 		BUILDOS_CALENDAR_SOURCE_ID,
 		decorateDashboardCalendarItems,
+		getDashboardCalendarItemTitle,
 		isConnectedGoogleCalendarItem,
 		isDashboardCalendarItemVisible,
+		isDashboardCalendarLayerVisible,
 		mapConnectedGoogleEvent,
 		mergeDashboardCalendarItems
 	} from '$lib/services/dashboard-calendar-items';
+	import {
+		invalidateDashboardCalendar,
+		loadDashboardCalendar,
+		loadDashboardCalendarProviderEvents,
+		peekDashboardCalendarItems,
+		peekDashboardCalendarMeta,
+		peekDashboardCalendarProviderEvents,
+		readSavedDashboardCalendarState,
+		saveDashboardCalendarState,
+		updateDashboardCalendarPreferences,
+		type DashboardCalendarViewMode
+	} from '$lib/services/dashboard-calendar-cache';
 	import { apiRequest } from '$lib/utils/api-client-helpers';
-	import { toastService } from '$lib/stores/toast.store';
-	import type { CalendarItem } from '$lib/types/calendar-items';
+	import type { CalendarItem, DashboardCalendarMeta } from '$lib/types/calendar-items';
 	import type {
+		ConnectedGoogleCalendarEventsPayload,
 		GoogleCalendarConnectionsPayload,
 		GoogleCalendarSourceSummary
 	} from '$lib/types/google-calendar-integration';
 	import type { Component } from 'svelte';
 
-	type ViewMode = 'day' | 'week' | 'month';
+	type ViewMode = DashboardCalendarViewMode;
+	type LayerKey = 'events' | 'range' | 'start' | 'due';
 	type DisplayCalendarSource = GoogleCalendarSourceSummary & {
 		connectionId: string;
 		connectionLabel: string;
@@ -99,12 +106,19 @@
 		| { type: 'event'; data: any; project: ProjectInfo | null }
 		| null;
 
-	const LOCAL_STORAGE_KEY = 'dashboard_calendar_state_v3';
-	const BUFFER_DAYS = 7;
+	const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+	// The dashboard calendar shows the full day; working hours only shape scheduling.
+	const calendarWorkingHours = {
+		work_start_time: '00:00',
+		work_end_time: '24:00',
+		working_days: [0, 1, 2, 3, 4, 5, 6]
+	};
 
 	let viewMode = $state<ViewMode>('month');
 	let currentDate = $state(new Date());
-	let items = $state<CalendarItem[]>([]);
+	// BuildOS items for every layer; display toggles filter locally so they never refetch.
+	let internalItems = $state.raw<CalendarItem[]>([]);
+	let providerPayload = $state.raw<ConnectedGoogleCalendarEventsPayload | null>(null);
 	let isLoading = $state(true);
 	let isRefreshing = $state(false);
 	let hasLoadedInitialData = $state(false);
@@ -118,28 +132,9 @@
 	let includeTaskRange = $state(true);
 	let includeTaskStart = $state(true);
 	let includeTaskDue = $state(true);
+	let preferencesLoaded = $state(false);
 
 	let showSettings = $state(false);
-	let preferencesLoaded = $state(false);
-	let suppressPreferenceSync = $state(false);
-
-	let workingHours = $state({
-		work_start_time: '09:00',
-		work_end_time: '17:00',
-		working_days: [1, 2, 3, 4, 5],
-		default_task_duration_minutes: 60,
-		min_task_duration_minutes: 30,
-		max_task_duration_minutes: 240,
-		exclude_holidays: true,
-		holiday_country_code: 'US',
-		prefer_morning_for_important_tasks: false
-	});
-
-	const calendarWorkingHours = $derived({
-		work_start_time: '00:00',
-		work_end_time: '24:00',
-		working_days: workingHours.working_days
-	});
 
 	let selectedItem = $state<CalendarItem | null>(null);
 	let detail = $state<ItemDetail>(null);
@@ -158,19 +153,10 @@
 
 	const detailCache = new Map<string, ItemDetail>();
 	const projectCache = new Map<string, ProjectInfo>();
-	// Latest-wins guards: only the newest range/detail request may write state.
+	// Latest-wins guards: only the newest range/provider/detail request may write state.
 	let itemsRequestId = 0;
+	let providerRequestId = 0;
 	let detailRequestId = 0;
-
-	const toggleKey = () =>
-		`${includeEvents}-${includeTaskRange}-${includeTaskStart}-${includeTaskDue}`;
-
-	let cache = $state<{
-		start: Date;
-		end: Date;
-		key: string;
-		items: CalendarItem[];
-	} | null>(null);
 
 	let enabledCalendarSources = $derived.by((): DisplayCalendarSource[] => {
 		if (!calendarConnections) return [];
@@ -191,19 +177,63 @@
 	let calendarSourceLookup = $derived(
 		new Map(enabledCalendarSources.map((source) => [source.id, source] as const))
 	);
-	let totalCalendarSourceCount = $derived(enabledCalendarSources.length + 1);
 	let isBuildOsVisible = $derived(!hiddenCalendarSourceSet.has(BUILDOS_CALENDAR_SOURCE_ID));
-	let visibleCalendarSourceCount = $derived(
-		enabledCalendarSources.filter((source) => !hiddenCalendarSourceSet.has(source.id)).length +
-			(hiddenCalendarSourceSet.has(BUILDOS_CALENDAR_SOURCE_ID) ? 0 : 1)
+
+	let providerItems = $derived(
+		providerPayload
+			? providerPayload.events
+					.map((event) => mapConnectedGoogleEvent(event, calendarSourceLookup))
+					.filter((item): item is CalendarItem => item !== null)
+			: []
 	);
-	let visibleItems = $derived(
-		items.filter((item) => isDashboardCalendarItemVisible(item, hiddenCalendarSourceSet))
+	let items = $derived(
+		decorateDashboardCalendarItems(
+			mergeDashboardCalendarItems(internalItems, providerItems),
+			calendarSourceLookup
+		)
 	);
+	let visibleItems = $derived.by(() => {
+		const layers = {
+			events: includeEvents,
+			taskRange: includeTaskRange,
+			taskStart: includeTaskStart,
+			taskDue: includeTaskDue
+		};
+		return items.filter(
+			(item) =>
+				isDashboardCalendarLayerVisible(item, layers) &&
+				isDashboardCalendarItemVisible(item, hiddenCalendarSourceSet)
+		);
+	});
+
+	const layerOptions: { key: LayerKey; label: string }[] = [
+		{ key: 'events', label: 'Events' },
+		{ key: 'range', label: 'Scheduled tasks' },
+		{ key: 'start', label: 'Task starts' },
+		{ key: 'due', label: 'Due dates' }
+	];
+
+	function isLayerOn(layer: LayerKey): boolean {
+		if (layer === 'events') return includeEvents;
+		if (layer === 'range') return includeTaskRange;
+		if (layer === 'start') return includeTaskStart;
+		return includeTaskDue;
+	}
+
+	let hiddenLayerLabels = $derived(
+		layerOptions.filter((option) => !isLayerOn(option.key)).map((option) => option.label)
+	);
+	let hiddenSourceLabels = $derived([
+		...(isBuildOsVisible ? [] : ['BuildOS']),
+		...enabledCalendarSources
+			.filter((source) => hiddenCalendarSourceSet.has(source.id))
+			.map(getCalendarSourceDisplayName)
+	]);
+	let hiddenCount = $derived(hiddenLayerLabels.length + hiddenSourceLabels.length);
 
 	const calendarEvents = $derived(
 		visibleItems.map((item) => ({
-			summary: item.title || '(Untitled)',
+			summary: getDashboardCalendarItemTitle(item),
 			start: { dateTime: item.start_at },
 			end: { dateTime: item.end_at || item.start_at },
 			allDay: item.all_day ?? false,
@@ -213,6 +243,7 @@
 			externalLink: (item.props?.external_link as string | undefined) ?? undefined,
 			colorClass: getItemColorClass(item),
 			colorStyle: getItemColorStyle(item),
+			accentColor: getItemAccentColor(item),
 			sourceLabel: item.calendar_source_label ?? undefined,
 			calendarItem: item
 		}))
@@ -220,120 +251,56 @@
 
 	function getItemColorClass(item: CalendarItem): string {
 		if (item.item_type === 'task') {
-			if (item.item_kind === 'range') {
-				return 'bg-success/10 border border-success/30';
-			}
-			if (item.item_kind === 'start') {
-				return 'bg-info/10 border border-info/30';
-			}
-			return 'bg-warning/10 border border-warning/30';
+			if (item.item_kind === 'range') return 'bg-success/10 border border-success/30';
+			if (item.item_kind === 'start') return 'bg-info/10 border border-info/30';
+			return 'bg-warning/15 border border-warning/35';
 		}
 		if (isConnectedGoogleCalendarItem(item)) {
 			return 'calendar-source-event bg-muted/60 border border-border';
 		}
-		return 'bg-muted border border-border';
+		return 'bg-accent/10 border border-accent/25';
+	}
+
+	function getItemAccentColor(item: CalendarItem): string | undefined {
+		if (!isConnectedGoogleCalendarItem(item)) return undefined;
+		const color = item.calendar_source_color;
+		return color && HEX_COLOR.test(color) ? color : undefined;
 	}
 
 	function getItemColorStyle(item: CalendarItem): string | undefined {
-		if (
-			!isConnectedGoogleCalendarItem(item) ||
-			!item.calendar_source_color ||
-			!/^#[0-9a-f]{6}$/i.test(item.calendar_source_color)
-		) {
-			return undefined;
-		}
+		const color = getItemAccentColor(item);
+		if (!color) return undefined;
 		return [
-			`--calendar-source-color: ${item.calendar_source_color}`,
+			`--calendar-source-color: ${color}`,
 			'border-left-width: 3px',
-			`border-left-color: ${item.calendar_source_color}`,
-			`background-color: color-mix(in srgb, ${item.calendar_source_color} 12%, hsl(var(--card)))`
+			`border-left-color: ${color}`,
+			`background-color: color-mix(in srgb, ${color} 12%, hsl(var(--card)))`
 		].join('; ');
 	}
 
 	function getSafeCalendarColor(color: string | null): string {
-		return color && /^#[0-9a-f]{6}$/i.test(color) ? color : 'hsl(var(--muted-foreground))';
+		return color && HEX_COLOR.test(color) ? color : 'hsl(var(--muted-foreground))';
 	}
 
 	function getCalendarSourceDisplayName(source: DisplayCalendarSource): string {
 		return source.summaryOverride || source.summary || source.emailAddress;
 	}
 
-	function getViewRange(date: Date, mode: ViewMode): { start: Date; end: Date } {
-		if (mode === 'day') {
-			const start = startOfDay(date);
-			return { start, end: addDays(start, 1) };
-		}
-		if (mode === 'month') {
-			const monthDates = getMonthDates(date);
-			const start = startOfDay(monthDates[0] ?? date);
-			const end = startOfDay(addDays(monthDates[monthDates.length - 1] ?? date, 1));
-			return { start, end };
-		}
-		const weekDates = getWeekDates(date);
-		const start = startOfDay(weekDates[0] ?? date);
-		const end = startOfDay(addDays(weekDates[weekDates.length - 1] ?? date, 1));
-		return { start, end };
-	}
+	function applyMeta(meta: DashboardCalendarMeta | null | undefined) {
+		if (!meta) return;
+		includeEvents = meta.preferences.show_events;
+		includeTaskRange = meta.preferences.show_task_scheduled;
+		includeTaskStart = meta.preferences.show_task_start;
+		includeTaskDue = meta.preferences.show_task_due;
+		preferencesLoaded = true;
 
-	async function loadPreferences() {
-		suppressPreferenceSync = true;
-		try {
-			const result = await apiRequest('/api/users/calendar-preferences', {
-				method: 'GET'
-			});
-			if (!result.success || !result.data) {
-				throw new Error(result.error || 'Failed to load calendar preferences');
-			}
-
-			const prefs = result.data as Record<string, any>;
-			workingHours = {
-				...workingHours,
-				work_start_time: prefs.work_start_time || workingHours.work_start_time,
-				work_end_time: prefs.work_end_time || workingHours.work_end_time,
-				working_days: prefs.working_days || workingHours.working_days,
-				default_task_duration_minutes:
-					prefs.default_task_duration_minutes ??
-					workingHours.default_task_duration_minutes,
-				min_task_duration_minutes:
-					prefs.min_task_duration_minutes ?? workingHours.min_task_duration_minutes,
-				max_task_duration_minutes:
-					prefs.max_task_duration_minutes ?? workingHours.max_task_duration_minutes,
-				exclude_holidays: prefs.exclude_holidays ?? workingHours.exclude_holidays,
-				holiday_country_code:
-					prefs.holiday_country_code || workingHours.holiday_country_code,
-				prefer_morning_for_important_tasks:
-					prefs.prefer_morning_for_important_tasks ??
-					workingHours.prefer_morning_for_important_tasks
-			};
-
-			includeEvents = prefs.show_events ?? includeEvents;
-			includeTaskRange = prefs.show_task_scheduled ?? includeTaskRange;
-			includeTaskStart = prefs.show_task_start ?? includeTaskStart;
-			includeTaskDue = prefs.show_task_due ?? includeTaskDue;
-
-			preferencesLoaded = true;
-		} catch (err) {
-			console.error('[DashboardCalendar] Failed to load preferences:', err);
-			toastService.error('Failed to load calendar preferences');
-		} finally {
-			suppressPreferenceSync = false;
-		}
-	}
-
-	async function loadCalendarConnections() {
-		calendarConnectionsError = null;
-		try {
-			const result = await apiRequest('/api/integrations/google-calendar/connections', {
-				method: 'GET'
-			});
-			if (!result.success || !result.data) {
-				calendarConnections = null;
-				return;
-			}
-
-			calendarConnections = result.data as GoogleCalendarConnectionsPayload;
+		calendarConnections = meta.connections;
+		calendarConnectionsError = meta.connectionsError
+			? 'Connected calendars could not be loaded.'
+			: null;
+		if (meta.connections) {
 			const currentSourceIds = new Set(
-				calendarConnections.connections.flatMap((connection) =>
+				meta.connections.connections.flatMap((connection) =>
 					connection.sources
 						.filter((source) => source.readEnabled && !source.providerDeletedAt)
 						.map((source) => source.id)
@@ -343,26 +310,20 @@
 			hiddenCalendarSourceIds = hiddenCalendarSourceIds.filter((id) =>
 				currentSourceIds.has(id)
 			);
-		} catch (err) {
-			console.error('[DashboardCalendar] Failed to load connected calendars:', err);
-			calendarConnections = null;
-			calendarConnectionsError = 'Connected calendars could not be loaded.';
 		}
 	}
 
 	const persistPreferences = debounce(async () => {
-		if (!preferencesLoaded || suppressPreferenceSync) return;
-
-		const payload = {
-			show_events: includeEvents,
-			show_task_scheduled: includeTaskRange,
-			show_task_start: includeTaskStart,
-			show_task_due: includeTaskDue
-		};
+		if (!preferencesLoaded) return;
 
 		const result = await apiRequest('/api/users/calendar-preferences', {
 			method: 'PUT',
-			body: JSON.stringify(payload)
+			body: JSON.stringify({
+				show_events: includeEvents,
+				show_task_scheduled: includeTaskRange,
+				show_task_start: includeTaskStart,
+				show_task_due: includeTaskDue
+			})
 		});
 
 		if (!result.success) {
@@ -370,196 +331,138 @@
 		}
 	}, 600);
 
-	async function loadCalendarItems(options?: { force?: boolean; refreshing?: boolean }) {
-		const range = getViewRange(currentDate, viewMode);
-		const bufferedStart = addDays(range.start, -BUFFER_DAYS);
-		const bufferedEnd = addDays(range.end, BUFFER_DAYS);
-		const key = toggleKey();
-
+	/**
+	 * Paint from the session cache when it covers this view, then revalidate in the background
+	 * when the data is stale or the neighbouring periods are not cached yet.
+	 */
+	async function loadCalendarItems(options: { force?: boolean } = {}) {
+		const date = currentDate;
+		const mode = viewMode;
 		const activeRequestId = ++itemsRequestId;
+		error = null;
 
-		if (
-			!options?.force &&
-			cache &&
-			cache.key === key &&
-			bufferedStart >= cache.start &&
-			bufferedEnd <= cache.end
-		) {
-			// Also supersedes any in-flight request for a range we navigated away from.
-			items = cache.items;
+		const cached = options.force ? null : peekDashboardCalendarItems(date, mode);
+		if (cached) {
+			internalItems = cached.items;
 			isLoading = false;
+			hasLoadedInitialData = true;
+		} else if (!hasLoadedInitialData) {
+			isLoading = true;
+		}
+
+		void loadProviderEvents({ force: options.force });
+
+		if (cached?.fresh && cached.neighborsCached) {
 			isRefreshing = false;
 			return;
 		}
 
-		const shouldUseRefreshState = options?.refreshing || hasLoadedInitialData;
-		if (shouldUseRefreshState) {
-			isRefreshing = true;
-		} else {
-			isLoading = true;
-		}
-		error = null;
-		calendarReadWarning = null;
-
+		isRefreshing = !isLoading && (Boolean(options.force) || !cached);
 		try {
-			const rangeParams = {
-				start: bufferedStart.toISOString(),
-				end: bufferedEnd.toISOString()
-			};
-			const shouldLoadConnectedCalendars = includeEvents && enabledCalendarSources.length > 0;
-			const connectedEventsPromise = shouldLoadConnectedCalendars
-				? fetchConnectedGoogleCalendarEvents({
-						...rangeParams,
-						maxResults: 500
-					}).then(
-						(value) => ({ value, error: null }),
-						(fetchError: unknown) => ({ value: null, error: fetchError })
-					)
-				: Promise.resolve({ value: null, error: null });
-
-			const [internalItems, connectedEventsResult] = await Promise.all([
-				fetchCalendarItems({
-					...rangeParams,
-					includeEvents,
-					includeTaskRange,
-					includeTaskStart,
-					includeTaskDue,
-					limit: 2000
-				}),
-				connectedEventsPromise
-			]);
+			const payload = await loadDashboardCalendar(date, mode, { force: options.force });
 			if (activeRequestId !== itemsRequestId) return;
-
-			let providerItems: CalendarItem[] = [];
-			if (connectedEventsResult.error) {
-				console.warn(
-					'[DashboardCalendar] Failed to load connected Google calendars:',
-					connectedEventsResult.error
-				);
-				calendarReadWarning =
-					'BuildOS items loaded, but connected Google calendars could not be refreshed.';
-			} else if (connectedEventsResult.value) {
-				providerItems = connectedEventsResult.value.events
-					.map((event) => mapConnectedGoogleEvent(event, calendarSourceLookup))
-					.filter((item): item is CalendarItem => item !== null);
-				if (connectedEventsResult.value.partial) {
-					calendarReadWarning =
-						'Some connected calendars took too long to respond. The rest are shown.';
-				}
-			}
-
-			const fetched = decorateDashboardCalendarItems(
-				mergeDashboardCalendarItems(internalItems, providerItems),
-				calendarSourceLookup
-			);
-			items = fetched;
-			cache = {
-				start: bufferedStart,
-				end: bufferedEnd,
-				key,
-				items: fetched
-			};
+			const hadMeta = preferencesLoaded;
+			applyMeta(payload.meta);
+			internalItems = payload.items;
+			hasLoadedInitialData = true;
+			// First visit: connected calendars are only known once meta arrives.
+			if (!hadMeta) void loadProviderEvents();
 		} catch (err) {
 			if (activeRequestId !== itemsRequestId) return;
 			console.error('[DashboardCalendar] Failed to load items:', err);
 			error = err instanceof Error ? err.message : 'Failed to load calendar items';
 		} finally {
 			if (activeRequestId === itemsRequestId) {
-				hasLoadedInitialData = true;
 				isLoading = false;
 				isRefreshing = false;
 			}
 		}
 	}
 
-	function saveLocalState() {
-		if (!browser) return;
-		const payload = {
-			viewMode,
-			date: currentDate.toISOString(),
-			hiddenCalendarSourceIds
-		};
-		localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
-	}
+	async function loadProviderEvents(options: { force?: boolean } = {}) {
+		const date = currentDate;
+		const mode = viewMode;
+		const activeRequestId = ++providerRequestId;
+		if (!includeEvents || enabledCalendarSources.length === 0) {
+			if (preferencesLoaded) calendarReadWarning = null;
+			return;
+		}
 
-	function restoreLocalState() {
-		if (!browser) return;
-		const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-		if (!raw) return;
+		const cached = options.force ? null : peekDashboardCalendarProviderEvents(date, mode);
+		if (cached) {
+			providerPayload = cached.payload;
+			if (cached.fresh) return;
+		}
+
 		try {
-			const parsed = JSON.parse(raw) as {
-				viewMode?: ViewMode;
-				date?: string;
-				hiddenCalendarSourceIds?: string[];
-			};
-			if (parsed.viewMode) {
-				viewMode = parsed.viewMode;
-			}
-			if (parsed.date) {
-				const parsedDate = new Date(parsed.date);
-				if (!Number.isNaN(parsedDate.getTime())) {
-					currentDate = parsedDate;
-				}
-			}
-			if (Array.isArray(parsed.hiddenCalendarSourceIds)) {
-				hiddenCalendarSourceIds = parsed.hiddenCalendarSourceIds.filter(
-					(id): id is string => typeof id === 'string'
-				);
-			}
-		} catch {
-			// Ignore corrupted local storage
+			const payload = await loadDashboardCalendarProviderEvents(date, mode, {
+				force: options.force
+			});
+			if (activeRequestId !== providerRequestId) return;
+			providerPayload = payload;
+			calendarReadWarning = payload.partial
+				? 'Some connected calendars took too long to respond. The rest are shown.'
+				: null;
+		} catch (fetchError) {
+			if (activeRequestId !== providerRequestId) return;
+			console.warn(
+				'[DashboardCalendar] Failed to load connected Google calendars:',
+				fetchError
+			);
+			calendarReadWarning =
+				'BuildOS items loaded, but connected Google calendars could not be refreshed.';
 		}
 	}
 
-	function handleToggleChange() {
-		if (suppressPreferenceSync) return;
+	function setLayer(layer: LayerKey, value: boolean) {
+		if (layer === 'events') includeEvents = value;
+		if (layer === 'range') includeTaskRange = value;
+		if (layer === 'start') includeTaskStart = value;
+		if (layer === 'due') includeTaskDue = value;
+		updateDashboardCalendarPreferences({
+			show_events: includeEvents,
+			show_task_scheduled: includeTaskRange,
+			show_task_start: includeTaskStart,
+			show_task_due: includeTaskDue
+		});
 		persistPreferences();
-		void loadCalendarItems({ force: true });
+		if (layer === 'events' && value) void loadProviderEvents();
 	}
 
-	function restoreLayer(layer: 'events' | 'range' | 'start' | 'due') {
-		if (layer === 'events') includeEvents = true;
-		if (layer === 'range') includeTaskRange = true;
-		if (layer === 'start') includeTaskStart = true;
-		if (layer === 'due') includeTaskDue = true;
-		handleToggleChange();
+	function setHiddenCalendarSources(ids: string[]) {
+		hiddenCalendarSourceIds = ids;
+		saveDashboardCalendarState({ hiddenCalendarSourceIds: ids });
 	}
 
 	function toggleCalendarSource(calendarSourceId: string) {
-		hiddenCalendarSourceIds = hiddenCalendarSourceSet.has(calendarSourceId)
-			? hiddenCalendarSourceIds.filter((id) => id !== calendarSourceId)
-			: [...hiddenCalendarSourceIds, calendarSourceId];
-		saveLocalState();
+		setHiddenCalendarSources(
+			hiddenCalendarSourceSet.has(calendarSourceId)
+				? hiddenCalendarSourceIds.filter((id) => id !== calendarSourceId)
+				: [...hiddenCalendarSourceIds, calendarSourceId]
+		);
 	}
 
-	function showAllCalendarSources() {
-		hiddenCalendarSourceIds = [];
-		saveLocalState();
-	}
-
-	function hideAllCalendarSources() {
-		hiddenCalendarSourceIds = [
-			BUILDOS_CALENDAR_SOURCE_ID,
-			...enabledCalendarSources.map((source) => source.id)
-		];
-		saveLocalState();
+	function showEverything() {
+		setHiddenCalendarSources([]);
+		for (const option of layerOptions) {
+			if (!isLayerOn(option.key)) setLayer(option.key, true);
+		}
 	}
 
 	function handleDateChange(date: Date) {
 		currentDate = date;
-		saveLocalState();
 		void loadCalendarItems();
 	}
 
 	function handleViewModeChange(mode: ViewMode) {
 		viewMode = mode;
-		saveLocalState();
+		saveDashboardCalendarState({ viewMode: mode });
 		void loadCalendarItems();
 	}
 
-	async function handleRefresh() {
-		await loadCalendarConnections();
-		await loadCalendarItems({ force: true, refreshing: true });
+	function handleRefresh() {
+		invalidateDashboardCalendar({ meta: true });
+		void loadCalendarItems({ force: true });
 	}
 
 	function resolveCalendarItem(event: any): CalendarItem | null {
@@ -675,12 +578,6 @@
 
 	async function handleEventClick(event: any) {
 		const item = resolveCalendarItem(event);
-		console.log('[DashboardCalendar] Event clicked:', {
-			event,
-			resolvedItem: item,
-			hasTaskId: !!item?.task_id,
-			hasProjectId: !!item?.project_id
-		});
 		if (!item) return;
 		selectedItem = item;
 		showDetailDrawer = true;
@@ -714,11 +611,6 @@
 	}
 
 	async function openTaskEditor() {
-		console.log('[DashboardCalendar] openTaskEditor called:', {
-			selectedItem,
-			hasTaskId: !!selectedItem?.task_id,
-			hasProjectId: !!selectedItem?.project_id
-		});
 		if (!selectedItem?.task_id || !selectedItem.project_id) {
 			console.warn('[DashboardCalendar] Missing task_id or project_id', {
 				task_id: selectedItem?.task_id,
@@ -750,6 +642,7 @@
 		editProjectId = null;
 		// The edit may have changed any cached detail (title, dates, links).
 		detailCache.clear();
+		invalidateDashboardCalendar();
 		void loadCalendarItems({ force: true });
 	}
 
@@ -888,282 +781,43 @@
 		}
 	}
 
-	onMount(async () => {
-		restoreLocalState();
-		await Promise.all([loadPreferences(), loadCalendarConnections()]);
-		await loadCalendarItems();
+	onMount(() => {
+		// The calendar always opens on today; the view and hidden calendars persist.
+		const saved = readSavedDashboardCalendarState();
+		viewMode = saved.viewMode;
+		hiddenCalendarSourceIds = saved.hiddenCalendarSourceIds;
+		applyMeta(peekDashboardCalendarMeta());
+		void loadCalendarItems();
 	});
 </script>
 
+<svelte:head>
+	<title>Calendar - BuildOS</title>
+</svelte:head>
+
+{#snippet togglePill(pressed: boolean, label: string, onclick: () => void, dotColor: string | null)}
+	<button
+		type="button"
+		aria-pressed={pressed}
+		{onclick}
+		class="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable {pressed
+			? 'border-border-strong bg-background text-foreground'
+			: 'border-border bg-transparent text-muted-foreground line-through decoration-muted-foreground/50'}"
+	>
+		{#if dotColor}
+			<span
+				class="h-2 w-2 shrink-0 rounded-full {pressed ? '' : 'opacity-40'}"
+				style:background-color={dotColor}
+				aria-hidden="true"
+			></span>
+		{/if}
+		<span class="truncate">{label}</span>
+	</button>
+{/snippet}
+
 <div class="min-h-screen bg-background">
-	<div class="mx-auto max-w-7xl px-2 py-3 sm:px-4 sm:py-6 lg:px-6">
-		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-			<div class="space-y-0.5">
-				<button
-					onclick={() => goto(resolve('/dashboard'))}
-					class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground pressable"
-				>
-					<ArrowLeft class="h-3 w-3" />
-					Dashboard
-				</button>
-				<h1 class="text-lg font-bold text-foreground">Calendar</h1>
-			</div>
-			<div class="flex flex-wrap items-center gap-1.5">
-				<Button
-					variant="outline"
-					size="sm"
-					onclick={() => (showSettings = !showSettings)}
-					class="pressable"
-				>
-					<SlidersHorizontal class="h-3.5 w-3.5 mr-1.5" />
-					Filters
-				</Button>
-			</div>
-		</div>
-
-		{#if calendarConnections}
-			<section
-				class="mt-3 rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak"
-				aria-labelledby="calendar-sources-heading"
-			>
-				<div class="flex flex-wrap items-center justify-between gap-2">
-					<div class="flex min-w-0 items-center gap-2">
-						<div
-							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
-						>
-							<CalendarDays class="h-4 w-4" aria-hidden="true" />
-						</div>
-						<div class="min-w-0">
-							<h2
-								id="calendar-sources-heading"
-								class="text-sm font-semibold text-foreground"
-							>
-								Calendar sources
-							</h2>
-							<p class="truncate text-xs text-muted-foreground">
-								{visibleCalendarSourceCount} of {totalCalendarSourceCount} shown ·
-								{calendarConnections.connections.length} Google
-								{calendarConnections.connections.length === 1
-									? 'account'
-									: 'accounts'}
-							</p>
-						</div>
-					</div>
-					<div class="flex items-center gap-1.5">
-						<Button
-							variant="ghost"
-							size="sm"
-							onclick={visibleCalendarSourceCount === totalCalendarSourceCount
-								? hideAllCalendarSources
-								: showAllCalendarSources}
-						>
-							{#if visibleCalendarSourceCount === totalCalendarSourceCount}
-								<EyeOff class="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-								Hide all
-							{:else}
-								<Eye class="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-								Show all
-							{/if}
-						</Button>
-						<a
-							href={resolve('/profile?tab=calendar&calendar=1')}
-							class="inline-flex min-h-11 items-center rounded-md px-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-						>
-							Manage
-						</a>
-					</div>
-				</div>
-
-				<div class="mt-2.5 flex flex-wrap gap-2" aria-label="Calendar visibility">
-					<button
-						type="button"
-						aria-pressed={isBuildOsVisible}
-						aria-label={`${isBuildOsVisible ? 'Hide' : 'Show'} BuildOS tasks and internal events`}
-						onclick={() => toggleCalendarSource(BUILDOS_CALENDAR_SOURCE_ID)}
-						class="flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left shadow-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable {isBuildOsVisible
-							? 'border-border-strong bg-background text-foreground'
-							: 'border-border bg-muted/40 text-muted-foreground'}"
-					>
-						<span
-							class="h-3 w-3 shrink-0 rounded-full bg-accent ring-1 ring-border-strong {isBuildOsVisible
-								? ''
-								: 'opacity-35'}"
-							aria-hidden="true"
-						></span>
-						<span class="min-w-0">
-							<span class="block truncate text-xs font-semibold">BuildOS</span>
-							<span class="block truncate text-2xs text-muted-foreground">
-								Tasks &amp; internal events
-							</span>
-						</span>
-					</button>
-
-					{#if enabledCalendarSources.length > 0}
-						{#each enabledCalendarSources as source (source.id)}
-							{@const isVisible = !hiddenCalendarSourceSet.has(source.id)}
-							<button
-								type="button"
-								aria-pressed={isVisible}
-								aria-label={`${isVisible ? 'Hide' : 'Show'} ${getCalendarSourceDisplayName(source)} from ${source.emailAddress}`}
-								onclick={() => toggleCalendarSource(source.id)}
-								class="flex min-h-11 min-w-0 max-w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left shadow-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable {isVisible
-									? 'border-border-strong bg-background text-foreground'
-									: 'border-border bg-muted/40 text-muted-foreground'}"
-							>
-								<span
-									class="h-3 w-3 shrink-0 rounded-full ring-1 ring-border-strong {isVisible
-										? ''
-										: 'opacity-35'}"
-									style:background-color={getSafeCalendarColor(
-										source.backgroundColor
-									)}
-									aria-hidden="true"
-								></span>
-								<span class="min-w-0">
-									<span class="block truncate text-xs font-semibold">
-										{getCalendarSourceDisplayName(source)}
-									</span>
-									<span class="block truncate text-2xs text-muted-foreground">
-										{source.emailAddress}
-									</span>
-								</span>
-							</button>
-						{/each}
-					{/if}
-				</div>
-				{#if enabledCalendarSources.length === 0}
-					<p class="mt-2.5 text-sm text-muted-foreground">
-						No Google calendars are enabled for display. Use Manage to turn on Events
-						for a calendar.
-					</p>
-				{/if}
-			</section>
-		{:else if calendarConnectionsError}
-			<div
-				class="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
-			>
-				{calendarConnectionsError}
-			</div>
-		{/if}
-
-		{#if !showSettings && (!includeEvents || !includeTaskRange || !includeTaskStart || !includeTaskDue)}
-			<div
-				class="mt-2 flex flex-wrap items-center gap-1.5"
-				aria-label="Hidden calendar layers"
-			>
-				{#if !includeEvents}
-					<button
-						type="button"
-						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-ink transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
-						aria-label="Show events"
-						onclick={() => restoreLayer('events')}
-					>
-						Events off
-						<X class="h-3 w-3 shrink-0" aria-hidden="true" />
-					</button>
-				{/if}
-				{#if !includeTaskRange}
-					<button
-						type="button"
-						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-ink transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
-						aria-label="Show task ranges"
-						onclick={() => restoreLayer('range')}
-					>
-						Task ranges off
-						<X class="h-3 w-3 shrink-0" aria-hidden="true" />
-					</button>
-				{/if}
-				{#if !includeTaskStart}
-					<button
-						type="button"
-						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-ink transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
-						aria-label="Show task start markers"
-						onclick={() => restoreLayer('start')}
-					>
-						Start markers off
-						<X class="h-3 w-3 shrink-0" aria-hidden="true" />
-					</button>
-				{/if}
-				{#if !includeTaskDue}
-					<button
-						type="button"
-						class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-ink transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
-						aria-label="Show task due markers"
-						onclick={() => restoreLayer('due')}
-					>
-						Due markers off
-						<X class="h-3 w-3 shrink-0" aria-hidden="true" />
-					</button>
-				{/if}
-			</div>
-		{/if}
-
-		{#if showSettings}
-			<div
-				class="mt-3 rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak"
-			>
-				<div class="flex items-center gap-2 mb-2">
-					<SlidersHorizontal class="h-3.5 w-3.5 text-muted-foreground" />
-					<span class="micro-label text-foreground">Display filters</span>
-				</div>
-				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-					<label class="flex items-center gap-2 text-sm">
-						<input
-							type="checkbox"
-							bind:checked={includeEvents}
-							onchange={handleToggleChange}
-							class="h-4 w-4 rounded border-border"
-						/>
-						<span>Events</span>
-					</label>
-					<label class="flex items-center gap-2 text-sm">
-						<input
-							type="checkbox"
-							bind:checked={includeTaskRange}
-							onchange={handleToggleChange}
-							class="h-4 w-4 rounded border-border"
-						/>
-						<span>Task ranges</span>
-					</label>
-					<label class="flex items-center gap-2 text-sm">
-						<input
-							type="checkbox"
-							bind:checked={includeTaskStart}
-							onchange={handleToggleChange}
-							class="h-4 w-4 rounded border-border"
-						/>
-						<span>Task start markers</span>
-					</label>
-					<label class="flex items-center gap-2 text-sm">
-						<input
-							type="checkbox"
-							bind:checked={includeTaskDue}
-							onchange={handleToggleChange}
-							class="h-4 w-4 rounded border-border"
-						/>
-						<span>Task due markers</span>
-					</label>
-				</div>
-			</div>
-		{/if}
-
-		{#if error}
-			<div
-				class="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive tx tx-static tx-weak"
-			>
-				{error}
-			</div>
-		{/if}
-
-		{#if calendarReadWarning}
-			<div
-				class="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
-			>
-				{calendarReadWarning}
-			</div>
-		{/if}
-
-		<div class="mt-3 rounded-lg border border-border bg-card shadow-ink">
+	<div class="mx-auto max-w-7xl px-2 py-3 sm:px-4 sm:py-5 lg:px-6">
+		<div class="overflow-clip rounded-lg border border-border bg-card shadow-ink">
 			<CalendarView
 				{viewMode}
 				{currentDate}
@@ -1175,7 +829,120 @@
 				onviewModeChange={handleViewModeChange}
 				onrefresh={handleRefresh}
 				oneventClick={handleEventClick}
-			/>
+			>
+				{#snippet toolbarStart()}
+					<a
+						href={resolve('/dashboard')}
+						data-sveltekit-preload-data="hover"
+						aria-label="Back to dashboard"
+						class="-ml-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+					>
+						<ArrowLeft class="h-4 w-4" />
+					</a>
+					<h1 class="text-base font-semibold text-foreground">Calendar</h1>
+				{/snippet}
+
+				{#snippet toolbarEnd()}
+					<Button
+						variant="ghost"
+						size="sm"
+						onclick={() => (showSettings = !showSettings)}
+						aria-expanded={showSettings}
+						aria-controls="calendar-filters"
+						class="relative p-1.5 sm:px-2.5 {showSettings ? 'bg-muted' : ''}"
+						title="Filter what the calendar shows"
+					>
+						<SlidersHorizontal class="h-4 w-4 shrink-0 sm:mr-1.5" />
+						<span class="sr-only sm:not-sr-only">Filters</span>
+						{#if hiddenCount > 0}
+							<span
+								class="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-2xs font-semibold text-accent-foreground"
+								aria-label={`${hiddenCount} hidden`}
+							>
+								{hiddenCount}
+							</span>
+						{/if}
+					</Button>
+				{/snippet}
+
+				{#snippet subbar()}
+					{#if showSettings}
+						<div
+							id="calendar-filters"
+							class="space-y-2.5 border-b border-border bg-background/60 px-3 py-3"
+						>
+							<div class="flex flex-wrap items-center gap-1.5">
+								<span class="micro-label mr-1 w-20 shrink-0">Show</span>
+								{#each layerOptions as option (option.key)}
+									{@render togglePill(
+										isLayerOn(option.key),
+										option.label,
+										() => setLayer(option.key, !isLayerOn(option.key)),
+										null
+									)}
+								{/each}
+							</div>
+							<div class="flex flex-wrap items-center gap-1.5">
+								<span class="micro-label mr-1 w-20 shrink-0">Calendars</span>
+								{@render togglePill(
+									isBuildOsVisible,
+									'BuildOS',
+									() => toggleCalendarSource(BUILDOS_CALENDAR_SOURCE_ID),
+									'hsl(var(--accent))'
+								)}
+								{#each enabledCalendarSources as source (source.id)}
+									{@render togglePill(
+										!hiddenCalendarSourceSet.has(source.id),
+										getCalendarSourceDisplayName(source),
+										() => toggleCalendarSource(source.id),
+										getSafeCalendarColor(source.backgroundColor)
+									)}
+								{/each}
+								{#if calendarConnections}
+									<a
+										href={resolve('/profile?tab=calendar&calendar=1')}
+										class="ml-1 inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+									>
+										Manage calendars
+									</a>
+								{/if}
+							</div>
+						</div>
+					{:else if hiddenCount > 0}
+						<div
+							class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border bg-background/60 px-3 py-1.5 text-xs text-muted-foreground"
+						>
+							<span class="min-w-0 truncate">
+								Hidden: {[...hiddenLayerLabels, ...hiddenSourceLabels].join(' · ')}
+							</span>
+							<button
+								type="button"
+								onclick={showEverything}
+								class="shrink-0 rounded font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								Show all
+							</button>
+						</div>
+					{/if}
+
+					{#if error || calendarReadWarning || calendarConnectionsError}
+						<div
+							class="space-y-1 border-b border-border px-3 py-2 text-xs"
+							role="status"
+						>
+							{#if error}
+								<p class="text-destructive">{error}</p>
+							{/if}
+							{#if calendarReadWarning}
+								<p class="text-foreground">{calendarReadWarning}</p>
+							{/if}
+							{#if calendarConnectionsError}
+								<p class="text-foreground">{calendarConnectionsError}</p>
+							{/if}
+						</div>
+					{/if}
+				{/snippet}
+			</CalendarView>
 		</div>
 	</div>
 </div>
@@ -1184,7 +951,7 @@
 	<CalendarItemDrawer
 		isOpen={showDetailDrawer}
 		onClose={closeDetail}
-		title={selectedItem.title || 'Calendar item'}
+		title={getDashboardCalendarItemTitle(selectedItem)}
 		subtitle={selectedItem.item_type === 'task'
 			? `Task · ${getTaskMarkerLabel(selectedItem.item_kind)}`
 			: isConnectedGoogleCalendarItem(selectedItem)

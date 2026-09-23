@@ -105,7 +105,10 @@ describe('tool surface size report', () => {
 		// surface caps below still hold without increasing their budgets.
 		// 2026-09-12: explicit task-creation evidence and recurrence guidance added
 		// 156 chars (3,056 -> 3,212). Keep a tight 38-char attribution margin.
-		expect(createTask?.chars).toBeLessThanOrEqual(3250);
+		// 2026-09-21 (3a407d688, tasker 92 change B, gated): one type_key policy
+		// ("set it only when the user states or clearly implies the work mode")
+		// added 119 chars (3,212 -> 3,331). Same tight margin.
+		expect(createTask?.chars).toBeLessThanOrEqual(3370);
 	});
 
 	it('retains the reviewed estimate and relationship capabilities behind the size budgets', () => {
@@ -219,9 +222,10 @@ describe('tool surface size report', () => {
 		expect(calendar?.incrementalByProfile.project_create).toMatchObject({ toolCount: 7 });
 		// 2026-09-12: the same reviewed task-schema guidance moves the complete
 		// plan bundle to 4,577 estimated tokens. Retain 23 tokens of headroom.
-		expect(plan?.estimatedTokens).toBeLessThanOrEqual(4_600);
+		// 2026-09-21: the tasker 92 type_key policy moves it to 4,620.
+		expect(plan?.estimatedTokens).toBeLessThanOrEqual(4_650);
 		expect(Math.max(...reports.map((report) => report.estimatedTokens))).toBeLessThanOrEqual(
-			4_600
+			4_650
 		);
 	});
 });

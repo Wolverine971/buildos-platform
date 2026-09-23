@@ -44,6 +44,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'get_external_account_status email.accounts.status read',
 	'get_field_info util.schema.field_info read',
 	'get_linked_entities onto.entity.links.get read',
+	'get_onto_asset onto.asset.get read',
 	'get_onto_document_details onto.document.get read',
 	'get_onto_goal_details onto.goal.get read',
 	'get_onto_milestone_details onto.milestone.get read',
@@ -78,6 +79,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'resolve_user_contact_candidate util.contact.candidate.resolve write',
 	'search_all_projects x.search.all_projects read',
 	'search_email_messages email.messages.search read',
+	'search_onto_assets onto.asset.search read',
 	'search_onto_documents onto.document.search read',
 	'search_onto_goals onto.goal.search read',
 	'search_onto_milestones onto.milestone.search read',
@@ -92,6 +94,9 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'tag_onto_entity x.misc.tag_onto_entity write',
 	'unlink_onto_edge onto.edge.unlink write',
 	'update_calendar_event cal.event.update write',
+	// Added 2026-09-22 with the chat image tools. The two asset reads reuse the
+	// existing external ops; onto.asset.update is a new external write op.
+	'update_onto_asset onto.asset.update write',
 	'update_onto_document onto.document.update write',
 	'update_onto_goal onto.goal.update write',
 	'update_onto_milestone onto.milestone.update write',

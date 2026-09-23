@@ -115,6 +115,7 @@ const NON_EFFECT_ARGUMENTS = new Set([
 	'plan_id',
 	'milestone_id',
 	'risk_id',
+	'asset_id',
 	'edge_id',
 	'entity_id',
 	'new_parent_id',
@@ -148,6 +149,15 @@ function moveSelectsParent(toolName: string, args: ParsedArgs): boolean {
 	);
 }
 
+/**
+ * Filing an image is the effect of `update_onto_asset` when it carries
+ * `document_id` (a document, or null for the Images shelf). The id is routing
+ * metadata everywhere else, so it is recorded only for this tool.
+ */
+function assetSelectsPlacement(toolName: string, args: ParsedArgs): boolean {
+	return toolName === 'update_onto_asset' && Object.hasOwn(args, 'document_id');
+}
+
 function taskDurationProps(toolName: string, args: ParsedArgs): ParsedArgs | null {
 	if (toolName !== 'create_onto_task' && toolName !== 'update_onto_task') return null;
 	const props = extractResultObject(args.props);
@@ -168,6 +178,7 @@ export function getWriteLedgerChangedFields(toolName: string, args: ParsedArgs):
 	if (moveSelectsParent(toolName, args)) {
 		fields.push('parent_id');
 	}
+	if (assetSelectsPlacement(toolName, args)) fields.push('document_id');
 	if (taskDurationProps(toolName, args)) fields.push('props.duration_minutes');
 	return Array.from(new Set(fields)).sort();
 }
@@ -220,6 +231,10 @@ function extractChangedValues(
 			(Object.hasOwn(args, 'new_parent_id') ? args.new_parent_id : args.parent_id);
 		const canonical = canonicalScalarEffectValue(value);
 		if (canonical !== undefined) values.parent_id = canonical;
+	}
+	if (assetSelectsPlacement(toolName, args)) {
+		const canonical = canonicalScalarEffectValue(args.document_id);
+		if (canonical !== undefined) values.document_id = canonical;
 	}
 	return values;
 }
@@ -390,6 +405,18 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 		if (toolName === 'update_onto_document') {
 			const strategy = readString(args.update_strategy as string);
 			if (strategy) entry.strategy = strategy;
+		}
+		if (toolName === 'update_onto_asset') {
+			// The saved caption is the image's name; the receipt's placement is
+			// where the document tree now shows it.
+			const asset = extractResultObject(result?.asset);
+			const caption = readString(asset?.caption) ?? readString(args.caption);
+			if (caption) entry.title = caption;
+			const placement = extractResultObject(result?.placement);
+			const documentId = readString(placement?.document_id);
+			if (documentId) entry.parentId = documentId;
+			const documentTitle = readString(placement?.document_title);
+			if (documentTitle) entry.parentTitle = documentTitle;
 		}
 	} else {
 		const errorText =

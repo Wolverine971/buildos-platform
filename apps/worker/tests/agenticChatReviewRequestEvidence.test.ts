@@ -516,7 +516,9 @@ describe('actor-facing commission guidance', () => {
 			'A direct call is fine when the target id is the focused entity, was given by the user, or is the only entity of its kind a read returned this turn.'
 		);
 		// Budget guard: the 2026-09-02 audit measured 4,677 chars for this message.
-		expect(deferred!.length).toBeLessThan(2_600);
-		expect(full!.length).toBeLessThan(3_300);
+		// 2026-09-22 book loop: the first commission line grew ~170 chars on purpose
+		// ("call the tools yourself; describing never stages"); measured 2,603 / 3,466.
+		expect(deferred!.length).toBeLessThan(2_650);
+		expect(full!.length).toBeLessThan(3_500);
 	});
 });

@@ -98,6 +98,11 @@
 			description: 'Allow the agent to place or reorder documents in project trees.'
 		},
 		{
+			op: 'onto.asset.update',
+			label: 'Name and file images',
+			description: 'Allow the agent to rename project images and file them under documents.'
+		},
+		{
 			op: 'onto.project.create',
 			label: 'Create projects',
 			description: 'Allow the agent to spin up new projects. Use carefully.'

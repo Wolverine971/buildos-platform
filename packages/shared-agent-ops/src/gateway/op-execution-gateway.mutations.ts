@@ -12,7 +12,7 @@ import type {
 	ProposedChangeAction
 } from '@buildos/shared-types';
 
-export type GatewayMutationEntityKind = ProjectLogEntityType | 'calendar';
+export type GatewayMutationEntityKind = ProjectLogEntityType | 'calendar' | 'asset';
 
 export type GatewayMutationActivityConfig = {
 	entityType: ProjectLogEntityType;
@@ -123,6 +123,12 @@ export const GATEWAY_MUTATION_COMMANDS: Record<BuildosAgentWriteOp, GatewayMutat
 		entityKind: 'edge',
 		proposedChangeAction: 'delete',
 		activity: { entityType: 'edge', action: 'updated' }
+	},
+	'onto.asset.update': {
+		// No generic activity row: onto_project_logs has no `asset` entity type.
+		// The handler logs the filing on the affected document(s) itself.
+		entityKind: 'asset',
+		proposedChangeAction: 'update'
 	},
 	'cal.event.create': {
 		entityKind: 'event',

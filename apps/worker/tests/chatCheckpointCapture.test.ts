@@ -11,7 +11,9 @@ import {
 import {
 	type SectionEdit,
 	applySectionEdit,
-	normalizeSynthesisReply
+	normalizeSynthesisReply,
+	normalizeThinkingLogReply,
+	restatedAdditions
 } from '../src/workers/chat/checkpoint/capturePrompts';
 import {
 	type MemoryCheckpointFixture,
@@ -410,8 +412,12 @@ describe('section edits', () => {
 				blocks,
 				edit({
 					add: [
-						{ after: 'b1', markdown: '[b3] - **Three** — third.' },
-						{ after: 'b99', markdown: '- **Four** — unknown anchor goes last.' }
+						{ after: 'b1', restates: null, markdown: '[b3] - **Three** — third.' },
+						{
+							after: 'b99',
+							restates: null,
+							markdown: '- **Four** — unknown anchor goes last.'
+						}
 					],
 					remove: ['b2'],
 					replace: [{ id: 'b1', markdown: '[b1] - **One** — first, revised.' }]
@@ -424,10 +430,56 @@ describe('section edits', () => {
 		]);
 	});
 
+	it('drops an addition the model marked as restating a line anywhere in the doc', () => {
+		const restating = edit({
+			add: [
+				{ after: null, restates: 'b7', markdown: '- **One again** — same point.' },
+				{
+					after: null,
+					restates: 'b404',
+					markdown: '- **Five** — unknown restates id is kept.'
+				}
+			]
+		});
+		const documentIds = new Set(['b1', 'b2', 'b7']);
+		expect(applySectionEdit(blocks, restating, documentIds)).toEqual([
+			'- **One** — first.',
+			'- **Two** — second.',
+			'- **Five** — unknown restates id is kept.'
+		]);
+		expect(restatedAdditions(restating, documentIds)).toBe(1);
+		expect(
+			normalizeSynthesisReply({
+				edits: [{ heading: 'Decisions', add: [{ restates: ' b7 ', markdown: 'x' }] }]
+			}).edits[0]?.add
+		).toEqual([{ after: null, restates: 'b7', markdown: 'x' }]);
+	});
+
 	it('lets a rewrite replace the whole section', () => {
 		expect(applySectionEdit(blocks, edit({ rewrite: '[b1] - Snapshot.' }))).toEqual([
 			'- Snapshot.'
 		]);
+	});
+
+	it('does not log passages the model labeled as instructions', () => {
+		expect(
+			normalizeThinkingLogReply({
+				topic: 'Prep',
+				passages: [
+					{
+						message_id: 'm1',
+						kind: 'instruction',
+						text: 'Can you research the luncheon?'
+					},
+					{
+						message_id: 'm2',
+						kind: 'thinking',
+						text: 'I think the room is mostly owners.'
+					},
+					{ message_id: 'm3', text: 'Unlabeled passages are kept.' }
+				]
+			}).passages.map((passage) => passage.messageId)
+		).toEqual(['m2', 'm3']);
 	});
 
 	it('drops malformed edits', () => {
@@ -446,7 +498,7 @@ describe('section edits', () => {
 		).toEqual([
 			{
 				heading: 'Decisions',
-				add: [{ after: null, markdown: '- ok' }],
+				add: [{ after: null, restates: null, markdown: '- ok' }],
 				remove: ['b2'],
 				replace: [],
 				rewrite: null,

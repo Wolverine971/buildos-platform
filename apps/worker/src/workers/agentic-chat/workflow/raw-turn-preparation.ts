@@ -6,6 +6,11 @@ import {
 	isDocumentSpecialistPolicyRef
 } from '@buildos/agentic-chat-runtime/specialists';
 import type { SpecialistSnapshotIdentity } from './specialist-snapshot-store';
+import {
+	type ContextEvidenceV1,
+	unavailableContextEvidence
+} from '@buildos/agentic-chat-runtime/context-finder';
+import type { WorkflowContextFinderPortV1 } from './context-finder-port';
 import { specialistStepLabels } from './workflow-projection';
 import type { SpecialistShadowObserver } from './specialist-selection-shadow';
 // apps/worker/src/workers/agentic-chat/workflow/raw-turn-preparation.ts
@@ -115,6 +120,8 @@ export type AgenticChatWorkflowTurnPreparerPortsV1 = {
 	projectReviewV2Enabled?: boolean;
 	projectReviewV3Enabled?: boolean;
 	observeSelection?: SpecialistShadowObserver;
+	/** Jev-selected evidence for published specialists that request it; absent when off. */
+	findContext?: WorkflowContextFinderPortV1;
 	loadSpecialistSnapshot?: (
 		identity: SpecialistSnapshotIdentity
 	) => Promise<ExecutableSpecialistSnapshot>;
@@ -177,6 +184,8 @@ type TraceState = {
 	progressPublishMs: number | null;
 	accessCheckMs: number | null;
 	contextLoadMs: number | null;
+	contextFinderMs: number | null;
+	contextFinderStatus: ContextEvidenceV1['status'] | null;
 	checkpointMs: number | null;
 	checkpointOutcome: string | null;
 	checkpointReplayed: boolean;
@@ -251,6 +260,8 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 				progressPublishMs: null,
 				accessCheckMs: null,
 				contextLoadMs: null,
+				contextFinderMs: null,
+				contextFinderStatus: null,
 				checkpointMs: null,
 				checkpointOutcome: null,
 				checkpointReplayed: false,
@@ -585,7 +596,13 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 					'Project context RPC failed'
 				);
 			}
+			const selectedEvidence = await this.findSelectedEvidence(
+				state,
+				projectId,
+				contextSignal
+			);
 			built = buildAgenticChatWorkflowContextV1({
+				selectedEvidence,
 				projectReviewV2: [
 					AGENTIC_CHAT_PROJECT_REVIEW_V2_POLICY_REF,
 					AGENTIC_CHAT_PROJECT_REVIEW_V3_POLICY_REF
@@ -1135,6 +1152,12 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 			progressPublishMs: round(trace.progressPublishMs),
 			accessCheckMs: round(trace.accessCheckMs),
 			contextLoadMs: round(trace.contextLoadMs),
+			...(trace.contextFinderStatus
+				? {
+						contextFinderMs: round(trace.contextFinderMs),
+						contextFinderStatus: trace.contextFinderStatus
+					}
+				: {}),
 			checkpointMs: round(trace.checkpointMs),
 			preparationMs: round(preparationMs) ?? 0,
 			checkpointOutcome: trace.checkpointOutcome,
@@ -1154,6 +1177,52 @@ export class AgenticChatWorkflowTurnPreparer implements AgenticChatRawWorkflowTu
 			}
 		}
 		return timing;
+	}
+
+	/**
+	 * Published specialists that request it get Jev-selected evidence inside the same bounded
+	 * context step, frozen into the checkpoint so recovery never ranks again. Fails open: a
+	 * loader or ranking error records `unavailable` and the review keeps its normal context.
+	 */
+	private async findSelectedEvidence(
+		state: PreparationState,
+		projectId: string,
+		signal: AbortSignal
+	): Promise<ContextEvidenceV1 | undefined> {
+		const snapshot = state.specialistSnapshot;
+		const request =
+			snapshot?.version === PUBLISHED_SPECIALIST_SNAPSHOT_VERSION
+				? snapshot.contextFinder
+				: undefined;
+		if (!request) return undefined;
+		const startedAt = this.mono();
+		let evidence: ContextEvidenceV1;
+		if (!this.ports.findContext) evidence = unavailableContextEvidence(null);
+		else {
+			try {
+				evidence = await abortable(
+					this.ports.findContext({
+						userId: state.claim.userId,
+						projectId,
+						question: state.raw!.input.request.message,
+						request,
+						signal
+					}),
+					signal
+				);
+			} catch (error) {
+				signal.throwIfAborted();
+				this.ports.onError?.({
+					stage: 'context_finder',
+					turnRunId: state.claim.turnRunId,
+					error
+				});
+				evidence = unavailableContextEvidence(null);
+			}
+		}
+		state.trace.contextFinderMs = this.mono() - startedAt;
+		state.trace.contextFinderStatus = evidence.status;
+		return evidence;
 	}
 
 	private report(stage: string, state: PreparationState, error: unknown): void {

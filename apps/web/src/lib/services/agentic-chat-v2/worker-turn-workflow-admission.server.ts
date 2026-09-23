@@ -15,6 +15,7 @@ import {
 	type SpecialistWorkbenchVersionV1,
 	type PublishedSpecialistRefV1,
 	type SpecialistRecommendationReceiptV1,
+	type PublishedSpecialistContextFinderV1,
 	DOCUMENT_ORGANIZATION_POLICY_REF,
 	type ExecutableSpecialistSnapshot
 } from '@buildos/agentic-chat-runtime/specialists';
@@ -90,7 +91,7 @@ export type AgenticChatWorkflowV4CommandV1 = {
 	projectFocus: { focusType: string } | null;
 	voiceNoteGroupId: string | null;
 	reviewIntent: 'project_review' | 'document_organization' | null;
-	publishedSpecialist?: PublishedSpecialistRefV1 | null;
+	publishedSpecialist?: (PublishedSpecialistRefV1 & { contextPlan?: unknown }) | null;
 };
 
 export type AgenticChatWorkflowV4IneligibleReasonV1 =
@@ -226,6 +227,7 @@ export async function buildAgenticChatWorkflowV4AdmissionArgs(input: {
 		snapshot: SpecialistWorkbenchVersionV1;
 		snapshotHash: string;
 		recommendation?: SpecialistRecommendationReceiptV1;
+		contextFinder?: PublishedSpecialistContextFinderV1;
 	};
 	transportDecisionId: string;
 	createId?: () => string;

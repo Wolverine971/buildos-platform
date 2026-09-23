@@ -179,6 +179,8 @@ const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 	delete_calendar_event: { toast: true, trackMutation: true },
 	set_project_calendar: { toast: true, trackMutation: true },
 	move_document_in_tree: { toast: true, trackMutation: true },
+	// No entity kind maps to an asset, so the receipt triggers a full project refresh.
+	update_onto_asset: { toast: true, trackMutation: true },
 
 	// Tracked but no user-facing toast (quieter effects)
 	create_task_document: { toast: false, trackMutation: true },
@@ -1387,6 +1389,23 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		move_document_in_tree: (args) => ({
 			action: 'Moving document in tree',
 			target: resolveEntityName('document', args?.document_id)
+		}),
+		search_onto_assets: (args) => ({
+			action: 'Searching images',
+			target: searchTarget(args)
+		}),
+		get_onto_asset: () => ({ action: 'Loading image' }),
+		update_onto_asset: (args) => ({
+			action:
+				typeof args?.document_id === 'string'
+					? 'Filing image'
+					: args?.document_id === null
+						? 'Moving image to the Images shelf'
+						: 'Updating image',
+			target:
+				typeof args?.document_id === 'string'
+					? resolveEntityName('document', args.document_id)
+					: normalizeEntityLabel(args?.caption)
 		}),
 		get_document_path: (args) => ({
 			action: 'Loading document path',

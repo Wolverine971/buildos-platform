@@ -89,7 +89,29 @@ describe('/api/onto/assets/[id]/render', () => {
 		expect(createSignedUrlMock).toHaveBeenCalledWith(
 			'projects/project-1/assets/asset-1/original.png',
 			1800,
-			{ transform: { width: 160, format: 'webp' } }
+			{ transform: { width: 160, format: 'webp', resize: 'contain' } }
 		);
+	});
+
+	it('keeps an explicit resize mode and omits the transform when no size is asked for', async () => {
+		await GET({
+			params: { id: 'asset-1' },
+			url: new URL(
+				'http://localhost/api/onto/assets/asset-1/render?width=64&height=64&resize=cover'
+			),
+			locals: createSessionLocals()
+		} as any);
+		expect(createSignedUrlMock).toHaveBeenLastCalledWith(expect.any(String), 1800, {
+			transform: { width: 64, height: 64, resize: 'cover' }
+		});
+
+		await GET({
+			params: { id: 'asset-1' },
+			url: new URL('http://localhost/api/onto/assets/asset-1/render'),
+			locals: createSessionLocals()
+		} as any);
+		expect(createSignedUrlMock).toHaveBeenLastCalledWith(expect.any(String), 1800, {
+			transform: undefined
+		});
 	});
 });

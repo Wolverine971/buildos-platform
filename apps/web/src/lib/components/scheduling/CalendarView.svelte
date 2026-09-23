@@ -1,16 +1,14 @@
 <!-- apps/web/src/lib/components/scheduling/CalendarView.svelte -->
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
+	import { format } from 'date-fns';
 	import {
 		Calendar,
-		CalendarRange,
 		ChevronLeft,
 		ChevronRight,
 		Clock,
 		ExternalLink,
-		Play,
-		RefreshCw,
-		Target
+		RefreshCw
 	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
@@ -34,6 +32,8 @@
 		externalLink?: string | null;
 		colorClass?: string | null;
 		colorStyle?: string | null;
+		/** Hex color for the event's dot/bar (e.g. its Google calendar color). */
+		accentColor?: string | null;
 		sourceLabel?: string | null;
 		allDay?: boolean | null;
 		all_day?: boolean | null;
@@ -50,6 +50,7 @@
 		displayEnd: Date;
 		color: string;
 		colorStyle?: string | null;
+		accentColor?: string | null;
 		sourceLabel?: string | null;
 		htmlLink?: string | null;
 		originalEvent?: CalendarViewEvent;
@@ -61,6 +62,9 @@
 		continuesBefore: boolean;
 		continuesAfter: boolean;
 	}
+
+	/** An event with its dates parsed once; per-day copies are cut from this. */
+	type NormalizedEvent = Omit<CalendarDayEvent, 'continuesBefore' | 'continuesAfter'>;
 
 	interface MonthEventSegment {
 		id: string;
@@ -86,6 +90,15 @@
 	const monthSegmentIdentityCache = new WeakMap<object, string>();
 	let monthSegmentIdentityCounter = 0;
 
+	const HOUR_HEIGHT_PX = 48;
+	const MONTH_LANE_PX = 22;
+	const MONTH_MAX_LANES = 3;
+	const VIEW_MODES = [
+		{ mode: 'day', label: 'Day' },
+		{ mode: 'week', label: 'Week' },
+		{ mode: 'month', label: 'Month' }
+	] as const;
+
 	interface Props {
 		viewMode?: 'day' | 'week' | 'month';
 		currentDate?: Date;
@@ -101,6 +114,12 @@
 		phaseStart?: Date | string | null;
 		phaseEnd?: Date | string | null;
 		highlightedTaskId?: string | null;
+		/** Leading toolbar content, e.g. a page title. */
+		toolbarStart?: Snippet;
+		/** Trailing toolbar content, e.g. a filter toggle. */
+		toolbarEnd?: Snippet;
+		/** Full-width row between the toolbar and the grid (filters, notices). */
+		subbar?: Snippet;
 		ondateChange?: (date: Date) => void;
 		onviewModeChange?: (mode: 'day' | 'week' | 'month') => void;
 		onrefresh?: () => void;
@@ -122,6 +141,9 @@
 		phaseStart = null,
 		phaseEnd = null,
 		highlightedTaskId = null,
+		toolbarStart,
+		toolbarEnd,
+		subbar,
 		ondateChange,
 		onviewModeChange,
 		onrefresh,
@@ -141,6 +163,15 @@
 			internalDate = new Date(currentDate);
 		}
 	});
+
+	let workStartHour = $derived(parseInt(workingHours.work_start_time.split(':')[0] ?? '9'));
+	let workEndHour = $derived(parseInt(workingHours.work_end_time.split(':')[0] ?? '17'));
+	let visibleHours = $derived(
+		Array.from(
+			{ length: Math.max(0, workEndHour - workStartHour) },
+			(_, i) => workStartHour + i
+		)
+	);
 
 	function navigatePeriod(direction: 1 | -1) {
 		const newDate = new Date(internalDate);
@@ -256,101 +287,90 @@
 		);
 	}
 
-	function eventOverlapsDay(start: Date, end: Date, date: Date): boolean {
-		const { start: dayStart, end: dayEnd } = getDayBounds(date);
-		return start < dayEnd && end > dayStart;
+	function isToday(date: Date): boolean {
+		return isSameLocalDay(date, new Date());
 	}
 
-	function buildDayEvent(
-		date: Date,
-		input: {
-			type: 'existing' | 'proposed';
-			title: string;
-			startValue: string | Date | null | undefined;
-			endValue: string | Date | null | undefined;
-			color: string;
-			colorStyle?: string | null;
-			sourceLabel?: string | null;
-			allDay?: boolean | null;
-			htmlLink?: string | null;
-			originalEvent?: CalendarViewEvent;
-			calendarItem?: any;
-			schedule?: any;
-			isHighlighted?: boolean;
-		}
-	): CalendarDayEvent | null {
-		const allDay = Boolean(input.allDay);
-		const normalized = normalizeEventDates(input.startValue, input.endValue, allDay);
-		if (!normalized || !eventOverlapsDay(normalized.start, normalized.end, date)) return null;
-
-		const { start: dayStart, end: dayEnd } = getDayBounds(date);
-		const spansMultipleDays = !isSameLocalDay(normalized.start, normalized.displayEnd);
-
-		return {
-			type: input.type,
-			title: input.title,
-			start: normalized.start,
-			end: normalized.end,
-			displayEnd: normalized.displayEnd,
-			color: input.color,
-			colorStyle: input.colorStyle,
-			sourceLabel: input.sourceLabel,
-			htmlLink: input.htmlLink,
-			originalEvent: input.originalEvent,
-			calendarItem: input.calendarItem,
-			schedule: input.schedule,
-			isHighlighted: input.isHighlighted,
-			allDay,
-			spansMultipleDays,
-			continuesBefore: normalized.start < dayStart,
-			continuesAfter: normalized.end > dayEnd
-		};
-	}
-
-	function getEventsForDay(date: Date): CalendarDayEvent[] {
-		const dayEvents: CalendarDayEvent[] = [];
+	// Parse every event's dates once per input change. The grid asks for ~42 days, several
+	// times each; re-parsing every event per call made month renders O(days × events × 3).
+	let normalizedEvents = $derived.by((): NormalizedEvent[] => {
+		const normalized: NormalizedEvent[] = [];
 
 		for (const event of events) {
-			const colorClass =
-				typeof event.colorClass === 'string'
-					? event.colorClass
-					: 'bg-muted border border-border';
-			const htmlLink = event.htmlLink ?? event.externalLink;
-			const allDay = event.allDay ?? event.all_day ?? event.calendarItem?.all_day ?? false;
-			const dayEvent = buildDayEvent(date, {
+			const allDay = Boolean(
+				event.allDay ?? event.all_day ?? event.calendarItem?.all_day ?? false
+			);
+			const dates = normalizeEventDates(
+				event.start?.dateTime || event.start?.date,
+				event.end?.dateTime || event.end?.date,
+				allDay
+			);
+			if (!dates) continue;
+			normalized.push({
 				type: 'existing',
 				title: event.summary || '(Untitled)',
-				startValue: event.start?.dateTime || event.start?.date,
-				endValue: event.end?.dateTime || event.end?.date,
-				color: colorClass,
+				...dates,
+				color:
+					typeof event.colorClass === 'string'
+						? event.colorClass
+						: 'bg-muted border border-border',
 				colorStyle: event.colorStyle,
+				accentColor: event.accentColor,
 				sourceLabel: event.sourceLabel,
-				allDay,
-				htmlLink,
+				htmlLink: event.htmlLink ?? event.externalLink,
 				originalEvent: event,
-				calendarItem: event.calendarItem
+				calendarItem: event.calendarItem,
+				allDay,
+				spansMultipleDays: !isSameLocalDay(dates.start, dates.displayEnd)
 			});
-			if (dayEvent) dayEvents.push(dayEvent);
 		}
 
 		for (const schedule of proposedSchedules) {
 			if (!schedule?.task?.title) continue;
-
+			const dates = normalizeEventDates(schedule.proposedStart, schedule.proposedEnd, false);
+			if (!dates) continue;
 			const isHighlighted = highlightedTaskId === schedule.task.id;
-			const dayEvent = buildDayEvent(date, {
+			normalized.push({
 				type: 'proposed',
 				title: schedule.task.title,
-				startValue: schedule.proposedStart,
-				endValue: schedule.proposedEnd,
+				...dates,
 				color: isHighlighted
 					? 'bg-accent/20 ring-2 ring-accent'
 					: schedule.hasConflict
-						? 'bg-destructive/10 border-destructive/40'
-						: 'bg-accent/10 border-accent/40',
+						? 'bg-destructive/10 border border-destructive/40'
+						: 'bg-accent/10 border border-accent/40',
 				schedule,
-				isHighlighted
+				isHighlighted,
+				allDay: false,
+				spansMultipleDays: !isSameLocalDay(dates.start, dates.displayEnd)
 			});
-			if (dayEvent) dayEvents.push(dayEvent);
+		}
+
+		return normalized;
+	});
+
+	// Per-day memo, rebuilt whenever the normalized events change. A plain Map (not state)
+	// so filling it during render never triggers reactivity.
+	let dayEventsMemo = $derived.by(() => {
+		void normalizedEvents;
+		return new Map<string, CalendarDayEvent[]>();
+	});
+
+	function getEventsForDay(date: Date): CalendarDayEvent[] {
+		const memo = dayEventsMemo;
+		const { start: dayStart, end: dayEnd } = getDayBounds(date);
+		const key = String(dayStart.getTime());
+		const cached = memo.get(key);
+		if (cached) return cached;
+
+		const dayEvents: CalendarDayEvent[] = [];
+		for (const event of normalizedEvents) {
+			if (!(event.start < dayEnd && event.end > dayStart)) continue;
+			dayEvents.push({
+				...event,
+				continuesBefore: event.start < dayStart,
+				continuesAfter: event.end > dayEnd
+			});
 		}
 
 		dayEvents.sort((a, b) => {
@@ -359,6 +379,7 @@
 			if (aMulti !== bMulti) return aMulti - bMulti;
 			return a.start.getTime() - b.start.getTime();
 		});
+		memo.set(key, dayEvents);
 		return dayEvents;
 	}
 
@@ -413,11 +434,8 @@
 			`height: ${Math.max(
 				5,
 				getTimePosition(layout.event.end) - getTimePosition(layout.event.start)
-			)}%`,
-			layout.event.colorStyle ?? ''
-		]
-			.filter(Boolean)
-			.join('; ');
+			)}%`
+		].join('; ');
 	}
 
 	function shouldRenderInAllDayLane(event: CalendarDayEvent): boolean {
@@ -437,6 +455,24 @@
 			month: 'short',
 			day: 'numeric'
 		});
+	}
+
+	/** "8p", "9:30a" — month cells are too narrow for "8:00 PM". */
+	function formatCompactTime(date: Date): string {
+		const hours = date.getHours();
+		const minutes = date.getMinutes();
+		const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+		const suffix = hours < 12 ? 'a' : 'p';
+		return minutes === 0
+			? `${hour12}${suffix}`
+			: `${hour12}:${String(minutes).padStart(2, '0')}${suffix}`;
+	}
+
+	function formatHourLabel(hour: number): string {
+		const normalized = ((hour % 24) + 24) % 24;
+		if (normalized === 0) return '12 AM';
+		if (normalized === 12) return '12 PM';
+		return normalized < 12 ? `${normalized} AM` : `${normalized - 12} PM`;
 	}
 
 	function getEventRangeLabel(event: CalendarDayEvent): string {
@@ -482,11 +518,16 @@
 	function getContinuationClass(event: CalendarDayEvent): string {
 		if (!shouldRenderInAllDayLane(event)) return '';
 		if (event.continuesBefore && event.continuesAfter) {
-			return 'border-l-4 border-r-4 border-l-accent/50 border-r-accent/50';
+			return 'border-l-2 border-r-2 border-l-accent/50 border-r-accent/50';
 		}
-		if (event.continuesBefore) return 'border-l-4 border-l-accent/50';
-		if (event.continuesAfter) return 'border-r-4 border-r-accent/50';
+		if (event.continuesBefore) return 'border-l-2 border-l-accent/50';
+		if (event.continuesAfter) return 'border-r-2 border-r-accent/50';
 		return '';
+	}
+
+	function getEventTitle(event: CalendarDayEvent): string {
+		const source = event.sourceLabel ? ` · ${event.sourceLabel}` : '';
+		return `${event.title} - ${getEventDayLabel(event)}${source}`;
 	}
 
 	function getEventIdentity(event: CalendarDayEvent): string {
@@ -579,7 +620,7 @@
 	}
 
 	function getVisibleMonthSegments(segments: MonthEventSegment[]): MonthEventSegment[] {
-		return segments.filter((segment) => segment.lane < 3);
+		return segments.filter((segment) => segment.lane < MONTH_MAX_LANES);
 	}
 
 	function getMonthLaneCount(segments: MonthEventSegment[]): number {
@@ -594,7 +635,7 @@
 	): number {
 		return segments.filter(
 			(segment) =>
-				segment.lane >= 3 &&
+				segment.lane >= MONTH_MAX_LANES &&
 				segment.startCol <= columnIndex &&
 				segment.endCol >= columnIndex
 		).length;
@@ -611,23 +652,24 @@
 		);
 	}
 
+	// Month cell geometry: 4px padding + 24px date badge, then 2px before the first lane.
 	function getMonthSegmentTop(lane: number): number {
-		return 30 + lane * 23;
+		return 30 + lane * MONTH_LANE_PX;
 	}
 
 	function getMonthCellEventOffset(laneCount: number): number {
-		return laneCount === 0 ? 8 : 8 + laneCount * 23;
+		return 2 + laneCount * MONTH_LANE_PX;
 	}
 
 	function getMonthRowMinHeight(laneCount: number): number {
-		return 104 + laneCount * 23;
+		return 108 + laneCount * MONTH_LANE_PX;
 	}
 
 	function getMonthSegmentStyle(segment: MonthEventSegment): string {
 		const radiusLeft = segment.continuesBefore ? '0' : '4px';
 		const radiusRight = segment.continuesAfter ? '0' : '4px';
-		const leftInset = segment.continuesBefore ? 0 : 6;
-		const rightInset = segment.continuesAfter ? 0 : 6;
+		const leftInset = segment.continuesBefore ? 0 : 4;
+		const rightInset = segment.continuesAfter ? 0 : 4;
 		const leftPercent = (segment.startCol / 7) * 100;
 		const widthPercent = (segment.colSpan / 7) * 100;
 		return [
@@ -637,14 +679,13 @@
 			`border-top-left-radius: ${radiusLeft}`,
 			`border-bottom-left-radius: ${radiusLeft}`,
 			`border-top-right-radius: ${radiusRight}`,
-			`border-bottom-right-radius: ${radiusRight}`,
-			segment.event.colorStyle ?? ''
+			`border-bottom-right-radius: ${radiusRight}`
 		].join('; ');
 	}
 
 	function getMonthSegmentLabel(segment: MonthEventSegment): string {
 		if (segment.event.allDay) return segment.event.title;
-		return `${formatTime(segment.event.start)} ${segment.event.title}`;
+		return `${formatCompactTime(segment.event.start)} ${segment.event.title}`;
 	}
 
 	function getTaskMarkerKind(event: CalendarDayEvent): TaskMarkerKind | null {
@@ -657,10 +698,40 @@
 		return null;
 	}
 
-	function getTaskMarkerLabel(kind: TaskMarkerKind, compact = false): string {
-		if (kind === 'range') return compact ? 'Sched' : 'Scheduled';
+	function getTaskMarkerLabel(kind: TaskMarkerKind): string {
+		if (kind === 'range') return 'Scheduled';
 		if (kind === 'start') return 'Start';
 		return 'Due';
+	}
+
+	/**
+	 * The glyph carries the item kind so chips can lead with the title:
+	 * due = goldenrod diamond, start = teal ring, scheduled = sage bar,
+	 * event = its calendar's color (BuildOS accent by default).
+	 */
+	function getGlyphClass(event: CalendarDayEvent): string {
+		if (event.type === 'proposed') {
+			return 'h-2 w-2 rounded-full border border-dashed border-accent';
+		}
+		const kind = getTaskMarkerKind(event);
+		if (kind === 'due') return 'h-1.5 w-1.5 rotate-45 rounded-[1px] bg-warning';
+		if (kind === 'start') return 'h-2 w-2 rounded-full border-[1.5px] border-info';
+		if (kind === 'range') return 'h-1.5 w-2.5 rounded-sm bg-success';
+		return event.accentColor ? 'h-2 w-2 rounded-full' : 'h-2 w-2 rounded-full bg-accent';
+	}
+
+	function getGlyphStyle(event: CalendarDayEvent): string | undefined {
+		if (event.type === 'proposed' || getTaskMarkerKind(event)) return undefined;
+		return event.accentColor ? `background-color: ${event.accentColor}` : undefined;
+	}
+
+	function getBarClass(event: CalendarDayEvent): string {
+		if (event.type === 'proposed') return 'bg-accent/50';
+		const kind = getTaskMarkerKind(event);
+		if (kind === 'due') return 'bg-warning';
+		if (kind === 'start') return 'bg-info';
+		if (kind === 'range') return 'bg-success';
+		return event.accentColor ? '' : 'bg-accent';
 	}
 
 	function getOpenDayAriaLabel(date: Date, hiddenCount: number): string {
@@ -670,301 +741,337 @@
 
 	function getTimePosition(date: Date): number {
 		const hours = date.getHours() + date.getMinutes() / 60;
-		const workStart = parseInt(workingHours.work_start_time.split(':')[0] ?? '9');
-		const workEnd = parseInt(workingHours.work_end_time.split(':')[0] ?? '17');
-		const workDuration = workEnd - workStart;
-		return ((hours - workStart) / workDuration) * 100;
+		const workDuration = workEndHour - workStartHour;
+		return ((hours - workStartHour) / workDuration) * 100;
 	}
 
 	function formatDisplayDate(): string {
 		if (viewMode === 'day') {
-			return formatDate(internalDate) + ', ' + internalDate.getFullYear();
-		} else if (viewMode === 'week') {
-			const weekDates = getWeekDates(internalDate);
-			return `Week of ${formatDate(weekDates[0] ?? internalDate)}`;
-		} else {
-			const monthNames = [
-				'January',
-				'February',
-				'March',
-				'April',
-				'May',
-				'June',
-				'July',
-				'August',
-				'September',
-				'October',
-				'November',
-				'December'
-			];
-			return monthNames[internalDate.getMonth()] + ' ' + internalDate.getFullYear();
+			return format(internalDate, 'EEEE, MMMM d, yyyy');
 		}
+		if (viewMode === 'week') {
+			const weekDates = getWeekDates(internalDate);
+			const first = weekDates[0] ?? internalDate;
+			const last = weekDates[weekDates.length - 1] ?? first;
+			if (first.getFullYear() !== last.getFullYear()) {
+				return `${format(first, 'MMM d, yyyy')} – ${format(last, 'MMM d, yyyy')}`;
+			}
+			if (first.getMonth() !== last.getMonth()) {
+				return `${format(first, 'MMM d')} – ${format(last, 'MMM d, yyyy')}`;
+			}
+			return `${format(first, 'MMM d')} – ${format(last, 'd, yyyy')}`;
+		}
+		return format(internalDate, 'MMMM yyyy');
 	}
 
 	// Check if navigation buttons should be disabled
 	let canNavigateBack = $derived(!effectivePhaseStart || internalDate > effectivePhaseStart);
 	let canNavigateForward = $derived(!effectivePhaseEnd || internalDate < effectivePhaseEnd);
 	let currentMonthEventDates = $derived(getCurrentMonthEventDates(internalDate));
+	let hourLinesStyle = $derived(
+		`height: ${visibleHours.length * HOUR_HEIGHT_PX}px; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_HEIGHT_PX - 1}px, hsl(var(--border)) ${HOUR_HEIGHT_PX - 1}px, hsl(var(--border)) ${HOUR_HEIGHT_PX}px)`
+	);
 
 	const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 </script>
 
-<div class="flex flex-col h-full">
-	<!-- View Controls -->
-	<div
-		class="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 py-2 border-b border-border gap-2 bg-muted/30 tx tx-strip tx-weak"
+{#snippet glyph(event: CalendarDayEvent)}
+	<span
+		class="inline-block shrink-0 {getGlyphClass(event)}"
+		style={getGlyphStyle(event)}
+		aria-hidden="true"
+	></span>
+{/snippet}
+
+<!-- Tints are translucent; this layer sits on an opaque card base so grid lines never
+     show through bars and blocks that overlap them. -->
+{#snippet tint(event: CalendarDayEvent)}
+	<span
+		class="pointer-events-none absolute inset-0 rounded-[inherit] {event.color}"
+		style={event.colorStyle}
+		aria-hidden="true"
+	></span>
+{/snippet}
+
+{#snippet refreshButton()}
+	<Button
+		onclick={handleRefresh}
+		disabled={refreshing || loading}
+		variant="ghost"
+		size="sm"
+		class="p-1.5"
+		aria-label="Refresh calendar"
+		title="Refresh calendar data"
 	>
-		<div class="flex items-center gap-1.5 flex-1 min-w-0">
+		<RefreshCw
+			class="h-4 w-4 shrink-0 text-muted-foreground {refreshing || loading
+				? 'animate-spin motion-reduce:animate-none'
+				: ''}"
+		/>
+	</Button>
+{/snippet}
+
+{#snippet dateBadge(date: Date, muted: boolean)}
+	<span
+		class="flex h-6 w-6 items-center justify-center rounded-full text-xs tabular-nums {isToday(
+			date
+		)
+			? 'bg-accent font-semibold text-accent-foreground'
+			: muted
+				? 'font-medium text-muted-foreground'
+				: 'font-medium text-foreground'}"
+	>
+		{date.getDate()}
+	</span>
+{/snippet}
+
+<div class="flex h-full flex-col">
+	<!-- Toolbar -->
+	<div
+		class="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-border px-3 py-2.5 sm:gap-x-3"
+	>
+		{#if toolbarStart}
+			<div class="flex min-w-0 items-center gap-1.5">
+				{@render toolbarStart()}
+			</div>
+		{/if}
+
+		<div
+			class="order-last flex w-full min-w-0 items-center gap-1 sm:order-none sm:w-auto sm:flex-1"
+		>
+			<button
+				type="button"
+				onclick={goToToday}
+				class="mr-1 h-8 shrink-0 rounded-md border border-border-strong/60 bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none pressable"
+			>
+				Today
+			</button>
 			<Button
 				onclick={() => navigatePeriod(-1)}
 				variant="ghost"
 				size="sm"
-				class="p-1 shrink-0"
+				class="shrink-0 p-1.5"
 				disabled={!canNavigateBack}
+				aria-label={`Previous ${viewMode}`}
 			>
-				<ChevronLeft class="w-4 h-4 shrink-0" />
+				<ChevronLeft class="h-4 w-4 shrink-0" />
 			</Button>
-
-			<span class="text-sm font-semibold text-foreground min-w-0 text-center flex-1 truncate">
-				{formatDisplayDate()}
-			</span>
-
 			<Button
 				onclick={() => navigatePeriod(1)}
 				variant="ghost"
 				size="sm"
-				class="p-1 shrink-0"
+				class="shrink-0 p-1.5"
 				disabled={!canNavigateForward}
+				aria-label={`Next ${viewMode}`}
 			>
-				<ChevronRight class="w-4 h-4 shrink-0" />
+				<ChevronRight class="h-4 w-4 shrink-0" />
 			</Button>
-
-			<Button
-				onclick={goToToday}
-				variant="outline"
-				size="sm"
-				class="px-2 py-1 text-xs ml-1 pressable"
+			<h2
+				class="ml-1 min-w-0 flex-1 truncate text-sm font-semibold text-foreground sm:flex-none sm:text-base"
+				aria-live="polite"
 			>
-				Today
-			</Button>
+				{formatDisplayDate()}
+			</h2>
+			<!-- Phones: refresh rides the date row so the title row fits at 360px. -->
+			<span class="sm:hidden">{@render refreshButton()}</span>
 		</div>
 
-		<div class="flex items-center gap-1.5">
-			<Button
-				onclick={handleRefresh}
-				disabled={refreshing || loading}
-				variant="ghost"
-				size="sm"
-				class="p-1"
-				aria-label="Refresh calendar"
-				title="Refresh calendar data"
-			>
-				<RefreshCw
-					class="w-4 h-4 shrink-0 {refreshing
-						? 'animate-spin motion-reduce:animate-none'
-						: ''}"
-				/>
-			</Button>
+		<div class="ml-auto flex shrink-0 items-center gap-1.5">
+			<span class="hidden sm:inline-flex">{@render refreshButton()}</span>
 
 			<div
-				class="flex items-center gap-0.5 bg-muted rounded-lg p-0.5 border border-border shadow-ink-inner"
+				class="flex items-center rounded-md border border-border bg-muted p-0.5"
+				role="group"
+				aria-label="Calendar view"
 			>
-				<Button
-					onclick={() => changeViewMode('day')}
-					variant={viewMode === 'day' ? 'primary' : 'ghost'}
-					size="sm"
-					class="px-2.5 py-1 text-xs pressable"
-				>
-					Day
-				</Button>
-				<Button
-					onclick={() => changeViewMode('week')}
-					variant={viewMode === 'week' ? 'primary' : 'ghost'}
-					size="sm"
-					class="px-2.5 py-1 text-xs pressable"
-				>
-					Week
-				</Button>
-				<Button
-					onclick={() => changeViewMode('month')}
-					variant={viewMode === 'month' ? 'primary' : 'ghost'}
-					size="sm"
-					class="px-2.5 py-1 text-xs pressable"
-				>
-					Month
-				</Button>
+				{#each VIEW_MODES as option (option.mode)}
+					<button
+						type="button"
+						onclick={() => changeViewMode(option.mode)}
+						aria-pressed={viewMode === option.mode}
+						class="rounded px-2 py-1 text-xs font-medium transition-colors sm:px-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none {viewMode ===
+						option.mode
+							? 'bg-card text-foreground shadow-ink'
+							: 'text-muted-foreground hover:text-foreground'}"
+					>
+						{option.label}
+					</button>
+				{/each}
 			</div>
+
+			{#if toolbarEnd}
+				{@render toolbarEnd()}
+			{/if}
 		</div>
 	</div>
 
+	{#if subbar}
+		{@render subbar()}
+	{/if}
+
 	<!-- Calendar Content -->
-	<div class="flex-1 overflow-auto p-3">
+	<div
+		class="relative flex-1 {viewMode === 'day' ? 'p-3' : 'p-3 md:p-0'}"
+		aria-busy={loading || refreshing}
+	>
 		{#if loading}
-			<div class="flex items-center justify-center h-full">
-				<div class="flex flex-col items-center gap-2">
-					<Calendar
-						class="w-10 h-10 text-muted-foreground animate-pulse motion-reduce:animate-none"
-					/>
-					<span class="text-xs text-muted-foreground">Loading calendar...</span>
-				</div>
-			</div>
-		{:else if viewMode === 'day'}
+			<div class="calendar-progress" aria-hidden="true"></div>
+		{/if}
+
+		{#if viewMode === 'day'}
 			<!-- Day View -->
-			<div class="max-w-2xl mx-auto space-y-2">
+			<div class="mx-auto max-w-2xl space-y-4 py-1">
 				{#each [getEventsForDay(internalDate)] as dayEvents}
 					{@const allDayEvents = getAllDayLaneEvents(dayEvents)}
 					{@const timedEvents = getTimedEvents(dayEvents)}
 
 					{#if allDayEvents.length > 0}
-						<div
-							class="rounded-lg border border-border bg-muted/20 p-2 shadow-ink-inner"
-						>
-							<div class="micro-label mb-1.5 flex items-center gap-1.5">
-								<Calendar class="h-3 w-3" />
-								<span>All-day and multi-day</span>
-							</div>
+						<section>
+							<h3 class="micro-label mb-1.5">All day</h3>
 							<div class="space-y-1">
 								{#each allDayEvents as event}
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="w-full text-left px-3 py-2 rounded-md border border-border transition-colors hover:border-accent/50 hover:shadow-ink motion-reduce:transition-none pressable tx tx-grain tx-weak {event.color} {getContinuationClass(
+										class="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left transition-[filter] hover:brightness-[0.97] motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 											event
 										)}"
 										style={event.colorStyle}
 									>
-										<div class="flex items-center justify-between gap-2">
-											<div class="min-w-0 flex-1">
-												<div class="flex min-w-0 items-center gap-2">
-													{#if markerKind}
-														<span
-															class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
-														>
-															{#if markerKind === 'range'}
-																<CalendarRange class="h-3 w-3" />
-															{:else if markerKind === 'start'}
-																<Play class="h-3 w-3" />
-															{:else}
-																<Target class="h-3 w-3" />
-															{/if}
-															<span
-																>{getTaskMarkerLabel(
-																	markerKind
-																)}</span
-															>
-														</span>
-													{/if}
-													<h4
-														class="min-w-0 truncate text-sm font-medium text-foreground"
+										{@render glyph(event)}
+										<div class="min-w-0 flex-1">
+											<div class="flex min-w-0 items-center gap-2">
+												{#if markerKind}
+													<span
+														class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
+														>{getTaskMarkerLabel(markerKind)}</span
 													>
-														{event.title}
-													</h4>
-													{#if event.type === 'existing' && event.htmlLink}
-														<ExternalLink
-															class="w-3.5 h-3.5 text-muted-foreground shrink-0"
-														/>
-													{/if}
-												</div>
-												<p class="text-xs text-muted-foreground mt-0.5">
-													{#if getContinuationLabel(event)}
-														<span class="font-medium"
-															>{getContinuationLabel(event)}</span
-														>
-														<span> - </span>
-													{/if}
-													{getEventRangeLabel(event)}
-													{#if event.sourceLabel}
-														<span> · {event.sourceLabel}</span>
-													{/if}
-												</p>
+												{/if}
+												<h4
+													class="min-w-0 truncate text-sm font-medium text-foreground"
+												>
+													{event.title}
+												</h4>
+												{#if event.type === 'existing' && event.htmlLink}
+													<ExternalLink
+														class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+													/>
+												{/if}
 											</div>
+											<p class="mt-0.5 text-xs text-muted-foreground">
+												{#if getContinuationLabel(event)}
+													<span class="font-medium"
+														>{getContinuationLabel(event)}</span
+													>
+													<span> - </span>
+												{/if}
+												{getEventRangeLabel(event)}
+												{#if event.sourceLabel}
+													<span> · {event.sourceLabel}</span>
+												{/if}
+											</p>
 										</div>
 									</button>
 								{/each}
 							</div>
-						</div>
+						</section>
 					{/if}
 
-					{#each timedEvents as event}
-						{@const markerKind = getTaskMarkerKind(event)}
-						<button
-							onclick={() => handleEventClick(event)}
-							class="w-full text-left px-3 py-2.5 rounded-lg border border-border transition-colors hover:border-accent/50 hover:shadow-ink motion-reduce:transition-none shadow-ink pressable tx tx-grain tx-weak {event.color}"
-							style={event.colorStyle}
-						>
-							<div class="flex items-center justify-between gap-2">
-								<div class="flex-1 min-w-0">
-									<div class="flex min-w-0 items-center gap-2">
-										{#if markerKind}
+					{#if timedEvents.length > 0}
+						<section class="space-y-0.5">
+							{#each timedEvents as event}
+								{@const markerKind = getTaskMarkerKind(event)}
+								<button
+									onclick={() => handleEventClick(event)}
+									class="flex w-full items-stretch gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/60 motion-reduce:transition-none pressable"
+								>
+									<span
+										class="w-16 shrink-0 pt-px text-right text-xs tabular-nums text-muted-foreground"
+									>
+										{formatTime(event.start)}
+									</span>
+									<span
+										class="w-1 shrink-0 rounded-full {getBarClass(event)}"
+										style={event.accentColor
+											? `background-color: ${event.accentColor}`
+											: undefined}
+										aria-hidden="true"
+									></span>
+									<span class="min-w-0 flex-1">
+										<span class="flex min-w-0 items-center gap-2">
+											{#if markerKind}
+												<span
+													class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
+													>{getTaskMarkerLabel(markerKind)}</span
+												>
+											{/if}
 											<span
-												class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+												class="min-w-0 truncate text-sm font-medium text-foreground"
 											>
-												{#if markerKind === 'range'}
-													<CalendarRange class="h-3 w-3" />
-												{:else if markerKind === 'start'}
-													<Play class="h-3 w-3" />
-												{:else}
-													<Target class="h-3 w-3" />
-												{/if}
-												<span>{getTaskMarkerLabel(markerKind)}</span>
+												{event.title}
+											</span>
+											{#if event.type === 'existing' && event.htmlLink}
+												<ExternalLink
+													class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+												/>
+											{/if}
+											{#if event.type === 'proposed'}
+												<Clock
+													class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+												/>
+											{/if}
+										</span>
+										<span class="mt-0.5 block text-xs text-muted-foreground">
+											{getEventDayLabel(event)}
+											{#if event.sourceLabel}
+												<span> · {event.sourceLabel}</span>
+											{/if}
+										</span>
+										{#if event.type === 'proposed' && event.schedule?.hasConflict}
+											<span class="mt-0.5 block text-xs text-destructive">
+												{event.schedule.conflictReason}
 											</span>
 										{/if}
-										<h4
-											class="min-w-0 truncate text-sm font-medium text-foreground"
-										>
-											{event.title}
-										</h4>
-										{#if event.type === 'existing' && event.htmlLink}
-											<ExternalLink
-												class="w-3.5 h-3.5 text-muted-foreground shrink-0"
-											/>
-										{/if}
-									</div>
-									<p class="text-xs text-muted-foreground mt-0.5">
-										{getEventDayLabel(event)}
-										{#if event.sourceLabel}
-											<span> · {event.sourceLabel}</span>
-										{/if}
-									</p>
-									{#if event.type === 'proposed' && event.schedule?.hasConflict}
-										<p class="text-xs text-destructive mt-0.5">
-											{event.schedule.conflictReason}
-										</p>
-									{/if}
-								</div>
-								{#if event.type === 'proposed'}
-									<Clock class="w-4 h-4 text-muted-foreground shrink-0" />
-								{/if}
-							</div>
-						</button>
-					{/each}
+									</span>
+								</button>
+							{/each}
+						</section>
+					{/if}
 
 					{#if dayEvents.length === 0}
-						<div class="text-center py-8 text-muted-foreground">
-							<Calendar class="w-10 h-10 mx-auto mb-2 opacity-40" />
-							<p class="text-sm">No events scheduled for this day</p>
+						<div class="py-10 text-center text-muted-foreground">
+							<Calendar class="mx-auto mb-2 h-8 w-8 opacity-40" />
+							<p class="text-sm">
+								{loading ? 'Loading…' : 'No events scheduled for this day'}
+							</p>
 						</div>
 					{/if}
 				{/each}
 			</div>
 		{:else if viewMode === 'week'}
-			<!-- Week View - Desktop: Grid, Mobile: Card-based list -->
-			<div
-				class="hidden md:grid grid-cols-8 gap-px bg-border rounded-lg overflow-hidden shadow-ink tx tx-frame tx-weak"
-			>
+			<!-- Week View - Desktop: time grid -->
+			<div class="hidden grid-cols-[3.5rem_repeat(7,minmax(0,1fr))] gap-px bg-border md:grid">
 				<!-- Time column -->
-				<div class="bg-muted/50">
-					<div class="h-10 border-b border-border"></div>
-					<div class="micro-label h-[46px] border-b border-border px-1.5 py-1">
+				<div class="bg-card">
+					<div class="h-12"></div>
+					<div
+						class="flex h-[46px] items-end justify-end border-t border-border px-1.5 pb-1 text-2xs text-muted-foreground"
+					>
 						All day
 					</div>
-					{#each Array(parseInt(workingHours.work_end_time.split(':')[0] ?? '17') - parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) as _, i}
-						<div
-							class="h-16 px-1.5 py-1 text-2xs text-muted-foreground border-b border-border tabular-nums"
-						>
-							{parseInt(workingHours.work_start_time.split(':')[0] ?? '9') + i}:00
-						</div>
-					{/each}
+					<div class="border-t border-border">
+						{#each visibleHours as hour, index (hour)}
+							<div
+								class="px-1.5 text-right text-2xs tabular-nums text-muted-foreground"
+								style="height: {HOUR_HEIGHT_PX}px"
+							>
+								<!-- The first label would sit on the all-day row's edge. -->
+								{#if index > 0}
+									<span class="relative -top-1.5">{formatHourLabel(hour)}</span>
+								{/if}
+							</div>
+						{/each}
+					</div>
 				</div>
 
 				<!-- Day columns -->
@@ -973,53 +1080,44 @@
 					{@const allDayEvents = getAllDayLaneEvents(dayEvents)}
 					{@const timedEvents = getTimedEvents(dayEvents)}
 					{@const timedEventLayouts = calculateWeekTimedEventLayouts(timedEvents)}
-					{@const isToday = date.toDateString() === new Date().toDateString()}
-					<div class="bg-card {isToday ? 'bg-accent/[0.03]' : ''}">
-						<div class="h-10 px-1.5 py-1 border-b border-border text-center">
-							<div class="micro-label">
-								{dayNames[date.getDay()]}
-							</div>
-							<div
-								class="text-sm font-semibold leading-tight {isToday
+					{@const today = isToday(date)}
+					<div class="min-w-0 bg-card">
+						<button
+							type="button"
+							onclick={() => openDayView(date)}
+							aria-label={`Open ${formatDate(date)} day view`}
+							class="flex h-12 w-full flex-col items-center justify-center gap-0.5 transition-colors hover:bg-muted/50 motion-reduce:transition-none"
+						>
+							<span
+								class="text-2xs font-semibold uppercase tracking-wide {today
 									? 'text-accent'
-									: 'text-foreground'}"
+									: 'text-muted-foreground'}"
 							>
-								{date.getDate()}
-							</div>
-						</div>
+								{dayNames[date.getDay()]}
+							</span>
+							{@render dateBadge(date, false)}
+						</button>
 						<div
-							class="h-[46px] border-b border-border p-1 space-y-0.5 overflow-hidden"
+							class="h-[46px] space-y-0.5 overflow-hidden border-t border-border p-1"
 						>
 							{#each allDayEvents.slice(0, 2) as event}
 								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
-									class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable {event.color} {getContinuationClass(
+									class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-[filter] hover:brightness-95 motion-reduce:transition-none pressable {event.color} {getContinuationClass(
 										event
 									)}"
 									style={event.colorStyle}
-									title={`${event.title} - ${getEventDayLabel(event)}${event.sourceLabel ? ` · ${event.sourceLabel}` : ''}`}
+									title={getEventTitle(event)}
 								>
 									{#if markerKind}
-										<span
-											class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-background/70 px-1 py-0.5 font-semibold text-foreground/80 shadow-sm ring-1 ring-border/60"
+										<span class="sr-only"
+											>{getTaskMarkerLabel(markerKind)}:</span
 										>
-											{#if markerKind === 'range'}
-												<CalendarRange class="h-2.5 w-2.5" />
-											{:else if markerKind === 'start'}
-												<Play class="h-2.5 w-2.5" />
-											{:else}
-												<Target class="h-2.5 w-2.5" />
-											{/if}
-											<span>{getTaskMarkerLabel(markerKind, true)}</span>
-										</span>
-									{:else}
-										<span class="shrink-0 font-medium"
-											>{getContinuationLabel(event) || 'All day'}</span
-										>
-										<span class="shrink-0 opacity-70">-</span>
 									{/if}
-									<span class="min-w-0 truncate">{event.title}</span>
+									<span class="min-w-0 truncate font-medium text-foreground"
+										>{event.title}</span
+									>
 								</button>
 							{/each}
 							{#if allDayEvents.length > 2}
@@ -1034,55 +1132,49 @@
 							{/if}
 						</div>
 						<div
-							class="relative"
-							style="height: {(parseInt(
-								workingHours.work_end_time.split(':')[0] ?? '17'
-							) -
-								parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) *
-								64}px"
+							class="relative border-t border-border {today
+								? 'bg-accent/[0.03]'
+								: ''}"
+							style={hourLinesStyle}
 						>
+							{#if today}
+								{@const nowPosition = getTimePosition(new Date())}
+								{#if nowPosition >= 0 && nowPosition <= 100}
+									<div
+										class="pointer-events-none absolute inset-x-0 z-20 h-px bg-accent"
+										style="top: {nowPosition}%"
+										aria-hidden="true"
+									>
+										<span
+											class="absolute -left-1 -top-[3px] h-[7px] w-[7px] rounded-full bg-accent"
+										></span>
+									</div>
+								{/if}
+							{/if}
 							{#each timedEventLayouts as layout (getEventIdentity(layout.event))}
 								{@const event = layout.event}
 								{@const markerKind = getTaskMarkerKind(event)}
 								<button
 									onclick={() => handleEventClick(event)}
-									class="absolute px-1 py-0.5 rounded-sm text-2xs leading-tight overflow-hidden transition-colors hover:opacity-90 hover:shadow-ink motion-reduce:transition-none pressable border border-transparent {event.color}"
+									class="absolute overflow-hidden rounded-md bg-card px-1.5 py-1 text-left text-2xs leading-tight transition-[filter] hover:z-10 hover:brightness-95 motion-reduce:transition-none pressable"
 									style={getWeekTimedEventStyle(layout)}
-									title={`${event.title} - ${getEventDayLabel(event)}${event.sourceLabel ? ` · ${event.sourceLabel}` : ''}`}
+									title={getEventTitle(event)}
 								>
-									<div class="flex min-w-0 items-center gap-1">
+									{@render tint(event)}
+									<span class="relative flex min-w-0 items-center gap-1">
+										{@render glyph(event)}
 										{#if markerKind}
-											<span
-												class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-background/70 px-1 py-0.5 font-semibold text-foreground/80 shadow-sm ring-1 ring-border/60"
+											<span class="sr-only"
+												>{getTaskMarkerLabel(markerKind)}:</span
 											>
-												{#if markerKind === 'range'}
-													<CalendarRange class="h-2.5 w-2.5" />
-												{:else if markerKind === 'start'}
-													<Play class="h-2.5 w-2.5" />
-												{:else}
-													<Target class="h-2.5 w-2.5" />
-												{/if}
-												{#if layout.columnCount < 3}
-													<span
-														>{getTaskMarkerLabel(
-															markerKind,
-															true
-														)}</span
-													>
-												{:else}
-													<span class="sr-only"
-														>{getTaskMarkerLabel(markerKind)}</span
-													>
-												{/if}
-											</span>
 										{/if}
-										<span class="min-w-0 truncate font-medium"
+										<span class="min-w-0 truncate font-medium text-foreground"
 											>{event.title}</span
 										>
-									</div>
-									<div class="opacity-70 tabular-nums">
-										{formatTime(event.start)}
-									</div>
+									</span>
+									<span class="relative block tabular-nums text-muted-foreground">
+										{formatCompactTime(event.start)}
+									</span>
 								</button>
 							{/each}
 						</div>
@@ -1090,72 +1182,46 @@
 				{/each}
 			</div>
 
-			<!-- Mobile Week View - Card-based layout -->
-			<div class="md:hidden space-y-2">
+			<!-- Mobile Week View - day list -->
+			<div class="space-y-2 md:hidden">
 				{#each getWeekDates(internalDate) as date}
 					{@const dayEvents = getEventsForDay(date)}
-					{@const isToday = date.toDateString() === new Date().toDateString()}
+					{@const today = isToday(date)}
 					<div
-						class="rounded-lg border shadow-ink {isToday
-							? 'border-accent/50 bg-accent/[0.03]'
-							: 'border-border bg-card'} p-2.5"
+						class="rounded-lg border bg-card p-2.5 {today
+							? 'border-accent/50'
+							: 'border-border'}"
 					>
-						<div class="mb-1.5 flex items-center justify-between">
-							<div class="flex items-baseline gap-2">
-								<div
-									class="text-base font-semibold tabular-nums {isToday
-										? 'text-accent'
-										: 'text-foreground'}"
-								>
-									{date.getDate()}
-								</div>
-								<div class="micro-label">
-									{dayNames[date.getDay()]}
-								</div>
-							</div>
-							{#if isToday}
-								<span
-									class="inline-block rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold text-accent-foreground"
-								>
-									Today
-								</span>
-							{/if}
+						<div class="mb-1 flex items-center gap-2">
+							{@render dateBadge(date, false)}
+							<span class="micro-label">{dayNames[date.getDay()]}</span>
 						</div>
 						{#if dayEvents.length > 0}
-							<div class="space-y-1 border-t border-border pt-1.5">
+							<div class="space-y-0.5">
 								{#each dayEvents as event}
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted motion-reduce:transition-none pressable {event.color} {getContinuationClass(
-											event
-										)}"
-										style={event.colorStyle}
+										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-muted motion-reduce:transition-none pressable"
 									>
-										<div class="flex-1 min-w-0">
-											<div class="flex min-w-0 items-center gap-2">
+										{@render glyph(event)}
+										<span class="min-w-0 flex-1">
+											<span class="flex min-w-0 items-center gap-2">
 												{#if markerKind}
 													<span
-														class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+														class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
+														>{getTaskMarkerLabel(markerKind)}</span
 													>
-														{#if markerKind === 'range'}
-															<CalendarRange class="h-3 w-3" />
-														{:else if markerKind === 'start'}
-															<Play class="h-3 w-3" />
-														{:else}
-															<Target class="h-3 w-3" />
-														{/if}
-														<span>{getTaskMarkerLabel(markerKind)}</span
-														>
-													</span>
 												{/if}
-												<div
+												<span
 													class="min-w-0 truncate text-sm font-medium text-foreground"
 												>
 													{event.title}
-												</div>
-											</div>
-											<div class="text-xs text-muted-foreground tabular-nums">
+												</span>
+											</span>
+											<span
+												class="block text-xs tabular-nums text-muted-foreground"
+											>
 												{#if getContinuationLabel(event)}
 													<span class="font-medium"
 														>{getContinuationLabel(event)}</span
@@ -1166,29 +1232,27 @@
 												{#if event.sourceLabel}
 													<span> · {event.sourceLabel}</span>
 												{/if}
-											</div>
-										</div>
+											</span>
+										</span>
 									</button>
 								{/each}
 							</div>
 						{:else}
-							<div
-								class="border-t border-border pt-1.5 text-center text-2xs text-muted-foreground"
-							>
-								No events
-							</div>
+							<p class="pl-8 text-2xs text-muted-foreground">
+								{loading ? 'Loading…' : 'No events'}
+							</p>
 						{/if}
 					</div>
 				{/each}
 			</div>
 		{:else}
-			<!-- Month View - Desktop: Grid, Mobile: List -->
-			<div
-				class="hidden md:block rounded-lg bg-border overflow-hidden shadow-ink tx tx-frame tx-weak"
-			>
-				<div class="grid grid-cols-7 gap-px bg-border">
+			<!-- Month View - Desktop: Grid -->
+			<div class="hidden md:block">
+				<div class="grid grid-cols-7 border-b border-border bg-card">
 					{#each dayNames as day}
-						<div class="micro-label bg-muted/50 px-1.5 py-1.5 text-center">
+						<div
+							class="px-2 py-1.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
+						>
 							{day}
 						</div>
 					{/each}
@@ -1211,23 +1275,21 @@
 								)}
 								{@const isCurrentMonth =
 									date.getMonth() === internalDate.getMonth()}
-								{@const isToday = date.toDateString() === new Date().toDateString()}
 								<div
-									class="min-h-full bg-card p-1.5 {!isCurrentMonth
-										? 'opacity-40'
-										: ''} {isToday
-										? 'ring-1 ring-inset ring-accent/50 bg-accent/[0.03]'
-										: ''}"
+									class="min-h-full min-w-0 p-1 {isCurrentMonth
+										? 'bg-card'
+										: 'bg-muted/30'}"
 								>
-									<div
-										class="text-xs font-semibold tabular-nums {isToday
-											? 'text-accent'
-											: 'text-foreground'}"
+									<button
+										type="button"
+										onclick={() => openDayView(date)}
+										aria-label={`Open ${formatDate(date)} day view`}
+										class="rounded-full transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 									>
-										{date.getDate()}
-									</div>
+										{@render dateBadge(date, !isCurrentMonth)}
+									</button>
 									<div
-										class="space-y-0.5"
+										class="space-y-px {isCurrentMonth ? '' : 'opacity-60'}"
 										style="margin-top: {getMonthCellEventOffset(laneCount)}px"
 									>
 										{#if hiddenSegments > 0}
@@ -1247,43 +1309,25 @@
 											{@const markerKind = getTaskMarkerKind(event)}
 											<button
 												onclick={() => handleEventClick(event)}
-												class="flex w-full items-center gap-1 overflow-hidden rounded-sm px-1 py-0.5 text-left text-2xs leading-tight transition-colors hover:bg-muted motion-reduce:transition-none pressable {event.color}"
-												style={event.colorStyle}
-												title={`${event.title} - ${getEventDayLabel(event)}${event.sourceLabel ? ` · ${event.sourceLabel}` : ''}`}
+												class="flex h-5 w-full items-center gap-1.5 overflow-hidden rounded px-1 text-left text-2xs leading-none transition-colors hover:bg-muted motion-reduce:transition-none pressable"
+												title={getEventTitle(event)}
 											>
+												{@render glyph(event)}
 												{#if markerKind}
-													<span
-														class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-muted px-1 py-0.5 font-semibold text-foreground/80 ring-1 ring-border/60"
+													<span class="sr-only"
+														>{getTaskMarkerLabel(markerKind)}:</span
 													>
-														{#if markerKind === 'range'}
-															<CalendarRange class="h-2.5 w-2.5" />
-														{:else if markerKind === 'start'}
-															<Play class="h-2.5 w-2.5" />
-														{:else}
-															<Target class="h-2.5 w-2.5" />
-														{/if}
-														<span
-															>{getTaskMarkerLabel(
-																markerKind,
-																true
-															)}</span
-														>
-													</span>
-												{:else}
-													<span
-														class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/70"
-														style="background-color: var(--calendar-source-color, hsl(var(--muted-foreground) / 0.7))"
-													></span>
 												{/if}
-												<span class="min-w-0 truncate">
-													{#if !event.allDay}
-														<span class="tabular-nums"
-															>{formatTime(event.start)}</span
-														>
-														<span> </span>
-													{/if}
-													{event.title}
-												</span>
+												{#if !event.allDay && markerKind !== 'due'}
+													<span
+														class="shrink-0 tabular-nums text-muted-foreground"
+														>{formatCompactTime(event.start)}</span
+													>
+												{/if}
+												<span
+													class="min-w-0 truncate font-medium text-foreground"
+													>{event.title}</span
+												>
 											</button>
 										{/each}
 										{#if timedEvents.length > 2}
@@ -1307,26 +1351,17 @@
 								{@const markerKind = getTaskMarkerKind(segment.event)}
 								<button
 									onclick={() => handleEventClick(segment.event)}
-									class="absolute z-10 flex h-5 items-center gap-1 overflow-hidden px-1.5 text-left text-2xs font-semibold leading-5 text-foreground shadow-sm transition-colors hover:brightness-95 hover:shadow-ink motion-reduce:transition-none pressable {segment
-										.event.color}"
+									class="absolute z-10 flex h-5 items-center gap-1 overflow-hidden bg-card px-1.5 text-left text-2xs font-medium leading-5 text-foreground transition-[filter] hover:brightness-95 motion-reduce:transition-none pressable"
 									style={getMonthSegmentStyle(segment)}
 									title={`${segment.event.title} - ${getEventRangeLabel(segment.event)}${segment.event.sourceLabel ? ` · ${segment.event.sourceLabel}` : ''}`}
 								>
+									{@render tint(segment.event)}
 									{#if markerKind}
-										<span
-											class="inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-background/70 px-1 py-0.5 leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+										<span class="sr-only"
+											>{getTaskMarkerLabel(markerKind)}:</span
 										>
-											{#if markerKind === 'range'}
-												<CalendarRange class="h-2.5 w-2.5" />
-											{:else if markerKind === 'start'}
-												<Play class="h-2.5 w-2.5" />
-											{:else}
-												<Target class="h-2.5 w-2.5" />
-											{/if}
-											<span>{getTaskMarkerLabel(markerKind, true)}</span>
-										</span>
 									{/if}
-									<span class="min-w-0 truncate"
+									<span class="relative min-w-0 truncate"
 										>{getMonthSegmentLabel(segment)}</span
 									>
 								</button>
@@ -1336,72 +1371,44 @@
 				</div>
 			</div>
 
-			<!-- Mobile Month View - Card-based layout -->
-			<div class="md:hidden space-y-1.5">
+			<!-- Mobile Month View - days with events -->
+			<div class="space-y-2 md:hidden">
 				{#if currentMonthEventDates.length > 0}
 					{#each currentMonthEventDates as date}
 						{@const dayEvents = getEventsForDay(date)}
-						{@const isToday = date.toDateString() === new Date().toDateString()}
+						{@const today = isToday(date)}
 						<div
-							class="rounded-lg border shadow-ink {isToday
-								? 'border-accent/50 bg-accent/[0.03]'
-								: 'border-border bg-card'} p-2.5"
+							class="rounded-lg border bg-card p-2.5 {today
+								? 'border-accent/50'
+								: 'border-border'}"
 						>
-							<div class="mb-1.5 flex items-center justify-between">
-								<div class="flex items-baseline gap-2">
-									<div
-										class="text-base font-semibold tabular-nums {isToday
-											? 'text-accent'
-											: 'text-foreground'}"
-									>
-										{date.getDate()}
-									</div>
-									<div class="micro-label">
-										{dayNames[date.getDay()]}
-									</div>
-								</div>
-								{#if isToday}
-									<span
-										class="inline-block rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold text-accent-foreground"
-									>
-										Today
-									</span>
-								{/if}
+							<div class="mb-1 flex items-center gap-2">
+								{@render dateBadge(date, false)}
+								<span class="micro-label">{dayNames[date.getDay()]}</span>
 							</div>
-							<div class="space-y-0.5 border-t border-border pt-1.5">
+							<div class="space-y-0.5">
 								{#each dayEvents.slice(0, 3) as event}
 									{@const markerKind = getTaskMarkerKind(event)}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted motion-reduce:transition-none pressable {event.color} {getContinuationClass(
-											event
-										)}"
-										style={event.colorStyle}
+										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-xs transition-colors hover:bg-muted motion-reduce:transition-none pressable"
 									>
-										<div class="min-w-0 flex-1">
-											<div class="flex min-w-0 items-center gap-2">
+										{@render glyph(event)}
+										<span class="min-w-0 flex-1">
+											<span class="flex min-w-0 items-center gap-2">
 												{#if markerKind}
 													<span
-														class="inline-flex shrink-0 items-center gap-1 rounded-md bg-background/70 px-1.5 py-0.5 text-2xs font-semibold leading-none text-foreground/80 shadow-sm ring-1 ring-border/60"
+														class="shrink-0 text-2xs font-semibold uppercase tracking-wide text-muted-foreground"
+														>{getTaskMarkerLabel(markerKind)}</span
 													>
-														{#if markerKind === 'range'}
-															<CalendarRange class="h-3 w-3" />
-														{:else if markerKind === 'start'}
-															<Play class="h-3 w-3" />
-														{:else}
-															<Target class="h-3 w-3" />
-														{/if}
-														<span>{getTaskMarkerLabel(markerKind)}</span
-														>
-													</span>
 												{/if}
-												<div
-													class="min-w-0 truncate font-medium text-foreground"
+												<span
+													class="min-w-0 truncate text-sm font-medium text-foreground"
 												>
 													{event.title}
-												</div>
-											</div>
-											<div class="text-2xs text-muted-foreground">
+												</span>
+											</span>
+											<span class="block text-2xs text-muted-foreground">
 												{#if getContinuationLabel(event)}
 													<span class="font-medium"
 														>{getContinuationLabel(event)}</span
@@ -1412,8 +1419,8 @@
 												{#if event.sourceLabel}
 													<span> · {event.sourceLabel}</span>
 												{/if}
-											</div>
-										</div>
+											</span>
+										</span>
 									</button>
 								{/each}
 								{#if dayEvents.length > 3}
@@ -1430,14 +1437,52 @@
 						</div>
 					{/each}
 				{:else}
-					<div
-						class="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground shadow-ink"
-					>
-						<Calendar class="mx-auto mb-2 h-10 w-10 opacity-40" />
-						<p class="text-sm">No events scheduled for this month</p>
+					<div class="px-4 py-10 text-center text-muted-foreground">
+						<Calendar class="mx-auto mb-2 h-8 w-8 opacity-40" />
+						<p class="text-sm">
+							{loading ? 'Loading…' : 'No events scheduled for this month'}
+						</p>
 					</div>
 				{/if}
 			</div>
 		{/if}
 	</div>
 </div>
+
+<style>
+	/* Non-blocking load indicator: the grid renders immediately, items fill in. */
+	.calendar-progress {
+		position: absolute;
+		inset: 0 0 auto 0;
+		z-index: 30;
+		height: 2px;
+		overflow: hidden;
+		pointer-events: none;
+	}
+
+	.calendar-progress::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		width: 35%;
+		background: hsl(var(--accent) / 0.7);
+		animation: calendar-progress 1.1s ease-in-out infinite;
+	}
+
+	@keyframes calendar-progress {
+		from {
+			transform: translateX(-100%);
+		}
+		to {
+			transform: translateX(300%);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.calendar-progress::after {
+			animation: none;
+			width: 100%;
+			opacity: 0.5;
+		}
+	}
+</style>

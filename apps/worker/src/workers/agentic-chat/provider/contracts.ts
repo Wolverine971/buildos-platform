@@ -204,6 +204,11 @@ export type AgenticChatTurnProviderClientPortV1 = {
 /** Internal request state shared by the provider coordinator and extracted helpers. */
 export type AgenticChatTurnProviderRequestV1 = AgenticChatTurnProviderClientRequestV1 & {
 	liveVisionRequest?: Omit<AgenticChatLiveVisionResolveInputV1, 'signal'>;
+	/**
+	 * Mounted tools the schema selector must keep, chosen from structured turn
+	 * facts (e.g. project images attached to this message), never message text.
+	 */
+	toolSelectionPins?: readonly string[];
 	semanticDispositionGate?: boolean;
 	unavailableSkillRepairAttempted?: boolean;
 	/** One bounded re-ask after a completion that carried neither text nor tool calls. */

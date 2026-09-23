@@ -49,9 +49,59 @@ export function faithfulPassage(passage: string | null, source: string): string 
 		cleaned.length <= source.trim().length + 20 &&
 		passageFidelity(cleaned, source) >= MIN_PASSAGE_FIDELITY
 	) {
-		return cleaned;
+		return restoreParagraphBreaks(cleaned, source);
 	}
 	return source.trim();
+}
+
+const PARAGRAPH_BREAK = /\n[ \t]*\n/;
+const ALIGN_WINDOW = 12;
+
+/**
+ * Put the source message's paragraph breaks back into a cleaned passage that
+ * lost them. Each cleaned word is matched to the next equal word of the source
+ * (within a small window, since cleanup drops filler), and a break goes into the
+ * whitespace before the first word matched in a later source paragraph.
+ */
+export function restoreParagraphBreaks(cleaned: string, source: string): string {
+	const paragraphs = source.trim().split(PARAGRAPH_BREAK);
+	if (paragraphs.length < 2 || cleaned.split(PARAGRAPH_BREAK).length >= paragraphs.length) {
+		return cleaned;
+	}
+	const sourceWords = paragraphs.flatMap((paragraph, index) =>
+		wordTokens(paragraph).map((word) => ({ word, paragraph: index }))
+	);
+	const breaks: Array<{ from: number; to: number }> = [];
+	let pointer = 0;
+	let paragraph = 0;
+	let previousEnd = 0;
+	for (const match of cleaned.matchAll(/[\p{L}\p{N}]+/gu)) {
+		const word = match[0].normalize('NFKC').toLowerCase();
+		const start = match.index ?? 0;
+		const limit = Math.min(sourceWords.length, pointer + ALIGN_WINDOW);
+		for (let index = pointer; index < limit; index++) {
+			if (sourceWords[index]!.word !== word) continue;
+			pointer = index + 1;
+			if (sourceWords[index]!.paragraph > paragraph) {
+				paragraph = sourceWords[index]!.paragraph;
+				const gap = cleaned.slice(previousEnd, start);
+				const space = /\s+(?=\S*$)/.exec(gap);
+				if (space) {
+					breaks.push({
+						from: previousEnd + space.index,
+						to: previousEnd + space.index + space[0].length
+					});
+				}
+			}
+			break;
+		}
+		previousEnd = start + match[0].length;
+	}
+	let result = cleaned;
+	for (const { from, to } of breaks.reverse()) {
+		result = `${result.slice(0, from).trimEnd()}\n\n${result.slice(to)}`;
+	}
+	return result;
 }
 
 /** User text becomes entry paragraphs: no comments, and no headings that would split the log. */

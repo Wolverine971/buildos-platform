@@ -900,6 +900,53 @@ Useful for showing where a document lives in the hierarchy.`,
 	{
 		type: 'function',
 		function: {
+			name: 'search_onto_assets',
+			description:
+				'Find project images by caption, file name, or OCR text. Returns asset_id and filed_under (its document; null = Images shelf).',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'Keywords; omit to list recent images.'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Optional project UUID filter.'
+					},
+					limit: {
+						type: 'integer',
+						default: 12,
+						minimum: 1,
+						maximum: 50
+					}
+				}
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_asset',
+			description:
+				'Get one project image: caption, file name, OCR summary/text preview, and the document it is filed under.',
+			parameters: {
+				type: 'object',
+				properties: {
+					asset_id: {
+						type: 'string',
+						description: 'Image asset UUID.'
+					}
+				},
+				required: ['asset_id']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'get_document_outline',
 			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. For a short document or a whole-document summary, use get_onto_document_details directly instead.`,
 			parameters: {

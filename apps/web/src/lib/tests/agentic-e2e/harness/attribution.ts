@@ -154,16 +154,20 @@ export async function readWorkerTurnAttribution(
 	return attribution;
 }
 
+const WORKER_PASS_OPERATION_TYPES = new Set([
+	'agentic_chat_worker_stream',
+	'agentic_chat_tool_selection',
+	'agentic_chat_web_navigation'
+]);
+
 export function buildWorkerTurnAttributionFromUsage(
 	rows: LlmUsageLogRow[]
 ): HarnessTurnAttribution {
-	// Tool selection is a paid worker pass too. Keep its receipt in the audit;
-	// ignoring it hides cost, while treating it as a legacy pass rejects every
-	// Jev-enabled turn despite complete attribution.
-	const attributedRows = rows.filter(
-		(row) =>
-			row.operation_type === 'agentic_chat_worker_stream' ||
-			row.operation_type === 'agentic_chat_tool_selection'
+	// Jev tool selection and web navigation are paid worker passes too. Keep
+	// their receipts in the audit; ignoring them hides cost, while treating them
+	// as legacy passes rejects every Jev-enabled turn despite complete attribution.
+	const attributedRows = rows.filter((row) =>
+		WORKER_PASS_OPERATION_TYPES.has(row.operation_type)
 	);
 	const passes = attributedRows.map((row, index) => ({
 		pass: index + 1,

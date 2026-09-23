@@ -34,6 +34,14 @@ import {
 } from './turn-contract';
 
 const UPDATE_TOOL_PREFIX = 'update_onto_';
+/**
+ * Update arguments whose explicit null IS the change. `update_onto_asset`
+ * with `document_id: null` unfiles an image back to the project's Images
+ * shelf, so an otherwise empty call carrying it is not a no-op.
+ */
+const NULLABLE_UPDATE_FIELDS: Readonly<Record<string, readonly string[]>> = {
+	update_onto_asset: ['document_id']
+};
 const UUID_VALIDATED_TOOL_NAMES = new Set([
 	'list_task_documents',
 	'create_task_document',
@@ -61,9 +69,11 @@ const UUID_ARG_KEYS = new Set([
 	'parent_id',
 	'parent_document_id',
 	'new_parent_id',
-	'supporting_milestone_id'
+	'supporting_milestone_id',
+	'asset_id'
 ]);
 const STRICT_UUID_ARG_KEYS = new Set([
+	'asset_id',
 	'task_id',
 	'goal_id',
 	'plan_id',
@@ -443,8 +453,10 @@ function validateUpdateToolArgs(
 	}
 
 	const ignoredKeys = new Set<string>([idKey, 'update_strategy', 'merge_instructions']);
+	const nullableFields = NULLABLE_UPDATE_FIELDS[toolName] ?? [];
 	const hasUpdateField = Object.entries(args).some(([key, value]) => {
 		if (ignoredKeys.has(key)) return false;
+		if (value === null && nullableFields.includes(key)) return true;
 		return hasMeaningfulUpdateValue(value);
 	});
 

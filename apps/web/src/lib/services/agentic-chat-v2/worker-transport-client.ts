@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-transport-client.ts
+import type { ContextPlanV1 } from '@buildos/agentic-chat-runtime/context-finder';
 import type {
 	AgentChatTransportLeaseRequestV1,
 	AgentChatTransportLeaseV1,
@@ -33,12 +34,16 @@ export type PublishedSpecialistReference = {
 	version: number;
 	snapshotHash: string;
 	selectionDecisionId?: string;
+	/** Evidence the user curated in Workflow Lab (context_plan_v1); the server validates it. */
+	contextPlan?: ContextPlanV1;
 };
 
-/** Host-only provenance used to keep a recommendation scoped to its original question. */
+/** Host-only provenance used to keep a recommendation or plan scoped to its question. */
 export type PublishedSpecialistSelection = PublishedSpecialistReference & {
 	selectionQuestion?: string;
 	selectionProjectId?: string;
+	contextPlanQuestion?: string;
+	contextPlanProjectId?: string;
 };
 
 export type AgenticChatWorkerCommand = {
@@ -230,6 +235,9 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 									selectionDecisionId:
 										command.publishedSpecialist.selectionDecisionId
 								}
+							: {}),
+						...(command.publishedSpecialist.contextPlan
+							? { contextPlan: command.publishedSpecialist.contextPlan }
 							: {})
 					}
 				}

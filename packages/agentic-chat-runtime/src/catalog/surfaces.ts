@@ -194,7 +194,13 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 	'list_task_documents',
 	'get_document_path',
 	'create_task_document',
-	'unlink_onto_edge'
+	'unlink_onto_edge',
+	// Project images (2026-09-22). Images attached in a project chat are stored
+	// as project assets; the write names them and files them in the document
+	// tree, the reads find one on a later turn and show where it is filed.
+	'search_onto_assets',
+	'get_onto_asset',
+	'update_onto_asset'
 ] as const;
 
 /**

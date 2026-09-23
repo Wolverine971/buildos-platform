@@ -339,15 +339,11 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		throw invalidCommand('One or more attachments are invalid');
 	}
 	const attachments = attachmentValidation.attachments;
+	// With live vision off, image turns still run: the model receives the
+	// attachment metadata and OCR text, and currentTurn.liveVision.requested is
+	// false, so the worker never expects raw pixels. Refusing here blocked every
+	// image turn from the one-engine cutover (2026-09-04) until 2026-09-22.
 	const liveVisionEnabled = input.dependencies?.liveVisionEnabled ?? LIVE_VISION_ENABLED;
-	if (attachments.length > 0 && !liveVisionEnabled) {
-		// There is no second engine to renegotiate onto since one-engine stage
-		// S8, so an unrunnable capability is a hard, user-visible refusal.
-		throw new AgenticChatWorkerPreparationError(
-			'capability_unavailable',
-			'Worker live vision is unavailable for attachment turns'
-		);
-	}
 	const normalizedAttachments = normalizeChatAttachmentsForAdmission(attachments);
 	const storedUserMessageContent =
 		normalizedMessage || buildAttachmentOnlyDisplayText(attachments.length);

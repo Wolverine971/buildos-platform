@@ -503,18 +503,27 @@ export class AgentChatStreamController {
 			isChatWorkflowCommand(trimmed)
 				? trimmed.replace(/^\/workflow(?:\s|$)/i, '').trim()
 				: trimmed;
-		const selectionDecisionId =
-			selectedSpecialist?.selectionDecisionId &&
-			selectedSpecialist.selectionQuestion === submittedMessage &&
-			selectedSpecialist.selectionProjectId ===
-				resolveEffectiveProjectId({
+		const effectiveProjectId = selectedSpecialist
+			? resolveEffectiveProjectId({
 					contextType: normalizeFastContextType(
 						this.#deps.getSelectedContextType() ?? 'global'
 					),
 					entityId: this.#deps.getSelectedEntityId(),
 					projectFocus: this.#deps.getResolvedProjectFocus()
 				})
+			: null;
+		const selectionDecisionId =
+			selectedSpecialist?.selectionDecisionId &&
+			selectedSpecialist.selectionQuestion === submittedMessage &&
+			selectedSpecialist.selectionProjectId === effectiveProjectId
 				? selectedSpecialist.selectionDecisionId
+				: undefined;
+		// Curated evidence belongs to the question it was found for, like a recommendation.
+		const contextPlan =
+			selectedSpecialist?.contextPlan &&
+			selectedSpecialist.contextPlanQuestion === submittedMessage &&
+			selectedSpecialist.contextPlanProjectId === effectiveProjectId
+				? selectedSpecialist.contextPlan
 				: undefined;
 		// Take a value copy before any await: a picker change must never replace
 		// the immutable version chosen for this submission.
@@ -524,7 +533,11 @@ export class AgentChatStreamController {
 						draftId: selectedSpecialist.draftId,
 						version: selectedSpecialist.version,
 						snapshotHash: selectedSpecialist.snapshotHash,
-						...(selectionDecisionId ? { selectionDecisionId } : {})
+						...(selectionDecisionId ? { selectionDecisionId } : {}),
+						// Plain JSON copy: the plan may arrive as a reactive proxy.
+						...(contextPlan
+							? { contextPlan: JSON.parse(JSON.stringify(contextPlan)) }
+							: {})
 					}
 				: null;
 		if (

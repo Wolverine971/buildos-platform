@@ -27,7 +27,31 @@ export type DirectWriteRouteContext = {
 	 * a write against a row nobody looked at.
 	 */
 	turnSeenEntityIds?: ReadonlyMap<string, string>;
+	/**
+	 * Project image asset ids attached to the current user message (the
+	 * structured `requestPayload.attachments`, never parsed from text). The user
+	 * picked these images in the composer for this very message, so they are
+	 * resolved the way the focused entity is.
+	 */
+	attachedAssetIds?: ReadonlySet<string>;
 };
+
+/**
+ * Durable project-image ids from the structured attachments of the current
+ * request. Temporary (non-project) uploads have no asset id and never count.
+ */
+export function collectAttachedProjectAssetIds(attachments: unknown): Set<string> {
+	const ids = new Set<string>();
+	if (!Array.isArray(attachments)) return ids;
+	for (const attachment of attachments) {
+		if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) continue;
+		const record = attachment as Record<string, unknown>;
+		if (record.attachment_kind !== 'onto_asset') continue;
+		const assetId = normalizeId(typeof record.asset_id === 'string' ? record.asset_id : null);
+		if (UUID_PATTERN.test(assetId)) ids.add(assetId);
+	}
+	return ids;
+}
 
 export type DirectWriteBatchAssessment =
 	| { kind: 'not_a_write' }
@@ -200,7 +224,8 @@ const ARGUMENT_ENTITY_KINDS: Readonly<Record<string, string>> = {
 	supporting_milestone_id: 'milestone',
 	risk_id: 'risk',
 	project_id: 'project',
-	edge_id: 'edge'
+	edge_id: 'edge',
+	asset_id: 'asset'
 };
 
 function entityKindForArgument(name: string, args: CompletedProviderToolCall['arguments']) {
@@ -293,6 +318,7 @@ function isDeterministicallyResolvedId(
 		return true;
 	}
 	if (resolvedKindMatches(context.resolvedEntityIds?.get(normalized), kind)) return true;
+	if (kind === 'asset' && context.attachedAssetIds?.has(normalized)) return true;
 	if (!userMessageNamesId(context.userMessage, normalized)) return false;
 	return resolvedKindMatches(context.turnSeenEntityIds?.get(normalized), kind);
 }

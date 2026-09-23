@@ -101,4 +101,50 @@ describe('DocTreeNode control quality', () => {
 		expect(onToggleExpand).toHaveBeenCalledWith('folder-1');
 		expect(onOpenDocument).not.toHaveBeenCalled();
 	});
+
+	it('lets a document holding images expand to show and open them', async () => {
+		const node = createNode({ title: 'Brand guide' });
+		const onOpenImage = vi.fn();
+		const imagesByDocumentId = new Map([
+			[
+				node.id,
+				[
+					{
+						id: 'logo-asset',
+						caption: 'Redline logo',
+						alt_text: null,
+						original_filename: 'logo.png',
+						width: 512,
+						height: 512,
+						ocr_status: 'complete',
+						extraction_summary: null,
+						created_at: '2026-09-22T00:00:00.000Z'
+					}
+				]
+			]
+		]);
+		const baseProps = {
+			node,
+			onToggleExpand: vi.fn(),
+			onOpenDocument: vi.fn(),
+			onContextMenu: vi.fn(),
+			canDrag: false,
+			imagesByDocumentId,
+			onOpenImage
+		};
+
+		const collapsed = render(DocTreeNode, {
+			props: { ...baseProps, expandedIds: new Set<string>() }
+		});
+		expect(screen.getByRole('button', { name: 'Expand Brand guide' })).toBeInTheDocument();
+		expect(screen.getByLabelText('1 image')).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Open image Redline logo' })).toBeNull();
+		collapsed.unmount();
+
+		render(DocTreeNode, {
+			props: { ...baseProps, expandedIds: new Set<string>([node.id]) }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Open image Redline logo' }));
+		expect(onOpenImage).toHaveBeenCalledWith('logo-asset', node.id);
+	});
 });

@@ -40,6 +40,10 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 	return {
 		projects: projects.map(({ id, name }) => ({ id, name })),
 		...catalog,
+		contextFinderEnabled:
+			publishedSpecialistsEnabled &&
+			env.AGENTIC_CHAT_CONTEXT_FINDER_ENABLED?.trim() === 'true' &&
+			!!env.PRIVATE_OPENROUTER_API_KEY?.trim(),
 		jevRecommendationsEnabled:
 			publishedSpecialistsEnabled &&
 			env.AGENTIC_CHAT_JEV_RECOMMENDATIONS_ENABLED?.trim() === 'true' &&

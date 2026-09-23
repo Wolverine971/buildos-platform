@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/document-service/STEP_2_EDITOR_ACCEPTANCE_2026-09-07.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-08; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Step 2 editor interaction: acceptance and remaining rollout
 
 **Date:** 2026-09-07. Follow-up to the

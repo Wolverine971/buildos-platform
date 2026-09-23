@@ -69,12 +69,15 @@ describe('buildLitePromptPreview', () => {
 		// 2026-09-02 (turn-executor audit Finding 9): the prose tool list is gone;
 		// the tools array is the source of truth, so no tool_surface_dynamic
 		// section renders when discovery tools are mounted.
+		// 2026-09-21 system-prompt audit (57749651c): the static frame (safety rules)
+		// precedes the per-turn dates_time section so the cached prefix stays stable.
 		expect(preview.lite.sections.map((section) => section.id)).toEqual([
 			'identity_mission',
 			'capabilities_skills_tools',
 			'operating_strategy',
-			'final_response_contract',
 			'safety_data_rules',
+			'dates_time',
+			'final_response_contract',
 			'focus_purpose',
 			'location_loaded_context'
 		]);

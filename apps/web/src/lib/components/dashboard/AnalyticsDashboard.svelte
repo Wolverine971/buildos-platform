@@ -1,7 +1,8 @@
 <!-- apps/web/src/lib/components/dashboard/AnalyticsDashboard.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { goto, invalidate } from '$app/navigation';
+	import { goto, invalidate, preloadCode, preloadData } from '$app/navigation';
+	import { prefetchDashboardCalendar } from '$lib/services/dashboard-calendar-cache';
 	import { onDestroy, onMount } from 'svelte';
 	import {
 		ArrowRight,
@@ -486,6 +487,7 @@
 		preloadBriefModals();
 		preloadOverdueTaskTriageModal();
 		preloadDashboardInboxModal();
+		void preloadCode('/dashboard/calendar').catch(() => undefined);
 	}
 
 	function scheduleIdleModalPreload(): () => void {
@@ -842,6 +844,13 @@
 		}
 	}
 
+	// Hover/focus/touch intent: start the route data and the calendar items before the click
+	// lands, so the calendar paints with data instead of a loading state.
+	function warmCalendarDashboard() {
+		prefetchDashboardCalendar();
+		void preloadData('/dashboard/calendar').catch(() => undefined);
+	}
+
 	async function openCalendarDashboard() {
 		if (isOpeningCalendar) return;
 		isOpeningCalendar = true;
@@ -903,6 +912,9 @@
 						variant="outline"
 						size="sm"
 						onclick={openCalendarDashboard}
+						onpointerenter={warmCalendarDashboard}
+						onfocus={warmCalendarDashboard}
+						ontouchstart={warmCalendarDashboard}
 						disabled={isOpeningCalendar}
 						class="shrink-0 px-2.5 sm:px-3"
 						aria-label="Open calendar"

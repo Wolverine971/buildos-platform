@@ -135,6 +135,41 @@ describe('selectJevToolDefinitions', () => {
 			'web_visit'
 		]);
 	});
+
+	// A project image attached to this message may need naming or filing. The
+	// pin is a structured turn fact (attachment kind), never message text.
+	it('keeps a pinned image tool and its document reads whatever Jev scored them', () => {
+		const tools = [
+			'request_turn_clarification',
+			'list_onto_documents',
+			'search_onto_documents',
+			'search_onto_assets',
+			'update_onto_asset',
+			'web_search'
+		].map(tool);
+		const probabilities = {
+			list_onto_documents: 0.01,
+			search_onto_documents: 0.01,
+			search_onto_assets: 0.01,
+			update_onto_asset: 0.02,
+			web_search: 0.01
+		};
+		expect(selectJevToolDefinitions(tools, probabilities).map((t) => t.function.name)).toEqual([
+			'request_turn_clarification'
+		]);
+		expect(
+			selectJevToolDefinitions(tools, probabilities, 0.3, [
+				'update_onto_asset',
+				'not_mounted_tool'
+			]).map((t) => t.function.name)
+		).toEqual([
+			'request_turn_clarification',
+			'list_onto_documents',
+			'search_onto_documents',
+			'search_onto_assets',
+			'update_onto_asset'
+		]);
+	});
 });
 
 describe('buildJevToolSelectionBody', () => {
@@ -151,6 +186,20 @@ describe('buildJevToolSelectionBody', () => {
 });
 
 describe('JevToolSelector', () => {
+	it('keeps a request-pinned schema through classification', async () => {
+		const fetchImpl = vi.fn(async () => jevResponse(OVERVIEW_ONLY));
+		const { instance } = selector(fetchImpl as unknown as typeof fetch);
+
+		const selected = await instance.select(
+			request({ toolSelectionPins: ['list_calendar_events'] })
+		);
+
+		expect(selected.tools.map((t) => t.function.name)).toEqual([
+			'get_project_overview',
+			'list_calendar_events'
+		]);
+	});
+
 	it('narrows the schemas and names the callable set for the model', async () => {
 		const fetchImpl = vi.fn(async () => jevResponse(OVERVIEW_ONLY));
 		const { instance, receipts } = selector(fetchImpl as unknown as typeof fetch);
@@ -165,7 +214,9 @@ describe('JevToolSelector', () => {
 		expect(selected.toolChoice).toBe('auto');
 		expect(selected.messages.at(-1)).toEqual({
 			role: 'system',
-			content: expect.stringContaining('callable schemas for this pass are get_project_overview.')
+			content: expect.stringContaining(
+				'callable schemas for this pass are get_project_overview.'
+			)
 		});
 		expect(receipts).toEqual([
 			expect.objectContaining({
@@ -283,7 +334,8 @@ describe('AGENTIC_CHAT_JEV_TOOL_SELECTION', () => {
 		expect(loadAgenticChatConfig(env).jevToolSelection).toBe('on');
 		for (const mode of ['off', 'shadow', 'on'] as const) {
 			expect(
-				loadAgenticChatConfig({ ...env, AGENTIC_CHAT_JEV_TOOL_SELECTION: mode }).jevToolSelection
+				loadAgenticChatConfig({ ...env, AGENTIC_CHAT_JEV_TOOL_SELECTION: mode })
+					.jevToolSelection
 			).toBe(mode);
 		}
 	});
@@ -383,7 +435,14 @@ describe('Jev selection inside a turn', () => {
 		return [
 			{
 				type: 'tool_call',
-				toolCall: [{ index: 0, id, type: 'function', function: { name, arguments: JSON.stringify(args) } }]
+				toolCall: [
+					{
+						index: 0,
+						id,
+						type: 'function',
+						function: { name, arguments: JSON.stringify(args) }
+					}
+				]
 			},
 			{ type: 'done', finishedReason: 'tool_calls' }
 		] satisfies AgenticChatTurnProviderClientEventV1[];

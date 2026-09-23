@@ -6,7 +6,8 @@ import {
 	faithfulPassage,
 	passageFidelity,
 	prependThinkingLogEntry,
-	removeThinkingLogEntry
+	removeThinkingLogEntry,
+	restoreParagraphBreaks
 } from './thinking-log';
 
 const source =
@@ -24,6 +25,19 @@ describe('thinking log', () => {
 		expect(faithfulPassage(`${source} And an invented extra sentence here.`, source)).toBe(
 			source
 		);
+	});
+
+	it("puts back the user's paragraph breaks when cleanup merged them", () => {
+		const written =
+			"Stability or anti-fragility, um, same thing.\n\nWhat should a reader say? First, 'I want to tell you things.'\n\nThe way to approach life is with curiosity.";
+		const merged =
+			"Stability or anti-fragility, same thing. What should a reader say? First, 'I want to tell you things.' The way to approach life is with curiosity.";
+		expect(faithfulPassage(merged, written)).toBe(
+			"Stability or anti-fragility, same thing.\n\nWhat should a reader say? First, 'I want to tell you things.'\n\nThe way to approach life is with curiosity."
+		);
+		expect(restoreParagraphBreaks('One line.', 'One line.')).toBe('One line.');
+		const kept = 'First.\n\nSecond.';
+		expect(restoreParagraphBreaks(kept, 'First.\n\nSecond.')).toBe(kept);
 	});
 
 	it('formats an entry and keeps headings in user text from splitting the log', () => {

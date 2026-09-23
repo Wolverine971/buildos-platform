@@ -1,4 +1,6 @@
 // apps/web/src/lib/types/calendar-items.ts
+import type { GoogleCalendarConnectionsPayload } from './google-calendar-integration';
+
 export type CalendarItemType = 'event' | 'task';
 export type CalendarItemKind = 'event' | 'range' | 'start' | 'due';
 
@@ -28,3 +30,23 @@ export interface CalendarItem {
 	created_at: string;
 	updated_at: string;
 }
+
+export type DashboardCalendarDisplayPreferences = {
+	show_events: boolean;
+	show_task_scheduled: boolean;
+	show_task_start: boolean;
+	show_task_due: boolean;
+};
+
+export type DashboardCalendarMeta = {
+	preferences: DashboardCalendarDisplayPreferences;
+	/** null when the user has no multi-account Google Calendar access. */
+	connections: GoogleCalendarConnectionsPayload | null;
+	connectionsError: boolean;
+};
+
+/** GET /api/calendar/dashboard — every layer in range, plus meta when `meta=1`. */
+export type DashboardCalendarPayload = {
+	items: CalendarItem[];
+	meta?: DashboardCalendarMeta;
+};

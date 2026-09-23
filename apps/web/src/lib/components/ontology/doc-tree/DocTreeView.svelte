@@ -9,6 +9,7 @@
 	- Polls for real-time updates (30s)
 	- Shows loading skeleton
 	- Shows unlinked documents section
+	- Shows project images: an Images shelf on top, filed images under their document
 	- Shows archived documents section
 	- Context menu support
 
@@ -32,6 +33,12 @@
 	import UnlinkedDocuments from './UnlinkedDocuments.svelte';
 	import DocTreeUpdateNotification from './DocTreeUpdateNotification.svelte';
 	import DocTreeDragLayer from './DocTreeDragLayer.svelte';
+	import DocTreeImageShelf from './DocTreeImageShelf.svelte';
+	import AssetDetailModal from '$lib/components/ontology/AssetDetailModal.svelte';
+	import ImageUploadModal from '$lib/components/ontology/ImageUploadModal.svelte';
+	import { groupTreeImages, type DocTreeImage, type DocTreeImageLink } from './tree-images';
+	import { projectImageEvents } from '$lib/stores/projectImageEvents';
+	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { createDragDropState } from './useDragDrop.svelte';
 	import { enrichTreeNodes, collectDocIds } from '$lib/services/ontology/doc-structure.service';
 	import type {
@@ -111,10 +118,21 @@
 	let hasUpdate = $state(false);
 	let treeRequest = 0;
 
+	// Project images (placement lives in onto_asset_links, never in doc_structure)
+	let treeImages = $state<DocTreeImage[]>([]);
+	let treeImageLinks = $state<DocTreeImageLink[]>([]);
+	let imagesLoaded = $state(false);
+	let imagesRequest = 0;
+	let lastImagesFetchAt = 0;
+	let viewerImageId = $state<string | null>(null);
+	let viewerOpen = $state(false);
+	let uploadOpen = $state(false);
+
 	// Parent snapshots arrive after chat/editor writes. Preserve disclosure and
 	// selection state while replacing the data, without a second tree request.
 	$effect(() => {
 		if (!initialStructure) return;
+		void fetchImages({ skipIfRecent: true });
 		treeRequest += 1;
 		structure = initialStructure;
 		documents = initialDocuments;
@@ -329,6 +347,71 @@
 		return enrichTreeNodes(structure.root, documents, 0, []);
 	});
 
+	const groupedImages = $derived(
+		groupTreeImages(treeImages, treeImageLinks, new Set(nodeMap.keys()))
+	);
+	const filedImageCount = $derived(treeImages.length - groupedImages.shelf.length);
+
+	/** Every tree document, in tree order, for the image viewer's "In document" picker. */
+	const documentOptions = $derived.by(() => {
+		const options: Array<{ id: string; title: string; depth: number }> = [];
+		function traverse(nodes: EnrichedDocTreeNode[]) {
+			for (const node of nodes) {
+				options.push({ id: node.id, title: node.title, depth: node.depth });
+				if (node.children) traverse(node.children);
+			}
+		}
+		traverse(enrichedTree);
+		return options;
+	});
+
+	/**
+	 * Load project images and their document links. Parent snapshots and tree loads
+	 * can land back to back, so `skipIfRecent` collapses a burst into one request.
+	 */
+	async function fetchImages(options: { skipIfRecent?: boolean } = {}) {
+		if (!browser) return;
+		const now = Date.now();
+		if (options.skipIfRecent && now - lastImagesFetchAt < 1500) return;
+		lastImagesFetchAt = now;
+		const request = ++imagesRequest;
+		try {
+			const res = await fetch(`/api/onto/projects/${projectId}/doc-tree/images`);
+			if (!res.ok) return;
+			const payload: { data?: { images?: DocTreeImage[]; links?: DocTreeImageLink[] } } =
+				await res.json();
+			if (request !== imagesRequest) return;
+			treeImages = payload.data?.images ?? [];
+			treeImageLinks = payload.data?.links ?? [];
+			imagesLoaded = true;
+		} catch {
+			// Images are additive to the tree; a failed load keeps the last good state.
+		}
+	}
+
+	function openImage(imageId: string) {
+		viewerImageId = imageId;
+		viewerOpen = true;
+	}
+
+	// A finished chat upload or an agent write can change this project's images.
+	$effect(() => {
+		let first = true;
+		const unsubscribeImages = projectImageEvents.subscribe((event) => {
+			if (first || !event || event.projectId !== projectId) return;
+			void fetchImages();
+		});
+		const unsubscribeMutations = dataMutationEvents.subscribe((event) => {
+			if (first || !event || !mutationAffectsProject(event.summary, projectId)) return;
+			void fetchImages();
+		});
+		first = false;
+		return () => {
+			unsubscribeImages();
+			unsubscribeMutations();
+		};
+	});
+
 	// LocalStorage key for expanded state
 	const storageKey = $derived(`doc-tree-expanded-${projectId}`);
 
@@ -431,6 +514,7 @@
 			unlinked = data.data.unlinked;
 			archived = data.data.archived ?? [];
 			currentVersion = newVersion;
+			void fetchImages({ skipIfRecent: true });
 
 			publishDataLoaded(structure, documents, unlinked, archived);
 			initializeExpandedState();
@@ -566,6 +650,7 @@
 			if (currentVersion > 0) {
 				void fetchTree(true);
 			}
+			void fetchImages({ skipIfRecent: true });
 			startPolling();
 			return;
 		}
@@ -585,6 +670,7 @@
 
 	// Lifecycle
 	onMount(() => {
+		void fetchImages({ skipIfRecent: true });
 		if (structure) {
 			loading = false;
 			publishDataLoaded();
@@ -632,6 +718,7 @@
 	export function refresh() {
 		hasUpdate = false;
 		fetchTree(false);
+		void fetchImages();
 	}
 </script>
 
@@ -644,6 +731,17 @@
 	<!-- Update notification -->
 	{#if hasUpdate}
 		<DocTreeUpdateNotification onRefresh={handleRefresh} onDismiss={dismissUpdate} />
+	{/if}
+
+	<!-- Images shelf: unfiled project images, front and center above the documents -->
+	{#if imagesLoaded && (treeImages.length > 0 || canEdit)}
+		<DocTreeImageShelf
+			images={groupedImages.shelf}
+			filedCount={filedImageCount}
+			{canEdit}
+			onOpenImage={openImage}
+			onAddImage={() => (uploadOpen = true)}
+		/>
 	{/if}
 
 	<!-- Loading state -->
@@ -704,6 +802,8 @@
 					canDrag={enableDragDrop}
 					cutNodeId={dragDrop?.state.cutNode?.id ?? null}
 					onFocus={(nodeId) => dragDrop?.setFocusedNode(nodeId)}
+					imagesByDocumentId={groupedImages.byDocumentId}
+					onOpenImage={(imageId) => openImage(imageId)}
 				/>
 			{/each}
 		</div>
@@ -798,6 +898,27 @@
 				</button>
 			</div>
 		{/if}
+	{/if}
+
+	<AssetDetailModal
+		bind:isOpen={viewerOpen}
+		{projectId}
+		assetId={viewerImageId}
+		{canEdit}
+		{documentOptions}
+		onUpdated={() => void fetchImages()}
+		onDeleted={() => void fetchImages()}
+		onClose={() => (viewerImageId = null)}
+	/>
+
+	{#if canEdit}
+		<ImageUploadModal
+			bind:isOpen={uploadOpen}
+			{projectId}
+			onUploaded={() => {
+				void fetchImages();
+			}}
+		/>
 	{/if}
 
 	<!-- Context menu -->

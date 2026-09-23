@@ -648,6 +648,32 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			}
 		},
 		required: ['edge_id']
+	},
+	'onto.asset.update': {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			asset_id: {
+				type: 'string',
+				format: 'uuid',
+				description: 'Existing project image asset UUID.'
+			},
+			caption: {
+				type: 'string',
+				description: 'Display name for the image, e.g. "Company logo". Omit to keep it.'
+			},
+			alt_text: {
+				type: 'string',
+				description: 'Accessible description of what the image shows. Omit to keep it.'
+			},
+			document_id: {
+				type: ['string', 'null'],
+				format: 'uuid',
+				description:
+					"File the image under this document of the same project. null moves it back to the project's Images shelf; omit to leave its placement unchanged."
+			}
+		},
+		required: ['asset_id']
 	}
 };
 

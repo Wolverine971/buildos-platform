@@ -125,12 +125,17 @@ function createOverviewSupabaseMock(config: {
 		if (table === 'onto_tasks') {
 			return {
 				select: vi.fn().mockReturnValue({
-					in: vi.fn().mockImplementation((_column: string, projectIds: unknown) => ({
-						is: vi.fn().mockResolvedValue({
+					in: vi.fn().mockImplementation((_column: string, projectIds: unknown) => {
+						// .is(deleted_at).is(archived_at).order().order().limit()
+						const chain: Record<string, unknown> = {};
+						chain.is = vi.fn().mockReturnValue(chain);
+						chain.order = vi.fn().mockReturnValue(chain);
+						chain.limit = vi.fn().mockResolvedValue({
 							data: filterByProjectIds(tasks, projectIds),
 							error: null
-						})
-					}))
+						});
+						return chain;
+					})
 				})
 			};
 		}
@@ -139,9 +144,12 @@ function createOverviewSupabaseMock(config: {
 			return {
 				select: vi.fn().mockReturnValue({
 					in: vi.fn().mockImplementation((_column: string, projectIds: unknown) => ({
-						is: vi.fn().mockResolvedValue({
-							data: filterByProjectIds(milestones, projectIds),
-							error: null
+						// deleted_at IS NULL, then archived_at IS NULL
+						is: vi.fn().mockReturnValue({
+							is: vi.fn().mockResolvedValue({
+								data: filterByProjectIds(milestones, projectIds),
+								error: null
+							})
 						})
 					}))
 				})
@@ -152,9 +160,12 @@ function createOverviewSupabaseMock(config: {
 			return {
 				select: vi.fn().mockReturnValue({
 					in: vi.fn().mockImplementation((_column: string, projectIds: unknown) => ({
-						is: vi.fn().mockResolvedValue({
-							data: filterByProjectIds(plans, projectIds),
-							error: null
+						// deleted_at IS NULL, then archived_at IS NULL
+						is: vi.fn().mockReturnValue({
+							is: vi.fn().mockResolvedValue({
+								data: filterByProjectIds(plans, projectIds),
+								error: null
+							})
 						})
 					}))
 				})
@@ -165,9 +176,12 @@ function createOverviewSupabaseMock(config: {
 			return {
 				select: vi.fn().mockReturnValue({
 					in: vi.fn().mockImplementation((_column: string, projectIds: unknown) => ({
-						is: vi.fn().mockResolvedValue({
-							data: filterByProjectIds(risks, projectIds),
-							error: null
+						// deleted_at IS NULL, then archived_at IS NULL
+						is: vi.fn().mockReturnValue({
+							is: vi.fn().mockResolvedValue({
+								data: filterByProjectIds(risks, projectIds),
+								error: null
+							})
 						})
 					}))
 				})

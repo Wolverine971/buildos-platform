@@ -7,6 +7,7 @@ import type { ChatAttachmentRef, ChatImageAttachmentCreateResponse } from '@buil
 import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/types';
 import { uploadFileToSignedStorageUrl as uploadToSignedStorageUrl } from '$lib/utils/signed-storage-upload';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
+import { notifyProjectImagesChanged } from '$lib/stores/projectImageEvents';
 
 export const AGENT_CHAT_MAX_IMAGE_ATTACHMENTS = 4;
 const AGENT_CHAT_MAX_IMAGE_BYTES = 25 * 1024 * 1024;
@@ -772,6 +773,7 @@ export class AttachmentController {
 					completedAsset.id,
 					completedAsset.ocr_status ?? 'pending'
 				);
+				notifyProjectImagesChanged(completedAsset.project_id);
 				return;
 			}
 

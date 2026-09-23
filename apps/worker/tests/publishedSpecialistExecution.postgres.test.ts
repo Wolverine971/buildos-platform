@@ -47,6 +47,11 @@ import {
 	type ScriptedReply
 } from './helpers/workflowProviderScript';
 import { SupabaseAgenticChatWorkflowStore } from '../src/workers/agentic-chat/workflow/workflow-store';
+import {
+	findProjectContext,
+	type ContextFinderDecider
+} from '@buildos/agentic-chat-runtime/context-finder';
+import type { WorkflowContextFinderPortV1 } from '../src/workers/agentic-chat/workflow/context-finder-port';
 const DOC = 'fd000000-0000-4000-8000-000000000001';
 const VERSION = '2026-09-19T00:00:00Z';
 const NOTE = 'CUSTOM REFERENCE: group decisions separately from working notes.';
@@ -255,6 +260,200 @@ function script(call: ScriptedCall): ScriptedReply {
 					})
 				]);
 				expect((await e2eFacts(admin, a.p_turn_run_id)).effects).toBe(0);
+			},
+			60000
+		);
+		it.each([false, true])(
+			'freezes Jev-selected evidence into the checkpoint for every role (finder fails=%s)',
+			async (fails) => {
+				const MEMO = 'fd000000-0000-4000-8000-0000000000aa';
+				const question = 'What does land cost for the school?';
+				const scripted: ContextFinderDecider = {
+					decide: async (request) => ({
+						ok: true,
+						answers: Object.fromEntries(
+							Object.keys(request.questions).map((key) => [
+								key,
+								{
+									type: 'noul',
+									noul: key === 'e_d0' || key === 'h_d0_0' ? 0.9 : 0.1
+								}
+							])
+						),
+						receipt: {
+							modelRequested: 'typesafe/jev-1.13',
+							modelUsed: 'typesafe/jev-1.13',
+							requestId: 'scripted',
+							inputTokens: 10,
+							outputTokens: 1,
+							costUsd: 0.0005,
+							durationMs: 5,
+							requestBytes: 100,
+							questionCount: Object.keys(request.questions).length,
+							attempts: 1
+						}
+					})
+				};
+				// The real shared finder over an in-memory project: the memo is not in the
+				// specialist's bounded inventory, so only the finder can surface it.
+				const findContext = vi.fn<WorkflowContextFinderPortV1>(async (input) => {
+					if (fails) throw new Error('offline');
+					return (
+						await findProjectContext({
+							project: {
+								project: { id: E2E_PROJECT_ID, name: 'Workshop launch' },
+								documents: [
+									{
+										id: MEMO,
+										title: 'Budget memo',
+										updated_at: VERSION,
+										content:
+											'## Land\nLand is $150K per acre.\n## Staff\nTwo teachers.'
+									}
+								],
+								tasks: [],
+								goals: [],
+								plans: [],
+								milestones: [],
+								risks: []
+							},
+							message: input.question,
+							decider: scripted,
+							signal: input.signal
+						})
+					).evidence;
+				});
+				const v = await version();
+				const a = await buildAgenticChatWorkflowV4AdmissionArgs({
+					userId: E2E_USER_ID,
+					command: {
+						clientTurnId: randomUUID(),
+						streamRunId: randomUUID(),
+						sessionId: null
+					},
+					eligibility: {
+						eligible: true,
+						projectId: E2E_PROJECT_ID,
+						message: question,
+						profile: 'document_organization',
+						documentReadTools: true,
+						documentEvidenceHandoff: true
+					},
+					published: {
+						snapshot: v.snapshot,
+						snapshotHash: v.version.snapshotHash,
+						contextFinder: { version: 'context_finder_request_v1', mode: 'auto' }
+					},
+					transportDecisionId: randomUUID()
+				});
+				expect(
+					(await admitAgenticChatWorkflowV4Turn({ client: shim as never, args: a }))
+						.outcome
+				).toBe('newly_admitted');
+				const cite = fails ? DOC : MEMO;
+				const provider = scriptedWorkflowProvider((call) =>
+					call.role === 'planner'
+						? {
+								kind: 'text',
+								text: JSON.stringify({
+									analyst: 'Find costs.',
+									reviewer: 'Check costs.'
+								})
+							}
+						: call.role === 'editor'
+							? {
+									kind: 'text',
+									text: 'Land is $150K per acre. No changes were made.'
+								}
+							: {
+									kind: 'text',
+									text: JSON.stringify({
+										summary: 'Land cost is recorded.',
+										findings: [
+											{
+												claim: 'Land cost is recorded.',
+												basis: 'recorded',
+												evidence: [cite]
+											}
+										],
+										risks: [],
+										unknowns: [],
+										recommendation: 'Confirm the acreage.'
+									})
+								}
+				);
+				const errors: { stage: string }[] = [];
+				const worker = buildE2EWorker({
+					shim,
+					client: provider.client,
+					specialistWorkflowsEnabled: true,
+					documentReadToolsEnabled: true,
+					documentEvidenceHandoffEnabled: true,
+					publishedSpecialistsEnabled: true,
+					findContext,
+					context: context(),
+					onError: (report) => errors.push(report)
+				});
+				try {
+					expect(
+						await worker.execute(await leaseAndClaimE2E(admin, shim, a.p_turn_run_id))
+					).toMatchObject({ terminalStatus: 'completed' });
+				} finally {
+					await worker.stop();
+				}
+				expect(findContext).toHaveBeenCalledOnce();
+				expect(findContext.mock.calls[0]![0]).toMatchObject({
+					userId: E2E_USER_ID,
+					projectId: E2E_PROJECT_ID,
+					question,
+					request: { mode: 'auto' }
+				});
+				const run = await new SupabaseAgenticChatWorkflowStore(shim as never).loadRun(
+					a.p_turn_run_id
+				);
+				const selected = (run!.context!.payload.data as any).selected_evidence;
+				for (const role of [
+					'planner',
+					'project_analyst',
+					'risk_reviewer',
+					'editor'
+				] as const)
+					for (const call of provider.callsFor(role))
+						expect(call.body.messages[1].content).toContain(
+							fails ? 'Relevance ranking was unavailable' : 'Land is $150K per acre.'
+						);
+				if (fails) {
+					expect(selected).toMatchObject({ status: 'unavailable', full: [] });
+					expect(errors.map((e) => e.stage)).toContain('context_finder');
+				} else {
+					expect(selected).toMatchObject({
+						status: 'selected',
+						source: 'jev',
+						full: [
+							{
+								id: MEMO,
+								excerpts: [
+									{ heading: 'Land', text: '## Land\nLand is $150K per acre.' }
+								]
+							}
+						],
+						ranker: { status: 'ranked', costUsd: 0.001 }
+					});
+					expect(run!.context!.evidenceVersions.map((e) => e.id)).toContain(MEMO);
+				}
+				const facts = await e2eFacts(admin, a.p_turn_run_id);
+				// Both specialists' reports cite the selected record and are accepted first try.
+				expect(
+					facts.steps
+						.filter((row) =>
+							['project_analyst', 'risk_reviewer'].includes(row.step_key)
+						)
+						.map((row) => [row.step_key, row.status, row.attempts_used])
+				).toEqual([
+					['project_analyst', 'accepted', 1],
+					['risk_reviewer', 'accepted', 1]
+				]);
+				expect(facts.effects).toBe(0);
 			},
 			60000
 		);

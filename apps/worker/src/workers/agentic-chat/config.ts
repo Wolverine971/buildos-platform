@@ -134,6 +134,8 @@ type AgenticChatBaseConfig = {
 	projectReviewV3Enabled?: boolean;
 	/** Counterfactual specialist/tool selection only; never enables routing. */
 	jevSpecialistSelection?: 'off' | 'shadow';
+	/** Jev ranks project records and sections for published specialist reviews. Default off. */
+	contextFinderEnabled?: boolean;
 	liveVisionEnabled: boolean;
 	consumptionBillingEnabled: boolean;
 	consumer: AgenticChatConsumerConfig;
@@ -210,6 +212,11 @@ export function loadAgenticChatConfig(
 	if (jevSpecialistSelection !== 'off' && jevSpecialistSelection !== 'shadow') {
 		throw new Error('AGENTIC_CHAT_JEV_SPECIALIST_SELECTION must be off or shadow');
 	}
+	const contextFinderEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_CONTEXT_FINDER_ENABLED,
+		false,
+		'AGENTIC_CHAT_CONTEXT_FINDER_ENABLED'
+	);
 	const specialistWorkflowsEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED,
 		false,
@@ -308,6 +315,7 @@ export function loadAgenticChatConfig(
 		projectReviewV3Enabled,
 		documentEvidenceHandoffEnabled,
 		jevSpecialistSelection,
+		contextFinderEnabled,
 		liveVisionEnabled,
 		consumptionBillingEnabled,
 		consumer,

@@ -1532,6 +1532,39 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_asset',
+			description:
+				'Name an existing project image or file it under a document of the same project (images attached in a project chat are already stored).',
+			parameters: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					asset_id: {
+						type: 'string',
+						description:
+							'Image asset UUID from the attachment context or an asset read.'
+					},
+					caption: {
+						type: 'string',
+						description: 'Display name, e.g. "Company logo".'
+					},
+					alt_text: {
+						type: 'string',
+						description: 'Accessible description of what the image shows.'
+					},
+					document_id: {
+						type: ['string', 'null'],
+						description:
+							"Document UUID from a read to file the image under; null moves it back to the project's Images shelf; omit to keep its placement."
+					}
+				},
+				required: ['asset_id']
+			}
+		}
+	},
 	// ============================================
 	// DELETE TOOLS
 	// ============================================

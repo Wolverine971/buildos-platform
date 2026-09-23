@@ -578,6 +578,19 @@ describe('checkpoint capture over real sections (tasker/95)', () => {
 		);
 	});
 
+	it("keeps a section's own spacing so the diff is only the changed lines", () => {
+		const added = '- **New** — x. _(2026-09-22)_';
+		const next = applyStartHereSectionBodies(customFixture, [
+			{
+				heading: 'Decisions',
+				markdown: `${sectionBody(customFixture, 'Decisions')}\n${added}`
+			}
+		]);
+		const before = customFixture.split('\n');
+		expect(next.split('\n').filter((line) => !before.includes(line))).toEqual([added]);
+		expect(next.split('\n')).toHaveLength(before.length + 1);
+	});
+
 	it('flags managed-fence edits, new duplicate headings, and removed sections', () => {
 		const changedFence = customFixture.replace(
 			'**Now:** 7 open tasks',

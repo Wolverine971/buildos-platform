@@ -20,6 +20,12 @@
 		entityId?: string | null;
 		linkRole?: AssetLinkRole;
 		canEdit?: boolean;
+		/**
+		 * Documents this image can be filed under (document tree). When set, the
+		 * modal shows an "In document" picker that moves the image's document
+		 * attachment link; null placement means the tree's Images shelf.
+		 */
+		documentOptions?: Array<{ id: string; title: string; depth: number }> | null;
 		onUpdated?: () => void;
 		onDeleted?: () => void;
 		onClose?: () => void;
@@ -33,6 +39,7 @@
 		entityId = null,
 		linkRole = 'attachment',
 		canEdit = true,
+		documentOptions = null,
 		onUpdated,
 		onDeleted,
 		onClose
@@ -43,6 +50,7 @@
 	let queueing = $state(false);
 	let deleting = $state(false);
 	let unlinking = $state(false);
+	let placing = $state(false);
 	let asset = $state<OntologyImageAsset | null>(null);
 	let links = $state<OntologyAssetLink[]>([]);
 	let formError = $state<string | null>(null);
@@ -55,7 +63,7 @@
 	let summary = $state('');
 
 	function closeModal() {
-		if (saving || deleting || queueing || unlinking) return;
+		if (saving || deleting || queueing || unlinking || placing) return;
 		isOpen = false;
 		onClose?.();
 	}
@@ -237,6 +245,71 @@
 		}
 	}
 
+	const SHELF_PLACEMENT = '';
+	const documentAttachmentLinks = $derived(
+		links.filter((link) => link.entity_kind === 'document' && link.role === 'attachment')
+	);
+	const currentDocumentId = $derived(
+		documentAttachmentLinks[0]?.entity_id ??
+			links.find((link) => link.entity_kind === 'document')?.entity_id ??
+			null
+	);
+
+	/** File the image under one document (or back on the shelf) via attachment links. */
+	async function moveToDocument(nextDocumentId: string | null) {
+		if (!assetId || !canEdit || nextDocumentId === currentDocumentId) return;
+		placing = true;
+		formError = null;
+		try {
+			if (nextDocumentId) {
+				const response = await fetch(`/api/onto/assets/${assetId}/links`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						entity_kind: 'document',
+						entity_id: nextDocumentId,
+						role: 'attachment'
+					})
+				});
+				const payload = await response.json().catch(() => null);
+				if (!response.ok) {
+					throw new Error(payload?.error ?? 'Failed to move image');
+				}
+			}
+			// Inline links mark embeds inside a document's content; only attachments move.
+			for (const link of documentAttachmentLinks) {
+				if (link.entity_id === nextDocumentId) continue;
+				const params = new URLSearchParams({
+					entity_kind: 'document',
+					entity_id: link.entity_id,
+					role: 'attachment'
+				});
+				const response = await fetch(
+					`/api/onto/assets/${assetId}/links?${params.toString()}`,
+					{ method: 'DELETE' }
+				);
+				if (!response.ok) {
+					const payload = await response.json().catch(() => null);
+					throw new Error(payload?.error ?? 'Failed to move image');
+				}
+			}
+			const destination = nextDocumentId
+				? (documentOptions?.find((option) => option.id === nextDocumentId)?.title ??
+					'document')
+				: 'Images shelf';
+			toastService.success(`Moved to ${destination}`);
+			onUpdated?.();
+			await loadAsset(assetId);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to move image';
+			formError = message;
+			toastService.error(message);
+			await loadAsset(assetId);
+		} finally {
+			placing = false;
+		}
+	}
+
 	const modalTitle = $derived(
 		asset?.caption?.trim() ||
 			asset?.alt_text?.trim() ||
@@ -281,10 +354,44 @@
 					</div>
 
 					<div class="space-y-2">
+						{#if documentOptions}
+							<div class="space-y-1">
+								<label
+									for="asset-placement"
+									class="text-2xs font-medium text-muted-foreground"
+									>In document</label
+								>
+								<select
+									id="asset-placement"
+									class="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground shadow-ink-inner outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-ring"
+									value={currentDocumentId ?? SHELF_PLACEMENT}
+									disabled={!canEdit || placing || saving || deleting}
+									onchange={(event) =>
+										moveToDocument(
+											event.currentTarget.value === SHELF_PLACEMENT
+												? null
+												: event.currentTarget.value
+										)}
+								>
+									<option value={SHELF_PLACEMENT}
+										>Images shelf (no document)</option
+									>
+									{#each documentOptions as option (option.id)}
+										<option value={option.id}
+											>{'\u00a0\u00a0'.repeat(
+												option.depth
+											)}{option.title}</option
+										>
+									{/each}
+								</select>
+							</div>
+						{/if}
+
 						<div class="space-y-1">
 							<label
 								for="asset-caption"
-								class="text-2xs font-medium text-muted-foreground">Caption</label
+								class="text-2xs font-medium text-muted-foreground"
+								>{documentOptions ? 'Name' : 'Caption'}</label
 							>
 							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 								<input

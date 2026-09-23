@@ -20,6 +20,7 @@ legacy compatibility values, not active processors.
 | `schedule_daily_sms`             | `workers/dailySmsWorker.ts`                           | Scheduler                                     |
 | `send_sms`                       | `workers/smsWorker.ts`                                | Daily SMS scheduler, SMS notification adapter |
 | `classify_chat_session`          | `workers/chat/chatSessionClassifier.ts`               | `POST /queue/chat/classify`                   |
+| `capture_chat_checkpoint`        | `workers/chat/checkpoint/checkpointJob.ts`            | Scheduler sweep, `classify_chat_session`      |
 | `process_onto_braindump`         | `workers/braindump/braindumpProcessor.ts`             | `POST /queue/braindump/process`               |
 | `transcribe_voice_note`          | `workers/voice-notes/voiceNoteTranscriptionWorker.ts` | Voice note flow                               |
 | `extract_onto_asset_ocr`         | `workers/assets/assetOcrWorker.ts`                    | Ontology asset flow                           |
@@ -106,6 +107,25 @@ Scheduled SMS management routes live under `/sms/scheduled/*`.
   snapshot work requires icon generation.
 - `sync_calendar` sends calendar projection jobs back to the web webhook using
   `PRIVATE_BUILDOS_WEBHOOK_SECRET`.
+
+## Chat Checkpoint Capture
+
+Added 2026-09-23 (tasker/95). The full design is in
+`apps/web/docs/technical/architecture/PROJECT_START_HERE_DOC_DESIGN_2026-06-23.md` §6.3.
+
+- Every minute, the scheduler runs `sweepChatCheckpoints` over project chats active in the last
+  3 days. It enqueues `capture_chat_checkpoint` once the part after the session's watermark
+  crosses 1,500 user characters or 4 user turns (after an assistant reply), or after 10 minutes
+  idle.
+- `classify_chat_session` (chat close) enqueues the same job with trigger `close`.
+- Dedup key: `chat-checkpoint:<sessionId>`. A failure writes a `failed` row in
+  `chat_capture_checkpoints`, and the sweep skips that session until a new message arrives.
+- The job writes the project's thinking log and START HERE. It stages review proposals as
+  `agent_runs`, records a receipt row, and advances `chat_sessions.capture_watermark_at`.
+- Disable with `CHAT_CHECKPOINT_CAPTURE_ENABLED=false`. This stops the sweep and makes the job a
+  no-op.
+- One-time backfill: `pnpm --filter @buildos/worker backfill:chat-checkpoints --user <id>`. It is
+  a dry run unless given `--apply --confirm <db-ref>`.
 
 ## Worker API Reference
 

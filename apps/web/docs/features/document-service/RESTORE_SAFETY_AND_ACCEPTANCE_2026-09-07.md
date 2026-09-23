@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/document-service/RESTORE_SAFETY_AND_ACCEPTANCE_2026-09-07.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-08; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Document restore safety and acceptance
 
 **Date:** 2026-09-07. Continuation of the [Step 2 editor pass](./STEP_2_EDITOR_ACCEPTANCE_2026-09-07.md).

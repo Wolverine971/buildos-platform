@@ -1,6 +1,7 @@
 // apps/worker/tests/helpers/workflowEndToEnd.ts
 import { loadSpecialistSnapshotV2 } from '../../src/workers/agentic-chat/workflow/specialist-snapshot-store';
 import type { SpecialistShadowObserver } from '../../src/workers/agentic-chat/workflow/specialist-selection-shadow';
+import type { WorkflowContextFinderPortV1 } from '../../src/workers/agentic-chat/workflow/context-finder-port';
 // apps/worker/tests/helpers/workflowEndToEnd.ts
 //
 // DISPOSABLE DATABASE ONLY. The Tasker 86 → 87 worker path against the frozen SQL:
@@ -172,6 +173,7 @@ export function buildE2EWorker(input: {
 	projectReviewV2Enabled?: boolean;
 	projectReviewV3Enabled?: boolean;
 	observeSelection?: SpecialistShadowObserver;
+	findContext?: WorkflowContextFinderPortV1;
 	context?: MasterPromptContext;
 	onError?: (report: { stage: string; turnRunId: string; error: unknown }) => void;
 }) {
@@ -224,6 +226,7 @@ export function buildE2EWorker(input: {
 		projectReviewV2Enabled: input.projectReviewV2Enabled,
 		projectReviewV3Enabled: input.projectReviewV3Enabled,
 		observeSelection: input.observeSelection,
+		findContext: input.findContext,
 		loadSpecialistSnapshot: (identity) => loadSpecialistSnapshotV2(shim as never, identity),
 		onTiming: () => undefined,
 		onError: input.onError ?? (() => undefined)

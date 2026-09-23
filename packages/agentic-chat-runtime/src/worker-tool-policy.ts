@@ -32,6 +32,7 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 = Object.free
 	'update_onto_risk',
 	'create_onto_project',
 	'update_onto_project',
+	'update_onto_asset',
 	'delegate_task',
 	// Calendar writes moved to the worker on 2026-09-04. They call Google
 	// directly from Railway through the shared calendar write stack.

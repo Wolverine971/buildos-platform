@@ -4,7 +4,7 @@
 
 **Status:** Implemented - initial end-to-end path
 **Date:** 2026-06-23
-**Last Updated:** 2026-09-22
+**Last Updated:** 2026-09-23
 **Owner:** DJ
 **Scope:** One continually maintained orientation document per project. This is the canonical first stop for an AI agent or human trying to understand what is going on in the project.
 **Companion:** [`PROJECT_KNOWLEDGE_LAYER_DESIGN_2026-06-16.md`](./PROJECT_KNOWLEDGE_LAYER_DESIGN_2026-06-16.md)
@@ -48,13 +48,13 @@ This spec must use the current data model, not the legacy context-document wirin
 
 ## 3. Locked Decisions
 
-| Fork             | Decision                                                                       | Consequence                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Data model       | Use `type_key='document.context.project'` on `onto_documents`                  | No schema revival, no legacy edge, no project-row pointer.                                          |
-| Ownership model  | Hybrid authored + managed regions                                              | Humans/agents own orientation prose through staged edits; machines own deterministic fenced blocks. |
-| Prompt injection | Add a guarded `project_start_here` section before `focus_purpose`              | The document becomes the orientation entry point while existing workflow guardrails remain intact.  |
-| Capture          | Session-end workers propose authored edits; they do not silently rewrite prose | The doc remains high-trust project context instead of becoming hidden LLM output.                   |
-| Managed refresh  | Deterministic pure merge only                                                  | No LLM in managed regions; idempotent updates can run after snapshot refreshes.                     |
+| Fork             | Decision                                                                                                                           | Consequence                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Data model       | Use `type_key='document.context.project'` on `onto_documents`                                                                      | No schema revival, no legacy edge, no project-row pointer.                                          |
+| Ownership model  | Hybrid authored + managed regions                                                                                                  | Humans/agents own orientation prose through staged edits; machines own deterministic fenced blocks. |
+| Prompt injection | Add a guarded `project_start_here` section before `focus_purpose`                                                                  | The document becomes the orientation entry point while existing workflow guardrails remain intact.  |
+| Capture          | Checkpoint capture applies additions and the Current state snapshot; removed or reworded lines are proposed for review (tasker/95) | Thinking lands without a review step, while nothing the user wrote is deleted or reworded silently. |
+| Managed refresh  | Deterministic pure merge only                                                                                                      | No LLM in managed regions; idempotent updates can run after snapshot refreshes.                     |
 
 ---
 
@@ -196,39 +196,100 @@ outside the managed fences is byte-identical, the prior `updated_at` is preserve
 (migration `20260624000000_start_here_managed_region_recency_guard.sql`). Authored
 edits still bump recency normally.
 
-### 6.3 Authored Capture From Chat
+### 6.3 Authored Capture From Chat (checkpoint capture)
 
-At session end, the worker already classifies/cleans up chats and updates project activity/next steps. Start Here capture should be a separate step in that flow:
+Checkpoint capture (tasker/95, live in production since `6660f80ce`, 2026-09-23) captures project
+chats while they run, not only when they close. Before it, capture ran only on an explicit chat
+close, and 468 of 516 production project chats from the prior 60 days (91%) were never captured.
 
-1. Detect durable orientation facts: explicit decisions, non-goals, changed definition of done, stable vocabulary, resolved/open questions.
-2. Map each fact to a named authored section.
-3. Propose a full-section rewrite through the staged mutation flow (contract below).
-4. Never write into managed fences.
-5. Never rewrite prose without review: every capture is a staged proposal.
+**Triggers.** Nothing runs inside a chat turn.
 
-This keeps the Start Here document current without letting a background worker silently become the author of trusted project context.
+- A scheduler sweep (`sweepChatCheckpoints`, every minute) looks at project chats active in the
+  last 3 days. It enqueues `capture_chat_checkpoint` when the messages after the session's
+  watermark reach 1,500 user characters or 4 user turns, once the assistant has replied. It also
+  enqueues when the session has been idle for 10 minutes.
+- Closing a chat (`classify_chat_session`) enqueues the same job.
+- The dedup key is `chat-checkpoint:<sessionId>`. A failed capture writes a `failed` receipt, and
+  the sweep skips that session until a new message arrives.
+- Kill switch: `CHAT_CHECKPOINT_CAPTURE_ENABLED=false`.
 
-**Reconcile, don't append (tasker/93, 2026-09-22).** The first capture contract appended
-snippets and never showed the model the current document, so each session re-derived the
-same facts in new words (production doc `1fc5b3c2…` ended with two "What this is"
-paragraphs, duplicate decisions, and invented `_(YYYY-MM-DD)_`/2025 dates). Capture now:
+**Watermark.** The watermark lives in `chat_sessions.capture_watermark_at` and
+`capture_watermark_message_id`. A capture reads up to 60 new messages, plus 4 earlier ones for
+context, then advances the watermark, so a repeat run is a no-op.
 
-- sends the model the current authored sections, the read-only text outside them, today's
-  date in the user's timezone, and the project's creation date;
-- accepts only `{ sections: [{ section, markdown, rationale }], outside_note? }`, where
-  `markdown` is the section's complete new body. The retired `updates` snippet shape is
-  ignored, because treating a snippet as a full body would wipe the section;
-- reconciles in code (`reconcileStartHereAuthoredSections` in `start-here.ts`): an empty
-  section never replaces a non-empty one, decision stamps are limited to today, a message
-  day, or a date already recorded (placeholders on carried-over bullets are dropped, and any
-  stamp before the project's creation is dropped), list bullets collapse on a stemmed
-  bold-title key with the newest wording winning, each section has a length cap, and
-  sections too long to show the model in full are read-only for that capture;
-- keeps one pending proposal per project. A new capture builds on the newest unreviewed
-  proposal when it still applies cleanly, then marks older pending runs `cancelled` with a
-  `superseded:` error, which the AI Inbox shows as expired rather than blocked.
+**Outputs.** Two parallel calls on the `fast` JSON profile, with reasoning off:
 
-Review stays mandatory. The proposal diff now shows removals, because rewrites replace text.
+1. **Thinking log.** One `document.context.thinking_log` document per project: a dated journal,
+   newest entry first. Each entry has a `## YYYY-MM-DD · <topic>` heading, then
+   `_From chat "<title>" · <time>_`, then the user's messages as paragraphs with light cleanup.
+    - Code keeps the model's cleanup only when at least 90% of its words come from the user's
+      message and it is no longer than the message plus 20 characters. Otherwise it logs the
+      message as written.
+    - Paragraph breaks the cleanup merged are put back (`restoreParagraphBreaks`).
+    - A passage the model labels `"kind": "instruction"` (a pure request) is not logged.
+    - Helpers are in `packages/shared-agent-ops/src/ontology/thinking-log.ts`.
+2. **START HERE.** The model returns block edits against the document's own `##` sections, custom
+   headings included:
+    - `add` after a block id `bN`;
+    - `remove`;
+    - `replace`;
+    - `rewrite`, only for Current state or a new section.
+
+    A missing section is added only under a standard name, which prevents twins like "What this is"
+    next to "What this book is".
+
+**Auto-apply versus review.**
+
+- Additions and the Current state snapshot apply immediately.
+- Removed or reworded lines go to one AI Inbox proposal per project, labelled "Update project
+  START HERE". It supersedes older pending proposals.
+- Decisions are a permanent record: they are never removed because they were carried out.
+- The model sees the document as it would read with any pending proposal approved. Code plans that
+  desired document against the real one with `planStartHereCheckpointRewrites`.
+
+**Invariants enforced in code.**
+
+- Managed regions stay byte-exact. Before every save, `checkStartHereCaptureInvariants` checks for
+  changed regions, duplicate headings, and removed sections.
+- Kept blocks are byte-exact, and a section keeps its own spacing.
+- New or reworded Decisions are stamped with the capture date in the user's timezone; dates the
+  model wrote are stripped.
+- Links to unknown entities become plain labels (`resolveEntityReferences`). The classifier's
+  `next_step_long` gets the same treatment.
+- Echoed `[bN]` ids are stripped.
+- An addition the model marks `"restates": "<bN>"` is dropped.
+- An `updated_at` check runs before each save.
+
+**Receipts and undo.**
+
+- Each capture writes a `chat_capture_checkpoints` row (owner-read RLS, realtime).
+- The chat shows `CaptureReceiptChip.svelte`, merged into the rendered message list only. It never
+  enters model history.
+- `POST /api/chat/capture-checkpoints/[id]/undo`:
+    - restores START HERE, but only if nobody edited it since the capture;
+    - removes the capture's log entry;
+    - withdraws the proposal it staged.
+
+**Backfill.** `pnpm --filter @buildos/worker backfill:chat-checkpoints --user <id>` is a dry run by
+default. `--apply --confirm <db-ref> --max-usd N` writes oldest first, dates each capture to the
+chat, and locks Current state. DJ declined a production backfill on 2026-09-23.
+
+**Eval.**
+
+- `scripts/book-loop/capture-eval/run-eval.sh` runs over the frozen book-loop fixture. It is paid
+  (about 1¢, with DJ's approval) unless run with `--dry`, or with `--replay <run.json>` to replay
+  saved model replies for free.
+- It runs structural checks, plus an LLM judge that scores recall, the user's wording, invented
+  claims and restated lines.
+- `e2e-qa.sh` is a free end-to-end check on the isolated QA database (13 checks).
+- Run 4 scored 100, yet a manual read found four defects. Their fixes (paragraph restore, the
+  `kind` label, `restates`, and section spacing) were built on 2026-09-23 but are **not yet
+  committed or deployed**; see tasker/96. Always read the output.
+
+**History.** Tasker 93's close-time reconcile contract (`startHereCaptureProcessor.ts`, full-section
+rewrites, every change staged for review) was removed in `6660f80ce`.
+`reconcileStartHereAuthoredSections` remains in `start-here.ts` but no longer has a production
+caller.
 
 ### 6.4 Librarian Reconciliation
 
@@ -318,16 +379,16 @@ This avoids duplicating two separate "project narrative" systems.
 
 ## 10. Phased Rollout
 
-| Phase | Deliverable                                                                            | Status      |
-| ----- | -------------------------------------------------------------------------------------- | ----------- |
-| P0    | Shared constants/template/managed-region utilities; canonical lookup documented.       | Implemented |
-| P1    | Project chat loader fetches bounded Start Here body.                                   | Implemented |
-| P2    | Lite prompt injects guarded `project_start_here` before `focus_purpose`.               | Implemented |
-| P3    | Create/backfill Start Here docs on project create and via an explicit backfill script. | Implemented |
-| P4    | Managed status/map refresh with recency guard.                                         | Implemented |
-| P5    | Session-end staged authored capture proposals (reconcile contract, tasker/93).         | Implemented |
-| P6    | Daily brief Start Here excerpts.                                                       | Implemented |
-| P7    | Broader librarian/project-loop reconciliation for Start Here cleanup suggestions.      | Future      |
+| Phase | Deliverable                                                                                  | Status      |
+| ----- | -------------------------------------------------------------------------------------------- | ----------- |
+| P0    | Shared constants/template/managed-region utilities; canonical lookup documented.             | Implemented |
+| P1    | Project chat loader fetches bounded Start Here body.                                         | Implemented |
+| P2    | Lite prompt injects guarded `project_start_here` before `focus_purpose`.                     | Implemented |
+| P3    | Create/backfill Start Here docs on project create and via an explicit backfill script.       | Implemented |
+| P4    | Managed status/map refresh with recency guard.                                               | Implemented |
+| P5    | Checkpoint capture: thinking log, auto-applied additions, review for rewordings (tasker/95). | Implemented |
+| P6    | Daily brief Start Here excerpts.                                                             | Implemented |
+| P7    | Broader librarian/project-loop reconciliation for Start Here cleanup suggestions.            | Future      |
 
 P0-P2 make agents orient around the Start Here doc. P3-P6 make it self-maintaining for the initial workflow.
 
@@ -343,8 +404,9 @@ P0-P2 make agents orient around the Start Here doc. P3-P6 make it self-maintaini
 - Snapshot worker (consumer + worker-side producer `queueProjectContextSnapshot`): `apps/worker/src/workers/ontology/projectContextSnapshotWorker.ts`
 - Web-side snapshot producer: `apps/web/src/lib/server/project-context-snapshot.service.ts`
 - Snapshot producers (call sites): `apps/web/src/routes/api/onto/projects/instantiate/+server.ts`, `apps/web/src/lib/services/calendar-analysis.service.ts` (create), `apps/worker/src/workers/chat/chatSessionClassifier.ts` (session end)
-- Session-end capture path: `apps/worker/src/workers/chat/chatSessionClassifier.ts` and `apps/worker/src/workers/chat/startHereCaptureProcessor.ts`; reconcile guards in `start-here.ts` (`reconcileStartHereAuthoredSections`); superseded-run inbox mapping in `packages/shared-agent-ops/src/inbox-index.ts` (`mapAgentRunToInboxItem`)
-- Capture tests: `apps/worker/tests/startHereCaptureProcessor.test.ts`, `packages/shared-agent-ops/src/ontology/start-here.test.ts`, and the production replay in `apps/web/src/lib/services/ontology/start-here.regression.test.ts`. They use the byte-exact fixtures in `packages/shared-agent-ops/src/ontology/__fixtures__/`, which Prettier ignores.
+- Checkpoint capture: `apps/worker/src/workers/chat/checkpoint/` (`checkpointCapture.ts` engine, `capturePrompts.ts`, `checkpointJob.ts` job + sweep, `supabaseCheckpointPorts.ts`); planning and invariants in `start-here.ts` (`planStartHereCheckpointRewrites`, `applyStartHereSectionBodies`, `checkStartHereCaptureInvariants`); thinking log in `packages/shared-agent-ops/src/ontology/thinking-log.ts`; superseded-run inbox mapping in `packages/shared-agent-ops/src/inbox-index.ts` (`mapAgentRunToInboxItem`)
+- Receipts and undo: `apps/web/src/lib/components/agent/CaptureReceiptChip.svelte`, `capture-receipt.ts`, `apps/web/src/routes/api/chat/capture-checkpoints/[id]/undo/+server.ts`; migrations `20260922230000_chat_capture_checkpoint_queue_type.sql` and `20260922230100_chat_capture_checkpoints.sql`
+- Capture tests: `apps/worker/tests/chatCheckpointCapture.test.ts`, `packages/shared-agent-ops/src/ontology/start-here.test.ts`, `thinking-log.test.ts`, and the production replay in `apps/web/src/lib/services/ontology/start-here.regression.test.ts`. They use the byte-exact fixtures in `packages/shared-agent-ops/src/ontology/__fixtures__/`, which Prettier ignores. Eval: `scripts/book-loop/capture-eval/`.
 - Daily brief loader: `apps/worker/src/workers/brief/ontologyBriefDataLoader.ts`
 - External-agent surfacing (shared loader `loadProjectStartHereExcerpt`): `packages/shared-agent-ops/src/ontology/start-here.service.ts`
 - External gateway project reads: `packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.ts` (`onto.project.get`), `op-execution-gateway.project-status.ts` (`onto.project.status.get`), tool description in `op-execution-gateway.config.ts`
@@ -357,7 +419,7 @@ P0-P2 make agents orient around the Start Here doc. P3-P6 make it self-maintaini
 ## 12. Open Questions
 
 1. What exact fields should `managed:status` render, and which are too volatile for prompt prefix stability?
-2. What bar should session-end capture use for "durable enough" after real-world review volume is visible? Nobody has checked the reconcile contract (tasker/93) against a live model yet.
+2. Is checkpoint capture's bar right in real use: are auto-applied additions kept, and are review proposals approved? Open follow-ups are in tasker/96.
 3. Should proposal-ready Start Here runs get a dedicated notification or surface inside the project document UI?
 4. Should the existing project-loop/librarian pass suggest Start Here cleanup when the authored sections drift?
 5. Is the initial 1,200-character daily brief excerpt enough, or should it prefer specific authored sections over a simple bounded excerpt?

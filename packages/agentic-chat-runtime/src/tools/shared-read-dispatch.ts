@@ -28,6 +28,7 @@ import {
 	type AgenticChatSharedReadContextV1
 } from './ontology-reads';
 import { getCalendarEventDetails, getProjectCalendar, listCalendarEvents } from './calendar-reads';
+import { getOntoAsset, searchOntoAssets } from './ontology-asset-reads';
 import {
 	getEmailMessage,
 	getExternalAccountStatus,
@@ -87,6 +88,9 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	read_document_section: readDocumentSection,
 	get_document_tree: getDocumentTree,
 	get_document_path: getDocumentPath,
+	// Project images (2026-09-22): find an image and where the tree files it.
+	search_onto_assets: searchOntoAssets,
+	get_onto_asset: getOntoAsset,
 	get_workspace_overview: getWorkspaceOverview,
 	get_project_overview: getProjectOverview,
 	// Calendar READS only. The calendar writes execute on the worker through

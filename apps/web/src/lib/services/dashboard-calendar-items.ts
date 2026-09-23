@@ -69,6 +69,32 @@ function getSourceLabel(source: DashboardCalendarSource, fallback?: string | nul
 	return `${calendarName} · ${accountLabel}`;
 }
 
+// user_calendar_items builds marker titles as 'Start: ' || title and 'Due: ' || title. The
+// calendar already shows the kind with a glyph/label, so drop that exact SQL-built prefix.
+const TASK_MARKER_TITLE_PREFIX: Partial<Record<CalendarItem['item_kind'], string>> = {
+	start: 'Start: ',
+	due: 'Due: '
+};
+
+export function getDashboardCalendarItemTitle(item: CalendarItem): string {
+	const title = item.title?.trim() || '(Untitled)';
+	const prefix = item.item_type === 'task' ? TASK_MARKER_TITLE_PREFIX[item.item_kind] : undefined;
+	if (!prefix || !title.startsWith(prefix)) return title;
+	return title.slice(prefix.length).trim() || '(Untitled)';
+}
+
+/** Display-layer toggles: events, and each task marker kind, can be hidden independently. */
+export function isDashboardCalendarLayerVisible(
+	item: CalendarItem,
+	layers: { events: boolean; taskRange: boolean; taskStart: boolean; taskDue: boolean }
+): boolean {
+	if (item.item_type === 'event') return layers.events;
+	if (item.item_kind === 'range') return layers.taskRange;
+	if (item.item_kind === 'start') return layers.taskStart;
+	if (item.item_kind === 'due') return layers.taskDue;
+	return true;
+}
+
 export function isConnectedGoogleCalendarItem(item: CalendarItem): boolean {
 	return item.source_table === 'google_calendar' || getCalendarSourceIds(item).length > 0;
 }

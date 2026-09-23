@@ -357,6 +357,40 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 	},
 
 	/**
+	 * Name/file a project image. Only the four reviewed fields reach the
+	 * gateway; `document_id` stays tri-state (omitted keeps the placement, null
+	 * unfiles to the Images shelf, a UUID files it) and is remembered so the
+	 * receipt must prove the placement that was asked for.
+	 */
+	normalize_asset_update_arguments: (context) => {
+		const args = context.args;
+		const next: Record<string, unknown> = { asset_id: args.asset_id };
+		for (const field of ['caption', 'alt_text'] as const) {
+			const value = args[field];
+			if (value === undefined || value === null) continue;
+			if (typeof value !== 'string' || !value.trim()) {
+				throw knownFailure(
+					'mutation_arguments_not_admitted',
+					`${context.toolName} ${field} must be non-empty text; omit it to keep the current value`
+				);
+			}
+			next[field] = value;
+		}
+		if (Object.hasOwn(args, 'document_id') && args.document_id !== undefined) {
+			next.document_id =
+				args.document_id === null ? null : requiredUuid(args.document_id, 'document_id');
+			context.expected.placementDocumentId = next.document_id;
+		}
+		if (next.caption === undefined && next.alt_text === undefined && !('document_id' in next)) {
+			throw knownFailure(
+				'mutation_arguments_not_admitted',
+				`${context.toolName} needs caption, alt_text, or document_id to change`
+			);
+		}
+		context.args = next;
+	},
+
+	/**
 	 * BuildOS never invites anyone or sets a reminder on a user's behalf. Neither
 	 * field is a canonical calendar argument, so the admitted-argument fence
 	 * already refuses them; this is the second lock, and it records what it took
@@ -627,6 +661,77 @@ export const AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1: Readonly<
 		return canonicalMutationReceipt(
 			buildEntityMentionPingToolResult(value as never),
 			context.toolName
+		);
+	},
+
+	/**
+	 * Prove the image receipt: the same asset, inside the admitted project, and
+	 * — when a placement was requested — exactly that placement. Only the
+	 * compact name + placement reach the model.
+	 */
+	asset_update: (value, context) => {
+		const toolName = context.toolName;
+		if (!value || !isRecord(value.asset) || !isRecord(value.placement)) {
+			throw invalidReceipt(toolName, 'returned no image receipt');
+		}
+		const asset = value.asset;
+		const placement = value.placement;
+		if (
+			asset.id !== context.args.asset_id ||
+			!canonicalUuid(asset.project_id) ||
+			(context.projectId !== null && asset.project_id !== context.projectId)
+		) {
+			throw invalidReceipt(toolName, 'returned a mismatched image receipt');
+		}
+		const isDocument = placement.kind === 'document' && canonicalUuid(placement.document_id);
+		if (!isDocument && placement.kind !== 'images_shelf') {
+			throw invalidReceipt(toolName, 'returned an unknown image placement');
+		}
+		if (Object.hasOwn(context.expected, 'placementDocumentId')) {
+			const expected = context.expected.placementDocumentId;
+			if (
+				expected === null
+					? placement.kind !== 'images_shelf'
+					: !isDocument || placement.document_id !== expected
+			) {
+				throw invalidReceipt(toolName, 'placed the image somewhere other than requested');
+			}
+		}
+		for (const field of ['caption', 'alt_text'] as const) {
+			const requested = context.args[field];
+			const saved = asset[field];
+			if (
+				typeof requested === 'string' &&
+				(typeof saved !== 'string' ||
+					saved.replace(/\s+/g, ' ').trim() !== requested.replace(/\s+/g, ' ').trim())
+			) {
+				throw invalidReceipt(toolName, `did not save the requested ${field}`);
+			}
+		}
+		return canonicalMutationReceipt(
+			{
+				asset: {
+					id: asset.id,
+					project_id: asset.project_id,
+					caption: typeof asset.caption === 'string' ? asset.caption : null,
+					alt_text: typeof asset.alt_text === 'string' ? asset.alt_text : null
+				},
+				placement: isDocument
+					? {
+							kind: 'document',
+							document_id: placement.document_id,
+							document_title:
+								typeof placement.document_title === 'string'
+									? placement.document_title
+									: null
+						}
+					: { kind: 'images_shelf' },
+				message:
+					typeof value.message === 'string' && value.message.trim()
+						? value.message
+						: 'Updated project image.'
+			},
+			toolName
 		);
 	},
 

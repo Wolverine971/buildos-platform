@@ -77,7 +77,9 @@ export const TOOL_CATEGORIES = {
 			'get_document_tree',
 			'get_document_path',
 			'get_document_outline',
-			'read_document_section'
+			'read_document_section',
+			'search_onto_assets',
+			'get_onto_asset'
 		],
 		averageTokens: 350,
 		costTier: 'medium'
@@ -105,6 +107,7 @@ export const TOOL_CATEGORIES = {
 			'tag_onto_entity',
 			'update_onto_milestone',
 			'update_onto_risk',
+			'update_onto_asset',
 			'delete_onto_task',
 			'delete_onto_goal',
 			'delete_onto_plan',

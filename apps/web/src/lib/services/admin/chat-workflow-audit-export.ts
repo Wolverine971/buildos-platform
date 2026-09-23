@@ -503,6 +503,76 @@ export const buildWorkflowCostsSection = (run: WorkflowAuditRun): string[] => {
 	return lines;
 };
 
+const record = (value: unknown): Record<string, unknown> | null =>
+	value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+const list = (value: unknown): Record<string, unknown>[] =>
+	Array.isArray(value) ? value.map(record).filter((x) => x !== null) : [];
+
+/** What Jev selected for this run, as frozen in the accepted context checkpoint. */
+export const buildContextFinderLines = (payload: unknown): string[] => {
+	const evidence = record(record(record(payload)?.data)?.selected_evidence);
+	if (!evidence) return [];
+	const ranker = record(evidence.ranker);
+	const coverage = record(evidence.coverage);
+	const score = (value: unknown) => (typeof value === 'number' ? value.toFixed(2) : '-');
+	const lines = [
+		'### Context finder (Jev-selected evidence)',
+		'',
+		metricLine('Status', evidence.status),
+		metricLine(
+			'Source',
+			evidence.source === 'curated' ? 'curated (edited by the user)' : evidence.source
+		),
+		metricLine('Policy', evidence.policy),
+		metricLine(
+			'Ranker',
+			ranker
+				? `${stringOrDash(ranker.status)} · checked ${stringOrDash(ranker.checked)}, unchecked ${stringOrDash(ranker.unchecked)} · ${ms(typeof ranker.durationMs === 'number' ? ranker.durationMs : null)} · ${usdPlain(typeof ranker.costUsd === 'number' ? ranker.costUsd : null)}`
+				: 'not run (plan materialized)'
+		),
+		metricLine(
+			'Coverage',
+			coverage
+				? `${stringOrDash(coverage.fullChars)} full + ${stringOrDash(coverage.summaryChars)} summary characters of ${stringOrDash(coverage.budgetChars)}`
+				: '-'
+		),
+		metricLine('Note', evidence.note),
+		''
+	];
+	const full = list(evidence.full);
+	if (full.length) {
+		lines.push(
+			'| Loaded in full | Kind | p | Pinned | Sections | Partial |',
+			'| --- | --- | --- | --- | --- | --- |'
+		);
+		for (const item of full)
+			lines.push(
+				`| ${tableCell(item.title ?? item.id, 48)} | ${tableCell(item.kind)} | ${score(item.p)} | ${item.pinned ? 'yes' : 'no'} | ${tableCell(
+					list(item.excerpts)
+						.map((excerpt) => excerpt.heading ?? 'opening')
+						.join(' · '),
+					80
+				)} | ${item.partial ? 'yes' : 'no'} |`
+			);
+		lines.push('');
+	}
+	const summaries = list(evidence.summaries);
+	if (summaries.length)
+		lines.push(
+			`Nearby (one line each): ${summaries.map((item) => `${escapeMarkdownInline(item.title ?? item.id, 60)} (${score(item.p)})`).join(', ')}`,
+			''
+		);
+	const missing = list(evidence.missing);
+	if (missing.length)
+		lines.push(
+			`Planned but no longer in the project: ${missing.map((x) => `${escapeMarkdownInline(x.kind, 20)} ${escapeMarkdownInline(x.id, 40)}`).join('; ')}`,
+			''
+		);
+	return lines;
+};
+
 export const buildWorkflowEvidenceSection = (run: WorkflowAuditRun): string[] => {
 	const specialists = run.steps.filter((step) => step.role === 'specialist');
 	const lines = [
@@ -525,6 +595,7 @@ export const buildWorkflowEvidenceSection = (run: WorkflowAuditRun): string[] =>
 		);
 	}
 	lines.push('');
+	lines.push(...buildContextFinderLines(run.context.payload));
 	for (const call of run.tool_calls) {
 		lines.push(
 			`### Document read by ${escapeMarkdownInline(call.step_key ?? 'unbound attempt')} (${call.step_attempt_id?.slice(0, 8) ?? '?'})`,

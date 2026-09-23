@@ -6,6 +6,7 @@ import {
 	type DirectWriteRouteContext,
 	MAX_DIRECT_SIMPLE_MUTATIONS_PER_TURN,
 	assessDirectWriteBatch,
+	collectAttachedProjectAssetIds,
 	collectReadResultEntityRefs,
 	collectSingleHitEntityIds,
 	directWriteContractInstruction,
@@ -216,6 +217,74 @@ function focusedProject(overrides: Partial<DirectWriteRouteContext> = {}): Direc
 		...overrides
 	};
 }
+
+// "This is our company logo, please save it." The image the user attached to
+// this message is a structured selection (requestPayload.attachments), so
+// naming it takes the direct lane; nothing here reads the message text.
+describe('attached project images on the direct lane', () => {
+	const ASSET_ID = '44000000-0000-4000-8000-000000000004';
+	const OTHER_ASSET_ID = '45000000-0000-4000-8000-000000000004';
+	const attachedAssetIds = collectAttachedProjectAssetIds([
+		{ attachment_kind: 'onto_asset', asset_id: ASSET_ID.toUpperCase() },
+		{ attachment_kind: 'temporary_file', temporary_attachment_id: OTHER_ASSET_ID },
+		{ attachment_kind: 'onto_asset', asset_id: 'not-a-uuid' }
+	]);
+
+	it('collects only durable project image ids from structured attachments', () => {
+		expect([...attachedAssetIds]).toEqual([ASSET_ID]);
+		expect(collectAttachedProjectAssetIds(undefined).size).toBe(0);
+	});
+
+	it('names an image attached to this message without review', () => {
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_asset', { asset_id: ASSET_ID, caption: 'Company logo' })],
+				focusedProject({
+					userMessage: 'This is our company logo, please save it.',
+					attachedAssetIds
+				})
+			)
+		).toEqual({ kind: 'simple', mutationCount: 1 });
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_asset', { asset_id: ASSET_ID, document_id: null })],
+				focusedProject({ attachedAssetIds })
+			)
+		).toEqual({ kind: 'simple', mutationCount: 1 });
+	});
+
+	it('still reviews an image that was not attached, or a document chosen from broad context', () => {
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_asset', { asset_id: OTHER_ASSET_ID, caption: 'Logo' })],
+				focusedProject({ attachedAssetIds })
+			)
+		).toMatchObject({ kind: 'contract_required', reason: 'target_resolution_requires_review' });
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_asset', { asset_id: ASSET_ID, document_id: DOCUMENT_ID })],
+				focusedProject({ attachedAssetIds })
+			)
+		).toMatchObject({ kind: 'contract_required', reason: 'target_resolution_requires_review' });
+		// A document a read returned alone is resolved, so filing is direct.
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_asset', { asset_id: ASSET_ID, document_id: DOCUMENT_ID })],
+				focusedProject({
+					attachedAssetIds,
+					resolvedEntityIds: new Map([[DOCUMENT_ID, 'document']])
+				})
+			)
+		).toEqual({ kind: 'simple', mutationCount: 1 });
+		// An attached id never stands in for another kind of target.
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_task', { task_id: ASSET_ID, state_key: 'done' })],
+				focusedProject({ attachedAssetIds })
+			)
+		).toMatchObject({ kind: 'contract_required' });
+	});
+});
 
 describe('resolved_existing direct lane (Decision 3)', () => {
 	it('admits an update whose target is the focused entity', () => {

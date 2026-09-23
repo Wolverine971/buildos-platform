@@ -78,6 +78,9 @@ export const BUILDOS_AGENT_WRITE_OPS = [
 	'onto.risk.update',
 	'onto.edge.link',
 	'onto.edge.unlink',
+	// Name a project image and file it under a document (or back on the
+	// project's Images shelf). Metadata + asset links only; never media bytes.
+	'onto.asset.update',
 	'cal.event.create',
 	'cal.event.update',
 	'cal.event.delete',

@@ -453,7 +453,8 @@ function workerReadOpForToolName(toolName: string): string {
 		plans: 'plan',
 		documents: 'document',
 		milestones: 'milestone',
-		risks: 'risk'
+		risks: 'risk',
+		assets: 'asset'
 	};
 	return `onto.${singularEntities[rawEntity] ?? rawEntity}.${action}`;
 }

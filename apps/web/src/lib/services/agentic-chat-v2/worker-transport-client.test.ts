@@ -237,6 +237,16 @@ describe('Agentic Chat worker transport client', () => {
 				{ status: 202 }
 			)
 		);
+		const contextPlan = {
+			version: 'context_plan_v1' as const,
+			policy: 'safe_v1' as const,
+			source: 'curated' as const,
+			items: [],
+			dropped: [],
+			topScore: null,
+			checked: 3,
+			unchecked: 0
+		};
 		await requestAgenticChatWorkerAdmission({
 			fetchImpl,
 			command: {
@@ -255,7 +265,8 @@ describe('Agentic Chat worker transport client', () => {
 				publishedSpecialist: {
 					draftId: 'd8000000-0000-4000-8000-000000000001',
 					version: 2,
-					snapshotHash: 'a'.repeat(64)
+					snapshotHash: 'a'.repeat(64),
+					contextPlan
 				}
 			}
 		});
@@ -264,7 +275,8 @@ describe('Agentic Chat worker transport client', () => {
 		expect(submittedBody.publishedSpecialist).toEqual({
 			draftId: 'd8000000-0000-4000-8000-000000000001',
 			version: 2,
-			snapshotHash: 'a'.repeat(64)
+			snapshotHash: 'a'.repeat(64),
+			contextPlan
 		});
 		expect(workerAdmissionRequestSchema.safeParse(submittedBody).success).toBe(true);
 	});

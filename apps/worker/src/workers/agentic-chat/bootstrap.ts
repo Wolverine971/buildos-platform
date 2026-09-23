@@ -33,6 +33,7 @@ import {
 	createWorkerWebNavigatePort
 } from './tools/web-navigate';
 import { SPECIALIST_SHADOW_POLICY } from './workflow/specialist-selection-policy';
+import { WORKFLOW_CONTEXT_FINDER_TIMEOUT_MS } from './workflow/context-finder-port';
 import {
 	AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS,
 	AGENTIC_CHAT_WORKFLOW_RESPONSE_HEADERS_TIMEOUT_MS,
@@ -534,6 +535,22 @@ function createDefaultComposition(
 							retryOnce: false,
 							fetchImpl: input.fetchImpl,
 							title: 'BuildOS Specialist Shadow'
+						})
+					: undefined,
+			contextFinderEnabled:
+				workflowExecutionEnabled && input.config.contextFinderEnabled === true,
+			contextFinderDecider:
+				workflowExecutionEnabled && input.config.contextFinderEnabled === true
+					? new JevClient({
+							apiKey: input.config.provider.routes.find(
+								(route) => route.kind === 'openrouter'
+							)!.apiKey,
+							timeoutMs: WORKFLOW_CONTEXT_FINDER_TIMEOUT_MS,
+							maxRequestBytes: 96_000,
+							retryOnce: false,
+							usage: usageLogger,
+							fetchImpl: input.fetchImpl,
+							title: 'BuildOS Context Finder'
 						})
 					: undefined,
 			runnerClient: workflowClient

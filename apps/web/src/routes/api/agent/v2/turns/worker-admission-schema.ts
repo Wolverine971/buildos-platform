@@ -154,7 +154,9 @@ export const workerAdmissionRequestSchema = z
 				draftId: z.string().uuid(),
 				version: z.number().int().min(1).max(50),
 				snapshotHash: z.string().regex(/^[a-f0-9]{64}$/),
-				selectionDecisionId: z.string().uuid().optional()
+				selectionDecisionId: z.string().uuid().optional(),
+				// Evidence the user curated in Workflow Lab; validated by the context finder.
+				contextPlan: z.unknown().optional()
 			})
 			.strict()
 			.nullable()

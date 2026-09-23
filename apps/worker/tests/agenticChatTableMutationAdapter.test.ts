@@ -2715,6 +2715,161 @@ describe('table rows calendar writes', () => {
 });
 
 // ---------------------------------------------------------------------------
+// update_onto_asset (2026-09-22): name/file a project image
+// ---------------------------------------------------------------------------
+
+describe('table row update_onto_asset', () => {
+	const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
+	const OTHER_PROJECT_ID = '22222222-2222-4222-8222-222222222222';
+	const ASSET_ID = '33333333-3333-4333-8333-333333333333';
+	const DOCUMENT_ID = '77777777-7777-4777-8777-777777777777';
+
+	function input(args: Record<string, unknown>, projectContext: string | null = PROJECT_ID) {
+		return mutationInput({
+			toolName: 'update_onto_asset',
+			operationName: 'onto.asset.update',
+			projectContext,
+			args
+		});
+	}
+
+	function gatewayResult(overrides: Record<string, unknown> = {}) {
+		return {
+			ok: true,
+			data: {
+				asset: {
+					id: ASSET_ID,
+					project_id: PROJECT_ID,
+					caption: 'Company logo',
+					alt_text: null,
+					file_name: 'IMG_2231.png'
+				},
+				placement: {
+					kind: 'document',
+					document_id: DOCUMENT_ID,
+					document_title: 'Brand guide'
+				},
+				message: 'Named image "Company logo" and filed it under "Brand guide".',
+				...overrides
+			}
+		};
+	}
+
+	it('is a reviewed gateway write on the external op vocabulary', () => {
+		expect(reviewedAgenticChatGatewayMutationSpecV1('update_onto_asset')).toMatchObject({
+			operationName: 'onto.asset.update',
+			directWriteClass: 'ordinary',
+			directWriteSelectionPolicy: 'resolved_existing',
+			requiredNames: ['asset_id']
+		});
+	});
+
+	it('names and files an image through the project-fenced gateway with a compact receipt', async () => {
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) => gatewayResult());
+
+		await expect(
+			adapter({ runGateway }).execute(
+				input({ asset_id: ASSET_ID, caption: 'Company logo', document_id: DOCUMENT_ID })
+			)
+		).resolves.toEqual({
+			asset: {
+				id: ASSET_ID,
+				project_id: PROJECT_ID,
+				caption: 'Company logo',
+				alt_text: null
+			},
+			placement: {
+				kind: 'document',
+				document_id: DOCUMENT_ID,
+				document_title: 'Brand guide'
+			},
+			message: 'Named image "Company logo" and filed it under "Brand guide".'
+		});
+		expect(runGateway).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: USER_ID,
+				op: 'onto.asset.update',
+				chatSessionId: SESSION_ID,
+				args: { asset_id: ASSET_ID, caption: 'Company logo', document_id: DOCUMENT_ID },
+				scope: {
+					mode: 'read_write',
+					allowed_ops: ['onto.asset.update'],
+					project_ids: [PROJECT_ID],
+					write_project_ids: [PROJECT_ID]
+				}
+			})
+		);
+	});
+
+	it('forwards an explicit null to unfile and proves the Images shelf placement', async () => {
+		const runGateway = vi.fn(async (_input: Record<string, unknown>) =>
+			gatewayResult({ placement: { kind: 'images_shelf' } })
+		);
+
+		await expect(
+			adapter({ runGateway }).execute(input({ asset_id: ASSET_ID, document_id: null }))
+		).resolves.toMatchObject({ placement: { kind: 'images_shelf' } });
+		expect(runGateway).toHaveBeenCalledWith(
+			expect.objectContaining({ args: { asset_id: ASSET_ID, document_id: null } })
+		);
+	});
+
+	it('treats a receipt that filed the image elsewhere, or in another project, as uncertain', async () => {
+		for (const data of [
+			gatewayResult({ placement: { kind: 'images_shelf' } }),
+			gatewayResult({
+				asset: { id: ASSET_ID, project_id: OTHER_PROJECT_ID, caption: 'Company logo' }
+			}),
+			gatewayResult({
+				asset: { id: ASSET_ID, project_id: PROJECT_ID, caption: 'Something else' }
+			})
+		]) {
+			await expect(
+				adapter({ runGateway: vi.fn(async () => data) }).execute(
+					input({ asset_id: ASSET_ID, caption: 'Company logo', document_id: DOCUMENT_ID })
+				)
+			).rejects.toMatchObject({
+				disposition: 'outcome_uncertain',
+				failureCode: 'update_onto_asset_receipt_invalid'
+			});
+		}
+	});
+
+	it('rejects unreviewed fields, empty changes, and malformed ids before dispatch', async () => {
+		const runGateway = vi.fn();
+		for (const args of [
+			{ asset_id: ASSET_ID, caption: 'Logo', storage_path: 'projects/x' },
+			{ asset_id: ASSET_ID },
+			{ asset_id: ASSET_ID, caption: '   ' },
+			{ asset_id: ASSET_ID, document_id: 'Brand guide' },
+			{ asset_id: 'logo.png', caption: 'Logo' }
+		]) {
+			await expect(adapter({ runGateway }).execute(input(args))).rejects.toMatchObject({
+				disposition: 'known_failed'
+			});
+		}
+		expect(runGateway).not.toHaveBeenCalled();
+	});
+
+	it('maps a gateway NOT_FOUND (cross-project document) to a known failure', async () => {
+		await expect(
+			adapter({
+				runGateway: vi.fn(async () => ({
+					ok: false,
+					error: {
+						code: 'NOT_FOUND',
+						message: "Document not found in this image's project"
+					}
+				}))
+			}).execute(input({ asset_id: ASSET_ID, document_id: DOCUMENT_ID }))
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'update_onto_asset_not_found'
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Table boundary
 // ---------------------------------------------------------------------------
 

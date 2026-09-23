@@ -12,6 +12,10 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { MasterPromptContext } from '@buildos/agentic-chat-runtime/context';
+import {
+	contextEvidenceRecords,
+	type ContextEvidenceV1
+} from '@buildos/agentic-chat-runtime/context-finder';
 
 /**
  * Tasker 86: turn one authorized project context read into the immutable,
@@ -122,6 +126,8 @@ export function buildAgenticChatWorkflowContextV1(input: {
 	projectReviewV2?: boolean;
 	documentOrganization?: boolean;
 	documentReadTools?: boolean;
+	/** Jev-selected excerpts for this question (published specialists that request them). */
+	selectedEvidence?: ContextEvidenceV1;
 	context: MasterPromptContext;
 	userId: string;
 	projectId: string;
@@ -173,12 +179,21 @@ export function buildAgenticChatWorkflowContextV1(input: {
 	const contextMeta = isRecord(data.context_meta) ? sanitize(data.context_meta) : null;
 
 	const documentStructure = input.documentOrganization ? sanitize(data.doc_structure) : null;
+	// Bounded by the finder (14K chars of excerpts, 2K each), so the 5K string cap never cuts it.
+	const selectedEvidence = input.selectedEvidence ? sanitize(input.selectedEvidence) : null;
+	const selectedRecords = input.selectedEvidence
+		? contextEvidenceRecords(input.selectedEvidence).map(({ kind, id, version, title }) => ({
+				kind,
+				record: { id, title, updated_at: version } as Record<string, JsonValue>
+			}))
+		: [];
 	let omittedRecords = 0;
 	const build = () => {
 		const evidence = buildEvidence({
 			project,
 			startHere,
 			collections,
+			selected: selectedRecords,
 			observedAt: input.contextLoadedAt
 		});
 		const payload: JsonObject = {
@@ -192,11 +207,14 @@ export function buildAgenticChatWorkflowContextV1(input: {
 				...(input.documentOrganization
 					? {
 							doc_structure: documentStructure,
-							documentReviewScope: input.documentReadTools
-								? 'Bounded document inventory; full text is absent from this initial context. Only explicit saved document-read results contain text. Inspect context_meta and coverage for inventory limits and each read result for excerpt limits.'
-								: 'Bounded inventory of document titles and summaries; full document bodies are not loaded. Inspect context_meta for source limits and coverage for further truncation.'
+							documentReviewScope: selectedEvidence
+								? 'selected_evidence holds excerpts ranked for this question across the whole project: listed sections or openings, not whole documents; read its note and coverage. The document inventory below is bounded. Saved document-read results contain the openings of documents you request.'
+								: input.documentReadTools
+									? 'Bounded document inventory; full text is absent from this initial context. Only explicit saved document-read results contain text. Inspect context_meta and coverage for inventory limits and each read result for excerpt limits.'
+									: 'Bounded inventory of document titles and summaries; full document bodies are not loaded. Inspect context_meta for source limits and coverage for further truncation.'
 						}
 					: {}),
+				...(selectedEvidence ? { selected_evidence: selectedEvidence } : {}),
 				project,
 				start_here: startHere,
 				goals: records(collections.get('goals')),
@@ -405,12 +423,15 @@ function buildEvidence(input: {
 	project: Record<string, JsonValue>;
 	startHere: Record<string, JsonValue> | null;
 	collections: Map<CollectionKey, RecordEntry[]>;
+	/** Jev-selected records outside the bounded inventory become citable too. */
+	selected?: RecordEntry[];
 	observedAt: string;
 }): AgenticChatWorkflowEvidenceVersionV1[] {
 	const ordered: RecordEntry[] = [
 		{ kind: 'project', record: input.project },
 		...(input.startHere ? [{ kind: 'start_here', record: input.startHere }] : []),
-		...[...input.collections.values()].flat()
+		...[...input.collections.values()].flat(),
+		...(input.selected ?? [])
 	];
 	const seen = new Set<string>();
 	const evidence: AgenticChatWorkflowEvidenceVersionV1[] = [];
@@ -451,6 +472,14 @@ export function collectRecordLabels(payload: JsonObject): Map<string, string> {
 		const rows = data[key];
 		if (Array.isArray(rows)) for (const row of rows) add(kind, row);
 	}
+	const selected = data.selected_evidence;
+	if (isRecord(selected))
+		for (const key of ['full', 'summaries'] as const) {
+			const rows = selected[key];
+			if (Array.isArray(rows))
+				for (const row of rows)
+					if (isRecord(row) && typeof row.kind === 'string') add(row.kind, row);
+		}
 	return labels;
 }
 

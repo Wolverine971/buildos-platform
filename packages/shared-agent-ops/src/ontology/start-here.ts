@@ -1003,7 +1003,18 @@ export function applyStartHereSectionBodies(
 				next.slice(duplicate.end)
 			);
 		}
-		next = joinMarkdownBlocks(next.slice(0, first.start), markdown, next.slice(first.end));
+		// Keep the section's own spacing around its body (a doc that puts the body
+		// right under the heading stays that way), so a capture's version diff shows
+		// only the lines that changed.
+		const region = next.slice(first.start, first.end);
+		const lead = region.slice(0, region.length - region.trimStart().length);
+		const trail = region.slice(region.trimEnd().length);
+		next =
+			region.trim() &&
+			lead.includes('\n') &&
+			(trail.includes('\n') || first.end === next.length)
+				? `${next.slice(0, first.start)}${lead}${markdown}${trail}${next.slice(first.end)}`
+				: joinMarkdownBlocks(next.slice(0, first.start), markdown, next.slice(first.end));
 	}
 	const finalBody = applyLineEnding(next, lineEnding);
 	return finalBody === content ? content : finalBody;

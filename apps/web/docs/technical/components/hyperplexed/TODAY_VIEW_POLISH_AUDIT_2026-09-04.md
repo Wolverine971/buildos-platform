@@ -1,3 +1,9 @@
+<!-- apps/web/docs/technical/components/hyperplexed/TODAY_VIEW_POLISH_AUDIT_2026-09-04.md -->
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-04; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Today page polish — 2026-09-04
 
 Scope: `/today`, `TodayAgendaRow.svelte`, and `WhatChangedSection.svelte`. Builds on the [original task affordance pass](../../../features/today-view/TODAY_VIEW_2026-07-09.md). Implementation authorized by the request for a more cohesive page.

@@ -27,13 +27,16 @@ You get the new part of a chat. Pick the user messages where the user is thinkin
 For each picked message, return its text with light cleanup only:
 - Fix typos and spoken filler ("um", "like", words said twice).
 - Keep every idea, sentence and phrase, in the user's wording and order.
+- Keep the user's paragraph breaks (a blank line, \\n\\n in JSON).
 - You may drop a trailing request to the assistant ("Help me shape this into the theme.").
 - Never summarize, paraphrase, merge messages, or add words.
+
+Label each passage with its kind: "thinking" when the message carries the user's own view, reasons, wants or context (even alongside a request), or "instruction" when it only asks the assistant to do something. Instruction passages are not logged.
 
 Give the entry a short topic: 3-10 plain words naming what the user was thinking about.
 
 Return JSON only:
-{"topic": "<short topic>", "passages": [{"message_id": "<id of the user message>", "text": "<the user's words>"}]}
+{"topic": "<short topic>", "passages": [{"message_id": "<id of the user message>", "kind": "thinking", "text": "<the user's words>"}]}
 Return {"topic": "", "passages": []} when no message qualifies.`;
 
 export const START_HERE_SYNTHESIS_SYSTEM_PROMPT = `You maintain a project's START HERE document: the page a future agent or collaborator reads first to understand the project.
@@ -45,7 +48,8 @@ Edits, per section:
 - "remove": ids of lines the chat answered, contradicted or superseded.
 - "replace": {"id", "markdown"} when a line stays but must change.
 - "rewrite": the complete new body. Use it only for Current state, which is a snapshot of right now, and for a new section.
-Prefer "add" over changing existing lines. Leave every line that is still true alone; you never need to copy it. Never add a line whose meaning an existing line already records. Write markdown without the [bN] ids.
+Prefer "add" over changing existing lines. Leave every line that is still true alone; you never need to copy it. Write markdown without the [bN] ids.
+Before adding a line, look for an existing line in any section that already records the same point. Set "restates" to that line's id, or null when none does. A line with "restates" set is not added; to add detail to an existing line, "replace" it instead.
 
 Headings:
 - Use the document's own headings exactly as given. Put the project's direction, thesis or "what this is" into whichever existing section already holds it.
@@ -65,7 +69,7 @@ What counts:
 - Text outside the sections is read-only. If the chat contradicts it, say so in one sentence in "outside_note".
 
 Return JSON only:
-{"edits": [{"heading": "<exact heading>", "add": [{"after": "b7", "markdown": "<one line>"}], "remove": ["b12"], "replace": [{"id": "b3", "markdown": "<new line>"}], "rewrite": "<complete body, only for Current state or a new section>", "rationale": "<what changed and why>"}], "outside_note": "<optional one sentence>"}
+{"edits": [{"heading": "<exact heading>", "add": [{"after": "b7", "restates": null, "markdown": "<one line>"}], "remove": ["b12"], "replace": [{"id": "b3", "markdown": "<new line>"}], "rewrite": "<complete body, only for Current state or a new section>", "rationale": "<what changed and why>"}], "outside_note": "<optional one sentence>"}
 Return {"edits": []} when nothing durable changed.`;
 
 const USER_MESSAGE_PROMPT_MAX_CHARS = 6000;
@@ -202,6 +206,8 @@ export function normalizeThinkingLogReply(reply: unknown): ThinkingLogReply {
 		const text = typeof passage?.text === 'string' ? passage.text : '';
 		if (!messageId || seen.has(messageId)) continue;
 		seen.add(messageId);
+		// The model's own label: a message that only instructs the assistant is not thinking.
+		if (passage?.kind === 'instruction') continue;
 		passages.push({ messageId, text });
 	}
 	return {
@@ -213,7 +219,8 @@ export function normalizeThinkingLogReply(reply: unknown): ThinkingLogReply {
 
 export type SectionEdit = {
 	heading: string;
-	add: Array<{ after: string | null; markdown: string }>;
+	/** `restates`: the model's own pointer to an existing line that already says this. */
+	add: Array<{ after: string | null; restates: string | null; markdown: string }>;
 	remove: string[];
 	replace: Array<{ id: string; markdown: string }>;
 	rewrite: string | null;
@@ -240,7 +247,14 @@ export function normalizeSynthesisReply(reply: unknown): SynthesisReply {
 			const markdown = typeof entry?.markdown === 'string' ? entry.markdown.trim() : '';
 			if (!markdown) return [];
 			return [
-				{ after: typeof entry?.after === 'string' ? entry.after.trim() : null, markdown }
+				{
+					after: typeof entry?.after === 'string' ? entry.after.trim() : null,
+					restates:
+						typeof entry?.restates === 'string' && entry.restates.trim()
+							? entry.restates.trim()
+							: null,
+					markdown
+				}
 			];
 		});
 		const replace = (Array.isArray(edit.replace) ? edit.replace : []).flatMap((item) => {
@@ -292,9 +306,16 @@ function stripEchoedBlockIds(markdown: string): string {
  * Turn one section's edits into its complete new body. Ids that belong to
  * another section are ignored; an addition with an unknown anchor goes last.
  */
+/** Additions the model itself marked as restating an existing line of the document. */
+export function restatedAdditions(edit: SectionEdit, documentIds: ReadonlySet<string>): number {
+	return edit.add.filter((addition) => addition.restates && documentIds.has(addition.restates))
+		.length;
+}
+
 export function applySectionEdit(
 	blocks: Array<{ id: string; markdown: string }>,
-	edit: SectionEdit
+	edit: SectionEdit,
+	documentIds: ReadonlySet<string> = new Set(blocks.map((block) => block.id))
 ): string[] {
 	if (edit.rewrite !== null) return [stripEchoedBlockIds(edit.rewrite)];
 	const removed = new Set(edit.remove);
@@ -305,6 +326,7 @@ export function applySectionEdit(
 	const after = new Map<string, string[]>();
 	const trailing: string[] = [];
 	for (const addition of edit.add) {
+		if (addition.restates && documentIds.has(addition.restates)) continue;
 		const markdown = stripEchoedBlockIds(addition.markdown);
 		if (addition.after && ids.has(addition.after)) {
 			after.set(addition.after, [...(after.get(addition.after) ?? []), markdown]);

@@ -1,5 +1,10 @@
 <!-- apps/web/docs/features/document-service/LIVE_ACCEPTANCE_AND_EDITOR_BOUNDARIES_2026-09-09.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-09; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Live acceptance and editor boundary fixes
 
 **Date:** 2026-09-09. The user confirmed deployment of the Sept 7 editor work. This continuation

@@ -124,6 +124,78 @@ describe('explicit published specialist execution', () => {
 			await expect(buildPublishedSpecialistSnapshotV3(v)).rejects.toThrow();
 		}
 	);
+	it('carries an auto or curated context-finder request and rejects a tampered plan', async () => {
+		const published = await catalog();
+		const auto = await buildPublishedSpecialistSnapshotV3({
+			...published,
+			contextFinder: { version: 'context_finder_request_v1', mode: 'auto' }
+		});
+		expect(
+			await parseExecutableSpecialistSnapshot(
+				auto,
+				await hashExecutableSpecialistSnapshot(auto)
+			)
+		).toEqual(auto);
+		const plan = {
+			version: 'context_plan_v1' as const,
+			policy: 'safe_v1' as const,
+			source: 'curated' as const,
+			topScore: 0.8,
+			checked: 12,
+			unchecked: 0,
+			dropped: [],
+			items: [
+				{
+					kind: 'document' as const,
+					id: 'fd000000-0000-4000-8000-000000000001',
+					title: 'Brief',
+					tier: 'full' as const,
+					p: 0.8,
+					pinned: true as const,
+					sections: [{ heading: 'Budget', p: 0.7 }]
+				}
+			]
+		};
+		const curated = await buildPublishedSpecialistSnapshotV3({
+			...published,
+			contextFinder: { version: 'context_finder_request_v1', mode: 'curated', plan }
+		});
+		const hash = await hashExecutableSpecialistSnapshot(curated);
+		const parsed = (await parseExecutableSpecialistSnapshot(curated, hash)) as {
+			contextFinder?: unknown;
+		};
+		expect(parsed.contextFinder).toEqual({
+			version: 'context_finder_request_v1',
+			mode: 'curated',
+			plan
+		});
+		const tampered = structuredClone(curated) as any;
+		tampered.contextFinder.plan.items[0].sections = new Array(5).fill({ heading: 'x', p: 1 });
+		await expect(
+			parseExecutableSpecialistSnapshot(
+				tampered,
+				await hashExecutableSpecialistSnapshot(tampered)
+			)
+		).rejects.toThrow();
+		const unknownMode = structuredClone(auto) as any;
+		unknownMode.contextFinder.mode = 'everything';
+		await expect(
+			parseExecutableSpecialistSnapshot(
+				unknownMode,
+				await hashExecutableSpecialistSnapshot(unknownMode)
+			)
+		).rejects.toThrow();
+		await expect(
+			buildPublishedSpecialistSnapshotV3({
+				...published,
+				contextFinder: {
+					version: 'context_finder_request_v1',
+					mode: 'auto',
+					extra: 1
+				} as any
+			})
+		).rejects.toThrow();
+	});
 	it('rejects substituted slots and altered knowledge even when the outer hash is recomputed', async () => {
 		const snapshot = await buildPublishedSpecialistSnapshotV3(await catalog());
 		(snapshot.slots.project_analyst.definition as any).instructions.system = 'Changed';

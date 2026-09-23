@@ -194,6 +194,19 @@ const logPassages = (state.thinkingLog?.content ?? '')
 			.map((paragraph) => paragraph.trim())
 			.filter((paragraph) => paragraph && !/^_From /.test(paragraph))
 	);
+// Which user message each logged paragraph came from (-1: none), by word overlap.
+const passageSources = logPassages.map((passage) => {
+	let best = -1;
+	let bestScore = 0;
+	userMessages.forEach((message: { content: string }, index: number) => {
+		const score = passageFidelity(passage, message.content);
+		if (score > bestScore) {
+			best = index;
+			bestScore = score;
+		}
+	});
+	return bestScore >= 0.9 ? best : -1;
+});
 const passageScores = logPassages.map((passage) =>
 	Math.max(
 		...userMessages.map((message: { content: string }) =>
@@ -222,7 +235,12 @@ const structural = {
 			.filter((block: string) => !oldBlocks.includes(block))
 			.every((block: string) => /^- .*_\(\d{4}-\d{2}-\d{2}\)_$/s.test(block));
 	}),
-	no_block_ids_leaked: [applied, proposed].every((content) => !/^\s*\[b\d+\]/m.test(content))
+	no_block_ids_leaked: [applied, proposed].every((content) => !/^\s*\[b\d+\]/m.test(content)),
+	// A logged message the user wrote in paragraphs stays in paragraphs.
+	log_keeps_paragraphs: userMessages.every((message: { content: string }, index: number) => {
+		const logged = passageSources.filter((source) => source === index).length;
+		return logged === 0 || message.content.trim().split(/\n[ \t]*\n/).length < 2 || logged >= 2;
+	})
 };
 const addedHeadings = {
 	applied: headings(applied).filter((heading: string) => !headings(before).includes(heading)),
@@ -234,6 +252,7 @@ type JudgeReply = {
 	thinking_log?: Array<{ id: string; present: boolean; in_users_words: boolean }>;
 	start_here?: Array<{ id: string; applied: boolean; proposed: boolean }>;
 	unsupported_claims?: Array<{ text: string; where: string }>;
+	restated_lines?: Array<{ text: string; where: string }>;
 };
 let judgeReply: JudgeReply | null = null;
 if (judge) {
@@ -281,8 +300,9 @@ For each START HERE fact, decide:
 - applied: the applied START HERE changes state it.
 - proposed: the proposed-for-review changes state it.
 START HERE changes are shown as a diff: "+" lines were added, "-" lines were removed. Then list unsupported_claims: added ("+") statements that the user never said or agreed to (invented facts, decisions the user did not make, the assistant's suggestions presented as decisions). Quote each briefly and say where ("applied" or "proposed").
+Then list restated_lines: added ("+") lines whose point a line of the original document already records, so the addition only repeats it. Quote each briefly and say where.
 
-Return JSON only: {"thinking_log": [{"id", "present", "in_users_words"}], "start_here": [{"id", "applied", "proposed"}], "unsupported_claims": [{"text", "where"}]}`,
+Return JSON only: {"thinking_log": [{"id", "present", "in_users_words"}], "start_here": [{"id", "applied", "proposed"}], "unsupported_claims": [{"text", "where"}], "restated_lines": [{"text", "where"}]}`,
 		userPrompt: [
 			'User messages, oldest first:',
 			...userMessages.map(
@@ -291,6 +311,14 @@ Return JSON only: {"thinking_log": [{"id", "present", "in_users_words"}], "start
 			),
 			'',
 			`Thinking log:\n<log>\n${state.thinkingLog?.content ?? '(none)'}\n</log>`,
+			'',
+			`Original START HERE sections, before capture:\n<original>\n${startHere
+				.readStartHereDocumentSections(before)
+				.map(
+					(section: { heading: string; body: string }) =>
+						`## ${section.heading}\n${section.body}`
+				)
+				.join('\n\n')}\n</original>`,
 			'',
 			`START HERE sections changed and applied now:\n<applied>\n${diffBlocks(before, applied) || '(none)'}\n</applied>`,
 			'',
@@ -321,6 +349,7 @@ const ratio = (numerator: number, denominator: number) =>
 const logItems = judgeReply?.thinking_log ?? [];
 const shItems = judgeReply?.start_here ?? [];
 const unsupported = judgeReply?.unsupported_claims ?? [];
+const restated = judgeReply?.restated_lines ?? [];
 const metrics = {
 	log_recall: ratio(
 		logItems.filter((item) => item.present).length,
@@ -334,7 +363,7 @@ const metrics = {
 		shItems.reduce((sum, item) => sum + (item.applied ? 1 : item.proposed ? 0.5 : 0), 0),
 		checklist.start_here_facts.length
 	),
-	precision: Math.max(0, 1 - unsupported.length / 5),
+	precision: Math.max(0, 1 - (unsupported.length + restated.length) / 5),
 	invariants: ratio(
 		Object.values(structural).filter(Boolean).length,
 		Object.keys(structural).length
@@ -394,7 +423,7 @@ for (const checkpoint of checkpoints) {
 	console.info(
 		`  checkpoint ${checkpoint.sessionId.slice(0, 8)}: ${checkpoint.status} in ${checkpoint.ms}ms` +
 			(record
-				? ` · log ${record.thinkingLog?.passageCount ?? 0} passage(s) · applied [${record.startHere?.appliedSections.join(', ') ?? ''}] · review [${record.review?.sections.join(', ') ?? ''}] · skipped ${record.skipped.length} · dropped links ${record.droppedLinks}`
+				? ` · log ${record.thinkingLog?.passageCount ?? 0} passage(s) · applied [${record.startHere?.appliedSections.join(', ') ?? ''}] · review [${record.review?.sections.join(', ') ?? ''}] · skipped ${record.skipped.length} · dropped links ${record.droppedLinks} · restated adds dropped ${record.restatedAdditions}`
 				: '')
 	);
 }
@@ -409,10 +438,11 @@ console.info(
 console.info(`  passage fidelity (min, code): ${pct(metrics.min_passage_fidelity)}`);
 if (judge) {
 	console.info(
-		`  judge: log recall ${pct(metrics.log_recall)} · log in user's words ${pct(metrics.log_fidelity)} · START HERE recall ${pct(metrics.start_here_recall)} · unsupported claims ${unsupported.length}`
+		`  judge: log recall ${pct(metrics.log_recall)} · log in user's words ${pct(metrics.log_fidelity)} · START HERE recall ${pct(metrics.start_here_recall)} · unsupported claims ${unsupported.length} · restated lines ${restated.length}`
 	);
 	for (const claim of unsupported)
 		console.info(`    - unsupported (${claim.where}): ${claim.text}`);
+	for (const line of restated) console.info(`    - restated (${line.where}): ${line.text}`);
 	const missing = logItems.filter((item) => !item.present).map((item) => item.id);
 	if (missing.length) console.info(`    - missing from log: ${missing.join(', ')}`);
 	const shMissing = shItems

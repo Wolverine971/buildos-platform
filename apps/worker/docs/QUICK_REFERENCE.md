@@ -93,6 +93,7 @@ require `Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN`.
 | `schedule_daily_sms`             | Scheduler                                           |
 | `send_sms`                       | SMS scheduler and notification SMS adapter          |
 | `classify_chat_session`          | `POST /queue/chat/classify`                         |
+| `capture_chat_checkpoint`        | Checkpoint sweep and chat close                     |
 | `process_onto_braindump`         | `POST /queue/braindump/process`                     |
 | `transcribe_voice_note`          | Voice note upload flow                              |
 | `extract_onto_asset_ocr`         | Ontology asset flow                                 |
@@ -109,17 +110,18 @@ Retired or compatibility-only values include `generate_phases`,
 
 ## Scheduler
 
-| Cadence                                           | Work                                  |
-| ------------------------------------------------- | ------------------------------------- |
-| Hourly                                            | Daily brief scheduling                |
-| Midnight UTC                                      | Daily SMS reminder scheduling         |
-| Hourly                                            | SMS alert checks                      |
-| 03:17 UTC                                         | Public page 30-day view count refresh |
-| Hourly, flag-gated                                | End-of-day project loops              |
-| 04:00 UTC, flag-gated                             | Scheduled project audits              |
-| Every 30 minutes, flag-gated                      | Project-loop reclaim/finalization     |
-| Every 5 minutes                                   | Scheduled Operatives to `agent_run`   |
-| `QUEUE_RETENTION_CLEANUP_CRON`, default 03:30 UTC | Queue retention cleanup               |
+| Cadence                                                      | Work                                  |
+| ------------------------------------------------------------ | ------------------------------------- |
+| Hourly                                                       | Daily brief scheduling                |
+| Midnight UTC                                                 | Daily SMS reminder scheduling         |
+| Hourly                                                       | SMS alert checks                      |
+| 03:17 UTC                                                    | Public page 30-day view count refresh |
+| Hourly, flag-gated                                           | End-of-day project loops              |
+| 04:00 UTC, flag-gated                                        | Scheduled project audits              |
+| Every 30 minutes, flag-gated                                 | Project-loop reclaim/finalization     |
+| Every 5 minutes                                              | Scheduled Operatives to `agent_run`   |
+| Every minute, unless `CHAT_CHECKPOINT_CAPTURE_ENABLED=false` | Chat checkpoint capture sweep         |
+| `QUEUE_RETENTION_CLEANUP_CRON`, default 03:30 UTC            | Queue retention cleanup               |
 
 ## Queue Config
 

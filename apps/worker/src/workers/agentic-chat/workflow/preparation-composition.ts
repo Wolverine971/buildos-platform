@@ -10,6 +10,8 @@ import type { AgenticChatTurnProviderClientPortV1 } from '../provider/contracts'
 import type { AgenticChatProviderCapacity } from '../providerCapacity';
 import type { AgenticChatStreamPublisher } from '../streamPublisher';
 import { createWorkflowPreparationContextLoader } from './context-loader';
+import type { ContextFinderDecider } from '@buildos/agentic-chat-runtime/context-finder';
+import { type ContextFinderReadClient, createWorkflowContextFinder } from './context-finder-port';
 import {
 	type AgenticChatWorkflowPreparationReadClient,
 	type AgenticChatWorkflowPreparationRpcClient,
@@ -37,6 +39,12 @@ export type AgenticChatWorkflowV4CompositionOptionsV1 = {
 	projectReviewV2Enabled?: boolean;
 	projectReviewV3Enabled?: boolean;
 	selectionDecider?: JevDecider;
+	/**
+	 * AGENTIC_CHAT_CONTEXT_FINDER_ENABLED: Jev-selected evidence for published specialists.
+	 * Off installs no port, so a run that requests evidence records it as unavailable.
+	 */
+	contextFinderEnabled?: boolean;
+	contextFinderDecider?: ContextFinderDecider;
 	/** Tasker 87 supplies the durable runner; until then preparation ends in a readable failure. */
 	runner?: AgenticChatWorkflowRunnerPortV1;
 	/**
@@ -91,6 +99,14 @@ export function createAgenticChatWorkflowTurnPreparerV1(input: {
 						onError: (code) => console.warn(JSON.stringify({ event: code }))
 					}).observe
 				: undefined,
+		...(input.options.contextFinderEnabled
+			? {
+					findContext: createWorkflowContextFinder({
+						client: input.client as unknown as ContextFinderReadClient,
+						decider: input.options.contextFinderDecider
+					})
+				}
+			: {}),
 		loadSpecialistSnapshot: (identity) =>
 			loadSpecialistSnapshotV2(
 				input.client as unknown as AgenticChatWorkflowStoreClient,

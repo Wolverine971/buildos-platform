@@ -33,6 +33,7 @@ import {
 	START_HERE_SYNTHESIS_SYSTEM_PROMPT,
 	THINKING_LOG_SYSTEM_PROMPT,
 	applySectionEdit,
+	restatedAdditions,
 	buildStartHereSynthesisPrompt,
 	buildThinkingLogPrompt,
 	normalizeSynthesisReply,
@@ -92,6 +93,8 @@ export type CheckpointRecord = {
 	skipped: Array<{ heading: string; reason: string }>;
 	invariantViolations: string[];
 	droppedLinks: number;
+	/** Additions dropped because the model marked them as restating an existing line. */
+	restatedAdditions: number;
 	error: string | null;
 };
 
@@ -235,6 +238,7 @@ export async function runChatCheckpointCapture(
 		skipped: [],
 		invariantViolations: [],
 		droppedLinks: 0,
+		restatedAdditions: 0,
 		error: null
 	};
 	const projectId = session.projectId;
@@ -362,10 +366,15 @@ export async function runChatCheckpointCapture(
 	const sectionsByKey = new Map(
 		promptSections.map((section) => [headingKey(section.heading), section])
 	);
+	const documentIds = new Set(
+		promptSections.flatMap((section) => section.blocks.map((block) => block.id))
+	);
 	const rewrites: StartHereSectionBody[] = synthesis.edits.map((edit) => {
+		record.restatedAdditions += restatedAdditions(edit, documentIds);
 		const blocks = applySectionEdit(
 			sectionsByKey.get(headingKey(edit.heading))?.blocks ?? [],
-			edit
+			edit,
+			documentIds
 		).map((markdown) => {
 			const resolved = resolveEntityReferences(markdown, isKnown);
 			record.droppedLinks += resolved.dropped.length;

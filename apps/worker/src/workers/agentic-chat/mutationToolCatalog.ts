@@ -27,6 +27,7 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'updateOntoRisk'
 	| 'createOntoProject'
 	| 'updateOntoProject'
+	| 'updateOntoAsset'
 	| 'delegateTask'
 	| 'createCalendarEvent'
 	| 'updateCalendarEvent'
@@ -86,6 +87,7 @@ export type AgenticChatMutationArgumentNormalizerIdV1 =
 	| 'normalize_task_document_arguments'
 	| 'normalize_task_move_arguments'
 	| 'normalize_entity_ping_arguments'
+	| 'normalize_asset_update_arguments'
 	| 'strip_calendar_attendees_and_reminders'
 	| 'default_calendar_sync_none';
 
@@ -104,6 +106,7 @@ export type AgenticChatMutationReceiptBuilderIdV1 =
 	| 'task_document_attach'
 	| 'task_move'
 	| 'entity_ping'
+	| 'asset_update'
 	| 'calendar_event'
 	| 'project_calendar';
 
@@ -1057,6 +1060,30 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'end_at',
 			'props'
 		]
+	},
+	update_onto_asset: {
+		capability: 'updateOntoAsset',
+		operationName: 'onto.asset.update',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			// The admitted project is the fence: an image or document from another
+			// project is not visible to the gateway call at all.
+			scope: { mode: 'context_project', required: false },
+			requiredUuidArguments: ['asset_id'],
+			argumentNormalizers: ['normalize_asset_update_arguments'],
+			receipt: { kind: 'builder', builder: 'asset_update' }
+		},
+		directWriteClass: 'ordinary',
+		// An image attached to the current message is resolved by that structured
+		// attachment (write-routing), exactly like a focused entity; a document
+		// target still needs a unique read or review.
+		directWriteSelectionPolicy: 'resolved_existing',
+		descriptionOverride:
+			"Name or file an existing project image (images attached in a project chat are already stored in the project's images). Pass the asset_id from the attachment context or an asset read.",
+		requiredNames: ['asset_id'],
+		reviewedArgumentNames: ['asset_id', 'caption', 'alt_text', 'document_id']
 	},
 	delegate_task: {
 		capability: 'delegateTask',

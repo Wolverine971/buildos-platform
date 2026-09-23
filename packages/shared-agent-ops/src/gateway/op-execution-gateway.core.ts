@@ -121,7 +121,7 @@ import {
 	clampLimit,
 	normalizeOffset
 } from './op-execution-gateway.pagination';
-import { getAsset, searchAssets } from './op-execution-gateway.assets';
+import { getAsset, searchAssets, updateAsset } from './op-execution-gateway.assets';
 import { assertValidId } from './op-execution-gateway.ids';
 import {
 	getProject,
@@ -280,7 +280,8 @@ export const EXTERNAL_OP_HANDLERS: Record<
 	'onto.risk.create': createRisk,
 	'onto.risk.update': updateRisk,
 	'onto.edge.link': linkOntoEntities,
-	'onto.edge.unlink': unlinkOntoEdge
+	'onto.edge.unlink': unlinkOntoEdge,
+	'onto.asset.update': updateAsset
 };
 
 function normalizeMaxChars(value: unknown, fallback = 20000): number {
@@ -2069,7 +2070,10 @@ export function buildExternalGatewayRegistry(
 	const ops: Record<string, ExternalGatewayRegistryEntry> = {};
 
 	for (const op of allowedOps) {
-		const entry = registryOps[op] ?? EXTERNAL_CUSTOM_OPS[op];
+		// A gateway custom op owns its external contract even when the chat
+		// catalog also mounts a leaner tool for the same op (the asset reads,
+		// 2026-09-22): MCP callers keep the exact schema they were given.
+		const entry = EXTERNAL_CUSTOM_OPS[op] ?? registryOps[op];
 		const handler = EXTERNAL_OP_HANDLERS[op];
 		if (!entry || !handler) continue;
 		const parametersSchema =

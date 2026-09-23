@@ -121,6 +121,16 @@ export function extractWriteEntityMeta(params: {
 		}
 	}
 
+	if (params.op === 'onto.asset.update') {
+		const asset = params.result.asset;
+		if (asset && typeof asset === 'object' && !Array.isArray(asset)) {
+			const assetRecord = asset as Record<string, unknown>;
+			return metaFromEntityRecord('asset', assetRecord, {
+				fallbackTitle: stringField(assetRecord, 'caption', 'file_name') ?? 'Project image'
+			});
+		}
+	}
+
 	if (params.op === 'onto.document.tree.move') {
 		return metaFromEntityRecord('document', params.result, {
 			idField: 'document_id',

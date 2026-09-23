@@ -168,6 +168,7 @@ import {
 import {
 	type DirectWriteRouteContext,
 	assessDirectWriteBatch,
+	collectAttachedProjectAssetIds,
 	collectReadResultEntityRefs,
 	directWriteContractInstruction,
 	selectSingleHitEntityIds
@@ -534,13 +535,19 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		// execution instead of succeeding and being reported as a move.
 		const turnTaskSchedules = new Map<string, LoadedTaskSchedule>();
 		const currentUserMessage = executionInput.requestPayload.message;
+		// Images the user attached to this message: a structured selection, so
+		// naming/filing one of them needs no reviewer (write-routing).
+		const attachedAssetIds = collectAttachedProjectAssetIds(
+			executionInput.requestPayload.attachments
+		);
 		const directWriteContext = (value: ClientRequest): DirectWriteRouteContext => ({
 			contextType: value.contextType,
 			entityId: value.entityId,
 			projectId: value.projectId,
 			userMessage: typeof currentUserMessage === 'string' ? currentUserMessage : null,
 			resolvedEntityIds: turnResolvedEntityIds,
-			turnSeenEntityIds
+			turnSeenEntityIds,
+			attachedAssetIds
 		});
 		// Read evidence and the read memo share one lifetime. Both describe the
 		// world before this turn's writes, so a write invalidates both: a stale

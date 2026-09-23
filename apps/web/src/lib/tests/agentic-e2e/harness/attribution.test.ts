@@ -155,6 +155,20 @@ describe('buildWorkerTurnAttributionFromUsage', () => {
 			provider: 'typesafe'
 		});
 	});
+	it('counts Jev web navigation receipts as attributed worker passes', () => {
+		const navigationUsage = {
+			...selectorUsage,
+			id: 'navigation',
+			operation_type: 'agentic_chat_web_navigation'
+		};
+		const result = buildWorkerTurnAttributionFromUsage([
+			selectorUsage,
+			workerUsage,
+			navigationUsage
+		]);
+		expect(result.outcomeClass).toBe('native');
+		expect(result.passes.map((pass) => pass.passRole)).toContain('agentic_chat_web_navigation');
+	});
 	it('requires a worker model pass and attribution for every selector receipt', () => {
 		expect(buildWorkerTurnAttributionFromUsage([selectorUsage]).outcomeClass).toBe(
 			'unattributed'

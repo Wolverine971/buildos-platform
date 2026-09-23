@@ -159,7 +159,10 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'list_task_documents',
 			'get_document_path',
 			'create_task_document',
-			'unlink_onto_edge'
+			'unlink_onto_edge',
+			'search_onto_assets',
+			'get_onto_asset',
+			'update_onto_asset'
 		]);
 		expect([...global].filter((name) => !projectSet.has(name))).toEqual([
 			'search_onto_projects',
@@ -172,6 +175,25 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 	// The delegate adapter requires project_id to equal the admitted context
 	// project, which a global turn does not have, so every global call failed
 	// after the model had already paid a round (harness audit 2026-09-08, F25).
+	// Images attached in a project chat are stored as project assets. Naming or
+	// filing one is a project-surface capability and must be worker-executable,
+	// or admission refuses the whole turn as capability_unavailable.
+	it('mounts the project image tools on the project surface only, all worker-executable', () => {
+		const imageTools = ['search_onto_assets', 'get_onto_asset', 'update_onto_asset'];
+		const project = getGatewayDirectToolNamesForProfile('project');
+		for (const name of imageTools) {
+			expect(project, name).toContain(name);
+			expect(isAgenticChatWorkerExecutableToolNameV1(name), name).toBe(true);
+			expect(getGatewayDirectToolNamesForProfile('global'), name).not.toContain(name);
+		}
+		expect(surfaceNames(getGatewaySurfaceForContextType('project'))).toEqual(
+			expect.arrayContaining(imageTools)
+		);
+		expect(surfaceNames(getGatewaySurfaceForContextType('ontology'))).toEqual(
+			expect.arrayContaining(imageTools)
+		);
+	});
+
 	it('mounts delegate_task only where its adapter can succeed', () => {
 		expect(getGatewayDirectToolNamesForProfile('project')).toContain('delegate_task');
 		expect(getGatewayDirectToolNamesForProfile('global')).not.toContain('delegate_task');

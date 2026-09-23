@@ -421,7 +421,9 @@ describe('multi-account /api/calendar mutations', () => {
 		expect(recurrenceBuildMock).toHaveBeenCalledWith({
 			pattern: { type: 'weekly' },
 			endOption: { type: 'date', value: '2026-10-01' },
-			startDate: '2026-08-13T14:00:00.000Z'
+			startDate: '2026-08-13T14:00:00.000Z',
+			// The request's zone, so a date-only end reads as that civil day.
+			timeZone: 'America/New_York'
 		});
 		expect(ontoCreateEventMock).toHaveBeenCalledWith(
 			'user-1',

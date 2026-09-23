@@ -34,9 +34,18 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const height = parsePositiveNumber(url.searchParams.get('height'));
 	const format = url.searchParams.get('format');
 
+	const resize = url.searchParams.get('resize');
+
 	const transform: Record<string, unknown> = {};
 	if (width) transform.width = width;
 	if (height) transform.height = height;
+	if (width || height) {
+		// Storage fills a missing dimension with the original's and defaults to
+		// 'cover', so a width-only request cropped images into a full-height strip.
+		// 'contain' scales proportionally unless the caller asks otherwise.
+		transform.resize =
+			resize && ['cover', 'contain', 'fill'].includes(resize) ? resize : 'contain';
+	}
 	if (format && ['origin', 'webp', 'avif'].includes(format)) {
 		transform.format = format;
 	}

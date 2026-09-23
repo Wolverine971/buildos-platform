@@ -40,6 +40,7 @@ export async function enqueueChatCheckpoint(params: {
 	lastMessageId?: string | null;
 	priority?: number;
 }): Promise<string | null> {
+	if (!chatCaptureEnabled()) return null;
 	const metadata: CaptureChatCheckpointJobMetadata = {
 		sessionId: params.sessionId,
 		userId: params.userId,
@@ -176,6 +177,11 @@ export async function processCaptureChatCheckpointJob(
 	job: ProcessingJob<CaptureChatCheckpointJobMetadata>
 ) {
 	const { sessionId, userId, trigger, lastMessageId } = job.data;
+	// The kill switch also covers jobs already queued and the chat-close path.
+	if (!chatCaptureEnabled()) {
+		await job.log('Checkpoint capture disabled (CHAT_CHECKPOINT_CAPTURE_ENABLED=false)');
+		return { success: true, status: 'disabled' };
+	}
 	try {
 		const outcome = await runChatCheckpointCapture(createSupabaseCheckpointPorts(), {
 			sessionId,

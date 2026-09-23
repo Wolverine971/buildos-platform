@@ -204,6 +204,41 @@ function ident(value: string): string {
 }
 
 /**
+ * A PostgREST logic tree as supabase-js `.or()` sends it: comma-separated
+ * `column.op.value` terms, nested with and(...) / or(...). Only the operators the
+ * radar uses are supported.
+ */
+function postgrestLogic(joiner: 'and' | 'or', expression: string, params: unknown[]): string {
+	const terms: string[] = [];
+	let depth = 0;
+	let start = 0;
+	for (let index = 0; index <= expression.length; index++) {
+		const char = expression[index];
+		if (char === '(') depth++;
+		else if (char === ')') depth--;
+		else if (index === expression.length || (char === ',' && depth === 0)) {
+			terms.push(expression.slice(start, index).trim());
+			start = index + 1;
+		}
+	}
+	return terms
+		.map((term) => {
+			const nested = /^(and|or)\((.*)\)$/.exec(term);
+			if (nested) return `(${postgrestLogic(nested[1] as 'and' | 'or', nested[2]!, params)})`;
+			const [column = '', operator, ...rest] = term.split('.');
+			const value = rest.join('.');
+			ident(column);
+			if (operator === 'eq') {
+				params.push(value);
+				return `${column}::text = $${params.length}`;
+			}
+			if (operator === 'is' && value === 'null') return `${column} IS NULL`;
+			throw new Error(`unsupported or() term ${term}`);
+		})
+		.join(joiner === 'or' ? ' OR ' : ' AND ');
+}
+
+/**
  * Just enough of supabase-js for the radar, its data port and the shared
  * helpers: every call becomes one parameterized SQL statement whose rows come
  * back through row_to_json (so timestamps and json read exactly as PostgREST
@@ -395,6 +430,10 @@ function createRestShim(client: Client) {
 					ident(column);
 					where.push(() => `${column} IS NOT NULL`);
 				} else throw new Error(`unsupported not(${operator})`);
+				return chain;
+			},
+			or(expression: string) {
+				where.push((params) => `(${postgrestLogic('or', expression, params)})`);
 				return chain;
 			},
 			order(column: string, options: { ascending?: boolean; nullsFirst?: boolean } = {}) {
@@ -743,6 +782,36 @@ describePostgres('freshness radar on a disposable PostgreSQL', () => {
 
 	const one = async (sql: string, params: unknown[] = []) =>
 		(await pg.client.query(sql, params)).rows[0];
+
+	it("never loads another member's private inbox items into the scanning user's context", async () => {
+		// The port reads with the admin client, so the audience filter is the only
+		// thing keeping a co-member's private proposals out of Jev's prompt.
+		const OTHER_USER = '88888888-8888-4888-8888-000000000001';
+		const [shared, mine, theirs] = [
+			'77777777-7777-4777-8777-000000000001',
+			'77777777-7777-4777-8777-000000000002',
+			'77777777-7777-4777-8777-000000000003'
+		];
+		await pg.client.query('BEGIN');
+		try {
+			for (const [id, audience, userId] of [
+				[shared, 'project_members', null],
+				[mine, 'user', USER],
+				[theirs, 'user', OTHER_USER]
+			] as const) {
+				await pg.client.query(
+					`INSERT INTO public.inbox_items (id, source_type, source_ref_id, project_id, user_id, audience, status, title)
+					 VALUES ($1::uuid, 'agent_run', $1::text, $2, $3, $4, 'pending', 'Inbox item')`,
+					[id, PROJECT, userId, audience]
+				);
+			}
+			const ids = (await deps.port.loadInboxItems(PROJECT, USER)).map((row) => row.id);
+			expect(ids).toEqual(expect.arrayContaining([shared, mine]));
+			expect(ids).not.toContain(theirs);
+		} finally {
+			await pg.client.query('ROLLBACK');
+		}
+	});
 
 	it('does not replay the previous scan message or skip a later message in the same millisecond', async () => {
 		const cursor = '2026-09-18T14:50:00.123456+00:00';

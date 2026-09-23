@@ -5,6 +5,7 @@
 	import type { PageData } from './$types';
 	import type { WorkbenchVersionSummary } from '$lib/types/specialist-workbench';
 	import type { PublishedSpecialistSelection } from '$lib/services/agentic-chat-v2/worker-transport-client';
+	import ContextFinderPanel, { type EvidenceSelection } from './ContextFinderPanel.svelte';
 	type Recommendation = {
 		id: string;
 		status: 'selected' | 'uncertain' | 'unavailable' | 'pending';
@@ -55,6 +56,15 @@
 			appliedRecommendation.selectionProjectId === projectId &&
 			appliedRecommendation.selectionQuestion === question.trim()
 			? appliedRecommendation
+			: null
+	);
+	// Evidence the user found (and maybe edited) for the current project and question.
+	let evidenceSelection = $state.raw<EvidenceSelection | null>(null);
+	const selectedEvidence = $derived(
+		evidenceSelection &&
+			evidenceSelection.projectId === projectId &&
+			evidenceSelection.question === question.trim()
+			? evidenceSelection
 			: null
 	);
 	let review = $state<{
@@ -170,7 +180,17 @@
 				question: question.trim(),
 				name: project.name,
 				specialist: selectedSpecialist
-					? { ...selectedSpecialist, ...selectedDecision }
+					? {
+							...selectedSpecialist,
+							...selectedDecision,
+							...(selectedEvidence
+								? {
+										contextPlan: selectedEvidence.plan,
+										contextPlanQuestion: selectedEvidence.question,
+										contextPlanProjectId: selectedEvidence.projectId
+									}
+								: {})
+						}
 					: null
 			};
 		}
@@ -406,6 +426,13 @@
 						</div>
 					{/if}
 				</section>
+			{/if}
+			{#if data.contextFinderEnabled && selectedSpecialist}
+				<ContextFinderPanel
+					{projectId}
+					{question}
+					onSelection={(selection) => (evidenceSelection = selection)}
+				/>
 			{/if}
 			<p class="text-sm text-muted-foreground">
 				Reads saved project context and shows both specialists’ findings. This review does
