@@ -57,9 +57,8 @@ import { OpenRouterClient } from './openrouter-client';
 import {
 	buildOpenRouterChatCompletionBody,
 	OPENROUTER_NO_DATA_COLLECTION_PROVIDER,
-	OPENROUTER_PRIVATE_PROVIDER
+	type OpenRouterPrivacyMode
 } from './openrouter-request';
-import { MoonshotClient } from './moonshot-client';
 import {
 	cleanJSONResponse,
 	enhanceSystemPromptForJSON,
@@ -112,31 +111,22 @@ export type SmartLLMConfig = {
 		/**
 		 * Evaluation-only escape hatch for anonymized fixtures whose frozen model pin has no ZDR
 		 * endpoint. Production callers must leave this false so requests retain `zdr: true`.
+		 * Maps to the builder's `privacy: 'evaluation_only_non_zdr'`.
 		 */
 		evaluationOnlyAllowNonZdr?: boolean;
 	};
-	moonshot?: {
-		apiKey?: string;
-		apiUrl?: string;
-		routeKimiModelsDirect?: boolean;
-		modelMap?: Record<string, string>;
-		streamIncludeUsage?: boolean;
-	};
 };
 
+// Every model call goes through OpenRouter under the private provider policy.
+// The direct Moonshot route was removed in tasker 103 (it bypassed ZDR).
 type ProviderRoute = {
-	provider: 'openrouter' | 'moonshot';
+	provider: 'openrouter';
 	requestModel: string;
 	apiUrl: string;
 };
 
-const DEFAULT_MOONSHOT_API_URL = 'https://api.moonshot.ai/v1/chat/completions';
 const DEFAULT_HTTP_REFERER = 'https://build-os.com';
 const DEFAULT_APP_NAME = 'BuildOS Smart LLM';
-const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
-	[KIMI_CODING_MODEL]: 'kimi-k2.7-code',
-	[KIMI_EXPERIMENT_MODEL]: 'kimi-k2.6'
-};
 const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
 const OPENROUTER_TOOL_STREAM_REASONING = { effort: 'low', exclude: false } as const;
 const OPENROUTER_TRANSCRIPTION_API_URL = 'https://openrouter.ai/api/v1/audio/transcriptions';
@@ -178,13 +168,10 @@ const CANONICAL_MODEL_ALIASES: Record<string, string> = {
 export class SmartLLMService {
 	private apiKey: string;
 	private apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-	private moonshotApiUrl = DEFAULT_MOONSHOT_API_URL;
-	private moonshotApiKey?: string;
 	private costTracking = new Map<string, number>();
 	private performanceMetrics = new Map<string, number[]>();
 	private errorLogger?: ErrorLogger;
 	private openRouterClient: OpenRouterClient;
-	private moonshotClient?: MoonshotClient;
 	private usageLogger: UsageLogger;
 	private fetchImpl: typeof fetch;
 	private enforceUserId: boolean;
@@ -192,13 +179,7 @@ export class SmartLLMService {
 	private middleOutMinChars: number;
 	private baseTransforms: string[];
 	private defaultTimeoutMs?: number;
-	private openRouterProviderPolicy: Readonly<{
-		data_collection: 'deny';
-		zdr?: true;
-	}>;
-	private routeKimiModelsDirectToMoonshot: boolean;
-	private moonshotModelMap: Record<string, string>;
-	private moonshotStreamIncludeUsage: boolean;
+	private openRouterPrivacy: OpenRouterPrivacyMode;
 
 	// Optional: For logging and metrics
 	private supabase?: SupabaseClient<Database>;
@@ -222,29 +203,9 @@ export class SmartLLMService {
 		this.middleOutMinChars = config.openrouter?.middleOutMinChars ?? 60000;
 		this.baseTransforms = config.openrouter?.transforms ?? [];
 		this.defaultTimeoutMs = config.openrouter?.timeoutMs;
-		this.openRouterProviderPolicy = config.openrouter?.evaluationOnlyAllowNonZdr
-			? OPENROUTER_NO_DATA_COLLECTION_PROVIDER
-			: OPENROUTER_PRIVATE_PROVIDER;
-		this.routeKimiModelsDirectToMoonshot = config.moonshot?.routeKimiModelsDirect ?? false;
-		this.moonshotModelMap = {
-			...DEFAULT_MOONSHOT_MODEL_MAP,
-			...Object.entries(config.moonshot?.modelMap ?? {}).reduce<Record<string, string>>(
-				(acc, [key, value]) => {
-					if (
-						typeof key === 'string' &&
-						key.trim().length > 0 &&
-						typeof value === 'string' &&
-						value.trim().length > 0
-					) {
-						acc[key.trim().toLowerCase()] = value.trim();
-					}
-					return acc;
-				},
-				{}
-			)
-		};
-		this.moonshotStreamIncludeUsage = config.moonshot?.streamIncludeUsage ?? true;
-		this.moonshotApiUrl = config.moonshot?.apiUrl?.trim() || DEFAULT_MOONSHOT_API_URL;
+		this.openRouterPrivacy = config.openrouter?.evaluationOnlyAllowNonZdr
+			? 'evaluation_only_non_zdr'
+			: 'zdr';
 
 		this.openRouterClient = new OpenRouterClient({
 			apiKey: this.apiKey,
@@ -254,20 +215,6 @@ export class SmartLLMService {
 			fetchImpl: this.fetchImpl
 		});
 
-		const moonshotApiKey = config.moonshot?.apiKey?.trim();
-		this.moonshotApiKey = moonshotApiKey;
-		if (moonshotApiKey) {
-			this.moonshotClient = new MoonshotClient({
-				apiKey: moonshotApiKey,
-				apiUrl: this.moonshotApiUrl,
-				fetchImpl: this.fetchImpl
-			});
-		}
-		if (this.routeKimiModelsDirectToMoonshot && !this.moonshotClient) {
-			console.warn(
-				'[SmartLLMService] Moonshot direct routing is enabled but no Moonshot API key is configured; falling back to OpenRouter.'
-			);
-		}
 		this.usageLogger =
 			config.usageLogger ||
 			new LLMUsageLogger({
@@ -358,35 +305,7 @@ export class SmartLLMService {
 		return normalized.startsWith('moonshotai/kimi') || normalized.startsWith('kimi-k');
 	}
 
-	private resolveMoonshotModel(model: string): string {
-		const normalized = model.trim().toLowerCase();
-		const mapped = this.moonshotModelMap[normalized];
-		if (mapped) {
-			return mapped;
-		}
-		if (normalized.startsWith('moonshotai/')) {
-			return normalized.slice('moonshotai/'.length);
-		}
-		return model;
-	}
-
-	private resolveProviderRoute(
-		model: string,
-		options: { forceOpenRouter?: boolean } = {}
-	): ProviderRoute {
-		const shouldUseMoonshot =
-			!options.forceOpenRouter &&
-			this.routeKimiModelsDirectToMoonshot &&
-			!!this.moonshotClient &&
-			this.isKimiModel(model) &&
-			this.canonicalizeModelId(model) !== KIMI_K3_MODEL;
-		if (shouldUseMoonshot) {
-			return {
-				provider: 'moonshot',
-				requestModel: this.resolveMoonshotModel(model),
-				apiUrl: this.moonshotApiUrl
-			};
-		}
+	private resolveProviderRoute(model: string): ProviderRoute {
 		return {
 			provider: 'openrouter',
 			requestModel: model,
@@ -394,14 +313,7 @@ export class SmartLLMService {
 		};
 	}
 
-	private buildProviderHeaders(provider: ProviderRoute['provider']): Record<string, string> {
-		if (provider === 'moonshot') {
-			const apiKey = this.moonshotApiKey || this.apiKey;
-			return {
-				Authorization: `Bearer ${apiKey}`,
-				'Content-Type': 'application/json'
-			};
-		}
+	private buildProviderHeaders(): Record<string, string> {
 		return {
 			Authorization: `Bearer ${this.apiKey}`,
 			'Content-Type': 'application/json',
@@ -457,18 +369,6 @@ export class SmartLLMService {
 		return MOONSHOT_REASONING_CONTENT_FALLBACK;
 	}
 
-	private resolveTemperatureForRoute(
-		route: ProviderRoute,
-		temperature: number | undefined,
-		fallback: number
-	): number {
-		// Moonshot Kimi direct requires temperature=1 (provider-side validation).
-		if (route.provider === 'moonshot' && this.isKimiModel(route.requestModel)) {
-			return 1;
-		}
-		return temperature ?? fallback;
-	}
-
 	private async callChatCompletions(params: {
 		model: string;
 		models?: string[];
@@ -488,29 +388,7 @@ export class SmartLLMService {
 		route: ProviderRoute;
 	}> {
 		const route = this.resolveProviderRoute(params.model);
-		const temperature = this.resolveTemperatureForRoute(route, params.temperature, 0.7);
-
-		if (route.provider === 'moonshot') {
-			if (!this.moonshotClient) {
-				throw new Error('Moonshot client not configured');
-			}
-			const response = await this.moonshotClient.callMoonshot({
-				model: route.requestModel,
-				messages: params.messages,
-				temperature,
-				max_tokens: params.max_tokens,
-				timeoutMs: params.timeoutMs,
-				signal: params.signal,
-				response_format: params.response_format,
-				stream: params.stream
-			});
-			const normalizedModel = response.model
-				? this.canonicalizeModelId(response.model)
-				: this.canonicalizeModelId(params.model);
-			response.model = normalizedModel;
-			response.provider = 'moonshotai';
-			return { response, route };
-		}
+		const temperature = params.temperature ?? 0.7;
 
 		// OpenRouter's top-level `provider` object supports order, only, ignore,
 		// allow_fallbacks, require_parameters, sort, data_collection, and max_price
@@ -524,16 +402,10 @@ export class SmartLLMService {
 		// `order` + `allow_fallbacks: false` for the life of a turn so passes 2..N
 		// land on the provider that already holds the prefix.
 		//
-		// Callers may steer among providers, but privacy policy is owned here.
-		// Strip protected keys defensively in case an untyped caller supplies them.
-		const {
-			zdr: _ignoredZdr,
-			data_collection: _ignoredDataCollection,
-			...providerRouting
-		} = (params.providerRouting ?? {}) as Record<string, unknown>;
+		// Callers may steer among providers; the request builder writes the
+		// privacy policy last, so no caller key can relax it.
 		const provider = {
-			...providerRouting,
-			...this.openRouterProviderPolicy,
+			...((params.providerRouting ?? {}) as Record<string, unknown>),
 			...(params.providerMaxPrice ? { max_price: params.providerMaxPrice } : {})
 		};
 
@@ -549,7 +421,8 @@ export class SmartLLMService {
 			reasoning: params.reasoning,
 			stream: params.stream,
 			transforms: params.transforms,
-			provider
+			provider,
+			privacy: this.openRouterPrivacy
 		});
 		response.model = response.model ? this.canonicalizeModelId(response.model) : params.model;
 		return { response, route };
@@ -2269,65 +2142,6 @@ export class SmartLLMService {
 	}
 
 	// ============================================
-	// EMBEDDING METHODS
-	// ============================================
-
-	/**
-	 * Generate embeddings using OpenAI API
-	 * Note: This requires a separate OpenAI API key as OpenRouter doesn't support embeddings
-	 */
-	async generateEmbedding(text: string, openAIApiKey: string): Promise<number[]> {
-		const response = await this.fetchImpl('https://api.openai.com/v1/embeddings', {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${openAIApiKey}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				model: 'text-embedding-3-small',
-				input: text
-			})
-		});
-
-		if (!response.ok) {
-			throw Object.assign(new Error('OpenAI embedding request failed.'), {
-				name: 'OpenAIEmbeddingError',
-				status: response.status
-			});
-		}
-
-		const result = await response.json();
-		return result.data[0].embedding;
-	}
-
-	/**
-	 * Generate multiple embeddings using OpenAI API
-	 */
-	async generateEmbeddings(texts: string[], openAIApiKey: string): Promise<number[][]> {
-		const response = await this.fetchImpl('https://api.openai.com/v1/embeddings', {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${openAIApiKey}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				model: 'text-embedding-3-small',
-				input: texts
-			})
-		});
-
-		if (!response.ok) {
-			throw Object.assign(new Error('OpenAI embedding request failed.'), {
-				name: 'OpenAIEmbeddingError',
-				status: response.status
-			});
-		}
-
-		const result = await response.json();
-		return result.data.map((d: any) => d.embedding);
-	}
-
-	// ============================================
 	// STATIC HELPER FOR QUICK PROFILE SELECTION
 	// ============================================
 
@@ -2478,7 +2292,6 @@ export class SmartLLMService {
 		let resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
 		let providerResolvedFromStream = false;
 		let lastRequestApiUrl = this.apiUrl;
-		let lastRouteProvider: ProviderRoute['provider'] = 'openrouter';
 		let lastRequestedModel = baseModel;
 		let lastRoutingModels = [...preferredModels];
 		let requestModelForStartedStream = baseModel;
@@ -2502,12 +2315,9 @@ export class SmartLLMService {
 				];
 				lastRequestedModel = requestedModel;
 				lastRoutingModels = routingModels;
-				const route = this.resolveProviderRoute(requestedModel, {
-					forceOpenRouter: needsToolSupport
-				});
+				const route = this.resolveProviderRoute(requestedModel);
 				lastRequestApiUrl = route.apiUrl;
-				lastRouteProvider = route.provider;
-				const providerLabel = route.provider === 'moonshot' ? 'Moonshot' : 'OpenRouter';
+				const providerLabel = 'OpenRouter';
 
 				const messagesForRequest =
 					needsToolSupport && this.isKimiModel(route.requestModel)
@@ -2516,48 +2326,25 @@ export class SmartLLMService {
 				const transforms = needsToolSupport
 					? undefined
 					: this.resolveTransforms(messagesForRequest);
-				const requestTemperature = this.resolveTemperatureForRoute(
-					route,
-					options.temperature,
-					0.7
-				);
+				const requestTemperature = options.temperature ?? 0.7;
 				// Stable per session (never per pass/turn) so multi-pass turns and
 				// follow-up turns land on the provider node holding the prompt prefix
 				// cache. Regressed in the openrouter-v2 -> smart-llm refactor (D9).
 				const cacheAffinityKey = options.chatSessionId || options.sessionId;
-				const body: any =
-					route.provider === 'openrouter'
-						? buildOpenRouterChatCompletionBody({
-								model: route.requestModel,
-								messages: messagesForRequest,
-								temperature: requestTemperature,
-								max_tokens: options.maxTokens ?? 2000,
-								stream: true,
-								models: routingModels,
-								reasoning: needsToolSupport
-									? OPENROUTER_TOOL_STREAM_REASONING
-									: undefined,
-								transforms,
-								stream_options: { include_usage: true },
-								session_id: cacheAffinityKey,
-								prompt_cache_key: cacheAffinityKey,
-								provider: this.openRouterProviderPolicy
-							})
-						: {
-								model: route.requestModel,
-								messages: messagesForRequest,
-								temperature: requestTemperature,
-								max_tokens: options.maxTokens ?? 2000,
-								stream: true
-							};
-				if (route.provider === 'moonshot') {
-					if (this.moonshotStreamIncludeUsage) {
-						body.stream_options = { include_usage: true };
-					}
-					if (cacheAffinityKey) {
-						body.prompt_cache_key = cacheAffinityKey;
-					}
-				}
+				const body: any = buildOpenRouterChatCompletionBody({
+					model: route.requestModel,
+					messages: messagesForRequest,
+					temperature: requestTemperature,
+					max_tokens: options.maxTokens ?? 2000,
+					stream: true,
+					models: routingModels,
+					reasoning: needsToolSupport ? OPENROUTER_TOOL_STREAM_REASONING : undefined,
+					transforms,
+					stream_options: { include_usage: true },
+					session_id: cacheAffinityKey,
+					prompt_cache_key: cacheAffinityKey,
+					privacy: this.openRouterPrivacy
+				});
 
 				// Add tools if provided
 				if (needsToolSupport) {
@@ -2568,7 +2355,7 @@ export class SmartLLMService {
 				try {
 					response = await this.fetchImpl(route.apiUrl, {
 						method: 'POST',
-						headers: this.buildProviderHeaders(route.provider),
+						headers: this.buildProviderHeaders(),
 						body: JSON.stringify(body),
 						signal: options.signal
 					});
@@ -2592,10 +2379,7 @@ export class SmartLLMService {
 					routingModelsForStartedStream = routingModels;
 					startedStreamAttempt = attempt + 1;
 					resolvedModel = this.canonicalizeModelId(requestedModel);
-					resolvedProvider =
-						route.provider === 'moonshot'
-							? 'moonshotai'
-							: TEXT_MODELS[resolvedModel]?.provider;
+					resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
 					modelResolvedFromStream = false;
 					providerResolvedFromStream = false;
 					break;
@@ -2633,7 +2417,7 @@ export class SmartLLMService {
 			}
 
 			if (!response || !response.ok) {
-				const providerLabel = lastRouteProvider === 'moonshot' ? 'Moonshot' : 'OpenRouter';
+				const providerLabel = 'OpenRouter';
 				const message = safeLlmErrorMessage(lastError, `${providerLabel} stream request`);
 				const operationType =
 					options.operationType || this.buildChatStreamOperationType(options.contextType);
@@ -2739,8 +2523,6 @@ export class SmartLLMService {
 			) {
 				resolvedProvider = responseProviderHeader.trim();
 				providerResolvedFromStream = true;
-			} else if (!resolvedProvider && lastRouteProvider === 'moonshot') {
-				resolvedProvider = 'moonshotai';
 			}
 
 			// Process SSE stream
@@ -3041,10 +2823,7 @@ export class SmartLLMService {
 							modelResolvedFromStream = true;
 							if (!providerResolvedFromStream) {
 								resolvedProvider =
-									TEXT_MODELS[resolvedModel]?.provider ??
-									(lastRouteProvider === 'moonshot'
-										? 'moonshotai'
-										: resolvedProvider);
+									TEXT_MODELS[resolvedModel]?.provider ?? resolvedProvider;
 							}
 							toolCallAssembler.setProfile(
 								resolveToolCallAssemblerProfile(resolvedProvider, resolvedModel)

@@ -145,7 +145,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 
 		// Log received file details and model being used
 		console.log(
-			`[Transcribe] Received: ${audioFile.size} bytes, Type: ${audioFile.type}, Name: ${audioFile.name}, Model: ${transcriptionModel}, Provider: OpenRouter`
+			`[Transcribe] Received: ${audioFile.size} bytes, Type: ${audioFile.type}, Model: ${transcriptionModel}, Provider: OpenRouter`
 		);
 
 		// Determine the correct file extension

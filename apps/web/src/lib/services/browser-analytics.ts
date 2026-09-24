@@ -19,6 +19,42 @@ interface MetaPixelFunction {
 	push: MetaPixelFunction;
 	loaded: boolean;
 	version: string;
+	disablePushState?: boolean;
+}
+
+/**
+ * Public marketing pages where a Meta PageView may fire, by SvelteKit route id. Meta records
+ * the full URL, so everything else stays out: the logged-in app, published user pages,
+ * invites, auth (invite links put the invite token in `/auth/register?redirect=`), and
+ * `/beta/thank-you` (its URL carries an email address).
+ */
+const META_PAGEVIEW_ROUTE_IDS = new Set([
+	'/',
+	'/about',
+	'/pricing',
+	'/contact',
+	'/beta',
+	'/investors',
+	'/landing-v2',
+	'/road-map',
+	'/help',
+	'/privacy',
+	'/terms'
+]);
+const META_PAGEVIEW_ROUTE_PREFIXES = [
+	'/blogs',
+	'/docs',
+	'/agent-skills',
+	'/skills',
+	'/(public)/integrations'
+];
+
+export function isMetaPageViewRoute(routeId: string | null | undefined): boolean {
+	if (!routeId) return false;
+	if (META_PAGEVIEW_ROUTE_IDS.has(routeId)) return true;
+	return META_PAGEVIEW_ROUTE_PREFIXES.some(
+		(prefix) => routeId === prefix || routeId.startsWith(`${prefix}/`)
+	);
 }
 
 type MetaWindow = Window & {
@@ -32,6 +68,7 @@ let visitorModulePromise: Promise<VisitorModule> | null = null;
 let metaInitialized = false;
 let metaEnabled = false;
 let lastMetaPageView: string | null = null;
+let currentRouteId: string | null = null;
 
 function runWhenIdle(callback: () => void, timeout = 3000): void {
 	if (!browser) return;
@@ -78,6 +115,8 @@ function getMetaPixel(): MetaPixelFunction {
 	fbq.loaded = true;
 	fbq.version = '2.0';
 	fbq.queue = [];
+	// fbevents.js otherwise fires its own PageView on every pushState, including in-app routes.
+	fbq.disablePushState = true;
 	metaWindow.fbq = fbq;
 	metaWindow._fbq = fbq;
 	return fbq;
@@ -94,6 +133,8 @@ function enableMetaPixel(): void {
 	if (!metaInitialized) {
 		metaInitialized = true;
 		fbq('consent', 'grant');
+		// No automatic events: they read page metadata such as titles and button text.
+		fbq('set', 'autoConfig', false, META_PIXEL_ID);
 		fbq('init', META_PIXEL_ID);
 
 		if (!document.getElementById(META_SCRIPT_ID)) {
@@ -168,8 +209,13 @@ export function initializeBrowserAnalytics(): () => void {
 	};
 }
 
-export function trackMetaPageView(): void {
-	if (!browser || !metaEnabled) return;
+/**
+ * Fire a Meta PageView for a public marketing route. Pass the route id on navigation; the
+ * consent-time call reuses the last one.
+ */
+export function trackMetaPageView(routeId?: string | null): void {
+	if (routeId !== undefined) currentRouteId = routeId;
+	if (!browser || !metaEnabled || !isMetaPageViewRoute(currentRouteId)) return;
 
 	const pageKey = currentPageKey();
 	if (lastMetaPageView === pageKey) return;

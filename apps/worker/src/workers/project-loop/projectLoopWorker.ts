@@ -3485,7 +3485,13 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			brief_decision_item_count: brief.decision_item_ids?.length ?? 0,
 			brief_safe_cleanup_item_count: brief.safe_cleanup_item_ids?.length ?? 0,
 			skipped_generators: skippedLenses.map((lens) => lens.label),
-			skipped_lenses: skippedLenses,
+			// Codes and ids only: `detail` is provider error text.
+			skipped_lenses: skippedLenses.map(({ label, kind, reason, providerRequestId }) => ({
+				label,
+				kind,
+				reason,
+				providerRequestId
+			})),
 			doc_org_count: countKind('doc_org'),
 			doc_outdated_count: countKind('doc_outdated'),
 			drift_count: countKind('drift'),

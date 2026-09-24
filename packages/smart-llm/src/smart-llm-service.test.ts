@@ -342,32 +342,7 @@ describe('LLM stream debug logging privacy', () => {
 	});
 });
 
-describe('SmartLLMService embedding error privacy', () => {
-	it.each([
-		['single', (llm: SmartLLMService) => llm.generateEmbedding('private input', 'key')],
-		['batch', (llm: SmartLLMService) => llm.generateEmbeddings(['private input'], 'key')]
-	])('does not expose provider response bodies for %s requests', async (_kind, invoke) => {
-		const sentinel = 'provider-body-secret-7f94';
-		const llm = new SmartLLMService({
-			apiKey: 'openrouter-test-key',
-			fetch: vi.fn(
-				async () => new Response(`upstream failure ${sentinel}`, { status: 429 })
-			) as unknown as typeof fetch
-		});
-
-		const error = await invoke(llm).catch((cause) => cause);
-
-		expect(error).toMatchObject({
-			name: 'OpenAIEmbeddingError',
-			message: 'OpenAI embedding request failed.',
-			status: 429
-		});
-		expect(JSON.stringify(error)).not.toContain(sentinel);
-		expect(String(error)).not.toContain(sentinel);
-	});
-});
-
-describe('SmartLLMService streamText Moonshot tool handling', () => {
+describe('SmartLLMService streamText tool handling', () => {
 	it('captures include_usage chunks that arrive with empty choices', async () => {
 		const usageLogger = {
 			logUsageToDatabase: vi.fn(async () => undefined)
@@ -544,10 +519,6 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		const llm = new SmartLLMService({
 			apiKey: 'openrouter-test-key',
-			moonshot: {
-				apiKey: 'moonshot-test-key',
-				routeKimiModelsDirect: true
-			},
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
@@ -608,10 +579,6 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		const llm = new SmartLLMService({
 			apiKey: 'openrouter-test-key',
-			moonshot: {
-				apiKey: 'moonshot-test-key',
-				routeKimiModelsDirect: true
-			},
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
@@ -666,10 +633,6 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		const llm = new SmartLLMService({
 			apiKey: 'openrouter-test-key',
-			moonshot: {
-				apiKey: 'moonshot-test-key',
-				routeKimiModelsDirect: true
-			},
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
@@ -755,10 +718,6 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		const llm = new SmartLLMService({
 			apiKey: 'openrouter-test-key',
-			moonshot: {
-				apiKey: 'moonshot-test-key',
-				routeKimiModelsDirect: true
-			},
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
@@ -822,7 +781,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 		}
 	});
 
-	it('uses Kimi through OpenRouter for tool calls when Moonshot direct routing is enabled', async () => {
+	it('routes tool-call streams through OpenRouter', async () => {
 		const requestBodies: any[] = [];
 		const requestUrls: string[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -851,10 +810,6 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		const llm = new SmartLLMService({
 			apiKey: 'openrouter-test-key',
-			moonshot: {
-				apiKey: 'moonshot-test-key',
-				routeKimiModelsDirect: true
-			},
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
@@ -897,10 +852,6 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		const llm = new SmartLLMService({
 			apiKey: 'openrouter-test-key',
-			moonshot: {
-				apiKey: 'moonshot-test-key',
-				routeKimiModelsDirect: true
-			},
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
@@ -1120,6 +1071,72 @@ describe('SmartLLMService OpenRouter data policy', () => {
 			max_price: expect.any(Object)
 		});
 		expect(body?.provider).not.toHaveProperty('zdr');
+	});
+
+	it.each([
+		[undefined, { data_collection: 'deny', zdr: true }],
+		[true, { data_collection: 'deny' }]
+	])(
+		'streams with the builder privacy policy (evaluationOnlyAllowNonZdr=%s)',
+		async (evaluationOnlyAllowNonZdr, expectedProvider) => {
+			const requestBodies: Array<Record<string, unknown>> = [];
+			const llm = new SmartLLMService({
+				apiKey: 'openrouter-test-key',
+				openrouter: { evaluationOnlyAllowNonZdr },
+				fetch: vi.fn(async (_url: string, init?: RequestInit) => {
+					requestBodies.push(JSON.parse(String(init?.body)));
+					return buildSSE([
+						JSON.stringify({
+							id: 'chatcmpl-policy',
+							object: 'chat.completion.chunk',
+							created: 0,
+							model: DEEPSEEK_V4_FLASH_MODEL,
+							choices: [{ index: 0, delta: { content: 'Hi' }, finish_reason: 'stop' }]
+						}),
+						'[DONE]'
+					]);
+				}) as unknown as typeof fetch
+			});
+			for await (const event of llm.streamText({
+				messages: [{ role: 'user', content: 'Say hi.' }],
+				userId: 'stream-policy-test'
+			})) {
+				if (event.type === 'done' || event.type === 'error') break;
+			}
+			expect(requestBodies[0]?.provider).toEqual(expectedProvider);
+		}
+	);
+
+	it('sends Kimi models to OpenRouter, never a direct Moonshot endpoint', async () => {
+		const requestUrls: string[] = [];
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: vi.fn(async (url: string, init?: RequestInit) => {
+				requestUrls.push(String(url));
+				requestBodies.push(JSON.parse(String(init?.body)));
+				return buildSSE([
+					JSON.stringify({
+						id: 'chatcmpl-kimi',
+						object: 'chat.completion.chunk',
+						created: 0,
+						model: 'moonshotai/kimi-k2.6',
+						choices: [{ index: 0, delta: { content: 'Done.' }, finish_reason: 'stop' }]
+					}),
+					'[DONE]'
+				]);
+			}) as unknown as typeof fetch
+		});
+		for await (const event of llm.streamText({
+			model: 'moonshotai/kimi-k2.6',
+			messages: [{ role: 'user', content: 'Analyze.' }],
+			userId: 'kimi-route-test'
+		})) {
+			if (event.type === 'done' || event.type === 'error') break;
+		}
+		expect(requestUrls).toEqual(['https://openrouter.ai/api/v1/chat/completions']);
+		expect(requestBodies[0]?.model).toBe('moonshotai/kimi-k2.6');
+		expect(requestBodies[0]?.provider).toMatchObject({ data_collection: 'deny', zdr: true });
 	});
 
 	it('merges caller routing while preventing privacy-policy overrides', async () => {

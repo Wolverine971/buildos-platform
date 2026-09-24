@@ -2,6 +2,7 @@
 <script lang="ts">
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { goto } from '$app/navigation';
+	import { RETENTION_WINDOWS } from '$lib/privacy/retention-policy';
 
 	interface Props {
 		isOpen: boolean;
@@ -16,6 +17,8 @@
 		onAnalyze,
 		onClose
 	}: Props = $props();
+
+	const eventsWindow = RETENTION_WINDOWS.calendarAnalysisEvents.label;
 
 	async function handleAnalyze() {
 		// Store flag that analysis was requested
@@ -88,10 +91,11 @@
 			</div>
 
 			<p class="text-xs text-muted-foreground">
-				<strong class="font-semibold text-foreground">Privacy First:</strong> Your calendar data
-				is analyzed privately using AI. We only store minimal information needed to create projects.
-				You'll review and approve any suggestions before projects are created — this typically
-				takes 10-30 seconds.
+				<strong class="font-semibold text-foreground">Privacy:</strong> Your events are sent
+				to an AI model under zero data retention. We keep only the title and time of the
+				events behind each suggestion, and delete them within {eventsWindow}. You'll review
+				and approve any suggestions before projects are created. This usually takes 10 to 30
+				seconds.
 			</p>
 		</div>
 	{/snippet}

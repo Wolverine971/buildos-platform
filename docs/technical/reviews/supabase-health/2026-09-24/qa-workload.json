@@ -1,0 +1,214 @@
+{
+	"project_ref": "daudvqczjqxhpzstlfih",
+	"collected_at": "2026-09-24T17:12:54.411339+00:00",
+	"read_only": true,
+	"sections": {
+		"workload": [
+			{
+				"section": "turns_last_24h_bounded_1000",
+				"data": {
+					"turns": 45,
+					"newest": "2026-09-24T16:13:44.431211+00:00",
+					"oldest": "2026-09-24T02:55:45.261733+00:00",
+					"status": "completed",
+					"p50_seconds": 14.950666,
+					"p95_seconds": 50.6038032,
+					"execution_mode": "worker_realtime",
+					"p50_durable_events": 13,
+					"p95_durable_events": 30
+				}
+			},
+			{
+				"section": "turns_last_24h_bounded_1000",
+				"data": {
+					"turns": 3,
+					"newest": "2026-09-24T16:10:22.046945+00:00",
+					"oldest": "2026-09-24T03:13:38.252547+00:00",
+					"status": "failed",
+					"p50_seconds": 195.666139,
+					"p95_seconds": 246.0954664,
+					"execution_mode": "worker_realtime",
+					"p50_durable_events": 16,
+					"p95_durable_events": 16
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "snapshot_version",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "system_prompt",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "model_messages",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "tool_definitions",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "request_payload",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "prompt_sections",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "context_payload",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "rendered_dump_text",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "system_prompt_sha256",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "messages_sha256",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "tools_sha256",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "prompt_variant",
+					"relname": "chat_prompt_snapshots",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "artifact_version",
+					"relname": "chat_turn_input_artifacts",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "history_source",
+					"relname": "chat_turn_input_artifacts",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "history",
+					"relname": "chat_turn_input_artifacts",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "prepared",
+					"relname": "chat_turn_input_artifacts",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "content_hash",
+					"relname": "chat_turn_input_artifacts",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "request",
+					"relname": "chat_turn_input_artifacts",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "request_hash",
+					"relname": "chat_turn_input_artifacts",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "history_hash",
+					"relname": "chat_turn_input_artifacts",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "assistant_text",
+					"relname": "chat_turn_stream_state",
+					"attcompression": ""
+				}
+			},
+			{
+				"section": "compressed_columns",
+				"data": {
+					"attname": "projection",
+					"relname": "chat_turn_stream_state",
+					"attcompression": ""
+				}
+			}
+		]
+	},
+	"errors": {}
+}

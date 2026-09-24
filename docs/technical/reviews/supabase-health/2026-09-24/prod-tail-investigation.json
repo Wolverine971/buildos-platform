@@ -1,0 +1,214 @@
+{
+	"project_ref": "iwifjtlebphefldmwbkh",
+	"collected_at": "2026-09-24T17:18:09.806188+00:00",
+	"read_only": true,
+	"sections": {
+		"api_5xx": {
+			"result": [
+				{
+					"origin_ms": "19685",
+					"path": "/rest/v1/agent_runs",
+					"status": "522",
+					"timestamp": "2026-09-24T08:36:01.016000"
+				}
+			]
+		},
+		"postgres_errors": {
+			"result": [
+				{
+					"events": 1,
+					"hour": "2026-09-23T21:00:00",
+					"sqlstate": "2201B"
+				},
+				{
+					"events": 1,
+					"hour": "2026-09-24T02:00:00",
+					"sqlstate": "42P01"
+				},
+				{
+					"events": 28,
+					"hour": "2026-09-24T04:00:00",
+					"sqlstate": "P0001"
+				},
+				{
+					"events": 1,
+					"hour": "2026-09-24T04:00:00",
+					"sqlstate": "23514"
+				},
+				{
+					"events": 6,
+					"hour": "2026-09-24T04:00:00",
+					"sqlstate": "42703"
+				},
+				{
+					"events": 1,
+					"hour": "2026-09-24T12:00:00",
+					"sqlstate": "22P02"
+				},
+				{
+					"events": 1,
+					"hour": "2026-09-24T14:00:00",
+					"sqlstate": "22P02"
+				},
+				{
+					"events": 1,
+					"hour": "2026-09-24T14:00:00",
+					"sqlstate": "42809"
+				},
+				{
+					"events": 1,
+					"hour": "2026-09-24T14:00:00",
+					"sqlstate": "23514"
+				},
+				{
+					"events": 1,
+					"hour": "2026-09-24T15:00:00",
+					"sqlstate": "23514"
+				},
+				{
+					"events": 4,
+					"hour": "2026-09-24T16:00:00",
+					"sqlstate": "42703"
+				},
+				{
+					"events": 2,
+					"hour": "2026-09-24T16:00:00",
+					"sqlstate": "42P01"
+				}
+			]
+		},
+		"rpc_error_statuses": {
+			"result": [
+				{
+					"first": "2026-09-24T02:39:59.487000",
+					"last": "2026-09-24T15:03:09.196000",
+					"path": "/rest/v1/rpc/recover_dead_agentic_chat_turns",
+					"requests": 1010,
+					"status": "404"
+				},
+				{
+					"first": "2026-09-24T02:41:09.383000",
+					"last": "2026-09-24T15:03:09.272000",
+					"path": "/rest/v1/rpc/reap_stranded_queued_agentic_chat_turns",
+					"requests": 743,
+					"status": "404"
+				},
+				{
+					"first": "2026-09-23T21:39:02.724000",
+					"last": "2026-09-24T04:38:16.660000",
+					"path": "/rest/v1/rpc/persist_agentic_chat_provider_attempt_observation",
+					"requests": 29,
+					"status": "400"
+				}
+			]
+		},
+		"last_cron_error": [
+			{
+				"executed_at": "2026-09-24 15:03:09.175+00",
+				"error_message": "reaper_failed,recovery_failed"
+			}
+		],
+		"plan_agent_runs": [
+			{
+				"QUERY PLAN": [
+					{
+						"Plan": {
+							"Node Type": "Limit",
+							"Parallel Aware": false,
+							"Async Capable": false,
+							"Startup Cost": 0.44,
+							"Total Cost": 25.95,
+							"Plan Rows": 20,
+							"Plan Width": 1152,
+							"Plans": [
+								{
+									"Node Type": "Limit",
+									"Parent Relationship": "InitPlan",
+									"Subplan Name": "InitPlan 1 (returns $0)",
+									"Parallel Aware": false,
+									"Async Capable": false,
+									"Startup Cost": 0,
+									"Total Cost": 0.14,
+									"Plan Rows": 1,
+									"Plan Width": 16,
+									"Plans": [
+										{
+											"Node Type": "Seq Scan",
+											"Parent Relationship": "Outer",
+											"Parallel Aware": false,
+											"Async Capable": false,
+											"Relation Name": "agent_runs",
+											"Alias": "agent_runs",
+											"Startup Cost": 0,
+											"Total Cost": 15.09,
+											"Plan Rows": 109,
+											"Plan Width": 16
+										}
+									]
+								},
+								{
+									"Node Type": "Nested Loop",
+									"Parent Relationship": "Outer",
+									"Parallel Aware": false,
+									"Async Capable": false,
+									"Join Type": "Left",
+									"Startup Cost": 0.3,
+									"Total Cost": 34.74,
+									"Plan Rows": 27,
+									"Plan Width": 1152,
+									"Inner Unique": true,
+									"Plans": [
+										{
+											"Node Type": "Index Scan",
+											"Parent Relationship": "Outer",
+											"Parallel Aware": false,
+											"Async Capable": false,
+											"Scan Direction": "Forward",
+											"Index Name": "idx_agent_runs_created_at",
+											"Relation Name": "agent_runs",
+											"Alias": "ar",
+											"Startup Cost": 0.14,
+											"Total Cost": 18.74,
+											"Plan Rows": 27,
+											"Plan Width": 1108,
+											"Filter": "(user_id = $0)"
+										},
+										{
+											"Node Type": "Memoize",
+											"Parent Relationship": "Inner",
+											"Parallel Aware": false,
+											"Async Capable": false,
+											"Startup Cost": 0.15,
+											"Total Cost": 1.07,
+											"Plan Rows": 1,
+											"Plan Width": 44,
+											"Cache Key": "ar.project_id",
+											"Cache Mode": "logical",
+											"Plans": [
+												{
+													"Node Type": "Index Scan",
+													"Parent Relationship": "Outer",
+													"Parallel Aware": false,
+													"Async Capable": false,
+													"Scan Direction": "Forward",
+													"Index Name": "onto_projects_pkey",
+													"Relation Name": "onto_projects",
+													"Alias": "p",
+													"Startup Cost": 0.14,
+													"Total Cost": 1.06,
+													"Plan Rows": 1,
+													"Plan Width": 44,
+													"Index Cond": "(id = ar.project_id)"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					}
+				]
+			}
+		]
+	}
+}

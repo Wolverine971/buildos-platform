@@ -826,7 +826,7 @@ export async function processNotification(
 		// Validate that we have a proper payload after transformation
 		if (!validateNotificationPayload(typedDelivery.payload)) {
 			jobLogger.error('Invalid payload after transformation', undefined, {
-				payload: typedDelivery.payload
+				payloadKeys: Object.keys(typedDelivery.payload ?? {})
 			});
 			throw new Error('Invalid notification payload: missing or empty title/body');
 		}

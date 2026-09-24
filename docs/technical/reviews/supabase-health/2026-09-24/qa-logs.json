@@ -1,0 +1,180 @@
+{
+	"project_ref": "daudvqczjqxhpzstlfih",
+	"collected_at": "2026-09-24T17:09:21.636288+00:00",
+	"read_only": true,
+	"sections": {
+		"logs": {
+			"result": [
+				{
+					"duration_ms": "2354.748",
+					"event_kind": "acquired",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:16:52.586000"
+				},
+				{
+					"duration_ms": "1000.104",
+					"event_kind": "still waiting for",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:16:51.231000"
+				},
+				{
+					"duration_ms": "3245.125",
+					"event_kind": "acquired",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:16:50.230000"
+				},
+				{
+					"duration_ms": "1003.003",
+					"event_kind": "still waiting for",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:16:47.992000"
+				},
+				{
+					"duration_ms": "",
+					"event_kind": "canceling statement due to",
+					"relation_oid": "",
+					"severity": "ERROR",
+					"sqlstate": "57014",
+					"timestamp": "2026-09-24T03:14:26.026000"
+				},
+				{
+					"duration_ms": "",
+					"event_kind": "canceling statement due to",
+					"relation_oid": "",
+					"severity": "ERROR",
+					"sqlstate": "57014",
+					"timestamp": "2026-09-24T03:14:15.851000"
+				},
+				{
+					"duration_ms": "",
+					"event_kind": "canceling statement due to",
+					"relation_oid": "",
+					"severity": "ERROR",
+					"sqlstate": "57014",
+					"timestamp": "2026-09-24T03:13:55.287000"
+				},
+				{
+					"duration_ms": "5745.181",
+					"event_kind": "acquired",
+					"relation_oid": "22512",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:55.093000"
+				},
+				{
+					"duration_ms": "",
+					"event_kind": "canceling statement due to",
+					"relation_oid": "",
+					"severity": "ERROR",
+					"sqlstate": "57014",
+					"timestamp": "2026-09-24T03:13:55.083000"
+				},
+				{
+					"duration_ms": "6876.372",
+					"event_kind": "acquired",
+					"relation_oid": "22512",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:54.176000"
+				},
+				{
+					"duration_ms": "6899.216",
+					"event_kind": "acquired",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:54.175000"
+				},
+				{
+					"duration_ms": "",
+					"event_kind": "canceling statement due to",
+					"relation_oid": "",
+					"severity": "ERROR",
+					"sqlstate": "57014",
+					"timestamp": "2026-09-24T03:13:54.154000"
+				},
+				{
+					"duration_ms": "1000.075",
+					"event_kind": "still waiting for",
+					"relation_oid": "22512",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:50.348000"
+				},
+				{
+					"duration_ms": "1000.799",
+					"event_kind": "still waiting for",
+					"relation_oid": "22512",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:48.301000"
+				},
+				{
+					"duration_ms": "1000.117",
+					"event_kind": "still waiting for",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:48.277000"
+				},
+				{
+					"duration_ms": "1042.990",
+					"event_kind": "acquired",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:44.993000"
+				},
+				{
+					"duration_ms": "1000.112",
+					"event_kind": "still waiting for",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:44.976000"
+				},
+				{
+					"duration_ms": "1154.893",
+					"event_kind": "acquired",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:43.950000"
+				},
+				{
+					"duration_ms": "1004.211",
+					"event_kind": "still waiting for",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:13:43.909000"
+				},
+				{
+					"duration_ms": "1619.012",
+					"event_kind": "acquired",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:04:48.450000"
+				},
+				{
+					"duration_ms": "1000.095",
+					"event_kind": "still waiting for",
+					"relation_oid": "",
+					"severity": "LOG",
+					"sqlstate": "00000",
+					"timestamp": "2026-09-24T03:04:47.836000"
+				}
+			]
+		}
+	},
+	"errors": {}
+}

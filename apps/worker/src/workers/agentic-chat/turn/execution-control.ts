@@ -73,6 +73,15 @@ export type AgenticChatExecutionControlPortV1 = {
 		input: AgenticChatExecutionIdentityV1,
 		signal?: AbortSignal
 	): Promise<AgenticChatTurnClaimResultV1>;
+	/**
+	 * Re-verify ownership of a running turn without taking or waiting on a row
+	 * lock (Tasker 102). Same receipt as `claim` for a running turn; never
+	 * claims. Ports without it fall back to `claim`.
+	 */
+	checkReadFence?(
+		input: AgenticChatExecutionIdentityV1,
+		signal?: AbortSignal
+	): Promise<AgenticChatTurnClaimResultV1>;
 	begin(
 		input: AgenticChatExecutionIdentityV1 & { executionGeneration: number }
 	): Promise<AgenticChatExecutionStartRpcResultV1>;
@@ -103,6 +112,9 @@ export type AgenticChatExecutionControlPortV1 = {
 		}
 	): Promise<AgenticChatWorkflowRecoveryReceiptV1>;
 };
+
+/** PostgREST schema-cache miss and Postgres undefined_function. */
+const MISSING_FUNCTION_CODES = new Set(['PGRST202', '42883']);
 
 export class AgenticChatExecutionControlRpcError extends Error {
 	constructor(
@@ -144,7 +156,41 @@ type CommonTerminalReceipt = Record<string, unknown> & {
 export class SupabaseAgenticChatExecutionControlAdapter
 	implements AgenticChatExecutionControlPortV1
 {
+	/** Cleared once the database reports the lock-free check missing (migration not applied). */
+	private readFenceCheckAvailable = true;
+
 	constructor(private readonly client: AgenticChatExecutionRpcClient) {}
+
+	async checkReadFence(
+		input: AgenticChatExecutionIdentityV1,
+		signal?: AbortSignal
+	): Promise<AgenticChatTurnClaimResultV1> {
+		if (!this.readFenceCheckAvailable) return this.claim(input, signal);
+		validateExecutionIdentity(input);
+		let value: unknown;
+		try {
+			value = await this.call(
+				'check_agentic_chat_turn_read_fence',
+				{
+					p_turn_run_id: input.turnRunId,
+					p_queue_job_id: input.queueJobId,
+					p_processing_token: input.processingToken
+				},
+				signal
+			);
+		} catch (error) {
+			// A worker deployed ahead of 20260924150000 keeps the locking check.
+			if (
+				error instanceof AgenticChatExecutionControlRpcError &&
+				MISSING_FUNCTION_CODES.has(error.code)
+			) {
+				this.readFenceCheckAvailable = false;
+				return this.claim(input, signal);
+			}
+			throw error;
+		}
+		return parseClaimReceipt(value, input);
+	}
 
 	async claim(
 		input: AgenticChatExecutionIdentityV1,

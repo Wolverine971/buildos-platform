@@ -26,8 +26,12 @@
 		email: string;
 	};
 
+	type AccountSection = 'profile' | 'password' | 'danger';
+
 	interface Props {
 		user: AccountUser;
+		/** Section to open first; Settings → Your data links to 'danger'. */
+		initialSection?: AccountSection;
 		onsuccess?: (event: { message: string }) => void;
 		onerror?: (event: { message: string }) => void;
 	}
@@ -39,10 +43,10 @@
 		};
 	}
 
-	let { user, onsuccess, onerror }: Props = $props();
+	let { user, initialSection = 'profile', onsuccess, onerror }: Props = $props();
 
 	// Form state
-	let activeSection = $state<'profile' | 'password' | 'danger'>('profile');
+	let activeSection = $state<AccountSection>(untrack(() => initialSection));
 	let loading = $state(false);
 	let showCurrentPassword = $state(false);
 	let showNewPassword = $state(false);

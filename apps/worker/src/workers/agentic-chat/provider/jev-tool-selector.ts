@@ -2,7 +2,7 @@
 // Select model-visible schemas; never change the worker's execution permissions.
 import { randomUUID } from 'node:crypto';
 import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
-import type { UsageLogger } from '@buildos/smart-llm';
+import { JEV_PROVIDER_POLICY, type UsageLogger } from '@buildos/smart-llm';
 import { runWithAbortableDeadline } from '../shared/abortable-deadline';
 import { startLocalPromptDump } from '../effects/prompt-dump';
 import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
@@ -209,7 +209,7 @@ export function buildJevToolSelectionBody(request: AgenticChatTurnProviderReques
 				}
 			])
 		),
-		provider: { allow_fallbacks: false, data_collection: 'deny' }
+		provider: JEV_PROVIDER_POLICY
 	};
 }
 

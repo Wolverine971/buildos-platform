@@ -20,6 +20,7 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 		.select('id, user_id, status')
 		.eq('id', braindumpId)
 		.eq('user_id', user.id)
+		.is('deleted_at', null)
 		.single();
 
 	if (braindumpError || !braindump) {

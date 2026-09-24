@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/posthog.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -196,5 +197,80 @@ describe('PostHog browser capture receipts', () => {
 		await expect(captureEvent('project_created')).resolves.toBeNull();
 		expect(mocks.capture).toHaveBeenCalledWith('project_created', undefined, undefined);
 		expect(dispatched).toEqual([]);
+	});
+});
+
+describe('PostHog before_send privacy filter', () => {
+	beforeEach(() => {
+		vi.resetModules();
+		mocks.hasAnalyticsConsent.mockReset().mockReturnValue(true);
+		mocks.init.mockReset();
+		mocks.optInCapturing.mockReset();
+		mocks.capture.mockReset().mockReturnValue({ uuid: 'x', event: 'e', properties: {} });
+		vi.stubGlobal('window', { dispatchEvent: vi.fn(() => true) });
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('is installed as before_send on init', async () => {
+		const { captureEvent, scrubPostHogEvent } = await import('./posthog');
+		await captureEvent('project_created');
+
+		expect(mocks.init).toHaveBeenCalledWith(
+			'phc_test_project_token',
+			expect.objectContaining({ before_send: scrubPostHogEvent })
+		);
+	});
+
+	it('drops the page title and strips query strings and hashes from URL properties', async () => {
+		const { scrubPostHogEvent } = await import('./posthog');
+
+		const scrubbed = scrubPostHogEvent({
+			uuid: '019f0000-0000-7000-8000-000000000002',
+			event: '$pageview',
+			properties: {
+				title: 'Launch plan | Acme rebrand | BuildOS',
+				$current_url: 'https://build-os.com/history?search=x#item-4',
+				$pathname: '/history',
+				$referrer: 'https://www.google.com/search?q=acme+rebrand',
+				$session_entry_url:
+					'https://build-os.com/beta/thank-you?email=person%40example.com',
+				$initial_referrer: '$direct',
+				$host: 'build-os.com',
+				token: 'phc_test_project_token'
+			},
+			$set: { $current_url: 'https://build-os.com/projects/p1?tab=docs' },
+			$set_once: {
+				$initial_current_url: 'https://build-os.com/invites/abc?ref=mail',
+				referrer: 'https://news.example.com/post?id=7',
+				landing_page: '/pricing',
+				utm_source: 'newsletter'
+			}
+		});
+
+		expect(scrubbed?.properties).toEqual({
+			$current_url: 'https://build-os.com/history',
+			$pathname: '/history',
+			$referrer: 'https://www.google.com/search',
+			$session_entry_url: 'https://build-os.com/beta/thank-you',
+			$initial_referrer: '$direct',
+			$host: 'build-os.com',
+			token: 'phc_test_project_token'
+		});
+		expect(scrubbed?.$set).toEqual({ $current_url: 'https://build-os.com/projects/p1' });
+		expect(scrubbed?.$set_once).toEqual({
+			$initial_current_url: 'https://build-os.com/invites/abc',
+			referrer: 'https://news.example.com/post',
+			landing_page: '/pricing',
+			utm_source: 'newsletter'
+		});
+		expect(JSON.stringify(scrubbed)).not.toMatch(/search=x|acme|person|Launch plan/i);
+	});
+
+	it('passes a dropped event through', async () => {
+		const { scrubPostHogEvent } = await import('./posthog');
+		expect(scrubPostHogEvent(null)).toBeNull();
 	});
 });

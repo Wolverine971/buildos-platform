@@ -97,9 +97,9 @@ The AI groups your thoughts based on what looks like distinct outcomes. If you g
 
 ### "AI suggestions don't match how I work"
 
-BuildOS learns from your patterns, but it needs data. If suggestions feel off:
+BuildOS works from the context you give it. If suggestions feel off:
 
-1. **Be consistent with your feedback**. When you accept or reject a suggestion, that trains the system.
+1. **Say what you want instead**. Tell it in chat what didn't fit. Clearer context leads to better suggestions.
 2. **Update your preferences** in settings. Tell it when you do deep work, when you handle admin tasks, what your priorities actually are.
 3. **Keep your context current**. Stale project descriptions lead to stale suggestions.
 

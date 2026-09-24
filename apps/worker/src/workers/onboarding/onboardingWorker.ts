@@ -36,17 +36,6 @@ export async function processOnboardingAnalysisJob(job: LegacyJob<OnboardingAnal
 			message: 'Your personalized questions are ready!'
 		});
 
-		// Log activity
-		await supabase.from('user_activity_logs').insert({
-			user_id: userId,
-			activity_type: 'onboarding_questions_generated',
-			metadata: {
-				job_id: job.id,
-				questions_count: result.questions.length,
-				analysis_summary: result.analysis
-			}
-		});
-
 		console.log(
 			`✅ Completed onboarding analysis for user ${userId} - Generated ${result.questions.length} questions`
 		);

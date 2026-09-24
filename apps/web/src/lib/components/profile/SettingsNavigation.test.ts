@@ -28,6 +28,11 @@ describe('SettingsNavigation', () => {
 		expect(within(desktop).getByText('Data & Plan')).toBeTruthy();
 		expect(within(desktop).getByRole('link', { name: /Cycles/ })).toBeTruthy();
 		expect(within(desktop).getByRole('link', { name: /Billing/ })).toBeTruthy();
+		expect(
+			within(desktop)
+				.getByRole('link', { name: /Your data/ })
+				.getAttribute('href')
+		).toBe('/profile?tab=data');
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Settings section, Account' }));
 		const mobileMenu = screen.getByRole('menu', { name: 'Settings sections' });

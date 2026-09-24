@@ -5,6 +5,7 @@ import {
 	Calendar,
 	Coffee,
 	CreditCard,
+	Database,
 	Key,
 	Mail,
 	Repeat,
@@ -45,6 +46,7 @@ const SETTINGS_DESTINATIONS: readonly SettingsDestination[] = [
 	{ id: 'calendar', label: 'Calendar', icon: Calendar, group: 'connections' },
 	{ id: 'email', label: 'Email', icon: Mail, group: 'connections' },
 	{ id: 'agent-keys', label: 'Agents', icon: Key, group: 'connections' },
+	{ id: 'data', label: 'Your data', icon: Database, group: 'data-plan' },
 	{ id: 'contacts', label: 'Contacts', icon: Users, group: 'data-plan' },
 	{
 		id: 'billing',

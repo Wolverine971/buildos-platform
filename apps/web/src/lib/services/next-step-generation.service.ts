@@ -606,7 +606,10 @@ function parseAndValidateLLMResponse(content: unknown): LLMNextStepResponse | nu
 			reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : undefined
 		};
 	} catch (error) {
-		console.error('[NextStep] Failed to parse LLM response:', error, content);
+		console.error('[NextStep] Failed to parse LLM response:', {
+			error: error instanceof Error ? error.name : 'unknown',
+			contentLength: typeof content === 'string' ? content.length : null
+		});
 		return null;
 	}
 }

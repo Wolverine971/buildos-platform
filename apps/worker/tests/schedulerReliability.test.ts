@@ -127,27 +127,42 @@ describe('Scheduler Reliability', () => {
 			await expect(loadSchedulingUserProfiles(['user-1'])).resolves.toBeNull();
 		});
 
-		it('maps timezones and display names when the lookup succeeds', async () => {
+		it('maps timezones without loading names or emails (logs use user ids)', async () => {
+			const query = usersQuery({
+				data: [
+					{ id: 'user-1', timezone: 'America/New_York' },
+					{ id: 'user-2', timezone: null }
+				],
+				error: null
+			});
+			schedulerMocks.supabaseFrom.mockReturnValueOnce(query);
+
+			const profiles = await loadSchedulingUserProfiles(['user-1', 'user-2']);
+
+			expect(query.select).toHaveBeenCalledWith('id, timezone, deletion_status');
+			expect(profiles?.timezoneByUserId.get('user-1')).toBe('America/New_York');
+			expect(profiles?.timezoneByUserId.has('user-2')).toBe(false);
+			expect(Object.keys(profiles ?? {})).toEqual([
+				'timezoneByUserId',
+				'deletionPendingUserIds'
+			]);
+		});
+
+		it('flags accounts whose deletion is pending or processing so no work is scheduled', async () => {
 			schedulerMocks.supabaseFrom.mockReturnValueOnce(
 				usersQuery({
 					data: [
-						{
-							id: 'user-1',
-							timezone: 'America/New_York',
-							name: 'Ada',
-							email: 'a@x.test'
-						},
-						{ id: 'user-2', timezone: null, name: null, email: 'b@x.test' }
+						{ id: 'user-1', timezone: 'UTC', deletion_status: null },
+						{ id: 'user-2', timezone: 'UTC', deletion_status: 'pending' },
+						{ id: 'user-3', timezone: 'UTC', deletion_status: 'processing' }
 					],
 					error: null
 				})
 			);
 
-			const profiles = await loadSchedulingUserProfiles(['user-1', 'user-2']);
+			const profiles = await loadSchedulingUserProfiles(['user-1', 'user-2', 'user-3']);
 
-			expect(profiles?.timezoneByUserId.get('user-1')).toBe('America/New_York');
-			expect(profiles?.timezoneByUserId.has('user-2')).toBe(false);
-			expect(profiles?.nameByUserId.get('user-2')).toBe('b@x.test');
+			expect([...(profiles?.deletionPendingUserIds ?? [])]).toEqual(['user-2', 'user-3']);
 		});
 	});
 });

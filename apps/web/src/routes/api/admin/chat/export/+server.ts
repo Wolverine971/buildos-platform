@@ -14,6 +14,13 @@ import { getAdminLlmUsageStats } from '$lib/server/admin-llm-usage-analytics';
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+import {
+	assertAdminChatPassThroughContentProjected,
+	logAdminChatContentAccess,
+	projectAdminChatMessageRows,
+	projectAdminToolExecutionRows,
+	projectAdminTurnEventRows
+} from '$lib/server/admin-chat-content-access';
 
 type Timeframe = '24h' | '7d' | '30d' | '90d' | '365d';
 
@@ -140,7 +147,11 @@ async function fetchSessionsByIds(
 	return rows;
 }
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({
+	url,
+	request,
+	locals: { supabase, safeGetSession }
+}) => {
 	const { user } = await safeGetSession();
 	if (!user?.id) {
 		return ApiResponse.unauthorized();
@@ -275,6 +286,16 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			)
 		]);
 
+		// Older rows still hold Gmail, Google Calendar, and web content; the export
+		// carries the same content-free trace the worker stores for new rows.
+		const messageRows = projectAdminChatMessageRows(messageResult.rows);
+		const toolExecutionRows = projectAdminToolExecutionRows(toolResult.rows);
+		const turnEventRows = projectAdminTurnEventRows(turnEventResult.rows);
+		assertAdminChatPassThroughContentProjected({
+			toolExecutions: toolExecutionRows,
+			turnEvents: turnEventRows
+		});
+
 		const sessionsById = new Map<string, any>(
 			(sessionResult.rows ?? []).map((row) => [row.id, row])
 		);
@@ -335,10 +356,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			dashboard_analytics: dashboardAnalytics,
 			llm_usage_stats: llmUsageStats,
 			chat_sessions: Array.from(sessionsById.values()),
-			chat_messages: messageResult.rows,
+			chat_messages: messageRows,
 			chat_turn_runs: turnRunResult.rows,
-			chat_turn_events: turnEventResult.rows,
-			chat_tool_executions: toolResult.rows,
+			chat_turn_events: turnEventRows,
+			chat_tool_executions: toolExecutionRows,
 			llm_usage_logs: usageResult.rows,
 			chat_prompt_snapshots: promptSnapshotResult.rows,
 			chat_prompt_eval_runs: evalRunResult.rows,
@@ -366,6 +387,32 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				total_prompt_eval_runs: evalRunResult.rows.length
 			}
 		};
+
+		if (format === 'json' || format === 'csv') {
+			await logAdminChatContentAccess({
+				adminUserId: user.id,
+				action: 'export',
+				route: '/api/admin/chat/export',
+				targetType: 'chat_export',
+				targetId: null,
+				targetUserIds: Array.from(sessionsById.values()).map((session) => session.user_id),
+				rowCounts:
+					format === 'json'
+						? {
+								sessions: sessionsById.size,
+								messages: messageRows.length,
+								turn_runs: turnRunResult.rows.length,
+								turn_events: turnEventRows.length,
+								tool_executions: toolExecutionRows.length,
+								llm_calls: usageResult.rows.length,
+								snapshots: promptSnapshotResult.rows.length,
+								eval_runs: evalRunResult.rows.length
+							}
+						: { sessions: sessionsById.size },
+				request,
+				details: { format, timeframe }
+			});
+		}
 
 		if (format === 'json') {
 			return new Response(JSON.stringify(exportData, null, 2), {

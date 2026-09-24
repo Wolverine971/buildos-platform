@@ -1,16 +1,22 @@
 // apps/web/src/routes/api/admin/chat/sessions/[id]/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { createAdminSupabaseClientMock, loadPromptEvalResultsMock } = vi.hoisted(() => ({
-	createAdminSupabaseClientMock: vi.fn(),
-	loadPromptEvalResultsMock: vi.fn()
-}));
+const { createAdminSupabaseClientMock, loadPromptEvalResultsMock, logSecurityEventMock } =
+	vi.hoisted(() => ({
+		createAdminSupabaseClientMock: vi.fn(),
+		loadPromptEvalResultsMock: vi.fn(),
+		logSecurityEventMock: vi.fn()
+	}));
 
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: createAdminSupabaseClientMock
 }));
 vi.mock('$lib/services/agentic-chat-v2/prompt-eval-runner', () => ({
 	loadPromptEvalResultsForTurnRuns: loadPromptEvalResultsMock
+}));
+vi.mock('$lib/server/security-event-logger', () => ({
+	logSecurityEventBlocking: logSecurityEventMock,
+	getSecurityRequestContext: () => ({ requestId: null, ipAddress: null, userAgent: null })
 }));
 
 import { GET } from './+server';
@@ -293,6 +299,80 @@ describe('GET /api/admin/chat/sessions/[id] — workflow audit', () => {
 			'id',
 			['artifact-1']
 		);
+	});
+
+	it('shows stored traces of pass-through tool results and records the admin read', async () => {
+		const tables = baseTables();
+		const page = {
+			url: 'https://clinic.example/intake',
+			title: 'Intake',
+			content: 'Patient intake form for Dr. Reyes'
+		};
+		tables.chat_tool_executions = {
+			data: [
+				{
+					id: 'tool-1',
+					session_id: SESSION,
+					turn_run_id: TURN,
+					tool_name: 'web_visit',
+					arguments: { url: page.url },
+					result: page,
+					success: true,
+					created_at: '2026-09-20T12:00:05.000Z'
+				}
+			],
+			error: null
+		};
+		tables.chat_turn_events = {
+			data: [
+				{
+					id: 'event-1',
+					turn_run_id: TURN,
+					sequence_index: 3,
+					phase: 'tool',
+					event_type: 'tool_result',
+					execution_generation: 1,
+					payload: {
+						type: 'tool_result',
+						result: {
+							tool_call_id: 'call-1',
+							tool_name: 'web_visit',
+							success: true,
+							result: page
+						}
+					},
+					created_at: '2026-09-20T12:00:06.000Z'
+				}
+			],
+			error: null
+		};
+		createAdminSupabaseClientMock.mockReturnValue(createAdminSupabase(tables));
+		const response = await call(`http://localhost/api/admin/chat/sessions/${SESSION}`, {
+			id: 'admin',
+			is_admin: true
+		});
+		const body = await response.json();
+		expect(response.status).toBe(200);
+		const serialized = JSON.stringify(body.data);
+		expect(serialized).not.toContain('Dr. Reyes');
+		expect(body.data.tool_executions[0].result).toMatchObject({
+			url: page.url,
+			title: 'Intake',
+			content_redacted: true
+		});
+		expect(logSecurityEventMock).toHaveBeenCalledOnce();
+		expect(logSecurityEventMock.mock.calls[0][0]).toMatchObject({
+			eventType: 'admin.chat_content.read',
+			actorUserId: 'admin',
+			targetType: 'chat_session',
+			targetId: SESSION,
+			metadata: {
+				route: '/api/admin/chat/sessions/[id]',
+				target_user_ids: ['user-1'],
+				rows: { tool_executions: 1, turn_events: 1, messages: 0 }
+			}
+		});
+		expect(JSON.stringify(logSecurityEventMock.mock.calls)).not.toContain('Intake');
 	});
 
 	it('still returns ordinary sessions when no workflow rows exist', async () => {

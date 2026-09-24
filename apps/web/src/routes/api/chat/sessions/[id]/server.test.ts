@@ -5,7 +5,7 @@ import { workflowProjectionFixture } from '$lib/components/agent/agent-chat-work
 const adminMocks = vi.hoisted(() => ({ createAdmin: vi.fn() }));
 vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: adminMocks.createAdmin }));
 
-import { GET } from './+server';
+import { DELETE, GET } from './+server';
 
 function createQuery(result: unknown) {
 	return {
@@ -547,5 +547,77 @@ describe('GET /api/chat/sessions/[id]', () => {
 				}
 			})
 		]);
+	});
+});
+
+describe('DELETE /api/chat/sessions/[id]', () => {
+	function deleteEvent(
+		rpcResult: { data: unknown; error: unknown },
+		userId: string | null = 'user-1'
+	) {
+		const rpc = vi.fn().mockResolvedValue(rpcResult);
+		const from = vi.fn();
+		return {
+			rpc,
+			from,
+			event: {
+				params: { id: 'session-1' },
+				locals: {
+					supabase: { rpc, from },
+					safeGetSession: vi
+						.fn()
+						.mockResolvedValue({ user: userId ? { id: userId } : null })
+				}
+			} as any
+		};
+	}
+
+	it('deletes through one atomic RPC call', async () => {
+		const { rpc, from, event } = deleteEvent({
+			data: { deleted: true, turns_deleted: 2 },
+			error: null
+		});
+
+		const response = await DELETE(event);
+
+		expect(response.status).toBe(200);
+		expect((await response.json()).data).toEqual({ deleted: true });
+		expect(rpc).toHaveBeenCalledExactlyOnceWith('delete_my_chat_session', {
+			p_session_id: 'session-1'
+		});
+		expect(from).not.toHaveBeenCalled();
+	});
+
+	it('returns 409 with a plain explanation while a turn is still running', async () => {
+		const { event } = deleteEvent({
+			data: null,
+			error: { code: '55006', message: 'chat_session_turn_in_progress' }
+		});
+
+		const response = await DELETE(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(409);
+		expect(payload.error).toContain('still working on a reply');
+	});
+
+	it.each(['P0002', '22P02'])(
+		'returns 404 for %s (missing, foreign or malformed id)',
+		async (code) => {
+			const { event } = deleteEvent({ data: null, error: { code, message: 'x' } });
+
+			const response = await DELETE(event);
+
+			expect(response.status).toBe(404);
+		}
+	);
+
+	it('rejects a signed-out request without calling the database', async () => {
+		const { rpc, event } = deleteEvent({ data: null, error: null }, null);
+
+		const response = await DELETE(event);
+
+		expect(response.status).toBe(401);
+		expect(rpc).not.toHaveBeenCalled();
 	});
 });

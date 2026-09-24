@@ -17,6 +17,14 @@
 		{
 			"path": "/api/cron/agentic-chat-stale-turns",
 			"schedule": "* * * * *"
+		},
+		{
+			"path": "/api/cron/account-deletions",
+			"schedule": "0 * * * *"
+		},
+		{
+			"path": "/api/cron/security-events-retention",
+			"schedule": "30 4 * * *"
 		}
 	]
 }

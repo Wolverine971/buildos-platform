@@ -4,6 +4,7 @@ import {
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
 	GLM_53_MODEL,
+	GPT_56_LUNA_MODEL,
 	GPT_6_LUNA_MODEL,
 	KIMI_K3_MODEL,
 	QWEN_38_27B_FREE_MODEL
@@ -31,6 +32,8 @@ export type OpenRouterChatCompletionBodyParams = {
 	// field itself, but forwards pass-through params to OpenAI-compatible upstreams,
 	// where it improves cache-hit routing. Additive/optional — safe when unsupported.
 	prompt_cache_key?: string;
+	/** Omit for production. See {@link OpenRouterPrivacyMode}. */
+	privacy?: OpenRouterPrivacyMode;
 };
 
 export const OPENROUTER_MAX_FALLBACK_MODELS = 3;
@@ -39,10 +42,38 @@ export const OPENROUTER_NO_DATA_COLLECTION_PROVIDER = Object.freeze({
 	data_collection: 'deny' as const
 });
 
+/** The privacy policy every BuildOS OpenRouter request carries (tasker 103). */
 export const OPENROUTER_PRIVATE_PROVIDER = Object.freeze({
 	data_collection: 'deny' as const,
-	zdr: true
+	zdr: true as const
 });
+
+/**
+ * `zdr` is the production policy. `evaluation_only_non_zdr` exists only for
+ * anonymized eval fixtures pinned to a model with no ZDR endpoint; it still
+ * denies data collection.
+ */
+export type OpenRouterPrivacyMode = 'zdr' | 'evaluation_only_non_zdr';
+
+/**
+ * Returns `provider` with the privacy policy written last, so no caller key
+ * (including `zdr: false` or `data_collection: 'allow'`) can override it.
+ * Use it for any OpenRouter body not built by buildOpenRouterChatCompletionBody.
+ */
+export function withOpenRouterPrivacy(
+	provider?: unknown,
+	privacy: OpenRouterPrivacyMode = 'zdr'
+): Record<string, unknown> {
+	const routing =
+		provider && typeof provider === 'object' && !Array.isArray(provider)
+			? { ...(provider as Record<string, unknown>) }
+			: {};
+	if (privacy === 'evaluation_only_non_zdr') {
+		delete routing.zdr;
+		return { ...routing, ...OPENROUTER_NO_DATA_COLLECTION_PROVIDER };
+	}
+	return { ...routing, ...OPENROUTER_PRIVATE_PROVIDER };
+}
 
 export type OpenRouterModelRequestPolicy = {
 	temperature: 'supported' | 'omit';
@@ -87,6 +118,9 @@ export const OPENROUTER_MODEL_REQUEST_POLICIES: Readonly<
 		defaultReasoningEffort: 'low' as const
 	}),
 	[GPT_6_LUNA_MODEL]: Object.freeze({
+		temperature: 'omit' as const
+	}),
+	[GPT_56_LUNA_MODEL]: Object.freeze({
 		temperature: 'omit' as const
 	})
 });
@@ -220,6 +254,7 @@ export function buildOpenRouterChatCompletionBody(
 		}
 		body.provider = provider;
 	}
+	body.provider = withOpenRouterPrivacy(body.provider, params.privacy);
 	if (params.stream_options) body.stream_options = params.stream_options;
 	if (Array.isArray(params.transforms) && params.transforms.length > 0) {
 		body.transforms = params.transforms;

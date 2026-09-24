@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	JEV_DECISIONS_ENDPOINT,
 	JEV_DEFAULT_MODEL,
+	JEV_PROVIDER_POLICY,
 	JevClient,
 	parseJevAnswers,
 	type JevQuestionSet
@@ -54,7 +55,7 @@ afterEach(() => {
 });
 
 describe('JevClient request', () => {
-	it('posts the pinned model, questions and no-fallback provider settings', async () => {
+	it('posts the pinned model, questions and the private no-fallback provider policy', async () => {
 		const fetchImpl = vi.fn(async () => jsonResponse(liveSmoke.response));
 		const client = new JevClient({
 			apiKey: 'test-key',
@@ -81,8 +82,10 @@ describe('JevClient request', () => {
 			model: JEV_DEFAULT_MODEL,
 			state: STATE,
 			questions: QUESTIONS,
-			provider: { allow_fallbacks: false, data_collection: 'deny' }
+			provider: { allow_fallbacks: false, data_collection: 'deny', zdr: true }
 		});
+		expect(JEV_PROVIDER_POLICY).toEqual(body.provider);
+		expect(Object.isFrozen(JEV_PROVIDER_POLICY)).toBe(true);
 		expect(result.receipt.requestBytes).toBe(
 			new TextEncoder().encode(String(init.body)).byteLength
 		);

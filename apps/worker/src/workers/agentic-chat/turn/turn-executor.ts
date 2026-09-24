@@ -75,6 +75,7 @@ import {
 	cancellationInterruptionReason,
 	classifyFailure,
 	errorMessage,
+	failurePublicError,
 	isExecutionFenceLost,
 	logAgenticChatExecutionBoundary,
 	logAgenticChatTypedExecutionFailure,
@@ -511,8 +512,9 @@ export class AgenticChatTurnExecutor {
 			let providerStream: AsyncIterable<AgenticChatProviderStepV1> = primedStream.stream;
 			// The snapshot RPC takes the turn row's exclusive lock for its whole
 			// transaction. Dispatching it here lets it overlap the first model
-			// request instead of the first tool batch, whose ownership checks
-			// need that same lock (case 14, 2026-09-21 gate).
+			// request instead of the first tool batch (case 14, 2026-09-21 gate):
+			// the batch's acks and events still queue behind that lock, though
+			// its ownership checks no longer take it (Tasker 102).
 			this.persistPromptSnapshot(envelope, executionInput, preparedProvider, combined.signal);
 			while (!finished) {
 				for await (const step of iterateWithAbort(providerStream, combined.signal)) {
@@ -821,7 +823,7 @@ export class AgenticChatTurnExecutor {
 				publisherRegistered,
 				cancellationInterruptionReason(error, combined.signal),
 				terminalEventContext,
-				failureClass === 'cancelled' ? undefined : 'An error occurred while streaming.',
+				failurePublicError(failureClass, terminalContext.toolExecutions),
 				terminalFailureCode,
 				executionStarted ? claim.userId : null
 			);

@@ -37,6 +37,12 @@ describe('profile tab routing', () => {
 		expect(resolveProfileTab('worker-diagnostics', hiddenOptionalTabs)).toBe('account');
 	});
 
+	it('always offers the Your data tab by deep link', () => {
+		expect(getVisibleProfileTabIds(hiddenOptionalTabs)).toContain('data');
+		expect(resolveProfileTab('data', hiddenOptionalTabs)).toBe('data');
+		expect(getProfileTabHref('data')).toBe('/profile?tab=data');
+	});
+
 	it('keeps Account at the query-free profile URL', () => {
 		expect(getProfileTabHref('account')).toBe('/profile');
 		expect(getProfileTabHref('notifications')).toBe('/profile?tab=notifications');

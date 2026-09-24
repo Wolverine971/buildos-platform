@@ -6,13 +6,15 @@ const {
 	createAdminSupabaseClientMock,
 	logErrorMock,
 	startSequenceForUserMock,
-	consumeLegalAcceptanceIntentMock
+	consumeLegalAcceptanceIntentMock,
+	captureServerEventMock
 } = vi.hoisted(() => ({
 	createAuthenticatedSupabaseClientMock: vi.fn(),
 	createAdminSupabaseClientMock: vi.fn(),
 	logErrorMock: vi.fn(),
 	startSequenceForUserMock: vi.fn().mockResolvedValue(undefined),
-	consumeLegalAcceptanceIntentMock: vi.fn().mockResolvedValue(true)
+	consumeLegalAcceptanceIntentMock: vi.fn().mockResolvedValue(true),
+	captureServerEventMock: vi.fn().mockResolvedValue(undefined)
 }));
 
 vi.mock('$lib/services/errorLogger.service', () => ({
@@ -39,6 +41,10 @@ vi.mock('$lib/server/welcome-sequence.service', () => ({
 
 vi.mock('$lib/server/legal-acceptance', () => ({
 	consumeLegalAcceptanceIntent: consumeLegalAcceptanceIntentMock
+}));
+
+vi.mock('$lib/server/posthog', () => ({
+	captureServerEvent: captureServerEventMock
 }));
 
 import { POST } from './+server';
@@ -219,5 +225,66 @@ describe('POST /api/auth/register', () => {
 		expect(payload.data.requiresEmailConfirmation).toBe(true);
 		expect(createAuthenticatedSupabaseClientMock).not.toHaveBeenCalled();
 		expect(createAdminSupabaseClientMock).toHaveBeenCalled();
+	});
+
+	it('keeps only the origin and path of the sign-up referrer and landing page', async () => {
+		const profileUser = { id: 'user-3', email: 'new@example.com', name: 'New' };
+		createAuthenticatedSupabaseClientMock.mockReturnValueOnce(
+			createUsersClient({ insertedUser: profileUser })
+		);
+		const attributionUpdate = vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }));
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn(() => ({ update: attributionUpdate }))
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/auth/register', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					email: 'new@example.com',
+					password: 'Password123',
+					name: 'New',
+					legalAcceptanceToken: 'legal-token-3',
+					attribution: {
+						referrer:
+							'https://news.example.com/post/7?email=new%40example.com#comments',
+						landing_page: 'https://build-os.com/pricing?coupon=SECRET#plans'
+					}
+				})
+			}),
+			locals: createLocals({
+				signUpResult: {
+					user: {
+						id: 'user-3',
+						email: 'new@example.com',
+						created_at: '2026-09-24T12:00:00.000Z',
+						user_metadata: { name: 'New' }
+					},
+					session: { access_token: 'signup-token-3', refresh_token: 'refresh-token-3' }
+				},
+				sessionClient: createUsersClient({}),
+				sessionUser: profileUser
+			})
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(captureServerEventMock).toHaveBeenCalledWith(
+			'user-3',
+			'signup',
+			expect.objectContaining({
+				signup_source: 'news.example.com',
+				landing_page: 'https://build-os.com/pricing',
+				$set_once: expect.objectContaining({
+					referrer: 'https://news.example.com/post/7'
+				})
+			})
+		);
+		expect(attributionUpdate).toHaveBeenCalledWith(
+			expect.objectContaining({ referrer: 'https://news.example.com/post/7' })
+		);
+		expect(
+			JSON.stringify([captureServerEventMock.mock.calls, attributionUpdate.mock.calls])
+		).not.toMatch(/SECRET|new%40example|#comments|#plans/);
 	});
 });

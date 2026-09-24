@@ -5,7 +5,10 @@
 // failure receipts (validation and recoverable read failures) that are fed
 // back so the model can recover.
 import { extractContextShiftPayload } from '@buildos/agentic-chat-runtime/loop';
-import { redactAgenticChatEmailToolResultForStorageV1 } from '@buildos/agentic-chat-runtime/tools';
+import {
+	projectAgenticChatToolProgressForStorageV1,
+	projectAgenticChatToolResultForStorageV1
+} from '@buildos/agentic-chat-runtime/tools';
 import type { ChatToolResult, JsonObject } from '@buildos/shared-types';
 import {
 	AgenticChatProviderExecutionError,
@@ -231,12 +234,15 @@ export class AgenticChatReadToolRunner {
 				durationMs: elapsedMs(readStartedAt)
 			});
 		}
-		// Email results keep their content in memory for this turn's model only;
-		// the ledger, turn events, and terminal records get a content-free trace
-		// (the privacy policy promises no durable copy of message content).
-		const storedResult =
-			redactAgenticChatEmailToolResultForStorageV1(step.toolName, toolResult.result) ??
-			toolResult.result;
+		// Pass-through results (Gmail, Google Calendar events BuildOS did not
+		// create, web pages) keep their content in memory for this turn's model
+		// only; the ledger, the tool_result event (and so the stream projection),
+		// and terminal records get the content-free trace. Workspace reads are
+		// returned unchanged (tool-storage-projection.ts).
+		const storedResult = projectAgenticChatToolResultForStorageV1(
+			step.toolName,
+			toolResult.result
+		);
 		const storedExecution =
 			storedResult === toolResult.result
 				? toolResult
@@ -493,7 +499,9 @@ export class AgenticChatReadToolRunner {
 			)
 				return;
 			const index = progressIndex++;
-			const message = progress.message.slice(0, 300);
+			// A durable event: page-derived text (link labels, titles) never reaches it.
+			const stored = projectAgenticChatToolProgressForStorageV1(step.toolName, progress);
+			const message = stored.message.slice(0, 300);
 			// Chains behind the tool_call publication, so it never persists first.
 			void this.services
 				.publishSemantic(
@@ -516,7 +524,7 @@ export class AgenticChatReadToolRunner {
 							tool_name: step.toolName,
 							step_index: index,
 							message,
-							data: progress.data
+							data: stored.data as JsonObject
 						}
 					},
 					signal

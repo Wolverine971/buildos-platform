@@ -16,10 +16,14 @@ const {
 	ontoDeleteEventMock,
 	recurrenceBuildMock,
 	createAdminMock,
-	adminClient
+	adminClient,
+	unregisterWebhookMock,
+	callOrder
 } = vi.hoisted(() => {
 	const adminClient = { role: 'service' };
 	return {
+		unregisterWebhookMock: vi.fn(),
+		callOrder: [] as string[],
 		legacyUpdateMock: vi.fn(),
 		legacyDeleteMock: vi.fn(),
 		legacyDisconnectMock: vi.fn(),
@@ -62,6 +66,15 @@ vi.mock('$lib/services/calendar-service', () => ({
 			disconnectCalendar: legacyDisconnectMock,
 			shareCalendar: legacyShareMock,
 			unshareCalendar: legacyUnshareMock
+		};
+	})
+}));
+
+vi.mock('$lib/services/calendar-webhook-service', () => ({
+	CalendarWebhookService: vi.fn().mockImplementation(function (client) {
+		return {
+			client,
+			unregisterWebhook: unregisterWebhookMock
 		};
 	})
 }));
@@ -251,6 +264,22 @@ describe('multi-account /api/calendar mutations', () => {
 		});
 		expect(legacyDisconnectMock).toHaveBeenCalledWith('user-1');
 		expect(payload.data).toEqual({ disconnected: true });
+	});
+
+	it('stops the legacy webhook channel before disconnecting', async () => {
+		callOrder.length = 0;
+		unregisterWebhookMock.mockImplementation(async () => {
+			callOrder.push('unregisterWebhook');
+		});
+		legacyDisconnectMock.mockImplementation(async () => {
+			callOrder.push('disconnectCalendar');
+		});
+
+		const response = await POST(eventFor({ method: 'disconnectCalendar' }));
+
+		expect(response.status).toBe(200);
+		expect(unregisterWebhookMock).toHaveBeenCalledWith('user-1', 'primary');
+		expect(callOrder).toEqual(['unregisterWebhook', 'disconnectCalendar']);
 	});
 
 	it('provides privileged cleanup authority for automatic disconnects', async () => {

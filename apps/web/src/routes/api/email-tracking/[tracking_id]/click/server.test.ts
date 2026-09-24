@@ -188,4 +188,97 @@ describe('/api/email-tracking/[tracking_id]/click', () => {
 		);
 		expect(loggerMock.error).not.toHaveBeenCalled();
 	});
+
+	it('records a non-user click without making the email address a PostHog person', async () => {
+		const recipient = {
+			id: 'recipient-2',
+			recipient_id: null,
+			recipient_email: 'outside@example.com'
+		};
+		const emailLookupQuery: any = {
+			select: vi.fn(() => emailLookupQuery),
+			eq: vi.fn(() => emailLookupQuery),
+			maybeSingle: vi.fn().mockResolvedValue({
+				data: { id: 'email-2', template_data: {}, email_recipients: [recipient] },
+				error: null
+			})
+		};
+		const priorClicksQuery: any = {
+			select: vi.fn(() => priorClicksQuery),
+			eq: vi.fn(() => priorClicksQuery),
+			in: vi.fn().mockResolvedValue({ data: [], error: null })
+		};
+		const eventInsertQuery = { insert: vi.fn().mockResolvedValue({ error: null }) };
+		let trackingEventsQueryCount = 0;
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn((table: string) => {
+				if (table === 'emails') return emailLookupQuery;
+				trackingEventsQueryCount += 1;
+				return trackingEventsQueryCount === 1 ? priorClicksQuery : eventInsertQuery;
+			})
+		});
+
+		await expect(
+			GET({
+				params: { tracking_id: 'tracking-2' },
+				url: new URL(
+					'https://build-os.com/api/email-tracking/tracking-2/click?url=https%3A%2F%2Fbuild-os.com%2F'
+				)
+			} as any)
+		).rejects.toMatchObject({ status: 302 });
+
+		expect(eventInsertQuery.insert).toHaveBeenCalledOnce();
+		expect(captureServerEventMock).not.toHaveBeenCalled();
+		const childLogCalls = loggerMock.child.mock.results.flatMap(({ value }) =>
+			[value.info, value.warn, value.error, value.debug].flatMap((fn) => fn.mock.calls)
+		);
+		expect(childLogCalls.length).toBeGreaterThan(0);
+		expect(JSON.stringify(childLogCalls)).not.toContain('outside@example.com');
+	});
+
+	it('sends PostHog only the origin and path of the clicked link', async () => {
+		const emailLookupQuery: any = {
+			select: vi.fn(() => emailLookupQuery),
+			eq: vi.fn(() => emailLookupQuery),
+			maybeSingle: vi.fn().mockResolvedValue({
+				data: {
+					id: 'email-3',
+					template_data: {},
+					email_recipients: [{ id: 'recipient-3', recipient_id: 'user-3' }]
+				},
+				error: null
+			})
+		};
+		const priorClicksQuery: any = {
+			select: vi.fn(() => priorClicksQuery),
+			eq: vi.fn(() => priorClicksQuery),
+			in: vi.fn().mockResolvedValue({ data: [], error: null })
+		};
+		const eventInsertQuery = { insert: vi.fn().mockResolvedValue({ error: null }) };
+		let trackingEventsQueryCount = 0;
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn((table: string) => {
+				if (table === 'emails') return emailLookupQuery;
+				trackingEventsQueryCount += 1;
+				return trackingEventsQueryCount === 1 ? priorClicksQuery : eventInsertQuery;
+			})
+		});
+		const destination = 'https://build-os.com/invites/abc?token=secret&email=a%40b.com#part';
+
+		await expect(
+			GET({
+				params: { tracking_id: 'tracking-3' },
+				url: new URL(
+					`https://build-os.com/api/email-tracking/tracking-3/click?url=${encodeURIComponent(destination)}`
+				)
+			} as any)
+		).rejects.toMatchObject({ status: 302, location: destination });
+
+		expect(captureServerEventMock).toHaveBeenCalledWith(
+			'user-3',
+			'email_clicked',
+			expect.objectContaining({ clicked_url: 'https://build-os.com/invites/abc' })
+		);
+		expect(JSON.stringify(captureServerEventMock.mock.calls)).not.toMatch(/secret|a%40b|#part/);
+	});
 });

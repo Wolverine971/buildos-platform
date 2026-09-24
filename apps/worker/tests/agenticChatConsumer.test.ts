@@ -328,7 +328,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 						fallbackModels: ['provider/fallback-1', 'provider/fallback-2'],
 						providerRouting: {
 							allow_fallbacks: true,
-							order: ['deepinfra', 'gmicloud', 'alibaba', 'streamlake'],
+							order: ['deepinfra', 'nextbit', 'open-inference', 'parasail'],
 							ignore: ['azure']
 						}
 					}

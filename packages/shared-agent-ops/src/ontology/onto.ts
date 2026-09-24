@@ -615,6 +615,8 @@ export const TaskSchema = z.object({
 	due_at: z.string().datetime().nullable().optional(),
 	completed_at: z.string().datetime().nullable().optional(),
 	deleted_at: z.string().datetime().nullable().optional(),
+	/** Set with deleted_at when archived: kept until restored or deleted. */
+	archived_at: z.string().datetime().nullable().optional(),
 	props: z.record(z.unknown()),
 	facet_scale: z.string().nullable().optional(),
 	assignees: z.array(TaskAssigneeSchema).optional(),

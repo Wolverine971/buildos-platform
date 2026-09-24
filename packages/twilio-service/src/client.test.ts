@@ -120,6 +120,26 @@ describe('TwilioClient error mapping', () => {
 		});
 	});
 
+	it('never carries the recipient number in a mapped error', async () => {
+		twilioMocks.messagesCreate.mockRejectedValueOnce(
+			Object.assign(new Error("The 'To' number +15551234567 is not a valid phone number."), {
+				code: 21211,
+				status: 400
+			})
+		);
+		const client = new TwilioClient({ ...baseConfig, sendingEnabled: true });
+
+		const error = await client
+			.sendSMS({ to: '+15551234567', body: 'Hello' })
+			.catch((caught: unknown) => caught as Error);
+
+		expect(error.message).toBe('Invalid phone number');
+		expect(error.cause).toBeUndefined();
+		expect(JSON.stringify(error, Object.getOwnPropertyNames(error))).not.toContain(
+			'5551234567'
+		);
+	});
+
 	it('treats a missing verification (20404) as an invalid code', async () => {
 		twilioMocks.verificationCheckCreate.mockRejectedValueOnce(twilioError(20404, 404));
 		const client = new TwilioClient(baseConfig);

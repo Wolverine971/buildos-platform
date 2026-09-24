@@ -173,6 +173,7 @@ function fakeOAuthAdmin(rows: {
 	token: Record<string, unknown>;
 	grant: Record<string, unknown>;
 	caller: Record<string, unknown>;
+	user?: Record<string, unknown> | null;
 }) {
 	return {
 		from(table: string) {
@@ -181,7 +182,11 @@ function fakeOAuthAdmin(rows: {
 					? rows.token
 					: table === 'agent_oauth_grants'
 						? rows.grant
-						: rows.caller;
+						: table === 'users'
+							? rows.user === undefined
+								? { deletion_status: null }
+								: rows.user
+							: rows.caller;
 			const builder = {
 				select: () => builder,
 				update: () => builder,
@@ -205,6 +210,7 @@ function baseRows(overrides: {
 	return {
 		token: {
 			id: 'token-1',
+			user_id: 'user-1',
 			grant_id: 'grant-1',
 			external_agent_caller_id: 'caller-1',
 			token_hash: sha256(TOKEN),
@@ -325,6 +331,22 @@ describe('authenticateOAuthMcpRequest scope binding', () => {
 		expect(auth.scope.mode).toBe('read_write');
 		expect(auth.scope.allowed_ops).toEqual(['onto.task.get', 'onto.task.create']);
 		expect(auth.scope.project_ids).toEqual(['project-a']);
+	});
+});
+
+describe('authenticateOAuthMcpRequest account deletion', () => {
+	it.each([
+		['pending', { deletion_status: 'pending' }],
+		['processing', { deletion_status: 'processing' }]
+	])('rejects a live token once deletion is %s', async (_label, user) => {
+		const admin = fakeOAuthAdmin({
+			...baseRows({ tokenScope: 'buildos.read buildos.write offline_access' }),
+			user
+		});
+
+		await expect(
+			authenticateOAuthMcpRequest({ admin, request: requestWithToken(), resource: RESOURCE })
+		).rejects.toMatchObject({ status: 401, code: 'invalid_token' });
 	});
 });
 

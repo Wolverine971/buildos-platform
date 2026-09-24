@@ -1631,9 +1631,7 @@ This action is permanent and removes the entire project workspace.`,
 		type: 'function',
 		function: {
 			name: 'delete_onto_task',
-			description: `Delete (soft delete) a task from the ontology system.
-Sets deleted_at timestamp to mark the task as deleted. The task is excluded from queries but can be recovered.
-Preserves edge relationships for potential restoration.
+			description: `Delete a task. It is hidden right away and erased for good 30 days later.
 Verifies ownership before deletion.`,
 			parameters: {
 				type: 'object',

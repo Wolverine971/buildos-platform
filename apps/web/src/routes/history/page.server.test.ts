@@ -1,6 +1,6 @@
 // apps/web/src/routes/history/page.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { load } from './+page.server';
+import { actions, load } from './+page.server';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -190,6 +190,34 @@ describe('history +page.server load', () => {
 			p_offset: 0,
 			p_selected_id: selectedId,
 			p_selected_type: 'braindump'
+		});
+	});
+
+	it('runs searches from the POST body so the query never enters a URL', async () => {
+		const { event, rpc } = createLoadEvent({});
+		const body = new FormData();
+		body.set('search', '  launch plan  ');
+		body.set('type', 'chats');
+		body.set('status', 'processed');
+		body.set('offset', '50');
+		body.set('limit', '50');
+		const request = new Request('https://app.test/history?/search', { method: 'POST', body });
+
+		const result = (await actions.search({ ...event, request } as any)) as {
+			historyData: { items: unknown[] };
+		};
+
+		expect(request.url).not.toContain('launch');
+		expect(result.historyData.items).toEqual([]);
+		expect(rpc).toHaveBeenCalledWith('get_history_page_v1', {
+			p_user_id: USER_ID,
+			p_type_filter: 'chats',
+			p_status: 'processed',
+			p_search: 'launch plan',
+			p_limit: 50,
+			p_offset: 50,
+			p_selected_id: null,
+			p_selected_type: null
 		});
 	});
 });

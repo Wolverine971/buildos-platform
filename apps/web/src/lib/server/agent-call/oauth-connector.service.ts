@@ -1371,7 +1371,7 @@ export async function authenticateOAuthMcpRequest(params: {
 		throw new OAuthConnectorError('Bearer token is expired or revoked', 401, 'invalid_token');
 	}
 
-	const [{ data: grantData }, { data: callerData }] = await Promise.all([
+	const [{ data: grantData }, { data: callerData }, owner] = await Promise.all([
 		params.admin
 			.from('agent_oauth_grants')
 			.select('*')
@@ -1381,6 +1381,11 @@ export async function authenticateOAuthMcpRequest(params: {
 			.from('external_agent_callers')
 			.select('*')
 			.eq('id', accessToken.external_agent_caller_id)
+			.maybeSingle(),
+		params.admin
+			.from('users')
+			.select('deletion_status')
+			.eq('id', accessToken.user_id)
 			.maybeSingle()
 	]);
 
@@ -1395,6 +1400,12 @@ export async function authenticateOAuthMcpRequest(params: {
 	);
 	if (grant.status !== 'active' || caller.status !== 'trusted') {
 		throw new OAuthConnectorError('OAuth grant is revoked', 403, 'insufficient_scope');
+	}
+	// Access ends when deletion is requested, even for a token minted before it.
+	if (owner.error)
+		throw new OAuthConnectorError('Failed to authenticate token', 500, 'server_error');
+	if (owner.data?.deletion_status) {
+		throw new OAuthConnectorError('Bearer token is expired or revoked', 401, 'invalid_token');
 	}
 
 	// Effective scope binds to the grant the token was minted under, clamped by
@@ -1466,39 +1477,4 @@ export async function createMcpCallSession(params: {
 	}
 
 	return data.id as string;
-}
-
-/**
- * Housekeeping: delete OAuth artifacts that are past their expiry. Lookups
- * already reject expired rows, so this only bounds table growth — it changes no
- * behavior. Meant to be called from the daily security-events-retention cron.
- *
- * IMPORTANT: refresh tokens are deleted ONLY when expired, never merely
- * used/revoked, so refresh-token reuse detection (family burn) keeps working for
- * the full lifetime of a token. Grants/clients are never reaped (audit trail).
- */
-export async function reapExpiredOAuthArtifacts(admin: any): Promise<{
-	authorization_codes: number;
-	access_tokens: number;
-	refresh_tokens: number;
-}> {
-	const nowIso = new Date().toISOString();
-	const countOf = (result: { data?: unknown[] | null }): number =>
-		Array.isArray(result?.data) ? result.data.length : 0;
-
-	const [codes, accessTokens, refreshTokens] = await Promise.all([
-		admin
-			.from('agent_oauth_authorization_codes')
-			.delete()
-			.lt('expires_at', nowIso)
-			.select('id'),
-		admin.from('agent_oauth_access_tokens').delete().lt('expires_at', nowIso).select('id'),
-		admin.from('agent_oauth_refresh_tokens').delete().lt('expires_at', nowIso).select('id')
-	]);
-
-	return {
-		authorization_codes: countOf(codes),
-		access_tokens: countOf(accessTokens),
-		refresh_tokens: countOf(refreshTokens)
-	};
 }

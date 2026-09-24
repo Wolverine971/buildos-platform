@@ -313,73 +313,104 @@ describe('CalendarAnalysisService source provenance', () => {
 		expect(result.sourceAware).toBe(true);
 	});
 
-	it('stores source/event pairs for analysis snapshots, suggestions, and task provenance', async () => {
+	const citedEvent = {
+		id: 'provider-event-a',
+		providerEventId: 'provider-event-a',
+		providerCalendarId: 'work@example.com',
+		calendarSourceId: 'source-a',
+		contributingCalendarSourceIds: ['source-a', 'source-b'],
+		contributingSourceEvents: [
+			{ calendarSourceId: 'source-a', providerEventId: 'provider-event-a' },
+			{ calendarSourceId: 'source-b', providerEventId: 'provider-event-b' }
+		],
+		summary: 'Launch planning',
+		description: 'Dial-in 555-0100, passcode 4412',
+		location: '12 Pier Rd, Baltimore',
+		start: { dateTime: '2026-08-12T14:00:00.000Z' },
+		end: { dateTime: '2026-08-12T15:00:00.000Z' },
+		organizer: { email: 'owner@example.com', self: true },
+		attendees: [
+			{ email: 'owner@example.com', self: true },
+			{ email: 'guest@example.com', responseStatus: 'accepted' }
+		]
+	};
+	const uncitedEvent = {
+		...citedEvent,
+		id: 'provider-event-z',
+		providerEventId: 'provider-event-z',
+		contributingSourceEvents: undefined,
+		summary: 'Therapy',
+		description: 'Private',
+		start: { dateTime: '2026-08-13T14:00:00.000Z' },
+		end: { dateTime: '2026-08-13T15:00:00.000Z' }
+	};
+	const launchSuggestion = {
+		name: 'Launch',
+		description: 'Launch work',
+		context: 'Launch context',
+		event_ids: ['source-a::provider-event-a', 'made-up-event'],
+		confidence: 0.9,
+		reasoning: 'Recurring work',
+		keywords: ['launch'],
+		suggested_tasks: [
+			{
+				title: 'Follow up',
+				description: 'Send notes',
+				event_id: 'source-a::provider-event-a'
+			}
+		]
+	};
+
+	it('keeps suggestion provenance and only the title and time of the events it cites', async () => {
+		const storedSuggestion = calendarSuggestion({
+			id: 'suggestion-1',
+			calendar_event_ids: ['provider-event-a', 'made-up-event']
+		});
 		const { supabase, inserts } = makeSupabase({
-			calendar_analysis_events: [{ data: null, error: null }],
-			calendar_project_suggestions: [{ data: [], error: null }]
+			calendar_project_suggestions: [{ data: [storedSuggestion], error: null }],
+			calendar_analysis_events: [{ data: null, error: null }]
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue({});
+		const insertsAtInboxSync: string[] = [];
+		mocks.syncInboxItemForCalendarSuggestion.mockImplementation(async () => {
+			insertsAtInboxSync.push(...inserts.map((insert) => insert.table));
 		});
 		const service = CalendarAnalysisService.getInstance(supabase as any, {
 			multiCalendarAllowed: () => true
 		});
-		const event = {
-			id: 'provider-event-a',
-			providerEventId: 'provider-event-a',
-			providerCalendarId: 'work@example.com',
-			calendarSourceId: 'source-a',
-			contributingCalendarSourceIds: ['source-a', 'source-b'],
-			contributingSourceEvents: [
-				{ calendarSourceId: 'source-a', providerEventId: 'provider-event-a' },
-				{ calendarSourceId: 'source-b', providerEventId: 'provider-event-b' }
-			],
-			summary: 'Launch planning',
-			start: { dateTime: '2026-08-12T14:00:00.000Z' },
-			end: { dateTime: '2026-08-12T15:00:00.000Z' },
-			organizer: { email: 'owner@example.com', self: true },
-			attendees: []
-		};
 
-		await (service as any).storeAnalysisEvents('analysis-1', [event]);
 		await (service as any).storeSuggestions(
 			'analysis-1',
 			'user-1',
-			[
-				{
-					name: 'Launch',
-					description: 'Launch work',
-					context: 'Launch context',
-					event_ids: ['source-a::provider-event-a'],
-					confidence: 0.9,
-					reasoning: 'Recurring work',
-					keywords: ['launch'],
-					suggested_tasks: [
-						{
-							title: 'Follow up',
-							description: 'Send notes',
-							event_id: 'source-a::provider-event-a'
-						}
-					]
-				}
-			],
-			[event]
+			[launchSuggestion],
+			[citedEvent, uncitedEvent]
 		);
 
-		expect(
-			inserts.find((insert) => insert.table === 'calendar_analysis_events')?.payload
-		).toEqual([
-			expect.objectContaining({
-				calendar_source_id: 'source-a',
+		const eventInsert = inserts.find((insert) => insert.table === 'calendar_analysis_events');
+		expect(eventInsert?.payload).toEqual([
+			{
+				analysis_id: 'analysis-1',
+				suggestion_id: 'suggestion-1',
 				calendar_id: 'work@example.com',
 				calendar_event_id: 'provider-event-a',
-				contributing_source_event_ids: event.contributingSourceEvents
-			})
+				event_title: 'Launch planning',
+				event_start: '2026-08-12T14:00:00.000Z',
+				event_end: '2026-08-12T15:00:00.000Z'
+			}
 		]);
+		const stored = JSON.stringify(eventInsert?.payload);
+		for (const secret of ['555-0100', 'Pier Rd', 'guest@example.com', 'Therapy', 'Private']) {
+			expect(stored).not.toContain(secret);
+		}
+		// Evidence exists before the inbox item that links to it.
+		expect(insertsAtInboxSync).toContain('calendar_analysis_events');
 		expect(
 			inserts.find((insert) => insert.table === 'calendar_project_suggestions')?.payload
 		).toEqual([
 			expect.objectContaining({
-				calendar_event_ids: ['provider-event-a'],
+				calendar_event_ids: ['provider-event-a', 'made-up-event'],
 				calendar_ids: ['work@example.com'],
-				calendar_source_event_ids: event.contributingSourceEvents,
+				calendar_source_event_ids: citedEvent.contributingSourceEvents,
 				suggested_tasks: [
 					expect.objectContaining({
 						event_id: 'provider-event-a',
@@ -388,6 +419,71 @@ describe('CalendarAnalysisService source provenance', () => {
 				]
 			})
 		]);
+	});
+
+	it('writes one evidence row per event even when two suggestions cite it', async () => {
+		const { supabase, inserts } = makeSupabase({
+			calendar_project_suggestions: [
+				{
+					data: [
+						calendarSuggestion({ id: 's-1', calendar_event_ids: ['provider-event-a'] }),
+						calendarSuggestion({ id: 's-2', calendar_event_ids: ['provider-event-a'] })
+					],
+					error: null
+				}
+			]
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue({});
+		mocks.syncInboxItemForCalendarSuggestion.mockResolvedValue(undefined);
+		const service = CalendarAnalysisService.getInstance(supabase as any);
+
+		await (service as any).storeSuggestions(
+			'analysis-1',
+			'user-1',
+			[launchSuggestion, launchSuggestion],
+			[citedEvent]
+		);
+
+		const payload = inserts.find((insert) => insert.table === 'calendar_analysis_events')
+			?.payload as Array<Record<string, unknown>>;
+		expect(payload).toHaveLength(1);
+		expect(payload[0]).toMatchObject({ suggestion_id: 's-1' });
+	});
+
+	it('logs a failed evidence insert without failing the analysis', async () => {
+		const { supabase } = makeSupabase({
+			calendar_project_suggestions: [
+				{
+					data: [calendarSuggestion({ calendar_event_ids: ['provider-event-a'] })],
+					error: null
+				}
+			],
+			calendar_analysis_events: [{ data: null, error: { message: 'insert failed' } }]
+		});
+		mocks.logError.mockClear();
+		mocks.createAdminSupabaseClient.mockReturnValue({});
+		mocks.syncInboxItemForCalendarSuggestion.mockResolvedValue(undefined);
+		const service = CalendarAnalysisService.getInstance(supabase as any);
+
+		await expect(
+			(service as any).storeSuggestions(
+				'analysis-1',
+				'user-1',
+				[launchSuggestion],
+				[citedEvent]
+			)
+		).resolves.toBeUndefined();
+
+		expect(mocks.logError).toHaveBeenCalledWith(
+			{ message: 'insert failed' },
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					operation: 'store_analysis_events',
+					eventCount: 1
+				})
+			})
+		);
+		expect(mocks.syncInboxItemForCalendarSuggestion).toHaveBeenCalled();
 	});
 });
 
@@ -446,7 +542,7 @@ describe('CalendarAnalysisService relevant-event filter', () => {
 				]
 			})
 		};
-		const { supabase } = makeSupabase({
+		const { supabase, inserts } = makeSupabase({
 			calendar_analyses: [{ data: { id: 'analysis-1' }, error: null }]
 		});
 		const service = CalendarAnalysisService.getInstance(supabase as any, {
@@ -469,5 +565,7 @@ describe('CalendarAnalysisService relevant-event filter', () => {
 			'Weekly standup'
 		]);
 		expect(result.eventsAnalyzed).toBe(workTitles.length + 2);
+		// No suggestion, so no event is stored.
+		expect(inserts.map((insert) => insert.table)).not.toContain('calendar_analysis_events');
 	});
 });

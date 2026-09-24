@@ -12,7 +12,7 @@ Build OS is a sophisticated AI-powered project management system that combines i
 
 - **Framework**: SvelteKit 2.16+ with Svelte 5.33+
 - **Database**: Supabase (PostgreSQL with real-time subscriptions)
-- **AI/LLM**: OpenRouter (primary) with OpenAI/Anthropic fallback; optional Moonshot for Kimi models (via `@buildos/smart-llm`)
+- **AI/LLM**: OpenRouter only (via `@buildos/smart-llm`), no direct-provider fallbacks; zero data retention is required on every call except OpenAI audio (voice transcription and brief narration), the disclosed exception
 - **Authentication**: Supabase Auth with Google OAuth
 - **Payments**: Stripe for subscription management
 - **Email**: Gmail API integration

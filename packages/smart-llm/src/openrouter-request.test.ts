@@ -11,7 +11,9 @@ import {
 } from './model-config';
 import {
 	buildOpenRouterChatCompletionBody,
-	resolveOpenRouterFallbackModels
+	OPENROUTER_PRIVATE_PROVIDER,
+	resolveOpenRouterFallbackModels,
+	withOpenRouterPrivacy
 } from './openrouter-request';
 
 describe('resolveOpenRouterFallbackModels', () => {
@@ -296,5 +298,96 @@ describe('buildOpenRouterChatCompletionBody', () => {
 		});
 
 		expect(body.usage).toEqual({ include: true });
+	});
+});
+
+// Tasker 103: every OpenRouter body denies data collection and requires ZDR,
+// whatever routing a caller passes. Only named eval fixtures may drop ZDR.
+describe('OpenRouter privacy policy', () => {
+	const hostileProviders: unknown[] = [
+		undefined,
+		null,
+		{},
+		{ zdr: false, data_collection: 'allow' },
+		{ zdr: false },
+		{ data_collection: 'allow', order: ['openai'], allow_fallbacks: true },
+		{ sort: 'throughput', ignore: ['azure'], max_price: { prompt: 1 } },
+		'not-an-object',
+		['zdr', false]
+	];
+	const models = [
+		'deepseek/deepseek-v4-flash',
+		GLM_53_MODEL,
+		QWEN_38_27B_FREE_MODEL,
+		GPT_6_LUNA_MODEL,
+		KIMI_K3_MODEL
+	];
+
+	it.each(models.flatMap((model) => hostileProviders.map((provider) => [model, provider])))(
+		'forces deny + zdr for %s with provider %j',
+		(model, provider) => {
+			const body = buildOpenRouterChatCompletionBody({
+				model: model as string,
+				messages: [],
+				tool_choice: 'auto',
+				provider
+			});
+			expect(body.provider).toMatchObject({ data_collection: 'deny', zdr: true });
+		}
+	);
+
+	it('keeps caller routing keys while the policy values win', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: 'deepseek/deepseek-v4-flash',
+			messages: [],
+			provider: {
+				zdr: false,
+				data_collection: 'allow',
+				order: ['deepinfra'],
+				allow_fallbacks: true
+			}
+		});
+		expect(body.provider).toEqual({
+			order: ['deepinfra'],
+			allow_fallbacks: true,
+			data_collection: 'deny',
+			zdr: true
+		});
+	});
+
+	it('applies the policy inside the GLM forced-tool rewrite', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GLM_53_MODEL,
+			messages: [],
+			tool_choice: 'required',
+			provider: { zdr: false, data_collection: 'allow' }
+		});
+		expect(body.provider).toMatchObject({
+			require_parameters: true,
+			only: ['morph', 'inference-net', 'phala', 'fireworks'],
+			data_collection: 'deny',
+			zdr: true
+		});
+	});
+
+	it('drops only zdr for the named evaluation-only escape hatch', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: 'unbiased/pareto',
+			messages: [],
+			provider: { zdr: true, data_collection: 'allow', order: ['unbiased'] },
+			privacy: 'evaluation_only_non_zdr'
+		});
+		expect(body.provider).toEqual({ order: ['unbiased'], data_collection: 'deny' });
+	});
+
+	it('exports one frozen policy for bodies built outside the builder', () => {
+		expect(Object.isFrozen(OPENROUTER_PRIVATE_PROVIDER)).toBe(true);
+		expect(OPENROUTER_PRIVATE_PROVIDER).toEqual({ data_collection: 'deny', zdr: true });
+		expect(withOpenRouterPrivacy({ zdr: false, allow_fallbacks: false })).toEqual({
+			allow_fallbacks: false,
+			data_collection: 'deny',
+			zdr: true
+		});
+		expect(withOpenRouterPrivacy()).toEqual({ data_collection: 'deny', zdr: true });
 	});
 });

@@ -79,6 +79,11 @@ function createSupabaseMock(
 			return this;
 		}
 
+		is(column: string, value: unknown) {
+			this.filters.push({ column, value });
+			return this;
+		}
+
 		private recordOperation() {
 			operations.push({
 				table: this.table,

@@ -101,6 +101,9 @@ function validateProviderRouting(
 	if (value.data_collection !== undefined && value.data_collection !== 'deny') {
 		throw new Error('Agentic Chat provider routing cannot allow data collection');
 	}
+	if (value.zdr === false) {
+		throw new Error('Agentic Chat provider routing cannot opt out of zero data retention');
+	}
 	for (const key of ['allow_fallbacks', 'require_parameters', 'zdr'] as const) {
 		if (value[key] !== undefined && typeof value[key] !== 'boolean') {
 			throw new Error(`Agentic Chat provider routing ${key} must be boolean`);

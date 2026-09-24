@@ -1,0 +1,290 @@
+{
+	"method": "Offline derivation; source collection timestamps unchanged. Counter rates approximate because exporter clock absent; 4096-byte page assumption.",
+	"projects": {
+		"prod": {
+			"collected_at": "2026-09-24T17:19:48.858129+00:00",
+			"db": {
+				"bytes": 610194223,
+				"stats": {
+					"datid": "5",
+					"datname": "postgres",
+					"blks_hit": 75743667039,
+					"sessions": 3024978,
+					"blks_read": 5903859,
+					"conflicts": 0,
+					"deadlocks": 0,
+					"temp_bytes": 5556188412665,
+					"temp_files": 1197604,
+					"active_time": 503693553.233,
+					"numbackends": 15,
+					"stats_reset": "2025-04-16T11:03:56.997116+00:00",
+					"tup_deleted": 4445803,
+					"tup_fetched": 45274608109,
+					"tup_updated": 764493,
+					"xact_commit": 107762942,
+					"session_time": 416513418056.621,
+					"tup_inserted": 4853012,
+					"tup_returned": 129232731969,
+					"blk_read_time": 0,
+					"xact_rollback": 1325588,
+					"blk_write_time": 0,
+					"sessions_fatal": 0,
+					"sessions_killed": 1,
+					"checksum_failures": null,
+					"sessions_abandoned": 139,
+					"checksum_last_failure": null,
+					"idle_in_transaction_time": 34182505.857
+				},
+				"database": "postgres",
+				"started_at": "2025-04-28T03:56:57.263534+00:00",
+				"observed_at": "2026-09-24T17:19:53.881048+00:00",
+				"statements_info": {
+					"dealloc": 12,
+					"stats_reset": "2026-08-11T18:59:52.682029+00:00"
+				},
+				"transaction_read_only": "on"
+			},
+			"paging_samples": [
+				{
+					"start": "2026-09-24T17:07:51.565876+00:00",
+					"end": "2026-09-24T17:12:52.117239+00:00",
+					"seconds": 300.551363,
+					"swap_in_MiB_per_min": 3.2105057364188365,
+					"swap_out_MiB_per_min": 0.3290826866088776,
+					"major_faults_per_second": 8.867036813271747,
+					"root_reads_MiB_per_min": 5.932846160474741,
+					"data_reads_MiB_per_min": 0.08344039684158745,
+					"cpu_iowait_pct": 0.37423617811230464,
+					"cpu_idle_pct": 96.72104786131615
+				},
+				{
+					"start": "2026-09-24T17:14:43.946312+00:00",
+					"end": "2026-09-24T17:19:44.375175+00:00",
+					"seconds": 300.428863,
+					"swap_in_MiB_per_min": 1.380838531482909,
+					"swap_out_MiB_per_min": 0.0,
+					"major_faults_per_second": 4.433661888205462,
+					"root_reads_MiB_per_min": 2.0002655337413437,
+					"data_reads_MiB_per_min": 0.005460943344847662,
+					"cpu_iowait_pct": 0.17988307600040943,
+					"cpu_idle_pct": 97.869718016609
+				}
+			],
+			"requests": 465179,
+			"errors_4xx_5xx": 1811,
+			"errors_5xx": 1,
+			"timing_samples": 465179,
+			"statements_total_seconds": 16875.9014713153,
+			"top_execution_shares": [
+				{
+					"queryid": "-1244211463441676038",
+					"seconds": 9463.139558520099,
+					"pct": 56.07486850172126
+				},
+				{
+					"queryid": "-2327107248597316362",
+					"seconds": 2106.83340800302,
+					"pct": 12.484271797770898
+				},
+				{
+					"queryid": "-2051358698060935295",
+					"seconds": 876.6147281200031,
+					"pct": 5.194476452769193
+				},
+				{
+					"queryid": "-6161800192636870106",
+					"seconds": 387.566101505097,
+					"pct": 2.2965653251997225
+				},
+				{
+					"queryid": "3539838095694159883",
+					"seconds": 222.548961944,
+					"pct": 1.3187382156874765
+				},
+				{
+					"queryid": "-917864993417029807",
+					"seconds": 216.87773835,
+					"pct": 1.285132759981068
+				},
+				{
+					"queryid": "-1260554882953010024",
+					"seconds": 176.30470545,
+					"pct": 1.044712815784524
+				},
+				{
+					"queryid": "1374137181295181563",
+					"seconds": 175.07082522599998,
+					"pct": 1.037401323559369
+				},
+				{
+					"queryid": "2051372600341434634",
+					"seconds": 152.388013359,
+					"pct": 0.9029918408685929
+				},
+				{
+					"queryid": "4959214960458875162",
+					"seconds": 116.27384744899999,
+					"pct": 0.6889934007177968
+				}
+			],
+			"advisor_counts": {
+				"rls_enabled_no_policy": 59,
+				"function_search_path_mutable": 111,
+				"extension_in_public": 4,
+				"anon_security_definer_function_executable": 96,
+				"authenticated_security_definer_function_executable": 115,
+				"auth_otp_long_expiry": 1,
+				"auth_leaked_password_protection": "[REDACTED]",
+				"vulnerable_postgres_version": 1,
+				"unindexed_foreign_keys": 203,
+				"auth_rls_initplan": 250,
+				"unused_index": 421,
+				"multiple_permissive_policies": 511,
+				"auth_db_connections_absolute": 1
+			},
+			"advisor_rows": 1774
+		},
+		"qa": {
+			"collected_at": "2026-09-24T17:19:53.415449+00:00",
+			"db": {
+				"bytes": 390763311,
+				"stats": {
+					"datid": "5",
+					"datname": "postgres",
+					"blks_hit": 286815831,
+					"sessions": 111278,
+					"blks_read": 64581,
+					"conflicts": 0,
+					"deadlocks": 674,
+					"temp_bytes": 115856525455,
+					"temp_files": 37342,
+					"active_time": 23948572.5,
+					"numbackends": 8,
+					"stats_reset": "2026-08-25T20:38:15.05763+00:00",
+					"tup_deleted": 153936,
+					"tup_fetched": 158079495,
+					"tup_updated": 191894,
+					"xact_commit": 1372256,
+					"session_time": 4727002734.665,
+					"tup_inserted": 391234,
+					"tup_returned": 2233842606,
+					"blk_read_time": 0,
+					"xact_rollback": 98213,
+					"blk_write_time": 0,
+					"sessions_fatal": 0,
+					"sessions_killed": 10,
+					"checksum_failures": 0,
+					"sessions_abandoned": 18,
+					"checksum_last_failure": null,
+					"idle_in_transaction_time": 1362855.497
+				},
+				"database": "postgres",
+				"started_at": "2026-09-11T01:18:36.673716+00:00",
+				"observed_at": "2026-09-24T17:19:57.574743+00:00",
+				"statements_info": {
+					"dealloc": 23,
+					"stats_reset": "2026-09-11T01:11:35.305801+00:00"
+				},
+				"transaction_read_only": "on"
+			},
+			"paging_samples": [
+				{
+					"start": "2026-09-24T17:07:54.912479+00:00",
+					"end": "2026-09-24T17:12:56.195484+00:00",
+					"seconds": 301.283005,
+					"swap_in_MiB_per_min": 4.376595188301445,
+					"swap_out_MiB_per_min": 10.935264586198613,
+					"major_faults_per_second": 86.57972592911439,
+					"root_reads_MiB_per_min": 132.19703747685668,
+					"data_reads_MiB_per_min": 10.611648589338785,
+					"cpu_iowait_pct": 1.7445958646613198,
+					"cpu_idle_pct": 94.9732730263158
+				},
+				{
+					"start": "2026-09-24T17:14:47.867903+00:00",
+					"end": "2026-09-24T17:19:48.667429+00:00",
+					"seconds": 300.799526,
+					"swap_in_MiB_per_min": 1.2480280693110801,
+					"swap_out_MiB_per_min": 0.0,
+					"major_faults_per_second": 8.266588919521682,
+					"root_reads_MiB_per_min": 5.539000981773895,
+					"data_reads_MiB_per_min": 0.0,
+					"cpu_iowait_pct": 0.11009357954258374,
+					"cpu_idle_pct": 99.12925987089046
+				}
+			],
+			"requests": 5391,
+			"errors_4xx_5xx": 13,
+			"errors_5xx": 5,
+			"timing_samples": 5391,
+			"statements_total_seconds": 13243.172503039019,
+			"top_execution_shares": [
+				{
+					"queryid": "8073567005574114929",
+					"seconds": 1847.80496274699,
+					"pct": 13.9528875148531
+				},
+				{
+					"queryid": "-2025370557647521259",
+					"seconds": 964.504021270997,
+					"pct": 7.28302845145047
+				},
+				{
+					"queryid": "3988854028208233806",
+					"seconds": 857.4788401990049,
+					"pct": 6.4748748081491225
+				},
+				{
+					"queryid": "-86378621254902171",
+					"seconds": 725.319398123,
+					"pct": 5.476930833276959
+				},
+				{
+					"queryid": "3248400240373745198",
+					"seconds": 547.563357364001,
+					"pct": 4.134684172076949
+				},
+				{
+					"queryid": "-1910831359249200216",
+					"seconds": 532.407454091,
+					"pct": 4.020241025848029
+				},
+				{
+					"queryid": "4641728520548500675",
+					"seconds": 529.916604625001,
+					"pct": 4.001432470228691
+				},
+				{
+					"queryid": "4710483520943389857",
+					"seconds": 522.252582946,
+					"pct": 3.9435609769951605
+				},
+				{
+					"queryid": "-753657135885790294",
+					"seconds": 510.717098855,
+					"pct": 3.856455835924523
+				},
+				{
+					"queryid": "-827995166086297652",
+					"seconds": 471.405928887,
+					"pct": 3.5596148036191675
+				}
+			],
+			"advisor_counts": {
+				"rls_enabled_no_policy": 53,
+				"function_search_path_mutable": 112,
+				"extension_in_public": 4,
+				"anon_security_definer_function_executable": 96,
+				"authenticated_security_definer_function_executable": 115,
+				"auth_otp_long_expiry": 1,
+				"auth_leaked_password_protection": "[REDACTED]",
+				"unindexed_foreign_keys": 190,
+				"auth_rls_initplan": 249,
+				"unused_index": 871,
+				"multiple_permissive_policies": 551,
+				"auth_db_connections_absolute": 1
+			},
+			"advisor_rows": 2244
+		}
+	}
+}

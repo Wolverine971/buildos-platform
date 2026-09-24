@@ -1,0 +1,52 @@
+{
+	"project_ref": "iwifjtlebphefldmwbkh",
+	"collected_at": "2026-09-24T17:18:08.611231+00:00",
+	"read_only": true,
+	"functions": [
+		{
+			"proname": "acquire_migration_platform_lock",
+			"definition_bytes": 1572,
+			"references_auth_uid": false,
+			"references_auth_role": false,
+			"references_is_admin": false,
+			"for_update": false,
+			"for_no_key_update": false
+		},
+		{
+			"proname": "batch_update_phase_dates",
+			"definition_bytes": 910,
+			"references_auth_uid": false,
+			"references_auth_role": false,
+			"references_is_admin": false,
+			"for_update": false,
+			"for_no_key_update": false
+		},
+		{
+			"proname": "check_agentic_chat_turn_read_fence",
+			"definition_bytes": 3671,
+			"references_auth_uid": false,
+			"references_auth_role": false,
+			"references_is_admin": false,
+			"for_update": true,
+			"for_no_key_update": false
+		},
+		{
+			"proname": "get_subscription_overview",
+			"definition_bytes": 1367,
+			"references_auth_uid": false,
+			"references_auth_role": false,
+			"references_is_admin": false,
+			"for_update": false,
+			"for_no_key_update": false
+		},
+		{
+			"proname": "observe_agentic_chat_turn_cancellations",
+			"definition_bytes": 6511,
+			"references_auth_uid": false,
+			"references_auth_role": false,
+			"references_is_admin": false,
+			"for_update": true,
+			"for_no_key_update": false
+		}
+	]
+}

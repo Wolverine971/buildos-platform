@@ -18,7 +18,40 @@ import {
 } from './shared/queueUtils';
 import { smsMetricsService } from '@buildos/shared-utils';
 import { checkQuietHours } from '../lib/utils/smsPreferenceChecks';
+import { PermanentQueueError } from '../lib/queueErrors';
 import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from '../config/sms';
+
+/** Twilio: the recipient replied STOP, so every send to them fails until they reply START. */
+const TWILIO_RECIPIENT_UNSUBSCRIBED = 21610;
+
+function getTwilioErrorCode(error: unknown): number | null {
+	const code = (error as { code?: unknown } | null)?.code;
+	return typeof code === 'number' ? code : null;
+}
+
+/** Provider error text can quote the recipient; replace the known number before storing it. */
+function redactRecipient(text: string, phoneNumber: string): string {
+	const digits = phoneNumber.replace(/\D/g, '');
+	const masked = `***${digits.slice(-2)}`;
+	let redacted = text.split(phoneNumber).join(masked);
+	if (digits.length >= 7) redacted = redacted.split(digits).join(masked);
+	return redacted;
+}
+
+/** Mirror a carrier-level STOP into the user's preferences so BuildOS stops enqueueing. */
+async function recordCarrierOptOut(userId: string): Promise<void> {
+	const now = new Date().toISOString();
+	const { error } = await supabase
+		.from('user_sms_preferences')
+		.update({ opted_out: true, opted_out_at: now, updated_at: now })
+		.eq('user_id', userId);
+	if (error) {
+		console.error(
+			`[SMS Worker] Failed to record STOP opt-out for user ${userId}:`,
+			error.message
+		);
+	}
+}
 
 // Conditional Twilio initialization
 let twilioClient: TwilioClient | null = null;
@@ -417,8 +450,16 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			scheduled_sms_id
 		};
 	} catch (error: unknown) {
-		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-		console.error('SMS job failed:', error);
+		const errorMessage = redactRecipient(
+			error instanceof Error ? error.message : 'Unknown error',
+			phone_number
+		);
+		const twilioErrorCode = getTwilioErrorCode(error);
+		console.error('SMS job failed:', { messageId: message_id, twilioErrorCode, errorMessage });
+
+		if (twilioErrorCode === TWILIO_RECIPIENT_UNSUBSCRIBED) {
+			await recordCarrierOptOut(user_id);
+		}
 
 		// Update message status with error
 		const { data: currentMessage } = await supabase
@@ -469,6 +510,14 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 
 		await updateJobStatus(job.id, 'failed', 'send_sms', errorMessage, job.processingToken);
 
+		if (twilioErrorCode === TWILIO_RECIPIENT_UNSUBSCRIBED) {
+			// Retrying cannot succeed until the recipient texts START.
+			throw new PermanentQueueError('sms_recipient_opted_out', errorMessage);
+		}
+		if (error instanceof Error && error.message !== errorMessage) {
+			// The queue persists the message and stack, so re-throw without the number.
+			throw Object.assign(new Error(errorMessage), { code: twilioErrorCode ?? undefined });
+		}
 		throw error;
 	}
 }

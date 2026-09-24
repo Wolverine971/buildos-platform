@@ -40,6 +40,7 @@ import {
 	runQueueRetentionCleanup,
 	runScheduledAgentRunCostReconciliation
 } from '../src/scheduler';
+import { PRIVACY_RETENTION_TASKS } from '../src/scheduler/privacyRetention';
 
 describe('Scheduler', () => {
 	beforeEach(() => {
@@ -92,33 +93,46 @@ describe('Scheduler', () => {
 	});
 
 	describe('runQueueRetentionCleanup', () => {
-		it('runs worker, prompt, and bootstrap cleanup RPCs on the queue retention path', async () => {
+		// Each drained store makes exactly one call when its first batch is empty.
+		const taskCount = PRIVACY_RETENTION_TASKS.length;
+
+		beforeEach(() => {
+			// An empty summary is a drained batch.
+			schedulerMocks.supabaseRpc.mockResolvedValue({ data: {}, error: null });
+		});
+
+		it('runs queue cleanup, then drains the existing chat cleanups before the privacy stores', async () => {
 			await runQueueRetentionCleanup();
 
 			expect(schedulerMocks.cleanupStaleJobs).toHaveBeenCalledOnce();
-			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
-				'cleanup_agentic_chat_worker_artifacts'
-			);
-			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
-				'cleanup_agentic_chat_prompt_artifacts',
-				{ p_batch_size: 1000 }
-			);
-			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
-				'cleanup_agentic_chat_sensitive_transcripts'
-			);
-			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
-				'cleanup_expired_agent_call_bootstrap_links',
-				{ p_batch_size: 500 }
-			);
-			expect(schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name)).toEqual([
+			const calledNames = schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name);
+			expect(calledNames.slice(0, 5)).toEqual([
 				'cleanup_agentic_chat_worker_artifacts',
 				'cleanup_agentic_chat_prompt_artifacts',
 				'cleanup_agentic_chat_sensitive_transcripts',
-				'cleanup_expired_agent_call_bootstrap_links'
+				'cleanup_expired_agent_call_bootstrap_links',
+				'cleanup_agentic_chat_workflow_dispatches_v1'
 			]);
+			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
+				'cleanup_agentic_chat_worker_artifacts',
+				{ p_batch_size: 500 }
+			);
+			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
+				'cleanup_privacy_chat_turn_effects',
+				{ p_batch_size: 500 }
+			);
+			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
+				'list_privacy_chat_temp_orphans',
+				{ p_limit: 500 }
+			);
+			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
+				'claim_privacy_expired_brief_audio',
+				{ p_limit: 500 }
+			);
+			expect(calledNames).toHaveLength(taskCount);
 		});
 
-		it('keeps prompt retention running when worker artifact cleanup is unavailable', async () => {
+		it('keeps later stores running when one cleanup function is unavailable', async () => {
 			schedulerMocks.supabaseRpc.mockImplementation(async (fn: string) => {
 				if (fn === 'cleanup_agentic_chat_worker_artifacts') {
 					return { data: null, error: { code: 'PGRST202' } };
@@ -128,34 +142,14 @@ describe('Scheduler', () => {
 
 			await runQueueRetentionCleanup();
 
-			expect(schedulerMocks.supabaseRpc.mock.calls.map(([name]) => name)).toEqual([
-				'cleanup_agentic_chat_worker_artifacts',
-				'cleanup_agentic_chat_prompt_artifacts',
-				'cleanup_agentic_chat_sensitive_transcripts',
-				'cleanup_expired_agent_call_bootstrap_links'
-			]);
-		});
-
-		it('falls back to prepared prompt cleanup when the broader cleanup RPC is unavailable', async () => {
-			schedulerMocks.supabaseRpc.mockImplementation(async (fn: string) => {
-				if (fn === 'cleanup_agentic_chat_prompt_artifacts') {
-					return { data: null, error: { code: 'PGRST202' } };
-				}
-				return { data: 2, error: null };
-			});
-
-			await runQueueRetentionCleanup();
-
+			expect(schedulerMocks.supabaseRpc.mock.calls).toHaveLength(taskCount);
 			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
 				'cleanup_agentic_chat_prompt_artifacts',
-				{ p_batch_size: 1000 }
-			);
-			expect(schedulerMocks.supabaseRpc).toHaveBeenCalledWith(
-				'cleanup_expired_agentic_chat_prepared_prompts'
+				{ p_batch_size: 500 }
 			);
 		});
 
-		it('drains full prompt-retention batches instead of leaving a permanent backlog', async () => {
+		it('drains full prompt-retention batches until one deletes nothing', async () => {
 			let promptBatch = 0;
 			schedulerMocks.supabaseRpc.mockImplementation(async (fn: string) => {
 				if (fn !== 'cleanup_agentic_chat_prompt_artifacts') {
@@ -164,8 +158,10 @@ describe('Scheduler', () => {
 				promptBatch += 1;
 				return {
 					data: {
-						prompt_snapshots_deleted: promptBatch < 3 ? 1000 : 7,
-						rendered_dumps_cleared: 0
+						prompt_snapshots_deleted: promptBatch < 3 ? 1000 : 0,
+						prepared_prompts_deleted: promptBatch === 3 ? 7 : 0,
+						rendered_dumps_cleared: 0,
+						batch_size: 500
 					},
 					error: null
 				};
@@ -177,7 +173,7 @@ describe('Scheduler', () => {
 				schedulerMocks.supabaseRpc.mock.calls.filter(
 					([name]) => name === 'cleanup_agentic_chat_prompt_artifacts'
 				)
-			).toHaveLength(3);
+			).toHaveLength(4);
 		});
 	});
 

@@ -1,7 +1,10 @@
 // packages/smart-llm/src/openrouter-client.ts
 
 import type { OpenRouterResponse, OpenRouterTranscriptionResponse } from './types';
-import { buildOpenRouterChatCompletionBody } from './openrouter-request';
+import {
+	buildOpenRouterChatCompletionBody,
+	type OpenRouterPrivacyMode
+} from './openrouter-request';
 import {
 	isOpenRouterModelAvailabilityError,
 	isOpenRouterProviderError,
@@ -52,6 +55,7 @@ export class OpenRouterClient {
 		transforms?: string[];
 		route?: 'fallback'; // NOTE: Not used - kept for backwards compatibility
 		provider?: Record<string, unknown>;
+		privacy?: OpenRouterPrivacyMode;
 	}): Promise<OpenRouterResponse> {
 		const headers = {
 			Authorization: `Bearer ${this.apiKey}`,
@@ -70,7 +74,8 @@ export class OpenRouterClient {
 			reasoning: params.reasoning,
 			models: params.models,
 			transforms: params.transforms,
-			provider: params.provider
+			provider: params.provider,
+			privacy: params.privacy
 		});
 		const timeoutMs = params.timeoutMs ?? 120000;
 
@@ -253,68 +258,6 @@ export class OpenRouterClient {
 				// reason the JSON parse-retry path defers to its outer catch. The
 				// service-layer catch owns terminal logging and carries strictly more
 				// context (profile, attempts, models attempted, generation id).
-				throw timeoutError;
-			}
-			throw error;
-		}
-	}
-
-	async callOpenRouterAudio(params: {
-		model: string;
-		messages: Array<{
-			role: string;
-			content:
-				| string
-				| Array<
-						| { type: 'text'; text: string }
-						| { type: 'input_audio'; input_audio: { data: string; format: string } }
-				  >;
-		}>;
-		temperature?: number;
-		max_tokens?: number;
-		timeoutMs: number;
-		provider?: Record<string, unknown>;
-	}): Promise<OpenRouterResponse> {
-		const headers = {
-			Authorization: `Bearer ${this.apiKey}`,
-			'Content-Type': 'application/json',
-			'HTTP-Referer': this.httpReferer,
-			'X-Title': this.appName
-		};
-
-		const body = buildOpenRouterChatCompletionBody({
-			model: params.model,
-			messages: params.messages,
-			temperature: params.temperature,
-			max_tokens: params.max_tokens,
-			stream: false,
-			provider: params.provider
-		});
-
-		try {
-			const response = await this.fetchImpl(this.apiUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(params.timeoutMs)
-			});
-
-			if (!response.ok) {
-				const error = new Error(
-					`OpenRouter audio request failed (status=${response.status}).`
-				) as Error & { status?: number };
-				error.name = 'OpenRouterHTTPError';
-				error.status = response.status;
-				throw error;
-			}
-
-			return (await response.json()) as OpenRouterResponse;
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') {
-				const timeoutError = new Error(
-					`Transcription request timed out after ${params.timeoutMs}ms`
-				) as Error & { name: string };
-				timeoutError.name = 'TranscriptionTimeoutError';
 				throw timeoutError;
 			}
 			throw error;

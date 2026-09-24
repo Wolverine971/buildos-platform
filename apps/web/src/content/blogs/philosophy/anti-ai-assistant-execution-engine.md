@@ -45,7 +45,7 @@ The problem is you can't see what actually matters.
 
 ### It's Not Your Email Assistant
 
-We don't read your emails, summarize your inbox, or draft responses.
+BuildOS doesn't live in your inbox. It never sends, drafts, or files email. If you connect Gmail, it can check your inbox when you ask a question about your work. It doesn't keep what it reads.
 
 Drowning in summarized emails is still drowning. AI-written responses don't solve email overload. They just make the problem shinier.
 

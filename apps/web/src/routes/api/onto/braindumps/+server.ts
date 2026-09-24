@@ -139,6 +139,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				{ count: 'estimated' }
 			)
 			.eq('user_id', user.id)
+			.is('deleted_at', null)
 			.order('created_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 

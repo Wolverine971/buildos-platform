@@ -7,11 +7,12 @@
 // scan so a ledger row always identifies the exact wording that produced it.
 
 import { createHash } from 'node:crypto';
-import type {
-	JevChoiceQuestion,
-	JevNoulQuestion,
-	JevQuestion,
-	JevScoreQuestion
+import {
+	JEV_PROVIDER_POLICY,
+	type JevChoiceQuestion,
+	type JevNoulQuestion,
+	type JevQuestion,
+	type JevScoreQuestion
 } from '@buildos/smart-llm';
 import {
 	FRESHNESS_QUESTION_SET_VERSION,
@@ -212,7 +213,8 @@ function requestBytes(model: string, request: FreshnessJevRequest): number {
 			model,
 			state: request.state,
 			questions: request.questions,
-			provider: { allow_fallbacks: false, data_collection: 'deny' }
+			// Mirrors the body JevClient sends, so the size estimate cannot drift.
+			provider: JEV_PROVIDER_POLICY
 		}),
 		'utf8'
 	);

@@ -322,6 +322,7 @@ describe('GoogleOAuthService calendar token exchange', () => {
 			const operation = { table, filters: [] as Array<[string, unknown]> };
 			protectedOperations.push(operation);
 			const builder: any = {
+				select: () => builder,
 				delete: () => builder,
 				eq: (column: string, value: unknown) => {
 					operation.filters.push([column, value]);
@@ -331,6 +332,7 @@ describe('GoogleOAuthService calendar token exchange', () => {
 					operation.filters.push([column, value]);
 					return builder;
 				},
+				maybeSingle: async () => ({ data: null, error: null }),
 				then: (resolve: (value: { error: null }) => unknown) =>
 					Promise.resolve({ error: null }).then(resolve)
 			};
@@ -351,11 +353,135 @@ describe('GoogleOAuthService calendar token exchange', () => {
 					['calendar_source_id', null]
 				]
 			},
+			// Token lookup for the Google revoke, then the delete.
+			{
+				table: 'user_calendar_tokens',
+				filters: [['user_id', 'user-1']]
+			},
 			{
 				table: 'user_calendar_tokens',
 				filters: [['user_id', 'user-1']]
 			}
 		]);
+	});
+
+	describe('legacy disconnect revokes the grant at Google', () => {
+		function legacyDisconnectSupabase(options: {
+			tokenRow: Record<string, unknown> | null;
+			migratedConnection?: Record<string, unknown> | null;
+			steps: string[];
+		}) {
+			return {
+				from: vi.fn((table: string) => {
+					let action = 'select';
+					const builder: any = {
+						select: () => builder,
+						delete: () => {
+							action = 'delete';
+							return builder;
+						},
+						eq: () => builder,
+						is: () => builder,
+						limit: () => builder,
+						maybeSingle: async () => {
+							options.steps.push(`${table}.select`);
+							return {
+								data:
+									table === 'user_calendar_tokens'
+										? options.tokenRow
+										: (options.migratedConnection ?? null),
+								error: null
+							};
+						},
+						then: (resolve: (value: { error: null }) => unknown) => {
+							options.steps.push(`${table}.${action}`);
+							return Promise.resolve({ error: null }).then(resolve);
+						}
+					};
+					return builder;
+				})
+			};
+		}
+
+		const tokenRow = {
+			access_token: encryptCalendarToken('legacy-access-token'),
+			refresh_token: encryptCalendarToken('legacy-refresh-token'),
+			google_user_id: 'google-sub-1'
+		};
+
+		it('revokes the refresh token before deleting the local tokens', async () => {
+			const steps: string[] = [];
+			const service = new GoogleOAuthService(
+				legacyDisconnectSupabase({ tokenRow, steps }) as any
+			);
+			const revokeToken = vi.fn(async (token: string) => {
+				steps.push(`google.revoke:${token}`);
+				return {};
+			});
+			vi.spyOn(service as any, 'createOAuth2Client').mockReturnValue({ revokeToken });
+
+			await service.disconnectCalendar('user-1');
+
+			expect(steps).toEqual([
+				'calendar_webhook_channels.delete',
+				'user_calendar_tokens.select',
+				'user_calendar_connections.select',
+				'google.revoke:legacy-refresh-token',
+				'user_calendar_tokens.delete'
+			]);
+		});
+
+		it('keeps the grant when a migrated connection for the same Google account uses it', async () => {
+			const steps: string[] = [];
+			const service = new GoogleOAuthService(
+				legacyDisconnectSupabase({
+					tokenRow,
+					migratedConnection: { id: 'connection-1' },
+					steps
+				}) as any
+			);
+			const revokeToken = vi.fn();
+			vi.spyOn(service as any, 'createOAuth2Client').mockReturnValue({ revokeToken });
+
+			await service.disconnectCalendar('user-1');
+
+			expect(revokeToken).not.toHaveBeenCalled();
+			expect(steps).toContain('user_calendar_tokens.delete');
+		});
+
+		it('still deletes the local tokens when Google refuses the revoke', async () => {
+			const steps: string[] = [];
+			const service = new GoogleOAuthService(
+				legacyDisconnectSupabase({ tokenRow, steps }) as any
+			);
+			const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			vi.spyOn(service as any, 'createOAuth2Client').mockReturnValue({
+				revokeToken: vi.fn().mockRejectedValue(new Error('invalid_token'))
+			});
+
+			await service.disconnectCalendar('user-1');
+
+			expect(steps.at(-1)).toBe('user_calendar_tokens.delete');
+			expect(JSON.stringify(warn.mock.calls)).not.toContain('legacy-refresh-token');
+			warn.mockRestore();
+		});
+
+		it('does not call Google when quarantining a grant Google already rejected', async () => {
+			const steps: string[] = [];
+			const service = new GoogleOAuthService(
+				legacyDisconnectSupabase({ tokenRow, steps }) as any
+			);
+			const revokeToken = vi.fn();
+			vi.spyOn(service as any, 'createOAuth2Client').mockReturnValue({ revokeToken });
+
+			await service.disconnectCalendar('user-1', { revokeAtGoogle: false });
+
+			expect(revokeToken).not.toHaveBeenCalled();
+			expect(steps).toEqual([
+				'calendar_webhook_channels.delete',
+				'user_calendar_tokens.delete'
+			]);
+		});
 	});
 
 	it('does not attempt protected webhook cleanup during automatic quarantine without service authority', async () => {
@@ -375,7 +501,7 @@ describe('GoogleOAuthService calendar token exchange', () => {
 
 		await (service as any).quarantineInvalidGrant('user-1');
 
-		expect(disconnectSpy).toHaveBeenCalledWith('user-1');
+		expect(disconnectSpy).toHaveBeenCalledWith('user-1', { revokeAtGoogle: false });
 	});
 
 	it('does not issue deletes through the user client after an automatic invalid-grant failure', async () => {

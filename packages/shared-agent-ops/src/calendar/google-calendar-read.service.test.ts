@@ -34,10 +34,14 @@ function readService(input: {
 	resolveExplicitSource?: (userId: string, sourceId: string) => Promise<CalendarTarget>;
 	getAuthenticatedClient?: () => Promise<unknown>;
 	events?: unknown[];
+	reconcileDefaultWriteSourceId?: (userId: string) => Promise<string | null>;
 }) {
 	const listEvents = vi.fn().mockResolvedValue({
 		data: { items: input.events ?? [], nextPageToken: null }
 	});
+	const reconcileDefaultWriteSourceId = vi.fn(
+		input.reconcileDefaultWriteSourceId ?? (async () => 'source-1')
+	);
 	const service = new GoogleCalendarReadService(admin, {
 		connectionService: {
 			getAuthenticatedClient: input.getAuthenticatedClient ?? (async () => ({}))
@@ -50,13 +54,13 @@ function readService(input: {
 				input.resolveExplicitSource ?? (async () => target())
 			) as never,
 			resolveLegacyCalendarId: vi.fn(async () => target()) as never,
-			reconcileDefaultWriteSourceId: vi.fn(async () => 'source-1')
+			reconcileDefaultWriteSourceId
 		} as never,
 		createCalendarApi: () => ({ events: { list: listEvents } }) as never,
 		now: () => new Date('2026-09-04T12:00:00.000Z'),
 		clock: () => 0
 	});
-	return { service, listEvents };
+	return { service, listEvents, reconcileDefaultWriteSourceId };
 }
 
 describe('GoogleCalendarReadService failure classification', () => {
@@ -219,5 +223,89 @@ describe('GoogleCalendarReadService partial responses', () => {
 			'event-1',
 			'event-2'
 		]);
+	});
+});
+
+// The default write source only breaks ties when duplicate events collapse, so
+// its reconcile (DB reads, and a write when the default changes) runs under the
+// target resolution and provider fan-out instead of ahead of them.
+describe('GoogleCalendarReadService default-source reconcile', () => {
+	function deferred<T>() {
+		let resolve!: (value: T) => void;
+		const promise = new Promise<T>((settle) => {
+			resolve = settle;
+		});
+		return { promise, resolve };
+	}
+
+	const sharedEvent = {
+		id: 'event-shared',
+		iCalUID: 'shared@google.com',
+		start: { dateTime: '2026-09-04T13:00:00.000Z' }
+	};
+	const twoAccounts = [
+		target({ calendarSourceId: 'source-1', providerCalendarId: 'a@example.com' }),
+		target({
+			connectionId: 'connection-2',
+			calendarSourceId: 'source-2',
+			providerCalendarId: 'b@example.com',
+			connectionConnectedAt: '2026-02-01T00:00:00.000Z'
+		})
+	];
+
+	it('reads the provider while the default reconcile is still pending', async () => {
+		const reconcile = deferred<string | null>();
+		const { service, listEvents } = readService({
+			events: [sharedEvent],
+			reconcileDefaultWriteSourceId: () => reconcile.promise
+		});
+		let settled = false;
+		const pending = service.listEvents({ userId: 'user-1' }).finally(() => {
+			settled = true;
+		});
+
+		await vi.waitFor(() => expect(listEvents).toHaveBeenCalledTimes(1));
+		expect(settled).toBe(false);
+
+		reconcile.resolve('source-1');
+		const response = await pending;
+		expect(response.events.map((event) => event.providerEventId)).toEqual(['event-shared']);
+	});
+
+	it('still ranks the reconciled default first when duplicate events collapse', async () => {
+		const reconcile = deferred<string | null>();
+		const { service, listEvents } = readService({
+			targets: twoAccounts,
+			events: [sharedEvent],
+			reconcileDefaultWriteSourceId: () => reconcile.promise
+		});
+		const pending = service.listEvents({ userId: 'user-1' });
+
+		await vi.waitFor(() => expect(listEvents).toHaveBeenCalledTimes(2));
+		// Without the default, the earlier-connected account would win the tie.
+		reconcile.resolve('source-2');
+		const response = await pending;
+
+		expect(response.events).toHaveLength(1);
+		expect(response.events[0]).toMatchObject({
+			calendarSourceId: 'source-2',
+			providerCalendarId: 'b@example.com',
+			contributingCalendarSourceIds: expect.arrayContaining(['source-1', 'source-2'])
+		});
+	});
+
+	it('reads on with no default when the reconcile fails', async () => {
+		const { service } = readService({
+			targets: twoAccounts,
+			events: [sharedEvent],
+			reconcileDefaultWriteSourceId: async () => {
+				throw new Error('preferences unavailable');
+			}
+		});
+
+		const response = await service.listEvents({ userId: 'user-1' });
+
+		expect(response.partial).toBe(false);
+		expect(response.events[0]?.calendarSourceId).toBe('source-1');
 	});
 });

@@ -17,7 +17,8 @@ const MIGRATIONS = [
 	'supabase/migrations/20260914203007_agentic_chat_workflow_v1_storage.sql',
 	'supabase/migrations/20260914203008_agentic_chat_workflow_v1_dispatch_recovery.sql',
 	'supabase/migrations/20260924000000_agentic_chat_reap_stranded_queued_turns.sql',
-	'supabase/migrations/20260924000100_agentic_chat_turn_leases.sql'
+	'supabase/migrations/20260924000100_agentic_chat_turn_leases.sql',
+	'supabase/migrations/20260924150000_agentic_chat_lock_free_turn_checks.sql'
 ];
 
 export const postgresAvailable = ['initdb', 'pg_ctl', 'psql'].every(

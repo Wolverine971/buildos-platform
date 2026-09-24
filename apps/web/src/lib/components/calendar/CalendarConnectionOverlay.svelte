@@ -168,7 +168,7 @@
 
 				<!-- Privacy Note -->
 				<p class="mt-4 text-xs text-muted-foreground">
-					Takes 30 seconds • We never read your private events
+					Takes 30 seconds • We don't store events BuildOS didn't create
 				</p>
 
 				<!-- Navigation Notice -->

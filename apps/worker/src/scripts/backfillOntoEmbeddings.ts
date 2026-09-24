@@ -29,7 +29,7 @@ const BATCH_SIZE = 100;
 const resolvedEmbeddings = createEmbeddingsClientFromEnv(process.env);
 if (!resolvedEmbeddings) {
 	console.error(
-		'[embeddings-backfill] PRIVATE_OPENROUTER_API_KEY (or an OpenAI key fallback) is required'
+		'[embeddings-backfill] PRIVATE_OPENROUTER_API_KEY is required (no direct OpenAI route)'
 	);
 	process.exit(1);
 }

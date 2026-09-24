@@ -1,16 +1,25 @@
 // apps/web/src/routes/api/admin/users/[userId]/activity/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { createAdminSupabaseClientMock, getErrorSummaryMock, getRecentErrorsMock } = vi.hoisted(
-	() => ({
-		createAdminSupabaseClientMock: vi.fn(),
-		getErrorSummaryMock: vi.fn(),
-		getRecentErrorsMock: vi.fn()
-	})
-);
+const {
+	createAdminSupabaseClientMock,
+	getErrorSummaryMock,
+	getRecentErrorsMock,
+	logSecurityEventMock
+} = vi.hoisted(() => ({
+	createAdminSupabaseClientMock: vi.fn(),
+	getErrorSummaryMock: vi.fn(),
+	getRecentErrorsMock: vi.fn(),
+	logSecurityEventMock: vi.fn()
+}));
 
 vi.mock('$lib/supabase/admin', () => ({
 	createAdminSupabaseClient: createAdminSupabaseClientMock
+}));
+
+vi.mock('$lib/server/security-event-logger', () => ({
+	logSecurityEventBlocking: logSecurityEventMock,
+	getSecurityRequestContext: () => ({ requestId: null, ipAddress: null, userAgent: null })
 }));
 
 vi.mock('$lib/services/errorLogger.service', () => ({
@@ -457,5 +466,79 @@ describe('GET /api/admin/users/[userId]/activity', () => {
 		expect(requestSupabase.rpc).not.toHaveBeenCalled();
 		expect(adminSupabase.from).toHaveBeenCalledWith('chat_sessions');
 		expect(adminSupabase.from).toHaveBeenCalledWith('chat_messages');
+	});
+
+	it('hides legacy pass-through tool messages and records the admin read', async () => {
+		const rowsByTable: Record<string, Row[]> = {
+			users: [{ id: 'user-1', email: 'lysander@example.com', name: 'Lysander' }],
+			user_context: [{ user_id: 'user-1' }],
+			onto_project_members: [],
+			onto_projects: [],
+			chat_sessions: [
+				{
+					id: 'chat-1',
+					user_id: 'user-1',
+					title: 'Inbox check',
+					status: 'active',
+					context_type: 'global',
+					message_count: 2,
+					created_at: '2026-08-01T01:01:00.000Z',
+					updated_at: '2026-08-01T01:02:00.000Z',
+					last_message_at: '2026-08-01T01:02:00.000Z'
+				}
+			],
+			chat_messages: [
+				{
+					id: 'message-2',
+					session_id: 'chat-1',
+					user_id: 'user-1',
+					role: 'tool',
+					tool_name: 'search_email_messages',
+					content: '{"summary":"Sarah: signed contract for the 9takes partnership"}',
+					created_at: '2026-08-01T01:02:00.000Z',
+					message_type: 'tool',
+					error_message: null
+				},
+				{
+					id: 'message-1',
+					session_id: 'chat-1',
+					user_id: 'user-1',
+					role: 'user',
+					tool_name: null,
+					content: 'Did Sarah send the contract?',
+					created_at: '2026-08-01T01:01:00.000Z',
+					message_type: 'user',
+					error_message: null
+				}
+			]
+		};
+		createAdminSupabaseClientMock.mockReturnValue(createSupabase(rowsByTable));
+
+		const response = await GET({
+			params: { userId: 'user-1' },
+			locals: {
+				safeGetSession: vi
+					.fn()
+					.mockResolvedValue({ user: { id: 'admin-1', is_admin: true } })
+			}
+		} as any);
+		const payload = await response.json();
+		expect(response.status).toBe(200);
+		expect(JSON.stringify(payload)).not.toContain('9takes partnership');
+		const chat = payload.data.chat_sessions.find((session: any) => session.id === 'chat-1');
+		expect(chat.recent_messages[0].content).toMatch(/Email content is not stored/);
+		expect(chat.recent_messages[1].content).toBe('Did Sarah send the contract?');
+		expect(logSecurityEventMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				eventType: 'admin.chat_content.read',
+				actorUserId: 'admin-1',
+				targetType: 'user',
+				targetId: 'user-1',
+				metadata: expect.objectContaining({
+					route: '/api/admin/users/[userId]/activity',
+					rows: { chat_sessions: 1, messages: 2 }
+				})
+			})
+		);
 	});
 });

@@ -286,6 +286,32 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		);
 	});
 
+	it('shows the search query and navigation goal from the stored tool_call arguments', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		// The worker's tool_call event carries JSON.stringify(step.arguments).
+		expect(
+			presenter.formatToolMessage(
+				'web_search',
+				JSON.stringify({ query: 'custody lawyer near Glen Burnie', max_results: 4 }),
+				'pending'
+			)
+		).toBe('Searching web: "custody lawyer near Glen Burnie"');
+		expect(
+			presenter.formatToolMessage(
+				'web_navigate',
+				JSON.stringify({ url: 'https://www.shop.example/', goal: 'refund policy' }),
+				'pending'
+			)
+		).toBe('Navigating web: "shop.example · refund policy"');
+		expect(
+			presenter.formatToolMessage(
+				'scan_email_inbox',
+				JSON.stringify({ window: 'today', looking_for: 'replies from the landlord' }),
+				'pending'
+			)
+		).toBe('Scanning inbox for relevant email: "replies from the landlord"');
+	});
+
 	it('returns "Using tool: X" on invalid JSON argument strings', () => {
 		const h = makeHarness();
 		const presenter = createToolPresenter(h.ctx);

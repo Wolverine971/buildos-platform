@@ -100,11 +100,7 @@
 	}
 
 	async function disconnect(connectionId: string, label: string) {
-		if (
-			!window.confirm(`Disconnect ${label}? Existing events will keep their source mapping.`)
-		) {
-			return;
-		}
+		if (!window.confirm(`Disconnect ${label}?`)) return;
 		await run(`disconnect:${connectionId}`, async () => {
 			await requestJson(`/api/integrations/google-calendar/connections/${connectionId}`, {
 				method: 'DELETE'

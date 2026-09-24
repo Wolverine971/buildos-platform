@@ -36,11 +36,16 @@ export interface QueueConfiguration {
 
 	// Queue data retention
 	enableRetentionCleanup: boolean; // Enable scheduled retention cleanup
-	retentionCleanupCron: string; // Cron expression for scheduled cleanup
+	retentionCleanupCron: string; // Cron for queue + privacy retention (default daily 03:30)
 	staleJobThresholdHours: number; // Cancel stale pending/retrying jobs older than this
 	oldFailedJobsDays: number; // Archive failed jobs older than this (0 disables)
 	completedJobsRetentionDays: number; // Delete completed jobs older than this (0 disables)
 	cleanupBatchSize: number; // Max rows to delete per cleanup batch
+
+	// Privacy retention (scheduler/privacyRetention.ts), run in the retention cron
+	privacyRetentionBatchSize: number; // Rows per cleanup-function call
+	privacyRetentionTaskBudgetMs: number; // Drain time for one store before moving on
+	privacyRetentionTotalBudgetMs: number; // Drain time for the whole run
 }
 
 /**
@@ -152,6 +157,15 @@ function validateConfig(config: QueueConfiguration): QueueConfiguration {
 	validated.oldFailedJobsDays = Math.max(0, validated.oldFailedJobsDays);
 	validated.completedJobsRetentionDays = Math.max(0, validated.completedJobsRetentionDays);
 	validated.cleanupBatchSize = Math.max(10, Math.min(5000, validated.cleanupBatchSize));
+	validated.privacyRetentionBatchSize = Math.max(
+		10,
+		Math.min(5000, validated.privacyRetentionBatchSize)
+	);
+	validated.privacyRetentionTaskBudgetMs = Math.max(1000, validated.privacyRetentionTaskBudgetMs);
+	validated.privacyRetentionTotalBudgetMs = Math.max(
+		validated.privacyRetentionTaskBudgetMs,
+		validated.privacyRetentionTotalBudgetMs
+	);
 
 	return validated;
 }
@@ -211,7 +225,17 @@ function loadQueueConfig(): QueueConfiguration {
 			envInt('QUEUE_OLD_FAILED_RETENTION_DAYS') ?? profile.oldFailedJobsDays ?? 0,
 		completedJobsRetentionDays:
 			envInt('QUEUE_COMPLETED_RETENTION_DAYS') ?? profile.completedJobsRetentionDays ?? 30,
-		cleanupBatchSize: envInt('QUEUE_CLEANUP_BATCH_SIZE') ?? profile.cleanupBatchSize ?? 500
+		cleanupBatchSize: envInt('QUEUE_CLEANUP_BATCH_SIZE') ?? profile.cleanupBatchSize ?? 500,
+		privacyRetentionBatchSize:
+			envInt('PRIVACY_RETENTION_BATCH_SIZE') ?? profile.privacyRetentionBatchSize ?? 500,
+		privacyRetentionTaskBudgetMs:
+			envInt('PRIVACY_RETENTION_TASK_BUDGET_MS') ??
+			profile.privacyRetentionTaskBudgetMs ??
+			2 * 60 * 1000,
+		privacyRetentionTotalBudgetMs:
+			envInt('PRIVACY_RETENTION_TOTAL_BUDGET_MS') ??
+			profile.privacyRetentionTotalBudgetMs ??
+			15 * 60 * 1000
 	};
 
 	return validateConfig(config);
@@ -253,6 +277,9 @@ export function logQueueConfiguration(config: QueueConfiguration = queueConfig):
 	console.log(`   - Stale threshold: ${config.staleJobThresholdHours}h`);
 	console.log(`   - Completed retention: ${config.completedJobsRetentionDays}d`);
 	console.log(`   - Cleanup batch size: ${config.cleanupBatchSize}`);
+	console.log(
+		`   - Privacy retention: batch ${config.privacyRetentionBatchSize}, budget ${config.privacyRetentionTaskBudgetMs}ms/store, ${config.privacyRetentionTotalBudgetMs}ms total`
+	);
 }
 
 /**

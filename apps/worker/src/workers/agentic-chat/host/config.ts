@@ -1,6 +1,11 @@
 // apps/worker/src/workers/agentic-chat/host/config.ts
 import { parseChatWorkflowPrototypeUsers } from '@buildos/shared-types';
-import { GLM_53_MODEL, PARETO_MODEL, QWEN_38_27B_FREE_MODEL } from '@buildos/smart-llm';
+import {
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER,
+	GLM_53_MODEL,
+	PARETO_MODEL,
+	QWEN_38_27B_FREE_MODEL
+} from '@buildos/smart-llm';
 
 import {
 	type AgenticChatConsumerConfig,
@@ -45,12 +50,12 @@ const PARETO_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 // Do not use `only`: an allowlist forfeits the availability the ordered
 // preference already keeps, and the semantic reviewer builds its own routing.
 // Mid-stream recovery is owned by the adapter's atomic buffered-pass retry.
-const DEFAULT_OPENROUTER_PROVIDER_POOL = Object.freeze([
-	'deepinfra',
-	'gmicloud',
-	'alibaba',
-	'streamlake'
-]);
+// 2026-09-24 (tasker 103): every request now requires ZDR, so the order names
+// only hosts on OpenRouter's /endpoints/zdr list for V4 Flash. GMICloud,
+// Alibaba, and StreamLake are not on it; NextBit (p50 7.8 s above),
+// Open Inference, and Parasail are. DeepInfra, NextBit, and Open Inference
+// support tool_choice=required; Parasail does not.
+const DEFAULT_OPENROUTER_PROVIDER_POOL = DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER;
 const DEFAULT_OPENROUTER_PROVIDER_IGNORE = Object.freeze(['azure']);
 const DEFAULT_OPENROUTER_PROVIDER_ROUTING = Object.freeze({
 	allow_fallbacks: true,

@@ -4,14 +4,13 @@ import {
 	ACTIVE_EXPERIMENT_MODEL,
 	AGENT_STATE_RECONCILIATION_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
+	DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER,
 	GEMINI_31_FLASH_LITE_MODEL,
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
 	KIMI_EXPERIMENT_MODEL,
-	NEX_N2_MINI_MODEL,
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_MULTIMODAL_MODELS,
-	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
 	QWEN_38_27B_FREE_MODEL,
 	XIAOMI_MIMO_V25_MODEL
@@ -53,26 +52,6 @@ function createServiceWithUsageLogger(insertMock: ReturnType<typeof vi.fn>) {
 	});
 }
 
-function createServiceWithDirectFallbacks() {
-	return new OpenRouterV2Service({
-		apiKey: 'openrouter-test-key',
-		httpReferer: 'https://buildos.test',
-		appName: 'OpenRouter V2 Test',
-		moonshot: {
-			apiKey: 'moonshot-test-key',
-			apiUrl: 'https://api.moonshot.ai/v1/chat/completions'
-		},
-		openai: {
-			apiKey: 'openai-test-key',
-			apiUrl: 'https://api.openai.com/v1/chat/completions',
-			model: 'configured-openai-fallback-model'
-		},
-		directFallbacks: {
-			providers: ['moonshot', 'openai']
-		}
-	});
-}
-
 function createSseResponse(payloads: string[], headers?: Record<string, string>) {
 	const encoder = new TextEncoder();
 	const stream = new ReadableStream({
@@ -95,7 +74,7 @@ function createSseResponse(payloads: string[], headers?: Record<string, string>)
 
 describe('OpenRouterV2Service model routing', () => {
 	it.each(['json', 'text', 'stream'] as const)(
-		'does not escape free Qwen to paid direct providers for %s',
+		'does not escape free Qwen to paid fallbacks for %s',
 		async (operation) => {
 			const bodies: Record<string, unknown>[] = [];
 			const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -105,7 +84,7 @@ describe('OpenRouterV2Service model routing', () => {
 				});
 			});
 			vi.stubGlobal('fetch', fetchMock);
-			const service = createServiceWithDirectFallbacks();
+			const service = createService();
 			if (operation === 'json') {
 				await expect(
 					service.getJSONResponse({
@@ -281,7 +260,7 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['baidu', 'gmicloud']
+			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER]
 		});
 		expect(requestBodies[1]?.model).toBe(OPENROUTER_V2_JSON_MODELS[1]);
 		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2, 5));
@@ -355,7 +334,7 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['baidu', 'gmicloud']
+			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER]
 		});
 	});
 
@@ -503,14 +482,14 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.models).toEqual([
 			GEMINI_37_FLASH_MODEL,
 			XIAOMI_MIMO_V25_MODEL,
-			NEX_N2_MINI_MODEL
+			GEMINI_31_FLASH_LITE_MODEL
 		]);
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['baidu', 'gmicloud']
+			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER]
 		});
 	});
 
@@ -757,339 +736,86 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[1]?.temperature).toBe(0.1);
 	});
 
-	it('falls back to direct Moonshot for JSON when OpenRouter is unavailable', async () => {
-		const requestUrls: string[] = [];
-		const requestBodies: any[] = [];
-		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-			requestUrls.push(url);
-			if (typeof init?.body === 'string') {
-				requestBodies.push(JSON.parse(init.body));
-			}
-
-			if (url.includes('openrouter.ai')) {
-				return new Response(JSON.stringify({ error: { message: 'OpenRouter outage' } }), {
-					status: 503,
-					headers: { 'content-type': 'application/json' }
+	// Tasker 103: direct Moonshot/OpenAI fallbacks bypassed ZDR and were removed.
+	it.each(['json', 'text', 'stream'] as const)(
+		'never leaves OpenRouter when every OpenRouter model fails (%s)',
+		async (operation) => {
+			vi.stubEnv('PRIVATE_MOONSHOT_API_KEY', 'moonshot-test-key');
+			vi.stubEnv('PRIVATE_OPENAI_API_KEY', 'openai-test-key');
+			vi.stubEnv('PRIVATE_OPENAI_CHAT_FALLBACK_MODEL', 'gpt-4o-mini');
+			vi.stubEnv('OPENROUTER_V2_DIRECT_FALLBACKS_ENABLED', 'true');
+			try {
+				const requestUrls: string[] = [];
+				const fetchMock = vi.fn(async (url: string) => {
+					requestUrls.push(url);
+					return new Response(JSON.stringify({ error: { message: 'unavailable' } }), {
+						status: 503
+					});
 				});
-			}
-
-			return new Response(
-				JSON.stringify({
-					id: 'moonshot-json-fallback',
-					model: 'kimi-k2.6',
-					choices: [
-						{
-							index: 0,
-							message: {
-								role: 'assistant',
-								content: '{"ok":true,"provider":"moonshot"}'
-							},
-							finish_reason: 'stop'
-						}
-					],
-					usage: {
-						prompt_tokens: 10,
-						completion_tokens: 4,
-						total_tokens: 14
-					}
-				}),
-				{
-					status: 200,
-					headers: { 'content-type': 'application/json' }
+				vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+				const service = createService();
+				if (operation === 'json') {
+					await expect(
+						service.getJSONResponse({
+							systemPrompt: 'Return JSON.',
+							userPrompt: 'Respond.',
+							userId: 'user-1'
+						})
+					).rejects.toThrow();
+				} else if (operation === 'text') {
+					await expect(
+						service.generateTextDetailed({ prompt: 'Respond.', userId: 'user-1' })
+					).rejects.toThrow();
+				} else {
+					const events = [];
+					for await (const event of service.streamText({
+						messages: [{ role: 'user', content: 'Respond.' }],
+						userId: 'user-1'
+					}))
+						events.push(event);
+					expect(events.some((event) => event.type === 'error')).toBe(true);
 				}
-			);
-		});
-
-		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-		const service = createServiceWithDirectFallbacks();
-		const onUsage = vi.fn();
-		const result = await service.getJSONResponse<{ ok: boolean; provider: string }>({
-			systemPrompt: 'Return valid JSON.',
-			userPrompt: 'Respond with {"ok":true}.',
-			model: DEEPSEEK_V4_FLASH_MODEL,
-			models: [DEEPSEEK_V4_FLASH_MODEL],
-			includeDefaultModels: false,
-			onUsage
-		});
-
-		expect(result).toEqual({ ok: true, provider: 'moonshot' });
-		expect(onUsage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				model: KIMI_EXPERIMENT_MODEL,
-				billingProvider: 'moonshot',
-				provider: 'moonshotai',
-				providerRequestId: 'moonshot-json-fallback',
-				promptTokens: 10,
-				completionTokens: 4,
-				totalTokens: 14,
-				costSource: 'catalog_estimate'
-			})
-		);
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
-		expect(requestUrls[1]).toBe('https://api.moonshot.ai/v1/chat/completions');
-		expect(requestBodies[0]?.provider).toEqual({
-			allow_fallbacks: true,
-			require_parameters: true,
-			data_collection: 'deny',
-			zdr: true,
-			order: ['baidu', 'gmicloud']
-		});
-		expect(requestBodies[1]?.model).toBe('kimi-k2.6');
-		expect(requestBodies[1]?.temperature).toBe(1);
-		expect(requestBodies[1]?.response_format).toEqual({ type: 'json_object' });
-	});
-
-	it('retries empty JSON content from direct Moonshot fallback', async () => {
-		const requestUrls: string[] = [];
-		const requestBodies: any[] = [];
-		let directAttempts = 0;
-		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-			requestUrls.push(url);
-			if (typeof init?.body === 'string') {
-				requestBodies.push(JSON.parse(init.body));
-			}
-
-			if (url.includes('openrouter.ai')) {
-				return new Response(JSON.stringify({ error: { message: 'OpenRouter outage' } }), {
-					status: 503,
-					headers: { 'content-type': 'application/json' }
-				});
-			}
-
-			directAttempts++;
-			return new Response(
-				JSON.stringify({
-					id: `moonshot-json-empty-retry-${directAttempts}`,
-					model: 'kimi-k2.6',
-					choices: [
-						{
-							index: 0,
-							message: {
-								role: 'assistant',
-								content:
-									directAttempts === 1
-										? ''
-										: '{"ok":true,"provider":"moonshot","retrySucceeded":true}'
-							},
-							finish_reason: 'stop'
-						}
-					],
-					usage: {
-						prompt_tokens: 10,
-						completion_tokens: 4,
-						total_tokens: 14
-					}
-				}),
-				{
-					status: 200,
-					headers: { 'content-type': 'application/json' }
+				expect(requestUrls.length).toBeGreaterThan(0);
+				for (const url of requestUrls) {
+					expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
 				}
-			);
-		});
-
-		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-		const service = createServiceWithDirectFallbacks();
-		const result = await service.getJSONResponse<{
-			ok: boolean;
-			provider: string;
-			retrySucceeded: boolean;
-		}>({
-			systemPrompt: 'Return valid JSON.',
-			userPrompt: 'Respond with {"ok":true}.',
-			model: DEEPSEEK_V4_FLASH_MODEL,
-			models: [DEEPSEEK_V4_FLASH_MODEL],
-			includeDefaultModels: false,
-			validation: {
-				retryOnParseError: true,
-				maxRetries: 1
+			} finally {
+				vi.unstubAllEnvs();
 			}
-		});
-
-		expect(result).toEqual({ ok: true, provider: 'moonshot', retrySucceeded: true });
-		expect(fetchMock).toHaveBeenCalledTimes(3);
-		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
-		expect(requestUrls[1]).toBe('https://api.moonshot.ai/v1/chat/completions');
-		expect(requestUrls[2]).toBe('https://api.moonshot.ai/v1/chat/completions');
-		expect(requestBodies[1]?.model).toBe('kimi-k2.6');
-		expect(requestBodies[2]?.model).toBe('kimi-k2.6');
-		expect(requestBodies[2]?.response_format).toEqual({ type: 'json_object' });
-	});
-
-	it('falls back to direct Moonshot streaming before emitting chat output', async () => {
-		const requestUrls: string[] = [];
-		const requestBodies: any[] = [];
-		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-			requestUrls.push(url);
-			if (typeof init?.body === 'string') {
-				requestBodies.push(JSON.parse(init.body));
-			}
-
-			if (url.includes('openrouter.ai')) {
-				return new Response(JSON.stringify({ error: { message: 'OpenRouter outage' } }), {
-					status: 503,
-					headers: { 'content-type': 'application/json' }
-				});
-			}
-
-			return createSseResponse([
-				JSON.stringify({
-					id: 'moonshot-stream-fallback',
-					model: 'kimi-k2.6',
-					choices: [{ delta: { content: 'Moonshot answer' } }]
-				}),
-				JSON.stringify({
-					choices: [{ delta: {}, finish_reason: 'stop' }],
-					usage: {
-						prompt_tokens: 12,
-						completion_tokens: 3,
-						total_tokens: 15
-					}
-				}),
-				'[DONE]'
-			]);
-		});
-
-		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-		const service = createServiceWithDirectFallbacks();
-		const events = [];
-		for await (const event of service.streamText({
-			messages: [{ role: 'user', content: 'hello' }],
-			tools: [
-				{
-					type: 'function',
-					function: {
-						name: 'lookup_project',
-						description: 'Lookup a project.',
-						parameters: { type: 'object', properties: {} }
-					}
-				}
-			],
-			userId: 'user_1',
-			profile: 'balanced'
-		})) {
-			events.push(event);
 		}
+	);
 
-		const text = events
-			.filter((event) => event.type === 'text')
-			.map((event) => event.content)
-			.join('');
-		const done = events.find((event) => event.type === 'done');
-
-		expect(text).toBe('Moonshot answer');
-		expect(done).toMatchObject({
-			type: 'done',
-			model: KIMI_EXPERIMENT_MODEL,
-			provider: 'moonshotai'
-		});
-		expect(fetchMock).toHaveBeenCalledTimes(OPENROUTER_V2_TOOL_MODELS.length + 1);
-		expect(
-			requestUrls
-				.slice(0, OPENROUTER_V2_TOOL_MODELS.length)
-				.every((url) => url.includes('openrouter.ai'))
-		).toBe(true);
-		expect(requestUrls[OPENROUTER_V2_TOOL_MODELS.length]).toBe(
-			'https://api.moonshot.ai/v1/chat/completions'
-		);
-		expect(requestBodies[0]?.provider).toEqual({
-			allow_fallbacks: true,
-			require_parameters: true,
-			data_collection: 'deny',
-			zdr: true,
-			order: ['baidu', 'gmicloud']
-		});
-		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.model).toBe('kimi-k2.6');
-		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.tools).toHaveLength(1);
-		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.tool_choice).toBe('auto');
-	});
-
-	it('continues to direct OpenAI when direct Moonshot fallback is unavailable', async () => {
-		const requestUrls: string[] = [];
-		const requestBodies: any[] = [];
-		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-			requestUrls.push(url);
-			if (typeof init?.body === 'string') {
-				requestBodies.push(JSON.parse(init.body));
-			}
-
-			if (url.includes('openrouter.ai')) {
-				return new Response(JSON.stringify({ error: { message: 'OpenRouter outage' } }), {
-					status: 503,
-					headers: { 'content-type': 'application/json' }
-				});
-			}
-
-			if (url.includes('moonshot.ai')) {
-				return new Response(JSON.stringify({ error: { message: 'Moonshot outage' } }), {
-					status: 503,
-					headers: { 'content-type': 'application/json' }
-				});
-			}
-
-			return createSseResponse([
-				JSON.stringify({
-					id: 'openai-stream-fallback',
-					model: 'configured-openai-fallback-model',
-					choices: [{ delta: { content: 'OpenAI answer' } }]
-				}),
-				JSON.stringify({
-					choices: [{ delta: {}, finish_reason: 'stop' }],
-					usage: {
-						prompt_tokens: 12,
-						completion_tokens: 3,
-						total_tokens: 15
-					}
-				}),
-				'[DONE]'
-			]);
-		});
-
-		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-
-		const service = createServiceWithDirectFallbacks();
-		const events = [];
-		for await (const event of service.streamText({
-			messages: [{ role: 'user', content: 'hello' }],
-			userId: 'user_1',
-			profile: 'balanced'
-		})) {
-			events.push(event);
+	it('ignores the retired PRIVATE_OPENROUTER_REQUIRE_ZDR=false opt-out', async () => {
+		vi.stubEnv('PRIVATE_OPENROUTER_REQUIRE_ZDR', 'false');
+		try {
+			const requestBodies: any[] = [];
+			const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+				requestBodies.push(JSON.parse(String(init?.body)));
+				return new Response(
+					JSON.stringify({
+						id: 'chatcmpl-zdr',
+						model: DEEPSEEK_V4_FLASH_MODEL,
+						choices: [
+							{
+								index: 0,
+								message: { role: 'assistant', content: 'Hi' },
+								finish_reason: 'stop'
+							}
+						],
+						usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 }
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				);
+			});
+			vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+			await createService().generateTextDetailed({ prompt: 'Hi', userId: 'user-1' });
+			expect(requestBodies[0]?.provider).toMatchObject({
+				data_collection: 'deny',
+				zdr: true
+			});
+		} finally {
+			vi.unstubAllEnvs();
 		}
-
-		const text = events
-			.filter((event) => event.type === 'text')
-			.map((event) => event.content)
-			.join('');
-		const done = events.find((event) => event.type === 'done');
-
-		expect(text).toBe('OpenAI answer');
-		expect(done).toMatchObject({
-			type: 'done',
-			model: 'openai/configured-openai-fallback-model',
-			provider: 'openai'
-		});
-		expect(fetchMock).toHaveBeenCalledTimes(OPENROUTER_V2_TEXT_MODELS.length + 2);
-		expect(
-			requestUrls
-				.slice(0, OPENROUTER_V2_TEXT_MODELS.length)
-				.every((url) => url.includes('openrouter.ai'))
-		).toBe(true);
-		expect(requestUrls[OPENROUTER_V2_TEXT_MODELS.length]).toBe(
-			'https://api.moonshot.ai/v1/chat/completions'
-		);
-		expect(requestUrls[OPENROUTER_V2_TEXT_MODELS.length + 1]).toBe(
-			'https://api.openai.com/v1/chat/completions'
-		);
-		expect(requestBodies[OPENROUTER_V2_TEXT_MODELS.length + 1]?.model).toBe(
-			'configured-openai-fallback-model'
-		);
-		expect(requestBodies[OPENROUTER_V2_TEXT_MODELS.length + 1]?.stream_options).toEqual({
-			include_usage: true
-		});
 	});
 });
 
@@ -1778,7 +1504,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			require_parameters: true,
 			data_collection: 'deny',
 			zdr: true,
-			order: ['baidu', 'gmicloud']
+			order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER]
 		});
 	});
 
@@ -1835,7 +1561,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 				allow_fallbacks: true,
 				data_collection: 'deny',
 				zdr: true,
-				order: ['baidu', 'gmicloud'],
+				order: [...DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER],
 				ignore: ['digitalocean']
 			}
 		});

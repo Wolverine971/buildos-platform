@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 252 tables, grouped by domain.
+Complete column listing for all 253 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-09-24T14:28:55.952Z
+**Schema generated:** 2026-09-24T19:51:25.663Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -28,7 +28,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Daily Briefs](#daily-briefs) (5 tables)
 - [Monitoring & Analytics](#monitoring--analytics) (10 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (47 tables)
+- [Other](#other) (48 tables)
 
 ---
 
@@ -500,7 +500,7 @@ ai_model `string?` · ai_model_version `string?` · analysis_warnings `Json` · 
 
 ### calendar_analysis_events
 
-analysis_id `string` · attendee_count `number?` · attendee_emails `string[]?` · calendar_event_id `string` · calendar_id `string` · calendar_source_id `string?` · contributing_source_event_ids `Json` · created_at `string?` · event_description `string?` · event_end `string?` · event_location `string?` · event_start `string?` · event_title `string?` · exclusion_reason `string?` · id `string` · included_in_analysis `boolean?` · is_organizer `boolean?` · is_recurring `boolean?` · recurrence_pattern `string?` · suggestion_id `string?`
+analysis_id `string` · attendee_count `number?` · calendar_event_id `string` · calendar_id `string` · calendar_source_id `string?` · contributing_source_event_ids `Json` · created_at `string?` · event_end `string?` · event_start `string?` · event_title `string?` · exclusion_reason `string?` · id `string` · included_in_analysis `boolean?` · is_organizer `boolean?` · is_recurring `boolean?` · recurrence_pattern `string?` · suggestion_id `string`
 
 ### calendar_analysis_preferences
 
@@ -1089,6 +1089,10 @@ agent_instructions `string` · analysis_version `number` · computed_at `string`
 ### user_buildos_agents
 
 agent_handle `string` · created_at `string` · default_policy `Json` · id `string` · metadata `Json` · status `string` · updated_at `string` · user_id `string`
+
+### user_data_exports
+
+byte_size `number?` · completed_at `string?` · error_code `string?` · expires_at `string?` · id `string` · part_count `number?` · requested_at `string` · started_at `string?` · status `string` · storage_path `string?` · user_id `string`
 
 ### user_project_behavioral_profiles
 

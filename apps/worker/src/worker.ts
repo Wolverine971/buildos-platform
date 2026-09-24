@@ -38,6 +38,7 @@ import { processProjectIconJob } from './workers/project-icon/projectIconWorker'
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processFreshnessRadarScanJob } from './workers/freshness-radar/signalJob';
 import { processCaptureChatCheckpointJob } from './workers/chat/checkpoint/checkpointJob';
+import { processUserDataExportJob } from './workers/export/userDataExportWorker';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { processQuestionTreeJob } from './workers/question-tree/questionTreeWorker';
 import type { QuestionTreeJobMetadata } from './workers/question-tree/questionTreeContracts';
@@ -477,6 +478,9 @@ export async function startWorker() {
 
 	// Register chat checkpoint capture (tasker/95): thinking log + START HERE, off the turn path.
 	queue.process('capture_chat_checkpoint', processCaptureChatCheckpointJob);
+
+	// Register "Download my data" exports (Settings → Your data).
+	queue.process('user_data_export', processUserDataExportJob);
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);

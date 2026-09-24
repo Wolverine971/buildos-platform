@@ -1,0 +1,66 @@
+{
+	"billing": {
+		"source": "Authenticated Supabase dashboard, manually transcribed displayed aggregates; no screenshot export or invoice download",
+		"observed_at_utc_approx": "2026-09-24T17:12:00Z",
+		"organization": "BuildOS",
+		"organization_id": "dajglretqbcvqwuznizv",
+		"cycle_start": "2026-09-17",
+		"cycle_end": "2026-10-17",
+		"currency": "USD",
+		"accrued_total": 29.97,
+		"projected_cycle_total": 65.28,
+		"accrued_items": {
+			"pro": 25,
+			"three_micro_projects_compute": 7.38,
+			"compute_credit_applied": -7.38,
+			"branching": 2.46,
+			"custom_domain": 2.51
+		},
+		"per_project_display": {
+			"compute_size": "Micro",
+			"hours": 183,
+			"amount": 2.46,
+			"names": ["build_os", "uxm", "cody-shooting-complex"]
+		},
+		"branch_display": {
+			"name": "agentic-chat-gate",
+			"hours": 183,
+			"amount": 2.46,
+			"hardware_size": "Nano"
+		},
+		"org_usage": {
+			"egress_GB": 4.327,
+			"egress_included_GB": 250,
+			"storage_GB": 0.312,
+			"storage_included_GB": 100,
+			"realtime_messages": 20705,
+			"realtime_included_messages": 5000000,
+			"peak_realtime_connections": 12,
+			"included_peak_realtime_connections": 500,
+			"MAU": 3,
+			"overage_amount": 0
+		},
+		"production_usage": {
+			"egress_GB": 3.963,
+			"storage_GB": 0.311,
+			"realtime_messages": 1923,
+			"peak_realtime_connections": 10,
+			"MAU": 2,
+			"micro_hours": 184
+		},
+		"caveat": "Screens loaded sequentially; small hour/count differences reflect accrual timing. Projected invoice is a dashboard forecast, not a final invoice. Other projects were not audited beyond organization cost metadata."
+	},
+	"database_dashboard": {
+		"observed_at_utc_approx": "2026-09-24T17:16:00Z",
+		"project_ref": "iwifjtlebphefldmwbkh",
+		"window": "last 24 hours",
+		"peak_connections_display": 21,
+		"max_connections": 60,
+		"overview_cpu_percent": 3,
+		"cpu_chart_aggregate_percent": 2.89,
+		"overview_memory_percent": 57,
+		"disk_used_percent": 14,
+		"overview_disk_io_percent": 1,
+		"limitations": "Some I/O charts returned Unable to load data. CPU aggregate is not a spike maximum. Memory chart 921.38 MB label represents total physical memory, not measured current usage."
+	}
+}

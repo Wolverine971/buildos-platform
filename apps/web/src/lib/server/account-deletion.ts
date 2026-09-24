@@ -8,6 +8,11 @@ import {
 } from '$lib/server/google-calendar-connection.service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { chunkArray } from '$lib/utils/chunk-array';
+import {
+	deletePostHogPerson,
+	type PostHogPersonDeletionStatus
+} from '$lib/server/posthog-person-deletion';
+import { logSecurityEventBlocking } from '$lib/server/security-event-logger';
 
 type DeletionRequestRow = {
 	id: string;
@@ -24,6 +29,15 @@ type StorageObjectRef = {
 	bucket_id: string;
 	object_name: string;
 };
+
+// From libri.account_deletion_storage_scope(): libraries the purge deletes, and
+// the person's own upload paths in libraries that survive.
+type LibriDeletionScope = {
+	library_ids: string[];
+	object_paths: string[];
+};
+
+const LIBRI_ASSETS_BUCKET = 'libri-assets';
 
 type GmailDeletionCleanupResult = {
 	connectionsFound: number;
@@ -234,13 +248,17 @@ const STORAGE_LIST_PAGE_SIZE = 1000;
  */
 export async function listAccountDeletionStorageObjects(
 	admin: { rpc: (...args: any[]) => any },
-	userId: string
+	userId: string,
+	libriLibraryIds: string[] = []
 ): Promise<StorageObjectRef[]> {
 	const rows: StorageObjectRef[] = [];
 	let from = 0;
 	while (true) {
 		const { data, error } = await admin
-			.rpc('list_account_deletion_storage_objects', { p_user_id: userId })
+			.rpc('list_account_deletion_storage_objects', {
+				p_user_id: userId,
+				p_libri_library_ids: libriLibraryIds
+			})
 			.order('bucket_id', { ascending: true })
 			.order('object_name', { ascending: true })
 			.range(from, from + STORAGE_LIST_PAGE_SIZE - 1);
@@ -253,17 +271,35 @@ export async function listAccountDeletionStorageObjects(
 	return rows;
 }
 
-async function removeAccountStorage(userId: string): Promise<number> {
+async function loadLibriDeletionScope(admin: any, userId: string): Promise<LibriDeletionScope> {
+	const { data, error } = await admin
+		.schema('libri')
+		.rpc('account_deletion_storage_scope', { p_user_id: userId });
+	if (error) throw error;
+	const scope = (data ?? {}) as Partial<LibriDeletionScope>;
+	return {
+		library_ids: Array.isArray(scope.library_ids) ? scope.library_ids : [],
+		object_paths: Array.isArray(scope.object_paths) ? scope.object_paths : []
+	};
+}
+
+async function removeAccountStorage(userId: string, libri: LibriDeletionScope): Promise<number> {
 	const admin = createAdminSupabaseClient();
-	const objects = await listAccountDeletionStorageObjects(admin as any, userId);
+	const objects = await listAccountDeletionStorageObjects(
+		admin as any,
+		userId,
+		libri.library_ids
+	);
 
 	const byBucket = new Map<string, Set<string>>();
-	for (const row of objects) {
-		if (!row.bucket_id || !row.object_name) continue;
-		const paths = byBucket.get(row.bucket_id) ?? new Set<string>();
-		paths.add(row.object_name);
-		byBucket.set(row.bucket_id, paths);
-	}
+	const add = (bucket: string, path: string) => {
+		if (!bucket || !path) return;
+		const paths = byBucket.get(bucket) ?? new Set<string>();
+		paths.add(path);
+		byBucket.set(bucket, paths);
+	};
+	for (const row of objects) add(row.bucket_id, row.object_name);
+	for (const path of libri.object_paths) add(LIBRI_ASSETS_BUCKET, path);
 
 	let removed = 0;
 	for (const [bucket, paths] of byBucket) {
@@ -281,6 +317,7 @@ async function purgeAccount(request: DeletionRequestRow): Promise<{
 	storageObjects: number;
 	gmailCleanup: GmailDeletionCleanupResult;
 	calendarCleanup: CalendarDeletionCleanupResult;
+	posthog: PostHogPersonDeletionStatus;
 }> {
 	const admin = createAdminSupabaseClient();
 	await (admin as any)
@@ -300,7 +337,16 @@ async function purgeAccount(request: DeletionRequestRow): Promise<{
 	const gmailCleanup = await removeGmailConnectionsForAccountDeletion(request.user_id);
 	const calendarCleanup = await removeCalendarConnectionsForAccountDeletion(request.user_id);
 
-	const storageObjects = await removeAccountStorage(request.user_id);
+	// Files first: the listing needs the rows the database purge removes.
+	const libriScope = await loadLibriDeletionScope(admin, request.user_id);
+	const storageObjects = await removeAccountStorage(request.user_id, libriScope);
+
+	// Libri rows RESTRICT the auth user delete, so they go before the public purge.
+	const { error: libriError } = await (admin as any)
+		.schema('libri')
+		.rpc('purge_account_deletion', { p_user_id: request.user_id });
+	if (libriError) throw libriError;
+
 	const { error: databaseError } = await (admin as any).rpc(
 		'finalize_account_deletion_database',
 		{ p_user_id: request.user_id }
@@ -309,6 +355,9 @@ async function purgeAccount(request: DeletionRequestRow): Promise<{
 
 	const { error: authError } = await admin.auth.admin.deleteUser(request.user_id);
 	if (authError && !isMissingAuthUser(authError)) throw authError;
+
+	// Analytics is outside the database; its outcome is recorded, never blocking.
+	const posthog = await deletePostHogPerson(request.user_id);
 
 	const completedAt = new Date().toISOString();
 	const { error: completionError } = await (admin as any)
@@ -319,12 +368,13 @@ async function purgeAccount(request: DeletionRequestRow): Promise<{
 			lease_expires_at: null,
 			next_attempt_at: null,
 			last_error: null,
+			posthog_deletion_status: posthog,
 			updated_at: completedAt
 		})
 		.eq('id', request.id);
 	if (completionError) throw completionError;
 
-	return { storageObjects, gmailCleanup, calendarCleanup };
+	return { storageObjects, gmailCleanup, calendarCleanup, posthog };
 }
 
 export async function retryPendingDeletionSubscriptionCancellations(limit = 25): Promise<{
@@ -361,6 +411,9 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 	calendarLegacyTokensDeleted: number;
 	calendarRemoteRevocationsSucceeded: number;
 	calendarRemoteRevocationsUnconfirmed: number;
+	posthogPersonsDeleted: number;
+	posthogDeletionsSkipped: number;
+	posthogDeletionsFailed: number;
 }> {
 	const admin = createAdminSupabaseClient();
 	const { data, error } = await (admin as any).rpc('claim_due_account_deletions', {
@@ -380,6 +433,9 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 	let calendarLegacyTokensDeleted = 0;
 	let calendarRemoteRevocationsSucceeded = 0;
 	let calendarRemoteRevocationsUnconfirmed = 0;
+	let posthogPersonsDeleted = 0;
+	let posthogDeletionsSkipped = 0;
+	let posthogDeletionsFailed = 0;
 
 	for (const request of requests) {
 		try {
@@ -394,6 +450,9 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 			calendarRemoteRevocationsSucceeded += result.calendarCleanup.remoteRevocationsSucceeded;
 			calendarRemoteRevocationsUnconfirmed +=
 				result.calendarCleanup.remoteRevocationsUnconfirmed;
+			if (result.posthog === 'deleted') posthogPersonsDeleted += 1;
+			if (result.posthog === 'skipped') posthogDeletionsSkipped += 1;
+			if (result.posthog === 'failed') posthogDeletionsFailed += 1;
 		} catch (requestError) {
 			failed += 1;
 			const message =
@@ -424,6 +483,54 @@ export async function processDueAccountDeletions(limit = 5): Promise<{
 		calendarConnectionsDeleted,
 		calendarLegacyTokensDeleted,
 		calendarRemoteRevocationsSucceeded,
-		calendarRemoteRevocationsUnconfirmed
+		calendarRemoteRevocationsUnconfirmed,
+		posthogPersonsDeleted,
+		posthogDeletionsSkipped,
+		posthogDeletionsFailed
 	};
+}
+
+const DELETION_DEADLINE_GRACE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The privacy page promises deletion within 30 days. Every request still open a
+ * day past its scheduled time writes a critical security event on each run
+ * until it completes. The event names the request, never the person.
+ */
+export async function alertOverdueAccountDeletions(now = new Date()): Promise<number> {
+	const admin = createAdminSupabaseClient();
+	const cutoff = new Date(now.getTime() - DELETION_DEADLINE_GRACE_MS).toISOString();
+	const { data, error } = await (admin as any)
+		.from('account_deletion_requests')
+		.select('id, status, scheduled_for, attempt_count')
+		.neq('status', 'completed')
+		.lt('scheduled_for', cutoff)
+		.order('scheduled_for', { ascending: true })
+		.limit(50);
+	if (error) throw error;
+
+	const overdue = (data ?? []) as Array<
+		Pick<DeletionRequestRow, 'id' | 'status' | 'scheduled_for' | 'attempt_count'>
+	>;
+	for (const request of overdue) {
+		await logSecurityEventBlocking(
+			{
+				eventType: 'account_deletion.deadline_missed',
+				category: 'system',
+				outcome: 'failure',
+				severity: 'critical',
+				actorType: 'system',
+				targetType: 'account_deletion_request',
+				targetId: request.id,
+				reason: 'Account deletion is more than 24 hours past its scheduled time',
+				metadata: {
+					status: request.status,
+					scheduledFor: request.scheduled_for,
+					attemptCount: request.attempt_count
+				}
+			},
+			{ supabase: admin as any }
+		);
+	}
+	return overdue.length;
 }

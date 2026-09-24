@@ -33,6 +33,28 @@ function task(title: string, state_key: Task['state_key'], overrides: Partial<Ta
 	};
 }
 
+function archivedTask(title: string): Task {
+	const at = new Date().toISOString();
+	return task(title, 'todo', { deleted_at: at, archived_at: at });
+}
+
+function json(body: unknown, status = 200) {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { 'Content-Type': 'application/json' }
+	});
+}
+
+function archivePage(tasks: Task[]) {
+	return json({ success: true, data: { tasks, total: tasks.length, hasMore: false } });
+}
+
+function drop(target: HTMLElement, taskId: string) {
+	return fireEvent.drop(target, {
+		dataTransfer: { getData: () => taskId, setData: () => undefined }
+	});
+}
+
 function renderBoard(tasks: Task[]) {
 	return render(TaskKanbanBoard, {
 		props: {
@@ -47,6 +69,8 @@ function renderBoard(tasks: Task[]) {
 
 describe('TaskKanbanBoard workflow', () => {
 	beforeEach(() => {
+		// The delete confirmation modal restores scroll on close.
+		vi.stubGlobal('scrollTo', vi.fn());
 		Element.prototype.animate = vi.fn(() => {
 			return {
 				finished: Promise.resolve(),
@@ -115,9 +139,7 @@ describe('TaskKanbanBoard workflow', () => {
 	});
 
 	it('loads archived work only when its secondary column is opened', async () => {
-		const archived = task('Archived research', 'todo', {
-			deleted_at: new Date().toISOString()
-		});
+		const archived = archivedTask('Archived research');
 		const fetchMock = vi.fn().mockResolvedValue(
 			new Response(
 				JSON.stringify({
@@ -145,10 +167,8 @@ describe('TaskKanbanBoard workflow', () => {
 	});
 
 	it('refreshes a loaded archive after chat changes and removes stale archived rows', async () => {
-		const old = task('Old archived task', 'todo', { deleted_at: new Date().toISOString() });
-		const archived = task('Deleted through chat', 'todo', {
-			deleted_at: new Date().toISOString()
-		});
+		const old = archivedTask('Old archived task');
+		const archived = archivedTask('Archived through chat');
 		const response = (tasks: Task[]) =>
 			new Response(
 				JSON.stringify({
@@ -181,5 +201,104 @@ describe('TaskKanbanBoard workflow', () => {
 		expect(await screen.findByText(archived.title)).toBeInTheDocument();
 		expect(screen.queryByText(old.title)).not.toBeInTheDocument();
 		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('archives a dropped card with archive: true so it is kept', async () => {
+		const live = task('Park this idea', 'todo');
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			if (url.includes('/tasks/archived')) return archivePage([]);
+			if (init?.method === 'DELETE') return json({ success: true, data: {} });
+			throw new Error(`Unexpected fetch ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		renderBoard([live]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Show archived tasks' }));
+		const archivedColumn = await screen.findByRole('region', { name: 'Archived column' });
+		await waitFor(() =>
+			expect(within(archivedColumn).getByText('No archived tasks')).toBeTruthy()
+		);
+
+		await drop(archivedColumn, live.id);
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(`/api/onto/tasks/${live.id}`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify({ archive: true })
+			});
+		});
+		expect(within(archivedColumn).getByText('Park this idea')).toBeInTheDocument();
+		expect(within(archivedColumn).getByText('archived today')).toBeInTheDocument();
+	});
+
+	it('restores an archived card dragged back to a workflow column', async () => {
+		const archived = archivedTask('Bring this back');
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			if (url.includes('/tasks/archived')) return archivePage([archived]);
+			if (url.endsWith('/restore') && init?.method === 'POST')
+				return json({ success: true, data: { task: archived } });
+			throw new Error(`Unexpected fetch ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		renderBoard([]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Show archived tasks' }));
+		await screen.findByText('Bring this back');
+
+		await drop(screen.getByRole('region', { name: 'Backlog column' }), archived.id);
+
+		const backlog = screen.getByRole('region', { name: 'Backlog column' });
+		await waitFor(() => expect(within(backlog).getByText('Bring this back')).toBeTruthy());
+		expect(fetchMock).toHaveBeenCalledWith(`/api/onto/tasks/${archived.id}/restore`, {
+			method: 'POST',
+			credentials: 'same-origin'
+		});
+		expect(
+			within(screen.getByRole('region', { name: 'Archived column' })).queryByText(
+				'Bring this back'
+			)
+		).not.toBeInTheDocument();
+	});
+
+	it('deletes an archived card after confirmation and drops it from the board', async () => {
+		const archived = archivedTask('Old experiment');
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			if (url.includes('/tasks/archived')) return archivePage([archived]);
+			if (init?.method === 'DELETE') return json({ success: true, data: {} });
+			throw new Error(`Unexpected fetch ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		renderBoard([]);
+		await fireEvent.click(screen.getByRole('button', { name: 'Show archived tasks' }));
+		await screen.findByText('Old experiment');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Delete Old experiment' }));
+		expect(
+			await screen.findByText(/leaves the archive now and is erased for good after 30/)
+		).toBeInTheDocument();
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Delete task' }));
+
+		await waitFor(() => expect(screen.queryByText('Old experiment')).not.toBeInTheDocument());
+		expect(fetchMock).toHaveBeenLastCalledWith(`/api/onto/tasks/${archived.id}`, {
+			method: 'DELETE',
+			credentials: 'same-origin'
+		});
+		expect(
+			within(screen.getByRole('region', { name: 'Archived column' })).getByText(
+				'No archived tasks'
+			)
+		).toBeInTheDocument();
+	});
+
+	it('never shows a deleted task that was not archived', () => {
+		renderBoard([
+			task('Still here', 'todo'),
+			task('Deleted for good', 'todo', { deleted_at: new Date().toISOString() })
+		]);
+
+		expect(screen.getByText('Still here')).toBeInTheDocument();
+		expect(screen.queryByText('Deleted for good')).not.toBeInTheDocument();
 	});
 });

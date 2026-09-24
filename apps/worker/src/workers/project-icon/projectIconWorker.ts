@@ -675,7 +675,7 @@ export async function processProjectIconJob(
 			steeringPrompt
 		});
 		await job.log(
-			`Image prompt query resolved (${imagePromptSource}): ${imagePromptQuery.slice(0, 280)}`
+			`Image prompt query resolved (${imagePromptSource}, ${imagePromptQuery.length} chars)`
 		);
 
 		stage = 'persist_image_prompt_query';

@@ -30,7 +30,7 @@ function embeddingsClient(): OpenAiEmbeddingsClient {
 		cachedEmbeddingsClient = createEmbeddingsClientFromEnv(process.env);
 		if (!cachedEmbeddingsClient) {
 			throw new Error(
-				'embed_onto_entity requires PRIVATE_OPENROUTER_API_KEY (or an OpenAI key fallback)'
+				'embed_onto_entity requires PRIVATE_OPENROUTER_API_KEY (no direct OpenAI route)'
 			);
 		}
 	}

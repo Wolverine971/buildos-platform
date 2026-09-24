@@ -82,8 +82,8 @@
 	function syncPostHogUser(currentUser: typeof user): void {
 		if (currentUser?.id && currentUser.id !== posthogIdentifiedUserId) {
 			posthogIdentifiedUserId = currentUser.id;
+			// The user id is enough to join server-side events; never send the email address.
 			identifyUser(currentUser.id, {
-				email: currentUser.email,
 				completed_onboarding: untrack(() => completedOnboarding)
 			});
 		}
@@ -939,8 +939,8 @@
 		});
 	});
 
-	afterNavigate(() => {
-		trackMetaPageView();
+	afterNavigate((navigation) => {
+		trackMetaPageView(navigation.to?.route.id ?? null);
 	});
 
 	// PERFORMANCE: Memoize component props to prevent unnecessary re-renders - converted to $derived.by()

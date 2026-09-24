@@ -100,7 +100,7 @@ const embeddings = MODEL_ARG
 		})
 	: createEmbeddingsClientFromEnv(process.env);
 if (!embeddings) {
-	console.error('Missing PRIVATE_OPENROUTER_API_KEY (or an OpenAI key fallback)');
+	console.error('Missing PRIVATE_OPENROUTER_API_KEY (no direct OpenAI route)');
 	process.exit(1);
 }
 /** Model identity stored on onto_embeddings rows for this run. */

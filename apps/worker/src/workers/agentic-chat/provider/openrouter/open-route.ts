@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/provider/openrouter/open-route.ts
 // Builds one route's request body and opens its SSE response, admitting the
 // dispatch gate and starting the local prompt dump before any network I/O.
-import { buildOpenRouterChatCompletionBody } from '@buildos/smart-llm';
+import { buildOpenRouterChatCompletionBody, OPENROUTER_PRIVATE_PROVIDER } from '@buildos/smart-llm';
 import type { AgenticChatTurnProviderMessageV1, AgenticChatTurnProviderToolV1 } from '../contracts';
 import {
 	type LocalPromptDump,
@@ -261,10 +261,12 @@ function buildProviderRequestBody(
 									route.model
 								)
 							},
+			// The privacy policy follows the routing spread so no route
+			// preference can drop it (tasker 103).
 			provider: {
 				allow_fallbacks: true,
-				data_collection: 'deny',
 				...(route.providerRouting ?? {}),
+				...OPENROUTER_PRIVATE_PROVIDER,
 				...(input.dispatchGate
 					? { max_price: { ...input.dispatchGate.providerMaxPrice } }
 					: {})

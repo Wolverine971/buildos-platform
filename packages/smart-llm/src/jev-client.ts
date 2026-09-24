@@ -15,10 +15,16 @@
 //
 // decide() never throws. Every failure is a fail-closed result with a receipt.
 
+import { OPENROUTER_PRIVATE_PROVIDER } from './openrouter-request';
 import type { UsageLogger } from './usage-logger';
 
 export const JEV_DECISIONS_ENDPOINT = 'https://openrouter.ai/api/alpha/decisions';
 export const JEV_DEFAULT_MODEL = 'typesafe/jev-1.13';
+/** Provider object for every Jev decisions body: one pinned endpoint, private policy. */
+export const JEV_PROVIDER_POLICY = Object.freeze({
+	allow_fallbacks: false as const,
+	...OPENROUTER_PRIVATE_PROVIDER
+});
 
 export type JevInstructions = string | { question: string; rules?: readonly string[] };
 export type JevNoulQuestion = { type: 'noul'; instructions: JevInstructions };
@@ -348,7 +354,7 @@ export class JevClient implements JevDecider {
 					model: this.model,
 					state: req.state ?? {},
 					questions: req.questions,
-					provider: { allow_fallbacks: false, data_collection: 'deny' }
+					provider: JEV_PROVIDER_POLICY
 				});
 			} catch {
 				return fail('jev_invalid_question');

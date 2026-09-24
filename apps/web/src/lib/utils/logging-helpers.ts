@@ -7,7 +7,10 @@ const DEFAULT_MAX_STRING_LENGTH = 160;
 const DEFAULT_MAX_DEPTH = 4;
 const DEFAULT_MAX_ENTRIES = 20;
 
-const DEFAULT_REDACT_KEYS = new Set([
+// Keys whose values are user content (chat, email, calendar, documents, voice, search).
+// Keep in sync with apps/worker/src/lib/logSanitizer.ts (enforced by
+// apps/worker/tests/logSanitizerParity.test.ts).
+export const LOG_REDACT_KEYS: readonly string[] = [
 	'content',
 	'message',
 	'userMessage',
@@ -18,12 +21,32 @@ const DEFAULT_REDACT_KEYS = new Set([
 	'tool_result',
 	'toolResult',
 	'toolResults',
-	'messages'
-]);
+	'messages',
+	'subject',
+	'title',
+	'name',
+	'text',
+	'body',
+	'snippet',
+	'query',
+	'description',
+	'summary',
+	'transcript',
+	'instruction',
+	'input',
+	'output',
+	'response',
+	'details'
+];
+
+const DEFAULT_REDACT_KEYS = new Set(LOG_REDACT_KEYS);
 
 const SENSITIVE_KEY_PATTERN =
 	/(?:^|[_-])(?:authorization|cookie|credentials?|password|passwd|private[_-]?key|api[_-]?keys?|client[_-]?secret|access[_-]?token|refresh[_-]?token|id[_-]?token|webhook[_-]?token|sync[_-]?token|session|secret|token)(?:$|[_-])/i;
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISO_DATE_REGEX =
+	/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const PHONE_REGEX = /(?:\+?\d[\d\s().-]{7,}\d)/g;
 const PRIVATE_KEY_REGEX =
@@ -103,7 +126,10 @@ export function sanitizeLogData(
 			return target;
 		}
 		if (typeof target === 'string') {
-			return sanitizeLogText(target, maxStringLength);
+			// Bare ids and dates are not content; the phone pattern would otherwise mangle them.
+			return UUID_REGEX.test(target) || ISO_DATE_REGEX.test(target)
+				? target
+				: sanitizeLogText(target, maxStringLength);
 		}
 		if (target instanceof Date) {
 			return target.toISOString();

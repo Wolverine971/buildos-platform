@@ -3986,15 +3986,12 @@ export type Database = {
         Row: {
           analysis_id: string
           attendee_count: number | null
-          attendee_emails: string[] | null
           calendar_event_id: string
           calendar_id: string
           calendar_source_id: string | null
           contributing_source_event_ids: Json
           created_at: string | null
-          event_description: string | null
           event_end: string | null
-          event_location: string | null
           event_start: string | null
           event_title: string | null
           exclusion_reason: string | null
@@ -4003,20 +4000,17 @@ export type Database = {
           is_organizer: boolean | null
           is_recurring: boolean | null
           recurrence_pattern: string | null
-          suggestion_id: string | null
+          suggestion_id: string
         }
         Insert: {
           analysis_id: string
           attendee_count?: number | null
-          attendee_emails?: string[] | null
           calendar_event_id: string
           calendar_id: string
           calendar_source_id?: string | null
           contributing_source_event_ids?: Json
           created_at?: string | null
-          event_description?: string | null
           event_end?: string | null
-          event_location?: string | null
           event_start?: string | null
           event_title?: string | null
           exclusion_reason?: string | null
@@ -4025,20 +4019,17 @@ export type Database = {
           is_organizer?: boolean | null
           is_recurring?: boolean | null
           recurrence_pattern?: string | null
-          suggestion_id?: string | null
+          suggestion_id: string
         }
         Update: {
           analysis_id?: string
           attendee_count?: number | null
-          attendee_emails?: string[] | null
           calendar_event_id?: string
           calendar_id?: string
           calendar_source_id?: string | null
           contributing_source_event_ids?: Json
           created_at?: string | null
-          event_description?: string | null
           event_end?: string | null
-          event_location?: string | null
           event_start?: string | null
           event_title?: string | null
           exclusion_reason?: string | null
@@ -4047,7 +4038,7 @@ export type Database = {
           is_organizer?: boolean | null
           is_recurring?: boolean | null
           recurrence_pattern?: string | null
-          suggestion_id?: string | null
+          suggestion_id?: string
         }
         Relationships: [
           {
@@ -18598,6 +18589,48 @@ export type Database = {
           },
         ]
       }
+      user_data_exports: {
+        Row: {
+          byte_size: number | null
+          completed_at: string | null
+          error_code: string | null
+          expires_at: string | null
+          id: string
+          part_count: number | null
+          requested_at: string
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          byte_size?: number | null
+          completed_at?: string | null
+          error_code?: string | null
+          expires_at?: string | null
+          id?: string
+          part_count?: number | null
+          requested_at?: string
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          byte_size?: number | null
+          completed_at?: string | null
+          error_code?: string | null
+          expires_at?: string | null
+          id?: string
+          part_count?: number | null
+          requested_at?: string
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_email_connections: {
         Row: {
           account_label: string
@@ -20738,6 +20771,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      complete_user_data_export: {
+        Args: {
+          p_byte_size: number
+          p_export_id: string
+          p_part_count: number
+          p_storage_path: string
+        }
+        Returns: string
+      }
       complete_email_sequence_send: {
         Args: {
           p_branch_key?: string
@@ -21647,6 +21689,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_my_data_summary: { Args: never; Returns: Json }
       get_latest_ontology_daily_briefs: {
         Args: { user_ids: string[] }
         Returns: {
@@ -23097,6 +23140,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      request_user_data_export: { Args: never; Returns: Json }
       request_account_deletion: {
         Args: { p_user_id: string }
         Returns: {
@@ -24175,6 +24219,7 @@ export type Database = {
         | "embed_onto_entity"
         | "freshness_radar_scan"
         | "capture_chat_checkpoint"
+        | "user_data_export"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -24443,6 +24488,7 @@ export const Constants = {
         "embed_onto_entity",
         "freshness_radar_scan",
         "capture_chat_checkpoint",
+        "user_data_export",
       ],
       recurrence_end_reason: [
         "indefinite",

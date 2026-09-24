@@ -1,21 +1,28 @@
 // packages/shared-agent-ops/src/embeddings/openai-embeddings.ts
 //
 // Hardened embeddings client for the semantic discovery pipeline (batching +
-// retry, which smart-llm's generateEmbedding lacks). Routes through OpenRouter
-// by default — its /api/v1/embeddings endpoint serves the same underlying
-// OpenAI text-embedding-3-small, so vectors are interchangeable with the
-// direct-OpenAI path, which remains the fallback when only an OpenAI key is
-// configured. Dimensions are pinned by the model: text-embedding-3-small =
-// 1536, matching onto_embeddings.embedding. The canonical stored model name
-// stays 'text-embedding-3-small' regardless of route.
+// retry). Routes only through OpenRouter, whose /api/v1/embeddings endpoint
+// serves OpenAI text-embedding-3-small. Every request requires zero data
+// retention (tasker 103), which lands on Azure's endpoint with identical
+// vectors. There is no direct-OpenAI route: it would bypass ZDR. Dimensions
+// are pinned by the model: text-embedding-3-small = 1536, matching
+// onto_embeddings.embedding. The canonical stored model name stays
+// 'text-embedding-3-small'.
 
 export const ONTO_EMBEDDING_MODEL = 'text-embedding-3-small';
 export const ONTO_EMBEDDING_DIMENSIONS = 1536;
 
-export const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
 export const OPENROUTER_EMBEDDINGS_URL = 'https://openrouter.ai/api/v1/embeddings';
 /** OpenRouter namespaces provider models; the vectors are identical. */
 export const OPENROUTER_EMBEDDING_REQUEST_MODEL = `openai/${ONTO_EMBEDDING_MODEL}`;
+/**
+ * Same policy as OPENROUTER_PRIVATE_PROVIDER in @buildos/smart-llm, which this
+ * package does not depend on.
+ */
+export const OPENROUTER_EMBEDDINGS_PROVIDER = Object.freeze({
+	data_collection: 'deny' as const,
+	zdr: true as const
+});
 const MAX_BATCH_SIZE = 96;
 const MAX_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 750;
@@ -92,8 +99,8 @@ export function createOpenAiEmbeddingsClient(options: {
 		throw new OpenAiEmbeddingsError('Embeddings require a non-empty API key');
 	}
 	const fetchImpl: FetchLike = options.fetchImpl ?? (fetch as unknown as FetchLike);
-	const model = options.model ?? ONTO_EMBEDDING_MODEL;
-	const url = options.url ?? OPENAI_EMBEDDINGS_URL;
+	const model = options.model ?? OPENROUTER_EMBEDDING_REQUEST_MODEL;
+	const url = options.url ?? OPENROUTER_EMBEDDINGS_URL;
 	const dimensions = options.dimensions;
 	async function waitForRetry(ms: number, signal?: AbortSignal): Promise<void> {
 		let timer: ReturnType<typeof setTimeout> | undefined;
@@ -123,11 +130,12 @@ export function createOpenAiEmbeddingsClient(options: {
 							Authorization: `Bearer ${apiKey}`,
 							'Content-Type': 'application/json'
 						},
-						body: JSON.stringify(
-							dimensions
-								? { model, input: texts, dimensions }
-								: { model, input: texts }
-						)
+						body: JSON.stringify({
+							model,
+							input: texts,
+							...(dimensions ? { dimensions } : {}),
+							provider: OPENROUTER_EMBEDDINGS_PROVIDER
+						})
 					})
 				);
 				if (!response.ok) {
@@ -211,10 +219,9 @@ export function createOpenAiEmbeddingsClient(options: {
 /**
  * Shared host wiring: resolve an embeddings client from an env record
  * (process.env for the worker and scripts, $env/dynamic/private for web).
- * OpenRouter is the primary route — one provider, one bill, and the platform's
- * existing key — with direct OpenAI as the fallback when only that key exists.
- * Returns null when neither key is configured so hosts can leave the
- * embeddings port unset (explore_project then reports itself unavailable).
+ * OpenRouter is the only route; an OpenAI key alone is ignored. Returns null
+ * without an OpenRouter key so hosts can leave the embeddings port unset
+ * (explore_project then reports itself unavailable).
  */
 export function createEmbeddingsClientFromEnv(
 	env: Record<string, string | undefined>,
@@ -228,10 +235,6 @@ export function createEmbeddingsClientFromEnv(
 			url: OPENROUTER_EMBEDDINGS_URL,
 			model: OPENROUTER_EMBEDDING_REQUEST_MODEL
 		});
-	}
-	const openAiKey = env.OPENAI_API_KEY?.trim() || env.PRIVATE_OPENAI_API_KEY?.trim();
-	if (openAiKey) {
-		return createOpenAiEmbeddingsClient({ ...options, apiKey: openAiKey });
 	}
 	return null;
 }

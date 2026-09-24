@@ -214,14 +214,16 @@ describe('resolveModelPricingProfile', () => {
 		expect(kimi?.profile.outputCost).toBe(15);
 	});
 
-	it('retains old Luna pricing for historical receipts only', () => {
+	// Tasker 103: GPT-5.6 Luna is the explicit semantic-reviewer default (its
+	// Azure ZDR endpoints are healthy) but never joins an automatic lane.
+	it('keeps GPT-5.6 Luna priced and tool-capable but out of automatic lanes', () => {
 		const previousLuna = resolveModelPricingProfile('openai/gpt-5.6-luna-20260709');
 
 		expect(previousLuna?.modelId).toBe('openai/gpt-5.6-luna');
 		expect(previousLuna?.profile.cost).toBe(0.2);
 		expect(previousLuna?.profile.outputCost).toBe(1.2);
 		expect(ACTIVE_RUNTIME_MODEL_IDS).not.toContain('openai/gpt-5.6-luna');
-		expect(modelSupportsCapability('openai/gpt-5.6-luna', 'tools')).toBe(false);
+		expect(modelSupportsCapability('openai/gpt-5.6-luna', 'tools')).toBe(true);
 	});
 
 	it('falls back to a requested model when the resolved model is not configured', () => {

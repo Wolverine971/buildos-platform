@@ -430,10 +430,8 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		);
 
 		console.log(
-			`✅ Classification result${usedFallbackClassification ? ' (fallback)' : ''}: "${title}" with topics: [${topics.join(', ')}]`
+			`✅ Classification result${usedFallbackClassification ? ' (fallback)' : ''} for session ${validatedData.sessionId}: title ${title.length} chars, ${topics.length} topics, summary ${summary.length} chars, ${extractedEntities.libri_candidates.length} Libri candidates`
 		);
-		console.log(`📝 Summary: ${summary.slice(0, 100)}${summary.length > 100 ? '...' : ''}`);
-		console.log(`📚 Libri candidates: ${extractedEntities.libri_candidates.length} extracted`);
 
 		// Update the chat session with classification results
 		const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();

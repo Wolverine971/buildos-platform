@@ -21,13 +21,16 @@ const TWILIO_RESOURCE_NOT_FOUND = 20404; // Verify check: expired, used, or neve
 
 type TwilioErrorFields = { code?: number; status?: number; moreInfo?: string };
 
-/** Replace the message but keep Twilio's code/status so callers can branch on them. */
+/**
+ * Replace the message but keep Twilio's code/status so callers can branch on them.
+ * The original error is not attached as `cause`: Twilio's text for these codes quotes the
+ * recipient's phone number, and callers log and persist the mapped error.
+ */
 function withTwilioFields(message: string, original: TwilioErrorFields): Error {
-	const mapped = new Error(message) as Error & TwilioErrorFields & { cause?: unknown };
+	const mapped = new Error(message) as Error & TwilioErrorFields;
 	if (original.code !== undefined) mapped.code = original.code;
 	if (original.status !== undefined) mapped.status = original.status;
 	if (original.moreInfo !== undefined) mapped.moreInfo = original.moreInfo;
-	mapped.cause = original;
 	return mapped;
 }
 
@@ -107,7 +110,7 @@ export class TwilioClient {
 		} catch (error: any) {
 			// Handle Twilio-specific errors
 			if (error?.code === TWILIO_INVALID_TO_NUMBER) {
-				throw withTwilioFields(`Invalid phone number: ${params.to}`, error);
+				throw withTwilioFields('Invalid phone number', error);
 			} else if (error?.code === TWILIO_RECIPIENT_UNSUBSCRIBED) {
 				throw withTwilioFields('Recipient has opted out of SMS (replied STOP)', error);
 			} else if (error?.code === TWILIO_NOT_SMS_CAPABLE) {

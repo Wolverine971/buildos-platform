@@ -14,54 +14,25 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { buildSessionDetailPayload } from './session-detail-payload';
+import { TURN_RUN_COLUMNS } from './turn-run-columns';
 import { loadPromptEvalResultsForTurnRuns } from '$lib/services/agentic-chat-v2/prompt-eval-runner';
 import {
 	buildChatWorkflowAuditPayload,
 	emptyWorkflowTableCoverage
 } from '$lib/services/admin/chat-workflow-audit-build';
 import { isOptionalTableMissing, loadWorkflowAuditRows } from './workflow-audit-loader';
+import {
+	assertAdminChatPassThroughContentProjected,
+	logAdminChatContentAccess,
+	projectAdminChatMessageRows,
+	projectAdminToolExecutionRows,
+	projectAdminTurnEventRows
+} from '$lib/server/admin-chat-content-access';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Turn list page size. A deep-linked turn past this page is resolved by id below.
 const TURN_RUN_PAGE_SIZE = 500;
-const TURN_RUN_COLUMNS = `
-          id,
-          stream_run_id,
-          client_turn_id,
-          source,
-          context_type,
-          entity_id,
-          project_id,
-          gateway_enabled,
-          request_message,
-          user_message_id,
-          assistant_message_id,
-          status,
-          finished_reason,
-          failure_code,
-          tool_round_count,
-          tool_call_count,
-          validation_failure_count,
-          llm_pass_count,
-          first_lane,
-          first_help_path,
-          first_skill_path,
-          first_canonical_op,
-          history_strategy,
-          history_compressed,
-          raw_history_count,
-          history_for_model_count,
-          cache_source,
-          cache_age_seconds,
-          request_prewarmed_context,
-          prompt_snapshot_id,
-          timing_metric_id,
-          started_at,
-          finished_at,
-          created_at,
-          updated_at
-        `;
 
 /** Audit payloads are private records; never let a shared cache hold one. */
 const privateNoStore = (response: Response): Response => {
@@ -70,7 +41,7 @@ const privateNoStore = (response: Response): Response => {
 	return response;
 };
 
-export const GET: RequestHandler = async ({ params, url, locals: { safeGetSession } }) => {
+export const GET: RequestHandler = async ({ params, url, request, locals: { safeGetSession } }) => {
 	const sessionId = params.id;
 	const { user } = await safeGetSession();
 
@@ -361,16 +332,22 @@ export const GET: RequestHandler = async ({ params, url, locals: { safeGetSessio
 			})
 		]);
 
+		// Rows written before the worker's storage projection still hold Gmail,
+		// Google Calendar, and web content; admins see the same trace as new rows.
+		const messages = projectAdminChatMessageRows(messageRows ?? []);
+		const toolExecutions = projectAdminToolExecutionRows(toolRows ?? []);
+		const turnEvents = projectAdminTurnEventRows(turnEventRows ?? []);
+		assertAdminChatPassThroughContentProjected({ toolExecutions, turnEvents });
 		const payload = buildSessionDetailPayload({
 			sessionRow,
-			messages: messageRows ?? [],
-			toolExecutions: toolRows ?? [],
+			messages,
+			toolExecutions,
 			llmCalls: usageRows ?? [],
 			operations: operationRows ?? [],
 			timingData: timingData ?? null,
 			turnRuns,
 			promptSnapshots: promptSnapshotRows ?? [],
-			turnEvents: turnEventRows ?? [],
+			turnEvents,
 			evalRuns,
 			evalAssertions: assertions
 		});
@@ -379,6 +356,24 @@ export const GET: RequestHandler = async ({ params, url, locals: { safeGetSessio
 			turnRuns: payload.turn_runs,
 			llmCalls: payload.llm_calls,
 			capturedAt
+		});
+
+		await logAdminChatContentAccess({
+			adminUserId: user.id,
+			action: 'read',
+			route: '/api/admin/chat/sessions/[id]',
+			targetType: 'chat_session',
+			targetId: sessionId,
+			targetUserIds: [sessionRow.user_id],
+			rowCounts: {
+				messages: messages.length,
+				tool_executions: toolExecutions.length,
+				turn_events: turnEvents.length,
+				turn_runs: turnRuns.length,
+				snapshots: promptSnapshotRows?.length ?? 0,
+				llm_calls: usageRows?.length ?? 0
+			},
+			request
 		});
 
 		return privateNoStore(ApiResponse.success(payload));

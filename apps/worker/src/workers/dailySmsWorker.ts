@@ -215,16 +215,14 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 			// Skip if reminder time is in the past
 			if (isBefore(reminderTime, now)) {
 				console.log(
-					`⏭️ [DailySMS] Skipping event "${event.event_title || 'Untitled'}" - reminder time is in the past`
+					`⏭️ [DailySMS] Skipping event ${event.calendar_event_id} - reminder time is in the past`
 				);
 				continue;
 			}
 
 			// Skip all-day events for now (Phase 2 enhancement)
 			if (!event.event_start.includes('T')) {
-				console.log(
-					`⏭️ [DailySMS] Skipping all-day event "${event.event_title || 'Untitled'}"`
-				);
+				console.log(`⏭️ [DailySMS] Skipping all-day event ${event.calendar_event_id}`);
 				continue;
 			}
 
@@ -256,14 +254,14 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
 				if (isInQuietHours) {
 					console.log(
-						`⏭️ [DailySMS] Skipping event "${event.event_title}" - falls in quiet hours`
+						`⏭️ [DailySMS] Skipping event ${event.calendar_event_id} - falls in quiet hours`
 					);
 					quietHoursSkipCount++;
 					continue;
 				}
 			} else if (job.data.skipQuietHours) {
 				console.log(
-					`⚠️ [DailySMS] Quiet hours check skipped for event "${event.event_title}" (manual override)`
+					`⚠️ [DailySMS] Quiet hours check skipped for event ${event.calendar_event_id} (manual override)`
 				);
 			}
 
@@ -295,7 +293,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 				);
 			} catch (error) {
 				console.error(
-					`❌ [DailySMS] Error generating message for event "${eventTitle}":`,
+					`❌ [DailySMS] Error generating message for event ${event.calendar_event_id}:`,
 					error
 				);
 				// Skip this event if message generation fails completely
@@ -334,7 +332,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 			});
 
 			console.log(
-				`✅ [DailySMS] Created ${generatedMessage.generatedVia} reminder for "${event.event_title}" at ${format(reminderTime, 'yyyy-MM-dd HH:mm:ss')} (${message.length} chars)`
+				`✅ [DailySMS] Created ${generatedMessage.generatedVia} reminder for event ${event.calendar_event_id} at ${format(reminderTime, 'yyyy-MM-dd HH:mm:ss')} (${message.length} chars)`
 			);
 		}
 

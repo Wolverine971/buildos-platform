@@ -3,6 +3,7 @@
 
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
+import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { googleCalendarRuntimeErrorResponse } from '$lib/server/google-calendar-api-errors';
 import { GoogleCalendarReadService } from '$lib/server/google-calendar-read.service';
@@ -42,9 +43,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Keep normal calendar reads/writes under the user's RLS authority while
 		// reserving the service client for token/webhook cleanup. Automatic
 		// disconnects can happen from any method after an invalid OAuth grant.
-		const calendarService = new CalendarService(locals.supabase, {
-			privilegedSupabase: createAdminSupabaseClient()
-		});
+		const privilegedSupabase = createAdminSupabaseClient();
+		const calendarService = new CalendarService(locals.supabase, { privilegedSupabase });
 		let targetService: GoogleCalendarTargetService | undefined;
 		const getTargetService = () =>
 			(targetService ??= new GoogleCalendarTargetService(createAdminSupabaseClient()));
@@ -192,6 +192,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			case 'disconnectCalendar':
+				// Stop Google's push channel while the grant still works (best effort).
+				await new CalendarWebhookService(privilegedSupabase).unregisterWebhook(
+					user.id,
+					'primary'
+				);
 				await calendarService.disconnectCalendar(user.id);
 				return ApiResponse.success({ disconnected: true });
 

@@ -7,7 +7,8 @@ export const BASE_PROFILE_TAB_IDS = [
 	'calendar',
 	'email',
 	'notifications',
-	'agent-keys'
+	'agent-keys',
+	'data'
 ] as const;
 
 export type BaseProfileTabId = (typeof BASE_PROFILE_TAB_IDS)[number];

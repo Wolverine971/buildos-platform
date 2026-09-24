@@ -102,4 +102,10 @@ describe('AccountTab profile draft ownership', () => {
 		expect(nameInput.value).toBe('Dana Builder');
 		expect(emailInput.value).toBe('dana@example.com');
 	});
+
+	it('opens straight to account deletion when linked from Your data', () => {
+		render(AccountTab, { props: { user: accountUser(), initialSection: 'danger' } });
+		expect(screen.getByRole('button', { name: 'Delete My Account' })).toBeTruthy();
+		expect(screen.queryByRole('textbox', { name: /full name/i })).toBeNull();
+	});
 });

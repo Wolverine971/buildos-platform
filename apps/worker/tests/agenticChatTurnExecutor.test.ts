@@ -23,7 +23,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
 import { AgenticChatCancellationError } from '../src/workers/agentic-chat/turn/cancellation-observer';
 import { AgenticChatTurnLeaseLostError } from '../src/workers/agentic-chat/turn/turn-lease';
-import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/turn/execution-control';
+import {
+	AgenticChatExecutionControlRpcError,
+	type AgenticChatTerminalFinalizeInputV1
+} from '../src/workers/agentic-chat/turn/execution-control';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
 import { AgenticChatExecutionInputError } from '../src/workers/agentic-chat/turn/execution-input';
 import type { AgenticChatRawWorkflowTurnPortV1 } from '../src/workers/agentic-chat/workflow/raw-turn-preparation';
@@ -46,6 +49,7 @@ import {
 import { AgenticChatToolExecutionAdapter } from '../src/workers/agentic-chat/tools/execution-adapter';
 import { createStableAgenticChatPromptSnapshotIdV1 } from '../src/workers/agentic-chat/effects/prompt-snapshot';
 import { AgenticChatReadToolFenceTimeoutError } from '../src/workers/agentic-chat/tools/read-tool-fence';
+import { AGENTIC_CHAT_INFRA_FAILURE_NOTHING_CHANGED_COPY } from '../src/workers/agentic-chat/turn/executor-failures';
 import type { AgenticChatRuntimeTimingSnapshotV1 } from '../src/workers/agentic-chat/stream/runtime-timing';
 import { AgenticChatStreamPublisher } from '../src/workers/agentic-chat/stream/stream-publisher';
 import {
@@ -6879,7 +6883,7 @@ function finishAfterReads() {
 }
 
 describe('AgenticChatTurnExecutor read-tool fence sharing', () => {
-	it('shares one fence claim per burst, cancels it at the deadline, and fails as transient infrastructure (case 14 reproduction)', async () => {
+	it('shares one fence claim per burst, retries it once, cancels it at each deadline, and fails as transient infrastructure (case 14 reproduction)', async () => {
 		const harness = createHarness([], {
 			overheadTimeoutMs: 100,
 			maxToolConcurrency: 4,
@@ -6892,7 +6896,8 @@ describe('AgenticChatTurnExecutor read-tool fence sharing', () => {
 			if (calls === 1) return Promise.resolve(claim);
 			fenceSignals.push(signal);
 			harness.log.push(`fence_claim:${fenceSignals.length}`);
-			if (fenceSignals.length === 1) return new Promise<never>(() => undefined);
+			// The burst's shared check and its one shared retry both hang.
+			if (fenceSignals.length <= 2) return new Promise<never>(() => undefined);
 			return Promise.resolve({
 				...claim,
 				outcome: 'matching_current_claim' as const,
@@ -6908,13 +6913,16 @@ describe('AgenticChatTurnExecutor read-tool fence sharing', () => {
 				outcome: 'requeued',
 				terminalStatus: null
 			});
-			// One admission claim, one shared check for the four-wide burst, and one
-			// fresh check for the fifth read that only starts once a slot frees.
-			expect(harness.control.claim).toHaveBeenCalledTimes(3);
-			expect(fenceSignals).toHaveLength(2);
-			expect(fenceSignals[0]?.aborted).toBe(true);
-			expect(fenceSignals[0]?.reason).toBeInstanceOf(AgenticChatReadToolFenceTimeoutError);
-			expect(fenceSignals[1]?.aborted).toBe(false);
+			// One admission claim, one shared check for the four-wide burst, one
+			// shared retry of it, and one fresh check for the fifth read that only
+			// starts once a slot frees.
+			expect(harness.control.claim).toHaveBeenCalledTimes(4);
+			expect(fenceSignals).toHaveLength(3);
+			for (const hung of fenceSignals.slice(0, 2)) {
+				expect(hung?.aborted).toBe(true);
+				expect(hung?.reason).toBeInstanceOf(AgenticChatReadToolFenceTimeoutError);
+			}
+			expect(fenceSignals[2]?.aborted).toBe(false);
 			// The burst never reached a tool; only the freshly fenced fifth read ran.
 			expect(harness.readTool.execute).toHaveBeenCalledTimes(1);
 			expect(harness.readTool.execute.mock.calls[0]?.[0]).toMatchObject({
@@ -6935,6 +6943,127 @@ describe('AgenticChatTurnExecutor read-tool fence sharing', () => {
 				failed_call_count: 4,
 				max_observed_concurrency: 4
 			});
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('retries a statement-timed-out fence check once and runs every read (case 13 reproduction)', async () => {
+		const harness = createHarness([], { overheadTimeoutMs: 100, maxToolConcurrency: 4 });
+		let calls = 0;
+		harness.control.claim.mockImplementation((() => {
+			calls += 1;
+			if (calls === 1) return Promise.resolve(claim);
+			if (calls === 2) {
+				return Promise.reject(
+					new AgenticChatExecutionControlRpcError(
+						'claim_agentic_chat_turn',
+						'57014',
+						'canceling statement due to statement timeout'
+					)
+				);
+			}
+			return Promise.resolve({
+				...claim,
+				outcome: 'matching_current_claim' as const,
+				executionMayStart: false
+			});
+		}) as never);
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 4, continueWithToolResults);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(harness.readTool.execute).toHaveBeenCalledTimes(4);
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+			expect(harness.control.recover).not.toHaveBeenCalled();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('fails a turn whose fence check times out twice as infrastructure and says nothing changed', async () => {
+		const harness = createHarness([], {
+			overheadTimeoutMs: 100,
+			maxToolConcurrency: 4,
+			recovery: [recoveryReceipt('finalize_failed')]
+		});
+		let calls = 0;
+		harness.control.claim.mockImplementation((() => {
+			calls += 1;
+			if (calls === 1) return Promise.resolve(claim);
+			return Promise.reject(
+				new AgenticChatExecutionControlRpcError(
+					'claim_agentic_chat_turn',
+					'57014',
+					'canceling statement due to statement timeout'
+				)
+			);
+		}) as never);
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 4, continueWithToolResults);
+		const processingJob = job();
+
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				terminalStatus: 'failed'
+			});
+			expect(harness.readTool.execute).not.toHaveBeenCalled();
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				failureClass: 'transient_infra'
+			});
+			expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+				execution_error_code: '57014',
+				failure_class: 'transient_infra',
+				retry_classification: 'transient_safe',
+				execution_started: true
+			});
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: 'failed',
+					publicError: AGENTIC_CHAT_INFRA_FAILURE_NOTHING_CHANGED_COPY
+				})
+			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('keeps the generic failure copy when recovery reclassifies an infrastructure failure', async () => {
+		const harness = createHarness([], {
+			overheadTimeoutMs: 100,
+			maxToolConcurrency: 4,
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'uncertain_external_commit' })
+			]
+		});
+		let calls = 0;
+		harness.control.claim.mockImplementation((() => {
+			calls += 1;
+			if (calls === 1) return Promise.resolve(claim);
+			return Promise.reject(
+				new AgenticChatExecutionControlRpcError(
+					'claim_agentic_chat_turn',
+					'57014',
+					'timeout'
+				)
+			);
+		}) as never);
+		prepareReadBurst(harness, 1, finishAfterReads());
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				terminalStatus: 'failed'
+			});
+			expect(harness.control.finalize).toHaveBeenCalledWith(
+				expect.objectContaining({
+					failureCode: 'uncertain_external_commit',
+					publicError: 'An error occurred while streaming.'
+				})
+			);
 		} finally {
 			await harness.publisher.stop();
 		}

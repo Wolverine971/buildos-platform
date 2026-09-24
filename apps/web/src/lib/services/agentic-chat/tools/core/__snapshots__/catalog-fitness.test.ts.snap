@@ -2,7 +2,7 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "1d204bb56a63df84a83f21aded79d94e1ad49c8401bb9b451870412f5dc798d3",
+  "catalogSerializedSha256": "905f629a78a7ff298974298e3c9d03d26035c43ffc273514c69f5be6603c638c",
   "contextSurfaces": [
     {
       "contextType": "global",
@@ -616,9 +616,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "delete_onto_task",
-      "serialized": "{"type":"function","function":{"name":"delete_onto_task","description":"Delete (soft delete) a task from the ontology system.\\nSets deleted_at timestamp to mark the task as deleted. The task is excluded from queries but can be recovered.\\nPreserves edge relationships for potential restoration.\\nVerifies ownership before deletion.","parameters":{"type":"object","properties":{"task_id":{"type":"string","description":"Task UUID (required)"}},"required":["task_id"]}}}",
-      "serializedChars": 468,
-      "serializedSha256": "156889d528047fbed0b2b9fda2a8e977e5b43a1d7ef9e2eabad6ff23b0c970cf",
+      "serialized": "{"type":"function","function":{"name":"delete_onto_task","description":"Delete a task. It is hidden right away and erased for good 30 days later.\\nVerifies ownership before deletion.","parameters":{"type":"object","properties":{"task_id":{"type":"string","description":"Task UUID (required)"}},"required":["task_id"]}}}",
+      "serializedChars": 319,
+      "serializedSha256": "dbfac89b222186561e0b46faac4ae94843d552a77fe09b98606f94b6ff798e4c",
     },
     {
       "name": "domain_load",
@@ -933,6 +933,12 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
       "serializedSha256": "ca980730ad89a6144609ddc4e3e6cbf192f1d8b98266e8a869290329b2a89071",
     },
     {
+      "name": "scan_email_inbox",
+      "serialized": "{"type":"function","function":{"name":"scan_email_inbox","description":"Check the user's recent inbox and return only the emails relevant to what they asked, each scored 0-100% by a fast relevance filter. Use for questions like 'any emails about this project today?', 'anything important in my inbox?', or 'did they reply this week?'. In a project chat the filter already receives the project's name, description, tasks, and documents, so for questions about the project in general, call it without looking_for; repeat checks then skip mail already scored. Scans every connected account by default, so list_email_accounts is not needed first. Returns relevant emails (body openings for the top few), counts of the rest, and Gmail links. Use search_email_messages instead to find a specific older email.","parameters":{"type":"object","properties":{"window":{"type":"string","enum":["today","last_24_hours","last_3_days","last_7_days","last_14_days"],"default":"today","description":"Which recent inbox mail to check, in the user's timezone."},"looking_for":{"type":"string","maxLength":300,"description":"Only for something narrower than the current project or unrelated to it, in plain words (e.g. 'replies from ConductorAI about the interview'). Leave it out when the user asks about the current project in general: the project context is included automatically, and rewording it here makes every check start over. In global chat, leaving it out finds mail that needs the user's attention."},"connection_ids":{"type":"array","maxItems":5,"items":{"type":"string"},"description":"Optional: only these accounts (exact connection_id values from list_email_accounts)."},"max_emails":{"type":"integer","default":100,"minimum":10,"maximum":200,"description":"Most recent inbox emails to check per account."}}}}}",
+      "serializedChars": 1807,
+      "serializedSha256": "06c9577395e4e03a5f70d65c991ef9b566b3773a475ce78c720ab39599c13483",
+    },
+    {
       "name": "search_all_projects",
       "serialized": "{"type":"function","function":{"name":"search_all_projects","description":"Primary search across accessible projects when the project is unknown or the question is cross-project. Returns typed matches with snippets. Query only distinctive content terms because terms are AND-combined; to scope a known project, pass project_id instead of adding its name to query.","parameters":{"type":"object","properties":{"query":{"type":"string","minLength":1,"description":"Distinctive content terms; omit the project name when project_id scopes the search."},"project_id":{"type":"string","description":"Optional. When known, scope the search to this project instead of putting the project name in the query. Prefer this for \\"in <project>, find X\\" requests."},"types":{"type":"array","description":"Optional entity type filters for narrowing results","items":{"type":"string","enum":["project","task","goal","plan","milestone","document","risk","requirement","image"]}},"limit":{"type":"integer","default":10,"minimum":1,"maximum":25,"description":"Maximum results."}},"required":["query"]}}}",
       "serializedChars": 1084,
@@ -1140,7 +1146,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/370f5afa",
+  "registryVersion": "tool-registry/3ef11aa2",
   "staticProfiles": [
     {
       "contextType": "global",

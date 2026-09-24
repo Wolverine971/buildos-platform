@@ -145,7 +145,8 @@
 						</li>
 						<li>Public pages, project sharing, comments, and invitations;</li>
 						<li>
-							Optional Google Calendar, third-party agent, and other integrations; and
+							Optional Google Calendar, read-only Gmail, third-party agent, and other
+							integrations; and
 						</li>
 						<li>Optional email, push, and SMS notifications.</li>
 					</ul>
@@ -264,6 +265,13 @@
 						support, and improve the Service, comply with your instructions, and satisfy
 						legal obligations. This license lasts while the content is stored in the
 						Service and for any lawful retention period described in the Privacy Policy.
+					</p>
+					<p>
+						This license does not let BuildOS, or any AI provider BuildOS uses, train AI
+						models on Your Content. Improving the Service means things like fixing
+						errors and measuring which features help, as the Privacy Policy describes.
+						Data BuildOS receives from Google is used only as the Privacy Policy's
+						Google section allows.
 					</p>
 					<p>
 						You represent that you own Your Content or have all permissions needed to
@@ -424,7 +432,9 @@
 					</ul>
 					<p class="text-muted-foreground mt-4">
 						We may use automated and human review to investigate suspected violations
-						and may apply usage, storage, or rate limits to protect the Service.
+						and may apply usage, storage, or rate limits to protect the Service. Human
+						review never includes reading data received from Google, except as the
+						Privacy Policy's Google section allows.
 					</p>
 				</div>
 			</section>
@@ -494,9 +504,8 @@
 						under a de-identified “Deleted user” actor so the other person's workspace
 						is not damaged. Limited backups and records retained for legal, security,
 						billing, consent, or fraud-prevention purposes are handled as described in
-						the Privacy Policy. Before requesting deletion, save any content you want to
-						keep and contact us if you need assistance obtaining a copy; not all data
-						may currently be available through a self-service export.
+						the Privacy Policy. Before requesting deletion, download a copy of your data
+						from Settings → Your data if you want to keep it.
 					</p>
 					<p>
 						We may suspend, restrict, or terminate access immediately if you materially
@@ -624,7 +633,7 @@
 			<!-- Last Updated -->
 			<div class="border-t border-border pt-6">
 				<p class="text-sm text-muted-foreground">
-					Effective and last updated: July 16, 2026 (version 2026-07-16)
+					Effective and last updated: September 24, 2026 (version 2026-09-24)
 				</p>
 			</div>
 		</div>

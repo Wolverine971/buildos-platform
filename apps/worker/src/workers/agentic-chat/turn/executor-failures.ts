@@ -7,6 +7,10 @@ import {
 	type AgenticChatRecoveryFailureClassV1,
 	classifyAgenticChatRetryV1
 } from '@buildos/shared-types';
+import {
+	type FastToolExecution,
+	isWriteLedgerToolExecution
+} from '@buildos/agentic-chat-runtime/loop';
 import type { ProcessingJob } from '../../../lib/supabaseQueue';
 import { AgenticChatCancellationError } from './cancellation-observer';
 import { AgenticChatTurnLeaseLostError } from './turn-lease';
@@ -36,6 +40,8 @@ import {
 } from './session-handoff';
 import type { TerminalClaim } from './executor-contracts';
 import { canonicalText } from './executor-helpers';
+import { isTransientDatabaseFailureCode } from '../shared/postgres-failure';
+import { AgenticChatExecutionControlRpcError } from './execution-control';
 
 /**
  * Post-start failure classes that finalize `completed` / `mutation_unfulfilled`
@@ -82,7 +88,53 @@ export function classifyFailure(
 		return 'permanent';
 	}
 	if (signal.aborted) return executionStarted ? 'timeout_post_start' : 'timeout_pre_start';
+	// A database answer that retrying can fix (statement timeout, lost
+	// connection, serialization race) is infrastructure, not an unknown bug.
+	// Case 13 of the 2026-09-24 gate: a 57014 on the read fence was logged
+	// `unknown` → `permanent`. Recovery policy still decides whether the turn
+	// may re-run; this only names the cause.
+	if (hasTransientDatabaseCode(error)) return 'transient_infra';
 	return executionStarted ? 'unknown' : 'transient_infra';
+}
+
+/**
+ * True for an error that carries a non-empty SQLSTATE/PostgREST code that
+ * `isTransientDatabaseFailureCode` accepts. An arbitrary error without a code
+ * is not a database answer (it may be a programming error), so it never
+ * qualifies; a control-plane RPC error without one never reached the database
+ * (network or fetch failure), which is transient.
+ */
+export function hasTransientDatabaseCode(error: unknown): boolean {
+	if (error instanceof AgenticChatExecutionControlRpcError) {
+		return isTransientDatabaseFailureCode(error.code);
+	}
+	if (!error || typeof error !== 'object') return false;
+	const code = (error as { code?: unknown }).code;
+	return typeof code === 'string' && code.trim() !== '' && isTransientDatabaseFailureCode(code);
+}
+
+export const AGENTIC_CHAT_GENERIC_FAILURE_COPY = 'An error occurred while streaming.';
+export const AGENTIC_CHAT_INFRA_FAILURE_NOTHING_CHANGED_COPY =
+	"I couldn't reach your project data just now. Nothing was changed. Try again.";
+
+/**
+ * What a failed turn tells the user, built from structure only: the failure
+ * class and the tool ledger. An infrastructure failure whose ledger holds no
+ * write attempt says what happened and that nothing changed; everything else
+ * keeps the generic line. Cancellation publishes no error.
+ */
+export function failurePublicError(
+	failureClass: AgenticChatRecoveryFailureClassV1,
+	toolExecutions: readonly FastToolExecution[]
+): string | undefined {
+	if (failureClass === 'cancelled') return undefined;
+	if (
+		failureClass === 'transient_infra' &&
+		!toolExecutions.some((execution) => isWriteLedgerToolExecution(execution))
+	) {
+		return AGENTIC_CHAT_INFRA_FAILURE_NOTHING_CHANGED_COPY;
+	}
+	return AGENTIC_CHAT_GENERIC_FAILURE_COPY;
 }
 
 /**

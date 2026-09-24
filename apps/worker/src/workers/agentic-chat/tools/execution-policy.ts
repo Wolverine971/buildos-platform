@@ -41,6 +41,9 @@ const ROW_LOCAL_MUTATIONS = new Map<string, readonly string[]>([
  * project update still orders against them. Document creates stay exclusive:
  * they rewrite the project's document tree. Tasker 101: five task creates ran
  * as layers [1,1,1,1,1] under the exclusive hold, ~1.7 s each on the gate.
+ * Requires migration 20260924193000 (task create locks its project first):
+ * without it, three or more concurrent creates starve each other in the
+ * database for 12-97 s. With it, five creates finish in about 1 s.
  */
 const SHARED_PROJECT_CREATES: ReadonlySet<string> = new Set(['create_onto_task']);
 

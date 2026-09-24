@@ -1,5 +1,6 @@
-export const CURRENT_TERMS_VERSION = '2026-07-16';
-export const CURRENT_PRIVACY_VERSION = '2026-07-16';
+// apps/web/src/lib/legal/policy-versions.ts
+export const CURRENT_TERMS_VERSION = '2026-09-24';
+export const CURRENT_PRIVACY_VERSION = '2026-09-24';
 
 export const CURRENT_POLICY_VERSIONS = Object.freeze({
 	terms: CURRENT_TERMS_VERSION,

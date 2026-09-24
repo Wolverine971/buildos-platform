@@ -11,8 +11,8 @@
  *   requested page and aggregate stats.
  */
 
-import { redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
 import {
 	needsChatClassification,
 	normalizeHistoryText,
@@ -172,6 +172,36 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 		historyData
 	};
 };
+
+/**
+ * Search runs as a POST action so the query never lands in a URL (address bar, browser
+ * history, analytics page views, request logs). The load still reads a legacy `?search=`.
+ */
+export const actions = {
+	search: async ({ locals, request }) => {
+		const { user } = await locals.safeGetSession();
+		if (!user) {
+			return fail(401, { error: 'Unauthorized' });
+		}
+
+		const form = await request.formData();
+		const field = (name: string) => {
+			const value = form.get(name);
+			return typeof value === 'string' ? value : null;
+		};
+		const historyData = await loadHistoryData(locals.supabase, user.id, {
+			limit: clampIntegerParam(field('limit'), DEFAULT_LIMIT, 1, MAX_LIMIT),
+			offset: clampIntegerParam(field('offset'), 0, 0, Number.MAX_SAFE_INTEGER),
+			typeFilter: parseTypeFilter(field('type')),
+			status: parseStatusFilter(field('status')),
+			search: normalizeSearchFilter(field('search')) ?? '',
+			selectedId: null,
+			selectedType: null
+		});
+
+		return { historyData };
+	}
+} satisfies Actions;
 
 /** Helper to load full history data - streamed in background */
 async function loadHistoryData(

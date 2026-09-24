@@ -187,7 +187,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const body = parsed.data;
 
 		console.log(
-			`[NotificationEmailWebhook] Sending notification email to ${body.recipientEmail} (delivery: ${body.deliveryId})`
+			`[NotificationEmailWebhook] Sending notification email to user ${body.recipientUserId} (delivery: ${body.deliveryId})`
 		);
 
 		// Create Supabase client and EmailService

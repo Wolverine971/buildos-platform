@@ -1683,7 +1683,7 @@
 		{#snippet content()}
 			<div class="space-y-3">
 				<p class="text-sm text-muted-foreground">
-					This action cannot be undone. The task will be permanently deleted from BuildOS.
+					The task will be deleted from BuildOS and erased for good after 30 days.
 				</p>
 				{#if hasCalendarLink}
 					<label

@@ -560,6 +560,10 @@ export class ErrorLoggerService {
 				if (typeof error.stack === 'string') {
 					sanitizedError.stack = sanitizeLogText(error.stack, 8000);
 				}
+				// Same for the error class name, which the generic `name` key redaction hides.
+				if (typeof error.name === 'string') {
+					sanitizedError.name = sanitizeLogText(error.name, 200);
+				}
 			}
 			const sanitizedContext = context
 				? (sanitizeLogData(context, {
@@ -751,24 +755,32 @@ export class ErrorLoggerService {
 				: operation === 'update'
 					? 'calendar_update_error'
 					: 'calendar_sync_error';
+		const safeContext = additionalContext
+			? (sanitizeLogData(additionalContext, {
+					maxStringLength: 2000,
+					maxDepth: 5,
+					maxEntries: 50
+				}) as NonNullable<typeof additionalContext>)
+			: undefined;
 
 		const context: ErrorContext = {
 			userId,
+			// Raw so a valid UUID is never replaced by a redaction marker.
 			projectId: additionalContext?.projectId,
 			operationType: `calendar_${operation}`,
 			tableName: 'task_calendar_events',
 			recordId: taskId,
 			operationPayload: {
-				calendarEventId: additionalContext?.calendarEventId,
-				calendarId: additionalContext?.calendarId,
-				reason: additionalContext?.reason,
-				taskStatus: additionalContext?.taskStatus,
-				taskStartDate: additionalContext?.taskStartDate
+				calendarEventId: safeContext?.calendarEventId,
+				calendarId: safeContext?.calendarId,
+				reason: safeContext?.reason,
+				taskStatus: safeContext?.taskStatus,
+				taskStartDate: safeContext?.taskStartDate
 			},
 			metadata: {
 				errorSource: 'calendar_operation',
 				operation,
-				...additionalContext
+				...safeContext
 			}
 		};
 

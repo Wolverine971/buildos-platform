@@ -293,6 +293,21 @@ async function describeAccount(
 }
 
 /**
+ * What the model should tell the user about an account that returned nothing.
+ * `unavailable` is a Google or BuildOS failure, not an auth problem, so it must
+ * not turn into "please reconnect".
+ */
+function accountReadGuidance(status: string, accountLabel: string): string | undefined {
+	if (status === 'reconnect_required') {
+		return `Ask the user to reconnect "${accountLabel}" in Profile → Email; other accounts still returned results.`;
+	}
+	if (status === 'unavailable') {
+		return `BuildOS could not read "${accountLabel}" just now (a temporary Google or BuildOS problem, not a connection problem). Say so plainly; do not ask the user to reconnect it.`;
+	}
+	return undefined;
+}
+
+/**
  * Map classified port errors to safe, content-free tool errors.
  * `reconnect_required` becomes a clear "reconnect in Profile → Email"
  * instruction; the label is resolved from the connection list, never from
@@ -636,10 +651,7 @@ export async function searchEmailMessages(
 		message_count: account.messageCount,
 		has_more: account.hasMore,
 		next_cursor: account.nextCursor,
-		guidance:
-			account.status === 'reconnect_required'
-				? `Ask the user to reconnect "${account.accountLabel}" in Profile → Email; other accounts still returned results.`
-				: undefined
+		guidance: accountReadGuidance(account.status, account.accountLabel)
 	}));
 
 	const messages = payload.messages.map((message: AgenticChatEmailMessageSummaryV1) => {
@@ -964,10 +976,7 @@ export async function scanEmailInbox(
 		newly_checked: account.newlyChecked,
 		checked_in_earlier_scan: account.previouslyChecked,
 		more_mail_than_scanned: account.truncated,
-		guidance:
-			account.status === 'reconnect_required'
-				? `Ask the user to reconnect "${account.accountLabel}" in Profile → Email; other accounts still returned results.`
-				: undefined
+		guidance: accountReadGuidance(account.status, account.accountLabel)
 	}));
 	const emailsInWindow = payload.accounts.reduce((sum, account) => sum + account.inWindow, 0);
 

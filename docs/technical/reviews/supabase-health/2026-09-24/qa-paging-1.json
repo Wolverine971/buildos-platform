@@ -1,0 +1,3363 @@
+{
+	"project_ref": "daudvqczjqxhpzstlfih",
+	"collected_at": "2026-09-24T17:07:54.407796+00:00",
+	"read_only": true,
+	"sections": {
+		"metrics": {
+			"collected_at": "2026-09-24T17:07:54.912479+00:00",
+			"metrics": [
+				{
+					"name": "node_disk_io_now",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_now",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Mlocked_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 8192.0
+				},
+				{
+					"name": "node_memory_SwapTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1073737728.0
+				},
+				{
+					"name": "node_disk_discards_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_AnonHugePages_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_HardwareCorrupted_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Dirty_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 212992.0
+				},
+				{
+					"name": "node_memory_CommitLimit_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1301237760.0
+				},
+				{
+					"name": "node_vmstat_oom_kill",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 29656.467
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 1038.977
+				},
+				{
+					"name": "node_memory_MemTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 455004160.0
+				},
+				{
+					"name": "node_memory_SwapCached_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 63455232.0
+				},
+				{
+					"name": "node_memory_Inactive_anon_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 94547968.0
+				},
+				{
+					"name": "node_memory_NFS_Unstable_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Writeback_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgpgout",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 213820113.0
+				},
+				{
+					"name": "node_disk_read_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 70535.114
+				},
+				{
+					"name": "node_disk_read_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 692.186
+				},
+				{
+					"name": "node_load1",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.1
+				},
+				{
+					"name": "node_memory_DirectMap1G_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_DirectMap4k_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 104763392.0
+				},
+				{
+					"name": "node_disk_reads_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 11652928.0
+				},
+				{
+					"name": "node_disk_reads_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 1136580.0
+				},
+				{
+					"name": "node_memory_VmallocChunk_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_time_weighted_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 137072.935
+				},
+				{
+					"name": "node_disk_io_time_weighted_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 1574.962
+				},
+				{
+					"name": "node_disk_writes_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 24848800.0
+				},
+				{
+					"name": "node_disk_writes_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 753675.0
+				},
+				{
+					"name": "node_memory_DirectMap2M_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 411041792.0
+				},
+				{
+					"name": "node_memory_HugePages_Total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_SReclaimable_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 31010816.0
+				},
+				{
+					"name": "node_disk_reads_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 73942299.0
+				},
+				{
+					"name": "node_disk_reads_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 964158.0
+				},
+				{
+					"name": "node_memory_KernelStack_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 3538944.0
+				},
+				{
+					"name": "node_vmstat_pgfault",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 732559504.0
+				},
+				{
+					"name": "node_memory_CmaFree_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_HugePages_Surp",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_ShmemHugePages_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Percpu_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1048576.0
+				},
+				{
+					"name": "node_memory_VmallocTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 35184372087808.0
+				},
+				{
+					"name": "node_disk_discarded_sectors_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discarded_sectors_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_writes_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 19420847.0
+				},
+				{
+					"name": "node_disk_writes_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 394695.0
+				},
+				{
+					"name": "node_vmstat_pswpout",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 40603988.0
+				},
+				{
+					"name": "node_disk_write_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 66537.821
+				},
+				{
+					"name": "node_disk_write_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 882.7760000000001
+				},
+				{
+					"name": "node_memory_Cached_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 136114176.0
+				},
+				{
+					"name": "node_memory_CmaTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_ShmemPmdMapped_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_SwapFree_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 599072768.0
+				},
+				{
+					"name": "node_disk_discards_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Inactive_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 144576512.0
+				},
+				{
+					"name": "node_memory_VmallocUsed_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 16646144.0
+				},
+				{
+					"name": "node_disk_info",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1",
+						"major": "259",
+						"minor": "0",
+						"model": "Amazon Elastic Block Store",
+						"path": "pci-0000:00:04.0-nvme-1",
+						"revision": "1.0",
+						"rotational": "0",
+						"serial": "vol09bd00092d8283d67",
+						"wwn": "nvme.1d0f-766f6c3039626430303039326438323833643637-416d617a6f6e20456c617374696320426c6f636b2053746f7265-00000001"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_disk_info",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1",
+						"major": "259",
+						"minor": "3",
+						"model": "Amazon Elastic Block Store",
+						"path": "pci-0000:00:1f.0-nvme-1",
+						"revision": "1.0",
+						"rotational": "0",
+						"serial": "vol0fff89ce32aba59d0",
+						"wwn": "nvme.1d0f-766f6c3066666638396365333261626135396430-416d617a6f6e20456c617374696320426c6f636b2053746f7265-00000001"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_load5",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.05
+				},
+				{
+					"name": "node_vmstat_pswpin",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 47504868.0
+				},
+				{
+					"name": "node_memory_Bounce_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_SUnreclaim_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 52916224.0
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 1238770902016.0
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 41310148608.0
+				},
+				{
+					"name": "node_memory_AnonPages_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 137994240.0
+				},
+				{
+					"name": "node_memory_Shmem_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 22126592.0
+				},
+				{
+					"name": "node_vmstat_pgpgin",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1250079159.0
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 190692668416.0
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 28259127296.0
+				},
+				{
+					"name": "node_memory_PageTables_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 9261056.0
+				},
+				{
+					"name": "node_disk_flush_requests_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Mapped_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 99577856.0
+				},
+				{
+					"name": "node_memory_WritebackTmp_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgmajfault",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 83223849.0
+				},
+				{
+					"name": "node_memory_Active_anon_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 85708800.0
+				},
+				{
+					"name": "node_memory_Buffers_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1757184.0
+				},
+				{
+					"name": "node_memory_MemAvailable_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 143392768.0
+				},
+				{
+					"name": "node_boot_time_seconds",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1789089067.0
+				},
+				{
+					"name": "node_memory_Slab_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 83927040.0
+				},
+				{
+					"name": "node_memory_HugePages_Free",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Inactive_file_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 50028544.0
+				},
+				{
+					"name": "node_disk_flush_requests_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_filesystem_info",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1",
+						"type": "ext4",
+						"usage": "filesystem",
+						"uuid": "d1c8f39b-741f-4526-92ed-9f7811e899c4",
+						"version": "1.0"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_memory_Active_file_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 65646592.0
+				},
+				{
+					"name": "node_memory_MemFree_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 8536064.0
+				},
+				{
+					"name": "node_load15",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.01
+				},
+				{
+					"name": "node_memory_Active_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 151355392.0
+				},
+				{
+					"name": "node_memory_Hugepagesize_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 2097152.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "idle"
+					},
+					"value": 1132081.57
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "iowait"
+					},
+					"value": 17029.46
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "irq"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "nice"
+					},
+					"value": 31.72
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "softirq"
+					},
+					"value": 190.05
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "steal"
+					},
+					"value": 232.38
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "system"
+					},
+					"value": 10034.91
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "user"
+					},
+					"value": 15092.41
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "idle"
+					},
+					"value": 1132342.66
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "iowait"
+					},
+					"value": 17019.97
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "irq"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "nice"
+					},
+					"value": 31.36
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "softirq"
+					},
+					"value": 209.86
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "steal"
+					},
+					"value": 177.78
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "system"
+					},
+					"value": 10038.23
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "user"
+					},
+					"value": 15050.42
+				},
+				{
+					"name": "node_memory_Committed_AS_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1235365888.0
+				},
+				{
+					"name": "node_memory_Unevictable_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1236992.0
+				},
+				{
+					"name": "node_disk_discard_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discard_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_HugePages_Rsvd",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoint_write_time_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 37758916.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_backend_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 49862.0
+				},
+				{
+					"name": "realtime_postgres_changes_total_subscriptions",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_activity_xact_runtime",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_clean_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 68.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_bufferpin_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_tup_fetched_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 158681388.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoints_timed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 3925.0
+				},
+				{
+					"name": "pg_stat_database_temp_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 115713643696.0
+				},
+				{
+					"name": "pg_stat_database_tup_deleted_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 156472.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_alloc_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 63994.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_deadlock_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_lock_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_temp_files_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 37301.0
+				},
+				{
+					"name": "pg_stat_database_tup_returned_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 2253034176.0
+				},
+				{
+					"name": "pg_stat_database_xact_commit_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1411877.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoint_sync_time_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 9869.0
+				},
+				{
+					"name": "pg_stat_database_blks_hit_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 291609976.0
+				},
+				{
+					"name": "pg_stat_database_tup_updated_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 192786.0
+				},
+				{
+					"name": "supabase_usage_metrics_user_queries_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 539547.0
+				},
+				{
+					"name": "pg_stat_bgwriter_stats_reset",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1787690215.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_tablespace_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_num_backends",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 7.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"datname": "postgres"
+					},
+					"value": 390763311.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"datname": "template0"
+					},
+					"value": 7488003.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"datname": "template1"
+					},
+					"value": 7721775.0
+				},
+				{
+					"name": "pg_settings_default_transaction_read_only",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_backend_fsync_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_checkpoint_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 378638.0
+				},
+				{
+					"name": "pg_stat_database_xact_rollback_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 98211.0
+				},
+				{
+					"name": "pg_stat_database_most_recent_reset",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1787690295.0
+				},
+				{
+					"name": "realtime_postgres_changes_client_subscriptions",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_blks_read_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 66548.0
+				},
+				{
+					"name": "pg_stat_bgwriter_maxwritten_clean_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_database_size_mb",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 387.1661081314087
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoints_req_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 20.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_snapshot_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_deadlocks_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 674.0
+				},
+				{
+					"name": "pg_stat_database_tup_inserted_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 415065.0
+				}
+			]
+		},
+		"metrics_end": {
+			"collected_at": "2026-09-24T17:12:56.195484+00:00",
+			"metrics": [
+				{
+					"name": "node_load5",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.04
+				},
+				{
+					"name": "node_memory_Cached_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 170139648.0
+				},
+				{
+					"name": "node_memory_Committed_AS_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1238933504.0
+				},
+				{
+					"name": "node_memory_Inactive_anon_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 67203072.0
+				},
+				{
+					"name": "node_memory_Inactive_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 150183936.0
+				},
+				{
+					"name": "node_memory_Mapped_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 80658432.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "idle"
+					},
+					"value": 1132403.8
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "iowait"
+					},
+					"value": 17036.3
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "irq"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "nice"
+					},
+					"value": 31.72
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "softirq"
+					},
+					"value": 190.11
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "steal"
+					},
+					"value": 232.42
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "system"
+					},
+					"value": 10039.7
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "user"
+					},
+					"value": 15098.93
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "idle"
+					},
+					"value": 1132667.16
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "iowait"
+					},
+					"value": 17025.01
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "irq"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "nice"
+					},
+					"value": 31.37
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "softirq"
+					},
+					"value": 209.9
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "steal"
+					},
+					"value": 177.82
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "system"
+					},
+					"value": 10042.77
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "user"
+					},
+					"value": 15056.73
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 1239466959360.0
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 41366022144.0
+				},
+				{
+					"name": "node_memory_Buffers_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 3145728.0
+				},
+				{
+					"name": "node_memory_CommitLimit_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1301237760.0
+				},
+				{
+					"name": "node_memory_HugePages_Rsvd",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_SUnreclaim_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 52948992.0
+				},
+				{
+					"name": "node_memory_SwapTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1073737728.0
+				},
+				{
+					"name": "node_disk_flush_requests_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_CmaFree_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Active_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 129802240.0
+				},
+				{
+					"name": "node_memory_Active_file_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 76230656.0
+				},
+				{
+					"name": "node_memory_DirectMap2M_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 411041792.0
+				},
+				{
+					"name": "node_memory_Mlocked_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 8192.0
+				},
+				{
+					"name": "node_memory_Percpu_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1048576.0
+				},
+				{
+					"name": "node_memory_SwapCached_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 54464512.0
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 190758925312.0
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 28316291072.0
+				},
+				{
+					"name": "node_disk_write_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 66548.735
+				},
+				{
+					"name": "node_disk_write_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 883.663
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 29668.338
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 1039.484
+				},
+				{
+					"name": "node_memory_AnonPages_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 86069248.0
+				},
+				{
+					"name": "node_memory_HardwareCorrupted_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_MemTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 455004160.0
+				},
+				{
+					"name": "node_memory_VmallocChunk_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_oom_kill",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_read_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 70551.378
+				},
+				{
+					"name": "node_disk_read_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 692.873
+				},
+				{
+					"name": "node_load1",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.02
+				},
+				{
+					"name": "node_memory_CmaTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_writes_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 19431214.0
+				},
+				{
+					"name": "node_disk_writes_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 394900.0
+				},
+				{
+					"name": "node_memory_HugePages_Surp",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_KernelStack_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 3571712.0
+				},
+				{
+					"name": "node_memory_VmallocUsed_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 16678912.0
+				},
+				{
+					"name": "node_disk_flush_requests_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_AnonHugePages_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Dirty_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 204800.0
+				},
+				{
+					"name": "node_memory_HugePages_Free",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Hugepagesize_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 2097152.0
+				},
+				{
+					"name": "node_vmstat_pswpin",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 47510494.0
+				},
+				{
+					"name": "node_memory_DirectMap1G_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_DirectMap4k_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 104763392.0
+				},
+				{
+					"name": "node_memory_SwapFree_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 550457344.0
+				},
+				{
+					"name": "node_memory_Unevictable_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1236992.0
+				},
+				{
+					"name": "node_disk_discard_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discard_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_load15",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_writes_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 24854145.0
+				},
+				{
+					"name": "node_disk_writes_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 754135.0
+				},
+				{
+					"name": "node_memory_PageTables_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 9367552.0
+				},
+				{
+					"name": "node_memory_WritebackTmp_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_info",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1",
+						"major": "259",
+						"minor": "0",
+						"model": "Amazon Elastic Block Store",
+						"path": "pci-0000:00:04.0-nvme-1",
+						"revision": "1.0",
+						"rotational": "0",
+						"serial": "vol09bd00092d8283d67",
+						"wwn": "nvme.1d0f-766f6c3039626430303039326438323833643637-416d617a6f6e20456c617374696320426c6f636b2053746f7265-00000001"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_disk_info",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1",
+						"major": "259",
+						"minor": "3",
+						"model": "Amazon Elastic Block Store",
+						"path": "pci-0000:00:1f.0-nvme-1",
+						"revision": "1.0",
+						"rotational": "0",
+						"serial": "vol0fff89ce32aba59d0",
+						"wwn": "nvme.1d0f-766f6c3066666638396365333261626135396430-416d617a6f6e20456c617374696320426c6f636b2053746f7265-00000001"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_memory_ShmemHugePages_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgfault",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 732928075.0
+				},
+				{
+					"name": "node_vmstat_pswpout",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 40618045.0
+				},
+				{
+					"name": "node_memory_ShmemPmdMapped_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Shmem_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 13979648.0
+				},
+				{
+					"name": "node_vmstat_pgmajfault",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 83249934.0
+				},
+				{
+					"name": "node_disk_reads_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 73967368.0
+				},
+				{
+					"name": "node_disk_reads_completed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 965048.0
+				},
+				{
+					"name": "node_memory_MemFree_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 18513920.0
+				},
+				{
+					"name": "node_memory_Slab_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 83173376.0
+				},
+				{
+					"name": "node_disk_discarded_sectors_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discarded_sectors_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_now",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_now",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_time_weighted_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 137100.113
+				},
+				{
+					"name": "node_disk_io_time_weighted_seconds_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 1576.537
+				},
+				{
+					"name": "node_memory_Inactive_file_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 82980864.0
+				},
+				{
+					"name": "node_vmstat_pgpgout",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 213940641.0
+				},
+				{
+					"name": "node_memory_SReclaimable_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 30224384.0
+				},
+				{
+					"name": "node_memory_VmallocTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 35184372087808.0
+				},
+				{
+					"name": "node_vmstat_pgpgin",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1250813458.0
+				},
+				{
+					"name": "node_disk_reads_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 11659992.0
+				},
+				{
+					"name": "node_disk_reads_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 1137500.0
+				},
+				{
+					"name": "node_boot_time_seconds",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 1789089067.0
+				},
+				{
+					"name": "node_memory_Writeback_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Active_anon_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 53571584.0
+				},
+				{
+					"name": "node_disk_discards_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_merged_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_filesystem_info",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db",
+						"device": "nvme1n1",
+						"type": "ext4",
+						"usage": "filesystem",
+						"uuid": "d1c8f39b-741f-4526-92ed-9f7811e899c4",
+						"version": "1.0"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_memory_Bounce_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_HugePages_Total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_MemAvailable_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 196120576.0
+				},
+				{
+					"name": "node_memory_NFS_Unstable_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_backend_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 49863.0
+				},
+				{
+					"name": "pg_stat_activity_xact_runtime",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.016873
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_checkpoint_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 378756.0
+				},
+				{
+					"name": "pg_stat_database_blks_hit_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 292348218.0
+				},
+				{
+					"name": "pg_stat_database_temp_bytes_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 115779660822.0
+				},
+				{
+					"name": "pg_stat_database_xact_rollback_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 98213.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_lock_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "supabase_usage_metrics_user_queries_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 539556.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_snapshot_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_blks_read_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 66565.0
+				},
+				{
+					"name": "pg_stat_database_xact_commit_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1412184.0
+				},
+				{
+					"name": "pg_database_size_mb",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 387.1661081314087
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_deadlock_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_bufferpin_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_tablespace_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_deadlocks_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 674.0
+				},
+				{
+					"name": "realtime_postgres_changes_client_subscriptions",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_backend_fsync_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_stats_reset",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1787690215.0
+				},
+				{
+					"name": "pg_stat_database_most_recent_reset",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1787690295.0
+				},
+				{
+					"name": "pg_stat_database_tup_updated_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 192786.0
+				},
+				{
+					"name": "realtime_postgres_changes_total_subscriptions",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoints_req_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 20.0
+				},
+				{
+					"name": "pg_settings_default_transaction_read_only",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_clean_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 68.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoints_timed_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 3926.0
+				},
+				{
+					"name": "pg_stat_database_tup_deleted_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 156472.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_alloc_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 64011.0
+				},
+				{
+					"name": "pg_stat_database_temp_files_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 37320.0
+				},
+				{
+					"name": "pg_stat_database_tup_inserted_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 415065.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_num_backends",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 8.0
+				},
+				{
+					"name": "pg_stat_database_tup_returned_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 2254144174.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoint_sync_time_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 9873.0
+				},
+				{
+					"name": "pg_stat_database_tup_fetched_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 159552374.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"datname": "postgres"
+					},
+					"value": 390763311.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"datname": "template0"
+					},
+					"value": 7488003.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"datname": "template1"
+					},
+					"value": 7721775.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoint_write_time_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 37771189.0
+				},
+				{
+					"name": "pg_stat_bgwriter_maxwritten_clean_total",
+					"labels": {
+						"supabase_project_ref": "daudvqczjqxhpzstlfih",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				}
+			]
+		},
+		"paging_rate": {
+			"elapsed_seconds": 301.283005,
+			"scrape_elapsed_seconds": null,
+			"cached_scrape_uncertainty": true,
+			"restarted": false,
+			"page_bytes_assumed": 4096,
+			"minimum_gap_met": true,
+			"cpu_time_fractions": {
+				"steal": 0.00011748120300749881,
+				"irq": 0.0,
+				"idle": 0.949732730263158,
+				"system": 0.013701245300754838,
+				"softirq": 0.0001468515037593944,
+				"nice": 1.4685150375942568e-5,
+				"iowait": 0.017445958646613198,
+				"user": 0.018841047932331264
+			},
+			"rates": [
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "idle",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 322.2299999999814,
+					"per_second": 1.0695259760834548,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "iowait",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 6.8400000000001455,
+					"per_second": 0.022702906856628523,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "irq",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.0,
+					"per_second": 0.0,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "nice",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.0,
+					"per_second": 0.0,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "softirq",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.060000000000002274,
+					"per_second": 0.00019914830575990262,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "steal",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.03999999999999204,
+					"per_second": 0.00013276553717323698,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "system",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 4.790000000000873,
+					"per_second": 0.01589867307650119,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "user",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 6.520000000000437,
+					"per_second": 0.02164078255924338,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "idle",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 324.5,
+					"per_second": 1.0770604203180993,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "iowait",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 5.039999999997235,
+					"per_second": 0.01672845768382201,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "irq",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.0,
+					"per_second": 0.0,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "nice",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.010000000000001563,
+					"per_second": 3.3191384293321037e-5,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "softirq",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.03999999999999204,
+					"per_second": 0.00013276553717323698,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "steal",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.03999999999999204,
+					"per_second": 0.00013276553717323698,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "system",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 4.540000000000873,
+					"per_second": 0.015068888469168294,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "user",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 6.309999999999491,
+					"per_second": 0.02094376348908061,
+					"reset": false
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"device": "nvme0n1",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 696057344.0,
+					"per_second": 2310310.6794888745,
+					"reset": false
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"device": "nvme1n1",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 55873536.0,
+					"per_second": 185452.00052024177,
+					"reset": false
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"device": "nvme0n1",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 66256896.0,
+					"per_second": 219915.80972182617,
+					"reset": false
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"device": "nvme1n1",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 57163776.0,
+					"per_second": 189734.48568730254,
+					"reset": false
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"device": "nvme0n1",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 11.870999999999185,
+					"per_second": 0.039401492294592534,
+					"reset": false
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"device": "nvme1n1",
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 0.5069999999998345,
+					"per_second": 0.001682803183670564,
+					"reset": false
+				},
+				{
+					"name": "node_vmstat_pswpin",
+					"labels": {
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 5626.0,
+					"per_second": 18.673472803419497,
+					"reset": false
+				},
+				{
+					"name": "node_vmstat_pswpout",
+					"labels": {
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 14057.0,
+					"per_second": 46.657128901114085,
+					"reset": false
+				},
+				{
+					"name": "node_vmstat_pgmajfault",
+					"labels": {
+						"service_type": "db",
+						"supabase_identifier": "daudvqczjqxhpzstlfih",
+						"supabase_project_ref": "daudvqczjqxhpzstlfih"
+					},
+					"delta": 26085.0,
+					"per_second": 86.57972592911439,
+					"reset": false
+				}
+			]
+		}
+	},
+	"errors": {}
+}

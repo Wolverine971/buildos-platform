@@ -91,9 +91,9 @@ export function isAgenticChatControlToolNameV1(value: unknown): value is string 
 }
 /**
  * Semantic discovery (explore_project) embeds the query text via OpenRouter's
- * embeddings endpoint (same underlying text-embedding-3-small; direct OpenAI
- * is the fallback route). Without any key the port stays unset and
- * explore_project reports itself unavailable instead of failing the turn.
+ * embeddings endpoint (text-embedding-3-small, ZDR required; no direct OpenAI
+ * route). Without an OpenRouter key the port stays unset and explore_project
+ * reports itself unavailable instead of failing the turn.
  */
 function createWorkerEmbeddingsPortFromEnv(): AgenticChatEmbeddingsPortV1 | undefined {
 	const client = createEmbeddingsClientFromEnv(process.env);

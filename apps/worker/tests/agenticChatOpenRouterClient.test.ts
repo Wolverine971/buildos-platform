@@ -418,7 +418,7 @@ describe('AgenticChatOpenRouterClient', () => {
 			stream: true,
 			stream_options: { include_usage: true },
 			reasoning: { exclude: true },
-			provider: { allow_fallbacks: true, data_collection: 'deny' },
+			provider: { allow_fallbacks: true, data_collection: 'deny', zdr: true },
 			session_id: SESSION_ID,
 			prompt_cache_key: SESSION_ID,
 			usage: { include: true }
@@ -1988,6 +1988,17 @@ describe('AgenticChatOpenRouterClient', () => {
 				new AgenticChatOpenRouterClient(
 					{ usage: { observe: vi.fn() } },
 					{
+						routes: [route({ providerRouting: { zdr: false } })],
+						httpReferer: 'https://build-os.com',
+						appName: 'BuildOS'
+					}
+				)
+		).toThrow('cannot opt out of zero data retention');
+		expect(
+			() =>
+				new AgenticChatOpenRouterClient(
+					{ usage: { observe: vi.fn() } },
+					{
 						routes: [
 							route({
 								kind: 'openai_compatible',
@@ -2020,6 +2031,7 @@ describe('AgenticChatOpenRouterClient', () => {
 		expect(routedBody.provider).toEqual({
 			allow_fallbacks: true,
 			data_collection: 'deny',
+			zdr: true,
 			sort: 'latency'
 		});
 

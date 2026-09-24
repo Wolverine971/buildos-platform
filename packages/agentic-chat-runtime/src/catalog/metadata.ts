@@ -407,6 +407,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: [
 			'Scans every connected account by default; no list_email_accounts call needed',
 			'A fast classifier scores every email; emails already scored for the same question are skipped',
+			'In a project chat the project context is automatic; omit looking_for for general project questions',
 			'Returns relevant emails with scores, body openings for the top few, and counts of the rest'
 		],
 		contexts: ['global', 'project'],

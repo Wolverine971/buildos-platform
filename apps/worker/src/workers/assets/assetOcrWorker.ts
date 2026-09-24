@@ -8,6 +8,7 @@ import {
 	buildAssetOcrSkippedUpdate,
 	shouldPreserveManualExtractedText
 } from '@buildos/shared-types';
+import { OPENROUTER_PRIVATE_PROVIDER } from '@buildos/smart-llm';
 import { logWorkerError } from '../../lib/errorLogger';
 import { PermanentQueueError } from '../../lib/queueErrors';
 import { supabase } from '../../lib/supabase';
@@ -43,20 +44,14 @@ type OcrOutput = {
 	language?: string;
 };
 
-// OCR routes through OpenRouter (one provider, one bill — same pattern as the
-// embeddings pipeline); a direct OpenAI key is only the fallback route. An
-// IMAGE_OCR_MODEL override is used verbatim, so on the OpenRouter route it
-// must carry the provider prefix (e.g. openai/gpt-4o-mini).
+// OCR routes only through OpenRouter under the private provider policy
+// (tasker 103: a direct OpenAI route would bypass zero data retention). An
+// IMAGE_OCR_MODEL override is used verbatim, so it must carry the provider
+// prefix (e.g. openai/gpt-4o-mini, served with ZDR on Azure).
 const OPENROUTER_API_KEY =
 	process.env.PRIVATE_OPENROUTER_API_KEY?.trim() || process.env.OPENROUTER_API_KEY?.trim();
-const OPENAI_API_KEY =
-	process.env.OPENAI_API_KEY?.trim() || process.env.PRIVATE_OPENAI_API_KEY?.trim();
-const OCR_API_KEY = OPENROUTER_API_KEY || OPENAI_API_KEY;
-const CHAT_COMPLETIONS_URL = OPENROUTER_API_KEY
-	? 'https://openrouter.ai/api/v1/chat/completions'
-	: 'https://api.openai.com/v1/chat/completions';
-const OCR_MODEL =
-	process.env.IMAGE_OCR_MODEL || (OPENROUTER_API_KEY ? 'openai/gpt-4o-mini' : 'gpt-4o-mini');
+const CHAT_COMPLETIONS_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OCR_MODEL = process.env.IMAGE_OCR_MODEL || 'openai/gpt-4o-mini';
 
 function trimToLimit(text: string, maxLength: number): string {
 	if (text.length <= maxLength) return text;
@@ -64,23 +59,24 @@ function trimToLimit(text: string, maxLength: number): string {
 }
 
 async function extractOcrFromImageUrl(imageUrl: string): Promise<OcrOutput> {
-	if (!OCR_API_KEY) {
+	if (!OPENROUTER_API_KEY) {
 		throw new PermanentQueueError(
 			'asset_ocr_missing_api_key',
-			'Missing PRIVATE_OPENROUTER_API_KEY (or an OpenAI key fallback) for asset OCR'
+			'Missing PRIVATE_OPENROUTER_API_KEY for asset OCR'
 		);
 	}
 
 	const response = await fetch(CHAT_COMPLETIONS_URL, {
 		method: 'POST',
 		headers: {
-			Authorization: `Bearer ${OCR_API_KEY}`,
+			Authorization: `Bearer ${OPENROUTER_API_KEY}`,
 			'Content-Type': 'application/json'
 		},
 		body: JSON.stringify({
 			model: OCR_MODEL,
 			temperature: 0.1,
 			response_format: { type: 'json_object' },
+			provider: OPENROUTER_PRIVATE_PROVIDER,
 			messages: [
 				{
 					role: 'system',

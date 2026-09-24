@@ -9,10 +9,14 @@
   - Small capped skeleton set renders immediately
   - Full history data streams from a bounded RPC
   - Search is debounced and kept on the indexed 3+ character path
+
+  PRIVACY: the search query is posted to the `search` action and kept in component state,
+  never written to the URL (analytics page views, browser history, request logs).
 -->
 
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
+	import { deserialize } from '$app/forms';
 	import { goto, invalidate, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
@@ -34,6 +38,9 @@
 	// shared loader on idle, so opening a session is still instant in practice.
 	import { loadAgentChatModal } from '$lib/components/agent/load-agent-chat-modal';
 	import HistoryListSkeleton from '$lib/components/history/HistoryListSkeleton.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import { Trash2 } from '$lib/icons/lucide';
+	import { toastService } from '$lib/stores/toast.store';
 	import type {
 		AgentBrainDumpContext,
 		DataMutationSummary
@@ -112,6 +119,84 @@
 			});
 	});
 
+	// Active search, applied through the `search` action instead of the URL.
+	let activeSearch = $state(initialFilters.search);
+	let searchResult = $state<HistoryDataResult | null>(null);
+	let searchOffset = $state(0);
+	let searchLoading = $state(Boolean(initialFilters.search));
+	let searchError = $state<string | null>(null);
+	let searchVersion = 0;
+
+	// A legacy `?search=` link was already applied by the load; show that result as the
+	// search view and drop the param from the address bar.
+	if (initialFilters.search) {
+		untrack(() => data.historyData).then(
+			(result) => {
+				if (searchVersion !== 0) return;
+				searchResult = result;
+				searchLoading = false;
+			},
+			() => {
+				if (searchVersion !== 0) return;
+				searchError = 'Failed to load history';
+				searchLoading = false;
+			}
+		);
+	}
+
+	onMount(() => {
+		if (!$page.url.searchParams.has('search')) return;
+		const url = new URL($page.url);
+		url.searchParams.delete('search');
+		goto(`${url.pathname}${url.search}`, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
+	});
+
+	async function runSearch(offset: number) {
+		const version = ++searchVersion;
+		searchLoading = true;
+		searchError = null;
+
+		const body = new FormData();
+		body.set('search', activeSearch);
+		body.set('offset', String(offset));
+		body.set('limit', String(limit));
+		if (statusFilter) body.set('status', statusFilter);
+		if (typeFilter !== 'all') body.set('type', typeFilter);
+
+		try {
+			const response = await fetch('/history?/search', {
+				method: 'POST',
+				body,
+				headers: { 'x-sveltekit-action': 'true' }
+			});
+			const result = deserialize(await response.text());
+			if (version !== searchVersion) return;
+			if (result.type !== 'success' || !result.data?.historyData) {
+				throw new Error('Search failed');
+			}
+			searchResult = result.data.historyData as HistoryDataResult;
+			searchOffset = offset;
+		} catch (err) {
+			if (version !== searchVersion) return;
+			searchError = err instanceof Error ? err.message : 'Search failed';
+		} finally {
+			if (version === searchVersion) searchLoading = false;
+		}
+	}
+
+	function endSearch() {
+		searchVersion++;
+		activeSearch = '';
+		searchResult = null;
+		searchOffset = 0;
+		searchLoading = false;
+		searchError = null;
+	}
+
 	// Local filter state
 	let searchInput = $state(initialFilters.search);
 	let statusFilter = $state<string>(initialFilters.status || '');
@@ -121,6 +206,8 @@
 	let selectedBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
 	let chatClassificationState = $state<Record<string, 'loading' | 'queued' | 'error'>>({});
 	let openingBraindumpId = $state<string | null>(null);
+	let pendingDeleteItem = $state<HistoryItem | null>(null);
+	let deletingBraindumpId = $state<string | null>(null);
 	let lastAutoOpenedSelection = $state<string | null>(null);
 	const MIN_SEARCH_LENGTH = 3;
 	const MAX_SEARCH_LENGTH = 120;
@@ -141,10 +228,13 @@
 		}
 	});
 
-	// Derived states from resolved data
-	const items = $derived(resolvedData?.items ?? []);
+	// Derived states from the search result or the URL-driven streamed data
+	const viewData = $derived(activeSearch ? searchResult : resolvedData);
+	const viewLoading = $derived(activeSearch ? searchLoading : historyLoading);
+	const viewError = $derived(activeSearch ? searchError : historyError);
+	const items = $derived(viewData?.items ?? []);
 	const stats = $derived(
-		resolvedData?.stats ?? {
+		viewData?.stats ?? {
 			totalBraindumps: braindumpCount,
 			processedBraindumps: 0,
 			pendingBraindumps: 0,
@@ -152,15 +242,15 @@
 			chatSessionsWithSummary: 0
 		}
 	);
-	const hasMore = $derived(resolvedData?.hasMore ?? false);
-	const currentOffset = $derived(data.filters.offset);
+	const hasMore = $derived(viewData?.hasMore ?? false);
+	const currentOffset = $derived(activeSearch ? searchOffset : data.filters.offset);
 	const limit = $derived(data.filters.limit);
-	const totalItems = $derived(resolvedData?.totalItems ?? itemCount);
-	const totalItemsExact = $derived(resolvedData?.totalItemsExact ?? true);
+	const totalItems = $derived(viewData?.totalItems ?? itemCount);
+	const totalItemsExact = $derived(viewData?.totalItemsExact ?? true);
 	const visibleItemCount = $derived(currentOffset + items.length);
 
 	// Show skeletons while loading if we have items to show
-	const showSkeletons = $derived(historyLoading && itemCount > 0);
+	const showSkeletons = $derived(viewLoading && itemCount > 0);
 
 	function getStatusIcon(status: string) {
 		switch (status) {
@@ -292,11 +382,22 @@
 
 	function applyFilters() {
 		const params = new URLSearchParams();
-		const normalizedSearch = searchInput.trim().slice(0, MAX_SEARCH_LENGTH);
-		if (normalizedSearch.length >= MIN_SEARCH_LENGTH) params.set('search', normalizedSearch);
 		if (statusFilter) params.set('status', statusFilter);
 		if (typeFilter !== 'all') params.set('type', typeFilter);
-		goto(`/history?${params.toString()}`);
+		const url = params.toString() ? `/history?${params.toString()}` : '/history';
+		const normalizedSearch = searchInput.trim().slice(0, MAX_SEARCH_LENGTH);
+
+		if (normalizedSearch.length < MIN_SEARCH_LENGTH) {
+			endSearch();
+			goto(url);
+			return;
+		}
+
+		activeSearch = normalizedSearch;
+		if (`${$page.url.pathname}${$page.url.search}` !== url) {
+			goto(url, { keepFocus: true, noScroll: true });
+		}
+		void runSearch(0);
 	}
 
 	function setTypeFilter(newFilter: 'all' | 'braindumps' | 'chats') {
@@ -308,10 +409,15 @@
 		searchInput = '';
 		statusFilter = '';
 		typeFilter = 'all';
+		endSearch();
 		goto('/history');
 	}
 
 	function loadMore() {
+		if (activeSearch) {
+			void runSearch(currentOffset + limit);
+			return;
+		}
 		const params = new URLSearchParams($page.url.searchParams);
 		params.set('offset', String(currentOffset + limit));
 		goto(`/history?${params.toString()}`);
@@ -368,6 +474,7 @@
 		replaceState(newUrl, {});
 		if (summary?.hasMessagesSent) {
 			void invalidate('history:data');
+			if (activeSearch) void runSearch(searchOffset);
 		}
 	}
 
@@ -381,7 +488,7 @@
 		if (
 			normalizedSearch.length > 0 &&
 			normalizedSearch.length < MIN_SEARCH_LENGTH &&
-			!$page.url.searchParams.has('search')
+			!activeSearch
 		) {
 			return;
 		}
@@ -392,6 +499,60 @@
 		if (event.key === 'Enter') {
 			clearTimeout(searchDebounceTimer);
 			applyFilters();
+		}
+	}
+
+	function withoutItem(
+		result: HistoryDataResult | null,
+		item: HistoryItem
+	): HistoryDataResult | null {
+		if (!result?.items.some((entry) => entry.id === item.id)) return result;
+		return {
+			...result,
+			items: result.items.filter((entry) => entry.id !== item.id),
+			totalItems: Math.max(0, result.totalItems - 1),
+			stats: {
+				...result.stats,
+				totalBraindumps: Math.max(0, result.stats.totalBraindumps - 1),
+				processedBraindumps: Math.max(
+					0,
+					result.stats.processedBraindumps - (item.status === 'processed' ? 1 : 0)
+				),
+				pendingBraindumps: Math.max(
+					0,
+					result.stats.pendingBraindumps - (item.status === 'pending' ? 1 : 0)
+				)
+			}
+		};
+	}
+
+	// Soft delete: the capture leaves History now and is erased 30 days later.
+	async function deletePendingBraindump() {
+		const item = pendingDeleteItem;
+		if (!item || deletingBraindumpId) return;
+		deletingBraindumpId = item.id;
+		try {
+			const response = await fetch(`/api/onto/braindumps/${item.id}`, { method: 'DELETE' });
+			// 404: already deleted elsewhere; the list outcome is the same.
+			if (!response.ok && response.status !== 404) {
+				const payload = await response.json().catch(() => null);
+				throw new Error(payload?.error || 'Could not delete this capture');
+			}
+			resolvedData = withoutItem(resolvedData, item);
+			searchResult = withoutItem(searchResult, item);
+			pendingDeleteItem = null;
+			toastService.success('Capture deleted');
+			// Pages are offset-based: refetch so the next item moves up into this page.
+			if (activeSearch ? searchResult?.hasMore : resolvedData?.hasMore) {
+				if (activeSearch) void runSearch(searchOffset);
+				else void invalidate('history:data');
+			}
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Could not delete this capture'
+			);
+		} finally {
+			deletingBraindumpId = null;
 		}
 	}
 
@@ -433,7 +594,7 @@
 				<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
 					History
 				</h1>
-				{#if historyLoading}
+				{#if viewLoading}
 					<LoaderCircle
 						class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin motion-reduce:animate-none"
 					/>
@@ -624,14 +785,14 @@
 			{#if showSkeletons}
 				<!-- Show a bounded skeleton set while streamed history data resolves. -->
 				<HistoryListSkeleton count={itemCount} />
-			{:else if historyError}
+			{:else if viewError}
 				<!-- Error state -->
 				<div
 					class="flex flex-col items-center justify-center rounded-lg border border-dashed border-destructive/30 bg-destructive/5 py-16 tx tx-static tx-weak"
 				>
 					<AlertCircle class="mb-4 h-12 w-12 text-destructive" />
 					<h3 class="mb-2 text-lg font-medium text-foreground">Failed to load history</h3>
-					<p class="mb-4 text-center text-sm text-muted-foreground">{historyError}</p>
+					<p class="mb-4 text-center text-sm text-muted-foreground">{viewError}</p>
 					<button
 						onclick={() => location.reload()}
 						class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -668,7 +829,7 @@
 						{@const StatusIcon = getStatusIcon(displayStatus)}
 						<div
 							class={`group relative flex h-full flex-col rounded-lg border border-border bg-card p-2 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong focus-within:border-accent/50 tx tx-frame tx-weak pressable sm:p-4 ${
-								openingBraindumpId === item.id
+								openingBraindumpId === item.id || deletingBraindumpId === item.id
 									? 'pointer-events-none opacity-70'
 									: ''
 							}`}
@@ -737,6 +898,17 @@
 												>{statusLabel}</span
 											>
 										</span>
+										{#if item.type === 'braindump'}
+											<button
+												type="button"
+												onclick={() => (pendingDeleteItem = item)}
+												class="pointer-events-auto relative z-[2] inline-flex items-center justify-center rounded-full border border-border bg-muted/60 p-1 text-muted-foreground transition pressable hover:border-destructive/40 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+												aria-label={`Delete ${item.title}`}
+												title="Delete capture"
+											>
+												<Trash2 class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+											</button>
+										{/if}
 									</div>
 								</div>
 
@@ -824,6 +996,26 @@
 		</div>
 	</div>
 </div>
+
+<ConfirmationModal
+	isOpen={pendingDeleteItem !== null}
+	title="Delete capture?"
+	confirmText="Delete"
+	confirmVariant="danger"
+	icon="danger"
+	loading={deletingBraindumpId !== null}
+	loadingText="Deleting..."
+	onconfirm={deletePendingBraindump}
+	oncancel={() => (pendingDeleteItem = null)}
+>
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
+			<span class="font-semibold text-foreground">"{pendingDeleteItem?.title}"</span>
+			leaves your history now and is erased for good after 30 days. Chats you started from it stay
+			until you delete them.
+		</p>
+	{/snippet}
+</ConfirmationModal>
 
 <!-- Agent Chat Modal for chat sessions -->
 {#if isAgentModalOpen && selectedChatSessionId}

@@ -762,6 +762,31 @@ describe('scan_email_inbox', () => {
 		expect(result.other_senders).toEqual([{ untrusted_from: 'Substack', count: 9 }]);
 	});
 
+	it('tells the model an unavailable account is a temporary failure, not a reconnect', async () => {
+		const base = scanResult();
+		const scanInbox = vi.fn(async (_input: unknown) => ({
+			...base,
+			accounts: base.accounts.map((account) =>
+				account.status === 'reconnect_required'
+					? { ...account, status: 'unavailable' as const }
+					: account
+			)
+		}));
+		const port = createPort({ scanInbox });
+		const { context } = createContext(port);
+		const result = await scanEmailInbox(context, {});
+
+		const unavailable = result.accounts.find(
+			(account: any) => account.status === 'unavailable'
+		);
+		expect(unavailable.guidance).toContain('not a connection problem');
+		expect(unavailable.guidance).toContain('do not ask the user to reconnect');
+		expect(result.reconnect_required_accounts).toEqual([]);
+		expect(result.accounts.find((account: any) => account.status === 'success').guidance).toBe(
+			undefined
+		);
+	});
+
 	it('lets get_email_message open a scanned message in the same turn', async () => {
 		const port = createPort({ scanInbox: vi.fn(async () => scanResult()) });
 		const { context } = createContext(port);

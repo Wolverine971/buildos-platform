@@ -47,4 +47,35 @@ describe('worker error classification', () => {
 			expect.objectContaining({ error_type: 'llm_error' })
 		);
 	});
+
+	it('redacts content in operation_payload and metadata before insert', async () => {
+		await logWorkerError(new Error('insert failed'), {
+			operationPayload: {
+				subject: 'Maya updated Acme rebrand',
+				recipientEmail: 'person@example.com',
+				emailId: '123e4567-e89b-12d3-a456-426614174000'
+			},
+			metadata: {
+				jobId: 'job-1',
+				summary: 'Therapy with Dr. Lee',
+				details: 'Failing row contains (Acme rebrand)',
+				briefDate: '2026-09-24'
+			}
+		});
+
+		const [entry] = mocks.insert.mock.calls[0] as unknown as [Record<string, any>];
+		expect(entry.operation_payload).toEqual({
+			subject: '[redacted]',
+			recipientEmail: '[redacted-email]',
+			emailId: '123e4567-e89b-12d3-a456-426614174000'
+		});
+		expect(entry.metadata).toMatchObject({
+			jobId: 'job-1',
+			summary: '[redacted]',
+			details: '[redacted]',
+			briefDate: '2026-09-24',
+			worker: true
+		});
+		expect(JSON.stringify(entry)).not.toMatch(/Acme|Therapy|person@example\.com/);
+	});
 });

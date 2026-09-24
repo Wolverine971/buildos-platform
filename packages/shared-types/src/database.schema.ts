@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-09-24T15:38:31.654Z
+// Generated on: 2026-09-24T19:51:25.663Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -590,15 +590,12 @@ export type DatabaseSchema = {
 	calendar_analysis_events: {
 		analysis_id: string;
 		attendee_count: number | null;
-		attendee_emails: string[] | null;
 		calendar_event_id: string;
 		calendar_id: string;
 		calendar_source_id: string | null;
 		contributing_source_event_ids: Json;
 		created_at: string | null;
-		event_description: string | null;
 		event_end: string | null;
-		event_location: string | null;
 		event_start: string | null;
 		event_title: string | null;
 		exclusion_reason: string | null;
@@ -607,7 +604,7 @@ export type DatabaseSchema = {
 		is_organizer: boolean | null;
 		is_recurring: boolean | null;
 		recurrence_pattern: string | null;
-		suggestion_id: string | null;
+		suggestion_id: string;
 	};
 	calendar_analysis_preferences: {
 		analysis_frequency: string | null;
@@ -4152,6 +4149,19 @@ export type DatabaseSchema = {
 		stripe_subscription_id: string | null;
 		user_id: string;
 	};
+	user_data_exports: {
+		byte_size: number | null;
+		completed_at: string | null;
+		error_code: string | null;
+		expires_at: string | null;
+		id: string;
+		part_count: number | null;
+		requested_at: string;
+		started_at: string | null;
+		status: string;
+		storage_path: string | null;
+		user_id: string;
+	};
 	user_email_connections: {
 		account_label: string;
 		connected_at: string;
@@ -4677,6 +4687,7 @@ export const tableNames = [
 	'user_contacts',
 	'user_context',
 	'user_discounts',
+	'user_data_exports',
 	'user_email_connections',
 	'user_notification_preferences',
 	'user_notifications',

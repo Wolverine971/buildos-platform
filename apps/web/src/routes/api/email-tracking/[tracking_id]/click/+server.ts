@@ -6,6 +6,7 @@ import { createLogger } from '@buildos/shared-utils';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { captureServerEvent } from '$lib/server/posthog';
+import { analyticsUrl } from '$lib/utils/analytics-url';
 import { getSafeLocalRedirect } from '$lib/server/safe-redirect';
 
 function getTemplateData(value: unknown): Record<string, unknown> {
@@ -66,12 +67,10 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			.select(
 				`
 				id,
-				subject,
 				template_data,
 				email_recipients (
 					id,
-					recipient_id,
-					recipient_email
+					recipient_id
 				)
 			`
 			)
@@ -177,7 +176,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 				const isFirstClick = !clickedRecipientIds.has(recipient.id);
 
 				logger.info('Tracking email click', {
-					recipientEmail: recipient.recipient_email,
 					recipientId: recipient.id,
 					isFirstClick
 				});
@@ -200,11 +198,11 @@ export const GET: RequestHandler = async ({ params, url }) => {
 					});
 				}
 
-				analyticsCaptures.push(
-					captureServerEvent(
-						recipient.recipient_id || recipient.recipient_email,
-						'email_clicked',
-						{
+				// Only BuildOS users become PostHog persons. Non-user recipients (admin, lifecycle,
+				// outreach emails) are not captured, and an email address is never a distinct_id.
+				if (recipient.recipient_id) {
+					analyticsCaptures.push(
+						captureServerEvent(recipient.recipient_id, 'email_clicked', {
 							email_id: email.id,
 							email_recipient_id: recipient.id,
 							tracking_id: tracking_id,
@@ -218,10 +216,11 @@ export const GET: RequestHandler = async ({ params, url }) => {
 								getStringMetadata(templateData, 'engagementStage') ||
 								'standard',
 							is_first_click: isFirstClick,
-							clicked_url: destination
-						}
-					).catch(() => {})
-				);
+							// Path only: a query string or hash can carry tokens or emails.
+							clicked_url: analyticsUrl(destination)
+						}).catch(() => {})
+					);
+				}
 			}
 
 			// NEW: Update notification_deliveries if this email is tied to a notification

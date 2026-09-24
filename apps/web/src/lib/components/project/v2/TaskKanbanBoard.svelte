@@ -13,15 +13,17 @@
 	Drag-and-drop semantics:
 	  - State columns (Backlog/In Progress/Blocked/Done) accept any card.
 	    A card from Archived is restored first (POST /restore), then PATCHed.
-	  - Archived accepts any non-archived card (DELETE soft-delete).
+	  - Archived accepts any non-archived card (DELETE { archive: true }: sets
+	    deleted_at and archived_at; kept until restored or deleted).
 	  - Scheduled and Overdue are derived filters, never drop targets.
 
 	Bucketing is mutually exclusive and combines `state_key`, `due_at`/`start_at`,
-	and `deleted_at`. Overdue takes precedence over state buckets so slipping
-	work is impossible to miss.
+	and `archived_at`. Overdue takes precedence over state buckets so slipping
+	work is impossible to miss. Deleted tasks (deleted_at without archived_at)
+	are never shown; they are erased 30 days after deletion.
 
 	Bucket rules (top to bottom = first match wins):
-	  Archived    → deleted_at != null
+	  Archived    → archived_at != null
 	  Done        → state_key === 'done'
 	  Overdue     → has due_at < now
 	  Scheduled   → state_key === 'todo' AND has due_at OR start_at >= now
@@ -31,10 +33,11 @@
 
 	Drag rules:
 	  - Backlog / In Progress / Blocked / Done accept drops → PATCH state_key
-	  - Archived accepts drops → DELETE (soft-delete via deleted_at)
+	  - Archived accepts drops → DELETE { archive: true }
 	  - Overdue and Scheduled are derived filters; matching cards stay in their
 	    persisted workflow column and can be dragged normally.
 	  - Archived cards can be dragged back to a workflow column to restore them.
+	  - An archived card's Delete action turns it into a deleted task (DELETE).
 
 	Archived cards are not in the standard project loader response, so the
 	column lazy-loads them from /api/onto/projects/[id]/tasks/archived.
@@ -57,9 +60,11 @@
 		LoaderCircle,
 		PauseCircle,
 		RefreshCw,
+		Trash2,
 		User,
 		X
 	} from '$lib/icons/lucide';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { toastService } from '$lib/stores/toast.store';
 	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
@@ -199,7 +204,7 @@
 	$effect(() => {
 		const incomingIds = new Set(tasks.map((t) => t.id));
 		untrack(() => {
-			const localArchived = localTasks.filter((t) => t.deleted_at && !incomingIds.has(t.id));
+			const localArchived = localTasks.filter((t) => t.archived_at && !incomingIds.has(t.id));
 			localTasks = [...tasks.map((t) => ({ ...t })), ...localArchived];
 		});
 	});
@@ -276,7 +281,7 @@
 			// Merge: drop any local copy of these IDs, then add server rows.
 			const fetchedIds = new Set(fetched.map((t) => t.id));
 			localTasks = [
-				...localTasks.filter((t) => !fetchedIds.has(t.id) && (loadMore || !t.deleted_at)),
+				...localTasks.filter((t) => !fetchedIds.has(t.id) && (loadMore || !t.archived_at)),
 				...fetched.map((t) => ({ ...t }))
 			];
 			archivedLoaded = true;
@@ -305,7 +310,7 @@
 	);
 
 	function taskWorkflowColumn(task: Task): ColumnKey {
-		if (task.deleted_at) return 'archived';
+		if (task.archived_at) return 'archived';
 		if (task.state_key === 'done') return 'done';
 		if (task.state_key === 'in_progress') return 'in_progress';
 		if (task.state_key === 'blocked') return 'blocked';
@@ -331,6 +336,7 @@
 		};
 
 		for (const task of localTasks) {
+			if (task.deleted_at && !task.archived_at) continue;
 			const column = taskWorkflowColumn(task);
 			if (column === 'archived' || matchesDueFilters(task)) grouped[column].push(task);
 		}
@@ -486,7 +492,7 @@
 		const idx = localTasks.findIndex((t) => t.id === taskId);
 		if (idx === -1) return;
 		const before = { ...localTasks[idx]! };
-		const wasArchived = !!before.deleted_at;
+		const wasArchived = !!before.archived_at;
 
 		// No-op guard: dropping on the column the task already lives in.
 		if (taskWorkflowColumn(before) === col.key) return;
@@ -494,17 +500,21 @@
 		// ----- Re-archive of an already-archived card → no-op -----
 		if (col.dropAction === 'archive' && wasArchived) return;
 
-		// ----- Archive (soft-delete) -----
+		// ----- Archive (kept until restored or deleted) -----
 		if (col.dropAction === 'archive') {
+			const archivedAt = new Date().toISOString();
 			localTasks[idx] = {
 				...before,
-				deleted_at: new Date().toISOString()
+				deleted_at: archivedAt,
+				archived_at: archivedAt
 			} as Task;
 			pendingTaskIds = new Set(pendingTaskIds).add(taskId);
 			try {
 				const res = await fetch(`/api/onto/tasks/${taskId}`, {
 					method: 'DELETE',
-					credentials: 'same-origin'
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({ archive: true })
 				});
 				if (!res.ok) {
 					const body = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -530,6 +540,7 @@
 			localTasks[idx] = {
 				...before,
 				deleted_at: wasArchived ? null : before.deleted_at,
+				archived_at: wasArchived ? null : before.archived_at,
 				state_key: target,
 				completed_at:
 					target === 'done' ? (before.completed_at ?? new Date().toISOString()) : null
@@ -542,8 +553,8 @@
 			let patchedOnServer = false;
 
 			try {
-				// Step 1: if restoring from archive, clear deleted_at first so the
-				// follow-up PATCH can pass the "deleted_at IS NULL" filter.
+				// Step 1: if restoring from archive, clear deleted_at/archived_at first
+				// so the follow-up PATCH can pass the "deleted_at IS NULL" filter.
 				if (wasArchived) {
 					const restoreRes = await fetch(`/api/onto/tasks/${taskId}/restore`, {
 						method: 'POST',
@@ -592,7 +603,8 @@
 				if (rollbackIdx !== -1) {
 					localTasks[rollbackIdx] = {
 						...before,
-						deleted_at: restoredOnServer ? null : before.deleted_at
+						deleted_at: restoredOnServer ? null : before.deleted_at,
+						archived_at: restoredOnServer ? null : before.archived_at
 					} as Task;
 				}
 				// Decrement archivedTotal here (instead of after restore) so the
@@ -606,6 +618,36 @@
 				next.delete(taskId);
 				pendingTaskIds = next;
 			}
+		}
+	}
+
+	// ----------------------------------------------------------------
+	// Delete from Archived (becomes a deleted task, erased in 30 days)
+	// ----------------------------------------------------------------
+	let deleteCandidate = $state<Task | null>(null);
+	let deletingArchived = $state(false);
+
+	async function deleteArchivedTask() {
+		const task = deleteCandidate;
+		if (!task || deletingArchived) return;
+		deletingArchived = true;
+		try {
+			const res = await fetch(`/api/onto/tasks/${task.id}`, {
+				method: 'DELETE',
+				credentials: 'same-origin'
+			});
+			if (!res.ok) {
+				const body = (await res.json().catch(() => null)) as { error?: string } | null;
+				throw new Error(body?.error || `Delete failed (${res.status})`);
+			}
+			localTasks = localTasks.filter((t) => t.id !== task.id);
+			archivedTotal = Math.max(0, archivedTotal - 1);
+			archivedServerReturned = Math.max(0, archivedServerReturned - 1);
+			deleteCandidate = null;
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Could not delete task');
+		} finally {
+			deletingArchived = false;
 		}
 	}
 
@@ -647,8 +689,8 @@
 	}
 
 	function archivedLabel(task: Task): string | null {
-		if (!task.deleted_at) return null;
-		const date = new Date(task.deleted_at);
+		if (!task.archived_at) return null;
+		const date = new Date(task.archived_at);
 		const diffMs = Date.now() - date.getTime();
 		const diffDay = Math.round(diffMs / (1000 * 60 * 60 * 24));
 		if (diffDay < 1) return 'archived today';
@@ -876,10 +918,11 @@
 						{@const archivedAt = archivedLabel(task)}
 						{@const isPending = pendingTaskIds.has(task.id)}
 						{@const isDragging = draggingTaskId === task.id}
-						{@const isArchivedCard = !!task.deleted_at}
+						{@const isArchivedCard = !!task.archived_at}
 						{@const justCreated = recentlyCreated?.has(task.id) ?? false}
 						{@const justCompleted = recentlyCompletedIds.has(task.id)}
 						{@const freshFlag = freshness?.flagFor('task', task.id) ?? null}
+						{@const canDeleteArchived = isArchivedCard && canEdit}
 						<div class="relative">
 							<button
 								type="button"
@@ -897,7 +940,7 @@
 								{isArchivedCard ? 'opacity-70' : ''}
 								{justCreated ? 'entity-just-created' : ''}
 								{justCompleted ? 'task-just-completed' : ''}
-								{freshFlag ? 'pb-8' : ''}
+								{freshFlag || canDeleteArchived ? 'pb-8' : ''}
 								{canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
 							>
 								<p
@@ -960,6 +1003,18 @@
 									flag={freshFlag}
 									class="absolute bottom-2 left-2.5 z-10"
 								/>
+							{/if}
+							{#if canDeleteArchived}
+								<button
+									type="button"
+									onclick={() => (deleteCandidate = task)}
+									disabled={isPending}
+									aria-label="Delete {task.title}"
+									class="absolute bottom-2 right-2.5 z-10 inline-flex min-h-6 items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 motion-reduce:transition-none"
+								>
+									<Trash2 class="h-3 w-3" />
+									Delete
+								</button>
 							{/if}
 						</div>
 					{/each}
@@ -1039,6 +1094,27 @@
 		</footer>
 	{/if}
 </section>
+
+{#if deleteCandidate}
+	<ConfirmationModal
+		isOpen={!!deleteCandidate}
+		title="Delete task"
+		confirmText="Delete task"
+		confirmVariant="danger"
+		loading={deletingArchived}
+		loadingText="Deleting..."
+		icon="danger"
+		onconfirm={() => void deleteArchivedTask()}
+		oncancel={() => (deleteCandidate = null)}
+	>
+		{#snippet content()}
+			<p class="text-sm text-muted-foreground">
+				“{deleteCandidate?.title}” leaves the archive now and is erased for good after 30
+				days.
+			</p>
+		{/snippet}
+	</ConfirmationModal>
+{/if}
 
 <style>
 	/* A brief success-green pulse when a task is confirmed done. The global

@@ -348,7 +348,7 @@ describe('ensureToolCompatibleModels', () => {
 	it('routes new OpenRouter models only through compatible lanes', () => {
 		expect(OPENROUTER_V2_TEXT_MODELS[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(TENCENT_HY3_MODEL);
-		expect(OPENROUTER_V2_TEXT_MODELS).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
@@ -365,7 +365,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_JSON_MODELS[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(MINIMAX_M3_MODEL);
-		expect(OPENROUTER_V2_JSON_MODELS).toContain(NEX_N2_MINI_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(NEX_N2_MINI_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(GPT_6_LUNA_MODEL);
@@ -384,7 +384,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GLM_53_FLASH_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(TENCENT_HY3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(MINIMAX_M3_MODEL);
-		expect(OPENROUTER_V2_TOOL_MODELS).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GPT_6_LUNA_MODEL);
@@ -395,7 +395,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain('legacy/removed-qwen-plus');
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS[0]).toBe(GEMINI_37_FLASH_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(MINIMAX_M3_MODEL);
-		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(NEX_N2_MINI_MODEL);
+		expect(OPENROUTER_V2_MULTIMODAL_MODELS).not.toContain(NEX_N2_MINI_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).not.toContain(GLM_53_FLASH_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).not.toContain('legacy/removed-preview');
@@ -403,7 +403,7 @@ describe('ensureToolCompatibleModels', () => {
 
 	it('uses stronger specialist models only for quality and maximum profiles', () => {
 		expect(TEXT_PROFILE_MODELS.speed[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(TEXT_PROFILE_MODELS.speed).toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
+		expect(TEXT_PROFILE_MODELS.speed).not.toContain(POOLSIDE_LAGUNA_XS_21_MODEL);
 		expect(ACTIVE_EXPERIMENT_MODEL).toBe(GLM_53_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality[0]).toBe(GEMINI_37_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality[1]).toBe(GLM_53_FLASH_MODEL);
@@ -424,7 +424,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(TEXT_PROFILE_MODELS.maximum).not.toContain(KIMI_EXPERIMENT_MODEL);
 
 		expect(JSON_PROFILE_MODELS.fast).not.toContain(DEEPSEEK_V4_PRO_MODEL);
-		expect(JSON_PROFILE_MODELS.fast).toContain(NEX_N2_MINI_MODEL);
+		expect(JSON_PROFILE_MODELS.fast).not.toContain(NEX_N2_MINI_MODEL);
 		expect(JSON_PROFILE_MODELS.powerful[0]).toBe(GEMINI_37_FLASH_MODEL);
 		expect(JSON_PROFILE_MODELS.powerful[1]).toBe(GLM_53_FLASH_MODEL);
 		expect(JSON_PROFILE_MODELS.powerful).toContain(GLM_53_MODEL);
@@ -440,7 +440,7 @@ describe('ensureToolCompatibleModels', () => {
 	it('excludes non-json active models from custom JSON selection', () => {
 		const models = selectJSONModels('custom', 'simple', { maxCost: 0.2 });
 
-		expect(models).toContain(NEX_N2_MINI_MODEL);
+		expect(models).not.toContain(NEX_N2_MINI_MODEL);
 		expect(models).toContain(GLM_53_FLASH_MODEL);
 		expect(models).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(models).not.toContain(TENCENT_HY3_MODEL);

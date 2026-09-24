@@ -7,6 +7,7 @@
 import {
 	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
 	type AgentStreamEventV1,
+	type AgenticChatTurnClaimResultV1,
 	type ContextShiftPayload,
 	type JsonObject,
 	createAgentStreamEventIdV1
@@ -17,6 +18,8 @@ import {
 	AgenticChatSharedReadToolFenceV1
 } from '../tools/read-tool-fence';
 import { AgenticChatToolExecutionFenceError } from '../tools/tool-execution';
+import { AgenticChatExecutionControlRpcError } from './execution-control';
+import { hasTransientDatabaseCode } from './executor-failures';
 import { createStableAgenticChatExecutionObservationKeyV1 } from '../effects/execution-observation';
 import { abortable, throwIfAborted } from '../shared/abortable-deadline';
 import type { AgenticChatExecutorEffects } from '../effects/executor-effects';
@@ -256,20 +259,24 @@ export class AgenticChatTurnRunServices {
 		signal: AbortSignal
 	): Promise<void> {
 		throwIfAborted(signal);
-		const receipt = await this.deadline.awaitOverhead(
-			signal,
-			'read-tool fence claim',
-			(deadlineSignal) =>
-				this.readToolFence.claim(
-					{
-						turnRunId: executionInput.claim.turnRunId,
-						queueJobId: executionInput.claim.queueJobId,
-						processingToken
-					},
-					deadlineSignal
-				),
-			() => new AgenticChatReadToolFenceTimeoutError(this.deadline.timeoutMs)
-		);
+		const identity = {
+			turnRunId: executionInput.claim.turnRunId,
+			queueJobId: executionInput.claim.queueJobId,
+			processingToken
+		};
+		let receipt: AgenticChatTurnClaimResultV1;
+		try {
+			receipt = await this.checkReadToolFence(identity, signal);
+		} catch (error) {
+			if (!isRetryableReadToolFenceFailure(error) || signal.aborted) throw error;
+			// Case 13 of the 2026-09-24 gate: one statement timeout on this check
+			// failed four reads and the whole turn while the database recovered
+			// seconds later. The check is read-only, so one retry after a short
+			// pause is always safe; parallel callers that retry together share
+			// the second check through the single-flight fence.
+			await abortableDelay(readToolFenceRetryDelayMs(this.deadline.timeoutMs), signal);
+			receipt = await this.checkReadToolFence(identity, signal);
+		}
 		if (receipt.outcome === 'cancel_requested') {
 			throw new AgenticChatToolExecutionFenceError('cancel_requested', 'cancelled');
 		}
@@ -291,4 +298,45 @@ export class AgenticChatTurnRunServices {
 		}
 		throwIfAborted(signal);
 	}
+
+	private checkReadToolFence(
+		identity: { turnRunId: string; queueJobId: string; processingToken: string },
+		signal: AbortSignal
+	): Promise<AgenticChatTurnClaimResultV1> {
+		return this.deadline.awaitOverhead(
+			signal,
+			'read-tool fence claim',
+			(deadlineSignal) => this.readToolFence.claim(identity, deadlineSignal),
+			() => new AgenticChatReadToolFenceTimeoutError(this.deadline.timeoutMs)
+		);
+	}
+}
+
+/** One tenth of the overhead deadline, at most 1 s: 1 s in production. */
+function readToolFenceRetryDelayMs(overheadTimeoutMs: number): number {
+	return Math.max(1, Math.min(1_000, Math.ceil(overheadTimeoutMs / 10)));
+}
+
+/**
+ * The ownership check may be retried when it never produced an answer (its
+ * own deadline fired) or the database answered with a failure that retrying
+ * can fix. A receipt that names another generation, a cancellation, or lost
+ * ownership is an answer and is never retried.
+ */
+function isRetryableReadToolFenceFailure(error: unknown): boolean {
+	return (
+		error instanceof AgenticChatReadToolFenceTimeoutError ||
+		(error instanceof AgenticChatExecutionControlRpcError && hasTransientDatabaseCode(error))
+	);
+}
+
+function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
+	throwIfAborted(signal);
+	return abortable(
+		new Promise<void>((resolve) => {
+			const timer = setTimeout(resolve, ms);
+			signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+		}),
+		signal
+	);
 }

@@ -6,13 +6,19 @@ import {
 	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1
 } from '../src/workers/agentic-chat/mutations/tool-catalog';
-import { GLM_53_FLASH_MODEL, GPT_6_LUNA_MODEL, JSON_PROFILE_MODELS } from '@buildos/smart-llm';
+import {
+	GLM_53_FLASH_MODEL,
+	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
+	JSON_PROFILE_MODELS
+} from '@buildos/smart-llm';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import {
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS,
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER,
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS,
 	buildAgenticChatSemanticReviewerRoutes,
+	DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL,
 	createAgenticChatBootstrap,
 	summarizeAgenticChatCalendarCredentialsV1,
 	summarizeAgenticChatMutationCapabilitiesV1,
@@ -195,7 +201,7 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(routes[0]).toMatchObject({
 			id: 'openrouter_semantic_reviewer',
 			kind: 'openrouter',
-			model: GPT_6_LUNA_MODEL
+			model: GPT_56_LUNA_MODEL
 		});
 		expect(routes[0]?.model).not.toBe('deepseek/deepseek-v4-flash');
 		expect(routes[0]?.apiKey).toBe('provider-secret');
@@ -219,7 +225,7 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS.has(GLM_53_FLASH_MODEL)).toBe(
 			true
 		);
-		expect(routes[0]?.model).toBe(GPT_6_LUNA_MODEL);
+		expect(routes[0]?.model).toBe(GPT_56_LUNA_MODEL);
 		expect(routes[0]?.fallbackModels).not.toContain(GLM_53_FLASH_MODEL);
 		expect(routes[0]?.fallbackModels?.length).toBeGreaterThan(0);
 		expect(
@@ -251,7 +257,7 @@ describe('Agentic Chat operational bootstrap', () => {
 
 		expect(routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['openai/fast', 'openai', 'azure']
+			order: ['azure']
 		});
 	});
 
@@ -264,11 +270,11 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(config.provider.routes[0]?.providerRouting?.ignore).toEqual(['azure']);
 		expect(routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['openai/fast', 'openai', 'azure']
+			order: ['azure']
 		});
 	});
 
-	it('routes the reviewer to OpenAI before Azure instead of the acting provider order', () => {
+	it("routes the reviewer to Azure, Luna's only ZDR host, instead of the acting order", () => {
 		const routes = buildAgenticChatSemanticReviewerRoutes(
 			[
 				{
@@ -293,17 +299,31 @@ describe('Agentic Chat operational bootstrap', () => {
 		// now ignores Azure, which is the reviewer's own fallback endpoint).
 		expect(routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['openai/fast', 'openai', 'azure']
+			order: ['azure']
 		});
 		expect(routes[0]?.providerRouting).not.toHaveProperty('ignore');
-		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER).toEqual([
-			'openai/fast',
-			'openai',
-			'azure'
-		]);
+		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER).toEqual(['azure']);
+		expect(routes[0]?.providerRouting?.order).not.toContain('openai');
+		expect(routes[0]?.providerRouting?.order).not.toContain('openai/fast');
 		expect(routes[0]?.providerRouting?.order).not.toContain('deepinfra');
 		expect(routes[0]?.fallbackModels).not.toContain('deepseek/deepseek-v4-flash');
 		expect(routes[0]?.fallbackModels).not.toContain('z-ai/glm-5.1');
+	});
+
+	// Tasker 103 (DJ 2026-09-24): prod ran gpt-5.6-luna; its Azure ZDR endpoints
+	// are healthy while gpt-6-luna's are degraded, so the default matches prod.
+	it('defaults the reviewer to GPT-5.6 Luna on Azure without hidden fallbacks', () => {
+		expect(DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL).toBe(GPT_56_LUNA_MODEL);
+		const config = loadAgenticChatConfig({
+			...environment(),
+			AGENTIC_CHAT_REVIEWER_MODEL: GPT_56_LUNA_MODEL
+		});
+		const routes = buildAgenticChatSemanticReviewerRoutes(
+			config.provider.routes,
+			config.provider.reviewer
+		);
+		expect(routes[0]).toMatchObject({ model: GPT_56_LUNA_MODEL, fallbackModels: [] });
+		expect(routes[0]?.providerRouting).toEqual({ allow_fallbacks: true, order: ['azure'] });
 	});
 
 	it('gives the reviewer client a shorter request timeout than the acting client', () => {
@@ -319,7 +339,7 @@ describe('Agentic Chat operational bootstrap', () => {
 					kind: 'openrouter',
 					baseUrl: 'https://openrouter.ai/api/v1',
 					apiKey: 'provider-secret',
-					model: GPT_6_LUNA_MODEL,
+					model: GPT_56_LUNA_MODEL,
 					fallbackModels: [
 						...JSON_PROFILE_MODELS.powerful,
 						...JSON_PROFILE_MODELS.maximum

@@ -15,7 +15,12 @@ import {
 	readGmailReadEnvFromProcess,
 	type GmailReadEnvReader
 } from './gmail-read-oauth.service';
-import { mapWithConcurrency, readJsonBounded } from './gmail-gateway-infrastructure';
+import {
+	mapWithConcurrency,
+	parseMultipartHttpResponse,
+	readJsonBounded,
+	readTextBounded
+} from './gmail-gateway-infrastructure';
 import type {
 	GmailMessageDetail,
 	GmailMessageSearchPayload,
@@ -28,9 +33,16 @@ const MAX_ACCOUNTS_PER_REQUEST = 5;
 const MAX_MESSAGES_PER_REQUEST = 20;
 const MAX_MESSAGES_PER_ACCOUNT = 10;
 export const MAX_SCAN_MESSAGES_PER_ACCOUNT = 200;
-// Gmail allows ~50 message reads/s per user (250 quota units, 5 per get); eight
-// in flight at ~150 ms each stays inside it while cutting a 100-message scan from
-// ~4 s at the search path's concurrency of 4 to ~2 s.
+// Scans read metadata through Gmail's batch endpoint: one HTTP round trip carries up
+// to 50 reads (Google's recommended ceiling), so a 100-message scan is two requests
+// instead of 100. Each inner read still spends its own quota (~50 reads/s per user),
+// so two batches in flight is the most one account should send at once.
+const GMAIL_BATCH_URL = `${GMAIL_API_ORIGIN}/batch/gmail/v1`;
+const SCAN_BATCH_SIZE = 50;
+const SCAN_BATCH_CONCURRENCY = 2;
+const MAX_PROVIDER_BATCH_BYTES = 4 * 1024 * 1024;
+// Single reads (retries of throttled batch items, or a batch that failed outright):
+// eight in flight at ~150 ms each stays inside the per-user rate.
 const SCAN_METADATA_CONCURRENCY = 8;
 const MAX_QUERY_LENGTH = 300;
 const MAX_PROVIDER_LIST_BYTES = 256 * 1024;
@@ -152,6 +164,25 @@ const GMAIL_READ_JSON_POLICY = {
 			'response_json_invalid'
 		)
 };
+
+/** Path and query for a scan's metadata read, shared by single and batched reads. */
+function scanMetadataRequest(messageId: string): { path: string; params: URLSearchParams } {
+	const params = new URLSearchParams({
+		format: 'metadata',
+		fields: 'id,threadId,internalDate,snippet,labelIds,payload/headers'
+	});
+	for (const header of ['From', 'To', 'Subject', 'Date'])
+		params.append('metadataHeaders', header);
+	return { path: `/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}`, params };
+}
+
+function unauthorizedBatchError(): GmailReadGatewayError {
+	return new GmailReadGatewayError(
+		'provider_error',
+		'Google could not complete this read-only Gmail request',
+		401
+	);
+}
 
 function uniqueStrings(values: string[]): string[] {
 	return Array.from(new Set(values));
@@ -874,23 +905,24 @@ export class GmailReadGateway {
 
 			failureStage = 'metadata';
 			let failedMessageCount = 0;
-			const fetched = await mapWithConcurrency(
-				toFetch,
-				SCAN_METADATA_CONCURRENCY,
-				async (messageId) => {
-					try {
-						const message = await this.fetchScanMetadata(accessToken, messageId);
-						return message ? this.scanMessageFromProvider(connection, message) : null;
-					} catch {
-						failedMessageCount += 1;
-						return null;
-					}
+			const { messages: fetched, singleReadCount } = await this.fetchScanMetadataBatched(
+				accessToken,
+				toFetch
+			);
+			const messages: GmailInboxScanMessage[] = [];
+			for (const message of fetched) {
+				if (message === null) continue; // Deleted between list and read.
+				if (message === undefined) {
+					failedMessageCount += 1;
+					continue;
 				}
-			);
-			const messages = fetched.filter(
-				(message): message is GmailInboxScanMessage => message !== null
-			);
-			if (toFetch.length > 0 && messages.length === 0) {
+				try {
+					messages.push(this.scanMessageFromProvider(connection, message));
+				} catch {
+					failedMessageCount += 1;
+				}
+			}
+			if (failedMessageCount > 0 && messages.length === 0) {
 				// Every read failed: surface it as an account failure, not an empty inbox.
 				throw new GmailReadGatewayError(
 					'provider_error',
@@ -908,6 +940,7 @@ export class GmailReadGateway {
 					fetchedCount: messages.length,
 					skippedCount: listedMessageIds.length - toFetch.length,
 					failedCount: failedMessageCount,
+					singleReadCount,
 					truncated
 				}
 			});
@@ -967,18 +1000,141 @@ export class GmailReadGateway {
 		}
 	}
 
+	/**
+	 * Metadata for many messages, in `messageIds` order: a message, `null` when it
+	 * was deleted after listing, or `undefined` when it could not be read. Also
+	 * reports how many reads fell back to single requests, for the audit trail. Batches of
+	 * 50 go first; throttled or failed items, and whole batches Google rejects, fall
+	 * back to single reads. An expired token throws so the caller refreshes it once.
+	 */
+	private async fetchScanMetadataBatched(
+		accessToken: string,
+		messageIds: string[]
+	): Promise<{
+		messages: Array<GmailProviderMessage | null | undefined>;
+		singleReadCount: number;
+	}> {
+		const resolved = new Map<string, GmailProviderMessage | null>();
+		const singleReads: string[] = [];
+		const batches: string[][] = [];
+		for (let index = 0; index < messageIds.length; index += SCAN_BATCH_SIZE) {
+			batches.push(messageIds.slice(index, index + SCAN_BATCH_SIZE));
+		}
+
+		await mapWithConcurrency(batches, SCAN_BATCH_CONCURRENCY, async (batch) => {
+			const responses = await this.providerBatchGetMetadata(accessToken, batch);
+			if (!responses) {
+				singleReads.push(...batch);
+				return;
+			}
+			for (const messageId of batch) {
+				const response = responses.get(messageId);
+				if (response?.status === 404) {
+					resolved.set(messageId, null);
+					continue;
+				}
+				if (response?.status === 200) {
+					try {
+						resolved.set(messageId, JSON.parse(response.body) as GmailProviderMessage);
+						continue;
+					} catch {
+						// Unparseable item: read it on its own below.
+					}
+				}
+				singleReads.push(messageId);
+			}
+		});
+
+		const failed = new Set<string>();
+		await mapWithConcurrency(singleReads, SCAN_METADATA_CONCURRENCY, async (messageId) => {
+			try {
+				resolved.set(messageId, await this.fetchScanMetadata(accessToken, messageId));
+			} catch {
+				failed.add(messageId);
+			}
+		});
+
+		return {
+			messages: messageIds.map((messageId) =>
+				failed.has(messageId) ? undefined : resolved.get(messageId)
+			),
+			singleReadCount: singleReads.length
+		};
+	}
+
+	/**
+	 * One Gmail batch request of metadata reads. Returns each item's status and body
+	 * by message id, or null when the batch as a whole failed and every item should
+	 * be read singly. A 401 anywhere throws: the token is stale for all of them.
+	 */
+	private async providerBatchGetMetadata(
+		accessToken: string,
+		messageIds: string[]
+	): Promise<Map<string, { status: number | null; body: string }> | null> {
+		const boundary = `buildos_scan_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+		const parts = messageIds.map((messageId, index) => {
+			const { path, params } = scanMetadataRequest(messageId);
+			return [
+				`--${boundary}`,
+				'Content-Type: application/http',
+				`Content-ID: <m${index}>`,
+				'',
+				`GET ${path}?${params.toString()}`,
+				'Accept: application/json',
+				'',
+				''
+			].join('\r\n');
+		});
+		const requestBody = `${parts.join('')}--${boundary}--\r\n`;
+
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+		try {
+			const response = await this.providerFetch(GMAIL_BATCH_URL, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					'Content-Type': `multipart/mixed; boundary=${boundary}`
+				},
+				body: requestBody,
+				redirect: 'error',
+				signal: controller.signal
+			});
+			if (response.status === 401) throw unauthorizedBatchError();
+			if (!response.ok) return null;
+			const responseBoundary = /boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(
+				response.headers.get('content-type') ?? ''
+			);
+			const boundaryValue = responseBoundary?.[1] ?? responseBoundary?.[2];
+			if (!boundaryValue) return null;
+			const text = await readTextBounded(
+				response,
+				MAX_PROVIDER_BATCH_BYTES,
+				GMAIL_READ_JSON_POLICY.responseTooLargeError
+			);
+			const byId = new Map<string, { status: number | null; body: string }>();
+			for (const part of parseMultipartHttpResponse(text, boundaryValue)) {
+				const index = /^m(\d+)$/.exec(part.contentId ?? '')?.[1];
+				const messageId = index === undefined ? undefined : messageIds[Number(index)];
+				if (!messageId) continue;
+				if (part.status === 401) throw unauthorizedBatchError();
+				byId.set(messageId, { status: part.status, body: part.body });
+			}
+			return byId.size > 0 ? byId : null;
+		} catch (error) {
+			if (error instanceof GmailReadGatewayError && error.providerStatus === 401) throw error;
+			return null;
+		} finally {
+			clearTimeout(timeout);
+		}
+	}
+
 	/** One metadata read; a 429 gets one short jittered retry before giving up. */
 	private async fetchScanMetadata(
 		accessToken: string,
 		messageId: string
 	): Promise<GmailProviderMessage | null> {
-		const metadataParams = new URLSearchParams({
-			format: 'metadata',
-			fields: 'id,threadId,internalDate,snippet,labelIds,payload/headers'
-		});
-		for (const header of ['From', 'To', 'Subject', 'Date'])
-			metadataParams.append('metadataHeaders', header);
-		const path = `/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}`;
+		const { path, params: metadataParams } = scanMetadataRequest(messageId);
 		try {
 			return (await this.providerGet(
 				path,

@@ -44,15 +44,19 @@ describe('Agentic Chat acting provider routing defaults', () => {
 	// Measured 2026-09-04 to 09-09 (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F78):
 	// DeepInfra and Alibaba p50 5.3 s, StreamLake 7.3 s, Azure 21.5 s at 112 ms
 	// per output token; DeepSeek and Cloudflare no longer list the model.
-	it('prefers the measured cheap endpoints, keeps fallbacks, and ignores Azure', () => {
+	// 2026-09-24 (tasker 103): the order names only V4 Flash ZDR hosts.
+	it('prefers ZDR endpoints, keeps fallbacks, and ignores Azure', () => {
 		const config = loadAgenticChatConfig(DEDICATED_PROVIDER_ENV);
 		expect(config.provider.responseHeadersTimeoutMs).toBe(5_000);
 		expect(config.provider.routes).toHaveLength(1);
 		expect(config.provider.routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['deepinfra', 'gmicloud', 'alibaba', 'streamlake'],
+			order: ['deepinfra', 'nextbit', 'open-inference', 'parasail'],
 			ignore: ['azure']
 		});
+		for (const nonZdrHost of ['gmicloud', 'alibaba', 'streamlake', 'baidu', 'atlas-cloud']) {
+			expect(config.provider.routes[0]?.providerRouting?.order).not.toContain(nonZdrHost);
+		}
 	});
 
 	it('never constrains the acting route with an allowlist', () => {

@@ -108,7 +108,7 @@ async function checkRateLimit(supabase: any, clientIP: string): Promise<boolean>
 async function sendFeedbackNotification(feedback: any) {
 	console.log(`[sendFeedbackNotification] Starting notification for feedback ID: ${feedback.id}`);
 	console.log(
-		`[sendFeedbackNotification] Category: ${feedback.category}, User email: ${feedback.user_email || 'anonymous'}`
+		`[sendFeedbackNotification] Category: ${feedback.category}, User email: ${feedback.user_email ? 'provided' : 'anonymous'}`
 	);
 
 	const defaultSender = getDefaultSender();
@@ -253,10 +253,9 @@ async function sendFeedbackNotification(feedback: any) {
 				replyTo: feedback.user_email || undefined // Allow direct reply if user provided email
 			};
 
-			console.log(`[sendFeedbackNotification] Sending email to: ${adminEmail}`);
-			console.log(`[sendFeedbackNotification] From: ${mailOptions.from}`);
-			console.log(`[sendFeedbackNotification] Subject: ${mailOptions.subject}`);
-			console.log(`[sendFeedbackNotification] ReplyTo: ${mailOptions.replyTo || 'none'}`);
+			console.log(
+				`[sendFeedbackNotification] Sending ${feedback.category} feedback email (replyTo: ${mailOptions.replyTo ? 'set' : 'none'})`
+			);
 
 			try {
 				const result = await transporter.sendMail(mailOptions);

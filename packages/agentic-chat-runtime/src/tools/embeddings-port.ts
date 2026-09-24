@@ -2,7 +2,7 @@
 //
 // Host-injected embeddings capability for semantic discovery (explore_project).
 // Web and the worker both construct it from @buildos/shared-agent-ops
-// embeddings/openai-embeddings with PRIVATE_OPENAI_API_KEY; the port stays a
+// embeddings/openai-embeddings with PRIVATE_OPENROUTER_API_KEY; the port stays a
 // minimal interface so this transport-neutral package never reads env or picks
 // a provider itself. The port is optional on the shared read context — hosts
 // without a key simply leave it unset and explore_project reports itself

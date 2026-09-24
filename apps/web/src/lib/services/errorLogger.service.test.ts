@@ -310,6 +310,82 @@ describe('ErrorLoggerService', () => {
 		expect(insertedEntries[0]?.error_message).toContain('[redacted]');
 	});
 
+	it('redacts content keys in payloads but keeps error diagnostics', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-error-content');
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+
+		await service.logDatabaseError(
+			{
+				name: 'PostgrestError',
+				code: '23505',
+				message: 'duplicate key value violates unique constraint',
+				details: 'Failing row contains (Acme rebrand launch plan)'
+			},
+			'INSERT',
+			'emails',
+			undefined,
+			{
+				operation: 'logRichEmailData',
+				subject: 'Maya updated Acme rebrand',
+				category: 'digest'
+			}
+		);
+
+		const entry = insertedEntries[0]!;
+		expect(entry.operation_payload).toEqual({
+			operation: 'logRichEmailData',
+			subject: '[redacted]',
+			category: 'digest'
+		});
+		expect(entry.metadata.originalError).toMatchObject({
+			name: 'PostgrestError',
+			code: '23505',
+			details: '[redacted]'
+		});
+		expect(JSON.stringify(entry)).not.toContain('Acme');
+	});
+
+	it('sanitizes calendar error context before persisting it', async () => {
+		const insertedEntries: Array<Record<string, any>> = [];
+		const supabase = createLoggingSupabase(insertedEntries, 'logged-calendar-error');
+		const service = ErrorLoggerService.getInstance(
+			supabase as unknown as SupabaseClient<Database>
+		);
+		const projectId = '11111111-1111-4111-8111-111111111111';
+
+		await service.logCalendarError(
+			new Error('Google API 404'),
+			'update',
+			projectId,
+			projectId,
+			{
+				projectId,
+				calendarEventId: 'evt_123',
+				calendarId: 'person@example.com',
+				reason: 'Not found',
+				summary: 'Therapy with Dr. Lee',
+				syncToken: 'secret-sync-token'
+			}
+		);
+
+		const entry = insertedEntries[0]!;
+		expect(entry.project_id).toBe(projectId);
+		expect(entry.operation_payload).toMatchObject({
+			calendarEventId: 'evt_123',
+			calendarId: '[redacted-email]',
+			reason: 'Not found'
+		});
+		expect(entry.metadata).toMatchObject({
+			projectId,
+			summary: '[redacted]',
+			syncToken: '[redacted]'
+		});
+		expect(JSON.stringify(entry)).not.toMatch(/Therapy|person@example\.com|secret-sync-token/);
+	});
+
 	it('retains an explicitly submitted login email for admin diagnostics', async () => {
 		const insertedEntries: Array<Record<string, any>> = [];
 		const supabase = createLoggingSupabase(insertedEntries, 'logged-auth-error');

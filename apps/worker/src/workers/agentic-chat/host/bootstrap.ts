@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import {
 	GLM_53_FLASH_MODEL,
+	GPT_56_LUNA_MODEL,
 	GPT_6_LUNA_MODEL,
 	JSON_PROFILE_MODELS,
 	JevClient,
@@ -674,21 +675,15 @@ export const AGENTIC_CHAT_SEMANTIC_REVIEWER_MAX_TOKENS = 4_000;
 export const AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS = 45_000;
 
 /**
- * The reviewer prefers OpenAI's own endpoint over Azure: both serve the Luna
- * model, but the acting route's provider order (DeepInfra/DeepSeek/...) is
- * meaningless for it and the audited 0% prefix-cache rate came from the
- * request bouncing between endpoints. Fallbacks stay allowed for availability.
- * OpenAI's `fast` tier leads: on three replayed case-2 reviews (2026-09-24,
- * tasker 101) it averaged 5.7 s against 7.6 s on the standard tier and 12.3 s
- * on gpt-5.6-luna, at $0.0023 per review. Naming tiers also keeps the route
- * off `openai/flex` (p50 latency 29 s that day).
+ * Luna is served with zero data retention only on Azure (OpenRouter
+ * /endpoints/zdr, 2026-09-24). Every reviewer request requires ZDR (tasker
+ * 103), so OpenAI's own `openai/fast` and `openai` tiers can no longer serve
+ * it. The acting route's order describes DeepSeek endpoints and never carries over.
  */
-export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze([
-	'openai/fast',
-	'openai',
-	'azure'
-]);
-export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_6_LUNA_MODEL;
+export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze(['azure']);
+// Prod 30 days (tasker 103): gpt-5.6-luna on Azure p50 5.0 s / p90 8.5 s at $0.0029/call vs OpenAI 5.3 s / 12.7 s at $0.0026; gpt-6-luna's Azure ZDR endpoints are degraded.
+export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_56_LUNA_MODEL;
+const LUNA_REVIEWER_MODELS: ReadonlySet<string> = new Set([GPT_56_LUNA_MODEL, GPT_6_LUNA_MODEL]);
 /**
  * Never a default reviewer fallback: 2026-09-04 GLM 5.3 Flash approved a
  * dependency correction without declaring its endpoints. An explicit policy
@@ -761,10 +756,10 @@ export function buildAgenticChatSemanticReviewerRoutes(
 				fallbackModels: Object.freeze(candidates.slice(1, 4)),
 				// Provider evidence is per model. The acting route's `order` and
 				// `ignore` describe DeepSeek's endpoints (Azure serves it at 112 ms
-				// per token; it serves Luna fine), so none of it carries over.
+				// per token; it is Luna's only ZDR host), so none of it carries over.
 				providerRouting: Object.freeze({
 					allow_fallbacks: true,
-					...(model === GPT_6_LUNA_MODEL
+					...(LUNA_REVIEWER_MODELS.has(model)
 						? { order: AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER }
 						: {})
 				})

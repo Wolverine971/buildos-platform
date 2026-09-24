@@ -20,7 +20,10 @@
  * - Maintains props object integrity
  *
  * DELETE /api/onto/tasks/[id]:
- * - Removes task and associated edges
+ * - Soft-deletes a live task; it is erased 30 days later
+ * - `{ archive: true }` archives it instead (also sets archived_at): kept until
+ *   the user restores or deletes it
+ * - On an archived task, deletes it (clears archived_at, restarts the 30 days)
  * - Verifies ownership before deletion
  *
  * Related Files:
@@ -788,7 +791,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 };
 
-// DELETE /api/onto/tasks/[id] - Soft delete a task
+// DELETE /api/onto/tasks/[id] - Soft delete (or archive) a task
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
@@ -798,6 +801,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const supabase = locals.supabase;
 	const chatSessionId = getChatSessionIdFromRequest(request);
 	const body = await request.json().catch(() => null);
+	const archive = body && typeof body === 'object' ? body.archive === true : false;
 	const shouldSyncEventsToCalendar =
 		body && typeof body === 'object'
 			? (body.sync_to_calendar as boolean | undefined) !== false
@@ -844,10 +848,11 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
-			.is('deleted_at', null) // Only allow deleting non-deleted tasks
 			.single();
 
-		if (fetchError || !task) {
+		// Live tasks can be archived or deleted; archived tasks can be deleted.
+		const isArchived = Boolean(task?.deleted_at && task.archived_at);
+		if (fetchError || !task || (task.deleted_at && (archive || !isArchived))) {
 			return ApiResponse.notFound('Task');
 		}
 
@@ -888,12 +893,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			due_at: task.due_at
 		};
 
-		// Soft delete: set deleted_at timestamp instead of hard delete
+		// Soft delete. The privacy purge erases deleted tasks 30 days after
+		// deleted_at and skips archived ones (archived_at set).
+		const now = new Date().toISOString();
 		const { error: deleteError } = await supabase
 			.from('onto_tasks')
 			.update({
-				deleted_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
+				deleted_at: now,
+				archived_at: archive ? now : null,
+				updated_at: now
 			})
 			.eq('id', params.id);
 
@@ -975,7 +983,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		return ApiResponse.success({ message: 'Task deleted successfully' });
+		return ApiResponse.success({
+			message: archive ? 'Task archived' : 'Task deleted successfully'
+		});
 	} catch (error) {
 		console.error('Error deleting task:', error);
 		await logOntologyApiError({

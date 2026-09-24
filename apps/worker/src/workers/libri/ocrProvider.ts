@@ -1,3 +1,6 @@
+// apps/worker/src/workers/libri/ocrProvider.ts
+import { OPENROUTER_PRIVATE_PROVIDER } from '@buildos/smart-llm';
+
 const OPENROUTER_CHAT_COMPLETIONS_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MODEL_PATTERN = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]*$/i;
@@ -186,6 +189,7 @@ function buildRequestBody(request: LibriOcrProviderRequest): Record<string, unkn
 		temperature: 0,
 		max_tokens: request.maxOutputTokens,
 		response_format: { type: 'json_object' },
+		provider: OPENROUTER_PRIVATE_PROVIDER,
 		messages: [
 			{
 				role: 'system',

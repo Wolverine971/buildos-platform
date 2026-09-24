@@ -84,6 +84,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		)
 		.eq('id', braindumpId)
 		.eq('user_id', user.id)
+		.is('deleted_at', null)
 		.single();
 
 	if (braindumpError || !braindump) {

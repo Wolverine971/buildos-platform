@@ -1,0 +1,127 @@
+{
+	"project_ref": "daudvqczjqxhpzstlfih",
+	"collected_at": "2026-09-24T17:11:48.588045+00:00",
+	"read_only": true,
+	"sections": {
+		"postgrest": {
+			"db_schema": "public,graphql_public,libri",
+			"max_rows": 1000,
+			"db_extra_search_path": "public, extensions",
+			"db_pool": null,
+			"db_pool_acquisition_timeout": 10
+		},
+		"pooler": [
+			{
+				"identifier": "daudvqczjqxhpzstlfih",
+				"is_using_scram_auth": true,
+				"db_port": 6543,
+				"default_pool_size": null,
+				"max_client_conn": null,
+				"pool_mode": "transaction"
+			}
+		],
+		"disk": {},
+		"disk_util": {
+			"timestamp": "2026-09-24T17:11:53Z",
+			"metrics": {
+				"fs_size_bytes": 8416882688,
+				"fs_avail_bytes": 7697235968,
+				"fs_used_bytes": 719646720
+			}
+		},
+		"backups": {
+			"region": "us-west-1",
+			"walg_enabled": true,
+			"pitr_enabled": false,
+			"backups": [
+				{
+					"id": 1772013260,
+					"is_physical_backup": true,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-24T11:04:44.763Z"
+				},
+				{
+					"id": 1762436727,
+					"is_physical_backup": true,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-23T11:04:49.419Z"
+				},
+				{
+					"id": 1752750819,
+					"is_physical_backup": true,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-22T11:04:51.776Z"
+				},
+				{
+					"id": 1742986190,
+					"is_physical_backup": true,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-21T11:04:19.944Z"
+				},
+				{
+					"id": 1733200077,
+					"is_physical_backup": true,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-20T11:03:35.866Z"
+				},
+				{
+					"id": 1723436822,
+					"is_physical_backup": true,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-19T11:03:30.835Z"
+				},
+				{
+					"id": 1713615565,
+					"is_physical_backup": true,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-18T11:04:23.830Z"
+				},
+				{
+					"id": 1703775620,
+					"is_physical_backup": true,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-17T11:04:15.667Z"
+				}
+			],
+			"physical_backup_data": {}
+		},
+		"actions": [
+			{
+				"id": "daudvqczjqxhpzstlfih",
+				"branch_id": "87467890-5cd0-4f5d-83fd-39cada64903e",
+				"run_steps": [
+					{
+						"name": "configure",
+						"status": "EXITED",
+						"created_at": "2026-09-11T01:18:29.933605+00:00",
+						"updated_at": "2026-09-11T01:18:41.014504+00:00"
+					},
+					{
+						"name": "deploy",
+						"status": "EXITED",
+						"created_at": "2026-09-11T01:18:29.933605+00:00",
+						"updated_at": "2026-09-11T01:18:34.430972+00:00"
+					},
+					{
+						"name": "migrate",
+						"status": "DEAD",
+						"created_at": "2026-09-11T01:18:29.933605+00:00",
+						"updated_at": "2026-09-11T01:18:42.564743+00:00"
+					},
+					{
+						"name": "pull",
+						"status": "EXITED",
+						"created_at": "2026-09-11T01:18:40.829463+00:00",
+						"updated_at": "2026-09-11T01:18:42.564743+00:00"
+					}
+				],
+				"git_config": null,
+				"workdir": null,
+				"check_run_id": null,
+				"created_at": "2026-09-11T01:18:29.928519+00:00",
+				"updated_at": "2026-09-11T01:18:29.928519+00:00"
+			}
+		]
+	},
+	"errors": {}
+}

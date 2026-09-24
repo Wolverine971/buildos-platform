@@ -1,0 +1,2936 @@
+{
+	"project_ref": "iwifjtlebphefldmwbkh",
+	"collected_at": "2026-09-24T17:07:51.037116+00:00",
+	"read_only": true,
+	"sections": {
+		"metrics": {
+			"collected_at": "2026-09-24T17:07:51.565876+00:00",
+			"metrics": [
+				{
+					"name": "node_memory_Inactive_anon_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 272429056.0
+				},
+				{
+					"name": "node_memory_ShmemHugePages_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_SwapFree_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 590725120.0
+				},
+				{
+					"name": "node_memory_Writeback_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pswpout",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 37911867.0
+				},
+				{
+					"name": "node_disk_io_now",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_now",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Inactive_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 376037376.0
+				},
+				{
+					"name": "node_memory_Mapped_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 184754176.0
+				},
+				{
+					"name": "node_memory_HugePages_Surp",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discarded_sectors_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discarded_sectors_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Buffers_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 22073344.0
+				},
+				{
+					"name": "node_disk_io_time_weighted_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 212824.209
+				},
+				{
+					"name": "node_disk_io_time_weighted_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 20491.219
+				},
+				{
+					"name": "node_disk_reads_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 96405677.0
+				},
+				{
+					"name": "node_disk_reads_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 2749164.0
+				},
+				{
+					"name": "node_disk_writes_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 160819737.0
+				},
+				{
+					"name": "node_disk_writes_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 19215049.0
+				},
+				{
+					"name": "node_memory_Active_file_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 175312896.0
+				},
+				{
+					"name": "node_memory_WritebackTmp_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_reads_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 16962824.0
+				},
+				{
+					"name": "node_disk_reads_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 266248.0
+				},
+				{
+					"name": "node_memory_Slab_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 95621120.0
+				},
+				{
+					"name": "node_memory_PageTables_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 18472960.0
+				},
+				{
+					"name": "node_memory_HardwareCorrupted_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_write_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 152867.785
+				},
+				{
+					"name": "node_disk_write_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 18589.153000000002
+				},
+				{
+					"name": "node_memory_CommitLimit_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1556807680.0
+				},
+				{
+					"name": "node_memory_Inactive_file_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 103608320.0
+				},
+				{
+					"name": "node_memory_SwapCached_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 35913728.0
+				},
+				{
+					"name": "node_vmstat_pgpgin",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1349507665.0
+				},
+				{
+					"name": "node_disk_filesystem_info",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1",
+						"type": "ext4",
+						"usage": "filesystem",
+						"uuid": "99713926-0ae4-48a9-ac58-62f76c4abdad",
+						"version": "1.0"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_memory_HugePages_Total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_ShmemPmdMapped_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pswpin",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 38951562.0
+				},
+				{
+					"name": "node_load1",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_VmallocTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 136339039191040.0
+				},
+				{
+					"name": "node_memory_Unevictable_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 8192.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "idle"
+					},
+					"value": 43584037.48
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "iowait"
+					},
+					"value": 38988.6
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "irq"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "nice"
+					},
+					"value": 613.75
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "softirq"
+					},
+					"value": 8363.84
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "steal"
+					},
+					"value": 22461.73
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "system"
+					},
+					"value": 142560.43
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "user"
+					},
+					"value": 562241.85
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "idle"
+					},
+					"value": 43571089.15
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "iowait"
+					},
+					"value": 39333.82
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "irq"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "nice"
+					},
+					"value": 641.23
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "softirq"
+					},
+					"value": 9094.02
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "steal"
+					},
+					"value": 22020.09
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "system"
+					},
+					"value": 142866.51
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "user"
+					},
+					"value": 570946.69
+				},
+				{
+					"name": "node_memory_MemFree_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 56426496.0
+				},
+				{
+					"name": "node_memory_SUnreclaim_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 44290048.0
+				},
+				{
+					"name": "node_memory_Shmem_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 102256640.0
+				},
+				{
+					"name": "node_memory_VmallocUsed_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 10936320.0
+				},
+				{
+					"name": "node_memory_Active_anon_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 190144512.0
+				},
+				{
+					"name": "node_memory_Active_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 365457408.0
+				},
+				{
+					"name": "node_memory_Committed_AS_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1655508992.0
+				},
+				{
+					"name": "node_memory_Dirty_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 225280.0
+				},
+				{
+					"name": "node_vmstat_oom_kill",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Bounce_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgpgout",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1450577624.0
+				},
+				{
+					"name": "node_disk_read_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 59956.423
+				},
+				{
+					"name": "node_disk_read_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 1902.065
+				},
+				{
+					"name": "node_memory_Hugepagesize_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 2097152.0
+				},
+				{
+					"name": "node_disk_info",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1",
+						"major": "259",
+						"minor": "0",
+						"model": "Amazon Elastic Block Store",
+						"path": "pci-0000:00:04.0-nvme-1",
+						"revision": "1.0",
+						"rotational": "0",
+						"serial": "vol0115790c165fb4007",
+						"wwn": "nvme.1d0f-766f6c3031313537393063313635666234303037-416d617a6f6e20456c617374696320426c6f636b2053746f7265-00000001"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_disk_info",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1",
+						"major": "259",
+						"minor": "1",
+						"model": "Amazon Elastic Block Store",
+						"path": "pci-0000:00:1f.0-nvme-1",
+						"revision": "1.0",
+						"rotational": "0",
+						"serial": "vol00dcda8c41202524a",
+						"wwn": "nvme.1d0f-766f6c3030646364613863343132303235323461-416d617a6f6e20456c617374696320426c6f636b2053746f7265-00000001"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 164322.844
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 31994.916
+				},
+				{
+					"name": "node_memory_SReclaimable_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 51331072.0
+				},
+				{
+					"name": "node_memory_NFS_Unstable_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgfault",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 16610825878.0
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 1323723828224.0
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 58172020736.0
+				},
+				{
+					"name": "node_load15",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_MemTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 966139904.0
+				},
+				{
+					"name": "node_disk_flush_requests_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_load5",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.02
+				},
+				{
+					"name": "node_memory_Percpu_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1499136.0
+				},
+				{
+					"name": "node_memory_KernelStack_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 4014080.0
+				},
+				{
+					"name": "node_memory_MemAvailable_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 297574400.0
+				},
+				{
+					"name": "node_memory_SwapTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1073737728.0
+				},
+				{
+					"name": "node_memory_AnonHugePages_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_HugePages_Rsvd",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgmajfault",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 41359036.0
+				},
+				{
+					"name": "node_memory_AnonPages_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 347987968.0
+				},
+				{
+					"name": "node_memory_Cached_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 359092224.0
+				},
+				{
+					"name": "node_memory_HugePages_Free",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Mlocked_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 8192.0
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 1245514560000.0
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 239876927488.0
+				},
+				{
+					"name": "node_disk_discard_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discard_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_writes_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 107125961.0
+				},
+				{
+					"name": "node_disk_writes_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 23426877.0
+				},
+				{
+					"name": "node_memory_VmallocChunk_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_temp_files_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1197553.0
+				},
+				{
+					"name": "pg_stat_database_xact_rollback_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1326615.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_backend_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 596444.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_snapshot_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoint_sync_time_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 217438.0
+				},
+				{
+					"name": "pg_stat_database_blks_hit_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 76276426823.0
+				},
+				{
+					"name": "pg_stat_database_deadlocks_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "realtime_postgres_changes_client_subscriptions",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_tup_fetched_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 45417774467.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoints_timed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 148148.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_bufferpin_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_lock_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_temp_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 5555948360564.0
+				},
+				{
+					"name": "pg_stat_database_tup_returned_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 130094218482.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"datname": "postgres"
+					},
+					"value": 610177839.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"datname": "template0"
+					},
+					"value": 7471619.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"datname": "template1"
+					},
+					"value": 7721775.0
+				},
+				{
+					"name": "pg_stat_database_blks_read_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 5960598.0
+				},
+				{
+					"name": "pg_stat_database_tup_updated_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 767462.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_clean_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 66729.0
+				},
+				{
+					"name": "pg_stat_database_most_recent_reset",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1744801436.0
+				},
+				{
+					"name": "pg_stat_database_tup_inserted_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 4908107.0
+				},
+				{
+					"name": "pg_stat_database_xact_commit_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 109253194.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoints_req_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 2.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_deadlock_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_tup_deleted_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 4477909.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoint_write_time_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 383591668.0
+				},
+				{
+					"name": "pg_stat_database_num_backends",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 21.0
+				},
+				{
+					"name": "supabase_usage_metrics_user_queries_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 16621001.0
+				},
+				{
+					"name": "pg_settings_default_transaction_read_only",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_backend_fsync_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "realtime_postgres_changes_total_subscriptions",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_alloc_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 5561508.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_maxwritten_clean_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 257.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_checkpoint_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 3951942.0
+				},
+				{
+					"name": "pg_stat_bgwriter_stats_reset",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1744801407.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_tablespace_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_database_size_mb",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 596.4004831314087
+				},
+				{
+					"name": "pg_stat_activity_xact_runtime",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				}
+			]
+		},
+		"metrics_end": {
+			"collected_at": "2026-09-24T17:12:52.117239+00:00",
+			"metrics": [
+				{
+					"name": "node_disk_discards_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_now",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_now",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_io_time_weighted_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 212827.33000000002
+				},
+				{
+					"name": "node_disk_io_time_weighted_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 20491.934
+				},
+				{
+					"name": "node_memory_HardwareCorrupted_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Writeback_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_ShmemHugePages_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_load5",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.05
+				},
+				{
+					"name": "node_memory_HugePages_Rsvd",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Inactive_file_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 106967040.0
+				},
+				{
+					"name": "node_memory_Unevictable_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 8192.0
+				},
+				{
+					"name": "node_disk_reads_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 96409793.0
+				},
+				{
+					"name": "node_disk_reads_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 2749237.0
+				},
+				{
+					"name": "node_memory_Bounce_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_Mapped_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 183488512.0
+				},
+				{
+					"name": "node_memory_Shmem_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 110624768.0
+				},
+				{
+					"name": "node_vmstat_pswpin",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 38955679.0
+				},
+				{
+					"name": "node_memory_SwapCached_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 37928960.0
+				},
+				{
+					"name": "node_disk_discard_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discard_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_SReclaimable_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 52695040.0
+				},
+				{
+					"name": "node_memory_ShmemPmdMapped_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "idle"
+					},
+					"value": 43584367.28
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "iowait"
+					},
+					"value": 38989.9
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "irq"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "nice"
+					},
+					"value": 613.75
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "softirq"
+					},
+					"value": 8364.2
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "steal"
+					},
+					"value": 22461.95
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "system"
+					},
+					"value": 142562.43
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "0",
+						"mode": "user"
+					},
+					"value": 562250.33
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "idle"
+					},
+					"value": 43571420.98
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "iowait"
+					},
+					"value": 39335.08
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "irq"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "nice"
+					},
+					"value": 641.23
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "softirq"
+					},
+					"value": 9094.27
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "steal"
+					},
+					"value": 22020.33
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "system"
+					},
+					"value": 142868.33
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"cpu": "1",
+						"mode": "user"
+					},
+					"value": 570953.19
+				},
+				{
+					"name": "node_disk_write_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 152868.468
+				},
+				{
+					"name": "node_disk_write_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 18589.821
+				},
+				{
+					"name": "node_memory_Active_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 357449728.0
+				},
+				{
+					"name": "node_memory_Hugepagesize_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 2097152.0
+				},
+				{
+					"name": "node_memory_WritebackTmp_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 1323754990592.0
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 58172459008.0
+				},
+				{
+					"name": "node_memory_Active_file_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 185036800.0
+				},
+				{
+					"name": "node_disk_filesystem_info",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1",
+						"type": "ext4",
+						"usage": "filesystem",
+						"uuid": "99713926-0ae4-48a9-ac58-62f76c4abdad",
+						"version": "1.0"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_memory_Buffers_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 24334336.0
+				},
+				{
+					"name": "node_memory_VmallocUsed_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 10887168.0
+				},
+				{
+					"name": "node_memory_HugePages_Surp",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_VmallocTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 136339039191040.0
+				},
+				{
+					"name": "node_memory_Active_anon_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 172412928.0
+				},
+				{
+					"name": "node_memory_AnonPages_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 239616000.0
+				},
+				{
+					"name": "node_memory_Committed_AS_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1510088704.0
+				},
+				{
+					"name": "node_memory_Dirty_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 32768.0
+				},
+				{
+					"name": "node_memory_Percpu_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1499136.0
+				},
+				{
+					"name": "node_vmstat_pgpgin",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1349538525.0
+				},
+				{
+					"name": "node_disk_discarded_sectors_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discarded_sectors_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 1245521461760.0
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 239884845056.0
+				},
+				{
+					"name": "node_memory_AnonHugePages_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_SwapFree_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 625328128.0
+				},
+				{
+					"name": "node_memory_SwapTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1073737728.0
+				},
+				{
+					"name": "node_disk_flush_requests_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_flush_requests_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_writes_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 107126744.0
+				},
+				{
+					"name": "node_disk_writes_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 23427790.0
+				},
+				{
+					"name": "node_memory_KernelStack_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 3948544.0
+				},
+				{
+					"name": "node_memory_MemAvailable_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 398213120.0
+				},
+				{
+					"name": "node_memory_PageTables_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 15421440.0
+				},
+				{
+					"name": "node_memory_SUnreclaim_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 43905024.0
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 164326.692
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 31995.812
+				},
+				{
+					"name": "node_memory_HugePages_Total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgpgout",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1450592096.0
+				},
+				{
+					"name": "node_disk_read_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 59958.862
+				},
+				{
+					"name": "node_disk_read_time_seconds_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 1902.113
+				},
+				{
+					"name": "node_load15",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.01
+				},
+				{
+					"name": "node_memory_MemTotal_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 966139904.0
+				},
+				{
+					"name": "node_memory_NFS_Unstable_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgfault",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 16611027404.0
+				},
+				{
+					"name": "node_disk_discards_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_discards_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_disk_reads_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 16964378.0
+				},
+				{
+					"name": "node_disk_reads_merged_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 266272.0
+				},
+				{
+					"name": "node_load1",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.07
+				},
+				{
+					"name": "node_memory_CommitLimit_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 1556807680.0
+				},
+				{
+					"name": "node_memory_Mlocked_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 8192.0
+				},
+				{
+					"name": "node_memory_Cached_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 378290176.0
+				},
+				{
+					"name": "node_memory_Inactive_anon_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 191631360.0
+				},
+				{
+					"name": "node_memory_Slab_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 96600064.0
+				},
+				{
+					"name": "node_vmstat_pswpout",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 37912289.0
+				},
+				{
+					"name": "node_disk_info",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1",
+						"major": "259",
+						"minor": "0",
+						"model": "Amazon Elastic Block Store",
+						"path": "pci-0000:00:04.0-nvme-1",
+						"revision": "1.0",
+						"rotational": "0",
+						"serial": "vol0115790c165fb4007",
+						"wwn": "nvme.1d0f-766f6c3031313537393063313635666234303037-416d617a6f6e20456c617374696320426c6f636b2053746f7265-00000001"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_disk_info",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1",
+						"major": "259",
+						"minor": "1",
+						"model": "Amazon Elastic Block Store",
+						"path": "pci-0000:00:1f.0-nvme-1",
+						"revision": "1.0",
+						"rotational": "0",
+						"serial": "vol00dcda8c41202524a",
+						"wwn": "nvme.1d0f-766f6c3030646364613863343132303235323461-416d617a6f6e20456c617374696320426c6f636b2053746f7265-00000001"
+					},
+					"value": 1.0
+				},
+				{
+					"name": "node_disk_writes_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme0n1"
+					},
+					"value": 160820428.0
+				},
+				{
+					"name": "node_disk_writes_completed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db",
+						"device": "nvme1n1"
+					},
+					"value": 19215753.0
+				},
+				{
+					"name": "node_memory_Inactive_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 298598400.0
+				},
+				{
+					"name": "node_memory_MemFree_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 143298560.0
+				},
+				{
+					"name": "node_vmstat_oom_kill",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_VmallocChunk_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_memory_HugePages_Free",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "node_vmstat_pgmajfault",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "db"
+					},
+					"value": 41361701.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_alloc_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 5561519.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoints_timed_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 148149.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_tablespace_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_temp_bytes_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 5556074442756.0
+				},
+				{
+					"name": "pg_stat_database_blks_hit_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 76278767405.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_backend_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 596451.0
+				},
+				{
+					"name": "pg_stat_database_most_recent_reset",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1744801436.0
+				},
+				{
+					"name": "pg_stat_database_tup_inserted_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 4908165.0
+				},
+				{
+					"name": "pg_settings_default_transaction_read_only",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoint_sync_time_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 217443.0
+				},
+				{
+					"name": "pg_stat_database_tup_deleted_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 4477918.0
+				},
+				{
+					"name": "pg_stat_database_xact_rollback_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1326618.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"datname": "postgres"
+					},
+					"value": 610186031.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"datname": "template0"
+					},
+					"value": 7471619.0
+				},
+				{
+					"name": "pg_database_size_bytes",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"datname": "template1"
+					},
+					"value": 7721775.0
+				},
+				{
+					"name": "pg_stat_bgwriter_maxwritten_clean_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 257.0
+				},
+				{
+					"name": "pg_stat_database_deadlocks_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "realtime_postgres_changes_client_subscriptions",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_temp_files_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1197580.0
+				},
+				{
+					"name": "realtime_postgres_changes_total_subscriptions",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_checkpoint_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 3952149.0
+				},
+				{
+					"name": "pg_stat_database_tup_updated_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 767476.0
+				},
+				{
+					"name": "pg_stat_bgwriter_stats_reset",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 1744801407.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoint_write_time_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 383612481.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_deadlock_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_num_backends",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 17.0
+				},
+				{
+					"name": "pg_stat_database_blks_read_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 5960609.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_bufferpin_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_tup_returned_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 130099049859.0
+				},
+				{
+					"name": "pg_stat_database_xact_commit_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 109256355.0
+				},
+				{
+					"name": "supabase_usage_metrics_user_queries_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 16623131.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_tup_fetched_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 45419632856.0
+				},
+				{
+					"name": "pg_stat_activity_xact_runtime",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_backend_fsync_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_bgwriter_buffers_clean_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 66729.0
+				},
+				{
+					"name": "pg_stat_bgwriter_checkpoints_req_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 2.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_lock_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_stat_database_conflicts_confl_snapshot_total",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 0.0
+				},
+				{
+					"name": "pg_database_size_mb",
+					"labels": {
+						"supabase_project_ref": "iwifjtlebphefldmwbkh",
+						"service_type": "postgresql",
+						"server": "localhost:5432"
+					},
+					"value": 596.4082956314087
+				}
+			]
+		},
+		"paging_rate": {
+			"elapsed_seconds": 300.551363,
+			"scrape_elapsed_seconds": null,
+			"cached_scrape_uncertainty": true,
+			"restarted": false,
+			"page_bytes_assumed": 4096,
+			"minimum_gap_met": true,
+			"cpu_time_fractions": {
+				"steal": 0.0006724556325482897,
+				"irq": 0.0,
+				"idle": 0.9672104786131616,
+				"system": 0.005584305470226419,
+				"softirq": 0.0008917346431573535,
+				"nice": 0.0,
+				"iowait": 0.0037423617811230465,
+				"user": 0.021898663859783275
+			},
+			"rates": [
+				{
+					"name": "node_vmstat_pswpin",
+					"labels": {
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 4117.0,
+					"per_second": 13.698157808720369,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "idle",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 329.80000000447035,
+					"per_second": 1.0973166007717303,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "iowait",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 1.3000000000029104,
+					"per_second": 0.004325383811361755,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "irq",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.0,
+					"per_second": 0.0,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "nice",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.0,
+					"per_second": 0.0,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "softirq",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.3600000000005821,
+					"per_second": 0.001197798593914818,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "steal",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.22000000000116415,
+					"per_second": 0.000731988029617301,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "system",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 2.0,
+					"per_second": 0.006654436632849341,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "0",
+						"mode": "user",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 8.479999999981374,
+					"per_second": 0.028214811323219232,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "idle",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 331.82999999821186,
+					"per_second": 1.1040708539332489,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "iowait",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 1.2600000000020373,
+					"per_second": 0.004192295078701863,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "irq",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.0,
+					"per_second": 0.0,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "nice",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.0,
+					"per_second": 0.0,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "softirq",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.25,
+					"per_second": 0.0008318045791061676,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "steal",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.2400000000016007,
+					"per_second": 0.0007985323959472469,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "system",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 1.819999999977881,
+					"per_second": 0.006055537335819306,
+					"reset": false
+				},
+				{
+					"name": "node_cpu_seconds_total",
+					"labels": {
+						"cpu": "1",
+						"mode": "user",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 6.5,
+					"per_second": 0.021626919056760358,
+					"reset": false
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"device": "nvme0n1",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 31162368.0,
+					"per_second": 103684.00159276603,
+					"reset": false
+				},
+				{
+					"name": "node_disk_read_bytes_total",
+					"labels": {
+						"device": "nvme1n1",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 438272.0,
+					"per_second": 1458.2266259760734,
+					"reset": false
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"device": "nvme0n1",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 6901760.0,
+					"per_second": 22963.662287567135,
+					"reset": false
+				},
+				{
+					"name": "node_disk_written_bytes_total",
+					"labels": {
+						"device": "nvme1n1",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 7917568.0,
+					"per_second": 26343.477271137846,
+					"reset": false
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"device": "nvme0n1",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 3.8479999999981374,
+					"per_second": 0.012803136081595935,
+					"reset": false
+				},
+				{
+					"name": "node_disk_io_time_seconds_total",
+					"labels": {
+						"device": "nvme1n1",
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 0.8960000000006403,
+					"per_second": 0.0029811876115186354,
+					"reset": false
+				},
+				{
+					"name": "node_vmstat_pswpout",
+					"labels": {
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 422.0,
+					"per_second": 1.404086129531211,
+					"reset": false
+				},
+				{
+					"name": "node_vmstat_pgmajfault",
+					"labels": {
+						"service_type": "db",
+						"supabase_project_ref": "iwifjtlebphefldmwbkh"
+					},
+					"delta": 2665.0,
+					"per_second": 8.867036813271747,
+					"reset": false
+				}
+			]
+		}
+	},
+	"errors": {}
+}

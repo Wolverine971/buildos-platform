@@ -10,6 +10,10 @@ import type { RequestHandler } from './$types';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+import {
+	logAdminChatContentAccess,
+	projectAdminChatMessageRows
+} from '$lib/server/admin-chat-content-access';
 
 type ProjectTaskRow = {
 	id: string;
@@ -85,6 +89,7 @@ type ChatMessageRow = {
 	id: string;
 	session_id: string;
 	role: string;
+	tool_name: string | null;
 	content: string;
 	created_at: string | null;
 	message_type: string | null;
@@ -378,7 +383,7 @@ const truncate = (value: string | null | undefined, limit: number): string | nul
 	return `${value.slice(0, limit).trim()}...`;
 };
 
-export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }) => {
+export const GET: RequestHandler = async ({ params, request, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -542,7 +547,9 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 				.limit(100),
 			adminSupabase
 				.from('chat_messages')
-				.select('id, session_id, role, content, created_at, message_type, error_message')
+				.select(
+					'id, session_id, role, tool_name, content, created_at, message_type, error_message'
+				)
 				.eq('user_id', userId)
 				.order('created_at', { ascending: false })
 				.limit(500),
@@ -573,7 +580,10 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 		const projectLogs = (projectLogsResult.data || []) as ProjectLogRow[];
 		const scheduledBriefs = scheduledBriefsResult.data || [];
 		const rawChatSessions = (chatSessionsResult.data || []) as ChatSessionRow[];
-		const chatMessages = (chatMessagesResult.data || []) as ChatMessageRow[];
+		// Legacy tool-role rows of pass-through tools held Gmail/Calendar/web summaries.
+		const chatMessages = projectAdminChatMessageRows(
+			(chatMessagesResult.data || []) as ChatMessageRow[]
+		);
 		const chatSessionProjectLinks = (chatSessionProjectLinksResult.data ||
 			[]) as ChatSessionProjectLinkRow[];
 
@@ -992,6 +1002,20 @@ export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }
 			total_errors: userErrorSummary.total_errors,
 			unresolved_errors: userErrorSummary.unresolved_errors
 		};
+
+		await logAdminChatContentAccess({
+			adminUserId: user.id,
+			action: 'read',
+			route: '/api/admin/users/[userId]/activity',
+			targetType: 'user',
+			targetId: userId,
+			targetUserIds: [userId],
+			rowCounts: {
+				chat_sessions: processedChatSessions.length,
+				messages: chatMessages.length
+			},
+			request
+		});
 
 		return ApiResponse.success({
 			...userData,

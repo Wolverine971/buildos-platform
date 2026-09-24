@@ -178,7 +178,7 @@ No system is perfect. Context engineering has real limitations:
 
 **Cost scales with context.** Larger context windows mean higher API costs.
 
-**Privacy requires attention.** You're trusting your thoughts and decisions to a system. BuildOS keeps your data encrypted and under your control, but understand what you're storing and where.
+**Privacy requires attention.** You're trusting your thoughts and decisions to a system. BuildOS runs every AI request under zero data retention (voice is the one exception) and lets you export or delete everything, but understand what you're storing and where.
 
 Build systems that are easy to maintain, prune regularly, and stay focused on what actually helps.
 

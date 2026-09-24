@@ -129,7 +129,6 @@ pnpm build:analyze    # Bundle analyzer
 
 # Generation
 pnpm gen:web          # blog context + sitemap + streamlined project context
-pnpm gen:embeddings
 pnpm gen:api-docs
 ```
 

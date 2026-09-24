@@ -27,6 +27,10 @@ import type { AgenticChatExecutionIdentityV1 } from '../turn/execution-control';
  *   later receipt. The shared request is aborted only when its last subscriber
  *   leaves, so one caller's deadline cannot cancel, or grant stale authority
  *   to, another caller.
+ *
+ * Tasker 102: the check itself no longer locks. Ports that offer
+ * `checkReadFence` (check_agentic_chat_turn_read_fence) answer from committed
+ * state, so a burst never queues behind a writer holding the turn row.
  */
 export const AGENTIC_CHAT_READ_TOOL_FENCE_SHARE_WINDOW_MS = 1_000;
 
@@ -42,6 +46,11 @@ export class AgenticChatReadToolFenceTimeoutError extends Error {
 
 export type AgenticChatReadToolFenceClaimPortV1 = {
 	claim(
+		input: AgenticChatExecutionIdentityV1,
+		signal?: AbortSignal
+	): Promise<AgenticChatTurnClaimResultV1>;
+	/** Lock-free check (Tasker 102); preferred over `claim` when the port has it. */
+	checkReadFence?(
 		input: AgenticChatExecutionIdentityV1,
 		signal?: AbortSignal
 	): Promise<AgenticChatTurnClaimResultV1>;
@@ -131,7 +140,11 @@ export class AgenticChatSharedReadToolFenceV1 {
 		const controller = new AbortController();
 		let request: Promise<AgenticChatTurnClaimResultV1>;
 		try {
-			request = Promise.resolve(this.port.claim(input, controller.signal));
+			request = Promise.resolve(
+				this.port.checkReadFence
+					? this.port.checkReadFence(input, controller.signal)
+					: this.port.claim(input, controller.signal)
+			);
 		} catch (error) {
 			request = Promise.reject(error);
 		}

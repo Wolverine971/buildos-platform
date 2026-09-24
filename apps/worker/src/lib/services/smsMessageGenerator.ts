@@ -90,9 +90,7 @@ export class SMSMessageGenerator {
 			const systemPrompt = getSystemPrompt(messageType);
 			const userPrompt = getUserPrompt(messageType, context);
 
-			console.log(
-				`🤖 [SMSMessageGenerator] Generating ${messageType} reminder for: ${event.title}`
-			);
+			console.log(`🤖 [SMSMessageGenerator] Generating ${messageType} reminder`);
 
 			const result = await this.llmService.generateTextDetailed({
 				prompt: userPrompt,
@@ -114,7 +112,7 @@ export class SMSMessageGenerator {
 				: undefined;
 
 			console.log(
-				`✅ [SMSMessageGenerator] LLM generated (${cleanedContent.length} chars): "${cleanedContent}"`
+				`✅ [SMSMessageGenerator] LLM generated ${messageType} reminder (${cleanedContent.length} chars)`
 			);
 
 			return {
@@ -225,7 +223,7 @@ export class SMSMessageGenerator {
 		const cleanedMessage = this.validateAndTruncate(message);
 
 		console.log(
-			`📝 [SMSMessageGenerator] Template generated (${cleanedMessage.length} chars): "${cleanedMessage}"`
+			`📝 [SMSMessageGenerator] Template generated reminder (${cleanedMessage.length} chars)`
 		);
 
 		return {

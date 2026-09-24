@@ -11,6 +11,7 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
 import { captureServerEvent } from '$lib/server/posthog';
+import { analyticsUrl } from '$lib/utils/analytics-url';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { consumeLegalAcceptanceIntent } from '$lib/server/legal-acceptance';
 import { inferAuthUserJustCreated } from '$lib/utils/auth-profile';
@@ -43,8 +44,10 @@ function sanitizeAttribution(raw: unknown): SignupAttribution | null {
 		utm_source: pick('utm_source'),
 		utm_medium: pick('utm_medium'),
 		utm_campaign: pick('utm_campaign'),
-		referrer: pick('referrer'),
-		landing_page: pick('landing_page')
+		// Origin + path only, for PostHog and users.referrer alike: a query string
+		// or hash can carry tokens, emails, or search text.
+		referrer: analyticsUrl(pick('referrer')),
+		landing_page: analyticsUrl(pick('landing_page'))
 	};
 	return attribution.utm_source || attribution.referrer ? attribution : null;
 }

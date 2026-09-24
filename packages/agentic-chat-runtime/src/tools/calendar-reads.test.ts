@@ -670,6 +670,365 @@ describe('shared list_calendar_events', () => {
 	});
 });
 
+// list_calendar_events p50 was 882 ms in prod because the BuildOS reads queued
+// behind the Google fan-out. They are independent, so they now run under it;
+// these cases pin that overlap and prove the merged result did not move.
+describe('shared list_calendar_events read overlap', () => {
+	const TASK_ID = '60000000-0000-4000-8000-000000000006';
+	const TASK_EVENT_ID = '50000000-0000-4000-8000-000000000002';
+	const FOCUS_EVENT_ID = '50000000-0000-4000-8000-000000000003';
+
+	function deferred<T>() {
+		let resolve!: (value: T) => void;
+		const promise = new Promise<T>((settle) => {
+			resolve = settle;
+		});
+		return { promise, resolve };
+	}
+
+	function representativeGoogleRead() {
+		return listResult({
+			sourceCount: 2,
+			events: [
+				{
+					id: 'g-synced',
+					providerEventId: 'ext-1',
+					calendarSourceId: 'source-1',
+					connectionId: 'connection-1',
+					providerCalendarId: 'calendar-1@example.com',
+					summary: 'Design review',
+					start: { dateTime: '2026-09-03T11:00:00Z' },
+					end: { dateTime: '2026-09-03T12:00:00Z' }
+				},
+				{
+					id: 'g-lunch',
+					providerEventId: 'g-lunch',
+					calendarSourceId: 'source-1',
+					connectionId: 'connection-1',
+					providerCalendarId: 'calendar-1@example.com',
+					summary: 'Lunch',
+					start: { dateTime: '2026-09-03T12:30:00Z' },
+					end: { dateTime: '2026-09-03T13:00:00Z' },
+					raw: { id: 'g-lunch', summary: 'Lunch', kind: 'calendar#event' }
+				},
+				{
+					id: 'g-task',
+					providerEventId: 'g-task',
+					calendarSourceId: 'source-2',
+					connectionId: 'connection-2',
+					providerCalendarId: 'calendar-2@example.com',
+					summary: 'Write brief',
+					start: { dateTime: '2026-09-03T14:00:00Z' },
+					end: { dateTime: '2026-09-03T15:00:00Z' }
+				}
+			]
+		});
+	}
+
+	const SYNCED_ROW = {
+		id: ONTO_EVENT_ID,
+		title: 'Design review',
+		description: null,
+		location: null,
+		start_at: '2026-09-03T11:00:00Z',
+		end_at: '2026-09-03T12:00:00Z',
+		project_id: PROJECT_ID,
+		owner_entity_type: null,
+		owner_entity_id: null,
+		props: {},
+		sync_status: 'synced',
+		sync_error: null,
+		onto_event_sync: [
+			{ user_id: USER_ID, external_event_id: 'ext-1', calendar_source_id: 'source-1' },
+			{ user_id: 'someone-else', external_event_id: 'ext-9', calendar_source_id: 'source-9' }
+		]
+	};
+	const TASK_ROW = {
+		id: TASK_EVENT_ID,
+		title: 'Write brief',
+		description: 'Draft the launch brief',
+		location: null,
+		start_at: '2026-09-03T14:00:00Z',
+		end_at: '2026-09-03T15:00:00Z',
+		project_id: PROJECT_ID,
+		owner_entity_type: 'task',
+		owner_entity_id: TASK_ID,
+		props: {},
+		sync_status: 'pending',
+		sync_error: null,
+		onto_event_sync: []
+	};
+	const FOCUS_ROW = {
+		id: FOCUS_EVENT_ID,
+		title: 'Focus block',
+		description: null,
+		location: 'Home office',
+		start_at: '2026-09-03T16:00:00Z',
+		end_at: '2026-09-03T17:00:00Z',
+		project_id: null,
+		owner_entity_type: null,
+		owner_entity_id: null,
+		props: {},
+		sync_status: null,
+		sync_error: null,
+		onto_event_sync: []
+	};
+
+	function representativeResponses(): Record<string, QueryResponse[]> {
+		return {
+			onto_events: [
+				{ data: structuredClone([SYNCED_ROW, TASK_ROW, FOCUS_ROW]), error: null }
+			],
+			onto_tasks: [{ data: [{ id: TASK_ID, title: 'Write brief' }], error: null }],
+			project_calendars: [
+				{
+					data: [
+						{
+							id: 'pc-1',
+							calendar_id: 'calendar-2@example.com',
+							calendar_source_id: 'source-2',
+							sync_enabled: true
+						}
+					],
+					error: null
+				}
+			]
+		};
+	}
+
+	it('starts the BuildOS reads while the Google fetch is still in flight', async () => {
+		const google = deferred<ReturnType<typeof representativeGoogleRead>>();
+		const listEvents = vi.fn(() => google.promise);
+		const { context, calls } = createContext({
+			calendar: { listEvents },
+			responses: representativeResponses()
+		});
+		let settled = false;
+		const pending = listCalendarEvents(context, RANGE).finally(() => {
+			settled = true;
+		});
+
+		// Both BuildOS reads go out before Google answers: the events, and the
+		// task titles that depend on them.
+		await vi.waitFor(() => {
+			expect(calls.map((call) => call.table)).toEqual(
+				expect.arrayContaining(['onto_events', 'onto_tasks'])
+			);
+		});
+		expect(listEvents).toHaveBeenCalledTimes(1);
+		expect(settled).toBe(false);
+
+		google.resolve(representativeGoogleRead());
+		const result = await pending;
+		expect(result.merged_event_count).toBe(4);
+		expect(result.google_event_count).toBe(3);
+		expect(result.ontology_event_count).toBe(3);
+	});
+
+	it('still rejects on a BuildOS read error, and only once the Google read settles', async () => {
+		const google = deferred<ReturnType<typeof representativeGoogleRead>>();
+		const listEvents = vi.fn(() => google.promise);
+		const { context, calls } = createContext({
+			calendar: { listEvents },
+			responses: {
+				onto_events: [{ data: null, error: { message: 'onto_events unavailable' } }]
+			}
+		});
+		let settled = false;
+		const pending = listCalendarEvents(context, RANGE);
+		pending.then(
+			() => (settled = true),
+			() => (settled = true)
+		);
+
+		await vi.waitFor(() => {
+			expect(calls.some((call) => call.table === 'onto_events')).toBe(true);
+		});
+		// Let the failed DB read reject while Google is still pending. An
+		// unhandled rejection here would fail this test.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(settled).toBe(false);
+
+		google.resolve(representativeGoogleRead());
+		await expect(pending).rejects.toThrow('onto_events unavailable');
+	});
+
+	// Captured from the sequential implementation before the overlap change.
+	// The fixture covers every merge path: a qualified sync-row match, a
+	// task-title fallback match, an unmatched ontology row, and Google-only rows.
+	const SYNCED_MERGED = {
+		source: 'ontology',
+		is_synced: true,
+		external_event_id: 'ext-1',
+		calendar_source_id: 'source-1',
+		connection_id: 'connection-1',
+		provider_calendar_id: 'calendar-1@example.com',
+		onto_event_id: ONTO_EVENT_ID,
+		title: 'Design review',
+		start_at: '2026-09-03T11:00:00Z',
+		end_at: '2026-09-03T12:00:00Z',
+		owner_entity_type: null,
+		owner_entity_id: null,
+		task_link: null,
+		sync_status: 'synced',
+		sync_error: null,
+		event: { ...SYNCED_ROW, onto_event_sync: [SYNCED_ROW.onto_event_sync[0]] }
+	};
+	const SYNCED_GOOGLE_ONLY = {
+		source: 'google',
+		is_synced: false,
+		external_event_id: 'ext-1',
+		calendar_source_id: 'source-1',
+		connection_id: 'connection-1',
+		provider_calendar_id: 'calendar-1@example.com',
+		title: 'Design review',
+		start_at: '2026-09-03T11:00:00Z',
+		end_at: '2026-09-03T12:00:00Z',
+		event: representativeGoogleRead().events[0]
+	};
+	const LUNCH_GOOGLE_ONLY = {
+		source: 'google',
+		is_synced: false,
+		external_event_id: 'g-lunch',
+		calendar_source_id: 'source-1',
+		connection_id: 'connection-1',
+		provider_calendar_id: 'calendar-1@example.com',
+		title: 'Lunch',
+		start_at: '2026-09-03T12:30:00Z',
+		end_at: '2026-09-03T13:00:00Z',
+		event: { id: 'g-lunch', summary: 'Lunch', kind: 'calendar#event' }
+	};
+	const TASK_TITLE_MERGED = {
+		source: 'ontology',
+		is_synced: false,
+		external_event_id: 'g-task',
+		calendar_source_id: 'source-2',
+		connection_id: 'connection-2',
+		provider_calendar_id: 'calendar-2@example.com',
+		onto_event_id: TASK_EVENT_ID,
+		title: 'Write brief',
+		start_at: '2026-09-03T14:00:00Z',
+		end_at: '2026-09-03T15:00:00Z',
+		owner_entity_type: 'task',
+		owner_entity_id: TASK_ID,
+		task_link: `/projects/${PROJECT_ID}/tasks/${TASK_ID}`,
+		sync_status: 'pending',
+		sync_error: null,
+		event: TASK_ROW
+	};
+	const FOCUS_UNMATCHED = {
+		source: 'ontology',
+		is_synced: false,
+		external_event_id: null,
+		calendar_source_id: null,
+		connection_id: null,
+		provider_calendar_id: null,
+		onto_event_id: FOCUS_EVENT_ID,
+		title: 'Focus block',
+		start_at: '2026-09-03T16:00:00Z',
+		end_at: '2026-09-03T17:00:00Z',
+		owner_entity_type: null,
+		owner_entity_id: null,
+		task_link: null,
+		sync_status: null,
+		sync_error: null,
+		event: FOCUS_ROW
+	};
+	const USER_SCOPE = {
+		calendar_scope: 'user',
+		project_id: null,
+		calendar_id: null,
+		calendar_source_id: null
+	};
+
+	function expectedResult(input: {
+		events: Array<Record<string, unknown>>;
+		ontologyEventCount: number;
+		queryScope: Record<string, unknown>;
+		query: string | null;
+	}) {
+		const count = input.events.length;
+		return {
+			query_scope: input.queryScope,
+			events: input.events,
+			google_event_count: 3,
+			ontology_event_count: input.ontologyEventCount,
+			merged_event_count: count,
+			pagination: {
+				offset: 0,
+				limit: 100,
+				returned: count,
+				total_available: count,
+				has_more: false,
+				next_offset: null
+			},
+			queried_range: {
+				time_min: '2026-09-03T10:00:00.000Z',
+				time_max: '2026-09-03T18:00:00.000Z',
+				timezone: 'America/New_York',
+				query: input.query,
+				default_time_min_applied: false,
+				default_time_max_applied: false
+			},
+			google_read: {
+				mode: 'source_aware',
+				source_count: 2,
+				successful_source_count: 2,
+				failed_source_count: 0,
+				partial: false,
+				coverage: 'complete',
+				source_failures: []
+			},
+			warnings: []
+		};
+	}
+
+	it.each([
+		{
+			label: 'user scope',
+			args: { ...RANGE },
+			expected: expectedResult({
+				events: [SYNCED_MERGED, LUNCH_GOOGLE_ONLY, TASK_TITLE_MERGED, FOCUS_UNMATCHED],
+				ontologyEventCount: 3,
+				queryScope: USER_SCOPE,
+				query: null
+			})
+		},
+		{
+			label: 'user scope with a text query',
+			args: { ...RANGE, query: 'brief' },
+			expected: expectedResult({
+				events: [SYNCED_GOOGLE_ONLY, LUNCH_GOOGLE_ONLY, TASK_TITLE_MERGED],
+				ontologyEventCount: 1,
+				queryScope: USER_SCOPE,
+				query: 'brief'
+			})
+		},
+		{
+			label: 'project scope',
+			args: { ...RANGE, project_id: PROJECT_ID },
+			expected: expectedResult({
+				events: [SYNCED_MERGED, LUNCH_GOOGLE_ONLY, TASK_TITLE_MERGED, FOCUS_UNMATCHED],
+				ontologyEventCount: 3,
+				queryScope: {
+					calendar_scope: 'project',
+					project_id: PROJECT_ID,
+					calendar_id: 'calendar-2@example.com',
+					calendar_source_id: 'source-2'
+				},
+				query: null
+			})
+		}
+	])('merges a representative fixture exactly as before ($label)', async ({ args, expected }) => {
+		const { context } = createContext({
+			calendar: { listEvents: vi.fn(async () => representativeGoogleRead()) },
+			responses: representativeResponses()
+		});
+
+		expect(await listCalendarEvents(context, args)).toEqual(expected);
+	});
+});
+
 describe('shared get_calendar_event_details', () => {
 	function ontoEventContext(row: Record<string, unknown> | null, denied: string[] = []) {
 		return createContext({

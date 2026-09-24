@@ -61,20 +61,17 @@ export async function processCalendarSyncJob(job: ProcessingJob): Promise<{
 	const responseText = await response.text();
 	if (!response.ok) {
 		if (NON_RETRYABLE_STATUS_CODES.has(response.status)) {
-			await job.log(
-				`Non-retryable calendar sync response ${response.status}: ${responseText.slice(0, 200)}`
-			);
+			// Status only: the body can echo Google Calendar error text about the event.
+			await job.log(`Non-retryable calendar sync response ${response.status}`);
 			return {
 				success: false,
 				terminal: true,
 				status: response.status,
-				error: responseText.slice(0, 500)
+				error: `Calendar sync webhook returned ${response.status}`
 			};
 		}
 
-		throw new Error(
-			`Calendar sync webhook failed (${response.status}): ${responseText.slice(0, 500)}`
-		);
+		throw new Error(`Calendar sync webhook failed (${response.status})`);
 	}
 
 	let payload: unknown = null;

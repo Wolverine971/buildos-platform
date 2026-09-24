@@ -1,0 +1,76 @@
+{
+	"railway": [
+		{
+			"service": "agentic-chat-worker",
+			"deployment_id": "a603a362-6057-4037-b37b-c43b27e1c3f1",
+			"created_at": "2026-09-24T16:55:12.738Z",
+			"instances": 4,
+			"commit": "e4c82b356f88e7a1b0ff0f63504ce698dc045099",
+			"deploy": {
+				"multiRegionConfig": {
+					"us-west2": {
+						"numReplicas": 4
+					}
+				},
+				"numReplicas": 1,
+				"region": null
+			}
+		},
+		{
+			"service": "daily-brief-worker",
+			"deployment_id": "39145ae5-c0d7-4293-b410-4c6201916d56",
+			"created_at": "2026-09-24T15:48:31.487Z",
+			"instances": 1,
+			"commit": "e4c82b356f88e7a1b0ff0f63504ce698dc045099",
+			"deploy": {
+				"multiRegionConfig": {
+					"us-east4-eqdc4a": {
+						"numReplicas": 1
+					}
+				},
+				"numReplicas": 1,
+				"region": null
+			}
+		},
+		{
+			"service": "libri-worker",
+			"deployment_id": "6ca63af3-3d51-4036-af05-99e990239428",
+			"created_at": "2026-09-24T15:48:31.490Z",
+			"instances": 1,
+			"commit": "e4c82b356f88e7a1b0ff0f63504ce698dc045099",
+			"deploy": {
+				"multiRegionConfig": {
+					"us-east4-eqdc4a": {
+						"numReplicas": 1
+					}
+				},
+				"numReplicas": 1,
+				"region": null
+			}
+		}
+	],
+	"vercel": {
+		"id": "dpl_6AWu9uNFZdoWCTBAw2s19shmSWRv",
+		"url": "build-r7bjva8sr-djwayne35gmailcoms-projects.vercel.app",
+		"created_at": 1790264912514,
+		"runtime_regions": ["sfo1"],
+		"crons": [
+			{
+				"path": "/api/cron/gmail-connection-health",
+				"schedule": "45 * * * *"
+			},
+			{
+				"path": "/api/cron/renew-webhooks",
+				"schedule": "15 * * * *"
+			},
+			{
+				"path": "/api/cron/gmail-relevance-retention",
+				"schedule": "30 * * * *"
+			},
+			{
+				"path": "/api/cron/agentic-chat-stale-turns",
+				"schedule": "* * * * *"
+			}
+		]
+	}
+}

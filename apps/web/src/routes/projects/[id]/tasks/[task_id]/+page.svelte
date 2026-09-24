@@ -1871,9 +1871,8 @@
 	>
 		{#snippet content()}
 			<p class="text-sm text-muted-foreground">
-				This action cannot be undone. The task <span class="font-semibold text-foreground"
-					>"{title}"</span
-				> and all its data will be permanently deleted.
+				The task <span class="font-semibold text-foreground">"{title}"</span> and all its data
+				will be deleted now and erased for good after 30 days.
 			</p>
 		{/snippet}
 	</ConfirmationModal>

@@ -1,3 +1,4 @@
+// apps/worker/tests/libriOcrProvider.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
 	LibriOcrProviderError,
@@ -65,7 +66,8 @@ describe('Libri OCR provider boundary', () => {
 			model: MODEL,
 			temperature: 0,
 			max_tokens: 800,
-			response_format: { type: 'json_object' }
+			response_format: { type: 'json_object' },
+			provider: { data_collection: 'deny', zdr: true }
 		});
 		expect(body.messages[1].content[1]).toEqual({
 			type: 'image_url',

@@ -853,6 +853,7 @@ async function fetchBraindumps(
 			.from('onto_braindumps')
 			.select('id, title, summary, topics, status, error_message, created_at, processed_at')
 			.eq('user_id', userId)
+			.is('deleted_at', null)
 			.order('created_at', { ascending: false })
 			.limit(FETCH_PER_SOURCE),
 		cursor

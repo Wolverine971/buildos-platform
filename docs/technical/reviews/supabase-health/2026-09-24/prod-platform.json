@@ -1,0 +1,85 @@
+{
+	"project_ref": "iwifjtlebphefldmwbkh",
+	"collected_at": "2026-09-24T17:11:43.954690+00:00",
+	"read_only": true,
+	"sections": {
+		"postgrest": {
+			"db_schema": "public,graphql_public,libri",
+			"max_rows": 1000,
+			"db_extra_search_path": "public, extensions",
+			"db_pool": null,
+			"db_pool_acquisition_timeout": 10
+		},
+		"pooler": [
+			{
+				"identifier": "iwifjtlebphefldmwbkh",
+				"is_using_scram_auth": true,
+				"db_port": 6543,
+				"default_pool_size": null,
+				"max_client_conn": null,
+				"pool_mode": "transaction"
+			}
+		],
+		"disk": {},
+		"disk_util": {
+			"timestamp": "2026-09-24T17:11:47Z",
+			"metrics": {
+				"fs_size_bytes": 8350298112,
+				"fs_avail_bytes": 7221067776,
+				"fs_used_bytes": 1129230336
+			}
+		},
+		"backups": {
+			"region": "us-west-1",
+			"walg_enabled": false,
+			"pitr_enabled": false,
+			"backups": [
+				{
+					"id": 774940452,
+					"is_physical_backup": false,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-24T14:51:26.519736"
+				},
+				{
+					"id": 774713323,
+					"is_physical_backup": false,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-23T14:50:59.850459"
+				},
+				{
+					"id": 774481525,
+					"is_physical_backup": false,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-22T14:50:39.799387"
+				},
+				{
+					"id": 774247542,
+					"is_physical_backup": false,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-21T14:50:51.347201"
+				},
+				{
+					"id": 774015963,
+					"is_physical_backup": false,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-20T14:50:53.188366"
+				},
+				{
+					"id": 773800019,
+					"is_physical_backup": false,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-19T14:50:36.587148"
+				},
+				{
+					"id": 773584126,
+					"is_physical_backup": false,
+					"status": "COMPLETED",
+					"inserted_at": "2026-09-18T14:50:51.250381"
+				}
+			],
+			"physical_backup_data": {}
+		},
+		"actions": []
+	},
+	"errors": {}
+}

@@ -4,6 +4,7 @@
 // never need to guard. See docs/marketing/growth/posthog-analytics-workflow.md.
 import { browser, dev } from '$app/environment';
 import { PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_KEY } from '$env/static/public';
+import type { CaptureResult } from 'posthog-js';
 import { hasAnalyticsConsent } from './tracking-consent';
 import {
 	AGENTIC_CHAT_ADMISSION_COMPLETED_EVENT,
@@ -149,6 +150,53 @@ function applyPendingIdentify(): void {
 	posthogClient.identify(userId, properties, firstTouch ? { ...firstTouch } : undefined);
 }
 
+type EventProperties = CaptureResult['properties'];
+
+/** `$current_url`, `$referrer`, `$session_entry_url`, `$initial_referrer`, first-touch `referrer`, ... */
+function isUrlProperty(key: string): boolean {
+	const name = key.toLowerCase();
+	return name.endsWith('url') || name.endsWith('referrer') || name.endsWith('href');
+}
+
+/** Keep origin + pathname; drop the query string and hash (search text, tokens, emails). */
+function stripQueryAndHash(value: unknown): unknown {
+	if (typeof value !== 'string') return value;
+	try {
+		const url = new URL(value);
+		return `${url.origin}${url.pathname}`;
+	} catch {
+		// Relative paths and sentinels such as `$direct`.
+		return value.split(/[?#]/, 1)[0];
+	}
+}
+
+function scrubProperties(properties: EventProperties | undefined): EventProperties | undefined {
+	if (!properties) return properties;
+	const scrubbed: EventProperties = {};
+	for (const [key, value] of Object.entries(properties)) {
+		// posthog-js adds `title: document.title` to every $pageview; BuildOS titles carry
+		// project, task, and document names.
+		if (key === 'title') continue;
+		scrubbed[key] = isUrlProperty(key) ? stripQueryAndHash(value) : value;
+	}
+	return scrubbed;
+}
+
+/**
+ * PostHog `before_send`: runs on every browser event, including $pageview, $pageleave, and
+ * $identify. Removes the page title and cuts query strings and hashes from URL properties,
+ * keeping the pathname.
+ */
+export function scrubPostHogEvent(event: CaptureResult | null): CaptureResult | null {
+	if (!event) return event;
+	return {
+		...event,
+		properties: scrubProperties(event.properties) ?? {},
+		...(event.$set ? { $set: scrubProperties(event.$set) } : {}),
+		...(event.$set_once ? { $set_once: scrubProperties(event.$set_once) } : {})
+	};
+}
+
 function ensurePostHogInitialized(): Promise<any | null> {
 	if (initialized && posthogClient) return Promise.resolve(posthogClient);
 	if (!isEnabled()) return Promise.resolve(null);
@@ -175,7 +223,8 @@ function ensurePostHogInitialized(): Promise<any | null> {
 						persistence: 'localStorage',
 						opt_out_capturing_by_default: true,
 						opt_out_persistence_by_default: true,
-						respect_dnt: true
+						respect_dnt: true,
+						before_send: scrubPostHogEvent
 					});
 					posthog.opt_in_capturing({ captureEventName: false });
 					initialized = true;

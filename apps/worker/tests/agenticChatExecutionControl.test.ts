@@ -374,6 +374,66 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 		});
 	});
 
+	it('checks the read fence without locks and falls back to claim once the check is missing', async () => {
+		const receipt = executionReceipt({
+			outcome: 'matching_current_claim',
+			execution_may_start: false,
+			input_artifact_id: INPUT_ARTIFACT_ID,
+			user_message_id: USER_MESSAGE_ID
+		});
+		const responses: Array<{ data: unknown; error: { code: string; message: string } | null }> =
+			[
+				{ data: receipt, error: null },
+				{
+					data: null,
+					error: { code: 'PGRST202', message: 'Could not find the function' }
+				},
+				{ data: receipt, error: null },
+				{ data: receipt, error: null }
+			];
+		const rpc = vi.fn(async () => responses.shift()!);
+		const adapter = new SupabaseAgenticChatExecutionControlAdapter({
+			rpc
+		} as unknown as AgenticChatExecutionRpcClient);
+		const args = {
+			p_turn_run_id: TURN_RUN_ID,
+			p_queue_job_id: QUEUE_JOB_ID,
+			p_processing_token: PROCESSING_TOKEN
+		};
+
+		await expect(adapter.checkReadFence(identity)).resolves.toMatchObject({
+			outcome: 'matching_current_claim',
+			executionMayStart: false
+		});
+		expect(rpc).toHaveBeenLastCalledWith('check_agentic_chat_turn_read_fence', args);
+
+		// A database without 20260924150000: this check and every later one use claim.
+		await expect(adapter.checkReadFence(identity)).resolves.toMatchObject({
+			outcome: 'matching_current_claim'
+		});
+		expect(rpc).toHaveBeenLastCalledWith('claim_agentic_chat_turn', args);
+		await adapter.checkReadFence(identity);
+		expect(rpc).toHaveBeenLastCalledWith('claim_agentic_chat_turn', args);
+		expect(rpc).toHaveBeenCalledTimes(4);
+	});
+
+	it('surfaces a transient read-fence failure without falling back', async () => {
+		const rpc = vi.fn(async () => ({
+			data: null,
+			error: { code: '57014', message: 'canceling statement due to statement timeout' }
+		}));
+		const adapter = new SupabaseAgenticChatExecutionControlAdapter({
+			rpc
+		} as unknown as AgenticChatExecutionRpcClient);
+
+		await expect(adapter.checkReadFence(identity)).rejects.toMatchObject({
+			name: 'AgenticChatExecutionControlRpcError',
+			code: '57014'
+		});
+		expect(rpc).toHaveBeenCalledOnce();
+		expect(rpc).toHaveBeenCalledWith('check_agentic_chat_turn_read_fence', expect.any(Object));
+	});
+
 	it('rejects a forged claim authority receipt', async () => {
 		const { adapter } = adapterFor([
 			executionReceipt({

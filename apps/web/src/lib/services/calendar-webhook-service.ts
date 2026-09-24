@@ -1157,8 +1157,7 @@ export class CalendarWebhookService {
 					// We might want to create a corresponding task
 					console.log('[BATCH_PROCESS] New recurring event detected:', {
 						id: event.id,
-						summary: event.summary,
-						recurrence: event.recurrence
+						hasRecurrence: true
 					});
 					// For now, we'll skip auto-creating tasks from calendar events
 					// This could be a future feature if needed

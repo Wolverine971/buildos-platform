@@ -46,7 +46,11 @@ import {
 	result,
 	safeAssistantText
 } from './executor-helpers';
-import { canonicalErrorMessage, reportTerminalControlError } from './executor-failures';
+import {
+	AGENTIC_CHAT_GENERIC_FAILURE_COPY,
+	canonicalErrorMessage,
+	reportTerminalControlError
+} from './executor-failures';
 import { type ProjectionState, type TerminalContextState, toProjectionJson } from './turn-run';
 
 export type FinalizeTurnInput = {
@@ -148,6 +152,13 @@ export class AgenticChatTurnFinalizer {
 				receipt.failure_code === failureClass
 					? terminalFailureCode
 					: receipt.failure_code;
+			// Recovery can reclassify the failure (an unsettled effect makes it
+			// uncertain_external_commit). Copy chosen for the executor's class,
+			// such as "Nothing was changed", must not describe another outcome.
+			const terminalPublicError =
+				publicError !== undefined && receipt.failure_code !== failureClass
+					? AGENTIC_CHAT_GENERIC_FAILURE_COPY
+					: publicError;
 			return await this.finalize({
 				envelope,
 				claim,
@@ -159,7 +170,7 @@ export class AgenticChatTurnFinalizer {
 				publisherRegistered,
 				assistantTextOverride: assistantText ?? '',
 				interruptedReason,
-				publicError,
+				publicError: terminalPublicError,
 				terminalEventContext
 			});
 		} catch (error) {
@@ -467,7 +478,7 @@ export class AgenticChatTurnFinalizer {
 						})
 					: null,
 			publicError: includesFailureEventPair
-				? (publicError ?? 'An error occurred while streaming.')
+				? (publicError ?? AGENTIC_CHAT_GENERIC_FAILURE_COPY)
 				: null,
 			errorTransitionId: includesFailureEventPair
 				? createStableAgenticChatLifecycleTransitionIdV1({

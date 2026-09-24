@@ -1634,12 +1634,6 @@ export class CalendarService {
 			// Get user's timezone if not provided
 			const userTimeZone = options.timeZone || 'America/New_York';
 
-			console.log('Creating calendar with options:', {
-				summary: options.name,
-				description: options.description,
-				timeZone: userTimeZone
-			});
-
 			// Create the calendar with minimal required fields per Google API docs
 			// Only 'summary' is required for calendars.insert
 			const requestBody: any = {
@@ -1653,8 +1647,6 @@ export class CalendarService {
 			if (userTimeZone) {
 				requestBody.timeZone = userTimeZone;
 			}
-
-			console.log('Calendar API request body:', requestBody);
 
 			// Try to create the calendar (may not return properly)
 			try {
@@ -1691,9 +1683,7 @@ export class CalendarService {
 			);
 
 			if (matchingCalendars.length === 0) {
-				throw new Error(
-					`Calendar creation failed - calendar with summary "${options.name}" not found in list`
-				);
+				throw new Error('Calendar creation failed - created calendar not found in list');
 			}
 
 			// Use the first matching calendar (most recent if multiple)
@@ -1701,7 +1691,7 @@ export class CalendarService {
 			if (!createdCalendar) {
 				throw new Error('No matching calendar found in list');
 			}
-			console.log('Found created calendar:', createdCalendar);
+			console.log('Found created calendar:', { id: createdCalendar.id });
 
 			const calendarId = createdCalendar.id;
 			if (!calendarId) {

@@ -1,6 +1,7 @@
 // apps/worker/src/lib/errorLogger.ts
 import type { Database } from '@buildos/shared-types';
 import { LLMRequestTimeoutError } from '@buildos/smart-llm';
+import { sanitizeLogData } from './logSanitizer';
 import { supabase } from './supabase';
 
 type ErrorLogInsert = Database['public']['Tables']['error_logs']['Insert'];
@@ -142,6 +143,9 @@ function inferSeverity(error: unknown, errorType: ErrorType): ErrorSeverity {
 	return 'error';
 }
 
+// Same limits as the web ErrorLoggerService, so both writers redact error_logs identically.
+const SANITIZE_OPTIONS = { maxStringLength: 2000, maxDepth: 5, maxEntries: 50 };
+
 function resolveEnvironment(): 'development' | 'staging' | 'production' {
 	const env = process.env.NODE_ENV;
 	if (env === 'production') return 'production';
@@ -155,10 +159,20 @@ export async function logWorkerError(error: unknown, context?: WorkerErrorContex
 		const errorType = inferErrorType(error, context);
 		const severity = context?.severity ?? inferSeverity(error, errorType);
 		const metadata = {
-			...(context?.metadata || {}),
+			...(sanitizeLogData(context?.metadata ?? {}, SANITIZE_OPTIONS) as Record<
+				string,
+				unknown
+			>),
 			worker: true,
 			timestamp: new Date().toISOString()
 		};
+		const operationPayload =
+			context?.operationPayload === undefined
+				? undefined
+				: (sanitizeLogData(
+						context.operationPayload,
+						SANITIZE_OPTIONS
+					) as ErrorLogInsert['operation_payload']);
 
 		const errorEntry: ErrorLogInsert = {
 			error_type: errorType,
@@ -174,7 +188,7 @@ export async function logWorkerError(error: unknown, context?: WorkerErrorContex
 			operation_type: context?.operationType,
 			table_name: context?.tableName,
 			record_id: context?.recordId,
-			operation_payload: context?.operationPayload,
+			operation_payload: operationPayload,
 			llm_provider: context?.llmProvider,
 			llm_model: context?.llmModel,
 			prompt_tokens: context?.llmPromptTokens,

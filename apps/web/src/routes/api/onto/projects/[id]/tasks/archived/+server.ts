@@ -2,9 +2,10 @@
 /**
  * GET /api/onto/projects/[id]/tasks/archived
  *
- * Returns soft-deleted (archived) tasks for the project, newest first.
- * The standard project loader filters these out, so the v2 kanban's
- * "Archived" column fetches them on demand.
+ * Returns archived tasks (deleted_at and archived_at set) for the project,
+ * newest first. Deleted tasks (archived_at NULL) are not listed; they are
+ * erased 30 days after deletion. The standard project loader filters both
+ * out, so the v2 kanban's "Archived" column fetches these on demand.
  */
 
 import type { RequestHandler } from './$types';
@@ -43,7 +44,8 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			.select('*', { count: 'exact' })
 			.eq('project_id', projectId)
 			.not('deleted_at', 'is', null)
-			.order('deleted_at', { ascending: false })
+			.not('archived_at', 'is', null)
+			.order('archived_at', { ascending: false })
 			.order('id', { ascending: true })
 			.range(offset, offset + limit - 1);
 

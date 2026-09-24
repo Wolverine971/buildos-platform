@@ -64,8 +64,8 @@ export class EmailService {
 			metadataTrackingId !== htmlTrackingId
 		) {
 			console.warn('EmailService tracking ID mismatch between metadata and HTML', {
-				to: data.to,
-				subject: data.subject,
+				userId: data.userId ?? null,
+				category: data.metadata?.category ?? null,
 				metadataTrackingId,
 				htmlTrackingId
 			});
@@ -203,10 +203,9 @@ export class EmailService {
 			}
 
 			console.log('Email sent:', {
-				to: data.to,
-				subject: data.subject,
 				messageId: info.messageId,
-				trackingId
+				trackingId,
+				category: data.metadata?.category ?? null
 			});
 
 			return {

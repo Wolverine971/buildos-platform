@@ -9,9 +9,22 @@ export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
 export const PARETO_MODEL = 'unbiased/pareto' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_6_LUNA_MODEL = 'openai/gpt-6-luna' as const;
+/** Agentic Chat semantic reviewer default; explicit-only, never in automatic lanes. */
+export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
 export const GROK_47_MODEL = 'x-ai/grok-4.7' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V41_FLASH_MODEL = 'deepseek/deepseek-v4.1-flash' as const;
+/**
+ * V4 Flash hosts on OpenRouter's /endpoints/zdr list (2026-09-24), fastest
+ * measured first. Every request already requires ZDR; a non-ZDR host in an
+ * `order` would only be a dead preference.
+ */
+export const DEEPSEEK_V4_FLASH_ZDR_PROVIDER_ORDER: readonly string[] = Object.freeze([
+	'deepinfra',
+	'nextbit',
+	'open-inference',
+	'parasail'
+]);
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
 export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
@@ -612,18 +625,29 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	// Keep historical estimates accurate without making the retired ID selectable.
-	'openai/gpt-5.6-luna': {
-		id: 'openai/gpt-5.6-luna',
-		name: 'GPT-5.6 Luna (historical)',
+	// Kept out of automatic lanes; the Agentic Chat semantic reviewer names it
+	// explicitly because its Azure ZDR endpoints are healthy (tasker 103).
+	[GPT_56_LUNA_MODEL]: {
+		id: GPT_56_LUNA_MODEL,
+		name: 'GPT-5.6 Luna',
 		speed: 4,
 		smartness: 5,
 		creativity: 4.8,
+		// Standard OpenAI/OpenRouter rates verified 2026-09-04:
+		// https://developers.openai.com/api/docs/models/gpt-5.6-luna
 		cost: 0.2,
 		outputCost: 1.2,
 		provider: 'openai',
-		bestFor: [],
-		limitations: ['historical-pricing-only']
+		bestFor: ['semantic-review', 'tool-calling', 'structured-output'],
+		limitations: ['no-temperature-parameter', 'explicit-only'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	},
 	[GROK_47_MODEL]: {
 		id: GROK_47_MODEL,
@@ -777,20 +801,21 @@ export function modelSupportsCapability(
 // premium candidates out of automatic lanes, and reserve K3 for an explicit
 // maximum profile. MiMo 2.6 Flash is explicit-only until OpenRouter offers a
 // ZDR endpoint; MiMo 2.5 remains in production routes until then.
+// 2026-09-24 (tasker 103): Poolside Laguna XS 2.1 and Nex N2 Mini have no ZDR
+// endpoint, so every request forced to ZDR failed over past them. They stay in
+// the catalog for historical pricing only; keep them out of automatic lanes.
 const OPENROUTER_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_37_FLASH_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
-	POOLSIDE_LAGUNA_XS_21_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const OPENROUTER_JSON_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_37_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
-	NEX_N2_MINI_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	MINIMAX_M3_MODEL
@@ -800,7 +825,6 @@ const OPENROUTER_TOOL_ROUTE = [
 	GEMINI_37_FLASH_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
-	POOLSIDE_LAGUNA_XS_21_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GLM_53_MODEL,
 	MINIMAX_M3_MODEL
@@ -809,7 +833,6 @@ const OPENROUTER_MULTIMODAL_ROUTE = [
 	GEMINI_37_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
-	NEX_N2_MINI_MODEL,
 	MINIMAX_M3_MODEL
 ] as const;
 const EMERGENCY_TEXT_ROUTE = [
@@ -817,14 +840,12 @@ const EMERGENCY_TEXT_ROUTE = [
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	TENCENT_HY3_MODEL,
-	POOLSIDE_LAGUNA_XS_21_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const JSON_FAST_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_37_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
-	NEX_N2_MINI_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const JSON_POWERFUL_ROUTE = [
@@ -846,7 +867,6 @@ const JSON_MAXIMUM_ROUTE = [
 ] as const;
 const TEXT_SPEED_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	POOLSIDE_LAGUNA_XS_21_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,

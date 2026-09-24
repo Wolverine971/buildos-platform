@@ -636,6 +636,37 @@ async function loadTaskTitles(
 	return taskTitleById;
 }
 
+/**
+ * The BuildOS half of a list request: ontology events in range, narrowed by the
+ * text query, plus the titles of their owning tasks. The task-title read needs
+ * the filtered events, so those two stay in order; nothing here reads the Google
+ * result, so the caller runs the whole chain alongside the provider fan-out.
+ */
+async function loadOntologyReadForList(
+	context: AgenticChatSharedReadContextV1,
+	input: Parameters<typeof loadOntologyEventsForList>[1],
+	textQuery: string | undefined
+): Promise<{ ontoEvents: OntoEventRecord[]; taskTitleById: Map<string, string> }> {
+	let ontoEvents = await loadOntologyEventsForList(context, input);
+
+	if (textQuery) {
+		const normalizedQuery = textQuery.toLowerCase();
+		ontoEvents = ontoEvents.filter((event) => {
+			const props = (event.props as Record<string, unknown> | null) ?? {};
+			const taskTitle = typeof props.task_title === 'string' ? props.task_title : undefined;
+			const candidates = [event.title, event.description, event.location, taskTitle];
+			return candidates.some((candidate) =>
+				typeof candidate === 'string'
+					? candidate.toLowerCase().includes(normalizedQuery)
+					: false
+			);
+		});
+	}
+
+	const taskTitleById = await loadTaskTitles(context, ontoEvents);
+	return { ontoEvents, taskTitleById };
+}
+
 // ============================================
 // list_calendar_events
 // ============================================
@@ -688,6 +719,20 @@ export async function listCalendarEvents(
 	} else {
 		googleCalendarId = requestedCalendarId ?? 'primary';
 	}
+
+	// The BuildOS reads do not depend on the Google result, so start them now,
+	// after the access check they rely on, and let them run under the provider
+	// fan-out instead of queueing behind it (prod p50 was 882 ms with them in
+	// series). A DB failure still rejects this call only once the Google read has
+	// settled, exactly as before. The no-op catch only marks the promise handled
+	// so Node does not report an early DB rejection as unhandled while the Google
+	// await is still pending; the `await` below still throws it.
+	const ontologyRead = loadOntologyReadForList(
+		context,
+		{ scope, projectId, timeMin, timeMax, fetchLimit },
+		textQuery
+	);
+	ontologyRead.catch(() => undefined);
 
 	if (googleCalendarId) {
 		if (!context.calendar) {
@@ -752,29 +797,7 @@ export async function listCalendarEvents(
 		}
 	}
 
-	let ontoEvents = await loadOntologyEventsForList(context, {
-		scope,
-		projectId,
-		timeMin,
-		timeMax,
-		fetchLimit
-	});
-
-	if (textQuery) {
-		const normalizedQuery = textQuery.toLowerCase();
-		ontoEvents = ontoEvents.filter((event) => {
-			const props = (event.props as Record<string, unknown> | null) ?? {};
-			const taskTitle = typeof props.task_title === 'string' ? props.task_title : undefined;
-			const candidates = [event.title, event.description, event.location, taskTitle];
-			return candidates.some((candidate) =>
-				typeof candidate === 'string'
-					? candidate.toLowerCase().includes(normalizedQuery)
-					: false
-			);
-		});
-	}
-
-	const taskTitleById = await loadTaskTitles(context, ontoEvents);
+	const { ontoEvents, taskTitleById } = await ontologyRead;
 
 	const googleEventKey = (event: AgenticChatCalendarEventV1): string =>
 		`${event.calendarSourceId ?? 'legacy'} ${event.providerEventId ?? event.id}`;

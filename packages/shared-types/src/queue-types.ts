@@ -212,6 +212,16 @@ export interface CaptureChatCheckpointJobMetadata {
 	lastMessageId?: string;
 }
 
+/**
+ * Queue job 'user_data_export': build the "Download my data" zip for one
+ * user_data_exports row. Enqueued only by request_user_data_export()
+ * (supabase/migrations/20260924190300_user_data_panel_and_exports.sql).
+ */
+export interface UserDataExportJobMetadata {
+	exportId: string;
+	userId: string;
+}
+
 export interface OntoBraindumpProcessingJobMetadata {
 	braindumpId: string;
 	userId: string;
@@ -360,6 +370,7 @@ export interface JobMetadataMap {
 	run_cycle: CycleQueueJobMetadata;
 	freshness_radar_scan: FreshnessScanJobMetadata;
 	capture_chat_checkpoint: CaptureChatCheckpointJobMetadata;
+	user_data_export: UserDataExportJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -651,6 +662,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isFreshnessScanJobMetadata(metadata);
 		case 'capture_chat_checkpoint':
 			return isCaptureChatCheckpointMetadata(metadata);
+		case 'user_data_export':
+			return isUserDataExportMetadata(metadata);
 		case 'other':
 			return true;
 		default:
@@ -676,6 +689,17 @@ function isCaptureChatCheckpointMetadata(obj: unknown): obj is CaptureChatCheckp
 		meta.userId.length > 0 &&
 		typeof meta.trigger === 'string' &&
 		CAPTURE_CHAT_CHECKPOINT_TRIGGERS.has(meta.trigger)
+	);
+}
+
+function isUserDataExportMetadata(obj: unknown): obj is UserDataExportJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.exportId === 'string' &&
+		meta.exportId.length > 0 &&
+		typeof meta.userId === 'string' &&
+		meta.userId.length > 0
 	);
 }
 

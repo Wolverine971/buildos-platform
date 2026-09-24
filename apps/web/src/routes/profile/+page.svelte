@@ -29,6 +29,7 @@
 	import AgentKeysTab from '$lib/components/profile/AgentKeysTab.svelte';
 	import BillingTab from '$lib/components/profile/BillingTab.svelte';
 	import CyclesTab from '$lib/components/profile/CyclesTab.svelte';
+	import DataTab from '$lib/components/profile/DataTab.svelte';
 	import SettingsNavigation from '$lib/components/profile/SettingsNavigation.svelte';
 	import { getSettingsDestinations } from '$lib/components/profile/settings-navigation';
 	import {
@@ -329,6 +330,9 @@
 				{#if activeTab === 'account'}
 					<AccountTab
 						user={data.user}
+						initialSection={$page.url.searchParams.get('section') === 'delete'
+							? 'danger'
+							: 'profile'}
 						onsuccess={handleComponentSuccess}
 						onerror={handleComponentError}
 					/>
@@ -364,6 +368,8 @@
 						onsuccess={handleComponentSuccess}
 						onerror={handleComponentError}
 					/>
+				{:else if activeTab === 'data'}
+					<DataTab />
 				{:else if activeTab === 'billing' && data.stripeEnabled}
 					<BillingTab subscriptionDetails={data.subscriptionDetails} />
 				{/if}

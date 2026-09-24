@@ -107,11 +107,44 @@ async function importWorker() {
 describe('asset OCR worker', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		process.env.OPENAI_API_KEY = 'test-openai-key';
+		process.env.PRIVATE_OPENROUTER_API_KEY = 'test-openrouter-key';
+		process.env.OPENAI_API_KEY = '';
 	});
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
+		process.env.PRIVATE_OPENROUTER_API_KEY = '';
+	});
+
+	it('sends OCR only to OpenRouter with zero data retention required', async () => {
+		wireAssetTable({ ...BASE_ASSET });
+		wireSignedUrlSuccess();
+		const fetchMock = stubOcrResponse({ extracted_text: 'Hi', summary: 'A sign' });
+
+		const { processAssetOcrJob } = await importWorker();
+		await processAssetOcrJob(OCR_JOB);
+
+		const [url, init] = fetchMock.mock.calls[0]!;
+		expect(url).toBe('https://openrouter.ai/api/v1/chat/completions');
+		expect(init.headers.Authorization).toBe('Bearer test-openrouter-key');
+		expect(JSON.parse(init.body)).toMatchObject({
+			model: 'openai/gpt-4o-mini',
+			provider: { data_collection: 'deny', zdr: true }
+		});
+	});
+
+	it('never falls back to a direct OpenAI key when OpenRouter is not configured', async () => {
+		process.env.PRIVATE_OPENROUTER_API_KEY = '';
+		process.env.OPENAI_API_KEY = 'test-openai-key';
+		wireAssetTable({ ...BASE_ASSET });
+		wireSignedUrlSuccess();
+		const fetchMock = stubOcrResponse({ extracted_text: 'Hi', summary: 'A sign' });
+
+		const { processAssetOcrJob } = await importWorker();
+		await expect(processAssetOcrJob(OCR_JOB)).rejects.toThrow(
+			'Missing PRIVATE_OPENROUTER_API_KEY'
+		);
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it('processes OCR successfully and persists complete status', async () => {

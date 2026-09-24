@@ -1,7 +1,6 @@
 // packages/shared-agent-ops/src/embeddings/openai-embeddings.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-	OPENAI_EMBEDDINGS_URL,
 	OPENROUTER_EMBEDDINGS_URL,
 	createEmbeddingsClientFromEnv,
 	createOpenAiEmbeddingsClient,
@@ -31,9 +30,29 @@ describe('createOpenAiEmbeddingsClient', () => {
 		const fetchImpl = vi.fn(async () => okResponse([[1], [2]]));
 		const client = createOpenAiEmbeddingsClient({ apiKey: 'k', fetchImpl, sleep: noSleep });
 		await expect(client.embed(['a', 'b'])).resolves.toEqual([[1], [2]]);
+		expect(fetchImpl.mock.calls[0]![0]).toBe(OPENROUTER_EMBEDDINGS_URL);
 		const body = JSON.parse((fetchImpl.mock.calls[0]![1] as any).body as string);
-		expect(body.model).toBe('text-embedding-3-small');
+		expect(body.model).toBe('openai/text-embedding-3-small');
 		expect(body.input).toEqual(['a', 'b']);
+	});
+
+	// Tasker 103: embeddings carry the whole workspace, so every request
+	// denies data collection and requires zero data retention.
+	it('requires zero data retention on every request, including custom models', async () => {
+		const fetchImpl = vi.fn(async () => okResponse([[1]]));
+		const client = createOpenAiEmbeddingsClient({
+			apiKey: 'k',
+			fetchImpl,
+			model: 'qwen/qwen3-embedding-8b',
+			dimensions: 1536
+		});
+		await client.embedOne('x');
+		expect(JSON.parse((fetchImpl.mock.calls[0]![1] as any).body as string)).toEqual({
+			model: 'qwen/qwen3-embedding-8b',
+			input: ['x'],
+			dimensions: 1536,
+			provider: { data_collection: 'deny', zdr: true }
+		});
 	});
 
 	it('retries retryable failures then succeeds', async () => {
@@ -177,19 +196,19 @@ describe('createEmbeddingsClientFromEnv', () => {
 		expect(fetchImpl.mock.calls[0]![0]).toBe(OPENROUTER_EMBEDDINGS_URL);
 		const body = JSON.parse((fetchImpl.mock.calls[0]![1] as any).body as string);
 		expect(body.model).toBe('openai/text-embedding-3-small');
+		expect(body.provider).toEqual({ data_collection: 'deny', zdr: true });
 		expect((fetchImpl.mock.calls[0]![1] as any).headers.Authorization).toBe('Bearer or-key');
 	});
 
-	it('falls back to direct OpenAI with the bare model name', async () => {
+	it('never falls back to direct OpenAI when only an OpenAI key exists', () => {
 		const fetchImpl = vi.fn(async () => okResponse([[1]]));
-		const client = createEmbeddingsClientFromEnv(
-			{ PRIVATE_OPENAI_API_KEY: 'oa-key' },
-			{ fetchImpl, sleep: noSleep }
-		);
-		await client!.embedOne('x');
-		expect(fetchImpl.mock.calls[0]![0]).toBe(OPENAI_EMBEDDINGS_URL);
-		const body = JSON.parse((fetchImpl.mock.calls[0]![1] as any).body as string);
-		expect(body.model).toBe('text-embedding-3-small');
+		expect(
+			createEmbeddingsClientFromEnv(
+				{ PRIVATE_OPENAI_API_KEY: 'oa-key', OPENAI_API_KEY: 'oa-key' },
+				{ fetchImpl, sleep: noSleep }
+			)
+		).toBeNull();
+		expect(fetchImpl).not.toHaveBeenCalled();
 	});
 
 	it('returns null when no key is configured', () => {

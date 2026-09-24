@@ -49,12 +49,10 @@ export const GET: RequestHandler = async ({ params, request }) => {
 			.select(
 				`
 				id,
-				subject,
 				template_data,
 				email_recipients (
 					id,
 					recipient_id,
-					recipient_email,
 					opened_at,
 					open_count,
 					last_opened_at
@@ -135,7 +133,6 @@ export const GET: RequestHandler = async ({ params, request }) => {
 				const isFirstOpen = !recipient.opened_at;
 
 				logger.info('Tracking email open', {
-					recipientEmail: recipient.recipient_email,
 					recipientId: recipient.id,
 					isFirstOpen,
 					openCount: (recipient.open_count || 0) + 1
@@ -176,11 +173,11 @@ export const GET: RequestHandler = async ({ params, request }) => {
 					});
 				}
 
-				analyticsCaptures.push(
-					captureServerEvent(
-						recipient.recipient_id || recipient.recipient_email,
-						'email_opened',
-						{
+				// Only BuildOS users become PostHog persons. Non-user recipients (admin, lifecycle,
+				// outreach emails) are not captured, and an email address is never a distinct_id.
+				if (recipient.recipient_id) {
+					analyticsCaptures.push(
+						captureServerEvent(recipient.recipient_id, 'email_opened', {
 							email_id: email.id,
 							email_recipient_id: recipient.id,
 							tracking_id: tracking_id,
@@ -195,9 +192,9 @@ export const GET: RequestHandler = async ({ params, request }) => {
 								'standard',
 							is_first_open: isFirstOpen,
 							open_count: (recipient.open_count || 0) + 1
-						}
-					).catch(() => {})
-				);
+						}).catch(() => {})
+					);
+				}
 			}
 
 			// NEW: Update notification_deliveries if this email is tied to a notification

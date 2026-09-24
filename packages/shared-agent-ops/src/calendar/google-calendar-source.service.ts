@@ -89,8 +89,60 @@ export class GoogleCalendarSourceService {
 	 * Preserve a still-eligible user choice. If it has disappeared or lost write access, promote
 	 * the primary calendar from the earliest connected healthy account. The RPC revalidates the
 	 * final choice so a concurrent permission change cannot persist an ineligible source.
+	 *
+	 * Every calendar read runs this, so it writes only when the default actually changes.
 	 */
 	async reconcileDefaultWriteSource(userId: string): Promise<string | null> {
+		// The stored choice does not depend on the eligibility reads, so fetch it alongside
+		// them. Every read failure raises the same error, so whichever rejects first, the
+		// caller sees the same thing it did when these ran in series.
+		const [{ connections, eligibleSources }, storedSourceId] = await Promise.all([
+			this.loadEligibleWriteSources(userId),
+			this.loadStoredDefaultWriteSourceId(userId)
+		]);
+
+		if (storedSourceId && eligibleSources.some((source) => source.id === storedSourceId)) {
+			return storedSourceId;
+		}
+
+		const connectionRank = new Map(
+			connections.map((connection, index) => [connection.id, index])
+		);
+		const promotedSource = eligibleSources
+			.filter((source) => source.is_primary)
+			.sort((left, right) => {
+				const connectionDifference =
+					(connectionRank.get(left.connection_id) ?? Number.MAX_SAFE_INTEGER) -
+					(connectionRank.get(right.connection_id) ?? Number.MAX_SAFE_INTEGER);
+				if (connectionDifference !== 0) return connectionDifference;
+				const createdDifference = left.created_at.localeCompare(right.created_at);
+				return createdDifference !== 0
+					? createdDifference
+					: left.id.localeCompare(right.id);
+			})[0];
+		const nextSourceId = promotedSource?.id ?? null;
+		// A user with no writable calendar used to rewrite null on every read. A missing
+		// preferences row reads as null too, and every reader already treats the two alike.
+		if (nextSourceId === storedSourceId) {
+			return nextSourceId;
+		}
+		const { error: updateError } = await this.admin.rpc('set_default_calendar_source', {
+			p_user_id: userId,
+			p_calendar_source_id: nextSourceId
+		});
+		if (updateError) {
+			throw new GoogleCalendarConnectionError(
+				'database_error',
+				'Unable to reconcile the default Google Calendar source'
+			);
+		}
+		return nextSourceId;
+	}
+
+	private async loadEligibleWriteSources(userId: string): Promise<{
+		connections: Array<{ id: string; connected_at: string }>;
+		eligibleSources: GoogleCalendarSourceRow[];
+	}> {
 		const { data: connectionData, error: connectionError } = await this.admin
 			.from('user_calendar_connections')
 			.select('id, connected_at')
@@ -130,7 +182,10 @@ export class GoogleCalendarSourceService {
 			}
 			eligibleSources = (sourceData ?? []) as GoogleCalendarSourceRow[];
 		}
+		return { connections, eligibleSources };
+	}
 
+	private async loadStoredDefaultWriteSourceId(userId: string): Promise<string | null> {
 		const { data: preferenceData, error: preferenceError } = await this.admin
 			.from('user_calendar_preferences')
 			.select('default_write_calendar_source_id')
@@ -142,38 +197,6 @@ export class GoogleCalendarSourceService {
 				'Unable to reconcile the default Google Calendar source'
 			);
 		}
-
-		const storedSourceId = preferenceData?.default_write_calendar_source_id ?? null;
-		if (storedSourceId && eligibleSources.some((source) => source.id === storedSourceId)) {
-			return storedSourceId;
-		}
-
-		const connectionRank = new Map(
-			connections.map((connection, index) => [connection.id, index])
-		);
-		const promotedSource = eligibleSources
-			.filter((source) => source.is_primary)
-			.sort((left, right) => {
-				const connectionDifference =
-					(connectionRank.get(left.connection_id) ?? Number.MAX_SAFE_INTEGER) -
-					(connectionRank.get(right.connection_id) ?? Number.MAX_SAFE_INTEGER);
-				if (connectionDifference !== 0) return connectionDifference;
-				const createdDifference = left.created_at.localeCompare(right.created_at);
-				return createdDifference !== 0
-					? createdDifference
-					: left.id.localeCompare(right.id);
-			})[0];
-		const nextSourceId = promotedSource?.id ?? null;
-		const { error: updateError } = await this.admin.rpc('set_default_calendar_source', {
-			p_user_id: userId,
-			p_calendar_source_id: nextSourceId
-		});
-		if (updateError) {
-			throw new GoogleCalendarConnectionError(
-				'database_error',
-				'Unable to reconcile the default Google Calendar source'
-			);
-		}
-		return nextSourceId;
+		return preferenceData?.default_write_calendar_source_id ?? null;
 	}
 }

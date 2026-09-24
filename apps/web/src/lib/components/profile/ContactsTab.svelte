@@ -217,7 +217,7 @@
 				method: 'DELETE'
 			});
 			await parseApiData(response);
-			const message = 'Contact archived.';
+			const message = 'Contact deleted.';
 			toastService.success(message);
 			onsuccess?.({ message });
 			if (editingContactId === target.id) resetForm();
@@ -628,5 +628,6 @@
 	onconfirm={confirmArchiveContact}
 	oncancel={cancelArchiveContact}
 >
-	Archive {pendingDelete?.name ?? 'this contact'}? You can still view archived contacts via API.
+	Delete {pendingDelete?.name ?? 'this contact'}? The contact is hidden now and erased for good
+	after 30 days.
 </ConfirmationModal>

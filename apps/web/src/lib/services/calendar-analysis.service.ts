@@ -86,6 +86,8 @@ function contributingSourceEvents(
 type CalendarAnalysis = Database['public']['Tables']['calendar_analyses']['Row'];
 type CalendarProjectSuggestion =
 	Database['public']['Tables']['calendar_project_suggestions']['Row'];
+type CalendarAnalysisEventInsert =
+	Database['public']['Tables']['calendar_analysis_events']['Insert'];
 type CalendarAnalysisPreferences =
 	Database['public']['Tables']['calendar_analysis_preferences']['Row'];
 type CalendarSuggestionStatus =
@@ -489,9 +491,6 @@ export class CalendarAnalysisService extends ApiService {
 					`[Calendar Analysis] Events excluded: ${events.length - relevantEvents.length}`
 				);
 			}
-
-			// Store event snapshots for future reference
-			await this.storeAnalysisEvents(analysis.id, relevantEvents);
 
 			// Part 1: Analyze event patterns and group them
 			const eventGroups = await this.analyzeEventPatterns({
@@ -1175,7 +1174,7 @@ When an event has a "recurrence" field with RRULE:
 		const todayDate = new Date(today);
 		todayDate.setHours(0, 0, 0, 0);
 
-		suggestions.forEach((suggestion) => {
+		suggestions.forEach((suggestion, index) => {
 			// Check for past-dated tasks
 			if (suggestion.suggested_tasks && Array.isArray(suggestion.suggested_tasks)) {
 				const pastTasks = suggestion.suggested_tasks.filter((task) => {
@@ -1186,8 +1185,7 @@ When an event has a "recurrence" field with RRULE:
 
 				if (pastTasks.length > 0) {
 					console.warn(
-						`[Calendar Analysis] WARNING: Project "${suggestion.name}" has ${pastTasks.length} task(s) with past dates`,
-						pastTasks.map((t) => ({ title: t.title, start_date: t.start_date }))
+						`[Calendar Analysis] WARNING: Suggestion #${index} has ${pastTasks.length} task(s) with past dates`
 					);
 				}
 			}
@@ -1196,7 +1194,7 @@ When an event has a "recurrence" field with RRULE:
 			const taskCount = suggestion.suggested_tasks?.length || 0;
 			if (taskCount < 2) {
 				console.warn(
-					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has only ${taskCount} task(s). Minimum 2 expected.`
+					`[Calendar Analysis] WARNING: Suggestion #${index} has only ${taskCount} task(s). Minimum 2 expected.`
 				);
 			}
 		});
@@ -1591,29 +1589,45 @@ When an event has a "recurrence" field with RRULE:
 		}
 	}
 
+	/**
+	 * Keeps the title and time of each event a stored suggestion cites, linked to
+	 * that suggestion so the row is deleted with it (FK cascade + 30-day cleanup in
+	 * 20260924190500). Descriptions, locations, attendees, and uncited events are
+	 * never written.
+	 */
 	private async storeAnalysisEvents(
 		analysisId: string,
+		suggestions: Pick<CalendarProjectSuggestion, 'id' | 'calendar_event_ids'>[],
 		events: AnalysisCalendarEvent[]
 	): Promise<void> {
-		const eventRecords = events.map((event) => ({
-			analysis_id: analysisId,
-			calendar_id: event.providerCalendarId || 'primary',
-			calendar_source_id: event.calendarSourceId ?? null,
-			calendar_event_id: providerEventId(event),
-			contributing_source_event_ids: contributingSourceEvents(event),
-			event_title: event.summary,
-			event_description: event.description,
-			event_start: event.start?.dateTime || event.start?.date,
-			event_end: event.end?.dateTime || event.end?.date,
-			event_location: event.location,
-			is_recurring: !!event.recurringEventId,
-			is_organizer: event.organizer?.self || false,
-			attendee_count: event.attendees?.length || 0,
-			attendee_emails: event.attendees?.map((a) => a.email) || [],
-			included_in_analysis: true
-		}));
+		const eventsById = new Map<string, AnalysisCalendarEvent>();
+		for (const event of events) {
+			const id = providerEventId(event);
+			if (!eventsById.has(id)) eventsById.set(id, event);
+		}
 
-		const { error } = await this.supabase.from('calendar_analysis_events').insert(eventRecords);
+		// One row per provider event id: the reader looks rows up by analysis + event id.
+		const eventRecords = new Map<string, CalendarAnalysisEventInsert>();
+		for (const suggestion of suggestions) {
+			for (const eventId of suggestion.calendar_event_ids) {
+				const event = eventsById.get(eventId);
+				if (!event || eventRecords.has(eventId)) continue;
+				eventRecords.set(eventId, {
+					analysis_id: analysisId,
+					suggestion_id: suggestion.id,
+					calendar_id: event.providerCalendarId || 'primary',
+					calendar_event_id: eventId,
+					event_title: event.summary ?? null,
+					event_start: event.start?.dateTime || event.start?.date || null,
+					event_end: event.end?.dateTime || event.end?.date || null
+				});
+			}
+		}
+		if (eventRecords.size === 0) return;
+
+		const { error } = await this.supabase
+			.from('calendar_analysis_events')
+			.insert([...eventRecords.values()]);
 
 		if (error) {
 			// Log but don't fail the analysis
@@ -1622,7 +1636,7 @@ When an event has a "recurrence" field with RRULE:
 				metadata: {
 					operation: 'store_analysis_events',
 					analysisId,
-					eventCount: events.length
+					eventCount: eventRecords.size
 				}
 			});
 		}
@@ -1705,6 +1719,9 @@ When an event has a "recurrence" field with RRULE:
 		if (error) {
 			throw new Error('Failed to store suggestions');
 		}
+
+		// Before the inbox sync, so an inbox chat opened right away finds its evidence.
+		await this.storeAnalysisEvents(analysisId, data ?? [], events);
 
 		for (const suggestion of data ?? []) {
 			await this.syncSuggestionToInbox(suggestion);

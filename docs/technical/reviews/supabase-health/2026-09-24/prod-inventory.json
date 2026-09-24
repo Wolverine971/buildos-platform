@@ -1,0 +1,2515 @@
+{
+	"project_ref": "iwifjtlebphefldmwbkh",
+	"collected_at": "2026-09-24T17:09:56.615612+00:00",
+	"read_only": true,
+	"sections": {
+		"inventory": [
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime_messages_publication",
+					"attnames": [
+						"topic",
+						"extension",
+						"payload",
+						"event",
+						"private",
+						"updated_at",
+						"inserted_at",
+						"id",
+						"binary_payload",
+						"skip_broadcast"
+					],
+					"rowfilter": null,
+					"tablename": "messages_2026_09_21",
+					"schemaname": "realtime"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime_messages_publication",
+					"attnames": [
+						"topic",
+						"extension",
+						"payload",
+						"event",
+						"private",
+						"updated_at",
+						"inserted_at",
+						"id",
+						"binary_payload",
+						"skip_broadcast"
+					],
+					"rowfilter": null,
+					"tablename": "messages_2026_09_22",
+					"schemaname": "realtime"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime_messages_publication",
+					"attnames": [
+						"topic",
+						"extension",
+						"payload",
+						"event",
+						"private",
+						"updated_at",
+						"inserted_at",
+						"id",
+						"binary_payload",
+						"skip_broadcast"
+					],
+					"rowfilter": null,
+					"tablename": "messages_2026_09_23",
+					"schemaname": "realtime"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime_messages_publication",
+					"attnames": [
+						"topic",
+						"extension",
+						"payload",
+						"event",
+						"private",
+						"updated_at",
+						"inserted_at",
+						"id",
+						"binary_payload",
+						"skip_broadcast"
+					],
+					"rowfilter": null,
+					"tablename": "messages_2026_09_24",
+					"schemaname": "realtime"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime_messages_publication",
+					"attnames": [
+						"topic",
+						"extension",
+						"payload",
+						"event",
+						"private",
+						"updated_at",
+						"inserted_at",
+						"id",
+						"binary_payload",
+						"skip_broadcast"
+					],
+					"rowfilter": null,
+					"tablename": "messages_2026_09_25",
+					"schemaname": "realtime"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime_messages_publication",
+					"attnames": [
+						"topic",
+						"extension",
+						"payload",
+						"event",
+						"private",
+						"updated_at",
+						"inserted_at",
+						"id",
+						"binary_payload",
+						"skip_broadcast"
+					],
+					"rowfilter": null,
+					"tablename": "messages_2026_09_26",
+					"schemaname": "realtime"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime_messages_publication",
+					"attnames": [
+						"topic",
+						"extension",
+						"payload",
+						"event",
+						"private",
+						"updated_at",
+						"inserted_at",
+						"id",
+						"binary_payload",
+						"skip_broadcast"
+					],
+					"rowfilter": null,
+					"tablename": "messages_2026_09_27",
+					"schemaname": "realtime"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"user_id",
+						"name",
+						"slug",
+						"description",
+						"start_date",
+						"end_date",
+						"tags",
+						"created_at",
+						"updated_at",
+						"context",
+						"executive_summary",
+						"status",
+						"calendar_color_id",
+						"calendar_sync_enabled",
+						"calendar_settings",
+						"source",
+						"source_metadata",
+						"core_context_descriptions",
+						"core_integrity_ideals",
+						"core_people_bonds",
+						"core_goals_momentum",
+						"core_meaning_identity",
+						"core_reality_understanding",
+						"core_trust_safeguards",
+						"core_opportunity_freedom",
+						"core_power_resources",
+						"core_harmony_integration"
+					],
+					"rowfilter": null,
+					"tablename": "projects",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"project_id",
+						"title",
+						"description",
+						"created_at",
+						"updated_at",
+						"dependencies",
+						"details",
+						"recurrence_ends",
+						"parent_task_id",
+						"completed_at",
+						"user_id",
+						"outdated",
+						"duration_minutes",
+						"start_date",
+						"task_steps",
+						"status",
+						"priority",
+						"task_type",
+						"recurrence_pattern",
+						"deleted_at",
+						"recurrence_end_source",
+						"source",
+						"source_calendar_event_id",
+						"source_calendar_source_id"
+					],
+					"rowfilter": null,
+					"tablename": "tasks",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"user_id",
+						"brief_date",
+						"summary_content",
+						"project_brief_ids",
+						"insights",
+						"priority_actions",
+						"created_at",
+						"updated_at",
+						"generation_status",
+						"generation_started_at",
+						"generation_completed_at",
+						"generation_progress",
+						"generation_error",
+						"metadata",
+						"llm_analysis"
+					],
+					"rowfilter": null,
+					"tablename": "daily_briefs",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"project_id",
+						"user_id",
+						"name",
+						"description",
+						"start_date",
+						"end_date",
+						"order",
+						"created_at",
+						"updated_at",
+						"scheduling_method"
+					],
+					"rowfilter": null,
+					"tablename": "phases",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"user_id",
+						"scheduled_for",
+						"queue_job_id",
+						"created_at",
+						"processed_at",
+						"error_message",
+						"metadata",
+						"priority",
+						"attempts",
+						"max_attempts",
+						"started_at",
+						"completed_at",
+						"result",
+						"updated_at",
+						"status",
+						"job_type",
+						"dedup_key",
+						"processing_token"
+					],
+					"rowfilter": null,
+					"tablename": "queue_jobs",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"session_id",
+						"role",
+						"content",
+						"tool_calls",
+						"tool_call_id",
+						"tool_name",
+						"tool_result",
+						"prompt_tokens",
+						"completion_tokens",
+						"total_tokens",
+						"metadata",
+						"error_message",
+						"error_code",
+						"created_at",
+						"operation_ids",
+						"message_type",
+						"user_id"
+					],
+					"rowfilter": null,
+					"tablename": "chat_messages",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"user_id",
+						"trigger",
+						"parent_run_id",
+						"parent_session_id",
+						"parent_message_id",
+						"depth",
+						"operative_id",
+						"label",
+						"goal",
+						"instructions",
+						"expected_output",
+						"context_type",
+						"project_id",
+						"review_required",
+						"status",
+						"result",
+						"change_set",
+						"budgets",
+						"metrics",
+						"error",
+						"created_at",
+						"started_at",
+						"completed_at",
+						"updated_at",
+						"scope_mode",
+						"allowed_ops",
+						"source_suggestion_id",
+						"source_decision",
+						"commit_started_at",
+						"effort",
+						"run_template",
+						"orchestration_state",
+						"execution_generation"
+					],
+					"rowfilter": null,
+					"tablename": "agent_runs",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"source_type",
+						"source_ref_id",
+						"source_status",
+						"user_id",
+						"project_id",
+						"audience",
+						"status",
+						"title",
+						"summary",
+						"risk_tier",
+						"action_kinds",
+						"blocked_reason",
+						"snoozed_until",
+						"expires_at",
+						"decided_at",
+						"created_at",
+						"updated_at",
+						"freshness_state",
+						"freshness_note",
+						"freshness_flag_id",
+						"freshness_checked_at"
+					],
+					"rowfilter": null,
+					"tablename": "inbox_items",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"created_by",
+						"root_node_id",
+						"root_question",
+						"status",
+						"phase",
+						"model_policy",
+						"explorer_model_requested",
+						"synthesis_model_requested",
+						"prompt_version",
+						"node_limit",
+						"nodes_created",
+						"nodes_completed",
+						"nodes_failed",
+						"deepest_depth",
+						"frontier_count",
+						"advance_sequence",
+						"max_provider_requests",
+						"provider_requests",
+						"config",
+						"usage",
+						"synthesis",
+						"pause_reason",
+						"next_retry_at",
+						"next_batch_not_before",
+						"started_at",
+						"completed_at",
+						"created_at",
+						"updated_at"
+					],
+					"rowfilter": null,
+					"tablename": "question_tree_runs",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"run_id",
+						"parent_node_id",
+						"node_kind",
+						"node_number",
+						"depth",
+						"sibling_index",
+						"status",
+						"question",
+						"normalized_question",
+						"answer",
+						"thesis",
+						"epistemic_assessment",
+						"confidence",
+						"stop_reason",
+						"model_requested",
+						"model_used",
+						"provider_request_id",
+						"attempt_count",
+						"prompt_tokens",
+						"completion_tokens",
+						"reasoning_tokens",
+						"cost_usd",
+						"latency_ms",
+						"lease_owner",
+						"lease_expires_at",
+						"error_code",
+						"error_message",
+						"started_at",
+						"completed_at",
+						"created_at",
+						"updated_at",
+						"search_document"
+					],
+					"rowfilter": null,
+					"tablename": "question_tree_nodes",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"run_id",
+						"source_node_id",
+						"rank",
+						"question",
+						"normalized_question",
+						"purpose",
+						"target_claim",
+						"why_it_matters",
+						"expected_information_gain",
+						"model_priority",
+						"scheduler_score",
+						"status",
+						"child_node_id",
+						"duplicate_of_node_id",
+						"validation_error",
+						"created_at",
+						"updated_at"
+					],
+					"rowfilter": null,
+					"tablename": "question_tree_proposals",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"run_id",
+						"node_id",
+						"seq",
+						"event_type",
+						"payload",
+						"created_at"
+					],
+					"rowfilter": null,
+					"tablename": "question_tree_events",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "publications",
+				"data": {
+					"pubname": "supabase_realtime",
+					"attnames": [
+						"id",
+						"session_id",
+						"user_id",
+						"project_id",
+						"trigger",
+						"status",
+						"through_message_id",
+						"through_message_at",
+						"user_message_count",
+						"thinking_log_document_id",
+						"thinking_log_entry",
+						"start_here_document_id",
+						"start_here_before",
+						"start_here_after_updated_at",
+						"applied_sections",
+						"review_run_id",
+						"review_sections",
+						"details",
+						"created_at",
+						"undone_at"
+					],
+					"rowfilter": null,
+					"tablename": "chat_capture_checkpoints",
+					"schemaname": "public"
+				}
+			},
+			{
+				"section": "replication_slots",
+				"data": {
+					"active": true,
+					"slot_name": "supabase_realtime_messages_replication_slot_2_138_1_a886414",
+					"slot_type": "logical",
+					"wal_status": "reserved",
+					"retained_wal_bytes": 56
+				}
+			},
+			{
+				"section": "replication_slots",
+				"data": {
+					"active": true,
+					"slot_name": "supabase_realtime_replication_slot_2_138_1_a886414",
+					"slot_type": "logical",
+					"wal_status": "reserved",
+					"retained_wal_bytes": 56
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "turn_run_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "session_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "user_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "snapshot_version",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "system_prompt",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "model_messages",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "tool_definitions",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "request_payload",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "prompt_sections",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "context_payload",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "rendered_dump_text",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "system_prompt_sha256",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "messages_sha256",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "tools_sha256",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "system_prompt_chars",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "message_chars",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "approx_prompt_tokens",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "created_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_prompt_snapshots",
+					"column_name": "prompt_variant",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_events",
+					"column_name": "id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_events",
+					"column_name": "turn_run_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_events",
+					"column_name": "session_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_events",
+					"column_name": "user_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_events",
+					"column_name": "stream_run_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_events",
+					"column_name": "sequence_index",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_events",
+					"column_name": "phase",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_events",
+					"column_name": "event_type",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "chat_turn_events",
+					"column_name": "payload",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_events",
+					"column_name": "created_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_events",
+					"column_name": "execution_generation",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_events",
+					"column_name": "event_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_events",
+					"column_name": "worker_transition_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "session_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "user_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "stream_run_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "client_turn_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "source",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "context_type",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "entity_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "project_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "boolean",
+					"table_name": "chat_turn_runs",
+					"column_name": "gateway_enabled",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "request_message",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "user_message_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "assistant_message_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "status",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "finished_reason",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "tool_round_count",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "tool_call_count",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "validation_failure_count",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "llm_pass_count",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "first_lane",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "first_help_path",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "first_skill_path",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "first_canonical_op",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "history_strategy",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "boolean",
+					"table_name": "chat_turn_runs",
+					"column_name": "history_compressed",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "raw_history_count",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "history_for_model_count",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "cache_source",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "numeric",
+					"table_name": "chat_turn_runs",
+					"column_name": "cache_age_seconds",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "boolean",
+					"table_name": "chat_turn_runs",
+					"column_name": "request_prewarmed_context",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "prompt_snapshot_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "timing_metric_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "started_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "finished_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "created_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "updated_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "prepared_prompt_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "boolean",
+					"table_name": "chat_turn_runs",
+					"column_name": "prepared_prompt_hit",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "prepared_prompt_miss_reason",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "prepared_surface_profile",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "last_progress_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "request_hash",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "request_hash_version",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "execution_mode",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "chat_turn_runs",
+					"column_name": "request_payload",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "request_payload_version",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "transport_contract_version",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "transport_decision_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "queue_job_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "correlation_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "execution_generation",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "cancel_requested_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "cancel_reason",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "worker_started_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "execution_started_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "mutation_reserved_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "irreversible_boundary_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "history_cutoff_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "ARRAY",
+					"table_name": "chat_turn_runs",
+					"column_name": "history_message_ids",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "stale_context_policy",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "last_event_sequence",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "terminal_event_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "terminalized_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_runs",
+					"column_name": "failure_code",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_runs",
+					"column_name": "input_artifact_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_runs",
+					"column_name": "worker_lease_generation",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_runs",
+					"column_name": "worker_lease_renewed_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "turn_run_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "session_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "user_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "execution_generation",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "snapshot_sequence",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "durable_through_sequence",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "projection_durable_sequence",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "assistant_text",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "projection",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "boolean",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "reconcile_required",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "created_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "updated_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "last_text_batch_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "last_text_sequence",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "last_text_end_bytes",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "chat_turn_stream_state",
+					"column_name": "first_text_persisted_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "cron_logs",
+					"column_name": "id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "cron_logs",
+					"column_name": "job_name",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "cron_logs",
+					"column_name": "status",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "cron_logs",
+					"column_name": "error_message",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "cron_logs",
+					"column_name": "executed_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "cron_logs",
+					"column_name": "created_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "cron_logs",
+					"column_name": "message",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "llm_usage_logs",
+					"column_name": "id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "llm_usage_logs",
+					"column_name": "user_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "llm_usage_logs",
+					"column_name": "operation_type",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "character varying",
+					"table_name": "llm_usage_logs",
+					"column_name": "model_requested",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "character varying",
+					"table_name": "llm_usage_logs",
+					"column_name": "model_used",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "character varying",
+					"table_name": "llm_usage_logs",
+					"column_name": "provider",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "prompt_tokens",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "completion_tokens",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "total_tokens",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "numeric",
+					"table_name": "llm_usage_logs",
+					"column_name": "input_cost_usd",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "numeric",
+					"table_name": "llm_usage_logs",
+					"column_name": "output_cost_usd",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "numeric",
+					"table_name": "llm_usage_logs",
+					"column_name": "total_cost_usd",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "response_time_ms",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "llm_usage_logs",
+					"column_name": "request_started_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "llm_usage_logs",
+					"column_name": "request_completed_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "USER-DEFINED",
+					"table_name": "llm_usage_logs",
+					"column_name": "status",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "llm_usage_logs",
+					"column_name": "error_message",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "numeric",
+					"table_name": "llm_usage_logs",
+					"column_name": "temperature",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "max_tokens",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "character varying",
+					"table_name": "llm_usage_logs",
+					"column_name": "profile",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "boolean",
+					"table_name": "llm_usage_logs",
+					"column_name": "streaming",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "llm_usage_logs",
+					"column_name": "project_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "llm_usage_logs",
+					"column_name": "brain_dump_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "llm_usage_logs",
+					"column_name": "task_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "llm_usage_logs",
+					"column_name": "brief_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "character varying",
+					"table_name": "llm_usage_logs",
+					"column_name": "openrouter_request_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "character varying",
+					"table_name": "llm_usage_logs",
+					"column_name": "openrouter_cache_status",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "rate_limit_remaining",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "llm_usage_logs",
+					"column_name": "metadata",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "llm_usage_logs",
+					"column_name": "created_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "llm_usage_logs",
+					"column_name": "chat_session_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "llm_usage_logs",
+					"column_name": "turn_run_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "llm_usage_logs",
+					"column_name": "stream_run_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "llm_usage_logs",
+					"column_name": "client_turn_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "reasoning_tokens",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "cached_prompt_tokens",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "llm_usage_logs",
+					"column_name": "cache_write_tokens",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "numeric",
+					"table_name": "llm_usage_logs",
+					"column_name": "openrouter_usage_cost_usd",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "boolean",
+					"table_name": "llm_usage_logs",
+					"column_name": "openrouter_byok",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "numeric",
+					"table_name": "llm_usage_logs",
+					"column_name": "openrouter_upstream_inference_cost_usd",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "queue_jobs",
+					"column_name": "id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "queue_jobs",
+					"column_name": "user_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "queue_jobs",
+					"column_name": "scheduled_for",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "queue_jobs",
+					"column_name": "queue_job_id",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "queue_jobs",
+					"column_name": "created_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "queue_jobs",
+					"column_name": "processed_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "queue_jobs",
+					"column_name": "error_message",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "queue_jobs",
+					"column_name": "metadata",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "queue_jobs",
+					"column_name": "priority",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "queue_jobs",
+					"column_name": "attempts",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "integer",
+					"table_name": "queue_jobs",
+					"column_name": "max_attempts",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "queue_jobs",
+					"column_name": "started_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "queue_jobs",
+					"column_name": "completed_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "jsonb",
+					"table_name": "queue_jobs",
+					"column_name": "result",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "timestamp with time zone",
+					"table_name": "queue_jobs",
+					"column_name": "updated_at",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "USER-DEFINED",
+					"table_name": "queue_jobs",
+					"column_name": "status",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "USER-DEFINED",
+					"table_name": "queue_jobs",
+					"column_name": "job_type",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "text",
+					"table_name": "queue_jobs",
+					"column_name": "dedup_key",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "columns",
+				"data": {
+					"data_type": "uuid",
+					"table_name": "queue_jobs",
+					"column_name": "processing_token",
+					"table_schema": "public"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_checkpoint_resume_terminal",
+					"proname": "resolve_agentic_chat_resume_checkpoint_on_terminal",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_execution_mode_immutable",
+					"proname": "reject_agentic_chat_execution_mode_change",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_freshness_radar",
+					"proname": "enqueue_freshness_radar_signal_v1",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_input_artifact_scope",
+					"proname": "validate_agentic_chat_input_artifact_link",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_resolve_effects_on_terminal",
+					"proname": "resolve_agentic_chat_effects_on_terminal_v1",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_terminal_domain_metadata",
+					"proname": "apply_agentic_chat_terminal_domain_metadata_v1",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_terminal_pending_contract",
+					"proname": "apply_agentic_chat_terminal_pending_contract_v1",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_updated",
+					"proname": "set_updated_at",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_runs_workflow_terminal",
+					"proname": "sync_agentic_chat_workflow_terminal_v1",
+					"relname": "chat_turn_runs"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_stream_state_retention",
+					"proname": "enforce_agentic_chat_control_row_retention",
+					"relname": "chat_turn_stream_state"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "trg_chat_turn_stream_state_validate",
+					"proname": "validate_agentic_chat_stream_state_write",
+					"relname": "chat_turn_stream_state"
+				}
+			},
+			{
+				"section": "triggers",
+				"data": {
+					"tgname": "update_queue_jobs_updated_at",
+					"proname": "update_updated_at_column",
+					"relname": "queue_jobs"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_lock_free_turn_checks",
+					"version": "20260924150000"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_turn_leases",
+					"version": "20260924000100"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_reap_stranded_queued_turns",
+					"version": "20260924000000"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "pin_onto_asset_storage_paths",
+					"version": "20260923000100"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "guard_user_privileged_columns",
+					"version": "20260923000000"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "chat_capture_checkpoints",
+					"version": "20260922230100"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "chat_capture_checkpoint_queue_type",
+					"version": "20260922230000"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "restrict_public_page_writes_to_server",
+					"version": "20260922221500"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_answer_comparisons_v1",
+					"version": "20260922002140"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_specialist_recommendations_v1",
+					"version": "20260921041759"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_published_specialist_execution_v1",
+					"version": "20260921002731"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_specialist_workbench_v1",
+					"version": "20260920162616"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_document_evidence_handoff_v1",
+					"version": "20260920154843"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_specialist_selection_shadow_v1",
+					"version": "20260920041644"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_document_read_tools_v1",
+					"version": "20260920032259"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_specialist_snapshots_v2",
+					"version": "20260920010743"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "freshness_radar_turn_signal_trigger",
+					"version": "20260918200300"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "freshness_radar_suggestion_inbox_columns",
+					"version": "20260918200200"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "freshness_radar_queue_type",
+					"version": "20260918200100"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "freshness_radar_ledger",
+					"version": "20260918200000"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_workflow_v1_dispatch_recovery",
+					"version": "20260914203008"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_workflow_v1_storage",
+					"version": "20260914203007"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "agentic_chat_workflow_prompt_snapshot",
+					"version": "20260914165546"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "libri_upload_capability_issuance",
+					"version": "20260909165112"
+				}
+			},
+			{
+				"section": "migrations",
+				"data": {
+					"name": "libri_upload_cleanup_leases",
+					"version": "20260908192820"
+				}
+			},
+			{
+				"section": "read_only",
+				"data": {
+					"transaction_read_only": "on"
+				}
+			}
+		]
+	},
+	"errors": {}
+}

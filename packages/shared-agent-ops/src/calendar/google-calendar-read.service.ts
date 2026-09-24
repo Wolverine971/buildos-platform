@@ -646,10 +646,15 @@ export class GoogleCalendarReadService {
 			params.background ? DEFAULT_BACKGROUND_BUDGET_MS : DEFAULT_INTERACTIVE_BUDGET_MS
 		);
 		const deadline = this.clock() + budgetMs;
-		const { targets, unreadable: unreadableSources } = await this.resolveReadTargets(params);
-		const defaultSourceId = await this.targetService
+		// The default write source only breaks ties when duplicate events collapse
+		// below, and it reads no target state, so reconcile it under the target
+		// resolution and provider fan-out instead of ahead of them. A failure still
+		// degrades to "no default"; the catch also keeps an early rejection from
+		// surfacing as unhandled while the fan-out runs.
+		const defaultSourceRead = this.targetService
 			.reconcileDefaultWriteSourceId(params.userId)
 			.catch(() => null);
+		const { targets, unreadable: unreadableSources } = await this.resolveReadTargets(params);
 		const clientCache = new Map<string, Promise<unknown>>();
 
 		// A slow credential refresh for one account must not occupy every worker
@@ -685,6 +690,7 @@ export class GoogleCalendarReadService {
 				};
 			}
 		});
+		const defaultSourceId = await defaultSourceRead;
 
 		const warnings: GoogleCalendarReadWarning[] = [];
 		const sourceStatuses: GoogleCalendarSourceReadStatus[] = [];

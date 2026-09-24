@@ -841,29 +841,26 @@ user_rating (int)
 updated_at (timestamptz)
 ```
 
-#### 12. `calendar_analysis_events` (Events in Analysis)
+#### 12. `calendar_analysis_events` (Events Behind a Suggestion)
+
+Only events a suggestion cites, with title and time only (2026-09-24,
+`20260924190500_calendar_analysis_minimal_events.sql`). Rows are deleted with their suggestion
+and at most 30 days after they are written (`cleanup_privacy_calendar_analysis_events`).
 
 ```
 id (uuid, pk)
 analysis_id (uuid fk, cascade)
+suggestion_id (uuid fk → calendar_project_suggestions, NOT NULL, cascade)
 
 calendar_id (text)
 calendar_event_id (text)
 event_title (text)
 event_start (timestamptz)
 event_end (timestamptz)
-event_location (text)
-event_description (text)
 
-attendee_count (int)
-attendee_emails (text array)
-is_organizer (boolean)
-is_recurring (boolean)
-recurrence_pattern (text)
-
-included_in_analysis (boolean)
-exclusion_reason (text)
-suggestion_id (uuid fk → calendar_project_suggestions)
+-- legacy, no longer written:
+calendar_source_id, contributing_source_event_ids, attendee_count, is_organizer,
+is_recurring, recurrence_pattern, included_in_analysis, exclusion_reason
 
 created_at (timestamptz)
 ```

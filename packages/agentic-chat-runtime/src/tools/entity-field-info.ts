@@ -154,7 +154,7 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		deleted_at: {
 			type: 'date',
 			description:
-				'Soft delete timestamp. When set, task is excluded from queries but can be recovered.',
+				'Soft delete timestamp. When set, the task is hidden from queries. A deleted task is erased for good 30 days later; an archived one (archived_at also set) is kept.',
 			required: false,
 			example: '(null when active)'
 		},
@@ -239,7 +239,7 @@ Examples: goal.outcome.project, goal.metric.revenue, goal.behavior.cadence, goal
 		deleted_at: {
 			type: 'date',
 			description:
-				'Soft delete timestamp. When set, goal is excluded from queries but can be recovered.',
+				'Soft delete timestamp. When set, the goal is hidden from queries and erased for good 30 days later.',
 			required: false,
 			example: '(null when active)'
 		},
@@ -288,7 +288,7 @@ Examples: plan.timebox.sprint, plan.pipeline.sales, plan.phase.project`,
 		deleted_at: {
 			type: 'date',
 			description:
-				'Soft delete timestamp. When set, plan is excluded from queries but can be recovered.',
+				'Soft delete timestamp. When set, the plan is hidden from queries and erased for good 30 days later.',
 			required: false,
 			example: '(null when active)'
 		},

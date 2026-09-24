@@ -88,6 +88,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			.select('id, content, title, topics, summary, status')
 			.eq('id', validatedData.braindumpId)
 			.eq('user_id', validatedData.userId)
+			.is('deleted_at', null)
 			.single();
 
 		if (braindumpError || !braindump) {
@@ -191,7 +192,9 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 		const topics = sanitizeTopics(result.topics);
 		const summary = sanitizeSummary(result.summary);
 
-		console.log(`✅ Processing result: "${title}" with topics: [${topics.join(', ')}]`);
+		console.log(
+			`✅ Processed captured context ${validatedData.braindumpId}: title ${title.length} chars, ${topics.length} topics, summary ${summary.length} chars`
+		);
 
 		// Update the captured context with processing results
 		const { error: updateError } = await supabase

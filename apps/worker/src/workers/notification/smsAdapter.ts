@@ -91,6 +91,11 @@ async function getTemplate(templateKey: string, smsLogger: Logger): Promise<SMST
 	}
 }
 
+/** Last two digits only, for correlating log lines without storing the number. */
+function maskPhoneNumber(phoneNumber: string): string {
+	return phoneNumber.length > 6 ? `***${phoneNumber.slice(-2)}` : '***';
+}
+
 /**
  * Validate phone number format (E.164 format: +[country code][number])
  * E.164 format allows phone numbers to be dialed internationally
@@ -658,7 +663,7 @@ export async function sendSMSNotification(
 			smsLogger.warn('Invalid phone number format', {
 				notificationDeliveryId: delivery.id,
 				recipientUserId: delivery.recipient_user_id,
-				phoneNumber: phoneNumber.substring(0, 3) + '*' + phoneNumber.substring(-2) // Log safely (masked)
+				phoneNumber: maskPhoneNumber(phoneNumber)
 			});
 			return {
 				success: false,
@@ -753,7 +758,7 @@ export async function sendSMSNotification(
 
 		smsLogger.debug('Formatted SMS message', {
 			notificationDeliveryId: delivery.id,
-			phoneNumber,
+			phoneNumber: maskPhoneNumber(phoneNumber),
 			messageLength: messageContent.length,
 			priority
 		});
@@ -787,7 +792,7 @@ export async function sendSMSNotification(
 		if (!messageId) {
 			smsLogger.error('queue_sms_message returned no message ID', undefined, {
 				notificationDeliveryId: delivery.id,
-				phoneNumber
+				phoneNumber: maskPhoneNumber(phoneNumber)
 			});
 			return {
 				success: false,
@@ -798,7 +803,7 @@ export async function sendSMSNotification(
 		smsLogger.info('SMS queued successfully', {
 			smsMessageId: messageId,
 			notificationDeliveryId: delivery.id,
-			phoneNumber
+			phoneNumber: maskPhoneNumber(phoneNumber)
 		});
 
 		return {

@@ -209,7 +209,7 @@ async function persistPendingEmailRecipient(options: {
 	if (lookupError) {
 		emailLogger.error('Failed to look up existing email recipient record', lookupError, {
 			emailRecordId,
-			recipientEmail
+			recipientUserId
 		});
 	}
 
@@ -229,7 +229,7 @@ async function persistPendingEmailRecipient(options: {
 		if (updateError) {
 			emailLogger.error('Failed to update recipient record', updateError, {
 				emailRecordId,
-				recipientEmail
+				recipientUserId
 			});
 		}
 
@@ -248,7 +248,7 @@ async function persistPendingEmailRecipient(options: {
 	if (recipientError) {
 		emailLogger.error('Failed to create recipient record', recipientError, {
 			emailRecordId,
-			recipientEmail
+			recipientUserId
 		});
 	}
 }
@@ -841,7 +841,7 @@ export async function sendEmailNotification(
 				emailRecordId: emailRecord.id,
 				notificationDeliveryId: delivery.id,
 				messageId: webhookResult.messageId,
-				recipientEmail: user.email
+				recipientUserId: delivery.recipient_user_id
 			});
 
 			return {

@@ -145,6 +145,41 @@ export async function authenticateExternalAgentCaller(
 		});
 	}
 
+	// Deletion revokes callers when it is requested; this also covers a caller
+	// trusted again afterwards, or rows the request-time lock never reached.
+	const { data: owner, error: ownerError } = await admin
+		.from('users')
+		.select('deletion_status')
+		.eq('id', data.user_id)
+		.maybeSingle();
+	if (ownerError) {
+		throw new AgentCallAuthError(
+			'Failed to authenticate caller',
+			500,
+			-32603,
+			ownerError.message
+		);
+	}
+	if (owner?.deletion_status) {
+		await logSecurityEvent(
+			{
+				eventType: 'agent.auth.failed',
+				category: 'agent',
+				outcome: 'denied',
+				severity: 'medium',
+				actorType: 'external_agent',
+				actorUserId: data.user_id,
+				externalAgentCallerId: data.id,
+				reason: 'account_deletion_pending',
+				...getSecurityRequestContext(request)
+			},
+			{ ...securityEventOptions, supabase: admin }
+		);
+		throw new AgentCallAuthError('Caller is not trusted', 403, -32003, {
+			status: 'account_deletion_pending'
+		});
+	}
+
 	const record = data as ExternalAgentCallerRecord;
 	const scopeMode = extractScopeModeFromPolicy(record.policy);
 	const allowedOps = extractAllowedOpsFromPolicy(record.policy, scopeMode);

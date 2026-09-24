@@ -86,7 +86,7 @@ export const EMAIL_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'scan_email_inbox',
 			description:
-				"Check the user's recent inbox and return only the emails relevant to what they asked, each scored 0-100% by a fast relevance filter. Use for questions like 'any emails about this project today?', 'anything important in my inbox?', or 'did they reply this week?'. Scans every connected account by default, so list_email_accounts is not needed first. Emails already scored for the same question are not re-scored. Returns relevant emails (body openings for the top few), counts of the rest, and Gmail links. Use search_email_messages instead to find a specific older email.",
+				"Check the user's recent inbox and return only the emails relevant to what they asked, each scored 0-100% by a fast relevance filter. Use for questions like 'any emails about this project today?', 'anything important in my inbox?', or 'did they reply this week?'. In a project chat the filter already receives the project's name, description, tasks, and documents, so for questions about the project in general, call it without looking_for; repeat checks then skip mail already scored. Scans every connected account by default, so list_email_accounts is not needed first. Returns relevant emails (body openings for the top few), counts of the rest, and Gmail links. Use search_email_messages instead to find a specific older email.",
 			parameters: {
 				type: 'object',
 				properties: {
@@ -106,7 +106,7 @@ export const EMAIL_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						type: 'string',
 						maxLength: 300,
 						description:
-							"What counts as relevant, in plain words (e.g. 'replies from ConductorAI about the interview'). Omit it in a project chat to score relevance to the current project, or in global chat to find mail that needs the user's attention."
+							"Only for something narrower than the current project or unrelated to it, in plain words (e.g. 'replies from ConductorAI about the interview'). Leave it out when the user asks about the current project in general: the project context is included automatically, and rewording it here makes every check start over. In global chat, leaving it out finds mail that needs the user's attention."
 					},
 					connection_ids: {
 						type: 'array',

@@ -36,7 +36,6 @@ export type WorkerSmartLLMConfig = {
 	enforceUserId?: boolean;
 	errorLogger?: SmartLLMConfig['errorLogger'];
 	openrouter?: SmartLLMConfig['openrouter'];
-	moonshot?: SmartLLMConfig['moonshot'];
 };
 
 function metadataString(
@@ -113,24 +112,6 @@ export class SmartLLMService extends SharedSmartLLMService {
 		const apiKey = config?.apiKey || process.env.PRIVATE_OPENROUTER_API_KEY || '';
 		const supabase = config?.supabase ?? defaultSupabase;
 		const errorLogger = config?.errorLogger ?? createWorkerSmartLlmErrorLogger();
-		const moonshotApiKey =
-			config?.moonshot?.apiKey ||
-			process.env.PRIVATE_MOONSHOT_API_KEY ||
-			process.env.MOONSHOT_API_KEY;
-		const moonshotApiUrl =
-			config?.moonshot?.apiUrl || process.env.PRIVATE_MOONSHOT_API_URL || undefined;
-		const moonshotRouteKimiModelsDirect =
-			config?.moonshot?.routeKimiModelsDirect ??
-			(process.env.PRIVATE_MOONSHOT_ROUTE_KIMI_DIRECT || '').trim().toLowerCase() === 'true';
-		const moonshotConfig: SmartLLMConfig['moonshot'] | undefined =
-			moonshotApiKey || moonshotApiUrl || moonshotRouteKimiModelsDirect || config?.moonshot
-				? {
-						...config?.moonshot,
-						apiKey: moonshotApiKey || undefined,
-						apiUrl: moonshotApiUrl,
-						routeKimiModelsDirect: moonshotRouteKimiModelsDirect
-					}
-				: undefined;
 		super({
 			apiKey,
 			httpReferer: config?.httpReferer || DEFAULT_HTTP_REFERER,
@@ -138,8 +119,7 @@ export class SmartLLMService extends SharedSmartLLMService {
 			supabase: supabase as SmartLLMConfig['supabase'],
 			errorLogger,
 			enforceUserId: config?.enforceUserId ?? true,
-			openrouter: config?.openrouter,
-			moonshot: moonshotConfig
+			openrouter: config?.openrouter
 		});
 	}
 }

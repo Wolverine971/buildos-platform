@@ -10,6 +10,8 @@ import {
 	decodeStoredCalendarTokens
 } from '$lib/server/calendar-token-crypto';
 
+const LEGACY_REVOKE_TIMEOUT_MS = 5000;
+
 export interface GoogleOAuthCredentials {
 	clientId?: string | null;
 	clientSecret?: string | null;
@@ -236,7 +238,8 @@ export class GoogleOAuthService {
 	private async quarantineInvalidGrant(userId: string): Promise<void> {
 		this.clientCache.delete(userId);
 		if (!this.protectedCleanupSupabase) return;
-		await this.disconnectCalendar(userId);
+		// Google already rejected this grant; there is nothing left to revoke.
+		await this.disconnectCalendar(userId, { revokeAtGoogle: false });
 	}
 
 	private requireClientId(): string {
@@ -970,7 +973,64 @@ export class GoogleOAuthService {
 	/**
 	 * Disconnect calendar and clear tokens
 	 */
-	async disconnectCalendar(userId: string): Promise<void> {
+	/**
+	 * Best effort: end the grant at Google before the local tokens go, so a
+	 * disconnect really stops BuildOS's access. Skipped while a migrated
+	 * connection for the same Google account still relies on that grant.
+	 */
+	private async revokeLegacyCalendarGrant(
+		cleanupSupabase: SupabaseClient,
+		userId: string
+	): Promise<void> {
+		let timeout: ReturnType<typeof setTimeout> | undefined;
+		try {
+			const { data, error } = await cleanupSupabase
+				.from('user_calendar_tokens')
+				.select('access_token, refresh_token, google_user_id')
+				.eq('user_id', userId)
+				.maybeSingle();
+			if (error || !data) return;
+
+			if (data.google_user_id) {
+				const { data: migrated, error: migratedError } = await cleanupSupabase
+					.from('user_calendar_connections')
+					.select('id')
+					.eq('user_id', userId)
+					.eq('provider', 'google_calendar')
+					.eq('provider_account_id', data.google_user_id)
+					.is('deleted_at', null)
+					.limit(1)
+					.maybeSingle();
+				if (migratedError || migrated) return;
+			}
+
+			const tokens = decodeStoredCalendarTokens(data);
+			const token = tokens.refresh_token || tokens.access_token;
+			if (!token) return;
+
+			await Promise.race([
+				this.createOAuth2Client().revokeToken(token),
+				new Promise((_, reject) => {
+					timeout = setTimeout(
+						() => reject(new Error('provider_timeout')),
+						LEGACY_REVOKE_TIMEOUT_MS
+					);
+				})
+			]);
+		} catch (error) {
+			console.warn(
+				'Legacy calendar grant could not be revoked at Google:',
+				safeGoogleOAuthErrorDiagnostic(error)
+			);
+		} finally {
+			if (timeout) clearTimeout(timeout);
+		}
+	}
+
+	async disconnectCalendar(
+		userId: string,
+		options: { revokeAtGoogle?: boolean } = {}
+	): Promise<void> {
 		const cleanupSupabase = this.protectedCleanupSupabase ?? this.supabase;
 		try {
 			const { error: channelError } = await cleanupSupabase
@@ -995,6 +1055,10 @@ export class GoogleOAuthService {
 				}
 			);
 			throw error;
+		}
+
+		if (options.revokeAtGoogle !== false) {
+			await this.revokeLegacyCalendarGrant(cleanupSupabase, userId);
 		}
 
 		try {

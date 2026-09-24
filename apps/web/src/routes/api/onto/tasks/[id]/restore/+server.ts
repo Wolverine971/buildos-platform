@@ -2,9 +2,10 @@
 /**
  * POST /api/onto/tasks/[id]/restore
  *
- * Reverses a soft-delete by clearing `deleted_at`. Requires write access on
- * the parent project. The standard PATCH endpoint filters `deleted_at IS NULL`
- * so it can't perform this operation; that's why this lives at its own route.
+ * Reverses an archive or a soft-delete by clearing `deleted_at` and
+ * `archived_at`. Requires write access on the parent project. The standard
+ * PATCH endpoint filters `deleted_at IS NULL` so it can't perform this
+ * operation; that's why this lives at its own route.
  *
  * Returns the restored task on success.
  */
@@ -52,7 +53,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		// Find the soft-deleted task and its project for the access check.
 		const { data: task, error: fetchError } = await supabase
 			.from('onto_tasks')
-			.select('id, project_id, deleted_at, title, type_key, state_key, start_at, due_at')
+			.select(
+				'id, project_id, deleted_at, archived_at, title, type_key, state_key, start_at, due_at'
+			)
 			.eq('id', taskId)
 			.not('deleted_at', 'is', null)
 			.maybeSingle();
@@ -90,6 +93,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		const beforeData = {
 			deleted_at: task.deleted_at,
+			archived_at: task.archived_at,
 			title: task.title,
 			type_key: task.type_key,
 			state_key: task.state_key,
@@ -101,6 +105,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			.from('onto_tasks')
 			.update({
 				deleted_at: null,
+				archived_at: null,
 				updated_at: new Date().toISOString()
 			})
 			.eq('id', taskId)
@@ -126,6 +131,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		const afterData = {
 			deleted_at: null,
+			archived_at: null,
 			title: updated.title,
 			type_key: updated.type_key,
 			state_key: updated.state_key,

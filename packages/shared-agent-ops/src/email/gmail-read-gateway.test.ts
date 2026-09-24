@@ -494,9 +494,80 @@ describe('GmailReadGateway.scanInboxWindow', () => {
 		read_enabled: true
 	};
 
-	function scanFetch(options: { listed: string[]; nextPageToken?: string; failIds?: string[] }) {
-		return vi.fn(async (input: URL | RequestInfo) => {
+	function scanMessage(id: string) {
+		return {
+			...metadataMessage(id, `t-${id}`, 1_758_700_000_000),
+			labelIds: ['INBOX', 'CATEGORY_PERSONAL'],
+			payload: {
+				headers: [
+					{ name: 'From', value: 'Sender <sender@example.com>' },
+					{ name: 'To', value: 'dj@example.com' },
+					{ name: 'Subject', value: `Subject ${id}` }
+				]
+			}
+		};
+	}
+
+	/** Message ids requested by one Gmail batch body, in order. */
+	function batchedIds(init?: RequestInit): string[] {
+		return [
+			...String(init?.body).matchAll(/GET \/gmail\/v1\/users\/me\/messages\/([^?]+)\?/g)
+		].map((match) => match[1]!);
+	}
+
+	function multipartResponse(
+		parts: Array<{ contentId: string; status: number; body: string }>
+	): Response {
+		const boundary = 'batch_test_boundary';
+		const body =
+			parts
+				.map((part) =>
+					[
+						`--${boundary}`,
+						'Content-Type: application/http',
+						`Content-ID: <response-${part.contentId}>`,
+						'',
+						`HTTP/1.1 ${part.status} STATUS`,
+						'Content-Type: application/json; charset=UTF-8',
+						'',
+						part.body,
+						''
+					].join('\r\n')
+				)
+				.join('') + `--${boundary}--\r\n`;
+		return new Response(body, {
+			status: 200,
+			headers: { 'Content-Type': `multipart/mixed; boundary=${boundary}` }
+		});
+	}
+
+	function scanFetch(options: {
+		listed: string[];
+		nextPageToken?: string;
+		/** Items that fail inside a batch and again when read singly. */
+		failIds?: string[];
+		/** Per-item status inside a batch only; single reads succeed. */
+		batchItemStatus?: Record<string, number>;
+		/** Status for every batch request as a whole. */
+		batchStatus?: number;
+	}) {
+		return vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
 			const url = new URL(String(input));
+			if (url.pathname === '/batch/gmail/v1') {
+				if (options.batchStatus) return new Response('{}', { status: options.batchStatus });
+				return multipartResponse(
+					batchedIds(init).map((id, index) => {
+						const status = options.failIds?.includes(id)
+							? 500
+							: (options.batchItemStatus?.[id] ?? 200);
+						return {
+							contentId: `m${index}`,
+							status,
+							body: status === 200 ? JSON.stringify(scanMessage(id)) : '{}'
+						};
+					})
+				);
+			}
 			if (url.pathname.endsWith('/messages')) {
 				return jsonResponse({
 					messages: options.listed.map((id) => ({ id, threadId: `t-${id}` })),
@@ -505,18 +576,18 @@ describe('GmailReadGateway.scanInboxWindow', () => {
 			}
 			const id = url.pathname.split('/').pop()!;
 			if (options.failIds?.includes(id)) return new Response('{}', { status: 500 });
-			return jsonResponse({
-				...metadataMessage(id, `t-${id}`, 1_758_700_000_000),
-				labelIds: ['INBOX', 'CATEGORY_PERSONAL'],
-				payload: {
-					headers: [
-						{ name: 'From', value: 'Sender <sender@example.com>' },
-						{ name: 'To', value: 'dj@example.com' },
-						{ name: 'Subject', value: `Subject ${id}` }
-					]
-				}
-			});
+			return jsonResponse(scanMessage(id));
 		});
+	}
+
+	function scanParams() {
+		return {
+			userId: 'user-1',
+			connectionId,
+			afterEpochSeconds: 1,
+			beforeEpochSeconds: 2,
+			maxResults: 200
+		};
 	}
 
 	it('builds the Gmail query from the window bounds only and fetches only unskipped messages', async () => {
@@ -539,7 +610,8 @@ describe('GmailReadGateway.scanInboxWindow', () => {
 		expect(listUrl.searchParams.get('q')).toBe('in:inbox after:1758672000 before:1758758400');
 		expect(listUrl.searchParams.get('maxResults')).toBe('100');
 		expect(skipFetch).toHaveBeenCalledWith(['m1', 'm2', 'm3']);
-		expect(providerFetch).toHaveBeenCalledTimes(3); // list + m1 + m3
+		expect(providerFetch).toHaveBeenCalledTimes(2); // list + one batch
+		expect(batchedIds(providerFetch.mock.calls[1]![1])).toEqual(['m1', 'm3']);
 		expect(result.account.status).toBe('success');
 		expect(result.listedMessageIds).toEqual(['m1', 'm2', 'm3']);
 		expect(result.truncated).toBe(true);
@@ -616,7 +688,7 @@ describe('GmailReadGateway.scanInboxWindow', () => {
 		const providerFetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
 			const auth = (init?.headers as Record<string, string>).Authorization;
 			if (auth === 'Bearer stale') return new Response('{}', { status: 401 });
-			return inner(input);
+			return inner(input, init);
 		});
 		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
 
@@ -634,6 +706,112 @@ describe('GmailReadGateway.scanInboxWindow', () => {
 			connectionId,
 			{ forceRefresh: true }
 		);
+	});
+
+	it('reads 120 messages in three batch requests of at most 50, keeping list order', async () => {
+		const { admin, auditInsert } = createAdmin([activeConnection]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const listed = Array.from({ length: 120 }, (_, index) => `m${index}`);
+		const providerFetch = scanFetch({ listed });
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+
+		const result = await gateway.scanInboxWindow(scanParams());
+
+		const batchCalls = providerFetch.mock.calls.filter(
+			([input]) => new URL(String(input)).pathname === '/batch/gmail/v1'
+		);
+		expect(batchCalls.map(([, init]) => batchedIds(init).length)).toEqual([50, 50, 20]);
+		expect(providerFetch).toHaveBeenCalledTimes(4); // list + 3 batches, no single reads
+		const [, firstBatchInit] = batchCalls[0]!;
+		expect(firstBatchInit).toMatchObject({ method: 'POST', redirect: 'error' });
+		expect((firstBatchInit!.headers as Record<string, string>)['Content-Type']).toMatch(
+			/^multipart\/mixed; boundary=/
+		);
+		expect(String(firstBatchInit!.body)).toContain(
+			'format=metadata&fields=id%2CthreadId%2CinternalDate%2Csnippet%2ClabelIds%2Cpayload%2Fheaders&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date'
+		);
+		expect(result.messages.map((message) => message.messageId)).toEqual(listed);
+		expect(auditInsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				outcome: 'success',
+				metadata: expect.objectContaining({ fetchedCount: 120, singleReadCount: 0 })
+			})
+		);
+	});
+
+	it('re-reads throttled batch items singly and drops deleted ones', async () => {
+		const { admin, auditInsert } = createAdmin([activeConnection]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const providerFetch = scanFetch({
+			listed: ['m1', 'm2', 'm3'],
+			batchItemStatus: { m2: 429, m3: 404 }
+		});
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+
+		const result = await gateway.scanInboxWindow(scanParams());
+
+		expect(result.account.status).toBe('success');
+		expect(result.messages.map((message) => message.messageId)).toEqual(['m1', 'm2']);
+		expect(result.failedMessageCount).toBe(0);
+		const singleReads = providerFetch.mock.calls
+			.map(([input]) => new URL(String(input)).pathname)
+			.filter((pathname) => /\/messages\/m\d+$/.test(pathname));
+		expect(singleReads).toEqual(['/gmail/v1/users/me/messages/m2']);
+		expect(auditInsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: expect.objectContaining({ singleReadCount: 1 })
+			})
+		);
+	});
+
+	it('falls back to single reads when Google rejects a whole batch', async () => {
+		const { admin } = createAdmin([activeConnection]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const providerFetch = scanFetch({ listed: ['m1', 'm2'], batchStatus: 503 });
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+
+		const result = await gateway.scanInboxWindow(scanParams());
+
+		expect(result.account.status).toBe('success');
+		expect(result.messages.map((message) => message.messageId)).toEqual(['m1', 'm2']);
+		expect(providerFetch).toHaveBeenCalledTimes(4); // list + batch + 2 single reads
+	});
+
+	it('refreshes the token once when a batch item comes back 401', async () => {
+		const { admin } = createAdmin([activeConnection]);
+		const oauthService = {
+			getAuthorizedReadAccessToken: vi
+				.fn()
+				.mockResolvedValueOnce('stale')
+				.mockResolvedValueOnce('fresh')
+		};
+		const stale = scanFetch({ listed: ['m1'], batchItemStatus: { m1: 401 } });
+		const fresh = scanFetch({ listed: ['m1'] });
+		const providerFetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+			const auth = (init?.headers as Record<string, string>).Authorization;
+			return auth === 'Bearer stale' ? stale(input, init) : fresh(input, init);
+		});
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+
+		const result = await gateway.scanInboxWindow(scanParams());
+
+		expect(result.account.status).toBe('success');
+		expect(result.messages.map((message) => message.messageId)).toEqual(['m1']);
+		expect(oauthService.getAuthorizedReadAccessToken).toHaveBeenCalledTimes(2);
+	});
+
+	it('treats a window whose listed mail was all deleted as empty, not unavailable', async () => {
+		const { admin } = createAdmin([activeConnection]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const gateway = new GmailReadGateway(admin, {
+			oauthService,
+			providerFetch: scanFetch({ listed: ['m1'], batchItemStatus: { m1: 404 } })
+		});
+
+		const result = await gateway.scanInboxWindow(scanParams());
+
+		expect(result.account.status).toBe('success');
+		expect(result.messages).toEqual([]);
 	});
 
 	it('does not call Google for a reconnect-required account', async () => {

@@ -378,6 +378,16 @@ describe('processProjectLoopJob detector degradation', () => {
 				]
 			})
 		);
+		// The provider's error text stays in the job log, never in PostHog.
+		const [, , properties] = mocks.captureWorkerEvent.mock.calls.find(
+			([, event]: unknown[]) => event === 'project_suggestion_generated'
+		) as [string, string, { skipped_lenses: Record<string, unknown>[] }];
+		expect(Object.keys(properties.skipped_lenses[0] ?? {}).sort()).toEqual([
+			'kind',
+			'label',
+			'providerRequestId',
+			'reason'
+		]);
 	});
 
 	it('fails permanently for a non-provider detector error', async () => {

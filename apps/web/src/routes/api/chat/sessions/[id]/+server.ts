@@ -8,7 +8,7 @@ import {
 	isProjectScopedContext,
 	normalizeProjectFocus
 } from '$lib/services/agentic-chat-v2/scope';
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { buildAgentTimeline } from '$lib/components/agent/agent-chat-timeline';
 import {
@@ -819,33 +819,24 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 		return ApiResponse.badRequest('Session id is required');
 	}
 
-	const { data: existingSession, error: sessionError } = await supabase
-		.from('chat_sessions')
-		.select('id')
-		.eq('id', sessionId)
-		.eq('user_id', user.id)
-		.single();
-
-	if (sessionError || !existingSession) {
-		return ApiResponse.notFound('Session');
-	}
-
-	const { error: messagesError } = await supabase
-		.from('chat_messages')
-		.delete()
-		.eq('session_id', sessionId);
-
-	if (messagesError) {
-		return ApiResponse.databaseError(messagesError);
-	}
-
-	const { error: deleteError } = await supabase
-		.from('chat_sessions')
-		.delete()
-		.eq('id', sessionId)
-		.eq('user_id', user.id);
+	// One atomic call: ownership check, live-turn refusal, and the worker turn
+	// rows a plain cascade cannot delete while their retention guards hold.
+	const { error: deleteError } = await (supabase as any).rpc('delete_my_chat_session', {
+		p_session_id: sessionId
+	});
 
 	if (deleteError) {
+		// SQLSTATEs raised by delete_my_chat_session (22P02: not a uuid).
+		if (deleteError.code === 'P0002' || deleteError.code === '22P02') {
+			return ApiResponse.notFound('Session');
+		}
+		if (deleteError.code === '55006') {
+			return ApiResponse.error(
+				'This chat is still working on a reply. Stop it or let it finish, then delete the chat.',
+				HttpStatus.CONFLICT,
+				ErrorCode.OPERATION_FAILED
+			);
+		}
 		return ApiResponse.databaseError(deleteError);
 	}
 

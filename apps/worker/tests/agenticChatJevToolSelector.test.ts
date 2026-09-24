@@ -183,7 +183,11 @@ describe('buildJevToolSelectionBody', () => {
 		]);
 		expect(JSON.stringify(body)).not.toContain('Private system prompt');
 		expect(Object.keys(body.questions)).toEqual(SURFACE);
-		expect(body.provider).toEqual({ allow_fallbacks: false, data_collection: 'deny' });
+		expect(body.provider).toEqual({
+			allow_fallbacks: false,
+			data_collection: 'deny',
+			zdr: true
+		});
 	});
 });
 
