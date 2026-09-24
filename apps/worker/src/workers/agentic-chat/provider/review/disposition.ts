@@ -107,18 +107,6 @@ export function buildPostSemanticDispositionRequest(
 	);
 }
 
-export function requestOffersSemanticDisposition(
-	request: AgenticChatTurnProviderRequestV1
-): boolean {
-	return request.tools.some((tool) => isSemanticDispositionToolName(tool.function.name));
-}
-
-export function callsIncludeSemanticDisposition(
-	calls: readonly CompletedProviderToolCall[]
-): boolean {
-	return calls.some((call) => isSemanticDispositionToolName(call.name));
-}
-
 /**
  * Two dispositions in one pass used to be a permanent
  * `provider_semantic_disposition_invalid`. The first one is the model's

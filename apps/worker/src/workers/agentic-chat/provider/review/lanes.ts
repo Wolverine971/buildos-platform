@@ -257,17 +257,23 @@ export async function* streamMutationBatchReview(
 	}
 }
 
-/** A rejected batch past the revision cap ends on what was saved, not another pass. */
+/**
+ * A rejected batch past the revision cap ends on what was saved, not another
+ * pass, and names what was held back (tasker 100: "I couldn't complete the
+ * requested change" left the user guessing what had been tried).
+ */
 export async function* streamReviewExhaustion(
 	usage: AgenticChatProviderUsageV1 | null,
-	state: ToolRoundStreamState
+	state: ToolRoundStreamState,
+	heldToolNames: readonly string[]
 ): AsyncGenerator<AgenticChatProviderStepV1> {
 	try {
 		const saved = state.renderWriteReceiptFallback('I saved these changes:');
+		const attempted = describeAttemptedWrites(heldToolNames);
 		yield state.textDelta(
 			saved
-				? `${saved}\n\nI couldn't complete the remaining changes. No additional changes were saved.`
-				: "I couldn't complete the requested change. Nothing was saved.",
+				? `${saved}\n\nI couldn't complete the remaining changes: my safety check still found problems with ${attempted} after repeated revisions. No additional changes were saved.`
+				: `I couldn't complete ${attempted}: my safety check still found problems with it after repeated revisions. Nothing was saved. Try again, or tell me exactly what to change.`,
 			false
 		);
 		state.advance({ type: 'finish' });
@@ -499,6 +505,11 @@ const UNAPPLIED_WRITE_VERBS: Readonly<Record<string, string>> = {
  * never from user or model prose.
  */
 export function describeUnappliedWrites(toolNames: readonly string[]): string {
+	return `I didn't apply this: my safety check couldn't confirm that ${describeAttemptedWrites(toolNames)} matched exactly what you asked. Nothing was changed. Try again, or tell me the exact text to change.`;
+}
+
+/** "the plan to update a document and update a task", or "this change". */
+function describeAttemptedWrites(toolNames: readonly string[]): string {
 	const counts = new Map<string, { verb: string; noun: string; count: number }>();
 	for (const name of toolNames) {
 		const [verb, ...rest] = name.split('_');
@@ -510,17 +521,17 @@ export function describeUnappliedWrites(toolNames: readonly string[]): string {
 		entry.count += 1;
 		counts.set(key, entry);
 	}
-	const parts = [...counts.values()].map(
-		({ verb, noun, count }) =>
-			`${verb} ${count === 1 ? 'a' : count} ${noun}${count === 1 ? '' : 's'}`
+	const parts = [...counts.values()].map(({ verb, noun, count }) =>
+		// link_onto_entities / unlink_onto_entities name a plural already.
+		noun === 'entities'
+			? `${verb} records`
+			: `${verb} ${count === 1 ? 'a' : count} ${noun}${count === 1 ? '' : 's'}`
 	);
-	const attempted =
-		parts.length === 0
-			? 'this change'
-			: `the plan to ${
-					parts.length === 1
-						? parts[0]
-						: `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
-				}`;
-	return `I didn't apply this: my safety check couldn't confirm that ${attempted} matched exactly what you asked. Nothing was changed. Try again, or tell me the exact text to change.`;
+	return parts.length === 0
+		? 'this change'
+		: `the plan to ${
+				parts.length === 1
+					? parts[0]
+					: `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+			}`;
 }

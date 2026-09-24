@@ -5610,8 +5610,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
+		// Prose written before a tool call is working narration, not reply text
+		// (tasker 100): it is never emitted.
 		await expect(collect(invocation.stream())).resolves.toEqual([
-			{ type: 'text_delta', text: 'Let me check the first source.' },
 			expect.objectContaining({
 				type: 'semantic',
 				eventType: 'agent_state',
@@ -5649,7 +5650,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		await expect(
 			collect(invocation.continueWithToolResults!({ round: 2, results: [firstFeedback] }))
 		).resolves.toEqual([
-			{ type: 'text_delta', text: '\n\nI need one more detail.' },
 			expect.objectContaining({
 				type: 'read_tool',
 				providerToolCallId: 'provider-read-2',
@@ -5707,7 +5707,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				})
 			)
 		).resolves.toEqual([
-			{ type: 'text_delta', text: '\n\nThe project and its second read are ready.' },
+			{ type: 'text_delta', text: 'The project and its second read are ready.' },
 			{
 				type: 'finish',
 				finishedReason: 'stop',
@@ -5723,10 +5723,10 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
 	});
 
-	it('separates a held lead-in from the next pass and never separates whitespace-terminated prose', async () => {
-		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F15: the same rule covers the
-		// withheld-prose flush on a disposition-offering surface as the live
-		// stream, and a lead-in that already ends in a newline gets no extra one.
+	it('keeps pre-tool narration out of the reply and trims its opening blank lines', async () => {
+		// Tasker 100 (book loop p01-p08): nearly every prod reply opened with
+		// blank lines and 1-4 "Let me check…" lines from passes that went on to
+		// call tools. Only the pass that ends without tool calls speaks.
 		const projectId = '40000000-0000-4000-8000-000000000004';
 		const client = clientWithRounds([
 			[
@@ -5741,7 +5741,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				...providerReadRound('provider-read-2', { project_id: projectId })
 			],
 			[
-				{ type: 'text', content: 'That task already exists. Nothing was changed.' },
+				{ type: 'text', content: '\n\nThat task already exists. Nothing was changed.' },
 				{ type: 'done', finishedReason: 'stop' }
 			]
 		]);
@@ -5765,12 +5765,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		});
 
 		const opening = await collect(invocation.stream());
-		expect(opening.filter((step) => step.type === 'text_delta')).toEqual([
-			{
-				type: 'text_delta',
-				text: 'Let me check whether this task already exists before doing anything'
-			}
-		]);
+		expect(opening.filter((step) => step.type === 'text_delta')).toEqual([]);
 		const second = await collect(
 			invocation.continueWithToolResults!({
 				round: 2,
@@ -5783,9 +5778,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		expect(second.filter((step) => step.type === 'text_delta')).toEqual([
-			{ type: 'text_delta', text: '\n\nNow one more read.\n' }
-		]);
+		expect(second.filter((step) => step.type === 'text_delta')).toEqual([]);
 		const final = await collect(
 			invocation.continueWithToolResults!({
 				round: 3,
@@ -13115,6 +13108,12 @@ describe('SHA-bound mutation batch approval', () => {
 				.join('');
 			expect(text).toContain(priorWrites ? 'Created task: Permit' : 'Nothing was saved.');
 			if (priorWrites) expect(text).toContain("couldn't complete the remaining changes");
+			// Names what was held back, from the rejected batch's tool names.
+			expect(text).toContain(
+				priorWrites
+					? 'still found problems with the plan to link records'
+					: "I couldn't complete the plan to create 4 tasks"
+			);
 			expect(text).not.toContain('?');
 			expect(steps).toContainEqual(
 				expect.objectContaining({

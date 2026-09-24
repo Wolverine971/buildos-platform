@@ -21,9 +21,16 @@ Last updated: 2025-10-21
 
 ## Prompt Injection Protection
 
+> **Status (2026-09-22): retired.** The two-stage regex + LLM detector described in this
+> section (`apps/web/src/lib/utils/prompt-injection-detector.ts`) lost its only caller when
+> brain-dump processing was removed, and the file has been deleted. No runtime scanner writes
+> `prompt_injection_*` events today; `/admin/security` still reads historical events and says
+> so when none exist. This section, and the prompt-injection parts of Rate Limiting and
+> Incident Response below, describe the retired system.
+
 ### Overview
 
-BuildOS implements a sophisticated two-stage detection system to protect against prompt injection attacks in AI-powered features (brain dump processing, email generation, etc.).
+BuildOS implemented a two-stage detection system to protect against prompt injection attacks in AI-powered features (brain dump processing, email generation, etc.).
 
 ### How It Works
 
@@ -306,7 +313,6 @@ const prompt = `Analyze this: ${userInput}`;
 
 - **Bugfix Changelog**: `/docs/BUGFIX_CHANGELOG.md`
 - **Security Audit**: `/thoughts/shared/research/2025-10-21_00-00-00_input-validation-security-audit.md`
-- **Prompt Injection Detector Code**: `/apps/web/src/lib/utils/prompt-injection-detector.ts`
 - **Admin Security Dashboard**: `/apps/web/src/routes/admin/security/+page.svelte`
 
 ---

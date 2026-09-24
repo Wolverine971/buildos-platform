@@ -14,16 +14,10 @@ import {
 } from './contracts';
 import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from './provider-capacity';
 import type { AgenticChatLiveVisionResolverPortV1 } from '../tools/live-vision';
-import {
-	type AgenticChatProviderMutationCapabilitiesV1,
-	reviewedAgenticChatMutationSpecV1
-} from '../mutations/tool-catalog';
+import { type AgenticChatProviderMutationCapabilitiesV1 } from '../mutations/tool-catalog';
 import {
 	buildProjectCreateInitialContractGateRequest,
-	callsIncludeSemanticDisposition,
-	canRequirePreMutationSemanticDisposition,
-	reconcileSemanticDispositionCalls,
-	requestOffersSemanticDisposition
+	reconcileSemanticDispositionCalls
 } from './review/disposition';
 import {
 	type ReviewLaneContext,
@@ -258,7 +252,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					phase: 'continuation'
 				});
 			case 'review_exhaustion':
-				return streamReviewExhaustion(next.usage, state);
+				return streamReviewExhaustion(next.usage, state, next.heldToolNames);
 			case 'turn_contract_review':
 				return streamTurnContractReview(
 					this.laneContext,
@@ -332,7 +326,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		};
 		let finished = false;
 		let keepLease = false;
-		let streamedText = false;
 		let passEmittedText = false;
 		let assistantCandidate = '';
 		const textDelta = (text: string): AgenticChatProviderStepV1 => {
@@ -340,29 +333,20 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			passEmittedText = true;
 			return step;
 		};
-		// Provider passes are fully buffered upstream, so deferring the text flush
-		// to pass end costs no latency. Holding lets a pass that ends in a semantic
-		// disposition control call withhold its prose: the post-disposition pass
-		// owns the final answer, and flushing both doubled the reply in production.
-		// Contract state can only hold prose after the opening pass; the opening
-		// pass instead holds whenever a withheld mutation could send it to the gate.
+		// Every pass's prose is held until the pass ends. Provider passes are
+		// fully buffered upstream, so this costs no latency (the flag-gated live
+		// preview shows it while the pass runs). Only a pass that ends without
+		// tool calls releases its prose into the reply. Prose written before a
+		// tool call ("Let me check the outline…") is working narration: saving
+		// it opened nearly every prod reply with 1-4 such lines (tasker 100,
+		// book loop p01-p08), and the continuation pass never sees it anyway.
+		// Contract state can additionally withhold a final pass's prose while a
+		// contract continuation may still own the answer.
 		const holdAssistantTextForTurnContract =
 			!initial &&
 			(state.hasPendingTurnContractWrite() ||
 				state.hasIncompleteApprovedContract() ||
 				request.semanticDispositionGate === true);
-		const holdAssistantText =
-			state.getRequestCompletionFallback() !== null ||
-			holdAssistantTextForTurnContract ||
-			(initial && canRequirePreMutationSemanticDisposition(request)) ||
-			// A subsequent batch can need review after the disposition controls
-			// have left the surface. Keep its unexecuted claims private too.
-			(this.mutationBatchLaneEnabled &&
-				Boolean(this.ports.semanticReviewer) &&
-				request.tools.some((tool) =>
-					reviewedAgenticChatMutationSpecV1(tool.function.name)
-				)) ||
-			requestOffersSemanticDisposition(request);
 		const toolCalls = createToolCallAccumulator();
 		try {
 			// The turn has spent its whole model budget. Everything already
@@ -404,10 +388,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
 					if (!event.content) throw providerError('provider_empty_text', 'unknown');
-					streamedText = true;
 					assistantCandidate += event.content;
-					if (holdAssistantText) continue;
-					yield textDelta(event.content);
 					continue;
 				}
 				if (event.type === 'tool_call') {
@@ -650,14 +631,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						});
 						continue;
 					}
-					if (
-						holdAssistantText &&
-						!holdAssistantTextForTurnContract &&
-						assistantCandidate &&
-						!callsIncludeSemanticDisposition(calls)
-					) {
-						yield textDelta(assistantCandidate);
-					}
+					// This pass's prose preceded its tool calls; it is not released.
 					const normalizedCalls = normalizeCompletedProviderCalls(request, calls);
 					state.setPendingToolRound({ calls: normalizedCalls, usage });
 					keepLease = true;
@@ -740,13 +714,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					}
 					// Nothing more to execute: release the withheld prose so the user
 					// still gets the answer exactly once.
-					if (assistantCandidate) {
-						yield textDelta(assistantCandidate);
-					}
-				} else if (holdAssistantText && assistantCandidate) {
-					yield textDelta(assistantCandidate);
 				}
-				if (!streamedText) {
+				const answered = assistantCandidate.trim().length > 0;
+				if (answered) yield textDelta(assistantCandidate);
+				if (!answered) {
 					// An empty completion after saved writes turned case 2 of the
 					// 2026-09-22 gate into a permanent failure. Re-ask once; a second
 					// empty reply still fails the pass.

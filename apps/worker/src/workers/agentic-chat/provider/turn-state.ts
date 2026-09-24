@@ -200,7 +200,9 @@ export type ToolRoundStreamState = {
 	/**
 	 * The one way a pass emits prose. Text from different passes is one reply
 	 * to the user, so the first text of a pass is separated from the previous
-	 * pass's text when that ended mid-line ("Let me check…" + "That task…").
+	 * pass's text when that ended mid-line (an answer + a host notice). The
+	 * turn's first text drops its leading whitespace. Callers never pass text
+	 * that is only whitespace.
 	 */
 	textDelta(text: string, continuesPass: boolean): AgenticChatProviderStepV1;
 };
@@ -215,7 +217,12 @@ export type ToolRoundContinuation =
 			request: ClientRequest;
 			usage: AgenticChatProviderUsageV1 | null;
 	  }
-	| { lane: 'review_exhaustion'; usage: AgenticChatProviderUsageV1 | null }
+	| {
+			lane: 'review_exhaustion';
+			usage: AgenticChatProviderUsageV1 | null;
+			/** Tool names of the batch the reviewer kept rejecting. */
+			heldToolNames: readonly string[];
+	  }
 	| {
 			lane: 'turn_contract_review';
 			request: ClientRequest;
@@ -295,6 +302,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	// True when the last prose emitted to the user ended without whitespace
 	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F15).
 	private emittedTextOwesSeparator = false;
+	private emittedText = false;
 	// Where the acting model is in the turn. Every precondition below is a
 	// phase check; the contract lane keeps only the SHA-bound data next to it.
 	// A project-create turn opens on the required gate rather than the surface.
@@ -514,10 +522,13 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	textDelta(text: string, continuesPass: boolean): AgenticChatProviderStepV1 {
+		// Models often open a reply with blank lines; the reply itself should not.
+		const opened = this.emittedText ? text : text.replace(/^\s+/, '');
 		const separated =
-			!continuesPass && this.emittedTextOwesSeparator && !/^\s/.test(text)
-				? `\n\n${text}`
-				: text;
+			!continuesPass && this.emittedTextOwesSeparator && !/^\s/.test(opened)
+				? `\n\n${opened}`
+				: opened;
+		this.emittedText = true;
 		this.emittedTextOwesSeparator = !/\s$/.test(separated);
 		return { type: 'text_delta', text: separated };
 	}
@@ -1049,7 +1060,11 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			this.toolRoundCompleted = false;
 			this.nextProviderRound += 1;
 			if (this.batchRevisionCount > MAX_REVISIONS_PER_TURN) {
-				return { lane: 'review_exhaustion', usage: completedToolRound.usage };
+				return {
+					lane: 'review_exhaustion',
+					usage: completedToolRound.usage,
+					heldToolNames: rejected.calls.map((call) => call.name)
+				};
 			}
 			return {
 				lane: 'acting_pass',

@@ -34,7 +34,7 @@ describe('reset password', () => {
 		form.set('password', 'new-password');
 		form.set('confirmPassword', 'new-password');
 
-		const result = await actions.default({
+		const result = await actions.default!({
 			request: new Request('https://build-os.com/auth/reset-password', {
 				method: 'POST',
 				body: form

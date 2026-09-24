@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-09-23T20:44:07.797Z
+// Generated on: 2026-09-24T01:11:54.861Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1069,6 +1069,8 @@ export type DatabaseSchema = {
 		user_id: string;
 		user_message_id: string | null;
 		validation_failure_count: number;
+		worker_lease_generation: number | null;
+		worker_lease_renewed_at: string | null;
 		worker_started_at: string | null;
 	};
 	chat_turn_signals: {

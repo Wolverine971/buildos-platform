@@ -8,6 +8,11 @@ import {
 	parseEntityReferences,
 	resolveEntityReferences
 } from '@buildos/shared-agent-ops/utils/entity-reference-parser';
+import {
+	START_HERE_DOCUMENT_TYPE_KEY,
+	buildStartHerePromptExcerpt,
+	pickProjectStartHereDocument
+} from '@buildos/shared-agent-ops/ontology/start-here';
 import type {
 	Json,
 	NextStepGenerationContext,
@@ -131,13 +136,16 @@ const OPERATION_TO_ACTION: Record<string, 'created' | 'updated' | 'deleted'> = {
 /**
  * System prompt for next step generation
  */
+const NEXT_STEP_START_HERE_MAX_CHARS = 1800;
+
 const NEXT_STEP_SYSTEM_PROMPT = `You are a project advisor helping users identify their next action. Use goals and recent progress to propose the most helpful next step.
 
 Priorities (in order):
-1. Anchor on active goals. The next step should directly advance a goal whenever possible.
-2. Use recent progress and recent session changes to infer momentum. Continue the same goal or phase if it makes sense.
-3. If recent work maps to a parent goal, propose the next task related to that goal.
-4. If no goals exist, choose the most impactful active or overdue task.
+1. Start from where the project actually stands. START HERE, when given, records its current state and decisions; much of the work lives in documents, not tasks. Never repeat a previous next step that START HERE, recent changes or the conversation show is done or superseded.
+2. Anchor on active goals. The next step should directly advance a goal whenever possible.
+3. Use recent progress and recent session changes to infer momentum. Continue the same goal or phase if it makes sense.
+4. If recent work maps to a parent goal, propose the next task related to that goal.
+5. If no goals exist, choose the most impactful active or overdue task.
 
 Guidelines:
 1. The short version should be ONE clear sentence (max 100 chars) answering "What should I do next?"
@@ -437,31 +445,49 @@ async function generateNextSteps(
 		return null;
 	}
 
-	const [{ data: goals }, { data: recentCompletedTasks }, { data: recentActivity }] =
-		await Promise.all([
-			supabase
-				.from('onto_goals')
-				.select('id, name, type_key, props')
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.is('archived_at', null)
-				.limit(10),
-			supabase
-				.from('onto_tasks')
-				.select('id, title, state_key, completed_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.is('archived_at', null)
-				.not('completed_at', 'is', null)
-				.order('completed_at', { ascending: false })
-				.limit(6),
-			supabase
-				.from('onto_project_logs')
-				.select('entity_type, entity_id, action, created_at, before_data, after_data')
-				.eq('project_id', projectId)
-				.order('created_at', { ascending: false })
-				.limit(8)
-		]);
+	const [
+		{ data: goals },
+		{ data: recentCompletedTasks },
+		{ data: recentActivity },
+		{ data: startHereRows }
+	] = await Promise.all([
+		supabase
+			.from('onto_goals')
+			.select('id, name, type_key, props')
+			.eq('project_id', projectId)
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.limit(10),
+		supabase
+			.from('onto_tasks')
+			.select('id, title, state_key, completed_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.not('completed_at', 'is', null)
+			.order('completed_at', { ascending: false })
+			.limit(6),
+		supabase
+			.from('onto_project_logs')
+			.select('entity_type, entity_id, action, created_at, before_data, after_data')
+			.eq('project_id', projectId)
+			.order('created_at', { ascending: false })
+			.limit(8),
+		// Tasker 100 (book loop, ledger 10): without START HERE the step
+		// anchored on tasks and on the previous step, and chat quoted a stale
+		// "Draft the one-page book overview" long after the work moved on.
+		supabase
+			.from('onto_documents')
+			.select('id, title, content, props, created_at, updated_at')
+			.eq('project_id', projectId)
+			.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
+			.is('deleted_at', null)
+			.is('archived_at', null)
+	]);
+	const startHere = pickProjectStartHereDocument(startHereRows ?? []);
+	const startHereExcerpt = startHere?.content
+		? buildStartHerePromptExcerpt(startHere.content, NEXT_STEP_START_HERE_MAX_CHARS).content
+		: null;
 
 	const sessionTaskIds = new Set<string>();
 	for (const change of [
@@ -511,7 +537,7 @@ async function generateNextSteps(
 	};
 
 	// Build user prompt
-	const userPrompt = buildNextStepPrompt(context, messages ?? []);
+	const userPrompt = buildNextStepPrompt(context, messages ?? [], startHereExcerpt);
 
 	// Call LLM
 	const llmService = new SmartLLMService({
@@ -559,9 +585,10 @@ async function generateNextSteps(
 /**
  * Build the prompt for next step generation
  */
-function buildNextStepPrompt(
+export function buildNextStepPrompt(
 	context: NextStepGenerationContext,
-	messages: Array<{ role: string; content: string }>
+	messages: Array<{ role: string; content: string }>,
+	startHereExcerpt: string | null = null
 ): string {
 	const parts: string[] = [];
 	const goals = context.goals ?? [];
@@ -578,6 +605,12 @@ function buildNextStepPrompt(
 		parts.push(`Description: ${context.projectDescription}`);
 	}
 	parts.push('');
+
+	if (startHereExcerpt?.trim()) {
+		parts.push('## START HERE (current state and decisions)');
+		parts.push(startHereExcerpt.trim());
+		parts.push('');
+	}
 
 	for (const task of recentCompletedTasks) {
 		taskDisplayNames.set(task.id, task.title);
@@ -681,7 +714,7 @@ function buildNextStepPrompt(
 
 	// Previous next step
 	if (context.previousNextStep?.short) {
-		parts.push('## Previous Next Step');
+		parts.push('## Previous Next Step (may be out of date)');
 		parts.push(context.previousNextStep.short);
 		parts.push('');
 	}

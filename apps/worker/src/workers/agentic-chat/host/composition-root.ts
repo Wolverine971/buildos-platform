@@ -77,8 +77,8 @@ import {
 } from './stalled-recovery';
 import {
 	type AgenticChatTurnLeaseEventV1,
-	type AgenticChatTurnLeaseRpcClient,
 	AgenticChatTurnLeaseKeeper,
+	type AgenticChatTurnLeaseRpcClient,
 	SupabaseAgenticChatTurnLeaseAdapter
 } from '../turn/turn-lease';
 import {

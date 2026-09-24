@@ -519,7 +519,7 @@ export class AgenticChatReadToolRunner {
 		};
 		// Settled into a value so a read that fails while the tool_call is still
 		// in flight is observed, never raised ahead of the tool_call's outcome.
-		const outcome = (async () => {
+		const outcome = Promise.resolve().then(() => {
 			throwIfAborted(readScope.signal);
 			return abortable(
 				this.ports.readTool.execute({
@@ -534,7 +534,7 @@ export class AgenticChatReadToolRunner {
 				}),
 				readScope.signal
 			);
-		})().then(
+		}).then(
 			(value): LiveReadOutcomeV1 => {
 				readScope.dispose();
 				return { ok: true, value };

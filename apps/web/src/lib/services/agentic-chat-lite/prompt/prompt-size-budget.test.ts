@@ -328,7 +328,14 @@ describe('total assembled prompt size budget', () => {
 		// a task table and never named the book; t08/t09 asked 10-11 questions a
 		// turn. Cap at measured + ~2.5%; the payload cap below binds first (76,588
 		// of 76,600 measured).
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(11_700);
+		// RE-BASELINED 2026-09-23 (tasker 100, book-loop prod replies): record
+		// links as exact relative paths (replies invented https://buildos.com),
+		// no day count without a recorded start ("Day 1 of the project"), the
+		// saved next step labeled as possibly stale, and documents written as the
+		// owner's own pages (the outline said "the user flagged…"). +410 chars,
+		// 11,439 → 11,849 measured; the four lines were tightened first. Caps at
+		// measured + ~1%.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_000);
 		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
 		// endpoint references, plus the nested estimate schema. Keep the system
 		// prose cap unchanged; the worker defers the contract from opening passes.
@@ -345,11 +352,13 @@ describe('total assembled prompt size budget', () => {
 		// passes and changed nothing). Descriptions were trimmed first. Measured
 		// payload 77,712 chars / 19,428 est tokens, tool schemas 16,554 est tokens
 		// per pass. Only unnarrowed passes pay all of it. Caps at measured + ~0.5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(78_100);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(19_530);
+		// RE-BASELINED 2026-09-23 (tasker 100): the system-prompt lines above.
+		// Measured payload 78,178 chars / 19,545 est tokens. Caps at measured + ~0.5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(78_600);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(19_650);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(58_590);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(58_950);
 		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(49_920);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.

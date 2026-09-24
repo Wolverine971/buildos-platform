@@ -9,22 +9,22 @@
 // Modes: shadow publishes a hidden receipt; chips publishes visible chips; on also injects the
 // block. Every failure is fail-open: the turn keeps today's global prompt.
 import {
-	findWorkspaceContext,
-	loadContextFinderProject,
-	loadWorkspaceFinderProjects,
-	renderWorkspaceContextBlock,
 	type ContextFinderDecider,
 	type WorkspaceContextV1,
 	type WorkspaceFinderDecider,
-	type WorkspaceFinderReadClient
+	type WorkspaceFinderReadClient,
+	findWorkspaceContext,
+	loadContextFinderProject,
+	loadWorkspaceFinderProjects,
+	renderWorkspaceContextBlock
 } from '@buildos/agentic-chat-runtime/context-finder';
 import {
-	contextSelectionTransitionId,
-	turnConversation,
-	withFinderDeadline,
 	type AgenticChatContextFinderPort,
 	type ChatContextFinderMode,
-	type ChatContextFinding
+	type ChatContextFinding,
+	contextSelectionTransitionId,
+	turnConversation,
+	withFinderDeadline
 } from './chat-context-finder';
 import type { AgenticChatProviderStepV1, AgenticChatTurnProviderRequestV1 } from './contracts';
 

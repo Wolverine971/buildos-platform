@@ -26,7 +26,9 @@ export type AssistantAppLinkRepair =
  * outside site with a `/projects/<uuid>` path is not something chat cites). A
  * bare record id is not a URL at all, so the link is dropped and its text kept.
  */
-export function repairAssistantAppLinkHref(href: string | null | undefined): AssistantAppLinkRepair {
+export function repairAssistantAppLinkHref(
+	href: string | null | undefined
+): AssistantAppLinkRepair {
 	const target = (href ?? '').trim();
 	if (!target) return { kind: 'keep' };
 	if (BARE_UUID.test(target)) return { kind: 'unlink' };
@@ -48,11 +50,14 @@ export function repairAssistantAppLinkHref(href: string | null | undefined): Ass
  */
 export function repairAssistantAppLinks(markdown: string): string {
 	if (!markdown.includes('](')) return markdown;
-	return markdown.replace(MARKDOWN_INLINE_LINK, (whole, bang: string, label: string, href: string) => {
-		if (bang) return whole;
-		const repair = repairAssistantAppLinkHref(href);
-		if (repair.kind === 'rewrite') return `[${label}](${repair.href})`;
-		if (repair.kind === 'unlink') return label;
-		return whole;
-	});
+	return markdown.replace(
+		MARKDOWN_INLINE_LINK,
+		(whole, bang: string, label: string, href: string) => {
+			if (bang) return whole;
+			const repair = repairAssistantAppLinkHref(href);
+			if (repair.kind === 'rewrite') return `[${label}](${repair.href})`;
+			if (repair.kind === 'unlink') return label;
+			return whole;
+		}
+	);
 }

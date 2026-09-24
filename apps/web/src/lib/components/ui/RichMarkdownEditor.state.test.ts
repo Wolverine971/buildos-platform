@@ -106,7 +106,7 @@ describe('RichMarkdownEditor inline dictation', () => {
 		render(RichMarkdownEditorStateHarness);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Dictate at cursor' }));
-		(captureMock.start as ReturnType<typeof deferred>).resolve();
+		(captureMock.start as ReturnType<typeof deferred>).resolve(undefined);
 		await waitFor(() => {
 			expect(screen.getByTestId('recording')).toHaveTextContent('true');
 		});

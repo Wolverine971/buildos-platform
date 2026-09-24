@@ -5,7 +5,7 @@
 // hop-1 receipt (the `context_selection` event), and this decides from those receipts whether
 // the new turns were clearly about one project. The rule is deliberately strict: a wrong
 // attribution would write one chat's thinking into another project's START HERE.
-import { parseContextSelectionEventV1, type ContextSelectionEventV1 } from '@buildos/shared-types';
+import { type ContextSelectionEventV1, parseContextSelectionEventV1 } from '@buildos/shared-types';
 
 /** A turn counts for a project only when Jev scored it at least this high. */
 export const GLOBAL_CAPTURE_MIN_P = 0.7;

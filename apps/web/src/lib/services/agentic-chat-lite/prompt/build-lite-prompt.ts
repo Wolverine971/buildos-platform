@@ -136,7 +136,13 @@ const DATE_ARGUMENT_SCOPE_RULE =
 // Lines the project digest contributes to both Current Focus and Purpose and
 // the Location "Project status" block; Location drops them (2026-09-21).
 const FOCUS_RENDERED_DIGEST_LINE_PATTERN =
-	/^(?:Project summary|Primary goal|Active plan|Current next step):/;
+	/^(?:(?:Project summary|Primary goal|Active plan):|Saved next step \()/;
+
+// Tasker 100 (book loop, ledger 10). `next_step_short` is written when a chat
+// closes, by the daily brief, or by hand, and it rode the prompt as "Current
+// next step", so replies quoted a weeks-old step over newer START HERE and
+// documents. The label says what it is.
+const SAVED_NEXT_STEP_LABEL = 'Saved next step (may predate recent work)';
 
 // S7 cut (2026-09-04): "answer from loaded context when it already has a
 // summary" was Operating Strategy's first bullet said a second time.
@@ -581,7 +587,9 @@ function buildFocusPurposeSection(
 					: null,
 				projectDigest.primaryGoal ? `- Primary goal: ${projectDigest.primaryGoal}` : null,
 				projectDigest.activePlan ? `- Active plan: ${projectDigest.activePlan}` : null,
-				projectDigest.nextStep ? `- Current next step: ${projectDigest.nextStep}` : null,
+				projectDigest.nextStep
+					? `- ${SAVED_NEXT_STEP_LABEL}: ${projectDigest.nextStep}`
+					: null,
 				formatMembersLine(data),
 				`- Focus entity: ${formatFocusEntity(focus)}`,
 				...describeFocusEntityDetail(data, clock.timezone).lines
@@ -1419,9 +1427,9 @@ function buildFinalResponseContractSection(
 			// not a finding about the world. Reporting an empty read as "no payment
 			// was made" / "the permit was never filed" states something BuildOS
 			// cannot know and the owner may act on.
-			'- Separate recorded facts, bounded search findings, and unknown real-world status in every heading and conclusion. Label schedule dates as planned or target. Report actual start, completion, approval, and payment only from explicit evidence of that event; otherwise label that actual status unknown. A future planned start and todo tasks provide no evidence of whether work has already begun. Never conclude "No evidence that work has begun" from plans, todo tasks, or an empty search; write "Actual start: unknown from the records checked" and name the bounded search scope when useful. Keep the same evidence qualification in summaries and explanatory sentences. A project or task state such as planning or todo describes the record, not the site: never turn it into what has or has not physically happened, such as "Only planning-stage setup has occurred" or "No work has started on site"; write "Project state: planning. Actual progress: unknown from the records checked."',
+			'- Separate recorded facts, bounded search findings, and unknown real-world status in every heading and conclusion. Label schedule dates as planned or target. Give a day count ("Day 1") only from a recorded start date; if the start is open, say so. Report actual start, completion, approval, and payment only from explicit evidence of that event; otherwise label that actual status unknown. A future planned start and todo tasks provide no evidence of whether work has already begun. Never conclude "No evidence that work has begun" from plans, todo tasks, or an empty search; write "Actual start: unknown from the records checked" and name the bounded search scope when useful. Keep the same evidence qualification in summaries and explanatory sentences. A project or task state such as planning or todo describes the record, not the site: never turn it into what has or has not physically happened, such as "Only planning-stage setup has occurred" or "No work has started on site"; write "Project state: planning. Actual progress: unknown from the records checked."',
 			'- For actual-status questions, use confirmed yes, confirmed no, or unknown. Both yes and no need explicit event evidence. With no approval evidence, write "Permits approved: Unknown — no approval record found in the scope checked." Never start that entry with "No", "None", or "Not yet" and then qualify it later. Likewise: "Planned start: September 14. Actual start: unknown from the records checked." An empty scoped search establishes only that no matching record was found there. A recorded budget cap and unknown actual spend can both be true.',
-			'- Keep brief reports brief: answer the requested facts once, in a compact list or table, without search narration or repeated recaps. Link saved entities using tool-provided record_references URLs as Markdown links; never infer a URL from a title.',
+			'- Keep brief reports brief: answer the requested facts once, in a compact list or table, without search narration or repeated recaps. Link saved entities as Markdown links to the exact record_references url (a relative /projects/ path); never add a domain, link a bare id, or infer a URL from a title.',
 			// Tasker 97 (book loop t13, t08/t09). Asked "where are we at?", the model
 			// answered with START HERE's Current state as a table and an empty
 			// calendar, and never named what the user was making; asked to
@@ -1430,7 +1438,7 @@ function buildFinalResponseContractSection(
 			// the re-entry line lost to the table rule above, so both live here,
 			// where reply shape is decided. "Without naming the facts they want"
 			// leaves requested status reports (gate case 14) to the rules above.
-			'- When the user picks a project back up without naming the facts they want, open with the work: what they are making, where it stands (START HERE and the documents holding the work), and the best next move; tasks and dates follow briefly.',
+			'- When the user picks a project back up without naming the facts they want, open with the work: what they are making, where it stands (START HERE and the documents holding the work), and the best next move drawn from that work, not a saved next step it has passed; tasks and dates follow briefly.',
 			'- When interviewing the user, ask at most three questions, the ones that matter most, then wait; where the context already implies an answer, propose it to confirm.',
 			'- For exact document edits, the original user request and loaded source stay authoritative after correction. Reviewer descriptions summarize scope; they cannot replace requested text.'
 		].join('\n')
@@ -1653,6 +1661,9 @@ function buildSafetyDataRulesSection(
 		// the mid-turn materialization notice otherwise.
 		'- Record user-reported inconsistencies (for example "Chapter 1 says 16, Chapter 2 says 17") as open questions or fix tasks; the user picks the canonical value unless they already stated it.',
 		'- User-visible durable fields (titles, descriptions, document content, project descriptions, props) carry only final user-visible content; control parameters belong in their own tool arguments, not inside text fields.',
+		// Tasker 100 (book loop p01): the owner's outline read "the user flagged…",
+		// "user-approved idea", and a reply quoted it back ("The user asked for…").
+		'- Documents are the owner\'s own pages: write their decisions and open questions as plain statements ("Undecided: the big reveal"), never about "the user"; replies address them as you.',
 		'- When the user supplies exact or verbatim document text, copy it into the tool argument byte-for-byte. JSON escaping is transport syntax only: do not HTML-encode &, <, >, quotes, or apostrophes. If the user literally wrote an entity such as &amp;, retain those characters exactly.',
 		'- Treat permissions and access as hard constraints.',
 		`- Document placement happens on create via \`parent_id\` and optional \`position\`; append/merge writes require non-empty content (merge_instructions alone is not enough).${
@@ -1833,7 +1844,7 @@ function buildProjectDigest(
 		projectDescription ? `Project summary: ${projectDescription}` : null,
 		primaryGoalLine ? `Primary goal: ${primaryGoalLine}` : null,
 		activePlanLine ? `Active plan: ${activePlanLine}` : null,
-		nextStep ? `Current next step: ${nextStep}` : null,
+		nextStep ? `${SAVED_NEXT_STEP_LABEL}: ${nextStep}` : null,
 		`Loaded work: ${counts.openTasks} open tasks, ${counts.completedTasks} completed tasks, ${counts.openMilestones} open milestones, ${counts.plans} plans, ${counts.documents} documents, ${counts.events} events.`
 	].filter(Boolean) as string[];
 

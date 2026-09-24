@@ -367,7 +367,12 @@ describe('buildLitePromptEnvelope', () => {
 			'A project or task state such as planning or todo describes the record, not the site'
 		);
 		expect(contract?.content).toContain('Permits approved: Unknown');
-		expect(contract?.content).toContain('record_references URLs as Markdown links');
+		expect(contract?.content).toContain(
+			'Markdown links to the exact record_references url (a relative /projects/ path); never add a domain'
+		);
+		expect(contract?.content).toContain(
+			'Give a day count ("Day 1") only from a recorded start date'
+		);
 		expect(contract?.content).toContain('cannot replace requested text');
 		const strategy = envelope.sections.find((section) => section.id === 'operating_strategy');
 		expect(strategy?.content).toContain(

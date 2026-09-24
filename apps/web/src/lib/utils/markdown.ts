@@ -3,6 +3,7 @@ import { marked } from 'marked';
 import { gfmHeadingId } from 'marked-gfm-heading-id';
 import sanitizeHtml from 'sanitize-html';
 import { normalizeMarkdownTables } from './markdown-text';
+import { repairAssistantAppLinkHref } from './assistant-app-links';
 
 export {
 	getProseClasses,
@@ -98,7 +99,18 @@ const agentSanitizeOptions = {
 	},
 	allowProtocolRelative: false,
 	exclusiveFilter: (frame: { tag: string; attribs: Record<string, string> }) =>
-		frame.tag === 'img' && !frame.attribs.src
+		frame.tag === 'img' && !frame.attribs.src,
+	transformTags: {
+		// Record links with an invented origin render as same-tab app paths; a
+		// bare record id as a link target renders as plain text (the tag becomes
+		// a disallowed <span>, which the sanitizer unwraps).
+		a: (tagName: string, attribs: any) => {
+			const repair = repairAssistantAppLinkHref(attribs.href);
+			if (repair.kind === 'unlink') return { tagName: 'span', attribs: {} };
+			if (repair.kind === 'rewrite') return { tagName, attribs: { href: repair.href } };
+			return sanitizeOptions.transformTags.a(tagName, attribs);
+		}
+	}
 };
 
 // Permissive sanitization for FIRST-PARTY blog content only.

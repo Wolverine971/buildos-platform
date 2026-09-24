@@ -55,7 +55,7 @@ export function latestSavedChanges(
 		.slice(-SAVED_CHANGE_PROMPT_LIMIT);
 }
 
-export const THINKING_LOG_SYSTEM_PROMPT =`You keep a project's thinking log: the user's own reasoning in their own words, saved so it can be quoted later, for example while drafting.
+export const THINKING_LOG_SYSTEM_PROMPT = `You keep a project's thinking log: the user's own reasoning in their own words, saved so it can be quoted later, for example while drafting.
 
 You get the new part of a chat. Pick the user messages where the user is thinking: explaining, arguing, deciding, describing what they want, or giving context, stories or examples. Skip user messages that only instruct the assistant, approve or acknowledge ("yes, do it"), or ask a question without adding their own view. Never log assistant text.
 
@@ -101,6 +101,7 @@ What counts:
 - Record what the user said, decided or explicitly accepted. An assistant suggestion counts only after the user accepted it.
 - Keep the user's certainty. An idea the user is unsure about, or a candidate they have not chosen, goes under Open questions, never into Decisions or settled prose.
 - Keep the user's wording for their ideas. Skip task chatter, tool output and private reasoning.
+- The page belongs to the project's owner: write their decisions, ideas and open questions as plain statements ("Undecided: the big reveal"), never about "the user".
 - Link only with [[type:id|label]] using an id from the entity list. Never invent ids.
 - Text outside the sections is read-only. If the chat contradicts it, say so in one sentence in "outside_note".
 

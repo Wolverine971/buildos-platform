@@ -14,7 +14,9 @@ describe('repairAssistantAppLinkHref', () => {
 			href: DOC_PATH
 		});
 		expect(
-			repairAssistantAppLinkHref(`https://app.build-os.com/projects/${PROJECT}?doc=${DOC}#top`)
+			repairAssistantAppLinkHref(
+				`https://app.build-os.com/projects/${PROJECT}?doc=${DOC}#top`
+			)
 		).toEqual({ kind: 'rewrite', href: `/projects/${PROJECT}?doc=${DOC}#top` });
 		expect(repairAssistantAppLinkHref(`http://localhost:5173/projects/${PROJECT}`)).toEqual({
 			kind: 'rewrite',
@@ -70,7 +72,9 @@ describe('repairAssistantAppLinks', () => {
 
 describe('renderAgentMarkdownContent link repair', () => {
 	it('renders an invented-origin record link as a same-tab relative link', () => {
-		const html = renderAgentMarkdownContent(`Updated [Book Contract](https://buildos.com${DOC_PATH}).`);
+		const html = renderAgentMarkdownContent(
+			`Updated [Book Contract](https://buildos.com${DOC_PATH}).`
+		);
 		expect(html).toContain(`href="${DOC_PATH}"`);
 		expect(html).not.toContain('buildos.com');
 		expect(html).not.toContain('target="_blank"');
@@ -83,7 +87,9 @@ describe('renderAgentMarkdownContent link repair', () => {
 	});
 
 	it('still opens outside links in a new tab', () => {
-		const html = renderAgentMarkdownContent('[Taleb](https://en.wikipedia.org/wiki/Antifragility)');
+		const html = renderAgentMarkdownContent(
+			'[Taleb](https://en.wikipedia.org/wiki/Antifragility)'
+		);
 		expect(html).toContain('href="https://en.wikipedia.org/wiki/Antifragility"');
 		expect(html).toContain('target="_blank"');
 	});
