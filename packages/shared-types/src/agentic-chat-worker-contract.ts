@@ -540,7 +540,6 @@ export type AgenticChatRecoveryDecisionV1 =
 	| { decision: 'stale_generation' }
 	| { decision: 'already_requeued' }
 	| { decision: 'finalize_cancelled'; failureCode: 'cancelled' }
-	| { decision: 'effect_reconciliation_required' }
 	| { decision: 'retry'; failureCode: AgenticChatRecoveryFailureClassV1 }
 	| {
 			decision: 'finalize_failed';
@@ -555,12 +554,123 @@ export type AgenticChatRecoveryRpcResultV1 = AgenticChatExecutionHandleV1 & {
 		| 'already_requeued'
 		| 'finalize_failed'
 		| 'finalize_cancelled'
-		| 'effect_reconciliation_required'
 		| 'stale_generation'
 		| 'queue_reconciled'
 		| 'already_reconciled';
 	execution_may_retry: boolean;
 	failure_code: AgenticChatRecoveryFailureClassV1 | null;
+};
+
+/**
+ * Worker turn leases (docs/architecture/AGENTIC_CHAT_TURN_LEASES_2026-09-23.md).
+ * The database owns the thresholds in `agentic_chat_turn_lease_state_v1`; the
+ * `staleAfterMs`, `expiredAfterMs`, and `unleasedExpiredAfterMs` values here
+ * mirror it (a worker test fails if they drift). The rest is worker behavior,
+ * checked against the mirrored values by `validateAgenticChatTurnLeaseTimingV1`
+ * (apps/worker .../turn/turn-lease.ts) at startup.
+ */
+export const AGENTIC_CHAT_TURN_LEASE_POLICY_V1 = {
+	/** The owning worker renews every turn it runs this often. */
+	renewIntervalMs: 15_000,
+	/** The worker aborts a turn this long after sending its last acknowledged renewal. */
+	selfFenceAfterMs: 60_000,
+	/** Stop finalizes a running turn itself once its lease is this old. */
+	staleAfterMs: 45_000,
+	/** Recovery takes a leased turn over once its lease is this old. */
+	expiredAfterMs: 90_000,
+	/** A running turn whose generation never renewed keeps the pre-lease 420 s rule. */
+	unleasedExpiredAfterMs: 420_000,
+	/** In-worker cadence of `recover_dead_agentic_chat_turns` (the web cron runs every minute). */
+	recoverySweepIntervalMs: 15_000,
+	/** One renewal or recovery RPC is abandoned after this long; a hung socket never blocks the next tick. */
+	rpcTimeoutMs: 10_000,
+	/**
+	 * After the worker hard cap fires, renewal continues this long so the turn can
+	 * finalize itself; then it stops (without aborting) and recovery may take over.
+	 */
+	terminalBudgetMs: 30_000
+} as const;
+
+export type AgenticChatTurnLeaseLostReasonV1 =
+	| 'relationship_mismatch'
+	| 'turn_terminal'
+	| 'generation_changed'
+	| 'not_running'
+	| 'ownership_lost'
+	| 'lease_expired';
+
+export type AgenticChatTurnLeaseRenewalRpcResultV1 =
+	| {
+			outcome: 'renewed';
+			turn_run_id: string;
+			execution_generation: number;
+			renewed_at: string;
+	  }
+	| {
+			outcome: 'lost';
+			reason: AgenticChatTurnLeaseLostReasonV1;
+			turn_run_id: string;
+			execution_generation: number;
+	  };
+
+export type AgenticChatDeadTurnRecoveryOutcomeV1 =
+	| 'requeued'
+	| 'finalized'
+	| 'terminal_reconciled'
+	| 'workflow_handoff'
+	| 'workflow_deferred'
+	| 'not_dead'
+	| 'skipped'
+	| 'failed';
+
+/** One turn in a `recover_dead_agentic_chat_turns` report. Never carries a token. */
+export type AgenticChatDeadTurnRecoveryResultRowV1 = {
+	turn_run_id: string;
+	outcome: AgenticChatDeadTurnRecoveryOutcomeV1;
+	queue_job_id?: string;
+	execution_generation?: number;
+	started_at?: string;
+	silent_since?: string;
+	lease_state?: 'held' | 'stale' | 'expired' | 'abandoned' | 'unowned';
+	status?: string;
+	failure_code?: string;
+	uncertain_effect_count?: number;
+	workflow_outcome?: string;
+	/** Present on `failed`: how many recoveries of this turn have now raised. */
+	recovery_failure_count?: number;
+	reason?: string;
+	error?: string;
+};
+
+/** A workflow turn handed to a live worker with a freshly rotated processing token. */
+export type AgenticChatDeadTurnHandoffRowV1 = AgenticChatDeadTurnRecoveryResultRowV1 & {
+	outcome: 'workflow_handoff';
+	queue_job_id: string;
+	execution_generation: number;
+	started_at: string;
+	silent_since: string;
+	user_id: string;
+	correlation_id: string;
+	processing_token: string;
+	workflow_outcome: string;
+};
+
+export type AgenticChatDeadTurnRecoveryRpcResultV1 = {
+	candidate_count: number;
+	requeued_count: number;
+	finalized_count: number;
+	reconciled_count: number;
+	handoff_count: number;
+	deferred_count: number;
+	not_dead_count: number;
+	skipped_count: number;
+	failed_count: number;
+	/** Turns whose recovery raised too often; no longer tried, reported every sweep. */
+	parked_count: number;
+	has_more: boolean;
+	batch_size: number;
+	results: AgenticChatDeadTurnRecoveryResultRowV1[];
+	handoffs: AgenticChatDeadTurnHandoffRowV1[];
 };
 
 export type AgentStreamEventPhaseV1 = 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize';
@@ -1769,6 +1879,8 @@ export function decideAgenticChatRecoveryV1(input: {
 	irreversibleBoundaryCrossed: boolean;
 	effectCount: number;
 	blockingEffectCount: number;
+	/** Started or uncertain effects; defaults to every blocking effect. */
+	inFlightEffectCount?: number;
 	queueAttempts: number;
 	queueMaxAttempts: number;
 	queueResidenceExpired: boolean;
@@ -1788,8 +1900,16 @@ export function decideAgenticChatRecoveryV1(input: {
 	if (input.cancelRequested) {
 		return { decision: 'finalize_cancelled', failureCode: 'cancelled' };
 	}
-	if (input.blockingEffectCount > 0) {
-		return { decision: 'effect_reconciliation_required' };
+	// Unsettled effects never park a turn (20260924000100): a started or
+	// uncertain one ends it as uncertain_external_commit; any effect row rules
+	// out a retry below.
+	const inFlightEffectCount = input.inFlightEffectCount ?? input.blockingEffectCount;
+	if (input.blockingEffectCount > 0 && inFlightEffectCount > 0) {
+		return {
+			decision: 'finalize_failed',
+			failureCode: 'uncertain_external_commit',
+			retryExhausted: false
+		};
 	}
 
 	const retryClassification = classifyAgenticChatRetryV1(input.failureClass);

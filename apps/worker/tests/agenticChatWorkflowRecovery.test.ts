@@ -1,7 +1,6 @@
 // apps/worker/tests/agenticChatWorkflowRecovery.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
-	AgenticChatExecutionControlRpcError,
 	SupabaseAgenticChatExecutionControlAdapter,
 	type AgenticChatExecutionRpcClient
 } from '../src/workers/agentic-chat/turn/execution-control';
@@ -10,9 +9,13 @@ import { AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE } from '../src/workers/agentic-cha
 import { stableAgenticChatWorkflowAnswerMessageIdV1 } from '../src/workers/agentic-chat/workflow/workflow-terminal';
 
 /**
- * Tasker 87 slice B: stalled-worker detection routes enforced read-only workflow
- * turns through Tasker 85's atomic recovery. Ordinary turns get `policy_denied` and
- * must see exactly the ordinary recovery they had before.
+ * A dead workflow turn (docs/architecture/AGENTIC_CHAT_TURN_LEASES_2026-09-23.md):
+ * `recover_dead_agentic_chat_turns` runs `recover_agentic_chat_workflow_turn_v1`
+ * in SQL and, when the turn must end, hands it to the worker sweep with a rotated
+ * token and the workflow outcome. The sweep renders the terminal from durable
+ * workflow truth, with no claim, no model call, and no second workflow recovery.
+ * Requeues, stale owners, and ordinary turns never reach this path; the SQL test
+ * covers them.
  */
 
 const TURN_RUN_ID = '10000000-0000-4000-8000-000000000001';
@@ -24,71 +27,21 @@ const CORRELATION_ID = '60000000-0000-4000-8000-000000000006';
 const GENERATION = 2;
 const NOW = new Date('2026-09-18T12:10:00.000Z');
 
-const candidate = {
-	turnRunId: TURN_RUN_ID,
-	queueJobId: QUEUE_JOB_ID,
-	processingToken: PROCESSING_TOKEN,
-	userId: USER_ID,
-	correlationId: CORRELATION_ID,
-	startedAt: '2026-09-18T11:55:00.000Z',
-	stalledAt: '2026-09-18T12:00:00.000Z'
-} as const;
-
-function claimed(overrides: Record<string, unknown> = {}) {
-	return {
-		outcome: 'matching_current_claim',
-		executionMayStart: false,
-		turnRunId: TURN_RUN_ID,
-		queueJobId: QUEUE_JOB_ID,
-		sessionId: SESSION_ID,
-		userId: USER_ID,
-		correlationId: CORRELATION_ID,
-		executionGeneration: GENERATION,
-		status: 'running',
-		inputArtifactId: '70000000-0000-4000-8000-000000000007',
-		userMessageId: '80000000-0000-4000-8000-000000000008',
-		...overrides
-	};
-}
-
 function ordinaryRecovery(outcome: string, overrides: Record<string, unknown> = {}) {
 	return {
 		outcome,
-		execution_may_retry: outcome === 'retry_scheduled',
-		failure_code: outcome === 'finalize_cancelled' ? 'cancelled' : 'timeout_post_start',
+		execution_may_retry: false,
+		failure_code: outcome === 'finalize_cancelled' ? 'cancelled' : 'permanent',
 		turn_run_id: TURN_RUN_ID,
 		queue_job_id: QUEUE_JOB_ID,
 		session_id: SESSION_ID,
 		user_id: USER_ID,
 		correlation_id: CORRELATION_ID,
 		execution_generation: GENERATION,
-		status: outcome === 'retry_scheduled' ? 'queued' : 'running',
+		status: 'running',
 		...overrides
 	};
 }
-
-function workflowReceipt(outcome: string, extra: Record<string, unknown> = {}) {
-	return {
-		outcome,
-		executionMayRetry: outcome === 'retry_scheduled',
-		reason: null,
-		uncertainCostHeld: false,
-		raw: { outcome, turn_run_id: TURN_RUN_ID, ...extra }
-	};
-}
-
-const snapshot = {
-	turnRunId: TURN_RUN_ID,
-	sessionId: SESSION_ID,
-	userId: USER_ID,
-	streamRunId: 'stream-run-1',
-	clientTurnId: 'client-turn-1',
-	executionGeneration: GENERATION,
-	status: 'running',
-	assistantText: '',
-	projection: { version: 'agentic_chat_ui_projection_v1', semantic_events: [] },
-	durableSequence: 4
-} as const;
 
 function terminal(status: 'completed' | 'failed' | 'cancelled', failureCode: string | null) {
 	return {
@@ -218,20 +171,19 @@ const BOTH_ACCEPTED = {
 };
 
 function createSweep(options: {
-	claim?: unknown;
-	workflow?: unknown | ((input: Record<string, unknown>) => Promise<unknown>) | null;
+	/** recover_agentic_chat_workflow_turn_v1's decision, as the database hands it over. */
+	workflowOutcome: string;
 	recoveries?: unknown[];
 	finalizations?: unknown[];
-	/** Durable workflow truth; a function may throw. Omitted: no reader is wired. */
+	/** Durable workflow truth; a function may throw. */
 	run?: unknown | (() => Promise<unknown>);
 }) {
 	const recoveries = [...(options.recoveries ?? [])];
 	const finalizations = [...(options.finalizations ?? [])];
-	const control: Record<string, ReturnType<typeof vi.fn>> = {
-		claim: vi.fn(async () => options.claim ?? claimed()),
+	const control = {
 		recover: vi.fn(async (_input: Record<string, unknown>) => {
 			const value = recoveries.shift();
-			if (!value) throw new Error('Unexpected ordinary recovery call');
+			if (!value) throw new Error('Unexpected recovery call');
 			return value;
 		}),
 		finalize: vi.fn(async (_input: Record<string, unknown>) => {
@@ -240,34 +192,39 @@ function createSweep(options: {
 			return value;
 		})
 	};
-	if (options.workflow !== null && options.workflow !== undefined) {
-		const workflow = options.workflow;
-		control.recoverWorkflow = vi.fn(async (input: Record<string, unknown>) =>
-			typeof workflow === 'function'
-				? await (workflow as (input: Record<string, unknown>) => Promise<unknown>)(input)
-				: workflow
-		);
-	}
-	const snapshots = { load: vi.fn(async () => snapshot) };
-	const run = options.run;
-	const workflowRuns =
-		run === undefined
-			? undefined
-			: {
-					loadRun: vi.fn(async (_turnRunId: string) =>
-						typeof run === 'function' ? await (run as () => Promise<unknown>)() : run
-					)
-				};
+	const run = options.run ?? null;
+	const workflowRuns = {
+		loadRun: vi.fn(async (_turnRunId: string) =>
+			typeof run === 'function' ? await (run as () => Promise<unknown>)() : run
+		)
+	};
+	const recovery = {
+		recover: vi.fn(async () => ({
+			candidateCount: 1,
+			hasMore: false,
+			parkedCount: 0,
+			results: [],
+			handoffs: [
+				{
+					turnRunId: TURN_RUN_ID,
+					queueJobId: QUEUE_JOB_ID,
+					processingToken: PROCESSING_TOKEN,
+					userId: USER_ID,
+					correlationId: CORRELATION_ID,
+					executionGeneration: GENERATION,
+					startedAt: '2026-09-18T11:55:00.000Z',
+					silentSince: '2026-09-18T12:00:00.000Z',
+					workflowOutcome: options.workflowOutcome
+				}
+			],
+			invalidRows: []
+		}))
+	};
 	const sweep = new AgenticChatStalledRecoverySweep(
-		{
-			candidates: { list: vi.fn(async () => [candidate]) },
-			control: control as never,
-			snapshots: snapshots as never,
-			...(workflowRuns ? { workflowRuns: workflowRuns as never } : {})
-		},
-		{ now: () => NOW, stallTimeoutMs: 420_000 }
+		{ recovery, control: control as never, workflowRuns: workflowRuns as never },
+		{ now: () => NOW }
 	);
-	return { sweep, control, snapshots, workflowRuns };
+	return { sweep, control, workflowRuns, recovery };
 }
 
 /** A terminal write settles the sweep: finalize, then the ordinary queue reconciliation. */
@@ -281,40 +238,7 @@ function settlesAs(status: 'completed' | 'failed', failureCode: string | null) {
 	};
 }
 
-describe('stalled recovery routes workflow turns through atomic workflow recovery', () => {
-	it.each(['retry_scheduled', 'already_requeued'])(
-		'reports %s as requeued without the ordinary post-start policy',
-		async (outcome) => {
-			const harness = createSweep({ workflow: workflowReceipt(outcome) });
-			await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-				results: [{ outcome: 'requeued', executionGeneration: GENERATION }]
-			});
-			expect(harness.control.recoverWorkflow).toHaveBeenCalledWith({
-				turnRunId: TURN_RUN_ID,
-				queueJobId: QUEUE_JOB_ID,
-				processingToken: PROCESSING_TOKEN,
-				executionGeneration: GENERATION,
-				failureClass: 'timeout_post_start',
-				errorMessage: 'Agentic Chat worker interrupted while queue ownership was stalled'
-			});
-			expect(harness.control.recover).not.toHaveBeenCalled();
-			expect(harness.control.finalize).not.toHaveBeenCalled();
-		}
-	);
-
-	it.each([
-		['stale_generation', 'stale_owner'],
-		['ownership_lost', 'stale_owner'],
-		['terminal_reconciled', 'terminal_reconciled']
-	])('settles %s as %s with no further write', async (outcome, expected) => {
-		const harness = createSweep({ workflow: workflowReceipt(outcome) });
-		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-			results: [{ outcome: expected }]
-		});
-		expect(harness.control.recover).not.toHaveBeenCalled();
-		expect(harness.control.finalize).not.toHaveBeenCalled();
-	});
-
+describe('a handed-off workflow turn is rendered from durable workflow truth', () => {
 	it.each([
 		'deadline_expired',
 		'budget_exhausted',
@@ -325,7 +249,7 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 		'fails a workflow that may not retry (%s) with no content when no report was accepted',
 		async (outcome) => {
 			const harness = createSweep({
-				workflow: workflowReceipt(outcome),
+				workflowOutcome: outcome,
 				run: runState({
 					steps: {
 						planner: stepRow('planner', 'accepted'),
@@ -370,7 +294,7 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 	it('uses an accepted answer as-is', async () => {
 		const answer = 'Book the venue first, then confirm the caterer.';
 		const harness = createSweep({
-			workflow: workflowReceipt('deadline_expired'),
+			workflowOutcome: 'deadline_expired',
 			run: runState({
 				steps: { ...BOTH_ACCEPTED, editor: stepRow('editor', 'accepted') },
 				answer: {
@@ -414,7 +338,7 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 	it('keeps an unfinished durable prefix with the fixed notice and never extends it', async () => {
 		const prefix = 'Book the venue first: it blocks every later';
 		const harness = createSweep({
-			workflow: workflowReceipt('budget_exhausted'),
+			workflowOutcome: 'budget_exhausted',
 			run: runState({
 				steps: BOTH_ACCEPTED,
 				answer: {
@@ -444,7 +368,7 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 
 	it('builds a model-free partial from accepted reports and names the missing coverage', async () => {
 		const harness = createSweep({
-			workflow: workflowReceipt('attempts_exhausted'),
+			workflowOutcome: 'attempts_exhausted',
 			run: runState({
 				steps: {
 					planner: stepRow('planner', 'accepted'),
@@ -482,7 +406,7 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 
 	it('shows no content when access was revoked, even with an accepted answer', async () => {
 		const harness = createSweep({
-			workflow: workflowReceipt('access_revoked'),
+			workflowOutcome: 'access_revoked',
 			run: runState({
 				steps: { ...BOTH_ACCEPTED, editor: stepRow('editor', 'accepted') },
 				answer: { text: 'Private project detail.', status: 'accepted', quality: 'complete' }
@@ -504,7 +428,7 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 	it('shows no content when durable truth is missing or names another owner', async () => {
 		for (const run of [null, runState({ steps: BOTH_ACCEPTED, userId: SESSION_ID })]) {
 			const harness = createSweep({
-				workflow: workflowReceipt('deadline_expired'),
+				workflowOutcome: 'deadline_expired',
 				run,
 				...settlesAs('failed', 'workflow_deadline_expired')
 			});
@@ -521,7 +445,7 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 	it('retries an unreadable durable truth inside the bounded window, then finalizes once', async () => {
 		let reads = 0;
 		const harness = createSweep({
-			workflow: workflowReceipt('deadline_expired'),
+			workflowOutcome: 'deadline_expired',
 			run: async () => {
 				reads += 1;
 				if (reads === 1) throw new Error('connection reset');
@@ -544,7 +468,7 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 
 	it('never fails a turn it cannot read: bounded retries end in manual recovery', async () => {
 		const harness = createSweep({
-			workflow: workflowReceipt('deadline_expired'),
+			workflowOutcome: 'deadline_expired',
 			run: async () => {
 				throw new Error('connection reset');
 			},
@@ -564,34 +488,10 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 		expect(harness.control.finalize).not.toHaveBeenCalled();
 	});
 
-	it('never depends on the ordinary stream snapshot, which cannot represent answer batches', async () => {
-		const prefix = 'Book the venue first: it blocks every later';
-		const harness = createSweep({
-			workflow: workflowReceipt('attempts_exhausted'),
-			run: runState({ steps: BOTH_ACCEPTED, answer: { text: prefix, status: 'streaming' } }),
-			...settlesAs('completed', null)
-		});
-		// Regression: a stalled generation whose last durable write was an answer batch
-		// fails this snapshot, which left the turn in manual recovery on every sweep.
-		harness.snapshots.load.mockRejectedValue(
-			new Error(
-				'Invalid Agentic Chat durable recovery snapshot: durable event window is incomplete'
-			)
-		);
-		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-			results: [{ outcome: 'terminal_reconciled' }]
-		});
-		expect(harness.snapshots.load).not.toHaveBeenCalled();
-		expect(harness.control.finalize.mock.calls[0]![0]).toMatchObject({
-			status: 'completed',
-			assistantText: `${prefix}${AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE}`
-		});
-	});
-
 	it('cancels a durable Stop with exactly the durable prefix, as the live worker would', async () => {
 		const prefix = 'Book the venue first: it blocks every later';
 		const harness = createSweep({
-			workflow: workflowReceipt('cancel_requested'),
+			workflowOutcome: 'cancel_requested',
 			run: runState({ steps: BOTH_ACCEPTED, answer: { text: prefix, status: 'streaming' } }),
 			recoveries: [
 				ordinaryRecovery('finalize_cancelled'),
@@ -602,7 +502,6 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 			],
 			finalizations: [terminal('cancelled', 'cancelled')]
 		});
-		harness.snapshots.load.mockRejectedValue(new Error('durable event window is incomplete'));
 		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
 			results: [{ outcome: 'terminal_reconciled' }]
 		});
@@ -622,22 +521,9 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 		});
 	});
 
-	it('without a durable-truth reader, fails with the workflow reason as before', async () => {
-		const harness = createSweep({
-			workflow: workflowReceipt('deadline_expired'),
-			...settlesAs('failed', 'workflow_deadline_expired')
-		});
-		await harness.sweep.runOnce();
-		expect(harness.control.finalize.mock.calls[0]![0]).toMatchObject({
-			status: 'failed',
-			failureCode: 'workflow_deadline_expired',
-			assistantMessageId: null
-		});
-	});
-
 	it('finalizes a durable cancellation as cancelled', async () => {
 		const harness = createSweep({
-			workflow: workflowReceipt('cancel_requested'),
+			workflowOutcome: 'cancel_requested',
 			recoveries: [
 				ordinaryRecovery('finalize_cancelled'),
 				ordinaryRecovery('queue_reconciled', {
@@ -657,85 +543,6 @@ describe('stalled recovery routes workflow turns through atomic workflow recover
 			expect.objectContaining({ status: 'cancelled', failureCode: 'cancelled' })
 		);
 	});
-
-	it('never calls workflow recovery for a turn that is already terminal', async () => {
-		const harness = createSweep({
-			claim: claimed({ outcome: 'already_terminal', status: 'completed' }),
-			workflow: workflowReceipt('retry_scheduled'),
-			recoveries: [
-				ordinaryRecovery('queue_reconciled', { status: 'completed', failure_code: null })
-			]
-		});
-		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-			results: [{ outcome: 'terminal_reconciled' }]
-		});
-		expect(harness.control.recoverWorkflow).not.toHaveBeenCalled();
-	});
-});
-
-describe('ordinary-turn parity', () => {
-	const scenarios: Array<
-		[string, { claim?: unknown; recoveries: unknown[]; finalizations?: unknown[] }]
-	> = [
-		[
-			'pre-start retry',
-			{
-				claim: claimed({ outcome: 'claimed', executionMayStart: true }),
-				recoveries: [
-					ordinaryRecovery('retry_scheduled', { failure_code: 'timeout_pre_start' })
-				]
-			}
-		],
-		[
-			'post-start failure',
-			{
-				recoveries: [
-					ordinaryRecovery('finalize_failed'),
-					ordinaryRecovery('queue_reconciled', { status: 'failed' })
-				],
-				finalizations: [terminal('failed', 'timeout_post_start')]
-			}
-		]
-	];
-
-	it.each(scenarios)(
-		'%s: policy_denied yields the same calls and result as no workflow recovery',
-		async (_name, scenario) => {
-			const without = createSweep({ ...scenario, workflow: null });
-			// The durable-truth reader is wired exactly as production wires it; an
-			// ordinary turn must never reach it.
-			const run = runState({ steps: BOTH_ACCEPTED });
-			const denied = createSweep({
-				...scenario,
-				run,
-				workflow: workflowReceipt('policy_denied', { reason: 'not_a_workflow_turn' })
-			});
-			const thrown = createSweep({
-				...scenario,
-				run,
-				workflow: async () => {
-					throw new AgenticChatExecutionControlRpcError(
-						'recover_agentic_chat_workflow_turn_v1',
-						'08006',
-						'connection reset'
-					);
-				}
-			});
-
-			const baseline = await without.sweep.runOnce();
-			for (const harness of [denied, thrown]) {
-				await expect(harness.sweep.runOnce()).resolves.toEqual(baseline);
-				expect(harness.control.recover.mock.calls).toEqual(
-					without.control.recover.mock.calls
-				);
-				expect(harness.control.finalize.mock.calls).toEqual(
-					without.control.finalize.mock.calls
-				);
-				expect(harness.control.recoverWorkflow).toHaveBeenCalledOnce();
-				expect(harness.workflowRuns!.loadRun).not.toHaveBeenCalled();
-			}
-		}
-	);
 });
 
 describe('SupabaseAgenticChatExecutionControlAdapter.recoverWorkflow', () => {

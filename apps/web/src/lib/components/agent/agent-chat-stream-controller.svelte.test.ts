@@ -190,6 +190,7 @@ function createHarness(
 		finalizeMessage: vi.fn()
 	};
 	const haptic = vi.fn();
+	const requestWorkerReconciliation = vi.fn();
 	const scheduleMessageOcrPoll = vi.fn();
 	const clearDraft = vi.fn(() => {
 		readyRefs = [];
@@ -262,6 +263,7 @@ function createHarness(
 		setUserHasScrolled: vi.fn(),
 		setExistingImagePickerOpen: vi.fn(),
 		haptic,
+		requestWorkerReconciliation,
 		fetchImpl,
 		logError: vi.fn(),
 		logDebug: vi.fn()
@@ -277,6 +279,7 @@ function createHarness(
 		thinking,
 		assistant,
 		haptic,
+		requestWorkerReconciliation,
 		messages,
 		transportCalls,
 		admissionCalls,
@@ -977,6 +980,57 @@ describe('AgentChatStreamController', () => {
 		expect(h.inputValue).toBe('queued follow-up');
 	});
 
+	it('warns that a change may already be saved when a turn fails mid-write', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+
+		h.controller.finishWorkerTurn(handle, 'failed', null, 'uncertain_external_commit');
+
+		expect(h.controller.error).toBe(
+			'BuildOS stopped partway through a change, so it may already be saved. Check before trying again.'
+		);
+	});
+
+	it('warns the same way when Stop ended a turn mid-write', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+
+		h.controller.finishWorkerTurn(
+			handle,
+			'cancelled',
+			'cancelled',
+			'uncertain_external_commit'
+		);
+
+		expect(h.controller.error).toBe(
+			'BuildOS stopped partway through a change, so it may already be saved. Check before trying again.'
+		);
+	});
+
+	it('keeps a plain Stop silent', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+
+		h.controller.finishWorkerTurn(handle, 'cancelled', 'cancelled', 'cancelled');
+
+		expect(h.controller.error).toBeNull();
+	});
+
+	it('keeps the generic failure copy when no write was in flight', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+
+		h.controller.finishWorkerTurn(handle, 'failed', null, 'provider_failure');
+
+		expect(h.controller.error).toBe(
+			'BuildOS could not finish this response. Please try again.'
+		);
+	});
+
 	it('does not clobber a newer draft when restoring a failed send', async () => {
 		let resolveAdmission!: (response: Response) => void;
 		const h = createHarness({
@@ -1030,6 +1084,29 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.activeTurnHandle).toBeNull();
 		expect(h.controller.isStreaming).toBe(false);
 		expect(h.controller.currentActivity).toBe('');
+		// A live worker ends the turn itself; no extra reconcile is requested.
+		expect(h.requestWorkerReconciliation).not.toHaveBeenCalled();
+	});
+
+	it('reconciles at once when Stop itself ended a turn whose worker is gone', async () => {
+		const fetchImpl = vi.fn(async () =>
+			Response.json({
+				success: true,
+				data: {
+					outcome: 'cancelled',
+					status: 'cancelled',
+					terminalEventId: `${WORKER_TURN_RUN_ID}:1:4`
+				}
+			})
+		) as unknown as typeof fetch;
+		const h = createHarness({ fetchImpl });
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+
+		await h.controller.stopGeneration('user_cancelled');
+
+		expect(h.controller.lastCancelResult).toMatchObject({ outcome: 'cancelled' });
+		expect(h.requestWorkerReconciliation).toHaveBeenCalledWith(WORKER_TURN_RUN_ID);
 	});
 
 	it('shows a long queue wait in the thinking block once, and only while queued', () => {

@@ -235,6 +235,54 @@ describe('Agentic Chat worker turn gateway', () => {
 		});
 	});
 
+	it('maps a Stop that ended a dead worker turn to its cancelled terminal', async () => {
+		// The receipt shape request_agentic_chat_turn_cancel returns once the lease is stale.
+		const deadWorker = client({
+			rpcResult: {
+				data: {
+					...terminalReceipt('cancelled'),
+					queue_job_id: 'd6000000-0000-4000-8000-000000000001',
+					started_at: '2026-09-24T12:00:00.000Z',
+					silent_since: '2026-09-24T12:01:00.000Z',
+					lease_state: 'stale',
+					finished_reason: 'cancelled',
+					failure_code: 'cancelled',
+					assistant_message_id: 'd7000000-0000-4000-8000-000000000001',
+					uncertain_effect_count: 1,
+					stopped_without_worker: true
+				},
+				error: null
+			}
+		});
+		expect(
+			await requestOwnedAgenticChatWorkerTurnCancellation({
+				client: deadWorker.value,
+				userId: USER_ID,
+				turnRunId: TURN_ID,
+				reason: 'user_cancelled'
+			})
+		).toEqual({
+			outcome: 'cancelled',
+			status: 'cancelled',
+			terminalEventId: `${TURN_ID}:1:4`
+		});
+
+		const wrongStatus = client({
+			rpcResult: {
+				data: { ...terminalReceipt('cancelled', 'failed'), stopped_without_worker: true },
+				error: null
+			}
+		});
+		await expect(
+			requestOwnedAgenticChatWorkerTurnCancellation({
+				client: wrongStatus.value,
+				userId: USER_ID,
+				turnRunId: TURN_ID,
+				reason: 'user_cancelled'
+			})
+		).rejects.toMatchObject({ code: 'protocol_error' });
+	});
+
 	it('hides absent ownership and rejects malformed cancellation receipts', async () => {
 		const absent = client({
 			rpcResult: {

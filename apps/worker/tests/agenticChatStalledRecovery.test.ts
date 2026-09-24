@@ -1,12 +1,20 @@
 // apps/worker/tests/agenticChatStalledRecovery.test.ts
-import { createAgentStreamEventIdV1 } from '@buildos/shared-types';
-import { describe, expect, it, vi } from 'vitest';
+//
+// The in-worker dead-turn sweep (docs/architecture/AGENTIC_CHAT_TURN_LEASES_2026-09-23.md).
+// The database decides and settles every dead turn; this sweep only renders
+// handed-off workflow turns from durable truth, bounds each RPC, and reports
+// health (unhealthy until its first successful sweep, so a worker deployed
+// without the recovery function never passes its healthcheck).
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AgenticChatExecutionControlRpcError } from '../src/workers/agentic-chat/turn/execution-control';
 import {
-	AgenticChatStalledCandidateSourceError,
+	AgenticChatDeadTurnRecoveryProtocolError,
+	type AgenticChatDeadTurnHandoffV1,
+	type AgenticChatDeadTurnRecoveryBatchV1,
+	type AgenticChatDeadTurnRecoveryPortV1,
+	type AgenticChatDeadTurnRecoveryReportRowV1,
 	AgenticChatStalledRecoverySweep,
-	SupabaseAgenticChatStalledCandidateSource,
-	type AgenticChatStalledReadQuery
+	SupabaseAgenticChatDeadTurnRecoveryAdapter
 } from '../src/workers/agentic-chat/host/stalled-recovery';
 
 const TURN_RUN_ID = '10000000-0000-4000-8000-000000000001';
@@ -15,35 +23,50 @@ const PROCESSING_TOKEN = '30000000-0000-4000-8000-000000000003';
 const USER_ID = '40000000-0000-4000-8000-000000000004';
 const SESSION_ID = '50000000-0000-4000-8000-000000000005';
 const CORRELATION_ID = '60000000-0000-4000-8000-000000000006';
-const INPUT_ARTIFACT_ID = '70000000-0000-4000-8000-000000000007';
-const USER_MESSAGE_ID = '80000000-0000-4000-8000-000000000008';
 const GENERATION = 1;
-const NOW = new Date('2026-08-03T12:10:00.000Z');
+const NOW = new Date('2026-09-23T12:10:00.000Z');
 
-const candidate = {
+const handoff: AgenticChatDeadTurnHandoffV1 = {
 	turnRunId: TURN_RUN_ID,
 	queueJobId: QUEUE_JOB_ID,
 	processingToken: PROCESSING_TOKEN,
 	userId: USER_ID,
 	correlationId: CORRELATION_ID,
-	startedAt: '2026-08-03T11:55:00.000Z',
-	stalledAt: '2026-08-03T12:00:00.000Z'
-} as const;
+	executionGeneration: GENERATION,
+	startedAt: '2026-09-23T12:05:00.000Z',
+	silentSince: '2026-09-23T12:07:00.000Z',
+	workflowOutcome: 'deadline_expired'
+};
 
-function claimed(overrides: Record<string, unknown> = {}) {
+function batch(
+	overrides: Partial<AgenticChatDeadTurnRecoveryBatchV1> = {}
+): AgenticChatDeadTurnRecoveryBatchV1 {
+	const results = overrides.results ?? [];
+	const handoffs = overrides.handoffs ?? [];
 	return {
-		outcome: 'claimed',
-		executionMayStart: true,
-		turnRunId: TURN_RUN_ID,
-		queueJobId: QUEUE_JOB_ID,
-		sessionId: SESSION_ID,
-		userId: USER_ID,
-		correlationId: CORRELATION_ID,
-		executionGeneration: GENERATION,
-		status: 'running',
-		inputArtifactId: INPUT_ARTIFACT_ID,
-		userMessageId: USER_MESSAGE_ID,
+		candidateCount: results.length + handoffs.length,
+		hasMore: false,
+		parkedCount: 0,
+		results,
+		handoffs,
+		invalidRows: [],
 		...overrides
+	};
+}
+
+function row(
+	outcome: AgenticChatDeadTurnRecoveryReportRowV1['outcome'],
+	turnRunId: string,
+	error: string | null = null
+): AgenticChatDeadTurnRecoveryReportRowV1 {
+	return {
+		turnRunId,
+		queueJobId: QUEUE_JOB_ID,
+		executionGeneration: GENERATION,
+		startedAt: '2026-09-23T12:05:00.000Z',
+		silentSince: '2026-09-23T12:08:00.000Z',
+		outcome,
+		error
 	};
 }
 
@@ -51,19 +74,19 @@ function recovery(outcome: string, overrides: Record<string, unknown> = {}) {
 	return {
 		outcome,
 		execution_may_retry: outcome === 'retry_scheduled',
-		failure_code: outcome === 'finalize_cancelled' ? 'cancelled' : 'timeout_post_start',
+		failure_code: outcome === 'finalize_cancelled' ? 'cancelled' : 'permanent',
 		turn_run_id: TURN_RUN_ID,
 		queue_job_id: QUEUE_JOB_ID,
 		session_id: SESSION_ID,
 		user_id: USER_ID,
 		correlation_id: CORRELATION_ID,
 		execution_generation: GENERATION,
-		status: outcome === 'retry_scheduled' ? 'queued' : 'running',
+		status: 'running',
 		...overrides
 	};
 }
 
-function terminal(status: 'failed' | 'cancelled', overrides: Record<string, unknown> = {}) {
+function terminal(status: 'failed' | 'cancelled') {
 	return {
 		outcome: 'finalized',
 		turn_run_id: TURN_RUN_ID,
@@ -73,38 +96,26 @@ function terminal(status: 'failed' | 'cancelled', overrides: Record<string, unkn
 		execution_generation: GENERATION,
 		status,
 		finished_reason: status === 'cancelled' ? 'cancelled' : 'worker_interrupted',
-		failure_code: status === 'cancelled' ? 'cancelled' : 'timeout_post_start',
-		assistant_message_id: '90000000-0000-5000-8000-000000000009',
-		terminal_event_id: createAgentStreamEventIdV1(TURN_RUN_ID, GENERATION, 3),
-		terminal_sequence_index: 3,
-		terminalized_at: '2026-08-03T12:10:01.000Z',
-		...overrides
+		failure_code: status === 'cancelled' ? 'cancelled' : 'workflow_deadline_expired'
 	};
 }
 
-const snapshot = {
-	turnRunId: TURN_RUN_ID,
-	sessionId: SESSION_ID,
-	userId: USER_ID,
-	streamRunId: 'stream-run-1',
-	clientTurnId: 'client-turn-1',
-	executionGeneration: GENERATION,
-	status: 'running',
-	assistantText: 'durable partial',
-	projection: { version: 'agentic_chat_ui_projection_v1', semantic_events: [] },
-	durableSequence: 2
-} as const;
-
+/** A sweep wired for workflow handoffs, with scripted control answers. */
 function createSweep(options: {
-	claim?: unknown;
-	recoveries: unknown[];
+	batches?: AgenticChatDeadTurnRecoveryBatchV1[];
+	recoveries?: unknown[];
 	finalizations?: unknown[];
-	snapshot?: unknown;
+	workflowRuns?: boolean;
+	sweepOptions?: ConstructorParameters<typeof AgenticChatStalledRecoverySweep>[1];
 }) {
-	const recoveries = [...options.recoveries];
+	const batches = [...(options.batches ?? [batch({ handoffs: [handoff] })])];
+	const recoveries = [...(options.recoveries ?? [])];
 	const finalizations = [...(options.finalizations ?? [])];
+	const recover = vi.fn(
+		async (_input: Parameters<AgenticChatDeadTurnRecoveryPortV1['recover']>[0]) =>
+			batches.shift() ?? batch()
+	);
 	const control = {
-		claim: vi.fn(async () => options.claim ?? claimed()),
 		recover: vi.fn(async (_input: Record<string, unknown>) => {
 			const value = recoveries.shift();
 			if (!value) throw new Error('Unexpected recovery call');
@@ -116,147 +127,436 @@ function createSweep(options: {
 			return value;
 		})
 	};
-	const snapshots = { load: vi.fn(async () => options.snapshot ?? snapshot) };
-	const candidates = { list: vi.fn(async () => [candidate]) };
+	const workflowRuns = { loadRun: vi.fn(async (_turnRunId: string) => null) };
 	const sweep = new AgenticChatStalledRecoverySweep(
-		{ candidates, control: control as never, snapshots: snapshots as never },
-		{ now: () => NOW, stallTimeoutMs: 420_000 }
+		{
+			recovery: { recover },
+			control: control as never,
+			...(options.workflowRuns === false ? {} : { workflowRuns: workflowRuns as never })
+		},
+		{ now: () => NOW, ...options.sweepOptions }
 	);
-	return { sweep, control, snapshots, candidates };
+	return { sweep, recover, control, workflowRuns };
 }
 
-describe('SupabaseAgenticChatStalledCandidateSource', () => {
-	it('queries only stale processing chat rows and validates their exact envelope', async () => {
-		const calls: Array<[string, unknown, unknown?]> = [];
-		const rows = [
-			{
-				id: QUEUE_JOB_ID,
-				processing_token: PROCESSING_TOKEN,
-				user_id: USER_ID,
-				started_at: '2026-08-03T11:55:00.000Z',
-				updated_at: '2026-08-03T12:00:00.000Z',
-				metadata: { turnRunId: TURN_RUN_ID, correlationId: CORRELATION_ID }
-			}
-		];
-		const query = createQuery(rows, calls);
-		const source = new SupabaseAgenticChatStalledCandidateSource({
-			from: vi.fn(() => ({ select: vi.fn(() => query) }))
-		});
-
-		await expect(
-			source.list({ stalledBefore: '2026-08-03T12:03:00.000Z', limit: 32 })
-		).resolves.toEqual([candidate]);
-		expect(calls).toEqual([
-			['eq', 'job_type', 'agentic_chat_turn'],
-			['eq', 'status', 'processing'],
-			['lt', 'updated_at', '2026-08-03T12:03:00.000Z'],
-			['order', 'updated_at', { ascending: true, nullsFirst: false }],
-			['limit', 32]
-		]);
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (error: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
 	});
+	return { promise, resolve, reject };
+}
 
-	it('isolates malformed and duplicate rows without hiding a valid candidate', async () => {
-		const invalid = vi.fn();
-		const rows = [
-			{ ...candidateRow(), processing_token: null },
-			candidateRow(),
-			candidateRow()
-		];
-		const source = new SupabaseAgenticChatStalledCandidateSource(
-			{ from: () => ({ select: () => createQuery(rows, []) }) },
-			invalid
-		);
-
-		await expect(
-			source.list({ stalledBefore: '2026-08-03T12:03:00.000Z', limit: 32 })
-		).resolves.toEqual([candidate]);
-		expect(invalid).toHaveBeenCalledTimes(2);
-		expect(invalid.mock.calls[0]?.[0]).toBeInstanceOf(AgenticChatStalledCandidateSourceError);
-		expect(invalid.mock.calls[0]?.[1]).toBe(0);
-		expect(invalid.mock.calls[1]?.[1]).toBe(2);
-	});
+afterEach(() => {
+	vi.useRealTimers();
 });
 
-describe('SupabaseAgenticChatStalledCandidateSource defer', () => {
-	function writableClient(rows: unknown[]) {
-		const writes: Array<{ values: unknown; filters: Array<[string, string, unknown]> }> = [];
-		const client = {
-			from: () => ({
-				select: () => createQuery(rows, []),
-				update: (values: unknown) => {
-					const filters: Array<[string, string, unknown]> = [];
-					writes.push({ values, filters });
-					const query: any = {
-						eq: (column: string, value: unknown) => {
-							filters.push(['eq', column, value]);
-							return query;
-						},
-						is: (column: string, value: unknown) => {
-							filters.push(['is', column, value]);
-							return query;
-						},
-						then: (resolve: (value: unknown) => unknown) =>
-							Promise.resolve({ data: null, error: null }).then(resolve)
-					};
-					return query;
-				}
-			})
+describe('SupabaseAgenticChatDeadTurnRecoveryAdapter', () => {
+	function client(data: unknown, error: { code?: string; message: string } | null = null) {
+		const abortSignal = vi.fn(async (_signal: AbortSignal) => ({ data, error }));
+		const rpc = vi.fn(() => ({ abortSignal }));
+		return {
+			rpc,
+			abortSignal,
+			adapter: new SupabaseAgenticChatDeadTurnRecoveryAdapter({ rpc })
 		};
-		return { client, writes };
+	}
+	const signal = new AbortController().signal;
+
+	function sqlRow(outcome: string, overrides: Record<string, unknown> = {}) {
+		return {
+			outcome,
+			turn_run_id: TURN_RUN_ID,
+			queue_job_id: QUEUE_JOB_ID,
+			user_id: USER_ID,
+			execution_generation: GENERATION,
+			started_at: '2026-09-23T12:05:00.000Z',
+			silent_since: '2026-09-23T12:08:00.000Z',
+			lease_state: 'expired',
+			...overrides
+		};
+	}
+	function handoffRow(overrides: Record<string, unknown> = {}) {
+		return sqlRow('workflow_handoff', {
+			processing_token: PROCESSING_TOKEN,
+			correlation_id: CORRELATION_ID,
+			silent_since: '2026-09-23T12:07:00.000Z',
+			workflow_outcome: 'deadline_expired',
+			...overrides
+		});
+	}
+	function report(overrides: Record<string, unknown> = {}) {
+		return {
+			candidate_count: 0,
+			requeued_count: 0,
+			finalized_count: 0,
+			reconciled_count: 0,
+			handoff_count: 0,
+			deferred_count: 0,
+			not_dead_count: 0,
+			skipped_count: 0,
+			failed_count: 0,
+			parked_count: 0,
+			has_more: false,
+			batch_size: 16,
+			results: [],
+			handoffs: [],
+			...overrides
+		};
 	}
 
-	it('bumps updated_at under the heartbeat fence', async () => {
-		const { client, writes } = writableClient([]);
-		const source = new SupabaseAgenticChatStalledCandidateSource(client);
+	it('calls the one recovery RPC, bounded by the caller signal, and parses rows and handoffs', async () => {
+		const handedOff = '10000000-0000-4000-8000-00000000000c';
+		const { rpc, abortSignal, adapter } = client(
+			report({
+				candidate_count: 3,
+				parked_count: 2,
+				has_more: true,
+				results: [
+					sqlRow('requeued'),
+					sqlRow('finalized', {
+						turn_run_id: '10000000-0000-4000-8000-00000000000b',
+						status: 'failed',
+						failure_code: 'uncertain_external_commit',
+						recovery_failure_count: 1
+					}),
+					// The tokenless summary of a handoff also appears in results.
+					sqlRow('workflow_handoff', { turn_run_id: handedOff })
+				],
+				handoffs: [handoffRow({ turn_run_id: handedOff })]
+			})
+		);
 
-		await source.defer({ queueJobId: QUEUE_JOB_ID, processingToken: PROCESSING_TOKEN });
+		const result = await adapter.recover({ batchSize: 16, workflowHandoff: true, signal });
 
-		expect(writes).toHaveLength(1);
-		expect(writes[0]!.values).toEqual({ updated_at: expect.any(String) });
-		expect(writes[0]!.filters).toEqual([
-			['eq', 'id', QUEUE_JOB_ID],
-			['eq', 'status', 'processing'],
-			['eq', 'processing_token', PROCESSING_TOKEN]
+		expect(rpc).toHaveBeenCalledWith('recover_dead_agentic_chat_turns', {
+			p_batch_size: 16,
+			p_workflow_handoff: true
+		});
+		expect(abortSignal).toHaveBeenCalledWith(signal);
+		expect(result).toEqual({
+			candidateCount: 3,
+			hasMore: true,
+			parkedCount: 2,
+			results: [
+				row('requeued', TURN_RUN_ID),
+				expect.objectContaining({
+					turnRunId: '10000000-0000-4000-8000-00000000000b',
+					outcome: 'finalized'
+				})
+			],
+			handoffs: [{ ...handoff, turnRunId: handedOff }],
+			invalidRows: []
+		});
+	});
+
+	it('never drops a valid handoff because a sibling row is malformed', async () => {
+		const { adapter } = client(
+			report({
+				candidate_count: 4,
+				results: [
+					sqlRow('revived', { turn_run_id: '10000000-0000-4000-8000-00000000000e' })
+				],
+				handoffs: [
+					handoffRow({
+						turn_run_id: '10000000-0000-4000-8000-00000000000d',
+						processing_token: null
+					}),
+					handoffRow(),
+					handoffRow(),
+					handoffRow({
+						turn_run_id: '10000000-0000-4000-8000-00000000000f',
+						workflow_outcome: ''
+					})
+				]
+			})
+		);
+		const result = await adapter.recover({ batchSize: 16, workflowHandoff: true, signal });
+
+		expect(result.handoffs).toEqual([handoff]);
+		expect(result.invalidRows).toEqual([
+			{
+				turnRunId: '10000000-0000-4000-8000-00000000000d',
+				error: expect.stringContaining('processing_token')
+			},
+			{ turnRunId: TURN_RUN_ID, error: expect.stringContaining('duplicate handoff') },
+			{
+				turnRunId: '10000000-0000-4000-8000-00000000000f',
+				error: expect.stringContaining('workflow_outcome')
+			},
+			{
+				turnRunId: '10000000-0000-4000-8000-00000000000e',
+				error: expect.stringContaining('result outcome is invalid')
+			}
 		]);
 	});
 
-	it('defers an unparseable row so it stops occupying a batch slot', async () => {
-		const malformedId = '20000000-0000-4000-8000-00000000000a';
-		const { client, writes } = writableClient([
-			{ ...candidateRow(), id: malformedId, metadata: {} },
-			candidateRow()
-		]);
-		const source = new SupabaseAgenticChatStalledCandidateSource(client);
+	it('reads what it can from a damaged report and never loops on an unreadable flag', async () => {
+		const read = (data: unknown) =>
+			client(data).adapter.recover({ batchSize: 16, workflowHandoff: false, signal });
 
+		await expect(read(report({ has_more: 'yes' }))).resolves.toMatchObject({ hasMore: false });
 		await expect(
-			source.list({ stalledBefore: '2026-08-03T12:03:00.000Z', limit: 32 })
-		).resolves.toEqual([candidate]);
-		expect(writes).toHaveLength(1);
-		expect(writes[0]!.filters).toContainEqual(['eq', 'id', malformedId]);
-		expect(writes[0]!.filters).toContainEqual(['eq', 'processing_token', PROCESSING_TOKEN]);
+			read(
+				report({ candidate_count: -1, parked_count: 'many', results: [sqlRow('skipped')] })
+			)
+		).resolves.toMatchObject({ candidateCount: 1, parkedCount: 0 });
+		await expect(read(report({ results: null }))).resolves.toMatchObject({
+			invalidRows: [{ turnRunId: null, error: 'results or handoffs are not arrays' }]
+		});
+		await expect(read(report({ results: [sqlRow('toString')] }))).resolves.toMatchObject({
+			results: [],
+			invalidRows: [{ turnRunId: TURN_RUN_ID }]
+		});
+		await expect(read([])).rejects.toBeInstanceOf(AgenticChatDeadTurnRecoveryProtocolError);
+	});
+
+	it('surfaces RPC errors, including a missing migration, and refuses an oversized batch', async () => {
+		const { adapter } = client(null, {
+			code: 'PGRST202',
+			message: 'Could not find the function'
+		});
+		await expect(
+			adapter.recover({ batchSize: 16, workflowHandoff: false, signal })
+		).rejects.toThrow('recover_dead_agentic_chat_turns failed (PGRST202)');
+		await expect(
+			adapter.recover({ batchSize: 101, workflowHandoff: false, signal })
+		).rejects.toThrow('batchSize must be between 1 and 100');
 	});
 });
 
 describe('AgenticChatStalledRecoverySweep', () => {
-	it('bridges a pre-domain queue claim and schedules only the safe pre-start retry', async () => {
-		const harness = createSweep({
-			recoveries: [recovery('retry_scheduled', { failure_code: 'timeout_pre_start' })]
+	it('stays unhealthy until its first sweep (run at boot) succeeds', async () => {
+		const first = deferred<AgenticChatDeadTurnRecoveryBatchV1>();
+		const recover = vi.fn(() => first.promise);
+		const onReport = vi.fn();
+		const sweep = new AgenticChatStalledRecoverySweep(
+			{ recovery: { recover }, control: {} as never },
+			{ now: () => NOW, onReport }
+		);
+
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: false,
+			state: 'idle',
+			reason: 'not_started'
+		});
+		sweep.start();
+		expect(recover).toHaveBeenCalledOnce();
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: false,
+			state: 'running',
+			reason: 'awaiting_first_sweep'
 		});
 
-		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-			candidateCount: 1,
-			results: [{ outcome: 'requeued', executionGeneration: GENERATION }]
+		first.resolve(batch());
+		await vi.waitFor(() => expect(onReport).toHaveBeenCalledOnce());
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: true,
+			lastSuccessfulSweepAt: NOW.toISOString()
 		});
-		expect(harness.control.recover).toHaveBeenCalledWith(
-			expect.objectContaining({ failureClass: 'timeout_pre_start' })
+		await sweep.stop();
+	});
+
+	it('never reports healthy when the recovery function is missing', async () => {
+		const recover = vi
+			.fn()
+			.mockRejectedValue(
+				new Error(
+					'recover_dead_agentic_chat_turns failed (PGRST202): Could not find the function'
+				)
+			);
+		const onError = vi.fn();
+		const sweep = new AgenticChatStalledRecoverySweep(
+			{ recovery: { recover }, control: {} as never },
+			{ now: () => NOW, onError }
 		);
-		expect(harness.snapshots.load).not.toHaveBeenCalled();
+		sweep.start();
+		await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: false,
+			reason: 'awaiting_first_sweep',
+			consecutiveSweepFailures: 1,
+			lastError: expect.stringContaining('PGRST202')
+		});
+		await expect(sweep.runOnce()).rejects.toThrow('PGRST202');
+		await expect(sweep.runOnce()).rejects.toThrow('PGRST202');
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: false,
+			reason: 'repeated_sweep_failures',
+			consecutiveSweepFailures: 3
+		});
+
+		recover.mockResolvedValueOnce(batch());
+		await sweep.runOnce();
+		expect(sweep.getHealth()).toMatchObject({ healthy: true, consecutiveSweepFailures: 0 });
+		await expect(sweep.stop()).resolves.toBe(true);
+		expect(sweep.getHealth()).toMatchObject({
+			healthy: true,
+			state: 'stopped',
+			reason: 'stopped'
+		});
+	});
+
+	it('abandons a recovery RPC that never settles, so the next sweep still runs', async () => {
+		const signals: AbortSignal[] = [];
+		const recover = vi.fn((input: { signal: AbortSignal }) => {
+			signals.push(input.signal);
+			return new Promise<AgenticChatDeadTurnRecoveryBatchV1>(() => undefined);
+		});
+		const sweep = new AgenticChatStalledRecoverySweep(
+			{ recovery: { recover }, control: {} as never },
+			{ now: () => NOW, rpcTimeoutMs: 20 }
+		);
+
+		await expect(sweep.runOnce()).rejects.toThrow(
+			'recover_dead_agentic_chat_turns did not settle within 20ms'
+		);
+		expect(signals[0]?.aborted).toBe(true);
+		expect(sweep.getHealth()).toMatchObject({ consecutiveSweepFailures: 1 });
+
+		// Not coalesced onto the hung call: a fresh sweep issues a fresh RPC.
+		await expect(sweep.runOnce()).rejects.toThrow('did not settle');
+		expect(recover).toHaveBeenCalledTimes(2);
+	});
+
+	it('reports a sweep stuck past three intervals as overdue', async () => {
+		let clock = NOW.getTime();
+		const pending = deferred<AgenticChatDeadTurnRecoveryBatchV1>();
+		const recover = vi
+			.fn()
+			.mockResolvedValueOnce(batch())
+			.mockImplementationOnce(() => pending.promise);
+		const sweep = new AgenticChatStalledRecoverySweep(
+			{ recovery: { recover }, control: {} as never },
+			{ now: () => new Date(clock), intervalMs: 1_000, rpcTimeoutMs: 60_000 }
+		);
+		sweep.start();
+		await vi.waitFor(() => expect(sweep.getHealth().healthy).toBe(true));
+
+		const stuck = sweep.runOnce();
+		clock += 3_000;
+		expect(sweep.getHealth()).toMatchObject({ healthy: true });
+		clock += 1;
+		expect(sweep.getHealth()).toMatchObject({ healthy: false, reason: 'sweep_overdue' });
+
+		pending.resolve(batch());
+		await stuck;
+		expect(sweep.getHealth()).toMatchObject({ healthy: true });
+		await sweep.stop();
+	});
+
+	it('reports what the database settled without touching the TypeScript convergence path', async () => {
+		const harness = createSweep({
+			batches: [
+				batch({
+					candidateCount: 7,
+					parkedCount: 2,
+					results: [
+						row('requeued', '10000000-0000-4000-8000-000000000011'),
+						row('finalized', '10000000-0000-4000-8000-000000000012'),
+						row('terminal_reconciled', '10000000-0000-4000-8000-000000000013'),
+						row('workflow_deferred', '10000000-0000-4000-8000-000000000014'),
+						row('not_dead', '10000000-0000-4000-8000-000000000015'),
+						row('skipped', '10000000-0000-4000-8000-000000000016'),
+						row('failed', '10000000-0000-4000-8000-000000000017', 'deadlock detected')
+					]
+				})
+			]
+		});
+
+		const report = await harness.sweep.runOnce();
+
+		expect(report.results.map((result) => result.outcome)).toEqual([
+			'requeued',
+			'finalized',
+			'terminal_reconciled',
+			'deferred',
+			// Honest: alive after all, or held by someone else right now.
+			'not_dead',
+			'skipped',
+			'failed'
+		]);
+		expect(report.parkedCount).toBe(2);
+		expect(report.results[0]).toMatchObject({
+			stalledAt: '2026-09-23T12:08:00.000Z',
+			startedAt: '2026-09-23T12:05:00.000Z'
+		});
+		expect(harness.control.recover).not.toHaveBeenCalled();
+		expect(harness.control.finalize).not.toHaveBeenCalled();
+		expect(harness.sweep.getHealth()).toMatchObject({
+			lastCandidateCount: 7,
+			lastParkedCount: 2,
+			// One failed row plus the two parked turns.
+			lastAttentionRequiredCount: 3
+		});
+	});
+
+	it('follows has_more within one sweep, bounded by batches and by one interval', async () => {
+		const more = () => batch({ hasMore: true, results: [row('requeued', TURN_RUN_ID)] });
+		const harness = createSweep({ batches: [more(), more(), batch()] });
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({ candidateCount: 2 });
+		expect(harness.recover).toHaveBeenCalledTimes(3);
+
+		const endless = createSweep({
+			batches: Array.from({ length: 10 }, more),
+			sweepOptions: { maxBatchesPerSweep: 4 }
+		});
+		await endless.sweep.runOnce();
+		expect(endless.recover).toHaveBeenCalledTimes(4);
+
+		let clock = NOW.getTime();
+		const slow = new AgenticChatStalledRecoverySweep(
+			{
+				recovery: {
+					recover: vi.fn(async () => {
+						clock += 1_000;
+						return more();
+					})
+				},
+				control: {} as never
+			},
+			{ now: () => new Date(clock), intervalMs: 1_000 }
+		);
+		await slow.runOnce();
+		expect(clock - NOW.getTime()).toBe(1_000);
+	});
+
+	it('asks for workflow handoffs only when it can render workflow terminals', async () => {
+		const plain = createSweep({ batches: [batch()], workflowRuns: false });
+		await plain.sweep.runOnce();
+		expect(plain.recover).toHaveBeenCalledWith({
+			batchSize: 16,
+			workflowHandoff: false,
+			signal: expect.any(AbortSignal)
+		});
+
+		const workflow = createSweep({ batches: [batch()], sweepOptions: { batchSize: 8 } });
+		await workflow.sweep.runOnce();
+		expect(workflow.recover).toHaveBeenCalledWith({
+			batchSize: 8,
+			workflowHandoff: true,
+			signal: expect.any(AbortSignal)
+		});
+	});
+
+	it('refuses a handoff it cannot render without writing anything', async () => {
+		const harness = createSweep({ workflowRuns: false });
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [
+				{
+					outcome: 'failed',
+					error: 'A workflow handoff arrived without a durable workflow reader'
+				}
+			]
+		});
+		expect(harness.control.recover).not.toHaveBeenCalled();
 		expect(harness.control.finalize).not.toHaveBeenCalled();
 	});
 
-	it('finalizes from durable snapshot truth and then reconciles the queue', async () => {
+	it('renders a handoff from its workflow outcome with the rotated token, no claim and no retry', async () => {
 		const harness = createSweep({
-			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
 			recoveries: [
 				recovery('finalize_failed'),
 				recovery('queue_reconciled', { status: 'failed' })
@@ -265,53 +565,59 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		});
 
 		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-			results: [{ outcome: 'terminal_reconciled' }]
-		});
-		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({
-				status: 'failed',
-				assistantMessageId: null,
-				assistantText: 'durable partial',
-				projection: snapshot.projection,
-				assistantMetadata: expect.objectContaining({
-					recovered_from_stall: true,
-					tool_round_count: 0
-				})
-			})
-		);
-		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
-			failureClass: 'timeout_post_start'
-		});
-	});
-
-	it('reconciles a terminal domain row without rerunning or refinalizing the turn', async () => {
-		const harness = createSweep({
-			claim: claimed({
-				outcome: 'already_terminal',
-				executionMayStart: false,
-				status: 'completed'
-			}),
-			recoveries: [
-				recovery('queue_reconciled', {
-					status: 'completed',
-					failure_code: null
-				})
+			candidateCount: 1,
+			results: [
+				{
+					turnRunId: TURN_RUN_ID,
+					outcome: 'terminal_reconciled',
+					stalledAt: handoff.silentSince
+				}
 			]
 		});
+		expect(harness.control.recover.mock.calls[0]?.[0]).toEqual({
+			turnRunId: TURN_RUN_ID,
+			queueJobId: QUEUE_JOB_ID,
+			processingToken: PROCESSING_TOKEN,
+			executionGeneration: GENERATION,
+			failureClass: 'permanent',
+			errorMessage: 'Agentic Chat worker lease expired'
+		});
+		expect(harness.workflowRuns.loadRun).toHaveBeenCalledWith(TURN_RUN_ID);
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				processingToken: PROCESSING_TOKEN,
+				status: 'failed',
+				failureCode: 'workflow_deadline_expired',
+				assistantText: '',
+				assistantMetadata: expect.objectContaining({ recovered_from_stall: true })
+			})
+		);
+		// Only the two ports the sweep is allowed to use exist on the control double.
+		expect(Object.keys(harness.control).sort()).toEqual(['finalize', 'recover']);
+	});
 
+	it('ends a durable Stop as cancelled', async () => {
+		const harness = createSweep({
+			batches: [batch({ handoffs: [{ ...handoff, workflowOutcome: 'cancel_requested' }] })],
+			recoveries: [
+				recovery('finalize_cancelled'),
+				recovery('queue_reconciled', { status: 'cancelled', failure_code: 'cancelled' })
+			],
+			finalizations: [terminal('cancelled')]
+		});
 		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
 			results: [{ outcome: 'terminal_reconciled' }]
 		});
-		expect(harness.control.recover).toHaveBeenCalledWith(
-			expect.objectContaining({ failureClass: 'unknown' })
+		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+			failureClass: 'cancelled'
+		});
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'cancelled', failureCode: 'cancelled' })
 		);
-		expect(harness.snapshots.load).not.toHaveBeenCalled();
-		expect(harness.control.finalize).not.toHaveBeenCalled();
 	});
 
 	it('converges after a committed finalization response is lost', async () => {
 		const harness = createSweep({
-			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
 			recoveries: [
 				recovery('finalize_failed'),
 				recovery('queue_reconciled', { status: 'failed' })
@@ -324,15 +630,69 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
 			results: [{ outcome: 'terminal_reconciled' }]
 		});
-		expect(harness.snapshots.load).toHaveBeenCalledOnce();
 		expect(harness.control.finalize).toHaveBeenCalledOnce();
 		expect(harness.control.recover).toHaveBeenCalledTimes(2);
 	});
 
-	it('reports the terminal contract failure when bounded recovery cannot converge', async () => {
+	it('rechecks durable cancellation when it wins failed finalization', async () => {
 		const harness = createSweep({
-			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
-			recoveries: Array.from({ length: 4 }, () => recovery('finalize_failed'))
+			recoveries: [
+				recovery('finalize_failed'),
+				recovery('finalize_cancelled'),
+				recovery('queue_reconciled', { status: 'cancelled', failure_code: 'cancelled' })
+			],
+			finalizations: [
+				{ ...terminal('failed'), outcome: 'cancel_requested', status: 'running' },
+				terminal('cancelled')
+			]
+		});
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'terminal_reconciled' }]
+		});
+		expect(harness.control.recover.mock.calls[1]?.[0]).toMatchObject({
+			failureClass: 'cancelled'
+		});
+		expect(harness.control.finalize.mock.calls[1]?.[0]).toMatchObject({
+			status: 'cancelled',
+			failureCode: 'cancelled'
+		});
+	});
+
+	it('classifies another recoverer winning as stale ownership, not a failure', async () => {
+		const stale = createSweep({ recoveries: [recovery('stale_generation')] });
+		await expect(stale.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'stale_owner', executionGeneration: GENERATION }]
+		});
+		expect(stale.control.finalize).not.toHaveBeenCalled();
+
+		const lost = createSweep({});
+		lost.control.recover.mockRejectedValueOnce(
+			new AgenticChatExecutionControlRpcError(
+				'recover_agentic_chat_turn',
+				'P0001',
+				'agentic_chat_recovery_ownership_lost'
+			)
+		);
+		await expect(lost.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'stale_owner', error: expect.stringContaining('ownership_lost') }]
+		});
+	});
+
+	it('hands an unconvergeable workflow turn back until the database ends it itself', async () => {
+		// Sweeps 1 and 2: the handoff cannot be rendered (finalize keeps failing).
+		// Sweep 3: the turn is past the abandoned threshold, so the database finalizes
+		// it in SQL (the fallback) and never hands it off again.
+		const harness = createSweep({
+			batches: [
+				batch({ handoffs: [handoff] }),
+				batch({
+					handoffs: [
+						{ ...handoff, processingToken: '30000000-0000-4000-8000-0000000000aa' }
+					]
+				}),
+				batch({ results: [row('finalized', TURN_RUN_ID)] })
+			],
+			recoveries: Array.from({ length: 8 }, () => recovery('finalize_failed'))
 		});
 		harness.control.finalize.mockRejectedValue(
 			new Error('agentic_chat_finalize_invalid_assistant_message')
@@ -348,274 +708,78 @@ describe('AgenticChatStalledRecoverySweep', () => {
 				}
 			]
 		});
-		expect(harness.control.finalize).toHaveBeenCalledTimes(4);
+		expect(harness.sweep.getHealth()).toMatchObject({ lastAttentionRequiredCount: 1 });
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ outcome: 'manual_recovery_required' }]
+		});
+		expect(harness.control.recover.mock.calls[4]?.[0]).toMatchObject({
+			processingToken: '30000000-0000-4000-8000-0000000000aa'
+		});
+		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+			results: [{ turnRunId: TURN_RUN_ID, outcome: 'finalized' }]
+		});
+		expect(harness.control.recover).toHaveBeenCalledTimes(8);
+		expect(harness.control.finalize).toHaveBeenCalledTimes(8);
+		expect(harness.sweep.getHealth()).toMatchObject({ lastAttentionRequiredCount: 0 });
 	});
 
-	it('rechecks durable cancellation when it wins failed finalization', async () => {
+	it('reports an unreadable row as failed and still renders the readable handoff', async () => {
 		const harness = createSweep({
-			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
-			recoveries: [
-				recovery('finalize_failed'),
-				recovery('finalize_cancelled'),
-				recovery('queue_reconciled', { status: 'cancelled', failure_code: 'cancelled' })
+			batches: [
+				batch({
+					candidateCount: 2,
+					handoffs: [handoff],
+					invalidRows: [
+						{
+							turnRunId: '10000000-0000-4000-8000-00000000000d',
+							error: 'handoff timestamps are invalid'
+						}
+					]
+				})
 			],
-			finalizations: [
-				{
-					outcome: 'cancel_requested',
-					turn_run_id: TURN_RUN_ID,
-					queue_job_id: QUEUE_JOB_ID,
-					session_id: SESSION_ID,
-					user_id: USER_ID,
-					execution_generation: GENERATION,
-					status: 'running',
-					cancel_requested_at: '2026-08-03T12:10:00.000Z',
-					cancel_reason: 'user_cancelled'
-				},
-				terminal('cancelled')
-			]
+			recoveries: [recovery('queue_reconciled', { status: 'failed' })]
 		});
-
-		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-			results: [{ outcome: 'terminal_reconciled' }]
-		});
-		expect(harness.control.finalize).toHaveBeenCalledTimes(2);
-		expect(harness.control.finalize.mock.calls[1]?.[0]).toMatchObject({
-			status: 'cancelled',
-			failureCode: 'cancelled',
-			assistantMetadata: expect.objectContaining({ tool_round_count: 0 }),
-			assistantMessageId: expect.stringMatching(
-				/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
-			)
-		});
-	});
-
-	it('never finalizes a turn whose effects require reconciliation', async () => {
-		const harness = createSweep({
-			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
-			recoveries: [recovery('effect_reconciliation_required')]
-		});
-
-		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-			results: [{ outcome: 'effect_reconciliation_required' }]
-		});
-		expect(harness.snapshots.load).not.toHaveBeenCalled();
-		expect(harness.control.finalize).not.toHaveBeenCalled();
-	});
-
-	it('classifies a concurrent sweeper winner as stale ownership, not a failed recovery', async () => {
-		const harness = createSweep({ recoveries: [] });
-		harness.control.claim.mockRejectedValueOnce(
-			new AgenticChatExecutionControlRpcError(
-				'claim_agentic_chat_turn',
-				'P0001',
-				'agentic_chat_claim_ownership_lost'
-			)
-		);
-
 		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
 			results: [
 				{
-					outcome: 'stale_owner',
-					error: expect.stringContaining('ownership_lost')
-				}
+					turnRunId: '10000000-0000-4000-8000-00000000000d',
+					outcome: 'failed',
+					queueJobId: null
+				},
+				{ turnRunId: TURN_RUN_ID, outcome: 'terminal_reconciled' }
 			]
 		});
 	});
 
-	it('stops immediately when recovery reports that the generation is stale', async () => {
-		const harness = createSweep({ recoveries: [recovery('stale_generation')] });
-
-		await expect(harness.sweep.runOnce()).resolves.toMatchObject({
-			results: [{ outcome: 'stale_owner', executionGeneration: GENERATION }]
-		});
-		expect(harness.snapshots.load).not.toHaveBeenCalled();
-		expect(harness.control.finalize).not.toHaveBeenCalled();
-	});
-
-	it('trips health after repeated sweep failures and recovers after a successful pass', async () => {
-		const candidates = {
-			list: vi.fn().mockRejectedValue(new Error('database unavailable'))
-		};
-		const onError = vi.fn();
-		const onReport = vi.fn();
-		const sweep = new AgenticChatStalledRecoverySweep(
-			{
-				candidates,
-				control: {} as never,
-				snapshots: {} as never
-			},
-			{ now: () => NOW, intervalMs: 60_000, onError, onReport }
-		);
-
-		expect(sweep.getHealth()).toMatchObject({
-			healthy: false,
-			state: 'idle',
-			reason: 'not_started'
-		});
-		sweep.start();
-		await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce());
-		await expect(sweep.runOnce()).rejects.toThrow('database unavailable');
-		await expect(sweep.runOnce()).rejects.toThrow('database unavailable');
-		expect(sweep.getHealth()).toMatchObject({
-			healthy: false,
-			state: 'running',
-			reason: 'repeated_sweep_failures',
-			consecutiveSweepFailures: 3,
-			lastError: 'database unavailable'
-		});
-
-		candidates.list.mockResolvedValueOnce([]);
-		await expect(sweep.runOnce()).resolves.toMatchObject({ candidateCount: 0 });
-		expect(onReport).toHaveBeenCalledWith(
-			expect.objectContaining({ candidateCount: 0, results: [] })
-		);
-		expect(sweep.getHealth()).toMatchObject({
-			healthy: true,
-			state: 'running',
-			consecutiveSweepFailures: 0,
-			lastError: null,
-			lastSuccessfulSweepAt: NOW.toISOString()
-		});
-		await expect(sweep.stop()).resolves.toBe(true);
-		expect(sweep.getHealth()).toMatchObject({
-			healthy: true,
-			state: 'stopped',
-			reason: 'stopped'
-		});
-	});
-
-	it('surfaces candidates that still require operator or reconciliation attention', async () => {
-		const harness = createSweep({
-			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
-			recoveries: [recovery('effect_reconciliation_required')]
-		});
-
-		await harness.sweep.runOnce();
-		expect(harness.sweep.getHealth()).toMatchObject({
-			lastCandidateCount: 1,
-			lastAttentionRequiredCount: 1
-		});
-	});
-
-	it('defers a candidate it could not settle so it cannot starve newer stalls', async () => {
-		const unsettled = createSweep({
-			claim: claimed({ outcome: 'matching_current_claim', executionMayStart: false }),
-			recoveries: [recovery('effect_reconciliation_required')]
-		});
-		const defer = vi.fn(async () => undefined);
-		Object.assign(unsettled.candidates, { defer });
-
-		await unsettled.sweep.runOnce();
-		expect(defer).toHaveBeenCalledWith(candidate);
-
-		const settled = createSweep({
-			recoveries: [recovery('retry_scheduled', { failure_code: 'timeout_pre_start' })]
-		});
-		const settledDefer = vi.fn(async () => undefined);
-		Object.assign(settled.candidates, { defer: settledDefer });
-
-		await settled.sweep.runOnce();
-		expect(settledDefer).not.toHaveBeenCalled();
-	});
-
 	it('coalesces overlapping sweeps and drains an in-flight run on stop', async () => {
-		let release!: () => void;
-		const wait = new Promise<void>((resolve) => {
-			release = resolve;
-		});
-		const candidates = {
-			list: vi.fn(async () => {
-				await wait;
-				return [];
-			})
-		};
+		const pending = deferred<AgenticChatDeadTurnRecoveryBatchV1>();
+		const recover = vi.fn(() => pending.promise);
 		const sweep = new AgenticChatStalledRecoverySweep(
-			{
-				candidates,
-				control: {} as never,
-				snapshots: {} as never
-			},
+			{ recovery: { recover }, control: {} as never },
 			{ now: () => NOW, drainTimeoutMs: 1_000 }
 		);
 		const first = sweep.runOnce();
-		const second = sweep.runOnce();
-		expect(second).toBe(first);
+		expect(sweep.runOnce()).toBe(first);
 		const stopping = sweep.stop();
-		release();
+		pending.resolve(batch());
 		await expect(stopping).resolves.toBe(true);
 		await first;
-		expect(candidates.list).toHaveBeenCalledOnce();
+		expect(recover).toHaveBeenCalledOnce();
 	});
 
 	it('bounds recovery drain time without starting another sweep', async () => {
-		let release!: () => void;
-		const wait = new Promise<void>((resolve) => {
-			release = resolve;
-		});
-		const candidates = {
-			list: vi.fn(async () => {
-				await wait;
-				return [];
-			})
-		};
+		const pending = deferred<AgenticChatDeadTurnRecoveryBatchV1>();
+		const recover = vi.fn(() => pending.promise);
 		const sweep = new AgenticChatStalledRecoverySweep(
-			{
-				candidates,
-				control: {} as never,
-				snapshots: {} as never
-			},
+			{ recovery: { recover }, control: {} as never },
 			{ now: () => NOW, drainTimeoutMs: 20 }
 		);
 		const active = sweep.runOnce();
 		await expect(sweep.stop()).resolves.toBe(false);
-		expect(candidates.list).toHaveBeenCalledOnce();
-		release();
+		expect(recover).toHaveBeenCalledOnce();
+		pending.resolve(batch());
 		await active;
 		await expect(sweep.runOnce()).rejects.toThrow(/is stopping/);
 		expect(() => sweep.start()).toThrow(/is stopping/);
 	});
 });
-
-function candidateRow() {
-	return {
-		id: QUEUE_JOB_ID,
-		processing_token: PROCESSING_TOKEN,
-		user_id: USER_ID,
-		started_at: '2026-08-03T11:55:00.000Z',
-		updated_at: '2026-08-03T12:00:00.000Z',
-		metadata: { turnRunId: TURN_RUN_ID, correlationId: CORRELATION_ID }
-	};
-}
-
-function createQuery(
-	data: unknown,
-	calls: Array<[string, unknown, unknown?]>
-): AgenticChatStalledReadQuery {
-	const query = {
-		eq(column: string, value: unknown) {
-			calls.push(['eq', column, value]);
-			return query;
-		},
-		lt(column: string, value: unknown) {
-			calls.push(['lt', column, value]);
-			return query;
-		},
-		order(column: string, options?: unknown) {
-			calls.push(['order', column, options]);
-			return query;
-		},
-		limit(value: number) {
-			calls.push(['limit', value]);
-			return query;
-		},
-		then<TResult1 = { data: unknown; error: null }, TResult2 = never>(
-			onfulfilled?:
-				| ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>)
-				| null,
-			onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
-		): PromiseLike<TResult1 | TResult2> {
-			return Promise.resolve({ data, error: null }).then(onfulfilled, onrejected);
-		}
-	};
-	return query as AgenticChatStalledReadQuery;
-}

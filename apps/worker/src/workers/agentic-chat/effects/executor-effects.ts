@@ -29,7 +29,6 @@ import type {
 	AgenticChatRuntimeTimingObserverV1,
 	AgenticChatRuntimeTimingSnapshotV1
 } from '../stream/runtime-timing';
-import type { AgenticChatStatedFutureCapturePortV1 } from './stated-future-capture';
 
 export type AgenticChatTerminalControlErrorReportV1 = {
 	stage: 'claim' | 'claim_readback' | 'finalize' | 'finalize_retry' | 'recover';
@@ -46,13 +45,11 @@ export type AgenticChatExecutorEffectPortsV1 = {
 	/** Shared with the provider client; the executor drains a turn's set at the terminal fence. */
 	pendingEffects?: Pick<AgenticChatPendingEffectsRegistry, 'forTurn' | 'drain'>;
 	researchCapture?: AgenticChatResearchCapturePortV1;
-	statedFutureCapture?: AgenticChatStatedFutureCapturePortV1;
 	consumptionBilling?: AgenticChatConsumptionBillingPortV1;
 	onTimingSnapshot?: AgenticChatRuntimeTimingObserverV1;
 	onPromptSnapshotError?: (error: unknown) => void;
 	onExecutionObservationError?: (error: unknown) => void;
 	onResearchCaptureError?: (error: unknown) => void;
-	onStatedFutureCaptureError?: (error: unknown) => void;
 	onConsumptionBillingError?: (error: unknown) => void;
 	onTerminalControlError?: (report: AgenticChatTerminalControlErrorReportV1) => void;
 };
@@ -148,12 +145,6 @@ export class AgenticChatExecutorEffects {
 		const port = this.ports.researchCapture;
 		if (!port) return Promise.resolve();
 		return attempt(() => port.capture(input), this.ports.onResearchCaptureError);
-	}
-
-	captureStatedFuture(input: CaptureInput): Promise<void> {
-		const port = this.ports.statedFutureCapture;
-		if (!port) return Promise.resolve();
-		return attempt(() => port.capture(input), this.ports.onStatedFutureCaptureError);
 	}
 
 	/** The executor bounds the evaluation with its terminal deadline through `run`. */

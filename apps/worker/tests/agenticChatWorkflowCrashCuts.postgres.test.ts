@@ -13,11 +13,10 @@ import type { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AgenticChatCancellationError } from '../src/workers/agentic-chat/turn/cancellation-observer';
 import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/turn/execution-control';
-import { SupabaseAgenticChatRecoverySnapshotAdapter } from '../src/workers/agentic-chat/host/recovery-snapshot';
 import {
 	type AgenticChatStalledRecoveryReportV1,
 	AgenticChatStalledRecoverySweep,
-	SupabaseAgenticChatStalledCandidateSource
+	SupabaseAgenticChatDeadTurnRecoveryAdapter
 } from '../src/workers/agentic-chat/host/stalled-recovery';
 import { AGENTIC_CHAT_WORKFLOW_CUT_SHORT_NOTE } from '../src/workers/agentic-chat/workflow/workflow-projection';
 import { SupabaseAgenticChatWorkflowStore } from '../src/workers/agentic-chat/workflow/workflow-store';
@@ -35,6 +34,7 @@ import {
 import {
 	type DisposablePostgres,
 	createPgSupabaseShim,
+	expireWorkerLease,
 	postgresAvailable,
 	serviceClient,
 	startDisposableWorkflowPostgres
@@ -165,25 +165,26 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 		return { turnRunId, lease, provider, result };
 	}
 
-	/** The real sweep, limited to one turn, run as if the stall threshold has passed. */
+	/**
+	 * The real sweep over the real `recover_dead_agentic_chat_turns`, once the dead
+	 * worker's lease has expired; the report is narrowed to this turn.
+	 */
 	async function sweep(turnRunId: string): Promise<AgenticChatStalledRecoveryReportV1> {
-		const candidates = new SupabaseAgenticChatStalledCandidateSource(shim as never);
+		await expireWorkerLease(admin, turnRunId);
 		const control = new SupabaseAgenticChatExecutionControlAdapter(shim as never);
 		const recovery = new AgenticChatStalledRecoverySweep(
 			{
-				candidates: {
-					list: async (input) =>
-						(await candidates.list(input)).filter(
-							(candidate) => candidate.turnRunId === turnRunId
-						)
-				},
+				recovery: new SupabaseAgenticChatDeadTurnRecoveryAdapter(shim as never),
 				control,
-				snapshots: new SupabaseAgenticChatRecoverySnapshotAdapter(shim as never),
 				workflowRuns: new SupabaseAgenticChatWorkflowStore(shim as never)
 			},
-			{ now: () => new Date(Date.now() + 10 * 60_000), stallTimeoutMs: 420_000 }
+			{ batchSize: 100 }
 		);
-		return recovery.runOnce();
+		const report = await recovery.runOnce();
+		return {
+			...report,
+			results: report.results.filter((result) => result.turnRunId === turnRunId)
+		};
 	}
 
 	async function secondGeneration(turnRunId: string) {
@@ -267,6 +268,12 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 			if (name === 'accept_agentic_chat_workflow_synthesis_v1') worker.kill();
 			return result;
 		});
+
+	function resultFor(data: unknown, turnRunId: string): Record<string, unknown> | undefined {
+		const results =
+			(data as { results?: Array<Record<string, unknown>> } | null)?.results ?? [];
+		return results.find((row) => row.turn_run_id === turnRunId);
+	}
 
 	async function durablePrefix(turnRunId: string): Promise<string> {
 		const facts = await e2eFacts(admin, turnRunId);
@@ -412,6 +419,65 @@ describePostgres('workflow synthesis crash cuts on the frozen SQL (Tasker 87 sli
 			expect(facts.dispatches.find((row) => row.step_key === 'editor')?.state).toBe(
 				'uncertain'
 			);
+		}, 60_000);
+	});
+
+	describe('(b2) no worker left to render the turn (web cron only)', () => {
+		it('the database ends an abandoned mid-stream turn itself, keeping the durable prefix', async () => {
+			// Answer batches take stream sequences without event rows; the SQL
+			// finalize reads chat_turn_stream_state and must accept that text.
+			const first = await killFirstGeneration({
+				script: happyScript,
+				textFlushBytes: 16,
+				cut: killMidStream
+			});
+			const prefix = await durablePrefix(first.turnRunId);
+			expect(prefix.length).toBeGreaterThan(0);
+			await exhaustQueueAttempts(first.turnRunId);
+
+			// Expired but not abandoned: the cron defers a workflow turn to a worker sweep.
+			await expireWorkerLease(admin, first.turnRunId, 100);
+			const deferredReceipt = await shim.rpc('recover_dead_agentic_chat_turns', {
+				p_batch_size: 100,
+				p_workflow_handoff: false
+			});
+			expect(deferredReceipt.error).toBeNull();
+			expect(resultFor(deferredReceipt.data, first.turnRunId)).toMatchObject({
+				outcome: 'workflow_deferred'
+			});
+
+			// Twice the expiry with nobody rendering it: the database finalizes it.
+			await expireWorkerLease(admin, first.turnRunId, 200);
+			const finalReceipt = await shim.rpc('recover_dead_agentic_chat_turns', {
+				p_batch_size: 100,
+				p_workflow_handoff: false
+			});
+			expect(finalReceipt.error).toBeNull();
+			expect(resultFor(finalReceipt.data, first.turnRunId)).toMatchObject({
+				outcome: 'finalized',
+				status: 'failed'
+			});
+
+			const facts = await e2eFacts(admin, first.turnRunId);
+			expect(facts.turn).toMatchObject({ status: 'failed' });
+			expect(String(facts.turn.failure_code)).toMatch(/^workflow_/);
+			expect(facts.job.status).not.toBe('processing');
+			// Like a live worker's failed partial: the durable prefix stays the
+			// reconnectable stream text, and no assistant message joins the history.
+			expect(facts.messages).toHaveLength(0);
+			const stream = await admin.query(
+				'SELECT assistant_text FROM public.chat_turn_stream_state WHERE turn_run_id = $1',
+				[first.turnRunId]
+			);
+			expect(stream.rows[0]?.assistant_text).toBe(prefix);
+			expect(facts.events.filter((event) => event.event_type === 'done')).toHaveLength(1);
+
+			// Settled: a later sweep does not see it again.
+			const again = await shim.rpc('recover_dead_agentic_chat_turns', {
+				p_batch_size: 100,
+				p_workflow_handoff: false
+			});
+			expect(resultFor(again.data, first.turnRunId)).toBeUndefined();
 		}, 60_000);
 	});
 

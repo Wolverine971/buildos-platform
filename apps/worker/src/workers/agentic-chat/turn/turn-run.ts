@@ -13,6 +13,7 @@ import type {
 import type { ProcessingJob } from '../../../lib/supabaseQueue';
 import type { AgenticChatWorkerExecutionInputV1 } from './execution-input';
 import type { AgenticChatTurnProviderStepV1 } from './executor-contracts';
+import type { AgenticChatTurnLeaseHandleV1 } from './turn-lease';
 
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
 export const MAX_UI_PROJECTION_EVENTS = 128;
@@ -102,6 +103,8 @@ export type TurnRun = {
 	readInvalidationEpoch: AgenticChatReadInvalidationEpochStateV1;
 	/** Counts the current provider round as a tool round on its first execution. */
 	markToolExecution: () => void;
+	/** Checked synchronously right before an external write may start. */
+	lease: Pick<AgenticChatTurnLeaseHandleV1, 'isFresh'>;
 };
 
 export function emptyProjection(): ProjectionState {

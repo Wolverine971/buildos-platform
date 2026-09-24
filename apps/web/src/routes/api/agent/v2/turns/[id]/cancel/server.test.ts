@@ -84,6 +84,22 @@ describe('POST /api/agent/v2/turns/[id]/cancel', () => {
 		});
 	});
 
+	it('returns the terminal when Stop ended a turn whose worker died', async () => {
+		mocks.requestOwnedAgenticChatWorkerTurnCancellation.mockResolvedValueOnce({
+			outcome: 'cancelled',
+			status: 'cancelled',
+			terminalEventId: `${TURN_ID}:1:4`
+		});
+		const response = await POST(event({ body: { reason: 'user_cancelled' } }) as never);
+		const body = await response.json();
+		expect(response.status).toBe(200);
+		expect(body.data).toEqual({
+			outcome: 'cancelled',
+			status: 'cancelled',
+			terminalEventId: `${TURN_ID}:1:4`
+		});
+	});
+
 	it('hides ownership and internal error detail', async () => {
 		mocks.requestOwnedAgenticChatWorkerTurnCancellation.mockRejectedValueOnce(
 			new AgenticChatWorkerTurnGatewayError('not_found', 'foreign-owned private detail')

@@ -12,7 +12,7 @@ import {
 	SupabaseAgenticChatWorkflowStore
 } from '../workflow/workflow-store';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import { AGENTIC_CHAT_TURN_LEASE_POLICY_V1, type Database } from '@buildos/shared-types';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import { createAgentRunWebResearchPort } from '../../agent-run/webResearchPort';
 import type { WebNavigatePort } from '../tools/web-navigate';
@@ -70,15 +70,17 @@ import {
 	createWorkerAgenticChatCalendarWritePort
 } from '../tools/calendar-write-port';
 import {
-	type AgenticChatRecoverySnapshotRpcClient,
-	SupabaseAgenticChatRecoverySnapshotAdapter
-} from './recovery-snapshot';
-import {
-	type AgenticChatStalledReadClient,
+	type AgenticChatDeadTurnRecoveryRpcClient,
 	type AgenticChatStalledRecoveryReportV1,
 	AgenticChatStalledRecoverySweep,
-	SupabaseAgenticChatStalledCandidateSource
+	SupabaseAgenticChatDeadTurnRecoveryAdapter
 } from './stalled-recovery';
+import {
+	type AgenticChatTurnLeaseEventV1,
+	type AgenticChatTurnLeaseRpcClient,
+	AgenticChatTurnLeaseKeeper,
+	SupabaseAgenticChatTurnLeaseAdapter
+} from '../turn/turn-lease';
 import {
 	type AgenticChatPublisherConfig,
 	AgenticChatStreamPublisher
@@ -134,11 +136,6 @@ import {
 	SupabaseAgenticChatResearchCaptureAdapter
 } from '../effects/research-capture';
 import {
-	type AgenticChatStatedFutureCapturePortV1,
-	type AgenticChatStatedFutureCaptureRpcClient,
-	SupabaseAgenticChatStatedFutureCaptureAdapter
-} from '../effects/stated-future-capture';
-import {
 	type AgenticChatConsumptionBillingPortV1,
 	type AgenticChatConsumptionBillingRpcClient,
 	SupabaseAgenticChatConsumptionBillingAdapter
@@ -159,10 +156,10 @@ export type AgenticChatCompositionRoot = {
 	executionObservations: AgenticChatExecutionObservationPortV1;
 	sessionHandoff: AgenticChatSessionHandoffPortV1;
 	researchCapture: AgenticChatResearchCapturePortV1;
-	statedFutureCapture: AgenticChatStatedFutureCapturePortV1;
 	consumptionBilling: AgenticChatConsumptionBillingPortV1 | null;
 	publisher: AgenticChatStreamPublisher;
 	cancellation: AgenticChatCancellationObserver;
+	lease: AgenticChatTurnLeaseKeeper;
 	recovery: AgenticChatStalledRecoverySweep;
 	capacity: AgenticChatWorkerCapacityCollector;
 };
@@ -250,7 +247,6 @@ export function createAgenticChatCompositionRoot(options: {
 	onPromptSnapshotError?: (error: unknown) => void;
 	onExecutionObservationError?: (error: unknown) => void;
 	onResearchCaptureError?: (error: unknown) => void;
-	onStatedFutureCaptureError?: (error: unknown) => void;
 	onConsumptionBillingError?: (error: unknown) => void;
 	/** Injectable telemetry sink; production emits one bounded structured span summary per turn. */
 	onTimingSnapshot?: AgenticChatRuntimeTimingObserverV1;
@@ -281,13 +277,11 @@ export function createAgenticChatCompositionRoot(options: {
 	const rpcClient = options.client as unknown as AgenticChatExecutionRpcClient &
 		AgenticChatEffectRpcClient &
 		AgenticChatSupabaseRpcClient &
-		AgenticChatRecoverySnapshotRpcClient &
 		AgenticChatPromptSnapshotRpcClient &
 		AgenticChatToolExecutionRpcClient &
 		AgenticChatExecutionObservationRpcClient &
 		AgenticChatSessionHandoffRpcClient &
 		AgenticChatResearchCaptureRpcClient &
-		AgenticChatStatedFutureCaptureRpcClient &
 		AgenticChatConsumptionBillingRpcClient;
 	const control = new SupabaseAgenticChatExecutionControlAdapter(rpcClient);
 	const effectControl = new SupabaseAgenticChatEffectControlAdapter(rpcClient);
@@ -301,10 +295,6 @@ export function createAgenticChatCompositionRoot(options: {
 	);
 	const sessionHandoff = new SupabaseAgenticChatSessionHandoffAdapter(rpcClient);
 	const researchCapture = new SupabaseAgenticChatResearchCaptureAdapter(rpcClient);
-	const statedFutureCapture = new SupabaseAgenticChatStatedFutureCaptureAdapter(
-		rpcClient,
-		effectControl
-	);
 	const consumptionBilling = options.consumptionBillingEnabled
 		? new SupabaseAgenticChatConsumptionBillingAdapter(rpcClient)
 		: null;
@@ -347,6 +337,24 @@ export function createAgenticChatCompositionRoot(options: {
 			observation: new SupabaseAgenticChatCancellationObservationAdapter(rpcClient)
 		},
 		{ ...options.cancellationConfig, consumerConcurrency: consumerConfig.concurrency }
+	);
+	const lease = new AgenticChatTurnLeaseKeeper(
+		{
+			lease: new SupabaseAgenticChatTurnLeaseAdapter(
+				options.client as unknown as AgenticChatTurnLeaseRpcClient
+			),
+			onEvent: reportAgenticChatTurnLeaseEvent
+		},
+		{
+			renewIntervalMs: consumerConfig.leaseRenewIntervalMs,
+			selfFenceAfterMs: consumerConfig.leaseSelfFenceAfterMs,
+			rpcTimeoutMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.rpcTimeoutMs,
+			terminalBudgetMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.terminalBudgetMs,
+			// Belt and braces with the job's hard-cap signal: a lease never outlives
+			// the hard cap plus the terminal budget, so a stuck turn stays recoverable.
+			maxHoldMs:
+				consumerConfig.workerTimeoutMs + AGENTIC_CHAT_TURN_LEASE_POLICY_V1.terminalBudgetMs
+		}
 	);
 	const providerCapacity = new AgenticChatProviderCapacity({
 		configured: options.providerConfigured,
@@ -422,6 +430,7 @@ export function createAgenticChatCompositionRoot(options: {
 			input,
 			publisher,
 			cancellation,
+			lease,
 			provider,
 			promptSnapshots,
 			executionObservations: observedExecutionObservations,
@@ -435,9 +444,6 @@ export function createAgenticChatCompositionRoot(options: {
 			onResearchCaptureError:
 				options.onResearchCaptureError ??
 				((error) => console.error('Agentic Chat research capture failed', error)),
-			onStatedFutureCaptureError:
-				options.onStatedFutureCaptureError ??
-				((error) => console.error('Agentic Chat stated-future capture failed', error)),
 			onTerminalControlError: (report) =>
 				console.error(
 					`Agentic Chat terminal control ${report.stage} failed turn=${report.turnRunId} generation=${report.executionGeneration}`,
@@ -447,7 +453,6 @@ export function createAgenticChatCompositionRoot(options: {
 			toolExecutions,
 			sessionHandoff,
 			researchCapture,
-			statedFutureCapture,
 			consumptionBilling: consumptionBilling ?? undefined,
 			onConsumptionBillingError:
 				options.onConsumptionBillingError ??
@@ -469,25 +474,25 @@ export function createAgenticChatCompositionRoot(options: {
 	const consumer = createAgenticChatConsumer(executor, {
 		config: consumerConfig
 	});
-	const stalledCandidates = new SupabaseAgenticChatStalledCandidateSource(
-		options.client as unknown as AgenticChatStalledReadClient,
-		(error, index) =>
-			console.error(`Agentic Chat stalled candidate ${index} was invalid`, error)
-	);
+	// Every 15 s the sweep calls recover_dead_agentic_chat_turns (the web cron calls
+	// the same function every minute), which decides and settles every dead turn
+	// in SQL. Only a handed-off workflow turn comes back to be rendered here.
 	const recovery = new AgenticChatStalledRecoverySweep(
 		{
-			candidates: stalledCandidates,
+			recovery: new SupabaseAgenticChatDeadTurnRecoveryAdapter(
+				options.client as unknown as AgenticChatDeadTurnRecoveryRpcClient
+			),
 			control,
-			snapshots: new SupabaseAgenticChatRecoverySnapshotAdapter(rpcClient),
-			// Read only for a workflow turn that may not retry; ordinary turns never reach it.
+			// Read only for a handed-off workflow turn; ordinary turns never reach it.
 			workflowRuns: new SupabaseAgenticChatWorkflowStore(
 				options.client as unknown as AgenticChatWorkflowStoreClient
 			)
 		},
 		{
-			stallTimeoutMs: consumer.config.stalledTimeoutMs,
+			intervalMs: consumer.config.recoverySweepIntervalMs,
 			drainTimeoutMs: consumer.config.drainTimeoutMs,
-			onError: (error) => console.error('Agentic Chat stalled recovery sweep failed', error),
+			onError: (error) =>
+				console.error('Agentic Chat dead-turn recovery sweep failed', error),
 			onReport: reportAgenticChatStalledRecovery
 		}
 	);
@@ -513,7 +518,9 @@ export function createAgenticChatCompositionRoot(options: {
 					now: new Date().toISOString(),
 					providerActiveTimeoutMs:
 						options.providerBudgetMs ?? DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS,
-					stallTimeoutMs: consumer.config.stalledTimeoutMs
+					// Informational only: a live turn with no durable progress for its whole
+					// hard-cap window is overdue. Worker death is the lease's job, not this.
+					stallTimeoutMs: consumerConfig.workerTimeoutMs
 				})
 		}
 	});
@@ -538,25 +545,62 @@ export function createAgenticChatCompositionRoot(options: {
 		executionObservations,
 		sessionHandoff,
 		researchCapture,
-		statedFutureCapture,
 		consumptionBilling,
 		publisher,
 		cancellation,
+		lease,
 		recovery,
 		capacity
 	};
 }
 
+/**
+ * Lease loss and self-fencing are rare and actionable. One failed renewal is
+ * weather; a second in a row is a signal. A renewal answered `turn_terminal`
+ * is the turn's own finalize racing a renewal already in flight, not a loss.
+ */
+export function reportAgenticChatTurnLeaseEvent(event: AgenticChatTurnLeaseEventV1): void {
+	const payload = {
+		event: `agentic_chat_turn_lease_${event.type}`,
+		turnRunId: event.turnRunId,
+		executionGeneration: event.executionGeneration,
+		...(event.type === 'lease_lost' ? { reason: event.reason } : {}),
+		...(event.type === 'self_fenced' ? { unacknowledgedForMs: event.unacknowledgedForMs } : {}),
+		...(event.type === 'renew_failed'
+			? { consecutiveFailures: event.consecutiveFailures }
+			: {}),
+		...(event.type === 'renewal_stopped' ? { reason: event.reason } : {})
+	};
+	if (event.type === 'renew_failed') {
+		if (event.consecutiveFailures >= 2) {
+			console.error('Agentic Chat turn lease renewal keeps failing', payload, event.error);
+			return;
+		}
+		console.warn('Agentic Chat turn lease renewal failed', payload, event.error);
+		return;
+	}
+	if (event.type === 'lease_lost' && event.reason === 'turn_terminal') {
+		console.info('Agentic Chat turn lease ended with its turn', payload);
+		return;
+	}
+	if (event.type === 'renewal_stopped') {
+		console.warn('Agentic Chat turn lease renewal stopped after the hard cap', payload);
+		return;
+	}
+	console.error('Agentic Chat turn lease requires attention', payload);
+}
+
 export function reportAgenticChatStalledRecovery(report: AgenticChatStalledRecoveryReportV1): void {
-	if (report.candidateCount === 0) return;
+	if (report.candidateCount === 0 && report.parkedCount === 0) return;
 	const finishedAtMs = Date.parse(report.finishedAt);
-	const oldestCandidateAgeMs = report.results.reduce(
-		(oldest, result) => Math.max(oldest, finishedAtMs - Date.parse(result.startedAt)),
-		0
-	);
-	const attentionRequiredCount = report.results.filter((result) =>
-		STALLED_RECOVERY_ATTENTION_OUTCOMES.has(result.outcome)
-	).length;
+	const oldestCandidateAgeMs = report.results.reduce((oldest, result) => {
+		const startedAtMs = result.startedAt ? Date.parse(result.startedAt) : Number.NaN;
+		return Number.isFinite(startedAtMs) ? Math.max(oldest, finishedAtMs - startedAtMs) : oldest;
+	}, 0);
+	const attentionRequiredCount =
+		report.parkedCount +
+		report.results.filter((result) => STALLED_RECOVERY_ATTENTION_OUTCOMES.has(result.outcome))
+			.length;
 	const payload = {
 		event: 'agentic_chat_stalled_recovery_report',
 		alert: attentionRequiredCount > 0 || oldestCandidateAgeMs >= STALLED_TURN_ALERT_AGE_MS,
@@ -589,11 +633,7 @@ export function reportAgenticChatMutationSpan(span: AgenticChatMutationSpanV1): 
 }
 
 const STALLED_TURN_ALERT_AGE_MS = 10 * 60_000;
-const STALLED_RECOVERY_ATTENTION_OUTCOMES = new Set([
-	'effect_reconciliation_required',
-	'manual_recovery_required',
-	'failed'
-]);
+const STALLED_RECOVERY_ATTENTION_OUTCOMES = new Set(['manual_recovery_required', 'failed']);
 
 function disabledToolPort(code: 'mutating_tools_disabled') {
 	return {

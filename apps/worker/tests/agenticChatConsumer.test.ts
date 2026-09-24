@@ -1,6 +1,7 @@
 // apps/worker/tests/agenticChatConsumer.test.ts
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AGENTIC_CHAT_TURN_LEASE_POLICY_V1 } from '@buildos/shared-types';
 import { supabase } from '../src/lib/supabase';
 import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import {
@@ -74,14 +75,45 @@ describe('Agentic Chat queue consumer', () => {
 			createAgenticChatConsumer(executor, consumerOptions({ pollIntervalMs: 999 }))
 		).toThrow('polling cannot be below 1000ms');
 		expect(() =>
+			createAgenticChatConsumer(executor, consumerOptions({ workerTimeoutMs: 420_000 }))
+		).toThrow('below the 420000ms unleased recovery threshold');
+	});
+
+	it('keeps the worker lease strictly ahead of the database thresholds', () => {
+		const executor = testExecutor();
+		expect(DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG).toMatchObject({
+			workerTimeoutMs: 360_000,
+			leaseRenewIntervalMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.renewIntervalMs,
+			leaseSelfFenceAfterMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.selfFenceAfterMs,
+			recoverySweepIntervalMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.recoverySweepIntervalMs
+		});
+		expect(() =>
+			createAgenticChatConsumer(executor, consumerOptions({ leaseRenewIntervalMs: 999 }))
+		).toThrow('lease renewal cannot be below 1000ms');
+		expect(() =>
 			createAgenticChatConsumer(
 				executor,
-				consumerOptions({
-					workerTimeoutMs: 1_000,
-					stalledTimeoutMs: 1_000
-				})
+				consumerOptions({ leaseRenewIntervalMs: 20_000, leaseSelfFenceAfterMs: 30_000 })
 			)
-		).toThrow('stalled timeout must exceed');
+		).toThrow('must tolerate one missed renewal');
+		expect(() =>
+			createAgenticChatConsumer(executor, consumerOptions({ leaseSelfFenceAfterMs: 80_000 }))
+		).toThrow('must end two renewals before the 90000ms database expiry');
+		expect(() =>
+			createAgenticChatConsumer(
+				executor,
+				consumerOptions({ leaseRenewIntervalMs: 15_001, leaseSelfFenceAfterMs: 30_002 })
+			)
+		).toThrow('too slow for the Stop threshold');
+		expect(() =>
+			createAgenticChatConsumer(executor, consumerOptions({ workerTimeoutMs: 390_000 }))
+		).toThrow('below the 420000ms unleased recovery threshold');
+		expect(() =>
+			createAgenticChatConsumer(
+				executor,
+				consumerOptions({ recoverySweepIntervalMs: 90_001 })
+			)
+		).toThrow('recovery sweep must run between 1000ms and 90000ms');
 	});
 
 	it('uses wake for immediate pickup while retaining processor-managed lifecycle', async () => {
@@ -238,6 +270,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			CHAT_POLL_INTERVAL_MS: '1500',
 			CHAT_WORKER_TIMEOUT_MS: '2000',
 			CHAT_PROVIDER_BUDGET_MS: '1200',
+			// Retired knob: ignored now that the database owns liveness.
 			CHAT_STALLED_TIMEOUT_MS: '3000',
 			CHAT_DRAIN_TIMEOUT_MS: '1000',
 			CHAT_MAX_TOOL_ROUNDS: '4',
@@ -269,8 +302,10 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 				concurrency: 2,
 				pollIntervalMs: 1500,
 				workerTimeoutMs: 2000,
-				stalledTimeoutMs: 3000,
-				drainTimeoutMs: 1000
+				drainTimeoutMs: 1000,
+				leaseRenewIntervalMs: 15_000,
+				leaseSelfFenceAfterMs: 60_000,
+				recoverySweepIntervalMs: 15_000
 			},
 			publisher: DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
 			providerBudgetMs: 1200,
@@ -310,7 +345,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			CHAT_POLL_INTERVAL_MS: '1000',
 			CHAT_WORKER_TIMEOUT_MS: '360000',
 			CHAT_PROVIDER_BUDGET_MS: '270000',
-			CHAT_STALLED_TIMEOUT_MS: '420000',
 			CHAT_DRAIN_TIMEOUT_MS: '22000',
 			CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES: '262144',
 			CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES: '1048576',
@@ -341,7 +375,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			'CHAT_POLL_INTERVAL_MS',
 			'CHAT_WORKER_TIMEOUT_MS',
 			'CHAT_PROVIDER_BUDGET_MS',
-			'CHAT_STALLED_TIMEOUT_MS',
 			'CHAT_DRAIN_TIMEOUT_MS',
 			'CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES',
 			'CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES',
@@ -625,6 +658,15 @@ describe('Agentic Chat consumer lifecycle', () => {
 		expect(
 			vi.mocked(supabase.rpc).mock.calls.filter(([name]) => name === 'complete_queue_job')
 		).toHaveLength(20);
+		// Turn leases belong to the chat executor, never to the shared queue:
+		// general jobs keep their existing heartbeat and generic recovery.
+		expect(
+			rpcMock.mock.calls.filter(
+				([name]) =>
+					name === 'renew_agentic_chat_turn_lease' ||
+					name === 'recover_dead_agentic_chat_turns'
+			)
+		).toEqual([]);
 	});
 
 	it('refuses a mixed or general queue at construction', () => {
@@ -665,6 +707,7 @@ function recoveryHealth(overrides: Record<string, unknown> = {}) {
 		lastError: null,
 		lastCandidateCount: 0,
 		lastAttentionRequiredCount: 0,
+		lastParkedCount: 0,
 		...overrides
 	};
 }

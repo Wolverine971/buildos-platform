@@ -94,6 +94,7 @@ import {
 	standaloneReadPlanningContext
 } from './turn-run';
 import { AgenticChatTurnRunServices } from './turn-run-services';
+import type { AgenticChatTurnLeaseHandleV1 } from './turn-lease';
 import { AgenticChatTurnFinalizer } from './turn-finalizer';
 import { AgenticChatReadToolRunner } from './read-tool-runner';
 import { AgenticChatMutationToolRunner } from './mutation-tool-runner';
@@ -252,12 +253,41 @@ export class AgenticChatTurnExecutor {
 				false
 			);
 		}
+		// The lease is renewed from here until the terminal fence returns (the
+		// `finally` below). Its signal aborts the turn when the database no longer
+		// counts this worker as alive, and after the hard cap it keeps renewing only
+		// for the terminal budget (docs/architecture/AGENTIC_CHAT_TURN_LEASES_2026-09-23.md).
+		let lease: AgenticChatTurnLeaseHandleV1;
+		try {
+			lease = this.ports.lease.hold(
+				{
+					turnRunId: claim.turnRunId,
+					queueJobId: claim.queueJobId,
+					processingToken: envelope.processingToken,
+					executionGeneration: generation
+				},
+				{ deadlineSignal: job.signal }
+			);
+		} catch (error) {
+			// Nothing ran yet; release the cancellation registration taken above.
+			this.ports.cancellation.unregisterTurn(claim.turnRunId, generation);
+			return this.finalizer.recover(
+				envelope,
+				generation,
+				'transient_infra',
+				errorMessage(error),
+				null,
+				emptyProjection(),
+				false
+			);
+		}
 		const providerBudget = new AbortController();
 		// Aborts only the provider request started ahead of the durable prelude.
 		const speculativeProviderAbort = new AbortController();
 		const combined = combineAbortSignals([
 			job.signal,
 			cancellationSignal,
+			lease.signal,
 			overload.signal,
 			providerBudget.signal
 		]);
@@ -455,7 +485,8 @@ export class AgenticChatTurnExecutor {
 				projection,
 				terminalContext,
 				readInvalidationEpoch,
-				markToolExecution
+				markToolExecution,
+				lease
 			};
 			const legacyStreamInput: AgenticChatProviderInputV1 = {
 				executionInput,
@@ -695,11 +726,6 @@ export class AgenticChatTurnExecutor {
 					terminalContext,
 					combined.signal
 				);
-				await this.captureStatedFuture(
-					executionInput,
-					envelope.processingToken,
-					combined.signal
-				);
 			}
 			await this.publishExecutorLifecycle(
 				executionInput,
@@ -746,6 +772,7 @@ export class AgenticChatTurnExecutor {
 				!(error instanceof AgenticChatCommittedEffectPersistError) &&
 				!cancellationSignal.aborted &&
 				!job.signal.aborted &&
+				!lease.signal.aborted &&
 				!overload.signal.aborted &&
 				hasSuccessfulDurableEffects(terminalContext.toolExecutions)
 			) {
@@ -802,6 +829,7 @@ export class AgenticChatTurnExecutor {
 			if (providerBudgetTimer) clearTimeout(providerBudgetTimer);
 			preparedProvider?.release();
 			combined.dispose();
+			lease.release();
 			this.ports.cancellation.unregisterTurn(claim.turnRunId, generation);
 			if (executionInput) {
 				this.ports.readTool.completeTurnSecurityState?.(
@@ -831,15 +859,6 @@ export class AgenticChatTurnExecutor {
 		) {
 			await this.effects.captureResearch({ executionInput, processingToken, signal });
 		}
-		throwIfAborted(signal);
-	}
-
-	private async captureStatedFuture(
-		executionInput: AgenticChatWorkerExecutionInputV1,
-		processingToken: string,
-		signal: AbortSignal
-	): Promise<void> {
-		await this.effects.captureStatedFuture({ executionInput, processingToken, signal });
 		throwIfAborted(signal);
 	}
 

@@ -1,174 +1,149 @@
 // apps/worker/src/workers/agentic-chat/host/stalled-recovery.ts
 import {
-	AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+	AGENTIC_CHAT_TURN_LEASE_POLICY_V1,
+	type AgenticChatDeadTurnRecoveryOutcomeV1,
 	type AgenticChatRecoveryFailureClassV1,
 	type AgenticChatRecoveryRpcResultV1,
 	type AgenticChatTerminalFinalizeRpcResultV1,
-	type AgenticChatTurnClaimResultV1,
 	type ChatTurnTerminalStatusV1
 } from '@buildos/shared-types';
-import { stableUuidFromSeed } from '../shared/identity-hash';
 import {
 	type AgenticChatExecutionControlPortV1,
 	AgenticChatExecutionControlRpcError,
-	AgenticChatExecutionIdentityV1,
-	AgenticChatTerminalFinalizeInputV1
+	type AgenticChatTerminalFinalizeInputV1
 } from '../turn/execution-control';
-import type { AgenticChatRecoverySnapshotPortV1 } from './recovery-snapshot';
 import type { AgenticChatWorkflowStorePortV1 } from '../workflow/workflow-store';
 import {
 	buildAgenticChatWorkflowStalledCancelInputV1,
 	buildAgenticChatWorkflowStalledTerminalInputV1
 } from '../workflow/workflow-terminal';
 
-type StalledQueryError = { code?: string; message: string };
-type StalledQueryResult = PromiseLike<{ data: unknown; error: StalledQueryError | null }>;
-
-export type AgenticChatStalledReadQuery = StalledQueryResult & {
-	eq(column: string, value: unknown): AgenticChatStalledReadQuery;
-	lt(column: string, value: unknown): AgenticChatStalledReadQuery;
-	order(
-		column: string,
-		options?: { ascending?: boolean; nullsFirst?: boolean }
-	): AgenticChatStalledReadQuery;
-	limit(value: number): AgenticChatStalledReadQuery;
+/**
+ * Dead-turn recovery (docs/architecture/AGENTIC_CHAT_TURN_LEASES_2026-09-23.md).
+ * Every 15 s this sweep calls `recover_dead_agentic_chat_turns`, the same
+ * function the per-minute web cron calls, which decides and settles every dead
+ * turn in SQL, so the worker and the cron cannot disagree. Only a workflow turn
+ * that must end comes back here, handed off with a freshly rotated processing
+ * token and its workflow outcome, so it can be rendered from durable workflow
+ * truth. A handoff this sweep cannot converge is simply handed off again on a
+ * later sweep until the database ends the run itself.
+ */
+export type AgenticChatDeadTurnHandoffV1 = {
+	turnRunId: string;
+	queueJobId: string;
+	/** The rotated token: this sweep now holds the turn. */
+	processingToken: string;
+	userId: string;
+	correlationId: string;
+	executionGeneration: number;
+	startedAt: string;
+	silentSince: string;
+	/** recover_agentic_chat_workflow_turn_v1's decision; `cancel_requested` ends it as cancelled. */
+	workflowOutcome: string;
 };
 
-export type AgenticChatStalledDeferQuery = StalledQueryResult & {
-	eq(column: string, value: unknown): AgenticChatStalledDeferQuery;
-	is(column: string, value: null): AgenticChatStalledDeferQuery;
+export type AgenticChatDeadTurnRecoveryReportRowV1 = {
+	turnRunId: string;
+	queueJobId: string | null;
+	executionGeneration: number | null;
+	startedAt: string | null;
+	silentSince: string | null;
+	outcome: Exclude<AgenticChatDeadTurnRecoveryOutcomeV1, 'workflow_handoff'>;
+	error: string | null;
 };
 
-export type AgenticChatStalledReadClient = {
-	from(table: 'queue_jobs'): {
-		select(columns: string): AgenticChatStalledReadQuery;
-		/** Only for `defer`; a client without it simply never defers. */
-		update?(values: { updated_at: string }): AgenticChatStalledDeferQuery;
+export type AgenticChatDeadTurnRecoveryBatchV1 = {
+	candidateCount: number;
+	hasMore: boolean;
+	/** Turns whose recovery failed so often the database stopped trying. */
+	parkedCount: number;
+	/** Settled in SQL (handoffs excluded). */
+	results: AgenticChatDeadTurnRecoveryReportRowV1[];
+	/** Workflow turns this caller now holds, with their rotated tokens. */
+	handoffs: AgenticChatDeadTurnHandoffV1[];
+	/** Rows that could not be read; never retried here (the database sees them again). */
+	invalidRows: Array<{ turnRunId: string | null; error: string }>;
+};
+
+export type AgenticChatDeadTurnRecoveryPortV1 = {
+	recover(input: {
+		batchSize: number;
+		workflowHandoff: boolean;
+		signal: AbortSignal;
+	}): Promise<AgenticChatDeadTurnRecoveryBatchV1>;
+};
+
+export class AgenticChatDeadTurnRecoveryProtocolError extends Error {
+	constructor(message: string) {
+		super(`Agentic Chat dead-turn recovery receipt is invalid: ${message}`);
+		this.name = 'AgenticChatDeadTurnRecoveryProtocolError';
+	}
+}
+
+type RecoveryRpcError = { code?: string; message: string };
+
+export type AgenticChatDeadTurnRecoveryRpcClient = {
+	rpc(
+		name: 'recover_dead_agentic_chat_turns',
+		args: { p_batch_size: number; p_workflow_handoff: boolean }
+	): {
+		abortSignal(
+			signal: AbortSignal
+		): PromiseLike<{ data: unknown; error: RecoveryRpcError | null }>;
 	};
 };
 
-export type AgenticChatStalledCandidateV1 = AgenticChatExecutionIdentityV1 & {
-	userId: string;
-	correlationId: string;
-	startedAt: string;
-	stalledAt: string;
-};
-
-export type AgenticChatStalledCandidateSourcePortV1 = {
-	list(input: { stalledBefore: string; limit: number }): Promise<AgenticChatStalledCandidateV1[]>;
-	/**
-	 * Moves a row the sweep could not settle behind newer stalls. Candidates are the
-	 * oldest `updated_at` first, so without this a batch of rows that never settle
-	 * would fill every sweep and starve newly stalled turns forever.
-	 */
-	defer?(target: { queueJobId: string; processingToken: string | null }): Promise<void>;
-};
-
-export class AgenticChatStalledCandidateSourceError extends Error {
-	constructor(message: string) {
-		super(`Agentic Chat stalled candidate source failed: ${message}`);
-		this.name = 'AgenticChatStalledCandidateSourceError';
-	}
-}
-
-/**
- * Strict read adapter; every actual state transition remains RPC-owned. Its one
- * write, `defer`, only bumps `updated_at` under the queue heartbeat's fence.
- */
-export class SupabaseAgenticChatStalledCandidateSource
-	implements AgenticChatStalledCandidateSourcePortV1
+/** The one recovery RPC; every state transition stays inside it. */
+export class SupabaseAgenticChatDeadTurnRecoveryAdapter
+	implements AgenticChatDeadTurnRecoveryPortV1
 {
-	constructor(
-		private readonly client: AgenticChatStalledReadClient,
-		private readonly onInvalidCandidate: (
-			error: AgenticChatStalledCandidateSourceError,
-			index: number
-		) => void = () => undefined
-	) {}
+	constructor(private readonly client: AgenticChatDeadTurnRecoveryRpcClient) {}
 
-	async list(input: {
-		stalledBefore: string;
-		limit: number;
-	}): Promise<AgenticChatStalledCandidateV1[]> {
-		if (!isTimestamp(input.stalledBefore)) throw sourceError('stalled cutoff is invalid');
-		if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 128) {
-			throw sourceError('candidate limit must be between 1 and 128');
-		}
+	async recover(input: {
+		batchSize: number;
+		workflowHandoff: boolean;
+		signal: AbortSignal;
+	}): Promise<AgenticChatDeadTurnRecoveryBatchV1> {
+		validatePositiveInteger(input.batchSize, 'batchSize', 1, 100);
 		const { data, error } = await this.client
-			.from('queue_jobs')
-			.select('id, processing_token, user_id, started_at, updated_at, metadata')
-			.eq('job_type', 'agentic_chat_turn')
-			.eq('status', 'processing')
-			.lt('updated_at', input.stalledBefore)
-			.order('updated_at', { ascending: true, nullsFirst: false })
-			.limit(input.limit);
-		if (error) throw sourceError(error.message);
-		if (!Array.isArray(data)) throw sourceError('candidate rows are not an array');
-
-		const seen = new Set<string>();
-		const candidates: AgenticChatStalledCandidateV1[] = [];
-		for (const [index, value] of data.entries()) {
-			try {
-				candidates.push(parseCandidate(value, input.stalledBefore, seen));
-			} catch (error) {
-				const invalid =
-					error instanceof AgenticChatStalledCandidateSourceError
-						? error
-						: sourceError(errorMessage(error));
-				try {
-					this.onInvalidCandidate(invalid, index);
-				} catch {
-					// Invalid-row telemetry cannot hide other recoverable candidates.
-				}
-				// An unparseable row can never be recovered here; keep it from
-				// occupying a batch slot on every sweep. A duplicate row is the same
-				// queue job as a valid candidate, so it is left to that candidate.
-				const row = value as Record<string, unknown> | null;
-				if (row && typeof row.id === 'string' && !seen.has(row.id)) {
-					await this.defer({
-						queueJobId: row.id,
-						processingToken:
-							typeof row.processing_token === 'string' ? row.processing_token : null
-					}).catch(() => undefined);
-				}
-			}
+			.rpc('recover_dead_agentic_chat_turns', {
+				p_batch_size: input.batchSize,
+				p_workflow_handoff: input.workflowHandoff
+			})
+			.abortSignal(input.signal);
+		if (error) {
+			throw new Error(
+				`recover_dead_agentic_chat_turns failed${error.code ? ` (${error.code})` : ''}: ${error.message}`
+			);
 		}
-		return candidates;
-	}
-
-	async defer(target: { queueJobId: string; processingToken: string | null }): Promise<void> {
-		const table = this.client.from('queue_jobs');
-		if (!table.update) return;
-		const query = table
-			.update({ updated_at: new Date().toISOString() })
-			.eq('id', target.queueJobId)
-			.eq('status', 'processing');
-		const { error } = await (target.processingToken
-			? query.eq('processing_token', target.processingToken)
-			: query.is('processing_token', null));
-		if (error) throw sourceError(`defer failed: ${error.message}`);
+		return parseRecoveryBatch(data);
 	}
 }
 
-type RecoveryControlPort = Pick<
-	AgenticChatExecutionControlPortV1,
-	'claim' | 'recover' | 'finalize'
-> &
-	Partial<Pick<AgenticChatExecutionControlPortV1, 'recoverWorkflow'>>;
+type RecoveryControlPort = Pick<AgenticChatExecutionControlPortV1, 'recover' | 'finalize'>;
 
 export type AgenticChatStalledRecoveryOutcomeV1 =
 	| 'requeued'
+	/** Finalized in SQL: failed or cancelled, partial text kept. */
+	| 'finalized'
 	| 'terminal_reconciled'
-	| 'effect_reconciliation_required'
+	/** A workflow turn left for a live worker's sweep (web cron only). */
+	| 'deferred'
+	/** Alive after all when re-checked under its lock (it renewed in between). */
+	| 'not_dead'
+	/** Held by a live worker or another sweep right now; seen again next sweep. */
+	| 'skipped'
+	/** A handed-off turn another recoverer moved on first. */
 	| 'stale_owner'
 	| 'manual_recovery_required'
 	| 'failed';
 
 export type AgenticChatStalledRecoveryResultV1 = {
 	turnRunId: string;
-	queueJobId: string;
-	startedAt: string;
-	stalledAt: string;
+	queueJobId: string | null;
+	startedAt: string | null;
+	/** When the worker last proved it was alive (lease renewal or queue heartbeat). */
+	stalledAt: string | null;
 	executionGeneration: number | null;
 	outcome: AgenticChatStalledRecoveryOutcomeV1;
 	error: string | null;
@@ -178,13 +153,20 @@ export type AgenticChatStalledRecoveryReportV1 = {
 	startedAt: string;
 	finishedAt: string;
 	candidateCount: number;
+	parkedCount: number;
 	results: AgenticChatStalledRecoveryResultV1[];
 };
 
 export type AgenticChatStalledRecoveryHealthV1 = {
 	healthy: boolean;
 	state: 'idle' | 'running' | 'stopping' | 'stopped';
-	reason?: 'not_started' | 'stopping' | 'stopped' | 'repeated_sweep_failures';
+	reason?:
+		| 'not_started'
+		| 'awaiting_first_sweep'
+		| 'sweep_overdue'
+		| 'stopping'
+		| 'stopped'
+		| 'repeated_sweep_failures';
 	lastSweepStartedAt: string | null;
 	lastSweepFinishedAt: string | null;
 	lastSuccessfulSweepAt: string | null;
@@ -192,13 +174,15 @@ export type AgenticChatStalledRecoveryHealthV1 = {
 	lastError: string | null;
 	lastCandidateCount: number;
 	lastAttentionRequiredCount: number;
+	lastParkedCount: number;
 };
 
 export class AgenticChatStalledRecoverySweep {
 	private readonly options: {
-		stallTimeoutMs: number;
 		intervalMs: number;
 		batchSize: number;
+		maxBatchesPerSweep: number;
+		rpcTimeoutMs: number;
 		drainTimeoutMs: number;
 		now: () => Date;
 		onError: (error: unknown) => void;
@@ -206,6 +190,7 @@ export class AgenticChatStalledRecoverySweep {
 	};
 	private timer: NodeJS.Timeout | null = null;
 	private inFlight: Promise<AgenticChatStalledRecoveryReportV1> | null = null;
+	private inFlightStartedAtMs: number | null = null;
 	private started = false;
 	private stopping = false;
 	private stopped = false;
@@ -216,22 +201,26 @@ export class AgenticChatStalledRecoverySweep {
 	private lastError: string | null = null;
 	private lastCandidateCount = 0;
 	private lastAttentionRequiredCount = 0;
+	private lastParkedCount = 0;
 
 	constructor(
 		private readonly ports: {
-			candidates: AgenticChatStalledCandidateSourcePortV1;
+			/** `recover_dead_agentic_chat_turns`: decides and settles in one transaction per turn. */
+			recovery: AgenticChatDeadTurnRecoveryPortV1;
 			control: RecoveryControlPort;
-			snapshots: AgenticChatRecoverySnapshotPortV1;
 			/**
-			 * Durable workflow truth (Tasker 87 slice C). Read only for a workflow turn that
-			 * may not retry; ordinary turns never reach it.
+			 * Durable workflow truth (Tasker 87 slice C). With it, workflow turns that must
+			 * end are handed to this sweep and rendered from durable truth; without it, the
+			 * database ends them generically after a further lease period.
 			 */
 			workflowRuns?: Pick<AgenticChatWorkflowStorePortV1, 'loadRun'>;
 		},
 		options: Partial<{
-			stallTimeoutMs: number;
 			intervalMs: number;
 			batchSize: number;
+			/** `has_more` is followed within one sweep, at most this many calls and one interval. */
+			maxBatchesPerSweep: number;
+			rpcTimeoutMs: number;
 			drainTimeoutMs: number;
 			now: () => Date;
 			onError: (error: unknown) => void;
@@ -239,17 +228,20 @@ export class AgenticChatStalledRecoverySweep {
 		}> = {}
 	) {
 		this.options = {
-			stallTimeoutMs: options.stallTimeoutMs ?? 420_000,
-			intervalMs: options.intervalMs ?? 60_000,
-			batchSize: options.batchSize ?? 32,
+			intervalMs:
+				options.intervalMs ?? AGENTIC_CHAT_TURN_LEASE_POLICY_V1.recoverySweepIntervalMs,
+			batchSize: options.batchSize ?? 16,
+			maxBatchesPerSweep: options.maxBatchesPerSweep ?? 4,
+			rpcTimeoutMs: options.rpcTimeoutMs ?? AGENTIC_CHAT_TURN_LEASE_POLICY_V1.rpcTimeoutMs,
 			drainTimeoutMs: options.drainTimeoutMs ?? 25_000,
 			now: options.now ?? (() => new Date()),
 			onError: options.onError ?? (() => undefined),
 			onReport: options.onReport ?? (() => undefined)
 		};
-		validatePositiveInteger(this.options.stallTimeoutMs, 'stallTimeoutMs', 1);
 		validatePositiveInteger(this.options.intervalMs, 'intervalMs', 250);
-		validatePositiveInteger(this.options.batchSize, 'batchSize', 1, 128);
+		validatePositiveInteger(this.options.batchSize, 'batchSize', 1, 100);
+		validatePositiveInteger(this.options.maxBatchesPerSweep, 'maxBatchesPerSweep', 1, 16);
+		validatePositiveInteger(this.options.rpcTimeoutMs, 'rpcTimeoutMs', 1);
 		validatePositiveInteger(this.options.drainTimeoutMs, 'drainTimeoutMs', 1);
 	}
 
@@ -257,6 +249,8 @@ export class AgenticChatStalledRecoverySweep {
 		if (this.stopping) throw new Error('Agentic Chat stalled recovery sweep is stopping');
 		if (this.timer) return;
 		this.started = true;
+		// The first sweep runs at boot: health stays unhealthy until one succeeds,
+		// so a worker deployed without the recovery RPC never passes its healthcheck.
 		void this.runOnce().catch((error) => this.reportError(error));
 		this.timer = setInterval(() => {
 			void this.runOnce().catch((error) => this.reportError(error));
@@ -298,6 +292,7 @@ export class AgenticChatStalledRecoverySweep {
 			return Promise.reject(new Error('Agentic Chat stalled recovery sweep is stopping'));
 		}
 		if (this.inFlight) return this.inFlight;
+		this.inFlightStartedAtMs = this.options.now().getTime();
 		const sweep = this.executeSweep()
 			.then(
 				(report) => {
@@ -311,7 +306,10 @@ export class AgenticChatStalledRecoverySweep {
 				}
 			)
 			.finally(() => {
-				if (this.inFlight === sweep) this.inFlight = null;
+				if (this.inFlight === sweep) {
+					this.inFlight = null;
+					this.inFlightStartedAtMs = null;
+				}
 				if (this.stopping) this.stopped = true;
 			});
 		this.inFlight = sweep;
@@ -334,13 +332,24 @@ export class AgenticChatStalledRecoverySweep {
 			consecutiveSweepFailures: this.consecutiveSweepFailures,
 			lastError: this.lastError,
 			lastCandidateCount: this.lastCandidateCount,
-			lastAttentionRequiredCount: this.lastAttentionRequiredCount
+			lastAttentionRequiredCount: this.lastAttentionRequiredCount,
+			lastParkedCount: this.lastParkedCount
 		};
 		if (state === 'idle') return { healthy: false, reason: 'not_started', ...base };
 		if (state === 'stopping') return { healthy: true, reason: 'stopping', ...base };
 		if (state === 'stopped') return { healthy: true, reason: 'stopped', ...base };
+		if (
+			this.inFlightStartedAtMs !== null &&
+			this.options.now().getTime() - this.inFlightStartedAtMs >
+				MAX_IN_FLIGHT_INTERVALS * this.options.intervalMs
+		) {
+			return { healthy: false, reason: 'sweep_overdue', ...base };
+		}
 		if (this.consecutiveSweepFailures >= MAX_CONSECUTIVE_SWEEP_FAILURES) {
 			return { healthy: false, reason: 'repeated_sweep_failures', ...base };
+		}
+		if (this.lastSuccessfulSweepAt === null) {
+			return { healthy: false, reason: 'awaiting_first_sweep', ...base };
 		}
 		return { healthy: true, ...base };
 	}
@@ -364,34 +373,68 @@ export class AgenticChatStalledRecoverySweep {
 	private async executeSweep(): Promise<AgenticChatStalledRecoveryReportV1> {
 		const started = this.options.now();
 		this.lastSweepStartedAt = started.toISOString();
-		const stalledBefore = new Date(
-			started.getTime() - this.options.stallTimeoutMs
-		).toISOString();
-		const candidates = await this.ports.candidates.list({
-			stalledBefore,
-			limit: this.options.batchSize
-		});
-		if (candidates.length > this.options.batchSize) {
-			throw new Error('Stalled candidate source exceeded the requested batch size');
-		}
 		const results: AgenticChatStalledRecoveryResultV1[] = [];
-		for (const candidate of candidates) {
-			const result = await this.recoverCandidate(candidate);
-			results.push(result);
-			if (!SETTLED_OUTCOMES.has(result.outcome) && this.ports.candidates.defer) {
-				try {
-					await this.ports.candidates.defer(candidate);
-				} catch (error) {
-					this.reportError(error);
-				}
+		let candidateCount = 0;
+		let parkedCount = 0;
+		for (let call = 0; call < this.options.maxBatchesPerSweep; call += 1) {
+			const batch = await this.recoverBatch();
+			candidateCount += batch.candidateCount;
+			parkedCount = batch.parkedCount;
+			for (const row of batch.results) results.push(settledSqlResult(row));
+			for (const invalid of batch.invalidRows) {
+				results.push({
+					turnRunId: invalid.turnRunId ?? 'unknown',
+					queueJobId: null,
+					startedAt: null,
+					stalledAt: null,
+					executionGeneration: null,
+					outcome: 'failed',
+					error: invalid.error
+				});
 			}
+			// A handed-off workflow turn is held by this sweep until the database
+			// sees it again; if rendering fails here it is handed off again later.
+			for (const handoff of batch.handoffs) {
+				results.push(await this.recoverHandoff(handoff));
+			}
+			const elapsedMs = this.options.now().getTime() - started.getTime();
+			if (!batch.hasMore || this.stopping || elapsedMs >= this.options.intervalMs) break;
 		}
 		return {
 			startedAt: started.toISOString(),
 			finishedAt: this.options.now().toISOString(),
-			candidateCount: candidates.length,
+			candidateCount,
+			parkedCount,
 			results
 		};
+	}
+
+	/** One bounded RPC: a hung socket fails this sweep, never the next one. */
+	private async recoverBatch(): Promise<AgenticChatDeadTurnRecoveryBatchV1> {
+		const call = new AbortController();
+		let timer: NodeJS.Timeout | null = null;
+		const timeout = new Promise<never>((_resolve, reject) => {
+			timer = setTimeout(() => {
+				const error = new Error(
+					`recover_dead_agentic_chat_turns did not settle within ${this.options.rpcTimeoutMs}ms`
+				);
+				call.abort(error);
+				reject(error);
+			}, this.options.rpcTimeoutMs);
+			timer.unref?.();
+		});
+		try {
+			return await Promise.race([
+				this.ports.recovery.recover({
+					batchSize: this.options.batchSize,
+					workflowHandoff: Boolean(this.ports.workflowRuns),
+					signal: call.signal
+				}),
+				timeout
+			]);
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
 	}
 
 	private observeSweepSuccess(report: AgenticChatStalledRecoveryReportV1): void {
@@ -401,9 +444,11 @@ export class AgenticChatStalledRecoverySweep {
 		this.consecutiveSweepFailures = 0;
 		this.lastError = null;
 		this.lastCandidateCount = report.candidateCount;
-		this.lastAttentionRequiredCount = report.results.filter((result) =>
-			ATTENTION_REQUIRED_OUTCOMES.has(result.outcome)
-		).length;
+		this.lastParkedCount = report.parkedCount;
+		this.lastAttentionRequiredCount =
+			report.parkedCount +
+			report.results.filter((result) => ATTENTION_REQUIRED_OUTCOMES.has(result.outcome))
+				.length;
 	}
 
 	private observeSweepFailure(error: unknown): void {
@@ -412,109 +457,54 @@ export class AgenticChatStalledRecoverySweep {
 		this.lastError = errorMessage(error);
 	}
 
-	private async recoverCandidate(
-		candidate: AgenticChatStalledCandidateV1
+	/**
+	 * A workflow turn that must end, rendered from durable workflow truth (an
+	 * accepted answer, a kept durable prefix, a model-free partial built from
+	 * accepted reports, or a failure when none was accepted), with no model call.
+	 * The database already decided (`workflowOutcome`); this never retries a
+	 * workflow turn or falls back to the ordinary pre-start path.
+	 */
+	private async recoverHandoff(
+		handoff: AgenticChatDeadTurnHandoffV1
 	): Promise<AgenticChatStalledRecoveryResultV1> {
-		let generation: number | null = null;
+		if (!this.ports.workflowRuns) {
+			return recoveryResult(
+				handoff,
+				'failed',
+				'A workflow handoff arrived without a durable workflow reader'
+			);
+		}
+		const terminal: WorkflowTerminalRecovery =
+			handoff.workflowOutcome === 'cancel_requested'
+				? { failureClass: 'cancelled', reason: null }
+				: { failureClass: 'permanent', reason: handoff.workflowOutcome };
 		try {
-			const claim = await this.ports.control.claim(candidate);
-			validateClaimCandidate(claim, candidate);
-			generation = claim.executionGeneration;
-			if (generation < 1) {
-				return recoveryResult(candidate, generation, 'manual_recovery_required');
-			}
-			const workflow = await this.recoverWorkflow(candidate, claim, claimFailureClass(claim));
-			if (workflow.result) return workflow.result;
-			return await this.converge(candidate, claim, workflow.failureClass, workflow.terminal);
+			return await this.converge(handoff, terminal);
 		} catch (error) {
 			return recoveryResult(
-				candidate,
-				generation,
+				handoff,
 				isOwnershipLoss(error) ? 'stale_owner' : 'failed',
 				errorMessage(error)
 			);
 		}
 	}
 
-	/**
-	 * Enforced read-only workflow turns (Tasker 85/87) try their atomic recovery first.
-	 * Every ordinary turn returns `policy_denied` and continues through the unchanged
-	 * ordinary recovery below. A workflow turn that may not retry never falls back to
-	 * ordinary pre-start retry: it is terminalized from durable workflow truth (an
-	 * accepted answer, a kept durable prefix, a model-free partial built from accepted
-	 * reports, or a failure when none was accepted), with no model call.
-	 */
-	private async recoverWorkflow(
-		candidate: AgenticChatStalledCandidateV1,
-		claim: AgenticChatTurnClaimResultV1,
-		failureClass: AgenticChatRecoveryFailureClassV1
-	): Promise<{
-		result?: AgenticChatStalledRecoveryResultV1;
-		failureClass: AgenticChatRecoveryFailureClassV1;
-		/** Present only for a workflow turn that must be terminalized now. */
-		terminal?: WorkflowTerminalRecovery;
-	}> {
-		const control = this.ports.control;
-		if (!control.recoverWorkflow || claim.outcome === 'already_terminal')
-			return { failureClass };
-		let receipt;
-		try {
-			receipt = await control.recoverWorkflow({
-				turnRunId: candidate.turnRunId,
-				queueJobId: candidate.queueJobId,
-				processingToken: candidate.processingToken,
-				executionGeneration: claim.executionGeneration,
-				failureClass,
-				errorMessage: 'Agentic Chat worker interrupted while queue ownership was stalled'
-			});
-		} catch {
-			// Nothing committed; the ordinary recovery path stays authoritative.
-			return { failureClass };
-		}
-		const generation = claim.executionGeneration;
-		switch (receipt.outcome) {
-			case 'retry_scheduled':
-			case 'already_requeued':
-				return { result: recoveryResult(candidate, generation, 'requeued'), failureClass };
-			case 'terminal_reconciled':
-				return {
-					result: recoveryResult(candidate, generation, 'terminal_reconciled'),
-					failureClass
-				};
-			case 'stale_generation':
-			case 'ownership_lost':
-				return {
-					result: recoveryResult(candidate, generation, 'stale_owner'),
-					failureClass
-				};
-			case 'policy_denied':
-				return { failureClass };
-			case 'cancel_requested':
-				return { failureClass: 'cancelled', terminal: { reason: null } };
-			default:
-				// deadline, budget, attempts, access, or a non-retryable class: terminal.
-				return { failureClass: 'permanent', terminal: { reason: receipt.outcome } };
-		}
-	}
-
 	private async converge(
-		candidate: AgenticChatStalledCandidateV1,
-		claim: AgenticChatTurnClaimResultV1,
-		initialFailureClass: AgenticChatRecoveryFailureClassV1,
-		workflow?: WorkflowTerminalRecovery
+		handoff: AgenticChatDeadTurnHandoffV1,
+		terminal: WorkflowTerminalRecovery
 	): Promise<AgenticChatStalledRecoveryResultV1> {
-		let failureClass = initialFailureClass;
+		let failureClass: AgenticChatRecoveryFailureClassV1 = terminal.failureClass;
 		let lastConvergenceError: string | null = null;
 		for (let attempt = 0; attempt < MAX_CONVERGENCE_STEPS; attempt += 1) {
 			const recovery = await this.ports.control.recover({
-				turnRunId: candidate.turnRunId,
-				queueJobId: candidate.queueJobId,
-				processingToken: candidate.processingToken,
-				executionGeneration: claim.executionGeneration,
+				turnRunId: handoff.turnRunId,
+				queueJobId: handoff.queueJobId,
+				processingToken: handoff.processingToken,
+				executionGeneration: handoff.executionGeneration,
 				failureClass,
-				errorMessage: 'Agentic Chat worker interrupted while queue ownership was stalled'
+				errorMessage: 'Agentic Chat worker lease expired'
 			});
-			const settled = settledRecoveryResult(candidate, claim.executionGeneration, recovery);
+			const settled = settledRecoveryResult(handoff, recovery);
 			if (settled) return settled;
 
 			if (
@@ -522,8 +512,7 @@ export class AgenticChatStalledRecoverySweep {
 				recovery.outcome !== 'finalize_cancelled'
 			) {
 				return recoveryResult(
-					candidate,
-					claim.executionGeneration,
+					handoff,
 					'manual_recovery_required',
 					`Recovery returned unsupported outcome: ${recovery.outcome}`
 				);
@@ -531,80 +520,42 @@ export class AgenticChatStalledRecoverySweep {
 
 			const status = recovery.outcome === 'finalize_cancelled' ? 'cancelled' : 'failed';
 			let request: AgenticChatTerminalFinalizeInputV1;
-			if (workflow && this.ports.workflowRuns) {
-				// A workflow turn is terminalized from durable workflow truth, never from the
-				// ordinary stream snapshot: answer batches take stream sequences without event
-				// rows, so that snapshot cannot represent a generation with a durable answer
-				// prefix. The finalize below stays fenced by token and generation, and answers
-				// `already_terminal` or `stale_generation` if the turn moved on meanwhile.
-				try {
-					request = await this.workflowTerminalInput(
-						candidate,
-						claim.executionGeneration,
-						status,
-						workflow.reason ?? 'finalize_failed'
-					);
-				} catch (error) {
-					// A partial answer needs durable workflow truth. Re-run the fenced recovery
-					// within the bounded window rather than failing a turn that may have content.
-					lastConvergenceError = `Workflow truth read failed: ${errorMessage(error)}`;
-					continue;
-				}
-			} else {
-				let snapshot;
-				try {
-					snapshot = await this.ports.snapshots.load({
-						turnRunId: candidate.turnRunId,
-						userId: candidate.userId,
-						executionGeneration: claim.executionGeneration
-					});
-				} catch (error) {
-					// Durable truth may have changed after the recovery decision. Re-run
-					// the fenced recovery RPC before classifying this candidate as failed.
-					lastConvergenceError = `Recovery snapshot failed: ${errorMessage(error)}`;
-					continue;
-				}
-				if (isTerminalStatus(snapshot.status)) {
-					failureClass = terminalFailureClass(snapshot.status);
-					continue;
-				}
-				if (snapshot.status !== 'running') {
-					return recoveryResult(
-						candidate,
-						claim.executionGeneration,
-						'manual_recovery_required',
-						`Recovery snapshot has unsupported status: ${snapshot.status}`
-					);
-				}
-				request = buildTerminalInput(
-					candidate,
-					snapshot,
-					status,
-					status === 'failed' && workflow?.reason
-						? `workflow_${workflow.reason}`
-						: recovery.failure_code
-				);
-			}
-			let terminal: AgenticChatTerminalFinalizeRpcResultV1;
+			// A workflow turn is terminalized from durable workflow truth, never from the
+			// ordinary stream snapshot: answer batches take stream sequences without event
+			// rows, so that snapshot cannot represent a generation with a durable answer
+			// prefix. The finalize below stays fenced by token and generation, and answers
+			// `already_terminal` or `stale_generation` if the turn moved on meanwhile.
 			try {
-				terminal = await this.ports.control.finalize(request);
+				request = await this.workflowTerminalInput(
+					handoff,
+					status,
+					terminal.reason ?? 'finalize_failed'
+				);
+			} catch (error) {
+				// A partial answer needs durable workflow truth. Re-run the fenced recovery
+				// within the bounded window rather than failing a turn that may have content.
+				lastConvergenceError = `Workflow truth read failed: ${errorMessage(error)}`;
+				continue;
+			}
+			let finalized: AgenticChatTerminalFinalizeRpcResultV1;
+			try {
+				finalized = await this.ports.control.finalize(request);
 			} catch (error) {
 				// A lost finalize response is resolved by the next recovery call.
 				lastConvergenceError = `Recovery finalization failed: ${errorMessage(error)}`;
 				continue;
 			}
-			if (terminal.outcome === 'stale_generation') {
-				return recoveryResult(candidate, claim.executionGeneration, 'stale_owner');
+			if (finalized.outcome === 'stale_generation') {
+				return recoveryResult(handoff, 'stale_owner');
 			}
-			if (terminal.outcome === 'cancel_requested') {
+			if (finalized.outcome === 'cancel_requested') {
 				failureClass = 'cancelled';
 				continue;
 			}
-			failureClass = terminalFailureClass(terminal.status);
+			failureClass = terminalFailureClass(finalized.status);
 		}
 		return recoveryResult(
-			candidate,
-			claim.executionGeneration,
+			handoff,
 			'manual_recovery_required',
 			lastConvergenceError ?? 'Recovery did not converge within the bounded retry window'
 		);
@@ -615,25 +566,24 @@ export class AgenticChatStalledRecoverySweep {
 	 * pure decision. A retried call rebuilds the same text and the same stable message id.
 	 */
 	private async workflowTerminalInput(
-		candidate: AgenticChatStalledCandidateV1,
-		executionGeneration: number,
+		handoff: AgenticChatDeadTurnHandoffV1,
 		status: 'failed' | 'cancelled',
 		reason: string
 	): Promise<AgenticChatTerminalFinalizeInputV1> {
-		const loaded = await this.ports.workflowRuns!.loadRun(candidate.turnRunId);
+		const loaded = await this.ports.workflowRuns!.loadRun(handoff.turnRunId);
 		// Truth that names another turn or owner cannot authorize showing any content.
 		const state =
-			loaded && loaded.turnRunId === candidate.turnRunId && loaded.userId === candidate.userId
+			loaded && loaded.turnRunId === handoff.turnRunId && loaded.userId === handoff.userId
 				? loaded
 				: null;
 		const input = {
 			fence: {
-				turnRunId: candidate.turnRunId,
-				queueJobId: candidate.queueJobId,
-				processingToken: candidate.processingToken,
-				executionGeneration
+				turnRunId: handoff.turnRunId,
+				queueJobId: handoff.queueJobId,
+				processingToken: handoff.processingToken,
+				executionGeneration: handoff.executionGeneration
 			},
-			userId: candidate.userId,
+			userId: handoff.userId,
 			state,
 			observedAt: this.options.now().toISOString()
 		};
@@ -644,94 +594,25 @@ export class AgenticChatStalledRecoverySweep {
 }
 
 /** A workflow turn to terminalize now; `reason` is null for a durable Stop. */
-type WorkflowTerminalRecovery = { reason: string | null };
+type WorkflowTerminalRecovery = {
+	failureClass: Extract<AgenticChatRecoveryFailureClassV1, 'cancelled' | 'permanent'>;
+	reason: string | null;
+};
 
 function settledRecoveryResult(
-	candidate: AgenticChatStalledCandidateV1,
-	generation: number,
+	handoff: AgenticChatDeadTurnHandoffV1,
 	recovery: AgenticChatRecoveryRpcResultV1
 ): AgenticChatStalledRecoveryResultV1 | null {
 	if (recovery.outcome === 'retry_scheduled' || recovery.outcome === 'already_requeued') {
-		return recoveryResult(candidate, generation, 'requeued');
-	}
-	if (recovery.outcome === 'effect_reconciliation_required') {
-		return recoveryResult(candidate, generation, 'effect_reconciliation_required');
+		return recoveryResult(handoff, 'requeued');
 	}
 	if (recovery.outcome === 'stale_generation') {
-		return recoveryResult(candidate, generation, 'stale_owner');
+		return recoveryResult(handoff, 'stale_owner');
 	}
 	if (recovery.outcome === 'queue_reconciled' || recovery.outcome === 'already_reconciled') {
-		return recoveryResult(candidate, generation, 'terminal_reconciled');
+		return recoveryResult(handoff, 'terminal_reconciled');
 	}
 	return null;
-}
-
-function buildTerminalInput(
-	candidate: AgenticChatStalledCandidateV1,
-	snapshot: Awaited<ReturnType<AgenticChatRecoverySnapshotPortV1['load']>>,
-	status: Extract<ChatTurnTerminalStatusV1, 'failed' | 'cancelled'>,
-	failureCode: AgenticChatRecoveryRpcResultV1['failure_code'] | string
-): AgenticChatTerminalFinalizeInputV1 {
-	const normalizedFailureCode = failureCode ?? (status === 'cancelled' ? 'cancelled' : 'unknown');
-	return {
-		turnRunId: candidate.turnRunId,
-		queueJobId: candidate.queueJobId,
-		processingToken: candidate.processingToken,
-		userId: candidate.userId,
-		executionGeneration: snapshot.executionGeneration,
-		status,
-		finishedReason: status === 'cancelled' ? 'cancelled' : 'worker_interrupted',
-		failureCode: normalizedFailureCode,
-		assistantMessageId:
-			status === 'cancelled' && snapshot.assistantText.length > 0
-				? stableRecoveryMessageId(candidate.turnRunId, snapshot.executionGeneration)
-				: null,
-		assistantText: snapshot.assistantText,
-		assistantMetadata: {
-			transport_contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
-			turn_run_id: candidate.turnRunId,
-			execution_generation: snapshot.executionGeneration,
-			recovered_from_stall: true,
-			// The interrupted process no longer owns the exact in-memory round count.
-			// Finalization derives calls from the durable ledger and treats zero as the
-			// conservative one-round fallback for failed/cancelled turns with ledger rows.
-			tool_round_count: 0
-		},
-		promptTokens: null,
-		completionTokens: null,
-		totalTokens: null,
-		projection: snapshot.projection,
-		eventPayload: {
-			type: 'done',
-			status,
-			finished_reason: status === 'cancelled' ? 'cancelled' : 'worker_interrupted',
-			failure_code: normalizedFailureCode,
-			recovered_from_stall: true
-		}
-	};
-}
-
-function validateClaimCandidate(
-	claim: AgenticChatTurnClaimResultV1,
-	candidate: AgenticChatStalledCandidateV1
-): void {
-	if (
-		claim.turnRunId !== candidate.turnRunId ||
-		claim.queueJobId !== candidate.queueJobId ||
-		claim.userId !== candidate.userId ||
-		claim.correlationId !== candidate.correlationId
-	) {
-		throw new Error('Stalled claim receipt does not match the queue candidate');
-	}
-}
-
-function claimFailureClass(claim: AgenticChatTurnClaimResultV1): AgenticChatRecoveryFailureClassV1 {
-	if (claim.outcome === 'cancel_requested') return 'cancelled';
-	if (claim.outcome === 'already_terminal') {
-		if (!isTerminalStatus(claim.status)) throw new Error('Terminal claim status is invalid');
-		return terminalFailureClass(claim.status);
-	}
-	return claim.executionMayStart ? 'timeout_pre_start' : 'timeout_post_start';
 }
 
 function terminalFailureClass(status: ChatTurnTerminalStatusV1): AgenticChatRecoveryFailureClassV1 {
@@ -740,73 +621,172 @@ function terminalFailureClass(status: ChatTurnTerminalStatusV1): AgenticChatReco
 	return 'unknown';
 }
 
-function isTerminalStatus(value: unknown): value is ChatTurnTerminalStatusV1 {
-	return value === 'completed' || value === 'failed' || value === 'cancelled';
-}
-
-function stableRecoveryMessageId(turnRunId: string, generation: number): string {
-	return stableUuidFromSeed(`agentic-chat-stalled-message-v1:${turnRunId}:${generation}`);
-}
-
 function recoveryResult(
-	candidate: AgenticChatStalledCandidateV1,
-	executionGeneration: number | null,
+	handoff: AgenticChatDeadTurnHandoffV1,
 	outcome: AgenticChatStalledRecoveryOutcomeV1,
 	error: string | null = null
 ): AgenticChatStalledRecoveryResultV1 {
 	return {
-		turnRunId: candidate.turnRunId,
-		queueJobId: candidate.queueJobId,
-		startedAt: candidate.startedAt,
-		stalledAt: candidate.stalledAt,
-		executionGeneration,
+		turnRunId: handoff.turnRunId,
+		queueJobId: handoff.queueJobId,
+		startedAt: handoff.startedAt,
+		stalledAt: handoff.silentSince,
+		executionGeneration: handoff.executionGeneration,
 		outcome,
 		error
 	};
 }
 
-function parseCandidate(
-	value: unknown,
-	stalledBefore: string,
-	seen: Set<string>
-): AgenticChatStalledCandidateV1 {
-	const row = requireRecord(value, 'candidate row');
-	canonicalUuid(row.id, 'queue job id');
-	canonicalUuid(row.processing_token, 'processing token');
-	canonicalUuid(row.user_id, 'user id');
-	if (!isTimestamp(row.started_at)) throw sourceError('candidate started_at is invalid');
-	if (!isTimestamp(row.updated_at) || Date.parse(row.updated_at) >= Date.parse(stalledBefore)) {
-		throw sourceError('candidate timestamp is not before the cutoff');
-	}
-	if (Date.parse(row.started_at) > Date.parse(row.updated_at)) {
-		throw sourceError('candidate started_at is after its last progress timestamp');
-	}
-	const metadata = requireRecord(row.metadata, 'candidate metadata');
-	canonicalUuid(metadata.turnRunId, 'metadata turnRunId');
-	canonicalUuid(metadata.correlationId, 'metadata correlationId');
-	if (seen.has(row.id)) throw sourceError('duplicate queue candidate identity');
-	seen.add(row.id);
+/** How a turn the database settled appears in the sweep report. */
+function settledSqlResult(
+	row: AgenticChatDeadTurnRecoveryReportRowV1
+): AgenticChatStalledRecoveryResultV1 {
 	return {
-		turnRunId: metadata.turnRunId,
-		queueJobId: row.id,
-		processingToken: row.processing_token,
-		userId: row.user_id,
-		correlationId: metadata.correlationId,
-		startedAt: row.started_at,
-		stalledAt: row.updated_at
+		turnRunId: row.turnRunId,
+		queueJobId: row.queueJobId,
+		startedAt: row.startedAt,
+		stalledAt: row.silentSince,
+		executionGeneration: row.executionGeneration,
+		outcome: SQL_OUTCOMES[row.outcome],
+		error: row.error
 	};
+}
+
+const SQL_OUTCOMES: Record<
+	AgenticChatDeadTurnRecoveryReportRowV1['outcome'],
+	AgenticChatStalledRecoveryOutcomeV1
+> = {
+	requeued: 'requeued',
+	finalized: 'finalized',
+	terminal_reconciled: 'terminal_reconciled',
+	workflow_deferred: 'deferred',
+	not_dead: 'not_dead',
+	skipped: 'skipped',
+	failed: 'failed'
+};
+
+/**
+ * Reads what it can: only a report that is not an object at all is rejected.
+ * An unreadable row is reported, never allowed to hide the others, and a
+ * handoff is parsed on its own so its rotated token is never dropped because a
+ * sibling row was malformed.
+ */
+function parseRecoveryBatch(value: unknown): AgenticChatDeadTurnRecoveryBatchV1 {
+	const report = requireRecord(value, 'recovery report');
+	const results: AgenticChatDeadTurnRecoveryReportRowV1[] = [];
+	const handoffs: AgenticChatDeadTurnHandoffV1[] = [];
+	const invalidRows: AgenticChatDeadTurnRecoveryBatchV1['invalidRows'] = [];
+	const seen = new Set<string>();
+	for (const item of Array.isArray(report.handoffs) ? report.handoffs : []) {
+		const turnRunId = rowTurnRunId(item);
+		try {
+			const row = requireRecord(item, 'handoff row');
+			if (row.outcome !== 'workflow_handoff')
+				throw protocolError('handoff outcome is invalid');
+			canonicalUuid(row.turn_run_id, 'handoff turn_run_id');
+			canonicalUuid(row.queue_job_id, 'handoff queue_job_id');
+			canonicalUuid(row.processing_token, 'handoff processing_token');
+			canonicalUuid(row.user_id, 'handoff user_id');
+			canonicalUuid(row.correlation_id, 'handoff correlation_id');
+			if (
+				!Number.isSafeInteger(row.execution_generation) ||
+				(row.execution_generation as number) < 1
+			) {
+				throw protocolError('handoff execution_generation is invalid');
+			}
+			if (!isTimestamp(row.started_at) || !isTimestamp(row.silent_since)) {
+				throw protocolError('handoff timestamps are invalid');
+			}
+			if (typeof row.workflow_outcome !== 'string' || !row.workflow_outcome.trim()) {
+				throw protocolError('handoff workflow_outcome is invalid');
+			}
+			if (seen.has(row.turn_run_id)) throw protocolError('duplicate handoff');
+			seen.add(row.turn_run_id);
+			handoffs.push({
+				turnRunId: row.turn_run_id,
+				queueJobId: row.queue_job_id,
+				processingToken: row.processing_token,
+				userId: row.user_id,
+				correlationId: row.correlation_id,
+				executionGeneration: row.execution_generation as number,
+				startedAt: row.started_at,
+				silentSince: row.silent_since,
+				workflowOutcome: row.workflow_outcome.slice(0, 128)
+			});
+		} catch (error) {
+			invalidRows.push({ turnRunId, error: errorMessage(error) });
+		}
+	}
+	for (const item of Array.isArray(report.results) ? report.results : []) {
+		const turnRunId = rowTurnRunId(item);
+		try {
+			const row = requireRecord(item, 'result row');
+			canonicalUuid(row.turn_run_id, 'result turn_run_id');
+			// The tokenless summary of a handoff; the handoff itself is above.
+			if (row.outcome === 'workflow_handoff') continue;
+			if (
+				typeof row.outcome !== 'string' ||
+				!Object.prototype.hasOwnProperty.call(SQL_OUTCOMES, row.outcome)
+			) {
+				throw protocolError('result outcome is invalid');
+			}
+			results.push({
+				turnRunId: row.turn_run_id,
+				queueJobId: optionalUuid(row.queue_job_id),
+				executionGeneration: Number.isSafeInteger(row.execution_generation)
+					? (row.execution_generation as number)
+					: null,
+				startedAt: isTimestamp(row.started_at) ? row.started_at : null,
+				silentSince: isTimestamp(row.silent_since) ? row.silent_since : null,
+				outcome: row.outcome as AgenticChatDeadTurnRecoveryReportRowV1['outcome'],
+				error: typeof row.error === 'string' ? row.error.slice(0, 2_000) : null
+			});
+		} catch (error) {
+			invalidRows.push({ turnRunId, error: errorMessage(error) });
+		}
+	}
+	if (!Array.isArray(report.results) || !Array.isArray(report.handoffs)) {
+		invalidRows.push({ turnRunId: null, error: 'results or handoffs are not arrays' });
+	}
+	return {
+		candidateCount: isCount(report.candidate_count)
+			? report.candidate_count
+			: results.length + handoffs.length,
+		// An unreadable flag never makes the sweep loop.
+		hasMore: report.has_more === true,
+		parkedCount: isCount(report.parked_count) ? report.parked_count : 0,
+		results,
+		handoffs,
+		invalidRows
+	};
+}
+
+function rowTurnRunId(value: unknown): string | null {
+	const id =
+		value !== null && typeof value === 'object' && !Array.isArray(value)
+			? (value as Record<string, unknown>).turn_run_id
+			: null;
+	return typeof id === 'string' && UUID_PATTERN.test(id) ? id : null;
+}
+
+function isCount(value: unknown): value is number {
+	return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+function optionalUuid(value: unknown): string | null {
+	return typeof value === 'string' && UUID_PATTERN.test(value) ? value : null;
 }
 
 function requireRecord(value: unknown, label: string): Record<string, unknown> {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-		throw sourceError(`${label} must be an object`);
+		throw protocolError(`${label} must be an object`);
 	}
 	return value as Record<string, unknown>;
 }
 
 function canonicalUuid(value: unknown, label: string): asserts value is string {
 	if (typeof value !== 'string' || !UUID_PATTERN.test(value) || value !== value.toLowerCase()) {
-		throw sourceError(`${label} is not a canonical UUID`);
+		throw protocolError(`${label} is not a canonical UUID`);
 	}
 }
 
@@ -825,8 +805,8 @@ function validatePositiveInteger(
 	}
 }
 
-function sourceError(message: string): AgenticChatStalledCandidateSourceError {
-	return new AgenticChatStalledCandidateSourceError(message);
+function protocolError(message: string): AgenticChatDeadTurnRecoveryProtocolError {
+	return new AgenticChatDeadTurnRecoveryProtocolError(message);
 }
 
 function errorMessage(error: unknown): string {
@@ -842,13 +822,9 @@ function isOwnershipLoss(error: unknown): boolean {
 
 const MAX_CONVERGENCE_STEPS = 4;
 const MAX_CONSECUTIVE_SWEEP_FAILURES = 3;
-// The recovery RPCs moved these rows out of `processing`; nothing left to defer.
-const SETTLED_OUTCOMES = new Set<AgenticChatStalledRecoveryOutcomeV1>([
-	'requeued',
-	'terminal_reconciled'
-]);
+/** A sweep still running after this many intervals is stuck, not slow. */
+const MAX_IN_FLIGHT_INTERVALS = 3;
 const ATTENTION_REQUIRED_OUTCOMES = new Set<AgenticChatStalledRecoveryOutcomeV1>([
-	'effect_reconciliation_required',
 	'manual_recovery_required',
 	'failed'
 ]);

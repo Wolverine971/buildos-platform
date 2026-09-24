@@ -4,8 +4,8 @@
 // fixture and the two frozen migrations, plus a PostgREST stand-in over one
 // `service_role` connection. The shim is Tasker 86's signature-checked RPC caller
 // (named arguments are cast to the exact SQL signature, so a misspelled `p_*` name
-// fails), extended with the read chains the workflow store and the stalled-recovery
-// candidate source use. Never point this at a linked or hosted database.
+// fails), extended with the read chains the workflow store uses. Never point this
+// at a linked or hosted database.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -15,7 +15,9 @@ import { Client } from 'pg';
 const FIXTURE = 'supabase/tests/fixtures/agentic_chat_workflow_v1_base.sql';
 const MIGRATIONS = [
 	'supabase/migrations/20260914203007_agentic_chat_workflow_v1_storage.sql',
-	'supabase/migrations/20260914203008_agentic_chat_workflow_v1_dispatch_recovery.sql'
+	'supabase/migrations/20260914203008_agentic_chat_workflow_v1_dispatch_recovery.sql',
+	'supabase/migrations/20260924000000_agentic_chat_reap_stranded_queued_turns.sql',
+	'supabase/migrations/20260924000100_agentic_chat_turn_leases.sql'
 ];
 
 export const postgresAvailable = ['initdb', 'pg_ctl', 'psql'].every(
@@ -93,6 +95,41 @@ export async function startDisposableWorkflowPostgres(
 			rmSync(tempDir, { recursive: true, force: true });
 		}
 	};
+}
+
+/**
+ * Ages a killed worker's lease past the 90 s database expiry (but not to the
+ * abandoned mark), as if it had stopped renewing. The queue heartbeat is aged
+ * too, for rows the worker had not claimed as a running turn.
+ */
+export async function expireWorkerLease(
+	admin: Client,
+	turnRunId: string,
+	ageSeconds = 100
+): Promise<void> {
+	await admin.query(
+		`UPDATE public.chat_turn_runs
+		SET worker_lease_generation = execution_generation,
+			worker_lease_renewed_at = now() - make_interval(secs => $2)
+		WHERE id = $1 AND status = 'running' AND execution_generation >= 1`,
+		[turnRunId, ageSeconds]
+	);
+	await admin.query('BEGIN');
+	try {
+		// update_queue_jobs_updated_at would stamp now() over the aged heartbeat.
+		await admin.query(`SET LOCAL session_replication_role = replica`);
+		await admin.query(
+			`UPDATE public.queue_jobs jobs
+			SET updated_at = now() - make_interval(secs => $2)
+			FROM public.chat_turn_runs turns
+			WHERE turns.id = $1 AND jobs.id = turns.queue_job_id AND jobs.status = 'processing'`,
+			[turnRunId, ageSeconds]
+		);
+		await admin.query('COMMIT');
+	} catch (error) {
+		await admin.query('ROLLBACK');
+		throw error;
+	}
 }
 
 export async function serviceClient(connection: DisposableConnection): Promise<Client> {
@@ -241,10 +278,16 @@ export function createPgSupabaseShim(client: Client) {
 		intercept(next: RpcInterceptor | null) {
 			interceptor = next;
 		},
-		async rpc(name: string, args: Record<string, unknown>): Promise<RpcResult> {
+		/** Like supabase-js, the result is awaitable and takes `.abortSignal()`. */
+		rpc(
+			name: string,
+			args: Record<string, unknown>
+		): Promise<RpcResult> & { abortSignal(signal: AbortSignal): Promise<RpcResult> } {
 			rpcCalls.push(name);
 			const run = () => execute(name, args);
-			return interceptor ? interceptor(name, args, run) : run();
+			const result = interceptor ? interceptor(name, args, run) : run();
+			// A pg query cannot be cancelled mid-flight here; callers bound it themselves.
+			return Object.assign(result, { abortSignal: (_signal: AbortSignal) => result });
 		},
 		from(table: string) {
 			return { select: (columns: string) => select(table, columns) };

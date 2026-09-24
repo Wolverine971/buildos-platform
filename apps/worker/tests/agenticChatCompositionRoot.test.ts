@@ -4,7 +4,8 @@ import {
 	assertAgenticChatMutationAdapterCoverageV1,
 	createAgenticChatCompositionRoot,
 	reportAgenticChatRuntimeTiming,
-	reportAgenticChatStalledRecovery
+	reportAgenticChatStalledRecovery,
+	reportAgenticChatTurnLeaseEvent
 } from '../src/workers/agentic-chat/host/composition-root';
 import {
 	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
@@ -211,6 +212,7 @@ describe('reportAgenticChatStalledRecovery', () => {
 			startedAt: '2026-08-19T12:10:00.000Z',
 			finishedAt: '2026-08-19T12:10:01.000Z',
 			candidateCount: 1,
+			parkedCount: 0,
 			results: [
 				{
 					turnRunId: 'turn-1',
@@ -235,6 +237,77 @@ describe('reportAgenticChatStalledRecovery', () => {
 			})
 		);
 		expect(info).not.toHaveBeenCalled();
+		error.mockRestore();
+		info.mockRestore();
+	});
+
+	it('alerts on parked turns even when the sweep had no candidates, and stays quiet otherwise', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+		const quiet = {
+			startedAt: '2026-08-19T12:10:00.000Z',
+			finishedAt: '2026-08-19T12:10:01.000Z',
+			candidateCount: 0,
+			parkedCount: 0,
+			results: []
+		};
+
+		reportAgenticChatStalledRecovery(quiet);
+		expect(error).not.toHaveBeenCalled();
+		expect(info).not.toHaveBeenCalled();
+
+		reportAgenticChatStalledRecovery({ ...quiet, parkedCount: 2 });
+		expect(error).toHaveBeenCalledWith(
+			'Agentic Chat stalled recovery requires attention',
+			expect.objectContaining({ alert: true, attentionRequiredCount: 2, parkedCount: 2 })
+		);
+		error.mockRestore();
+		info.mockRestore();
+	});
+});
+
+describe('reportAgenticChatTurnLeaseEvent', () => {
+	it('warns on one failed renewal and alerts on repeats, loss, or self-fencing', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+		const base = { turnRunId: 'turn-1', executionGeneration: 2 };
+
+		reportAgenticChatTurnLeaseEvent({
+			type: 'renew_failed',
+			...base,
+			consecutiveFailures: 1,
+			error: new Error('blip')
+		});
+		reportAgenticChatTurnLeaseEvent({
+			type: 'renew_failed',
+			...base,
+			consecutiveFailures: 2,
+			error: new Error('blip again')
+		});
+		reportAgenticChatTurnLeaseEvent({ type: 'lease_lost', ...base, reason: 'lease_expired' });
+		reportAgenticChatTurnLeaseEvent({
+			type: 'self_fenced',
+			...base,
+			unacknowledgedForMs: 60_000
+		});
+		// A turn that finished in the database first is the normal race, not an alert.
+		reportAgenticChatTurnLeaseEvent({ type: 'lease_lost', ...base, reason: 'turn_terminal' });
+		reportAgenticChatTurnLeaseEvent({ type: 'renewal_stopped', ...base, reason: 'hard_cap' });
+
+		expect(warn.mock.calls.map(([, payload]) => payload)).toEqual([
+			{ event: 'agentic_chat_turn_lease_renew_failed', ...base, consecutiveFailures: 1 },
+			{ event: 'agentic_chat_turn_lease_renewal_stopped', ...base, reason: 'hard_cap' }
+		]);
+		expect(error.mock.calls.map(([, payload]) => payload)).toEqual([
+			{ event: 'agentic_chat_turn_lease_renew_failed', ...base, consecutiveFailures: 2 },
+			{ event: 'agentic_chat_turn_lease_lease_lost', ...base, reason: 'lease_expired' },
+			{ event: 'agentic_chat_turn_lease_self_fenced', ...base, unacknowledgedForMs: 60_000 }
+		]);
+		expect(info.mock.calls.map(([, payload]) => payload)).toEqual([
+			{ event: 'agentic_chat_turn_lease_lease_lost', ...base, reason: 'turn_terminal' }
+		]);
+		warn.mockRestore();
 		error.mockRestore();
 		info.mockRestore();
 	});

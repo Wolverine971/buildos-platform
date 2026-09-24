@@ -123,6 +123,12 @@ export interface StreamControllerDeps {
 	setUserHasScrolled(value: boolean): void;
 	setExistingImagePickerOpen(value: boolean): void;
 	haptic?(style: 'light' | 'medium' | 'heavy'): void;
+	/**
+	 * Reconcile one worker turn now. Stop can end a turn whose worker is gone;
+	 * no worker will broadcast that terminal, so the UI fetches it at once
+	 * instead of waiting for its next reconcile tick.
+	 */
+	requestWorkerReconciliation?(turnRunId: string): void;
 	/** Product telemetry sink for the finished send timeline (PostHog in the modal). */
 	captureTurnTiming?(summary: ClientTurnTimingSummary): void;
 	fetchImpl?: typeof fetch;
@@ -278,7 +284,8 @@ export class AgentChatStreamController {
 	finishWorkerTurn(
 		handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>,
 		status: Extract<ChatTurnStatusV1, 'completed' | 'failed' | 'cancelled'>,
-		finishedReason: string | null = null
+		finishedReason: string | null = null,
+		failureCode: string | null = null
 	): void {
 		if (!this.#isActiveWorkerHandle(handle)) return;
 		this.finalizeClientStreamTiming(
@@ -289,7 +296,13 @@ export class AgentChatStreamController {
 		this.isStreaming = false;
 		this.isStartingStream = false;
 		this.currentActivity = '';
-		if (status === 'failed') {
+		if (status !== 'completed' && failureCode === 'uncertain_external_commit') {
+			// A write had started when the turn ended (failed, or stopped by the
+			// user), so it may have landed; a blind retry could make it twice.
+			this.error =
+				'BuildOS stopped partway through a change, so it may already be saved. Check before trying again.';
+			this.returnQueuedMessageToComposer();
+		} else if (status === 'failed') {
 			this.error = 'BuildOS could not finish this response. Please try again.';
 			// Don't fire a queued follow-up into a turn that just failed.
 			this.returnQueuedMessageToComposer();
@@ -825,6 +838,12 @@ export class AgentChatStreamController {
 		try {
 			this.currentActivity = 'Stopping response...';
 			this.lastCancelResult = await this.cancelTurn(handle, reason);
+			// The turn already ended (a queued turn, or one whose worker is gone):
+			// show that terminal now rather than "Stopping response..." until the
+			// next reconcile tick.
+			if (this.lastCancelResult.outcome !== 'cancel_requested') {
+				this.#deps.requestWorkerReconciliation?.(handle.turnRunId);
+			}
 		} catch (error) {
 			this.#deps.logError?.('[AgentChat] Worker cancellation failed:', error);
 			this.error =

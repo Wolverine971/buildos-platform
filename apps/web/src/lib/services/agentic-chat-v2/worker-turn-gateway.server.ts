@@ -140,8 +140,13 @@ export async function requestOwnedAgenticChatWorkerTurnCancellation(input: {
 	if (!isTerminalStatus(data.status)) {
 		throw protocolError('Worker cancellation terminal status is invalid');
 	}
+	// `cancelled` means this Stop ended the turn itself: a queued turn no worker
+	// had started, or a running turn whose worker stopped renewing its lease
+	// (>= 45 s; `stopped_without_worker`), finalized with its partial text
+	// (docs/architecture/AGENTIC_CHAT_TURN_LEASES_2026-09-23.md). A live
+	// worker gets `cancel_requested` and ends the turn itself.
 	if (data.outcome === 'cancelled' && data.status !== 'cancelled') {
-		throw protocolError('Queued cancellation did not terminalize as cancelled');
+		throw protocolError('Cancellation did not terminalize as cancelled');
 	}
 	const generation = safeNonnegativeInteger(data.execution_generation);
 	const sequence = safeNonnegativeInteger(data.terminal_sequence_index);

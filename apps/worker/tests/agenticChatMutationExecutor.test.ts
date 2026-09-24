@@ -331,6 +331,58 @@ describe('AgenticChatMutationExecutor', () => {
 		});
 	});
 
+	it('starts no write once the worker lease is no longer fresh', async () => {
+		// An event-loop stall can outrun the self-fence timer; the synchronous check
+		// at the irreversible boundary still refuses to write for a turn the
+		// database may already have handed to someone else.
+		const harness = createHarness();
+		const lease = { isFresh: vi.fn(() => false) };
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: new AbortController().signal,
+				lease
+			})
+		).rejects.toMatchObject({
+			failureClass: 'permanent',
+			effectId: harness.stable.effectId,
+			failureCode: 'worker_lease_stale'
+		});
+		expect(lease.isFresh).toHaveBeenCalledOnce();
+		expect(harness.mutatingTool.execute).not.toHaveBeenCalled();
+		expect(harness.control.reconcile).toHaveBeenCalledWith(
+			expect.objectContaining({ targetState: 'failed' })
+		);
+	});
+
+	it('keeps a possibly committed write uncertain when the lease goes stale before its retry', async () => {
+		const harness = createHarness();
+		const lease = { isFresh: vi.fn().mockReturnValueOnce(true).mockReturnValue(false) };
+		harness.mutatingTool.execute.mockRejectedValueOnce(
+			new Error('response lost after possible commit')
+		);
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: new AbortController().signal,
+				lease
+			})
+		).rejects.toMatchObject({
+			failureClass: 'uncertain_external_commit',
+			effectId: harness.stable.effectId
+		});
+		expect(harness.mutatingTool.execute).toHaveBeenCalledOnce();
+		expect(harness.control.reconcile).toHaveBeenCalledWith(
+			expect.objectContaining({ targetState: 'uncertain' })
+		);
+	});
+
 	it('keeps an earlier ambiguous attempt uncertain when recovery fails closed', async () => {
 		const harness = createHarness();
 		harness.mutatingTool.execute

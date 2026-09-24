@@ -66,7 +66,8 @@ function health(
 			consecutiveSweepFailures: 0,
 			lastError: null,
 			lastCandidateCount: 0,
-			lastAttentionRequiredCount: 0
+			lastAttentionRequiredCount: 0,
+			lastParkedCount: 0
 		},
 		queue: {
 			healthy,

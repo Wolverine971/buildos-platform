@@ -16,10 +16,9 @@ import { resolve } from 'node:path';
 import type { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SupabaseAgenticChatExecutionControlAdapter } from '../src/workers/agentic-chat/turn/execution-control';
-import { SupabaseAgenticChatRecoverySnapshotAdapter } from '../src/workers/agentic-chat/host/recovery-snapshot';
 import {
 	AgenticChatStalledRecoverySweep,
-	SupabaseAgenticChatStalledCandidateSource
+	SupabaseAgenticChatDeadTurnRecoveryAdapter
 } from '../src/workers/agentic-chat/host/stalled-recovery';
 import { AGENTIC_CHAT_WORKFLOW_PRICING_SNAPSHOTS_V1 } from '../src/workers/agentic-chat/workflow/workflow-dispatch';
 import { SupabaseAgenticChatWorkflowStore } from '../src/workers/agentic-chat/workflow/workflow-store';
@@ -33,6 +32,7 @@ import {
 import {
 	type DisposablePostgres,
 	createPgSupabaseShim,
+	expireWorkerLease,
 	postgresAvailable,
 	serviceClient,
 	startDisposableWorkflowPostgres
@@ -262,25 +262,20 @@ describePostgres(
 			expect(await first.exited).toEqual({ code: null, signal: 'SIGKILL' });
 			expect(first.events.some((entry) => entry.event === 'finished')).toBe(false);
 
-			// Detection and requeue: the real stalled-recovery sweep, past the stall threshold.
-			const candidates = new SupabaseAgenticChatStalledCandidateSource(shim as never);
+			// Detection and requeue: the real sweep over recover_dead_agentic_chat_turns,
+			// once the killed process's lease is past the 90 s expiry.
+			await expireWorkerLease(admin, turnRunId);
 			const sweep = new AgenticChatStalledRecoverySweep(
 				{
-					candidates: {
-						list: async (input) =>
-							(await candidates.list(input)).filter(
-								(candidate) => candidate.turnRunId === turnRunId
-							)
-					},
+					recovery: new SupabaseAgenticChatDeadTurnRecoveryAdapter(shim as never),
 					control: new SupabaseAgenticChatExecutionControlAdapter(shim as never),
-					snapshots: new SupabaseAgenticChatRecoverySnapshotAdapter(shim as never),
 					workflowRuns: new SupabaseAgenticChatWorkflowStore(shim as never)
 				},
-				{ now: () => new Date(Date.now() + 10 * 60_000), stallTimeoutMs: 420_000 }
+				{ batchSize: 100 }
 			);
 			const detectedAt = new Date().toISOString();
 			const report = await sweep.runOnce();
-			expect(report.results).toEqual([
+			expect(report.results.filter((result) => result.turnRunId === turnRunId)).toEqual([
 				expect.objectContaining({
 					outcome: 'requeued',
 					executionGeneration: 1,

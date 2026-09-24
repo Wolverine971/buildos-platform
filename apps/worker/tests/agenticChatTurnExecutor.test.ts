@@ -22,6 +22,7 @@ import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
 import { AgenticChatCancellationError } from '../src/workers/agentic-chat/turn/cancellation-observer';
+import { AgenticChatTurnLeaseLostError } from '../src/workers/agentic-chat/turn/turn-lease';
 import type { AgenticChatTerminalFinalizeInputV1 } from '../src/workers/agentic-chat/turn/execution-control';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
 import { AgenticChatExecutionInputError } from '../src/workers/agentic-chat/turn/execution-input';
@@ -209,7 +210,6 @@ function recoveryReceipt(
 		| 'retry_scheduled'
 		| 'finalize_failed'
 		| 'finalize_cancelled'
-		| 'effect_reconciliation_required'
 		| 'stale_generation'
 		| 'queue_reconciled',
 	overrides: Record<string, unknown> = {}
@@ -278,7 +278,6 @@ function createHarness(
 		concurrentMutationsEnabled?: boolean;
 		failSemanticType?: string;
 		researchCaptureError?: Error;
-		statedFutureCaptureError?: Error;
 		consumptionBillingError?: Error;
 		beforeFlushTextBatches?: (inputs: Array<Record<string, unknown>>) => Promise<void>;
 		beforePersistSemantic?: (input: Record<string, unknown>) => Promise<void>;
@@ -680,7 +679,6 @@ function createHarness(
 	};
 	const promptSnapshotErrors: unknown[] = [];
 	const researchCaptureErrors: unknown[] = [];
-	const statedFutureCaptureErrors: unknown[] = [];
 	const consumptionBillingErrors: unknown[] = [];
 	const terminalControlErrors: Array<{
 		stage: 'claim' | 'claim_readback' | 'finalize' | 'finalize_retry' | 'recover';
@@ -742,17 +740,22 @@ function createHarness(
 		registerTurn: vi.fn(() => cancellationController.signal),
 		unregisterTurn: vi.fn(() => true)
 	};
+	const leaseController = new AbortController();
+	const leaseRelease = vi.fn();
+	const leaseIsFresh = vi.fn(() => true);
+	const lease = {
+		hold: vi.fn(
+			(_fence: Record<string, unknown>, _options?: { deadlineSignal?: AbortSignal }) => ({
+				signal: leaseController.signal,
+				isFresh: leaseIsFresh,
+				release: leaseRelease
+			})
+		)
+	};
 	const researchCapture = options.researchCaptureError
 		? {
 				capture: vi.fn(async () => {
 					throw options.researchCaptureError;
-				})
-			}
-		: undefined;
-	const statedFutureCapture = options.statedFutureCaptureError
-		? {
-				capture: vi.fn(async () => {
-					throw options.statedFutureCaptureError;
 				})
 			}
 		: undefined;
@@ -777,20 +780,19 @@ function createHarness(
 			input: input as never,
 			publisher,
 			cancellation: cancellation as never,
+			lease,
 			provider,
 			promptSnapshots,
 			pendingEffects,
 			executionObservations,
 			onPromptSnapshotError: (error) => promptSnapshotErrors.push(error),
 			onResearchCaptureError: (error) => researchCaptureErrors.push(error),
-			onStatedFutureCaptureError: (error) => statedFutureCaptureErrors.push(error),
 			onConsumptionBillingError: (error) => consumptionBillingErrors.push(error),
 			onTerminalControlError: (report) => terminalControlErrors.push(report),
 			readTool,
 			toolExecutions,
 			sessionHandoff,
 			researchCapture,
-			statedFutureCapture,
 			consumptionBilling,
 			mutation,
 			rawWorkflow: options.rawWorkflow,
@@ -829,7 +831,6 @@ function createHarness(
 		promptSnapshots,
 		promptSnapshotErrors,
 		researchCaptureErrors,
-		statedFutureCaptureErrors,
 		consumptionBillingErrors,
 		terminalControlErrors,
 		readTool,
@@ -838,11 +839,14 @@ function createHarness(
 		executionObservationInputs,
 		sessionHandoff,
 		researchCapture,
-		statedFutureCapture,
 		consumptionBilling,
 		mutation,
 		cancellation,
 		cancellationController,
+		lease,
+		leaseController,
+		leaseIsFresh,
+		leaseRelease,
 		semanticInputs,
 		broadcastMessages,
 		textFlushBatches,
@@ -1668,15 +1672,13 @@ describe('AgenticChatTurnExecutor', () => {
 			],
 			{
 				automaticDomainCapture: 'disabled',
-				researchCaptureError: new Error('must not run'),
-				statedFutureCaptureError: new Error('must not run')
+				researchCaptureError: new Error('must not run')
 			}
 		);
 		await expect(harness.executor.execute(job())).resolves.toMatchObject({
 			outcome: 'completed'
 		});
 		expect(harness.researchCapture!.capture).not.toHaveBeenCalled();
-		expect(harness.statedFutureCapture!.capture).not.toHaveBeenCalled();
 		const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 		expect(terminalInput).toMatchObject({
 			status: 'completed',
@@ -1771,31 +1773,6 @@ describe('AgenticChatTurnExecutor', () => {
 			await harness.publisher.stop();
 		}
 	);
-
-	it('reports deterministic stated-future failure without overturning the completed answer', async () => {
-		const error = new Error('stated-future task unavailable');
-		const harness = createHarness(
-			[
-				{ type: 'text_delta', text: 'completed answer' },
-				{ type: 'finish', finishedReason: 'stop', usage: null }
-			],
-			{ statedFutureCaptureError: error }
-		);
-
-		await expect(harness.executor.execute(job())).resolves.toMatchObject({
-			outcome: 'completed',
-			terminalStatus: 'completed'
-		});
-		expect(harness.statedFutureCapture?.capture).toHaveBeenCalledOnce();
-		expect(harness.statedFutureCaptureErrors).toEqual([error]);
-		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({ assistantText: 'completed answer', status: 'completed' })
-		);
-		expect(harness.statedFutureCapture!.capture.mock.invocationCallOrder[0]).toBeLessThan(
-			harness.control.finalize.mock.invocationCallOrder[0]!
-		);
-		await harness.publisher.stop();
-	});
 
 	it('re-evaluates consumption billing after execution and before terminal finalization', async () => {
 		const harness = createHarness([
@@ -3692,7 +3669,9 @@ describe('AgenticChatTurnExecutor', () => {
 	it('invalidates provider read memo before a mutation that fails uncertain', async () => {
 		const harness = createHarness([], {
 			recovery: [
-				recoveryReceipt('effect_reconciliation_required', {
+				recoveryReceipt('finalize_failed', { failure_code: 'uncertain_external_commit' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
 					failure_code: 'uncertain_external_commit'
 				})
 			]
@@ -3733,11 +3712,15 @@ describe('AgenticChatTurnExecutor', () => {
 
 		try {
 			await expect(harness.executor.execute(job())).resolves.toMatchObject({
-				outcome: 'effect_reconciliation_required',
-				terminalStatus: null
+				outcome: 'failed',
+				terminalStatus: 'failed'
 			});
 			expect(invalidateReadMemo).toHaveBeenCalledOnce();
 			expect(harness.mutation.execute).toHaveBeenCalledOnce();
+			// The irreversible boundary checks the turn's lease before it writes.
+			expect(harness.mutation.execute.mock.calls[0]?.[0]).toMatchObject({
+				lease: expect.objectContaining({ isFresh: harness.leaseIsFresh })
+			});
 			expect(continueWithToolResults).not.toHaveBeenCalled();
 		} finally {
 			await harness.publisher.stop();
@@ -4950,7 +4933,7 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
-	it('stops at effect reconciliation when a non-queryable mutation outcome is uncertain', async () => {
+	it('fails a turn whose non-queryable mutation outcome is uncertain as "may already be saved"', async () => {
 		const harness = createHarness(
 			[
 				{
@@ -4968,8 +4951,12 @@ describe('AgenticChatTurnExecutor', () => {
 				{ type: 'finish', finishedReason: 'stop', usage: null }
 			],
 			{
+				// The database never parks a turn on an uncertain effect: it ends the
+				// turn failed with the uncertain code (the UI says it may be saved).
 				recovery: [
-					recoveryReceipt('effect_reconciliation_required', {
+					recoveryReceipt('finalize_failed', { failure_code: 'uncertain_external_commit' }),
+					recoveryReceipt('queue_reconciled', {
+						status: 'failed',
 						failure_code: 'uncertain_external_commit'
 					})
 				]
@@ -4985,14 +4972,16 @@ describe('AgenticChatTurnExecutor', () => {
 		const processingJob = job();
 
 		await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
-			outcome: 'effect_reconciliation_required',
-			terminalStatus: null,
-			queueReconciled: false
+			outcome: 'failed',
+			terminalStatus: 'failed',
+			queueReconciled: true
 		});
 		expect(harness.control.recover).toHaveBeenCalledWith(
 			expect.objectContaining({ failureClass: 'uncertain_external_commit' })
 		);
-		expect(harness.control.finalize).not.toHaveBeenCalled();
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'failed', failureCode: 'uncertain_external_commit' })
+		);
 		expect(typedExecutionFailureLog(processingJob)).toMatchObject({
 			failure_class: 'uncertain_external_commit',
 			retry_classification: 'uncertain_external_commit',
@@ -5185,6 +5174,128 @@ describe('AgenticChatTurnExecutor', () => {
 				failureCode: 'provider_budget_exhausted'
 			})
 		);
+		await harness.publisher.stop();
+	});
+
+	it('holds the claimed generation lease for the whole turn and releases it once', async () => {
+		const harness = createHarness([
+			{ type: 'text_delta', text: 'answer' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+
+		const hardCap = new AbortController();
+		await expect(harness.executor.execute(job(hardCap.signal))).resolves.toMatchObject({
+			outcome: 'completed'
+		});
+		expect(harness.lease.hold).toHaveBeenCalledOnce();
+		// The job's hard-cap signal bounds renewal to the cap plus the terminal budget.
+		expect(harness.lease.hold).toHaveBeenCalledWith(
+			{
+				turnRunId: TURN_RUN_ID,
+				queueJobId: QUEUE_JOB_ID,
+				processingToken: PROCESSING_TOKEN,
+				executionGeneration: EXECUTION_GENERATION
+			},
+			{ deadlineSignal: hardCap.signal }
+		);
+		expect(harness.leaseRelease).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('requeues a turn whose lease is lost before the model starts', async () => {
+		const harness = createHarness([], {
+			recovery: [recoveryReceipt('retry_scheduled', { failure_code: 'timeout_pre_start' })]
+		});
+		harness.leaseController.abort(
+			new AgenticChatTurnLeaseLostError(TURN_RUN_ID, EXECUTION_GENERATION, {
+				kind: 'unacknowledged',
+				unacknowledgedForMs: 60_000
+			})
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'requeued',
+			terminalStatus: null
+		});
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'timeout_pre_start' })
+		);
+		expect(harness.control.begin).not.toHaveBeenCalled();
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(harness.leaseRelease).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('stops a streaming turn when its lease is lost and keeps the partial text', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'timeout_post_start'
+				})
+			]
+		});
+		harness.provider.stream.mockImplementation(() =>
+			(async function* () {
+				yield { type: 'text_delta', text: 'partial answer' } as const;
+				while (harness.textFlushBatches.length === 0) {
+					await new Promise((resolve) => setTimeout(resolve, 1));
+				}
+				harness.leaseController.abort(
+					new AgenticChatTurnLeaseLostError(TURN_RUN_ID, EXECUTION_GENERATION, {
+						kind: 'lost',
+						reason: 'lease_expired'
+					})
+				);
+				// Only the lease can end this stream.
+				await new Promise<never>(() => undefined);
+			})()
+		);
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'failed',
+			terminalStatus: 'failed',
+			queueReconciled: true
+		});
+		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+			failureClass: 'timeout_post_start'
+		});
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'failed',
+				// Named, so the transcript and the logs say why the turn stopped.
+				failureCode: 'worker_lease_lost',
+				assistantText: 'partial answer'
+			})
+		);
+		expect(harness.leaseRelease).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('releases the cancellation registration when the lease cannot be taken', async () => {
+		const harness = createHarness([], {
+			recovery: [recoveryReceipt('retry_scheduled', { failure_code: 'transient_infra' })]
+		});
+		harness.lease.hold.mockImplementationOnce(() => {
+			throw new Error('Agentic Chat lease requires a claimed turn fence');
+		});
+
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'requeued',
+			terminalStatus: null
+		});
+		expect(harness.cancellation.registerTurn).toHaveBeenCalledOnce();
+		expect(harness.cancellation.unregisterTurn).toHaveBeenCalledWith(
+			TURN_RUN_ID,
+			EXECUTION_GENERATION
+		);
+		expect(harness.control.recover).toHaveBeenCalledWith(
+			expect.objectContaining({ failureClass: 'transient_infra' })
+		);
+		expect(harness.control.begin).not.toHaveBeenCalled();
+		expect(harness.provider.stream).not.toHaveBeenCalled();
+		expect(harness.leaseRelease).not.toHaveBeenCalled();
 		await harness.publisher.stop();
 	});
 
@@ -6108,6 +6219,61 @@ describe('AgenticChatTurnExecutor', () => {
 			}
 		}
 	);
+
+	it('keeps the failure path when the lease is lost after a durable write', async () => {
+		// Another worker or the sweep may already own the turn: this worker must not
+		// write a "completed" partial over whatever the new owner decides.
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'timeout_post_start'
+				})
+			]
+		});
+		const targets = [MOVE_TASK_IDS[0]!, MOVE_TASK_IDS[1]!];
+		installMoveContractFixture(harness, targets, [targets[0]!], []);
+		const prepare = vi.mocked(harness.provider.prepare!);
+		const prepared = prepare.getMockImplementation() as () => Promise<Record<string, unknown>>;
+		prepare.mockImplementation(async () => ({
+			...(await prepared()),
+			// Round 2 opens after the first move committed, then the lease is lost.
+			continueWithToolResults: vi.fn(() =>
+				(async function* () {
+					harness.leaseController.abort(
+						new AgenticChatTurnLeaseLostError(TURN_RUN_ID, EXECUTION_GENERATION, {
+							kind: 'lost',
+							reason: 'lease_expired'
+						})
+					);
+					// Only the lease can end this round.
+					await new Promise<never>(() => undefined);
+					yield { type: 'text_delta', text: 'unreachable' } as const;
+				})()
+			)
+		}));
+		const processingJob = job();
+
+		try {
+			await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed'
+			});
+			expect(harness.mutation.execute).toHaveBeenCalledOnce();
+			expect(harness.control.completeQueueJob).not.toHaveBeenCalled();
+			for (const [terminalInput] of harness.control.finalize.mock.calls) {
+				expect(terminalInput).toMatchObject({
+					status: 'failed',
+					failureCode: 'worker_lease_lost'
+				});
+				expect(terminalInput.assistantText ?? '').not.toContain('Not yet moved');
+			}
+			expect(harness.control.finalize).toHaveBeenCalledOnce();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
 
 	it('keeps the failure path when a stale-context fence is lost after a durable write', async () => {
 		const harness = createHarness([], {
@@ -7153,19 +7319,25 @@ describe('AgenticChatTurnExecutor live reads overlap their own tool_call write',
 
 	it('fails exactly as before when the tool_call is rejected, abandoning the in-flight read', async () => {
 		const readSignals: AbortSignal[] = [];
-		const harness = createHarness([liveReadStep, { type: 'finish', finishedReason: 'stop', usage: null }], {
-			beforePersistSemantic: async (input) => {
-				if (toolCallId(input)) {
-					throw Object.assign(new Error('agentic_chat_stream_write_rejected'), {
-						code: 'P0001'
-					});
-				}
-			},
-			recovery: [
-				recoveryReceipt('finalize_failed', { failure_code: 'unknown' }),
-				recoveryReceipt('queue_reconciled', { status: 'failed', failure_code: 'unknown' })
-			]
-		});
+		const harness = createHarness(
+			[liveReadStep, { type: 'finish', finishedReason: 'stop', usage: null }],
+			{
+				beforePersistSemantic: async (input) => {
+					if (toolCallId(input)) {
+						throw Object.assign(new Error('agentic_chat_stream_write_rejected'), {
+							code: 'P0001'
+						});
+					}
+				},
+				recovery: [
+					recoveryReceipt('finalize_failed', { failure_code: 'unknown' }),
+					recoveryReceipt('queue_reconciled', {
+						status: 'failed',
+						failure_code: 'unknown'
+					})
+				]
+			}
+		);
 		// A read that would never settle on its own.
 		harness.readTool.execute.mockImplementationOnce((input) => {
 			readSignals.push(input.signal);
@@ -7196,14 +7368,17 @@ describe('AgenticChatTurnExecutor live reads overlap their own tool_call write',
 			expect(typedExecutionFailureLog(processingJob)).toMatchObject({
 				execution_error_code: 'AgenticChatPublisherBlockedError',
 				failure_class: 'unknown',
-				publisher_block_outcome: 'persistence_error:P0001:agentic_chat_stream_write_rejected'
+				publisher_block_outcome:
+					'persistence_error:P0001:agentic_chat_stream_write_rejected'
 			});
 			expect(harness.toolExecutions.persistRead).not.toHaveBeenCalled();
 			expect(harness.toolExecutions.persistFailure).not.toHaveBeenCalled();
 			expect(harness.executionObservationInputs).toEqual([]);
-			expect(
-				harness.semanticInputs.map((input) => input.event_type)
-			).toEqual(['turn_phase', 'session', 'context_usage']);
+			expect(harness.semanticInputs.map((input) => input.event_type)).toEqual([
+				'turn_phase',
+				'session',
+				'context_usage'
+			]);
 			expect(
 				streamBroadcastMessages(harness.broadcastMessages).map(
 					(message) => (message.payload as Record<string, unknown>).type
@@ -7217,18 +7392,21 @@ describe('AgenticChatTurnExecutor live reads overlap their own tool_call write',
 	});
 
 	it('fails exactly as before when the tool_call never becomes durable before the budget', async () => {
-		const harness = createHarness([liveReadStep, { type: 'finish', finishedReason: 'stop', usage: null }], {
-			failSemanticType: 'tool_call',
-			providerBudgetMs: 50,
-			publisherConfig: { retryDelayMs: 1 },
-			recovery: [
-				recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
-				recoveryReceipt('queue_reconciled', {
-					status: 'failed',
-					failure_code: 'timeout_post_start'
-				})
-			]
-		});
+		const harness = createHarness(
+			[liveReadStep, { type: 'finish', finishedReason: 'stop', usage: null }],
+			{
+				failSemanticType: 'tool_call',
+				providerBudgetMs: 50,
+				publisherConfig: { retryDelayMs: 1 },
+				recovery: [
+					recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
+					recoveryReceipt('queue_reconciled', {
+						status: 'failed',
+						failure_code: 'timeout_post_start'
+					})
+				]
+			}
+		);
 		const processingJob = job();
 
 		try {

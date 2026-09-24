@@ -30,6 +30,7 @@ import type {
 } from '../tools/tool-execution';
 import type { AgenticChatExecutorEffectPortsV1 } from '../effects/executor-effects';
 import type { AgenticChatSessionHandoffPortV1 } from './session-handoff';
+import type { AgenticChatTurnLeaseKeeper } from './turn-lease';
 import type { AgenticChatRawWorkflowTurnPortV1 } from '../workflow/raw-turn-preparation';
 
 // The retained Phase 0 acceptance baseline reaches 245,137 ms, and independent
@@ -116,6 +117,8 @@ export type CancellationPort = Pick<
 	'registerTurn' | 'unregisterTurn'
 >;
 export type MutationPort = Pick<AgenticChatMutationExecutor, 'execute'>;
+/** Renews the claimed generation's lease; its signal aborts the turn when the worker must stop. */
+export type LeasePort = Pick<AgenticChatTurnLeaseKeeper, 'hold'>;
 
 export type AgenticChatTurnExecutionOutcomeV1 =
 	| 'completed'
@@ -124,7 +127,6 @@ export type AgenticChatTurnExecutionOutcomeV1 =
 	| 'requeued'
 	| 'terminal_reconciled'
 	| 'stale_generation'
-	| 'effect_reconciliation_required'
 	| 'recovery_required';
 
 export type AgenticChatTurnExecutionResultV1 = {
@@ -141,6 +143,7 @@ export type AgenticChatTurnExecutorPorts = AgenticChatExecutorEffectPortsV1 & {
 	input: AgenticChatExecutionInputPortV1;
 	publisher: PublisherPort;
 	cancellation: CancellationPort;
+	lease: LeasePort;
 	provider: AgenticChatProviderPortV1;
 	readTool: AgenticChatReadToolPortV1;
 	toolExecutions: AgenticChatToolExecutionPortV1;

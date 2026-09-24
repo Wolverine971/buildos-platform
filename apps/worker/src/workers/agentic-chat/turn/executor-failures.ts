@@ -9,6 +9,7 @@ import {
 } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../../lib/supabaseQueue';
 import { AgenticChatCancellationError } from './cancellation-observer';
+import { AgenticChatTurnLeaseLostError } from './turn-lease';
 import {
 	AgenticChatExecutionInputError,
 	type AgenticChatWorkerExecutionInputV1
@@ -120,6 +121,9 @@ export function specificTerminalFailureCode(
 	const unwrapped =
 		reason instanceof AgenticChatCommittedEffectPersistError ? reason.cause : reason;
 	const candidate = unwrapped ?? error;
+	// The database stopped counting this worker as alive (or it could not prove
+	// it was): a distinct code, so a lease loss is never read as a model timeout.
+	if (candidate instanceof AgenticChatTurnLeaseLostError) return candidate.code;
 	if (candidate instanceof AgenticChatToolExecutionTimeoutError) return candidate.code;
 	if (candidate instanceof AgenticChatReadToolFenceTimeoutError) return candidate.code;
 	if (candidate instanceof AgenticChatProviderExecutionError) {

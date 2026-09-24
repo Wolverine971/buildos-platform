@@ -552,9 +552,7 @@ function parseRecoveryReceipt(
 		(receipt.outcome === 'retry_scheduled') !== receipt.execution_may_retry ||
 		((receipt.outcome === 'retry_scheduled' || receipt.outcome === 'already_requeued') &&
 			receipt.status !== 'queued') ||
-		((receipt.outcome === 'finalize_failed' ||
-			receipt.outcome === 'finalize_cancelled' ||
-			receipt.outcome === 'effect_reconciliation_required') &&
+		((receipt.outcome === 'finalize_failed' || receipt.outcome === 'finalize_cancelled') &&
 			receipt.status !== 'running') ||
 		((receipt.outcome === 'queue_reconciled' || receipt.outcome === 'already_reconciled') &&
 			!isTerminalStatus(receipt.status)) ||
@@ -1055,7 +1053,8 @@ const RECOVERY_OUTCOMES = new Set([
 	'already_requeued',
 	'finalize_failed',
 	'finalize_cancelled',
-	'effect_reconciliation_required',
+	// effect_reconciliation_required is gone: since 20260924000100 an unsettled
+	// effect ends the turn (uncertain_external_commit) instead of parking it.
 	'stale_generation',
 	'queue_reconciled',
 	'already_reconciled'

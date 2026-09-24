@@ -1016,8 +1016,26 @@ describe('agentic chat worker v1 contract fixtures', () => {
 			decision: 'finalize_cancelled',
 			failureCode: 'cancelled'
 		});
-		expect(decideAgenticChatRecoveryV1({ ...input, blockingEffectCount: 1 })).toEqual({
-			decision: 'effect_reconciliation_required'
+		// An in-flight effect ends the turn as uncertain instead of parking it.
+		expect(
+			decideAgenticChatRecoveryV1({ ...input, effectCount: 1, blockingEffectCount: 1 })
+		).toEqual({
+			decision: 'finalize_failed',
+			failureCode: 'uncertain_external_commit',
+			retryExhausted: false
+		});
+		// Only reserved effects: no retry, the original class stands.
+		expect(
+			decideAgenticChatRecoveryV1({
+				...input,
+				effectCount: 1,
+				blockingEffectCount: 1,
+				inFlightEffectCount: 0
+			})
+		).toEqual({
+			decision: 'finalize_failed',
+			failureCode: 'transient_infra',
+			retryExhausted: false
 		});
 	});
 

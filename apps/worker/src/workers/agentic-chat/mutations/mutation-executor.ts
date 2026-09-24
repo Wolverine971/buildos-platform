@@ -49,6 +49,14 @@ export type AgenticChatMutationSpanV1 = {
 	toolName: string;
 };
 
+/**
+ * The turn's lease, as the irreversible boundary sees it: a synchronous check
+ * that this worker still holds the turn. After an event-loop stall the database
+ * may already have taken the turn over before any timer here has run, so the
+ * check sits immediately before each adapter call.
+ */
+export type AgenticChatMutationLeasePortV1 = { isFresh(): boolean };
+
 export type AgenticChatMutationResultV1 = {
 	effectId: string;
 	canonicalArgumentHash: string;
@@ -116,6 +124,7 @@ export class AgenticChatMutationExecutor {
 		processingToken: string;
 		step: AgenticChatMutationStepV1;
 		signal: AbortSignal;
+		lease?: AgenticChatMutationLeasePortV1;
 	}): Promise<AgenticChatMutationResultV1> {
 		if (input.signal.aborted) throwAbort(input.signal);
 		const { claim } = input.executionInput;
@@ -222,6 +231,7 @@ export class AgenticChatMutationExecutor {
 		processingToken: string;
 		step: AgenticChatMutationStepV1;
 		signal: AbortSignal;
+		lease?: AgenticChatMutationLeasePortV1;
 		effectId: string;
 		downstreamIdempotencyKey: string;
 	}): Promise<JsonObject> {
@@ -233,6 +243,18 @@ export class AgenticChatMutationExecutor {
 			? this.maximumAdapterAttempts
 			: 1;
 		for (let attempt = 1; attempt <= attempts; attempt += 1) {
+			// No write starts once this worker may have lost the turn. Before any
+			// ambiguous attempt that is a known non-write; after one it stays
+			// uncertain (the error below is kept by the ambiguous-outcome rule).
+			if (input.lease && !input.lease.isFresh()) {
+				const stale = new AgenticChatMutationAdapterError(
+					sawAmbiguousAttempt ? 'outcome_uncertain' : 'known_failed',
+					'worker_lease_stale',
+					'The worker lease is no longer fresh; the write was not started'
+				);
+				if (!sawAmbiguousAttempt) throw stale;
+				throw preserveAmbiguousOutcome(firstAmbiguousError, stale);
+			}
 			try {
 				return await this.ports.mutatingTool.execute({
 					effectId: input.effectId,

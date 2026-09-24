@@ -784,6 +784,8 @@
 
 	const stream = createAgentChatStreamController({
 		getInputValue: () => inputValue,
+		requestWorkerReconciliation: (turnRunId) =>
+			workerRealtime?.coordinator.inbox.requestReconciliation(turnRunId, 'reconcile_hint'),
 		getReviewIntent: () => selectedReviewIntent,
 		getPublishedSpecialist: () => publishedSpecialist,
 		onReviewAdmitted: () => {
@@ -2806,7 +2808,12 @@
 		if (currentThinkingBlockId === finalizedThinking.blockId) {
 			currentThinkingBlockId = null;
 		}
-		stream.finishWorkerTurn(input.handle, input.status, input.finishedReason);
+		stream.finishWorkerTurn(
+			input.handle,
+			input.status,
+			input.finishedReason,
+			input.failureCode
+		);
 	}
 
 	function normalizeMessageContent(value: unknown): string {

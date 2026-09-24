@@ -1,18 +1,31 @@
 // apps/worker/src/workers/agentic-chat/host/consumer.ts
 
-import type { AgenticChatTurnJobV1 } from '@buildos/shared-types';
+import {
+	AGENTIC_CHAT_TURN_LEASE_POLICY_V1,
+	type AgenticChatTurnJobV1
+} from '@buildos/shared-types';
 import { type ProcessingJob, SupabaseQueue } from '../../../lib/supabaseQueue';
 import { MAX_QUEUE_DRAIN_TIMEOUT_MS } from '../../../config/shutdownBudget';
 import { MAX_AGENTIC_CHAT_CONCURRENCY } from '../shared/concurrency-bounds';
+import { validateAgenticChatTurnLeaseTimingV1 } from '../turn/turn-lease';
 
 export { MAX_AGENTIC_CHAT_CONCURRENCY };
 
+/**
+ * Queue cadence plus the worker side of turn leases
+ * (docs/architecture/AGENTIC_CHAT_TURN_LEASES_2026-09-23.md). The database owns
+ * when a turn counts as dead; these values must keep the worker ahead of it,
+ * which `validateAgenticChatConsumerConfig` enforces.
+ */
 export const DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG = {
 	concurrency: 1,
 	pollIntervalMs: 1_000,
+	/** Hard cap on one turn, unchanged by leases. */
 	workerTimeoutMs: 360_000,
-	stalledTimeoutMs: 420_000,
-	drainTimeoutMs: MAX_QUEUE_DRAIN_TIMEOUT_MS
+	drainTimeoutMs: MAX_QUEUE_DRAIN_TIMEOUT_MS,
+	leaseRenewIntervalMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.renewIntervalMs,
+	leaseSelfFenceAfterMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.selfFenceAfterMs,
+	recoverySweepIntervalMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.recoverySweepIntervalMs
 } as const;
 
 export type AgenticChatConsumerConfig = {
@@ -57,7 +70,9 @@ export function createAgenticChatConsumer(
 	const queue = new SupabaseQueue({
 		batchSize: resolved.concurrency,
 		pollInterval: resolved.pollIntervalMs,
-		stalledTimeout: resolved.stalledTimeoutMs,
+		// Only sets the queue-row heartbeat (every 60 s). Chat recovery reads that
+		// heartbeat solely for rows without a lease; generic recovery stays off.
+		stalledTimeout: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.unleasedExpiredAfterMs,
 		drainTimeout: resolved.drainTimeoutMs,
 		genericStalledRecovery: false
 	});
@@ -92,9 +107,31 @@ export function validateAgenticChatConsumerConfig(config: AgenticChatConsumerCon
 	if (config.pollIntervalMs < 1_000) {
 		throw new Error('Agentic Chat durable polling cannot be below 1000ms');
 	}
-	if (config.stalledTimeoutMs <= config.workerTimeoutMs) {
-		throw new Error('Agentic Chat stalled timeout must exceed its worker timeout');
-	}
+	validateAgenticChatLeaseTiming(config);
+}
+
+/**
+ * The lease model replaces "stalled timeout > worker timeout". The rules live
+ * in one place, `validateAgenticChatTurnLeaseTimingV1`, which the lease keeper
+ * and the drift test use too.
+ */
+export function validateAgenticChatLeaseTiming(
+	config: Pick<
+		AgenticChatConsumerConfig,
+		| 'workerTimeoutMs'
+		| 'leaseRenewIntervalMs'
+		| 'leaseSelfFenceAfterMs'
+		| 'recoverySweepIntervalMs'
+	>
+): void {
+	validateAgenticChatTurnLeaseTimingV1({
+		renewIntervalMs: config.leaseRenewIntervalMs,
+		selfFenceAfterMs: config.leaseSelfFenceAfterMs,
+		rpcTimeoutMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.rpcTimeoutMs,
+		recoverySweepIntervalMs: config.recoverySweepIntervalMs,
+		workerTimeoutMs: config.workerTimeoutMs,
+		terminalBudgetMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.terminalBudgetMs
+	});
 }
 
 export function validateAgenticChatDrainTimeout(drainTimeoutMs: number): void {

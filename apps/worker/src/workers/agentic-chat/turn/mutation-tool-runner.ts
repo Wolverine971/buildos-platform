@@ -135,7 +135,8 @@ export class AgenticChatMutationToolRunner {
 					arguments: step.arguments,
 					downstreamIdempotencySupported: step.downstreamIdempotencySupported
 				},
-				signal
+				signal,
+				lease: run.lease
 			});
 		} catch (error) {
 			if (

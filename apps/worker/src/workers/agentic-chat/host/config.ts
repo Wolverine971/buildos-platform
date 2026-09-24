@@ -284,16 +284,17 @@ export function loadAgenticChatConfig(
 			DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.workerTimeoutMs,
 			'CHAT_WORKER_TIMEOUT_MS'
 		),
-		stalledTimeoutMs: parsePositiveInteger(
-			environment.CHAT_STALLED_TIMEOUT_MS,
-			DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.stalledTimeoutMs,
-			'CHAT_STALLED_TIMEOUT_MS'
-		),
 		drainTimeoutMs: parsePositiveInteger(
 			environment.CHAT_DRAIN_TIMEOUT_MS,
 			DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.drainTimeoutMs,
 			'CHAT_DRAIN_TIMEOUT_MS'
-		)
+		),
+		// Turn-lease timing is one policy with the database's thresholds
+		// (AGENTIC_CHAT_TURN_LEASE_POLICY_V1), not deployment configuration.
+		// CHAT_STALLED_TIMEOUT_MS is retired: the database decides when a turn is dead.
+		leaseRenewIntervalMs: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.leaseRenewIntervalMs,
+		leaseSelfFenceAfterMs: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.leaseSelfFenceAfterMs,
+		recoverySweepIntervalMs: DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.recoverySweepIntervalMs
 	};
 	validateAgenticChatConsumerConfig(consumer);
 	const publisher = loadPublisherConfig(environment);
@@ -394,7 +395,6 @@ const PRODUCTION_REQUIRED_CONFIG = Object.freeze([
 	'CHAT_POLL_INTERVAL_MS',
 	'CHAT_WORKER_TIMEOUT_MS',
 	'CHAT_PROVIDER_BUDGET_MS',
-	'CHAT_STALLED_TIMEOUT_MS',
 	'CHAT_DRAIN_TIMEOUT_MS',
 	'CHAT_PUBLISHER_TURN_PENDING_SOFT_BYTES',
 	'CHAT_PUBLISHER_TURN_PENDING_HARD_BYTES',

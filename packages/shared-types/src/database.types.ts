@@ -5689,6 +5689,41 @@ export type Database = {
           },
         ]
       }
+      chat_turn_recovery_failures: {
+        Row: {
+          failure_count: number
+          first_failed_at: string
+          last_error: string | null
+          last_failed_at: string
+          last_sqlstate: string | null
+          turn_run_id: string
+        }
+        Insert: {
+          failure_count: number
+          first_failed_at: string
+          last_error?: string | null
+          last_failed_at: string
+          last_sqlstate?: string | null
+          turn_run_id: string
+        }
+        Update: {
+          failure_count?: number
+          first_failed_at?: string
+          last_error?: string | null
+          last_failed_at?: string
+          last_sqlstate?: string | null
+          turn_run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_turn_recovery_failures_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: true
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_turn_runs: {
         Row: {
           assistant_message_id: string | null
@@ -5755,6 +5790,8 @@ export type Database = {
           user_id: string
           user_message_id: string | null
           validation_failure_count: number
+          worker_lease_generation: number | null
+          worker_lease_renewed_at: string | null
           worker_started_at: string | null
         }
         Insert: {
@@ -5822,6 +5859,8 @@ export type Database = {
           user_id: string
           user_message_id?: string | null
           validation_failure_count?: number
+          worker_lease_generation?: number | null
+          worker_lease_renewed_at?: string | null
           worker_started_at?: string | null
         }
         Update: {
@@ -5889,6 +5928,8 @@ export type Database = {
           user_id?: string
           user_message_id?: string | null
           validation_failure_count?: number
+          worker_lease_generation?: number | null
+          worker_lease_renewed_at?: string | null
           worker_started_at?: string | null
         }
         Relationships: [
@@ -20156,6 +20197,16 @@ export type Database = {
         Args: { p_intent: Json }
         Returns: Json
       }
+      agentic_chat_finalize_dead_turn_v1: {
+        Args: {
+          p_bare?: boolean
+          p_failure_code: string
+          p_status: string
+          p_trigger: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       agentic_chat_frozen_attachment_v1_is_valid: {
         Args: { p_attachment: Json; p_require_resolution: boolean }
         Returns: boolean
@@ -20193,6 +20244,15 @@ export type Database = {
         }
         Returns: Json
       }
+      agentic_chat_recover_dead_turn_v1: {
+        Args: {
+          p_bare?: boolean
+          p_trigger: string
+          p_turn_run_id: string
+          p_workflow_handoff?: boolean
+        }
+        Returns: Json
+      }
       agentic_chat_research_log_entries: {
         Args: { p_content: string }
         Returns: string[]
@@ -20200,6 +20260,17 @@ export type Database = {
       agentic_chat_research_result_urls: {
         Args: { p_depth?: number; p_value: Json }
         Returns: string[]
+      }
+      agentic_chat_turn_lease_state_v1: {
+        Args: {
+          p_execution_generation: number
+          p_lease_generation: number
+          p_lease_renewed_at: string
+          p_now: string
+          p_queue_heartbeat_at: string
+          p_turn_status: string
+        }
+        Returns: string
       }
       apply_agentic_chat_research_capture: {
         Args: {
@@ -22900,6 +22971,10 @@ export type Database = {
         }
         Returns: Json
       }
+      recover_dead_agentic_chat_turns: {
+        Args: { p_batch_size?: number; p_workflow_handoff?: boolean }
+        Returns: Json
+      }
       refresh_onto_public_page_30d_counts: { Args: never; Returns: number }
       refresh_sms_metrics_daily: { Args: never; Returns: undefined }
       refresh_user_migration_stats: {
@@ -22931,6 +23006,15 @@ export type Database = {
       release_native_search_cache: {
         Args: { p_cache_key: string; p_owner_token: string }
         Returns: boolean
+      }
+      renew_agentic_chat_turn_lease: {
+        Args: {
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
       }
       reorder_phases_with_tasks: {
         Args: {

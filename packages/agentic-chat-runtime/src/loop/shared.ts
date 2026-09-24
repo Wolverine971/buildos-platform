@@ -158,8 +158,6 @@ export type FastChatOrchestrationInterventions = {
 	skillGateStopRepair: boolean;
 	/** A turn ran >=2 web research calls and persisted nothing; a capture round was injected. */
 	researchNoPersistRepair: boolean;
-	/** The user stated a future the turn did not record; a forward-carry round was injected. */
-	statedFutureRepair: boolean;
 	/** A commissioned reorganization ended with zero writes; an execute round was injected. */
 	organizeCommissionRepair: boolean;
 	gatewaySchemaRepair: boolean;

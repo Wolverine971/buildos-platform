@@ -122,13 +122,6 @@ export class AgenticChatTurnFinalizer {
 			if (receipt.outcome === 'stale_generation') {
 				return result('stale_generation', envelope.turnRunId, executionGeneration);
 			}
-			if (receipt.outcome === 'effect_reconciliation_required') {
-				return result(
-					'effect_reconciliation_required',
-					envelope.turnRunId,
-					executionGeneration
-				);
-			}
 			if (
 				receipt.outcome === 'queue_reconciled' ||
 				receipt.outcome === 'already_reconciled'
