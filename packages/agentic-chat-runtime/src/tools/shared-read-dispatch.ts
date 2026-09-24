@@ -34,6 +34,7 @@ import {
 	getExternalAccountStatus,
 	listEmailAccounts,
 	requestEmailAccountConnection,
+	scanEmailInbox,
 	searchEmailMessages
 } from './email-reads';
 import { exploreProject } from './ontology-explore';
@@ -106,6 +107,7 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	request_email_account_connection: requestEmailAccountConnection,
 	list_email_accounts: listEmailAccounts,
 	search_email_messages: searchEmailMessages,
+	scan_email_inbox: scanEmailInbox,
 	get_email_message: getEmailMessage,
 	get_field_info: async (_context, args: Parameters<typeof getFieldInfo>[0]) => getFieldInfo(args)
 } satisfies Readonly<Record<string, SharedReadToolRunnerV1>>);

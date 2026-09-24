@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 
 import { env as privateEnv } from '$env/dynamic/private';
 import {
-	GLM_52_MODEL,
+	GLM_53_MODEL,
 	SmartLLMService,
 	type JSONUsageEvent,
 	type UsageLogParams
@@ -34,10 +34,10 @@ import { frozenPhaseACorpus, phaseAProjectSnapshot } from './fixtures';
 
 const ROUTE_EVAL_OUTPUT_PATH =
 	process.env.PHASE_A_ROUTE_OUTPUT_PATH?.trim() || '/tmp/buildos-phase-a-route-eval.json';
-const ROUTE_EVAL_MODEL = process.env.PHASE_A_ROUTE_MODEL?.trim() || GLM_52_MODEL;
+const ROUTE_EVAL_MODEL = process.env.PHASE_A_ROUTE_MODEL?.trim() || GLM_53_MODEL;
 const ROUTE_EVAL_PROFILE = parseRouteEvalProfile(process.env.PHASE_A_ROUTE_PROFILE);
 const ROUTE_EVAL_STRATEGY = parseRouteEvalStrategy(process.env.PHASE_A_ROUTE_STRATEGY);
-const ROUTE_REVIEW_MODEL = process.env.PHASE_A_ROUTE_REVIEW_MODEL?.trim() || GLM_52_MODEL;
+const ROUTE_REVIEW_MODEL = process.env.PHASE_A_ROUTE_REVIEW_MODEL?.trim() || GLM_53_MODEL;
 const ROUTE_REVIEW_PROFILE = parseRouteEvalProfile(process.env.PHASE_A_ROUTE_REVIEW_PROFILE);
 const ROUTES_PER_SCENARIO = parseRoutesPerScenario(process.env.PHASE_A_ROUTE_RUNS_PER_SCENARIO);
 const EXPECTED_LOGICAL_RUNS = frozenPhaseACorpus.scenarios.length * ROUTES_PER_SCENARIO;

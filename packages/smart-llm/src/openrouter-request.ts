@@ -3,8 +3,10 @@
 import {
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
+	GLM_53_MODEL,
 	GPT_6_LUNA_MODEL,
-	KIMI_K3_MODEL
+	KIMI_K3_MODEL,
+	QWEN_38_27B_FREE_MODEL
 } from './model-config';
 import type { ReasoningEffort } from './types';
 
@@ -45,14 +47,27 @@ export const OPENROUTER_PRIVATE_PROVIDER = Object.freeze({
 export type OpenRouterModelRequestPolicy = {
 	temperature: 'supported' | 'omit';
 	requiredReasoningEffort?: 'max';
-	minimumReasoningEffort?: 'medium';
+	minimumReasoningEffort?: 'low' | 'medium';
 	defaultReasoningEffort?: ReasoningEffort;
+	supportedReasoningEfforts?: readonly ReasoningEffort[];
 	includeReasoningDetails?: boolean;
 };
 
 export const OPENROUTER_MODEL_REQUEST_POLICIES: Readonly<
 	Record<string, OpenRouterModelRequestPolicy>
 > = Object.freeze({
+	[GLM_53_MODEL]: Object.freeze({
+		temperature: 'supported' as const,
+		// Always-on reasoning defaults to max upstream. Keep routine requests
+		// bounded and translate caller efforts into the three supported levels.
+		minimumReasoningEffort: 'low' as const,
+		defaultReasoningEffort: 'low' as const,
+		supportedReasoningEfforts: ['low', 'high', 'max'] as const
+	}),
+	[QWEN_38_27B_FREE_MODEL]: Object.freeze({
+		temperature: 'supported' as const,
+		defaultReasoningEffort: 'low' as const
+	}),
 	[KIMI_K3_MODEL]: Object.freeze({
 		temperature: 'omit' as const,
 		requiredReasoningEffort: 'max' as const,
@@ -84,6 +99,7 @@ function uniqueNonEmpty(values: string[]): string[] {
 
 export function resolveOpenRouterFallbackModels(model: string, models?: string[]): string[] {
 	const primary = model.trim();
+	if (primary === QWEN_38_27B_FREE_MODEL) return [];
 	return uniqueNonEmpty(models ?? [])
 		.filter((entry) => entry !== primary)
 		.slice(0, OPENROUTER_MAX_FALLBACK_MODELS);
@@ -114,6 +130,7 @@ function normalizeReasoningForModel(model: string, reasoning: unknown): unknown 
 	if (
 		policy.defaultReasoningEffort &&
 		!normalizedReasoning.effort &&
+		!normalizedReasoning.max_tokens &&
 		normalizedReasoning.enabled !== false
 	) {
 		normalizedReasoning = {
@@ -121,7 +138,7 @@ function normalizeReasoningForModel(model: string, reasoning: unknown): unknown 
 			effort: policy.defaultReasoningEffort
 		};
 	}
-	if (policy.minimumReasoningEffort) {
+	if (policy.minimumReasoningEffort && !normalizedReasoning.max_tokens) {
 		const effortOrder = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
 		const suppliedEffortIndex = effortOrder.indexOf(String(normalizedReasoning.effort ?? ''));
 		const minimumEffortIndex = effortOrder.indexOf(policy.minimumReasoningEffort);
@@ -131,6 +148,15 @@ function normalizeReasoningForModel(model: string, reasoning: unknown): unknown 
 				effort: policy.minimumReasoningEffort
 			};
 		}
+	}
+	if (policy.supportedReasoningEfforts && normalizedReasoning.effort) {
+		const effortOrder = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+		const requestedIndex = effortOrder.indexOf(String(normalizedReasoning.effort));
+		const effort =
+			policy.supportedReasoningEfforts.find(
+				(supported) => effortOrder.indexOf(supported) >= requestedIndex
+			) ?? policy.defaultReasoningEffort;
+		normalizedReasoning = { ...normalizedReasoning, effort };
 	}
 
 	if (!policy.requiredReasoningEffort) return normalizedReasoning;
@@ -160,8 +186,40 @@ export function buildOpenRouterChatCompletionBody(
 	const normalizedReasoning = normalizeReasoningForModel(params.model, params.reasoning);
 	if (normalizedReasoning) body.reasoning = normalizedReasoning;
 	if (params.provider) body.provider = params.provider;
-	if (Array.isArray(params.tools) && params.tools.length > 0) body.tools = params.tools;
-	if (params.tool_choice) body.tool_choice = params.tool_choice;
+	// ModelRun supports forced calls but not tool_choice:none (2026-09-24).
+	// Withholding the tool surface preserves the requested no-tools turn.
+	const omitTools = params.model === QWEN_38_27B_FREE_MODEL && params.tool_choice === 'none';
+	if (!omitTools) {
+		if (Array.isArray(params.tools) && params.tools.length > 0) body.tools = params.tools;
+		if (params.tool_choice) body.tool_choice = params.tool_choice;
+	}
+	if (params.model === GLM_53_MODEL || params.model === QWEN_38_27B_FREE_MODEL) {
+		const provider = {
+			...((params.provider ?? {}) as Record<string, unknown>),
+			require_parameters: true
+		};
+		if (params.model === QWEN_38_27B_FREE_MODEL) {
+			// Keep the free route free even if provider pricing changes.
+			Object.assign(provider, { max_price: { prompt: 0, completion: 0, request: 0 } });
+		} else if (params.tool_choice && params.tool_choice !== 'auto') {
+			// Verified full tool-choice support plus schema output and ZDR. Several
+			// cheaper GLM endpoints advertise tools but reject required/none.
+			// Source: /api/v1/models/z-ai/glm-5.3/endpoints, checked 2026-09-24.
+			const compatibleProviders = ['morph', 'inference-net', 'phala', 'fireworks'];
+			const requestedOnly = (params.provider as { only?: string[] } | undefined)?.only;
+			const only = requestedOnly
+				? requestedOnly.filter((entry) =>
+						compatibleProviders.includes(entry.split('/')[0]!)
+					)
+				: compatibleProviders;
+			if (only.length === 0)
+				throw new Error(
+					'Selected GLM 5.3 providers do not support the requested tool choice'
+				);
+			Object.assign(provider, { only });
+		}
+		body.provider = provider;
+	}
 	if (params.stream_options) body.stream_options = params.stream_options;
 	if (Array.isArray(params.transforms) && params.transforms.length > 0) {
 		body.transforms = params.transforms;

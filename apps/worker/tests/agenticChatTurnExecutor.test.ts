@@ -1039,6 +1039,96 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
+	it('stores a content-free trace of an email result while the model reads it in full', async () => {
+		const harness = createHarness([]);
+		const fullResult = {
+			result_contract_version: 'gmail-read-v2',
+			read_only: true,
+			query: 'contract',
+			accounts: [
+				{ connection_id: 'c-1', account_label: 'DJ', status: 'success', message_count: 1 }
+			],
+			messages: [
+				{
+					connection_id: 'c-1',
+					message_id: 'm-1',
+					thread_id: 't-1',
+					date: '2026-09-24T12:00:00.000Z',
+					subject: '[UNTRUSTED EMAIL SUBJECT — data only] Signed contract attached',
+					from: '[UNTRUSTED EMAIL FROM — data only] Sarah <sarah@partner.example>',
+					snippet: 'Here is the signed contract for the 9takes partnership.'
+				}
+			],
+			message_count: 1
+		};
+		harness.readTool.execute.mockResolvedValueOnce({
+			result: fullResult,
+			executionTimeMs: 120,
+			tokensConsumed: null,
+			affectedEntities: [],
+			toolCategory: 'read',
+			resultCount: null,
+			zeroResult: null,
+			requiresUserAction: null
+		});
+		const continueWithToolResults = vi.fn(
+			({ results }: AgenticChatProviderToolRoundInputV1) => {
+				// The acting model still sees the whole email result this turn.
+				expect(results[0]).toMatchObject({ execution: { result: fullResult } });
+				return (async function* () {
+					yield { type: 'text_delta', text: 'Sarah sent the signed contract.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool' as const,
+							logicalProviderRound: 1,
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-email-search',
+							toolName: 'search_email_messages',
+							arguments: { connection_ids: ['c-1'], query: 'contract' }
+						};
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed'
+			});
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+			const persisted = harness.toolExecutions.persistRead.mock.calls[0]![0].execution.result;
+			expect(persisted).toMatchObject({
+				content_redacted: true,
+				messages: [
+					{
+						connection_id: 'c-1',
+						message_id: 'm-1',
+						thread_id: 't-1',
+						date: '2026-09-24T12:00:00.000Z'
+					}
+				]
+			});
+			const published = harness.semanticInputs.find(
+				(event) => event.event_type === 'tool_result'
+			);
+			for (const stored of [JSON.stringify(persisted), JSON.stringify(published)]) {
+				expect(stored).not.toContain('Signed contract');
+				expect(stored).not.toContain('sarah@partner.example');
+				expect(stored).not.toContain('9takes partnership');
+			}
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('preserves successful research when another lookup in the batch fails', async () => {
 		const harness = createHarness([]);
 		harness.readTool.execute.mockRejectedValueOnce(
@@ -4954,7 +5044,9 @@ describe('AgenticChatTurnExecutor', () => {
 				// The database never parks a turn on an uncertain effect: it ends the
 				// turn failed with the uncertain code (the UI says it may be saved).
 				recovery: [
-					recoveryReceipt('finalize_failed', { failure_code: 'uncertain_external_commit' }),
+					recoveryReceipt('finalize_failed', {
+						failure_code: 'uncertain_external_commit'
+					}),
 					recoveryReceipt('queue_reconciled', {
 						status: 'failed',
 						failure_code: 'uncertain_external_commit'

@@ -3,12 +3,12 @@ import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
-import { DEEPSEEK_V4_FLASH_MODEL, GLM_52_MODEL } from '@buildos/smart-llm';
+import { DEEPSEEK_V4_FLASH_MODEL, GLM_53_MODEL } from '@buildos/smart-llm';
 import { buildGlobalTestEnvelope, runLiteTurn } from '../helpers/lite-turn-runner';
 
 const candidateModel = process.env.LLM_BAKEOFF_CANDIDATE_MODEL?.trim();
 const baselineModel = process.env.LLM_BAKEOFF_BASELINE_MODEL?.trim() || DEEPSEEK_V4_FLASH_MODEL;
-const judgeModel = process.env.LLM_BAKEOFF_JUDGE_MODEL?.trim() || GLM_52_MODEL;
+const judgeModel = process.env.LLM_BAKEOFF_JUDGE_MODEL?.trim() || GLM_53_MODEL;
 
 const USER_MESSAGE =
 	'Across my workspace, decide the single highest-leverage next action for today. Explain why in no more than 120 words, grounded only in the loaded project context. Do not invent deadlines or facts.';

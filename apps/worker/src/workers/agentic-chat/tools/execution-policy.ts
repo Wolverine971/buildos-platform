@@ -35,6 +35,16 @@ const ROW_LOCAL_MUTATIONS = new Map<string, readonly string[]>([
 ]);
 
 /**
+ * Creates whose server path inserts only new rows (task, containment edges,
+ * project log) and reads no project-wide state it then rewrites. They take a
+ * shared hold on their project, so sibling creates run together while a
+ * project update still orders against them. Document creates stay exclusive:
+ * they rewrite the project's document tree. Tasker 101: five task creates ran
+ * as layers [1,1,1,1,1] under the exclusive hold, ~1.7 s each on the gate.
+ */
+const SHARED_PROJECT_CREATES: ReadonlySet<string> = new Set(['create_onto_task']);
+
+/**
  * Resolve concurrency only from reviewed worker policy and exact domain IDs.
  * Unknown-scope mutations fail closed to serial execution.
  */
@@ -55,10 +65,15 @@ export function resolveAgenticChatToolExecutionPolicyV1(
 	if (!resourceFields) {
 		return { executionPolicy: 'serial', resources: [] };
 	}
+	const access: AgenticChatToolExecutionResourceV1['access'] = SHARED_PROJECT_CREATES.has(
+		input.toolName
+	)
+		? 'read'
+		: 'write';
 	const resources = resourceFields.flatMap((fieldName) => {
 		const value = input.arguments[fieldName];
 		return typeof value === 'string' && value.length > 0
-			? [{ key: resourceKey(fieldName, value), access: 'write' as const }]
+			? [{ key: resourceKey(fieldName, value), access }]
 			: [];
 	});
 	return resources.length === resourceFields.length

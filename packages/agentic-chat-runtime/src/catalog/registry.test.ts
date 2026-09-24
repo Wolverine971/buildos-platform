@@ -77,6 +77,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'reorganize_onto_project_graph onto.project.graph.reorganize write',
 	'request_email_account_connection email.accounts.connect write',
 	'resolve_user_contact_candidate util.contact.candidate.resolve write',
+	'scan_email_inbox email.messages.scan read',
 	'search_all_projects x.search.all_projects read',
 	'search_email_messages email.messages.search read',
 	'search_onto_assets onto.asset.search read',

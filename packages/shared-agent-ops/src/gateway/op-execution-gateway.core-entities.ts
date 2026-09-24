@@ -1,5 +1,4 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.core-entities.ts
-import { ensureActorId } from '../ontology/ontology-projects.service';
 import {
 	GOAL_STATES,
 	MILESTONE_STATES,
@@ -17,6 +16,7 @@ import { CORE_ENTITY_CONFIG, type ExternalEntityKind } from './op-execution-gate
 import {
 	assertAccessibleProject,
 	assertProjectWriteAccess,
+	contextActorId,
 	getProjectIdsForVisibleContext,
 	loadVisibleProjects,
 	withProjectName
@@ -185,7 +185,7 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
 	assertProjectWriteAccess(project, context.scope);
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	const name = requireTrimmedString(args.name, 'name');
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', GOAL_STATES, 'draft');
 	// A goal target date is a civil day in the user's timezone, closing that day.
@@ -337,7 +337,7 @@ export async function createPlan(context: ToolExecutionContext, args: Record<str
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
 	assertProjectWriteAccess(project, context.scope);
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	const name = requireTrimmedString(args.name, 'name');
 	const description =
 		normalizeOptionalText(args.description, 'description', { allowNull: true }) || null;
@@ -472,7 +472,7 @@ export async function createMilestone(
 		);
 	}
 	await loadCoreEntityForAccess(context, 'goal', goalId, 'write');
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	const title = requireTrimmedString(args.title, 'title');
 	const stateKey = normalizeStateValue(args.state_key, 'state_key', MILESTONE_STATES, 'pending');
 	// A milestone due date is a civil day in the user's timezone, closing that day.
@@ -585,7 +585,7 @@ export async function createRisk(context: ToolExecutionContext, args: Record<str
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
 	assertProjectWriteAccess(project, context.scope);
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	const title = requireTrimmedString(args.title, 'title');
 	const impact = requireTrimmedString(args.impact, 'impact') ?? '';
 	if (!['low', 'medium', 'high', 'critical'].includes(impact)) {

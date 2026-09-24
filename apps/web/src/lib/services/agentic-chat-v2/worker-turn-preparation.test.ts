@@ -82,7 +82,8 @@ const mocks = vi.hoisted(() => ({
 	loadFastChatPromptContext: vi.fn(),
 	buildLitePromptEnvelope: vi.fn(),
 	applyActiveDomainSignalsOverlay: vi.fn(),
-	buildPendingTurnContractSystemMessage: vi.fn()
+	buildPendingTurnContractSystemMessage: vi.fn(),
+	runAfterResponse: vi.fn()
 }));
 
 vi.mock('./access-checks', () => ({
@@ -105,6 +106,9 @@ vi.mock('./turn-preparation', () => ({
 }));
 vi.mock('./context-loader', () => ({
 	loadFastChatPromptContext: mocks.loadFastChatPromptContext
+}));
+vi.mock('$lib/server/background', () => ({
+	runAfterResponse: mocks.runAfterResponse
 }));
 vi.mock('./turn-contract', async (importOriginal) => {
 	const original = await importOriginal<typeof import('./turn-contract')>();
@@ -186,6 +190,10 @@ function serviceClientWithTables(tables: Record<string, Array<Record<string, any
 			return { data: rows[0] ?? null, error: rows.length > 1 ? { code: 'multiple' } : null };
 		}
 
+		upsert(row: Record<string, any>, options?: unknown) {
+			return upsert(this.table, row, options);
+		}
+
 		then<TResult1 = { data: Record<string, any>[]; error: null }>(
 			onfulfilled?: (value: {
 				data: Record<string, any>[];
@@ -215,8 +223,36 @@ function serviceClientWithTables(tables: Record<string, Array<Record<string, any
 		}
 	}
 
-	return { from: vi.fn((table: string) => new Builder(table)), rpc: vi.fn() };
+	const upsert = vi.fn(async (_table: string, _row: Record<string, any>, _options?: unknown) => ({
+		error: null
+	}));
+	return { from: vi.fn((table: string) => new Builder(table)), rpc: vi.fn(), upsert };
 }
+
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((settle) => {
+		resolve = settle;
+	});
+	return { promise, resolve };
+}
+
+/** Holds every read of `table` until the returned release is called. */
+function gateTable(client: ReturnType<typeof serviceClientWithTables>, table: string) {
+	const gate = deferred<void>();
+	const build = client.from.getMockImplementation()!;
+	client.from.mockImplementation((name: string) => {
+		const builder = build(name) as any;
+		if (name !== table) return builder;
+		const then = builder.then.bind(builder);
+		builder.then = (onfulfilled?: any, onrejected?: any) =>
+			gate.promise.then(() => then(onfulfilled, onrejected));
+		return builder;
+	});
+	return () => gate.resolve();
+}
+
+const flushMacrotask = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe('Agentic Chat worker turn preparation', () => {
 	beforeEach(() => {
@@ -665,7 +701,10 @@ describe('Agentic Chat worker turn preparation', () => {
 		// The message's wording never selects a block (AGENTS.md "Never classify
 		// language with regex"); with no pending contract there is no write
 		// situation, and a mounted delegate_task never makes one.
-		expect(overlayInput?.turnSituation).toMatchObject({ writeIntent: false, workerBound: true });
+		expect(overlayInput?.turnSituation).toMatchObject({
+			writeIntent: false,
+			workerBound: true
+		});
 		expect(overlayInput?.turnSituation).not.toHaveProperty('reviewDelegation');
 	});
 
@@ -2394,6 +2433,248 @@ describe('Agentic Chat worker turn preparation', () => {
 			expect(admittedToolNames(withConnection as never)).toEqual(
 				expect.arrayContaining(emailGroup)
 			);
+		});
+	});
+
+	// Tasker 101: admission made ~15 serial Supabase round trips. The reads now
+	// start together, but the serial order stays the error order and nothing
+	// durable happens before the access check passes.
+	describe('concurrent admission reads', () => {
+		const LEASE = {
+			decisionId: DECISION_ID,
+			mode: 'worker_realtime' as const,
+			contractVersion: 'agentic_chat_worker_v1' as const
+		};
+		const PROJECT_CONTEXT = { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID };
+		const SESSION_ROW = {
+			id: SESSION_ID,
+			user_id: USER_ID,
+			context_type: 'project',
+			entity_id: PROJECT_ID,
+			summary: null,
+			agent_metadata: {}
+		};
+
+		/** A user client whose context-token reads answer in order. */
+		function tokenUserClient(...answers: Array<Promise<string> | string>) {
+			return {
+				rpc: vi.fn(async () => ({ data: await (answers.shift() ?? null), error: null }))
+			};
+		}
+
+		it('starts the access check, email lookup, and context load together and waits for all', async () => {
+			const access = deferred<{ allowed: boolean }>();
+			mocks.checkProjectAccess.mockReturnValueOnce(access.promise);
+			const email = deferred<boolean>();
+			const hasActiveEmailConnection = vi.fn(() => email.promise);
+			const context = deferred<Record<string, unknown>>();
+			mocks.loadFastChatPromptContext.mockReturnValueOnce(context.promise);
+
+			let settled = false;
+			const preparation = prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: {} as never,
+				userId: USER_ID,
+				command: command({ context: PROJECT_CONTEXT }) as never,
+				lease: LEASE,
+				dependencies: { ...dependencies(), hasActiveEmailConnection }
+			}).finally(() => {
+				settled = true;
+			});
+
+			await vi.waitFor(() => expect(mocks.loadFastChatPromptContext).toHaveBeenCalledOnce());
+			// All three are in flight at once; none has answered yet.
+			expect(mocks.checkProjectAccess).toHaveBeenCalledOnce();
+			expect(hasActiveEmailConnection).toHaveBeenCalledOnce();
+
+			access.resolve({ allowed: true });
+			email.resolve(false);
+			await flushMacrotask();
+			expect(settled).toBe(false);
+
+			context.resolve({
+				contextType: 'project',
+				entityId: PROJECT_ID,
+				projectId: PROJECT_ID,
+				data: { source: 'server' }
+			});
+			await expect(preparation).resolves.toMatchObject({
+				args: { p_project_id: PROJECT_ID, p_history_source: 'admission_window' }
+			});
+		});
+
+		it('loads the history window beside the prompt context on a session turn', async () => {
+			const assistantMessageId = 'e2000000-0000-4000-8000-000000000002';
+			const serviceClient = serviceClientWithTables({
+				chat_sessions: [SESSION_ROW],
+				chat_messages: [
+					{
+						id: assistantMessageId,
+						session_id: SESSION_ID,
+						user_id: USER_ID,
+						role: 'assistant',
+						content: 'Earlier answer',
+						// Interrupted, so both tool-execution lookups have ids to read.
+						metadata: { interrupted: true },
+						created_at: '2026-08-03T10:01:00.000Z'
+					}
+				],
+				chat_message_attachments: [],
+				chat_tool_executions: []
+			});
+			const releaseMessages = gateTable(serviceClient, 'chat_messages');
+
+			const preparation = prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({ sessionId: SESSION_ID, context: PROJECT_CONTEXT }) as never,
+				lease: LEASE,
+				dependencies: dependencies()
+			});
+
+			// The context load runs while the history read is still held.
+			await vi.waitFor(() => expect(mocks.loadFastChatPromptContext).toHaveBeenCalledOnce());
+			expect(serviceClient.from).toHaveBeenCalledWith('chat_messages');
+			expect(serviceClient.from).not.toHaveBeenCalledWith('chat_tool_executions');
+
+			// Behind the message read, the attachment and both tool-execution reads
+			// start together.
+			const releaseAttachments = gateTable(serviceClient, 'chat_message_attachments');
+			releaseMessages();
+			await vi.waitFor(() =>
+				expect(
+					serviceClient.from.mock.calls.filter(
+						([table]) => table === 'chat_tool_executions'
+					)
+				).toHaveLength(2)
+			);
+			releaseAttachments();
+
+			const result = await preparation;
+			expect(result.args.p_artifact_history).toEqual([
+				expect.objectContaining({ sourceMessageId: assistantMessageId, role: 'assistant' })
+			]);
+		});
+
+		it('publishes the context snapshot after access passes without waiting for the write', async () => {
+			const recheck = deferred<string>();
+			const userClient = tokenUserClient('project:v1:1', recheck.promise);
+			const serviceClient = serviceClientWithTables({});
+
+			const result = await prepareAgenticChatWorkerAdmission({
+				userClient: userClient as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({ context: PROJECT_CONTEXT }) as never,
+				lease: LEASE,
+				dependencies: dependencies()
+			});
+
+			// Admission returned while the recheck that guards the write is pending.
+			expect(result.args.p_project_id).toBe(PROJECT_ID);
+			expect(mocks.runAfterResponse).toHaveBeenCalledExactlyOnceWith(
+				expect.any(Promise),
+				'agentic chat context snapshot publish'
+			);
+			expect(serviceClient.upsert).not.toHaveBeenCalled();
+
+			recheck.resolve('project:v1:1');
+			await mocks.runAfterResponse.mock.calls[0]?.[0];
+			expect(serviceClient.upsert).toHaveBeenCalledExactlyOnceWith(
+				'agentic_chat_context_snapshots',
+				expect.objectContaining({ user_id: USER_ID, invalidation_token: 'project:v1:1' }),
+				{ onConflict: 'user_id,cache_key' }
+			);
+		});
+
+		it.each([
+			{
+				name: 'a project access denial',
+				setup: () => mocks.checkProjectAccess.mockResolvedValueOnce({ allowed: false }),
+				sessionId: null,
+				error: { code: 'access_denied', message: 'Project access denied' }
+			},
+			{
+				name: 'a denial that settles after a racing attachment failure',
+				setup: () => {
+					const access = deferred<{ allowed: boolean }>();
+					mocks.checkProjectAccess.mockReturnValueOnce(access.promise);
+					mocks.loadValidatedChatAttachments.mockResolvedValueOnce({
+						error: { status: 400 }
+					});
+					setTimeout(() => access.resolve({ allowed: false }), 5);
+				},
+				sessionId: null,
+				error: { code: 'access_denied', message: 'Project access denied' }
+			},
+			{
+				name: 'a denial that settles after a racing session read failure',
+				setup: () => {
+					const access = deferred<{ allowed: boolean }>();
+					mocks.checkProjectAccess.mockReturnValueOnce(access.promise);
+					setTimeout(() => access.resolve({ allowed: false }), 5);
+				},
+				// Two rows make the session lookup fail as a database error.
+				sessionRows: [SESSION_ROW, { ...SESSION_ROW }],
+				sessionId: SESSION_ID,
+				error: { code: 'access_denied', message: 'Project access denied' }
+			},
+			{
+				name: 'an unavailable attachment once access passes',
+				setup: () =>
+					mocks.loadValidatedChatAttachments.mockResolvedValueOnce({
+						error: { status: 403 }
+					}),
+				sessionId: null,
+				error: {
+					code: 'access_denied',
+					message: 'One or more attachments are unavailable'
+				}
+			},
+			{
+				name: 'a session read failure once access passes',
+				setup: () => undefined,
+				sessionRows: [SESSION_ROW, { ...SESSION_ROW }],
+				sessionId: SESSION_ID,
+				error: { code: 'database_error', message: 'Worker session lookup failed' }
+			},
+			{
+				name: 'a missing session once access passes',
+				setup: () => undefined,
+				sessionRows: [],
+				sessionId: SESSION_ID,
+				error: { code: 'session_conflict', message: 'Worker session is unavailable' }
+			}
+		])('rejects $name before any turn or snapshot exists', async (scenario) => {
+			scenario.setup();
+			const userClient = tokenUserClient('project:v1:2', 'project:v1:2');
+			const serviceClient = serviceClientWithTables({
+				chat_sessions: scenario.sessionRows ?? [],
+				chat_messages: [],
+				chat_message_attachments: [],
+				chat_tool_executions: []
+			});
+
+			await expect(
+				prepareAgenticChatWorkerAdmission({
+					userClient: userClient as never,
+					serviceClient: serviceClient as never,
+					userId: USER_ID,
+					command: command({
+						context: PROJECT_CONTEXT,
+						sessionId: scenario.sessionId
+					}) as never,
+					lease: LEASE,
+					dependencies: dependencies()
+				})
+			).rejects.toMatchObject(scenario.error);
+
+			// Let any read that raced the failure finish: it must publish nothing.
+			await flushMacrotask();
+			expect(mocks.runAfterResponse).not.toHaveBeenCalled();
+			expect(serviceClient.upsert).not.toHaveBeenCalled();
+			expect(userClient.rpc.mock.calls.length).toBeLessThanOrEqual(1);
 		});
 	});
 });

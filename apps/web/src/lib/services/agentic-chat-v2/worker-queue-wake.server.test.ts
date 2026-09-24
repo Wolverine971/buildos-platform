@@ -7,6 +7,7 @@ vi.mock('$env/static/private', () => ({ PRIVATE_SUPABASE_SERVICE_KEY: 'service-r
 vi.mock('$env/dynamic/private', () => dynamicEnv);
 
 import {
+	AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS,
 	AGENTIC_CHAT_QUEUE_WAKE_EVENT,
 	AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS,
 	AGENTIC_CHAT_QUEUE_WAKE_TOPIC,
@@ -17,6 +18,24 @@ import {
 
 function accepted(): Response {
 	return new Response(null, { status: 202 });
+}
+
+/** A fetch that accepts the wake after `delayMs`, unless its signal aborts first. */
+function slowFetch(delayMs: number) {
+	return vi.fn(
+		(_input: RequestInfo | URL, init?: RequestInit) =>
+			new Promise<Response>((resolve, reject) => {
+				const timer = setTimeout(() => resolve(accepted()), delayMs);
+				init?.signal?.addEventListener(
+					'abort',
+					() => {
+						clearTimeout(timer);
+						reject(new DOMException('Aborted', 'AbortError'));
+					},
+					{ once: true }
+				);
+			})
+	);
 }
 
 /** A fetch that only settles when its request signal aborts. */
@@ -50,6 +69,9 @@ describe('Agentic Chat worker queue wake', () => {
 		expect(AGENTIC_CHAT_QUEUE_WAKE_TOPIC).toBe('agentic-chat-queue:wake');
 		expect(AGENTIC_CHAT_QUEUE_WAKE_EVENT).toBe('wake');
 		expect(AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS).toBeLessThanOrEqual(150);
+		expect(AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS).toBeGreaterThan(
+			AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS
+		);
 	});
 
 	it('publishes one private, data-free Broadcast through the Realtime REST endpoint', async () => {
@@ -83,14 +105,16 @@ describe('Agentic Chat worker queue wake', () => {
 		expect(init.signal).toBeInstanceOf(AbortSignal);
 	});
 
-	it('gives up at the deadline and aborts the request instead of holding admission', async () => {
+	it('stops waiting at the deadline but lets a slow wake finish in the background', async () => {
 		vi.useFakeTimers();
-		const fetchImpl = hangingFetch();
+		const fetchImpl = slowFetch(400);
+		const keepAlive = vi.fn();
 		const wake = createAgenticChatWorkerQueueWake({
 			supabaseUrl: 'https://project.supabase.co/',
 			serviceKey: 'service-role-key',
 			fetchImpl: fetchImpl as typeof fetch,
-			timeoutMs: 150
+			timeoutMs: 150,
+			keepAlive
 		});
 
 		let settled: string | null = null;
@@ -98,9 +122,92 @@ describe('Agentic Chat worker queue wake', () => {
 		await vi.advanceTimersByTimeAsync(149);
 		expect(settled).toBeNull();
 		await vi.advanceTimersByTimeAsync(1);
+		// Admission stops waiting at 150 ms, but the request is not cancelled.
 		expect(settled).toBe('timed_out');
 		const init = fetchImpl.mock.calls[0]?.[1] as RequestInit;
+		expect(init.signal?.aborted).toBe(false);
+		expect(keepAlive).toHaveBeenCalledOnce();
+
+		let background: string | null = null;
+		void (keepAlive.mock.calls[0]?.[0] as Promise<string>).then(
+			(outcome) => (background = outcome)
+		);
+		await vi.advanceTimersByTimeAsync(250);
+		expect(background).toBe('sent');
+		expect(init.signal?.aborted).toBe(false);
+		// The safety timer was cleared when the wake landed.
+		await vi.advanceTimersByTimeAsync(AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS);
+		expect(init.signal?.aborted).toBe(false);
+	});
+
+	it('aborts a wake that never completes at the safety bound', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = hangingFetch();
+		const keepAlive = vi.fn();
+		const wake = createAgenticChatWorkerQueueWake({
+			supabaseUrl: 'https://project.supabase.co',
+			serviceKey: 'service-role-key',
+			fetchImpl: fetchImpl as typeof fetch,
+			keepAlive
+		});
+
+		const outcome = wake();
+		await vi.advanceTimersByTimeAsync(AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS);
+		await expect(outcome).resolves.toBe('timed_out');
+		const init = fetchImpl.mock.calls[0]?.[1] as RequestInit;
+		expect(init.signal?.aborted).toBe(false);
+
+		let background: string | null = null;
+		void (keepAlive.mock.calls[0]?.[0] as Promise<string>).then(
+			(outcome) => (background = outcome)
+		);
+		await vi.advanceTimersByTimeAsync(
+			AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS - AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS - 1
+		);
+		expect(init.signal?.aborted).toBe(false);
+		expect(background).toBeNull();
+		await vi.advanceTimersByTimeAsync(1);
 		expect(init.signal?.aborted).toBe(true);
+		expect(background).toBe('timed_out');
+	});
+
+	it('settles the kept-alive wake at the safety bound even if fetch ignores the abort', async () => {
+		vi.useFakeTimers();
+		const keepAlive = vi.fn();
+		const wake = createAgenticChatWorkerQueueWake({
+			supabaseUrl: 'https://project.supabase.co',
+			serviceKey: 'service-role-key',
+			fetchImpl: vi.fn(() => new Promise<Response>(() => undefined)) as typeof fetch,
+			keepAlive
+		});
+
+		void wake();
+		await vi.advanceTimersByTimeAsync(AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS);
+		let background: string | null = null;
+		void (keepAlive.mock.calls[0]?.[0] as Promise<string>).then(
+			(outcome) => (background = outcome)
+		);
+		await vi.advanceTimersByTimeAsync(AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS);
+		expect(background).toBe('timed_out');
+	});
+
+	it('keeps nothing alive and aborts nothing after a wake that lands in time', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = slowFetch(20);
+		const keepAlive = vi.fn();
+		const wake = createAgenticChatWorkerQueueWake({
+			supabaseUrl: 'https://project.supabase.co',
+			serviceKey: 'service-role-key',
+			fetchImpl: fetchImpl as typeof fetch,
+			keepAlive
+		});
+
+		const outcome = wake();
+		await vi.advanceTimersByTimeAsync(20);
+		await expect(outcome).resolves.toBe('sent');
+		await vi.advanceTimersByTimeAsync(AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS);
+		expect(keepAlive).not.toHaveBeenCalled();
+		expect((fetchImpl.mock.calls[0]?.[1] as RequestInit).signal?.aborted).toBe(false);
 	});
 
 	it('never waits longer than the reviewed bound even when asked to', async () => {
@@ -109,7 +216,8 @@ describe('Agentic Chat worker queue wake', () => {
 			supabaseUrl: 'https://project.supabase.co',
 			serviceKey: 'service-role-key',
 			fetchImpl: hangingFetch() as typeof fetch,
-			timeoutMs: 10_000
+			timeoutMs: 10_000,
+			keepAlive: vi.fn()
 		});
 
 		let settled: string | null = null;

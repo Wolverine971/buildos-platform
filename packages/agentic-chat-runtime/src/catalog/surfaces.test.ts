@@ -290,6 +290,7 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 		expect(getGatewayEmailSurfaceToolNames(true)).toEqual([
 			'get_external_account_status',
 			'list_email_accounts',
+			'scan_email_inbox',
 			'search_email_messages',
 			'get_email_message'
 		]);

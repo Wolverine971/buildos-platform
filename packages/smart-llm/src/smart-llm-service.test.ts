@@ -9,10 +9,11 @@ import {
 	ACTIVE_EXPERIMENT_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_37_FLASH_MODEL,
-	GLM_52_MODEL,
+	GLM_53_MODEL,
 	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	KIMI_K3_MODEL,
+	QWEN_38_27B_FREE_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from './model-config';
 
@@ -919,12 +920,109 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 });
 
 describe('SmartLLMService OpenRouter data policy', () => {
+	it('keeps JSON parse repair on the explicitly selected free model', async () => {
+		const bodies: Record<string, unknown>[] = [];
+		const llm = new SmartLLMService({
+			apiKey: 'test-key',
+			fetch: vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+				bodies.push(JSON.parse(String(init?.body)));
+				return buildJSONCompletion({
+					model: QWEN_38_27B_FREE_MODEL,
+					content: bodies.length === 1 ? 'invalid JSON' : '{"ok":true}',
+					cost: 0
+				});
+			}) as typeof fetch
+		});
+		await expect(
+			llm.getJSONResponse({
+				model: QWEN_38_27B_FREE_MODEL,
+				userId: 'dev',
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Summarize the fixture.',
+				validation: { retryOnParseError: true, maxRetries: 1 }
+			})
+		).resolves.toEqual({ ok: true });
+		expect(bodies).toHaveLength(2);
+		for (const body of bodies) {
+			expect(body.model).toBe(QWEN_38_27B_FREE_MODEL);
+			expect(body).not.toHaveProperty('models');
+			expect(body.provider).toMatchObject({
+				max_price: { prompt: 0, completion: 0, request: 0 }
+			});
+		}
+	});
+	it('uses free Qwen for budgeted JSON with no paid profile fallbacks or estimated spend', async () => {
+		const bodies: Record<string, unknown>[] = [];
+		const onSpendReservation = vi.fn();
+		const llm = new SmartLLMService({
+			apiKey: 'test-key',
+			fetch: vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+				bodies.push(JSON.parse(String(init?.body)));
+				return buildJSONCompletion({
+					model: QWEN_38_27B_FREE_MODEL,
+					content: '{"ok":true}',
+					cost: 0
+				});
+			}) as typeof fetch
+		});
+		await expect(
+			llm.getJSONResponse({
+				model: QWEN_38_27B_FREE_MODEL,
+				models: [GLM_53_MODEL],
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Summarize the fixture.',
+				userId: 'dev',
+				spendLimit: { maxCostUsd: 0.01 },
+				onSpendReservation
+			})
+		).resolves.toEqual({ ok: true });
+		expect(bodies).toHaveLength(1);
+		expect(bodies[0]?.model).toBe(QWEN_38_27B_FREE_MODEL);
+		expect(bodies[0]).not.toHaveProperty('models');
+		expect(bodies[0]).not.toHaveProperty('response_format');
+		expect(bodies[0]?.provider).toMatchObject({
+			zdr: true,
+			data_collection: 'deny',
+			max_price: { prompt: 0, completion: 0, request: 0 }
+		});
+		expect(onSpendReservation).toHaveBeenCalledWith(
+			expect.objectContaining({ reservedCostUsd: 0 })
+		);
+	});
+
+	it('stops a free Qwen stream on endpoint removal without trying paid fallbacks', async () => {
+		const bodies: Record<string, unknown>[] = [];
+		const llm = new SmartLLMService({
+			apiKey: 'test-key',
+			fetch: vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+				bodies.push(JSON.parse(String(init?.body)));
+				return new Response(JSON.stringify({ error: { message: 'No endpoints found' } }), {
+					status: 404
+				});
+			}) as typeof fetch
+		});
+		const events = [];
+		for await (const event of llm.streamText({
+			model: QWEN_38_27B_FREE_MODEL,
+			models: [GLM_53_MODEL],
+			messages: [{ role: 'user', content: 'Read a fixture.' }],
+			tools: createToolDefs(),
+			tool_choice: 'required',
+			userId: 'dev'
+		}))
+			events.push(event);
+		expect(events.some((event) => event.type === 'error')).toBe(true);
+		expect(bodies).toHaveLength(1);
+		expect(bodies[0]?.model).toBe(QWEN_38_27B_FREE_MODEL);
+		expect(bodies[0]).not.toHaveProperty('models');
+	});
+
 	async function captureJsonRequestBody(evaluationOnlyAllowNonZdr?: boolean) {
 		const requestBodies: Array<Record<string, unknown>> = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 			return buildJSONCompletion({
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				content: '{"ok":true}',
 				provider: 'Z.AI'
 			});
@@ -938,7 +1036,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		await llm.getJSONResponse({
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Exercise the configured data policy.',
-			model: GLM_52_MODEL,
+			model: GLM_53_MODEL,
 			models: [],
 			spendLimit: { maxCostUsd: 0.01 },
 			userId: 'data-policy-test'
@@ -962,7 +1060,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 			return buildJSONCompletion({
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				content: '{"ok":true}',
 				provider: 'Z.AI'
 			});
@@ -975,7 +1073,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		await llm.getJSONResponse({
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Grade this result deterministically.',
-			model: GLM_52_MODEL,
+			model: GLM_53_MODEL,
 			models: [],
 			temperature: 0,
 			userId: 'zero-temperature-test'
@@ -1029,7 +1127,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 			return buildJSONCompletion({
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				content: '{"ok":true}',
 				provider: 'Novita'
 			});
@@ -1042,7 +1140,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		await llm.getJSONResponse({
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Exercise provider steering.',
-			model: GLM_52_MODEL,
+			model: GLM_53_MODEL,
 			models: [],
 			userId: 'provider-routing-test',
 			providerRouting: {
@@ -1057,6 +1155,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 			order: ['novita', 'parasail'],
 			allow_fallbacks: true,
 			data_collection: 'deny',
+			require_parameters: true,
 			zdr: true
 		});
 	});
@@ -1067,7 +1166,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 			return requestBodies.length === 1
 				? buildJSONCompletion({
-						model: GLM_52_MODEL,
+						model: GLM_53_MODEL,
 						content: 'not valid JSON',
 						provider: 'Novita'
 					})
@@ -1085,7 +1184,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		const result = await llm.getJSONResponse<{ ok: boolean }>({
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Repair malformed JSON.',
-			model: GLM_52_MODEL,
+			model: GLM_53_MODEL,
 			models: [],
 			userId: 'provider-routing-repair-test',
 			providerRouting: { order: ['novita'], allow_fallbacks: true },
@@ -1099,6 +1198,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 				order: ['novita'],
 				allow_fallbacks: true,
 				data_collection: 'deny',
+				require_parameters: true,
 				zdr: true
 			},
 			{
@@ -1119,7 +1219,7 @@ describe('SmartLLMService model failover', () => {
 				requestBodies.push(JSON.parse(init.body));
 			}
 			return buildJSONCompletion({
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				content: '{"ok":true}',
 				provider: 'Z.AI'
 			});
@@ -1266,7 +1366,7 @@ describe('SmartLLMService JSON model recovery', () => {
 				systemPrompt: 'Return JSON.',
 				userPrompt: 'Exercise accepted timeout handling.',
 				userId: 'accepted-timeout-test',
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				models: [],
 				timeoutMs: 42
 			});
@@ -1313,7 +1413,7 @@ describe('SmartLLMService JSON model recovery', () => {
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Fail over safely.',
 			userId: 'pre-header-timeout-test',
-			model: GLM_52_MODEL,
+			model: GLM_53_MODEL,
 			models: [],
 			timeoutMs: 42
 		});
@@ -1339,7 +1439,7 @@ describe('SmartLLMService JSON model recovery', () => {
 				systemPrompt: 'Return JSON.',
 				userPrompt: 'Stop when ownership is lost.',
 				userId: 'cancelled-test',
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				models: [],
 				signal: controller.signal
 			})
@@ -1361,7 +1461,7 @@ describe('SmartLLMService JSON model recovery', () => {
 			.fn()
 			.mockResolvedValueOnce(
 				buildJSONCompletion({
-					model: GLM_52_MODEL,
+					model: GLM_53_MODEL,
 					content: 'not valid JSON',
 					provider: 'Novita'
 				})
@@ -1378,7 +1478,7 @@ describe('SmartLLMService JSON model recovery', () => {
 				systemPrompt: 'Return JSON.',
 				userPrompt: 'Exercise repair timeout handling.',
 				userId: 'repair-timeout-test',
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				models: [],
 				timeoutMs: 42,
 				validation: { retryOnParseError: true, maxRetries: 1 }
@@ -1639,7 +1739,7 @@ describe('SmartLLMService JSON model recovery', () => {
 			return new Response(
 				JSON.stringify({
 					id: 'completion-no-usage-budgeted',
-					model: GLM_52_MODEL,
+					model: GLM_53_MODEL,
 					provider: 'Z.AI',
 					choices: [
 						{
@@ -1689,7 +1789,7 @@ describe('SmartLLMService JSON model recovery', () => {
 			return new Response(
 				JSON.stringify({
 					id: 'completion-no-usage-unbudgeted',
-					model: GLM_52_MODEL,
+					model: GLM_53_MODEL,
 					provider: 'Z.AI',
 					choices: [
 						{
@@ -2055,7 +2155,7 @@ describe('SmartLLMService billed intermediate attempts', () => {
 			.fn()
 			.mockResolvedValueOnce(
 				buildJSONCompletion({
-					model: GLM_52_MODEL,
+					model: GLM_53_MODEL,
 					content: 'not valid JSON',
 					provider: 'Novita',
 					cost: 0.002
@@ -2075,7 +2175,7 @@ describe('SmartLLMService billed intermediate attempts', () => {
 				systemPrompt: 'Return JSON.',
 				userPrompt: 'Repair me.',
 				userId: 'json-billed-repair',
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				validation: { retryOnParseError: true, maxRetries: 1 }
 			})
 		).resolves.toEqual({ ok: true });
@@ -2085,7 +2185,7 @@ describe('SmartLLMService billed intermediate attempts', () => {
 		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
 			expect.objectContaining({
 				status: 'invalid_response',
-				modelUsed: GLM_52_MODEL,
+				modelUsed: GLM_53_MODEL,
 				promptTokens: 10,
 				totalCost: 0.002
 			})
@@ -2100,7 +2200,7 @@ describe('SmartLLMService billed intermediate attempts', () => {
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 			return requestBodies.length === 1
-				? buildJSONCompletion({ model: GLM_52_MODEL, content: 'not valid JSON' })
+				? buildJSONCompletion({ model: GLM_53_MODEL, content: 'not valid JSON' })
 				: buildJSONCompletion({ model: DEEPSEEK_V4_FLASH_MODEL, content: '{"ok":true}' });
 		});
 		const llm = new SmartLLMService({
@@ -2112,7 +2212,7 @@ describe('SmartLLMService billed intermediate attempts', () => {
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'No repair allowed.',
 			userId: 'json-zero-retries',
-			model: GLM_52_MODEL,
+			model: GLM_53_MODEL,
 			validation: { retryOnParseError: true, maxRetries: 0 }
 		});
 

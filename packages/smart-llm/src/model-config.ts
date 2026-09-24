@@ -18,7 +18,10 @@ export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
 export const XIAOMI_MIMO_V26_FLASH_MODEL = 'xiaomi/mimo-v2.6-flash' as const;
 export const TENCENT_HY3_PREVIEW_MODEL = 'tencent/hy3-preview' as const;
 export const TENCENT_HY3_MODEL = 'tencent/hy3' as const;
+/** Historical receipt pricing only; active routes use GLM_53_MODEL. */
 export const GLM_52_MODEL = 'z-ai/glm-5.2' as const;
+export const GLM_53_MODEL = 'z-ai/glm-5.3' as const;
+export const QWEN_38_27B_FREE_MODEL = 'qwen/qwen3.8-27b:free' as const;
 export const GLM_53_FLASH_MODEL = 'z-ai/glm-5.3-flash' as const;
 export const NEX_N2_MINI_MODEL = 'nex-agi/nex-n2-mini' as const;
 export const POOLSIDE_LAGUNA_XS_21_MODEL = 'poolside/laguna-xs-2.1' as const;
@@ -267,12 +270,24 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 	},
 	[GLM_52_MODEL]: {
 		id: GLM_52_MODEL,
-		name: 'GLM 5.2',
+		name: 'GLM 5.2 (historical pricing)',
+		speed: 3.1,
+		smartness: 5,
+		cost: 0.9226,
+		outputCost: 2.8996,
+		provider: 'z-ai',
+		bestFor: [],
+		limitations: ['not-default-production-routing', 'historical-pricing-only']
+	},
+	[GLM_53_MODEL]: {
+		id: GLM_53_MODEL,
+		name: 'GLM 5.3',
 		speed: 3.1,
 		smartness: 5,
 		creativity: 4.6,
-		cost: 0.9226,
-		outputCost: 2.8996,
+		// Standard rates; provider discounts are temporary.
+		cost: 1.4,
+		outputCost: 4.4,
 		provider: 'z-ai',
 		bestFor: [
 			'long-horizon-agentic-workflows',
@@ -288,13 +303,34 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		limitations: [
 			'higher-cost-than-defaults',
 			'text-only',
-			'reasoning-tokens-can-increase-cost'
+			'reasoning-tokens-can-increase-cost',
+			'always-on-reasoning'
 		],
 		capabilities: {
 			jsonMode: true,
 			structuredOutputs: true,
 			tools: true,
 			reasoning: true,
+			longContext: true
+		}
+	},
+	[QWEN_38_27B_FREE_MODEL]: {
+		id: QWEN_38_27B_FREE_MODEL,
+		name: 'Qwen3.8 27B (free)',
+		speed: 3.5,
+		smartness: 4.2,
+		creativity: 4,
+		cost: 0,
+		outputCost: 0,
+		provider: 'qwen',
+		bestFor: ['dev-trial', 'multimodal', 'structured-output', 'tool-calling', '262k-context'],
+		limitations: ['not-default-production-routing', 'free-rate-limits', 'single-provider'],
+		// ModelRun advertises schema output, but not json_object response format.
+		capabilities: {
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
 			longContext: true
 		}
 	},
@@ -766,7 +802,7 @@ const OPENROUTER_TOOL_ROUTE = [
 	XIAOMI_MIMO_V25_MODEL,
 	POOLSIDE_LAGUNA_XS_21_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
-	GLM_52_MODEL,
+	GLM_53_MODEL,
 	MINIMAX_M3_MODEL
 ] as const;
 const OPENROUTER_MULTIMODAL_ROUTE = [
@@ -794,7 +830,7 @@ const JSON_FAST_ROUTE = [
 const JSON_POWERFUL_ROUTE = [
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
-	GLM_52_MODEL,
+	GLM_53_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
@@ -805,7 +841,7 @@ const JSON_MAXIMUM_ROUTE = [
 	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	GLM_53_FLASH_MODEL,
-	GLM_52_MODEL,
+	GLM_53_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const TEXT_SPEED_ROUTE = [
@@ -837,7 +873,7 @@ const TEXT_MAXIMUM_ROUTE = [
 	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	GLM_53_FLASH_MODEL,
-	GLM_52_MODEL,
+	GLM_53_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 
@@ -846,6 +882,8 @@ export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 		// Explicit-only local quality trial. Pareto is a mutable composite route with
 		// one non-ZDR provider and no response-format support, so automatic lanes stay off.
 		PARETO_MODEL,
+		// Free dev selection; never included in automatic profiles.
+		QWEN_38_27B_FREE_MODEL,
 		// Explicitly selectable while launch compatibility/capacity is evaluated.
 		// Keep automatic lanes and the old Flash fallback independent of this ID.
 		DEEPSEEK_V41_FLASH_MODEL,

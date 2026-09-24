@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.access.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const GRANTED_ID = '11111111-1111-4111-8111-111111111111';
@@ -19,6 +20,7 @@ import {
 	assertAccessibleProject,
 	assertVisibleEntityProject,
 	buildAllowedProjectSet,
+	contextActorId,
 	loadVisibleProjects,
 	PROJECT_NOT_GRANTED_TO_CONNECTOR
 } from './op-execution-gateway.access';
@@ -147,5 +149,50 @@ describe('connector project scope denials', () => {
 		const listed = await listProjects(connectorContext(), {});
 		expect(listed.total).toBe(2);
 		expect(listed).not.toHaveProperty('connector_scope');
+	});
+});
+
+describe('per-turn lookup memo', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.fetchProjectSummaries.mockResolvedValue(userProjects);
+	});
+
+	function turnContext(memo?: object) {
+		return {
+			admin: {},
+			userId: USER_ID,
+			scope: { mode: 'read_write' },
+			...(memo ? { memo } : {})
+		} as never;
+	}
+
+	it('resolves the actor and project summaries once across a turn’s writes', async () => {
+		// Tasker 101: each of five task creates re-resolved both lookups.
+		const memo = {};
+		await Promise.all([
+			loadVisibleProjects(turnContext(memo)),
+			loadVisibleProjects(turnContext(memo))
+		]);
+		await loadVisibleProjects(turnContext(memo));
+		expect(await contextActorId(turnContext(memo))).toBe('actor-1');
+		expect(mocks.ensureActorId).toHaveBeenCalledTimes(1);
+		expect(mocks.fetchProjectSummaries).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not keep a failed lookup, so the next write retries it', async () => {
+		const memo = {};
+		mocks.fetchProjectSummaries.mockRejectedValueOnce(new Error('network'));
+		await expect(loadVisibleProjects(turnContext(memo))).rejects.toThrow('network');
+		const visible = await loadVisibleProjects(turnContext(memo));
+		expect(visible.projectMap.has(GRANTED_ID)).toBe(true);
+		expect(mocks.fetchProjectSummaries).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps looking up per call when the caller passes no memo', async () => {
+		await loadVisibleProjects(turnContext());
+		await loadVisibleProjects(turnContext());
+		expect(mocks.ensureActorId).toHaveBeenCalledTimes(2);
+		expect(mocks.fetchProjectSummaries).toHaveBeenCalledTimes(2);
 	});
 });

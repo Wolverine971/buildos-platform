@@ -29,14 +29,14 @@ Run the opt-in blind comparison against the production baseline and save the res
 ```bash
 LLM_BAKEOFF_CANDIDATE_MODEL=x-ai/grok-4.7 \
 LLM_BAKEOFF_BASELINE_MODEL=deepseek/deepseek-v4-flash \
-LLM_BAKEOFF_JUDGE_MODEL=z-ai/glm-5.2 \
+LLM_BAKEOFF_JUDGE_MODEL=z-ai/glm-5.3 \
 LLM_BAKEOFF_OUTPUT_PATH=/tmp/grok-47-bakeoff-result.json \
 pnpm test:llm -- src/lib/tests/llm/__tests__/model-bakeoff-live.test.ts --retry=0
 ```
 
 The candidate and baseline receive the same rendered BuildOS workspace prompt. Their model
 identities are hidden from the judge, which uses strict JSON output and BuildOS's ZDR/data-collection
-policy. GLM 5.2 is the default judge because it has a ZDR-compatible endpoint; a judge without one
+policy. GLM 5.3 is the default judge because it has a ZDR-compatible endpoint; a judge without one
 fails closed rather than relaxing the privacy policy. The bakeoff is skipped unless
 `LLM_BAKEOFF_CANDIDATE_MODEL` is explicitly set.
 

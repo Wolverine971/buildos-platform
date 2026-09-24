@@ -16,6 +16,8 @@ import { AGENTIC_CHAT_TURN_LEASE_POLICY_V1, type Database } from '@buildos/share
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import { createAgentRunWebResearchPort } from '../../agent-run/webResearchPort';
 import type { WebNavigatePort } from '../tools/web-navigate';
+import type { EmailSearchProvenanceJudge } from '../tools/email-search-provenance';
+import type { JevDecider } from '@buildos/smart-llm';
 import { createAgenticChatWebSearchReviewer } from '../tools/web-search-review';
 import type { AgenticChatQueueAgeClient } from './capacity';
 import {
@@ -230,6 +232,10 @@ export function createAgenticChatCompositionRoot(options: {
 	/** Injectable for tests; production reuses the worker's SSRF-safe native web port. */
 	webResearch?: WebResearchPort;
 	webNavigator?: WebNavigatePort;
+	/** Jev relevance scores for `scan_email_inbox`. */
+	emailRelevanceDecider?: JevDecider;
+	/** Jev authorization for `search_email_messages` queries. */
+	emailSearchProvenance?: EmailSearchProvenanceJudge;
 	/**
 	 * Injectable for tests. Production composes the source-aware Google Calendar
 	 * services, `OntoEventSyncService` and the shared project-calendar service
@@ -388,6 +394,12 @@ export function createAgenticChatCompositionRoot(options: {
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),
 		...(options.webNavigator ? { webNavigator: options.webNavigator } : {}),
+		...(options.emailRelevanceDecider
+			? { emailRelevanceDecider: options.emailRelevanceDecider }
+			: {}),
+		...(options.emailSearchProvenance
+			? { emailSearchProvenance: options.emailSearchProvenance }
+			: {}),
 		webSearchReviewer: createAgenticChatWebSearchReviewer(
 			options.semanticReviewerClient ?? options.providerClient
 		)

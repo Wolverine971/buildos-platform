@@ -149,6 +149,7 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	request_email_account_connection: { op: 'email.accounts.connect', kind: 'write' },
 	list_email_accounts: { op: 'email.accounts.list', kind: 'read' },
 	search_email_messages: { op: 'email.messages.search', kind: 'read' },
+	scan_email_inbox: { op: 'email.messages.scan', kind: 'read' },
 	get_email_message: { op: 'email.messages.get', kind: 'read' }
 });
 

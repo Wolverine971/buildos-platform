@@ -401,6 +401,18 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 30000,
 		category: 'read'
 	},
+	scan_email_inbox: {
+		summary:
+			'Scan recent inbox mail (read-only) and return only the emails relevant to a project or question, each scored 0-100%.',
+		capabilities: [
+			'Scans every connected account by default; no list_email_accounts call needed',
+			'A fast classifier scores every email; emails already scored for the same question are skipped',
+			'Returns relevant emails with scores, body openings for the top few, and counts of the rest'
+		],
+		contexts: ['global', 'project'],
+		timeoutMs: 30000,
+		category: 'read'
+	},
 	get_email_message: {
 		summary: 'Read one sanitized Gmail message by connection_id + message_id (read-only).',
 		capabilities: [

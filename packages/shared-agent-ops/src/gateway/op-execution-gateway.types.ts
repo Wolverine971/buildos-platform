@@ -7,6 +7,7 @@ import type {
 	BuildosAgentScopeMode,
 	RegistryOp
 } from '@buildos/shared-types';
+import type { OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import type { ActivityLogActorContext } from '../ops/async-activity-logger';
 
 export type { RegistryOp } from '@buildos/shared-types';
@@ -101,6 +102,22 @@ export type ToolExecutionContext = {
 	 * gateway reads `users.timezone` lazily, only for date-only input.
 	 */
 	timezone?: string | null;
+	/**
+	 * Lookups shared across one caller's run of writes (one chat turn). Each
+	 * write builds a fresh context, so without this every write re-resolved
+	 * the actor, the project summaries, and the timezone (tasker 101). The
+	 * timezone lookup caches on this object too.
+	 */
+	memo?: GatewayLookupMemo;
+};
+
+/**
+ * Per-unit-of-work lookup memo. Promises are stored so concurrent writes share
+ * one query; a rejected lookup is dropped so the next write retries it.
+ */
+export type GatewayLookupMemo = {
+	actorId?: Promise<string>;
+	projectSummaries?: Promise<OntologyProjectSummary[]>;
 };
 
 export type ExternalGatewayRegistryEntry = RegistryOp & {

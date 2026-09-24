@@ -1,6 +1,6 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.assets.ts
 import { logUpdateAsync } from '../ops/async-activity-logger';
-import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
+import { type OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import { buildSearchFilter } from '../utils/search-filter';
 import {
 	EXTERNAL_ASSET_OCR_STATUSES,
@@ -12,6 +12,7 @@ import {
 	assertAccessibleProject,
 	assertProjectWriteAccess,
 	assertVisibleEntityProject,
+	contextActorId,
 	getProjectIdsForVisibleContext,
 	loadVisibleProjects
 } from './op-execution-gateway.access';
@@ -422,7 +423,7 @@ export async function updateAsset(context: ToolExecutionContext, args: Record<st
 	let removedDocumentIds: string[] = [];
 	let addedDocumentId: string | null = null;
 	if (requestedDocumentId !== undefined) {
-		const actorId = await ensureActorId(context.admin, context.userId, context.signal);
+		const actorId = await contextActorId(context);
 		if (requestedDocumentId !== null && !existingDocumentIds.includes(requestedDocumentId)) {
 			// Link first, unlink second: a failure between the two leaves the image
 			// visible under an extra document instead of silently losing its place.

@@ -1,9 +1,10 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.project-status.ts
 //
 // Project status packet handler and serializers.
-import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
+import { type OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import {
 	assertAccessibleProject,
+	contextActorId,
 	loadVisibleProjects,
 	type VisibleProjectContext
 } from './op-execution-gateway.access';
@@ -346,11 +347,7 @@ async function loadProjectStatusCollaborators(params: {
 	projectId: string;
 	collaboratorLimit: number;
 }) {
-	const currentActorId = await ensureActorId(
-		params.context.admin,
-		params.context.userId,
-		params.context.signal
-	);
+	const currentActorId = await contextActorId(params.context);
 	const request = params.context.admin
 		.from('onto_project_members')
 		.select(

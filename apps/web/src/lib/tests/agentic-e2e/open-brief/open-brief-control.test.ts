@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { GLM_52_MODEL } from '@buildos/smart-llm';
+import { GLM_53_MODEL } from '@buildos/smart-llm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -51,7 +51,7 @@ const controlDescribe =
 const OUTPUT_PATH =
 	process.env.OPEN_BRIEF_CONTROL_OUTPUT_PATH?.trim() ||
 	'/tmp/buildos-open-brief-control-cohort1.json';
-const EXPECTED_MODEL = process.env.OPEN_BRIEF_EXPECTED_FINAL_MODEL?.trim() || GLM_52_MODEL;
+const EXPECTED_MODEL = process.env.OPEN_BRIEF_EXPECTED_FINAL_MODEL?.trim() || GLM_53_MODEL;
 const CONTROL_TOOL_ROUND_CAP = 12;
 const TAVILY_PUBLIC_PAYG_CREDIT_COST_USD = 0.008;
 const CORPUS_PATH = fileURLToPath(

@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.core-entities.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -40,6 +41,7 @@ vi.mock('../ops/entity-mention-notification.service', () => ({
 vi.mock('./op-execution-gateway.access', () => ({
 	assertAccessibleProject: vi.fn(() => mocks.project),
 	assertProjectWriteAccess: vi.fn(),
+	contextActorId: vi.fn(async () => mocks.actorId),
 	getProjectIdsForVisibleContext: vi.fn(() => [PROJECT_ID]),
 	loadVisibleProjects: vi.fn(async () => ({
 		projects: [mocks.project],

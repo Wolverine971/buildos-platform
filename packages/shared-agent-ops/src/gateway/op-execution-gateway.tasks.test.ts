@@ -643,6 +643,27 @@ describe('createTask civil-date normalization', () => {
 		).rejects.toThrow(/due_at must be a valid ISO date/);
 	});
 
+	it('shares one set of lookups across a turn and skips the empty assignee read', async () => {
+		// Tasker 101: each create re-resolved the actor twice, the project
+		// summaries and the timezone, then read assignees it could not have.
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+		const memo = {};
+		for (const title of ['Order cabinets', 'Electrical rough-in']) {
+			await createTask({ ...(contextFor(admin) as object), memo } as never, {
+				project_id: PROJECT_ID,
+				title,
+				due_at: '2026-09-18'
+			});
+		}
+		const rpcNames = admin.rpc.mock.calls.map(([name]) => name);
+		expect(rpcNames.filter((name) => name === 'ensure_actor_for_user')).toHaveLength(1);
+		expect(rpcNames.filter((name) => name === 'get_onto_project_summaries_v1')).toHaveLength(1);
+		const tables = admin.from.mock.calls.map(([table]) => table);
+		expect(tables.filter((table) => table === 'users')).toHaveLength(1);
+		expect(tables).not.toContain('onto_task_assignees');
+	});
+
 	it('passes calendar_sync: none through to the side-effect layer', async () => {
 		const capture: { task?: any } = {};
 		const admin = adminFor({ timezone: 'America/New_York' }, capture);

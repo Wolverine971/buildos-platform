@@ -1,6 +1,6 @@
 // apps/worker/src/workers/agentic-chat/host/config.ts
 import { parseChatWorkflowPrototypeUsers } from '@buildos/shared-types';
-import { PARETO_MODEL } from '@buildos/smart-llm';
+import { GLM_53_MODEL, PARETO_MODEL, QWEN_38_27B_FREE_MODEL } from '@buildos/smart-llm';
 
 import {
 	type AgenticChatConsumerConfig,
@@ -109,6 +109,13 @@ function resolveProviderRouting(
 			ignore: ignoredProviders,
 			sort: 'throughput'
 		};
+	}
+	if (
+		[GLM_53_MODEL, QWEN_38_27B_FREE_MODEL].some(
+			(model) => model === environment.AGENTIC_CHAT_OPENROUTER_MODEL?.trim()
+		)
+	) {
+		return { allow_fallbacks: true, require_parameters: true };
 	}
 	return DEFAULT_OPENROUTER_PROVIDER_ROUTING;
 }

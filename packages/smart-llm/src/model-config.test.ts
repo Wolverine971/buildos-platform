@@ -6,6 +6,7 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GLM_52_MODEL,
+	GLM_53_MODEL,
 	GLM_53_FLASH_MODEL,
 	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
@@ -16,6 +17,7 @@ import {
 	NEX_N2_MINI_MODEL,
 	PARETO_MODEL,
 	POOLSIDE_LAGUNA_XS_21_MODEL,
+	QWEN_38_27B_FREE_MODEL,
 	resolveModelPricingProfile,
 	TENCENT_HY3_MODEL,
 	TENCENT_HY3_PREVIEW_MODEL,
@@ -24,6 +26,29 @@ import {
 } from './model-config';
 
 describe('resolveModelPricingProfile', () => {
+	it('upgrades GLM routes while retaining distinct historical receipt pricing', () => {
+		const current = resolveModelPricingProfile('z-ai/glm-5.3-20260816');
+		expect(current?.modelId).toBe(GLM_53_MODEL);
+		expect(current?.profile.cost).toBe(1.4);
+		expect(current?.profile.outputCost).toBe(4.4);
+		expect(ACTIVE_RUNTIME_MODEL_IDS).toContain(GLM_53_MODEL);
+		expect(ACTIVE_RUNTIME_MODEL_IDS).not.toContain(GLM_52_MODEL);
+		expect(modelSupportsCapability(GLM_52_MODEL, 'tools')).toBe(false);
+	});
+
+	it('catalogs free Qwen with zero prices and explicit-only capabilities', () => {
+		const result = resolveModelPricingProfile(QWEN_38_27B_FREE_MODEL);
+		expect(result?.profile.cost).toBe(0);
+		expect(result?.profile.outputCost).toBe(0);
+		expect(result?.profile.capabilities).toMatchObject({
+			tools: true,
+			structuredOutputs: true,
+			multimodal: true
+		});
+		expect(result?.profile.capabilities?.jsonMode).not.toBe(true);
+		expect(result?.profile.limitations).toContain('not-default-production-routing');
+		expect(ACTIVE_RUNTIME_MODEL_IDS).toContain(QWEN_38_27B_FREE_MODEL);
+	});
 	it('catalogs Pareto as a paid explicit-only tool model', () => {
 		const result = resolveModelPricingProfile(PARETO_MODEL);
 

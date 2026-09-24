@@ -26,6 +26,7 @@ import {
 	uncertainFailure
 } from './adapter-boundary';
 import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from './tool-catalog';
+import { gatewayMemoForTurn } from './gateway-turn-memo';
 
 const TOOL_NAME = 'create_onto_project';
 const MUTATION_SPEC = AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1[TOOL_NAME];
@@ -128,7 +129,10 @@ export class AgenticChatCreateOntoProjectMutationAdapter implements AgenticChatM
 				},
 				op: MUTATION_SPEC.operationName,
 				args: gatewayArguments,
-				chatSessionId: input.executionInput.claim.sessionId
+				chatSessionId: input.executionInput.claim.sessionId,
+				// Shared so this create clears project summaries the turn's later
+				// writes would otherwise reuse.
+				memo: gatewayMemoForTurn(input.executionInput.claim)
 			});
 		} catch (error) {
 			throw uncertainFailure(

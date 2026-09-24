@@ -115,8 +115,10 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 	set_project_calendar: ['get_project_calendar'],
 	// Filing an image under a document needs the document found first.
 	update_onto_asset: [...DOCUMENT_READS, 'search_onto_assets', 'get_onto_asset'],
+	// A scan needs no account list first; its results open with get_email_message.
+	scan_email_inbox: ['get_email_message'],
 	search_email_messages: ['list_email_accounts', 'get_email_message'],
-	get_email_message: ['list_email_accounts', 'search_email_messages'],
+	get_email_message: ['list_email_accounts', 'search_email_messages', 'scan_email_inbox'],
 	// A search's results are start points to read or click through.
 	web_search: ['web_visit', 'web_navigate'],
 	web_visit: ['web_navigate'],

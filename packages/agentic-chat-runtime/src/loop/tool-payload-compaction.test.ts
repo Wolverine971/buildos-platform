@@ -84,12 +84,55 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.preview).toBeUndefined();
 		expect(payload.result_contract_version).toBe('gmail-read-v2');
 		expect(payload.account_message_links).toEqual(accountLinks);
-		expect(payload.messages).toHaveLength(5);
+		// Under the email (web-sized) budget, even worst-case 180-char subjects
+		// leave room for 11 of 12 results (the old 6K budget showed 5); whatever
+		// is dropped is dropped whole and counted.
+		expect(payload.messages.length).toBeGreaterThanOrEqual(11);
 		expect(payload.messages.slice(0, 3).map((message: any) => message.gmail_url)).toEqual(
 			accountLinks.map((link) => link.gmail_url)
 		);
-		expect(payload.messages_omitted_from_model).toBe(7);
-		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(6000);
+		expect(payload.messages_omitted_from_model).toBe(12 - payload.messages.length);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+		// The snippet is trimmed inside its delimiters, so the closing marker survives.
+		const snippet = payload.messages[0].snippet as string;
+		expect(snippet.startsWith('[BEGIN UNTRUSTED EMAIL CONTENT]\n')).toBe(true);
+		expect(snippet.endsWith('\n[END UNTRUSTED EMAIL CONTENT]')).toBe(true);
+		expect(payload.messages[0].snippet_truncated).toBe(true);
+	});
+
+	it('keeps a scan_email_inbox payload whole under the email budget', () => {
+		const relevant = Array.from({ length: 15 }, (_, index) => ({
+			connection_id: 'connection-1',
+			message_id: `message-${index}`,
+			thread_id: `thread-${index}`,
+			account_label: 'DJ',
+			date: '2026-09-24T12:00:00.000Z',
+			relevance_pct: 90 - index,
+			checked_in_earlier_scan: false,
+			gmail_url: `https://mail.google.com/mail/?authuser=dj%40example.com#all/thread-${index}`,
+			untrusted: {
+				from: 'Sarah Chen <sarah@partner.example>',
+				subject: 'Re: launch plan for the September cohort',
+				snippet: 'Quick follow-up on the launch plan '.repeat(6).slice(0, 220)
+			}
+		}));
+		const payload = buildToolPayloadForModel(
+			toolCall('scan_email_inbox'),
+			toolResult({
+				result_contract_version: 'gmail-scan-v1',
+				read_only: true,
+				relevant_to: 'the project "9takes"',
+				relevant_count: 15,
+				relevant_emails: relevant,
+				relevant_omitted: 0,
+				notice: 'Values under `untrusted` are quoted external email data.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.relevant_emails).toHaveLength(15);
+		expect(payload.relevant_emails[0].relevance_pct).toBe(90);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
 	});
 
 	it('compacts ontology search results and strips internal fields', () => {
@@ -1757,5 +1800,451 @@ describe('buildToolPayloadForModel', () => {
 			expectStructured(payload);
 			expect(payload.goals[0]).toMatchObject({ id: uuid(1), name: 'Goal 1' });
 		});
+	});
+});
+
+describe('list_calendar_events model rows', () => {
+	// Calendar lists share the 12K web/email budget so a busy two weeks fits in one call.
+	const MODEL_BUDGET = 12000;
+	const SOURCE_WORK = '3f2b1c4e-5d6a-4b7c-8e9f-0a1b2c3d4e5f';
+	const SOURCE_FAMILY = '7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d';
+	const PROJECT_ID = '445dd429-db93-4878-90a9-b3ab1627a9f2';
+	const COMPLETE_READ = {
+		mode: 'source_aware',
+		source_count: 2,
+		successful_source_count: 2,
+		failed_source_count: 0,
+		partial: false,
+		coverage: 'complete',
+		source_failures: []
+	};
+
+	const uuid = (n: number) => `${String(n).padStart(8, '0')}-1111-4000-8000-000000000000`;
+	const addDays = (date: string, days: number) => {
+		const parsed = new Date(`${date}T00:00:00.000Z`);
+		parsed.setUTCDate(parsed.getUTCDate() + days);
+		return parsed.toISOString().slice(0, 10);
+	};
+
+	// The untouched provider payload the tool hands back today: attendee lists,
+	// conference data and HTML invite bodies the model never needs in a list.
+	function googleItem(input: {
+		id: string;
+		title: string;
+		start: Record<string, string>;
+		end: Record<string, string>;
+		sourceId?: string;
+		selfResponse?: string;
+	}) {
+		const sourceId = input.sourceId ?? SOURCE_WORK;
+		const raw = {
+			kind: 'calendar#event',
+			etag: `"3${input.id}1234567890000"`,
+			id: input.id,
+			status: 'confirmed',
+			htmlLink: `https://www.google.com/calendar/event?eid=${'x'.repeat(60)}${input.id}`,
+			created: '2026-08-01T12:00:00.000Z',
+			updated: '2026-08-02T12:00:00.000Z',
+			summary: input.title,
+			description:
+				`<p>Join Zoom Meeting</p><br>https://zoom.us/j/9${input.id}?pwd=${'p'.repeat(40)}<br>` +
+				'Agenda: review the open items and decide next steps. '.repeat(12),
+			location: 'Zoom',
+			creator: { email: 'dj@example.com', self: true },
+			organizer: { email: 'dj@example.com', self: true },
+			start: input.start,
+			end: input.end,
+			iCalUID: `${input.id}@google.com`,
+			sequence: 0,
+			attendees: [
+				{
+					email: 'dj@example.com',
+					self: true,
+					organizer: true,
+					responseStatus: input.selfResponse ?? 'accepted'
+				},
+				{ email: 'alex@example.com', displayName: 'Alex', responseStatus: 'accepted' },
+				{ email: 'sam@example.com', responseStatus: 'needsAction' }
+			],
+			conferenceData: {
+				entryPoints: [{ entryPointType: 'video', uri: `https://zoom.us/j/9${input.id}` }],
+				conferenceSolution: { name: 'Zoom Meeting' }
+			},
+			reminders: { useDefault: true },
+			eventType: 'default',
+			calendarSourceId: sourceId,
+			contributingSourceEvents: [{ calendarSourceId: sourceId, providerEventId: input.id }],
+			connectionId: 'connection-1',
+			connectionLabel: 'dj@example.com',
+			calendarSummary: sourceId === SOURCE_WORK ? 'Work' : 'Family',
+			providerCalendarId: 'dj@example.com',
+			providerEventId: input.id
+		};
+		return {
+			source: 'google',
+			is_synced: false,
+			external_event_id: input.id,
+			calendar_source_id: sourceId,
+			connection_id: 'connection-1',
+			provider_calendar_id: 'dj@example.com',
+			title: input.title,
+			start_at: input.start.dateTime ?? input.start.date,
+			end_at: input.end.dateTime ?? input.end.date,
+			event: raw
+		};
+	}
+
+	function ontologyItem(input: {
+		id: string;
+		title: string;
+		startAt: string;
+		endAt: string | null;
+		allDay?: boolean;
+		timezone?: string | null;
+		taskId?: string;
+	}) {
+		const row = {
+			id: input.id,
+			project_id: PROJECT_ID,
+			owner_entity_type: input.taskId ? 'task' : 'project',
+			owner_entity_id: input.taskId ?? PROJECT_ID,
+			title: input.title,
+			description: 'Block time to draft the proposal. '.repeat(10),
+			type_key: 'event.work_block',
+			state_key: 'scheduled',
+			start_at: input.startAt,
+			end_at: input.endAt,
+			all_day: input.allDay === true,
+			timezone: input.timezone ?? null,
+			location: null,
+			external_link: null,
+			props: { task_title: input.title },
+			recurrence: {},
+			sync_status: 'synced',
+			sync_error: null,
+			created_by: uuid(900),
+			created_at: '2026-08-01T12:00:00+00:00',
+			updated_at: '2026-08-01T12:00:00+00:00',
+			onto_event_sync: [
+				{
+					id: uuid(800),
+					calendar_source_id: SOURCE_WORK,
+					user_id: uuid(900),
+					provider: 'google',
+					external_event_id: `synced${input.id.slice(0, 8)}`,
+					sync_status: 'synced'
+				}
+			]
+		};
+		return {
+			source: 'ontology',
+			is_synced: true,
+			external_event_id: `synced${input.id.slice(0, 8)}`,
+			calendar_source_id: SOURCE_WORK,
+			connection_id: 'connection-1',
+			provider_calendar_id: 'dj@example.com',
+			onto_event_id: input.id,
+			title: input.title,
+			start_at: input.startAt,
+			end_at: input.endAt,
+			owner_entity_type: row.owner_entity_type,
+			owner_entity_id: row.owner_entity_id,
+			task_link: null,
+			sync_status: 'synced',
+			sync_error: null,
+			event: row
+		};
+	}
+
+	/** A busy calendar: timed meetings on two calendars plus BuildOS work blocks. */
+	function busyCalendar(count: number, days = 14) {
+		const perDay = Math.ceil(count / days);
+		return Array.from({ length: count }, (_, index) => {
+			const date = addDays('2026-09-24', Math.floor(index / perDay));
+			const minutes = 7 * 60 + (index % perDay) * 40;
+			const clock = (value: number) =>
+				`${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+			const start = `${date}T${clock(minutes)}:00-04:00`;
+			const end = `${date}T${clock(minutes + 30)}:00-04:00`;
+			if (index % 6 === 5) {
+				return ontologyItem({
+					id: uuid(index + 1),
+					title: `Proposal work block ${index + 1}`,
+					startAt: new Date(start).toISOString().replace('.000Z', '+00:00'),
+					endAt: new Date(end).toISOString().replace('.000Z', '+00:00'),
+					taskId: uuid(500 + index)
+				});
+			}
+			return googleItem({
+				id: `evt${String(index + 1).padStart(3, '0')}q7s2k9m4x1c8v5b3n6`,
+				title: `Client sync ${index + 1}`,
+				start: { dateTime: start, timeZone: 'America/New_York' },
+				end: { dateTime: end, timeZone: 'America/New_York' },
+				sourceId: index % 4 === 3 ? SOURCE_FAMILY : SOURCE_WORK
+			});
+		});
+	}
+
+	/** The listCalendarEvents envelope around one page of a merged, sorted list. */
+	function listResult(merged: Array<Record<string, any>>, offset = 0, limit = 100) {
+		const events = merged.slice(offset, offset + limit);
+		const hasMore = offset + limit < merged.length;
+		return {
+			query_scope: {
+				calendar_scope: 'user',
+				project_id: null,
+				calendar_id: null,
+				calendar_source_id: null
+			},
+			events,
+			google_event_count: merged.filter((item) => item.source === 'google').length,
+			ontology_event_count: merged.filter((item) => item.source === 'ontology').length,
+			merged_event_count: merged.length,
+			pagination: {
+				offset,
+				limit,
+				returned: events.length,
+				total_available: merged.length,
+				has_more: hasMore,
+				next_offset: hasMore ? offset + limit : null
+			},
+			queried_range: {
+				time_min: '2026-09-24T00:00:00-04:00',
+				time_max: '2026-10-07T23:59:59-04:00',
+				timezone: 'America/New_York',
+				query: null,
+				default_time_min_applied: false,
+				default_time_max_applied: false
+			},
+			google_read: COMPLETE_READ,
+			warnings: []
+		};
+	}
+
+	const modelPayload = (result: unknown) =>
+		buildToolPayloadForModel(
+			toolCall('list_calendar_events'),
+			toolResult(result),
+			parseArgs
+		) as Record<string, any>;
+	const rowId = (row: unknown[]) => (row[3] ?? row[4]) as string;
+	const itemId = (item: Record<string, any>) =>
+		(item.onto_event_id ?? item.external_event_id) as string;
+
+	it('fits a busy two-week window (60 events) as rows under the model budget', () => {
+		const merged = busyCalendar(60);
+		const payload = modelPayload(listResult(merged));
+
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(MODEL_BUDGET);
+		expect(payload.payload_truncated).toBeUndefined();
+		expect(payload.event_fields).toEqual([
+			'start',
+			'end',
+			'title',
+			'onto_event_id',
+			'external_event_id',
+			'calendar',
+			'details'
+		]);
+		// No raw provider blobs reach the model.
+		const serialized = JSON.stringify(payload);
+		expect(serialized).not.toContain('conferenceData');
+		expect(serialized).not.toContain('etag');
+		expect(serialized).not.toContain('alex@example.com');
+
+		const rows = payload.events as unknown[][];
+		// The generic guard showed ~5 of these; rows must carry most of the window.
+		expect(rows.length).toBeGreaterThanOrEqual(45);
+		expect(rows.map(rowId)).toEqual(merged.slice(0, rows.length).map(itemId));
+		const starts = rows.map((row) => row[0] as string);
+		expect([...starts].sort()).toEqual(starts);
+
+		if (rows.length < merged.length) {
+			expect(payload.pagination).toMatchObject({
+				offset: 0,
+				returned: rows.length,
+				total_available: 60,
+				has_more: true,
+				next_offset: rows.length,
+				held_back: 60 - rows.length
+			});
+			expect(payload.pagination.continuation).toContain(`offset=${rows.length}`);
+		} else {
+			expect(payload.pagination).toMatchObject({ has_more: false, next_offset: null });
+		}
+	});
+
+	it('never skips events a truncated page held back (next_offset regression)', () => {
+		// 150 events at limit 100: the tool says next_offset=100, but only the
+		// rows that fit reach the model. Paging must resume at the first unseen row.
+		const merged = busyCalendar(150);
+		const seen: string[] = [];
+		let offset: number | null = 0;
+		let calls = 0;
+		while (offset !== null && calls < 10) {
+			calls += 1;
+			const payload = modelPayload(listResult(merged, offset, 100));
+			expect(JSON.stringify(payload).length).toBeLessThanOrEqual(MODEL_BUDGET);
+			const rows = payload.events as unknown[][];
+			expect(rows.length).toBeGreaterThan(0);
+			seen.push(...rows.map(rowId));
+			if (rows.length < Math.min(100, merged.length - offset)) {
+				expect(payload.pagination.has_more).toBe(true);
+				expect(payload.pagination.next_offset).toBe(offset + rows.length);
+			}
+			offset = payload.pagination.has_more ? payload.pagination.next_offset : null;
+		}
+		expect(seen).toEqual(merged.map(itemId));
+	});
+
+	it('pages by time once the next offset would pass the tool maximum', () => {
+		// The merged window can exceed 300 (Google and BuildOS each fetch up to 300).
+		const merged = busyCalendar(400, 20);
+		const payload = modelPayload(listResult(merged, 290, 100));
+		const rows = payload.events as unknown[][];
+		expect(rows.length).toBeGreaterThan(0);
+		expect(rows.map(rowId)).toEqual(merged.slice(290, 290 + rows.length).map(itemId));
+		expect(payload.pagination.next_offset).toBeNull();
+		expect(payload.pagination.has_more).toBe(true);
+		// Held-back rows continue at the first unseen event; a fully shown page
+		// continues at its last event (a repeat, never a skip).
+		expect(payload.pagination.next_time_min).toBe(
+			rows.length < 100
+				? merged[290 + rows.length]!.start_at
+				: merged[290 + rows.length - 1]!.start_at
+		);
+		expect(payload.pagination.continuation).toContain('time_min=');
+	});
+
+	it('renders local times, all-day spans, addressable ids and the calendar legend', () => {
+		const merged = [
+			googleItem({
+				id: 'meeting1q7s2k9m4x1c8v5b3n6',
+				title: 'Client sync',
+				start: { dateTime: '2026-09-24T14:00:00-04:00' },
+				end: { dateTime: '2026-09-24T15:00:00-04:00' }
+			}),
+			ontologyItem({
+				id: uuid(1),
+				title: 'Proposal work block',
+				startAt: '2026-09-25T18:00:00+00:00',
+				endAt: '2026-09-25T19:30:00+00:00',
+				taskId: uuid(2)
+			}),
+			googleItem({
+				id: 'offsite1q7s2k9m4x1c8v5b3n6',
+				title: 'Team offsite',
+				start: { date: '2026-09-26' },
+				end: { date: '2026-09-29' },
+				sourceId: SOURCE_FAMILY
+			}),
+			ontologyItem({
+				id: uuid(3),
+				title: 'Focus day',
+				startAt: '2026-09-27T04:00:00+00:00',
+				endAt: '2026-09-28T04:00:00+00:00',
+				allDay: true,
+				timezone: 'America/New_York'
+			}),
+			googleItem({
+				id: 'declined1q7s2k9m4x1c8v5b3n6',
+				title: 'Vendor pitch',
+				start: { dateTime: '2026-09-28T23:30:00-04:00' },
+				end: { dateTime: '2026-09-29T00:30:00-04:00' },
+				selfResponse: 'declined'
+			})
+		];
+		const result = {
+			...listResult(merged),
+			warnings: ['Calendar coverage is degraded: 1 of 3 calendar source(s) failed.']
+		};
+		const payload = modelPayload(result);
+		const rows = payload.events as unknown[][];
+
+		expect(payload.rows_guide).toContain('local to America/New_York');
+		expect(payload.google_read).toEqual(COMPLETE_READ);
+		expect(payload.warnings).toEqual(result.warnings);
+		expect(payload.pagination).toEqual(result.pagination);
+		expect(payload.calendars).toEqual({
+			c1: { calendar_source_id: SOURCE_WORK, name: 'Work', account: 'dj@example.com' },
+			c2: { calendar_source_id: SOURCE_FAMILY, name: 'Family', account: 'dj@example.com' }
+		});
+
+		expect(rows[0]!.slice(0, 6)).toEqual([
+			'2026-09-24 14:00',
+			'15:00',
+			'Client sync',
+			null,
+			'meeting1q7s2k9m4x1c8v5b3n6',
+			'c1'
+		]);
+		expect(rows[0]![6]).toMatchObject({ attendees: 3, location: 'Zoom' });
+		expect(rows[0]![6]).not.toHaveProperty('my_response');
+		expect((rows[0]![6] as Record<string, string>).description).toMatch(
+			/^Join Zoom Meeting https:\/\/zoom\.us/
+		);
+		expect((rows[0]![6] as Record<string, string>).description.length).toBeLessThanOrEqual(120);
+
+		// A BuildOS event is addressed by onto_event_id even though it is synced.
+		expect(rows[1]!.slice(0, 6)).toEqual([
+			'2026-09-25 14:00',
+			'15:30',
+			'Proposal work block',
+			uuid(1),
+			null,
+			'c1'
+		]);
+		expect(rows[1]![6]).toMatchObject({ project_id: PROJECT_ID, task_id: uuid(2) });
+
+		// Google's exclusive all-day end becomes the inclusive last day.
+		expect(rows[2]!.slice(0, 6)).toEqual([
+			'2026-09-26',
+			'2026-09-28',
+			'Team offsite',
+			null,
+			'offsite1q7s2k9m4x1c8v5b3n6',
+			'c2'
+		]);
+		expect(rows[2]![6]).toMatchObject({ all_day: true });
+		// A one-day stored all-day row, read in its own timezone.
+		expect(rows[3]!.slice(0, 4)).toEqual(['2026-09-27', null, 'Focus day', uuid(3)]);
+		expect(rows[3]![6]).toMatchObject({ all_day: true });
+		// Crossing midnight keeps the end date; a declined invite says so.
+		expect(rows[4]!.slice(0, 2)).toEqual(['2026-09-28 23:30', '2026-09-29 00:30']);
+		expect(rows[4]![6]).toMatchObject({ my_response: 'declined' });
+	});
+
+	it('keeps an empty or failed read verdict intact without row scaffolding', () => {
+		const failed = {
+			...listResult([]),
+			calendar_read_failed: true,
+			error_code: 'reconnect_required',
+			google_read: {
+				...COMPLETE_READ,
+				successful_source_count: 0,
+				failed_source_count: 2,
+				coverage: 'unavailable',
+				source_failures: [
+					{
+						calendar: 'dj@example.com',
+						calendar_source_id: SOURCE_WORK,
+						connection_id: 'connection-1',
+						reason_code: 'reconnect_required'
+					}
+				]
+			},
+			warnings: ['No calendar data was read: all 2 connected calendar source(s) failed.']
+		};
+		const payload = modelPayload(failed);
+
+		expect(payload).toMatchObject({
+			calendar_read_failed: true,
+			error_code: 'reconnect_required',
+			google_read: failed.google_read,
+			warnings: failed.warnings,
+			events: []
+		});
+		expect(payload).not.toHaveProperty('event_fields');
+		expect(payload).not.toHaveProperty('calendars');
 	});
 });

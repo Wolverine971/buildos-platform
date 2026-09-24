@@ -9,7 +9,7 @@ import {
 	DEEPSEEK_V4_PRO_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	GEMINI_37_FLASH_MODEL,
-	GLM_52_MODEL,
+	GLM_53_MODEL,
 	GLM_53_FLASH_MODEL,
 	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
@@ -31,6 +31,7 @@ import {
 	POOLSIDE_LAGUNA_XS_21_MODEL,
 	PROJECT_NEXT_STEP_MODELS,
 	QWEN_37_PLUS_EXPERIMENT_MODEL,
+	QWEN_38_27B_FREE_MODEL,
 	TENCENT_HY3_MODEL,
 	TENCENT_HY3_PREVIEW_MODEL,
 	TEXT_PROFILE_MODELS,
@@ -59,6 +60,23 @@ function collectModelIds(value: unknown): string[] {
 }
 
 describe('ensureToolCompatibleModels', () => {
+	it('allows free Qwen explicitly without including it in automatic selections', () => {
+		expect(ensureToolCompatibleModels([QWEN_38_27B_FREE_MODEL])).toEqual([
+			QWEN_38_27B_FREE_MODEL
+		]);
+		for (const route of [
+			...Object.values(JSON_PROFILE_MODELS),
+			...Object.values(TEXT_PROFILE_MODELS),
+			OPENROUTER_V2_MULTIMODAL_MODELS,
+			OPENROUTER_V2_TOOL_MODELS
+		])
+			expect(route).not.toContain(QWEN_38_27B_FREE_MODEL);
+		for (const type of ['json', 'text'] as const) {
+			expect(selectModelsByRequirements(MODEL_CATALOG, {}, type)).not.toContain(
+				QWEN_38_27B_FREE_MODEL
+			);
+		}
+	});
 	it('allows explicit V4.1 Flash selection without promoting the launch endpoint automatically', () => {
 		expect(ACTIVE_RUNTIME_MODEL_SET.has(DEEPSEEK_V41_FLASH_MODEL)).toBe(true);
 		expect(
@@ -362,7 +380,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain('legacy/removed-qwen-plus');
 
 		expect(OPENROUTER_V2_TOOL_MODELS[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(OPENROUTER_V2_TOOL_MODELS).toContain(GLM_52_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).toContain(GLM_53_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(GLM_53_FLASH_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(TENCENT_HY3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(MINIMAX_M3_MODEL);
@@ -389,14 +407,14 @@ describe('ensureToolCompatibleModels', () => {
 		expect(ACTIVE_EXPERIMENT_MODEL).toBe(GLM_53_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality[0]).toBe(GEMINI_37_FLASH_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality[1]).toBe(GLM_53_FLASH_MODEL);
-		expect(TEXT_PROFILE_MODELS.quality).not.toContain(GLM_52_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality).not.toContain(GLM_53_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(DEEPSEEK_V4_PRO_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(GPT_6_LUNA_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).toContain(GROK_47_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(KIMI_K3_MODEL);
 		expect(TEXT_PROFILE_MODELS.quality).not.toContain(KIMI_CODING_MODEL);
 		expect(TEXT_PROFILE_MODELS.creative[0]).toBe(GLM_53_FLASH_MODEL);
-		expect(TEXT_PROFILE_MODELS.creative).not.toContain(GLM_52_MODEL);
+		expect(TEXT_PROFILE_MODELS.creative).not.toContain(GLM_53_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toEqual([...MAXIMUM_WORK_MODEL_ORDER]);
 		expect(TEXT_PROFILE_MODELS.maximum[0]).toBe(MAXIMUM_WORK_MODEL);
 		expect(TEXT_PROFILE_MODELS.maximum).toContain(GPT_6_LUNA_MODEL);
@@ -409,7 +427,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(JSON_PROFILE_MODELS.fast).toContain(NEX_N2_MINI_MODEL);
 		expect(JSON_PROFILE_MODELS.powerful[0]).toBe(GEMINI_37_FLASH_MODEL);
 		expect(JSON_PROFILE_MODELS.powerful[1]).toBe(GLM_53_FLASH_MODEL);
-		expect(JSON_PROFILE_MODELS.powerful).toContain(GLM_52_MODEL);
+		expect(JSON_PROFILE_MODELS.powerful).toContain(GLM_53_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum[0]).toBe(KIMI_K3_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GPT_6_LUNA_MODEL);
 		expect(JSON_PROFILE_MODELS.maximum).toContain(GROK_47_MODEL);
@@ -435,7 +453,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(supportsJsonMode(GEMINI_31_FLASH_LITE_MODEL)).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_PRO_MODEL)).toBe(true);
-		expect(supportsJsonMode(GLM_52_MODEL)).toBe(true);
+		expect(supportsJsonMode(GLM_53_MODEL)).toBe(true);
 		expect(supportsJsonMode(GLM_53_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(MINIMAX_M3_MODEL)).toBe(true);
 		expect(supportsJsonMode(NEX_N2_MINI_MODEL)).toBe(true);

@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
+	GLM_53_MODEL,
 	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
-	KIMI_K3_MODEL
+	KIMI_K3_MODEL,
+	QWEN_38_27B_FREE_MODEL
 } from './model-config';
 import {
 	buildOpenRouterChatCompletionBody,
@@ -38,6 +40,98 @@ describe('resolveOpenRouterFallbackModels', () => {
 });
 
 describe('buildOpenRouterChatCompletionBody', () => {
+	it.each([
+		[undefined, 'low'],
+		['none', 'low'],
+		['minimal', 'low'],
+		['low', 'low'],
+		['medium', 'high'],
+		['high', 'high'],
+		['xhigh', 'max'],
+		['max', 'max']
+	])('normalizes GLM reasoning effort %s to %s', (effort, expected) => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GLM_53_MODEL,
+			messages: [],
+			reasoning: { effort, enabled: false, exclude: true }
+		});
+		expect(body.reasoning).toEqual({ effort: expected, exclude: true });
+	});
+
+	it('preserves an explicit GLM reasoning token budget without adding conflicting effort', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GLM_53_MODEL,
+			messages: [],
+			reasoning: { max_tokens: 2048, exclude: true }
+		});
+		expect(body.reasoning).toEqual({ max_tokens: 2048, exclude: true });
+	});
+
+	it('restricts forced GLM tools to compatible providers without relaxing caller privacy or price caps', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: GLM_53_MODEL,
+			messages: [],
+			tool_choice: 'required',
+			provider: {
+				zdr: true,
+				data_collection: 'deny',
+				max_price: { prompt: 2 },
+				only: ['phala', 'deepinfra']
+			}
+		});
+		expect(body.provider).toEqual({
+			zdr: true,
+			data_collection: 'deny',
+			max_price: { prompt: 2 },
+			only: ['phala'],
+			require_parameters: true
+		});
+		expect(body.tool_choice).toBe('required');
+	});
+
+	it('rejects an incompatible explicit GLM provider restriction', () => {
+		expect(() =>
+			buildOpenRouterChatCompletionBody({
+				model: GLM_53_MODEL,
+				messages: [],
+				tool_choice: 'required',
+				provider: { only: ['deepinfra'] }
+			})
+		).toThrow('do not support the requested tool choice');
+	});
+
+	it('keeps Qwen free and disables the tool surface for a no-tools turn', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: QWEN_38_27B_FREE_MODEL,
+			models: [GLM_53_MODEL],
+			messages: [],
+			tools: [{ type: 'function' }],
+			tool_choice: 'none',
+			provider: { zdr: true, data_collection: 'deny', max_price: { prompt: 5 } }
+		});
+		expect(body).not.toHaveProperty('models');
+		expect(body).not.toHaveProperty('tools');
+		expect(body).not.toHaveProperty('tool_choice');
+		expect(body.provider).toEqual({
+			zdr: true,
+			data_collection: 'deny',
+			require_parameters: true,
+			max_price: { prompt: 0, completion: 0, request: 0 }
+		});
+	});
+
+	it('preserves forced Qwen tool calls and explicit reasoning off', () => {
+		const body = buildOpenRouterChatCompletionBody({
+			model: QWEN_38_27B_FREE_MODEL,
+			messages: [],
+			tools: [{ type: 'function' }],
+			tool_choice: 'required',
+			reasoning: { enabled: false }
+		});
+		expect(body.tool_choice).toBe('required');
+		expect(body.tools).toHaveLength(1);
+		expect(body.reasoning).toEqual({ enabled: false });
+	});
 	it('serializes fallback models with the top-level OpenRouter models field', () => {
 		const body = buildOpenRouterChatCompletionBody({
 			model: 'qwen/qwen3.7-plus',

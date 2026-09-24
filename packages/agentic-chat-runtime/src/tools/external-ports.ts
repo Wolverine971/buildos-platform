@@ -307,6 +307,76 @@ export interface AgenticChatEmailGetMessageInputV1 {
 }
 
 /**
+ * What an inbox scan judges relevance against. `project` = the turn's focused
+ * project (a trusted host fact, never a model argument); `request` = the
+ * model's plain-words `looking_for`; `attention` = mail that needs the user.
+ */
+export type AgenticChatEmailScanScopeV1 = 'project' | 'request' | 'attention';
+
+export interface AgenticChatEmailScanInputV1 {
+	/** MUST equal the read context's trusted `userId`. */
+	userId: string;
+	/** Exact connection ids to scan; undefined scans every readable account. */
+	connectionIds?: string[];
+	/** Inclusive window start and exclusive end, epoch milliseconds. */
+	afterMs: number;
+	beforeMs: number;
+	/** Most recent inbox messages to consider per account. */
+	maxPerAccount: number;
+	/** Model-written relevance target. Reaches the relevance model only, never Gmail. */
+	lookingFor: string | null;
+	/** The turn's focused project from the host's trusted context. */
+	projectId: string | null;
+	signal?: AbortSignal;
+}
+
+export interface AgenticChatEmailScanMessageV1 extends AgenticChatEmailMessageSummaryV1 {
+	/** Untrusted external text. */
+	to: string;
+	/** 0..1 chance the email is relevant to the scan scope; null when unscored. */
+	relevance: number | null;
+	/** An earlier scan with the same scope already classified this message. */
+	previouslyChecked: boolean;
+	/** Sanitized plain-text opening of the body (top matches only). Untrusted. */
+	bodyExcerpt: string | null;
+	bodyTruncated: boolean;
+}
+
+export interface AgenticChatEmailScanAccountV1 {
+	connectionId: string;
+	accountLabel: string;
+	emailAddress: string;
+	status: AgenticChatEmailSearchAccountStatusV1;
+	/** Inbox messages found in the window (capped at maxPerAccount). */
+	inWindow: number;
+	/** Messages the relevance model scored during this scan. */
+	newlyChecked: number;
+	/** Messages skipped because an earlier scan with this scope scored them. */
+	previouslyChecked: number;
+	/** Gmail holds more window mail than maxPerAccount. */
+	truncated: boolean;
+}
+
+export interface AgenticChatEmailScanResultV1 {
+	accounts: AgenticChatEmailScanAccountV1[];
+	scope: AgenticChatEmailScanScopeV1;
+	/** Plain-words description of what relevance was judged against. */
+	scopeLabel: string;
+	/**
+	 * `scored`: the relevance model ranked every new message. `unscored`: it was
+	 * unavailable, so `relevant` holds the newest messages unfiltered.
+	 */
+	filter: 'scored' | 'unscored';
+	/** Relevant messages, highest relevance first. */
+	relevant: AgenticChatEmailScanMessageV1[];
+	/** Relevant messages beyond the returned cap. */
+	relevantOmitted: number;
+	/** Senders of messages judged not relevant this scan, most frequent first. Untrusted. */
+	otherSenders: Array<{ from: string; count: number }>;
+	fetchedAt: string;
+}
+
+/**
  * Classified failures the shared email tools can turn into safe, content-free
  * model-facing errors. Anything a host throws that is NOT one of these is
  * assumed to carry request details or credentials and is collapsed into a
@@ -380,4 +450,10 @@ export interface AgenticChatEmailReadPortV1 {
 	searchMessages(input: AgenticChatEmailSearchInputV1): Promise<AgenticChatEmailSearchResultV1>;
 	/** One sanitized message. Throws `message_not_found` rather than returning null. */
 	getMessage(input: AgenticChatEmailGetMessageInputV1): Promise<AgenticChatEmailMessageV1>;
+	/**
+	 * Relevance-ranked scan of recent inbox mail. Optional: a host without a
+	 * relevance model leaves it unset and `scan_email_inbox` reports itself
+	 * unavailable.
+	 */
+	scanInbox?(input: AgenticChatEmailScanInputV1): Promise<AgenticChatEmailScanResultV1>;
 }

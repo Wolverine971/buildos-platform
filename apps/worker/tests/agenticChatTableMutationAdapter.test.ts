@@ -758,7 +758,8 @@ describe('table row create_onto_document', () => {
 				parent_document_id: '77777777-7777-4777-8777-777777777777',
 				position: 2
 			},
-			chatSessionId: SESSION_ID
+			chatSessionId: SESSION_ID,
+			memo: expect.any(Object)
 		});
 	});
 
@@ -1154,7 +1155,8 @@ describe('table rows for reviewed gateway ontology entities', () => {
 				},
 				op: testCase.operationName,
 				args: testCase.gatewayArguments ?? testCase.arguments,
-				chatSessionId: SESSION_ID
+				chatSessionId: SESSION_ID,
+				memo: expect.any(Object)
 			});
 		}
 	);
@@ -1347,7 +1349,8 @@ describe('table row update_onto_project', () => {
 				end_at: null,
 				props: { color: 'blue' }
 			},
-			chatSessionId: SESSION_ID
+			chatSessionId: SESSION_ID,
+			memo: expect.any(Object)
 		});
 	});
 
@@ -1520,7 +1523,8 @@ describe('table rows for reviewed ontology edges', () => {
 				rel: 'supports_goal',
 				props: { weight: 2, original_rel: 'helps_with' }
 			},
-			chatSessionId: SESSION_ID
+			chatSessionId: SESSION_ID,
+			memo: expect.any(Object)
 		});
 	});
 
@@ -1770,7 +1774,8 @@ describe('table rows for reviewed document relationships', () => {
 			},
 			op: 'onto.document.tree.move',
 			args: MOVE_ARGS,
-			chatSessionId: SESSION_ID
+			chatSessionId: SESSION_ID,
+			memo: expect.any(Object)
 		});
 	});
 

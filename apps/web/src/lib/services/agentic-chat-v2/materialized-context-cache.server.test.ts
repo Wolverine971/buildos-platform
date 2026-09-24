@@ -31,8 +31,11 @@ function sourceClient(tokens: Array<string | null>) {
 	} as any;
 }
 
-function storeClient(row: Record<string, unknown> | null = null) {
-	const upsert = vi.fn(async () => ({ error: null }));
+function storeClient(
+	row: Record<string, unknown> | null = null,
+	upsertResult: { error: unknown } = { error: null }
+) {
+	const upsert = vi.fn(async () => upsertResult);
 	const maybeSingle = vi.fn(async () => ({ data: row, error: null }));
 	const builder = {
 		select: vi.fn(() => builder),
@@ -181,5 +184,126 @@ describe('materialized fast-chat context cache', () => {
 		expect(result.cache.context.data).toEqual({ label: 'rebuilt' });
 		expect(loadFresh).toHaveBeenCalledOnce();
 		expect(store.upsert).toHaveBeenCalledOnce();
+	});
+
+	it('reads the durable snapshot beside the token when no session cache can serve', async () => {
+		let releaseToken!: (value: { data: string; error: null }) => void;
+		const source = sourceClient(['project:v1:7']);
+		source.rpc.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					releaseToken = resolve;
+				})
+		);
+		const store = storeClient();
+		const resolution = resolveMaterializedFastChatContext(
+			baseParams({ source, store: store.client, loadFresh: async () => freshContext() })
+		);
+
+		await vi.waitFor(() => expect(source.rpc).toHaveBeenCalledOnce());
+		// Both round trips are in flight before the token answers.
+		expect(store.maybeSingle).toHaveBeenCalledOnce();
+		releaseToken({ data: 'project:v1:7', error: null });
+		await expect(resolution).resolves.toMatchObject({ cacheSource: 'fresh_load' });
+		expect(store.maybeSingle).toHaveBeenCalledOnce();
+	});
+
+	it('does not report a speculative snapshot read the token failure made unused', async () => {
+		const source = {
+			rpc: vi.fn(async () => ({ data: null, error: { message: 'token unavailable' } }))
+		} as any;
+		const store = storeClient();
+		store.maybeSingle.mockRejectedValueOnce(new Error('snapshot unavailable'));
+		const onWarning = vi.fn();
+
+		await resolveMaterializedFastChatContext({
+			...baseParams({ source, store: store.client, loadFresh: async () => freshContext() }),
+			onWarning
+		});
+
+		expect(onWarning.mock.calls.map(([message]) => message)).toEqual([
+			'Failed to resolve context invalidation token'
+		]);
+	});
+
+	describe('with the snapshot write deferred', () => {
+		it('returns before the recheck and writes only when publishSnapshot runs', async () => {
+			const source = sourceClient(['project:v1:8', 'project:v1:8']);
+			const store = storeClient();
+			const loadFresh = vi.fn(async () => freshContext('loaded'));
+
+			const result = await resolveMaterializedFastChatContext({
+				...baseParams({ source, store: store.client, loadFresh }),
+				deferSnapshotWrite: true
+			});
+
+			expect(result).toMatchObject({
+				cacheSource: 'fresh_load',
+				invalidationToken: 'project:v1:8'
+			});
+			expect(result.cache.context.data).toEqual({ label: 'loaded' });
+			expect(source.rpc).toHaveBeenCalledOnce();
+			expect(store.upsert).not.toHaveBeenCalled();
+
+			await expect(result.publishSnapshot?.()).resolves.toBeUndefined();
+			expect(source.rpc).toHaveBeenCalledTimes(2);
+			expect(store.upsert).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					invalidation_token: 'project:v1:8',
+					context_payload: expect.objectContaining({ data: { label: 'loaded' } })
+				}),
+				{ onConflict: 'user_id,cache_key' }
+			);
+			expect(loadFresh).toHaveBeenCalledOnce();
+		});
+
+		it('never publishes a snapshot whose source changed during the load', async () => {
+			const source = sourceClient(['project:v1:9', 'project:v1:10']);
+			const store = storeClient();
+			const loadFresh = vi.fn(async () => freshContext('loaded-under-9'));
+
+			const result = await resolveMaterializedFastChatContext({
+				...baseParams({ source, store: store.client, loadFresh }),
+				deferSnapshotWrite: true
+			});
+			await result.publishSnapshot?.();
+
+			// The turn keeps the context it loaded, labelled with the generation the
+			// load started under, so the next read misses and rebuilds it.
+			expect(result.invalidationToken).toBe('project:v1:9');
+			expect(result.cache.invalidation_token).toBe('project:v1:9');
+			expect(loadFresh).toHaveBeenCalledOnce();
+			expect(store.upsert).not.toHaveBeenCalled();
+		});
+
+		it('reports a failed write without rejecting and offers nothing without a token', async () => {
+			const onWarning = vi.fn();
+			const store = storeClient(null, { error: { message: 'write refused' } });
+			const result = await resolveMaterializedFastChatContext({
+				...baseParams({
+					source: sourceClient(['project:v1:11', 'project:v1:11']),
+					store: store.client,
+					loadFresh: async () => freshContext()
+				}),
+				deferSnapshotWrite: true,
+				onWarning
+			});
+
+			await expect(result.publishSnapshot?.()).resolves.toBeUndefined();
+			expect(onWarning).toHaveBeenCalledExactlyOnceWith(
+				'Failed to write materialized context snapshot',
+				{ message: 'write refused' }
+			);
+
+			const untokened = await resolveMaterializedFastChatContext({
+				...baseParams({
+					source: sourceClient([]),
+					store: storeClient().client,
+					loadFresh: async () => freshContext()
+				}),
+				deferSnapshotWrite: true
+			});
+			expect(untokened.publishSnapshot).toBeUndefined();
+		});
 	});
 });

@@ -12,11 +12,25 @@ import {
 	OPENROUTER_V2_TOOL_MODELS,
 	OPENROUTER_V2_TOOL_MODELS_EXACTO,
 	GLM_53_FLASH_MODEL,
+	QWEN_38_27B_FREE_MODEL,
 	TEXT_PROFILE_MODELS
 } from '@buildos/smart-llm';
 import { resolveLaneModels, resolveLaneReasoning } from './model-lanes';
 
 describe('resolveLaneModels', () => {
+	it.each(['text', 'json', 'tool_calling', 'multimodal'] as const)(
+		'keeps explicit free Qwen isolated from paid %s defaults',
+		(lane) => {
+			expect(
+				resolveLaneModels({
+					lane,
+					model: QWEN_38_27B_FREE_MODEL,
+					models: [KIMI_K3_MODEL],
+					profile: 'maximum'
+				})
+			).toEqual([QWEN_38_27B_FREE_MODEL]);
+		}
+	);
 	it('returns default text lane models when no explicit selection is provided', () => {
 		const result = resolveLaneModels({ lane: 'text' });
 

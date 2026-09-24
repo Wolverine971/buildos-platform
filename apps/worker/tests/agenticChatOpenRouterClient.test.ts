@@ -1,6 +1,7 @@
 // apps/worker/tests/agenticChatOpenRouterClient.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DOCUMENT_READ_TOOL } from '@buildos/agentic-chat-runtime/specialists';
+import { QWEN_38_27B_FREE_MODEL } from '@buildos/smart-llm';
 import {
 	AGENTIC_CHAT_ACTING_MAX_TOKENS,
 	AgenticChatLlmUsageObserver,
@@ -169,6 +170,43 @@ async function collect(
 }
 
 describe('AgenticChatOpenRouterClient', () => {
+	it('rejects paid model and route fallbacks for an explicit free Qwen trial', () => {
+		const fetchImpl = vi.fn();
+		expect(() => harness(fetchImpl, [route({ model: QWEN_38_27B_FREE_MODEL })])).toThrow(
+			'free Qwen dev route'
+		);
+		expect(() =>
+			harness(fetchImpl, [
+				route({ model: QWEN_38_27B_FREE_MODEL, fallbackModels: [] }),
+				route({ id: 'paid-fallback' })
+			])
+		).toThrow('free Qwen dev route');
+		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+
+	it('sends a free Qwen final response without unsupported tool_choice:none', async () => {
+		const fetchImpl = vi.fn(async () =>
+			sseResponse([
+				JSON.stringify({
+					model: QWEN_38_27B_FREE_MODEL,
+					choices: [{ delta: { content: 'Done.' }, finish_reason: 'stop' }],
+					usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12, cost: 0 }
+				}),
+				'[DONE]'
+			])
+		);
+		const test = harness(fetchImpl, [
+			route({ model: QWEN_38_27B_FREE_MODEL, fallbackModels: [] })
+		]);
+		await collect(test.client.stream(input()));
+		const body = JSON.parse(
+			String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1]?.body)
+		);
+		expect(body.model).toBe(QWEN_38_27B_FREE_MODEL);
+		expect(body).not.toHaveProperty('tool_choice');
+		expect(body).not.toHaveProperty('tools');
+		expect(body.provider.max_price).toEqual({ prompt: 0, completion: 0, request: 0 });
+	});
 	it.each(['ordinary', 'no_meter', 'wrong_role', 'altered_schema', 'extra_tool'])(
 		'rejects the document surface with %s before any request',
 		async (violation) => {

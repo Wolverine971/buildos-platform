@@ -5,6 +5,7 @@
 // clears the "No endpoints found that satisfy the max price" 404. Used to
 // calibrate DEFAULT_SAFETY_MULTIPLIER in packages/smart-llm/src/spend-guard.ts.
 //   node apps/worker/scripts/openrouter-maxprice-probe.mjs
+import { GLM_53_MODEL, MODEL_CATALOG } from '@buildos/smart-llm';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,15 +23,16 @@ const env = Object.fromEntries(
 const KEY = env.PRIVATE_OPENROUTER_API_KEY;
 if (!KEY) throw new Error('no OpenRouter key');
 
-const MODEL = 'z-ai/glm-5.2';
-const CATALOG_PROMPT = 0.9226;
-const CATALOG_COMPLETION = 2.8996;
+const MODEL = GLM_53_MODEL;
+const CATALOG_PROMPT = MODEL_CATALOG[MODEL].cost;
+const CATALOG_COMPLETION = MODEL_CATALOG[MODEL].outputCost;
 
 async function probe(mult) {
 	const body = {
 		model: MODEL,
 		messages: [{ role: 'user', content: 'Reply with the single word: ok' }],
 		max_tokens: 5,
+		reasoning: { effort: 'low' },
 		provider:
 			mult === null
 				? undefined
@@ -52,7 +54,7 @@ async function probe(mult) {
 	return { mult, http: res.status, ok: !!ok, err: err ? err.slice(0, 90) : null };
 }
 
-// First: no cap (baseline — what does glm-5.2 actually cost?)
+// First: no cap (baseline — what does the configured model actually cost?)
 const base = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 	method: 'POST',
 	headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
@@ -60,6 +62,7 @@ const base = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 		model: MODEL,
 		messages: [{ role: 'user', content: 'Reply with the single word: ok' }],
 		max_tokens: 5,
+		reasoning: { effort: 'low' },
 		usage: { include: true }
 	})
 });

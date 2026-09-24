@@ -6,52 +6,30 @@ import {
 } from './web-egress-policy';
 
 describe('agentic chat web egress provenance', () => {
-	it('allows only an exact explicitly requested Gmail query', () => {
+	it('routes every Gmail query to the mailbox review instead of matching message phrasing', () => {
+		for (const userMessage of [
+			'Search Gmail for "from:alice@example.com newer_than:7d".',
+			'check my djwayne35 email and see what interviews I have',
+			'Summarize my project.'
+		]) {
+			expect(
+				evaluateAgenticChatWebEgressProvenance({
+					toolName: 'search_email_messages',
+					arguments: {
+						connection_ids: ['connection-1'],
+						query: 'from:alice@example.com newer_than:7d'
+					},
+					userMessage
+				})
+			).toEqual({ allowed: false, reason: 'mailbox_review_required' });
+		}
 		expect(
 			evaluateAgenticChatWebEgressProvenance({
 				toolName: 'search_email_messages',
-				arguments: {
-					connection_ids: ['connection-1'],
-					query: 'from:alice@example.com newer_than:7d'
-				},
-				userMessage: 'Search Gmail for "from:alice@example.com newer_than:7d".'
+				arguments: { connection_ids: ['connection-1'], query: '   ' },
+				userMessage: 'Search Gmail for alice.'
 			})
-		).toEqual({ allowed: true });
-		expect(
-			evaluateAgenticChatWebEgressProvenance({
-				toolName: 'search_email_messages',
-				arguments: {
-					connection_ids: ['connection-1'],
-					query: 'private project codename'
-				},
-				userMessage: 'Summarize my project.'
-			})
-		).toMatchObject({ allowed: false, reason: 'query_not_explicitly_requested' });
-	});
-
-	it('allows a locally verified Gmail pagination cursor without weakening query provenance', () => {
-		expect(
-			evaluateAgenticChatWebEgressProvenance({
-				toolName: 'search_email_messages',
-				arguments: {
-					connection_ids: ['connection-1'],
-					query: 'from:alice@example.com newer_than:7d',
-					cursor: 'enc:gmail-cursor:v1.locally-verified-envelope'
-				},
-				userMessage: 'Search Gmail for "from:alice@example.com newer_than:7d".'
-			})
-		).toEqual({ allowed: true });
-		expect(
-			evaluateAgenticChatWebEgressProvenance({
-				toolName: 'search_email_messages',
-				arguments: {
-					connection_ids: ['connection-1'],
-					query: 'private project codename',
-					cursor: 'enc:gmail-cursor:v1.locally-verified-envelope'
-				},
-				userMessage: 'Search Gmail for "public launch news".'
-			})
-		).toMatchObject({ allowed: false, reason: 'query_not_explicitly_requested' });
+		).toEqual({ allowed: false, reason: 'invalid_web_egress_arguments' });
 	});
 
 	it('fast-paths exact searches and requires review for inferred queries', () => {

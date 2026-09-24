@@ -15,6 +15,7 @@ import {
 import type { AgenticChatTurnProviderClientRequestV1 } from '../src/workers/agentic-chat/provider/contracts';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import type { WebNavigatePort } from '../src/workers/agentic-chat/tools/web-navigate';
+import type { EmailSearchProvenanceJudge } from '../src/workers/agentic-chat/tools/email-search-provenance';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import {
 	AGENTIC_CHAT_CONTROL_TOOL_NAMES_V1,
@@ -139,7 +140,11 @@ function adapterWith(
 		maxTurnSecurityStates?: number;
 		maxTurnSecurityStatesPerUser?: number;
 		turnSecurityStateTtlMs?: number;
-		createEmailPort?: (userId: string) => AgenticChatEmailReadPortV1;
+		createEmailPort?: (
+			userId: string,
+			turn: { turnRunId: string; sessionId: string }
+		) => AgenticChatEmailReadPortV1;
+		emailSearchProvenance?: EmailSearchProvenanceJudge;
 	} = {}
 ): AgenticChatToolExecutionAdapter {
 	return new AgenticChatToolExecutionAdapter(client as never, {
@@ -384,14 +389,23 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		expect(webResearch.visit).not.toHaveBeenCalled();
 	});
 
-	// The five email tools moved to the worker on 2026-09-04. `search_email_messages`
-	// sends a model-authored query to Google, so it sits behind the same egress
-	// fence as web research (isAgenticChatWebEgressToolName), while the three
-	// content-free account tools deliberately do not taint the turn.
-	it('runs a Gmail search after the content-free account listing that authorizes it', async () => {
+	// The email tools moved to the worker on 2026-09-04. `search_email_messages`
+	// sends a model-authored query to Google, so every query needs Jev's
+	// provenance approval (it replaced a phrase regex on 2026-09-24). The query
+	// reaches only the user's own mailbox, so earlier private reads no longer
+	// block it.
+	function provenanceJudge(allowed: boolean) {
+		return {
+			authorize: vi.fn(async () => ({ allowed, probability: allowed ? 0.9 : 0.1 }))
+		} satisfies EmailSearchProvenanceJudge;
+	}
+
+	it('runs a Gmail search once Jev confirms it serves the request', async () => {
 		const email = emailPortStub();
+		const judge = provenanceJudge(true);
 		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
-			createEmailPort: () => email
+			createEmailPort: () => email,
+			emailSearchProvenance: judge
 		});
 
 		await expect(
@@ -399,7 +413,7 @@ describe('AgenticChatToolExecutionAdapter', () => {
 				requestFor(
 					'list_email_accounts',
 					{},
-					{ userMessage: 'Search my email for contract' }
+					{ userMessage: 'check my djwayne35 email for anything about the contract' }
 				)
 			)
 		).resolves.toMatchObject({ result: { readable_count: 1 } });
@@ -407,85 +421,79 @@ describe('AgenticChatToolExecutionAdapter', () => {
 			adapter.execute(
 				requestFor(
 					'search_email_messages',
-					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'contract' },
-					{ userMessage: 'Search my email for contract' }
+					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'contract', max_results: 10 },
+					{ userMessage: 'check my djwayne35 email for anything about the contract' }
 				)
 			)
 		).resolves.toMatchObject({ result: { message_count: 1 } });
 		expect(email.searchMessages).toHaveBeenCalledTimes(1);
+		expect(judge.authorize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userMessage: 'check my djwayne35 email for anything about the contract',
+				query: 'contract',
+				usage: expect.objectContaining({
+					operationType: 'agentic_chat_email_search_provenance'
+				})
+			})
+		);
 	});
 
-	it('refuses search_email_messages after get_email_message in the same turn', async () => {
+	it('lets an authorized Gmail search follow private reads in the same turn', async () => {
 		const email = emailPortStub();
-		// Seed the receipt search would have issued, so this turn's only mailbox
-		// content read is get_email_message and the block is attributable to it.
 		agenticChatEmailTurnStateForPortV1(email).searchedMessageCapabilities.add(
 			agenticChatEmailSearchReceiptKeyV1(EMAIL_CONNECTION_ID, 'm1')
 		);
 		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
-			createEmailPort: () => email
+			createEmailPort: () => email,
+			emailSearchProvenance: provenanceJudge(true)
 		});
 
 		await expect(
+			adapter.execute(requestFor('get_project_overview', { project_id: PROJECT_ID }))
+		).resolves.toMatchObject({ result: { project: { id: PROJECT_ID } } });
+		await expect(
 			adapter.execute(
-				requestFor(
-					'get_email_message',
-					{ connection_id: EMAIL_CONNECTION_ID, message_id: 'm1' },
-					{ userMessage: 'Search my email for contract' }
-				)
+				requestFor('get_email_message', {
+					connection_id: EMAIL_CONNECTION_ID,
+					message_id: 'm1'
+				})
 			)
 		).resolves.toMatchObject({ result: { message_id: 'm1' } });
-
 		await expect(
 			adapter.execute(
-				requestFor(
-					'search_email_messages',
-					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'contract' },
-					{ userMessage: 'Search my email for contract' }
-				)
+				requestFor('search_email_messages', {
+					connection_ids: [EMAIL_CONNECTION_ID],
+					query: 'contract'
+				})
 			)
-		).rejects.toMatchObject({
-			code: 'read_tool_egress_blocked_private_content',
-			failureClass: 'permanent'
-		});
-		expect(email.searchMessages).not.toHaveBeenCalled();
+		).resolves.toMatchObject({ result: { message_count: 1 } });
 	});
 
-	it('refuses search_email_messages after a private document read', async () => {
+	it('asks Jev once per distinct query in a turn', async () => {
 		const email = emailPortStub();
+		const judge = provenanceJudge(true);
 		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
-			createEmailPort: () => email
+			createEmailPort: () => email,
+			emailSearchProvenance: judge
 		});
-
-		await expect(
+		const search = () =>
 			adapter.execute(
-				requestFor(
-					'get_project_overview',
-					{ project_id: PROJECT_ID },
-					{ userMessage: 'Search my email for contract' }
-				)
-			)
-		).resolves.toMatchObject({ result: { project: { id: PROJECT_ID } } });
-
-		await expect(
-			adapter.execute(
-				requestFor(
-					'search_email_messages',
-					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'contract' },
-					{ userMessage: 'Search my email for contract' }
-				)
-			)
-		).rejects.toMatchObject({
-			code: 'read_tool_egress_blocked_private_content',
-			failureClass: 'permanent'
-		});
-		expect(email.searchMessages).not.toHaveBeenCalled();
+				requestFor('search_email_messages', {
+					connection_ids: [EMAIL_CONNECTION_ID],
+					query: 'contract'
+				})
+			);
+		await search();
+		await search();
+		expect(judge.authorize).toHaveBeenCalledTimes(1);
+		expect(email.searchMessages).toHaveBeenCalledTimes(2);
 	});
 
-	it('refuses a Gmail query the current user message never authorized', async () => {
+	it('refuses a Gmail query Jev says the user never asked for', async () => {
 		const email = emailPortStub();
 		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
-			createEmailPort: () => email
+			createEmailPort: () => email,
+			emailSearchProvenance: provenanceJudge(false)
 		});
 
 		await expect(
@@ -496,8 +504,67 @@ describe('AgenticChatToolExecutionAdapter', () => {
 					{ userMessage: 'Summarize my project.' }
 				)
 			)
+		).rejects.toMatchObject({
+			code: 'read_tool_egress_provenance_required',
+			failureClass: 'permanent'
+		});
+		expect(email.searchMessages).not.toHaveBeenCalled();
+	});
+
+	it('fails closed when no Gmail provenance judge is configured', async () => {
+		const email = emailPortStub();
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			createEmailPort: () => email
+		});
+
+		await expect(
+			adapter.execute(
+				requestFor(
+					'search_email_messages',
+					{ connection_ids: [EMAIL_CONNECTION_ID], query: 'contract' },
+					{ userMessage: 'Search my email for contract' }
+				)
+			)
 		).rejects.toMatchObject({ code: 'read_tool_egress_provenance_required' });
 		expect(email.searchMessages).not.toHaveBeenCalled();
+	});
+
+	it('scans the inbox against the turn project without an egress check', async () => {
+		const email = emailPortStub();
+		const scanInbox = vi.fn(async () => ({
+			fetchedAt: '2026-09-24T15:00:00.000Z',
+			scope: 'project' as const,
+			scopeLabel: 'the project "Test"',
+			filter: 'scored' as const,
+			accounts: [],
+			relevant: [],
+			relevantOmitted: 0,
+			otherSenders: []
+		}));
+		email.scanInbox = scanInbox;
+		const createEmailPort = vi.fn(() => email);
+		const judge = provenanceJudge(false);
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			createEmailPort,
+			emailSearchProvenance: judge
+		});
+
+		await expect(
+			adapter.execute(requestFor('get_project_overview', { project_id: PROJECT_ID }))
+		).resolves.toMatchObject({ result: { project: { id: PROJECT_ID } } });
+		await expect(
+			adapter.execute(requestFor('scan_email_inbox', { window: 'today' }))
+		).resolves.toMatchObject({
+			result: { result_contract_version: 'gmail-scan-v1', relevant_to: 'the project "Test"' }
+		});
+		expect(scanInbox).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: PROJECT_ID, lookingFor: null })
+		);
+		expect(createEmailPort).toHaveBeenCalledWith(USER_ID, {
+			turnRunId: expect.any(String),
+			sessionId: expect.any(String)
+		});
+		expect(judge.authorize).not.toHaveBeenCalled();
 	});
 
 	it('carries the Gmail OAuth browser handoff envelope through the read result', async () => {

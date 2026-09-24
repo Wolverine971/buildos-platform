@@ -1,5 +1,6 @@
 // apps/worker/tests/agenticChatToolExecutionPolicy.test.ts
 import { describe, expect, it } from 'vitest';
+import { compileAgenticChatToolExecutionGraphV1 } from '../src/workers/agentic-chat/tools/execution-graph';
 import { resolveAgenticChatToolExecutionPolicyV1 } from '../src/workers/agentic-chat/tools/execution-policy';
 
 describe('Agentic Chat tool execution policy', () => {
@@ -35,6 +36,42 @@ describe('Agentic Chat tool execution policy', () => {
 		});
 		expect(read.resources).toEqual([{ key: 'task:task-a', access: 'read' }]);
 		expect(mutation.resources).toEqual([{ key: 'task:task-a', access: 'write' }]);
+	});
+
+	it('lets sibling task creates share their project while updates and document creates hold it', () => {
+		const policy = (toolName: string, arguments_: Record<string, string>) =>
+			resolveAgenticChatToolExecutionPolicyV1({
+				toolName,
+				kind: 'mutation',
+				arguments: arguments_,
+				concurrentReadsEnabled: true,
+				concurrentMutationsEnabled: true
+			});
+		expect(policy('create_onto_task', { project_id: 'p1', title: 'A' })).toEqual({
+			executionPolicy: 'parallel_safe',
+			resources: [{ key: 'project:p1', access: 'read' }]
+		});
+		expect(policy('create_onto_document', { project_id: 'p1' }).resources).toEqual([
+			{ key: 'project:p1', access: 'write' }
+		]);
+		expect(policy('update_onto_project', { project_id: 'p1' }).resources).toEqual([
+			{ key: 'project:p1', access: 'write' }
+		]);
+
+		// Tasker 101 case 2: five creates in one project compile to one layer.
+		const graph = compileAgenticChatToolExecutionGraphV1({
+			batchId: 'case-2',
+			maxCalls: 40,
+			calls: ['a', 'b', 'c', 'd', 'e'].map((title, index) => ({
+				providerCallIndex: index,
+				providerToolCallId: `create-${title}`,
+				toolName: 'create_onto_task',
+				kind: 'mutation' as const,
+				arguments: { project_id: 'p1', title },
+				...policy('create_onto_task', { project_id: 'p1', title })
+			}))
+		});
+		expect(graph.layers.map((layer) => layer.providerToolCallIds.length)).toEqual([5]);
 	});
 
 	it('keeps unknown-scope mutations serial even when mutation concurrency is enabled', () => {

@@ -6,6 +6,8 @@ import {
 	canonicalizeAgenticChatJson
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { JevDecider } from '@buildos/smart-llm';
+import type { ContextFinderReadClient } from '@buildos/agentic-chat-runtime/context-finder';
 import {
 	type WebResearchPort,
 	WebResearchPortError,
@@ -50,6 +52,9 @@ import { AgenticChatProviderExecutionError } from '../provider/contracts';
 import { WorkerAgenticChatToolAccessAdapter } from './worker-access-adapter';
 import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
+import { loadEmailScanProjectBrief } from './email-scan';
+import { type EmailScanLedger, SupabaseEmailScanLedger } from './email-scan-ledger';
+import type { EmailSearchProvenanceJudge } from './email-search-provenance';
 import type { AgenticChatWebSearchReviewPort } from './web-search-review';
 import {
 	WEB_NAVIGATE_TOOL_NAME,
@@ -271,7 +276,10 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	 * per-turn call cap, character budget, and search-receipt set off the port
 	 * instance. One port per turn is therefore the budget boundary.
 	 */
-	private readonly createEmailPort: (userId: string) => AgenticChatEmailReadPortV1;
+	private readonly createEmailPort: (
+		userId: string,
+		turn: { turnRunId: string; sessionId: string }
+	) => AgenticChatEmailReadPortV1;
 	private readonly turnEmailPorts = new Map<
 		string,
 		{ expiresAt: number; port: AgenticChatEmailReadPortV1 }
@@ -315,7 +323,16 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			webSearchReviewer?: AgenticChatWebSearchReviewPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
 			createCalendarPort?: (userId: string) => AgenticChatCalendarReadPortV1;
-			createEmailPort?: (userId: string) => AgenticChatEmailReadPortV1;
+			createEmailPort?: (
+				userId: string,
+				turn: { turnRunId: string; sessionId: string }
+			) => AgenticChatEmailReadPortV1;
+			/** Jev for `scan_email_inbox` relevance scores; unset = unscored scans. */
+			emailRelevanceDecider?: JevDecider;
+			/** `scan_email_inbox` cursor; defaults to the Supabase ledger when its secret is set. */
+			emailScanLedger?: EmailScanLedger | null;
+			/** Jev check that a Gmail search serves what the user asked for. */
+			emailSearchProvenance?: EmailSearchProvenanceJudge;
 			embeddings?: AgenticChatEmbeddingsPortV1;
 			securityNow?: () => number;
 			maxTurnSecurityStates?: number;
@@ -355,9 +372,41 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		this.createCalendarPort =
 			options.createCalendarPort ??
 			((userId) => createWorkerAgenticChatCalendarReadPort({ client: this.client, userId }));
+		this.emailSearchProvenance = options.emailSearchProvenance;
+		const emailScanLedger =
+			options.emailScanLedger === undefined
+				? defaultEmailScanLedger(this.client)
+				: options.emailScanLedger;
+		const emailRelevanceDecider = options.emailRelevanceDecider ?? null;
 		this.createEmailPort =
 			options.createEmailPort ??
-			((userId) => createWorkerAgenticChatEmailReadPort({ client: this.client, userId }));
+			((userId, turn) =>
+				createWorkerAgenticChatEmailReadPort({
+					client: this.client,
+					userId,
+					options: {
+						scan: {
+							decider: emailRelevanceDecider,
+							ledger: emailScanLedger,
+							loadProjectBrief: (projectId, signal) =>
+								loadEmailScanProjectBrief(
+									this.client as unknown as ContextFinderReadClient,
+									projectId,
+									signal
+								),
+							usage: {
+								operationType: 'agentic_chat_email_scan',
+								userId,
+								chatSessionId: turn.sessionId,
+								metadata: { turnRunId: turn.turnRunId }
+							},
+							onLedgerWriteError: (error) =>
+								console.warn('[AgenticChat] email scan ledger write failed', {
+									error: error instanceof Error ? error.message : String(error)
+								})
+						}
+					}
+				}));
 		this.embeddings = options.embeddings ?? createWorkerEmbeddingsPortFromEnv();
 	}
 
@@ -371,8 +420,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		const webResearchTool = AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1.includes(
 			toolName as (typeof AGENTIC_CHAT_WEB_RESEARCH_TOOL_NAMES_V1)[number]
 		);
-		// Mailbox search retains its existing provenance policy. Public web
-		// research uses request-specific authorization regardless of private reads.
+		// Mailbox search is authorized per query by the Jev provenance judge.
+		// Public web research uses request-specific authorization regardless of
+		// private reads.
 		const egressTool = isAgenticChatWebEgressToolName(toolName);
 		const turnRunId = input.executionInput.claim.turnRunId;
 		const standardControlTool = isAgenticChatStandardControlToolNameV1(toolName);
@@ -383,6 +433,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 				? this.turnSecurityStateFor(input.executionInput.claim.userId, turnRunId)
 				: null;
 		let reviewRequired = false;
+		let mailboxReviewRequired = false;
 		let webArguments = input.arguments;
 		if (toolName === 'web_search') {
 			const normalized = normalizeAgenticChatWebSearchArguments(input.arguments);
@@ -394,9 +445,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			if (!turnSecurityState) {
 				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
 			}
-			if (!webResearchTool && turnSecurityState.privateContentRead) {
-				throw providerError('read_tool_egress_blocked_private_content', 'permanent');
-			}
+			// A Gmail query reaches only the user's own mailbox, so earlier private
+			// reads no longer block it; the Jev provenance check below decides
+			// whether the query serves what the user asked for.
 			const provenance = evaluateAgenticChatWebEgressProvenance({
 				toolName,
 				arguments: webArguments,
@@ -405,6 +456,8 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			});
 			if (!provenance.allowed) {
 				if (provenance.reason === 'search_review_required') reviewRequired = true;
+				else if (provenance.reason === 'mailbox_review_required')
+					mailboxReviewRequired = true;
 				else throw providerError('read_tool_egress_provenance_required', 'permanent');
 			}
 		}
@@ -457,8 +510,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						input.executionInput.claim.userId,
 						turnRunId
 					),
-					email: this.turnEmailPortFor(input.executionInput.claim.userId, turnRunId),
-					embeddings: this.embeddings
+					email: this.turnEmailPortFor(input.executionInput.claim.userId, turnRunId, {
+						turnRunId,
+						sessionId: input.executionInput.claim.sessionId
+					}),
+					embeddings: this.embeddings,
+					focusProjectId: focusProjectIdFromRequest(input.executionInput.requestPayload)
 				}
 			: null;
 		const startedAt = this.now();
@@ -485,6 +542,13 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						return execution.result;
 					}
 					if (sharedReadTool) {
+						if (mailboxReviewRequired) {
+							await this.authorizeMailboxSearch(
+								input,
+								turnSecurityState!,
+								deadlineSignal
+							);
+						}
 						return executeAgenticChatSharedReadToolV1({
 							toolName,
 							context: { ...sharedContext!, signal: deadlineSignal },
@@ -661,6 +725,46 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		};
 	}
 
+	/**
+	 * Jev decides whether this Gmail query serves the user's latest message.
+	 * One decision per distinct query per turn (pagination reuses it); a Jev
+	 * failure refuses the search, and the refusal steers the model to
+	 * scan_email_inbox, which sends no model-written text to Gmail.
+	 */
+	private async authorizeMailboxSearch(
+		input: Parameters<AgenticChatReadToolPortV1['execute']>[0],
+		state: TurnSecurityState,
+		signal: AbortSignal
+	): Promise<void> {
+		if (!this.emailSearchProvenance) {
+			throw providerError('read_tool_egress_provenance_required', 'permanent');
+		}
+		const query = typeof input.arguments.query === 'string' ? input.arguments.query.trim() : '';
+		const key = `mailbox:${query}`;
+		let review = state.searchReviews.get(key);
+		if (!review) {
+			if (state.searchReviews.size >= 32)
+				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
+			const claim = input.executionInput.claim;
+			review = this.emailSearchProvenance
+				.authorize({
+					userMessage: String(input.executionInput.requestPayload.message ?? ''),
+					query,
+					signal,
+					usage: {
+						operationType: 'agentic_chat_email_search_provenance',
+						userId: claim.userId,
+						chatSessionId: claim.sessionId,
+						metadata: { turnRunId: claim.turnRunId }
+					}
+				})
+				.then((decision) => decision.allowed);
+			state.searchReviews.set(key, review);
+		}
+		if (!(await review))
+			throw providerError('read_tool_egress_provenance_required', 'permanent');
+	}
+
 	private accessAdapterFor(userId: string): AgenticChatToolAccessPortV1 {
 		const cached = this.accessAdapters.get(userId);
 		if (cached) return cached;
@@ -727,7 +831,11 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	}
 
 	/** One email port per (user, turn), memoized exactly like the calendar port. */
-	private turnEmailPortFor(userId: string, turnRunId: string): AgenticChatEmailReadPortV1 {
+	private turnEmailPortFor(
+		userId: string,
+		turnRunId: string,
+		turn: { turnRunId: string; sessionId: string }
+	): AgenticChatEmailReadPortV1 {
 		const now = this.securityNow();
 		for (const [candidateId, entry] of this.turnEmailPorts) {
 			if (entry.expiresAt <= now) this.turnEmailPorts.delete(candidateId);
@@ -738,7 +846,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			existing.expiresAt = now + this.turnSecurityStateTtlMs;
 			return existing.port;
 		}
-		const port = this.createEmailPort(userId);
+		const port = this.createEmailPort(userId, turn);
 		if (this.turnEmailPorts.size < this.maxTurnSecurityStates) {
 			this.turnEmailPorts.set(stateKey, {
 				expiresAt: now + this.turnSecurityStateTtlMs,
@@ -815,6 +923,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 
 	private readonly webResearch: WebResearchPort | undefined;
 	private readonly webNavigator: WebNavigatePort | undefined;
+	private readonly emailSearchProvenance: EmailSearchProvenanceJudge | undefined;
 	private readonly webSearchReviewer: AgenticChatWebSearchReviewPort | undefined;
 }
 
@@ -851,6 +960,37 @@ function requireResultRecord(value: unknown): Record<string, unknown> {
 		throw new WebResearchPortError('Web research result is not an object');
 	}
 	return value as Record<string, unknown>;
+}
+
+/**
+ * The project a project-scoped turn is about, from the admitted request context
+ * (never a model argument). Admission already checked the user's access to it.
+ */
+function focusProjectIdFromRequest(requestPayload: unknown): string | null {
+	const context = requireOptionalRecord(requireOptionalRecord(requestPayload)?.context);
+	if (!context || (context.type !== 'project' && context.type !== 'ontology')) return null;
+	return canonicalUuidOrNull(context.projectId);
+}
+
+/**
+ * The scan cursor needs a server-side HMAC secret; it reuses the Gmail token
+ * key the worker already holds for reading Gmail. Without it scans still run,
+ * they just re-score mail an earlier scan already scored.
+ */
+function defaultEmailScanLedger(client: SupabaseClient<Database>): EmailScanLedger | null {
+	const secret = process.env.PRIVATE_GMAIL_TOKEN_ENCRYPTION_KEY_V1?.trim();
+	if (!secret) return null;
+	return new SupabaseEmailScanLedger(
+		client as unknown as ConstructorParameters<typeof SupabaseEmailScanLedger>[0],
+		secret,
+		{
+			onError: (operation, error) =>
+				console.warn('[AgenticChat] email scan ledger unavailable', {
+					operation,
+					error: error instanceof Error ? error.message : String(error)
+				})
+		}
+	);
 }
 
 function canonicalUuidOrNull(value: unknown): string | null {

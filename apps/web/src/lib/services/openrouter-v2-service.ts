@@ -8,9 +8,11 @@ import {
 	GLM_53_FLASH_MODEL,
 	LAST_RESORT_MODEL,
 	KIMI_EXPERIMENT_MODEL,
+	QWEN_38_27B_FREE_MODEL,
 	resolveModelPricingProfile,
 	repairTruncatedJSONResponse,
 	shouldFailoverToNextOpenRouterModel,
+	supportsJsonMode,
 	type JSONUsageEvent
 } from '@buildos/smart-llm';
 import {
@@ -874,8 +876,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 		return requestModel.includes('/') ? requestModel : `openai/${requestModel}`;
 	}
 
-	private resolveDirectFallbackRoutes(): DirectProviderRoute[] {
-		if (!this.directFallbacksEnabled) return [];
+	private resolveDirectFallbackRoutes(primaryModel?: string): DirectProviderRoute[] {
+		if (!this.directFallbacksEnabled || primaryModel === QWEN_38_27B_FREE_MODEL) return [];
 
 		const routes: DirectProviderRoute[] = [];
 		for (const provider of this.directFallbackProviderOrder) {
@@ -1345,7 +1347,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 							? Math.min(options.temperature ?? 0.2, 0.1)
 							: (options.temperature ?? 0.2),
 					max_tokens: maxTokens,
-					response_format: { type: 'json_object' },
+					response_format: supportsJsonMode(model) ? { type: 'json_object' } : undefined,
 					reasoning: resolveLaneReasoning('json'),
 					provider: this.resolveOpenRouterProviderConfig('json', model),
 					timeoutMs: this.resolveTimeout(options.timeoutMs)
@@ -1440,7 +1442,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		}
 
 		let directFallbackError: Error | null = null;
-		for (const route of this.resolveDirectFallbackRoutes()) {
+		for (const route of this.resolveDirectFallbackRoutes(laneModels[0])) {
 			providersAttempted.add(route.provider);
 			while (true) {
 				try {
@@ -1696,7 +1698,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		}
 
 		let directFallbackError: Error | null = null;
-		for (const route of this.resolveDirectFallbackRoutes()) {
+		for (const route of this.resolveDirectFallbackRoutes(laneModels[0])) {
 			providersAttempted.add(route.provider);
 			try {
 				const response = await this.createDirectChatCompletion({
@@ -1974,7 +1976,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 				lane === 'multimodal'
 					? stripMultimodalContentFromMessages(requestMessages)
 					: requestMessages;
-			for (const route of this.resolveDirectFallbackRoutes()) {
+			for (const route of this.resolveDirectFallbackRoutes(laneModels[0])) {
 				providersAttempted.add(route.provider);
 				try {
 					streamResponse = await this.requestDirectChatCompletion({

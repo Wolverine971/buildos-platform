@@ -41,6 +41,13 @@ import {
 	WEB_NAVIGATE_MODEL,
 	createWorkerWebNavigatePort
 } from '../tools/web-navigate';
+import {
+	EMAIL_RELEVANCE_HEDGE_MS,
+	EMAIL_RELEVANCE_MAX_REQUEST_BYTES,
+	EMAIL_RELEVANCE_MODEL,
+	EMAIL_RELEVANCE_TIMEOUT_MS
+} from '../tools/email-relevance';
+import { JevEmailSearchProvenanceJudge } from '../tools/email-search-provenance';
 import { WORKFLOW_CONTEXT_FINDER_TIMEOUT_MS } from '../workflow/context-finder-port';
 import {
 	AGENTIC_CHAT_WORKFLOW_REQUEST_TIMEOUT_MS,
@@ -550,6 +557,22 @@ function createDefaultComposition(
 		tavilyApiKey:
 			process.env.PRIVATE_TAVILY_API_KEY?.trim() || process.env.TAVILY_API_KEY?.trim() || null
 	});
+	// scan_email_inbox scores relevance and search_email_messages authorizes its
+	// query with Jev; one hedged client serves both (same OpenRouter credential).
+	const emailJev = new JevClient({
+		apiKey: (
+			input.config.provider.routes.find((route) => route.kind === 'openrouter') ??
+			input.config.provider.routes[0]!
+		).apiKey,
+		model: EMAIL_RELEVANCE_MODEL,
+		timeoutMs: EMAIL_RELEVANCE_TIMEOUT_MS,
+		maxRequestBytes: EMAIL_RELEVANCE_MAX_REQUEST_BYTES,
+		retryOnce: false,
+		hedgeAfterMs: EMAIL_RELEVANCE_HEDGE_MS,
+		title: 'BuildOS Email Scan',
+		usage: usageLogger,
+		...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {})
+	});
 	// Tasker 87: a separate client whose routes use only priced workflow models.
 	const workflowExecutionEnabled = input.config.workflowV4ExecutionEnabled === true;
 	const workflowClient = workflowExecutionEnabled
@@ -567,6 +590,8 @@ function createDefaultComposition(
 		...(toolSelector ? { toolSelector } : {}),
 		...(contextFinder ? { contextFinder } : {}),
 		webNavigator,
+		emailRelevanceDecider: emailJev,
+		emailSearchProvenance: new JevEmailSearchProvenanceJudge(emailJev),
 		providerConfigured: true,
 		workflowPrototypeUserIds: input.config.workflowPrototypeUserIds,
 		workflowV4: {
@@ -653,8 +678,16 @@ export const AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS = 45_000;
  * model, but the acting route's provider order (DeepInfra/DeepSeek/...) is
  * meaningless for it and the audited 0% prefix-cache rate came from the
  * request bouncing between endpoints. Fallbacks stay allowed for availability.
+ * OpenAI's `fast` tier leads: on three replayed case-2 reviews (2026-09-24,
+ * tasker 101) it averaged 5.7 s against 7.6 s on the standard tier and 12.3 s
+ * on gpt-5.6-luna, at $0.0023 per review. Naming tiers also keeps the route
+ * off `openai/flex` (p50 latency 29 s that day).
  */
-export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze(['openai', 'azure']);
+export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze([
+	'openai/fast',
+	'openai',
+	'azure'
+]);
 export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_6_LUNA_MODEL;
 /**
  * Never a default reviewer fallback: 2026-09-04 GLM 5.3 Flash approved a

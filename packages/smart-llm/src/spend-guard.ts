@@ -101,12 +101,16 @@ export function planJSONRequestSpend(options: PlanJSONRequestSpendOptions): JSON
 		if (!pricing) continue;
 		const inputRate = pricing.profile.cost;
 		const outputRate = pricing.profile.outputCost;
-		if (!(inputRate >= 0) || !(outputRate > 0)) continue;
+		if (!(inputRate >= 0) || !(outputRate >= 0)) continue;
 
 		const preSafetyBudgetUsd = maxCostUsd / safetyMultiplier;
 		const inputCostUsd = (estimatedInputTokens / 1_000_000) * inputRate;
 		const outputBudgetUsd = preSafetyBudgetUsd - inputCostUsd;
-		const affordableOutputTokens = Math.floor((outputBudgetUsd / outputRate) * 1_000_000);
+		if (outputBudgetUsd < 0) continue;
+		const affordableOutputTokens =
+			outputRate === 0
+				? requestedMaxTokens
+				: Math.floor((outputBudgetUsd / outputRate) * 1_000_000);
 		const maxTokens = Math.min(requestedMaxTokens, affordableOutputTokens);
 		if (maxTokens < minOutputTokens) continue;
 

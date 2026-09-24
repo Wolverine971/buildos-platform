@@ -19,6 +19,8 @@ vi.mock('../ontology/ontology-projects.service', () => ({
 vi.mock('./op-execution-gateway.access', () => ({
 	assertProjectWriteAccess: mocks.assertProjectWriteAccess,
 	assertVisibleEntityProject: mocks.assertVisibleEntityProject,
+	contextActorId: (context: { admin: unknown; userId: string }) =>
+		mocks.ensureActorId(context.admin, context.userId),
 	loadVisibleProjects: mocks.loadVisibleProjects
 }));
 

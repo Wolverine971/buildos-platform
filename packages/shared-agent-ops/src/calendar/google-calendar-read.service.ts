@@ -360,6 +360,23 @@ function eventOccurrenceKey(event: calendar_v3.Schema$Event): string {
 	);
 }
 
+/**
+ * Event fields `listEvents` itself reads, whatever the caller asks for: the
+ * identity, the recurring-occurrence dedupe key (`eventOccurrenceKey`) and the
+ * sort key (`eventStart`).
+ */
+const LIST_EVENTS_OWN_EVENT_FIELDS = ['id', 'iCalUID', 'originalStartTime', 'start', 'created'];
+
+/**
+ * Google partial-response mask for `events.list`. `nextPageToken` stays in the
+ * mask or a masked read silently stops after its first page.
+ */
+export function buildEventListFieldMask(eventFields?: readonly string[]): string | undefined {
+	if (!eventFields || eventFields.length === 0) return undefined;
+	const fields = Array.from(new Set([...LIST_EVENTS_OWN_EVENT_FIELDS, ...eventFields]));
+	return `nextPageToken,items(${fields.join(',')})`;
+}
+
 function targetRank(target: CalendarTarget, defaultSourceId: string | null): string {
 	return [
 		target.calendarSourceId === defaultSourceId ? '0' : '1',
@@ -558,6 +575,7 @@ export class GoogleCalendarReadService {
 		maxResults: number;
 		q?: string;
 		timeZone?: string;
+		fields?: string;
 		deadline: number;
 		clientCache: Map<string, Promise<unknown>>;
 	}): Promise<calendar_v3.Schema$Event[]> {
@@ -582,7 +600,8 @@ export class GoogleCalendarReadService {
 					maxResults: Math.min(250, remaining),
 					pageToken,
 					q: params.q,
-					timeZone: params.timeZone
+					timeZone: params.timeZone,
+					...(params.fields ? { fields: params.fields } : {})
 				}),
 				params.deadline
 			);
@@ -606,8 +625,15 @@ export class GoogleCalendarReadService {
 		timeZone?: string;
 		budgetMs?: number;
 		background?: boolean;
+		/**
+		 * Opt-in partial response: the event fields this caller reads. Omit it to
+		 * get the full provider payload (the calendar UI and analysis need it).
+		 * The fields `listEvents` itself needs are always added.
+		 */
+		eventFields?: readonly string[];
 	}): Promise<AggregatedGoogleCalendarEventsResponse> {
 		const now = this.now();
+		const fields = buildEventListFieldMask(params.eventFields);
 		const timeMin = params.timeMin ?? now.toISOString();
 		const timeMax =
 			params.timeMax ?? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -638,6 +664,7 @@ export class GoogleCalendarReadService {
 					timeMin,
 					timeMax,
 					maxResults,
+					fields,
 					deadline,
 					clientCache
 				});

@@ -35,6 +35,11 @@ export type MaterializedContextResolution = {
 	cache: FastChatContextCache;
 	cacheSource: MaterializedContextCacheSource;
 	invalidationToken: string | null;
+	/**
+	 * Set only when the caller deferred the snapshot write and a fresh load has
+	 * one to publish. It never rejects; failures go to `onWarning`.
+	 */
+	publishSnapshot?: () => Promise<void>;
 };
 
 const CACHEABLE_CONTEXT_TYPES = new Set<ChatContextType>(['global', 'project', 'ontology']);
@@ -57,9 +62,27 @@ export async function resolveMaterializedFastChatContext(params: {
 	loadFresh: () => Promise<FastChatPromptContextSnapshot>;
 	nowMs?: number;
 	onWarning?: (message: string, error: unknown) => void;
+	/**
+	 * Hand the post-load token recheck and snapshot write back as
+	 * `publishSnapshot` instead of awaiting them. Admission uses this to keep
+	 * two round trips off the turn's critical path and to publish only after
+	 * its access check passed.
+	 */
+	deferSnapshotWrite?: boolean;
 }): Promise<MaterializedContextResolution> {
 	const nowMs = params.nowMs ?? Date.now();
 	const supportsMaterialization = CACHEABLE_CONTEXT_TYPES.has(params.contextType);
+	const sessionCacheCandidate =
+		params.sessionCache?.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
+		params.sessionCache.key === params.cacheKey &&
+		isFastChatContextCacheFresh(params.sessionCache, nowMs)
+			? params.sessionCache
+			: null;
+	// With no usable session cache the durable snapshot is the next source, so
+	// it is read beside the token instead of one round trip after it. A session
+	// cache that only needs the token to confirm it keeps the read lazy.
+	const snapshotRead =
+		supportsMaterialization && !sessionCacheCandidate ? settleSnapshotRead(params) : null;
 	const initialToken = supportsMaterialization
 		? await resolveInvalidationToken(params).catch((error) => {
 				params.onWarning?.('Failed to resolve context invalidation token', error);
@@ -67,25 +90,20 @@ export async function resolveMaterializedFastChatContext(params: {
 			})
 		: null;
 
-	if (
-		initialToken &&
-		params.sessionCache?.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
-		params.sessionCache.key === params.cacheKey &&
-		params.sessionCache.invalidation_token === initialToken &&
-		isFastChatContextCacheFresh(params.sessionCache, nowMs)
-	) {
+	if (initialToken && sessionCacheCandidate?.invalidation_token === initialToken) {
 		return {
-			cache: params.sessionCache,
+			cache: sessionCacheCandidate,
 			cacheSource: 'session_cache',
 			invalidationToken: initialToken
 		};
 	}
 
 	if (initialToken) {
-		const materialized = await readMaterializedSnapshot(params).catch((error) => {
-			params.onWarning?.('Failed to read materialized context snapshot', error);
-			return null;
-		});
+		const snapshot = await (snapshotRead ?? settleSnapshotRead(params));
+		if ('error' in snapshot) {
+			params.onWarning?.('Failed to read materialized context snapshot', snapshot.error);
+		}
+		const materialized = 'row' in snapshot ? snapshot.row : null;
 		if (
 			materialized &&
 			materialized.context_cache_version === FASTCHAT_CONTEXT_CACHE_VERSION &&
@@ -111,6 +129,9 @@ export async function resolveMaterializedFastChatContext(params: {
 	}
 
 	let context = await params.loadFresh();
+	if (params.deferSnapshotWrite) {
+		return resolveFreshLoadWithDeferredPublish({ ...params, context, initialToken, nowMs });
+	}
 	let finalToken = initialToken;
 	if (initialToken) {
 		const tokenAfterLoad = await resolveInvalidationToken(params).catch((error) => {
@@ -152,6 +173,57 @@ export async function resolveMaterializedFastChatContext(params: {
 	};
 }
 
+/**
+ * The deferred variant of a fresh load. The turn uses the context as loaded,
+ * labelled with the generation the load started under: if a source row changed
+ * mid-load, the next read sees a newer token and misses, so the label can only
+ * cause a reload, never serve stale context later. The recheck moves into
+ * `publishSnapshot`, where it still guards the one thing that outlives this
+ * turn: a durable snapshot is written only when the token did not move during
+ * the load. A moved or unreadable token skips the write; the next turn
+ * rebuilds it.
+ */
+function resolveFreshLoadWithDeferredPublish(
+	params: Parameters<typeof resolveMaterializedFastChatContext>[0] & {
+		context: FastChatPromptContextSnapshot;
+		initialToken: string | null;
+		nowMs: number;
+	}
+): MaterializedContextResolution {
+	const { initialToken, nowMs } = params;
+	const materializedAt = new Date(nowMs).toISOString();
+	const cache = buildFastChatContextCacheEntry({
+		cacheKey: params.cacheKey,
+		context: params.context,
+		createdAt: materializedAt,
+		invalidationToken: initialToken,
+		materializedAt
+	});
+	const resolution: MaterializedContextResolution = {
+		cache,
+		cacheSource: 'fresh_load',
+		invalidationToken: initialToken
+	};
+	if (!initialToken) return resolution;
+
+	resolution.publishSnapshot = async () => {
+		const tokenAfterLoad = await resolveInvalidationToken(params).catch((error) => {
+			params.onWarning?.('Failed to recheck context invalidation token', error);
+			return null;
+		});
+		if (tokenAfterLoad !== initialToken) return;
+		await writeMaterializedSnapshot({
+			...params,
+			cache,
+			invalidationToken: initialToken,
+			nowMs
+		}).catch((error) => {
+			params.onWarning?.('Failed to write materialized context snapshot', error);
+		});
+	};
+	return resolution;
+}
+
 async function resolveInvalidationToken(params: {
 	sourceSupabase: FastChatSupabaseClient;
 	userId: string;
@@ -168,6 +240,19 @@ async function resolveInvalidationToken(params: {
 	);
 	if (error) throw error;
 	return typeof data === 'string' && data.length > 0 ? data : null;
+}
+
+/**
+ * Never rejects. The failure is reported only if the result gets used, so a
+ * snapshot read started beside a token read that then fails logs nothing new.
+ */
+function settleSnapshotRead(
+	params: Parameters<typeof readMaterializedSnapshot>[0]
+): Promise<{ row: MaterializedContextSnapshotRow | null } | { error: unknown }> {
+	return readMaterializedSnapshot(params).then(
+		(row) => ({ row }),
+		(error: unknown) => ({ error })
+	);
 }
 
 async function readMaterializedSnapshot(params: {

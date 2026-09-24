@@ -43,6 +43,7 @@ vi.mock('./op-execution-gateway.access', () => ({
 	assertVisibleEntityProject: vi.fn(() => project),
 	assertProjectWriteAccess: vi.fn(),
 	assertAccessibleProject: vi.fn(() => project),
+	contextActorId: vi.fn(async () => 'actor-1'),
 	getProjectIdsForVisibleContext: vi.fn(),
 	getProjectIdsOrThrow: vi.fn(),
 	withProjectName: vi.fn()

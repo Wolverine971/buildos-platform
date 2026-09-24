@@ -155,6 +155,7 @@ describe('searchToolRegistry discovery surfaces', () => {
 				'get_external_account_status',
 				'list_email_accounts',
 				'request_email_account_connection',
+				'scan_email_inbox',
 				'search_email_messages'
 			].sort()
 		);

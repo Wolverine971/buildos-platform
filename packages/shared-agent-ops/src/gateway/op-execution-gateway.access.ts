@@ -9,7 +9,7 @@ import {
 	type OntologyProjectSummary
 } from '../ontology/ontology-projects.service';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
-import type { ToolExecutionContext } from './op-execution-gateway.types';
+import type { GatewayLookupMemo, ToolExecutionContext } from './op-execution-gateway.types';
 
 export type VisibleProjectContext = {
 	projects: OntologyProjectSummary[];
@@ -114,11 +114,39 @@ export function assertVisibleEntityProject(
 	return project;
 }
 
+/**
+ * Store a lookup on the memo once; a failure clears it so the next write
+ * retries instead of replaying the rejection.
+ */
+function memoized<K extends keyof GatewayLookupMemo>(
+	memo: GatewayLookupMemo,
+	key: K,
+	load: () => NonNullable<GatewayLookupMemo[K]>
+): NonNullable<GatewayLookupMemo[K]> {
+	const existing = memo[key];
+	if (existing) return existing as NonNullable<GatewayLookupMemo[K]>;
+	const pending = load();
+	memo[key] = pending;
+	(pending as Promise<unknown>).catch(() => {
+		if (memo[key] === pending) delete memo[key];
+	});
+	return pending;
+}
+
+/** The caller's actor id, resolved once per memo (one chat turn). */
+export function contextActorId(context: ToolExecutionContext): Promise<string> {
+	const load = () => ensureActorId(context.admin, context.userId, context.signal);
+	return context.memo ? memoized(context.memo, 'actorId', load) : load();
+}
+
 export async function loadVisibleProjects(
 	context: ToolExecutionContext
 ): Promise<VisibleProjectContext> {
-	const actorId = await ensureActorId(context.admin, context.userId, context.signal);
-	const projects = await fetchProjectSummaries(context.admin, actorId, undefined, context.signal);
+	const actorId = await contextActorId(context);
+	const load = () => fetchProjectSummaries(context.admin, actorId, undefined, context.signal);
+	const projects = await (context.memo
+		? memoized(context.memo, 'projectSummaries', load)
+		: load());
 	const projectMap = buildAllowedProjectSet(context.scope, projects);
 	const scopedProjectIds = Array.isArray(context.scope.project_ids)
 		? new Set(context.scope.project_ids)

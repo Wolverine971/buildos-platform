@@ -35,10 +35,13 @@ import {
 	type AgenticChatEmailMessageV1,
 	AgenticChatEmailReadErrorV1,
 	type AgenticChatEmailReadPortV1,
+	type AgenticChatEmailScanInputV1,
+	type AgenticChatEmailScanResultV1,
 	type AgenticChatEmailSearchInputV1,
 	type AgenticChatEmailSearchResultV1,
 	type AgenticChatExternalAccountsResultV1
 } from '@buildos/agentic-chat-runtime/tools';
+import type { JevDecider, JevUsageContext } from '@buildos/smart-llm';
 import {
 	type GmailReadEnvReader,
 	GmailReadOAuthService
@@ -56,9 +59,15 @@ import {
 	GoogleCalendarConnectionReadPort,
 	isGoogleCalendarMultiAccountConfigured
 } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
+import type { EmailScanProjectBrief } from './email-relevance';
+import type { EmailScanLedger } from './email-scan-ledger';
+import { runEmailInboxScan } from './email-scan';
 
 type GmailAccountsPort = Pick<GmailReadOAuthService, 'listConnections'>;
-type GmailMessagesPort = Pick<GmailReadGateway, 'searchMessages' | 'getMessage'>;
+type GmailMessagesPort = Pick<
+	GmailReadGateway,
+	'searchMessages' | 'getMessage' | 'scanInboxWindow'
+>;
 type CalendarAccountsPort = Pick<GoogleCalendarConnectionReadPort, 'listConnections'>;
 
 /**
@@ -138,6 +147,21 @@ export type WorkerAgenticChatEmailReadPortOptions = {
 	calendarAccounts?: () => CalendarAccountsPort;
 	readEnv?: GmailReadEnvReader;
 	rateLimiter?: RateLimiterPort;
+	/**
+	 * `scan_email_inbox` dependencies. Without them the port exposes no
+	 * `scanInbox` and the tool reports itself unavailable.
+	 */
+	scan?: {
+		/** Jev; null keeps the scan working as an honest unscored newest-first list. */
+		decider: JevDecider | null;
+		ledger: EmailScanLedger | null;
+		loadProjectBrief(
+			projectId: string,
+			signal?: AbortSignal
+		): Promise<EmailScanProjectBrief | null>;
+		usage?: JevUsageContext;
+		onLedgerWriteError?: (error: unknown) => void;
+	};
 };
 
 /**
@@ -314,6 +338,45 @@ export function createWorkerAgenticChatEmailReadPort(input: {
 				);
 			}
 		},
+
+		...(options.scan
+			? {
+					async scanInbox(
+						scanInput: AgenticChatEmailScanInputV1
+					): Promise<AgenticChatEmailScanResultV1> {
+						assertBoundUser(scanInput.userId);
+						enforceRateLimit(scanInput.connectionIds ?? [], 'scan');
+						const scanDeps = options.scan!;
+						try {
+							return await runEmailInboxScan(userId, scanInput, {
+								gateway: requireMessages(),
+								listAccounts: async () =>
+									(await loadGmailAccounts()).accounts.map((account) => ({
+										connectionId: account.connectionId,
+										emailAddress: account.emailAddress,
+										accountLabel: account.accountLabel,
+										status: account.status,
+										readEnabled: account.readEnabled
+									})),
+								ledger: scanDeps.ledger,
+								decider: scanDeps.decider,
+								loadProjectBrief: scanDeps.loadProjectBrief,
+								...(scanDeps.usage ? { usage: scanDeps.usage } : {}),
+								...(scanDeps.onLedgerWriteError
+									? { onLedgerWriteError: scanDeps.onLedgerWriteError }
+									: {})
+							});
+						} catch (error) {
+							throw toPortError(
+								error,
+								scanInput.connectionIds?.length === 1
+									? (scanInput.connectionIds[0] ?? null)
+									: null
+							);
+						}
+					}
+				}
+			: {}),
 
 		async getMessage(
 			messageInput: AgenticChatEmailGetMessageInputV1

@@ -13,6 +13,7 @@ import {
 	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
+	QWEN_38_27B_FREE_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
 
@@ -93,6 +94,54 @@ function createSseResponse(payloads: string[], headers?: Record<string, string>)
 }
 
 describe('OpenRouterV2Service model routing', () => {
+	it.each(['json', 'text', 'stream'] as const)(
+		'does not escape free Qwen to paid direct providers for %s',
+		async (operation) => {
+			const bodies: Record<string, unknown>[] = [];
+			const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+				bodies.push(JSON.parse(String(init?.body)));
+				return new Response(JSON.stringify({ error: { message: 'No endpoints found' } }), {
+					status: 404
+				});
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			const service = createServiceWithDirectFallbacks();
+			if (operation === 'json') {
+				await expect(
+					service.getJSONResponse({
+						model: QWEN_38_27B_FREE_MODEL,
+						systemPrompt: 'Return JSON.',
+						userPrompt: 'Summarize a fixture.',
+						userId: 'dev'
+					})
+				).rejects.toThrow();
+				expect(bodies[0]).not.toHaveProperty('response_format');
+			} else if (operation === 'text') {
+				await expect(
+					service.generateTextDetailed({
+						model: QWEN_38_27B_FREE_MODEL,
+						prompt: 'Summarize a fixture.',
+						userId: 'dev'
+					})
+				).rejects.toThrow();
+			} else {
+				const events = [];
+				for await (const event of service.streamText({
+					model: QWEN_38_27B_FREE_MODEL,
+					messages: [{ role: 'user', content: 'Summarize a fixture.' }],
+					userId: 'dev'
+				}))
+					events.push(event);
+				expect(events.some((event) => event.type === 'error')).toBe(true);
+			}
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(bodies[0]?.model).toBe(QWEN_38_27B_FREE_MODEL);
+			expect(bodies[0]).not.toHaveProperty('models');
+			expect(bodies[0]?.provider).toMatchObject({
+				max_price: { prompt: 0, completion: 0, request: 0 }
+			});
+		}
+	);
 	afterEach(() => {
 		vi.unstubAllGlobals();
 	});

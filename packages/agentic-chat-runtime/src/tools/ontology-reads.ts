@@ -68,6 +68,12 @@ export type AgenticChatSharedReadContextV1 = {
 	calendar?: AgenticChatCalendarReadPortV1;
 	/** Host adapter over Gmail reads; unset on hosts without email access. */
 	email?: AgenticChatEmailReadPortV1;
+	/**
+	 * The project the turn is focused on, from the host's trusted turn context
+	 * (never a model argument). `scan_email_inbox` judges relevance against it
+	 * when the model gives no `looking_for`.
+	 */
+	focusProjectId?: string | null;
 };
 
 // ============================================

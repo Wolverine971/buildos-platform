@@ -483,3 +483,174 @@ describe('GmailReadGateway', () => {
 		).rejects.toMatchObject<GmailReadGatewayError>({ code: 'provider_response_too_large' });
 	});
 });
+
+describe('GmailReadGateway.scanInboxWindow', () => {
+	const connectionId = '11111111-1111-4111-8111-111111111111';
+	const activeConnection: Connection = {
+		id: connectionId,
+		email_address: 'dj@example.com',
+		account_label: 'DJ',
+		status: 'active',
+		read_enabled: true
+	};
+
+	function scanFetch(options: { listed: string[]; nextPageToken?: string; failIds?: string[] }) {
+		return vi.fn(async (input: URL | RequestInfo) => {
+			const url = new URL(String(input));
+			if (url.pathname.endsWith('/messages')) {
+				return jsonResponse({
+					messages: options.listed.map((id) => ({ id, threadId: `t-${id}` })),
+					...(options.nextPageToken ? { nextPageToken: options.nextPageToken } : {})
+				});
+			}
+			const id = url.pathname.split('/').pop()!;
+			if (options.failIds?.includes(id)) return new Response('{}', { status: 500 });
+			return jsonResponse({
+				...metadataMessage(id, `t-${id}`, 1_758_700_000_000),
+				labelIds: ['INBOX', 'CATEGORY_PERSONAL'],
+				payload: {
+					headers: [
+						{ name: 'From', value: 'Sender <sender@example.com>' },
+						{ name: 'To', value: 'dj@example.com' },
+						{ name: 'Subject', value: `Subject ${id}` }
+					]
+				}
+			});
+		});
+	}
+
+	it('builds the Gmail query from the window bounds only and fetches only unskipped messages', async () => {
+		const { admin, auditInsert } = createAdmin([activeConnection]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const providerFetch = scanFetch({ listed: ['m1', 'm2', 'm3'], nextPageToken: 'more' });
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+		const skipFetch = vi.fn(async () => new Set(['m2']));
+
+		const result = await gateway.scanInboxWindow({
+			userId: 'user-1',
+			connectionId,
+			afterEpochSeconds: 1_758_672_000,
+			beforeEpochSeconds: 1_758_758_400,
+			maxResults: 100,
+			skipFetch
+		});
+
+		const listUrl = new URL(String(providerFetch.mock.calls[0]![0]));
+		expect(listUrl.searchParams.get('q')).toBe('in:inbox after:1758672000 before:1758758400');
+		expect(listUrl.searchParams.get('maxResults')).toBe('100');
+		expect(skipFetch).toHaveBeenCalledWith(['m1', 'm2', 'm3']);
+		expect(providerFetch).toHaveBeenCalledTimes(3); // list + m1 + m3
+		expect(result.account.status).toBe('success');
+		expect(result.listedMessageIds).toEqual(['m1', 'm2', 'm3']);
+		expect(result.truncated).toBe(true);
+		expect(result.messages.map((message) => message.messageId)).toEqual(['m1', 'm3']);
+		expect(result.messages[0]).toMatchObject({
+			to: 'dj@example.com',
+			labelIds: ['INBOX', 'CATEGORY_PERSONAL'],
+			snippet: 'Safe preview'
+		});
+		expect(oauthService.getAuthorizedReadAccessToken).toHaveBeenCalledOnce();
+		expect(auditInsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				operation: 'gmail.messages.scan',
+				outcome: 'success',
+				metadata: expect.objectContaining({
+					listedCount: 3,
+					fetchedCount: 2,
+					skippedCount: 1
+				})
+			})
+		);
+	});
+
+	it('drops a message whose read fails instead of failing the account', async () => {
+		const { admin } = createAdmin([activeConnection]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const gateway = new GmailReadGateway(admin, {
+			oauthService,
+			providerFetch: scanFetch({ listed: ['m1', 'm2'], failIds: ['m2'] })
+		});
+
+		const result = await gateway.scanInboxWindow({
+			userId: 'user-1',
+			connectionId,
+			afterEpochSeconds: 1,
+			beforeEpochSeconds: 2,
+			maxResults: 50
+		});
+
+		expect(result.account.status).toBe('success');
+		expect(result.messages.map((message) => message.messageId)).toEqual(['m1']);
+		expect(result.failedMessageCount).toBe(1);
+	});
+
+	it('reports an account as unavailable when every read fails', async () => {
+		const { admin } = createAdmin([activeConnection]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn().mockResolvedValue('token') };
+		const gateway = new GmailReadGateway(admin, {
+			oauthService,
+			providerFetch: scanFetch({ listed: ['m1'], failIds: ['m1'] })
+		});
+
+		const result = await gateway.scanInboxWindow({
+			userId: 'user-1',
+			connectionId,
+			afterEpochSeconds: 1,
+			beforeEpochSeconds: 2,
+			maxResults: 50
+		});
+
+		expect(result.account.status).toBe('unavailable');
+		expect(result.messages).toEqual([]);
+	});
+
+	it('refreshes the token once after a 401 on the list call', async () => {
+		const { admin } = createAdmin([activeConnection]);
+		const oauthService = {
+			getAuthorizedReadAccessToken: vi
+				.fn()
+				.mockResolvedValueOnce('stale')
+				.mockResolvedValueOnce('fresh')
+		};
+		const inner = scanFetch({ listed: ['m1'] });
+		const providerFetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+			const auth = (init?.headers as Record<string, string>).Authorization;
+			if (auth === 'Bearer stale') return new Response('{}', { status: 401 });
+			return inner(input);
+		});
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+
+		const result = await gateway.scanInboxWindow({
+			userId: 'user-1',
+			connectionId,
+			afterEpochSeconds: 1,
+			beforeEpochSeconds: 2,
+			maxResults: 50
+		});
+
+		expect(result.account.status).toBe('success');
+		expect(oauthService.getAuthorizedReadAccessToken).toHaveBeenLastCalledWith(
+			'user-1',
+			connectionId,
+			{ forceRefresh: true }
+		);
+	});
+
+	it('does not call Google for a reconnect-required account', async () => {
+		const { admin } = createAdmin([{ ...activeConnection, status: 'reconnect_required' }]);
+		const oauthService = { getAuthorizedReadAccessToken: vi.fn() };
+		const providerFetch = vi.fn();
+		const gateway = new GmailReadGateway(admin, { oauthService, providerFetch });
+
+		const result = await gateway.scanInboxWindow({
+			userId: 'user-1',
+			connectionId,
+			afterEpochSeconds: 1,
+			beforeEpochSeconds: 2,
+			maxResults: 50
+		});
+
+		expect(result.account.status).toBe('reconnect_required');
+		expect(providerFetch).not.toHaveBeenCalled();
+	});
+});

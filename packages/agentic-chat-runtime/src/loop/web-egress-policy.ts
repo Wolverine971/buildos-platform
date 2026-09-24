@@ -13,6 +13,7 @@ export type AgenticChatWebEgressProvenanceDecision =
 			allowed: false;
 			reason:
 				| 'search_review_required'
+				| 'mailbox_review_required'
 				| 'query_not_explicitly_requested'
 				| 'url_not_explicitly_requested'
 				| 'invalid_web_egress_arguments';
@@ -67,24 +68,14 @@ export function evaluateAgenticChatWebEgressProvenance(params: {
 }): AgenticChatWebEgressProvenanceDecision {
 	const toolName = params.toolName.trim().toLowerCase();
 	if (toolName === 'search_email_messages') {
+		// Whether a mailbox query serves the user's request is a question of
+		// meaning, so the host asks a model (the worker's Jev provenance judge)
+		// instead of matching the message against a phrase pattern (AGENTS.md).
+		// The optional cursor is an opaque BuildOS AES-GCM envelope bound to the
+		// user, connection, and exact query, consumed before any provider request.
 		const query = readNonemptyText(params.arguments.query);
 		if (!query) return { allowed: false, reason: 'invalid_web_egress_arguments' };
-		const normalizedQuery = normalizeProvenanceText(query);
-		const explicitQueries = extractExplicitGmailQueries(params.userMessage);
-		if (
-			hasNegatedGmailSearchRequest(params.userMessage) ||
-			!normalizedQuery ||
-			explicitQueries.size !== 1 ||
-			!explicitQueries.has(normalizedQuery) ||
-			(params.arguments.max_results !== undefined && params.arguments.max_results !== 12)
-		) {
-			return { allowed: false, reason: 'query_not_explicitly_requested' };
-		}
-		// The optional cursor is an opaque BuildOS AES-GCM envelope, bound to the
-		// current user, connection, and exact query with a short expiry. The Gmail
-		// gateway consumes it locally before any provider request, so permitting the
-		// field restores pagination without creating a model-controlled egress value.
-		return { allowed: true };
+		return { allowed: false, reason: 'mailbox_review_required' };
 	}
 	if (toolName === 'web_search') {
 		const normalized = normalizeAgenticChatWebSearchArguments(params.arguments);
@@ -181,25 +172,6 @@ export function normalizeAgenticChatWebSearchArguments(args: JsonObject): JsonOb
 		if (domains.length) result[field] = [...new Set(domains as string[])].sort();
 	}
 	return result;
-}
-
-function extractExplicitGmailQueries(message: string): Set<string> {
-	const queries = new Set<string>();
-	for (const match of message
-		.normalize('NFKC')
-		.matchAll(
-			/\b(?:search|find|look\s+up)\s+(?:my\s+)?(?:gmail|email|inbox)(?:\s+(?:messages?|emails?))?\s+(?:for\s+)?(?:["“']([^"”']+)["”']|(.+?))(?=[.;!?]|$)/giu
-		)) {
-		const candidate = (match[1] ?? match[2] ?? '').trim();
-		if (candidate) queries.add(normalizeProvenanceText(candidate));
-	}
-	return queries;
-}
-
-function hasNegatedGmailSearchRequest(message: string): boolean {
-	return /\b(?:do\s+not|don['’]?t|never|avoid)\s+(?:\w+\s+){0,3}(?:search|find|look\s+up)\s+(?:my\s+)?(?:gmail|email|inbox)\b/iu.test(
-		message.normalize('NFKC')
-	);
 }
 
 function extractExplicitSearchQueries(message: string): Set<string> {

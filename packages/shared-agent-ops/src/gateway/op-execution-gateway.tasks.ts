@@ -9,13 +9,13 @@ import {
 	relationshipMutationErrorFromDatabase,
 	toParentRefs
 } from '../ontology/auto-organizer.service';
-import { ensureActorId } from '../ontology/ontology-projects.service';
 import type { ConnectionRef } from '../ontology/relationship-resolver';
 import { normalizeTaskStateInput } from '../ontology/task-state';
 import {
 	assertAccessibleProject,
 	assertProjectWriteAccess,
 	assertVisibleEntityProject,
+	contextActorId,
 	loadVisibleProjects
 } from './op-execution-gateway.access';
 import {
@@ -321,7 +321,7 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 	});
 	const calendarSync = normalizeCalendarSyncMode(args.calendar_sync);
 	const props = normalizeProps(args.props, 'props');
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	const assignees = await resolveGatewayTaskAssignees({
 		admin: context.admin,
 		projectId: project.id,
@@ -459,17 +459,22 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 	// contract. The former direct-insert gateway did not expose this column.
 	delete responseTaskBase.idempotency_key;
 	let responseTask: Record<string, unknown> = { ...responseTaskBase, assignees: [] };
-	try {
-		responseTask = {
-			...responseTaskBase,
-			assignees: await fetchGatewayTaskAssignees({
-				admin: context.admin,
-				projectId: project.id,
-				taskId: String(task.id)
-			})
-		};
-	} catch (assigneeError) {
-		console.warn('[External Tool Gateway] Failed to enrich task assignees:', assigneeError);
+	// A fresh create inserts assignees only when asked (onto_task_create_atomic)
+	// and no trigger adds any, so the read is needed only for requested
+	// assignees or a replay of an earlier create.
+	if (assignees.hasInput || atomic.idempotent_replay) {
+		try {
+			responseTask = {
+				...responseTaskBase,
+				assignees: await fetchGatewayTaskAssignees({
+					admin: context.admin,
+					projectId: project.id,
+					taskId: String(task.id)
+				})
+			};
+		} catch (assigneeError) {
+			console.warn('[External Tool Gateway] Failed to enrich task assignees:', assigneeError);
+		}
 	}
 
 	return {
@@ -523,7 +528,7 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 
 	const project = assertVisibleEntityProject(visible.projectMap, existingTask.project_id);
 	assertProjectWriteAccess(project, context.scope);
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	const assignees = await resolveGatewayTaskAssignees({
 		admin: context.admin,
 		projectId: project.id,

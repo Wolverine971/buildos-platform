@@ -13,6 +13,7 @@ import {
 	normalizeGatewayError,
 	previewDocumentUpdate,
 	type CalendarPort,
+	type GatewayLookupMemo,
 	type TaskSyncPort,
 	type ToolExecutionContext
 } from './op-execution-gateway.core';
@@ -160,6 +161,8 @@ export async function runGatewayWriteOp(params: {
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;
 	downstreamIdempotencyKey?: string;
+	/** Lookups shared across the writes of one chat turn. */
+	memo?: GatewayLookupMemo;
 }): Promise<GatewayWriteOpResult> {
 	const canonicalOp = normalizeGatewayOpName(
 		typeof params.op === 'string' ? params.op.trim() : ''
@@ -190,11 +193,16 @@ export async function runGatewayWriteOp(params: {
 		scope: params.scope,
 		calendar: params.calendar,
 		taskSync: params.taskSync,
-		downstreamIdempotencyKey: params.downstreamIdempotencyKey
+		downstreamIdempotencyKey: params.downstreamIdempotencyKey,
+		memo: params.memo
 	};
 
 	try {
 		const result = await handler(context, args);
+		// A project write can change which projects this turn may write to.
+		if (params.memo && canonicalOp.startsWith('onto.project.')) {
+			delete params.memo.projectSummaries;
+		}
 		const meta = extractWriteEntityMeta({ op: canonicalOp as BuildosAgentAllowedOp, result });
 		return {
 			ok: true,

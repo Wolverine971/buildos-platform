@@ -13,6 +13,7 @@ import { getCapabilityByPath, listCapabilities } from './capability-catalog';
 const EMAIL_READ_TOOLS = [
 	'get_external_account_status',
 	'list_email_accounts',
+	'scan_email_inbox',
 	'search_email_messages',
 	'get_email_message'
 ];
@@ -21,6 +22,7 @@ const EMAIL_TOOL_NAMES = [...EMAIL_READ_TOOLS, ...EMAIL_CONNECTION_TOOLS];
 const EMAIL_READ_OPS = [
 	'email.accounts.status',
 	'email.accounts.list',
+	'email.messages.scan',
 	'email.messages.search',
 	'email.messages.get'
 ];

@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/provider/openrouter/validation.ts
 // Construction-time route/header validation and per-request tool-surface checks.
 import { DOCUMENT_READ_TOOL } from '@buildos/agentic-chat-runtime/specialists';
+import { QWEN_38_27B_FREE_MODEL } from '@buildos/smart-llm';
 import { type JsonValue, canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import type { AgenticChatProviderPassRoleV1, AgenticChatTurnProviderToolV1 } from '../contracts';
 import {
@@ -79,6 +80,17 @@ export function validateRoutes(
 			headers: validateHeaders(route.headers)
 		});
 	});
+	if (
+		validated[0]?.model === QWEN_38_27B_FREE_MODEL &&
+		validated.some(
+			(route) =>
+				route.kind !== 'openrouter' ||
+				route.model !== QWEN_38_27B_FREE_MODEL ||
+				route.fallbackModels?.some((model) => model !== QWEN_38_27B_FREE_MODEL)
+		)
+	) {
+		throw new Error('The free Qwen dev route cannot use paid or direct-provider fallbacks');
+	}
 	return Object.freeze(validated);
 }
 

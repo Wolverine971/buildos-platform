@@ -5,6 +5,7 @@
 // failure receipts (validation and recoverable read failures) that are fed
 // back so the model can recover.
 import { extractContextShiftPayload } from '@buildos/agentic-chat-runtime/loop';
+import { redactAgenticChatEmailToolResultForStorageV1 } from '@buildos/agentic-chat-runtime/tools';
 import type { ChatToolResult, JsonObject } from '@buildos/shared-types';
 import {
 	AgenticChatProviderExecutionError,
@@ -26,12 +27,7 @@ import {
 	type AgenticChatTurnExecutorPorts,
 	type AgenticChatTurnProviderStepV1
 } from './executor-contracts';
-import {
-	canonicalText,
-	canonicalUuid,
-	combineAbortSignals,
-	elapsedMs
-} from './executor-helpers';
+import { canonicalText, canonicalUuid, combineAbortSignals, elapsedMs } from './executor-helpers';
 import { executionErrorCode, logAgenticChatExecutionBoundary } from './executor-failures';
 import {
 	type AgenticChatReadPlanningContextV1,
@@ -235,6 +231,16 @@ export class AgenticChatReadToolRunner {
 				durationMs: elapsedMs(readStartedAt)
 			});
 		}
+		// Email results keep their content in memory for this turn's model only;
+		// the ledger, turn events, and terminal records get a content-free trace
+		// (the privacy policy promises no durable copy of message content).
+		const storedResult =
+			redactAgenticChatEmailToolResultForStorageV1(step.toolName, toolResult.result) ??
+			toolResult.result;
+		const storedExecution =
+			storedResult === toolResult.result
+				? toolResult
+				: { ...toolResult, result: storedResult as typeof toolResult.result };
 		const ledgerStartedAt = Date.now();
 		await logAgenticChatExecutionBoundary(job, executionInput, {
 			stage: 'ledger_persist',
@@ -259,7 +265,7 @@ export class AgenticChatReadToolRunner {
 						providerToolCallId: step.providerToolCallId,
 						toolName: step.toolName,
 						arguments: step.arguments,
-						execution: toolResult
+						execution: storedExecution
 					},
 					signal
 				),
@@ -302,7 +308,7 @@ export class AgenticChatReadToolRunner {
 		});
 		const chatToolResult: ChatToolResult = {
 			tool_call_id: step.providerToolCallId,
-			result: toolResult.result,
+			result: storedExecution.result,
 			success: true,
 			...(toolResult.executionTimeMs !== null
 				? { duration_ms: toolResult.executionTimeMs }
@@ -519,31 +525,33 @@ export class AgenticChatReadToolRunner {
 		};
 		// Settled into a value so a read that fails while the tool_call is still
 		// in flight is observed, never raised ahead of the tool_call's outcome.
-		const outcome = Promise.resolve().then(() => {
-			throwIfAborted(readScope.signal);
-			return abortable(
-				this.ports.readTool.execute({
-					processingToken,
-					toolName: step.toolName,
-					arguments: step.arguments,
-					providerToolCallId: step.providerToolCallId,
-					...(step.decidedBy ? { decidedBy: step.decidedBy } : {}),
-					executionInput,
-					signal: readScope.signal,
-					onProgress
-				}),
-				readScope.signal
+		const outcome = Promise.resolve()
+			.then(() => {
+				throwIfAborted(readScope.signal);
+				return abortable(
+					this.ports.readTool.execute({
+						processingToken,
+						toolName: step.toolName,
+						arguments: step.arguments,
+						providerToolCallId: step.providerToolCallId,
+						...(step.decidedBy ? { decidedBy: step.decidedBy } : {}),
+						executionInput,
+						signal: readScope.signal,
+						onProgress
+					}),
+					readScope.signal
+				);
+			})
+			.then(
+				(value): LiveReadOutcomeV1 => {
+					readScope.dispose();
+					return { ok: true, value };
+				},
+				(error: unknown): LiveReadOutcomeV1 => {
+					readScope.dispose();
+					return { ok: false, error };
+				}
 			);
-		}).then(
-			(value): LiveReadOutcomeV1 => {
-				readScope.dispose();
-				return { ok: true, value };
-			},
-			(error: unknown): LiveReadOutcomeV1 => {
-				readScope.dispose();
-				return { ok: false, error };
-			}
-		);
 
 		try {
 			await toolCall.accepted;
@@ -570,6 +578,9 @@ export class AgenticChatReadToolRunner {
 		const deniedPageVisit =
 			code === 'read_tool_egress_provenance_required' &&
 			(step.toolName === 'web_visit' || step.toolName === 'web_navigate');
+		const deniedMailboxSearch =
+			code === 'read_tool_egress_provenance_required' &&
+			step.toolName === 'search_email_messages';
 		const webResearch =
 			step.toolName === 'web_search' ||
 			step.toolName === 'web_visit' ||
@@ -580,7 +591,9 @@ export class AgenticChatReadToolRunner {
 				: code === 'read_tool_egress_provenance_required'
 					? deniedPageVisit
 						? 'Page visit did not run: the URL was not supplied by you or returned by a search this turn.'
-						: 'External lookup did not run: the query or URL was not authorized for this research request.'
+						: deniedMailboxSearch
+							? 'Gmail search did not run: the query did not match what the user asked to find in their email.'
+							: 'External lookup did not run: the query or URL was not authorized for this research request.'
 					: webResearch
 						? 'Live research did not return usable evidence. The lookup service was unavailable, timed out, or could not complete its checks.'
 						: privateReadFailureMessage(readFailure);
@@ -655,7 +668,9 @@ export class AgenticChatReadToolRunner {
 							? [
 									deniedPageVisit
 										? "To reach a page linked from one you already opened, call web_navigate from that page with a goal; it follows the page's own links. Otherwise use web_search with include_domains for the relevant public domain and open an exact returned URL. Do not guess or modify URLs to bypass authorization."
-										: 'Do not repeat this failed lookup or route around an authorization denial.',
+										: deniedMailboxSearch
+											? "Search only for what the user asked about, in the user's own terms. For recent mail, scan_email_inbox needs no search query."
+											: 'Do not repeat this failed lookup or route around an authorization denial.',
 									'Continue useful work using loaded context and any successful research results. Disclose which live facts could not be verified; cite only evidence that actually returned.'
 								].join(' ')
 							: 'Do not repeat this call with the same arguments. If the id was guessed, locate the record with a search or list tool that is available this turn; otherwise continue with the loaded context and tell the user what could not be read.'

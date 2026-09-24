@@ -2,6 +2,7 @@
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { PRIVATE_SUPABASE_SERVICE_KEY } from '$env/static/private';
 import { env } from '$env/dynamic/private';
+import { runAfterResponse } from '$lib/server/background';
 
 /**
  * Private Realtime Broadcast topic the dedicated chat worker listens on. Must
@@ -15,13 +16,21 @@ export const AGENTIC_CHAT_QUEUE_WAKE_TOPIC = 'agentic-chat-queue:wake';
 export const AGENTIC_CHAT_QUEUE_WAKE_EVENT = 'wake';
 
 /**
- * Admission awaits the wake so a frozen serverless instance cannot drop it, so
- * the wait is bounded tightly. A slow or lost wake costs nothing but latency:
- * the worker's one-second durable poll still claims the turn.
+ * How long admission waits for the wake. A slow or lost wake costs nothing but
+ * latency: the worker's one-second durable poll still claims the turn.
  */
 export const AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS = 150;
 
+/**
+ * How long a wake may keep running after admission stopped waiting. Aborting
+ * at the wait deadline cancelled wakes that were merely slow (tasker 101: 17
+ * timed-out wakes in one gate, median queue wait 882 ms), so the request now
+ * finishes in the background and only this bound aborts it.
+ */
+export const AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS = 5_000;
+
 const DISABLED_VALUES = new Set(['off', 'false', '0', 'disabled']);
+const WAIT_ELAPSED = Symbol('agentic_chat_queue_wake_wait_elapsed');
 const FAILURE_LOG_INTERVAL_MS = 60_000;
 
 export type AgenticChatWorkerQueueWakeOutcome =
@@ -36,6 +45,12 @@ export type AgenticChatWorkerQueueWakeOptions = {
 	serviceKey: string | undefined;
 	fetchImpl?: typeof fetch;
 	timeoutMs?: number;
+	/**
+	 * Keeps a wake that outlives the admission wait alive until it settles.
+	 * Defaults to `runAfterResponse` (Vercel `waitUntil`), because a frozen
+	 * serverless instance would otherwise drop it.
+	 */
+	keepAlive?: (pending: Promise<AgenticChatWorkerQueueWakeOutcome>) => void;
 };
 
 /**
@@ -52,17 +67,24 @@ export function createAgenticChatWorkerQueueWake(
 	const endpoint = broadcastEndpoint(options.supabaseUrl);
 	const serviceKey = options.serviceKey?.trim() ?? '';
 	const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+	const keepAlive =
+		options.keepAlive ??
+		((pending: Promise<AgenticChatWorkerQueueWakeOutcome>) =>
+			runAfterResponse(pending, 'agentic chat queue wake'));
 
 	return async () => {
 		if (!endpoint || !serviceKey || typeof fetchImpl !== 'function') return 'not_configured';
 
+		// Two clocks: the wait deadline only stops admission from waiting, and the
+		// safety bound is the one that aborts, so a slow wake still reaches the
+		// worker while nothing outlives the bound.
 		const controller = new AbortController();
-		let timer: ReturnType<typeof setTimeout> | null = null;
-		const deadline = new Promise<'timed_out'>((resolve) => {
-			timer = setTimeout(() => {
+		let abortTimer: ReturnType<typeof setTimeout> | null = null;
+		const safetyBound = new Promise<'timed_out'>((resolve) => {
+			abortTimer = setTimeout(() => {
 				controller.abort();
 				resolve('timed_out');
-			}, timeoutMs);
+			}, AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS);
 		});
 		const request = (async (): Promise<AgenticChatWorkerQueueWakeOutcome> => {
 			const response = await fetchImpl(endpoint, {
@@ -90,13 +112,28 @@ export function createAgenticChatWorkerQueueWake(
 		})().catch((): AgenticChatWorkerQueueWakeOutcome => {
 			return controller.signal.aborted ? 'timed_out' : 'failed';
 		});
+		// Settles by the safety bound even if a fetch ignores its abort signal.
+		const settled = Promise.race([request, safetyBound]).finally(() => {
+			if (abortTimer !== null) clearTimeout(abortTimer);
+		});
 
+		let waitTimer: ReturnType<typeof setTimeout> | null = null;
+		const waitElapsed = new Promise<typeof WAIT_ELAPSED>((resolve) => {
+			waitTimer = setTimeout(() => resolve(WAIT_ELAPSED), timeoutMs);
+		});
 		try {
-			return await Promise.race([request, deadline]);
+			const outcome = await Promise.race([settled, waitElapsed]);
+			if (outcome !== WAIT_ELAPSED) return outcome;
+			try {
+				keepAlive(settled);
+			} catch {
+				// The request is already running; losing keep-alive only risks the wake.
+			}
+			return 'timed_out';
 		} catch {
 			return 'failed';
 		} finally {
-			if (timer !== null) clearTimeout(timer);
+			if (waitTimer !== null) clearTimeout(waitTimer);
 		}
 	};
 }
@@ -107,7 +144,8 @@ let lastFailureLoggedAt = Number.NEGATIVE_INFINITY;
 /**
  * Nudge the Agentic Chat worker to claim a just-admitted turn now instead of
  * on its next poll. Call only after a successful `newly_admitted` admission
- * committed. Resolves within ~150ms, never rejects, and never throws.
+ * committed. Resolves within ~150ms, never rejects, and never throws; a wake
+ * still in flight at 150ms reports `timed_out` and finishes in the background.
  *
  * Kill switch: PRIVATE_AGENTIC_CHAT_QUEUE_WAKE=off.
  */

@@ -157,6 +157,14 @@ interface ToolCatalogEntry {
 	trackMutation: boolean;
 }
 
+const SCAN_WINDOW_LABELS: Record<string, string> = {
+	today: 'today',
+	last_24_hours: 'last 24 hours',
+	last_3_days: 'last 3 days',
+	last_7_days: 'last 7 days',
+	last_14_days: 'last 14 days'
+};
+
 const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 	// Ontology writes — both toast + track
 	create_onto_project: { toast: true, trackMutation: true },
@@ -1608,6 +1616,13 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		list_email_accounts: () => ({
 			action: 'Listing connected inboxes'
+		}),
+		scan_email_inbox: (args) => ({
+			action: 'Scanning inbox for relevant email',
+			target:
+				typeof args?.looking_for === 'string' && args.looking_for.trim()
+					? args.looking_for.trim().slice(0, 60)
+					: (SCAN_WINDOW_LABELS[args?.window as string] ?? 'today')
 		}),
 		search_email_messages: () => ({
 			action: 'Searching connected inboxes'

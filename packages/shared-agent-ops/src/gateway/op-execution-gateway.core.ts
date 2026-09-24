@@ -9,7 +9,7 @@ import type { AgentCallScope, BuildosAgentAllowedOp, Database } from '@buildos/s
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
 import { escapeLikePattern } from '../utils/search-filter';
-import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
+import { type OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import {
 	defaultAllowedOpsForMode,
 	isSupportedOp,
@@ -111,6 +111,7 @@ import {
 	assertAccessibleProject,
 	assertProjectWriteAccess,
 	assertVisibleEntityProject,
+	contextActorId,
 	getProjectIdsForVisibleContext,
 	getProjectIdsOrThrow,
 	loadVisibleProjects,
@@ -220,6 +221,7 @@ export type {
 	CalendarPort,
 	ExternalGatewayRegistry,
 	ExternalGatewayRegistryEntry,
+	GatewayLookupMemo,
 	RegistryOp,
 	TaskSyncPort,
 	ToolExecutionContext
@@ -613,7 +615,7 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 
 	const props = normalizeProps(args.props, 'props') ?? {};
 	const position = normalizeDocumentPosition(args.position, 'position');
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 
 	const insertPayload: Record<string, unknown> = {
 		project_id: project.id,
@@ -961,7 +963,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 
 	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
 	assertProjectWriteAccess(project, context.scope);
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 
 	const updateData: Record<string, unknown> = {
 		updated_at: new Date().toISOString()
@@ -1507,7 +1509,7 @@ async function grantCallerProjectAccess(
 
 async function createTaskDocument(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const taskAccess = await loadCoreEntityForAccess(context, 'task', args.task_id, 'write');
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	let document: Record<string, unknown>;
 	let versionWarning: string | null = null;
 
@@ -1751,7 +1753,7 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 	}
 	const position =
 		normalizeDocumentPosition(args.new_position ?? args.position, 'new_position') ?? 0;
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	let structure;
 	try {
 		structure = await moveDocument(

@@ -3,7 +3,7 @@
 // process singleton and the worker gets its own in-memory instance.
 import type { RateLimiterPort } from './gmail-rate-limiter-port';
 
-export type GmailReadOperation = 'search' | 'get';
+export type GmailReadOperation = 'search' | 'get' | 'scan';
 
 const RULES = {
 	search: {
@@ -13,6 +13,12 @@ const RULES = {
 	get: {
 		user: { requests: 60, windowMs: 60_000 },
 		connection: { requests: 40, windowMs: 60_000 }
+	},
+	// One scan reads up to 200 messages per account, so its budget is per scan,
+	// not per message: a dozen "anything new?" checks a minute is already generous.
+	scan: {
+		user: { requests: 12, windowMs: 60_000 },
+		connection: { requests: 12, windowMs: 60_000 }
 	}
 } as const;
 

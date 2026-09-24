@@ -169,10 +169,11 @@ export const TOOL_CATEGORIES = {
 			'get_external_account_status',
 			'request_email_account_connection',
 			'list_email_accounts',
+			'scan_email_inbox',
 			'search_email_messages',
 			'get_email_message'
 		],
-		averageTokens: 400,
+		averageTokens: 550,
 		costTier: 'low'
 	}
 };

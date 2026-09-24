@@ -107,6 +107,7 @@ import type { FastChatHistoryMessage } from './types';
 import type { ChatHistorySnapshot } from './turn-admission';
 import type { AgenticChatWorkerAdmissionRpcArgs } from './worker-turn-admission.server';
 import { buildWorkerPromptScaffold, resolveWorkerPromptTools } from './worker-prompt-surface';
+import { runAfterResponse } from '$lib/server/background';
 import { createLogger } from '$lib/utils/logger';
 
 const logger = createLogger('AgenticChat:WorkerPreparation');
@@ -257,20 +258,47 @@ export type AgenticChatWorkerPreparationDependencies = {
 	}) => Promise<boolean>;
 };
 
-/**
- * Build the one trusted value accepted by the atomic worker admission adapter.
- * The browser supplies only command intent and a separately verified lease;
- * ownership, context, history, prompt content, hashes, capacity, and durable
- * identities are all derived here.
- */
-export async function prepareAgenticChatWorkerAdmission(input: {
+type AgenticChatWorkerPreparationInput = {
 	userClient: FastChatSupabaseClient;
 	serviceClient: FastChatSupabaseClient;
 	userId: string;
 	command: AgenticChatWorkerCommandInput;
 	lease: AgenticChatWorkerLeaseAuthority;
 	dependencies?: AgenticChatWorkerPreparationDependencies;
-}): Promise<AgenticChatWorkerPreparationResult> {
+};
+
+/**
+ * Build the one trusted value accepted by the atomic worker admission adapter.
+ * The browser supplies only command intent and a separately verified lease;
+ * ownership, context, history, prompt content, hashes, capacity, and durable
+ * identities are all derived here.
+ */
+export async function prepareAgenticChatWorkerAdmission(
+	input: AgenticChatWorkerPreparationInput
+): Promise<AgenticChatWorkerPreparationResult> {
+	const access: ContextAccessCheck = { verified: Promise.resolve() };
+	try {
+		return await prepareWorkerAdmission(input, access);
+	} catch (error) {
+		// Admission reads start beside the access check instead of after it. When
+		// the check ran first, a denial was the error every request saw, so it
+		// still outranks any failure from a read that raced it.
+		await access.verified;
+		throw error;
+	}
+}
+
+/**
+ * The context access check, once started. Its rejection is observed on
+ * creation, so a request that fails elsewhere first never leaks it as an
+ * unhandled rejection.
+ */
+type ContextAccessCheck = { verified: Promise<void> };
+
+async function prepareWorkerAdmission(
+	input: AgenticChatWorkerPreparationInput,
+	access: ContextAccessCheck
+): Promise<AgenticChatWorkerPreparationResult> {
 	const createId = input.dependencies?.createId ?? randomUUID;
 	const nowMs = input.dependencies?.nowMs?.() ?? Date.now();
 	const nowIso = new Date(nowMs).toISOString();
@@ -291,6 +319,18 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		throw invalidCommand('Daily brief context requires an entity');
 	}
 
+	// Admission reads run together (tasker 101: ~15 serial Supabase round trips
+	// made gate admission ~2.4 s). The email lookup depends only on the user, so
+	// it starts first. Nothing durable happens before the access check passes:
+	// the snapshot publish is scheduled only after it, and the route creates the
+	// turn only after this function returns.
+	const emailConnectionRead = observed(
+		(input.dependencies?.hasActiveEmailConnection ?? defaultHasActiveEmailConnection)({
+			serviceClient: input.serviceClient,
+			userId: input.userId,
+			nowMs
+		})
+	);
 	const preparedAdmissionLeaseStartedAt = Date.now();
 	const preparedAdmissionLease = await inspectPreparedAdmissionLease({
 		client: input.serviceClient,
@@ -308,30 +348,47 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		Date.now() - preparedAdmissionLeaseStartedAt
 	);
 	if (!preparedAdmissionLease.hit) {
-		await verifyContextAccess({
-			userClient: input.userClient,
-			userId: input.userId,
-			contextType,
-			entityId,
-			projectId
-		});
+		access.verified = observed(
+			verifyContextAccess({
+				userClient: input.userClient,
+				userId: input.userId,
+				contextType,
+				entityId,
+				projectId
+			})
+		);
 	}
+	const attachmentRead = observed(
+		loadValidatedChatAttachments({
+			supabase: input.userClient,
+			userId: input.userId,
+			projectId,
+			attachments: input.command.attachments,
+			endpoint: WORKER_TURNS_ENDPOINT,
+			httpMethod: 'POST',
+			maxExtractedTextChars: ATTACHMENT_TEXT_MAX_CHARS,
+			tempAttachmentPathPrefix: TEMP_ATTACHMENT_PATH_PREFIX,
+			storageBucket: STORAGE_BUCKET,
+			maxTempImageBytes: TEMP_IMAGE_MAX_BYTES,
+			maxTempLifetimeSeconds: TEMP_IMAGE_TTL_SECONDS,
+			nowMs,
+			createAdminClient: () => input.serviceClient as never
+		})
+	);
+	const sessionIntentRead: Promise<WorkerSessionIntent> = preparedAdmissionLease.hit
+		? Promise.resolve({ session: preparedAdmissionLease.session, inlineMetadata: {} })
+		: observed(
+				resolveWorkerSessionIntent({
+					serviceClient: input.serviceClient,
+					userId: input.userId,
+					requestedSessionId: input.command.sessionId,
+					contextType,
+					entityId,
+					projectFocus: input.command.projectFocus
+				})
+			);
 
-	const attachmentValidation = await loadValidatedChatAttachments({
-		supabase: input.userClient,
-		userId: input.userId,
-		projectId,
-		attachments: input.command.attachments,
-		endpoint: WORKER_TURNS_ENDPOINT,
-		httpMethod: 'POST',
-		maxExtractedTextChars: ATTACHMENT_TEXT_MAX_CHARS,
-		tempAttachmentPathPrefix: TEMP_ATTACHMENT_PATH_PREFIX,
-		storageBucket: STORAGE_BUCKET,
-		maxTempImageBytes: TEMP_IMAGE_MAX_BYTES,
-		maxTempLifetimeSeconds: TEMP_IMAGE_TTL_SECONDS,
-		nowMs,
-		createAdminClient: () => input.serviceClient as never
-	});
+	const attachmentValidation = await attachmentRead;
 	if ('error' in attachmentValidation) {
 		if (attachmentValidation.error.status === 403) {
 			throw accessDenied('One or more attachments are unavailable');
@@ -352,16 +409,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		rawMediaPassedToModel: false
 	});
 
-	const sessionIntent: WorkerSessionIntent = preparedAdmissionLease.hit
-		? { session: preparedAdmissionLease.session, inlineMetadata: {} }
-		: await resolveWorkerSessionIntent({
-				serviceClient: input.serviceClient,
-				userId: input.userId,
-				requestedSessionId: input.command.sessionId,
-				contextType,
-				entityId,
-				projectFocus: input.command.projectFocus
-			});
+	const sessionIntent = await sessionIntentRead;
 	const conversationSummary =
 		typeof sessionIntent.session?.summary === 'string' ? sessionIntent.session.summary : null;
 	const agentMetadata = sessionIntent.session?.agent_metadata ?? sessionIntent.inlineMetadata;
@@ -378,16 +426,62 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		nowMs,
 		scaffold: SCAFFOLD
 	});
+	const preparedWorkerSurfaceKey = buildPreparedPromptSurfaceKey(
+		turnPreparation.selectedSurfaceProfile
+	);
+	// Only a session turn carrying a prepared key can adopt a prepared prompt,
+	// which needs neither the history window nor fresh context. Every other turn
+	// is certain to build both, so they start now, beside the access check and
+	// the email lookup, instead of after them.
+	const startAdmissionWindowReads = (session: ChatSession | null): AdmissionWindowReads => ({
+		ownedHistory: session
+			? observed(
+					loadOwnedWorkerHistory({
+						serviceClient: input.serviceClient,
+						userId: input.userId,
+						sessionId: session.id,
+						limit: HISTORY_LIMIT
+					})
+				)
+			: Promise.resolve(null),
+		promptContext: observed(
+			resolveTrustedPromptContext({
+				userClient: input.userClient,
+				serviceClient: input.serviceClient,
+				userId: input.userId,
+				contextType,
+				entityId,
+				projectId,
+				projectFocus: input.command.projectFocus,
+				turnPreparation
+			})
+		)
+	});
+	const mayAdoptPreparedPrompt =
+		sessionIntent.session !== null &&
+		(preparedAdmissionLease.hit || input.command.preparedPromptKey !== null);
+	let admissionWindowReads = mayAdoptPreparedPrompt
+		? null
+		: startAdmissionWindowReads(sessionIntent.session);
+	const preparedLineageRead =
+		sessionIntent.session && !preparedAdmissionLease.hit
+			? observed(
+					inspectPreparedPromptAdmissionLineage({
+						supabase: input.serviceClient,
+						key: input.command.preparedPromptKey,
+						userId: input.userId,
+						sessionId: sessionIntent.session.id,
+						cacheKey: turnPreparation.cacheKey,
+						surfaceProfile: preparedWorkerSurfaceKey
+					})
+				)
+			: null;
+
+	await access.verified;
 	// A8: the Gmail read group is per-user, not per-context. Prewarm applies the
 	// same decision to its prepared surfaces, so a connected user's prepared
 	// prompt still matches on the tool list.
-	const emailToolsMounted = await (
-		input.dependencies?.hasActiveEmailConnection ?? defaultHasActiveEmailConnection
-	)({
-		serviceClient: input.serviceClient,
-		userId: input.userId,
-		nowMs
-	});
+	const emailToolsMounted = await emailConnectionRead;
 	const workerToolResolution = resolveWorkerPromptTools(
 		applyEmailSurfaceMount(turnPreparation.tools, emailToolsMounted)
 	);
@@ -406,9 +500,6 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			`Worker tool surface is unavailable: ${workerToolResolution.unavailableToolNames.join(', ')}`
 		);
 	}
-	const preparedWorkerSurfaceKey = buildPreparedPromptSurfaceKey(
-		turnPreparation.selectedSurfaceProfile
-	);
 
 	// Both lineage paths must apply the same acceptance conditions so a retry
 	// of one clientTurnId hashes identically no matter which path resolves it.
@@ -421,14 +512,7 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 						acceptedSurfaceProfile: preparedWorkerSurfaceKey
 					}
 				: null
-			: await inspectPreparedPromptAdmissionLineage({
-					supabase: input.serviceClient,
-					key: input.command.preparedPromptKey,
-					userId: input.userId,
-					sessionId: sessionIntent.session.id,
-					cacheKey: turnPreparation.cacheKey,
-					surfaceProfile: preparedWorkerSurfaceKey
-				})
+			: await preparedLineageRead
 		: null;
 	const requestHash = await hashCanonicalAdmissionRequestV1({
 		version: AGENTIC_CHAT_REQUEST_HASH_VERSION,
@@ -521,14 +605,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 		};
 	} else {
 		historySource = 'admission_window';
-		const ownedHistory = sessionIntent.session
-			? await loadOwnedWorkerHistory({
-					serviceClient: input.serviceClient,
-					userId: input.userId,
-					sessionId: sessionIntent.session.id,
-					limit: HISTORY_LIMIT
-				})
-			: null;
+		// A prepared miss starts both reads here, together; every other turn
+		// started them beside the access check.
+		admissionWindowReads ??= startAdmissionWindowReads(sessionIntent.session);
+		const ownedHistory = await admissionWindowReads.ownedHistory;
 		windowLoadedSkillIds = ownedHistory?.loadedSkillIds ?? [];
 		const historyComposition = composeFastChatHistory({
 			history: ownedHistory?.history ?? [],
@@ -551,16 +631,13 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 			rawHistoryCount: historyComposition.rawHistoryCount,
 			historyForModelCount: historyComposition.historyForModel.length
 		};
-		const trustedPromptContext = await resolveTrustedPromptContext({
-			userClient: input.userClient,
-			serviceClient: input.serviceClient,
-			userId: input.userId,
-			contextType,
-			entityId,
-			projectId,
-			projectFocus: input.command.projectFocus,
-			turnPreparation
-		});
+		const { context: trustedPromptContext, publishSnapshot } =
+			await admissionWindowReads.promptContext;
+		// The durable snapshot is a cache for later turns, so this turn does not
+		// wait for its write. Access passed above, so it is safe to publish.
+		if (publishSnapshot) {
+			runAfterResponse(publishSnapshot(), 'agentic chat context snapshot publish');
+		}
 		const promptContext = {
 			...trustedPromptContext,
 			conversationSummary,
@@ -962,6 +1039,23 @@ type WorkerSessionIntent = {
 	inlineMetadata: JsonObject;
 };
 
+type AdmissionWindowReads = {
+	ownedHistory: Promise<Awaited<ReturnType<typeof loadOwnedWorkerHistory>> | null>;
+	promptContext: ReturnType<typeof resolveTrustedPromptContext>;
+};
+
+/**
+ * Start a read now and await it later, where the serial order awaited it.
+ * Marks the rejection observed, so a read that loses the race to an earlier
+ * failure is dropped instead of surfacing as an unhandled rejection; awaiting
+ * the returned promise still throws.
+ */
+function observed<T>(read: Promise<T>): Promise<T> {
+	const pending = Promise.resolve(read);
+	pending.catch(() => undefined);
+	return pending;
+}
+
 function buildWorkerSessionEventSnapshot(input: {
 	session: ChatSession | null;
 	inlineAgentMetadata: unknown;
@@ -1077,40 +1171,39 @@ async function loadOwnedWorkerHistory(params: {
 		.slice()
 		.reverse();
 	const ids = rows.map((row) => row.id);
-	let attachmentRows: ChatHistorySnapshot['attachments'] = [];
-	if (ids.length > 0) {
-		const { data: loadedAttachmentRows, error: attachmentError } = await (
-			params.serviceClient as any
-		)
-			.from('chat_message_attachments')
-			.select(
-				'message_id, asset_id, project_id, attachment_kind, media_type, role, display_order, metadata, asset:onto_assets(id, project_id, storage_bucket, storage_path, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, ocr_status, extraction_summary, extracted_text)'
-			)
-			.in('message_id', ids)
-			.eq('session_id', params.sessionId)
-			.order('display_order', { ascending: true })
-			.limit(params.limit * 8);
-		if (attachmentError || !Array.isArray(loadedAttachmentRows)) {
-			throw databaseError('Worker history attachment lookup failed');
-		}
-		attachmentRows = loadedAttachmentRows as ChatHistorySnapshot['attachments'];
-	}
+	const attachmentRowsRead = observed(
+		loadHistoryAttachmentRows({
+			serviceClient: params.serviceClient,
+			sessionId: params.sessionId,
+			messageIds: ids,
+			limit: params.limit
+		})
+	);
 
 	const interruptedMessageIds = rows
 		.filter((row) => row.role === 'assistant' && isInterruptedMessageMetadata(row.metadata))
 		.map((row) => row.id);
 	const assistantMessageIds = rows.filter((row) => row.role === 'assistant').map((row) => row.id);
-	const interruptedToolExecutions = await loadHistoryToolExecutions({
-		serviceClient: params.serviceClient,
-		messageIds: interruptedMessageIds,
-		limit: Math.min(Math.max(params.limit * 32, 64), 1600)
-	});
-	const continuityToolExecutions = await loadHistoryToolExecutions({
-		serviceClient: params.serviceClient,
-		messageIds: assistantMessageIds,
-		limit: params.limit * 6,
-		toolNames: ['skill_load', 'request_turn_clarification']
-	});
+	// All three reads need only the message ids, so they run together; awaiting
+	// them in the old order keeps the old error precedence.
+	const interruptedToolExecutionsRead = observed(
+		loadHistoryToolExecutions({
+			serviceClient: params.serviceClient,
+			messageIds: interruptedMessageIds,
+			limit: Math.min(Math.max(params.limit * 32, 64), 1600)
+		})
+	);
+	const continuityToolExecutionsRead = observed(
+		loadHistoryToolExecutions({
+			serviceClient: params.serviceClient,
+			messageIds: assistantMessageIds,
+			limit: params.limit * 6,
+			toolNames: ['skill_load', 'request_turn_clarification']
+		})
+	);
+	const attachmentRows = await attachmentRowsRead;
+	const interruptedToolExecutions = await interruptedToolExecutionsRead;
+	const continuityToolExecutions = await continuityToolExecutionsRead;
 
 	return {
 		history: projectWorkerFrozenHistorySnapshot({
@@ -1255,6 +1348,30 @@ function applyWorkerPromptOverlayToPreparedSurface(params: {
 	};
 }
 
+async function loadHistoryAttachmentRows(params: {
+	serviceClient: FastChatSupabaseClient;
+	sessionId: string;
+	messageIds: string[];
+	limit: number;
+}): Promise<ChatHistorySnapshot['attachments']> {
+	if (params.messageIds.length === 0) return [];
+	const { data: loadedAttachmentRows, error: attachmentError } = await (
+		params.serviceClient as any
+	)
+		.from('chat_message_attachments')
+		.select(
+			'message_id, asset_id, project_id, attachment_kind, media_type, role, display_order, metadata, asset:onto_assets(id, project_id, storage_bucket, storage_path, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, ocr_status, extraction_summary, extracted_text)'
+		)
+		.in('message_id', params.messageIds)
+		.eq('session_id', params.sessionId)
+		.order('display_order', { ascending: true })
+		.limit(params.limit * 8);
+	if (attachmentError || !Array.isArray(loadedAttachmentRows)) {
+		throw databaseError('Worker history attachment lookup failed');
+	}
+	return loadedAttachmentRows as ChatHistorySnapshot['attachments'];
+}
+
 async function loadHistoryToolExecutions(params: {
 	serviceClient: FastChatSupabaseClient;
 	messageIds: string[];
@@ -1300,6 +1417,7 @@ async function resolveTrustedPromptContext(params: {
 	turnPreparation: ReturnType<typeof resolveFastChatTurnPreparation>;
 }) {
 	const cached = params.turnPreparation.cachedContext;
+	const cacheKey = params.turnPreparation.cacheKey;
 	const resolution = await resolveMaterializedFastChatContext({
 		sourceSupabase: params.userClient,
 		storeSupabase: params.serviceClient,
@@ -1308,7 +1426,7 @@ async function resolveTrustedPromptContext(params: {
 		entityId: params.entityId,
 		projectId: params.projectId,
 		projectFocus: params.projectFocus,
-		cacheKey: params.turnPreparation.cacheKey,
+		cacheKey,
 		sessionCache: params.turnPreparation.bypassContextCacheForShiftHint ? null : cached,
 		loadFresh: () =>
 			loadFastChatPromptContext({
@@ -1317,9 +1435,19 @@ async function resolveTrustedPromptContext(params: {
 				contextType: params.contextType,
 				entityId: params.entityId ?? undefined,
 				projectFocus: params.projectFocus ?? undefined
+			}),
+		// Admission may start this before its access check settles; the caller
+		// publishes the snapshot only after the check passes.
+		deferSnapshotWrite: true,
+		onWarning: (message, error) =>
+			logger.warn(message, {
+				error,
+				contextType: params.contextType,
+				projectId: params.projectId,
+				cacheKey
 			})
 	});
-	return resolution.cache.context;
+	return { context: resolution.cache.context, publishSnapshot: resolution.publishSnapshot };
 }
 
 function freezeHistory(history: HistoryWithLineage[]): FrozenHistoryMessageV1[] {

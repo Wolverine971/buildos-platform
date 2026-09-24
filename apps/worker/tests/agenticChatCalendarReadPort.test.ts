@@ -477,3 +477,28 @@ describe('worker calendar read port', () => {
 		expect(client.from).not.toHaveBeenCalledWith('project_calendars');
 	});
 });
+
+describe('worker calendar list field mask', () => {
+	it('asks Google only for the event fields the chat list reads', async () => {
+		const services = fakeServices();
+		const { context } = createContext({ services: () => services });
+
+		await listCalendarEvents(context, { time_min: RANGE.time_min, time_max: RANGE.time_max });
+
+		const [input] = services.read.listEvents.mock.calls[0] as [Record<string, any>];
+		// The model-facing row compactor reads these; the attendee e-mails,
+		// conference data and reminders it never reads stay at Google.
+		expect(input.eventFields).toEqual(
+			expect.arrayContaining([
+				'summary',
+				'description',
+				'location',
+				'status',
+				'start',
+				'end',
+				'attendees(self,responseStatus)',
+				'organizer(email,displayName,self)'
+			])
+		);
+	});
+});

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	DEEPSEEK_V4_PRO_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
-	GLM_52_MODEL,
+	GLM_53_MODEL,
 	SmartLLMService,
 	type JSONProfile,
 	type JSONUsageEvent,
@@ -61,10 +61,10 @@ const COMPLEX_SCENARIO_IDS = [
 ] as const;
 const MODEL_PINS = {
 	route_primary: GEMINI_31_FLASH_LITE_MODEL,
-	route_reviewer: GLM_52_MODEL,
+	route_reviewer: GLM_53_MODEL,
 	researcher: DEEPSEEK_V4_PRO_MODEL,
-	transition: GLM_52_MODEL,
-	synthesis: GLM_52_MODEL
+	transition: GLM_53_MODEL,
+	synthesis: GLM_53_MODEL
 };
 
 const fixtureRoot = fileURLToPath(
@@ -248,7 +248,7 @@ function createTransitionPort(params: {
 				systemPrompt: call.systemPrompt,
 				userPrompt: call.userPrompt,
 				profile: 'powerful',
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				models: [],
 				temperature: call.temperature,
 				maxTokens: call.maxTokens,
@@ -398,7 +398,7 @@ function modelCost(usage: ModelUsageEvent[]): number {
 /**
  * ADR 0001 promises that a run whose actual model differs from its role's pin is
  * infrastructure-invalid. Checking every event against the union of all five pins does not
- * deliver that: a researcher call that silently fell back to GLM 5.2 would pass, because GLM 5.2
+ * deliver that: a researcher call that silently fell back to GLM 5.3 would pass, because GLM 5.3
  * is the transition and synthesis pin. The check is therefore per role.
  * See PHASE_A_AUDIT_2026-07-25.md S4.
  */
@@ -465,7 +465,7 @@ async function executeRun(params: {
 			}),
 			reviewModel: createRoutePort({
 				apiKey: params.apiKey,
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				profile: 'powerful',
 				role: 'route_reviewer',
 				observedUsage,
@@ -523,7 +523,7 @@ async function executeRun(params: {
 			}),
 			synthesisModel: createJsonTextPort({
 				apiKey: params.apiKey,
-				model: GLM_52_MODEL,
+				model: GLM_53_MODEL,
 				profile: 'powerful',
 				role: 'synthesis',
 				observedUsage,

@@ -272,6 +272,8 @@ export type CivilTimezoneContext = {
 	userId: string;
 	/** Pre-resolved override; skips the lookup entirely. */
 	timezone?: string | null;
+	/** Shared per-turn memo; the lookup is cached on it instead of this context. */
+	memo?: object;
 };
 
 /**
@@ -288,14 +290,17 @@ export async function resolveGatewayCivilTimezone(
 		return context.timezone.trim();
 	}
 
-	const cached = contextTimezoneCache.get(context as object);
+	// Each write builds a fresh context; a shared memo carries the lookup
+	// across the writes of one turn.
+	const cacheKey = (context.memo ?? context) as object;
+	const cached = contextTimezoneCache.get(cacheKey);
 	if (cached) return cached;
 
 	const pending = resolveUserCivilTimezone(
 		context.admin as { from: (table: string) => any } | null,
 		context.userId
 	);
-	contextTimezoneCache.set(context as object, pending);
+	contextTimezoneCache.set(cacheKey, pending);
 	return pending;
 }
 

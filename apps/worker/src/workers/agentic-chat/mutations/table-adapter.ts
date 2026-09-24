@@ -67,6 +67,7 @@ import {
 	type AgenticChatMutationScopeSpecV1,
 	reviewedAgenticChatMutationSpecV1
 } from './tool-catalog';
+import { gatewayMemoForTurn } from './gateway-turn-memo';
 
 type GatewayRunner = typeof runGatewayWriteOp;
 type TaskMoveRunner = (input: AtomicTaskMoveInput) => Promise<TaskMoveResult>;
@@ -236,6 +237,7 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 				op,
 				args: context.args,
 				chatSessionId: input.executionInput.claim.sessionId,
+				memo: gatewayMemoForTurn(input.executionInput.claim),
 				...(execution.taskSync ? { taskSync: this.taskSync() } : {}),
 				...(execution.forwardIdempotencyKey
 					? { downstreamIdempotencyKey: input.downstreamIdempotencyKey }

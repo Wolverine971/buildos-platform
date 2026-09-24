@@ -6,11 +6,17 @@ import {
 	JSON_MODELS,
 	JSON_PROFILE_MODELS,
 	modelSupportsCapability,
+	QWEN_38_27B_FREE_MODEL,
 	TEXT_MODELS,
 	TEXT_PROFILE_MODELS,
 	TOOL_CALLING_MODEL_ORDER,
 	TOOL_CALLING_MODEL_SET
 } from './model-config';
+
+/** An explicit free trial must not acquire paid fallbacks from a profile. */
+export function constrainFreeModelRoute(models: string[]): string[] {
+	return models[0]?.trim() === QWEN_38_27B_FREE_MODEL ? [QWEN_38_27B_FREE_MODEL] : models;
+}
 
 const REQUIREMENT_SELECTION_EXCLUDED_LIMITATIONS = new Set([
 	'alpha-model',

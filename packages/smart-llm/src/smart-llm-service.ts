@@ -27,6 +27,7 @@ import {
 	KIMI_K3_MODEL,
 	LAST_RESORT_MODEL,
 	QWEN_37_PLUS_EXPERIMENT_MODEL,
+	QWEN_38_27B_FREE_MODEL,
 	resolveModelPricingProfile
 } from './model-config';
 import {
@@ -43,6 +44,7 @@ import {
 	shouldFailoverToNextOpenRouterModel
 } from './errors';
 import {
+	constrainFreeModelRoute,
 	ensureMinimumTextModels,
 	ensureToolCompatibleModels,
 	estimateResponseLength,
@@ -623,10 +625,11 @@ export class SmartLLMService {
 			.filter((model): model is string => Boolean(model));
 		// The caller's profile is authoritative: no prompt keyword scan may upgrade it.
 		const profileModels = selectJSONModels(profile, undefined, options.requirements);
-		let preferredModels =
+		let preferredModels = constrainFreeModelRoute(
 			requestedModels.length > 0
 				? Array.from(new Set([...requestedModels, ...profileModels]))
-				: profileModels;
+				: profileModels
+		);
 
 		// Add JSON-specific instructions to system prompt
 		const enhancedSystemPrompt = enhanceSystemPromptForJSON(options.systemPrompt);
@@ -815,14 +818,17 @@ export class SmartLLMService {
 						) {
 							retryCount++;
 							console.log(
-								`Retrying with powerful model (attempt ${retryCount}/${maxRetries})`
+								`Retrying JSON validation (attempt ${retryCount}/${maxRetries})`
 							);
 							// The malformed response was billed and is now superseded by the
 							// repair call (or by cancellation); record it before moving on.
 							logSupersededResponse(response, parseError, attempt);
 
 							let cleanedRetry = ''; // Declare outside try block for error logging
-							const retryModel = JSON_PROFILE_MODELS.powerful[0] ?? LAST_RESORT_MODEL;
+							const retryModel =
+								baseModel === QWEN_38_27B_FREE_MODEL
+									? baseModel
+									: (JSON_PROFILE_MODELS.powerful[0] ?? LAST_RESORT_MODEL);
 							const retryModels = [retryModel];
 							try {
 								// Try again with powerful profile
@@ -2457,10 +2463,11 @@ export class SmartLLMService {
 					.filter(Boolean)
 			)
 		);
-		let preferredModels =
+		let preferredModels = constrainFreeModelRoute(
 			explicitModels.length > 0
 				? Array.from(new Set([...explicitModels, ...profileModels]))
-				: profileModels;
+				: profileModels
+		);
 
 		if (needsToolSupport) {
 			preferredModels = ensureToolCompatibleModels(preferredModels);

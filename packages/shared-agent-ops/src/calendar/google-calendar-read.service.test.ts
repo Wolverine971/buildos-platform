@@ -169,3 +169,55 @@ describe('GoogleCalendarReadService target resolution', () => {
 		).rejects.toMatchObject({ code: 'CALENDAR_SOURCE_NOT_FOUND' });
 	});
 });
+
+describe('GoogleCalendarReadService partial responses', () => {
+	it('sends no field mask unless the caller names the fields it reads', async () => {
+		const { service, listEvents } = readService({});
+		await service.listEvents({ userId: 'user-1' });
+		expect(listEvents.mock.calls[0]?.[0]).not.toHaveProperty('fields');
+	});
+
+	it('masks events.list to the caller fields plus its own, and keeps paging', async () => {
+		const { service, listEvents } = readService({});
+		listEvents
+			.mockResolvedValueOnce({
+				data: {
+					items: [
+						{
+							id: 'event-1',
+							iCalUID: 'event-1@google.com',
+							start: { dateTime: '2026-09-04T13:00:00Z' }
+						}
+					],
+					nextPageToken: 'page-2'
+				}
+			})
+			.mockResolvedValueOnce({
+				data: {
+					items: [
+						{
+							id: 'event-2',
+							iCalUID: 'event-2@google.com',
+							start: { dateTime: '2026-09-04T15:00:00Z' }
+						}
+					],
+					nextPageToken: null
+				}
+			});
+
+		const response = await service.listEvents({
+			userId: 'user-1',
+			eventFields: ['summary', 'start', 'attendees(self,responseStatus)']
+		});
+
+		expect(listEvents).toHaveBeenCalledTimes(2);
+		expect(listEvents.mock.calls[0]?.[0]).toMatchObject({
+			fields: 'nextPageToken,items(id,iCalUID,originalStartTime,start,created,summary,attendees(self,responseStatus))'
+		});
+		expect(listEvents.mock.calls[1]?.[0]).toMatchObject({ pageToken: 'page-2' });
+		expect(response.events.map((event) => event.providerEventId)).toEqual([
+			'event-1',
+			'event-2'
+		]);
+	});
+});

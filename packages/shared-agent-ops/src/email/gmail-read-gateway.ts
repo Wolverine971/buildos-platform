@@ -27,6 +27,11 @@ const GMAIL_API_ORIGIN = 'https://gmail.googleapis.com';
 const MAX_ACCOUNTS_PER_REQUEST = 5;
 const MAX_MESSAGES_PER_REQUEST = 20;
 const MAX_MESSAGES_PER_ACCOUNT = 10;
+export const MAX_SCAN_MESSAGES_PER_ACCOUNT = 200;
+// Gmail allows ~50 message reads/s per user (250 quota units, 5 per get); eight
+// in flight at ~150 ms each stays inside it while cutting a 100-message scan from
+// ~4 s at the search path's concurrency of 4 to ~2 s.
+const SCAN_METADATA_CONCURRENCY = 8;
 const MAX_QUERY_LENGTH = 300;
 const MAX_PROVIDER_LIST_BYTES = 256 * 1024;
 const MAX_PROVIDER_MESSAGE_BYTES = 2 * 1024 * 1024;
@@ -81,7 +86,32 @@ type GmailProviderMessage = {
 	threadId?: unknown;
 	internalDate?: unknown;
 	snippet?: unknown;
+	labelIds?: unknown;
 	payload?: GmailMessagePart;
+};
+
+/** A window-scan message: the search summary plus the recipient and Gmail labels. */
+export type GmailInboxScanMessage = GmailMessageSummary & {
+	/** Untrusted external text. */
+	to: string;
+	/** Gmail label ids such as INBOX, UNREAD, CATEGORY_PROMOTIONS. */
+	labelIds: string[];
+};
+
+export type GmailInboxWindowScan = {
+	account: {
+		connectionId: string;
+		accountLabel: string;
+		emailAddress: string;
+		status: 'success' | 'reconnect_required' | 'unavailable';
+	};
+	/** Every inbox message in the window (newest first, capped at maxResults). */
+	listedMessageIds: string[];
+	/** Gmail holds more window mail than maxResults. */
+	truncated: boolean;
+	/** Metadata for the listed messages the caller did not skip. */
+	messages: GmailInboxScanMessage[];
+	failedMessageCount: number;
 };
 
 type GmailProviderList = {
@@ -740,6 +770,255 @@ export class GmailReadGateway {
 			messages,
 			fetchedAt: this.now().toISOString(),
 			readOnly: true
+		};
+	}
+
+	/**
+	 * Lists one account's inbox inside a time window and fetches metadata for the
+	 * listed messages the caller still needs. The Gmail query is built here from
+	 * two epoch bounds — no caller text ever reaches Google — so a window scan is
+	 * an ordinary private read, not an egress of model-authored text.
+	 *
+	 * `skipFetch` runs between the list and the metadata reads so the caller can
+	 * drop messages it already classified (the scan ledger) before paying for
+	 * them. One access token serves the whole scan; a failed single-message read
+	 * drops that message instead of failing the account.
+	 */
+	async scanInboxWindow(params: {
+		userId: string;
+		connectionId: string;
+		afterEpochSeconds: number;
+		beforeEpochSeconds: number;
+		maxResults: number;
+		skipFetch?: (messageIds: readonly string[]) => Promise<ReadonlySet<string>>;
+		retriedAfterUnauthorized?: boolean;
+	}): Promise<GmailInboxWindowScan> {
+		const after = Math.floor(params.afterEpochSeconds);
+		const before = Math.floor(params.beforeEpochSeconds);
+		if (!Number.isSafeInteger(after) || !Number.isSafeInteger(before) || after >= before) {
+			throw new GmailReadGatewayError('invalid_request', 'Invalid Gmail scan window');
+		}
+		const maxResults = Math.max(
+			1,
+			Math.min(Math.floor(params.maxResults), MAX_SCAN_MESSAGES_PER_ACCOUNT)
+		);
+		const [connection] = await this.loadOwnedConnections(params.userId, [params.connectionId]);
+		if (!connection) {
+			throw new GmailReadGatewayError('connection_not_found', 'Gmail account was not found');
+		}
+		const account = {
+			connectionId: connection.id,
+			accountLabel: connection.account_label,
+			emailAddress: connection.email_address
+		};
+		if (connection.status !== 'active' || !connection.read_enabled) {
+			return {
+				account: {
+					...account,
+					status:
+						connection.status === 'reconnect_required'
+							? 'reconnect_required'
+							: 'unavailable'
+				},
+				listedMessageIds: [],
+				truncated: false,
+				messages: [],
+				failedMessageCount: 0
+			};
+		}
+
+		let failureStage: 'authorize' | 'list' | 'metadata' = 'authorize';
+		try {
+			const accessToken = await this.oauthService.getAuthorizedReadAccessToken(
+				params.userId,
+				connection.id,
+				params.retriedAfterUnauthorized ? { forceRefresh: true } : undefined
+			);
+			failureStage = 'list';
+			const listPayload = await this.providerGet(
+				'/gmail/v1/users/me/messages',
+				accessToken,
+				new URLSearchParams({
+					q: `in:inbox after:${after} before:${before}`,
+					maxResults: String(maxResults),
+					includeSpamTrash: 'false',
+					fields: 'messages(id,threadId),nextPageToken'
+				}),
+				MAX_PROVIDER_LIST_BYTES
+			);
+			if (
+				listPayload !== null &&
+				(typeof listPayload !== 'object' || Array.isArray(listPayload))
+			) {
+				throw new GmailReadGatewayError(
+					'provider_error',
+					'Google returned an invalid Gmail response',
+					undefined,
+					'response_json_invalid'
+				);
+			}
+			const listResponse = (listPayload ?? {}) as GmailProviderList;
+			const listedMessageIds = uniqueStrings(
+				(Array.isArray(listResponse.messages) ? listResponse.messages : [])
+					.map((message) => safeMessageId(message.id))
+					.filter((id): id is string => Boolean(id))
+			).slice(0, maxResults);
+			const truncated =
+				typeof listResponse.nextPageToken === 'string' &&
+				listResponse.nextPageToken.length > 0;
+
+			const skipped = params.skipFetch
+				? await params.skipFetch(listedMessageIds)
+				: new Set<string>();
+			const toFetch = listedMessageIds.filter((id) => !skipped.has(id));
+
+			failureStage = 'metadata';
+			let failedMessageCount = 0;
+			const fetched = await mapWithConcurrency(
+				toFetch,
+				SCAN_METADATA_CONCURRENCY,
+				async (messageId) => {
+					try {
+						const message = await this.fetchScanMetadata(accessToken, messageId);
+						return message ? this.scanMessageFromProvider(connection, message) : null;
+					} catch {
+						failedMessageCount += 1;
+						return null;
+					}
+				}
+			);
+			const messages = fetched.filter(
+				(message): message is GmailInboxScanMessage => message !== null
+			);
+			if (toFetch.length > 0 && messages.length === 0) {
+				// Every read failed: surface it as an account failure, not an empty inbox.
+				throw new GmailReadGatewayError(
+					'provider_error',
+					'Google could not complete this read-only Gmail request'
+				);
+			}
+
+			await this.audit({
+				userId: params.userId,
+				connectionId: connection.id,
+				operation: 'gmail.messages.scan',
+				outcome: 'success',
+				metadata: {
+					listedCount: listedMessageIds.length,
+					fetchedCount: messages.length,
+					skippedCount: listedMessageIds.length - toFetch.length,
+					failedCount: failedMessageCount,
+					truncated
+				}
+			});
+			return {
+				account: { ...account, status: 'success' },
+				listedMessageIds,
+				truncated,
+				messages,
+				failedMessageCount
+			};
+		} catch (error) {
+			let failure = error;
+			if (
+				error instanceof GmailReadGatewayError &&
+				error.providerStatus === 401 &&
+				!params.retriedAfterUnauthorized
+			) {
+				try {
+					return await this.scanInboxWindow({
+						...params,
+						retriedAfterUnauthorized: true
+					});
+				} catch (retryError) {
+					failure = retryError;
+				}
+			}
+			const reconnectRequired =
+				failure instanceof GmailOAuthError &&
+				(failure.code === 'reconnect_required' ||
+					failure.code === 'read_capability_disabled');
+			await this.audit({
+				userId: params.userId,
+				connectionId: connection.id,
+				operation: 'gmail.messages.scan',
+				outcome: 'failure',
+				reasonCode: reconnectRequired ? 'reconnect_required' : 'provider_error',
+				metadata: {
+					failureStage,
+					gatewayErrorCode:
+						failure instanceof GmailReadGatewayError ? failure.code : null,
+					providerStatus:
+						failure instanceof GmailReadGatewayError
+							? (failure.providerStatus ?? null)
+							: null
+				}
+			});
+			return {
+				account: {
+					...account,
+					status: reconnectRequired ? 'reconnect_required' : 'unavailable'
+				},
+				listedMessageIds: [],
+				truncated: false,
+				messages: [],
+				failedMessageCount: 0
+			};
+		}
+	}
+
+	/** One metadata read; a 429 gets one short jittered retry before giving up. */
+	private async fetchScanMetadata(
+		accessToken: string,
+		messageId: string
+	): Promise<GmailProviderMessage | null> {
+		const metadataParams = new URLSearchParams({
+			format: 'metadata',
+			fields: 'id,threadId,internalDate,snippet,labelIds,payload/headers'
+		});
+		for (const header of ['From', 'To', 'Subject', 'Date'])
+			metadataParams.append('metadataHeaders', header);
+		const path = `/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}`;
+		try {
+			return (await this.providerGet(
+				path,
+				accessToken,
+				metadataParams,
+				MAX_PROVIDER_LIST_BYTES
+			)) as GmailProviderMessage;
+		} catch (error) {
+			if (error instanceof GmailReadGatewayError && error.code === 'message_not_found') {
+				return null; // Deleted between list and read.
+			}
+			if (!(error instanceof GmailReadGatewayError) || error.providerStatus !== 429) {
+				throw error;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 400));
+			return (await this.providerGet(
+				path,
+				accessToken,
+				metadataParams,
+				MAX_PROVIDER_LIST_BYTES
+			)) as GmailProviderMessage;
+		}
+	}
+
+	private scanMessageFromProvider(
+		connection: ConnectionRow,
+		message: GmailProviderMessage
+	): GmailInboxScanMessage {
+		const summary = this.summaryFromProvider(connection, message);
+		const labelIds = Array.isArray(message.labelIds)
+			? message.labelIds
+					.filter((label): label is string => typeof label === 'string')
+					.map((label) => cleanHeaderValue(label, 60))
+					.filter(Boolean)
+					.slice(0, 20)
+			: [];
+		return {
+			...summary,
+			to: getHeader(message.payload?.headers, 'To').slice(0, 500),
+			labelIds
 		};
 	}
 

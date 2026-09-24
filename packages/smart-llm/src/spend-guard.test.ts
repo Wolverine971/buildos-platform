@@ -1,12 +1,25 @@
 // packages/smart-llm/src/spend-guard.test.ts
 import { describe, expect, it } from 'vitest';
-import { GLM_52_MODEL, resolveModelPricingProfile } from './model-config';
+import { GLM_53_MODEL, QWEN_38_27B_FREE_MODEL, resolveModelPricingProfile } from './model-config';
 import { LLMSpendLimitError, planJSONRequestSpend } from './spend-guard';
 
 describe('JSON request spend guard', () => {
+	it('reserves zero for free Qwen without skipping to a paid model', () => {
+		const plan = planJSONRequestSpend({
+			models: [QWEN_38_27B_FREE_MODEL, GLM_53_MODEL],
+			systemPrompt: 'Return JSON.',
+			userPrompt: 'Summarize a fixture.',
+			requestedMaxTokens: 1000,
+			maxCostUsd: 0.01
+		});
+		expect(plan.model).toBe(QWEN_38_27B_FREE_MODEL);
+		expect(plan.maxTokens).toBe(1000);
+		expect(plan.reservedCostUsd).toBe(0);
+		expect(plan.providerMaxPrice).toEqual({ prompt: 0, completion: 0, request: 0 });
+	});
 	it('reserves conservatively for input and caps output inside the call budget', () => {
 		const plan = planJSONRequestSpend({
-			models: [GLM_52_MODEL],
+			models: [GLM_53_MODEL],
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Analyze this bounded research packet.',
 			requestedMaxTokens: 100_000,
@@ -14,7 +27,7 @@ describe('JSON request spend guard', () => {
 			minOutputTokens: 128
 		});
 
-		expect(plan.model).toBe(GLM_52_MODEL);
+		expect(plan.model).toBe(GLM_53_MODEL);
 		expect(plan.maxTokens).toBeGreaterThanOrEqual(128);
 		expect(plan.maxTokens).toBeLessThan(100_000);
 		expect(plan.reservedCostUsd).toBeLessThanOrEqual(0.01);
@@ -43,7 +56,7 @@ describe('JSON request spend guard', () => {
 	it('rejects a request whose prompt reservation leaves no useful output budget', () => {
 		expect(() =>
 			planJSONRequestSpend({
-				models: [GLM_52_MODEL],
+				models: [GLM_53_MODEL],
 				systemPrompt: 'x'.repeat(100_000),
 				userPrompt: 'Do work.',
 				requestedMaxTokens: 1000,
@@ -58,12 +71,12 @@ describe('JSON request spend guard', () => {
 		// returned 404 "No endpoints found that satisfy the max price" whenever a
 		// model's real endpoints cost more than its (lagging) catalog price. A live
 		// probe confirmed z-ai/glm-5.2 clears at >=1.25x catalog.
-		const pricing = resolveModelPricingProfile(GLM_52_MODEL);
+		const pricing = resolveModelPricingProfile(GLM_53_MODEL);
 		const catalogPrompt = pricing!.profile.cost;
 		const catalogCompletion = pricing!.profile.outputCost;
 
 		const plan = planJSONRequestSpend({
-			models: [GLM_52_MODEL],
+			models: [GLM_53_MODEL],
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Analyze this.',
 			requestedMaxTokens: 1000,
@@ -84,7 +97,7 @@ describe('JSON request spend guard', () => {
 	});
 
 	it('keeps the requested model id while using its normalized catalog pricing', () => {
-		const versionedModel = `${GLM_52_MODEL}-20270101`;
+		const versionedModel = `${GLM_53_MODEL}-20270101`;
 		const plan = planJSONRequestSpend({
 			models: [versionedModel],
 			systemPrompt: 'Return JSON.',

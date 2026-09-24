@@ -2,6 +2,7 @@
 
 import {
 	ACTIVE_RUNTIME_MODEL_SET,
+	constrainFreeModelRoute,
 	ensureToolCompatibleModels,
 	LAST_RESORT_MODEL,
 	type JSONProfile,
@@ -166,7 +167,7 @@ export function resolveLaneModels(params: ResolveLaneModelsParams): string[] {
 		: uniqueModels([...explicitModels, ...profileModels, ...defaults]);
 
 	if (merged.length > 0) {
-		return merged;
+		return constrainFreeModelRoute(merged);
 	}
 
 	return [LAST_RESORT_MODEL];

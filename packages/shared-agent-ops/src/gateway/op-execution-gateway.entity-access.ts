@@ -1,5 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.entity-access.ts
-import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
+import { type OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import {
 	ARCHIVABLE_ENTITY_KINDS,
 	LINK_ENTITY_SELECTS,
@@ -10,6 +10,7 @@ import {
 import {
 	assertProjectWriteAccess,
 	assertVisibleEntityProject,
+	contextActorId,
 	loadVisibleProjects
 } from './op-execution-gateway.access';
 import { assertValidId } from './op-execution-gateway.ids';
@@ -28,7 +29,7 @@ async function resolveArchivedProjectAccessContext(
 	context: ToolExecutionContext,
 	entity: Record<string, unknown>
 ): Promise<OntologyProjectSummary | null> {
-	const actorId = await ensureActorId(context.admin, context.userId);
+	const actorId = await contextActorId(context);
 	const createdBy = typeof entity.created_by === 'string' ? entity.created_by : null;
 	let accessRole: OntologyProjectSummary['access_role'] = createdBy === actorId ? 'owner' : null;
 	let accessLevel: OntologyProjectSummary['access_level'] =

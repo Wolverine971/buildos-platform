@@ -226,6 +226,7 @@ const PROJECT_CREATE_DIRECT_TOOL_NAMES = [
 export const GATEWAY_EMAIL_CONNECTED_SURFACE_TOOL_NAMES = [
 	'get_external_account_status',
 	'list_email_accounts',
+	'scan_email_inbox',
 	'search_email_messages',
 	'get_email_message'
 ] as const;

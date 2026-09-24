@@ -251,7 +251,7 @@ describe('Agentic Chat operational bootstrap', () => {
 
 		expect(routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['openai', 'azure']
+			order: ['openai/fast', 'openai', 'azure']
 		});
 	});
 
@@ -264,7 +264,7 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(config.provider.routes[0]?.providerRouting?.ignore).toEqual(['azure']);
 		expect(routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['openai', 'azure']
+			order: ['openai/fast', 'openai', 'azure']
 		});
 	});
 
@@ -293,10 +293,14 @@ describe('Agentic Chat operational bootstrap', () => {
 		// now ignores Azure, which is the reviewer's own fallback endpoint).
 		expect(routes[0]?.providerRouting).toEqual({
 			allow_fallbacks: true,
-			order: ['openai', 'azure']
+			order: ['openai/fast', 'openai', 'azure']
 		});
 		expect(routes[0]?.providerRouting).not.toHaveProperty('ignore');
-		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER).toEqual(['openai', 'azure']);
+		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER).toEqual([
+			'openai/fast',
+			'openai',
+			'azure'
+		]);
 		expect(routes[0]?.providerRouting?.order).not.toContain('deepinfra');
 		expect(routes[0]?.fallbackModels).not.toContain('deepseek/deepseek-v4-flash');
 		expect(routes[0]?.fallbackModels).not.toContain('z-ai/glm-5.1');

@@ -2,7 +2,7 @@
 /**
  * Email (Gmail) Tool Definitions — account handoff + Tier 1 reads.
  *
- * Account discovery + connection handoff and three read tools over the user's
+ * Account discovery + connection handoff and four read tools over the user's
  * connected Gmail accounts, served through the deployed read gateway. These
  * tools NEVER send, save a Gmail draft, label,
  * archive, or modify Gmail state — no such capability exists in any tier of the
@@ -78,6 +78,51 @@ export const EMAIL_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 			parameters: {
 				type: 'object',
 				properties: {}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'scan_email_inbox',
+			description:
+				"Check the user's recent inbox and return only the emails relevant to what they asked, each scored 0-100% by a fast relevance filter. Use for questions like 'any emails about this project today?', 'anything important in my inbox?', or 'did they reply this week?'. Scans every connected account by default, so list_email_accounts is not needed first. Emails already scored for the same question are not re-scored. Returns relevant emails (body openings for the top few), counts of the rest, and Gmail links. Use search_email_messages instead to find a specific older email.",
+			parameters: {
+				type: 'object',
+				properties: {
+					window: {
+						type: 'string',
+						enum: [
+							'today',
+							'last_24_hours',
+							'last_3_days',
+							'last_7_days',
+							'last_14_days'
+						],
+						default: 'today',
+						description: "Which recent inbox mail to check, in the user's timezone."
+					},
+					looking_for: {
+						type: 'string',
+						maxLength: 300,
+						description:
+							"What counts as relevant, in plain words (e.g. 'replies from ConductorAI about the interview'). Omit it in a project chat to score relevance to the current project, or in global chat to find mail that needs the user's attention."
+					},
+					connection_ids: {
+						type: 'array',
+						maxItems: 5,
+						items: { type: 'string' },
+						description:
+							'Optional: only these accounts (exact connection_id values from list_email_accounts).'
+					},
+					max_emails: {
+						type: 'integer',
+						default: 100,
+						minimum: 10,
+						maximum: 200,
+						description: 'Most recent inbox emails to check per account.'
+					}
+				}
 			}
 		}
 	},

@@ -2,6 +2,7 @@
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
 import { collectRecordReferences } from './record-references';
+import { instantToZonedIso, isValidIanaTimezone } from '@buildos/shared-agent-ops/dates/civil-date';
 
 type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; error?: string };
 
@@ -24,8 +25,18 @@ const MAX_WEB_SEARCH_SNIPPET_CHARS = 1600;
 const MIN_WEB_SEARCH_SNIPPET_CHARS = 400;
 const MAX_WEB_SEARCH_PAGE_CONTENT_CHARS = 4000;
 const MIN_WEB_SEARCH_PAGE_CONTENT_CHARS = 900;
-const MAX_EMAIL_MODEL_MESSAGES = 5;
+// Email results are evidence the model cannot re-derive (like web pages), so
+// they share the larger web budget. At ~650 chars per compacted message, all 12
+// a default search returns fit; the old 6K budget showed the model only 5.
+const MAX_EMAIL_MODEL_MESSAGES = 12;
 const MAX_EMAIL_SNIPPET_CHARS = 260;
+const EMAIL_CONTENT_PAYLOAD_TOOLS = new Set([
+	'search_email_messages',
+	'get_email_message',
+	'scan_email_inbox'
+]);
+const EMAIL_UNTRUSTED_OPEN_PREFIX = '[BEGIN UNTRUSTED EMAIL CONTENT';
+const EMAIL_UNTRUSTED_CLOSE = '[END UNTRUSTED EMAIL CONTENT]';
 const MAX_SKILL_OUTPUT_CONTRACT_CHARS = 4000;
 const MAX_SKILL_MARKDOWN_CHARS = 16000;
 const MAX_SKILL_MARKDOWN_WITH_CONTRACT_CHARS = 12000;
@@ -244,6 +255,12 @@ function isWebPayloadTool(toolName: string | undefined): boolean {
 function resolvePayloadBudget(toolName: string | undefined): number {
 	if (isSkillPayloadTool(toolName ?? '')) return MAX_MODEL_SKILL_PAYLOAD_CHARS;
 	if (isWebPayloadTool(toolName)) return MAX_MODEL_WEB_PAYLOAD_CHARS;
+	if (EMAIL_CONTENT_PAYLOAD_TOOLS.has(toolName?.trim().toLowerCase() ?? ''))
+		return MAX_MODEL_WEB_PAYLOAD_CHARS;
+	// A busy two weeks (~60 compact event rows) fits in one call at this size;
+	// the 6K budget needed two, each costing a model round trip.
+	if (toolName?.trim().toLowerCase() === 'list_calendar_events')
+		return MAX_MODEL_WEB_PAYLOAD_CHARS;
 	return MAX_MODEL_TOOL_PAYLOAD_CHARS;
 }
 
@@ -781,6 +798,11 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	if (normalizedToolName === 'search_email_messages') {
 		return compactEmailSearchPayload(payload);
 	}
+	if (normalizedToolName === 'scan_email_inbox') {
+		// The scan tool already bounds itself (15 emails, short snippets, three
+		// body openings); the guard only trims if a host overshoots.
+		return applyToolPayloadSizeGuard(payload, WEB_COMPACT_TARGET_CHARS);
+	}
 	if (
 		normalizedToolName === 'search_project' ||
 		normalizedToolName === 'search_all_projects' ||
@@ -803,6 +825,9 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	}
 	if (normalizedToolName === 'list_onto_tasks') {
 		return compactTaskListPayload(payload);
+	}
+	if (normalizedToolName === 'list_calendar_events') {
+		return compactCalendarEventListPayload(payload);
 	}
 	if (
 		normalizedToolName === 'create_onto_document' ||
@@ -867,7 +892,19 @@ function compactEmailSearchPayload(payload: unknown): unknown {
 		if (gmailUrl) selectedUrls.add(gmailUrl);
 	}
 
-	return {
+	const compactMessages = selectedMessages.map((message) => ({
+		connection_id: message.connection_id,
+		account_label: message.account_label,
+		email_address: message.email_address,
+		message_id: message.message_id,
+		thread_id: message.thread_id,
+		subject: toTextPreview(message.subject, 180),
+		from: toTextPreview(message.from, 180),
+		date: message.date,
+		gmail_url: message.gmail_url,
+		...compactUntrustedEmailSnippet(message.snippet, message.snippet_truncated === true)
+	}));
+	const build = (messages: typeof compactMessages) => ({
 		result_contract_version: record.result_contract_version,
 		read_only: record.read_only === true,
 		query: record.query,
@@ -883,30 +920,60 @@ function compactEmailSearchPayload(payload: unknown): unknown {
 					next_cursor: account.next_cursor
 				}))
 			: [],
-		messages: selectedMessages.map((message) => ({
-			connection_id: message.connection_id,
-			account_label: message.account_label,
-			email_address: message.email_address,
-			message_id: message.message_id,
-			thread_id: message.thread_id,
-			subject: toTextPreview(message.subject, 180),
-			from: toTextPreview(message.from, 180),
-			date: message.date,
-			gmail_url: message.gmail_url,
-			snippet: toTextPreview(message.snippet, MAX_EMAIL_SNIPPET_CHARS),
-			snippet_truncated:
-				message.snippet_truncated === true ||
-				(typeof message.snippet === 'string' &&
-					message.snippet.length > MAX_EMAIL_SNIPPET_CHARS)
-		})),
+		messages,
 		message_count: record.message_count,
-		messages_returned_to_model: selectedMessages.length,
-		messages_omitted_from_model: Math.max(0, sourceMessages.length - selectedMessages.length),
+		messages_returned_to_model: messages.length,
+		messages_omitted_from_model: Math.max(0, sourceMessages.length - messages.length),
 		reconnect_required_accounts: Array.isArray(record.reconnect_required_accounts)
 			? record.reconnect_required_accounts.slice(0, 5)
 			: [],
 		fetched_at: record.fetched_at,
 		notice: record.notice
+	});
+	// Fit by dropping whole trailing messages (never the ones backing an account
+	// link) so the outer size guard never has to cut a snippet's delimiters.
+	const linkBacked = Math.min(accountMessageLinks.length, compactMessages.length);
+	let kept = compactMessages;
+	let compacted = build(kept);
+	while (
+		kept.length > linkBacked &&
+		JSON.stringify(compacted).length > WEB_COMPACT_TARGET_CHARS
+	) {
+		kept = kept.slice(0, -1);
+		compacted = build(kept);
+	}
+	return compacted;
+}
+
+/**
+ * Shorten a delimited email snippet without cutting its delimiters. Truncating
+ * the wrapped string kept the 113-char opening marker, left ~143 chars of real
+ * text, and dropped the closing marker; this trims the quoted text itself and
+ * re-wraps it.
+ */
+function compactUntrustedEmailSnippet(
+	snippet: unknown,
+	alreadyTruncated: boolean
+): { snippet: string | null; snippet_truncated: boolean } {
+	if (typeof snippet !== 'string' || !snippet.trim()) {
+		return { snippet: null, snippet_truncated: alreadyTruncated };
+	}
+	const trimmed = snippet.trim();
+	const openEnd = trimmed.startsWith(EMAIL_UNTRUSTED_OPEN_PREFIX) ? trimmed.indexOf('\n') : -1;
+	if (openEnd === -1) {
+		return {
+			snippet: toTextPreview(trimmed, MAX_EMAIL_SNIPPET_CHARS),
+			snippet_truncated: alreadyTruncated || trimmed.length > MAX_EMAIL_SNIPPET_CHARS
+		};
+	}
+	const open = trimmed.slice(0, openEnd);
+	const inner = trimmed
+		.slice(openEnd + 1)
+		.replace(EMAIL_UNTRUSTED_CLOSE, '')
+		.trim();
+	return {
+		snippet: `${open}\n${toTextPreview(inner, MAX_EMAIL_SNIPPET_CHARS) ?? ''}\n${EMAIL_UNTRUSTED_CLOSE}`,
+		snippet_truncated: alreadyTruncated || inner.length > MAX_EMAIL_SNIPPET_CHARS
 	};
 }
 
@@ -1939,6 +2006,426 @@ function compactTaskListPayload(payload: unknown): unknown {
 		fieldCount: Math.max(tasks.length, 1)
 	});
 	return applyToolPayloadSizeGuard(fitted, TOOL_COMPACT_TARGET_CHARS);
+}
+
+// list_calendar_events returns up to 200 merged events, each carrying the
+// untouched provider payload (attendee lists, conference data, HTML
+// descriptions) or the whole onto_events row. Under the generic size guard a
+// two-week window reached the model as ~5 events, and because the guard dropped
+// trailing events after the tool had computed next_offset, the dropped events
+// could never be paged to. Here each event is a positional row (see
+// `event_fields`), details shrink before any event is dropped, and when events
+// still have to go the continuation points at the first event the model did
+// not see.
+const CALENDAR_EVENT_FIELDS = [
+	'start',
+	'end',
+	'title',
+	'onto_event_id',
+	'external_event_id',
+	'calendar',
+	'details'
+] as const;
+const calendarRowsGuide = (timezone: string) =>
+	`Rows follow event_fields. Times are local to ${timezone}; a same-day end is HH:MM. ` +
+	'All-day: date-only start, end = last day or null. BuildOS events use onto_event_id; ' +
+	'Google events use external_event_id with calendars[calendar].calendar_source_id.';
+// The tool's offset schema stops at 299; past it the continuation pages by time.
+const CALENDAR_MAX_LIST_OFFSET = 299;
+const CALENDAR_DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const CALENDAR_SHORT_LINK_CHARS = 60;
+const CALENDAR_SYNC_ERROR_CHARS = 80;
+const CALENDAR_LEGEND_LABEL_CHARS = 60;
+
+type CalendarRowBudget = {
+	title: number;
+	description: number;
+	location: number;
+	organizer: number;
+	/** BuildOS project/task ids (two UUIDs); onto_event_id still reaches them. */
+	linkage: boolean;
+	attendees: boolean;
+};
+
+// Richest first. Descriptions, then locations and organizers, then linkage ids
+// and attendee counts go before any event does: an event missing from the
+// list reads as free time. A decline (`my_response`) is never dropped.
+const CALENDAR_ROW_BUDGETS: readonly CalendarRowBudget[] = [
+	{ title: 100, description: 120, location: 60, organizer: 40, linkage: true, attendees: true },
+	{ title: 80, description: 60, location: 40, organizer: 30, linkage: true, attendees: true },
+	{ title: 80, description: 0, location: 30, organizer: 0, linkage: true, attendees: true },
+	{ title: 60, description: 0, location: 0, organizer: 0, linkage: false, attendees: false }
+];
+
+type CalendarEventTimes = { start: string | null; end: string | null; allDay: boolean };
+
+function isCalendarRecord(value: unknown): value is Record<string, any> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function calendarString(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+/** `YYYY-MM-DD` and `HH:MM` of an instant, read in `timezone`. */
+function calendarLocalParts(
+	value: unknown,
+	timezone: string
+): { date: string; time: string } | null {
+	const instant = calendarString(value);
+	if (!instant) return null;
+	const zoned = instantToZonedIso(instant, timezone);
+	if (!zoned) return null;
+	return { date: zoned.slice(0, 10), time: zoned.slice(11, 16) };
+}
+
+function previousCalendarDate(date: string | null): string | null {
+	if (!date || !CALENDAR_DATE_ONLY_PATTERN.test(date)) return null;
+	const parsed = new Date(`${date}T00:00:00.000Z`);
+	if (Number.isNaN(parsed.getTime())) return null;
+	parsed.setUTCDate(parsed.getUTCDate() - 1);
+	return parsed.toISOString().slice(0, 10);
+}
+
+/**
+ * Google all-day events carry an exclusive end date; stored all-day rows hold
+ * instants in the event's own timezone (see `googleAllDayDates`). Both become a
+ * start date plus the inclusive last day, null when the event is one day long.
+ */
+function compactCalendarEventTimes(
+	item: Record<string, any>,
+	raw: Record<string, any>,
+	timezone: string
+): CalendarEventTimes {
+	const startRaw = calendarString(item.start_at);
+	const endRaw = calendarString(item.end_at);
+	const rawStart = isCalendarRecord(raw.start) ? raw.start : null;
+	const rawEnd = isCalendarRecord(raw.end) ? raw.end : null;
+	const lastDayOrNull = (start: string | null, lastDay: string | null) =>
+		start && lastDay && lastDay > start ? lastDay : null;
+
+	const googleAllDay =
+		item.source !== 'ontology' &&
+		((calendarString(rawStart?.date) !== null && !calendarString(rawStart?.dateTime)) ||
+			(startRaw !== null && CALENDAR_DATE_ONLY_PATTERN.test(startRaw)));
+	if (googleAllDay) {
+		const start = calendarString(rawStart?.date) ?? startRaw;
+		const exclusiveEnd = calendarString(rawEnd?.date) ?? endRaw;
+		return {
+			start,
+			end: lastDayOrNull(start, previousCalendarDate(exclusiveEnd)),
+			allDay: true
+		};
+	}
+
+	if (item.source === 'ontology' && raw.all_day === true) {
+		const zone = isValidIanaTimezone(raw.timezone) ? raw.timezone.trim() : timezone;
+		const start = calendarLocalParts(startRaw, zone)?.date ?? startRaw;
+		const end = calendarLocalParts(endRaw, zone);
+		// A stored end at midnight is exclusive; any other end time is inside the last day.
+		const lastDay = !end
+			? null
+			: end.time === '00:00'
+				? previousCalendarDate(end.date)
+				: end.date;
+		return { start, end: lastDayOrNull(start, lastDay), allDay: true };
+	}
+
+	const start = calendarLocalParts(startRaw, timezone);
+	if (!start) return { start: startRaw, end: endRaw, allDay: false };
+	const end = calendarLocalParts(endRaw, timezone);
+	return {
+		start: `${start.date} ${start.time}`,
+		end: end ? (end.date === start.date ? end.time : `${end.date} ${end.time}`) : endRaw,
+		allDay: false
+	};
+}
+
+function calendarTextPreview(value: unknown, maxLength: number): string | undefined {
+	if (maxLength <= 0 || typeof value !== 'string') return undefined;
+	// Google descriptions are often HTML; tags and entities are markup, not text.
+	const text = value
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/&nbsp;/g, ' ')
+		.replace(/&amp;/g, '&')
+		.replace(/\s+/g, ' ');
+	return toTextPreview(text, maxLength) ?? undefined;
+}
+
+function compactCalendarEventDetails(
+	item: Record<string, any>,
+	raw: Record<string, any>,
+	allDay: boolean,
+	budget: CalendarRowBudget,
+	scopeProjectId: string | null
+): Record<string, unknown> | null {
+	const details: Record<string, unknown> = {};
+	const isOntology = item.source === 'ontology';
+	if (allDay) details.all_day = true;
+	const status = calendarString(raw.status);
+	if (!isOntology && status && status !== 'confirmed') details.status = status;
+
+	const attendees = Array.isArray(raw.attendees) ? raw.attendees : [];
+	if (attendees.length > 0) {
+		if (budget.attendees) details.attendees = attendees.length;
+		const self = attendees.find(
+			(attendee: unknown) => isCalendarRecord(attendee) && attendee.self === true
+		);
+		const response = calendarString(self?.responseStatus);
+		// Accepted is the default; a decline or an unanswered invite changes
+		// whether the slot is really busy.
+		if (response && response !== 'accepted') details.my_response = response;
+	}
+	if (isCalendarRecord(raw.organizer) && raw.organizer.self !== true) {
+		const organizer = calendarTextPreview(
+			calendarString(raw.organizer.displayName) ?? raw.organizer.email,
+			budget.organizer
+		);
+		if (organizer) details.organizer = organizer;
+	}
+
+	const location = calendarTextPreview(raw.location, budget.location);
+	if (location) details.location = location;
+	const description = calendarTextPreview(raw.description, budget.description);
+	if (description) details.description = description;
+
+	if (budget.linkage && isOntology) {
+		const projectId = calendarString(raw.project_id);
+		if (projectId && projectId !== scopeProjectId) details.project_id = projectId;
+		const taskId = calendarString(item.owner_entity_id);
+		if (item.owner_entity_type === 'task' && taskId) details.task_id = taskId;
+	}
+	const syncError = calendarTextPreview(item.sync_error, CALENDAR_SYNC_ERROR_CHARS);
+	if (syncError) details.sync_error = syncError;
+	const link = [raw.htmlLink, raw.external_link]
+		.map(calendarString)
+		.find((candidate) => candidate !== null && candidate.length <= CALENDAR_SHORT_LINK_CHARS);
+	if (link) details.link = link;
+
+	return Object.keys(details).length > 0 ? details : null;
+}
+
+function compactCalendarQueriedRange(value: unknown): Record<string, unknown> | undefined {
+	if (!isCalendarRecord(value)) return undefined;
+	return {
+		time_min: value.time_min,
+		time_max: value.time_max,
+		timezone: value.timezone,
+		query: value.query ?? undefined,
+		default_time_min_applied: value.default_time_min_applied === true ? true : undefined,
+		default_time_max_applied: value.default_time_max_applied === true ? true : undefined
+	};
+}
+
+/**
+ * The tool's pagination is truthful only when every event on the page reaches
+ * the model. When rows are held back, the continuation is rewritten to start
+ * at the first held-back event.
+ */
+function compactCalendarPagination(
+	value: unknown,
+	events: readonly Record<string, any>[],
+	shown: number,
+	firstHeldBackStart: string | null
+): unknown {
+	const heldBack = events.length - shown;
+	if (heldBack <= 0) return pageEndBeyondOffsetLimit(value, events);
+	const pagination: Record<string, any> = isCalendarRecord(value) ? value : {};
+	const offset =
+		typeof pagination.offset === 'number' && Number.isFinite(pagination.offset)
+			? Math.max(0, Math.floor(pagination.offset))
+			: 0;
+	const nextOffset = offset + shown;
+	const offsetReachable = nextOffset <= CALENDAR_MAX_LIST_OFFSET;
+	// Rows are chronological, so the held-back events all start at or after the
+	// first one; a time_min there repeats in-progress events but skips none.
+	const nextTimeMin = offsetReachable ? null : calendarString(events[shown]?.start_at);
+	const from = firstHeldBackStart ? ` (from ${firstHeldBackStart})` : '';
+	const how = offsetReachable
+		? `offset=${nextOffset}`
+		: nextTimeMin
+			? `time_min=${nextTimeMin}`
+			: 'a narrower window';
+	return {
+		offset,
+		limit: pagination.limit,
+		returned: shown,
+		total_available: pagination.total_available,
+		has_more: true,
+		next_offset: offsetReachable ? nextOffset : null,
+		...(nextTimeMin ? { next_time_min: nextTimeMin } : {}),
+		held_back: heldBack,
+		continuation:
+			`${heldBack} later events on this page${from} did not fit and are unseen, not free time. ` +
+			`Call again with the same window and filters and ${how}.`
+	};
+}
+
+/**
+ * A fully shown page can still end past the tool's offset maximum (the merged
+ * window holds more than 300 events). Its `next_offset` would be rejected by
+ * the schema, so the continuation switches to time: starting at the last shown
+ * event repeats events that share its start but skips none.
+ */
+function pageEndBeyondOffsetLimit(value: unknown, events: readonly Record<string, any>[]): unknown {
+	if (!isCalendarRecord(value) || value.has_more !== true) return value;
+	const nextOffset = value.next_offset;
+	if (typeof nextOffset !== 'number' || nextOffset <= CALENDAR_MAX_LIST_OFFSET) return value;
+	const nextTimeMin = calendarString(events.at(-1)?.start_at);
+	return {
+		...value,
+		next_offset: null,
+		...(nextTimeMin ? { next_time_min: nextTimeMin } : {}),
+		continuation: nextTimeMin
+			? `More events follow. Call again with the same window and filters and time_min=${nextTimeMin} (events starting then may repeat).`
+			: 'More events follow. Call again with a narrower window.'
+	};
+}
+
+function compactCalendarEventListPayload(payload: unknown): unknown {
+	if (!isCalendarRecord(payload) || !Array.isArray(payload.events)) {
+		return applyToolPayloadSizeGuard(payload, WEB_COMPACT_TARGET_CHARS);
+	}
+	const record = payload;
+	// Never filter: row index + pagination.offset is the event's merged offset.
+	const events: Record<string, any>[] = (record.events as unknown[]).map((item) =>
+		isCalendarRecord(item) ? item : {}
+	);
+	const raws: Record<string, any>[] = events.map((item) =>
+		isCalendarRecord(item.event) ? item.event : {}
+	);
+	const queriedRange: Record<string, any> = isCalendarRecord(record.queried_range)
+		? record.queried_range
+		: {};
+	const timezone = isValidIanaTimezone(queriedRange.timezone)
+		? queriedRange.timezone.trim()
+		: 'UTC';
+	const scopeProjectId = isCalendarRecord(record.query_scope)
+		? calendarString(record.query_scope.project_id)
+		: null;
+	const times = events.map((item, index) =>
+		compactCalendarEventTimes(item, raws[index]!, timezone)
+	);
+
+	// One short ref per calendar source; the legend carries the UUID once.
+	const calendarRefs = new Map<string, string>();
+	const legend = new Map<string, Record<string, unknown>>();
+	events.forEach((item, index) => {
+		const sourceId = calendarString(item.calendar_source_id);
+		if (!sourceId) return;
+		let ref = calendarRefs.get(sourceId);
+		if (!ref) {
+			ref = `c${calendarRefs.size + 1}`;
+			calendarRefs.set(sourceId, ref);
+			legend.set(ref, { calendar_source_id: sourceId });
+		}
+		const entry = legend.get(ref)!;
+		const raw = raws[index]!;
+		if (entry.name === undefined) {
+			const name = calendarTextPreview(raw.calendarSummary, CALENDAR_LEGEND_LABEL_CHARS);
+			const account = calendarTextPreview(raw.connectionLabel, CALENDAR_LEGEND_LABEL_CHARS);
+			if (name) entry.name = name;
+			if (account && account !== name) entry.account = account;
+		}
+	});
+
+	const buildRows = (budget: CalendarRowBudget): unknown[][] =>
+		events.map((item, index) => {
+			const raw = raws[index]!;
+			const onto = calendarString(item.onto_event_id);
+			const sourceId = calendarString(item.calendar_source_id);
+			const row: unknown[] = [
+				times[index]!.start,
+				times[index]!.end,
+				toTextPreview(item.title ?? raw.summary ?? raw.title, budget.title),
+				onto,
+				// A BuildOS event is addressed by its own id even when synced.
+				onto ? null : calendarString(item.external_event_id),
+				sourceId ? (calendarRefs.get(sourceId) ?? null) : null
+			];
+			const details = compactCalendarEventDetails(
+				item,
+				raw,
+				times[index]!.allDay,
+				budget,
+				scopeProjectId
+			);
+			if (details) row.push(details);
+			return row;
+		});
+
+	const buildPayload = (rows: unknown[][]): Record<string, unknown> => {
+		const shown = rows.length;
+		const usedRefs = new Set(rows.map((row) => row[5]).filter(Boolean));
+		const calendars = Object.fromEntries(
+			Array.from(legend.entries()).filter(([ref]) => usedRefs.has(ref))
+		);
+		return {
+			...('calendar_read_failed' in record
+				? {
+						calendar_read_failed: record.calendar_read_failed,
+						error_code: record.error_code
+					}
+				: {}),
+			query_scope: isCalendarRecord(record.query_scope)
+				? Object.fromEntries(
+						Object.entries(record.query_scope).filter(
+							([, value]) => value !== null && value !== undefined
+						)
+					)
+				: undefined,
+			queried_range: compactCalendarQueriedRange(record.queried_range),
+			// The coverage verdict is small and load-bearing: never reshaped.
+			google_read: record.google_read,
+			warnings:
+				Array.isArray(record.warnings) && record.warnings.length > 0
+					? record.warnings
+					: undefined,
+			google_event_count: record.google_event_count,
+			ontology_event_count: record.ontology_event_count,
+			pagination: compactCalendarPagination(
+				record.pagination,
+				events,
+				shown,
+				shown < events.length ? times[shown]!.start : null
+			),
+			...(shown > 0
+				? {
+						event_fields: CALENDAR_EVENT_FIELDS,
+						rows_guide: calendarRowsGuide(timezone),
+						calendars: Object.keys(calendars).length > 0 ? calendars : undefined
+					}
+				: {}),
+			events: rows
+		};
+	};
+	const fits = (candidate: Record<string, unknown>): boolean => {
+		const length = serializedLength(candidate);
+		return length !== null && length <= WEB_COMPACT_TARGET_CHARS;
+	};
+
+	let rows: unknown[][] = [];
+	for (const budget of CALENDAR_ROW_BUDGETS) {
+		rows = buildRows(budget);
+		const candidate = buildPayload(rows);
+		if (fits(candidate)) return candidate;
+	}
+
+	// Even the leanest rows overflow: keep the longest chronological prefix that
+	// fits. The continuation built for that prefix names the first unseen event.
+	let shown = Math.min(1, rows.length);
+	let low = shown + 1;
+	let high = rows.length - 1;
+	while (low <= high) {
+		const middle = Math.floor((low + high) / 2);
+		if (fits(buildPayload(rows.slice(0, middle)))) {
+			shown = middle;
+			low = middle + 1;
+		} else {
+			high = middle - 1;
+		}
+	}
+	return applyToolPayloadSizeGuard(buildPayload(rows.slice(0, shown)), TOOL_COMPACT_TARGET_CHARS);
 }
 
 // A document write receipt proves the write; the body the model just sent

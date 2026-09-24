@@ -1,6 +1,6 @@
 // apps/worker/tests/agenticChatConfig.test.ts
 import { describe, expect, it } from 'vitest';
-import { PARETO_MODEL } from '@buildos/smart-llm';
+import { GLM_53_MODEL, PARETO_MODEL, QWEN_38_27B_FREE_MODEL } from '@buildos/smart-llm';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import {
 	AGENTIC_CHAT_WORKFLOW_FALLBACK_MODELS_V1,
@@ -15,6 +15,19 @@ const DEDICATED_PROVIDER_ENV: NodeJS.ProcessEnv = {
 };
 
 describe('Agentic Chat acting provider routing defaults', () => {
+	it.each([GLM_53_MODEL, QWEN_38_27B_FREE_MODEL])(
+		'does not reuse DeepSeek provider ordering for %s',
+		(model) => {
+			const config = loadAgenticChatConfig({
+				...DEDICATED_PROVIDER_ENV,
+				AGENTIC_CHAT_OPENROUTER_MODEL: model
+			});
+			expect(config.provider.routes[0]?.providerRouting).toEqual({
+				allow_fallbacks: true,
+				require_parameters: true
+			});
+		}
+	);
 	it('uses neutral routing and a measured header budget for the local Pareto experiment', () => {
 		const config = loadAgenticChatConfig({
 			...DEDICATED_PROVIDER_ENV,

@@ -87,6 +87,28 @@ function connectionLevelReasonCode(error: unknown): string | null {
 	return null;
 }
 
+/**
+ * The Google event fields a chat calendar list reads. Every reader downstream
+ * of this port uses only these: `toPortEvent` below, the shared
+ * `list_calendar_events` merge (summary/start/end), and the model-facing row
+ * compactor (`compactCalendarEventListPayload` in
+ * packages/agentic-chat-runtime/src/loop/tool-payload-compaction.ts). Attendee
+ * e-mails, conference data, reminders and etags were fetched for every event
+ * and never read. The single-event detail read stays unmasked. Add a field here
+ * before any of those readers starts using it.
+ */
+const CHAT_LIST_EVENT_FIELDS = [
+	'summary',
+	'description',
+	'location',
+	'status',
+	'htmlLink',
+	'start',
+	'end',
+	'attendees(self,responseStatus)',
+	'organizer(email,displayName,self)'
+] as const;
+
 function unavailableListResult(reasonCode: string): AgenticChatCalendarListEventsResultV1 {
 	return {
 		events: [],
@@ -178,7 +200,8 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 					maxResults: listInput.maxResults,
 					q: listInput.query,
 					timeZone: listInput.timeZone,
-					budgetMs: listInput.budgetMs
+					budgetMs: listInput.budgetMs,
+					eventFields: CHAT_LIST_EVENT_FIELDS
 				});
 			} catch (error) {
 				const reasonCode = connectionLevelReasonCode(error);
