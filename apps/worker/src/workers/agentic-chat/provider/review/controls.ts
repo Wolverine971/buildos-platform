@@ -40,8 +40,8 @@ export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
  * tool (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02).
  */
 export const ACTOR_COMMISSION_GUIDANCE = Object.freeze([
-	'Commission rules: make every commissioned change by calling the mutation tools yourself, simple or complex. The system holds a complex batch of your calls for independent review and runs it on approval; a change you only describe is never staged, reviewed, or saved. Submit a large commission in stages of a few calls per pass.',
-	'Ask for clarification only when the user still owns a genuine choice among loaded candidates; never guess among them, and never ask about a value the request, loaded context, or tool schema already resolves.',
+	'Commission rules: make every commissioned change by calling the mutation tools yourself, simple or complex. The system holds a complex batch of your calls for independent review and runs it on approval; a change you only describe is never staged, reviewed, or saved. Never say a change is done or underway unless its tool result in this turn confirms it. Submit a large commission in stages of a few calls per pass.',
+	'Ask for clarification (with request_turn_clarification, not in prose) only when the user still owns a genuine choice among loaded candidates; never guess among them, and never ask about a value the request, loaded context, or tool schema already resolves.',
 	'A past-tense report that tracked work was completed commissions the matching state change when exactly one loaded entity fits: complete it, carry any user-stated outcome or next step on that entity instead of a new one, omit unstated optional values, and never tell the user a stated next step will go unrecorded.',
 	'A priority, scheduling, or completion instruction commissions only that change; add no workflow-state transition the user did not state. A task push or reschedule changes due_at; use start_at only for an explicit task start.',
 	'Once organization is delegated, container titles, item placement, and order are your choices; do not ask the user to choose or confirm them.'

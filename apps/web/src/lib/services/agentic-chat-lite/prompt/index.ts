@@ -25,7 +25,6 @@ export { LITE_PROMPT_VARIANT } from './types';
 export {
 	buildMidTurnSituationalNotice,
 	hasActiveSituation,
-	looksLikeWebResearchTurn,
 	resolveLitePromptTurnSituation
 } from './situational-rules';
 export type { LitePromptTurnSituation } from './situational-rules';

@@ -6,133 +6,16 @@ import type { ToolValidationIssue } from './tool-validation';
 import {
 	doesToolExecutionRequireUserAction,
 	didGatewayExecSucceed,
-	didGatewayOpExecute,
-	didSuccessfulGatewayOpExecute,
 	getGatewayExecOp,
 	isDuplicateWriteSkippedExecution,
-	isWriteLedgerToolExecution,
 	isWriteLikeOperation
 } from './tool-classification';
 import { extractGatewayRequiredFieldFailuresFromValidationIssues } from './round-analysis';
-import { getDocumentUpdateContentCandidate } from '@buildos/shared-agent-ops/ops/update-value-validation';
-import { hasDocumentEdits } from '@buildos/shared-agent-ops/ontology/document-edits';
 import {
 	classifyToolFailure,
 	isNotFoundFailure,
 	parseRequiredParameterFailure
 } from './tool-failure';
-
-/**
- * Forward-carry floor (2026-07-26).
- *
- * A user who says "that's done, I'm just waiting to hear back from them" has stated two things: an
- * outcome and a future. The agent reliably records the first and drops the second — measured
- * **0/17** on `task-complete-cold-reference` across every intervention tried:
- *   - no rule at all: 0/2
- *   - rule added mid-list (position 14 of 20): 0/5
- *   - after the research-budget fix: 0/5
- *   - rule moved to the Final Response Contract, the best boundary position available: 0/5
- *
- * Three placements, zero effect. Instruction cannot carry this one, so it becomes a gate.
- *
- * Unlike the research floor, the trigger cannot be read off tool calls — "the user stated a durable
- * future" is a language judgment. So detection is deliberately conservative AND the repair is
- * model-judged: it asks the model to consider recording, and explicitly permits declining. A false
- * positive therefore costs one extra round, never a spurious write — which matters because
- * `restraint-noop-and-ambiguity` asserts zero writes on a passing mention.
- */
-const STATED_FUTURE_PATTERNS: RegExp[] = [
-	/\bwaiting (?:to hear|on|for|back)\b/i,
-	/\bhear(?:ing)? back\b/i,
-	/\bnext (?:step|thing|up) is\b/i,
-	/\bblocked (?:on|by)\b/i,
-	/\bfollow(?:ing)? up\b/i,
-	/\bonce (?:they|he|she|we|it|that|this)\b.*\b(?:then|i'?ll|we'?ll)\b/i,
-	/\bi'?ll\b.*\b(?:tomorrow|next week|next month|later this week|by (?:mon|tue|wed|thu|fri|sat|sun))/i,
-	/\bsupposed to\b/i,
-	/\bstill (?:need|needs|have) to\b/i
-];
-
-function looksLikeStatedFuture(text: string): boolean {
-	const normalized = (text ?? '').trim();
-	if (!normalized) return false;
-	return STATED_FUTURE_PATTERNS.some((pattern) => pattern.test(normalized));
-}
-
-/**
- * The user's own words for the stated future — the first sentence-ish segment that trips a
- * stated-future pattern — so deterministic capture can title the record verbatim instead of
- * paraphrasing. Falls back to the whole message for patterns that span sentence boundaries
- * ("once they sign off ... then I'll ..."). Null means "nothing matched, do not capture".
- */
-export function extractStatedFutureClause(text: string): string | null {
-	const normalized = (text ?? '').trim();
-	if (!normalized) return null;
-	const segments = normalized
-		.split(/(?<=[.!?])\s+|\n+/g)
-		.map((segment) => segment.trim())
-		.filter(Boolean);
-	for (const segment of segments) {
-		if (STATED_FUTURE_PATTERNS.some((pattern) => pattern.test(segment))) return segment;
-	}
-	return looksLikeStatedFuture(normalized) ? normalized : null;
-}
-
-/**
- * A durable record of something NEW, as opposed to a state change on an entity that already existed.
- * Closing a task is not carrying its follow-up forward, which is the whole failure being gated.
- * Mirrors the four surfaces the scenario accepts: task, document, event, or START HERE edit.
- */
-function didCreateDurableRecord(toolExecutions: FastToolExecution[]): boolean {
-	return toolExecutions.some((execution) => {
-		if (execution.result.success !== true) return false;
-		const name = execution.toolCall.function?.name?.trim() ?? '';
-		if (!name) return false;
-		if (name.startsWith('create_onto_')) return true;
-		if (name === 'create_calendar_event') return true;
-		// A document edit is how "update START HERE" lands, but metadata-only
-		// edits do not carry the stated future on the accepted document surface.
-		// Counting every nominal update suppressed both the repair and the D1
-		// floor when a model changed only description/state and left body content
-		// untouched (Phase 0 gate, 2026-07-31).
-		if (name === 'update_onto_document') {
-			const { args } = parseToolArguments(execution.toolCall.function?.arguments);
-			return getDocumentUpdateContentCandidate(args) !== null || hasDocumentEdits(args);
-		}
-		return false;
-	});
-}
-
-/**
- * The subset of stated-future phrasings safe to act on DETERMINISTICALLY (the server-side
- * last-resort write in the stream route). The broad STATED_FUTURE_PATTERNS list is fine for the
- * model-judged gate — a false positive there costs one extra round — but a deterministic write
- * turns every false positive into a user-visible task. So this list keeps only unambiguous
- * waiting-state declarations and drops the patterns that routinely appear inside instructions
- * ("follow up", "still need to", "i'll ... tomorrow"), where the stated work is usually the very
- * thing the user just asked the agent to do.
- */
-const CONSERVATIVE_STATED_FUTURE_PATTERNS: RegExp[] = [
-	/\bwaiting (?:to hear|on|for|back)\b/i,
-	/\bhear(?:ing)? back\b/i,
-	/\bblocked (?:on|by)\b/i,
-	/\bnext (?:step|thing|up) is\b/i
-];
-
-export function looksLikeConservativeStatedFuture(text: string): boolean {
-	const normalized = (text ?? '').trim();
-	if (!normalized) return false;
-	return CONSERVATIVE_STATED_FUTURE_PATTERNS.some((pattern) => pattern.test(normalized));
-}
-
-/** True when the turn made a successful write yet created no new durable record — the
- * forward-carry failure condition, computed from ground truth rather than model output. */
-export function didWriteWithoutDurableRecord(toolExecutions: FastToolExecution[]): boolean {
-	const wrote = toolExecutions.some(
-		(execution) => isWriteLedgerToolExecution(execution) && execution.result.success === true
-	);
-	return wrote && !didCreateDurableRecord(toolExecutions);
-}
 
 const DOCUMENT_READ_TOOL_NAMES = new Set([
 	'get_document_tree',
@@ -222,118 +105,47 @@ export type UnfulfilledMutationOutcomeDisclosureV1 = {
 };
 
 type EnforceMutationOutcomeIntegrityParams = {
-	contextType: string;
 	toolExecutions: FastToolExecution[];
-	latestUserText?: string;
-	explicitMutationRequested?: boolean;
 	/**
 	 * Declared outcomes still unfulfilled at finalization. After at least one
-	 * successful write, prose that does not disclose the unfinished remainder
-	 * gets a deterministic "Done: N of M ... Not yet ...: ..." line appended so
-	 * the user learns what is still pending without relying on model prose.
+	 * successful write, a deterministic "Done: N of M ... Not yet ...: ..." line
+	 * is appended so the user learns what is still pending from the ledger, not
+	 * from model prose.
 	 */
 	unfulfilledOutcomes?: UnfulfilledMutationOutcomeDisclosureV1[];
 };
 
+/**
+ * Terminal receipts rendered from the write ledger, appended under the model's
+ * answer. The answer itself is never read: whether the prose already admitted a
+ * failure or claimed a success is a language judgment (AGENTS.md "Never
+ * classify language with regex"), and the regexes that used to make it both
+ * rewrote correct answers and let paraphrased overclaims through. The ledger
+ * decides; at worst a receipt repeats what an honest answer already said.
+ *
+ * Prevention lives upstream: the acting prompt tells the model to report only
+ * what tool results confirm, and a write the model merely describes is never
+ * saved (ACTOR_COMMISSION_GUIDANCE in the worker).
+ */
 export function enforceMutationOutcomeIntegrity(
 	finalText: string,
 	params: EnforceMutationOutcomeIntegrityParams
 ): string {
-	const text = enforceMutationOutcomeIntegrityCore(finalText, params);
-	return appendUnfulfilledMutationOutcomeDisclosure(text, params);
-}
-
-function appendUnfulfilledMutationOutcomeDisclosure(
-	finalText: string,
-	params: EnforceMutationOutcomeIntegrityParams
-): string {
-	const unfulfilledOutcomes = params.unfulfilledOutcomes ?? [];
-	if (!finalText || unfulfilledOutcomes.length === 0) return finalText;
-	// Zero-write turns are already corrected by the no-execution and
-	// finalization-guard floors; the partial line is for work that half-happened.
-	if (summarizeMutationOutcomes(params.toolExecutions).succeeded === 0) return finalText;
-	if (looksLikeUnfulfilledMutationDisclosure(finalText)) return finalText;
-	return `${finalText.trim()}\n\n${formatUnfulfilledMutationOutcomeDisclosure(unfulfilledOutcomes)}`;
-}
-
-function enforceMutationOutcomeIntegrityCore(
-	finalText: string,
-	params: EnforceMutationOutcomeIntegrityParams
-): string {
 	if (!finalText) return finalText;
-
-	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
-	if (
-		mutationOutcomes.attempted === 0 &&
-		params.explicitMutationRequested === true &&
-		looksLikeMutationSuccessClaim(finalText)
-	) {
-		return buildNoExecutionMutationFailureMessage();
+	const blocks: string[] = [];
+	const unrepairedFailures = collectUnrepairedFailedWrites(params.toolExecutions);
+	const succeeded = countSuccessfulWrites(params.toolExecutions);
+	if (unrepairedFailures.length > 0) {
+		blocks.push(formatWriteFailureDisclosure(unrepairedFailures, succeeded));
 	}
-
-	if (mutationOutcomes.attempted > 0) {
-		if (mutationOutcomes.failed > 0 && looksLikeBulkMutationSuccessClaim(finalText)) {
-			return buildMutationFailureMessage(mutationOutcomes);
-		}
-
-		if (mutationOutcomes.succeeded === 0 && looksLikeMutationSuccessClaim(finalText)) {
-			return buildMutationFailureMessage(mutationOutcomes);
-		}
-
-		const unrepairedFailures = collectUnrepairedFailedWrites(params.toolExecutions);
-		if (unrepairedFailures.length > 0 && !looksLikeWriteFailureDisclosure(finalText)) {
-			return appendWriteFailureDisclosure(finalText, unrepairedFailures);
-		}
+	const unfulfilledOutcomes = params.unfulfilledOutcomes ?? [];
+	// Zero-write turns get the finalization guard's notice instead; the
+	// partial line is for work that half-happened.
+	if (unfulfilledOutcomes.length > 0 && succeeded > 0) {
+		blocks.push(formatUnfulfilledMutationOutcomeDisclosure(unfulfilledOutcomes));
 	}
-
-	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
-	if (
-		mutationOutcomes.succeeded === 0 &&
-		writeIntentOps.length > 0 &&
-		looksLikeActionSuccessClaim(finalText)
-	) {
-		return buildMutationFailureMessage({
-			attempted: writeIntentOps.length,
-			succeeded: 0,
-			failed: writeIntentOps.length,
-			writeOps: writeIntentOps
-		});
-	}
-
-	if (params.contextType === 'project_create') {
-		const projectCreateSucceeded = didSuccessfulGatewayOpExecute(
-			params.toolExecutions,
-			'onto.project.create'
-		);
-		if (!projectCreateSucceeded && looksLikeProjectCreateSuccessClaim(finalText)) {
-			const attemptedProjectCreate = didGatewayOpExecute(
-				params.toolExecutions,
-				'onto.project.create'
-			);
-			return attemptedProjectCreate
-				? 'I was unable to create the project because the create payload never validated. Nothing changed yet; I need to retry with a complete project payload.'
-				: 'I was unable to create the project because the create call did not run. Nothing changed yet; I only loaded the project creation guidance.';
-		}
-	}
-
-	// Only a turn that changed something, or was structurally asked to change
-	// something (turn contract / gateway write intent, never prose), can
-	// overclaim a link or placement it did not make. A zero-write turn that
-	// was asked to move a document and replies "the doc is now organized under
-	// Research" must still be corrected. On a genuinely read-only turn "X is
-	// linked to Y" describes existing state, and the lexical claim check below
-	// cannot tell the two apart, so it stays off there.
-	if (mutationOutcomes.succeeded > 0 || params.explicitMutationRequested === true) {
-		const unsupportedClaims = collectUnsupportedDocumentClaims(
-			finalText,
-			params.toolExecutions
-		);
-		if (unsupportedClaims.length > 0 && !looksLikeDocumentClaimCorrection(finalText)) {
-			return appendDocumentClaimCorrection(finalText, unsupportedClaims);
-		}
-	}
-
-	return finalText;
+	if (blocks.length === 0) return finalText;
+	return [finalText.trim(), ...blocks].join('\n\n');
 }
 
 const MAX_DISCLOSED_MISSING_TARGETS = 10;
@@ -412,23 +224,6 @@ function describeMissingOutcomeTargets(outcome: UnfulfilledMutationOutcomeDisclo
 	const shown = labels.slice(0, MAX_DISCLOSED_MISSING_TARGETS);
 	const hidden = labels.length - shown.length;
 	return hidden > 0 ? `${shown.join(', ')}, and ${hidden} more` : shown.join(', ');
-}
-
-const UNFULFILLED_MUTATION_DISCLOSURE_PATTERNS: RegExp[] = [
-	/\bnot yet\b/i,
-	/\b\d+\s+(?:of|out of)\s+\d+\b/i,
-	/\b(?:still|remain(?:s|ing)?|left)\b[^.!?\n]{0,40}\b(?:pending|unfinished|undone|outstanding|to do|to be (?:done|moved|updated|created|completed))\b/i,
-	/\b(?:the )?(?:rest|remainder|remaining|others?)\b[^.!?\n]{0,60}\b(?:pending|later|next turn|unfinished|not (?:yet )?(?:done|moved|updated|created|complete))\b/i,
-	/\b(?:only|just)\s+(?:moved|updated|created|completed|deleted|linked|managed|got)\b/i,
-	/\b(?:haven['’]?t|have not|didn['’]?t|did not|couldn['’]?t|could not|wasn['’]?t able to|was not able to|unable to)\s+(?:yet\s+)?(?:move|update|create|complete|finish|delete|link|get to|do|make|process|handle|reach)\b/i,
-	/\bran out of\b/i,
-	/\bpending\b/i,
-	/\bstill unfinished\b/i
-];
-
-/** True when the prose already tells the user that requested work is unfinished. */
-export function looksLikeUnfulfilledMutationDisclosure(text: string): boolean {
-	return UNFULFILLED_MUTATION_DISCLOSURE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 export function buildToolValidationRepairInstruction(
@@ -614,188 +409,12 @@ export function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]
 	return Array.from(ops).sort();
 }
 
-type ReceiptGroundedAssistantDisposition = 'mutation_claim' | 'clarification_question';
-
-/**
- * Identify terminal prose that cannot safely be authoritative on its own.
- *
- * This intentionally inspects only the assistant candidate, never the user's
- * message. The provider's semantic-disposition gate remains responsible for
- * deciding whether the turn is a write, a real ambiguity, or neither. This
- * helper only prevents an unreceipted completion claim or unresolved-choice
- * question from bypassing that gate as plain text.
- */
-export function classifyReceiptGroundedAssistantDisposition(
-	text: string
-): ReceiptGroundedAssistantDisposition | null {
-	const candidate = text.replace(/\s+/g, ' ').trim();
-	if (!candidate) return null;
-	if (looksLikeActionSuccessClaim(candidate)) return 'mutation_claim';
-	if (!candidate.includes('?')) return null;
-	return UNRESOLVED_CHOICE_QUESTION_PATTERNS.some((pattern) => pattern.test(candidate))
-		? 'clarification_question'
-		: null;
-}
-
-const UNRESOLVED_CHOICE_QUESTION_PATTERNS = [
-	/\b(?:are|were)\s+you\s+(?:referring\s+to|talking\s+about)\b[^?]*\?/i,
-	/\b(?:do|did)\s+you\s+mean\b[^?]*\?/i,
-	/\b(?:can|could|would)\s+you\s+(?:clarify|specify|choose|tell\s+me\s+which)\b[^?]*\?/i,
-	/\bwhich\b[^?]{0,160}\b(?:one|task|project|document|goal|plan|milestone|risk|event|email|target|item|record|date|time|priority|status|state)\b[^?]*\?/i
-];
-
-function looksLikeActionSuccessClaim(text: string): boolean {
-	return (
-		looksLikeMutationSuccessClaim(text) ||
-		looksLikeBulkMutationSuccessClaim(text) ||
-		looksLikeProjectCreateSuccessClaim(text)
-	);
-}
-
-function collectUnsupportedDocumentClaims(
-	finalText: string,
-	toolExecutions: FastToolExecution[]
-): string[] {
-	const corrections: string[] = [];
-
-	if (looksLikeDocumentLinkClaim(finalText) && !hasSuccessfulDocumentLinkWrite(toolExecutions)) {
-		corrections.push('I did not create a document link.');
-	}
-
-	if (
-		looksLikeDocumentPlacementClaim(finalText) &&
-		!hasSuccessfulDocumentPlacementWrite(toolExecutions)
-	) {
-		corrections.push('I did not move or place the document in the tree.');
-	}
-
-	return corrections;
-}
-
-// Require the link/placement verb and the document noun to appear within the
-// same sentence or short clause. A whole-answer match produced false positives
-// when unrelated clauses mentioned "tasks linked to the goal" alongside "context
-// document" elsewhere in the response.
-const DOC_LINK_VERBS = /(?:linked|cross-linked|attached|connected)/i;
-const DOC_PLACEMENT_VERBS = /(?:placed|moved|nested|organized|organised)/i;
-const DOC_NOUN = /(?:doc|document)s?/i;
-const CLAUSE_GAP = /[^.!?\n]{0,80}/;
-
-function hasClauseLevelMatch(text: string, verb: RegExp, noun: RegExp): boolean {
-	const verbThenNoun = new RegExp(
-		`\\b${verb.source}\\b${CLAUSE_GAP.source}\\b${noun.source}\\b`,
-		'i'
-	);
-	const nounThenVerb = new RegExp(
-		`\\b${noun.source}\\b${CLAUSE_GAP.source}\\b${verb.source}\\b`,
-		'i'
-	);
-	return verbThenNoun.test(text) || nounThenVerb.test(text);
-}
-
-function looksLikeDocumentLinkClaim(text: string): boolean {
-	if (
-		/\b(?:not|did not|didn't|was not|wasn't|no)\s+(?:linked|cross-linked|attached|connected)\b/i.test(
-			text
-		)
-	) {
-		return false;
-	}
-	return hasClauseLevelMatch(text, DOC_LINK_VERBS, DOC_NOUN);
-}
-
-function looksLikeDocumentPlacementClaim(text: string): boolean {
-	if (
-		/\b(?:not|did not|didn't|was not|wasn't|no)\s+(?:placed|moved|nested|organized|organised)\b/i.test(
-			text
-		)
-	) {
-		return false;
-	}
-	return hasClauseLevelMatch(text, DOC_PLACEMENT_VERBS, DOC_NOUN);
-}
-
-function hasSuccessfulDocumentLinkWrite(toolExecutions: FastToolExecution[]): boolean {
-	return toolExecutions.some((execution) => {
-		if (!didWriteExecutionSucceed(execution)) return false;
-		const op = getWriteOperationName(execution);
-		return (
-			op === 'link_onto_entities' ||
-			op === 'onto.edge.link' ||
-			op === 'create_task_document' ||
-			op === 'onto.task.docs.create_or_attach'
-		);
-	});
-}
-
-function hasSuccessfulDocumentPlacementWrite(toolExecutions: FastToolExecution[]): boolean {
-	return toolExecutions.some((execution) => {
-		if (!didWriteExecutionSucceed(execution)) return false;
-		const op = getWriteOperationName(execution);
-		if (op === 'move_document_in_tree' || op === 'onto.document.tree.move') return true;
-		// A created document is placed in the tree — under its parent, or at the
-		// root when none was given — so the create itself is the placement.
-		// Known limitation: this does not compare the create's parent with the
-		// claim, so a create at the root satisfies any placement claim about that
-		// document ("nested it under Research" included). Telling "at the root"
-		// from "under X" would need more text patterns on model prose, which
-		// AGENTS.md rules out; the fix belongs in a structured claim channel.
-		return op === 'create_onto_document' || op === 'onto.document.create';
-	});
-}
-
-function looksLikeDocumentClaimCorrection(text: string): boolean {
-	return /\b(?:did not|didn't|not linked|not placed|not moved|not organized|not organised|no document link)\b/i.test(
-		text
-	);
-}
-
-function appendDocumentClaimCorrection(finalText: string, corrections: string[]): string {
-	return `${finalText.trim()}\n\nCorrection: ${corrections.join(' ')}`;
-}
-
-function looksLikeProjectCreateSuccessClaim(text: string): boolean {
-	const normalized = text.toLowerCase();
-	return (
-		/\bproject\b/.test(normalized) &&
-		(/\bcreated successfully\b/.test(normalized) ||
-			/\bi(?:'ve| have)?\s+created\b/.test(normalized) ||
-			/\bcreated the project\b/.test(normalized) ||
-			/\bcreated\b[^.?!]*\bproject\b/.test(normalized) ||
-			/\bproject\b[^.?!]*\bcreated\b/.test(normalized))
-	);
-}
-
-type MutationOutcomeSummary = {
-	attempted: number;
-	succeeded: number;
-	failed: number;
-	writeOps: string[];
-};
-
-function summarizeMutationOutcomes(toolExecutions: FastToolExecution[]): MutationOutcomeSummary {
-	const writeOps: string[] = [];
+function countSuccessfulWrites(toolExecutions: FastToolExecution[]): number {
 	let succeeded = 0;
-	let failed = 0;
-
 	for (const execution of toolExecutions) {
-		if (isDuplicateWriteSkippedExecution(execution)) continue;
-		const writeOp = getWriteOperationName(execution);
-		if (!writeOp) continue;
-		writeOps.push(writeOp);
-		if (didWriteExecutionSucceed(execution)) {
-			succeeded += 1;
-		} else {
-			failed += 1;
-		}
+		if (getWriteOperationName(execution) && didWriteExecutionSucceed(execution)) succeeded += 1;
 	}
-
-	return {
-		attempted: writeOps.length,
-		succeeded,
-		failed,
-		writeOps
-	};
+	return succeeded;
 }
 
 type FailedWriteDisclosure = {
@@ -932,48 +551,19 @@ function didWriteExecutionSucceed(execution: FastToolExecution): boolean {
 	return didGatewayExecSucceed(execution);
 }
 
-const BULK_MUTATION_SUCCESS_CLAIM_PATTERNS = [
-	/\bupdates?\s+confirmed\b/i,
-	/\bchanges?\s+confirmed\b/i,
-	/\bcompleted\s+updates?\b/i
-];
-
-const MUTATION_SUCCESS_CLAIM_PATTERNS = [
-	/^\s*done\b/i,
-	/\bmarked(?:\s+\w+){0,4}\s+(?:done|complete|completed)\b/i,
-	/(?:^\s*marking|\b(?:i(?:['’]?m| am)|we(?:['’]?re| are))\s+marking|\b(?:got it|okay|ok|sure)\b[^.!?\n]{0,40}\bmarking)\b[^.!?\n]{0,120}\b(?:done|complete|completed)\b/i,
-	/\b(?:i|we)(?:'ve| have)?\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set)\b/i,
-	/\b(?:i|we)(?:'ve| have)?\s+(?:merged|archived)\b/i,
-	/\b(?:created|updated|deleted|removed|moved|merged|archived|linked|unlinked|scheduled|rescheduled|set)\s+successfully\b/i,
-	/\b(?:has|have|was|were)\s+been\s+(?:created|updated|deleted|removed|moved|merged|archived|linked|unlinked|scheduled|rescheduled|set|marked)\b/i,
-	/\b(?:is|are)\s+back\s+to\s+(?:done|complete|completed|todo|to-do|open|in progress|blocked|cancelled|canceled)\b/i,
-	/\bis\s+now\s+(?:done|complete|completed|updated|merged|archived|scheduled|rescheduled)\b/i
-];
-
-function looksLikeBulkMutationSuccessClaim(text: string): boolean {
-	return BULK_MUTATION_SUCCESS_CLAIM_PATTERNS.some((pattern) => pattern.test(text));
-}
-
-function looksLikeMutationSuccessClaim(text: string): boolean {
-	return MUTATION_SUCCESS_CLAIM_PATTERNS.some((pattern) => pattern.test(text));
-}
-
-function looksLikeWriteFailureDisclosure(text: string): boolean {
-	return /\b(?:failed|unable|could not|did not|didn't|not saved|not updated|not created|nothing changed|tool error)\b/i.test(
-		text
-	);
-}
-
-function appendWriteFailureDisclosure(
-	finalText: string,
-	failures: FailedWriteDisclosure[]
+function formatWriteFailureDisclosure(
+	failures: FailedWriteDisclosure[],
+	succeededWrites: number
 ): string {
 	const uniqueFailures = groupFailedWriteDisclosures(failures);
 	const labels = uniqueFailures.map((failure) => formatWriteFailureLabel(failure));
+	if (succeededWrites === 0) {
+		return `No changes were saved: ${labels.join('; ')}.`;
+	}
 	const subject =
 		uniqueFailures.length === 1 ? 'One write did not complete' : 'Some writes did not complete';
 	const persistedPart = uniqueFailures.length === 1 ? 'that part' : 'those parts';
-	return `${finalText.trim()}\n\n${subject}: ${labels.join('; ')}. I did not persist ${persistedPart}.`;
+	return `${subject}: ${labels.join('; ')}. I did not persist ${persistedPart}.`;
 }
 
 function groupFailedWriteDisclosures(failures: FailedWriteDisclosure[]): FailedWriteDisclosure[] {
@@ -1015,29 +605,6 @@ function formatWriteOperationLabel(op: string): string {
 		.replace(/^update_onto_/, '')
 		.replace(/^create_onto_/, '')
 		.replace(/_/g, ' ');
-}
-
-function buildMutationFailureMessage(summary: MutationOutcomeSummary): string {
-	const dominantOp = summary.writeOps[0] ?? '';
-
-	if (summary.succeeded === 0) {
-		if (dominantOp.endsWith('.update') || dominantOp.startsWith('update_')) {
-			return 'I was unable to complete that update because no write call succeeded. Nothing changed yet; I need to retry with the exact ID and valid arguments.';
-		}
-		if (dominantOp.endsWith('.create') || dominantOp.startsWith('create_')) {
-			return 'I was unable to create that because no write call succeeded. Nothing changed yet; I need to retry with a valid payload.';
-		}
-		if (dominantOp.endsWith('.delete') || dominantOp.startsWith('delete_')) {
-			return 'I was unable to complete that delete because no write call succeeded. Nothing changed yet; I need to retry after confirming the exact target.';
-		}
-		return 'I was unable to complete that change because no write call succeeded. Nothing changed yet; I need to retry with the exact target and valid arguments.';
-	}
-
-	return 'Some requested changes did not go through. I need to verify the final state before I confirm any updates.';
-}
-
-function buildNoExecutionMutationFailureMessage(): string {
-	return 'I was unable to complete that change because no write call ran. Nothing changed yet; I need to retry with the exact target and valid arguments.';
 }
 
 function buildGatewayCreateFieldRepairLines(failures: GatewayRequiredFieldFailure[]): string[] {

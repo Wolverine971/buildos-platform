@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/history-composer.ts
 import type { FastChatHistoryMessage } from './types';
-import { sanitizeAssistantFinalText } from '@buildos/agentic-chat-runtime/loop';
+import { repairAssistantAppLinks } from '$lib/utils/assistant-app-links';
 
 export type FastChatHistoryCompositionSettings = {
 	compressionThresholdMessages?: number;
@@ -126,7 +126,12 @@ function sanitizeHistoryForModel(history: FastChatHistoryMessage[]): FastChatHis
 			continue;
 		}
 
-		const cleanContent = sanitizeAssistantFinalText(message.content).trim();
+		// Repaired links keep one invented origin from being copied into every
+		// later reply of the session (book loop p06 → p07, p08).
+		// Replies are replayed as written: sentences that merely look like
+		// scratchpad are no longer deleted (AGENTS.md "Never classify language
+		// with regex"); hidden reasoning is separated by the provider.
+		const cleanContent = repairAssistantAppLinks(message.content).trim();
 		if (!cleanContent) {
 			continue;
 		}

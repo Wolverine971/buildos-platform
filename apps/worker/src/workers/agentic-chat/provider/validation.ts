@@ -50,7 +50,6 @@ export function validateCompletedProviderCalls(
 		}
 	);
 	validateProjectCreateShellContracts(calls, request, admittedTools, issues);
-	validateExplicitProjectCreateName(calls, request, issues);
 	validateExactDocumentLiterals(calls, request, issues);
 	// Hosted ontology ids are canonical UUIDs. A contract target typo previously
 	// survived semantic parsing, then made the candidate gate ask the user which
@@ -191,79 +190,6 @@ function addCallValidationErrors(
 			errors
 		});
 	}
-}
-
-function validateExplicitProjectCreateName(
-	calls: readonly CompletedProviderToolCall[],
-	request: AgenticChatTurnProviderRequestV1,
-	issues: ToolValidationIssue[]
-): void {
-	const expectedName = explicitProjectCreateName(request);
-	if (!expectedName) return;
-	for (const call of calls) {
-		if (call.name !== 'create_onto_project') continue;
-		const project = call.arguments.project;
-		const proposedName =
-			project && typeof project === 'object' && !Array.isArray(project)
-				? (project as JsonObject).name
-				: null;
-		// The failure this guards is the model cutting a long explicit name
-		// short ("Agentic Worker PC1" -> "Agentic Worker", 841fbe501). A misfire
-		// is not free: it rejects a correct create_onto_project call, burns a
-		// repair round, and can fail the turn. So the expected name comes only
-		// from a span the user delimited with quotes (never from unquoted
-		// prose), and only a strict shortened prefix fails; a different, longer,
-		// or re-cased name passes. An apostrophe inside a single-quoted name
-		// ("'Dad's Garage'" reads as "Dad") under-captures, which is harmless
-		// because the full name the model proposes is longer.
-		if (
-			!isShortenedProjectName(
-				typeof proposedName === 'string' ? proposedName : '',
-				expectedName
-			)
-		) {
-			continue;
-		}
-		const error =
-			`The user explicitly named this project ${JSON.stringify(expectedName)}. ` +
-			`create_onto_project.project.name must preserve that exact name, not a shortened form; received ${JSON.stringify(proposedName ?? null)}.`;
-		addCallValidationErrors(issues, call, [error]);
-	}
-}
-
-function explicitProjectCreateName(request: AgenticChatTurnProviderRequestV1): string | null {
-	const currentUserMessage = [...request.messages]
-		.reverse()
-		.find((message) => message.role === 'user');
-	if (!currentUserMessage || typeof currentUserMessage.content !== 'string') return null;
-	// Only a name the user explicitly delimited with ASCII or typographic quotes
-	// counts. An unquoted name has no reliable end ("called Kitchen Remodel for
-	// my mom. The goal..." over-captured "for my mom" and rejected the correct
-	// "Kitchen Remodel"), so it is not validated at all.
-	const quoted = currentUserMessage.content.match(
-		/\bcreate\s+(?:a\s+)?project\s+(?:called|named)\s+(?:"([^"]{1,300})"|'([^']{1,300})'|“([^”"]{1,300})[”"]|‘([^’']{1,300})[’'])/i
-	);
-	const name = stripWrappingQuotes(
-		quoted?.[1] ?? quoted?.[2] ?? quoted?.[3] ?? quoted?.[4] ?? ''
-	);
-	return name ? name.slice(0, 300) : null;
-}
-
-const WRAPPING_QUOTE_CHARS = /^["'“”‘’\s]+|["'“”‘’\s]+$/g;
-
-function stripWrappingQuotes(value: string): string {
-	return value.replace(WRAPPING_QUOTE_CHARS, '');
-}
-
-function projectNameKey(value: string): string {
-	return stripWrappingQuotes(value.normalize('NFC')).replace(/\s+/g, ' ').toLowerCase();
-}
-
-/** True only when `proposed` is `expected` with its end cut off. */
-function isShortenedProjectName(proposed: string, expected: string): boolean {
-	const proposedKey = projectNameKey(proposed);
-	const expectedKey = projectNameKey(expected);
-	return proposedKey.length < expectedKey.length && expectedKey.startsWith(proposedKey);
 }
 
 /**

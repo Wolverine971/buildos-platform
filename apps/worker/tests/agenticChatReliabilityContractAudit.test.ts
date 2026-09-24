@@ -19,7 +19,7 @@ const FENCED_WRITE_MODULE_USAGE_COUNTS = Object.freeze({
 	'effects/execution-observation': 1,
 	'effects/prompt-snapshot': 1,
 	'effects/research-capture': 2,
-	'effects/stated-future-capture': 1,
+	// effects/stated-future-capture no longer writes (regex trigger retired 2026-09-23).
 	'stream/supabase-stream-publisher-adapters': 2,
 	'tools/tool-execution': 3
 });

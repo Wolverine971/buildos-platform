@@ -4,7 +4,13 @@
 // (chat_turn_runs / chat_tool_executions), and ground-truth onto_* rows.
 // All reads use the service-role admin client (bypasses RLS).
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import { STATED_FUTURE_SOURCE } from '@buildos/agentic-chat-runtime/loop';
+
+/**
+ * `props.source` stamped on tasks the retired stated-future floor created
+ * (worker capture removed 2026-09-23; no new rows carry it). Kept so scenarios
+ * can still tell those legacy rows apart from model-created tasks.
+ */
+const STATED_FUTURE_SOURCE = 'stated_future_capture';
 
 export interface TurnRunRow {
 	id: string;

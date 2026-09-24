@@ -1655,7 +1655,8 @@ describe('AgenticChatTurnExecutor', () => {
 		const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
 		if (!terminalInput) throw new Error('Terminal correction fixture did not finalize');
 		expect(terminalInput.assistantText.startsWith(`${emittedText}\n\n`)).toBe(true);
-		expect(terminalInput.assistantText).toContain('Nothing changed');
+		// The structural no-change receipt (declared contract, empty write ledger).
+		expect(terminalInput.assistantText).toContain('No changes were saved in this turn.');
 		await harness.publisher.stop();
 	});
 

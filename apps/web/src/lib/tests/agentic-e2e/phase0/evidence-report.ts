@@ -5,7 +5,6 @@ import { dirname } from 'node:path';
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { AgentTimingSummary } from '@buildos/shared-types';
-import { classifyReceiptGroundedAssistantDisposition } from '@buildos/agentic-chat-runtime/loop';
 
 import {
 	getExecutionObservations,
@@ -427,8 +426,7 @@ export function classifyPhase0TurnResult(params: {
 		// user-damaging failure class, and mapping every assertion failure to
 		// `behavior_failure` (score 1) made it invisible in the diffable number
 		// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J5).
-		return classifyReceiptGroundedAssistantDisposition(params.assistantText ?? '') ===
-			'mutation_claim'
+		return looksLikeCompletionClaimForEvalLabel(params.assistantText ?? '')
 			? 'misleading_success'
 			: 'behavior_failure';
 	}
@@ -436,6 +434,27 @@ export function classifyPhase0TurnResult(params: {
 	if (params.checkOutcome.judge.status === 'failed') return 'quality_failure';
 	if (params.captureErrors.length > 0) return 'instrument_failure';
 	return 'end_to_end_pass';
+}
+
+/**
+ * EVAL-ONLY lexical label (AGENTS.md "Never classify language with regex"
+ * permits a small check that is harmless when it misfires). It runs offline,
+ * only on a turn whose deterministic assertion already failed, and only picks
+ * between two failure buckets in the report. It never steers chat behavior:
+ * the turn path's regex claim classifier it came from was retired 2026-09-23.
+ */
+const EVAL_COMPLETION_CLAIM_PATTERNS = [
+	/^\s*done\b/i,
+	/\bmarked(?:\s+\w+){0,4}\s+(?:done|complete|completed)\b/i,
+	/\b(?:i|we)(?:['’]ve| have)?\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set|merged|archived)\b/i,
+	/\b(?:created|updated|deleted|removed|moved|merged|archived|linked|scheduled|rescheduled)\s+successfully\b/i,
+	/\b(?:has|have|was|were)\s+been\s+(?:created|updated|deleted|removed|moved|merged|archived|linked|scheduled|rescheduled|set|marked)\b/i,
+	/\bis\s+now\s+(?:done|complete|completed|updated|scheduled|rescheduled)\b/i
+];
+
+function looksLikeCompletionClaimForEvalLabel(text: string): boolean {
+	const candidate = text.replace(/\s+/g, ' ').trim();
+	return EVAL_COMPLETION_CLAIM_PATTERNS.some((pattern) => pattern.test(candidate));
 }
 
 /** 95% Wilson score interval; honest for the very small live battery cohorts. */

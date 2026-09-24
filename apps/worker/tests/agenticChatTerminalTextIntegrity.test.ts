@@ -6,6 +6,7 @@ import {
 } from '@buildos/agentic-chat-runtime/loop';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { enforceAgenticChatTerminalTextIntegrityV1 } from '../src/workers/agentic-chat/turn/terminal-text-integrity';
+import { NO_CHANGES_SAVED_NOTICE } from '@buildos/agentic-chat-runtime/loop';
 
 beforeAll(() => {
 	provideAgenticChatLoopToolCatalog(() => ({
@@ -209,36 +210,55 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 		expect(result.correctionDelta).toBeNull();
 	});
 
-	it('corrects a mutation success claim when a declared contract has no write evidence', () => {
-		const emittedText = 'Done — I marked the task complete.';
-		const contract = toolExecution(
-			'declare_turn_contract',
-			true,
-			{ status: 'declared' },
-			{
-				outcomes: [
-					{
-						action: 'complete',
-						entity_kind: 'task',
-						target_ids: ['task_1'],
-						minimum_successful_effects: 1
-					}
-				]
-			}
-		);
+	// The claim is not read. A declared contract with an empty write ledger gets
+	// the host receipt appended under whatever the model said.
+	it.each(['Done — I marked the task complete.', 'I could not find a matching task.'])(
+		'appends the no-change receipt when a declared contract has no write evidence: %j',
+		(emittedText) => {
+			const contract = toolExecution(
+				'declare_turn_contract',
+				true,
+				{ status: 'declared' },
+				{
+					outcomes: [
+						{
+							action: 'complete',
+							entity_kind: 'task',
+							target_ids: ['task_1'],
+							minimum_successful_effects: 1
+						}
+					]
+				}
+			);
+			const result = enforceAgenticChatTerminalTextIntegrityV1({
+				assistantText: emittedText,
+				finishedReason: 'stop',
+				contextType: 'project',
+				toolExecutions: [contract]
+			});
+
+			expect(result.correctionDelta).toBe(`\n\n${NO_CHANGES_SAVED_NOTICE}`);
+			expect(result.assistantText).toBe(`${emittedText}${result.correctionDelta}`);
+			expect(result.finishedReason).toBe('mutation_unfulfilled');
+			expect(result.finalizationGuard?.reason).toBe('incomplete_mutation_after_reads');
+		}
+	);
+
+	it('leaves a read-only turn alone however its answer is worded', () => {
+		const answer = 'Done — the task is marked complete in your plan.';
 		const result = enforceAgenticChatTerminalTextIntegrityV1({
-			assistantText: emittedText,
+			assistantText: answer,
 			finishedReason: 'stop',
 			contextType: 'project',
-			toolExecutions: [contract]
+			toolExecutions: [toolExecution('search_project', true, { results: [] })]
 		});
 
-		expect(result.assistantText).toContain('no write call ran');
-		expect(result.assistantText).toContain('Nothing changed');
-		expect(result.correctionDelta).toContain('no write call ran');
-		expect(result.assistantText).toBe(`${emittedText}${result.correctionDelta}`);
-		expect(result.assistantText.startsWith(emittedText)).toBe(true);
-		expect(result.finalizationGuard).toBeNull();
+		expect(result).toEqual({
+			assistantText: answer,
+			finishedReason: 'stop',
+			correctionDelta: null,
+			finalizationGuard: null
+		});
 	});
 
 	it('synthesizes durable read evidence when the provider ends on an empty candidate', () => {
@@ -343,7 +363,8 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 		});
 	});
 
-	it('does not duplicate a partial disclosure the model already wrote', () => {
+	it('appends the ledger disclosure even when the model already wrote one', () => {
+		// The answer is not classified: a repeated receipt is the accepted cost.
 		const emittedText =
 			'Moved Draft outline and Interview notes into Backlog. The other 4 tasks are not yet moved.';
 		const result = enforceAgenticChatTerminalTextIntegrityV1({
@@ -358,11 +379,10 @@ describe('enforceAgenticChatTerminalTextIntegrityV1', () => {
 			]
 		});
 
-		expect(result).toMatchObject({
-			assistantText: emittedText,
-			finishedReason: 'mutation_unfulfilled',
-			correctionDelta: null
-		});
+		expect(result.finishedReason).toBe('mutation_unfulfilled');
+		expect(result.correctionDelta).toBe(
+			'\n\nDone: 2 of 6 moves. Not yet moved: Task C, Task D, Task E, Task F.'
+		);
 	});
 });
 

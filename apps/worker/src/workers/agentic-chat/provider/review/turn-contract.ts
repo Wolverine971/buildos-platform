@@ -384,7 +384,7 @@ export function projectCreateShellGuidance(
 		.map(([name, label]) => `${name} (${label})`);
 	return [
 		`${lead} create_onto_project creates exactly one project plus its generated Context document. Pass entities=[] and relationships=[].`,
-		'In declare_turn_contract, represent that call as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, no label, and no required_fields or changes. Put the project name, type_key, and other values in the later create_onto_project arguments.',
+		'In declare_turn_contract, represent that call as one outcome with action=create, entity_kind=project, minimum_successful_effects=1, no target_ids, no label, and no required_fields or changes. Put the project name, type_key, and other values in the later create_onto_project arguments; when the user named the project, use that name exactly as written, never shortened or reworded.',
 		...(supportedChildTools.length > 0
 			? [
 					'Use id to identify each outcome. Omit label on additional records unless a later outcome needs that symbolic reference. If a create outcome uses label, it must also declare the entity title in changes (goals use name) and minimum_successful_effects=1; the label itself never supplies the title or name. Project membership is execution scope: omit project_id from required_fields and changes.'
@@ -395,6 +395,18 @@ export function projectCreateShellGuidance(
 			: 'No goal, task, or relationship creation tool is available in this turn. Create the project now without asking the user to reconfirm. Keep entities and relationships empty, then explain which requested additional records could not be created.'
 	];
 }
+
+/**
+ * Write-argument rules that rode the web prompt's "Rules for This Turn" block
+ * only when a regex over the user's message looked like a write
+ * (`looksLikeMutationTurn`, retired from that block 2026-09-23). They belong
+ * with the write tools, so they ride this message, which is mounted exactly
+ * when mutation tools are on the surface.
+ */
+const WORKER_WRITE_ARGUMENT_RULES = [
+	'Copy exact full IDs from context or tool results; never truncate them or use placeholders such as "..." or "<task_id>".',
+	'When a task visibly advanced (started, blocked, finished), include state_key in update_onto_task.'
+] as const;
 
 export function buildWorkerSemanticMutationOrdering(
 	tools: readonly AgenticChatTurnProviderToolV1[],
@@ -416,7 +428,8 @@ export function buildWorkerSemanticMutationOrdering(
 			'Call request_turn_clarification instead when a required target or value has multiple plausible choices. Never guess among loaded candidates. Include every known candidate with its stable ID when available; the candidates are shown to the user as a list beneath your question.',
 			'For an answer-only turn, do not call a disposition control; answer after any necessary reads.',
 			'Information gathering, research, comparison, analysis, and advice remain read-only when they only inform a later possible change; future context is not a commission to perform that later change now.',
-			...ACTOR_COMMISSION_GUIDANCE
+			...ACTOR_COMMISSION_GUIDANCE,
+			...WORKER_WRITE_ARGUMENT_RULES
 		].join(' ');
 	}
 	return [
@@ -430,6 +443,7 @@ export function buildWorkerSemanticMutationOrdering(
 		...ACTOR_COMMISSION_GUIDANCE,
 		'Updates need unique target_ids, required_fields, scalar changes; estimates use props.duration_minutes, text edits use content. Existing links use src_id/dst_id and rel changes. Labels only reference same-contract creates; omit unused labels.',
 		...projectCreateShellGuidance(contextType, tools),
-		'Do not combine declare_turn_contract with a mutation call. Reads may accompany a contract when they are needed to resolve executable details.'
+		'Do not combine declare_turn_contract with a mutation call. Reads may accompany a contract when they are needed to resolve executable details.',
+		...WORKER_WRITE_ARGUMENT_RULES
 	].join(' ');
 }

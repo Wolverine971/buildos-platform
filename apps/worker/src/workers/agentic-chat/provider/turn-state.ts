@@ -14,6 +14,7 @@ import {
 	type FastToolExecution,
 	type LoadedTaskSchedule,
 	type MutationBatch,
+	NO_CHANGES_SAVED_NOTICE,
 	type ToolValidationIssue,
 	type TurnContract,
 	type TurnContractOutcome,
@@ -22,7 +23,6 @@ import {
 	buildOrganizeCommissionRepairInstruction,
 	buildRoundToolPattern,
 	buildWriteLedger,
-	classifyReceiptGroundedAssistantDisposition,
 	doesToolExecutionRequireUserAction,
 	extractReviewedRequestExpectation,
 	isControlToolName,
@@ -177,10 +177,12 @@ export type ToolRoundStreamState = {
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[]
 	): ClientRequest | null;
-	takeReceiptGroundedFinalDispositionGate(
-		request: ClientRequest,
-		assistantCandidate: string
-	): ClientRequest | null;
+	/**
+	 * Host receipt for a prose finish on a turn the schema selector judged to
+	 * need a write, when no write ran and no disposition was taken. Structure
+	 * only: the prose is never read.
+	 */
+	takeUnsavedCommissionNotice(request: ClientRequest): string | null;
 	takeTurnContractWriteCarveOut(request: ClientRequest): ClientRequest | null;
 	/** An approved contract still has unfulfilled outcomes after a mutation round. */
 	hasIncompleteApprovedContract(): boolean;
@@ -718,29 +720,21 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		return this.batchRevisionCount;
 	}
 
-	takeReceiptGroundedFinalDispositionGate(
-		value: ClientRequest,
-		assistantCandidate: string
-	): ClientRequest | null {
+	/**
+	 * Replaces the 2026-08 receipt-grounded gate, which pattern-matched the final
+	 * prose for completion claims ("marking X done") and unresolved-choice
+	 * questions, then spent one or two more full model passes on a match. The
+	 * signal is now structured: the schema selector (Jev) judged the message to
+	 * need a write, and the turn ended in prose with no mutation and no
+	 * disposition. The answer is kept as written and gets a factual receipt
+	 * under it; no extra model pass runs. Grounding is upstream: the acting
+	 * prompt says a change only happens through a tool call and must never be
+	 * described as done without its tool result (ACTOR_COMMISSION_GUIDANCE).
+	 */
+	takeUnsavedCommissionNotice(value: ClientRequest): string | null {
 		if (!dispositionPending(this.phase)) return null;
-		const reason = classifyReceiptGroundedAssistantDisposition(assistantCandidate);
-		if (!reason) return null;
-		const gate = buildSemanticTurnDispositionGateRequest(
-			{
-				...value,
-				logicalProviderRound: value.logicalProviderRound + 1,
-				providerRound: 'synthesis'
-			},
-			this.admittedTools
-		);
-		if (!gate) return null;
-		this.advance({ type: 'gate' });
-		return appendSystemInstruction(
-			gate,
-			reason === 'mutation_claim'
-				? 'A prior provider pass proposed terminal prose that claimed a durable mutation without a succeeded effect or explicit mutation receipt. That prose was withheld and is untrusted. Choose the semantic disposition from the user request and loaded context; do not repeat the claim unless the approved mutation later succeeds.'
-				: 'A prior provider pass proposed an unresolved execution-choice question as plain terminal prose. That prose was withheld. Choose the semantic disposition from the user request and loaded context so any required clarification becomes durable.'
-		);
+		if (!value.commissionedWriteToolNames?.length) return null;
+		return NO_CHANGES_SAVED_NOTICE;
 	}
 
 	takeTurnContractWriteCarveOut(value: ClientRequest): ClientRequest | null {

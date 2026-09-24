@@ -20,6 +20,7 @@ import {
 	TURN_CONTRACT_TOOL_DEFINITION
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
+	NO_CHANGES_SAVED_NOTICE,
 	parseDeclaredTurnContract,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
@@ -42,7 +43,10 @@ import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../src/work
 import type { AgenticChatLiveVisionResolverPortV1 } from '../src/workers/agentic-chat/tools/live-vision';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/tools/read-tool-identity';
-import { EVIDENCE_COVERAGE_INSTRUCTION_PREFIX } from '../src/workers/agentic-chat/provider/request-builders';
+import {
+	EVIDENCE_COVERAGE_INSTRUCTION_PREFIX,
+	WEB_RESEARCH_RULES_INSTRUCTION
+} from '../src/workers/agentic-chat/provider/request-builders';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
 import type { AgenticChatDocumentEditPreviewPort } from '../src/workers/agentic-chat/provider/document-edit-preview';
 import { AgenticChatOpenRouterClient } from '../src/workers/agentic-chat/provider/openrouter-client';
@@ -2768,31 +2772,95 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		invocation.release();
 	});
 
-	it('withholds an unreceipted completion claim until its clarification is durable', async () => {
+	// The 2026-08 receipt-grounded gate pattern-matched this production prose
+	// ("marking ... done", "are you referring to ...?") and re-ran the model
+	// through the disposition gate: one or two more full passes. The signal is
+	// now structured (the schema selector judged the message to need a write)
+	// and costs no pass: the prose stands and a host receipt says nothing saved.
+	const UNRECEIPTED_PROSE =
+		'Got it — marking the usage-based pricing migration done. Are you referring to Fix the email verification bug or Send the launch email?';
+	const writeSurfaceInput = () =>
+		executionInputWithReadSurface(
+			[
+				turnContractToolDefinition(),
+				readOnlyTurnToolDefinition(),
+				clarificationToolDefinition(),
+				updateTaskToolDefinition()
+			],
+			[
+				'declare_turn_contract',
+				'declare_read_only_turn',
+				'request_turn_clarification',
+				'update_onto_task'
+			]
+		);
+
+	it('appends a no-change receipt, without another pass, when the selector judged a write', async () => {
+		const client = clientWith([
+			{ type: 'text', content: UNRECEIPTED_PROSE },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+				toolSelector: {
+					select: async (request) => ({
+						...request,
+						commissionedWriteToolNames: ['update_onto_task']
+					})
+				}
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: writeSurfaceInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: UNRECEIPTED_PROSE },
+			{ type: 'text_delta', text: `\n\n${NO_CHANGES_SAVED_NOTICE}` },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(1);
+	});
+
+	it('never reads the prose: without the selector signal the same answer ends as written', async () => {
+		const client = clientWith([
+			{ type: 'text', content: UNRECEIPTED_PROSE },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: writeSurfaceInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		await expect(collect(invocation.stream())).resolves.toEqual([
+			{ type: 'text_delta', text: UNRECEIPTED_PROSE },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
+		expect(client.stream).toHaveBeenCalledTimes(1);
+	});
+
+	it('adds no receipt once a clarification control took the turn', async () => {
 		const clarificationArguments = {
 			reason: 'Several loaded tasks fit the user’s descriptive reference.',
 			question:
-				'Are you referring to Fix the email verification bug or Send the launch email?',
-			candidates: [
-				{
-					id: 'e1ff583d-de10-4887-80ab-cb8892d0d082',
-					label: 'Fix the email verification bug',
-					kind: 'task'
-				},
-				{
-					id: '89f88057-8216-4d86-a6bc-7edc191c94e8',
-					label: 'Send the launch email',
-					kind: 'task'
-				}
-			]
+				'Are you referring to Fix the email verification bug or Send the launch email?'
 		};
-		const unreceiptedCandidate =
-			'Got it — marking the usage-based pricing migration done. Are you referring to Fix the email verification bug or Send the launch email?';
 		const streams: AgenticChatTurnProviderClientEventV1[][] = [
-			[
-				{ type: 'text', content: unreceiptedCandidate },
-				{ type: 'done', finishedReason: 'stop' }
-			],
 			providerReadRound(
 				'provider-clarification-1',
 				clarificationArguments,
@@ -2814,52 +2882,24 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		const invocation = await new AgenticChatTurnProviderAdapter(
 			{
 				client,
-				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+				toolSelector: {
+					select: async (request) => ({
+						...request,
+						commissionedWriteToolNames: ['update_onto_task']
+					})
+				}
 			},
 			2_000,
 			16,
 			{ updateOntoTask: true }
 		).prepare({
-			executionInput: executionInputWithReadSurface(
-				[
-					turnContractToolDefinition(),
-					readOnlyTurnToolDefinition(),
-					clarificationToolDefinition(),
-					updateTaskToolDefinition()
-				],
-				[
-					'declare_turn_contract',
-					'declare_read_only_turn',
-					'request_turn_clarification',
-					'update_onto_task'
-				]
-			),
+			executionInput: writeSurfaceInput(),
 			processingToken: PROCESSING_TOKEN,
 			signal: new AbortController().signal
 		});
 
-		const firstRound = await collect(invocation.stream());
-		expect(firstRound).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					type: 'read_tool',
-					providerToolCallId: 'provider-clarification-1',
-					toolName: 'request_turn_clarification'
-				})
-			])
-		);
-		expect(firstRound.some((step) => step.type === 'text_delta')).toBe(false);
-		expect(
-			client.stream.mock.calls[1]?.[0].messages.some(
-				(message) =>
-					message.role === 'system' &&
-					typeof message.content === 'string' &&
-					message.content.includes(
-						'claimed a durable mutation without a succeeded effect'
-					)
-			)
-		).toBe(true);
-
+		await collect(invocation.stream());
 		const clarificationFeedback = durableReadFeedbackFor(
 			'provider-clarification-1',
 			'request_turn_clarification',
@@ -2867,18 +2907,14 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			{ status: 'clarification_required', requires_user_action: true }
 		);
 		clarificationFeedback.execution.requiresUserAction = true;
-		await expect(
-			collect(
-				invocation.continueWithToolResults!({
-					round: 2,
-					results: [clarificationFeedback]
-				})
+		const steps = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [clarificationFeedback] })
+		);
+		expect(
+			steps.some(
+				(step) => step.type === 'text_delta' && step.text.includes(NO_CHANGES_SAVED_NOTICE)
 			)
-		).resolves.toEqual([
-			{ type: 'text_delta', text: clarificationArguments.question },
-			{ type: 'finish', finishedReason: 'stop', usage: null }
-		]);
-		expect(client.stream).toHaveBeenCalledTimes(3);
+		).toBe(false);
 	});
 
 	it('keeps ordinary final prose on the direct fast path', async () => {
@@ -3764,12 +3800,48 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		]);
 		expect(client.stream).toHaveBeenCalledTimes(1);
 
-		// No system message may command the model to make live web calls.
+		// No system message may command the model to make live web calls. The
+		// only web text is the usage rules, present because web tools are callable
+		// (structure), never because the message reads like research.
 		const sentMessages = client.stream.mock.calls[0]?.[0]?.messages ?? [];
+		expect(
+			sentMessages.filter((message) => message.content === WEB_RESEARCH_RULES_INSTRUCTION)
+		).toHaveLength(1);
 		for (const message of sentMessages) {
+			if (message.content === WEB_RESEARCH_RULES_INSTRUCTION) continue;
 			expect(String(message.content ?? '')).not.toMatch(/web_search|web_visit/);
 		}
 		expect(capacity.getSnapshot()).toMatchObject({ available: true, activeRequests: 0 });
+	});
+
+	it('sends the web research rules only when a web tool is callable, whatever the message says', async () => {
+		const client = clientWithRounds([
+			[
+				{ type: 'text', content: 'Here is what I found in the project.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const adapter = new AgenticChatTurnProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		});
+		const baseExecution = executionInputWithReadSurface();
+		const invocation = await adapter.prepare({
+			executionInput: {
+				...baseExecution,
+				requestPayload: {
+					...baseExecution.requestPayload,
+					message: 'Search the web for the latest competitor pricing.'
+				}
+			},
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+		await collect(invocation.stream());
+		const sentMessages = client.stream.mock.calls[0]?.[0]?.messages ?? [];
+		expect(
+			sentMessages.some((message) => message.content === WEB_RESEARCH_RULES_INSTRUCTION)
+		).toBe(false);
 	});
 
 	it('streams a direct answer immediately even when the read tool is available', async () => {
@@ -4841,10 +4913,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			entities: [],
 			relationships: []
 		};
-		const wrongProjectArguments = {
-			...projectArguments,
-			project: { ...projectArguments.project, name: 'Agentic Worker' }
-		};
 		const goalArguments = {
 			project_id: projectId,
 			name: 'Publish the first three podcast episodes',
@@ -4894,11 +4962,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				'declare_turn_contract'
 			),
 			providerReadRound(
-				'provider-create-composite-project-wrong-name',
-				wrongProjectArguments,
-				'create_onto_project'
-			),
-			providerReadRound(
 				'provider-create-composite-project',
 				projectArguments,
 				'create_onto_project'
@@ -4922,7 +4985,6 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			['create_onto_project', 'create_onto_goal', 'create_onto_task']
 		);
 		input.requestPayload.context = { type: 'project_create' };
-		// Quoted: the name check only reads a name the user delimited with quotes.
 		input.requestPayload.message =
 			'Create a project called "Agentic Worker PC1". The goal is due September 15, with three starter tasks.';
 		const invocation = await new AgenticChatTurnProviderAdapter(
@@ -5004,17 +5066,19 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
+		// The name is not validated against a regex over the user's message; the
+		// shell guidance tells the model to use the user's name exactly.
+		expect(
+			client.stream.mock.calls[2]?.[0].messages.some(
+				(message) =>
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'when the user named the project, use that name exactly as written'
+					)
+			)
+		).toBe(true);
 		expect(projectMutationSteps).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({
-					providerToolCallId: 'provider-create-composite-project-wrong-name',
-					toolName: 'create_onto_project',
-					validationFailure: expect.objectContaining({
-						error: expect.stringContaining(
-							'create_onto_project.project.name must preserve that exact name'
-						)
-					})
-				}),
 				expect.objectContaining({
 					type: 'mutating_tool',
 					providerToolCallId: 'provider-create-composite-project',
@@ -5068,7 +5132,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		expect(client.stream.mock.calls[4]?.[0].tools.map((tool) => tool.function.name)).toEqual([
+		expect(client.stream.mock.calls[3]?.[0].tools.map((tool) => tool.function.name)).toEqual([
 			'create_onto_goal',
 			'create_onto_task'
 		]);
@@ -5128,7 +5192,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				]
 			})
 		);
-		const retryRequest = client.stream.mock.calls[5]?.[0];
+		const retryRequest = client.stream.mock.calls[4]?.[0];
 		expect(retryRequest?.tools.map((tool) => tool.function.name)).toContain('create_onto_task');
 		expect(retryRequest?.toolChoice).not.toBe('none');
 		expect(
@@ -6867,7 +6931,8 @@ describe('AgenticChatTurnProviderAdapter', () => {
 				}
 			] satisfies AgenticChatTurnProviderClientEventV1[],
 			[
-				{ type: 'text', content: 'Read-loop hard stop: synthesize now.\n' },
+				// Prose is emitted as written; no sentence is stripped for looking
+				// like prompt narration (the forced-synthesis sanitizer is retired).
 				{ type: 'text', content: 'The project evidence is ready.' },
 				{
 					type: 'done',

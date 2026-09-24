@@ -4,7 +4,6 @@ import {
 	buildMidTurnSituationalNotice,
 	CLARIFICATION_RULE_LINE,
 	hasActiveSituation,
-	looksLikeWebResearchTurn,
 	renderSituationalRulesContent,
 	resolveLitePromptTurnSituation,
 	WORKER_WRITE_TURN_RULE_LINES,
@@ -18,52 +17,31 @@ describe('resolveLitePromptTurnSituation', () => {
 	it('does not flag writes from mounted write tools alone', () => {
 		const situation = resolveLitePromptTurnSituation({
 			toolNames: ['get_project_overview', 'update_onto_task'],
-			pendingTurnContract: false,
-			latestUserMessage: 'just talked to them, it went well'
+			pendingTurnContract: false
 		});
 		expect(situation.writeIntent).toBe(false);
 		expect(situation.webResearch).toBe(false);
 		expect(hasActiveSituation(situation)).toBe(false);
 	});
 
-	it('flags writes from a mutation verb in the message', () => {
-		for (const message of [
-			'mark the intro call done',
-			'add a task to follow up with Sarah on Friday',
-			'reorganize the docs under Research',
-			'save this as a note in the project',
-			'rename the grocery list task to weekend errands'
-		]) {
-			const situation = resolveLitePromptTurnSituation({
-				toolNames: ['get_project_overview'],
-				pendingTurnContract: false,
-				latestUserMessage: message
-			});
-			expect(situation.writeIntent, message).toBe(true);
-		}
+	// AGENTS.md "Never classify language with regex" (2026-09-23): the message
+	// no longer reaches this function, so its wording cannot select a block.
+	// The worker carries the write-argument rules on its write-routing message
+	// and appends the research rules when a web tool survives schema selection.
+	it('takes no message input, so wording can never select a block', () => {
+		const situation = resolveLitePromptTurnSituation({
+			toolNames: ['get_project_overview', 'web_search', 'update_onto_task'],
+			pendingTurnContract: false,
+			workerBound: true
+		});
+		expect(situation).toEqual({ writeIntent: false, webResearch: false, workerBound: true });
+		expect(renderSituationalRulesContent(situation)).toBeNull();
 	});
 
-	it('keeps status questions that merely mention entities on the read path', () => {
-		for (const message of [
-			'what tasks are due this week?',
-			'update me on where the docs stand',
-			'what changed in the plan since Monday?',
-			'where are we at with this book? Do we have a theme or a synopsis'
-		]) {
-			const situation = resolveLitePromptTurnSituation({
-				toolNames: ['get_project_overview', 'update_onto_task', 'update_onto_document'],
-				pendingTurnContract: false,
-				latestUserMessage: message
-			});
-			expect(situation.writeIntent, message).toBe(false);
-		}
-	});
-
-	it('flags writes from turn intent when no write tool is mounted yet', () => {
+	it('flags writes from a pending contract when no write tool is mounted yet', () => {
 		const situation = resolveLitePromptTurnSituation({
 			toolNames: ['get_project_overview'],
-			pendingTurnContract: true,
-			latestUserMessage: 'ok go ahead'
+			pendingTurnContract: true
 		});
 		expect(situation.writeIntent).toBe(true);
 	});
@@ -71,33 +49,13 @@ describe('resolveLitePromptTurnSituation', () => {
 	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F01: web_search/web_visit and
 	// delegate_task ride every global and project surface since stage S6, so a
 	// mount-keyed trigger rendered ~2,050 chars of research and delegation
-	// rules on "what is overdue?". Only research phrasing selects the block.
+	// rules on "what is overdue?".
 	it('does not flag web research from mounted web tools alone', () => {
 		const situation = resolveLitePromptTurnSituation({
 			toolNames: ['web_search', 'web_visit', 'delegate_task'],
-			pendingTurnContract: false,
-			latestUserMessage: 'what is overdue?'
+			pendingTurnContract: false
 		});
 		expect(situation.webResearch).toBe(false);
-		expect(hasActiveSituation(situation)).toBe(false);
-		expect(renderSituationalRulesContent(situation)).toBeNull();
-	});
-
-	it('flags web research from research phrasing even before web tools are mounted', () => {
-		const situation = resolveLitePromptTurnSituation({
-			toolNames: ['get_project_overview'],
-			pendingTurnContract: false,
-			latestUserMessage: 'search the web for the latest Vercel pricing'
-		});
-		expect(situation.webResearch).toBe(true);
-	});
-
-	it('stays inactive for a pure read turn', () => {
-		const situation = resolveLitePromptTurnSituation({
-			toolNames: ['get_project_overview', 'list_onto_tasks'],
-			pendingTurnContract: false,
-			latestUserMessage: 'what is the status of this project?'
-		});
 		expect(hasActiveSituation(situation)).toBe(false);
 		expect(renderSituationalRulesContent(situation)).toBeNull();
 	});
@@ -107,33 +65,6 @@ describe('resolveLitePromptTurnSituation', () => {
 			resolveLitePromptTurnSituation({ toolNames: [], workerBound: true }).workerBound
 		).toBe(true);
 		expect(resolveLitePromptTurnSituation({ toolNames: [] }).workerBound).toBe(false);
-	});
-});
-
-describe('looksLikeWebResearchTurn', () => {
-	it('matches explicit web research phrasing', () => {
-		expect(looksLikeWebResearchTurn('search the web for framework comparisons')).toBe(true);
-		expect(looksLikeWebResearchTurn('what is the latest pricing for Vercel?')).toBe(true);
-		expect(looksLikeWebResearchTurn('check competitor pricing pages')).toBe(true);
-		expect(
-			looksLikeWebResearchTurn(
-				'i think we need to figure out the research on what other people are charging'
-			)
-		).toBe(true);
-		expect(
-			looksLikeWebResearchTurn(
-				'Look into what other scheduling tools for small service businesses charge — ' +
-					'I want a sense of the pricing landscape before we put a paid tier together.'
-			)
-		).toBe(true);
-	});
-
-	it('does not match workspace research phrasing', () => {
-		expect(looksLikeWebResearchTurn('research this project and summarize open tasks')).toBe(
-			false
-		);
-		expect(looksLikeWebResearchTurn('update my resume task')).toBe(false);
-		expect(looksLikeWebResearchTurn('')).toBe(false);
 	});
 });
 
@@ -179,8 +110,9 @@ describe('renderSituationalRulesContent', () => {
 			(recipe ?? '').indexOf('routed to review by the worker')
 		);
 		expect(recipe).toContain('you do not choose the route');
-		expect(content).toContain('exact full IDs');
-		expect(content).toContain('state_key');
+		// Exact-ID and state_key rules ride the worker's write-routing message.
+		expect(content).not.toContain('exact full IDs');
+		expect(content).not.toContain('state_key');
 		expect(content).not.toContain('task_management skill');
 		expect(content).not.toContain('document_workspace skill');
 		expect(content).not.toContain('search the workspace when project scope is unknown');
@@ -214,17 +146,15 @@ describe('renderSituationalRulesContent', () => {
 		expect(content).not.toContain('state_key');
 	});
 
-	it('supports public research after workspace reads with honest failure reporting', () => {
+	it('leaves worker-bound research rules to the worker', () => {
+		// The worker appends WEB_RESEARCH_RULES_INSTRUCTION when a web tool is
+		// callable after schema selection; the web prompt renders nothing.
 		const content = renderSituationalRulesContent({
 			writeIntent: false,
 			webResearch: true,
 			workerBound: true
 		});
-		expect(content).toContain('Workspace reads do not disable web research');
-		expect(content).toContain('read only missing details');
-		expect(content).toContain('disclose what could not be verified');
-		expect(content).not.toContain('search there first');
-		expect(content).toContain('returned by successful searches in this turn');
+		expect(content).toBeNull();
 	});
 
 	it('renders both blocks together', () => {
@@ -238,8 +168,7 @@ describe('renderSituationalRulesContent', () => {
 	// governs, so a mounted delegate_task no longer makes every turn "situational".
 	it('never renders a delegation block, however delegate_task is mounted', () => {
 		const situation = resolveLitePromptTurnSituation({
-			toolNames: ['get_document_tree', 'delegate_task'],
-			latestUserMessage: 'Stage one coherent change set for review.'
+			toolNames: ['get_document_tree', 'delegate_task']
 		});
 		const content = renderSituationalRulesContent(situation);
 

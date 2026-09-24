@@ -2,8 +2,7 @@
 
 import {
 	NO_TOOL_SYNTHESIS_EMPTY_RETRY_MESSAGE,
-	NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE,
-	sanitizeAssistantFinalText
+	NO_TOOL_SYNTHESIS_TOOL_RETRY_MESSAGE
 } from '@buildos/agentic-chat-runtime/loop';
 import {
 	AgenticChatProviderExecutionError,
@@ -166,7 +165,7 @@ export async function* streamForcedSynthesis(
 					// a usable answer, the user gets it and the turn ends degraded
 					// rather than failing and discarding work they paid for
 					// (people-synthesis timeout, 2026-07-22).
-					const recovered = sanitizeAssistantFinalText(assistantCandidate);
+					const recovered = assistantCandidate.trim();
 					if (isUsableSynthesisPartial(recovered)) {
 						yield state.textDelta(
 							clarification && !clarificationRenderSatisfied(recovered, clarification)
@@ -198,7 +197,11 @@ export async function* streamForcedSynthesis(
 			if (!finished) throw providerError('provider_missing_done', 'unknown');
 
 			accumulatedUsage = combineUsage(accumulatedUsage, passUsage);
-			const finalText = sanitizeAssistantFinalText(assistantCandidate);
+			// Taken as written: hidden reasoning is separated by the provider
+			// (`reasoning.exclude`, think-block stripping in openrouter/sse.ts), and
+			// deleting sentences that look like scratchpad is language
+			// classification by regex (AGENTS.md).
+			const finalText = assistantCandidate.trim();
 			// A clarification pass owes the user the question, not a promise.
 			// When the prose dropped it, the structured question is emitted
 			// verbatim instead of failing or burning a retry on the same model.

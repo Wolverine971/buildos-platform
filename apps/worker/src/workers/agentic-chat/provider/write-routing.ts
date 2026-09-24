@@ -193,11 +193,17 @@ export function assessDirectWriteBatch(
 }
 
 /**
- * Conservative English-language routing cues, not a source-fidelity validator.
- * A small create can still omit commissioned source text. Let the existing
- * reviewer compare the held content against the original user message, even
- * when target selection is trivial. This neither extracts source boundaries
- * nor treats a model-authored substring/hash as proof of preservation.
+ * INTENTIONAL LEXICAL CHECK (AGENTS.md "Never classify language with regex"
+ * allows one only when small and harmless on a misfire). It reads the user's
+ * message for explicit verbatim-storage wording and, on a hit, sends a
+ * document create/update through the existing independent batch review
+ * instead of the direct lane. A false positive costs one reviewer pass on a
+ * document write; a false negative leaves the direct lane as before. It never
+ * blocks, rewrites, or extracts content. It guards a measured failure: Case 9
+ * r2 of the 2026-09-14 gate saved a "store this exactly" note with a block
+ * silently omitted, and the review caught the omission before saving.
+ * Structured replacement (not built): a model-set flag on the document write
+ * schemas, e.g. `preserve_user_text`, routed to review the same way.
  */
 function requestsSourcePreservationReview(message?: string | null): boolean {
 	if (!message) return false;

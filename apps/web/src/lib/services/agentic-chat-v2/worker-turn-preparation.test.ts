@@ -662,7 +662,10 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 
 		const overlayInput = mocks.applyActiveDomainSignalsOverlay.mock.calls[0]?.[1];
-		expect(overlayInput?.turnSituation).toMatchObject({ writeIntent: true, workerBound: true });
+		// The message's wording never selects a block (AGENTS.md "Never classify
+		// language with regex"); with no pending contract there is no write
+		// situation, and a mounted delegate_task never makes one.
+		expect(overlayInput?.turnSituation).toMatchObject({ writeIntent: false, workerBound: true });
 		expect(overlayInput?.turnSituation).not.toHaveProperty('reviewDelegation');
 	});
 
@@ -920,7 +923,9 @@ describe('Agentic Chat worker turn preparation', () => {
 					source: 'operational_intent',
 					promptContent: expect.stringContaining('update_onto_task')
 				}),
-				turnSituation: expect.objectContaining({ writeIntent: true, workerBound: true }),
+				// The skill preload is a separate router; the situation no longer
+				// reads the message, so a fresh write turn has no write situation.
+				turnSituation: expect.objectContaining({ writeIntent: false, workerBound: true }),
 				scaffold: expect.objectContaining({ dynamicSkillTools: false })
 			})
 		);
@@ -1078,7 +1083,7 @@ describe('Agentic Chat worker turn preparation', () => {
 					skillId: 'task_management',
 					source: 'operational_intent'
 				}),
-				turnSituation: expect.objectContaining({ writeIntent: true, workerBound: true })
+				turnSituation: expect.objectContaining({ writeIntent: false, workerBound: true })
 			})
 		);
 		// ...and its sections are appended after the prewarmed bytes.

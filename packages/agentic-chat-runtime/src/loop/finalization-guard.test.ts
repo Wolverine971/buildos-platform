@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { provideAgenticChatLoopToolCatalog } from './tool-catalog';
-import { applyFinalizationGuard } from './finalization-guard';
+import { NO_CHANGES_SAVED_NOTICE, applyFinalizationGuard } from './finalization-guard';
 
 const TEST_TOOL_CATALOG = {
 	ops: {},
@@ -302,40 +302,68 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).toContain('request remains pending');
 	});
 
-	it('replaces a write lead-in with an honest incomplete notice when no write ran', () => {
+	// The notice is decided by structure (a requested change, an empty write
+	// ledger, a plain prose finish), never by whether the answer reads like a
+	// lead-in or a completion claim. It is appended, never substituted.
+	it.each([
+		"I'll update that doc now.",
+		'Got it — marking the usage-based pricing migration done. Are you referring to the signup email or launch email?',
+		'I could not find that document, so nothing changed.'
+	])('appends the no-change receipt under %j when a requested write never ran', (text) => {
 		const call = toolCall('search_project', { query: 'start here doc' });
 		const guard = applyFinalizationGuard({
-			finalAssistantText: "I'll update that doc now.",
-			assistantText: "I'll update that doc now.",
+			finalAssistantText: text,
+			assistantText: text,
 			mutationRequested: true,
+			providerFinishedReason: 'stop',
 			toolExecutions: [{ toolCall: call, result: toolResult(call, true, { results: [] }) }]
 		});
 
-		expect(guard.applied).toBe(true);
-		expect(guard.reason).toBe('incomplete_mutation_after_reads');
-		expect(guard.finishedReason).toBe('mutation_unfulfilled');
-		expect(guard.text).not.toContain("I'll update that doc");
-		expect(guard.text).toContain('nothing was updated');
-	});
-
-	it('replaces an unreceipted completion claim when a requested write never ran', () => {
-		const call = toolCall('search_project', { query: 'email task' });
-		const guard = applyFinalizationGuard({
-			finalAssistantText:
-				'Got it — marking the usage-based pricing migration done. Are you referring to the signup email or launch email?',
-			assistantText:
-				'Got it — marking the usage-based pricing migration done. Are you referring to the signup email or launch email?',
-			mutationRequested: true,
-			toolExecutions: [{ toolCall: call, result: toolResult(call, true, { results: [] }) }]
-		});
-
-		expect(guard).toMatchObject({
+		expect(guard).toEqual({
+			text: `${text}\n\n${NO_CHANGES_SAVED_NOTICE}`,
 			applied: true,
 			reason: 'incomplete_mutation_after_reads',
 			finishedReason: 'mutation_unfulfilled'
 		});
-		expect(guard.text).not.toContain('marking the usage-based pricing migration done');
-		expect(guard.text).toContain('nothing was updated');
+	});
+
+	it('leaves host-written terminal text alone after a non-stop provider finish', () => {
+		const call = toolCall('search_project', { query: 'email task' });
+		const text = 'The review could not finish. Nothing was changed.';
+		const guard = applyFinalizationGuard({
+			finalAssistantText: text,
+			assistantText: text,
+			mutationRequested: true,
+			providerFinishedReason: 'semantic_review_failed',
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true, { results: [] }) }]
+		});
+
+		expect(guard).toEqual({ text, applied: false, finishedReason: 'mutation_unfulfilled' });
+	});
+
+	it('does not repeat the receipt the provider already appended', () => {
+		const call = toolCall('search_project', { query: 'email task' });
+		const text = `Which email task did you mean?\n\n${NO_CHANGES_SAVED_NOTICE}`;
+		const guard = applyFinalizationGuard({
+			finalAssistantText: text,
+			assistantText: text,
+			mutationRequested: true,
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true, { results: [] }) }]
+		});
+
+		expect(guard).toEqual({ text, applied: false, finishedReason: 'mutation_unfulfilled' });
+	});
+
+	it('never appends on a turn that was not structurally asked to change anything', () => {
+		const call = toolCall('search_project', { query: 'open tasks' });
+		const text = 'Done — I marked the task complete.';
+		const guard = applyFinalizationGuard({
+			finalAssistantText: text,
+			assistantText: text,
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true, { results: [] }) }]
+		});
+
+		expect(guard).toEqual({ text, applied: false });
 	});
 
 	it('preserves an explicit user-action question even when it contains a write verb', () => {
@@ -534,7 +562,9 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).toContain('remaining request stays pending');
 	});
 
-	it('keeps replacing an overclaim that hides the unfinished remainder', () => {
+	it('marks a partial overclaim unfulfilled and leaves the disclosure to the ledger receipt', () => {
+		// enforceMutationOutcomeIntegrity appends "Done: 1 of 3 ..." under this
+		// prose before the guard runs; the guard only marks the turn.
 		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
 		const text = 'I have marked all three tasks done.';
 		const guard = applyFinalizationGuard({
@@ -557,13 +587,7 @@ describe('applyFinalizationGuard', () => {
 			toolExecutions: [{ toolCall: call, result: toolResult(call, true) }]
 		});
 
-		expect(guard).toMatchObject({
-			applied: true,
-			reason: 'incomplete_mutation_after_reads',
-			finishedReason: 'mutation_unfulfilled'
-		});
-		expect(guard.text).not.toContain('all three');
-		expect(guard.text).toContain('Not yet completed: Task B, Task C.');
+		expect(guard).toEqual({ text, applied: false, finishedReason: 'mutation_unfulfilled' });
 	});
 
 	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F13 narrowed the lead-in heuristic;

@@ -23,16 +23,22 @@ const UNFULFILLED_TURN_NOTICE =
 	'I could not finish the full request in this turn. The remaining work is still pending.';
 
 /**
- * Apply the same deterministic terminal safety floors as the legacy loop after
- * every provider/tool round is durable and before the worker's terminal CAS.
+ * Apply the deterministic terminal floors after every provider/tool round is
+ * durable and before the worker's terminal CAS.
  *
- * Mutation state comes only from structured control/write executions. Natural
- * language is interpreted by the reviewed semantic-disposition path, not by a
- * second regex classifier at finalization.
+ * Every floor reads structure only: the write ledger, the reviewed contract or
+ * request expectation, and the provider's finish reason. The model's answer is
+ * never classified; receipts are appended under it, never substituted
+ * (AGENTS.md "Never classify language with regex").
  */
 export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 	assistantText: string;
 	finishedReason: string;
+	/**
+	 * Unused since the project-create claim regex was retired (2026-09-23); a
+	 * project-create turn declares a contract, whose unfulfilled outcomes are
+	 * disclosed like any other. Kept so executor call sites stay unchanged.
+	 */
 	contextType: string;
 	toolExecutions: FastToolExecution[];
 }): AgenticChatTerminalTextIntegrityResultV1 {
@@ -50,9 +56,7 @@ export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 		input.finishedReason
 	);
 	const integrityText = enforceMutationOutcomeIntegrity(input.assistantText, {
-		contextType: input.contextType,
 		toolExecutions: input.toolExecutions,
-		explicitMutationRequested: mutationRequested,
 		unfulfilledOutcomes
 	});
 	let guard = applyFinalizationGuard({
@@ -60,7 +64,8 @@ export function enforceAgenticChatTerminalTextIntegrityV1(input: {
 		assistantText: input.assistantText,
 		toolExecutions: input.toolExecutions,
 		mutationRequested,
-		unfulfilledOutcomes
+		unfulfilledOutcomes,
+		providerFinishedReason: input.finishedReason
 	});
 	let guardedAssistantText = guard.applied ? guard.text : integrityText;
 	// A failed continuation can leave only successful write receipts: those receipts

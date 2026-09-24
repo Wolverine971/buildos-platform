@@ -18,9 +18,11 @@ import type {
 } from '../src/workers/agentic-chat/provider/contracts';
 import {
 	JEV_TOOL_SELECTION_ENDPOINT,
+	JEV_WRITE_COMMISSION_THRESHOLD,
 	JevToolSelector,
 	type JevToolSelectionReceipt,
 	buildJevToolSelectionBody,
+	commissionedWriteToolNamesFrom,
 	selectJevToolDefinitions
 } from '../src/workers/agentic-chat/provider/jev-tool-selector';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
@@ -229,6 +231,38 @@ describe('JevToolSelector', () => {
 				costUsd: 0.0003
 			})
 		]);
+	});
+
+	it('marks a write commission only from mutation-tool scores at the commission threshold', async () => {
+		const surface = [...SURFACE, 'update_onto_task'].map(tool);
+		const scores = {
+			get_project_overview: 0.2,
+			list_onto_tasks: 0.9,
+			web_search: 0.97,
+			list_calendar_events: 0.02,
+			update_onto_task: JEV_WRITE_COMMISSION_THRESHOLD
+		};
+		const { instance, receipts } = selector(
+			vi.fn(async () => jevResponse(scores)) as unknown as typeof fetch
+		);
+
+		const selected = await instance.select(request({ tools: surface }));
+
+		// A read scoring 0.97 is relevance, not a commission; only admitted
+		// mutation tools count, and the message text is never consulted.
+		expect(selected.commissionedWriteToolNames).toEqual(['update_onto_task']);
+		expect(receipts[0]?.commissionedWriteToolNames).toEqual(['update_onto_task']);
+
+		const below = selector(
+			vi.fn(async () =>
+				jevResponse({ ...scores, update_onto_task: JEV_WRITE_COMMISSION_THRESHOLD - 0.01 })
+			) as unknown as typeof fetch
+		);
+		const unselected = await below.instance.select(request({ tools: surface }));
+		expect(unselected.commissionedWriteToolNames).toBeUndefined();
+		expect(
+			commissionedWriteToolNamesFrom(surface, { update_onto_task: 0.8, web_search: 0.99 })
+		).toEqual(['update_onto_task']);
 	});
 
 	it('skips gate passes without calling Jev', async () => {

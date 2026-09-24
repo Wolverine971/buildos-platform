@@ -5,6 +5,7 @@ import { TOOL_METADATA } from '@buildos/agentic-chat-runtime/catalog';
 import type { UsageLogger } from '@buildos/smart-llm';
 import { runWithAbortableDeadline } from '../shared/abortable-deadline';
 import { startLocalPromptDump } from '../effects/prompt-dump';
+import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from './contracts';
 import { appendSystemInstruction } from './request-builders';
 
@@ -15,6 +16,14 @@ export const JEV_TOOL_SELECTION_ENDPOINT = 'https://openrouter.ai/api/alpha/deci
 // 0.51, so 0.3 kept every needed tool with margin while cutting ~58% of schema.
 // Not a calibrated guarantee: re-tune from logged shadow probabilities.
 export const JEV_TOOL_INCLUSION_THRESHOLD = 0.3;
+// A mutation tool at or above this score marks the message as asking for a
+// durable change (`commissionedWriteToolNames`). It replaces the regex that
+// read the model's final prose for completion claims: the provider appends a
+// "No changes were saved" receipt when such a turn ends in prose with no
+// write and no disposition. Stricter than inclusion because a false positive
+// puts a true-but-unneeded receipt under an answer. Uncalibrated: re-tune from
+// the logged probabilities (`commissionedWriteToolNames` rides the receipt).
+export const JEV_WRITE_COMMISSION_THRESHOLD = 0.5;
 // Observed p95 ~470 ms, max ~970 ms. On timeout the turn keeps the full surface.
 const DEFAULT_TIMEOUT_MS = 1_500;
 const USAGE_LOG_TIMEOUT_MS = 5_000;
@@ -45,6 +54,7 @@ export type JevToolSelectionReceipt = {
 	outputTokens?: number;
 	costUsd?: number;
 	probabilities?: Record<string, number>;
+	commissionedWriteToolNames?: string[];
 };
 
 const REQUIRED_CONTROLS = new Set([
@@ -138,6 +148,21 @@ export function selectJevToolDefinitions(
 	}
 	// Preserve canonical order for stable prompts and their cache prefixes.
 	return tools.filter((t) => selected.has(t.function.name));
+}
+
+/** Admitted mutation tools Jev judged needed for the current message (structured, never text). */
+export function commissionedWriteToolNamesFrom(
+	tools: readonly AgenticChatTurnProviderToolV1[],
+	probabilities: Readonly<Record<string, number>>,
+	threshold = JEV_WRITE_COMMISSION_THRESHOLD
+): string[] {
+	return tools
+		.map((tool) => tool.function.name)
+		.filter(
+			(name) =>
+				reviewedAgenticChatMutationSpecV1(name) !== null &&
+				(probabilities[name] ?? 0) >= threshold
+		);
 }
 
 export function buildJevToolSelectionBody(request: AgenticChatTurnProviderRequestV1) {
@@ -345,6 +370,14 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 					{ ...request, tools, toolChoice: tools.length ? 'auto' : 'none' },
 					`Tool relevance selection: the callable schemas for this pass are ${receipt.selectedToolNames.join(', ') || 'none'}. Earlier generic tool or skill menus do not describe this pass. Use the supplied schemas; their selection is not permission to act. Follow the existing user-intent and execution rules.`
 				);
+			}
+			const commissionedWriteToolNames = commissionedWriteToolNamesFrom(
+				request.tools,
+				probabilities
+			);
+			if (commissionedWriteToolNames.length > 0) {
+				receipt.commissionedWriteToolNames = commissionedWriteToolNames;
+				selectedRequest = { ...selectedRequest, commissionedWriteToolNames };
 			}
 		} catch (error) {
 			receipt.status = 'fallback';

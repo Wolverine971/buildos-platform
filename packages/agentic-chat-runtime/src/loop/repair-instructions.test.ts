@@ -6,10 +6,8 @@ import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import {
 	buildToolValidationRepairInstruction,
-	classifyReceiptGroundedAssistantDisposition,
 	enforceMutationOutcomeIntegrity,
 	formatUnfulfilledMutationOutcomeDisclosure,
-	looksLikeUnfulfilledMutationDisclosure,
 	type UnfulfilledMutationOutcomeDisclosureV1
 } from './repair-instructions';
 import type { FastToolExecution } from './shared';
@@ -88,13 +86,11 @@ describe('unfulfilled mutation outcome disclosure', () => {
 		expect(text).not.toContain('Task 10');
 	});
 
-	it('appends the disclosure after a successful write when the prose hides the remainder', () => {
+	it('appends the ledger disclosure after a successful write', () => {
 		const text = enforceMutationOutcomeIntegrity('Moved Task A and Task B into Backlog.', {
-			contextType: 'project',
 			toolExecutions: [
 				writeExecution('move_onto_task', true, { status: 'moved', task: { id: 'task_1' } })
 			],
-			explicitMutationRequested: true,
 			unfulfilledOutcomes: [PARTIAL_MOVE_OUTCOME]
 		});
 		expect(text).toBe(
@@ -102,90 +98,52 @@ describe('unfulfilled mutation outcome disclosure', () => {
 		);
 	});
 
-	it('does not append when the model already disclosed the remainder or nothing was written', () => {
+	it('never reads the prose: the receipt lands even when the model already disclosed', () => {
+		// The ledger decides. A repeated receipt under an honest answer is the
+		// accepted cost of not classifying the answer's wording.
 		const disclosed = 'Moved Task A and Task B. The other four are not yet moved.';
 		expect(
 			enforceMutationOutcomeIntegrity(disclosed, {
-				contextType: 'project',
 				toolExecutions: [
 					writeExecution('move_onto_task', true, {
 						status: 'moved',
 						task: { id: 'task_1' }
 					})
 				],
-				explicitMutationRequested: true,
 				unfulfilledOutcomes: [PARTIAL_MOVE_OUTCOME]
 			})
-		).toBe(disclosed);
+		).toBe(
+			`${disclosed}\n\nDone: 2 of 6 moves. Not yet moved: Task C, Task D, task_5, Task F.`
+		);
+	});
+
+	it('leaves the partial line to the finalization guard when nothing was written', () => {
 		expect(
 			enforceMutationOutcomeIntegrity('I could not find those tasks.', {
-				contextType: 'project',
 				toolExecutions: [],
-				explicitMutationRequested: true,
 				unfulfilledOutcomes: [PARTIAL_MOVE_OUTCOME]
 			})
 		).toBe('I could not find those tasks.');
 	});
-
-	it('recognises honest partial-progress prose', () => {
-		for (const text of [
-			'Done: 2 of 6 moves.',
-			'The rest are still pending.',
-			'I only moved two of them.',
-			'I ran out of steps before the last four.',
-			'I have not yet moved the remaining tasks.'
-		]) {
-			expect(looksLikeUnfulfilledMutationDisclosure(text)).toBe(true);
-		}
-		expect(looksLikeUnfulfilledMutationDisclosure('Moved all six tasks into Backlog.')).toBe(
-			false
-		);
-	});
 });
 
-describe('receipt-grounded assistant disposition', () => {
-	it('classifies the exact unreceipted production completion claim', () => {
-		expect(
-			classifyReceiptGroundedAssistantDisposition(
-				'Got it — marking the usage-based pricing migration done. And just to make sure I follow: when you say "the email one," are you referring to Fix the email verification bug or Send the launch email?'
-			)
-		).toBe('mutation_claim');
-	});
-
-	it('classifies an unresolved target question but leaves optional offers alone', () => {
-		expect(
-			classifyReceiptGroundedAssistantDisposition(
-				'Which matching task should I mark complete?'
-			)
-		).toBe('clarification_question');
-		expect(
-			classifyReceiptGroundedAssistantDisposition(
-				'Here is the current project status. Would you like me to summarize the risks too?'
-			)
-		).toBeNull();
-	});
-
-	it('does not mistake suggested wording for a completed mutation', () => {
-		expect(
-			classifyReceiptGroundedAssistantDisposition(
-				'Perhaps suggest updating it or marking tasks done.'
-			)
-		).toBeNull();
-	});
-});
-
-describe('document link and placement claims', () => {
+describe('ledger receipts never depend on answer wording', () => {
 	function execution(
 		name: string,
 		args: Record<string, unknown>,
-		result: unknown
+		result: unknown,
+		success = true,
+		error?: string
 	): FastToolExecution {
 		const toolCall: ChatToolCall = {
-			id: `${name}:1`,
+			id: `${name}:${Math.random().toString(36).slice(2)}`,
 			type: 'function',
 			function: { name, arguments: JSON.stringify(args) }
 		};
-		return { toolCall, result: { tool_call_id: toolCall.id, success: true, result } };
+		return {
+			toolCall,
+			result: { tool_call_id: toolCall.id, success, result, ...(error ? { error } : {}) }
+		};
 	}
 
 	const createRootDocument = () =>
@@ -199,78 +157,51 @@ describe('document link and placement claims', () => {
 			}
 		);
 
-	it('accepts a root placement claim after a successful document create without a parent', () => {
-		// Production misfire: the create placed the document at the tree root,
-		// yet the reply got "Correction: I did not move or place the document".
-		const text =
-			"Created **Launch pitch** as a new project document. I created it at the root of the project's document tree since no parent folder was specified.\n\nIf you'd like it nested under another document, let me know where it should go.";
+	it.each([
+		// Former lexical "link/placement claim" corrections; the turn contract's
+		// unfulfilled outcomes are the structured record of an unmade link or move.
+		'Created the Pitch doc and linked it to the Launch goal.',
+		'Created **Launch pitch** at the root of the document tree.',
+		'Your pitch document is linked to the Launch goal.'
+	])('leaves %j alone when every write succeeded', (text) => {
 		expect(
-			enforceMutationOutcomeIntegrity(text, {
-				contextType: 'project',
-				toolExecutions: [createRootDocument()],
-				explicitMutationRequested: true
-			})
+			enforceMutationOutcomeIntegrity(text, { toolExecutions: [createRootDocument()] })
 		).toBe(text);
 	});
 
-	it('does not correct a read-only answer that describes an existing link', () => {
-		const text = 'Your pitch document is linked to the Launch goal.';
-		expect(
-			enforceMutationOutcomeIntegrity(text, {
-				contextType: 'project',
-				toolExecutions: [
-					execution(
-						'search_onto_documents',
-						{ query: 'pitch' },
-						{ documents: [{ id: 'doc_1', title: 'Pitch' }] }
-					)
-				],
-				explicitMutationRequested: false
-			})
-		).toBe(text);
-	});
-
-	it('still corrects a link claim when the only write was a document create', () => {
-		const text = 'Created the Pitch doc and linked it to the Launch goal.';
-		expect(
-			enforceMutationOutcomeIntegrity(text, {
-				contextType: 'project',
-				toolExecutions: [createRootDocument()],
-				explicitMutationRequested: true
-			})
-		).toBe(`${text}\n\nCorrection: I did not create a document link.`);
-	});
-
-	const searchDocuments = () =>
-		execution(
-			'search_onto_documents',
-			{ query: 'pitch' },
-			{ documents: [{ id: 'doc_1', title: 'Pitch' }] }
+	it('appends an unrepaired failure whatever the answer says', () => {
+		const failed = execution(
+			'create_onto_document',
+			{ project_id: 'project_1', title: 'Notes' },
+			null,
+			false,
+			'Document title already exists'
 		);
-
-	it('corrects a placement claim on a requested move that made no write', () => {
-		// The turn was structurally asked to change something, yet only read.
-		const text = 'The Pitch document is now organized under Research.';
-		expect(
-			enforceMutationOutcomeIntegrity(text, {
-				contextType: 'project',
-				toolExecutions: [searchDocuments()],
-				explicitMutationRequested: true
-			})
-		).toBe(`${text}\n\nCorrection: I did not move or place the document in the tree.`);
+		for (const text of [
+			'Created both documents.',
+			'The second document failed to save.'
+		]) {
+			expect(
+				enforceMutationOutcomeIntegrity(text, {
+					toolExecutions: [createRootDocument(), failed]
+				})
+			).toBe(
+				`${text}\n\nOne write did not complete: document create failed (Document title already exists). I did not persist that part.`
+			);
+		}
 	});
 
-	it('corrects link and placement claims on a requested change that made no write', () => {
-		const text = 'Moved the Pitch doc under Research and linked the doc to the Launch goal.';
-		expect(
-			enforceMutationOutcomeIntegrity(text, {
-				contextType: 'project',
-				toolExecutions: [searchDocuments()],
-				explicitMutationRequested: true
-			})
-		).toBe(
-			`${text}\n\nCorrection: I did not create a document link. I did not move or place the document in the tree.`
+	it('says nothing was saved when every attempted write failed', () => {
+		const failed = execution(
+			'move_onto_task',
+			{ task_id: 'task_1' },
+			null,
+			false,
+			'Task not found'
 		);
+		expect(
+			enforceMutationOutcomeIntegrity('Done — moved the task.', { toolExecutions: [failed] })
+		).toBe('Done — moved the task.\n\nNo changes were saved: task move failed (Task not found).');
 	});
 });
 

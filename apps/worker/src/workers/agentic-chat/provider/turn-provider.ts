@@ -55,6 +55,7 @@ import {
 } from './repair-policy';
 import {
 	appendSystemInstruction,
+	appendWebResearchRules,
 	buildBaseProviderRequest,
 	buildPromptSnapshot,
 	buildValidationRepairRequest,
@@ -387,6 +388,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				request = await this.resolveLiveVision(request);
 				if (this.ports.toolSelector)
 					request = await this.ports.toolSelector.select(request);
+				request = appendWebResearchRules(request);
 				const found = finding ? await finding : null;
 				if (found?.injection) request = appendSystemInstruction(request, found.injection);
 				state.setCurrentRequest(request);
@@ -691,19 +693,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					);
 					return;
 				}
-				const receiptGroundedFinalDispositionGate =
-					state.takeReceiptGroundedFinalDispositionGate(request, assistantCandidate);
-				if (receiptGroundedFinalDispositionGate) {
-					state.setCurrentRequest(receiptGroundedFinalDispositionGate);
-					keepLease = true;
-					yield* this.streamActingPass(
-						receiptGroundedFinalDispositionGate,
-						usage,
-						state,
-						continuationOptions
-					);
-					return;
-				}
 				const requestCompletion = state.takeRequestCompletionContinuation(request);
 				if (requestCompletion) {
 					state.setCurrentRequest(requestCompletion);
@@ -774,6 +763,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						return;
 					}
 					throw providerError('provider_no_assistant_text', 'permanent');
+				}
+				const unsavedCommissionNotice = state.takeUnsavedCommissionNotice(request);
+				if (unsavedCommissionNotice) {
+					// Its own paragraph under the answer, whatever this pass emitted.
+					yield state.textDelta(unsavedCommissionNotice, false);
 				}
 				this.ports.capacity.markAvailable(request.turnRunId);
 				state.advance({ type: 'finish' });

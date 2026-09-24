@@ -518,7 +518,13 @@ describe('actor-facing commission guidance', () => {
 		// Budget guard: the 2026-09-02 audit measured 4,677 chars for this message.
 		// 2026-09-22 book loop: the first commission line grew ~170 chars on purpose
 		// ("call the tools yourself; describing never stages"); measured 2,603 / 3,466.
-		expect(deferred!.length).toBeLessThan(2_650);
-		expect(full!.length).toBeLessThan(3_500);
+		// 2026-09-23 regex retirement: +~350 chars on purpose. The grounding line
+		// ("never say a change is done unless its tool result confirms it") and
+		// "clarify with the tool, not in prose" replace the regex gate that re-ran
+		// the model on claim-shaped prose, and the exact-ID / state_key write
+		// rules moved here from the web prompt's lexically triggered write block;
+		// measured 2,957 / 3,820.
+		expect(deferred!.length).toBeLessThan(3_000);
+		expect(full!.length).toBeLessThan(3_870);
 	});
 });

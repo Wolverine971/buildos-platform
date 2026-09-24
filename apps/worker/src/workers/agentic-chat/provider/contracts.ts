@@ -235,6 +235,14 @@ export type AgenticChatTurnProviderRequestV1 = AgenticChatTurnProviderClientRequ
 	 * facts (e.g. project images attached to this message), never message text.
 	 */
 	toolSelectionPins?: readonly string[];
+	/**
+	 * Mutation tools the schema selector (Jev) scored at or above
+	 * JEV_WRITE_COMMISSION_THRESHOLD for the current message: a structured,
+	 * model-judged signal that the message asks for a durable change. Set only
+	 * from selector probabilities, never from message text; absent when the
+	 * selector did not classify (shadow, off, fallback, ineligible pass).
+	 */
+	commissionedWriteToolNames?: readonly string[];
 	semanticDispositionGate?: boolean;
 	unavailableSkillRepairAttempted?: boolean;
 	/** One bounded re-ask after a completion that carried neither text nor tool calls. */

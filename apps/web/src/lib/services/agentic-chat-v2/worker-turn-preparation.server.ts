@@ -615,9 +615,10 @@ export async function prepareAgenticChatWorkerAdmission(input: {
 	const turnSituation = resolveLitePromptTurnSituation({
 		toolNames: workerPromptToolNames,
 		// A pending semantic contract is the one structural write signal
-		// admission has (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F44).
+		// admission has (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F44). The message
+		// text never selects a block (AGENTS.md "Never classify language with
+		// regex"); the worker adds write and research rules from structure.
 		pendingTurnContract: turnPreparation.pendingTurnContract !== null,
-		latestUserMessage: messageForModel,
 		workerBound: WORKER_PROMPT_SCAFFOLD.dynamicSkillTools === false
 	});
 	const overlayInput = {

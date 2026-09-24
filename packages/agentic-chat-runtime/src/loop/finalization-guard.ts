@@ -1,6 +1,5 @@
 // packages/agentic-chat-runtime/src/loop/finalization-guard.ts
 import type { FastToolExecution } from './shared';
-import { sanitizeAssistantFinalText } from './assistant-text-sanitization';
 import {
 	classifyToolExecution,
 	didGatewayExecSucceed,
@@ -8,9 +7,7 @@ import {
 	isDuplicateWriteSkippedExecution
 } from './tool-classification';
 import {
-	classifyReceiptGroundedAssistantDisposition,
 	formatUnfulfilledMutationOutcomeDisclosure,
-	looksLikeUnfulfilledMutationDisclosure,
 	type UnfulfilledMutationOutcomeDisclosureV1
 } from './repair-instructions';
 
@@ -49,7 +46,21 @@ type ApplyFinalizationGuardParams = {
 	 */
 	unfulfilledOutcomes?: UnfulfilledMutationOutcomeDisclosureV1[];
 	synthesisTransportFailure?: boolean;
+	/**
+	 * How the provider ended the turn. Only an ordinary prose finish (`stop`)
+	 * gets the no-change notice appended; other finishes carry host-written
+	 * terminal text that already states the outcome.
+	 */
+	providerFinishedReason?: string;
 };
+
+/**
+ * Host receipt for a turn that owed a change and saved none. It is appended
+ * under the model's answer, never substituted for it, and it is decided from
+ * structure (a requested change, an empty write ledger, no clarification), not
+ * from what the answer says.
+ */
+export const NO_CHANGES_SAVED_NOTICE = 'No changes were saved in this turn.';
 
 type EvidenceItem = {
 	id?: string;
@@ -57,34 +68,6 @@ type EvidenceItem = {
 	title: string;
 	stateKey?: string;
 };
-
-// A lead-in is a promise to keep working, and it opens a sentence: "I'll pull
-// that up", "Let me check", "First, I'll…", "One moment". A short answer that
-// merely contains a verb such as "check" or "update", or ends on a question,
-// is an answer (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F13). Only consulted once
-// the ledger or turn contract already proves the requested change unfinished,
-// so a misfire swaps one honest "not done yet" notice for another.
-const LEAD_IN_OPENER_PATTERN =
-	/(?:^|[.!?:;—–-]\s+)(?:(?:first|then|now|next|okay|ok|sure|got it|alright|of course),?\s+)?(?:i['’]?ll|i will|let me|i['’]?m going to|i am going to|one moment|hang on|give me a (?:moment|second|sec|minute))\b/i;
-
-function isLikelyLeadIn(text: string): boolean {
-	const normalized = text.replace(/\s+/g, ' ').trim();
-	if (!normalized) return false;
-	if (normalized.length > 260) return false;
-	if (normalized.endsWith('?')) return false;
-	const lower = normalized.toLowerCase();
-	if (
-		lower.includes('updated') ||
-		lower.includes('created') ||
-		lower.includes('deleted') ||
-		lower.includes('completed') ||
-		lower.includes('finished') ||
-		lower.includes('found')
-	) {
-		return false;
-	}
-	return LEAD_IN_OPENER_PATTERN.test(normalized);
-}
 
 function findRequiredUserActionQuestion(toolExecutions: FastToolExecution[]): string | null {
 	for (let index = toolExecutions.length - 1; index >= 0; index -= 1) {
@@ -489,18 +472,17 @@ export function applyFinalizationGuard(
 	params: ApplyFinalizationGuardParams
 ): FinalizationGuardResult {
 	const toolExecutions = params.toolExecutions ?? [];
-	const finalText = sanitizeAssistantFinalText(params.finalAssistantText ?? '').trim();
-	const assistantText = sanitizeAssistantFinalText(params.assistantText ?? '').trim();
-	const candidate = finalText || assistantText;
+	// The answer is taken as written. Scratchpad leaks are handled at the source
+	// (provider-separated reasoning), not by deleting sentences that look like
+	// one (AGENTS.md "Never classify language with regex").
+	const candidate = (params.finalAssistantText ?? '').trim() || (params.assistantText ?? '').trim();
 
 	if (toolExecutions.length === 0) {
 		return { text: candidate, applied: false };
 	}
 
 	// A successful tool result that explicitly requires user action is a semantic
-	// terminal state, not an unfinished mutation. Preserve the model's question even
-	// when it contains words such as "update" that the legacy lead-in heuristic would
-	// otherwise mistake for a promise to keep working.
+	// terminal state, not an unfinished mutation: the model's question stands.
 	const requiredUserActionExecution = toolExecutions.some(
 		(execution) =>
 			didGatewayExecSucceed(execution) && doesToolExecutionRequireUserAction(execution)
@@ -543,45 +525,39 @@ export function applyFinalizationGuard(
 		}
 	}
 
-	// A requested mutation that never ran (no write succeeded or failed) must not be
-	// papered over with a lead-in like "let me update that" — the change did not happen.
 	const unfulfilledOutcomes = params.unfulfilledOutcomes ?? [];
 	// Declared outcomes are the reviewed authority for what this turn owed. Any
 	// outcome the ledger could not prove complete keeps the turn unfulfilled even
 	// when some write already landed (2 of 6 moves is 2 moves).
 	const declaredOutcomesUnfulfilled =
 		params.mutationRequested === true && unfulfilledOutcomes.length > 0;
+	const nothingAttempted = successfulWrites === 0 && failedWrites === 0;
 	const mutationIncomplete =
-		params.mutationRequested === true &&
-		(declaredOutcomesUnfulfilled || (successfulWrites === 0 && failedWrites === 0));
-	// Prose that already names the unfinished remainder is honest; replacing it
-	// with the generic incomplete notice would drop the specific list.
-	const partialDisclosurePresent =
-		declaredOutcomesUnfulfilled &&
-		successfulWrites > 0 &&
-		Boolean(candidate) &&
-		looksLikeUnfulfilledMutationDisclosure(candidate);
-	const unfulfilledFinishedReason: FinalizationGuardFinishedReason | undefined =
-		declaredOutcomesUnfulfilled ? 'mutation_unfulfilled' : undefined;
-	// Non-empty prose is replaced only when the ledger or turn contract proves the
-	// requested change is unfinished. A wording-only "is this a lead-in?" check on
-	// read-only or fully written turns appended "I gathered context…" / "I
-	// completed the requested change." under correct answers in production.
-	const shouldReplaceMutationLeadIn =
-		!partialDisclosurePresent &&
-		mutationIncomplete &&
-		Boolean(candidate) &&
-		isLikelyLeadIn(candidate);
-	const shouldReplaceMutationClaim =
-		!partialDisclosurePresent &&
-		mutationIncomplete &&
-		classifyReceiptGroundedAssistantDisposition(candidate) === 'mutation_claim';
-	const shouldReplaceLeadIn = shouldReplaceMutationLeadIn || shouldReplaceMutationClaim;
-	const shouldSynthesizeEmpty = !candidate;
+		params.mutationRequested === true && (declaredOutcomesUnfulfilled || nothingAttempted);
 
-	if (!shouldReplaceLeadIn && !shouldSynthesizeEmpty) {
-		return unfulfilledFinishedReason
-			? { text: candidate, applied: false, finishedReason: unfulfilledFinishedReason }
+	if (candidate) {
+		// Structure alone decides, never the wording of the answer: a requested
+		// change with an empty write ledger gets the host receipt appended. When
+		// writes were attempted, the ledger disclosures (failures, "Done: N of M")
+		// were already appended by enforceMutationOutcomeIntegrity.
+		const providerStopped =
+			params.providerFinishedReason === undefined || params.providerFinishedReason === 'stop';
+		if (
+			mutationIncomplete &&
+			nothingAttempted &&
+			providerStopped &&
+			// The provider appends the same host sentinel on a prose-only finish.
+			!candidate.includes(NO_CHANGES_SAVED_NOTICE)
+		) {
+			return {
+				text: `${candidate}\n\n${NO_CHANGES_SAVED_NOTICE}`,
+				applied: true,
+				reason: 'incomplete_mutation_after_reads',
+				finishedReason: 'mutation_unfulfilled'
+			};
+		}
+		return mutationIncomplete
+			? { text: candidate, applied: false, finishedReason: 'mutation_unfulfilled' }
 			: { text: candidate, applied: false };
 	}
 
@@ -598,19 +574,11 @@ export function applyFinalizationGuard(
 		toolExecutions
 	});
 
-	if (synthesized.reason === 'incomplete_mutation_after_reads') {
-		return {
-			text: synthesized.text,
-			applied: true,
-			reason: synthesized.reason,
-			finishedReason: synthesized.finishedReason ?? unfulfilledFinishedReason
-		};
-	}
-
 	return {
 		text: synthesized.text,
 		applied: true,
 		reason: synthesized.reason,
-		finishedReason: synthesized.finishedReason ?? unfulfilledFinishedReason
+		finishedReason:
+			synthesized.finishedReason ?? (mutationIncomplete ? 'mutation_unfulfilled' : undefined)
 	};
 }

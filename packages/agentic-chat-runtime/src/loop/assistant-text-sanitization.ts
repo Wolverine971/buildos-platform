@@ -1,6 +1,18 @@
 // packages/agentic-chat-runtime/src/loop/assistant-text-sanitization.ts
 //
-// Two families of scratchpad leakage are handled here:
+// OFFLINE LEAK MONITOR ONLY — never call this on the chat turn path.
+//
+// Deciding that a sentence of the model's answer is "scratchpad" and deleting
+// it is language classification by regex (AGENTS.md "Never classify language
+// with regex"). The turn path fixes leakage at the source instead: acting
+// passes request `reasoning.exclude` and the SSE decoder drops inline
+// `<think>` blocks (apps/worker/.../provider/openrouter/sse.ts), so hidden
+// reasoning never reaches `content`. As of 2026-09-23 no chat path strips
+// sentences; the only caller is `pnpm agentic:health`
+// (apps/web/scripts/agentic-health), which counts how many stored replies
+// these markers would have touched — a leak-rate signal that steers nothing.
+//
+// Two families of scratchpad leakage are detected here:
 //   1. Legacy / generic scratchpad (tool_call echoes, "actually, wait", etc.)
 //   2. Grok-4.1-fast prompt-section mirroring observed in the 2026-04-17
 //      consolidation replay, where the model restated prompt section headers
