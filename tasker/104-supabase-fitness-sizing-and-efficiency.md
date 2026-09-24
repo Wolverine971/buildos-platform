@@ -2,7 +2,7 @@
 
 # Tasker 104 — Supabase fitness: are we sized, configured, and using Postgres well?
 
-**Status:** Security containment LIVE in prod; polling shipping; QA retirement + migration rehearsal in progress; busy-window sizing sample open · **Opened:** 2026-09-24 · **Owner:** Claude (took over from Codex 2026-09-24 evening)
+**Status:** Security containment LIVE + verified; 5 s polling LIVE; QA retired (branch deleted) and replaced by `pnpm db:rehearse`. Open: busy-window sizing sample, stream-state HOT updates, retention (103) · **Opened:** 2026-09-24 · **Owner:** Claude (took over from Codex 2026-09-24 evening)
 **Source:** the Tasker 102 investigation. A gate turn died because the QA database stalled for
 40 s. The QA branch turned out to be memory-starved and swapping, and a quick check shows production
 is on the default 1 GB instance with swap in use. It was paging only lightly in the one sample
@@ -42,10 +42,35 @@ before prod) with a free local migration rehearsal.
   `20260909194302` onboarding progress (the live signup blocker). Both are in the prod ledger.
 - **Still unapplied, on purpose:** `20260910170101` Libri quota settlement (needs the
   issuance-broker rollout first).
-- **Wake-aware polling:** code complete, 92 focused worker tests pass. Ships with this push;
-  post-deploy check below.
-- Free validation: 21 health-kit and security tests (9 against a disposable PostgreSQL) plus 92
-  worker tests.
+- **Wake-aware polling is live** (`8e05790b2`, pushed 23:2x UTC). Chat-worker `/health` reports
+  `queue.polling`: interval 5000 ms, jitter ≤250 ms, `wakeChannelHealthy: true`. About 7 minutes
+  after deploy, one replica showed startup 1, timer 82, wake 1 (the initial-subscription
+  catch-up), and 84 empty claims. That is ~12 idle claims/min per replica, versus 60 at 1 s.
+  Fleet-wide that's ~48/min versus ~240. Restore the old cadence with `CHAT_IDLE_POLL_INTERVAL_MS=1000`.
+- **Read-only preflight after rollout:** `preflight.py --scope all --require-cron` passed
+  29/29 on production, including the security scope.
+- **QA retired.** The persistent branch `agentic-chat-gate` (`daudvqczjqxhpzstlfih`) was deleted
+  (made non-persistent, then deleted via the Management API), saving ~$9.81/mo. The
+  `agentic-chat-gate.yml` CI workflow was removed. The gate runner (`gate.ts`,
+  `calendar-setup.ts`, `concurrent-write-probe.mts`) stays dormant: it refuses to run without an
+  isolated env file, and works unchanged if an isolated DB is ever provisioned. `AGENTS.md` now
+  points live validation at `pnpm agentic:prod-battery` and migrations at `pnpm db:rehearse`.
+- **Migration rehearsal built:** `scripts/migration-rehearsal/` (`pnpm db:rehearse <file>`).
+  It takes a schema-only pg_dump of production over the CLI's temporary login, with every session
+  forced read-only and cached 24 h (~2 min to refresh). A disposable local PG16 with pgvector
+  0.8.0 loads the schema in ~1.2 s (11,293 objects). It then applies the files, diffs every
+  table, column, index, constraint, function (definer, search_path, grants), policy, and trigger,
+  and flags SECURITY/DATA risks using production row counts. 12 offline tests pass.
+  First results:
+  `20260910170101` Libri quota settlement applies cleanly to production's current schema
+  (6 changes; `libri.image_upload_intents` has 0 rows). The containment re-applies as a no-op,
+  and its rollback applies cleanly.
+  **Key finding it surfaced:** Supabase's default privileges grant EXECUTE on every new function
+  to `anon` and `authenticated`. A new `SECURITY DEFINER` function is therefore client-callable
+  unless the migration revokes it. That is the root of the Tasker 76 exposures, and the
+  rehearsal now flags it.
+- Free validation: 21 health-kit and security tests (9 against a disposable PostgreSQL), 92
+  worker tests, 12 rehearsal tests, the worker typecheck, and 6 prod-battery policy tests.
 
 ### Found during takeover
 
@@ -58,17 +83,18 @@ before prod) with a free local migration rehearsal.
 
 ### Remaining
 
-1. **Post-deploy polling check (free):** once Railway runs the new commit, read chat-worker
-   `/health` → `queue.polling` (interval 5000, `wakeChannelHealthy: true`, `claimsByReason`) and
-   compare 24 h `claim_pending_jobs` REST volume with the 408,669/day baseline. Restore the old
-   cadence with `CHAT_IDLE_POLL_INTERVAL_MS=1000` if wake latency regresses.
-2. **Retire QA:** build the migration rehearsal, delete the branch, remove the gate CI workflow,
-   and repoint docs to the production battery.
-3. **Open measurements (no action until evidence):** busy-window paging sample (the kit's
-   `sample` command), stream-state zero-HOT updates (`updated_at` index), retention with Tasker 103.
-   Production stays on Micro.
+1. **24 h polling receipt (free):** compare `claim_pending_jobs` REST volume for a full day after
+   `8e05790b2` with the 408,669/day baseline, using the health kit's `latency`/`logs` over a
+   ≥24 h window. Watch for wake-latency regressions in the first real turns.
+2. **Open measurements (no action until evidence):** a busy-window paging sample (the kit's
+   `sample` command while real users are active), stream-state zero-HOT updates (the
+   `updated_at` index on `chat_turn_stream_state`), and retention with Tasker 103. Production
+   stays on Micro.
+3. **Libri quota settlement:** rehearsed clean. Apply only after its issuance-broker rollout
+   prerequisite holds.
 4. **Tasker 63:** historical ledger reconciliation and the `wrong_project` email-review
-   constraint drift. Never bulk-replay the 241 unverified historical files.
+   constraint drift. Never bulk-replay the 241 unverified historical files. QA's ledger gap is
+   moot now that the branch is deleted.
 
 ## Why this matters
 

@@ -2,6 +2,14 @@
 
 # Agentic Chat change-set gate
 
+> **Status (2026-09-24): the isolated QA database is retired.** DJ moved live validation to
+> production. The Supabase branch `agentic-chat-gate` (`daudvq…`) was deleted, along with the CI
+> workflow that tried to run this gate on every push. Use the
+> [deployed-stack battery](#deployed-stack-battery-post-deploy-check) (`pnpm agentic:prod-battery`)
+> for live checks, and `pnpm db:rehearse` ([migration rehearsal](../../scripts/migration-rehearsal/README.md))
+> for pre-production migration checks. `pnpm agentic:gate` still works unchanged against any new
+> isolated database you provision; the sections below describe that setup.
+
 Use `pnpm agentic:gate` for broader live Agentic Chat validation when warranted, with
 explicit approval for each paid run. It is not required after every change set or
 before continuing implementation; use focused free tests for routine changes. This is
@@ -175,8 +183,9 @@ and retries once. It does not change Vitest pool/worker limits.
 through **production**: Vercel web (`https://build-os.com`), the Railway `agentic-chat-worker`,
 and the production database. It runs as the dedicated harness account
 (`agentic-e2e-…@example.com`; the runner refuses any other address). It starts no local services
-and proves what users get after a deploy. The isolated QA gate above still tests a change
-before it ships. The two scorecards are separate. Only a deployed commit can be tested this way.
+and proves what users get after a deploy. Only a deployed commit can be tested this way. With QA
+retired, this is the live check. Test a risky change with the free preflight and focused tests
+before deploying, then run the battery (approval required) right after the deploy.
 
 - **Setup:**
     - `.env.agentic-prod-battery.local` (ignored, mode 0600) holds `AGENTIC_TEST_USER_EMAIL`,
@@ -209,12 +218,10 @@ before it ships. The two scorecards are separate. Only a deployed commit can be 
 
 ## CI and deployment
 
-`.github/workflows/agentic-chat-gate.yml` runs on relevant pull requests and main
-pushes. Configure repository secret `AGENTIC_GATE_ENV` with the dedicated env file
-contents; the job fails with an actionable setup error when it is absent. Set
-**Agentic Chat seed-data gate** as a required branch check in repository settings.
-That repository setting and the secret are external prerequisites; adding this
-workflow does not configure them automatically.
+The `agentic-chat-gate.yml` CI workflow was removed on 2026-09-24. It failed on every push
+because `AGENTIC_GATE_ENV` was never configured. Had it been configured, it would have started a
+paid gate on every push, against the paid-run approval rule. Live runs are started by hand, with
+approval.
 
 The worker health response includes immutable startup `provenance`. Production
 builds write `dist/source-provenance.json`; Railway source archives use the exact

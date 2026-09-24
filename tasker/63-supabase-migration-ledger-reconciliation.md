@@ -35,6 +35,11 @@ lock-first function body matches local after line-ending normalization. The new 
 migration is unapplied in both and remains unstaged per DJ's conditional instruction. No hosted
 schema or ledger changes occurred during either audit.
 
+**2026-09-24 evening (Tasker 104):** the QA branch `daudvqczjqxhpzstlfih` was deleted, so every
+QA ledger gap recorded here is moot; only the production ledger remains. The containment migration
+`20260924202321` has since been applied to production and recorded. New migrations are
+checked with `pnpm db:rehearse` against a production schema snapshot before they are applied.
+
 ## Why this exists
 
 During the queue-first rollout, `supabase migration list` showed many historical local files absent

@@ -12,12 +12,6 @@ python3 scripts/supabase-health/health.py snapshot \
   --start 2026-09-23T17:00:00Z --end 2026-09-24T17:00:00Z \
   --out /tmp/prod-health.json.gz
 
-python3 scripts/supabase-health/health.py snapshot \
-  --project-ref daudvqczjqxhpzstlfih --parent-ref iwifjtlebphefldmwbkh \
-  --env-file .env.agentic-gate.local \
-  --start 2026-09-24T03:00:00Z --end 2026-09-24T03:30:00Z \
-  --out /tmp/qa-health.json.gz
-
 python3 scripts/supabase-health/health.py sample \
   --project-ref iwifjtlebphefldmwbkh --env-file apps/web/.env \
   --seconds 300 --out /tmp/prod-paging.json
@@ -83,8 +77,8 @@ python3 scripts/supabase-health/preflight.py \
   --out /tmp/prod-maintenance-preflight.json
 
 python3 scripts/supabase-health/preflight.py \
-  --project-ref daudvqczjqxhpzstlfih --scope all \
-  --out /tmp/qa-release-preflight.json
+  --project-ref iwifjtlebphefldmwbkh --scope all --require-cron \
+  --out /tmp/prod-release-preflight.json
 ```
 
 `maintenance` checks exact RPC signatures and named arguments, service-only grants,
@@ -96,10 +90,11 @@ where the web cron is deployed. Cron checks use at most the newest 50 matching r
 This command is an on-demand check, not an installed alert or a proof of PostgREST cache state.
 An API/cron receipt is still needed to verify actual endpoint availability.
 
-On 2026-09-24 production passed maintenance + cron checks; QA passed the function contract but
-failed all three expected ledger versions. Do not suppress that failure or replay historical DDL.
-Reconcile QA's ledger under Tasker 63 after verifying the complete migration effects. The
-containment migration is prepared locally; security checks must fail until it is applied.
+On 2026-09-24 (evening) production passed all 29 checks, including `security`, after the
+containment migration was applied. The QA branch (`daudvq…`) was deleted the same day. Its
+snapshots in `docs/technical/reviews/supabase-health/2026-09-24/` are historical. Pass
+`--parent-ref` only for a Supabase branch. Rehearse new migrations with
+`scripts/migration-rehearsal/` before running a preflight against production.
 
 Free offline checks (the RPC test additionally needs local `initdb`, `pg_ctl`, and `psql`;
 it creates and destroys its own socket-only PostgreSQL cluster):

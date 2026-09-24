@@ -73,12 +73,23 @@ lint, and build are in the same weight class. Unbounded fan-out freezes the mach
 
 ## Agentic Chat validation
 
-Use focused free tests for each change. The paid `pnpm agentic:gate` is available for
-broader live validation when warranted; it is not required after every change set or
-before continuing implementation. Paid runs still require explicit approval under the
-rule above. When a gate is run, follow `docs/testing/agentic-chat-gate.md`, preserve its
-scorecard, and report missing prerequisites or failed cases accurately. Match claims
-about live behavior to the validation actually performed.
+Use focused free tests for each change. For live validation, use the paid
+`pnpm agentic:prod-battery` against the deployed production stack (free
+`--preflight-only` first); it is not required after every change set. Paid runs still
+require explicit approval under the rule above. The isolated QA branch was retired on
+2026-09-24, so `pnpm agentic:gate` has no test database. Follow
+`docs/testing/agentic-chat-gate.md`, preserve the scorecard, and report missing
+prerequisites or failed cases accurately. Match claims about live behavior to the
+validation actually performed.
+
+## Database migrations
+
+Rehearse every new migration against production's schema with `pnpm db:rehearse
+supabase/migrations/<file>.sql` (free, read-only, ~3 s cached) and resolve its SECURITY
+findings before applying. Apply to production one file at a time, then record it:
+`supabase db query --linked -f <file>` and `supabase migration repair --status applied <version> --linked`
+(`--linked` is production). Never use `db push --include-all` or replay the historical
+unrecorded files. See `scripts/migration-rehearsal/README.md`.
 
 ## Never classify language with regex
 
