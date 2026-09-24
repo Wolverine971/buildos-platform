@@ -1,0 +1,12 @@
+{
+	"run_at": "2026-09-22T19:38:04.381Z",
+	"sites": 40,
+	"ok": 29,
+	"blocked": 5,
+	"js_shell": 2,
+	"empty_after_parse": 2,
+	"error": 2,
+	"ok_but_main_content_outside_default_window": 0,
+	"blocked_that_browser_ua_unblocks": 1,
+	"median_same_site_links_on_ok_pages": 105
+}

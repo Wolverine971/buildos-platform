@@ -152,6 +152,10 @@ path: docs/features/sms-event-scheduling/README.md
 
 **Part 1: Integration Testing** ✅ COMPLETE (2025-10-08)
 
+> **Removed 2026-09-22.** No vitest config ran this suite (the worker default config excludes
+> `tests/integration/**`, and the integration config lists only its own Postgres suites), and its
+> setup fell back to production Supabase credentials. The list below is historical.
+
 - ✅ Test infrastructure setup (`apps/worker/tests/integration/sms-event-scheduling/`)
     - `setup.ts` - Test database setup with fixtures
     - `helpers.ts` - Time manipulation, assertions, wait utilities

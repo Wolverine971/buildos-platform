@@ -1,0 +1,97 @@
+{
+	"version": "specialist_gate_latency_case_v1",
+	"analyzedAt": "2026-09-21T05:42:20.378814+00:00",
+	"sourceFile": "output/agentic-gate/specialist-review-v2-deepseek-2026-09-21/turns/cedar-02-task-batch-2-1.json",
+	"totalMs": 70181.56524999999,
+	"limitMs": 60000,
+	"stateAssertions": "passed",
+	"modelPasses": [
+		{
+			"role": "tool_selection",
+			"provider": "TypeSafe",
+			"durationMs": 361,
+			"status": "selected"
+		},
+		{
+			"role": "acting",
+			"provider": "Parasail",
+			"durationMs": 8037,
+			"status": "failure"
+		},
+		{
+			"role": "acting",
+			"provider": "Together",
+			"durationMs": 7138,
+			"status": "success"
+		},
+		{
+			"role": "mutation_review",
+			"provider": "OpenAI",
+			"durationMs": 3730,
+			"status": "success"
+		},
+		{
+			"role": "acting",
+			"provider": "Together",
+			"durationMs": 1753,
+			"status": "success"
+		},
+		{
+			"role": "mutation_review",
+			"provider": "OpenAI",
+			"durationMs": 5975,
+			"status": "success"
+		},
+		{
+			"role": "acting",
+			"provider": "Together",
+			"durationMs": 3900,
+			"status": "success"
+		}
+	],
+	"summedModelRequestMs": 30894,
+	"tools": [
+		{
+			"name": "approve_mutation_batch_review",
+			"executionMs": 1
+		},
+		{
+			"name": "create_onto_task",
+			"executionMs": 1915
+		},
+		{
+			"name": "create_onto_task",
+			"executionMs": 1909
+		},
+		{
+			"name": "create_onto_task",
+			"executionMs": 1453
+		},
+		{
+			"name": "create_onto_task",
+			"executionMs": 1545
+		},
+		{
+			"name": "create_onto_task",
+			"executionMs": 1422
+		},
+		{
+			"name": "approve_mutation_batch_review",
+			"executionMs": 1
+		},
+		{
+			"name": "link_onto_entities",
+			"executionMs": 5231
+		},
+		{
+			"name": "link_onto_entities",
+			"executionMs": 1766
+		},
+		{
+			"name": "link_onto_entities",
+			"executionMs": 1947
+		}
+	],
+	"summedToolExecutionMs": 17190,
+	"interpretation": "An 8.037s buffered acting pass on Parasail failed its progress watchdog and retried on Together. Two mutation-review stages passed; all five creates and three links persisted. Request sums are not a disjoint wall-clock decomposition; orchestration, queue, publication and gaps remain. Do not infer a provider ranking or safe write parallelism from one turn."
+}

@@ -118,6 +118,13 @@ export type StreamState = {
 	completionChars: number;
 	/** Actual output bytes, excluding SSE/tool-delta envelopes and repeated IDs. */
 	generatedBytes: number;
+	/**
+	 * Streamed reasoning bytes. Never surfaced: they only show the slow-stream
+	 * watch that a thinking model is still generating.
+	 */
+	reasoningBytes: number;
+	/** When the first reasoning, text, or tool-argument byte arrived. */
+	firstProgressAtMs: number | null;
 	toolCalls: Map<number, ObservedToolCall>;
 	toolCallsObservable: boolean;
 };

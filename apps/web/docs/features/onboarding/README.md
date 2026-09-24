@@ -201,7 +201,7 @@ From the spec (§5, §9):
 ### Direct Dependencies
 
 - **[Behavioral Profile Spec](/docs/specs/USER_BEHAVIORAL_PROFILE_SPEC.md)** — Companion spec for profile system
-- **[Onboarding Seed Spec](/docs/archive/specs/ONBOARDING_BEHAVIORAL_SEED_SPEC.md)** — V3 design spec
+- **[Onboarding Seed Spec](https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/specs/ONBOARDING_BEHAVIORAL_SEED_SPEC.md)** — V3 design spec
 - **[Ontology System](../ontology/README.md)** — Project structure created during brain dump
 - **[Brain Dump](../braindump-context/README.md)** — Brain dump processing system
 

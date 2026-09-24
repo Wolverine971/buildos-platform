@@ -1,0 +1,499 @@
+<!-- docs/founder/samos-offers-2026-09-18/offer-sheets.html -->
+<title>Samos Offer Sheets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+	rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+/>
+<style>
+	:root {
+		--bg: #e9ecea;
+		--paper: #ffffff;
+		--ink: #141a18;
+		--ink-2: #4b5652;
+		--ink-3: #75817c;
+		--rule: #d6dcd8;
+		--accent: #0f6b5c;
+		--accent-wash: #dcede8;
+		--warn: #b8700f;
+		--ui: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		--mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	}
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) {
+			--bg: #0f1413;
+			--paper: #1b2321;
+			--ink: #e8ece9;
+			--ink-2: #b0bab5;
+			--ink-3: #7f8b86;
+			--rule: #2c3733;
+			--accent: #5fc4ae;
+			--accent-wash: #173129;
+			--warn: #e6a650;
+		}
+	}
+	:root[data-theme='dark'] {
+		--bg: #0f1413;
+		--paper: #1b2321;
+		--ink: #e8ece9;
+		--ink-2: #b0bab5;
+		--ink-3: #7f8b86;
+		--rule: #2c3733;
+		--accent: #5fc4ae;
+		--accent-wash: #173129;
+		--warn: #e6a650;
+	}
+	* {
+		box-sizing: border-box;
+	}
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--ink);
+		font-family: var(--ui);
+		font-size: 15.5px;
+		line-height: 1.5;
+		-webkit-font-smoothing: antialiased;
+	}
+	.wrap {
+		max-width: 760px;
+		margin: 0 auto;
+		padding-inline: 16px;
+		padding-block: 24px 64px;
+		display: grid;
+		gap: 22px;
+	}
+	.intro {
+		font-size: 0.9rem;
+		color: var(--ink-3);
+		max-width: 64ch;
+		margin: 0;
+	}
+	.intro b {
+		color: var(--ink-2);
+	}
+	.sheet {
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: 6px;
+		padding: 34px 36px 28px;
+		display: grid;
+		gap: 18px;
+	}
+	.top {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 12px;
+		flex-wrap: wrap;
+		border-bottom: 2px solid var(--ink);
+		padding-bottom: 10px;
+	}
+	.brand {
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		font-size: 1.05rem;
+	}
+	.brand span {
+		color: var(--accent);
+	}
+	.kind {
+		font-family: var(--mono);
+		font-size: 0.66rem;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+	h1 {
+		font-size: clamp(1.7rem, 4.5vw, 2.3rem);
+		font-weight: 800;
+		letter-spacing: -0.025em;
+		line-height: 1.08;
+		margin: 0;
+		text-wrap: balance;
+	}
+	.lede {
+		margin: 0;
+		font-size: 1.05rem;
+		color: var(--ink-2);
+		max-width: 58ch;
+	}
+	.q {
+		background: var(--accent-wash);
+		border-left: 3px solid var(--accent);
+		border-radius: 4px;
+		padding: 12px 16px;
+		font-size: 1.02rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+	}
+	.q small {
+		display: block;
+		font-family: var(--mono);
+		font-size: 0.62rem;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--accent);
+		font-weight: 600;
+		margin-bottom: 4px;
+	}
+	.cols {
+		display: grid;
+		grid-template-columns: 1.3fr 1fr;
+		gap: 22px;
+	}
+	h2 {
+		font-family: var(--mono);
+		font-size: 0.66rem;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		margin: 0 0 6px;
+		font-weight: 600;
+	}
+	ul {
+		margin: 0;
+		padding-left: 18px;
+		display: grid;
+		gap: 5px;
+		font-size: 0.95rem;
+		color: var(--ink-2);
+	}
+	ul li b {
+		color: var(--ink);
+		font-weight: 700;
+	}
+	.terms {
+		display: grid;
+		gap: 10px;
+	}
+	.term {
+		border-top: 1px solid var(--rule);
+		padding-top: 8px;
+	}
+	.term b {
+		display: block;
+		font-family: var(--mono);
+		font-size: 1.05rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+	}
+	.term span {
+		font-size: 0.84rem;
+		color: var(--ink-3);
+	}
+	.works {
+		font-size: 0.84rem;
+		color: var(--ink-3);
+	}
+	.foot {
+		border-top: 1px solid var(--rule);
+		padding-top: 10px;
+		display: flex;
+		justify-content: space-between;
+		gap: 10px;
+		flex-wrap: wrap;
+		font-size: 0.84rem;
+		color: var(--ink-2);
+	}
+	.foot .fill {
+		color: var(--warn);
+		font-family: var(--mono);
+		font-size: 0.78rem;
+	}
+	.ladder {
+		display: grid;
+		gap: 6px;
+	}
+	.rung {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 10px;
+		align-items: baseline;
+		padding: 8px 0;
+		border-top: 1px solid var(--rule);
+		font-size: 0.95rem;
+	}
+	.rung:first-child {
+		border-top: 0;
+	}
+	.rung b {
+		font-weight: 700;
+	}
+	.rung span {
+		color: var(--ink-3);
+		font-size: 0.86rem;
+		display: block;
+	}
+	.rung .p {
+		font-family: var(--mono);
+		font-size: 0.9rem;
+		white-space: nowrap;
+	}
+	@media (max-width: 640px) {
+		.cols {
+			grid-template-columns: 1fr;
+		}
+		.sheet {
+			padding: 24px 20px;
+		}
+	}
+	@media print {
+		body {
+			background: #fff;
+			color: #111;
+		}
+		.wrap {
+			max-width: none;
+			padding: 0;
+			gap: 0;
+		}
+		.intro {
+			display: none;
+		}
+		.sheet {
+			border: 0;
+			border-radius: 0;
+			break-after: page;
+			padding: 0.4in 0.5in;
+			min-height: 10in;
+		}
+		.sheet:last-child {
+			break-after: auto;
+		}
+		a {
+			color: inherit;
+			text-decoration: none;
+		}
+	}
+</style>
+
+<div class="wrap">
+	<p class="intro">
+		<b>Three leave-behind sheets.</b> Print with your browser (Cmd+P), one page each. The
+		contact line at the bottom of each sheet is yours to fill in before printing.
+	</p>
+
+	<article class="sheet">
+		<div class="top">
+			<div class="brand">Sam<span>os</span></div>
+			<div class="kind">The front door · two weeks · fixed price</div>
+		</div>
+		<h1>Find the leak before you hire for it.</h1>
+		<p class="lede">
+			A paid two-week look at the one pipeline that costs you money: bids, quotes, or
+			inquiries. You get the numbers, the three leaks ranked, and a fix already running on
+			your live inbox before we talk about anything bigger.
+		</p>
+		<div class="q">
+			<small>We start with one question</small>How many came in last month, how many did you
+			answer, and how many did you win? Almost nobody can say. That gap is the leak.
+		</div>
+		<div class="cols">
+			<div>
+				<h2>What you get</h2>
+				<ul>
+					<li>
+						<b>The Leak Report.</b> One page: what came in over 90 days, what got
+						answered, what died silently, and the dollars sitting in each.
+					</li>
+					<li>
+						<b>The three leaks, ranked</b> by money, with what each would take to close.
+					</li>
+					<li>
+						<b>A working fix by day ten.</b> A scorer or follow-up sequence running on
+						your real inbox so you see it before you pay for a build.
+					</li>
+					<li>
+						<b>Packages priced for what you actually have going on.</b> Not a menu. Two
+						or three options, each with a number.
+					</li>
+				</ul>
+				<h2 style="margin-top: 16px">What I need from you</h2>
+				<ul>
+					<li>Read-only access to the inbox or tool where the work lands.</li>
+					<li>Thirty minutes with the person it all runs through.</li>
+				</ul>
+			</div>
+			<div class="terms">
+				<div class="term">
+					<b>$2,500 to $3,500</b><span>fixed, credited toward any build</span>
+				</div>
+				<div class="term"><b>Two weeks</b><span>Leak Report on day fourteen</span></div>
+				<div class="term">
+					<b>What comes after</b
+					><span
+						>a fixed-price build ($5,000 to $25,000) or a monthly retainer ($2,000 to
+						$8,000), only if the report earns it</span
+					>
+				</div>
+				<h2 style="margin-top: 6px">The ladder</h2>
+				<div class="ladder">
+					<div class="rung">
+						<div>
+							<b>Friction call</b
+							><span>Twenty minutes. One leak named out loud.</span>
+						</div>
+						<div class="p">free</div>
+					</div>
+					<div class="rung">
+						<div><b>The Diagnosis</b><span>This sheet.</span></div>
+						<div class="p">$2.5–3.5k</div>
+					</div>
+					<div class="rung">
+						<div><b>Build</b><span>Fixed scope, fixed price.</span></div>
+						<div class="p">$5–25k</div>
+					</div>
+					<div class="rung">
+						<div><b>Run it</b><span>Tuned monthly, kept shipping.</span></div>
+						<div class="p">$2–8k/mo</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="foot">
+			<div>
+				DJ Wayne · Marine Corps veteran, 2012–2017 · nine years building software, including
+				the dispatch system at a venture-backed delivery company that routed jobs to seven
+				outside networks automatically · Glen Burnie, MD
+			</div>
+			<div class="fill">[phone] · [email]</div>
+		</div>
+	</article>
+
+	<article class="sheet">
+		<div class="top">
+			<div class="brand">Sam<span>os</span></div>
+			<div class="kind">Bid Desk · for commercial subcontractors</div>
+		</div>
+		<h1>Every invitation to bid, scored before your estimator opens it.</h1>
+		<p class="lede">
+			General contractors send invitations through five different doors. Subs that track them
+			in email or a spreadsheet miss some every year and can't say which GCs they actually win
+			with. Bid Desk reads every invite, scores it against your rules, and hands your
+			estimator a ranked list each morning.
+		</p>
+		<div class="q">
+			<small>The question</small>How many invitations to bid did you get last month, and how
+			many did you answer?
+		</div>
+		<div class="cols">
+			<div>
+				<h2>What it does every morning</h2>
+				<ul>
+					<li>
+						<b>Reads every invite</b> from BuildingConnected, Procore, PlanHub,
+						ConstructConnect, and plain email, and pulls out the GC, scope, location,
+						due date, size, and plans.
+					</li>
+					<li>
+						<b>Scores it against your rules:</b> trade fit, your history with that GC,
+						distance, size band, and how loaded the schedule already is.
+					</li>
+					<li>
+						<b>Sends the digest:</b> "14 new: 4 bid, 7 pass, 3 for you to look at," with
+						the reason on each.
+					</li>
+					<li>
+						<b>Sends the courtesy no-bid reply</b> so a pass never costs you the
+						relationship.
+					</li>
+					<li>
+						<b>Puts due dates on the calendar</b> and catches duplicates across
+						platforms.
+					</li>
+					<li>
+						<b>Tracks outcomes</b> into a hit-rate-by-GC report, so you bid where you
+						win.
+					</li>
+				</ul>
+			</div>
+			<div class="terms">
+				<div class="term">
+					<b>$5,000 to $15,000</b><span>build, fixed price, Diagnosis fee credited</span>
+				</div>
+				<div class="term">
+					<b>$500 to $1,500 a month</b
+					><span>to run it, tune the rules, and keep the report current</span>
+				</div>
+				<div class="term">
+					<b>Three weeks</b><span>from signed scope to the first digest</span>
+				</div>
+				<h2 style="margin-top: 6px">Hiring an estimator?</h2>
+				<p class="works" style="margin: 0">
+					Before you pay for the role, let's see how much of it is triage. The Diagnosis
+					answers that in two weeks.
+				</p>
+				<h2 style="margin-top: 12px">Works with</h2>
+				<p class="works" style="margin: 0">
+					Gmail and Outlook, BuildingConnected, Procore, PlanHub, ConstructConnect, Google
+					Sheets, Airtable, Slack or Teams.
+				</p>
+			</div>
+		</div>
+		<div class="foot">
+			<div>Samos · DJ Wayne · Glen Burnie, MD</div>
+			<div class="fill">[phone] · [email]</div>
+		</div>
+	</article>
+
+	<article class="sheet">
+		<div class="top">
+			<div class="brand">Sam<span>os</span></div>
+			<div class="kind">
+				Quiet Quote Recovery · for remodelers, roofers, and home services
+			</div>
+		</div>
+		<h1>The money is in the quotes that went quiet.</h1>
+		<p class="lede">
+			Roughly four in ten estimates never get a follow-up. Not because anyone decided to let
+			them go, but because the next job started. Quiet Quote Recovery watches every open
+			estimate and puts a follow-up in your voice in front of you the moment one goes quiet.
+		</p>
+		<div class="q">
+			<small>The question</small>How many quotes did you send last month, and how many did you
+			never hear back on?
+		</div>
+		<div class="cols">
+			<div>
+				<h2>How it runs</h2>
+				<ul>
+					<li>
+						<b>Three days of silence</b> on any estimate and it drafts the follow-up, by
+						text or email, in your words.
+					</li>
+					<li><b>You tap approve.</b> Once you trust it, it sends on its own.</li>
+					<li><b>Day 3, 7, 14, 30.</b> A sequence that stops the moment they reply.</li>
+					<li><b>Replies land in one place,</b> hot ones flagged.</li>
+					<li>
+						<b>A monthly number:</b> how much came back from quotes that had gone quiet.
+					</li>
+				</ul>
+				<h2 style="margin-top: 16px">What the Diagnosis shows first</h2>
+				<ul>
+					<li>Quotes sent, followed up, and closed over 90 days.</li>
+					<li>The dollar figure sitting in open estimates right now.</li>
+				</ul>
+			</div>
+			<div class="terms">
+				<div class="term">
+					<b>$1,500</b><span>one-day setup on your existing tools</span>
+				</div>
+				<div class="term"><b>$300 to $800 a month</b><span>to run it and report</span></div>
+				<div class="term">
+					<b>One week</b><span>from booking to the first follow-up going out</span>
+				</div>
+				<h2 style="margin-top: 6px">Works with</h2>
+				<p class="works" style="margin: 0">
+					Jobber, Housecall Pro, JobNimbus, Buildertrend, QuickBooks estimates, or PDFs
+					sent from email.
+				</p>
+			</div>
+		</div>
+		<div class="foot">
+			<div>Samos · DJ Wayne · Glen Burnie, MD</div>
+			<div class="fill">[phone] · [email]</div>
+		</div>
+	</article>
+</div>

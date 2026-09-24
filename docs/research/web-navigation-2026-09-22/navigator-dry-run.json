@@ -1,0 +1,17 @@
+{
+	"http_requests": 2,
+	"rows": [
+		{
+			"id": "buildos-pricing",
+			"ok": true,
+			"text_chars": 3000,
+			"link_options": 17,
+			"links_disallowed_by_robots": 2,
+			"links_truncated": 0,
+			"target_one_click_away": ["Pricing → https://build-os.com/pricing"],
+			"choice_questions": 1,
+			"jev_request_chars": 6149,
+			"est_tokens": 1708
+		}
+	]
+}

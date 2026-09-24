@@ -1,0 +1,65 @@
+{
+	"version": "specialist_single_analyst_v1",
+	"createdAt": "2026-09-21T05:20:28.267Z",
+	"inputSha256": "b60cc6b582057a9189f57cae47887696488c430c3f185811dac535dd2f511922",
+	"note": "Synthetic sequential model-only probe. One analyst and editor per case, compiled assignment, same frozen v2 fixtures as the earlier two-specialist probe. Runs are not interleaved with that earlier comparison; timings are not a controlled difference. No production graph/recovery/dispatch accounting. No retries. Not independently human-scored.",
+	"spentUsd": 0,
+	"results": [
+		{
+			"fixture": "harbor-launch",
+			"arm": "single_analyst",
+			"question": "What is the most important saved blocker to opening this launch?",
+			"required": "Identify missing permit approval; do not treat the done room task as the blocker.",
+			"contextHash": "82d4ec1d6ffc3e836fd7ce1b37386ae2a0a3a2f2c1fa0aee0f7b802bdd14b265",
+			"calls": [],
+			"assignments": {
+				"analyst": "Identify the most useful next decision or action using saved goals, milestones, dependencies, risks and document commitments. Explain which prerequisite matters and what evidence would change the recommendation. Use an honest no-finding outcome when appropriate.",
+				"reviewer": "Independently stress-test the plan. Start with the saved risk register and dependency evidence; distinguish open risks from resolved issues. Identify consequential assumptions, contradictory commitments, early warning signals and proportionate mitigations. Missing evidence is not proof of failure."
+			},
+			"error": "fetch failed",
+			"durationMs": 30
+		},
+		{
+			"fixture": "sparse-project",
+			"arm": "single_analyst",
+			"question": "Does the saved evidence establish whether our launch is on track? State when evidence is insufficient.",
+			"required": "Explicit insufficient evidence; do not fabricate a finding about launch health.",
+			"contextHash": "6a96598487c3f5fc5ba2f11690a5602f8e6271bfffc08a7085124a15dc7140ac",
+			"calls": [],
+			"assignments": {
+				"analyst": "Identify the most useful next decision or action using saved goals, milestones, dependencies, risks and document commitments. Explain which prerequisite matters and what evidence would change the recommendation. Use an honest no-finding outcome when appropriate.",
+				"reviewer": "Independently stress-test the plan. Start with the saved risk register and dependency evidence; distinguish open risks from resolved issues. Identify consequential assumptions, contradictory commitments, early warning signals and proportionate mitigations. Missing evidence is not proof of failure."
+			},
+			"error": "fetch failed",
+			"durationMs": 1
+		},
+		{
+			"fixture": "birch-workshop",
+			"arm": "single_analyst",
+			"question": "Does the saved risk register contain an open catering risk? Review only the supplied register.",
+			"required": "The saved catering risk is mitigated; do not invent another open catering issue.",
+			"contextHash": "d752c80a22fb8a73d60df5c6fcad6cd0e621a4d9ac1f7bad67585afb6131d1dd",
+			"calls": [],
+			"assignments": {
+				"analyst": "Identify the most useful next decision or action using saved goals, milestones, dependencies, risks and document commitments. Explain which prerequisite matters and what evidence would change the recommendation. Use an honest no-finding outcome when appropriate.",
+				"reviewer": "Independently stress-test the plan. Start with the saved risk register and dependency evidence; distinguish open risks from resolved issues. Identify consequential assumptions, contradictory commitments, early warning signals and proportionate mitigations. Missing evidence is not proof of failure."
+			},
+			"error": "fetch failed",
+			"durationMs": 2
+		},
+		{
+			"fixture": "atlas-migration",
+			"arm": "single_analyst",
+			"question": "What do the saved migration plans say about the cutover date and permitted downtime?",
+			"required": "October 12, 2026; 30 minutes; acknowledge missing text under the old inventory-only recipe.",
+			"contextHash": "6d77a4163526e0a1952145a95da5a104527bf855592ff2ba429f370f4b4a9241",
+			"calls": [],
+			"assignments": {
+				"analyst": "Identify the most useful next decision or action using saved goals, milestones, dependencies, risks and document commitments. Explain which prerequisite matters and what evidence would change the recommendation. Use an honest no-finding outcome when appropriate.",
+				"reviewer": "Independently stress-test the plan. Start with the saved risk register and dependency evidence; distinguish open risks from resolved issues. Identify consequential assumptions, contradictory commitments, early warning signals and proportionate mitigations. Missing evidence is not proof of failure."
+			},
+			"error": "fetch failed",
+			"durationMs": 1
+		}
+	]
+}

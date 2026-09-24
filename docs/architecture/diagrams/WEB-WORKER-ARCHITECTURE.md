@@ -276,7 +276,7 @@ flowchart TD
 > **Updated 2026-04-17.** The original 100%-web-based SSE brain-dump flow described here was
 > deprecated (see `docs/architecture/decisions/2026-04-17-deprecate-brain-dump.md`). Brain dumps
 > now process through the worker via the `process_onto_braindump` job into the ontology pipeline.
-> The historical web-SSE flow diagram is preserved in `docs/archive/brain-dump/`.
+> The historical web-SSE flow diagram is in [git history](https://github.com/Wolverine971/buildos-platform/tree/f46e9090c774/docs/archive/brain-dump).
 
 ### Calendar Sync (Web + Worker)
 

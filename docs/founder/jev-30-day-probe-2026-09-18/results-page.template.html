@@ -1,0 +1,1279 @@
+<!-- docs/founder/jev-30-day-probe-2026-09-18/results-page.template.html -->
+<title>Probe Results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+	rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+	:root {
+		--bg: #f3f4ef;
+		--surface: #ffffff;
+		--surface-2: #e9ebe4;
+		--ink: #171b19;
+		--ink-2: #4a524d;
+		--ink-3: #6e7670;
+		--rule: #d8dcd4;
+		--rule-2: #bcc2b9;
+		--accent: #25507a;
+		--accent-ink: #ffffff;
+		--accent-wash: #e1e9f1;
+		--amber: #8f5a0e;
+		--amber-wash: #f4ead6;
+		--good: #2f6b45;
+		--good-wash: #dfede3;
+		--crit: #a3342a;
+		--crit-wash: #f5e0dd;
+		--display: 'Barlow Condensed', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+		--body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		--mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	}
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) {
+			--bg: #111413;
+			--surface: #181c1a;
+			--surface-2: #202522;
+			--ink: #e5e8e3;
+			--ink-2: #aeb6b0;
+			--ink-3: #838c86;
+			--rule: #2b312e;
+			--rule-2: #3c4440;
+			--accent: #86afd6;
+			--accent-ink: #0c1620;
+			--accent-wash: #1b2a38;
+			--amber: #e0aa55;
+			--amber-wash: #33291a;
+			--good: #74c08e;
+			--good-wash: #18301f;
+			--crit: #ee8a7f;
+			--crit-wash: #3a1e1b;
+		}
+	}
+	:root[data-theme='dark'] {
+		--bg: #111413;
+		--surface: #181c1a;
+		--surface-2: #202522;
+		--ink: #e5e8e3;
+		--ink-2: #aeb6b0;
+		--ink-3: #838c86;
+		--rule: #2b312e;
+		--rule-2: #3c4440;
+		--accent: #86afd6;
+		--accent-ink: #0c1620;
+		--accent-wash: #1b2a38;
+		--amber: #e0aa55;
+		--amber-wash: #33291a;
+		--good: #74c08e;
+		--good-wash: #18301f;
+		--crit: #ee8a7f;
+		--crit-wash: #3a1e1b;
+	}
+	* {
+		box-sizing: border-box;
+	}
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--ink);
+		font-family: var(--body);
+		font-size: 15.5px;
+		line-height: 1.55;
+		-webkit-font-smoothing: antialiased;
+	}
+	.wrap {
+		max-width: 1040px;
+		margin: 0 auto;
+		padding-inline: 20px;
+		padding-block: 0 96px;
+	}
+	:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+		border-radius: 2px;
+	}
+	button {
+		font: inherit;
+		cursor: pointer;
+	}
+	.mono {
+		font-family: var(--mono);
+		font-size: 0.86em;
+	}
+	.eyebrow {
+		font-family: var(--mono);
+		font-size: 0.7rem;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+	header.top {
+		padding-block: 44px 28px;
+		border-bottom: 2px solid var(--ink);
+		margin-bottom: 36px;
+	}
+	header.top h1 {
+		font-family: var(--display);
+		font-weight: 700;
+		font-size: clamp(2.6rem, 8vw, 4.2rem);
+		line-height: 0.95;
+		margin: 10px 0 14px;
+		text-transform: uppercase;
+	}
+	.standfirst {
+		font-size: 1.08rem;
+		color: var(--ink-2);
+		max-width: 66ch;
+		margin: 0;
+	}
+	.standfirst b {
+		color: var(--ink);
+	}
+	section {
+		margin-bottom: 56px;
+	}
+	h2 {
+		font-family: var(--display);
+		font-weight: 700;
+		font-size: 1.75rem;
+		text-transform: uppercase;
+		margin: 0 0 4px;
+		line-height: 1.05;
+	}
+	.sec-note {
+		color: var(--ink-2);
+		margin: 0 0 20px;
+		max-width: 70ch;
+		font-size: 0.95rem;
+	}
+
+	/* findings */
+	.finds {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.find {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 16px 18px;
+	}
+	.find .big {
+		font-family: var(--mono);
+		font-size: 1.6rem;
+		font-weight: 500;
+		line-height: 1.1;
+		font-variant-numeric: tabular-nums;
+	}
+	.find .big small {
+		font-size: 0.8rem;
+		color: var(--ink-3);
+		font-weight: 400;
+		margin-left: 4px;
+	}
+	.find h3 {
+		margin: 8px 0 6px;
+		font-size: 1rem;
+		font-weight: 600;
+		line-height: 1.35;
+	}
+	.find p {
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--ink-2);
+	}
+	.find.lead {
+		grid-column: 1 / -1;
+		border-left: 3px solid var(--accent);
+	}
+
+	/* trust */
+	.trust-verdict {
+		background: var(--amber-wash);
+		border-radius: 3px;
+		padding: 14px 18px;
+		margin-bottom: 16px;
+		font-size: 0.95rem;
+		max-width: 80ch;
+	}
+	.trust-verdict b {
+		font-weight: 600;
+	}
+	.tgrid {
+		display: grid;
+		grid-template-columns: 1.6fr 1fr;
+		gap: 12px;
+		align-items: start;
+	}
+	.panel {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 14px 16px;
+	}
+	.panel h3 {
+		margin: 0 0 10px;
+		font-size: 0.95rem;
+		font-weight: 600;
+	}
+	.chk {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 2px 12px;
+		padding: 9px 0;
+		border-top: 1px solid var(--rule);
+		font-size: 0.88rem;
+	}
+	.chk:first-of-type {
+		border-top: 0;
+		padding-top: 0;
+	}
+	.chk .what {
+		color: var(--ink);
+	}
+	.chk .got {
+		grid-column: 1 / -1;
+		color: var(--ink-3);
+		font-family: var(--mono);
+		font-size: 0.74rem;
+	}
+	.pill {
+		font-family: var(--mono);
+		font-size: 0.64rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		padding: 2px 7px;
+		border-radius: 2px;
+		white-space: nowrap;
+		align-self: start;
+	}
+	.pill.ok {
+		background: var(--good-wash);
+		color: var(--good);
+	}
+	.pill.miss {
+		background: var(--crit-wash);
+		color: var(--crit);
+	}
+	.pill.drift {
+		background: var(--amber-wash);
+		color: var(--amber);
+	}
+	.stat {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		padding: 8px 0;
+		border-top: 1px solid var(--rule);
+		font-size: 0.88rem;
+		color: var(--ink-2);
+	}
+	.stat:first-of-type {
+		border-top: 0;
+		padding-top: 0;
+	}
+	.stat b {
+		font-family: var(--mono);
+		font-weight: 500;
+		font-size: 1.05rem;
+		color: var(--ink);
+		min-width: 64px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* ranking */
+	.controls {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 16px 18px;
+		margin-bottom: 16px;
+	}
+	.presets {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 14px;
+		align-items: center;
+	}
+	.chip {
+		border: 1px solid var(--rule-2);
+		background: var(--surface);
+		color: var(--ink-2);
+		border-radius: 99px;
+		padding: 5px 11px;
+		font-size: 0.82rem;
+	}
+	.chip[aria-pressed='true'] {
+		background: var(--ink);
+		color: var(--bg);
+		border-color: var(--ink);
+	}
+	.sliders {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 8px 28px;
+	}
+	.sl {
+		display: grid;
+		grid-template-columns: 1fr 120px 34px;
+		gap: 10px;
+		align-items: center;
+		font-size: 0.86rem;
+	}
+	.sl label {
+		display: flex;
+		gap: 6px;
+		align-items: center;
+		color: var(--ink-2);
+	}
+	.sl input[type='range'] {
+		width: 100%;
+		accent-color: var(--accent);
+	}
+	.sl.bad input[type='range'] {
+		accent-color: var(--crit);
+	}
+	.sl output {
+		font-family: var(--mono);
+		font-size: 0.78rem;
+		text-align: right;
+		color: var(--ink);
+	}
+	.kind {
+		font-family: var(--mono);
+		font-size: 0.58rem;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+		padding: 1px 5px;
+		border-radius: 2px;
+	}
+	.kind.e {
+		background: var(--good-wash);
+		color: var(--good);
+	}
+	.kind.f {
+		background: var(--surface-2);
+		color: var(--ink-3);
+	}
+	.kind.b {
+		background: var(--crit-wash);
+		color: var(--crit);
+	}
+	.filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 12px;
+		align-items: center;
+	}
+	.legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 14px;
+		font-size: 0.74rem;
+		color: var(--ink-3);
+		margin-bottom: 8px;
+		font-family: var(--mono);
+	}
+	.legend span b {
+		color: var(--ink-2);
+		font-weight: 500;
+	}
+	.list {
+		border-top: 2px solid var(--ink);
+	}
+	.row {
+		display: grid;
+		grid-template-columns: 38px 1fr 250px 64px;
+		gap: 12px;
+		align-items: center;
+		padding: 9px 2px;
+		border-bottom: 1px solid var(--rule);
+	}
+	.rk {
+		font-family: var(--mono);
+		font-size: 0.9rem;
+		color: var(--ink-3);
+		font-variant-numeric: tabular-nums;
+	}
+	.rk .mv {
+		display: block;
+		font-size: 0.66rem;
+	}
+	.mv.up {
+		color: var(--good);
+	}
+	.mv.dn {
+		color: var(--crit);
+	}
+	.rt {
+		font-size: 0.92rem;
+	}
+	.rt .id {
+		font-family: var(--mono);
+		font-size: 0.74rem;
+		color: var(--ink-3);
+		margin-right: 6px;
+	}
+	.rt .cat {
+		font-size: 0.74rem;
+		color: var(--ink-3);
+		margin-left: 6px;
+	}
+	.heat {
+		display: grid;
+		grid-template-columns: repeat(10, 1fr);
+		gap: 2px;
+	}
+	.cell {
+		height: 22px;
+		border-radius: 2px;
+		font-family: var(--mono);
+		font-size: 0.6rem;
+		display: grid;
+		place-items: center;
+		color: var(--ink);
+	}
+	.score {
+		font-family: var(--mono);
+		font-size: 0.9rem;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+	.row.base {
+		background: var(--amber-wash);
+		border-bottom: 1px solid var(--amber);
+	}
+	.row.base .rt {
+		font-weight: 600;
+	}
+	.row.ctl .rt {
+		color: var(--ink-3);
+	}
+	.heat-head {
+		display: grid;
+		grid-template-columns: 38px 1fr 250px 64px;
+		gap: 12px;
+		padding: 6px 2px;
+		font-family: var(--mono);
+		font-size: 0.62rem;
+		color: var(--ink-3);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.heat-head .heat .cell {
+		height: auto;
+		background: none;
+		writing-mode: vertical-rl;
+		transform: rotate(180deg);
+		justify-content: start;
+		padding-block: 2px;
+		min-height: 64px;
+		color: var(--ink-3);
+		font-size: 0.6rem;
+	}
+
+	/* h2h + cats */
+	.two {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.bar {
+		display: grid;
+		grid-template-columns: 1fr 44px;
+		gap: 4px 10px;
+		font-size: 0.86rem;
+		padding: 6px 0;
+	}
+	.bar .lab .id {
+		font-family: var(--mono);
+		font-size: 0.72rem;
+		color: var(--ink-3);
+		margin-right: 5px;
+	}
+	.bar .val {
+		font-family: var(--mono);
+		font-size: 0.78rem;
+		text-align: right;
+	}
+	.bar .track {
+		grid-column: 1 / -1;
+		height: 6px;
+		background: var(--surface-2);
+		border-radius: 99px;
+		overflow: hidden;
+	}
+	.bar .fill {
+		height: 100%;
+		background: var(--accent);
+		border-radius: 99px;
+	}
+	.tbl-wrap {
+		overflow-x: auto;
+	}
+	table {
+		border-collapse: collapse;
+		width: 100%;
+		font-size: 0.88rem;
+		background: var(--surface);
+		border: 1px solid var(--rule);
+	}
+	th,
+	td {
+		padding: 8px 12px;
+		text-align: right;
+		border-bottom: 1px solid var(--rule);
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
+	}
+	th:first-child,
+	td:first-child {
+		text-align: left;
+	}
+	th {
+		font-family: var(--mono);
+		font-size: 0.66rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		font-weight: 500;
+	}
+	td.mono {
+		font-family: var(--mono);
+	}
+	.foot {
+		font-size: 0.82rem;
+		color: var(--ink-3);
+		border-top: 1px solid var(--rule);
+		padding-top: 16px;
+	}
+	.foot p {
+		margin: 0 0 6px;
+	}
+
+	@media (max-width: 760px) {
+		.finds,
+		.tgrid,
+		.two,
+		.sliders {
+			grid-template-columns: 1fr;
+		}
+		.row {
+			grid-template-columns: 32px 1fr 56px;
+		}
+		.row .heat {
+			grid-column: 2 / -1;
+			grid-row: 2;
+		}
+		.heat-head {
+			display: none;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		* {
+			transition: none !important;
+		}
+	}
+</style>
+
+<div class="wrap">
+	<header class="top">
+		<div class="eyebrow" id="eyebrow"></div>
+		<h1>Probe Results</h1>
+		<p class="standfirst">
+			Jev's clearest message: <b>the salary track beats everything else on your list</b>, and
+			a $125-an-hour AI contract is the fastest money. On the millionaire question itself, it
+			barely separates anything. Every real option lands between 11% and 37%, and "change
+			nothing" sits at 19%.
+		</p>
+	</header>
+
+	<section>
+		<h2>What Jev is saying</h2>
+		<p class="sec-note">
+			Averages over three runs. Every number is Jev's answer to one question, asked on its
+			own, with your full profile in front of it.
+		</p>
+		<div class="finds">
+			<div class="find lead">
+				<div class="big">9 of 9<small>top spots go to career moves</small></div>
+				<h3>Salary and contract roles win on every money question</h3>
+				<p>
+					Career moves average <b>0.41</b> for $10k in hand within 90 days, against 0.27
+					for AI operator services and 0.19 for BuildOS. They also average 0.70 for
+					recurring income. The top of the $1M list is the same set: a $170k remote role
+					(0.37), 40 FDE applications (0.36), and a cleared federal AI role (0.33).
+				</p>
+			</div>
+			<div class="find">
+				<div class="big">54%<small>head-to-head pick for fastest $10k</small></div>
+				<h3>The 1099 AI-agent contract is the strongest single signal</h3>
+				<p>
+					When all 100 actions were put in front of Jev together, it chose the $125/hr
+					contract (a07) five times as often as the runner-up. Scored on its own, it has
+					the best odds of $1k in 30 days (0.57) and of $10k in 90 (0.62).
+				</p>
+			</div>
+			<div class="find">
+				<div class="big">0.35<small>average follow-through</small></div>
+				<h3>"Will you actually do it" is your lowest score everywhere</h3>
+				<p>
+					No action clears 0.52. Jev read the profile line about preparing outreach
+					without sending it, and marked down every action that depends on outreach. The
+					highest follow-through scores went to contained, concrete work: annotation gigs,
+					a frontier-lab application, pitching the recon trainer you know, and a free
+					pilot.
+				</p>
+			</div>
+			<div class="find">
+				<div class="big">b10<small>top-ranked operator move</small></div>
+				<h3>The operator pivot lands mid-pack, and warm beats cold</h3>
+				<p>
+					The best operator moves are the warm ones: pitching veteran-owned businesses as
+					a fellow veteran (b10), walking into local subcontractor offices (b02), and
+					church networks (b17). The $3,500 Bid Desk as a cold sale (b01) scores 0.34 on
+					follow-through and 0.20 on recurring income.
+				</p>
+			</div>
+			<div class="find">
+				<div class="big">0.80–0.94<small>"missing a prerequisite"</small></div>
+				<h3>The bottom is the big swings you're not set up for yet</h3>
+				<p>
+					Last places: the $3,500 TEDCO sponsorship, raising a pre-seed round, buying a
+					SaaS or a local business, and a DoD SBIR bid. Jev flags each as needing capital,
+					traction or credentials the profile doesn't show.
+				</p>
+			</div>
+		</div>
+	</section>
+
+	<section>
+		<h2>Can you trust it?</h2>
+		<p class="sec-note">
+			The controls were built in for this question. Anchors have obvious answers. Twins are
+			the same action worded differently. Every action ran three times.
+		</p>
+		<div class="trust-verdict">
+			<b>Consistent, sensible on the extremes, weak in the middle.</b> Jev is very repeatable,
+			with a typical run-to-run wobble of 0.04, and it flags gambling correctly. But it gives
+			"sell your gear" 0.17 on the millionaire question, about the same as doing nothing
+			(0.19) and not far below most operator moves (0.21–0.26).
+			<b>Read the $1M column as rough tiers, not odds.</b> The money, recurring and evidence
+			columns carry far more signal. Consistency also isn't accuracy: the same answer three
+			times can still be wrong three times.
+		</div>
+		<div class="tgrid">
+			<div class="panel">
+				<h3>Anchors</h3>
+				<div id="anchors"></div>
+			</div>
+			<div>
+				<div class="panel" style="margin-bottom: 12px">
+					<h3>Twins</h3>
+					<div id="twins"></div>
+				</div>
+				<div class="panel">
+					<h3>Stability</h3>
+					<div id="stability"></div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section>
+		<h2>Rank it your way</h2>
+		<p class="sec-note">
+			Change what matters to you and the list re-sorts instantly, with no new calls to Jev.
+			Red sliders subtract. The amber row is "change nothing": anything below it, Jev scores
+			as no better than your current routine.
+		</p>
+		<div class="controls">
+			<div class="presets" id="presets"></div>
+			<div class="sliders" id="sliders"></div>
+		</div>
+		<div class="filters" id="filters"></div>
+		<div class="legend" id="legend"></div>
+		<div class="heat-head" id="heat-head"></div>
+		<div class="list" id="list"></div>
+	</section>
+
+	<section>
+		<h2>Head-to-head picks</h2>
+		<p class="sec-note">
+			Here Jev saw every action at once and had to choose one. One contradiction: for the $1M
+			goal it gave "raise a pre-seed round" about 23% across its two wordings, yet scored that
+			action near the bottom when judging it alone. Asked to choose, Jev favors big swings.
+			Asked about one action at a time, it penalizes anything you can't finish.
+		</p>
+		<div class="two" id="h2h"></div>
+	</section>
+
+	<section>
+		<h2>By category</h2>
+		<div class="tbl-wrap"><table id="cats"></table></div>
+	</section>
+
+	<div class="foot" id="foot"></div>
+</div>
+
+<script>
+	(function () {
+		'use strict';
+		var D = __RESULTS_JSON__;
+		var Q = D.questions;
+		var ABBR = {
+			finishable_30d: 'Finish',
+			follow_through: 'Do it',
+			cash_1k_30d: '$1k/30d',
+			cash_10k_90d: '$10k/90d',
+			recurring_income: 'Recur',
+			millionaire_path: '$1M',
+			unfair_edge: 'Edge',
+			track_record: 'Done before',
+			missing_prereq: 'Missing',
+			downside_risk: 'Risk'
+		};
+		var PRESETS = {
+			balanced: {
+				label: 'Balanced (default)',
+				w: {
+					millionaire_path: 3,
+					cash_10k_90d: 1.5,
+					recurring_income: 1,
+					finishable_30d: 1,
+					follow_through: 1,
+					unfair_edge: 1,
+					track_record: 0.5,
+					cash_1k_30d: 1,
+					missing_prereq: 1,
+					downside_risk: 1.5
+				}
+			},
+			million: { label: 'Only the $1M question', w: { millionaire_path: 5 } },
+			quarter: {
+				label: 'Money this quarter',
+				w: {
+					cash_1k_30d: 3,
+					cash_10k_90d: 4,
+					finishable_30d: 2,
+					follow_through: 2,
+					downside_risk: 2
+				}
+			},
+			evidence: {
+				label: 'What Jev is built for',
+				w: { unfair_edge: 3, track_record: 3, missing_prereq: 3 }
+			},
+			doable: {
+				label: "Stuff you'll actually do",
+				w: { follow_through: 4, finishable_30d: 2, cash_10k_90d: 2, missing_prereq: 2 }
+			}
+		};
+		var W = {},
+			preset = 'balanced',
+			cat = 'all',
+			showCtl = false;
+		var CATS = {};
+		D.categories.forEach(function (c) {
+			CATS[c.id] = c.label;
+		});
+		var ROWS = {};
+		D.rows.forEach(function (r) {
+			ROWS[r.id] = r;
+		});
+
+		function $(id) {
+			return document.getElementById(id);
+		}
+		function el(tag, cls, text) {
+			var n = document.createElement(tag);
+			if (cls) n.className = cls;
+			if (text != null) n.textContent = text;
+			return n;
+		}
+		function applyPreset(k) {
+			preset = k;
+			W = {};
+			Q.forEach(function (q) {
+				W[q.id] = PRESETS[k].w[q.id] || 0;
+			});
+		}
+		function score(r, w) {
+			var t = 0,
+				s = 0;
+			Q.forEach(function (q) {
+				var x = w[q.id] || 0;
+				if (!x) return;
+				s += x;
+				t += x * (q.bad ? -r.v[q.id] : r.v[q.id]);
+			});
+			return s ? t / s : 0;
+		}
+		function ranked(w) {
+			return D.rows.slice().sort(function (a, b) {
+				return score(b, w) - score(a, w);
+			});
+		}
+
+		// header + foot
+		var M = D.meta;
+		$('eyebrow').textContent =
+			M.model +
+			' · ' +
+			M.requests +
+			' requests · $' +
+			M.spent.toFixed(3) +
+			' · ' +
+			M.failed +
+			' failed · median ' +
+			M.p50 +
+			's';
+		var foot = $('foot');
+		[
+			[
+				'Settings used: ',
+				M.goal +
+					' by ' +
+					M.deadline +
+					'; ' +
+					M.settings.hours_per_week +
+					' hours a week; $' +
+					M.settings.risk_capital_usd +
+					' at risk.'
+			],
+			[
+				'Source: ',
+				'docs/founder/jev-30-day-probe-2026-09-18/out/' +
+					M.source +
+					' (raw requests and responses included).'
+			],
+			[
+				'Re-run: ',
+				'edit the review page, then python3 run_probe.py --review <export> --live, then python3 build_results.py.'
+			]
+		].forEach(function (p) {
+			var n = el('p');
+			n.appendChild(el('b', null, p[0]));
+			n.appendChild(document.createTextNode(p[1]));
+			foot.appendChild(n);
+		});
+
+		// trust
+		var an = $('anchors');
+		D.anchors.forEach(function (a) {
+			var r = ROWS[a[0]],
+				ok = a[1].every(function (c) {
+					return c.ok;
+				}),
+				some = a[1].some(function (c) {
+					return c.ok;
+				});
+			var d = el('div', 'chk');
+			d.appendChild(el('div', 'what', r.text));
+			d.appendChild(
+				el(
+					'span',
+					'pill ' + (ok ? 'ok' : some ? 'drift' : 'miss'),
+					ok ? 'Pass' : some ? 'Partial' : 'Miss'
+				)
+			);
+			d.appendChild(
+				el(
+					'div',
+					'got',
+					a[1]
+						.map(function (c) {
+							return (
+								ABBR[c.q] +
+								' ' +
+								c.v.toFixed(2) +
+								' (want ' +
+								c.op +
+								' ' +
+								c.x +
+								')' +
+								(c.ok ? ' ✓' : ' ✗')
+							);
+						})
+						.join(' · ')
+				)
+			);
+			an.appendChild(d);
+		});
+		var tw = $('twins');
+		D.twins.forEach(function (t) {
+			var d = el('div', 'chk');
+			d.appendChild(el('div', 'what', t.id + ' vs ' + t.of));
+			d.appendChild(
+				el(
+					'span',
+					'pill ' + (t.gap <= 0.1 ? 'ok' : 'drift'),
+					t.gap <= 0.1 ? 'Match' : 'Drift'
+				)
+			);
+			d.appendChild(
+				el(
+					'div',
+					'got',
+					'Largest gap ' +
+						t.gap.toFixed(2) +
+						' on ' +
+						ABBR[t.q] +
+						' (' +
+						t.a.toFixed(2) +
+						' vs ' +
+						t.b.toFixed(2) +
+						')'
+				)
+			);
+			tw.appendChild(d);
+		});
+		var real = D.rows.filter(function (r) {
+			return !r.control;
+		});
+		var sq = ROWS.x05.v.millionaire_path;
+		var st = $('stability');
+		[
+			[D.median_spread.toFixed(2), 'typical largest run-to-run wobble per action'],
+			[
+				real.filter(function (r) {
+					return r.v.millionaire_path < sq;
+				}).length +
+					' / ' +
+					real.length,
+				'real actions score below "change nothing" on the $1M question'
+			],
+			[
+				Math.min
+					.apply(
+						null,
+						real.map(function (r) {
+							return r.v.millionaire_path;
+						})
+					)
+					.toFixed(2) +
+					'–' +
+					Math.max
+						.apply(
+							null,
+							real.map(function (r) {
+								return r.v.millionaire_path;
+							})
+						)
+						.toFixed(2),
+				'full range of $1M answers across real actions'
+			]
+		].forEach(function (s) {
+			var d = el('div', 'stat');
+			d.appendChild(el('b', null, s[0]));
+			d.appendChild(el('span', null, s[1]));
+			st.appendChild(d);
+		});
+
+		// controls
+		function renderPresets() {
+			var h = $('presets');
+			h.textContent = '';
+			Object.keys(PRESETS).forEach(function (k) {
+				var b = el('button', 'chip', PRESETS[k].label);
+				b.type = 'button';
+				b.setAttribute('aria-pressed', preset === k ? 'true' : 'false');
+				b.addEventListener('click', function () {
+					applyPreset(k);
+					save();
+					renderPresets();
+					renderSliders();
+					renderList();
+				});
+				h.appendChild(b);
+			});
+		}
+		function renderSliders() {
+			var h = $('sliders');
+			h.textContent = '';
+			Q.forEach(function (q) {
+				var row = el('div', 'sl' + (q.bad ? ' bad' : ''));
+				var lab = el('label');
+				lab.htmlFor = 'w-' + q.id;
+				lab.appendChild(document.createTextNode(q.label));
+				lab.appendChild(
+					el(
+						'span',
+						'kind ' + (q.bad ? 'b' : q.kind === 'evidence' ? 'e' : 'f'),
+						q.bad ? 'subtracts' : q.kind
+					)
+				);
+				var inp = document.createElement('input');
+				inp.type = 'range';
+				inp.min = '0';
+				inp.max = '5';
+				inp.step = '0.5';
+				inp.id = 'w-' + q.id;
+				inp.value = W[q.id];
+				var out = el('output', null, String(W[q.id]));
+				out.htmlFor = inp.id;
+				inp.addEventListener('input', function () {
+					W[q.id] = Number(inp.value);
+					out.textContent = inp.value;
+					preset = 'custom';
+					renderPresets();
+					renderList();
+					save();
+				});
+				row.appendChild(lab);
+				row.appendChild(inp);
+				row.appendChild(out);
+				h.appendChild(row);
+			});
+		}
+		function renderFilters() {
+			var h = $('filters');
+			h.textContent = '';
+			[['all', 'All categories']]
+				.concat(
+					D.categories
+						.filter(function (c) {
+							return c.id !== 'controls';
+						})
+						.map(function (c) {
+							return [c.id, c.label];
+						})
+				)
+				.forEach(function (c) {
+					var b = el('button', 'chip', c[1]);
+					b.type = 'button';
+					b.setAttribute('aria-pressed', cat === c[0] ? 'true' : 'false');
+					b.addEventListener('click', function () {
+						cat = c[0];
+						renderFilters();
+						renderList();
+					});
+					h.appendChild(b);
+				});
+			var t = el('button', 'chip', showCtl ? 'Hide controls' : 'Show anchors & twins');
+			t.type = 'button';
+			t.setAttribute('aria-pressed', showCtl ? 'true' : 'false');
+			t.addEventListener('click', function () {
+				showCtl = !showCtl;
+				renderFilters();
+				renderList();
+			});
+			h.appendChild(t);
+		}
+		function cellColor(q, v) {
+			var pct = Math.round(8 + v * 72);
+			return (
+				'color-mix(in srgb, ' +
+				(q.bad ? 'var(--crit)' : 'var(--accent)') +
+				' ' +
+				pct +
+				'%, var(--surface))'
+			);
+		}
+		function renderHead() {
+			var h = $('heat-head');
+			h.textContent = '';
+			h.appendChild(el('span', null, '#'));
+			h.appendChild(el('span', null, 'Action'));
+			var heat = el('div', 'heat');
+			Q.forEach(function (q) {
+				heat.appendChild(el('div', 'cell', ABBR[q.id]));
+			});
+			h.appendChild(heat);
+			h.appendChild(el('span', null, 'Score'));
+			$('legend').textContent = '';
+			var lg = $('legend');
+			var a = el('span');
+			a.appendChild(el('b', null, 'Blue'));
+			a.appendChild(document.createTextNode(' darker = more likely'));
+			lg.appendChild(a);
+			var b = el('span');
+			b.appendChild(el('b', null, 'Red'));
+			b.appendChild(document.createTextNode(' darker = worse (missing prerequisite, risk)'));
+			lg.appendChild(b);
+			var c = el('span');
+			c.appendChild(el('b', null, '↑↓'));
+			c.appendChild(document.createTextNode(' places moved vs. the default weights'));
+			lg.appendChild(c);
+		}
+		function renderList() {
+			var base = {};
+			ranked(PRESETS.balanced.w)
+				.filter(function (r) {
+					return !r.control || r.id === 'x05';
+				})
+				.forEach(function (r, i) {
+					base[r.id] = i + 1;
+				});
+			var list = ranked(W).filter(function (r) {
+				if (r.id === 'x05') return true;
+				if (r.control && !showCtl) return false;
+				return cat === 'all' || r.cat === cat || r.control;
+			});
+			var h = $('list');
+			h.textContent = '';
+			var n = 0;
+			list.forEach(function (r) {
+				var isBase = r.id === 'x05';
+				if (!r.control || isBase) n++;
+				var row = el('div', 'row' + (isBase ? ' base' : r.control ? ' ctl' : ''));
+				var rk = el('div', 'rk', r.control && !isBase ? '·' : String(n));
+				if (!r.control && preset !== 'balanced' && base[r.id]) {
+					var mv = base[r.id] - n;
+					if (mv)
+						rk.appendChild(
+							el(
+								'span',
+								'mv ' + (mv > 0 ? 'up' : 'dn'),
+								(mv > 0 ? '↑' : '↓') + Math.abs(mv)
+							)
+						);
+				}
+				row.appendChild(rk);
+				var t = el('div', 'rt');
+				t.appendChild(el('span', 'id', r.id));
+				t.appendChild(
+					document.createTextNode(
+						isBase ? 'Change nothing — your current routine' : r.text
+					)
+				);
+				t.appendChild(
+					el(
+						'span',
+						'cat',
+						isBase
+							? 'baseline'
+							: r.control
+								? r.control === 'twin'
+									? 'twin of ' + r.twin_of
+									: 'anchor'
+								: CATS[r.cat]
+					)
+				);
+				row.appendChild(t);
+				var heat = el('div', 'heat');
+				Q.forEach(function (q) {
+					var v = r.v[q.id];
+					var c = el('div', 'cell', v.toFixed(2).replace(/^0/, ''));
+					c.style.background = cellColor(q, v);
+					if (v > 0.62) c.style.color = 'var(--bg)';
+					c.title =
+						q.label +
+						': ' +
+						v.toFixed(2) +
+						' (wobble ' +
+						((r.s && r.s[q.id]) || 0).toFixed(2) +
+						')';
+					heat.appendChild(c);
+				});
+				row.appendChild(heat);
+				row.appendChild(el('div', 'score', (score(r, W) * 100).toFixed(1)));
+				h.appendChild(row);
+			});
+		}
+
+		// h2h
+		D.h2h.forEach(function (g) {
+			var p = el('div', 'panel');
+			p.appendChild(el('h3', null, g.label));
+			var max = g.top.length ? g.top[0][1] : 1;
+			g.top.forEach(function (o) {
+				var r = ROWS[o[0]] || { text: o[0] };
+				var b = el('div', 'bar');
+				var lab = el('div', 'lab');
+				lab.appendChild(el('span', 'id', o[0]));
+				lab.appendChild(
+					document.createTextNode(r.text.length > 84 ? r.text.slice(0, 82) + '…' : r.text)
+				);
+				b.appendChild(lab);
+				b.appendChild(el('div', 'val', Math.round(o[1] * 100) + '%'));
+				var tr = el('div', 'track');
+				var f = el('div', 'fill');
+				f.style.width = (o[1] / max) * 100 + '%';
+				tr.appendChild(f);
+				b.appendChild(tr);
+				p.appendChild(b);
+			});
+			$('h2h').appendChild(p);
+		});
+
+		// categories
+		(function () {
+			var t = $('cats');
+			var cols = [
+				'millionaire_path',
+				'cash_10k_90d',
+				'cash_1k_30d',
+				'recurring_income',
+				'follow_through',
+				'missing_prereq'
+			];
+			var hr = el('tr');
+			hr.appendChild(el('th', null, 'Category'));
+			hr.appendChild(el('th', null, 'Actions'));
+			cols.forEach(function (c) {
+				hr.appendChild(el('th', null, ABBR[c]));
+			});
+			var th = el('thead');
+			th.appendChild(hr);
+			t.appendChild(th);
+			var tb = el('tbody');
+			var groups = D.categories
+				.filter(function (c) {
+					return c.id !== 'controls';
+				})
+				.map(function (c) {
+					var rs = real.filter(function (r) {
+						return r.cat === c.id;
+					});
+					var avg = {};
+					cols.forEach(function (q) {
+						avg[q] =
+							rs.reduce(function (s, r) {
+								return s + r.v[q];
+							}, 0) / rs.length;
+					});
+					return { c: c, n: rs.length, avg: avg };
+				})
+				.sort(function (a, b) {
+					return b.avg.cash_10k_90d - a.avg.cash_10k_90d;
+				});
+			groups.forEach(function (g) {
+				var tr = el('tr');
+				tr.appendChild(el('td', null, g.c.label));
+				tr.appendChild(el('td', 'mono', String(g.n)));
+				cols.forEach(function (q) {
+					tr.appendChild(el('td', 'mono', g.avg[q].toFixed(2)));
+				});
+				tb.appendChild(tr);
+			});
+			t.appendChild(tb);
+		})();
+
+		// boot, with per-viewer weight memory
+		function save() {
+			try {
+				localStorage.setItem('probe-weights', JSON.stringify({ preset: preset, W: W }));
+			} catch (e) {}
+		}
+		applyPreset('balanced');
+		try {
+			var s = JSON.parse(localStorage.getItem('probe-weights') || 'null');
+			if (s && s.W) {
+				preset = s.preset || 'custom';
+				Q.forEach(function (q) {
+					if (typeof s.W[q.id] === 'number') W[q.id] = s.W[q.id];
+				});
+			}
+		} catch (e) {}
+		renderPresets();
+		renderSliders();
+		renderFilters();
+		renderHead();
+		renderList();
+	})();
+</script>

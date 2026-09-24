@@ -26,6 +26,13 @@ live verification, or a named exit gate is still pending.
 
 ## Current focus
 
+- **Gate failures from the tasker 100 run (2026-09-24):** the gate scored 48/52 but failed on two
+  turns. [101 — Case 2 latency](101-gate-case2-task-batch-latency.md): not a hang. Two review
+  rounds, because dependencies need a second batch, plus ~15 serial DB round trips per write put the
+  floor near 45 s against a 60 s limit, so one slow provider sample tips it over.
+  [102 — Case 13 dead turn](102-gate-case13-db-stall-permanent-failure.md): a 40 s gate-DB stall, a
+  prompt-snapshot RPC holding the turn row lock, and the executor classifying the retryable `57014`
+  as permanent. Both are ready for another agent; paid reruns need DJ's approval.
 - **Surgical document edits (2026-09-23):**
   [99 — Remove or replace a line without rewriting the doc](99-surgical-document-edits.md)
   shipped in 5014e3ef5 (p04 passed) and preview-before-review in 4ebe44389. The p05 replay and

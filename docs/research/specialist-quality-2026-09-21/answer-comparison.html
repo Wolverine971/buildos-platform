@@ -1,0 +1,894 @@
+<!-- docs/research/specialist-quality-2026-09-21/answer-comparison.html -->
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Specialist answer comparison</title>
+		<style>
+			:root {
+				color-scheme: light dark;
+				--bg: #f6f5f1;
+				--ink: #222522;
+				--muted: #5c635d;
+				--paper: #fff;
+				--line: #d8ddd5;
+				--accent: #236348;
+				--on-accent: #fff;
+				font:
+					16px/1.6 system-ui,
+					sans-serif;
+			}
+			@media (prefers-color-scheme: dark) {
+				:root {
+					--bg: #171b18;
+					--ink: #e9eee8;
+					--muted: #aab5ac;
+					--paper: #222823;
+					--line: #3e4940;
+					--accent: #9bd7b3;
+					--on-accent: #15251b;
+				}
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				background: var(--bg);
+				color: var(--ink);
+			}
+			main {
+				max-width: 1280px;
+				margin: auto;
+				padding: 40px 28px;
+			}
+			header {
+				max-width: 780px;
+			}
+			h1 {
+				font-size: clamp(26px, 4vw, 38px);
+				line-height: 1.15;
+				margin: 10px 0 16px;
+				letter-spacing: -0.035em;
+			}
+			h2 {
+				font-size: 22px;
+				line-height: 1.4;
+			}
+			h3 {
+				font-size: 18px;
+			}
+			p {
+				margin: 0.65em 0;
+			}
+			.eyebrow {
+				font-size: 12px;
+				letter-spacing: 0.12em;
+				font-weight: 700;
+				text-transform: uppercase;
+				color: var(--accent);
+			}
+			.muted {
+				color: var(--muted);
+			}
+			.controls {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				flex-wrap: wrap;
+				margin: 28px 0 20px;
+			}
+			select,
+			button {
+				font: inherit;
+				background: var(--paper);
+				color: var(--ink);
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				padding: 9px 13px;
+			}
+			button {
+				cursor: pointer;
+			}
+			button:hover,
+			button:focus-visible {
+				border-color: var(--accent);
+			}
+			button[aria-pressed='true'] {
+				background: var(--accent);
+				color: var(--on-accent);
+			}
+			select {
+				max-width: 100%;
+			}
+			.question {
+				border-top: 1px solid var(--line);
+				padding-top: 16px;
+			}
+			.answers {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 30px;
+				margin-top: 20px;
+			}
+			.answer {
+				min-width: 0;
+				background: var(--paper);
+				padding: 24px;
+				border-radius: 10px;
+			}
+			.answer-label {
+				font-weight: 750;
+				font-size: 22px;
+			}
+			.body {
+				font-size: 15px;
+				line-height: 1.65;
+			}
+			.body h2,
+			.body h3,
+			.body h4 {
+				font-size: 17px;
+				line-height: 1.4;
+				margin: 20px 0 8px;
+			}
+			.body ul {
+				padding-left: 23px;
+			}
+			.body code {
+				font-size: 0.9em;
+				overflow-wrap: anywhere;
+			}
+			.body p {
+				overflow-wrap: anywhere;
+			}
+			.receipt {
+				font-size: 13px;
+				color: var(--muted);
+				padding: 8px 0;
+				border-bottom: 1px solid var(--line);
+			}
+			.vote {
+				display: flex;
+				gap: 10px;
+				flex-wrap: wrap;
+				margin: 20px 0;
+			}
+			.sources {
+				margin: 22px 0;
+			}
+			summary {
+				cursor: pointer;
+				font-weight: 650;
+			}
+			pre {
+				white-space: pre-wrap;
+				overflow-wrap: anywhere;
+				font-size: 13px;
+				max-height: 450px;
+				overflow: auto;
+				background: var(--paper);
+				padding: 20px;
+				border-radius: 8px;
+			}
+			.criteria {
+				font-size: 14px;
+				max-width: 900px;
+			}
+			.status {
+				min-height: 26px;
+				color: var(--accent);
+			}
+			footer {
+				font-size: 13px;
+				margin-top: 30px;
+				color: var(--muted);
+			}
+			@media (max-width: 760px) {
+				main {
+					padding: 24px 16px;
+				}
+				.answers {
+					grid-template-columns: 1fr;
+					gap: 16px;
+				}
+				.answer {
+					padding: 20px;
+				}
+				.controls {
+					align-items: flex-start;
+					flex-direction: column;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<header>
+				<div class="eyebrow">BuildOS · Quality workbench prototype</div>
+				<h1>Which answer is more useful?</h1>
+				<p class="muted">
+					Compare two real outputs against the same frozen evidence. Choose an answer
+					before revealing how it was produced.
+				</p>
+			</header>
+			<div class="controls">
+				<label for="fixture">Case</label
+				><select id="fixture"></select
+				><button id="reveal" type="button">Reveal variants</button
+				><button id="export" type="button">Export ratings</button>
+			</div>
+			<section class="question">
+				<h2 id="question"></h2>
+				<p class="criteria">
+					<strong>Look for:</strong> a direct answer, supported facts, useful uncertainty,
+					and a proportionate next step. Penalize invented concerns, database jargon and
+					unnecessary work.
+				</p>
+			</section>
+			<details class="sources">
+				<summary>Inspect the exact project evidence</summary>
+				<pre id="evidence"></pre>
+			</details>
+			<div class="vote" role="group" aria-label="Preferred answer">
+				<button type="button" data-vote="A" aria-pressed="false">Prefer A</button
+				><button type="button" data-vote="B" aria-pressed="false">Prefer B</button
+				><button type="button" data-vote="tie" aria-pressed="false">No preference</button
+				><button type="button" data-vote="neither" aria-pressed="false">
+					Neither is useful
+				</button>
+			</div>
+			<p class="status" id="status" role="status"></p>
+			<div class="answers">
+				<article class="answer">
+					<div class="answer-label">Answer A</div>
+					<div class="receipt" id="receipt-a" hidden></div>
+					<div class="body" id="answer-a"></div>
+				</article>
+				<article class="answer">
+					<div class="answer-label">Answer B</div>
+					<div class="receipt" id="receipt-b" hidden></div>
+					<div class="body" id="answer-b"></div>
+				</article>
+			</div>
+			<footer>
+				Exploratory synthetic cases written by an agent; one observation per variant. No
+				independent human calibration yet. Ratings stay in this browser unless you export
+				them. This comparison does not apply changes to any project.
+			</footer>
+		</main>
+		<script id="comparison-data" type="application/json">
+			[
+				{
+					"id": "harbor-launch",
+					"name": "Harbor Launch",
+					"question": "What is the most important saved blocker to opening this launch?",
+					"evidence": {
+						"version": "agentic_chat_project_review_payload_v2",
+						"projectId": "harbor-launch",
+						"timezone": "UTC",
+						"loadedAt": "2026-09-21T04:00:00Z",
+						"data": {
+							"project": {
+								"id": "harbor-launch",
+								"name": "harbor-launch",
+								"updated_at": "2026-09-21T04:00:00Z"
+							},
+							"start_here": null,
+							"goals": [],
+							"milestones": [],
+							"plans": [],
+							"tasks": [
+								{
+									"id": "task-room",
+									"title": "Confirm room",
+									"state_key": "done",
+									"updated_at": "2026-09-21T04:00:00Z"
+								}
+							],
+							"documents": [],
+							"events": [],
+							"context_meta": null,
+							"risks": [
+								{
+									"id": "risk-permit",
+									"title": "Permit approval outstanding",
+									"state_key": "open",
+									"impact": "high",
+									"content": "Opening depends on permit approval. The application is submitted; approval has not been received.",
+									"updated_at": "2026-09-21T04:00:00Z"
+								}
+							],
+							"relationships": [
+								{
+									"id": "edge-permit",
+									"src_id": "opening",
+									"rel": "depends_on",
+									"dst_id": "permit",
+									"created_at": "2026-09-21T04:00:00Z"
+								}
+							],
+							"activity": [],
+							"prior_suggestions": []
+						},
+						"coverage": {
+							"includedRecords": 4,
+							"omittedRecords": 0,
+							"truncatedStrings": 0,
+							"evidenceLimit": 256,
+							"families": {
+								"goals": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"milestones": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"plans": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"tasks": {
+									"status": "loaded",
+									"included": 1,
+									"total": 1,
+									"omitted": 0
+								},
+								"documents": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"events": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"risks": {
+									"status": "loaded",
+									"included": 1,
+									"total": 1,
+									"omitted": 0
+								},
+								"relationships": {
+									"status": "loaded",
+									"included": 1,
+									"total": 1,
+									"omitted": 0
+								},
+								"activity": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"prior_suggestions": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								}
+							}
+						}
+					},
+					"inputHash": "b60cc6b582057a9189f57cae47887696488c430c3f185811dac535dd2f511922",
+					"a": {
+						"variant": "compiled",
+						"label": "Compiled assignments",
+						"calls": 3,
+						"durationMs": 7259,
+						"costUsd": 0.00244812,
+						"acceptedReports": 2,
+						"answer": "## Most important saved blocker: Permit approval outstanding\n\nBoth accepted specialist reports converge on the same blocker, and the evidence supports it:\n\n- **Recorded fact \u2014 blocker:** \"Permit approval outstanding\" (risk-permit) is the only saved risk, and it is **open** with **high** impact. Its content states opening depends on permit approval; the application is submitted but approval has not been received.\n- **Recorded fact \u2014 dependency:** The relationship \"edge-permit\" records that **opening depends on the permit**, making the permit a prerequisite rather than a parallel workstream.\n- **Recorded fact \u2014 no competing blocker:** The only saved task is \"Confirm room\" (task-room), which is marked **done**. Goals, milestones, plans, documents, events, and activity are all empty, so no other saved item competes as a blocker.\n\n**Specialist outcome preserved:** project_analyst (findings) and risk_reviewer (findings) both identify the outstanding permit approval as the sole saved open high-impact blocker. Both describe it as recorded, not inferred. Review is complete \u2014 2/2 specialists completed, no partial coverage.\n\n**Interpretation (not a recorded fact):** Because opening is recorded as dependent on the permit and the permit is unapproved, the permit is the gating item for launch as currently saved.\n\n**Unknowns / missing evidence:**\n- No approval date, expected decision window, submission date, or owner is recorded for the permit.\n- No launch target date or milestone is saved, so the blocking margin cannot be assessed.\n- No documents, events, plans, or prior suggestions provide mitigation or contingency detail.\n\n**Smallest useful next check:** Confirm the current permit application status and an expected decision date with the permitting authority, then record that dated status against the \"Permit approval outstanding\" risk. This blocker clears if approval is confirmed; if a saved launch date later shows the permit timeline cannot meet it, that would shift the priority toward a contingency/alternate opening plan.\n\n*Proposals versus completed work:* the recommendations above are proposals from the specialists and this review, not recorded actions. Nothing in the saved evidence indicates the permit has been resolved."
+					},
+					"b": {
+						"variant": "model_planner",
+						"label": "Model planner",
+						"calls": 4,
+						"durationMs": 13408,
+						"costUsd": 0.0033749699999999997,
+						"acceptedReports": 1,
+						"answer": "## Answer\n\nIn the inspected evidence, the most important saved blocker to opening is **Permit approval outstanding (`risk-permit`)**.\n\n**Recorded facts**\n- `risk-permit` is **open** with **impact: high**, and its content states opening depends on permit approval \u2014 submitted, but approval not received.\n- Relationship **`edge-permit`** records that `opening` **depends_on** `permit`, so the outstanding approval gates opening.\n- It is the **only** risk record loaded (risks: 1 included, 0 omitted), so it is the sole saved blocker available to rank. The project analyst's `findings` report reaches the same conclusion and treats it as the top blocker.\n\n**Interpretation**\nIt is the top blocker in the inspected set primarily because it is open, high impact, and directly gates opening via `edge-permit` \u2014 not because it beat out other loaded blockers, since there are none.\n\n**Unknowns / what's missing**\n- No records define the `opening` or `permit` nodes referenced by `edge-permit`.\n- No dated submission/approval or event records show permit status beyond the risk text; documents, milestones, events, goals, plans, and activity are all empty.\n- Hazard: whether an unloaded or external blocker exists is **not shown**; coverage reports no omissions, so this is a statement about inspected evidence only.\n\n**Review is partial:** specialists completed **1 of 2**. The remaining specialist's review is absent, so this synthesis carries only the one accepted report plus supplied project evidence.\n\n**Smallest useful next check**\nConfirm the permit's approval status and owner (and any approval date) against the actual permit record or source \u2014 this is the single gap that would either clear or confirm the blocker. Equally cheap: confirm what the `permit` and `opening` nodes are, since neither currently exists as a loaded record."
+					}
+				},
+				{
+					"id": "sparse-project",
+					"name": "Sparse Project",
+					"question": "Does the saved evidence establish whether our launch is on track? State when evidence is insufficient.",
+					"evidence": {
+						"version": "agentic_chat_project_review_payload_v2",
+						"projectId": "sparse-project",
+						"timezone": "UTC",
+						"loadedAt": "2026-09-21T04:00:00Z",
+						"data": {
+							"project": {
+								"id": "sparse-project",
+								"name": "sparse-project",
+								"updated_at": "2026-09-21T04:00:00Z"
+							},
+							"start_here": null,
+							"goals": [],
+							"milestones": [],
+							"plans": [],
+							"tasks": [],
+							"documents": [],
+							"events": [],
+							"context_meta": null,
+							"risks": [],
+							"relationships": [],
+							"activity": [],
+							"prior_suggestions": []
+						},
+						"coverage": {
+							"includedRecords": 1,
+							"omittedRecords": 0,
+							"truncatedStrings": 0,
+							"evidenceLimit": 256,
+							"families": {
+								"goals": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"milestones": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"plans": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"tasks": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"documents": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"events": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"risks": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"relationships": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"activity": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"prior_suggestions": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								}
+							}
+						}
+					},
+					"inputHash": "b60cc6b582057a9189f57cae47887696488c430c3f185811dac535dd2f511922",
+					"a": {
+						"variant": "model_planner",
+						"label": "Model planner",
+						"calls": 4,
+						"durationMs": 7595,
+						"costUsd": 0.0024545369999999997,
+						"acceptedReports": 2,
+						"answer": "## Answer: No \u2014 the saved evidence does not establish whether the launch is on track.\n\n### Recorded facts\n- The only supplied record is the project shell **sparse-project** (updated 2026-09-21T04:00:00Z). `start_here` is null.\n- Every evidence family is **empty with zero omitted records**: goals, milestones, plans, tasks, documents, events, risks, relationships, activity, and prior suggestions. Coverage reports 1 included record out of a 256-record limit, no truncation, no omissions.\n- There are no specialist findings to weigh: both accepted reports returned outcome `insufficient_evidence` with empty findings and risks lists.\n\n### Assessments carried from accepted reports\n- **project_analyst** (v2): launch status cannot be established; do not treat the result as either on-track or off-track. Unknowns: no launch date, scope, or success criteria; no tasks/milestones/plans/events; no recorded risks.\n- **risk_reviewer** (v3): launch readiness cannot be assessed; no schedule, scope, or status baseline; no progress or completion signals. Notably, it is unknown whether this project has a launch at all.\n\n### Interpretation\nAbsence of evidence here reflects a **sparse dataset**, not confirmed absence of real project work \u2014 both specialists explicitly flag this. Empty families may mean records were never saved, or were unavailable to this review; the evidence does not distinguish between those cases.\n\n### Unknowns\n- Whether a launch target, scope, or success criteria exist anywhere.\n- Whether any work has actually been scheduled or completed.\n- Whether \"empty\" means genuinely no records or records not exposed to the review.\n\n### Smallest useful next check\nSave and re-run against at least a launch milestone (or goal with a target date) plus a handful of launch tasks and a recent status event. That single check converts an unknown status into an assessable baseline; until then, treat launch status as **unknown**, not on track."
+					},
+					"b": {
+						"variant": "compiled",
+						"label": "Compiled assignments",
+						"calls": 3,
+						"durationMs": 8359,
+						"costUsd": 0.0021300900000000003,
+						"acceptedReports": 2,
+						"answer": "## Answer\n\nNo. The saved evidence does **not** establish whether the launch is on track \u2014 and it equally does not establish that it is off track. Launch status is currently **unmeasurable** from the record set.\n\n## What the evidence shows (recorded facts)\n\n- The only populated item is the project record **sparse-project** (updated 2026-09-21T04:00:00Z). Its `start_here` pointer is null.\n- Every evidence family inspected is **empty**: goals, milestones, plans, tasks, documents, events, risks, relationships, activity, prior suggestions \u2014 0 included, 0 omitted in each (coverage metadata: 1 record included, 0 omitted, 0 truncated strings).\n- Both accepted specialists reached **`insufficient_evidence`**:\n  - **project_analyst report** \u2014 \"no saved record establishes launch status, goals, milestones, tasks, risks or commitments.\"\n  - **risk_reviewer report** \u2014 \"Launch status cannot be assessed\"; no launch date, milestone, plan, or task records exist, and no risk register or dependency data exists.\n\nSpecialist completion: 2/2 \u2014 this review is **complete**, not partial.\n\n## Interpretation\n\nThe empty coverage is a **gap in saved records**, not a negative or positive signal about launch health. As the risk_reviewer report states, absence of evidence must not be read as evidence the launch is on track. I cannot infer schedule position, blockers, or readiness from a project record alone.\n\n## Unknowns\n\n- Whether a launch target date, owner, or scope exists anywhere (nothing recorded).\n- Schedule progress (target date vs. actual) \u2014 no milestone or task data.\n- Blockers, dependencies, and warn signals \u2014 no risk register, relationship, or activity data.\n- Whether records exist elsewhere but were not loaded into this review.\n\n## Smallest useful next check\n\nLoad or link, for **sparse-project**, just four things, then re-review: the **launch goal with its target date**, the **due milestones**, the **open tasks with owners/statuses**, and the **active risks**. Any one populated family showing target date versus actual progress would be enough to move this from \"unmeasurable\" to a substantive on-track finding. Until then, do not make a launch-readiness call on this record set."
+					}
+				},
+				{
+					"id": "birch-workshop",
+					"name": "Birch Workshop",
+					"question": "Does the saved risk register contain an open catering risk? Review only the supplied register.",
+					"evidence": {
+						"version": "agentic_chat_project_review_payload_v2",
+						"projectId": "birch-workshop",
+						"timezone": "UTC",
+						"loadedAt": "2026-09-21T04:00:00Z",
+						"data": {
+							"project": {
+								"id": "birch-workshop",
+								"name": "birch-workshop",
+								"updated_at": "2026-09-21T04:00:00Z"
+							},
+							"start_here": null,
+							"goals": [],
+							"milestones": [],
+							"plans": [],
+							"tasks": [],
+							"documents": [],
+							"events": [],
+							"context_meta": null,
+							"risks": [
+								{
+									"id": "risk-catering",
+									"title": "Caterer unavailable",
+									"state_key": "mitigated",
+									"mitigated_at": "2026-09-21T04:00:00Z",
+									"updated_at": "2026-09-21T04:00:00Z",
+									"content": "An alternative caterer confirmed the booking."
+								}
+							],
+							"relationships": [],
+							"activity": [],
+							"prior_suggestions": []
+						},
+						"coverage": {
+							"includedRecords": 2,
+							"omittedRecords": 0,
+							"truncatedStrings": 0,
+							"evidenceLimit": 256,
+							"families": {
+								"goals": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"milestones": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"plans": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"tasks": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"documents": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"events": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"risks": {
+									"status": "loaded",
+									"included": 1,
+									"total": 1,
+									"omitted": 0
+								},
+								"relationships": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"activity": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"prior_suggestions": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								}
+							}
+						}
+					},
+					"inputHash": "b60cc6b582057a9189f57cae47887696488c430c3f185811dac535dd2f511922",
+					"a": {
+						"variant": "compiled",
+						"label": "Compiled assignments",
+						"calls": 3,
+						"durationMs": 4262,
+						"costUsd": 0.0015453480000000002,
+						"acceptedReports": 2,
+						"answer": "**Answer: No.** The supplied register contains no open catering risk.\n\n**Findings**\n- The register holds exactly one risk: **risk-catering (\"Caterer unavailable\")**, recorded with `state_key` = `mitigated` and a mitigation timestamp of 2026-09-21T04:00:00Z. Its recorded content states an alternative caterer confirmed the booking.\n- Risk coverage in the payload is complete: 1 of 1 risk records included, 0 omitted \u2014 so no catering risk is hidden by truncation or omission within this register.\n- Both accepted specialists (project_analyst, risk_reviewer) returned **no_material_findings** and reached the same conclusion: the catering risk is recorded as mitigated, not open. Neither raised a competing risk finding.\n\n**Interpretation**\nOn the face of the register, risk-catering is closed/mitigated. This is a statement about the recorded state only, not an independent verification that the mitigation is still valid.\n\n**Unknowns / limits**\n- The register records only the mitigation outcome. The underlying evidence that the alternative caterer actually confirmed the booking is not supplied, so the mitigation's real-world reliability cannot be assessed from this register alone.\n- Other record families (goals, milestones, plans, tasks, documents, events, relationships, activity) are all empty, so there is nothing in the supplied evidence to corroborate or contradict the risk's status.\n\n**Smallest useful next check**\nIf catering exposure needs re-confirmation, verify the alternative caterer's booking against records outside this register \u2014 that evidence was not provided here."
+					},
+					"b": {
+						"variant": "model_planner",
+						"label": "Model planner",
+						"calls": 4,
+						"durationMs": 14139,
+						"costUsd": 0.005541072,
+						"acceptedReports": 2,
+						"answer": "**Finding:** No. In the supplied saved risk register for **birch-workshop**, there is **no open catering risk recorded**.\n\n**Recorded facts from the supplied register**\n- Risk coverage is loaded: **1 included, 1 total, 0 omitted**.\n- The only supplied risk is **\u201cCaterer unavailable\u201d (risk-catering)**.\n- Its recorded state is `state_key: mitigated`.\n- It has `mitigated_at: 2026-09-21T04:00:00Z` and `updated_at: 2026-09-21T04:00:00Z`.\n- Its content states: **\u201cAn alternative caterer confirmed the booking.\u201d**\n\n**Accepted specialist outcomes**\n- **project_analyst** (`findings`): concluded **\u201cCaterer unavailable\u201d (risk-catering)** is recorded as mitigated, not open.\n- **risk_reviewer** (`findings`): also found no open catering risk recorded, but flagged that the register does not define whether `mitigated` is terminal or closed.\n\n**Interpretation and uncertainty**\nBased only on the supplied register, the catering risk is **recorded as mitigated**, not open. However, because no `state_key` definitions or risk workflow schema are supplied, `mitigated` cannot be independently confirmed as a closed state from the label alone. The other record families \u2014 activity, events, relationships \u2014 are empty in the supplied payload, so there is no reopening evidence to inspect here.\n\n**Smallest useful next check**\nConfirm whether `mitigated` is terminal/closed in the project\u2019s state schema. If it is not terminal, inspect external workflow, activity, or event history for reopening. No action is needed on the supplied register for an open catering risk."
+					}
+				},
+				{
+					"id": "atlas-migration",
+					"name": "Atlas Migration",
+					"question": "What do the saved migration plans say about the cutover date and permitted downtime?",
+					"evidence": {
+						"version": "agentic_chat_project_review_payload_v2",
+						"projectId": "atlas-migration",
+						"timezone": "UTC",
+						"loadedAt": "2026-09-21T04:00:00Z",
+						"data": {
+							"project": {
+								"id": "atlas-migration",
+								"name": "atlas-migration",
+								"updated_at": "2026-09-21T04:00:00Z"
+							},
+							"start_here": null,
+							"goals": [],
+							"milestones": [],
+							"plans": [],
+							"tasks": [],
+							"documents": [
+								{
+									"id": "doc-cutover",
+									"title": "Migration plan",
+									"content": "The current approved cutover is October 12, 2026. Downtime must not exceed 30 minutes.",
+									"content_coverage": "full",
+									"updated_at": "2026-09-21T04:00:00Z"
+								}
+							],
+							"events": [],
+							"context_meta": null,
+							"risks": [],
+							"relationships": [],
+							"activity": [],
+							"prior_suggestions": []
+						},
+						"coverage": {
+							"includedRecords": 2,
+							"omittedRecords": 0,
+							"truncatedStrings": 0,
+							"evidenceLimit": 256,
+							"families": {
+								"goals": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"milestones": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"plans": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"tasks": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"documents": {
+									"status": "loaded",
+									"included": 1,
+									"total": 1,
+									"omitted": 0
+								},
+								"events": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"risks": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"relationships": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"activity": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								},
+								"prior_suggestions": {
+									"status": "empty",
+									"included": 0,
+									"total": 0,
+									"omitted": 0
+								}
+							}
+						}
+					},
+					"inputHash": "b60cc6b582057a9189f57cae47887696488c430c3f185811dac535dd2f511922",
+					"a": {
+						"variant": "model_planner",
+						"label": "Model planner",
+						"calls": 4,
+						"durationMs": 8033,
+						"costUsd": 0.002785512,
+						"acceptedReports": 2,
+						"answer": "## Answer\n\n**No saved migration plans are present in the supplied evidence.** The `plans` family is empty (0 records included, 0 total, 0 omitted), so there are no plan-type records to quote on cutover or downtime.\n\nHowever, the loaded document **Migration plan** (`doc-cutover`) does record both terms:\n\n- **Cutover date:** The current approved cutover is **October 12, 2026**.\n- **Permitted downtime:** Downtime **must not exceed 30 minutes**.\n\n### Scope and caveats\n\n- `doc-cutover` is the **only** document in this payload (documents 1/1 loaded, 0 omitted), and both accepted specialist reports cite it as the sole source for these two terms. No other record corroborates or conflicts.\n- The wording in the question \u2014 \"saved migration plans\" \u2014 is **not supported by the evidence**. Both specialists flag this: the cutover details exist only as document-level content, not as plan-type records (project_analyst; risk_reviewer).\n- Coverage reports 0 omitted records, but as risk_reviewer notes, an empty family is **not proof of nonexistence** outside this payload. This is a recorded gap, not a confirmed absence project-wide.\n\n### Recommended next step\n\nIf plan-type records are expected to exist, request a targeted re-export of the `plans` family before treating the above as the full picture. Until then, treat **Migration plan** (`doc-cutover`) as the sole source for the **October 12, 2026** cutover and the **30-minute** downtime limit.\n\n**Review status:** Complete \u2014 both specialists (project_analyst, risk_reviewer) submitted findings; 2/2 completed, no partial coverage."
+					},
+					"b": {
+						"variant": "compiled",
+						"label": "Compiled assignments",
+						"calls": 3,
+						"durationMs": 5025,
+						"costUsd": 0.002203644,
+						"acceptedReports": 2,
+						"answer": "## What the saved evidence says\n\n**No plan records exist.** The `plans` family is empty (0 records), so there are no saved migration *plans* to read. The only migration-plan content is in a document record:\n\n- **\"Migration plan\" (doc-cutover)** \u2014 content coverage labeled *full*: the current **approved cutover is October 12, 2026**, and **downtime must not exceed 30 minutes**.\n\nBoth accepted specialists agree on this, and neither reported any conflicting date or downtime figure. The project_analyst additionally notes the cited commitment lives only in this document, not in any plan/milestone/task record; the risk_reviewer notes there is no risk-register entry touching downtime contingency.\n\n## Recorded vs. interpreted\n\n- **Recorded fact:** October 12, 2026 cutover date; 30-minute downtime ceiling (from \"Migration plan\" (doc-cutover)).\n- **Interpretation (specialist recommendation):** treat these as the *recorded baseline* only. Both specialists recommend confirming before relying on them, because readiness evidence is absent.\n\n## Unknowns and gaps\n\n- Whether October 12, 2026 is **final or provisional** \u2014 the document does not say.\n- Whether the 30-minute limit has an **owner, validation method, or contingency plan** \u2014 not recorded.\n- No milestones, tasks, dependencies, or risks are loaded, so **readiness for that date cannot be confirmed** from this evidence.\n- No second source exists to **cross-check** the document's date or downtime cap.\n\n## Smallest useful next checks\n\n1. Confirm with the document owner whether \"Migration plan\" (doc-cutover) is the **latest approved version** and whether the date is final.\n2. Ask for a **populated risk register or plan records** covering downtime contingency \u2014 none were supplied.\n\n## Scope note\n\nThis review is **complete, not partial** \u2014 both specialists (2/2) returned findings. But it covers only the supplied evidence: one document with full coverage and empty plans, risks, milestones, tasks, and events families. \"No recorded risk or plan\" means none *in the inspected evidence*, not a guarantee about the wider project."
+					}
+				}
+			]
+		</script>
+		<script>
+			(() => {
+				const cases = JSON.parse(document.getElementById('comparison-data').textContent);
+				const select = document.getElementById('fixture');
+				const votes = {};
+				const revealed = new Set();
+				const escape = (value) =>
+					String(value).replace(
+						/[&<>"']/g,
+						(c) =>
+							({
+								'&': '&amp;',
+								'<': '&lt;',
+								'>': '&gt;',
+								'"': '&quot;',
+								"'": '&#39;'
+							})[c]
+					);
+				const inline = (value) =>
+					escape(value)
+						.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+						.replace(/`([^`]+)`/g, '<code>$1</code>');
+				function markdown(value) {
+					let html = '',
+						list = false;
+					for (const line of value.split('\n')) {
+						const item = line.match(/^\s*(?:[-*]|\d+\.)\s+(.+)/);
+						if (item) {
+							if (!list) {
+								html += '<ul>';
+								list = true;
+							}
+							html += '<li>' + inline(item[1]) + '</li>';
+							continue;
+						}
+						if (list) {
+							html += '</ul>';
+							list = false;
+						}
+						const heading = line.match(/^#{1,6}\s+(.+)/);
+						if (heading) html += '<h3>' + inline(heading[1]) + '</h3>';
+						else if (line.trim()) html += '<p>' + inline(line) + '</p>';
+					}
+					return html + (list ? '</ul>' : '');
+				}
+				for (const [index, c] of cases.entries()) {
+					const option = document.createElement('option');
+					option.value = String(index);
+					option.textContent = c.name;
+					select.append(option);
+				}
+				function render() {
+					const c = cases[Number(select.value)];
+					if (!c) return;
+					document.getElementById('question').textContent = c.question;
+					document.getElementById('evidence').textContent = JSON.stringify(
+						c.evidence,
+						null,
+						2
+					);
+					for (const side of ['a', 'b']) {
+						const arm = c[side];
+						document.getElementById('answer-' + side).innerHTML = markdown(arm.answer);
+						const receipt = document.getElementById('receipt-' + side);
+						receipt.hidden = !revealed.has(c.id);
+						receipt.textContent = `${arm.label} · ${arm.calls} model calls · ${(arm.durationMs / 1000).toFixed(2)} s · $${arm.costUsd.toFixed(5)} · ${arm.acceptedReports}/2 reports accepted`;
+					}
+					for (const b of document.querySelectorAll('[data-vote]'))
+						b.setAttribute(
+							'aria-pressed',
+							String(votes[c.id]?.choice === b.dataset.vote)
+						);
+					document.getElementById('status').textContent = votes[c.id]
+						? `Recorded: ${votes[c.id].choice === 'tie' ? 'no preference' : votes[c.id].choice === 'neither' ? 'neither' : 'Answer ' + votes[c.id].choice}${votes[c.id].afterReveal ? ' (after reveal)' : ''}.`
+						: 'No rating yet.';
+					document.getElementById('reveal').disabled = revealed.has(c.id);
+				}
+				select.addEventListener('change', render);
+				document.getElementById('reveal').addEventListener('click', () => {
+					revealed.add(cases[Number(select.value)].id);
+					render();
+				});
+				for (const b of document.querySelectorAll('[data-vote]'))
+					b.addEventListener('click', () => {
+						const c = cases[Number(select.value)];
+						votes[c.id] = {
+							choice: b.dataset.vote,
+							afterReveal: revealed.has(c.id),
+							recordedAt: new Date().toISOString(),
+							mapping: { A: c.a.variant, B: c.b.variant },
+							inputHash: c.inputHash
+						};
+						render();
+					});
+				document.getElementById('export').addEventListener('click', () => {
+					const blob = new Blob(
+						[
+							JSON.stringify(
+								{
+									version: 'specialist_comparison_ratings_v1',
+									note: 'Local human preference ratings. Agent-authored synthetic fixtures.',
+									votes
+								},
+								null,
+								2
+							)
+						],
+						{ type: 'application/json' }
+					);
+					const url = URL.createObjectURL(blob);
+					const a = document.createElement('a');
+					a.href = url;
+					a.download = 'specialist-comparison-ratings.json';
+					a.click();
+					setTimeout(() => URL.revokeObjectURL(url), 1000);
+				});
+				render();
+			})();
+		</script>
+	</body>
+</html>

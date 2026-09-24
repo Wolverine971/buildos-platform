@@ -1,0 +1,451 @@
+{
+	"scope": "Failures and timing violations from a source-unverified run. Concurrent checkout edits prevent attribution to one executable tree. Model/tool durations are not disjoint wall-clock components.",
+	"source": "output/agentic-gate/specialist-review-v3-2026-09-21",
+	"startedAt": "2026-09-21T14:50:53.993Z",
+	"finishedAt": "2026-09-21T15:19:26.646Z",
+	"score": {
+		"caseCount": 13,
+		"totalScore": 44,
+		"maxScore": 52,
+		"percent": 84.6,
+		"grade": "B"
+	},
+	"capturedTurns": 44,
+	"sourceVerification": {
+		"expected": {
+			"version": 1,
+			"gitSha": "b3c2764f4717d41858256aa9bed725c652ea2816",
+			"dirtyTreeSha256": "53320c75859bde82cd8f171f76a118b4d4169f4a2ab59dbbeabf2af89c7f8dcd"
+		},
+		"worker": {
+			"version": 1,
+			"gitSha": "b3c2764f4717d41858256aa9bed725c652ea2816",
+			"dirtyTreeSha256": "53320c75859bde82cd8f171f76a118b4d4169f4a2ab59dbbeabf2af89c7f8dcd"
+		},
+		"web": {
+			"version": 1,
+			"gitSha": "b3c2764f4717d41858256aa9bed725c652ea2816",
+			"dirtyTreeSha256": "393551f7d3ecd8fb6b4e0ab65682fa9f380b2f2d982efea384c7537d98d68e33"
+		},
+		"verified": false,
+		"error": "Web source provenance mismatch: expected {\"version\":1,\"gitSha\":\"b3c2764f4717d41858256aa9bed725c652ea2816\",\"dirtyTreeSha256\":\"53320c75859bde82cd8f171f76a118b4d4169f4a2ab59dbbeabf2af89c7f8dcd\"}, received {\"version\":1,\"gitSha\":\"b3c2764f4717d41858256aa9bed725c652ea2816\",\"dirtyTreeSha256\":\"393551f7d3ecd8fb6b4e0ab65682fa9f380b2f2d982efea384c7537d98d68e33\"}. Restart both services from the same tree."
+	},
+	"finalSourceError": "Checkout after battery source provenance mismatch: expected {\"version\":1,\"gitSha\":\"b3c2764f4717d41858256aa9bed725c652ea2816\",\"dirtyTreeSha256\":\"53320c75859bde82cd8f171f76a118b4d4169f4a2ab59dbbeabf2af89c7f8dcd\"}, received {\"version\":1,\"gitSha\":\"b3c2764f4717d41858256aa9bed725c652ea2816\",\"dirtyTreeSha256\":\"9428ac6fbe832ada9d463c2908d503cf2cde5e43b41f36c305c9765810ba028b\"}. Restart both services from the same tree.",
+	"cases": [
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnRunId": "fe730fcb-fb28-4fdf-a4d7-b8edc7d58f0c",
+			"resultClass": "end_to_end_pass",
+			"durationMs": 63440.544417,
+			"limitMs": 60000,
+			"toolCallCount": 10,
+			"checkOutcome": {
+				"deterministicAssertionPassed": true,
+				"deterministicAssertionError": null,
+				"judge": {
+					"status": "not_configured"
+				},
+				"overallError": null
+			},
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": null,
+					"durationMs": 640
+				},
+				{
+					"role": "acting",
+					"provider": "Together",
+					"status": "failure",
+					"durationMs": 4821
+				},
+				{
+					"role": "acting",
+					"provider": "Novita",
+					"status": "success",
+					"durationMs": 10512
+				},
+				{
+					"role": "mutation_review",
+					"provider": "OpenAI",
+					"status": "success",
+					"durationMs": 2520
+				},
+				{
+					"role": "acting",
+					"provider": "Novita",
+					"status": "success",
+					"durationMs": 3362
+				},
+				{
+					"role": "mutation_review",
+					"provider": "OpenAI",
+					"status": "success",
+					"durationMs": 3354
+				},
+				{
+					"role": "acting",
+					"provider": "Novita",
+					"status": "success",
+					"durationMs": 3492
+				}
+			],
+			"tools": [
+				{
+					"name": "approve_mutation_batch_review",
+					"success": true,
+					"durationMs": 0
+				},
+				{
+					"name": "create_onto_task",
+					"success": true,
+					"durationMs": 2671
+				},
+				{
+					"name": "create_onto_task",
+					"success": true,
+					"durationMs": 2174
+				},
+				{
+					"name": "create_onto_task",
+					"success": true,
+					"durationMs": 3068
+				},
+				{
+					"name": "create_onto_task",
+					"success": true,
+					"durationMs": 2448
+				},
+				{
+					"name": "create_onto_task",
+					"success": true,
+					"durationMs": 1381
+				},
+				{
+					"name": "approve_mutation_batch_review",
+					"success": true,
+					"durationMs": 0
+				},
+				{
+					"name": "link_onto_entities",
+					"success": true,
+					"durationMs": 2231
+				},
+				{
+					"name": "link_onto_entities",
+					"success": true,
+					"durationMs": 1573
+				},
+				{
+					"name": "link_onto_entities",
+					"success": true,
+					"durationMs": 1876
+				}
+			],
+			"providerFailures": [
+				{
+					"file": "2026-09-21T14-54-32.444Z--fe730fcb-fb28-4fdf-a4d7-b8edc7d58f0c--g1-r1--acting--a1--openrouter--00027613-b02e-457d-bc48-374badcb7dce.json",
+					"outcome": {
+						"completedAt": "2026-09-21T14:54:37.262Z",
+						"status": "failure",
+						"error": "Agentic Chat provider stream made insufficient progress; retrying the buffered pass",
+						"retryable": true,
+						"requestId": "gen-1790002472-xrkwlSiRJU5NNuScnDR7",
+						"modelUsed": "deepseek/deepseek-v4.1-flash",
+						"provider": "Together",
+						"finishReason": null,
+						"usage": null,
+						"timing": {
+							"networkStartedAtMs": 1790002472449,
+							"deadlineAtMs": 1790002562449,
+							"responseOpenedAtMs": 1790002473255,
+							"timeoutFiredAtMs": null
+						}
+					}
+				}
+			]
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnRunId": "d42317f9-205b-4fbc-88a7-6e49d5047f1c",
+			"resultClass": "transport_failure",
+			"durationMs": 24876.72116700001,
+			"limitMs": 30000,
+			"toolCallCount": 0,
+			"checkOutcome": {
+				"deterministicAssertionPassed": false,
+				"deterministicAssertionError": {
+					"name": "Error",
+					"message": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | provider_stream_error"
+				},
+				"judge": {
+					"status": "not_configured"
+				},
+				"overallError": {
+					"name": "Error",
+					"message": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | provider_stream_error"
+				}
+			},
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": null,
+					"durationMs": 465
+				},
+				{
+					"role": "acting",
+					"provider": "openrouter",
+					"status": "failure",
+					"durationMs": 5010
+				},
+				{
+					"role": "acting",
+					"provider": "openrouter",
+					"status": "failure",
+					"durationMs": 10007
+				}
+			],
+			"tools": [],
+			"providerFailures": [
+				{
+					"file": "2026-09-21T14-59-21.164Z--d42317f9-205b-4fbc-88a7-6e49d5047f1c--g1-r1--acting--a1--openrouter--1b3dbd86-d148-4b7c-b1f9-2988228570c1.json",
+					"outcome": {
+						"completedAt": "2026-09-21T14:59:26.169Z",
+						"status": "failure",
+						"error": "Agentic Chat provider timeout after 5000ms",
+						"httpStatus": null,
+						"requestId": null,
+						"timing": {
+							"networkStartedAtMs": 1790002761167,
+							"deadlineAtMs": 1790002766167,
+							"responseOpenedAtMs": null,
+							"timeoutFiredAtMs": 1790002766167
+						}
+					}
+				},
+				{
+					"file": "2026-09-21T14-59-26.176Z--d42317f9-205b-4fbc-88a7-6e49d5047f1c--g1-r1--acting--a2--openrouter--ffe5d8d4-d1b4-4c28-b100-ff2819efa926.json",
+					"outcome": {
+						"completedAt": "2026-09-21T14:59:36.179Z",
+						"status": "failure",
+						"error": "Agentic Chat provider timeout after 10000ms",
+						"httpStatus": null,
+						"requestId": null,
+						"timing": {
+							"networkStartedAtMs": 1790002766178,
+							"deadlineAtMs": 1790002776178,
+							"responseOpenedAtMs": null,
+							"timeoutFiredAtMs": 1790002776178
+						}
+					}
+				}
+			]
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnRunId": "13fbdd4d-3960-4799-a2d4-a2362538c1eb",
+			"resultClass": "transport_failure",
+			"durationMs": 63697.654249999905,
+			"limitMs": 40000,
+			"toolCallCount": 6,
+			"checkOutcome": {
+				"deterministicAssertionPassed": false,
+				"deterministicAssertionError": {
+					"name": "Error",
+					"message": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | read_tool_timeout"
+				},
+				"judge": {
+					"status": "not_reached"
+				},
+				"overallError": {
+					"name": "Error",
+					"message": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | read_tool_timeout"
+				}
+			},
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": null,
+					"durationMs": 424
+				},
+				{
+					"role": "acting",
+					"provider": "GMICloud",
+					"status": "success",
+					"durationMs": 5497
+				}
+			],
+			"tools": [
+				{
+					"name": "get_onto_document_details",
+					"success": true,
+					"durationMs": 847
+				},
+				{
+					"name": "search_project",
+					"success": true,
+					"durationMs": 2308
+				},
+				{
+					"name": "search_project",
+					"success": true,
+					"durationMs": 2712
+				},
+				{
+					"name": "list_onto_tasks",
+					"success": true,
+					"durationMs": 579
+				},
+				{
+					"name": "list_onto_milestones",
+					"success": true,
+					"durationMs": 313
+				}
+			],
+			"providerFailures": []
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnRunId": "cd9c3a1e-dd39-431d-a90e-f3ce243c6613",
+			"resultClass": "end_to_end_pass",
+			"durationMs": 41831.77020799997,
+			"limitMs": 40000,
+			"toolCallCount": 4,
+			"checkOutcome": {
+				"deterministicAssertionPassed": true,
+				"deterministicAssertionError": null,
+				"judge": {
+					"status": "passed",
+					"result": {
+						"score": 5,
+						"passed": true,
+						"reasoning": "The report accurately reflects all fixture facts (budget cap with contingency, dates, exclusions, both To Do tasks with due dates and dependency, verbatim-safe marketing references) and correctly frames construction, permits, and payments as unknowns with bounded 'no record found' language. The change-log statement ('no later revisions recorded') is bounded and supported because the full document was actually retrieved, and no unsupported real-world claims or invented text appear.",
+						"threshold": 3
+					}
+				},
+				"overallError": null
+			},
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": null,
+					"durationMs": 369
+				},
+				{
+					"role": "acting",
+					"provider": "GMICloud",
+					"status": "success",
+					"durationMs": 4394
+				},
+				{
+					"role": "acting",
+					"provider": "GMICloud",
+					"status": "success",
+					"durationMs": 6687
+				}
+			],
+			"tools": [
+				{
+					"name": "get_onto_document_details",
+					"success": true,
+					"durationMs": 330
+				},
+				{
+					"name": "search_project",
+					"success": true,
+					"durationMs": 2484
+				},
+				{
+					"name": "search_project",
+					"success": true,
+					"durationMs": 1962
+				},
+				{
+					"name": "list_onto_risks",
+					"success": true,
+					"durationMs": 404
+				}
+			],
+			"providerFailures": []
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnRunId": "18cc0f4c-941f-4475-98ac-78b91deef484",
+			"resultClass": "end_to_end_pass",
+			"durationMs": 50389.77120800014,
+			"limitMs": 40000,
+			"toolCallCount": 4,
+			"checkOutcome": {
+				"deterministicAssertionPassed": true,
+				"deterministicAssertionError": null,
+				"judge": {
+					"status": "passed",
+					"result": {
+						"score": 4,
+						"passed": true,
+						"reasoning": "The report accurately distinguishes recorded facts from unknowns, including the budget, dates, exclusions, task states and dependencies, permit/payment uncertainty, and the marketing brief\u2019s recorded draft entry and guardrails. It avoids asserting that construction did or did not occur; minor gaps include omitting the verbatim audience and call-to-action and making a somewhat broad claim about missing progress records from a limited search scope.",
+						"threshold": 3
+					}
+				},
+				"overallError": null
+			},
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": null,
+					"durationMs": 428
+				},
+				{
+					"role": "acting",
+					"provider": "GMICloud",
+					"status": "success",
+					"durationMs": 4355
+				},
+				{
+					"role": "acting",
+					"provider": "GMICloud",
+					"status": "success",
+					"durationMs": 5842
+				}
+			],
+			"tools": [
+				{
+					"name": "get_project_overview",
+					"success": true,
+					"durationMs": 510
+				},
+				{
+					"name": "get_onto_document_details",
+					"success": true,
+					"durationMs": 510
+				},
+				{
+					"name": "search_project",
+					"success": true,
+					"durationMs": 1414
+				},
+				{
+					"name": "search_onto_documents",
+					"success": true,
+					"durationMs": 404
+				}
+			],
+			"providerFailures": []
+		}
+	]
+}

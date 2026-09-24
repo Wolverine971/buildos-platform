@@ -1,0 +1,72 @@
+{
+	"version": "source_bound_live_replay_v1",
+	"createdAt": "2026-09-21T05:37:53.089Z",
+	"note": "Offline research prototype replay of a synthetic QA workflow. No runtime changes or authorization. Quotes establish source wording; arbitrary semantic claims remain unverified.",
+	"turnRunId": "bad075a8-7cc6-4028-a499-064f378801af",
+	"contextHash": "8c84ce4043a5b8aa6a0c55326babd85f613d235fc373aa958112611ef86cb339",
+	"claims": {
+		"C1": {
+			"kind": "overdue_comparison",
+			"relation": "all",
+			"supported": false,
+			"outcome": "contradicted",
+			"snapshotAt": "2026-09-21T05:33:22.907Z",
+			"count": 2,
+			"inspected": 5,
+			"unknown": 0,
+			"facts": [
+				{
+					"source": "S3",
+					"sourceHash": "a662ef370a44de3a2c5e7b950c5f71953b956fb7ab7a6b5db4c63fe89c9c32d3",
+					"dueAt": "2026-09-16T03:59:59+00:00",
+					"state": "todo",
+					"status": "overdue"
+				},
+				{
+					"source": "S4",
+					"sourceHash": "b5fa8df3dd6f790f272681c3b2bb6c97a4bab31b344a2a42a6861890a4c6d20e",
+					"dueAt": "2026-09-19T03:59:59+00:00",
+					"state": "todo",
+					"status": "overdue"
+				},
+				{
+					"source": "S5",
+					"sourceHash": "35abc860c46f287b5afae4cc847bf67baba4f346989ae19a9acb3c5cec4f38bf",
+					"dueAt": "2026-10-01T03:59:59+00:00",
+					"state": "todo",
+					"status": "not_overdue"
+				},
+				{
+					"source": "S6",
+					"sourceHash": "49503a14b80f34f88fc88f478dc087b8a8fa0e70e93247ccbba3585f747c0193",
+					"dueAt": "2026-10-03T03:59:59+00:00",
+					"state": "todo",
+					"status": "not_overdue"
+				},
+				{
+					"source": "S7",
+					"sourceHash": "25959bfed508f3100771851e2262016db63c7ad86b278f4db4587dac8cadda2d",
+					"dueAt": "2026-09-29T03:59:59+00:00",
+					"state": "todo",
+					"status": "not_overdue"
+				}
+			],
+			"rendered": "2 of these 5 cited tasks are recorded as unfinished with a due time before this snapshot."
+		},
+		"C2": {
+			"kind": "source_excerpt",
+			"source": "S10",
+			"sourceHash": "31746254ba4b83ef01c451d6118169382b484acdc6767760fe1bd58d711ce3dd",
+			"field": "/content",
+			"span": {
+				"encoding": "utf16",
+				"start": 0,
+				"end": 72
+			},
+			"quote": "Permit filing requires a $1,200 fee that has no approved funding source.",
+			"rendered": "Permit filing fee unfunded: “Permit filing requires a $1,200 fee that has no approved funding source.”",
+			"semanticParaphraseVerified": false
+		}
+	},
+	"rendered": "2 of these 5 cited tasks are recorded as unfinished with a due time before this snapshot.\n\nPermit filing fee unfunded: “Permit filing requires a $1,200 fee that has no approved funding source.”"
+}

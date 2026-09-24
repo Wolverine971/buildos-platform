@@ -1,0 +1,2915 @@
+{
+	"summary": {
+		"run_at": "2026-09-22T19:48:11.077Z",
+		"navigator": "keyword-overlap",
+		"tasks": 20,
+		"success": 3,
+		"reached_target": 7,
+		"model_calls": 69,
+		"model_ms_p50_per_call": 0,
+		"model_ms_p90_per_call": 0,
+		"total_cost_usd": 0,
+		"http_requests": 105
+	},
+	"results": [
+		{
+			"id": "naaccc-lunch",
+			"goal": "Find the details page for the chamber's Networking Lunch at Italia's Corner (date, time, location).",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 4,
+			"model_ms_total": 0,
+			"fetch_ms_total": 1760,
+			"cost_usd": 0,
+			"wall_ms": 5439,
+			"hops": [
+				{
+					"url": "https://business.naaccc.com/event-calendar",
+					"title": "Calendar - Northern Anne Arundel County Chamber of Commerce",
+					"text_chars": 2454,
+					"link_options": 57,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 542,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Networking Lunch Italia's Corner",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Hub"
+						},
+						{
+							"p": 0.472,
+							"label": "Networking Lunch Italia's Corner link",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Website"
+						},
+						{
+							"p": 0.368,
+							"label": "Multi Chamber Lunch & Learn with AAWDC",
+							"url": "https://business.naaccc.com/event-calendar/Details/multi-chamber-lunch-learn-with-aawdc-1875534?sourceTypeId=Hub"
+						},
+						{
+							"p": 0.283,
+							"label": "Multi Chamber Lunch & Learn with AAWDC link",
+							"url": "https://business.naaccc.com/event-calendar/Details/multi-chamber-lunch-learn-with-aawdc-1875534?sourceTypeId=Website"
+						},
+						{
+							"p": 0.283,
+							"label": "Multi-Chamber Power Networking Breakfast link",
+							"url": "https://business.naaccc.com/event-calendar/Details/multi-chamber-power-networking-breakfast-1930408?sourceTypeId=Website"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Hub",
+					"title": "Networking Lunch Italia's Corner - Northern Anne Arundel County Chamber of Commerce",
+					"text_chars": 628,
+					"link_options": 34,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 589,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Print",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?rendermode=print"
+						},
+						{
+							"p": 0.4,
+							"label": "Add to Calendar",
+							"url": "https://business.naaccc.com/event-calendar/ICal/networking-lunch-italia-s-corner-1874154.ics"
+						},
+						{
+							"p": 0.4,
+							"label": "X",
+							"url": "http://twitter.com/share?text=Networking+Lunch+Italia%27s+Corner&url=https%3a%2f%2fbusiness.naaccc.com%2fevent-calendar%2fDetails%2fnetworking-lunch-italia-s-corner-1874154%3fsourceTypeId%3dHub"
+						},
+						{
+							"p": 0.16,
+							"label": "Facebook",
+							"url": "http://www.facebook.com/sharer.php?u=https%3a%2f%2fbusiness.naaccc.com%2fevent-calendar%2fDetails%2fnetworking-lunch-italia-s-corner-1874154%3fsourceTypeId%3dHub"
+						},
+						{
+							"p": 0.12,
+							"label": "Pinterest",
+							"url": "https://pinterest.com/pin/create/button/?media=&url=https%3a%2f%2fbusiness.naaccc.com%2fevent-calendar%2fDetails%2fnetworking-lunch-italia-s-corner-1874154%3fsourceTypeId%3dHub"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?rendermode=print",
+					"title": "Networking Lunch Italia's Corner Overridden - https://www.naaccc.com/- - 6021",
+					"text_chars": 628,
+					"link_options": 7,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 310,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Add to Calendar",
+							"url": "https://business.naaccc.com/event-calendar/ICal/networking-lunch-italia-s-corner-1874154.ics"
+						},
+						{
+							"p": 0.5,
+							"label": "X",
+							"url": "http://twitter.com/share?text=Networking+Lunch+Italia%27s+Corner&url=https%3a%2f%2fbusiness.naaccc.com%2fevent-calendar%2fDetails%2fnetworking-lunch-italia-s-corner-1874154%3frendermode%3dprint"
+						},
+						{
+							"p": 0.2,
+							"label": "Facebook",
+							"url": "http://www.facebook.com/sharer.php?u=https%3a%2f%2fbusiness.naaccc.com%2fevent-calendar%2fDetails%2fnetworking-lunch-italia-s-corner-1874154%3frendermode%3dprint"
+						},
+						{
+							"p": 0.15,
+							"label": "Pinterest",
+							"url": "https://pinterest.com/pin/create/button/?media=&url=https%3a%2f%2fbusiness.naaccc.com%2fevent-calendar%2fDetails%2fnetworking-lunch-italia-s-corner-1874154%3frendermode%3dprint"
+						},
+						{
+							"p": 0.112,
+							"label": "LinkedIn",
+							"url": "http://www.linkedin.com/shareArticle?mini=true&url=https%3a%2f%2fbusiness.naaccc.com%2fevent-calendar%2fDetails%2fnetworking-lunch-italia-s-corner-1874154%3frendermode%3dprint&title=Networking+Lunch+Italia%27s+Corner"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://business.naaccc.com/event-calendar/ICal/networking-lunch-italia-s-corner-1874154.ics",
+					"text_chars": 269,
+					"link_options": 0,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 319,
+					"page_has_answer": 0,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "http://twitter.com/share?text=Networking+Lunch+Italia%27s+Corner&url=https%3a%2f%2fbusiness.naaccc.com%2fevent-calendar%2fDetails%2fnetworking-lunch-italia-s-corner-1874154%3frendermode%3dprint",
+					"error": "Request failed (520 <none>)."
+				}
+			]
+		},
+		{
+			"id": "mailchimp-free-limits",
+			"goal": "Find how many contacts and monthly email sends Mailchimp's Free plan includes.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 4,
+			"model_ms_total": 0,
+			"fetch_ms_total": 1027,
+			"cost_usd": 0,
+			"wall_ms": 3778,
+			"hops": [
+				{
+					"url": "https://mailchimp.com/",
+					"title": "Email & SMS Marketing Platform | Mailchimp",
+					"text_chars": 3000,
+					"link_options": 125,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 113,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Start Free Trial Start Free Trial Buy Now Buy Now Contact limit exceeded Limit",
+							"url": "https://mailchimp.com/signup/?plan=standard_monthly_plan_v0&locale=en&discount_id=66cfd014b28e3"
+						},
+						{
+							"p": 0.383,
+							"label": "Start today. | Start Free Trial",
+							"url": "https://login.mailchimp.com/signup/"
+						},
+						{
+							"p": 0.383,
+							"label": "Audience",
+							"url": "https://admin.mailchimp.com/audience/contacts/?ref=plums_nav"
+						},
+						{
+							"p": 0.333,
+							"label": "Buy Now Buy Now",
+							"url": "https://mailchimp.com/signup/?plan=premium_monthly_plan_v0&locale=en&discount_id=68430f65968c4"
+						},
+						{
+							"p": 0.217,
+							"label": "Pricing | Start Free Trial | See pricing | See all plans",
+							"url": "https://mailchimp.com/pricing/marketing/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://login.mailchimp.com/signup/?plan=standard_monthly_plan_v0&locale=en&discount_id=66cfd014b28e3",
+					"title": "Sign Up for Mailchimp",
+					"text_chars": 229,
+					"link_options": 7,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 566,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "log in",
+							"url": "https://login.mailchimp.com/?referrer=%2Faccount%2Fpaywall%3Fpricing_id%3D40018%26is_login%3Dtrue%26allowDowngrades&locale=en?plan=standard_monthly_plan_v0&locale=en&discount_id=66cfd014b28e3"
+						},
+						{
+							"p": 0.5,
+							"label": "full offer terms",
+							"url": "https://mailchimp.com/legal/promotional-offer-terms/"
+						},
+						{
+							"p": 0.406,
+							"label": "Terms",
+							"url": "https://mailchimp.com/legal/terms/"
+						},
+						{
+							"p": 0.313,
+							"label": "Cookie Preferences",
+							"url": "https://mailchimp.com/legal/cookies/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://login.mailchimp.com/?referrer=%2Faccount%2Fpaywall%3Fpricing_id%3D40018%26is_login%3Dtrue%26allowDowngrades&locale=en?plan=standard_monthly_plan_v0&locale=en&discount_id=66cfd014b28e3",
+					"error": "robots.txt disallows this URL"
+				},
+				{
+					"url": "https://mailchimp.com/legal/promotional-offer-terms/",
+					"title": "Legal - Trial and Discount Offer Full Terms | Mailchimp",
+					"text_chars": 3000,
+					"link_options": 113,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 143,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Start today. | Start Free Trial",
+							"url": "https://login.mailchimp.com/signup/"
+						},
+						{
+							"p": 0.5,
+							"label": "Audience",
+							"url": "https://admin.mailchimp.com/audience/contacts/?ref=plums_nav"
+						},
+						{
+							"p": 0.283,
+							"label": "Campaigns",
+							"url": "https://admin.mailchimp.com/campaigns/?ref=plums_nav"
+						},
+						{
+							"p": 0.283,
+							"label": "https://mailchimp.com/sales/ | Talk to Sales",
+							"url": "https://mailchimp.com/sales/"
+						},
+						{
+							"p": 0.283,
+							"label": "Email Marketing",
+							"url": "https://mailchimp.com/features/email/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://login.mailchimp.com/signup/",
+					"title": "Sign Up for Mailchimp",
+					"text_chars": 217,
+					"link_options": 5,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 205,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Terms",
+							"url": "https://mailchimp.com/legal/terms/"
+						},
+						{
+							"p": 0.385,
+							"label": "Cookie Preferences",
+							"url": "https://mailchimp.com/legal/cookies/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "aacounty-bids",
+			"goal": "Find where Anne Arundel County lists its current bid opportunities and open solicitations.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 0,
+			"fetch_ms_total": 1257,
+			"cost_usd": 0,
+			"wall_ms": 5067,
+			"hops": [
+				{
+					"url": "https://www.aacounty.org/central-services/purchasing",
+					"title": "Purchasing | Anne Arundel County Government",
+					"text_chars": 439,
+					"link_options": 38,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 224,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "View Opportunities",
+							"url": "https://www.aacounty.org/solicitations"
+						},
+						{
+							"p": 0.172,
+							"label": "Jobs | Job Opportunities",
+							"url": "https://www.aacounty.org/personnel/employment-information/job-announcements"
+						},
+						{
+							"p": 0.172,
+							"label": "EngageArundel",
+							"url": "https://www.aacounty.org/county-executive/cecs/engagearundel"
+						},
+						{
+							"p": 0.172,
+							"label": "Doing Business with the County",
+							"url": "https://www.aacounty.org/central-services/purchasing/doing-business-county"
+						},
+						{
+							"p": 0.172,
+							"label": "Closings/Cancellations",
+							"url": "https://www.aacounty.org/county-operations"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://ibvijb.fa.ocs.oraclecloud.com/fscmUI/redwood/negotiation-abstracts/view/abstractlisting?prcBuId=300000008120003",
+					"title": "Oracle Applications",
+					"text_chars": 19,
+					"link_options": 0,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 479,
+					"page_has_answer": 0,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.aacounty.org/personnel/employment-information/job-announcements",
+					"title": "Job Announcements | Anne Arundel County Government",
+					"text_chars": 726,
+					"link_options": 25,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 65,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "EngageArundel",
+							"url": "https://www.aacounty.org/county-executive/cecs/engagearundel"
+						},
+						{
+							"p": 0.5,
+							"label": "Closings/Cancellations",
+							"url": "https://www.aacounty.org/county-operations"
+						},
+						{
+							"p": 0.45,
+							"label": "News",
+							"url": "https://www.aacounty.org/news-events/news"
+						},
+						{
+							"p": 0.45,
+							"label": "Accessibility",
+							"url": "https://www.aacounty.org/accessibility"
+						},
+						{
+							"p": 0.45,
+							"label": "Non-Discrimination Public Notices",
+							"url": "https://www.aacounty.org/personnel/non-discrimination-non-harassment"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.aacounty.org/county-executive/cecs/engagearundel",
+					"title": "EngageArundel | Anne Arundel County Government",
+					"text_chars": 1982,
+					"link_options": 37,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 430,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "View Vacancies",
+							"url": "https://www.aacounty.org/county-executive/commission-membership"
+						},
+						{
+							"p": 0.5,
+							"label": "Register Now",
+							"url": "https://www.aacounty.org/county-executive/cecs/community-associations"
+						},
+						{
+							"p": 0.406,
+							"label": "Get Started",
+							"url": "https://www.aacounty.org/county-executive/cecs/newsletter"
+						},
+						{
+							"p": 0.313,
+							"label": "County Executive",
+							"url": "https://www.aacounty.org/county-executive"
+						},
+						{
+							"p": 0.313,
+							"label": "Community Engagement and Constituent Services (CECS)",
+							"url": "https://www.aacounty.org/county-executive/cecs"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.aacounty.org/county-operations",
+					"title": "County Operations | Anne Arundel County Government",
+					"text_chars": 1301,
+					"link_options": 35,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 59,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "ANNE ARUNDEL COUNTY WEATHER",
+							"url": "https://forecast7.com/en/38d95n76d55/anne-arundel-county/?unit=us"
+						},
+						{
+							"p": 0.333,
+							"label": "Anne Arundel Public Schools",
+							"url": "https://www.aacps.org/"
+						},
+						{
+							"p": 0.333,
+							"label": "Anne Arundel Community College",
+							"url": "https://www.aacc.edu/campusalerts/"
+						},
+						{
+							"p": 0.333,
+							"label": "Anne Arundel Public Library",
+							"url": "https://www.aacpl.net/"
+						},
+						{
+							"p": 0.333,
+							"label": "Anne Arundel Circuit Court",
+							"url": "http://www.circuitcourt.org/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "montgomery-solicitations",
+			"goal": "Find the page listing Montgomery County's currently open solicitations.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 4,
+			"model_ms_total": 0,
+			"fetch_ms_total": 567,
+			"cost_usd": 0,
+			"wall_ms": 4285,
+			"hops": [
+				{
+					"url": "https://www.montgomerycountymd.gov/office-procurement",
+					"title": "Office of Procurement | Montgomery County, MD",
+					"text_chars": 2249,
+					"link_options": 44,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 226,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "News ReleaseMontgomery County Expands Contracting Opportunities for Women-Owned and Vetera",
+							"url": "https://www.montgomerycountymd.gov/news/montgomery-county-expands-contracting-opportunities-women-owned-veteran-owned-businesses"
+						},
+						{
+							"p": 0.5,
+							"label": "News ReleaseMontgomery County Launches New Business Training NetworkFebruary 20, 2026Busin",
+							"url": "https://www.montgomerycountymd.gov/news/montgomery-county-launches-new-business-training-network"
+						},
+						{
+							"p": 0.5,
+							"label": "Podcasts",
+							"url": "https://www.montgomerycountymd.gov/technology-enterprise-business-solutions/county-cable-montgomery/county-podcasts-page"
+						},
+						{
+							"p": 0.325,
+							"label": "Solicitations and Contracts",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts"
+						},
+						{
+							"p": 0.325,
+							"label": "News Release - EspañolLa Oficina de Adquisiciones del Condado de Montgomery informa sobre ",
+							"url": "https://www.montgomerycountymd.gov/news/la-oficina-de-adquisiciones-del-condado-de-montgomery-informa-sobre-la-adjudicacion-de-contratos-record-pequenas-empresas-locales-y-de-minorias-en-el-ano-fiscal-2025"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.montgomerycountymd.gov/news/montgomery-county-expands-contracting-opportunities-women-owned-veteran-owned-businesses",
+					"title": "Montgomery County Expands Contracting Opportunities for Women-Owned and Veteran-Owned Businesses | Montgomery County, MD",
+					"text_chars": 3000,
+					"link_options": 35,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 88,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Podcasts",
+							"url": "https://www.montgomerycountymd.gov/technology-enterprise-business-solutions/county-cable-montgomery/county-podcasts-page"
+						},
+						{
+							"p": 0.5,
+							"label": "follow Public Information Office on Nextdoor - external",
+							"url": "https://nextdoor.com/agency-detail/md/montgomery-county/montgomery-county-government/"
+						},
+						{
+							"p": 0.325,
+							"label": "News | County News",
+							"url": "https://www.montgomerycountymd.gov/news"
+						},
+						{
+							"p": 0.325,
+							"label": "County Services",
+							"url": "https://www.montgomerycountymd.gov/services"
+						},
+						{
+							"p": 0.25,
+							"label": "County Vendor Registration System.",
+							"url": "http://www.montgomerycountymd.gov/VendorRegistration"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.montgomerycountymd.gov/news/montgomery-county-launches-new-business-training-network",
+					"title": "Montgomery County Launches New Business Training Network | Montgomery County, MD",
+					"text_chars": 2563,
+					"link_options": 36,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 103,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Business Center - Montgomery County, Maryland",
+							"url": "https://www.montgomerycountymd.gov/business/"
+						},
+						{
+							"p": 0.5,
+							"label": "Podcasts",
+							"url": "https://www.montgomerycountymd.gov/technology-enterprise-business-solutions/county-cable-montgomery/county-podcasts-page"
+						},
+						{
+							"p": 0.5,
+							"label": "follow Public Information Office on Nextdoor - external",
+							"url": "https://nextdoor.com/agency-detail/md/montgomery-county/montgomery-county-government/"
+						},
+						{
+							"p": 0.325,
+							"label": "News | County News",
+							"url": "https://www.montgomerycountymd.gov/news"
+						},
+						{
+							"p": 0.325,
+							"label": "County Services",
+							"url": "https://www.montgomerycountymd.gov/services"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.montgomerycountymd.gov/technology-enterprise-business-solutions/county-cable-montgomery/county-podcasts-page",
+					"title": "County Podcasts Page - Technology and Enterprise Business Solutions - Montgomery County, MD",
+					"text_chars": 621,
+					"link_options": 55,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 150,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "County Cable Montgomery | County Cable Montgomery (CCM)",
+							"url": "https://www.montgomerycountymd.gov/technology-enterprise-business-solutions/county-cable-montgomery"
+						},
+						{
+							"p": 0.5,
+							"label": "Apple",
+							"url": "https://podcasts.apple.com/us/podcast/spirited-discussions-a-podcast-by-montgomery-county-alcohol-beverage-services/id1762074072"
+						},
+						{
+							"p": 0.325,
+							"label": "County Services",
+							"url": "https://www.montgomerycountymd.gov/services"
+						},
+						{
+							"p": 0.325,
+							"label": "Spotify",
+							"url": "https://open.spotify.com/show/5PFuhpEPrVkpMZlASpQwi2"
+						},
+						{
+							"p": 0.25,
+							"label": "County News",
+							"url": "https://www.montgomerycountymd.gov/news"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://nextdoor.com/agency-detail/md/montgomery-county/montgomery-county-government/",
+					"error": "robots.txt disallows this URL"
+				}
+			]
+		},
+		{
+			"id": "baltimore-vendor-registration",
+			"goal": "Find how a business registers as a vendor/supplier with Baltimore City.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 0,
+			"fetch_ms_total": 2228,
+			"cost_usd": 0,
+			"wall_ms": 6409,
+			"hops": [
+				{
+					"url": "https://www.baltimorecity.gov/procurement",
+					"title": "Bureau of Procurement | Baltimore City",
+					"text_chars": 497,
+					"link_options": 93,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 286,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Supplier | Doing Business With the City | Doing Business with the City",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city"
+						},
+						{
+							"p": 0.333,
+							"label": "City of Baltimore City of Baltimore",
+							"url": "https://www.baltimorecity.gov/"
+						},
+						{
+							"p": 0.333,
+							"label": "Entities Doing Business With the City",
+							"url": "https://www.baltimorecity.gov/ethics/our-work/companies-doing-business-with-the-city"
+						},
+						{
+							"p": 0.333,
+							"label": "How-To Guides",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/training"
+						},
+						{
+							"p": 0.333,
+							"label": "City of Baltimore Charter and Codes",
+							"url": "https://codes.baltimorecity.gov/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city",
+					"title": "Doing Business With the City | Baltimore City",
+					"text_chars": 3000,
+					"link_options": 104,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 93,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Submit an Inquiry",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/supplier-inquiry-form"
+						},
+						{
+							"p": 0.333,
+							"label": "City of Baltimore City of Baltimore",
+							"url": "https://www.baltimorecity.gov/"
+						},
+						{
+							"p": 0.333,
+							"label": "Entities Doing Business With the City",
+							"url": "https://www.baltimorecity.gov/ethics/our-work/companies-doing-business-with-the-city"
+						},
+						{
+							"p": 0.333,
+							"label": "How-To Guides",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/training"
+						},
+						{
+							"p": 0.333,
+							"label": "City of Baltimore Charter and Codes",
+							"url": "https://codes.baltimorecity.gov/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/supplier-inquiry-form",
+					"title": "Submit an Inquiry | Baltimore City",
+					"text_chars": 241,
+					"link_options": 89,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 606,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "City of Baltimore City of Baltimore",
+							"url": "https://www.baltimorecity.gov/"
+						},
+						{
+							"p": 0.5,
+							"label": "Entities Doing Business With the City",
+							"url": "https://www.baltimorecity.gov/ethics/our-work/companies-doing-business-with-the-city"
+						},
+						{
+							"p": 0.5,
+							"label": "How-To Guides | How-to Guides page",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/training"
+						},
+						{
+							"p": 0.5,
+							"label": "City of Baltimore Charter and Codes",
+							"url": "https://codes.baltimorecity.gov/"
+						},
+						{
+							"p": 0.5,
+							"label": "Baltimore City Sheriff's Office",
+							"url": "https://baltimorecitysheriff.gov/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.baltimorecity.gov/",
+					"title": "Home | Baltimore City",
+					"text_chars": 3000,
+					"link_options": 100,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 151,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Entities Doing Business With the City",
+							"url": "https://www.baltimorecity.gov/ethics/our-work/companies-doing-business-with-the-city"
+						},
+						{
+							"p": 0.5,
+							"label": "Charm City Cleanup Baltimore's citywide cleaning initiative brings together city agencies,",
+							"url": "https://www.baltimorecity.gov/mayor/charm-city-cleanup"
+						},
+						{
+							"p": 0.5,
+							"label": "Fri, Oct 2 2026 33rd Annual Baltimore City Civil Rights Breakfast",
+							"url": "https://www.baltimorecity.gov/smbad/event/33rd-annual-baltimore-city-civil-rights-breakfast"
+						},
+						{
+							"p": 0.5,
+							"label": "September 18, 2026 City of Baltimore Relaunches Ceremonial Street Sign Application Process",
+							"url": "https://www.baltimorecity.gov/mayor/news-media/press-releases/2026-09-18-city-of-baltimore-relaunches-ceremonial-street-sign-application-process"
+						},
+						{
+							"p": 0.5,
+							"label": "September 02, 2026 City of Baltimore Announces City Hall and the Charles L. Benton Buildin",
+							"url": "https://www.baltimorecity.gov/mayor/news-media/press-releases/2026-09-02-city-of-baltimore-announces-city-hall-and-the-charles-l-benton-building-closed-today-due-to-emergency-maintenance"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.baltimorecity.gov/ethics/entities-doing-business-with-the-city",
+					"title": "Entities Doing Business With the City | Baltimore City",
+					"text_chars": 792,
+					"link_options": 98,
+					"links_disallowed_by_robots": 6,
+					"fetch_ms": 1092,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Entities Doing Business With the City",
+							"url": "https://www.baltimorecity.gov/ethics/our-work/companies-doing-business-with-the-city"
+						},
+						{
+							"p": 0.5,
+							"label": "City of Baltimore Charter and Codes",
+							"url": "https://codes.baltimorecity.gov/"
+						},
+						{
+							"p": 0.5,
+							"label": "Baltimore City Sheriff's Office",
+							"url": "https://baltimorecitysheriff.gov/"
+						},
+						{
+							"p": 0.5,
+							"label": "Baltimore City Open Checkbook",
+							"url": "https://app.powerbigov.us/view?r=eyJrIjoiMjJjODE1ZGMtZGJlZS00NDE1LWFiNzQtYjgyMmUyYzVhMmI1IiwidCI6IjMxMmNiMTI2LWM2YWUtNGZjMi04MDBkLTMxOGU2NzljZTZjNyJ9&pageName=ReportSectiond854c858804b0a3816ed"
+						},
+						{
+							"p": 0.325,
+							"label": "Bidding, Contracting, & Business Opportunities",
+							"url": "https://www.baltimorecity.gov/mwbd/our-work/bidding-contracting-opportunities"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "mdot-procurement",
+			"goal": "Find MDOT's page for procurement / bid opportunities for businesses.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 0,
+			"fetch_ms_total": 3931,
+			"cost_usd": 0,
+			"wall_ms": 5768,
+			"hops": [
+				{
+					"url": "https://mdot.maryland.gov/pages/home.aspx",
+					"title": "Home",
+					"text_chars": 2835,
+					"link_options": 92,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 879,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Procurement and Contracts",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=11"
+						},
+						{
+							"p": 0.325,
+							"label": "MDOT Real Estate",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=177"
+						},
+						{
+							"p": 0.325,
+							"label": "Careers",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=3"
+						},
+						{
+							"p": 0.25,
+							"label": "Business",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=2"
+						},
+						{
+							"p": 0.25,
+							"label": "Programs",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=4"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=11",
+					"title": "Procurement and Contracts - MDOT",
+					"text_chars": 3000,
+					"link_options": 68,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 739,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "RFP No. MDOT AC 2023​",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=206"
+						},
+						{
+							"p": 0.406,
+							"label": "MDOT Real Estate",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=177"
+						},
+						{
+							"p": 0.313,
+							"label": "About MDOT",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=5"
+						},
+						{
+							"p": 0.313,
+							"label": "Policy Manual",
+							"url": "https://policymanual.mdot.maryland.gov/mediawiki/index.php"
+						},
+						{
+							"p": 0.313,
+							"label": "Maryland State Procurement Mission",
+							"url": "https://procurement.maryland.gov/procurement-mission/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=206",
+					"title": "RFP No. MDOT AC 2023 - MDOT",
+					"text_chars": 3000,
+					"link_options": 73,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 822,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "MDOT Real Estate",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=177"
+						},
+						{
+							"p": 0.385,
+							"label": "About MDOT",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=5"
+						},
+						{
+							"p": 0.385,
+							"label": "Policy Manual",
+							"url": "https://policymanual.mdot.maryland.gov/mediawiki/index.php"
+						},
+						{
+							"p": 0.385,
+							"label": "Maryland State Procurement Mission",
+							"url": "https://procurement.maryland.gov/procurement-mission/"
+						},
+						{
+							"p": 0.385,
+							"label": "Procurement Forecasting",
+							"url": "https://gomdsmallbiz.maryland.gov/Pages/Forecasting.aspx"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=177",
+					"title": "Office of Real Estate and Economic Development - MDOT",
+					"text_chars": 2757,
+					"link_options": 61,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 730,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "About MDOT",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=5"
+						},
+						{
+							"p": 0.5,
+							"label": "Policy Manual",
+							"url": "https://policymanual.mdot.maryland.gov/mediawiki/index.php"
+						},
+						{
+							"p": 0.5,
+							"label": "MDOT SHA Property Viewer",
+							"url": "https://www.mdot.maryland.gov/tso/Pages/Index.aspx?PageId=180"
+						},
+						{
+							"p": 0.3,
+							"label": "Careers",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=3"
+						},
+						{
+							"p": 0.15,
+							"label": "MD Business Express",
+							"url": "https://businessexpress.maryland.gov/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=5",
+					"title": "About MDOT - MDOT",
+					"text_chars": 3000,
+					"link_options": 56,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 761,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Executive Leadership | About the ​Secretary & MDOT Executive Leadership",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=64"
+						},
+						{
+							"p": 0.5,
+							"label": "Policy Manual",
+							"url": "https://policymanual.mdot.maryland.gov/mediawiki/index.php"
+						},
+						{
+							"p": 0.3,
+							"label": "Careers",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=3"
+						},
+						{
+							"p": 0.15,
+							"label": "MD Business Express",
+							"url": "https://businessexpress.maryland.gov/"
+						},
+						{
+							"p": 0.15,
+							"label": "Motor Carrier Program",
+							"url": "https://www.roads.maryland.gov/mdotsha/pages/cvo.aspx?did=ahps&PageId=23"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "procore-pricing",
+			"goal": "Find how Procore prices its construction software.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 0,
+			"fetch_ms_total": 1577,
+			"cost_usd": 0,
+			"wall_ms": 5634,
+			"hops": [
+				{
+					"url": "https://www.procore.com/",
+					"title": "Construction Project Management Software | Procore",
+					"text_chars": 3000,
+					"link_options": 66,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 275,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Apple App Store",
+							"url": "https://apps.apple.com/us/app/procore-construction-management/id374930542"
+						},
+						{
+							"p": 0.325,
+							"label": "Learn more | Support",
+							"url": "https://v2.support.procore.com/"
+						},
+						{
+							"p": 0.325,
+							"label": "LinkedIn",
+							"url": "https://www.linkedin.com/company/procore-technologies"
+						},
+						{
+							"p": 0.325,
+							"label": "Facebook",
+							"url": "https://www.facebook.com/procore.tech"
+						},
+						{
+							"p": 0.25,
+							"label": "Read the blog",
+							"url": "https://www.procore.com/blog/procore-acquires-dronedeploy-to-bring-visual-intelligence-to-every-jobsite"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://apps.apple.com/us/app/procore/id374930542",
+					"title": "‎Procore App - App Store",
+					"text_chars": 3000,
+					"link_options": 231,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 464,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Developer Procore Technologies, Inc.",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?platform=iphone"
+						},
+						{
+							"p": 0.5,
+							"label": "Español (México)",
+							"url": "https://apps.apple.com/us/app/procore/id374930542?l=es-MX"
+						},
+						{
+							"p": 0.5,
+							"label": "العربية",
+							"url": "https://apps.apple.com/us/app/procore/id374930542?l=ar"
+						},
+						{
+							"p": 0.5,
+							"label": "Русский",
+							"url": "https://apps.apple.com/us/app/procore/id374930542?l=ru"
+						},
+						{
+							"p": 0.5,
+							"label": "简体中文",
+							"url": "https://apps.apple.com/us/app/procore/id374930542?l=zh-Hans-CN"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545",
+					"title": "‎Procore Technologies, Inc. for iPhone - App Store",
+					"text_chars": 249,
+					"link_options": 210,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 244,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Español (México)",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=es-MX"
+						},
+						{
+							"p": 0.5,
+							"label": "العربية",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=ar"
+						},
+						{
+							"p": 0.5,
+							"label": "Русский",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=ru"
+						},
+						{
+							"p": 0.5,
+							"label": "简体中文",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=zh-Hans-CN"
+						},
+						{
+							"p": 0.5,
+							"label": "Français (France)",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=fr-FR"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://apps.apple.com/us/app/procore/id374930542?l=es-MX",
+					"title": "‎App Procore - App Store",
+					"text_chars": 3000,
+					"link_options": 231,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 275,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Desarrollador Procore Technologies, Inc.",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=es-MX&platform=iphone"
+						},
+						{
+							"p": 0.5,
+							"label": "Más de Procore Technologies, Inc.",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=es-MX"
+						},
+						{
+							"p": 0.5,
+							"label": "Ver Raken Safety Field Management Construction Time Tracking App",
+							"url": "https://apps.apple.com/us/app/raken-safety-field-management/id747582049?l=es-MX"
+						},
+						{
+							"p": 0.5,
+							"label": "Ver OpenSpace.ai Construction App Negocios",
+							"url": "https://apps.apple.com/us/app/openspace-ai-construction-app/id1390396977?l=es-MX"
+						},
+						{
+							"p": 0.5,
+							"label": "العربية",
+							"url": "https://apps.apple.com/us/app/procore/id374930542?l=ar"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://apps.apple.com/us/app/procore/id374930542?l=ar",
+					"title": "‏‫تطبيق Procore‬ - App Store",
+					"text_chars": 3000,
+					"link_options": 230,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 319,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "المطور Procore Technologies, Inc.",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=ar&platform=iphone"
+						},
+						{
+							"p": 0.5,
+							"label": "المزيد من Procore Technologies, Inc.",
+							"url": "https://apps.apple.com/us/developer/procore-technologies-inc/id374930545?l=ar"
+						},
+						{
+							"p": 0.5,
+							"label": "عرض Fieldwire - Construction App أعمال",
+							"url": "https://apps.apple.com/us/app/fieldwire-construction-app/id780165517?l=ar"
+						},
+						{
+							"p": 0.5,
+							"label": "عرض Raken Construction Management أعمال",
+							"url": "https://apps.apple.com/us/app/raken-construction-management/id747582049?l=ar"
+						},
+						{
+							"p": 0.5,
+							"label": "عرض OpenSpace.ai Construction App أعمال",
+							"url": "https://apps.apple.com/us/app/openspace-ai-construction-app/id1390396977?l=ar"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "constructconnect-pricing",
+			"goal": "Find ConstructConnect pricing for finding construction projects to bid on.",
+			"navigator": "keyword-overlap",
+			"found_url": "https://www.constructconnect.com/",
+			"success": false,
+			"reached_target": false,
+			"fetches": 1,
+			"model_calls": 1,
+			"model_ms_total": 0,
+			"fetch_ms_total": 98,
+			"cost_usd": 0,
+			"wall_ms": 1117,
+			"hops": [
+				{
+					"url": "https://www.constructconnect.com/",
+					"title": "Finding and Winning Projects | ConstructConnect",
+					"text_chars": 3000,
+					"link_options": 60,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 98,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Project Intelligence Find and Qualify Projects to Bid | 1 Find Projects Find the right projects to bid with better visib",
+							"url": "https://www.constructconnect.com/products/project-intelligence"
+						},
+						{
+							"p": 0.435,
+							"label": "Find Projects",
+							"url": "https://projects.constructconnect.com/"
+						},
+						{
+							"p": 0.435,
+							"label": "Construction News",
+							"url": "https://news.constructconnect.com/"
+						},
+						{
+							"p": 0.435,
+							"label": "How Can Building Product Manufacturers Find Early-Stage Construction Projects?",
+							"url": "https://www.constructconnect.com/blog/how-can-building-product-manufacturers-find-early-stage-construction-projects"
+						},
+						{
+							"p": 0.283,
+							"label": "On-Screen Takeoff® Scalable takeoff with AI | 2 Takeoff & Estimating Move from plans to pricing faster with digital take",
+							"url": "https://www.constructconnect.com/products/on-screen-takeoff"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "agc-events",
+			"goal": "Find AGC's calendar of upcoming events, including its annual convention.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 4,
+			"model_ms_total": 0,
+			"fetch_ms_total": 1321,
+			"cost_usd": 0,
+			"wall_ms": 5092,
+			"hops": [
+				{
+					"url": "https://www.agc.org/",
+					"title": "Associated General Contractors of America | Associated General Contractors of America",
+					"text_chars": 2534,
+					"link_options": 137,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 95,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "AGC Convention",
+							"url": "http://convention.agc.org/"
+						},
+						{
+							"p": 0.385,
+							"label": "Annual Risk Conference",
+							"url": "https://risk.agc.org/"
+						},
+						{
+							"p": 0.385,
+							"label": "Events Calendar",
+							"url": "https://www.agc.org/connect/events-calendar"
+						},
+						{
+							"p": 0.365,
+							"label": "Sponsorship",
+							"url": "http://meetings.agc.org/sponsors"
+						},
+						{
+							"p": 0.308,
+							"label": "Mobile App | AGC Connect",
+							"url": "https://www.agc.org/app"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://convention.agc.org/",
+					"title": "2027 AGC Annual Convention",
+					"text_chars": 2275,
+					"link_options": 47,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 320,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "AGC Events Policy",
+							"url": "https://convention.agc.org/events-policy/"
+						},
+						{
+							"p": 0.5,
+							"label": "BECOME A SPEAKER",
+							"url": "https://agc.secure-platform.com/convention/"
+						},
+						{
+							"p": 0.325,
+							"label": "Special Events | Explore Special Events",
+							"url": "https://convention.agc.org/special-events/"
+						},
+						{
+							"p": 0.25,
+							"label": "",
+							"url": "https://www.agc.org/csea"
+						},
+						{
+							"p": 0.25,
+							"label": "",
+							"url": "https://www.agc.org/home-depot-pro"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://convention.agc.org/events-policy/",
+					"title": "Events Policy | 2027 AGC Annual Convention",
+					"text_chars": 3000,
+					"link_options": 19,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 536,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Facebook",
+							"url": "https://www.facebook.com/sharer?u=https://convention.agc.org/events-policy/&t=Events%20Policy"
+						},
+						{
+							"p": 0.5,
+							"label": "Twitter",
+							"url": "https://twitter.com/intent/tweet?text=Currently%20reading%20Events%20Policy&url=https://convention.agc.org/events-policy/"
+						},
+						{
+							"p": 0.5,
+							"label": "LinkedIn",
+							"url": "https://www.linkedin.com/shareArticle?mini=true&url=https://convention.agc.org/events-policy/&title=Events%20Policy&summary=&source=2027%20AGC%20Annual%20Convention"
+						},
+						{
+							"p": 0.317,
+							"label": "Special Events",
+							"url": "https://convention.agc.org/special-events/"
+						},
+						{
+							"p": 0.217,
+							"label": "Secure Your Seat",
+							"url": "https://agc-community.agc.org/s/lt-event?id=a1mRg000006U1Mb"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://agc.secure-platform.com/convention/",
+					"title": "Associated General Contractors of America - home",
+					"text_chars": 705,
+					"link_options": 6,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 370,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Start Your Submission",
+							"url": "https://agc.secure-platform.com/convention/solicitations/106001/home"
+						},
+						{
+							"p": 0.5,
+							"label": "Call for Proposals Guidelines and Instructions",
+							"url": "https://agc.secure-platform.com/convention/page/additional-information/proposal-guidelines"
+						},
+						{
+							"p": 0.5,
+							"label": "Learning Lab",
+							"url": "https://agc.secure-platform.com/convention/page/additional-information/learning-lab"
+						},
+						{
+							"p": 0.5,
+							"label": "Submission Guide",
+							"url": "https://agc.secure-platform.com/convention/page/additional-information/submission-guide"
+						},
+						{
+							"p": 0.5,
+							"label": "My Account",
+							"url": "https://agc.secure-platform.com/convention/account/login"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.facebook.com/sharer?u=https://convention.agc.org/events-policy/&t=Events%20Policy",
+					"error": "robots.txt disallows this URL"
+				}
+			]
+		},
+		{
+			"id": "supabase-rls",
+			"goal": "Find the Supabase documentation page about Row Level Security (RLS) policies.",
+			"navigator": "keyword-overlap",
+			"found_url": "https://supabase.com/",
+			"success": false,
+			"reached_target": false,
+			"fetches": 1,
+			"model_calls": 1,
+			"model_ms_total": 0,
+			"fetch_ms_total": 215,
+			"cost_usd": 0,
+			"wall_ms": 1238,
+			"hops": [
+				{
+					"url": "https://supabase.com/",
+					"title": "Supabase | The Postgres Development Platform",
+					"text_chars": 3000,
+					"link_options": 95,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 215,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "AuthenticationAdd user sign ups and logins, securing your data with Row Level Security.",
+							"url": "https://supabase.com/auth"
+						},
+						{
+							"p": 0.348,
+							"label": "@SteinlageScottI love @supabase's built-in Advisors. The security and performance linters ",
+							"url": "https://x.com/SteinlageScott/status/1958603243401183701"
+						},
+						{
+							"p": 0.303,
+							"label": "@adeelibr@supabase shout out, their MCP is awesome. It's helping me create better row secu",
+							"url": "https://x.com/adeelibr/status/1981356783818985774"
+						},
+						{
+							"p": 0.242,
+							"label": "Supabase Library",
+							"url": "https://supabase.com/library"
+						},
+						{
+							"p": 0.197,
+							"label": "Join us on Discord",
+							"url": "https://discord.supabase.com/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "svelte-derived",
+			"goal": "Find the documentation page for the $derived rune.",
+			"navigator": "keyword-overlap",
+			"found_url": "https://svelte.dev/docs/svelte/$derived",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 0,
+			"fetch_ms_total": 143,
+			"cost_usd": 0,
+			"wall_ms": 2086,
+			"hops": [
+				{
+					"url": "https://svelte.dev/docs/svelte/overview",
+					"title": "Overview • Svelte Docs",
+					"text_chars": 1055,
+					"link_options": 101,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 68,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "$derived",
+							"url": "https://svelte.dev/docs/svelte/$derived"
+						},
+						{
+							"p": 0.5,
+							"label": "Edit this page on GitHub",
+							"url": "https://github.com/sveltejs/svelte/edit/main/documentation/docs/01-introduction/01-overview.md"
+						},
+						{
+							"p": 0.15,
+							"label": "$effect",
+							"url": "https://svelte.dev/docs/svelte/$effect"
+						},
+						{
+							"p": 0.15,
+							"label": "$props",
+							"url": "https://svelte.dev/docs/svelte/$props"
+						},
+						{
+							"p": 0.15,
+							"label": "$bindable",
+							"url": "https://svelte.dev/docs/svelte/$bindable"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://svelte.dev/docs/svelte/$derived",
+					"title": "$derived • Svelte Docs",
+					"text_chars": 3000,
+					"link_options": 101,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 75,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Edit this page on GitHub",
+							"url": "https://github.com/sveltejs/svelte/edit/main/documentation/docs/02-runes/03-$derived.md"
+						},
+						{
+							"p": 0.25,
+							"label": "llms.txt",
+							"url": "https://svelte.dev/docs/svelte/$derived/llms.txt"
+						},
+						{
+							"p": 0.075,
+							"label": "Homepage",
+							"url": "https://svelte.dev/"
+						},
+						{
+							"p": 0.075,
+							"label": "Docs",
+							"url": "https://svelte.dev/docs"
+						},
+						{
+							"p": 0.075,
+							"label": "Svelte",
+							"url": "https://svelte.dev/docs/svelte"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "typesafe-score",
+			"goal": "Find the documentation for the Score primitive.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 0,
+			"fetch_ms_total": 939,
+			"cost_usd": 0,
+			"wall_ms": 5416,
+			"hops": [
+				{
+					"url": "https://docs.typesafe.ai/primitives/choice",
+					"title": "Choice - TypeSafe AI",
+					"text_chars": 3000,
+					"link_options": 32,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 223,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Documentation | Introduction",
+							"url": "https://docs.typesafe.ai/introduction"
+						},
+						{
+							"p": 0.5,
+							"label": "Score | ScoreNext",
+							"url": "https://docs.typesafe.ai/primitives/score"
+						},
+						{
+							"p": 0.5,
+							"label": "Powered byThis documentation is built and hosted on Mintlify, a developer documentation pl",
+							"url": "https://www.mintlify.com/?utm_campaign=poweredBy&utm_medium=referral&utm_source=ts-docs"
+						},
+						{
+							"p": 0.15,
+							"label": "/llms.txt",
+							"url": "https://docs.typesafe.ai/llms.txt"
+						},
+						{
+							"p": 0.15,
+							"label": "Cookbooks",
+							"url": "https://docs.typesafe.ai/cookbooks"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://docs.typesafe.ai/introduction",
+					"title": "Introduction - TypeSafe AI",
+					"text_chars": 2877,
+					"link_options": 25,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 141,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Score",
+							"url": "https://docs.typesafe.ai/primitives/score"
+						},
+						{
+							"p": 0.5,
+							"label": "Powered byThis documentation is built and hosted on Mintlify, a developer documentation pl",
+							"url": "https://www.mintlify.com/?utm_campaign=poweredBy&utm_medium=referral&utm_source=ts-docs"
+						},
+						{
+							"p": 0.15,
+							"label": "/llms.txt",
+							"url": "https://docs.typesafe.ai/llms.txt"
+						},
+						{
+							"p": 0.15,
+							"label": "Cookbooks",
+							"url": "https://docs.typesafe.ai/cookbooks"
+						},
+						{
+							"p": 0.15,
+							"label": "Reference",
+							"url": "https://docs.typesafe.ai/models"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://docs.typesafe.ai/primitives/score",
+					"title": "Score - TypeSafe AI",
+					"text_chars": 3000,
+					"link_options": 29,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 153,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Powered byThis documentation is built and hosted on Mintlify, a developer documentation pl",
+							"url": "https://www.mintlify.com/?utm_campaign=poweredBy&utm_medium=referral&utm_source=ts-docs"
+						},
+						{
+							"p": 0.3,
+							"label": "/llms.txt",
+							"url": "https://docs.typesafe.ai/llms.txt"
+						},
+						{
+							"p": 0.15,
+							"label": "Cookbooks",
+							"url": "https://docs.typesafe.ai/cookbooks"
+						},
+						{
+							"p": 0.15,
+							"label": "Reference",
+							"url": "https://docs.typesafe.ai/models"
+						},
+						{
+							"p": 0.15,
+							"label": "Noul | NoulNext",
+							"url": "https://docs.typesafe.ai/primitives/noul"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.mintlify.com/?utm_campaign=poweredBy&utm_medium=referral&utm_source=ts-docs",
+					"title": "Mintlify - The Knowledge Platform Built for Agents",
+					"text_chars": 3000,
+					"link_options": 55,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 182,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Kalshi powers its developer documentation with Mintlify.Read Kalshi's story",
+							"url": "https://www.mintlify.com/customers/kalshi"
+						},
+						{
+							"p": 0.5,
+							"label": "Decagon ships sleek, AI-native documentation built on Mintlify.Read Decagon's story",
+							"url": "https://www.mintlify.com/customers/decagon"
+						},
+						{
+							"p": 0.5,
+							"label": "Learn how Replit uses Mintlify to turn documentation into a fast, collaborative, and acces",
+							"url": "https://www.mintlify.com/customers/replit"
+						},
+						{
+							"p": 0.5,
+							"label": "Perplexity keeps its developer documentation fast and accurate with Mintlify.Read Perplexi",
+							"url": "https://www.mintlify.com/customers/perplexity"
+						},
+						{
+							"p": 0.5,
+							"label": "Polymarket builds clear, AI-native documentation on Mintlify.Read Polymarket's story",
+							"url": "https://www.mintlify.com/customers/polymarket"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.mintlify.com/customers/kalshi",
+					"title": "Kalshi",
+					"text_chars": 3000,
+					"link_options": 42,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 240,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Agent score",
+							"url": "https://www.mintlify.com/score"
+						},
+						{
+							"p": 0.3,
+							"label": "Getting started",
+							"url": "https://www.mintlify.com/docs"
+						},
+						{
+							"p": 0.3,
+							"label": "API reference",
+							"url": "https://www.mintlify.com/docs/api/introduction"
+						},
+						{
+							"p": 0.3,
+							"label": "Components",
+							"url": "https://www.mintlify.com/docs/components"
+						},
+						{
+							"p": 0.3,
+							"label": "Changelog",
+							"url": "https://www.mintlify.com/docs/changelog"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "mdn-429",
+			"goal": "Find the reference page for the HTTP 429 Too Many Requests status code.",
+			"navigator": "keyword-overlap",
+			"found_url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 0,
+			"fetch_ms_total": 310,
+			"cost_usd": 0,
+			"wall_ms": 2164,
+			"hops": [
+				{
+					"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/403",
+					"title": "403 Forbidden - HTTP | MDN",
+					"text_chars": 1704,
+					"link_options": 484,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 166,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "429 Too Many Requests",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429"
+						},
+						{
+							"p": 0.35,
+							"label": "431 Request Header Fields Too Large",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/431"
+						},
+						{
+							"p": 0.3,
+							"label": "451 Unavailable For Legal Reasons",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/451"
+						},
+						{
+							"p": 0.286,
+							"label": "413 Content Too Large",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413"
+						},
+						{
+							"p": 0.286,
+							"label": "414 URI Too Long",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/414"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429",
+					"title": "429 Too Many Requests - HTTP | MDN",
+					"text_chars": 1746,
+					"link_options": 485,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 144,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "How to avoid HTTP error 429 python",
+							"url": "https://stackoverflow.com/questions/22786068/how-to-avoid-http-error-429-too-many-requests-python"
+						},
+						{
+							"p": 0.462,
+							"label": "431 Request Header Fields Too Large",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/431"
+						},
+						{
+							"p": 0.396,
+							"label": "451 Unavailable For Legal Reasons",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/451"
+						},
+						{
+							"p": 0.377,
+							"label": "MDN contributors",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429/contributors.txt"
+						},
+						{
+							"p": 0.377,
+							"label": "413 Content Too Large",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/413"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "wiki-county-population",
+			"goal": "Find the population of the county that Glen Burnie is located in.",
+			"navigator": "keyword-overlap",
+			"found_url": "https://en.wikipedia.org/wiki/Glen_Burnie,_Maryland",
+			"success": false,
+			"reached_target": false,
+			"fetches": 1,
+			"model_calls": 1,
+			"model_ms_total": 0,
+			"fetch_ms_total": 225,
+			"cost_usd": 0,
+			"wall_ms": 1323,
+			"hops": [
+				{
+					"url": "https://en.wikipedia.org/wiki/Glen_Burnie,_Maryland",
+					"title": "Glen Burnie, Maryland - Wikipedia",
+					"text_chars": 3000,
+					"link_options": 322,
+					"links_disallowed_by_robots": 34,
+					"fetch_ms": 225,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "North County High School",
+							"url": "https://en.wikipedia.org/wiki/North_County_High_School_(Glen_Burnie,_Maryland)"
+						},
+						{
+							"p": 0.383,
+							"label": "39°9′36″N 76°36′38″W / 39.16000°N 76.61056°W / 39.16000; -76.61056",
+							"url": "https://geohack.toolforge.org/geohack.php?pagename=Glen_Burnie,_Maryland&params=39_9_36_N_76_36_38_W_type:city"
+						},
+						{
+							"p": 0.333,
+							"label": "Català",
+							"url": "https://ca.wikipedia.org/wiki/Glen_Burnie"
+						},
+						{
+							"p": 0.333,
+							"label": "Cebuano",
+							"url": "https://ceb.wikipedia.org/wiki/Glen_Burnie_(lungsod)"
+						},
+						{
+							"p": 0.333,
+							"label": "Deutsch",
+							"url": "https://de.wikipedia.org/wiki/Glen_Burnie_(Maryland)"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "aacounty-home-bids",
+			"goal": "Find where Anne Arundel County posts its open bids and solicitations for vendors.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 0,
+			"fetch_ms_total": 1463,
+			"cost_usd": 0,
+			"wall_ms": 4422,
+			"hops": [
+				{
+					"url": "https://www.aacounty.org/",
+					"title": "The Best Place - For All | Anne Arundel County Government",
+					"text_chars": 3000,
+					"link_options": 87,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 164,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "09/17/2026 Anne Arundel County, Resilience Authority, and Department of Recreation and Par",
+							"url": "https://www.aacounty.org/county-executive/news/anne-arundel-county-resilience-authority-and-department-recreation-and-parks"
+						},
+						{
+							"p": 0.5,
+							"label": "09/17/2026 Anne Arundel County Fire/Arson & Explosives Investigator, Lieutenant Neil Patri",
+							"url": "https://www.aacounty.org/fire-department/fire-department-press-releases/anne-arundel-county-firearson-explosives"
+						},
+						{
+							"p": 0.5,
+							"label": "FY27 Approved Budget The Anne Arundel County Council passed Anne Arundel County’s Fiscal Y",
+							"url": "https://www.aacounty.org/budget/current-budget"
+						},
+						{
+							"p": 0.5,
+							"label": "Maryland Legislative Delegation",
+							"url": "https://www.aacounty.org/anne-arundel-county-delegation"
+						},
+						{
+							"p": 0.5,
+							"label": "University of Maryland Extension",
+							"url": "https://extension.umd.edu/anne-arundel-county"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.aacounty.org/county-executive/news/anne-arundel-county-resilience-authority-and-department-recreation-and-parks",
+					"title": "Anne Arundel County, Resilience Authority, and Department of Recreation and Parks Celebrate Construction Beginning on the Edgewater Community Center | Anne Arundel County Government",
+					"text_chars": 2829,
+					"link_options": 30,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 239,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "EngageArundel",
+							"url": "https://www.aacounty.org/county-executive/cecs/engagearundel"
+						},
+						{
+							"p": 0.5,
+							"label": "County Executive",
+							"url": "https://www.aacounty.org/county-executive"
+						},
+						{
+							"p": 0.5,
+							"label": "County Executive News",
+							"url": "https://www.aacounty.org/county-executive/news"
+						},
+						{
+							"p": 0.5,
+							"label": "Contact Form",
+							"url": "https://www.aacounty.org/county-executive/contact-us"
+						},
+						{
+							"p": 0.5,
+							"label": "Closings/Cancellations",
+							"url": "https://www.aacounty.org/county-operations"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.aacounty.org/fire-department/fire-department-press-releases/anne-arundel-county-firearson-explosives",
+					"title": "Anne Arundel County Fire/Arson & Explosives Investigator, Lieutenant Neil Patrick Kinnier | Anne Arundel County Government",
+					"text_chars": 2610,
+					"link_options": 27,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 282,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "EngageArundel",
+							"url": "https://www.aacounty.org/county-executive/cecs/engagearundel"
+						},
+						{
+							"p": 0.5,
+							"label": "Closings/Cancellations",
+							"url": "https://www.aacounty.org/county-operations"
+						},
+						{
+							"p": 0.45,
+							"label": "News",
+							"url": "https://www.aacounty.org/news-events/news"
+						},
+						{
+							"p": 0.45,
+							"label": "Accessibility",
+							"url": "https://www.aacounty.org/accessibility"
+						},
+						{
+							"p": 0.45,
+							"label": "Non-Discrimination Public Notices",
+							"url": "https://www.aacounty.org/personnel/non-discrimination-non-harassment"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.aacounty.org/budget/current-budget",
+					"title": "Current Budget | Anne Arundel County Government",
+					"text_chars": 887,
+					"link_options": 30,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 362,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "EngageArundel",
+							"url": "https://www.aacounty.org/county-executive/cecs/engagearundel"
+						},
+						{
+							"p": 0.5,
+							"label": "Closings/Cancellations",
+							"url": "https://www.aacounty.org/county-operations"
+						},
+						{
+							"p": 0.45,
+							"label": "News",
+							"url": "https://www.aacounty.org/news-events/news"
+						},
+						{
+							"p": 0.45,
+							"label": "Accessibility",
+							"url": "https://www.aacounty.org/accessibility"
+						},
+						{
+							"p": 0.45,
+							"label": "Non-Discrimination Public Notices",
+							"url": "https://www.aacounty.org/personnel/non-discrimination-non-harassment"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.aacounty.org/anne-arundel-county-delegation",
+					"title": "Anne Arundel County Delegation | Anne Arundel County Government",
+					"text_chars": 548,
+					"link_options": 38,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 416,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "About Us",
+							"url": "https://www.aacounty.org/anne-arundel-county-delegation/about-us"
+						},
+						{
+							"p": 0.5,
+							"label": "Delegates",
+							"url": "https://www.aacounty.org/anne-arundel-county-delegation/delegates"
+						},
+						{
+							"p": 0.5,
+							"label": "Senators",
+							"url": "https://www.aacounty.org/anne-arundel-county-delegation/senators"
+						},
+						{
+							"p": 0.5,
+							"label": "Meeting Calendar | View All Events",
+							"url": "https://www.aacounty.org/anne-arundel-county-delegation/meeting-calendar"
+						},
+						{
+							"p": 0.5,
+							"label": "Meeting Documents",
+							"url": "https://www.aacounty.org/anne-arundel-county-delegation/meeting-documents"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "hn-opus-thread",
+			"goal": "Open the Hacker News discussion thread about the Claude Opus 5.5 announcement.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 4,
+			"model_ms_total": 0,
+			"fetch_ms_total": 897,
+			"cost_usd": 0,
+			"wall_ms": 4993,
+			"hops": [
+				{
+					"url": "https://news.ycombinator.com/",
+					"title": "Hacker News",
+					"text_chars": 3000,
+					"link_options": 135,
+					"links_disallowed_by_robots": 61,
+					"fetch_ms": 231,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Hacker News",
+							"url": "https://news.ycombinator.com/news"
+						},
+						{
+							"p": 0.5,
+							"label": "Claude Opus 5.5",
+							"url": "https://www.anthropic.com/claude-opus-5-5"
+						},
+						{
+							"p": 0.5,
+							"label": "Claude Opus 5.5 Intelligence, Performance and Price Analysis (Max)",
+							"url": "https://artificialanalysis.ai/models/claude-opus-5-5"
+						},
+						{
+							"p": 0.25,
+							"label": "The human brain is two separate organs, study finds",
+							"url": "https://news.stanford.edu/stories/2026/09/human-brain-two-separate-organs"
+						},
+						{
+							"p": 0.25,
+							"label": "The Economics of Open-Weight Inference",
+							"url": "https://data.ornn.com/publications/the-economics-of-open-weight-inference"
+						}
+					],
+					"matches_target_text": true,
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://news.ycombinator.com/news",
+					"title": "Hacker News",
+					"text_chars": 3000,
+					"link_options": 134,
+					"links_disallowed_by_robots": 61,
+					"fetch_ms": 255,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Claude Opus 5.5",
+							"url": "https://www.anthropic.com/claude-opus-5-5"
+						},
+						{
+							"p": 0.5,
+							"label": "Claude Opus 5.5 Intelligence, Performance and Price Analysis (Max)",
+							"url": "https://artificialanalysis.ai/models/claude-opus-5-5"
+						},
+						{
+							"p": 0.25,
+							"label": "More",
+							"url": "https://news.ycombinator.com/news?p=2"
+						},
+						{
+							"p": 0.25,
+							"label": "The human brain is two separate organs, study finds",
+							"url": "https://news.stanford.edu/stories/2026/09/human-brain-two-separate-organs"
+						},
+						{
+							"p": 0.25,
+							"label": "The Economics of Open-Weight Inference",
+							"url": "https://data.ornn.com/publications/the-economics-of-open-weight-inference"
+						}
+					],
+					"matches_target_text": true,
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://www.anthropic.com/claude-opus-5-5",
+					"title": "Introducing Claude Opus 5.5 \\ Anthropic",
+					"text_chars": 3000,
+					"link_options": 108,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 210,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "discussed here",
+							"url": "https://www.anthropic.com/news/claude-text-watermark"
+						},
+						{
+							"p": 0.435,
+							"label": "Opus 5.5 System Card",
+							"url": "https://anthropic.com/claude-opus-5-5-system-card"
+						},
+						{
+							"p": 0.435,
+							"label": "Claude Security",
+							"url": "https://www.anthropic.com/news/claude-code-security"
+						},
+						{
+							"p": 0.435,
+							"label": "Opus",
+							"url": "https://www.anthropic.com/claude/opus"
+						},
+						{
+							"p": 0.435,
+							"label": "Cyber Verification Program",
+							"url": "https://support.claude.com/en/articles/14604842-real-time-cyber-safeguards-on-claude-opus-and-sonnet"
+						}
+					],
+					"matches_target_text": true,
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://artificialanalysis.ai/models/claude-opus-5-5",
+					"error": "Response body exceeds size limit."
+				},
+				{
+					"url": "https://www.anthropic.com/news/claude-text-watermark",
+					"title": "How Claude's text watermarking works \\ Anthropic",
+					"text_chars": 3000,
+					"link_options": 99,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 201,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Opus",
+							"url": "https://www.anthropic.com/claude/opus"
+						},
+						{
+							"p": 0.5,
+							"label": "Share on Twitter",
+							"url": "https://twitter.com/intent/tweet?text=https://www.anthropic.com/news/claude-text-watermark"
+						},
+						{
+							"p": 0.5,
+							"label": "Share on LinkedIn",
+							"url": "https://www.linkedin.com/shareArticle?mini=true&url=https://www.anthropic.com/news/claude-text-watermark"
+						},
+						{
+							"p": 0.325,
+							"label": "Sonnet",
+							"url": "https://www.anthropic.com/claude/sonnet"
+						},
+						{
+							"p": 0.325,
+							"label": "Haiku",
+							"url": "https://www.anthropic.com/claude/haiku"
+						}
+					],
+					"matches_target_text": false,
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "linear-changelog",
+			"goal": "Find Linear's changelog of recent product updates.",
+			"navigator": "keyword-overlap",
+			"found_url": "https://linear.app/changelog/2026-08-13-team-initiatives",
+			"success": false,
+			"reached_target": false,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 0,
+			"fetch_ms_total": 597,
+			"cost_usd": 0,
+			"wall_ms": 2308,
+			"hops": [
+				{
+					"url": "https://linear.app/",
+					"title": "Linear – The system for product development",
+					"text_chars": 3000,
+					"link_options": 49,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 298,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Team initiativesInitiatives are Linear's way to manage product strategy and high-level pla",
+							"url": "https://linear.app/changelog/2026-08-13-team-initiatives"
+						},
+						{
+							"p": 0.333,
+							"label": "Loops for product managementLoops are recurring agent workflows for teams. They now respon",
+							"url": "https://linear.app/changelog/2026-09-14-loops-for-product-management"
+						},
+						{
+							"p": 0.333,
+							"label": "You’ll probably build a better product, just because of the craft that using Linear infuse | You’ll probably build a bet",
+							"url": "https://linear.app/customers/openai"
+						},
+						{
+							"p": 0.267,
+							"label": "Priority inboxAn active workspace can create a significant amount of notifications each da",
+							"url": "https://linear.app/changelog/2026-09-03-priority-inbox"
+						},
+						{
+							"p": 0.167,
+							"label": "Coding sessionsLinear Agent can now set up, run, and test your code before returning its w",
+							"url": "https://linear.app/changelog/2026-08-20-coding-environments"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://linear.app/changelog/2026-08-13-team-initiatives",
+					"title": "Team initiatives – Changelog",
+					"text_chars": 3000,
+					"link_options": 42,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 299,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Changelog",
+							"url": "https://linear.app/changelog"
+						},
+						{
+							"p": 0.5,
+							"label": "X (Twitter)",
+							"url": "https://x.com/linear"
+						},
+						{
+							"p": 0.5,
+							"label": "GitHub",
+							"url": "https://github.com/linear"
+						},
+						{
+							"p": 0.5,
+							"label": "YouTube",
+							"url": "https://www.youtube.com/@linear"
+						},
+						{
+							"p": 0.15,
+							"label": "Navigate to home",
+							"url": "https://linear.app/homepage"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "stripe-intl-fee",
+			"goal": "Find the additional fee Stripe charges US businesses for international cards.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 0,
+			"fetch_ms_total": 1678,
+			"cost_usd": 0,
+			"wall_ms": 4725,
+			"hops": [
+				{
+					"url": "https://stripe.com/",
+					"title": "Stripe | Financial Infrastructure to Grow Your Revenue",
+					"text_chars": 3000,
+					"link_options": 136,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 147,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Start now | Get started",
+							"url": "https://dashboard.stripe.com/register"
+						},
+						{
+							"p": 0.5,
+							"label": "Your privacy choices",
+							"url": "https://privacy.stripe.com/"
+						},
+						{
+							"p": 0.385,
+							"label": "Guide me | Get recommendationsTell us about your business",
+							"url": "https://stripe.com/personalize"
+						},
+						{
+							"p": 0.385,
+							"label": "Sign in",
+							"url": "https://dashboard.stripe.com/login"
+						},
+						{
+							"p": 0.385,
+							"label": "Sign up with Google",
+							"url": "https://dashboard.stripe.com/login/oauth/google/init"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://dashboard.stripe.com/register",
+					"title": "Sign up and create a Stripe account | Stripe",
+					"text_chars": 215,
+					"link_options": 1,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 210,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "View Stripe Dashboard browser compatibility",
+							"url": "https://stripe.com/docs/dashboard"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://privacy.stripe.com/",
+					"title": "Stripe Privacy Portal",
+					"text_chars": 21,
+					"link_options": 0,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 284,
+					"page_has_answer": 0,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://docs.stripe.com/dashboard/basics",
+					"title": "Web Dashboard | Stripe Documentation",
+					"text_chars": 3000,
+					"link_options": 112,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 700,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Terminal readers",
+							"url": "https://dashboard.stripe.com/setup/terminal/activate"
+						},
+						{
+							"p": 0.5,
+							"label": "Sigma",
+							"url": "https://dashboard.stripe.com/sigma/queries"
+						},
+						{
+							"p": 0.5,
+							"label": "Workflows",
+							"url": "https://dashboard.stripe.com/workflows"
+						},
+						{
+							"p": 0.5,
+							"label": "Issuing",
+							"url": "https://dashboard.stripe.com/issuing/overview"
+						},
+						{
+							"p": 0.5,
+							"label": "Financial connections",
+							"url": "https://dashboard.stripe.com/settings/financial-connections"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://dashboard.stripe.com/login?redirect=%2Fsetup%2Fterminal%2Factivate",
+					"title": "Stripe Login | Sign in to the Stripe Dashboard",
+					"text_chars": 217,
+					"link_options": 1,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 337,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "View Stripe Dashboard browser compatibility",
+							"url": "https://stripe.com/docs/dashboard"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "anthropic-api-pricing",
+			"goal": "Find the per-token API pricing for Claude models.",
+			"navigator": "keyword-overlap",
+			"found_url": "https://claude.com/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 0,
+			"fetch_ms_total": 351,
+			"cost_usd": 0,
+			"wall_ms": 1385,
+			"hops": [
+				{
+					"url": "https://www.anthropic.com/",
+					"title": "Home \\ Anthropic",
+					"text_chars": 1652,
+					"link_options": 109,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 90,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Pricing",
+							"url": "https://claude.com/pricing"
+						},
+						{
+							"p": 0.5,
+							"label": "Overview",
+							"url": "http://claude.com/platform/api"
+						},
+						{
+							"p": 0.4,
+							"label": "Mythos",
+							"url": "https://www.anthropic.com/claude/mythos"
+						},
+						{
+							"p": 0.4,
+							"label": "Fable",
+							"url": "https://www.anthropic.com/claude/fable"
+						},
+						{
+							"p": 0.4,
+							"label": "Opus",
+							"url": "https://www.anthropic.com/claude/opus"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://claude.com/pricing",
+					"title": "Plans & Pricing | Claude by Anthropic",
+					"text_chars": 3000,
+					"link_options": 124,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 261,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Claude Platform | Overview",
+							"url": "https://claude.com/platform/api"
+						},
+						{
+							"p": 0.5,
+							"label": "Learn more | Explore detailed pricing (opens in new tab) | Learn more (opens in new tab)",
+							"url": "https://platform.claude.com/docs/en/about-claude/pricing"
+						},
+						{
+							"p": 0.5,
+							"label": "Learn more (opens in new tab)",
+							"url": "https://platform.claude.com/docs/en/api/service-tiers"
+						},
+						{
+							"p": 0.5,
+							"label": "Learn more (opens in new tab)",
+							"url": "https://platform.claude.com/docs/en/about-claude/models/overview"
+						},
+						{
+							"p": 0.4,
+							"label": "Try Claude",
+							"url": "https://claude.ai/"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		},
+		{
+			"id": "buildos-pricing",
+			"goal": "Find what BuildOS costs.",
+			"navigator": "keyword-overlap",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 3,
+			"model_ms_total": 0,
+			"fetch_ms_total": 579,
+			"cost_usd": 0,
+			"wall_ms": 3129,
+			"hops": [
+				{
+					"url": "https://build-os.com/",
+					"title": "BuildOS — A project workspace you can talk to.",
+					"text_chars": 3000,
+					"link_options": 17,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 203,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "BuildOS on X (opens in new tab)",
+							"url": "https://x.com/build_os"
+						},
+						{
+							"p": 0.5,
+							"label": "BuildOS on LinkedIn (opens in new tab)",
+							"url": "https://www.linkedin.com/company/build-os-app"
+						},
+						{
+							"p": 0.15,
+							"label": "Read docs",
+							"url": "https://build-os.com/docs"
+						},
+						{
+							"p": 0.15,
+							"label": "About",
+							"url": "https://build-os.com/about"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://x.com/build_os",
+					"error": "robots.txt disallows this URL"
+				},
+				{
+					"url": "https://www.linkedin.com/company/build-os-app",
+					"error": "robots.txt disallows this URL"
+				},
+				{
+					"url": "https://build-os.com/docs",
+					"title": "Documentation — BuildOS",
+					"text_chars": 1559,
+					"link_options": 23,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 252,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "Getting Started | Read getting started | Getting Started Your first ten minutes in BuildOS — sign up, capture a project,",
+							"url": "https://build-os.com/docs/getting-started"
+						},
+						{
+							"p": 0.5,
+							"label": "The BuildOS Ontology | The BuildOS Ontology Projects, tasks, plans, documents, goals — the semantic model behind everyth",
+							"url": "https://build-os.com/docs/ontology"
+						},
+						{
+							"p": 0.5,
+							"label": "Brain Dump & Voice Notes | Brain Dump & Voice Notes Capture messy thinking in text or voice; BuildOS structures it into ",
+							"url": "https://build-os.com/docs/brain-dump"
+						},
+						{
+							"p": 0.15,
+							"label": "Agentic Chat | Agentic Chat The in-app agent that reads, writes, searches, and schedules across your projects.",
+							"url": "https://build-os.com/docs/agentic-chat"
+						},
+						{
+							"p": 0.15,
+							"label": "Projects, Tasks & Plans | Projects, Tasks & Plans Organize work into projects with tasks, plans, documents, and goals.",
+							"url": "https://build-os.com/docs/projects-tasks-plans"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				},
+				{
+					"url": "https://build-os.com/docs/getting-started",
+					"title": "Getting Started — BuildOS Docs",
+					"text_chars": 2244,
+					"link_options": 22,
+					"links_disallowed_by_robots": 3,
+					"fetch_ms": 124,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.5,
+							"label": "The BuildOS Ontology | Next The BuildOS Ontology",
+							"url": "https://build-os.com/docs/ontology"
+						},
+						{
+							"p": 0.15,
+							"label": "Brain Dump & Voice Notes",
+							"url": "https://build-os.com/docs/brain-dump"
+						},
+						{
+							"p": 0.15,
+							"label": "Agentic Chat",
+							"url": "https://build-os.com/docs/agentic-chat"
+						},
+						{
+							"p": 0.15,
+							"label": "Projects, Tasks & Plans",
+							"url": "https://build-os.com/docs/projects-tasks-plans"
+						},
+						{
+							"p": 0.15,
+							"label": "Calendar & Time Blocks",
+							"url": "https://build-os.com/docs/calendar"
+						}
+					],
+					"model_ms": 0,
+					"cost_usd": 0
+				}
+			]
+		}
+	]
+}

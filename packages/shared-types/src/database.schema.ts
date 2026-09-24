@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-09-24T01:11:54.861Z
+// Generated on: 2026-09-24T14:28:55.952Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1003,6 +1003,14 @@ export type DatabaseSchema = {
 		source_prepared_prompt_id: string | null;
 		turn_run_id: string;
 		user_id: string;
+	};
+	chat_turn_recovery_failures: {
+		failure_count: number;
+		first_failed_at: string;
+		last_error: string | null;
+		last_failed_at: string;
+		last_sqlstate: string | null;
+		turn_run_id: string;
 	};
 	chat_turn_runs: {
 		assistant_message_id: string | null;
@@ -4489,6 +4497,7 @@ export const tableNames = [
 	'chat_turn_effects',
 	'chat_turn_events',
 	'chat_turn_input_artifacts',
+	'chat_turn_recovery_failures',
 	'chat_turn_runs',
 	'chat_turn_signals',
 	'chat_turn_stream_state',

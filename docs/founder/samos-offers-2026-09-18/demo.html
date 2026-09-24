@@ -1,0 +1,1151 @@
+<!-- docs/founder/samos-offers-2026-09-18/demo.html -->
+<title>Samos Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+	rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+/>
+<style>
+	:root {
+		--bg: #e9ecea;
+		--frame: #f7f8f6;
+		--surface: #ffffff;
+		--surface-2: #eef1ee;
+		--ink: #141a18;
+		--ink-2: #4b5652;
+		--ink-3: #75817c;
+		--rule: #d6dcd8;
+		--accent: #0f6b5c;
+		--accent-ink: #ffffff;
+		--accent-wash: #dcede8;
+		--bid: #1e7a4c;
+		--bid-wash: #ddefe4;
+		--pass: #6b7570;
+		--pass-wash: #e6e9e7;
+		--review: #b8700f;
+		--review-wash: #f6e8d2;
+		--won: #0f6b5c;
+		--lost: #a33b2e;
+		--lost-wash: #f3dfdb;
+		--ui: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		--mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	}
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) {
+			--bg: #0f1413;
+			--frame: #151b19;
+			--surface: #1b2321;
+			--surface-2: #232d2a;
+			--ink: #e8ece9;
+			--ink-2: #b0bab5;
+			--ink-3: #7f8b86;
+			--rule: #2c3733;
+			--accent: #5fc4ae;
+			--accent-ink: #07211b;
+			--accent-wash: #173129;
+			--bid: #6cc996;
+			--bid-wash: #183426;
+			--pass: #98a39e;
+			--pass-wash: #262e2b;
+			--review: #e6a650;
+			--review-wash: #35270f;
+			--won: #5fc4ae;
+			--lost: #ee8a7a;
+			--lost-wash: #3a1e1a;
+		}
+	}
+	:root[data-theme='dark'] {
+		--bg: #0f1413;
+		--frame: #151b19;
+		--surface: #1b2321;
+		--surface-2: #232d2a;
+		--ink: #e8ece9;
+		--ink-2: #b0bab5;
+		--ink-3: #7f8b86;
+		--rule: #2c3733;
+		--accent: #5fc4ae;
+		--accent-ink: #07211b;
+		--accent-wash: #173129;
+		--bid: #6cc996;
+		--bid-wash: #183426;
+		--pass: #98a39e;
+		--pass-wash: #262e2b;
+		--review: #e6a650;
+		--review-wash: #35270f;
+		--won: #5fc4ae;
+		--lost: #ee8a7a;
+		--lost-wash: #3a1e1a;
+	}
+	* {
+		box-sizing: border-box;
+	}
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--ink);
+		font-family: var(--ui);
+		font-size: 15px;
+		line-height: 1.45;
+		-webkit-font-smoothing: antialiased;
+	}
+	.page {
+		max-width: 470px;
+		margin: 0 auto;
+		padding-inline: 16px;
+		padding-block: 18px 48px;
+	}
+	.frame {
+		background: var(--frame);
+		border: 1px solid var(--rule);
+		border-radius: 18px;
+		overflow: hidden;
+		box-shadow:
+			0 1px 2px rgba(0, 0, 0, 0.06),
+			0 18px 40px -24px rgba(0, 0, 0, 0.35);
+	}
+	.bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 14px 16px 10px;
+	}
+	.brand {
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		font-size: 1.1rem;
+	}
+	.brand span {
+		color: var(--accent);
+	}
+	.pill {
+		font-family: var(--mono);
+		font-size: 0.62rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		padding: 3px 8px;
+		border-radius: 99px;
+		background: var(--review-wash);
+		color: var(--review);
+		font-weight: 600;
+	}
+	.tabs {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		padding: 0 16px 12px;
+		gap: 6px;
+	}
+	.tabs button {
+		border: 1px solid var(--rule);
+		background: var(--surface);
+		color: var(--ink-2);
+		border-radius: 10px;
+		padding: 9px 10px;
+		font-weight: 700;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	.tabs button[aria-selected='true'] {
+		background: var(--ink);
+		color: var(--frame);
+		border-color: var(--ink);
+	}
+	:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	section {
+		padding: 0 12px 16px;
+	}
+	.digest {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 14px;
+		padding: 14px 14px 12px;
+		margin-bottom: 10px;
+	}
+	.digest .day {
+		font-family: var(--mono);
+		font-size: 0.66rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+	.digest h2 {
+		margin: 4px 0 8px;
+		font-size: 1.25rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		line-height: 1.2;
+	}
+	.counts {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+	}
+	.count {
+		font-family: var(--mono);
+		font-size: 0.78rem;
+		font-weight: 600;
+		padding: 4px 9px;
+		border-radius: 8px;
+		font-variant-numeric: tabular-nums;
+	}
+	.count.bid {
+		background: var(--bid-wash);
+		color: var(--bid);
+	}
+	.count.pass {
+		background: var(--pass-wash);
+		color: var(--pass);
+	}
+	.count.review {
+		background: var(--review-wash);
+		color: var(--review);
+	}
+	.stats {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+		margin-bottom: 10px;
+	}
+	.stat {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 12px;
+		padding: 10px 10px 8px;
+	}
+	.stat b {
+		display: block;
+		font-family: var(--mono);
+		font-size: 1.15rem;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+		font-variant-numeric: tabular-nums;
+	}
+	.stat span {
+		font-size: 0.72rem;
+		color: var(--ink-3);
+		line-height: 1.2;
+		display: block;
+	}
+	.stat.warn b {
+		color: var(--lost);
+	}
+	.list {
+		display: grid;
+		gap: 6px;
+	}
+	.item {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 12px;
+		overflow: hidden;
+	}
+	.item > button.head {
+		width: 100%;
+		text-align: left;
+		background: none;
+		border: 0;
+		padding: 11px 12px;
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 4px 10px;
+		align-items: start;
+		cursor: pointer;
+		color: var(--ink);
+	}
+	.gc {
+		font-weight: 800;
+		font-size: 0.95rem;
+		letter-spacing: -0.01em;
+	}
+	.proj {
+		color: var(--ink-2);
+		font-size: 0.86rem;
+	}
+	.sub {
+		font-family: var(--mono);
+		font-size: 0.7rem;
+		color: var(--ink-3);
+		margin-top: 3px;
+	}
+	.chip {
+		font-family: var(--mono);
+		font-size: 0.64rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		font-weight: 600;
+		padding: 4px 8px;
+		border-radius: 8px;
+		white-space: nowrap;
+		align-self: start;
+	}
+	.chip.bid {
+		background: var(--bid-wash);
+		color: var(--bid);
+	}
+	.chip.pass {
+		background: var(--pass-wash);
+		color: var(--pass);
+	}
+	.chip.review {
+		background: var(--review-wash);
+		color: var(--review);
+	}
+	.chip.won {
+		background: var(--accent-wash);
+		color: var(--won);
+	}
+	.chip.lost {
+		background: var(--lost-wash);
+		color: var(--lost);
+	}
+	.chip.sent {
+		background: var(--accent-wash);
+		color: var(--accent);
+	}
+	.why {
+		padding: 0 12px 12px;
+		display: grid;
+		gap: 8px;
+		border-top: 1px solid var(--rule);
+		padding-top: 10px;
+	}
+	.why ul {
+		margin: 0;
+		padding-left: 16px;
+		font-size: 0.84rem;
+		color: var(--ink-2);
+		display: grid;
+		gap: 2px;
+	}
+	.why ul li b {
+		color: var(--ink);
+		font-weight: 700;
+	}
+	.why .note {
+		font-size: 0.8rem;
+		color: var(--ink-3);
+	}
+	.btns {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+	}
+	.btn {
+		border: 1px solid var(--rule);
+		background: var(--surface);
+		color: var(--ink);
+		border-radius: 9px;
+		padding: 7px 11px;
+		font-weight: 700;
+		font-size: 0.82rem;
+		cursor: pointer;
+	}
+	.btn.primary {
+		background: var(--accent);
+		color: var(--accent-ink);
+		border-color: var(--accent);
+	}
+	.btn.bid {
+		color: var(--bid);
+	}
+	.btn.pass {
+		color: var(--pass);
+	}
+	.btn.review {
+		color: var(--review);
+	}
+	.btn.lost {
+		color: var(--lost);
+	}
+	.btn[aria-pressed='true'] {
+		background: var(--ink);
+		color: var(--frame);
+		border-color: var(--ink);
+	}
+	h3.sec {
+		font-family: var(--mono);
+		font-size: 0.66rem;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		margin: 14px 2px 6px;
+		font-weight: 600;
+	}
+	.bars {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 12px;
+		padding: 10px 12px;
+		display: grid;
+		gap: 6px;
+	}
+	.bar-row {
+		display: grid;
+		grid-template-columns: 1fr 96px 40px;
+		gap: 8px;
+		align-items: center;
+		font-size: 0.82rem;
+	}
+	.track {
+		height: 7px;
+		background: var(--surface-2);
+		border-radius: 99px;
+		overflow: hidden;
+	}
+	.fill {
+		height: 100%;
+		background: var(--accent);
+		border-radius: 99px;
+	}
+	.fill.low {
+		background: var(--lost);
+	}
+	.pct {
+		font-family: var(--mono);
+		font-size: 0.74rem;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+		color: var(--ink-2);
+	}
+	.money {
+		font-family: var(--mono);
+		font-variant-numeric: tabular-nums;
+	}
+	.draft {
+		background: var(--surface-2);
+		border-radius: 10px;
+		padding: 9px 10px;
+		font-size: 0.86rem;
+		color: var(--ink);
+		white-space: pre-wrap;
+	}
+	textarea.draft {
+		width: 100%;
+		border: 1px solid var(--rule);
+		font: inherit;
+		font-size: 0.86rem;
+		min-height: 84px;
+		resize: vertical;
+		color: var(--ink);
+	}
+	.seq {
+		display: flex;
+		gap: 4px;
+	}
+	.seq span {
+		font-family: var(--mono);
+		font-size: 0.62rem;
+		padding: 2px 6px;
+		border-radius: 6px;
+		background: var(--surface-2);
+		color: var(--ink-3);
+	}
+	.seq span.on {
+		background: var(--accent-wash);
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.empty {
+		font-size: 0.84rem;
+		color: var(--ink-3);
+		padding: 8px 4px;
+	}
+	.caption {
+		margin: 14px 4px 0;
+		font-size: 0.84rem;
+		color: var(--ink-3);
+		max-width: 60ch;
+	}
+	.caption b {
+		color: var(--ink-2);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		* {
+			transition: none !important;
+		}
+	}
+</style>
+
+<div class="page">
+	<div class="frame">
+		<div class="bar">
+			<div class="brand">Sam<span>os</span></div>
+			<span class="pill">Sample data</span>
+		</div>
+		<div class="tabs" role="tablist">
+			<button type="button" role="tab" id="tab-bid" aria-selected="true" aria-controls="bid">
+				Bid Desk
+			</button>
+			<button
+				type="button"
+				role="tab"
+				id="tab-quotes"
+				aria-selected="false"
+				aria-controls="quotes"
+			>
+				Quiet Quotes
+			</button>
+		</div>
+
+		<section id="bid" role="tabpanel" aria-labelledby="tab-bid">
+			<div class="digest">
+				<div class="day">Tuesday · 6:40 am · estimating inbox</div>
+				<h2 id="bid-h2"></h2>
+				<div class="counts" id="bid-counts"></div>
+			</div>
+			<div class="stats">
+				<div class="stat"><b>61</b><span>invitations, last 90 days</span></div>
+				<div class="stat"><b>38</b><span>answered</span></div>
+				<div class="stat warn">
+					<b>9</b><span>died silently, past due, never answered</span>
+				</div>
+			</div>
+			<h3 class="sec">Today's invitations · tap one</h3>
+			<div class="list" id="bid-list"></div>
+			<h3 class="sec">Hit rate by general contractor · 12 months</h3>
+			<div class="bars" id="bid-bars"></div>
+		</section>
+
+		<section id="quotes" role="tabpanel" aria-labelledby="tab-quotes" hidden>
+			<div class="digest">
+				<div class="day">Tuesday · 6:40 am · open estimates</div>
+				<h2 id="q-h2"></h2>
+				<div class="counts" id="q-counts"></div>
+			</div>
+			<div class="stats">
+				<div class="stat"><b class="money" id="q-open"></b><span>in open quotes</span></div>
+				<div class="stat warn"><b id="q-quiet"></b><span>quiet 3+ days</span></div>
+				<div class="stat">
+					<b class="money" id="q-won"></b><span>won back this month</span>
+				</div>
+			</div>
+			<h3 class="sec">Went quiet · tap Send to approve</h3>
+			<div class="list" id="q-quiet-list"></div>
+			<h3 class="sec">Following up</h3>
+			<div class="list" id="q-follow-list"></div>
+			<h3 class="sec">Won back</h3>
+			<div class="list" id="q-won-list"></div>
+		</section>
+	</div>
+	<p class="caption">
+		<b>What this is.</b> A morning screen for the owner. Every invitation or quote is read by an
+		agent, scored against rules you set, and shown with its reasons. Names and numbers here are
+		invented for the demo; the real one reads your inbox.
+	</p>
+</div>
+
+<script>
+	(function () {
+		'use strict';
+		var $ = function (id) {
+			return document.getElementById(id);
+		};
+		function el(tag, cls, text) {
+			var n = document.createElement(tag);
+			if (cls) n.className = cls;
+			if (text != null) n.textContent = text;
+			return n;
+		}
+		function money(n) {
+			return '$' + n.toLocaleString('en-US');
+		}
+
+		// ---------- Bid Desk ----------
+		var GCS = {
+			'Harbor Point Builders': [3, 7],
+			'Patapsco General': [1, 9],
+			'Chesapeake Commercial': [4, 6],
+			'Severn Ridge Construction': [0, 5],
+			'Old Line Builders': [2, 4],
+			'Fort McHenry Contracting': [2, 3]
+		};
+		var INVITES = [
+			{
+				gc: 'Chesapeake Commercial',
+				proj: 'Medical office fit-out, Towson',
+				scope: 'Electrical, 2 floors',
+				due: 6,
+				mi: 18,
+				size: 410000,
+				fit: 1,
+				d: 'bid'
+			},
+			{
+				gc: 'Harbor Point Builders',
+				proj: 'Elementary school HVAC + controls, Pasadena',
+				scope: 'Electrical for mechanical',
+				due: 9,
+				mi: 7,
+				size: 265000,
+				fit: 1,
+				d: 'bid'
+			},
+			{
+				gc: 'Old Line Builders',
+				proj: 'Distribution center tenant improvement, Jessup',
+				scope: 'Power + lighting',
+				due: 4,
+				mi: 14,
+				size: 190000,
+				fit: 1,
+				d: 'bid'
+			},
+			{
+				gc: 'Fort McHenry Contracting',
+				proj: 'Parking garage lighting retrofit, Baltimore',
+				scope: 'LED retrofit, controls',
+				due: 11,
+				mi: 16,
+				size: 88000,
+				fit: 1,
+				d: 'bid'
+			},
+			{
+				gc: 'Patapsco General',
+				proj: 'Data hall build-out, Ashburn VA',
+				scope: 'Electrical',
+				due: 5,
+				mi: 54,
+				size: 2400000,
+				fit: 1,
+				d: 'review'
+			},
+			{
+				gc: 'Severn Ridge Construction',
+				proj: 'Church addition, Severna Park',
+				scope: 'Electrical',
+				due: 12,
+				mi: 9,
+				size: 120000,
+				fit: 1,
+				d: 'review'
+			},
+			{
+				gc: 'Harbor Point Builders',
+				proj: 'Warehouse roof replacement, Curtis Bay',
+				scope: 'Roofing',
+				due: 8,
+				mi: 6,
+				size: 300000,
+				fit: 0,
+				d: 'pass'
+			},
+			{
+				gc: 'Patapsco General',
+				proj: 'Hotel renovation, Ocean City',
+				scope: 'Electrical',
+				due: 3,
+				mi: 130,
+				size: 640000,
+				fit: 1,
+				d: 'pass'
+			},
+			{
+				gc: 'Chesapeake Commercial',
+				proj: 'Grocery store remodel, Glen Burnie',
+				scope: 'Electrical, night work',
+				due: 2,
+				mi: 3,
+				size: 150000,
+				fit: 1,
+				d: 'review'
+			},
+			{
+				gc: 'Severn Ridge Construction',
+				proj: 'Site utilities, Crofton',
+				scope: 'Sitework',
+				due: 10,
+				mi: 15,
+				size: 500000,
+				fit: 0,
+				d: 'pass'
+			},
+			{
+				gc: 'Old Line Builders',
+				proj: 'Fire station generator, Annapolis',
+				scope: 'Generator + ATS',
+				due: 7,
+				mi: 22,
+				size: 95000,
+				fit: 1,
+				d: 'bid'
+			},
+			{
+				gc: 'Fort McHenry Contracting',
+				proj: 'Plumbing package, Columbia',
+				scope: 'Plumbing',
+				due: 6,
+				mi: 24,
+				size: 210000,
+				fit: 0,
+				d: 'pass'
+			},
+			{
+				gc: 'Patapsco General',
+				proj: 'Duplicate: Data hall build-out (BuildingConnected copy)',
+				scope: 'Electrical',
+				due: 5,
+				mi: 54,
+				size: 2400000,
+				fit: 1,
+				d: 'pass'
+			},
+			{
+				gc: 'Harbor Point Builders',
+				proj: 'Bid bond request, no scope attached',
+				scope: 'Unknown',
+				due: 1,
+				mi: 0,
+				size: 0,
+				fit: 0,
+				d: 'pass'
+			}
+		];
+		INVITES.forEach(function (x, i) {
+			x.id = 'b' + i;
+		});
+
+		function reasons(x) {
+			var h = GCS[x.gc] || [0, 0],
+				rate = h[1] ? Math.round((100 * h[0]) / h[1]) : 0,
+				out = [];
+			out.push({
+				k: 'Trade fit',
+				v: x.fit ? 'electrical, in scope' : x.scope + ', not your trade'
+			});
+			out.push({
+				k: 'This GC',
+				v: h[1] ? h[0] + ' won of ' + h[1] + ' bid (' + rate + '%)' : 'no history'
+			});
+			out.push({ k: 'Distance', v: x.mi ? x.mi + ' miles' : 'unknown' });
+			out.push({
+				k: 'Due',
+				v:
+					x.due <= 2
+						? 'in ' + x.due + ' day' + (x.due === 1 ? '' : 's') + ', tight'
+						: 'in ' + x.due + ' days'
+			});
+			out.push({
+				k: 'Size',
+				v: x.size
+					? money(x.size) +
+						(x.size > 1500000
+							? ', above your band'
+							: x.size < 90000
+								? ', small'
+								: ', in your band')
+					: 'no scope attached'
+			});
+			if (/Duplicate/.test(x.proj))
+				out.push({ k: 'Duplicate', v: 'same invite already scored from email' });
+			return out;
+		}
+		function noteFor(x) {
+			if (x.d === 'pass')
+				return (
+					'No-bid reply drafted for ' + x.gc + '. Sent at 8:00 unless you change this.'
+				);
+			if (x.d === 'review')
+				return (
+					"Held for you. Reason it isn't automatic: " +
+					(x.size > 1500000
+						? 'size is above your usual band.'
+						: x.due <= 2
+							? 'due date is very tight.'
+							: 'this GC has never awarded you.')
+				);
+			return 'Added to the estimating board. Due date is on the calendar.';
+		}
+		var openBid = null;
+		function renderBid() {
+			var c = { bid: 0, pass: 0, review: 0 };
+			INVITES.forEach(function (x) {
+				c[x.d]++;
+			});
+			$('bid-h2').textContent =
+				INVITES.length +
+				' new invitations. ' +
+				c.bid +
+				' to bid, ' +
+				c.pass +
+				' to pass, ' +
+				c.review +
+				' for you to look at.';
+			var cc = $('bid-counts');
+			cc.innerHTML = '';
+			cc.appendChild(el('span', 'count bid', c.bid + ' bid'));
+			cc.appendChild(el('span', 'count pass', c.pass + ' pass'));
+			cc.appendChild(el('span', 'count review', c.review + ' review'));
+			var list = $('bid-list');
+			list.innerHTML = '';
+			var order = { review: 0, bid: 1, pass: 2 };
+			INVITES.slice()
+				.sort(function (a, b) {
+					return order[a.d] - order[b.d] || a.due - b.due;
+				})
+				.forEach(function (x) {
+					var it = el('div', 'item');
+					var head = el('button', 'head');
+					head.type = 'button';
+					head.setAttribute('aria-expanded', openBid === x.id ? 'true' : 'false');
+					var left = el('div');
+					left.appendChild(el('div', 'gc', x.gc));
+					left.appendChild(el('div', 'proj', x.proj));
+					left.appendChild(
+						el(
+							'div',
+							'sub',
+							x.scope +
+								' · due in ' +
+								x.due +
+								'd' +
+								(x.size ? ' · ' + money(x.size) : '')
+						)
+					);
+					head.appendChild(left);
+					head.appendChild(el('span', 'chip ' + x.d, x.d));
+					head.addEventListener('click', function () {
+						openBid = openBid === x.id ? null : x.id;
+						renderBid();
+					});
+					it.appendChild(head);
+					if (openBid === x.id) {
+						var why = el('div', 'why');
+						var ul = el('ul');
+						reasons(x).forEach(function (r) {
+							var li = el('li');
+							li.appendChild(el('b', null, r.k + ': '));
+							li.appendChild(document.createTextNode(r.v));
+							ul.appendChild(li);
+						});
+						why.appendChild(ul);
+						why.appendChild(el('div', 'note', noteFor(x)));
+						var btns = el('div', 'btns');
+						['bid', 'review', 'pass'].forEach(function (d) {
+							var b = el(
+								'button',
+								'btn ' + d,
+								d === 'bid' ? 'Bid it' : d === 'pass' ? 'Pass' : 'Hold for me'
+							);
+							b.type = 'button';
+							b.setAttribute('aria-pressed', x.d === d ? 'true' : 'false');
+							b.addEventListener('click', function () {
+								x.d = d;
+								renderBid();
+							});
+							btns.appendChild(b);
+						});
+						why.appendChild(btns);
+						it.appendChild(why);
+					}
+					list.appendChild(it);
+				});
+			var bars = $('bid-bars');
+			bars.innerHTML = '';
+			Object.keys(GCS).forEach(function (g) {
+				var h = GCS[g],
+					p = Math.round((100 * h[0]) / h[1]);
+				var row = el('div', 'bar-row');
+				row.appendChild(el('span', null, g));
+				var t = el('div', 'track');
+				var f = el('div', 'fill' + (p < 20 ? ' low' : ''));
+				f.style.width = p + '%';
+				t.appendChild(f);
+				row.appendChild(t);
+				row.appendChild(el('span', 'pct', h[0] + '/' + h[1]));
+				bars.appendChild(row);
+			});
+		}
+
+		// ---------- Quiet Quotes ----------
+		var OWNER = 'Mike';
+		var QUOTES = [
+			{
+				who: 'Sarah M.',
+				job: 'Deck rebuild, Severna Park',
+				amt: 18400,
+				quiet: 6,
+				st: 'quiet',
+				step: 1,
+				draft:
+					"Hi Sarah, it's " +
+					OWNER +
+					'. Wanted to check whether the deck quote answered your questions. If the layout changed, happy to walk it again. No rush either way.'
+			},
+			{
+				who: 'The Nguyens',
+				job: 'Kitchen remodel, Pasadena',
+				amt: 46200,
+				quiet: 4,
+				st: 'quiet',
+				step: 1,
+				draft:
+					'Hi, ' +
+					OWNER +
+					" here. Following up on the kitchen estimate from last week. If the number needs to move, tell me what you're weighing and I'll see what I can do on scope."
+			},
+			{
+				who: 'Dan R.',
+				job: 'Roof replacement, Glen Burnie',
+				amt: 14900,
+				quiet: 3,
+				st: 'quiet',
+				step: 1,
+				draft:
+					'Dan, ' +
+					OWNER +
+					' from the roof estimate. Two crews open up the week of the 6th if you want to get ahead of the rain. Want me to hold one?'
+			},
+			{
+				who: 'Priya K.',
+				job: 'Basement finish, Crofton',
+				amt: 31500,
+				quiet: 9,
+				st: 'follow',
+				step: 2,
+				draft: ''
+			},
+			{
+				who: 'Tom & Lisa B.',
+				job: 'Bathroom, Millersville',
+				amt: 12800,
+				quiet: 15,
+				st: 'follow',
+				step: 3,
+				draft: ''
+			},
+			{
+				who: 'Greg H.',
+				job: 'Screened porch, Arnold',
+				amt: 22600,
+				quiet: 0,
+				st: 'won',
+				step: 2,
+				draft: ''
+			},
+			{
+				who: 'Alicia P.',
+				job: 'Siding, Linthicum',
+				amt: 9200,
+				quiet: 0,
+				st: 'won',
+				step: 1,
+				draft: ''
+			}
+		];
+		QUOTES.forEach(function (q, i) {
+			q.id = 'q' + i;
+		});
+		var OPEN_BASE = 187400,
+			OPEN_COUNT = 34;
+		var editing = null;
+		var STEPS = ['Day 3', 'Day 7', 'Day 14', 'Day 30'];
+
+		function renderQuotes() {
+			var quiet = QUOTES.filter(function (q) {
+					return q.st === 'quiet';
+				}),
+				follow = QUOTES.filter(function (q) {
+					return q.st === 'follow';
+				}),
+				won = QUOTES.filter(function (q) {
+					return q.st === 'won';
+				});
+			var wonAmt = won.reduce(function (s, q) {
+				return s + q.amt;
+			}, 0);
+			var lostAmt = QUOTES.filter(function (q) {
+				return q.st === 'lost';
+			}).reduce(function (s, q) {
+				return s + q.amt;
+			}, 0);
+			var openAmt = OPEN_BASE - wonAmt - lostAmt + 31800; // base sample excludes the two earlier wins
+			var openCount =
+				OPEN_COUNT -
+				(won.length - 2) -
+				QUOTES.filter(function (q) {
+					return q.st === 'lost';
+				}).length;
+			$('q-h2').textContent =
+				money(openAmt) +
+				' sitting in ' +
+				openCount +
+				' open quotes. ' +
+				quiet.length +
+				' went quiet this week.';
+			var cc = $('q-counts');
+			cc.innerHTML = '';
+			cc.appendChild(el('span', 'count review', quiet.length + ' to send'));
+			cc.appendChild(el('span', 'count bid', follow.length + ' in sequence'));
+			cc.appendChild(el('span', 'count pass', won.length + ' won back'));
+			$('q-open').textContent = money(openAmt);
+			$('q-quiet').textContent = String(quiet.length);
+			$('q-won').textContent = money(wonAmt);
+
+			function card(q, kind) {
+				var it = el('div', 'item');
+				var head = el('div', 'head');
+				head.style.cursor = 'default';
+				var left = el('div');
+				left.appendChild(el('div', 'gc', q.who));
+				left.appendChild(el('div', 'proj', q.job));
+				left.appendChild(
+					el(
+						'div',
+						'sub',
+						money(q.amt) +
+							(q.st === 'quiet'
+								? ' · quiet ' + q.quiet + ' days'
+								: q.st === 'follow'
+									? ' · quiet ' + q.quiet + ' days'
+									: '')
+					)
+				);
+				head.appendChild(left);
+				head.appendChild(
+					el(
+						'span',
+						'chip ' +
+							(q.st === 'quiet'
+								? 'review'
+								: q.st === 'follow'
+									? 'sent'
+									: q.st === 'won'
+										? 'won'
+										: 'lost'),
+						q.st === 'quiet' ? 'went quiet' : q.st === 'follow' ? 'following up' : q.st
+					)
+				);
+				it.appendChild(head);
+				var why = el('div', 'why');
+				var seq = el('div', 'seq');
+				STEPS.forEach(function (s, i) {
+					seq.appendChild(el('span', i < q.step ? 'on' : '', s));
+				});
+				why.appendChild(seq);
+				if (kind === 'quiet') {
+					if (editing === q.id) {
+						var ta = document.createElement('textarea');
+						ta.className = 'draft';
+						ta.id = 'draft-' + q.id;
+						ta.value = q.draft;
+						ta.setAttribute('aria-label', 'Follow-up to ' + q.who);
+						ta.addEventListener('input', function () {
+							q.draft = ta.value;
+						});
+						why.appendChild(ta);
+					} else why.appendChild(el('div', 'draft', q.draft));
+					var btns = el('div', 'btns');
+					var send = el('button', 'btn primary', 'Send');
+					send.type = 'button';
+					send.addEventListener('click', function () {
+						q.st = 'follow';
+						editing = null;
+						renderQuotes();
+					});
+					btns.appendChild(send);
+					var edit = el('button', 'btn', editing === q.id ? 'Done' : 'Edit');
+					edit.type = 'button';
+					edit.addEventListener('click', function () {
+						editing = editing === q.id ? null : q.id;
+						renderQuotes();
+					});
+					btns.appendChild(edit);
+					var skip = el('button', 'btn pass', 'Skip');
+					skip.type = 'button';
+					skip.addEventListener('click', function () {
+						q.st = 'follow';
+						q.step = Math.min(4, q.step + 1);
+						renderQuotes();
+					});
+					btns.appendChild(skip);
+					why.appendChild(btns);
+				} else if (kind === 'follow') {
+					why.appendChild(
+						el(
+							'div',
+							'note',
+							'Next message goes ' +
+								(STEPS[q.step] ? STEPS[q.step].toLowerCase() : 'no further') +
+								' unless they reply. Replies land here.'
+						)
+					);
+					var b2 = el('div', 'btns');
+					var w = el('button', 'btn primary', 'Mark won');
+					w.type = 'button';
+					w.addEventListener('click', function () {
+						q.st = 'won';
+						renderQuotes();
+					});
+					b2.appendChild(w);
+					var l = el('button', 'btn lost', 'Mark lost');
+					l.type = 'button';
+					l.addEventListener('click', function () {
+						q.st = 'lost';
+						renderQuotes();
+					});
+					b2.appendChild(l);
+					why.appendChild(b2);
+				} else {
+					why.appendChild(
+						el(
+							'div',
+							'note',
+							'Recovered after the ' + STEPS[q.step - 1].toLowerCase() + ' message.'
+						)
+					);
+				}
+				it.appendChild(why);
+				return it;
+			}
+			var ql = $('q-quiet-list');
+			ql.innerHTML = '';
+			if (!quiet.length)
+				ql.appendChild(
+					el('div', 'empty', 'Nothing waiting. Every quiet quote has a message out.')
+				);
+			quiet.forEach(function (q) {
+				ql.appendChild(card(q, 'quiet'));
+			});
+			var fl = $('q-follow-list');
+			fl.innerHTML = '';
+			if (!follow.length) fl.appendChild(el('div', 'empty', 'No sequences running.'));
+			follow.forEach(function (q) {
+				fl.appendChild(card(q, 'follow'));
+			});
+			var wl = $('q-won-list');
+			wl.innerHTML = '';
+			if (!won.length) wl.appendChild(el('div', 'empty', 'None yet this month.'));
+			won.forEach(function (q) {
+				wl.appendChild(card(q, 'won'));
+			});
+		}
+
+		// ---------- tabs ----------
+		function show(which) {
+			$('bid').hidden = which !== 'bid';
+			$('quotes').hidden = which !== 'quotes';
+			$('tab-bid').setAttribute('aria-selected', which === 'bid' ? 'true' : 'false');
+			$('tab-quotes').setAttribute('aria-selected', which === 'quotes' ? 'true' : 'false');
+			try {
+				localStorage.setItem('samos-demo-tab', which);
+			} catch (e) {}
+		}
+		$('tab-bid').addEventListener('click', function () {
+			show('bid');
+		});
+		$('tab-quotes').addEventListener('click', function () {
+			show('quotes');
+		});
+		renderBid();
+		renderQuotes();
+		var saved = null;
+		try {
+			saved = localStorage.getItem('samos-demo-tab');
+		} catch (e) {}
+		show(saved === 'quotes' ? 'quotes' : 'bid');
+	})();
+</script>

@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/AGENTIC_CHAT_REVIEW_UI_2026-09-19.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Project review in ordinary chat — September 19, 2026
 
 Implemented locally on the shared checkout. DJ requested these three changes and explicitly
@@ -55,7 +60,7 @@ must be enabled together when rollout is authorized. Full QA, provider/pricing v
 and live recovery proof remain deferred rather than claimed complete.
 
 The next development path is
-[versioned specialists plus Jev selection](../../architecture/SPECIALIST_AGENTS_AND_JEV_NEXT_STEPS_2026-09-19.md).
+versioned specialists plus Jev selection.
 Jev tool narrowing already exists in ordinary worker chat. Agent selection, custom specialist
 tool loops, and specialist-triggered workflows are the next layer; they are not implemented by
 this change set.

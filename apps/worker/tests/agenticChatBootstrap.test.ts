@@ -6,7 +6,7 @@ import {
 	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 	AGENTIC_CHAT_MUTATION_CAPABILITY_TOOLS_V1
 } from '../src/workers/agentic-chat/mutations/tool-catalog';
-import { GLM_53_FLASH_MODEL, GPT_56_LUNA_MODEL, JSON_PROFILE_MODELS } from '@buildos/smart-llm';
+import { GLM_53_FLASH_MODEL, GPT_6_LUNA_MODEL, JSON_PROFILE_MODELS } from '@buildos/smart-llm';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import {
 	AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS,
@@ -135,18 +135,18 @@ describe('Agentic Chat operational bootstrap', () => {
 		const config = loadAgenticChatConfig({
 			...environment(),
 			AGENTIC_CHAT_REVIEWER_MODEL: GLM_53_FLASH_MODEL,
-			AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS: GPT_56_LUNA_MODEL
+			AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS: GPT_6_LUNA_MODEL
 		});
 		expect(
 			buildAgenticChatSemanticReviewerRoutes(
 				config.provider.routes,
 				config.provider.reviewer
 			)[0]?.fallbackModels
-		).toEqual([GPT_56_LUNA_MODEL]);
+		).toEqual([GPT_6_LUNA_MODEL]);
 	});
 
 	it.each([
-		{ AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS: GPT_56_LUNA_MODEL },
+		{ AGENTIC_CHAT_REVIEWER_FALLBACK_MODELS: GPT_6_LUNA_MODEL },
 		{ AGENTIC_CHAT_REVIEWER_MODEL: ' ' },
 		{
 			AGENTIC_CHAT_REVIEWER_MODEL: GLM_53_FLASH_MODEL,
@@ -195,7 +195,7 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(routes[0]).toMatchObject({
 			id: 'openrouter_semantic_reviewer',
 			kind: 'openrouter',
-			model: GPT_56_LUNA_MODEL
+			model: GPT_6_LUNA_MODEL
 		});
 		expect(routes[0]?.model).not.toBe('deepseek/deepseek-v4-flash');
 		expect(routes[0]?.apiKey).toBe('provider-secret');
@@ -219,7 +219,7 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS.has(GLM_53_FLASH_MODEL)).toBe(
 			true
 		);
-		expect(routes[0]?.model).toBe(GPT_56_LUNA_MODEL);
+		expect(routes[0]?.model).toBe(GPT_6_LUNA_MODEL);
 		expect(routes[0]?.fallbackModels).not.toContain(GLM_53_FLASH_MODEL);
 		expect(routes[0]?.fallbackModels?.length).toBeGreaterThan(0);
 		expect(
@@ -246,7 +246,7 @@ describe('Agentic Chat operational bootstrap', () => {
 					}
 				}
 			],
-			{ model: GPT_56_LUNA_MODEL, fallbackModels: [] }
+			{ model: GPT_6_LUNA_MODEL, fallbackModels: [] }
 		);
 
 		expect(routes[0]?.providerRouting).toEqual({
@@ -285,7 +285,7 @@ describe('Agentic Chat operational bootstrap', () => {
 					}
 				}
 			],
-			{ model: GPT_56_LUNA_MODEL, fallbackModels: [] }
+			{ model: GPT_6_LUNA_MODEL, fallbackModels: [] }
 		);
 
 		// Provider evidence is per model: the acting route's `ignore` describes
@@ -315,7 +315,7 @@ describe('Agentic Chat operational bootstrap', () => {
 					kind: 'openrouter',
 					baseUrl: 'https://openrouter.ai/api/v1',
 					apiKey: 'provider-secret',
-					model: GPT_56_LUNA_MODEL,
+					model: GPT_6_LUNA_MODEL,
 					fallbackModels: [
 						...JSON_PROFILE_MODELS.powerful,
 						...JSON_PROFILE_MODELS.maximum

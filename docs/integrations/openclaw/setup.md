@@ -70,7 +70,9 @@ Inside BuildOS:
 2. Open the `Agent Keys` tab
 3. Choose the `OpenClaw` client profile
 4. Give it an installation name
-5. Optionally limit it to specific projects
+5. Leave project access on **All standard projects** (includes projects you create later), or
+   choose **Only selected projects** to limit it. A limited agent that needs another project
+   gives you a one-click grant link instead of failing silently.
 6. Click `Generate BuildOS Key`
 
 BuildOS will show:

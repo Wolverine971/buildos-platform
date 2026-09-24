@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	KIMI_K3_MODEL
 } from './model-config';
@@ -131,7 +131,7 @@ describe('buildOpenRouterChatCompletionBody', () => {
 
 	it('omits unsupported Luna temperature without changing its requested reasoning effort', () => {
 		const body = buildOpenRouterChatCompletionBody({
-			model: GPT_56_LUNA_MODEL,
+			model: GPT_6_LUNA_MODEL,
 			messages: [{ role: 'user', content: 'Analyze this.' }],
 			temperature: 0.4,
 			reasoning: { effort: 'low', exclude: true }

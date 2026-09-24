@@ -733,11 +733,14 @@ The production `daily-brief-worker` started the sustained shadow window on 2026-
 `2026-08-26T02:49:44.288Z`: 20/20 projections matched in 417 ms, with zero mismatches, missing Cycles, invalid
 preferences, or Cycle Runs. Worker health reported the shadow healthy and the coordinator disabled.
 
-The next operational gate is the canary review scheduled for 2026-09-02 after the seven-day observation
-window. Review the accumulated shadow evidence and select an internal cohort. Before activating any paused
-Cycle, refresh its materialized `next_run_at`; paused definitions deliberately stop advancing while shadow mode
-computes from their structured schedule specs. Do not enable the coordinator before that activation path and
-cohort are explicitly approved.
+The 2026-09-02 canary review is recorded in
+[`DAILY_BRIEF_CYCLE_CANARY_REVIEW_2026-09-02.md`](../plans/DAILY_BRIEF_CYCLE_CANARY_REVIEW_2026-09-02.md).
+It is a no-go: the original 20 projections still match, but one active preference created after the backfill
+has no Cycle, the seven-day logs contain observation gaps, and the shared legacy-versus-Cycle ownership cohort
+gate is not implemented. The coordinator remains disabled, all 20 Daily Brief Cycles remain paused, and there
+are zero Cycle Runs. Before activating any paused Cycle, repair continuous definition coverage, implement the
+atomic ownership/activation path, record a clean follow-up shadow window, and obtain explicit approval for the
+exact internal cohort.
 
 ## Release gates
 

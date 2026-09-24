@@ -44,6 +44,8 @@ The lead-gen operating system is the current source of truth for how to run manu
 
 ---
 
+**Current positioning:** [A project workspace you can talk to — rollout, copy, demo, and user test](strategy/project-workspace-rollout-2026-09-10.md).
+
 ## 1. Positioning & Strategy (Read These First)
 
 These define what BuildOS is, who it's for, and how to talk about it.
@@ -61,11 +63,11 @@ These define what BuildOS is, who it's for, and how to talk about it.
 
 ### Key positioning decisions (across all docs)
 
-- **Public category:** Thinking environment for people making complex things
+- **Public description:** A project workspace you can talk to.
 - **Core promise:** Turn messy thinking into structured work
-- **Differentiator:** The project remembers
-- **Moat:** Context compounds over time
-- **Strategic enemy:** Tool sprawl, stateless chat, blank-page chaos, productivity theater
+- **Benefit to demonstrate:** Return to the same project and keep it current through conversation
+- **Value hypothesis:** Saved context makes later sessions more useful
+- **Strategic enemy:** Tool sprawl, rebuilding project context, blank-page chaos, productivity theater
 - **Primary wedge:** Authors and YouTubers
 - **Anti-AI stance:** Do not lead with AI in marketing. Sell relief, not intelligence
 - **Real media stance:** No AI-generated images or videos. Show BuildOS through real product screenshots, screen recordings, and founder footage

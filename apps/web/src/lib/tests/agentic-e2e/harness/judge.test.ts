@@ -102,7 +102,7 @@ describe('judgeQuality', () => {
 	it('retains the actual judge model and provider returned by usage accounting', async () => {
 		const onAttempt = vi.fn();
 		const usage = {
-			model: 'openai/gpt-5.6-luna',
+			model: 'openai/gpt-6-luna',
 			provider: 'OpenAI',
 			providerRequestId: 'qa-request'
 		};

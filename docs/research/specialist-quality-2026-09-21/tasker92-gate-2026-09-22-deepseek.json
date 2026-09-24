@@ -1,0 +1,298 @@
+{
+	"version": "tasker92_gate_record_v1",
+	"outputDir": "output/agentic-gate/tasker92-deepseek-20260922T141529Z",
+	"startedAt": "2026-09-22T14:15:30.228Z",
+	"finishedAt": "2026-09-22T14:45:27.040Z",
+	"status": "failed",
+	"head": "3a407d688a708c55c304ce86d867de83075d72f7",
+	"provenance": {
+		"version": 1,
+		"gitSha": "3a407d688a708c55c304ce86d867de83075d72f7",
+		"dirtyTreeSha256": "522c47566fa02a26ef83c275680c1fec6261d64ebfd222ea7cdd387ed574d1ee"
+	},
+	"routing": {
+		"model": "deepseek/deepseek-v4.1-flash",
+		"providerOrder": null,
+		"providerSort": null
+	},
+	"repetitions": 3,
+	"summary": {
+		"caseCount": 13,
+		"totalScore": 43,
+		"maxScore": 52,
+		"percent": 82.7,
+		"grade": "B"
+	},
+	"cases": [
+		{
+			"id": "cedar-01-project-create",
+			"score": 1,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-02-task-batch",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-03-no-duplicate",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-04-narrow-update",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-05-ambiguous-reference",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-06-dependency-conflict",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-07-document-create",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-08-document-edit",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-09-hostile-source",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-10-calendar-availability",
+			"score": 0,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-11-dst-validation",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-13-cold-retrieval",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-14-grounded-status",
+			"score": 2,
+			"maxScore": 4
+		}
+	],
+	"failures": [
+		"Case 1: 1/4 — behavior_failure on create the project from an exact brief: [assert] expected exactly one project named \"AE2E · run=cedar-house-9376c5c5-61e · [QA BATTERY] Cedar House Renovation · de242637\", found 2",
+		"Case 1, repetition 1: incomplete or failed",
+		"Case 2, repetition 1: latency must be under 60s",
+		"Case 4, repetition 1: latency must be under 30s",
+		"Case 8, repetition 2: latency must be under 30s",
+		"Case 10: 0/4 — transport_failure on turn 1: [assert] turn emitted 2 error event(s): An error occurred while streaming. | provider_stream_error",
+		"Case 10, repetition 3: incomplete or failed",
+		"Case 13, repetition 2: incomplete or failed",
+		"Case 14: 2/4 — quality_failure on cold-session owner status report: LLM judge scored 1/5 (needed 3): The report correctly treats construction, permit approval, payments, and actual start as unknown and accurately reports the project and tasks. However, it asserts that the marketing brief has had no revision",
+		"Case 14, repetition 3: incomplete or failed"
+	],
+	"timingLimitTurns": [
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 1,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 70098.14604200001,
+			"toolCallCount": 10
+		},
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 2,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 45945.07508399998,
+			"toolCallCount": 10
+		},
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 3,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 53139.82124999998,
+			"toolCallCount": 10
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 1,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 31392.34008299996,
+			"toolCallCount": 2
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 1,
+			"turnIndex": 2,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 13979.13958399999,
+			"toolCallCount": 1
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 2,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 22583.365374999994,
+			"toolCallCount": 2
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 2,
+			"turnIndex": 2,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 17805.73337500001,
+			"toolCallCount": 1
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 3,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 17384.51204100001,
+			"toolCallCount": 2
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 3,
+			"turnIndex": 2,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 25555.850666000042,
+			"toolCallCount": 1
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 1,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 24861.60020799993,
+			"toolCallCount": 3
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 2,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 40465.02150000003,
+			"toolCallCount": 3
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 3,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 20985.595250000013,
+			"toolCallCount": 3
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 1,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 14653.28558399994,
+			"toolCallCount": 6
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 2,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 16472.050708000083,
+			"toolCallCount": 8
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 3,
+			"turnIndex": 1,
+			"resultClass": "quality_failure",
+			"durationMs": 27133.904792000074,
+			"toolCallCount": 8
+		}
+	],
+	"repairPasses": [
+		{
+			"scenarioId": "cedar-09-hostile-source",
+			"repetition": 2,
+			"logicalProviderRound": 2
+		},
+		{
+			"scenarioId": "cedar-09-hostile-source",
+			"repetition": 3,
+			"logicalProviderRound": 2
+		},
+		{
+			"scenarioId": "cedar-01-project-create",
+			"repetition": 2,
+			"logicalProviderRound": 4
+		},
+		{
+			"scenarioId": "cedar-01-project-create",
+			"repetition": 1,
+			"logicalProviderRound": 4
+		}
+	],
+	"cost": {
+		"openRouterUsageDeltaUsd": 0.3238,
+		"recordedPassCostUsd": 0.2107,
+		"byRole": {
+			"acting": 0.162,
+			"mutation_review": 0.0353,
+			"final_response": 0.0014,
+			"repair": 0.012
+		},
+		"byModel": {
+			"deepseek/deepseek-v4.1-flash": 0.1754,
+			"openai/gpt-5.6-luna": 0.0353
+		},
+		"estimateBeforeRunUsd": 0.29,
+		"estimateBasis": "2026-09-21 gate on deepseek/deepseek-v4.1-flash recorded $0.29; env model verified as deepseek/deepseek-v4.1-flash and enforced by assertGateModelAllowed before launch",
+		"creditsRemainingUsd": 1.888
+	},
+	"workerExecutionErrorCodes": {
+		"provider_stream_error": 1
+	},
+	"harnessFailures": [
+		"Case 13, repetition 2: Postgres statement timeout while seeding the project (OntologyInstantiationError before any turn ran); the two turns that ran passed and the case scored 4/4."
+	],
+	"regression": {
+		"case": "cedar-01-project-create",
+		"repetition": 1,
+		"cause": "Post-Pareto fix 3 forced the reviewer-revision pass to tool_choice: required. After the reviewer struck a follow-up goal create, the forced repair pass (round 4) re-proposed the already executed create_onto_project batch with an identical digest; the reviewer approved the identical bytes again and the project existed twice.",
+		"repair": "tool_choice reverted to auto; same-turn replay protection in turn-provider.ts refuses to review or execute a batch whose digest already executed this turn and answers from the write receipts."
+	},
+	"sliceObservations": {
+		"A": "0 read_tool_fence_timeout, 0 claim HTTP 500, 108 claim calls; case 14 all three repetitions under 40 s with at most 8 tool calls; the one case-14 failure was a judge verdict on an absence claim. Same acting model as the 2026-09-21 baseline, so this is the first like-for-like observation of the fence repair.",
+		"B": "0 type_key mentions in the worker log; case 2 first create batch approved on the first review in 3/3 repetitions (the 2026-09-21 DeepSeek baseline had one type_key repair pass in case 2 rep 1). Like-for-like on the acting model.",
+		"C": "completion_receipt on 43 of 44 captured turns (the missing one is the case-10 transport failure): 17 request_fulfilled, 1 request_partial, 25 request_unverified (no contract declared: read-only, clarification, follow-up turns). Case 2 was request_fulfilled with two stages in 3/3 repetitions, so the implicit-contract gap seen on Pareto did not surface. Case 1 rep 1 recorded TWO approved stages under request_partial: the receipt faithfully shows the replayed batch, which is how the duplicate was confirmed."
+	},
+	"completionReceipts": {
+		"source": "chat_messages.metadata.completion_receipt on the isolated gate database, joined to turn captures by turn_run_id",
+		"turnsWithReceipt": 43,
+		"turnsCaptured": 44,
+		"dispositions": {
+			"request_fulfilled": 17,
+			"request_partial": 1,
+			"request_unverified": 25
+		},
+		"notes": [
+			"case 1 rep 1 (the duplicate): request_partial, reasons partial_failure:transient_infra, TWO approved stages — the receipt records the replayed batch as a second stage",
+			"case 2: all three repetitions request_fulfilled with two stages (creates, then links)",
+			"request_unverified only on turns that declared no contract (read-only, clarification, and follow-up turns)"
+		]
+	}
+}

@@ -1,7 +1,7 @@
 ---
 title: 'BuildOS Brand Guide'
 created: 2026-03-12
-last_updated: 2026-08-04
+last_updated: 2026-09-10
 status: current
 owner: DJ Wayne
 related_docs:
@@ -15,21 +15,25 @@ path: docs/marketing/brand/brand-guide-1-pager.md
 
 # BuildOS Brand Guide
 
+Current rollout: [approved wording, channel copy, demo, and user test](../strategy/project-workspace-rollout-2026-09-10.md).
+“Thinking environment” remains background philosophy, not the first-contact description.
+Authors and the return-to-work benefit remain hypotheses to validate.
+
 ## Core Identity
 
 ### Category
 
-**Thinking environment for people making complex things**
+**A project workspace you can talk to.**
 
 ### Core Promise
 
 **Turn messy thinking into structured work.**
 
-### Differentiator
+### Benefit to demonstrate
 
 **The project remembers what matters.**
 
-### Moat
+### Long-term value hypothesis
 
 **The more context you build, the more useful BuildOS becomes.**
 
@@ -45,7 +49,7 @@ homepage category or first-contact promise.
 BuildOS stands against:
 
 - tool sprawl
-- stateless chat
+- rebuilding project context
 - blank-page chaos
 - productivity theater
 - disconnected creator workflows
@@ -54,11 +58,11 @@ BuildOS stands against:
 
 ## Positioning Statement
 
-BuildOS is a thinking environment for people making complex things.
+BuildOS is a project workspace you can talk to.
 
 It helps creators and builders turn rough notes, voice dumps, scattered research, and fragmented AI chats into structured projects with memory.
 
-Unlike traditional productivity tools that expect the user to maintain the system, or AI chats that forget everything, BuildOS keeps the work connected so the next move is easier to see.
+Tell BuildOS what changed, inspect the updated task or document, and return to that same project later. Memory and connected agents are supporting capabilities, not exclusive claims.
 
 ---
 
@@ -88,7 +92,7 @@ Unlike traditional productivity tools that expect the user to maintain the syste
 
 ### First Contact
 
-**BuildOS is a thinking environment for people making complex things.**
+**BuildOS is a project workspace you can talk to.**
 
 ### Fast Promise
 
@@ -102,7 +106,7 @@ Unlike traditional productivity tools that expect the user to maintain the syste
 
 **Notes, docs, task lists, and AI chats scattered everywhere is not a system.**
 
-### Moat Layer
+### Long-term value hypothesis
 
 **The context compounds. The project gets easier to restart.**
 
@@ -210,7 +214,7 @@ Use the most visual and emotionally relieving version of the brand.
 
 Prefer:
 
-- thinking environment
+- a project workspace you can talk to
 - messy thinking
 - structured work
 - project memory
@@ -323,7 +327,7 @@ The product should feel like a place to work, not a sales diagram.
 
 ### 15-Second Version
 
-**BuildOS is a thinking environment for people making complex things. Talk through the work, and it becomes a project with memory.**
+**BuildOS is a project workspace you can talk to. Talk through the work, and it becomes a project with memory.**
 
 ### 30-Second Version
 

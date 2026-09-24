@@ -38,13 +38,32 @@ export function isV41FlashModel(model: string): boolean {
 	return /^deepseek\/deepseek-v4\.1-flash(?:-\d{8})?$/.test(model);
 }
 
+const WATCHED_PASS_ROLES: ReadonlySet<string> = new Set(['acting', 'repair', 'final_response']);
+
+/**
+ * Whether this attempt may be abandoned as a slow stream. A watched attempt
+ * also asks the provider to stream its reasoning so the watch can see it.
+ */
+export function watchesStreamProgress(input: ClientInput, passRole: string, model: string) {
+	return (
+		input.allowSlowStreamRecovery === true &&
+		WATCHED_PASS_ROLES.has(passRole) &&
+		isV41FlashModel(model)
+	);
+}
+
 export function watchStreamProgress(
 	active: ActiveResponse,
 	state: StreamState,
 	input: ClientInput
 ): () => void {
 	let startedAtMs = Date.now();
-	let startedBytes = state.generatedBytes;
+	let startedBytes = 0;
+	const progressBytes = () => state.generatedBytes + state.reasoningBytes;
+	const schedule = (delayMs: number) => {
+		timer = setTimeout(check, delayMs);
+		timer.unref?.();
+	};
 	const check = () => {
 		if (active.signal.aborted || state.finishReason !== null) return;
 		if (!isV41FlashModel(state.modelUsed ?? active.route.model)) return;
@@ -56,17 +75,23 @@ export function watchStreamProgress(
 				MIN_ATTEMPT_TIMEOUT_MS + BUDGET_FINALIZATION_RESERVE_MS
 		)
 			return;
-		// Reasoning is requested with `exclude: true`, so a thinking model emits
-		// nothing until its first text or tool call. Judge throughput only once
-		// output has begun; the attempt deadline still bounds a silent stream.
-		if (state.generatedBytes === 0) {
+		// Judge throughput only over full windows of generation. Waiting for
+		// the first byte (prompt processing) is bounded by the attempt deadline.
+		// Measuring from stream open killed healthy streams whose first byte
+		// came late: 9 of 9 gate aborts on 2026-09-24 were generating at
+		// 80–200 tok/s, mostly reasoning (tasker 101).
+		if (state.firstProgressAtMs === null) {
 			startedAtMs = now;
-			timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
-			timer.unref?.();
+			schedule(SLOW_STREAM_WINDOW_MS);
 			return;
 		}
+		startedAtMs = Math.max(startedAtMs, state.firstProgressAtMs);
 		const elapsed = now - startedAtMs;
-		const bytes = state.generatedBytes - startedBytes;
+		if (elapsed < SLOW_STREAM_WINDOW_MS) {
+			schedule(SLOW_STREAM_WINDOW_MS - elapsed);
+			return;
+		}
+		const bytes = progressBytes() - startedBytes;
 		// A suspended host is not evidence of slow provider generation.
 		if (
 			elapsed <= SLOW_STREAM_WINDOW_MS * 2 &&
@@ -76,12 +101,11 @@ export function watchStreamProgress(
 			return;
 		}
 		startedAtMs = now;
-		startedBytes = state.generatedBytes;
-		timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
-		timer.unref?.();
+		startedBytes = progressBytes();
+		schedule(SLOW_STREAM_WINDOW_MS);
 	};
-	let timer = setTimeout(check, SLOW_STREAM_WINDOW_MS);
-	timer.unref?.();
+	let timer: ReturnType<typeof setTimeout>;
+	schedule(SLOW_STREAM_WINDOW_MS);
 	return () => clearTimeout(timer);
 }
 

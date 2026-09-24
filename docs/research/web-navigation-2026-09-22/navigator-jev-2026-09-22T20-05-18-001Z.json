@@ -1,0 +1,3385 @@
+{
+	"summary": {
+		"run_at": "2026-09-22T20:05:18.001Z",
+		"navigator": "typesafe/jev-1.13",
+		"tasks": 20,
+		"success": 11,
+		"reached_target": 17,
+		"model_calls": 60,
+		"model_ms_p50_per_call": 303,
+		"model_ms_p90_per_call": 454,
+		"total_cost_usd": 0.018464,
+		"http_requests": 89
+	},
+	"results": [
+		{
+			"id": "naaccc-lunch",
+			"goal": "Find the details page for the chamber's Networking Lunch at Italia's Corner (date, time, location).",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://business.naaccc.com/event-calendar",
+			"success": false,
+			"reached_target": false,
+			"fetches": 1,
+			"model_calls": 1,
+			"model_ms_total": 361,
+			"fetch_ms_total": 887,
+			"cost_usd": 0.000211764,
+			"wall_ms": 2264,
+			"hops": [
+				{
+					"url": "https://business.naaccc.com/event-calendar",
+					"title": "Calendar - Northern Anne Arundel County Chamber of Commerce",
+					"text_chars": 2557,
+					"link_options": 59,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 887,
+					"page_has_answer": 0.81,
+					"needs_browser": 0.05,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.77,
+							"label": "Networking Lunch Italia's Corner link",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Website"
+						},
+						{
+							"p": 0.19,
+							"label": "Networking Lunch Italia's Corner",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Hub"
+						},
+						{
+							"p": 0.04,
+							"label": "Register",
+							"url": "https://business.naaccc.com/ap/Events/Register/zBFlODVcgCACR"
+						},
+						{
+							"p": 0,
+							"label": "",
+							"url": "https://business.naaccc.com/"
+						},
+						{
+							"p": 0,
+							"label": "GrowthZone",
+							"url": "http://www.growthzone.com/"
+						}
+					],
+					"model_ms": 361,
+					"cost_usd": 0.000211764,
+					"input_tokens": 5042,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l14",
+								"confidence": 0.75
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "mailchimp-free-limits",
+			"goal": "Find how many contacts and monthly email sends Mailchimp's Free plan includes.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 4,
+			"model_ms_total": 1377,
+			"fetch_ms_total": 1675,
+			"cost_usd": 0.000972888,
+			"wall_ms": 4926,
+			"hops": [
+				{
+					"url": "https://mailchimp.com/",
+					"title": "Email & SMS Marketing Platform | Mailchimp",
+					"text_chars": 3000,
+					"link_options": 125,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 282,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.18,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.9,
+							"label": "Pricing | Start Free Trial | See pricing | Sign Up | See all plans",
+							"url": "https://mailchimp.com/pricing/marketing/"
+						},
+						{
+							"p": 0.09,
+							"label": "Essentials | Free",
+							"url": "https://mailchimp.com/pricing/marketing/compare-plans/"
+						},
+						{
+							"p": 0,
+							"label": "DE Deutsch",
+							"url": "https://mailchimp.com/de/"
+						},
+						{
+							"p": 0,
+							"label": "Case Studies | View all case studies",
+							"url": "https://mailchimp.com/case-studies/"
+						},
+						{
+							"p": 0,
+							"label": "Developers",
+							"url": "https://mailchimp.com/developer/"
+						}
+					],
+					"model_ms": 309,
+					"cost_usd": 0.000289002,
+					"input_tokens": 6881,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l65",
+								"confidence": 0.89
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://mailchimp.com/pricing/marketing/",
+					"title": "Mailchimp Pricing Plans | Get Started Today | Mailchimp",
+					"text_chars": 3000,
+					"link_options": 132,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 301,
+					"page_has_answer": 0.08,
+					"needs_browser": 0.17,
+					"none_p": 0.09,
+					"top_links": [
+						{
+							"p": 0.77,
+							"label": "Essentials | Free | Compare all features | About Free | About Essentials | plans and pricing",
+							"url": "https://mailchimp.com/pricing/marketing/compare-plans/"
+						},
+						{
+							"p": 0.06,
+							"label": "Sign Up Sign Up Contact limit exceeded Limit",
+							"url": "https://mailchimp.com/signup/?plan=free_monthly_plan_v0&locale=en"
+						},
+						{
+							"p": 0.02,
+							"label": "Free Trial Terms | Offer Terms | full offer terms",
+							"url": "https://mailchimp.com/legal/promotional-offer-terms/"
+						},
+						{
+							"p": 0.02,
+							"label": "Overages",
+							"url": "https://mailchimp.com/help/about-additional-charges/"
+						},
+						{
+							"p": 0.02,
+							"label": "Learn more",
+							"url": "https://mailchimp.com/pricing/pay-as-you-go/"
+						}
+					],
+					"model_ms": 352,
+					"cost_usd": 0.000307062,
+					"input_tokens": 7311,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l78",
+								"confidence": 0.76
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://mailchimp.com/pricing/marketing/compare-plans/",
+					"title": "Mailchimp Marketing Plan Comparisons | Mailchimp",
+					"text_chars": 3000,
+					"link_options": 147,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 509,
+					"page_has_answer": 0.12,
+					"needs_browser": 0.17,
+					"none_p": 0.16,
+					"top_links": [
+						{
+							"p": 0.54,
+							"label": "Sign Up Sign Up Contact limit exceeded Limit",
+							"url": "https://mailchimp.com/signup/?plan=free_monthly_plan_v0&locale=en"
+						},
+						{
+							"p": 0.11,
+							"label": "Offer Terms | Free Trial Terms",
+							"url": "https://mailchimp.com/legal/promotional-offer-terms/"
+						},
+						{
+							"p": 0.09,
+							"label": "Overages",
+							"url": "https://mailchimp.com/help/about-additional-charges/"
+						},
+						{
+							"p": 0.02,
+							"label": "Start Free Trial",
+							"url": "https://login.mailchimp.com/signup/"
+						},
+						{
+							"p": 0.02,
+							"label": "Request a demo | contact us | Contact sales | Talk to Sales",
+							"url": "https://mailchimp.com/sales/"
+						}
+					],
+					"model_ms": 429,
+					"cost_usd": 0.000336042,
+					"input_tokens": 8001,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l80",
+								"confidence": 0.53
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://login.mailchimp.com/signup/?plan=free_monthly_plan_v0&locale=en",
+					"title": "Sign Up for Mailchimp",
+					"text_chars": 225,
+					"link_options": 7,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 583,
+					"page_has_answer": 0.01,
+					"needs_browser": 0.61,
+					"none_p": 0.75,
+					"top_links": [
+						{
+							"p": 0.17,
+							"label": "log in",
+							"url": "https://login.mailchimp.com/?referrer=%2Faccount%2Fpaywall%3Fpricing_id%3D20240%26is_login%3Dtrue%26allowDowngrades&locale=en?plan=free_monthly_plan_v0&locale=en"
+						},
+						{
+							"p": 0.06,
+							"label": "Terms",
+							"url": "https://mailchimp.com/legal/terms/"
+						},
+						{
+							"p": 0.02,
+							"label": "full offer terms",
+							"url": "https://mailchimp.com/legal/promotional-offer-terms/"
+						},
+						{
+							"p": 0,
+							"label": "Global Privacy Statement.",
+							"url": "https://www.intuit.com/privacy/statement/"
+						},
+						{
+							"p": 0,
+							"label": "Cookie Preferences",
+							"url": "https://mailchimp.com/legal/cookies/"
+						}
+					],
+					"model_ms": 287,
+					"cost_usd": 0.000040782,
+					"input_tokens": 971,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.72
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://login.mailchimp.com/?referrer=%2Faccount%2Fpaywall%3Fpricing_id%3D20240%26is_login%3Dtrue%26allowDowngrades&locale=en?plan=free_monthly_plan_v0&locale=en",
+					"error": "robots.txt disallows this URL"
+				}
+			]
+		},
+		{
+			"id": "aacounty-bids",
+			"goal": "Find where Anne Arundel County lists its current bid opportunities and open solicitations.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 663,
+			"fetch_ms_total": 1435,
+			"cost_usd": 0.00012184199999999999,
+			"wall_ms": 3108,
+			"hops": [
+				{
+					"url": "https://www.aacounty.org/central-services/purchasing",
+					"title": "Purchasing | Anne Arundel County Government",
+					"text_chars": 439,
+					"link_options": 38,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 677,
+					"page_has_answer": 0.08,
+					"needs_browser": 0.13,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "View Opportunities",
+							"url": "https://www.aacounty.org/solicitations"
+						},
+						{
+							"p": 0,
+							"label": "Services",
+							"url": "https://www.aacounty.org/services"
+						},
+						{
+							"p": 0,
+							"label": "Government",
+							"url": "https://www.aacounty.org/government"
+						},
+						{
+							"p": 0,
+							"label": "Closings/Cancellations",
+							"url": "https://www.aacounty.org/county-operations"
+						},
+						{
+							"p": 0,
+							"label": "Prevailing Wage & Local Hiring Programs",
+							"url": "https://www.aacounty.org/central-services/purchasing/prevailing-wage-local-hiring-programs"
+						}
+					],
+					"model_ms": 322,
+					"cost_usd": 0.000098742,
+					"input_tokens": 2351,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l20",
+								"confidence": 1
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://ibvijb.fa.ocs.oraclecloud.com/fscmUI/redwood/negotiation-abstracts/view/abstractlisting?prcBuId=300000008120003",
+					"title": "Oracle Applications",
+					"text_chars": 19,
+					"link_options": 0,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 758,
+					"page_has_answer": 0.01,
+					"needs_browser": 0.71,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 341,
+					"cost_usd": 0.0000231,
+					"input_tokens": 550,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 1
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "montgomery-solicitations",
+			"goal": "Find the page listing Montgomery County's currently open solicitations.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 3,
+			"model_calls": 3,
+			"model_ms_total": 875,
+			"fetch_ms_total": 658,
+			"cost_usd": 0.000326508,
+			"wall_ms": 3322,
+			"hops": [
+				{
+					"url": "https://www.montgomerycountymd.gov/office-procurement",
+					"title": "Office of Procurement | Montgomery County, MD",
+					"text_chars": 2249,
+					"link_options": 44,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 466,
+					"page_has_answer": 0.04,
+					"needs_browser": 0.13,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Solicitations and Contracts",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts"
+						},
+						{
+							"p": 0,
+							"label": "User Rights",
+							"url": "https://www.montgomerycountymd.gov/government/policies/user-rights"
+						},
+						{
+							"p": 0,
+							"label": "MC311",
+							"url": "https://www.montgomerycountymd.gov/mc311-contact-center"
+						},
+						{
+							"p": 0,
+							"label": "follow Office of Procurement on LinkedIn - external",
+							"url": "https://www.linkedin.com/company/mocoprocure/"
+						},
+						{
+							"p": 0,
+							"label": "County Services",
+							"url": "https://www.montgomerycountymd.gov/services"
+						}
+					],
+					"model_ms": 306,
+					"cost_usd": 0.000144858,
+					"input_tokens": 3449,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l2",
+								"confidence": 0.99
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts",
+					"title": "Solicitations and Contracts - Office of Procurement - Montgomery County, MD",
+					"text_chars": 305,
+					"link_options": 33,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 98,
+					"page_has_answer": 0.08,
+					"needs_browser": 0.17,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.95,
+							"label": "Informal & Open Solicitations",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts/informal-open-solicitations"
+						},
+						{
+							"p": 0.03,
+							"label": "Formal Solicitations",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts/formal-solicitations"
+						},
+						{
+							"p": 0.01,
+							"label": "Contract Search",
+							"url": "https://data.montgomerycountymd.gov/Government/Contracts/vmu2-pnrc/about_data"
+						},
+						{
+							"p": 0,
+							"label": "Documents",
+							"url": "https://www.montgomerycountymd.gov/documents"
+						},
+						{
+							"p": 0,
+							"label": "Solicitation & Contract Forms",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts/solicitation-forms"
+						}
+					],
+					"model_ms": 346,
+					"cost_usd": 0.000093408,
+					"input_tokens": 2224,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l3",
+								"confidence": 0.94
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts/informal-open-solicitations",
+					"title": "Informal and Open Solicitations - Office of Procurement - Montgomery County, MD",
+					"text_chars": 1573,
+					"link_options": 26,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 94,
+					"page_has_answer": 0.29,
+					"needs_browser": 0.07,
+					"none_p": 0.92,
+					"top_links": [
+						{
+							"p": 0.02,
+							"label": " | Home",
+							"url": "https://www.montgomerycountymd.gov/"
+						},
+						{
+							"p": 0.02,
+							"label": "Businesses",
+							"url": "https://www.montgomerycountymd.gov/businesses"
+						},
+						{
+							"p": 0.02,
+							"label": "ePortal",
+							"url": "https://www.montgomerycountymd.gov/eportal"
+						},
+						{
+							"p": 0.02,
+							"label": "AccessMCG Extranet",
+							"url": "https://www.montgomerycountymd.gov/accessmcg"
+						},
+						{
+							"p": 0,
+							"label": "County News",
+							"url": "https://www.montgomerycountymd.gov/news"
+						}
+					],
+					"model_ms": 223,
+					"cost_usd": 0.000088242,
+					"input_tokens": 2101,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.92
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "baltimore-vendor-registration",
+			"goal": "Find how a business registers as a vendor/supplier with Baltimore City.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://cityservices.baltimorecity.gov/suppliers/",
+			"success": true,
+			"reached_target": true,
+			"fetches": 3,
+			"model_calls": 3,
+			"model_ms_total": 817,
+			"fetch_ms_total": 611,
+			"cost_usd": 0.00056238,
+			"wall_ms": 4461,
+			"hops": [
+				{
+					"url": "https://www.baltimorecity.gov/procurement",
+					"title": "Bureau of Procurement | Baltimore City",
+					"text_chars": 497,
+					"link_options": 93,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 319,
+					"page_has_answer": 0.03,
+					"needs_browser": 0.12,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.9,
+							"label": "Supplier | Doing Business With the City | Doing Business with the City",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city"
+						},
+						{
+							"p": 0.06,
+							"label": "How-To Guides",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/training"
+						},
+						{
+							"p": 0.02,
+							"label": "Bidding, Contracting, & Business Opportunities",
+							"url": "https://www.baltimorecity.gov/mwbd/our-work/bidding-contracting-opportunities"
+						},
+						{
+							"p": 0.01,
+							"label": "Bidding Opportunities",
+							"url": "https://cityservices.baltimorecity.gov/suppliers/bid-opportunities"
+						},
+						{
+							"p": 0,
+							"label": "Harbor Connector",
+							"url": "https://www.baltimorecity.gov/transportation/harbor-connector"
+						}
+					],
+					"model_ms": 255,
+					"cost_usd": 0.000208194,
+					"input_tokens": 4957,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l18",
+								"confidence": 0.89
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city",
+					"title": "Doing Business With the City | Baltimore City",
+					"text_chars": 3000,
+					"link_options": 104,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 206,
+					"page_has_answer": 0.49,
+					"needs_browser": 0.07,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.99,
+							"label": "register as a supplier | Prospective Supplier Registration site",
+							"url": "https://cityservices.baltimorecity.gov/suppliers/"
+						},
+						{
+							"p": 0,
+							"label": "Web Accessibility",
+							"url": "https://www.baltimorecity.gov/web-accessibility"
+						},
+						{
+							"p": 0,
+							"label": "Bidding, Contracting, & Business Opportunities",
+							"url": "https://www.baltimorecity.gov/mwbd/our-work/bidding-contracting-opportunities"
+						},
+						{
+							"p": 0,
+							"label": "Privacy Policy",
+							"url": "https://www.baltimorecity.gov/privacy-policy"
+						},
+						{
+							"p": 0,
+							"label": "Payment Plan for Water and Sewer Bill",
+							"url": "https://www.baltimorecity.gov/publicworks/our-work/water-bill/water-bill-assistance/payment-plan-program"
+						}
+					],
+					"model_ms": 342,
+					"cost_usd": 0.000286146,
+					"input_tokens": 6813,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l61",
+								"confidence": 0.98
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://cityservices.baltimorecity.gov/suppliers/",
+					"title": "Prospective Supplier Registration Portal",
+					"text_chars": 3000,
+					"link_options": 8,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 86,
+					"page_has_answer": 0.68,
+					"needs_browser": 0.09,
+					"none_p": 0.24,
+					"top_links": [
+						{
+							"p": 0.56,
+							"label": "Sign in to Workday | Workday Supplier Portal",
+							"url": "https://workday.baltimorecity.gov/login"
+						},
+						{
+							"p": 0.16,
+							"label": "Supplier Contact Form",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/supplier-contact-form"
+						},
+						{
+							"p": 0.02,
+							"label": "Download it from IRS.gov",
+							"url": "https://irs.gov/"
+						},
+						{
+							"p": 0.01,
+							"label": "Bureau of Procurement Website",
+							"url": "https://baltimorecity.gov/procurement"
+						},
+						{
+							"p": 0.01,
+							"label": "Department of Accounts Payable",
+							"url": "https://www.baltimorecity.gov/finance"
+						}
+					],
+					"model_ms": 220,
+					"cost_usd": 0.00006804,
+					"input_tokens": 1620,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l0",
+								"confidence": 0.49
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "mdot-procurement",
+			"goal": "Find MDOT's page for procurement / bid opportunities for businesses.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 4,
+			"model_ms_total": 955,
+			"fetch_ms_total": 3345,
+			"cost_usd": 0.000647808,
+			"wall_ms": 7475,
+			"hops": [
+				{
+					"url": "https://mdot.maryland.gov/pages/home.aspx",
+					"title": "Home",
+					"text_chars": 2835,
+					"link_options": 92,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 1008,
+					"page_has_answer": 0.06,
+					"needs_browser": 0.07,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.84,
+							"label": "Procurement and Project Quality Assurance",
+							"url": "https://mdot.maryland.gov/tso/pages/Index.aspx?PageId=11"
+						},
+						{
+							"p": 0.09,
+							"label": "Procurement and Contracts",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=11"
+						},
+						{
+							"p": 0.05,
+							"label": "Business",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=2"
+						},
+						{
+							"p": 0.01,
+							"label": "List of MDOT Offices",
+							"url": "https://mdot.maryland.gov/tso/pages/Index.aspx?PageId=67"
+						},
+						{
+							"p": 0,
+							"label": "DC Metro Trip Planner",
+							"url": "https://www.wmata.com/"
+						}
+					],
+					"model_ms": 233,
+					"cost_usd": 0.000254562,
+					"input_tokens": 6061,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l60",
+								"confidence": 0.82
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://mdot.maryland.gov/tso/pages/Index.aspx?PageId=11",
+					"title": "Procurement and Contracts - MDOT",
+					"text_chars": 3000,
+					"link_options": 68,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 666,
+					"page_has_answer": 0.16,
+					"needs_browser": 0.1,
+					"none_p": 0.02,
+					"top_links": [
+						{
+							"p": 0.54,
+							"label": "eMaryland Marketplace Advantage (eMMA)",
+							"url": "https://emma.maryland.gov/page.aspx/en/usr/login?ReturnUrl=/page.aspx/en/buy/homepage"
+						},
+						{
+							"p": 0.15,
+							"label": "How to do Business with the State of Maryland",
+							"url": "https://procurement.maryland.gov/how-to-do-business-with-the-state-of-maryland/"
+						},
+						{
+							"p": 0.12,
+							"label": "RFP No. MDOT AC 2023​",
+							"url": "https://mdot.maryland.gov/tso/pages/Index.aspx?PageId=206"
+						},
+						{
+							"p": 0.04,
+							"label": "Procurement and Contracts",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=11"
+						},
+						{
+							"p": 0.04,
+							"label": "Maryland State Procurement Mission",
+							"url": "https://procurement.maryland.gov/procurement-mission/"
+						}
+					],
+					"model_ms": 245,
+					"cost_usd": 0.000209874,
+					"input_tokens": 4997,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l33",
+								"confidence": 0.53
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://emma.maryland.gov/page.aspx/en/usr/login?ReturnUrl=/page.aspx/en/buy/homepage",
+					"error": "robots.txt disallows this URL"
+				},
+				{
+					"url": "https://procurement.maryland.gov/how-to-do-business-with-the-state-of-maryland/",
+					"text_chars": 2896,
+					"link_options": 18,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 678,
+					"page_has_answer": 0.11,
+					"needs_browser": 0.15,
+					"none_p": 0.14,
+					"top_links": [
+						{
+							"p": 0.47,
+							"label": "For Vendors & Businesses",
+							"url": "https://procurement.maryland.gov/business-community/"
+						},
+						{
+							"p": 0.31,
+							"label": "Visit the MDOT MBE website",
+							"url": "http://www.mdot.maryland.gov/Office%20of%20Minority%20Business%20Enterprise/HomePage.html"
+						},
+						{
+							"p": 0.04,
+							"label": "found here",
+							"url": "http://dgs.maryland.gov/Pages/SmallBusiness/index.aspx"
+						},
+						{
+							"p": 0.02,
+							"label": "Home",
+							"url": "https://procurement.maryland.gov/"
+						},
+						{
+							"p": 0.01,
+							"label": "on their website",
+							"url": "http://www.vetbiz.gov/"
+						}
+					],
+					"model_ms": 262,
+					"cost_usd": 0.00008442,
+					"input_tokens": 2010,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l3",
+								"confidence": 0.44
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://procurement.maryland.gov/business-community/",
+					"text_chars": 2494,
+					"link_options": 24,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 993,
+					"page_has_answer": 0.23,
+					"needs_browser": 0.17,
+					"none_p": 0.29000000000000004,
+					"top_links": [
+						{
+							"p": 0.3,
+							"label": "eMMA Training for Vendors",
+							"url": "https://procurement.maryland.gov/vendor-training-and-resources/"
+						},
+						{
+							"p": 0.11,
+							"label": "Small Business Reserve",
+							"url": "https://gomdsmallbiz.maryland.gov/Pages/sbr-Program.aspx"
+						},
+						{
+							"p": 0.08,
+							"label": "Home",
+							"url": "https://procurement.maryland.gov/"
+						},
+						{
+							"p": 0.06,
+							"label": "About",
+							"url": "https://procurement.maryland.gov/office-of-state-procurement/"
+						},
+						{
+							"p": 0.04,
+							"label": "Quick Reference Guides (QRGs)",
+							"url": "https://mdprocurement.freshdesk.com/support/solutions/70000319661"
+						}
+					],
+					"model_ms": 215,
+					"cost_usd": 0.000098952,
+					"input_tokens": 2356,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l12",
+								"confidence": 0.26
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "procore-pricing",
+			"goal": "Find how Procore prices its construction software.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 1349,
+			"fetch_ms_total": 798,
+			"cost_usd": 0.000651,
+			"wall_ms": 5375,
+			"hops": [
+				{
+					"url": "https://www.procore.com/",
+					"title": "Construction Project Management Software | Procore",
+					"text_chars": 3000,
+					"link_options": 66,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 213,
+					"page_has_answer": 0.03,
+					"needs_browser": 0.12,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.99,
+							"label": "Pricing | See pricing",
+							"url": "https://www.procore.com/pricing"
+						},
+						{
+							"p": 0,
+							"label": "Do Not Sell Personal Information",
+							"url": "https://www.procore.com/legal/california-consumer-rights"
+						},
+						{
+							"p": 0,
+							"label": "Read customer story",
+							"url": "https://www.procore.com/casestudies/mccowngordon-partner"
+						},
+						{
+							"p": 0,
+							"label": "Learn more",
+							"url": "https://community.procore.com/s"
+						},
+						{
+							"p": 0,
+							"label": "Read their story",
+							"url": "https://www.procore.com/casestudies/bernards-ai"
+						}
+					],
+					"model_ms": 307,
+					"cost_usd": 0.000169428,
+					"input_tokens": 4034,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l1",
+								"confidence": 0.99
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.procore.com/pricing",
+					"title": "Procore - Plans and Pricing [Estimate] | Procore",
+					"text_chars": 3000,
+					"link_options": 39,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 130,
+					"page_has_answer": 0.32,
+					"needs_browser": 0.15,
+					"none_p": 0.4,
+					"top_links": [
+						{
+							"p": 0.52,
+							"label": "click here | Contact Us",
+							"url": "https://www.procore.com/contact"
+						},
+						{
+							"p": 0.04,
+							"label": "Request a demo",
+							"url": "https://www.procore.com/offer/demo/values"
+						},
+						{
+							"p": 0.04,
+							"label": "Canada (English)",
+							"url": "https://www.procore.com/en-ca/pricing"
+						},
+						{
+							"p": 0,
+							"label": "Do Not Sell Personal Information",
+							"url": "https://www.procore.com/legal/california-consumer-rights"
+						},
+						{
+							"p": 0,
+							"label": "Legal",
+							"url": "https://www.procore.com/legal"
+						}
+					],
+					"model_ms": 303,
+					"cost_usd": 0.000121884,
+					"input_tokens": 2902,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l13",
+								"confidence": 0.5
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.procore.com/contact",
+					"title": "Talk to a construction technology expert | Learn More About Our Product | Procore",
+					"text_chars": 662,
+					"link_options": 40,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 166,
+					"page_has_answer": 0.04,
+					"needs_browser": 0.11,
+					"none_p": 0.21000000000000002,
+					"top_links": [
+						{
+							"p": 0.33,
+							"label": "About Procore | Our Story",
+							"url": "https://www.procore.com/about"
+						},
+						{
+							"p": 0.32,
+							"label": "Request a demo",
+							"url": "https://www.procore.com/offer/demo/values"
+						},
+						{
+							"p": 0.07,
+							"label": "Vision",
+							"url": "https://www.procore.com/vision"
+						},
+						{
+							"p": 0.04,
+							"label": "Procore Support Center",
+							"url": "https://support.procore.com/"
+						},
+						{
+							"p": 0.01,
+							"label": "Contact",
+							"url": "https://www.procore.com/contact/mobile"
+						}
+					],
+					"model_ms": 282,
+					"cost_usd": 0.000104034,
+					"input_tokens": 2477,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l12",
+								"confidence": 0.3
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.procore.com/about",
+					"title": "Procore is a leader in construction management software | Procore",
+					"text_chars": 3000,
+					"link_options": 47,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 136,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.1,
+					"none_p": 0.32,
+					"top_links": [
+						{
+							"p": 0.4,
+							"label": "Vision | Learn more",
+							"url": "https://www.procore.com/vision"
+						},
+						{
+							"p": 0.12,
+							"label": "Company",
+							"url": "https://www.procore.com/company"
+						},
+						{
+							"p": 0.09,
+							"label": "Request a demo",
+							"url": "https://www.procore.com/offer/demo/values"
+						},
+						{
+							"p": 0.02,
+							"label": "Discover the Procore Platform | Platform Overview",
+							"url": "https://www.procore.com/platform"
+						},
+						{
+							"p": 0.02,
+							"label": "Contact",
+							"url": "https://www.procore.com/contact/mobile"
+						}
+					],
+					"model_ms": 247,
+					"cost_usd": 0.000137802,
+					"input_tokens": 3281,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l12",
+								"confidence": 0.38
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.procore.com/vision",
+					"title": "Our Vision | Procore",
+					"text_chars": 3000,
+					"link_options": 37,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 153,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.08,
+					"none_p": 0.2,
+					"top_links": [
+						{
+							"p": 0.56,
+							"label": "Company",
+							"url": "https://www.procore.com/company"
+						},
+						{
+							"p": 0.18,
+							"label": "Request a demo",
+							"url": "https://www.procore.com/offer/demo/values"
+						},
+						{
+							"p": 0.02,
+							"label": "Contact",
+							"url": "https://www.procore.com/contact/mobile"
+						},
+						{
+							"p": 0.01,
+							"label": "Platform Overview",
+							"url": "https://www.procore.com/platform"
+						},
+						{
+							"p": 0.01,
+							"label": "France (Français)",
+							"url": "https://www.procore.com/fr/vision"
+						}
+					],
+					"model_ms": 210,
+					"cost_usd": 0.000117852,
+					"input_tokens": 2806,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l12",
+								"confidence": 0.54
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "constructconnect-pricing",
+			"goal": "Find ConstructConnect pricing for finding construction projects to bid on.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://www.constructconnect.com/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 623,
+			"fetch_ms_total": 247,
+			"cost_usd": 0.000387156,
+			"wall_ms": 2466,
+			"hops": [
+				{
+					"url": "https://www.constructconnect.com/",
+					"title": "Finding and Winning Projects | ConstructConnect",
+					"text_chars": 3000,
+					"link_options": 60,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 91,
+					"page_has_answer": 0.03,
+					"needs_browser": 0.13,
+					"none_p": 0.09999999999999999,
+					"top_links": [
+						{
+							"p": 0.48,
+							"label": "Get Pricing | Start Now",
+							"url": "https://www.constructconnect.com/get-started-now"
+						},
+						{
+							"p": 0.33,
+							"label": "Project Intelligence Find and Qualify Projects to Bid | 1 Find Projects Find the right projects to bid with better visib",
+							"url": "https://www.constructconnect.com/products/project-intelligence"
+						},
+						{
+							"p": 0.07,
+							"label": "See a Demo | Try It Free",
+							"url": "https://www.constructconnect.com/get-a-demo"
+						},
+						{
+							"p": 0.02,
+							"label": "Intelligent Leads Curated leads matched to you",
+							"url": "https://www.constructconnect.com/products/insight/intelligent-leads"
+						},
+						{
+							"p": 0,
+							"label": "Careers",
+							"url": "https://www.constructconnect.com/company/careers"
+						}
+					],
+					"model_ms": 323,
+					"cost_usd": 0.000187908,
+					"input_tokens": 4474,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l23",
+								"confidence": 0.46
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.constructconnect.com/pricing",
+					"title": "Get Access to Preconstruction Software | ConstructConnect",
+					"text_chars": 3000,
+					"link_options": 67,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 156,
+					"page_has_answer": 0.83,
+					"needs_browser": 0.09,
+					"none_p": 0.29000000000000004,
+					"top_links": [
+						{
+							"p": 0.34,
+							"label": "Subscribe Now",
+							"url": "https://pay-portal.app.constructconnect.com/ProjectIntelligence/Starter?ga_campaign_namec__c=UU-WS-WU-Market-Selection-Page-Starter&ga_campaign_name__c=UU-WS-WU-Market-Selection-Page-Starter"
+						},
+						{
+							"p": 0.15,
+							"label": "See Pricing",
+							"url": "https://www.constructconnect.com/get-started-now?hsCtaAttrib=197544475662"
+						},
+						{
+							"p": 0.06,
+							"label": "See Pricing",
+							"url": "https://www.constructconnect.com/get-started-now"
+						},
+						{
+							"p": 0.04,
+							"label": "Project Intelligence Find and Qualify Projects to Bid",
+							"url": "https://www.constructconnect.com/products/project-intelligence"
+						},
+						{
+							"p": 0.03,
+							"label": "Buy Now",
+							"url": "https://projects.constructconnect.com/market-selection?ga_campaign_namec__c=UU-WS-WU-Pricing-Page-Starter-Table&ga_campaign_name__c=UU-WS-WU-Pricing-Page-Starter-Table"
+						}
+					],
+					"model_ms": 300,
+					"cost_usd": 0.000199248,
+					"input_tokens": 4744,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l39",
+								"confidence": 0.32
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "agc-events",
+			"goal": "Find AGC's calendar of upcoming events, including its annual convention.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://www.agc.org/future-agc-meetings",
+			"success": false,
+			"reached_target": true,
+			"fetches": 3,
+			"model_calls": 3,
+			"model_ms_total": 949,
+			"fetch_ms_total": 297,
+			"cost_usd": 0.001136898,
+			"wall_ms": 3472,
+			"hops": [
+				{
+					"url": "https://www.agc.org/",
+					"title": "Associated General Contractors of America | Associated General Contractors of America",
+					"text_chars": 2534,
+					"link_options": 137,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 94,
+					"page_has_answer": 0.06,
+					"needs_browser": 0.09,
+					"none_p": 0.03,
+					"top_links": [
+						{
+							"p": 0.8,
+							"label": "Events Calendar",
+							"url": "https://www.agc.org/connect/events-calendar"
+						},
+						{
+							"p": 0.15,
+							"label": "AGC Convention",
+							"url": "http://convention.agc.org/"
+						},
+						{
+							"p": 0.01,
+							"label": "Explore the Conference",
+							"url": "https://agc-community.agc.org/s/lt-event?id=a1mRg00000AyPqb&comSiteId=a2A3t00000MHkjCEAT"
+						},
+						{
+							"p": 0,
+							"label": "Terms of Use",
+							"url": "https://www.agc.org/terms-use"
+						},
+						{
+							"p": 0,
+							"label": "Contracts & Law",
+							"url": "https://www.agc.org/industry-priorities/contracts-law"
+						}
+					],
+					"model_ms": 271,
+					"cost_usd": 0.000331926,
+					"input_tokens": 7903,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l83",
+								"confidence": 0.78
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.agc.org/connect/events-calendar",
+					"title": "Events Calendar | Associated General Contractors of America",
+					"text_chars": 3000,
+					"link_options": 162,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 102,
+					"page_has_answer": 0.2,
+					"needs_browser": 0.09,
+					"none_p": 0.09,
+					"top_links": [
+						{
+							"p": 0.54,
+							"label": "View Future AGC Conferences",
+							"url": "https://www.agc.org/future-agc-meetings"
+						},
+						{
+							"p": 0.32,
+							"label": "AGC Convention",
+							"url": "http://convention.agc.org/"
+						},
+						{
+							"p": 0.01,
+							"label": "Discount Programs",
+							"url": "https://www.agc.org/Discounts"
+						},
+						{
+							"p": 0.01,
+							"label": "Benefits",
+							"url": "https://www.agc.org/agc-america-member-benefits"
+						},
+						{
+							"p": 0.01,
+							"label": "Get Started",
+							"url": "https://www.agc.org/benefits"
+						}
+					],
+					"model_ms": 317,
+					"cost_usd": 0.000449232,
+					"input_tokens": 10696,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l104",
+								"confidence": 0.52
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.agc.org/future-agc-meetings",
+					"title": "Future AGC Meetings | Associated General Contractors of America",
+					"text_chars": 1842,
+					"link_options": 145,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 101,
+					"page_has_answer": 0.74,
+					"needs_browser": 0.06,
+					"none_p": 0.21000000000000002,
+					"top_links": [
+						{
+							"p": 0.51,
+							"label": "AGC Annual Convention",
+							"url": "https://convention.agc.org/"
+						},
+						{
+							"p": 0.18,
+							"label": "AGC Convention",
+							"url": "http://convention.agc.org/"
+						},
+						{
+							"p": 0.03,
+							"label": "Mobile App | AGC Connect",
+							"url": "https://www.agc.org/app"
+						},
+						{
+							"p": 0.02,
+							"label": "Construction Safety & Health Conference",
+							"url": "http://safety.agc.org/"
+						},
+						{
+							"p": 0.02,
+							"label": "Connect",
+							"url": "https://www.agc.org/connect"
+						}
+					],
+					"model_ms": 361,
+					"cost_usd": 0.00035574,
+					"input_tokens": 8470,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l106",
+								"confidence": 0.5
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "supabase-rls",
+			"goal": "Find the Supabase documentation page about Row Level Security (RLS) policies.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+			"success": true,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 1430,
+			"fetch_ms_total": 1064,
+			"cost_usd": 0.0013082579999999999,
+			"wall_ms": 5520,
+			"hops": [
+				{
+					"url": "https://supabase.com/",
+					"title": "Supabase | The Postgres Development Platform",
+					"text_chars": 3000,
+					"link_options": 95,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 232,
+					"page_has_answer": 0.06,
+					"needs_browser": 0.1,
+					"none_p": 0.03,
+					"top_links": [
+						{
+							"p": 0.66,
+							"label": "Docs | Documentation",
+							"url": "https://supabase.com/docs"
+						},
+						{
+							"p": 0.3,
+							"label": "AuthenticationAdd user sign ups and logins, securing your data with Row Level Security.",
+							"url": "https://supabase.com/auth"
+						},
+						{
+							"p": 0.01,
+							"label": "DevTo",
+							"url": "https://dev.to/supabase"
+						},
+						{
+							"p": 0,
+							"label": "@Aliahsan_sfvOkay, I finally tried Supabase today and wow... why did I wait so long? 😅 We",
+							"url": "https://x.com/Aliahsan_sfv/status/1967167095894098210"
+						},
+						{
+							"p": 0,
+							"label": "View all examples",
+							"url": "https://supabase.com/docs/guides/examples"
+						}
+					],
+					"model_ms": 325,
+					"cost_usd": 0.000265692,
+					"input_tokens": 6326,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l1",
+								"confidence": 0.65
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://supabase.com/docs",
+					"title": "Supabase Docs",
+					"text_chars": 3000,
+					"link_options": 73,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 258,
+					"page_has_answer": 0.1,
+					"needs_browser": 0.07,
+					"none_p": 0.11,
+					"top_links": [
+						{
+							"p": 0.36,
+							"label": "DatabaseSupabase provides a full Postgres database for every project with Realtime functio",
+							"url": "https://supabase.com/docs/guides/database/overview"
+						},
+						{
+							"p": 0.35,
+							"label": "StorageStore, organize, transform, and serve large files—fully integrated with your Postgr",
+							"url": "https://supabase.com/docs/guides/storage"
+						},
+						{
+							"p": 0.08,
+							"label": "AuthAdd and manage email and password, passwordless, OAuth, and mobile logins to your proj",
+							"url": "https://supabase.com/docs/guides/auth"
+						},
+						{
+							"p": 0.05,
+							"label": "RealtimeListen to database changes, store and sync user states across clients, broadcast d",
+							"url": "https://supabase.com/docs/guides/realtime"
+						},
+						{
+							"p": 0.02,
+							"label": "Storage",
+							"url": "https://supabase.com/docs/reference/self-hosting-storage/introduction"
+						}
+					],
+					"model_ms": 350,
+					"cost_usd": 0.00021525,
+					"input_tokens": 5125,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l21",
+								"confidence": 0.35
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://supabase.com/docs/guides/database/overview",
+					"title": "Database | Supabase Docs",
+					"text_chars": 2232,
+					"link_options": 101,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 139,
+					"page_has_answer": 0.13,
+					"needs_browser": 0.03,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.89,
+							"label": "Securing your data | Secure your dataRow Level Security (RLS) is how Supabase makes the database safe to query directly ",
+							"url": "https://supabase.com/docs/guides/database/secure-data"
+						},
+						{
+							"p": 0.1,
+							"label": "Row Level Security",
+							"url": "https://supabase.com/docs/guides/database/postgres/row-level-security"
+						},
+						{
+							"p": 0,
+							"label": "Ask ChatGPT",
+							"url": "https://chatgpt.com/?hint=search&q=Read%20from%20https%3A%2F%2Fsupabase.com%2Fdocs%2Fguides%2Fdatabase%2Foverview%20so%20I%20can%20ask%20questions%20about%20its%20contents"
+						},
+						{
+							"p": 0,
+							"label": "Overview",
+							"url": "https://supabase.com/docs/guides/database/extensions/wrappers/overview"
+						},
+						{
+							"p": 0,
+							"label": "Implementing cascade deletes",
+							"url": "https://supabase.com/docs/guides/database/postgres/cascade-deletes"
+						}
+					],
+					"model_ms": 239,
+					"cost_usd": 0.000276066,
+					"input_tokens": 6573,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l2",
+								"confidence": 0.88
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://supabase.com/docs/guides/database/secure-data",
+					"title": "Securing your data | Supabase Docs",
+					"text_chars": 2493,
+					"link_options": 98,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 187,
+					"page_has_answer": 0.1,
+					"needs_browser": 0.04,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.99,
+							"label": "Row Level Security",
+							"url": "https://supabase.com/docs/guides/database/postgres/row-level-security"
+						},
+						{
+							"p": 0,
+							"label": "Managing tables and data",
+							"url": "https://supabase.com/docs/guides/database/tables"
+						},
+						{
+							"p": 0,
+							"label": "Contributing",
+							"url": "https://github.com/supabase/supabase/blob/master/apps/docs/DEVELOPERS.md"
+						},
+						{
+							"p": 0,
+							"label": "Overview",
+							"url": "https://supabase.com/docs/guides/database/replication"
+						},
+						{
+							"p": 0,
+							"label": "Twitter",
+							"url": "https://twitter.com/supabase"
+						}
+					],
+					"model_ms": 278,
+					"cost_usd": 0.000261744,
+					"input_tokens": 6232,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l20",
+								"confidence": 0.98
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+					"title": "Row Level Security | Supabase Docs",
+					"text_chars": 3000,
+					"link_options": 107,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 248,
+					"page_has_answer": 0.51,
+					"needs_browser": 0.04,
+					"none_p": 0.72,
+					"top_links": [
+						{
+							"p": 0.07,
+							"label": "Policies",
+							"url": "https://www.postgresql.org/docs/current/sql-createpolicy.html"
+						},
+						{
+							"p": 0.06,
+							"label": "Row Level Security (RLS)",
+							"url": "https://www.postgresql.org/docs/current/ddl-rowsecurity.html"
+						},
+						{
+							"p": 0.04,
+							"label": "Row Level Security Performance | Row Level Security performance",
+							"url": "https://supabase.com/docs/guides/database/postgres/row-level-security-performance"
+						},
+						{
+							"p": 0.03,
+							"label": "Column Level Security",
+							"url": "https://supabase.com/docs/guides/database/postgres/column-level-security"
+						},
+						{
+							"p": 0.02,
+							"label": "SQL Editor",
+							"url": "https://supabase.com/dashboard/project/_/sql/new"
+						}
+					],
+					"model_ms": 238,
+					"cost_usd": 0.000289506,
+					"input_tokens": 6893,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.71
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "svelte-derived",
+			"goal": "Find the documentation page for the $derived rune.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 1998,
+			"fetch_ms_total": 1548,
+			"cost_usd": 0.000751086,
+			"wall_ms": 7112,
+			"hops": [
+				{
+					"url": "https://svelte.dev/docs/svelte/overview",
+					"title": "Overview • Svelte Docs",
+					"text_chars": 1055,
+					"link_options": 101,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 82,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.06,
+					"none_p": 0.06999999999999999,
+					"top_links": [
+						{
+							"p": 0.71,
+							"label": "$derived",
+							"url": "https://svelte.dev/docs/svelte/$derived"
+						},
+						{
+							"p": 0.09,
+							"label": "Docs",
+							"url": "https://svelte.dev/docs"
+						},
+						{
+							"p": 0.04,
+							"label": "Getting started",
+							"url": "https://svelte.dev/docs/svelte/getting-started"
+						},
+						{
+							"p": 0.04,
+							"label": "What are runes?",
+							"url": "https://svelte.dev/docs/svelte/what-are-runes"
+						},
+						{
+							"p": 0.04,
+							"label": "Svelte",
+							"url": "https://svelte.dev/docs/svelte"
+						}
+					],
+					"model_ms": 391,
+					"cost_usd": 0.000241878,
+					"input_tokens": 5759,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l16",
+								"confidence": 0.7
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://svelte.dev/docs/svelte/$derived",
+					"title": "$derived • Svelte Docs",
+					"text_chars": 3000,
+					"link_options": 101,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 83,
+					"page_has_answer": 0.49,
+					"needs_browser": 0.05,
+					"none_p": 0.44,
+					"top_links": [
+						{
+							"p": 0.13,
+							"label": "Edit this page on GitHub",
+							"url": "https://github.com/sveltejs/svelte/edit/main/documentation/docs/02-runes/03-$derived.md"
+						},
+						{
+							"p": 0.12,
+							"label": "llms.txt",
+							"url": "https://svelte.dev/docs/svelte/$derived/llms.txt"
+						},
+						{
+							"p": 0.11,
+							"label": "$effect",
+							"url": "https://svelte.dev/docs/svelte/$effect"
+						},
+						{
+							"p": 0.04,
+							"label": "TutorialBasic SvelteReactivityDerived state",
+							"url": "https://svelte.dev/tutorial/svelte/derived-state"
+						},
+						{
+							"p": 0.04,
+							"label": "Svelte",
+							"url": "https://svelte.dev/docs/svelte"
+						}
+					],
+					"model_ms": 291,
+					"cost_usd": 0.000263046,
+					"input_tokens": 6263,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.43
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fsveltejs%2Fsvelte%2Fedit%2Fmain%2Fdocumentation%2Fdocs%2F02-runes%2F03-%24derived.md",
+					"title": "Sign in to GitHub · GitHub",
+					"text_chars": 613,
+					"link_options": 5,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 440,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.88,
+					"none_p": 0.73,
+					"top_links": [
+						{
+							"p": 0.25,
+							"label": "Docs",
+							"url": "https://docs.github.com/"
+						},
+						{
+							"p": 0.01,
+							"label": "Contact GitHub Support",
+							"url": "https://support.github.com/"
+						},
+						{
+							"p": 0.01,
+							"label": "Forgot password?",
+							"url": "https://github.com/password_reset"
+						},
+						{
+							"p": 0,
+							"label": "Terms",
+							"url": "https://docs.github.com/site-policy/github-terms/github-terms-of-service"
+						},
+						{
+							"p": 0,
+							"label": "Privacy",
+							"url": "https://docs.github.com/site-policy/privacy-policies/github-privacy-statement"
+						}
+					],
+					"model_ms": 402,
+					"cost_usd": 0.000038514,
+					"input_tokens": 917,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.67
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://docs.github.com/en",
+					"title": "GitHub Docs",
+					"text_chars": 1115,
+					"link_options": 61,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 788,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.16,
+					"none_p": 0.81,
+					"top_links": [
+						{
+							"p": 0.1,
+							"label": "Get started",
+							"url": "https://docs.github.com/en/get-started"
+						},
+						{
+							"p": 0.05,
+							"label": "Search on GitHub",
+							"url": "https://docs.github.com/en/search-github"
+						},
+						{
+							"p": 0.01,
+							"label": "Electron",
+							"url": "https://electronjs.org/docs/latest"
+						},
+						{
+							"p": 0.01,
+							"label": "npm",
+							"url": "https://docs.npmjs.com/"
+						},
+						{
+							"p": 0.01,
+							"label": "GitHub",
+							"url": "https://github.com/"
+						}
+					],
+					"model_ms": 371,
+					"cost_usd": 0.000152712,
+					"input_tokens": 3636,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.79
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://svelte.dev/docs/svelte/$derived/llms.txt",
+					"text_chars": 3000,
+					"link_options": 0,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 155,
+					"page_has_answer": 0.4,
+					"needs_browser": 0.1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 543,
+					"cost_usd": 0.000054936,
+					"input_tokens": 1308,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 1
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "typesafe-score",
+			"goal": "Find the documentation for the Score primitive.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://docs.typesafe.ai/primitives/score",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 579,
+			"fetch_ms_total": 241,
+			"cost_usd": 0.00022071,
+			"wall_ms": 2457,
+			"hops": [
+				{
+					"url": "https://docs.typesafe.ai/primitives/choice",
+					"title": "Choice - TypeSafe AI",
+					"text_chars": 3000,
+					"link_options": 32,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 96,
+					"page_has_answer": 0.05,
+					"needs_browser": 0.05,
+					"none_p": 0.05,
+					"top_links": [
+						{
+							"p": 0.92,
+							"label": "Score | ScoreNext",
+							"url": "https://docs.typesafe.ai/primitives/score"
+						},
+						{
+							"p": 0.02,
+							"label": "Choose a question type | Ask multiple questions together | Primitives (Questions)Previous",
+							"url": "https://docs.typesafe.ai/primitives"
+						},
+						{
+							"p": 0.01,
+							"label": "Noul",
+							"url": "https://docs.typesafe.ai/primitives/noul"
+						},
+						{
+							"p": 0,
+							"label": "github",
+							"url": "https://github.com/typesafe-ai"
+						},
+						{
+							"p": 0,
+							"label": "Confidence | confidence",
+							"url": "https://docs.typesafe.ai/confidence"
+						}
+					],
+					"model_ms": 284,
+					"cost_usd": 0.000111762,
+					"input_tokens": 2661,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l11",
+								"confidence": 0.91
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://docs.typesafe.ai/primitives/score",
+					"title": "Score - TypeSafe AI",
+					"text_chars": 3000,
+					"link_options": 30,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 145,
+					"page_has_answer": 0.68,
+					"needs_browser": 0.06,
+					"none_p": 0.73,
+					"top_links": [
+						{
+							"p": 0.08,
+							"label": "Choose a question type | Ask multiple questions together",
+							"url": "https://docs.typesafe.ai/primitives"
+						},
+						{
+							"p": 0.06,
+							"label": "TypeSafe API | API reference",
+							"url": "https://docs.typesafe.ai/api"
+						},
+						{
+							"p": 0.04,
+							"label": "/llms.txt",
+							"url": "https://docs.typesafe.ai/llms.txt"
+						},
+						{
+							"p": 0.03,
+							"label": "Quick start",
+							"url": "https://docs.typesafe.ai/introduction/quickstart"
+						},
+						{
+							"p": 0.02,
+							"label": "Advanced: structure",
+							"url": "https://docs.typesafe.ai/primitives/advanced"
+						}
+					],
+					"model_ms": 295,
+					"cost_usd": 0.000108948,
+					"input_tokens": 2594,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.72
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "mdn-429",
+			"goal": "Find the reference page for the HTTP 429 Too Many Requests status code.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429",
+			"success": true,
+			"reached_target": true,
+			"fetches": 3,
+			"model_calls": 3,
+			"model_ms_total": 1409,
+			"fetch_ms_total": 580,
+			"cost_usd": 0.003936828,
+			"wall_ms": 3607,
+			"hops": [
+				{
+					"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/403",
+					"title": "403 Forbidden - HTTP | MDN",
+					"text_chars": 1704,
+					"link_options": 483,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 367,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.03,
+					"none_p": 0.05,
+					"top_links": [
+						{
+							"p": 0.85,
+							"label": "HTTP response status codes | client error response",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status"
+						},
+						{
+							"p": 0.83,
+							"label": "429 Too Many Requests",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429"
+						},
+						{
+							"p": 0.5,
+							"label": "HTTP Status Code Definitions",
+							"url": "https://httpwg.org/specs/rfc9110.html"
+						},
+						{
+							"p": 0.09,
+							"label": "language-model",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy/language-model"
+						},
+						{
+							"p": 0.05,
+							"label": "401 | 401 Unauthorized",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/401"
+						}
+					],
+					"model_ms": 500,
+					"cost_usd": 0.001306788,
+					"input_tokens": 31114,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l84",
+								"confidence": 0.84
+							},
+							{
+								"q": "next_link_1",
+								"choice": "l363",
+								"confidence": 0.81
+							},
+							{
+								"q": "next_link_2",
+								"choice": "l477",
+								"confidence": 0.48
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status",
+					"title": "HTTP response status codes - HTTP | MDN",
+					"text_chars": 3000,
+					"link_options": 492,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 74,
+					"page_has_answer": 0.06,
+					"needs_browser": 0.05,
+					"none_p": 0.06999999999999999,
+					"top_links": [
+						{
+							"p": 0.92,
+							"label": "429 Too Many Requests",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429"
+						},
+						{
+							"p": 0.37,
+							"label": "identity-credentials-get",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy/identity-credentials-get"
+						},
+						{
+							"p": 0.07,
+							"label": "IANA official registry of HTTP status codes",
+							"url": "https://www.iana.org/assignments/http-status-codes"
+						},
+						{
+							"p": 0.02,
+							"label": "RFC 9110",
+							"url": "https://httpwg.org/specs/rfc9110.html"
+						},
+						{
+							"p": 0.02,
+							"label": "List of HTTP status codes on Wikipedia",
+							"url": "https://en.wikipedia.org/wiki/List_of_HTTP_status_codes"
+						}
+					],
+					"model_ms": 454,
+					"cost_usd": 0.00132048,
+					"input_tokens": 31440,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l148",
+								"confidence": 0.91
+							},
+							{
+								"q": "next_link_1",
+								"choice": "none",
+								"confidence": 0.98
+							},
+							{
+								"q": "next_link_2",
+								"choice": "none",
+								"confidence": 0.49
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429",
+					"title": "429 Too Many Requests - HTTP | MDN",
+					"text_chars": 1746,
+					"link_options": 483,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 139,
+					"page_has_answer": 0.73,
+					"needs_browser": 0.02,
+					"none_p": 0.4,
+					"top_links": [
+						{
+							"p": 0.47,
+							"label": "RFC 6585# section-4",
+							"url": "https://www.rfc-editor.org/info/rfc6585/"
+						},
+						{
+							"p": 0.08,
+							"label": "language-model",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy/language-model"
+						},
+						{
+							"p": 0.07,
+							"label": "Retry-After",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Retry-After"
+						},
+						{
+							"p": 0.06,
+							"label": "Reference",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference"
+						},
+						{
+							"p": 0.06,
+							"label": "431 Request Header Fields Too Large",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/431"
+						}
+					],
+					"model_ms": 455,
+					"cost_usd": 0.00130956,
+					"input_tokens": 31180,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.76
+							},
+							{
+								"q": "next_link_1",
+								"choice": "none",
+								"confidence": 0.83
+							},
+							{
+								"q": "next_link_2",
+								"choice": "l476",
+								"confidence": 0.45
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "wiki-county-population",
+			"goal": "Find the population of the county that Glen Burnie is located in.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://en.wikipedia.org/wiki/Anne_Arundel_County,_Maryland",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 916,
+			"fetch_ms_total": 3275,
+			"cost_usd": 0.0026355,
+			"wall_ms": 5638,
+			"hops": [
+				{
+					"url": "https://en.wikipedia.org/wiki/Glen_Burnie,_Maryland",
+					"title": "Glen Burnie, Maryland - Wikipedia",
+					"text_chars": 3000,
+					"link_options": 322,
+					"links_disallowed_by_robots": 34,
+					"fetch_ms": 309,
+					"page_has_answer": 0.08,
+					"needs_browser": 0.06,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.99,
+							"label": "Anne Arundel | Anne Arundel County, Maryland",
+							"url": "https://en.wikipedia.org/wiki/Anne_Arundel_County,_Maryland"
+						},
+						{
+							"p": 0.43,
+							"label": "Census-designated places in Anne Arundel County, Maryland",
+							"url": "https://en.wikipedia.org/wiki/Category:Census-designated_places_in_Anne_Arundel_County,_Maryland"
+						},
+						{
+							"p": 0.02,
+							"label": "Fairhaven",
+							"url": "https://en.wikipedia.org/wiki/Fairhaven,_Anne_Arundel_County,_Maryland"
+						},
+						{
+							"p": 0.02,
+							"label": "\"U.S. Census website\"",
+							"url": "https://www.census.gov/"
+						},
+						{
+							"p": 0.02,
+							"label": "\"2020 Decennial Census Demographic and Housing Characteristics (DHC)\"",
+							"url": "https://api.census.gov/data/2020/dec/dhc?get=NAME%2CP2_002N%2CP2_003N&for=place%3A32650&in=state%3A24"
+						}
+					],
+					"model_ms": 452,
+					"cost_usd": 0.000937146,
+					"input_tokens": 22313,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l45",
+								"confidence": 0.98
+							},
+							{
+								"q": "next_link_1",
+								"choice": "none",
+								"confidence": 0.43
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://en.wikipedia.org/wiki/Anne_Arundel_County,_Maryland",
+					"title": "Anne Arundel County, Maryland - Wikipedia",
+					"text_chars": 3000,
+					"link_options": 600,
+					"links_disallowed_by_robots": 63,
+					"fetch_ms": 2966,
+					"page_has_answer": 0.91,
+					"needs_browser": 0.03,
+					"none_p": 0.45,
+					"top_links": [
+						{
+							"p": 0.43,
+							"label": "2020 | 2020 United States census | 2020 census",
+							"url": "https://en.wikipedia.org/wiki/2020_United_States_census"
+						},
+						{
+							"p": 0.06,
+							"label": "2010 | 2010 United States census",
+							"url": "https://en.wikipedia.org/wiki/2010_United_States_census"
+						},
+						{
+							"p": 0.05,
+							"label": "United States Census Bureau",
+							"url": "https://en.wikipedia.org/wiki/United_States_Census_Bureau"
+						},
+						{
+							"p": 0.05,
+							"label": "US Census Bureau",
+							"url": "https://en.wikipedia.org/wiki/US_Census_Bureau"
+						},
+						{
+							"p": 0.03,
+							"label": "Time zone",
+							"url": "https://en.wikipedia.org/wiki/Time_zone"
+						}
+					],
+					"model_ms": 464,
+					"cost_usd": 0.001698354,
+					"input_tokens": 40437,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.44
+							},
+							{
+								"q": "next_link_1",
+								"choice": "none",
+								"confidence": 0.79
+							},
+							{
+								"q": "next_link_2",
+								"choice": "none",
+								"confidence": 0.82
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "aacounty-home-bids",
+			"goal": "Find where Anne Arundel County posts its open bids and solicitations for vendors.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 1294,
+			"fetch_ms_total": 788,
+			"cost_usd": 0.0006431879999999999,
+			"wall_ms": 4346,
+			"hops": [
+				{
+					"url": "https://www.aacounty.org/",
+					"title": "The Best Place - For All | Anne Arundel County Government",
+					"text_chars": 3000,
+					"link_options": 89,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 71,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.08,
+					"none_p": 0.38,
+					"top_links": [
+						{
+							"p": 0.36,
+							"label": "OpenArundel",
+							"url": "https://www.aacounty.org/openarundel"
+						},
+						{
+							"p": 0.12,
+							"label": "Departments | Departments & Offices",
+							"url": "https://www.aacounty.org/departments"
+						},
+						{
+							"p": 0.04,
+							"label": "Government",
+							"url": "https://www.aacounty.org/government"
+						},
+						{
+							"p": 0.02,
+							"label": "For Employees",
+							"url": "https://www.aacounty.org/personnel/employee-retiree-information"
+						},
+						{
+							"p": 0.02,
+							"label": "Contact Us",
+							"url": "https://www.aacounty.org/contact"
+						}
+					],
+					"model_ms": 230,
+					"cost_usd": 0.000253176,
+					"input_tokens": 6028,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.37
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/openarundel",
+					"title": "OpenArundel | Anne Arundel County Government",
+					"text_chars": 3000,
+					"link_options": 63,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 102,
+					"page_has_answer": 0.06,
+					"needs_browser": 0.1,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.76,
+							"label": "Purchasing",
+							"url": "https://www.aacounty.org/central-services/purchasing"
+						},
+						{
+							"p": 0.23,
+							"label": "Bid Results",
+							"url": "https://www.aacounty.org/central-services/purchasing/doing-business-county/bid-results"
+						},
+						{
+							"p": 0,
+							"label": "Government",
+							"url": "https://www.aacounty.org/government"
+						},
+						{
+							"p": 0,
+							"label": "Budget",
+							"url": "https://www.aacounty.org/budget"
+						},
+						{
+							"p": 0,
+							"label": "Follow us on Twitter",
+							"url": "https://twitter.com/AACountyGovt"
+						}
+					],
+					"model_ms": 320,
+					"cost_usd": 0.00018921,
+					"input_tokens": 4505,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l22",
+								"confidence": 0.74
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/central-services/purchasing",
+					"title": "Purchasing | Anne Arundel County Government",
+					"text_chars": 439,
+					"link_options": 36,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 86,
+					"page_has_answer": 0.14,
+					"needs_browser": 0.12,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "View Opportunities",
+							"url": "https://www.aacounty.org/solicitations"
+						},
+						{
+							"p": 0,
+							"label": "Public Information Request",
+							"url": "https://www.aacounty.org/pia"
+						},
+						{
+							"p": 0,
+							"label": "Jobs | Job Opportunities",
+							"url": "https://www.aacounty.org/personnel/employment-information/job-announcements"
+						},
+						{
+							"p": 0,
+							"label": "Maps",
+							"url": "https://maps.aacounty.org/"
+						},
+						{
+							"p": 0,
+							"label": "Closings/Cancellations",
+							"url": "https://www.aacounty.org/county-operations"
+						}
+					],
+					"model_ms": 214,
+					"cost_usd": 0.00009681,
+					"input_tokens": 2305,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l18",
+								"confidence": 0.99
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://ibvijb.fa.ocs.oraclecloud.com/fscmUI/redwood/negotiation-abstracts/view/abstractlisting?prcBuId=300000008120003",
+					"title": "Oracle Applications",
+					"text_chars": 19,
+					"link_options": 0,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 446,
+					"page_has_answer": 0.01,
+					"needs_browser": 0.67,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 273,
+					"cost_usd": 0.000024738,
+					"input_tokens": 589,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 1
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/central-services/purchasing/doing-business-county/bid-results",
+					"title": "Bid Results | Anne Arundel County Government",
+					"text_chars": 266,
+					"link_options": 28,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 83,
+					"page_has_answer": 0.05,
+					"needs_browser": 0.15,
+					"none_p": 0.06,
+					"top_links": [
+						{
+							"p": 0.65,
+							"label": "Doing Business with the County",
+							"url": "https://www.aacounty.org/central-services/purchasing/doing-business-county"
+						},
+						{
+							"p": 0.25,
+							"label": "County's Purchasing Procedures",
+							"url": "https://www.aacounty.org/central-services/purchasing/purchasing-procedures"
+						},
+						{
+							"p": 0.02,
+							"label": "Virtual Bid Opening",
+							"url": "https://www.aacounty.org/central-services/purchasing/doing-business-county/bid-results/virtual-bid-opening"
+						},
+						{
+							"p": 0.01,
+							"label": "Services",
+							"url": "https://www.aacounty.org/services"
+						},
+						{
+							"p": 0.01,
+							"label": "Follow us on Twitter",
+							"url": "https://twitter.com/AACOPURCHASING"
+						}
+					],
+					"model_ms": 257,
+					"cost_usd": 0.000079254,
+					"input_tokens": 1887,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l9",
+								"confidence": 0.63
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "hn-opus-thread",
+			"goal": "Open the Hacker News discussion thread about the Claude Opus 5.5 announcement.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://news.ycombinator.com/item?id=49803892",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 724,
+			"fetch_ms_total": 1047,
+			"cost_usd": 0.001796382,
+			"wall_ms": 3336,
+			"hops": [
+				{
+					"url": "https://news.ycombinator.com/",
+					"title": "Hacker News",
+					"text_chars": 3000,
+					"link_options": 135,
+					"links_disallowed_by_robots": 61,
+					"fetch_ms": 276,
+					"page_has_answer": 0.13,
+					"needs_browser": 0.04,
+					"none_p": 0.01,
+					"top_links": [
+						{
+							"p": 0.89,
+							"label": "3 hours ago | 614 comments",
+							"url": "https://news.ycombinator.com/item?id=49803892"
+						},
+						{
+							"p": 0.09,
+							"label": "Claude Opus 5.5",
+							"url": "https://www.anthropic.com/claude-opus-5-5"
+						},
+						{
+							"p": 0.01,
+							"label": "anthropic.com",
+							"url": "https://news.ycombinator.com/from?site=anthropic.com"
+						},
+						{
+							"p": 0,
+							"label": "Solitaire Alone Together",
+							"url": "https://solitairealonetogether.com/"
+						},
+						{
+							"p": 0,
+							"label": "1 hour ago | 6 comments",
+							"url": "https://news.ycombinator.com/item?id=49806335"
+						}
+					],
+					"matches_target_text": true,
+					"model_ms": 245,
+					"cost_usd": 0.000403662,
+					"input_tokens": 9611,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l13",
+								"confidence": 0.88
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://news.ycombinator.com/item?id=49803892",
+					"title": "Claude Opus 5.5 | Hacker News",
+					"text_chars": 3000,
+					"link_options": 600,
+					"links_disallowed_by_robots": 1225,
+					"fetch_ms": 771,
+					"page_has_answer": 0.51,
+					"needs_browser": 0.05,
+					"none_p": 0.54,
+					"top_links": [
+						{
+							"p": 0.33,
+							"label": "comments",
+							"url": "https://news.ycombinator.com/newcomments"
+						},
+						{
+							"p": 0.08,
+							"label": "anthropic.com",
+							"url": "https://news.ycombinator.com/from?site=anthropic.com"
+						},
+						{
+							"p": 0.03,
+							"label": "2 hours ago",
+							"url": "https://news.ycombinator.com/item?id=49804882"
+						},
+						{
+							"p": 0.02,
+							"label": "Hacker News",
+							"url": "https://news.ycombinator.com/news"
+						},
+						{
+							"p": 0.01,
+							"label": "chickensong",
+							"url": "https://news.ycombinator.com/user?id=chickensong"
+						}
+					],
+					"matches_target_text": true,
+					"model_ms": 479,
+					"cost_usd": 0.00139272,
+					"input_tokens": 33160,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.53
+							},
+							{
+								"q": "next_link_1",
+								"choice": "none",
+								"confidence": 0.95
+							},
+							{
+								"q": "next_link_2",
+								"choice": "none",
+								"confidence": 0.92
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "linear-changelog",
+			"goal": "Find Linear's changelog of recent product updates.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://linear.app/changelog",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 594,
+			"fetch_ms_total": 591,
+			"cost_usd": 0.000361032,
+			"wall_ms": 2689,
+			"hops": [
+				{
+					"url": "https://linear.app/",
+					"title": "Linear – The system for product development",
+					"text_chars": 3000,
+					"link_options": 49,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 182,
+					"page_has_answer": 0.04,
+					"needs_browser": 0.2,
+					"none_p": 0.05,
+					"top_links": [
+						{
+							"p": 0.84,
+							"label": "View all→ | Changelog",
+							"url": "https://linear.app/changelog"
+						},
+						{
+							"p": 0.05,
+							"label": "About",
+							"url": "https://linear.app/about"
+						},
+						{
+							"p": 0.04,
+							"label": "Loops for product managementLoops are recurring agent workflows for teams. They now respon",
+							"url": "https://linear.app/changelog/2026-09-14-loops-for-product-management"
+						},
+						{
+							"p": 0.01,
+							"label": "Navigate to home",
+							"url": "https://linear.app/homepage"
+						},
+						{
+							"p": 0.01,
+							"label": "Docs | DocumentationDocs",
+							"url": "https://linear.app/docs"
+						}
+					],
+					"model_ms": 338,
+					"cost_usd": 0.000148386,
+					"input_tokens": 3533,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l17",
+								"confidence": 0.82
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://linear.app/changelog",
+					"title": "Changelog – Linear",
+					"text_chars": 3000,
+					"link_options": 82,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 409,
+					"page_has_answer": 0.7,
+					"needs_browser": 0.07,
+					"none_p": 0.29000000000000004,
+					"top_links": [
+						{
+							"p": 0.53,
+							"label": "Loops for product management",
+							"url": "https://linear.app/changelog/2026-09-14-loops-for-product-management"
+						},
+						{
+							"p": 0.11,
+							"label": "Older updates",
+							"url": "https://linear.app/changelog/page/2"
+						},
+						{
+							"p": 0.03,
+							"label": "Now | All",
+							"url": "https://linear.app/now"
+						},
+						{
+							"p": 0.01,
+							"label": "Priority inbox",
+							"url": "https://linear.app/changelog/2026-09-03-priority-inbox"
+						},
+						{
+							"p": 0.01,
+							"label": "Navigate to home",
+							"url": "https://linear.app/homepage"
+						}
+					],
+					"model_ms": 256,
+					"cost_usd": 0.000212646,
+					"input_tokens": 5063,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l12",
+								"confidence": 0.52
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "stripe-intl-fee",
+			"goal": "Find the additional fee Stripe charges US businesses for international cards.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://stripe.com/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 746,
+			"fetch_ms_total": 254,
+			"cost_usd": 0.0008285759999999999,
+			"wall_ms": 2590,
+			"hops": [
+				{
+					"url": "https://stripe.com/",
+					"title": "Stripe | Financial Infrastructure to Grow Your Revenue",
+					"text_chars": 3000,
+					"link_options": 134,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 128,
+					"page_has_answer": 0.01,
+					"needs_browser": 0.11,
+					"none_p": 0.05,
+					"top_links": [
+						{
+							"p": 0.93,
+							"label": "Pricing | Pricing details",
+							"url": "https://stripe.com/pricing"
+						},
+						{
+							"p": 0.01,
+							"label": "Payments",
+							"url": "https://stripe.com/payments"
+						},
+						{
+							"p": 0,
+							"label": "",
+							"url": "https://stripe.com/customers/amazon"
+						},
+						{
+							"p": 0,
+							"label": "Treasury for platforms",
+							"url": "https://stripe.com/treasury/platforms"
+						},
+						{
+							"p": 0,
+							"label": "Financial Connections",
+							"url": "https://stripe.com/financial-connections"
+						}
+					],
+					"model_ms": 320,
+					"cost_usd": 0.00030492,
+					"input_tokens": 7260,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l0",
+								"confidence": 0.92
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://stripe.com/pricing",
+					"title": "Pricing & Fees",
+					"text_chars": 3000,
+					"link_options": 246,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 126,
+					"page_has_answer": 0.86,
+					"needs_browser": 0.04,
+					"none_p": 0.5,
+					"top_links": [
+						{
+							"p": 0.49,
+							"label": "English",
+							"url": "https://stripe.com/us/pricing"
+						},
+						{
+							"p": 0.2,
+							"label": "currency conversion",
+							"url": "https://docs.stripe.com/currencies"
+						},
+						{
+							"p": 0.04,
+							"label": "See more payment methods | More details on fees by payment method | fees for refunds when bank transfers are used",
+							"url": "https://stripe.com/pricing/local-payment-methods"
+						},
+						{
+							"p": 0.03,
+							"label": "English",
+							"url": "https://stripe.com/au/pricing"
+						},
+						{
+							"p": 0.03,
+							"label": "Tap to Pay",
+							"url": "https://stripe.com/terminal/tap-to-pay"
+						}
+					],
+					"model_ms": 426,
+					"cost_usd": 0.000523656,
+					"input_tokens": 12468,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.62
+							},
+							{
+								"q": "next_link_1",
+								"choice": "none",
+								"confidence": 0.48
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "anthropic-api-pricing",
+			"goal": "Find the per-token API pricing for Claude models.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://platform.claude.com/docs/en/about-claude/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 3,
+			"model_calls": 3,
+			"model_ms_total": 733,
+			"fetch_ms_total": 706,
+			"cost_usd": 0.00082866,
+			"wall_ms": 4495,
+			"hops": [
+				{
+					"url": "https://www.anthropic.com/",
+					"title": "Home \\ Anthropic",
+					"text_chars": 1652,
+					"link_options": 109,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 121,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.15,
+					"none_p": 0.04,
+					"top_links": [
+						{
+							"p": 0.96,
+							"label": "Pricing",
+							"url": "https://claude.com/pricing"
+						},
+						{
+							"p": 0,
+							"label": "Claude Code for Enterprise",
+							"url": "https://claude.com/product/claude-code/enterprise"
+						},
+						{
+							"p": 0,
+							"label": "Careers",
+							"url": "https://www.anthropic.com/careers"
+						},
+						{
+							"p": 0,
+							"label": "Commerce",
+							"url": "https://claude.com/solutions/commerce"
+						},
+						{
+							"p": 0,
+							"label": "Privacy policy",
+							"url": "https://www.anthropic.com/legal/privacy"
+						}
+					],
+					"model_ms": 226,
+					"cost_usd": 0.000251958,
+					"input_tokens": 5999,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l54",
+								"confidence": 0.95
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://claude.com/pricing",
+					"title": "Plans & Pricing | Claude by Anthropic",
+					"text_chars": 3000,
+					"link_options": 124,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 296,
+					"page_has_answer": 0.04,
+					"needs_browser": 0.11,
+					"none_p": 0.03,
+					"top_links": [
+						{
+							"p": 0.87,
+							"label": "Learn more | Explore detailed pricing (opens in new tab) | Learn more (opens in new tab)",
+							"url": "https://platform.claude.com/docs/en/about-claude/pricing"
+						},
+						{
+							"p": 0.03,
+							"label": "Claude Platform | Overview",
+							"url": "https://claude.com/platform/api"
+						},
+						{
+							"p": 0.03,
+							"label": "Try Claude",
+							"url": "https://claude.ai/"
+						},
+						{
+							"p": 0.02,
+							"label": "Console",
+							"url": "https://platform.claude.com/docs/en/home"
+						},
+						{
+							"p": 0.02,
+							"label": "Learn more",
+							"url": "https://platform.claude.com/docs/en/build-with-claude/data-residency"
+						}
+					],
+					"model_ms": 287,
+					"cost_usd": 0.000317772,
+					"input_tokens": 7566,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l46",
+								"confidence": 0.86
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://platform.claude.com/docs/en/about-claude/pricing",
+					"title": "Pricing - Claude Platform Docs",
+					"text_chars": 3000,
+					"link_options": 87,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 289,
+					"page_has_answer": 0.84,
+					"needs_browser": 0.05,
+					"none_p": 0.5700000000000001,
+					"top_links": [
+						{
+							"p": 0.21,
+							"label": "Amazon Bedrock pricing",
+							"url": "https://aws.amazon.com/bedrock/pricing/"
+						},
+						{
+							"p": 0.13,
+							"label": "Models & pricing | Models overview",
+							"url": "https://platform.claude.com/docs/en/models/overview"
+						},
+						{
+							"p": 0.04,
+							"label": "Google Cloud pricing",
+							"url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"
+						},
+						{
+							"p": 0.03,
+							"label": "Claude Platform on AWS",
+							"url": "https://platform.claude.com/docs/en/build-with-claude/claude-platform-on-aws"
+						},
+						{
+							"p": 0.01,
+							"label": "API reference",
+							"url": "https://platform.claude.com/docs/en/api/overview"
+						}
+					],
+					"model_ms": 220,
+					"cost_usd": 0.00025893,
+					"input_tokens": 6165,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.55
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		},
+		{
+			"id": "buildos-pricing",
+			"goal": "Find what BuildOS costs.",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://build-os.com/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 585,
+			"fetch_ms_total": 448,
+			"cost_usd": 0.000135114,
+			"wall_ms": 2416,
+			"hops": [
+				{
+					"url": "https://build-os.com/",
+					"title": "BuildOS — A project workspace you can talk to.",
+					"text_chars": 3000,
+					"link_options": 17,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 317,
+					"page_has_answer": 0.02,
+					"needs_browser": 0.11,
+					"none_p": 0.04,
+					"top_links": [
+						{
+							"p": 0.96,
+							"label": "Pricing",
+							"url": "https://build-os.com/pricing"
+						},
+						{
+							"p": 0,
+							"label": "Join beta",
+							"url": "https://build-os.com/beta"
+						},
+						{
+							"p": 0,
+							"label": "Read docs",
+							"url": "https://build-os.com/docs"
+						},
+						{
+							"p": 0,
+							"label": "Feedback",
+							"url": "https://build-os.com/feedback"
+						},
+						{
+							"p": 0,
+							"label": "Marketing assets",
+							"url": "https://build-os.com/marketing-assets"
+						}
+					],
+					"model_ms": 303,
+					"cost_usd": 0.00007812,
+					"input_tokens": 1860,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l5",
+								"confidence": 0.95
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				},
+				{
+					"url": "https://build-os.com/pricing",
+					"title": "Pricing - BuildOS | Thinking Environment for Complex Work",
+					"text_chars": 1212,
+					"link_options": 15,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 131,
+					"page_has_answer": 0.93,
+					"needs_browser": 0.04,
+					"none_p": 0.72,
+					"top_links": [
+						{
+							"p": 0.26,
+							"label": "Roadmap",
+							"url": "https://build-os.com/road-map"
+						},
+						{
+							"p": 0.01,
+							"label": "Join beta",
+							"url": "https://build-os.com/beta"
+						},
+						{
+							"p": 0.01,
+							"label": "About",
+							"url": "https://build-os.com/about"
+						},
+						{
+							"p": 0,
+							"label": "Blog",
+							"url": "https://build-os.com/blogs"
+						},
+						{
+							"p": 0,
+							"label": "Privacy",
+							"url": "https://build-os.com/privacy"
+						}
+					],
+					"model_ms": 282,
+					"cost_usd": 0.000056994,
+					"input_tokens": 1357,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "none",
+								"confidence": 0.69
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,449 @@
+<!-- docs/research/specialist-quality-2026-09-21/claim-inspector.html -->
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>Inspect the overdue claim</title>
+		<style>
+			:root {
+				color-scheme: light dark;
+				--bg: #f5f3ee;
+				--panel: #fff;
+				--text: #18211f;
+				--muted: #60706a;
+				--line: #d7ded8;
+				--accent: #18694f;
+				--bad: #9b352b;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				background: var(--bg);
+				color: var(--text);
+				font:
+					16px/1.55 system-ui,
+					sans-serif;
+			}
+			main {
+				max-width: 1060px;
+				margin: auto;
+				padding: 44px 24px;
+			}
+			a {
+				color: var(--accent);
+			}
+			.eyebrow {
+				font-size: 12px;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--muted);
+			}
+			h1 {
+				font-size: clamp(32px, 5vw, 52px);
+				line-height: 1.08;
+				letter-spacing: -0.035em;
+				margin: 12px 0 18px;
+			}
+			h2 {
+				font-size: 19px;
+				margin: 0 0 12px;
+			}
+			p {
+				margin: 10px 0;
+			}
+			.intro {
+				max-width: 730px;
+				color: var(--muted);
+			}
+			.grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 18px;
+				margin: 28px 0;
+			}
+			.card {
+				background: var(--panel);
+				border: 1px solid var(--line);
+				border-radius: 14px;
+				padding: 24px;
+			}
+			.bad {
+				border-top: 4px solid var(--bad);
+			}
+			.good {
+				border-top: 4px solid var(--accent);
+			}
+			.big {
+				font-size: 42px;
+				font-weight: 750;
+				line-height: 1.1;
+				margin: 15px 0;
+			}
+			.note {
+				font-size: 13px;
+				color: var(--muted);
+			}
+			label {
+				cursor: pointer;
+			}
+			select {
+				font: inherit;
+				max-width: 100%;
+				padding: 10px;
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				background: var(--panel);
+				color: var(--text);
+			}
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				margin-top: 20px;
+			}
+			th,
+			td {
+				text-align: left;
+				border-bottom: 1px solid var(--line);
+				padding: 12px 8px;
+			}
+			th {
+				font-size: 12px;
+				color: var(--muted);
+				text-transform: uppercase;
+			}
+			td:first-child {
+				width: 44px;
+			}
+			.pill {
+				display: inline-block;
+				border-radius: 20px;
+				padding: 3px 10px;
+				font-size: 12px;
+				background: #e5ece7;
+			}
+			.overdue {
+				color: var(--bad);
+			}
+			.future {
+				color: var(--accent);
+			}
+			input {
+				accent-color: var(--accent);
+				width: 18px;
+				height: 18px;
+			}
+			output {
+				display: block;
+				font-weight: 650;
+				margin-top: 18px;
+			}
+			blockquote {
+				margin: 12px 0;
+				border-left: 3px solid var(--accent);
+				padding-left: 16px;
+			}
+			details {
+				margin-top: 18px;
+			}
+			summary {
+				cursor: pointer;
+				font-weight: 600;
+			}
+			pre {
+				white-space: pre-wrap;
+				overflow-wrap: anywhere;
+				font: 14px/1.6 system-ui;
+				padding: 18px;
+				background: var(--panel);
+				border: 1px solid var(--line);
+				border-radius: 10px;
+			}
+			.scroll {
+				overflow: auto;
+			}
+			@media (max-width: 650px) {
+				main {
+					padding: 24px 16px;
+				}
+				.grid {
+					grid-template-columns: 1fr;
+				}
+				.card {
+					padding: 18px;
+				}
+				th,
+				td {
+					font-size: 13px;
+					padding: 10px 5px;
+				}
+			}
+			@media (prefers-color-scheme: dark) {
+				:root {
+					--bg: #111916;
+					--panel: #18231e;
+					--text: #e7eee9;
+					--muted: #afbeb4;
+					--line: #35483c;
+					--accent: #90cfab;
+					--bad: #f2a092;
+				}
+				.pill {
+					background: #253d2f;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<a href="answer-comparison.html">← Answer comparison</a>
+			<p class="eyebrow">Synthetic QA · source-bound claim prototype</p>
+			<h1>Inspect the overdue claim</h1>
+			<p class="intro">
+				A real workflow produced a cited date error. This replay checks the claim against
+				its frozen task records and snapshot time. Nothing here changes the project or the
+				running workflow.
+			</p>
+			<div class="grid">
+				<section class="card bad">
+					<h2>Saved model answer</h2>
+					<p class="big">“All five tasks<br />are past due”</p>
+					<p class="note">
+						The source IDs were valid. The analyst misread a future date, and the editor
+						extended the claim to every task.
+					</p>
+				</section>
+				<section class="card good">
+					<h2>Checked from saved dates and states</h2>
+					<p class="big">2 of 5 overdue</p>
+					<p id="snapshot" class="note"></p>
+					<p class="note">
+						Only unfinished tasks with a due instant before the frozen snapshot qualify.
+						Future due dates do not.
+					</p>
+				</section>
+			</div>
+			<section class="card good" style="margin-bottom: 18px">
+				<h2>Now running in the real workflow</h2>
+				<p>
+					The default-off v3 review passed its isolated QA smoke in
+					<strong>15.4 seconds</strong>. It preserved the $1,200 fee evidence, computed
+					<strong>2 of 5 overdue</strong>, and left every project record unchanged. Both
+					specialists and the editor succeeded on their first attempt.
+				</p>
+				<p class="note">
+					The model selects exact excerpts and requests date calculations; code checks and
+					renders them. This is one synthetic smoke, not a broad answer-quality result.
+					The complete gate failed 44/52, with provider/read failures, timing violations
+					and source changes during the run. V3 remains default-off and is not deployed.
+				</p>
+				<details>
+					<summary>Read the actual v3 answer</summary>
+					<pre>
+[risk: Permit filing fee unfunded](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=risk&amp;entity_id=afd3a5d1-0582-4df7-8f30-4876ca1e0c66) records (content): “Permit filing requires a $1,200 fee that has no approved funding source.”
+
+As of 2026-09-21T14:50:07.997Z: 2 of these 5 cited tasks are recorded as unfinished with a due time before the snapshot.
+
+Cited tasks: [task: QA — Confirm permit requirements](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&amp;entity_id=7884fbd1-276a-45c5-a13f-2b3b463e1314), [task: QA — Order kitchen cabinets](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&amp;entity_id=2358a920-c83b-4590-b6e7-6585b39d2bc9), [task: QA — Kitchen inspection](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&amp;entity_id=8c5538e3-8534-4bd5-b9d3-e11a9d426d61), [task: QA — Bathroom inspection](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&amp;entity_id=18599ddf-70d4-45dc-a778-ef9d15b58136), [task: QA — Electrical rough-in](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&amp;entity_id=91c7b54d-40e7-45ba-8bc1-16e491509150)
+
+This review uses the inspected records. Excerpts describe saved statements; unread evidence and current real-world status remain unverified. No project changes were made.</pre
+					>
+				</details>
+				<p class="note">
+					<a href="live-v3-review.json">Inspect the live receipt</a> ·
+					<a href="v3-gate-diagnostics.json">Inspect the failed gate</a> · The interactive
+					replay below preserves the original v2 snapshot.
+				</p>
+			</section>
+			<section class="card">
+				<h2>Try a bounded claim</h2>
+				<label for="relation">Claim about the selected tasks</label>
+				<p>
+					<select id="relation">
+						<option value="all">All selected tasks are overdue</option>
+						<option value="some">At least one selected task is overdue</option>
+						<option value="none">No selected task is overdue</option>
+					</select>
+				</p>
+				<div class="scroll">
+					<table>
+						<thead>
+							<tr>
+								<th>Select</th>
+								<th>Saved task</th>
+								<th>Due in project timezone</th>
+								<th>Checked state</th>
+							</tr>
+						</thead>
+						<tbody id="tasks"></tbody>
+					</table>
+				</div>
+				<output id="verdict" aria-live="polite"></output>
+				<p class="note">
+					The conclusion applies only to the selected records. It does not claim complete
+					coverage of every task in the project.
+				</p>
+			</section>
+			<section class="card" style="margin-top: 18px">
+				<h2>Exact source binding</h2>
+				<p id="quote-title"></p>
+				<blockquote id="quote"></blockquote>
+				<p class="note">
+					This verifies the saved wording. It does not prove an arbitrary paraphrase or
+					that the source is true in the world.
+				</p>
+				<details>
+					<summary>Inspect frozen reference</summary>
+					<pre id="receipt"></pre>
+				</details>
+			</section>
+			<details>
+				<summary>Read the original saved answer</summary>
+				<pre id="answer"></pre>
+			</details>
+			<p class="note" style="margin-top: 30px">
+				Research replay, September 21, 2026. Six offline boundary tests support the original
+				prototype. The separate v3 implementation adds versioned admission, database
+				validation and durable recovery. General semantic judgments and production promotion
+				remain future work.
+			</p>
+		</main>
+		<script type="application/json" id="data">
+			{
+				"snapshot": "2026-09-21T05:33:22.907Z",
+				"timezone": "America/New_York",
+				"contextHash": "8c84ce4043a5b8aa6a0c55326babd85f613d235fc373aa958112611ef86cb339",
+				"tasks": [
+					{
+						"source": "S3",
+						"sourceHash": "a662ef370a44de3a2c5e7b950c5f71953b956fb7ab7a6b5db4c63fe89c9c32d3",
+						"dueAt": "2026-09-16T03:59:59+00:00",
+						"state": "todo",
+						"status": "overdue",
+						"title": "QA — Confirm permit requirements"
+					},
+					{
+						"source": "S4",
+						"sourceHash": "b5fa8df3dd6f790f272681c3b2bb6c97a4bab31b344a2a42a6861890a4c6d20e",
+						"dueAt": "2026-09-19T03:59:59+00:00",
+						"state": "todo",
+						"status": "overdue",
+						"title": "QA — Order kitchen cabinets"
+					},
+					{
+						"source": "S5",
+						"sourceHash": "35abc860c46f287b5afae4cc847bf67baba4f346989ae19a9acb3c5cec4f38bf",
+						"dueAt": "2026-10-01T03:59:59+00:00",
+						"state": "todo",
+						"status": "not_overdue",
+						"title": "QA — Kitchen inspection"
+					},
+					{
+						"source": "S6",
+						"sourceHash": "49503a14b80f34f88fc88f478dc087b8a8fa0e70e93247ccbba3585f747c0193",
+						"dueAt": "2026-10-03T03:59:59+00:00",
+						"state": "todo",
+						"status": "not_overdue",
+						"title": "QA — Bathroom inspection"
+					},
+					{
+						"source": "S7",
+						"sourceHash": "25959bfed508f3100771851e2262016db63c7ad86b278f4db4587dac8cadda2d",
+						"dueAt": "2026-09-29T03:59:59+00:00",
+						"state": "todo",
+						"status": "not_overdue",
+						"title": "QA — Electrical rough-in"
+					}
+				],
+				"quote": {
+					"kind": "source_excerpt",
+					"source": "S10",
+					"sourceHash": "31746254ba4b83ef01c451d6118169382b484acdc6767760fe1bd58d711ce3dd",
+					"field": "/content",
+					"span": { "encoding": "utf16", "start": 0, "end": 72 },
+					"quote": "Permit filing requires a $1,200 fee that has no approved funding source.",
+					"rendered": "Permit filing fee unfunded: “Permit filing requires a $1,200 fee that has no approved funding source.”",
+					"semanticParaphraseVerified": false
+				},
+				"answer": "## Combined recommendation — Workflow lab · Cedar House demo\n\n**Review status:** complete (2/2 specialists reported: project_analyst, risk_reviewer). Both returned findings; neither failed. All supplied families were loaded except goals, milestones, plans, events, relationships, and prior suggestions, which are empty — so there is no baseline schedule or cost plan to check plans against.\n\n### What the evidence actually shows (recorded)\n- **Permit confirmation is the gate.** Task *QA — Confirm permit requirements* was due 2026-09-16 and is still `todo` at load time (2026-09-21). Task *QA — Order kitchen cabinets* and *QA — Electrical rough-in* both record a dependency on it; *QA — Kitchen inspection* depends on electrical rough-in. *QA — Bathroom inspection* has no recorded dependency (analyst flagged this as possibly undocumented).\n- **All five tasks are past due** and none shows progress — activity records are creation events only (*activity* 3fad7f80, 7764f2b9, 9eef7c80, 2559e766 and peers), so slippage may exceed the due-date gap.\n- **A saved risk is still open.** *Permit filing fee unfunded* is `identified`, high impact, no `mitigated_at`: a $1,200 permit filing fee with no approved funding source.\n- **Budget frame:** $85,000 cap including a $10,000 contingency (from *Workflow lab · Cedar House demo*); **no budget lines, spend-to-date, or contingency drawdown are recorded.**\n- **Communications constraint:** *QA — Cedar House Marketing Brief* guardrail states do not promise permits are approved or completion is guaranteed.\n\n### Where the two reports diverge (this matters)\n- The **analyst** sequenced the work and recommended funding the $1,200 fee **from the $10,000 contingency**.\n- The **reviewer challenged that assumption**: it is *inferred*, not recorded, that $1,200 is absorbable \"if contingency is uncommitted\" — and no record shows contingency is uncommitted. The reviewer also notes change orders are unquantified, so contingency headroom cannot currently be verified.\n\nMy editorial read: the analyst's request for an *explicit funding source* is sound; the parenthetical \"from contingency\" is a **proposal, not a finding**, and should not be adopted as if funded.\n\n### One combined recommendation\n1. **Resolve task *QA — Confirm permit requirements* now** and record the actual permit status/timing. Step 1 is a fact-finding action, not a plan change.\n2. **Make an explicit, recorded funding decision for the $1,200 fee** against *Permit filing fee unfunded* — and only draw on the $10,000 contingency after confirming what, if anything, is already committed. Cost the likely change orders before treating contingency as available (reviewer's caution, adopted).\n3. **Then unblock dependents in sequence:** electrical rough-in → kitchen inspection; cabinets after permits; bathroom inspection (verify whether it has an unrecorded dependency while doing so).\n4. **Re-baseline all five overdue tasks against the 2026-11-20 target** and capture the missing milestones/plans; without them there is no critical path to measure slip against.\n5. **Hold the marketing guardrail** until permit status is confirmed — the brief's own rule.\n\n### What is unknown (do not treat as settled)\n- Permit jurisdiction, status, and approval timing — not captured; task has no completion record or description.\n- Awardable dollar figures: no budget lines, spend-to-date, or contingency balance.\n- Whether *QA — Bathroom inspection* has a hidden dependency; why *No project snapshot* is rendered in *START HERE*.\n\n**Smallest useful next check:** one confirm-permit action that returns, in writing, (a) permit requirements/status/timing and (b) the $1,200 fee's funding source — that single record answers the gating question and lets the budget assumption be re-tested.\n\n*No records were changed; this is a read-only synthesis of the two accepted specialist reports and supplied evidence.*"
+			}
+		</script>
+		<script>
+			const data = JSON.parse(document.getElementById('data').textContent);
+			const rows = document.getElementById('tasks');
+			const format = new Intl.DateTimeFormat('en-US', {
+				timeZone: data.timezone,
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric',
+				hour: 'numeric',
+				minute: '2-digit'
+			});
+			document.getElementById('snapshot').textContent =
+				'Snapshot: ' + format.format(new Date(data.snapshot)) + ' · ' + data.timezone;
+			for (const task of data.tasks) {
+				const row = document.createElement('tr');
+				const cell = document.createElement('td');
+				const input = document.createElement('input');
+				input.type = 'checkbox';
+				input.checked = true;
+				input.value = task.source;
+				input.setAttribute('aria-label', 'Include ' + task.title);
+				input.addEventListener('change', update);
+				cell.append(input);
+				row.append(cell);
+				for (const text of [
+					task.title,
+					format.format(new Date(task.dueAt)),
+					task.status === 'overdue' ? 'Overdue' : 'Future due date'
+				]) {
+					const td = document.createElement('td');
+					td.textContent = text;
+					row.append(td);
+				}
+				row.lastChild.className = task.status === 'overdue' ? 'overdue' : 'future';
+				rows.append(row);
+			}
+			function update() {
+				const selected = new Set(
+					[...document.querySelectorAll('input:checked')].map((x) => x.value)
+				);
+				const facts = data.tasks.filter((x) => selected.has(x.source));
+				const count = facts.filter((x) => x.status === 'overdue').length;
+				const relation = document.getElementById('relation').value;
+				const verdict = document.getElementById('verdict');
+				if (!facts.length) {
+					verdict.textContent = 'Select at least one source record.';
+					return;
+				}
+				const supported =
+					relation === 'all'
+						? count === facts.length
+						: relation === 'some'
+							? count > 0
+							: count === 0;
+				verdict.textContent =
+					(supported ? 'Supported' : 'Contradicted') +
+					' — ' +
+					count +
+					' of these ' +
+					facts.length +
+					' selected tasks are overdue.';
+				verdict.className = supported ? 'future' : 'overdue';
+			}
+			document.getElementById('relation').addEventListener('change', update);
+			document.getElementById('quote-title').textContent =
+				data.quote.rendered.split(': “')[0];
+			document.getElementById('quote').textContent = data.quote.quote;
+			document.getElementById('receipt').textContent = JSON.stringify(
+				{ contextHash: data.contextHash, ...data.quote },
+				null,
+				2
+			);
+			document.getElementById('answer').textContent = data.answer;
+			update();
+		</script>
+	</body>
+</html>

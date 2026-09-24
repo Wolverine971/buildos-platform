@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/DJFLOW_PROTOTYPE_2026-09-12.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-18; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # DJFlow first working prototype — verification
 
 Date: 2026-09-12. Local internal pilot; no production deployment.
@@ -109,7 +114,7 @@ empty prepared artifact as worker-owned admission.
 
 ## Inspect and run
 
-See [prototype guide](../../../docs/archive/agentic-chat-djflow/djflow-prototype.md).
+See [prototype guide](https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/agentic-chat-djflow/djflow-prototype.md).
 The original checkout's lab was started at `http://127.0.0.1:5188/workflow-lab`
 after the gate stopped. An authenticated HTTP check returned 200, rendered the lab,
 found the retained demo, and verified the healthy worker's matching provenance.

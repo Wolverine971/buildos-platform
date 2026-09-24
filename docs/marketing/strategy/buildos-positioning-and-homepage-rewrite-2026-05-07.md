@@ -15,6 +15,11 @@ path: docs/marketing/strategy/buildos-positioning-and-homepage-rewrite-2026-05-0
 
 # BuildOS Positioning & Homepage Rewrite
 
+> September 10 update: use [the project workspace rollout](./project-workspace-rollout-2026-09-10.md)
+> for current first-contact copy. The founder selected “A project workspace you can talk to.”
+> The material below records earlier exploration. Claims that other AI products always forget,
+> start from zero, or cannot update shared work are not current competitive evidence.
+
 This is the working doc behind the homepage redesign at `/landing-v2`. It captures the philosophy, the wedge, the audience decisions, and the punch list.
 
 The page is the artifact. This doc is the receipts.

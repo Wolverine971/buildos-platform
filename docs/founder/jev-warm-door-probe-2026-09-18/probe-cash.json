@@ -1,0 +1,369 @@
+{
+	"version": "2026-09-18.3",
+	"model": "typesafe/jev-1.13",
+	"endpoint": "https://openrouter.ai/api/alpha/decisions",
+	"price_per_million_input_tokens": 0.042,
+	"settings": {
+		"goal": "cash90",
+		"horizon_years": 0,
+		"hours_per_week": 30,
+		"risk_capital_usd": 250,
+		"window_start": "2026-09-21"
+	},
+	"goal_options": { "cash90": "at least $10,000 of new money received within 90 days" },
+	"weights": {
+		"first_step_warm": 0.15,
+		"forcing_function": 0.1,
+		"pays_inside_30d": 0.15,
+		"pays_recurring": 0.1,
+		"uses_existing_asset": 0.1,
+		"bounded_scope": 0.1,
+		"cash_1k_30d": 0.1,
+		"cash_10k_90d": 0.1,
+		"requires_cold_send": -0.05,
+		"missing_prereq": -0.15
+	},
+	"profile": [
+		{
+			"id": "identity",
+			"label": "Who he is",
+			"text": "DJ Wayne, about 36, Glen Burnie, Maryland. Marine Corps veteran (2012-2017, infantry then Scout Sniper Team Leader, Afghanistan 2013). Married with three young children."
+		},
+		{
+			"id": "career",
+			"label": "Career",
+			"text": "About nine years as a software engineer after a 2017 bootcamp: federal contracting 2018-2021 (Census Bureau search, Air Force knowledge-graph tool, Marine Corps military-justice archive), then Curri (a Y Combinator delivery startup) 2022-2025, where he rebuilt the dispatch triage console used daily by about twenty service reps and owned integrations that automatically routed deliveries to seven outside networks. No salaried job since February 2025. Since then he has interviewed at a few companies for forward-deployed engineer roles and received no offers; by his own account he was weak on systems engineering in the technical rounds and has been out of the day-to-day engineering loop while working mostly with AI agents."
+		},
+		{
+			"id": "what_he_sells",
+			"label": "What he sells",
+			"text": "A small development shop, Tacemus, being rebranded to Samos. Front-door offer: a paid two-week Diagnostic ($2,500-$3,500) of a business's inbound-work pipeline (bid invitations, estimate requests, booking inquiries) followed by fixed-price automation builds ($5,000-$25,000) and monthly retainers ($2,000-$8,000). Clients so far: the booking site for CadreTraining.com (run by his former sniper instructor), a website for a financial analyst, and a social-media push about to start for a wealth manager, plus a few referrals. Amounts paid and whether any client pays monthly are not stated."
+		},
+		{
+			"id": "assets",
+			"label": "Assets he already has",
+			"text": "A sourced list of 50 veteran-owned businesses within 35 minutes of Glen Burnie (four Marine-owned; three currently hiring an estimator or operations manager: Dvorak Electric in Dundalk, FiberPlus in Jessup, Brothers Flooring in Annapolis; the nearest strong fits are Stolar Construction in Hanover and Severn Excavation, both about 10 minutes away). A beachhead board of 23 named commercial subcontractors and remodelers. The Curri dispatch story, which maps directly onto bid triage. BuildOS, an AI thinking-environment product he built solo with 124 signups and no revenue, which he now considers dead in the water; its agent harness and MCP connector code are reusable. 9takes.com, an Enneagram site with roughly 15,000 monthly visitors, not monetized."
+		},
+		{
+			"id": "network",
+			"label": "Network",
+			"text": "No current membership in any chamber, trade association, church group, or veteran organization, and no existing local business connections; willing to join any. His former BuildOS co-founder now runs a Baltimore business that advertises, diagnoses small businesses, and fixes their back-office systems and automation; they respect each other and are meeting next week to discuss working together. He knows the Cadre owner (his former sniper instructor) and the two other clients personally. He has not spoken to anyone from Curri since leaving and does not consider that network active."
+		},
+		{
+			"id": "finances",
+			"label": "Money",
+			"text": "Household runway at current spending is under three months. He can risk about $250 of cash this month."
+		},
+		{
+			"id": "work_patterns",
+			"label": "How he actually works",
+			"text": "In the last 90 days he has sent no outreach at all: no messages, calls, or walk-ins, although prospect lists and drafts exist. He prefers building to selling and tends to over-engineer, but is a confident presenter once in the room and says he would enjoy pitching veteran-owned businesses veteran-to-veteran and walking into local subcontractor offices."
+		}
+	],
+	"questions": [
+		{
+			"id": "first_step_warm",
+			"label": "First step goes to someone he knows",
+			"type": "noul",
+			"kind": "evidence",
+			"instructions": "Does the first step of the action in `action.text` go to a person or company that `profile` documents this person already knows or has an active thread with, rather than to a stranger?"
+		},
+		{
+			"id": "requires_cold_send",
+			"label": "Requires contacting strangers",
+			"type": "noul",
+			"kind": "evidence",
+			"instructions": "Does the action in `action.text` require this person to contact strangers uninvited, by message, phone, or walking in, before anything else can happen?"
+		},
+		{
+			"id": "forcing_function",
+			"label": "Has a forcing function",
+			"type": "noul",
+			"kind": "evidence",
+			"instructions": "Does the action in `action.text` include a fixed date, a scheduled meeting, an event, a partner's commitment, or a paid deposit that makes the key step happen on a particular day, rather than leaving the timing to this person's initiative?"
+		},
+		{
+			"id": "pays_inside_30d",
+			"label": "Pays inside 30 days if it works",
+			"type": "noul",
+			"kind": "evidence",
+			"instructions": "If the action in `action.text` succeeds exactly as written, does this person receive money, not an invoice or a promise, within 30 days of starting? Judge the structure of the action, not its odds."
+		},
+		{
+			"id": "pays_recurring",
+			"label": "Pays monthly if it works",
+			"type": "noul",
+			"kind": "evidence",
+			"instructions": "If the action in `action.text` succeeds exactly as written, does it produce income that repeats every month without redoing the action from scratch? Judge the structure of the action, not its odds."
+		},
+		{
+			"id": "uses_existing_asset",
+			"label": "Uses what he already has",
+			"type": "score",
+			"kind": "evidence",
+			"instructions": "How much does the action in `action.text` rely on assets that `profile` documents this person already has, such as the three clients, the former co-founder's business, the Marine veteran identity, the Curri dispatch work, the veteran-owned prospect list, the 9takes audience, or the BuildOS code?",
+			"criteria": [
+				"Relies on nothing specific to this person.",
+				"Relies only on general software-engineering skill.",
+				"Relies on one documented asset.",
+				"Built around several documented assets."
+			]
+		},
+		{
+			"id": "bounded_scope",
+			"label": "Concrete and countable",
+			"type": "score",
+			"kind": "evidence",
+			"instructions": "How well does the action in `action.text` state a concrete activity, a countable output, and a deadline?",
+			"criteria": [
+				"No concrete activity is stated.",
+				"An activity is stated but the output and deadline are vague.",
+				"A concrete activity and a countable output are stated, but no deadline.",
+				"A concrete activity, a countable output, and a deadline are all stated."
+			]
+		},
+		{
+			"id": "missing_prereq",
+			"label": "Missing a prerequisite",
+			"type": "noul",
+			"kind": "evidence",
+			"instructions": "Does the action in `action.text` require a relationship, credential, audience, or capital that `profile` does not show this person having?"
+		},
+		{
+			"id": "cash_1k_30d",
+			"label": "$1k in hand in 30 days",
+			"type": "noul",
+			"kind": "forecast",
+			"instructions": "Within 30 days of starting the action in `action.text`, will the person in `profile` have actually received at least $1,000 of new money as a direct result of it? Money promised, invoiced, or merely saved does not count."
+		},
+		{
+			"id": "cash_10k_90d",
+			"label": "$10k in hand in 90 days",
+			"type": "noul",
+			"kind": "forecast",
+			"instructions": "Within 90 days of starting the action in `action.text`, will the person in `profile` have actually received at least $10,000 of new money as a direct result of it? Money promised, invoiced, or merely saved does not count."
+		}
+	],
+	"head_to_head": [
+		{
+			"id": "best_first_move",
+			"label": "Best first move with under three months of runway",
+			"instructions": "Given that the person in `profile` has under three months of household runway and has sent no outreach in 90 days, which one action in `candidate_actions`, started this week, is the best first move?"
+		},
+		{
+			"id": "best_for_cash",
+			"label": "Fastest $10k",
+			"instructions": "Which one action in `candidate_actions`, started now by the person in `profile`, is most likely to put at least $10,000 of new money in their hands within 90 days?"
+		}
+	],
+	"categories": [
+		{
+			"id": "partner",
+			"label": "Former co-founder partnership",
+			"note": "He already runs the diagnose-then-fix model in Baltimore. The meeting is next week."
+		},
+		{
+			"id": "clients",
+			"label": "Existing clients",
+			"note": "The three people who have already paid or are about to."
+		},
+		{
+			"id": "veterans",
+			"label": "Veteran-owned list",
+			"note": "50 sourced businesses, four Marine-owned, three hiring an estimator right now."
+		},
+		{
+			"id": "subs",
+			"label": "Subcontractor board",
+			"note": "The 23 named commercial subs and remodelers."
+		},
+		{ "id": "cash", "label": "Direct cash", "note": "Money first, pipeline second." },
+		{
+			"id": "research",
+			"label": "Research desk",
+			"note": "He said he would like to do research for people. Agent-run, fast, low trust barrier."
+		},
+		{
+			"id": "career",
+			"label": "Career",
+			"note": "The lane that lost its lead once the interview record went into the profile."
+		},
+		{ "id": "assets", "label": "Existing assets", "note": "BuildOS code, 9takes traffic." },
+		{ "id": "controls", "label": "Controls", "note": "Anchors and twins." }
+	],
+	"actions": [
+		{
+			"id": "p01",
+			"cat": "partner",
+			"text": "At next week's meeting with his former co-founder, propose a split where the co-founder sells and diagnoses and DJ delivers the builds, and leave the meeting with two of the co-founder's already-diagnosed clients assigned to DJ as fixed-price builds starting this month."
+		},
+		{
+			"id": "p02",
+			"cat": "partner",
+			"text": "Bring the 50-business veteran-owned prospect list to next week's meeting and propose running it as a shared pipeline: the co-founder's ads and diagnostic front end, DJ's delivery, and a revenue split on every closed client, with the first five prospects contacted within a week of the meeting."
+		},
+		{
+			"id": "p03",
+			"cat": "partner",
+			"text": "Ask the former co-founder to subcontract DJ on his current backlog at an hourly or fixed rate paid weekly, starting the week after the meeting."
+		},
+		{
+			"id": "p04",
+			"cat": "partner",
+			"text": "Propose a joint paid Diagnostic with the former co-founder at one veteran-owned business within 12 minutes of Glen Burnie, with the visit booked for a specific date within two weeks of the meeting."
+		},
+		{
+			"id": "c01",
+			"cat": "clients",
+			"text": "This week, ask each of the three current clients (the Cadre owner, the financial analyst, the wealth manager) for one introduction to a business owner they know who is drowning in inbound requests, and book a friction call with each introduction within ten days."
+		},
+		{
+			"id": "c02",
+			"cat": "clients",
+			"text": "Before the wealth manager's social-media push starts, convert it into a $1,500-a-month retainer that includes the posting system and a monthly report, with the first month paid up front."
+		},
+		{
+			"id": "c03",
+			"cat": "clients",
+			"text": "Propose a $2,500 fixed-price inbound-lead follow-up automation to the financial analyst, with a 50% deposit on signature and delivery within three weeks."
+		},
+		{
+			"id": "c04",
+			"cat": "clients",
+			"text": "Collect a written testimonial and reference permission from each of the three clients and publish them on the Samos site within seven days."
+		},
+		{
+			"id": "c05",
+			"cat": "clients",
+			"text": "Ask the Cadre owner, his former sniper instructor, to introduce him to two other veteran-owned businesses in his circle, and pitch each a paid Diagnostic within two weeks of the introduction."
+		},
+		{
+			"id": "v01",
+			"cat": "veterans",
+			"text": "On a chosen day this week, walk into Severn Excavation (Marine-owned, 10 minutes away) and Stolar Construction in Hanover and ask each owner for a 20-minute friction call."
+		},
+		{
+			"id": "v02",
+			"cat": "veterans",
+			"text": "On one afternoon this week, phone the four Marine-owned businesses on the list (Severn Excavation, Charm City Builders, RightDirection Technology, Tidewater Refrigeration) Marine-to-Marine and offer each a free 20-minute friction call."
+		},
+		{
+			"id": "v03",
+			"cat": "veterans",
+			"text": "Send Dvorak Electric, FiberPlus, and Brothers Flooring, each currently hiring an estimator or operations manager, a two-paragraph note about what an inbound-triage system does before the hire, and follow up by phone three business days later."
+		},
+		{
+			"id": "v04",
+			"cat": "veterans",
+			"text": "Run one walk-in day covering the eight veteran-owned offices within 12 minutes of Glen Burnie, with the route and date fixed in advance, asking each owner for a friction call."
+		},
+		{
+			"id": "v05",
+			"cat": "veterans",
+			"text": "Attend the September 24 Northern Anne Arundel Chamber luncheon in Glen Burnie and ask three business owners there for a friction call the following week."
+		},
+		{
+			"id": "v06",
+			"cat": "veterans",
+			"text": "Over two weeks, send a personalized two-minute teardown video to the top 15 veteran-owned prospects on the list, one per weekday."
+		},
+		{
+			"id": "s01",
+			"cat": "subs",
+			"text": "Walk into Kroeger Electric in Glen Burnie and Arundel Electrical Contractors in Hanover, the two hometown subcontractors on the beachhead board, on a chosen day this week and ask each for a friction call."
+		},
+		{
+			"id": "s02",
+			"cat": "subs",
+			"text": "Buy a guest ticket to the October 21 ABC Greater Baltimore construction gala and book two friction calls from the room."
+		},
+		{
+			"id": "k01",
+			"cat": "cash",
+			"text": "Sign up this week for paid AI-evaluation and coding-annotation work at $60-$120 an hour and put in 15 hours a week for the month."
+		},
+		{
+			"id": "k02",
+			"cat": "cash",
+			"text": "Apply this week to ten Y Combinator companies' contractor or agent-engineer listings on Work at a Startup and take the first paid contract offered."
+		},
+		{
+			"id": "k03",
+			"cat": "cash",
+			"text": "Email 20 people he has worked with in the last five years announcing Samos and its fixed-price Diagnostic, asking each for one introduction, all 20 sent in one sitting this week."
+		},
+		{
+			"id": "k04",
+			"cat": "cash",
+			"text": "Offer a $1,500 one-day inbound-triage setup, deposit paid up front and delivered within a week of booking, to any business referred by the three current clients."
+		},
+		{
+			"id": "r01",
+			"cat": "research",
+			"text": "Sell a $500 48-hour Bid Research Brief to five subcontractors on the beachhead board: agent-run research on a chosen general contractor's recent bids and upcoming projects, delivered as a one-page report, paid on order."
+		},
+		{
+			"id": "r02",
+			"cat": "research",
+			"text": "Sell a $750 competitor and lead-list research package to the wealth manager and the financial analyst this week, and ask each to refer one peer for the same package."
+		},
+		{
+			"id": "a01",
+			"cat": "career",
+			"text": "Spend evenings for 30 days on a systems-design interview course and weekly mock interviews, then re-apply to the forward-deployed engineer roles that rejected him."
+		},
+		{
+			"id": "a02",
+			"cat": "career",
+			"text": "Apply to be the first dedicated AI engineer at five Baltimore-area mid-size construction or logistics companies, leading with the Curri dispatch story, all five applications sent this week."
+		},
+		{
+			"id": "a03",
+			"cat": "career",
+			"text": "Pause the job search for 30 days and put all working hours into Samos client work."
+		},
+		{
+			"id": "x01",
+			"cat": "assets",
+			"text": "Stop BuildOS feature work and repackage its agent harness and MCP connector as Samos's internal delivery tooling for client automations, finished within two weeks."
+		},
+		{
+			"id": "x02",
+			"cat": "assets",
+			"text": "Add affiliate links for Enneagram books and courses across 9takes' articles this week."
+		},
+		{
+			"id": "x03",
+			"cat": "assets",
+			"text": "List BuildOS for sale or acqui-hire on a startup-acquisition marketplace this week."
+		},
+		{
+			"id": "z01",
+			"cat": "controls",
+			"control": "anchor",
+			"expect": "Near zero everywhere.",
+			"text": "Spend $250 on lottery tickets over the next 30 days."
+		},
+		{
+			"id": "z02",
+			"cat": "controls",
+			"control": "anchor",
+			"expect": "The baseline everything should beat.",
+			"text": "Change nothing: keep splitting time between BuildOS features, job applications, and occasional freelance work, as over the past six months."
+		},
+		{
+			"id": "z03",
+			"cat": "controls",
+			"control": "twin",
+			"twin_of": "p01",
+			"text": "When he meets his former co-founder next week, suggest that the co-founder handle sales and diagnosis while DJ handles delivery, and come away with two clients the co-founder has already diagnosed handed to DJ as fixed-price builds that begin this month."
+		},
+		{
+			"id": "z04",
+			"cat": "controls",
+			"control": "twin",
+			"twin_of": "v01",
+			"text": "Pick a day this week to show up in person at Severn Excavation (a Marine-owned company ten minutes from home) and at Stolar Construction in Hanover, and ask the owners for a twenty-minute conversation about where work gets stuck."
+		}
+	]
+}

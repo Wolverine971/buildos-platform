@@ -252,6 +252,14 @@ describe('work-type classification policy reaches the reviewer', () => {
 			)!;
 			if (!frozen)
 				expect(approval.function.parameters.required).toContain('request_expectation');
+			else {
+				// A later approval is not offered the checklist, so the reviewer
+				// cannot spend its output re-copying the frozen one (tasker 101).
+				expect(approval.function.parameters.properties).not.toHaveProperty(
+					'request_expectation'
+				);
+				expect(approval.function.parameters.required).not.toContain('request_expectation');
+			}
 			const args: JsonObject = {
 				reason: 'Commissioned',
 				batch_sha256: sha,

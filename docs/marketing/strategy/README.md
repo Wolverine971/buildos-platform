@@ -6,6 +6,8 @@ Use this folder for current positioning, audience, content doctrine, and lifecyc
 
 **For the full marketing start-here guide (positioning + carousels + content), see [START_HERE.md](../START_HERE.md).**
 
+**Current positioning:** [A project workspace you can talk to — rollout, copy, demo, and user test](./project-workspace-rollout-2026-09-10.md).
+
 ## Start Here
 
 1. [BuildOS Marketing Strategy 2026](./buildos-marketing-strategy-2026.md)

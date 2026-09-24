@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/AGENTIC_CHAT_THIRD_PASS_2026-09-03.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat — third review and repair pass
 
 Local source based on `f28e8f7bc2fd41718c4141dc6d4fd40dd09a45d3`, preserving the existing staged and unstaged changes. This pass adds completion fixes, removes repeated validation plumbing, and implements recovery from repeated invalid submissions.

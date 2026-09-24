@@ -152,9 +152,12 @@ verified) and produced a second fix round:
 
 Newly catalogued, deferred with rationale:
 
-- **Cross-user existence oracle** — FORBIDDEN vs NOT_FOUND distinguishes whether a leaked UUID
+- **Cross-user existence oracle** — FORBIDDEN vs NOT*FOUND distinguishes whether a leaked UUID
   exists in another account (no content leaks). Normalizing to NOT_FOUND for out-of-scope rows is
-  a gateway-wide change; deferred.
+  a gateway-wide change; deferred. \_2026-09-22 (tasker 94):* projects the **user** can see but the
+  connector was not granted now intentionally return FORBIDDEN with
+  `reason: project_not_granted_to_connector` + `grant_url` (no name). The cross-user case is
+  unchanged and still deferred.
 - **Paused projects** are hidden from list/search enumeration but remain readable/writable by
   direct id. Product-semantics decision; deferred.
 - **No rate limiting on `/mcp/buildos` itself** (auth brute force is cryptographically infeasible;

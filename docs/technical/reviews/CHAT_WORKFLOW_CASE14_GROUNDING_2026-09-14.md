@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/CHAT_WORKFLOW_CASE14_GROUNDING_2026-09-14.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-18; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Case 14 grounding: judge calibration and evidence-qualified synthesis
 
 This is the Tasker 82 follow-up to an unsupported revision-history claim. Manual review found it

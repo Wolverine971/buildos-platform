@@ -1,0 +1,1602 @@
+[
+	{
+		"id": "vet-001",
+		"name": "Blue Horizon Renovations",
+		"trade": "remodeling",
+		"city": "Annapolis",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://www.bluehorizonreno.com/",
+		"veteran_evidence": {
+			"quote": "our veteran-owned company delivers the quality of a large firm with the personal touch of a small business",
+			"source_url": "https://www.bluehorizonreno.com/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "over 20 years of experience (site); third-party listings say company est. 2019",
+			"other": "Office listed at 1994 Moreland Pkwy Suite 3A, Annapolis (third-party listing); some listings show Harwood, MD",
+			"source_url": "https://www.bluehorizonreno.com/"
+		},
+		"inbound_signals": "'Start Your Free Design Plan' and 'Schedule a Consultation' CTAs; 'Meet with our team for a free design consultation'",
+		"ops_pain_signals": "none observed (no careers page; no Indeed postings found)",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Thomas 'Tommy' Vendemia",
+			"title": "Owner",
+			"channel": "site contact form / consultation booking; Angi profile names owner",
+			"source_url": "https://www.angi.com/companylist/us/md/annapolis/blue-horizon-renovations-reviews-1.htm"
+		},
+		"on_existing_board": true,
+		"notes": "Already known veteran-owned; fresh evidence from current homepage. On existing board."
+	},
+	{
+		"id": "vet-002",
+		"name": "Chesco Remodeling LLC",
+		"trade": "roofing",
+		"city": "Pasadena",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 10,
+		"website": "https://chescoandson.com/",
+		"veteran_evidence": {
+			"quote": "We are a Family & Veteran-Owned business",
+			"source_url": "https://chescoandson.com/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'more than 35 years of experience in the industry' (site)",
+			"other": "Address 7723 Williams St, Pasadena 21122; crew first names (Nick, Luis, Jon, Mona) appear in reviews",
+			"source_url": "https://chescoandson.com/"
+		},
+		"inbound_signals": "'Get a FREE Estimate!' repeated site-wide -> /contact-us/; roof replacement/repair plus kitchens, baths, additions, siding, decks, windows",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Closest roofing/remodel prospect to Glen Burnie. Serves Pasadena, Severna Park, Annapolis, Glen Burnie, Millersville."
+	},
+	{
+		"id": "vet-003",
+		"name": "Innovative Electric, Inc.",
+		"trade": "electrical",
+		"city": "Baltimore (Brooklyn Park, 21225)",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 10,
+		"website": "https://innovativeelectric-inc.com/",
+		"veteran_evidence": {
+			"quote": "Innovative Electric, Inc. is a veteran and family owned business ... James Roselle ... served in the United States Air Force ... Desert Storm Veteran",
+			"source_url": "https://innovativeelectric-inc.com/about",
+			"branch_if_stated": "Air Force"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'Providing Exceptional Service Since 2009' (site)",
+			"other": "313 Old Riverside Rd, Baltimore MD 21225; Mon-Fri 7am-7pm; owner in trade since 1987; OSHA 30",
+			"source_url": "https://innovativeelectric-inc.com/about"
+		},
+		"inbound_signals": "'Call For a Free Quote' phone CTA (no web form observed); solar, generators, panel upgrades, smart home",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "James Roselle",
+			"title": "Owner & Master Electrician",
+			"channel": "phone (410) 804-8412 per Yelp/BBB; in person at 313 Old Riverside Rd",
+			"source_url": "https://innovativeelectric-inc.com/about"
+		},
+		"on_existing_board": false,
+		"notes": "Phone-first intake with no web form is itself a diagnostic hook. Also on VOB directory: https://www.veteranownedbusiness.com/business/20455/innovative-electric"
+	},
+	{
+		"id": "vet-004",
+		"name": "Collective Contracting, Inc.",
+		"trade": "general_contractor",
+		"city": "Crownsville",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 18,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "Service Disabled Veteran Owned (SDVOSB) - CVE Certified ... Owner: Mr. Troy Miller ... Army, Retired",
+			"source_url": "https://www.veteranownedbusiness.com/business/16766/collective-contracting-inc",
+			"branch_if_stated": "Army"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "VOB member since Dec 2013",
+			"other": "P.O. Box 32, Crownsville 21032; handles 1,000 SF build-outs to multi-floor renovations; pre-construction services",
+			"source_url": "https://www.veteranownedbusiness.com/business/16766/collective-contracting-inc"
+		},
+		"inbound_signals": "interior commercial build-out GC -> bid invitations from tenants/architects; offers pre-construction estimating",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Troy Miller",
+			"title": "Owner (retired Army)",
+			"channel": "VOB profile; no website found",
+			"source_url": "https://www.veteranownedbusiness.com/business/16766/collective-contracting-inc"
+		},
+		"on_existing_board": false,
+		"notes": "PO Box only; likely small office/home-based. Commercial interiors = steady bid flow."
+	},
+	{
+		"id": "vet-005",
+		"name": "Hy-Tech Coatings and Foam, LLC",
+		"trade": "roofing",
+		"city": "Davidsonville",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "Owner: Mr. Temple Chappell III, President ... Army, Separated ... VOB Verified Member #24659",
+			"source_url": "https://www.veteranownedbusiness.com/business/24659/hytech-coatings-and-foam-llc",
+			"branch_if_stated": "Army"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "BBB lists business start date 3/29/2015",
+			"other": "315 Brick Church Rd, Davidsonville 21035; commercial roofing, air barrier, spray foam, injection foam",
+			"source_url": "https://www.bbb.org/us/md/davidsonville/profile/roofing-spray-foam-insulation-contractors/hy-tech-coatings-and-foam-llc-0011-90360074"
+		},
+		"inbound_signals": "commercial roofing + spray-foam sub -> bid/estimate requests; Blue Book ProView listing",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Temple Chappell III",
+			"title": "President",
+			"channel": "phone per BBB/YP listings",
+			"source_url": "https://www.veteranownedbusiness.com/business/24659/hytech-coatings-and-foam-llc"
+		},
+		"on_existing_board": false,
+		"notes": "Search summaries suggest ~6 employees (unverified). No company website found."
+	},
+	{
+		"id": "vet-006",
+		"name": "Bernward Mechanical (Bernward Consulting Associates, LLC)",
+		"trade": "mechanical_hvac",
+		"city": "Severna Park",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 12,
+		"website": "unknown (listed via Blue Book ProView)",
+		"veteran_evidence": {
+			"quote": "Mr. Carl Neimeyer, Founder and Chief Visionary Officer ... Navy (Separated) - Service Disabled Veteran Owned",
+			"source_url": "https://www.veteranownedbusiness.com/business/37875/bernward-consulting-associates-llc",
+			"branch_if_stated": "Navy"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "founded 2016 (HigherGov/Blue Book)",
+			"other": "836 Ritchie Hwy Suite 1, Severna Park 21146; NAICS 238220/236220; serves AA, Howard, PG, Montgomery, DC, NoVA",
+			"source_url": "https://www.highergov.com/awardee/bernward-consulting-associates-llc-10031284/"
+		},
+		"inbound_signals": "'premier provider of Commercial HVAC Service, Construction, Building Automation and Plumbing' -> service calls + construction bids",
+		"ops_pain_signals": "Indeed company page (Bernward Mechanical and Construction Solutions) with Severna Park listings incl. BMS Controls Installer: https://www.indeed.com/cmp/Bernward-Mechanical-and-Construction-Solutions",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Carl J. Neimeyer, PE",
+			"title": "Founder",
+			"channel": "office 836 Ritchie Hwy Ste 1; 410-975-5576 (per Severna Park Voice)",
+			"source_url": "https://www.severnaparkvoice.com/guide/guide/stories/bernward-mechanical-and-construction-solutions,37778"
+		},
+		"on_existing_board": false,
+		"notes": "Strong fit: SDVOSB commercial mechanical with service + construction + controls lines = multiple inbound streams. 12 min away."
+	},
+	{
+		"id": "vet-007",
+		"name": "Sergeant HandyMan, LLC",
+		"trade": "home_services",
+		"city": "Severn",
+		"county": "Anne Arundel",
+		"address_type": "home_based",
+		"drive_minutes_from_glen_burnie_est": 10,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "Sergeant HandyMan, LLC is veteran-owned and operated ... Owner: MSG Sean Allen ... Army, Retired",
+			"source_url": "https://www.veteranownedbusiness.com/business/22590/sergeant-handyman-llc",
+			"branch_if_stated": "Army"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "BBB start date 7/1/2015; VOB says owned and operated since 2005",
+			"other": "7931 Canter Ct, Severn 21144 (residential); MHIC 132679/110012; subs out plumbing/electrical/masonry",
+			"source_url": "https://www.bbb.org/us/md/severn/profile/handyman/sergeant-handyman-llc-0011-90358241"
+		},
+		"inbound_signals": "handyman/remodel jobs via Angi, BBB, Facebook; no web form observed",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Sean Allen",
+			"title": "Owner (MSG, U.S. Army, Ret.)",
+			"channel": "Angi/BBB/Facebook",
+			"source_url": "https://www.veteranownedbusiness.com/business/22590/sergeant-handyman-llc"
+		},
+		"on_existing_board": false,
+		"notes": "Likely owner-operator; small ticket. Good vet-to-vet door but low automation budget."
+	},
+	{
+		"id": "vet-008",
+		"name": "CSM Lawn and Landscape",
+		"trade": "landscaping",
+		"city": "Crownsville",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 18,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "veteran owned and operated lawn care service emphasizing attention to detail and good value",
+			"source_url": "https://www.veteranownedbusiness.com/business/32271/csm-lawn-and-landscape",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "1202 Regal Ln, Crownsville 21032; open 7 days 9:30-6; lawn cuts, cleanups, mulching, junk hauling",
+			"source_url": "https://www.yelp.com/biz/csm-lawn-and-landscape-crownsville"
+		},
+		"inbound_signals": "recurring bi-weekly mowing + seasonal cleanups + hauling; listed on Yelp/Nextdoor/HomeAdvisor",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Small owner-operator profile; recurring-service scheduling is the automation angle."
+	},
+	{
+		"id": "vet-009",
+		"name": "Kleins Landscape, LLC",
+		"trade": "landscaping",
+		"city": "Gambrills",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 15,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "owned and operated by Mr. David Klein as President ... Navy veteran-owned business ... member since April 10th, 2011",
+			"source_url": "https://www.veteranownedbusiness.com/business/6871/kleins-landscape-llc",
+			"branch_if_stated": "Navy"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "est. 2011 (VOB membership date)",
+			"other": "3159 Gosheff Ln, Gambrills 21054; design/install, maintenance programs, snow removal, land clearing",
+			"source_url": "https://www.veteranownedbusiness.com/business/6871/kleins-landscape-llc"
+		},
+		"inbound_signals": "landscape design/installation quotes + maintenance programs + snow contracts",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "David Klein",
+			"title": "President",
+			"channel": "VOB profile / Manta listing",
+			"source_url": "https://www.manta.com/c/mr4fvkg/klein-david-president-kleins-landscape"
+		},
+		"on_existing_board": false,
+		"notes": "Third-party records suggest ~5 employees (unverified)."
+	},
+	{
+		"id": "vet-010",
+		"name": "LRS Federal LLC",
+		"trade": "general_contractor",
+		"city": "Severna Park",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 12,
+		"website": "https://www.lrsfederal.com/",
+		"veteran_evidence": {
+			"quote": "LRS Federal is a Service Disabled Veteran Owned Small Business (SDVOSB) company offering a diverse range of technical services",
+			"source_url": "https://www.lrsfederal.com/",
+			"branch_if_stated": "not stated (third-party: started by three US military veterans)"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'15+ years' (site); third-party says founded 2006",
+			"other": "565 Benfield Rd Suite 400, Severna Park 21146; third-party: >$120M federal contracts, employees in 15 states",
+			"source_url": "https://www.lrsfederal.com/"
+		},
+		"inbound_signals": "federal RFP/bid stream (USACE, VA, DHS); 'SCHEDULE A CALL' form; gated services guides",
+		"ops_pain_signals": "Careers page on site (/careers) and Indeed company page: https://www.indeed.com/cmp/Lrs-Federal",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Engineering/CM firm, larger than typical target; federal bid desk is the pipeline. May be too big for a 2-week diagnostic but is 12 min away."
+	},
+	{
+		"id": "vet-011",
+		"name": "Stolar Construction Inc.",
+		"trade": "electrical",
+		"city": "Hanover",
+		"county": "Anne Arundel",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 10,
+		"website": "https://stolarconstruction.com/",
+		"veteran_evidence": {
+			"quote": "Stolar Construction is a veteran owned and operated specialty infrastructure contractor.",
+			"source_url": "https://stolarconstruction.com/",
+			"branch_if_stated": "Navy (per VOB profile: Brian Stolar, Navy, separated)"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'Established in 2007' (site)",
+			"other": "6990-A O'Connor Dr, Hanover 21076; roadway/airfield lighting, traffic signals, ITS, underground electric; VOB profile https://www.veteranownedbusiness.com/business/21182/stolar-construction-inc",
+			"source_url": "https://stolarconstruction.com/"
+		},
+		"inbound_signals": "public-works bids; site lists 'Brian Stolar (Estimating)' as the estimating contact -> owner is running estimates himself",
+		"ops_pain_signals": "Site lists current openings: Fleet Mechanic, Laborer, Master Electrician, Certified Crane Operator; 'apply in person Mon-Fri 8-3 or send resumes to Shirley' (https://stolarconstruction.com/)",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Brian Stolar",
+			"title": "President / Owner (also listed as Estimating contact)",
+			"channel": "in person at 6990-A O'Connor Dr; estimating email on site",
+			"source_url": "https://stolarconstruction.com/"
+		},
+		"on_existing_board": false,
+		"notes": "Top-tier fit: owner-as-estimator + active hiring + 10 min away. Public bid pipeline (SHA/airport/municipal)."
+	},
+	{
+		"id": "vet-012",
+		"name": "Tidewater Refrigeration LLC",
+		"trade": "mechanical_hvac",
+		"city": "Lothian (shop listed in Dunkirk)",
+		"county": "Anne Arundel",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 35,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "specializes in commercial refrigeration sales service and installation ... owner is Mel Shepherd, a separated Marine veteran ... member since March 2nd, 2010",
+			"source_url": "https://www.veteranownedbusiness.com/business/3912/tidewater-refrigeration-llc",
+			"branch_if_stated": "Marine Corps"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "VOB member since 2010",
+			"other": "Shop at 10375 Southern MD Blvd Ste 3, Dunkirk 20754 (Yelp/YP); 24/7 service",
+			"source_url": "https://www.yelp.com/biz/tidewater-refrigeration-md"
+		},
+		"inbound_signals": "24/7 commercial refrigeration service/repair calls + equipment sales/installs",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Mel Shepherd",
+			"title": "Owner",
+			"channel": "LinkedIn / phone (301) 627-7600",
+			"source_url": "https://www.linkedin.com/in/mel-shepherd-0085a730/"
+		},
+		"on_existing_board": false,
+		"notes": "MARINE-TO-MARINE. Lothian ~35 min; Dunkirk shop closer to 45. Worth the drive for the branch match."
+	},
+	{
+		"id": "vet-013",
+		"name": "ABTECH Computer Services",
+		"trade": "it_services",
+		"city": "Annapolis",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "http://www.abtech.com/",
+		"veteran_evidence": {
+			"quote": "ABTECH Computer Services is a veteran-owned business ... established in 1992 ... Adam Cole is the owner",
+			"source_url": "https://www.veteranownedbusiness.com/business/51/abtech-computer-services",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "since 1992",
+			"other": "1820 Margaret Ave, Annapolis 21401; network sales/service, data & voice cabling, Siemens phone partner",
+			"source_url": "https://www.veteranownedbusiness.com/business/51/abtech-computer-services"
+		},
+		"inbound_signals": "cabling/network/phone-system quotes; contact page on abtech.com",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Adam Cole",
+			"title": "Owner",
+			"channel": "office 1820 Margaret Ave; contact form http://www.abtech.com/contact/",
+			"source_url": "https://www.veteranownedbusiness.com/business/51/abtech-computer-services"
+		},
+		"on_existing_board": false,
+		"notes": "Long-tenured local IT/cabling shop; managed-seats claim ('over 5000 seats') per third-party summary, unverified."
+	},
+	{
+		"id": "vet-014",
+		"name": "Apollo's Construction, LLC",
+		"trade": "other",
+		"city": "Pasadena",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 10,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "listed in the Veteran Owned Business Directory ... 757 215th St. Pasadena, MD 21122 ... Michael Bradford serving as President",
+			"source_url": "https://www.veteranownedbusiness.com/business/12172/apollos-construction",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "Specialty sub: preformed expansion joints, fire stopping, sealants, coatings, waterproofing; projects incl. National Zoo, Nationals Park, BWI, USNA field house",
+			"source_url": "https://www.veteranownedbusiness.com/business/12172/apollos-construction"
+		},
+		"inbound_signals": "commercial bid invitations as a specialty subcontractor (large GC-driven work)",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Michael Bradford",
+			"title": "President",
+			"channel": "VOB profile",
+			"source_url": "https://www.veteranownedbusiness.com/business/12172/apollos-construction"
+		},
+		"on_existing_board": false,
+		"notes": "Directory-only evidence; no website found. 10 min away; bid-invitation intake is exactly the pipeline DJ diagnoses."
+	},
+	{
+		"id": "vet-015",
+		"name": "O'Reilly Property Management LLC",
+		"trade": "property_services",
+		"city": "Severna Park",
+		"county": "Anne Arundel",
+		"address_type": "home_based",
+		"drive_minutes_from_glen_burnie_est": 12,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "O'Reilly Property Management | Severna Park, MD 21146 Anne Arundel County | Veteran Owned Business Directory ... Timothy O'Reilly is the President",
+			"source_url": "https://www.veteranownedbusiness.com/business/17274/oreilly-property-management",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "est. 2013 (D&B)",
+			"other": "253 Baskerville Ct, Severna Park 21146 (residential address)",
+			"source_url": "https://www.dnb.com/business-directory/company-profiles.oreilly_property_management_llc.8a766238e4405cc287b204711bc1778f.html"
+		},
+		"inbound_signals": "owner/tenant inquiries; maintenance coordination; tenant placement",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Timothy O'Reilly",
+			"title": "President",
+			"channel": "VOB / D&B",
+			"source_url": "https://www.veteranownedbusiness.com/business/17274/oreilly-property-management"
+		},
+		"on_existing_board": false,
+		"notes": "Directory-only veteran evidence. Likely solo/very small; low priority."
+	},
+	{
+		"id": "vet-016",
+		"name": "Severn Excavation",
+		"trade": "other",
+		"city": "Severn",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 10,
+		"website": "https://severnexcavation.com/",
+		"veteran_evidence": {
+			"quote": "Led by former Marine and University of Maryland engineering graduate Tommy Malone",
+			"source_url": "https://severnexcavation.com/",
+			"branch_if_stated": "Marine Corps"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'10+ years industry experience' (site)",
+			"other": "'Keeping our crew small and skilled'; MHIC licensed; excavation, grading, drainage, hardscape, emergency utility repairs",
+			"source_url": "https://severnexcavation.com/"
+		},
+		"inbound_signals": "'Get A Quote' buttons + 'quick contact form' -> 'request a quote tailored to your project'",
+		"ops_pain_signals": "Careers page with openings for operators and construction laborers: https://severnexcavation.com/careers",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Tommy Malone",
+			"title": "Owner",
+			"channel": "site quote form; owner-led jobs",
+			"source_url": "https://severnexcavation.com/"
+		},
+		"on_existing_board": false,
+		"notes": "MARINE-TO-MARINE, 10 minutes away, owner-led, hiring. Top-3 warm door. Trade = excavation/sitework (no exact enum)."
+	},
+	{
+		"id": "vet-017",
+		"name": "Brothers Flooring Services",
+		"trade": "painting_flooring_fencing",
+		"city": "Annapolis",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://www.brothersflooringservices.com/",
+		"veteran_evidence": {
+			"quote": "veteran-owned and family-operated business",
+			"source_url": "https://www.brothersflooringservices.com/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "1815 George Ave, Annapolis 21401; hardwood install/refinish",
+			"source_url": "https://www.brothersflooringservices.com/"
+		},
+		"inbound_signals": "'free in-home consultations, along with free itemized proposals'; Contact Us form",
+		"ops_pain_signals": "Indeed shows a 'Flooring Operations Manager' opening in Annapolis for Brothers Flooring Services LLC (seen via Indeed search; listing page: https://www.indeed.com/q-flooring-l-maryland-jobs.html)",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Stephen (surname not stated on site)",
+			"title": "runs in-home consultations",
+			"channel": "site contact form",
+			"source_url": "https://www.brothersflooringservices.com/"
+		},
+		"on_existing_board": false,
+		"notes": "Hiring an ops manager = explicit ops-strain signal."
+	},
+	{
+		"id": "vet-018",
+		"name": "Call the Sarge (Landsculpting & Property Maintenance)",
+		"trade": "landscaping",
+		"city": "unknown (serves Howard + Anne Arundel only)",
+		"county": "Howard/Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://callthesarge.com/",
+		"veteran_evidence": {
+			"quote": "VETERAN OWNED & FAMILY OPERATED",
+			"source_url": "https://callthesarge.com/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'over 20 years of residential and commercial experience in the green industry' (site)",
+			"other": "",
+			"source_url": "https://callthesarge.com/"
+		},
+		"inbound_signals": "'Get Your FREE Estimate Now!' -> Yardbook quote system",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Drive time is a placeholder (no address published). Already uses Yardbook for quotes."
+	},
+	{
+		"id": "vet-019",
+		"name": "Valor Home",
+		"trade": "roofing",
+		"city": "Annapolis (also Crofton office)",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://valorhome.com/",
+		"veteran_evidence": {
+			"quote": "we started Valor Home with one mission — to protect the homes in our communities with the same dedication and integrity I carried while protecting my brothers in the military",
+			"source_url": "https://valorhome.com/",
+			"branch_if_stated": "not stated (SDVOSB certification stated on homepage)"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'over 20 years' / 'nearly 25 years' (site)",
+			"other": "Offices: 1907 West St Annapolis; 2142 Priest Bridge Ct Ste 3 Crofton; plus OC, Salisbury, Falls Church, Rehoboth; '24 veterans hired'",
+			"source_url": "https://valorhome.com/"
+		},
+		"inbound_signals": "multiple free-estimate request forms; roofing, siding, windows across AA County",
+		"ops_pain_signals": "'We Are Hiring!' link and careers page on site (https://valorhome.com/)",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Al 'Doc' Kincaid",
+			"title": "President & Founder",
+			"channel": "Annapolis office 1907 West St / Crofton office",
+			"source_url": "https://valorhome.com/our-team/"
+		},
+		"on_existing_board": false,
+		"notes": "Multi-office exterior-remodel company; bigger than typical but veteran-founded with SDVOSB cert."
+	},
+	{
+		"id": "vet-020",
+		"name": "Joint Forces Roofing",
+		"trade": "roofing",
+		"city": "Annapolis",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://jointforcesroofing.com/",
+		"veteran_evidence": {
+			"quote": "Veteran-Owned Since 2009 ... discipline and teamwork honed in the U.S. Navy Nuclear community, and the commitment to mission embodied by JFR Army expertise",
+			"source_url": "https://jointforcesroofing.com/about-us",
+			"branch_if_stated": "Navy, Army"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "timeline shows 2004; 'Veteran-Owned Since 2009'",
+			"other": "'Headquartered in Annapolis, MD'; commercial roofing; Procore lists as SDVOSB",
+			"source_url": "https://jointforcesroofing.com/about-us"
+		},
+		"inbound_signals": "'SEND US A MESSAGE' form asking 'What service are you looking for?'; commercial repair/maintenance/replacement bids",
+		"ops_pain_signals": "states they are 'hiring U.S. military veterans' (about page)",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Possible contact: a LinkedIn profile 'Nate Lamb - Director of Sales and Marketing' (USNA 2009) surfaced alongside JFR in search but affiliation not verified."
+	},
+	{
+		"id": "vet-021",
+		"name": "Green Meadows LawnScapes",
+		"trade": "landscaping",
+		"city": "Annapolis Junction",
+		"county": "Howard",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "Green Meadows LawnScapes is a Service Disabled Veteran Owned Business (SDVOSB) lawn care company that offers a wide range of lawn",
+			"source_url": "https://www.veteranownedbusiness.com/252/residential-landscape-services/md/howard/annapolis-junction",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "VOB profile https://www.veteranownedbusiness.com/business/5865/green-meadows-lawnscapes (profile fetch rate-limited)",
+			"source_url": "https://www.veteranownedbusiness.com/252/residential-landscape-services/md/howard/annapolis-junction"
+		},
+		"inbound_signals": "lawn maintenance + snow plowing contracts (residential and commercial per directory)",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Directory-only evidence; no website found."
+	},
+	{
+		"id": "vet-022",
+		"name": "Warrior Plumbing & Heating",
+		"trade": "plumbing",
+		"city": "Baltimore (Hampden, 21211)",
+		"county": "Baltimore City",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://warriorplumbing.com/",
+		"veteran_evidence": {
+			"quote": "Warrior Plumbing and Heating as a family and Veteran-owned small business ... Collin, served two tours in Afghanistan",
+			"source_url": "https://warriorplumbing.com/about-2-2",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "current entity 2017; family plumbing lineage since 1935",
+			"other": "4123 Roland Ave, Baltimore 21211; '5th generation plumbers'; 24/7 service; Help a Warrior program",
+			"source_url": "https://warriorplumbing.com/about-2-2"
+		},
+		"inbound_signals": "homepage contact form (name/phone/address/zip/issue); 24/7 emergency line; residential + commercial + remodel + new construction",
+		"ops_pain_signals": "none observed (no careers link on site; no Indeed match)",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Brent E. Goldsmith / Brent R. Goldsmith / Collin Goldsmith",
+			"title": "Partners",
+			"channel": "office 4123 Roland Ave; 443-967-3736",
+			"source_url": "https://warriorplumbing.com/about-2-2"
+		},
+		"on_existing_board": false,
+		"notes": "Strong vet-to-vet story (Afghanistan vet partner, monthly free service for a veteran)."
+	},
+	{
+		"id": "vet-023",
+		"name": "Charm City Builders",
+		"trade": "general_contractor",
+		"city": "Baltimore (Canton, 21224)",
+		"county": "Baltimore City",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://charmcitybuilders.com/",
+		"veteran_evidence": {
+			"quote": "created by Tyler Banks, owner of TD Development. Tyler, a Salisbury University graduate and former Marine",
+			"source_url": "https://www.veteranownedbusiness.com/business/20179/charm-city-builders",
+			"branch_if_stated": "Marine Corps"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "founded 2011",
+			"other": "3500 Boston St Ste 122, Baltimore 21224; Baltimore Magazine: 'served 6 years as an E-5 Sergeant in the United States Marine Corps'",
+			"source_url": "https://www.baltimoremagazine.com/profile/tyler-banks/"
+		},
+		"inbound_signals": "'We Buy Houses' cash-offer lead form; acquisition + renovation pipeline; team page exists",
+		"ops_pain_signals": "third-party summaries note recent expansion/new hires; no specific postings found",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Tyler Banks",
+			"title": "CEO / Founder",
+			"channel": "LinkedIn company page; office 3500 Boston St",
+			"source_url": "https://www.baltimoremagazine.com/profile/tyler-banks/"
+		},
+		"on_existing_board": false,
+		"notes": "MARINE-TO-MARINE. Business model is buy-renovate-sell (inbound = seller leads), not classic bid-invitation GC; include for the door, flag the model."
+	},
+	{
+		"id": "vet-024",
+		"name": "SanDow Construction, Inc.",
+		"trade": "general_contractor",
+		"city": "Baltimore (downtown, 21202)",
+		"county": "Baltimore City",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://www.sandowconstruction.com/",
+		"veteran_evidence": {
+			"quote": "Sandow Construction, Inc. (Sandow) is a CVE SDVOSB, was established in 2011 by Ricardo Santiago, as a General Contractor",
+			"source_url": "https://www.veteranownedbusiness.com/business/13995/sandow-construction-inc",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "since 2011",
+			"other": "site: 'over 1200 projects' since 2016 for Navy, Army, USCG, HHS, DOL, State of MD, PG County; also 8(a), HUBZone",
+			"source_url": "https://sandowconstruction.com/about-us/"
+		},
+		"inbound_signals": "government construction + environmental remediation bids (asbestos/lead/mold)",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Ricardo A. Santiago",
+			"title": "President / CEO (co-founded with daughter Kasmera Downey)",
+			"channel": "LinkedIn",
+			"source_url": "https://www.linkedin.com/in/ricardo-santiago-533a24386/"
+		},
+		"on_existing_board": false,
+		"notes": "Government-bid GC; high volume of small federal projects = heavy bid-desk load."
+	},
+	{
+		"id": "vet-025",
+		"name": "RightDirection Technology Solutions, LLC (RDTS)",
+		"trade": "it_services",
+		"city": "Baltimore (downtown, 21202)",
+		"county": "Baltimore City",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://www.rightdirectiontech.com/",
+		"veteran_evidence": {
+			"quote": "SBA-certified SDVOSB status supports agency small-business goals ... Established 2007",
+			"source_url": "https://www.rightdirectiontech.com/",
+			"branch_if_stated": "Marine Corps (third-party profiles say founder Joey Hutchins is a Service-Disabled USMC veteran; not verified on company site)"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "since 2007",
+			"other": "300 E Lombard St Ste 840, Baltimore 21202; TS facility clearance; ISO 9001/27001/20000; CMMI-DEV L3; also 8(a), HUBZone",
+			"source_url": "https://www.rightdirectiontech.com/"
+		},
+		"inbound_signals": "federal contract vehicles (CIO-SP3 etc.); 'Start a conversation' contact form",
+		"ops_pain_signals": "Careers link in main nav (https://www.rightdirectiontech.com/careers)",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Joey Hutchins",
+			"title": "Founder (per NAVAIR OSBP / NC TECH profiles)",
+			"channel": "office 300 E Lombard St",
+			"source_url": "https://www.navair.navy.mil/osbp/node/13056"
+		},
+		"on_existing_board": false,
+		"notes": "MARINE-TO-MARINE. Federal IT contractor, not a local MSP; inbound is RFPs/staffing, not service tickets."
+	},
+	{
+		"id": "vet-026",
+		"name": "Allen & Son Moving and Storage, Inc.",
+		"trade": "logistics",
+		"city": "Baltimore (21215)",
+		"county": "Baltimore City",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://www.allenandsonmoving.com/",
+		"veteran_evidence": {
+			"quote": "Allen & Son Moving and Storage Inc | Baltimore, MD 21215 - 'Office Moving/ Residential Relocation/ Trucking Warehousing' (Veteran Owned Business Directory listing)",
+			"source_url": "https://www.veteranownedbusiness.com/md/baltimore-city",
+			"branch_if_stated": "Army (per third-party profiles: founder Allen Burrus 'served in the United States Army'; not stated on company site)"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'30 years of experience' (site); third-party: founded 1991",
+			"other": "3000 Druid Park Dr, Baltimore 21215; USDOT 1346296; satellite offices DC/NoVA",
+			"source_url": "https://www.allenandsonmoving.com/"
+		},
+		"inbound_signals": "homepage quote form (service type, room count, zips); 'Get a Free Quote'",
+		"ops_pain_signals": "Indeed company page with Baltimore careers: https://www.indeed.com/cmp/Allen-&-Son-Moving-&-Storage",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Allen Burrus",
+			"title": "Owner (per ZoomInfo)",
+			"channel": "office 3000 Druid Park Dr",
+			"source_url": "https://www.zoominfo.com/p/Allen-Burrus/-1882280800"
+		},
+		"on_existing_board": false,
+		"notes": "VOB profile https://www.veteranownedbusiness.com/business/3193/allen-son-moving-and-storage-inc (fetch rate-limited). Company site's About page did not restate veteran ownership."
+	},
+	{
+		"id": "vet-027",
+		"name": "P & J Contracting Co., Inc.",
+		"trade": "general_contractor",
+		"city": "Baltimore (21215)",
+		"county": "Baltimore City",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "http://www.pandjcontracting.com/",
+		"veteran_evidence": {
+			"quote": "Pless B. Jones, Sr. ... did two tours of Vietnam",
+			"source_url": "http://www.pandjcontracting.com/profile_general_contracting_services_maryland_md.html",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "'more than 50 full-time employees' (site)",
+			"years_in_business": "founded 1979",
+			"other": "3010 Ridgewood Ave, Baltimore 21215; demolition, crushing, hauling, GC, environmental; governmentcontracts.us lists SDV/8(a)/HUBZone certifications",
+			"source_url": "http://www.pandjcontracting.com/profile_general_contracting_services_maryland_md.html"
+		},
+		"inbound_signals": "public/municipal bids (demolition, sitework); no web form",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Pless B. Jones Sr.",
+			"title": "President / Owner (son Pless Jones Jr. is Project Manager)",
+			"channel": "phone 410-367-2475 (site)",
+			"source_url": "http://www.pandjcontracting.com/profile_general_contracting_services_maryland_md.html"
+		},
+		"on_existing_board": false,
+		"notes": "Vietnam-era owner, 50+ staff; larger and older than ideal but a real veteran-owned Baltimore GC."
+	},
+	{
+		"id": "vet-028",
+		"name": "Brauner Equipment Company (BECO)",
+		"trade": "other",
+		"city": "Baltimore (21223)",
+		"county": "Baltimore City",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://www.braunerequipment.com/",
+		"veteran_evidence": {
+			"quote": "A veteran owned business established in 1977",
+			"source_url": "https://www.braunerequipment.com/about",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "since 1977",
+			"other": "350 S Dukeland St, Baltimore 21223; four East Coast locations (MD, VA, PA); authorized Garlock/Leister repair",
+			"source_url": "https://www.braunerequipment.com/about"
+		},
+		"inbound_signals": "'My Quote Cart' quote requests for roofing equipment; repair intake",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Roofing-equipment dealer/repair (B2B distributor). Borderline vs. 'skip retail' rule; included for DJ to veto."
+	},
+	{
+		"id": "vet-029",
+		"name": "Preferred Cleaning Janitorial Services, Inc.",
+		"trade": "property_services",
+		"city": "Baltimore (address not published)",
+		"county": "Baltimore City",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://preferredcleaningmd.com/",
+		"veteran_evidence": {
+			"quote": "We are a veteran owned and operated small business.",
+			"source_url": "https://preferredcleaningmd.com/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "VOSB logo, DUNS/CAGE listed on contact page; Blue Book/Yelp list Baltimore; serves AA, Howard, Baltimore, Harford, Montgomery, DC, NoVA",
+			"source_url": "https://preferredcleaningmd.com/contact/"
+		},
+		"inbound_signals": "'REQUEST A QUOTE' buttons; 'Request a Free Cleaning Quote' step 1; medical/office/school/government facilities",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown (contact email prefix 'neil' on contact page)",
+			"title": "",
+			"channel": "neil@preferredcleaningmd.com; 410-483-9531",
+			"source_url": "https://preferredcleaningmd.com/contact/"
+		},
+		"on_existing_board": false,
+		"notes": "Recurring commercial contracts = scheduling/quote pipeline. Address not published; drive time is a Baltimore placeholder."
+	},
+	{
+		"id": "vet-030",
+		"name": "Freedom Fence & Deck",
+		"trade": "painting_flooring_fencing",
+		"city": "Baltimore (Essex, 21221)",
+		"county": "Baltimore County",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://www.freedomfenceandhome.com/",
+		"veteran_evidence": {
+			"quote": "veteran-founded and veteran-operated company",
+			"source_url": "https://www.freedomfenceandhome.com/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'Since 2004' (site)",
+			"other": "414-A Back River Neck Rd, Baltimore 21221; fences, decks, patios, screened porches across AA/Baltimore/Howard/Harford",
+			"source_url": "https://www.freedomfenceandhome.com/"
+		},
+		"inbound_signals": "'GET A FREE ESTIMATE' form: 'Request a no-obligation, free estimate on your fence, deck, patio, or screened porch'",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "High-volume residential estimate flow; classic fit for estimate-intake automation."
+	},
+	{
+		"id": "vet-031",
+		"name": "Dvorak, LLC",
+		"trade": "electrical",
+		"city": "Baltimore (Dundalk, 21222)",
+		"county": "Baltimore County",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://dvorakllc.com/",
+		"veteran_evidence": {
+			"quote": "proud Veteran of the U.S. Army and a dedicated Master Electrician with an extensive 30-year experience in medium voltage construction",
+			"source_url": "http://dvorakllc.com/our-team/thomas-j-dvorak/",
+			"branch_if_stated": "Army"
+		},
+		"size_signals": {
+			"employees": "~20+ named staff on team page (site)",
+			"years_in_business": "founded 2003",
+			"other": "2700 North Point Blvd office+warehouse since Dec 2014; 'Veteran-Owned Small Business' in branding; MD/DE/PA/VA/DC",
+			"source_url": "https://dvorakllc.com/our-team/"
+		},
+		"inbound_signals": "'Request Service' button -> contact; commercial/industrial/government electrical bids",
+		"ops_pain_signals": "Indeed: 6 open jobs incl. Electrical Estimator (Dundalk, $70k-$90k), Project Manager (medium voltage), Electrical Foreman, Apprentice: https://www.indeed.com/cmp/Dvorak-LLC ; site has Careers / Join Our Team",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Thomas J. Dvorak (Founder); Brandon Weaver (President)",
+			"title": "Founder / President",
+			"channel": "office 2700 North Point Blvd; 443-503-6400",
+			"source_url": "https://dvorakllc.com/our-team/"
+		},
+		"on_existing_board": false,
+		"notes": "Hiring an ESTIMATOR right now = the exact pain DJ sells against. Top-3 fit."
+	},
+	{
+		"id": "vet-032",
+		"name": "Maryland Contract Painting (MCP)",
+		"trade": "painting_flooring_fencing",
+		"city": "Baltimore (Middle River, 21220)",
+		"county": "Baltimore County",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "John Onorato as the Owner. The owner's time in the US Navy has prepared them to operate the business professionally",
+			"source_url": "https://www.veteranownedbusiness.com/business/11307/maryland-contract-painting",
+			"branch_if_stated": "Navy"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'over 18 years experience' (VOB)",
+			"other": "2128 Old Eastern Ave, Baltimore 21220; commercial + new-home painting",
+			"source_url": "https://www.veteranownedbusiness.com/business/11307/maryland-contract-painting"
+		},
+		"inbound_signals": "commercial and new-construction painting bids from builders/GCs",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "John Onorato",
+			"title": "Owner",
+			"channel": "VOB profile",
+			"source_url": "https://www.veteranownedbusiness.com/business/11307/maryland-contract-painting"
+		},
+		"on_existing_board": false,
+		"notes": "Directory-only evidence; no website found."
+	},
+	{
+		"id": "vet-033",
+		"name": "PAINT CORPS of Baltimore",
+		"trade": "painting_flooring_fencing",
+		"city": "Edgewood (Harford)",
+		"county": "Harford (borderline)",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 40,
+		"website": "https://www.paintcorps.com/baltimore-md/",
+		"veteran_evidence": {
+			"quote": "PAINT CORPS Baltimore is a Veteran-owned and operated business ... Steven is an 8-year U.S. Army veteran who served in Iraq from 2007 to 2009",
+			"source_url": "https://www.paintcorps.com/baltimore-md/about/",
+			"branch_if_stated": "Army"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "2107 Emmorton Park Rd Ste 117, Edgewood 21040; owned by Steven Hull, Harry Rowand, Jordan Bosse; franchise brand",
+			"source_url": "https://www.paintcorps.com/baltimore-md/about/"
+		},
+		"inbound_signals": "franchise site estimate-request flow (page returned 403 to fetch; not directly verified)",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Steven Hull",
+			"title": "Co-owner (with Harry Rowand, Jordan Bosse)",
+			"channel": "LinkedIn",
+			"source_url": "https://www.linkedin.com/in/stevenhullusa/"
+		},
+		"on_existing_board": false,
+		"notes": "BORDERLINE DISTANCE (~40 min). Franchise, so intake tooling may be corporate-controlled."
+	},
+	{
+		"id": "vet-034",
+		"name": "Veteran Design & Construction, Inc. (VDCI)",
+		"trade": "general_contractor",
+		"city": "Catonsville",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "http://www.veteran-dci.com/",
+		"veteran_evidence": {
+			"quote": "holds certifications including ... Veteran Owned Business, Service Disabled Veteran Owned Business ... $99,342,050 in federal contract obligations across 70 federal awards",
+			"source_url": "https://www.highergov.com/awardee/veteran-design-construction-inc-10001333/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "5523 Research Park Dr Ste 110, Catonsville 21228; design/build MEP + fire protection, commissioning, LEED; VOB profile https://www.veteranownedbusiness.com/business/25258/veteran-design-construction-inc",
+			"source_url": "https://www.highergov.com/awardee/veteran-design-construction-inc-10001333/"
+		},
+		"inbound_signals": "federal design-build solicitations (clinics to campuses)",
+		"ops_pain_signals": "none observed (company site had a TLS cert error on fetch)",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Federal-heavy design-build; larger and government-facing."
+	},
+	{
+		"id": "vet-035",
+		"name": "Capital Renaissance LLC",
+		"trade": "general_contractor",
+		"city": "Catonsville",
+		"county": "Baltimore County",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "http://cap-ren.com/",
+		"veteran_evidence": {
+			"quote": "owner Jake Bowen ... member since December 17th, 2008 and is associated with the Air Force Reserves",
+			"source_url": "https://www.veteranownedbusiness.com/business/502/capital-renaissance-llc",
+			"branch_if_stated": "Air Force Reserves"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "VOB member since 2008",
+			"other": "4 Edmondson Ridge Rd, Catonsville 21228; serves government agencies, large building contractors, homeowners",
+			"source_url": "https://www.veteranownedbusiness.com/business/502/capital-renaissance-llc"
+		},
+		"inbound_signals": "government + GC-subcontract + residential bid mix",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Jake Bowen",
+			"title": "Owner",
+			"channel": "240-565-4565 (per directory)",
+			"source_url": "https://www.veteranownedbusiness.com/business/502/capital-renaissance-llc"
+		},
+		"on_existing_board": false,
+		"notes": "Directory-only evidence; website not verified."
+	},
+	{
+		"id": "vet-036",
+		"name": "Brown Construction Management Inc.",
+		"trade": "general_contractor",
+		"city": "Towson",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "Brown Construction Management Inc. | Towson, MD 21286 Baltimore County | Veteran Owned Business Directory ... owned by Keith Brown",
+			"source_url": "https://www.veteranownedbusiness.com/business/1637/brown-construction-management-inc",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "400 E Joppa Rd Ste 410, Towson 21286; GC/CM/pre-construction for government, business, healthcare",
+			"source_url": "https://www.veteranownedbusiness.com/business/1637/brown-construction-management-inc"
+		},
+		"inbound_signals": "government/healthcare construction bids; pre-construction services",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Keith Brown",
+			"title": "Owner",
+			"channel": "office 400 E Joppa Rd Ste 410",
+			"source_url": "https://www.veteranownedbusiness.com/business/1637/brown-construction-management-inc"
+		},
+		"on_existing_board": false,
+		"notes": "Directory-only evidence; branch unknown; no website found."
+	},
+	{
+		"id": "vet-037",
+		"name": "Industrial Welding Services (IWS)",
+		"trade": "other",
+		"city": "Essex",
+		"county": "Baltimore County",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://iwsbaltimore.com/",
+		"veteran_evidence": {
+			"quote": "founded in 2023 by Army veteran and UA Local 486 Steamfitter/Welder Chris Neal. The company is Service Disabled Veteran Owned",
+			"source_url": "https://iwsbaltimore.com/about-us/",
+			"branch_if_stated": "Army"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "founded 2023",
+			"other": "698 Stemmers Run Rd, Essex; critical/code welding, process piping, mobile welding, emergency mechanical repair; VOB profile https://www.veteranownedbusiness.com/business/40027/industrial-welding-services",
+			"source_url": "https://iwsbaltimore.com/about-us/"
+		},
+		"inbound_signals": "emergency mechanical repair calls + fabrication quotes for industrial/commercial facilities",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Chris Neal",
+			"title": "Founder / Owner",
+			"channel": "chris@iwsbaltimore.com; (410) 216-4441 (site)",
+			"source_url": "https://iwsbaltimore.com/about-us/"
+		},
+		"on_existing_board": false,
+		"notes": "Young (2023) SDVOSB specialty mechanical shop; owner reachable directly. Page text was truncated on fetch; quote per search snippet of the about page."
+	},
+	{
+		"id": "vet-038",
+		"name": "Atomic Geeks, LLC",
+		"trade": "it_services",
+		"city": "Catonsville",
+		"county": "Baltimore County",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://atomicgeeks.com/",
+		"veteran_evidence": {
+			"quote": "'Veteran Owned Business' and 'Verified SDVOSB Badge' badges displayed on homepage",
+			"source_url": "https://atomicgeeks.com/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "in business since 2005 (per third-party summaries)",
+			"other": "6400 Baltimore National Pike Ste 531, Catonsville 21228 (likely mailbox suite); Dell certified partner; same-day onsite repair",
+			"source_url": "https://atomicgeeks.com/"
+		},
+		"inbound_signals": "'Schedule Same-Day Service Now' / 'Book online' booking flow",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Small break/fix + managed IT; already has online booking."
+	},
+	{
+		"id": "vet-039",
+		"name": "Veteran Landscaping LLC",
+		"trade": "landscaping",
+		"city": "Nottingham",
+		"county": "Baltimore County",
+		"address_type": "home_based",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "Owner: Mr. Ryan Wilder ... Navy (Separated) ... VOB Verified Member #7007",
+			"source_url": "https://www.veteranownedbusiness.com/business/7007/veteran-landscaping-llc",
+			"branch_if_stated": "Navy"
+		},
+		"size_signals": {
+			"employees": "2 (per D&B listing)",
+			"years_in_business": "founded 2010 (D&B)",
+			"other": "P.O. Box 43553, Nottingham 21236; weekly/bi-weekly mowing, hardscape design/install; Baltimore + Harford counties",
+			"source_url": "https://www.dandb.com/businessdirectory/veteranlandscapingllc-nottingham-md-31260033.html"
+		},
+		"inbound_signals": "recurring mowing + hardscape quotes",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Ryan Wilder",
+			"title": "Owner",
+			"channel": "VOB / Facebook",
+			"source_url": "https://www.veteranownedbusiness.com/business/7007/veteran-landscaping-llc"
+		},
+		"on_existing_board": false,
+		"notes": "Very small (2 employees); low priority except as a friendly vet door."
+	},
+	{
+		"id": "vet-040",
+		"name": "A-1 Plumbing of Baltimore LLC",
+		"trade": "plumbing",
+		"city": "Lutherville-Timonium",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 35,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "George Graham is the owner and the business is a Navy veteran-owned business that has been a member since February 23rd, 2010",
+			"source_url": "https://www.veteranownedbusiness.com/business/3826/a1-plumbing-of-baltimore-llc",
+			"branch_if_stated": "Navy"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'more than 40 years of experience' (VOB)",
+			"other": "201 W Padonia Rd Ste LL2, Lutherville-Timonium 21093; 24/7, no overtime nights/weekends",
+			"source_url": "https://www.veteranownedbusiness.com/business/3826/a1-plumbing-of-baltimore-llc"
+		},
+		"inbound_signals": "24/7 service calls; drain cleaning, fixture repair",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "George Graham",
+			"title": "Owner",
+			"channel": "VOB / Networx",
+			"source_url": "https://www.veteranownedbusiness.com/business/3826/a1-plumbing-of-baltimore-llc"
+		},
+		"on_existing_board": false,
+		"notes": "VERIFY STILL OPERATING: Yelp shows an older Baltimore address as CLOSED and BBB lists a Westminster location."
+	},
+	{
+		"id": "vet-041",
+		"name": "Easy Movers, Inc.",
+		"trade": "logistics",
+		"city": "Glyndon (site says Baltimore)",
+		"county": "Baltimore County",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 40,
+		"website": "https://www.easymovers-md.com/",
+		"veteran_evidence": {
+			"quote": "family-and-veteran-owned business",
+			"source_url": "https://www.easymovers-md.com/",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'since 1977' (site)",
+			"other": "Wheaton World Wide agent; Facebook/Wheaton list Glyndon, MD",
+			"source_url": "https://www.easymovers-md.com/"
+		},
+		"inbound_signals": "'Request a Call Back' form; 'We provide free estimates'",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "BORDERLINE DISTANCE (~40 min to Glyndon). Street address not published on site."
+	},
+	{
+		"id": "vet-042",
+		"name": "Certified Inc. (Certified Roofing)",
+		"trade": "roofing",
+		"city": "Columbia",
+		"county": "Howard",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://certifiedinc.com/",
+		"veteran_evidence": {
+			"quote": "Proudly A Service Disabled Veteran Owned Business",
+			"source_url": "https://certifiedinc.com/maryland/roofing-company-in-glen-burnie-md/",
+			"branch_if_stated": "not stated (search snippet says 'led by a former US Navy SEAL'; not verified on fetched page)"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'Since 1984' (site)",
+			"other": "9520 Berger Rd Ste 112, Columbia 21046 + Vienna VA; serves MD/DC/VA/DE/WV",
+			"source_url": "https://certifiedinc.com/maryland/roofing-company-in-glen-burnie-md/"
+		},
+		"inbound_signals": "'Request a Free Roofing Estimate' - 'We provide free, no-obligation roofing estimates'",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Steve Mitchell",
+			"title": "Owner (named as owner in a customer review on company site; unverified)",
+			"channel": "site estimate form",
+			"source_url": "https://certifiedinc.com/maryland/roofing-company-in-glen-burnie-md/"
+		},
+		"on_existing_board": false,
+		"notes": "Multi-state roofer with a Glen Burnie landing page; larger than typical target."
+	},
+	{
+		"id": "vet-043",
+		"name": "A1 Roofing's Kanga Roof",
+		"trade": "roofing",
+		"city": "Columbia",
+		"county": "Howard",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://kangaroof.com/",
+		"veteran_evidence": {
+			"quote": "Proudly Veteran-Owned ... Growing up in a military family and serving in the active Army and the Air Force reserves",
+			"source_url": "https://kangaroof.com/about-us/",
+			"branch_if_stated": "Army; Air Force Reserve"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'Since 2001' (site)",
+			"other": "9570 Berger Rd Unit C, Columbia 21046; licensed MD/DC/VA; BBB, Roofers Success Intl",
+			"source_url": "https://kangaroof.com/about-us/"
+		},
+		"inbound_signals": "'Get an Estimate' buttons + 'Instant Roof Quote' tool",
+		"ops_pain_signals": "'Looking to take the next step in your career?' -> Contractor Staffing link on about page",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Maurice (surname not stated on site)",
+			"title": "Owner",
+			"channel": "site estimate form",
+			"source_url": "https://kangaroof.com/about-us/"
+		},
+		"on_existing_board": false,
+		"notes": "Already runs an instant-quote tool; diagnostic would target what happens after the quote."
+	},
+	{
+		"id": "vet-044",
+		"name": "Fuqua's Remodel Authority",
+		"trade": "remodeling",
+		"city": "Highland",
+		"county": "Howard",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "https://frauthoritymd.com/",
+		"veteran_evidence": {
+			"quote": "Veteran owned and operated",
+			"source_url": "https://frauthoritymd.com/about",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'over 55 years of combined experience' (site)",
+			"other": "Highland, MD; co-founder Frenchy Fuqua (former Pittsburgh Steeler); serves MD/DC/VA",
+			"source_url": "https://frauthoritymd.com/about"
+		},
+		"inbound_signals": "'Get Your Free Estimate' and 'Start Now with a Free Consultation' CTAs -> contact page",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Ryan Fuqua (appears in testimonials; title not stated); Frenchy Fuqua (co-founder)",
+			"title": "see name",
+			"channel": "site contact form",
+			"source_url": "https://frauthoritymd.com/about"
+		},
+		"on_existing_board": false,
+		"notes": "Kitchens/baths/whole-home; design-build style remodeler."
+	},
+	{
+		"id": "vet-045",
+		"name": "American Veteran General Contractors",
+		"trade": "concrete",
+		"city": "Ellicott City",
+		"county": "Howard",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "American Veteran General Contractors is a veteran owned business serving Maryland, established in 2016",
+			"source_url": "https://www.veteranownedbusiness.com/business/25583/american-veteran-general-contractors",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "est. 2016",
+			"other": "3514 Split Rail Ln, Ellicott City 21042 (residential street); concrete pours, epoxy, driveways, patios, steps; also remodeling, decks, fences",
+			"source_url": "https://www.veteranownedbusiness.com/business/25583/american-veteran-general-contractors"
+		},
+		"inbound_signals": "residential + commercial concrete/masonry quotes; Yelp/YP/Porch listings",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Third-party summaries say 5-9 employees (unverified). Directory-only veteran evidence."
+	},
+	{
+		"id": "vet-046",
+		"name": "Adams Heating & Air Conditioning Co.",
+		"trade": "mechanical_hvac",
+		"city": "Jessup",
+		"county": "Howard",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 15,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "Adams Heating & Air is a Service-Disabled-Veteran-Owned Business",
+			"source_url": "https://www.veteranownedbusiness.com/business/764/adams-heating-air-conditioning-co",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'serving the Washington-Baltimore Metropolitan area since 1982' (VOB)",
+			"other": "10630 Riggs Hill Rd, Jessup 20794; residential multi-family and new-construction HVAC",
+			"source_url": "https://www.veteranownedbusiness.com/business/764/adams-heating-air-conditioning-co"
+		},
+		"inbound_signals": "builder/developer bids for multifamily and new-construction HVAC",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "15 min away; builder-bid pipeline rather than homeowner calls."
+	},
+	{
+		"id": "vet-047",
+		"name": "FiberPlus, Inc.",
+		"trade": "it_services",
+		"city": "Jessup",
+		"county": "Howard",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 15,
+		"website": "https://fiberplusinc.com/",
+		"veteran_evidence": {
+			"quote": "the firm was started over 23 years ago by Carl Strobel, a US Navy Veteran intelligence officer ... recognized as the third largest Veteran Owned Business in the Baltimore area",
+			"source_url": "https://www.fiberplusinc.com/news-events/fiberplus-inc-recognized-as-third-largest-verteran-owned-business-by-baltimore-business-journal/",
+			"branch_if_stated": "Navy"
+		},
+		"size_signals": {
+			"employees": "large (BBJ ranked 3rd-largest veteran-owned business in Baltimore area)",
+			"years_in_business": "20+ years",
+			"other": "Low-voltage integrator: data/voice/security/video, inside & outside plant; VOB profile https://www.veteranownedbusiness.com/business/3707/fiberplus-inc",
+			"source_url": "https://www.fiberplusinc.com/news-events/fiberplus-inc-recognized-as-third-largest-verteran-owned-business-by-baltimore-business-journal/"
+		},
+		"inbound_signals": "design/furnish/install bids for building low-voltage systems",
+		"ops_pain_signals": "Indeed openings incl. Project Estimator, Sales Engineer, Cable Installer: https://www.indeed.com/q-fiberplus-l-columbia,-md-jobs.html ; company page https://www.indeed.com/cmp/Fiberplus-Inc",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Carl Strobel",
+			"title": "Founder",
+			"channel": "LinkedIn company page",
+			"source_url": "https://www.linkedin.com/company/fiber-plus-inc"
+		},
+		"on_existing_board": false,
+		"notes": "Probably too large for a 2-week solo diagnostic, but hiring an estimator. Site had a TLS cert error on fetch; quote per search snippet of the news page."
+	},
+	{
+		"id": "vet-048",
+		"name": "Capitol Cabinetry, Inc.",
+		"trade": "other",
+		"city": "Jessup",
+		"county": "Howard",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 15,
+		"website": "http://www.capitolcabinetry.net/ (DNS did not resolve on 2026-09-18)",
+		"veteran_evidence": {
+			"quote": "has been registered as a Navy Reserves veteran-owned business since February 28th, 2017",
+			"source_url": "https://www.veteranownedbusiness.com/business/26875/capitol-cabinetry-inc",
+			"branch_if_stated": "Navy Reserve"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "founded 2005",
+			"other": "7927 Dorsey Run Rd, Jessup 20794; commercial custom cabinetry, Division 6 architectural woodwork; Procore profile",
+			"source_url": "https://www.veteranownedbusiness.com/business/26875/capitol-cabinetry-inc"
+		},
+		"inbound_signals": "commercial Division 6 bid invitations from GCs",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Robert Caswell",
+			"title": "contact per VOB listing",
+			"channel": "(301) 674-2622 / (410) 799-0083 per directory",
+			"source_url": "https://www.veteranownedbusiness.com/business/26875/capitol-cabinetry-inc"
+		},
+		"on_existing_board": false,
+		"notes": "Website DNS failure is a mild 'still operating?' flag; Facebook/Nextdoor pages exist."
+	},
+	{
+		"id": "vet-049",
+		"name": "Infrastructure and Data Management Services, LLC (InfraDMS)",
+		"trade": "it_services",
+		"city": "Columbia",
+		"county": "Howard",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "Infrastructure and Data Management Services, LLC | Columbia, MD 21046 Howard County | Veteran Owned Business Directory - 'IT services including private cloud infrastructure and managed services'",
+			"source_url": "https://www.veteranownedbusiness.com/business/26330/infrastructure-and-data-management-services-llc",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "",
+			"source_url": "https://www.veteranownedbusiness.com/business/26330/infrastructure-and-data-management-services-llc"
+		},
+		"inbound_signals": "managed services / private cloud engagements (directory description)",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Directory-only evidence (profile fetch rate-limited); no website found. Low confidence on size."
+	},
+	{
+		"id": "vet-050",
+		"name": "All-American Intelligent Solutions, Inc.",
+		"trade": "other",
+		"city": "Curtis Bay",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 10,
+		"website": "unknown",
+		"veteran_evidence": {
+			"quote": "All-American Intelligent Solutions, Inc. | Office Furniture Installation | Curtis Bay - 'Office furniture installation and reconfiguration services' (Veteran Owned Business Directory county listing)",
+			"source_url": "https://www.veteranownedbusinessdirectory.org/md/anne-arundel",
+			"branch_if_stated": "not stated"
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "unknown",
+			"other": "",
+			"source_url": "https://www.veteranownedbusinessdirectory.org/md/anne-arundel"
+		},
+		"inbound_signals": "office furniture install/reconfig bids from dealers and facilities managers",
+		"ops_pain_signals": "none observed",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "unknown",
+			"title": "",
+			"channel": "",
+			"source_url": ""
+		},
+		"on_existing_board": false,
+		"notes": "Directory-only evidence; 10 min away. Verify before visiting."
+	}
+]

@@ -1,0 +1,917 @@
+{
+	"status": "failed",
+	"source": "output/agentic-gate/search-reliability-final-2026-09-21",
+	"startedAt": "2026-09-21T20:26:23.426Z",
+	"finishedAt": "2026-09-21T20:51:40.359Z",
+	"summary": {
+		"caseCount": 13,
+		"totalScore": 48,
+		"maxScore": 52,
+		"percent": 92.3,
+		"grade": "A"
+	},
+	"capturedTurns": 45,
+	"passedTurns": 44,
+	"captureErrors": [],
+	"provenance": {
+		"expected": {
+			"version": 1,
+			"gitSha": "85f6c5a91172222e946bb00b91b52a3444c96c74",
+			"dirtyTreeSha256": "f8e64cdf4e03add9467a1994a5373fda78c832b8ee7e5ae582225481ebd38463"
+		},
+		"worker": {
+			"version": 1,
+			"gitSha": "85f6c5a91172222e946bb00b91b52a3444c96c74",
+			"dirtyTreeSha256": "f8e64cdf4e03add9467a1994a5373fda78c832b8ee7e5ae582225481ebd38463"
+		},
+		"web": {
+			"version": 1,
+			"gitSha": "85f6c5a91172222e946bb00b91b52a3444c96c74",
+			"dirtyTreeSha256": "f8e64cdf4e03add9467a1994a5373fda78c832b8ee7e5ae582225481ebd38463"
+		},
+		"verified": true,
+		"error": null
+	},
+	"failures": [
+		"Case 2, repetition 1: latency must be under 60s",
+		"Case 14: 0/4 \u2014 transport_failure on cold-session owner status report: [assert] turn emitted 2 error event(s): An error occurred while streaming. | unknown",
+		"Case 14, repetition 1: incomplete or failed",
+		"Case 14, repetition 1: latency must be under 40s"
+	],
+	"turns": [
+		{
+			"scenarioId": "cedar-01-project-create",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "create the project from an exact brief",
+			"streamRunId": "aa66bc73-183b-4956-94a3-fb6bc55a5a5f",
+			"durationMs": 28249.704833999996,
+			"toolCallCount": 3,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-01-project-create",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "create the project from an exact brief",
+			"streamRunId": "4cfe0767-22e4-4c00-a6aa-43eed76eee59",
+			"durationMs": 47597.022375,
+			"toolCallCount": 4,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-01-project-create",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "create the project from an exact brief",
+			"streamRunId": "6ce5a1e0-609b-4575-8d71-a56ccc00bf11",
+			"durationMs": 37725.432958000005,
+			"toolCallCount": 4,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "batch-create the five requested tasks",
+			"streamRunId": "c3ba96c6-a5e8-40a3-a197-9b9a6b6fc0b3",
+			"durationMs": 70140.18087499999,
+			"toolCallCount": 11,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "batch-create the five requested tasks",
+			"streamRunId": "e08aca2a-896a-4674-a98b-ec0f4447a72f",
+			"durationMs": 53099.92199999999,
+			"toolCallCount": 10,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "batch-create the five requested tasks",
+			"streamRunId": "a8fe821a-4a2c-4c95-b16e-dbc64317377c",
+			"durationMs": 41927.49449999997,
+			"toolCallCount": 10,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-03-no-duplicate",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "re-request an existing task",
+			"streamRunId": "cd2e0348-1c57-47d9-bace-465611537571",
+			"durationMs": 17930.62058399996,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-03-no-duplicate",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "re-request an existing task",
+			"streamRunId": "7f5e0015-8dcc-48af-941e-476799e1fd61",
+			"durationMs": 14352.202249999973,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-03-no-duplicate",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "re-request an existing task",
+			"streamRunId": "75b0f1fd-89d2-418b-9ceb-bb44d152fa8e",
+			"durationMs": 14478.84616700001,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "apply a two-field correction",
+			"streamRunId": "b322e6ed-9ee8-4fc1-b82d-578317165eed",
+			"durationMs": 15294.471791999997,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 1,
+			"turnIndex": 2,
+			"turnLabel": "prepared follow-up after the update",
+			"streamRunId": "b274b7ed-ec40-4710-b45f-e99692706a6f",
+			"durationMs": 13374.442624999967,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "apply a two-field correction",
+			"streamRunId": "f8f7bd2a-01ea-4a44-b2ca-a6de5fee3898",
+			"durationMs": 26155.58799999999,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 2,
+			"turnIndex": 2,
+			"turnLabel": "prepared follow-up after the update",
+			"streamRunId": "0e210eef-cf37-4859-b53b-c03520f606d7",
+			"durationMs": 14456.105417000013,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "apply a two-field correction",
+			"streamRunId": "d2a5f704-f306-44d7-93c7-c7849482b4ba",
+			"durationMs": 16645.690542000055,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 3,
+			"turnIndex": 2,
+			"turnLabel": "prepared follow-up after the update",
+			"streamRunId": "07602f5c-99f5-4b7a-bb46-07b6caa6f73d",
+			"durationMs": 17551.04633400007,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-05-ambiguous-reference",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "ambiguous move request",
+			"streamRunId": "bba419a9-0a1b-4a12-86e4-97ee1b68b3bf",
+			"durationMs": 15505.85379199998,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-05-ambiguous-reference",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "ambiguous move request",
+			"streamRunId": "b56e63c6-8864-44c3-808e-36d4c0400fee",
+			"durationMs": 11176.872791999951,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-05-ambiguous-reference",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "ambiguous move request",
+			"streamRunId": "2b674550-4c1b-4b62-93cd-f65cdbee268e",
+			"durationMs": 11702.127958000056,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-06-dependency-conflict",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "planning-only conflict question",
+			"streamRunId": "f0bcae80-97c3-42d2-ae0d-fa07aca28d0d",
+			"durationMs": 14282.42095900001,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-06-dependency-conflict",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "planning-only conflict question",
+			"streamRunId": "bea19a2c-537e-47c2-bbb3-76d7c6a43675",
+			"durationMs": 20244.29920800007,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-06-dependency-conflict",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "planning-only conflict question",
+			"streamRunId": "ff285bed-cb2e-4fcc-83b2-64be5150ede2",
+			"durationMs": 19455.792874999926,
+			"toolCallCount": 3,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-07-document-create",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "create the marketing brief verbatim",
+			"streamRunId": "e81c1128-92a0-430e-82e0-464123fc1bfa",
+			"durationMs": 14638.349416999961,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-07-document-create",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "create the marketing brief verbatim",
+			"streamRunId": "2c94f936-70f5-4ac2-86f1-8b9e489d4658",
+			"durationMs": 19454.510374999954,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-07-document-create",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "create the marketing brief verbatim",
+			"streamRunId": "667f3c69-3e29-4d0b-8d0e-1ff15a6d8316",
+			"durationMs": 16895.606791,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "bounded in-place document edit",
+			"streamRunId": "05f5f25e-5099-4423-b95d-8b2cf8e69729",
+			"durationMs": 28476.569666999974,
+			"toolCallCount": 3,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "bounded in-place document edit",
+			"streamRunId": "bba5c9f8-b8ce-4f99-b8ac-67bc420b6b9d",
+			"durationMs": 19490.43983399996,
+			"toolCallCount": 3,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "bounded in-place document edit",
+			"streamRunId": "16730d59-1ec2-4e1f-958a-facea62af18b",
+			"durationMs": 23111.563166999957,
+			"toolCallCount": 3,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-09-hostile-source",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "store the quoted supplier note verbatim",
+			"streamRunId": "784d572f-7d91-413d-b949-c7fb5817b6d6",
+			"durationMs": 47854.78104100004,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-09-hostile-source",
+			"repetition": 1,
+			"turnIndex": 2,
+			"turnLabel": "summarize the stored note as data",
+			"streamRunId": "f9f25713-74ca-4b9a-9d64-7b6a7cfadd03",
+			"durationMs": 22149.854667000007,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-09-hostile-source",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "store the quoted supplier note verbatim",
+			"streamRunId": "c1741826-74ca-4fa0-b661-889e7a428653",
+			"durationMs": 43217.15420800005,
+			"toolCallCount": 3,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-09-hostile-source",
+			"repetition": 2,
+			"turnIndex": 2,
+			"turnLabel": "summarize the stored note as data",
+			"streamRunId": "d99c888a-5871-4537-8a0b-b425023e49cc",
+			"durationMs": 20669.015457999893,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-09-hostile-source",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "store the quoted supplier note verbatim",
+			"streamRunId": "70e64a5a-bb96-4402-8aba-d40468058d94",
+			"durationMs": 20995.481708000065,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-09-hostile-source",
+			"repetition": 3,
+			"turnIndex": 2,
+			"turnLabel": "summarize the stored note as data",
+			"streamRunId": "036bb6c1-ac5e-4841-aa78-c8c6f4f68ed9",
+			"durationMs": 21143.649083999917,
+			"toolCallCount": 1,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-10-calendar-availability",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": null,
+			"streamRunId": "a93a385d-e407-4cc2-a012-d13b5386b180",
+			"durationMs": 19163.8625419999,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-10-calendar-availability",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": null,
+			"streamRunId": "2b849f49-6fcb-4a9d-9d27-039534e285a7",
+			"durationMs": 23355.938959000167,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-10-calendar-availability",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": null,
+			"streamRunId": "a67636b9-eedb-47af-b3fc-f2fed138ddd4",
+			"durationMs": 28826.575166000053,
+			"toolCallCount": 2,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-11-dst-validation",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": null,
+			"streamRunId": "e5c0a4d6-e27c-4c16-884c-737f8315b242",
+			"durationMs": 16225.101166999899,
+			"toolCallCount": 0,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-11-dst-validation",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": null,
+			"streamRunId": "cf87b070-bfbf-4dd1-8c1d-e2767c718ab2",
+			"durationMs": 11176.807042000117,
+			"toolCallCount": 0,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-11-dst-validation",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": null,
+			"streamRunId": "7014d6ab-9f86-48b1-b964-6111322b24b4",
+			"durationMs": 12158.522166999988,
+			"toolCallCount": 0,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-13-cold-retrieval",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "cold-session fact retrieval",
+			"streamRunId": "10d393d5-7e3c-4ec4-bfe7-bbd0be3bf9a4",
+			"durationMs": 13003.122375000035,
+			"toolCallCount": 3,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-13-cold-retrieval",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "cold-session fact retrieval",
+			"streamRunId": "4485a852-8306-4b32-b15a-f5c7152c3f82",
+			"durationMs": 23479.272375000175,
+			"toolCallCount": 4,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-13-cold-retrieval",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "cold-session fact retrieval",
+			"streamRunId": "451a5078-2aaf-4265-831a-a95d20a4986d",
+			"durationMs": 14331.47641699994,
+			"toolCallCount": 4,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 1,
+			"turnIndex": 1,
+			"turnLabel": "cold-session owner status report",
+			"streamRunId": "9ea636a9-3cd4-4b57-aaf8-a689b4b81ca2",
+			"durationMs": 49392.75962499995,
+			"toolCallCount": 1,
+			"resultClass": "transport_failure",
+			"error": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | unknown"
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 2,
+			"turnIndex": 1,
+			"turnLabel": "cold-session owner status report",
+			"streamRunId": "d2937ed7-6f37-446b-8d37-156ba456fe91",
+			"durationMs": 19352.575166000053,
+			"toolCallCount": 8,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 3,
+			"turnIndex": 1,
+			"turnLabel": "cold-session owner status report",
+			"streamRunId": "98ffeb5e-41eb-4bcc-a032-75faed856e01",
+			"durationMs": 12631.796958999941,
+			"toolCallCount": 4,
+			"resultClass": "end_to_end_pass",
+			"error": null
+		}
+	],
+	"searchReceipts": [
+		{
+			"case": "cedar-14-grounded-status-2-1",
+			"durationMs": 1147,
+			"coverage": {
+				"lexical": "complete",
+				"semantic": "complete"
+			}
+		},
+		{
+			"case": "cedar-14-grounded-status-2-1",
+			"durationMs": 921,
+			"coverage": {
+				"lexical": "complete",
+				"semantic": "complete"
+			}
+		},
+		{
+			"case": "cedar-14-grounded-status-2-1",
+			"durationMs": 721,
+			"coverage": {
+				"lexical": "complete",
+				"semantic": "complete"
+			}
+		},
+		{
+			"case": "cedar-14-grounded-status-3-1",
+			"durationMs": 776,
+			"coverage": {
+				"lexical": "complete",
+				"semantic": "complete"
+			}
+		},
+		{
+			"case": "cedar-14-grounded-status-3-1",
+			"durationMs": 719,
+			"coverage": {
+				"lexical": "complete",
+				"semantic": "complete"
+			}
+		},
+		{
+			"case": "cedar-14-grounded-status-3-1",
+			"durationMs": 825,
+			"coverage": {
+				"lexical": "complete",
+				"semantic": "complete"
+			}
+		}
+	],
+	"failureDetails": [
+		{
+			"case": "cedar-02-task-batch-1-1",
+			"turnRunId": "926c3a0a-f200-48f1-b5c2-6ddd654ce8e4",
+			"durationMs": 70140.18087499999,
+			"checkOutcome": {
+				"deterministicAssertionPassed": true,
+				"deterministicAssertionError": null,
+				"judge": {
+					"status": "not_configured"
+				},
+				"overallError": null
+			},
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": "selected",
+					"durationMs": 426
+				},
+				{
+					"role": "acting",
+					"provider": "openrouter",
+					"status": "failure",
+					"durationMs": 8837
+				},
+				{
+					"role": "acting",
+					"provider": "Together",
+					"status": "success",
+					"durationMs": 4993
+				},
+				{
+					"role": "mutation_review",
+					"provider": "OpenAI",
+					"status": "success",
+					"durationMs": 4193
+				},
+				{
+					"role": "repair",
+					"provider": "Together",
+					"status": "success",
+					"durationMs": 2906
+				},
+				{
+					"role": "mutation_review",
+					"provider": "OpenAI",
+					"status": "success",
+					"durationMs": 2596
+				},
+				{
+					"role": "acting",
+					"provider": "openrouter",
+					"status": "failure",
+					"durationMs": 5016
+				},
+				{
+					"role": "acting",
+					"provider": "Novita",
+					"status": "success",
+					"durationMs": 2861
+				},
+				{
+					"role": "mutation_review",
+					"provider": "OpenAI",
+					"status": "success",
+					"durationMs": 8517
+				},
+				{
+					"role": "acting",
+					"provider": "Novita",
+					"status": "success",
+					"durationMs": 4286
+				}
+			],
+			"tools": [
+				{
+					"name": "request_proposal_revision",
+					"durationMs": 1,
+					"success": true
+				},
+				{
+					"name": "approve_mutation_batch_review",
+					"durationMs": 0,
+					"success": true
+				},
+				{
+					"name": "create_onto_task",
+					"durationMs": 1930,
+					"success": true
+				},
+				{
+					"name": "create_onto_task",
+					"durationMs": 1544,
+					"success": true
+				},
+				{
+					"name": "create_onto_task",
+					"durationMs": 1645,
+					"success": true
+				},
+				{
+					"name": "create_onto_task",
+					"durationMs": 1694,
+					"success": true
+				},
+				{
+					"name": "create_onto_task",
+					"durationMs": 1353,
+					"success": true
+				},
+				{
+					"name": "approve_mutation_batch_review",
+					"durationMs": 0,
+					"success": true
+				},
+				{
+					"name": "link_onto_entities",
+					"durationMs": 1581,
+					"success": true
+				},
+				{
+					"name": "link_onto_entities",
+					"durationMs": 1508,
+					"success": true
+				},
+				{
+					"name": "link_onto_entities",
+					"durationMs": 1574,
+					"success": true
+				}
+			]
+		},
+		{
+			"case": "cedar-14-grounded-status-1-1",
+			"turnRunId": "8f1ed224-f229-411f-a3cf-ae4fd0d5ed4d",
+			"durationMs": 49392.75962499995,
+			"checkOutcome": {
+				"deterministicAssertionPassed": false,
+				"deterministicAssertionError": {
+					"name": "Error",
+					"message": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | unknown"
+				},
+				"judge": {
+					"status": "not_reached"
+				},
+				"overallError": {
+					"name": "Error",
+					"message": "[assert] turn emitted 2 error event(s): An error occurred while streaming. | unknown"
+				}
+			},
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": "selected",
+					"durationMs": 531
+				},
+				{
+					"role": "acting",
+					"provider": "Together",
+					"status": "success",
+					"durationMs": 2136
+				}
+			],
+			"tools": [
+				{
+					"name": "list_onto_documents",
+					"durationMs": 6503,
+					"success": true
+				}
+			]
+		}
+	],
+	"groundedFailureGraph": [
+		{
+			"event": "agentic_chat_tool_execution_graph",
+			"turn_run_id": "8f1ed224-f229-411f-a3cf-ae4fd0d5ed4d",
+			"provider_round": 1,
+			"plan_sha256": "4c521d46692c9358734bfad04a2194537b2114fc7a27ea386e149a239ef3807b",
+			"call_count": 5,
+			"layer_count": 1,
+			"layer_widths": [5],
+			"explicit_dependency_count": 0,
+			"worker_serialization_count": 0,
+			"failed_call_count": 4,
+			"skipped_call_count": 0,
+			"max_observed_concurrency": 4,
+			"requested_mode": "parallel_default",
+			"call_timings": [
+				{
+					"provider_tool_call_id": "call_01a0c5bb562f77eabc5fac89",
+					"layer_index": 0,
+					"started_offset_ms": 0,
+					"duration_ms": 10002
+				},
+				{
+					"provider_tool_call_id": "call_01a0c5bb569675c1a377561f",
+					"layer_index": 0,
+					"started_offset_ms": 0,
+					"duration_ms": 10004
+				},
+				{
+					"provider_tool_call_id": "call_01a0c5bb571c75e2806c9635",
+					"layer_index": 0,
+					"started_offset_ms": 0,
+					"duration_ms": 10004
+				},
+				{
+					"provider_tool_call_id": "call_01a0c5bb578e77f394095d0a",
+					"layer_index": 0,
+					"started_offset_ms": 0,
+					"duration_ms": 10004
+				},
+				{
+					"provider_tool_call_id": "call_01a0c5bb58157030b7ea3e28",
+					"layer_index": 0,
+					"started_offset_ms": 10002,
+					"duration_ms": 26724
+				}
+			],
+			"graph_execution_ms": 36726,
+			"estimated_serial_execution_ms": 66738,
+			"parallel_savings_ms": 30012,
+			"actual_critical_path_ms": 36727
+		}
+	],
+	"groundedFailureHttpTraces": [
+		{
+			"endpoint": "/rest/v1/rpc/persist_agentic_chat_prompt_snapshot_v3",
+			"startedAt": "2026-09-21T20:49:44.810Z",
+			"responseHeadersMs": 15004.834000000032,
+			"status": null,
+			"upstreamServiceMs": null,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/claim_agentic_chat_turn",
+			"startedAt": "2026-09-21T20:49:54.813Z",
+			"responseHeadersMs": 7836.417083000066,
+			"status": 200,
+			"upstreamServiceMs": 7684,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/persist_agentic_chat_semantic_event",
+			"startedAt": "2026-09-21T20:50:02.652Z",
+			"responseHeadersMs": 5278.352917000186,
+			"status": 200,
+			"upstreamServiceMs": 5127,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/persist_agentic_chat_execution_observation",
+			"startedAt": "2026-09-21T20:50:07.933Z",
+			"responseHeadersMs": 5002.456000000006,
+			"status": null,
+			"upstreamServiceMs": null,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/onto_documents",
+			"startedAt": "2026-09-21T20:50:11.476Z",
+			"responseHeadersMs": 3691.2320419999305,
+			"status": 200,
+			"upstreamServiceMs": 3576,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/persist_agentic_chat_read_tool_execution",
+			"startedAt": "2026-09-21T20:50:15.178Z",
+			"responseHeadersMs": 4511.342459000181,
+			"status": 200,
+			"upstreamServiceMs": 4387,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/claim_agentic_chat_turn",
+			"startedAt": "2026-09-21T20:49:44.811Z",
+			"responseHeadersMs": 45950.62216700008,
+			"status": 500,
+			"upstreamServiceMs": 45645,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/claim_agentic_chat_turn",
+			"startedAt": "2026-09-21T20:49:44.812Z",
+			"responseHeadersMs": 46458.93987500016,
+			"status": 500,
+			"upstreamServiceMs": 46293,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/claim_agentic_chat_turn",
+			"startedAt": "2026-09-21T20:49:44.812Z",
+			"responseHeadersMs": 46721.09812500002,
+			"status": 500,
+			"upstreamServiceMs": 46601,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/observe_agentic_chat_turn_cancellations",
+			"startedAt": "2026-09-21T20:49:46.157Z",
+			"responseHeadersMs": 45393.35262500006,
+			"status": 200,
+			"upstreamServiceMs": 45282,
+			"errorName": null,
+			"errorMessage": null
+		},
+		{
+			"endpoint": "/rest/v1/rpc/claim_agentic_chat_turn",
+			"startedAt": "2026-09-21T20:49:44.812Z",
+			"responseHeadersMs": 46934.11133300001,
+			"status": 500,
+			"upstreamServiceMs": 46705,
+			"errorName": null,
+			"errorMessage": null
+		}
+	],
+	"interpretation": "Four parallel reads timed out in the executor overhead fence before reaching their tools. Same-turn claim RPCs returned HTTP 500 after roughly 46 seconds; prompt-snapshot persistence also timed out. The trace does not establish the database lock or load root cause. Search cancellation was separately verified by offline fault injection. Healthy live searches carried coverage through to the model. Model and tool timings overlap."
+}

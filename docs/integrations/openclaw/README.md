@@ -16,7 +16,8 @@ Users can:
 
 - generate a `BuildOS Agent Key`
 - revoke or rotate that key
-- scope access to specific projects
+- give it all projects (including ones created later) or limit it to specific projects
+- approve a denied project from the one-click grant link the agent receives
 - expose a scoped BuildOS direct-tool surface to OpenClaw
 
 The missing piece is the OpenClaw-side connector/plugin that uses those credentials automatically.

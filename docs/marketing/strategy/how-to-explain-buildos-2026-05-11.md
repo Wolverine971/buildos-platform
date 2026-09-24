@@ -15,6 +15,11 @@ path: docs/marketing/strategy/how-to-explain-buildos-2026-05-11.md
 
 # How to Explain BuildOS
 
+> September 10 update: use [the project workspace rollout](./project-workspace-rollout-2026-09-10.md)
+> for current first-contact copy. The founder selected “A project workspace you can talk to.”
+> The material below records earlier exploration. Claims that other AI products always forget,
+> start from zero, or cannot update shared work are not current competitive evidence.
+
 A working synthesis of how to explain BuildOS in conversation — to a creator, to a heavy AI user, to a VC — and how to frame the market opportunity. Drafted in response to "mental warfare" trying to articulate the product against ChatGPT/Claude.
 
 The answers are not new. They are scattered across the positioning doc, the philosophy in §1, the connect-your-agents spec, and the LinkedIn go-between angle. This doc compresses them into something quotable, organized as **modular talking points** that can be assembled into persona-specific flows.

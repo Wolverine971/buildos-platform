@@ -87,9 +87,11 @@ export function parseSseLine(
 	const events: AgenticChatTurnProviderClientEventV1[] = [];
 	if (record.delta !== undefined && record.delta !== null) {
 		const delta = requireRecord(record.delta, 'provider delta');
-		// Reasoning deltas are not surfaced: the request sends
-		// `reasoning.exclude`, and no consumer reads them. Their tokens are
-		// still accounted from the usage receipt.
+		// Reasoning deltas are never surfaced. They arrive only when the request
+		// asks for them (a watched V4.1 pass) and count solely as progress, so
+		// a model thinking after a line of narration is not taken for a stalled
+		// stream (tasker 101). Their tokens are accounted from the usage receipt.
+		state.reasoningBytes += reasoningDeltaBytes(delta);
 		if (delta.content !== undefined && delta.content !== null) {
 			const normalizedContent = normalizeStreamingContent(
 				delta.content,
@@ -112,8 +114,29 @@ export function parseSseLine(
 			observeToolCallDelta(state, delta.tool_calls);
 			events.push({ type: 'tool_call', toolCall: delta.tool_calls });
 		}
+		if (state.firstProgressAtMs === null && state.generatedBytes + state.reasoningBytes > 0) {
+			state.firstProgressAtMs = Date.now();
+		}
 	}
 	return { events, done: false };
+}
+
+/**
+ * OpenRouter streams reasoning as `delta.reasoning` text, with the same text
+ * (or an encrypted/summary form) in `delta.reasoning_details`. Count one of
+ * them, never both.
+ */
+function reasoningDeltaBytes(delta: Record<string, unknown>): number {
+	if (typeof delta.reasoning === 'string') return Buffer.byteLength(delta.reasoning, 'utf8');
+	if (!Array.isArray(delta.reasoning_details)) return 0;
+	let bytes = 0;
+	for (const detail of delta.reasoning_details) {
+		if (!detail || typeof detail !== 'object') continue;
+		const { text, summary, data } = detail as Record<string, unknown>;
+		const content = [text, summary, data].find((value) => typeof value === 'string');
+		if (typeof content === 'string') bytes += Buffer.byteLength(content, 'utf8');
+	}
+	return bytes;
 }
 
 /**

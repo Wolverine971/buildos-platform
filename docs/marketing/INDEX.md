@@ -22,6 +22,8 @@ This is the broad catalog, including historical material. Use [README.md](README
 
 ---
 
+**Current positioning:** [A project workspace you can talk to — rollout, copy, demo, and user test](strategy/project-workspace-rollout-2026-09-10.md).
+
 ## Current 2026 Docs (Start Here)
 
 - **[Growth Audit — April 2026](growth/growth-audit-2026-04-09.md)** ⭐ **NEW**

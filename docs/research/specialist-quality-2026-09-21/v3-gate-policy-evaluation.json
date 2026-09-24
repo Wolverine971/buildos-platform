@@ -1,0 +1,15 @@
+{
+	"scope": "Read-only evaluation of the retained scorecard. The gate itself failed earlier at final source verification.",
+	"repetitions": 3,
+	"failures": [
+		"Source provenance was not verified",
+		"Case 2, repetition 2: latency must be under 60s",
+		"Case 4: 0/4 — transport_failure on apply a two-field correction: [assert] turn emitted 2 error event(s): An error occurred while streaming. | provider_stream_error",
+		"Case 4, repetition 3: incomplete or failed",
+		"Case 14: 0/4 — transport_failure on cold-session owner status report: [assert] turn emitted 2 error event(s): An error occurred while streaming. | read_tool_timeout",
+		"Case 14, repetition 1: incomplete or failed",
+		"Case 14, repetition 1: latency must be under 40s",
+		"Case 14, repetition 2: latency must be under 40s",
+		"Case 14, repetition 3: latency must be under 40s"
+	]
+}

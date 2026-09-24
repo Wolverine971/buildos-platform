@@ -148,31 +148,52 @@ export function buildMutationBatchReviewRequest(
 			}
 		],
 		...surface,
-		tools: surface.tools.map((tool) => {
-			if (
-				requestExpectation ||
-				tool.function.name !== MUTATION_BATCH_REVIEW_APPROVAL_TOOL.function.name
-			)
-				return tool;
-			return {
-				...tool,
-				function: {
-					...tool.function,
-					parameters: {
-						...tool.function.parameters,
-						required: [
-							...(Array.isArray(tool.function.parameters.required)
-								? tool.function.parameters.required
-								: []),
-							'request_expectation'
-						]
-					}
-				}
-			};
-		}),
+		tools: surface.tools.map((tool) =>
+			tool.function.name === MUTATION_BATCH_REVIEW_APPROVAL_TOOL.function.name
+				? withRequestExpectationSlot(tool, requestExpectation === null)
+				: tool
+		),
 		providerRound: 'synthesis',
 		passRole: 'mutation_review',
 		semanticDispositionGate: false
+	};
+}
+
+/**
+ * The first approval must write the whole-request checklist; later approvals
+ * are not offered the field at all. While it stayed optional, the reviewer
+ * re-emitted the frozen checklist on every later approval: ~1,100 output
+ * tokens (~6 s on gpt-5.6-luna) per review that the harness only compares and
+ * discards, and any drift in the copy failed the review (gate tasker100
+ * case 2, tasker 101).
+ */
+function withRequestExpectationSlot(
+	tool: AgenticChatTurnProviderToolV1,
+	firstApproval: boolean
+): AgenticChatTurnProviderToolV1 {
+	const parameters = tool.function.parameters;
+	const required = Array.isArray(parameters.required) ? parameters.required : [];
+	if (firstApproval) {
+		return {
+			...tool,
+			function: {
+				...tool.function,
+				parameters: { ...parameters, required: [...required, 'request_expectation'] }
+			}
+		};
+	}
+	const { request_expectation: _frozen, ...properties } = (parameters.properties ??
+		{}) as JsonObject;
+	return {
+		...tool,
+		function: {
+			...tool.function,
+			parameters: {
+				...parameters,
+				properties,
+				required: required.filter((name) => name !== 'request_expectation')
+			}
+		}
 	};
 }
 

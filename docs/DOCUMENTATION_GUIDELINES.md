@@ -9,7 +9,7 @@
 
 ## The problem this file exists to prevent
 
-This repo has ~1,700 tracked markdown files outside the marketing and archive lanes.
+This repo has ~1,700 tracked markdown files outside the marketing lane.
 Most of them are **point-in-time artifacts** — an audit, a plan, a handoff, a phase
 report — written in the present tense at a moment that has passed. There are more
 than 300 live documents with "agentic chat" in the filename alone.
@@ -85,11 +85,12 @@ Measured from where they actually land, not from where an old policy wished they
 | Package docs                     | `packages/<pkg>/docs/`                                        |
 | Work tracking                    | `tasker/`                                                     |
 | Marketing                        | `docs/marketing/` (own lane, not health-checked)              |
-| Retired material                 | `docs/archive/` (not health-checked, excluded from search)    |
+| Retired material                 | Delete it. Git history is the archive.                        |
 
 `thoughts/` and `apps/web/thoughts/` were the research homes under the October 2025
-policy. Both were archived to `docs/archive/thoughts/` on 2026-08-19. Do not
-re-create them.
+policy. Both were retired on 2026-08-19. `docs/archive/` was deleted on 2026-09-24:
+an archive folder still answers every grep, so superseded docs are deleted outright.
+Do not re-create `thoughts/` or `docs/archive/`.
 
 ---
 
@@ -121,7 +122,7 @@ Fixing a failure, in order of preference:
     Always include the reason. The marker is visible to whoever reads the doc, which
     is the point — it tells them what to distrust.
 
-The gate never touches `docs/archive/`, `docs/marketing/`, `apps/web/src/content/`
+The gate never touches `docs/marketing/`, `apps/web/src/content/`
 (published content), generated files, agent config in `.claude/` or `.codex/`, or
 anything outside a documentation tree.
 

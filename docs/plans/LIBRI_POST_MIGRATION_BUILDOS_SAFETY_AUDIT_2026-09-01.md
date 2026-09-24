@@ -1,6 +1,9 @@
+<!-- docs/plans/LIBRI_POST_MIGRATION_BUILDOS_SAFETY_AUDIT_2026-09-01.md -->
+
 # Libri post-migration BuildOS safety audit
 
 Date: 2026-09-01 EDT
+Status: conditional pass; Convex remains read-only and cannot be retired yet
 Production evidence refreshed: 2026-09-02T03:00Z
 Decision: conditional pass; keep Convex read-only and do not retire it yet
 

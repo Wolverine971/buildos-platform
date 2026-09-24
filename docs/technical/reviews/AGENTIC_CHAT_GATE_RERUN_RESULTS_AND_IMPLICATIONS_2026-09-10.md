@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/AGENTIC_CHAT_GATE_RERUN_RESULTS_AND_IMPLICATIONS_2026-09-10.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Agentic Chat gate rerun: results and implications
 
 **Run date:** 2026-09-10 EDT / 2026-09-11 UTC  

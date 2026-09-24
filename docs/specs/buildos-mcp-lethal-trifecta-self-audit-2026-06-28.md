@@ -134,7 +134,7 @@ connector as living inside the trifecta and design accordingly.
 | Resource-indicator audience binding (RFC 8707)                      | ✅              | `oauth-connector.service.ts` (`normalizeResource`, token `resource` check) |
 | Origin allow-list + validated CORS (anti-rebinding)                 | ✅              | `mcp-connector.service.ts` (`isAllowedMcpOrigin`, `mcpCorsHeaders`)        |
 | Read-only by default; write requires explicit grant                 | ✅              | consent screen + `scopeModeFromScopes`                                     |
-| Per-project scope (`allowed_project_ids`)                           | ✅              | consent screen + gateway scope enforcement                                 |
+| Per-project scope (`project_scope_mode` + explicit grants)          | ✅              | `project-access.service.ts` + gateway scope enforcement (see §4c)          |
 | Hard read-only data-app profile                                     | ✅              | `mcp-connector.service.ts` (`readOnlyScopeFrom`, `chatgpt_data_app`)       |
 | Destructive-op annotations                                          | ✅              | `mcp-connector.service.ts` (`toMcpTool`/`isDestructiveOp`)                 |
 | PKCE S256 required                                                  | ✅              | `loadOAuthAuthorizationRequest`                                            |
@@ -179,6 +179,34 @@ Also: all client notifications → 202, `general`-profile discovery tools blocke
 bridge https enforcement + request timeout, repro coverage extended (notifications, authenticated
 GET→405, no non-read tool invocation). Full fix list: `buildos-mcp-audit-fixes-2026-06-28.md`
 §Second audit round.
+
+## 4c. Addendum 2026-09-22 — project scope modes and one-click grants (tasker 94)
+
+Project scoping (the main T1 mitigation) now works like this; the canonical rules are in
+`docs/architecture/EXTERNAL_AGENT_PROJECT_ACCESS.md`:
+
+- **Scope modes.** A connector is either `all_unrestricted`, meaning every owned `standard`
+  project including future ones (the default for new keys and consent), or `selected`, meaning
+  explicit grants only. Projects someone else shared with the user, and projects marked
+  `restricted`, never enter scope without an explicit grant. `restricted` is the per-project fence
+  for sensitive projects under the all-projects default. The owner's own keys were moved to
+  `all_unrestricted` on 2026-09-22. That deliberately trades blast radius for "connect, find the
+  project, work on it".
+- **T8 — Agent-mediated scope escalation.** A denied connector now gets
+  `reason: project_not_granted_to_connector` plus a `grant_url`, and it can show that link to the
+  user. An injected agent could use this to talk the user into widening access. Mitigations:
+    - the page is on the BuildOS origin and requires the owner's session and caller ownership;
+    - it names the exact connector, project, and read/write level before any change;
+    - changes happen only through POST form actions (SvelteKit origin check), never on GET;
+    - a grant never raises read→write or allowed ops;
+    - revoked connectors are refused;
+    - every change is logged (`agent.caller.project_access_granted`,
+      `agent.caller.permissions_updated`).
+
+    Denials never name an ungranted project. Project lists expose only a count.
+    **Residual:** a user may approve whatever the agent asks for. That is the same consent risk as
+    the OAuth screen, and the agent relays the link as plain text, so a malicious host could swap
+    in a look-alike URL. Mitigation: users should approve only on `build-os.com`.
 
 ## 5. Recommended next hardening (not blocking outreach)
 

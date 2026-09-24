@@ -1,0 +1,43 @@
+{
+	"_note": "Re-score of probe 1's top 25 with facts DJ stated on 2026-09-18. Amounts paid by clients and exact interview counts were not stated and are left as 'not stated'.",
+	"settings": {
+		"hours_per_week": 30,
+		"risk_capital_usd": 250
+	},
+	"profile_edits": {
+		"ventures": "BuildOS (since spring 2025): an AI 'thinking environment' he built solo. 124 total signups, 4 in the last 30 days, 0 paying customers; he now describes it as 'dead in the water' and is not raising money for it. 9takes.com: a long-running Enneagram personality site with hundreds of articles and roughly 15,000 monthly unique visitors, not meaningfully monetized. His development shop (Tacemus, being rebranded to Samos): three clients so far, the booking site for CadreTraining.com (his former sniper instructor's precision-rifle training company), a website for a financial analyst, and a social-media push about to start for a wealth manager, plus a few referrals. Amounts paid and whether any client pays monthly: not stated."
+	},
+	"profile_add": {
+		"job_search_history": "Since February 2025 he has interviewed at a few companies for forward-deployed engineer roles and received no offers. By his own account he was weak on systems engineering in the technical rounds and has been out of the day-to-day software-engineering loop while working mostly with AI agents. He has not spoken to anyone from Curri since leaving and does not consider that network active.",
+		"outreach_history": "In the last 90 days he has sent no outreach at all: no messages, calls, or walk-ins. Prospect lists and drafts exist but nothing was sent. He currently belongs to no local chamber, trade association, church group, or veteran group, and is open to joining any.",
+		"runway": "Household runway at current spending is under three months.",
+		"partner_option": "His former BuildOS co-founder now runs a Baltimore business that advertises, diagnoses small businesses, and fixes their back-office systems and automation. They respect each other and are meeting next week to discuss working together."
+	},
+	"only": [
+		"a07",
+		"a08",
+		"a01",
+		"a09",
+		"a12",
+		"a13",
+		"a02",
+		"a06",
+		"a03",
+		"a04",
+		"a11",
+		"a10",
+		"f09",
+		"b10",
+		"b02",
+		"c02",
+		"b05",
+		"b03",
+		"b01",
+		"b12",
+		"h08",
+		"x05",
+		"x07",
+		"x08",
+		"x04"
+	]
+}

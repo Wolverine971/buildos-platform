@@ -1,0 +1,1750 @@
+<!-- docs/founder/jev-30-day-probe-2026-09-18/review-page.template.html -->
+<title>Millionaire Probe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+	rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+/>
+<style>
+	:root {
+		--bg: #f3f4ef;
+		--surface: #ffffff;
+		--surface-2: #e9ebe4;
+		--ink: #171b19;
+		--ink-2: #4a524d;
+		--ink-3: #6e7670;
+		--rule: #d8dcd4;
+		--rule-2: #bcc2b9;
+		--accent: #25507a;
+		--accent-ink: #ffffff;
+		--accent-wash: #e1e9f1;
+		--amber: #8f5a0e;
+		--amber-wash: #f4ead6;
+		--good: #2f6b45;
+		--good-wash: #dfede3;
+		--crit: #a3342a;
+		--off: #a3a9a2;
+		--shadow: 0 1px 2px rgba(23, 27, 25, 0.05), 0 6px 18px -12px rgba(23, 27, 25, 0.25);
+		--display: 'Barlow Condensed', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+		--body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		--mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	}
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) {
+			--bg: #111413;
+			--surface: #181c1a;
+			--surface-2: #202522;
+			--ink: #e5e8e3;
+			--ink-2: #aeb6b0;
+			--ink-3: #838c86;
+			--rule: #2b312e;
+			--rule-2: #3c4440;
+			--accent: #86afd6;
+			--accent-ink: #0c1620;
+			--accent-wash: #1b2a38;
+			--amber: #e0aa55;
+			--amber-wash: #33291a;
+			--good: #74c08e;
+			--good-wash: #18301f;
+			--crit: #ee8a7f;
+			--off: #5b635e;
+			--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.9);
+		}
+	}
+	:root[data-theme='dark'] {
+		--bg: #111413;
+		--surface: #181c1a;
+		--surface-2: #202522;
+		--ink: #e5e8e3;
+		--ink-2: #aeb6b0;
+		--ink-3: #838c86;
+		--rule: #2b312e;
+		--rule-2: #3c4440;
+		--accent: #86afd6;
+		--accent-ink: #0c1620;
+		--accent-wash: #1b2a38;
+		--amber: #e0aa55;
+		--amber-wash: #33291a;
+		--good: #74c08e;
+		--good-wash: #18301f;
+		--crit: #ee8a7f;
+		--off: #5b635e;
+		--shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.9);
+	}
+
+	* {
+		box-sizing: border-box;
+	}
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--ink);
+		font-family: var(--body);
+		font-size: 15.5px;
+		line-height: 1.55;
+		-webkit-font-smoothing: antialiased;
+	}
+	.wrap {
+		max-width: 980px;
+		margin: 0 auto;
+		padding-inline: 20px;
+		padding-block: 0 96px;
+	}
+	:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+		border-radius: 2px;
+	}
+	button {
+		font: inherit;
+		cursor: pointer;
+	}
+	code,
+	.mono {
+		font-family: var(--mono);
+		font-size: 0.86em;
+	}
+
+	.eyebrow {
+		font-family: var(--mono);
+		font-size: 0.7rem;
+		font-weight: 500;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+
+	header.top {
+		padding-block: 44px 20px;
+	}
+	header.top h1 {
+		font-family: var(--display);
+		font-weight: 700;
+		font-size: clamp(2.6rem, 8vw, 4.2rem);
+		line-height: 0.95;
+		letter-spacing: -0.01em;
+		margin: 10px 0 14px;
+		text-transform: uppercase;
+	}
+	.standfirst {
+		font-size: 1.05rem;
+		color: var(--ink-2);
+		max-width: 64ch;
+		margin: 0;
+	}
+
+	/* status strip */
+	.strip {
+		position: sticky;
+		top: env(safe-area-inset-top, 0px);
+		z-index: 5;
+		background: var(--bg);
+		border-block: 1px solid var(--rule-2);
+		padding-block: 10px;
+		margin-bottom: 36px;
+	}
+	.strip-in {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px 22px;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.figs {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 20px;
+	}
+	.fig {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+	}
+	.fig b {
+		font-family: var(--mono);
+		font-weight: 500;
+		font-size: 1.05rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.fig span {
+		font-size: 0.8rem;
+		color: var(--ink-3);
+	}
+	.strip-right {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+	.save {
+		font-family: var(--mono);
+		font-size: 0.7rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+	.save[data-s='saving'] {
+		color: var(--amber);
+	}
+	.save[data-s='error'],
+	.save[data-s='off'] {
+		color: var(--crit);
+	}
+	.approve {
+		border: 1px solid var(--accent);
+		background: var(--accent);
+		color: var(--accent-ink);
+		font-weight: 600;
+		font-size: 0.88rem;
+		padding: 7px 14px;
+		border-radius: 3px;
+	}
+	.approve[data-on='true'] {
+		background: var(--good-wash);
+		color: var(--good);
+		border-color: var(--good);
+	}
+
+	section {
+		margin-bottom: 52px;
+	}
+	h2 {
+		font-family: var(--display);
+		font-weight: 700;
+		font-size: 1.75rem;
+		letter-spacing: 0.005em;
+		text-transform: uppercase;
+		margin: 0 0 4px;
+		line-height: 1.05;
+	}
+	.sec-note {
+		color: var(--ink-2);
+		margin: 0 0 20px;
+		max-width: 68ch;
+		font-size: 0.95rem;
+	}
+
+	/* flow */
+	.flow {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0;
+		border: 1px solid var(--rule);
+		background: var(--surface);
+		border-radius: 3px;
+	}
+	.step {
+		padding: 14px 16px;
+		border-right: 1px solid var(--rule);
+	}
+	.step:last-child {
+		border-right: 0;
+	}
+	.step .k {
+		font-family: var(--mono);
+		font-size: 0.68rem;
+		color: var(--accent);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.step p {
+		margin: 4px 0 0;
+		font-size: 0.9rem;
+		color: var(--ink-2);
+	}
+	.step p b {
+		color: var(--ink);
+		font-weight: 600;
+	}
+
+	.caveat {
+		margin-top: 18px;
+		background: var(--amber-wash);
+		border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+		border-radius: 3px;
+		padding: 16px 18px;
+	}
+	.caveat h3 {
+		margin: 0 0 6px;
+		font-size: 1rem;
+		font-weight: 600;
+	}
+	.caveat p {
+		margin: 0 0 8px;
+		font-size: 0.92rem;
+		color: var(--ink-2);
+		max-width: 74ch;
+	}
+	.caveat p:last-child {
+		margin-bottom: 0;
+	}
+
+	/* settings */
+	.settings {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.set {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 14px 16px;
+		display: grid;
+		gap: 8px;
+		align-content: start;
+	}
+	.set label.t,
+	.set .t {
+		font-weight: 600;
+		font-size: 0.95rem;
+	}
+	.set .why {
+		font-size: 0.84rem;
+		color: var(--ink-3);
+		margin: 0;
+	}
+	.set.wide {
+		grid-column: 1 / -1;
+	}
+	.radios {
+		display: grid;
+		gap: 6px;
+	}
+	.radio {
+		display: grid;
+		grid-template-columns: 18px 1fr;
+		gap: 8px;
+		align-items: start;
+		font-size: 0.9rem;
+		color: var(--ink-2);
+		cursor: pointer;
+	}
+	.radio input {
+		margin-top: 4px;
+		accent-color: var(--accent);
+	}
+	.radio b {
+		color: var(--ink);
+		font-weight: 600;
+	}
+	input[type='number'],
+	select,
+	textarea {
+		font: inherit;
+		font-size: 0.92rem;
+		color: var(--ink);
+		background: var(--surface);
+		border: 1px solid var(--rule-2);
+		border-radius: 3px;
+		padding: 7px 10px;
+		max-width: 100%;
+	}
+	input[type='number'] {
+		width: 140px;
+		font-family: var(--mono);
+	}
+	.inline {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+		font-size: 0.9rem;
+		color: var(--ink-2);
+	}
+	.guess {
+		font-family: var(--mono);
+		font-size: 0.64rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--amber);
+		background: var(--amber-wash);
+		padding: 2px 6px;
+		border-radius: 2px;
+		justify-self: start;
+	}
+
+	/* profile */
+	.prof {
+		display: grid;
+		gap: 8px;
+	}
+	.pcard {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 6px 16px;
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 13px 16px;
+	}
+	.pcard.off {
+		background: transparent;
+		border-style: dashed;
+	}
+	.pcard.off .ptext {
+		color: var(--off);
+		text-decoration: line-through;
+		text-decoration-color: color-mix(in srgb, var(--off) 60%, transparent);
+	}
+	.phead {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: center;
+	}
+	.phead b {
+		font-weight: 600;
+	}
+	.ptext {
+		grid-column: 1 / -1;
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--ink-2);
+	}
+	.pnote {
+		grid-column: 1 / -1;
+		margin: 0;
+		font-size: 0.8rem;
+		color: var(--amber);
+	}
+	.badge {
+		font-family: var(--mono);
+		font-size: 0.62rem;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+		padding: 2px 6px;
+		border-radius: 2px;
+		background: var(--surface-2);
+		color: var(--ink-2);
+		white-space: nowrap;
+	}
+	.badge.amber {
+		background: var(--amber-wash);
+		color: var(--amber);
+	}
+	.badge.blue {
+		background: var(--accent-wash);
+		color: var(--accent);
+	}
+	.badge.green {
+		background: var(--good-wash);
+		color: var(--good);
+	}
+	.switch {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 0.82rem;
+		color: var(--ink-2);
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.switch input {
+		accent-color: var(--accent);
+		width: 16px;
+		height: 16px;
+	}
+	.withheld {
+		margin-top: 12px;
+		font-size: 0.86rem;
+		color: var(--ink-3);
+	}
+	.withheld ul {
+		margin: 6px 0 0;
+		padding-left: 18px;
+	}
+
+	/* questions */
+	.qs {
+		display: grid;
+		gap: 8px;
+	}
+	.q {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 6px 16px;
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 13px 16px;
+	}
+	.q.off {
+		background: transparent;
+		border-style: dashed;
+	}
+	.q.off .qtext {
+		color: var(--off);
+	}
+	.qtext {
+		grid-column: 1 / -1;
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--ink-2);
+	}
+	.levels {
+		grid-column: 1 / -1;
+		margin: 2px 0 0;
+		padding-left: 0;
+		list-style: none;
+		display: grid;
+		gap: 2px;
+		font-size: 0.82rem;
+		color: var(--ink-3);
+	}
+	.levels li span {
+		font-family: var(--mono);
+		color: var(--ink-2);
+		margin-right: 6px;
+	}
+
+	/* actions */
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 10px;
+	}
+	.chip {
+		border: 1px solid var(--rule-2);
+		background: var(--surface);
+		color: var(--ink-2);
+		border-radius: 99px;
+		padding: 5px 11px;
+		font-size: 0.82rem;
+	}
+	.chip[aria-pressed='true'] {
+		background: var(--ink);
+		color: var(--bg);
+		border-color: var(--ink);
+	}
+	.chip .n {
+		font-family: var(--mono);
+		font-size: 0.72rem;
+		opacity: 0.75;
+		margin-left: 4px;
+	}
+	.viewbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 16px;
+		align-items: center;
+		margin-bottom: 18px;
+		font-size: 0.85rem;
+		color: var(--ink-3);
+	}
+	.viewbar .chip {
+		font-size: 0.78rem;
+		padding: 3px 9px;
+	}
+	.cat {
+		margin-bottom: 26px;
+	}
+	.cat-head {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 14px;
+		align-items: baseline;
+		justify-content: space-between;
+		border-bottom: 2px solid var(--ink);
+		padding-bottom: 6px;
+		margin-bottom: 8px;
+	}
+	.cat-head h3 {
+		font-family: var(--display);
+		font-weight: 700;
+		font-size: 1.3rem;
+		text-transform: uppercase;
+		margin: 0;
+		letter-spacing: 0.01em;
+	}
+	.cat-head h3 .n {
+		font-family: var(--mono);
+		font-weight: 400;
+		font-size: 0.8rem;
+		color: var(--ink-3);
+		margin-left: 6px;
+		text-transform: none;
+	}
+	.cat-note {
+		font-size: 0.86rem;
+		color: var(--ink-3);
+		margin: 0 0 10px;
+		max-width: 72ch;
+	}
+	.linkbtn {
+		background: none;
+		border: 0;
+		padding: 0;
+		color: var(--accent);
+		font-size: 0.8rem;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+	.acts {
+		display: grid;
+		gap: 0;
+	}
+	.act {
+		display: grid;
+		grid-template-columns: 26px 44px 1fr auto;
+		gap: 4px 10px;
+		align-items: start;
+		padding: 9px 4px;
+		border-bottom: 1px solid var(--rule);
+	}
+	.act input[type='checkbox'] {
+		width: 17px;
+		height: 17px;
+		margin-top: 3px;
+		accent-color: var(--accent);
+	}
+	.aid {
+		font-family: var(--mono);
+		font-size: 0.78rem;
+		color: var(--ink-3);
+		padding-top: 2px;
+	}
+	.atext {
+		margin: 0;
+		font-size: 0.93rem;
+	}
+	.act.off .atext {
+		color: var(--off);
+	}
+	.act.off .aid {
+		color: var(--off);
+	}
+	.ameta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-top: 5px;
+		align-items: center;
+		font-size: 0.8rem;
+		color: var(--ink-3);
+	}
+	.act textarea {
+		width: 100%;
+		min-height: 64px;
+		resize: vertical;
+	}
+	.edit-row {
+		display: flex;
+		gap: 8px;
+		margin-top: 6px;
+	}
+	.btn {
+		border: 1px solid var(--rule-2);
+		background: var(--surface);
+		color: var(--ink);
+		border-radius: 3px;
+		padding: 5px 11px;
+		font-size: 0.82rem;
+	}
+	.btn.primary {
+		background: var(--ink);
+		color: var(--bg);
+		border-color: var(--ink);
+	}
+	.add {
+		display: grid;
+		gap: 8px;
+		background: var(--surface);
+		border: 1px dashed var(--rule-2);
+		border-radius: 3px;
+		padding: 14px 16px;
+	}
+	.add-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: center;
+	}
+	.add textarea {
+		width: 100%;
+		min-height: 56px;
+	}
+
+	/* payload */
+	.pl-bar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		align-items: center;
+		margin-bottom: 10px;
+		font-size: 0.88rem;
+		color: var(--ink-2);
+	}
+	.pl-bar select {
+		max-width: min(560px, 100%);
+	}
+	pre.payload {
+		margin: 0;
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 14px 16px;
+		font-family: var(--mono);
+		font-size: 0.76rem;
+		line-height: 1.5;
+		overflow-x: auto;
+		max-height: 520px;
+		overflow-y: auto;
+		white-space: pre;
+		color: var(--ink-2);
+	}
+
+	.next {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-left: 3px solid var(--accent);
+		border-radius: 3px;
+		padding: 16px 18px;
+	}
+	.next p {
+		margin: 0 0 8px;
+		max-width: 72ch;
+		font-size: 0.93rem;
+		color: var(--ink-2);
+	}
+	.next p:last-child {
+		margin-bottom: 0;
+	}
+	.next b {
+		color: var(--ink);
+	}
+
+	@media (max-width: 720px) {
+		.flow {
+			grid-template-columns: 1fr 1fr;
+		}
+		.step:nth-child(2) {
+			border-right: 0;
+		}
+		.step:nth-child(-n + 2) {
+			border-bottom: 1px solid var(--rule);
+		}
+		.settings {
+			grid-template-columns: 1fr;
+		}
+		.act {
+			grid-template-columns: 24px 1fr auto;
+		}
+		.aid {
+			grid-column: 2;
+			grid-row: 1;
+		}
+		.act .abody {
+			grid-column: 2 / -1;
+		}
+		.strip {
+			position: static;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		* {
+			transition: none !important;
+			animation: none !important;
+		}
+	}
+</style>
+
+<div class="wrap">
+	<header class="top">
+		<div class="eyebrow">
+			Jev 1.13 via OpenRouter · review before sending · drafted 18 Sep 2026
+		</div>
+		<h1>Millionaire Probe</h1>
+		<p class="standfirst">
+			100 things you could do in the next 30 days. Jev will rate each one against your profile
+			on the ten questions below. Nothing has been sent yet. Untick, edit or add actions,
+			check the four settings, then approve.
+		</p>
+	</header>
+
+	<div class="strip" id="strip">
+		<div class="strip-in">
+			<div class="figs" id="figs"></div>
+			<div class="strip-right">
+				<span class="save" id="save" data-s="init">Connecting…</span>
+				<button class="approve" id="approve" type="button">Approve for sending</button>
+			</div>
+		</div>
+	</div>
+
+	<section>
+		<h2>How the probe works</h2>
+		<p class="sec-note">
+			Jev doesn't write answers. It reads a fixed state and returns a probability for each
+			question you define. Your profile goes in every request, alongside one action at a time.
+		</p>
+		<div class="flow">
+			<div class="step">
+				<div class="k">State</div>
+				<p><b>Your profile</b>, your constraints, and <b>one action</b></p>
+			</div>
+			<div class="step">
+				<div class="k">Questions</div>
+				<p>
+					<b>10 questions</b>, each answered on its own: 8 yes/no probabilities and one
+					0–3 score
+				</p>
+			</div>
+			<div class="step">
+				<div class="k">Repeat</div>
+				<p>Every action runs <b>3 times</b>, so we can see how much the numbers wobble</p>
+			</div>
+			<div class="step">
+				<div class="k">Rank</div>
+				<p>
+					<b>Code combines</b> the answers using weights you can change later without
+					asking Jev again
+				</p>
+			</div>
+		</div>
+		<div class="caveat">
+			<h3>Before you trust any number: what Jev is and isn't built for</h3>
+			<p>
+				TypeSafe's documentation for yes/no questions says to
+				<b
+					>avoid questions that require world knowledge or predictions about future
+					events</b
+				>. Jev's calibration claim covers judgments about evidence in the state you give it.
+				Seven of these ten questions are forecasts, including "will you reach a million?"
+				For those, a 0.12 is Jev's structured opinion, not a measured 12% chance.
+			</p>
+			<p>
+				That's why the list includes controls. <b>Six anchors</b> have obvious answers
+				(lottery tickets, meme coins, selling your gear). If Jev gets them wrong, its
+				forecasts are noise. <b>Three twins</b> restate another action in different words,
+				and their scores should match. Three repeats show how much each number moves. The
+				three <b>Evidence</b> questions are the ones Jev is designed for.
+			</p>
+		</div>
+	</section>
+
+	<section>
+		<h2>Four settings that change the answers</h2>
+		<p class="sec-note">
+			These go into every request. The ones marked "my guess" are placeholders I set. Only you
+			know the real numbers.
+		</p>
+		<div class="settings" id="settings"></div>
+	</section>
+
+	<section>
+		<h2>What Jev sees about you</h2>
+		<p class="sec-note">
+			This is the exact text sent with every request, built from your resume, founder
+			interviews and current numbers (BuildOS signups were pulled from production today). Turn
+			off any section to hold it back. Phone and email are stripped.
+		</p>
+		<div class="prof" id="profile"></div>
+		<div class="withheld" id="withheld"></div>
+	</section>
+
+	<section>
+		<h2>The ten questions</h2>
+		<p class="sec-note">
+			Each question is asked separately and can't see the other answers, so each one stands on
+			its own. Text in <code>code</code> points to a field in the state. The goal and deadline
+			update from your settings.
+		</p>
+		<div class="qs" id="questions"></div>
+		<p class="sec-note" style="margin-top: 16px">
+			After that, two head-to-head questions put all selected actions in front of Jev at once
+			and ask it to pick: <span id="h2h"></span>
+		</p>
+	</section>
+
+	<section>
+		<h2>The 100 actions</h2>
+		<p class="sec-note">
+			Each one can be finished or tested inside 30 days, and each is grounded in something you
+			already have. Untick anything you'd never do. Edit wording to make it true to you. Add
+			anything missing at the bottom.
+		</p>
+		<div class="chips" id="chips"></div>
+		<div class="viewbar" id="viewbar"></div>
+		<div id="actions"></div>
+		<div class="add">
+			<div class="t" style="font-weight: 600">Add your own action</div>
+			<div class="add-row">
+				<label for="add-cat" class="mono" style="font-size: 0.78rem; color: var(--ink-3)"
+					>Category</label
+				>
+				<select id="add-cat"></select>
+			</div>
+			<textarea
+				id="add-text"
+				placeholder="Something specific you could do or test in the next 30 days"
+			></textarea>
+			<div class="add-row">
+				<button class="btn primary" id="add-btn" type="button">Add action</button
+				><span id="add-msg" style="font-size: 0.84rem; color: var(--ink-3)"></span>
+			</div>
+		</div>
+	</section>
+
+	<section>
+		<h2>The exact request</h2>
+		<p class="sec-note">
+			This is precisely what goes to Jev for one action, with your current choices applied.
+			Nothing here is a summary.
+		</p>
+		<div class="pl-bar">
+			<label for="pl-select">Action</label
+			><select id="pl-select"></select
+			><span id="pl-cost" class="mono"></span>
+		</div>
+		<pre class="payload" id="payload"></pre>
+	</section>
+
+	<section>
+		<h2>When you approve</h2>
+		<div class="next">
+			<p>
+				Tell Claude <b>"send it"</b>. It reads the choices saved on this page and runs the
+				probe from your machine through OpenRouter, with data collection set to
+				<b>deny</b> and provider fallbacks off. It's capped at $0.25; the estimate is in the
+				bar above.
+			</p>
+			<p>
+				Results come back as a ranked board. You'll be able to change how much each question
+				counts and watch the order change without paying for another run. It will also show
+				whether the anchors and twins passed, so you know how far to trust the rest.
+			</p>
+			<p class="mono" style="font-size: 0.78rem; color: var(--ink-3)">
+				Source: docs/founder/jev-30-day-probe-2026-09-18/ (probe.json, run_probe.py)
+			</p>
+		</div>
+	</section>
+</div>
+
+<script>
+	(function () {
+		'use strict';
+		var P = __PROBE_JSON__;
+		var MONTHS = [
+			'January',
+			'February',
+			'March',
+			'April',
+			'May',
+			'June',
+			'July',
+			'August',
+			'September',
+			'October',
+			'November',
+			'December'
+		];
+		var DOC = 'review/current';
+
+		var R = {
+			settings: JSON.parse(JSON.stringify(P.settings)),
+			profileOff: [],
+			questionsOff: [],
+			actionsOff: [],
+			edits: {},
+			custom: [],
+			approvedAt: null,
+			updatedAt: null
+		};
+		var UI = { cat: 'all', view: 'all', editing: null, preview: null };
+		var db = null,
+			saveTimer = null,
+			saving = false,
+			dirty = false;
+
+		function $(id) {
+			return document.getElementById(id);
+		}
+		function el(tag, cls, text) {
+			var n = document.createElement(tag);
+			if (cls) n.className = cls;
+			if (text != null) n.textContent = text;
+			return n;
+		}
+		function has(list, id) {
+			return list.indexOf(id) !== -1;
+		}
+		function toggleIn(list, id, on) {
+			var i = list.indexOf(id);
+			if (on && i !== -1) list.splice(i, 1);
+			if (!on && i === -1) list.push(id);
+		}
+
+		// ---------- request builder (mirrors run_probe.py) ----------
+		function deadline() {
+			var d = new Date(R.settings.window_start + 'T12:00:00');
+			return (
+				MONTHS[d.getMonth()] + ' ' + (d.getFullYear() + Number(R.settings.horizon_years))
+			);
+		}
+		function goal() {
+			return P.goal_options[R.settings.goal];
+		}
+		function fill(t) {
+			return t.split('{GOAL}').join(goal()).split('{DEADLINE}').join(deadline());
+		}
+		function allActions() {
+			return P.actions.concat(R.custom);
+		}
+		function actionText(a) {
+			return (R.edits[a.id] || a.text).trim();
+		}
+		function activeActions() {
+			return allActions().filter(function (a) {
+				return !has(R.actionsOff, a.id) && actionText(a);
+			});
+		}
+		function profileState() {
+			var o = {};
+			P.profile.forEach(function (s) {
+				if (!has(R.profileOff, s.id)) o[s.id] = s.text;
+			});
+			return o;
+		}
+		function constraints() {
+			return {
+				window: '30 days starting ' + R.settings.window_start,
+				hours_available_per_week: parseInt(R.settings.hours_per_week, 10) || 0,
+				money_he_can_risk_usd: parseInt(R.settings.risk_capital_usd, 10) || 0
+			};
+		}
+		function questions() {
+			var o = {};
+			P.questions.forEach(function (q) {
+				if (has(R.questionsOff, q.id)) return;
+				var b = { type: q.type, instructions: fill(q.instructions) };
+				if (q.criteria) b.criteria = q.criteria;
+				o[q.id] = b;
+			});
+			return o;
+		}
+		var PROVIDER = { allow_fallbacks: false, data_collection: 'deny' };
+		function actionRequest(a) {
+			return {
+				model: P.model,
+				state: {
+					profile: profileState(),
+					constraints: constraints(),
+					action: { text: actionText(a) }
+				},
+				questions: questions(),
+				provider: PROVIDER
+			};
+		}
+		function h2hRequest(h, acts) {
+			var crit = {};
+			acts.forEach(function (a) {
+				crit[a.id] = actionText(a);
+			});
+			var q = {};
+			q[h.id] = { type: 'choice', instructions: fill(h.instructions), criteria: crit };
+			return {
+				model: P.model,
+				state: {
+					profile: profileState(),
+					constraints: constraints(),
+					candidate_actions: acts.map(function (a) {
+						return { id: a.id, text: actionText(a) };
+					})
+				},
+				questions: q,
+				provider: PROVIDER
+			};
+		}
+		function tokens(body) {
+			return Math.floor(JSON.stringify(body).length / 4);
+		}
+
+		// ---------- persistence ----------
+		function setSave(state, text) {
+			var s = $('save');
+			s.dataset.s = state;
+			s.textContent = text;
+		}
+		function changed() {
+			R.approvedAt = null;
+			dirty = true;
+			renderStrip();
+			if (!db) return;
+			setSave('saving', 'Saving…');
+			clearTimeout(saveTimer);
+			saveTimer = setTimeout(flush, 700);
+		}
+		function flush() {
+			if (!db || !dirty) return;
+			if (saving) {
+				clearTimeout(saveTimer);
+				saveTimer = setTimeout(flush, 400);
+				return;
+			}
+			saving = true;
+			dirty = false;
+			R.updatedAt = new Date().toISOString();
+			db.doc(DOC)
+				.set(JSON.parse(JSON.stringify(R)))
+				.then(
+					function () {
+						saving = false;
+						setSave('ok', dirty ? 'Saving…' : 'Saved');
+						if (dirty) flush();
+					},
+					function (e) {
+						saving = false;
+						setSave('error', "Couldn't save (" + ((e && e.code) || 'error') + ')');
+					}
+				);
+		}
+
+		// ---------- strip ----------
+		function renderStrip() {
+			var acts = activeActions();
+			var nq = Object.keys(questions()).length;
+			var per = acts.reduce(function (t, a) {
+				return t + tokens(actionRequest(a));
+			}, 0);
+			var h2h = P.head_to_head.reduce(function (t, h) {
+				return t + tokens(h2hRequest(h, acts));
+			}, 0);
+			var cost = ((per + h2h) * 3 * P.price_per_million_input_tokens) / 1e6;
+			var figs = $('figs');
+			figs.textContent = '';
+			[
+				[acts.length + '', 'actions'],
+				[nq + '', 'questions each'],
+				[(acts.length + P.head_to_head.length) * 3 + '', 'requests (3 runs)'],
+				['$' + cost.toFixed(3), 'estimated']
+			].forEach(function (f) {
+				var d = el('div', 'fig');
+				d.appendChild(el('b', null, f[0]));
+				d.appendChild(el('span', null, f[1]));
+				figs.appendChild(d);
+			});
+			var ap = $('approve');
+			if (R.approvedAt) {
+				var t = new Date(R.approvedAt);
+				ap.dataset.on = 'true';
+				ap.textContent =
+					'Approved ' +
+					t.toLocaleString([], {
+						month: 'short',
+						day: 'numeric',
+						hour: 'numeric',
+						minute: '2-digit'
+					});
+			} else {
+				ap.dataset.on = 'false';
+				ap.textContent = 'Approve for sending';
+			}
+		}
+
+		// ---------- settings ----------
+		function renderSettings() {
+			var host = $('settings');
+			host.textContent = '';
+
+			var g = el('div', 'set wide');
+			g.appendChild(el('div', 't', 'What counts as "millionaire"'));
+			g.appendChild(
+				el(
+					'p',
+					'why',
+					'This changes the most important question. Net worth is the strictest test, earnings the loosest.'
+				)
+			);
+			var radios = el('div', 'radios');
+			[
+				['net_worth', 'Net worth'],
+				['earnings', 'Cumulative earnings'],
+				['run_rate', 'Income run-rate']
+			].forEach(function (o) {
+				var lab = el('label', 'radio');
+				var inp = document.createElement('input');
+				inp.type = 'radio';
+				inp.name = 'goal';
+				inp.id = 'goal-' + o[0];
+				inp.value = o[0];
+				inp.checked = R.settings.goal === o[0];
+				inp.addEventListener('change', function () {
+					R.settings.goal = o[0];
+					changed();
+					renderQuestions();
+					renderPayload();
+				});
+				var t = el('span');
+				t.appendChild(el('b', null, o[1] + ': '));
+				t.appendChild(document.createTextNode(P.goal_options[o[0]]));
+				lab.appendChild(inp);
+				lab.appendChild(t);
+				radios.appendChild(lab);
+			});
+			g.appendChild(radios);
+			host.appendChild(g);
+
+			var h = el('div', 'set');
+			var hl = el('label', 't', 'Deadline');
+			hl.htmlFor = 'horizon';
+			h.appendChild(hl);
+			h.appendChild(el('p', 'why', 'How long you give yourself to hit it.'));
+			var row = el('div', 'inline');
+			var sel = document.createElement('select');
+			sel.id = 'horizon';
+			[3, 5, 7, 10].forEach(function (y) {
+				var o = el('option', null, y + ' years');
+				o.value = y;
+				o.selected = Number(R.settings.horizon_years) === y;
+				sel.appendChild(o);
+			});
+			var out = el('span', 'mono', '→ ' + deadline());
+			sel.addEventListener('change', function () {
+				R.settings.horizon_years = Number(sel.value);
+				out.textContent = '→ ' + deadline();
+				changed();
+				renderQuestions();
+				renderPayload();
+			});
+			row.appendChild(sel);
+			row.appendChild(out);
+			h.appendChild(row);
+			host.appendChild(h);
+
+			function numSet(key, label, why, suffix, prefix) {
+				var s = el('div', 'set');
+				var l = el('label', 't', label);
+				l.htmlFor = 'set-' + key;
+				s.appendChild(l);
+				s.appendChild(el('p', 'why', why));
+				var r = el('div', 'inline');
+				if (prefix) r.appendChild(el('span', 'mono', prefix));
+				var inp = document.createElement('input');
+				inp.type = 'number';
+				inp.min = '0';
+				inp.id = 'set-' + key;
+				inp.value = R.settings[key];
+				inp.addEventListener('input', function () {
+					R.settings[key] = parseInt(inp.value, 10) || 0;
+					changed();
+					renderPayload();
+				});
+				r.appendChild(inp);
+				r.appendChild(el('span', null, suffix));
+				s.appendChild(r);
+				if (Number(R.settings[key]) === Number(P.settings[key]))
+					s.appendChild(el('span', 'guess', 'My guess, set the real number'));
+				host.appendChild(s);
+			}
+			numSet(
+				'hours_per_week',
+				'Hours a week you can actually spend',
+				'After kids, interviews and client work. It sets what "can finish in 30 days" means.',
+				'hours / week'
+			);
+			numSet(
+				'risk_capital_usd',
+				'Money you can put at risk',
+				'Cash you could spend on tables, ads, tools or bets without hurting the household.',
+				'USD',
+				'$'
+			);
+		}
+
+		// ---------- profile ----------
+		function renderProfile() {
+			var host = $('profile');
+			host.textContent = '';
+			P.profile.forEach(function (s) {
+				var on = !has(R.profileOff, s.id);
+				var c = el('div', 'pcard' + (on ? '' : ' off'));
+				var head = el('div', 'phead');
+				head.appendChild(el('b', null, s.label));
+				head.appendChild(el('span', 'badge', s.id));
+				if (s.sensitive) head.appendChild(el('span', 'badge amber', 'Sensitive'));
+				c.appendChild(head);
+				var sw = el('label', 'switch');
+				var cb = document.createElement('input');
+				cb.type = 'checkbox';
+				cb.id = 'prof-' + s.id;
+				cb.checked = on;
+				var st = el('span', null, on ? 'Sent' : 'Held back');
+				cb.addEventListener('change', function () {
+					toggleIn(R.profileOff, s.id, cb.checked);
+					c.className = 'pcard' + (cb.checked ? '' : ' off');
+					st.textContent = cb.checked ? 'Sent' : 'Held back';
+					changed();
+					renderPayload();
+				});
+				sw.appendChild(cb);
+				sw.appendChild(st);
+				c.appendChild(sw);
+				c.appendChild(el('p', 'ptext', s.text));
+				if (s.sensitive)
+					c.appendChild(
+						el(
+							'p',
+							'pnote',
+							"Private by your own rules for public content, but it's on by default here because it changes the answers. The request is sent with data collection denied."
+						)
+					);
+				if (s.confirm) c.appendChild(el('p', 'pnote', 'Check this: ' + s.confirm));
+				host.appendChild(c);
+			});
+			var w = $('withheld');
+			w.textContent = '';
+			w.appendChild(el('b', null, 'Never sent, whatever you toggle:'));
+			var ul = el('ul');
+			P.withheld.forEach(function (t) {
+				ul.appendChild(el('li', null, t));
+			});
+			w.appendChild(ul);
+		}
+
+		// ---------- questions ----------
+		function renderQuestions() {
+			var host = $('questions');
+			host.textContent = '';
+			P.questions.forEach(function (q) {
+				var on = !has(R.questionsOff, q.id);
+				var c = el('div', 'q' + (on ? '' : ' off'));
+				var head = el('div', 'phead');
+				head.appendChild(el('b', null, q.label));
+				head.appendChild(
+					el(
+						'span',
+						q.kind === 'evidence' ? 'badge green' : 'badge amber',
+						q.kind === 'evidence' ? 'Evidence' : 'Forecast'
+					)
+				);
+				head.appendChild(
+					el('span', 'badge', q.type === 'score' ? 'Score 0–3' : 'Yes/no probability')
+				);
+				c.appendChild(head);
+				var sw = el('label', 'switch');
+				var cb = document.createElement('input');
+				cb.type = 'checkbox';
+				cb.id = 'q-' + q.id;
+				cb.checked = on;
+				cb.addEventListener('change', function () {
+					toggleIn(R.questionsOff, q.id, cb.checked);
+					c.className = 'q' + (cb.checked ? '' : ' off');
+					changed();
+					renderPayload();
+				});
+				sw.appendChild(cb);
+				sw.appendChild(el('span', null, 'Ask'));
+				c.appendChild(sw);
+				c.appendChild(el('p', 'qtext', fill(q.instructions)));
+				if (q.criteria) {
+					var ul = el('ul', 'levels');
+					q.criteria.forEach(function (t, i) {
+						var li = el('li');
+						li.appendChild(el('span', null, String(i)));
+						li.appendChild(document.createTextNode(t));
+						ul.appendChild(li);
+					});
+					c.appendChild(ul);
+				}
+				host.appendChild(c);
+			});
+			$('h2h').textContent = P.head_to_head
+				.map(function (h) {
+					return (
+						'“' +
+						fill(h.instructions).replace('in `candidate_actions`', 'on the list') +
+						'”'
+					);
+				})
+				.join(' and ');
+		}
+
+		// ---------- actions ----------
+		function catCounts(cat) {
+			var list = allActions().filter(function (a) {
+				return a.cat === cat;
+			});
+			return {
+				total: list.length,
+				on: list.filter(function (a) {
+					return !has(R.actionsOff, a.id);
+				}).length
+			};
+		}
+		function renderChips() {
+			var host = $('chips');
+			host.textContent = '';
+			var all = allActions();
+			function chip(key, label, n) {
+				var b = el('button', 'chip', label);
+				b.type = 'button';
+				b.appendChild(el('span', 'n', n));
+				b.setAttribute('aria-pressed', UI.cat === key ? 'true' : 'false');
+				b.addEventListener('click', function () {
+					UI.cat = key;
+					renderChips();
+					renderActions();
+				});
+				host.appendChild(b);
+			}
+			chip(
+				'all',
+				'All',
+				all.filter(function (a) {
+					return !has(R.actionsOff, a.id);
+				}).length +
+					'/' +
+					all.length
+			);
+			P.categories.forEach(function (c) {
+				var k = catCounts(c.id);
+				if (k.total) chip(c.id, c.label, k.on + '/' + k.total);
+			});
+
+			var vb = $('viewbar');
+			vb.textContent = '';
+			vb.appendChild(el('span', null, 'Show'));
+			[
+				['all', 'Everything'],
+				['on', 'Ticked'],
+				['off', 'Unticked'],
+				['edited', 'Edited']
+			].forEach(function (v) {
+				var b = el('button', 'chip', v[1]);
+				b.type = 'button';
+				b.setAttribute('aria-pressed', UI.view === v[0] ? 'true' : 'false');
+				b.addEventListener('click', function () {
+					UI.view = v[0];
+					renderChips();
+					renderActions();
+				});
+				vb.appendChild(b);
+			});
+		}
+		function visible(a) {
+			if (UI.cat !== 'all' && a.cat !== UI.cat) return false;
+			if (UI.view === 'on') return !has(R.actionsOff, a.id);
+			if (UI.view === 'off') return has(R.actionsOff, a.id);
+			if (UI.view === 'edited') return !!R.edits[a.id] || a.custom === true;
+			return true;
+		}
+		function renderActions() {
+			var host = $('actions');
+			host.textContent = '';
+			P.categories.forEach(function (c) {
+				var list = allActions().filter(function (a) {
+					return a.cat === c.id && visible(a);
+				});
+				if (!list.length) return;
+				var wrap = el('div', 'cat');
+				var head = el('div', 'cat-head');
+				var h3 = el('h3', null, c.label);
+				var k = catCounts(c.id);
+				h3.appendChild(el('span', 'n', k.on + ' of ' + k.total + ' ticked'));
+				head.appendChild(h3);
+				var tools = el('div', 'inline');
+				[
+					['Tick all', true],
+					['Untick all', false]
+				].forEach(function (t) {
+					var b = el('button', 'linkbtn', t[0]);
+					b.type = 'button';
+					b.addEventListener('click', function () {
+						allActions().forEach(function (a) {
+							if (a.cat === c.id) toggleIn(R.actionsOff, a.id, t[1]);
+						});
+						changed();
+						renderChips();
+						renderActions();
+						renderPayloadSelect();
+					});
+					tools.appendChild(b);
+				});
+				head.appendChild(tools);
+				wrap.appendChild(head);
+				wrap.appendChild(el('p', 'cat-note', c.note));
+				var rows = el('div', 'acts');
+				list.forEach(function (a) {
+					rows.appendChild(actionRow(a));
+				});
+				wrap.appendChild(rows);
+				host.appendChild(wrap);
+			});
+			if (!host.childNodes.length)
+				host.appendChild(el('p', 'sec-note', 'Nothing matches this filter.'));
+		}
+		function actionRow(a) {
+			var on = !has(R.actionsOff, a.id);
+			var row = el('div', 'act' + (on ? '' : ' off'));
+			var cb = document.createElement('input');
+			cb.type = 'checkbox';
+			cb.id = 'act-' + a.id;
+			cb.checked = on;
+			cb.setAttribute('aria-label', 'Include ' + a.id);
+			cb.addEventListener('change', function () {
+				toggleIn(R.actionsOff, a.id, cb.checked);
+				row.className = 'act' + (cb.checked ? '' : ' off');
+				changed();
+				renderChips();
+				renderPayloadSelect();
+			});
+			row.appendChild(cb);
+			row.appendChild(el('span', 'aid', a.id));
+			var body = el('div', 'abody');
+			if (UI.editing === a.id) {
+				var ta = document.createElement('textarea');
+				ta.id = 'edit-' + a.id;
+				ta.value = actionText(a);
+				body.appendChild(ta);
+				var er = el('div', 'edit-row');
+				var save = el('button', 'btn primary', 'Save');
+				save.type = 'button';
+				save.addEventListener('click', function () {
+					var v = ta.value.trim();
+					if (a.custom) {
+						a.text = v;
+					} else if (v && v !== a.text) {
+						R.edits[a.id] = v;
+					} else {
+						delete R.edits[a.id];
+					}
+					UI.editing = null;
+					changed();
+					renderActions();
+					renderPayloadSelect();
+					renderPayload();
+				});
+				var cancel = el('button', 'btn', 'Cancel');
+				cancel.type = 'button';
+				cancel.addEventListener('click', function () {
+					UI.editing = null;
+					renderActions();
+				});
+				er.appendChild(save);
+				er.appendChild(cancel);
+				if (a.custom) {
+					var del = el('button', 'btn', 'Remove');
+					del.type = 'button';
+					del.addEventListener('click', function () {
+						R.custom = R.custom.filter(function (x) {
+							return x.id !== a.id;
+						});
+						toggleIn(R.actionsOff, a.id, true);
+						UI.editing = null;
+						changed();
+						renderChips();
+						renderActions();
+						renderPayloadSelect();
+					});
+					er.appendChild(del);
+				}
+				body.appendChild(er);
+				setTimeout(function () {
+					ta.focus();
+				}, 0);
+			} else {
+				body.appendChild(el('p', 'atext', actionText(a)));
+				var meta = el('div', 'ameta');
+				if (a.control === 'anchor') {
+					meta.appendChild(el('span', 'badge amber', 'Anchor'));
+					meta.appendChild(el('span', null, 'Expect: ' + a.expect));
+				}
+				if (a.control === 'twin') {
+					meta.appendChild(el('span', 'badge blue', 'Twin of ' + a.twin_of));
+					meta.appendChild(
+						el('span', null, 'Should score the same as ' + a.twin_of + '.')
+					);
+				}
+				if (a.custom) meta.appendChild(el('span', 'badge green', 'Yours'));
+				if (R.edits[a.id]) {
+					meta.appendChild(el('span', 'badge green', 'Edited'));
+					var reset = el('button', 'linkbtn', 'Restore original');
+					reset.type = 'button';
+					reset.addEventListener('click', function () {
+						delete R.edits[a.id];
+						changed();
+						renderActions();
+						renderPayloadSelect();
+						renderPayload();
+					});
+					meta.appendChild(reset);
+				}
+				if (meta.childNodes.length) body.appendChild(meta);
+			}
+			row.appendChild(body);
+			if (UI.editing !== a.id) {
+				var eb = el('button', 'linkbtn', 'Edit');
+				eb.type = 'button';
+				eb.style.paddingTop = '2px';
+				eb.addEventListener('click', function () {
+					UI.editing = a.id;
+					renderActions();
+				});
+				row.appendChild(eb);
+			}
+			return row;
+		}
+		function renderAdd() {
+			var sel = $('add-cat');
+			sel.textContent = '';
+			P.categories.forEach(function (c) {
+				if (c.id === 'controls') return;
+				var o = el('option', null, c.label);
+				o.value = c.id;
+				sel.appendChild(o);
+			});
+			$('add-btn').addEventListener('click', function () {
+				var t = $('add-text').value.trim();
+				if (!t) {
+					$('add-msg').textContent = 'Write the action first.';
+					return;
+				}
+				var n = 1;
+				while (
+					allActions().some(function (a) {
+						return a.id === 'u' + String(n).padStart(2, '0');
+					})
+				)
+					n++;
+				var id = 'u' + String(n).padStart(2, '0');
+				R.custom.push({ id: id, cat: sel.value, text: t, custom: true });
+				$('add-text').value = '';
+				$('add-msg').textContent = 'Added as ' + id + '.';
+				changed();
+				renderChips();
+				renderActions();
+				renderPayloadSelect();
+			});
+		}
+
+		// ---------- payload ----------
+		function renderPayloadSelect() {
+			var sel = $('pl-select');
+			var keep = UI.preview;
+			sel.textContent = '';
+			var acts = activeActions();
+			acts.forEach(function (a) {
+				var o = el('option', null, a.id + ' · ' + actionText(a).slice(0, 70));
+				o.value = a.id;
+				sel.appendChild(o);
+			});
+			P.head_to_head.forEach(function (h) {
+				var o = el(
+					'option',
+					null,
+					'Head-to-head · ' + h.label + ' (all ' + acts.length + ' actions)'
+				);
+				o.value = 'h2h:' + h.id;
+				sel.appendChild(o);
+			});
+			if (
+				keep &&
+				Array.prototype.some.call(sel.options, function (o) {
+					return o.value === keep;
+				})
+			)
+				sel.value = keep;
+			UI.preview = sel.value;
+			renderPayload();
+		}
+		function renderPayload() {
+			var id = UI.preview,
+				body = null,
+				acts = activeActions();
+			if (id && id.indexOf('h2h:') === 0) {
+				var h = P.head_to_head.filter(function (x) {
+					return 'h2h:' + x.id === id;
+				})[0];
+				if (h) body = h2hRequest(h, acts);
+			} else {
+				var a = allActions().filter(function (x) {
+					return x.id === id;
+				})[0];
+				if (a) body = actionRequest(a);
+			}
+			if (!body) {
+				$('payload').textContent = 'Tick at least one action.';
+				$('pl-cost').textContent = '';
+				return;
+			}
+			var tk = tokens(body);
+			$('pl-cost').textContent =
+				'≈ ' +
+				tk.toLocaleString() +
+				' tokens · $' +
+				((tk * P.price_per_million_input_tokens) / 1e6).toFixed(5);
+			$('payload').textContent = JSON.stringify(body, null, 2);
+		}
+
+		// ---------- boot ----------
+		function renderAll() {
+			renderSettings();
+			renderProfile();
+			renderQuestions();
+			renderChips();
+			renderActions();
+			renderPayloadSelect();
+			renderStrip();
+		}
+		$('pl-select').addEventListener('change', function () {
+			UI.preview = $('pl-select').value;
+			renderPayload();
+		});
+		$('approve').addEventListener('click', function () {
+			if (R.approvedAt) return;
+			R.approvedAt = new Date().toISOString();
+			renderStrip();
+			if (!db) {
+				setSave('off', 'Not saved — approval stays in this tab');
+				return;
+			}
+			dirty = true;
+			setSave('saving', 'Saving…');
+			clearTimeout(saveTimer);
+			flush();
+		});
+		renderAdd();
+		renderAll();
+
+		var c = window.claude;
+		if (!c || typeof c.use !== 'function') {
+			setSave('off', 'Not saving — open on claude.ai');
+			return;
+		}
+		c.use('db')
+			.then(function (d) {
+				if (!d) {
+					setSave('off', 'Not saving — storage unavailable here');
+					return;
+				}
+				db = d;
+				return db
+					.doc(DOC)
+					.get()
+					.then(function (snap) {
+						if (snap.exists) {
+							var s = snap.data() || {};
+							R = {
+								settings: Object.assign({}, R.settings, s.settings || {}),
+								profileOff: (s.profileOff || []).slice(),
+								questionsOff: (s.questionsOff || []).slice(),
+								actionsOff: (s.actionsOff || []).slice(),
+								edits: Object.assign({}, s.edits || {}),
+								custom: (s.custom || []).map(function (x) {
+									return Object.assign({}, x, { custom: true });
+								}),
+								approvedAt: s.approvedAt || null,
+								updatedAt: s.updatedAt || null
+							};
+							renderAll();
+						}
+						setSave('ok', snap.exists ? 'Saved' : 'Ready — changes save here');
+					});
+			})
+			.catch(function (e) {
+				setSave('error', 'Storage error (' + ((e && e.code) || 'unknown') + ')');
+			});
+	})();
+</script>

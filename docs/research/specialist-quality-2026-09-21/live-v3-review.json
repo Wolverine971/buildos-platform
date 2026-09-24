@@ -1,0 +1,42 @@
+{
+	"version": 1,
+	"observedAt": "2026-09-21T14:50:03.389Z",
+	"mode": "durable_project_review_v3",
+	"policyRef": "internal-project-review:v3",
+	"turnRunId": "8bd5a5ce-7147-462d-87ac-2eb0c1e4e2e3",
+	"contextHash": "00d41aa3a4ca190c94b163b5b7e0483596176a6d03a0140d54262438171447cc",
+	"durationMs": 15426.869332999999,
+	"recordsUnchanged": true,
+	"steps": [
+		{
+			"key": "editor",
+			"status": "accepted",
+			"attemptsUsed": 1
+		},
+		{
+			"key": "planner",
+			"status": "accepted",
+			"attemptsUsed": 1
+		},
+		{
+			"key": "project_analyst",
+			"status": "accepted",
+			"attemptsUsed": 1
+		},
+		{
+			"key": "risk_reviewer",
+			"status": "accepted",
+			"attemptsUsed": 1
+		}
+	],
+	"answer": "[risk: Permit filing fee unfunded](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=risk&entity_id=afd3a5d1-0582-4df7-8f30-4876ca1e0c66) records (content): \u201cPermit filing requires a $1,200 fee that has no approved funding source.\u201d\n\nAs of 2026-09-21T14:50:07.997Z: 2 of these 5 cited tasks are recorded as unfinished with a due time before the snapshot.\n\nCited tasks: [task: QA \u2014 Confirm permit requirements](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&entity_id=7884fbd1-276a-45c5-a13f-2b3b463e1314), [task: QA \u2014 Order kitchen cabinets](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&entity_id=2358a920-c83b-4590-b6e7-6585b39d2bc9), [task: QA \u2014 Kitchen inspection](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&entity_id=8c5538e3-8534-4bd5-b9d3-e11a9d426d61), [task: QA \u2014 Bathroom inspection](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&entity_id=18599ddf-70d4-45dc-a778-ef9d15b58136), [task: QA \u2014 Electrical rough-in](/projects/e08109be-e8f2-4788-b62c-9d1c0a1a5a4b?entity=task&entity_id=91c7b54d-40e7-45ba-8bc1-16e491509150)\n\nThis review uses the inspected records. Excerpts describe saved statements; unread evidence and current real-world status remain unverified. No project changes were made.",
+	"limits": [
+		"Synthetic QA fixture; one final-code live smoke.",
+		"Exact source statements and typed date arithmetic only; general semantic entailment is not established.",
+		"The separate complete regression gate failed 44/52 with provider/read failures, timing violations and source-verification failure after concurrent checkout edits. Default off and not deployed."
+	],
+	"evidencePath": "output/workflow-durable-v3-final-2026-09-21/smoke.json",
+	"firstEventMs": 4703.570540999999,
+	"firstTextMs": 14870.209458000001,
+	"gateEvidencePath": "output/agentic-gate/specialist-review-v3-2026-09-21/gate.json"
+}

@@ -44,14 +44,13 @@ Use this page to find the right documentation quickly. For full route-level navi
 1. Start at [Prompts README](./prompts/README.md)
 2. Choose the prompt family (`brain-dump`, `agent`, `chat`, etc.)
 
-## Canonical vs Archived
+## Canonical vs Superseded
 
 - Active docs stay in `apps/web/docs/*`.
-- Archived/superseded docs are moved under [/docs/archive/](/docs/archive/README.md).
+- Superseded docs are deleted, not archived. Git history keeps them.
 - If a doc is marked deprecated, treat it as historical unless a feature README explicitly calls it out for active maintenance.
 
 ## Notes
 
 - Onboarding V3 is the active flow: [features/onboarding/README.md](./features/onboarding/README.md)
-- Onboarding V2 is legacy archive: [docs/archive/apps-web/features/onboarding-v2/README.md](../../../docs/archive/apps-web/features/onboarding-v2/README.md)
 - Agentic chat canonical flow doc: [features/agentic-chat/README.md](./features/agentic-chat/README.md)

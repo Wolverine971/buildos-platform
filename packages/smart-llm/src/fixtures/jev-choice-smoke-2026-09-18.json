@@ -1,0 +1,49 @@
+{
+	"http_status": 200,
+	"elapsed_seconds": 0.402,
+	"request": {
+		"model": "typesafe/jev-1.13",
+		"state": {
+			"user_request": "Add a task to my existing Garden project.",
+			"observations": []
+		},
+		"questions": {
+			"next_action": {
+				"type": "choice",
+				"instructions": "Which step should happen next to handle the user request? No project identifier is known yet.",
+				"criteria": {
+					"search_projects": "Find the existing project and obtain its ID.",
+					"create_task": "Create a task using a known project ID.",
+					"finish": "All requested work is complete."
+				}
+			}
+		},
+		"provider": {
+			"allow_fallbacks": false,
+			"data_collection": "deny"
+		}
+	},
+	"response": {
+		"model": "typesafe/jev-1.13-20260917",
+		"answers": {
+			"next_action": {
+				"type": "choice",
+				"choice": "search_projects",
+				"probabilities": {
+					"create_task": 0,
+					"search_projects": 1,
+					"finish": 0
+				},
+				"confidence": 1
+			}
+		},
+		"usage": {
+			"input_tokens": 378,
+			"output_tokens": 42,
+			"cost": 1.5876e-5
+		},
+		"id": "gen-dec-1789754971-P3Xvp5AP26FN8izBOQkX",
+		"provider": "TypeSafe"
+	},
+	"live_tools_executed": false
+}

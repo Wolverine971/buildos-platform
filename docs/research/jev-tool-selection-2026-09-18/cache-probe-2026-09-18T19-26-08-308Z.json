@@ -1,0 +1,91 @@
+{
+	"model": "deepseek/deepseek-v4-flash",
+	"fullTools": 26,
+	"subsetTools": 8,
+	"out": [
+		{
+			"provider": "Alibaba",
+			"label": "1 warm: system + FULL tools + user",
+			"prompt": 10244,
+			"cached": 0,
+			"cost": 0.001381272
+		},
+		{
+			"provider": "Alibaba",
+			"label": "2 repeat identical",
+			"prompt": 10244,
+			"cached": 10240,
+			"cost": 0.000283544
+		},
+		{
+			"provider": "Alibaba",
+			"label": "3 same system, NARROWED tools",
+			"prompt": 5247,
+			"cached": 2560,
+			"cost": 0.000437242
+		},
+		{
+			"provider": "Alibaba",
+			"label": "4 repeat narrowed",
+			"prompt": 5247,
+			"cached": 5120,
+			"cost": 0.00016281
+		},
+		{
+			"provider": "Alibaba",
+			"label": "5 same system + FULL tools, new user message",
+			"prompt": 10238,
+			"cached": 9984,
+			"cost": 0.0003101832
+		},
+		{
+			"provider": "Alibaba",
+			"label": "6 system changed at its start, FULL tools",
+			"prompt": 10250,
+			"cached": 0,
+			"cost": 0.001382076
+		},
+		{
+			"provider": "NextBit",
+			"label": "1 warm: system + FULL tools + user",
+			"prompt": 10241,
+			"cached": 0,
+			"cost": 0.00154735
+		},
+		{
+			"provider": "NextBit",
+			"label": "2 repeat identical",
+			"prompt": 10241,
+			"cached": 10240,
+			"cost": 0.00036975
+		},
+		{
+			"provider": "NextBit",
+			"label": "3 same system, NARROWED tools",
+			"prompt": 5244,
+			"cached": 2560,
+			"cost": 0.0005034
+		},
+		{
+			"provider": "NextBit",
+			"label": "4 repeat narrowed",
+			"prompt": 5244,
+			"cached": 5120,
+			"cost": 0.000209
+		},
+		{
+			"provider": "NextBit",
+			"label": "5 same system + FULL tools, new user message",
+			"prompt": 10235,
+			"cached": 9984,
+			"cost": 0.00039829
+		},
+		{
+			"provider": "NextBit",
+			"label": "6 system changed at its start, FULL tools",
+			"prompt": 10247,
+			"cached": 0,
+			"cost": 0.00154825
+		}
+	]
+}

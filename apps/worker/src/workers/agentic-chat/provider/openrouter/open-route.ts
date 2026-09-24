@@ -19,11 +19,16 @@ import {
 import { AgenticChatProviderNetworkError } from './errors';
 import { isRetryableStatus, orderedProviderSlug, responseError } from './retry';
 import { createStableAgenticChatProviderUsageLogIdV1 } from './usage';
-import { abortableProviderRead, attemptTimeoutMs, createAttemptSignal } from './watchdog';
+import {
+	abortableProviderRead,
+	attemptTimeoutMs,
+	createAttemptSignal,
+	watchesStreamProgress
+} from './watchdog';
 
 const FINAL_BUFFERED_RESPONSE_HEADERS_TIMEOUT_MS = 10_000;
 /** Bump when the reviewer prefix (system prompt or tool schemas) changes shape. */
-const REVIEWER_PROMPT_CACHE_KEY = 'agentic-chat-reviewer-v2';
+const REVIEWER_PROMPT_CACHE_KEY = 'agentic-chat-reviewer-v3';
 
 /** Client-level settings every request on every route shares. */
 export type OpenRouteSettings = {
@@ -242,12 +247,20 @@ function buildProviderRequestBody(
 			// need a document's worth of thinking. Acting and research-review
 			// passes keep the provider default
 			// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F80).
+			// A watched pass streams its reasoning so the slow-stream watch can
+			// tell thinking from stalling; the parser never surfaces it.
 			reasoning:
 				input.reasoningEffort === 'none'
 					? { enabled: false }
 					: contractReview || input.reasoningEffort === 'low'
 						? { effort: 'low', exclude: true }
-						: { exclude: true },
+						: {
+								exclude: !watchesStreamProgress(
+									input,
+									canonicalProviderPassRole(input.passRole),
+									route.model
+								)
+							},
 			provider: {
 				allow_fallbacks: true,
 				data_collection: 'deny',

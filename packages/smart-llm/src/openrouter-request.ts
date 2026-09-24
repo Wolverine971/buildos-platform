@@ -3,7 +3,7 @@
 import {
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	KIMI_K3_MODEL
 } from './model-config';
 import type { ReasoningEffort } from './types';
@@ -71,7 +71,7 @@ export const OPENROUTER_MODEL_REQUEST_POLICIES: Readonly<
 		// responses and hidden-token cost bounded.
 		defaultReasoningEffort: 'low' as const
 	}),
-	[GPT_56_LUNA_MODEL]: Object.freeze({
+	[GPT_6_LUNA_MODEL]: Object.freeze({
 		temperature: 'omit' as const
 	})
 });

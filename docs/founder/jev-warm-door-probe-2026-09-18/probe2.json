@@ -1,0 +1,333 @@
+{
+	"version": "2026-09-18.2",
+	"model": "typesafe/jev-1.13",
+	"endpoint": "https://openrouter.ai/api/alpha/decisions",
+	"price_per_million_input_tokens": 0.042,
+	"profile": [
+		{
+			"id": "identity",
+			"text": "DJ Wayne, Marine Corps veteran (2012-2017: infantry, then Scout Sniper Team Leader; deployed to Afghanistan in 2013). Lives in Glen Burnie, Maryland. Married with three young children."
+		},
+		{
+			"id": "what_he_does",
+			"text": "Senior software engineer with about nine years' experience who runs a small development shop, Tacemus, and sells a paid two-week Diagnostic of a business's inbound-work pipeline followed by fixed-price automation builds and monthly retainers. At Curri, a Y Combinator delivery startup, he built the dispatch triage console used daily by about twenty service reps and the integrations that automatically routed deliveries to seven outside networks. He has built websites and booking systems for small clients, including the booking site for a precision-rifle training company run by his former sniper instructor. Tacemus is being rebranded to Samos. Clients so far: CadreTraining.com (his former sniper instructor's company), a financial analyst (website), and a wealth manager (a social-media push about to start), plus a few referrals."
+		},
+		{
+			"id": "rooms_and_memberships",
+			"text": "He currently belongs to no chamber, trade association, church group, or veteran organization and has no existing local business connections; he is willing to attend any of them. Confirmed on the calendar: Maryland Tech Council AI lunch on September 22, Northern Anne Arundel Chamber luncheon in Glen Burnie on September 24, ABC Greater Baltimore construction gala on October 21, TEDCO Entrepreneur Expo in Baltimore on October 27."
+		},
+		{
+			"id": "how_he_sells",
+			"text": "Prefers meeting owners in person or through a warm introduction, and is a confident presenter once in the room. Can drive anywhere in Anne Arundel, Baltimore, or Howard County on a weekday."
+		}
+	],
+	"offer": {
+		"name": "The Diagnostic",
+		"summary": "A paid two-week review of the one inbound pipeline that leaks money for the business: bid invitations, estimate requests, or booking inquiries. Deliverables: a count of what came in versus what was answered, the jobs that died silently, and a working automation that scores or follows up on every new item. Priced $2,500 to $3,500 and credited toward a fixed-price build ($5,000 to $25,000) or a monthly retainer ($2,000 to $8,000).",
+		"entry_points": {
+			"bid_invite_triage": "For commercial subcontractors: score and route incoming bid invitations from general contractors so estimators answer the right ones first.",
+			"unsold_estimate_followup": "For remodelers and home-service trades: automatically follow up on every quote that went quiet.",
+			"inquiry_response": "For venues, training companies, and service businesses: answer every inquiry within minutes and keep one customer record.",
+			"scheduling_dispatch": "For field-service and delivery businesses: route jobs and exceptions to the right person automatically."
+		}
+	},
+	"questions": [
+		{
+			"id": "veteran_verified",
+			"label": "Veteran ownership is evidenced",
+			"type": "noul",
+			"instructions": "Does `prospect.veteran_evidence` contain a statement from the business itself, a veteran-owned business directory, or a government certification that the owner or a principal is a military veteran? A directory listing counts. A guess from a name, a logo, or flag imagery does not."
+		},
+		{
+			"id": "takes_inbound_work",
+			"label": "Has an inbound quote/bid/booking stream",
+			"type": "noul",
+			"instructions": "Does the evidence in `prospect` show that the business receives a recurring stream of inbound estimate requests, bid invitations, or booking inquiries? A request-a-quote form, an online booking page, a statement that the company bids commercial work, or customer reviews that describe getting a quote all count."
+		},
+		{
+			"id": "ops_strain_now",
+			"label": "Office is strained right now",
+			"type": "noul",
+			"instructions": "Does the evidence in `prospect` show a current operational strain in the office: an open job posting for an estimator, office manager, dispatcher, or coordinator; customer reviews complaining about slow responses or missed calls; or a stated backlog? Judge only what the evidence shows, not what is typical for the trade."
+		},
+		{
+			"id": "size_band",
+			"label": "Revenue band",
+			"type": "choice",
+			"instructions": "Which annual revenue band do the size signals in `prospect` best support? Use only the stated employee counts, staff roles, facilities, and years in business.",
+			"criteria": {
+				"under_1m": "An owner-operator or a crew of one to four, typically home-based, with no named office staff.",
+				"1m_to_5m": "Roughly five to twenty staff, one shop or office, and the owner still runs the office.",
+				"5m_to_30m": "Roughly twenty to one hundred fifty staff, with named office roles such as estimators, project managers, or an operations manager.",
+				"over_30m": "More than about one hundred fifty staff, or multiple offices or divisions.",
+				"unknown": "The size signals are absent or too thin to place the business in a band."
+			}
+		},
+		{
+			"id": "staffed_office",
+			"label": "Walk-in possible",
+			"type": "noul",
+			"instructions": "Does the evidence in `prospect` show a staffed physical office, shop, showroom, or yard with business hours where an owner could plausibly be met in person? A home address, a post-office box, or an address type of unknown does not count."
+		},
+		{
+			"id": "warm_path",
+			"label": "Warm path strength",
+			"type": "score",
+			"instructions": "How strong is the documented personal connection between the person in `profile` and this business, based only on `prospect.warm_path` and `prospect.veteran_evidence`?",
+			"criteria": [
+				"No shared connection is documented.",
+				"The only shared connection is that both are military veterans.",
+				"They share a named organization or community, such as the same chamber of commerce, trade association, church, or the same service branch.",
+				"A named mutual contact or a prior direct interaction is documented."
+			]
+		},
+		{
+			"id": "offer_fit",
+			"label": "Offer fits the evidence",
+			"type": "score",
+			"instructions": "How directly does `offer` address a problem that the evidence in `prospect` shows this specific business has? Judge the match between the offer's entry points and the observed signals, not the general plausibility for the trade.",
+			"criteria": [
+				"The evidence shows no inbound pipeline the offer could improve.",
+				"The trade normally has such a pipeline, but nothing in the evidence shows it for this business.",
+				"One observed signal, such as a quote form or a bid page, shows the pipeline exists.",
+				"Several observed signals show both the pipeline and a strain on it."
+			]
+		},
+		{
+			"id": "owner_reachable",
+			"label": "Owner named with a direct channel",
+			"type": "noul",
+			"instructions": "Does `prospect.decision_maker` name the owner or a principal and give a direct channel to that person, such as a personal phone number, a personal email address, or a LinkedIn profile? A generic office number or an info@ address does not count."
+		},
+		{
+			"id": "evidence_grounded",
+			"label": "Record is sourced",
+			"type": "score",
+			"instructions": "How much of the factual content in `prospect` is backed by a quoted source URL, rather than unsourced description or fields marked unknown?",
+			"criteria": [
+				"Almost nothing is sourced; most fields are unknown or unsupported.",
+				"Only the veteran evidence is sourced.",
+				"The veteran evidence and at least one of the size, inbound, or decision-maker fields are sourced.",
+				"Nearly every field that is not marked unknown has a source."
+			]
+		},
+		{
+			"id": "pitch_angle",
+			"label": "Best entry point",
+			"type": "choice",
+			"instructions": "Which entry point in `offer.entry_points` does the evidence in `prospect` most directly support for this business? Choose `none` if no entry point is supported by the evidence.",
+			"criteria": {
+				"bid_invite_triage": "The evidence shows the business answers bid invitations from general contractors or bids commercial work.",
+				"unsold_estimate_followup": "The evidence shows the business issues estimates or quotes to homeowners or small clients.",
+				"inquiry_response": "The evidence shows the business takes bookings or inquiries for events, classes, or services.",
+				"scheduling_dispatch": "The evidence shows the business schedules field crews, routes, or deliveries.",
+				"none": "No entry point is supported by the evidence."
+			}
+		}
+	],
+	"weights": {
+		"veteran_verified": 0.12,
+		"takes_inbound_work": 0.15,
+		"ops_strain_now": 0.13,
+		"staffed_office": 0.1,
+		"warm_path": 0.15,
+		"offer_fit": 0.15,
+		"owner_reachable": 0.1,
+		"evidence_grounded": 0.05,
+		"size_band": 0.05
+	},
+	"size_band_value": {
+		"5m_to_30m": 1.0,
+		"1m_to_5m": 0.8,
+		"over_30m": 0.5,
+		"under_1m": 0.1,
+		"unknown": 0.4
+	},
+	"distance_factor": [
+		[25, 1.0],
+		[35, 0.85],
+		[100000, 0.6]
+	],
+	"controls": [
+		{
+			"kind": "anchor_low",
+			"expect": [
+				{
+					"q": "veteran_verified",
+					"op": "<",
+					"x": 0.15
+				},
+				{
+					"q": "staffed_office",
+					"op": "<",
+					"x": 0.2
+				},
+				{
+					"q": "owner_reachable",
+					"op": "<",
+					"x": 0.15
+				},
+				{
+					"q": "evidence_grounded",
+					"op": "<",
+					"x": 0.25
+				},
+				{
+					"q": "size_band",
+					"op": "in",
+					"x": ["under_1m", "unknown"]
+				}
+			],
+			"prospect": {
+				"id": "ctl-low",
+				"name": "Handy Dan Home Repair",
+				"trade": "home_services",
+				"city": "Glen Burnie",
+				"county": "Anne Arundel",
+				"address_type": "unknown",
+				"drive_minutes_from_glen_burnie_est": 5,
+				"website": "",
+				"veteran_evidence": {
+					"quote": "",
+					"source_url": "",
+					"branch_if_stated": ""
+				},
+				"size_signals": {
+					"employees": "unknown",
+					"years_in_business": "unknown",
+					"other": "",
+					"source_url": ""
+				},
+				"inbound_signals": "none observed",
+				"ops_pain_signals": "none observed",
+				"warm_path": "none",
+				"decision_maker": {
+					"name": "unknown",
+					"title": "",
+					"channel": "",
+					"source_url": ""
+				},
+				"on_existing_board": false,
+				"notes": "Control record: a name from a flyer with nothing verified."
+			}
+		},
+		{
+			"kind": "anchor_high",
+			"expect": [
+				{
+					"q": "veteran_verified",
+					"op": ">",
+					"x": 0.85
+				},
+				{
+					"q": "takes_inbound_work",
+					"op": ">",
+					"x": 0.8
+				},
+				{
+					"q": "ops_strain_now",
+					"op": ">",
+					"x": 0.7
+				},
+				{
+					"q": "staffed_office",
+					"op": ">",
+					"x": 0.8
+				},
+				{
+					"q": "owner_reachable",
+					"op": ">",
+					"x": 0.8
+				},
+				{
+					"q": "warm_path",
+					"op": ">",
+					"x": 0.55
+				},
+				{
+					"q": "offer_fit",
+					"op": ">",
+					"x": 0.7
+				},
+				{
+					"q": "size_band",
+					"op": "in",
+					"x": ["5m_to_30m"]
+				},
+				{
+					"q": "pitch_angle",
+					"op": "in",
+					"x": ["bid_invite_triage"]
+				}
+			],
+			"prospect": {
+				"id": "ctl-high",
+				"name": "Semper Volt Electric (synthetic)",
+				"trade": "electrical",
+				"city": "Glen Burnie",
+				"county": "Anne Arundel",
+				"address_type": "staffed_office",
+				"drive_minutes_from_glen_burnie_est": 8,
+				"website": "https://example.invalid/semper-volt",
+				"veteran_evidence": {
+					"quote": "Semper Volt is a Marine Corps veteran-owned and operated commercial electrical contractor, serving Maryland since 2009.",
+					"source_url": "https://example.invalid/semper-volt/about",
+					"branch_if_stated": "Marine Corps"
+				},
+				"size_signals": {
+					"employees": "45",
+					"years_in_business": "17",
+					"other": "Named VP of Estimating and two project managers on the team page; 6,000 sq ft office and warehouse on Crain Highway, open Monday to Friday 7am-4pm.",
+					"source_url": "https://example.invalid/semper-volt/team"
+				},
+				"inbound_signals": "'Request a bid' form on the site; About page says 'we respond to invitations to bid from general contractors across the Baltimore-Washington region.'",
+				"ops_pain_signals": "Open Indeed posting for an Electrical Estimator dated this month (https://example.invalid/indeed/semper-volt-estimator); two Google reviews this year mention waiting over a week for a quote.",
+				"warm_path": "shared_org (Northern Anne Arundel Chamber of Commerce member; owner is a Marine veteran)",
+				"decision_maker": {
+					"name": "Ray Costa",
+					"title": "Owner and President",
+					"channel": "LinkedIn profile linkedin.com/in/example-ray-costa; direct line listed on the team page",
+					"source_url": "https://example.invalid/semper-volt/team"
+				},
+				"on_existing_board": false,
+				"notes": "Control record: synthetic ideal prospect. Every field is invented."
+			}
+		},
+		{
+			"kind": "twin_of_high",
+			"twin_of": "ctl-high",
+			"prospect": {
+				"id": "ctl-high-twin",
+				"name": "Semper Volt Electric (synthetic twin)",
+				"trade": "electrical",
+				"city": "Glen Burnie",
+				"county": "Anne Arundel",
+				"address_type": "staffed_office",
+				"drive_minutes_from_glen_burnie_est": 8,
+				"website": "https://example.invalid/semper-volt",
+				"veteran_evidence": {
+					"quote": "Founded in 2009 by a former Marine, Semper Volt remains veteran-owned and veteran-run today.",
+					"source_url": "https://example.invalid/semper-volt/about",
+					"branch_if_stated": "Marine Corps"
+				},
+				"size_signals": {
+					"employees": "about 45",
+					"years_in_business": "since 2009",
+					"other": "Team page lists a VP of Estimating plus two PMs; the company works out of a 6,000 square foot office/warehouse on Crain Hwy with weekday hours.",
+					"source_url": "https://example.invalid/semper-volt/team"
+				},
+				"inbound_signals": "Site has a bid-request form and states the firm answers GC invitations to bid throughout the Baltimore-DC area.",
+				"ops_pain_signals": "Hiring an electrical estimator on Indeed as of this month (https://example.invalid/indeed/semper-volt-estimator); a couple of 2026 Google reviews complain that quotes took more than a week.",
+				"warm_path": "shared_org (both in the Northern Anne Arundel Chamber; owner is a fellow Marine)",
+				"decision_maker": {
+					"name": "Ray Costa",
+					"title": "President and owner",
+					"channel": "LinkedIn (linkedin.com/in/example-ray-costa) and a direct phone line on the team page",
+					"source_url": "https://example.invalid/semper-volt/team"
+				},
+				"on_existing_board": false,
+				"notes": "Control record: the same synthetic prospect, reworded."
+			}
+		}
+	]
+}

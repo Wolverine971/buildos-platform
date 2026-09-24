@@ -1,3 +1,4 @@
+<!-- docs/technical/reviews/AGENTIC_CHAT_LIGHT_SMOKE_2026-09-19.md -->
 <!-- doc-status: point-in-time -->
 
 # Project review: inexpensive workflow smoke
@@ -26,16 +27,16 @@ custom specialist tools/Jev agent selection.
 
 ## Real-model result
 
-| Measure | Observed |
-| --- | --- |
-| Provider-reported total | **$0.00573078**, about **0.57 cents** |
-| Rounded durable ledger total | $0.005732 |
-| Test elapsed time | 29.48 seconds, including local database setup/cleanup |
-| Model requests | 4; no retries or fallback calls |
-| Roles | Planner → project analyst + risk reviewer → editor |
-| Accepted steps | 4/4, each on its first attempt |
-| Saved answers / terminal events | 1 / 1 |
-| Effects / project mutations | 0 / 0 in the test fixture |
+| Measure                         | Observed                                              |
+| ------------------------------- | ----------------------------------------------------- |
+| Provider-reported total         | **$0.00573078**, about **0.57 cents**                 |
+| Rounded durable ledger total    | $0.005732                                             |
+| Test elapsed time               | 29.48 seconds, including local database setup/cleanup |
+| Model requests                  | 4; no retries or fallback calls                       |
+| Roles                           | Planner → project analyst + risk reviewer → editor    |
+| Accepted steps                  | 4/4, each on its first attempt                        |
+| Saved answers / terminal events | 1 / 1                                                 |
+| Effects / project mutations     | 0 / 0 in the test fixture                             |
 
 The saved answer included the completed workflow projection and both specialists'
 accepted findings, which are the inputs the new UI restores. The final answer distinguished
@@ -84,7 +85,7 @@ Proceed with `SpecialistDefinitionV1` and extract the current analyst/reviewer d
 first. Keep their current behavior as the baseline. Configurable rosters need a versioned
 durable snapshot because the existing SQL contract encodes four fixed step keys. Then add
 one specialist with bounded tools/workflows and the `AgentSelector` interface for Jev.
-See [the implementation path](../../architecture/SPECIALIST_AGENTS_AND_JEV_NEXT_STEPS_2026-09-19.md).
+See the implementation path.
 
 Broad rollout and hosted end-to-end acceptance remain separate work. This smoke provides
 development confidence without claiming those checks passed.

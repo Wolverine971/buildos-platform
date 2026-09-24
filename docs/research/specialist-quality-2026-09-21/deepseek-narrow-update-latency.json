@@ -1,0 +1,415 @@
+{
+	"scope": "Three narrow-update repetitions from the separate DeepSeek QA gate; readback turns excluded. Observational timings, not disjoint wall-clock components or proof of database root cause. HTTP traces are selected by the isolated worker time window, not a per-request turn ID.",
+	"cases": [
+		{
+			"file": "output/agentic-gate/specialist-review-v2-deepseek-2026-09-21/turns/cedar-04-narrow-update-1-1.json",
+			"turnRunId": "6a0a8119-99da-4113-adce-827c34e8b6cf",
+			"durationMs": 31764.356749999977,
+			"responseHeadersMs": 2917.748666999978,
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": null,
+					"durationMs": 383
+				},
+				{
+					"role": "acting",
+					"provider": "openrouter",
+					"status": "failure",
+					"durationMs": 5011
+				},
+				{
+					"role": "acting",
+					"provider": "Parasail",
+					"status": "success",
+					"durationMs": 2215
+				},
+				{
+					"role": "mutation_review",
+					"provider": "OpenAI",
+					"status": "success",
+					"durationMs": 2171
+				},
+				{
+					"role": "acting",
+					"provider": "Parasail",
+					"status": "success",
+					"durationMs": 2924
+				}
+			],
+			"tools": [
+				{
+					"name": "approve_mutation_batch_review",
+					"durationMs": 0,
+					"success": true
+				},
+				{
+					"name": "update_onto_task",
+					"durationMs": 2549,
+					"success": true
+				}
+			],
+			"phases": {
+				"admission_to_acceptance_ms": 72,
+				"provider_authority_to_finish_ms": 24784.346415999986,
+				"provider_authority_to_first_event_persistence_ms": 139,
+				"provider_authority_to_first_response_persistence_ms": 25974,
+				"provider_finish_to_terminal_call_ms": 2088.0743750000256,
+				"queue_wait_ms": 831,
+				"response_generation_ms": 0,
+				"time_to_first_event_ms": 1641,
+				"time_to_first_response_ms": 27476,
+				"total_request_ms": 28532.846,
+				"worker_start_to_provider_authority_ms": 599
+			},
+			"slowestWorkerHttpRequests": [
+				{
+					"endpoint": "/rest/v1/rpc/claim_agentic_chat_turn",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:42:55.339Z",
+					"responseHeadersMs": 6057.888207999989,
+					"upstreamServiceMs": 5869,
+					"eventLoopUtilization": 0.009937465139460363,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/observe_agentic_chat_turn_cancellations",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:42:55.633Z",
+					"responseHeadersMs": 3220.4587499999907,
+					"upstreamServiceMs": 3078,
+					"eventLoopUtilization": 0.009554211824249231,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_provider_attempt_observation",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:42:55.336Z",
+					"responseHeadersMs": 2967.3860830000485,
+					"upstreamServiceMs": 2854,
+					"eventLoopUtilization": 0.012178789772332206,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_prompt_snapshot_v3",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:42:55.339Z",
+					"responseHeadersMs": 2941.9634999999544,
+					"upstreamServiceMs": 2774,
+					"eventLoopUtilization": 0.009954745336994815,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/llm_usage_logs",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:42:55.335Z",
+					"responseHeadersMs": 2212.605125000002,
+					"upstreamServiceMs": 2106,
+					"eventLoopUtilization": 0.012093067223814211,
+					"status": 201
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_provider_attempt_observation",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:43:09.795Z",
+					"responseHeadersMs": 1564.1118329999736,
+					"upstreamServiceMs": 1360,
+					"eventLoopUtilization": 0.016620173030365424,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/flush_agentic_chat_text_batches",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:43:09.798Z",
+					"responseHeadersMs": 1383.8348750000005,
+					"upstreamServiceMs": 1245,
+					"eventLoopUtilization": 0.011398477062113164,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_semantic_event",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:43:01.398Z",
+					"responseHeadersMs": 1241.9170419999864,
+					"upstreamServiceMs": 1140,
+					"eventLoopUtilization": 0.009783042018634653,
+					"status": 200
+				}
+			]
+		},
+		{
+			"file": "output/agentic-gate/specialist-review-v2-deepseek-2026-09-21/turns/cedar-04-narrow-update-2-1.json",
+			"turnRunId": "1a84a778-64da-4fd7-b8b7-e2ddd2d343fc",
+			"durationMs": 30993.06920799997,
+			"responseHeadersMs": 6646.085416999995,
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": null,
+					"durationMs": 329
+				},
+				{
+					"role": "acting",
+					"provider": "Together",
+					"status": "success",
+					"durationMs": 1464
+				},
+				{
+					"role": "mutation_review",
+					"provider": "OpenAI",
+					"status": "success",
+					"durationMs": 2371
+				},
+				{
+					"role": "acting",
+					"provider": "Together",
+					"status": "success",
+					"durationMs": 1731
+				}
+			],
+			"tools": [
+				{
+					"name": "approve_mutation_batch_review",
+					"durationMs": 1,
+					"success": true
+				},
+				{
+					"name": "update_onto_task",
+					"durationMs": 3673,
+					"success": true
+				}
+			],
+			"phases": {
+				"admission_to_acceptance_ms": 62,
+				"provider_authority_to_finish_ms": 21455.111124999996,
+				"provider_authority_to_first_event_persistence_ms": 132,
+				"provider_authority_to_first_response_persistence_ms": 21704,
+				"provider_finish_to_terminal_call_ms": 968.6844999999739,
+				"queue_wait_ms": 743,
+				"response_generation_ms": 0,
+				"time_to_first_event_ms": 1538,
+				"time_to_first_response_ms": 23110,
+				"total_request_ms": 23964.542,
+				"worker_start_to_provider_authority_ms": 601
+			},
+			"slowestWorkerHttpRequests": [
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_read_tool_execution",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:44:08.879Z",
+					"responseHeadersMs": 4605.765583000029,
+					"upstreamServiceMs": 4505,
+					"eventLoopUtilization": 0.007760405084070036,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/observe_agentic_chat_turn_cancellations",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:44:09.675Z",
+					"responseHeadersMs": 4276.9373749999795,
+					"upstreamServiceMs": 4169,
+					"eventLoopUtilization": 0.007134661882982752,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_semantic_event",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:44:13.486Z",
+					"responseHeadersMs": 2734.7170410000253,
+					"upstreamServiceMs": 2632,
+					"eventLoopUtilization": 0.00841206846631865,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_execution_observation",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:44:13.487Z",
+					"responseHeadersMs": 2246.876833999995,
+					"upstreamServiceMs": 2128,
+					"eventLoopUtilization": 0.007762973335460389,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_execution_observation",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:44:08.878Z",
+					"responseHeadersMs": 1866.2753749999683,
+					"upstreamServiceMs": 1762,
+					"eventLoopUtilization": 0.011295787663267878,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_semantic_event",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:44:07.067Z",
+					"responseHeadersMs": 1806.259458000015,
+					"upstreamServiceMs": 1704,
+					"eventLoopUtilization": 0.014270274067338082,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/observe_agentic_chat_turn_cancellations",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:44:07.674Z",
+					"responseHeadersMs": 1355.189167000004,
+					"upstreamServiceMs": 1220,
+					"eventLoopUtilization": 0.016658076948148907,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/acknowledge_agentic_chat_stream_delivery",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:44:16.244Z",
+					"responseHeadersMs": 1308.5707500000135,
+					"upstreamServiceMs": 922,
+					"eventLoopUtilization": 0.013072165798898756,
+					"status": 200
+				}
+			]
+		},
+		{
+			"file": "output/agentic-gate/specialist-review-v2-deepseek-2026-09-21/turns/cedar-04-narrow-update-3-1.json",
+			"turnRunId": "a823b909-5ca9-4e0f-970c-71b2db292786",
+			"durationMs": 33194.51329099992,
+			"responseHeadersMs": 9958.220749999979,
+			"modelPasses": [
+				{
+					"role": "tool_selection",
+					"provider": "TypeSafe",
+					"status": null,
+					"durationMs": 342
+				},
+				{
+					"role": "acting",
+					"provider": "Together",
+					"status": "success",
+					"durationMs": 1473
+				},
+				{
+					"role": "acting",
+					"provider": "Together",
+					"status": "success",
+					"durationMs": 1572
+				},
+				{
+					"role": "mutation_review",
+					"provider": "OpenAI",
+					"status": "success",
+					"durationMs": 2846
+				},
+				{
+					"role": "acting",
+					"provider": "Together",
+					"status": "success",
+					"durationMs": 1200
+				}
+			],
+			"tools": [
+				{
+					"name": "get_onto_task_details",
+					"durationMs": 949,
+					"success": true
+				},
+				{
+					"name": "approve_mutation_batch_review",
+					"durationMs": 0,
+					"success": true
+				},
+				{
+					"name": "update_onto_task",
+					"durationMs": 2359,
+					"success": true
+				}
+			],
+			"phases": {
+				"admission_to_acceptance_ms": 218,
+				"provider_authority_to_finish_ms": 19228.47904200002,
+				"provider_authority_to_first_event_persistence_ms": 224,
+				"provider_authority_to_first_response_persistence_ms": 19419,
+				"provider_finish_to_terminal_call_ms": 891.1500000000233,
+				"queue_wait_ms": 4037,
+				"response_generation_ms": 0,
+				"time_to_first_event_ms": 5861,
+				"time_to_first_response_ms": 25056,
+				"total_request_ms": 25892.788,
+				"worker_start_to_provider_authority_ms": 1382
+			},
+			"slowestWorkerHttpRequests": [
+				{
+					"endpoint": "/rest/v1/rpc/observe_agentic_chat_turn_cancellations",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:45:25.713Z",
+					"responseHeadersMs": 1803.9540829999605,
+					"upstreamServiceMs": 1553,
+					"eventLoopUtilization": 0.013801703101418792,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_semantic_event",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:45:25.610Z",
+					"responseHeadersMs": 1694.672375000082,
+					"upstreamServiceMs": 1591,
+					"eventLoopUtilization": 0.011697526013038771,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_prompt_snapshot_v3",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:45:31.067Z",
+					"responseHeadersMs": 1493.8262920000125,
+					"upstreamServiceMs": 1207,
+					"eventLoopUtilization": 0.030827736819370323,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_semantic_event",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:45:27.308Z",
+					"responseHeadersMs": 1417.1807920000283,
+					"upstreamServiceMs": 1230,
+					"eventLoopUtilization": 0.011121082200084387,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/acknowledge_agentic_chat_stream_delivery",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:45:27.331Z",
+					"responseHeadersMs": 1395.5130409999983,
+					"upstreamServiceMs": 1264,
+					"eventLoopUtilization": 0.010415079012258827,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/observe_agentic_chat_turn_cancellations",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:45:27.712Z",
+					"responseHeadersMs": 1102.5877079999773,
+					"upstreamServiceMs": 992,
+					"eventLoopUtilization": 0.024365147424288892,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/claim_pending_jobs",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:45:21.330Z",
+					"responseHeadersMs": 1101.9428749999497,
+					"upstreamServiceMs": 862,
+					"eventLoopUtilization": 0.008217427666702533,
+					"status": 200
+				},
+				{
+					"endpoint": "/rest/v1/rpc/persist_agentic_chat_provider_attempt_observation",
+					"method": "POST",
+					"startedAt": "2026-09-21T05:45:30.554Z",
+					"responseHeadersMs": 923.2345409999834,
+					"upstreamServiceMs": 807,
+					"eventLoopUtilization": 0.026469167935800623,
+					"status": 200
+				}
+			]
+		}
+	]
+}

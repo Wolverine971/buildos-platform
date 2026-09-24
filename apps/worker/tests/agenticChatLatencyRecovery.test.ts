@@ -495,4 +495,66 @@ describe('buffered slow-provider recovery', () => {
 		expect(events.at(-1)?.type).toBe('done');
 		expect(test.fetchImpl).toHaveBeenCalledOnce();
 	});
+
+	it('judges the first window from the first output byte, not from stream open', async () => {
+		// Tasker 101: the first byte arrived late and the 4 s check counted the
+		// silent prompt-processing time as a slow stream.
+		vi.useFakeTimers();
+		const late = controllableResponse();
+		const test = harness([late.response]);
+		const collecting = collect(test.stream());
+		await vi.advanceTimersByTimeAsync(3_500);
+		late.text('x'.repeat(300));
+		for (let second = 0; second < 4; second++) {
+			await vi.advanceTimersByTimeAsync(1_000);
+			late.text('x'.repeat(400));
+		}
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
+		expect(late.cancel).not.toHaveBeenCalled();
+		late.finish();
+		expect((await collecting).at(-1)?.type).toBe('done');
+	});
+
+	it('counts streamed reasoning as progress after a line of narration', async () => {
+		// Gate 2026-09-24 case 2 rep 1: 139 bytes of narration, then 487 hidden
+		// reasoning tokens, aborted at 4.3 s as "insufficient progress".
+		vi.useFakeTimers();
+		const thinking = controllableResponse();
+		const test = harness([thinking.response]);
+		const collecting = collect(test.stream());
+		await vi.advanceTimersByTimeAsync(0);
+		thinking.text("I'll create the five tasks exactly as specified.");
+		for (let second = 0; second < 9; second++) {
+			await vi.advanceTimersByTimeAsync(1_000);
+			thinking.frame({
+				choices: [{ delta: { reasoning: 'r'.repeat(600) }, finish_reason: null }]
+			});
+		}
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
+		expect(thinking.cancel).not.toHaveBeenCalled();
+		thinking.text('Created.');
+		thinking.finish();
+		const events = await collecting;
+		expect(JSON.stringify(events)).not.toContain('rrrr');
+		expect(events.at(-1)?.type).toBe('done');
+	});
+
+	it('asks only a watched attempt to stream its reasoning', async () => {
+		vi.useFakeTimers();
+		const slow = controllableResponse();
+		const fast = controllableResponse('Wafer', V4);
+		fast.text('Recovered.');
+		fast.finish();
+		const test = harness([slow.response, fast.response]);
+		const collecting = collect(test.stream());
+		await vi.advanceTimersByTimeAsync(0);
+		slow.text('x');
+		await vi.advanceTimersByTimeAsync(4_001);
+		await collecting;
+		// The final retry has no slow-stream recovery left, so nothing reads it.
+		expect(test.requests.map((r) => r.body.reasoning)).toEqual([
+			{ exclude: false },
+			{ exclude: true }
+		]);
+	});
 });

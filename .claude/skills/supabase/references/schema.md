@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 251 tables, grouped by domain.
+Complete column listing for all 252 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-09-23T23:57:54.894Z
+**Schema generated:** 2026-09-24T14:28:55.952Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -17,7 +17,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [People & Contacts](#people--contacts) (6 tables)
 - [Ontology System](#ontology-system) (41 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
-- [Chat & Agents](#chat--agents) (34 tables)
+- [Chat & Agents](#chat--agents) (35 tables)
 - [Calendar](#calendar) (13 tables)
 - [Notifications](#notifications) (7 tables)
 - [SMS & Twilio](#sms--twilio) (7 tables)
@@ -470,9 +470,13 @@ created_at `string` · event_id `string` · event_type `string` · execution_gen
 
 artifact_version `string` · content_bytes `number` · content_hash `string` · created_at `string` · history `Json` · history_bytes `number` · history_source `string` · id `string` · prepared `Json` · retain_until `string` · session_id `string` · source_prepared_prompt_id `string?` · turn_run_id `string` · user_id `string`
 
+### chat_turn_recovery_failures
+
+failure_count `number` · first_failed_at `string` · last_error `string?` · last_failed_at `string` · last_sqlstate `string?` · turn_run_id `string`
+
 ### chat_turn_runs
 
-assistant_message_id `string?` · cache_age_seconds `number?` · cache_source `string?` · cancel_reason `string?` · cancel_requested_at `string?` · client_turn_id `string?` · context_type `string` · correlation_id `string` · created_at `string` · entity_id `string?` · execution_generation `number` · execution_mode `string` · execution_started_at `string?` · failure_code `string?` · finished_at `string?` · finished_reason `string?` · first_canonical_op `string?` · first_help_path `string?` · first_lane `string?` · first_skill_path `string?` · gateway_enabled `boolean` · history_compressed `boolean?` · history_cutoff_at `string?` · history_for_model_count `number?` · history_message_ids `string[]?` · history_strategy `string?` · id `string` · input_artifact_id `string?` · irreversible_boundary_at `string?` · last_event_sequence `number` · last_progress_at `string?` · llm_pass_count `number` · mutation_reserved_at `string?` · prepared_prompt_hit `boolean?` · prepared_prompt_id `string?` · prepared_prompt_miss_reason `string?` · prepared_surface_profile `string?` · project_id `string?` · prompt_snapshot_id `string?` · queue_job_id `string?` · raw_history_count `number?` · request_hash `string?` · request_hash_version `string?` · request_message `string` · request_payload `Json` · request_payload_version `string` · request_prewarmed_context `boolean?` · session_id `string` · source `string` · stale_context_policy `string?` · started_at `string` · status `string` · stream_run_id `string` · terminal_event_id `string?` · terminalized_at `string?` · timing_metric_id `string?` · tool_call_count `number` · tool_round_count `number` · transport_contract_version `string?` · transport_decision_id `string?` · updated_at `string` · user_id `string` · user_message_id `string?` · validation_failure_count `number` · worker_started_at `string?`
+assistant_message_id `string?` · cache_age_seconds `number?` · cache_source `string?` · cancel_reason `string?` · cancel_requested_at `string?` · client_turn_id `string?` · context_type `string` · correlation_id `string` · created_at `string` · entity_id `string?` · execution_generation `number` · execution_mode `string` · execution_started_at `string?` · failure_code `string?` · finished_at `string?` · finished_reason `string?` · first_canonical_op `string?` · first_help_path `string?` · first_lane `string?` · first_skill_path `string?` · gateway_enabled `boolean` · history_compressed `boolean?` · history_cutoff_at `string?` · history_for_model_count `number?` · history_message_ids `string[]?` · history_strategy `string?` · id `string` · input_artifact_id `string?` · irreversible_boundary_at `string?` · last_event_sequence `number` · last_progress_at `string?` · llm_pass_count `number` · mutation_reserved_at `string?` · prepared_prompt_hit `boolean?` · prepared_prompt_id `string?` · prepared_prompt_miss_reason `string?` · prepared_surface_profile `string?` · project_id `string?` · prompt_snapshot_id `string?` · queue_job_id `string?` · raw_history_count `number?` · request_hash `string?` · request_hash_version `string?` · request_message `string` · request_payload `Json` · request_payload_version `string` · request_prewarmed_context `boolean?` · session_id `string` · source `string` · stale_context_policy `string?` · started_at `string` · status `string` · stream_run_id `string` · terminal_event_id `string?` · terminalized_at `string?` · timing_metric_id `string?` · tool_call_count `number` · tool_round_count `number` · transport_contract_version `string?` · transport_decision_id `string?` · updated_at `string` · user_id `string` · user_message_id `string?` · validation_failure_count `number` · worker_lease_generation `number?` · worker_lease_renewed_at `string?` · worker_started_at `string?`
 
 ### chat_turn_signals
 

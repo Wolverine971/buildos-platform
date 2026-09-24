@@ -10,7 +10,7 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	GEMINI_37_FLASH_MODEL,
 	GLM_52_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	KIMI_K3_MODEL,
 	XIAOMI_MIMO_V25_MODEL
@@ -989,7 +989,7 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 			return buildJSONCompletion({
-				model: GPT_56_LUNA_MODEL,
+				model: GPT_6_LUNA_MODEL,
 				content: '{"score":5}',
 				provider: 'OpenAI'
 			});
@@ -1002,13 +1002,13 @@ describe('SmartLLMService OpenRouter data policy', () => {
 		await llm.getJSONResponse({
 			systemPrompt: 'Return JSON.',
 			userPrompt: 'Grade this result.',
-			models: [GPT_56_LUNA_MODEL, KIMI_K3_MODEL, GROK_47_MODEL],
+			models: [GPT_6_LUNA_MODEL, KIMI_K3_MODEL, GROK_47_MODEL],
 			profile: 'custom',
 			temperature: 0,
 			userId: 'custom-chain-test'
 		});
 
-		expect(requestBodies[0]?.model).toBe(GPT_56_LUNA_MODEL);
+		expect(requestBodies[0]?.model).toBe(GPT_6_LUNA_MODEL);
 		expect(requestBodies[0]?.models).toEqual([KIMI_K3_MODEL, GROK_47_MODEL]);
 		expect(requestBodies[0]?.models).not.toContain(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[0]?.models).not.toContain(ACTIVE_EXPERIMENT_MODEL);

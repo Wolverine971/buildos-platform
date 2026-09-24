@@ -57,7 +57,7 @@ For **package documentation**:
 - ✅ Worker docs → `/apps/worker/docs/`
 - ✅ Point-in-time docs (audits, plans, handoffs) carry a status banner — run `pnpm fix:doc-health`
 - ❌ Don't create random docs at root level
-- ❌ Don't re-create `thoughts/` — it was archived to `/docs/archive/thoughts/` on 2026-08-19
+- ❌ Don't re-create `thoughts/` or `docs/archive/` — delete superseded docs; git history keeps them
 
 ## Quick Navigation
 

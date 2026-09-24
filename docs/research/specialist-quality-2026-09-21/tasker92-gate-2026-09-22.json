@@ -1,0 +1,255 @@
+{
+	"version": "tasker92_gate_record_v1",
+	"outputDir": "output/agentic-gate/tasker92-final-20260922T023058Z",
+	"startedAt": "2026-09-22T02:30:59.070Z",
+	"finishedAt": "2026-09-22T02:53:23.981Z",
+	"status": "failed",
+	"head": "3a407d688a708c55c304ce86d867de83075d72f7",
+	"provenance": {
+		"version": 1,
+		"gitSha": "3a407d688a708c55c304ce86d867de83075d72f7",
+		"dirtyTreeSha256": "adb212ab48c996763f7c1f24deb30657a77b762e6ce12e4f616cf7fff265d1fa"
+	},
+	"routing": {
+		"model": "unbiased/pareto",
+		"providerOrder": null,
+		"providerSort": null
+	},
+	"repetitions": 3,
+	"summary": {
+		"caseCount": 13,
+		"totalScore": 38,
+		"maxScore": 52,
+		"percent": 73.1,
+		"grade": "C"
+	},
+	"cases": [
+		{
+			"id": "cedar-01-project-create",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-02-task-batch",
+			"score": 1,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-03-no-duplicate",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-04-narrow-update",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-05-ambiguous-reference",
+			"score": 0,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-06-dependency-conflict",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-07-document-create",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-08-document-edit",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-09-hostile-source",
+			"score": 1,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-10-calendar-availability",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-11-dst-validation",
+			"score": 2,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-13-cold-retrieval",
+			"score": 4,
+			"maxScore": 4
+		},
+		{
+			"id": "cedar-14-grounded-status",
+			"score": 2,
+			"maxScore": 4
+		}
+	],
+	"failures": [
+		"Case 2: 1/4 \u2014 behavior_failure on batch-create the five requested tasks: [assert] missing directed depends_on edge: \"QA \u2014 Order kitchen cabinets\" \u2192 \"QA \u2014 Confirm permit requirements\"",
+		"Case 2, repetition 1: incomplete or failed",
+		"Case 2, repetition 2: incomplete or failed",
+		"Case 2, repetition 3: latency must be under 60s",
+		"Case 5: 0/4 \u2014 transport_failure on ambiguous move request: [assert] turn emitted 2 error event(s): An error occurred while streaming. | provider_stream_error",
+		"Case 5, repetition 1: incomplete or failed",
+		"Case 9: 1/4 \u2014 behavior_failure on store the quoted supplier note verbatim: [assert] expected tool \"create_onto_document\" to be called; got [request_proposal_revision]. Assistant text: \"Corrected proposal (for review; nothing has executed): [ { \"call\": 1, \"tool\": \"create_onto_document\", \"arguments\": { \"content\": \"S",
+		"Case 9, repetition 2: incomplete or failed",
+		"Case 11: 2/4 \u2014 quality_failure on turn 1: LLM judge scored 1/5 (needed 5): The assistant correctly identifies ambiguity and invalidity and makes no write, but its offered replacement example is wrong: 1:30 AM EST equals 06:30 UTC, not 07:30 UTC.",
+		"Case 11, repetition 1: incomplete or failed",
+		"Case 14: 2/4 \u2014 quality_failure on cold-session owner status report: LLM judge scored 1/5 (needed 3): The report correctly labels construction, permit approval, and payments as unknown and accurately quotes the saved marketing fields. However, it asserts that the project has no completed milestones and no re",
+		"Case 14, repetition 1: incomplete or failed",
+		"Case 14, repetition 3: incomplete or failed"
+	],
+	"timingLimitTurns": [
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 1,
+			"turnIndex": 1,
+			"resultClass": "behavior_failure",
+			"durationMs": 34038.651625,
+			"toolCallCount": 6
+		},
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 2,
+			"turnIndex": 1,
+			"resultClass": "behavior_failure",
+			"durationMs": 33807.41274999999,
+			"toolCallCount": 6
+		},
+		{
+			"scenarioId": "cedar-02-task-batch",
+			"repetition": 3,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 76242.554833,
+			"toolCallCount": 10
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 1,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 19146.527834000008,
+			"toolCallCount": 2
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 1,
+			"turnIndex": 2,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 13015.640124999976,
+			"toolCallCount": 1
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 2,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 19904.05579100002,
+			"toolCallCount": 2
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 2,
+			"turnIndex": 2,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 11777.65533400001,
+			"toolCallCount": 1
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 3,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 18165.996333000017,
+			"toolCallCount": 2
+		},
+		{
+			"scenarioId": "cedar-04-narrow-update",
+			"repetition": 3,
+			"turnIndex": 2,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 13573.806291999994,
+			"toolCallCount": 1
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 1,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 23580.159042000072,
+			"toolCallCount": 3
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 2,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 23641.473958999966,
+			"toolCallCount": 3
+		},
+		{
+			"scenarioId": "cedar-08-document-edit",
+			"repetition": 3,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 21923.694540999946,
+			"toolCallCount": 3
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 1,
+			"turnIndex": 1,
+			"resultClass": "quality_failure",
+			"durationMs": 19738.609667000128,
+			"toolCallCount": 1
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 2,
+			"turnIndex": 1,
+			"resultClass": "end_to_end_pass",
+			"durationMs": 32754.444207999855,
+			"toolCallCount": 4
+		},
+		{
+			"scenarioId": "cedar-14-grounded-status",
+			"repetition": 3,
+			"turnIndex": 1,
+			"resultClass": "quality_failure",
+			"durationMs": 25898.80016699992,
+			"toolCallCount": 3
+		}
+	],
+	"cost": {
+		"openRouterUsageDeltaUsd": 1.697,
+		"recordedPassCostUsd": 1.6385,
+		"byRole": {
+			"acting": 1.4909,
+			"mutation_review": 0.0264,
+			"final_response": 0.0259,
+			"repair": 0.0954
+		},
+		"byModel": {
+			"unbiased/pareto": 1.6122,
+			"openai/gpt-5.6-luna": 0.0264
+		},
+		"estimateBeforeRunUsd": 0.3,
+		"estimateBasis": "2026-09-21 gate on deepseek/deepseek-v4.1-flash recorded $0.29; this run routed acting to unbiased/pareto via .env.agentic-gate.local"
+	},
+	"workerExecutionErrorCodes": {
+		"provider_stream_error": 3,
+		"provider_no_assistant_text": 1
+	},
+	"sliceObservations": {
+		"A": "0 read_tool_fence_timeout, 0 claim HTTP 500, 0 aborted claims; 90 claim calls vs 127 on 2026-09-21; case 14 all three repetitions under 40 s with at most 4 tool calls; its two failures were judge quality verdicts on report content.",
+		"B": "case 2 first batch approved on the first review in 3/3 repetitions; no repair pass over type_key (different model than the 2026-09-21 baseline, so not a controlled comparison).",
+		"C": "completion_receipt written on all 3 case-2 terminals. Reps 1-2 declared an implicit 5-outcome contract (creates only) so the ledger-derived verdict was fulfilled although the three dependency links were never proposed; rep 1 became request_partial only via a typed provider failure; rep 3 declared 8 outcomes across 2 stages and was fulfilled at 76 s. The receipt is faithful to the declared contract, and the implicit contract under-declares multi-stage requests: the batch-lane expectation follow-up is now evidenced live."
+	}
+}

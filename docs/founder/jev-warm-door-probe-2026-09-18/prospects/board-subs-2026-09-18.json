@@ -1,0 +1,738 @@
+[
+	{
+		"id": "sub-001",
+		"name": "Temp Air Company",
+		"trade": "mechanical_hvac",
+		"city": "Owings Mills",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 35,
+		"website": "https://www.tempaircompany.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "'more than 130 skilled professionals' (site staff page); LinkedIn company page: 51-200 employees, 35 on LinkedIn",
+			"years_in_business": "founded 1980 (LinkedIn company page; site history snippet)",
+			"other": "Named: Nick Bobes President; Chris Bobes VP; Nick Heffler VP Construction; Jeff Kelley Director of Estimating; Kristin Burke Lead Estimator; Justin Basso Estimator; 3 PMs + 3 APMs + Project Executive; Victoria Taylor Service Coordinator. 51 Gwynns Mill Ct, Owings Mills 21117; hours Mon-Fri 8:00am-4:30pm. ABC Baltimore member since 2013, Building Congress & Exchange, MD MBE certified.",
+			"source_url": "https://www.tempaircompany.com/about/our-staff/"
+		},
+		"inbound_signals": "Password-protected 'Bid Board' page at https://www.tempaircompany.com/bids/ (dated 2026-05-20) tracking projects the company is bidding; Director of Estimating + Lead Estimator + Estimator on staff; HVAC Sales and Plumbing Sales roles; service coordinator. No public quote form (contact page only).",
+		"ops_pain_signals": "Search surfaced current-looking office postings: 'Mechanical Project Manager' (Glassdoor https://www.glassdoor.com/job-listing/mechanical-project-manager-temp-air-company-JV_IC1153614_KO0,26_KE27,43.htm?jl=1010141926133 — fetch 403), 'Mechanical Estimator' (BeBee/Jooble — fetch 404), 'Assistant Project Manager / Project Engineer' (search snippet only). Dates unverified. Careers page (https://www.tempaircompany.com/careers/) is a general resume form that lists 'estimators' and 'project managers' among roles 'we commonly hire for'. Indeed company page 403.",
+		"warm_path": "shared_org (ABC Greater Baltimore; Building Congress & Exchange)",
+		"decision_maker": {
+			"name": "Nick Bobes",
+			"title": "President",
+			"channel": "LinkedIn https://www.linkedin.com/in/nick-bobes-8b770917/",
+			"source_url": "https://www.linkedin.com/in/nick-bobes-8b770917/"
+		},
+		"on_existing_board": true,
+		"notes": "Second-generation owners Christopher and Nicholas Bobes (site history via search snippet). No veteran evidence (only a Veterans Day social post). A password-protected internal bid board plus a named Director of Estimating means bid triage is already a tracked process; pitch is capacity/turnaround, not existence. Steven Bosse 'VP PreConstruction' appears on ZoomInfo (aggregator) but not on the current staff page."
+	},
+	{
+		"id": "sub-002",
+		"name": "Windsor Electric Company",
+		"trade": "electrical",
+		"city": "Owings Mills",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 35,
+		"website": "https://windsorelectric.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 201-500 employees (92 on LinkedIn); ZoomInfo/search snippet: 51-200 (aggregator)",
+			"years_in_business": "founded 1955 by Donald Kirk Sr. (site About)",
+			"other": "Named on site with direct lines: Donald Kirk Jr. CEO; Edward Kirk President (410) 205-8538; John Gardner CFO (410) 205-8524; Kris Parker VP – Director of Field Operations (410) 205-8541; Lou Westermeyer VP – Director of Estimating (410) 205-8540; Bob Stuart Service Manager (410) 205-8537. 10227 S Dolfield Rd, Owings Mills 21117; hours not listed. ABC Platinum STEP award 3 yrs; BCE member; ASA member.",
+			"source_url": "https://windsorelectric.com/about/"
+		},
+		"inbound_signals": "Dedicated estimating inbox estimates@windsorelectric.com published on About page; VP – Director of Estimating named with direct line; 'Prompt 24/7 Service' per BCE listing (https://www.bcebaltimore.org/members/windsor-electric-company-inc/). No web quote form.",
+		"ops_pain_signals": "None found. Careers page (https://windsorelectric.com/careers/) is a general 'always hiring' form with no titles. No estimator/PM/office postings surfaced on Indeed/Glassdoor/LinkedIn searches; Indeed company page 403.",
+		"warm_path": "shared_org (ABC Greater Baltimore; Building Congress & Exchange; American Subcontractors Association)",
+		"decision_maker": {
+			"name": "Edward Kirk",
+			"title": "President",
+			"channel": "direct line (410) 205-8538 (published on About page); info@windsorelectric.com",
+			"source_url": "https://windsorelectric.com/about/"
+		},
+		"on_existing_board": true,
+		"notes": "ZoomInfo lists a 'Michael Larsen, President' (aggregator; conflicts with the site — trust the site). ASA directory lists Edward Kirk as Executive Vice President (https://members.asaonline.com/directory/Details/windsor-electric-company-inc-542887). Estimating is a named, staffed function with its own inbox — Diagnostic pitch is bid-invite triage into Lou Westermeyer's desk."
+	},
+	{
+		"id": "sub-003",
+		"name": "Kroeger Electric Company",
+		"trade": "electrical",
+		"city": "Glen Burnie",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 5,
+		"website": "",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "unknown — conflicting aggregator snippets (~9 staff in one search snippet vs '50+' in earlier research); neither verifiable (Manta/LeadSmart/TopProz fetches blocked or empty)",
+			"years_in_business": "since 1963 (BBB foundingDate 1963-01-01); incorporated 1967 per search snippet",
+			"other": "BBB management: Mr. Leonard Bathgate, President; Mr. Roland Lee Kroeger, Vice President. Founder Roland LeRoy Kroeger Sr. (d. 2019, obituary). Address 1007 Crain Hwy S #2, Glen Burnie 21061-3996; hours not published anywhere found. No website. NECA Maryland listing gives a personal Verizon email for the president (published as leonard.bathgate@verison.net). IBEW Local 24 interactive map lists them.",
+			"source_url": "https://www.bbb.org/us/md/glen-burnie/profile/electrician/kroeger-electric-company-0011-20000348"
+		},
+		"inbound_signals": "No website, no form. NECA Maryland member (union electrical contractor); aggregators describe industrial/commercial/residential wiring. Inbound is phone (410-766-1416) and GC/NECA relationships.",
+		"ops_pain_signals": "None found. No careers page; no postings on Indeed/LinkedIn searches. BBB: 0 reviews, 0 complaints in 3 years.",
+		"warm_path": "shared_org (NECA Maryland; IBEW Local 24)",
+		"decision_maker": {
+			"name": "Leonard Bathgate",
+			"title": "President",
+			"channel": "LinkedIn https://www.linkedin.com/in/leonard-bathgate-0a0b522a/ ; email leonard.bathgate@verison.net (as published on NECA listing) ; 410-766-1416",
+			"source_url": "https://marylandneca.org/contractors/kroeger-electric-company/"
+		},
+		"on_existing_board": true,
+		"notes": "Maryland license board reportedly lists 'Darrell Van Oliver' as owner (search snippet; unverified). Walk-in distance for DJ. Zero web presence means the inbound stream is phone + paper; address type unknown because hours/suite use are unpublished — drive by 1007 Crain Hwy S to confirm it is a staffed shop."
+	},
+	{
+		"id": "sub-004",
+		"name": "Arundel Electrical Contractors, LLC",
+		"trade": "electrical",
+		"city": "Hanover",
+		"county": "Anne Arundel",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 8,
+		"website": "",
+		"veteran_evidence": {
+			"quote": "Service Disabled Veteran Owned Small Business (SDVOSB) and Veteran Owned Small Business (VOSB)",
+			"source_url": "https://www.useappello.com/directory/contractors/arundel-electrical-contractors-llc",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "11-25 employees (Appello directory; aggregator)",
+			"years_in_business": "since 2006 ('Full Service Electrical Contractor that has been serving it's Customers since 2006' — NECA listing)",
+			"other": "Karl Krasauskis is the NECA-listed contact; Bluebook search snippet describes him as Vice President 'responsible for daily operations, estimating, and project management' (Bluebook page itself 403). 1327 Ashton Rd #3, Hanover 21076 (Yahoo Local); hours Mon-Fri 6:00 AM-5:00 PM (Yahoo Local https://local.yahoo.com/info-234905344-arundel-electrical-contractors-hanover/). IBEW Local 24; NECA Maryland. Services: switchgear, transfer switches, generators, UPS, fire alarm, data center installs, elevator electrical, lighting maintenance, solar PV.",
+			"source_url": "https://marylandneca.org/contractors/arundel-electrical-contractors-inc/"
+		},
+		"inbound_signals": "No live website or form — arundelelectrical.com returns a TLS error and arundelelectricalcontractors.com serves a certificate for 'accountterminated.com'. NECA listing describes commercial/industrial service, maintenance and data-center work; inbound is phone 410-766-4030 / karl@arundelelectrical.net. Facebook page exists (not fetched).",
+		"ops_pain_signals": "None found; no postings anywhere. Both web domains dead — the web side of their inbound plumbing is itself broken (a concrete opener).",
+		"warm_path": "shared_org (NECA Maryland; IBEW Local 24)",
+		"decision_maker": {
+			"name": "Karl Krasauskis",
+			"title": "Vice President (Bluebook snippet) / NECA-listed contact",
+			"channel": "karl@arundelelectrical.net ; 410-766-4030",
+			"source_url": "https://marylandneca.org/contractors/arundel-electrical-contractors-inc/"
+		},
+		"on_existing_board": true,
+		"notes": "Veteran-owned claim is from a third-party directory (Appello), not the company's own (dead) site; the SDVOSB owner's name is not published — confirm by phone whether Karl is the owner. Vet-to-vet AND shared org (NECA), 8 minutes from DJ: strongest combined warm path on this board."
+	},
+	{
+		"id": "sub-005",
+		"name": "Schuster Concrete Construction",
+		"trade": "concrete",
+		"city": "Owings Mills",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 35,
+		"website": "https://www.schusterconstruction.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 501-1,000 employees; a search snippet elsewhere says 51-100 (aggregator)",
+			"years_in_business": "founded 1974 by Daniel G. Schuster (site)",
+			"other": "Daniel G. Schuster founder/President; Datanyze snippet lists Wanda Schleich as CEO (aggregator). ENR #235 specialty contractor (2009). 3717 Crondall Lane, Owings Mills 21117; hours not listed. No associations named on site.",
+			"source_url": "https://www.schusterconstruction.com/about-us/"
+		},
+		"inbound_signals": "'Sales & Estimating Contact Form' at https://www.schusterconstruction.com/contact/contact-sales-estimating/ and 'Upload Documents & Drawings' at https://www.schusterconstruction.com/upload/ — a drawing-intake path for GCs sending bid packages. Large-scale commercial concrete MD/DC/NoVA.",
+		"ops_pain_signals": "Search surfaced 'Commercial Concrete Construction Project Manager' on Indeed (https://www.indeed.com/viewjob?jk=d9fa1bc5add34262 — fetch 401, date unverified) and a 'Project Coordinator' on Tallo (snippet: expiration 8/18/2026; page now 410 Gone — likely expired). Glassdoor claims 11 open positions (403). Careers page is general ('always looking to build our team').",
+		"warm_path": "none",
+		"decision_maker": {
+			"name": "Daniel G. Schuster",
+			"title": "Founder / President",
+			"channel": "sales & estimating web form only; no direct channel published",
+			"source_url": "https://www.schusterconstruction.com/about-us/"
+		},
+		"on_existing_board": true,
+		"notes": "Earlier 'BIM and robotic layout' signal not found on fetched pages (site cites 'laser screed' pours). LinkedIn 501-1,000 puts them above the Diagnostic's sweet spot; the drawing-upload form suggests intake is already tooled."
+	},
+	{
+		"id": "sub-006",
+		"name": "Premier Concrete, Inc.",
+		"trade": "concrete",
+		"city": "White Marsh",
+		"county": "Baltimore County",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "https://www.premierconcrete.biz/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 11-50 employees; Bluebook/search snippet: 250-500 (aggregator; implausible vs LinkedIn)",
+			"years_in_business": "founded 1986, family-owned (site)",
+			"other": "James (Jim) Workmeister owner; Steve Workmeister VP & co-owner (search snippet); Dan Beck Estimator ext. 24. 11351 Red Lion Rd, White Marsh 21162; hours not listed. Members: American Subcontractors Association, Building Congress & Exchange, ABC Greater Baltimore (site).",
+			"source_url": "https://www.premierconcrete.biz/"
+		},
+		"inbound_signals": "'Invitation to Bid' page: 'To receive a bid from Premier Concrete, please contact Estimator Dan Beck at 410-344-1604 x 24' plus an online project form (https://www.premierconcrete.biz/contact/invitation-to-bid/) — GC bid invites are routed to one named estimator.",
+		"ops_pain_signals": "Now Hiring page (https://www.premierconcrete.biz/contact/now-hiring/): 'Field Engineer' and 'Concrete Construction Positions' (carpenters, operators, finishers, laborers), undated; LinkedIn page echoes field hiring. No estimator/PM/office posting. Careers page is a confidential-inquiry form to Jim Workmeister.",
+		"warm_path": "shared_org (ABC Greater Baltimore; Building Congress & Exchange; American Subcontractors Association)",
+		"decision_maker": {
+			"name": "Jim Workmeister",
+			"title": "Owner",
+			"channel": "jworkmeister@premierconcrete.biz ; 410-344-1604 ext. 27 (published on careers page)",
+			"source_url": "https://www.premierconcrete.biz/careers/"
+		},
+		"on_existing_board": true,
+		"notes": "Single-estimator bid intake (Dan Beck) is exactly the bottleneck the Diagnostic targets. Owner email is public. Size figures conflict; trust LinkedIn 11-50 over the aggregator."
+	},
+	{
+		"id": "sub-007",
+		"name": "Ruff Roofers, Inc.",
+		"trade": "roofing",
+		"city": "Halethorpe (Baltimore)",
+		"county": "Baltimore County",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 15,
+		"website": "https://ruffroofers.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 51-200 employees; 'over 130' as of 2012 (Baltimore Sun obituary of Timothy B. Ruff)",
+			"years_in_business": "founded 1939 (site)",
+			"other": "1420 Knecht Ave, Baltimore 21227 plus Queenstown branch; hours not listed. Awards: ABC safety/excellence (2022-23), BCE and WBC craftsmanship, NRCA Gold Circle finalist, Sika/GAF/Firestone manufacturer awards (https://ruffroofers.com/awards/). Rob Ruff VP; Tim Ruff VP (LinkedIn). PitchBook: Audax Private Equity-backed; 'Buyout/LBO with Simpson Unlimited made on 13-Mar-2025'; CEO William (Bill) Emory (ZoomInfo).",
+			"source_url": "https://pitchbook.com/profiles/company/448742-80"
+		},
+		"inbound_signals": "'Request Estimate' form at https://ruffroofers.com/request-an-estimate/; commercial, residential and historic restoration; a search snippet names 'Kevin' as estimator and project manager.",
+		"ops_pain_signals": "Careers page (https://ruffroofers.com/careers/) lists 'Project Managers' and 'Warehouse Manager' among 9 open roles — undated, single Wufoo application form. No date-stamped posting found.",
+		"warm_path": "shared_org (ABC Greater Baltimore; Building Congress & Exchange; NRCA)",
+		"decision_maker": {
+			"name": "Rob Ruff",
+			"title": "Vice President",
+			"channel": "LinkedIn https://www.linkedin.com/in/rob-ruff-7638357/",
+			"source_url": "https://theorg.com/org/ruff-roofers/org-chart/rob-ruff"
+		},
+		"on_existing_board": true,
+		"notes": "Ownership changed: PE-backed since a March 2025 buyout, CEO Bill Emory (Audax) — the 'family since 1939' framing is stale and decision rights likely sit with the platform, not the Ruffs. 15 min from DJ. Site still says 'same owners' (unrevised)."
+	},
+	{
+		"id": "sub-008",
+		"name": "J. F. Fischer, Inc.",
+		"trade": "mechanical_hvac",
+		"city": "Rosedale (Baltimore)",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://www.jffischer.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "'staff of forty-three office personnel and over two hundred Plumbers/Pipefitters and Service Technicians' (site About); LinkedIn company page says 11-50 (understated)",
+			"years_in_business": "since 1973 (site)",
+			"other": "John F. Fischer President; Daniel J. Fischer Vice President; David J. Fischer Secretary/Treasurer; '3rd generation family-owned mechanical contractor'. Jason Fischer Estimator (LinkedIn https://www.linkedin.com/in/jason-fischer-a4865840/). 7909 Philadelphia Rd, Baltimore 21237; hours not listed. Associations on site: AGC, Building Congress & Exchange, MCAA, AWS, Maryland Construction Network; Plumbers UA Local 48.",
+			"source_url": "https://www.jffischer.com/about-us/"
+		},
+		"inbound_signals": "'24 hour HVAC / plumbing service' to GCs, CMs, government agencies and private owners (site); no public quote/bid form found — contact page only.",
+		"ops_pain_signals": "None found. Indeed only shows salary pages for 'Service Coordinator' and 'Accounts Receivable Manager' at J. F. Fischer (historical roles, not confirmed open); Indeed company page blocked (403); no careers page on site.",
+		"warm_path": "shared_org (AGC of Maryland; Building Congress & Exchange; MCAA)",
+		"decision_maker": {
+			"name": "John F. Fischer",
+			"title": "President",
+			"channel": "no direct channel published (site contact page http://www.jffischer.com/contact/)",
+			"source_url": "https://www.jffischer.com/about-us/"
+		},
+		"on_existing_board": true,
+		"notes": "~250 staff, union shop, subbed on a $442M casino — above the Diagnostic's sweet spot; a 43-person office means inbound work is already staffed. Family principals named but unreachable directly."
+	},
+	{
+		"id": "sub-009",
+		"name": "Clinton Electric Company",
+		"trade": "electrical",
+		"city": "Timonium",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "https://www.clintonelectric.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 11-50 employees",
+			"years_in_business": "since 1969, 'two generations' (site)",
+			"other": "President per ZoomInfo: Michael Wall (aggregator); BBB profile lists 'Jordan Mayer, President' with a 2014-10-01 start date (likely a re-registration). 1524 York Rd, Timonium 21093; Ellicott City office; generator showroom; 24/7 phone; hours not listed. Baltimore Magazine Best of Baltimore multiple years; HomeAdvisor 10 yrs; Qmerit-certified.",
+			"source_url": "https://www.clintonelectric.com/about-us/"
+		},
+		"inbound_signals": "Online booking: 'Request Service' button → Picktime scheduler (https://www.picktime.com/70d7d494-5109-4789-bb2f-a9e26f02c506); residential + commercial; 24/7 line 410-449-7292.",
+		"ops_pain_signals": "LIVE office posting: 'Customer Service Representative' – Timonium, Residential, on the JazzHR portal (https://clintonelectric.applytojob.com/apply, undated) alongside Commercial Electrician, Electrical Helper, Residential Apprentice, Residential Electrician. BBB: '32 BBB Complaints Closed in Last 3 Years' (details not fetched).",
+		"warm_path": "none",
+		"decision_maker": {
+			"name": "Michael Wall",
+			"title": "President (ZoomInfo aggregator)",
+			"channel": "no direct channel published; main 410-449-7292",
+			"source_url": "https://www.zoominfo.com/pic/clinton-electric/343935765"
+		},
+		"on_existing_board": true,
+		"notes": "Residential-service shape (booking widget, CSR hiring, 32 BBB complaints) — pitch angle is inquiry response / dispatch, not bid triage. Owner identity conflicts across aggregators; verify."
+	},
+	{
+		"id": "sub-010",
+		"name": "Live Green Landscape Associates, LLC",
+		"trade": "landscaping",
+		"city": "Reisterstown",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 40,
+		"website": "https://livegreenlandscapes.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 51-200 employees (earlier signal: grew from <10 to 100+)",
+			"years_in_business": "founded 2008 by Michael Martin (site team page)",
+			"other": "Michael Martin President & Owner; Brandon Proescher VP Commercial Landscapes; Jay Crawford Senior Commercial Estimator; Will Wright and Alexi Castillo Commercial Estimators; Kevin Crawford Project Manager; Flavia Berton Office Manager; Taylor Sinclair Commercial Administrator; Aaron Raines Residential Dept Manager. 619 Westminster Pike, Reisterstown 21136 (contact page); hours not listed. Logos: LCA MD-DC-VA, NALP, ASLA, ABC Greater Baltimore.",
+			"source_url": "https://livegreenlandscapes.com/about-us/our-team/"
+		},
+		"inbound_signals": "'Start Your Project Today' contact form capturing project description (https://livegreenlandscapes.com/contact/); three commercial estimators plus residential design-sales; commercial and residential divisions.",
+		"ops_pain_signals": "Careers page (https://livegreenlandscapes.com/careers/): 'Landscape Maintenance Account Manager' (posted Dec 5, 2025), 'Landscape Architect/ Landscape Designer' (Dec 1, 2025), 'Residential Landscape Sales Professional' (Nov 28, 2025). Sales/account roles — no estimator/PM/office-manager posting.",
+		"warm_path": "shared_org (ABC Greater Baltimore; Landscape Contractors Association MD-DC-VA; NALP)",
+		"decision_maker": {
+			"name": "Michael Martin",
+			"title": "President and Owner",
+			"channel": "no direct channel published; main 410-833-9640; Hiring@livegreenlandscapes.com is HR",
+			"source_url": "https://livegreenlandscapes.com/about-us/our-team/"
+		},
+		"on_existing_board": true,
+		"notes": "Three named commercial estimators = real bid volume; the open account-manager seat hints at client-communication load. 40 min drive."
+	},
+	{
+		"id": "sub-011",
+		"name": "Comer Construction, Inc.",
+		"trade": "other",
+		"city": "Forest Hill",
+		"county": "Harford",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 50,
+		"website": "https://www.comerconstruction.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 51-200 employees",
+			"years_in_business": "since 1982 (site); purchased by founder's daughters 1998 (Daily Record snippet)",
+			"other": "Susie Comer Owner | President | Treasurer (LinkedIn); Dorothy Kuzora VP & Corporate Secretary (site); Leona Comer-Hill co-leads (snippet). MDOT MBE/WBE #02-102; Baltimore City WBE. 2100 Slade Lane, Forest Hill 21050; hours M-F 6:00am-5:00pm (site). Memberships: MWMCA (expo exhibitor), Maryland AGC (40-year feature https://marylandagc.org/comer-construction-celebrates-40-years/); ATSSA-certified MOT team.",
+			"source_url": "https://www.comerconstruction.com/"
+		},
+		"inbound_signals": "No public bid/quote form; sitework, excavation, utilities, stormwater, paving for GCs and public owners; exhibits at the MWMCA spring expo.",
+		"ops_pain_signals": "LIVE: careers page (https://www.comerconstruction.com/careers/) lists 'Estimator' and 'Junior Estimator' among 12 openings (undated; the Grading Foreman post is dated Apr 28, 2026 at https://www.comerconstruction.com/category/job-openings/), with '2026 New Hire Bonus Starting From 1500'; apply via online form or kkuzora@comerconstruction.com. Earlier snippet also showed 'Estimator Support'.",
+		"warm_path": "shared_org (Maryland AGC; Maryland Women & Minority Contractors Association)",
+		"decision_maker": {
+			"name": "Susie Comer",
+			"title": "Owner | President | Treasurer",
+			"channel": "LinkedIn https://www.linkedin.com/in/susie-comer/",
+			"source_url": "https://www.linkedin.com/in/susie-comer/"
+		},
+		"on_existing_board": true,
+		"notes": "Two open estimator seats plus a sign-on bonus = bid pipeline outrunning staff. 50 min drive; heavy-civil bidding (public plan rooms) differs from invite-to-bid flow. Trade is sitework/utilities (no enum match)."
+	},
+	{
+		"id": "sub-012",
+		"name": "Scaffold Resource, LLC",
+		"trade": "other",
+		"city": "Lanham",
+		"county": "Prince George's",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "https://scaffoldresource.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 201-500 employees; ZoomInfo/search snippet: 172 employees, $44.1M revenue (aggregator)",
+			"years_in_business": "created 1998 (site)",
+			"other": "Gary Boncich President & CEO, Secretary of the SAIA Executive Committee (site). 4841 Walden Lane, Lanham 20706 (site; an aggregator shows 9513 Lanham Severn Rd); hours not listed. Memberships on site: ABC, American Subcontractors Association, SAIA, Washington Building Congress, ICRI, DC Chamber of Commerce.",
+			"source_url": "https://scaffoldresource.com/"
+		},
+		"inbound_signals": "'Have a project in mind? Talk to our sales team' → sales@scaffoldresource.com / 301-923-4420; no web form; rental/erection quoting by nature of the trade.",
+		"ops_pain_signals": "Search surfaced 'Project Manager' ($100,000-$125,000; ZipRecruiter https://www.ziprecruiter.com/c/Scaffold-Resource-LLC/Job/Project-Manager/-in-Lanham,MD?jid=685cbfefdf256f38 and LinkedIn job 3931296941 — both blocked on fetch; the LinkedIn IDs date to ~mid-2024), 'Assistant Project Manager' (snippet) and 'Project & Labor Scheduler' (Indeed https://www.indeed.com/viewjob?jk=d535fb782dc57fac, blocked). Careers page fetched showed no titles.",
+		"warm_path": "shared_org (ABC; American Subcontractors Association; Washington Building Congress; DC Chamber of Commerce)",
+		"decision_maker": {
+			"name": "Gary Boncich",
+			"title": "President & CEO",
+			"channel": "no direct channel published; sales@scaffoldresource.com / 301-923-4420",
+			"source_url": "https://scaffoldresource.com/"
+		},
+		"on_existing_board": true,
+		"notes": "Large ($44M aggregator) and DC-oriented; posting currency unverifiable. The 'Project & Labor Scheduler' role is the dispatch/ops-pain angle if still open. Trade is scaffolding (no enum match)."
+	},
+	{
+		"id": "sub-013",
+		"name": "Maloof Contracting Company",
+		"trade": "other",
+		"city": "Crofton",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 15,
+		"website": "https://maloofcontracting.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "since 1988 (site); BBB start date 2007-01-08",
+			"other": "Robert A. Maloof Jr. President/Owner (LinkedIn; ZoomInfo). 1651 Crofton Blvd #2, Crofton 21114; hours not listed. No trade associations listed — only charity affiliations (Special Olympics, St. Jude, etc.).",
+			"source_url": "https://www.maloofcontracting.com/about-us/"
+		},
+		"inbound_signals": "Contact form only (name/email/phone/message); high-end DC-metro commercial drywall, metal framing and acoustical — bid invites presumably arrive by email from GCs.",
+		"ops_pain_signals": "None found; no careers page; BBB 0 complaints / 0 reviews; Bluebook contacts page blocked (403); no postings surfaced.",
+		"warm_path": "none",
+		"decision_maker": {
+			"name": "Robert A. Maloof Jr.",
+			"title": "President / Owner",
+			"channel": "LinkedIn https://www.linkedin.com/in/robert-a-maloof-jr-767ba422/",
+			"source_url": "https://www.linkedin.com/in/robert-a-maloof-jr-767ba422/"
+		},
+		"on_existing_board": true,
+		"notes": "Thin web presence confirmed. 15 min from DJ; owner on LinkedIn. Trade is drywall/framing (no enum match)."
+	},
+	{
+		"id": "sub-014",
+		"name": "R.F. Warder, Inc.",
+		"trade": "mechanical_hvac",
+		"city": "White Marsh",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "https://rfwarder.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "started 1996-01-04 (BBB)",
+			"other": "BBB management: 'R F Warder' President; Deborah Hammond Office Manager. Site publishes dstallings@rfwarder.com and describes a union, 'woman owned small business enterprise (SBE)'. 10556 Philadelphia Rd, White Marsh 21162; hours not listed; 24/7 emergency service. No associations listed.",
+			"source_url": "https://www.bbb.org/us/md/white-marsh/profile/heating-and-air-conditioning/rfwarder-inc-0011-90097649"
+		},
+		"inbound_signals": "'Contact Us' by phone/email only; commercial HVAC/plumbing for high-rises, malls, schools, Class A office; '24/7 emergency services' implies a service-call intake stream.",
+		"ops_pain_signals": "None found; no careers page; BBB 0 complaints; no postings surfaced.",
+		"warm_path": "none",
+		"decision_maker": {
+			"name": "R F Warder",
+			"title": "President (BBB listing; first name not published)",
+			"channel": "dstallings@rfwarder.com (site) ; (410) 344-0190",
+			"source_url": "https://www.bbb.org/us/md/white-marsh/profile/heating-and-air-conditioning/rfwarder-inc-0011-90097649"
+		},
+		"on_existing_board": true,
+		"notes": "Site discloses little; woman-owned + union + BBB A+. The named office manager (Deborah Hammond) is who would feel intake pain. Owner's actual name unverified."
+	},
+	{
+		"id": "sub-015",
+		"name": "Cole Roofing Co., Inc.",
+		"trade": "roofing",
+		"city": "Baltimore",
+		"county": "Baltimore City",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 20,
+		"website": "https://coleroofing.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 51-200 employees; Crustdata snippet: 55 as of June 2026 (aggregator)",
+			"years_in_business": "founded 1919; 4th generation (site)",
+			"other": "Bill Cole President; Jim Layman VP Construction; Jimmy Canoles IV VP Service; Garrett G. Parks CFO; Jeffrey Streib Director of Sales; John Osterritter Director Construction & Field Ops; Sam Muffoletto Chief Estimator; Emily Owens Channell HR. 3915 Coolidge Ave, Baltimore 21229; hours 7:00 AM – 4:00 PM M-F (site). Affiliations page: ABC, Building Congress & Exchange, American Subcontractors Association, NRCA, MARCA, IIBEC, ASBO, Accelerent.",
+			"source_url": "https://coleroofing.com/company/leadership-team/"
+		},
+		"inbound_signals": "'Service Request' (emergency roof repair page) and 'Contact Us'; Chief Estimator and Director of Sales named; commercial re-roof plus service group.",
+		"ops_pain_signals": "Site posts 'Service Work Superintendent' (https://coleroofing.com/company/service-work-superintendent/); search snippets cite Roofing Service Technician, Commercial Roofing Foreman and Mechanic hiring. No estimator/PM/office posting; Join Our Team page fetched showed no listings.",
+		"warm_path": "shared_org (ABC Greater Baltimore; Building Congress & Exchange; NRCA; American Subcontractors Association)",
+		"decision_maker": {
+			"name": "Bill Cole",
+			"title": "President",
+			"channel": "LinkedIn https://www.linkedin.com/in/billcolepvroof/",
+			"source_url": "https://www.linkedin.com/in/billcolepvroof/"
+		},
+		"on_existing_board": true,
+		"notes": "Director of Sales is a 'licensed 100-ton United States Coast Guard Captain' (a credential, not service) — no veteran ownership. Strong association overlap (ABC/BCE/ASA) with other board subs; one room reaches several."
+	},
+	{
+		"id": "sub-016",
+		"name": "L.R. Willson & Sons, Inc.",
+		"trade": "other",
+		"city": "Gambrills",
+		"county": "Anne Arundel",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 15,
+		"website": "https://www.lrwillsonandsons.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "'Over 250 men and women are currently employed.' (site About)",
+			"years_in_business": "incorporated 1971; roots in Willson's Welding 1951 (site)",
+			"other": "Donald E. Willson President; LJ Willson Vice President / Crane Rental Manager – Tilt Up Estimates; Rob Pollock Steel Erection Estimates; Michael Hunter Precast Estimator; Lenny Willson Project Manager; Sherrie Wilkinson HR; Jon Mosebach Safety Director. 773 Annapolis Rd, Gambrills 21054; office hours M-F 8:00 AM-4:30 PM (Fri to 4:00), shop 7:00 AM-4:00 PM (contact page). AISC Advanced Steel Erector, PCI Certified Precast Erector, NCCCO; apprenticeship via ABC Metro Washington.",
+			"source_url": "https://www.lrwillsonandsons.com/about/staff/"
+		},
+		"inbound_signals": "'Get Your Free Estimate' form at https://www.lrwillsonandsons.com/contact-us/estimate/; 'Request a free quote for our many services today via phone or email'; three named estimating desks (steel erection, precast, tilt-up/crane rental).",
+		"ops_pain_signals": "None found; no careers page; no postings surfaced. BBB lists owner as 'Mr. Donald E. Wilson' [sic].",
+		"warm_path": "shared_org (ABC Metro Washington)",
+		"decision_maker": {
+			"name": "Donald E. Willson",
+			"title": "President",
+			"channel": "LinkedIn https://www.linkedin.com/in/donald-willson-88a96537/",
+			"source_url": "https://www.linkedin.com/in/donald-willson-88a96537/"
+		},
+		"on_existing_board": true,
+		"notes": "Board said 'Baltimore' — actual office is Gambrills, ~15 min from Glen Burnie. 250+ staff but only three estimating desks and a public estimate form: a real inbound quote stream. Trade is structural steel erection (no enum match)."
+	},
+	{
+		"id": "sub-017",
+		"name": "Ashton Manor Environmental, LLC",
+		"trade": "landscaping",
+		"city": "Ashton (Sandy Spring)",
+		"county": "Montgomery",
+		"address_type": "shop_or_yard",
+		"drive_minutes_from_glen_burnie_est": 35,
+		"website": "https://www.ashtonmanorenvironmental.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 51-200 employees; 24 named office/lead staff on team page",
+			"years_in_business": "founded 2002 by Jeff Schwartz (site)",
+			"other": "Jeff Schwartz Founder & President; Aaron K. Ruffins Director of Operations — 'retired Lieutenant Colonel and Commanding Officer in the United States Marine Corps'; Eric DuBois Director QAQC/Fleet/Facilities; John Cole Senior Estimator plus Rob Petersen, Beatriz Firpo, Beatriz Ortega Estimators; Sara Crawford Preconstruction Manager; Ben Statler and Scott Pullen Senior PMs; Steve Pritchard PM ('United States Coast Guard veteran'); Refugio Vera PM; Micaela Nunez Office Manager. PO Box 428 Ashton 20861 (site); 17701 New Hampshire Ave, Ashton (aggregator); hours not listed.",
+			"source_url": "https://www.ashtonmanorenvironmental.com/about-us/ame-team/"
+		},
+		"inbound_signals": "'Request An Estimate' at https://www.ashtonmanorenvironmental.com/contact-us/#request-an-estimate; commercial landscape/environmental construction for GCs, government and municipal clients; preconstruction manager + four estimators on staff.",
+		"ops_pain_signals": "LIVE: careers page (https://www.ashtonmanorenvironmental.com/careers/) lists 'Project Manager' and 'Estimator' (email resume@ashtonmanor.com) plus Driver/Foreman/Crew Member via Indeed; undated. Homepage banner 'We Are Hiring!'.",
+		"warm_path": "shared_org (branch: U.S. Marine Corps — Director of Operations Aaron K. Ruffins is a retired USMC Lieutenant Colonel)",
+		"decision_maker": {
+			"name": "Jeff Schwartz",
+			"title": "Founder and President / Owner",
+			"channel": "LinkedIn https://www.linkedin.com/in/jeff-schwartz/",
+			"source_url": "https://www.linkedin.com/in/jeff-schwartz/"
+		},
+		"on_existing_board": true,
+		"notes": "Owner is not a stated veteran, but the Director of Operations who would own a pipeline Diagnostic is a retired Marine LtCol and a PM is a Coast Guard vet — Marine-to-Marine path into the ops seat. Open PM + Estimator seats now. 35 min."
+	},
+	{
+		"id": "sub-018",
+		"name": "Anchor Mechanical, LLC",
+		"trade": "mechanical_hvac",
+		"city": "Forest Hill (Bel Air North)",
+		"county": "Harford",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 50,
+		"website": "https://anchormech.com/",
+		"veteran_evidence": {
+			"quote": "Mark's military and sports background has provided core values of teamwork and integrity.",
+			"source_url": "https://anchormech.com/about-us/",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 201-500 employees; ~60 named office/management staff on team page",
+			"years_in_business": "LinkedIn: founded 2012; not stated on site",
+			"other": "Principals Mark Huntley and Gabriel Fetty (site About). Shane Goetzinger GM Preconstruction; Steve Teague Sr Plumbing Estimator; John Monath Plumbing Estimator; Jessica Lucas Jr Mechanical Estimator; Bre Russell Bid Coordinator; dispatchers Ruth Dieffenderfer (Plumbing), Ashley McFadden (Residential HVAC), Michelle Maggio (Commercial HVAC); Kylie Coyne Commercial Service Coordinator; Kim Huntley Office Director; Peter Markus Safety Director 'US Navy Veteran'; Richard Christie Residential HVAC Service Manager, 'Tech Sergeant in the Air National Guard'. 1630 Robin Circle, Forest Hill 21050 (contact page); PA office; hours not listed. ABC; NFIB.",
+			"source_url": "https://anchormech.com/about-us/our-team/"
+		},
+		"inbound_signals": "'Request a Quote' form (https://anchormech.com/request-a-quote/) and 'Schedule an Appointment' → contact form; residential and commercial service divisions with three named dispatchers; preconstruction division with a Bid Coordinator and BIM team.",
+		"ops_pain_signals": "None on site — careers page (https://anchormech.com/careers/) is a general 'always looking' form. No postings surfaced on LinkedIn/Indeed searches.",
+		"warm_path": "shared_org (ABC; NFIB)",
+		"decision_maker": {
+			"name": "Mark Huntley",
+			"title": "Principal",
+			"channel": "LinkedIn https://www.linkedin.com/in/markhuntleyanchormechanicalllc/",
+			"source_url": "https://anchormech.com/about-us/"
+		},
+		"on_existing_board": true,
+		"notes": "Principal has a stated 'military background' (branch not given) — vet-to-vet plausible, verify on first contact. Already has dispatchers, a bid coordinator and BIM staff: mature intake, so the pitch is measurement not build. 50 min drive."
+	},
+	{
+		"id": "sub-019",
+		"name": "Blue Horizon Renovations",
+		"trade": "remodeling",
+		"city": "Annapolis",
+		"county": "Anne Arundel",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://www.bluehorizonreno.com/",
+		"veteran_evidence": {
+			"quote": "our veteran-owned company delivers the quality of a large firm with the personal touch of a small business",
+			"source_url": "https://www.bluehorizonreno.com/",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "'over 20 years of experience' (site); est. ~2019 per third-party listings",
+			"other": "Thomas 'Tommy' Vendemia Owner and Operator (ZoomInfo; Angi). Showroom 1994 Moreland Parkway Unit 3A, Annapolis 21401 — 'Showroom visits are available by appointment only'. No associations listed.",
+			"source_url": "https://www.bluehorizonreno.com/"
+		},
+		"inbound_signals": "'Start Your Free Design Plan' and 'Schedule a Consultation' → https://www.bluehorizonreno.com/contact/; kitchens, baths, basements, additions.",
+		"ops_pain_signals": "None found; no careers page; no postings.",
+		"warm_path": "vet_to_vet_only",
+		"decision_maker": {
+			"name": "Thomas Vendemia",
+			"title": "Owner and Operator",
+			"channel": "web consultation form only; no direct channel published",
+			"source_url": "https://www.zoominfo.com/p/Thomas-Vendemia/9270278615"
+		},
+		"on_existing_board": true,
+		"notes": "Also vet-001 on the veteran board. Small design-build shop; inquiry-response angle."
+	},
+	{
+		"id": "sub-020",
+		"name": "Apter Remodeling/Craftsman",
+		"trade": "remodeling",
+		"city": "Annapolis",
+		"county": "Anne Arundel",
+		"address_type": "unknown",
+		"drive_minutes_from_glen_burnie_est": 25,
+		"website": "https://apterremodeling.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "unknown",
+			"years_in_business": "since 1981 (site); BBB start date 2011-01-01",
+			"other": "Andy Apter President/Owner, NARI CKBR #137500, UDCP; 'NARI Government Affairs Chair – National Board Member'; board member NARI Chesapeake chapter; NARI snippet: 'instrumental in establishing the NARI Greater Chesapeake Bay Chapter in 2015', later national board chair. BBB address 2109 Forest Dr, Annapolis 21401 (site lists no address); hours not listed.",
+			"source_url": "https://apterremodeling.com/about-us/"
+		},
+		"inbound_signals": "'Contact us for a quote' → https://apterremodeling.com/request-quote/ form; residential and office remodels in Anne Arundel, Queen Anne's and Montgomery counties.",
+		"ops_pain_signals": "None found; no careers page; no postings.",
+		"warm_path": "shared_org (NARI Greater Chesapeake Bay chapter)",
+		"decision_maker": {
+			"name": "Andy Apter",
+			"title": "President",
+			"channel": "no direct channel published; main 410-295-9410",
+			"source_url": "https://apterremodeling.com/about-us/"
+		},
+		"on_existing_board": true,
+		"notes": "Owner is a NARI national officer — the room to meet him is NARI Chesapeake events (https://www.narimd.org/approved-members). Address type unverified (site publishes none; BBB address may be home/office)."
+	},
+	{
+		"id": "sub-021",
+		"name": "Lynch Design | Build",
+		"trade": "remodeling",
+		"city": "Churchville",
+		"county": "Harford",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 50,
+		"website": "https://lynchdesignbuild.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 2-10 employees; 11 named on team page",
+			"years_in_business": "since 1958 (site); LinkedIn says founded 1956",
+			"other": "Donald F. Lynch Jr. President; Donald F. Lynch III VP of Operations; Mike Mentzer Director; Katie Stowers Office Manager; Jerry Wilson Project Manager. 20 Carico Ln, Churchville 21028; Towson satellite office (snippet); hours not listed. MBIA; NAHB CAPS/CGR; Harford County Chamber of Commerce; BBB.",
+			"source_url": "https://lynchdesignbuild.com/about-us/our-team/"
+		},
+		"inbound_signals": "'Schedule for Appointment' → https://lynchdesignbuild.com/contact/; whole-house remodels and custom homes MD/PA/DE.",
+		"ops_pain_signals": "Careers (https://lynchdesignbuild.com/join-our-team/): 'Lead Carpenter' – Churchville, undated. No office/PM posting.",
+		"warm_path": "shared_org (Maryland Building Industry Association; Harford County Chamber of Commerce)",
+		"decision_maker": {
+			"name": "Donald F. Lynch Jr.",
+			"title": "President",
+			"channel": "no direct channel published; main (410) 879-5510",
+			"source_url": "https://lynchdesignbuild.com/about-us/our-team/"
+		},
+		"on_existing_board": true,
+		"notes": "Tiny (2-10) family shop 50 min away; office manager named. The earlier 'Anne Arundel' tag was wrong — Churchville, Harford County."
+	},
+	{
+		"id": "sub-022",
+		"name": "Owings Brothers Contracting",
+		"trade": "remodeling",
+		"city": "Sykesville",
+		"county": "Carroll",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 40,
+		"website": "https://www.owingsbrothers.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 11-50 employees",
+			"years_in_business": "established 1983 (LinkedIn); '40-year anniversary' (site)",
+			"other": "Michael Gerard Owings Owner/General Manager/Sales (CGR, CAPS; 2009 HBAM President per snippet); Joseph Smith Managing Partner/Sales; Chris Owings and Timothy Raymond Owings Owners/Production Supervisors; unnamed Communication & Contract Specialist, Finance Manager, Custom Care Manager, in-house designers. 5340 Enterprise St, Sykesville 21784; hours M-F 8:30 am-4:30 pm (Howard County Chamber listing). NAHB, MBIA/HBAM, NKBA, Rotary, Howard County Chamber.",
+			"source_url": "https://www.owingsbrothers.com/owings-brothers-team/"
+		},
+		"inbound_signals": "'Request a Consultation' CTAs site-wide; design center; residential remodels and additions.",
+		"ops_pain_signals": "None — employment page (https://www.owingsbrothers.com/employment/) is a general interest form (foreman, sales, carpenter, trades).",
+		"warm_path": "shared_org (Maryland Building Industry Association / HBAM; Howard County Chamber of Commerce; NKBA)",
+		"decision_maker": {
+			"name": "Michael Owings",
+			"title": "Owner, General Manager, Sales",
+			"channel": "no direct channel published; contact@owingsbrothers.com / 410-781-7022",
+			"source_url": "https://www.owingsbrothers.com/owings-brothers-team/"
+		},
+		"on_existing_board": true,
+		"notes": "Heavily marketed remodeler with a named 'Communication and Contract Specialist' role — inquiry-response angle. Howard County Chamber page: https://business.howardchamber.com/list/member/owings-brothers-contracting-sykesville-20047"
+	},
+	{
+		"id": "sub-023",
+		"name": "J Paul Builders, LLC",
+		"trade": "general_contractor",
+		"city": "Pikesville",
+		"county": "Baltimore County",
+		"address_type": "staffed_office",
+		"drive_minutes_from_glen_burnie_est": 30,
+		"website": "https://jpaulbuilders.com/",
+		"veteran_evidence": {
+			"quote": "",
+			"source_url": "",
+			"branch_if_stated": ""
+		},
+		"size_signals": {
+			"employees": "LinkedIn company page: 11-50 employees",
+			"years_in_business": "since 1991 (site)",
+			"other": "Paul Lichter Principal Owner / President; Steven Lichter Vice President (son, per search snippet). 1 Reservoir Circle, Suite 100, Pikesville 21208 (office suite); hours not listed. No associations listed on site. MHB #1757.",
+			"source_url": "https://jpaulbuilders.com/about/"
+		},
+		"inbound_signals": "'Get Free Consultation' → https://jpaulbuilders.com/contact/ throughout; 'Partnership & Careers Inquiry' in footer; luxury custom homes and remodels.",
+		"ops_pain_signals": "None found; no postings.",
+		"warm_path": "none",
+		"decision_maker": {
+			"name": "Paul Lichter",
+			"title": "Principal Owner / President",
+			"channel": "LinkedIn https://www.linkedin.com/in/paul-lichter-b90a5632/",
+			"source_url": "https://www.linkedin.com/in/paul-lichter-b90a5632/"
+		},
+		"on_existing_board": true,
+		"notes": "Annapolis is a service area, not an office. Luxury custom — low-volume, high-touch inquiries; weak Diagnostic fit."
+	}
+]

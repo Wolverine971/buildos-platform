@@ -25,10 +25,9 @@ const STRICT = args.includes('--strict');
 const STAMP = args.includes('--stamp');
 const JSON_OUT = args.includes('--json');
 
-// Docs excluded from health checks. Archive and marketing are deliberate
-// write-only lanes; generated files are owned by their generators.
+// Docs excluded from health checks. Marketing is a deliberate write-only lane;
+// generated files are owned by their generators.
 const EXCLUDE = [
-	/^docs\/archive\//,
 	/^docs\/marketing\//,
 	/^docs\/research-library\//,
 	/^apps\/web\/src\/content\//, // published blog/doc content, renders to users

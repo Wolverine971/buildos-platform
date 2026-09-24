@@ -6,7 +6,7 @@ Status: the shared context boundary is implemented and locally verified. The ful
 Agentic Chat release gate is pending. Worker-owned preparation and multi-agent
 execution are not enabled by this change.
 
-This starts Packet 1 of the [companion architecture](../../../docs/archive/agentic-chat-djflow/djflow-architecture.md).
+This starts Packet 1 of the [companion architecture](https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/agentic-chat-djflow/djflow-architecture.md).
 The packet is split at the existing web dependency boundary so that moving context
 ownership does not also introduce a second implementation of context selection.
 

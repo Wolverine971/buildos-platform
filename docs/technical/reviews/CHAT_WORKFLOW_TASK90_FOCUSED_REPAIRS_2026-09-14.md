@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/CHAT_WORKFLOW_TASK90_FOCUSED_REPAIRS_2026-09-14.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-18; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Task 90 — provider and reviewer repairs, focused validation
 
 **Subsequent full-gate result:** DJ later authorized one isolated three-repetition

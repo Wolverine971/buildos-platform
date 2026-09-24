@@ -1289,7 +1289,7 @@ describe('AgenticChatOpenRouterClient', () => {
 							{ status, headers: { 'content-type': 'application/json' } }
 						)
 				) as unknown as typeof fetch,
-				[route({ model: 'openai/gpt-5.6-luna', fallbackModels: [] })]
+				[route({ model: 'openai/gpt-6-luna', fallbackModels: [] })]
 			);
 			await collect(test.client.stream(input()));
 			expect(test.observations).toHaveLength(1);
@@ -1316,7 +1316,7 @@ describe('AgenticChatOpenRouterClient', () => {
 					})
 				])
 			) as unknown as typeof fetch,
-			[route({ model: 'openai/gpt-5.6-luna', fallbackModels: [] })]
+			[route({ model: 'openai/gpt-6-luna', fallbackModels: [] })]
 		);
 		await collect(test.client.stream(input()));
 		expect(test.observations[0]).toMatchObject({
@@ -2627,8 +2627,8 @@ describe('truncated tool-call attempts and turn budgets', () => {
 			test.client.stream({ ...input(), logicalProviderRound: 3, passRole: 'mutation_review' })
 		);
 		expect(requests[0]?.prompt_cache_key).toBe(SESSION_ID);
-		expect(requests[1]?.prompt_cache_key).toBe('agentic-chat-reviewer-v2');
-		expect(requests[2]?.prompt_cache_key).toBe('agentic-chat-reviewer-v2');
+		expect(requests[1]?.prompt_cache_key).toBe('agentic-chat-reviewer-v3');
+		expect(requests[2]?.prompt_cache_key).toBe('agentic-chat-reviewer-v3');
 	});
 
 	it('asks for low reasoning effort on contract and mutation reviews only', async () => {

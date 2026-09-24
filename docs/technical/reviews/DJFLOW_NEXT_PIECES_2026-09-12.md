@@ -6,7 +6,7 @@ Status: incremental synthesis passes focused tests and a real queued smoke run.
 The subsequent complete regression gate scored 52/52 on behavior and quality but
 failed four latency checks. Lightweight admission,
 durable step recovery, and the ordinary-chat review control remain on the
-[build list](../../../docs/archive/agentic-chat-djflow/djflow-build-list.md).
+[build list](https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/agentic-chat-djflow/djflow-build-list.md).
 
 ## Visible change
 

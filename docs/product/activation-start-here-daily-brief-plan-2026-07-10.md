@@ -155,6 +155,8 @@ work. There is no canonical `daily_brief_acted_on` measure.
     - project reopened within seven days;
     - brief viewed and followed by a project mutation within 24 hours.
 5. Sample real `proposal_ready` Start Here capture runs and decide whether prompt tuning is needed.
+   On 2026-09-22 (tasker/93), capture switched from appending snippets to reconciling whole
+   sections. Only runs created after that change ships reflect the current prompt.
 
 Exit: Start Here quality is known, activation false positives are quantified, and no new data model
 is being proposed without evidence.

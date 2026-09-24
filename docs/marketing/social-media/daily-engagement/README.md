@@ -20,9 +20,8 @@ This folder is for active social warmup docs only.
 
 Warmup and reply docs are working files. The long-term loop should be visible in profiles, people nodes, candidates, and the comment log.
 
-## Archive Rule
+## Cleanup Rule
 
-- Move older dated warmups to `docs/archive/marketing/social-media/daily-engagement/`
-- Move older dated replies docs to `docs/archive/marketing/social-media/daily-engagement/`
+- Delete older dated warmups and replies docs once they are no longer in use. Git history keeps them.
 - Do not let this folder become the long-term storage location for completed scans
 - Keep evergreen strategy, voice, and campaign docs in the parent `social-media/` folder

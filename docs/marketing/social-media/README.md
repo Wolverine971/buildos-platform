@@ -31,7 +31,7 @@ If you are planning a social series, follow the Proof And Presence Doctrine: rec
 - Use [`./daily-engagement/`](./daily-engagement/README.md) as the current working set for dated warmups.
 - Use [`./discovery/`](./discovery/README.md) for Stage 0 discovery queues and search terms.
 - Use [`./comment-log.md`](./comment-log.md) as the cross-run ledger for queued, drafted, posted, reacted, and converted touchpoints.
-- Move older dated warmups into `docs/archive/marketing/social-media/daily-engagement/` once they are no longer actively in use.
+- Delete older dated warmups once they are no longer actively in use. Git history keeps them.
 
 ## Relationship Memory
 

@@ -1,16 +1,18 @@
 // packages/smart-llm/src/model-config.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	ACTIVE_RUNTIME_MODEL_IDS,
 	DEEPSEEK_V41_FLASH_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GLM_52_MODEL,
 	GLM_53_FLASH_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	KIMI_CODING_MODEL,
 	KIMI_K3_MODEL,
 	MINIMAX_M3_MODEL,
+	modelSupportsCapability,
 	NEX_N2_MINI_MODEL,
 	PARETO_MODEL,
 	POOLSIDE_LAGUNA_XS_21_MODEL,
@@ -174,17 +176,27 @@ describe('resolveModelPricingProfile', () => {
 	});
 
 	it('prices the premium evaluation and maximum-work roster', () => {
-		const luna = resolveModelPricingProfile(GPT_56_LUNA_MODEL);
+		const luna = resolveModelPricingProfile(GPT_6_LUNA_MODEL);
 		const grok = resolveModelPricingProfile(GROK_47_MODEL);
 		const kimi = resolveModelPricingProfile(KIMI_K3_MODEL);
 
-		expect(luna?.profile.cost).toBe(0.2);
-		expect(luna?.profile.outputCost).toBe(1.2);
+		expect(luna?.profile.cost).toBe(0.1);
+		expect(luna?.profile.outputCost).toBe(0.5);
 		expect(grok?.modelId).toBe(GROK_47_MODEL);
 		expect(grok?.profile.cost).toBe(1.6);
 		expect(grok?.profile.outputCost).toBe(4.8);
 		expect(kimi?.profile.cost).toBe(3);
 		expect(kimi?.profile.outputCost).toBe(15);
+	});
+
+	it('retains old Luna pricing for historical receipts only', () => {
+		const previousLuna = resolveModelPricingProfile('openai/gpt-5.6-luna-20260709');
+
+		expect(previousLuna?.modelId).toBe('openai/gpt-5.6-luna');
+		expect(previousLuna?.profile.cost).toBe(0.2);
+		expect(previousLuna?.profile.outputCost).toBe(1.2);
+		expect(ACTIVE_RUNTIME_MODEL_IDS).not.toContain('openai/gpt-5.6-luna');
+		expect(modelSupportsCapability('openai/gpt-5.6-luna', 'tools')).toBe(false);
 	});
 
 	it('falls back to a requested model when the resolved model is not configured', () => {

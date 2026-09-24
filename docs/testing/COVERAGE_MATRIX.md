@@ -100,7 +100,6 @@ This document provides a comprehensive matrix of all major components, services,
 | `sse-processor.ts`                  | 🔴 None      | -                                                 | P1       | Server-sent events  |
 | `date-utils.ts`                     | 🔴 None      | -                                                 | P1       | Date formatting     |
 | `timezone.ts`                       | 🔴 None      | -                                                 | P1       | Timezone handling   |
-| `dateValidation.ts`                 | 🔴 None      | -                                                 | P1       | Date validation     |
 | `markdown.ts`                       | 🔴 None      | -                                                 | P2       | Markdown processing |
 | `markdown-nesting.ts`               | 🔴 None      | -                                                 | P2       | Nesting logic       |
 | `calendar-error-monitor.ts`         | 🔴 None      | -                                                 | P2       | Error monitoring    |
@@ -277,12 +276,9 @@ This document provides a comprehensive matrix of all major components, services,
 | --------------------------------- | ------------ | ----- | --------------------------- |
 | `scheduler.test.ts`               | ✅ Excellent | 171   | Core functions              |
 | `scheduler.comprehensive.test.ts` | ✅ Excellent | 764   | Edge cases, timezones, DST  |
-| `scheduler-parallel.test.ts`      | ✅ Excellent | 515   | Parallel processing         |
-| `scheduler-utils.test.ts`         | ✅ Excellent | 230   | Utility functions           |
 | `briefBackoffCalculator.test.ts`  | ✅ Excellent | 324   | Engagement-based throttling |
-| `briefGenerator.test.ts`          | 🟡 Partial   | 302   | Parallel project processing |
 
-**Summary**: 6 test files, ~2,306 lines
+**Summary**: 3 test files. `scheduler-parallel`, `scheduler-utils`, and `briefGenerator` were removed 2026-09-22: they re-implemented the logic inside the test instead of importing it.
 
 ---
 

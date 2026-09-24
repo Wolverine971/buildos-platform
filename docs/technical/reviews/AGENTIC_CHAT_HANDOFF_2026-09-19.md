@@ -9,6 +9,110 @@
 
 ## Read this first
 
+**Workflow inspector built, September 20 (later):** Task 91 is implemented locally on `main`,
+uncommitted and undeployed: lab Logs/Trace/Export actions on the real session id, the session
+audit API joins the seven workflow tables with admin-only access and per-table coverage, a new
+`/admin/chat/workflows` inspector (Flow/Timeline/Evidence/Costs/Transcript/Raw, deep links,
+polling only while running), and Markdown/ZIP exports with `flow.mmd`, `agents/<step>/`,
+`raw/*.json` and a manifest that keeps stored hashes apart from exported-file hashes. 53 free
+tests and `web check` pass; the inspector was browser-checked read-only on the pilot session
+`d104deef…`. No paid runs, no QA gate, no worker/schema changes; per-attempt prompts remain
+not persisted and are reported as coverage. Status and remaining items are in
+[Task 91](../../../tasker/91-workflow-lab-audit-and-export.md#implementation-status-2026-09-20).
+
+**Workflow inspection handoff, September 20:** DJ tested Workflow Lab and requested log links,
+an admin-style multi-agent flow inspector, and chat/flow/evidence export for another agent to
+reverse-engineer a run. [Task 91](../../../tasker/91-workflow-lab-audit-and-export.md) is a ready
+implementation handoff with source map, data/coverage contract, and acceptance criteria. Existing
+`ChatSessionAuditActions` and `AgentChatModal.onSessionChange` provide the lab link/export entry;
+the session audit API still needs the workflow-specific records. This update creates the task,
+not the feature. Research and the full QA gate remain deferred.
+
+**Workbench migration applied, September 20:** `20260920162616_agentic_chat_specialist_workbench_v1`
+is now applied to production and recorded under its original migration version. Fixed a hosted
+default-grants issue before applying: service role now has only the required catalog operations,
+with no delete/truncate access. Seven focused Postgres tests and a rolled-back production
+save/publish/retry/ownership smoke pass; exact function bodies and migration source match. No paid
+calls, application deployment, or custom-agent activation. See
+[production verification](../../architecture/SPECIALIST_WORKBENCH_2026-09-20.md#production-migration-verification).
+
+**Specialist workbench continuation, September 20:** Implemented locally at
+`/workflow-lab/specialists`: private drafts, authored reference-note loading, free input/capability
+checks, exact prompt previews, and immutable catalog versions. Publication does **not** activate
+a custom agent in live chat. The `20260920162616_agentic_chat_specialist_workbench_v1` migration
+was subsequently applied as recorded above; existing pilot cohort membership controls access. 32 focused
+free tests, runtime build, web check, and a synthetic browser interaction check cover this slice.
+No paid inference or production changes. See
+[implementation and remaining activation bridge](../../architecture/SPECIALIST_WORKBENCH_2026-09-20.md).
+Next: explicitly select and pin a published specialist in a supported chat workflow, then let Jev
+choose among eligible versions/profiles. The full QA/research gate remains deferred.
+
+**Shared-evidence continuation, September 20:** Implemented locally: document profile 3 now runs
+the reviewer after the organizer and binds its input to accepted context and saved read-result hashes.
+Old profiles keep their parallel behavior. 128 focused free tests and worker typecheck pass;
+no paid calls were used. The new `20260920154843_agentic_chat_document_evidence_handoff_v1`
+migration is **not yet applied to production**. Deploy the migration, then the worker, then web
+with `AGENTIC_CHAT_DOCUMENT_EVIDENCE_HANDOFF_ENABLED=true` while retaining DJ's cohort.
+See [implementation, validation, rollout and rollback](../../architecture/DOCUMENT_EVIDENCE_HANDOFF_2026-09-20.md).
+A small synthetic live smoke remains; the full QA/research gate stays deferred. Next implementation
+was the specialist workbench with bounded knowledge loading, now described above. Activation of
+published versions and durable Jev routing remain.
+
+**Next-work clarification, September 20:** Rechecked production: all three specialist migrations,
+the shadow table, and the three matching shadow functions are present. No reapplication is
+needed. DJ asked to figure out the next work; the
+bounded implementation plan
+prioritizes shared document evidence, then the specialist workbench/knowledge loader, then
+versioned Jev routing. Cross-turn evidence reuse is a separate follow-up rather than a prerequisite
+for authoring specialists. This clarification changed documentation only.
+
+**Production pilot enabled, September 20:** DJ explicitly authorized migration application and
+live testing. All three specialist migration versions are recorded in production (the first two
+already existed; their ledger entries were repaired after verifying SQL). Worker deployment
+`629435b3-aeee-43ff-a3ca-556ec12a67e4` and web deployment
+`dpl_8jMxWUeePvTN9pWm8aUPM8dnCoeE`, source `3c787c76d`, enable Review project,
+Organize documents with bounded reads, and Jev **shadow** selection for DJ only. Two production
+UI-to-worker runs on a new synthetic fixture completed for **$0.00647589** in recorded workflow
+plus selector cost. History restored both answers/cards after reload; domain hashes were unchanged.
+See [rollout, evidence, quality gap, and rollback](SPECIALIST_PILOT_ROLLOUT_2026-09-20.md).
+Next: specialist evidence handoffs and safe cross-turn evidence reuse. The parallel risk reviewer
+does not receive the organizer's full reads. Full QA/research remain deferred; dynamic Jev routing
+is still unimplemented. Earlier "local only" notes below describe the implementation milestones,
+not the current rollout state. The shadow migration and these documentation files still need to
+be included in DJ's next source commit; no push was made by this session.
+
+**Jev specialist shadow continuation, September 20:** The next local change set adds typed Jev
+comparison of the supported specialist/tool bundles, a durable one-attempt audit receipt, and a
+free offline comparison report. The fixed agents, tools, and answers remain authoritative.
+`AGENTIC_CHAT_JEV_SPECIALIST_SELECTION` defaults to `off`; only `off|shadow` are accepted.
+See [implementation, cost boundary, and rollout](../../architecture/JEV_SPECIALIST_SHADOW_2026-09-20.md).
+91 focused free tests, worker typecheck, and the offline report command pass. The audit migration
+is local only, with no paid inference or production setting changes. Shadow
+cost is separate evaluation telemetry, outside the fixed workflow dispatch budget. Full QA remains deferred.
+
+**Bounded document-tool continuation, September 19:** `document_organizer@2` now has one native
+read tool for up to four inventory documents, immutable saved read results, and recovery without
+refetching changed text. A new explicit policy and default-off `AGENTIC_CHAT_DOCUMENT_READ_TOOLS_ENABLED`
+gate preserve older tool-free runs. See [implementation and rollout](../../architecture/DOCUMENT_ORGANIZATION_SPECIALIST_2026-09-19.md#bounded-document-reads-implemented-locally).
+253 focused free tests pass, along with runtime build, worker typecheck, catalog preview, and
+web check (0 errors/warnings). The additional document-read migration is local only; no paid
+inference or production changes. Next implementation boundary: Jev shadow selection and a durable selection receipt. Full QA and
+research remain deferred by DJ.
+
+**Document specialist continuation, September 19:** The next local change set adds the
+**Organize documents** composer mode and `document_organizer@1`, with immutable admission-time
+specialist snapshots and recovery through the existing durable engine. It proposes organization
+from bounded titles/summaries and saved structure; it does not read full bodies or change documents.
+See [implementation, rollout, and remaining work](../../architecture/DOCUMENT_ORGANIZATION_SPECIALIST_2026-09-19.md).
+192 focused free tests passed, plus runtime build, worker typecheck, and web check (0 errors/warnings).
+The migration is local only; production flags are unchanged. Full QA/research remain deferred.
+
+**Specialist continuation, September 19:** DJ approved the next implementation step. The local
+change set extracts the analyst/reviewer into versioned definitions, connects them to the current
+runner, adds a selector port with a free deterministic preview, and specifies the future v2 run
+snapshot. See [the implementation contract](../../architecture/SPECIALIST_DEFINITIONS_V1_2026-09-19.md).
+That baseline is now followed by the document-specialist continuation above. No production switch or schema changed; the full gate remains deferred.
+
 **Latest continuation, September 19, 8:16pm EDT:** DJ deployed the UI changes at `8951b7dc9`
 and requested an inexpensive smoke. One real-model durable review passed for **$0.00573078**,
 along with 79 free recovery/admission/restoration checks. The tested worker revision matches
@@ -22,7 +126,7 @@ The first live radar scans were inspected; see the
 the composer’s **Review project** choice, durable workflow progress/restoration, and the freshness
 card’s **Review deeper** draft action. Production rollout switches remain unchanged. See the
 [UI implementation record](AGENTIC_CHAT_REVIEW_UI_2026-09-19.md) and the proposed
-[specialist agents/Jev next steps](../../architecture/SPECIALIST_AGENTS_AND_JEV_NEXT_STEPS_2026-09-19.md).
+specialist agents/Jev next steps.
 The original handoff below records the earlier deployment state.
 
 - **The most urgent task is the freshness radar.** It went live for DJ's account minutes before
@@ -285,3 +389,43 @@ runs here. See `tasker/89-chat-workflow-integration-acceptance.md`. Still owed:
     - web freshness, chat session and decide suites: 116/116;
     - SQL contracts: 52/52;
     - worker typecheck clean.
+
+## September 20 continuation — published specialists connected to Workflow Lab
+
+After DJ reported Tasker 91 complete, implemented explicit published-version selection in Workflow
+Lab and the composer. Admission verifies owner/version/hash, pins the full catalog snapshot and
+reference knowledge into the run, and uses a distinct v3 executable snapshot rejected by old workers.
+The worker applies custom instructions and knowledge only to the selected specialist, enforces its
+optional document-read capability, and retains the existing reviewer/editor and spend limits.
+Changed versions and built-in/custom swaps conflict on retry; recovery uses the original run copy.
+Jev stays shadow-only for built-ins and is skipped for explicit custom selections.
+
+Tasker 91 Logs/Trace/Export remain connected to the actual session and include the raw pinned version.
+New default-off flag on both services: `AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED`.
+Local migration: `20260921002731_agentic_chat_published_specialist_execution_v1.sql`; it requires the
+previous evidence-handoff migration (still pending production) and the already-applied workbench
+migration. No production flags, migrations or deployments were changed in this turn.
+
+Validation: 191 focused free tests passed; runtime build, worker typecheck, and web Svelte check
+(zero errors/warnings) passed.
+
+See [implementation, validation and rollout](../../architecture/PUBLISHED_SPECIALIST_EXECUTION_2026-09-20.md).
+The full Agentic Chat gate and paid research remain deferred by DJ. Next: deploy/enable this bounded
+selection path, inspect a small real custom-specialist run, then curate the eligible roster for Jev.
+
+## September 20 — specialist migrations applied to production
+
+On DJ's request, applied `20260920154843_agentic_chat_document_evidence_handoff_v1.sql` and
+`20260921002731_agentic_chat_published_specialist_execution_v1.sql` together on `build_os`
+(`iwifjtlebphefldmwbkh`). Each exact source and original ledger ID committed in the same transaction.
+The workbench migration was already installed and was not reapplied. No unrelated migrations ran.
+
+Verified at September 21 01:02 UTC: both ledger/source hashes match, all 23 final function bodies
+match, service-only execution and fixed search paths remain correct, all changed constraints validate,
+both new triggers are enabled, and profile 2/3 plan selection and reviewer dependencies are correct.
+Relevant table RLS remains enabled; no security-advisor warnings concern changed objects.
+
+App deployment and feature activation are still pending: deploy worker/runtime then web, enable
+`AGENTIC_CHAT_PUBLISHED_SPECIALISTS_ENABLED` on worker before web. No flag or deployment was changed
+while applying these migrations. Paid inference and the full QA gate remain deferred.
+See [rollout and verification](../../architecture/PUBLISHED_SPECIALIST_EXECUTION_2026-09-20.md).

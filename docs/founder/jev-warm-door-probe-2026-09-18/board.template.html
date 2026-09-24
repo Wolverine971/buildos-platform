@@ -1,0 +1,1161 @@
+<!-- docs/founder/jev-warm-door-probe-2026-09-18/board.template.html -->
+<title>Warm Door Call List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+	rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Sofia+Sans+Extra+Condensed:wght@700;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+/>
+<style>
+	:root {
+		--bg: #edefea;
+		--surface: #ffffff;
+		--surface-2: #e2e6e0;
+		--ink: #16201c;
+		--ink-2: #47524d;
+		--ink-3: #6f7a74;
+		--rule: #cbd1cc;
+		--rule-2: #aeb7b0;
+		--accent: #1f5f3f;
+		--accent-ink: #ffffff;
+		--accent-wash: #dcebe1;
+		--hot: #a85a0e;
+		--hot-wash: #f3e6d3;
+		--crit: #9e3b2e;
+		--crit-wash: #f2deda;
+		--good: #1f5f3f;
+		--heat-0: #e7ebe6;
+		--heat-1: #c9dccf;
+		--heat-2: #9dc3aa;
+		--heat-3: #5f9c78;
+		--heat-4: #2e6e4c;
+		--display: 'Sofia Sans Extra Condensed', 'Arial Narrow', Impact, sans-serif;
+		--body: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		--mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+	}
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) {
+			--bg: #10161a;
+			--surface: #171f23;
+			--surface-2: #1f292e;
+			--ink: #e6ebe7;
+			--ink-2: #aeb9b2;
+			--ink-3: #7f8b85;
+			--rule: #2a363b;
+			--rule-2: #3b4a50;
+			--accent: #6cc095;
+			--accent-ink: #08160e;
+			--accent-wash: #173124;
+			--hot: #e3a24f;
+			--hot-wash: #33270f;
+			--crit: #ee8a7a;
+			--crit-wash: #3a1e1a;
+			--good: #6cc095;
+			--heat-0: #1c262b;
+			--heat-1: #22392d;
+			--heat-2: #2d5a40;
+			--heat-3: #3e8259;
+			--heat-4: #6cc095;
+		}
+	}
+	:root[data-theme='dark'] {
+		--bg: #10161a;
+		--surface: #171f23;
+		--surface-2: #1f292e;
+		--ink: #e6ebe7;
+		--ink-2: #aeb9b2;
+		--ink-3: #7f8b85;
+		--rule: #2a363b;
+		--rule-2: #3b4a50;
+		--accent: #6cc095;
+		--accent-ink: #08160e;
+		--accent-wash: #173124;
+		--hot: #e3a24f;
+		--hot-wash: #33270f;
+		--crit: #ee8a7a;
+		--crit-wash: #3a1e1a;
+		--good: #6cc095;
+		--heat-0: #1c262b;
+		--heat-1: #22392d;
+		--heat-2: #2d5a40;
+		--heat-3: #3e8259;
+		--heat-4: #6cc095;
+	}
+	* {
+		box-sizing: border-box;
+	}
+	body {
+		margin: 0;
+		background: var(--bg);
+		color: var(--ink);
+		font-family: var(--body);
+		font-size: 16px;
+		line-height: 1.5;
+		-webkit-font-smoothing: antialiased;
+	}
+	.wrap {
+		max-width: 1060px;
+		margin: 0 auto;
+		padding-inline: 20px;
+		padding-block: 0 96px;
+	}
+	a {
+		color: var(--accent);
+		text-underline-offset: 2px;
+	}
+	:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+		border-radius: 2px;
+	}
+	button,
+	select,
+	input,
+	textarea {
+		font: inherit;
+	}
+	.mono {
+		font-family: var(--mono);
+	}
+	.eyebrow {
+		font-family: var(--mono);
+		font-size: 0.7rem;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+	header.top {
+		padding-block: 40px 22px;
+	}
+	header.top h1 {
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: clamp(3rem, 9vw, 5rem);
+		line-height: 0.9;
+		margin: 8px 0 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.005em;
+	}
+	.standfirst {
+		font-size: 1.08rem;
+		color: var(--ink-2);
+		max-width: 66ch;
+		margin: 0;
+	}
+	.standfirst b {
+		color: var(--ink);
+	}
+
+	.strip {
+		position: sticky;
+		top: env(safe-area-inset-top, 0px);
+		z-index: 5;
+		background: var(--bg);
+		border-block: 1px solid var(--rule-2);
+		padding-block: 10px;
+		margin-bottom: 28px;
+	}
+	.strip-in {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px 18px;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.figs {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px 18px;
+	}
+	.fig {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+	}
+	.fig b {
+		font-family: var(--mono);
+		font-weight: 600;
+		font-size: 1rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.fig span {
+		font-size: 0.78rem;
+		color: var(--ink-3);
+	}
+	.save {
+		font-family: var(--mono);
+		font-size: 0.68rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+	.save[data-s='saving'] {
+		color: var(--hot);
+	}
+	.save[data-s='off'],
+	.save[data-s='error'] {
+		color: var(--crit);
+	}
+
+	section {
+		margin-bottom: 56px;
+	}
+	h2 {
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 1.9rem;
+		text-transform: uppercase;
+		margin: 0 0 4px;
+		line-height: 1;
+		letter-spacing: 0.01em;
+	}
+	.sec-note {
+		color: var(--ink-2);
+		margin: 0 0 18px;
+		max-width: 70ch;
+		font-size: 0.95rem;
+	}
+
+	.how {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.how .box {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 16px 18px;
+		display: grid;
+		gap: 6px;
+		align-content: start;
+	}
+	.how .k {
+		font-family: var(--mono);
+		font-size: 0.66rem;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.how p {
+		margin: 0;
+		font-size: 0.92rem;
+		line-height: 1.5;
+		color: var(--ink-2);
+	}
+	.how p b {
+		color: var(--ink);
+	}
+
+	.filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 10px;
+		align-items: center;
+	}
+	.chip {
+		border: 1px solid var(--rule-2);
+		background: var(--surface);
+		color: var(--ink-2);
+		border-radius: 99px;
+		padding: 5px 12px;
+		font-size: 0.84rem;
+		cursor: pointer;
+	}
+	.chip[aria-pressed='true'] {
+		background: var(--ink);
+		color: var(--bg);
+		border-color: var(--ink);
+	}
+	.chip .n {
+		font-family: var(--mono);
+		font-size: 0.72rem;
+		opacity: 0.75;
+		margin-left: 4px;
+	}
+	.legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 14px;
+		font-family: var(--mono);
+		font-size: 0.7rem;
+		color: var(--ink-3);
+		margin-bottom: 8px;
+	}
+	.legend b {
+		color: var(--ink-2);
+		font-weight: 600;
+	}
+
+	.list {
+		border-top: 2px solid var(--ink);
+	}
+	.row {
+		display: grid;
+		grid-template-columns: 40px 1fr 236px 150px;
+		gap: 12px;
+		align-items: start;
+		padding: 12px 2px;
+		border-bottom: 1px solid var(--rule);
+	}
+	.row.won {
+		background: var(--accent-wash);
+	}
+	.row.passed {
+		opacity: 0.5;
+	}
+	.rk {
+		font-family: var(--mono);
+		font-size: 1rem;
+		color: var(--ink-3);
+		font-variant-numeric: tabular-nums;
+		padding-top: 2px;
+	}
+	.rk .sc {
+		display: block;
+		font-size: 0.66rem;
+		color: var(--ink-3);
+	}
+	.nm {
+		font-weight: 700;
+		font-size: 1rem;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+	.nm a {
+		color: var(--ink);
+		text-decoration: none;
+	}
+	.nm a:hover {
+		text-decoration: underline;
+	}
+	.meta {
+		font-family: var(--mono);
+		font-size: 0.68rem;
+		color: var(--ink-3);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-top: 2px;
+	}
+	.tag {
+		font-family: var(--mono);
+		font-size: 0.6rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		padding: 2px 6px;
+		border-radius: 2px;
+		background: var(--accent-wash);
+		color: var(--accent);
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.tag.hot {
+		background: var(--hot-wash);
+		color: var(--hot);
+	}
+	.tag.marine {
+		background: var(--crit-wash);
+		color: var(--crit);
+	}
+	.tag.sub {
+		background: var(--surface-2);
+		color: var(--ink-2);
+	}
+	.angle {
+		font-size: 0.86rem;
+		color: var(--ink-2);
+		margin-top: 4px;
+	}
+	.angle b {
+		color: var(--ink);
+		font-weight: 600;
+	}
+	.heat {
+		display: grid;
+		grid-template-columns: repeat(8, 1fr);
+		gap: 3px;
+	}
+	.hc {
+		height: 26px;
+		border-radius: 2px;
+		font-family: var(--mono);
+		font-size: 0.62rem;
+		display: grid;
+		place-items: center;
+		color: var(--ink);
+	}
+	.heat-head {
+		display: grid;
+		grid-template-columns: 40px 1fr 236px 150px;
+		gap: 12px;
+		padding: 6px 2px 4px;
+	}
+	.heat-head .heat .hc {
+		height: auto;
+		background: none;
+		writing-mode: vertical-rl;
+		transform: rotate(180deg);
+		justify-content: start;
+		min-height: 74px;
+		color: var(--ink-3);
+		font-size: 0.6rem;
+		padding-block: 2px;
+	}
+	.act {
+		display: grid;
+		gap: 6px;
+	}
+	select.status {
+		width: 100%;
+		padding: 6px 8px;
+		border: 1px solid var(--rule-2);
+		border-radius: 3px;
+		background: var(--surface);
+		color: var(--ink);
+		font-size: 0.84rem;
+	}
+	select.status[data-v='visited'],
+	select.status[data-v='called'] {
+		background: var(--accent-wash);
+		color: var(--accent);
+		font-weight: 600;
+	}
+	select.status[data-v='meeting'],
+	select.status[data-v='proposal'] {
+		background: var(--hot-wash);
+		color: var(--hot);
+		font-weight: 600;
+	}
+	select.status[data-v='won'] {
+		background: var(--accent);
+		color: var(--accent-ink);
+		font-weight: 700;
+	}
+	select.status[data-v='passed'] {
+		background: var(--crit-wash);
+		color: var(--crit);
+	}
+	input.note {
+		width: 100%;
+		padding: 6px 8px;
+		border: 1px solid var(--rule-2);
+		border-radius: 3px;
+		background: var(--surface);
+		color: var(--ink);
+		font-size: 0.82rem;
+	}
+	details.ev {
+		grid-column: 2 / -1;
+		margin-top: 4px;
+	}
+	details.ev summary {
+		font-family: var(--mono);
+		font-size: 0.68rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
+		cursor: pointer;
+		list-style: none;
+	}
+	details.ev summary::-webkit-details-marker {
+		display: none;
+	}
+	details.ev summary::before {
+		content: '▸ ';
+	}
+	details.ev[open] summary::before {
+		content: '▾ ';
+	}
+	.evbody {
+		display: grid;
+		grid-template-columns: 130px 1fr;
+		gap: 4px 12px;
+		font-size: 0.86rem;
+		padding: 10px 12px;
+		margin-top: 6px;
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+	}
+	.evbody .k {
+		font-family: var(--mono);
+		font-size: 0.66rem;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		padding-top: 3px;
+	}
+	.evbody .v {
+		color: var(--ink-2);
+		overflow-wrap: anywhere;
+	}
+	.evbody .v q {
+		color: var(--ink);
+	}
+	.evbody .v a {
+		font-family: var(--mono);
+		font-size: 0.74rem;
+	}
+
+	.routes {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.route {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: 3px;
+		padding: 14px 16px;
+	}
+	.route h3 {
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 1.35rem;
+		text-transform: uppercase;
+		margin: 0 0 2px;
+	}
+	.route .sub {
+		font-family: var(--mono);
+		font-size: 0.68rem;
+		color: var(--ink-3);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		margin-bottom: 10px;
+	}
+	.route ol {
+		margin: 0;
+		padding-left: 20px;
+		font-size: 0.9rem;
+		display: grid;
+		gap: 4px;
+	}
+	.route li span {
+		color: var(--ink-3);
+		font-family: var(--mono);
+		font-size: 0.72rem;
+		margin-left: 6px;
+	}
+
+	.foot {
+		font-size: 0.84rem;
+		color: var(--ink-3);
+		border-top: 1px solid var(--rule);
+		padding-top: 16px;
+		max-width: 78ch;
+	}
+	.foot p {
+		margin: 0 0 6px;
+	}
+
+	@media (max-width: 800px) {
+		.how,
+		.routes {
+			grid-template-columns: 1fr;
+		}
+		.row {
+			grid-template-columns: 34px 1fr;
+		}
+		.row .heat {
+			grid-column: 2;
+		}
+		.row .act {
+			grid-column: 2;
+		}
+		.heat-head {
+			display: none;
+		}
+		.strip {
+			position: static;
+		}
+		.evbody {
+			grid-template-columns: 1fr;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		* {
+			transition: none !important;
+		}
+	}
+</style>
+
+<div class="wrap">
+	<header class="top">
+		<div class="eyebrow" id="eyebrow">Jev 1.13 · evidence scoring · drafted 18 Sep 2026</div>
+		<h1>Warm Door Call List</h1>
+		<p class="standfirst" id="standfirst"></p>
+	</header>
+
+	<div class="strip">
+		<div class="strip-in">
+			<div class="figs" id="figs"></div>
+			<span class="save" id="save" data-s="init">Connecting…</span>
+		</div>
+	</div>
+
+	<section>
+		<h2>How to read it</h2>
+		<div class="how">
+			<div class="box">
+				<div class="k">What Jev judged</div>
+				<p>
+					Each business was sent as a sourced record with <b>the offer</b> and asked eight
+					yes/no or 0–3 questions about the evidence. No forecasts. Two typed picks:
+					revenue band and <b>which entry point the evidence supports</b>.
+				</p>
+			</div>
+			<div class="box">
+				<div class="k">What the score is</div>
+				<p>
+					A weighted sum in code, times a drive-time factor (≤25 min ×1, ≤35 ×0.85, else
+					×0.6). The <b>warm path</b> column is flat for now: you have no memberships yet,
+					so veteran-owned businesses score "both veterans" and the rest score nothing.
+					Joining one room changes it.
+				</p>
+			</div>
+			<div class="box">
+				<div class="k">What to do with it</div>
+				<p>
+					Set a status when you visit or call. It saves to this page. Those outcomes are
+					the only real test of whether the order was right, so <b>log the misses too</b>.
+				</p>
+			</div>
+		</div>
+	</section>
+
+	<section>
+		<h2>The list</h2>
+		<p class="sec-note">
+			Green cells are strong evidence. Amber tag = hiring an estimator or ops manager right
+			now. Red tag = Marine-owned. Grey tag = from the beachhead board. Open a row for the
+			sourced evidence and the owner's name.
+		</p>
+		<div class="filters" id="filters"></div>
+		<div class="legend" id="legend"></div>
+		<div class="heat-head" id="heat-head"></div>
+		<div class="list" id="list"></div>
+	</section>
+
+	<section>
+		<h2>Walk-in routes</h2>
+		<p class="sec-note">
+			Grouped by drive time from Glen Burnie, best score first. A route is a day, not a list:
+			pick one, put a date on it.
+		</p>
+		<div class="routes" id="routes"></div>
+	</section>
+
+	<div class="foot" id="foot"></div>
+</div>
+
+<script>
+	(function () {
+		'use strict';
+		var D = __BOARD_JSON__;
+		var STATUSES = [
+			['untouched', 'Untouched'],
+			['visited', 'Visited'],
+			['called', 'Called'],
+			['meeting', 'Meeting set'],
+			['proposal', 'Proposal out'],
+			['won', 'Won'],
+			['passed', 'Passed']
+		];
+		var ANGLE = {
+			bid_invite_triage: 'Bid-invite triage',
+			unsold_estimate_followup: 'Unsold-estimate follow-up',
+			inquiry_response: 'Inquiry response',
+			scheduling_dispatch: 'Scheduling & dispatch',
+			none: 'No clear entry point'
+		};
+		var SIZE = {
+			under_1m: '<$1M',
+			'1m_to_5m': '$1–5M',
+			'5m_to_30m': '$5–30M',
+			over_30m: '>$30M',
+			unknown: 'size unknown'
+		};
+		var STATE = {};
+		var FILTER = 'all';
+		var db = null;
+		var unsub = null;
+
+		function el(tag, cls, text) {
+			var n = document.createElement(tag);
+			if (cls) n.className = cls;
+			if (text != null) n.textContent = text;
+			return n;
+		}
+		function isMarine(r) {
+			var v = r.vet || {};
+			return /marine/i.test((v.branch_if_stated || '') + ' ' + (v.quote || ''));
+		}
+		function isHiring(r) {
+			return (r.v.ops_strain_now || 0) >= 0.4;
+		}
+		function heatClass(x) {
+			return x >= 0.8
+				? 'heat-4'
+				: x >= 0.6
+					? 'heat-3'
+					: x >= 0.4
+						? 'heat-2'
+						: x >= 0.2
+							? 'heat-1'
+							: 'heat-0';
+		}
+		function status(id) {
+			return (STATE[id] && STATE[id].status) || 'untouched';
+		}
+
+		var FILTERS = [
+			[
+				'all',
+				'All',
+				function () {
+					return true;
+				}
+			],
+			[
+				'near',
+				'≤ 12 min',
+				function (r) {
+					return typeof r.minutes === 'number' && r.minutes <= 12;
+				}
+			],
+			['hiring', 'Hiring now', isHiring],
+			['marine', 'Marine-owned', isMarine],
+			[
+				'bid',
+				'Bid triage',
+				function (r) {
+					return r.angle === 'bid_invite_triage';
+				}
+			],
+			[
+				'est',
+				'Unsold estimates',
+				function (r) {
+					return r.angle === 'unsold_estimate_followup';
+				}
+			],
+			[
+				'reach',
+				'Owner reachable',
+				function (r) {
+					return r.v.owner_reachable >= 0.5;
+				}
+			],
+			[
+				'open',
+				'Not yet touched',
+				function (r) {
+					return status(r.id) === 'untouched';
+				}
+			]
+		];
+
+		function renderHead() {
+			var s = document.getElementById('standfirst');
+			var n = D.rows.length,
+				near = D.rows.filter(FILTERS[1][2]).length,
+				hiring = D.rows.filter(isHiring).length,
+				marine = D.rows.filter(isMarine).length;
+			s.innerHTML = '';
+			var nv = D.rows.filter(function (r) {
+					return r.list === 'vet';
+				}).length,
+				ns = n - nv;
+			s.appendChild(
+				document.createTextNode(
+					n +
+						' businesses near Glen Burnie (' +
+						nv +
+						' veteran-owned, ' +
+						ns +
+						' from the beachhead board), each scored by Jev on sourced evidence against the Diagnostic. '
+				)
+			);
+			var b = el(
+				'b',
+				null,
+				near +
+					' are within 12 minutes, ' +
+					hiring +
+					' are hiring an estimator or ops manager right now, and ' +
+					marine +
+					' are Marine-owned.'
+			);
+			s.appendChild(b);
+			s.appendChild(
+				document.createTextNode(
+					' Controls passed ' +
+						D.meta.controls_ok +
+						' of ' +
+						D.meta.controls_total +
+						'. Cost of the run: $' +
+						D.meta.spent.toFixed(3) +
+						'.'
+				)
+			);
+			var figs = document.getElementById('figs');
+			figs.innerHTML = '';
+			var counts = {};
+			STATUSES.forEach(function (s) {
+				counts[s[0]] = 0;
+			});
+			D.rows.forEach(function (r) {
+				counts[status(r.id)]++;
+			});
+			STATUSES.forEach(function (s) {
+				if (!counts[s[0]] && s[0] !== 'untouched') return;
+				var f = el('div', 'fig');
+				f.appendChild(el('b', null, String(counts[s[0]])));
+				f.appendChild(el('span', null, s[1].toLowerCase()));
+				figs.appendChild(f);
+			});
+		}
+
+		function renderFilters() {
+			var host = document.getElementById('filters');
+			host.innerHTML = '';
+			FILTERS.forEach(function (f) {
+				var b = el('button', 'chip', f[1]);
+				b.type = 'button';
+				b.setAttribute('aria-pressed', FILTER === f[0] ? 'true' : 'false');
+				var n = el('span', 'n', String(D.rows.filter(f[2]).length));
+				b.appendChild(n);
+				b.addEventListener('click', function () {
+					FILTER = f[0];
+					renderFilters();
+					renderList();
+				});
+				host.appendChild(b);
+			});
+			var lg = document.getElementById('legend');
+			lg.innerHTML = '';
+			D.questions.forEach(function (q, i) {
+				var s = el('span');
+				s.appendChild(el('b', null, String(i + 1)));
+				s.appendChild(document.createTextNode(' ' + q.label));
+				lg.appendChild(s);
+			});
+			var hh = document.getElementById('heat-head');
+			hh.innerHTML = '';
+			hh.appendChild(el('div'));
+			hh.appendChild(el('div'));
+			var heat = el('div', 'heat');
+			D.questions.forEach(function (q) {
+				heat.appendChild(el('div', 'hc', q.label));
+			});
+			hh.appendChild(heat);
+			hh.appendChild(el('div'));
+		}
+
+		function link(url, text) {
+			var a = el('a', null, text || url);
+			a.href = url;
+			a.target = '_blank';
+			a.rel = 'noopener';
+			return a;
+		}
+		function kv(body, k, node) {
+			body.appendChild(el('div', 'k', k));
+			var v = el('div', 'v');
+			if (typeof node === 'string') v.textContent = node;
+			else v.appendChild(node);
+			body.appendChild(v);
+		}
+
+		function renderList() {
+			var host = document.getElementById('list');
+			host.innerHTML = '';
+			var f = FILTERS.filter(function (x) {
+				return x[0] === FILTER;
+			})[0][2];
+			D.rows.forEach(function (r, i) {
+				if (!f(r)) return;
+				var st = status(r.id);
+				var row = el('div', 'row ' + st);
+				row.dataset.id = r.id;
+				var rk = el('div', 'rk', String(i + 1));
+				rk.appendChild(el('span', 'sc', r.composite.toFixed(2)));
+				row.appendChild(rk);
+
+				var main = el('div');
+				var nm = el('div', 'nm');
+				nm.appendChild(r.website ? link(r.website, r.name) : el('span', null, r.name));
+				if (isMarine(r)) nm.appendChild(el('span', 'tag marine', 'Marine'));
+				if (isHiring(r)) nm.appendChild(el('span', 'tag hot', 'Hiring now'));
+				if (r.list === 'sub') nm.appendChild(el('span', 'tag sub', 'Board sub'));
+				main.appendChild(nm);
+				main.appendChild(
+					el(
+						'div',
+						'meta',
+						(r.trade || '').replace(/_/g, ' ') +
+							' · ' +
+							r.city +
+							' · ' +
+							(typeof r.minutes === 'number' ? r.minutes + ' min' : '? min') +
+							' · ' +
+							(SIZE[r.size] || r.size)
+					)
+				);
+				var ang = el('div', 'angle');
+				ang.appendChild(el('b', null, 'Pitch: '));
+				ang.appendChild(document.createTextNode(ANGLE[r.angle] || r.angle));
+				main.appendChild(ang);
+				row.appendChild(main);
+
+				var heat = el('div', 'heat');
+				D.questions.forEach(function (q) {
+					var x = r.v[q.id] || 0;
+					var c = el('div', 'hc ' + heatClass(x), x.toFixed(2));
+					c.style.background = 'var(--' + heatClass(x) + ')';
+					c.title = q.label + ': ' + x.toFixed(2);
+					heat.appendChild(c);
+				});
+				row.appendChild(heat);
+
+				var act = el('div', 'act');
+				var sel = document.createElement('select');
+				sel.className = 'status';
+				sel.id = 'status-' + r.id;
+				sel.setAttribute('aria-label', 'Status for ' + r.name);
+				STATUSES.forEach(function (s) {
+					var o = document.createElement('option');
+					o.value = s[0];
+					o.textContent = s[1];
+					if (s[0] === st) o.selected = true;
+					sel.appendChild(o);
+				});
+				sel.dataset.v = st;
+				sel.disabled = !db;
+				sel.addEventListener('change', function () {
+					save(r.id, { status: sel.value });
+				});
+				act.appendChild(sel);
+				var note = document.createElement('input');
+				note.className = 'note';
+				note.id = 'note-' + r.id;
+				note.placeholder = 'Note';
+				note.value = (STATE[r.id] && STATE[r.id].note) || '';
+				note.disabled = !db;
+				note.setAttribute('aria-label', 'Note for ' + r.name);
+				note.addEventListener('change', function () {
+					save(r.id, { note: note.value });
+				});
+				act.appendChild(note);
+				row.appendChild(act);
+
+				var det = el('details', 'ev');
+				det.appendChild(el('summary', null, 'Evidence & owner'));
+				var body = el('div', 'evbody');
+				var dm = r.dm || {};
+				var dmNode = el('span');
+				dmNode.appendChild(
+					document.createTextNode(
+						(dm.name || 'unknown') +
+							(dm.title ? ', ' + dm.title : '') +
+							(dm.channel ? ' · ' + dm.channel : '')
+					)
+				);
+				if (dm.source_url) {
+					dmNode.appendChild(document.createTextNode(' '));
+					dmNode.appendChild(link(dm.source_url, 'source'));
+				}
+				kv(body, 'Owner', dmNode);
+				var vq = el('span');
+				if (r.vet && r.vet.quote) {
+					var q = el('q', null, r.vet.quote);
+					vq.appendChild(q);
+					if (r.vet.source_url) {
+						vq.appendChild(document.createTextNode(' '));
+						vq.appendChild(link(r.vet.source_url, 'source'));
+					}
+				} else vq.textContent = 'No veteran-ownership evidence on file.';
+				kv(body, 'Veteran evidence', vq);
+				var sz = r.sizes || {};
+				var szNode = el('span');
+				szNode.appendChild(
+					document.createTextNode(
+						'Employees ' +
+							(sz.employees || 'unknown') +
+							' · years ' +
+							(sz.years_in_business || 'unknown') +
+							(sz.other ? ' · ' + sz.other : '')
+					)
+				);
+				if (sz.source_url) {
+					szNode.appendChild(document.createTextNode(' '));
+					szNode.appendChild(link(sz.source_url, 'source'));
+				}
+				kv(body, 'Size signals', szNode);
+				kv(body, 'Inbound', r.inbound || 'none observed');
+				kv(body, 'Pain right now', r.pain || 'none observed');
+				kv(body, 'Warm path', r.warm || 'none');
+				kv(body, 'Address', (r.address_type || 'unknown').replace(/_/g, ' '));
+				if (r.notes) kv(body, 'Notes', r.notes);
+				det.appendChild(body);
+				row.appendChild(det);
+				host.appendChild(row);
+			});
+			if (!host.children.length)
+				host.appendChild(el('p', 'sec-note', 'Nothing matches this filter.'));
+		}
+
+		function renderRoutes() {
+			var host = document.getElementById('routes');
+			host.innerHTML = '';
+			var bands = [
+				[0, 12, 'Route A · Glen Burnie, Severn, Hanover, Pasadena, Severna Park'],
+				[13, 20, 'Route B · Jessup, Dundalk, south & downtown Baltimore'],
+				[21, 25, 'Route C · Annapolis, Columbia'],
+				[26, 999, 'Route D · 26 minutes and beyond']
+			];
+			bands.forEach(function (b) {
+				var rows = D.rows
+					.filter(function (r) {
+						return (
+							typeof r.minutes === 'number' && r.minutes >= b[0] && r.minutes <= b[1]
+						);
+					})
+					.slice(0, 8);
+				if (!rows.length) return;
+				var card = el('div', 'route');
+				card.appendChild(el('h3', null, b[2].split(' · ')[0]));
+				card.appendChild(
+					el('div', 'sub', b[2].split(' · ')[1] + ' · ' + rows.length + ' stops')
+				);
+				var ol = el('ol');
+				rows.forEach(function (r) {
+					var li = el('li', null, r.name);
+					li.appendChild(
+						el(
+							'span',
+							null,
+							r.minutes +
+								' min · ' +
+								(ANGLE[r.angle] || '') +
+								(isHiring(r) ? ' · hiring' : '') +
+								(isMarine(r) ? ' · Marine' : '')
+						)
+					);
+					ol.appendChild(li);
+				});
+				card.appendChild(ol);
+				host.appendChild(card);
+			});
+		}
+
+		function renderFoot() {
+			var f = document.getElementById('foot');
+			f.innerHTML = '';
+			f.appendChild(
+				el(
+					'p',
+					null,
+					'Source: docs/founder/jev-warm-door-probe-2026-09-18/ (probe2.json, run_probe2.py, prospects/*.json, build_board.py). Results files: ' +
+						D.meta.sources.join(', ') +
+						'. ' +
+						D.meta.requests +
+						' requests, $' +
+						D.meta.spent.toFixed(4) +
+						'.'
+				)
+			);
+			f.appendChild(
+				el(
+					'p',
+					null,
+					'Every veteran-ownership quote links to where it was found. Size bands marked unknown mean the scout found no staff or facility signals; that is a data gap, not a judgment. Seven directory-only records should be phone-verified before driving out (see prospects/SOURCING_NOTES.md).'
+				)
+			);
+		}
+
+		function setSave(s, t) {
+			var n = document.getElementById('save');
+			n.dataset.s = s;
+			n.textContent = t;
+		}
+		var writing = {};
+		function save(id, patch) {
+			if (!db) return;
+			STATE[id] = Object.assign({}, STATE[id] || {}, patch, {
+				updatedAt: new Date().toISOString()
+			});
+			renderHead();
+			var row = document.querySelector('.row[data-id="' + id + '"]');
+			if (row) {
+				row.className = 'row ' + status(id);
+				var sel = row.querySelector('select.status');
+				if (sel) sel.dataset.v = status(id);
+			}
+			if (writing[id]) {
+				writing[id].next = STATE[id];
+				return;
+			}
+			writing[id] = { next: null };
+			setSave('saving', 'Saving…');
+			(function go(body) {
+				db.doc('outreach/' + id)
+					.set(body)
+					.then(
+						function () {
+							var w = writing[id];
+							if (w && w.next) {
+								var n = w.next;
+								w.next = null;
+								go(n);
+								return;
+							}
+							delete writing[id];
+							setSave('ok', 'Saved');
+						},
+						function (e) {
+							delete writing[id];
+							setSave('error', "Couldn't save (" + ((e && e.code) || 'error') + ')');
+						}
+					);
+			})(STATE[id]);
+		}
+
+		function boot() {
+			renderHead();
+			renderFilters();
+			renderList();
+			renderRoutes();
+			renderFoot();
+			var use = window.claude && window.claude.use;
+			if (!use) {
+				setSave('off', 'Read-only');
+				return;
+			}
+			window.claude.use('db').then(function (ns) {
+				if (!ns) {
+					setSave('off', 'Read-only');
+					return;
+				}
+				db = ns;
+				unsub = db.collection('outreach').onSnapshot(
+					function (snap) {
+						snap.docs.forEach(function (d) {
+							if (d.exists) STATE[d.id] = d.data();
+						});
+						setSave('ok', snap.metadata.fromCache ? 'Loading…' : 'Saved');
+						renderHead();
+						renderList();
+					},
+					function (e) {
+						setSave('error', 'Sync lost (' + (e && e.code) + ')');
+					}
+				);
+			});
+		}
+		boot();
+	})();
+</script>

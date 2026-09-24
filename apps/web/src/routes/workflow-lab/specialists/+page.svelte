@@ -14,7 +14,7 @@
 	/>
 </svelte:head>
 
-<main class="mx-auto min-h-[calc(100dvh-5rem)] max-w-7xl space-y-6 px-4 py-6 sm:px-8">
+<main class="mx-auto min-h-[calc(100dvh-5rem)] max-w-7xl space-y-6 bg-background px-4 py-6 sm:px-8">
 	<header>
 		<a
 			href="/workflow-lab"

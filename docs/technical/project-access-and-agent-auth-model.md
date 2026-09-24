@@ -74,9 +74,14 @@ Public endpoints should be separate routes with separate response shaping. A pub
 External agents have two layers of restriction:
 
 1. The authorizing user or agent actor must have owner/member access to the project.
-2. The external caller grant narrows that further by mode, allowed ops, and optional `project_ids`.
+2. The connector's project policy narrows that further. `project_scope_mode` is either
+   `all_unrestricted` (every owned standard project, including future ones) or `selected`
+   (explicit permission rows only). Read/write mode and allowed ops narrow it again.
 
-The effective access is the intersection of those two layers.
+The effective access is the intersection of those layers, resolved on every request. The
+canonical rules for project scope modes, the per-project `restricted` flag, explicit grants,
+and the one-click grant flow for denied projects live in
+[`docs/architecture/EXTERNAL_AGENT_PROJECT_ACCESS.md`](../architecture/EXTERNAL_AGENT_PROJECT_ACCESS.md).
 
 Connector-visible tools must not imply that public projects are available. A project is visible to a connector only if the authorizing actor is an owner/member and the connector grant permits that project.
 

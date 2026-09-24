@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/CHAT_WORKFLOW_CASE8_LATENCY_INVESTIGATION_2026-09-13.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-18; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Case 8 latency investigation — 2026-09-13
 
 **Latest result (September 14):** the authorized isolated rerun scored **45/52**

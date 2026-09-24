@@ -1,6 +1,7 @@
 ---
 title: 'BuildOS Welcome Sequence'
 created: 2026-03-16
+last_updated: 2026-09-10
 status: current
 owner: DJ Wayne
 related_docs:
@@ -13,15 +14,34 @@ path: docs/marketing/strategy/buildos-welcome-sequence.md
 
 # BuildOS Welcome Sequence
 
-## Purpose
+## Current messaging — September 10, 2026
 
-The welcome sequence should help a new BuildOS signup do three things:
+BuildOS is **a project workspace you can talk to**. The sequence teaches: start one project,
+inspect its tasks/documents, update the same project, then return to keep going.
 
-1. Start a first brain dump
-2. Finish onboarding and enable one follow-through channel
-3. Come back for a second session before the trial reminder sequence starts
+The current templates are in `apps/web/src/lib/server/welcome-sequence.content.ts`. The first three
+emails were revised locally for the [positioning rollout](./project-workspace-rollout-2026-09-10.md).
+This is not evidence of deployment or delivery. Scheduling, eligibility, consent, and Email 4/5
+logic were not changed. Pricing/trial claims below describe the March implementation, not a
+newly verified commercial offer.
 
-This sequence is for real new users starting the 14-day trial. It is not a reactivation sequence, not a beta approval sequence, and not a last-chance conversion push.
+| Step      | Recipient state                | Main message                                                   | CTA                     |
+| --------- | ------------------------------ | -------------------------------------------------------------- | ----------------------- |
+| Email 1   | New signup                     | Welcome; bring one project and rough notes                     | Start with one project  |
+| Email 2   | No project                     | Use the first-project prompt                                   | Start with one project  |
+| Email 2   | Has project                    | Tell the same project what changed                             | Re-open your project    |
+| Email 3   | No project                     | Start one conversation and inspect the result                  | Start with one project  |
+| Email 3   | Project, onboarding incomplete | Saved work is present; finish onboarding, optional connections | Finish setup            |
+| Email 3   | Project, onboarding complete   | Review, update, choose next work                               | Re-open your project    |
+| Email 4/5 | Existing branches              | Optional follow-through / personal check-in                    | Existing contextual CTA |
+
+First input: “I’m working on \_\_\_\_. Here’s what I have so far. Here’s where I’m stuck.”
+Return: “Tell BuildOS one thing that changed: something you finished, a new idea, or a deadline that moved.”
+
+## Historical delivery and strategy record — March 2026
+
+The sections below retain earlier implementation context and drafts. For the current first-three-email
+copy and CTA routing, use the source templates and the table above.
 
 ## Implementation Snapshot
 

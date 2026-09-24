@@ -61,9 +61,9 @@ import {
 import { validateRoutes, validateToolSurface } from './openrouter/validation';
 import {
 	abortableProviderRead,
-	isV41FlashModel,
 	providerAttemptTimingPayload,
-	watchStreamProgress
+	watchStreamProgress,
+	watchesStreamProgress
 } from './openrouter/watchdog';
 
 export type {
@@ -214,6 +214,8 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			inThinkingBlock: false,
 			completionChars: 0,
 			generatedBytes: 0,
+			reasoningBytes: 0,
+			firstProgressAtMs: null,
 			toolCalls: new Map(),
 			toolCallsObservable: true
 		};
@@ -440,11 +442,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			);
 			state.providerSlug = normalizeProviderSlug(state.provider) ?? null;
 			if (
-				input.allowSlowStreamRecovery === true &&
 				attemptedRouteIds.length === 1 &&
 				active.route.kind === 'openrouter' &&
-				isV41FlashModel(state.modelUsed ?? active.route.model) &&
-				['acting', 'repair', 'final_response'].includes(passRole)
+				watchesStreamProgress(input, passRole, state.modelUsed ?? active.route.model)
 			) {
 				stopProgressWatch = watchStreamProgress(active, state, input);
 			}

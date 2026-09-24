@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { parse } from 'dotenv';
 import { describe, expect, it } from 'vitest';
 import type { JsonObject } from '@buildos/shared-types';
-import { GPT_56_LUNA_MODEL, modelSupportsCapability } from '@buildos/smart-llm';
+import { GPT_6_LUNA_MODEL, modelSupportsCapability } from '@buildos/smart-llm';
 import {
 	ONTOLOGY_WRITE_TOOLS,
 	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
@@ -31,7 +31,7 @@ import { contractSha256 } from '../src/workers/agentic-chat/provider/validation'
 const enabled = process.env.AGENTIC_CHAT_REVIEWER_REPLAY === 'true';
 // Re-check saved synthetic responses without credentials or additional API calls.
 const replayInput = process.env.AGENTIC_CHAT_REVIEWER_REPLAY_INPUT;
-const replayModel = process.env.AGENTIC_CHAT_REVIEWER_REPLAY_MODEL || GPT_56_LUNA_MODEL;
+const replayModel = process.env.AGENTIC_CHAT_REVIEWER_REPLAY_MODEL || GPT_6_LUNA_MODEL;
 const projectId = '51000000-0000-4000-8000-000000000051';
 const ids = [1, 2, 3, 4, 5].map((n) => `41000000-0000-4000-8000-00000000000${n}`);
 const names = [
@@ -305,7 +305,7 @@ describe.runIf(enabled || Boolean(replayInput))('live production contract review
 							apiKey,
 							model: replayModel,
 							providerRouting: {
-								...(replayModel === GPT_56_LUNA_MODEL
+								...(replayModel === GPT_6_LUNA_MODEL
 									? { order: ['openai', 'azure'] }
 									: {}),
 								allow_fallbacks: true

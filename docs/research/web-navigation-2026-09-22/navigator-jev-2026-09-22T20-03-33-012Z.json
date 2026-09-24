@@ -1,0 +1,83 @@
+{
+	"summary": {
+		"run_at": "2026-09-22T20:03:33.012Z",
+		"navigator": "typesafe/jev-1.13",
+		"tasks": 1,
+		"success": 0,
+		"reached_target": 0,
+		"model_calls": 1,
+		"model_ms_p50_per_call": 351,
+		"model_ms_p90_per_call": 351,
+		"total_cost_usd": 0.000212,
+		"http_requests": 2
+	},
+	"results": [
+		{
+			"id": "naaccc-lunch",
+			"goal": "Find the details page for the chamber's Networking Lunch at Italia's Corner (date, time, location).",
+			"navigator": "typesafe/jev-1.13",
+			"found_url": "https://business.naaccc.com/event-calendar",
+			"success": false,
+			"reached_target": false,
+			"fetches": 1,
+			"model_calls": 1,
+			"model_ms_total": 351,
+			"fetch_ms_total": 477,
+			"cost_usd": 0.000211512,
+			"wall_ms": 1846,
+			"hops": [
+				{
+					"url": "https://business.naaccc.com/event-calendar",
+					"title": "Calendar - Northern Anne Arundel County Chamber of Commerce",
+					"text_chars": 2557,
+					"link_options": 59,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 477,
+					"page_has_answer": 0.9,
+					"needs_browser": 0.05,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 0.8,
+							"label": "Networking Lunch Italia's Corner link",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Website"
+						},
+						{
+							"p": 0.16,
+							"label": "Networking Lunch Italia's Corner",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Hub"
+						},
+						{
+							"p": 0.04,
+							"label": "Register",
+							"url": "https://business.naaccc.com/ap/Events/Register/zBFlODVcgCACR"
+						},
+						{
+							"p": 0,
+							"label": "Register",
+							"url": "https://business.naaccc.com/ap/Events/Register/EqFX01VtgC6C9"
+						},
+						{
+							"p": 0,
+							"label": "24",
+							"url": "https://business.naaccc.com/event-calendar/Search?from=09%2f24%2f2026&to=09%2f25%2f2026&mode=0&cid=9234&DateFilter=5"
+						}
+					],
+					"model_ms": 351,
+					"cost_usd": 0.000211512,
+					"input_tokens": 5036,
+					"raw": {
+						"choices": [
+							{
+								"q": "next_link_0",
+								"choice": "l14",
+								"confidence": 0.79
+							}
+						],
+						"model": "typesafe/jev-1.13-20260917"
+					}
+				}
+			]
+		}
+	]
+}

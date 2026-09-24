@@ -1,5 +1,10 @@
 <!-- docs/product/reentry-compass-phase0-evidence-2026-08-04.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-26; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Re-entry Compass — Phase 0 Evidence Report
 
 **Date:** 2026-08-04

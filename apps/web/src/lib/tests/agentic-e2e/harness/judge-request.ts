@@ -8,7 +8,7 @@ import { DEEPSEEK_V4_FLASH_MODEL, type JSONRequestOptions } from '@buildos/smart
 
 /** Strong graders only, most capable first. Override with AGENTIC_E2E_JUDGE_MODEL. */
 export const JUDGE_MODEL_CHAIN: readonly string[] = [
-	'openai/gpt-5.6-luna',
+	'openai/gpt-6-luna',
 	'moonshotai/kimi-k3',
 	'x-ai/grok-4.7'
 ];

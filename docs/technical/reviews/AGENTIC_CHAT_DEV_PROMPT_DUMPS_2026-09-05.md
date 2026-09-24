@@ -1,5 +1,10 @@
 <!-- docs/technical/reviews/AGENTIC_CHAT_DEV_PROMPT_DUMPS_2026-09-05.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-09-19; describes the state of the system at that moment.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Worker prompt capture and session audit navigation
 
 Implemented locally on 2026-09-05. No deployment or database mutation was performed.

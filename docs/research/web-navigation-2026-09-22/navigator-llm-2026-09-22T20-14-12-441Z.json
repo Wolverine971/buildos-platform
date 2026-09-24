@@ -1,0 +1,1906 @@
+{
+	"summary": {
+		"run_at": "2026-09-22T20:14:12.441Z",
+		"navigator": "deepseek/deepseek-v4.1-flash",
+		"tasks": 20,
+		"success": 16,
+		"reached_target": 18,
+		"model_calls": 56,
+		"model_ms_p50_per_call": 2913,
+		"model_ms_p90_per_call": 11600,
+		"total_cost_usd": 0.064472,
+		"http_requests": 80
+	},
+	"results": [
+		{
+			"id": "naaccc-lunch",
+			"goal": "Find the details page for the chamber's Networking Lunch at Italia's Corner (date, time, location).",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Website",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 3197,
+			"fetch_ms_total": 1344,
+			"cost_usd": 0.001264,
+			"wall_ms": 5566,
+			"hops": [
+				{
+					"url": "https://business.naaccc.com/event-calendar",
+					"title": "Calendar - Northern Anne Arundel County Chamber of Commerce",
+					"text_chars": 2557,
+					"link_options": 59,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 938,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Networking Lunch Italia's Corner link",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Website"
+						},
+						{
+							"p": 0.5,
+							"label": "Networking Lunch Italia's Corner",
+							"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Hub"
+						},
+						{
+							"p": 0.333,
+							"label": "Register",
+							"url": "https://business.naaccc.com/ap/Events/Register/zBFlODVcgCACR"
+						}
+					],
+					"model_ms": 1510,
+					"cost_usd": 0.0008288,
+					"input_tokens": 3832,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l14\", \"l43\", \"l15\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://business.naaccc.com/event-calendar/Details/networking-lunch-italia-s-corner-1874154?sourceTypeId=Website",
+					"title": "Networking Lunch Italia's Corner - Northern Anne Arundel County Chamber of Commerce",
+					"text_chars": 628,
+					"link_options": 34,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 406,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 1687,
+					"cost_usd": 0.0004352,
+					"input_tokens": 1897,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "mailchimp-free-limits",
+			"goal": "Find how many contacts and monthly email sends Mailchimp's Free plan includes.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": null,
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 23295,
+			"fetch_ms_total": 1709,
+			"cost_usd": 0.003301854,
+			"wall_ms": 26123,
+			"hops": [
+				{
+					"url": "https://mailchimp.com/",
+					"title": "Email & SMS Marketing Platform | Mailchimp",
+					"text_chars": 3000,
+					"link_options": 125,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 160,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Pricing | Start Free Trial | See pricing | See all plans",
+							"url": "https://mailchimp.com/pricing/marketing/"
+						},
+						{
+							"p": 0.5,
+							"label": "Essentials | Free",
+							"url": "https://mailchimp.com/pricing/marketing/compare-plans/"
+						},
+						{
+							"p": 0.333,
+							"label": "See all features and solutions",
+							"url": "https://mailchimp.com/features/"
+						}
+					],
+					"model_ms": 3268,
+					"cost_usd": 0.0007818,
+					"input_tokens": 5235,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l65\", \"l79\", \"l20\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://mailchimp.com/pricing/marketing/",
+					"title": "Mailchimp Pricing Plans | Get Started Today | Mailchimp",
+					"text_chars": 3000,
+					"link_options": 132,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 437,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Essentials | Free | Compare all features | About Free | About Essentials | plans and pricing",
+							"url": "https://mailchimp.com/pricing/marketing/compare-plans/"
+						},
+						{
+							"p": 0.5,
+							"label": "Sign Up Sign Up Contact limit exceeded Limit",
+							"url": "https://mailchimp.com/signup/?plan=free_monthly_plan_v0&locale=en"
+						},
+						{
+							"p": 0.333,
+							"label": "Learn more",
+							"url": "https://mailchimp.com/pricing/pay-as-you-go/"
+						}
+					],
+					"model_ms": 4226,
+					"cost_usd": 0.000630024,
+					"input_tokens": 5534,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l78\", \"l84\", \"l89\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://mailchimp.com/pricing/marketing/compare-plans/",
+					"title": "Mailchimp Marketing Plan Comparisons | Mailchimp",
+					"text_chars": 3000,
+					"link_options": 147,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 468,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Overages",
+							"url": "https://mailchimp.com/help/about-additional-charges/"
+						},
+						{
+							"p": 0.5,
+							"label": "Help Center | Guides and Tutorials",
+							"url": "https://mailchimp.com/help/"
+						},
+						{
+							"p": 0.333,
+							"label": "See all features and solutions",
+							"url": "https://mailchimp.com/features/"
+						}
+					],
+					"model_ms": 6648,
+					"cost_usd": 0.00106971,
+					"input_tokens": 6065,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l82\", \"l19\", \"l18\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://mailchimp.com/help/about-additional-charges/",
+					"title": "About Additional Charges | Mailchimp",
+					"text_chars": 2993,
+					"link_options": 111,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 166,
+					"page_has_answer": 0,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 6300,
+					"cost_usd": 0.00054672,
+					"input_tokens": 4480,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://login.mailchimp.com/signup/?plan=free_monthly_plan_v0&locale=en",
+					"title": "Sign Up for Mailchimp",
+					"text_chars": 225,
+					"link_options": 7,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 478,
+					"page_has_answer": 0,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 2853,
+					"cost_usd": 0.0002736,
+					"input_tokens": 651,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "aacounty-bids",
+			"goal": "Find where Anne Arundel County lists its current bid opportunities and open solicitations.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": null,
+			"success": false,
+			"reached_target": false,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 14161,
+			"fetch_ms_total": 1466,
+			"cost_usd": 0.0028585,
+			"wall_ms": 16663,
+			"hops": [
+				{
+					"url": "https://www.aacounty.org/central-services/purchasing",
+					"title": "Purchasing | Anne Arundel County Government",
+					"text_chars": 439,
+					"link_options": 38,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 217,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "View Opportunities",
+							"url": "https://www.aacounty.org/solicitations"
+						},
+						{
+							"p": 0.5,
+							"label": "Learn More",
+							"url": "https://www.aacounty.org/harbor-support"
+						},
+						{
+							"p": 0.333,
+							"label": "Doing Business with the County",
+							"url": "https://www.aacounty.org/central-services/purchasing/doing-business-county"
+						}
+					],
+					"model_ms": 1785,
+					"cost_usd": 0.0003585,
+					"input_tokens": 1662,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l20\", \"l19\", \"l14\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://ibvijb.fa.ocs.oraclecloud.com/fscmUI/redwood/negotiation-abstracts/view/abstractlisting?prcBuId=300000008120003",
+					"title": "Oracle Applications",
+					"text_chars": 19,
+					"link_options": 0,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 286,
+					"page_has_answer": 0,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 1356,
+					"cost_usd": 0.0001791,
+					"input_tokens": 281,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/harbor-support",
+					"title": "Harbor Support Site | Anne Arundel County Government",
+					"text_chars": 2140,
+					"link_options": 29,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 151,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Departments",
+							"url": "https://www.aacounty.org/departments"
+						},
+						{
+							"p": 0.5,
+							"label": "Services",
+							"url": "https://www.aacounty.org/services"
+						},
+						{
+							"p": 0.333,
+							"label": "Government",
+							"url": "https://www.aacounty.org/government"
+						}
+					],
+					"model_ms": 2806,
+					"cost_usd": 0.00040395,
+					"input_tokens": 1689,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l9\", \"l7\", \"l8\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/departments",
+					"title": "Departments | Anne Arundel County Government",
+					"text_chars": 3000,
+					"link_options": 50,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 94,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Central Services",
+							"url": "https://www.aacounty.org/central-services"
+						},
+						{
+							"p": 0.5,
+							"label": "Government",
+							"url": "https://www.aacounty.org/government"
+						},
+						{
+							"p": 0.333,
+							"label": "Services",
+							"url": "https://www.aacounty.org/services"
+						}
+					],
+					"model_ms": 5301,
+					"cost_usd": 0.0013611,
+					"input_tokens": 2665,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l14\", \"l8\", \"l7\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/central-services",
+					"title": "Central Services | Anne Arundel County Government",
+					"text_chars": 344,
+					"link_options": 29,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 718,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Services",
+							"url": "https://www.aacounty.org/services"
+						},
+						{
+							"p": 0.5,
+							"label": "Government",
+							"url": "https://www.aacounty.org/government"
+						},
+						{
+							"p": 0.333,
+							"label": "About Central Services",
+							"url": "https://www.aacounty.org/central-services/about-central-services"
+						}
+					],
+					"model_ms": 2913,
+					"cost_usd": 0.00055585,
+					"input_tokens": 1320,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l7\", \"l8\", \"l9\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "montgomery-solicitations",
+			"goal": "Find the page listing Montgomery County's currently open solicitations.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts/informal-open-solicitations",
+			"success": true,
+			"reached_target": true,
+			"fetches": 3,
+			"model_calls": 3,
+			"model_ms_total": 25275,
+			"fetch_ms_total": 401,
+			"cost_usd": 0.0012933872,
+			"wall_ms": 26690,
+			"hops": [
+				{
+					"url": "https://www.montgomerycountymd.gov/office-procurement",
+					"title": "Office of Procurement | Montgomery County, MD",
+					"text_chars": 2249,
+					"link_options": 44,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 269,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Solicitations and Contracts",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts"
+						},
+						{
+							"p": 0.5,
+							"label": "Vendor Resources",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/vendor-resources"
+						},
+						{
+							"p": 0.333,
+							"label": "Local | MFD | Wage",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/division-business-relations-compliance-dbrc"
+						}
+					],
+					"model_ms": 1549,
+					"cost_usd": 0.0008589,
+					"input_tokens": 2563,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l2\", \"l4\", \"l3\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts",
+					"title": "Solicitations and Contracts - Office of Procurement - Montgomery County, MD",
+					"text_chars": 305,
+					"link_options": 33,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 73,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Informal & Open Solicitations",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts/informal-open-solicitations"
+						},
+						{
+							"p": 0.5,
+							"label": "Formal Solicitations",
+							"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts/formal-solicitations"
+						},
+						{
+							"p": 0.333,
+							"label": "Contract Search",
+							"url": "https://data.montgomerycountymd.gov/Government/Contracts/vmu2-pnrc/about_data"
+						}
+					],
+					"model_ms": 2283,
+					"cost_usd": 0.0000711536,
+					"input_tokens": 1490,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l3\", \"l2\", \"l6\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.montgomerycountymd.gov/office-procurement/solicitations-contracts/informal-open-solicitations",
+					"title": "Informal and Open Solicitations - Office of Procurement - Montgomery County, MD",
+					"text_chars": 1573,
+					"link_options": 26,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 59,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 21443,
+					"cost_usd": 0.0003633336,
+					"input_tokens": 1462,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "baltimore-vendor-registration",
+			"goal": "Find how a business registers as a vendor/supplier with Baltimore City.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://cityservices.baltimorecity.gov/suppliers/",
+			"success": true,
+			"reached_target": true,
+			"fetches": 3,
+			"model_calls": 3,
+			"model_ms_total": 52532,
+			"fetch_ms_total": 380,
+			"cost_usd": 0.00306598,
+			"wall_ms": 55948,
+			"hops": [
+				{
+					"url": "https://www.baltimorecity.gov/procurement",
+					"title": "Bureau of Procurement | Baltimore City",
+					"text_chars": 497,
+					"link_options": 93,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 219,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Supplier | Doing Business With the City | Doing Business with the City",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city"
+						},
+						{
+							"p": 0.5,
+							"label": "How-To Guides",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/training"
+						},
+						{
+							"p": 0.333,
+							"label": "Bidding, Contracting, & Business Opportunities",
+							"url": "https://www.baltimorecity.gov/mwbd/our-work/bidding-contracting-opportunities"
+						}
+					],
+					"model_ms": 5379,
+					"cost_usd": 0.0008954,
+					"input_tokens": 3553,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l18\", \"l61\", \"l17\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city",
+					"title": "Doing Business With the City | Baltimore City",
+					"text_chars": 3000,
+					"link_options": 104,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 60,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "register as a supplier | Prospective Supplier Registration site",
+							"url": "https://cityservices.baltimorecity.gov/suppliers/"
+						},
+						{
+							"p": 0.5,
+							"label": "Submit an Inquiry",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/supplier-inquiry-form"
+						},
+						{
+							"p": 0.333,
+							"label": "How-To Guides",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/doing-business-city/training"
+						}
+					],
+					"model_ms": 10593,
+					"cost_usd": 0.0018819,
+					"input_tokens": 5037,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l61\", \"l51\", \"l50\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://cityservices.baltimorecity.gov/suppliers/",
+					"title": "Prospective Supplier Registration Portal",
+					"text_chars": 3000,
+					"link_options": 8,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 101,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Sign in to Workday | Workday Supplier Portal",
+							"url": "https://workday.baltimorecity.gov/login"
+						},
+						{
+							"p": 0.5,
+							"label": "Supplier Contact Form",
+							"url": "https://www.baltimorecity.gov/procurement/our-work/supplier-contact-form"
+						},
+						{
+							"p": 0.333,
+							"label": "Current Bid Opportunities",
+							"url": "https://cityservices.baltimorecity.gov/suppliers/bid-opportunities"
+						}
+					],
+					"model_ms": 36560,
+					"cost_usd": 0.00028868,
+					"input_tokens": 1231,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"l0\", \"l1\", \"l2\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "mdot-procurement",
+			"goal": "Find MDOT's page for procurement / bid opportunities for businesses.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=11",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 15403,
+			"fetch_ms_total": 4681,
+			"cost_usd": 0.00351183,
+			"wall_ms": 21098,
+			"hops": [
+				{
+					"url": "https://mdot.maryland.gov/pages/home.aspx",
+					"title": "Home",
+					"text_chars": 2835,
+					"link_options": 92,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 865,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Procurement and Contracts",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=11"
+						},
+						{
+							"p": 0.5,
+							"label": "Procurement and Project Quality Assurance",
+							"url": "https://mdot.maryland.gov/tso/pages/Index.aspx?PageId=11"
+						},
+						{
+							"p": 0.333,
+							"label": "Business",
+							"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=2"
+						}
+					],
+					"model_ms": 3803,
+					"cost_usd": 0.0005712,
+					"input_tokens": 4648,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l3\", \"l60\", \"l1\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.mdot.maryland.gov/tso/pages/Index.aspx?PageId=11",
+					"title": "Procurement and Contracts - MDOT",
+					"text_chars": 3000,
+					"link_options": 68,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 3816,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 11600,
+					"cost_usd": 0.00294063,
+					"input_tokens": 3634,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "procore-pricing",
+			"goal": "Find how Procore prices its construction software.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://www.procore.com/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 18944,
+			"fetch_ms_total": 457,
+			"cost_usd": 0.00073276,
+			"wall_ms": 20435,
+			"hops": [
+				{
+					"url": "https://www.procore.com/",
+					"title": "Construction Project Management Software | Procore",
+					"text_chars": 3000,
+					"link_options": 66,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 226,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Pricing | See pricing",
+							"url": "https://www.procore.com/pricing"
+						},
+						{
+							"p": 0.5,
+							"label": "Request a demo | See it in action",
+							"url": "https://www.procore.com/offer/demo/values"
+						},
+						{
+							"p": 0.333,
+							"label": "Explore capabilities",
+							"url": "https://www.procore.com/products"
+						}
+					],
+					"model_ms": 14035,
+					"cost_usd": 0.00045976,
+					"input_tokens": 3041,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l1\", \"l12\", \"l18\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.procore.com/pricing",
+					"title": "Procore - Plans and Pricing [Estimate] | Procore",
+					"text_chars": 3000,
+					"link_options": 39,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 231,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 4909,
+					"cost_usd": 0.000273,
+					"input_tokens": 2199,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "constructconnect-pricing",
+			"goal": "Find ConstructConnect pricing for finding construction projects to bid on.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://www.constructconnect.com/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 10863,
+			"fetch_ms_total": 315,
+			"cost_usd": 0.0017885,
+			"wall_ms": 12215,
+			"hops": [
+				{
+					"url": "https://www.constructconnect.com/",
+					"title": "Finding and Winning Projects | ConstructConnect",
+					"text_chars": 3000,
+					"link_options": 60,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 101,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Get Pricing | Start Now",
+							"url": "https://www.constructconnect.com/get-started-now"
+						},
+						{
+							"p": 0.5,
+							"label": "Project Intelligence Find and Qualify Projects to Bid | 1 Find Projects Find the right projects to bid with better visib",
+							"url": "https://www.constructconnect.com/products/project-intelligence"
+						},
+						{
+							"p": 0.333,
+							"label": "See a Demo | Try It Free",
+							"url": "https://www.constructconnect.com/get-a-demo"
+						}
+					],
+					"model_ms": 2625,
+					"cost_usd": 0.0011592,
+					"input_tokens": 3348,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l23\", \"l3\", \"l40\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.constructconnect.com/pricing",
+					"title": "Get Access to Preconstruction Software | ConstructConnect",
+					"text_chars": 3000,
+					"link_options": 67,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 214,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 8238,
+					"cost_usd": 0.0006293,
+					"input_tokens": 3635,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "agc-events",
+			"goal": "Find AGC's calendar of upcoming events, including its annual convention.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://www.agc.org/future-agc-meetings",
+			"success": false,
+			"reached_target": true,
+			"fetches": 5,
+			"model_calls": 5,
+			"model_ms_total": 52844,
+			"fetch_ms_total": 816,
+			"cost_usd": 0.0045908,
+			"wall_ms": 55728,
+			"hops": [
+				{
+					"url": "https://www.agc.org/",
+					"title": "Associated General Contractors of America | Associated General Contractors of America",
+					"text_chars": 2534,
+					"link_options": 137,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 185,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Events Calendar",
+							"url": "https://www.agc.org/connect/events-calendar"
+						},
+						{
+							"p": 0.5,
+							"label": "AGC Convention",
+							"url": "http://convention.agc.org/"
+						},
+						{
+							"p": 0.333,
+							"label": "Sponsorship",
+							"url": "http://meetings.agc.org/sponsors"
+						}
+					],
+					"model_ms": 40369,
+					"cost_usd": 0.00089992,
+					"input_tokens": 5891,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l83\", \"l85\", \"l86\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.agc.org/connect/events-calendar",
+					"title": "Events Calendar | Associated General Contractors of America",
+					"text_chars": 3000,
+					"link_options": 162,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 108,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "AGC Convention",
+							"url": "http://convention.agc.org/"
+						},
+						{
+							"p": 0.5,
+							"label": "View Future AGC Conferences",
+							"url": "https://www.agc.org/future-agc-meetings"
+						},
+						{
+							"p": 0.333,
+							"label": "Sponsorship",
+							"url": "http://meetings.agc.org/sponsors"
+						}
+					],
+					"model_ms": 4917,
+					"cost_usd": 0.00096408,
+					"input_tokens": 7922,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l84\", \"l104\", \"l85\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://convention.agc.org/",
+					"title": "2027 AGC Annual Convention",
+					"text_chars": 2275,
+					"link_options": 47,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 237,
+					"page_has_answer": 0,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 2646,
+					"cost_usd": 0.0006062,
+					"input_tokens": 2356,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://convention.agc.org/",
+					"title": "2027 AGC Annual Convention",
+					"text_chars": 2275,
+					"link_options": 47,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 193,
+					"page_has_answer": 0,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 3433,
+					"cost_usd": 0.000677,
+					"input_tokens": 2365,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.agc.org/future-agc-meetings",
+					"title": "Future AGC Meetings | Associated General Contractors of America",
+					"text_chars": 1842,
+					"link_options": 144,
+					"links_disallowed_by_robots": 1,
+					"fetch_ms": 93,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 1479,
+					"cost_usd": 0.0014436,
+					"input_tokens": 6334,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "supabase-rls",
+			"goal": "Find the Supabase documentation page about Row Level Security (RLS) policies.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+			"success": true,
+			"reached_target": true,
+			"fetches": 4,
+			"model_calls": 4,
+			"model_ms_total": 14404,
+			"fetch_ms_total": 992,
+			"cost_usd": 0.004008175,
+			"wall_ms": 16506,
+			"hops": [
+				{
+					"url": "https://supabase.com/",
+					"title": "Supabase | The Postgres Development Platform",
+					"text_chars": 3000,
+					"link_options": 95,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 216,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Docs | Documentation",
+							"url": "https://supabase.com/docs"
+						},
+						{
+							"p": 0.5,
+							"label": "Data APIsInstant ready-to-use REST APIs.",
+							"url": "https://supabase.com/docs/guides/api"
+						},
+						{
+							"p": 0.333,
+							"label": "AuthenticationAdd user sign ups and logins, securing your data with Row Level Security.",
+							"url": "https://supabase.com/auth"
+						}
+					],
+					"model_ms": 2296,
+					"cost_usd": 0.001507365,
+					"input_tokens": 4893,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l1\", \"l12\", \"l7\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://supabase.com/docs",
+					"title": "Supabase Docs",
+					"text_chars": 3000,
+					"link_options": 73,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 463,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "DatabaseSupabase provides a full Postgres database for every project with Realtime functio",
+							"url": "https://supabase.com/docs/guides/database/overview"
+						},
+						{
+							"p": 0.5,
+							"label": "AuthAdd and manage email and password, passwordless, OAuth, and mobile logins to your proj",
+							"url": "https://supabase.com/docs/guides/auth"
+						},
+						{
+							"p": 0.333,
+							"label": "StorageStore, organize, transform, and serve large files—fully integrated with your Postgr",
+							"url": "https://supabase.com/docs/guides/storage"
+						}
+					],
+					"model_ms": 2287,
+					"cost_usd": 0.00072885,
+					"input_tokens": 4063,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l21\", \"l22\", \"l23\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://supabase.com/docs/guides/database/overview",
+					"title": "Database | Supabase Docs",
+					"text_chars": 2232,
+					"link_options": 101,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 154,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Row Level Security",
+							"url": "https://supabase.com/docs/guides/database/postgres/row-level-security"
+						},
+						{
+							"p": 0.5,
+							"label": "Securing your data | Secure your dataRow Level Security (RLS) is how Supabase makes the database safe to query directly ",
+							"url": "https://supabase.com/docs/guides/database/secure-data"
+						},
+						{
+							"p": 0.333,
+							"label": "Row Level Security Performance",
+							"url": "https://supabase.com/docs/guides/database/postgres/row-level-security-performance"
+						}
+					],
+					"model_ms": 1589,
+					"cost_usd": 0.0011038,
+					"input_tokens": 5168,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l21\", \"l2\", \"l22\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://supabase.com/docs/guides/database/postgres/row-level-security",
+					"title": "Row Level Security | Supabase Docs",
+					"text_chars": 3000,
+					"link_options": 108,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 159,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 8232,
+					"cost_usd": 0.00066816,
+					"input_tokens": 5492,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "svelte-derived",
+			"goal": "Find the documentation page for the $derived rune.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://svelte.dev/docs/svelte/$derived",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 18635,
+			"fetch_ms_total": 212,
+			"cost_usd": 0.00150153,
+			"wall_ms": 19863,
+			"hops": [
+				{
+					"url": "https://svelte.dev/docs/svelte/overview",
+					"title": "Overview • Svelte Docs",
+					"text_chars": 1055,
+					"link_options": 101,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 139,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "$derived",
+							"url": "https://svelte.dev/docs/svelte/$derived"
+						},
+						{
+							"p": 0.5,
+							"label": "What are runes?",
+							"url": "https://svelte.dev/docs/svelte/what-are-runes"
+						},
+						{
+							"p": 0.333,
+							"label": "$state",
+							"url": "https://svelte.dev/docs/svelte/$state"
+						}
+					],
+					"model_ms": 2509,
+					"cost_usd": 0.00067819,
+					"input_tokens": 4813,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l16\", \"l14\", \"l15\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://svelte.dev/docs/svelte/$derived",
+					"title": "$derived • Svelte Docs",
+					"text_chars": 3000,
+					"link_options": 101,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 73,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 16126,
+					"cost_usd": 0.00082334,
+					"input_tokens": 5380,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "typesafe-score",
+			"goal": "Find the documentation for the Score primitive.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://docs.typesafe.ai/primitives/score",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 11584,
+			"fetch_ms_total": 269,
+			"cost_usd": 0.001533825,
+			"wall_ms": 24663,
+			"hops": [
+				{
+					"url": "https://docs.typesafe.ai/primitives/choice",
+					"title": "Choice - TypeSafe AI",
+					"text_chars": 3000,
+					"link_options": 32,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 139,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Score | ScoreNext",
+							"url": "https://docs.typesafe.ai/primitives/score"
+						},
+						{
+							"p": 0.5,
+							"label": "Choose a question type | Ask multiple questions together | Primitives (Questions)Previous",
+							"url": "https://docs.typesafe.ai/primitives"
+						},
+						{
+							"p": 0.333,
+							"label": "Advanced: structure",
+							"url": "https://docs.typesafe.ai/primitives/advanced"
+						}
+					],
+					"model_ms": 1581,
+					"cost_usd": 0.000742425,
+					"input_tokens": 2085,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l11\", \"l22\", \"l13\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://docs.typesafe.ai/primitives/score",
+					"title": "Score - TypeSafe AI",
+					"text_chars": 3000,
+					"link_options": 30,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 130,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 10003,
+					"cost_usd": 0.0007914,
+					"input_tokens": 2026,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "mdn-429",
+			"goal": "Find the reference page for the HTTP 429 Too Many Requests status code.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 8885,
+			"fetch_ms_total": 195,
+			"cost_usd": 0.00645738,
+			"wall_ms": 10108,
+			"hops": [
+				{
+					"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/403",
+					"title": "403 Forbidden - HTTP | MDN",
+					"text_chars": 1704,
+					"link_options": 484,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 121,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "429 Too Many Requests",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429"
+						},
+						{
+							"p": 0.5,
+							"label": "HTTP response status codes | client error response",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status"
+						},
+						{
+							"p": 0.333,
+							"label": "451 Unavailable For Legal Reasons",
+							"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/451"
+						}
+					],
+					"model_ms": 3355,
+					"cost_usd": 0.0036039,
+					"input_tokens": 23626,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l363\", \"l84\", \"l365\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429",
+					"title": "429 Too Many Requests - HTTP | MDN",
+					"text_chars": 1746,
+					"link_options": 485,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 74,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 5530,
+					"cost_usd": 0.00285348,
+					"input_tokens": 23703,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "wiki-county-population",
+			"goal": "Find the population of the county that Glen Burnie is located in.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://en.wikipedia.org/wiki/Anne_Arundel_County,_Maryland",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 8419,
+			"fetch_ms_total": 552,
+			"cost_usd": 0.0066904600000000005,
+			"wall_ms": 10299,
+			"hops": [
+				{
+					"url": "https://en.wikipedia.org/wiki/Glen_Burnie,_Maryland",
+					"title": "Glen Burnie, Maryland - Wikipedia",
+					"text_chars": 3000,
+					"link_options": 322,
+					"links_disallowed_by_robots": 34,
+					"fetch_ms": 276,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Anne Arundel | Anne Arundel County, Maryland",
+							"url": "https://en.wikipedia.org/wiki/Anne_Arundel_County,_Maryland"
+						},
+						{
+							"p": 0.5,
+							"label": "County",
+							"url": "https://en.wikipedia.org/wiki/List_of_counties_in_Maryland"
+						},
+						{
+							"p": 0.333,
+							"label": "County seat",
+							"url": "https://en.wikipedia.org/wiki/County_seat"
+						}
+					],
+					"model_ms": 5593,
+					"cost_usd": 0.00245112,
+					"input_tokens": 16971,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l45\", \"l44\", \"l181\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://en.wikipedia.org/wiki/Anne_Arundel_County,_Maryland",
+					"title": "Anne Arundel County, Maryland - Wikipedia",
+					"text_chars": 3000,
+					"link_options": 600,
+					"links_disallowed_by_robots": 63,
+					"fetch_ms": 276,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 2826,
+					"cost_usd": 0.00423934,
+					"input_tokens": 29660,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "aacounty-home-bids",
+			"goal": "Find where Anne Arundel County posts its open bids and solicitations for vendors.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://www.aacounty.org/central-services/purchasing",
+			"success": false,
+			"reached_target": false,
+			"fetches": 4,
+			"model_calls": 4,
+			"model_ms_total": 9660,
+			"fetch_ms_total": 1127,
+			"cost_usd": 0.0022544500000000003,
+			"wall_ms": 10817,
+			"hops": [
+				{
+					"url": "https://www.aacounty.org/",
+					"title": "The Best Place - For All | Anne Arundel County Government",
+					"text_chars": 3000,
+					"link_options": 89,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 118,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Departments | Departments & Offices",
+							"url": "https://www.aacounty.org/departments"
+						},
+						{
+							"p": 0.5,
+							"label": "Services | View All Services",
+							"url": "https://www.aacounty.org/services"
+						},
+						{
+							"p": 0.333,
+							"label": "Government",
+							"url": "https://www.aacounty.org/government"
+						}
+					],
+					"model_ms": 5076,
+					"cost_usd": 0.0007316,
+					"input_tokens": 4595,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l8\", \"l6\", \"l7\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/departments",
+					"title": "Departments | Anne Arundel County Government",
+					"text_chars": 3000,
+					"link_options": 49,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 93,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Central Services",
+							"url": "https://www.aacounty.org/central-services"
+						},
+						{
+							"p": 0.5,
+							"label": "Finance",
+							"url": "https://www.aacounty.org/finance"
+						},
+						{
+							"p": 0.333,
+							"label": "Services",
+							"url": "https://www.aacounty.org/services"
+						}
+					],
+					"model_ms": 1685,
+					"cost_usd": 0.00046545,
+					"input_tokens": 2611,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l13\", \"l19\", \"l6\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/central-services",
+					"title": "Central Services | Anne Arundel County Government",
+					"text_chars": 344,
+					"link_options": 29,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 433,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Purchasing",
+							"url": "https://www.aacounty.org/central-services/purchasing"
+						},
+						{
+							"p": 0.5,
+							"label": "About Central Services",
+							"url": "https://www.aacounty.org/central-services/about-central-services"
+						},
+						{
+							"p": 0.333,
+							"label": "Services",
+							"url": "https://www.aacounty.org/services"
+						}
+					],
+					"model_ms": 912,
+					"cost_usd": 0.0004821,
+					"input_tokens": 1247,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l9\", \"l8\", \"l6\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://www.aacounty.org/central-services/purchasing",
+					"title": "Purchasing | Anne Arundel County Government",
+					"text_chars": 439,
+					"link_options": 35,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 483,
+					"page_has_answer": 1,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "View Opportunities",
+							"url": "https://www.aacounty.org/solicitations"
+						},
+						{
+							"p": 0.5,
+							"label": "Learn More",
+							"url": "https://www.aacounty.org/harbor-support"
+						},
+						{
+							"p": 0.333,
+							"label": "Doing Business with the County",
+							"url": "https://www.aacounty.org/central-services/purchasing/doing-business-county"
+						}
+					],
+					"model_ms": 1987,
+					"cost_usd": 0.0005753,
+					"input_tokens": 1622,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"l17\", \"l16\", \"l11\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "hn-opus-thread",
+			"goal": "Open the Hacker News discussion thread about the Claude Opus 5.5 announcement.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://news.ycombinator.com/item?id=49803892",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 6869,
+			"fetch_ms_total": 1041,
+			"cost_usd": 0.010405305,
+			"wall_ms": 9031,
+			"hops": [
+				{
+					"url": "https://news.ycombinator.com/",
+					"title": "Hacker News",
+					"text_chars": 3000,
+					"link_options": 135,
+					"links_disallowed_by_robots": 61,
+					"fetch_ms": 306,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "3 hours ago | 622 comments",
+							"url": "https://news.ycombinator.com/item?id=49803892"
+						},
+						{
+							"p": 0.5,
+							"label": "Claude Opus 5.5",
+							"url": "https://www.anthropic.com/claude-opus-5-5"
+						},
+						{
+							"p": 0.333,
+							"label": "3 hours ago | 46 comments",
+							"url": "https://news.ycombinator.com/item?id=49804316"
+						}
+					],
+					"matches_target_text": true,
+					"model_ms": 4451,
+					"cost_usd": 0.00104643,
+					"input_tokens": 7311,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l13\", \"l105\", \"l22\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://news.ycombinator.com/item?id=49803892",
+					"title": "Claude Opus 5.5 | Hacker News",
+					"text_chars": 3000,
+					"link_options": 600,
+					"links_disallowed_by_robots": 1250,
+					"fetch_ms": 735,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"matches_target_text": true,
+					"model_ms": 2418,
+					"cost_usd": 0.009358875,
+					"input_tokens": 24205,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "linear-changelog",
+			"goal": "Find Linear's changelog of recent product updates.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://linear.app/changelog",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 7400,
+			"fetch_ms_total": 862,
+			"cost_usd": 0.0015254449999999998,
+			"wall_ms": 9338,
+			"hops": [
+				{
+					"url": "https://linear.app/",
+					"title": "Linear – The system for product development",
+					"text_chars": 3000,
+					"link_options": 49,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 196,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "View all→ | Changelog",
+							"url": "https://linear.app/changelog"
+						},
+						{
+							"p": 0.5,
+							"label": "Loops for product managementLoops are recurring agent workflows for teams. They now respon",
+							"url": "https://linear.app/changelog/2026-09-14-loops-for-product-management"
+						},
+						{
+							"p": 0.333,
+							"label": "Priority inboxAn active workspace can create a significant amount of notifications each da",
+							"url": "https://linear.app/changelog/2026-09-03-priority-inbox"
+						}
+					],
+					"model_ms": 3770,
+					"cost_usd": 0.000894045,
+					"input_tokens": 2673,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l17\", \"l13\", \"l14\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://linear.app/changelog",
+					"title": "Changelog – Linear",
+					"text_chars": 3000,
+					"link_options": 82,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 666,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 3630,
+					"cost_usd": 0.0006314,
+					"input_tokens": 3820,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "stripe-intl-fee",
+			"goal": "Find the additional fee Stripe charges US businesses for international cards.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://stripe.com/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 3367,
+			"fetch_ms_total": 266,
+			"cost_usd": 0.0038526,
+			"wall_ms": 4700,
+			"hops": [
+				{
+					"url": "https://stripe.com/",
+					"title": "Stripe | Financial Infrastructure to Grow Your Revenue",
+					"text_chars": 3000,
+					"link_options": 136,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 157,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Pricing | Pricing details",
+							"url": "https://stripe.com/pricing"
+						},
+						{
+							"p": 0.5,
+							"label": "Documentation",
+							"url": "https://docs.stripe.com/"
+						},
+						{
+							"p": 0.333,
+							"label": "Get support",
+							"url": "https://support.stripe.com/"
+						}
+					],
+					"model_ms": 2728,
+					"cost_usd": 0.0009651,
+					"input_tokens": 5642,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l0\", \"l112\", \"l130\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://stripe.com/pricing",
+					"title": "Pricing & Fees",
+					"text_chars": 3000,
+					"link_options": 246,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 109,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 639,
+					"cost_usd": 0.0028875,
+					"input_tokens": 9301,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "anthropic-api-pricing",
+			"goal": "Find the per-token API pricing for Claude models.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://platform.claude.com/docs/en/about-claude/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 3,
+			"model_calls": 3,
+			"model_ms_total": 5730,
+			"fetch_ms_total": 632,
+			"cost_usd": 0.003339,
+			"wall_ms": 9453,
+			"hops": [
+				{
+					"url": "https://www.anthropic.com/",
+					"title": "Home \\ Anthropic",
+					"text_chars": 1652,
+					"link_options": 109,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 216,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Pricing",
+							"url": "https://claude.com/pricing"
+						},
+						{
+							"p": 0.5,
+							"label": "Overview",
+							"url": "http://claude.com/platform/api"
+						},
+						{
+							"p": 0.333,
+							"label": "Developer docs",
+							"url": "https://platform.claude.com/docs"
+						}
+					],
+					"model_ms": 1458,
+					"cost_usd": 0.00070035,
+					"input_tokens": 4345,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l54\", \"l90\", \"l51\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://claude.com/pricing",
+					"title": "Plans & Pricing | Claude by Anthropic",
+					"text_chars": 3000,
+					"link_options": 124,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 159,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Learn more | Explore detailed pricing (opens in new tab) | Learn more (opens in new tab)",
+							"url": "https://platform.claude.com/docs/en/about-claude/pricing"
+						},
+						{
+							"p": 0.5,
+							"label": "Claude Platform | Overview",
+							"url": "https://claude.com/platform/api"
+						},
+						{
+							"p": 0.333,
+							"label": "Start building (opens in new tab) | Console account",
+							"url": "https://platform.claude.com/"
+						}
+					],
+					"model_ms": 1503,
+					"cost_usd": 0.0018279,
+					"input_tokens": 5669,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l46\", \"l15\", \"l43\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://platform.claude.com/docs/en/about-claude/pricing",
+					"title": "Pricing - Claude Platform Docs",
+					"text_chars": 3000,
+					"link_options": 87,
+					"links_disallowed_by_robots": 0,
+					"fetch_ms": 257,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 2769,
+					"cost_usd": 0.00081075,
+					"input_tokens": 4857,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		},
+		{
+			"id": "buildos-pricing",
+			"goal": "Find what BuildOS costs.",
+			"navigator": "deepseek/deepseek-v4.1-flash",
+			"found_url": "https://build-os.com/pricing",
+			"success": true,
+			"reached_target": true,
+			"fetches": 2,
+			"model_calls": 2,
+			"model_ms_total": 2138,
+			"fetch_ms_total": 330,
+			"cost_usd": 0.0004959,
+			"wall_ms": 3488,
+			"hops": [
+				{
+					"url": "https://build-os.com/",
+					"title": "BuildOS — A project workspace you can talk to.",
+					"text_chars": 3000,
+					"link_options": 17,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 161,
+					"page_has_answer": 0,
+					"none_p": 0,
+					"top_links": [
+						{
+							"p": 1,
+							"label": "Pricing",
+							"url": "https://build-os.com/pricing"
+						},
+						{
+							"p": 0.5,
+							"label": "Read docs",
+							"url": "https://build-os.com/docs"
+						},
+						{
+							"p": 0.333,
+							"label": "Join beta",
+							"url": "https://build-os.com/beta"
+						}
+					],
+					"model_ms": 984,
+					"cost_usd": 0.0003252,
+					"input_tokens": 1461,
+					"raw": {
+						"content": "{\"page_has_answer\": false, \"ranked_links\": [\"l5\", \"l3\", \"l7\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				},
+				{
+					"url": "https://build-os.com/pricing",
+					"title": "Pricing - BuildOS | Thinking Environment for Complex Work",
+					"text_chars": 1212,
+					"link_options": 15,
+					"links_disallowed_by_robots": 2,
+					"fetch_ms": 169,
+					"page_has_answer": 1,
+					"none_p": 1,
+					"top_links": [],
+					"model_ms": 1154,
+					"cost_usd": 0.0001707,
+					"input_tokens": 954,
+					"raw": {
+						"content": "{\"page_has_answer\": true, \"ranked_links\": [\"none\"]}",
+						"model": "deepseek/deepseek-v4.1-flash"
+					}
+				}
+			]
+		}
+	]
+}

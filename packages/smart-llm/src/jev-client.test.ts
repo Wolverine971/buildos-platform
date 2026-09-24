@@ -22,13 +22,7 @@ const liveSmoke = JSON.parse(
 	)
 ) as SmokeFixture;
 const repoChoiceSmoke = JSON.parse(
-	readFileSync(
-		new URL(
-			'../../../docs/research/jev-braindump-orchestration-2026-09-18/smoke.json',
-			import.meta.url
-		),
-		'utf8'
-	)
+	readFileSync(new URL('./fixtures/jev-choice-smoke-2026-09-18.json', import.meta.url), 'utf8')
 ) as SmokeFixture;
 
 const QUESTIONS = liveSmoke.request.questions;

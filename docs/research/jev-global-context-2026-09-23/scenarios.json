@@ -1,0 +1,309 @@
+[
+	{
+		"key": "logan_offer",
+		"source": "real 2026-09-21",
+		"expectScope": "projects",
+		"message": "I talked to somebody named Logan about getting him set up with a pistol shooting website. He wants to start a pistol shooting website, and I need to send him an offer, but I don't remember if I saved this information. Can you check to see if I have information on this and what project this might refer to?",
+		"mustProjects": ["Redline Training Company Website"],
+		"helpfulProjects": ["Tacemus Website Design"],
+		"must": [
+			[
+				"Redline Training Company Website",
+				"document",
+				"Logan / Redline Training Company — Discovery Notes"
+			],
+			["Redline Training Company Website", "task", "Send Logan the Redline website offer"]
+		],
+		"helpful": [
+			[
+				"Redline Training Company Website",
+				"document",
+				"Pistol Shooting Client Website Context Document"
+			],
+			["Tacemus Website Design", "task", "Monday meeting with Logan"]
+		],
+		"expectDig": true
+	},
+	{
+		"key": "theo_von",
+		"source": "real 2026-09-02",
+		"expectScope": "projects",
+		"message": "ok what is going on with 9takes and my out reach to theo von?",
+		"mustProjects": ["9takes"],
+		"helpfulProjects": [],
+		"must": [
+			["9takes", "task", "Outreach: Theo Von — SEND"],
+			["9takes", "document", "Long-Form Network Outreach — 12 Emails"]
+		],
+		"helpful": [],
+		"expectDig": true
+	},
+	{
+		"key": "theo_von_followup",
+		"source": "real 2026-09-02 (turn 2)",
+		"expectScope": "projects",
+		"message": "ok cool  so i want you to create the proper pitch for messaging Theo Von",
+		"recent": [
+			{
+				"role": "user",
+				"content": "ok what is going on with 9takes and my out reach to theo von?"
+			},
+			{
+				"role": "assistant",
+				"content": "Here's the full picture on 9takes and your Theo Von outreach. 9takes is active with 11 overdue tasks. The task \"Outreach: Theo Von — SEND\" was due August 16 and is still To Do. Your next step says: send Theo Von outreach, then post daily Instagram content. Want me to pull up the outreach document or draft you have prepped for Theo Von?"
+			}
+		],
+		"previousFocus": ["9takes"],
+		"mustProjects": ["9takes"],
+		"helpfulProjects": [],
+		"must": [
+			["9takes", "task", "Outreach: Theo Von — SEND"],
+			["9takes", "document", "Long-Form Network Outreach — 12 Emails"]
+		],
+		"helpful": [],
+		"expectDig": true
+	},
+	{
+		"key": "brain_dump_routing",
+		"source": "real 2026-08-21",
+		"expectScope": "projects",
+		"message": "I need to talk to Rod Chamberlain and email him about Beyond Exit Planning. I need to email people for the Cody Shooting Complex, and they just sent out the proposals for Tacemus. I have a lot to do today. I don't know which project these fall under.",
+		"mustProjects": ["Beyond Exit Planning", "Tacemus Website Design"],
+		"helpfulProjects": [
+			"Redline Training Company Website",
+			"The Cadre- DJ Internal",
+			"DJ Wayne Studio"
+		],
+		"must": [
+			[
+				"Tacemus Website Design",
+				"task",
+				"Follow up with Rod Chamberlain on compliance resolution"
+			],
+			["Beyond Exit Planning", "document", "Project Brief — Beyond Exit Planning"]
+		],
+		"helpful": [
+			["Tacemus Website Design", "task", "Outreach to Rod Chamberlain - Monday check-in"],
+			["Tacemus Website Design", "document", "Rod Chamberlin Meeting Prep - May 2026"]
+		],
+		"expectDig": null
+	},
+	{
+		"key": "phil_demo",
+		"source": "real 2026-09-04",
+		"expectScope": "projects",
+		"message": "I'm meeting Phil Valeyo tomorrow at 8 a.m. This is for my cadre project. I'm going to be demoing a bunch of things for him. Can you make sure we have that event on the calendar? It should be on the cadre calendar for wayne@thecadretraining.com.",
+		"mustProjects": ["The Cadre Content Operations"],
+		"helpfulProjects": ["The Cadre- DJ Internal", "Tacemus Website Design"],
+		"must": [
+			[
+				"The Cadre Content Operations",
+				"document",
+				"Phil Velayo - Instructor Bio Questionnaire"
+			]
+		],
+		"helpful": [
+			["Tacemus Website Design", "task", "Follow up with Phil Velayo on building his website"]
+		],
+		"expectDig": false
+	},
+	{
+		"key": "air_days",
+		"source": "real 2026-07-27",
+		"expectScope": "projects",
+		"message": "Today and tomorrow (Monday, July 27, and Tuesday, July 28) I need to have close-to-perfect days.\nToday:\n- At 10:00 a.m., I have a call.\n- At 10:30, I have a haircut.\n- I'm talking to Stephen Taplinski about my interview at Air.\nAfter that happens, I need to study for my interview at Air and get at least two coding reps in and a system design rep. That's what it's going to take for me to have a good day tomorrow.\nSome of this context is in the Operation Second Round project. On Tuesday, I have an in-person interview in Roslyn, Virginia, and I need to prep for that. That's what this prep is for.\nGet context on this, and let's start laying out what the perfect day for tomorrow and Tuesday is. L",
+		"mustProjects": ["Operation Second Round — Job Search Sprint"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"Operation Second Round — Job Search Sprint",
+				"document",
+				"Air Onsite Dossier (Jul 28)"
+			],
+			[
+				"Operation Second Round — Job Search Sprint",
+				"document",
+				"Meeting Debrief — Air / Govini with Brian Hicks"
+			]
+		],
+		"helpful": [
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Prep for Air / Govini interview"
+			]
+		],
+		"expectDig": true
+	},
+	{
+		"key": "todo_dump",
+		"source": "real 2026-07-13",
+		"expectScope": "projects",
+		"message": "Okay, so I'm gonna tell you about some things I need to do. I need to update these things and different projects. So on the cadre project, I need to write a newsletter introducing Erica Obisido and doing a few other things. I also need to do two different take-home tests, one for air and one for another guy that I met on LinkedIn. And I also need to hit up a guy that I want, basically saying that, yes, I'd like to move to the next round. I didn't hit him up yet. He's waiting on me. There's a project where it talks about me getting a job, and I want you to add those tasks to that project.",
+		"mustProjects": ["Operation Second Round — Job Search Sprint"],
+		"helpfulProjects": ["The Cadre Content Operations", "The Cadre- DJ Internal"],
+		"must": [
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Cadre newsletter: introduce Eric Avvisato"
+			],
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Complete take-home test from LinkedIn contact"
+			],
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Follow up: confirm you'd like to move to the next round"
+			]
+		],
+		"helpful": [
+			[
+				"Operation Second Round — Job Search Sprint",
+				"task",
+				"Check-in: AIR / Genesis AI take-home test progress"
+			]
+		],
+		"expectDig": null
+	},
+	{
+		"key": "portfolio",
+		"source": "real (12 sessions)",
+		"expectScope": "portfolio",
+		"message": "OK, what's going on with my projects?",
+		"mustProjects": [],
+		"helpfulProjects": [],
+		"must": [],
+		"helpful": [],
+		"expectDig": null
+	},
+	{
+		"key": "ninetakes_status",
+		"source": "real 2026-09-10",
+		"expectScope": "projects",
+		"message": "ok what is going on with 9takes?",
+		"mustProjects": ["9takes"],
+		"helpfulProjects": [],
+		"must": [["9takes", "document", "START HERE - 9takes"]],
+		"helpful": [],
+		"expectDig": false
+	},
+	{
+		"key": "samos_alias",
+		"source": "synthetic",
+		"expectScope": "projects",
+		"message": "Where am I at with the Samos Bid Desk offer? What's left before the chamber luncheon?",
+		"mustProjects": ["DJ Wayne Studio"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"DJ Wayne Studio",
+				"document",
+				"Offer sheets — The Diagnosis, Bid Desk, Quiet Quote Recovery"
+			],
+			["DJ Wayne Studio", "task", "Fill the contact line on the three offer sheets"]
+		],
+		"helpful": [],
+		"expectDig": true
+	},
+	{
+		"key": "ian_minor",
+		"source": "synthetic",
+		"expectScope": "projects",
+		"message": "What's going on with Ian Minor? I feel like I owe him something.",
+		"mustProjects": ["Tacemus Website Design", "The Cadre- DJ Internal"],
+		"helpfulProjects": ["The Cadre Content Operations", "UXM Training Website"],
+		"must": [
+			[
+				"Tacemus Website Design",
+				"task",
+				"Follow up with Ian Minor about site and UXM training"
+			],
+			["The Cadre- DJ Internal", "task", "Coordinate with Ian Minor on Email Communications"]
+		],
+		"helpful": [
+			["The Cadre Content Operations", "document", "Ian Minor - Instructor Bio Questionnaire"]
+		],
+		"expectDig": true
+	},
+	{
+		"key": "book_structure",
+		"source": "synthetic",
+		"expectScope": "projects",
+		"message": "What did I decide about how the book chapters should be structured?",
+		"mustProjects": ["100-Day Nonfiction Book Project"],
+		"helpfulProjects": [],
+		"must": [
+			[
+				"100-Day Nonfiction Book Project",
+				"document",
+				"Book Contract & Chapter Blueprint Template"
+			]
+		],
+		"helpful": [
+			["100-Day Nonfiction Book Project", "task", "Complete chapter and framework blueprint"]
+		],
+		"expectDig": true
+	},
+	{
+		"key": "naaccc_lunch",
+		"source": "real 2026-09-23",
+		"expectScope": "none",
+		"message": "Go to https://business.naaccc.com/event-calendar and find the date, time, and location of\n  ▎ the Networking Lunch at Italia's Corner.",
+		"mustProjects": [],
+		"helpfulProjects": ["DJ Wayne Studio"],
+		"must": [],
+		"helpful": [],
+		"control": true,
+		"expectDig": false
+	},
+	{
+		"key": "calendar_control",
+		"source": "real 2026-09-04",
+		"expectScope": "none",
+		"message": "ok what calendars do you have access to?",
+		"mustProjects": [],
+		"helpfulProjects": [],
+		"must": [],
+		"helpful": [],
+		"control": true,
+		"expectDig": false
+	},
+	{
+		"key": "quantum_negative",
+		"source": "real 2026-08-30",
+		"expectScope": "projects",
+		"message": "Search across all my BuildOS projects for quantum entanglement. If there are no relevant entities, say exactly that. Do not create or change anything.",
+		"mustProjects": [],
+		"helpfulProjects": [],
+		"must": [],
+		"helpful": [],
+		"control": true,
+		"expectDig": null
+	},
+	{
+		"key": "thanks_control",
+		"source": "synthetic",
+		"expectScope": "none",
+		"message": "thanks, that's really helpful",
+		"recent": [
+			{
+				"role": "user",
+				"content": "ok what is going on with 9takes and my out reach to theo von?"
+			},
+			{
+				"role": "assistant",
+				"content": "Here's the full picture on 9takes and your Theo Von outreach. 9takes is active with 11 overdue tasks. The task \"Outreach: Theo Von — SEND\" was due August 16 and is still To Do. Your next step says: send Theo Von outreach, then post daily Instagram content. Want me to pull up the outreach document or draft you have prepped for Theo Von?"
+			}
+		],
+		"previousFocus": ["9takes"],
+		"mustProjects": [],
+		"helpfulProjects": [],
+		"must": [],
+		"helpful": [],
+		"control": true,
+		"expectDig": false
+	}
+]

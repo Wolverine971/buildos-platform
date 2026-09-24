@@ -1,6 +1,7 @@
 ---
 title: 'BuildOS Marketing Strategy 2026'
 created: 2026-03-12
+last_updated: 2026-09-10
 status: current
 owner: DJ Wayne
 related_docs:
@@ -16,6 +17,10 @@ path: docs/marketing/strategy/buildos-marketing-strategy-2026.md
 ---
 
 # BuildOS Marketing Strategy 2026
+
+Current rollout: [approved wording, channel copy, demo, and user test](./project-workspace-rollout-2026-09-10.md).
+“Thinking environment” remains background philosophy, not the first-contact description.
+Authors and the return-to-work benefit remain hypotheses to validate.
 
 ## Purpose
 
@@ -42,17 +47,17 @@ BuildOS should not compete as "another AI tool."
 
 It should be positioned as:
 
-**a thinking environment for people making complex things**
+**a project workspace you can talk to**
 
 The main promise is:
 
 **turn messy thinking into structured work**
 
-The main differentiator is:
+The continuing benefit to demonstrate is:
 
 **the project remembers**
 
-The moat is:
+The long-term value hypothesis is:
 
 **context compounds over time**
 
@@ -74,14 +79,10 @@ That means:
 
 ### Public Category
 
-**Thinking environment**
+**A project workspace you can talk to**
 
-This is the best top-level category because it:
-
-- feels more human than "AI productivity tool"
-- avoids crowded AI language
-- fits complex creator workflows
-- lets BuildOS feel like infrastructure, not a trick
+The founder selected this description on September 10. It gives the reader a familiar object
+and an interaction they can picture. Use the actual creation and change workflow as proof.
 
 ### Core Promise
 
@@ -89,17 +90,14 @@ This is the best top-level category because it:
 
 This is the clearest front-door promise across channels.
 
-### Differentiator
+### Benefit to demonstrate
 
 **The project remembers what matters.**
 
-This is the practical difference between BuildOS and:
+Show a person opening saved work, making a conversational update, and inspecting the result.
+This is a workflow to validate against alternatives, not proof that other products lack memory.
 
-- stateless chat tools
-- disconnected notes and task apps
-- productivity tools that require the user to maintain everything manually
-
-### Moat
+### Long-term value hypothesis
 
 **The more context you build, the more useful the environment becomes.**
 
@@ -110,7 +108,7 @@ This should usually appear after the product is understood, not before.
 BuildOS should position against:
 
 - tool sprawl
-- stateless chat
+- rebuilding project context
 - blank-page chaos
 - productivity theater
 - disconnected creator workflows
@@ -163,7 +161,7 @@ Use this order consistently.
 
 ### 1. Category
 
-**BuildOS is a thinking environment for people making complex things.**
+**BuildOS is a project workspace you can talk to.**
 
 ### 2. Promise
 

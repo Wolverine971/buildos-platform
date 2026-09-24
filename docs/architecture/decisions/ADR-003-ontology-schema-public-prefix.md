@@ -9,7 +9,7 @@
 
 - `/thoughts/shared/research/2025-11-01_19-51-42_ontology-schema-architectural-fix.md`
 - Migration: `/supabase/migrations/20250601000001_ontology_system.sql`
-- Master Plan: `docs/archive/thoughts/root/shared/ideas/ontology/buildos-ontology-master-plan.md`
+- Master Plan: [buildos-ontology-master-plan.md](https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/thoughts/root/shared/ideas/ontology/buildos-ontology-master-plan.md) (git history)
 
 ## Context
 

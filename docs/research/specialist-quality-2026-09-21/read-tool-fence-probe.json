@@ -1,0 +1,153 @@
+{
+	"scope": "Injected-port reproduction of case 14 (turn 8f1ed224, 2026-09-21 gate): five parallel reads, four-wide concurrency, first ownership check hung, 100 ms overhead deadline. Free local test; no model or database calls.",
+	"command": "pnpm --filter @buildos/worker exec vitest run tests/agenticChatTurnExecutorProbe.test.ts -t 'case 14 reproduction probe' (probe body is the case-14 reproduction test in tests/agenticChatTurnExecutor.test.ts with assertions replaced by a JSON record)",
+	"before": {
+		"sourceIdentity": "frozen worktree /private/tmp/buildos-search-reliability-20260921 at 85f6c5a91 + search slice (unrepaired executor)",
+		"record": {
+			"outcome": "requeued",
+			"claimCalls": 6,
+			"fenceClaims": [
+				{
+					"startedOffsetMs": 4,
+					"signalProvided": false,
+					"aborted": null,
+					"reason": null
+				},
+				{
+					"startedOffsetMs": 4,
+					"signalProvided": false,
+					"aborted": null,
+					"reason": null
+				},
+				{
+					"startedOffsetMs": 4,
+					"signalProvided": false,
+					"aborted": null,
+					"reason": null
+				},
+				{
+					"startedOffsetMs": 4,
+					"signalProvided": false,
+					"aborted": null,
+					"reason": null
+				},
+				{
+					"startedOffsetMs": 6,
+					"signalProvided": false,
+					"aborted": null,
+					"reason": null
+				}
+			],
+			"readExecuteCalls": 4,
+			"recover": {
+				"failureClass": "unknown",
+				"errorMessage": "Agentic Chat read-tool fence claim exceeded its 100ms overhead deadline"
+			},
+			"graph": {
+				"call_count": 5,
+				"failed_call_count": 1,
+				"max_observed_concurrency": 4,
+				"call_timings": [
+					{
+						"provider_tool_call_id": "provider-burst-read-1",
+						"layer_index": 0,
+						"started_offset_ms": 0,
+						"duration_ms": 102
+					},
+					{
+						"provider_tool_call_id": "provider-burst-read-2",
+						"layer_index": 0,
+						"started_offset_ms": 0,
+						"duration_ms": 2
+					},
+					{
+						"provider_tool_call_id": "provider-burst-read-3",
+						"layer_index": 0,
+						"started_offset_ms": 0,
+						"duration_ms": 2
+					},
+					{
+						"provider_tool_call_id": "provider-burst-read-4",
+						"layer_index": 0,
+						"started_offset_ms": 0,
+						"duration_ms": 2
+					},
+					{
+						"provider_tool_call_id": "provider-burst-read-5",
+						"layer_index": 0,
+						"started_offset_ms": 2,
+						"duration_ms": 0
+					}
+				]
+			}
+		}
+	},
+	"after": {
+		"sourceIdentity": "workspace 57749651c + read-tool fence repair (uncommitted)",
+		"record": {
+			"outcome": "requeued",
+			"claimCalls": 3,
+			"fenceClaims": [
+				{
+					"startedOffsetMs": 4,
+					"signalProvided": true,
+					"aborted": true,
+					"reason": "AgenticChatReadToolFenceTimeoutError"
+				},
+				{
+					"startedOffsetMs": 106,
+					"signalProvided": true,
+					"aborted": false,
+					"reason": null
+				}
+			],
+			"readExecuteCalls": 1,
+			"recover": {
+				"failureClass": "transient_infra",
+				"errorMessage": "Agentic Chat read-tool fence claim exceeded its 100ms overhead deadline"
+			},
+			"graph": {
+				"call_count": 5,
+				"failed_call_count": 4,
+				"max_observed_concurrency": 4,
+				"call_timings": [
+					{
+						"provider_tool_call_id": "provider-burst-read-1",
+						"layer_index": 0,
+						"started_offset_ms": 0,
+						"duration_ms": 102
+					},
+					{
+						"provider_tool_call_id": "provider-burst-read-2",
+						"layer_index": 0,
+						"started_offset_ms": 0,
+						"duration_ms": 103
+					},
+					{
+						"provider_tool_call_id": "provider-burst-read-3",
+						"layer_index": 0,
+						"started_offset_ms": 0,
+						"duration_ms": 103
+					},
+					{
+						"provider_tool_call_id": "provider-burst-read-4",
+						"layer_index": 0,
+						"started_offset_ms": 0,
+						"duration_ms": 103
+					},
+					{
+						"provider_tool_call_id": "provider-burst-read-5",
+						"layer_index": 0,
+						"started_offset_ms": 102,
+						"duration_ms": 1
+					}
+				]
+			}
+		}
+	},
+	"reading": [
+		"before: one claim_agentic_chat_turn per read (6 calls = 1 admission + 5 fences); no fence claim received an AbortSignal, so a timed-out check keeps running; the timeout surfaced as a generic Error and classified as failure_class 'unknown'.",
+		"after: one shared fence claim for the four-wide burst plus one fresh claim for the queued fifth read (3 calls); the shared claim's signal was aborted with AgenticChatReadToolFenceTimeoutError at the deadline; the fifth read's claim was never aborted; the failure classified as 'transient_infra' with a specific code.",
+		"The injected hang stalls only the first check. In the live incident every check stalled because the database itself was slow for ~46 s; the reproduction proves the worker-side mechanics (fan-out, no cancellation, classification), not the database cause."
+	]
+}

@@ -1,0 +1,496 @@
+{
+	"summary": {
+		"total": 36,
+		"correct": 35,
+		"heldOutTotal": 12,
+		"heldOutCorrect": 11,
+		"falseSupported": [],
+		"disagreements": [
+			{
+				"id": "birch-workshop-12",
+				"split": "held_out",
+				"claim": "The workshop has no remaining risks.",
+				"expected": "insufficient",
+				"actual": "contradicted",
+				"confidence": 0.69,
+				"probabilities": {
+					"supported": 0,
+					"contradicted": 0.79,
+					"insufficient": 0.21
+				}
+			}
+		],
+		"costUsd": 0.000455112,
+		"durationsMs": [928, 272, 269]
+	},
+	"cases": [
+		{
+			"id": "harbor-launch-01",
+			"split": "development",
+			"claim": "Permit approval remains outstanding.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 1,
+				"contradicted": 0,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "harbor-launch-02",
+			"split": "development",
+			"claim": "The opening depends on the permit.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 0.95,
+			"probabilities": {
+				"supported": 0.97,
+				"contradicted": 0.01,
+				"insufficient": 0.02
+			}
+		},
+		{
+			"id": "harbor-launch-03",
+			"split": "held_out",
+			"claim": "The contract limits attendance to 40.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 0.99,
+			"probabilities": {
+				"supported": 0.99,
+				"contradicted": 0,
+				"insufficient": 0.01
+			}
+		},
+		{
+			"id": "harbor-launch-04",
+			"split": "development",
+			"claim": "The venue task is due October 5, 2026.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 1,
+				"contradicted": 0,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "harbor-launch-05",
+			"split": "development",
+			"claim": "The permit has been approved.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 0.99,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 1,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "harbor-launch-06",
+			"split": "held_out",
+			"claim": "The contract allows 60 attendees.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 0.99,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.99,
+				"insufficient": 0.01
+			}
+		},
+		{
+			"id": "harbor-launch-07",
+			"split": "development",
+			"claim": "The opening is a prerequisite for the permit.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 0.96,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.97,
+				"insufficient": 0.03
+			}
+		},
+		{
+			"id": "harbor-launch-08",
+			"split": "development",
+			"claim": "The venue task is complete.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 0.94,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.96,
+				"insufficient": 0.04
+			}
+		},
+		{
+			"id": "harbor-launch-09",
+			"split": "held_out",
+			"claim": "The $5,000 deposit was paid.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.82,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.12,
+				"insufficient": 0.88
+			}
+		},
+		{
+			"id": "harbor-launch-10",
+			"split": "development",
+			"claim": "The project has exactly one risk.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.97,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.02,
+				"insufficient": 0.98
+			}
+		},
+		{
+			"id": "harbor-launch-11",
+			"split": "development",
+			"claim": "The permit has been approved.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.91,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.05,
+				"insufficient": 0.95
+			}
+		},
+		{
+			"id": "harbor-launch-12",
+			"split": "held_out",
+			"claim": "A full refund is guaranteed.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0,
+				"insufficient": 1
+			}
+		},
+		{
+			"id": "atlas-migration-01",
+			"split": "development",
+			"claim": "The backup task is marked done.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 1,
+				"contradicted": 0,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "atlas-migration-02",
+			"split": "development",
+			"claim": "The current plan schedules cutover for October 12, 2026.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 0.99,
+			"probabilities": {
+				"supported": 0.99,
+				"contradicted": 0,
+				"insufficient": 0.01
+			}
+		},
+		{
+			"id": "atlas-migration-03",
+			"split": "held_out",
+			"claim": "Cutover depends on restore verification.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 0.93,
+			"probabilities": {
+				"supported": 0.95,
+				"contradicted": 0.03,
+				"insufficient": 0.02
+			}
+		},
+		{
+			"id": "atlas-migration-04",
+			"split": "development",
+			"claim": "The approved downtime budget is 30 minutes.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 0.99,
+			"probabilities": {
+				"supported": 0.99,
+				"contradicted": 0,
+				"insufficient": 0.01
+			}
+		},
+		{
+			"id": "atlas-migration-05",
+			"split": "development",
+			"claim": "Restore verification is complete.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 0.99,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.99,
+				"insufficient": 0.01
+			}
+		},
+		{
+			"id": "atlas-migration-06",
+			"split": "held_out",
+			"claim": "The current plan schedules cutover for October 10, 2026.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 0.9,
+			"probabilities": {
+				"supported": 0.01,
+				"contradicted": 0.93,
+				"insufficient": 0.06
+			}
+		},
+		{
+			"id": "atlas-migration-07",
+			"split": "development",
+			"claim": "Restore performance has already been tested.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 1,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "atlas-migration-08",
+			"split": "development",
+			"claim": "Restore verification depends on cutover.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 0.97,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.98,
+				"insufficient": 0.02
+			}
+		},
+		{
+			"id": "atlas-migration-09",
+			"split": "held_out",
+			"claim": "The backup is demonstrably restorable.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.75,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.17,
+				"insufficient": 0.83
+			}
+		},
+		{
+			"id": "atlas-migration-10",
+			"split": "development",
+			"claim": "Cutover will take exactly 20 minutes.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.45,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.36,
+				"insufficient": 0.64
+			}
+		},
+		{
+			"id": "atlas-migration-11",
+			"split": "development",
+			"claim": "A real test proved the backup corrupt.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.46,
+			"probabilities": {
+				"supported": 0.01,
+				"contradicted": 0.35,
+				"insufficient": 0.64
+			}
+		},
+		{
+			"id": "atlas-migration-12",
+			"split": "held_out",
+			"claim": "No other migration risks exist.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.37,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.42,
+				"insufficient": 0.58
+			}
+		},
+		{
+			"id": "birch-workshop-01",
+			"split": "development",
+			"claim": "The room is confirmed for November 2, 2026.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 1,
+				"contradicted": 0,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "birch-workshop-02",
+			"split": "development",
+			"claim": "The catering risk is marked mitigated.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 1,
+				"contradicted": 0,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "birch-workshop-03",
+			"split": "held_out",
+			"claim": "The supplied excerpt lists paper and markers.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 0.99,
+			"probabilities": {
+				"supported": 1,
+				"contradicted": 0,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "birch-workshop-04",
+			"split": "development",
+			"claim": "The room task changed from todo to done.",
+			"expected": "supported",
+			"actual": "supported",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 1,
+				"contradicted": 0,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "birch-workshop-05",
+			"split": "development",
+			"claim": "The room is booked for November 3, 2026.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 0.99,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.99,
+				"insufficient": 0.01
+			}
+		},
+		{
+			"id": "birch-workshop-06",
+			"split": "held_out",
+			"claim": "The catering risk is still marked open.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 1,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "birch-workshop-07",
+			"split": "development",
+			"claim": "The complete risk register was supplied.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 1,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "birch-workshop-08",
+			"split": "development",
+			"claim": "The room task changed from done to todo.",
+			"expected": "contradicted",
+			"actual": "contradicted",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 1,
+				"insufficient": 0
+			}
+		},
+		{
+			"id": "birch-workshop-09",
+			"split": "held_out",
+			"claim": "The full materials list contains no scissors.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 1,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0,
+				"insufficient": 1
+			}
+		},
+		{
+			"id": "birch-workshop-10",
+			"split": "development",
+			"claim": "The project has no dependencies.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.84,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.11,
+				"insufficient": 0.89
+			}
+		},
+		{
+			"id": "birch-workshop-11",
+			"split": "development",
+			"claim": "Every participant paid in full.",
+			"expected": "insufficient",
+			"actual": "insufficient",
+			"confidence": 0.68,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.21,
+				"insufficient": 0.79
+			}
+		},
+		{
+			"id": "birch-workshop-12",
+			"split": "held_out",
+			"claim": "The workshop has no remaining risks.",
+			"expected": "insufficient",
+			"actual": "contradicted",
+			"confidence": 0.69,
+			"probabilities": {
+				"supported": 0,
+				"contradicted": 0.79,
+				"insufficient": 0.21
+			}
+		}
+	]
+}

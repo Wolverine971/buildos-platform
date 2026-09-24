@@ -1,0 +1,732 @@
+{
+	"version": "2026-09-18.1",
+	"model": "typesafe/jev-1.13",
+	"endpoint": "https://openrouter.ai/api/alpha/decisions",
+	"price_per_million_input_tokens": 0.042,
+	"settings": {
+		"goal": "net_worth",
+		"horizon_years": 5,
+		"hours_per_week": 30,
+		"risk_capital_usd": 1000,
+		"window_start": "2026-09-21"
+	},
+	"goal_options": {
+		"net_worth": "a personal net worth of at least $1,000,000",
+		"earnings": "at least $1,000,000 in cumulative personal earnings (money received, before tax), counted from today",
+		"run_rate": "a personal income run-rate of at least $1,000,000 per year"
+	},
+	"profile": [
+		{
+			"id": "identity",
+			"label": "Who you are",
+			"text": "David \"DJ\" Wayne, about 36, lives in Glen Burnie, Maryland (Baltimore-Washington corridor). US citizen and Marine Corps veteran. Married with three young children; family time limits his availability."
+		},
+		{
+			"id": "military",
+			"label": "Military service",
+			"text": "US Marine Corps 2012-2017: infantry, then Scout Sniper Team Leader. Deployed to Afghanistan (2013) and Kuwait (2016). Graduated Marine Scout Sniper School; honor graduate of the Corporal/NCO leadership course. Held a Secret clearance through 2021 and is eligible for reinstatement with an employer sponsor. Eligible for veteran benefits such as a VA home loan and veteran-owned business certification."
+		},
+		{
+			"id": "career",
+			"label": "Engineering career",
+			"text": "About 9 years as a software engineer after a 2017 coding bootcamp. Federal contracting 2018-2021: the search interface for the US Census Bureau's data.census.gov; a knowledge-graph query builder for US Air Force intelligence analysts; migration of a Marine Corps military-justice case archive. Curri (Y Combinator S19 construction-materials delivery startup), Jan 2022-Feb 2025: rebuilt the real-time operations triage console used daily by about 20 service reps, and built and owned integrations with seven outside delivery networks (Uber, Lyft, DoorDash and others) so deliveries automatically failed over to them. Has not held a salaried job since leaving Curri in February 2025."
+		},
+		{
+			"id": "skills",
+			"label": "Skills",
+			"text": "Senior full-stack engineer: TypeScript, React, Svelte, Node.js, PostgreSQL/Supabase. Hands-on with LLM systems: multi-model routing, tool calling, agent harnesses, MCP integrations, and evaluation harnesses. Strong at demos and briefings (briefed commanders as a sniper); an extroverted engineer who likes explaining what he built. No college degree (bootcamp certificate plus two years of community college)."
+		},
+		{
+			"id": "ventures",
+			"label": "What you own today",
+			"confirm": "9takes traffic comes from the resume and hasn't been re-checked. Paid client history is inferred.",
+			"text": "BuildOS (since spring 2025): an AI 'thinking environment' he built solo that turns messy notes and voice into projects, tasks and daily briefs. 124 total signups, 4 in the last 30 days, 0 paying customers; paid billing has not launched (planned price $20/month). 9takes.com: a long-running Enneagram personality discussion site with hundreds of articles and roughly 15,000 monthly unique visitors, not meaningfully monetized. Has built websites for a few small clients, including the booking site for a precision-rifle training company; paid client history is thin."
+		},
+		{
+			"id": "current_plan",
+			"label": "Current plan",
+			"text": "Plan as of September 2026: sell 'AI operator' services to Maryland businesses under the BuildOS name. Lead niche: commercial specialty subcontractors with $5-30M revenue (electrical, mechanical, concrete). Offer ladder: a $3,500 two-week 'Bid Desk' audit of the estimating inbox, then $5,000-$25,000 build sprints, then $2,000-$8,000/month retainers. Has researched 48 named local prospects but has contacted none yet. Upcoming local events: business lunches on Sept 22 and 24, a construction-association gala on Oct 21, and the TEDCO Entrepreneur Expo in Baltimore on Oct 27. In parallel, interviewing for forward-deployed engineer roles at AI companies."
+		},
+		{
+			"id": "network",
+			"label": "Network",
+			"text": "Former Curri colleagues and founders in the Y Combinator network; the Marine scout-sniper community, including his former sniper instructor's training company and a well-known Marine-recon trainer he has met personally; a church community (he grew up a pastor's kid); a local circle of fathers. Active on LinkedIn but has no large public audience."
+		},
+		{
+			"id": "finances",
+			"label": "Money situation",
+			"sensitive": true,
+			"text": "Bootstrapping. Household money is tight; income since February 2025 has come from occasional freelance work. He cannot absorb large losses."
+		},
+		{
+			"id": "work_patterns",
+			"label": "How you actually work",
+			"sensitive": true,
+			"text": "Relentless and persistent, with repeated comebacks from setbacks. Weaknesses named in his own reviews: he tends to over-engineer products, and he tends to prepare outreach (drafts, prospect lists, campaigns) without actually sending it. Prefers building to selling, but is a confident presenter once he is in the room."
+		}
+	],
+	"withheld": [
+		"Health, bereavement and other family history",
+		"Siblings, extended family and personality types of family members",
+		"Politics and religion beyond 'grew up a pastor's kid'",
+		"How past jobs ended (the profile only says he left)",
+		"Phone number, email and exact address"
+	],
+	"questions": [
+		{
+			"id": "finishable_30d",
+			"label": "Can finish in 30 days",
+			"type": "noul",
+			"instructions": "Could the person described in `profile` fully carry out the action in `action.text` within 30 days, given the weekly hours and money available in `constraints`? Judge only whether the action can be completed in that window, not whether it pays off.",
+			"kind": "forecast"
+		},
+		{
+			"id": "follow_through",
+			"label": "Will actually do it",
+			"type": "noul",
+			"instructions": "Given the work patterns and circumstances described in `profile`, will this person actually carry out the action in `action.text` to completion, rather than delay it, over-prepare, or abandon it partway?",
+			"kind": "forecast"
+		},
+		{
+			"id": "cash_1k_30d",
+			"label": "$1k in hand in 30 days",
+			"type": "noul",
+			"instructions": "Within 30 days of starting the action in `action.text`, will the person in `profile` have actually received at least $1,000 of new money (payment, salary, bonus, grant, prize, or investment) as a direct result of it? Money promised, invoiced, or merely saved does not count.",
+			"kind": "forecast"
+		},
+		{
+			"id": "cash_10k_90d",
+			"label": "$10k in hand in 90 days",
+			"type": "noul",
+			"instructions": "Within 90 days of starting the action in `action.text`, will the person in `profile` have actually received at least $10,000 of new money (payment, salary, bonus, grant, prize, or investment) as a direct result of it? Money promised, invoiced, or merely saved does not count.",
+			"kind": "forecast"
+		},
+		{
+			"id": "recurring_income",
+			"label": "Creates recurring income",
+			"type": "noul",
+			"instructions": "If the action in `action.text` succeeds, will it give the person in `profile` a source of income that keeps paying repeatedly (such as a salary, a retainer, subscriptions, or ad revenue) without redoing the action from scratch? One-time payments do not count.",
+			"kind": "forecast"
+		},
+		{
+			"id": "millionaire_path",
+			"label": "Reaches the goal",
+			"type": "noul",
+			"instructions": "Suppose the person in `profile` carries out the action in `action.text` over the next 30 days and then keeps pursuing the path it opens. Will they reach {GOAL} by {DEADLINE}?",
+			"kind": "forecast"
+		},
+		{
+			"id": "unfair_edge",
+			"label": "Uses your unfair advantages",
+			"type": "score",
+			"instructions": "How much does the action in `action.text` rely on advantages specific to the person in `profile` (their documented experience, credentials, network, existing assets, or location) rather than effort anyone could supply? Judge only this reliance, not the action's value.",
+			"criteria": [
+				"Relies on nothing specific to this person; anyone could do it equally well.",
+				"Relies only on general software-engineering skill that many people share.",
+				"Relies on one specific advantage documented in the profile.",
+				"Built around several specific advantages in the profile that few competitors share."
+			],
+			"kind": "evidence"
+		},
+		{
+			"id": "track_record",
+			"label": "Has done this before",
+			"type": "noul",
+			"kind": "evidence",
+			"instructions": "Does `profile` show that this person has already successfully done the core work that the action in `action.text` requires (the same kind of selling, building, or job), rather than only related skills?"
+		},
+		{
+			"id": "missing_prereq",
+			"label": "Missing a prerequisite",
+			"type": "noul",
+			"kind": "evidence",
+			"instructions": "Does the action in `action.text` require a credential, license, capital, audience, or relationship that `profile` does not show this person having?"
+		},
+		{
+			"id": "downside_risk",
+			"label": "Real downside risk",
+			"type": "noul",
+			"instructions": "Does the action in `action.text` carry a real risk that the person in `profile` loses more than $2,000 of their own money, or materially damages their professional reputation, within 90 days?",
+			"kind": "forecast"
+		}
+	],
+	"head_to_head": [
+		{
+			"id": "best_for_goal",
+			"label": "Best single move toward the goal",
+			"instructions": "Which one action in `candidate_actions`, carried out over the next 30 days by the person in `profile`, most increases their chance of reaching {GOAL} by {DEADLINE}?"
+		},
+		{
+			"id": "best_for_cash",
+			"label": "Fastest $10k",
+			"instructions": "Which one action in `candidate_actions`, started now by the person in `profile`, is most likely to put at least $10,000 of new money in their hands within 90 days?"
+		}
+	],
+	"categories": [
+		{
+			"id": "career",
+			"label": "Salary & career",
+			"note": "The FDE track and other paid roles. A salary with equity is the most common route to a first million for engineers."
+		},
+		{
+			"id": "operator",
+			"label": "AI operator services",
+			"note": "The September pivot: selling operations work to Maryland businesses."
+		},
+		{
+			"id": "buildos",
+			"label": "BuildOS",
+			"note": "Getting money out of the product you already built."
+		},
+		{
+			"id": "assets",
+			"label": "9takes & other sites",
+			"note": "Traffic and sites you already own."
+		},
+		{
+			"id": "audience",
+			"label": "Audience & content",
+			"note": "Building attention that turns into leads, sales or offers."
+		},
+		{
+			"id": "gov",
+			"label": "Veteran, defense & government",
+			"note": "Where your service record, clearance history and federal work count."
+		},
+		{
+			"id": "products",
+			"label": "Products & micro-SaaS",
+			"note": "New things to build and sell."
+		},
+		{
+			"id": "ownership",
+			"label": "Ownership & capital",
+			"note": "Equity, acquisitions, property and partners."
+		},
+		{
+			"id": "controls",
+			"label": "Controls",
+			"note": "Test items, not suggestions. Anchors have obvious answers, so if Jev gets them wrong the rest of its scores are noise. Twins restate another action in different words, so their scores should match."
+		}
+	],
+	"actions": [
+		{
+			"id": "a01",
+			"cat": "career",
+			"text": "Apply to 40 forward-deployed engineer roles at AI companies in 30 days, each with the FDE-tailored resume and a short personalized note."
+		},
+		{
+			"id": "a02",
+			"cat": "career",
+			"text": "Get 10 warm referrals into AI-company forward-deployed engineer roles by messaging former Curri colleagues and Y Combinator founders, then interview through those referrals."
+		},
+		{
+			"id": "a03",
+			"cat": "career",
+			"text": "Target defense-tech AI companies (such as Palantir, Anduril, and Scale AI's public-sector unit) for forward-deployed roles, leading with Marine sniper service and a reinstatable Secret clearance."
+		},
+		{
+			"id": "a04",
+			"cat": "career",
+			"text": "Land a cleared federal-contractor AI engineering role that sponsors reinstating his Secret clearance."
+		},
+		{
+			"id": "a05",
+			"cat": "career",
+			"text": "Negotiate any job offer he receives toward maximum equity (at least 0.25% at a Series A-C AI startup) rather than maximum salary."
+		},
+		{
+			"id": "a06",
+			"cat": "career",
+			"text": "Join a pre-seed or seed-stage AI startup as a founding engineer for at least 1% equity plus a reduced salary."
+		},
+		{
+			"id": "a07",
+			"cat": "career",
+			"text": "Sign a 1099 contract as an AI agent engineer at $125+ per hour for 20+ hours a week through a former colleague's company."
+		},
+		{
+			"id": "a08",
+			"cat": "career",
+			"text": "Take a remote senior full-stack role paying at least $170,000 a year and run BuildOS and operator work on nights and weekends."
+		},
+		{
+			"id": "a09",
+			"cat": "career",
+			"text": "Apply through Y Combinator's Work at a Startup board to 25 YC companies hiring AI or agent engineers."
+		},
+		{
+			"id": "a10",
+			"cat": "career",
+			"text": "Do paid expert AI-training and evaluation work (coding annotation platforms) at $60-$120 per hour for immediate cash."
+		},
+		{
+			"id": "a11",
+			"cat": "career",
+			"text": "Publish a public case study of the BuildOS agent harness and evaluation work as a portfolio piece, and send it directly to 20 AI hiring managers."
+		},
+		{
+			"id": "a12",
+			"cat": "career",
+			"text": "Pursue a solutions or applied-AI engineer role at a frontier model lab or AI infrastructure company."
+		},
+		{
+			"id": "a13",
+			"cat": "career",
+			"text": "Get hired as the first dedicated AI engineer at a Baltimore-area mid-size company in construction, logistics, or healthcare."
+		},
+		{
+			"id": "b01",
+			"cat": "operator",
+			"text": "Sell one $3,500 Bid Desk audit to a commercial specialty subcontractor from his list of 48 researched local prospects."
+		},
+		{
+			"id": "b02",
+			"cat": "operator",
+			"text": "Walk into 15 Anne Arundel and Baltimore subcontractor offices in person, starting with a 50-person electrical contractor in Glen Burnie, to book 20-minute friction calls with owners."
+		},
+		{
+			"id": "b03",
+			"cat": "operator",
+			"text": "Attend the Sept 22 Maryland Tech Council AI lunch and the Sept 24 Northern Anne Arundel Chamber luncheon, and book 5 follow-up calls from them."
+		},
+		{
+			"id": "b04",
+			"cat": "operator",
+			"text": "Record and send 120 personalized two-minute teardown videos to the prospects on his list."
+		},
+		{
+			"id": "b05",
+			"cat": "operator",
+			"text": "Give one subcontractor a free two-week Bid Desk pilot in exchange for a written case study and two referrals."
+		},
+		{
+			"id": "b06",
+			"cat": "operator",
+			"text": "Sell a $2,000-$5,000 half-day 'AI for your operations team' workshop to a chamber of commerce, a trade association, or a single company."
+		},
+		{
+			"id": "b07",
+			"cat": "operator",
+			"text": "Upsell an existing website client to a $5,000+ AI automation build."
+		},
+		{
+			"id": "b08",
+			"cat": "operator",
+			"text": "Sign a $2,000-$4,000 per month AI operator retainer with any local business."
+		},
+		{
+			"id": "b09",
+			"cat": "operator",
+			"text": "Pre-sell an instant inquiry-response system to 3 wedding venues or wineries for a December start, collecting deposits now."
+		},
+		{
+			"id": "b10",
+			"cat": "operator",
+			"text": "Pitch veteran-owned local businesses, starting with a veteran-owned Annapolis remodeler, veteran to veteran, on a system that follows up on unsold estimates."
+		},
+		{
+			"id": "b11",
+			"cat": "operator",
+			"text": "Partner with a local marketing agency to white-label AI operations work for its existing clients on a revenue share."
+		},
+		{
+			"id": "b12",
+			"cat": "operator",
+			"text": "Sell dispatch and delivery-exception automation to Baltimore-area building-material suppliers and couriers, drawing on his Curri experience."
+		},
+		{
+			"id": "b13",
+			"cat": "operator",
+			"text": "Get booked as a guest on local business podcasts and pitch the operator offer to the shows' past guests."
+		},
+		{
+			"id": "b14",
+			"cat": "operator",
+			"text": "Email 50 past guests of local business podcasts, each with one specific observation about their company's operations."
+		},
+		{
+			"id": "b15",
+			"cat": "operator",
+			"text": "Buy the $500 exhibitor table at the Oct 27 TEDCO Entrepreneur Expo and pre-book 10 meetings for the day."
+		},
+		{
+			"id": "b16",
+			"cat": "operator",
+			"text": "Buy the $3,500 TEDCO Expo sponsorship tier that includes a speaking slot."
+		},
+		{
+			"id": "b17",
+			"cat": "operator",
+			"text": "Offer AI operations help to churches and faith-based nonprofits in the Baltimore area through his church network."
+		},
+		{
+			"id": "b18",
+			"cat": "operator",
+			"text": "Sell fractional CTO and AI-lead services at $5,000 a month to 3 non-technical local founders."
+		},
+		{
+			"id": "b19",
+			"cat": "operator",
+			"text": "Productize the Bid Desk into a fixed $1,500 one-day bid-inbox triage setup for small subcontractors under $5M in revenue."
+		},
+		{
+			"id": "c01",
+			"cat": "buildos",
+			"text": "Turn on Stripe billing and personally ask all 124 existing BuildOS signups to become paying users at $20 a month."
+		},
+		{
+			"id": "c02",
+			"cat": "buildos",
+			"text": "Offer the 124 BuildOS signups a $120-a-year founding-member plan that includes a personal onboarding call."
+		},
+		{
+			"id": "c03",
+			"cat": "buildos",
+			"text": "Sell BuildOS as a $49-$99 lifetime deal on a software-deals marketplace."
+		},
+		{
+			"id": "c04",
+			"cat": "buildos",
+			"text": "Launch BuildOS on Product Hunt and Hacker News (Show HN) in the same week."
+		},
+		{
+			"id": "c05",
+			"cat": "buildos",
+			"text": "Reposition BuildOS as a shared context layer for teams and agencies, and sell 3 paid team pilots at $300+ a month."
+		},
+		{
+			"id": "c06",
+			"cat": "buildos",
+			"text": "Bundle BuildOS as the client workspace for every AI operator engagement, so each client's projects live in BuildOS."
+		},
+		{
+			"id": "c07",
+			"cat": "buildos",
+			"text": "Raise a $250,000-$1,000,000 pre-seed round for BuildOS from angels and micro-VCs."
+		},
+		{
+			"id": "c08",
+			"cat": "buildos",
+			"text": "Submit a Y Combinator application for BuildOS for the next batch, with a working demo and current traction numbers."
+		},
+		{
+			"id": "c09",
+			"cat": "buildos",
+			"text": "Apply for Maryland non-dilutive startup funding (such as TEDCO's pre-seed and builder programs) for BuildOS."
+		},
+		{
+			"id": "c10",
+			"cat": "buildos",
+			"text": "Sell BuildOS's agent-context connector (MCP) to developers as a paid API priced per project."
+		},
+		{
+			"id": "c11",
+			"cat": "buildos",
+			"text": "Open-source the BuildOS agent harness and evaluation tooling to build a public reputation that leads to consulting work."
+		},
+		{
+			"id": "c12",
+			"cat": "buildos",
+			"text": "List BuildOS for sale (asset sale or acqui-hire) on a startup-acquisition marketplace."
+		},
+		{
+			"id": "c13",
+			"cat": "buildos",
+			"text": "Build a book-writing version of BuildOS on its existing author workflow and sell it to 20 authors."
+		},
+		{
+			"id": "d01",
+			"cat": "assets",
+			"text": "Add display advertising to 9takes and its roughly 15,000 monthly visitors."
+		},
+		{
+			"id": "d02",
+			"cat": "assets",
+			"text": "Sell $19 premium personalized Enneagram reports on 9takes."
+		},
+		{
+			"id": "d03",
+			"cat": "assets",
+			"text": "Launch a $9-a-month AI Enneagram coach on 9takes."
+		},
+		{
+			"id": "d04",
+			"cat": "assets",
+			"text": "Add affiliate links for Enneagram books, tests, and courses across 9takes' hundreds of articles."
+		},
+		{
+			"id": "d05",
+			"cat": "assets",
+			"text": "Sell $1,500+ Enneagram team workshops to companies, using 9takes as credibility."
+		},
+		{
+			"id": "d06",
+			"cat": "assets",
+			"text": "List 9takes for sale on a website marketplace."
+		},
+		{
+			"id": "d07",
+			"cat": "assets",
+			"text": "Capture 9takes visitors into an email list and sell them a $49 Enneagram relationships course."
+		},
+		{
+			"id": "d08",
+			"cat": "assets",
+			"text": "Monetize TinyTribeAdventures, his early-stage family-activities site, with local sponsorships and affiliate links."
+		},
+		{
+			"id": "e01",
+			"cat": "audience",
+			"text": "Post on LinkedIn every day for 30 days about building AI agents as a Marine veteran and solo founder."
+		},
+		{
+			"id": "e02",
+			"cat": "audience",
+			"text": "Publish an independent, data-driven evaluation of the new Jev decision model against frontier LLMs while the model is brand new."
+		},
+		{
+			"id": "e03",
+			"cat": "audience",
+			"text": "Start a YouTube channel and publish 8 videos of real AI agent builds."
+		},
+		{
+			"id": "e04",
+			"cat": "audience",
+			"text": "Launch a $500 cohort course teaching working developers agentic engineering."
+		},
+		{
+			"id": "e05",
+			"cat": "audience",
+			"text": "Launch a paid newsletter about AI operations for small businesses."
+		},
+		{
+			"id": "e06",
+			"cat": "audience",
+			"text": "Build in public on X (Twitter) every day for 30 days."
+		},
+		{
+			"id": "e07",
+			"cat": "audience",
+			"text": "Speak at 3 Baltimore or DC tech meetups."
+		},
+		{
+			"id": "e08",
+			"cat": "audience",
+			"text": "Write and self-publish a short book titled 'From Scout Sniper to AI Founder.'"
+		},
+		{
+			"id": "e09",
+			"cat": "audience",
+			"text": "Start a monthly 'AI for the trades' meetup in Glen Burnie."
+		},
+		{
+			"id": "e10",
+			"cat": "audience",
+			"text": "Launch a $29-a-month paid community for veterans moving into AI and software careers."
+		},
+		{
+			"id": "f01",
+			"cat": "gov",
+			"text": "Register for Maryland's veteran-owned small business (VSBE) certification and SBA veteran certification to qualify for set-aside contracts."
+		},
+		{
+			"id": "f02",
+			"cat": "gov",
+			"text": "Submit a Department of Defense SBIR/STTR Phase I proposal for an AI decision-support tool."
+		},
+		{
+			"id": "f03",
+			"cat": "gov",
+			"text": "Bid on small Maryland state or county AI and IT procurement requests as a sole proprietor."
+		},
+		{
+			"id": "f04",
+			"cat": "gov",
+			"text": "Subcontract AI development work under a prime federal contractor in the Baltimore-DC area."
+		},
+		{
+			"id": "f05",
+			"cat": "gov",
+			"text": "Pitch an AI case-intelligence tool to military justice offices, using his past work on the Marine Corps military-justice system."
+		},
+		{
+			"id": "f06",
+			"cat": "gov",
+			"text": "Build an AI knowledge-graph search prototype for intelligence analysts, based on his Air Force work, and pitch it to defense primes."
+		},
+		{
+			"id": "f07",
+			"cat": "gov",
+			"text": "Get paid to teach AI agent development at a veteran-focused coding bootcamp or workforce program."
+		},
+		{
+			"id": "f08",
+			"cat": "gov",
+			"text": "Use veteran entrepreneurship programs (such as SBA Boots to Business or VA vocational rehabilitation) for funding or mentorship."
+		},
+		{
+			"id": "f09",
+			"cat": "gov",
+			"text": "Pitch AI operations work to the training business of a well-known Marine-recon trainer he knows personally."
+		},
+		{
+			"id": "g01",
+			"cat": "products",
+			"text": "Build and sell a $199-a-month bid-invitation triage SaaS for subcontractors."
+		},
+		{
+			"id": "g02",
+			"cat": "products",
+			"text": "Build a $99-a-month AI estimate follow-up tool for home remodelers."
+		},
+		{
+			"id": "g03",
+			"cat": "products",
+			"text": "Build and sell a small-business email-triage tool powered by the new Jev decision model while it is new."
+		},
+		{
+			"id": "g04",
+			"cat": "products",
+			"text": "Sell packs of Claude Code agent skills and MCP servers to developers."
+		},
+		{
+			"id": "g05",
+			"cat": "products",
+			"text": "Build MCP connectors for construction software such as Procore and sell them to contractors or agencies."
+		},
+		{
+			"id": "g06",
+			"cat": "products",
+			"text": "Build an AI dispatcher for small courier and delivery companies."
+		},
+		{
+			"id": "g07",
+			"cat": "products",
+			"text": "Sell a $149 SvelteKit + Supabase starter kit for building AI apps."
+		},
+		{
+			"id": "g08",
+			"cat": "products",
+			"text": "Build a $5-a-month Chrome extension that captures browser context into AI chats."
+		},
+		{
+			"id": "g09",
+			"cat": "products",
+			"text": "Build booking-and-CRM software for precision-shooting and firearms-training companies."
+		},
+		{
+			"id": "g10",
+			"cat": "products",
+			"text": "Enter AI hackathons with cash prizes over the next 30 days."
+		},
+		{
+			"id": "h01",
+			"cat": "ownership",
+			"text": "Trade AI operations work for 5-10% equity in a profitable local business."
+		},
+		{
+			"id": "h02",
+			"cat": "ownership",
+			"text": "Sign a letter of intent to buy a small profitable local service business with an SBA 7(a) loan and run it with AI."
+		},
+		{
+			"id": "h03",
+			"cat": "ownership",
+			"text": "Buy a small profitable SaaS product or content site (under $50,000) using seller financing."
+		},
+		{
+			"id": "h04",
+			"cat": "ownership",
+			"text": "Go under contract on a 2-4 unit property with a VA loan (no down payment) and live in one unit."
+		},
+		{
+			"id": "h05",
+			"cat": "ownership",
+			"text": "Recruit a commission-only salesperson to sell the AI operator offer."
+		},
+		{
+			"id": "h06",
+			"cat": "ownership",
+			"text": "Bring on a sales-focused cofounder for the operator business in exchange for 30-50% equity."
+		},
+		{
+			"id": "h07",
+			"cat": "ownership",
+			"text": "Earn recruiting referral fees by placing veterans and engineers from his network into tech jobs."
+		},
+		{
+			"id": "h08",
+			"cat": "ownership",
+			"text": "Join an established AI agency as a partner with a profit share."
+		},
+		{
+			"id": "h09",
+			"cat": "ownership",
+			"text": "Put a fixed amount of spare money into index funds every month and leave it alone."
+		},
+		{
+			"id": "x01",
+			"cat": "controls",
+			"control": "anchor",
+			"expect": "Near zero on everything except downside.",
+			"text": "Spend $500 on lottery tickets over the next 30 days."
+		},
+		{
+			"id": "x02",
+			"cat": "controls",
+			"control": "anchor",
+			"expect": "High downside; near-zero goal odds.",
+			"text": "Put $1,000 into newly launched meme coins and trade them daily."
+		},
+		{
+			"id": "x03",
+			"cat": "controls",
+			"control": "anchor",
+			"expect": "High downside; near-zero goal odds.",
+			"text": "Trade short-dated stock options using household savings."
+		},
+		{
+			"id": "x04",
+			"cat": "controls",
+			"control": "anchor",
+			"expect": "High cash in 30 days; zero recurring; near-zero goal odds.",
+			"text": "Sell personal belongings (gear and electronics) worth about $1,500 on local marketplaces."
+		},
+		{
+			"id": "x05",
+			"cat": "controls",
+			"control": "anchor",
+			"expect": "The baseline everything else should beat.",
+			"text": "Change nothing: keep splitting time between BuildOS features, job applications, and occasional freelance work, as over the past six months."
+		},
+		{
+			"id": "x06",
+			"cat": "controls",
+			"control": "anchor",
+			"expect": "Low cash; lower than c01.",
+			"text": "Spend 30 days only building new BuildOS features, with no user conversations or outreach."
+		},
+		{
+			"id": "x07",
+			"cat": "controls",
+			"control": "twin",
+			"twin_of": "b01",
+			"text": "Close a paid two-week estimating-inbox audit ($3,500) with a Maryland electrical, mechanical, or concrete subcontractor this month."
+		},
+		{
+			"id": "x08",
+			"cat": "controls",
+			"control": "twin",
+			"twin_of": "a01",
+			"text": "Send tailored applications for about forty forward-deployed engineering positions at AI companies over the next month."
+		},
+		{
+			"id": "x09",
+			"cat": "controls",
+			"control": "twin",
+			"twin_of": "c07",
+			"text": "Raise between $250,000 and $1 million in pre-seed investment for BuildOS from angel investors and small venture funds."
+		}
+	]
+}

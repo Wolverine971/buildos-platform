@@ -8,7 +8,7 @@ export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL, KIMI_CODING_MODEL]
 export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
 export const PARETO_MODEL = 'unbiased/pareto' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
-export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
+export const GPT_6_LUNA_MODEL = 'openai/gpt-6-luna' as const;
 export const GROK_47_MODEL = 'x-ai/grok-4.7' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V41_FLASH_MODEL = 'deepseek/deepseek-v4.1-flash' as const;
@@ -27,7 +27,7 @@ export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as cons
 export const ACTIVE_EXPERIMENT_MODEL = GLM_53_FLASH_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [
 	GLM_53_FLASH_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL
 ] as const;
 export const MAXIMUM_WORK_MODEL = KIMI_K3_MODEL;
@@ -541,16 +541,16 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	[GPT_56_LUNA_MODEL]: {
-		id: GPT_56_LUNA_MODEL,
-		name: 'GPT-5.6 Luna',
+	[GPT_6_LUNA_MODEL]: {
+		id: GPT_6_LUNA_MODEL,
+		name: 'GPT-6 Luna',
 		speed: 4,
 		smartness: 5,
 		creativity: 4.8,
-		// Standard OpenAI/OpenRouter rates verified 2026-09-04:
-		// https://developers.openai.com/api/docs/models/gpt-5.6-luna
-		cost: 0.2,
-		outputCost: 1.2,
+		// OpenRouter standard rates verified 2026-09-24:
+		// https://openrouter.ai/openai/gpt-6-luna
+		cost: 0.1,
+		outputCost: 0.5,
 		provider: 'openai',
 		bestFor: [
 			'premium-reasoning',
@@ -575,6 +575,19 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			multimodal: true,
 			longContext: true
 		}
+	},
+	// Keep historical estimates accurate without making the retired ID selectable.
+	'openai/gpt-5.6-luna': {
+		id: 'openai/gpt-5.6-luna',
+		name: 'GPT-5.6 Luna (historical)',
+		speed: 4,
+		smartness: 5,
+		creativity: 4.8,
+		cost: 0.2,
+		outputCost: 1.2,
+		provider: 'openai',
+		bestFor: [],
+		limitations: ['historical-pricing-only']
 	},
 	[GROK_47_MODEL]: {
 		id: GROK_47_MODEL,
@@ -783,13 +796,13 @@ const JSON_POWERFUL_ROUTE = [
 	GLM_53_FLASH_MODEL,
 	GLM_52_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const JSON_MAXIMUM_ROUTE = [
 	KIMI_K3_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	GLM_53_FLASH_MODEL,
 	GLM_52_MODEL,
@@ -807,21 +820,21 @@ const TEXT_QUALITY_ROUTE = [
 	GEMINI_37_FLASH_MODEL,
 	GLM_53_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	MINIMAX_M3_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
 const TEXT_CREATIVE_ROUTE = [
 	GLM_53_FLASH_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	MINIMAX_M3_MODEL,
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const TEXT_MAXIMUM_ROUTE = [
 	KIMI_K3_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	GLM_53_FLASH_MODEL,
 	GLM_52_MODEL,

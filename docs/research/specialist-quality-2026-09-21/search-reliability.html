@@ -1,0 +1,251 @@
+<!-- docs/research/specialist-quality-2026-09-21/search-reliability.html -->
+<!doctype html>
+<html lang="en">
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>A slow search should not lose useful results</title>
+	<style>
+		:root {
+			font:
+				16px/1.55 system-ui,
+				sans-serif;
+			color: #18211f;
+			background: #f5f3ee;
+		}
+		* {
+			box-sizing: border-box;
+		}
+		body {
+			margin: 0;
+		}
+		main {
+			max-width: 1000px;
+			margin: auto;
+			padding: 44px 24px;
+		}
+		a {
+			color: #18694f;
+		}
+		.eyebrow {
+			font-size: 12px;
+			letter-spacing: 0.1em;
+			text-transform: uppercase;
+			color: #60706a;
+		}
+		h1 {
+			font-size: clamp(32px, 5vw, 50px);
+			line-height: 1.1;
+			letter-spacing: -0.035em;
+			max-width: 800px;
+		}
+		h2 {
+			font-size: 20px;
+			margin: 0 0 12px;
+		}
+		p {
+			max-width: 760px;
+		}
+		.muted,
+		small {
+			color: #60706a;
+		}
+		.grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 20px;
+			margin: 26px 0;
+		}
+		.card {
+			background: white;
+			border: 1px solid #d7ded8;
+			border-radius: 14px;
+			padding: 24px;
+		}
+		.old {
+			border-top: 4px solid #9b352b;
+		}
+		.new {
+			border-top: 4px solid #18694f;
+		}
+		.metric {
+			font-size: 42px;
+			font-weight: 750;
+			line-height: 1.2;
+			margin: 14px 0;
+		}
+		.track {
+			height: 12px;
+			background: #eeeae4;
+			border-radius: 6px;
+			overflow: hidden;
+			margin: 20px 0;
+		}
+		.fill {
+			height: 100%;
+			background: #18694f;
+		}
+		.old .fill {
+			background: #9b352b;
+		}
+		label {
+			display: block;
+			font-weight: 650;
+		}
+		input {
+			width: 100%;
+			accent-color: #18694f;
+		}
+		output {
+			font-variant-numeric: tabular-nums;
+		}
+		strong {
+			font-weight: 700;
+		}
+		.evidence {
+			border-left: 4px solid #18694f;
+			padding-left: 20px;
+		}
+		code {
+			overflow-wrap: anywhere;
+		}
+		footer {
+			margin-top: 32px;
+			font-size: 14px;
+			color: #60706a;
+		}
+		@media (max-width: 680px) {
+			.grid {
+				grid-template-columns: 1fr;
+			}
+			main {
+				padding: 28px 18px;
+			}
+		}
+	</style>
+	<main>
+		<a href="claim-inspector.html">← Claim inspector</a>
+		<p class="eyebrow">Search reliability · September 21, 2026</p>
+		<h1>A slow search should not lose useful results.</h1>
+		<p class="muted">
+			Keyword and semantic search run together. Semantic search adds meaning-based matches,
+			but a stalled embedding provider should not block the keyword results already available.
+		</p>
+		<section class="card" aria-labelledby="model-heading">
+			<h2 id="model-heading">Try the channel budget</h2>
+			<p class="muted">
+				Illustrative model of the search channels only. It excludes authorization, other
+				tools, model generation, and persistence. This is not a live speed benchmark.
+			</p>
+			<label for="semantic"
+				>Embedding + vector lookup: <output id="semantic-value">32.0 s</output></label
+			>
+			<input id="semantic" type="range" min="0.5" max="45" step="0.5" value="32" />
+			<label for="keyword">Keyword lookup: <output id="keyword-value">1.5 s</output></label>
+			<input id="keyword" type="range" min="0.5" max="10" step="0.5" value="1.5" />
+			<div class="grid" aria-live="polite">
+				<article class="card old">
+					<h2>Previous behavior</h2>
+					<div class="metric" id="old-time"></div>
+					<div class="track"><div class="fill" id="old-bar"></div></div>
+					<p id="old-result"></p>
+				</article>
+				<article class="card new">
+					<h2>Bounded semantic search</h2>
+					<div class="metric" id="new-time"></div>
+					<div class="track"><div class="fill" id="new-bar"></div></div>
+					<p id="new-result"></p>
+				</article>
+			</div>
+			<small
+				>The shared five-second budget covers embedding and vector lookup together. An outer
+				read timeout or turn cancellation still stops the read; authorization and keyword
+				failures still fail it.</small
+			>
+		</section>
+		<section class="grid">
+			<article class="card">
+				<h2>Observed failure</h2>
+				<p>
+					<strong>30.003 seconds</strong> until the earlier search timed out. A vector
+					request started after that deadline and ran another
+					<strong>15.022 seconds</strong>.
+				</p>
+				<p class="muted">
+					Retained trace from the earlier source-unverified gate. It diagnoses the
+					failure; it is not a release pass.
+				</p>
+				<a href="v3-gate-diagnostics.json">Earlier gate diagnostics</a>
+			</article>
+			<article class="card">
+				<h2>Fault-injection replay</h2>
+				<p>
+					<strong>5.008 seconds</strong> to return the synthetic keyword result. The
+					embedding fetch was aborted. A late response triggered
+					<strong>zero vector requests</strong>.
+				</p>
+				<p class="muted">
+					Real timer, current code, injected hung transport and synthetic data. No live
+					provider or database.
+				</p>
+				<a href="search-timeout-replay.json">Inspect the replay</a>
+			</article>
+		</section>
+		<section class="evidence">
+			<h2>Coverage stays visible</h2>
+			<p>
+				When the optional search is unavailable, the result carries
+				<code>search_coverage.semantic</code> and says that no matches do not establish
+				absence. A fast partial answer must not pretend to be complete.
+			</p>
+		</section>
+		<section class="card old" style="margin-top: 28px">
+			<h2>Full gate: failed · 48/52</h2>
+			<p>
+				<strong>44 of 45 turns passed, with verified source provenance.</strong> One task
+				batch took 70.1 seconds. One grounded-status run failed in database ownership checks
+				before reaching search.
+			</p>
+			<p>
+				The other status runs passed in 19.4 and 12.6 seconds. Their six searches took
+				0.72–1.15 seconds; coverage reached the model prompts. No semantic timeout fired in
+				the live run.
+			</p>
+			<a href="search-reliability-gate.json"
+				>Inspect the complete gate result and failure traces</a
+			>
+		</section>
+		<footer>
+			<strong id="gate-status"
+				>133 focused tests pass. The full release gate remains failed.</strong
+			><br />Worker and shared-runtime typechecks pass. Production flags and deployment are
+			unchanged.
+		</footer>
+	</main>
+	<script>
+		const semantic = document.getElementById('semantic'),
+			keyword = document.getElementById('keyword');
+		function update() {
+			const s = Number(semantic.value),
+				k = Number(keyword.value),
+				old = Math.min(30, Math.max(s, k)),
+				next = Math.max(Math.min(s, 5), k);
+			document.getElementById('semantic-value').textContent = s.toFixed(1) + ' s';
+			document.getElementById('keyword-value').textContent = k.toFixed(1) + ' s';
+			document.getElementById('old-time').textContent = old.toFixed(1) + ' s';
+			document.getElementById('new-time').textContent = next.toFixed(1) + ' s';
+			document.getElementById('old-bar').style.width = (old / 30) * 100 + '%';
+			document.getElementById('new-bar').style.width = (next / 30) * 100 + '%';
+			document.getElementById('old-result').textContent =
+				s >= 30
+					? 'The outer deadline fails the read. Optional work could continue after failure.'
+					: 'Keyword and semantic results return together.';
+			document.getElementById('new-result').textContent =
+				s >= 5
+					? 'Keyword results return with reduced coverage. The optional lookup is cancelled.'
+					: 'Keyword and semantic results return together.';
+		}
+		semantic.addEventListener('input', update);
+		keyword.addEventListener('input', update);
+		update();
+	</script>
+</html>

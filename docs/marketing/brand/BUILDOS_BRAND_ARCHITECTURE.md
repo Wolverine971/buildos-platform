@@ -1,7 +1,7 @@
 ---
 title: 'BuildOS Brand Architecture'
 created: 2026-04-08
-last_updated: 2026-08-04
+last_updated: 2026-09-10
 status: current
 owner: DJ Wayne
 related_docs:
@@ -15,6 +15,10 @@ path: docs/marketing/brand/BUILDOS_BRAND_ARCHITECTURE.md
 ---
 
 # BuildOS Brand Architecture
+
+Current rollout: [approved wording, channel copy, demo, and user test](../strategy/project-workspace-rollout-2026-09-10.md).
+“Thinking environment” remains background philosophy, not the first-contact description.
+Authors and the return-to-work benefit remain hypotheses to validate.
 
 ## Purpose
 
@@ -34,13 +38,13 @@ Use this as the canonical abstraction layer above individual campaigns and below
 
 BuildOS should present one stable public identity:
 
-- **Category:** thinking environment for people making complex things
+- **Category:** project workspace you can talk to
 - **Promise:** turn messy thinking into structured work
-- **Differentiator:** the project remembers
-- **Moat:** context compounds
+- **Benefit to demonstrate:** the project remembers
+- **Long-term value hypothesis:** context compounds
 - **Strategic thesis / why now:** BuildOS is where humans keep judgment, context, and control as
   AI makes execution abundant
-- **Strategic enemy:** tool sprawl, stateless chat, blank-page chaos, productivity theater
+- **Strategic enemy:** tool sprawl, rebuilding project context, blank-page chaos, productivity theater
 
 Everything else is subordinate to that stack.
 
@@ -107,10 +111,10 @@ Each phrase has a role. The mistake is letting multiple phrases compete for the 
 
 | Phrase                                                                                         | Role                              | Use It For                                                                                                        | Do Not Use It For                                                          |
 | ---------------------------------------------------------------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| **Thinking environment**                                                                       | Public category                   | Homepage, hero copy, first-contact messaging, creator-facing positioning                                          | Investor-only architecture framing                                         |
+| **A project workspace you can talk to**                                                        | Public category                   | Homepage, hero copy, first-contact messaging, creator-facing positioning                                          | Investor-only architecture framing                                         |
 | **Turn messy thinking into structured work**                                                   | Core promise                      | Hero lines, social hooks, demos, product description                                                              | Deep technical explanation                                                 |
-| **The project remembers**                                                                      | Differentiator                    | Proof layer, feature explanation, comparison copy                                                                 | Top-level category                                                         |
-| **Context compounds**                                                                          | Moat                              | Second-layer explanation, blog, investor decks, product philosophy                                                | First-contact headline                                                     |
+| **The project remembers**                                                                      | Supporting benefit                | Proof layer, feature explanation, comparison copy                                                                 | Top-level category                                                         |
+| **Context compounds**                                                                          | Value hypothesis                  | Second-layer explanation, blog, investor decks, product philosophy                                                | First-contact headline                                                     |
 | **BuildOS is where humans keep judgment, context, and control as AI makes execution abundant** | Strategic thesis / why-now bridge | Founder narrative, About-page philosophy, investor materials, essays, and agent-era campaigns after product proof | Public category, first-screen acquisition copy, creator CTA, or product UI |
 | **Builder operating system**                                                                   | Channel translation               | X, founder voice, indie-builder audiences, selected founder-led copy                                              | Universal homepage category                                                |
 | **AI project collaboration**                                                                   | Experience / campaign framing     | Specific campaigns about “works with you,” handoffs, team or shared-context stories                               | Canonical public category                                                  |
@@ -126,7 +130,7 @@ Each phrase has a role. The mistake is letting multiple phrases compete for the 
 
 Fixed across all public surfaces unless there is a very good reason.
 
-- thinking environment
+- a project workspace you can talk to
 - messy thinking -> structured work
 - project remembers
 - context compounds
@@ -224,7 +228,7 @@ Lead with a specific user group:
 Lead with a failure mode:
 
 - your project is living in five places
-- stateless AI resets the work
+- re-explaining project decisions interrupts the work
 - notes + docs + tasks + chats is not a system
 - the hard part is re-entry, not intelligence
 
@@ -318,7 +322,7 @@ Not:
 
 Use:
 
-- thinking environment
+- a project workspace you can talk to
 - messy thinking
 - structured work
 - project memory
@@ -367,7 +371,7 @@ Avoid:
 
 ### Homepage
 
-BuildOS is a thinking environment for people making complex things.
+BuildOS is a project workspace you can talk to.
 
 Turn messy thinking into structured work.
 
@@ -380,11 +384,11 @@ scoped work from that context without becoming the owner of the work.
 
 ### X / Founder-Builders
 
-BuildOS is a thinking environment for builders who are tired of stateless AI and fragmented workflows.
+BuildOS is a project workspace you can talk to. Keep your notes, tasks, and decisions together as you build.
 
 ### Creator Campaign
 
-BuildOS is a thinking environment for books, videos, and launches with too many moving pieces.
+BuildOS is a project workspace you can talk to. Bring the rough notes for your book, video, or launch.
 
 ### Technical / Investor
 

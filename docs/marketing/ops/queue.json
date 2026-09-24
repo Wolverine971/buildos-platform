@@ -119,7 +119,7 @@
 			"status": "published",
 			"rank": 2,
 			"published_at": "2026-04-27",
-			"note": "Newest published cluster blog. Full publish kit drafted (all 5 lanes) but NOTHING was ever posted. Kit: docs/archive/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md",
+			"note": "Newest published cluster blog. Full publish kit drafted (all 5 lanes) but NOTHING was ever posted. Kit (git history): https://github.com/Wolverine971/buildos-platform/blob/f46e9090c774/docs/archive/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md",
 			"deliverables": [
 				{ "kind": "twitter-thread", "status": "drafted", "posted_at": null, "url": null },
 				{ "kind": "linkedin-post", "status": "drafted", "posted_at": null, "url": null },

@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import {
 	GLM_53_FLASH_MODEL,
-	GPT_56_LUNA_MODEL,
+	GPT_6_LUNA_MODEL,
 	JSON_PROFILE_MODELS,
 	JevClient,
 	LLMUsageLogger,
@@ -655,7 +655,7 @@ export const AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS = 45_000;
  * request bouncing between endpoints. Fallbacks stay allowed for availability.
  */
 export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze(['openai', 'azure']);
-export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_56_LUNA_MODEL;
+export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_6_LUNA_MODEL;
 /**
  * Never a default reviewer fallback: 2026-09-04 GLM 5.3 Flash approved a
  * dependency correction without declaring its endpoints. An explicit policy
@@ -731,7 +731,7 @@ export function buildAgenticChatSemanticReviewerRoutes(
 				// per token; it serves Luna fine), so none of it carries over.
 				providerRouting: Object.freeze({
 					allow_fallbacks: true,
-					...(model === GPT_56_LUNA_MODEL
+					...(model === GPT_6_LUNA_MODEL
 						? { order: AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER }
 						: {})
 				})
