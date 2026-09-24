@@ -2,9 +2,10 @@
 
 # Agentic Chat change-set gate
 
-Run `pnpm agentic:gate` after each Agentic Chat change set, before stacking another
-change or claiming that a regression is fixed. This is the automated Cedar House
-seed-data battery, with three independent repetitions, no automatic retries, and
+Use `pnpm agentic:gate` for broader live Agentic Chat validation when warranted, with
+explicit approval for each paid run. It is not required after every change set or
+before continuing implementation; use focused free tests for routine changes. This is
+the automated Cedar House seed-data battery, with three independent repetitions, no automatic retries, and
 13 scored cases (1–11, 13–14). Case 12 would mutate an external calendar and is not
 part of this battery. Manual browser checks supplement this gate.
 
@@ -167,6 +168,44 @@ and retries once. It does not change Vitest pool/worker limits.
   cost estimate taken from one model can never authorize a run on a dearer one. Quote the
   model and its measured figure when asking for approval; check the credits counter before
   and after, since that delta is the real cost. A three-repetition DeepSeek gate measured $0.32 on 2026-09-22 (usage-counter delta).
+
+## Deployed-stack battery (post-deploy check)
+
+`pnpm agentic:prod-battery --confirm-prod` sends the same 13-case, three-repetition battery
+through **production**: Vercel web (`https://build-os.com`), the Railway `agentic-chat-worker`,
+and the production database. It runs as the dedicated harness account
+(`agentic-e2e-…@example.com`; the runner refuses any other address). It starts no local services
+and proves what users get after a deploy. The isolated QA gate above still tests a change
+before it ships. The two scorecards are separate. Only a deployed commit can be tested this way.
+
+- **Setup:**
+    - `.env.agentic-prod-battery.local` (ignored, mode 0600) holds `AGENTIC_TEST_USER_EMAIL`,
+      `AGENTIC_TEST_USER_PASSWORD`, and a `PRIVATE_OPENROUTER_API_KEY` used only by the judge on
+      this machine. Production Supabase values come from `apps/web/.env`. Deploy metadata comes
+      from the Vercel CLI login (or `VERCEL_TOKEN`) and the Railway CLI.
+    - Case 10 needs the harness account's own Google Calendar connection in production. Sign in
+      at `https://build-os.com/profile?tab=calendar` as the harness account and connect the
+      dedicated QA Google account. Either connection kind passes preflight: the single-calendar
+      flow, which nearly every production user is on, or the allowlisted multi-calendar flow.
+      `prod-battery.json` records which one the run used.
+- **Free first:** `pnpm agentic:prod-battery --preflight-only` checks the target, the production
+  acting model against `AGENTIC_GATE_ALLOWED_MODELS`, one clean deployed commit on web and
+  worker (Vercel deployment SHA = worker `/health` provenance), the harness account, and the
+  calendar. It spends nothing and writes nothing.
+- **What the run enforces:**
+    - Every turn's executing worker receipt must match the deployed commit.
+    - The deployment must be unchanged at the end, or the run fails as mixed.
+    - Scoring is the same as the QA gate: `evaluateGateScorecard`, 52/52 plus the latency and
+      call limits.
+    - Evidence (`turns/`, `scorecard.json`, `prod-battery.json`) covers only the harness
+      account's own rows. Production records no prompts, so there is no `provider-passes/`.
+- **Cleanup (hard delete):** before the run, every project the harness account owns is deleted.
+  After it, the run's projects are deleted, and the run's chat sessions go through
+  `delete_my_chat_session` as the harness account. Both are verified empty. Usage rows keep
+  their cost (their session and turn links are set null).
+- **Cost:** it is paid. It needs explicit approval per run. `prod-battery.json` reports the
+  production model spend (from the harness account's `llm_usage_logs`) and the judge spend
+  (the judge key's usage delta).
 
 ## CI and deployment
 

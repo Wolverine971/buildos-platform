@@ -165,6 +165,7 @@ export type AgenticChatBootstrapCompositionPort = {
 		start(): Promise<void>;
 		stop(): Promise<void>;
 		wake(): Promise<void>;
+		setWakeChannelHealthy(healthy: boolean): void;
 		getHealth(): AgenticChatConsumerRuntimeHealth;
 	};
 	capacity: {
@@ -399,9 +400,14 @@ export class AgenticChatBootstrap {
 	}
 
 	private startQueueWake(): void {
+		this.composition.runtime.setWakeChannelHealthy(false);
 		try {
-			this.queueWake?.start(() => this.wake());
+			this.queueWake?.start(
+				() => this.wake(),
+				(healthy) => this.composition.runtime.setWakeChannelHealthy(healthy)
+			);
 		} catch (error) {
+			this.composition.runtime.setWakeChannelHealthy(false);
 			console.warn(
 				JSON.stringify({
 					event: 'agentic_chat_queue_wake_start_failed',

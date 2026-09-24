@@ -12,6 +12,9 @@ type QueueJob = Database['public']['Tables']['queue_jobs']['Row'];
 type ClaimedQueueJob = QueueJob & { processing_token?: string | null };
 type JobStatus = QueueJobStatus;
 type JobType = QueueJobType;
+type ClaimReason = 'startup' | 'timer' | 'wake' | 'refill';
+
+type WakeAwarePolling = { idleIntervalMs: number; jitterMs: number };
 
 export interface JobOptions {
 	priority?: number;
@@ -94,6 +97,12 @@ export class SupabaseQueue {
 	private isClaiming = false;
 	private acceptingWork = false;
 	private pollInterval: number;
+	private readonly wakeAwarePolling: WakeAwarePolling | null;
+	private wakeChannelHealthy = false;
+	private nextPollAtMs: number | null = null;
+	private pendingWake: Promise<void> | null = null;
+	private claimCounts: Record<ClaimReason, number> = { startup: 0, timer: 0, wake: 0, refill: 0 };
+	private emptyClaims = 0;
 	private batchSize: number;
 	private stalledTimeout: number;
 	private readonly genericStalledRecovery: boolean;
@@ -123,6 +132,8 @@ export class SupabaseQueue {
 
 	constructor(options?: {
 		pollInterval?: number;
+		/** Opt-in idle backoff for consumers with a wake transport. */
+		wakeAwarePolling?: WakeAwarePolling;
 		batchSize?: number;
 		stalledTimeout?: number;
 		drainTimeout?: number;
@@ -130,6 +141,18 @@ export class SupabaseQueue {
 		genericStalledRecovery?: boolean;
 	}) {
 		this.pollInterval = options?.pollInterval ?? 5000; // 5 seconds
+		this.wakeAwarePolling = options?.wakeAwarePolling ?? null;
+		if (
+			this.wakeAwarePolling &&
+			(!Number.isSafeInteger(this.wakeAwarePolling.idleIntervalMs) ||
+				this.wakeAwarePolling.idleIntervalMs < 1 ||
+				!Number.isSafeInteger(this.wakeAwarePolling.jitterMs) ||
+				this.wakeAwarePolling.jitterMs < 0)
+		) {
+			throw new Error(
+				'Wake-aware polling requires a positive interval and nonnegative jitter'
+			);
+		}
 		this.batchSize = options?.batchSize ?? 5;
 		this.stalledTimeout = options?.stalledTimeout ?? 300000; // 5 minutes
 		this.genericStalledRecovery = options?.genericStalledRecovery ?? true;
@@ -239,6 +262,11 @@ export class SupabaseQueue {
 
 		console.log('🚀 Starting Supabase queue processor');
 		console.log(`   - Poll interval: ${this.pollInterval}ms`);
+		if (this.wakeAwarePolling) {
+			console.log(
+				`   - Healthy wake safety poll: ${Math.max(this.pollInterval, this.wakeAwarePolling.idleIntervalMs)}ms + up to ${this.wakeAwarePolling.jitterMs}ms jitter`
+			);
+		}
 		console.log(`   - Batch size: ${this.batchSize}`);
 		console.log(`   - Stalled timeout: ${this.stalledTimeout}ms`);
 		console.log(`   - Job types: ${Array.from(this.processors.keys()).join(', ')}`);
@@ -248,16 +276,19 @@ export class SupabaseQueue {
 		this.acceptingWork = true;
 
 		// Process immediately on start
-		await this.processJobs();
+		await this.processJobs('startup');
 		if (!this.acceptingWork) {
 			// stop() may have begun while the initial claim was in flight.
 			return;
 		}
 
-		// Set up polling interval
-		this.processingInterval = setInterval(async () => {
-			await this.processJobs();
-		}, this.pollInterval);
+		// Wake-aware consumers schedule one idle deadline when a claim settles.
+		// Preserve the existing fixed interval for all other consumers.
+		if (!this.wakeAwarePolling) {
+			this.processingInterval = setInterval(async () => {
+				await this.processJobs('timer');
+			}, this.pollInterval);
+		}
 
 		// Agentic Chat owns a stricter fenced recovery service. Other consumers
 		// retain the generic minute cadence by default.
@@ -281,8 +312,50 @@ export class SupabaseQueue {
 	wake(): Promise<void> {
 		if (!this.acceptingWork) return Promise.resolve();
 		const activeClaim = this.inFlightClaim;
-		if (!activeClaim) return this.processJobs();
-		return activeClaim.then(() => this.processJobs());
+		if (!activeClaim) return this.processJobs('wake');
+		if (this.pendingWake) return this.pendingWake;
+		this.pendingWake = activeClaim.then(() => {
+			this.pendingWake = null;
+			return this.processJobs('wake');
+		});
+		return this.pendingWake;
+	}
+
+	/** Transport state is advisory; unknown/unavailable always uses fast polling. */
+	setWakeChannelHealthy(healthy: boolean): void {
+		if (!this.wakeAwarePolling || this.wakeChannelHealthy === healthy) return;
+		this.wakeChannelHealthy = healthy;
+		this.scheduleSafetyPoll();
+	}
+
+	private currentPollInterval(): number {
+		return this.wakeAwarePolling && this.wakeChannelHealthy
+			? Math.max(this.pollInterval, this.wakeAwarePolling.idleIntervalMs)
+			: this.pollInterval;
+	}
+
+	private clearSafetyPoll(): void {
+		if (this.processingInterval) clearTimeout(this.processingInterval);
+		this.processingInterval = null;
+		this.nextPollAtMs = null;
+	}
+
+	private scheduleSafetyPoll(): void {
+		if (!this.wakeAwarePolling) return;
+		this.clearSafetyPoll();
+		if (!this.acceptingWork || this.inFlightClaim || this.activeJobs.size >= this.batchSize)
+			return;
+		const jitter =
+			this.wakeChannelHealthy && this.currentPollInterval() > this.pollInterval
+				? Math.floor(Math.random() * (this.wakeAwarePolling.jitterMs + 1))
+				: 0;
+		const delayMs = this.currentPollInterval() + jitter;
+		this.nextPollAtMs = Date.now() + delayMs;
+		this.processingInterval = setTimeout(() => {
+			this.processingInterval = null;
+			this.nextPollAtMs = null;
+			void this.processJobs('timer');
+		}, delayMs);
 	}
 
 	/**
@@ -308,6 +381,7 @@ export class SupabaseQueue {
 			clearInterval(this.processingInterval);
 			this.processingInterval = null;
 		}
+		this.nextPollAtMs = null;
 		if (this.stalledJobInterval) {
 			clearInterval(this.stalledJobInterval);
 			this.stalledJobInterval = null;
@@ -373,18 +447,21 @@ export class SupabaseQueue {
 	 * Claim enough pending jobs to fill the currently open worker slots.
 	 * Processing continues independently after this method returns.
 	 */
-	private processJobs(): Promise<void> {
+	private processJobs(reason: ClaimReason = 'timer'): Promise<void> {
 		if (!this.acceptingWork || this.isClaiming) return Promise.resolve();
 
 		const availableSlots = this.batchSize - this.activeJobs.size;
 		if (availableSlots <= 0) return Promise.resolve();
 
+		if (this.wakeAwarePolling) this.clearSafetyPoll();
+		this.claimCounts[reason] += 1;
 		this.isClaiming = true;
 		const claim = this.claimAndStartJobs(availableSlots).finally(() => {
 			this.isClaiming = false;
 			if (this.inFlightClaim === claim) {
 				this.inFlightClaim = null;
 			}
+			this.scheduleSafetyPoll();
 		});
 		this.inFlightClaim = claim;
 		return claim;
@@ -413,6 +490,7 @@ export class SupabaseQueue {
 			this.lastPollSuccessAtMs = Date.now();
 
 			if (!jobs || jobs.length === 0) {
+				this.emptyClaims += 1;
 				return; // No jobs to process
 			}
 
@@ -449,7 +527,12 @@ export class SupabaseQueue {
 		// Refill immediately instead of waiting for every job from the original
 		// claim to settle. The isClaiming guard serializes concurrent completions.
 		if (this.acceptingWork) {
-			void this.processJobs();
+			// A completion during another claim still needs a subsequent refill.
+			if (this.wakeAwarePolling && this.inFlightClaim) {
+				void this.inFlightClaim.then(() => this.processJobs('refill'));
+			} else {
+				void this.processJobs('refill');
+			}
 		}
 	}
 
@@ -866,6 +949,14 @@ export class SupabaseQueue {
 		consecutiveClaimFailures: number;
 		processingBatch: boolean;
 		draining: boolean;
+		polling?: {
+			intervalMs: number;
+			jitterMaxMs: number;
+			wakeChannelHealthy: boolean;
+			nextPollAt: string | null;
+			claimsByReason: Record<ClaimReason, number>;
+			emptyClaims: number;
+		};
 	} {
 		const lastSuccessfulClaimAt = this.lastPollSuccessAtMs
 			? new Date(this.lastPollSuccessAtMs).toISOString()
@@ -879,7 +970,26 @@ export class SupabaseQueue {
 			lastPollSuccessAt: lastSuccessfulClaimAt,
 			consecutiveClaimFailures: this.consecutiveClaimFailures,
 			processingBatch: this.activeJobs.size > 0,
-			draining: this.stopping !== null
+			draining: this.stopping !== null,
+			...(this.wakeAwarePolling
+				? {
+						polling: {
+							intervalMs: this.currentPollInterval(),
+							jitterMaxMs:
+								this.wakeChannelHealthy &&
+								this.currentPollInterval() > this.pollInterval
+									? this.wakeAwarePolling.jitterMs
+									: 0,
+							wakeChannelHealthy: this.wakeChannelHealthy,
+							nextPollAt:
+								this.nextPollAtMs === null
+									? null
+									: new Date(this.nextPollAtMs).toISOString(),
+							claimsByReason: { ...this.claimCounts },
+							emptyClaims: this.emptyClaims
+						}
+					}
+				: {})
 		};
 
 		if (!this.started) {
@@ -893,7 +1003,7 @@ export class SupabaseQueue {
 			return { healthy: false, reason: 'repeated_claim_failures', ...snapshot };
 		}
 
-		const staleThresholdMs = Math.max(5 * this.pollInterval, 60_000);
+		const staleThresholdMs = Math.max(5 * this.currentPollInterval(), 60_000);
 		const referenceMs = this.lastPollSuccessAtMs ?? this.startedAtMs!;
 		if (this.activeJobs.size < this.batchSize && Date.now() - referenceMs > staleThresholdMs) {
 			return {

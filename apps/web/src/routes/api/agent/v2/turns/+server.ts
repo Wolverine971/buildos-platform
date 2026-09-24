@@ -251,7 +251,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			);
 		}
 
-		// Wake the worker (bounded, never throws; its 1s poll is the fallback).
+		// Wake the worker (bounded, never throws; durable safety polling is the fallback).
 		const [session] = await Promise.all([
 			loadCreatedSession ? loadCreatedSession(result.sessionId) : null,
 			result.outcome === 'newly_admitted' ? wakeAgenticChatWorkerQueue() : null

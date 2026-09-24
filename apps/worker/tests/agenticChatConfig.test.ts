@@ -14,6 +14,19 @@ const DEDICATED_PROVIDER_ENV: NodeJS.ProcessEnv = {
 	AGENTIC_CHAT_OPENROUTER_MODEL: 'deepseek/deepseek-v4-flash'
 };
 
+it('keeps deployed one-second fallback settings and defaults healthy wake polling to five seconds', () => {
+	expect(
+		loadAgenticChatConfig({ ...DEDICATED_PROVIDER_ENV, CHAT_POLL_INTERVAL_MS: '1000' }).consumer
+	).toMatchObject({ pollIntervalMs: 1000, idlePollIntervalMs: 5000 });
+	expect(
+		loadAgenticChatConfig({ ...DEDICATED_PROVIDER_ENV, CHAT_IDLE_POLL_INTERVAL_MS: '1000' })
+			.consumer
+	).toMatchObject({ pollIntervalMs: 1000, idlePollIntervalMs: 1000 });
+	expect(() =>
+		loadAgenticChatConfig({ ...DEDICATED_PROVIDER_ENV, CHAT_IDLE_POLL_INTERVAL_MS: '0' })
+	).toThrow('CHAT_IDLE_POLL_INTERVAL_MS');
+});
+
 describe('Agentic Chat acting provider routing defaults', () => {
 	it.each([GLM_53_MODEL, QWEN_38_27B_FREE_MODEL])(
 		'does not reuse DeepSeek provider ordering for %s',

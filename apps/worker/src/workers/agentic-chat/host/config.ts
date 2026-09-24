@@ -295,6 +295,11 @@ export function loadAgenticChatConfig(
 			DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.pollIntervalMs,
 			'CHAT_POLL_INTERVAL_MS'
 		),
+		idlePollIntervalMs: parsePositiveInteger(
+			environment.CHAT_IDLE_POLL_INTERVAL_MS,
+			DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.idlePollIntervalMs,
+			'CHAT_IDLE_POLL_INTERVAL_MS'
+		),
 		workerTimeoutMs: parsePositiveInteger(
 			environment.CHAT_WORKER_TIMEOUT_MS,
 			DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG.workerTimeoutMs,

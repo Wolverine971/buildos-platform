@@ -2,6 +2,11 @@
 
 # Supabase work order and queue-wake investigation
 
+**Implementation update:** DJ removed the mandatory per-change-set gate requirement after this
+work order. The five-second polling change is now implemented and freely tested locally;
+security containment is prepared but unapplied. See the [current implementation notes](SUPABASE_CONTAINMENT_IMPLEMENTATION_2026-09-24.md).
+The audit and initial ordering below are retained as the original proposal.
+
 **Tasker 104 · Owner: Codex · Follow-up observed 2026-09-24, 17:40–17:45 UTC**
 
 DJ's decision: **keep the existing QA branch**. Deletion, pausing and ephemeral replacement are no longer proposed immediate actions. No resizing, runtime changes, RPC mutations, deployments or paid tests were performed in this follow-up.

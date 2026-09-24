@@ -11,6 +11,17 @@ required before paid launch
 
 **Type:** Production security, database authorization, and release governance
 
+**2026-09-24 implementation update (Tasker 104):** A focused
+[containment migration and tested rollback](../docs/technical/reviews/SUPABASE_CONTAINMENT_IMPLEMENTATION_2026-09-24.md)
+are ready locally. DJ suggested retiring the unused phase-date RPC; the patch drops only that
+function and retains its tables/data. The two used admin RPCs become service-only invokers.
+Nine disposable PostgreSQL privilege/behavior tests and five existing admin-route tests pass.
+**Update, evening:** the patch was **applied to production** (recorded in the ledger as
+`20260924202321`). Verified through PostgREST: anon is refused (401/42501), the phase RPC is gone
+(404) with its data intact, and the service-role admin path returns 200. QA was not patched because it is
+being retired (Tasker 104). The three known exposures are closed. The broader privileged-RPC audit
+remains open.
+
 ## Kernel
 
 The live Supabase project currently allows anonymous callers to execute privileged database

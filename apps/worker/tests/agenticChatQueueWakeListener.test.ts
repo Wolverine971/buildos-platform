@@ -89,15 +89,16 @@ describe('Agentic Chat queue wake listener', () => {
 		]);
 		fake.channels[0]!.status('SUBSCRIBED');
 		expect(listener.getHealth().status).toBe('subscribed');
-		// The first subscription follows the queue's own startup claim.
-		expect(onWake).not.toHaveBeenCalled();
+		// Catch admissions between the startup claim and initial subscription.
+		await settle();
+		expect(onWake).toHaveBeenCalledOnce();
 
 		fake.channels[0]!.broadcast();
 		await settle();
-		expect(onWake).toHaveBeenCalledOnce();
+		expect(onWake).toHaveBeenCalledTimes(2);
 		fake.channels[0]!.broadcast('some-other-event');
 		await settle();
-		expect(onWake).toHaveBeenCalledOnce();
+		expect(onWake).toHaveBeenCalledTimes(2);
 		expect(listener.getHealth()).toMatchObject({
 			wakesReceived: 1,
 			consecutiveFailures: 0,
@@ -114,6 +115,10 @@ describe('Agentic Chat queue wake listener', () => {
 		listener.start(onWake);
 		await settle();
 		fake.channels[0]!.status('SUBSCRIBED');
+		await settle();
+		releases.shift()!();
+		await settle();
+		onWake.mockClear();
 
 		for (let index = 0; index < 25; index += 1) fake.channels[0]!.broadcast();
 		await settle();
@@ -141,8 +146,6 @@ describe('Agentic Chat queue wake listener', () => {
 		listener.start(onWake);
 		await settle();
 		fake.channels[0]!.status('SUBSCRIBED');
-
-		fake.channels[0]!.broadcast();
 		await settle();
 		fake.channels[0]!.broadcast();
 		await settle();
@@ -161,19 +164,26 @@ describe('Agentic Chat queue wake listener', () => {
 		const fake = fakeClient();
 		const log = vi.fn();
 		const onWake = vi.fn(async () => undefined);
+		const onHealth = vi.fn();
 		const listener = new AgenticChatQueueWakeListener({
 			client: fake.client,
 			retryBaseMs: 1_000,
 			retryMaxMs: 4_000,
 			log
 		});
-		listener.start(onWake);
+		listener.start(onWake, onHealth);
 		await settle();
+		expect(onHealth).toHaveBeenLastCalledWith(false);
 		fake.channels[0]!.status('SUBSCRIBED');
+		await settle();
+		expect(onHealth).toHaveBeenLastCalledWith(true);
+		expect(onWake).toHaveBeenCalledOnce();
+		onWake.mockClear();
 
 		fake.channels[0]!.status('CHANNEL_ERROR', new Error('socket dropped'));
 		await settle();
 		expect(listener.getHealth()).toMatchObject({ status: 'retrying', consecutiveFailures: 1 });
+		expect(onHealth).toHaveBeenLastCalledWith(false);
 		expect(fake.removed).toEqual([fake.channels[0]]);
 		expect(log).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -212,6 +222,7 @@ describe('Agentic Chat queue wake listener', () => {
 
 		fake.channels[4]!.status('SUBSCRIBED');
 		await settle();
+		expect(onHealth).toHaveBeenLastCalledWith(true);
 		expect(listener.getHealth()).toMatchObject({
 			status: 'subscribed',
 			consecutiveFailures: 0
@@ -222,6 +233,7 @@ describe('Agentic Chat queue wake listener', () => {
 		await settle();
 		expect(onWake).toHaveBeenCalledTimes(2);
 		await listener.stop();
+		expect(onHealth).toHaveBeenLastCalledWith(false);
 	});
 
 	it('survives a client that throws while creating the channel', async () => {

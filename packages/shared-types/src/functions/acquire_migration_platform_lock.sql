@@ -1,10 +1,11 @@
 -- packages/shared-types/src/functions/acquire_migration_platform_lock.sql
--- Source: Supabase pg_get_functiondef
+-- Service-only admin RPC; see 20260924202321_contain_legacy_admin_rpcs.sql.
 
 CREATE OR REPLACE FUNCTION public.acquire_migration_platform_lock(p_run_id uuid, p_locked_by uuid, p_duration_minutes integer DEFAULT 60)
  RETURNS TABLE(acquired boolean, existing_run_id uuid, existing_locked_by uuid, existing_locked_at timestamp with time zone, existing_expires_at timestamp with time zone)
  LANGUAGE plpgsql
- SECURITY DEFINER
+ SECURITY INVOKER
+ SET search_path = ''
 AS $function$
 DECLARE
     v_expires_at TIMESTAMPTZ;
@@ -13,7 +14,7 @@ BEGIN
     v_expires_at := NOW() + (p_duration_minutes || ' minutes')::INTERVAL;
 
     -- Try to acquire the lock
-    UPDATE migration_platform_lock
+    UPDATE public.migration_platform_lock
     SET
         run_id = p_run_id,
         locked_by = p_locked_by,
@@ -33,7 +34,7 @@ BEGIN
             NULL::TIMESTAMPTZ AS existing_expires_at;
     ELSE
         -- Lock not acquired, return existing lock info
-        SELECT * INTO v_current_lock FROM migration_platform_lock WHERE id = 1;
+        SELECT * INTO v_current_lock FROM public.migration_platform_lock WHERE id = 1;
 
         RETURN QUERY SELECT
             false AS acquired,
@@ -43,4 +44,4 @@ BEGIN
             v_current_lock.expires_at AS existing_expires_at;
     END IF;
 END;
-$function$
+$function$;

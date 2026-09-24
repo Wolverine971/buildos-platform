@@ -82,6 +82,10 @@ export class AgenticChatConsumerRuntime {
 		return this.queue.wake();
 	}
 
+	setWakeChannelHealthy(healthy: boolean): void {
+		this.queue.setWakeChannelHealthy(healthy);
+	}
+
 	stop(): Promise<void> {
 		if (this.stopPromise) return this.stopPromise;
 		this.stopPromise = this.stopOwnedServices();

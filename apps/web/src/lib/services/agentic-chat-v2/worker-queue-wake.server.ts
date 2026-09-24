@@ -17,7 +17,7 @@ export const AGENTIC_CHAT_QUEUE_WAKE_EVENT = 'wake';
 
 /**
  * How long admission waits for the wake. A slow or lost wake costs nothing but
- * latency: the worker's one-second durable poll still claims the turn.
+ * latency: the worker's durable safety poll still claims the turn (normally 5 s).
  */
 export const AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS = 150;
 

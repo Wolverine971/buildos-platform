@@ -301,6 +301,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			consumer: {
 				concurrency: 2,
 				pollIntervalMs: 1500,
+				idlePollIntervalMs: 5000,
 				workerTimeoutMs: 2000,
 				drainTimeoutMs: 1000,
 				leaseRenewIntervalMs: 15_000,

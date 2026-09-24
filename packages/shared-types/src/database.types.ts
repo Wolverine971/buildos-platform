@@ -20330,15 +20330,6 @@ export type Database = {
         }
         Returns: Json
       }
-      batch_update_phase_dates: {
-        Args: { p_project_id: string; p_updates: Json }
-        Returns: {
-          end_date: string
-          id: string
-          start_date: string
-          updated_at: string
-        }[]
-      }
       begin_agentic_chat_effect: {
         Args: {
           p_canonical_argument_hash: string

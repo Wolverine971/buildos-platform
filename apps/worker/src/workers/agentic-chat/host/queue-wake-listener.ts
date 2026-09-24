@@ -47,7 +47,7 @@ export type AgenticChatQueueWakeListenerHealthV1 = {
 };
 
 export type AgenticChatQueueWakeListenerPort = {
-	start(onWake: () => unknown): void;
+	start(onWake: () => unknown, onHealthChange?: (healthy: boolean) => void): void;
 	stop(): Promise<void>;
 	getHealth(): AgenticChatQueueWakeListenerHealthV1;
 };
@@ -79,12 +79,12 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 	private readonly now: () => number;
 	private readonly log: (record: Record<string, unknown>) => void;
 	private onWake: (() => unknown) | null = null;
+	private onHealthChange: ((healthy: boolean) => void) | null = null;
 	private status: AgenticChatQueueWakeListenerHealthV1['status'] = 'idle';
 	private channel: AgenticChatQueueWakeChannel | null = null;
 	private removal: Promise<void> = Promise.resolve();
 	private epoch = 0;
 	private retryTimer: NodeJS.Timeout | null = null;
-	private hasSubscribed = false;
 	private wakeRunning = false;
 	private wakePending = false;
 	private wakesReceived = 0;
@@ -104,15 +104,16 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 		this.log = options.log ?? ((record) => console.warn(JSON.stringify(record)));
 	}
 
-	start(onWake: () => unknown): void {
+	start(onWake: () => unknown, onHealthChange?: (healthy: boolean) => void): void {
 		if (this.status !== 'idle') return;
 		this.onWake = onWake;
+		this.onHealthChange = onHealthChange ?? null;
 		this.connect();
 	}
 
 	async stop(): Promise<void> {
 		if (this.status === 'stopped') return;
-		this.status = 'stopped';
+		this.setStatus('stopped');
 		this.epoch += 1;
 		this.wakePending = false;
 		this.clearRetry();
@@ -134,7 +135,7 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 	private connect(): void {
 		if (this.status === 'stopped') return;
 		const epoch = ++this.epoch;
-		this.status = 'connecting';
+		this.setStatus('connecting');
 		// Supabase returns the existing channel for a topic until the previous
 		// one is removed, so a fresh subscription waits for that removal.
 		void this.removal.then(() => {
@@ -153,12 +154,12 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 				channel.subscribe((status, error) => {
 					if (epoch !== this.epoch || this.status === 'stopped') return;
 					if (status === 'SUBSCRIBED') {
-						this.status = 'subscribed';
+						this.setStatus('subscribed');
 						this.consecutiveFailures = 0;
 						// A wake published while unsubscribed is gone; one catch-up
 						// claim covers that gap instead of waiting for the next poll.
-						if (this.hasSubscribed) this.requestWake();
-						this.hasSubscribed = true;
+						// Include initial subscription: admission can race startup.
+						this.requestWake();
 						return;
 					}
 					this.fail(status, error);
@@ -173,7 +174,7 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 		if (this.status === 'stopped') return;
 		this.consecutiveFailures += 1;
 		this.epoch += 1;
-		this.status = 'retrying';
+		this.setStatus('retrying');
 		this.detachChannel();
 		const delayMs = Math.min(
 			this.retryMaxMs,
@@ -185,7 +186,7 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 			error: error instanceof Error ? error.message.slice(0, 200) : undefined,
 			consecutiveFailures: this.consecutiveFailures,
 			retryInMs: delayMs,
-			impact: 'Admitted turns are claimed by the one-second durable poll until the wake channel returns.'
+			impact: 'Fast durable fallback polling covers admissions until the wake channel returns.'
 		});
 		this.clearRetry();
 		this.retryTimer = setTimeout(() => {
@@ -208,6 +209,11 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 			);
 	}
 
+	private setStatus(status: AgenticChatQueueWakeListenerHealthV1['status']): void {
+		this.status = status;
+		this.onHealthChange?.(status === 'subscribed');
+	}
+
 	private requestWake(): void {
 		if (this.wakeRunning) {
 			if (this.wakePending) this.wakesCoalesced += 1;
@@ -222,7 +228,10 @@ export class AgenticChatQueueWakeListener implements AgenticChatQueueWakeListene
 		if (!onWake || this.status === 'stopped') return;
 		this.wakeRunning = true;
 		void Promise.resolve()
-			.then(() => onWake())
+			.then(() => {
+				// Shutdown can happen between scheduling this callback and running it.
+				return this.status === 'stopped' ? undefined : onWake();
+			})
 			.catch((error: unknown) => {
 				this.safeLog({
 					event: 'agentic_chat_queue_wake_claim_failed',

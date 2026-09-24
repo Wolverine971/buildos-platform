@@ -71,16 +71,14 @@ lint, and build are in the same weight class. Unbounded fan-out freezes the mach
 5. Fewer calls, steps, and round trips.
 6. Production hardening after the idea earns it.
 
-## Agentic Chat change sets
+## Agentic Chat validation
 
-After each Agentic Chat change set, obtain explicit user approval before running the
-paid `pnpm agentic:gate`. The gate is required before stacking another change set or
-claiming a live regression is fixed; without approval, leave it pending and report that
-limitation. It runs the Cedar House seed-data
-battery with verified web/worker provenance and three repetitions. Setup and the
-strict pass criteria are in `docs/testing/agentic-chat-gate.md`. A missing isolated
-test database or calendar connection is a blocked/failed gate, never a pass. Preserve
-the scorecard and resolve failures before deleting the contract rollback lane.
+Use focused free tests for each change. The paid `pnpm agentic:gate` is available for
+broader live validation when warranted; it is not required after every change set or
+before continuing implementation. Paid runs still require explicit approval under the
+rule above. When a gate is run, follow `docs/testing/agentic-chat-gate.md`, preserve its
+scorecard, and report missing prerequisites or failed cases accurately. Match claims
+about live behavior to the validation actually performed.
 
 ## Never classify language with regex
 

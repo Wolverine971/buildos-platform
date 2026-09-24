@@ -20,6 +20,8 @@ export { MAX_AGENTIC_CHAT_CONCURRENCY };
 export const DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG = {
 	concurrency: 1,
 	pollIntervalMs: 1_000,
+	/** Safety cadence while the private wake subscription is healthy. */
+	idlePollIntervalMs: 5_000,
 	/** Hard cap on one turn, unchanged by leases. */
 	workerTimeoutMs: 360_000,
 	drainTimeoutMs: MAX_QUEUE_DRAIN_TIMEOUT_MS,
@@ -40,7 +42,7 @@ export type AgenticChatConsumer = {
 	/** Dedicated queue instance. The factory never starts it. */
 	queue: SupabaseQueue;
 	config: AgenticChatConsumerConfig;
-	/** Low-latency hint; the configured one-second poll remains the fallback. */
+	/** Low-latency hint; durable safety polling covers missed notifications. */
 	wake(): Promise<void>;
 };
 
@@ -70,6 +72,7 @@ export function createAgenticChatConsumer(
 	const queue = new SupabaseQueue({
 		batchSize: resolved.concurrency,
 		pollInterval: resolved.pollIntervalMs,
+		wakeAwarePolling: { idleIntervalMs: resolved.idlePollIntervalMs, jitterMs: 250 },
 		// Only sets the queue-row heartbeat (every 60 s). Chat recovery reads that
 		// heartbeat solely for rows without a lease; generic recovery stays off.
 		stalledTimeout: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.unleasedExpiredAfterMs,

@@ -102,6 +102,7 @@ function composition(): AgenticChatBootstrapCompositionPort & {
 		start: ReturnType<typeof vi.fn>;
 		stop: ReturnType<typeof vi.fn>;
 		wake: ReturnType<typeof vi.fn>;
+		setWakeChannelHealthy: ReturnType<typeof vi.fn>;
 		getHealth: ReturnType<typeof vi.fn>;
 	};
 	capacity: { collect: ReturnType<typeof vi.fn> };
@@ -115,6 +116,7 @@ function composition(): AgenticChatBootstrapCompositionPort & {
 			runtimeState = 'stopped';
 		}),
 		wake: vi.fn(async () => undefined),
+		setWakeChannelHealthy: vi.fn(),
 		getHealth: vi.fn(() => health(runtimeState, runtimeState === 'running'))
 	};
 	return {
@@ -459,9 +461,11 @@ describe('Agentic Chat operational bootstrap', () => {
 	it('starts the admission wake listener only once the runtime can claim, and stops it first', async () => {
 		const hosted = composition();
 		let onWake: (() => unknown) | null = null;
+		let onHealth: ((healthy: boolean) => void) | undefined;
 		const queueWake = {
-			start: vi.fn((handler: () => unknown) => {
+			start: vi.fn((handler: () => unknown, healthHandler?: (healthy: boolean) => void) => {
 				onWake = handler;
+				onHealth = healthHandler;
 			}),
 			stop: vi.fn(async () => undefined),
 			getHealth: vi.fn(() => ({
@@ -482,6 +486,11 @@ describe('Agentic Chat operational bootstrap', () => {
 
 		await bootstrap.start();
 		expect(queueWake.start).toHaveBeenCalledOnce();
+		expect(hosted.runtime.setWakeChannelHealthy).toHaveBeenLastCalledWith(false);
+		onHealth!(true);
+		expect(hosted.runtime.setWakeChannelHealthy).toHaveBeenLastCalledWith(true);
+		onHealth!(false);
+		expect(hosted.runtime.setWakeChannelHealthy).toHaveBeenLastCalledWith(false);
 		expect(hosted.runtime.start.mock.invocationCallOrder[0]).toBeLessThan(
 			queueWake.start.mock.invocationCallOrder[0]!
 		);

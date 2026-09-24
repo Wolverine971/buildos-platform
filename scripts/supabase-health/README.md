@@ -75,10 +75,37 @@ Interpretation:
 - Missing extensions/permissions/endpoints are saved under `errors`; the process exits nonzero.
   Outputs are not an all-clear when a section is unavailable. `.gz` paths produce gzip JSON.
 
-Free offline guard checks:
+Read-only deployment preflight (does **not** call the mutating recovery RPCs):
 
 ```sh
-python3 -m unittest discover -s scripts/supabase-health -p 'test_*.py'
+python3 scripts/supabase-health/preflight.py \
+  --project-ref iwifjtlebphefldmwbkh --scope maintenance --require-cron \
+  --out /tmp/prod-maintenance-preflight.json
+
+python3 scripts/supabase-health/preflight.py \
+  --project-ref daudvqczjqxhpzstlfih --scope all \
+  --out /tmp/qa-release-preflight.json
+```
+
+`maintenance` checks exact RPC signatures and named arguments, service-only grants,
+invoker/search-path/lock-timeout settings, and three required migration ledger versions.
+`security` checks the Tasker 104 containment migration and grants, including removal of the
+phase-date RPC. `all` requires both. `--require-cron` additionally fails for no success within
+five minutes, a failed latest receipt, or warnings/errors in the last 15 minutes; use it only
+where the web cron is deployed. Cron checks use at most the newest 50 matching receipts.
+This command is an on-demand check, not an installed alert or a proof of PostgREST cache state.
+An API/cron receipt is still needed to verify actual endpoint availability.
+
+On 2026-09-24 production passed maintenance + cron checks; QA passed the function contract but
+failed all three expected ledger versions. Do not suppress that failure or replay historical DDL.
+Reconcile QA's ledger under Tasker 63 after verifying the complete migration effects. The
+containment migration is prepared locally; security checks must fail until it is applied.
+
+Free offline checks (the RPC test additionally needs local `initdb`, `pg_ctl`, and `psql`;
+it creates and destroys its own socket-only PostgreSQL cluster):
+
+```sh
+test-gate run python3 -m unittest discover -s scripts/supabase-health -v
 ```
 
 The [2026-09-24 decision brief](../../docs/technical/reviews/SUPABASE_FITNESS_DECISION_2026-09-24.md)

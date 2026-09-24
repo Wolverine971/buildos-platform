@@ -42,6 +42,7 @@
 		"label-paths": "node --import tsx scripts/labelFilePaths.ts",
 		"label-paths:changed": "node --import tsx scripts/labelFilePaths.ts --changed",
 		"agentic:gate": "node --import tsx scripts/agentic/gate.ts",
+		"agentic:prod-battery": "node --import tsx scripts/agentic/prod-battery.ts",
 		"agentic:calendar-setup": "node --import tsx scripts/agentic/calendar-setup.ts",
 		"test:agentic:gate": "node --import tsx --test scripts/agentic/*.test.ts",
 		"agentic:workflow": "tsx scripts/agentic/workflow-prototype.ts"
