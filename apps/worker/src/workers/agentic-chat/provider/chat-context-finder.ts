@@ -21,6 +21,13 @@ import { runWithAbortableDeadline, throwIfAborted } from '../shared/abortable-de
 import { stableUuidFromSeed } from '../shared/identity-hash';
 import type { AgenticChatProviderStepV1, AgenticChatTurnProviderRequestV1 } from './contracts';
 
+export function allowsContextFinderUser(
+	userIds: readonly string[] | 'all',
+	userId: string
+): boolean {
+	return userIds === 'all' || userIds.includes(userId.toLowerCase());
+}
+
 export type ChatContextFinderMode = 'off' | 'shadow' | 'chips' | 'on';
 
 export type ChatContextFinding = {
@@ -49,7 +56,8 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 		private readonly options: {
 			mode: Exclude<ChatContextFinderMode, 'off'>;
 			/** Only these users are ranked; an empty list ranks nobody. */
-			userIds: readonly string[];
+			/** Allowlisted ids, or 'all'. An empty list ranks nobody. */
+			userIds: readonly string[] | 'all';
 			client: ContextFinderReadClient;
 			decider: ContextFinderDecider;
 			deadlineMs?: number;
@@ -60,7 +68,8 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 
 	async find(request: AgenticChatTurnProviderRequestV1): Promise<ChatContextFinding | null> {
 		const projectId = request.projectId;
-		if (!projectId || !this.options.userIds.includes(request.userId.toLowerCase())) return null;
+		if (!projectId || !allowsContextFinderUser(this.options.userIds, request.userId))
+			return null;
 		const turn = turnConversation(request);
 		if (!turn) return null;
 

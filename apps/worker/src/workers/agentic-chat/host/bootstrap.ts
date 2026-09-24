@@ -500,7 +500,7 @@ function createDefaultComposition(
 	const contextFinderGlobalMode = input.config.contextFinderGlobal ?? 'off';
 	const contextFinderUserIds = input.config.contextFinderChatUserIds ?? [];
 	const contextFinderJev =
-		contextFinderUserIds.length &&
+		(contextFinderUserIds === 'all' || contextFinderUserIds.length > 0) &&
 		(contextFinderChatMode !== 'off' || contextFinderGlobalMode !== 'off')
 			? new JevClient({
 					apiKey: (

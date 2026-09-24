@@ -139,6 +139,17 @@ describe('ChatContextFinder', () => {
 		expect(decide).not.toHaveBeenCalled();
 	});
 
+	it('ranks every user when the allowlist is all', async () => {
+		const finder = new ChatContextFinder({
+			mode: 'chips',
+			userIds: 'all',
+			client: fakeClient(),
+			decider: fakeDecider(scores).decider
+		});
+		expect(await finder.find(request({ userId: OTHER_USER }))).not.toBeNull();
+		expect(await finder.find(request({ projectId: null }))).toBeNull();
+	});
+
 	it('publishes chips without record text and injects nothing in chips mode', async () => {
 		const finder = new ChatContextFinder({
 			mode: 'chips',
@@ -263,6 +274,10 @@ describe('AGENTIC_CHAT_CONTEXT_FINDER_CHAT', () => {
 				AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS: ` ${USER_ID.toUpperCase()}, not-a-uuid`
 			}).contextFinderChatUserIds
 		).toEqual([USER_ID]);
+		expect(
+			loadAgenticChatConfig({ ...env, AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS: ' * ' })
+				.contextFinderChatUserIds
+		).toBe('all');
 	});
 
 	it('rejects an unknown mode', () => {

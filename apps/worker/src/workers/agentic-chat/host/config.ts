@@ -156,8 +156,8 @@ type AgenticChatBaseConfig = {
 	workflowReasoning?: AgenticChatWorkflowReasoningPolicyV1;
 	/** Ordinary project chat: Jev-ranked "Working from" chips (off|shadow|chips|on). */
 	contextFinderChat?: ChatContextFinderMode;
-	/** Users whose project chats are ranked; empty ranks nobody. */
-	contextFinderChatUserIds?: string[];
+	/** Users whose chats are ranked: ids, or 'all' (env value `*`); empty ranks nobody. */
+	contextFinderChatUserIds?: string[] | 'all';
 	/**
 	 * Global chat (no project in focus): Jev picks the projects a message is about, and digs
 	 * into them only when it looks for something specific. Same user allowlist as project chat.
@@ -262,9 +262,13 @@ export function loadAgenticChatConfig(
 		environment.AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL,
 		'AGENTIC_CHAT_CONTEXT_FINDER_GLOBAL'
 	);
-	const contextFinderChatUserIds = parseChatWorkflowPrototypeUsers(
-		environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS
-	);
+	// `*` opens the context finder to every user; otherwise a comma-separated id allowlist.
+	const contextFinderChatUserIds: string[] | 'all' =
+		environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS?.trim() === '*'
+			? 'all'
+			: parseChatWorkflowPrototypeUsers(
+					environment.AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS
+				);
 	const specialistWorkflowsEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_SPECIALIST_WORKFLOWS_ENABLED,
 		false,

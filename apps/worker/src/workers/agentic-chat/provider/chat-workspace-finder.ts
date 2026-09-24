@@ -20,6 +20,7 @@ import {
 } from '@buildos/agentic-chat-runtime/context-finder';
 import {
 	type AgenticChatContextFinderPort,
+	allowsContextFinderUser,
 	type ChatContextFinderMode,
 	type ChatContextFinding,
 	contextSelectionTransitionId,
@@ -45,7 +46,8 @@ export class ChatWorkspaceFinder implements AgenticChatContextFinderPort {
 		private readonly options: {
 			mode: Exclude<ChatContextFinderMode, 'off'>;
 			/** Only these users are ranked; an empty list ranks nobody. */
-			userIds: readonly string[];
+			/** Allowlisted ids, or 'all'. An empty list ranks nobody. */
+			userIds: readonly string[] | 'all';
 			/** Service client: access is decided by the accessible-projects RPC in the loader. */
 			client: WorkspaceFinderReadClient;
 			decider: WorkspaceFinderDecider & ContextFinderDecider;
@@ -56,7 +58,7 @@ export class ChatWorkspaceFinder implements AgenticChatContextFinderPort {
 
 	async find(request: AgenticChatTurnProviderRequestV1): Promise<ChatContextFinding | null> {
 		if (request.projectId || !GLOBAL_CONTEXT_TYPES.has(request.contextType)) return null;
-		if (!this.options.userIds.includes(request.userId.toLowerCase())) return null;
+		if (!allowsContextFinderUser(this.options.userIds, request.userId)) return null;
 		const turn = turnConversation(request);
 		if (!turn) return null;
 
