@@ -38,7 +38,7 @@ export function validateRoutes(
 		throw new Error('Agentic Chat provider requires between one and four routes');
 	}
 	const ids = new Set<string>();
-	const validated = routes.map((route) => {
+	const validated: readonly AgenticChatOpenAiCompatibleRouteV1[] = routes.map((route) => {
 		if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(route.id) || ids.has(route.id)) {
 			throw new Error('Agentic Chat provider route ids must be unique canonical identifiers');
 		}
