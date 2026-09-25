@@ -687,8 +687,17 @@ export const AGENTIC_CHAT_SEMANTIC_REVIEWER_REQUEST_TIMEOUT_MS = 45_000;
  * it. The acting route's order describes DeepSeek endpoints and never carries over.
  */
 export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze(['azure']);
-// Prod 30 days (tasker 103): gpt-5.6-luna on Azure p50 5.0 s / p90 8.5 s at $0.0029/call vs OpenAI 5.3 s / 12.7 s at $0.0026; gpt-6-luna's Azure ZDR endpoints are degraded.
-export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_56_LUNA_MODEL;
+// Tasker 108 (DJ 2026-09-25): gpt-6-luna's Azure ZDR endpoints recovered
+// (99.7–99.97% 30-min uptime) and it costs $0.10/$0.50 per M vs 5.6's
+// $0.20/$1.20 (~$0.0011 vs $0.0022 per prod review). Tasker 103 had pinned
+// 5.6 only while 6's ZDR hosts were degraded.
+export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_6_LUNA_MODEL;
+/**
+ * First fallback while GPT-6 Luna earns its first week in prod (Azure 429s
+ * cost an env-pinned gate reviewer 4 turns). Remove after 2026-10-02 if the
+ * fallback never carried a review.
+ */
+const INTERIM_REVIEWER_FALLBACK_MODEL = GPT_56_LUNA_MODEL;
 const LUNA_REVIEWER_MODELS: ReadonlySet<string> = new Set([GPT_56_LUNA_MODEL, GPT_6_LUNA_MODEL]);
 /**
  * Never a default reviewer fallback: 2026-09-04 GLM 5.3 Flash approved a
@@ -714,6 +723,7 @@ export function buildAgenticChatSemanticReviewerRoutes(
 		? [policy.model, ...policy.fallbackModels]
 		: [
 				DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL,
+				INTERIM_REVIEWER_FALLBACK_MODEL,
 				...JSON_PROFILE_MODELS.powerful,
 				...JSON_PROFILE_MODELS.maximum
 			].filter((model) => !AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS.has(model));

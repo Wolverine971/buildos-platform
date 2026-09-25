@@ -1843,8 +1843,11 @@ export class OntologyBriefDataLoader {
 				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null)
-				.is('archived_at', null)
-				.not('state_key', 'in', '(cancelled,archived)'),
+				// task_state is todo | in_progress | blocked | done. A filter on
+				// 'cancelled'/'archived' (2026-07-06) made Postgres reject the
+				// whole query (22P02), so every brief from July to 2026-09-25
+				// loaded zero tasks. Archival is archived_at, filtered above.
+				.is('archived_at', null),
 			this.supabase
 				.from('onto_goals')
 				.select(
@@ -1923,6 +1926,14 @@ export class OntologyBriefDataLoader {
 
 		if (errors.length > 0) {
 			console.error('[OntologyBriefDataLoader] Errors loading entities:', errors);
+			// Never write a brief from partial data: a failed task query once
+			// shipped "no tasks scheduled" to every user for 11 weeks. Failing
+			// hands the job to the brief queue's retry and error reporting.
+			throw new Error(
+				`Failed to load ontology entities for the brief: ${errors
+					.map((entry) => `${entry.name} (${entry.error?.message ?? 'unknown error'})`)
+					.join(', ')}`
+			);
 		}
 
 		const tasks = (tasksResult.data || []) as OntoTask[];

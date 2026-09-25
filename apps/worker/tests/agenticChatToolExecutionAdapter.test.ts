@@ -893,6 +893,31 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		expect(search).not.toHaveBeenCalled();
 	});
 
+	it('re-reviews an identical search after a review that reached no verdict', async () => {
+		const unavailable = Object.assign(new Error('review unavailable'), {
+			code: 'read_tool_research_review_unavailable'
+		});
+		const authorize = vi
+			.fn<() => Promise<boolean>>()
+			.mockRejectedValueOnce(unavailable)
+			.mockResolvedValueOnce(true);
+		const search = vi.fn(async () => ({ results: [] }));
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			webResearch: { search },
+			webSearchReviewer: { authorize }
+		});
+		const request = requestFor(
+			'web_search',
+			{ query: 'Mailchimp pricing' },
+			{ userMessage: 'What does Mailchimp cost?' }
+		);
+		await expect(adapter.execute(request)).rejects.toThrow();
+		expect(search).not.toHaveBeenCalled();
+		await adapter.execute(request);
+		expect(authorize).toHaveBeenCalledTimes(2);
+		expect(search).toHaveBeenCalledOnce();
+	});
+
 	it('does not use review approval to override a no-browsing request', async () => {
 		const authorize = vi.fn(async () => true);
 		const search = vi.fn(async () => ({ results: [] }));

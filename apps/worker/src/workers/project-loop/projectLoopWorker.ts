@@ -45,6 +45,7 @@ import {
 	type LoopStartHere,
 	type LoopTask,
 	type ProjectReviewSynthesisCandidate,
+	type RadarConcernSubject,
 	type UsageEvent,
 	buildHeuristicProjectManagerBrief,
 	generateDocOrganization,
@@ -53,7 +54,6 @@ import {
 	generateProjectManagerBrief,
 	generateTaskConflicts,
 	suggestionSuppressionKey,
-	type RadarConcernSubject,
 	withoutRadarOwnedFindings
 } from './generators';
 import { rankTaskConflictPairs } from './taskPairs';
@@ -90,6 +90,8 @@ import {
 	type SkippedLens,
 	classifyDetectorFailure
 } from './detectorFailure';
+import { loadUnchangedLensInputs } from './lensInputs';
+import type { FreshnessDb } from '../freshness-radar/dataPort';
 import {
 	type DriftEvidenceClient,
 	type ProjectDriftEvidence,
@@ -3081,7 +3083,7 @@ async function loadOpenRadarConcerns(
 ): Promise<RadarConcernSubject[]> {
 	try {
 		// freshness_concerns is newer than the generated database types.
-		const { data, error } = await (supabase as unknown as { from: (t: string) => any })
+		const { data, error } = await (supabase as unknown as FreshnessDb)
 			.from('freshness_concerns')
 			.select('subject_kind, subject_id, subject_title')
 			.eq('project_id', projectId)
@@ -3331,23 +3333,38 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		};
 
 		// One owner per stale record: what the freshness radar already tracks, the loop leaves.
-		const radarConcerns = await loadOpenRadarConcerns(projectId, run.user_id);
+		// A lens whose inputs did not change since the last review adds nothing new
+		// (tasker 108); it is logged, not reported as a skipped or degraded lens.
+		const [radarConcerns, unchangedInputs] = await Promise.all([
+			loadOpenRadarConcerns(projectId, run.user_id),
+			loadUnchangedLensInputs({
+				projectId,
+				runId,
+				triggerReason: run.trigger_reason
+			})
+		]);
 		throwIfOwnershipLost();
+		const skipUnchangedLens = async (label: string): Promise<ProposedSuggestion[]> => {
+			await job.log(`Skipping ${label}: its inputs are unchanged since the last review`);
+			return [];
+		};
 
 		// The four detectors are independent, so they run together: a run takes as long as
 		// the slowest one (drift, ~55 s on the book) instead of their sum (~80 s).
 		const [docOrg, outdated, drift, taskConflicts] = await Promise.all([
-			runGenerator('doc organization', () =>
-				generateDocOrganization({
-					llm,
-					ctx,
-					userId: run.user_id,
-					chatSessionId: run.chat_session_id ?? undefined,
-					runId,
-					signal: job.signal,
-					onUsage
-				})
-			),
+			unchangedInputs.documents
+				? skipUnchangedLens('doc organization')
+				: runGenerator('doc organization', () =>
+						generateDocOrganization({
+							llm,
+							ctx,
+							userId: run.user_id,
+							chatSessionId: run.chat_session_id ?? undefined,
+							runId,
+							signal: job.signal,
+							onUsage
+						})
+					),
 			runGenerator('outdated docs', () =>
 				generateOutdatedDocs({
 					llm,
@@ -3381,6 +3398,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			}),
 			runGenerator('task conflicts', async () => {
 				if (ctx.tasks.length < 2) return [];
+				if (unchangedInputs.tasks) return skipUnchangedLens('task conflicts');
 				const candidatePairs = await rankTaskConflictPairs({
 					decider: getProjectLoopJev(),
 					project: { name: ctx.projectName, description: ctx.projectDescription },

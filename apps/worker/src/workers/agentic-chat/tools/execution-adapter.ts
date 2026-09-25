@@ -615,19 +615,29 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						const key = canonicalizeAgenticChatJson(webArguments);
 						let review = state.searchReviews.get(key);
 						if (!review) {
-							if (state.searchReviews.size >= 32)
+							// reviewIndex counts web reviews started, so evicting failures
+							// below cannot lift the cap; size still covers mailbox reviews.
+							if (state.searchReviews.size >= 32 || state.reviewIndex >= 32)
 								throw providerError(
 									'read_tool_egress_security_capacity_exceeded',
 									'permanent'
 								);
-							review = this.webSearchReviewer.authorize({
+							const started = this.webSearchReviewer.authorize({
 								arguments: webArguments,
 								executionInput: input.executionInput,
 								processingToken: input.processingToken,
 								reviewIndex: ++state.reviewIndex,
 								signal: deadlineSignal
 							});
-							state.searchReviews.set(key, review);
+							review = started;
+							state.searchReviews.set(key, started);
+							// A review that failed to reach a verdict is not a verdict:
+							// drop it so a later identical search gets a fresh review
+							// instead of the cached failure. Denials stay cached.
+							started.catch(() => {
+								if (state.searchReviews.get(key) === started)
+									state.searchReviews.delete(key);
+							});
 						}
 						if (!(await review))
 							throw providerError(

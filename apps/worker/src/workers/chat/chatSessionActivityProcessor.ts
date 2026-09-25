@@ -551,6 +551,7 @@ async function generateNextSteps(
 			userPrompt,
 			userId,
 			profile: 'fast',
+			operationType: 'chat_project_next_step',
 			temperature: 0.4,
 			validation: {
 				retryOnParseError: true,
@@ -972,8 +973,7 @@ async function updateProjectNextStep(
 			next_step_short: nextStep.nextStepShort,
 			next_step_long: nextStep.nextStepLong,
 			next_step_updated_at: new Date().toISOString(),
-			next_step_source: 'ai',
-			updated_at: new Date().toISOString()
+			next_step_source: 'ai'
 		})
 		.eq('id', projectId)
 		.in('state_key', ACTIVE_PROJECT_STATES)

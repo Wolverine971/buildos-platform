@@ -99,6 +99,7 @@ export class OnboardingAnalysisService {
 			userPrompt: OnboardingAnalysisPrompt.getUserPrompt(onboardingData),
 			userId,
 			profile: 'balanced',
+			operationType: 'onboarding_analysis',
 			temperature: 0.6,
 			validation: {
 				retryOnParseError: true,

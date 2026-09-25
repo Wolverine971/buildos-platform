@@ -115,6 +115,70 @@ describe('isolated web-search review', () => {
 		}
 	);
 
+	it('retries once after a transport failure that arrived before any verdict', async () => {
+		const attempts: Array<number | undefined> = [];
+		const deadlines: number[] = [];
+		const reviewer = createAgenticChatWebSearchReviewer({
+			async *stream(input) {
+				attempts.push(input.providerAttempt);
+				deadlines.push(input.budget!.deadlineAtMs);
+				if (attempts.length === 1) {
+					yield { type: 'error', error: 'timed out after 5000ms', retryable: true };
+					return;
+				}
+				yield call();
+				yield done;
+			}
+		});
+		await expect(reviewer.authorize(request())).resolves.toBe(true);
+		expect(attempts).toEqual([1, 2]);
+		// Both attempts share one deadline: a retry never extends the budget.
+		expect(deadlines[1]).toBe(deadlines[0]);
+	});
+
+	it.each([
+		['a second transport failure', 'transport'],
+		['a permanent failure', 'permanent'],
+		['a failure after partial verdict data', 'partial']
+	] as const)('fails closed without further retries on %s', async (_label, mode) => {
+		let attempts = 0;
+		const reviewer = createAgenticChatWebSearchReviewer({
+			async *stream() {
+				attempts += 1;
+				if (mode === 'partial') yield call('{"allowed":tr');
+				yield {
+					type: 'error',
+					error: 'offline',
+					retryable: mode !== 'permanent'
+				};
+			}
+		});
+		await expect(reviewer.authorize(request())).rejects.toMatchObject({
+			code: 'read_tool_research_review_unavailable'
+		});
+		expect(attempts).toBe(mode === 'permanent' || mode === 'partial' ? 1 : 2);
+	});
+
+	it('does not retry when the shared budget cannot fit another attempt', async () => {
+		vi.useFakeTimers();
+		try {
+			let attempts = 0;
+			const reviewer = createAgenticChatWebSearchReviewer({
+				async *stream() {
+					attempts += 1;
+					vi.advanceTimersByTime(13_000);
+					yield { type: 'error', error: 'timed out', retryable: true };
+				}
+			});
+			await expect(reviewer.authorize(request())).rejects.toMatchObject({
+				code: 'read_tool_research_review_unavailable'
+			});
+			expect(attempts).toBe(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('runs through the production provider client with a reviewer-only tool and distinct usage identity', async () => {
 		const fetchImpl = vi.fn(
 			async () =>

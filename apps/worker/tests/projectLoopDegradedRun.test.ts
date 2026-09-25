@@ -187,6 +187,7 @@ const mocks = vi.hoisted(() => {
 				error: null
 			};
 		}),
+		loadUnchangedLensInputs: vi.fn(),
 		generateDocOrganization: vi.fn(async () => []),
 		generateOutdatedDocs: vi.fn(async () => []),
 		generateDrift: vi.fn(),
@@ -242,6 +243,10 @@ vi.mock('../src/lib/posthog', () => ({
 
 vi.mock('../src/lib/errorLogger', () => ({
 	logWorkerError: mocks.logWorkerError
+}));
+
+vi.mock('../src/workers/project-loop/lensInputs', () => ({
+	loadUnchangedLensInputs: mocks.loadUnchangedLensInputs
 }));
 
 vi.mock('../src/workers/project-loop/generators', () => ({
@@ -313,6 +318,7 @@ describe('processProjectLoopJob detector degradation', () => {
 		mocks.state.queries.length = 0;
 		mocks.state.updates.length = 0;
 		mocks.state.inserts.length = 0;
+		mocks.loadUnchangedLensInputs.mockResolvedValue({ documents: false, tasks: false });
 		mocks.generateDocOrganization.mockResolvedValue([]);
 		mocks.generateOutdatedDocs.mockResolvedValue([]);
 		mocks.rankTaskConflictPairs.mockResolvedValue([
@@ -397,6 +403,24 @@ describe('processProjectLoopJob detector degradation', () => {
 			'providerRequestId',
 			'reason'
 		]);
+	});
+
+	it('skips lenses whose inputs are unchanged, without reporting them as unchecked', async () => {
+		mocks.generateDrift.mockResolvedValue([]);
+		mocks.loadUnchangedLensInputs.mockResolvedValue({ documents: true, tasks: true });
+		const job = createJob();
+
+		const result = await processProjectLoopJob(job);
+
+		expect(result).toMatchObject({ success: true, runId: 'run-1' });
+		expect(mocks.generateDocOrganization).not.toHaveBeenCalled();
+		expect(mocks.rankTaskConflictPairs).not.toHaveBeenCalled();
+		expect(mocks.generateTaskConflicts).not.toHaveBeenCalled();
+		expect(mocks.generateOutdatedDocs).toHaveBeenCalledOnce();
+		expect(mocks.generateDrift).toHaveBeenCalledOnce();
+		expect(mocks.generateProjectManagerBrief).toHaveBeenCalledWith(
+			expect.objectContaining({ uncheckedLenses: [] })
+		);
 	});
 
 	it('fails permanently for a non-provider detector error', async () => {

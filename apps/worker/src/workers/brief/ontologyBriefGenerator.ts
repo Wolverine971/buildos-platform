@@ -9,7 +9,12 @@
 import { supabase } from '../../lib/supabase.js';
 import type { BriefJobData } from '../shared/queueUtils.js';
 import type { Json } from '@buildos/shared-types';
-import { DEEPSEEK_V4_FLASH_MODEL, XIAOMI_MIMO_V25_MODEL } from '@buildos/smart-llm';
+import {
+	DEEPSEEK_V4_FLASH_MODEL,
+	GEMINI_37_FLASH_MODEL,
+	GPT_6_LUNA_MODEL,
+	XIAOMI_MIMO_V25_MODEL
+} from '@buildos/smart-llm';
 import { format, parseISO, subDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
@@ -82,6 +87,22 @@ interface ProjectBriefLLMResponse {
 }
 
 const PROJECT_BRIEF_MODELS = [DEEPSEEK_V4_FLASH_MODEL, XIAOMI_MIMO_V25_MODEL] as const;
+/**
+ * Executive summary, analysis and re-engagement writers. Gemini always reasons
+ * (medium minimum), and the reasoning shares `maxTokens`: at the old 600-token
+ * cap 22 of 22 executive summaries (prod, 2026-09-12..25) stopped mid-sentence
+ * with ~20 visible tokens. The caps below leave room for ~1,100 reasoning tokens
+ * plus a full answer; only generated tokens are billed. Model order is pending
+ * DJ's side-by-side (tasker 108 item 2).
+ */
+const DAILY_BRIEF_WRITING_MODELS = [
+	GEMINI_37_FLASH_MODEL,
+	DEEPSEEK_V4_FLASH_MODEL,
+	GPT_6_LUNA_MODEL
+] as const;
+const EXECUTIVE_SUMMARY_MAX_TOKENS = 1_500;
+const REENGAGEMENT_MAX_TOKENS = 2_500;
+const ANALYSIS_MAX_TOKENS = 3_000;
 const BRIEF_ENTITY_RECORDING_TIMEOUT_MS = 5_000;
 const PROJECT_BRIEF_GENERATION_CONCURRENCY = 3;
 const ACTIVE_PROJECT_STATES = ['planning', 'active'] as const;
@@ -134,7 +155,7 @@ function findTaskReferencedByAction(
 	return bestMatch;
 }
 
-async function loadYesterdayPlanContinuity(
+export async function loadYesterdayPlanContinuity(
 	userId: string,
 	briefDate: string,
 	projectsData: OntoProjectWithRelations[]
@@ -684,12 +705,13 @@ async function generateOntologyProjectBrief(
 				const now = new Date().toISOString();
 				const { data: persistedProject, error: nextStepError } = await supabase
 					.from('onto_projects')
+					// No updated_at: an AI next step is not project activity, and the
+					// onto_projects trigger keeps the old stamp (20260925180000).
 					.update({
 						next_step_short: llmNextStepShort,
 						next_step_long: llmNextStepLong,
 						next_step_source: 'ai',
-						next_step_updated_at: now,
-						updated_at: now
+						next_step_updated_at: now
 					})
 					.eq('id', project.project.id)
 					.in('state_key', ACTIVE_PROJECT_STATES)
@@ -1088,6 +1110,38 @@ function generateMainBriefMarkdown(
 // MAIN ENTRY POINT
 // ============================================================================
 
+/**
+ * The project briefs the executive summary and analysis prompts see: up to
+ * five, highest-priority projects first, then any remaining briefs.
+ */
+export function selectPromptProjectBriefContents(
+	projects: ProjectBriefData[],
+	projectBriefs: Array<Pick<OntologyProjectBriefRow, 'project_id' | 'brief_content'>>,
+	maxPromptProjectBriefs = 5
+): string[] {
+	const projectBriefContentById = new Map(
+		projectBriefs.map((brief) => [brief.project_id, brief.brief_content])
+	);
+	const sortedProjects = [...projects].sort(compareProjectsForPromptInclusion);
+	const promptProjectBriefContents: string[] = [];
+	const includedProjectIds = new Set<string>();
+	for (const project of sortedProjects) {
+		const content = projectBriefContentById.get(project.project.id);
+		if (!content) continue;
+		promptProjectBriefContents.push(content);
+		includedProjectIds.add(project.project.id);
+		if (promptProjectBriefContents.length >= maxPromptProjectBriefs) break;
+	}
+	if (promptProjectBriefContents.length < maxPromptProjectBriefs) {
+		for (const brief of projectBriefs) {
+			if (includedProjectIds.has(brief.project_id)) continue;
+			promptProjectBriefContents.push(brief.brief_content);
+			if (promptProjectBriefContents.length >= maxPromptProjectBriefs) break;
+		}
+	}
+	return promptProjectBriefContents;
+}
+
 export async function generateOntologyDailyBrief(
 	userId: string,
 	briefDate: string,
@@ -1255,27 +1309,10 @@ export async function generateOntologyDailyBrief(
 			.map((r) => r.value);
 
 		const allProjectBriefContents = projectBriefs.map((b) => b.brief_content);
-		const projectBriefContentById = new Map(
-			projectBriefs.map((brief) => [brief.project_id, brief.brief_content])
+		const promptProjectBriefContents = selectPromptProjectBriefContents(
+			briefData.projects,
+			projectBriefs
 		);
-		const maxPromptProjectBriefs = 5;
-		const sortedProjects = [...briefData.projects].sort(compareProjectsForPromptInclusion);
-		const promptProjectBriefContents: string[] = [];
-		const includedProjectIds = new Set<string>();
-		for (const project of sortedProjects) {
-			const content = projectBriefContentById.get(project.project.id);
-			if (!content) continue;
-			promptProjectBriefContents.push(content);
-			includedProjectIds.add(project.project.id);
-			if (promptProjectBriefContents.length >= maxPromptProjectBriefs) break;
-		}
-		if (promptProjectBriefContents.length < maxPromptProjectBriefs) {
-			for (const brief of projectBriefs) {
-				if (includedProjectIds.has(brief.project_id)) continue;
-				promptProjectBriefContents.push(brief.brief_content);
-				if (promptProjectBriefContents.length >= maxPromptProjectBriefs) break;
-			}
-		}
 
 		console.log(
 			`[OntologyBrief] Generated ${projectBriefs.length}/${briefData.projects.length} project briefs`
@@ -1311,11 +1348,15 @@ export async function generateOntologyDailyBrief(
 			executiveSummary = await llmService.generateText({
 				prompt: summaryPrompt,
 				userId,
-				profile: 'quality',
+				profile: 'custom',
+				models: [...DAILY_BRIEF_WRITING_MODELS],
 				temperature: 0.7,
-				maxTokens: 600,
+				maxTokens: EXECUTIVE_SUMMARY_MAX_TOKENS,
 				signal,
-				systemPrompt: OntologyExecutiveSummaryPrompt.getSystemPrompt()
+				systemPrompt: OntologyExecutiveSummaryPrompt.getSystemPrompt(),
+				operationType: 'daily_brief_executive_summary',
+				// llm_usage_logs.brief_id references legacy daily_briefs.
+				metadata: { ontologyDailyBriefId: dailyBrief.id }
 			});
 
 			console.log(`[OntologyBrief] Generated executive summary`);
@@ -1380,10 +1421,13 @@ export async function generateOntologyDailyBrief(
 				llmAnalysis = await llmService.generateText({
 					prompt: reengagementPrompt,
 					userId,
-					profile: 'quality',
+					profile: 'custom',
+					models: [...DAILY_BRIEF_WRITING_MODELS],
 					temperature: 0.7,
-					maxTokens: 1200,
+					maxTokens: REENGAGEMENT_MAX_TOKENS,
 					signal,
+					operationType: 'daily_brief_reengagement',
+					metadata: { ontologyDailyBriefId: dailyBrief.id },
 					systemPrompt: OntologyReengagementPrompt.getSystemPrompt(
 						daysSinceLastLogin,
 						reengagementStage
@@ -1402,10 +1446,13 @@ export async function generateOntologyDailyBrief(
 				llmAnalysis = await llmService.generateText({
 					prompt: analysisPrompt,
 					userId,
-					profile: 'quality',
+					profile: 'custom',
+					models: [...DAILY_BRIEF_WRITING_MODELS],
 					temperature: 0.4,
-					maxTokens: 2000,
+					maxTokens: ANALYSIS_MAX_TOKENS,
 					signal,
+					operationType: 'daily_brief_analysis',
+					metadata: { ontologyDailyBriefId: dailyBrief.id },
 					systemPrompt: OntologyAnalysisPrompt.getSystemPrompt()
 				});
 			}

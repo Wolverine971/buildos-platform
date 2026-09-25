@@ -122,7 +122,8 @@ export const LITE_PROMPT_SECTION_ORDER: LitePromptSectionId[] = [
 	'project_start_here',
 	'focus_purpose',
 	'location_loaded_context',
-	'project_knowledge_map'
+	'project_knowledge_map',
+	'current_time'
 ];
 
 // Date resolution is an ARGUMENT rule, not a text rule (2026-09-04). Told only
@@ -262,6 +263,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 	};
 
 	const knowledgeMapSection = buildProjectKnowledgeMapSection(focus, input.data);
+	const currentTimeSection = buildCurrentTimeSection(timeline);
 	const startHereSection = buildProjectStartHereSection(focus, input.data, clock);
 	// Each UUID renders once (audit 2026-09-02 F-06/F-08/F-09): the loaded-work
 	// lines skip ids the Timeline already carries and the focused entity; the
@@ -347,7 +349,8 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 						projectDigest,
 						loadedWork
 					}),
-					...(knowledgeMapSection ? [knowledgeMapSection] : [])
+					...(knowledgeMapSection ? [knowledgeMapSection] : []),
+					...(currentTimeSection ? [currentTimeSection] : [])
 				];
 
 	return {
@@ -965,17 +968,13 @@ function buildLocationLoadedContextSection(
 	// The date-resolution, argument-scope, timestamp-offset, and DST rules that
 	// used to follow these two values live in the static Dates and Time
 	// section (2026-09-21); only the per-turn values render here.
-	const clockLines =
-		localClock && timeline
-			? [
-					`- Current date: ${localClock.localDate}${localClock.weekday ? ` (${localClock.weekday})` : ''}${
-						localClock.localTime
-							? `, ${localClock.localTime} local time in ${localClock.timezone}`
-							: ` in ${localClock.timezone}`
-					}`,
-					`- Current time (UTC instant, minute precision): ${truncateIsoToMinute(timeline.generatedAt)}`
-				]
-			: [];
+	// Date precision only: the minute clock lives in the closing Current Time
+	// section (see buildCurrentTimeSection).
+	const clockLines = localClock
+		? [
+				`- Current date: ${localClock.localDate}${localClock.weekday ? ` (${localClock.weekday})` : ''} in ${localClock.timezone}`
+			]
+		: [];
 	const renderMode = timeline
 		? resolveTimelineRenderMode(timeline, activity?.projectDigest ?? null)
 		: 'frame_only';
@@ -1043,6 +1042,31 @@ function buildLocationLoadedContextSection(
 			...activityBlock,
 			...loadedWorkBlock,
 			...(index ? ['', index] : [])
+		].join('\n')
+	});
+}
+
+/**
+ * The minute clock, rendered as the last section of the system prompt
+ * (2026-09-25). It used to sit inside Location and Loaded Context, about 16K
+ * characters in, and since it changes every minute it was the first differing
+ * byte between consecutive turns' prompts: every token after it was billed
+ * uncached on each turn's opening pass (12.5% cache hit vs 74-85% on
+ * continuations; docs/research/agentic-chat-session-spend-2026-09-25.md). The
+ * date line stays in Location; it only changes once a day.
+ */
+function buildCurrentTimeSection(timeline: LitePromptTimelineSummary): LitePromptSection | null {
+	const localClock = describeLocalClock(timeline.generatedAt, timeline.timezone);
+	if (!localClock.localTime) return null;
+	return makeSection({
+		id: 'current_time',
+		title: 'Current Time',
+		kind: 'dynamic',
+		source: 'lite.current_time',
+		slots: { timezone: localClock.timezone, generatedAt: timeline.generatedAt },
+		content: [
+			`- Local time: ${localClock.localTime} in ${localClock.timezone} (the date is on the Current date line in Location and Loaded Context).`,
+			`- UTC instant (minute precision): ${truncateIsoToMinute(timeline.generatedAt)}`
 		].join('\n')
 	});
 }

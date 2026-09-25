@@ -39,93 +39,119 @@ export function createAgenticChatWebSearchReviewer(
 				.filter((message) => message.role === 'user')
 				.slice(-8)
 				.map((message) => message.content.slice(0, 5_000));
-			const calls = createToolCallAccumulator();
-			let finished = false;
-			try {
-				for await (const event of client.stream({
-					messages: [
-						{ role: 'system', content: SYSTEM_PROMPT },
-						{
-							role: 'user',
-							content: JSON.stringify({
-								earlierUserMessages,
-								currentMessage,
-								proposedSearch: input.arguments
-							})
-						}
-					],
-					tools: [
-						{
-							type: 'function',
-							function: {
-								name: 'review_web_search',
-								description: 'Approve or deny this exact outbound public search.',
-								parameters: {
-									type: 'object',
-									properties: {
-										allowed: { type: 'boolean' },
-										reason: { type: 'string', minLength: 1, maxLength: 500 }
-									},
-									required: ['allowed', 'reason'],
-									additionalProperties: false
+			// One budget covers both attempts, so a retry never extends the search.
+			const deadlineAtMs = Date.now() + 20_000;
+			for (let attempt = 1; ; attempt += 1) {
+				const calls = createToolCallAccumulator();
+				let finished = false;
+				let transportFailure = false;
+				try {
+					for await (const event of client.stream({
+						messages: [
+							{ role: 'system', content: SYSTEM_PROMPT },
+							{
+								role: 'user',
+								content: JSON.stringify({
+									earlierUserMessages,
+									currentMessage,
+									proposedSearch: input.arguments
+								})
+							}
+						],
+						tools: [
+							{
+								type: 'function',
+								function: {
+									name: 'review_web_search',
+									description:
+										'Approve or deny this exact outbound public search.',
+									parameters: {
+										type: 'object',
+										properties: {
+											allowed: { type: 'boolean' },
+											reason: { type: 'string', minLength: 1, maxLength: 500 }
+										},
+										required: ['allowed', 'reason'],
+										additionalProperties: false
+									}
 								}
 							}
+						],
+						toolChoice: 'required',
+						userId: claim.userId,
+						sessionId: claim.sessionId,
+						turnRunId: claim.turnRunId,
+						streamRunId: executionInput.streamRunId,
+						clientTurnId: executionInput.clientTurnId,
+						contextType: 'research',
+						entityId: null,
+						projectId: null,
+						queueJobId: claim.queueJobId,
+						processingToken: input.processingToken,
+						executionGeneration: claim.executionGeneration,
+						providerRound: 'synthesis',
+						logicalProviderRound: input.reviewIndex,
+						passRole: 'research_review',
+						providerAttempt: attempt,
+						budget: { deadlineAtMs },
+						signal
+					})) {
+						if (signal.aborted) throw signal.reason;
+						if (event.type === 'error') {
+							// Only a retryable transport failure before any verdict data
+							// may be retried; everything else fails closed at once.
+							transportFailure = event.retryable && calls.size === 0 && !finished;
+							throw unavailable();
 						}
-					],
-					toolChoice: 'required',
-					userId: claim.userId,
-					sessionId: claim.sessionId,
-					turnRunId: claim.turnRunId,
-					streamRunId: executionInput.streamRunId,
-					clientTurnId: executionInput.clientTurnId,
-					contextType: 'research',
-					entityId: null,
-					projectId: null,
-					queueJobId: claim.queueJobId,
-					processingToken: input.processingToken,
-					executionGeneration: claim.executionGeneration,
-					providerRound: 'synthesis',
-					logicalProviderRound: input.reviewIndex,
-					passRole: 'research_review',
-					budget: { deadlineAtMs: Date.now() + 20_000 },
-					signal
-				})) {
-					if (signal.aborted) throw signal.reason;
-					if (event.type === 'error') throw unavailable();
-					if (event.type === 'done') {
-						if (finished || event.finishedReason !== 'tool_calls') throw unavailable();
-						finished = true;
+						if (event.type === 'done') {
+							if (finished || event.finishedReason !== 'tool_calls')
+								throw unavailable();
+							finished = true;
+						}
+						if (event.type !== 'tool_call') continue;
+						if (finished) throw unavailable();
+						appendToolCallDelta(calls, event.toolCall);
+						if (
+							calls.size > 1 ||
+							[...calls.values()].some((call) => call.argumentsText.length > 2_000)
+						)
+							throw unavailable();
 					}
-					if (event.type !== 'tool_call') continue;
-					if (finished) throw unavailable();
-					appendToolCallDelta(calls, event.toolCall);
+					if (!finished || calls.size !== 1) throw unavailable();
+					const call = [...calls.values()][0]!;
+					if (!call.id || call.name !== 'review_web_search') throw unavailable();
+					const args = record(JSON.parse(call.argumentsText));
 					if (
-						calls.size > 1 ||
-						[...calls.values()].some((call) => call.argumentsText.length > 2_000)
+						!args ||
+						typeof args.allowed !== 'boolean' ||
+						typeof args.reason !== 'string' ||
+						!args.reason.trim() ||
+						args.reason.length > 500 ||
+						Object.keys(args).some((key) => key !== 'allowed' && key !== 'reason')
 					)
 						throw unavailable();
-				}
-				if (!finished || calls.size !== 1) throw unavailable();
-				const call = [...calls.values()][0]!;
-				if (!call.id || call.name !== 'review_web_search') throw unavailable();
-				const args = record(JSON.parse(call.argumentsText));
-				if (
-					!args ||
-					typeof args.allowed !== 'boolean' ||
-					typeof args.reason !== 'string' ||
-					!args.reason.trim() ||
-					args.reason.length > 500 ||
-					Object.keys(args).some((key) => key !== 'allowed' && key !== 'reason')
-				)
+					return args.allowed;
+				} catch (error) {
+					if (signal.aborted) throw error;
+					// Prod 09-24: 2 of 23 reviews died at the 5 s response-headers
+					// timeout (successes ran p90 4.9 s) and each failure killed its
+					// search. One retry routes around the endpoint that timed out; the
+					// search still runs only on an explicit allowed === true.
+					if (
+						transportFailure &&
+						attempt < 2 &&
+						deadlineAtMs - Date.now() >= MIN_RETRY_BUDGET_MS
+					)
+						continue;
 					throw unavailable();
-				return args.allowed;
-			} catch (error) {
-				if (signal.aborted) throw error;
-				throw unavailable();
+				}
 			}
 		}
 	};
 }
+
+/** A retry needs room for the headers timeout plus a short verdict. */
+const MIN_RETRY_BUDGET_MS = 8_000;
 
 function record(value: unknown): Record<string, unknown> | null {
 	return value && typeof value === 'object' && !Array.isArray(value)

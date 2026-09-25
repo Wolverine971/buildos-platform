@@ -180,6 +180,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			userPrompt,
 			userId: validatedData.userId,
 			profile: 'fast', // Use fast profile since this is a simple processing task
+			operationType: 'braindump_processing',
 			temperature: 0.3,
 			validation: {
 				retryOnParseError: true,

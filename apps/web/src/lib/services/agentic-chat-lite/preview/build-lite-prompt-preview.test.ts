@@ -79,7 +79,10 @@ describe('buildLitePromptPreview', () => {
 			'dates_time',
 			'final_response_contract',
 			'focus_purpose',
-			'location_loaded_context'
+			'location_loaded_context',
+			// 2026-09-25: the minute clock closes the prompt so it no longer breaks
+			// cross-turn prefix caching.
+			'current_time'
 		]);
 		// Stage S7 (2026-09-04): timeline_recent_activity and
 		// context_inventory_retrieval fold into location_loaded_context.

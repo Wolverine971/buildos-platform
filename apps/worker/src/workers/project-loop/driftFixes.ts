@@ -7,9 +7,9 @@
 // Project Review's integrity check re-resolves them against the live body first.
 import type { LoopOperation } from '@buildos/shared-types';
 import {
+	type DocumentTextEditV1,
 	largeDeletionRefusal,
-	resolveDocumentEdits,
-	type DocumentTextEditV1
+	resolveDocumentEdits
 } from '@buildos/shared-agent-ops';
 
 export const DRIFT_FIX_LIMITS = Object.freeze({

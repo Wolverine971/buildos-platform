@@ -37,6 +37,7 @@ export type LitePromptSectionId =
 	| 'focus_purpose'
 	| 'location_loaded_context'
 	| 'project_knowledge_map'
+	| 'current_time'
 	| 'tool_surface_dynamic'
 	| 'final_response_contract';
 

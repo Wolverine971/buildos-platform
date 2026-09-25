@@ -28,7 +28,7 @@ import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../../config/projectL
 import { generateEnglishProjectReview, hasUnexpectedReviewScript } from './reviewLanguage';
 import { type ProjectDriftEvidence, renderDriftEvidence } from './driftEvidence';
 import { PROJECT_REVIEW_CLIPPED_TEXT_RULE, clipForPrompt } from './promptText';
-import { buildDriftFix, type DriftFixDocument } from './driftFixes';
+import { type DriftFixDocument, buildDriftFix } from './driftFixes';
 
 /** Field budgets for prompt lines. Goals and short descriptions are rarely cut at all. */
 const PROMPT_CLIP = Object.freeze({

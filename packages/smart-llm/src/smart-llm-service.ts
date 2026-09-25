@@ -21,6 +21,7 @@ import {
 	EMPTY_CONTENT_RETRY_MIN_TOKENS,
 	EMPTY_CONTENT_RETRY_BUFFER_TOKENS,
 	EMPTY_CONTENT_RETRY_MAX_TOKENS,
+	TRUNCATED_CONTENT_RETRY_MAX_TOKENS,
 	JSON_PROFILE_MODELS,
 	KIMI_CODING_MODEL,
 	KIMI_EXPERIMENT_MODEL,
@@ -35,6 +36,8 @@ import {
 	LLMRequestTimeoutError,
 	OpenRouterEmptyContentError,
 	buildOpenRouterEmptyContentError,
+	buildOpenRouterTruncatedContentError,
+	OpenRouterTruncatedContentError,
 	hasOpenRouterGenerationId,
 	isOpenRouterDefinitivePreGenerationRejection,
 	isOpenRouterModelAvailabilityError,
@@ -1233,9 +1236,14 @@ export class SmartLLMService {
 		// Estimate response length
 		const estimatedLength = estimateResponseLength(options.prompt);
 
-		// Select models based on profile and requirements
+		// An explicit caller order wins over the profile lane.
+		const explicitModels = Array.from(
+			new Set((options.models ?? []).map((model) => model.trim()).filter(Boolean))
+		);
 		const preferredModels = ensureMinimumTextModels(
-			selectTextModels(profile, estimatedLength, options.requirements)
+			explicitModels.length > 0
+				? explicitModels
+				: selectTextModels(profile, estimatedLength, options.requirements)
 		);
 
 		// Make the OpenRouter API call with model routing
@@ -1321,6 +1329,14 @@ export class SmartLLMService {
 							response: attemptResponse,
 							choice,
 							extractedText: content
+						});
+					}
+					if (choice.finish_reason === 'length') {
+						throw buildOpenRouterTruncatedContentError({
+							operation: 'generateText',
+							requestedModel,
+							response: attemptResponse,
+							visibleTextLength: content.length
 						});
 					}
 
@@ -1470,7 +1486,25 @@ export class SmartLLMService {
 							? emptyContentDetails.finishReason
 							: null;
 
-					if (error instanceof OpenRouterEmptyContentError) {
+					if (error instanceof OpenRouterTruncatedContentError) {
+						// Stay on the caller's model order (no emergency jump): the
+						// next model gets room for reasoning plus a whole answer.
+						forceFinalAnswerOnly = true;
+						const reasoningTokens =
+							typeof emptyContentDetails?.usage?.reasoning_tokens === 'number'
+								? emptyContentDetails.usage.reasoning_tokens
+								: 0;
+						const targetMaxTokens = Math.min(
+							Math.max(
+								maxTokensOverride * 2,
+								reasoningTokens + EMPTY_CONTENT_RETRY_MIN_TOKENS
+							),
+							TRUNCATED_CONTENT_RETRY_MAX_TOKENS
+						);
+						if (maxTokensOverride < targetMaxTokens) {
+							maxTokensOverride = targetMaxTokens;
+						}
+					} else if (error instanceof OpenRouterEmptyContentError) {
 						forceFinalAnswerOnly = true;
 						const reasoningTokens =
 							typeof emptyContentDetails?.usage?.reasoning_tokens === 'number'
@@ -1710,23 +1744,10 @@ export class SmartLLMService {
 					profile?: TextProfile; // Added profile parameter
 			  }
 	): Promise<string> {
-		// Normalize parameters to TextGenerationOptions format
-		const options: TextGenerationOptions =
-			'systemPrompt' in optionsOrParams
-				? {
-						prompt: optionsOrParams.prompt,
-						userId: optionsOrParams.userId,
-						systemPrompt: optionsOrParams.systemPrompt,
-						temperature: optionsOrParams.temperature,
-						maxTokens: optionsOrParams.maxTokens,
-						timeoutMs: optionsOrParams.timeoutMs,
-						signal: optionsOrParams.signal,
-						operationType: optionsOrParams.operationType,
-						profile: optionsOrParams.profile // Pass through profile
-					}
-				: optionsOrParams;
-
-		const result = await this.performTextGeneration(options);
+		// Both shapes are TextGenerationOptions. Rebuilding the object here used
+		// to drop every field it did not list (projectId, briefId, metadata,
+		// models) whenever a caller passed a systemPrompt.
+		const result = await this.performTextGeneration(optionsOrParams);
 		return result.text;
 	}
 

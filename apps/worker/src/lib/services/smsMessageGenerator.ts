@@ -98,7 +98,8 @@ export class SMSMessageGenerator {
 				profile: 'speed',
 				systemPrompt,
 				temperature: 0.6, // Balanced creativity
-				maxTokens: 100 // Short SMS messages
+				maxTokens: 100, // Short SMS messages
+				operationType: 'sms_event_reminder'
 			});
 
 			// Validate and clean the response

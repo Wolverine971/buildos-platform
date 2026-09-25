@@ -457,6 +457,7 @@ async function regenerateProfileSummary(params: {
 			userPrompt: buildSummaryPrompt(chapterRows),
 			userId: params.userId,
 			profile: 'fast',
+			operationType: 'profile_summary',
 			temperature: 0.2,
 			signal: AbortSignal.timeout(PROFILE_SUMMARY_TIMEOUT_MS),
 			validation: {
@@ -701,6 +702,7 @@ export async function processProfileSignals(params: {
 			}),
 			userId,
 			profile: 'fast',
+			operationType: 'profile_signal_extraction',
 			temperature: 0.3,
 			signal: AbortSignal.timeout(PROFILE_SIGNAL_TIMEOUT_MS),
 			validation: {

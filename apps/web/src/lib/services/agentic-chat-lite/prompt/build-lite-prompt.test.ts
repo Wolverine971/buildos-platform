@@ -2722,9 +2722,7 @@ describe('AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 context rendering', () => {
 			}
 		};
 		const local = loadedContext(buildProjectEnvelope(data));
-		expect(local).toContain(
-			'- Current date: 2026-04-14 (Tuesday), 19:30 local time in America/New_York'
-		);
+		expect(local).toContain('- Current date: 2026-04-14 (Tuesday) in America/New_York');
 		expect(local).toContain(
 			'2026-04-13: task (task_id: task-late) "Send beta invite" in Launch Alpha, overdue, todo, priority 2, yesterday.'
 		);
@@ -2737,7 +2735,7 @@ describe('AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 context rendering', () => {
 
 		// The same instants on a UTC clock are the next calendar day.
 		const utc = loadedContext(buildProjectEnvelope(data, 'UTC'));
-		expect(utc).toContain('- Current date: 2026-04-14 (Tuesday), 23:30 local time in UTC');
+		expect(utc).toContain('- Current date: 2026-04-14 (Tuesday) in UTC');
 		expect(utc).toContain(
 			'2026-04-14: task (task_id: task-late) "Send beta invite" in Launch Alpha, overdue, todo, priority 2, today.'
 		);
@@ -2914,11 +2912,21 @@ describe('prompt clock renders the local date', () => {
 		const section = timelineSection(envelope);
 
 		expect(section.content).toContain(
-			'- Current date: 2026-08-20 (Thursday), 20:17 local time in America/New_York'
+			'- Current date: 2026-08-20 (Thursday) in America/New_York'
 		);
-		expect(section.content).toContain(
-			'- Current time (UTC instant, minute precision): 2026-08-21T00:17:00.000Z'
+		// The minute clock closes the prompt (2026-09-25): inside Location it was
+		// the first byte that changed between turns and broke prefix caching for
+		// everything after it.
+		expect(section.content).not.toContain('20:17');
+		const clock = envelope.sections.at(-1);
+		expect(clock?.id).toBe('current_time');
+		expect(clock?.content).toBe(
+			[
+				'- Local time: 20:17 in America/New_York (the date is on the Current date line in Location and Loaded Context).',
+				'- UTC instant (minute precision): 2026-08-21T00:17:00.000Z'
+			].join('\n')
 		);
+		expect(envelope.systemPrompt.endsWith(`## Current Time\n\n${clock?.content}`)).toBe(true);
 		expect(section.content).not.toContain('- Timezone: ');
 		// Static-frame rewrite (2026-09-21): the four date rules are static and
 		// live in the cacheable Dates and Time section; Location carries only the
@@ -2962,9 +2970,8 @@ describe('prompt clock renders the local date', () => {
 		});
 		const section = timelineSection(envelope);
 
-		expect(section.content).toContain(
-			'- Current date: 2026-08-21 (Friday), 00:17 local time in UTC'
-		);
+		expect(section.content).toContain('- Current date: 2026-08-21 (Friday) in UTC');
+		expect(envelope.sections.at(-1)?.content).toContain('- Local time: 00:17 in UTC');
 		expect(section.slots).toMatchObject({ localDate: '2026-08-21', weekday: 'Friday' });
 	});
 

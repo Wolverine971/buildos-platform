@@ -33,6 +33,7 @@ const LITE_SECTION_TITLE_KEYS: Record<string, string> = {
 	'Current Focus and Purpose': 'focus_purpose',
 	'Location and Loaded Context': 'location_loaded_context',
 	'Project Knowledge Map': 'project_knowledge_map',
+	'Current Time': 'current_time',
 	'Final Response Contract': 'final_response_contract'
 };
 

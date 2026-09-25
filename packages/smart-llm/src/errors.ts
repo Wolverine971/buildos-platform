@@ -32,6 +32,46 @@ export class OpenRouterEmptyContentError extends Error {
 	}
 }
 
+/**
+ * Text that stopped at `max_tokens` (`finish_reason: 'length'`). A fragment is
+ * not an answer: 2026-09-25 prod shipped 22 of 22 daily-brief executive
+ * summaries cut mid-sentence because reasoning spent the 600-token budget and
+ * `generateText` returned the ~20 visible tokens as success. Subclassing the
+ * empty-content error keeps its retry and diagnostic handling.
+ */
+export class OpenRouterTruncatedContentError extends OpenRouterEmptyContentError {
+	public override name = 'OpenRouterTruncatedContentError';
+}
+
+export function buildOpenRouterTruncatedContentError(params: {
+	operation: string;
+	requestedModel: string;
+	response: OpenRouterResponse;
+	visibleTextLength: number;
+}): OpenRouterTruncatedContentError {
+	const { operation, requestedModel, response, visibleTextLength } = params;
+	const actualModel = response.model || requestedModel;
+	const completionTokens = response.usage?.completion_tokens ?? null;
+	const reasoningTokens = response.usage?.completion_tokens_details?.reasoning_tokens ?? null;
+	return new OpenRouterTruncatedContentError(
+		`OpenRouter output hit max_tokens (finish_reason=length, model=${actualModel}, provider=${response.provider ?? 'unknown'}, completion_tokens=${completionTokens ?? 'unknown'}, reasoning_tokens=${reasoningTokens ?? 'unknown'}, requestId=${response.id})`,
+		{
+			operation,
+			requestedModel,
+			actualModel,
+			provider: response.provider ?? null,
+			requestId: response.id ?? null,
+			inferredCause: 'truncated_at_max_tokens',
+			finishReason: 'length',
+			visibleTextLength,
+			usage: {
+				completion_tokens: completionTokens,
+				reasoning_tokens: reasoningTokens
+			}
+		}
+	);
+}
+
 export type SafeLlmErrorDiagnostic = {
 	name: string;
 	category:
@@ -54,6 +94,7 @@ const SAFE_LLM_ERROR_NAMES = new Set([
 	'LLMRequestCancelledError',
 	'LLMRequestTimeoutError',
 	'OpenRouterEmptyContentError',
+	'OpenRouterTruncatedContentError',
 	'SyntaxError',
 	'TimeoutError',
 	'TranscriptionTimeoutError',
@@ -122,7 +163,8 @@ function classifySafeLlmError(
 		error instanceof SyntaxError ||
 		error instanceof OpenRouterEmptyContentError ||
 		name === 'SyntaxError' ||
-		name === 'OpenRouterEmptyContentError'
+		name === 'OpenRouterEmptyContentError' ||
+		name === 'OpenRouterTruncatedContentError'
 	) {
 		return 'invalid_response';
 	}

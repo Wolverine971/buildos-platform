@@ -401,6 +401,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 				userPrompt,
 				userId: validatedData.userId,
 				profile: 'fast', // Use fast profile since this is a simple classification
+				operationType: 'chat_session_classification',
 				temperature: 0.3,
 				validation: {
 					retryOnParseError: true,

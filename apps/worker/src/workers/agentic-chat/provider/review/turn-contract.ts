@@ -154,7 +154,8 @@ export const ACTING_PROMPT_SECTION_TITLES = Object.freeze([
 	'Project Start Here',
 	'Current Focus and Purpose',
 	'Location and Loaded Context',
-	'Project Knowledge Map'
+	'Project Knowledge Map',
+	'Current Time'
 ]);
 
 /**
@@ -171,7 +172,8 @@ export const REVIEWER_EVIDENCE_SECTION_TITLES = Object.freeze([
 	'Project Start Here',
 	'Current Focus and Purpose',
 	'Location and Loaded Context',
-	'Project Knowledge Map'
+	'Project Knowledge Map',
+	'Current Time'
 ]);
 
 const ACTING_PROMPT_SECTION_TITLE_SET = new Set<string>(ACTING_PROMPT_SECTION_TITLES);

@@ -136,6 +136,8 @@ export interface TextGenerationOptions {
 	prompt: string;
 	userId?: string; // Made optional to match LLMService interface expectations
 	profile?: TextProfile;
+	/** Explicit model order; overrides the profile lane when non-empty. */
+	models?: string[];
 	systemPrompt?: string;
 	temperature?: number;
 	maxTokens?: number;

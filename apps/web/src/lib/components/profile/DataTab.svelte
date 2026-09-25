@@ -31,7 +31,6 @@
 	import { DATA_EXPORT_REQUESTS_PER_DAY, RETENTION_WINDOWS } from '$lib/privacy/retention-policy';
 	import {
 		formatBytes,
-		formatCount,
 		formatDateTime,
 		formatRelativeTime,
 		isActiveExport,

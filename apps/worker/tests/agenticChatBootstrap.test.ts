@@ -203,8 +203,10 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(routes[0]).toMatchObject({
 			id: 'openrouter_semantic_reviewer',
 			kind: 'openrouter',
-			model: GPT_56_LUNA_MODEL
+			model: GPT_6_LUNA_MODEL
 		});
+		// 5.6 stays one week as the first fallback (tasker 108).
+		expect(routes[0]?.fallbackModels?.[0]).toBe(GPT_56_LUNA_MODEL);
 		expect(routes[0]?.model).not.toBe('deepseek/deepseek-v4-flash');
 		expect(routes[0]?.apiKey).toBe('provider-secret');
 	});
@@ -227,7 +229,7 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS.has(GLM_53_FLASH_MODEL)).toBe(
 			true
 		);
-		expect(routes[0]?.model).toBe(GPT_56_LUNA_MODEL);
+		expect(routes[0]?.model).toBe(GPT_6_LUNA_MODEL);
 		expect(routes[0]?.fallbackModels).not.toContain(GLM_53_FLASH_MODEL);
 		expect(routes[0]?.fallbackModels?.length).toBeGreaterThan(0);
 		expect(
@@ -312,19 +314,19 @@ describe('Agentic Chat operational bootstrap', () => {
 		expect(routes[0]?.fallbackModels).not.toContain('z-ai/glm-5.1');
 	});
 
-	// Tasker 103 (DJ 2026-09-24): prod ran gpt-5.6-luna; its Azure ZDR endpoints
-	// are healthy while gpt-6-luna's are degraded, so the default matches prod.
-	it('defaults the reviewer to GPT-5.6 Luna on Azure without hidden fallbacks', () => {
-		expect(DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL).toBe(GPT_56_LUNA_MODEL);
+	// Tasker 108 (DJ 2026-09-25): gpt-6-luna's Azure ZDR endpoints recovered and
+	// it costs about half of gpt-5.6-luna per review.
+	it('defaults the reviewer to GPT-6 Luna, and an explicit pin keeps no hidden fallbacks', () => {
+		expect(DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL).toBe(GPT_6_LUNA_MODEL);
 		const config = loadAgenticChatConfig({
 			...environment(),
-			AGENTIC_CHAT_REVIEWER_MODEL: GPT_56_LUNA_MODEL
+			AGENTIC_CHAT_REVIEWER_MODEL: GPT_6_LUNA_MODEL
 		});
 		const routes = buildAgenticChatSemanticReviewerRoutes(
 			config.provider.routes,
 			config.provider.reviewer
 		);
-		expect(routes[0]).toMatchObject({ model: GPT_56_LUNA_MODEL, fallbackModels: [] });
+		expect(routes[0]).toMatchObject({ model: GPT_6_LUNA_MODEL, fallbackModels: [] });
 		expect(routes[0]?.providerRouting).toEqual({ allow_fallbacks: true, order: ['azure'] });
 	});
 

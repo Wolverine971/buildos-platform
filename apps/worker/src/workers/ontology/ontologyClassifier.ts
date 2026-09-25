@@ -439,6 +439,7 @@ export async function classifyOntologyEntity(
 		userPrompt,
 		userId,
 		profile: 'fast',
+		operationType: 'ontology_classification',
 		temperature: 0.2,
 		validation: {
 			retryOnParseError: true,

@@ -9,7 +9,7 @@ export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
 export const PARETO_MODEL = 'unbiased/pareto' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_6_LUNA_MODEL = 'openai/gpt-6-luna' as const;
-/** Agentic Chat semantic reviewer default; explicit-only, never in automatic lanes. */
+/** Interim Agentic Chat reviewer fallback (tasker 108); explicit-only, never in automatic lanes. */
 export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
 export const GROK_47_MODEL = 'x-ai/grok-4.7' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
@@ -626,7 +626,7 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		}
 	},
 	// Kept out of automatic lanes; the Agentic Chat semantic reviewer names it
-	// explicitly because its Azure ZDR endpoints are healthy (tasker 103).
+	// explicitly as the interim fallback behind GPT-6 Luna (tasker 108).
 	[GPT_56_LUNA_MODEL]: {
 		id: GPT_56_LUNA_MODEL,
 		name: 'GPT-5.6 Luna',
@@ -1038,6 +1038,11 @@ export const EMPTY_CONTENT_RETRY_INSTRUCTION =
 export const EMPTY_CONTENT_RETRY_MIN_TOKENS = 1200;
 export const EMPTY_CONTENT_RETRY_BUFFER_TOKENS = 256;
 export const EMPTY_CONTENT_RETRY_MAX_TOKENS = 2048;
+/**
+ * Ceiling for the one budget increase after a `finish_reason: length` text
+ * response: room for the reasoning already spent plus a full answer.
+ */
+export const TRUNCATED_CONTENT_RETRY_MAX_TOKENS = 8192;
 export const EMERGENCY_TEXT_FALLBACKS = [...MODEL_ROUTES.emergencyTextFallbacks];
 
 export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {

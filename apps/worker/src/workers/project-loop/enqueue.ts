@@ -19,7 +19,6 @@ import { mapProjectLoopOwnerUserIds } from './ownerResolution';
 export { projectLoopDedupKey };
 
 const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
-const END_OF_DAY_PROJECT_PAGE_SIZE = 500;
 const END_OF_DAY_SCAN_LOOKBACK_MS = 36 * 60 * 60 * 1000;
 const DEFAULT_END_OF_DAY_MAX_PROJECTS_PER_USER = 10;
 
@@ -95,6 +94,71 @@ async function unresolvedBriefHasNoNewEvidence(projectId: string): Promise<boole
 		return false;
 	}
 	return !newerSignals?.length;
+}
+
+type ProjectLoopActivityRow = {
+	project_id: string;
+	created_by: string;
+	last_activity_at: string;
+};
+
+/**
+ * Latest user-driven activity per active project since `sinceIso`: the project
+ * row (machine-only writes such as the brief's next step no longer move it),
+ * child records, edges and user chat messages (migration 20260925180100).
+ */
+async function loadProjectLoopActivity(
+	sinceIso: string,
+	projectIds?: string[]
+): Promise<{ data: ProjectLoopActivityRow[]; errorMessage?: string }> {
+	// Not in the generated types until `pnpm gen:all` runs after the migration.
+	const rpc = supabase.rpc as unknown as (
+		fn: string,
+		args: Record<string, unknown>
+	) => PromiseLike<{ data: ProjectLoopActivityRow[] | null; error: { message: string } | null }>;
+	const { data, error } = await rpc.call(supabase, 'project_loop_activity', {
+		p_since: sinceIso,
+		p_project_ids: projectIds ?? null
+	});
+	return error ? { data: [], errorMessage: error.message } : { data: data ?? [] };
+}
+
+/** Time-based triggers; activity-driven and manual runs always pass. */
+const ACTIVITY_GATED_TRIGGERS: ReadonlySet<ProjectLoopTriggerReason> = new Set([
+	'end_of_day',
+	'scheduled'
+]);
+
+/**
+ * True when nothing a user did touched the project since the last run that
+ * produced a review. The loop's own writes finish before that run's
+ * `finished_at`, so they never count. Fails open: a read error runs the loop.
+ */
+async function projectHasNoActivitySinceLastReview(projectId: string): Promise<boolean> {
+	const { data: lastReview, error } = await supabase
+		.from('project_loop_runs')
+		.select('finished_at')
+		.eq('project_id', projectId)
+		.in('status', ['completed', 'waiting_review'])
+		.not('finished_at', 'is', null)
+		.order('finished_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+	if (error) {
+		console.warn(
+			`[ProjectLoops] Failed to read the last review for ${projectId}: ${error.message}`
+		);
+		return false;
+	}
+	if (!lastReview?.finished_at) return false;
+	const activity = await loadProjectLoopActivity(lastReview.finished_at, [projectId]);
+	if (activity.errorMessage) {
+		console.warn(
+			`[ProjectLoops] Failed to read activity for ${projectId}: ${activity.errorMessage}`
+		);
+		return false;
+	}
+	return activity.data.length === 0;
 }
 
 async function resolveQueueJobDetails(
@@ -236,6 +300,13 @@ export async function enqueueProjectLoop(params: {
 		if (!Number.isNaN(finishedAt) && Date.now() - finishedAt < AUTO_TRIGGER_COOLDOWN_MS) {
 			return { queued: false, reason: 'cooldown_active' };
 		}
+
+		if (
+			ACTIVITY_GATED_TRIGGERS.has(params.triggerReason) &&
+			(await projectHasNoActivitySinceLastReview(params.projectId))
+		) {
+			return { queued: false, reason: 'no_new_activity' };
+		}
 	}
 
 	let chatSessionId: string;
@@ -320,16 +391,12 @@ export async function enqueueProjectLoop(params: {
 		const message = queueMetadata.runId
 			? `Deduplicated onto active project loop job ${queueJob.queueJobId} for run ${queueMetadata.runId}`
 			: `Queue job ${queueJob.queueJobId} metadata did not include the new loop run ${runRow.id}`;
+		// A concurrent enqueue won the queue's dedup key. This row never had a
+		// job, so recording it as a failed run only showed a failure that did
+		// not happen (8 of 9 "failed" runs, 2026-09-12..25). Remove it.
+		console.info(`[ProjectLoops] ${message}; discarding unqueued run ${runRow.id}`);
 		await Promise.all([
-			supabase
-				.from('project_loop_runs')
-				.update({
-					status: 'failed',
-					error_message: message,
-					finished_at: new Date().toISOString()
-				})
-				.eq('id', runRow.id)
-				.eq('status', 'queued'),
+			supabase.from('project_loop_runs').delete().eq('id', runRow.id).eq('status', 'queued'),
 			archiveChatSession(chatSessionId)
 		]);
 		return {
@@ -470,35 +537,23 @@ export function selectEndOfDayProjectLoopCandidates(params: {
 	};
 }
 
+/**
+ * Active projects with user activity since `sinceIso`. `updated_at` carries
+ * the latest activity (child records, edges and user chat included), not the
+ * project row's own timestamp, which task and document edits never move.
+ */
 async function loadEndOfDayCandidateProjects(
 	sinceIso: string
 ): Promise<{ projects: EndOfDayProjectLoopCandidateProject[]; errorMessage?: string }> {
-	const projects: EndOfDayProjectLoopCandidateProject[] = [];
-	let from = 0;
-
-	while (true) {
-		const to = from + END_OF_DAY_PROJECT_PAGE_SIZE - 1;
-		const { data, error } = await supabase
-			.from('onto_projects')
-			.select('id, created_by, updated_at')
-			.in('state_key', ['active', 'planning'])
-			.is('deleted_at', null)
-			.is('archived_at', null)
-			.gte('updated_at', sinceIso)
-			.order('updated_at', { ascending: false })
-			.range(from, to);
-
-		if (error) {
-			return { projects, errorMessage: error.message };
-		}
-
-		const page = (data ?? []) as EndOfDayProjectLoopCandidateProject[];
-		projects.push(...page);
-		if (page.length < END_OF_DAY_PROJECT_PAGE_SIZE) break;
-		from += END_OF_DAY_PROJECT_PAGE_SIZE;
-	}
-
-	return { projects };
+	const { data, errorMessage } = await loadProjectLoopActivity(sinceIso);
+	const projects = data
+		.map((row) => ({
+			id: row.project_id,
+			created_by: row.created_by,
+			updated_at: row.last_activity_at
+		}))
+		.sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
+	return errorMessage ? { projects: [], errorMessage } : { projects };
 }
 
 async function loadUserTimezones(userIds: string[]): Promise<Map<string, string | null>> {

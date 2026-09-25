@@ -749,6 +749,7 @@ export async function processContactSignals(params: {
 			}),
 			userId,
 			profile: 'fast',
+			operationType: 'chat_contact_signal_extraction',
 			temperature: 0.2,
 			signal: AbortSignal.timeout(CONTACT_SIGNAL_TIMEOUT_MS),
 			validation: {

@@ -2090,6 +2090,89 @@ describe('SmartLLMService text generation retry rule', () => {
 	});
 });
 
+describe('SmartLLMService text truncation', () => {
+	it('never returns a max_tokens fragment: retries the next model with room for reasoning', async () => {
+		const usageLogger = { logUsageToDatabase: vi.fn(async () => undefined) };
+		const requestBodies: Array<Record<string, unknown>> = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+			return requestBodies.length === 1
+				? buildJSONCompletion({
+						model: GEMINI_37_FLASH_MODEL,
+						content: 'Clear calendar today, ideal for knocking out critical',
+						finishReason: 'length',
+						cost: 0.004
+					})
+				: buildJSONCompletion({
+						model: DEEPSEEK_V4_FLASH_MODEL,
+						content: 'Clear calendar today. Start with the chapter draft.'
+					});
+		});
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const text = await llm.generateText({
+			prompt: 'Summarize the day.',
+			systemPrompt: 'You write the executive summary.',
+			userId: 'text-truncated',
+			models: [GEMINI_37_FLASH_MODEL, DEEPSEEK_V4_FLASH_MODEL],
+			maxTokens: 600,
+			operationType: 'daily_brief_executive_summary',
+			briefId: 'brief-1'
+		});
+
+		expect(text).toBe('Clear calendar today. Start with the chapter draft.');
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(requestBodies[0]).toMatchObject({ model: GEMINI_37_FLASH_MODEL, max_tokens: 600 });
+		// Caller order is kept (no emergency-lane jump) and the budget grows.
+		expect(requestBodies[1]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(Number(requestBodies[1]?.max_tokens)).toBeGreaterThanOrEqual(1200);
+		const rows = usageLogger.logUsageToDatabase.mock.calls.map(
+			(call) => (call as unknown as [Record<string, unknown>])[0]
+		);
+		expect(rows).toHaveLength(2);
+		// The billed fragment is logged once; the systemPrompt call shape keeps
+		// its operation type and brief id.
+		expect(rows[0]).toMatchObject({
+			status: 'invalid_response',
+			modelUsed: GEMINI_37_FLASH_MODEL,
+			totalCost: 0.004,
+			operationType: 'daily_brief_executive_summary'
+		});
+		expect(rows[1]).toMatchObject({
+			status: 'success',
+			operationType: 'daily_brief_executive_summary',
+			briefId: 'brief-1'
+		});
+	});
+
+	it('fails instead of returning a fragment when every model truncates', async () => {
+		const fetchMock = vi.fn(async () =>
+			buildJSONCompletion({
+				model: DEEPSEEK_V4_FLASH_MODEL,
+				content: 'Start with **drafting Chapter',
+				finishReason: 'length'
+			})
+		);
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		await expect(
+			llm.generateText({
+				prompt: 'Summarize.',
+				userId: 'text-always-truncated',
+				models: [DEEPSEEK_V4_FLASH_MODEL, XIAOMI_MIMO_V25_MODEL]
+			})
+		).rejects.toThrow('Failed to generate text');
+		expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+	});
+});
+
 describe('SmartLLMService billed intermediate attempts', () => {
 	it('logs a billed empty-content text attempt as its own usage row before failing over', async () => {
 		const usageLogger = { logUsageToDatabase: vi.fn(async () => undefined) };
