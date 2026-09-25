@@ -11,7 +11,13 @@ export function checkMutationBatchRevisionEvidence(
 	// Structural/prose corrections do not need scalar comparisons. Preserve them.
 	if (checks === undefined) return null;
 	if (!Array.isArray(checks) || checks.length > 20) return 'revision_evidence_invalid';
-	let unchanged = false;
+	// A revision is contradictory only when EVERY check asks for the value the
+	// batch already holds (the Case 2 priority 2 -> 2 hallucination). One stale
+	// check next to a real correction used to void the whole revision and, after
+	// the single repair, end the turn with its writes half-applied (prod turn
+	// b7b18080, 2026-09-23). Checks are never forwarded to the acting model, so
+	// a mixed revision reaches it only as the reviewer's reason and correction.
+	let unchanged = 0;
 	for (const check of checks) {
 		if (!check || typeof check !== 'object' || Array.isArray(check))
 			return 'revision_evidence_invalid';
@@ -40,7 +46,7 @@ export function checkMutationBatchRevisionEvidence(
 				return 'revision_evidence_invalid';
 			actual = (actual as Record<string, unknown>)[key];
 		}
-		if (actual === required) unchanged = true;
+		if (actual === required) unchanged += 1;
 	}
-	return unchanged ? 'revision_value_unchanged' : null;
+	return checks.length > 0 && unchanged === checks.length ? 'revision_value_unchanged' : null;
 }

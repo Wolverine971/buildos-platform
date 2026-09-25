@@ -13,8 +13,13 @@
 //     env still boots; a calendar read then reports
 //     `credentials_not_configured` as `coverage: 'unavailable'` instead of
 //     throwing an unhandled error or blaming Google.
-//  2. There is NO legacy single-OAuth-account fallback. A user with no active
-//     source-aware read target gets `coverage: 'unavailable'` with
+//  2. Routing mirrors the web executor: a user on the multi-calendar allowlist,
+//     or with any active source-aware read target, reads source-aware; everyone
+//     else reads their singleton Google grant (`user_calendar_tokens`, the
+//     connection nearly every production user has) through the shared legacy
+//     reader. Until 2026-09-25 the worker had no legacy route, so every such
+//     user got `not_connected` from chat (prod battery case 10). A user with
+//     neither still gets `coverage: 'unavailable'` with
 //     `reason_code: 'not_connected'`, never an empty event list.
 //
 // Authorization: the port is bound to the turn's trusted `userId` claim and
@@ -35,6 +40,12 @@ import {
 	resolveCalendarReadCoverage
 } from '@buildos/agentic-chat-runtime/tools';
 import { ProjectCalendarReadService } from '@buildos/shared-agent-ops/calendar/project-calendar-read.service';
+import {
+	type LegacyGoogleCalendarReader,
+	createLegacyGoogleCalendarReader
+} from '@buildos/shared-agent-ops/calendar/agent-run-calendar-port';
+import { isMultiCalendarUserAllowed } from '@buildos/shared-agent-ops/calendar/google-calendar-feature';
+import type { calendar_v3 } from 'googleapis';
 import {
 	type AggregatedGoogleCalendarEvent,
 	GoogleCalendarConnectionError,
@@ -70,6 +81,8 @@ const CONNECTION_LEVEL_REASON_CODES = new Map<string, string>([
 function connectionLevelReasonCode(error: unknown): string | null {
 	const code = (error as { code?: unknown } | null)?.code;
 	if (typeof code !== 'string') return null;
+	// The legacy reader already speaks the model-facing vocabulary.
+	if ((error as { name?: unknown } | null)?.name === 'LegacyCalendarReadError') return code;
 	// Bundle boundaries can break instanceof; match by shape as the calendar
 	// services themselves do.
 	const name = (error as { name?: unknown } | null)?.name;
@@ -147,10 +160,35 @@ function toPortEvent(event: WorkerCalendarEvent): AgenticChatCalendarEventV1 {
 	};
 }
 
+/** A singleton-grant event as the port's event shape; it has one implicit source. */
+function toLegacyPortEvent(
+	event: calendar_v3.Schema$Event,
+	providerCalendarId: string
+): AgenticChatCalendarEventV1 {
+	return {
+		id: event.id ?? null,
+		providerEventId: event.id ?? null,
+		calendarSourceId: null,
+		connectionId: null,
+		providerCalendarId,
+		summary: event.summary ?? null,
+		description: event.description ?? null,
+		location: event.location ?? null,
+		status: event.status ?? null,
+		htmlLink: event.htmlLink ?? null,
+		start: event.start ?? null,
+		end: event.end ?? null,
+		contributingSourceEvents: [],
+		raw: event
+	};
+}
+
 export type WorkerAgenticChatCalendarReadPortOptions = {
 	/** Test seam: supply the composed provider services instead of building them. */
 	services?: () => WorkerGoogleCalendarServices;
 	serviceOptions?: WorkerGoogleCalendarServicesOptions;
+	/** Test seam: supply the singleton-grant reader instead of building it. */
+	legacyReader?: () => LegacyGoogleCalendarReader;
 };
 
 /**
@@ -165,6 +203,18 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 	const { client, userId } = input;
 	const options = input.options ?? {};
 	let services: WorkerGoogleCalendarServices | null = null;
+
+	const env = options.serviceOptions?.env ?? process.env;
+	const multiCalendarAllowed = isMultiCalendarUserAllowed(userId, env);
+	let legacyReader: LegacyGoogleCalendarReader | null = null;
+	const requireLegacyReader = (): LegacyGoogleCalendarReader => {
+		if (!legacyReader) {
+			legacyReader = options.legacyReader
+				? options.legacyReader()
+				: createLegacyGoogleCalendarReader({ admin: client, userId });
+		}
+		return legacyReader;
+	};
 
 	const requireServices = (): WorkerGoogleCalendarServices => {
 		if (!services) {
@@ -189,6 +239,38 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 			listInput: AgenticChatCalendarListEventsInputV1
 		): Promise<AgenticChatCalendarListEventsResultV1> {
 			assertBoundUser(listInput.userId);
+			// The singleton grant has one calendar per read, so a selector that
+			// names only a source row cannot be served by it.
+			const legacyCalendarId =
+				listInput.calendarId ?? (listInput.calendarSourceId ? null : 'primary');
+			const readLegacy = async (): Promise<AgenticChatCalendarListEventsResultV1> => {
+				if (!legacyCalendarId) return unavailableListResult('not_connected');
+				let events: calendar_v3.Schema$Event[];
+				try {
+					events = await requireLegacyReader().listEvents({
+						calendarId: legacyCalendarId,
+						timeMin: listInput.timeMin,
+						timeMax: listInput.timeMax,
+						maxResults: listInput.maxResults,
+						q: listInput.query,
+						timeZone: listInput.timeZone
+					});
+				} catch (error) {
+					const reasonCode = connectionLevelReasonCode(error);
+					if (reasonCode) return unavailableListResult(reasonCode);
+					throw error;
+				}
+				return {
+					events: events.map((event) => toLegacyPortEvent(event, legacyCalendarId)),
+					mode: 'legacy_single_account',
+					coverage: 'complete',
+					sourceCount: 1,
+					successfulSourceCount: 1,
+					failedSourceCount: 0,
+					partial: false,
+					sourceFailures: []
+				};
+			};
 			let response;
 			try {
 				response = await requireServices().read.listEvents({
@@ -204,16 +286,22 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 					eventFields: CHAT_LIST_EVENT_FIELDS
 				});
 			} catch (error) {
+				// Web parity: only an allowlisted user is committed to the
+				// source-aware route; anyone else falls back to their singleton grant.
+				if (!multiCalendarAllowed) return readLegacy();
 				const reasonCode = connectionLevelReasonCode(error);
 				if (reasonCode) return unavailableListResult(reasonCode);
 				throw error;
 			}
 
 			const sourceStatuses = response.sourceStatuses ?? [];
-			// The worker has no legacy single-account route, so zero enabled read
-			// targets means nothing was read at all. Reporting that as vacuously
-			// "complete" would let the model call an empty list proof of free time.
-			if (sourceStatuses.length === 0) return unavailableListResult('not_connected');
+			// Active source rows are authoritative; the singleton grant is only a
+			// fallback when none exist. With neither, nothing was read at all, and
+			// reporting that as vacuously "complete" would let the model call an
+			// empty list proof of free time.
+			if (sourceStatuses.length === 0) {
+				return multiCalendarAllowed ? unavailableListResult('not_connected') : readLegacy();
+			}
 
 			const successfulSourceCount = sourceStatuses.filter(
 				(status) => status.status === 'success'
@@ -250,9 +338,29 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 
 			try {
 				const activeServices = requireServices();
-				// Without an explicit source selector the resolver needs at least one
-				// active read target; say "not connected" rather than surfacing an
-				// internal resolver error to the model.
+				// Web parity (resolveSourceAwareEventRoute): an explicit source or an
+				// allowlisted user is source-aware; otherwise an active read target
+				// decides, and without one the singleton grant answers.
+				if (
+					!getInput.calendarSourceId &&
+					!multiCalendarAllowed &&
+					!(await activeServices.targets.hasActiveTarget(userId, 'read'))
+				) {
+					const calendarId = getInput.calendarId ?? 'primary';
+					const event = await requireLegacyReader().getEvent({
+						calendarId,
+						eventId: getInput.providerEventId
+					});
+					return {
+						event: toLegacyPortEvent(event, calendarId),
+						calendarSourceId: null,
+						connectionId: null,
+						providerCalendarId: calendarId,
+						reasonCode: null
+					};
+				}
+				// An allowlisted user without a source still needs one active target;
+				// say "not connected" rather than surfacing a resolver error.
 				if (
 					!getInput.calendarSourceId &&
 					!(await activeServices.targets.hasActiveTarget(userId, 'read'))

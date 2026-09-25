@@ -29,6 +29,10 @@ describe('revision evidence against exact held arguments', () => {
 		expect(inspect([check(2)])).toBe('revision_value_unchanged');
 		expect(JSON.stringify(batch)).toBe(before);
 	});
+	it('keeps a real correction that sits next to an already-satisfied check', () => {
+		expect(inspect([check(2), check('Permit application', ['title'])])).toBeNull();
+		expect(inspect([check(2), check('Permit', ['title'])])).toBe('revision_value_unchanged');
+	});
 	it('preserves real corrections, exact scalar types, and structural/prose rejection', () => {
 		expect(inspect([check(1)])).toBeNull();
 		expect(inspect([check('2')])).toBeNull();

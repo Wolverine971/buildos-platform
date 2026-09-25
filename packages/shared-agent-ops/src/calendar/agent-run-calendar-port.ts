@@ -46,6 +46,8 @@ type StoredCalendarTokenFields = {
 	updated_at?: string | null;
 };
 
+type DecodedCalendarTokens = StoredCalendarTokenFields & { requiresEncryptionUpgrade: boolean };
+
 type StoredCalendarTokenPatch = {
 	access_token?: string | null;
 	refresh_token?: string | null;
@@ -985,13 +987,44 @@ class AgentRunCalendarPort implements CalendarPort {
 		return new google.auth.OAuth2(this.requireClientId(), this.requireClientSecret());
 	}
 
-	private async getAuthenticatedClient(): Promise<OAuth2Client> {
+	/**
+	 * Legacy single-account read access (`user_calendar_tokens`) for hosts that
+	 * route source-aware users elsewhere, such as the worker chat calendar port.
+	 * Every "there is no calendar to ask" condition becomes a
+	 * `LegacyCalendarReadError` with a model-facing reason code; genuine provider
+	 * failures still throw as-is.
+	 */
+	async authorizeLegacyRead(): Promise<calendar_v3.Calendar> {
+		if (!this.clientId || !this.clientSecret) {
+			throw new LegacyCalendarReadError('credentials_not_configured');
+		}
+		let tokens: DecodedCalendarTokens | null;
+		try {
+			tokens = await this.getTokens();
+		} catch {
+			throw new LegacyCalendarReadError('credentials_unreadable');
+		}
+		if (!tokens?.access_token || !tokens.refresh_token) {
+			throw new LegacyCalendarReadError('not_connected');
+		}
+		let auth: OAuth2Client;
+		try {
+			auth = await this.getAuthenticatedClient(tokens);
+		} catch {
+			throw new LegacyCalendarReadError('reconnect_required');
+		}
+		return google.calendar({ version: 'v3', auth });
+	}
+
+	private async getAuthenticatedClient(
+		preloadedTokens?: DecodedCalendarTokens | null
+	): Promise<OAuth2Client> {
 		const cached = this.clientCache.get(this.userId);
 		if (cached && cached.expires > Date.now()) {
 			return cached.client;
 		}
 
-		const tokens = await this.getTokens();
+		const tokens = preloadedTokens ?? (await this.getTokens());
 		if (!tokens?.access_token || !tokens.refresh_token) {
 			throw new Error('No calendar connection found. Please connect Google Calendar.');
 		}
@@ -1034,9 +1067,7 @@ class AgentRunCalendarPort implements CalendarPort {
 		return oauth2Client;
 	}
 
-	private async getTokens(): Promise<
-		(StoredCalendarTokenFields & { requiresEncryptionUpgrade: boolean }) | null
-	> {
+	private async getTokens(): Promise<DecodedCalendarTokens | null> {
 		const { data, error } = await this.admin
 			.from('user_calendar_tokens')
 			.select('access_token, refresh_token, expiry_date, scope, updated_at, token_type')
@@ -1815,4 +1846,88 @@ class AgentRunCalendarPort implements CalendarPort {
 
 export function createAgentRunCalendarPort(params: CreateAgentRunCalendarPortParams): CalendarPort {
 	return new AgentRunCalendarPort(params);
+}
+
+/** Why a legacy single-account read reached no calendar at all. */
+export type LegacyCalendarReadReasonCode =
+	| 'not_connected'
+	| 'credentials_not_configured'
+	| 'credentials_unreadable'
+	| 'reconnect_required';
+
+export class LegacyCalendarReadError extends Error {
+	readonly code: LegacyCalendarReadReasonCode;
+
+	constructor(code: LegacyCalendarReadReasonCode) {
+		super(`Legacy Google Calendar read unavailable: ${code}`);
+		this.name = 'LegacyCalendarReadError';
+		this.code = code;
+	}
+}
+
+export interface LegacyGoogleCalendarReader {
+	listEvents(params: {
+		calendarId: string;
+		timeMin?: string;
+		timeMax?: string;
+		maxResults?: number;
+		q?: string;
+		timeZone?: string;
+	}): Promise<calendar_v3.Schema$Event[]>;
+	getEvent(params: { calendarId: string; eventId: string }): Promise<calendar_v3.Schema$Event>;
+}
+
+/** A revoked or expired grant surfaces on the first API call, not at refresh time. */
+function isRevokedGrantError(error: unknown): boolean {
+	const record = error as {
+		code?: unknown;
+		status?: unknown;
+		response?: { status?: unknown; data?: { error?: unknown } };
+	} | null;
+	const status = record?.response?.status ?? record?.status ?? record?.code;
+	return status === 401 || status === '401' || record?.response?.data?.error === 'invalid_grant';
+}
+
+/**
+ * Reads the user's singleton Calendar grant with the same token decryption,
+ * refresh, and re-encryption the Agent Run port uses. Hosts own the routing
+ * decision (source-aware vs legacy); this only reads.
+ */
+export function createLegacyGoogleCalendarReader(
+	params: CreateAgentRunCalendarPortParams
+): LegacyGoogleCalendarReader {
+	const port = new AgentRunCalendarPort(params);
+	const call = async <T>(run: (calendar: calendar_v3.Calendar) => Promise<T>): Promise<T> => {
+		const calendar = await port.authorizeLegacyRead();
+		try {
+			return await run(calendar);
+		} catch (error) {
+			if (isRevokedGrantError(error)) throw new LegacyCalendarReadError('reconnect_required');
+			throw error;
+		}
+	};
+	return {
+		listEvents: (input) =>
+			call(async (calendar) => {
+				const response = await calendar.events.list({
+					calendarId: input.calendarId,
+					timeMin: input.timeMin,
+					timeMax: input.timeMax,
+					maxResults: input.maxResults,
+					q: input.q,
+					timeZone: input.timeZone,
+					singleEvents: true,
+					orderBy: 'startTime'
+				});
+				return response.data.items ?? [];
+			}),
+		getEvent: (input) =>
+			call(async (calendar) => {
+				const response = await calendar.events.get({
+					calendarId: input.calendarId,
+					eventId: input.eventId
+				});
+				return response.data;
+			})
+	};
 }

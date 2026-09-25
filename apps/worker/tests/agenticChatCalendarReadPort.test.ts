@@ -14,6 +14,7 @@ import {
 	type AgenticChatSharedReadContextV1,
 	type AgenticChatToolAccessPortV1
 } from '@buildos/agentic-chat-runtime/tools';
+import { LegacyCalendarReadError } from '@buildos/shared-agent-ops/calendar/agent-run-calendar-port';
 import { createWorkerAgenticChatCalendarReadPort } from '../src/workers/agentic-chat/tools/calendar-read-port';
 
 const USER_ID = 'user-1';
@@ -83,8 +84,22 @@ function fakeServices(overrides: Partial<FakeServices> = {}): FakeServices {
 	};
 }
 
+// Allowlisted for the multi-calendar flow unless a test opts out, so the
+// source-aware cases below cannot fall through to the singleton grant.
+const MULTI_CALENDAR_ENV = {
+	PRIVATE_MULTI_CALENDAR_CONNECTIONS_ENABLED: 'true',
+	PRIVATE_MULTI_CALENDAR_CONNECTIONS_USER_IDS: USER_ID
+};
+
+type FakeLegacyReader = {
+	listEvents: ReturnType<typeof vi.fn>;
+	getEvent: ReturnType<typeof vi.fn>;
+};
+
 function createContext(input: {
 	services?: () => any;
+	multiCalendar?: boolean;
+	legacyReader?: FakeLegacyReader;
 	servicesFactory?: ReturnType<typeof vi.fn>;
 	responses?: Record<string, QueryResponse[]>;
 	timezone?: string | null;
@@ -103,7 +118,11 @@ function createContext(input: {
 	const calendar = createWorkerAgenticChatCalendarReadPort({
 		client,
 		userId: USER_ID,
-		options: { services: input.services as any }
+		options: {
+			services: input.services as any,
+			serviceOptions: { env: input.multiCalendar === false ? {} : MULTI_CALENDAR_ENV },
+			...(input.legacyReader ? { legacyReader: () => input.legacyReader as any } : {})
+		}
 	});
 	return {
 		client,
@@ -475,6 +494,194 @@ describe('worker calendar read port', () => {
 			})
 		).rejects.toThrow('access denied');
 		expect(client.from).not.toHaveBeenCalledWith('project_calendars');
+	});
+});
+
+describe('worker calendar read port: singleton Google grant (not multi-calendar allowlisted)', () => {
+	const LEGACY_EVENT = {
+		id: 'legacy-event-1',
+		summary: 'Standup',
+		status: 'confirmed',
+		start: { dateTime: '2026-09-03T13:00:00Z' },
+		end: { dateTime: '2026-09-03T13:30:00Z' }
+	};
+
+	function fakeLegacyReader(overrides: Partial<FakeLegacyReader> = {}): FakeLegacyReader {
+		return {
+			listEvents: vi.fn(() => Promise.resolve([LEGACY_EVENT])),
+			getEvent: vi.fn(() => Promise.resolve(LEGACY_EVENT)),
+			...overrides
+		};
+	}
+
+	function noSources() {
+		const services = fakeServices({
+			targets: { hasActiveTarget: vi.fn(() => Promise.resolve(false)) }
+		});
+		services.read.listEvents = vi.fn(() =>
+			Promise.resolve({ events: [], partial: false, warnings: [], sourceStatuses: [] })
+		);
+		return services;
+	}
+
+	// Prod battery case 10 (2026-09-25): the harness account, like nearly every
+	// production user, has only `user_calendar_tokens`; chat said not_connected.
+	it('reads the primary calendar as one complete source when no source rows exist', async () => {
+		const legacyReader = fakeLegacyReader();
+		const { context } = createContext({
+			services: () => noSources(),
+			multiCalendar: false,
+			legacyReader
+		});
+
+		const result = await listCalendarEvents(context, RANGE);
+
+		expect(legacyReader.listEvents).toHaveBeenCalledWith(
+			expect.objectContaining({ calendarId: 'primary' })
+		);
+		expect(result.google_read).toMatchObject({
+			mode: 'legacy_single_account',
+			coverage: 'complete',
+			source_count: 1,
+			successful_source_count: 1,
+			failed_source_count: 0,
+			partial: false,
+			source_failures: []
+		});
+		expect(result.events).toHaveLength(1);
+	});
+
+	it('keeps source rows authoritative when a non-allowlisted user already has them', async () => {
+		const legacyReader = fakeLegacyReader();
+		const { context } = createContext({
+			services: () => fakeServices(),
+			multiCalendar: false,
+			legacyReader
+		});
+
+		const result = await listCalendarEvents(context, RANGE);
+
+		expect(result.google_read).toMatchObject({ mode: 'source_aware', source_count: 1 });
+		expect(legacyReader.listEvents).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the grant when the source-aware read throws for a non-allowlisted user', async () => {
+		const services = fakeServices();
+		services.read.listEvents = vi.fn(() =>
+			Promise.reject(
+				new GoogleCalendarConnectionError('not_configured', 'missing calendar client')
+			)
+		);
+		const legacyReader = fakeLegacyReader();
+		const { context } = createContext({
+			services: () => services,
+			multiCalendar: false,
+			legacyReader
+		});
+
+		const result = await listCalendarEvents(context, RANGE);
+
+		expect(result.google_read).toMatchObject({
+			mode: 'legacy_single_account',
+			coverage: 'complete'
+		});
+	});
+
+	it.each(['not_connected', 'reconnect_required', 'credentials_unreadable'] as const)(
+		'reports a grant that cannot be read (%s) as unavailable, never an empty complete list',
+		async (code) => {
+			const legacyReader = fakeLegacyReader({
+				listEvents: vi.fn(() => Promise.reject(new LegacyCalendarReadError(code)))
+			});
+			const { context } = createContext({
+				services: () => noSources(),
+				multiCalendar: false,
+				legacyReader
+			});
+
+			const result = await listCalendarEvents(context, RANGE);
+
+			expect(result.google_read).toMatchObject({
+				coverage: 'unavailable',
+				source_count: 0,
+				source_failures: [expect.objectContaining({ reason_code: code })]
+			});
+			expect(result.events).toEqual([]);
+		}
+	);
+
+	it('lets a genuine provider failure on the grant fail the read', async () => {
+		const legacyReader = fakeLegacyReader({
+			listEvents: vi.fn(() => Promise.reject(new Error('provider exploded')))
+		});
+		const { calendar } = createContext({
+			services: () => noSources(),
+			multiCalendar: false,
+			legacyReader
+		});
+
+		await expect(calendar.listEvents({ userId: USER_ID })).rejects.toThrow('provider exploded');
+	});
+
+	it('does not guess a calendar for a source-row selector the grant cannot serve', async () => {
+		const legacyReader = fakeLegacyReader();
+		const { calendar } = createContext({
+			services: () => noSources(),
+			multiCalendar: false,
+			legacyReader
+		});
+
+		const result = await calendar.listEvents({
+			userId: USER_ID,
+			calendarSourceId: 'source-9'
+		});
+
+		expect(result).toMatchObject({ coverage: 'unavailable', mode: 'none' });
+		expect(legacyReader.listEvents).not.toHaveBeenCalled();
+	});
+
+	it('reads a single event through the grant when no active target exists', async () => {
+		const legacyReader = fakeLegacyReader();
+		const services = noSources();
+		const { calendar } = createContext({
+			services: () => services,
+			multiCalendar: false,
+			legacyReader
+		});
+
+		const result = await calendar.getEvent({
+			userId: USER_ID,
+			providerEventId: 'legacy-event-1'
+		});
+
+		expect(legacyReader.getEvent).toHaveBeenCalledWith({
+			calendarId: 'primary',
+			eventId: 'legacy-event-1'
+		});
+		expect(result).toMatchObject({
+			providerCalendarId: 'primary',
+			reasonCode: null,
+			event: expect.objectContaining({ providerEventId: 'legacy-event-1' })
+		});
+		expect(services.write.getEvent).not.toHaveBeenCalled();
+	});
+
+	it('reports reconnect_required for a single event when the grant is revoked', async () => {
+		const legacyReader = fakeLegacyReader({
+			getEvent: vi.fn(() => Promise.reject(new LegacyCalendarReadError('reconnect_required')))
+		});
+		const { calendar } = createContext({
+			services: () => noSources(),
+			multiCalendar: false,
+			legacyReader
+		});
+
+		const result = await calendar.getEvent({
+			userId: USER_ID,
+			providerEventId: 'legacy-event-1'
+		});
+
+		expect(result).toMatchObject({ event: null, reasonCode: 'reconnect_required' });
 	});
 });
 

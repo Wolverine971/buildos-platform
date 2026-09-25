@@ -1,6 +1,10 @@
 // packages/shared-agent-ops/src/calendar/agent-run-calendar-port.test.ts
 import { describe, expect, it, vi } from 'vitest';
-import { createAgentRunCalendarPort } from './agent-run-calendar-port';
+import {
+	LegacyCalendarReadError,
+	createAgentRunCalendarPort,
+	createLegacyGoogleCalendarReader
+} from './agent-run-calendar-port';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const PROJECT_ID = '22222222-2222-4222-8222-222222222222';
@@ -121,5 +125,65 @@ describe('AgentRunCalendarPort.listCalendarEvents', () => {
 		});
 
 		expect(result.pagination).toMatchObject({ has_more: false, next_offset: null });
+	});
+});
+
+describe('legacy Google Calendar reader', () => {
+	/** `user_calendar_tokens` returns `row`; every other table is empty. */
+	function tokenAdmin(row: Record<string, unknown> | null, error: unknown = null) {
+		return {
+			from: vi.fn(() => {
+				const builder: any = {
+					select: () => builder,
+					eq: () => builder,
+					maybeSingle: async () => ({ data: row, error })
+				};
+				return builder;
+			})
+		};
+	}
+	const credentials = { clientId: 'client-id', clientSecret: 'client-secret' };
+	const read = (admin: unknown, creds = credentials) =>
+		createLegacyGoogleCalendarReader({ admin, userId: USER_ID, credentials: creds })
+			.listEvents({ calendarId: 'primary' })
+			.catch((error: unknown) => error);
+
+	it('reports not_connected when the user has no singleton grant', async () => {
+		const error = await read(tokenAdmin(null));
+		expect(error).toBeInstanceOf(LegacyCalendarReadError);
+		expect((error as LegacyCalendarReadError).code).toBe('not_connected');
+	});
+
+	it('reports not_connected for a grant row that holds no tokens', async () => {
+		const error = await read(tokenAdmin({ access_token: null, refresh_token: null }));
+		expect((error as LegacyCalendarReadError).code).toBe('not_connected');
+	});
+
+	it('reports credentials_unreadable when a stored token cannot be decrypted', async () => {
+		const error = await read(
+			tokenAdmin({
+				access_token: 'enc:v1.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+				refresh_token: 'r'
+			})
+		);
+		expect((error as LegacyCalendarReadError).code).toBe('credentials_unreadable');
+	});
+
+	it('reports credentials_not_configured before touching the grant', async () => {
+		const admin = tokenAdmin({ access_token: 'a', refresh_token: 'r' });
+		const previous = {
+			id: process.env.PRIVATE_GOOGLE_CLIENT_ID,
+			legacyId: process.env.GOOGLE_CLIENT_ID
+		};
+		delete process.env.PRIVATE_GOOGLE_CLIENT_ID;
+		delete process.env.GOOGLE_CLIENT_ID;
+		try {
+			const error = await read(admin, { clientId: '', clientSecret: '' });
+			expect((error as LegacyCalendarReadError).code).toBe('credentials_not_configured');
+			expect(admin.from).not.toHaveBeenCalled();
+		} finally {
+			if (previous.id !== undefined) process.env.PRIVATE_GOOGLE_CLIENT_ID = previous.id;
+			if (previous.legacyId !== undefined) process.env.GOOGLE_CLIENT_ID = previous.legacyId;
+		}
 	});
 });

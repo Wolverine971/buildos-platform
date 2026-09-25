@@ -9,6 +9,7 @@ import {
 	assertProdBatteryTarget,
 	deployedProvenance,
 	evaluateCaseSubset,
+	failedTurnStreamRunIds,
 	parseCaseSelection,
 	parseVercelProductionDeployment
 } from './prod-battery-policy';
@@ -127,4 +128,21 @@ test('scores a subset with the full rules but only for the selected cases', () =
 		)
 	);
 	assert.ok(evaluateCaseSubset(scorecard(4), [1, 2, 14], 3)[0]!.startsWith('Selected cases'));
+});
+
+test('keeps evidence for every turn that did not pass, once each', () => {
+	assert.deepEqual(
+		failedTurnStreamRunIds({
+			turns: [
+				{ streamRunId: 'a', resultClass: 'end_to_end_pass' },
+				{ streamRunId: 'b', resultClass: 'behavior_failure' },
+				{ streamRunId: 'b', resultClass: 'behavior_failure' },
+				{ streamRunId: 'c' },
+				{ resultClass: 'behavior_failure' }
+			]
+		}),
+		['b', 'c']
+	);
+	assert.deepEqual(failedTurnStreamRunIds(null), []);
+	assert.deepEqual(failedTurnStreamRunIds({ turns: 'x' }), []);
 });

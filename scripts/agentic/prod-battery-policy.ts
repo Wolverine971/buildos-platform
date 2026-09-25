@@ -169,3 +169,24 @@ export function evaluateCaseSubset(
 		);
 	return failures;
 }
+
+/**
+ * Stream runs of every turn that did not pass. Cleanup hard-deletes the run's
+ * sessions (and with them turn runs, events and tool executions), so their
+ * rows are copied into the run directory first. Without them a reviewer
+ * rejection or a dead turn can only be guessed at (2026-09-25: case 2's
+ * `revision_value_unchanged` loop survived only in the SSE capture).
+ */
+export function failedTurnStreamRunIds(scorecard: unknown): string[] {
+	const turns = (scorecard as { turns?: unknown })?.turns;
+	if (!Array.isArray(turns)) return [];
+	const ids = turns
+		.filter(
+			(turn): turn is { streamRunId: string; resultClass?: unknown } =>
+				Boolean(turn) &&
+				typeof (turn as { streamRunId?: unknown }).streamRunId === 'string' &&
+				(turn as { resultClass?: unknown }).resultClass !== 'end_to_end_pass'
+		)
+		.map((turn) => turn.streamRunId);
+	return [...new Set(ids)];
+}

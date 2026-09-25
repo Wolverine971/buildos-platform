@@ -9,6 +9,7 @@
 //   Dry run (free):  pnpm --filter @buildos/worker exec tsx scripts/reviewer-model-replay.ts
 //   Live (paid):     ... --live --max-usd 0.08
 //   Options:         --model openai/gpt-6-luna  --samples 2  --only <dump name substring>
+//                    --reasoning low|medium|high (default: the captured request's effort, low)
 //
 // Each request is sent as captured except: the candidate model, Azure as the
 // only provider (Luna's one ZDR host, what prod routes to), no streaming, and
@@ -107,10 +108,14 @@ async function main() {
 	const samples = Number(arg('samples', '2'));
 	const maxUsd = Number(arg('max-usd', '0.08'));
 	const live = process.argv.includes('--live');
+	const reasoningEffort = arg('reasoning');
+	if (reasoningEffort && !['low', 'medium', 'high'].includes(reasoningEffort)) {
+		throw new Error('--reasoning must be low, medium or high');
+	}
 	const dumpDir = resolve(process.cwd(), '.prompt-dumps');
 	const dumps = loadDumps(dumpDir, arg('only'));
 	console.info(
-		`${dumps.length} captured reviews × ${samples} samples on ${model}; cap $${maxUsd}${live ? '' : ' (dry run)'}`
+		`${dumps.length} captured reviews × ${samples} samples on ${model}${reasoningEffort ? ` (reasoning ${reasoningEffort})` : ''}; cap $${maxUsd}${live ? '' : ' (dry run)'}`
 	);
 
 	const apiKey = parse(readFileSync(resolve(process.cwd(), '.env'))).PRIVATE_OPENROUTER_API_KEY;
@@ -144,6 +149,9 @@ async function main() {
 				...rest,
 				model,
 				provider: { ...(rest.provider ?? {}), order: ['azure'], zdr: true },
+				...(reasoningEffort
+					? { reasoning: { ...(rest.reasoning ?? {}), effort: reasoningEffort } }
+					: {}),
 				usage: { include: true }
 			};
 			if (!live) {

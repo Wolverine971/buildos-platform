@@ -29,6 +29,7 @@ import {
 	assertProdBatteryTarget,
 	deployedProvenance,
 	evaluateCaseSubset,
+	failedTurnStreamRunIds,
 	parseCaseSelection,
 	parseVercelProductionDeployment
 } from './prod-battery-policy';
@@ -207,6 +208,51 @@ async function deleteRunChatSessions(
 		`chat_sessions?select=id&user_id=eq.${credentials.userId}&created_at=gte.${encodeURIComponent(since)}`
 	);
 	return { found: sessions.length as number, remaining: remaining.length as number, failures };
+}
+
+/**
+ * Copies the durable rows of each failed turn into `failed-turn-rows/` before
+ * cleanup deletes them: the turn run, its semantic events (reviewer
+ * rejections, terminal reason), tool executions (reviewer arguments) and usage
+ * rows. Harness-account rows only; best effort, so a read failure is recorded
+ * and never masks the battery result.
+ */
+async function captureFailedTurnRows(
+	rest: ReturnType<typeof serviceRest>,
+	userId: string,
+	streamRunIds: readonly string[],
+	output: string
+) {
+	const directory = resolve(output, 'failed-turn-rows');
+	const captured: string[] = [];
+	const failures: string[] = [];
+	for (const streamRunId of streamRunIds) {
+		try {
+			const id = encodeURIComponent(streamRunId);
+			const turnRuns = await rest(`chat_turn_runs?select=*&stream_run_id=eq.${id}`);
+			const owned = (turnRuns as Array<{ user_id?: string }>).every(
+				(row) => row.user_id === undefined || row.user_id === userId
+			);
+			if (!owned) throw new Error('turn run is not the harness account');
+			const [events, toolExecutions, usage] = await Promise.all([
+				rest(`chat_turn_events?select=*&stream_run_id=eq.${id}&order=created_at.asc`),
+				rest(`chat_tool_executions?select=*&stream_run_id=eq.${id}&order=created_at.asc`),
+				rest(
+					`llm_usage_logs?select=*&stream_run_id=eq.${id}&user_id=eq.${userId}&order=created_at.asc`
+				)
+			]);
+			mkdirSync(directory, { recursive: true });
+			writeFileSync(
+				resolve(directory, `${streamRunId}.json`),
+				JSON.stringify({ streamRunId, turnRuns, events, toolExecutions, usage }, null, 2) +
+					'\n'
+			);
+			captured.push(streamRunId);
+		} catch (error) {
+			failures.push(`${streamRunId}: ${String(error).slice(0, 160)}`);
+		}
+	}
+	return { captured, failures };
 }
 
 async function openRouterUsage(key: string): Promise<number | null> {
@@ -396,6 +442,13 @@ async function main() {
 		};
 		evidence.summary = scorecard.summary;
 		evidence.failures = failures;
+		// Before cleanup: the session delete takes these rows with it.
+		evidence.failedTurnRows = await captureFailedTurnRows(
+			rest,
+			userId,
+			failedTurnStreamRunIds(scorecard),
+			output
+		);
 		if (exitCode || failures.length)
 			throw new Error(`Deployed battery failed (${exitCode}): ${failures.join('; ')}`);
 		// A green subset is evidence for those cases only, never a full post-deploy pass.
