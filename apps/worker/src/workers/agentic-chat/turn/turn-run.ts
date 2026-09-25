@@ -55,6 +55,8 @@ export type KnownMutationFailure = {
 	observationErrorCode: 'known_mutation_failure' | 'mutation_retry_capped';
 	/** True when the adapter's failure applies to every call of the tool, not just these arguments. */
 	toolLevel: boolean;
+	/** Nothing was written and the identical call may succeed later, so it is not capped. */
+	retryable?: boolean;
 };
 
 export type TerminalContextState = {

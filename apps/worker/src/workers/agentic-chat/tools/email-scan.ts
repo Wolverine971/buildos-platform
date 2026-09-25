@@ -188,7 +188,7 @@ export async function runEmailInboxScan(
 	const beforeEpochSeconds = Math.ceil(input.beforeMs / 1000);
 	const priorByAccount = new Map<string, Map<string, EmailScanLedgerEntry>>();
 	const scans = await Promise.all(
-		accounts.map(async (account): Promise<GmailInboxWindowScan> => {
+		accounts.map((account): GmailInboxWindowScan | Promise<GmailInboxWindowScan> => {
 			if (account.status !== 'active' || !account.readEnabled) {
 				return {
 					account: {

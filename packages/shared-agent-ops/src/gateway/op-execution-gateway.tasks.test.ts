@@ -684,6 +684,53 @@ describe('createTask civil-date normalization', () => {
 		syncCreatedTaskSideEffectsMock.mockResolvedValue(undefined as never);
 	});
 
+	it('marks a deadlocked create as rolled back so the caller can retry it', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+		const base = admin.rpc.getMockImplementation()!;
+		admin.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) =>
+			name === 'onto_task_create_with_relationships_atomic'
+				? ({ data: null, error: { code: '40P01', message: 'deadlock detected' } } as never)
+				: base(name, args)
+		);
+
+		syncCreatedTaskSideEffectsMock.mockClear();
+
+		const failure = await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Ship it'
+		}).catch((error: unknown) => error);
+
+		expect(failure).toMatchObject({
+			code: 'INTERNAL',
+			message: 'deadlock detected',
+			details: { write_rolled_back: true, database_code: '40P01' }
+		});
+		expect(syncCreatedTaskSideEffectsMock).not.toHaveBeenCalled();
+	});
+
+	it('does not mark a deterministic database failure as rolled back', async () => {
+		const capture: { task?: any } = {};
+		const admin = adminFor({ timezone: 'America/New_York' }, capture);
+		const base = admin.rpc.getMockImplementation()!;
+		admin.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) =>
+			name === 'onto_task_create_with_relationships_atomic'
+				? ({
+						data: null,
+						error: { code: '23514', message: 'new row violates check constraint' }
+					} as never)
+				: base(name, args)
+		);
+
+		const failure = await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Ship it'
+		}).catch((error: unknown) => error);
+
+		expect(failure).toMatchObject({ code: 'INTERNAL' });
+		expect((failure as { details?: unknown }).details).toBeUndefined();
+	});
+
 	it('rejects an unknown calendar_sync value', async () => {
 		const capture: { task?: any } = {};
 		const admin = adminFor({ timezone: 'America/New_York' }, capture);

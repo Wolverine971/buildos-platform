@@ -614,6 +614,27 @@ describe('table row update_onto_task', () => {
 		});
 	});
 
+	it('classifies a write the database rolled back as a known, retryable failure', async () => {
+		await expect(
+			adapter({
+				runGateway: vi.fn(async () => ({
+					ok: false,
+					error: {
+						code: 'INTERNAL',
+						message: 'deadlock detected',
+						details: { write_rolled_back: true, database_code: '40P01' }
+					}
+				})),
+				taskSync: { syncTaskEvents: vi.fn() }
+			}).execute(input())
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'update_onto_task_database_busy',
+			retryable: true,
+			message: expect.stringContaining('nothing was saved')
+		});
+	});
+
 	it('classifies internal or thrown gateway outcomes as uncertain', async () => {
 		await expect(
 			adapter({

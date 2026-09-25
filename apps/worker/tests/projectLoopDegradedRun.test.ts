@@ -415,7 +415,8 @@ describe('processProjectLoopJob detector degradation', () => {
 		});
 
 		await expect(processProjectLoopJob(createJob(controller))).rejects.toBe(cancellation);
-		expect(mocks.generateTaskConflicts).not.toHaveBeenCalled();
+		// Detectors run concurrently, so the others may already be in flight; what matters is
+		// that nothing is written after ownership is lost.
 		expect(mocks.state.inserts).toHaveLength(0);
 		expect(
 			mocks.state.updates.some(

@@ -268,7 +268,9 @@ function scriptedJev(): JevDecider & { calls: number } {
 			const answers: Record<string, unknown> = {};
 			for (const [key, question] of Object.entries(req.questions)) {
 				const options = question.type === 'choice' ? Object.keys(question.criteria) : [];
-				if (question.type === 'noul') answers[key] = { type: 'noul', noul: 0.05 };
+				// Targeting (tasker 106) defaults to "relevant", like the v1 prefilter.
+				if (question.type === 'noul')
+					answers[key] = { type: 'noul', noul: key.startsWith('target_') ? 0.9 : 0.05 };
 				else if (question.type === 'choice')
 					answers[key] = choice(
 						options,
@@ -703,6 +705,7 @@ describe('replay', () => {
 			at: '2026-09-01T14:51:30.000Z'
 		});
 		expect(scan.requests.map((request) => [request.name, request.source])).toEqual([
+			['target', 'live'],
 			['r1', 'live'],
 			['r2', 'live'],
 			['r3', 'live']
@@ -760,8 +763,8 @@ describe('replay', () => {
 			timeoutMs: 5_000
 		});
 		const again = await replayDataset({ dataset, jev: cached, model: MODEL });
-		expect(cached).toMatchObject({ hits: 3, misses: 0, liveCalls: 0 });
-		expect(decider.calls).toBe(3);
+		expect(cached).toMatchObject({ hits: 4, misses: 0, liveCalls: 0 });
+		expect(decider.calls).toBe(4);
 		expect(again.scans[0]!.entities).toEqual(scan.entities);
 
 		// Off: the requests are still planned, nothing is decided, like a failed live scan.
@@ -806,7 +809,7 @@ describe('replay', () => {
 				JSON.parse(readFileSync(join(warmDir, file), 'utf8'))
 			])
 		);
-		expect(Object.keys(jevCache)).toHaveLength(3);
+		expect(Object.keys(jevCache)).toHaveLength(4);
 		const fixture = join(temp, 'history.json');
 		writeFileSync(fixture, JSON.stringify({ ...dataset, jevCache }));
 
@@ -823,7 +826,7 @@ describe('replay', () => {
 		expect(printed).toContain('writes:   none');
 		expect(printed).toMatch(/AUROC 1\.000/);
 		const report = JSON.parse(readFileSync(join(out, 'report.json'), 'utf8'));
-		expect(report.jev).toMatchObject({ mode: 'cache', hits: 3, misses: 0, liveCalls: 0 });
+		expect(report.jev).toMatchObject({ mode: 'cache', hits: 4, misses: 0, liveCalls: 0 });
 		const scans = readFileSync(join(out, 'scans.jsonl'), 'utf8');
 		expect(scans).toContain('[redacted:');
 		expect(scans).not.toContain('now due Oct 3');

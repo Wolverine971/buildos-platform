@@ -56,7 +56,7 @@
 		onDeleteVoiceNote?: (groupId: string, noteId: string) => void;
 		onSelectSuggestion?: (text: string) => void;
 		onClientActionComplete?: (completion: AgentClientActionCompletion) => void | Promise<void>;
-		/** Freshness radar card "Draft in chat": pre-fill the composer with this text. */
+		/** Freshness radar card "Fix in chat": pre-fill the composer with this text. */
 		onDraftInChat?: (text: string) => void;
 		onReviewDeeper?: (card: FreshnessCardPayloadV1) => void;
 		/** Global chat "Looking in" chip: continue this conversation inside that project. */

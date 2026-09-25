@@ -14,6 +14,7 @@
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
 	import InboxProjectManagerBrief from '$lib/components/inbox/InboxProjectManagerBrief.svelte';
 	import InboxReviewDetails from '$lib/components/inbox/InboxReviewDetails.svelte';
+	import InboxFreshnessReviewItems from '$lib/components/inbox/InboxFreshnessReviewItems.svelte';
 	import { formatInboxAttentionSummary } from '$lib/components/inbox/inbox-presentation';
 	import type { VerifiedProjectSuggestionChangeSummary } from '@buildos/shared-agent-ops/proposal-context';
 	import type {
@@ -1226,6 +1227,11 @@
 															payload?.rationale ??
 															agent?.goal}
 													</p>
+												{/if}
+												{#if payload?.kind === 'freshness_update' && payload.preview?.review_items?.length}
+													<InboxFreshnessReviewItems
+														items={payload.preview.review_items}
+													/>
 												{/if}
 												{#if item.source_type === 'calendar_suggestion' && calendar}
 													<div class="mt-2 space-y-2">

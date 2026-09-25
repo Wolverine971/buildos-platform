@@ -973,4 +973,159 @@ describe('project loop generators', () => {
 			evidence_refs: [{ entity_type: 'document', entity_id: 'doc-1', title: 'Launch plan' }]
 		});
 	});
+
+	it('marks every cut and sends short fields whole, so a context cut never reads as a defect', async () => {
+		const goal =
+			'Plan backward from publication and write forward from the seed to complete, revise, and self-publish a 60,000-word nonfiction book in 100 days.';
+		const longDescription = `${'word '.repeat(120)}end`;
+		const ctx = {
+			...makeContext(),
+			goals: [{ name: 'Write the book', description: goal }],
+			documents: [{ ...makeContext().documents[0]!, description: longDescription }]
+		};
+		const { llm, getJSONResponse } = makeTrackedLlm({ suggestions: [] });
+
+		await generateDrift({ llm, ctx, userId: 'user-1', onUsage });
+
+		const call = getJSONResponse.mock.calls[0]![0];
+		expect(call.userPrompt).toContain(`- Write the book: ${goal}`);
+		expect(call.userPrompt).toMatch(/ word…/);
+		expect(call.systemPrompt).toContain('Text ending in "…" was shortened for this review');
+	});
+
+	it('gives the manager brief the current state, phases, and tasks, and keeps its next action', async () => {
+		const ctx: LoopContext = {
+			...makeContext(),
+			plans: [
+				{ name: 'Phase 1: Contract', state_key: 'done' },
+				{ name: 'Phase 2: Blueprint', state_key: 'active' },
+				{ name: 'Phase 7: Proof & Production', state_key: 'draft' }
+			],
+			startHere: {
+				currentState: '- Blueprint: first-pass outline drafted.\n- Draft: not started.',
+				decisions: null,
+				openQuestions: null
+			}
+		};
+		const { llm, getJSONResponse } = makeTrackedLlm({
+			brief: {
+				attention_level: 'decision',
+				next_best_action: 'Fill the Part IV evidence gaps in the blueprint',
+				bottom_line: 'The AI working doc is out of date.',
+				decision: {
+					question: 'Update the AI working doc to match the outline?',
+					recommendation: 'Yes.',
+					why_user_needed: 'It is your doc.',
+					options: [],
+					recommended_option_id: null,
+					recommended_suggestion_id: null,
+					candidate_ids: ['suggestion-1']
+				},
+				tensions_or_contradictions: [
+					{
+						summary: 'The working doc lists a decided question as open.',
+						candidate_ids: ['suggestion-1']
+					}
+				],
+				issues: []
+			}
+		});
+
+		const brief = await generateProjectManagerBrief({
+			llm,
+			ctx,
+			candidates: makeReviewCandidates(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		const prompt = getJSONResponse.mock.calls[0]![0];
+		expect(prompt.systemPrompt).toContain('"next_best_action": string|null');
+		expect(prompt.userPrompt).toContain('Draft: not started.');
+		expect(prompt.userPrompt).toContain('- Phase 2: Blueprint (state=active)');
+		expect(prompt.userPrompt).toContain('Publish launch announcement');
+		expect(brief.next_best_action).toBe('Fill the Part IV evidence gaps in the blueprint');
+		// Legacy fields follow the brief's own judgment, never task titles.
+		expect(brief.open_decisions).toEqual(['Update the AI working doc to match the outline?']);
+		expect(brief.contradictions_or_drift).toEqual([
+			'The working doc lists a decided question as open.'
+		]);
+		expect(brief.open_decisions).not.toContain('Publish launch announcement');
+	});
+
+	it('never promotes a recently touched task to next action or decision without a model', () => {
+		const brief = buildHeuristicProjectManagerBrief({
+			ctx: makeContext(),
+			candidates: makeReviewCandidates()
+		});
+		expect(brief.next_best_action).toBeNull();
+		expect(brief.open_decisions).not.toContain('Publish announcement draft');
+		expect(brief.open_decisions).not.toContain('Publish launch announcement');
+	});
+
+	it('shows drift both sides and accepts citations of evidence outside the recent-document window', async () => {
+		const olderDocId = '00000000-0000-4000-8000-0000000000aa';
+		const { llm, getJSONResponse } = makeTrackedLlm({
+			suggestions: [
+				{
+					title: 'AI working doc still lists a decided question as open',
+					rationale: 'The outline decided AI is the why-now; the working doc still asks.',
+					evidence_refs: [
+						{
+							entity_type: 'document',
+							entity_id: olderDocId,
+							reason: 'Stale open question'
+						},
+						{
+							entity_type: 'document',
+							entity_id: 'doc-1',
+							reason: 'Records the decision'
+						}
+					],
+					operations: []
+				}
+			]
+		});
+		const evidence = {
+			since: '2026-09-11T00:00:00.000Z',
+			changes: [
+				{
+					documentId: 'doc-1',
+					documentTitle: 'Launch plan',
+					heading: 'Decisions',
+					change: 'edited' as const,
+					text: '- AI is the why-now',
+					changedAt: '2026-09-24T00:00:00.000Z'
+				}
+			],
+			related: [
+				{
+					kind: 'document',
+					id: olderDocId,
+					title: 'AI Pillar — Working Doc',
+					excerpts: [{ heading: 'Open questions', text: "- AI's role — undecided" }]
+				}
+			],
+			source: 'jev' as const,
+			ranker: null,
+			fallbackReason: null
+		};
+
+		const suggestions = await generateDrift({
+			llm,
+			ctx: makeContext(),
+			userId: 'user-1',
+			evidence,
+			onUsage
+		});
+
+		const prompt = getJSONResponse.mock.calls[0]![0];
+		expect(prompt.systemPrompt).toContain('Most drift is a change that did not propagate');
+		expect(prompt.userPrompt).toContain('RECENT CHANGES');
+		expect(prompt.userPrompt).toContain("- AI's role — undecided");
+		expect(suggestions).toHaveLength(1);
+		const refs = suggestions[0]?.evidence_refs ?? [];
+		expect(refs.map((ref) => ref.entity_id)).toEqual([olderDocId, 'doc-1']);
+		expect(refs[0]?.title).toBe('AI Pillar — Working Doc');
+	});
 });

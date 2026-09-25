@@ -9,6 +9,8 @@
 
 import { FRESHNESS_POLICY_VERSION } from '@buildos/shared-types';
 
+// The identifier keeps its v1 name to avoid churn; `version` carries the live
+// policy version (v2 added targeting, dig, decisions and rollup, tasker 106).
 export const FRESHNESS_POLICY_V1 = Object.freeze({
 	version: FRESHNESS_POLICY_VERSION,
 	/** Informational: the SQL trigger owns the debounce (60s quiet, 10m cap). */
@@ -70,6 +72,57 @@ export const FRESHNESS_POLICY_V1 = Object.freeze({
 		offTrackBelow: 0.75,
 		atRiskBelow: 1.5,
 		doneHintAtOrAbove: 2.5
+	}),
+	/**
+	 * Recorded START HERE decisions count as news (tasker 106): a record last
+	 * changed before a decision may now contradict it.
+	 */
+	decisions: Object.freeze({ max: 20, textChars: 280 }),
+	/**
+	 * Jev targeting (hop 1) replaces the word-overlap prefilter: one yes/no per
+	 * open record, "would keeping this current need a revision because of what
+	 * changed?". The lexical rank only orders the pool when it is over budget,
+	 * and is the fallback when Jev fails. Probe 2026-09-24 on the book: stale
+	 * records 0.78/0.90, everything else <=0.26.
+	 */
+	targeting: Object.freeze({
+		maxPool: 80,
+		maxPoolDocuments: 20,
+		maxHeadingsPerDocument: 30,
+		headingChars: 80,
+		floor: 0.35,
+		relativeToTop: 0.5,
+		maxSelected: 24,
+		timeoutMs: 6_000
+	}),
+	/**
+	 * Section dig (hop 2): each targeted document's own sections are judged
+	 * against the news, so a doc is flagged by what it says, not its summary.
+	 * Probe 2026-09-24: stale sections 0.70-0.88, current sections <=0.27.
+	 */
+	dig: Object.freeze({
+		maxDocuments: 4,
+		maxSectionsPerDocument: 24,
+		sectionChars: 1_500,
+		bodyChars: 60_000,
+		sectionFloor: 0.35,
+		maxConcernSections: 3
+	}),
+	/**
+	 * Roll-up (tasker 106). score = max(decayed peak, 1 - prod(1 - discount * p_i * decay_i))
+	 * over independent observations (distinct evidence keys) at or above `floor`.
+	 * Calibrated against the book ledger: the blueprint task (0.50, 0.42, 0.50,
+	 * 0.41 over two days) crosses `bar` on its 4th observation; a one-off 0.5
+	 * never does; a single observation at `bar` surfaces at once, as in v1.
+	 */
+	rollup: Object.freeze({
+		floor: 0.35,
+		bar: 0.6,
+		discount: 0.5,
+		halfLifeDays: 7,
+		expireDays: 14,
+		maxEvidence: 12,
+		inboxMaxItems: 5
 	}),
 	inbox: Object.freeze({ retireMin: 0.9, markMin: 0.6, maxRetiredPerScan: 3 }),
 	bundle: Object.freeze({ maxOperations: 5, ttlHours: 72, carryForwardDays: 7 }),

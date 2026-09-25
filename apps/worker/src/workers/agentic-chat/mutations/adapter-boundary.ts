@@ -1,3 +1,4 @@
+// apps/worker/src/workers/agentic-chat/mutations/adapter-boundary.ts
 import {
 	type JsonObject,
 	type JsonValue,
@@ -141,12 +142,22 @@ export function assertMutationReceiptSize(receipt: JsonObject, toolName: string)
 
 export function throwGatewayResultFailure(
 	toolName: string,
-	error: { code?: string; message?: string } | null | undefined
+	error: { code?: string; message?: string; details?: Record<string, unknown> } | null | undefined
 ): never {
 	const code = error?.code ?? 'INTERNAL';
 	const message = error?.message ?? `${toolName} gateway failed`;
 	if (KNOWN_PRECOMMIT_GATEWAY_CODES.has(code)) {
 		throw knownFailure(`${toolName}_${code.toLowerCase()}`, message);
+	}
+	// The gateway sets this only when the op's single write was aborted by the
+	// database for a transient reason (deadlock, lock or statement timeout).
+	if (error?.details?.write_rolled_back === true) {
+		throw new AgenticChatMutationAdapterError(
+			'known_failed',
+			`${toolName}_database_busy`,
+			`The database was busy and rolled this write back, so nothing was saved (${message}). The same call can be made again.`,
+			{ retryable: true }
+		);
 	}
 	throw uncertainFailure(`${toolName}_outcome_uncertain`, message);
 }

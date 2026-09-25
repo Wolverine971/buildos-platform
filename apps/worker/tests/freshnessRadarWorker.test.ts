@@ -83,6 +83,15 @@ class MemoryDb {
 		],
 		freshness_radar_signals: [
 			{ name: 'pending_session', key: (r) => (r.status === 'pending' ? r.session_id : null) }
+		],
+		freshness_concerns: [
+			{
+				name: 'freshness_concerns_one_open',
+				key: (r) =>
+					r.status === 'open'
+						? `${r.project_id}:${r.user_id}:${r.subject_kind}:${r.subject_id}`
+						: null
+			}
 		]
 	};
 
@@ -655,7 +664,10 @@ function scriptedJev(overrides: AnswerOverrides, options: { fail?: string } = {}
 					answers[key] = overrides[key];
 					continue;
 				}
-				if (question.type === 'noul') answers[key] = { type: 'noul', noul: 0.05 };
+				// Targeting (tasker 106) defaults to "relevant", like the v1 prefilter
+				// keeping every candidate; every other yes/no defaults to "no".
+				if (question.type === 'noul')
+					answers[key] = { type: 'noul', noul: key.startsWith('target_') ? 0.9 : 0.05 };
 				else if (question.type === 'choice') {
 					const options = Object.keys(question.criteria);
 					const chosen = options.includes('no_change_needed')
@@ -696,7 +708,8 @@ function scriptedJev(overrides: AnswerOverrides, options: { fail?: string } = {}
 
 function entityIndex(calls: Array<{ state: any }>, title: string): number {
 	const r1 = calls.find((call) => Array.isArray(call.state.entities));
-	return r1!.state.entities.findIndex((entity: { title: string }) => entity.title === title);
+	if (!r1) return -1; // the targeting call comes first
+	return r1.state.entities.findIndex((entity: { title: string }) => entity.title === title);
 }
 
 const choice = (chosen: string, probability: number, rest: Record<string, number> = {}) => ({
@@ -967,10 +980,12 @@ describe('freshness_radar_scan job', () => {
 			status: 'failed',
 			reason: expect.stringContaining('jev_timeout')
 		});
+		// Targeting failing only degrades to the lexical top-N; the main batch
+		// (r1, dig, r2, r3) failing fails the scan closed.
 		expect(db.table('freshness_scans')[0]).toMatchObject({
 			status: 'failed',
 			info_cursor_at: null,
-			jev_requests: 3
+			jev_requests: 5
 		});
 		expect(db.table('freshness_flags')).toHaveLength(0);
 		expect(db.table('chat_messages').filter(isFreshnessCardRow)).toHaveLength(0);
@@ -1070,7 +1085,7 @@ describe('freshness_radar_scan job', () => {
 			chat_session_id: SESSION,
 			risk_tier: 1,
 			reversible: true,
-			title: 'Update 1 out-of-date item',
+			title: '1 thing looks out of date',
 			why_now: 'From your update on 2026-09-18 · 1 task',
 			operations: [
 				{
@@ -1766,7 +1781,7 @@ describe('draft bundle supersede', () => {
 			},
 			carriedOp
 		]);
-		expect(bundles[0]!.title).toBe('Update 2 out-of-date items');
+		expect(bundles[0]!.title).toBe('2 things look out of date');
 		expect(db.table('freshness_flags').find((row) => row.id === 'flag-carry')).toMatchObject({
 			suggestion_id: bundles[0]!.id,
 			status: 'open'
@@ -1836,5 +1851,204 @@ describe('bundle verification against the shared verifier', () => {
 			checkModelAlignment: true
 		});
 		expect(verified.ok).toBe(true);
+	});
+});
+
+describe('roll-up (tasker 106)', () => {
+	const PLAN_BODY = [
+		'# Launch plan',
+		'',
+		'## Venue',
+		'',
+		'Book a venue downtown.',
+		'',
+		'## Open questions',
+		'',
+		'- Which venue? Undecided.',
+		''
+	].join('\n');
+	const START_BODY = [
+		'# Pop-up store',
+		'',
+		'## Decisions',
+		'',
+		'- **Venue picked** — the Hall on Main. _(2026-09-18)_',
+		''
+	].join('\n');
+
+	function seedRollup(db: MemoryDb) {
+		seedStore(db);
+		const plan = db.table('onto_documents').find((row) => row.id === D_PLAN)!;
+		plan.content = PLAN_BODY;
+		const start = db.table('onto_documents').find((row) => row.id === D_START)!;
+		start.content = START_BODY;
+		// No obsolete inbox item and no other suggestion in these scans.
+		db.tables.set('inbox_items', []);
+		db.tables.set('project_suggestions', []);
+	}
+
+	/** Only the "Open questions" section of the plan is out of date. */
+	function staleOpenQuestions(calls: () => Array<{ state: any }>): AnswerOverrides {
+		const resolve = (): Record<string, unknown> => {
+			const out: Record<string, unknown> = { status_news: { type: 'noul', noul: 0.9 } };
+			const dig = calls().find((call) => Array.isArray(call.state.sections));
+			const index =
+				dig?.state.sections.findIndex(
+					(section: { heading: string }) => section.heading === 'Open questions'
+				) ?? -1;
+			if (index >= 0) out[`section_${index}`] = { type: 'noul', noul: 0.85 };
+			return out;
+		};
+		return new Proxy(
+			{},
+			{
+				has: (_target, key) => typeof key === 'string' && key in resolve(),
+				get: (_target, key) => (typeof key === 'string' ? resolve()[key] : undefined)
+			}
+		);
+	}
+
+	function nextSignal(db: MemoryDb, n: number, text: string, at: string) {
+		const signalId = `55555555-5555-4555-8555-00000000000${n}`;
+		db.seed('chat_messages', [
+			{
+				id: `m-${n}`,
+				session_id: SESSION,
+				user_id: USER,
+				role: 'user',
+				content: text,
+				metadata: {},
+				created_at: at
+			}
+		]);
+		db.seed('chat_turn_runs', [
+			{
+				id: `turn-${n}`,
+				session_id: SESSION,
+				user_message_id: `m-${n}`,
+				status: 'completed',
+				created_at: at
+			}
+		]);
+		db.seed('freshness_radar_signals', [
+			{
+				id: signalId,
+				session_id: SESSION,
+				user_id: USER,
+				status: 'pending',
+				project_id_hints: [PROJECT],
+				first_turn_at: at,
+				last_turn_at: at,
+				due_at: at,
+				queue_job_id: `job-${n}`
+			}
+		]);
+		return job({
+			queueRowId: `job-${n}`,
+			data: { signalId, sessionId: SESSION, userId: USER }
+		});
+	}
+
+	it('a stale doc surfaces once as one inbox item, then resolves when its section is fixed', async () => {
+		const db = new MemoryDb();
+		seedRollup(db);
+		const jev = scripted(staleOpenQuestions);
+		const { deps } = makeDeps(db, jev.decider);
+
+		// Scan 1: the recorded decision makes "Open questions" stale.
+		await processFreshnessRadarScanJob(job(), deps);
+		const targeting = jev.calls[0]!;
+		expect(Object.keys(targeting.questions).every((key) => key.startsWith('target_'))).toBe(
+			true
+		);
+		expect(targeting.state.recorded_decisions).toEqual([
+			{ id: 'd1', recorded: '2026-09-18', text: '**Venue picked** — the Hall on Main.' }
+		]);
+		const plan = targeting.state.records.find(
+			(record: { title: string }) => record.title === 'Launch plan'
+		);
+		expect(plan).toMatchObject({ headings: ['Venue', 'Open questions'] }); // the bare H1 says nothing itself
+		expect(plan.newer_decisions).toEqual(['d1']);
+
+		const concerns = () => db.table('freshness_concerns');
+		expect(concerns()).toHaveLength(1);
+		expect(concerns()[0]).toMatchObject({
+			subject_kind: 'document',
+			subject_id: D_PLAN,
+			status: 'open',
+			score: 0.85,
+			evidence_count: 1,
+			detail: {
+				changeKind: 'content_outdated',
+				sections: [
+					{ anchor: 'open-questions', heading: 'Open questions', probability: 0.85 }
+				],
+				decisions: [
+					{ text: '**Venue picked** — the Hall on Main.', recorded: '2026-09-18' }
+				]
+			}
+		});
+		expect(concerns()[0]!.surfaced_at).toBeTruthy();
+
+		// One inbox item, no operations: fixed in chat, never approved blind.
+		const bundles = () =>
+			db.table('project_suggestions').filter((row) => row.kind === 'freshness_update');
+		expect(bundles()).toHaveLength(1);
+		const reason = 'A section looks older than decisions you recorded since: “Open questions”.';
+		expect(bundles()[0]).toMatchObject({
+			status: 'pending',
+			title: '1 thing looks out of date',
+			operations: [],
+			why_now: 'From your update on 2026-09-18 · 1 document',
+			evidence_refs: [{ entity_type: 'document', entity_id: D_PLAN, title: 'Launch plan' }],
+			preview: {
+				review_items: [{ entity_type: 'document', entity_id: D_PLAN, reason }]
+			}
+		});
+		expect(bundles()[0]!.preview.review_items[0].fix_in_chat_prompt).toBe(
+			'In "Launch plan": This section looks out of date: "Open questions". Since then I decided: Venue picked — the Hall on Main. (2026-09-18). Update just that section to match, and leave the rest of the doc as is.'
+		);
+		expect(deps.draftDeps.verify).not.toHaveBeenCalled(); // nothing executable to verify
+
+		const cardRows = () => db.table('chat_messages').filter(isFreshnessCardRow);
+		expect(cardRows()).toHaveLength(1);
+		const card = parseFreshnessCardPayloadV1(cardRows()[0]!.metadata.card)!;
+		expect(card.bundle).toBeNull();
+		expect(card.items).toEqual([
+			expect.objectContaining({
+				entity: { kind: 'document', id: D_PLAN, title: 'Launch plan' },
+				disposition: 'surfaced',
+				reason,
+				draftInChatPrompt: expect.stringContaining('Update just that section')
+			})
+		]);
+
+		// Scan 2: the same evidence again. One concern, no second card, same inbox item.
+		await processFreshnessRadarScanJob(
+			nextSignal(db, 2, 'Worked on the flyer copy today.', '2026-09-18T14:55:00.000Z'),
+			deps
+		);
+		expect(concerns()).toHaveLength(1);
+		expect(concerns()[0]).toMatchObject({ status: 'open', evidence_count: 1, seen_count: 2 });
+		expect(cardRows()).toHaveLength(1);
+		expect(bundles()).toHaveLength(1);
+		expect(bundles()[0]!.status).toBe('pending');
+
+		// Scan 3: the section was fixed. The concern closes and the inbox item goes away.
+		const doc = db.table('onto_documents').find((row) => row.id === D_PLAN)!;
+		doc.content = PLAN_BODY.replace('- Which venue? Undecided.', '- Venue: the Hall on Main.');
+		doc.updated_at = '2026-09-18T14:56:00.000Z';
+		await processFreshnessRadarScanJob(
+			nextSignal(db, 3, 'Printed the flyers for the opening.', '2026-09-18T14:57:00.000Z'),
+			deps
+		);
+		expect(concerns()[0]).toMatchObject({
+			status: 'resolved',
+			close_reason: 'resolved_by_update'
+		});
+		expect(bundles()).toHaveLength(1);
+		expect(bundles()[0]).toMatchObject({ status: 'superseded', result: { ok: false } });
+		expect(bundles()[0]!.result).toHaveProperty('superseded_by_freshness_rollup');
+		expect(cardRows()).toHaveLength(1);
 	});
 });

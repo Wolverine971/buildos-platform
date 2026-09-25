@@ -44,7 +44,8 @@ const SQL_FILES = [
 	'supabase/migrations/20260918200000_freshness_radar_ledger.sql',
 	'supabase/migrations/20260918200100_freshness_radar_queue_type.sql',
 	'supabase/migrations/20260918200200_freshness_radar_suggestion_inbox_columns.sql',
-	'supabase/migrations/20260918200300_freshness_radar_turn_signal_trigger.sql'
+	'supabase/migrations/20260918200300_freshness_radar_turn_signal_trigger.sql',
+	'supabase/migrations/20260925030000_freshness_radar_concerns.sql'
 ];
 
 // Column-shaped stubs (database.types.ts shapes) for tables the fixture lacks.
@@ -623,7 +624,9 @@ function scriptedJev(): JevDecider & { requests: number } {
 			const answers: Record<string, unknown> = {};
 			for (const [key, question] of Object.entries(req.questions)) {
 				const options = question.type === 'choice' ? Object.keys(question.criteria) : [];
-				if (question.type === 'noul') answers[key] = { type: 'noul', noul: 0.05 };
+				// Targeting (tasker 106) defaults to "relevant", like the v1 prefilter.
+				if (question.type === 'noul')
+					answers[key] = { type: 'noul', noul: key.startsWith('target_') ? 0.9 : 0.05 };
 				else if (question.type === 'choice')
 					answers[key] = choice(
 						options,
@@ -859,7 +862,7 @@ describePostgres('freshness radar on a disposable PostgreSQL', () => {
 		expect(result.scans, logs.join('\n')).toEqual([
 			{ projectId: PROJECT, scanId: expect.any(String), status: 'completed' }
 		]);
-		expect(jev.requests).toBe(3);
+		expect(jev.requests).toBe(5); // target, r1, dig, r2, r3
 
 		const signal = await one(`SELECT * FROM public.freshness_radar_signals WHERE id = $1`, [
 			SIGNAL
@@ -873,8 +876,8 @@ describePostgres('freshness radar on a disposable PostgreSQL', () => {
 			trigger: 'chat_turn',
 			signal_id: SIGNAL,
 			trigger_session_id: SESSION,
-			jev_requests: 3,
-			policy_version: 'freshness_policy_v1'
+			jev_requests: 5,
+			policy_version: 'freshness_policy_v2'
 		});
 		expect(new Date(scan.info_cursor_at).toISOString()).toBe('2026-09-18T14:50:00.000Z');
 		expect(scan.counts).toMatchObject({
@@ -919,7 +922,7 @@ describePostgres('freshness radar on a disposable PostgreSQL', () => {
 			chat_session_id: SESSION,
 			risk_tier: 1,
 			reversible: true,
-			title: 'Update 1 out-of-date item',
+			title: '1 thing looks out of date',
 			operations: [
 				{
 					tool: 'update_onto_task',
@@ -939,7 +942,7 @@ describePostgres('freshness radar on a disposable PostgreSQL', () => {
 			source_type: 'project_suggestion',
 			audience: 'project_members',
 			status: 'pending',
-			title: 'Update 1 out-of-date item'
+			title: '1 thing looks out of date'
 		});
 		expect(bundleInbox.source_status).toMatch(/^proposal_verified/);
 

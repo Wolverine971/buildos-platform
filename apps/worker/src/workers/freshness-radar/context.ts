@@ -8,6 +8,7 @@
 import { createHash } from 'node:crypto';
 import type { FreshnessSubjectSnapshot } from '@buildos/shared-types';
 import type { AutoApplyGate, SuppressionReason } from './combine';
+import { type RecordedDecision, decisionsSince, recordedDecisionsFromStartHere } from './decisions';
 import {
 	type FreshnessDateMention,
 	type SourcedSentence,
@@ -32,20 +33,30 @@ import type { FreshnessPolicyV1 } from './freshnessPolicy';
 import {
 	type FreshnessCandidate,
 	type PrefilteredCandidate,
-	prefilterCandidates
+	prefilterCandidates,
+	rankCandidatePool
 } from './prefilter';
 import type {
+	JevDecisionView,
 	JevEntityView,
 	JevInboxItemView,
 	JevNewInformation,
 	JevProjectState,
+	JevTargetRecordView,
 	JevTrackSubjectView
 } from './questions';
+import { type DocumentSegment, documentSegments } from './sections';
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 
 export const START_HERE_DOCUMENT_TYPE_KEY = 'document.context.project';
+/** Capture's append-only log: BuildOS writes it, so it is never "out of date". */
+export const THINKING_LOG_DOCUMENT_TYPE_KEY = 'document.context.thinking_log';
+const SYSTEM_DOCUMENT_TYPE_KEYS = new Set([
+	START_HERE_DOCUMENT_TYPE_KEY,
+	THINKING_LOG_DOCUMENT_TYPE_KEY
+]);
 
 const OPEN_TASK_STATES = new Set(['todo', 'in_progress', 'blocked']);
 const OPEN_GOAL_STATES = new Set(['draft', 'active']);
@@ -104,8 +115,19 @@ export type FreshnessScanContext = {
 	dateMentions: FreshnessDateMention[];
 	candidatesTotal: number;
 	excludedCount: number;
+	/** The lexical top-N: the evaluated set only when Jev targeting fails. */
 	prefiltered: PrefilteredCandidate[];
+	/** Every eligible candidate Jev targeting rates (tasker 106), forced keys first. */
+	pool: PrefilteredCandidate[];
+	/** Views for every pool entity (R1 reuses them for the selected ones). */
 	entityViews: Map<string, JevEntityView>;
+	/** Targeting views: entity views plus document headings. */
+	targetViews: Map<string, JevTargetRecordView>;
+	/** Recorded START HERE decisions, newest first (tasker 106). */
+	decisions: RecordedDecision[];
+	decisionViews: JevDecisionView[];
+	/** Own-text segments of pool documents (and forced documents), by document id. */
+	documentSegments: Map<string, DocumentSegment[]>;
 	changedInWindow: Set<string>;
 	trackSubjects: FreshnessTrackSubject[];
 	inboxSubjects: FreshnessInboxSubject[];
@@ -115,6 +137,15 @@ export type FreshnessScanContext = {
 	entitiesByKey: Map<string, FreshnessCandidate>;
 	skipReason: string | null;
 };
+
+/** Archived, or in a terminal state: nothing left to keep current (roll-up close check). */
+export function isClosedCandidate(candidate: FreshnessCandidate): boolean {
+	if (candidate.archivedAt) return true;
+	if (candidate.kind === 'task') return !OPEN_TASK_STATES.has(candidate.state);
+	if (candidate.kind === 'goal') return !OPEN_GOAL_STATES.has(candidate.state);
+	if (candidate.kind === 'milestone') return !OPEN_MILESTONE_STATES.has(candidate.state);
+	return candidate.state === 'archived';
+}
 
 export function sha256(value: string | null | undefined): string | null {
 	if (value === null || value === undefined) return null;
@@ -164,7 +195,8 @@ function fromTask(row: FreshnessTaskRow, timeZone: string | null): FreshnessCand
 		createdAt: row.created_at,
 		partOf: null,
 		summary: null,
-		props: asRecord(row.props)
+		props: asRecord(row.props),
+		archivedAt: row.archived_at
 	};
 }
 
@@ -185,7 +217,8 @@ function fromGoal(row: FreshnessGoalRow, timeZone: string | null): FreshnessCand
 		createdAt: row.created_at,
 		partOf: null,
 		summary: null,
-		props: asRecord(row.props)
+		props: asRecord(row.props),
+		archivedAt: row.archived_at
 	};
 }
 
@@ -206,7 +239,8 @@ function fromMilestone(row: FreshnessMilestoneRow, timeZone: string | null): Fre
 		createdAt: row.created_at,
 		partOf: null,
 		summary: null,
-		props: asRecord(row.props)
+		props: asRecord(row.props),
+		archivedAt: row.archived_at
 	};
 }
 
@@ -227,7 +261,8 @@ function fromDocument(row: FreshnessDocumentRow): FreshnessCandidate {
 		createdAt: row.created_at,
 		partOf: null,
 		summary: row.description,
-		props: asRecord(row.props)
+		props: asRecord(row.props),
+		archivedAt: row.archived_at
 	};
 }
 
@@ -541,6 +576,8 @@ export async function buildFreshnessScanContext(params: {
 	userId: string;
 	/** Sessions to include even without a project context row (the trigger session). */
 	extraSessionIds: readonly string[];
+	/** `${kind}:${id}` of subjects with an open roll-up concern: always in the targeting pool. */
+	forcedKeys?: ReadonlySet<string>;
 	now: Date;
 	policy: FreshnessPolicyV1;
 }): Promise<FreshnessScanContext> {
@@ -581,7 +618,12 @@ export async function buildFreshnessScanContext(params: {
 		candidatesTotal: 0,
 		excludedCount: 0,
 		prefiltered: [],
+		pool: [],
 		entityViews: new Map(),
+		targetViews: new Map(),
+		decisions: [],
+		decisionViews: [],
+		documentSegments: new Map(),
 		changedInWindow: new Set(),
 		trackSubjects: [],
 		inboxSubjects: [],
@@ -704,7 +746,7 @@ export async function buildFreshnessScanContext(params: {
 		if (candidate.kind === 'task') return OPEN_TASK_STATES.has(candidate.state);
 		if (candidate.kind === 'goal') return OPEN_GOAL_STATES.has(candidate.state);
 		if (candidate.kind === 'milestone') return OPEN_MILESTONE_STATES.has(candidate.state);
-		if (raw?.type_key === START_HERE_DOCUMENT_TYPE_KEY) return false;
+		if (raw?.type_key && SYSTEM_DOCUMENT_TYPE_KEYS.has(raw.type_key)) return false;
 		return candidate.state !== 'archived';
 	};
 	const open = all.filter(isOpen);
@@ -777,41 +819,82 @@ export async function buildFreshnessScanContext(params: {
 		for (const neighbor of graph.neighbors.get(changed) ?? []) linkedToChanged.add(neighbor);
 	}
 	const windowText = messages.map((message) => message.text).join('\n');
-	const prefiltered = messages.length
-		? prefilterCandidates({
-				candidates: eligible,
-				windowText,
-				dateMentions,
-				linkedToChanged,
-				today,
-				policy
+	const scoreParams = {
+		candidates: eligible,
+		windowText,
+		dateMentions,
+		linkedToChanged,
+		today,
+		policy
+	};
+	const prefiltered = messages.length ? prefilterCandidates(scoreParams) : [];
+	const pool = messages.length
+		? rankCandidatePool({
+				...scoreParams,
+				fallback: prefiltered,
+				forcedKeys: params.forcedKeys ?? new Set()
 			})
 		: [];
 
-	// Document summaries: description, or the head of content for the survivors.
-	const needContent = prefiltered
-		.filter((entry) => entry.candidate.kind === 'document' && !entry.candidate.description)
+	// Bodies: START HERE (recorded decisions) and every pool document (dig + headings).
+	const startHere = entities.documents
+		.filter((row) => row.type_key === START_HERE_DOCUMENT_TYPE_KEY && !row.archived_at)
+		.sort((a, b) =>
+			String(b.updated_at ?? b.created_at).localeCompare(String(a.updated_at ?? a.created_at))
+		)[0];
+	const poolDocumentIds = pool
+		.filter((entry) => entry.candidate.kind === 'document')
 		.map((entry) => entry.candidate.id);
-	const heads = needContent.length
-		? await port.loadDocumentContentHeads(needContent, policy.prefilter.docSummaryChars)
+	const bodies = messages.length
+		? await port.loadDocumentBodies(
+				[...(startHere ? [startHere.id] : []), ...poolDocumentIds],
+				policy.dig.bodyChars
+			)
 		: new Map<string, string>();
+	const decisions = startHere
+		? recordedDecisionsFromStartHere(bodies.get(startHere.id), policy.decisions)
+		: [];
+	const decisionViews: JevDecisionView[] = decisions.map((decision) => ({
+		id: decision.id,
+		recorded: decision.recorded,
+		text: decision.text
+	}));
+
+	const segmentsByDocument = new Map<string, DocumentSegment[]>();
 	const entityViews = new Map<string, JevEntityView>();
-	for (const { candidate } of prefiltered) {
+	const targetViews = new Map<string, JevTargetRecordView>();
+	for (const { candidate } of pool) {
+		const key = entityKey(candidate.kind, candidate.id);
 		if (candidate.kind === 'document') {
+			const body = bodies.get(candidate.id) ?? null;
 			candidate.summary =
-				(candidate.description ?? heads.get(candidate.id) ?? null)?.slice(
+				(candidate.description ?? body?.replace(/\s+/g, ' ').trim() ?? null)?.slice(
 					0,
 					policy.prefilter.docSummaryChars
 				) ?? null;
+			segmentsByDocument.set(
+				candidate.id,
+				documentSegments(body, { sectionChars: policy.dig.sectionChars })
+			);
 		}
-		entityViews.set(
-			entityKey(candidate.kind, candidate.id),
-			entityView(candidate, now, timeZone, policy)
-		);
+		const view = entityView(candidate, now, timeZone, policy, decisions);
+		entityViews.set(key, view);
+		const headings =
+			candidate.kind === 'document'
+				? (segmentsByDocument.get(candidate.id) ?? [])
+						.filter((segment) => segment.anchor !== null)
+						.slice(0, policy.targeting.maxHeadingsPerDocument)
+						.map((segment) =>
+							Array.from(segment.heading)
+								.slice(0, policy.targeting.headingChars)
+								.join('')
+						)
+				: [];
+		targetViews.set(key, headings.length ? { ...view, headings } : view);
 	}
 
 	// Auto-apply gate facts for task candidates only.
-	const taskIds = prefiltered
+	const taskIds = pool
 		.filter((entry) => entry.candidate.kind === 'task')
 		.map((entry) => entry.candidate.id);
 	const [legacyCalendar, assignees, autoApplied24h] = await Promise.all([
@@ -837,7 +920,7 @@ export async function buildFreshnessScanContext(params: {
 			candidate.kind === 'goal' || candidate.kind === 'milestone'
 	);
 	const prefilterRank = new Map(
-		prefiltered.map((entry) => [
+		pool.map((entry) => [
 			entityKey(entry.candidate.kind, entry.candidate.id),
 			entry.features.rank
 		])
@@ -921,7 +1004,7 @@ export async function buildFreshnessScanContext(params: {
 
 	const skipReason = !messages.length
 		? 'no_window_text'
-		: !prefiltered.length && !trackSubjects.length && !inboxSubjects.length
+		: !pool.length && !trackSubjects.length && !inboxSubjects.length
 			? 'no_candidates'
 			: null;
 
@@ -936,7 +1019,12 @@ export async function buildFreshnessScanContext(params: {
 		candidatesTotal: open.length,
 		excludedCount: open.length - eligible.length,
 		prefiltered,
+		pool,
 		entityViews,
+		targetViews,
+		decisions,
+		decisionViews,
+		documentSegments: segmentsByDocument,
 		changedInWindow,
 		trackSubjects,
 		inboxSubjects,
@@ -958,13 +1046,23 @@ export function entityView(
 	candidate: FreshnessCandidate,
 	now: Date,
 	timeZone: string | null,
-	policy: FreshnessPolicyV1
+	policy: FreshnessPolicyV1,
+	decisions: readonly RecordedDecision[] = []
 ): JevEntityView {
+	const changedCivil = candidate.updatedAt
+		? civilDateInZone(candidate.updatedAt, timeZone)
+		: null;
+	const phrase = relativeAgePhrase(candidate.updatedAt, now, timeZone);
 	const view: JevEntityView = {
 		kind: candidate.kind,
 		title: candidate.title,
 		state: candidate.state,
-		last_changed: relativeAgePhrase(candidate.updatedAt, now, timeZone)
+		last_changed: changedCivil
+			? phrase
+				? `${changedCivil} (${phrase})`
+				: changedCivil
+			: phrase,
+		newer_decisions: decisionsSince(decisions, changedCivil).map((decision) => decision.id)
 	};
 	if (candidate.dueCivil) view.due = candidate.dueCivil;
 	if (candidate.startCivil) view.start = candidate.startCivil;

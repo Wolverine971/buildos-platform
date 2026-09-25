@@ -22,10 +22,18 @@ import type {
 	ProposedSuggestion
 } from '@buildos/shared-types';
 import { parseProjectGraphContext } from '@buildos/shared-types';
+import { JevClient, LLMUsageLogger } from '@buildos/smart-llm';
+import {
+	START_HERE_DOCUMENT_TYPE_KEY,
+	readStartHereAuthoredSections
+} from '@buildos/shared-agent-ops/ontology/start-here';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
-import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
+import {
+	PROJECT_LOOPS_ENABLED,
+	PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED
+} from '../../config/projectLoops';
 import { logWorkerError } from '../../lib/errorLogger';
 import { PermanentQueueError, classifyQueueError } from '../../lib/queueErrors';
 import { queueConfig } from '../../config/queueConfig';
@@ -34,6 +42,7 @@ import {
 	type LoopContext,
 	type LoopDocument,
 	type LoopPriorDecision,
+	type LoopStartHere,
 	type LoopTask,
 	type ProjectReviewSynthesisCandidate,
 	type UsageEvent,
@@ -74,6 +83,12 @@ import {
 } from './auditEnqueue';
 import { enqueueProjectLoop } from './enqueue';
 import { type SkippedLens, classifyDetectorFailure } from './detectorFailure';
+import {
+	type DriftEvidenceClient,
+	type ProjectDriftEvidence,
+	loadProjectDriftEvidence
+} from './driftEvidence';
+import { PROJECT_REVIEW_CLIPPED_TEXT_RULE } from './promptText';
 
 function isProjectAuditTriggerReason(
 	value: ProjectLoopJobMetadata['triggerReason']
@@ -517,7 +532,8 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	);
 	const goalNamesByTaskId = new Map<string, Set<string>>();
 	for (const edge of rawEdges) {
-		if (edge?.rel !== 'supports_goal') continue;
+		// Tasks reach goals as task→supports_goal→goal or goal→has_task→task.
+		if (edge?.rel !== 'supports_goal' && edge?.rel !== 'has_task') continue;
 		const taskId =
 			edge.src_kind === 'task' ? edge.src_id : edge.dst_kind === 'task' ? edge.dst_id : null;
 		const goalId =
@@ -562,8 +578,62 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 		documents,
 		docStructureSummary: summarizeProjectLoopDocTree(projectRow.doc_structure, titleById),
 		tasks,
-		priorDecisions
+		priorDecisions,
+		plans: [...graph.plans]
+			.sort((a, b) => (parseDateMs(a.created_at) ?? 0) - (parseDateMs(b.created_at) ?? 0))
+			.slice(0, 20)
+			.map((plan) => ({
+				name: plan.name ?? 'Untitled plan',
+				state_key: plan.state_key ?? null
+			})),
+		startHere: await loadLoopStartHere(projectId)
 	};
+}
+
+/** START HERE's authored sections: where the project is, for the next-action judgment. */
+async function loadLoopStartHere(projectId: string): Promise<LoopStartHere | null> {
+	// START HERE only sharpens the brief; a failed read never fails the review.
+	try {
+		const { data, error } = await supabase
+			.from('onto_documents')
+			.select('content')
+			.eq('project_id', projectId)
+			.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
+			.is('deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		if (error || !data?.content) return null;
+		const sections = readStartHereAuthoredSections(data.content);
+		return {
+			currentState: sections['Current state'] ?? null,
+			decisions: sections.Decisions ?? null,
+			openQuestions: sections['Open questions'] ?? null
+		};
+	} catch {
+		return null;
+	}
+}
+
+let projectLoopJev: JevClient | null | undefined;
+
+/** Jev for the drift finder, built once; null without an OpenRouter key (drift falls back). */
+function getProjectLoopJev(): JevClient | null {
+	if (projectLoopJev !== undefined) return projectLoopJev;
+	const apiKey = process.env.PRIVATE_OPENROUTER_API_KEY?.trim();
+	projectLoopJev = apiKey
+		? new JevClient({
+				apiKey,
+				timeoutMs: 6_000,
+				maxRequestBytes: 96_000,
+				retryOnce: false,
+				// Jev latency is bimodal; one hedge rescues most slow calls (chat finder data).
+				hedgeAfterMs: 1_500,
+				title: 'BuildOS Project Loop (drift finder)',
+				usage: new LLMUsageLogger({ supabase: supabase as never })
+			})
+		: null;
+	return projectLoopJev;
 }
 
 async function failRun(
@@ -1130,6 +1200,7 @@ type RawAuditFinding = {
 	summary?: unknown;
 	dimension?: unknown;
 	rating?: unknown;
+	evidence?: unknown;
 	evidence_refs?: unknown;
 };
 
@@ -1139,6 +1210,7 @@ type RawAuditDimensionUpdate = {
 	summary?: unknown;
 	uncertainty?: unknown;
 	recommendations?: unknown;
+	evidence?: unknown;
 	evidence_refs?: unknown;
 };
 
@@ -1147,12 +1219,14 @@ type RawAuditRisk = {
 	summary?: unknown;
 	severity?: unknown;
 	dimension?: unknown;
+	evidence?: unknown;
 	evidence_refs?: unknown;
 };
 
 type RawAuditOpenQuestion = {
 	question?: unknown;
 	dimension?: unknown;
+	evidence?: unknown;
 	evidence_refs?: unknown;
 };
 
@@ -1164,6 +1238,7 @@ type RawAuditRecommendation = {
 	dimension?: unknown;
 	target_entity_type?: unknown;
 	target_entity_id?: unknown;
+	evidence?: unknown;
 	evidence_refs?: unknown;
 };
 
@@ -1198,7 +1273,7 @@ function compactAuditText(value: string | null | undefined, maxLength: number): 
 	if (!normalized) return null;
 	return normalized.length <= maxLength
 		? normalized
-		: `${normalized.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+		: `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
 function auditEvidenceRef(params: {
@@ -1903,10 +1978,13 @@ function buildCompleteAuditEvidenceCatalog(params: {
 	});
 }
 
+/** Catalog entries shown to the synthesis model; citations are 1-based numbers into these. */
+const AUDIT_EVIDENCE_CATALOG_MAX = 90;
+
 function describeAuditEvidenceCatalog(catalog: ProjectAuditEvidenceRef[]): string {
 	if (!catalog.length) return '(none)';
 	return catalog
-		.slice(0, 90)
+		.slice(0, AUDIT_EVIDENCE_CATALOG_MAX)
 		.map((ref, index) => {
 			const id = ref.entity_id ? ` id=${ref.entity_id}` : '';
 			const reason = ref.reason ? ` — ${compactAuditText(ref.reason, 120)}` : '';
@@ -1957,6 +2035,19 @@ function sanitizeAuditEvidenceRefs(
 	const refs: ProjectAuditEvidenceRef[] = [];
 	const seen = new Set<string>();
 	for (const raw of asUnknownArray(value)) {
+		// Catalog numbers (the current prompt) cost a few tokens where a repeated
+		// {entity_type, entity_id, label} object cost ~40; that output is what timed out.
+		const index = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
+		if (Number.isInteger(index)) {
+			const match =
+				index >= 1 && index <= AUDIT_EVIDENCE_CATALOG_MAX ? catalog[index - 1] : undefined;
+			if (!match) continue;
+			const key = auditEvidenceKey(match);
+			if (seen.has(key)) continue;
+			seen.add(key);
+			refs.push(match);
+			continue;
+		}
 		const record = asRecord(raw) as RawAuditEvidenceRef | null;
 		if (!record) continue;
 		const entityType = asString(record.entity_type);
@@ -1989,7 +2080,10 @@ function sanitizeAuditFindings(
 			if (!record) return null;
 			const title = compactAuditText(asString(record.title), 180);
 			const summary = compactAuditText(asString(record.summary), 700);
-			const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+			const evidenceRefs = sanitizeAuditEvidenceRefs(
+				record.evidence ?? record.evidence_refs,
+				catalog
+			);
 			if (!title || !summary || evidenceRefs.length === 0) return null;
 			const dimension = asAuditDimensionKey(record.dimension);
 			const rating = asAuditRating(record.rating);
@@ -2015,7 +2109,10 @@ function sanitizeAuditDimensionUpdates(
 		if (!record) continue;
 		const key = asAuditDimensionKey(record.key);
 		const summary = compactAuditText(asString(record.summary), 900);
-		const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+		const evidenceRefs = sanitizeAuditEvidenceRefs(
+			record.evidence ?? record.evidence_refs,
+			catalog
+		);
 		if (!key || !summary || evidenceRefs.length === 0) continue;
 		const recommendations = asUnknownArray(record.recommendations)
 			.map((item) => compactAuditText(asString(item), 180))
@@ -2044,7 +2141,10 @@ function sanitizeAuditRisks(
 			if (!record) return null;
 			const title = compactAuditText(asString(record.title), 180);
 			const summary = compactAuditText(asString(record.summary), 700);
-			const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+			const evidenceRefs = sanitizeAuditEvidenceRefs(
+				record.evidence ?? record.evidence_refs,
+				catalog
+			);
 			if (!title || !summary || evidenceRefs.length === 0) return null;
 			const severity = asString(record.severity);
 			const dimension = asAuditDimensionKey(record.dimension);
@@ -2072,7 +2172,10 @@ function sanitizeAuditOpenQuestions(
 			const record = asRecord(raw) as RawAuditOpenQuestion | null;
 			if (!record) return null;
 			const question = compactAuditText(asString(record.question), 260);
-			const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+			const evidenceRefs = sanitizeAuditEvidenceRefs(
+				record.evidence ?? record.evidence_refs,
+				catalog
+			);
 			if (!question || evidenceRefs.length === 0) return null;
 			const dimension = asAuditDimensionKey(record.dimension);
 			return {
@@ -2095,7 +2198,10 @@ function sanitizeAuditRecommendations(
 			if (!record) return null;
 			const title = compactAuditText(asString(record.title), 180);
 			const summary = compactAuditText(asString(record.summary), 700);
-			const evidenceRefs = sanitizeAuditEvidenceRefs(record.evidence_refs, catalog);
+			const evidenceRefs = sanitizeAuditEvidenceRefs(
+				record.evidence ?? record.evidence_refs,
+				catalog
+			);
 			if (!title || !summary || evidenceRefs.length === 0) return null;
 			return {
 				title,
@@ -2335,7 +2441,7 @@ async function synthesizeCompleteAuditPacket(params: {
 	const systemPrompt = [
 		'You are a BuildOS Complete Project Audit reviewer.',
 		'Use only the evidence catalog provided. Do not invent entities, dates, blockers, or decisions.',
-		'Every finding, dimension update, risk, open question, and recommendation MUST cite evidence_refs from the catalog.',
+		'Every finding, dimension update, risk, open question, and recommendation MUST cite evidence from the catalog by number, for example "evidence": [3, 12].',
 		'Focus on coherence: duplicated work, missing decisions, overloaded scope, stale evidence, blockers, and unclear dependencies.',
 		'Do not create mutation operations. Recommendations should be review follow-ups, not direct writes.',
 		'Lead with the bottom line: put the single most important user decision or action first in recommendations.',
@@ -2349,17 +2455,19 @@ async function synthesizeCompleteAuditPacket(params: {
 		'Do not re-raise anything listed in previously_reviewed_recommendations unless materially new evidence changes the proposed action.',
 		'If the project is healthy and nothing warrants user attention, return an empty recommendations array. Do not invent work merely to create an inbox item.',
 		'If evidence is insufficient but the gap requires user attention, state the exact decision as an open question and pair it with a decision_point recommendation.',
+		'Only include dimension_updates for dimensions whose rating or summary you are changing.',
+		PROJECT_REVIEW_CLIPPED_TEXT_RULE,
 		'',
 		'Return ONLY JSON:',
 		'{ "audit": {',
 		'  "delivery_confidence": "green"|"yellow"|"red"|"unknown",',
 		'  "project_thesis": string|null,',
 		'  "summary": string,',
-		'  "top_findings": [{"title": string, "summary": string, "dimension": string, "rating": "green"|"yellow"|"red"|"unknown", "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}],',
-		'  "dimension_updates": [{"key": string, "rating": "green"|"yellow"|"red"|"unknown", "summary": string, "uncertainty": string|null, "recommendations": string[], "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}],',
-		'  "risks": [{"title": string, "summary": string, "severity": "low"|"medium"|"high", "dimension": string, "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}],',
-		'  "open_questions": [{"question": string, "dimension": string, "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}],',
-		'  "recommendations": [{"title": string, "summary": string, "role": "recommended_action"|"risk_follow_up"|"cleanup"|"decision_point", "priority": "low"|"medium"|"high", "dimension": string, "target_entity_type": string|null, "target_entity_id": string|null, "evidence_refs": [{"entity_type": string, "entity_id": string|null, "label": string}]}]',
+		'  "top_findings": [{"title": string, "summary": string, "dimension": string, "rating": "green"|"yellow"|"red"|"unknown", "evidence": number[]}],',
+		'  "dimension_updates": [{"key": string, "rating": "green"|"yellow"|"red"|"unknown", "summary": string, "uncertainty": string|null, "recommendations": string[], "evidence": number[]}],',
+		'  "risks": [{"title": string, "summary": string, "severity": "low"|"medium"|"high", "dimension": string, "evidence": number[]}],',
+		'  "open_questions": [{"question": string, "dimension": string, "evidence": number[]}],',
+		'  "recommendations": [{"title": string, "summary": string, "role": "recommended_action"|"risk_follow_up"|"cleanup"|"decision_point", "priority": "low"|"medium"|"high", "dimension": string, "target_entity_type": string|null, "target_entity_id": string|null, "evidence": number[]}]',
 		'} }'
 	].join('\n');
 	const userPrompt = [
@@ -2390,6 +2498,13 @@ async function synthesizeCompleteAuditPacket(params: {
 			userPrompt,
 			userId: params.userId,
 			profile: 'balanced',
+			// The same fast JSON hosts as the light review; unsteered, this call landed on
+			// slow hosts and timed out at 120 s (2 of 4 runs, tasker 107).
+			providerRouting:
+				Array.isArray(PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED) &&
+				PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED.length
+					? { order: PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED, allow_fallbacks: true }
+					: undefined,
 			validation: { retryOnParseError: true, maxRetries: 2 },
 			operationType: 'project_audit_synthesis',
 			projectId: params.ctx.projectId,
@@ -2949,6 +3064,28 @@ async function processCompleteProjectAuditJob(
 	}
 }
 
+/** Drift evidence for one run (driftEvidence.ts); null on any failure, never throws. */
+async function loadDriftEvidenceForRun(params: {
+	projectId: string;
+	userId: string;
+	signal: AbortSignal;
+	log: (message: string) => Promise<void>;
+}): Promise<ProjectDriftEvidence | null> {
+	const evidence = await loadProjectDriftEvidence({
+		client: supabase as unknown as DriftEvidenceClient,
+		projectId: params.projectId,
+		decider: getProjectLoopJev(),
+		signal: params.signal,
+		usage: { userId: params.userId }
+	});
+	await params.log(
+		evidence
+			? `Drift evidence: ${evidence.changes.length} recent change${evidence.changes.length === 1 ? '' : 's'}, ${evidence.related.length} related record${evidence.related.length === 1 ? '' : 's'} (${evidence.source}${evidence.fallbackReason ? `: ${evidence.fallbackReason}` : ''}${evidence.ranker ? `, Jev ${evidence.ranker.durationMs} ms` : ''}).`
+			: 'Drift evidence unavailable; drift reads the document list only.'
+	);
+	return evidence;
+}
+
 export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMetadata>): Promise<{
 	success: boolean;
 	runId?: string;
@@ -3156,50 +3293,62 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			}
 		};
 
-		const docOrg = await runGenerator('doc organization', () =>
-			generateDocOrganization({
-				llm,
-				ctx,
-				userId: run.user_id,
-				chatSessionId: run.chat_session_id ?? undefined,
-				runId,
-				signal: job.signal,
-				onUsage
-			})
-		);
-		const outdated = await runGenerator('outdated docs', () =>
-			generateOutdatedDocs({
-				llm,
-				ctx,
-				userId: run.user_id,
-				chatSessionId: run.chat_session_id ?? undefined,
-				runId,
-				signal: job.signal,
-				onUsage
-			})
-		);
-		const drift = await runGenerator('drift', () =>
-			generateDrift({
-				llm,
-				ctx,
-				userId: run.user_id,
-				chatSessionId: run.chat_session_id ?? undefined,
-				runId,
-				signal: job.signal,
-				onUsage
-			})
-		);
-		const taskConflicts = await runGenerator('task conflicts', () =>
-			generateTaskConflicts({
-				llm,
-				ctx,
-				userId: run.user_id,
-				chatSessionId: run.chat_session_id ?? undefined,
-				runId,
-				signal: job.signal,
-				onUsage
-			})
-		);
+		// The four detectors are independent, so they run together: a run takes as long as
+		// the slowest one (drift, ~55 s on the book) instead of their sum (~80 s).
+		const [docOrg, outdated, drift, taskConflicts] = await Promise.all([
+			runGenerator('doc organization', () =>
+				generateDocOrganization({
+					llm,
+					ctx,
+					userId: run.user_id,
+					chatSessionId: run.chat_session_id ?? undefined,
+					runId,
+					signal: job.signal,
+					onUsage
+				})
+			),
+			runGenerator('outdated docs', () =>
+				generateOutdatedDocs({
+					llm,
+					ctx,
+					userId: run.user_id,
+					chatSessionId: run.chat_session_id ?? undefined,
+					runId,
+					signal: job.signal,
+					onUsage
+				})
+			),
+			runGenerator('drift', async () => {
+				const evidence = await loadDriftEvidenceForRun({
+					projectId,
+					userId: run.user_id,
+					signal: job.signal,
+					log: (message) => job.log(message)
+				});
+				throwIfOwnershipLost();
+				return generateDrift({
+					llm,
+					ctx,
+					userId: run.user_id,
+					chatSessionId: run.chat_session_id ?? undefined,
+					runId,
+					evidence,
+					signal: job.signal,
+					onUsage
+				});
+			}),
+			runGenerator('task conflicts', () =>
+				generateTaskConflicts({
+					llm,
+					ctx,
+					userId: run.user_id,
+					chatSessionId: run.chat_session_id ?? undefined,
+					runId,
+					signal: job.signal,
+					onUsage
+				})
+			)
+		]);
 
 		// Deterministic pre-insert suppression: drop proposals that duplicate a
 		// suggestion the user is already looking at or has already decided, keyed

@@ -322,4 +322,31 @@ describe('applyCompleteAuditSynthesis', () => {
 			cleared_deterministic_recommendation_count: 1
 		});
 	});
+
+	it('resolves evidence cited by catalog number, the compact form the prompt asks for', () => {
+		const packet = basePacket();
+		const result = applyCompleteAuditSynthesis(
+			packet,
+			{
+				recommendations: [
+					{
+						title: 'Decide which launch page ships first',
+						summary: 'Recommend the launch page; the plan already names it.',
+						role: 'decision_point',
+						priority: 'high',
+						evidence: [2, 1, 2, 99]
+					}
+				]
+			},
+			packet.evidenceRefs
+		);
+		const recommendation = result.recommendations.find(
+			(item: { title: string }) => item.title === 'Decide which launch page ships first'
+		);
+		expect(
+			(recommendation?.evidence_refs ?? []).map(
+				(ref: { entity_id?: string }) => ref.entity_id
+			)
+		).toEqual(['doc-1', 'task-1']);
+	});
 });

@@ -55,7 +55,12 @@ function effectReceipt(effectId: string, overrides: Record<string, unknown> = {}
 	};
 }
 
-function createHarness(options: { abortOnReserve?: AbortController } = {}) {
+function createHarness(
+	options: {
+		abortOnReserve?: AbortController;
+		rolledBackRetryDelayMs?: (retry: number) => number;
+	} = {}
+) {
 	const stable = createStableAgenticChatEffectIdentityV1({
 		turnRunId: TURN_RUN_ID,
 		logicalOperationId: LOGICAL_OPERATION_ID,
@@ -91,11 +96,23 @@ function createHarness(options: { abortOnReserve?: AbortController } = {}) {
 			ConstructorParameters<typeof AgenticChatMutationExecutor>[0]['mutatingTool']['execute']
 		>(async () => ({ mutationId: 'mutation-1' }))
 	};
-	const executor = new AgenticChatMutationExecutor({
-		control: control as never,
-		mutatingTool
-	});
+	const executor = new AgenticChatMutationExecutor(
+		{
+			control: control as never,
+			mutatingTool
+		},
+		{ rolledBackRetryDelayMs: options.rolledBackRetryDelayMs ?? (() => 0) }
+	);
 	return { executor, control, mutatingTool, stable };
+}
+
+function databaseBusy() {
+	return new AgenticChatMutationAdapterError(
+		'known_failed',
+		'fixture_project_write_database_busy',
+		'The database was busy and rolled this write back, so nothing was saved (deadlock detected).',
+		{ retryable: true }
+	);
 }
 
 describe('AgenticChat effect identity', () => {
@@ -329,6 +346,112 @@ describe('AgenticChatMutationExecutor', () => {
 			effectId: harness.stable.effectId,
 			failureCode: 'onto_task_update_contract_mismatch'
 		});
+	});
+
+	it('retries a rolled-back write after a growing wait until it lands', async () => {
+		const delays: number[] = [];
+		const harness = createHarness({
+			rolledBackRetryDelayMs: (retry) => {
+				delays.push(retry);
+				return 0;
+			}
+		});
+		harness.mutatingTool.execute
+			.mockRejectedValueOnce(databaseBusy())
+			.mockRejectedValueOnce(databaseBusy())
+			.mockResolvedValueOnce({ mutationId: 'mutation-1' });
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: new AbortController().signal
+			})
+		).resolves.toMatchObject({ downstreamReceipt: { mutationId: 'mutation-1' } });
+		expect(harness.mutatingTool.execute).toHaveBeenCalledTimes(3);
+		expect(delays).toEqual([1, 2]);
+		expect(harness.control.reconcile).toHaveBeenCalledWith(
+			expect.objectContaining({ targetState: 'succeeded' })
+		);
+	});
+
+	it('retries a rolled-back write even when the downstream has no idempotency key', async () => {
+		const harness = createHarness();
+		harness.mutatingTool.execute
+			.mockRejectedValueOnce(databaseBusy())
+			.mockResolvedValueOnce({ mutationId: 'mutation-1' });
+
+		await harness.executor.execute({
+			executionInput,
+			processingToken: PROCESSING_TOKEN,
+			step: { ...baseStep, downstreamIdempotencySupported: false },
+			signal: new AbortController().signal
+		});
+		expect(harness.mutatingTool.execute).toHaveBeenCalledTimes(2);
+	});
+
+	it('reports a write that stays busy as a known, retryable failure', async () => {
+		const harness = createHarness();
+		harness.mutatingTool.execute.mockRejectedValue(databaseBusy());
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: new AbortController().signal
+			})
+		).rejects.toMatchObject({
+			failureClass: 'permanent',
+			failureCode: 'fixture_project_write_database_busy',
+			retryable: true
+		});
+		expect(harness.mutatingTool.execute).toHaveBeenCalledTimes(3);
+		expect(harness.control.reconcile).toHaveBeenCalledWith(
+			expect.objectContaining({ targetState: 'failed' })
+		);
+	});
+
+	it('stops retrying a rolled-back write when the turn is cancelled during the wait', async () => {
+		const controller = new AbortController();
+		const harness = createHarness({
+			rolledBackRetryDelayMs: () => {
+				controller.abort(new Error('user cancelled'));
+				return 0;
+			}
+		});
+		harness.mutatingTool.execute.mockRejectedValue(databaseBusy());
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: controller.signal
+			})
+		).rejects.toMatchObject({ failureClass: 'permanent' });
+		expect(harness.mutatingTool.execute).toHaveBeenCalledOnce();
+	});
+
+	it('keeps an earlier ambiguous attempt uncertain when its retries are rolled back', async () => {
+		const harness = createHarness();
+		harness.mutatingTool.execute
+			.mockRejectedValueOnce(new Error('response lost after possible commit'))
+			.mockRejectedValue(databaseBusy());
+
+		await expect(
+			harness.executor.execute({
+				executionInput,
+				processingToken: PROCESSING_TOKEN,
+				step: baseStep,
+				signal: new AbortController().signal
+			})
+		).rejects.toMatchObject({ failureClass: 'uncertain_external_commit' });
+		expect(harness.mutatingTool.execute).toHaveBeenCalledTimes(4);
+		expect(harness.control.reconcile).toHaveBeenCalledWith(
+			expect.objectContaining({ targetState: 'uncertain' })
+		);
 	});
 
 	it('starts no write once the worker lease is no longer fresh', async () => {

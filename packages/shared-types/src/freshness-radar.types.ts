@@ -6,8 +6,9 @@
 
 import type { LoopOperation, ProjectSuggestionStatus } from './project-loops.types';
 
-export const FRESHNESS_QUESTION_SET_VERSION = 'freshness_questions_v1' as const;
-export const FRESHNESS_POLICY_VERSION = 'freshness_policy_v1' as const;
+// v2 (tasker 106): Jev targeting + document section dig; recorded START HERE decisions count as news.
+export const FRESHNESS_QUESTION_SET_VERSION = 'freshness_questions_v2' as const;
+export const FRESHNESS_POLICY_VERSION = 'freshness_policy_v2' as const;
 export const FRESHNESS_UPDATE_SUGGESTION_KIND = 'freshness_update' as const;
 
 export type FreshnessEntityKind = 'task' | 'document' | 'goal' | 'milestone';
@@ -162,6 +163,8 @@ export interface FreshnessCardItemV1 {
 	} | null;
 	evidenceExcerpt: string | null;
 	draftInChatPrompt: string | null;
+	/** Code-authored reason line (e.g. which document sections look out of date). Optional (tasker 106). */
+	reason?: string | null;
 }
 
 /** Chat card: persisted as an injected chat_messages row (role 'assistant', message_type 'assistant_message';
@@ -194,6 +197,94 @@ export interface FreshnessCardPayloadV1 {
 	}>;
 }
 
+// ---------------------------------------------------------------------------
+// Roll-up (tasker 106): one living concern per (project, user, subject)
+// ---------------------------------------------------------------------------
+
+export type FreshnessConcernStatus = 'open' | 'resolved' | 'dismissed' | 'expired' | 'applied';
+export type FreshnessConcernCloseReason =
+	/** The subject changed where the concern pointed (its flagged sections or fields). */
+	| 'resolved_by_update'
+	/** Deleted, archived, or moved to a terminal state (done task, achieved goal…). */
+	| 'subject_closed'
+	| 'user_dismissed'
+	| 'user_marked_not_stale'
+	| 'applied'
+	/** No new evidence within the policy's expiry window. */
+	| 'aged_out';
+
+/** A document section the radar judged out of date (anchor = gfm heading slug). */
+export interface FreshnessConcernSection {
+	anchor: string | null;
+	heading: string;
+	probability: number;
+	/** SHA-256 of the section's own text when judged: a changed hash means it was edited. */
+	textSha256: string;
+}
+
+/** A recorded START HERE decision newer than the subject's last change. */
+export interface FreshnessConcernDecision {
+	text: string;
+	recorded: string | null;
+}
+
+/** One accumulated evidence item (one per independent scan observation). */
+export interface FreshnessConcernEvidence {
+	flagId: string | null;
+	scanId: string;
+	probability: number;
+	at: string;
+	/** Identity of the information the observation rested on; repeats of a key never accumulate. */
+	key: string;
+}
+
+export interface FreshnessConcernDetail {
+	changeKind: FreshnessChangeKind | null;
+	sections: FreshnessConcernSection[];
+	decisions: FreshnessConcernDecision[];
+	evidenceExcerpt: string | null;
+	proposal: {
+		summary: string;
+		field: 'state_key' | 'due_at' | 'target_date';
+		from: string | null;
+		to: string;
+	} | null;
+	/** Composer prefill for "Fix in chat" (the user's own voice; names sections and decisions). */
+	fixInChatPrompt: string;
+}
+
+/** Mirrors public.freshness_concerns 1:1. */
+export interface FreshnessConcernRecord {
+	id: string;
+	project_id: string;
+	user_id: string;
+	subject_kind: FreshnessEntityKind;
+	subject_id: string;
+	subject_title: string;
+	status: FreshnessConcernStatus;
+	close_reason: FreshnessConcernCloseReason | null;
+	score: number;
+	peak_probability: number;
+	last_probability: number;
+	evidence_count: number;
+	seen_count: number;
+	first_flag_id: string | null;
+	last_flag_id: string | null;
+	evidence: FreshnessConcernEvidence[];
+	detail: FreshnessConcernDetail;
+	subject_snapshot: FreshnessSubjectSnapshot | null;
+	subject_updated_at: string | null;
+	first_seen_at: string;
+	last_seen_at: string;
+	last_evidence_at: string;
+	surfaced_at: string | null;
+	surfaced_scan_id: string | null;
+	closed_at: string | null;
+	closed_scan_id: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
 /** The stored message_type. Cards are identified by `FRESHNESS_CARD_METADATA_KIND`, not by this value. */
 export const FRESHNESS_CARD_MESSAGE_TYPE = 'assistant_message' as const;
 export const FRESHNESS_CARD_METADATA_KIND = 'freshness_radar_card' as const;
@@ -224,6 +315,10 @@ export interface FreshnessBadgeReadV1 {
 		suggestionId: string | null;
 		createdAt: string;
 		undoableUntil: string | null;
+		/** Roll-up reason line, e.g. which sections look out of date (tasker 106). */
+		reason?: string | null;
+		/** Composer prefill for "Fix in chat" (tasker 106). */
+		fixInChatPrompt?: string | null;
 	}>;
 	gauges: Array<{
 		entity: { kind: 'goal' | 'milestone'; id: string };
@@ -322,7 +417,13 @@ function parseItem(value: unknown): FreshnessCardItemV1 | null {
 	}
 	const evidenceExcerpt = value.evidenceExcerpt ?? null;
 	const draftInChatPrompt = value.draftInChatPrompt ?? null;
-	if (!isNullableString(evidenceExcerpt) || !isNullableString(draftInChatPrompt)) return null;
+	const reason = value.reason ?? null;
+	if (
+		!isNullableString(evidenceExcerpt) ||
+		!isNullableString(draftInChatPrompt) ||
+		!isNullableString(reason)
+	)
+		return null;
 	return {
 		flagId: value.flagId,
 		entity: {
@@ -334,7 +435,8 @@ function parseItem(value: unknown): FreshnessCardItemV1 | null {
 		disposition: value.disposition,
 		proposal,
 		evidenceExcerpt,
-		draftInChatPrompt
+		draftInChatPrompt,
+		...(reason ? { reason } : {})
 	};
 }
 

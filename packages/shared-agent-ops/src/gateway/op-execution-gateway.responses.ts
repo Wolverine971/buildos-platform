@@ -24,6 +24,34 @@ export class ExternalToolGatewayError extends Error {
 	}
 }
 
+/**
+ * SQLSTATEs Postgres raises while a statement is still running: the request's
+ * transaction aborted, so none of its writes were kept, and the identical
+ * request can succeed on a retry. Connection failures are left out on purpose;
+ * a dropped connection cannot say whether COMMIT ran.
+ */
+const ROLLED_BACK_TRANSIENT_SQLSTATES = new Set([
+	'40001', // serialization_failure
+	'40P01', // deadlock_detected
+	'55P03', // lock_not_available
+	'57014' // query_canceled (statement timeout)
+]);
+
+/**
+ * Error details for a failed database call that was its op's first and only
+ * write. When Postgres aborted that call for a transient reason, the op wrote
+ * nothing and the details say so (`write_rolled_back`), which lets a caller
+ * such as the chat worker retry instead of treating the outcome as unknown.
+ * Undefined for every other failure.
+ */
+export function rolledBackWriteDetails(
+	error: { code?: string | null } | null | undefined
+): { write_rolled_back: true; database_code: string } | undefined {
+	const code = error?.code?.trim().toUpperCase();
+	if (!code || !ROLLED_BACK_TRANSIENT_SQLSTATES.has(code)) return undefined;
+	return { write_rolled_back: true, database_code: code };
+}
+
 export function normalizeGatewayError(error: unknown): ExternalToolGatewayError {
 	if (error instanceof ExternalToolGatewayError) {
 		return error;

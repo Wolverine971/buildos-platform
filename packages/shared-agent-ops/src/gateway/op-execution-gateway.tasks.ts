@@ -40,7 +40,7 @@ import {
 	clampLimit,
 	normalizeOffset
 } from './op-execution-gateway.pagination';
-import { ExternalToolGatewayError } from './op-execution-gateway.responses';
+import { ExternalToolGatewayError, rolledBackWriteDetails } from './op-execution-gateway.responses';
 import { searchEntitiesByType } from './op-execution-gateway.search';
 import {
 	fetchGatewayTaskAssignees,
@@ -63,7 +63,10 @@ function hasOwn(record: Record<string, unknown>, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(record, key);
 }
 
-function atomicTaskUpdateError(error: { message?: string } | null | undefined): never {
+// The atomic RPC is its op's only write, so a transient abort left nothing behind.
+function atomicTaskUpdateError(
+	error: { code?: string; message?: string } | null | undefined
+): never {
 	const message = error?.message ?? 'Failed to update task atomically';
 	const relationshipError = relationshipMutationErrorFromDatabase({ message });
 	if (relationshipError) {
@@ -88,10 +91,13 @@ function atomicTaskUpdateError(error: { message?: string } | null | undefined): 
 	if (message.includes('invalid_state_key')) {
 		throw new ExternalToolGatewayError('VALIDATION_ERROR', message);
 	}
-	throw new ExternalToolGatewayError('INTERNAL', message);
+	throw new ExternalToolGatewayError('INTERNAL', message, rolledBackWriteDetails(error));
 }
 
-function atomicTaskCreateError(error: { message?: string } | null | undefined): never {
+// The atomic RPC is its op's only write, so a transient abort left nothing behind.
+function atomicTaskCreateError(
+	error: { code?: string; message?: string } | null | undefined
+): never {
 	const message = error?.message ?? 'Failed to create task atomically';
 	const relationshipError = relationshipMutationErrorFromDatabase({ message });
 	if (relationshipError) {
@@ -113,7 +119,7 @@ function atomicTaskCreateError(error: { message?: string } | null | undefined): 
 	if (message.includes('invalid_state_key')) {
 		throw new ExternalToolGatewayError('VALIDATION_ERROR', message);
 	}
-	throw new ExternalToolGatewayError('INTERNAL', message);
+	throw new ExternalToolGatewayError('INTERNAL', message, rolledBackWriteDetails(error));
 }
 
 function relationshipPlanningError(error: unknown): never {
@@ -764,9 +770,11 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 			.single();
 
 		if (error || !updatedTask) {
+			// This single update is the op's only write.
 			throw new ExternalToolGatewayError(
 				'INTERNAL',
-				error?.message || 'Failed to update task'
+				error?.message || 'Failed to update task',
+				rolledBackWriteDetails(error)
 			);
 		}
 		data = updatedTask as Record<string, unknown>;

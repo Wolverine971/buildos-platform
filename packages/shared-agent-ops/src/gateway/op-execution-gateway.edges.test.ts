@@ -72,28 +72,14 @@ function edge(overrides: Record<string, unknown> = {}) {
 }
 
 function linkAdmin(existing: Record<string, unknown> | null) {
-	const equalityChecks: Array<[string, unknown]> = [];
-	const existingQuery: Record<string, any> = {};
-	existingQuery.select = vi.fn(() => existingQuery);
-	existingQuery.eq = vi.fn((column: string, value: unknown) => {
-		equalityChecks.push([column, value]);
-		return existingQuery;
-	});
-	existingQuery.maybeSingle = vi.fn().mockResolvedValue({ data: existing, error: null });
 	const inserted = edge({ props: { source: 'worker', original_rel: 'helps_with' } });
-	const insertQuery: Record<string, any> = {};
-	insertQuery.select = vi.fn(() => insertQuery);
-	insertQuery.single = vi.fn().mockResolvedValue({ data: inserted, error: null });
-	const fromResult = {
-		...existingQuery,
-		insert: vi.fn(() => insertQuery)
-	};
-	return {
-		admin: { from: vi.fn(() => fromResult) },
-		equalityChecks,
-		insert: fromResult.insert,
-		inserted
-	};
+	// The RPC returns the whole row; updated_at stands in for columns the tool result omits.
+	const row = { ...(existing ?? inserted), updated_at: '2026-08-12T00:00:00.000Z' };
+	const rpc = vi.fn().mockResolvedValue({
+		data: { created: existing === null, edge: row },
+		error: null
+	});
+	return { admin: { rpc }, rpc, inserted };
 }
 
 describe('edge gateway handlers', () => {
@@ -114,7 +100,7 @@ describe('edge gateway handlers', () => {
 		mocks.assertVisibleEntityProject.mockReturnValue(project);
 	});
 
-	it('queries the full canonical edge identity before deciding the link already exists', async () => {
+	it('links through the atomic RPC and returns an existing edge without logging', async () => {
 		const existing = edge({ props: { existing: true } });
 		const fixture = linkAdmin(existing);
 
@@ -127,15 +113,16 @@ describe('edge gateway handlers', () => {
 			props: { ignored_on_existing: true }
 		});
 
-		expect(fixture.equalityChecks).toEqual([
-			['project_id', PROJECT_ID],
-			['src_kind', 'task'],
-			['src_id', TASK_ID],
-			['dst_kind', 'goal'],
-			['dst_id', GOAL_ID],
-			['rel', 'supports_goal']
-		]);
-		expect(fixture.insert).not.toHaveBeenCalled();
+		expect(fixture.rpc).toHaveBeenCalledOnce();
+		expect(fixture.rpc).toHaveBeenCalledWith('onto_edge_link_atomic', {
+			p_project_id: PROJECT_ID,
+			p_src_kind: 'task',
+			p_src_id: TASK_ID,
+			p_rel: 'supports_goal',
+			p_dst_kind: 'goal',
+			p_dst_id: GOAL_ID,
+			p_props: { ignored_on_existing: true }
+		});
 		expect(mocks.logCreate).not.toHaveBeenCalled();
 		expect(result).toEqual({
 			created: 0,
@@ -156,14 +143,14 @@ describe('edge gateway handlers', () => {
 			props: { source: 'worker' }
 		});
 
-		expect(fixture.insert).toHaveBeenCalledWith({
-			project_id: PROJECT_ID,
-			src_kind: 'task',
-			src_id: TASK_ID,
-			dst_kind: 'goal',
-			dst_id: GOAL_ID,
-			rel: 'supports_goal',
-			props: { source: 'worker', original_rel: 'helps_with' }
+		expect(fixture.rpc).toHaveBeenCalledWith('onto_edge_link_atomic', {
+			p_project_id: PROJECT_ID,
+			p_src_kind: 'task',
+			p_src_id: TASK_ID,
+			p_rel: 'supports_goal',
+			p_dst_kind: 'goal',
+			p_dst_id: GOAL_ID,
+			p_props: { source: 'worker', original_rel: 'helps_with' }
 		});
 		expect(mocks.logCreate).toHaveBeenCalledOnce();
 		expect(result).toEqual({
@@ -171,6 +158,28 @@ describe('edge gateway handlers', () => {
 			edge: fixture.inserted,
 			message: 'Linked entities successfully.'
 		});
+	});
+
+	it('marks a link whose only insert timed out as rolled back', async () => {
+		const fixture = linkAdmin(null);
+		fixture.rpc.mockResolvedValueOnce({
+			data: null,
+			error: { code: '57014', message: 'canceling statement due to statement timeout' }
+		});
+
+		const failure = await EXTERNAL_OP_HANDLERS['onto.edge.link'](context(fixture.admin), {
+			src_kind: 'task',
+			src_id: TASK_ID,
+			dst_kind: 'goal',
+			dst_id: GOAL_ID,
+			rel: 'supports_goal'
+		}).catch((error: unknown) => error);
+
+		expect(failure).toMatchObject({
+			code: 'INTERNAL',
+			details: { write_rolled_back: true, database_code: '57014' }
+		});
+		expect(mocks.logCreate).not.toHaveBeenCalled();
 	});
 
 	it('rejects an explicit project id that does not match the edge endpoints', async () => {
@@ -186,7 +195,7 @@ describe('edge gateway handlers', () => {
 				rel: 'supports_goal'
 			})
 		).rejects.toThrow('Edge project_id does not match its endpoints');
-		expect(fixture.insert).not.toHaveBeenCalled();
+		expect(fixture.rpc).not.toHaveBeenCalled();
 	});
 
 	it('deletes one exact edge after enforcing its project write scope', async () => {

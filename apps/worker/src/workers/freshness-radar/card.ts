@@ -48,8 +48,11 @@ export type CardInputs = {
 	projectId: string;
 	projectName: string;
 	createdAt: string;
-	/** Surfaced + drafted decisions, already ranked (top first). */
-	items: ReadonlyArray<{ flagId: string; decision: EntityDecision }>;
+	/**
+	 * Newly surfaced roll-up concerns, already ranked (top first). Since tasker 106
+	 * a concern reaches the card once, the scan it first crosses the bar.
+	 */
+	items: ReadonlyArray<FreshnessCardItemV1>;
 	moreCount: number;
 	bundle: { suggestionId: string; operationCount: number } | null;
 	autoApplied: FreshnessCardPayloadV1['autoApplied'];
@@ -57,7 +60,11 @@ export type CardInputs = {
 	gaugeChanges: FreshnessCardPayloadV1['gaugeChanges'];
 };
 
-function cardItem(flagId: string, decision: EntityDecision): FreshnessCardItemV1 {
+/** A card item straight from one scan's decision (backtest reports and tests). */
+export function cardItemFromDecision(
+	flagId: string,
+	decision: EntityDecision
+): FreshnessCardItemV1 {
 	const disposition = decision.disposition === 'drafted' ? 'drafted' : 'surfaced';
 	const proposal =
 		disposition === 'drafted' && decision.proposal
@@ -107,9 +114,7 @@ export function cardHeadline(inputs: CardInputs): string {
 }
 
 export function buildFreshnessCard(inputs: CardInputs): FreshnessCardPayloadV1 | null {
-	const items = inputs.items
-		.slice(0, FRESHNESS_CARD_MAX_ITEMS)
-		.map(({ flagId, decision }) => cardItem(flagId, decision));
+	const items = inputs.items.slice(0, FRESHNESS_CARD_MAX_ITEMS);
 	const hasContent =
 		items.length > 0 ||
 		inputs.autoApplied.length > 0 ||

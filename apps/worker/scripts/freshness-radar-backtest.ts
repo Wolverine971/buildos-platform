@@ -60,9 +60,11 @@ import {
 } from '../src/workers/freshness-radar/questions';
 import {
 	type ScanRequestName,
+	applyTargeting,
 	decideScan,
 	namespaceAnswers,
-	planScanRequests
+	planScanRequests,
+	planTargeting
 } from '../src/workers/freshness-radar/scanStages';
 
 const REPO_ROOT = resolve(__dirname, '../../..');
@@ -1090,6 +1092,20 @@ export class AsOfFreshnessDataPort implements FreshnessDataPort {
 		return heads;
 	}
 
+	async loadDocumentBodies(
+		documentIds: readonly string[],
+		maxChars: number
+	): Promise<Map<string, string>> {
+		// Current content (document bodies are not reversed as-of; tasker 106).
+		const wanted = new Set(documentIds);
+		const bodies = new Map<string, string>();
+		for (const document of this.dataset.documents) {
+			if (!wanted.has(document.id) || !document.content) continue;
+			bodies.set(document.id, document.content.slice(0, maxChars));
+		}
+		return bodies;
+	}
+
 	async loadEdges(projectId: string): Promise<FreshnessEdgeRow[]> {
 		return this.dataset.edges
 			.filter((edge) => edge.project_id === projectId && (edge.created_at ?? '') <= this.at)
@@ -1449,7 +1465,30 @@ export async function replayDataset(params: {
 				record.reason = context.skipReason;
 				continue;
 			}
-			const plan = planScanRequests(context, params.model, policy);
+			// [1b] Targeting, exactly as live: a failed request falls back to the lexical top-N.
+			const targetingPlan = planTargeting(context, params.model, policy);
+			let targetingAnswers: AnswerMap | null = null;
+			if (targetingPlan.request) {
+				const fetched = await params.jev.ask(targetingPlan.request);
+				record.requests.push({
+					name: 'target',
+					sha256: fetched.sha256,
+					bytes: fetched.bytes,
+					source: fetched.source
+				});
+				record.costUsd += fetched.receipt?.costUsd ?? 0;
+				if (typeof fetched.receipt?.durationMs === 'number')
+					record.latencyMs.push(fetched.receipt.durationMs);
+				if (fetched.answers) targetingAnswers = fetched.answers as AnswerMap;
+			}
+			const targeting = applyTargeting({
+				context,
+				plan: targetingPlan,
+				answers: targetingAnswers,
+				forcedKeys: new Set(),
+				policy
+			});
+			const plan = planScanRequests(context, targeting, params.model, policy);
 			if (!plan.requests.length) {
 				record.reason = 'no_questions';
 				continue;

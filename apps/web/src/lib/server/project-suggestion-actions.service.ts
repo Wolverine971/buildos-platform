@@ -753,6 +753,14 @@ export async function decideProjectSuggestion(params: {
 		await syncProjectSuggestionInboxItem(updated);
 		await refreshLinkedAuditSuggestionCounts({ supabase, suggestionId });
 		await finalizeProjectLoopRunIfComplete(supabase, (updated as { run_id?: string }).run_id);
+		if (updated.kind === 'freshness_update') {
+			// The roll-up's concerns close with the item, so the next scan does not re-raise them.
+			await recordFreshnessBundleOutcome({
+				admin: createAdminSupabaseClient(),
+				suggestion: updated,
+				action: 'address'
+			});
+		}
 		emitSuggestionDecisionEvent(userId, 'project_suggestion_addressed', updated, {
 			has_note: true
 		});

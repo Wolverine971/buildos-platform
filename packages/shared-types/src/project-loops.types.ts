@@ -87,6 +87,24 @@ export interface ProjectSuggestionPreview {
 	before?: string[];
 	after?: string[];
 	impact?: string;
+	/**
+	 * Freshness roll-up items with no operation (tasker 106): stale documents and
+	 * records the user fixes in chat. Code-authored; never executed on approval.
+	 */
+	review_items?: ProjectSuggestionReviewItem[];
+	/** Content signature of a freshness bundle: an unchanged roll-up keeps its inbox item. */
+	signature?: string;
+}
+
+export interface ProjectSuggestionReviewItem {
+	concern_id: string;
+	entity_type: 'task' | 'goal' | 'milestone' | 'document';
+	entity_id: string;
+	title: string;
+	/** One line: why it looks out of date. */
+	reason: string;
+	/** Composer prefill for "Fix in chat". */
+	fix_in_chat_prompt: string;
 }
 
 export type ProjectReviewAttentionLevel = AttentionLevel;

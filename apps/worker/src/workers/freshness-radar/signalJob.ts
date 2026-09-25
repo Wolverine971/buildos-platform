@@ -2,9 +2,10 @@
 //
 // Queue job 'freshness_radar_scan' (plan section 1). A per-session debounced
 // signal becomes up to three per-project scans:
-//   [1] context -> [2] Jev R1/R2/R3 in parallel -> [3] code combine ->
-//   [4] ledger -> [5] live only: auto-apply -> inbox cleanup -> bundle ->
-//   attention budget -> chat card.
+//   [1] context -> [1b] Jev targeting (tasker 106) -> [2] Jev R1/dig/R2/R3 in
+//   parallel -> [3] code combine -> [4] ledger -> [5] live only: auto-apply ->
+//   inbox cleanup -> roll-up merge -> one inbox item (bundle) -> attention
+//   budget -> chat card (newly surfaced concerns only).
 // Fail closed and silent: any Jev or network failure ends the scan as failed
 // with no flags, no card and no entity writes. FRESHNESS_RADAR_MODE=off is the
 // kill switch; shadow writes the ledger only.
@@ -41,17 +42,13 @@ import {
 	sessionHasActiveTurn
 } from './autoApply';
 import { buildFreshnessCard, deliverFreshnessCard } from './card';
-import {
-	type AnswerMap,
-	type EntityDecision,
-	type InboxDecision,
-	rankCardDecisions
-} from './combine';
+import type { AnswerMap, EntityDecision, InboxDecision } from './combine';
 import {
 	type FreshnessScanContext,
 	buildFreshnessScanContext,
 	candidateSnapshot,
 	entityKey,
+	isClosedCandidate,
 	snapshotsMatch
 } from './context';
 import { type FreshnessDataPort, type FreshnessDb, SupabaseFreshnessDataPort } from './dataPort';
@@ -59,6 +56,7 @@ import {
 	type CarriedFlagRow,
 	type DraftBundleDeps,
 	type DraftItem,
+	type ReviewItem,
 	buildDraftBundle
 } from './drafts';
 import {
@@ -84,7 +82,18 @@ import {
 	updateFlag
 } from './ledger';
 import { labelImplicitOutcomes } from './outcomes';
-import { type ScanRequestPlan, decideScan, namespaceAnswers, planScanRequests } from './scanStages';
+import { applyConcernMerge, loadOpenConcerns, mergeConcerns } from './rollup';
+import { buildConcernObservations, concernReason, concernSectionHashes } from './rollupStages';
+import {
+	type ScanRequestName,
+	type ScanRequestPlan,
+	applyTargeting,
+	decideScan,
+	namespaceAnswers,
+	planScanRequests,
+	planTargeting,
+	scopedAnswers
+} from './scanStages';
 import { gaugeChanges, trackScoreRows } from './trackScores';
 
 export const FRESHNESS_RADAR_JOB_TYPE = 'freshness_radar_scan' as const;
@@ -389,7 +398,10 @@ type JevRun = {
 
 async function askJev(params: {
 	jev: JevDecider;
-	requests: ScanRequestPlan['requests'];
+	requests: Array<{
+		name: ScanRequestName;
+		request: ScanRequestPlan['requests'][number]['request'];
+	}>;
 	timeoutMs: number;
 	signal?: AbortSignal;
 	usage: { userId: string; projectId: string; chatSessionId: string | null; scanId: string };
@@ -626,11 +638,18 @@ export async function runFreshnessProjectScan(params: {
 	};
 
 	try {
+		// The roll-up is live-only (its concerns feed user-visible surfaces). Its
+		// open subjects are always re-evaluated, so evidence keeps accruing.
+		const openConcerns = mode === 'live' ? await loadOpenConcerns(db, projectId, userId) : [];
+		const forcedKeys = new Set(
+			openConcerns.map((concern) => entityKey(concern.subject_kind, concern.subject_id))
+		);
 		const context = await buildFreshnessScanContext({
 			port: deps.port,
 			projectId,
 			userId,
 			extraSessionIds: params.extraSessionIds,
+			forcedKeys,
 			now: startedAt,
 			policy
 		});
@@ -667,9 +686,39 @@ export async function runFreshnessProjectScan(params: {
 			});
 			return { scanId: scan.id, status: 'skipped', reason: context.skipReason };
 		}
+		if (!deps.jev) return await fail('jev_unconfigured', { window: windowPatch });
+
+		const usage = {
+			userId,
+			projectId,
+			chatSessionId: params.triggerSessionId,
+			scanId: scan.id
+		};
+		// [1b] Targeting: Jev rates every pool record against the news. A failure
+		// degrades to the lexical top-N (v1 behavior), never fails the scan.
+		const targetingPlan = planTargeting(context, deps.model, policy);
+		const targetingRun = targetingPlan.request
+			? await askJev({
+					jev: deps.jev,
+					requests: [{ name: 'target', request: targetingPlan.request }],
+					timeoutMs: policy.targeting.timeoutMs,
+					signal: params.abortSignal,
+					usage
+				})
+			: null;
+		const targeting = applyTargeting({
+			context,
+			plan: targetingPlan,
+			answers:
+				targetingRun && !targetingRun.error
+					? scopedAnswers(targetingRun.answers, 'target')
+					: null,
+			forcedKeys,
+			policy
+		});
 
 		// [2] Jev requests (shared with the backtest).
-		const plan = planScanRequests(context, deps.model, policy);
+		const plan = planScanRequests(context, targeting, deps.model, policy);
 		const { requests, evaluatedEntities, inboxSubjects } = plan;
 		if (!requests.length) {
 			await finishScan(db, scan.id, {
@@ -677,24 +726,34 @@ export async function runFreshnessProjectScan(params: {
 				skipReason: 'no_questions',
 				window: windowPatch,
 				candidatesTotal: context.candidatesTotal,
+				counts: { targeting_pool: targetingPlan.records.length },
+				jev: targetingRun?.stats,
 				now: deps.now().toISOString()
 			});
 			return { scanId: scan.id, status: 'skipped', reason: 'no_questions' };
 		}
-		if (!deps.jev) return await fail('jev_unconfigured', { window: windowPatch });
 
-		const jevRun = await askJev({
+		const mainRun = await askJev({
 			jev: deps.jev,
 			requests,
 			timeoutMs: policy.jev.timeoutMs,
 			signal: params.abortSignal,
-			usage: { userId, projectId, chatSessionId: params.triggerSessionId, scanId: scan.id }
+			usage
 		});
-		if (jevRun.error) {
+		const stats: ScanJevStats = targetingRun
+			? {
+					modelUsed: targetingRun.stats.modelUsed ?? mainRun.stats.modelUsed,
+					requests: targetingRun.stats.requests + mainRun.stats.requests,
+					inputTokens: targetingRun.stats.inputTokens + mainRun.stats.inputTokens,
+					costUsd: targetingRun.stats.costUsd + mainRun.stats.costUsd,
+					latencyMs: [...targetingRun.stats.latencyMs, ...mainRun.stats.latencyMs]
+				}
+			: mainRun.stats;
+		if (mainRun.error) {
 			// Fail closed and silent: no flags, no card, no writes.
-			return await fail(jevRun.error, { window: windowPatch, jev: jevRun.stats });
+			return await fail(mainRun.error, { window: windowPatch, jev: stats });
 		}
-		if (params.abortSignal?.aborted) return await fail('aborted', { jev: jevRun.stats });
+		if (params.abortSignal?.aborted) return await fail('aborted', { jev: stats });
 
 		// [3] Code combine (shared with the backtest).
 		const gateEnabled = mode === 'live' && params.flags.autoApply && params.flags.surfaces;
@@ -702,14 +761,27 @@ export async function runFreshnessProjectScan(params: {
 			context,
 			plan,
 			projectId,
-			answers: jevRun.answers,
+			answers: mainRun.answers,
 			gateEnabled,
 			policy
 		});
 		const inboxLive = mode === 'live' && params.flags.inboxCleanup;
 
 		// [4] Ledger.
-		const entityInserts = entityDecisions.map((decision) => entityFlagInsert(decision, mode));
+		const entityInserts = entityDecisions.map((decision) => {
+			const insert = entityFlagInsert(decision, mode);
+			const key = entityKey(decision.candidate.kind, decision.candidate.id);
+			insert.features = {
+				...insert.features,
+				targeting: {
+					source: targeting.source,
+					probability: targeting.scores.get(key) ?? null,
+					forced: forcedKeys.has(key)
+				},
+				newer_decisions: context.entityViews.get(key)?.newer_decisions.length ?? 0
+			};
+			return insert;
+		});
 		const inboxInserts = inboxDecisions.map((decision, index) =>
 			inboxFlagInsert({ ...context, inboxSubjects }, index, decision, inboxLive)
 		);
@@ -718,7 +790,7 @@ export async function runFreshnessProjectScan(params: {
 			scanId: scan.id,
 			projectId,
 			userId,
-			modelUsed: jevRun.stats.modelUsed,
+			modelUsed: stats.modelUsed,
 			flags: [...entityInserts, ...inboxInserts]
 		});
 		const flagIdByKey = new Map(
@@ -729,7 +801,7 @@ export async function runFreshnessProjectScan(params: {
 			scanId: scan.id,
 			projectId,
 			userId,
-			modelUsed: jevRun.stats.modelUsed,
+			modelUsed: stats.modelUsed,
 			rows: trackScoreRows(trackDecisions)
 		});
 
@@ -743,13 +815,18 @@ export async function runFreshnessProjectScan(params: {
 			...countBy(entityInserts.map((flag) => flag.disposition)),
 			excluded: context.excludedCount,
 			gauges: trackDecisions.length,
-			inbox_evaluated: inboxDecisions.length
+			inbox_evaluated: inboxDecisions.length,
+			targeting_pool: targetingPlan.records.length,
+			targeting_jev: targeting.source === 'jev' ? 1 : 0,
+			documents_dug: plan.evaluatedDocuments.length,
+			sections_judged: plan.digSections.length,
+			decisions: context.decisions.length
 		};
 		const baseFinish = {
 			window: windowPatch,
 			candidatesTotal: context.candidatesTotal,
-			candidatesEvaluated: evaluatedEntities.length,
-			jev: jevRun.stats
+			candidatesEvaluated: evaluatedEntities.length + plan.evaluatedDocuments.length,
+			jev: stats
 		};
 
 		// An aborted live scan never applied its decisions; completing it would
@@ -836,7 +913,43 @@ export async function runFreshnessProjectScan(params: {
 				})
 			: { retired: [], marked: [], reset: [], failed: [] };
 
-		// [5c] Bundle of drafts (tasks, goals, milestones with an operation).
+		// [5c] Roll-up merge (tasker 106): one living concern per subject.
+		const observations = buildConcernObservations({
+			context,
+			plan,
+			answers: mainRun.answers,
+			decisions: entityDecisions.filter(
+				(decision) =>
+					finalDisposition.get(
+						entityKey(decision.candidate.kind, decision.candidate.id)
+					) !== 'auto_applied'
+			),
+			flagIdByKey
+		});
+		const sectionHashes = await concernSectionHashes({
+			open: openConcerns,
+			context,
+			port: deps.port,
+			policy
+		});
+		const mergePlan = mergeConcerns({
+			open: openConcerns,
+			observations,
+			current: context.entitiesByKey,
+			isClosed: isClosedCandidate,
+			sectionHashes,
+			scanId: scan.id,
+			now: deps.now(),
+			policy
+		});
+		await applyConcernMerge({ db, projectId, userId, plan: mergePlan });
+		const surfacedConcerns = (await loadOpenConcerns(db, projectId, userId))
+			.filter((concern) => concern.surfaced_at)
+			.sort((a, b) => b.score - a.score);
+		const newlySurfaced = new Set(mergePlan.newlySurfaced);
+
+		// [5d] The single inbox item: drafts (tasks, goals, milestones with an
+		// operation) plus every surfaced concern without one, fixed in chat.
 		const draftDecisions = entityDecisions.filter((decision) => {
 			const key = entityKey(decision.candidate.kind, decision.candidate.id);
 			return finalDisposition.get(key) === 'drafted' && decision.proposal;
@@ -850,6 +963,15 @@ export async function runFreshnessProjectScan(params: {
 			operation: decision.proposal!.operation,
 			undo: draftUndoOperation(decision)!
 		}));
+		const reviewItems: ReviewItem[] = surfacedConcerns.map((concern) => ({
+			concernId: concern.id,
+			entityKind: concern.subject_kind,
+			entityId: concern.subject_id,
+			title: concern.subject_title,
+			score: concern.score,
+			reason: concernReason(concern),
+			fixInChatPrompt: concern.detail.fixInChatPrompt
+		}));
 		const bundle = await buildDraftBundle({
 			db,
 			deps: deps.draftDeps,
@@ -858,6 +980,7 @@ export async function runFreshnessProjectScan(params: {
 			triggerSessionId: params.triggerSessionId,
 			today: context.today,
 			drafts: draftItems,
+			reviewItems,
 			isUnchanged: (flag: CarriedFlagRow) => {
 				const current = context.entitiesByKey.get(
 					entityKey(flag.subject_kind, flag.subject_id)
@@ -870,6 +993,7 @@ export async function runFreshnessProjectScan(params: {
 			now: deps.now(),
 			policy
 		});
+		const bundledDrafts = new Set<string>();
 		if (bundle.status === 'failed') {
 			for (const flagId of bundle.flagIds) {
 				await updateFlag(db, flagId, {
@@ -891,56 +1015,79 @@ export async function runFreshnessProjectScan(params: {
 			}
 			const overCapFresh = new Set(bundle.overCapFlagIds);
 			for (const decision of draftDecisions) {
-				const flagId = flagIdByKey.get(
-					entityKey(decision.candidate.kind, decision.candidate.id)
-				);
+				const key = entityKey(decision.candidate.kind, decision.candidate.id);
+				const flagId = flagIdByKey.get(key);
 				if (flagId && overCapFresh.has(flagId)) {
 					await updateFlag(db, flagId, {
 						disposition: 'surfaced',
 						disposition_reason: 'bundle_cap',
 						status: 'open'
 					});
-					finalDisposition.set(
-						entityKey(decision.candidate.kind, decision.candidate.id),
-						'surfaced'
-					);
-				}
+					finalDisposition.set(key, 'surfaced');
+				} else bundledDrafts.add(key);
 			}
+		} else if (bundle.status === 'unchanged') {
+			for (const decision of draftDecisions)
+				bundledDrafts.add(entityKey(decision.candidate.kind, decision.candidate.id));
 		}
 
-		// [5d] Budget ran inside the bundle build; cleanup-only scans rebalance here.
+		// [5e] Budget ran inside the bundle build; cleanup-only scans rebalance here.
 		if (bundle.status !== 'created' && cleanup.retired.length) {
 			await deps.draftDeps.applyBudget({ supabase: db, projectId }).catch(() => undefined);
 		}
 
-		// [5e] Card.
-		const cardDecisions = entityDecisions.map((decision) => ({
-			...decision,
-			disposition: (finalDisposition.get(
-				entityKey(decision.candidate.kind, decision.candidate.id)
-			) ?? decision.disposition) as EntityDecision['disposition']
-		}));
-		const ranked = rankCardDecisions(cardDecisions, policy.combine.cardMaxItems);
+		// [5f] Card: only concerns that crossed the bar in this scan (surfaced once).
+		const decisionByKey = new Map(
+			entityDecisions.map((decision) => [
+				entityKey(decision.candidate.kind, decision.candidate.id),
+				decision
+			])
+		);
+		const cardConcerns = surfacedConcerns.filter(
+			(concern) =>
+				newlySurfaced.has(entityKey(concern.subject_kind, concern.subject_id)) &&
+				concern.last_flag_id
+		);
+		const cardItems = cardConcerns.map((concern) => {
+			const key = entityKey(concern.subject_kind, concern.subject_id);
+			const drafted = bundledDrafts.has(key);
+			const proposal = drafted ? (decisionByKey.get(key)?.proposal ?? null) : null;
+			return {
+				flagId: concern.last_flag_id!,
+				entity: {
+					kind: concern.subject_kind,
+					id: concern.subject_id,
+					title: concern.subject_title
+				},
+				probability: concern.score,
+				disposition: drafted ? ('drafted' as const) : ('surfaced' as const),
+				proposal: proposal
+					? {
+							summary: proposal.summary,
+							field: proposal.field,
+							from: proposal.from,
+							to: proposal.to
+						}
+					: null,
+				evidenceExcerpt: concern.detail.evidenceExcerpt,
+				draftInChatPrompt: drafted ? null : concern.detail.fixInChatPrompt,
+				// A drafted item already shows its proposal; the reason line would repeat it.
+				reason: drafted ? null : concernReason(concern)
+			};
+		});
+		const bundleRef =
+			bundle.status === 'created' || bundle.status === 'unchanged'
+				? { suggestionId: bundle.suggestionId, operationCount: bundle.operationCount }
+				: null;
 		const card = params.triggerSessionId
 			? buildFreshnessCard({
 					scanId: scan.id,
 					projectId,
 					projectName: context.project.name,
 					createdAt: deps.now().toISOString(),
-					items: ranked.top.map((decision) => ({
-						flagId: flagIdByKey.get(
-							entityKey(decision.candidate.kind, decision.candidate.id)
-						)!,
-						decision
-					})),
-					moreCount: ranked.more,
-					bundle:
-						bundle.status === 'created'
-							? {
-									suggestionId: bundle.suggestionId,
-									operationCount: bundle.operationCount
-								}
-							: null,
+					items: cardItems,
+					moreCount: Math.max(0, cardItems.length - policy.combine.cardMaxItems),
+					bundle: bundleRef && bundleRef.operationCount > 0 ? bundleRef : null,
 					autoApplied,
 					inboxCleanup: {
 						retired: cleanup.retired,
@@ -971,7 +1118,15 @@ export async function runFreshnessProjectScan(params: {
 				retired: cleanup.retired.length,
 				marked: cleanup.marked.length,
 				reset_fresh: cleanup.reset.length,
-				bundle_operations: bundle.status === 'created' ? bundle.operationCount : 0
+				bundle_operations:
+					bundle.status === 'created' || bundle.status === 'unchanged'
+						? bundle.operationCount
+						: 0,
+				concerns_opened: mergePlan.inserts.length,
+				concerns_closed: mergePlan.updates.filter((update) => update.patch.closed_at)
+					.length,
+				concerns_surfaced: mergePlan.newlySurfaced.length,
+				concerns_open_surfaced: surfacedConcerns.length
 			},
 			cardMessageId,
 			...baseFinish,

@@ -1055,3 +1055,31 @@ How it works:
 - Only the flags whose operation actually applied are marked applied.
 - Actions require write access; reads require read access.
 - Flagged documents render in a list above the document tree.
+
+## Amendment: v2 targeting, section dig and roll-up (tasker 106, 2026-09-25)
+
+Question set and policy are now `freshness_questions_v2` / `freshness_policy_v2`. The policy object
+keeps its `FRESHNESS_POLICY_V1` identifier. Full design and replay results are in
+`tasker/106-freshness-radar-rollup.md`.
+
+- **Pipeline.** The pipeline is now context → **[1b] Jev targeting** → [2] R1 / **dig** / R2 / R3 →
+  [3] combine → [4] ledger → [5] live only: auto-apply, inbox cleanup, **roll-up merge**, one bundle,
+  and a card of newly surfaced concerns. A targeting failure falls back to the lexical prefilter;
+  the main batch still fails closed.
+- **News now includes recorded decisions.** These are START HERE `## Decisions` bullets with
+  `_(YYYY-MM-DD)_` stamps. Each record's view carries `last_changed` (a date and a phrase) and
+  `newer_decisions` (ids). A record with newer decisions skips the status-news gate.
+- **Documents are judged section by section,** never by description. Each section is its own text
+  from `extractOutline`. The document's probability is its stalest section. Documents never get
+  operations; they get Fix in chat.
+- **New table `freshness_concerns`** (migration `20260925030000`) holds one open row per subject
+  (a unique partial index). The owner has read access through RLS; all writes go through the
+  service role. It is derived, current state. `freshness_flags` stays the ledger (section 7 is
+  unchanged).
+- **The bundle may be review-only.** `preview.review_items` lists concerns that have nothing to
+  apply. With zero operations, `action_kinds` is `['reject']`. The `preview.signature` keeps an
+  unchanged roll-up on the same inbox item.
+- **The card shows only concerns that newly cross the bar,** so the same concern never produces a
+  second card. Items show a reason line and a **Fix in chat** button, which replaced "Draft in chat".
+- **Replay:** `apps/worker/scripts/freshness-radar-rollup-replay.ts`. It is read-only and cached,
+  and paid Jev calls need the owner's OK. The backtest now runs targeting exactly as live does.

@@ -170,7 +170,8 @@ export class AgenticChatMutationToolRunner {
 					effectId: error.effectId,
 					message: errorMessage(error),
 					observationErrorCode: 'known_mutation_failure',
-					toolLevel: isToolLevelPermanentMutationFailure(error)
+					toolLevel: !error.retryable && isToolLevelPermanentMutationFailure(error),
+					retryable: error.retryable
 				},
 				sequenceIndex,
 				planning,
@@ -479,10 +480,13 @@ export class AgenticChatMutationToolRunner {
 		const failureMessage = failure.message;
 		const toolCategory = mutationToolCategory(step);
 		// Remember the failure before any await so a concurrent call of the same
-		// tool in this layer already sees the cap.
+		// tool in this layer already sees the cap. A rolled-back write is not
+		// permanent, so it is never capped: the model may make the call again.
 		const ledger = terminalContext.permanentMutationFailures;
-		ledger.byCall.set(mutationCallKey(step), failureMessage);
-		if (failure.toolLevel) ledger.byTool.set(step.toolName, failureMessage);
+		if (!failure.retryable) {
+			ledger.byCall.set(mutationCallKey(step), failureMessage);
+			if (failure.toolLevel) ledger.byTool.set(step.toolName, failureMessage);
+		}
 		// The effect executor has already reconciled this attempt to durable
 		// `failed`. Persist its failed tool row with an independent bounded signal
 		// so a known outcome can never be mistaken for an uncertain commit.

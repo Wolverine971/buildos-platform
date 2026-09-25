@@ -30,6 +30,12 @@ live verification, or a named exit gate is still pending.
   turns. [101 — Case 2 latency](101-gate-case2-task-batch-latency.md): not a hang. Two review
   rounds, because dependencies need a second batch, plus ~15 serial DB round trips per write put the
   floor near 45 s against a 60 s limit, so one slow provider sample tips it over.
+  **2026-09-25:** case 2 now passes in the prod battery at 26.5 s median (was 53 s). Fixes: the
+  reviewer no longer re-copies its checklist, streamed reasoning counts as progress, task creates
+  run in parallel, and the task-create RPC locks its project first. Residuals moved to
+  [105 — One lock order for every project write](105-project-write-lock-order.md): goal/plan creates,
+  plan and task updates, and document RPCs still upgrade their project lock mid-transaction. After
+  that, widen parallel writes (goal/plan/milestone/risk creates; links, which need dedupe first).
   [102 — Case 13 dead turn](102-gate-case13-db-stall-permanent-failure.md): a 40 s gate-DB stall, a
   prompt-snapshot RPC holding the turn row lock, and the executor classifying the retryable `57014`
   as permanent. Both are ready for another agent; paid reruns need DJ's approval.

@@ -23,7 +23,8 @@ const base = {
 	newInformation: [
 		{ said: '2026-09-18 (today)', text: 'The investor deck is done. Launch is Oct 3.' }
 	],
-	titleChars: 80
+	titleChars: 80,
+	decisions: [] as Array<{ id: string; recorded: string | null; text: string }>
 };
 
 const mention: FreshnessDateMention = {
@@ -42,7 +43,8 @@ function subject(kind: R1Subject['kind'], title: string): R1Subject {
 			kind,
 			title,
 			state: kind === 'task' ? 'todo' : 'active',
-			last_changed: '3 days ago'
+			last_changed: '3 days ago',
+			newer_decisions: []
 		}
 	};
 }
@@ -60,9 +62,11 @@ describe('R1 staleness request', () => {
 			'status_news',
 			'stale_0',
 			'change_0',
+			'chat_0',
 			'date_0',
 			'stale_1',
-			'change_1'
+			'change_1',
+			'chat_1'
 		]);
 		const stale = questions.stale_0 as unknown as {
 			instructions: { question: string; rules: string[] };
@@ -93,7 +97,7 @@ describe('R1 staleness request', () => {
 		});
 	});
 
-	it('asks date questions only when there are mentions, and caps at 73 questions', () => {
+	it('asks date questions only when there are mentions, and caps at 97 questions', () => {
 		const subjects = Array.from({ length: 24 }, (_, index) =>
 			subject('task', `Task number ${index}`)
 		);
@@ -103,14 +107,15 @@ describe('R1 staleness request', () => {
 			dateSentenceChars: 200,
 			subjects
 		});
-		expect(Object.keys(withDates.request!.questions)).toHaveLength(73);
+		// status_news + 24 × (stale, change, chat-bears, date)
+		expect(Object.keys(withDates.request!.questions)).toHaveLength(97);
 		const withoutDates = buildR1Request({
 			...base,
 			dateMentions: [],
 			dateSentenceChars: 200,
 			subjects
 		});
-		expect(Object.keys(withoutDates.request!.questions)).toHaveLength(49);
+		expect(Object.keys(withoutDates.request!.questions)).toHaveLength(73);
 		expect(
 			Object.keys(withoutDates.request!.questions).some((key) => key.startsWith('date_'))
 		).toBe(false);
@@ -229,7 +234,7 @@ describe('frozen wording', () => {
 	it('pins the question-set hash (change the version when this changes)', () => {
 		expect(FRESHNESS_QUESTION_SET_SHA256).toMatch(/^[0-9a-f]{64}$/);
 		expect(FRESHNESS_QUESTION_SET_SHA256).toMatchInlineSnapshot(
-			`"2d43e98de84c2d81cf32ba985740b60dae742c071ef2765417812f29f8d7198b"`
+			`"049e28fb80f514b6a687f2ace324a44869b891a332a4a8bb0c8d1b1579b68c2c"`
 		);
 	});
 });

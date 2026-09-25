@@ -360,6 +360,10 @@
 							<p class="mt-0.5 pl-5 text-xs text-foreground/80">
 								{item.proposal.summary}
 							</p>
+						{:else if item.reason}
+							<p class="mt-0.5 line-clamp-3 pl-5 text-xs text-foreground/80">
+								{item.reason}
+							</p>
 						{:else if item.evidenceExcerpt}
 							<p
 								class="mt-0.5 line-clamp-2 pl-5 text-xs italic text-muted-foreground"
@@ -387,10 +391,10 @@
 									class={secondaryButton}
 									disabled={busy !== null}
 									onclick={() => onDraftInChat?.(draftInChatPromptFor(item))}
-									aria-label="Draft an update to {item.entity.title} in chat"
+									aria-label="Fix {item.entity.title} in chat"
 								>
 									<MessageSquare class="h-3.5 w-3.5" aria-hidden="true" />
-									Draft in chat
+									Fix in chat
 								</button>
 							{/if}
 							<button

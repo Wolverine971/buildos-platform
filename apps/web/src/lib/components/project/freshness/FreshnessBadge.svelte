@@ -221,6 +221,9 @@
 					<X class="h-3.5 w-3.5" aria-hidden="true" />
 				</button>
 			</div>
+			{#if flag.reason}
+				<p class="mt-2 line-clamp-4 text-xs text-foreground/80">{flag.reason}</p>
+			{/if}
 			{#if flag.evidenceExcerpt}
 				<p class="mt-2 line-clamp-3 text-xs italic text-muted-foreground">
 					“{flag.evidenceExcerpt}”

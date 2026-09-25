@@ -22388,6 +22388,18 @@ export type Database = {
         }
         Returns: Json
       }
+      onto_edge_link_atomic: {
+        Args: {
+          p_dst_id: string
+          p_dst_kind: string
+          p_project_id: string
+          p_props?: Json
+          p_rel: string
+          p_src_id: string
+          p_src_kind: string
+        }
+        Returns: Json
+      }
       onto_goal_create_atomic: {
         Args: { p_goal: Json; p_relationship_plan: Json }
         Returns: Json
@@ -22406,6 +22418,10 @@ export type Database = {
       }
       onto_jsonb_has_value: {
         Args: { p_json: Json; p_path: string }
+        Returns: boolean
+      }
+      onto_lock_project_for_write: {
+        Args: { p_project_id: string }
         Returns: boolean
       }
       onto_plan_create_atomic: {

@@ -32,6 +32,8 @@ export type FreshnessCandidate = {
 	/** Documents: description or the head of content (<=400). */
 	summary: string | null;
 	props: Record<string, unknown>;
+	/** archived_at of the row (tasker 106: an archived subject closes its roll-up concern). */
+	archivedAt?: string | null;
 };
 
 export type PrefilterFeatures = {
@@ -179,12 +181,7 @@ function recencyMs(candidate: FreshnessCandidate): number {
 	return Number.isFinite(value) ? value : 0;
 }
 
-/**
- * Score, keep entities scoring above 0 (top N), pad to the minimum with the most
- * recently updated open entities, and return them in rank order. Deterministic:
- * ties break by recency, then id.
- */
-export function prefilterCandidates(params: {
+type ScoreParams = {
 	candidates: readonly FreshnessCandidate[];
 	windowText: string;
 	dateMentions: readonly FreshnessDateMention[];
@@ -192,12 +189,14 @@ export function prefilterCandidates(params: {
 	linkedToChanged: ReadonlySet<string>;
 	today: string;
 	policy: FreshnessPolicyV1;
-}): PrefilteredCandidate[] {
+};
+
+function scoreCandidates(params: ScoreParams): PrefilteredCandidate[] {
 	const config = params.policy.prefilter;
 	const windowTokens = new Set(prefilterTokens(params.windowText));
 	const idf = idfTable(params.candidates);
 
-	const scored = params.candidates.map((candidate) => {
+	return params.candidates.map((candidate) => {
 		const title = weightedCoverage(candidate.title, windowTokens, idf) * config.titleWeight;
 		const description =
 			weightedCoverage(candidate.description ?? candidate.summary, windowTokens, idf) *
@@ -235,11 +234,22 @@ export function prefilterCandidates(params: {
 			}
 		};
 	});
+}
 
-	const byRank = (a: PrefilteredCandidate, b: PrefilteredCandidate) =>
-		b.features.score - a.features.score ||
-		recencyMs(b.candidate) - recencyMs(a.candidate) ||
-		a.candidate.id.localeCompare(b.candidate.id);
+const byRank = (a: PrefilteredCandidate, b: PrefilteredCandidate) =>
+	b.features.score - a.features.score ||
+	recencyMs(b.candidate) - recencyMs(a.candidate) ||
+	a.candidate.id.localeCompare(b.candidate.id);
+
+/**
+ * Score, keep entities scoring above 0 (top N), pad to the minimum with the most
+ * recently updated open entities, and return them in rank order. Deterministic:
+ * ties break by recency, then id. Since tasker 106 this is only the fallback
+ * when Jev targeting fails.
+ */
+export function prefilterCandidates(params: ScoreParams): PrefilteredCandidate[] {
+	const config = params.policy.prefilter;
+	const scored = scoreCandidates(params);
 
 	const kept = scored
 		.filter((entry) => entry.features.score > 0)
@@ -261,6 +271,46 @@ export function prefilterCandidates(params: {
 	}
 
 	return kept.map((entry, index) => ({
+		candidate: entry.candidate,
+		features: { ...entry.features, rank: index }
+	}));
+}
+
+/**
+ * The Jev targeting pool (tasker 106): every eligible candidate, forced keys
+ * first (open roll-up concerns, re-checked every scan), then the lexical
+ * fallback list, then the rest by lexical score and recency. The caps only
+ * bite on large projects; forced and fallback entries are never cut.
+ */
+export function rankCandidatePool(
+	params: ScoreParams & {
+		fallback: readonly PrefilteredCandidate[];
+		forcedKeys: ReadonlySet<string>;
+	}
+): PrefilteredCandidate[] {
+	const config = params.policy.targeting;
+	const scored = scoreCandidates(params).sort(byRank);
+	const key = (entry: PrefilteredCandidate) => `${entry.candidate.kind}:${entry.candidate.id}`;
+	const fallbackKeys = new Set(params.fallback.map(key));
+	const pool: PrefilteredCandidate[] = [];
+	const seen = new Set<string>();
+	let documents = 0;
+	const push = (entry: PrefilteredCandidate, protectedEntry: boolean) => {
+		const k = key(entry);
+		if (seen.has(k)) return;
+		const isDocument = entry.candidate.kind === 'document';
+		if (!protectedEntry) {
+			if (pool.length >= config.maxPool) return;
+			if (isDocument && documents >= config.maxPoolDocuments) return;
+		}
+		seen.add(k);
+		if (isDocument) documents += 1;
+		pool.push(entry);
+	};
+	for (const entry of scored) if (params.forcedKeys.has(key(entry))) push(entry, true);
+	for (const entry of params.fallback) push(entry, true);
+	for (const entry of scored) if (!fallbackKeys.has(key(entry))) push(entry, false);
+	return pool.map((entry, index) => ({
 		candidate: entry.candidate,
 		features: { ...entry.features, rank: index }
 	}));

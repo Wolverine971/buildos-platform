@@ -226,6 +226,11 @@ export interface FreshnessDataPort {
 		documentIds: readonly string[],
 		chars: number
 	): Promise<Map<string, string>>;
+	/** Full markdown bodies (clipped at `maxChars`), for the section dig and roll-up checks. */
+	loadDocumentBodies(
+		documentIds: readonly string[],
+		maxChars: number
+	): Promise<Map<string, string>>;
 	loadEdges(projectId: string): Promise<FreshnessEdgeRow[]>;
 	/** task ids among `taskIds` with a legacy task_calendar_events row. */
 	loadCalendarEventTaskIds(taskIds: readonly string[]): Promise<Set<string>>;
@@ -469,6 +474,23 @@ export class SupabaseFreshnessDataPort implements FreshnessDataPort {
 			if (text) heads.set(row.id, text.slice(0, chars));
 		}
 		return heads;
+	}
+
+	async loadDocumentBodies(
+		documentIds: readonly string[],
+		maxChars: number
+	): Promise<Map<string, string>> {
+		const ids = uniq(documentIds);
+		const bodies = new Map<string, string>();
+		if (!ids.length) return bodies;
+		const rows = unwrap<Array<{ id: string; content: string | null }>>(
+			await this.db.from('onto_documents').select('id, content').in('id', ids),
+			'onto_documents'
+		);
+		for (const row of rows) {
+			if (row.content) bodies.set(row.id, row.content.slice(0, maxChars));
+		}
+		return bodies;
 	}
 
 	async loadEdges(projectId: string): Promise<FreshnessEdgeRow[]> {

@@ -853,7 +853,7 @@ describe('freshness_update bundle inbox mapping', () => {
 			source_ref_id: 'bundle-1',
 			audience: 'project_members',
 			status: 'pending',
-			title: 'Update 2 out-of-date items',
+			title: '2 things look out of date',
 			summary: 'From your update on Sep 18 · 1 task, 1 milestone',
 			risk_tier: 1,
 			action_kinds: ['approve', 'reject'],
@@ -879,7 +879,7 @@ describe('freshness_update bundle inbox mapping', () => {
 			...bundle,
 			operations: [bundle.operations[0]]
 		});
-		expect(row?.title).toBe('Update 1 out-of-date item');
+		expect(row?.title).toBe('1 thing looks out of date');
 		expect(row?.summary).toMatch(/· 1 task$/);
 	});
 
@@ -915,7 +915,7 @@ describe('freshness_update bundle inbox mapping', () => {
 		expect(upserts).toHaveLength(1);
 		expect(row).toMatchObject({
 			status: 'pending',
-			title: 'Update 2 out-of-date items',
+			title: '2 things look out of date',
 			source_status: expect.stringMatching(/^proposal_verified:[0-9a-f]{64}$/)
 		});
 	});

@@ -1,4 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.edges.ts
+import type { Json } from '@buildos/shared-types';
 import type { OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
 import { normalizeEdgeDirection, VALID_RELS, type EntityKind } from '../ontology/edge-direction';
@@ -16,11 +17,18 @@ import {
 } from './op-execution-gateway.entity-access';
 import { assertValidId } from './op-execution-gateway.ids';
 import { normalizeProps, requireTrimmedString } from './op-execution-gateway.normalization';
-import { ExternalToolGatewayError } from './op-execution-gateway.responses';
+import { ExternalToolGatewayError, rolledBackWriteDetails } from './op-execution-gateway.responses';
 import { ONTO_EDGE_SELECT, type ExternalLinkEntityKind } from './op-execution-gateway.config';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
 
 export const TASK_DOCUMENT_REL = 'task_has_document';
+
+const ONTO_EDGE_FIELDS = ONTO_EDGE_SELECT.split(',').map((field) => field.trim());
+
+/** The RPC returns the whole row; tool results keep the fields a select returned. */
+function pickEdgeFields(row: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(ONTO_EDGE_FIELDS.map((field) => [field, row[field]]));
+}
 
 export async function createOptionalParentEdges(
 	context: ToolExecutionContext,
@@ -141,46 +149,29 @@ export async function createEdge(
 }> {
 	const prepared = await prepareEdgeMutation(context, args, knownProject);
 	const { normalized, project } = prepared;
-	const { data: existing, error: existingError } = await context.admin
-		.from('onto_edges')
-		.select(ONTO_EDGE_SELECT)
-		.eq('project_id', project.id)
-		.eq('src_kind', normalized.src_kind)
-		.eq('src_id', normalized.src_id)
-		.eq('dst_kind', normalized.dst_kind)
-		.eq('dst_id', normalized.dst_id)
-		.eq('rel', normalized.rel)
-		.maybeSingle();
-	if (existingError) {
+	// One request that checks and inserts under the project write lock
+	// (migration 20260925020100), so identical links running at once return the
+	// same edge instead of inserting duplicates (Tasker 105).
+	const { data: linked, error } = await context.admin.rpc('onto_edge_link_atomic', {
+		p_project_id: project.id,
+		p_src_kind: normalized.src_kind,
+		p_src_id: normalized.src_id,
+		p_rel: normalized.rel,
+		p_dst_kind: normalized.dst_kind,
+		p_dst_id: normalized.dst_id,
+		p_props: normalized.props as Json
+	});
+	const result = linked as { created?: boolean; edge?: Record<string, unknown> } | null;
+	if (error || !result?.edge) {
 		throw new ExternalToolGatewayError(
 			'INTERNAL',
-			existingError.message || 'Failed to check existing edge'
+			error?.message || 'Failed to create edge',
+			error?.code ? { database_code: error.code } : undefined
 		);
 	}
-	if (existing) {
-		return {
-			created: 0,
-			edge: existing as Record<string, unknown>,
-			project
-		};
-	}
-
-	const { data, error } = await context.admin
-		.from('onto_edges')
-		.insert({
-			project_id: project.id,
-			src_kind: normalized.src_kind,
-			src_id: normalized.src_id,
-			dst_kind: normalized.dst_kind,
-			dst_id: normalized.dst_id,
-			rel: normalized.rel,
-			props: normalized.props
-		})
-		.select(ONTO_EDGE_SELECT)
-		.single();
-
-	if (error || !data) {
-		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create edge');
+	const data = pickEdgeFields(result.edge);
+	if (!result.created) {
+		return { created: 0, edge: data, project };
 	}
 
 	await logCreateAsync(
@@ -195,18 +186,29 @@ export async function createEdge(
 		getExternalAgentActivityContext(context)
 	);
 
-	return {
-		created: 1,
-		edge: data as Record<string, unknown>,
-		project
-	};
+	return { created: 1, edge: data, project };
 }
 
 export async function linkOntoEntities(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ) {
-	const result = await createEdge(context, args);
+	let result: Awaited<ReturnType<typeof createEdge>>;
+	try {
+		result = await createEdge(context, args);
+	} catch (error) {
+		// Here the edge insert is the op's only write (other callers of createEdge
+		// write their entity first), so a transient abort left nothing behind.
+		if (!(error instanceof ExternalToolGatewayError)) throw error;
+		const rolledBack = rolledBackWriteDetails({
+			code: String(error.details?.database_code ?? '')
+		});
+		if (!rolledBack) throw error;
+		throw new ExternalToolGatewayError(error.code, error.message, {
+			...error.details,
+			...rolledBack
+		});
+	}
 	return {
 		created: result.created,
 		edge: result.edge,

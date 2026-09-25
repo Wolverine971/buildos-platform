@@ -101,14 +101,14 @@ describe('FreshnessRadarCard', () => {
 		expect(screen.queryByText('Fourth')).toBeNull();
 	});
 
-	it('offers Draft in chat only for items without a proposal and pre-fills through the handler', async () => {
+	it('offers Fix in chat only for items without a proposal and pre-fills through the handler', async () => {
 		const onDraftInChat = vi.fn();
 		render(FreshnessRadarCard, {
 			card: freshnessCardFixture(),
 			onDraftInChat,
 			fetchFn: makeFetch(statusFixture())
 		});
-		const drafts = screen.getAllByRole('button', { name: /Draft an update/ });
+		const drafts = screen.getAllByRole('button', { name: /Fix .* in chat/ });
 		expect(drafts).toHaveLength(1);
 		await fireEvent.click(drafts[0]!);
 		expect(onDraftInChat).toHaveBeenCalledWith(
@@ -116,9 +116,9 @@ describe('FreshnessRadarCard', () => {
 		);
 	});
 
-	it('hides Draft in chat when no composer handler is wired', () => {
+	it('hides Fix in chat when no composer handler is wired', () => {
 		render(FreshnessRadarCard, { card: freshnessCardFixture(), fetchFn: makeFetch(null) });
-		expect(screen.queryByRole('button', { name: /Draft an update/ })).toBeNull();
+		expect(screen.queryByRole('button', { name: /Fix .* in chat/ })).toBeNull();
 	});
 
 	it('approves the bundle in one tap and marks drafted items updated', async () => {

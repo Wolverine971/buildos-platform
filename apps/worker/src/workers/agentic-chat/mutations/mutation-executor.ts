@@ -66,13 +66,22 @@ export type AgenticChatMutationResultV1 = {
 };
 
 export class AgenticChatMutationAdapterError extends Error {
+	/**
+	 * A known failure that wrote nothing and may succeed if the identical call is
+	 * made again (the database rolled a busy write back). Never set for an
+	 * uncertain outcome.
+	 */
+	readonly retryable: boolean;
+
 	constructor(
 		readonly disposition: 'known_failed' | 'outcome_uncertain',
 		readonly failureCode: string,
-		message: string
+		message: string,
+		options: { retryable?: boolean } = {}
 	) {
 		super(message);
 		this.name = 'AgenticChatMutationAdapterError';
+		this.retryable = disposition === 'known_failed' && options.retryable === true;
 	}
 }
 
@@ -85,7 +94,9 @@ export class AgenticChatEffectExecutionError extends Error {
 		readonly effectId: string,
 		message: string,
 		/** The adapter's structured failure code, when an adapter failure caused this. */
-		readonly failureCode: string | null = null
+		readonly failureCode: string | null = null,
+		/** Nothing was written and the identical call may succeed later this turn. */
+		readonly retryable: boolean = false
 	) {
 		super(message);
 		this.name = 'AgenticChatEffectExecutionError';
@@ -98,6 +109,7 @@ export class AgenticChatEffectExecutionError extends Error {
  */
 export class AgenticChatMutationExecutor {
 	private readonly maximumAdapterAttempts: number;
+	private readonly rolledBackRetryDelayMs: (retry: number) => number;
 
 	constructor(
 		private readonly ports: {
@@ -107,8 +119,14 @@ export class AgenticChatMutationExecutor {
 			onSpan?: (span: AgenticChatMutationSpanV1) => void;
 			nowMs?: () => number;
 		},
-		options: { maximumAdapterAttempts?: number } = {}
+		options: {
+			maximumAdapterAttempts?: number;
+			/** Wait before retry N (1-based) of a rolled-back write. */
+			rolledBackRetryDelayMs?: (retry: number) => number;
+		} = {}
 	) {
+		this.rolledBackRetryDelayMs =
+			options.rolledBackRetryDelayMs ?? defaultRolledBackRetryDelayMs;
 		this.maximumAdapterAttempts = options.maximumAdapterAttempts ?? 2;
 		if (
 			!Number.isSafeInteger(this.maximumAdapterAttempts) ||
@@ -204,7 +222,8 @@ export class AgenticChatMutationExecutor {
 				targetState === 'uncertain' ? 'uncertain_external_commit' : 'permanent',
 				stableIdentity.effectId,
 				outcome.message,
-				outcome.failureCode
+				outcome.failureCode,
+				outcome.retryable
 			);
 		}
 
@@ -242,7 +261,13 @@ export class AgenticChatMutationExecutor {
 		const attempts = input.step.downstreamIdempotencySupported
 			? this.maximumAdapterAttempts
 			: 1;
-		for (let attempt = 1; attempt <= attempts; attempt += 1) {
+		// A write the database rolled back (deadlock, lock or statement timeout)
+		// left nothing behind, so it is retried after a short jittered wait: the
+		// parallel calls that collided no longer line up. These retries are safe
+		// without downstream idempotency and do not use `attempts`, which only an
+		// ambiguous attempt consumes.
+		let rolledBackRetries = 0;
+		for (let attempt = 1; attempt <= attempts; ) {
 			// No write starts once this worker may have lost the turn. Before any
 			// ambiguous attempt that is a known non-write; after one it stays
 			// uncertain (the error below is kept by the ambiguous-outcome rule).
@@ -272,6 +297,20 @@ export class AgenticChatMutationExecutor {
 				});
 			} catch (error) {
 				lastError = error;
+				if (
+					error instanceof AgenticChatMutationAdapterError &&
+					error.retryable &&
+					rolledBackRetries < MAXIMUM_ROLLED_BACK_RETRIES
+				) {
+					rolledBackRetries += 1;
+					await abortableDelay(
+						this.rolledBackRetryDelayMs(rolledBackRetries),
+						sawAmbiguousAttempt ? recoverySignal : input.signal
+					);
+					// Cancelled while waiting: this attempt wrote nothing, so stop here.
+					if (!sawAmbiguousAttempt && input.signal.aborted) throw error;
+					continue;
+				}
 				const knownFailure =
 					error instanceof AgenticChatMutationAdapterError &&
 					error.disposition === 'known_failed';
@@ -284,6 +323,7 @@ export class AgenticChatMutationExecutor {
 				if (!sawAmbiguousAttempt) firstAmbiguousError = error;
 				sawAmbiguousAttempt = true;
 				if (attempt === attempts) throw error;
+				attempt += 1;
 			}
 		}
 		throw lastError ?? new Error('Mutating adapter did not produce a receipt');
@@ -367,19 +407,43 @@ function mutationFailure(error: unknown): {
 	disposition: 'known_failed' | 'outcome_uncertain';
 	failureCode: string;
 	message: string;
+	retryable: boolean;
 } {
 	if (error instanceof AgenticChatMutationAdapterError) {
 		return {
 			disposition: error.disposition,
 			failureCode: canonicalFailureCode(error.failureCode),
-			message: error.message
+			message: error.message,
+			retryable: error.retryable
 		};
 	}
 	return {
 		disposition: 'outcome_uncertain',
 		failureCode: 'uncertain_external_commit',
-		message: error instanceof Error ? error.message : String(error)
+		message: error instanceof Error ? error.message : String(error),
+		retryable: false
 	};
+}
+
+/** Two retries: a deadlock victim already waited deadlock_timeout (1 s) per attempt. */
+const MAXIMUM_ROLLED_BACK_RETRIES = 2;
+
+function defaultRolledBackRetryDelayMs(retry: number): number {
+	return 150 * retry + Math.floor(Math.random() * 250);
+}
+
+/** Waits `ms`, resolving early (never rejecting) when `signal` aborts. */
+function abortableDelay(ms: number, signal: AbortSignal): Promise<void> {
+	if (ms <= 0 || signal.aborted) return Promise.resolve();
+	return new Promise((resolve) => {
+		const timer = setTimeout(done, ms);
+		function done() {
+			clearTimeout(timer);
+			signal.removeEventListener('abort', done);
+			resolve();
+		}
+		signal.addEventListener('abort', done, { once: true });
+	});
 }
 
 function stateError(receipt: ChatTurnEffectRpcResultV1): AgenticChatEffectExecutionError {

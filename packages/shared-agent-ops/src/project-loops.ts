@@ -456,16 +456,22 @@ export function buildHeuristicProjectLoopBrief(
 		ctx.projectDescription ??
 		`Keep ${ctx.projectName} moving`;
 
+	// Without a model there is no judgment about what comes next. Recency is not one: a bulk
+	// edit made "Finalize manuscript lock" the next action of an unwritten book (tasker 107).
+	// Name only work already under way, and never present task titles as decisions.
+	const inProgress = activeTasks.find((task) => task.state_key === 'in_progress');
 	return {
 		current_goal: currentGoal,
 		recent_changes: [
 			`${ctx.documents.length} document${ctx.documents.length === 1 ? '' : 's'} in scope`,
 			`${activeTasks.length} open task${activeTasks.length === 1 ? '' : 's'} tracked`
 		],
-		open_decisions: activeTasks.slice(0, 3).map((task) => task.title),
+		open_decisions: [],
 		stale_assumptions: staleDocs.map((doc) => doc.title),
 		contradictions_or_drift: [],
-		next_best_action: activeTasks[0]?.title ?? 'Add the next concrete task',
+		next_best_action: activeTasks.length
+			? (inProgress?.title ?? null)
+			: 'Add the next concrete task',
 		generated_at: now.toISOString(),
 		source: 'heuristic'
 	};

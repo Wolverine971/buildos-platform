@@ -20,9 +20,9 @@ import {
 } from '@buildos/agentic-chat-runtime/context-finder';
 import {
 	type AgenticChatContextFinderPort,
-	allowsContextFinderUser,
 	type ChatContextFinderMode,
 	type ChatContextFinding,
+	allowsContextFinderUser,
 	contextSelectionTransitionId,
 	turnConversation,
 	withFinderDeadline

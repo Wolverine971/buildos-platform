@@ -60,6 +60,8 @@ type Row = Record<string, any>;
 
 class FakeDb {
 	tables: Record<string, Row[]> = {};
+	/** Tables that do not exist yet (a deploy that runs before its migration). */
+	missing = new Set<string>();
 	nextId = 0;
 	constructor(seed: Record<string, Row[]> = {}) {
 		for (const [table, rows] of Object.entries(seed)) {
@@ -132,6 +134,12 @@ class FakeQuery {
 		return this;
 	}
 	private run(): { data: Row[] | null; error: { message: string; code?: string } | null } {
+		if (this.db.missing.has(this.table)) {
+			return {
+				data: null,
+				error: { message: `relation ${this.table} does not exist`, code: '42P01' }
+			};
+		}
 		const matches = () =>
 			this.db.rows(this.table).filter((row) => this.filters.every((f) => f(row)));
 		if (this.op === 'insert') {
@@ -429,8 +437,11 @@ describe('loadFreshnessBadges', () => {
 	}
 
 	it('returns the caller’s live flags, omitting entities changed or deleted since the flag', async () => {
+		// Before the roll-up migration: per-scan flags back the "may be out of date" badges.
+		const db = seed();
+		db.missing.add('freshness_concerns');
 		const read = await loadFreshnessBadges({
-			supabase: seed(),
+			supabase: db,
 			projectId: PROJECT,
 			userId: USER,
 			now: NOW
@@ -459,6 +470,65 @@ describe('loadFreshnessBadges', () => {
 				scanId: 'scan-1'
 			}
 		]);
+	});
+
+	it('reads "may be out of date" from surfaced roll-up concerns once they exist', async () => {
+		const db = seed();
+		db.tables.freshness_concerns = [
+			{
+				id: 'concern-1',
+				project_id: PROJECT,
+				user_id: USER,
+				subject_kind: 'document',
+				subject_id: 'doc-2',
+				status: 'open',
+				score: '0.8600',
+				last_flag_id: 'f-doc',
+				surfaced_at: iso(-3600e3),
+				surfaced_scan_id: 'scan-1',
+				first_seen_at: iso(-3600e3),
+				evidence_count: 1,
+				evidence: [{ scanId: 'scan-1', probability: 0.86 }],
+				detail: {
+					sections: [
+						{ anchor: 'open-questions', heading: 'Open questions', probability: 0.86 }
+					],
+					decisions: [{ text: 'Venue picked', recorded: '2026-09-18' }],
+					evidenceExcerpt: null,
+					fixInChatPrompt: 'In "Plan": update "Open questions".'
+				}
+			},
+			{
+				// Still accruing evidence: not shown.
+				id: 'concern-2',
+				project_id: PROJECT,
+				user_id: USER,
+				subject_kind: 'task',
+				subject_id: 'task-5',
+				status: 'open',
+				score: '0.4000',
+				last_flag_id: 'f-quiet',
+				surfaced_at: null,
+				evidence: [],
+				detail: {}
+			}
+		];
+		const read = await loadFreshnessBadges({
+			supabase: db,
+			projectId: PROJECT,
+			userId: USER,
+			now: NOW
+		});
+		// Per-scan open flags no longer badge on their own; automatic updates still do.
+		expect(read.flags.map((flag) => flag.flagId).sort()).toEqual(['f-auto', 'f-doc']);
+		expect(read.flags.find((flag) => flag.flagId === 'f-doc')).toMatchObject({
+			entity: { kind: 'document', id: 'doc-2' },
+			probability: 0.86,
+			label: 'may_be_out_of_date',
+			scanId: 'scan-1',
+			reason: 'Older than decisions you recorded since: “Open questions”.',
+			fixInChatPrompt: 'In "Plan": update "Open questions".'
+		});
 	});
 
 	it('lets an automatic-update badge fade once its undo window closes', async () => {
@@ -836,7 +906,7 @@ describe('markFreshnessFlagNotStale', () => {
 			run_id: null,
 			freshness_scan_id: 'scan-1',
 			chat_session_id: 'session-1',
-			title: 'Update 1 out-of-date item',
+			title: '1 thing looks out of date',
 			why_now: 'From your update on 2026-09-18 · 1 milestone',
 			operations: [milestoneOp('ms-1')],
 			undo_operations: [milestoneOp('ms-1')],
@@ -850,7 +920,7 @@ describe('markFreshnessFlagNotStale', () => {
 			expect.objectContaining({
 				projectId: PROJECT,
 				operations: [milestoneOp('ms-1')],
-				title: 'Update 1 out-of-date item',
+				title: '1 thing looks out of date',
 				checkModelAlignment: true
 			})
 		);
@@ -924,6 +994,60 @@ describe('markFreshnessFlagNotStale', () => {
 		expect(second).toMatchObject({ ok: true, flag: { status: 'dismissed' } });
 	});
 
+	it('closes the roll-up concern and drops its review item from the inbox item', async () => {
+		const reviewItem = {
+			concern_id: 'concern-doc',
+			entity_type: 'document',
+			entity_id: 'doc-1',
+			title: 'Launch plan',
+			reason: 'A section looks out of date: “Open questions”.',
+			fix_in_chat_prompt: 'In "Launch plan": update "Open questions".'
+		};
+		const db = seed(
+			bundleRow({
+				preview: {
+					kind: 'generic',
+					summary: '3 things look out of date',
+					review_items: [reviewItem]
+				}
+			})
+		);
+		db.tables.freshness_concerns = [
+			{
+				id: 'concern-doc',
+				project_id: PROJECT,
+				user_id: USER,
+				subject_kind: 'document',
+				subject_id: 'doc-1',
+				status: 'open',
+				last_flag_id: 'f-doc'
+			}
+		];
+		const outcome = await markFreshnessFlagNotStale({
+			supabase: db,
+			admin: db,
+			userId: USER,
+			projectId: PROJECT,
+			flagId: 'f-doc',
+			now: NOW
+		});
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(db.find('freshness_concerns', 'concern-doc')).toMatchObject({
+			status: 'dismissed',
+			close_reason: 'user_marked_not_stale',
+			closed_at: new Date(NOW).toISOString()
+		});
+		expect(db.find('project_suggestions', 'bundle-1')?.status).toBe('superseded');
+		const rebuilt = db.find('project_suggestions', outcome.suggestionId!)!;
+		expect(rebuilt).toMatchObject({
+			status: 'pending',
+			title: '2 things look out of date',
+			operations: [taskOp('task-1'), milestoneOp('ms-1')]
+		});
+		expect(rebuilt.preview.review_items).toBeUndefined();
+	});
+
 	it('returns 404 for another user’s flag', async () => {
 		const db = seed();
 		db.find('freshness_flags', 'f-task')!.user_id = 'user-2';
@@ -989,6 +1113,99 @@ describe('recordFreshnessBundleOutcome', () => {
 			outcome: 'unknown',
 			outcome_source: 'user_dismissed'
 		});
+	});
+});
+
+describe('roll-up concerns on bundle decisions (tasker 106)', () => {
+	function seedConcerns() {
+		return new FakeDb({
+			freshness_flags: [
+				flagRow({ id: 'f-task', subject_id: 'task-1' }),
+				flagRow({
+					id: 'f-doc',
+					subject_kind: 'document',
+					subject_id: 'doc-1',
+					disposition: 'surfaced',
+					suggestion_id: null
+				})
+			],
+			freshness_concerns: [
+				{
+					id: 'concern-task',
+					project_id: PROJECT,
+					user_id: USER,
+					subject_kind: 'task',
+					subject_id: 'task-1',
+					status: 'open',
+					last_flag_id: 'f-task'
+				},
+				{
+					id: 'concern-doc',
+					project_id: PROJECT,
+					user_id: USER,
+					subject_kind: 'document',
+					subject_id: 'doc-1',
+					status: 'open',
+					last_flag_id: 'f-doc'
+				}
+			]
+		});
+	}
+	const withReview = () =>
+		bundleRow({
+			preview: {
+				kind: 'generic',
+				summary: '3 things look out of date',
+				review_items: [
+					{
+						concern_id: 'concern-doc',
+						entity_type: 'document',
+						entity_id: 'doc-1',
+						title: 'Launch plan',
+						reason: 'x',
+						fix_in_chat_prompt: 'y'
+					}
+				]
+			}
+		});
+
+	it('handled or dismissed: closes every concern in the item and labels its last flag', async () => {
+		const db = seedConcerns();
+		await recordFreshnessBundleOutcome({
+			admin: db,
+			suggestion: withReview(),
+			action: 'address',
+			now: NOW
+		});
+		for (const id of ['concern-task', 'concern-doc']) {
+			expect(db.find('freshness_concerns', id)).toMatchObject({
+				status: 'dismissed',
+				close_reason: 'user_dismissed'
+			});
+		}
+		// The doc's flag was never in the bundle: it is labeled through its concern.
+		expect(db.find('freshness_flags', 'f-doc')).toMatchObject({
+			status: 'dismissed',
+			outcome: 'unknown',
+			outcome_source: 'user_dismissed'
+		});
+	});
+
+	it('approve: closes only the concerns whose operation applied', async () => {
+		const db = seedConcerns();
+		await recordFreshnessBundleOutcome({
+			admin: db,
+			suggestion: withReview(),
+			action: 'approve',
+			result: { ok: false, applied_operations: 1 },
+			operationOutcomes: [true, false],
+			now: NOW
+		});
+		expect(db.find('freshness_concerns', 'concern-task')).toMatchObject({
+			status: 'applied',
+			close_reason: 'applied'
+		});
+		expect(db.find('freshness_concerns', 'concern-doc')?.status).toBe('open');
 	});
 });
 

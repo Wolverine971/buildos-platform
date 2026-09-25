@@ -44,8 +44,37 @@ const ROW_LOCAL_MUTATIONS = new Map<string, readonly string[]>([
  * Requires migration 20260924193000 (task create locks its project first):
  * without it, three or more concurrent creates starve each other in the
  * database for 12-97 s. With it, five creates finish in about 1 s.
+ *
+ * Tasker 105: goal, plan, milestone and risk creates are single-row inserts in
+ * the gateway (plan and milestone parent edges go through the lock-first link
+ * RPC). Requires migration 20260925020000, which makes every project write RPC
+ * lock first. Before it, an update_onto_task that moves a task in the same
+ * layer deadlocked against these inserts (local probe: 8 of 24 calls lost).
  */
-const SHARED_PROJECT_CREATES: ReadonlySet<string> = new Set(['create_onto_task']);
+const SHARED_PROJECT_CREATES: ReadonlySet<string> = new Set([
+	'create_onto_task',
+	'create_onto_goal',
+	'create_onto_plan',
+	'create_onto_milestone',
+	'create_onto_risk'
+]);
+
+/**
+ * Links write one edge through onto_edge_link_atomic (migration
+ * 20260925020100), which checks and inserts under the project lock, so links
+ * run together without duplicating an edge. Each link reads both endpoints: an
+ * update of either endpoint in the same batch still orders against it. Tasker
+ * 101 case 2's three dependency links ran one at a time.
+ */
+const LINK_ENDPOINTS: ReadonlyMap<string, readonly (readonly [string, string])[]> = new Map([
+	[
+		'link_onto_entities',
+		[
+			['src_kind', 'src_id'],
+			['dst_kind', 'dst_id']
+		]
+	]
+]);
 
 /**
  * Resolve concurrency only from reviewed worker policy and exact domain IDs.
@@ -62,6 +91,26 @@ export function resolveAgenticChatToolExecutionPolicyV1(
 	}
 	if (!input.concurrentMutationsEnabled) {
 		return { executionPolicy: 'serial', resources: [] };
+	}
+
+	const endpoints = LINK_ENDPOINTS.get(input.toolName);
+	if (endpoints) {
+		const resources = endpoints.flatMap(([kindField, idField]) => {
+			const kind = input.arguments[kindField];
+			const id = input.arguments[idField];
+			return typeof kind === 'string' &&
+				kind.length > 0 &&
+				typeof id === 'string' &&
+				id.length > 0
+				? [{ key: `${kind}:${id}`, access: 'read' as const }]
+				: [];
+		});
+		return resources.length === endpoints.length
+			? {
+					executionPolicy: 'parallel_safe',
+					resources: resources.sort((left, right) => left.key.localeCompare(right.key))
+				}
+			: { executionPolicy: 'serial', resources: [] };
 	}
 
 	const resourceFields = ROW_LOCAL_MUTATIONS.get(input.toolName);

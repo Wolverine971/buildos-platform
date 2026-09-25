@@ -199,6 +199,164 @@ function changedSince(state: EntityState | undefined, reference: unknown): boole
 }
 
 // ---------------------------------------------------------------------------
+// Roll-up concerns (tasker 106)
+// ---------------------------------------------------------------------------
+
+type ConcernBadgeRow = {
+	id: string;
+	subject_kind: string;
+	subject_id: string;
+	score: number | string;
+	last_flag_id: string | null;
+	surfaced_at: string | null;
+	surfaced_scan_id: string | null;
+	first_seen_at: string | null;
+	evidence_count: number | null;
+	evidence: unknown;
+	detail: unknown;
+};
+
+/**
+ * Open, surfaced concerns for the badge read (RLS: the user's own). Returns null
+ * when the roll-up table is unavailable (deploy before migration), so the caller
+ * falls back to per-scan flags.
+ */
+async function loadSurfacedConcerns(
+	supabase: AnySupabase,
+	projectId: string,
+	userId: string
+): Promise<ConcernBadgeRow[] | null> {
+	const { data, error } = await supabase
+		.from('freshness_concerns')
+		.select(
+			'id, subject_kind, subject_id, score, last_flag_id, surfaced_at, surfaced_scan_id, first_seen_at, evidence_count, evidence, detail'
+		)
+		.eq('project_id', projectId)
+		.eq('user_id', userId)
+		.eq('status', 'open')
+		.order('score', { ascending: false })
+		.limit(200);
+	if (error) {
+		console.warn('[FreshnessRadar] Roll-up concerns unavailable:', error.message);
+		return null;
+	}
+	// Only concerns that crossed the bar are shown; the rest are still accruing evidence.
+	return ((data ?? []) as ConcernBadgeRow[]).filter((row) => Boolean(row.surfaced_at));
+}
+
+/** One line for the badge panel (mirrors the worker's concernReason, shortened). */
+function concernBadgeReason(concern: ConcernBadgeRow): string | null {
+	const detail = isRecord(concern.detail) ? concern.detail : {};
+	const sections = (Array.isArray(detail.sections) ? detail.sections : []).filter(
+		(section): section is Record<string, unknown> =>
+			isRecord(section) && typeof section.heading === 'string' && section.anchor !== null
+	);
+	const decided = Array.isArray(detail.decisions) && detail.decisions.length > 0;
+	if (sections.length) {
+		const list = sections
+			.slice(0, 3)
+			.map((section) => `“${String(section.heading).slice(0, 80)}”`)
+			.join(', ');
+		return decided
+			? `Older than decisions you recorded since: ${list}.`
+			: `Looks out of date: ${list}.`;
+	}
+	const proposal = isRecord(detail.proposal) ? str(detail.proposal.summary) : null;
+	if (proposal) return `${proposal}.`;
+	return decided ? 'Older than decisions you recorded since.' : null;
+}
+
+/**
+ * Close open concerns after a user decision, and label each one's latest flag the
+ * same way so the scanner's suppression (14 days while unchanged) stops it
+ * re-surfacing. Admin client; call only after the route's access check. Never throws.
+ */
+export async function closeFreshnessConcerns(params: {
+	admin: AnySupabase;
+	projectId: string;
+	userId?: string | null;
+	concernIds?: string[];
+	subjects?: Array<{ kind: string; id: string }>;
+	status: 'dismissed' | 'applied';
+	reason: 'user_dismissed' | 'user_marked_not_stale' | 'applied';
+	now?: number;
+}): Promise<string[]> {
+	const nowIso = new Date(params.now ?? Date.now()).toISOString();
+	const closed: string[] = [];
+	try {
+		const byId = (params.concernIds ?? []).filter(Boolean);
+		const subjects = params.subjects ?? [];
+		if (!byId.length && !subjects.length) return closed;
+		const queries: Array<Promise<{ data: unknown; error: { message: string } | null }>> = [];
+		const patch = {
+			status: params.status,
+			close_reason: params.reason,
+			closed_at: nowIso
+		};
+		if (byId.length) {
+			let query = params.admin
+				.from('freshness_concerns')
+				.update(patch)
+				.eq('project_id', params.projectId)
+				.eq('status', 'open')
+				.in('id', byId);
+			if (params.userId) query = query.eq('user_id', params.userId);
+			queries.push(query.select('id, last_flag_id'));
+		}
+		for (const subject of subjects) {
+			let query = params.admin
+				.from('freshness_concerns')
+				.update(patch)
+				.eq('project_id', params.projectId)
+				.eq('status', 'open')
+				.eq('subject_kind', subject.kind)
+				.eq('subject_id', subject.id);
+			if (params.userId) query = query.eq('user_id', params.userId);
+			queries.push(query.select('id, last_flag_id'));
+		}
+		const flagIds: string[] = [];
+		for (const result of await Promise.all(queries)) {
+			if (result.error) throw new Error(result.error.message);
+			for (const row of (result.data ?? []) as Array<{
+				id: string;
+				last_flag_id: string | null;
+			}>) {
+				closed.push(row.id);
+				if (row.last_flag_id) flagIds.push(row.last_flag_id);
+			}
+		}
+		if (flagIds.length && params.status === 'dismissed') {
+			const { error } = await params.admin
+				.from('freshness_flags')
+				.update({
+					status: 'dismissed',
+					outcome: params.reason === 'user_marked_not_stale' ? 'not_stale' : 'unknown',
+					outcome_source: params.reason,
+					outcome_at: nowIso
+				})
+				.in('id', flagIds)
+				.eq('status', 'open');
+			if (error) throw new Error(error.message);
+		}
+	} catch (error) {
+		console.warn(
+			'[FreshnessRadar] Failed to close roll-up concerns:',
+			error instanceof Error ? error.message : error
+		);
+	}
+	return closed;
+}
+
+/** Concern ids of a bundle's review items (preview.review_items). */
+function bundleReviewConcernIds(suggestion: Record<string, unknown>): string[] {
+	const preview = isRecord(suggestion.preview) ? suggestion.preview : null;
+	const items = preview && Array.isArray(preview.review_items) ? preview.review_items : [];
+	return items
+		.map((item) => (isRecord(item) ? str(item.concern_id) : null))
+		.filter((id): id is string => Boolean(id));
+}
+
+// ---------------------------------------------------------------------------
 // GET badges and gauges
 // ---------------------------------------------------------------------------
 
@@ -255,13 +413,16 @@ export async function loadFreshnessBadges(params: {
 	if (flagError) throw new Error(`Failed to load freshness flags: ${flagError.message}`);
 	if (gaugeError) throw new Error(`Failed to load on-track scores: ${gaugeError.message}`);
 
+	// Tasker 106: "May be out of date" comes from the roll-up (one open, surfaced
+	// concern per entity) when it exists; the per-scan flags are the fallback.
+	const concerns = await loadSurfacedConcerns(params.supabase, params.projectId, params.userId);
 	const flagRows = ((flagData ?? []) as Array<Record<string, unknown>>).filter((row) => {
 		if (!isEntityKind(row.subject_kind)) return false;
 		if (row.disposition === 'auto_applied') {
 			// "Updated automatically" lasts as long as its undo window, then fades.
 			return !row.undone_at && isFreshnessFlagUndoable(row, now);
 		}
-		return row.status === 'open';
+		return concerns === null && row.status === 'open';
 	});
 
 	const states = await loadEntityStates(
@@ -275,6 +436,28 @@ export async function loadFreshnessBadges(params: {
 
 	const seen = new Set<string>();
 	const flags: FreshnessBadgeReadV1['flags'] = [];
+	for (const concern of concerns ?? []) {
+		const kind = concern.subject_kind as FreshnessEntityKind;
+		const key = `${kind}:${concern.subject_id}:may_be_out_of_date`;
+		if (!isEntityKind(kind) || seen.has(key) || !concern.last_flag_id) continue;
+		seen.add(key);
+		const detail = isRecord(concern.detail) ? concern.detail : {};
+		const evidence = Array.isArray(concern.evidence) ? concern.evidence : [];
+		const last = evidence.at(-1);
+		flags.push({
+			flagId: concern.last_flag_id,
+			scanId: str(isRecord(last) ? last.scanId : null) ?? str(concern.surfaced_scan_id) ?? '',
+			entity: { kind, id: concern.subject_id },
+			probability: num(concern.score) ?? 0,
+			label: 'may_be_out_of_date',
+			evidenceExcerpt: str(detail.evidenceExcerpt),
+			suggestionId: null,
+			createdAt: str(concern.surfaced_at) ?? str(concern.first_seen_at) ?? '',
+			undoableUntil: null,
+			reason: concernBadgeReason(concern),
+			fixInChatPrompt: str(detail.fixInChatPrompt)
+		});
+	}
 	for (const row of flagRows) {
 		const kind = row.subject_kind as FreshnessEntityKind;
 		const entityId = String(row.subject_id);
@@ -599,13 +782,14 @@ export async function undoFreshnessFlags(params: {
 // ---------------------------------------------------------------------------
 
 function bundleTitle(count: number): string {
-	return `Update ${count} out-of-date item${count === 1 ? '' : 's'}`;
+	return `${count} thing${count === 1 ? ' looks' : 's look'} out of date`;
 }
 
 const KIND_PLURAL: Record<string, [string, string]> = {
 	task: ['task', 'tasks'],
 	milestone: ['milestone', 'milestones'],
-	goal: ['goal', 'goals']
+	goal: ['goal', 'goals'],
+	document: ['document', 'documents']
 };
 
 /** Keep the worker's "From your update on <date> · …" summary true after a removal. */
@@ -614,7 +798,7 @@ function bundleWhyNow(previous: unknown, refs: ProjectSuggestionEvidenceRef[]): 
 		typeof previous === 'string' ? previous.match(/From your update on (\S+)/)?.[1] : null;
 	const counts = new Map<string, number>();
 	for (const ref of refs) counts.set(ref.entity_type, (counts.get(ref.entity_type) ?? 0) + 1);
-	const parts = ['task', 'milestone', 'goal']
+	const parts = ['task', 'milestone', 'goal', 'document']
 		.filter((kind) => counts.get(kind))
 		.map((kind) => {
 			const count = counts.get(kind)!;
@@ -622,6 +806,17 @@ function bundleWhyNow(previous: unknown, refs: ProjectSuggestionEvidenceRef[]): 
 		});
 	if (!date) return parts.length ? parts.join(', ') : null;
 	return parts.length ? `From your update on ${date} · ${parts.join(', ')}` : null;
+}
+
+/** Same shape as the worker's bundle rationale (the Discuss chat's seed). */
+function bundleRationale(items: Array<Record<string, unknown>>): string {
+	return [
+		'To fix in chat (no automatic change is proposed for these):',
+		...items.map(
+			(item) =>
+				`- ${str(item.title) ?? 'Item'}: ${str(item.reason) ?? ''} Suggested request: ${str(item.fix_in_chat_prompt) ?? ''}`
+		)
+	].join('\n');
 }
 
 function operationTargets(operation: unknown, subjectId: string): boolean {
@@ -666,7 +861,16 @@ async function rebuildBundleWithout(params: {
 	const index = operations.findIndex((operation) =>
 		operationTargets(operation, params.subjectId)
 	);
-	if (index < 0) return { suggestionId: String(current.id) };
+	const currentPreview: Record<string, unknown> = isRecord(current.preview)
+		? current.preview
+		: {};
+	const reviewItems: Array<Record<string, unknown>> = (
+		Array.isArray(currentPreview.review_items) ? (currentPreview.review_items as unknown[]) : []
+	).filter(isRecord);
+	const nextReviewItems = reviewItems.filter((item) => item.entity_id !== params.subjectId);
+	if (index < 0 && nextReviewItems.length === reviewItems.length) {
+		return { suggestionId: String(current.id) };
+	}
 
 	const keep = (_: unknown, i: number) => i !== index;
 	const nextOperations = operations.filter(keep) as LoopOperation[];
@@ -683,7 +887,7 @@ async function rebuildBundleWithout(params: {
 		freshness_rebuild: { removed_flag_id: params.flagId }
 	} as unknown as Json;
 
-	if (nextOperations.length === 0) {
+	if (nextOperations.length === 0 && nextReviewItems.length === 0) {
 		const { data: superseded, error: supersedeError } = await admin
 			.from('project_suggestions')
 			.update({ status: 'superseded', decided_at: params.now, result: supersedeResult })
@@ -700,27 +904,42 @@ async function rebuildBundleWithout(params: {
 		return { suggestionId: null };
 	}
 
-	const title = bundleTitle(nextOperations.length);
+	const title = bundleTitle(nextOperations.length + nextReviewItems.length);
 	const preview: ProjectSuggestionPreview = {
 		kind: 'generic',
 		summary: title,
-		after: nextOperations.map((operation) => operation.label ?? operation.tool)
+		after: [
+			...nextOperations.map((operation) => operation.label ?? operation.tool),
+			...nextReviewItems.map(
+				(item) => `${str(item.title) ?? 'Item'}: ${str(item.reason) ?? ''}`
+			)
+		],
+		...(nextReviewItems.length
+			? {
+					review_items:
+						nextReviewItems as unknown as ProjectSuggestionPreview['review_items']
+				}
+			: {})
 	};
-	const verification = await verifyProjectSuggestionIntegrity(admin, {
-		projectId: params.projectId,
-		operations: nextOperations,
-		title,
-		preview,
-		checkModelAlignment: true
-	});
-	if (!verification.ok) {
-		throw new Error(`Rebuilt bundle failed verification (${verification.diagnostic.code})`);
+	if (nextOperations.length) {
+		const verification = await verifyProjectSuggestionIntegrity(admin, {
+			projectId: params.projectId,
+			operations: nextOperations,
+			title,
+			preview,
+			checkModelAlignment: true
+		});
+		if (!verification.ok) {
+			throw new Error(`Rebuilt bundle failed verification (${verification.diagnostic.code})`);
+		}
 	}
-	const sourceFingerprint = await computeProjectSuggestionFreshnessFingerprint(
-		admin,
-		params.projectId,
-		nextOperations
-	);
+	const sourceFingerprint = nextOperations.length
+		? await computeProjectSuggestionFreshnessFingerprint(
+				admin,
+				params.projectId,
+				nextOperations
+			)
+		: null;
 
 	const { data: superseded, error: supersedeError } = await admin
 		.from('project_suggestions')
@@ -751,6 +970,7 @@ async function rebuildBundleWithout(params: {
 			title,
 			preview: preview as unknown as Json,
 			why_now: bundleWhyNow(current.why_now, nextEvidence),
+			rationale: nextReviewItems.length ? bundleRationale(nextReviewItems) : null,
 			operations: nextOperations as unknown as Json,
 			undo_operations: (undoOperations.length === operations.length
 				? undoOperations.filter(keep)
@@ -856,10 +1076,22 @@ export async function markFreshnessFlagNotStale(params: {
 		.maybeSingle();
 	if (updateError) return { ok: false, status: 500, message: updateError.message };
 	const record = toFreshnessFlagRecord((updated ?? flag) as Record<string, unknown>);
+	// The roll-up concern for this subject closes too (tasker 106).
+	await closeFreshnessConcerns({
+		admin: params.admin,
+		projectId: params.projectId,
+		userId: params.userId,
+		subjects: [{ kind: String(flag.subject_kind), id: String(flag.subject_id) }],
+		status: 'dismissed',
+		reason: 'user_marked_not_stale',
+		now: params.now
+	});
 
 	let suggestionId: string | null = null;
-	const bundleId = str(flag.suggestion_id);
-	if (flag.disposition === 'drafted' && bundleId) {
+	const bundleId =
+		str(flag.suggestion_id) ??
+		(await currentPendingBundleId(params.supabase, params.projectId));
+	if (bundleId) {
 		try {
 			const rebuilt = await rebuildBundleWithout({
 				admin: params.admin,
@@ -896,7 +1128,8 @@ export async function markFreshnessFlagNotStale(params: {
 export async function recordFreshnessBundleOutcome(params: {
 	admin: AnySupabase;
 	suggestion: Record<string, unknown>;
-	action: 'approve' | 'dismiss';
+	/** 'address': the user marked the roll-up item handled (tasker 106). */
+	action: 'approve' | 'dismiss' | 'address';
 	result?: ProjectSuggestionResult;
 	/** Per-operation success, aligned with suggestion.operations (approve only). */
 	operationOutcomes?: boolean[];
@@ -906,8 +1139,29 @@ export async function recordFreshnessBundleOutcome(params: {
 	const suggestionId = str(params.suggestion.id);
 	if (!suggestionId) return;
 	const nowIso = new Date(params.now ?? Date.now()).toISOString();
+	const projectId = str(params.suggestion.project_id);
+	const operationSubjects = (
+		Array.isArray(params.suggestion.operations) ? params.suggestion.operations : []
+	)
+		.map((operation) =>
+			isRecord(operation)
+				? entityRefFromOperation(operation as unknown as LoopOperation)
+				: null
+		)
+		.filter((ref): ref is NonNullable<typeof ref> => Boolean(ref));
 	try {
-		if (params.action === 'dismiss') {
+		if (params.action === 'dismiss' || params.action === 'address') {
+			if (projectId) {
+				await closeFreshnessConcerns({
+					admin: params.admin,
+					projectId,
+					concernIds: bundleReviewConcernIds(params.suggestion),
+					subjects: operationSubjects.map((ref) => ({ kind: ref.kind, id: ref.id })),
+					status: 'dismissed',
+					reason: 'user_dismissed',
+					now: params.now
+				});
+			}
 			const { error } = await params.admin
 				.from('freshness_flags')
 				.update({
@@ -935,6 +1189,18 @@ export async function recordFreshnessBundleOutcome(params: {
 			if (ref) appliedSubjects.add(ref.id);
 		});
 		if (!appliedSubjects.size) return;
+		if (projectId) {
+			await closeFreshnessConcerns({
+				admin: params.admin,
+				projectId,
+				subjects: operationSubjects
+					.filter((ref) => appliedSubjects.has(ref.id))
+					.map((ref) => ({ kind: ref.kind, id: ref.id })),
+				status: 'applied',
+				reason: 'applied',
+				now: params.now
+			});
+		}
 		const { error } = await params.admin
 			.from('freshness_flags')
 			.update({

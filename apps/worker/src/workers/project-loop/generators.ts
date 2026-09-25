@@ -26,6 +26,17 @@ import { buildHeuristicProjectLoopBrief } from '@buildos/shared-agent-ops';
 import type { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../../config/projectLoops';
 import { generateEnglishProjectReview, hasUnexpectedReviewScript } from './reviewLanguage';
+import { type ProjectDriftEvidence, renderDriftEvidence } from './driftEvidence';
+import { PROJECT_REVIEW_CLIPPED_TEXT_RULE, clipForPrompt } from './promptText';
+
+/** Field budgets for prompt lines. Goals and short descriptions are rarely cut at all. */
+const PROMPT_CLIP = Object.freeze({
+	projectDescription: 600,
+	goalDescription: 400,
+	documentDescription: 300,
+	taskDescription: 240,
+	startHereSection: 1_600
+});
 
 /**
  * LLM usage/cost event emitted by the smart-llm service on each call. Relocated
@@ -65,6 +76,18 @@ export interface LoopTask {
 	goal_names?: string[];
 }
 
+export interface LoopPlan {
+	name: string;
+	state_key: string | null;
+}
+
+/** START HERE's authored sections, when the project has one (managed regions excluded). */
+export interface LoopStartHere {
+	currentState: string | null;
+	decisions: string | null;
+	openQuestions: string | null;
+}
+
 export interface LoopPriorDecision {
 	title: string;
 	kind: string;
@@ -83,6 +106,9 @@ export interface LoopContext {
 	docStructureSummary: string;
 	tasks: LoopTask[];
 	priorDecisions: LoopPriorDecision[];
+	/** Plans or phases, oldest first. Optional so older callers and fixtures keep working. */
+	plans?: LoopPlan[];
+	startHere?: LoopStartHere | null;
 }
 
 export interface ProjectReviewSynthesisCandidate {
@@ -581,7 +607,7 @@ async function callGenerator(params: {
 		? PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED
 		: [];
 	const result = await generateEnglishProjectReview({
-		systemPrompt: params.systemPrompt,
+		systemPrompt: `${params.systemPrompt}\n${PROJECT_REVIEW_CLIPPED_TEXT_RULE}`,
 		sourceNames: reviewSourceNames(params.ctx),
 		signal: params.signal,
 		generate: (systemPrompt, languageAttempt) =>
@@ -627,7 +653,7 @@ async function callBriefGenerator(params: {
 		? PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED
 		: [];
 	const result = await generateEnglishProjectReview({
-		systemPrompt: params.systemPrompt,
+		systemPrompt: `${params.systemPrompt}\n${PROJECT_REVIEW_CLIPPED_TEXT_RULE}`,
 		sourceNames: reviewSourceNames(params.ctx),
 		signal: params.signal,
 		generate: (systemPrompt, languageAttempt) =>
@@ -696,7 +722,9 @@ function describeDocuments(documents: LoopDocument[]): string {
 	return documents
 		.map((d) => {
 			const parent = d.parent_id ? ` parent=${d.parent_id}` : ' parent=ROOT';
-			const desc = d.description ? ` — ${d.description.slice(0, 140)}` : '';
+			const desc = d.description
+				? ` — ${clipForPrompt(d.description, PROMPT_CLIP.documentDescription)}`
+				: '';
 			return `- [${d.id}] "${d.title}" (type=${d.type_key ?? 'n/a'}, state=${d.state_key ?? 'n/a'}, updated=${d.updated_at ?? 'n/a'}${parent})${desc}`;
 		})
 		.join('\n');
@@ -706,7 +734,9 @@ function describeTasks(tasks: LoopTask[]): string {
 	if (!tasks.length) return '(none)';
 	return tasks
 		.map((t) => {
-			const desc = t.description ? ` — ${t.description.slice(0, 160)}` : '';
+			const desc = t.description
+				? ` — ${clipForPrompt(t.description, PROMPT_CLIP.taskDescription)}`
+				: '';
 			const metadata = [
 				`state=${t.state_key ?? 'n/a'}`,
 				t.type_key ? `type=${t.type_key}` : null,
@@ -1120,6 +1150,32 @@ function formatLensList(lenses: string[]): string {
 	return `${lenses.slice(0, -1).join(', ')}, and ${lenses.at(-1)}`;
 }
 
+/**
+ * The v1 fields a v2 brief still carries, derived from the v2 judgment. They used to come
+ * from the heuristic: the three most recently touched task titles as "open decisions" and the
+ * newest task as "next action", which contradicted the brief itself (tasker 107).
+ */
+function withLegacyFieldsFromBrief(
+	brief: ProjectLoopBrief,
+	nextBestAction: string | null
+): ProjectLoopBrief {
+	return {
+		...brief,
+		recent_changes: (brief.what_changed ?? []).map((claim) => claim.summary).slice(0, 5),
+		open_decisions: brief.decision ? [brief.decision.question] : [],
+		stale_assumptions: (brief.issues ?? [])
+			.filter(
+				(issue) => issue.category === 'document_drift' || issue.category === 'project_drift'
+			)
+			.map((issue) => issue.headline)
+			.slice(0, 5),
+		contradictions_or_drift: (brief.tensions_or_contradictions ?? [])
+			.map((claim) => claim.summary)
+			.slice(0, 5),
+		next_best_action: nextBestAction
+	};
+}
+
 export function buildHeuristicProjectManagerBrief(params: {
 	ctx: LoopContext;
 	candidates: ProjectReviewSynthesisCandidate[];
@@ -1137,28 +1193,31 @@ export function buildHeuristicProjectManagerBrief(params: {
 		);
 	const legacy = buildHeuristicProjectLoopBrief(params.ctx, now);
 	if (!candidates.length) {
-		return {
-			...legacy,
-			version: 2,
-			attention_level: 'none',
-			state_summary: legacy.current_goal,
-			bottom_line: null,
-			recommendation: null,
-			decision: null,
-			what_changed: [],
-			what_matters_now: [],
-			tensions_or_contradictions: [],
-			issues: [],
-			decision_item_ids: [],
-			safe_cleanup_item_ids: [],
-			cluster_members: [],
-			candidate_ids: [],
-			no_attention_reason: uncheckedLenses.length
-				? `The checks that finished found nothing important enough to interrupt you about. The ${formatLensList(uncheckedLenses)} check${uncheckedLenses.length === 1 ? '' : 's'} didn't finish this pass.`
-				: 'The review did not find anything important enough to interrupt you about.',
-			generated_at: now.toISOString(),
-			source: 'heuristic'
-		};
+		return withLegacyFieldsFromBrief(
+			{
+				...legacy,
+				version: 2,
+				attention_level: 'none',
+				state_summary: legacy.current_goal,
+				bottom_line: null,
+				recommendation: null,
+				decision: null,
+				what_changed: [],
+				what_matters_now: [],
+				tensions_or_contradictions: [],
+				issues: [],
+				decision_item_ids: [],
+				safe_cleanup_item_ids: [],
+				cluster_members: [],
+				candidate_ids: [],
+				no_attention_reason: uncheckedLenses.length
+					? `The checks that finished found nothing important enough to interrupt you about. The ${formatLensList(uncheckedLenses)} check${uncheckedLenses.length === 1 ? '' : 's'} didn't finish this pass.`
+					: 'The review did not find anything important enough to interrupt you about.',
+				generated_at: now.toISOString(),
+				source: 'heuristic'
+			},
+			legacy.next_best_action
+		);
 	}
 
 	const lead = candidates[0];
@@ -1197,32 +1256,35 @@ export function buildHeuristicProjectManagerBrief(params: {
 			? issues[0].headline
 			: `${issues[0].headline}, with ${issues.length - 1} other project issue${issues.length === 2 ? '' : 's'} underneath it.`;
 
-	return {
-		...legacy,
-		version: 2,
-		attention_level: attentionLevel,
-		state_summary: legacy.current_goal,
-		bottom_line: bottomLine,
-		recommendation: decision?.recommendation ?? fallbackRecommendation(lead),
-		decision,
-		what_changed: candidates.slice(0, 5).map(candidateClaim),
-		what_matters_now: decisionCandidates.slice(0, 3).map(candidateClaim),
-		tensions_or_contradictions: candidates
-			.filter((candidate) => ['drift', 'task_conflict'].includes(candidate.kind))
-			.slice(0, 3)
-			.map(candidateClaim),
-		issues,
-		decision_item_ids: decisionCandidates.map((candidate) => candidate.id),
-		safe_cleanup_item_ids: safeCleanupCandidates.map((candidate) => candidate.id),
-		cluster_members: buildCandidateClusters(candidates),
-		candidate_ids: candidates.map((candidate) => candidate.id),
-		no_attention_reason:
-			attentionLevel === 'minor'
-				? 'The review found only minor project-health notes, so it did not interrupt you.'
-				: null,
-		generated_at: now.toISOString(),
-		source: 'heuristic'
-	};
+	return withLegacyFieldsFromBrief(
+		{
+			...legacy,
+			version: 2,
+			attention_level: attentionLevel,
+			state_summary: legacy.current_goal,
+			bottom_line: bottomLine,
+			recommendation: decision?.recommendation ?? fallbackRecommendation(lead),
+			decision,
+			what_changed: candidates.slice(0, 5).map(candidateClaim),
+			what_matters_now: decisionCandidates.slice(0, 3).map(candidateClaim),
+			tensions_or_contradictions: candidates
+				.filter((candidate) => ['drift', 'task_conflict'].includes(candidate.kind))
+				.slice(0, 3)
+				.map(candidateClaim),
+			issues,
+			decision_item_ids: decisionCandidates.map((candidate) => candidate.id),
+			safe_cleanup_item_ids: safeCleanupCandidates.map((candidate) => candidate.id),
+			cluster_members: buildCandidateClusters(candidates),
+			candidate_ids: candidates.map((candidate) => candidate.id),
+			no_attention_reason:
+				attentionLevel === 'minor'
+					? 'The review found only minor project-health notes, so it did not interrupt you.'
+					: null,
+			generated_at: now.toISOString(),
+			source: 'heuristic'
+		},
+		legacy.next_best_action
+	);
 }
 
 function candidateIdsFrom(value: unknown, allowedIds: Set<string>, maxItems = 8): string[] {
@@ -1406,7 +1468,7 @@ function sanitizeManagerBrief(params: {
 		};
 	}
 
-	return {
+	const brief: ProjectLoopBrief = {
 		...fallback,
 		version: 2,
 		attention_level: attention,
@@ -1440,6 +1502,10 @@ function sanitizeManagerBrief(params: {
 		generated_at: new Date().toISOString(),
 		source: 'llm'
 	};
+	return withLegacyFieldsFromBrief(
+		brief,
+		plainBriefText(raw.next_best_action, 220) ?? fallback.next_best_action ?? null
+	);
 }
 
 function describeSynthesisCandidates(candidates: ProjectReviewSynthesisCandidate[]): string {
@@ -1494,9 +1560,11 @@ export async function generateProjectManagerBrief(params: {
 		'Attention policy: none=no useful action; minor=low-consequence note that must not ping; decision=a bounded choice or verified change needs the user; urgent=blocked work or material consequence.',
 		'When a verified executable candidate is your recommendation, set decision.recommended_suggestion_id to that candidate id. Otherwise use null.',
 		'Every claim, issue, and decision must cite one or more candidate_ids. Evidence links are attached deterministically from those ids after generation.',
+		'next_best_action is the one concrete step that moves the project forward now, independent of the review findings. Read where the project is now, the plans or phases, and the open tasks. Pick work from the earliest unfinished phase, preferably by naming an existing open task. Never pick a late-phase task, such as launch or final production, while earlier phases are unfinished. Use null when the evidence does not show a next step.',
 		'',
 		'Return ONLY JSON: { "brief": {',
 		'  "attention_level": "none"|"minor"|"decision"|"urgent",',
+		'  "next_best_action": string|null,',
 		'  "state_summary": string|null,',
 		'  "bottom_line": string|null,',
 		'  "recommendation": string|null,',
@@ -1511,6 +1579,15 @@ export async function generateProjectManagerBrief(params: {
 	].join('\n');
 	const userPrompt = [
 		PROJECT_HEADER(params.ctx),
+		'',
+		'Where the project is now (START HERE):',
+		describeStartHere(params.ctx.startHere),
+		'',
+		'Plans or phases:',
+		describePlans(params.ctx.plans),
+		'',
+		'Open tasks:',
+		describeTasks(params.ctx.tasks),
 		'',
 		...(uncheckedLenses.length
 			? [
@@ -1561,11 +1638,35 @@ export async function generateProjectManagerBrief(params: {
 const PROJECT_HEADER = (ctx: LoopContext): string => {
 	const goals = ctx.goals.length
 		? ctx.goals
-				.map((g) => `- ${g.name}${g.description ? `: ${g.description.slice(0, 120)}` : ''}`)
+				.map(
+					(g) =>
+						`- ${g.name}${g.description ? `: ${clipForPrompt(g.description, PROMPT_CLIP.goalDescription)}` : ''}`
+				)
 				.join('\n')
 		: '(none)';
-	return `Project: ${ctx.projectName}\nDescription: ${ctx.projectDescription ?? '(none)'}\nGoals:\n${goals}`;
+	const description = ctx.projectDescription
+		? clipForPrompt(ctx.projectDescription, PROMPT_CLIP.projectDescription)
+		: '(none)';
+	return `Project: ${ctx.projectName}\nDescription: ${description}\nGoals:\n${goals}`;
 };
+
+function describePlans(plans: LoopPlan[] | undefined): string {
+	if (!plans?.length) return '(none)';
+	return plans.map((plan) => `- ${plan.name} (state=${plan.state_key ?? 'n/a'})`).join('\n');
+}
+
+function describeStartHere(startHere: LoopStartHere | null | undefined): string {
+	if (!startHere) return '(no START HERE document)';
+	const parts = [
+		startHere.currentState
+			? `Current state:\n${clipForPrompt(startHere.currentState, PROMPT_CLIP.startHereSection, { keepLines: true })}`
+			: null,
+		startHere.openQuestions
+			? `Open questions:\n${clipForPrompt(startHere.openQuestions, PROMPT_CLIP.startHereSection, { keepLines: true })}`
+			: null
+	].filter(Boolean);
+	return parts.length ? parts.join('\n\n') : '(START HERE has no current state yet)';
+}
 
 export async function generateProjectBrief(params: {
 	llm: SmartLLMService;
@@ -1754,7 +1855,7 @@ export async function generateOutdatedDocs(params: {
 			? ctx.tasks
 					.map(
 						(t) =>
-							`- "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})${t.description ? ` — ${t.description.slice(0, 160)}` : ''}`
+							`- "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})${t.description ? ` — ${clipForPrompt(t.description, PROMPT_CLIP.taskDescription)}` : ''}`
 					)
 					.join('\n')
 			: '(none)'
@@ -1809,6 +1910,10 @@ export async function generateOutdatedDocs(params: {
  * Surfaces evidence-backed mismatches between the stated project intent and
  * the current docs/tasks. Drift items are no-op review decisions: applying them
  * acknowledges the item; dismissing with feedback teaches later runs.
+ *
+ * With `evidence` (driftEvidence.ts) the pass reads what changed recently next to the
+ * sections Jev found on the same subjects, so it can see that one document still lists as
+ * open what another has since decided. Without it, it sees the document list only.
  */
 export async function generateDrift(params: {
 	llm: SmartLLMService;
@@ -1816,22 +1921,35 @@ export async function generateDrift(params: {
 	userId: string;
 	chatSessionId?: string;
 	runId?: string;
+	evidence?: ProjectDriftEvidence | null;
 	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
 	if (ctx.documents.length === 0 && ctx.tasks.length === 0) return [];
+	const evidence =
+		params.evidence?.related.length || params.evidence?.changes.length ? params.evidence : null;
 
 	const systemPrompt = [
 		'You are a BuildOS project reviewer. Find PROJECT DRIFT: places where',
 		'the stated goals/description and the current documents or tasks appear',
 		'to point in different directions, contain stale assumptions, or leave an',
 		'important decision unresolved.',
+		...(evidence
+			? [
+					'',
+					'You also get RECENT CHANGES and the sections elsewhere in the project that cover the same subjects.',
+					'Most drift is a change that did not propagate. Compare each recent change with the related sections and report where one still says what a change decided, renamed, replaced, or finished:',
+					'an item still listed as open or undecided after it was decided, a count or status that no longer matches, a plan step that contradicts a later decision, or material duplicated in two places after a restructure.',
+					'Also report contradictions between two related sections even when neither is a recent change.',
+					'In rationale, quote the stale words and the words that supersede them, with the document titles. In evidence_refs, cite every document or record involved, with the stale one first.'
+				]
+			: []),
 		'',
 		'Rules:',
 		'- Be conservative. Only raise drift that is supported by specific evidence.',
 		'- Do NOT propose writes. Drift items are informational review decisions.',
-		'- Prefer 0-3 high-signal items.',
+		'- Prefer 0-3 high-signal items; one item per stale place.',
 		'- Attach evidence_refs from documents, tasks, goals, or project.',
 		'- Do NOT re-raise previously reviewed drift unless materially new evidence changes the assessment.',
 		'',
@@ -1847,7 +1965,18 @@ export async function generateDrift(params: {
 		'If no clear drift exists, return { "suggestions": [] }.'
 	].join('\n');
 
-	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}\n\n${priorDecisionContext(ctx)}`;
+	const userPrompt = [
+		PROJECT_HEADER(ctx),
+		'',
+		'Documents:',
+		describeDocuments(ctx.documents),
+		'',
+		'Open tasks:',
+		describeTasks(ctx.tasks),
+		...(evidence ? ['', renderDriftEvidence(evidence)] : []),
+		'',
+		priorDecisionContext(ctx)
+	].join('\n');
 
 	const raw = await callGenerator({
 		llm: params.llm,
@@ -1862,10 +1991,13 @@ export async function generateDrift(params: {
 		onUsage: params.onUsage
 	});
 
+	// Jev can surface records older than the loop's recent-document window; the model may
+	// cite anything it was shown.
+	const refCtx = evidence ? withDriftEvidenceRecords(ctx, evidence) : ctx;
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw.slice(0, 5)) {
 		if (!s.title) continue;
-		const evidenceRefs = sanitizeEvidenceRefs(s.evidence_refs, ctx);
+		const evidenceRefs = sanitizeEvidenceRefs(s.evidence_refs, refCtx);
 		if (!evidenceRefs.length) continue;
 		suggestions.push({
 			kind: 'drift',
@@ -1883,6 +2015,46 @@ export async function generateDrift(params: {
 		});
 	}
 	return suggestions;
+}
+
+function withDriftEvidenceRecords(ctx: LoopContext, evidence: ProjectDriftEvidence): LoopContext {
+	const documentIds = new Set(ctx.documents.map((doc) => doc.id));
+	const taskIds = new Set(ctx.tasks.map((task) => task.id));
+	const documents = [...ctx.documents];
+	const tasks = [...ctx.tasks];
+	const shown = [
+		...evidence.changes.map((change) => ({
+			kind: 'document',
+			id: change.documentId,
+			title: change.documentTitle
+		})),
+		...evidence.related
+	];
+	for (const item of shown) {
+		if (item.kind === 'document' && !documentIds.has(item.id)) {
+			documentIds.add(item.id);
+			documents.push({
+				id: item.id,
+				title: item.title,
+				type_key: null,
+				state_key: null,
+				description: null,
+				updated_at: null,
+				parent_id: null
+			});
+		}
+		if (item.kind === 'task' && !taskIds.has(item.id)) {
+			taskIds.add(item.id);
+			tasks.push({
+				id: item.id,
+				title: item.title,
+				description: null,
+				state_key: null,
+				updated_at: null
+			});
+		}
+	}
+	return { ...ctx, documents, tasks };
 }
 
 /**

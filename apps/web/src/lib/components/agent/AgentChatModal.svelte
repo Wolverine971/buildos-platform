@@ -1234,7 +1234,7 @@
 		}
 	}
 
-	/** Freshness radar card "Draft in chat": pre-fill the composer; the user sends it. */
+	/** Freshness radar card "Fix in chat": pre-fill the composer; the user sends it. */
 	function handleFreshnessDraftInChat(text: string) {
 		reviewSelection = null;
 		const existingDraft = inputValue.trim();

@@ -6648,6 +6648,89 @@ describe('AgenticChatTurnExecutor', () => {
 			await harness.publisher.stop();
 		}
 	});
+
+	it('lets the model retry a write the database rolled back', async () => {
+		const harness = createHarness([]);
+		harness.mutation.execute.mockRejectedValueOnce(
+			new AgenticChatEffectExecutionError(
+				'permanent',
+				EFFECT_ID,
+				'The database was busy and rolled this write back, so nothing was saved (deadlock detected). The same call can be made again.',
+				'update_onto_task_database_busy',
+				true
+			)
+		);
+		const taskArguments = {
+			task_id: 'db000000-0000-4000-8000-000000000002',
+			state_key: 'done'
+		};
+		const rounds: AgenticChatProviderToolRoundInputV1[] = [];
+		const continueWithToolResults = vi.fn((input: AgenticChatProviderToolRoundInputV1) => {
+			rounds.push(input);
+			return (async function* () {
+				if (input.round === 2) {
+					yield {
+						type: 'mutating_tool',
+						callTransitionId: SECOND_CALL_TRANSITION_ID,
+						resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+						logicalOperationId: SECOND_LOGICAL_OPERATION_ID,
+						providerToolCallId: 'provider-busy-retry',
+						toolName: 'update_onto_task',
+						operationName: 'onto.task.update',
+						arguments: { ...taskArguments },
+						downstreamIdempotencySupported: false
+					} as const;
+					return;
+				}
+				yield { type: 'text_delta', text: 'Marked it done.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-busy-first',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: taskArguments,
+							downstreamIdempotencySupported: false
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo: vi.fn(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			// The rolled-back call is not capped: the identical retry ran and landed.
+			expect(harness.mutation.execute).toHaveBeenCalledTimes(2);
+			expect(harness.toolExecutions.persistFailure).toHaveBeenCalledOnce();
+			expect(harness.toolExecutions.persistMutation).toHaveBeenCalledOnce();
+			expect(rounds[0]?.results[0]).toMatchObject({
+				failure: expect.objectContaining({
+					kind: 'known_execution_failure',
+					error: expect.stringContaining('nothing was saved')
+				})
+			});
+			expect(rounds[1]?.results[0]).toMatchObject({
+				providerToolCallId: 'provider-busy-retry',
+				mutation: expect.objectContaining({ operationName: 'onto.task.update' })
+			});
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
 });
 
 const SECOND_LOGICAL_OPERATION_ID = 'c1000000-0000-4000-8000-00000000001c';

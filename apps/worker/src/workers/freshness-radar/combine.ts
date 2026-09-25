@@ -8,6 +8,7 @@
 
 import type {
 	FreshnessChangeKind,
+	FreshnessConcernSection,
 	FreshnessDisposition,
 	FreshnessEntityKind,
 	FreshnessEvidence,
@@ -25,7 +26,8 @@ import {
 	strictGroundStateChange
 } from './grounding';
 import type { FreshnessCandidate, PrefilterFeatures } from './prefilter';
-import { r1QuestionKeys, r2QuestionKeys, r3QuestionKey } from './questions';
+import { r1QuestionKeys, r2QuestionKeys, r3QuestionKey, sectionQuestionKey } from './questions';
+import type { DocumentSegment } from './sections';
 
 export type JevAnswer = JevNoulAnswer | JevChoiceAnswer | JevScoreAnswer;
 export type AnswerMap = Readonly<Record<string, JevAnswer | undefined>>;
@@ -234,6 +236,8 @@ export type EntityDecisionInput = {
 	index: number;
 	candidate: FreshnessCandidate;
 	prefilter: PrefilterFeatures;
+	/** Recorded decisions on or after the entity's last change (tasker 106). */
+	newerDecisions?: number;
 };
 
 export type EntityDecision = {
@@ -254,6 +258,8 @@ export type EntityDecision = {
 	features: Record<string, unknown>;
 	/** Weighted card rank (probability × kind weight). */
 	cardScore: number;
+	/** Documents: the sections judged out of date, best first (tasker 106 dig). */
+	sections: FreshnessConcernSection[];
 };
 
 function evidenceFrom(
@@ -410,10 +416,14 @@ export function combineEntityDecisions(params: {
 				...(params.answers[keys.date] ? { date: params.answers[keys.date] } : {})
 			},
 			features: { prefilter: entity.prefilter },
-			cardScore: round4(stale * weight)
+			cardScore: round4(stale * weight),
+			sections: []
 		};
 
-		if (statusNews < combine.statusNewsMin) return { ...base, reason: 'no_status_news' };
+		// The status gate only silences chat-only evidence: a recorded decision newer
+		// than the record is news even when the chat is about something else.
+		if (statusNews < combine.statusNewsMin && !(entity.newerDecisions ?? 0))
+			return { ...base, reason: 'no_status_news' };
 		const suppression = params.suppressed.get(`${candidate.kind}:${candidate.id}`);
 		if (suppression) return { ...base, disposition: 'suppressed', reason: suppression };
 		if (stale < combine.staleMin) return { ...base, reason: 'below_stale_threshold' };
@@ -518,6 +528,100 @@ export function combineEntityDecisions(params: {
 			? { ...decision, disposition: 'drafted', reason: 'draft_auto_apply_cap' }
 			: decision
 	);
+}
+
+export type DocumentDigInput = {
+	/** Unique across all decisions of the scan (card ranking tie-break). */
+	index: number;
+	/** Position among the dig's documents (chat-bears question index). */
+	documentIndex: number;
+	candidate: FreshnessCandidate;
+	prefilter: PrefilterFeatures;
+	segments: readonly DocumentSegment[];
+	/** Which dig questions judged which of this document's segments. */
+	sectionIndexes: ReadonlyArray<{ segmentIndex: number; questionIndex: number }>;
+};
+
+/**
+ * Documents from the section dig (tasker 106): a document is as stale as its
+ * stalest section, and its evidence is those sections. Documents never get an
+ * operation; a stale one surfaces with a Fix-in-chat prompt instead.
+ */
+export function combineDocumentDecisions(params: {
+	documents: readonly DocumentDigInput[];
+	answers: AnswerMap;
+	sentences: readonly SourcedSentence[];
+	suppressed: ReadonlyMap<string, SuppressionReason>;
+	policy: FreshnessPolicyV1;
+}): EntityDecision[] {
+	const { policy } = params;
+	const weight = policy.combine.cardWeights.document ?? 1;
+	return params.documents.map((document) => {
+		const judged = document.sectionIndexes
+			.map(({ segmentIndex, questionIndex }) => {
+				const segment = document.segments[segmentIndex];
+				const p = noulOf(params.answers, sectionQuestionKey(questionIndex));
+				return segment && p !== null ? { segment, p, questionIndex } : null;
+			})
+			.filter(
+				(entry): entry is { segment: DocumentSegment; p: number; questionIndex: number } =>
+					Boolean(entry)
+			)
+			.sort((a, b) => b.p - a.p || a.questionIndex - b.questionIndex);
+		const probability = judged[0]?.p ?? 0;
+		const sections: FreshnessConcernSection[] = judged
+			.filter((entry) => entry.p >= policy.dig.sectionFloor)
+			.slice(0, policy.dig.maxConcernSections)
+			.map((entry) => ({
+				anchor: entry.segment.anchor,
+				heading: entry.segment.heading,
+				probability: round4(entry.p),
+				textSha256: entry.segment.textSha256
+			}));
+		const loose = looseGround(document.candidate.title, params.sentences);
+		const base: EntityDecision = {
+			index: document.index,
+			candidate: document.candidate,
+			probability: round4(probability),
+			statusNews: 0,
+			changeKind:
+				probability >= policy.dig.sectionFloor ? 'content_outdated' : 'no_change_needed',
+			changeKindProbability: null,
+			dateChoice: null,
+			dateChoiceProbability: null,
+			dateMention: null,
+			disposition: 'evaluated',
+			reason: '',
+			proposal: null,
+			evidence: evidenceFrom(loose, policy.evidence.excerptChars),
+			answers: {
+				sections: Object.fromEntries(
+					judged.map((entry) => [
+						entry.segment.anchor ?? '(opening)',
+						params.answers[sectionQuestionKey(entry.questionIndex)] ?? null
+					])
+				)
+			},
+			features: {
+				prefilter: document.prefilter,
+				dig: {
+					sections_judged: judged.length,
+					top: judged.slice(0, 5).map((entry) => ({
+						anchor: entry.segment.anchor,
+						heading: entry.segment.heading,
+						p: round4(entry.p)
+					}))
+				}
+			},
+			cardScore: round4(probability * weight),
+			sections
+		};
+		const suppression = params.suppressed.get(`document:${document.candidate.id}`);
+		if (suppression) return { ...base, disposition: 'suppressed', reason: suppression };
+		if (probability < policy.combine.staleMin)
+			return { ...base, reason: 'below_stale_threshold' };
+		return { ...base, disposition: 'surfaced', reason: 'stale_sections' };
+	});
 }
 
 /**

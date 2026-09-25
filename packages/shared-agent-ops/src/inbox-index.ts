@@ -613,9 +613,21 @@ const FRESHNESS_KIND_BY_TOOL: Record<string, string> = {
 };
 const FRESHNESS_KIND_ORDER = ['task', 'goal', 'milestone', 'document'];
 
-/** Code-authored bundle title; `count` is the verified operation count. */
+/**
+ * Code-authored bundle title; `count` is the verified operation count plus the
+ * roll-up's review items (tasker 106: stale documents and records fixed in chat).
+ */
 export function freshnessBundleInboxTitle(count: number): string {
-	return `Update ${count} out-of-date item${count === 1 ? '' : 's'}`;
+	return `${count} thing${count === 1 ? ' looks' : 's look'} out of date`;
+}
+
+/** Roll-up items with no operation (preview.review_items, tasker 106). */
+export function freshnessBundleReviewItems(
+	suggestion: Record<string, unknown>
+): Array<Record<string, unknown>> {
+	const preview = asRecord(suggestion.preview);
+	const items = preview && Array.isArray(preview.review_items) ? preview.review_items : [];
+	return items.filter((item): item is Record<string, unknown> => asRecord(item) !== null);
 }
 
 /**
@@ -627,6 +639,10 @@ export function freshnessBundleInboxSummary(suggestion: Record<string, unknown>)
 	const counts = new Map<string, number>();
 	for (const operation of operations) {
 		const kind = FRESHNESS_KIND_BY_TOOL[asString(asRecord(operation)?.tool) ?? ''] ?? 'item';
+		counts.set(kind, (counts.get(kind) ?? 0) + 1);
+	}
+	for (const item of freshnessBundleReviewItems(suggestion)) {
+		const kind = asString(item.entity_type) ?? 'item';
 		counts.set(kind, (counts.get(kind) ?? 0) + 1);
 	}
 	const parts = [...counts.entries()]
@@ -654,7 +670,8 @@ export function freshnessBundleInboxSummary(suggestion: Record<string, unknown>)
 /**
  * The radar's single per-project bundle (kind freshness_update): a standard
  * project_suggestion row with a code-authored title and summary, risk tier 1,
- * approve/reject, and a 72-hour expiry from updated_at.
+ * approve/reject, and a 72-hour expiry from updated_at. A roll-up item with no
+ * operations (only review items, fixed in chat) offers dismiss, never approve.
  */
 function mapFreshnessBundleToInboxItem(suggestion: Record<string, unknown>): InboxIndexRow | null {
 	const id = asString(suggestion.id);
@@ -678,10 +695,12 @@ function mapFreshnessBundleToInboxItem(suggestion: Record<string, unknown>): Inb
 		project_id: projectId,
 		audience: 'project_members',
 		status: inboxStatus,
-		title: freshnessBundleInboxTitle(operations.length),
+		title: freshnessBundleInboxTitle(
+			operations.length + freshnessBundleReviewItems(suggestion).length
+		),
 		summary: freshnessBundleInboxSummary(suggestion),
 		risk_tier: 1,
-		action_kinds: ['approve', 'reject'],
+		action_kinds: operations.length ? ['approve', 'reject'] : ['reject'],
 		blocked_reason: inboxStatus === 'blocked' ? 'Project suggestion failed to apply' : null,
 		decided_at:
 			inboxStatus === 'pending' || inboxStatus === 'deciding'
@@ -1102,7 +1121,10 @@ export async function syncInboxItemForProjectSuggestion(params: {
 			});
 		}
 		row.title = isFreshnessBundle
-			? freshnessBundleInboxTitle(verification.summary.operation_count)
+			? freshnessBundleInboxTitle(
+					verification.summary.operation_count +
+						freshnessBundleReviewItems(suggestion).length
+				)
 			: verification.summary.headline;
 		row.source_status = projectSuggestionVerifiedSourceStatus(
 			verification.summary.structural_fingerprint
