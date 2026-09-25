@@ -2,7 +2,7 @@
 
 # Tasker 104 — Supabase fitness: are we sized, configured, and using Postgres well?
 
-**Status:** All known client-callable admin RPCs contained (76 anon-callable definers found 09-25: step 1 + default-private LIVE, step 2 after web deploy); 5 s polling LIVE (−77% claims); QA + gate tooling retired; CI unblocked. Open: 5 low-severity guard fixes, stream-state HOT updates · **Opened:** 2026-09-24 · **Owner:** Claude (took over from Codex 2026-09-24 evening)
+**Status:** All known client-callable admin RPCs contained (76 anon-callable definers found 09-25: step 1 + default-private LIVE, all 3 steps LIVE + verified with a real signed-in user); 5 s polling LIVE (−77% claims); QA + gate tooling retired; CI GREEN at 0cdead19e (first since 09-14). Open: 5 low-severity guard fixes, stream-state HOT updates · **Opened:** 2026-09-24 · **Owner:** Claude (took over from Codex 2026-09-24 evening)
 **Source:** the Tasker 102 investigation. A gate turn died because the QA database stalled for
 40 s. The QA branch turned out to be memory-starved and swapping, and a quick check shows production
 is on the default 1 GB instance with swap in use. It was paging only lightly in the one sample
@@ -37,9 +37,11 @@ busy-window sample planned until there are users.
       unreferenced `app_auth.is_admin()`. `upsert_legacy_entity_mapping` stays signed-in because
       the `onto_projects`/`onto_tasks` triggers call it with invoker rights. After apply: anon
       calls get 401/42501, service calls 200, and public pages (/, sitemap, pricing, blogs) 200.
-    - **Step 2, `20260925013100` (after the web deploy):** `evaluate_user_consumption_gate`,
-      `queue_sms_message` and `get_user_llm_usage` become service-only, since their callers now
-      use the admin client. Subscription and trial status gain an own-id-or-admin guard.
+    - **Step 2, `20260925013100` (LIVE after web `fe3a44c12` reached build-os.com):**
+      `evaluate_user_consumption_gate`, `queue_sms_message` and `get_user_llm_usage` are
+      service-only, since their callers now use the admin client. Subscription and trial status
+      gained an own-id-or-admin guard. Verified with the non-admin harness account's JWT: own
+      trial/subscription 200; another user's 403/42501; revenue and LLM usage 403; kept helpers 200. Edge logs and `error_logs` showed no permission errors beyond the test calls.
     - **Step 3, `20260925013200` (LIVE):** functions that `postgres` creates are private by
       default, so a migration must grant clients explicitly. This fixes the class of bug.
       AGENTS.md records the rule.
@@ -50,6 +52,10 @@ busy-window sample planned until there are users.
       id is an admin), `resolve_onto_public_page_slug_prefix` (another user's name or email prefix),
       `increment_question_display_count`, the inviter email in the invite preview, and
       `log_client_error` spam. Tasker 76's broader audit continues from here.
+- **CI green at `0cdead19e`** (first since 09-14). After verify passed, the coverage step
+  exposed wall-clock budgets that coverage instrumentation broke (180KB summary, 2MB HTML
+  flatten in web and worker; budgets scale via `VITEST_COVERAGE=1`) and a libri pg teardown race
+  (57P01 uncaught; now uses `trackPoolDisconnections`).
 - **CI had been red since 09-14.** Fixed five web test type errors (Tasker 103 tests), a
   portability-guard comment, the refill source-contract string, two Phase 5 anchors renamed by
   the turn-leases commit, and the admin export test. The full local suite (`turbo test:run --continue`)
