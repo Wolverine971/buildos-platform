@@ -9,7 +9,7 @@ export const KIMI_K3_MODEL = 'moonshotai/kimi-k3' as const;
 export const PARETO_MODEL = 'unbiased/pareto' as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const GPT_6_LUNA_MODEL = 'openai/gpt-6-luna' as const;
-/** Interim Agentic Chat reviewer fallback (tasker 108); explicit-only, never in automatic lanes. */
+/** Retired from the Agentic Chat reviewer default (DJ 2026-09-25); explicit-only, never in automatic lanes. */
 export const GPT_56_LUNA_MODEL = 'openai/gpt-5.6-luna' as const;
 export const GROK_47_MODEL = 'x-ai/grok-4.7' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
@@ -625,8 +625,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	// Kept out of automatic lanes; the Agentic Chat semantic reviewer names it
-	// explicitly as the interim fallback behind GPT-6 Luna (tasker 108).
+	// Kept out of automatic lanes and out of the reviewer default (DJ 2026-09-25);
+	// only an explicit AGENTIC_CHAT_REVIEWER_MODEL policy can still name it.
 	[GPT_56_LUNA_MODEL]: {
 		id: GPT_56_LUNA_MODEL,
 		name: 'GPT-5.6 Luna',

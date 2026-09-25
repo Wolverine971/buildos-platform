@@ -205,8 +205,9 @@ describe('Agentic Chat operational bootstrap', () => {
 			kind: 'openrouter',
 			model: GPT_6_LUNA_MODEL
 		});
-		// 5.6 stays one week as the first fallback (tasker 108).
-		expect(routes[0]?.fallbackModels?.[0]).toBe(GPT_56_LUNA_MODEL);
+		// GPT-5.6 is retired from the default chain (DJ 2026-09-25).
+		expect(routes[0]?.fallbackModels).not.toContain(GPT_56_LUNA_MODEL);
+		expect(routes[0]?.fallbackModels?.length).toBeGreaterThan(0);
 		expect(routes[0]?.model).not.toBe('deepseek/deepseek-v4-flash');
 		expect(routes[0]?.apiKey).toBe('provider-secret');
 	});

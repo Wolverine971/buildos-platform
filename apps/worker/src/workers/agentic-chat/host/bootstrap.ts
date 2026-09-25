@@ -691,13 +691,10 @@ export const AGENTIC_CHAT_SEMANTIC_REVIEWER_PROVIDER_ORDER = Object.freeze(['azu
 // (99.7–99.97% 30-min uptime) and it costs $0.10/$0.50 per M vs 5.6's
 // $0.20/$1.20 (~$0.0011 vs $0.0022 per prod review). Tasker 103 had pinned
 // 5.6 only while 6's ZDR hosts were degraded.
+// DJ 2026-09-25: GPT-5.6 is retired from the default chain. The replay
+// (scripts/reviewer-model-replay.ts) matched 8 of 14 samples of 7 real
+// 5.6 reviews; 3 approvals where 5.6 revised are the thing to watch in prod.
 export const DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL = GPT_6_LUNA_MODEL;
-/**
- * First fallback while GPT-6 Luna earns its first week in prod (Azure 429s
- * cost an env-pinned gate reviewer 4 turns). Remove after 2026-10-02 if the
- * fallback never carried a review.
- */
-const INTERIM_REVIEWER_FALLBACK_MODEL = GPT_56_LUNA_MODEL;
 const LUNA_REVIEWER_MODELS: ReadonlySet<string> = new Set([GPT_56_LUNA_MODEL, GPT_6_LUNA_MODEL]);
 /**
  * Never a default reviewer fallback: 2026-09-04 GLM 5.3 Flash approved a
@@ -723,7 +720,6 @@ export function buildAgenticChatSemanticReviewerRoutes(
 		? [policy.model, ...policy.fallbackModels]
 		: [
 				DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL,
-				INTERIM_REVIEWER_FALLBACK_MODEL,
 				...JSON_PROFILE_MODELS.powerful,
 				...JSON_PROFILE_MODELS.maximum
 			].filter((model) => !AGENTIC_CHAT_SEMANTIC_REVIEWER_DEFAULT_EXCLUDED_MODELS.has(model));
