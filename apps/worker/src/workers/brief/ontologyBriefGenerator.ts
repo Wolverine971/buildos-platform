@@ -11,7 +11,6 @@ import type { BriefJobData } from '../shared/queueUtils.js';
 import type { Json } from '@buildos/shared-types';
 import {
 	DEEPSEEK_V4_FLASH_MODEL,
-	GEMINI_37_FLASH_MODEL,
 	GPT_6_LUNA_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
@@ -88,18 +87,15 @@ interface ProjectBriefLLMResponse {
 
 const PROJECT_BRIEF_MODELS = [DEEPSEEK_V4_FLASH_MODEL, XIAOMI_MIMO_V25_MODEL] as const;
 /**
- * Executive summary, analysis and re-engagement writers. Gemini always reasons
- * (medium minimum), and the reasoning shares `maxTokens`: at the old 600-token
- * cap 22 of 22 executive summaries (prod, 2026-09-12..25) stopped mid-sentence
- * with ~20 visible tokens. The caps below leave room for ~1,100 reasoning tokens
- * plus a full answer; only generated tokens are billed. Model order is pending
- * DJ's side-by-side (tasker 108 item 2).
+ * Executive summary, analysis and re-engagement writers (DJ 2026-09-25, tasker
+ * 108 side-by-side on his real brief): GPT-6 Luna wrote the most grounded summary
+ * in ~7 s for ~$0.0006, about a tenth of Gemini 3.7 Flash, which is no longer used.
+ * DeepSeek V4 Flash is the fallback. Reasoning shares `maxTokens`: at the old
+ * 600-token cap 22 of 22 Gemini executive summaries (prod, 2026-09-12..25) stopped
+ * mid-sentence. The caps below leave room for reasoning plus a full answer; only
+ * generated tokens are billed.
  */
-const DAILY_BRIEF_WRITING_MODELS = [
-	GEMINI_37_FLASH_MODEL,
-	DEEPSEEK_V4_FLASH_MODEL,
-	GPT_6_LUNA_MODEL
-] as const;
+const DAILY_BRIEF_WRITING_MODELS = [GPT_6_LUNA_MODEL, DEEPSEEK_V4_FLASH_MODEL] as const;
 const EXECUTIVE_SUMMARY_MAX_TOKENS = 1_500;
 const REENGAGEMENT_MAX_TOKENS = 2_500;
 const ANALYSIS_MAX_TOKENS = 3_000;

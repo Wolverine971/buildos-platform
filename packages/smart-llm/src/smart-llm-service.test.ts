@@ -1255,7 +1255,7 @@ describe('SmartLLMService model failover', () => {
 		});
 
 		expect(result).toEqual({ ok: true });
-		expect(requestBodies[0]?.model).toBe(GEMINI_37_FLASH_MODEL);
+		expect(requestBodies[0]?.model).toBe(GPT_6_LUNA_MODEL);
 		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'high', exclude: false });
 	});
 
@@ -1345,12 +1345,12 @@ describe('SmartLLMService model failover', () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(requestBodies[1]?.model).toBe(GEMINI_37_FLASH_MODEL);
+		expect(requestBodies[1]?.model).toBe(GPT_6_LUNA_MODEL);
 		expect(events.some((event) => event.type === 'error')).toBe(false);
 		expect(events.some((event) => event.type === 'text')).toBe(true);
 		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
 			expect.objectContaining({
-				modelRequested: GEMINI_37_FLASH_MODEL,
+				modelRequested: GPT_6_LUNA_MODEL,
 				modelUsed: ACTIVE_EXPERIMENT_MODEL,
 				status: 'success',
 				streaming: true
@@ -1508,14 +1508,14 @@ describe('SmartLLMService JSON model recovery', () => {
 		await vi.waitFor(() => {
 			expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
 				expect.objectContaining({
-					modelUsed: GEMINI_37_FLASH_MODEL,
+					modelUsed: GPT_6_LUNA_MODEL,
 					promptTokens: 0,
 					completionTokens: 0,
 					totalTokens: 0,
 					status: 'timeout',
 					metadata: expect.objectContaining({
-						lastRequestedModel: GEMINI_37_FLASH_MODEL,
-						lastModel: GEMINI_37_FLASH_MODEL,
+						lastRequestedModel: GPT_6_LUNA_MODEL,
+						lastModel: GPT_6_LUNA_MODEL,
 						billingDisposition: 'uncertain',
 						openrouterRequestId: 'gen-repair-timeout'
 					})
@@ -1536,7 +1536,7 @@ describe('SmartLLMService JSON model recovery', () => {
 			const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
 			requestBodies.push(body);
 			return buildJSONCompletion({
-				model: GEMINI_37_FLASH_MODEL,
+				model: GPT_6_LUNA_MODEL,
 				content: 'not valid JSON',
 				provider: 'Google',
 				cost: 0.003
@@ -1565,13 +1565,13 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(dispatchOrder).toEqual(['reserved', 'fetch']);
 		expect(onSpendReservation).toHaveBeenCalledWith(
 			expect.objectContaining({
-				model: GEMINI_37_FLASH_MODEL,
+				model: GPT_6_LUNA_MODEL,
 				maxTokens: expect.any(Number),
 				estimatedInputTokens: expect.any(Number),
 				reservedCostUsd: expect.any(Number)
 			})
 		);
-		expect(requestBodies[0]?.model).toBe(GEMINI_37_FLASH_MODEL);
+		expect(requestBodies[0]?.model).toBe(GPT_6_LUNA_MODEL);
 		expect(requestBodies[0]).not.toHaveProperty('models');
 		expect(requestBodies[0]?.max_tokens).toEqual(expect.any(Number));
 		expect(requestBodies[0]?.max_tokens).toBeLessThan(100_000);
@@ -1585,7 +1585,7 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(onUsage).toHaveBeenCalledOnce();
 		expect(onUsage).toHaveBeenCalledWith(
 			expect.objectContaining({
-				model: GEMINI_37_FLASH_MODEL,
+				model: GPT_6_LUNA_MODEL,
 				totalTokens: 15,
 				totalCost: expect.any(Number)
 			})
@@ -1950,7 +1950,7 @@ describe('SmartLLMService JSON model recovery', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(3);
 		expect(requestBodies.map((body) => body.model)).toEqual([
 			DEEPSEEK_V4_FLASH_MODEL,
-			GEMINI_37_FLASH_MODEL,
+			GPT_6_LUNA_MODEL,
 			XIAOMI_MIMO_V25_MODEL
 		]);
 		expect(errorLogger.logAPIError).not.toHaveBeenCalled();

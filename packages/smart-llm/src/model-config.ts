@@ -611,11 +611,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'1m-context',
 			'quality-profile'
 		],
-		limitations: [
-			'higher-cost-than-defaults',
-			'no-temperature-parameter',
-			'premium-evaluation-lane'
-		],
+		// Automatic lanes since 2026-09-25 (replaced Gemini 3.7 Flash; tasker 108).
+		limitations: ['no-temperature-parameter', 'azure-only-zdr-endpoint'],
 		capabilities: {
 			jsonMode: true,
 			structuredOutputs: true,
@@ -804,9 +801,12 @@ export function modelSupportsCapability(
 // 2026-09-24 (tasker 103): Poolside Laguna XS 2.1 and Nex N2 Mini have no ZDR
 // endpoint, so every request forced to ZDR failed over past them. They stay in
 // the catalog for historical pricing only; keep them out of automatic lanes.
+// 2026-09-25 (DJ, tasker 108): Gemini 3.7 Flash left every automatic lane; GPT-6 Luna
+// ($0.10/$0.50 per M on Azure ZDR vs $0.375/$1.875) takes its place. Gemini stays in
+// the catalog for historical pricing and explicit use only.
 const OPENROUTER_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	GEMINI_37_FLASH_MODEL,
+	GPT_6_LUNA_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
@@ -814,7 +814,7 @@ const OPENROUTER_TEXT_ROUTE = [
 ] as const;
 const OPENROUTER_JSON_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	GEMINI_37_FLASH_MODEL,
+	GPT_6_LUNA_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
@@ -822,7 +822,7 @@ const OPENROUTER_JSON_ROUTE = [
 ] as const;
 const OPENROUTER_TOOL_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	GEMINI_37_FLASH_MODEL,
+	GPT_6_LUNA_MODEL,
 	TENCENT_HY3_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
@@ -830,7 +830,7 @@ const OPENROUTER_TOOL_ROUTE = [
 	MINIMAX_M3_MODEL
 ] as const;
 const OPENROUTER_MULTIMODAL_ROUTE = [
-	GEMINI_37_FLASH_MODEL,
+	GPT_6_LUNA_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
 	MINIMAX_M3_MODEL
@@ -844,16 +844,15 @@ const EMERGENCY_TEXT_ROUTE = [
 ] as const;
 const JSON_FAST_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
-	GEMINI_37_FLASH_MODEL,
+	GPT_6_LUNA_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const JSON_POWERFUL_ROUTE = [
-	GEMINI_37_FLASH_MODEL,
+	GPT_6_LUNA_MODEL,
 	GLM_53_FLASH_MODEL,
 	GLM_53_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
-	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
 ] as const;
@@ -873,10 +872,9 @@ const TEXT_SPEED_ROUTE = [
 	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 const TEXT_QUALITY_ROUTE = [
-	GEMINI_37_FLASH_MODEL,
+	GPT_6_LUNA_MODEL,
 	GLM_53_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
-	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	MINIMAX_M3_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL
