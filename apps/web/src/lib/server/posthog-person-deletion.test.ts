@@ -51,7 +51,7 @@ describe('deletePostHogPerson', () => {
 		env.PRIVATE_POSTHOG_PERSONAL_API_KEY = 'phx_secret';
 		env.PRIVATE_POSTHOG_PROJECT_ID = '123';
 		env.PRIVATE_POSTHOG_API_HOST = 'https://eu.posthog.com/';
-		const fetchImpl = vi.fn(async () => jsonResponse({ persons_found: 1 }));
+		const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ persons_found: 1 }));
 
 		await deletePostHogPerson('user-1', fetchImpl);
 

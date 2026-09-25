@@ -361,7 +361,7 @@ describe('GET /api/admin/chat/sessions/[id] — workflow audit', () => {
 			content_redacted: true
 		});
 		expect(logSecurityEventMock).toHaveBeenCalledOnce();
-		expect(logSecurityEventMock.mock.calls[0][0]).toMatchObject({
+		expect(logSecurityEventMock.mock.calls[0]?.[0]).toMatchObject({
 			eventType: 'admin.chat_content.read',
 			actorUserId: 'admin',
 			targetType: 'chat_session',

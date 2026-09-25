@@ -3,8 +3,8 @@
 // Deployed-stack battery: the 13-case Cedar House battery sent through
 // production (Vercel web, Railway chat worker, production Supabase) as the
 // dedicated harness account. It starts no local services. It proves what users
-// get after a deploy; the isolated QA gate (`pnpm agentic:gate`) still tests a
-// change before it ships. See docs/testing/agentic-chat-gate.md.
+// get after a deploy; since the QA database was retired (2026-09-24) it is the only
+// live check. See docs/testing/agentic-chat-gate.md.
 //
 //   pnpm agentic:prod-battery --preflight-only   # free: target, model, deploy, calendar
 //   pnpm agentic:prod-battery --confirm-prod     # paid: the full three-repetition run

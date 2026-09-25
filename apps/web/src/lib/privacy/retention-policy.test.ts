@@ -42,6 +42,7 @@ function functionBody(sql: string, fn: string): string | null {
 	const open = /\bas\s+(\$[a-z_]*\$)/i.exec(rest);
 	if (!open) return null;
 	const tag = open[1];
+	if (!tag) return null;
 	const bodyStart = (open.index ?? 0) + open[0].length;
 	const bodyEnd = rest.indexOf(tag, bodyStart);
 	// Signature + body: parameter defaults live before AS.

@@ -15,7 +15,7 @@
 //
 // Safety:
 // - The database is whatever PUBLIC_SUPABASE_URL points at. apps/worker/.env is
-//   PROD; `set -a; source .env.agentic-gate.local; set +a` first for QA.
+//   PROD (the QA database was retired on 2026-09-24).
 // - --apply refuses unless --confirm names that database's project ref.
 // - --max-usd is a hard cap on model spend, checked before every capture.
 // - A dry run never calls the model and never writes.

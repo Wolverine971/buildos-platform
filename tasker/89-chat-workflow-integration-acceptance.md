@@ -1,4 +1,7 @@
 <!-- tasker/89-chat-workflow-integration-acceptance.md -->
+<!-- doc-status: point-in-time -->
+> **Point-in-time document.** Written 2026-09-12 for the isolated QA gate. The QA database, `scripts/agentic/gate.ts`, and the workflow-prototype runner were retired on 2026-09-24 (Tasker 104); live acceptance now runs through `pnpm agentic:prod-battery`. Verify against code before acting on anything here.
+
 
 # 89 — Prove the integrated workflow and prepare the test handoff
 

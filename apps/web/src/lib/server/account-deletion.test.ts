@@ -312,7 +312,7 @@ describe('alertOverdueAccountDeletions', () => {
 			args: ['scheduled_for', '2026-09-23T12:00:00.000Z']
 		});
 		expect(mocks.logSecurityEventBlocking).toHaveBeenCalledTimes(1);
-		const [event] = mocks.logSecurityEventBlocking.mock.calls[0];
+		const [event] = mocks.logSecurityEventBlocking.mock.calls[0]!;
 		expect(event).toMatchObject({
 			eventType: 'account_deletion.deadline_missed',
 			category: 'system',

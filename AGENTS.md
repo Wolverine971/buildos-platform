@@ -35,7 +35,7 @@ These are repository-wide defaults unless the user asks for a different approach
 ### Paid tests require explicit approval
 
 - Ask the user before every test run that incurs monetary costs, including live model/API
-  tests, paid smoke tests, `pnpm agentic:gate`, and reruns. Wait for explicit approval for
+  tests, paid smoke tests, `pnpm agentic:prod-battery`, and reruns. Wait for explicit approval for
   that run before starting it.
 - State the proposed scope and estimated cost when known; say when the cost is uncertain.
   Name the acting model the run will use (`AGENTIC_CHAT_OPENROUTER_MODEL` in the env file the
@@ -76,8 +76,8 @@ lint, and build are in the same weight class. Unbounded fan-out freezes the mach
 Use focused free tests for each change. For live validation, use the paid
 `pnpm agentic:prod-battery` against the deployed production stack (free
 `--preflight-only` first); it is not required after every change set. Paid runs still
-require explicit approval under the rule above. The isolated QA branch was retired on
-2026-09-24, so `pnpm agentic:gate` has no test database. Follow
+require explicit approval under the rule above. The isolated QA branch and its local
+gate runner were retired on 2026-09-24. Follow
 `docs/testing/agentic-chat-gate.md`, preserve the scorecard, and report missing
 prerequisites or failed cases accurately. Match claims about live behavior to the
 validation actually performed.

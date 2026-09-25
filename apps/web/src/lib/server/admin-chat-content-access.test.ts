@@ -97,7 +97,7 @@ describe('admin chat content projection', () => {
 			assistant
 		]);
 		expect(tool!.content).toMatch(/Email content is not stored/);
-		expect(tool!.tool_result).toMatchObject({
+		expect((tool as any).tool_result).toMatchObject({
 			content_redacted: true,
 			messages: [{ message_id: 'm1' }]
 		});
