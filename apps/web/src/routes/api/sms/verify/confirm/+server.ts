@@ -10,6 +10,7 @@ import {
 	PRIVATE_TWILIO_VERIFY_SERVICE_SID
 } from '$env/static/private';
 import { env } from '$env/dynamic/private';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
 const smsSendingEnabled =
@@ -88,7 +89,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Send welcome SMS only when the global sending switch is explicitly enabled.
 		if (smsSendingEnabled) {
 			try {
-				await supabase.rpc('queue_sms_message', {
+				// Service-only RPC (it accepts any number and message); ids come from the session.
+				await createAdminSupabaseClient().rpc('queue_sms_message', {
 					p_user_id: session.user.id,
 					p_phone_number: phoneNumber,
 					p_message:

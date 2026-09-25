@@ -520,8 +520,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		if (user && !user.is_admin) {
 			mutationGuardUserId = user.id;
 
+			// Service-only RPC: it trusts p_user_id and the limits, so it runs on the admin
+			// client; the id always comes from the verified session above.
 			const gateResult: any = await measure('db.consumption_gate_pre', () =>
-				(event.locals.supabase as any).rpc('evaluate_user_consumption_gate', {
+				(createAdminSupabaseClient() as any).rpc('evaluate_user_consumption_gate', {
 					p_user_id: user.id,
 					p_project_limit: CONSUMPTION_BILLING_LIMITS.FREE_PROJECT_LIMIT,
 					p_credit_limit: CONSUMPTION_BILLING_LIMITS.FREE_CREDIT_LIMIT
@@ -586,7 +588,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	if (mutationGuardEnabled && mutationGuardUserId && response.ok) {
 		try {
 			const gateResult: any = await measure('db.consumption_gate_post', () =>
-				(event.locals.supabase as any).rpc('evaluate_user_consumption_gate', {
+				(createAdminSupabaseClient() as any).rpc('evaluate_user_consumption_gate', {
 					p_user_id: mutationGuardUserId,
 					p_project_limit: CONSUMPTION_BILLING_LIMITS.FREE_PROJECT_LIMIT,
 					p_credit_limit: CONSUMPTION_BILLING_LIMITS.FREE_CREDIT_LIMIT

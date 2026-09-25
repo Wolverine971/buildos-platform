@@ -119,7 +119,9 @@ describe('admin chat telemetry routes', () => {
 		expect(response.status).toBe(200);
 		expect(event.locals.supabase.from).toHaveBeenCalledTimes(1);
 		expect(event.locals.supabase.from).toHaveBeenCalledWith('admin_users');
-		expect(createAdminSupabaseClientMock).toHaveBeenCalledTimes(1);
+		// Export also writes an admin.chat_content.exported security event, whose shared
+		// logger creates its own service client.
+		expect(createAdminSupabaseClientMock).toHaveBeenCalledTimes(name === 'export' ? 2 : 1);
 		if (name === 'dashboard' || name === 'agents') {
 			expect(getAdminChatDashboardAnalyticsMock).toHaveBeenCalledWith(adminSupabase, '7d');
 		} else {

@@ -2,6 +2,7 @@
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { checkUserSubscription } from '$lib/utils/subscription';
 import { CONSUMPTION_BILLING_LIMITS } from '$lib/server/consumption-billing';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export interface BillingContextPayload {
 	subscription: any | null;
@@ -41,15 +42,18 @@ function toTypedConsumptionGateRow(
 	};
 }
 
+/** Service-only RPC (it trusts its user id and limits); userId comes from the verified session. */
 async function evaluateConsumptionGate(
-	supabase: TypedSupabaseClient,
 	userId: string
 ): Promise<BillingContextPayload['consumptionGate']> {
-	const result: Promise<any> = (supabase as any).rpc('evaluate_user_consumption_gate', {
-		p_user_id: userId,
-		p_project_limit: CONSUMPTION_BILLING_LIMITS.FREE_PROJECT_LIMIT,
-		p_credit_limit: CONSUMPTION_BILLING_LIMITS.FREE_CREDIT_LIMIT
-	});
+	const result: Promise<any> = (createAdminSupabaseClient() as any).rpc(
+		'evaluate_user_consumption_gate',
+		{
+			p_user_id: userId,
+			p_project_limit: CONSUMPTION_BILLING_LIMITS.FREE_PROJECT_LIMIT,
+			p_credit_limit: CONSUMPTION_BILLING_LIMITS.FREE_CREDIT_LIMIT
+		}
+	);
 
 	const gateResult = await result;
 	if (gateResult?.error) {
@@ -78,7 +82,7 @@ async function fetchConsumptionGateSnapshot(
 
 	if (!data) {
 		// Bootstrap/safety fallback for accounts that do not yet have a billing snapshot row.
-		return evaluateConsumptionGate(supabase, userId);
+		return evaluateConsumptionGate(userId);
 	}
 
 	const billingState =
@@ -120,7 +124,7 @@ export async function fetchBillingContext(
 	const consumptionGatePromise =
 		consumptionGateMode === 'snapshot'
 			? fetchConsumptionGateSnapshot(supabase, userId)
-			: evaluateConsumptionGate(supabase, userId);
+			: evaluateConsumptionGate(userId);
 
 	const [subscriptionResult, trialStatusResult, consumptionGateResult] = await Promise.all([
 		subscriptionPromise,

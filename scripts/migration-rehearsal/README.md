@@ -10,6 +10,7 @@ cached run takes about 3 seconds.
 pnpm db:rehearse supabase/migrations/20260926120000_my_change.sql
 pnpm db:rehearse a.sql b.sql --check supabase/tests/my_assertions.sql   # applied in order
 pnpm db:rehearse my_change.sql --refresh      # re-snapshot now (cache lasts 24 h)
+pnpm db:rehearse my_change.sql --role-probe   # grants/policies: prove anon + signed-in reads still work
 ```
 
 ## What it does
@@ -25,7 +26,7 @@ pnpm db:rehearse my_change.sql --refresh      # re-snapshot now (cache lasts 24 
    afterwards unless you pass `--keep`.
 3. **Report.** Every object each migration added (+), removed (-) or changed (~): tables, columns,
    constraints, indexes, views, functions (including `SECURITY DEFINER`, `search_path`, and
-   grants), policies, triggers, and enum/domain types. It also reports the production size of
+   grants), policies, triggers, default privileges, and enum/domain types. It also reports the production size of
    every touched table and flags risks:
     - **SECURITY:** a `SECURITY DEFINER` function that `PUBLIC`/`anon`/`authenticated` can
       execute. Supabase's default privileges grant EXECUTE on every new function to `anon` and
@@ -34,8 +35,16 @@ pnpm db:rehearse my_change.sql --refresh      # re-snapshot now (cache lasts 24 
     - **DATA:** checks a schema-only copy cannot prove against production's real rows: `NOT NULL`
       without a default, constraints validated against existing rows, type changes, and unique
       index builds. Each gives the production row count.
+    - **NOTE:** a new function with no client grant. Functions are server-only by default
+      since 2026-09-25; grant `authenticated` when the browser, a user session, an RLS policy, or
+      an invoker trigger on client writes needs it.
     - **Ledger:** the file is already recorded in production, or newer unrecorded local
       migrations sit before it.
+4. **Role probe (`--role-probe`).** As `anon` and as a signed-in user, it reads every table and
+   view the role may `SELECT`, before and after the migrations. Empty tables still evaluate RLS
+   policies, so a policy helper function the role can no longer execute fails here exactly as it
+   would in production. Any relation that stops working fails the rehearsal. It caught nine
+   tables that would have broken for expired sessions in the 2026-09-25 containment.
 
 Exit codes: `0` passed (read the findings), `1` a migration or check failed, `2` harness error.
 

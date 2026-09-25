@@ -80,6 +80,20 @@ class Findings(unittest.TestCase):
                    'after': {'security_definer': True, 'grants': ['anon=X/postgres']}}
         self.assertEqual(len(self.findings(regrant)), 1)
 
+    def test_new_server_only_function_gets_a_grant_note(self):
+        [note] = self.findings({'op': '+', 'kind': 'function', 'id': 'public.g()',
+                                'detail': {'security_definer': False, 'grants': ['service_role=X/postgres'],
+                                           'returns': 'integer'}})
+        self.assertTrue(note.startswith('NOTE') and 'GRANT EXECUTE' in note)
+        self.assertEqual(self.findings({'op': '+', 'kind': 'function', 'id': 'public.t()',
+                                        'detail': {'grants': ['service_role=X/postgres'], 'returns': 'trigger'}}), [])
+
+    def test_narrowing_exposure_is_not_reported(self):
+        narrowed = {'op': '~', 'kind': 'function', 'id': 'public.f()',
+                    'fields': {'grants': {'from': None, 'to': ['authenticated=X/postgres']}},
+                    'after': {'security_definer': True, 'grants': ['authenticated=X/postgres']}}
+        self.assertEqual(self.findings(narrowed), [])
+
     def test_not_null_column_on_populated_table(self):
         [finding] = self.findings({'op': '+', 'kind': 'column', 'id': 'public.users.x',
                                    'detail': {'type': 'text', 'not_null': True, 'default': None}})

@@ -119,7 +119,7 @@ describe('queue processor timeout', () => {
 
 		expect(source).toContain('this.batchSize - this.activeJobs.size');
 		expect(source).toContain('this.releaseJobSlot(job.id)');
-		expect(source).toContain('void this.processJobs()');
+		expect(source).toContain("void this.processJobs('refill')");
 	});
 
 	it('heartbeats active claims with processing-token ownership', () => {

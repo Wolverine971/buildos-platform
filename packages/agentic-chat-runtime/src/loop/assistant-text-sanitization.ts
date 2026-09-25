@@ -6,7 +6,7 @@
 // it is language classification by regex (AGENTS.md "Never classify language
 // with regex"). The turn path fixes leakage at the source instead: acting
 // passes request `reasoning.exclude` and the SSE decoder drops inline
-// `<think>` blocks (apps/worker/.../provider/openrouter/sse.ts), so hidden
+// `<think>` blocks (the worker's OpenRouter SSE parser), so hidden
 // reasoning never reaches `content`. As of 2026-09-23 no chat path strips
 // sentences; the only caller is `pnpm agentic:health`
 // (apps/web/scripts/agentic-health), which counts how many stored replies

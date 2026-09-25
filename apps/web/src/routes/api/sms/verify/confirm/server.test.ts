@@ -1,7 +1,11 @@
 // apps/web/src/routes/api/sms/verify/confirm/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { checkVerificationMock } = vi.hoisted(() => ({ checkVerificationMock: vi.fn() }));
+const { checkVerificationMock, smsEnv, adminRpcMock } = vi.hoisted(() => ({
+	checkVerificationMock: vi.fn(),
+	smsEnv: { PRIVATE_SMS_SENDING_ENABLED: 'false' },
+	adminRpcMock: vi.fn(async () => ({ data: null, error: null }))
+}));
 
 vi.mock('$env/static/private', () => ({
 	PRIVATE_TWILIO_ACCOUNT_SID: 'AC-test',
@@ -10,7 +14,10 @@ vi.mock('$env/static/private', () => ({
 	PRIVATE_TWILIO_VERIFY_SERVICE_SID: 'VA-test'
 }));
 
-vi.mock('$env/dynamic/private', () => ({ env: { PRIVATE_SMS_SENDING_ENABLED: 'false' } }));
+vi.mock('$env/dynamic/private', () => ({ env: smsEnv }));
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: () => ({ rpc: adminRpcMock })
+}));
 
 vi.mock('@buildos/twilio-service', () => ({
 	TwilioClient: vi.fn(function () {
@@ -83,5 +90,24 @@ describe('POST /api/sms/verify/confirm', () => {
 			expect.objectContaining({ user_id: 'user-1', phone_verified: true }),
 			{ onConflict: 'user_id' }
 		);
+	});
+
+	it('queues the welcome SMS through the service client, never the user session', async () => {
+		// queue_sms_message is service-only: it accepts any number and message.
+		smsEnv.PRIVATE_SMS_SENDING_ENABLED = 'true';
+		vi.resetModules();
+		const { POST: enabledPost } = await import('./+server');
+		checkVerificationMock.mockResolvedValue(true);
+		const { event } = createEvent();
+
+		const response = await enabledPost(event);
+
+		expect(response.status).toBe(200);
+		expect(event.locals.supabase.rpc).not.toHaveBeenCalled();
+		expect(adminRpcMock).toHaveBeenCalledWith(
+			'queue_sms_message',
+			expect.objectContaining({ p_user_id: 'user-1', p_phone_number: '+15555550100' })
+		);
+		smsEnv.PRIVATE_SMS_SENDING_ENABLED = 'false';
 	});
 });

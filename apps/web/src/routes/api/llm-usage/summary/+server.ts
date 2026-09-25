@@ -3,6 +3,7 @@
 import type { RequestHandler } from './$types';
 import { LLMUsageService } from '$lib/services/llm-usage.service';
 import { ApiResponse } from '$utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 /**
  * GET /api/llm-usage/summary
@@ -33,7 +34,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			return ApiResponse.unauthorized();
 		}
 
-		const usageService = new LLMUsageService(supabase);
+		// get_user_llm_usage is service-only; this route is admin-gated above.
+		const usageService = new LLMUsageService(createAdminSupabaseClient());
 
 		// Parse query parameters
 		const period = url.searchParams.get('period') || 'month';

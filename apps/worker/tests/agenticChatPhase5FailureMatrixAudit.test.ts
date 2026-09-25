@@ -259,9 +259,10 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	},
 	{
 		id: 'termination_after_uncertain_mutation',
-		requirement: 'Uncertain mutation recovery stops at the effect boundary.',
+		requirement:
+			'An uncertain non-queryable mutation ends the turn as "may already be saved" (no retry past the effect).',
 		file: 'apps/worker/tests/agenticChatTurnExecutor.test.ts',
-		anchor: 'stops at effect reconciliation when a non-queryable mutation outcome is uncertain'
+		anchor: 'fails a turn whose non-queryable mutation outcome is uncertain as "may already be saved"'
 	},
 	{
 		id: 'timeout_provider_ignores_abort',
@@ -277,9 +278,10 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 	},
 	{
 		id: 'stale_worker_finalization',
-		requirement: 'Stalled recovery stops when another generation owns the turn.',
+		requirement:
+			'Stalled recovery stops, as stale ownership rather than failure, when another generation owns the turn.',
 		file: 'apps/worker/tests/agenticChatStalledRecovery.test.ts',
-		anchor: 'stops immediately when recovery reports that the generation is stale'
+		anchor: 'classifies another recoverer winning as stale ownership, not a failure'
 	},
 	{
 		id: 'generic_stalled_post_start',

@@ -91,6 +91,13 @@ findings before applying. Apply to production one file at a time, then record it
 (`--linked` is production). Never use `db push --include-all` or replay the historical
 unrecorded files. See `scripts/migration-rehearsal/README.md`.
 
+New functions are server-only by default (since 2026-09-25): only `postgres` and
+`service_role` can execute them. When the browser or a signed-in session calls a function,
+or an RLS policy or invoker trigger uses it for client requests, add
+`GRANT EXECUTE ON FUNCTION ... TO authenticated` (and `anon` only for logged-out paths). A
+`SECURITY DEFINER` function a client can call must check `auth.uid()` itself. Use
+`--role-probe` when a migration touches grants or policies.
+
 ## Never classify language with regex
 
 - Do not decide what a user message or model reply means with regex or keyword lists: intent,

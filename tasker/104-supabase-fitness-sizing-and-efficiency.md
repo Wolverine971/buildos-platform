@@ -2,7 +2,7 @@
 
 # Tasker 104 — Supabase fitness: are we sized, configured, and using Postgres well?
 
-**Status:** Security containment LIVE + verified; 5 s polling LIVE; QA retired (branch deleted) and replaced by `pnpm db:rehearse`. Open: busy-window sizing sample, stream-state HOT updates, retention (103) · **Opened:** 2026-09-24 · **Owner:** Claude (took over from Codex 2026-09-24 evening)
+**Status:** All known client-callable admin RPCs contained (76 anon-callable definers found 09-25: step 1 + default-private LIVE, step 2 after web deploy); 5 s polling LIVE (−77% claims); QA + gate tooling retired; CI unblocked. Open: 5 low-severity guard fixes, stream-state HOT updates · **Opened:** 2026-09-24 · **Owner:** Claude (took over from Codex 2026-09-24 evening)
 **Source:** the Tasker 102 investigation. A gate turn died because the QA database stalled for
 40 s. The QA branch turned out to be memory-starved and swapping, and a quick check shows production
 is on the default 1 GB instance with swap in use. It was paging only lightly in the one sample
@@ -16,6 +16,47 @@ the full five-second wake-aware polling recommendation, and asked whether the un
 RPC can be deleted. Local containment implementation is prepared below. QA is retained. The
 paid-run approval requirement remains in effect. DJ subsequently removed the mandatory
 per-change-set gate and asked to verify migration status before staging already-applied files.
+
+## Double-check pass — 2026-09-25 (DJ: "double-check everything; maybe delete the old gate scripts")
+
+DJ confirmed there is no real load yet (DJ is the main user), so sizing stays on Micro with no
+busy-window sample planned until there are users.
+
+- **Polling receipt (prod edge logs, 15-min buckets):** `claim_pending_jobs` fell from 252–271/min
+  (21:00–23:15 UTC) to ~59/min after 00:15 UTC, which is 4 chat replicas × 12 plus the general
+  worker × 12. That is 77% fewer queue claims, or ~380K fewer REST calls/day.
+- **Security (the big one):** 76 `SECURITY DEFINER` functions were executable by `anon`, and
+  therefore by anyone holding the public key in the web bundle. Confirmed live: anon read
+  `get_revenue_metrics` and `get_admin_top_users` (user emails, names, costs). A caller audit
+  traced every call site to its client; the prod catalog was checked for policies, invoker callers
+  and triggers.
+    - **Step 1, `20260925013000` (LIVE, verified):** 44 functions server-only, 26 signed-in only.
+      Unchanged on purpose: `is_admin()`, `current_actor_id()` and
+      `current_actor_has_project_access()` (RLS helpers that the role probe showed are needed on
+      anon-visible policies), the logged-out invite preview, `log_client_error`, and the
+      unreferenced `app_auth.is_admin()`. `upsert_legacy_entity_mapping` stays signed-in because
+      the `onto_projects`/`onto_tasks` triggers call it with invoker rights. After apply: anon
+      calls get 401/42501, service calls 200, and public pages (/, sitemap, pricing, blogs) 200.
+    - **Step 2, `20260925013100` (after the web deploy):** `evaluate_user_consumption_gate`,
+      `queue_sms_message` and `get_user_llm_usage` become service-only, since their callers now
+      use the admin client. Subscription and trial status gain an own-id-or-admin guard.
+    - **Step 3, `20260925013200` (LIVE):** functions that `postgres` creates are private by
+      default, so a migration must grant clients explicitly. This fixes the class of bug.
+      AGENTS.md records the rule.
+    - **Rehearsed** with the new `--role-probe` and `supabase/tests/contain_client_callable_definer_rpcs.check.sql`:
+      zero read regressions for anon or authenticated, and every privilege and guard assertion passes.
+      The first draft broke nine tables for expired sessions; the probe caught it.
+    - **Remaining low-severity guard fixes:** `is_admin(uuid)` (a signed-in user can test whether any
+      id is an admin), `resolve_onto_public_page_slug_prefix` (another user's name or email prefix),
+      `increment_question_display_count`, the inviter email in the invite preview, and
+      `log_client_error` spam. Tasker 76's broader audit continues from here.
+- **CI had been red since 09-14.** Fixed five web test type errors (Tasker 103 tests), a
+  portability-guard comment, the refill source-contract string, two Phase 5 anchors renamed by
+  the turn-leases commit, and the admin export test. The full local suite (`turbo test:run --continue`)
+  showed only those failures.
+- **Gate tooling deleted:** the QA-only runner, calendar setup, workflow prototype, write probe,
+  latency/trace analysis and the book-loop QA scripts. `book-loop/turn.sh` kept its prod mode.
+  They were last present in `525cc6e6b`.
 
 ## Current state — September 24, evening (Claude takeover)
 

@@ -111,7 +111,36 @@ SELECT json_agg(row_to_json(x)) FROM (
   FROM pg_type t JOIN app_ns n ON n.oid = t.typnamespace WHERE t.typtype IN ('e', 'd')
   UNION ALL
   SELECT 'schema', nspname, json_build_object() FROM app_ns
+  UNION ALL
+  SELECT 'default_acl', format('%s.%s.%s', pg_get_userbyid(d.defaclrole), coalesce(n.nspname, '*'), d.defaclobjtype),
+         json_build_object('grants', (SELECT array_agg(a::text ORDER BY a::text) FROM unnest(d.defaclacl) a))
+  FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
 ) x;
+"""
+
+PROBE_ROLES = {
+    'anon': '{"role":"anon"}',
+    'authenticated': '{"role":"authenticated","sub":"00000000-0000-4000-8000-000000000001"}',
+}
+ROLE_PROBE_SQL = r"""
+DO $probe$
+DECLARE rel regclass;
+BEGIN
+  FOR rel IN
+    SELECT c.oid::regclass FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relkind IN ('r', 'p', 'v', 'm')
+      AND n.nspname NOT LIKE 'pg\_%' AND n.nspname NOT IN ('information_schema', 'extensions', 'vault')
+      AND has_schema_privilege('__ROLE__', n.oid, 'USAGE')
+      AND has_table_privilege('__ROLE__', c.oid, 'SELECT')
+  LOOP
+    BEGIN
+      EXECUTE format('SELECT count(*) FROM %s', rel);
+    EXCEPTION WHEN others THEN
+      RAISE NOTICE 'probe_fail|%|%', rel, SQLERRM;
+    END;
+  END LOOP;
+END
+$probe$;
 """
 
 LEDGER_SQL = """
@@ -289,9 +318,21 @@ def risk_findings(changes: list[dict], sizes: dict) -> list[str]:
         rows = (sizes.get(table) or {}).get('rows', 0) if table else 0
         if kind == 'function' and op in ('+', '~'):
             after = change.get('detail') or change.get('after') or {}
-            exposure_changed = op == '+' or bool({'grants', 'security_definer'} & set(change.get('fields') or {}))
             definer, grants = after.get('security_definer'), after.get('grants')
-            if definer and exposure_changed and (holders := client_executable(grants)):
+            holders = client_executable(grants)
+            if op == '~':
+                fields = change.get('fields') or {}
+                was_definer = fields.get('security_definer', {}).get('from', definer)
+                before = client_executable(fields['grants']['from']) if 'grants' in fields else holders
+                # Flag only newly gained client exposure; a narrowing change is the fix, not the bug.
+                if was_definer and any(h.startswith('PUBLIC') for h in before):
+                    holders = []  # PUBLIC already covered every client role
+                holders = [h for h in holders if h not in before or not was_definer]
+            if op == '+' and not holders and after.get('returns') != 'trigger':
+                findings.append(f'NOTE: {ident} is server-only (no anon/authenticated grant; the default since '
+                                '2026-09-25). If a browser or signed-in session calls it, or an RLS policy or '
+                                'invoker trigger uses it for client requests, GRANT EXECUTE ... TO authenticated.')
+            if definer and holders:
                 findings.append(f'SECURITY: {ident} is SECURITY DEFINER and executable by {", ".join(holders)}. '
                                 'Revoke from PUBLIC/anon/authenticated unless clients must call it.')
             elif definer and op == '+' and not (after.get('config') or []):
@@ -378,6 +419,20 @@ class LocalCluster:
             args += ['-f', str(file)]
         return self.run('psql', *args, stdin=sql)
 
+    def role_probe(self) -> dict[str, dict[str, str]]:
+        """Read every table/view each client role may SELECT; return {role: {relation: error}}.
+
+        Empty tables still initialise RLS quals, so a policy helper function the role can no
+        longer EXECUTE fails here exactly as it would in production."""
+        failures: dict[str, dict[str, str]] = {}
+        for role, claims in PROBE_ROLES.items():
+            script = (f"SET ROLE {role};\nSELECT set_config('request.jwt.claims', '{claims}', false);\n"
+                      + ROLE_PROBE_SQL.replace('__ROLE__', role) + '\nRESET ROLE;\n')
+            self.psql(sql=script)
+            failures[role] = dict(line.split('probe_fail|', 1)[1].split('|', 1)
+                                  for line in self.last_stderr.splitlines() if 'probe_fail|' in line)
+        return failures
+
     def fingerprint(self) -> list[dict]:
         return json.loads(self.psql(sql=FINGERPRINT_SQL).strip() or '[]') or []
 
@@ -393,7 +448,8 @@ def print_changes(changes: list[dict], sizes: dict) -> None:
     if not changes:
         print('  No schema change (the migration is a no-op against production as it is now).')
         return
-    order = ['schema', 'type', 'table', 'column', 'constraint', 'index', 'view', 'function', 'policy', 'trigger']
+    order = ['schema', 'default_acl', 'type', 'table', 'column', 'constraint', 'index', 'view', 'function',
+             'policy', 'trigger']
     for change in sorted(changes, key=lambda c: (order.index(c['kind']) if c['kind'] in order else 99, c['id'])):
         print(f"  {change['op']} {change['kind']:<10} {change['id']}")
         for field, values in (change.get('fields') or {}).items():
@@ -425,6 +481,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--refresh', action='store_true', help='re-snapshot even if the cache is fresh')
     parser.add_argument('--max-age-hours', type=float, default=24.0)
     parser.add_argument('--keep', action='store_true', help='keep the stopped local cluster for inspection')
+    parser.add_argument('--role-probe', action='store_true',
+                        help='as anon and authenticated, read every readable table before and after; '
+                             'fail on any relation that stops working (catches revoked RLS helpers)')
     parser.add_argument('--pg-bin', help='directory with initdb/pg_ctl/psql/pg_dump (default: from PATH)')
     parser.add_argument('--json', type=Path, help='also write the full report as JSON')
     args = parser.parse_args(argv)
@@ -458,6 +517,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f'Loaded in {time.time() - started:.1f} s.')
 
         before = cluster.fingerprint()
+        probe_before = cluster.role_probe() if args.role_probe else None
         failed = False
         for migration in args.migrations:
             started = time.time()
@@ -485,6 +545,21 @@ def main(argv: list[str] | None = None) -> int:
                                          'findings': findings})
             before = after
 
+        if probe_before is not None and not failed:
+            probe_after = cluster.role_probe()
+            regressions = {role: {rel: err for rel, err in probe_after[role].items() if rel not in probe_before[role]}
+                           for role in probe_after}
+            report['role_probe'] = {'before': probe_before, 'regressions': regressions}
+            print('\nRole probe (reads every table each client role may SELECT):')
+            for role in probe_after:
+                fixed = [rel for rel in probe_before[role] if rel not in probe_after[role]]
+                print(f"  {role}: {len(probe_before[role])} failing before, {len(probe_after[role])} after"
+                      + (f"; now working: {', '.join(fixed)}" if fixed else ''))
+                for rel, err in sorted(regressions[role].items()):
+                    print(f'    ✗ REGRESSION {rel}: {err}')
+            if any(regressions.values()):
+                failed = True
+
         for check in [] if failed else args.check:
             try:
                 cluster.psql(file=check.resolve())
@@ -500,7 +575,9 @@ def main(argv: list[str] | None = None) -> int:
     findings = [f for m in report['migrations'] for f in m.get('findings', [])]
     if findings:
         security = sum(f.startswith('SECURITY') for f in findings)
-        print(f'\n{security} security and {len(findings) - security} data finding(s) above: review before applying.')
+        data = sum(f.startswith('DATA') for f in findings)
+        notes = len(findings) - security - data
+        print(f'\n{security} security, {data} data finding(s) and {notes} note(s) above: review before applying.')
     print('\nREHEARSAL FAILED' if failed else '\nREHEARSAL PASSED — nothing was written to any hosted database.')
     return 1 if failed else 0
 
