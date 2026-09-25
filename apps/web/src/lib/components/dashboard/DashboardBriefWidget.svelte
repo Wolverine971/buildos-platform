@@ -1,14 +1,16 @@
 <!-- apps/web/src/lib/components/dashboard/DashboardBriefWidget.svelte -->
 <!--
-  Compact daily brief widget for the dashboard with ontology support.
+  Daily brief chip for the dashboard Today row, with ontology support.
+  States: loading skeleton → generating (progress %) → brief ready (opens the
+  brief modal; the summary is the hover title) / generate CTA / retry on error.
 
   PERFORMANCE (Dec 2024):
-  - Fixed-height container prevents layout shift during state transitions
-  - Skeleton loading state matches final card dimensions
+  - Skeleton chip matches the final chip height, so the row doesn't shift
   - Brief data deferred - doesn't block initial page render
 -->
 <script lang="ts">
-	import { Sparkles, LoaderCircle, ChevronRight, AlertCircle, Sun, Volume2 } from 'lucide-svelte';
+	import { Sparkles, LoaderCircle, AlertCircle, Sun, Volume2 } from 'lucide-svelte';
+	import TodayChip from './TodayChip.svelte';
 	import { browser } from '$app/environment';
 	import { getContext, onDestroy, onMount } from 'svelte';
 	import {
@@ -283,146 +285,53 @@
 	}
 </script>
 
-<!-- Fixed-height container prevents layout shift during state transitions -->
-<div class="w-full min-h-[52px] sm:min-h-[72px] transition-[min-height] duration-200">
-	{#if isLoading}
-		<!-- Skeleton Loading State - ghost weight for ephemeral state -->
-		<div
-			class="flex items-center gap-2 sm:gap-3 wt-ghost p-2 sm:p-3 animate-pulse motion-reduce:animate-none"
-			aria-hidden="true"
-		>
-			<div class="p-1.5 sm:p-2 rounded-md bg-muted">
-				<div class="h-3 w-3 sm:h-4 sm:w-4 bg-muted-foreground/20 rounded"></div>
-			</div>
-			<div class="flex-1 space-y-1.5 sm:space-y-2">
-				<div class="h-3 sm:h-4 bg-muted rounded w-20 sm:w-24"></div>
-				<div class="h-2.5 sm:h-3 bg-muted rounded w-32 sm:w-48"></div>
-			</div>
-		</div>
-	{:else if isGenerating}
-		<!-- Generating State - paper weight with pulse texture -->
-		<div class="wt-paper p-2 sm:p-3 border-accent/30 bg-accent/5 tx tx-pulse tx-weak">
-			<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-				<div class="p-1.5 sm:p-2 rounded-md bg-accent/10 border border-accent/20">
-					<LoaderCircle
-						class="h-3 w-3 sm:h-4 sm:w-4 text-accent animate-spin motion-reduce:animate-none"
-					/>
-				</div>
-				<div class="flex-1 min-w-0">
-					<p class="text-xs sm:text-sm font-medium text-foreground">Generating brief</p>
-					<p class="text-2xs sm:text-xs text-muted-foreground truncate">
-						{statusMessage}
-					</p>
-				</div>
-				<span class="text-2xs sm:text-xs font-bold text-accent">{progress}%</span>
-			</div>
-			<!-- Progress bar -->
-			<div class="h-0.5 sm:h-1 bg-accent/20 rounded-full overflow-hidden">
-				<div
-					class="h-full bg-accent rounded-full transition-all duration-300"
-					style="width: {progress}%"
-				></div>
-			</div>
-		</div>
-	{:else if error}
-		<!-- Error State - paper weight with static texture -->
-		<div class="flex items-center gap-2 sm:gap-3 wt-paper p-2 sm:p-3 tx tx-static tx-weak">
-			<div class="p-1.5 sm:p-2 rounded-md bg-destructive/10">
-				<AlertCircle class="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
-			</div>
-			<div class="flex-1">
-				<p class="text-xs sm:text-sm text-destructive">{error}</p>
-			</div>
-			<button
-				onclick={generateBrief}
-				class="rounded-sm text-2xs sm:text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-			>
-				Retry
-			</button>
-		</div>
-	{:else if brief}
-		<!-- Brief Available - paper weight with frame texture -->
-		<button
-			onclick={handleClick}
-			onpointerdown={onpreloadbrief}
-			onpointerenter={onpreloadbrief}
-			onfocus={onpreloadbrief}
-			class="w-full text-left wt-paper p-2 sm:p-3 hover:border-accent pressable tx tx-frame tx-weak group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-		>
-			<div class="flex items-center sm:items-start gap-2 sm:gap-3">
-				<div
-					class="p-1.5 sm:p-2 rounded-md bg-warning/10 border border-warning/20 group-hover:bg-warning/20 transition-colors flex-shrink-0"
-				>
-					<Sun class="h-3 w-3 sm:h-4 sm:w-4 text-warning" />
-				</div>
-				<div class="flex-1 min-w-0">
-					<div class="flex min-w-0 items-center justify-between gap-1.5 sm:gap-2">
-						<div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
-							<h3 class="shrink-0 text-xs sm:text-sm font-semibold text-foreground">
-								Today's Brief
-							</h3>
-							{#if brief.priority_actions && brief.priority_actions.length > 0}
-								<span
-									class="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-2xs font-bold rounded bg-accent/10 text-accent border border-accent/20"
-									title="{brief.priority_actions.length} priority action{brief
-										.priority_actions.length === 1
-										? ''
-										: 's'}"
-								>
-									<AlertCircle class="w-2.5 h-2.5 sm:hidden" />
-									<span class="sm:hidden">{brief.priority_actions.length}</span>
-									<span class="hidden sm:inline">
-										{brief.priority_actions.length} priority {brief
-											.priority_actions.length === 1
-											? 'action'
-											: 'actions'}
-									</span>
-								</span>
-							{/if}
-							{#if brief.audio_status === 'ready' && brief.audio_storage_path}
-								<span
-									class="inline-flex shrink-0 items-center justify-center rounded bg-muted px-1.5 py-0.5 text-muted-foreground border border-border"
-									title="Audio narration ready"
-								>
-									<Volume2 class="h-3 w-3" />
-								</span>
-							{/if}
-						</div>
-						<ChevronRight
-							class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/50 group-hover:text-accent transition-colors flex-shrink-0"
-						/>
-					</div>
-					<p
-						class="mt-0.5 sm:mt-1 w-full min-w-0 truncate text-2xs sm:text-xs text-muted-foreground leading-snug sm:leading-relaxed"
-					>
-						{briefSnippet || 'Your daily brief is ready'}
-					</p>
-				</div>
-			</div>
-		</button>
-	{:else}
-		<!-- No Brief - Compact Generate CTA on mobile - ghost weight for suggestion/CTA -->
-		<button
-			onclick={generateBrief}
-			disabled={isGenerating}
-			class="w-full flex items-center gap-2 sm:gap-3 wt-ghost border-dashed border-accent/50 p-2 sm:p-3 hover:border-accent hover:bg-accent/10 pressable group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-		>
-			<div
-				class="p-1.5 sm:p-2 rounded-md bg-accent/10 border border-accent/20 group-hover:bg-accent group-hover:border-accent transition-colors flex-shrink-0"
-			>
-				<Sparkles
-					class="h-3 w-3 sm:h-4 sm:w-4 text-accent group-hover:text-accent-foreground transition-colors"
-				/>
-			</div>
-			<div class="flex-1 text-left min-w-0">
-				<h3 class="text-xs sm:text-sm font-semibold text-foreground">Generate Brief</h3>
-				<p class="text-2xs sm:text-xs text-muted-foreground line-clamp-1">
-					See what matters today — so nothing slips
-				</p>
-			</div>
-			<ChevronRight
-				class="h-3 w-3 sm:h-4 sm:w-4 text-accent/50 group-hover:text-accent transition-colors flex-shrink-0"
-			/>
-		</button>
-	{/if}
-</div>
+<!-- One chip in the dashboard Today row; the brief itself opens in the brief modal. -->
+{#if isLoading}
+	<span
+		class="inline-flex h-8 w-36 shrink-0 animate-pulse rounded-full bg-muted motion-reduce:animate-none"
+		aria-hidden="true"
+	></span>
+{:else if isGenerating}
+	<TodayChip
+		icon={LoaderCircle}
+		spin
+		iconClass="text-accent"
+		label="Generating brief"
+		detail="{progress}%"
+		title={statusMessage}
+	/>
+{:else if error}
+	<TodayChip
+		icon={AlertCircle}
+		tone="danger"
+		label="Brief failed"
+		detail="Retry"
+		title={error}
+		onclick={generateBrief}
+	/>
+{:else if brief}
+	{@const priorityCount = brief.priority_actions?.length ?? 0}
+	<TodayChip
+		icon={Sun}
+		iconClass="text-warning"
+		label="Today's brief"
+		detail={priorityCount > 0
+			? `${priorityCount} ${priorityCount === 1 ? 'priority' : 'priorities'}`
+			: undefined}
+		trailingIcon={brief.audio_status === 'ready' && brief.audio_storage_path
+			? Volume2
+			: undefined}
+		trailingLabel="Audio narration ready"
+		title={briefSnippet || 'Your daily brief is ready'}
+		onclick={handleClick}
+		onpreload={onpreloadbrief}
+	/>
+{:else}
+	<TodayChip
+		icon={Sparkles}
+		tone="dashed"
+		label="Generate brief"
+		title="See what matters today — so nothing slips"
+		onclick={generateBrief}
+	/>
+{/if}

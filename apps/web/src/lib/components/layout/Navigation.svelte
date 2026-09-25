@@ -860,10 +860,13 @@
 						{#each navItems as item (item.href)}
 							{@const Icon = item.icon}
 
+							<!-- Icon-only between md and lg, tight padding until xl: labeled links
+							     overflowed under the right-side controls on narrow desktops. -->
 							<a
 								href={item.href}
 								onclick={() => handleMenuItemClick(item.href)}
-								class="relative inline-flex items-center px-2 lg:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded-md transition-all duration-200 whitespace-nowrap
+								title={item.label}
+								class="relative inline-flex items-center px-2 xl:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded-md transition-all duration-200 whitespace-nowrap
 								{currentPath === item.href
 									? 'text-accent bg-muted'
 									: 'text-muted-foreground hover:text-foreground hover:bg-muted'}
@@ -877,13 +880,12 @@
 									></div>
 								{/if}
 								<Icon
-									class="w-3.5 md:w-4 h-3.5 md:h-4 mr-1 lg:mr-1.5 flex-shrink-0 {currentPath ===
+									class="w-4 h-4 lg:mr-1 xl:mr-1.5 flex-shrink-0 {currentPath ===
 									item.href
 										? 'text-accent'
 										: 'text-muted-foreground'}"
 								/>
-								<span class="hidden lg:inline">{item.label}</span>
-								<span class="lg:hidden">{item.label.split(' ')[0]}</span>
+								<span class="sr-only lg:not-sr-only">{item.label}</span>
 							</a>
 						{/each}
 					</div>
@@ -1184,7 +1186,9 @@
 												{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 											>
 												<Sparkles class="h-4 w-4 flex-shrink-0" />
-												<span class="min-w-0">Connect your agents</span>
+												<span class="min-w-0"
+													>Connect other AI surfaces</span
+												>
 											</a>
 										</div>
 									{/if}
@@ -1496,7 +1500,7 @@
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<Sparkles class="h-5 w-5 flex-shrink-0" />
-								Connect your agents
+								Connect other AI surfaces
 							</a>
 						{/if}
 

@@ -1,10 +1,8 @@
 <!-- apps/web/src/lib/components/profile/EmailTab.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
-	import { replaceState } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
+	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
 	import {
 		CircleAlert,
 		LockKeyhole,
@@ -236,10 +234,10 @@
 		});
 	}
 
-	$effect(() => {
-		if (!browser) return;
-		const params = $page.url.searchParams;
-		if (params.get('gmail') !== '1') return;
+	// One-time params from the Gmail OAuth return, handled once and then stripped from the URL.
+	consumeOneTimeUrlParams((url) => {
+		const params = url.searchParams;
+		if (params.get('gmail') !== '1') return [];
 
 		const success = params.get('success');
 		const error = params.get('error');
@@ -248,14 +246,7 @@
 		} else if (error) {
 			onerror?.({ message: gmailOAuthErrorMessage(error) });
 		}
-
-		const nextUrl = new URL($page.url);
-		nextUrl.searchParams.delete('gmail');
-		nextUrl.searchParams.delete('success');
-		nextUrl.searchParams.delete('error');
-		nextUrl.searchParams.delete('connection');
-		const destination = `/profile${nextUrl.search}${nextUrl.hash}` as '/profile';
-		replaceState(resolve(destination), {});
+		return ['gmail', 'success', 'error', 'connection'];
 	});
 
 	onMount(() => {

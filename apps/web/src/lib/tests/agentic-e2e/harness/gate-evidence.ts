@@ -1,10 +1,19 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/gate-evidence.ts
-// Raw evidence is opt-in and limited to the isolated QA database. Phase 0 keeps
-// its existing redacted contract. Never serialize the context (cookies/clients).
+// Raw evidence is opt-in and limited to the isolated QA database, or to the
+// deployed-stack battery, whose snapshot reads only the dedicated harness
+// account's own seeded rows. Phase 0 keeps its existing redacted contract.
+// Never serialize the context (cookies/clients).
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ScenarioContext, TurnResult } from './types';
 import { waitForToolExecutions } from './telemetry';
+
+function rawCaptureAllowed(): boolean {
+	return (
+		process.env.AGENTIC_GATE_DATABASE_ISOLATED === 'true' ||
+		process.env.AGENTIC_BATTERY_TARGET === 'deployed'
+	);
+}
 
 export function findGateProviderPassFiles(
 	directory: string,
@@ -29,8 +38,8 @@ export function findGateProviderPassFiles(
 
 export async function gateSnapshot(ctx: ScenarioContext): Promise<Record<string, unknown> | null> {
 	if (!process.env.AGENTIC_GATE_EVIDENCE_DIR) return null;
-	if (process.env.AGENTIC_GATE_DATABASE_ISOLATED !== 'true')
-		throw new Error('Raw gate capture requires an isolated database');
+	if (!rawCaptureAllowed())
+		throw new Error('Raw gate capture requires an isolated database or the deployed battery');
 	const { data: projects, error } = await ctx.db.admin
 		.from('onto_projects')
 		.select('*')
@@ -61,8 +70,8 @@ export async function captureGateTurn(params: {
 }): Promise<string[]> {
 	const dir = process.env.AGENTIC_GATE_EVIDENCE_DIR;
 	if (!dir) return [];
-	if (process.env.AGENTIC_GATE_DATABASE_ISOLATED !== 'true')
-		throw new Error('Raw gate capture requires an isolated database');
+	if (!rawCaptureAllowed())
+		throw new Error('Raw gate capture requires an isolated database or the deployed battery');
 	const captureErrors: string[] = [];
 	const record: Record<string, unknown> = { ...params.evidence, result: params.result };
 	try {

@@ -4,7 +4,7 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { replaceState } from '$app/navigation';
+	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
 	import {
 		Calendar,
 		CircleCheck,
@@ -150,25 +150,16 @@
 		}
 	});
 
-	// Consolidated URL parameter handling — one effect branches per param.
-	// Original behaviors preserved:
-	//  1) calendar=1 & success=calendar_connected → refresh, fire success, maybe show analysis modal, strip both params
-	//  2) analyze=true → start analysis, strip analyze param
-	//  3) calendar=1 & error=<code> → emit error, strip both params
-	$effect(() => {
-		if (!browser) return;
-
-		const params = $page.url.searchParams;
+	// One-time params from the Google OAuth return (calendar=1 + success/error) and the
+	// analyze deep link. Handled once per navigation, then stripped from the URL.
+	consumeOneTimeUrlParams((url) => {
+		const params = url.searchParams;
 		const calendarFlag = params.get('calendar') === '1';
-		const success = params.get('success');
 		const errorCode = params.get('error');
-		const analyzeFlag = params.get('analyze') === 'true';
 
-		if (!calendarFlag && !analyzeFlag) return;
-
-		// (1) Calendar connected success path
-		if (calendarFlag && success === 'calendar_connected') {
-			refreshCalendarData({ showErrors: false });
+		if (calendarFlag && params.get('success') === 'calendar_connected') {
+			// OAuth returns are full page loads, so this joins the onMount load already in flight.
+			void loadCalendarData();
 			onsuccess?.({ message: 'Google Calendar connected successfully!' });
 
 			const hasShownAnalysis =
@@ -178,15 +169,9 @@
 			if (!hasShownAnalysis) {
 				showAnalysisModal = true;
 			}
-
-			const newUrl = new URL($page.url);
-			newUrl.searchParams.delete('success');
-			newUrl.searchParams.delete('calendar');
-			replaceState(newUrl.toString(), {});
-			return;
+			return ['calendar', 'success'];
 		}
 
-		// (3) Calendar connection error path
 		if (calendarFlag && errorCode) {
 			let errorMessage = 'Failed to connect Google Calendar';
 
@@ -208,21 +193,15 @@
 			}
 
 			onerror?.({ message: errorMessage });
-
-			const newUrl = new URL($page.url);
-			newUrl.searchParams.delete('error');
-			newUrl.searchParams.delete('calendar');
-			replaceState(newUrl.toString(), {});
-			return;
+			return ['calendar', 'error'];
 		}
 
-		// (2) Analyze deep-link path
-		if (analyzeFlag) {
-			startCalendarAnalysis();
-			const newUrl = new URL($page.url);
-			newUrl.searchParams.delete('analyze');
-			replaceState(newUrl.toString(), {});
+		if (params.get('analyze') === 'true') {
+			void startCalendarAnalysis();
+			return ['analyze'];
 		}
+
+		return [];
 	});
 
 	// Computed values

@@ -27,7 +27,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
 	import ProjectOverdueIndicator from './ProjectOverdueIndicator.svelte';
-	import AttentionBanner from './AttentionBanner.svelte';
+	import TodayChip from './TodayChip.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import { getTaskStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import { getDashboardGreeting } from '$lib/utils/dashboard-greeting';
@@ -130,11 +130,14 @@
 		onrefresh: refreshHandler
 	}: Props = $props();
 
+	const AGENT_CONNECTION_HREF = '/profile?tab=agent-keys';
+
 	let isRefreshing = $state(false);
 	let pendingNavigationHref = $state<string | null>(null);
 	let dashboardInviteRows = $state<ProjectInviteRow[]>([]);
 	let inviteActionId = $state<string | null>(null);
 	let inviteActionError = $state<string | null>(null);
+	let invitesOpen = $state(false);
 	let isOpeningCalendar = $state(false);
 	let showBriefModal = $state(false);
 	let selectedBrief = $state<DailyBrief | null>(null);
@@ -150,8 +153,6 @@
 	let overdueProjectBatches = $state<OverdueProjectBatch[]>([]);
 	let overdueProjectBatchTotal = $state(0);
 	let overdueProjectTaskTotal = $state(0);
-	let isLoadingOverdueProjectBatches = $state(false);
-	let overdueProjectBatchError = $state<string | null>(null);
 	let overdueProjectBatchRequestToken = 0;
 	let overdueProjectBatchAbortController: AbortController | null = null;
 	let dashboardInboxCount = $derived($aiInboxCountStore.total);
@@ -180,9 +181,6 @@
 	const overdueProjectTaskCount = $derived(overdueProjectTaskTotal || overdueTasks);
 	const overdueProjectBatchCount = $derived(
 		overdueProjectBatchTotal || overdueProjectBatches.length
-	);
-	const overdueLabel = $derived(
-		`${overdueTasks} overdue ${overdueTasks === 1 ? 'task' : 'tasks'}`
 	);
 	const overdueProjectBatchSummary = $derived.by(() => {
 		const taskSummary = `${overdueProjectTaskCount} overdue ${overdueProjectTaskCount === 1 ? 'task' : 'tasks'}`;
@@ -629,8 +627,6 @@
 		overdueProjectBatchAbortController?.abort();
 		const controller = new AbortController();
 		overdueProjectBatchAbortController = controller;
-		isLoadingOverdueProjectBatches = true;
-		overdueProjectBatchError = null;
 
 		try {
 			const response = await fetch(
@@ -662,14 +658,11 @@
 			if (controller.signal.aborted) return;
 			console.error('[Dashboard] Failed to load overdue project batches:', err);
 			if (requestToken !== overdueProjectBatchRequestToken) return;
-			overdueProjectBatchError =
-				err instanceof Error ? err.message : 'Failed to load overdue project batches';
 			overdueProjectBatches = [];
 			overdueProjectBatchTotal = 0;
 			overdueProjectTaskTotal = overdueTasks;
 		} finally {
 			if (requestToken === overdueProjectBatchRequestToken) {
-				isLoadingOverdueProjectBatches = false;
 				overdueProjectBatchAbortController = null;
 			}
 		}
@@ -727,8 +720,6 @@
 			overdueProjectBatches = [];
 			overdueProjectBatchTotal = 0;
 			overdueProjectTaskTotal = 0;
-			overdueProjectBatchError = null;
-			isLoadingOverdueProjectBatches = false;
 			return;
 		}
 	});
@@ -950,69 +941,102 @@
 				</div>
 			</header>
 
-			<!-- Daily Brief -->
-			<section>
-				<DashboardBriefWidget
-					{user}
-					onviewbrief={handleViewBrief}
-					onpreloadbrief={preloadBriefModals}
-				/>
-			</section>
+			<!-- Today row: one line of chips for what needs you today. Each chip opens
+			     what its full-width banner used to; chips with nothing to show stay hidden. -->
+			<section aria-label="Today" class="min-w-0">
+				<div class="flex min-w-0 flex-wrap items-center gap-2">
+					<DashboardBriefWidget
+						{user}
+						onviewbrief={handleViewBrief}
+						onpreloadbrief={preloadBriefModals}
+					/>
 
-			{#if dashboardInboxCount > 0 || dashboardInboxCountError}
-				<AttentionBanner
-					tone="accent"
-					icon={Inbox}
-					title="AI Inbox"
-					subtext={dashboardInboxCountError
-						? 'Inbox count unavailable'
-						: dashboardInboxSummary}
-					action={dashboardInboxCountError
-						? {
-								label: 'Retry',
-								onClick: () => loadDashboardInboxCount(true),
-								disabled: isLoadingDashboardInboxCount,
-								tone: 'neutral',
-								showArrow: false
-							}
-						: {
-								label: 'Review inbox',
-								onClick: openDashboardInbox,
-								onPreload: preloadDashboardInboxModal,
-								loading: isOpeningDashboardInbox,
-								disabled: isOpeningDashboardInbox
-							}}
-				/>
-			{/if}
-
-			{#if showAgentConnectionCta}
-				<AttentionBanner
-					tone="accent"
-					icon={Sparkles}
-					title="Do you have agents?"
-					subtext="ChatGPT Codex, Claude Code, Open Claw."
-					action={{
-						label: 'Connect your agents here.',
-						href: '/profile?tab=agent-keys'
-					}}
-				/>
-			{/if}
-
-			{#if actionableInvites.length > 0}
-				<AttentionBanner
-					tone="accent"
-					icon={UserPlus}
-					title="Project invites"
-					subtext={inviteSummary}
-					action={{ label: 'Review all', href: '/invites' }}
-				>
-					{#if inviteActionError}
-						<div class="border-t border-accent/15 bg-background/60 px-3 py-2">
-							<p class="text-xs text-destructive">{inviteActionError}</p>
-						</div>
+					{#if overdueTasks > 0}
+						<TodayChip
+							icon={AlertTriangle}
+							tone="warning"
+							label="{overdueTasks} overdue"
+							title={overdueProjectBatchSummary}
+							onclick={() => openOverdueTaskTriage()}
+							onpreload={preloadOverdueTaskTriageModal}
+							loading={isOpeningOverdueTriage}
+						/>
 					{/if}
 
-					<div class="border-t border-accent/15 bg-background/40">
+					{#if dashboardInboxCountError}
+						<TodayChip
+							icon={Inbox}
+							label="Inbox unavailable"
+							detail="Retry"
+							onclick={() => loadDashboardInboxCount(true)}
+							loading={isLoadingDashboardInboxCount}
+						/>
+					{:else if dashboardInboxCount > 0}
+						<TodayChip
+							icon={Inbox}
+							iconClass="text-accent"
+							label="{dashboardInboxCount} to review"
+							title="AI Inbox: {dashboardInboxSummary}"
+							onclick={openDashboardInbox}
+							onpreload={preloadDashboardInboxModal}
+							loading={isOpeningDashboardInbox}
+						/>
+					{/if}
+
+					{#if actionableInvites.length > 0}
+						<TodayChip
+							icon={UserPlus}
+							iconClass="text-accent"
+							label="{actionableInvites.length} {actionableInvites.length === 1
+								? 'invite'
+								: 'invites'}"
+							title="Project invites: {inviteSummary}"
+							onclick={() => (invitesOpen = !invitesOpen)}
+							expanded={invitesOpen}
+							controls="dashboard-invites-tray"
+						/>
+					{/if}
+
+					{#if showAgentConnectionCta}
+						<TodayChip
+							icon={Sparkles}
+							tone="quiet"
+							label="Connect other AI surfaces"
+							trailingIcon={ArrowRight}
+							title="Let ChatGPT, Claude Code, Codex, and OpenClaw read your BuildOS context"
+							href={AGENT_CONNECTION_HREF}
+							onclick={(event) =>
+								handleDashboardAnchorClick(event, AGENT_CONNECTION_HREF)}
+							busy={isPendingNavigation(AGENT_CONNECTION_HREF)}
+							class="sm:ml-auto {dashboardLinkClass(AGENT_CONNECTION_HREF)}"
+						/>
+					{/if}
+				</div>
+
+				{#if invitesOpen && actionableInvites.length > 0}
+					<div id="dashboard-invites-tray" class="mt-2 wt-card overflow-hidden">
+						<div
+							class="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2"
+						>
+							<p class="min-w-0 text-xs text-muted-foreground">
+								<span class="font-semibold text-foreground">Project invites</span>
+								· {inviteSummary}
+							</p>
+							<a
+								href="/invites"
+								onclick={(event) => handleDashboardAnchorClick(event, '/invites')}
+								class="shrink-0 rounded-sm text-xs font-semibold text-accent hover:underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								Review all &rarr;
+							</a>
+						</div>
+
+						{#if inviteActionError}
+							<p class="border-b border-border px-3 py-2 text-xs text-destructive">
+								{inviteActionError}
+							</p>
+						{/if}
+
 						<div class="grid gap-2 p-3 lg:grid-cols-2">
 							{#each actionableInvites.slice(0, 4) as invite (invite.invite_id)}
 								<div class="wt-paper px-3 py-2.5">
@@ -1079,48 +1103,8 @@
 							{/each}
 						</div>
 					</div>
-				</AttentionBanner>
-			{/if}
-
-			{#if overdueTasks > 0}
-				<AttentionBanner
-					tone="warning"
-					icon={AlertTriangle}
-					title="Overdue tasks need review"
-					subtext={overdueProjectBatchSummary}
-					action={{
-						label: 'Review overdue',
-						onClick: () => openOverdueTaskTriage(),
-						onPreload: preloadOverdueTaskTriageModal,
-						loading: isOpeningOverdueTriage,
-						disabled: isOpeningOverdueTriage,
-						showArrow: false
-					}}
-				>
-					{#if isLoadingOverdueProjectBatches || overdueProjectBatchError}
-						<div
-							class="border-t border-border bg-background/40 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2"
-						>
-							{#if isLoadingOverdueProjectBatches}
-								<p class="text-xs text-muted-foreground">
-									Checking affected projects...
-								</p>
-							{:else if overdueProjectBatchError}
-								<p class="text-xs text-muted-foreground">
-									Project details unavailable. {overdueLabel}.
-								</p>
-								<button
-									type="button"
-									class="rounded-sm text-xs font-medium text-accent hover:underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
-									onclick={loadOverdueProjectBatches}
-								>
-									Retry
-								</button>
-							{/if}
-						</div>
-					{/if}
-				</AttentionBanner>
-			{/if}
+				{/if}
+			</section>
 
 			<!-- Active Projects -->
 			<section class="min-w-0">

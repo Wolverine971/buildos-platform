@@ -6,17 +6,11 @@
 	import { setContext, onMount, onDestroy, untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import {
-		goto,
-		replaceState,
-		onNavigate,
-		afterNavigate,
-		invalidate,
-		invalidateAll
-	} from '$app/navigation';
+	import { goto, onNavigate, afterNavigate, invalidate, invalidateAll } from '$app/navigation';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
 	import { clearOnboardingDrafts, onboardingStorageKey } from '$lib/utils/onboarding-state';
+	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import IOSSplashScreens from '$lib/components/layout/IOSSplashScreens.svelte';
 	import {
@@ -236,14 +230,11 @@
 		}
 	});
 
-	// Detect ?onboarding=true URL param and consume it into reactive state
-	$effect(() => {
-		if (browser && $page?.url?.searchParams.get('onboarding') === 'true') {
-			forceOnboardingActive = true;
-			const url = new URL($page.url);
-			url.searchParams.delete('onboarding');
-			replaceState(url.toString(), {});
-		}
+	// Consume ?onboarding=true (set after signup) into reactive state
+	consumeOneTimeUrlParams((url) => {
+		if (url.searchParams.get('onboarding') !== 'true') return [];
+		forceOnboardingActive = true;
+		return ['onboarding'];
 	});
 
 	// Onboarding state — fully reactive to user/data changes (not route-gated)

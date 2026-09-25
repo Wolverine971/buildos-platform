@@ -14,6 +14,28 @@ export interface BatteryProvenance {
 	error: string | null;
 }
 
+/**
+ * The deployed-stack battery (`pnpm agentic:prod-battery`) tests what production
+ * runs, not this checkout. Its orchestrator reads the deployed commit from the
+ * Railway worker's health and the Vercel production deployment and passes both
+ * here; every turn's executing worker is still checked against it.
+ */
+export function isDeployedBatteryTarget(env: NodeJS.ProcessEnv = process.env): boolean {
+	return env.AGENTIC_BATTERY_TARGET === 'deployed';
+}
+
+function provenanceFromEnv(name: string, env: NodeJS.ProcessEnv): SourceProvenance {
+	const raw = env[name];
+	if (!raw) throw new Error(`${name} is required when AGENTIC_BATTERY_TARGET=deployed`);
+	return JSON.parse(raw) as SourceProvenance;
+}
+
+export function expectedBatteryProvenance(env: NodeJS.ProcessEnv = process.env): SourceProvenance {
+	return isDeployedBatteryTarget(env)
+		? provenanceFromEnv('AGENTIC_BATTERY_EXPECTED_PROVENANCE', env)
+		: readSourceProvenance();
+}
+
 export async function verifyBatteryServices(
 	record: BatteryProvenance,
 	baseUrl: string,
@@ -28,18 +50,28 @@ export async function verifyBatteryServices(
 				throw new Error(`Provenance health request failed: ${url} (${response.status})`);
 			return response.json();
 		};
+		const deployed = isDeployedBatteryTarget();
+		// Production serves no provenance route; Vercel's deployment record is the web receipt.
 		const [worker, web] = await Promise.all([
 			get(`${workerUrl}/health`),
-			get(`${baseUrl}/__agentic/provenance`)
+			deployed
+				? Promise.resolve({
+						provenance: provenanceFromEnv('AGENTIC_BATTERY_WEB_PROVENANCE', process.env)
+					})
+				: get(`${baseUrl}/__agentic/provenance`)
 		]);
 		record.worker = worker.provenance ?? null;
 		record.web = web.provenance ?? null;
 		assertSourceProvenance(record.expected, record.worker, 'Worker');
 		assertSourceProvenance(record.expected, record.web, 'Web');
 		const batch = process.env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false';
-		if (worker.mutationBatchLaneEnabled !== batch || web.mutationBatchLaneEnabled !== batch)
+		if (
+			worker.mutationBatchLaneEnabled !== batch ||
+			(!deployed && web.mutationBatchLaneEnabled !== batch)
+		)
 			throw new Error('Web, worker and battery mutation-lane flags differ');
-		assertSourceProvenance(record.expected, readSourceProvenance(), 'Current checkout');
+		if (!deployed)
+			assertSourceProvenance(record.expected, readSourceProvenance(), 'Current checkout');
 		record.verified = true;
 	} catch (error) {
 		record.verified = false;

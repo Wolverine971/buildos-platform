@@ -21,47 +21,58 @@ function genericNotification(index: number): GenericNotification {
 	};
 }
 
+function renderStack(count: number) {
+	const items = Array.from({ length: count }, (_, index) => genericNotification(index + 1));
+	const notifications = new Map<string, Notification>(items.map((item) => [item.id, item]));
+	const stack = items.map((item) => item.id);
+	return render(NotificationStack, { props: { stack, notifications, expandedId: null } });
+}
+
 describe('NotificationStack', () => {
 	afterEach(cleanup);
 
-	it('collapses the mobile stack into a single review control', async () => {
-		const items = Array.from({ length: 2 }, (_, index) => genericNotification(index + 1));
-		const notifications = new Map<string, Notification>(items.map((item) => [item.id, item]));
-		const stack = items.map((item) => item.id);
+	it('folds 2+ notifications into a deck showing only the newest tile', async () => {
+		renderStack(6);
 
-		render(NotificationStack, {
-			props: { stack, notifications, expandedId: null }
-		});
+		expect(screen.getByText('Notification 6')).toBeInTheDocument();
+		expect(screen.queryByText('Notification 1')).not.toBeInTheDocument();
 
-		const toggle = screen.getByRole('button', { name: 'Review 2 updates' });
+		const toggle = screen.getByRole('button', { name: '6 updates' });
 		expect(toggle).toHaveAttribute('aria-expanded', 'false');
-
-		await fireEvent.click(toggle);
-		expect(screen.getByRole('button', { name: 'Hide notifications' })).toHaveAttribute(
-			'aria-expanded',
-			'true'
-		);
+		expect(toggle).toHaveAttribute('aria-controls', 'notification-stack-list');
 	});
 
-	it('lets pointer and keyboard users reveal and collapse older notifications', async () => {
-		const items = Array.from({ length: 6 }, (_, index) => genericNotification(index + 1));
-		const notifications = new Map<string, Notification>(items.map((item) => [item.id, item]));
-		const stack = items.map((item) => item.id);
+	it('expands every tile into the scrollable column and collapses back', async () => {
+		renderStack(6);
 
-		render(NotificationStack, {
-			props: { stack, notifications, expandedId: null }
-		});
+		await fireEvent.click(screen.getByRole('button', { name: '6 updates' }));
+		const list = document.getElementById('notification-stack-list');
+		for (let index = 1; index <= 6; index += 1) {
+			expect(list).toHaveTextContent(`Notification ${index}`);
+		}
 
-		expect(screen.queryByText('Notification 1')).not.toBeInTheDocument();
-		const reveal = screen.getByRole('button', { name: 'Show 1 older notification' });
-		expect(reveal).toHaveAttribute('aria-expanded', 'false');
-
-		await fireEvent.click(reveal);
-		expect(screen.getByText('Notification 1')).toBeInTheDocument();
-		const collapse = screen.getByRole('button', { name: 'Show newest 5' });
+		const collapse = screen.getByRole('button', { name: 'Show less' });
 		expect(collapse).toHaveAttribute('aria-expanded', 'true');
 
 		await fireEvent.click(collapse);
 		expect(screen.queryByText('Notification 1')).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: '6 updates' })).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+	});
+
+	it('keeps a lone tile visible and lets the phone toggle stay open', async () => {
+		renderStack(1);
+
+		expect(screen.getByText('Notification 1')).toBeInTheDocument();
+		const toggle = screen.getByRole('button', { name: '1 update' });
+		expect(toggle).toHaveClass('sm:hidden');
+
+		await fireEvent.click(toggle);
+		expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
 	});
 });

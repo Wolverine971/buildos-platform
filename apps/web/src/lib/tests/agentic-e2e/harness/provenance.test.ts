@@ -1,6 +1,7 @@
 // apps/web/src/lib/tests/agentic-e2e/harness/provenance.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	expectedBatteryProvenance,
 	verifyBatteryServices,
 	verifyTurnWorkerProvenance,
 	type BatteryProvenance
@@ -77,5 +78,52 @@ describe('battery provenance fence', () => {
 		await expect(
 			verifyTurnWorkerProvenance({ from: () => query } as never, 'turn-1', expected)
 		).rejects.toThrow('Executing worker');
+	});
+});
+
+describe('deployed-stack battery provenance', () => {
+	const deployed = {
+		version: 1 as const,
+		gitSha: 'd'.repeat(40),
+		dirtyTreeSha256: 'e'.repeat(64)
+	};
+	function stubDeployedEnv(web = deployed) {
+		vi.stubEnv('AGENTIC_BATTERY_TARGET', 'deployed');
+		vi.stubEnv('AGENTIC_BATTERY_EXPECTED_PROVENANCE', JSON.stringify(deployed));
+		vi.stubEnv('AGENTIC_BATTERY_WEB_PROVENANCE', JSON.stringify(web));
+	}
+
+	it('expects the deployed commit, not the local checkout', () => {
+		stubDeployedEnv();
+		expect(expectedBatteryProvenance()).toEqual(deployed);
+		vi.unstubAllEnvs();
+		expect(expectedBatteryProvenance()).toEqual(expected);
+	});
+
+	it('verifies the live worker and the Vercel web receipt without a web provenance route', async () => {
+		stubDeployedEnv();
+		const fetch = vi.fn(async (_url: string) =>
+			Response.json({ provenance: deployed, mutationBatchLaneEnabled: true })
+		);
+		vi.stubGlobal('fetch', fetch);
+		const result = { ...record(), expected: deployed };
+		await verifyBatteryServices(result, 'https://build-os.com', 'https://worker');
+		expect(result.verified).toBe(true);
+		expect(fetch.mock.calls.map(([url]) => url)).toEqual(['https://worker/health']);
+	});
+
+	it('refuses when the deployed web and worker differ', async () => {
+		stubDeployedEnv({ ...deployed, gitSha: 'f'.repeat(40) });
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () =>
+				Response.json({ provenance: deployed, mutationBatchLaneEnabled: true })
+			)
+		);
+		const result = { ...record(), expected: deployed };
+		await expect(
+			verifyBatteryServices(result, 'https://build-os.com', 'https://worker')
+		).rejects.toThrow();
+		expect(result.verified).toBe(false);
 	});
 });

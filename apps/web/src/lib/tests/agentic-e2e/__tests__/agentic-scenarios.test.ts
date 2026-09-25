@@ -6,8 +6,8 @@
 // fuzzy scenarios. It COSTS MONEY and requires a running dev server
 // (`pnpm dev --filter=@buildos/web`). Excluded from `pnpm test`; run with
 // `pnpm --filter @buildos/web test:agentic`.
-import { readSourceProvenance } from '@buildos/agentic-chat-runtime/provenance';
 import {
+	expectedBatteryProvenance,
 	verifyBatteryServices,
 	verifyTurnWorkerProvenance,
 	type BatteryProvenance
@@ -118,7 +118,7 @@ beforeAll(async () => {
 	phase0BaseUrl = env.baseUrl;
 	if (BATTERY) {
 		batteryProvenance = {
-			expected: readSourceProvenance(),
+			expected: expectedBatteryProvenance(),
 			worker: null,
 			web: null,
 			verified: false,
