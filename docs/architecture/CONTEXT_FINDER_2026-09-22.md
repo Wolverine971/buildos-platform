@@ -271,6 +271,54 @@ for DJ's account first. It reuses this core unchanged. The UX spec is
 3. Watch `llm_usage_logs` operation `agentic_chat_context_finder_chat` for cost, and the
    `context_selection` rows in `chat_turn_events` for latency (`elapsed_ms`) and failures.
 
+### Audit 2026-09-25: how much the chat finder adds, and is it bloat? (free, 13 real turns)
+
+**Method.** `apps/worker/scripts/context-finder-audit.ts` rebuilds the exact block `on` mode
+injects for each recorded `context_selection` event: the runtime's own loader, materializer and
+renderer run on read-only project dumps, and the rebuilt sizes match the recorded coverage
+exactly. The 13 turns are DJ's chips-mode turns on 09-24/25; no `on` turn existed yet.
+
+**Size**
+- Block: mean 9.3K chars ≈ 2.4K tokens; median 9.3K; range 1.0K–16.9K.
+- The acting prompt is 15.4K tokens per pass, so the block adds about 16%.
+- The block is re-sent on every pass. Continuations build on `currentRequest`, and turns
+  averaged 3.15 acting passes, which comes to about 7.6K extra input tokens per turn.
+- Today 59% of acting prompt tokens are cached. The block sits in the stable prefix, so passes
+  2+ should mostly hit the cache.
+- Cost on deepseek-v4.1-flash, worst case uncached: about $0.0011 per turn for the block, plus
+  about $0.001 for Jev. That's roughly +20% on the current $0.0093 per turn of acting cost.
+
+**Composition** (of 121K injected chars)
+- Record and section text: 75%.
+- Summaries: 11%.
+- Headers, ids and the note: 14%.
+- Nested-section duplication, where a parent section and its own subsection are both picked:
+  2.6%.
+
+**Usefulness** (judged against each question, answer and tool trace)
+- The model's tools read 21 project records across the 13 turns. **18 were in the full tier, 3
+  in the summaries, and none were missed.**
+- **Direct hits, 7 turns, about 63% of the chars:** Rod status ×2, "where's the email", "fold
+  the Reindex", Chapter 4 leftovers, AI philosophy, book status. The block held what the model
+  then spent 1–9 tool calls fetching.
+- **Partly tangential, 4 turns, about 24%:** retire the DAU goal, the hackathon rethink, "just
+  sent it", and "show visual placement" (Agent Skills docs to create one task). Each had the
+  right goal/task plus 3–4 loosely related documents.
+- **Bloat, 2 turns plus part of a third, about 13%:** the inbox checks ("any emails for 9takes
+  today", "anything new since then"). They need a live tool, not project records.
+
+**Verdict.** Mostly signal, not bloat, but not free. The case for `on` rests on the block
+replacing lookups: one skipped read pass (about 15K prompt tokens) pays for a whole turn's
+block. That savings is **not yet measured**. Compare tool calls and passes per turn for DJ's
+`on` turns against these 13.
+
+**Cheap fixes, in value order**
+1. **Skip when the request needs a live tool rather than records** (the inbox cases). Use one
+   extra Jev `noul` in the entity stage; a structured decision, no keyword matching.
+2. **Drop a subsection when its parent section is already selected** (2.6%).
+3. **Tighten the tangential tail** on broad turns, e.g. at most 6 full items when more than 15
+   score within 0.1 of the top.
+
 ## Tests
 
 - Runtime: `src/context-finder/context-finder.test.ts` (16, incl. the pinned-document regression), `published-execution.test.ts`

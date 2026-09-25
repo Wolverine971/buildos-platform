@@ -1005,3 +1005,95 @@ describe('decodeLoopOperation scalar arguments', () => {
 		});
 	});
 });
+
+describe('document text edits', () => {
+	const body = [
+		'# AI Pillar',
+		'## Open questions',
+		'- **Name of the move** — not settled.',
+		"- **AI's role** — one pillar, or the why-now?"
+	].join('\n');
+	const tables = (content = body) =>
+		baseTables({ target: { title: 'AI Pillar — Working Doc', content } });
+	const editOperation = (edits: unknown, extra: Record<string, unknown> = {}): LoopOperation => ({
+		tool: 'update_onto_document',
+		args: { project_id: projectId, document_id: targetId, edits, ...extra },
+		label: 'Edit "AI Pillar — Working Doc"'
+	});
+	const verify = (operation: LoopOperation, content?: string) =>
+		verifyProjectSuggestionIntegrity(createSupabaseMock(tables(content)), {
+			projectId,
+			operations: [operation],
+			title: 'AI Pillar — Working Doc still lists decided questions as open',
+			checkModelAlignment: true
+		});
+
+	it('shows each edit as before and after, resolved against the live body', async () => {
+		const result = await verify(
+			editOperation([
+				{ old_text: '- **Name of the move** — not settled.', new_text: '' },
+				{
+					old_text: "- **AI's role** — one pillar, or the why-now?",
+					new_text: "- **AI's role** — decided: the why-now (see Card 9)."
+				}
+			])
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const [operation] = result.summary.operations;
+		expect(operation?.summary).toBe('Edit "AI Pillar — Working Doc" (2 changes).');
+		expect(operation?.changes).toEqual([
+			{
+				label: 'Remove',
+				format: 'text_edit',
+				before: '- **Name of the move** — not settled.',
+				value: '(removed)'
+			},
+			{
+				label: 'Change',
+				format: 'text_edit',
+				before: "- **AI's role** — one pillar, or the why-now?",
+				value: "- **AI's role** — decided: the why-now (see Card 9)."
+			}
+		]);
+	});
+
+	it('rejects edits whose text no longer matches the document', async () => {
+		const result = await verify(
+			editOperation([{ old_text: '- **Name of the move** — not settled.', new_text: '' }]),
+			'# AI Pillar\n## Open questions\n(none)'
+		);
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.diagnostic.code).toBe('DOCUMENT_EDIT_UNRESOLVED');
+	});
+
+	it('fails closed on replace_all, section edits, and whole-body writes', async () => {
+		for (const operation of [
+			editOperation([{ old_text: 'not settled', new_text: 'settled', replace_all: true }]),
+			editOperation([{ old_text: 'not settled', new_text: 'settled' }], {
+				section_edits: [{ action: 'delete', section: 'Open questions' }]
+			}),
+			editOperation([{ old_text: 'not settled', new_text: 'settled' }], { content: 'x' }),
+			editOperation([])
+		]) {
+			const result = await verify(operation);
+			expect(result.ok).toBe(false);
+			if (!result.ok) expect(result.diagnostic.code).toBe('INVALID_OPERATION');
+		}
+	});
+
+	it('binds the approval fingerprint to the exact edits', async () => {
+		const first = await verify(
+			editOperation([{ old_text: 'not settled', new_text: 'settled: The Reindex' }])
+		);
+		const second = await verify(
+			editOperation([{ old_text: 'not settled', new_text: 'settled: The Life Audit' }])
+		);
+		expect(first.ok && second.ok).toBe(true);
+		if (!first.ok || !second.ok) return;
+		expect(first.summary.structural_fingerprint).not.toBe(
+			second.summary.structural_fingerprint
+		);
+	});
+});

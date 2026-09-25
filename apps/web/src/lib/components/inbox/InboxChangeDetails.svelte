@@ -117,16 +117,63 @@
 						{/if}
 
 						{#if op.changes.length}
-							<div class="mt-1.5 space-y-0.5">
-								{#each op.changes as change (`${change.label}:${change.value}`)}
-									<div class="flex items-baseline gap-1.5 text-2xs">
-										<span class="shrink-0 font-medium text-muted-foreground">
-											{change.label}:
-										</span>
-										<span class="min-w-0 break-words text-foreground/90">
-											{change.value}
-										</span>
-									</div>
+							<div class="mt-1.5 space-y-1">
+								{#each op.changes as change, changeIndex (changeIndex)}
+									{#if change.format === 'text_edit' && change.before !== undefined}
+										<!-- A document edit: the exact text approval replaces, as a diff. -->
+										<div class="text-2xs">
+											<span class="font-medium text-muted-foreground">
+												{change.label}:
+											</span>
+											<div
+												class="mt-0.5 overflow-hidden rounded border border-border font-mono leading-relaxed"
+											>
+												<p
+													class="whitespace-pre-wrap break-words bg-destructive/10 px-1.5 py-0.5 text-foreground/90"
+												>
+													<span
+														class="select-none text-destructive"
+														aria-hidden="true">−</span
+													>
+													<span class="sr-only">Before:</span>
+													{change.before}
+												</p>
+												{#if change.label !== 'Remove'}
+													<p
+														class="whitespace-pre-wrap break-words bg-success/10 px-1.5 py-0.5 text-foreground/90"
+													>
+														<span
+															class="select-none text-success"
+															aria-hidden="true">+</span
+														>
+														<span class="sr-only">After:</span>
+														{change.value}
+													</p>
+												{/if}
+											</div>
+										</div>
+									{:else}
+										<div class="flex items-baseline gap-1.5 text-2xs">
+											<span
+												class="shrink-0 font-medium text-muted-foreground"
+											>
+												{change.label}:
+											</span>
+											<span class="min-w-0 break-words text-foreground/90">
+												{#if change.before !== undefined}
+													<span class="text-muted-foreground"
+														>{change.before}</span
+													>
+													<span
+														class="text-muted-foreground"
+														aria-hidden="true">→</span
+													>
+													<span class="sr-only">changes to</span>
+												{/if}
+												{change.value}
+											</span>
+										</div>
+									{/if}
 								{/each}
 							</div>
 						{/if}

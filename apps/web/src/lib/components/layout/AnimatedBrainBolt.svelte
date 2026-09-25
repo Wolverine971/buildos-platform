@@ -16,7 +16,11 @@
 	};
 
 	const POSTER_SRC = '/brain-bolt-electric-poster.webp';
-	const ANIMATION_SRC = '/onboarding-assets/animations/brain-bolt-electric-transparent.webm';
+	// Safari (every iOS browser) plays VP9 WebM but drops its alpha, painting a black square, so
+	// it gets HEVC-with-alpha first. Chrome and Firefox report no QuickTime support and fall
+	// through to the WebM.
+	const ANIMATION_HEVC_SRC = '/onboarding-assets/animations/brain-bolt-electric-icon.mov';
+	const ANIMATION_WEBM_SRC = '/onboarding-assets/animations/brain-bolt-electric-icon.webm';
 
 	let { class: className = '' }: Props = $props();
 	let animationRequested = $state(false);
@@ -115,8 +119,8 @@
 			bind:this={videoElement}
 			class={`pointer-events-none absolute inset-0 block h-full w-full object-contain ${animationVisible ? 'visible' : 'invisible'}`}
 			poster={POSTER_SRC}
-			width="624"
-			height="624"
+			width="192"
+			height="192"
 			preload="auto"
 			autoplay
 			loop
@@ -125,7 +129,8 @@
 			oncanplay={startPlayback}
 			onerror={handleVideoError}
 		>
-			<source src={ANIMATION_SRC} type="video/webm" />
+			<source src={ANIMATION_HEVC_SRC} type={'video/quicktime; codecs="hvc1"'} />
+			<source src={ANIMATION_WEBM_SRC} type="video/webm" />
 		</video>
 	{/if}
 </span>

@@ -57,4 +57,48 @@ describe('InboxChangeDetails', () => {
 		).toBeInTheDocument();
 		expect(screen.queryByText(/wrong model label/i)).not.toBeInTheDocument();
 	});
+
+	it('shows a document edit as the exact text removed and added', async () => {
+		render(InboxChangeDetails, {
+			props: {
+				verifiedChangeSummary: {
+					headline: 'Edit "AI Pillar — Working Doc" (2 changes).',
+					operation_count: 1,
+					structural_fingerprint: 'fingerprint',
+					verified_at: '2026-09-25T12:00:00.000Z',
+					operations: [
+						{
+							key: 'update_onto_document:doc-1:0',
+							action: 'update',
+							actionLabel: 'Update',
+							entityLabel: 'document',
+							target: 'AI Pillar — Working Doc',
+							summary: 'Edit "AI Pillar — Working Doc" (2 changes).',
+							changes: [
+								{
+									label: 'Remove',
+									format: 'text_edit',
+									before: '- Name of the move — not settled.',
+									value: '(removed)'
+								},
+								{
+									label: 'Change',
+									format: 'text_edit',
+									before: "- AI's role — undecided",
+									value: "- AI's role — the why-now"
+								}
+							]
+						}
+					]
+				}
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /show 1 proposed change/i }));
+
+		expect(screen.getByText('- Name of the move — not settled.')).toBeInTheDocument();
+		expect(screen.queryByText('(removed)')).not.toBeInTheDocument();
+		expect(screen.getByText("- AI's role — undecided")).toBeInTheDocument();
+		expect(screen.getByText("- AI's role — the why-now")).toBeInTheDocument();
+	});
 });

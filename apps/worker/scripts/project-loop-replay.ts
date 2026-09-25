@@ -30,6 +30,7 @@ import {
 	START_HERE_DOCUMENT_TYPE_KEY,
 	readStartHereAuthoredSections
 } from '@buildos/shared-agent-ops/ontology/start-here';
+import { verifyProjectSuggestionIntegrity } from '@buildos/shared-agent-ops/proposal-context';
 import {
 	generateDocOrganization,
 	generateDrift,
@@ -37,8 +38,11 @@ import {
 	generateProjectManagerBrief,
 	generateTaskConflicts,
 	type LoopContext,
-	type ProjectReviewSynthesisCandidate
+	type ProjectReviewSynthesisCandidate,
+	type RadarConcernSubject,
+	withoutRadarOwnedFindings
 } from '../src/workers/project-loop/generators';
+import { buildTaskPairRequest, rankTaskConflictPairs } from '../src/workers/project-loop/taskPairs';
 import {
 	type DriftEvidenceClient,
 	loadProjectDriftEvidence,
@@ -174,6 +178,26 @@ async function main() {
 	const signal = new AbortController().signal;
 	const project = await loadContextFinderProject(client, projectId!, signal);
 	const ctx = loopContext(project);
+	const { data: concernRows } = await (db as unknown as { from: (t: string) => any })
+		.from('freshness_concerns')
+		.select('subject_kind, subject_id, subject_title')
+		.eq('project_id', projectId!)
+		.eq('status', 'open');
+	const radarConcerns: RadarConcernSubject[] = (concernRows ?? []).map(
+		(row: Record<string, unknown>) => ({
+			kind: String(row.subject_kind),
+			id: String(row.subject_id),
+			title: String(row.subject_title)
+		})
+	);
+	console.log(`Radar concerns (open): ${radarConcerns.map((c) => c.title).join('; ') || 'none'}`);
+	const pairRequest = buildTaskPairRequest({
+		project: { name: ctx.projectName, description: ctx.projectDescription },
+		tasks: ctx.tasks
+	});
+	console.log(
+		`Task pairs: ${Object.keys(pairRequest.request.questions).length} questions over ${pairRequest.tasks.length} open tasks (${JSON.stringify(pairRequest.request).length} bytes)`
+	);
 
 	const decider =
 		jev && openRouterKey
@@ -229,7 +253,7 @@ async function main() {
 	} as unknown as SmartLLMService;
 	const onUsage = async () => undefined;
 	const userId = 'project-loop-replay';
-	await generateDrift({ llm: stub as never, ctx, userId, evidence, onUsage });
+	await generateDrift({ llm: stub as never, ctx, userId, evidence, radarConcerns, onUsage });
 	await generateProjectManagerBrief({ llm: stub as never, ctx, candidates: [], userId, onUsage });
 	for (const [name, prompt] of Object.entries(prompts))
 		writeFileSync(
@@ -251,13 +275,39 @@ async function main() {
 	};
 	const common = { llm: llm as never, ctx, userId, onUsage: meter };
 	const liveStarted = Date.now();
+	const candidatePairs = await rankTaskConflictPairs({
+		decider,
+		project: { name: ctx.projectName, description: ctx.projectDescription },
+		tasks: ctx.tasks
+	});
+	console.log(
+		`Jev task pairs: ${candidatePairs === null ? 'unavailable' : candidatePairs.map((p) => `${ctx.tasks.find((t) => t.id === p.taskAId)?.title} <> ${ctx.tasks.find((t) => t.id === p.taskBId)?.title} (${p.score})`).join('; ') || 'none'}`
+	);
 	const [docOrg, outdated, drift, conflicts] = await Promise.all([
 		generateDocOrganization(common),
 		generateOutdatedDocs(common),
-		generateDrift({ ...common, evidence }),
-		generateTaskConflicts(common)
+		generateDrift({ ...common, evidence, radarConcerns }),
+		candidatePairs ? generateTaskConflicts({ ...common, candidatePairs }) : Promise.resolve([])
 	]);
-	const suggestions: ProposedSuggestion[] = [...outdated, ...conflicts, ...docOrg, ...drift];
+	const filtered = withoutRadarOwnedFindings(
+		[...outdated, ...conflicts, ...docOrg, ...drift],
+		radarConcerns
+	);
+	if (filtered.dropped) console.log(`Left ${filtered.dropped} finding(s) to the radar.`);
+	const suggestions: ProposedSuggestion[] = filtered.kept;
+	// The same integrity gate approval runs, read-only against live rows.
+	for (const suggestion of suggestions.filter((s) => s.operations.length)) {
+		const verification = await verifyProjectSuggestionIntegrity(db, {
+			projectId: projectId!,
+			operations: suggestion.operations,
+			title: suggestion.title,
+			preview: suggestion.preview ?? null,
+			checkModelAlignment: true
+		});
+		console.log(
+			`  gate ${verification.ok ? 'PASS' : `FAIL ${verification.diagnostic.code}`}: ${suggestion.title}${verification.ok ? ` — ${verification.summary.headline}` : ` — ${verification.diagnostic.message}`}`
+		);
+	}
 	const candidates: ProjectReviewSynthesisCandidate[] = suggestions.map((s, i) => ({
 		id: `replay-${i + 1}`,
 		kind: s.kind,

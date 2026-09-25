@@ -209,6 +209,7 @@ const mocks = vi.hoisted(() => {
 			no_attention_reason: 'No action from completed checks.'
 		})),
 		buildHeuristicProjectManagerBrief: vi.fn(),
+		rankTaskConflictPairs: vi.fn(),
 		captureWorkerEvent: vi.fn(),
 		logWorkerError: vi.fn(async () => undefined),
 		syncInboxItemForProjectReview: vi.fn(async () => undefined),
@@ -231,6 +232,10 @@ vi.mock('../src/lib/services/smart-llm-service', () => ({
 	SmartLLMService: vi.fn()
 }));
 
+vi.mock('../src/workers/project-loop/taskPairs', () => ({
+	rankTaskConflictPairs: mocks.rankTaskConflictPairs
+}));
+
 vi.mock('../src/lib/posthog', () => ({
 	captureWorkerEvent: mocks.captureWorkerEvent
 }));
@@ -246,6 +251,7 @@ vi.mock('../src/workers/project-loop/generators', () => ({
 	generateTaskConflicts: mocks.generateTaskConflicts,
 	generateProjectManagerBrief: mocks.generateProjectManagerBrief,
 	buildHeuristicProjectManagerBrief: mocks.buildHeuristicProjectManagerBrief,
+	withoutRadarOwnedFindings: (kept: unknown[]) => ({ kept, dropped: 0 }),
 	suggestionSuppressionKey: vi.fn((suggestion: { kind?: string; title?: string | null }) =>
 		suggestion.kind && suggestion.title ? `${suggestion.kind}:${suggestion.title}` : null
 	)
@@ -309,6 +315,9 @@ describe('processProjectLoopJob detector degradation', () => {
 		mocks.state.inserts.length = 0;
 		mocks.generateDocOrganization.mockResolvedValue([]);
 		mocks.generateOutdatedDocs.mockResolvedValue([]);
+		mocks.rankTaskConflictPairs.mockResolvedValue([
+			{ taskAId: 'task-1', taskBId: 'task-2', score: 0.9, reasons: ['review relevance 0.90'] }
+		]);
 		mocks.generateTaskConflicts.mockResolvedValue([
 			{
 				kind: 'task_conflict',
@@ -404,6 +413,31 @@ describe('processProjectLoopJob detector degradation', () => {
 			)
 		).toBe(true);
 		expect(mocks.logWorkerError).toHaveBeenCalledOnce();
+	});
+
+	it('reports task conflicts as not run when Jev cannot shortlist pairs', async () => {
+		mocks.generateDrift.mockResolvedValue([]);
+		mocks.rankTaskConflictPairs.mockResolvedValue(null);
+
+		const result = await processProjectLoopJob(createJob());
+
+		expect(result).toMatchObject({ success: true, runId: 'run-1', suggestionCount: 0 });
+		expect(mocks.generateTaskConflicts).not.toHaveBeenCalled();
+		expect(mocks.generateProjectManagerBrief).toHaveBeenCalledWith(
+			expect.objectContaining({ uncheckedLenses: ['task conflicts'] })
+		);
+		expect(mocks.captureWorkerEvent).toHaveBeenCalledWith(
+			'user-1',
+			'project_suggestion_generated',
+			expect.objectContaining({
+				skipped_lenses: [
+					expect.objectContaining({
+						label: 'task conflicts',
+						reason: 'finder_unavailable'
+					})
+				]
+			})
+		);
 	});
 
 	it('stops without terminal writes after caller ownership is lost', async () => {

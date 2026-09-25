@@ -82,14 +82,23 @@
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 			<div class="flex justify-center mb-8">
 				<video
-					src="/onboarding-assets/animations/brain-bolt-electric-transparent.webm"
 					class="w-16 h-16 rounded-md"
 					autoplay
 					loop
 					muted
 					playsinline
 					aria-label="BuildOS Icon"
-				></video>
+				>
+					<!-- HEVC first: Safari drops VP9 alpha and paints a black square. -->
+					<source
+						src="/onboarding-assets/animations/brain-bolt-electric-icon.mov"
+						type={'video/quicktime; codecs="hvc1"'}
+					/>
+					<source
+						src="/onboarding-assets/animations/brain-bolt-electric-icon.webm"
+						type="video/webm"
+					/>
+				</video>
 			</div>
 			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-6">
 				How can we help you?

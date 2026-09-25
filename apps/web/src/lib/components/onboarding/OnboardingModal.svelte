@@ -53,8 +53,13 @@
 						class="h-full w-full object-contain"
 						aria-label="BuildOS brain animation"
 					>
+						<!-- HEVC first: Safari drops VP9 alpha and paints a black square. -->
 						<source
-							src="/onboarding-assets/animations/brain-bolt-consistent-pulse-transparent.webm"
+							src="/onboarding-assets/animations/brain-bolt-consistent-pulse-icon.mov"
+							type={'video/quicktime; codecs="hvc1"'}
+						/>
+						<source
+							src="/onboarding-assets/animations/brain-bolt-consistent-pulse-icon.webm"
 							type="video/webm"
 						/>
 					</video>{/if}

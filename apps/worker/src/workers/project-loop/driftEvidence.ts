@@ -80,6 +80,11 @@ export type ProjectDriftEvidence = {
 	ranker: ContextEvidenceRankerV1 | null;
 	/** Why the fallback was used, for the run log. */
 	fallbackReason: string | null;
+	/**
+	 * Full current text of every document shown above, keyed by id: the only documents a
+	 * one-click fix may edit, and the text its edits must resolve against (driftFixes.ts).
+	 */
+	documents: Record<string, { title: string; content: string }>;
 };
 
 type DocSection = { key: string; heading: string | null; text: string };
@@ -413,14 +418,31 @@ export async function loadProjectDriftEvidence(input: {
 	} catch {
 		input.signal.throwIfAborted();
 	}
-	const fallback = (reason: string): ProjectDriftEvidence => ({
-		since,
-		changes,
-		related: fallbackRelated(project),
-		source: 'fallback',
-		ranker: null,
-		fallbackReason: reason
-	});
+	const shownDocuments = (related: DriftRelatedItem[]) => {
+		const ids = new Set([
+			...changes.map((change) => change.documentId),
+			...related.filter((item) => item.kind === 'document').map((item) => item.id)
+		]);
+		const documents: ProjectDriftEvidence['documents'] = {};
+		for (const doc of project.documents) {
+			const id = String(doc.id);
+			if (ids.has(id) && typeof doc.content === 'string')
+				documents[id] = { title: String(doc.title ?? 'Untitled'), content: doc.content };
+		}
+		return documents;
+	};
+	const fallback = (reason: string): ProjectDriftEvidence => {
+		const related = fallbackRelated(project);
+		return {
+			since,
+			changes,
+			related,
+			source: 'fallback',
+			ranker: null,
+			fallbackReason: reason,
+			documents: shownDocuments(related)
+		};
+	};
 	if (!input.decider) return fallback('no_decider');
 
 	try {
@@ -457,7 +479,8 @@ export async function loadProjectDriftEvidence(input: {
 			related,
 			source: 'jev',
 			ranker: rankerSummary(ranking),
-			fallbackReason: null
+			fallbackReason: null,
+			documents: shownDocuments(related)
 		};
 	} catch {
 		input.signal.throwIfAborted();

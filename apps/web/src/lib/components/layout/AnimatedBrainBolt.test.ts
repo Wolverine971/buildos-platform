@@ -58,13 +58,21 @@ describe('AnimatedBrainBolt', () => {
 		await waitFor(() => expect(view.container.querySelector('video')).toBeInTheDocument());
 		const video = view.container.querySelector('video');
 		expect(video).toHaveAttribute('poster', '/brain-bolt-electric-poster.webp');
-		expect(video).toHaveAttribute('width', '624');
-		expect(video).toHaveAttribute('height', '624');
+		expect(video).toHaveAttribute('width', '192');
+		expect(video).toHaveAttribute('height', '192');
 		expect(video).toHaveClass('invisible');
-		expect(video?.querySelector('source')).toHaveAttribute(
-			'src',
-			'/onboarding-assets/animations/brain-bolt-electric-transparent.webm'
-		);
+		// HEVC-with-alpha must come first: Safari renders VP9 alpha as a black square.
+		const sources = Array.from(video?.querySelectorAll('source') ?? []).map((source) => [
+			source.getAttribute('src'),
+			source.getAttribute('type')
+		]);
+		expect(sources).toEqual([
+			[
+				'/onboarding-assets/animations/brain-bolt-electric-icon.mov',
+				'video/quicktime; codecs="hvc1"'
+			],
+			['/onboarding-assets/animations/brain-bolt-electric-icon.webm', 'video/webm']
+		]);
 
 		if (video) await fireEvent(video, new Event('canplay'));
 		await waitFor(() => expect(video).toHaveClass('visible'));

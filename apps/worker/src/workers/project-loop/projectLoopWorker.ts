@@ -52,8 +52,11 @@ import {
 	generateOutdatedDocs,
 	generateProjectManagerBrief,
 	generateTaskConflicts,
-	suggestionSuppressionKey
+	suggestionSuppressionKey,
+	type RadarConcernSubject,
+	withoutRadarOwnedFindings
 } from './generators';
+import { rankTaskConflictPairs } from './taskPairs';
 import {
 	MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS,
 	PROJECT_REVIEW_SIGNAL_QUEUE_MODE,
@@ -82,7 +85,11 @@ import {
 	queueProjectAuditFromWorker
 } from './auditEnqueue';
 import { enqueueProjectLoop } from './enqueue';
-import { type SkippedLens, classifyDetectorFailure } from './detectorFailure';
+import {
+	DetectorFinderUnavailableError,
+	type SkippedLens,
+	classifyDetectorFailure
+} from './detectorFailure';
 import {
 	type DriftEvidenceClient,
 	type ProjectDriftEvidence,
@@ -3064,6 +3071,36 @@ async function processCompleteProjectAuditJob(
 	}
 }
 
+/**
+ * Records with an open freshness-radar concern for this user (tasker 106). Fail-open: without
+ * the list the loop may repeat a radar item, which is noise, not harm.
+ */
+async function loadOpenRadarConcerns(
+	projectId: string,
+	userId: string
+): Promise<RadarConcernSubject[]> {
+	try {
+		// freshness_concerns is newer than the generated database types.
+		const { data, error } = await (supabase as unknown as { from: (t: string) => any })
+			.from('freshness_concerns')
+			.select('subject_kind, subject_id, subject_title')
+			.eq('project_id', projectId)
+			.eq('user_id', userId)
+			.eq('status', 'open')
+			.limit(200);
+		if (error || !Array.isArray(data)) return [];
+		return (data as Array<Record<string, unknown>>)
+			.filter((row) => typeof row.subject_id === 'string')
+			.map((row) => ({
+				kind: String(row.subject_kind ?? 'record'),
+				id: String(row.subject_id),
+				title: String(row.subject_title ?? 'Untitled')
+			}));
+	} catch {
+		return [];
+	}
+}
+
 /** Drift evidence for one run (driftEvidence.ts); null on any failure, never throws. */
 async function loadDriftEvidenceForRun(params: {
 	projectId: string;
@@ -3293,6 +3330,10 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			}
 		};
 
+		// One owner per stale record: what the freshness radar already tracks, the loop leaves.
+		const radarConcerns = await loadOpenRadarConcerns(projectId, run.user_id);
+		throwIfOwnershipLost();
+
 		// The four detectors are independent, so they run together: a run takes as long as
 		// the slowest one (drift, ~55 s on the book) instead of their sum (~80 s).
 		const [docOrg, outdated, drift, taskConflicts] = await Promise.all([
@@ -3333,21 +3374,33 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 					chatSessionId: run.chat_session_id ?? undefined,
 					runId,
 					evidence,
+					radarConcerns,
 					signal: job.signal,
 					onUsage
 				});
 			}),
-			runGenerator('task conflicts', () =>
-				generateTaskConflicts({
+			runGenerator('task conflicts', async () => {
+				if (ctx.tasks.length < 2) return [];
+				const candidatePairs = await rankTaskConflictPairs({
+					decider: getProjectLoopJev(),
+					project: { name: ctx.projectName, description: ctx.projectDescription },
+					tasks: ctx.tasks,
+					signal: job.signal,
+					usage: { userId: run.user_id, projectId }
+				});
+				throwIfOwnershipLost();
+				if (!candidatePairs) throw new DetectorFinderUnavailableError('task conflicts');
+				return generateTaskConflicts({
 					llm,
 					ctx,
 					userId: run.user_id,
 					chatSessionId: run.chat_session_id ?? undefined,
 					runId,
+					candidatePairs,
 					signal: job.signal,
 					onUsage
-				})
-			)
+				});
+			})
 		]);
 
 		// Deterministic pre-insert suppression: drop proposals that duplicate a
@@ -3356,12 +3409,16 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		// only reliable guard against the loop re-flagging the same undecided task
 		// pair or doc every run — prompt suppression has never had feedback data to
 		// work with. See project-loops-flow-audit-2026-07-04 §3/§4.
-		const generated: ProposedSuggestion[] = [
-			...outdated,
-			...taskConflicts,
-			...docOrg,
-			...drift
-		];
+		const radarFiltered = withoutRadarOwnedFindings(
+			[...outdated, ...taskConflicts, ...docOrg, ...drift],
+			radarConcerns
+		);
+		if (radarFiltered.dropped) {
+			await job.log(
+				`Left ${radarFiltered.dropped} finding${radarFiltered.dropped === 1 ? '' : 's'} to the freshness radar, which already tracks ${radarFiltered.dropped === 1 ? 'that record' : 'those records'}.`
+			);
+		}
+		const generated: ProposedSuggestion[] = radarFiltered.kept;
 		throwIfOwnershipLost();
 		const existingKeys = await loadExistingSuggestionKeys(projectId);
 		throwIfOwnershipLost();

@@ -12,7 +12,8 @@ export type DetectorSkipReason =
 	| 'cost_cap'
 	| 'provider_timeout'
 	| 'provider_error'
-	| 'invalid_language';
+	| 'invalid_language'
+	| 'finder_unavailable';
 
 export type SkippedLens = {
 	label: string;
@@ -22,6 +23,14 @@ export type SkippedLens = {
 	providerRequestId?: string | null;
 };
 
+/** A lens whose Jev shortlist could not be built; it reports as not run, never as clean. */
+export class DetectorFinderUnavailableError extends Error {
+	constructor(lens: string) {
+		super(`${lens}: the relevance finder was unavailable`);
+		this.name = 'DetectorFinderUnavailableError';
+	}
+}
+
 /**
  * Detector isolation is intentionally narrow: a provider timeout, transient
  * upstream response, or exhausted language retry may degrade a single lens.
@@ -30,6 +39,7 @@ export type SkippedLens = {
  */
 export function classifyDetectorFailure(error: unknown): DetectorSkipReason | null {
 	if (error instanceof LLMRequestCancelledError) return null;
+	if (error instanceof DetectorFinderUnavailableError) return 'finder_unavailable';
 	if (error instanceof ProjectReviewLanguageError) return 'invalid_language';
 	if (error instanceof LLMRequestTimeoutError) return 'provider_timeout';
 	if (error instanceof SyntaxError || error instanceof OpenRouterEmptyContentError) return null;

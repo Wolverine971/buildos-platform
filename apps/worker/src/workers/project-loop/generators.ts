@@ -28,6 +28,7 @@ import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../../config/projectL
 import { generateEnglishProjectReview, hasUnexpectedReviewScript } from './reviewLanguage';
 import { type ProjectDriftEvidence, renderDriftEvidence } from './driftEvidence';
 import { PROJECT_REVIEW_CLIPPED_TEXT_RULE, clipForPrompt } from './promptText';
+import { buildDriftFix, type DriftFixDocument } from './driftFixes';
 
 /** Field budgets for prompt lines. Goals and short descriptions are rarely cut at all. */
 const PROMPT_CLIP = Object.freeze({
@@ -211,20 +212,6 @@ const TASK_PAIR_STOP_WORDS = new Set([
 	'to',
 	'with'
 ]);
-const TASK_PAIR_OPPOSING_TERMS: Array<[string, string]> = [
-	['add', 'remove'],
-	['allow', 'block'],
-	['approve', 'reject'],
-	['build', 'delete'],
-	['create', 'delete'],
-	['enable', 'disable'],
-	['include', 'exclude'],
-	['launch', 'delay'],
-	['open', 'close'],
-	['publish', 'unpublish'],
-	['start', 'stop']
-];
-
 export interface TaskConflictCandidatePair {
 	taskAId: string;
 	taskBId: string;
@@ -242,6 +229,8 @@ function taskPairKey(a: string, b: string): string {
 	return [a, b].sort().join('|');
 }
 
+// Normalizes a title into a stable identity key for suppression (suggestionSuppressionKey).
+// It never decides what a task means; the conflict shortlist is Jev's (taskPairs.ts).
 function tokenizeTaskText(value: string | null | undefined): string[] {
 	if (!value) return [];
 	return Array.from(
@@ -254,125 +243,6 @@ function tokenizeTaskText(value: string | null | undefined): string[] {
 				.filter((token) => token.length >= 3 && !TASK_PAIR_STOP_WORDS.has(token))
 		)
 	);
-}
-
-function normalizedTaskTitle(value: string): string {
-	return tokenizeTaskText(value).join(' ');
-}
-
-function overlapCount(a: string[], b: string[]): number {
-	const bSet = new Set(b);
-	return a.filter((token) => bSet.has(token)).length;
-}
-
-function jaccard(a: string[], b: string[]): number {
-	const union = new Set([...a, ...b]);
-	if (!union.size) return 0;
-	return overlapCount(a, b) / union.size;
-}
-
-function daysBetween(a: string | null | undefined, b: string | null | undefined): number | null {
-	if (!a || !b) return null;
-	const aMs = Date.parse(a);
-	const bMs = Date.parse(b);
-	if (!Number.isFinite(aMs) || !Number.isFinite(bMs)) return null;
-	return Math.abs(aMs - bMs) / (24 * 60 * 60 * 1000);
-}
-
-function hasOpposingAction(aTokens: string[], bTokens: string[]): boolean {
-	const aSet = new Set(aTokens);
-	const bSet = new Set(bTokens);
-	return TASK_PAIR_OPPOSING_TERMS.some(
-		([left, right]) =>
-			(aSet.has(left) && bSet.has(right)) || (aSet.has(right) && bSet.has(left))
-	);
-}
-
-/**
- * Deterministic shortlist for task-conflict LLM classification. The model no
- * longer scans all open tasks and invents pair coverage; it only classifies
- * pairs with concrete signals (title overlap, same goal/date with overlap, or
- * opposing action language). This keeps coverage auditable and reduces noise.
- */
-export function buildTaskConflictCandidatePairs(
-	tasks: LoopTask[],
-	maxPairs = 20
-): TaskConflictCandidatePair[] {
-	const candidates: TaskConflictCandidatePair[] = [];
-	const prepared = tasks.map((task) => {
-		const titleTokens = tokenizeTaskText(task.title);
-		return {
-			task,
-			titleTokens,
-			descriptionTokens: tokenizeTaskText(task.description),
-			normalizedTitle: normalizedTaskTitle(task.title),
-			goalNames: new Set((task.goal_names ?? []).map((goal) => goal.toLowerCase()))
-		};
-	});
-
-	for (let i = 0; i < prepared.length; i += 1) {
-		for (let j = i + 1; j < prepared.length; j += 1) {
-			const left = prepared[i];
-			const right = prepared[j];
-			const titleOverlap = overlapCount(left.titleTokens, right.titleTokens);
-			const titleSimilarity = jaccard(left.titleTokens, right.titleTokens);
-			const descriptionOverlap = overlapCount(
-				left.descriptionTokens,
-				right.descriptionTokens
-			);
-			const sameGoal =
-				left.goalNames.size > 0 &&
-				Array.from(left.goalNames).some((goal) => right.goalNames.has(goal));
-			const dueDistanceDays = daysBetween(left.task.due_at, right.task.due_at);
-			const closeDueDates = dueDistanceDays !== null && dueDistanceDays <= 1;
-			const containsTitle =
-				Boolean(left.normalizedTitle && right.normalizedTitle) &&
-				(left.normalizedTitle.includes(right.normalizedTitle) ||
-					right.normalizedTitle.includes(left.normalizedTitle));
-			const opposingAction = hasOpposingAction(left.titleTokens, right.titleTokens);
-
-			let score = titleOverlap * 3 + titleSimilarity * 4 + Math.min(descriptionOverlap, 2);
-			const reasons: string[] = [];
-			if (titleOverlap >= 2 || titleSimilarity >= 0.34) {
-				reasons.push(
-					`title overlap (${titleOverlap} shared term${titleOverlap === 1 ? '' : 's'})`
-				);
-			}
-			if (containsTitle) {
-				score += 4;
-				reasons.push('one title contains the other');
-			}
-			if (sameGoal && titleOverlap >= 1) {
-				score += 2;
-				reasons.push('same goal linkage');
-			}
-			if (closeDueDates && titleOverlap >= 1) {
-				score += 1.5;
-				reasons.push('nearby due dates');
-			}
-			if (opposingAction && titleOverlap >= 1) {
-				score += 4;
-				reasons.push('opposing action words');
-			}
-
-			if (reasons.length && score >= 4) {
-				candidates.push({
-					taskAId: left.task.id,
-					taskBId: right.task.id,
-					score: Number(score.toFixed(3)),
-					reasons
-				});
-			}
-		}
-	}
-
-	return candidates
-		.sort(
-			(a, b) =>
-				b.score - a.score ||
-				taskPairKey(a.taskAId, a.taskBId).localeCompare(taskPairKey(b.taskAId, b.taskBId))
-		)
-		.slice(0, maxPairs);
 }
 
 /**
@@ -1922,6 +1792,8 @@ export async function generateDrift(params: {
 	chatSessionId?: string;
 	runId?: string;
 	evidence?: ProjectDriftEvidence | null;
+	/** Subjects the freshness radar already tracks; the prompt says not to raise them. */
+	radarConcerns?: RadarConcernSubject[];
 	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
@@ -1929,6 +1801,7 @@ export async function generateDrift(params: {
 	if (ctx.documents.length === 0 && ctx.tasks.length === 0) return [];
 	const evidence =
 		params.evidence?.related.length || params.evidence?.changes.length ? params.evidence : null;
+	const radarConcerns = params.radarConcerns ?? [];
 
 	const systemPrompt = [
 		'You are a BuildOS project reviewer. Find PROJECT DRIFT: places where',
@@ -1942,13 +1815,31 @@ export async function generateDrift(params: {
 					'Most drift is a change that did not propagate. Compare each recent change with the related sections and report where one still says what a change decided, renamed, replaced, or finished:',
 					'an item still listed as open or undecided after it was decided, a count or status that no longer matches, a plan step that contradicts a later decision, or material duplicated in two places after a restructure.',
 					'Also report contradictions between two related sections even when neither is a recent change.',
-					'In rationale, quote the stale words and the words that supersede them, with the document titles. In evidence_refs, cite every document or record involved, with the stale one first.'
+					'In rationale, quote the stale words and the words that supersede them, with the document titles. In evidence_refs, cite every document or record involved, with the stale one first.',
+					'',
+					'ONE-CLICK FIX: when one place is plainly stale and another records the newer truth, include ONE update_onto_document operation that corrects the stale document with exact-text edits.',
+					'- Copy each old_text character for character from RECENT CHANGES or RELATED SECTIONS above, as a whole line or bullet, long enough to be unique in that document.',
+					'- new_text is the corrected text; use "" to delete a line that no longer belongs. Up to 5 edits, all in one document shown above.',
+					"- Keep the author's wording and formatting; change only what is stale. Never edit a managed status or map block.",
+					"- Leave operations empty when the fix needs the user's judgment, for example when two statements disagree and neither is clearly newer.",
+					'- Name the document you would edit in the title.'
+				]
+			: []),
+		...(radarConcerns.length
+			? [
+					'',
+					'The freshness radar already tracks these records as possibly out of date. Do not raise them again:',
+					...radarConcerns.map(
+						(concern) => `- ${concern.kind} ${concern.id} "${concern.title}"`
+					)
 				]
 			: []),
 		'',
 		'Rules:',
 		'- Be conservative. Only raise drift that is supported by specific evidence.',
-		'- Do NOT propose writes. Drift items are informational review decisions.',
+		evidence
+			? '- The only write you may propose is the one-click fix above. Items without one are informational review decisions.'
+			: '- Do NOT propose writes. Drift items are informational review decisions.',
 		'- Prefer 0-3 high-signal items; one item per stale place.',
 		'- Attach evidence_refs from documents, tasks, goals, or project.',
 		'- Do NOT re-raise previously reviewed drift unless materially new evidence changes the assessment.',
@@ -1960,7 +1851,9 @@ export async function generateDrift(params: {
 		'  "confidence": number,',
 		'  "evidence_refs": [ { "entity_type": "project"|"goal"|"document"|"task", "entity_id": "<uuid optional>", "title": string, "reason": string } ],',
 		'  "preview": { "kind": "drift", "summary": string, "before": [string], "after": [string], "impact": string },',
-		'  "operations": []',
+		evidence
+			? '  "operations": [] | [ { "tool": "update_onto_document", "args": { "document_id": "<uuid>", "edits": [ { "old_text": string, "new_text": string } ] } } ]'
+			: '  "operations": []',
 		'} ] }',
 		'If no clear drift exists, return { "suggestions": [] }.'
 	].join('\n');
@@ -1994,11 +1887,42 @@ export async function generateDrift(params: {
 	// Jev can surface records older than the loop's recent-document window; the model may
 	// cite anything it was shown.
 	const refCtx = evidence ? withDriftEvidenceRecords(ctx, evidence) : ctx;
+	const fixDocuments = new Map<string, DriftFixDocument>(
+		Object.entries(evidence?.documents ?? {}).map(([id, doc]) => [id, { id, ...doc }])
+	);
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw.slice(0, 5)) {
 		if (!s.title) continue;
 		const evidenceRefs = sanitizeEvidenceRefs(s.evidence_refs, refCtx);
 		if (!evidenceRefs.length) continue;
+		let preview = sanitizePreview(s.preview);
+		let operations: LoopOperation[] = [];
+		let undoOperations: LoopOperation[] = [];
+		if (evidence && Array.isArray(s.operations) && s.operations.length) {
+			const result = buildDriftFix({
+				projectId: ctx.projectId,
+				rawOperations: s.operations,
+				documents: fixDocuments
+			});
+			if ('fix' in result) {
+				operations = result.fix.operations;
+				undoOperations = result.fix.undoOperations;
+				// The preview shows exactly what approval changes, not the model's paraphrase.
+				preview = {
+					kind: 'drift',
+					summary: preview?.summary ?? s.title.slice(0, 200),
+					before: result.fix.before,
+					after: result.fix.after,
+					...(preview?.impact ? { impact: preview.impact } : {})
+				};
+			} else {
+				// Not safe to apply as proposed; the finding still stands on its evidence.
+				console.warn(
+					`[ProjectLoops] drift fix dropped (${result.rejected}); keeping the finding informational`,
+					{ projectId: ctx.projectId }
+				);
+			}
+		}
 		suggestions.push({
 			kind: 'drift',
 			risk_tier: 2,
@@ -2007,14 +1931,39 @@ export async function generateDrift(params: {
 			why_now: truncate(s.why_now, 220),
 			confidence: typeof s.confidence === 'number' ? s.confidence : undefined,
 			evidence_refs: evidenceRefs,
-			preview: sanitizePreview(s.preview),
+			preview,
 			freshness_state: 'fresh',
 			reversible: true,
-			operations: [],
-			undo_operations: []
+			operations,
+			undo_operations: undoOperations
 		});
 	}
 	return suggestions;
+}
+
+/** A record the freshness radar has an open concern about (tasker 106 roll-up). */
+export type RadarConcernSubject = { kind: string; id: string; title: string };
+
+/**
+ * One owner per stale record. The freshness radar owns "this record lags a newer decision"
+ * (tasker 106), so the loop drops a drift or outdated-doc finding whose stale subject the radar
+ * already tracks: the document a fix or flag would change, or the first-cited (stale) record.
+ */
+export function withoutRadarOwnedFindings(
+	suggestions: ProposedSuggestion[],
+	concerns: readonly RadarConcernSubject[]
+): { kept: ProposedSuggestion[]; dropped: number } {
+	if (!concerns.length) return { kept: suggestions, dropped: 0 };
+	const owned = new Set(concerns.map((concern) => concern.id));
+	const kept = suggestions.filter((suggestion) => {
+		if (suggestion.kind !== 'drift' && suggestion.kind !== 'doc_outdated') return true;
+		const targets = suggestion.operations
+			.map((operation) => (operation.args as Record<string, unknown>)?.document_id)
+			.filter((id): id is string => typeof id === 'string');
+		const staleSubject = targets[0] ?? suggestion.evidence_refs?.[0]?.entity_id;
+		return !(staleSubject && owned.has(staleSubject));
+	});
+	return { kept, dropped: suggestions.length - kept.length };
 }
 
 function withDriftEvidenceRecords(ctx: LoopContext, evidence: ProjectDriftEvidence): LoopContext {
@@ -2068,12 +2017,14 @@ export async function generateTaskConflicts(params: {
 	userId: string;
 	chatSessionId?: string;
 	runId?: string;
+	/** Jev's shortlist (taskPairs.ts); the pass classifies only these pairs. */
+	candidatePairs: TaskConflictCandidatePair[];
 	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
 	if (ctx.tasks.length < 2) return [];
-	const candidatePairs = buildTaskConflictCandidatePairs(ctx.tasks);
+	const candidatePairs = params.candidatePairs;
 	if (!candidatePairs.length) return [];
 	const candidatePairKeys = new Set(
 		candidatePairs.map((pair) => taskPairKey(pair.taskAId, pair.taskBId))

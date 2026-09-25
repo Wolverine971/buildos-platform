@@ -1,7 +1,6 @@
 // apps/worker/tests/projectLoopGenerators.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
-	buildTaskConflictCandidatePairs,
 	buildHeuristicProjectManagerBrief,
 	generateDocOrganization,
 	generateDrift,
@@ -9,7 +8,8 @@ import {
 	generateProjectManagerBrief,
 	generateTaskConflicts,
 	type LoopContext,
-	type ProjectReviewSynthesisCandidate
+	type ProjectReviewSynthesisCandidate,
+	withoutRadarOwnedFindings
 } from '../src/workers/project-loop/generators';
 import type { SmartLLMService } from '../src/lib/services/smart-llm-service';
 import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../src/config/projectLoops';
@@ -72,6 +72,11 @@ function makeTrackedLlm(response: unknown): {
 
 const onUsage = vi.fn(async () => undefined);
 
+/** Jev's shortlist (taskPairs.ts), as the worker passes it in. */
+const PAIR_1_2 = [
+	{ taskAId: 'task-1', taskBId: 'task-2', score: 0.9, reasons: ['review relevance 0.90'] }
+];
+
 function makeReviewCandidates(): ProjectReviewSynthesisCandidate[] {
 	return [
 		{
@@ -126,6 +131,7 @@ describe('project loop generators', () => {
 		const controller = new AbortController();
 
 		await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
 			llm,
 			ctx: makeContext(),
 			userId: 'user-1',
@@ -163,43 +169,7 @@ describe('project loop generators', () => {
 		expect(getJSONResponse.mock.calls[0]?.[0]?.userPrompt).toContain('[task-2]');
 	});
 
-	it('shortlists likely task-conflict candidate pairs deterministically', () => {
-		const pairs = buildTaskConflictCandidatePairs([
-			{
-				id: 'task-1',
-				title: 'Publish launch announcement',
-				description: null,
-				state_key: 'todo',
-				updated_at: '2026-06-22T00:00:00.000Z',
-				goal_names: ['Public launch']
-			},
-			{
-				id: 'task-2',
-				title: 'Publish announcement draft',
-				description: null,
-				state_key: 'todo',
-				updated_at: '2026-06-23T00:00:00.000Z',
-				goal_names: ['Public launch']
-			},
-			{
-				id: 'task-3',
-				title: 'Set up analytics dashboard',
-				description: null,
-				state_key: 'todo',
-				updated_at: '2026-06-24T00:00:00.000Z'
-			}
-		]);
-
-		expect(pairs).toEqual([
-			expect.objectContaining({
-				taskAId: 'task-1',
-				taskBId: 'task-2',
-				reasons: expect.arrayContaining(['same goal linkage'])
-			})
-		]);
-	});
-
-	it('skips the task-conflict LLM call when no deterministic candidate pairs exist', async () => {
+	it('skips the task-conflict LLM call when Jev shortlists no pairs', async () => {
 		const { llm, getJSONResponse } = makeTrackedLlm({ suggestions: [] });
 		const ctx: LoopContext = {
 			...makeContext(),
@@ -222,6 +192,7 @@ describe('project loop generators', () => {
 		};
 
 		const suggestions = await generateTaskConflicts({
+			candidatePairs: [],
 			llm,
 			ctx,
 			userId: 'user-1',
@@ -589,6 +560,7 @@ describe('project loop generators', () => {
 
 	it('turns task conflicts into reversible non-destructive task flags', async () => {
 		const suggestions = await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
 			llm: makeLlm({
 				suggestions: [
 					{
@@ -668,6 +640,7 @@ describe('project loop generators', () => {
 
 	it('drops task conflict suggestions with unknown task ids', async () => {
 		const suggestions = await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
 			llm: makeLlm({
 				suggestions: [
 					{
@@ -698,6 +671,7 @@ describe('project loop generators', () => {
 
 	it('drops task conflict suggestions with unknown paired task ids', async () => {
 		const suggestions = await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
 			llm: makeLlm({
 				suggestions: [
 					{
@@ -746,6 +720,7 @@ describe('project loop generators', () => {
 		};
 
 		const suggestions = await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
 			llm: makeLlm({
 				suggestions: [
 					{
@@ -812,6 +787,7 @@ describe('project loop generators', () => {
 		];
 
 		const suggestions = await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
 			llm: makeLlm({
 				suggestions: [
 					{
@@ -1108,7 +1084,8 @@ describe('project loop generators', () => {
 			],
 			source: 'jev' as const,
 			ranker: null,
-			fallbackReason: null
+			fallbackReason: null,
+			documents: {}
 		};
 
 		const suggestions = await generateDrift({
@@ -1127,5 +1104,112 @@ describe('project loop generators', () => {
 		const refs = suggestions[0]?.evidence_refs ?? [];
 		expect(refs.map((ref) => ref.entity_id)).toEqual([olderDocId, 'doc-1']);
 		expect(refs[0]?.title).toBe('AI Pillar — Working Doc');
+	});
+
+	it('turns a plainly stale line into a one-click fix, and keeps a bad fix informational', async () => {
+		const pillarId = '00000000-0000-4000-8000-0000000000bb';
+		const pillarBody =
+			'# AI Pillar\n## Open questions\n- **Name of the move** — not settled.\n- Voice: undecided.';
+		const evidence = {
+			since: '2026-09-11T00:00:00.000Z',
+			changes: [],
+			related: [
+				{
+					kind: 'document',
+					id: pillarId,
+					title: 'AI Pillar — Working Doc',
+					excerpts: [{ heading: 'Open questions', text: pillarBody }]
+				}
+			],
+			source: 'jev' as const,
+			ranker: null,
+			fallbackReason: null,
+			documents: { [pillarId]: { title: 'AI Pillar — Working Doc', content: pillarBody } }
+		};
+		const finding = (edits: unknown) => ({
+			title: 'AI Pillar — Working Doc still lists the move name as open',
+			rationale: 'Card 9 decided The Reindex; the working doc says "not settled".',
+			evidence_refs: [{ entity_type: 'document', entity_id: pillarId, reason: 'Stale' }],
+			operations: [{ tool: 'update_onto_document', args: { document_id: pillarId, edits } }]
+		});
+		const { llm, getJSONResponse } = makeTrackedLlm({
+			suggestions: [
+				finding([
+					{
+						old_text: '- **Name of the move** — not settled.',
+						new_text: '- **Name of the move** — decided: The Reindex.'
+					}
+				]),
+				finding([{ old_text: 'a line that is not in the document', new_text: 'x' }])
+			]
+		});
+
+		const suggestions = await generateDrift({
+			llm,
+			ctx: makeContext(),
+			userId: 'user-1',
+			evidence,
+			radarConcerns: [{ kind: 'task', id: 'task-9', title: 'Complete the blueprint' }],
+			onUsage
+		});
+
+		const prompt = getJSONResponse.mock.calls[0]![0];
+		expect(prompt.systemPrompt).toContain('ONE-CLICK FIX');
+		expect(prompt.systemPrompt).toContain('task task-9 "Complete the blueprint"');
+		expect(suggestions).toHaveLength(2);
+		const [fixed, informational] = suggestions;
+		expect(fixed?.operations).toEqual([
+			{
+				tool: 'update_onto_document',
+				args: {
+					project_id: 'project-1',
+					document_id: pillarId,
+					edits: [
+						{
+							old_text: '- **Name of the move** — not settled.',
+							new_text: '- **Name of the move** — decided: The Reindex.'
+						}
+					]
+				},
+				label: 'Edit "AI Pillar — Working Doc"'
+			}
+		]);
+		expect(fixed?.undo_operations).toHaveLength(1);
+		expect(fixed?.preview).toMatchObject({
+			kind: 'drift',
+			before: ['- **Name of the move** — not settled.'],
+			after: ['- **Name of the move** — decided: The Reindex.']
+		});
+		expect(informational?.operations).toEqual([]);
+	});
+
+	it('leaves records the freshness radar already tracks to the radar', () => {
+		const drift = (id: string, operations: unknown[] = []) =>
+			({
+				kind: 'drift',
+				risk_tier: 2,
+				title: `Drift in ${id}`,
+				evidence_refs: [{ entity_type: 'document', entity_id: id, title: id }],
+				operations
+			}) as never;
+		const { kept, dropped } = withoutRadarOwnedFindings(
+			[
+				drift('doc-radar'),
+				drift('doc-other', [
+					{ tool: 'update_onto_document', args: { document_id: 'doc-radar' } }
+				]),
+				drift('doc-other'),
+				{
+					kind: 'task_conflict',
+					risk_tier: 1,
+					title: 'Overlap',
+					evidence_refs: [{ entity_type: 'task', entity_id: 'doc-radar', title: 'x' }],
+					operations: []
+				} as never
+			],
+			[{ kind: 'document', id: 'doc-radar', title: 'Radar doc' }]
+		);
+		expect(dropped).toBe(2);
+		expect(kept.map((s) => s.title)).toEqual(['Drift in doc-other', 'Overlap']);
 	});
 });

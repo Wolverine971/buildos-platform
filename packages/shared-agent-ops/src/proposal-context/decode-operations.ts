@@ -16,6 +16,8 @@ export type DecodedLoopOperationFieldChange = {
 	value: string;
 	/** The verified current value, when a scalar field is decoded against live state. */
 	before?: string;
+	/** text_edit: `before` is document text that `value` replaces; show it as a diff. */
+	format?: 'text_edit';
 };
 
 export type DecodedLoopOperation = {

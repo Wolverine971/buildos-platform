@@ -98,7 +98,6 @@
 					>
 						<video
 							bind:this={brandVideo}
-							src="/onboarding-assets/animations/brain-bolt-electric-transparent.webm"
 							poster="/brain-bolt-80.png"
 							class="h-10 w-10 motion-reduce:hidden"
 							width="40"
@@ -108,7 +107,17 @@
 							muted
 							playsinline
 							aria-hidden="true"
-						></video>
+						>
+							<!-- HEVC first: Safari drops VP9 alpha and paints a black square. -->
+							<source
+								src="/onboarding-assets/animations/brain-bolt-electric-icon.mov"
+								type={'video/quicktime; codecs="hvc1"'}
+							/>
+							<source
+								src="/onboarding-assets/animations/brain-bolt-electric-icon.webm"
+								type="video/webm"
+							/>
+						</video>
 						<img
 							src="/brain-bolt-80.png"
 							alt=""

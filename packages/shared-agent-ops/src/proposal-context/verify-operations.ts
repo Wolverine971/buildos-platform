@@ -3,6 +3,11 @@ import { createHash } from 'node:crypto';
 import type { LoopOperation, ProjectSuggestionPreview } from '@buildos/shared-types';
 import { buildProjectLoopParentMap } from '../project-loops';
 import {
+	formatDocumentEditFailures,
+	resolveDocumentEdits,
+	type DocumentTextEditV1
+} from '../ontology/document-edits';
+import {
 	formatLoopOperationValue,
 	humanizeLoopOperationKey,
 	type DecodedLoopOperation,
@@ -23,6 +28,8 @@ type ResolvedEntity = {
 	due_at: string | null;
 	start_at: string | null;
 	target_date: string | null;
+	/** Raw document body, loaded only when an operation carries text edits. */
+	content?: string | null;
 };
 
 export type ProjectSuggestionIntegrityCode =
@@ -37,6 +44,7 @@ export type ProjectSuggestionIntegrityCode =
 	| 'NO_OP_OPERATION'
 	| 'MODEL_ENTITY_MISMATCH'
 	| 'EXPECTED_STATE_CHANGED'
+	| 'DOCUMENT_EDIT_UNRESOLVED'
 	| 'RESOLUTION_FAILED';
 
 export type ProjectSuggestionIntegrityDiagnostic = {
@@ -143,7 +151,10 @@ const UPDATE_TOOL_SPECS: Record<string, UpdateToolSpec> = {
 			'props',
 			'document',
 			'updates',
-			'document_update'
+			'document_update',
+			// Decoded against the live body below; never replayed unshown.
+			'edits',
+			'section_edits'
 		]
 	},
 	update_onto_goal: {
@@ -438,7 +449,9 @@ function normalizeEntityRows(rows: unknown): Map<string, ResolvedEntity> {
 			archived_at: asString(row?.archived_at),
 			due_at: asString(row?.due_at),
 			start_at: asString(row?.start_at),
-			target_date: asString(row?.target_date)
+			target_date: asString(row?.target_date),
+			// Untrimmed: edit anchors are exact offsets into the stored body.
+			...(typeof row?.content === 'string' ? { content: row.content } : {})
 		});
 	}
 	return byId;
@@ -480,6 +493,41 @@ function idsForOperations(operations: LoopOperation[]): {
 
 function hasOwnArg(args: Record<string, unknown>, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(args, key) && args[key] !== undefined;
+}
+
+/** Most text edits one review proposal may carry; each is shown to the user. */
+export const REVIEW_DOCUMENT_EDITS_MAX = 10;
+const REVIEW_EDIT_DISPLAY_CHARS = 600;
+
+/**
+ * Review proposals carry plain exact-text edits only: no replace_all, no section
+ * edits, no whole-body writes. Anything else fails closed.
+ */
+function parseReviewDocumentEdits(value: unknown): DocumentTextEditV1[] | null {
+	if (!Array.isArray(value) || value.length === 0 || value.length > REVIEW_DOCUMENT_EDITS_MAX)
+		return null;
+	const edits: DocumentTextEditV1[] = [];
+	for (const raw of value) {
+		const edit = asRecord(raw);
+		if (!edit || Object.keys(edit).some((key) => key !== 'old_text' && key !== 'new_text'))
+			return null;
+		if (typeof edit.old_text !== 'string' || !edit.old_text.trim()) return null;
+		if (typeof edit.new_text !== 'string') return null;
+		if (edit.old_text === edit.new_text) return null;
+		edits.push({ old_text: edit.old_text, new_text: edit.new_text });
+	}
+	return edits;
+}
+
+function editDisplayText(value: string): string {
+	const text = value.trim();
+	return text.length > REVIEW_EDIT_DISPLAY_CHARS
+		? `${text.slice(0, REVIEW_EDIT_DISPLAY_CHARS - 1).trimEnd()}…`
+		: text;
+}
+
+function operationsCarryEdits(operations: LoopOperation[]): boolean {
+	return operations.some((operation) => hasOwnArg(asRecord(operation.args) ?? {}, 'edits'));
 }
 
 function isValidCivilDate(value: string): boolean {
@@ -672,7 +720,11 @@ export async function verifyProjectSuggestionIntegrity(
 			ids.documentIds.size
 				? supabase
 						.from('onto_documents')
-						.select('id, project_id, title, state_key, deleted_at, archived_at')
+						.select(
+							operationsCarryEdits(input.operations)
+								? 'id, project_id, title, state_key, deleted_at, archived_at, content'
+								: 'id, project_id, title, state_key, deleted_at, archived_at'
+						)
 						.in('id', [...ids.documentIds])
 				: Promise.resolve({ data: [], error: null }),
 			ids.taskIds.size
@@ -925,11 +977,70 @@ export async function verifyProjectSuggestionIntegrity(
 				};
 			}
 
+			// Document text edits: resolve every anchor against the live body now, so
+			// the user sees exactly the text that approval replaces.
+			let documentEdits: DocumentTextEditV1[] | null = null;
+			if (entityKind === 'document' && hasOwnArg(args, 'edits')) {
+				documentEdits = parseReviewDocumentEdits(args.edits);
+				if (!documentEdits) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'INVALID_OPERATION',
+							message: `${operation.tool} edits must be 1-${REVIEW_DOCUMENT_EDITS_MAX} exact {old_text, new_text} pairs`,
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: entityKind,
+							entity_id: entityId
+						}
+					};
+				}
+				const resolved = resolveDocumentEdits({
+					project_id: input.projectId,
+					document_id: entityId,
+					content: entity!.content ?? '',
+					edits: documentEdits
+				});
+				if (resolved.status !== 'resolved') {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'DOCUMENT_EDIT_UNRESOLVED',
+							message:
+								`Edits no longer match "${entity!.title}": ${formatDocumentEditFailures(resolved.failures, resolved.matched_edits)}`.slice(
+									0,
+									1_000
+								),
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: entityKind,
+							entity_id: entityId,
+							resolved_entity_title: entity!.title
+						}
+					};
+				}
+				if (resolved.next_content === (entity!.content ?? '')) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'NO_OP_OPERATION',
+							message: `Document "${entity!.title}" already reads as proposed`,
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: entityKind,
+							entity_id: entityId,
+							resolved_entity_title: entity!.title
+						}
+					};
+				}
+			}
+
 			// Fail closed on any argument the executor would write that this
 			// verifier cannot show the user (for example an undisplayed title
 			// rename or state change riding along with a props flag).
 			for (const key of spec.mutatingArgs) {
 				if (!hasOwnArg(args, key)) continue;
+				if (key === 'edits' && documentEdits) continue;
 				if (key === 'props') {
 					if (asRecord(args.props)) continue;
 				} else if ((spec.scalarFields as readonly string[]).includes(key)) {
@@ -997,7 +1108,13 @@ export async function verifyProjectSuggestionIntegrity(
 					value: formatScalarValue(field, proposed),
 					before: formatScalarValue(field, current)
 				})),
-				...updateChanges(args)
+				...updateChanges(args),
+				...(documentEdits ?? []).map((edit) => ({
+					label: edit.new_text.trim() ? 'Change' : 'Remove',
+					format: 'text_edit' as const,
+					before: editDisplayText(edit.old_text),
+					value: edit.new_text.trim() ? editDisplayText(edit.new_text) : '(removed)'
+				}))
 			];
 			if (changes.length === 0) {
 				return {
@@ -1016,11 +1133,13 @@ export async function verifyProjectSuggestionIntegrity(
 				entityKind === 'document' && asRecord(args.props)?.loop_flagged_outdated === true;
 			const summary = isOutdatedFlag
 				? `Mark "${entity!.title}" as outdated.`
-				: conflictTask
-					? `Flag "${entity!.title}" for review against "${conflictTask.title}".`
-					: scalars.length && !asRecord(args.props)
-						? scalarSummary(entityKind, entity!.title, scalars)
-						: `Update ${entityKind} "${entity!.title}".`;
+				: documentEdits
+					? `Edit "${entity!.title}" (${documentEdits.length} change${documentEdits.length === 1 ? '' : 's'}).`
+					: conflictTask
+						? `Flag "${entity!.title}" for review against "${conflictTask.title}".`
+						: scalars.length && !asRecord(args.props)
+							? scalarSummary(entityKind, entity!.title, scalars)
+							: `Update ${entityKind} "${entity!.title}".`;
 			decoded.push({
 				key: `${operation.tool}:${entityId}:${index}`,
 				action: 'update',
@@ -1054,6 +1173,8 @@ export async function verifyProjectSuggestionIntegrity(
 					scalars.map(({ field, current }) => [field, current])
 				);
 			}
+			// Only edit-carrying shapes gain the key, so every other fingerprint is unchanged.
+			if (documentEdits) structuralPart.proposed_edits = documentEdits;
 			structuralParts.push(structuralPart);
 		}
 
