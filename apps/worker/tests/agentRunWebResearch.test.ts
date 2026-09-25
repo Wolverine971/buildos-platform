@@ -523,9 +523,12 @@ describe('Agent Run web research port', () => {
 			visitMaxBytes: 5_000_000
 		});
 
+		// Coverage instrumentation slows parsing ~2-10x (808ms seen in CI); the pathological
+		// regex path this guards against takes seconds even uninstrumented.
+		const budgetMs = process.env.VITEST_COVERAGE ? 5_000 : 500;
 		const start = Date.now();
 		await port.visit!({ url: 'https://93.184.216.34/adversarial', max_chars: 6_000 });
-		expect(Date.now() - start).toBeLessThan(500);
+		expect(Date.now() - start).toBeLessThan(budgetMs);
 	});
 
 	it('blocks private targets before fetch and re-checks redirect destinations', async () => {

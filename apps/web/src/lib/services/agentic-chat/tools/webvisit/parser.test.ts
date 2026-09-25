@@ -166,8 +166,11 @@ describe('web visit parser', () => {
 		const pathological = `<html><body>${'<script>x'.repeat(240_000)}<p>done</p></body></html>`;
 		expect(pathological.length).toBeGreaterThan(2_000_000);
 
+		// Coverage instrumentation slows parsing ~2-10x (808ms seen in CI); the pathological
+		// regex path this guards against takes seconds even uninstrumented.
+		const budgetMs = process.env.VITEST_COVERAGE ? 5_000 : 500;
 		const start = Date.now();
 		parseHtmlToText(pathological, { mode: 'reader', baseUrl: 'https://example.com/' });
-		expect(Date.now() - start).toBeLessThan(500);
+		expect(Date.now() - start).toBeLessThan(budgetMs);
 	});
 });

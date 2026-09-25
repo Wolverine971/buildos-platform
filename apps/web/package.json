@@ -35,7 +35,7 @@
 		"lint:fix": "node ./scripts/run-eslint.cjs --fix && pnpm run styles:sync && pnpm run guardrails:server-routes && pnpm run guardrails:onto-project-columns && pnpm run guardrails:supabase-selects && pnpm run guardrails:lucide-icons && pnpm run guardrails:styles && pnpm run guardrails:agent-skills && pnpm run guardrails:local-skills && pnpm run format",
 		"test": "vitest run",
 		"test:run": "vitest run",
-		"test:coverage": "vitest run --coverage",
+		"test:coverage": "VITEST_COVERAGE=1 vitest run --coverage",
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"test:llm": "vitest run --config vitest.config.llm.ts",
