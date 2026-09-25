@@ -545,10 +545,10 @@ describe('tasker 98 review fixes', () => {
 			.join('\n');
 		expect(before.length).toBeGreaterThan(180_000);
 
-		// Before the fix this took ~25s: one full Markdown parse per changed run. Coverage
-		// instrumentation slows this ~9x (18s in CI), so the budget scales but still fails
-		// the old quadratic path (~225s instrumented).
-		const budgetMs = process.env.VITEST_COVERAGE ? 60_000 : 2_000;
+		// Before the fix this took ~25s: one full Markdown parse per changed run. CI runners
+		// take ~2s for the fixed path (2.1s seen), and coverage instrumentation ~9x more
+		// (18s). Both budgets still fail the old quadratic path (~25s / ~225s).
+		const budgetMs = process.env.VITEST_COVERAGE ? 60_000 : 5_000;
 		let started = performance.now();
 		const summary = summarizeDocumentChange({ ...IDS, before, after });
 		expect(performance.now() - started).toBeLessThan(budgetMs);
