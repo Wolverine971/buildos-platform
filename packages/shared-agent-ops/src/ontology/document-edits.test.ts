@@ -479,7 +479,9 @@ describe('tasker 98 review fixes', () => {
 		for (let section = 0; section < sections; section += 1) {
 			lines.push(`## Section ${section}`, '');
 			for (let item = 0; item < 25; item += 1) {
-				lines.push(`- item ${section}.${item} with some words to pad the line out a bit more`);
+				lines.push(
+					`- item ${section}.${item} with some words to pad the line out a bit more`
+				);
 			}
 			lines.push('');
 		}
@@ -506,9 +508,7 @@ describe('tasker 98 review fixes', () => {
 		const replaced = resolved(
 			resolve(crlf, [], [{ action: 'replace', section: 'beta', content: 'NEW BETA' }])
 		);
-		expect(replaced).toContain(
-			'## Alpha\r\nalpha body\r\nmore alpha\r\n\r\n## Beta\r\n'
-		);
+		expect(replaced).toContain('## Alpha\r\nalpha body\r\nmore alpha\r\n\r\n## Beta\r\n');
 		expect(replaced).toContain('NEW BETA');
 		expect(replaced).not.toContain('beta body');
 	});
@@ -537,28 +537,34 @@ describe('tasker 98 review fixes', () => {
 		expect(resolved(resolve(items(DOCUMENT_REPLACE_ALL_MAX), [edit]))).not.toContain('todo');
 	});
 
-	it('summarizes a 180KB rewrite quickly and drops an Undo patch over the cap', () => {
-		const before = checklistDocument(120);
-		const after = before
-			.split('\n')
-			.map((line, index) => (index % 2 === 0 && line.startsWith('- ') ? `${line} (edited)` : line))
-			.join('\n');
-		expect(before.length).toBeGreaterThan(180_000);
+	it(
+		'summarizes a 180KB rewrite quickly and drops an Undo patch over the cap',
+		() => {
+			const before = checklistDocument(120);
+			const after = before
+				.split('\n')
+				.map((line, index) =>
+					index % 2 === 0 && line.startsWith('- ') ? `${line} (edited)` : line
+				)
+				.join('\n');
+			expect(before.length).toBeGreaterThan(180_000);
 
-		// Before the fix this took ~25s: one full Markdown parse per changed run. CI runners
-		// take ~2s for the fixed path (2.1s seen), and coverage instrumentation ~9x more
-		// (18s). Both budgets still fail the old quadratic path (~25s / ~225s).
-		const budgetMs = process.env.VITEST_COVERAGE ? 60_000 : 5_000;
-		let started = performance.now();
-		const summary = summarizeDocumentChange({ ...IDS, before, after });
-		expect(performance.now() - started).toBeLessThan(budgetMs);
-		expect(summary?.lines_added).toBeGreaterThan(1_000);
-		expect(summary?.revert_patch).toBeNull();
+			// Before the fix this took ~25s: one full Markdown parse per changed run. CI runners
+			// take ~2s for the fixed path (2.1s seen), and coverage instrumentation ~9x more
+			// (18s). Both budgets still fail the old quadratic path (~25s / ~225s).
+			const budgetMs = process.env.VITEST_COVERAGE ? 60_000 : 5_000;
+			let started = performance.now();
+			const summary = summarizeDocumentChange({ ...IDS, before, after });
+			expect(performance.now() - started).toBeLessThan(budgetMs);
+			expect(summary?.lines_added).toBeGreaterThan(1_000);
+			expect(summary?.revert_patch).toBeNull();
 
-		started = performance.now();
-		expect(createDocumentRevertPatch({ ...IDS, before, after })).toBeNull();
-		expect(performance.now() - started).toBeLessThan(budgetMs);
-	});
+			started = performance.now();
+			expect(createDocumentRevertPatch({ ...IDS, before, after })).toBeNull();
+			expect(performance.now() - started).toBeLessThan(budgetMs);
+		},
+		process.env.VITEST_COVERAGE ? 150_000 : 15_000
+	);
 
 	it('still carries a working Undo patch for a small edit in a long document', () => {
 		const before = checklistDocument(40);
@@ -583,8 +589,11 @@ describe('tasker 98 review fixes', () => {
 				{ old_text: '- [ ] Book venue', new_text: '- [ ] Book venue\n- [ ] Call Sam' }
 			])
 		);
-		const patch = summarizeDocumentChange({ ...IDS, before: original, after: edited })
-			?.revert_patch;
+		const patch = summarizeDocumentChange({
+			...IDS,
+			before: original,
+			after: edited
+		})?.revert_patch;
 		if (!patch) throw new Error('expected revert patch');
 		expect(resolveDocumentPatch(patch, edited, { strict_context: true })).toMatchObject({
 			status: 'resolved',
