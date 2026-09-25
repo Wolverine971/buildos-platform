@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Pool, type PoolConfig } from 'pg';
+import { trackPoolDisconnections } from './helpers/trackPoolDisconnections';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
 	createLibriAdmissionDispatcher,
@@ -43,6 +44,7 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 	let ownsCluster = false;
 	let psqlConnectionArgs: string[] = [];
 	let workerPool: Pool | null = null;
+	const closePools: Array<() => Promise<void>> = [];
 	let adminPool: Pool | null = null;
 	let dispatcher: LibriAdmissionDispatcherPort;
 	let reconciler: LibriAdmissionReconcilerPort;
@@ -145,7 +147,9 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 		applySql(seedSql());
 
 		workerPool = new Pool({ ...poolOptions, user: 'libri_worker', max: 2 });
+		closePools.push(trackPoolDisconnections(workerPool));
 		adminPool = new Pool({ ...poolOptions, user: adminUser, max: 1 });
+		closePools.push(trackPoolDisconnections(adminPool));
 		dispatcher = createLibriAdmissionDispatcher(workerPool);
 		reconciler = createLibriAdmissionReconciler(workerPool);
 		lifecycle = createLibriLifecycle(workerPool);
@@ -211,8 +215,9 @@ describePostgres('Libri OCR admission dispatcher restricted-role PostgreSQL cont
 	}, 30_000);
 
 	afterAll(async () => {
-		await workerPool?.end();
-		await adminPool?.end();
+		// Wait for every socket to close before pg_ctl stop, or 57P01 reaches a client
+		// with no listener and fails the run as an uncaught error.
+		await Promise.all(closePools.map((close) => close()));
 		if (ownsCluster && dataDir) {
 			spawnSync('pg_ctl', ['-D', dataDir, 'stop', '-m', 'fast'], { stdio: 'ignore' });
 		}

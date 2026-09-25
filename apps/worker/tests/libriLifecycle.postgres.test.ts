@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Pool } from 'pg';
+import { trackPoolDisconnections } from './helpers/trackPoolDisconnections';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createLibriLifecycle, type LibriLifecyclePort } from '../src/workers/libri/lifecycle';
 import {
@@ -34,6 +35,7 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 	let socketDir = '';
 	let port = 0;
 	let workerPool: Pool | null = null;
+	const closePools: Array<() => Promise<void>> = [];
 	let adminPool: Pool | null = null;
 	let lifecycle: LibriLifecyclePort;
 
@@ -170,13 +172,16 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 			max: 1
 		};
 		workerPool = new Pool({ ...poolOptions, user: 'libri_worker' });
+		closePools.push(trackPoolDisconnections(workerPool));
 		adminPool = new Pool({ ...poolOptions, user: 'postgres' });
+		closePools.push(trackPoolDisconnections(adminPool));
 		lifecycle = createLibriLifecycle(workerPool);
 	}, 30_000);
 
 	afterAll(async () => {
-		await workerPool?.end();
-		await adminPool?.end();
+		// Wait for every socket to close before pg_ctl stop, or 57P01 reaches a client
+		// with no listener and fails the run as an uncaught error.
+		await Promise.all(closePools.map((close) => close()));
 		if (dataDir) {
 			spawnSync('pg_ctl', ['-D', dataDir, 'stop', '-m', 'fast'], { stdio: 'ignore' });
 		}
