@@ -7,7 +7,6 @@ import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
 import { summarizeDocumentChange } from '@buildos/shared-agent-ops/ontology/document-edits';
-import { readRecordIdsByTurn } from './context-selection-chips';
 import {
 	buildAgentChatSessionSnapshot,
 	deriveSessionTitle,
@@ -389,7 +388,7 @@ describe('agent-chat-session helpers', () => {
 		]);
 	});
 
-	it('stamps restored tool blocks with their turn run so "Working from" chips keep read ticks', () => {
+	it('stamps restored tool blocks with their turn run', () => {
 		const turnOne = '8d7c6b5a-4f3e-4d2c-9b1a-0f9e8d7c6b5a';
 		const turnTwo = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
 		const docOne = 'aaaaaaaa-1111-4222-8333-444444444444';
@@ -450,16 +449,11 @@ describe('agent-chat-session helpers', () => {
 					created_at: '2026-09-23T10:02:30.000Z'
 				}
 			] as any,
-			turnRuns: [
-				{ id: turnTwo, status: 'completed', assistant_message_id: 'assistant-2' }
-			]
+			turnRuns: [{ id: turnTwo, status: 'completed', assistant_message_id: 'assistant-2' }]
 		});
 
 		const blocks = snapshot.messages.filter((message) => message.type === 'thinking_block');
 		expect(blocks.map((block) => block.metadata?.turn_run_id)).toEqual([turnOne, turnTwo]);
-		const readIds = readRecordIdsByTurn(snapshot.messages);
-		expect([...(readIds.get(turnOne) ?? [])]).toEqual([docOne]);
-		expect([...(readIds.get(turnTwo) ?? [])]).toEqual([docTwo]);
 	});
 
 	it('buildAgentChatSessionSnapshot exposes active turn runs for restore polling', () => {

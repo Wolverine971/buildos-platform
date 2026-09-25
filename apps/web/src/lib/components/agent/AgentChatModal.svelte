@@ -40,11 +40,7 @@
 	import { onDestroy, getAbortSignal, getContext, tick, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-	import type {
-		ContextSelectionEventV1,
-		Database,
-		FreshnessCardPayloadV1
-	} from '@buildos/shared-types';
+	import type { Database, FreshnessCardPayloadV1 } from '@buildos/shared-types';
 	import { browser, dev } from '$app/environment';
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -128,7 +124,6 @@
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import {
-		buildProjectWideFocus,
 		deriveSessionTitle,
 		type AgentChatSessionSnapshot,
 		isProjectContext,
@@ -1282,26 +1277,6 @@
 		toastService.success('Project review ready in the composer');
 	}
 
-	/**
-	 * Global chat "Looking in" chip: continue this conversation inside the project. Mirrors a
-	 * server context shift; the next message carries the project context, so the session moves
-	 * there (resolveSession) and the project prompt, with START HERE, loads. History is kept.
-	 */
-	function handleContinueInProject(project: { id: string; name: string }) {
-		if (stream.isStreaming) return;
-		const { shiftedToNewProject } = shellRouter.setSelectedContext({
-			contextType: 'project',
-			entityId: project.id,
-			label: project.name
-		});
-		if (shiftedToNewProject) contextShiftPulse += 1;
-		shellRouter.projectFocus = buildProjectWideFocus(project.id, project.name);
-		if (currentSession)
-			currentSession = { ...currentSession, context_type: 'project', entity_id: project.id };
-		haptic('light');
-		toastService.success(`Continuing in ${project.name}`);
-	}
-
 	function handleAskAboutTimelineItem(item: AgentTimelineItem) {
 		const draft = buildTimelineItemQuestionDraft(item);
 		const existingDraft = inputValue.trim();
@@ -2410,7 +2385,6 @@
 		processedToolResultIds,
 		addCreatedEntitiesMessage,
 		addDocumentChangesMessage,
-		attachContextSelection,
 		isDev: dev
 	};
 
@@ -2466,24 +2440,6 @@
 		addActivityToThinkingBlock(`${action}: ${details}`, 'context_shift', {
 			focus
 		});
-	}
-
-	/** "Working from" chips ride on the turn's user message; the latest selection wins. */
-	function attachContextSelection(selection: ContextSelectionEventV1) {
-		const index = messages.findLastIndex(
-			(message) =>
-				message.type === 'user' &&
-				message.metadata?.client_turn_id === selection.client_turn_id
-		);
-		if (index === -1) return;
-		const target = messages[index]!;
-		// Replace, never mutate: the timeline cache keys on message identity.
-		const next = [...messages];
-		next[index] = {
-			...target,
-			metadata: { ...(target.metadata ?? {}), context_selection: selection }
-		};
-		messages = next;
 	}
 
 	function addCreatedEntitiesMessage(entities: CreatedEntityRef[]) {
@@ -3014,7 +2970,6 @@
 		onDraftInChat={handleFreshnessDraftInChat}
 		onDocumentChangeUndone={handleDocumentChangeUndone}
 		onReviewDeeper={projectReviewAvailable ? handleReviewDeeper : undefined}
-		onContinueInProject={handleContinueInProject}
 		{reviewProjectId}
 		{reviewDisabled}
 		{compact}

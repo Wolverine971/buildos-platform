@@ -9,8 +9,6 @@
 	import DocumentChangeCards from './DocumentChangeCards.svelte';
 	import FreshnessRadarCard from './FreshnessRadarCard.svelte';
 	import CaptureReceiptChip from './CaptureReceiptChip.svelte';
-	import ContextSelectionChips from './ContextSelectionChips.svelte';
-	import { contextSelectionOf, readRecordIdsByTurn } from './context-selection-chips';
 	import { ArrowDown } from '$lib/icons/lucide';
 	import { getProseClasses } from '$lib/utils/markdown';
 	import {
@@ -59,8 +57,6 @@
 		/** Freshness radar card "Fix in chat": pre-fill the composer with this text. */
 		onDraftInChat?: (text: string) => void;
 		onReviewDeeper?: (card: FreshnessCardPayloadV1) => void;
-		/** Global chat "Looking in" chip: continue this conversation inside that project. */
-		onContinueInProject?: (project: { id: string; name: string }) => void;
 		/** A document change card's Undo succeeded (refresh open views, persist "Undone"). */
 		onDocumentChangeUndone?: (
 			messageId: string,
@@ -94,7 +90,6 @@
 		onClientActionComplete,
 		onDraftInChat,
 		onReviewDeeper,
-		onContinueInProject,
 		onDocumentChangeUndone,
 		reviewProjectId = null,
 		reviewDisabled = false,
@@ -133,14 +128,6 @@
 	const REVEAL_SNAP_INITIAL_CHARS = 400;
 	/** Follow-after-tap (scroll policy below): set only by the pill mid-stream. */
 	let followingLatest = false;
-
-	// "Working from" read ticks. Skipped entirely unless some turn carries a selection, so
-	// ordinary chats pay nothing while text streams.
-	const readIdsByTurn = $derived.by(() =>
-		messages.some((message) => message.type === 'user' && message.metadata?.context_selection)
-			? readRecordIdsByTurn(messages)
-			: new Map<string, Set<string>>()
-	);
 
 	function hasLivePreview(message: UIMessage): boolean {
 		return (
@@ -918,18 +905,6 @@
 								</div>
 							</div>
 						</div>
-						{#if message.metadata?.context_selection}
-							{@const selection = contextSelectionOf(message)}
-							{#if selection}
-								<ContextSelectionChips
-									{selection}
-									readIds={readIdsByTurn.get(selection.turn_run_id)}
-									onContinueInProject={resolvedProjectFocus
-										? undefined
-										: onContinueInProject}
-								/>
-							{/if}
-						{/if}
 					</div>
 				{:else if message.type === 'assistant'}
 					{@const body = assistantBody(message, message.id === streamingMessageId)}

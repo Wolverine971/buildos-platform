@@ -1392,51 +1392,18 @@ describe('createSSEHandler — skill_activity', () => {
 });
 
 describe('createSSEHandler — context_selection', () => {
-	const selection = {
-		type: 'context_selection',
-		version: 1,
-		mode: 'chips',
-		visible: true,
-		injected: false,
-		status: 'selected',
-		failure: null,
-		client_turn_id: 'client-turn-1',
-		turn_run_id: 'turn-1',
-		project_id: 'project-1',
-		items: [
-			{
-				kind: 'document',
-				id: 'doc-1',
-				label: 'Founder Call Parse',
-				tier: 'full',
-				p: 0.8,
-				pinned: false,
-				sections: ['Budget']
-			}
-		],
-		counts: { full: 1, summary: 0, checked: 20 },
-		elapsed_ms: 400
-	} as const;
-
-	it('attaches a visible selection to its turn', () => {
+	it('is a silent receipt: nothing renders and assistant text is flushed as for any event', () => {
 		const h = createHarness();
-		const attach = vi.fn();
-		h.deps.attachContextSelection = attach;
-		h.handler(selection as any);
-		expect(attach).toHaveBeenCalledTimes(1);
-		expect(attach.mock.calls[0]![0]).toMatchObject({
-			client_turn_id: 'client-turn-1',
-			items: [{ id: 'doc-1', tier: 'full', sections: ['Budget'] }]
-		});
-	});
-
-	it('ignores shadow receipts and malformed payloads', () => {
-		const h = createHarness();
-		const attach = vi.fn();
-		h.deps.attachContextSelection = attach;
-		h.handler({ ...selection, visible: false } as any);
-		h.handler({ ...selection, items: 'nope' } as any);
-		h.handler({ type: 'context_selection' } as any);
-		expect(attach).not.toHaveBeenCalled();
+		h.handler({ type: 'text_delta', content: 'partial' });
+		h.handler({
+			type: 'context_selection',
+			version: 1,
+			mode: 'on',
+			visible: true,
+			items: []
+		} as any);
+		expect(h.calls.flushAssistantText).toBe(1);
+		expect(h.calls.addCreatedEntitiesMessage).toHaveLength(0);
+		expect(h.snapshot.error).toBeNull();
 	});
 });

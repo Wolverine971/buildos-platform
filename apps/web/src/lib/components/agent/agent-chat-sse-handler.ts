@@ -24,12 +24,10 @@ import type {
 	AgentTimingSummary,
 	ChatContextType,
 	ChatSession,
-	ContextSelectionEventV1,
 	ContextShiftPayload,
 	ContextUsageSnapshot,
 	SkillActivityEvent
 } from '@buildos/shared-types';
-import { parseContextSelectionEventV1 } from '@buildos/shared-types';
 import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type {
 	ActivityEntry,
@@ -431,9 +429,6 @@ export interface SSEHandlerDeps {
 
 	/** Document change cards (diff + Undo) appended at the end of a turn that edited documents. */
 	addDocumentChangesMessage?(changes: DocumentChangeReceipt[]): void;
-
-	/** "Working from" chips: attach a turn's context selection to its user message. */
-	attachContextSelection?(selection: ContextSelectionEventV1): void;
 
 	isDev?: boolean;
 }
@@ -886,11 +881,10 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				thinking.upsertSkillActivity(event);
 				return;
 
-			case 'context_selection': {
-				const selection = parseContextSelectionEventV1(event);
-				if (selection?.visible) deps.attachContextSelection?.(selection);
+			// The worker's context-finder receipt. It is not rendered (the "Working from" chips
+			// were removed 2026-09-25); it stays in chat_turn_events for measurement.
+			case 'context_selection':
 				return;
-			}
 
 			case 'context_shift':
 				if (event.context_shift) {
