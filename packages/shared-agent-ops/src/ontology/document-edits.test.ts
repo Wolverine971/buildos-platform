@@ -545,16 +545,19 @@ describe('tasker 98 review fixes', () => {
 			.join('\n');
 		expect(before.length).toBeGreaterThan(180_000);
 
-		// Before the fix this took ~25s: one full Markdown parse per changed run.
+		// Before the fix this took ~25s: one full Markdown parse per changed run. Coverage
+		// instrumentation slows this ~9x (18s in CI), so the budget scales but still fails
+		// the old quadratic path (~225s instrumented).
+		const budgetMs = process.env.VITEST_COVERAGE ? 60_000 : 2_000;
 		let started = performance.now();
 		const summary = summarizeDocumentChange({ ...IDS, before, after });
-		expect(performance.now() - started).toBeLessThan(2_000);
+		expect(performance.now() - started).toBeLessThan(budgetMs);
 		expect(summary?.lines_added).toBeGreaterThan(1_000);
 		expect(summary?.revert_patch).toBeNull();
 
 		started = performance.now();
 		expect(createDocumentRevertPatch({ ...IDS, before, after })).toBeNull();
-		expect(performance.now() - started).toBeLessThan(2_000);
+		expect(performance.now() - started).toBeLessThan(budgetMs);
 	});
 
 	it('still carries a working Undo patch for a small edit in a long document', () => {

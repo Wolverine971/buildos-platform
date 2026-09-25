@@ -391,7 +391,7 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest",
 		"test:run": "vitest run",
-		"test:coverage": "vitest run --coverage"
+		"test:coverage": "VITEST_COVERAGE=1 vitest run --coverage"
 	},
 	"dependencies": {
 		"@buildos/shared-types": "workspace:*",
