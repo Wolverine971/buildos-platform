@@ -9,7 +9,9 @@
  * $1.70 on unbiased/pareto against a $0.50 approval).
  */
 export const GATE_MODEL_RUN_COST_USD: Record<string, number> = {
-	'deepseek/deepseek-v4.1-flash': 0.29,
+	// Full 13-case x3 prod battery, model + judge, from the OpenRouter credits
+	// delta on 2026-09-25 (the old 0.29 predated the judge double-count fix).
+	'deepseek/deepseek-v4.1-flash': 0.24,
 	'unbiased/pareto': 1.66
 };
 export const DEFAULT_GATE_ALLOWED_MODELS = ['deepseek/deepseek-v4.1-flash'];

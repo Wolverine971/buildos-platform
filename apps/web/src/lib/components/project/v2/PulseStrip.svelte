@@ -581,7 +581,7 @@
 									{#if mode === 'workspace'}
 										<time
 											datetime={tile.when.toISOString()}
-											class="shrink-0 text-2xs text-muted-foreground"
+											class="stamp shrink-0 text-2xs text-muted-foreground"
 										>
 											{relativeTime(tile.when)}
 										</time>
@@ -593,7 +593,7 @@
 									<span class="capitalize">{tile.entityType}</span>
 									{#if mode !== 'workspace'}
 										<span class="mx-1 text-muted-foreground/50">·</span>
-										<span>{relativeTime(tile.when)}</span>
+										<span class="stamp">{relativeTime(tile.when)}</span>
 									{/if}
 								</p>
 							</div>
@@ -701,7 +701,7 @@
 									{#if mode === 'workspace'}
 										<time
 											datetime={tile.when.toISOString()}
-											class="shrink-0 text-2xs text-muted-foreground"
+											class="stamp shrink-0 text-2xs text-muted-foreground"
 										>
 											{relativeTime(tile.when)}
 										</time>
@@ -715,7 +715,7 @@
 									<span class="capitalize">{tile.entityType}</span>
 									{#if mode !== 'workspace'}
 										<span class="mx-1 text-muted-foreground/50">·</span>
-										<span>{relativeTime(tile.when)}</span>
+										<span class="stamp">{relativeTime(tile.when)}</span>
 									{/if}
 									{#if tile.source && sourceLabel(tile.source)}
 										<span class="mx-1 text-muted-foreground/50">·</span>

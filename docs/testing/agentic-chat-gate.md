@@ -67,8 +67,13 @@ before deploying, then run the battery (approval required) right after the deplo
 - **Quote the model and its measured cost.** Cost is set by the production acting model (the
   Railway `agentic-chat-worker` env `AGENTIC_CHAT_OPENROUTER_MODEL`, reported by the free
   `--preflight-only`), plus the judge. `assertGateModelAllowed` refuses models outside
-  `AGENTIC_GATE_ALLOWED_MODELS` (default DeepSeek V4.1 Flash). Measured on 2026-09-24:
-  6 cases × 3 repetitions = $0.36 ($0.18 model + $0.18 judge).
+  `AGENTIC_GATE_ALLOWED_MODELS` (default DeepSeek V4.1 Flash). Measured on 2026-09-25:
+  the full 13 cases × 3 repetitions = **$0.24** real spend (OpenRouter credits delta;
+  cases 2 + 10 × 3 = $0.054). The judge uses the same OpenRouter key as production, so older
+  reports that listed the key's delta as "judge" (for example "$0.36 = $0.18 model + $0.18
+  judge") double-counted the model spend. `prod-battery.json` now reports `productionModelUsd`,
+  `judgeUsd` (key delta minus model spend when the key is shared), `judgeKeySharedWithProduction`
+  and `totalUsd`.
 - **Check OpenRouter credits before and after.** The delta is the real cost. An exhausted
   balance returns HTTP 402 at stream start, which is recorded as a generic
   `provider_stream_error`.

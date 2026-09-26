@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	LegacyCalendarReadError,
 	createAgentRunCalendarPort,
+	createLegacyGoogleCalendarClient,
 	createLegacyGoogleCalendarReader
 } from './agent-run-calendar-port';
 
@@ -185,5 +186,146 @@ describe('legacy Google Calendar reader', () => {
 			if (previous.id !== undefined) process.env.PRIVATE_GOOGLE_CLIENT_ID = previous.id;
 			if (previous.legacyId !== undefined) process.env.GOOGLE_CLIENT_ID = previous.legacyId;
 		}
+	});
+});
+
+describe('legacy Google Calendar client (writes)', () => {
+	/** A Calendar API double: each method is a spy the test can override. */
+	function fakeCalendar(overrides: Record<string, Record<string, unknown>> = {}) {
+		const api = {
+			events: {
+				insert: vi.fn(async () => ({ data: { id: 'g-1', htmlLink: 'https://cal/g-1' } })),
+				get: vi.fn(async () => ({
+					data: { id: 'g-1', summary: 'Old', start: { dateTime: 'x' } }
+				})),
+				update: vi.fn(async () => ({ data: { id: 'g-1', htmlLink: 'https://cal/g-1' } })),
+				delete: vi.fn(async () => ({})),
+				...overrides.events
+			},
+			calendars: {
+				insert: vi.fn(async () => ({ data: { id: 'proj-cal@group' } })),
+				patch: vi.fn(async () => ({})),
+				delete: vi.fn(async () => ({})),
+				...overrides.calendars
+			},
+			calendarList: {
+				list: vi.fn(async () => ({
+					data: { items: [{ id: 'primary@x', summary: 'Me', accessRole: 'owner' }] }
+				})),
+				patch: vi.fn(async () => ({})),
+				...overrides.calendarList
+			}
+		};
+		return api;
+	}
+	const client = (api: ReturnType<typeof fakeCalendar>) =>
+		createLegacyGoogleCalendarClient(
+			{ admin: {}, userId: USER_ID },
+			{ calendar: async () => api as never }
+		);
+
+	it('creates on primary with the wall-clock time and zone the web client sends', async () => {
+		const api = fakeCalendar();
+		await expect(
+			client(api).createStandaloneEvent(USER_ID, {
+				summary: 'Dentist',
+				start: new Date('2026-09-10T15:00:00Z'),
+				end: new Date('2026-09-10T16:00:00Z'),
+				timeZone: 'America/New_York'
+			})
+		).resolves.toEqual({ eventId: 'g-1', eventLink: 'https://cal/g-1' });
+		expect(api.events.insert).toHaveBeenCalledWith({
+			calendarId: 'primary',
+			requestBody: {
+				summary: 'Dentist',
+				description: undefined,
+				start: { dateTime: '2026-09-10T11:00:00', timeZone: 'America/New_York' },
+				end: { dateTime: '2026-09-10T12:00:00', timeZone: 'America/New_York' },
+				colorId: undefined
+			}
+		});
+	});
+
+	it('updates by merging onto the stored Google event', async () => {
+		const api = fakeCalendar();
+		await client(api).updateCalendarEvent(USER_ID, {
+			event_id: 'g-1',
+			calendar_id: 'proj-cal@group',
+			summary: 'New'
+		});
+		expect(api.events.update).toHaveBeenCalledWith({
+			calendarId: 'proj-cal@group',
+			eventId: 'g-1',
+			requestBody: { id: 'g-1', summary: 'New', start: { dateTime: 'x' } }
+		});
+	});
+
+	it('treats an event Google already removed as deleted', async () => {
+		const api = fakeCalendar({
+			events: { delete: vi.fn(async () => Promise.reject({ code: 410 })) }
+		});
+		await expect(
+			client(api).deleteCalendarEvent(USER_ID, { event_id: 'g-1' })
+		).resolves.toMatchObject({ success: true, already_missing: true });
+	});
+
+	it('maps a revoked grant to reconnect_required on writes and project calendars', async () => {
+		const revoked = vi.fn(async () =>
+			Promise.reject({ response: { status: 401, data: { error: 'invalid_grant' } } })
+		);
+		const api = fakeCalendar({ events: { insert: revoked }, calendars: { insert: revoked } });
+		const created = await client(api)
+			.createStandaloneEvent(USER_ID, {
+				summary: 'x',
+				start: new Date('2026-09-10T15:00:00Z'),
+				end: new Date('2026-09-10T16:00:00Z')
+			})
+			.catch((error: unknown) => error);
+		expect((created as LegacyCalendarReadError).code).toBe('reconnect_required');
+		const project = await client(api)
+			.createProjectCalendar(USER_ID, { name: 'Launch' })
+			.catch((error: unknown) => error);
+		expect((project as LegacyCalendarReadError).code).toBe('reconnect_required');
+	});
+
+	it('reports other project-calendar failures as data, like the web client', async () => {
+		const api = fakeCalendar({
+			calendars: { patch: vi.fn(async () => Promise.reject(new Error('quota'))) }
+		});
+		await expect(
+			client(api).updateCalendarProperties(USER_ID, 'proj-cal@group', { summary: 'x' })
+		).resolves.toEqual({ success: false, error: 'quota' });
+		await expect(
+			client(fakeCalendar()).createProjectCalendar(USER_ID, { name: 'Launch', colorId: '7' })
+		).resolves.toEqual({ success: true, calendarId: 'proj-cal@group' });
+	});
+
+	it('refuses a user other than the one it is bound to', async () => {
+		const api = fakeCalendar();
+		await expect(
+			client(api).deleteCalendarEvent('someone-else', { event_id: 'g-1' })
+		).rejects.toThrow('outside its binding');
+		expect(api.events.delete).not.toHaveBeenCalled();
+	});
+
+	it('reports not_connected without a grant, before any write', async () => {
+		const admin = {
+			from: vi.fn(() => {
+				const builder: any = {
+					select: () => builder,
+					eq: () => builder,
+					maybeSingle: async () => ({ data: null, error: null })
+				};
+				return builder;
+			})
+		};
+		const error = await createLegacyGoogleCalendarClient({
+			admin,
+			userId: USER_ID,
+			credentials: { clientId: 'id', clientSecret: 'secret' }
+		})
+			.createProjectCalendar(USER_ID, { name: 'Launch' })
+			.catch((caught: unknown) => caught);
+		expect((error as LegacyCalendarReadError).code).toBe('not_connected');
 	});
 });

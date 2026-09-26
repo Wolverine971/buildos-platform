@@ -212,7 +212,6 @@
 
 <svelte:head><title>Workflow lab · BuildOS</title></svelte:head>
 
-<!-- Solid page surface: the app frame's brushed-aluminum texture should not show through. -->
 <div class="min-h-[calc(100dvh-5rem)] bg-background">
 	<main
 		class="mx-auto flex w-full flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 {review

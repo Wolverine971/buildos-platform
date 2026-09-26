@@ -58,7 +58,7 @@
 		datetime={project.updated_at}
 		title={updatedTitle}
 		aria-label={updatedLabel}
-		class="justify-self-end whitespace-nowrap text-xs tabular-nums text-muted-foreground"
+		class="stamp justify-self-end whitespace-nowrap text-xs text-muted-foreground"
 	>
 		{compactUpdatedLabel}
 	</time>

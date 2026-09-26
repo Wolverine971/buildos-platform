@@ -30,6 +30,8 @@ export default {
 				// Core semantic tokens (paper + ink + accent)
 				background: hslVar('--background'),
 				foreground: hslVar('--foreground'),
+				// The app frame each page (a sheet of --background) lies on
+				bench: hslVar('--bench'),
 				border: {
 					DEFAULT: hslVar('--border'),
 					// 3:1 boundary for inputs/controls (WCAG 1.4.11); plain border is decorative

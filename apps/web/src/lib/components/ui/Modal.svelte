@@ -768,7 +768,7 @@
 							{/if}
 
 							{#if showCloseButton && !persistent}
-								<!-- Inkprint close button with brushed-alum texture -->
+								<!-- Inkprint close button (a key: lip + press, see .tx-button) -->
 								<button
 									type="button"
 									onclick={attemptClose}

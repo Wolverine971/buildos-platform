@@ -854,7 +854,7 @@
 				<p class="mt-1 flex min-w-0 items-baseline gap-2 text-xs text-muted-foreground">
 					<span class="micro-label shrink-0 text-accent">Up next</span>
 					<span class="truncate" title={nextEntry.title}>{nextEntry.title}</span>
-					<span class="shrink-0 text-xs tabular-nums">{nextEntry.timeLabel}</span>
+					<span class="shrink-0 text-xs stamp">{nextEntry.timeLabel}</span>
 				</p>
 			{/if}
 
@@ -1020,9 +1020,7 @@
 								size="sm"
 								icon={Send}
 								loading={captureLoading}
-								disabled={!captureText.trim() ||
-									captureVoiceBusy ||
-									captureLoading}
+								disabled={!captureText.trim() || captureVoiceBusy || captureLoading}
 							>
 								Structure my first project
 							</Button>
@@ -1057,9 +1055,7 @@
 						<Button
 							onclick={submitCapture}
 							loading={captureLoading}
-							disabled={!captureText.trim() ||
-								captureVoiceBusy ||
-								captureLoading}
+							disabled={!captureText.trim() || captureVoiceBusy || captureLoading}
 							variant="ghost"
 							size="sm"
 							class="shrink-0 px-2 text-accent [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
@@ -1143,7 +1139,7 @@
 						<h2 class="text-sm font-semibold tracking-tight text-foreground">
 							Schedule
 						</h2>
-						<span class="text-xs tabular-nums text-muted-foreground"
+						<span class="text-xs stamp text-muted-foreground"
 							>{agenda.schedule.length}</span
 						>
 					</div>
@@ -1152,7 +1148,7 @@
 							{#if index === nowMarkerIndex}
 								<div class="flex items-center gap-2" aria-hidden="true">
 									<div
-										class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium tabular-nums text-accent"
+										class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium stamp text-accent"
 									>
 										{fmtTime(new Date(nowMs).toISOString())}
 									</div>
@@ -1203,7 +1199,7 @@
 						{#if nowMarkerIndex === agenda.schedule.length}
 							<div class="flex items-center gap-2" aria-hidden="true">
 								<div
-									class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium tabular-nums text-accent"
+									class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium stamp text-accent"
 								>
 									{fmtTime(new Date(nowMs).toISOString())}
 								</div>
@@ -1220,7 +1216,7 @@
 						<h2 class="text-sm font-semibold tracking-tight text-foreground">
 							Anytime today
 						</h2>
-						<span class="text-xs tabular-nums text-muted-foreground"
+						<span class="text-xs stamp text-muted-foreground"
 							>{agenda.anytime.length}</span
 						>
 					</div>

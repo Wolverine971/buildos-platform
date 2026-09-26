@@ -210,7 +210,7 @@
 													>{entry.actor_label}</span
 												>
 											</span>
-											<span class="shrink-0"
+											<span class="stamp shrink-0"
 												>· {relativeTime(entry.latest_at)}</span
 											>
 										</div>

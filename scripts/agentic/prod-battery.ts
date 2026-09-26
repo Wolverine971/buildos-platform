@@ -102,6 +102,26 @@ async function readDeployed() {
 }
 
 /** The acting model the production worker is configured with; the cost allowlist applies to it. */
+/**
+ * Whether the judge's OpenRouter key is the one production bills to. When it
+ * is (true on 2026-09-25), the key's usage delta already contains the
+ * production model spend, so reporting that delta as "judge" double-counts it.
+ */
+function judgeKeyIsProductionKey(judgeKey: string): boolean | null {
+	try {
+		const raw = execFileSync(
+			'railway',
+			['variables', '--service', 'agentic-chat-worker', '--json'],
+			{ cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+		);
+		const productionKey = (JSON.parse(raw) as Record<string, string>)
+			.PRIVATE_OPENROUTER_API_KEY;
+		return productionKey?.trim() ? productionKey.trim() === judgeKey : null;
+	} catch {
+		return null;
+	}
+}
+
 function readProductionActingModel(): string {
 	if (process.env.AGENTIC_PROD_BATTERY_ACTING_MODEL?.trim())
 		return process.env.AGENTIC_PROD_BATTERY_ACTING_MODEL.trim();
@@ -430,15 +450,30 @@ async function main() {
 			`llm_usage_logs?select=total_cost_usd&user_id=eq.${userId}&created_at=gte.${encodeURIComponent(runSince)}`
 		)) as Array<{ total_cost_usd: number | null }>;
 		const judgeUsageAfter = await openRouterUsage(judgeKey);
+		const productionModelUsd = usage.reduce(
+			(sum, row) => sum + (Number(row.total_cost_usd) || 0),
+			0
+		);
+		const keyDeltaUsd =
+			judgeUsageBefore === null || judgeUsageAfter === null
+				? null
+				: judgeUsageAfter - judgeUsageBefore;
+		const sharedKey = judgeKeyIsProductionKey(judgeKey);
+		// On a shared key the delta is judge + this run's production spend (+ any
+		// real user traffic during the run), so it is the run's total, not the
+		// judge's. Unknown sharing reports no judge split rather than a guess.
+		const judgeUsd =
+			keyDeltaUsd === null || sharedKey === null
+				? null
+				: sharedKey
+					? Math.max(0, keyDeltaUsd - productionModelUsd)
+					: keyDeltaUsd;
 		evidence.cost = {
-			productionModelUsd: Number(
-				usage.reduce((sum, row) => sum + (Number(row.total_cost_usd) || 0), 0).toFixed(4)
-			),
+			productionModelUsd: Number(productionModelUsd.toFixed(4)),
 			productionModelCalls: usage.length,
-			judgeUsd:
-				judgeUsageBefore === null || judgeUsageAfter === null
-					? null
-					: Number((judgeUsageAfter - judgeUsageBefore).toFixed(4))
+			judgeUsd: judgeUsd === null ? null : Number(judgeUsd.toFixed(4)),
+			judgeKeySharedWithProduction: sharedKey,
+			totalUsd: judgeUsd === null ? null : Number((productionModelUsd + judgeUsd).toFixed(4))
 		};
 		evidence.summary = scorecard.summary;
 		evidence.failures = failures;

@@ -503,7 +503,293 @@ describe('worker calendar write port', () => {
 	});
 });
 
+describe('legacy single-grant users', () => {
+	/** Source-aware services for a user with no active write target. */
+	function servicesWithoutTarget(hasActiveTarget: () => Promise<boolean> = async () => false) {
+		return () =>
+			({
+				write: {
+					createStandaloneEvent: vi.fn(async () => {
+						throw new Error('source-aware writer must not run for a legacy user');
+					}),
+					updateEvent: vi.fn(),
+					deleteEvent: vi.fn()
+				},
+				targets: { hasActiveTarget: vi.fn(hasActiveTarget) },
+				projectResources: {},
+				credentials: {},
+				sources: {},
+				read: {}
+			}) as never;
+	}
+	function legacyClient(overrides: Record<string, unknown> = {}) {
+		return {
+			createStandaloneEvent: vi.fn(async () => ({ eventId: 'g-1' })),
+			updateCalendarEvent: vi.fn(async () => ({ success: true, event_id: 'g-1' })),
+			deleteCalendarEvent: vi.fn(async () => ({ success: true, event_id: 'g-1' })),
+			listUserCalendars: vi.fn(),
+			createProjectCalendar: vi.fn(),
+			deleteProjectCalendar: vi.fn(),
+			updateCalendarProperties: vi.fn(),
+			...overrides
+		};
+	}
+	const grantError = (code: string) =>
+		Object.assign(new Error(`Legacy Google Calendar read unavailable: ${code}`), {
+			name: 'LegacyCalendarReadError',
+			code
+		});
+
+	it('routes the ontology write through the singleton grant when no source exists', async () => {
+		const legacy = legacyClient();
+		let wiring: { sourceAware: boolean; legacyCalendar: unknown } | null = null;
+		const createEvent = vi.fn(async () => {
+			await (wiring!.legacyCalendar as ReturnType<typeof legacyClient>).createStandaloneEvent(
+				USER_ID,
+				{}
+			);
+			return { event: { id: EVENT_ID } };
+		});
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({
+				users: [{ data: { timezone: 'UTC' }, error: null }],
+				onto_events: [syncedEventRow()]
+			}),
+			options: {
+				services: servicesWithoutTarget(),
+				serviceOptions: { env: {} },
+				legacyCalendar: () => legacy as never,
+				createAccess: () => fakeAccess(),
+				createEventSync: (input) => {
+					wiring = input;
+					return { createEvent } as never;
+				}
+			}
+		});
+
+		await expect(port.execute(request())).resolves.toMatchObject({
+			ok: true,
+			synced: true,
+			google_event_id: 'google-abc'
+		});
+		expect(wiring!.sourceAware).toBe(false);
+		expect(legacy.createStandaloneEvent).toHaveBeenCalledOnce();
+	});
+
+	it('keeps allowlisted, source-selecting, and connected users on the source-aware route', async () => {
+		const route = async (
+			options: Record<string, unknown>,
+			args: Record<string, unknown> = {}
+		) => {
+			let sourceAware: boolean | null = null;
+			const port = createWorkerAgenticChatCalendarWritePort({
+				client: fakeClient({
+					users: [{ data: { timezone: 'UTC' }, error: null }],
+					onto_events: [syncedEventRow()]
+				}),
+				options: {
+					legacyCalendar: () => legacyClient() as never,
+					createAccess: () => fakeAccess(),
+					createEventSync: (input) => {
+						sourceAware = input.sourceAware;
+						return { createEvent: async () => ({ event: { id: EVENT_ID } }) } as never;
+					},
+					...options
+				}
+			});
+			await port.execute(
+				request({
+					arguments: { title: 'Dentist', start_at: '2026-09-10T15:00:00Z', ...args }
+				})
+			);
+			return sourceAware;
+		};
+		const allowlist = {
+			PRIVATE_MULTI_CALENDAR_CONNECTIONS_ENABLED: 'true',
+			PRIVATE_MULTI_CALENDAR_CONNECTIONS_USER_IDS: USER_ID
+		};
+		expect(
+			await route({ services: servicesWithoutTarget(), serviceOptions: { env: allowlist } })
+		).toBe(true);
+		expect(
+			await route(
+				{ services: servicesWithoutTarget(), serviceOptions: { env: {} } },
+				{ calendar_source_id: PROJECT_ID }
+			)
+		).toBe(true);
+		expect(await route({ services: fakeServices(), serviceOptions: { env: {} } })).toBe(true);
+		// A target probe that fails still leaves the singleton grant its chance.
+		expect(
+			await route({
+				services: servicesWithoutTarget(async () => {
+					throw new Error('connections table unavailable');
+				}),
+				serviceOptions: { env: {} }
+			})
+		).toBe(false);
+	});
+
+	it('reports a revoked singleton grant as reconnect_required while the row survives', async () => {
+		const legacy = legacyClient({
+			createStandaloneEvent: vi.fn(async () => {
+				throw grantError('reconnect_required');
+			})
+		});
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({
+				users: [{ data: { timezone: 'UTC' }, error: null }],
+				onto_events: [
+					syncedEventRow({ props: {}, external_link: null, sync_status: 'error' })
+				]
+			}),
+			options: {
+				services: servicesWithoutTarget(),
+				serviceOptions: { env: {} },
+				legacyCalendar: () => legacy as never,
+				createAccess: () => fakeAccess(),
+				createEventSync: ({ legacyCalendar }) =>
+					({
+						createEvent: async () => {
+							// OntoEventSyncService records the failure and keeps the row.
+							await (legacyCalendar as ReturnType<typeof legacyClient>)
+								.createStandaloneEvent(USER_ID, {})
+								.catch(() => undefined);
+							return { event: { id: EVENT_ID } };
+						}
+					}) as never
+			}
+		});
+
+		await expect(port.execute(request())).resolves.toMatchObject({
+			ok: false,
+			error_code: 'reconnect_required',
+			event_id: EVENT_ID,
+			synced: false
+		});
+	});
+
+	it('updates a Google-only event on the calendar the web executor would pick', async () => {
+		const legacy = legacyClient();
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({
+				users: [{ data: { timezone: 'UTC' }, error: null }],
+				project_calendars: [{ data: { calendar_id: 'proj-cal@group' }, error: null }]
+			}),
+			options: {
+				services: servicesWithoutTarget(),
+				serviceOptions: { env: {} },
+				legacyCalendar: () => legacy as never,
+				createAccess: () => fakeAccess()
+			}
+		});
+
+		await expect(
+			port.execute(
+				request({
+					toolName: 'update_calendar_event',
+					projectId: PROJECT_ID,
+					arguments: {
+						event_id: 'g-1',
+						calendar_scope: 'project',
+						project_id: PROJECT_ID,
+						title: 'Renamed'
+					}
+				})
+			)
+		).resolves.toMatchObject({
+			ok: true,
+			google_event_id: 'g-1',
+			calendar_id: 'proj-cal@group',
+			synced: true
+		});
+		expect(legacy.updateCalendarEvent).toHaveBeenCalledWith(
+			USER_ID,
+			expect.objectContaining({
+				event_id: 'g-1',
+				calendar_id: 'proj-cal@group',
+				summary: 'Renamed'
+			})
+		);
+	});
+
+	it('reports a Google-only delete with no grant as not_connected, never deleted', async () => {
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({}),
+			options: {
+				services: servicesWithoutTarget(),
+				serviceOptions: { env: {} },
+				legacyCalendar: () =>
+					legacyClient({
+						deleteCalendarEvent: vi.fn(async () => {
+							throw grantError('not_connected');
+						})
+					}) as never,
+				createAccess: () => fakeAccess()
+			}
+		});
+
+		await expect(
+			port.execute(
+				request({ toolName: 'delete_calendar_event', arguments: { event_id: 'g-1' } })
+			)
+		).resolves.toEqual({ ok: false, error_code: 'not_connected', synced: false });
+	});
+
+	it('creates a project calendar through the singleton grant and reports a missing grant as data', async () => {
+		const createProjectCalendar = vi.fn(async () => {
+			throw grantError('not_connected');
+		});
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({
+				project_calendars: [{ data: null, error: null }],
+				onto_projects: [
+					{ data: { id: PROJECT_ID, name: 'Launch', description: null, props: {} } }
+				],
+				users: [{ data: { timezone: 'UTC' }, error: null }]
+			}),
+			options: {
+				services: servicesWithoutTarget(),
+				serviceOptions: { env: {} },
+				legacyCalendar: () => legacyClient({ createProjectCalendar }) as never,
+				createAccess: () => fakeAccess()
+			}
+		});
+
+		await expect(
+			port.execute(
+				request({
+					toolName: 'set_project_calendar',
+					projectId: PROJECT_ID,
+					arguments: { project_id: PROJECT_ID, name: 'Launch calendar' }
+				})
+			)
+		).resolves.toMatchObject({
+			ok: false,
+			error_code: 'not_connected',
+			project_id: PROJECT_ID,
+			calendar_id: null
+		});
+		expect(createProjectCalendar).toHaveBeenCalledWith(
+			USER_ID,
+			expect.objectContaining({ name: 'Launch calendar', timeZone: 'UTC' })
+		);
+	});
+});
+
 describe('calendar write failure classification', () => {
+	it('maps the singleton-grant reason codes into the write vocabulary', () => {
+		const grant = (code: string) =>
+			Object.assign(new Error(code), { name: 'LegacyCalendarReadError', code });
+		expect(calendarWriteFailureCode(grant('not_connected'))).toBe('not_connected');
+		expect(calendarWriteFailureCode(grant('reconnect_required'))).toBe('reconnect_required');
+		expect(calendarWriteFailureCode(grant('credentials_unreadable'))).toBe(
+			'credentials_unreadable'
+		);
+		expect(calendarWriteFailureCode(grant('credentials_not_configured'))).toBe(
+			'not_configured'
+		);
+		expect(calendarWriteFailureCode(grant('something_else'))).toBeNull();
+	});
 	it('maps every dead-grant shape to reconnect_required and env gaps to not_configured', () => {
 		expect(
 			calendarWriteFailureCode(

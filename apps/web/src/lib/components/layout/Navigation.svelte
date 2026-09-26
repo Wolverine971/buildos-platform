@@ -792,7 +792,7 @@
 	aria-label="Main navigation"
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-[100] bg-card border-b border-border shadow-ink transition-all duration-200 motion-reduce:transition-none {navHidden
+	class="sticky top-0 z-[100] bg-bench bench-grain transition-all duration-200 motion-reduce:transition-none {navHidden
 		? '-translate-y-full'
 		: 'translate-y-0'}"
 >
@@ -868,17 +868,12 @@
 								title={item.label}
 								class="relative inline-flex items-center px-2 xl:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded-md transition-all duration-200 whitespace-nowrap
 								{currentPath === item.href
-									? 'text-accent bg-muted'
-									: 'text-muted-foreground hover:text-foreground hover:bg-muted'}
+									? 'text-accent bench-well'
+									: 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === item.href ? 'animate-pulse motion-reduce:animate-none' : ''}"
 							>
-								<!-- Underline indicator for active route -->
-								{#if currentPath === item.href}
-									<div
-										class="absolute bottom-0 left-1 right-1 h-0.5 rounded-full bg-accent"
-									></div>
-								{/if}
+								<!-- The active route sits down in the bench (bench-well). -->
 								<Icon
 									class="w-4 h-4 lg:mr-1 xl:mr-1.5 flex-shrink-0 {currentPath ===
 									item.href

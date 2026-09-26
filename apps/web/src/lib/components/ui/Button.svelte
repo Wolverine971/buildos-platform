@@ -55,23 +55,22 @@
 	};
 
 	// Variant classes - Inkprint design system
-	// Tactile buttons with brushed-alum texture and subtle shadows
+	// Keys: .tx-button (inkprint.css) owns the lip, press depth, and spring release, so
+	// variants don't set shadow/translate utilities that would override it.
 	const variantClasses = {
 		primary: `
 			bg-accent text-accent-foreground border border-accent font-semibold tracking-tight
-			hover:bg-accent/90 hover:shadow-ink-strong
-			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-ring focus:ring-offset-1
+			hover:bg-accent/90
+			focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink tx-button relative
+			tx-button relative tx-button-accent
 		`,
 		secondary: `
 			bg-foreground text-background border border-foreground font-semibold tracking-tight
-			hover:bg-foreground/90 hover:shadow-ink-strong
-			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-ring focus:ring-offset-1
+			hover:bg-foreground/90
+			focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink tx-button relative
+			tx-button relative tx-button-ink
 		`,
 		ghost: `
 			bg-transparent text-muted-foreground border border-transparent font-semibold tracking-tight
@@ -81,43 +80,38 @@
 		`,
 		danger: `
 			bg-destructive text-destructive-foreground border border-destructive font-semibold tracking-tight
-			hover:bg-destructive/90 hover:shadow-ink-strong
-			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-destructive focus:ring-offset-1
+			hover:bg-destructive/90
+			focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink tx-button relative
+			tx-button relative tx-button-destructive
 		`,
 		warning: `
 			bg-warning text-warning-foreground border border-warning font-semibold tracking-tight
-			hover:bg-warning/90 hover:shadow-ink-strong
-			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-warning focus:ring-offset-1
+			hover:bg-warning/90
+			focus-visible:ring-2 focus-visible:ring-warning focus-visible:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink tx-button relative
+			tx-button relative tx-button-warning
 		`,
 		outline: `
 			bg-card text-foreground border border-border font-semibold tracking-tight
 			hover:bg-muted hover:border-accent hover:text-accent
-			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-ring focus:ring-offset-1
+			focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink tx-button relative
+			tx-button relative
 		`,
 		accent: `
 			bg-card text-accent border border-accent/30 font-semibold tracking-tight
 			hover:bg-accent/10 hover:border-accent/50 hover:text-accent
-			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-ring focus:ring-offset-1
+			focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink tx-button relative
+			tx-button relative
 		`,
 		success: `
 			bg-success text-success-foreground border border-success font-semibold tracking-tight
-			hover:bg-success/90 hover:shadow-ink-strong
-			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-success focus:ring-offset-1
+			hover:bg-success/90
+			focus-visible:ring-2 focus-visible:ring-success focus-visible:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink tx-button relative
+			tx-button relative tx-button-success
 		`
 	};
 

@@ -1297,10 +1297,21 @@
 			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
 		},
 		{
-			"file": "src/lib/components/ontology/document-agent-mutation.ts",
+			"file": "src/lib/components/profile/profile-tabs.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["resolveDocumentAgentMutationAction"]
+			"exports": [
+				"BASE_PROFILE_TAB_IDS",
+				"getVisibleProfileTabIds",
+				"resolveProfileTab",
+				"getProfileTabHref"
+			]
+		},
+		{
+			"file": "src/lib/components/profile/settings-navigation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["SETTINGS_GROUPS", "getSettingsDestinations", "getSettingsGroupLabel"]
 		},
 		{
 			"file": "src/lib/components/projects/project-list.ts",
@@ -1315,6 +1326,12 @@
 				"formatProjectUpdatedLabel",
 				"formatProjectUpdatedTitle"
 			]
+		},
+		{
+			"file": "src/lib/components/ontology/document-agent-mutation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["resolveDocumentAgentMutationAction"]
 		},
 		{
 			"file": "src/lib/components/project/entity-modal-data.ts",
@@ -1410,23 +1427,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/profile/profile-tabs.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"BASE_PROFILE_TAB_IDS",
-				"getVisibleProfileTabIds",
-				"resolveProfileTab",
-				"getProfileTabHref"
-			]
-		},
-		{
-			"file": "src/lib/components/profile/settings-navigation.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["SETTINGS_GROUPS", "getSettingsDestinations", "getSettingsGroupLabel"]
-		},
-		{
 			"file": "src/lib/components/ui/rich-markdown-editor-voice.ts",
 			"type": "component",
 			"components": [],
@@ -1491,6 +1491,19 @@
 			]
 		},
 		{
+			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"presentCycleKind",
+				"formatCycleSchedule",
+				"presentCycleCadence",
+				"presentCycleStatus",
+				"formatCycleTimestamp",
+				"presentCycle"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/doc-tree/tree-images.ts",
 			"type": "component",
 			"components": [],
@@ -1506,6 +1519,17 @@
 			"type": "component",
 			"components": [],
 			"exports": ["createDragDropState"]
+		},
+		{
+			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_FRESHNESS_CONTEXT_KEY",
+				"ProjectFreshnessState",
+				"setProjectFreshnessContext",
+				"getProjectFreshnessContext"
+			]
 		},
 		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
@@ -1538,34 +1562,10 @@
 			]
 		},
 		{
-			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_FRESHNESS_CONTEXT_KEY",
-				"ProjectFreshnessState",
-				"setProjectFreshnessContext",
-				"getProjectFreshnessContext"
-			]
-		},
-		{
 			"file": "src/lib/components/project/v2/board-a11y.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
-		},
-		{
-			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"presentCycleKind",
-				"formatCycleSchedule",
-				"presentCycleCadence",
-				"presentCycleStatus",
-				"formatCycleTimestamp",
-				"presentCycle"
-			]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -1815,27 +1815,27 @@
 		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/notifications/notification-preview.ts",
-		"src/lib/components/ontology/document-agent-mutation.ts",
+		"src/lib/components/profile/profile-tabs.ts",
+		"src/lib/components/profile/settings-navigation.ts",
 		"src/lib/components/projects/project-list.ts",
+		"src/lib/components/ontology/document-agent-mutation.ts",
 		"src/lib/components/project/entity-modal-data.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-mutation-refresh.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
-		"src/lib/components/profile/profile-tabs.ts",
-		"src/lib/components/profile/settings-navigation.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
+		"src/lib/components/profile/cycles/cycle-presenter.ts",
 		"src/lib/components/ontology/doc-tree/tree-images.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
-		"src/lib/components/profile/cycles/cycle-presenter.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",

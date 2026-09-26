@@ -115,14 +115,6 @@
 	}
 }
 
-/* Dark mode: subtle texture breaks the flat void, adds material feel */
-.dark body {
-	background-image: url('/textures/noise-lines.png');
-	background-size: 200px;
-	background-repeat: repeat;
-	background-blend-mode: overlay;
-}
-
 @layer components {
 	/* Prose styling for markdown content.
 	   No prose-slate: colors come from the Inkprint typography config

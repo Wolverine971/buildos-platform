@@ -2,9 +2,11 @@
 
 # BuildOS Inkprint Design System
 
-> **Version:** 1.1
-> **Last Updated:** 2026-06-15
+> **Version:** 1.2
+> **Last Updated:** 2026-09-25
 > **Status:** Active - Primary Design System
+>
+> v1.2 (2026-09-25): Bench & sheet replaces the brushed-aluminum page texture (§8.3); `.tx-button` is now a key (lip, press, spring release) with no image; `.micro-label` is stamped in the system monospace and `.stamp` marks timestamps/counts (§7).
 >
 > v1.1 (2026-06-15): §6 color tokens updated to current WCAG-tuned values (deep accent, goldenrod warning, sage/teal status, `border-strong`); §6.4 status table now uses semantic tokens not raw palette; §7 typography adds `text-2xs` + `.micro-label` guidance; §4.8 radius vocabulary. See `DESIGN_AUDIT_2026-06-12.md`.
 
@@ -514,7 +516,7 @@ Use `font-notes` for longform thinking, journaling, scratchpad.
 | Micro / chips   | `text-2xs`             | `font-medium`   | Timestamps, counts       |
 | Micro-label     | `.micro-label`         | (built-in)      | Uppercase eyebrow labels |
 
-**Never use arbitrary font sizes** (`text-[10px]`, `text-[0.6rem]`, etc.). The scale stops at `text-2xs` (0.6875rem / 11px) — anything smaller is unreadable. Uppercase metadata labels use the `.micro-label` class (0.65rem / 0.15em tracking, defined in `inkprint.css`), never a hand-rolled `text-[…] uppercase tracking-[…]` stack.
+**Never use arbitrary font sizes** (`text-[10px]`, `text-[0.6rem]`, etc.). The scale stops at `text-2xs` (0.6875rem / 11px) — anything smaller is unreadable. Uppercase metadata labels use the `.micro-label` class (0.6875rem, system monospace, 0.12em tracking, defined in `inkprint.css`), never a hand-rolled `text-[…] uppercase tracking-[…]` stack. Timestamps, counts, and IDs use `.stamp` (system monospace + tabular numerals); sentences stay in the UI font.
 
 > Mobile dominance: ensure one clearly dominant element per view. Don't let a project/page title collapse to `text-sm` (= a list-row) on mobile, and avoid inverted responsive sizes (`text-sm sm:text-xs`). Exception: form controls use `text-base sm:text-sm` deliberately — the `text-base` floor stops iOS from zooming on focus.
 
@@ -554,10 +556,23 @@ p-6   /* 24px - spacious */
 
 | Level         | Use                  | Classes                                        |
 | ------------- | -------------------- | ---------------------------------------------- |
+| 0. Bench      | App frame + top nav  | `bg-bench` (root layout; nav sits on it)       |
 | 1. Background | Page background      | `bg-background`                                |
 | 2. Card/Panel | Main content sheets  | `bg-card border-border shadow-ink`             |
 | 3. Inset      | Sub-surface in cards | `bg-background border-border shadow-ink-inner` |
 | 4. Overlay    | Modals, popovers     | `bg-card shadow-ink-strong tx tx-frame`        |
+
+**Bench & sheet.** The root layout paints the darker `--bench`; each app page is a lighter
+sheet (`#main-content.app-sheet`: `bg-background`, rounded, `--sheet-edge` hairline + contact
+shadow) lying on it. Pages never need their own background to hide the frame. The active nav
+tab is a `.bench-well` (a recess in the bench), not an underline. The bench (root layout + nav) carries
+`.bench-grain`, a faint inline-SVG noise that never sits under text. Solidity comes from tone,
+edges, and how controls press — not from image textures.
+
+**Keys.** `.tx-button` makes a control a key: a 2px lip (`--key-lip`, darkened from the fill
+via `.tx-button-accent|ink|destructive|warning|success`), a top highlight, a 2px press, and a
+spring release. It owns `box-shadow`/`transform`, so don't add `shadow-*` or
+`active:translate-*` utilities to a key; focus rings still compose in.
 
 ### 8.4 Shadow Utilities
 

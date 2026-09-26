@@ -854,9 +854,7 @@
 								>
 									{visibleSectionLabel}
 								</h2>
-								<span
-									class="text-xs font-medium tabular-nums text-muted-foreground"
-								>
+								<span class="text-xs font-medium stamp text-muted-foreground">
 									{filteredProjects.length}
 								</span>
 								<span

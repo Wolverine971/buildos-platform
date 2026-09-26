@@ -4,14 +4,20 @@
 // `update_calendar_event`, `delete_calendar_event`, `set_project_calendar`. It is
 // the write twin of `calendar-read-port.ts`: the same source-aware provider
 // services (`createWorkerGoogleCalendarServices`), the same lazy construction,
-// the same "no legacy single-OAuth fallback" rule.
+// and (since 2026-09-25) the same legacy single-grant fallback.
 //
-// Four properties this file must keep:
+// Routing, per turn: a user on the multi-calendar allowlist, a call that names
+// a `calendar_source_id`, or a user with an active source-aware write target
+// writes source-aware; everyone else writes through their singleton grant
+// (`user_calendar_tokens`) via the shared legacy client, the way the web
+// executor always has. Until 2026-09-25 the worker had no legacy route, so every
+// calendar write from chat failed for users who never moved to connections.
+//
+// Five properties this file must keep:
 //
 //  1. Google is called DIRECTLY, with no queue hop. `OntoEventSyncService` is
-//     constructed WITHOUT `enqueueSync` and WITHOUT `legacyCalendar`, so a
-//     project-scoped write falls through to the synchronous Google path
-//     (A4 contract).
+//     constructed WITHOUT `enqueueSync`, so a project-scoped write falls
+//     through to the synchronous Google path (A4 contract), on either route.
 //  2. Nothing here reads OAuth environment variables at construction time. A
 //     worker deployed without the Calendar OAuth env still boots; the write then
 //     reports `not_configured` as structured data, never a boot crash.
@@ -23,12 +29,20 @@
 //  4. Attendees and reminders are NEVER sent to Google. The reviewed argument
 //     table cannot express them and the table normalizer strips them; this file
 //     never builds either field.
+//  5. A missing, unreadable, or revoked singleton grant is data, not a thrown
+//     tool error: `not_connected`, `credentials_unreadable`,
+//     `reconnect_required`, or `not_configured`, never a success receipt.
 //
 // A 401 / `invalid_grant` from the provider is not a thrown tool error. It comes
 // back as `{ ok: false, error_code: 'reconnect_required', connection_id }` with
 // the same `client_action` envelope the Gmail connection handoff uses, and the
 // ontology row survives with `synced: false` and `sync_error` recorded.
 
+import {
+	type LegacyGoogleCalendarClient,
+	createLegacyGoogleCalendarClient
+} from '@buildos/shared-agent-ops/calendar/agent-run-calendar-port';
+import { isMultiCalendarUserAllowed } from '@buildos/shared-agent-ops/calendar/google-calendar-feature';
 import { GoogleCalendarConnectionError } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
 import {
 	type OntoEventCalendarWriter,
@@ -84,7 +98,19 @@ const RECONNECT_REASON_CODES = new Set([
 	'source_not_found'
 ]);
 
-export type AgenticChatCalendarWriteErrorCodeV1 = 'reconnect_required' | 'not_configured';
+export type AgenticChatCalendarWriteErrorCodeV1 =
+	| 'reconnect_required'
+	| 'not_configured'
+	| 'not_connected'
+	| 'credentials_unreadable';
+
+/** The shared legacy client's reason codes, in this file's vocabulary. */
+const LEGACY_GRANT_FAILURE_CODES = new Map<string, AgenticChatCalendarWriteErrorCodeV1>([
+	['not_connected', 'not_connected'],
+	['credentials_unreadable', 'credentials_unreadable'],
+	['credentials_not_configured', 'not_configured'],
+	['reconnect_required', 'reconnect_required']
+]);
 
 /**
  * Classify a provider failure without depending on `instanceof` surviving a
@@ -97,6 +123,9 @@ export function calendarWriteFailureCode(
 		| { code?: unknown; name?: unknown; message?: unknown; status?: unknown }
 		| null
 		| undefined;
+	if (candidate?.name === 'LegacyCalendarReadError' && typeof candidate.code === 'string') {
+		return LEGACY_GRANT_FAILURE_CODES.get(candidate.code) ?? null;
+	}
 	const code =
 		error instanceof GoogleCalendarConnectionError
 			? error.code
@@ -127,16 +156,22 @@ export type WorkerAgenticChatCalendarWritePortOptions = {
 	/** Test seam: supply the composed provider services instead of building them. */
 	services?: () => WorkerGoogleCalendarServices;
 	serviceOptions?: WorkerGoogleCalendarServicesOptions;
+	/** Test seam: supply the singleton-grant client instead of building it. */
+	legacyCalendar?: () => LegacyGoogleCalendarClient;
 	/** Test seam: supply the shared ontology-event write service. */
 	createEventSync?: (input: {
 		client: SupabaseClient<Database>;
 		services: WorkerGoogleCalendarServices;
 		calendarWriter: OntoEventCalendarWriter;
+		sourceAware: boolean;
+		legacyCalendar: LegacyGoogleCalendarClient | null;
 	}) => OntoEventSyncService;
 	/** Test seam: supply the shared project-calendar write service. */
 	createProjectCalendarService?: (input: {
 		client: SupabaseClient<Database>;
 		services: WorkerGoogleCalendarServices;
+		sourceAware: boolean;
+		legacyCalendar: LegacyGoogleCalendarClient | null;
 	}) => ProjectCalendarService;
 	/** Test seam: supply the project/actor authorization port. */
 	createAccess?: (input: {
@@ -187,6 +222,8 @@ class CalendarWriteExecution {
 	private access: WorkerAgenticChatToolAccessAdapter | null = null;
 	private eventSync: OntoEventSyncService | null = null;
 	private projectCalendars: ProjectCalendarService | null = null;
+	private legacyCalendar: LegacyGoogleCalendarClient | null = null;
+	private sourceAware: Promise<boolean> | null = null;
 	/** Set by the writer proxy when a provider call failed on the connection. */
 	private capturedFailure: AgenticChatCalendarWriteErrorCodeV1 | null = null;
 
@@ -221,32 +258,107 @@ class CalendarWriteExecution {
 	}
 
 	/**
-	 * The shared ontology write service, wired for direct Google writes: a
-	 * source-aware writer, the source-aware project-calendar gateway, and NO
-	 * `enqueueSync` / `legacyCalendar`, so project scope writes synchronously.
+	 * Which route this turn's writes take (see the file header). The web
+	 * executor commits an allowlisted user or an explicit source selector to
+	 * source-aware writes and otherwise asks whether any active write target
+	 * exists; the worker has no allowlist env, so the target probe is what keeps
+	 * a connected multi-calendar user off the legacy route. A probe that throws
+	 * reads as "no source", so the singleton grant still gets its chance.
 	 */
-	private requireEventSync(): OntoEventSyncService {
+	private resolveSourceAware(): Promise<boolean> {
+		this.sourceAware ??= (async () => {
+			const env = this.options.serviceOptions?.env ?? process.env;
+			if (isMultiCalendarUserAllowed(this.request.userId, env)) return true;
+			if (optionalUuidArg(this.request.arguments.calendar_source_id, 'calendar_source_id')) {
+				return true;
+			}
+			try {
+				return await this.requireServices().targets.hasActiveTarget(
+					this.request.userId,
+					'write'
+				);
+			} catch {
+				return false;
+			}
+		})();
+		return this.sourceAware;
+	}
+
+	/** The singleton-grant client, with dead-grant failures captured like the writer's. */
+	private requireLegacyCalendar(): LegacyGoogleCalendarClient {
+		if (this.legacyCalendar) return this.legacyCalendar;
+		const client = this.options.legacyCalendar
+			? this.options.legacyCalendar()
+			: createLegacyGoogleCalendarClient({
+					admin: this.client,
+					userId: this.request.userId
+				});
+		const capture = this.captureFailure.bind(this);
+		this.legacyCalendar = {
+			createStandaloneEvent: capture(client.createStandaloneEvent.bind(client)),
+			updateCalendarEvent: capture(client.updateCalendarEvent.bind(client)),
+			deleteCalendarEvent: capture(client.deleteCalendarEvent.bind(client)),
+			listUserCalendars: capture(client.listUserCalendars.bind(client)),
+			createProjectCalendar: capture(client.createProjectCalendar.bind(client)),
+			deleteProjectCalendar: capture(client.deleteProjectCalendar.bind(client)),
+			updateCalendarProperties: capture(client.updateCalendarProperties.bind(client))
+		};
+		return this.legacyCalendar;
+	}
+
+	/**
+	 * The shared ontology write service, wired for direct Google writes and NO
+	 * `enqueueSync`, so project scope writes synchronously. Source-aware turns
+	 * get the source-aware writer and project gateway; legacy turns get the
+	 * singleton-grant client for both, which is exactly the web wiring.
+	 */
+	private async requireEventSync(): Promise<OntoEventSyncService> {
 		if (this.eventSync) return this.eventSync;
+		const sourceAware = await this.resolveSourceAware();
 		const services = this.requireServices();
 		const calendarWriter = this.captureConnectionFailures(services.write);
+		const legacyCalendar = sourceAware ? null : this.requireLegacyCalendar();
+		const projectCalendars = await this.requireProjectCalendars();
 		this.eventSync = this.options.createEventSync
-			? this.options.createEventSync({ client: this.client, services, calendarWriter })
+			? this.options.createEventSync({
+					client: this.client,
+					services,
+					calendarWriter,
+					sourceAware,
+					legacyCalendar
+				})
 			: new OntoEventSyncService(this.client as unknown as TypedSupabaseClient, {
 					calendarWriter,
-					sourceProjectCalendarService: this.requireProjectCalendars(),
+					sourceRoutingEnabled: () => sourceAware,
+					...(sourceAware
+						? { sourceProjectCalendarService: projectCalendars }
+						: {
+								projectCalendarService: projectCalendars,
+								legacyCalendar: legacyCalendar!
+							}),
 					appBaseUrl: this.options.appBaseUrl ?? process.env.PUBLIC_APP_URL
 				});
 		return this.eventSync;
 	}
 
-	private requireProjectCalendars(): ProjectCalendarService {
+	private async requireProjectCalendars(): Promise<ProjectCalendarService> {
 		if (this.projectCalendars) return this.projectCalendars;
+		const sourceAware = await this.resolveSourceAware();
 		const services = this.requireServices();
+		const legacyCalendar = sourceAware ? null : this.requireLegacyCalendar();
 		this.projectCalendars = this.options.createProjectCalendarService
-			? this.options.createProjectCalendarService({ client: this.client, services })
-			: new ProjectCalendarService(this.client as unknown as TypedSupabaseClient, {
-					projectResourceService: services.projectResources
-				});
+			? this.options.createProjectCalendarService({
+					client: this.client,
+					services,
+					sourceAware,
+					legacyCalendar
+				})
+			: new ProjectCalendarService(
+					this.client as unknown as TypedSupabaseClient,
+					sourceAware
+						? { projectResourceService: services.projectResources }
+						: { legacyCalendar: legacyCalendar! }
+				);
 		return this.projectCalendars;
 	}
 
@@ -256,19 +368,21 @@ class CalendarWriteExecution {
 	 * how the tool still learns that the failure was a dead grant rather than a
 	 * transient provider error.
 	 */
-	private captureConnectionFailures(writer: OntoEventCalendarWriter): OntoEventCalendarWriter {
-		const capture = <TArgs extends unknown[], TResult>(
-			fn: (...args: TArgs) => Promise<TResult>
-		) => {
-			return async (...args: TArgs): Promise<TResult> => {
-				try {
-					return await fn(...args);
-				} catch (error) {
-					this.capturedFailure ??= calendarWriteFailureCode(error);
-					throw error;
-				}
-			};
+	private captureFailure<TArgs extends unknown[], TResult>(
+		fn: (...args: TArgs) => Promise<TResult>
+	): (...args: TArgs) => Promise<TResult> {
+		return async (...args: TArgs): Promise<TResult> => {
+			try {
+				return await fn(...args);
+			} catch (error) {
+				this.capturedFailure ??= calendarWriteFailureCode(error);
+				throw error;
+			}
 		};
+	}
+
+	private captureConnectionFailures(writer: OntoEventCalendarWriter): OntoEventCalendarWriter {
+		const capture = this.captureFailure.bind(this);
 		return {
 			createStandaloneEvent: capture(writer.createStandaloneEvent.bind(writer)),
 			updateEvent: capture(writer.updateEvent.bind(writer)),
@@ -334,8 +448,8 @@ class CalendarWriteExecution {
 				? { type: 'project', id: projectId }
 				: { type: 'actor', id: actorId };
 		const inferredTimezone = !start.hadExplicitTimezone || Boolean(end?.assumedTimezone);
-		const created = await this.runProvider('create_calendar_event', () =>
-			this.requireEventSync().createEvent(this.request.userId, {
+		const created = await this.runProvider('create_calendar_event', async () =>
+			(await this.requireEventSync()).createEvent(this.request.userId, {
 				orgId: null,
 				projectId,
 				owner,
@@ -430,8 +544,8 @@ class CalendarWriteExecution {
 			(start && !start.hadExplicitTimezone) || (end && !end.hadExplicitTimezone);
 		const actorId = await this.requireAccess().getActorId();
 
-		await this.runProvider('update_calendar_event', () =>
-			this.requireEventSync().updateEvent(this.request.userId, {
+		await this.runProvider('update_calendar_event', async () =>
+			(await this.requireEventSync()).updateEvent(this.request.userId, {
 				eventId: ontoEventId,
 				...(args.title !== undefined ? { title: requireText(args.title, 'title') } : {}),
 				...(Object.hasOwn(args, 'description')
@@ -485,6 +599,40 @@ class CalendarWriteExecution {
 				? timezone
 				: undefined;
 
+		if (!(await this.resolveSourceAware())) {
+			const calendarId = await this.resolveLegacyCalendarId();
+			const updated = await this.runProvider('update_calendar_event', () =>
+				this.requireLegacyCalendar().updateCalendarEvent(this.request.userId, {
+					event_id: providerEventId,
+					calendar_id: calendarId,
+					start_time: start?.iso,
+					end_time: end?.iso,
+					...(args.title !== undefined
+						? { summary: requireText(args.title, 'title') }
+						: {}),
+					...(Object.hasOwn(args, 'description')
+						? { description: optionalText(args.description, 'description') ?? '' }
+						: {}),
+					...(Object.hasOwn(args, 'location')
+						? { location: optionalText(args.location, 'location') ?? '' }
+						: {}),
+					timeZone: zone
+				})
+			);
+			if (this.capturedProviderOutcome()) return this.capturedProviderOutcome()!;
+			const receipt = (updated ?? {}) as { event_id?: unknown; event_link?: unknown };
+			return {
+				ok: true,
+				event_id: null,
+				google_event_id:
+					typeof receipt.event_id === 'string' ? receipt.event_id : providerEventId,
+				html_link: typeof receipt.event_link === 'string' ? receipt.event_link : null,
+				calendar_id: calendarId,
+				scope: resolveScope(args.calendar_scope, 'user'),
+				synced: true
+			};
+		}
+
 		const updated = await this.runProvider('update_calendar_event', () =>
 			this.requireServices().write.updateEvent({
 				userId: this.request.userId,
@@ -529,8 +677,8 @@ class CalendarWriteExecution {
 
 		const existing = await this.loadAuthorizedEvent(ontoEventId, 'delete_calendar_event');
 		const actorId = await this.requireAccess().getActorId();
-		await this.runProvider('delete_calendar_event', () =>
-			this.requireEventSync().deleteEvent(this.request.userId, {
+		await this.runProvider('delete_calendar_event', async () =>
+			(await this.requireEventSync()).deleteEvent(this.request.userId, {
 				eventId: ontoEventId,
 				syncToCalendar: optionalBoolean(args.sync_to_calendar, 'sync_to_calendar'),
 				activityLog: {
@@ -546,6 +694,29 @@ class CalendarWriteExecution {
 	private async deleteProviderEvent(): Promise<Record<string, unknown>> {
 		const args = this.request.arguments;
 		const providerEventId = requireText(args.event_id, 'event_id');
+		if (!(await this.resolveSourceAware())) {
+			const calendarId = await this.resolveLegacyCalendarId();
+			const deleted = await this.runProvider('delete_calendar_event', () =>
+				this.requireLegacyCalendar().deleteCalendarEvent(this.request.userId, {
+					event_id: providerEventId,
+					calendar_id: calendarId,
+					send_notifications: false
+				})
+			);
+			if (this.capturedProviderOutcome()) return this.capturedProviderOutcome()!;
+			return {
+				ok: true,
+				event_id: null,
+				google_event_id: providerEventId,
+				html_link: null,
+				calendar_id: calendarId,
+				scope: resolveScope(args.calendar_scope, 'user'),
+				synced: true,
+				deleted: true,
+				already_missing:
+					(deleted as { already_missing?: unknown })?.already_missing === true
+			};
+		}
 		const result = await this.runProvider('delete_calendar_event', () =>
 			this.requireServices().write.deleteEvent({
 				userId: this.request.userId,
@@ -603,7 +774,7 @@ class CalendarWriteExecution {
 			.eq('user_id', this.request.userId)
 			.maybeSingle();
 
-		const service = this.requireProjectCalendars();
+		const service = await this.requireProjectCalendars();
 		const outcome = await this.runProvider('set_project_calendar', () =>
 			!existing || action === 'create'
 				? service.createProjectCalendarRecord({
@@ -642,7 +813,9 @@ class CalendarWriteExecution {
 
 	private async readSyncMode(projectId: string): Promise<string> {
 		try {
-			return await this.requireProjectCalendars().getProjectCalendarSyncMode(projectId);
+			return await (
+				await this.requireProjectCalendars()
+			).getProjectCalendarSyncMode(projectId);
 		} catch {
 			return 'actor_projection';
 		}
@@ -720,6 +893,47 @@ class CalendarWriteExecution {
 			...(calendarSourceId ? { calendarSourceId } : {}),
 			...(calendarId ? { calendarId } : {})
 		};
+	}
+
+	/**
+	 * The singleton grant's calendar for a provider-only edit, resolved the way
+	 * the web executor does: a project scope maps to that project's calendar
+	 * (after a membership check), an explicit calendar id is used as given, and
+	 * anything else is the user's primary calendar.
+	 */
+	private async resolveLegacyCalendarId(): Promise<string> {
+		const args = this.request.arguments;
+		const toolName = this.request.toolName;
+		const scope = resolveScope(args.calendar_scope, 'user');
+		const calendarId = normalizeCalendarId(args.calendar_id);
+		if (scope === 'project') {
+			const projectId = optionalUuidArg(args.project_id, 'project_id');
+			if (!projectId) {
+				throw knownFailure(
+					`${toolName}_invalid_arguments`,
+					'project_id is required when calendar_scope is project'
+				);
+			}
+			this.assertFenceAgrees(projectId);
+			await this.assertProjectWriteAccess(projectId);
+			const { data } = await this.client
+				.from('project_calendars')
+				.select('calendar_id')
+				.eq('project_id', projectId)
+				.eq('user_id', this.request.userId)
+				.maybeSingle();
+			if (!data?.calendar_id) {
+				throw knownFailure(`${toolName}_invalid_arguments`, 'Project calendar not found');
+			}
+			return data.calendar_id;
+		}
+		if (scope === 'calendar_id' && !calendarId) {
+			throw knownFailure(
+				`${toolName}_invalid_arguments`,
+				'calendar_id must be a valid Google Calendar ID'
+			);
+		}
+		return calendarId ?? 'primary';
 	}
 
 	/** The reviewed row already fenced the turn; a widened target never runs. */

@@ -245,12 +245,14 @@
 	let isAuthRoute = $derived(($page.route?.id ?? '').startsWith('/auth'));
 	let showNavigation = $derived(!isAuthRoute);
 	let showFooter = $derived(!isAuthRoute && !isAdminRoute);
+	// App pages are a sheet (bg-background) lying on the bench; admin and auth bring their own.
+	let isSheetRoute = $derived(!isAdminRoute && !isAuthRoute);
 	let mainContentClasses = $derived(
 		isAdminRoute
 			? 'relative flex flex-1 w-full min-h-0'
 			: isAuthRoute
 				? 'relative flex flex-1 w-full flex-col'
-				: 'rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-7xl p-px'
+				: 'app-sheet relative mx-auto my-2 sm:my-4 flex-1 w-full sm:w-[calc(100%-2rem)] max-w-7xl bg-background sm:rounded-xl'
 	);
 	let needsOnboarding = $derived(Boolean(user && !completedOnboarding));
 	let showOnboardingModal = $derived.by(() => {
@@ -1042,7 +1044,9 @@
 <IOSSplashScreens />
 
 <div
-	class="layout-root flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden bg-background text-foreground transition-colors"
+	class="layout-root flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden {isSheetRoute
+		? 'bg-bench bench-grain'
+		: 'bg-background'} text-foreground transition-colors"
 >
 	<!-- Skip to main content link for accessibility -->
 	<a
@@ -1150,15 +1154,14 @@
 </div>
 
 <style>
-	/* Brushed aluminum background - switches based on theme */
 	#main-content {
-		background-image: url('/textures/brushed-alum.png');
-		background-size: 500px 500px;
-		background-repeat: repeat;
 		outline: none;
 	}
 
-	:global(.dark) #main-content {
-		background-image: url('/textures/brushed-alum-dark.png');
+	/* The sheet's edge and contact shadow. clip (not hidden) rounds the page corners without
+	   creating a scroll container, so position: sticky keeps working. */
+	.app-sheet {
+		box-shadow: var(--sheet-edge);
+		overflow: clip;
 	}
 </style>

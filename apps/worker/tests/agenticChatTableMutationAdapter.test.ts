@@ -2633,6 +2633,28 @@ describe('table rows calendar writes', () => {
 		).toMatchObject({ stripped_fields: ['attendees', 'reminders'] });
 	});
 
+	it('tells the model a missing singleton grant is not connected, not a server gap', () => {
+		const context = {
+			toolName: 'delete_calendar_event',
+			input: { arguments: {} },
+			args: {},
+			projectId: null,
+			expected: {}
+		} as never;
+		const receipt = AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1.calendar_event(
+			{ ok: false, error_code: 'not_connected', synced: false },
+			context
+		);
+		expect(receipt).toMatchObject({
+			ok: false,
+			error_code: 'not_connected',
+			requires_user_action: false
+		});
+		expect(String((receipt as { message?: unknown }).message)).toContain(
+			'Google Calendar is not connected'
+		);
+	});
+
 	it('never widens past the admitted project fence', async () => {
 		const calendarWrites = calendarPort({ ok: true, event_id: EVENT_ID, synced: true });
 

@@ -471,9 +471,16 @@ function calendarFailureReceipt(
 }
 
 function calendarFailureMessage(errorCode: string): string {
-	return errorCode === 'reconnect_required'
-		? 'Google Calendar must be reconnected before this change can reach Google. The BuildOS record was saved.'
-		: 'Google Calendar is not configured in this environment, so nothing was sent to Google.';
+	switch (errorCode) {
+		case 'reconnect_required':
+			return 'Google Calendar must be reconnected before this change can reach Google. The BuildOS record was saved.';
+		case 'not_connected':
+			return `Google Calendar is not connected, so nothing was sent to Google. Connect it from Profile > Calendar (${CALENDAR_RECONNECT_PATH}).`;
+		case 'credentials_unreadable':
+			return 'BuildOS could not read the stored Google Calendar credential, so nothing was sent to Google.';
+		default:
+			return 'Google Calendar is not configured in this environment, so nothing was sent to Google.';
+	}
 }
 
 function calendarEventMessage(

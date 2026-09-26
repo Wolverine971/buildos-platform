@@ -58,6 +58,16 @@
 	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
 	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
 	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+
+	/* Bench & sheet: the app frame is a darker bench; each page is a lighter sheet lying
+	   on it, held apart by a crisp edge and a small contact shadow. */
+	--bench: 40 9% 90%;
+	--sheet-edge:
+		0 0 0 1px rgba(var(--tx-ink-rgb), 0.08), 0 1px 1px rgba(var(--tx-ink-rgb), 0.04),
+		0 12px 24px -14px rgba(var(--tx-ink-rgb), 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+	/* Faint grain on the bench only (inline SVG noise, 0 image requests). It never sits under
+	   text: the sheet covers it. Grain carries no meaning, unlike Inkprint's grid/dots. */
+	--bench-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .dark {
@@ -110,6 +120,13 @@
 	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
 	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
 	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+
+	/* Dark bench & sheet */
+	--bench: 30 5% 7%;
+	--sheet-edge:
+		0 0 0 1px rgba(255, 255, 255, 0.07), 0 16px 32px -16px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	--bench-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ============================================
@@ -250,38 +267,144 @@
 }
 
 /* ============================================
-   Button Texture - Brushed Aluminum
+   Keys - raised controls that press down and spring back
    ============================================ */
 
-/* tx-button - brushed metal texture for buttons */
+/* A key sits on a 2px lip (a darker edge of its own color) under a top highlight. Pressing
+   drops it onto the lip; releasing springs it back with a slight overshoot. */
+:root {
+	--key-lip: rgba(24, 24, 27, 0.17);
+	--key-hl: rgba(255, 255, 255, 0.35);
+	--key-drop: rgba(24, 24, 27, 0.22);
+}
+
+.dark {
+	--key-lip: rgba(0, 0, 0, 0.75);
+	--key-hl: rgba(255, 255, 255, 0.07);
+	--key-drop: rgba(0, 0, 0, 0.6);
+}
+
+/* Solid keys take a lip darkened from their own fill. */
+.tx-button-accent {
+	--key-lip: color-mix(in srgb, hsl(var(--accent)) 60%, black);
+}
+.tx-button-ink {
+	--key-lip: color-mix(in srgb, hsl(var(--foreground)) 70%, black);
+}
+.tx-button-destructive {
+	--key-lip: color-mix(in srgb, hsl(var(--destructive)) 60%, black);
+}
+.tx-button-warning {
+	--key-lip: color-mix(in srgb, hsl(var(--warning)) 60%, black);
+}
+.tx-button-success {
+	--key-lip: color-mix(in srgb, hsl(var(--success)) 60%, black);
+}
+
 .tx-button {
 	position: relative;
-	overflow: hidden;
 }
 
-.tx-button::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-	z-index: 1;
-	border-radius: inherit;
-	background-image: url('/textures/brushed-alum.png');
-	background-size: 100px 100px;
-	background-repeat: repeat;
-	opacity: 0.08;
-	mix-blend-mode: overlay;
+/* (0,3,0) specificity outranks Tailwind's single-state shadow/ring utilities; the ring
+   variables are composed in so focus rings still draw. */
+.tx-button:not(:disabled):not([aria-disabled='true']) {
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000),
+		var(--tw-ring-shadow, 0 0 #0000),
+		inset 0 1px 0 var(--key-hl),
+		0 2px 0 var(--key-lip),
+		0 3px 6px -2px var(--key-drop);
+	transition:
+		transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+		box-shadow 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+		background-color 100ms ease,
+		border-color 100ms ease,
+		color 100ms ease,
+		opacity 100ms ease;
+	/* Spring release where linear() is supported; the declaration above is the fallback. */
+	transition:
+		transform 420ms
+			linear(
+				0,
+				0.23 5%,
+				0.62 10%,
+				0.93 15%,
+				1.1 20%,
+				1.14 25%,
+				1.11 30%,
+				1.03 38%,
+				0.98 46%,
+				0.975 55%,
+				0.99 65%,
+				1.003 80%,
+				1
+			),
+		box-shadow 420ms
+			linear(
+				0,
+				0.23 5%,
+				0.62 10%,
+				0.93 15%,
+				1.1 20%,
+				1.14 25%,
+				1.11 30%,
+				1.03 38%,
+				0.98 46%,
+				0.975 55%,
+				0.99 65%,
+				1.003 80%,
+				1
+			),
+		background-color 100ms ease,
+		border-color 100ms ease,
+		color 100ms ease,
+		opacity 100ms ease;
 }
 
-.dark .tx-button::before {
-	opacity: 0.12;
-	mix-blend-mode: soft-light;
+.tx-button:not(:disabled):not([aria-disabled='true']):active {
+	transform: translateY(2px);
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000),
+		var(--tw-ring-shadow, 0 0 #0000),
+		inset 0 1px 2px rgba(0, 0, 0, 0.12),
+		0 0 0 var(--key-lip),
+		0 1px 1px var(--key-drop);
+	transition-duration: 60ms;
+	transition-timing-function: ease-out;
 }
 
-/* Ensure button content stays above texture */
-.tx-button > * {
-	position: relative;
-	z-index: 2;
+@media (prefers-reduced-motion: reduce) {
+	.tx-button:not(:disabled):not([aria-disabled='true']) {
+		transition-duration: 0ms;
+	}
+	.tx-button:not(:disabled):not([aria-disabled='true']):active {
+		transform: none;
+	}
+}
+
+/* The bench surface: tone + grain. Used by the root layout and the top nav. */
+.bench-grain {
+	background-image: var(--bench-grain);
+	background-size: 180px 180px;
+}
+
+/* ============================================
+   Bench well - a recess cut into the bench
+   ============================================ */
+
+/* The active nav tab sits down in the bench instead of being underlined. */
+.bench-well {
+	background-color: rgba(var(--tx-ink-rgb), 0.07);
+	box-shadow:
+		inset 0 1px 2px rgba(var(--tx-ink-rgb), 0.16),
+		inset 0 0 0 1px rgba(var(--tx-ink-rgb), 0.05);
+}
+
+.dark .bench-well {
+	background-color: rgba(0, 0, 0, 0.45);
+	box-shadow:
+		inset 0 1px 2px rgba(0, 0, 0, 0.7),
+		0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* ============================================
@@ -520,11 +643,23 @@
    Single source of truth — components compose `micro-label` + an optional
    `text-*` color override + `font-*` weight rather than re-inlining the longhand. */
 .micro-label {
+	/* Stamped: labels are set in the system monospace (SF Mono on Apple, 0 bytes). */
+	font-family:
+		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 	font-size: 0.6875rem;
 	line-height: 1.1;
 	text-transform: uppercase;
-	letter-spacing: 0.15em;
+	letter-spacing: 0.12em;
 	color: hsl(var(--muted-foreground));
+}
+
+/* Stamp: timestamps, counts, and IDs read as stamped metadata, not prose. Sentences stay in
+   the UI font. Compose with a text-* size when a count needs to be larger. */
+.stamp {
+	font-family:
+		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.02em;
 }
 
 /* Ensure text remains readable over textures */

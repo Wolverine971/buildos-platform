@@ -334,7 +334,7 @@
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span class="capitalize">{tile.kind}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
-									<span>{relativeTime(tile.when)}</span>
+									<span class="stamp">{relativeTime(tile.when)}</span>
 								</p>
 							</div>
 						</div>
@@ -424,7 +424,7 @@
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span class="capitalize">{tile.kind}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
-									<span>{relativeTime(tile.when)}</span>
+									<span class="stamp">{relativeTime(tile.when)}</span>
 								</p>
 							</div>
 						</div>

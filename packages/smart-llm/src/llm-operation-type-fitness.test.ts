@@ -78,7 +78,8 @@ function untaggedCalls(filePath: string): string[] {
 	return findings;
 }
 
-describe('SmartLLM operationType fitness', () => {
+// Walks every source file's AST; under CI coverage that exceeds the 5 s default.
+describe('SmartLLM operationType fitness', { timeout: 30_000 }, () => {
 	it('tags every SmartLLM call with an operationType', () => {
 		const findings = SCANNED_ROOTS.flatMap((root) => listSourceFiles(path.join(repoRoot, root)))
 			.filter((filePath) => !(path.relative(repoRoot, filePath) in EXEMPT_FILES))

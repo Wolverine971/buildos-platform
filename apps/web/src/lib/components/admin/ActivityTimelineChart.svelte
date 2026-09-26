@@ -222,7 +222,7 @@
 											</div>
 
 											<div
-												class="flex-shrink-0 text-xs text-muted-foreground"
+												class="stamp flex-shrink-0 text-xs text-muted-foreground"
 											>
 												{formatRelativeTime(activity.created_at)}
 											</div>

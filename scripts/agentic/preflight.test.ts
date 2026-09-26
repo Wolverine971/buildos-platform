@@ -11,7 +11,7 @@ test('refuses acting models outside the cost allowlist and names the known spend
 	assert.throws(() => assertGateModelAllowed({}), /must set AGENTIC_CHAT_OPENROUTER_MODEL/);
 	assert.deepEqual(
 		assertGateModelAllowed({ AGENTIC_CHAT_OPENROUTER_MODEL: 'deepseek/deepseek-v4.1-flash' }),
-		{ model: 'deepseek/deepseek-v4.1-flash', knownRunCostUsd: 0.29 }
+		{ model: 'deepseek/deepseek-v4.1-flash', knownRunCostUsd: 0.24 }
 	);
 	assert.deepEqual(
 		assertGateModelAllowed({

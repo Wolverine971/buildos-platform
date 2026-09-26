@@ -361,7 +361,7 @@
 			<!-- Freshness is useful at a glance, but stays out of the way on narrow screens. -->
 			<time
 				datetime={node.updated_at}
-				class="ml-2 hidden shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground sm:inline"
+				class="stamp ml-2 hidden shrink-0 whitespace-nowrap text-xs text-muted-foreground sm:inline"
 			>
 				Updated {formatRelativeTime(node.updated_at)}
 			</time>

@@ -9,7 +9,13 @@ import type { calendar_v3 } from 'googleapis';
 import type { OAuth2Client } from 'google-auth-library';
 import type { Database, Json } from '@buildos/shared-types';
 import { isValidUUID } from '@buildos/shared-types';
+import { format as formatDate } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import type { CalendarPort } from '../gateway/op-execution-gateway';
+import type {
+	LegacyOntoEventCalendarClient,
+	LegacyProjectCalendarClient
+} from './legacy-google-calendar.port';
 import { ensureActorId } from '../ontology/ontology-projects.service';
 import {
 	isDateOnlyAgentCalendarInput,
@@ -1930,4 +1936,228 @@ export function createLegacyGoogleCalendarReader(
 				return response.data;
 			})
 	};
+}
+
+/**
+ * The legacy singleton-grant client the shared ontology-event and
+ * project-calendar write services accept (`legacyCalendar`), built on the same
+ * grant authorization as the reader above so the worker can serve users who
+ * never moved to source-aware connections. Behavior mirrors the web
+ * `CalendarService` methods it stands in for: `primary` is the default
+ * calendar, times are sent as wall-clock `dateTime` plus `timeZone`, a
+ * delete of an event Google already removed (404/410) counts as done, and the
+ * project-calendar methods report provider failures as `{ success: false }`.
+ * A missing, unreadable, or revoked grant always throws
+ * `LegacyCalendarReadError`, before or instead of any write, so hosts can
+ * report it as structured data.
+ */
+export type LegacyGoogleCalendarClient = LegacyOntoEventCalendarClient &
+	LegacyProjectCalendarClient;
+
+export function createLegacyGoogleCalendarClient(
+	params: CreateAgentRunCalendarPortParams,
+	deps: {
+		/** Test seam: an authorized Calendar API in place of the stored grant. */
+		calendar?: () => Promise<calendar_v3.Calendar>;
+	} = {}
+): LegacyGoogleCalendarClient {
+	const port = deps.calendar ? null : new AgentRunCalendarPort(params);
+	const assertUser = (candidate: string) => {
+		if (candidate !== params.userId) {
+			throw new Error('Legacy calendar client received a userId outside its binding');
+		}
+	};
+	const call = async <T>(
+		userId: string,
+		run: (calendar: calendar_v3.Calendar) => Promise<T>
+	): Promise<T> => {
+		assertUser(userId);
+		const calendar = deps.calendar ? await deps.calendar() : await port!.authorizeLegacyRead();
+		try {
+			return await run(calendar);
+		} catch (error) {
+			if (isRevokedGrantError(error)) throw new LegacyCalendarReadError('reconnect_required');
+			throw error;
+		}
+	};
+	/** Project-calendar methods return failures as data, like the web client. */
+	const outcome = async <T extends { success: boolean }>(
+		userId: string,
+		run: (calendar: calendar_v3.Calendar) => Promise<T>,
+		fallback: string
+	): Promise<T | { success: false; error: string }> => {
+		try {
+			return await call(userId, run);
+		} catch (error) {
+			if (error instanceof LegacyCalendarReadError) throw error;
+			return { success: false, error: safeErrorMessage(error, fallback) };
+		}
+	};
+
+	return {
+		createStandaloneEvent: (userId, input) =>
+			call(userId, async (calendar) => {
+				const response = await calendar.events.insert({
+					calendarId: input.calendar_id ?? 'primary',
+					requestBody: {
+						summary: input.summary,
+						description: input.description,
+						start: legacyEventTime(input.start.toISOString(), input.timeZone),
+						end: legacyEventTime(input.end.toISOString(), input.timeZone),
+						colorId: input.colorId
+					}
+				});
+				if (!response.data.id) throw new Error('Failed to create calendar event');
+				return {
+					eventId: response.data.id,
+					eventLink: response.data.htmlLink ?? undefined
+				};
+			}),
+		updateCalendarEvent: (userId, input) =>
+			call(userId, async (calendar) => {
+				const calendarId = input.calendar_id ?? 'primary';
+				const existing = await calendar.events.get({ calendarId, eventId: input.event_id });
+				if (!existing.data) throw new Error('Event not found');
+				const requestBody: calendar_v3.Schema$Event = { ...existing.data };
+				if (input.start_time)
+					requestBody.start = legacyEventTime(input.start_time, input.timeZone);
+				if (input.end_time)
+					requestBody.end = legacyEventTime(input.end_time, input.timeZone);
+				if (input.summary !== undefined) requestBody.summary = input.summary;
+				if (input.description !== undefined) requestBody.description = input.description;
+				if (input.location !== undefined) requestBody.location = input.location;
+				const response = await calendar.events.update({
+					calendarId,
+					eventId: input.event_id,
+					requestBody
+				});
+				if (!response.data) {
+					throw new Error('Calendar API did not return updated event details');
+				}
+				return {
+					success: true,
+					event_id: response.data.id ?? undefined,
+					event_link: response.data.htmlLink ?? undefined
+				};
+			}),
+		deleteCalendarEvent: (userId, input) =>
+			call(userId, async (calendar) => {
+				const request: calendar_v3.Params$Resource$Events$Delete = {
+					calendarId: input.calendar_id ?? 'primary',
+					eventId: input.event_id
+				};
+				if (input.sendUpdates) request.sendUpdates = input.sendUpdates;
+				else request.sendNotifications = input.send_notifications ?? false;
+				try {
+					await calendar.events.delete(request);
+				} catch (error) {
+					// Google returns 410 for an event already deleted, 404 when unknown.
+					if (!isMissingEventError(error)) throw error;
+					return { success: true, event_id: input.event_id, already_missing: true };
+				}
+				return { success: true, event_id: input.event_id };
+			}),
+		listUserCalendars: (userId) =>
+			outcome(
+				userId,
+				async (calendar) => {
+					const response = await calendar.calendarList.list({
+						showHidden: false,
+						showDeleted: false
+					});
+					return {
+						success: true as const,
+						calendars: (response.data.items ?? []).map((item) => ({
+							id: item.id || '',
+							summary: item.summary || '',
+							description: item.description || undefined,
+							colorId: item.colorId || undefined,
+							primary: item.primary || undefined,
+							accessRole: item.accessRole || undefined
+						}))
+					};
+				},
+				'Failed to list calendars'
+			),
+		createProjectCalendar: (userId, input) =>
+			outcome(
+				userId,
+				async (calendar) => {
+					const response = await calendar.calendars.insert({
+						requestBody: {
+							summary: input.name,
+							...(input.description ? { description: input.description } : {}),
+							timeZone: input.timeZone || DEFAULT_TIMEZONE
+						}
+					});
+					const calendarId = response.data.id;
+					if (!calendarId)
+						throw new Error('Google Calendar did not return a calendar ID');
+					if (input.colorId) {
+						// Color lives on the calendar-list entry; a failure here is cosmetic.
+						await calendar.calendarList
+							.patch({ calendarId, requestBody: { colorId: input.colorId } })
+							.catch(() => undefined);
+					}
+					return { success: true as const, calendarId };
+				},
+				'Failed to create calendar'
+			),
+		deleteProjectCalendar: (userId, calendarId) =>
+			outcome(
+				userId,
+				async (calendar) => {
+					await calendar.calendars.delete({ calendarId });
+					return { success: true as const };
+				},
+				'Failed to delete calendar'
+			),
+		updateCalendarProperties: (userId, calendarId, updates) =>
+			outcome(
+				userId,
+				async (calendar) => {
+					const patch: calendar_v3.Schema$Calendar = {};
+					if (updates.summary) patch.summary = updates.summary;
+					if (updates.description) patch.description = updates.description;
+					if (updates.timeZone) patch.timeZone = updates.timeZone;
+					if (Object.keys(patch).length > 0) {
+						await calendar.calendars.patch({ calendarId, requestBody: patch });
+					}
+					if (updates.colorId) {
+						await calendar.calendarList.patch({
+							calendarId,
+							requestBody: { colorId: updates.colorId }
+						});
+					}
+					return { success: true as const };
+				},
+				'Failed to update calendar'
+			)
+	};
+}
+
+/** The web client's wall-clock form: local `dateTime` plus the IANA `timeZone`. */
+function legacyEventTime(iso: string, timeZone?: string): calendar_v3.Schema$EventDateTime {
+	const date = new Date(iso);
+	if (timeZone && !Number.isNaN(date.getTime())) {
+		try {
+			return {
+				dateTime: formatDate(toZonedTime(date, timeZone), "yyyy-MM-dd'T'HH:mm:ss"),
+				timeZone
+			};
+		} catch {
+			// An unusable zone falls back to the instant, as the web client does.
+		}
+	}
+	return { dateTime: date.toISOString() };
+}
+
+function isMissingEventError(error: unknown): boolean {
+	const record = error as {
+		code?: unknown;
+		status?: unknown;
+		response?: { status?: unknown };
+	} | null;
+	const status = record?.response?.status ?? record?.status ?? record?.code;
+	return [404, 410, '404', '410'].includes(status as never);
 }

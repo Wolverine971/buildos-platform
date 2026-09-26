@@ -1219,7 +1219,7 @@
 									</div>
 									<div class="flex items-center gap-1 shrink-0">
 										<span
-											class="text-2xs text-muted-foreground whitespace-nowrap"
+											class="stamp text-2xs text-muted-foreground whitespace-nowrap"
 										>
 											{formatRelativeTime(project.updated_at)}
 										</span>
@@ -1306,7 +1306,7 @@
 									</div>
 									<div class="flex items-center gap-1 shrink-0">
 										<span
-											class="text-2xs text-muted-foreground whitespace-nowrap"
+											class="stamp text-2xs text-muted-foreground whitespace-nowrap"
 										>
 											{formatRelativeTime(project.updated_at)}
 										</span>
@@ -1438,7 +1438,7 @@
 
 									<div class="flex items-center gap-1 shrink-0">
 										<span
-											class="text-2xs text-muted-foreground whitespace-nowrap"
+											class="stamp text-2xs text-muted-foreground whitespace-nowrap"
 										>
 											{formatRelativeTime(item.updated_at)}
 										</span>
@@ -1513,7 +1513,7 @@
 										</div>
 										<div class="flex items-center gap-1 shrink-0">
 											<span
-												class="text-2xs text-muted-foreground whitespace-nowrap"
+												class="stamp text-2xs text-muted-foreground whitespace-nowrap"
 											>
 												{formatRelativeTime(session.last_activity_at)}
 											</span>
