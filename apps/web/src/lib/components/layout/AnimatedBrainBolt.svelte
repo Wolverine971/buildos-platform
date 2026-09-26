@@ -18,7 +18,8 @@
 	const POSTER_SRC = '/brain-bolt-electric-poster.webp';
 	// Safari (every iOS browser) plays VP9 WebM but drops its alpha, painting a black square, so
 	// it gets HEVC-with-alpha first. Chrome and Firefox report no QuickTime support and fall
-	// through to the WebM.
+	// through to the WebM. Encode the .mov with Apple's avconvert, not ffmpeg
+	// (see brain-bolt-hevc-alpha.test.ts).
 	const ANIMATION_HEVC_SRC = '/onboarding-assets/animations/brain-bolt-electric-icon.mov';
 	const ANIMATION_WEBM_SRC = '/onboarding-assets/animations/brain-bolt-electric-icon.webm';
 
