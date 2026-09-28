@@ -7,7 +7,8 @@ export type FeatureName =
   | "freshness_radar"
   | "freshness_radar.surfaces"
   | "freshness_radar.auto_apply"
-  | "freshness_radar.inbox_cleanup";
+  | "freshness_radar.inbox_cleanup"
+  | "project_steward";
 
 export interface FeatureFlag {
   id: string;

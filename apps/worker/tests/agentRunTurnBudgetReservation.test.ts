@@ -73,6 +73,7 @@ async function driveBudgetedTurn(runBudgets: unknown) {
 		systemPrompt: 'You are a bounded research agent.',
 		userPrompt: 'Research the topic.',
 		userId: 'user-1',
+		operationType: 'agent_run_deep',
 		profile: 'balanced',
 		spendLimit,
 		onSpendReservation,

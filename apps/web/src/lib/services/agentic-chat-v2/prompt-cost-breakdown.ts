@@ -21,6 +21,8 @@ export type PromptCostBreakdown = {
 // Context; Daily Brief and Active Domain Signals no longer render.
 const LITE_SECTION_TITLE_KEYS: Record<string, string> = {
 	'Identity and Mission': 'identity_mission',
+	'Steward Charter': 'steward_charter',
+	'Live Facts': 'steward_live_facts',
 	'Capabilities, Skills, and Tools': 'capabilities_skills_tools',
 	'Current Tool Surface': 'tool_surface_dynamic',
 	'Operating Strategy': 'operating_strategy',

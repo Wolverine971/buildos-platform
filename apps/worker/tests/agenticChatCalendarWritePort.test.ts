@@ -524,7 +524,11 @@ describe('legacy single-grant users', () => {
 	}
 	function legacyClient(overrides: Record<string, unknown> = {}) {
 		return {
-			createStandaloneEvent: vi.fn(async () => ({ eventId: 'g-1' })),
+			createStandaloneEvent: vi.fn(
+				async (_userId: string, _payload: Record<string, unknown>) => ({
+					eventId: 'g-1'
+				})
+			),
 			updateCalendarEvent: vi.fn(async () => ({ success: true, event_id: 'g-1' })),
 			deleteCalendarEvent: vi.fn(async () => ({ success: true, event_id: 'g-1' })),
 			listUserCalendars: vi.fn(),

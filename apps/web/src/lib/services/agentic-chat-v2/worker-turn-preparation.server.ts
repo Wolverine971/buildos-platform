@@ -1434,7 +1434,16 @@ async function resolveTrustedPromptContext(params: {
 				userId: params.userId,
 				contextType: params.contextType,
 				entityId: params.entityId ?? undefined,
-				projectFocus: params.projectFocus ?? undefined
+				projectFocus: params.projectFocus ?? undefined,
+				// A failed stage degrades the context rather than failing the turn;
+				// log it so a steward's "not loaded" facts are traceable.
+				onError: ({ stage, error, metadata }) =>
+					logger.warn('Chat context load stage failed', {
+						stage,
+						error,
+						...metadata,
+						contextType: params.contextType
+					})
 			}),
 		// Admission may start this before its access check settles; the caller
 		// publishes the snapshot only after the check passes.

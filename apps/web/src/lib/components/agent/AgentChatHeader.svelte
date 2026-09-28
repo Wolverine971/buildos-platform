@@ -14,9 +14,11 @@
 		CheckCircle2,
 		CircleSlash
 	} from 'lucide-svelte';
+	import { untrack } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { dev } from '$app/environment';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
+	import StewardChip from './StewardChip.svelte';
 	import ChatSessionAuditActions from './ChatSessionAuditActions.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -83,6 +85,16 @@
 	}: Props = $props();
 
 	const isProjectContext = $derived.by(() => selectedContextType === 'project');
+
+	// Bumped each time a chat turn finishes, so the steward chip rereads its
+	// status and shows charter edits the turn made (one read per turn).
+	let stewardRefreshKey = $state(0);
+	let wasStreaming = false;
+	$effect(() => {
+		const streaming = isStreaming;
+		if (wasStreaming && !streaming) untrack(() => (stewardRefreshKey += 1));
+		wasStreaming = streaming;
+	});
 
 	// Mobile overflow menu — folds the secondary header actions (View / Steps /
 	// Support) behind a single "..." control so the mobile header stays clean.
@@ -378,6 +390,13 @@
 					{displayContextLabel}
 				</h2>
 			{/key}
+			{#if isProjectContext && projectId}
+				<StewardChip
+					{projectId}
+					projectName={displayContextLabel}
+					refreshKey={stewardRefreshKey}
+				/>
+			{/if}
 		{:else}
 			<!-- BuildOS with accent color -->
 			<h2 class="inline-flex items-baseline gap-[0.05em] text-sm font-bold tracking-tight">

@@ -493,7 +493,14 @@ const handlePrewarmRequest: RequestHandler = async ({
 				userId: user.id,
 				contextType,
 				entityId,
-				projectFocus
+				projectFocus,
+				onError: ({ stage, error, metadata }) =>
+					logger.warn('Chat context load stage failed', {
+						stage,
+						error,
+						...metadata,
+						contextType
+					})
 			}),
 		onWarning: (message, error) =>
 			logger.warn(message, { error, contextType, projectId, cacheKey })

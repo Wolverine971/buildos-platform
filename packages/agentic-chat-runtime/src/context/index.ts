@@ -9,3 +9,4 @@ export * from './context-models';
 export * from './focused-document-context';
 export * from './prompt-context';
 export * from './scope';
+export * from './steward-packet';

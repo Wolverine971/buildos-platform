@@ -28,6 +28,10 @@ export type LitePromptSectionKind = 'static' | 'dynamic' | 'mixed';
 //   `focus_purpose` (purpose line + brief guardrails).
 export type LitePromptSectionId =
 	| 'identity_mission'
+	// Project stewards beta: render only when the loaded project context carries
+	// an approved steward packet (steward-sections.ts).
+	| 'steward_charter'
+	| 'steward_live_facts'
 	| 'operating_strategy'
 	| 'safety_data_rules'
 	| 'dates_time'

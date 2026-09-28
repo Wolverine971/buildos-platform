@@ -116,8 +116,8 @@ export interface JSONRequestOptions {
 		minAccuracy?: number;
 		maxCost?: number;
 	};
-	// Optional context for usage tracking
-	operationType?: string;
+	// Usage tracking: every call names its operation (tasker 111).
+	operationType: string;
 	projectId?: string;
 	brainDumpId?: string;
 	taskId?: string;
@@ -150,8 +150,8 @@ export interface TextGenerationOptions {
 		minQuality?: number;
 		maxCost?: number;
 	};
-	// Optional context for usage tracking
-	operationType?: string;
+	// Usage tracking: every call names its operation (tasker 111).
+	operationType: string;
 	projectId?: string;
 	brainDumpId?: string;
 	taskId?: string;

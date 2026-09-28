@@ -370,8 +370,11 @@ export function startScheduler() {
 	});
 
 	// Complete-audit cadence remains a single daily scan; the per-user timezone
-	// fan-out applies only to light end-of-day project loops.
-	cron.schedule('0 4 * * *', async () => {
+	// fan-out applies only to light end-of-day project loops. 03:00 UTC, an hour
+	// before Eastern midnight (04:00 UTC in EDT): the audit reviews first and
+	// that night's light loop then sees no new activity since it (tasker 111).
+	// At 04:00 both fired in the same minute and read the same changes twice.
+	cron.schedule('0 3 * * *', async () => {
 		if (!PROJECT_LOOPS_ENABLED) return;
 		try {
 			const audits = await enqueueScheduledProjectAudits();

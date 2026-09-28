@@ -77,6 +77,18 @@ export const WEB_RESEARCH_RULES_INSTRUCTION = [
 	'- Cite the URLs of sources you actually used. If a lookup fails, continue with loaded context and successful results, disclose what could not be verified, and do not invent current prices or claim failed research succeeded. Do not repeat a denied query or route around its authorization check.'
 ].join('\n');
 
+/** Project stewards beta: goal and plan writes a confirmed goal shift needs. */
+const STEWARD_PLANNING_TOOL_PINS = [
+	'create_onto_goal',
+	'update_onto_goal',
+	'update_onto_plan',
+	'update_onto_milestone'
+] as const;
+
+function isStewardPrompt(promptSections: readonly JsonObject[] | undefined): boolean {
+	return (promptSections ?? []).some((section) => section.id === 'steward_charter');
+}
+
 export function appendWebResearchRules(
 	request: AgenticChatTurnProviderRequestV1
 ): AgenticChatTurnProviderRequestV1 {
@@ -300,6 +312,22 @@ export function buildBaseProviderRequest(
 		messages.push({ role: 'system', content: TOOL_EXECUTION_BATCHING_INSTRUCTION });
 	}
 	messages.push({ role: 'user', content: userMessage });
+	const toolSelectionPins = [
+		// A project image attached to this message may need naming or filing;
+		// keep that schema through relevance selection (structured, not text).
+		...(currentTurn?.attachments.some(
+			(attachment) => attachment.attachment_kind === 'onto_asset' && attachment.asset_id
+		)
+			? ['update_onto_asset']
+			: []),
+		// A steward asks before recording a goal shift, then records it on the
+		// next turn ("yes, pause the IG series"), a message Jev can't tie to goal
+		// tools. Keep them mounted whenever the prepared prompt is a steward's
+		// (its section id, structured, not text).
+		...(isStewardPrompt(input.artifact.prepared.promptSections)
+			? STEWARD_PLANNING_TOOL_PINS
+			: [])
+	];
 	return {
 		admittedTools,
 		request: {
@@ -322,13 +350,7 @@ export function buildBaseProviderRequest(
 			passRole: 'acting',
 			signal,
 			...(budget ? { budget } : {}),
-			// A project image attached to this message may need naming or filing;
-			// keep that schema through relevance selection (structured, not text).
-			...(currentTurn?.attachments.some(
-				(attachment) => attachment.attachment_kind === 'onto_asset' && attachment.asset_id
-			)
-				? { toolSelectionPins: ['update_onto_asset'] }
-				: {}),
+			...(toolSelectionPins.length > 0 ? { toolSelectionPins } : {}),
 			...(liveVisionEnabled && currentTurn?.liveVision?.requested
 				? {
 						liveVisionRequest: {

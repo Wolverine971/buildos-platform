@@ -432,7 +432,10 @@ async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {
 }
 
 type PreparedArtifactPatch = Partial<
-	Pick<TurnInputArtifactV1['prepared'], 'currentTurn' | 'toolSurface' | 'turnIntent'>
+	Pick<
+		TurnInputArtifactV1['prepared'],
+		'currentTurn' | 'promptSections' | 'toolSurface' | 'turnIntent'
+	>
 >;
 
 function withPreparedArtifactPatch(
@@ -3459,6 +3462,46 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		// relevance selection; the pin never reaches the provider client.
 		expect(selectedRequests[0]?.toolSelectionPins).toEqual(['update_onto_asset']);
 		expect(JSON.stringify(client.stream.mock.calls)).not.toContain('toolSelectionPins');
+	});
+
+	it('pins goal and plan writes through selection when the prepared prompt is a steward', async () => {
+		const selectedRequests: AgenticChatTurnProviderRequestV1[] = [];
+		const prepare = async (promptSections: JsonObject[]) => {
+			const input = executionInput();
+			input.artifact = withPreparedArtifactPatch(input.artifact, {
+				promptSections
+			});
+			const adapter = new AgenticChatTurnProviderAdapter({
+				client: clientWith([
+					{ type: 'text', content: 'Noted.' },
+					{ type: 'done', finishedReason: 'stop' }
+				]),
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+				toolSelector: {
+					select: async (value) => {
+						selectedRequests.push(value);
+						return value;
+					}
+				}
+			});
+			const invocation = await adapter.prepare({
+				executionInput: input,
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			await collect(invocation.stream());
+		};
+
+		// The section id is the structured signal; a classic prompt pins nothing.
+		await prepare([{ id: 'identity_mission' }, { id: 'steward_charter' }]);
+		await prepare([{ id: 'identity_mission' }]);
+		expect(selectedRequests[0]?.toolSelectionPins).toEqual([
+			'create_onto_goal',
+			'update_onto_goal',
+			'update_onto_plan',
+			'update_onto_milestone'
+		]);
+		expect(selectedRequests[1]?.toolSelectionPins).toBeUndefined();
 	});
 
 	it('resolves current-turn vision after preparation without persisting its signed URL', async () => {

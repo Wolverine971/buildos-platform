@@ -9,7 +9,10 @@ const ROW_NOT_FOUND = 'PGRST116';
 export const FEATURE_KEYS = {
 	timeBlocks: 'time_play' as FeatureName,
 	migrationDualWriteProjects: 'migration.dualwrite.projects' as FeatureName,
-	cyclesProfileSettings: 'cycles.profile_settings' as FeatureName
+	cyclesProfileSettings: 'cycles.profile_settings' as FeatureName,
+	// Project stewards beta: shows the steward chip and its approve/toggle API.
+	// The steward itself turns on per project once a charter is approved.
+	projectSteward: 'project_steward' as FeatureName
 } as const;
 
 /**

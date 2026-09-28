@@ -279,6 +279,7 @@ renderer run on read-only project dumps, and the rebuilt sizes match the recorde
 exactly. The 13 turns are DJ's chips-mode turns on 09-24/25; no `on` turn existed yet.
 
 **Size**
+
 - Block: mean 9.3K chars ≈ 2.4K tokens; median 9.3K; range 1.0K–16.9K.
 - The acting prompt is 15.4K tokens per pass, so the block adds about 16%.
 - The block is re-sent on every pass. Continuations build on `currentRequest`, and turns
@@ -289,6 +290,7 @@ exactly. The 13 turns are DJ's chips-mode turns on 09-24/25; no `on` turn existe
   about $0.001 for Jev. That's roughly +20% on the current $0.0093 per turn of acting cost.
 
 **Composition** (of 121K injected chars)
+
 - Record and section text: 75%.
 - Summaries: 11%.
 - Headers, ids and the note: 14%.
@@ -296,6 +298,7 @@ exactly. The 13 turns are DJ's chips-mode turns on 09-24/25; no `on` turn existe
   2.6%.
 
 **Usefulness** (judged against each question, answer and tool trace)
+
 - The model's tools read 21 project records across the 13 turns. **18 were in the full tier, 3
   in the summaries, and none were missed.**
 - **Direct hits, 7 turns, about 63% of the chars:** Rod status ×2, "where's the email", "fold
@@ -313,6 +316,7 @@ block. That savings is **not yet measured**. Compare tool calls and passes per t
 `on` turns against these 13.
 
 **Cheap fixes, in value order**
+
 1. **Skip when the request needs a live tool rather than records** (the inbox cases). Use one
    extra Jev `noul` in the entity stage; a structured decision, no keyword matching.
 2. **Drop a subsection when its parent section is already selected** (2.6%).

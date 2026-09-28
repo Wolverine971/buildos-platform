@@ -7,7 +7,11 @@ export const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
 // 4 (2026-09-21): snapshots gained `userDisplayName`; bumping retires cached
 // snapshots that predate it so the identity line names the user on the next
 // turn instead of whenever the old snapshot happens to expire.
-export const FASTCHAT_CONTEXT_CACHE_VERSION = 4;
+// 5 (2026-09-26, project stewards beta): project snapshots can carry a
+// `steward` packet. Local dev and production share one database, so a
+// snapshot written by code that predates stewards must not satisfy code that
+// renders them (the steward would silently vanish until the snapshot expired).
+export const FASTCHAT_CONTEXT_CACHE_VERSION = 5;
 
 export type FastChatPromptContextSnapshot = {
 	contextType: ChatContextType;

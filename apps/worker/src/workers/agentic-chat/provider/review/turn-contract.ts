@@ -142,6 +142,9 @@ export function buildTurnContractReviewRequest(
  */
 export const ACTING_PROMPT_SECTION_TITLES = Object.freeze([
 	'Identity and Mission',
+	// Project stewards beta: the charter is actor instructions (dropped like
+	// Identity); Live Facts is loaded context the reviewer resolves ids from.
+	'Steward Charter',
 	'Capabilities, Skills, and Tools',
 	'Operating Strategy',
 	'Final Response Contract',
@@ -152,6 +155,7 @@ export const ACTING_PROMPT_SECTION_TITLES = Object.freeze([
 	'Project Starter Profile',
 	'Project Creation Boundaries',
 	'Project Start Here',
+	'Live Facts',
 	'Current Focus and Purpose',
 	'Location and Loaded Context',
 	'Project Knowledge Map',
@@ -170,6 +174,7 @@ export const ACTING_PROMPT_SECTION_TITLES = Object.freeze([
  */
 export const REVIEWER_EVIDENCE_SECTION_TITLES = Object.freeze([
 	'Project Start Here',
+	'Live Facts',
 	'Current Focus and Purpose',
 	'Location and Loaded Context',
 	'Project Knowledge Map',

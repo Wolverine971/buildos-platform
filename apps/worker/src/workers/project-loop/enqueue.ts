@@ -81,19 +81,17 @@ async function unresolvedBriefHasNoNewEvidence(projectId: string): Promise<boole
 
 	const producedAt = briefRun.finished_at ?? briefRun.created_at;
 	if (!producedAt) return false;
-	const { data: newerSignals, error: signalError } = await supabase
-		.from('project_review_signals')
-		.select('id')
-		.eq('project_id', projectId)
-		.gt('last_seen_at', producedAt)
-		.limit(1);
-	if (signalError) {
+	// New evidence = recorded project work since the brief (tasker 111). This
+	// read project_review_signals, which almost nothing writes (1 row ever), so
+	// a project with a waiting brief never got another automated review.
+	const activity = await loadProjectLoopActivity(producedAt, [projectId]);
+	if (activity.errorMessage) {
 		console.warn(
-			`[ProjectLoops] Failed to inspect new review evidence for ${projectId}: ${signalError.message}`
+			`[ProjectLoops] Failed to inspect new review evidence for ${projectId}: ${activity.errorMessage}`
 		);
 		return false;
 	}
-	return !newerSignals?.length;
+	return activity.data.length === 0;
 }
 
 type ProjectLoopActivityRow = {
@@ -159,6 +157,35 @@ async function projectHasNoActivitySinceLastReview(projectId: string): Promise<b
 		return false;
 	}
 	return activity.data.length === 0;
+}
+
+/**
+ * A non-stale queued or running loop run for the project, of any trigger. The
+ * scheduled complete audit checks this so it never reviews the same changes
+ * a light loop is reviewing at that moment (tasker 111: both fired at 04:00 UTC
+ * for Eastern owners).
+ */
+export async function hasActiveProjectLoopRun(projectId: string): Promise<boolean> {
+	const now = Date.now();
+	const { data, error } = await supabase
+		.from('project_loop_runs')
+		.select('status, created_at, started_at')
+		.eq('project_id', projectId)
+		.in('status', ['queued', 'running'])
+		.limit(5);
+	if (error) {
+		console.warn(
+			`[ProjectLoops] Failed to read active runs for ${projectId}: ${error.message}`
+		);
+		return false;
+	}
+	return (data ?? []).some((run) => {
+		const referenceIso =
+			run.status === 'running' ? (run.started_at ?? run.created_at) : run.created_at;
+		const referenceMs = referenceIso ? Date.parse(referenceIso) : Number.NaN;
+		const staleAfterMs = run.status === 'running' ? STALE_RUNNING_RUN_MS : STALE_QUEUED_RUN_MS;
+		return Number.isFinite(referenceMs) && now - referenceMs <= staleAfterMs;
+	});
 }
 
 async function resolveQueueJobDetails(

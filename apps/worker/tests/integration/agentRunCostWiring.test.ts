@@ -194,6 +194,7 @@ describePostgres('Agent Run cost-ledger live wiring', () => {
 			systemPrompt: 'You are a bounded research agent.',
 			userPrompt: 'Research the topic.',
 			userId: USER_ID,
+			operationType: 'agent_run_deep',
 			profile: 'balanced',
 			spendLimit,
 			onSpendReservation: async (reservation) => {

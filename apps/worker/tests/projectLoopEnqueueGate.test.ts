@@ -16,7 +16,8 @@ vi.mock('../src/config/projectLoops', () => ({
 
 import {
 	enqueueEndOfDayProjectLoops,
-	enqueueProjectLoop
+	enqueueProjectLoop,
+	hasActiveProjectLoopRun
 } from '../src/workers/project-loop/enqueue';
 
 function queryResult(result: { data: unknown; error: unknown }) {
@@ -45,28 +46,35 @@ describe('project loop unresolved-brief trigger gate', () => {
 		vi.clearAllMocks();
 	});
 
-	it('skips an automatic review when the unresolved manager brief has no newer evidence', async () => {
+	const briefFinishedAt = '2026-08-14T12:01:00.000Z';
+
+	function mockBriefReads() {
 		let projectRunQuery = 0;
 		mocks.from.mockImplementation((table: string) => {
 			if (table === 'project_loop_runs') {
 				projectRunQuery += 1;
-				if (projectRunQuery === 1) return queryResult({ data: null, error: null });
-				return queryResult({
-					data: {
-						id: 'run-1',
-						status: 'waiting_review',
-						created_at: '2026-08-14T12:00:00.000Z',
-						finished_at: '2026-08-14T12:01:00.000Z',
-						brief: { version: 2, attention_level: 'decision' }
-					},
-					error: null
-				});
+				if (projectRunQuery === 2) {
+					return queryResult({
+						data: {
+							id: 'run-1',
+							status: 'waiting_review',
+							created_at: '2026-08-14T12:00:00.000Z',
+							finished_at: briefFinishedAt,
+							brief: { version: 2, attention_level: 'decision' }
+						},
+						error: null
+					});
+				}
+				return queryResult({ data: null, error: null });
 			}
-			if (table === 'project_review_signals') {
-				return queryResult({ data: [], error: null });
-			}
+			if (table === 'chat_sessions') throw new Error('reached chat session creation');
 			throw new Error(`Unexpected table after trigger gate: ${table}`);
 		});
+	}
+
+	it('skips an automatic review when nothing was recorded since the unresolved brief', async () => {
+		mockBriefReads();
+		mocks.rpc.mockResolvedValue({ data: [], error: null });
 
 		const result = await enqueueProjectLoop({
 			projectId: 'project-1',
@@ -75,7 +83,36 @@ describe('project loop unresolved-brief trigger gate', () => {
 		});
 
 		expect(result).toEqual({ queued: false, reason: 'unresolved_brief_unchanged' });
+		// Evidence is recorded project work since the brief (tasker 111), not
+		// project_review_signals, which almost nothing writes.
+		expect(mocks.rpc).toHaveBeenCalledWith('project_loop_activity', {
+			p_since: briefFinishedAt,
+			p_project_ids: ['project-1']
+		});
+		expect(mocks.from).not.toHaveBeenCalledWith('project_review_signals');
 		expect(mocks.from).not.toHaveBeenCalledWith('chat_sessions');
+	});
+
+	it('reviews again once the project changed after the unresolved brief', async () => {
+		mockBriefReads();
+		mocks.rpc.mockResolvedValue({
+			data: [
+				{
+					project_id: 'project-1',
+					created_by: 'actor-1',
+					last_activity_at: '2026-08-15T09:00:00.000Z'
+				}
+			],
+			error: null
+		});
+
+		const result = await enqueueProjectLoop({
+			projectId: 'project-1',
+			userId: 'user-1',
+			triggerReason: 'end_of_day'
+		});
+
+		expect(result.reason).not.toBe('unresolved_brief_unchanged');
 	});
 });
 
@@ -289,5 +326,35 @@ describe('end-of-day scan candidates (tasker 108)', () => {
 		expect(result.scanned).toBe(1);
 		expect(enqueuedProjectIds).toEqual(['task-edited']);
 		expect(mocks.from).not.toHaveBeenCalledWith('onto_projects');
+	});
+});
+
+describe('active loop run check for the scheduled audit (tasker 111)', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+
+	it('counts a fresh queued or running run and ignores stuck ones', async () => {
+		mocks.from.mockImplementation(() =>
+			queryResult({
+				data: [{ status: 'running', created_at: minutesAgo(5), started_at: minutesAgo(4) }],
+				error: null
+			})
+		);
+		expect(await hasActiveProjectLoopRun('project-1')).toBe(true);
+
+		mocks.from.mockImplementation(() =>
+			queryResult({
+				data: [
+					// Running for 2 h (stale after 1 h), queued for 7 h (stale after 6 h).
+					{ status: 'running', created_at: minutesAgo(125), started_at: minutesAgo(120) },
+					{ status: 'queued', created_at: minutesAgo(420), started_at: null }
+				],
+				error: null
+			})
+		);
+		expect(await hasActiveProjectLoopRun('project-1')).toBe(false);
 	});
 });

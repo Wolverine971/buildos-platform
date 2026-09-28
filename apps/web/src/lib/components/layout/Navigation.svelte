@@ -974,7 +974,7 @@
 						onpointerenter={warmAgentChatModal}
 						onpointerdown={warmAgentChatModal}
 						onfocus={warmAgentChatModal}
-						class={`relative flex items-center gap-2 px-3 h-9 rounded-md font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
+						class={`relative flex items-center gap-2 px-1.5 xl:px-3 h-9 rounded-md font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
 						aria-label={$workingAgentRunCount > 0 && !showChatModal
 							? `Open ${chatLabel}. ${$workingAgentRunCount} agent${$workingAgentRunCount === 1 ? '' : 's'} working in the background`
 							: `Open ${chatLabel}`}
@@ -982,7 +982,8 @@
 						btnType="container"
 					>
 						<div class="relative flex items-center justify-center">
-							<AnimatedBrainBolt class="w-8 sm:w-9 md:w-10 lg:w-11" />
+							<!-- Full button height: the brain fills ~60% of the frame, so smaller reads tiny. -->
+							<AnimatedBrainBolt class="w-11" />
 							<!-- Overlay icon - changes based on modal state -->
 							{#if showChatModal}
 								<!-- Zap icon when modal is open - centered on brain-bolt -->

@@ -15,7 +15,7 @@ import { projectAuditDedupKey, readProjectLoopQueueMetadata } from '@buildos/sha
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import { captureWorkerEvent } from '../../lib/posthog';
 import { supabase } from '../../lib/supabase';
-import { resolveProjectLoopOwnerUserIds } from './enqueue';
+import { hasActiveProjectLoopRun, resolveProjectLoopOwnerUserIds } from './enqueue';
 import {
 	type ScheduledAuditProjectRow,
 	scanScheduledAuditProjectPages
@@ -206,6 +206,19 @@ export async function queueProjectAuditFromWorker(params: {
 		triggerReason: params.triggerReason,
 		now: params.now
 	});
+
+	// A light loop reviewing this project right now would make the audit read
+	// the same changes twice (tasker 111). Wait for the next scan instead.
+	if (
+		evaluated.evaluation.decision === 'queued' &&
+		(await hasActiveProjectLoopRun(params.projectId))
+	) {
+		evaluated.evaluation = {
+			...evaluated.evaluation,
+			decision: 'skipped_active_run',
+			reason_summary: 'A project loop run is already queued or running.'
+		};
+	}
 
 	if (evaluated.evaluation.decision !== 'queued' || !evaluated.snapshot) {
 		const evaluationId = await recordProjectAuditTriggerEvaluation({

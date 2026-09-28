@@ -1040,7 +1040,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		maxTokens?: number;
 		timeoutMs?: number;
 		userId?: string;
-		operationType?: string;
+		operationType: string;
 		profile?: TextGenerationOptions['profile'];
 		model?: string;
 		models?: string[];

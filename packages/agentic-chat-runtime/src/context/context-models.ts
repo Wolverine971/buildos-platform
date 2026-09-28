@@ -1,6 +1,7 @@
 // packages/agentic-chat-runtime/src/context/context-models.ts
 import type { Database } from '@buildos/shared-types';
 import type { DocStructure, DocTreeNode } from '@buildos/shared-agent-ops/ontology/onto-api';
+import type { ProjectStewardPacket } from './steward-packet';
 
 export type DocMetaSummary = {
 	title?: string | null;
@@ -316,6 +317,8 @@ export type ProjectContextData = {
 	members: LightProjectMember[];
 	project_intelligence?: FastChatProjectIntelligence;
 	context_meta: ProjectContextMeta;
+	/** Present only when the user has an active, approved steward for this project. */
+	steward?: ProjectStewardPacket | null;
 };
 
 export type EntityContextData = ProjectContextData & {

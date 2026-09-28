@@ -1725,7 +1725,7 @@ export class SmartLLMService {
 		timeoutMs?: number;
 		signal?: AbortSignal;
 		userId?: string;
-		operationType?: string;
+		operationType: string;
 		profile?: TextProfile; // Added profile parameter
 	}): Promise<string>;
 	async generateText(options: TextGenerationOptions): Promise<string>;
@@ -1740,7 +1740,7 @@ export class SmartLLMService {
 					timeoutMs?: number;
 					signal?: AbortSignal;
 					userId?: string;
-					operationType?: string;
+					operationType: string;
 					profile?: TextProfile; // Added profile parameter
 			  }
 	): Promise<string> {
@@ -2241,7 +2241,7 @@ export class SmartLLMService {
 		streamRunId?: string;
 		clientTurnId?: string;
 		signal?: AbortSignal;
-		operationType?: string;
+		operationType: string;
 		// Context tracking for usage logging
 		contextType?: string; // e.g., 'project', 'general', 'project_create', 'ontology'
 		entityId?: string; // Optional entity ID for additional tracking

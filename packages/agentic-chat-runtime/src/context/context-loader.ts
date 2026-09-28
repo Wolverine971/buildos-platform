@@ -44,6 +44,7 @@ import {
 	START_HERE_DOCUMENT_TYPE_KEY
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { pickStartHereDocument } from '../tools/start-here-selector';
+import { loadProjectStewardPacket } from './steward-packet';
 
 const GLOBAL_CONTEXT_PROJECT_LIMIT = 8;
 const GLOBAL_CONTEXT_GOAL_LIMIT = 2;
@@ -2310,15 +2311,40 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			: null;
 	}
 
+	/**
+	 * START HERE and, for a user with an active steward on this project, the
+	 * steward packet (project stewards beta). Both load only after the project
+	 * RPC (or the fallback loader) has authorized and returned the project, and
+	 * they run side by side: a user without a steward pays one small read that
+	 * finishes inside the START HERE round trips.
+	 */
 	async function attachProjectStartHere<T extends ProjectContextData | EntityContextData | null>(
 		supabase: SupabaseClient<Database>,
 		data: T,
+		userId: string,
 		onError?: LoadContextParams['onError']
 	): Promise<T> {
 		if (!data?.project?.id) return data;
-		const startHere = await loadProjectStartHereDocument(supabase, data.project.id, onError);
-		if (!startHere) return data;
-		return { ...data, start_here: startHere } as T;
+		const projectId = data.project.id;
+		const [startHere, steward] = await Promise.all([
+			loadProjectStartHereDocument(supabase, projectId, onError),
+			loadProjectStewardPacket({
+				supabase,
+				userId,
+				projectId,
+				onError: (stage, error) =>
+					reportContextLoadError(onError, stage, error, { projectId })
+			}).catch((error: unknown) => {
+				reportContextLoadError(onError, 'query.steward', error, { projectId });
+				return null;
+			})
+		]);
+		if (!startHere && !steward) return data;
+		return {
+			...data,
+			...(startHere ? { start_here: startHere } : {}),
+			...(steward ? { steward } : {})
+		} as T;
 	}
 
 	async function loadGlobalContextData(
@@ -3284,6 +3310,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 						const projectContextWithStartHere = await attachProjectStartHere(
 							supabase,
 							projectContext,
+							userId,
 							params.onError
 						);
 						const resolvedProjectName =
@@ -3365,6 +3392,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				const dataWithStartHere = await attachProjectStartHere(
 					supabase,
 					data,
+					userId,
 					params.onError
 				);
 				return {
@@ -3380,6 +3408,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			const data = await attachProjectStartHere(
 				supabase,
 				await loadProjectContextData(supabase, projectId, eventWindow, params.onError),
+				userId,
 				params.onError
 			);
 			const projectName = data?.project.name ?? baseContext.projectName ?? null;
@@ -3402,6 +3431,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 					eventWindow,
 					params.onError
 				),
+				userId,
 				params.onError
 			);
 			return {

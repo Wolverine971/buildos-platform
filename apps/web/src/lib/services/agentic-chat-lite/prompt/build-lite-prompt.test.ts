@@ -174,6 +174,9 @@ describe('buildLitePromptEnvelope', () => {
 				(id) =>
 					id !== 'project_knowledge_map' &&
 					id !== 'project_start_here' &&
+					// Steward sections render only with a project steward packet.
+					id !== 'steward_charter' &&
+					id !== 'steward_live_facts' &&
 					id !== 'situational_rules' &&
 					id !== 'tool_surface_dynamic'
 			)
