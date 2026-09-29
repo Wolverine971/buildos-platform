@@ -70,8 +70,8 @@
 	let reviewError = $state<string | null>(null);
 
 	// Plain (non-reactive) bookkeeping: which project the shown status belongs
-	// to, and a counter bumped around every write so a status read that
-	// overlaps a write can't overwrite the write's result.
+	// to, and a counter bumped around every write and project change so stale
+	// requests cannot overwrite the current project's status or busy state.
 	let loadedFor: string | null = null;
 	let mutationSeq = 0;
 
@@ -83,7 +83,7 @@
 			if (!response.ok) return;
 			const payload = await response.json();
 			const data = payload?.data as StewardStatus | undefined;
-			if (!data || id !== projectId || seq !== mutationSeq || busy) return;
+			if (!data || signal?.aborted || id !== projectId || seq !== mutationSeq || busy) return;
 			if (!data.enabled) stewardDisabledForPage = true;
 			status = data;
 		} catch {
@@ -96,10 +96,13 @@
 		void refreshKey;
 		if (loadedFor !== id) {
 			loadedFor = id;
+			mutationSeq += 1;
+			busy = false;
 			status = null;
 			liveMessage = '';
 			reviewOpen = false;
 			review = null;
+			reviewError = null;
 		}
 		if (stewardDisabledForPage) return;
 		const controller = new AbortController();
@@ -122,7 +125,8 @@
 	async function post(body: Record<string, unknown>): Promise<PostOutcome | null> {
 		const id = projectId;
 		busy = true;
-		mutationSeq += 1;
+		const seq = ++mutationSeq;
+		const isCurrent = () => id === projectId && seq === mutationSeq;
 		try {
 			const response = await fetch(`/api/onto/projects/${id}/steward`, {
 				method: 'POST',
@@ -130,7 +134,7 @@
 				body: JSON.stringify(body)
 			});
 			const payload = await response.json().catch(() => null);
-			if (id !== projectId) return null;
+			if (!isCurrent()) return null;
 			if (response.ok && payload?.data) status = payload.data as StewardStatus;
 			return {
 				ok: response.ok,
@@ -138,10 +142,12 @@
 				error: response.ok ? null : (payload?.error ?? null)
 			};
 		} catch {
-			return id === projectId ? { ok: false, httpStatus: 0, error: null } : null;
+			return isCurrent() ? { ok: false, httpStatus: 0, error: null } : null;
 		} finally {
-			busy = false;
-			mutationSeq += 1;
+			if (isCurrent()) {
+				busy = false;
+				mutationSeq += 1;
+			}
 		}
 	}
 
@@ -196,8 +202,9 @@
 		}
 		if (outcome.httpStatus === 409) {
 			// The document changed after the sheet opened: show the new text.
+			const seq = mutationSeq;
 			await loadStatus(id);
-			if (id !== projectId || !status) return;
+			if (id !== projectId || seq !== mutationSeq || !status) return;
 			review = snapshotFrom(status);
 			reviewView = review.approvedText !== null ? 'changes' : 'full';
 		}

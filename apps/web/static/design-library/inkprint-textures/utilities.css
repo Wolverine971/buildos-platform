@@ -96,11 +96,23 @@
    Single source of truth — components compose `micro-label` + an optional
    `text-*` color override + `font-*` weight rather than re-inlining the longhand. */
 .micro-label {
+	/* Stamped: labels are set in the system monospace (SF Mono on Apple, 0 bytes). */
+	font-family:
+		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 	font-size: 0.6875rem;
 	line-height: 1.1;
 	text-transform: uppercase;
-	letter-spacing: 0.15em;
+	letter-spacing: 0.12em;
 	color: hsl(var(--muted-foreground));
+}
+
+/* Stamp: timestamps, counts, and IDs read as stamped metadata, not prose. Sentences stay in
+   the UI font. Compose with a text-* size when a count needs to be larger. */
+.stamp {
+	font-family:
+		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.02em;
 }
 
 /* Ensure text remains readable over textures */

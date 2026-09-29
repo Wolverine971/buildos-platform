@@ -291,7 +291,9 @@ describe('project steward service', () => {
 			projectId: 'p1',
 			active: false
 		});
-		expect(admin.writes[0].value).toMatchObject({
+		expect(admin.writes).toHaveLength(1);
+		const write = admin.writes[0]!;
+		expect(write.value).toMatchObject({
 			dimensions: {
 				other: { keep: true },
 				steward: {
@@ -302,7 +304,7 @@ describe('project steward service', () => {
 			}
 		});
 		// The approved text is untouched by a toggle.
-		expect(admin.writes[0].value).not.toHaveProperty('agent_instructions');
+		expect(write.value).not.toHaveProperty('agent_instructions');
 		expect(user.writes).toEqual([]);
 	});
 });

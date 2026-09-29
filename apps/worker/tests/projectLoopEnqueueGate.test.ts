@@ -148,6 +148,62 @@ describe('project loop activity gate (tasker 108)', () => {
 		vi.clearAllMocks();
 	});
 
+	it.each([false, true])(
+		'reclaims an orphan while respecting other recent runs (%s)',
+		async (hasRecentRun) => {
+			let projectRunQuery = 0;
+			const reclaimedAt = new Date().toISOString();
+			mocks.from.mockImplementation((table: string) => {
+				if (table === 'chat_sessions') throw new Error('reached chat session creation');
+				if (table !== 'project_loop_runs') throw new Error(`Unexpected table: ${table}`);
+				projectRunQuery += 1;
+				if (projectRunQuery === 1) {
+					return queryResult({
+						data: {
+							id: 'orphan-run',
+							status: 'running',
+							created_at: hoursAgo(3),
+							started_at: hoursAgo(2)
+						},
+						error: null
+					});
+				}
+				if (projectRunQuery === 2) {
+					return queryResult({ data: { id: 'orphan-run' }, error: null });
+				}
+				if (projectRunQuery === 4) {
+					const builder = queryResult({
+						data: { id: 'orphan-run', finished_at: reclaimedAt },
+						error: null
+					});
+					builder.neq = vi.fn((column: string, value: string) => {
+						if (column === 'id' && value === 'orphan-run') {
+							builder.maybeSingle.mockResolvedValue({
+								data: hasRecentRun
+									? { id: 'recent-run', finished_at: reclaimedAt }
+									: null,
+								error: null
+							});
+						}
+						return builder;
+					});
+					return builder;
+				}
+				return queryResult({ data: null, error: null });
+			});
+
+			const result = await enqueueProjectLoop({
+				projectId: 'project-1',
+				userId: 'user-1',
+				triggerReason: 'end_of_day'
+			});
+
+			expect(result.reason).toBe(
+				hasRecentRun ? 'cooldown_active' : 'reached chat session creation'
+			);
+		}
+	);
+
 	it('skips an end-of-day loop when nothing changed since the last review', async () => {
 		const lastReview = hoursAgo(20);
 		mockRunReads(lastReview);

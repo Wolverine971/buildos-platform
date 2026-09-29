@@ -57,6 +57,16 @@
 	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
 	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
 	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+
+	/* Bench & sheet: the app frame is a darker bench; each page is a lighter sheet lying
+	   on it, held apart by a crisp edge and a small contact shadow. */
+	--bench: 40 9% 90%;
+	--sheet-edge:
+		0 0 0 1px rgba(var(--tx-ink-rgb), 0.08), 0 1px 1px rgba(var(--tx-ink-rgb), 0.04),
+		0 12px 24px -14px rgba(var(--tx-ink-rgb), 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+	/* Faint grain on the bench only (inline SVG noise, 0 image requests). It never sits under
+	   text: the sheet covers it. Grain carries no meaning, unlike Inkprint's grid/dots. */
+	--bench-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .dark {
@@ -109,4 +119,11 @@
 	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
 	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
 	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+
+	/* Dark bench & sheet */
+	--bench: 30 5% 7%;
+	--sheet-edge:
+		0 0 0 1px rgba(255, 255, 255, 0.07), 0 16px 32px -16px rgba(0, 0, 0, 0.8),
+		inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	--bench-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }

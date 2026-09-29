@@ -88,6 +88,7 @@ describe('OpenRouterV2Service model routing', () => {
 			if (operation === 'json') {
 				await expect(
 					service.getJSONResponse({
+						operationType: 'openrouter_v2_test',
 						model: QWEN_38_27B_FREE_MODEL,
 						systemPrompt: 'Return JSON.',
 						userPrompt: 'Summarize a fixture.',
@@ -98,6 +99,7 @@ describe('OpenRouterV2Service model routing', () => {
 			} else if (operation === 'text') {
 				await expect(
 					service.generateTextDetailed({
+						operationType: 'openrouter_v2_test',
 						model: QWEN_38_27B_FREE_MODEL,
 						prompt: 'Summarize a fixture.',
 						userId: 'dev'
@@ -245,6 +247,7 @@ describe('OpenRouterV2Service model routing', () => {
 		const service = createService();
 
 		const result = await service.getJSONResponse<{ ok: boolean }>({
+			operationType: 'openrouter_v2_test',
 			systemPrompt: 'Return valid JSON.',
 			userPrompt: 'Respond with {"ok":true}.'
 		});
@@ -312,6 +315,7 @@ describe('OpenRouterV2Service model routing', () => {
 			devPrimaryModel: GLM_53_FLASH_MODEL
 		});
 		const result = await service.getJSONResponse<{ ok: boolean }>({
+			operationType: 'openrouter_v2_test',
 			systemPrompt: 'Return valid JSON.',
 			userPrompt: 'Respond with {"ok":true}.'
 		});
@@ -366,6 +370,7 @@ describe('OpenRouterV2Service model routing', () => {
 
 			const service = createService();
 			const result = await service.getJSONResponse<{ ok: boolean }>({
+				operationType: 'openrouter_v2_test',
 				systemPrompt: 'Return valid JSON.',
 				userPrompt: 'Respond with {"ok":true}.'
 			});
@@ -411,6 +416,7 @@ describe('OpenRouterV2Service model routing', () => {
 
 			const service = createService();
 			const result = await service.getJSONResponse<{ ok: boolean }>({
+				operationType: 'openrouter_v2_test',
 				systemPrompt: 'Return valid JSON.',
 				userPrompt: 'Respond with {"ok":true}.'
 			});
@@ -470,6 +476,7 @@ describe('OpenRouterV2Service model routing', () => {
 		const service = createService();
 
 		const result = await service.getJSONResponse<{ ok: boolean }>({
+			operationType: 'openrouter_v2_test',
 			systemPrompt: 'Return valid JSON.',
 			userPrompt: 'Respond with {"ok":true}.',
 			profile: 'fast'
@@ -588,6 +595,7 @@ describe('OpenRouterV2Service model routing', () => {
 
 		const service = createService();
 		const result = await service.getJSONResponse<{ ok: boolean }>({
+			operationType: 'openrouter_v2_test',
 			systemPrompt: 'Return valid JSON.',
 			userPrompt: 'Respond with {"ok":true}.',
 			model: AGENT_STATE_RECONCILIATION_MODEL,
@@ -649,6 +657,7 @@ describe('OpenRouterV2Service model routing', () => {
 			ok: boolean;
 			retrySucceeded: boolean;
 		}>({
+			operationType: 'openrouter_v2_test',
 			systemPrompt: 'Return valid JSON.',
 			userPrompt: 'Respond with {"ok":true}.',
 			model: AGENT_STATE_RECONCILIATION_MODEL,
@@ -715,6 +724,7 @@ describe('OpenRouterV2Service model routing', () => {
 			ok: boolean;
 			retrySucceeded: boolean;
 		}>({
+			operationType: 'openrouter_v2_test',
 			systemPrompt: 'Return valid JSON.',
 			userPrompt: 'Respond with {"ok":true}.',
 			model: AGENT_STATE_RECONCILIATION_MODEL,
@@ -757,6 +767,7 @@ describe('OpenRouterV2Service model routing', () => {
 				if (operation === 'json') {
 					await expect(
 						service.getJSONResponse({
+							operationType: 'openrouter_v2_test',
 							systemPrompt: 'Return JSON.',
 							userPrompt: 'Respond.',
 							userId: 'user-1'
@@ -764,7 +775,11 @@ describe('OpenRouterV2Service model routing', () => {
 					).rejects.toThrow();
 				} else if (operation === 'text') {
 					await expect(
-						service.generateTextDetailed({ prompt: 'Respond.', userId: 'user-1' })
+						service.generateTextDetailed({
+							operationType: 'openrouter_v2_test',
+							prompt: 'Respond.',
+							userId: 'user-1'
+						})
 					).rejects.toThrow();
 				} else {
 					const events = [];
@@ -808,7 +823,11 @@ describe('OpenRouterV2Service model routing', () => {
 				);
 			});
 			vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
-			await createService().generateTextDetailed({ prompt: 'Hi', userId: 'user-1' });
+			await createService().generateTextDetailed({
+				operationType: 'openrouter_v2_test',
+				prompt: 'Hi',
+				userId: 'user-1'
+			});
 			expect(requestBodies[0]?.provider).toMatchObject({
 				data_collection: 'deny',
 				zdr: true
@@ -863,6 +882,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 
 		const service = createService();
 		const result = await service.generateTextDetailed({
+			operationType: 'openrouter_v2_test',
 			systemPrompt: 'You are concise.',
 			prompt: 'Answer visibly.'
 		});

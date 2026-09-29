@@ -140,36 +140,142 @@
 }
 
 /* ============================================
-   Button Texture - Brushed Aluminum
+   Keys - raised controls that press down and spring back
    ============================================ */
 
-/* tx-button - brushed metal texture for buttons */
+/* A key sits on a 2px lip (a darker edge of its own color) under a top highlight. Pressing
+   drops it onto the lip; releasing springs it back with a slight overshoot. */
+:root {
+	--key-lip: rgba(24, 24, 27, 0.17);
+	--key-hl: rgba(255, 255, 255, 0.35);
+	--key-drop: rgba(24, 24, 27, 0.22);
+}
+
+.dark {
+	--key-lip: rgba(0, 0, 0, 0.75);
+	--key-hl: rgba(255, 255, 255, 0.07);
+	--key-drop: rgba(0, 0, 0, 0.6);
+}
+
+/* Solid keys take a lip darkened from their own fill. */
+.tx-button-accent {
+	--key-lip: color-mix(in srgb, hsl(var(--accent)) 60%, black);
+}
+.tx-button-ink {
+	--key-lip: color-mix(in srgb, hsl(var(--foreground)) 70%, black);
+}
+.tx-button-destructive {
+	--key-lip: color-mix(in srgb, hsl(var(--destructive)) 60%, black);
+}
+.tx-button-warning {
+	--key-lip: color-mix(in srgb, hsl(var(--warning)) 60%, black);
+}
+.tx-button-success {
+	--key-lip: color-mix(in srgb, hsl(var(--success)) 60%, black);
+}
+
 .tx-button {
 	position: relative;
-	overflow: hidden;
 }
 
-.tx-button::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-	z-index: 1;
-	border-radius: inherit;
-	background-image: url('/textures/brushed-alum.png');
-	background-size: 100px 100px;
-	background-repeat: repeat;
-	opacity: 0.08;
-	mix-blend-mode: overlay;
+/* (0,3,0) specificity outranks Tailwind's single-state shadow/ring utilities; the ring
+   variables are composed in so focus rings still draw. */
+.tx-button:not(:disabled):not([aria-disabled='true']) {
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000),
+		var(--tw-ring-shadow, 0 0 #0000),
+		inset 0 1px 0 var(--key-hl),
+		0 2px 0 var(--key-lip),
+		0 3px 6px -2px var(--key-drop);
+	transition:
+		transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+		box-shadow 420ms cubic-bezier(0.34, 1.56, 0.64, 1),
+		background-color 100ms ease,
+		border-color 100ms ease,
+		color 100ms ease,
+		opacity 100ms ease;
+	/* Spring release where linear() is supported; the declaration above is the fallback. */
+	transition:
+		transform 420ms
+			linear(
+				0,
+				0.23 5%,
+				0.62 10%,
+				0.93 15%,
+				1.1 20%,
+				1.14 25%,
+				1.11 30%,
+				1.03 38%,
+				0.98 46%,
+				0.975 55%,
+				0.99 65%,
+				1.003 80%,
+				1
+			),
+		box-shadow 420ms
+			linear(
+				0,
+				0.23 5%,
+				0.62 10%,
+				0.93 15%,
+				1.1 20%,
+				1.14 25%,
+				1.11 30%,
+				1.03 38%,
+				0.98 46%,
+				0.975 55%,
+				0.99 65%,
+				1.003 80%,
+				1
+			),
+		background-color 100ms ease,
+		border-color 100ms ease,
+		color 100ms ease,
+		opacity 100ms ease;
 }
 
-.dark .tx-button::before {
-	opacity: 0.12;
-	mix-blend-mode: soft-light;
+.tx-button:not(:disabled):not([aria-disabled='true']):active {
+	transform: translateY(2px);
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000),
+		var(--tw-ring-shadow, 0 0 #0000),
+		inset 0 1px 2px rgba(0, 0, 0, 0.12),
+		0 0 0 var(--key-lip),
+		0 1px 1px var(--key-drop);
+	transition-duration: 60ms;
+	transition-timing-function: ease-out;
 }
 
-/* Ensure button content stays above texture */
-.tx-button > * {
-	position: relative;
-	z-index: 2;
+@media (prefers-reduced-motion: reduce) {
+	.tx-button:not(:disabled):not([aria-disabled='true']) {
+		transition-duration: 0ms;
+	}
+	.tx-button:not(:disabled):not([aria-disabled='true']):active {
+		transform: none;
+	}
+}
+
+/* The bench surface: tone + grain. Used by the root layout and the top nav. */
+.bench-grain {
+	background-image: var(--bench-grain);
+	background-size: 180px 180px;
+}
+
+/* ============================================
+   Bench well - a recess cut into the bench
+   ============================================ */
+
+/* The active nav tab sits down in the bench instead of being underlined. */
+.bench-well {
+	background-color: rgba(var(--tx-ink-rgb), 0.07);
+	box-shadow:
+		inset 0 1px 2px rgba(var(--tx-ink-rgb), 0.16),
+		inset 0 0 0 1px rgba(var(--tx-ink-rgb), 0.05);
+}
+
+.dark .bench-well {
+	background-color: rgba(0, 0, 0, 0.45);
+	box-shadow:
+		inset 0 1px 2px rgba(0, 0, 0, 0.7),
+		0 1px 0 rgba(255, 255, 255, 0.05);
 }

@@ -23,7 +23,8 @@ describe('Brain Bolt HEVC-with-alpha videos', () => {
 		expect(seiStart, 'alpha_channel_info SEI missing').toBeGreaterThanOrEqual(0);
 
 		// Skip the SEI payloadSize byte; the next byte carries cancel_flag(1) + use_idc(3).
-		const alphaChannelUseIdc = (bytes[seiStart + ALPHA_INFO_SEI.length + 1] >> 4) & 0b111;
+		const alphaChannelUseIdc =
+			(bytes.readUInt8(seiStart + ALPHA_INFO_SEI.length + 1) >> 4) & 0b111;
 		expect(alphaChannelUseIdc).toBe(0);
 	});
 });

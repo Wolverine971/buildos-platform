@@ -268,6 +268,7 @@ export async function enqueueProjectLoop(params: {
 }): Promise<{ queued: boolean; runId?: string; reason?: string }> {
 	if (!PROJECT_LOOPS_ENABLED) return { queued: false, reason: 'feature_disabled' };
 
+	let reclaimedRunId: string | null = null;
 	// Don't stack on an active run.
 	const { data: active } = await supabase
 		.from('project_loop_runs')
@@ -305,6 +306,7 @@ export async function enqueueProjectLoop(params: {
 		if (reclaimError || !reclaimed?.id) {
 			return { queued: false, runId: active.id, reason: 'already_running' };
 		}
+		reclaimedRunId = reclaimed.id;
 		console.warn(
 			`[ProjectLoops] Failed stale ${active.status} run ${active.id} for project ${params.projectId}; enqueueing a fresh run.`
 		);
@@ -315,11 +317,15 @@ export async function enqueueProjectLoop(params: {
 			return { queued: false, reason: 'unresolved_brief_unchanged' };
 		}
 
-		const { data: lastRun } = await supabase
+		let cooldownQuery = supabase
 			.from('project_loop_runs')
 			.select('finished_at')
 			.eq('project_id', params.projectId)
-			.not('finished_at', 'is', null)
+			.not('finished_at', 'is', null);
+		// Reclaiming an orphan just set its finished_at to now. It must not
+		// impose a new cooldown on the replacement; other recent runs still do.
+		if (reclaimedRunId) cooldownQuery = cooldownQuery.neq('id', reclaimedRunId);
+		const { data: lastRun } = await cooldownQuery
 			.order('finished_at', { ascending: false })
 			.limit(1)
 			.maybeSingle();
