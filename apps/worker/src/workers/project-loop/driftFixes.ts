@@ -167,3 +167,158 @@ export function buildDriftFix(input: {
 		}
 	};
 }
+
+export type DriftFixGoal = { id: string; name: string; state_key: string | null };
+export type DriftFixProject = {
+	id: string;
+	description: string | null;
+	type_key: string | null;
+};
+
+/** Goal states the review may set; the verifier accepts the same list. */
+const GOAL_STATES = new Set(['draft', 'active', 'achieved', 'abandoned']);
+/** project.{realm}.{initiative}[.{variant}] — the verifier enforces the same shape. */
+const PROJECT_TYPE_KEY = /^project\.[a-z0-9_]+\.[a-z0-9_]+(\.[a-z0-9_]+)?$/;
+const MAX_GOAL_NAME_CHARS = 200;
+const MAX_PROJECT_DESCRIPTION_CHARS = 2_000;
+
+/**
+ * Tasker 112: drift whose stale place is a goal or the project itself. A goal gets a rename or a
+ * state change; the project gets a new description or type. The label, preview and undo come
+ * from code and the values the pass was shown, never from the model's wording.
+ */
+export function buildRecordFix(input: {
+	projectId: string;
+	rawOperations: unknown;
+	goals: ReadonlyMap<string, DriftFixGoal>;
+	project: DriftFixProject;
+}): { fix: DriftFix } | { rejected: DriftFixRejection } {
+	const raws = Array.isArray(input.rawOperations) ? input.rawOperations : [];
+	if (!raws.length) return { rejected: 'no_operation' };
+	if (raws.length > 1) return { rejected: 'invalid_shape' };
+	const raw = asRecord(raws[0]);
+	const args = asRecord(raw?.args);
+	if (!args) return { rejected: 'invalid_shape' };
+
+	if (raw?.tool === 'update_onto_goal') {
+		const goalId = typeof args.goal_id === 'string' ? args.goal_id : null;
+		const goal = goalId ? input.goals.get(goalId) : undefined;
+		if (!goalId || !goal) return { rejected: 'unknown_document' };
+		const name = typeof args.name === 'string' ? args.name.trim() : null;
+		const state = typeof args.state_key === 'string' ? args.state_key : null;
+		// One change per fix, so the card says exactly what approval does.
+		if ((name ? 1 : 0) + (state ? 1 : 0) !== 1) return { rejected: 'invalid_shape' };
+		if (name) {
+			if (name.length > MAX_GOAL_NAME_CHARS || name === goal.name)
+				return { rejected: 'invalid_shape' };
+			return recordFix(
+				input.projectId,
+				'update_onto_goal',
+				{ goal_id: goalId },
+				{
+					field: 'name',
+					next: name,
+					previous: goal.name,
+					label: `Rename goal "${goal.name}" to "${name}"`,
+					undoLabel: `Rename goal back to "${goal.name}"`,
+					title: goal.name
+				}
+			);
+		}
+		if (!state || !GOAL_STATES.has(state) || state === goal.state_key || !goal.state_key)
+			return { rejected: 'invalid_shape' };
+		return recordFix(
+			input.projectId,
+			'update_onto_goal',
+			{ goal_id: goalId },
+			{
+				field: 'state_key',
+				next: state,
+				previous: goal.state_key,
+				label: `Mark goal "${goal.name}" ${state}`,
+				undoLabel: `Mark goal "${goal.name}" ${goal.state_key} again`,
+				title: goal.name
+			}
+		);
+	}
+
+	if (raw?.tool === 'update_onto_project') {
+		const description = typeof args.description === 'string' ? args.description.trim() : null;
+		const typeKey = typeof args.type_key === 'string' ? args.type_key : null;
+		if ((description ? 1 : 0) + (typeKey ? 1 : 0) !== 1) return { rejected: 'invalid_shape' };
+		if (description) {
+			if (
+				description.length > MAX_PROJECT_DESCRIPTION_CHARS ||
+				description === (input.project.description ?? '').trim()
+			)
+				return { rejected: 'invalid_shape' };
+			return recordFix(
+				input.projectId,
+				'update_onto_project',
+				{},
+				{
+					field: 'description',
+					next: description,
+					previous: input.project.description ?? '',
+					label: 'Update the project description',
+					undoLabel: 'Restore the previous project description',
+					title: 'Project description'
+				}
+			);
+		}
+		if (!typeKey || !PROJECT_TYPE_KEY.test(typeKey) || typeKey === input.project.type_key)
+			return { rejected: 'invalid_shape' };
+		if (!input.project.type_key) return { rejected: 'no_reverse' };
+		return recordFix(
+			input.projectId,
+			'update_onto_project',
+			{},
+			{
+				field: 'type_key',
+				next: typeKey,
+				previous: input.project.type_key,
+				label: `Change the project type to ${typeKey}`,
+				undoLabel: `Change the project type back to ${input.project.type_key}`,
+				title: 'Project type'
+			}
+		);
+	}
+
+	return { rejected: 'invalid_shape' };
+}
+
+function recordFix(
+	projectId: string,
+	tool: 'update_onto_goal' | 'update_onto_project',
+	target: Record<string, string>,
+	change: {
+		field: string;
+		next: string;
+		previous: string;
+		label: string;
+		undoLabel: string;
+		title: string;
+	}
+): { fix: DriftFix } {
+	return {
+		fix: {
+			operations: [
+				{
+					tool,
+					args: { project_id: projectId, ...target, [change.field]: change.next },
+					label: change.label
+				}
+			],
+			undoOperations: [
+				{
+					tool,
+					args: { project_id: projectId, ...target, [change.field]: change.previous },
+					label: change.undoLabel
+				}
+			],
+			before: [change.previous || '(empty)'],
+			after: [change.next],
+			documentTitle: change.title
+		}
+	};
+}

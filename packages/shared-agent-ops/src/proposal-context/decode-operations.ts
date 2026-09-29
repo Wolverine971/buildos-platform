@@ -101,7 +101,7 @@ export function formatLoopOperationValue(value: unknown, maxLength = 80): string
 	}
 }
 
-function parseTool(tool: string): { action: LoopOperationAction; entity: string } {
+function parseTool(tool: string): { action: LoopOperationAction; entity: string; verb: string } {
 	const cleaned = tool.toLowerCase().replace(/_in_tree$/, '');
 	const parts = cleaned.split('_').filter((part) => part !== 'onto');
 	const verb = parts[0] ?? '';
@@ -120,11 +120,11 @@ function parseTool(tool: string): { action: LoopOperationAction; entity: string 
 								? 'unlink'
 								: 'other';
 	const entity = parts[1] ?? '';
-	return { action, entity };
+	return { action, entity, verb };
 }
 
 export function decodeLoopOperation(op: LoopOperation): DecodedLoopOperation {
-	const { action, entity } = parseTool(op.tool ?? '');
+	const { action, entity, verb } = parseTool(op.tool ?? '');
 	const args = (op.args ?? {}) as Record<string, unknown>;
 	const entityLabel = entityNameLabel[entity] ?? (entity || 'item');
 
@@ -196,7 +196,8 @@ export function decodeLoopOperation(op: LoopOperation): DecodedLoopOperation {
 
 	return {
 		action,
-		actionLabel: actionLabel[action],
+		// Archives have no action of their own (the union feeds exhaustive UI maps).
+		actionLabel: verb === 'archive' ? 'Archive' : actionLabel[action],
 		entityLabel,
 		target,
 		summary: typeof op.label === 'string' && op.label.trim() ? op.label.trim() : null,

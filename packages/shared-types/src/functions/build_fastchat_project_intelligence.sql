@@ -1,16 +1,11 @@
 -- packages/shared-types/src/functions/build_fastchat_project_intelligence.sql
 -- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION public.build_fastchat_project_intelligence(
-  p_context_type text,
-  p_user_id uuid,
-  p_project_id uuid DEFAULT NULL::uuid
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
+CREATE OR REPLACE FUNCTION public.build_fastchat_project_intelligence(p_context_type text, p_user_id uuid, p_project_id uuid DEFAULT NULL::uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 DECLARE
   v_actor_id uuid;
@@ -115,6 +110,7 @@ BEGIN
       FROM onto_tasks t
       INNER JOIN project_scope ps ON ps.id = t.project_id
       WHERE t.deleted_at IS NULL
+        AND t.archived_at IS NULL
         AND (t.due_at IS NOT NULL OR t.start_at IS NOT NULL)
 
       UNION ALL
@@ -139,6 +135,7 @@ BEGIN
       FROM onto_milestones m
       INNER JOIN project_scope ps ON ps.id = m.project_id
       WHERE m.deleted_at IS NULL
+        AND m.archived_at IS NULL
         AND m.due_at IS NOT NULL
 
       UNION ALL
@@ -163,6 +160,7 @@ BEGIN
       FROM onto_goals g
       INNER JOIN project_scope ps ON ps.id = g.project_id
       WHERE g.deleted_at IS NULL
+        AND g.archived_at IS NULL
         AND g.target_date IS NOT NULL
 
       UNION ALL
@@ -184,6 +182,12 @@ BEGIN
       FROM onto_events e
       INNER JOIN project_scope ps ON ps.id = e.project_id
       WHERE e.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM onto_tasks owner_task
+          WHERE e.owner_entity_type = 'task'
+            AND owner_task.id = e.owner_entity_id
+            AND (owner_task.deleted_at IS NOT NULL OR owner_task.archived_at IS NOT NULL)
+        )
         AND e.start_at IS NOT NULL
     ),
     bucketed_work AS (

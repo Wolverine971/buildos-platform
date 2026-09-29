@@ -779,3 +779,115 @@ describe('syncLegacyDescriptionMirror', () => {
 		expect(explicit.props).toEqual({ description: 'caller copy' });
 	});
 });
+
+// Tasker 113: a connector archive left deleted_at NULL, so 34 archived tasks read as live
+// work in chat context. Archive and restore now match the board (20260924190350).
+describe('updateTask archive matches the board', () => {
+	function archiveHarness(existingTask: Record<string, unknown>) {
+		const filters: Array<[string, string, unknown]> = [];
+		const updates: Record<string, unknown>[] = [];
+		const rpc = vi.fn(async (name: string) => {
+			if (name === 'ensure_actor_for_user') return { data: OWNER_ACTOR_ID, error: null };
+			if (name === 'get_onto_project_summaries_v1') {
+				return { data: [projectSummary()], error: null };
+			}
+			throw new Error(`unexpected rpc ${name}`);
+		});
+		class Query {
+			private updated: Record<string, unknown> | null = null;
+			constructor(private readonly table: string) {}
+			select() {
+				return this;
+			}
+			eq() {
+				return this;
+			}
+			in() {
+				return this;
+			}
+			is(column: string, value: unknown) {
+				filters.push(['is', column, value]);
+				return this;
+			}
+			update(data: Record<string, unknown>) {
+				this.updated = data;
+				updates.push(data);
+				return this;
+			}
+			async maybeSingle() {
+				if (this.table !== 'onto_tasks') throw new Error(`unexpected table ${this.table}`);
+				return { data: existingTask, error: null };
+			}
+			async single() {
+				return { data: { ...existingTask, ...this.updated }, error: null };
+			}
+		}
+		const context = {
+			admin: { rpc, from: vi.fn((table: string) => new Query(table)) },
+			userId: USER_ID,
+			scope: {
+				mode: 'read_write',
+				allowed_ops: ['onto.task.update'],
+				project_ids: [PROJECT_ID],
+				write_project_ids: [PROJECT_ID]
+			}
+		} as never;
+		return { context, filters, updates };
+	}
+
+	const liveTask = {
+		id: TASK_ID,
+		project_id: PROJECT_ID,
+		title: 'Reach out to Julian',
+		description: null,
+		type_key: 'task.default',
+		state_key: 'todo',
+		priority: null,
+		start_at: null,
+		due_at: null,
+		completed_at: null,
+		props: {},
+		created_at: '2026-03-01T00:00:00.000Z',
+		updated_at: '2026-03-01T00:00:00.000Z',
+		archived_at: null,
+		deleted_at: null
+	};
+
+	it('sets deleted_at with archived_at and only archives a live task', async () => {
+		const { context, filters, updates } = archiveHarness(liveTask);
+		await updateTask(context, { task_id: TASK_ID, archived: true });
+
+		expect(filters).toEqual(
+			expect.arrayContaining([
+				['is', 'archived_at', null],
+				['is', 'deleted_at', null]
+			])
+		);
+		expect(updates).toHaveLength(1);
+		expect(updates[0]!.archived_at).toEqual(expect.any(String));
+		expect(updates[0]!.deleted_at).toBe(updates[0]!.archived_at);
+	});
+
+	it('restore clears both columns', async () => {
+		const archivedAt = '2026-07-02T12:00:00.000Z';
+		const { context, updates } = archiveHarness({
+			...liveTask,
+			archived_at: archivedAt,
+			deleted_at: archivedAt
+		});
+		await updateTask(context, { task_id: TASK_ID, archived: false });
+
+		expect(updates[0]).toMatchObject({ archived_at: null, deleted_at: null });
+	});
+
+	it('restore never brings back a deleted task that was not archived', async () => {
+		const { context, updates } = archiveHarness({
+			...liveTask,
+			deleted_at: '2026-09-01T00:00:00.000Z'
+		});
+		await expect(updateTask(context, { task_id: TASK_ID, archived: false })).rejects.toMatchObject(
+			{ code: 'NOT_FOUND' }
+		);
+		expect(updates).toHaveLength(0);
+	});
+});

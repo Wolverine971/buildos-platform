@@ -4,6 +4,7 @@
 import { isValidUUID } from '@buildos/shared-types';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import { AgenticChatDetailReadQueryError } from './ontology-detail-reads';
+import { isArchivedOrDeletedRecord } from './record-scope';
 
 export const TASK_DOCUMENT_REL = 'task_has_document';
 
@@ -120,10 +121,18 @@ export async function listTaskDocuments(
 	if (!taskRef?.project_id) throw new Error('Task not found');
 
 	await context.access.assertProjectAccess(taskRef.project_id, 'read');
-	const payload = await loadTaskDocumentLinks(context.client, {
+	const links = await loadTaskDocumentLinks(context.client, {
 		taskId: args.task_id,
 		projectId: taskRef.project_id
 	});
+	// Chat reads the present (tasker 113); the web task panel keeps its own view.
+	const documents = links.documents.filter(
+		(link) => !isArchivedOrDeletedRecord(link.document, 'document')
+	);
+	const payload = {
+		documents,
+		scratch_pad: links.scratch_pad && documents.includes(links.scratch_pad) ? links.scratch_pad : null
+	};
 	return {
 		...payload,
 		message: `Found ${payload.documents.length} documents linked to this task.`

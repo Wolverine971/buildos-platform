@@ -44,7 +44,7 @@
 -->
 <script lang="ts">
 	import { preloadEntityModal } from '$lib/actions/preload-entity-modal';
-	import { onMount, untrack } from 'svelte';
+	import { onMount, untrack, type Snippet } from 'svelte';
 	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { slide } from 'svelte/transition';
 	import {
@@ -56,7 +56,6 @@
 		Clock,
 		Filter,
 		Flame,
-		ListChecks,
 		LoaderCircle,
 		PauseCircle,
 		RefreshCw,
@@ -91,7 +90,6 @@
 	type ColumnDef = {
 		key: ColumnKey;
 		label: string;
-		hint: string;
 		accent: string;
 		bg: string;
 		icon: typeof Circle;
@@ -105,7 +103,6 @@
 		{
 			key: 'backlog',
 			label: 'Backlog',
-			hint: 'Not started',
 			accent: 'text-muted-foreground',
 			bg: 'bg-muted/40',
 			icon: Circle,
@@ -115,7 +112,6 @@
 		{
 			key: 'in_progress',
 			label: 'In progress',
-			hint: 'Actively working',
 			accent: 'text-info',
 			bg: 'bg-info/10',
 			icon: Flame,
@@ -125,7 +121,6 @@
 		{
 			key: 'blocked',
 			label: 'Blocked',
-			hint: 'Stuck or waiting',
 			accent: 'text-warning',
 			bg: 'bg-warning/10',
 			icon: PauseCircle,
@@ -135,7 +130,6 @@
 		{
 			key: 'done',
 			label: 'Done',
-			hint: 'Completed',
 			accent: 'text-success',
 			bg: 'bg-success/10',
 			icon: CheckCircle2,
@@ -147,7 +141,6 @@
 	const ARCHIVED_COLUMN: ColumnDef = {
 		key: 'archived',
 		label: 'Archived',
-		hint: 'Removed from view',
 		accent: 'text-muted-foreground',
 		bg: 'bg-muted/40',
 		icon: Archive,
@@ -178,8 +171,12 @@
 		canEdit,
 		onEditTask,
 		onTaskMoved,
-		onLoadMoreTasks
+		onLoadMoreTasks,
+		search,
+		createAction
 	}: {
+		search?: Snippet;
+		createAction?: Snippet;
 		projectId: string;
 		tasks: Task[];
 		tasksCoverage?: ProjectTasksCoverage;
@@ -707,24 +704,14 @@
 		if (!name) return null;
 		return list.length > 1 ? `${name} +${list.length - 1}` : name;
 	}
-
-	function activeTaskCount(): number {
-		return tasksCoverage?.total ?? localTasks.filter((t) => !t.deleted_at).length;
-	}
 </script>
 
-<section class="overflow-hidden border-y border-border/70" aria-label="Task kanban board">
-	<header
-		class="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-1 py-2.5"
-	>
-		<div class="flex min-w-0 items-center gap-2">
-			<ListChecks class="h-4 w-4 shrink-0 text-muted-foreground" />
-			<p class="truncate text-sm font-semibold text-foreground">
-				{activeTaskCount()} tasks
-			</p>
-		</div>
-
-		<div class="flex items-center gap-1.5">
+<section class="min-w-0 border-b border-border/70" aria-label="Task kanban board">
+	<header class="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+		{#if search}
+			<div class="min-w-0 basis-full sm:basis-0 sm:flex-1">{@render search()}</div>
+		{/if}
+		<div class="flex w-full items-center gap-1.5 sm:w-auto">
 			<button
 				type="button"
 				onclick={() => (showFilters = !showFilters)}
@@ -760,11 +747,12 @@
 					: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
 			>
 				<Archive class="h-3.5 w-3.5" />
-				<span class="hidden sm:inline">Archived</span>
+				<span>Archived</span>
 				{#if archivedLoaded && archivedTotal > 0}
 					<span class="text-2xs text-muted-foreground">{archivedTotal}</span>
 				{/if}
 			</button>
+			{#if createAction}<div class="ml-auto sm:ml-1">{@render createAction()}</div>{/if}
 		</div>
 	</header>
 
@@ -867,9 +855,6 @@
 						{isArchive && archivedLoaded ? archivedTotal : items.length}
 					</span>
 				</div>
-				<span class="micro-label hidden shrink-0 text-muted-foreground/60 md:inline">
-					{col.hint}
-				</span>
 			</div>
 
 			<!-- Archived tasks are fetched only after the secondary column is opened. -->
@@ -945,11 +930,11 @@
 							>
 								<p
 									class="text-sm font-medium text-foreground line-clamp-2 leading-snug
-									{col.key === 'done' || isArchivedCard ? 'line-through text-muted-foreground' : ''}"
+									{col.key === 'done' || isArchivedCard ? 'text-muted-foreground' : ''}"
 								>
 									{task.title}
 								</p>
-								{#if task.description}
+								{#if task.description && col.key !== 'done'}
 									<p
 										class="mt-0.5 line-clamp-1 text-xs leading-snug text-muted-foreground"
 									>
@@ -959,8 +944,10 @@
 								{#if prio || due || assignee || archivedAt}
 									<div class="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
 										{#if prio && !isArchivedCard}
-											<span class="text-2xs font-semibold {prio.className}"
-												>{prio.label}</span
+											<span
+												class="text-2xs font-medium {col.key === 'done'
+													? 'text-muted-foreground'
+													: prio.className}">{prio.label}</span
 											>
 										{/if}
 										{#if due}

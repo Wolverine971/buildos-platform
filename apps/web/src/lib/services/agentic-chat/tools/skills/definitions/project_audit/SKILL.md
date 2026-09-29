@@ -55,18 +55,19 @@ The decision spine for reading a project critically.
 
 1. Keep the chat in `project` context. Do not switch to a `project_audit` context type.
 2. Start from the current project scope and reuse the in-context project_id when available.
-3. Prefer read-only analysis first; do not mutate the graph just because you found issues.
-4. Build the structural map: identify the project's major documents, goals, milestones/sub-goals, plans, tasks, risks, and calendar anchors. Use the project overview first when it is enough; fetch the graph and targeted lists when the snapshot is thin.
-5. Audit the ideal project chain: each important goal should have either a clear plan, supporting milestones, linked tasks, or a reason why it is intentionally thin. Each plan should link to the tasks that complete it. Completed task sets should imply plan progress; completed plans should support goal or milestone progress.
-6. Audit milestone structure: check whether milestones are being used as meaningful sub-goals, whether milestone-level plans exist when needed, and whether milestones actually help explain progress toward parent goals.
-7. Audit documentation coverage: find goals, plans, milestones, or risky workstreams that lack strategy docs, research docs, requirements, notes, decision records, or other context that would help the user execute. Also flag stale, unlinked, or orphaned documents when they create confusion.
-8. Audit task fit: identify loose tasks that do not relate back to a goal, milestone, plan, document, or clear project outcome. Separate useful one-off admin tasks from work that should be linked, merged, renamed, or removed.
-9. Audit duplicate and overlapping work: look for tasks, plans, milestones, or docs with similar names, objectives, or descriptions. Treat this as a signal to consolidate or clarify ownership, not as proof of a bug unless the evidence is strong.
-10. Audit timeline realism: compare stated due dates, milestone dates, task volume, blocked work, dependencies, and calendar commitments. Ask whether the proper work can realistically fit in the timeline, and name the biggest schedule compression points.
-11. Audit velocity and plan adherence: look for completed task counts, stale active tasks, overdue tasks, repeated date bumps, blocked work, and whether planned tasks are actually getting done. If historical completion data is thin, say what you can and cannot infer.
-12. Synthesize the audit into a ranked set of findings. For each material finding, include evidence, impact, and the smallest practical correction.
-13. Separate observations from recommendations: first report what is true, then suggest what should change.
-14. If the user asks you to fix issues after the audit, switch from analysis to the appropriate write skill, then use that skill's paired direct tools after resolving exact targets and required fields.
+3. For stale, out-of-date, or cleanup questions, call `get_project_cleanup` first. It is the nightly Project Review's open cleanup set with evidence records. Build on it: confirm items and add what it missed. Do not re-propose its items as new findings; the user applies them from the AI Inbox Project cleanup card.
+4. Prefer read-only analysis first; do not mutate the graph just because you found issues.
+5. Build the structural map: identify the project's major documents, goals, milestones/sub-goals, plans, tasks, risks, and calendar anchors. Use the project overview first when it is enough; fetch the graph and targeted lists when the snapshot is thin.
+6. Audit the ideal project chain: each important goal should have either a clear plan, supporting milestones, linked tasks, or a reason why it is intentionally thin. Each plan should link to the tasks that complete it. Completed task sets should imply plan progress; completed plans should support goal or milestone progress.
+7. Audit milestone structure: check whether milestones are being used as meaningful sub-goals, whether milestone-level plans exist when needed, and whether milestones actually help explain progress toward parent goals.
+8. Audit documentation coverage: find goals, plans, milestones, or risky workstreams that lack strategy docs, research docs, requirements, notes, decision records, or other context that would help the user execute. Also flag stale, unlinked, or orphaned documents when they create confusion.
+9. Audit task fit: identify loose tasks that do not relate back to a goal, milestone, plan, document, or clear project outcome. Separate useful one-off admin tasks from work that should be linked, merged, renamed, or removed.
+10. Audit duplicate and overlapping work: look for tasks, plans, milestones, or docs with similar names, objectives, or descriptions. Treat this as a signal to consolidate or clarify ownership, not as proof of a bug unless the evidence is strong.
+11. Audit timeline realism: compare stated due dates, milestone dates, task volume, blocked work, dependencies, and calendar commitments. Ask whether the proper work can realistically fit in the timeline, and name the biggest schedule compression points.
+12. Audit velocity and plan adherence: look for completed task counts, stale active tasks, overdue tasks, repeated date bumps, blocked work, and whether planned tasks are actually getting done. If historical completion data is thin, say what you can and cannot infer.
+13. Synthesize the audit into a ranked set of findings. For each material finding, include evidence, impact, and the smallest practical correction.
+14. Separate observations from recommendations: first report what is true, then suggest what should change.
+15. If the user asks you to fix issues after the audit, switch from analysis to the appropriate write skill, then use that skill's paired direct tools after resolving exact targets and required fields.
 
 ## Contract
 
@@ -97,6 +98,7 @@ Good audit output usually has: executive readout, strongest findings, evidence, 
 ## Related Tools
 
 - `util.project.overview`
+- `onto.project.cleanup.get`
 - `onto.project.graph.get`
 - `onto.task.list`
 - `onto.goal.list`

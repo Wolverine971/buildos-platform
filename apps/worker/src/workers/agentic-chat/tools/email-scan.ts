@@ -423,6 +423,7 @@ export async function loadEmailScanProjectBrief(
 			.eq('project_id', projectId)
 			.eq('type_key', START_HERE_TYPE_KEY)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(1)
 			.abortSignal(signal),
@@ -431,23 +432,28 @@ export async function loadEmailScanProjectBrief(
 			.select('title')
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(18)
 			.abortSignal(signal),
 		client
 			.from('onto_documents')
-			.select('title')
+			.select('title,state_key')
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(12)
 			.abortSignal(signal)
 	]);
 	const row = project.data as { name?: unknown; description?: unknown } | null;
 	if (project.error || !row || typeof row.name !== 'string') return null;
+	// Archived work is not "recent work" (tasker 113); a document archived from the tree
+	// keeps archived_at NULL and says so in state_key.
 	const titles = (result: { data: unknown; error: unknown }): string[] =>
 		!result.error && Array.isArray(result.data)
-			? (result.data as Array<{ title?: unknown }>)
+			? (result.data as Array<{ title?: unknown; state_key?: unknown }>)
+					.filter((entry) => entry.state_key !== 'archived')
 					.map((entry) => (typeof entry.title === 'string' ? entry.title.trim() : ''))
 					.filter(Boolean)
 			: [];

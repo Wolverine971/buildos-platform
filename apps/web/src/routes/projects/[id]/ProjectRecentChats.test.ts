@@ -51,13 +51,17 @@ afterEach(() => {
 });
 
 describe('ProjectRecentChats', () => {
-	it('summarizes and reopens a saved project conversation', async () => {
+	it('reveals details on demand and reopens a saved project conversation', async () => {
 		const onOpenChat = vi.fn();
 		render(ProjectRecentChats, { props: { projectId: PROJECT_ID, onOpenChat } });
 
 		const reopen = await screen.findByRole('button', {
 			name: 'Reopen chat: Launch positioning review'
 		});
+		expect(
+			screen.queryByText('Compared the launch narrative with customer research.')
+		).not.toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'View chats' }));
 		expect(
 			screen.getByText('Compared the launch narrative with customer research.')
 		).toBeInTheDocument();

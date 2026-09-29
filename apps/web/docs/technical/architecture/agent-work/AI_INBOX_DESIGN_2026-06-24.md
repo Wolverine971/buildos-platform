@@ -4,6 +4,10 @@
 
 **Date:** 2026-06-24
 **Status:** Shaping, audit-revised 2026-06-24, review/audit alignment revised 2026-06-26, project-suggestion clarified decisions and shared decision controls implemented 2026-06-26, decision notification handoff implemented 2026-06-27, inbox chat resolution hook implemented 2026-06-28, agent-run shared chat context service/API/inbox delegation/status-modal UI wiring implemented 2026-06-29, proposal-focus grounding and explicit in-chat inbox resolution implemented 2026-06-30; manual smoke next
+**Update 2026-09-29:** Project Review findings, Complete Project Audit recommendations and the
+freshness radar bundle no longer get separate inbox rows. Each project has one `project_cleanup`
+item; see `docs/product/PROJECT_CLEANUP_CHANGE_SET.md`. The per-source adapter tables below
+describe the earlier design.
 **Author:** DJ + Claude + Codex audit pass
 **Related:** `HANDOFF_2026-06-19.md` (Agent Work / change sets), `PROJECT_START_HERE_DOC_DESIGN_2026-06-23.md`, `docs/product/PROJECT_REVIEW_TAXONOMY.md`, `docs/research/project-review-loop-audit-suggestion-families-2026-06-25.md`, `AGENT_RUN_CHAT_CONTEXT_BRIDGE_PLAN_2026-06-29.md`
 

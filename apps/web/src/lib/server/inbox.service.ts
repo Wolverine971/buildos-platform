@@ -10,6 +10,7 @@ import {
 	type InboxItemStatus,
 	type InboxSourceType
 } from '@buildos/shared-agent-ops/inbox-index';
+import { loadProjectCleanupView } from '@buildos/shared-agent-ops/project-cleanup';
 import {
 	readProjectSuggestionStructuralFingerprint,
 	verifyProjectSuggestionIntegrity
@@ -107,6 +108,7 @@ const INBOX_SOURCE_TYPES = new Set<InboxSourceType>([
 	'project_suggestion',
 	'project_review',
 	'project_audit',
+	'project_cleanup',
 	'calendar_suggestion',
 	'profile_fragment',
 	'contact_merge_candidate',
@@ -118,6 +120,7 @@ const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
 	'project_suggestion',
 	'project_review',
 	'project_audit',
+	'project_cleanup',
 	'calendar_suggestion'
 ]);
 
@@ -618,8 +621,13 @@ async function loadSourcePayloads(params: {
 }): Promise<Map<string, Record<string, unknown>>> {
 	const payloads = new Map<string, Record<string, unknown>>();
 	const idsBySource = new Map<InboxSourceType, string[]>();
+	const cleanupProjectIds = new Set<string>();
 
 	for (const row of params.rows) {
+		if (row.source_type === 'project_cleanup') {
+			cleanupProjectIds.add(row.source_ref_id);
+			continue;
+		}
 		if (
 			!SUPPORTED_SOURCE_TYPES.has(row.source_type) &&
 			row.source_type !== 'integration_attention'
@@ -640,16 +648,39 @@ async function loadSourcePayloads(params: {
 		integration_attention: 'user_email_connections'
 	};
 
-	const sourceRows = await Promise.all(
-		[...idsBySource].map(async ([sourceType, ids]) => {
-			const table = tableBySource[sourceType];
-			if (!table) return { sourceType, rows: [] as Record<string, unknown>[] };
-			return {
-				sourceType,
-				rows: await loadRowsById({ admin: params.admin, table, ids })
-			};
-		})
-	);
+	const [sourceRows] = await Promise.all([
+		Promise.all(
+			[...idsBySource].map(async ([sourceType, ids]) => {
+				const table = tableBySource[sourceType];
+				if (!table) return { sourceType, rows: [] as Record<string, unknown>[] };
+				return {
+					sourceType,
+					rows: await loadRowsById({ admin: params.admin, table, ids })
+				};
+			})
+		),
+		// Tasker 112: a project's cleanup card carries its whole change set, re-verified
+		// against the live project so the card shows current wording and fingerprints.
+		Promise.all(
+			[...cleanupProjectIds].map(async (projectId) => {
+				try {
+					const view = await loadProjectCleanupView(params.admin, projectId, {
+						verify: true
+					});
+					payloads.set(
+						sourceKey('project_cleanup', projectId),
+						view as unknown as Record<string, unknown>
+					);
+				} catch (error) {
+					// One project's view must not fail the whole inbox; the card offers a retry.
+					console.warn(
+						`[AI Inbox] Failed to load project cleanup for ${projectId}:`,
+						error instanceof Error ? error.message : error
+					);
+				}
+			})
+		)
+	]);
 	for (const { sourceType, rows } of sourceRows) {
 		await Promise.all(
 			rows.map(async (row) => {
@@ -937,7 +968,8 @@ async function loadDecisionCapabilities(params: {
 					(row) =>
 						row.status === 'pending' &&
 						(row.source_type === 'project_suggestion' ||
-							row.source_type === 'project_review') &&
+							row.source_type === 'project_review' ||
+							row.source_type === 'project_cleanup') &&
 						Boolean(row.project_id)
 				)
 				.map((row) => row.project_id as string)
@@ -992,7 +1024,7 @@ async function loadDecisionCapabilities(params: {
 			continue;
 		}
 
-		if (row.source_type === 'project_review') {
+		if (row.source_type === 'project_review' || row.source_type === 'project_cleanup') {
 			if (!row.project_id) {
 				capabilities.set(rowKey(row), {
 					can_decide: false,
@@ -1236,12 +1268,14 @@ async function backfillVisibleSourceRows(params: {
 	}
 
 	if (
-		(!params.sourceType || params.sourceType === 'project_suggestion') &&
+		(!params.sourceType ||
+			params.sourceType === 'project_suggestion' ||
+			params.sourceType === 'project_cleanup') &&
 		params.group !== 'account'
 	) {
 		let query = params.supabase
 			.from('project_suggestions')
-			.select('*')
+			.select('id, project_id, status, agent_run_id')
 			.in('status', ['pending', 'approved', 'delegated'])
 			.order('created_at', { ascending: false })
 			.limit(limit);
@@ -1252,10 +1286,17 @@ async function backfillVisibleSourceRows(params: {
 			admin: params.admin,
 			rows: (data ?? []) as Record<string, unknown>[]
 		});
+		// Tasker 112: every suggestion reaches the inbox through its project's one cleanup
+		// item, so sync once per project instead of once per suggestion row.
+		const projectIds = [
+			...new Set(
+				rows.map((row) => asString(row.project_id)).filter((id): id is string => !!id)
+			)
+		];
 		synced += await syncRows({
 			admin: params.admin,
-			sourceType: 'project_suggestion',
-			rows
+			sourceType: 'project_cleanup',
+			rows: projectIds.map((id) => ({ id }))
 		});
 	}
 

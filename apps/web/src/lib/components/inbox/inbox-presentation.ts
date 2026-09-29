@@ -19,3 +19,18 @@ export function formatInboxAttentionSummary(params: {
 
 	return held > 0 ? `${attention} · ${held} held for later` : attention;
 }
+
+const INBOX_SOURCE_LABELS: Record<string, string> = {
+	agent_run: 'Agent proposal',
+	project_review: 'Project manager brief',
+	project_audit: 'Project audit',
+	project_cleanup: 'Project cleanup',
+	calendar_suggestion: 'Calendar suggestion',
+	integration_attention: 'Gmail access',
+	project_suggestion: 'Project review'
+};
+
+/** The eyebrow label an AI Inbox item shows for where it came from. */
+export function formatInboxSourceLabel(sourceType: string): string {
+	return INBOX_SOURCE_LABELS[sourceType] ?? 'Project review';
+}

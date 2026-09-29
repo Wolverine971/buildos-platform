@@ -138,9 +138,17 @@ export function normalizeArchivedReadFilter(value: unknown): boolean {
 	return normalizeArchivedBoolean(value) ?? false;
 }
 
+/**
+ * An archived task has deleted_at and archived_at set together (20260924190350),
+ * so its archive read ignores deleted_at. Every other entity archives with
+ * archived_at alone, and a deleted row stays out of both reads.
+ */
 export function applyArchivedFilter<
 	T extends { is: (...args: any[]) => any; not: (...args: any[]) => any }
->(query: T, archived: boolean): T {
+>(query: T, archived: boolean, entity?: 'task'): T {
+	if (archived && entity === 'task') {
+		return query.not('archived_at', 'is', null) as T;
+	}
 	const withoutDeleted = query.is('deleted_at', null) as T;
 	return archived
 		? (withoutDeleted.not('archived_at', 'is', null) as T)
@@ -149,8 +157,8 @@ export function applyArchivedFilter<
 
 export function applyArchivedReadFilter<
 	T extends { is: (...args: any[]) => any; not: (...args: any[]) => any }
->(query: T, args: Record<string, unknown>): T {
-	return applyArchivedFilter(query, normalizeArchivedReadFilter(args.archived));
+>(query: T, args: Record<string, unknown>, entity?: 'task'): T {
+	return applyArchivedFilter(query, normalizeArchivedReadFilter(args.archived), entity);
 }
 
 export function normalizeArchivedUpdate(value: unknown): string | null | undefined {

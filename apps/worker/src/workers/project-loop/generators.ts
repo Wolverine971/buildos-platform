@@ -23,12 +23,26 @@ import type {
 	ProposedSuggestion
 } from '@buildos/shared-types';
 import { buildHeuristicProjectLoopBrief } from '@buildos/shared-agent-ops';
+import { THINKING_LOG_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/thinking-log';
 import type { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { PROJECT_LOOP_JSON_PROVIDER_ORDER_RESOLVED } from '../../config/projectLoops';
 import { generateEnglishProjectReview, hasUnexpectedReviewScript } from './reviewLanguage';
 import { type ProjectDriftEvidence, renderDriftEvidence } from './driftEvidence';
 import { PROJECT_REVIEW_CLIPPED_TEXT_RULE, clipForPrompt } from './promptText';
-import { type DriftFixDocument, buildDriftFix } from './driftFixes';
+import {
+	CLEANUP_SYNTHESIS_OUTPUT,
+	type CleanupSynthesisItem,
+	type CleanupSynthesisResult,
+	buildHeuristicCleanupSynthesis,
+	describeCleanupItems,
+	parseCleanupSynthesis
+} from './cleanupSynthesis';
+import {
+	type DriftFixDocument,
+	type DriftFixGoal,
+	buildDriftFix,
+	buildRecordFix
+} from './driftFixes';
 
 /** Field budgets for prompt lines. Goals and short descriptions are rarely cut at all. */
 const PROMPT_CLIP = Object.freeze({
@@ -62,6 +76,10 @@ export interface LoopDocument {
 	description: string | null;
 	updated_at: string | null;
 	parent_id: string | null;
+	/** Body length; 0 means an empty placeholder (tasker 112). */
+	content_chars?: number | null;
+	/** Has a live public page: archiving it takes the page offline. */
+	is_public?: boolean;
 }
 
 export interface LoopTask {
@@ -98,12 +116,36 @@ export interface LoopPriorDecision {
 	decided_at?: string | null;
 }
 
+/** A finding already in the project's cleanup change set (tasker 112). */
+export interface LoopTrackedFinding {
+	kind: string;
+	title: string;
+	/** Names of the records it is about. */
+	about: string[];
+}
+
 export interface LoopContext {
 	projectId: string;
 	projectName: string;
 	projectDescription: string | null;
-	goals: Array<{ name: string; description: string | null }>;
+	projectTypeKey?: string | null;
+	goals: Array<{
+		id?: string;
+		name: string;
+		description: string | null;
+		state_key?: string | null;
+	}>;
+	/** The most recently touched documents, described in full. */
 	documents: LoopDocument[];
+	/**
+	 * Every other live document, one compact line each, so the stalest documents stay in view
+	 * (tasker 112: a 40-document window hid them).
+	 */
+	moreDocuments?: LoopDocument[];
+	/** The live START HERE document's id; never proposed for archiving. */
+	startHereDocumentId?: string | null;
+	/** Open findings the roll-up already carries; the checks look for new ones. */
+	tracked?: LoopTrackedFinding[];
 	docStructureSummary: string;
 	tasks: LoopTask[];
 	priorDecisions: LoopPriorDecision[];
@@ -331,8 +373,11 @@ function stringList(value: unknown, maxItems = 4): string[] | undefined {
 function sanitizeEvidenceRefs(rawRefs: unknown, ctx: LoopContext): ProjectSuggestionEvidenceRef[] {
 	if (!Array.isArray(rawRefs)) return [];
 
-	const documentsById = new Map(ctx.documents.map((d) => [d.id, d]));
+	const documentsById = new Map(allDocuments(ctx).map((d) => [d.id, d]));
 	const tasksById = new Map(ctx.tasks.map((t) => [t.id, t]));
+	const goalsById = new Map(
+		ctx.goals.filter((g) => g.id).map((g) => [g.id as string, g] as const)
+	);
 	const refs: ProjectSuggestionEvidenceRef[] = [];
 
 	for (const raw of rawRefs.slice(0, 6)) {
@@ -341,9 +386,19 @@ function sanitizeEvidenceRefs(rawRefs: unknown, ctx: LoopContext): ProjectSugges
 		const entityType = EVIDENCE_TYPES.has(ref.entity_type as ProjectSuggestionEvidenceType)
 			? (ref.entity_type as ProjectSuggestionEvidenceType)
 			: 'unknown';
-		const entityId = typeof ref.entity_id === 'string' ? ref.entity_id : undefined;
+		let entityId = typeof ref.entity_id === 'string' ? ref.entity_id : undefined;
 
 		let knownTitle: string | undefined;
+		// Goal and project refs keep only real ids (tasker 112: the model invented "goal-1").
+		if (entityType === 'goal' && entityId) {
+			const goal = goalsById.get(entityId);
+			if (goal) knownTitle = goal.name;
+			else entityId = undefined;
+		}
+		if (entityType === 'project') {
+			entityId = ctx.projectId;
+			knownTitle = ctx.projectName;
+		}
 		let knownUpdatedAt: string | null | undefined;
 		if (entityType === 'document') {
 			if (!entityId || !documentsById.has(entityId)) continue;
@@ -595,9 +650,36 @@ function describeDocuments(documents: LoopDocument[]): string {
 			const desc = d.description
 				? ` — ${clipForPrompt(d.description, PROMPT_CLIP.documentDescription)}`
 				: '';
-			return `- [${d.id}] "${d.title}" (type=${d.type_key ?? 'n/a'}, state=${d.state_key ?? 'n/a'}, updated=${d.updated_at ?? 'n/a'}${parent})${desc}`;
+			return `- [${d.id}] "${d.title}" (type=${d.type_key ?? 'n/a'}, state=${d.state_key ?? 'n/a'}, updated=${d.updated_at ?? 'n/a'}${parent}${documentFacts(d)})${desc}`;
 		})
 		.join('\n');
+}
+
+function documentFacts(d: LoopDocument): string {
+	const size =
+		typeof d.content_chars === 'number'
+			? d.content_chars === 0
+				? ', EMPTY'
+				: `, ${d.content_chars} chars`
+			: '';
+	return `${size}${d.is_public ? ', HAS A LIVE PUBLIC PAGE' : ''}`;
+}
+
+/** Every other live document, one line each: stale ones are usually here. */
+function describeMoreDocuments(documents: LoopDocument[] | undefined): string {
+	if (!documents?.length) return '';
+	return [
+		'',
+		`Older documents (${documents.length}, compact):`,
+		...documents.map(
+			(d) =>
+				`- [${d.id}] "${d.title}" (type=${d.type_key ?? 'n/a'}, updated=${d.updated_at?.slice(0, 10) ?? 'n/a'}${d.parent_id ? ` parent=${d.parent_id}` : ''}${documentFacts(d)})`
+		)
+	].join('\n');
+}
+
+function allDocuments(ctx: LoopContext): LoopDocument[] {
+	return [...ctx.documents, ...(ctx.moreDocuments ?? [])];
 }
 
 function describeTasks(tasks: LoopTask[]): string {
@@ -654,11 +736,28 @@ function describePriorDecisions(decisions: LoopPriorDecision[] | undefined): str
 }
 
 function priorDecisionContext(ctx: LoopContext): string {
-	return `Previously reviewed decisions:\n${describePriorDecisions(ctx.priorDecisions)}`;
+	const tracked = ctx.tracked?.length
+		? [
+				'',
+				"Already in the project's cleanup list (carried across reviews until resolved). Do not raise these again unless something materially new changes them:",
+				...ctx.tracked.map(
+					(finding) =>
+						`- ${finding.kind}: "${finding.title}"${
+							finding.about.length
+								? ` (about ${finding.about
+										.slice(0, 4)
+										.map((name) => `"${name}"`)
+										.join(', ')})`
+								: ''
+						}`
+				)
+			].join('\n')
+		: '';
+	return `Decisions the user made on earlier review items:\n${describePriorDecisions(ctx.priorDecisions)}${tracked}`;
 }
 
 function docMoveUndoOperations(operations: LoopOperation[], ctx: LoopContext): LoopOperation[] {
-	const parentById = new Map(ctx.documents.map((doc) => [doc.id, doc.parent_id]));
+	const parentById = new Map(allDocuments(ctx).map((doc) => [doc.id, doc.parent_id]));
 	const undo: LoopOperation[] = [];
 	for (const op of operations) {
 		if (op.tool !== 'move_document_in_tree') continue;
@@ -676,29 +775,6 @@ function docMoveUndoOperations(operations: LoopOperation[], ctx: LoopContext): L
 		});
 	}
 	return undo;
-}
-
-function outdatedFlagUndoOperations(
-	operations: LoopOperation[],
-	ctx: LoopContext
-): LoopOperation[] {
-	return operations
-		.map((op) => (typeof op.args.document_id === 'string' ? op.args.document_id : null))
-		.filter((documentId): documentId is string =>
-			Boolean(documentId && ctx.documents.some((doc) => doc.id === documentId))
-		)
-		.map((documentId) => ({
-			tool: 'update_onto_document',
-			args: {
-				document_id: documentId,
-				project_id: ctx.projectId,
-				props: {
-					loop_flagged_outdated: false,
-					loop_outdated_reason: null
-				}
-			},
-			label: 'Remove outdated-document flag'
-		}));
 }
 
 function taskConflictUndoOperations(
@@ -1505,19 +1581,113 @@ export async function generateProjectManagerBrief(params: {
 	}
 }
 
+/**
+ * The roll-up call (tasker 112): the manager brief's slot, now judging the whole cleanup list.
+ * It sees every open item with the current state of what it touches and returns verdicts,
+ * merges, sections and groups by handle. Falls back to code's defaults when the call fails.
+ */
+export async function generateProjectCleanupSynthesis(params: {
+	llm: SmartLLMService;
+	ctx: LoopContext;
+	items: CleanupSynthesisItem[];
+	closedThisPass: string[];
+	userId: string;
+	chatSessionId?: string;
+	runId?: string;
+	uncheckedLenses?: string[];
+	generatedAt: string;
+	signal?: AbortSignal;
+	onUsage: (event: UsageEvent) => Promise<void>;
+}): Promise<CleanupSynthesisResult> {
+	if (!params.items.length)
+		return buildHeuristicCleanupSynthesis({ items: [], generatedAt: params.generatedAt });
+	const uncheckedLenses = [...new Set(params.uncheckedLenses ?? [])];
+	const systemPrompt = [
+		"You keep one project's cleanup list for its owner. The list carries findings across reviews until they are done or no longer true.",
+		'For EVERY item below, decide:',
+		'- verdict "still_true" when the finding still holds given the current state shown, or "resolved" with a reason when the current state shows it no longer applies. Do not resolve an item just because it is old.',
+		'- section: "safe_cleanup" for a verified change the owner can apply without thinking twice; "needs_call" when it needs their judgment (direction, goals, public pages, anything between projects); "note" when approving it changes nothing. Use only the sections listed for that item.',
+		'- summary: one plain sentence on why it is worth doing now.',
+		'Merge two items only when they are the same finding about the same records (keep the older one).',
+		'Group items the owner would decide together, for example "Archive 6 old drafts" or "Tidy the Research folder". Every group lists item ids of one section.',
+		'bottom_line says in one sentence what this list is about; recommendation names the one thing to do first. Use ordinary language. Name the records. Never invent an id, record, or fact.',
+		'Attention: none=nothing useful; minor=notes only; decision=changes or calls wait on the owner; urgent=blocked work or a material consequence.',
+		'next_best_action is the one concrete step that moves the project forward now, independent of the cleanup list: pick work from the earliest unfinished phase, preferably an existing open task. Use null when the evidence does not show one.',
+		'',
+		CLEANUP_SYNTHESIS_OUTPUT
+	].join('\n');
+	const userPrompt = [
+		PROJECT_HEADER(params.ctx),
+		'',
+		'Where the project is now (START HERE):',
+		describeStartHere(params.ctx.startHere),
+		'',
+		'Plans or phases:',
+		describePlans(params.ctx.plans),
+		'',
+		'Open tasks:',
+		describeTasks(params.ctx.tasks),
+		'',
+		...(uncheckedLenses.length
+			? [
+					'Checks NOT run this pass (do not resolve items of these kinds for lack of a new finding):',
+					uncheckedLenses.join(', '),
+					''
+				]
+			: []),
+		...(params.closedThisPass.length
+			? [
+					'Closed by code this pass (already off the list):',
+					...params.closedThisPass.map((line) => `- ${line}`),
+					''
+				]
+			: []),
+		'Cleanup list:',
+		describeCleanupItems(params.items),
+		'',
+		priorDecisionContext({ ...params.ctx, tracked: [] })
+	].join('\n');
+
+	try {
+		const raw = await callBriefGenerator({
+			llm: params.llm,
+			userId: params.userId,
+			chatSessionId: params.chatSessionId,
+			ctx: params.ctx,
+			runId: params.runId,
+			systemPrompt,
+			userPrompt,
+			signal: params.signal,
+			onUsage: params.onUsage
+		});
+		if (!raw) throw new Error('empty roll-up response');
+		return parseCleanupSynthesis({ raw, items: params.items, generatedAt: params.generatedAt });
+	} catch (error) {
+		if (params.signal?.aborted) throw error;
+		console.warn(
+			'[ProjectReviews] cleanup roll-up failed, keeping every item open:',
+			error instanceof Error ? error.message : error
+		);
+		return buildHeuristicCleanupSynthesis({
+			items: params.items,
+			generatedAt: params.generatedAt
+		});
+	}
+}
+
 const PROJECT_HEADER = (ctx: LoopContext): string => {
 	const goals = ctx.goals.length
 		? ctx.goals
 				.map(
 					(g) =>
-						`- ${g.name}${g.description ? `: ${clipForPrompt(g.description, PROMPT_CLIP.goalDescription)}` : ''}`
+						`- ${g.id ? `[${g.id}] ` : ''}${g.name}${g.state_key ? ` (state=${g.state_key})` : ''}${g.description ? `: ${clipForPrompt(g.description, PROMPT_CLIP.goalDescription)}` : ''}`
 				)
 				.join('\n')
 		: '(none)';
 	const description = ctx.projectDescription
 		? clipForPrompt(ctx.projectDescription, PROMPT_CLIP.projectDescription)
 		: '(none)';
-	return `Project: ${ctx.projectName}\nDescription: ${description}\nGoals:\n${goals}`;
+	return `Project: ${ctx.projectName}${ctx.projectTypeKey ? ` (type=${ctx.projectTypeKey})` : ''}\nDescription: ${description}\nGoals:\n${goals}`;
 };
 
 function describePlans(plans: LoopPlan[] | undefined): string {
@@ -1634,7 +1804,7 @@ export async function generateDocOrganization(params: {
 		'If the documents are already well organized, return { "suggestions": [] }.'
 	].join('\n');
 
-	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nCurrent document tree:\n${ctx.docStructureSummary}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\n${priorDecisionContext(ctx)}`;
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nCurrent document tree:\n${ctx.docStructureSummary}\n\nDocuments:\n${describeDocuments(ctx.documents)}${describeMoreDocuments(ctx.moreDocuments)}\n\n${priorDecisionContext(ctx)}`;
 
 	const raw = await callGenerator({
 		llm: params.llm,
@@ -1649,7 +1819,7 @@ export async function generateDocOrganization(params: {
 		onUsage: params.onUsage
 	});
 
-	const knownDocIds = new Set(ctx.documents.map((d) => d.id));
+	const knownDocIds = new Set(allDocuments(ctx).map((d) => d.id));
 	const allowedTools = new Set(['move_document_in_tree']);
 
 	const suggestions: ProposedSuggestion[] = [];
@@ -1679,10 +1849,11 @@ export async function generateDocOrganization(params: {
 }
 
 /**
- * OUTDATED DOCUMENTS (tier 1)
- * Flags documents that look stale/superseded. The applied operation is a
- * non-destructive props flag on the document (reversible). v1 flags one
- * document per suggestion so each can be reviewed independently.
+ * OUTDATED RECORDS (tier 1)
+ * Finds documents and open tasks the project has moved past and proposes archiving each one
+ * (tasker 112; tasker 113's single archive meaning). One suggestion per record, or per folder
+ * archived with everything under it, so the cleanup card can apply them one by one. Labels and
+ * previews come from code; the live START HERE and the thinking log are never proposed.
  */
 export async function generateOutdatedDocs(params: {
 	llm: SmartLLMService;
@@ -1694,42 +1865,70 @@ export async function generateOutdatedDocs(params: {
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<ProposedSuggestion[]> {
 	const { ctx } = params;
-	if (ctx.documents.length === 0) return [];
+	const documents = allDocuments(ctx);
+	if (documents.length === 0 && ctx.tasks.length === 0) return [];
 
 	const systemPrompt = [
-		'You are a BuildOS project archivist. Identify documents that appear OUTDATED',
-		'or SUPERSEDED relative to the project goals and recent activity (e.g. old plans,',
-		'drafts overtaken by newer docs, notes whose subject is clearly done).',
-		'Be conservative — only flag documents you are reasonably confident are stale.',
-		'Do not re-raise documents that were previously dismissed/applied unless materially new evidence changes the stale/outdated judgment.',
+		'You are a BuildOS project archivist. Find records the project has clearly moved past and',
+		'propose archiving them. Archived records leave the working view and can be restored.',
 		'',
-		'For each flagged document emit ONE suggestion whose single operation marks the',
-		'document with a non-destructive props flag using update_onto_document:',
-		'{ "document_id": "<uuid>", "props": { "loop_flagged_outdated": true, "loop_outdated_reason": "<short reason>" } }',
-		'(project_id is added automatically — do not include it. Do not change content or state.)',
+		'Good candidates:',
+		'- EMPTY placeholder documents with nothing under them and no recent activity;',
+		'- old drafts, plans, or notes a newer document has replaced (name the newer one);',
+		'- duplicate copies of a document, including an older duplicate START HERE;',
+		'- a folder whose whole subject is finished or abandoned (archive it with everything under it);',
+		'- open tasks that are obsolete: already done elsewhere, replaced by another task, or about a',
+		'  direction the project dropped.',
+		'',
+		'Rules:',
+		'- Be conservative. Only propose what the evidence shows the project no longer needs.',
+		'- Never propose the documents marked NEVER ARCHIVE.',
+		'- A document with a live public page may be proposed, but say so in the rationale.',
+		'- Do not re-raise records the user already decided on, or records already in the cleanup list.',
+		'- One suggestion per record. For a folder, use children "archive_children" to archive',
+		'  everything under it, or "promote_children" to keep its children and move them up a level.',
+		'',
+		'Operations (project_id is added automatically):',
+		'- archive_onto_document { "document_id": "<uuid>", "children": "archive_children"|"promote_children" }',
+		'- archive_onto_task { "task_id": "<uuid>" }',
 		'',
 		'Return ONLY JSON: { "suggestions": [ {',
-		'  "title": string,        // e.g. "Looks outdated: \\"Q1 launch plan\\""',
-		'  "why_now": string,      // why this document surfaced in this review',
-		'  "rationale": string,    // why it seems stale',
+		'  "title": string,        // e.g. "Archive \\"Q1 launch plan\\" (replaced by \\"Q2 plan\\")"',
+		'  "why_now": string,',
+		'  "rationale": string,    // why the project no longer needs it',
 		'  "confidence": number,   // 0..1',
 		'  "evidence_refs": [ { "entity_type": "document"|"task", "entity_id": "<uuid>", "reason": string } ],',
-		'  "preview": { "kind": "outdated_flag", "summary": string, "impact": string },',
-		'  "operations": [ { "tool": "update_onto_document", "args": {…}, "label": string } ]',
+		'  "operations": [ one archive operation ]',
 		'} ] }',
-		'If nothing looks outdated, return { "suggestions": [] }.'
+		'If nothing is clearly finished with, return { "suggestions": [] }.'
 	].join('\n');
 
-	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\nRecent tasks (signal of where the project is now):\n${
+	const protectedIds = protectedDocumentIds(ctx);
+	const protectedLines = documents
+		.filter((doc) => protectedIds.has(doc.id))
+		.map((doc) => `- [${doc.id}] "${doc.title}"`);
+	const userPrompt = [
+		PROJECT_HEADER(ctx),
+		'',
+		'Current document tree:',
+		ctx.docStructureSummary,
+		'',
+		'Documents:',
+		describeDocuments(ctx.documents) + describeMoreDocuments(ctx.moreDocuments),
+		...(protectedLines.length ? ['', 'NEVER ARCHIVE:', ...protectedLines] : []),
+		'',
+		'Open tasks:',
 		ctx.tasks.length
 			? ctx.tasks
 					.map(
 						(t) =>
-							`- "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})${t.description ? ` — ${clipForPrompt(t.description, PROMPT_CLIP.taskDescription)}` : ''}`
+							`- [${t.id}] "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})${t.description ? ` — ${clipForPrompt(t.description, PROMPT_CLIP.taskDescription)}` : ''}`
 					)
 					.join('\n')
-			: '(none)'
-	}\n\n${priorDecisionContext(ctx)}`;
+			: '(none)',
+		'',
+		priorDecisionContext(ctx)
+	].join('\n');
 
 	const raw = await callGenerator({
 		llm: params.llm,
@@ -1744,19 +1943,13 @@ export async function generateOutdatedDocs(params: {
 		onUsage: params.onUsage
 	});
 
-	const knownDocIds = new Set(ctx.documents.map((d) => d.id));
-	const allowedTools = new Set(['update_onto_document']);
-
 	const suggestions: ProposedSuggestion[] = [];
+	const proposed = new Set<string>();
 	for (const s of raw) {
-		const operations = sanitizeCompleteOperations('project_loop_outdated_docs', s, {
-			projectId: ctx.projectId,
-			allowedTools,
-			knownDocIds
-		});
-		// Outdated-doc operations don't carry project_id in the tool schema, but
-		// forcing it is harmless and ignored by update_onto_document.
-		if (!operations?.length || !s.title) continue;
+		if (!s.title) continue;
+		const archive = buildArchiveOperation(s.operations, ctx, protectedIds);
+		if (!archive || proposed.has(archive.targetId)) continue;
+		proposed.add(archive.targetId);
 		suggestions.push({
 			kind: 'doc_outdated',
 			risk_tier: 1,
@@ -1765,14 +1958,110 @@ export async function generateOutdatedDocs(params: {
 			why_now: truncate(s.why_now, 220),
 			confidence: typeof s.confidence === 'number' ? s.confidence : undefined,
 			evidence_refs: sanitizeEvidenceRefs(s.evidence_refs, ctx),
-			preview: sanitizePreview(s.preview),
+			preview: {
+				kind: 'outdated_flag',
+				summary: archive.operation.label ?? s.title.slice(0, 200),
+				...(archive.after.length ? { after: archive.after } : {}),
+				impact: archive.impact
+			},
 			freshness_state: 'fresh',
+			// Archived records can be restored; no replayable unarchive exists, so no undo ops.
 			reversible: true,
-			operations,
-			undo_operations: outdatedFlagUndoOperations(operations, ctx)
+			operations: [archive.operation],
+			undo_operations: []
 		});
 	}
 	return suggestions;
+}
+
+/** The live START HERE and every thinking log: archiving either breaks the project's memory. */
+function protectedDocumentIds(ctx: LoopContext): Set<string> {
+	const ids = new Set<string>();
+	if (ctx.startHereDocumentId) ids.add(ctx.startHereDocumentId);
+	for (const doc of allDocuments(ctx)) {
+		if (doc.type_key === THINKING_LOG_TYPE_KEY) ids.add(doc.id);
+	}
+	return ids;
+}
+
+/**
+ * One archive of a record the pass was shown. The model picks the record and, for a folder, the
+ * children mode; code writes the label and refuses anything that would take a protected
+ * document with it.
+ */
+function buildArchiveOperation(
+	rawOps: RawSuggestion['operations'],
+	ctx: LoopContext,
+	protectedIds: Set<string>
+): { operation: LoopOperation; targetId: string; after: string[]; impact: string } | null {
+	if (!Array.isArray(rawOps) || rawOps.length !== 1) return null;
+	const raw = rawOps[0];
+	const args = raw?.args && typeof raw.args === 'object' ? raw.args : {};
+	if (raw?.tool === 'archive_onto_task') {
+		const taskId = typeof args.task_id === 'string' ? args.task_id : null;
+		const task = taskId ? ctx.tasks.find((t) => t.id === taskId) : undefined;
+		if (!taskId || !task) return null;
+		return {
+			operation: {
+				tool: 'archive_onto_task',
+				args: { project_id: ctx.projectId, task_id: taskId },
+				label: `Archive task "${task.title}"`
+			},
+			targetId: taskId,
+			after: [],
+			impact: 'The task leaves the board. It can be restored from the archive.'
+		};
+	}
+	if (raw?.tool !== 'archive_onto_document') return null;
+	const documents = allDocuments(ctx);
+	const documentId = typeof args.document_id === 'string' ? args.document_id : null;
+	const document = documentId ? documents.find((d) => d.id === documentId) : undefined;
+	if (!documentId || !document || protectedIds.has(documentId)) return null;
+	const children = args.children === 'promote_children' ? 'promote_children' : 'archive_children';
+	const descendants = descendantDocuments(documentId, documents);
+	if (children === 'archive_children' && descendants.some((d) => protectedIds.has(d.id)))
+		return null;
+	const archivesTree = children === 'archive_children' && descendants.length > 0;
+	// Promote moves only the direct children up a level; their own children go with them.
+	const directChildren = descendants.filter((d) => d.parent_id === documentId).length;
+	return {
+		operation: {
+			tool: 'archive_onto_document',
+			args: { project_id: ctx.projectId, document_id: documentId, children },
+			label: archivesTree
+				? `Archive "${document.title}" and the ${descendants.length} document${descendants.length === 1 ? '' : 's'} under it`
+				: `Archive "${document.title}"`
+		},
+		targetId: documentId,
+		after: archivesTree
+			? descendants.slice(0, 8).map((d) => `Also archived: "${d.title}"`)
+			: [],
+		impact:
+			directChildren > 0 && children === 'promote_children'
+				? `The ${directChildren} document${directChildren === 1 ? '' : 's'} under it move${directChildren === 1 ? 's' : ''} up a level and stay${directChildren === 1 ? 's' : ''}. It can be restored from the archive.`
+				: 'It leaves the document tree. It can be restored from the archive.'
+	};
+}
+
+function descendantDocuments(rootId: string, documents: LoopDocument[]): LoopDocument[] {
+	const childrenByParent = new Map<string, LoopDocument[]>();
+	for (const doc of documents) {
+		if (!doc.parent_id) continue;
+		const list = childrenByParent.get(doc.parent_id) ?? [];
+		list.push(doc);
+		childrenByParent.set(doc.parent_id, list);
+	}
+	const found: LoopDocument[] = [];
+	const queue = [...(childrenByParent.get(rootId) ?? [])];
+	const seen = new Set<string>([rootId]);
+	while (queue.length) {
+		const doc = queue.shift() as LoopDocument;
+		if (seen.has(doc.id)) continue;
+		seen.add(doc.id);
+		found.push(doc);
+		queue.push(...(childrenByParent.get(doc.id) ?? []));
+	}
+	return found;
 }
 
 /**
@@ -1825,6 +2114,11 @@ export async function generateDrift(params: {
 					'- Name the document you would edit in the title.'
 				]
 			: []),
+		'',
+		'GOAL OR PROJECT FIX: when the stale place is a goal or the project itself, you may instead include ONE operation:',
+		'- update_onto_goal { "goal_id": "<goal id shown above>", "name": string } to rename a goal, or { "goal_id": "<id>", "state_key": "active"|"achieved"|"abandoned"|"draft" } when its status is plainly out of date;',
+		'- update_onto_project { "description": string } when the description no longer says what the project is, or { "type_key": "project.<realm>.<initiative>" } when its type is plainly wrong.',
+		"One change per operation. Leave operations empty when the change needs the user's judgment.",
 		...(radarConcerns.length
 			? [
 					'',
@@ -1838,8 +2132,8 @@ export async function generateDrift(params: {
 		'Rules:',
 		'- Be conservative. Only raise drift that is supported by specific evidence.',
 		evidence
-			? '- The only write you may propose is the one-click fix above. Items without one are informational review decisions.'
-			: '- Do NOT propose writes. Drift items are informational review decisions.',
+			? '- The only writes you may propose are the one-click fixes above. Items without one are informational review decisions.'
+			: '- The only write you may propose is the goal or project fix above. Items without one are informational review decisions.',
 		'- Prefer 0-3 high-signal items; one item per stale place.',
 		'- Attach evidence_refs from documents, tasks, goals, or project.',
 		'- Do NOT re-raise previously reviewed drift unless materially new evidence changes the assessment.',
@@ -1852,8 +2146,8 @@ export async function generateDrift(params: {
 		'  "evidence_refs": [ { "entity_type": "project"|"goal"|"document"|"task", "entity_id": "<uuid optional>", "title": string, "reason": string } ],',
 		'  "preview": { "kind": "drift", "summary": string, "before": [string], "after": [string], "impact": string },',
 		evidence
-			? '  "operations": [] | [ { "tool": "update_onto_document", "args": { "document_id": "<uuid>", "edits": [ { "old_text": string, "new_text": string } ] } } ]'
-			: '  "operations": []',
+			? '  "operations": [] | [ { "tool": "update_onto_document", "args": { "document_id": "<uuid>", "edits": [ { "old_text": string, "new_text": string } ] } } ] | [ { "tool": "update_onto_goal"|"update_onto_project", "args": {…} } ]'
+			: '  "operations": [] | [ { "tool": "update_onto_goal"|"update_onto_project", "args": {…} } ]',
 		'} ] }',
 		'If no clear drift exists, return { "suggestions": [] }.'
 	].join('\n');
@@ -1890,6 +2184,14 @@ export async function generateDrift(params: {
 	const fixDocuments = new Map<string, DriftFixDocument>(
 		Object.entries(evidence?.documents ?? {}).map(([id, doc]) => [id, { id, ...doc }])
 	);
+	const fixGoals = new Map<string, DriftFixGoal>(
+		ctx.goals
+			.filter((goal) => goal.id)
+			.map((goal) => [
+				goal.id as string,
+				{ id: goal.id as string, name: goal.name, state_key: goal.state_key ?? null }
+			])
+	);
 	const suggestions: ProposedSuggestion[] = [];
 	for (const s of raw.slice(0, 5)) {
 		if (!s.title) continue;
@@ -1898,12 +2200,28 @@ export async function generateDrift(params: {
 		let preview = sanitizePreview(s.preview);
 		let operations: LoopOperation[] = [];
 		let undoOperations: LoopOperation[] = [];
-		if (evidence && Array.isArray(s.operations) && s.operations.length) {
-			const result = buildDriftFix({
-				projectId: ctx.projectId,
-				rawOperations: s.operations,
-				documents: fixDocuments
-			});
+		const recordFix =
+			Array.isArray(s.operations) &&
+			s.operations.length === 1 &&
+			(s.operations[0]?.tool === 'update_onto_goal' ||
+				s.operations[0]?.tool === 'update_onto_project');
+		if (recordFix || (evidence && Array.isArray(s.operations) && s.operations.length)) {
+			const result = recordFix
+				? buildRecordFix({
+						projectId: ctx.projectId,
+						rawOperations: s.operations,
+						goals: fixGoals,
+						project: {
+							id: ctx.projectId,
+							description: ctx.projectDescription,
+							type_key: ctx.projectTypeKey ?? null
+						}
+					})
+				: buildDriftFix({
+						projectId: ctx.projectId,
+						rawOperations: s.operations,
+						documents: fixDocuments
+					});
 			if ('fix' in result) {
 				operations = result.fix.operations;
 				undoOperations = result.fix.undoOperations;
@@ -1958,7 +2276,10 @@ export function withoutRadarOwnedFindings(
 	const kept = suggestions.filter((suggestion) => {
 		if (suggestion.kind !== 'drift' && suggestion.kind !== 'doc_outdated') return true;
 		const targets = suggestion.operations
-			.map((operation) => (operation.args as Record<string, unknown>)?.document_id)
+			.map((operation) => {
+				const args = operation.args as Record<string, unknown>;
+				return args?.document_id ?? args?.task_id;
+			})
 			.filter((id): id is string => typeof id === 'string');
 		const staleSubject = targets[0] ?? suggestion.evidence_refs?.[0]?.entity_id;
 		return !(staleSubject && owned.has(staleSubject));

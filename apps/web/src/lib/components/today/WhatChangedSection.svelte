@@ -136,9 +136,7 @@
 				/>{:else}<ChevronDown class="h-4 w-4 shrink-0 text-muted-foreground" />{/if}
 		</button>
 		{#if !collapsed}
-			<div
-				class="mt-1 divide-y divide-border/70 rounded-lg border border-border/70 bg-card px-2 sm:px-3"
-			>
+			<div class="mt-1 divide-y divide-border/70">
 				{#each groups as group (group.projectId)}
 					{@const isExpanded = expandedProjects.has(group.projectId)}
 					{@const visible = isExpanded
@@ -151,9 +149,6 @@
 								class="flex min-h-11 min-w-0 items-center rounded-md text-xs font-semibold [@media(pointer:fine)]:min-h-7 text-foreground hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								title={group.projectName}
 								><span class="truncate">{group.projectName}</span></a
-							>
-							<span class="shrink-0 text-xs tabular-nums text-muted-foreground"
-								>{group.entries.length}</span
 							>
 						</div>
 						<ul>

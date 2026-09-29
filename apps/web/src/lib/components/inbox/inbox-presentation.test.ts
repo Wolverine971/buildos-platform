@@ -1,6 +1,6 @@
 // apps/web/src/lib/components/inbox/inbox-presentation.test.ts
 import { describe, expect, it } from 'vitest';
-import { formatInboxAttentionSummary } from './inbox-presentation';
+import { formatInboxAttentionSummary, formatInboxSourceLabel } from './inbox-presentation';
 
 describe('formatInboxAttentionSummary', () => {
 	it('states the visible and held workload separately', () => {
@@ -25,5 +25,15 @@ describe('formatInboxAttentionSummary', () => {
 		expect(formatInboxAttentionSummary({ loaded: 0, total: 0, held: 3 })).toBe(
 			'No items need attention · 3 held for later'
 		);
+	});
+});
+
+describe('formatInboxSourceLabel', () => {
+	it('names the project cleanup card and keeps existing labels', () => {
+		expect(formatInboxSourceLabel('project_cleanup')).toBe('Project cleanup');
+		expect(formatInboxSourceLabel('project_audit')).toBe('Project audit');
+		expect(formatInboxSourceLabel('integration_attention')).toBe('Gmail access');
+		expect(formatInboxSourceLabel('project_suggestion')).toBe('Project review');
+		expect(formatInboxSourceLabel('something_new')).toBe('Project review');
 	});
 });

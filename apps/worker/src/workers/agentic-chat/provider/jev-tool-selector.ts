@@ -119,6 +119,12 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 	scan_email_inbox: ['get_email_message'],
 	search_email_messages: ['list_email_accounts', 'get_email_message'],
 	get_email_message: ['list_email_accounts', 'search_email_messages', 'scan_email_inbox'],
+	// Building on the Project cleanup set means reading the records its items cite.
+	get_project_cleanup: [
+		'get_onto_document_details',
+		'get_onto_task_details',
+		'get_onto_goal_details'
+	],
 	// A search's results are start points to read or click through.
 	web_search: ['web_visit', 'web_navigate'],
 	web_visit: ['web_navigate'],

@@ -156,9 +156,125 @@ export interface ProjectReviewBriefCluster {
 	member_candidate_ids: string[];
 }
 
+/** Where an item sits in the Project cleanup change set (tasker 112). */
+export type ProjectCleanupSection = 'safe_cleanup' | 'needs_call' | 'note';
+
+/** Which producer raised a cleanup item. */
+export type ProjectCleanupSource = 'review' | 'audit' | 'radar';
+
+/** Why a finding left the change set. Every close carries one. */
+export type ProjectCleanupCloseReason =
+	| 'subject_archived'
+	| 'subject_deleted'
+	| 'already_done'
+	| 'no_longer_applies'
+	| 'resolved'
+	| 'revised'
+	| 'merged'
+	| 'aged_out';
+
+/**
+ * Roll-up state on a project_suggestions row (tasker 112). Every live row of a lineage
+ * carries the same lineage-level values; `close` is set when the row leaves the set.
+ */
+export interface ProjectSuggestionRollup {
+	first_seen_at: string;
+	last_confirmed_at: string;
+	seen_run_ids: string[];
+	passes_since_confirmed: number;
+	/** One line from the latest roll-up: why this is still worth doing. */
+	summary?: string | null;
+	section?: ProjectCleanupSection | null;
+	close?: {
+		reason: ProjectCleanupCloseReason;
+		detail: string;
+		run_id: string | null;
+		at: string;
+		merged_into?: string | null;
+	} | null;
+}
+
+export interface ProjectCleanupGroup {
+	title: string;
+	section: ProjectCleanupSection;
+	/** Lineage ids; the radar bundle is referenced by its suggestion id. */
+	item_ids: string[];
+	recommendation: string | null;
+}
+
+export interface ProjectCleanupClosedItem {
+	lineage_id: string;
+	title: string;
+	reason: ProjectCleanupCloseReason;
+	detail: string;
+}
+
+/** The roll-up's synthesis, stored on the run as brief.cleanup (brief version 3). */
+export interface ProjectCleanupSynthesis {
+	bottom_line: string | null;
+	recommendation: string | null;
+	groups: ProjectCleanupGroup[];
+	open_count: number;
+	closed_this_pass: ProjectCleanupClosedItem[];
+	generated_at: string;
+	source: 'llm' | 'heuristic';
+}
+
+export interface ProjectCleanupItemRow {
+	suggestion_id: string;
+	kind: ProjectSuggestionKind;
+	title: string;
+	operation_count: number;
+	/** Operation-derived copy from the integrity check; null for findings with no change. */
+	verified_headline: string | null;
+	verified_fingerprint: string | null;
+	verified_operations?: Array<Record<string, unknown>>;
+	cautions?: string[];
+	updated_at: string;
+}
+
+export interface ProjectCleanupItem {
+	/** The lineage id; for the radar bundle, its suggestion id. */
+	id: string;
+	source: ProjectCleanupSource;
+	kind: ProjectSuggestionKind;
+	section: ProjectCleanupSection;
+	title: string;
+	summary: string | null;
+	why_now: string | null;
+	/** True when approval applies a verified change. */
+	executable: boolean;
+	rows: ProjectCleanupItemRow[];
+	evidence_refs: ProjectSuggestionEvidenceRef[];
+	seen_count: number;
+	first_seen_at: string;
+	updated_at: string;
+	/** Radar items fixed in chat (tasker 106). */
+	review_items?: ProjectSuggestionReviewItem[];
+	audit_id?: string | null;
+}
+
+/** One project's living cleanup change set, as the inbox card and chat read it. */
+export interface ProjectCleanupView {
+	project_id: string;
+	items: ProjectCleanupItem[];
+	groups: ProjectCleanupGroup[];
+	bottom_line: string | null;
+	recommendation: string | null;
+	synthesized_at: string | null;
+	latest_run_id: string | null;
+	latest_audit: { id: string; created_at: string | null; summary: string | null } | null;
+	counts: { total: number; safe_cleanup: number; needs_call: number; note: number };
+	recently_closed: Array<ProjectCleanupClosedItem & { at: string | null }>;
+}
+
 export interface ProjectLoopBrief {
-	/** v2 is the post-generator, evidence-bound project-manager synthesis. */
-	version?: 1 | 2;
+	/**
+	 * v2 is the post-generator, evidence-bound project-manager synthesis. v3 adds the
+	 * roll-up (`cleanup`) and drives the Project cleanup card instead of a brief card.
+	 */
+	version?: 1 | 2 | 3;
+	cleanup?: ProjectCleanupSynthesis | null;
 	attention_level?: ProjectReviewAttentionLevel;
 	state_summary?: string | null;
 	bottom_line?: string | null;
@@ -230,6 +346,9 @@ export interface ProjectSuggestion {
 	sort_order: number;
 	depends_on: string | null;
 	result: ProjectSuggestionResult | null;
+	/** The finding this row belongs to (tasker 112); null on rows written before the roll-up. */
+	lineage_id?: string | null;
+	rollup?: ProjectSuggestionRollup | null;
 	created_at: string;
 	decided_at: string | null;
 	applied_at: string | null;

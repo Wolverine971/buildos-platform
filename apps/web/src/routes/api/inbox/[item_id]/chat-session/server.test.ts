@@ -22,7 +22,12 @@ import { POST } from './+server';
 
 type InboxItemFixture = {
 	id: string;
-	source_type: 'project_suggestion' | 'project_audit' | 'calendar_suggestion' | 'agent_run';
+	source_type:
+		| 'project_suggestion'
+		| 'project_audit'
+		| 'project_cleanup'
+		| 'calendar_suggestion'
+		| 'agent_run';
 	source_ref_id: string;
 	source_status: string | null;
 	status: string;
@@ -210,5 +215,39 @@ describe('POST /api/inbox/[item_id]/chat-session', () => {
 		expect(response.status).toBe(403);
 		expect(json.success).toBe(false);
 		expect(mocks.createInboxChatSession).not.toHaveBeenCalled();
+	});
+
+	it('opens a project cleanup chat focused on the discussed item', async () => {
+		const item: InboxItemFixture = {
+			id: 'inbox-cleanup-1',
+			source_type: 'project_cleanup',
+			source_ref_id: 'project-1',
+			source_status: 'open:3',
+			status: 'pending',
+			user_id: null,
+			project_id: 'project-1',
+			audience: 'project_members',
+			title: 'Project cleanup',
+			action_kinds: ['review', 'discuss', 'snooze']
+		};
+		const supabase = createSupabaseMock(item);
+
+		const response = await POST({
+			params: { item_id: item.id },
+			locals: makeLocals(supabase),
+			request: new Request('http://localhost/api/inbox/inbox-cleanup-1/chat-session', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ cleanup_item_id: 'lineage-rod' })
+			})
+		} as any);
+
+		expect(response.status).toBe(201);
+		expect(mocks.requireProjectMemberAccess).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: 'project-1', requiredAccess: 'write' })
+		);
+		expect(mocks.createInboxChatSession).toHaveBeenCalledWith(
+			expect.objectContaining({ item, userId: USER_ID, focusCleanupItemId: 'lineage-rod' })
+		);
 	});
 });

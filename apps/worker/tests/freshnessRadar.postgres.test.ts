@@ -97,6 +97,12 @@ CREATE TABLE public.task_calendar_events (
 	id uuid PRIMARY KEY DEFAULT gen_random_uuid(), task_id uuid NOT NULL, user_id uuid NOT NULL,
 	calendar_event_id text NOT NULL, calendar_id text NOT NULL, sync_status text NOT NULL DEFAULT 'synced',
 	created_at timestamptz DEFAULT now());
+-- Read by the project cleanup card sync (tasker 112) when the radar bundle syncs.
+CREATE TABLE public.project_audits (
+	id uuid PRIMARY KEY DEFAULT gen_random_uuid(), project_id uuid NOT NULL, status text NOT NULL,
+	summary text, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE public.project_audit_suggestions (
+	audit_id uuid NOT NULL, suggestion_id uuid NOT NULL);
 -- Hosted Supabase grants service_role ALL on public tables by default privileges;
 -- the fixture stubs (feature_flags, project_suggestions, inbox_items) do not.
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
@@ -935,16 +941,20 @@ describePostgres('freshness radar on a disposable PostgreSQL', () => {
 			T_VENUE
 		]);
 		expect(venue).toMatchObject({ disposition: 'drafted', suggestion_id: bundle.id });
+		// Tasker 112: the bundle reaches the inbox as an item in the project's one cleanup card.
+		const cleanupInbox = await one(
+			`SELECT * FROM public.inbox_items WHERE source_type = 'project_cleanup' AND source_ref_id = $1`,
+			[PROJECT]
+		);
+		expect(cleanupInbox).toMatchObject({
+			audience: 'project_members',
+			status: 'pending',
+			expires_at: null
+		});
 		const bundleInbox = await one(`SELECT * FROM public.inbox_items WHERE source_ref_id = $1`, [
 			bundle.id
 		]);
-		expect(bundleInbox).toMatchObject({
-			source_type: 'project_suggestion',
-			audience: 'project_members',
-			status: 'pending',
-			title: '1 thing looks out of date'
-		});
-		expect(bundleInbox.source_status).toMatch(/^proposal_verified/);
+		expect(bundleInbox?.status ?? 'expired').toBe('expired');
 
 		// Inbox cleanup through the shared H3 helper: source superseded, row retired.
 		const retiredFlag = await one(

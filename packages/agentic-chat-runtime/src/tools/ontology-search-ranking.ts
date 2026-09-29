@@ -37,8 +37,7 @@ export type TaskBucketKey =
 	| 'overdue'
 	| 'in_progress'
 	| 'blocked'
-	| 'done'
-	| 'archived';
+	| 'done';
 
 export type TaskStateKey = 'todo' | 'in_progress' | 'blocked' | 'done';
 
@@ -152,8 +151,7 @@ const TASK_BUCKET_PRIORITY_BOOSTS: Readonly<Record<TaskBucketKey, number>> = Obj
 	backlog: 0.1,
 	scheduled: 0.08,
 	blocked: -0.12,
-	done: -0.28,
-	archived: -0.5
+	done: -0.28
 });
 
 const TASK_BUCKET_ALIASES: Readonly<Record<TaskBucketKey, string[]>> = Object.freeze({
@@ -173,8 +171,7 @@ const TASK_BUCKET_ALIASES: Readonly<Record<TaskBucketKey, string[]>> = Object.fr
 	overdue: ['overdue', 'late', 'past due', 'past-due', 'past_due'],
 	in_progress: ['in progress', 'in-progress', 'in_progress', 'working', 'doing', 'started'],
 	blocked: ['blocked', 'stuck', 'waiting'],
-	done: ['done', 'completed', 'complete', 'finished', 'closed'],
-	archived: ['archived', 'archive']
+	done: ['done', 'completed', 'complete', 'finished', 'closed']
 });
 
 function buildResultPath(result: OntologySearchRow): string | null {
@@ -330,10 +327,9 @@ function dateMs(value: string | null): number | null {
 }
 
 export function taskBucketFor(
-	task: Pick<TaskSearchRow, 'archived_at' | 'state_key' | 'due_at' | 'start_at'>,
+	task: Pick<TaskSearchRow, 'state_key' | 'due_at' | 'start_at'>,
 	nowMs = Date.now()
 ): TaskBucketKey {
-	if (task.archived_at) return 'archived';
 	const stateKey = task.state_key ?? 'todo';
 	if (stateKey === 'done') return 'done';
 
@@ -370,8 +366,6 @@ export function taskStatesForBuckets(buckets: Set<TaskBucketKey>): TaskStateKey[
 			case 'done':
 				states.add('done');
 				break;
-			case 'archived':
-				break;
 		}
 	}
 	return Array.from(states);
@@ -388,8 +382,6 @@ export function taskBucketSearchScore(bucket: TaskBucketKey): number {
 			return 0.66;
 		case 'done':
 			return 0.58;
-		case 'archived':
-			return 0.45;
 	}
 }
 

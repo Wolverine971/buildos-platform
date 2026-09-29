@@ -87,6 +87,7 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	read_document_section: { op: 'x.misc.read_document_section', kind: 'read' },
 	get_entity_relationships: { op: 'onto.entity.relationships.get', kind: 'read' },
 	get_linked_entities: { op: 'onto.entity.links.get', kind: 'read' },
+	get_project_cleanup: { op: 'onto.project.cleanup.get', kind: 'read' },
 	// --- Ontology writes ---
 	create_onto_task: { op: 'onto.task.create', kind: 'write' },
 	create_onto_goal: { op: 'onto.goal.create', kind: 'write' },

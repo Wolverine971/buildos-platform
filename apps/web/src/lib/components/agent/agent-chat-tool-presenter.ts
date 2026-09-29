@@ -1428,6 +1428,10 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Loading project graph',
 			target: resolveEntityName('project', args?.project_id)
 		}),
+		get_project_cleanup: (args) => ({
+			action: 'Checking project cleanup',
+			target: resolveEntityName('project', args?.project_id)
+		}),
 		reorganize_onto_project_graph: (args) => ({
 			action: 'Reorganizing project graph',
 			target: resolveEntityName('project', args?.project_id)

@@ -101,8 +101,13 @@ Scheduled SMS management routes live under `/sms/scheduled/*`.
 - `agent_run` handles detached agent runs from chat, manual starts, and
   scheduled Operatives.
 - The scheduler scans due Operatives every 5 minutes and enqueues `agent_run`.
-- `buildos_project_loop` is flag-gated by `ENABLE_PROJECT_LOOPS` in scheduler
-  paths and can also be queued by web project-loop services.
+- `buildos_project_loop` runs Project Review passes and Complete Project Audits.
+  The scheduler queues it, and web project-loop services can also queue it. A
+  light pass runs the four checks, then carries open findings forward as
+  lineages (`reviewRollup.ts`, `reviewRollupStore.ts`). It re-verifies live
+  changes and makes one roll-up call (`cleanupSynthesis.ts`). It finishes by
+  syncing the project's one `project_cleanup` inbox item. See
+  `docs/product/PROJECT_CLEANUP_CHANGE_SET.md` (tasker 112, 2026-09-29).
 - `build_project_context_snapshot` can enqueue `generate_project_icon` when
   snapshot work requires icon generation.
 - `sync_calendar` sends calendar projection jobs back to the web webhook using

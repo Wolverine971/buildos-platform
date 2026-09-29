@@ -124,3 +124,47 @@ describe('shared task document reads', () => {
 		expect((context.client as any).from).not.toHaveBeenCalled();
 	});
 });
+
+// Tasker 113: chat reads the present; the web task panel keeps its own view of the links.
+describe('chat task documents keep to the present', () => {
+	it('drops archived linked documents and an archived scratch pad', async () => {
+		const liveId = '20000000-0000-4000-8000-000000000002';
+		const scratchId = '30000000-0000-4000-8000-000000000003';
+		const connectorArchivedId = '50000000-0000-4000-8000-000000000005';
+		const { context } = createContext({
+			onto_tasks: [{ data: { id: TASK_ID, project_id: PROJECT_ID }, error: null }],
+			onto_edges: [
+				{
+					data: [
+						{ id: 'edge-1', dst_id: liveId, props: { role: 'deliverable' } },
+						{ id: 'edge-2', dst_id: scratchId, props: { role: 'scratch' } },
+						{ id: 'edge-3', dst_id: connectorArchivedId, props: {} }
+					],
+					error: null
+				}
+			],
+			onto_documents: [
+				{
+					data: [
+						{ id: liveId, title: 'Brief', state_key: 'draft', archived_at: null },
+						{ id: scratchId, title: 'Scratch', state_key: 'archived', archived_at: null },
+						{
+							id: connectorArchivedId,
+							title: 'Old pitch',
+							state_key: 'draft',
+							archived_at: '2026-03-02T00:00:00.000Z'
+						}
+					],
+					error: null
+				}
+			]
+		});
+
+		const result = await listTaskDocuments(context, { task_id: TASK_ID });
+
+		expect(result.documents.map((link) => link.document.title)).toEqual(['Brief']);
+		expect(result.scratch_pad).toBeNull();
+		expect(result.message).toBe('Found 1 documents linked to this task.');
+	});
+});
+

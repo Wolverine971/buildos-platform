@@ -5,6 +5,7 @@ import type { TaskAssignee } from '@buildos/shared-agent-ops/ontology/onto';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import { buildDetailNotFoundPayload, stripInternalPayloadFields } from './ontology-reads';
 import { loadReadableOntologyDetailRow } from './ontology-detail-reads';
+import { isArchivedOrDeletedRecord } from './record-scope';
 
 export interface SharedGetOntoTaskDetailsArgs {
 	task_id: string;
@@ -67,16 +68,28 @@ function emptyTaskLinkedEntities(): TaskLinkedEntitiesResult {
 
 async function fetchLinkedRows(
 	client: any,
-	input: { table: string; selection: string; ids: string[]; projectId: string }
+	input: {
+		table: string;
+		selection: string;
+		ids: string[];
+		projectId: string;
+		currentOnly?: boolean;
+	}
 ): Promise<LinkedRow[]> {
 	if (input.ids.length === 0) return [];
-	const { data, error } = await client
+	let query = client
 		.from(input.table)
 		.select(input.selection)
 		.eq('project_id', input.projectId)
-		.is('deleted_at', null)
-		.in('id', input.ids);
-	return error || !Array.isArray(data) ? [] : (data as LinkedRow[]);
+		.is('deleted_at', null);
+	if (input.currentOnly) query = query.is('archived_at', null);
+	const { data, error } = await query.in('id', input.ids);
+	if (error || !Array.isArray(data)) return [];
+	const rows = data as LinkedRow[];
+	// A document archived from the tree keeps archived_at NULL (tasker 113).
+	return input.currentOnly && input.table === 'onto_documents'
+		? rows.filter((row) => !isArchivedOrDeletedRecord(row, 'document'))
+		: rows;
 }
 
 /**
@@ -85,7 +98,12 @@ async function fetchLinkedRows(
  */
 export async function resolveTaskLinkedEntities(
 	client: AgenticChatSharedReadContextV1['client'],
-	input: { taskId: string; projectId: string }
+	input: {
+		taskId: string;
+		projectId: string;
+		/** Chat reads the present: archived links stay out (tasker 113). The web modal keeps them. */
+		currentOnly?: boolean;
+	}
 ): Promise<TaskLinkedEntitiesResult> {
 	const db = client as any;
 	const result = emptyTaskLinkedEntities();
@@ -141,31 +159,36 @@ export async function resolveTaskLinkedEntities(
 			table: 'onto_plans',
 			selection: 'id, name, state_key, type_key',
 			ids: ids.plans,
-			projectId: input.projectId
+			projectId: input.projectId,
+			currentOnly: input.currentOnly
 		}),
 		fetchLinkedRows(db, {
 			table: 'onto_goals',
 			selection: 'id, name, state_key, type_key',
 			ids: ids.goals,
-			projectId: input.projectId
+			projectId: input.projectId,
+			currentOnly: input.currentOnly
 		}),
 		fetchLinkedRows(db, {
 			table: 'onto_milestones',
 			selection: 'id, title, due_at, state_key',
 			ids: ids.milestones,
-			projectId: input.projectId
+			projectId: input.projectId,
+			currentOnly: input.currentOnly
 		}),
 		fetchLinkedRows(db, {
 			table: 'onto_documents',
 			selection: 'id, title, type_key, state_key',
 			ids: ids.documents,
-			projectId: input.projectId
+			projectId: input.projectId,
+			currentOnly: input.currentOnly
 		}),
 		fetchLinkedRows(db, {
 			table: 'onto_tasks',
 			selection: 'id, title, state_key, type_key',
 			ids: ids.tasks,
-			projectId: input.projectId
+			projectId: input.projectId,
+			currentOnly: input.currentOnly
 		})
 	]);
 
@@ -249,7 +272,11 @@ export async function loadOntoTaskDetail(
 
 	const { project: _project, ...task } = row;
 	const [linkedEntities, assigneeMap] = await Promise.all([
-		resolveTaskLinkedEntities(context.client, { taskId, projectId: row.project_id }),
+		resolveTaskLinkedEntities(context.client, {
+			taskId,
+			projectId: row.project_id,
+			currentOnly: true
+		}),
 		fetchTaskAssigneesMapForProject(context.client, {
 			projectId: row.project_id,
 			taskIds: [taskId]

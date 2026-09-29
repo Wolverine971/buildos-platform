@@ -642,3 +642,100 @@ stack covered the lower quarter of the mobile viewport.
   mature state/effect and mutable-collection guidance unrelated to this heading-only change.
 - Full web `svelte-check`: **0 errors and 0 warnings**. Scoped ESLint, Prettier, and
   `git diff --check` also pass.
+
+## Scan-first project tabs audit — 2026-09-29
+
+**Audit status at capture time: recommendations only. Subsequently approved and implemented locally; see the implementation record below.**
+
+This follow-up applies the Today-page lessons from [Kole Jain's scannability analysis](../../../../../../docs/research/youtube-library/analyses/2026-09-29_kole-jain_scannable-today.md): shared edges, meaningful grouping, quiet defaults, and emphasis that helps answer the user's immediate question. The existing tab structure is sound. Lists are appropriate here; repeated framing and metadata are the main sources of noise.
+
+### Scope and evidence
+
+Inspected the authenticated production Tasks, Docs, and Activity tabs in **Wayne Strategies** and **9takes**, plus all three 9takes tabs at a measured **416 × 900 CSS px** phone viewport. Desktop measured **2016 × 977 CSS px**, with a **1232 px** content area. The existing browser zoom was preserved; dimensions below come from DOM measurements, not screenshot pixels.
+
+Regions reviewed: persistent identity/navigation; search/create toolbar; board controls, columns, cards, and empty states; document review notices, image shelf, tree rows, dates, and recovery sections; recent chats, change history, schedule, and mobile switching. The August audit's already-shipped improvements remain the baseline.
+
+| Surface            | Observed evidence                                                                                                                                                                                            | Implication                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tasks              | Wayne Strategies shows 10 Backlog, 0 In progress, 0 Blocked, and 19 Done cards. 9takes has populated active and blocked columns. Both repeat a task total in the tab and board toolbar.                      | The same template needs to stay quiet with empty columns and dense with populated ones. Column counts describe work distribution; duplicated overall totals do not. |
+| Docs               | Wayne Strategies has three review rows above an empty Images shelf. Those regions measure about 133 px and 77 px, respectively; the first tree row begins at y=522.                                          | Roughly 210 px above the tree is spent on secondary material. This is the clearest opportunity to show documents sooner.                                            |
+| Docs on phones     | 9takes rows retain 44 px targets and fit the page, but one-line titles cut off distinguishing words in long document names. Its Images shelf is empty because the image is already filed beneath a document. | Preserve hierarchy and touch targets while giving names more room and reducing empty-shelf explanation.                                                             |
+| Activity           | Wayne Strategies shows repeated edits to the same context document and thinking log; two of its three recent-chat previews are simply titled `Recent chat`. 9takes also repeats entities in history.         | Date grouping and a smaller chat entry area would improve recognition without dropping historical records.                                                          |
+| Activity on phones | In 9takes the History/Schedule control starts at y≈475 of the 900 px viewport, following the recent-chat carousel.                                                                                           | Reaching the tab's chronology takes too much of the first screen.                                                                                                   |
+
+### Tier 1 — cheap, high-impact
+
+1. **Tasks: quiet the cards and column headers.** Remove `Not started`, `Actively working`, `Stuck or waiting`, and `Completed` subtitles; the column names already convey these states. Keep the task title dominant and place priority, date, and assignee in one consistent, quiet metadata row. Hide description snippets in Done and remove persistent title strikethrough there—the Done column already establishes completion, and struck-through multi-line titles are harder to recognize. Keep open/edit behavior and drag affordances. **→ P4 + P6 + P9**
+
+2. **Shared navigation and Tasks: remove duplicate quantity signals.** Remove Tasks/Docs tab badges and the board's repeated overall task total. Keep small column counts because they show the work distribution, and retain explicit pagination/coverage information so a partially loaded board remains truthful. Remove one of the adjacent toolbar/board border rules. This follows the user's preference for fewer incidental numbers without erasing useful state. **→ P3 + P6 + P22**
+
+3. **Docs: simplify date metadata and protect names.** Replace repeated `Updated …` text on every row with a single desktop `Updated` column label and quiet, aligned dates. Preserve the actual timestamps and accessible date meaning. Allow up to two title lines on phones, retaining indentation and 44 px disclosure/open targets. The tree is already a good flat list; it does not need more cards or a replacement grid. **→ P1 + P3 + P4 + P13**
+
+4. **Activity: make the header and rows less repetitive.** Remove instructional subtitles such as `Recorded changes across this project` and `Reopen conversations held in this project.` Omit lifetime change/chat totals from section headers; keep pagination feedback where it is useful. Lead each history row with the entity title, put the actor/action on one quiet second line, and align its timestamp. Keep meaningful provenance available; don't remove actor identity or exceptional change information just to shorten a row. **→ P4 + P6 + P22**
+
+### Tier 2 — structural within the surface
+
+5. **Docs: let the tree begin sooner.** Replace the duplicate three-document warning list with one disclosure, `Review documents that may be out of date`, which expands to the existing named items and their explanations. For an empty image shelf, retain a visible `Add image` action without a full section and helper paragraph; show the thumbnail shelf when it actually contains unfiled images. Filed images remain under their document. This consolidates secondary material while keeping both review and upload discoverable. **→ P4 + P6 + P7 + P8**
+
+6. **Tasks: consolidate controls after the card cleanup.** Put search, Filters, Archived, and New task in one aligned desktop toolbar, with intentional wrapping on phones. The current search/create row and separate count/filter row consume space before any work appears. Keep selected-filter chips, visible creation, archive recovery, and the distinction between search (opens matching entities) and board filters (changes visible cards). Do not add list/grid toggles or new filter categories as part of this cleanup. **→ P3 + P6 + P7 + P8**
+
+7. **Activity: reduce chat previews and group chronology.** Use a compact recent-chat entry area with title/date and an explicit `View chats` control; on phones show the latest chat plus that control instead of a large horizontal carousel. Add date headings such as Today, Yesterday, and dated groups to history using structured timestamps. Preserve every log entry and pagination. Group Schedule into Overdue and Upcoming when both exist; show a short empty state when neither exists. Keep the desktop history/schedule split and mobile switch. **→ P1 + P4 + P6 + P8 + P22**
+
+    Session-based collapsing of repeated edits is a possible later enhancement, not part of this small pass: it needs reliable operation/session identifiers and an expansion path to each original record. Do not infer related changes from title wording or regex. **→ P4 + P22**
+
+### Tier 3 — polish
+
+- **Keep motion unchanged.** No new animation or signature effect is earned by this audit. After implementation, verify visible focus, keyboard tab/disclosure behavior, drag/drop feedback, reduced motion, and light-theme contrast. Preserve 44 px touch targets. **→ P11 + P13 + P19**
+
+### Recommended implementation order
+
+Start with Tasks card/header cleanup and redundant totals; then Docs date/title treatment plus review/image preamble; then Activity's compact recent chats and date grouping. Preserve the Kanban columns and card boundaries, document hierarchy and saved expansion state, and history/schedule separation. These changes should align the tabs with Today without changing their underlying jobs.
+
+### Source anchors
+
+Line references are from the working tree at audit time:
+
+- `apps/web/src/routes/projects/[id]/ProjectWorkspace.svelte:1090` — tab counts; `:1169` — search/create toolbar; `:1796` — chats before activity; `:2025` — toolbar border.
+- `apps/web/src/lib/components/project/v2/TaskKanbanBoard.svelte:716` — board header; `:844` — column framing; `:869` — hints; `:948` — completion strikethrough; `:952` — description snippets; `:960` — metadata.
+- `apps/web/src/lib/components/project/ProjectDocumentsSection.svelte:78` — separate freshness list.
+- `apps/web/src/lib/components/ontology/doc-tree/DocTreeImageShelf.svelte:27` — shelf and empty state.
+- `apps/web/src/lib/components/ontology/doc-tree/DocTreeNode.svelte:329` — open target; `:346` — one-line title; `:362` — date metadata.
+- `apps/web/src/routes/projects/[id]/ProjectRecentChats.svelte:143` — chat cards; `:233` — horizontal rail; `:244` — seven-rem card minimum.
+- `apps/web/src/lib/components/project/v2/PulseStrip.svelte:166` — workspace preserves individual log entries; `:621` — desktop regions; `:686` — history rows; `:791` — schedule rows.
+
+### Validation and captures
+
+- Read-only live visual inspection in dark mode. All three phone tabs had `scrollWidth === innerWidth === 416`; Docs open targets measured 44 px. Internal Kanban/chat scrolling is intentional and distinct from page overflow.
+- Official Svelte analyzer: `issues: []` for TaskKanbanBoard, ProjectDocumentsSection, and PulseStrip. It also returned existing state/effect, mutable-collection, and `bind:this` suggestions; these were not changed or treated as visual defects.
+- No implementation, runtime test suite, or full typecheck in this audit. Light mode, wider mobile coverage, keyboard interactions, and before/after comparison remain implementation validation work, not claimed as passed.
+- Captures: [Tasks desktop](./assets/project-tabs-2026-09-29/9takes-kanban-desktop.png), [Tasks phone](./assets/project-tabs-2026-09-29/9takes-kanban-mobile.png), [Docs preamble](./assets/project-tabs-2026-09-29/wayne-docs-desktop.png), [Docs phone](./assets/project-tabs-2026-09-29/9takes-docs-mobile.png), [Activity desktop](./assets/project-tabs-2026-09-29/wayne-activity-desktop.png), [Activity with schedule](./assets/project-tabs-2026-09-29/9takes-activity-desktop.png), [Activity phone](./assets/project-tabs-2026-09-29/9takes-activity-mobile.png).
+
+## Scan-first project tabs implementation — 2026-09-29
+
+**Status: approved cleanup implemented and verified locally; not deployed.**
+
+- **Tasks:** one desktop toolbar aligns search, Filters, Archived, and New task at 44 px. On phones, search occupies its own line above the three actions. Removed redundant tab/board totals and column subtitles. Done cards use quieter titles and priorities without strikethrough or description previews. Column counts, coverage, selected filters, archive recovery, and existing drag/drop behavior remain. **→ P3 + P4 + P6 + P7 + P8 + P9 + P22**
+- **Docs:** a native disclosure contains the existing document-review list. When no unfiled images exist, a compact Add image action replaces the empty shelf; filed images retain their document hierarchy. A single desktop Updated heading replaces repeated visible labels while each timestamp keeps accessible context. Phone titles have up to two lines. **→ P1 + P3 + P4 + P6 + P8 + P13**
+- **Activity:** recent chats are compact title/date links, with three visible on desktop and one on phones. View chats expands summaries and pagination. History groups every original record by calendar day, including repeated edits to the same entity; Schedule groups overdue and upcoming entries. Removed lifetime header totals and repetitive instructions. Actor/action, meaningful provenance, timestamps, pagination, and keyboard switching remain available. **→ P1 + P4 + P6 + P8 + P13 + P22**
+- Preserved Inkprint tokens, existing primitives, visible focus, and reduced-motion rules. No new animation was introduced. **→ P11 + P13 + P19**
+
+### Implementation validation
+
+- Six focused Vitest files: **47 tests pass**. After the final Docs/Activity refinements, the three affected files were rerun: **14 tests pass**. Coverage includes repeated-entity history records across date groups and pagination, recent-chat expansion/opening, document-tree interactions, workspace tabs, and Kanban behavior.
+- Full `pnpm --filter @buildos/web check`, through `test-gate`: **0 errors and 0 warnings**.
+- Official Svelte analyzer: no reported issues in modified components; existing state/effect, mutable-collection, and `bind:this` suggestions were reviewed without expanding this visual change into unrelated refactoring.
+- Scoped formatting and `git diff --check` pass. No paid tests, production writes, or deployment were performed.
+- Browser verification used the real components in a **development-only sample-data route**, `/project-scan-preview`, because the local project route required authentication. The preview rejects writes and returns 404 outside development. It is a layout and interaction fixture, not a claim of authenticated production validation.
+- Desktop dark capture viewport: **1890 × 916 CSS px**; final light Tasks/Docs captures: **1280 × 720 CSS px**. Phone captures: **390 × 844 CSS px**. All three tabs were inspected in both themes. Each phone tab has `scrollWidth === innerWidth === 390`; Kanban scrolling remains contained within the board.
+- Measured toolbar targets are approximately **44 px** on desktop and phone. Document open targets are **44 px**, increasing to **48 px** for long names. Checked search results without clipping, opening/clearing Filters, the document-review disclosure with Enter, chat expansion, and the History/Schedule switch with arrow keys.
+- Before captures show real production projects in dark mode; after captures show synthetic fixtures in both themes. They demonstrate layout changes but are not a same-data pixel comparison. Browser drag/drop writes, a physical iPhone, and OS-level reduced-motion emulation were not exercised; existing drag/drop tests and reduced-motion styles remain the evidence for those paths.
+
+### After captures
+
+| Surface  | Desktop dark                                                                | Desktop light                                                                | Phone dark                                                                 | Phone light                                                                 |
+| -------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Tasks    | [Capture](./assets/project-tabs-2026-09-29/after-kanban-desktop-dark.png)   | [Capture](./assets/project-tabs-2026-09-29/after-kanban-desktop-light.png)   | [Capture](./assets/project-tabs-2026-09-29/after-kanban-mobile-dark.png)   | [Capture](./assets/project-tabs-2026-09-29/after-kanban-mobile-light.png)   |
+| Docs     | [Capture](./assets/project-tabs-2026-09-29/after-docs-desktop-dark.png)     | [Capture](./assets/project-tabs-2026-09-29/after-docs-desktop-light.png)     | [Capture](./assets/project-tabs-2026-09-29/after-docs-mobile-dark.png)     | [Capture](./assets/project-tabs-2026-09-29/after-docs-mobile-light.png)     |
+| Activity | [Capture](./assets/project-tabs-2026-09-29/after-activity-desktop-dark.png) | [Capture](./assets/project-tabs-2026-09-29/after-activity-desktop-light.png) | [Capture](./assets/project-tabs-2026-09-29/after-activity-mobile-dark.png) | [Capture](./assets/project-tabs-2026-09-29/after-activity-mobile-light.png) |
+
+Session-based collapsing of related edits remains a separate product enhancement requiring reliable operation/session identifiers. This pass preserves every history entry.

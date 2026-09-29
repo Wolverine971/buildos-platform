@@ -16,6 +16,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import TodayAgendaRow from '$lib/components/today/TodayAgendaRow.svelte';
+	import TodayTaskGroups from '$lib/components/today/TodayTaskGroups.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
 	import { loadTaskEditModal } from '$lib/components/project/project-entity-modal-loader';
 	import {
@@ -1143,7 +1144,7 @@
 							>{agenda.schedule.length}</span
 						>
 					</div>
-					<div class="space-y-1">
+					<div class="border-y border-border/70">
 						{#each agenda.schedule as entry, index (entry.key)}
 							{#if index === nowMarkerIndex}
 								<div class="flex items-center gap-2" aria-hidden="true">
@@ -1220,27 +1221,13 @@
 							>{agenda.anytime.length}</span
 						>
 					</div>
-					<div class="space-y-1">
-						{#each agenda.anytime as task (task.id)}
-							<TodayAgendaRow
-								kind="task"
-								title={task.title}
-								timeLabel={null}
-								metaLabel={task.bucket === 'due_today'
-									? 'Due today'
-									: task.bucket === 'starts_today'
-										? 'Starts today'
-										: null}
-								stateKey={task.state_key}
-								done={doneIds.has(task.id)}
-								projectName={task.project_name}
-								projectHref={`/projects/${task.project_id}`}
-								onChat={() => openTaskChat(task)}
-								onOpenTask={() => openTask(task)}
-								onToggleDone={() => toggleDone(task)}
-							/>
-						{/each}
-					</div>
+					<TodayTaskGroups
+						tasks={agenda.anytime}
+						{doneIds}
+						onChat={openTaskChat}
+						onOpenTask={openTask}
+						onToggleDone={toggleDone}
+					/>
 				</section>
 			{/if}
 

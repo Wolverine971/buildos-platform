@@ -212,7 +212,7 @@ export async function listTasks(context: ToolExecutionContext, args: Record<stri
 		.in('project_id', projectIds)
 		.order('updated_at', { ascending: false })
 		.range(offset, offset + limit - 1);
-	query = applyArchivedReadFilter(query, args);
+	query = applyArchivedReadFilter(query, args, 'task');
 
 	if (stateKey) {
 		query = query.eq('state_key', stateKey);
@@ -263,7 +263,7 @@ export async function getTask(context: ToolExecutionContext, args: Record<string
 			'project_id',
 			visible.projects.map((project) => project.id)
 		);
-	query = applyArchivedReadFilter(query, args);
+	query = applyArchivedReadFilter(query, args, 'task');
 
 	const { data, error } = await query.maybeSingle();
 
@@ -508,7 +508,7 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 	let existingTaskQuery = context.admin
 		.from('onto_tasks')
 		.select(
-			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at'
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at, deleted_at'
 		)
 		.eq('id', taskId)
 		.in(
@@ -517,6 +517,9 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		);
 	if (archivedAtUpdate !== null) {
 		existingTaskQuery = existingTaskQuery.is('archived_at', null);
+	}
+	if (typeof archivedAtUpdate === 'string') {
+		existingTaskQuery = existingTaskQuery.is('deleted_at', null);
 	}
 
 	const { data: existingTask, error: existingTaskError } = await existingTaskQuery.maybeSingle();
@@ -528,7 +531,8 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 		);
 	}
 
-	if (!existingTask) {
+	// Restoring un-archives; it never brings back a deleted task that was not archived.
+	if (!existingTask || (archivedAtUpdate === null && existingTask.deleted_at && !existingTask.archived_at)) {
 		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
 	}
 
@@ -668,7 +672,10 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 	}
 
 	if (archivedAtUpdate !== undefined) {
+		// The board's canonical archive (20260924190350): deleted_at and archived_at
+		// move together, so every reader that hides deleted rows hides archived ones.
 		updateData.archived_at = archivedAtUpdate;
+		updateData.deleted_at = archivedAtUpdate;
 		changedFieldCount += 1;
 		changedFields.push('archived');
 	}

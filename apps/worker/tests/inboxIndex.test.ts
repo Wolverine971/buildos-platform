@@ -31,12 +31,16 @@ function createSupabaseMock(tables: Record<string, Row[]>) {
 			const filters: Array<[string, unknown]> = [];
 			const inFilters: Array<[string, unknown[]]> = [];
 			const notInFilters: Array<[string, unknown[]]> = [];
+			const notNullFilters: string[] = [];
 			let upsertPayload: Row | null = null;
 			let updatePayload: Row | null = null;
 			const matches = (candidate: Row) =>
 				filters.every(([field, value]) => candidate[field] === value) &&
 				inFilters.every(([field, values]) => values.includes(candidate[field])) &&
-				notInFilters.every(([field, values]) => !values.includes(candidate[field]));
+				notInFilters.every(([field, values]) => !values.includes(candidate[field])) &&
+				notNullFilters.every(
+					(field) => candidate[field] !== null && candidate[field] !== undefined
+				);
 			const builder = {
 				select() {
 					return builder;
@@ -44,9 +48,22 @@ function createSupabaseMock(tables: Record<string, Row[]>) {
 				limit() {
 					return builder;
 				},
-				not(field: string, operator: string, value: string) {
+				order() {
+					return builder;
+				},
+				not(field: string, operator: string, value: string | null) {
+					// JSON-path "is not null" filters (brief->cleanup) match nothing in these fixtures.
+					if (operator === 'is') {
+						notNullFilters.push(field);
+						return builder;
+					}
 					if (operator !== 'in') throw new Error(`Unsupported not operator ${operator}`);
-					notInFilters.push([field, value.replace(/^\(|\)$/g, '').split(',')]);
+					notInFilters.push([
+						field,
+						String(value)
+							.replace(/^\(|\)$/g, '')
+							.split(',')
+					]);
 					return builder;
 				},
 				eq(field: string, value: unknown) {
@@ -345,7 +362,7 @@ describe('inbox index mappers', () => {
 		expect(row).toBeNull();
 	});
 
-	it('retires an existing unresolved drift inbox row during source sync', async () => {
+	it("folds a drift finding's own inbox row into the project cleanup item", async () => {
 		const { supabase, updates, upserts } = createSupabaseMock({
 			project_suggestions: [
 				{
@@ -367,21 +384,18 @@ describe('inbox index mappers', () => {
 			]
 		});
 
-		const row = await syncInboxItemForProjectSuggestion({
+		await syncInboxItemForProjectSuggestion({
 			supabase: supabase as any,
 			suggestionId: 'drift-1'
 		});
 
-		expect(row).toMatchObject({
-			status: 'expired',
-			source_status: 'observation_not_admitted'
-		});
+		// Tasker 112: findings reach the inbox only through the project's cleanup item.
 		expect(upserts).toHaveLength(0);
 		expect(updates).toContainEqual(
 			expect.objectContaining({
 				table: 'inbox_items',
 				status: 'expired',
-				source_status: 'observation_not_admitted'
+				source_status: 'grouped_into_project_cleanup'
 			})
 		);
 	});
@@ -468,7 +482,7 @@ describe('inbox index mappers', () => {
 		});
 	});
 
-	it('syncs a ready audit as one parent packet', async () => {
+	it('folds a ready audit into the project cleanup item', async () => {
 		const { supabase, updates, upserts } = createSupabaseMock({
 			project_audits: [
 				{
@@ -501,13 +515,16 @@ describe('inbox index mappers', () => {
 			auditId: 'audit-1'
 		});
 
+		// Its recommendations are items in the cleanup card; the audit's own card retires.
 		expect(row).toMatchObject({
-			status: 'pending',
+			status: 'expired',
 			source_type: 'project_audit',
-			source_status: 'ready'
+			source_status: 'grouped_into_project_cleanup'
 		});
-		expect(upserts).toHaveLength(1);
-		expect(updates).toHaveLength(0);
+		expect(upserts).toHaveLength(0);
+		expect(updates).toContainEqual(
+			expect.objectContaining({ table: 'inbox_items', status: 'expired' })
+		);
 	});
 
 	it('syncs one decision-level manager brief and leaves its candidates as payload evidence', async () => {
@@ -883,7 +900,7 @@ describe('freshness_update bundle inbox mapping', () => {
 		expect(row?.summary).toMatch(/· 1 task$/);
 	});
 
-	it('is not grouped into an active manager brief and keeps its verified bundle title', async () => {
+	it('folds the radar bundle and an older brief card into one project cleanup item', async () => {
 		const { supabase, upserts, updates } = createSupabaseMock({
 			...radarEntityTables(),
 			project_suggestions: [freshnessBundle()],
@@ -911,17 +928,24 @@ describe('freshness_update bundle inbox mapping', () => {
 			suggestionId: 'bundle-1'
 		});
 
-		expect(updates).toHaveLength(0);
 		expect(upserts).toHaveLength(1);
 		expect(row).toMatchObject({
+			source_type: 'project_cleanup',
+			source_ref_id: RADAR_PROJECT,
 			status: 'pending',
-			title: '2 things look out of date',
-			source_status: expect.stringMatching(/^proposal_verified:[0-9a-f]{64}$/)
+			expires_at: null
 		});
+		expect(updates).toContainEqual(
+			expect.objectContaining({
+				table: 'inbox_items',
+				status: 'expired',
+				source_status: 'grouped_into_project_cleanup'
+			})
+		);
 	});
 
-	it('still groups an ordinary suggestion behind an active manager brief', async () => {
-		const { supabase, upserts } = createSupabaseMock({
+	it('folds an ordinary review finding into the project cleanup item', async () => {
+		const tables = {
 			project_suggestions: [retirableSuggestion()],
 			inbox_items: [
 				{
@@ -933,15 +957,16 @@ describe('freshness_update bundle inbox mapping', () => {
 				},
 				retirableInboxRow()
 			]
-		});
-		const row = await syncInboxItemForProjectSuggestion({
+		};
+		const { supabase, upserts } = createSupabaseMock(tables);
+		await syncInboxItemForProjectSuggestion({
 			supabase: supabase as any,
 			suggestionId: 'suggestion-obsolete'
 		});
 		expect(upserts).toHaveLength(0);
-		expect(row).toMatchObject({
+		expect(tables.inbox_items.find((row) => row.id === 'inbox-obsolete')).toMatchObject({
 			status: 'expired',
-			source_status: 'grouped_into_project_review'
+			source_status: 'grouped_into_project_cleanup'
 		});
 	});
 
@@ -1031,13 +1056,14 @@ describe('freshness radar inbox cleanup', () => {
 			reason: 'No longer relevant'
 		});
 
-		const row = await syncInboxItemForProjectSuggestion({
+		await syncInboxItemForProjectSuggestion({
 			supabase: supabase as any,
 			suggestionId: 'suggestion-obsolete'
 		});
 
-		expect(upserts).toHaveLength(1);
-		expect(row).toMatchObject({
+		// The resync folds findings into the cleanup item; the retired row is left as it was.
+		expect(upserts).toHaveLength(0);
+		expect(tables.inbox_items[0]).toMatchObject({
 			status: 'expired',
 			source_status: FRESHNESS_RETIRED_SOURCE_STATUS,
 			blocked_reason: 'No longer relevant'
@@ -1119,14 +1145,13 @@ describe('freshness radar inbox cleanup', () => {
 			freshness_state: 'fresh',
 			result: null
 		});
-		// Reopened with its previous status; the resync keeps a deferred row deferred
-		// and the budget pass (one row, within budget) promotes it.
-		expect(upserts.at(-1)).toMatchObject({
-			status: 'deferred',
-			source_status: 'pending',
-			blocked_reason: null
+		// The restored finding is open again; the resync folds its own row into the
+		// project's cleanup item (tasker 112).
+		expect(upserts).toHaveLength(0);
+		expect(tables.inbox_items[0]).toMatchObject({
+			status: 'expired',
+			source_status: 'grouped_into_project_cleanup'
 		});
-		expect(tables.inbox_items[0]).toMatchObject({ status: 'pending' });
 	});
 
 	it('refuses to restore when the suggestion changed or another flag retired it', async () => {
@@ -1199,6 +1224,7 @@ describe('freshness radar inbox cleanup', () => {
 
 	it('never writes freshness columns during an ordinary resync', async () => {
 		const { supabase, upserts } = createSupabaseMock({
+			onto_projects: [{ id: RADAR_PROJECT, deleted_at: null, archived_at: null }],
 			project_suggestions: [retirableSuggestion()],
 			inbox_items: [retirableInboxRow({ freshness_state: 'possibly_stale' })]
 		});

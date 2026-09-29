@@ -8,6 +8,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
 	entry: [
 		'src/index.ts',
+		'src/project-cleanup.ts',
 		'src/policy.ts',
 		'src/dates/civil-date.ts',
 		'src/ontology/onto.ts',

@@ -200,7 +200,10 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 	// tree, the reads find one on a later turn and show where it is filed.
 	'search_onto_assets',
 	'get_onto_asset',
-	'update_onto_asset'
+	'update_onto_asset',
+	// Tasker 112 (2026-09-29): the nightly Project cleanup change set. A cleanup or
+	// "what's out of date?" turn starts from it instead of re-deriving it with ~18 reads.
+	'get_project_cleanup'
 ] as const;
 
 /**

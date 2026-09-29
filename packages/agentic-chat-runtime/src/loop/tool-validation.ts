@@ -51,6 +51,7 @@ const UUID_VALIDATED_TOOL_NAMES = new Set([
 	'unlink_onto_edge',
 	'get_document_tree',
 	'get_document_path',
+	'get_project_cleanup',
 	'move_document_in_tree',
 	'reorganize_onto_project_graph'
 ]);

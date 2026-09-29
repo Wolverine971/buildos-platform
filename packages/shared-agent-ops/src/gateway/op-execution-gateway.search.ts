@@ -242,7 +242,7 @@ async function searchEntityKind(params: {
 		.or(buildSearchFilter(query, config.searchFields))
 		.order('updated_at', { ascending: false })
 		.range(offset, offset + limit - 1);
-	dbQuery = applyArchivedReadFilter(dbQuery, args);
+	dbQuery = applyArchivedReadFilter(dbQuery, args, kind === 'task' ? 'task' : undefined);
 
 	if (stateKey) {
 		dbQuery = dbQuery.eq('state_key', stateKey);

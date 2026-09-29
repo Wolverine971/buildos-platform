@@ -7,6 +7,7 @@ import {
 	resolveDocumentEdits,
 	type DocumentTextEditV1
 } from '../ontology/document-edits';
+import { TYPE_KEY_PATTERNS } from '../ontology/onto';
 import {
 	formatLoopOperationValue,
 	humanizeLoopOperationKey,
@@ -30,7 +31,70 @@ type ResolvedEntity = {
 	target_date: string | null;
 	/** Raw document body, loaded only when an operation carries text edits. */
 	content?: string | null;
+	/** Present only when the row was loaded with a description column (goals). */
+	description?: string | null;
 };
+
+// ---------------------------------------------------------------------------
+// Project cleanup operations (Tasker 112)
+// ---------------------------------------------------------------------------
+
+/**
+ * Operations the "Project cleanup" change set adds on top of the original
+ * Project Review set. Each is verified, displayed, fingerprinted and replayed
+ * like the others; the archives run the canonical web archive paths.
+ */
+export const PROJECT_CLEANUP_OPERATION_TOOLS = Object.freeze([
+	'archive_onto_document',
+	'archive_onto_task',
+	'update_onto_project'
+] as const);
+export type ProjectCleanupOperationTool = (typeof PROJECT_CLEANUP_OPERATION_TOOLS)[number];
+
+export function isProjectCleanupOperationTool(tool: unknown): tool is ProjectCleanupOperationTool {
+	return (
+		typeof tool === 'string' &&
+		(PROJECT_CLEANUP_OPERATION_TOOLS as readonly string[]).includes(tool)
+	);
+}
+
+/** What happens to a document's children when the document is archived. */
+export const DOCUMENT_ARCHIVE_CHILDREN_MODES = Object.freeze([
+	'archive_children',
+	'promote_children'
+] as const);
+export type DocumentArchiveChildrenMode = (typeof DOCUMENT_ARCHIVE_CHILDREN_MODES)[number];
+
+/** Absent means archive_children; any other unknown value is null (fail closed). */
+export function readDocumentArchiveChildrenMode(
+	value: unknown
+): DocumentArchiveChildrenMode | null {
+	if (value === undefined || value === null) return 'archive_children';
+	return typeof value === 'string' &&
+		(DOCUMENT_ARCHIVE_CHILDREN_MODES as readonly string[]).includes(value)
+		? (value as DocumentArchiveChildrenMode)
+		: null;
+}
+
+/** The complete argument list of each cleanup tool; anything else fails closed. */
+const CLEANUP_TOOL_ARGS: Record<ProjectCleanupOperationTool, readonly string[]> = {
+	archive_onto_document: ['project_id', 'document_id', 'children'],
+	archive_onto_task: ['project_id', 'task_id'],
+	update_onto_project: ['project_id', 'name', 'description', 'type_key']
+};
+
+const PROJECT_UPDATE_FIELDS = ['name', 'description', 'type_key'] as const;
+type ProjectUpdateField = (typeof PROJECT_UPDATE_FIELDS)[number];
+const PROJECT_UPDATE_FIELD_LABELS: Record<ProjectUpdateField, string> = {
+	name: 'Name',
+	description: 'Description',
+	type_key: 'Type'
+};
+
+/** Archive display lists at most this many child names, then "and N more". */
+const ARCHIVE_DISPLAY_NAMES_MAX = 12;
+/** A multi-archive headline names each target up to this many operations. */
+const ARCHIVE_HEADLINE_NAMES_MAX = 4;
 
 export type ProjectSuggestionIntegrityCode =
 	| 'INVALID_PROJECT'
@@ -52,7 +116,7 @@ export type ProjectSuggestionIntegrityDiagnostic = {
 	message: string;
 	operation_index?: number;
 	tool?: string;
-	entity_kind?: ResolvedEntityKind;
+	entity_kind?: ResolvedEntityKind | 'project';
 	entity_id?: string;
 	expected_project_id?: string;
 	actual_project_id?: string;
@@ -66,6 +130,11 @@ export type VerifiedProjectSuggestionChangeSummary = {
 	operations: Array<DecodedLoopOperation & { key: string }>;
 	structural_fingerprint: string;
 	verified_at: string;
+	/**
+	 * Side effects worth a second look before approving (for example an archived
+	 * document that has a live public page). Present only when non-empty.
+	 */
+	cautions?: string[];
 };
 
 export type ProjectSuggestionIntegrityResult =
@@ -89,6 +158,13 @@ export type ProjectSuggestionIntegrityInput = {
 
 type ScalarField = 'state_key' | 'due_at' | 'start_at' | 'target_date';
 
+type TextField = 'name' | 'description';
+
+const TEXT_FIELD_LABELS: Record<TextField, string> = {
+	name: 'Name',
+	description: 'Description'
+};
+
 type UpdateToolSpec = {
 	entityKind: ResolvedEntityKind;
 	idArg: 'task_id' | 'document_id' | 'goal_id' | 'milestone_id';
@@ -96,6 +172,11 @@ type UpdateToolSpec = {
 	titleArgs: readonly string[];
 	/** Scalar fields decoded with before and after values. */
 	scalarFields: readonly ScalarField[];
+	/**
+	 * Text fields decoded with before and after values (a rename, a rewritten
+	 * description). An exact echo of the current value is not a change.
+	 */
+	textFields?: readonly TextField[];
 	stateKeys: readonly string[];
 	/**
 	 * Every argument the ChatToolExecutor turns into a write (or a write side
@@ -162,6 +243,7 @@ const UPDATE_TOOL_SPECS: Record<string, UpdateToolSpec> = {
 		idArg: 'goal_id',
 		titleArgs: ['name'],
 		scalarFields: ['state_key', 'target_date'],
+		textFields: ['name', 'description'],
 		stateKeys: ['draft', 'active', 'achieved', 'abandoned'],
 		mutatingArgs: [
 			'name',
@@ -184,7 +266,14 @@ const UPDATE_TOOL_SPECS: Record<string, UpdateToolSpec> = {
 	}
 };
 
-const SUPPORTED_TOOLS = new Set(['move_document_in_tree', ...Object.keys(UPDATE_TOOL_SPECS)]);
+/** Every tool Project Review's integrity check can resolve, display and fingerprint. */
+export const PROJECT_REVIEW_VERIFIABLE_OPERATION_TOOLS: readonly string[] = Object.freeze([
+	'move_document_in_tree',
+	...Object.keys(UPDATE_TOOL_SPECS),
+	...PROJECT_CLEANUP_OPERATION_TOOLS
+]);
+
+const SUPPORTED_TOOLS = new Set<string>(PROJECT_REVIEW_VERIFIABLE_OPERATION_TOOLS);
 
 const SCALAR_FIELD_LABELS: Record<ScalarField, string> = {
 	state_key: 'Status',
@@ -284,28 +373,67 @@ export function projectSuggestionTextNamesEntity(text: string, entityTitle: stri
 	return overlap >= required;
 }
 
-function readTreeState(docStructure: unknown): {
+type TreeState = {
 	parentById: Map<string, string | null>;
 	positionById: Map<string, number>;
-} {
+	/** Child ids in tree order. */
+	childrenById: Map<string, string[]>;
+};
+
+function readTreeState(docStructure: unknown): TreeState {
 	const parentById = buildProjectLoopParentMap(docStructure);
 	const positionById = new Map<string, number>();
+	const childrenById = new Map<string, string[]>();
 	const root =
 		docStructure && typeof docStructure === 'object' && 'root' in (docStructure as object)
 			? (docStructure as { root?: unknown }).root
 			: docStructure;
-	const visit = (nodes: unknown) => {
-		if (!Array.isArray(nodes)) return;
+	const visit = (nodes: unknown): string[] => {
+		const ids: string[] = [];
+		if (!Array.isArray(nodes)) return ids;
 		for (let index = 0; index < nodes.length; index += 1) {
 			const node = asRecord(nodes[index]);
 			const id = asString(node?.id);
 			if (!id) continue;
+			ids.push(id);
 			positionById.set(id, index);
-			visit(node?.children);
+			childrenById.set(id, visit(node?.children));
 		}
+		return ids;
 	};
 	visit(root);
-	return { parentById, positionById };
+	return { parentById, positionById, childrenById };
+}
+
+/** Every document under `documentId`, depth first in tree order. */
+function treeDescendantIds(tree: TreeState, documentId: string): string[] {
+	const ids: string[] = [];
+	const seen = new Set<string>([documentId]);
+	const visit = (parentId: string) => {
+		for (const childId of tree.childrenById.get(parentId) ?? []) {
+			if (seen.has(childId)) continue;
+			seen.add(childId);
+			ids.push(childId);
+			visit(childId);
+		}
+	};
+	visit(documentId);
+	return ids;
+}
+
+/**
+ * The children an archive touches, matching `archiveDocumentInTree`: every
+ * descendant is archived with the document, or its direct children move up to
+ * the document's place.
+ */
+function archiveChildIds(
+	tree: TreeState,
+	documentId: string,
+	mode: DocumentArchiveChildrenMode
+): string[] {
+	return mode === 'archive_children'
+		? treeDescendantIds(tree, documentId)
+		: [...(tree.childrenById.get(documentId) ?? [])];
 }
 
 function isInactive(entity: ResolvedEntity): boolean {
@@ -358,6 +486,67 @@ function entityDiagnostic(params: {
 		};
 	}
 	return null;
+}
+
+/**
+ * Already archived, by the meaning each writer uses: a board-archived task has
+ * `archived_at` (with `deleted_at`), a connector-archived row has `archived_at`
+ * alone, and a tree-archived document has `state_key = 'archived'`. A deleted
+ * document is deleted, not archived.
+ */
+function isAlreadyArchived(entityKind: 'document' | 'task', entity: ResolvedEntity): boolean {
+	if (entityKind === 'task') return Boolean(entity.archived_at);
+	return !entity.deleted_at && (Boolean(entity.archived_at) || entity.state_key === 'archived');
+}
+
+/**
+ * An archive whose target is already archived is done, not broken: report it as
+ * NO_OP_OPERATION so the roll-up can close the item as already handled.
+ */
+function alreadyArchivedDiagnostic(params: {
+	entity: ResolvedEntity | undefined;
+	entityId: string;
+	entityKind: 'document' | 'task';
+	projectId: string;
+	operationIndex: number;
+	tool: string;
+}): ProjectSuggestionIntegrityDiagnostic | null {
+	const { entity } = params;
+	if (!entity || entity.project_id !== params.projectId) return null;
+	if (!isAlreadyArchived(params.entityKind, entity)) return null;
+	return {
+		code: 'NO_OP_OPERATION',
+		message: `${params.entityKind} "${entity.title}" is already archived`,
+		operation_index: params.operationIndex,
+		tool: params.tool,
+		entity_kind: params.entityKind,
+		entity_id: params.entityId,
+		resolved_entity_title: entity.title
+	};
+}
+
+/** Cleanup tools accept exactly their documented arguments; anything else fails closed. */
+function cleanupArgsDiagnostic(
+	tool: ProjectCleanupOperationTool,
+	args: Record<string, unknown>,
+	operationIndex: number
+): ProjectSuggestionIntegrityDiagnostic | null {
+	const allowed = CLEANUP_TOOL_ARGS[tool];
+	const unexpected = Object.keys(args).find(
+		(key) => args[key] !== undefined && !allowed.includes(key)
+	);
+	return unexpected
+		? {
+				code: 'INVALID_OPERATION',
+				message: `${tool} does not accept argument "${unexpected}"`,
+				operation_index: operationIndex,
+				tool
+			}
+		: null;
+}
+
+function plural(count: number, noun: string): string {
+	return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 function modelTextForOperation(
@@ -416,8 +605,33 @@ function listWithAnd(values: string[]): string {
 	return `${values.slice(0, -1).join(', ')}, and ${values.at(-1)}`;
 }
 
-function verifiedHeadline(operations: DecodedLoopOperation[]): string {
+type ArchiveCount = { documents: number; tasks: number };
+
+/**
+ * @param archiveCounts per decoded-operation index, how many documents and tasks
+ *   that archive operation archives; set only for archive operations.
+ */
+function verifiedHeadline(
+	operations: DecodedLoopOperation[],
+	archiveCounts: ReadonlyMap<number, ArchiveCount> = new Map()
+): string {
 	if (operations.length === 1) return operations[0]?.summary ?? 'Apply 1 verified change.';
+	if (archiveCounts.size === operations.length) {
+		if (operations.length <= ARCHIVE_HEADLINE_NAMES_MAX) {
+			return `Archive ${listWithAnd(operations.map((operation) => `"${operation.target}"`))}.`;
+		}
+		let documents = 0;
+		let tasks = 0;
+		for (const count of archiveCounts.values()) {
+			documents += count.documents;
+			tasks += count.tasks;
+		}
+		const parts = [
+			...(documents ? [plural(documents, 'document')] : []),
+			...(tasks ? [plural(tasks, 'task')] : [])
+		];
+		return `Archive ${listWithAnd(parts)}.`;
+	}
 	const moves = operations.filter((operation) => operation.action === 'move');
 	const destinations = new Set(
 		moves.map(
@@ -451,7 +665,10 @@ function normalizeEntityRows(rows: unknown): Map<string, ResolvedEntity> {
 			start_at: asString(row?.start_at),
 			target_date: asString(row?.target_date),
 			// Untrimmed: edit anchors are exact offsets into the stored body.
-			...(typeof row?.content === 'string' ? { content: row.content } : {})
+			...(typeof row?.content === 'string' ? { content: row.content } : {}),
+			...(row && 'description' in row
+				? { description: typeof row.description === 'string' ? row.description : null }
+				: {})
 		});
 	}
 	return byId;
@@ -583,6 +800,45 @@ function readProposedScalar(
 		: { ok: false };
 }
 
+/**
+ * A proposed project field, normalized the way the gateway's project update
+ * writes it (trimmed; an empty description clears it; type_key lowercased and
+ * matching the project taxonomy).
+ */
+function readProposedProjectField(
+	field: ProjectUpdateField,
+	value: unknown
+): { ok: true; value: string | null } | { ok: false } {
+	if (field === 'description') {
+		if (value === null) return { ok: true, value: null };
+		return typeof value === 'string'
+			? { ok: true, value: value.trim() || null }
+			: { ok: false };
+	}
+	const text = asString(value);
+	if (!text) return { ok: false };
+	if (field === 'type_key') {
+		const typeKey = text.toLowerCase();
+		return TYPE_KEY_PATTERNS.project!.test(typeKey)
+			? { ok: true, value: typeKey }
+			: { ok: false };
+	}
+	return { ok: true, value: text };
+}
+
+/** A proposed goal name or description; the name may not be empty. */
+function readProposedTextField(
+	field: TextField,
+	value: unknown
+): { ok: true; value: string | null } | { ok: false } {
+	if (field === 'name') {
+		const name = asString(value);
+		return name ? { ok: true, value: name } : { ok: false };
+	}
+	if (value === null) return { ok: true, value: null };
+	return typeof value === 'string' ? { ok: true, value: value.trim() || null } : { ok: false };
+}
+
 function scalarValueIsCurrent(
 	field: ScalarField,
 	proposed: string | null,
@@ -619,6 +875,19 @@ function scalarSummary(
 	return only.proposed === null
 		? `Clear the ${label} of ${entityKind} "${title}".`
 		: `Change the ${label} of ${entityKind} "${title}" to ${formatScalarValue(only.field, only.proposed)}.`;
+}
+
+function textSummary(
+	entityKind: ResolvedEntityKind,
+	title: string,
+	changes: Array<{ field: TextField; proposed: string | null }>
+): string {
+	if (changes.length !== 1) return `Update ${entityKind} "${title}".`;
+	const only = changes[0]!;
+	if (only.field === 'name') return `Rename ${entityKind} "${title}" to "${only.proposed}".`;
+	return only.proposed
+		? `Update the description of ${entityKind} "${title}".`
+		: `Clear the description of ${entityKind} "${title}".`;
 }
 
 function isDescendant(
@@ -692,9 +961,16 @@ export async function verifyProjectSuggestionIntegrity(
 			}
 		}
 
+		const updatesProject = input.operations.some(
+			(operation) => operation?.tool === 'update_onto_project'
+		);
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, doc_structure, deleted_at, archived_at')
+			.select(
+				updatesProject
+					? 'id, name, description, type_key, doc_structure, deleted_at, archived_at'
+					: 'id, doc_structure, deleted_at, archived_at'
+			)
 			.eq('id', input.projectId)
 			.maybeSingle();
 		if (projectError) throw projectError;
@@ -711,53 +987,86 @@ export async function verifyProjectSuggestionIntegrity(
 
 		const tree = readTreeState(project.doc_structure);
 		const ids = idsForOperations(input.operations);
+		// An archive touches the target's subtree: load every child it archives or
+		// promotes, and check each archived document for a live public page.
+		const archivedDocumentCandidates = new Set<string>();
+		for (const operation of input.operations) {
+			if (operation.tool !== 'archive_onto_document') continue;
+			const args = asRecord(operation.args) ?? {};
+			const documentId = asString(args.document_id);
+			const mode = readDocumentArchiveChildrenMode(args.children);
+			if (!documentId || !mode) continue;
+			archivedDocumentCandidates.add(documentId);
+			for (const childId of archiveChildIds(tree, documentId, mode)) {
+				ids.documentIds.add(childId);
+				if (mode === 'archive_children') archivedDocumentCandidates.add(childId);
+			}
+		}
 		for (const documentId of [...ids.documentIds]) {
 			const parentId = tree.parentById.get(documentId);
 			if (parentId) ids.documentIds.add(parentId);
 		}
 
-		const [documentResult, taskResult, goalResult, milestoneResult] = await Promise.all([
-			ids.documentIds.size
-				? supabase
-						.from('onto_documents')
-						.select(
-							operationsCarryEdits(input.operations)
-								? 'id, project_id, title, state_key, deleted_at, archived_at, content'
-								: 'id, project_id, title, state_key, deleted_at, archived_at'
-						)
-						.in('id', [...ids.documentIds])
-				: Promise.resolve({ data: [], error: null }),
-			ids.taskIds.size
-				? supabase
-						.from('onto_tasks')
-						.select(
-							'id, project_id, title, state_key, due_at, start_at, deleted_at, archived_at'
-						)
-						.in('id', [...ids.taskIds])
-				: Promise.resolve({ data: [], error: null }),
-			ids.goalIds.size
-				? supabase
-						.from('onto_goals')
-						.select(
-							'id, project_id, name, state_key, target_date, deleted_at, archived_at'
-						)
-						.in('id', [...ids.goalIds])
-				: Promise.resolve({ data: [], error: null }),
-			ids.milestoneIds.size
-				? supabase
-						.from('onto_milestones')
-						.select('id, project_id, title, state_key, due_at, deleted_at, archived_at')
-						.in('id', [...ids.milestoneIds])
-				: Promise.resolve({ data: [], error: null })
-		]);
+		const [documentResult, taskResult, goalResult, milestoneResult, publicPageResult] =
+			await Promise.all([
+				ids.documentIds.size
+					? supabase
+							.from('onto_documents')
+							.select(
+								operationsCarryEdits(input.operations)
+									? 'id, project_id, title, state_key, deleted_at, archived_at, content'
+									: 'id, project_id, title, state_key, deleted_at, archived_at'
+							)
+							.in('id', [...ids.documentIds])
+					: Promise.resolve({ data: [], error: null }),
+				ids.taskIds.size
+					? supabase
+							.from('onto_tasks')
+							.select(
+								'id, project_id, title, state_key, due_at, start_at, deleted_at, archived_at'
+							)
+							.in('id', [...ids.taskIds])
+					: Promise.resolve({ data: [], error: null }),
+				ids.goalIds.size
+					? supabase
+							.from('onto_goals')
+							.select(
+								'id, project_id, name, description, state_key, target_date, deleted_at, archived_at'
+							)
+							.in('id', [...ids.goalIds])
+					: Promise.resolve({ data: [], error: null }),
+				ids.milestoneIds.size
+					? supabase
+							.from('onto_milestones')
+							.select(
+								'id, project_id, title, state_key, due_at, deleted_at, archived_at'
+							)
+							.in('id', [...ids.milestoneIds])
+					: Promise.resolve({ data: [], error: null }),
+				archivedDocumentCandidates.size
+					? supabase
+							.from('onto_public_pages')
+							.select('document_id, status, deleted_at')
+							.in('document_id', [...archivedDocumentCandidates])
+					: Promise.resolve({ data: [], error: null })
+			]);
 		if (documentResult.error) throw documentResult.error;
 		if (taskResult.error) throw taskResult.error;
 		if (goalResult.error) throw goalResult.error;
 		if (milestoneResult.error) throw milestoneResult.error;
+		if (publicPageResult.error) throw publicPageResult.error;
 		const documents = normalizeEntityRows(documentResult.data);
 		const tasks = normalizeEntityRows(taskResult.data);
 		const goals = normalizeEntityRows(goalResult.data);
 		const milestones = normalizeEntityRows(milestoneResult.data);
+		const publishedDocumentIds = new Set<string>();
+		for (const value of Array.isArray(publicPageResult.data) ? publicPageResult.data : []) {
+			const page = asRecord(value);
+			const documentId = asString(page?.document_id);
+			if (documentId && page?.status === 'published' && !page?.deleted_at) {
+				publishedDocumentIds.add(documentId);
+			}
+		}
 		const entitiesByKind: Record<ResolvedEntityKind, Map<string, ResolvedEntity>> = {
 			document: documents,
 			task: tasks,
@@ -767,10 +1076,344 @@ export async function verifyProjectSuggestionIntegrity(
 
 		const decoded: Array<DecodedLoopOperation & { key: string }> = [];
 		const structuralParts: unknown[] = [];
+		const archiveCounts = new Map<number, ArchiveCount>();
+		const cautions: string[] = [];
 		for (const [index, operation] of input.operations.entries()) {
 			const args = asRecord(operation.args) ?? {};
 			const modelText = modelTextForOperation(operation, input);
 			const targetText = targetTextForOperation(operation, input);
+
+			if (operation.tool === 'archive_onto_document') {
+				const argsError = cleanupArgsDiagnostic(operation.tool, args, index);
+				if (argsError) return { ok: false, diagnostic: argsError };
+				const documentId = asString(args.document_id);
+				const mode = readDocumentArchiveChildrenMode(args.children);
+				if (!documentId || !mode) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'INVALID_OPERATION',
+							message:
+								'archive_onto_document requires document_id, and children must be archive_children or promote_children',
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: 'document'
+						}
+					};
+				}
+				const target = documents.get(documentId);
+				const targetParams = {
+					entity: target,
+					entityId: documentId,
+					entityKind: 'document' as const,
+					projectId: input.projectId,
+					operationIndex: index,
+					tool: operation.tool
+				};
+				const doneError = alreadyArchivedDiagnostic(targetParams);
+				if (doneError) return { ok: false, diagnostic: doneError };
+				const targetError = entityDiagnostic(targetParams);
+				if (targetError) return { ok: false, diagnostic: targetError };
+				if (
+					input.checkModelAlignment !== false &&
+					!projectSuggestionTextNamesEntity(targetText, target!.title)
+				) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'MODEL_ENTITY_MISMATCH',
+							message:
+								'Model-authored proposal text does not name the resolved archive target',
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: 'document',
+							entity_id: documentId,
+							resolved_entity_title: target!.title
+						}
+					};
+				}
+
+				const childIds = archiveChildIds(tree, documentId, mode);
+				if (mode === 'archive_children') {
+					// The archive command writes every descendant in one transaction, so a
+					// stale tree node (missing, moved or deleted row) would fail it.
+					for (const childId of childIds) {
+						const child = documents.get(childId);
+						if (child && child.project_id === input.projectId && !child.deleted_at)
+							continue;
+						return {
+							ok: false,
+							diagnostic: {
+								code: !child
+									? 'ENTITY_NOT_FOUND'
+									: child.project_id !== input.projectId
+										? 'ENTITY_PROJECT_MISMATCH'
+										: 'ENTITY_INACTIVE',
+								message: `A document inside "${target!.title}" is missing, deleted, or in another project, so it cannot be archived with it`,
+								operation_index: index,
+								tool: operation.tool,
+								entity_kind: 'document',
+								entity_id: childId,
+								expected_project_id: input.projectId,
+								actual_project_id: child?.project_id,
+								resolved_entity_title: target!.title
+							}
+						};
+					}
+				}
+
+				const title = target!.title;
+				const childTitles = childIds.map(
+					(childId) => documents.get(childId)?.title ?? 'Untitled document'
+				);
+				const childPhrase =
+					childIds.length === 1 ? 'document' : plural(childIds.length, 'document');
+				const summary =
+					childIds.length === 0
+						? `Archive "${title}".`
+						: mode === 'archive_children'
+							? `Archive "${title}" and the ${childPhrase} inside it.`
+							: `Archive "${title}" and move its ${childPhrase} up a level.`;
+				const childLabel =
+					mode === 'archive_children' ? 'Also archives' : 'Moves up a level';
+				const changes: DecodedLoopOperationFieldChange[] = [
+					{ label: 'Archive', value: title },
+					...childTitles
+						.slice(0, ARCHIVE_DISPLAY_NAMES_MAX)
+						.map((value) => ({ label: childLabel, value })),
+					...(childTitles.length > ARCHIVE_DISPLAY_NAMES_MAX
+						? [
+								{
+									label: childLabel,
+									value: `and ${childTitles.length - ARCHIVE_DISPLAY_NAMES_MAX} more`
+								}
+							]
+						: [])
+				];
+
+				const archivedIds =
+					mode === 'archive_children' ? [documentId, ...childIds] : [documentId];
+				const publicPageIds = archivedIds.filter((id) => publishedDocumentIds.has(id));
+				for (const id of publicPageIds) {
+					const pageTitle = documents.get(id)?.title ?? title;
+					// Archiving leaves onto_public_pages untouched: the published snapshot
+					// keeps serving until the page is unpublished.
+					cautions.push(
+						`"${pageTitle}" has a live public page. It stays published after the archive; unpublish it separately if it should go offline.`
+					);
+				}
+
+				archiveCounts.set(decoded.length, { documents: archivedIds.length, tasks: 0 });
+				decoded.push({
+					key: `${operation.tool}:${documentId}:${index}`,
+					action: 'other',
+					actionLabel: 'Archive',
+					entityLabel: 'document',
+					target: title,
+					summary,
+					changes
+				});
+				structuralParts.push({
+					tool: operation.tool,
+					target_id: documentId,
+					target_project_id: target!.project_id,
+					target_state: target!.state_key,
+					target_parent_id: tree.parentById.get(documentId) ?? null,
+					archive_mode: mode,
+					archived_document_ids: [...archivedIds].sort(),
+					...(mode === 'promote_children'
+						? { promoted_document_ids: [...childIds].sort() }
+						: {}),
+					public_page_document_ids: [...publicPageIds].sort()
+				});
+				continue;
+			}
+
+			if (operation.tool === 'archive_onto_task') {
+				const argsError = cleanupArgsDiagnostic(operation.tool, args, index);
+				if (argsError) return { ok: false, diagnostic: argsError };
+				const taskId = asString(args.task_id);
+				if (!taskId) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'INVALID_OPERATION',
+							message: 'archive_onto_task requires task_id',
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: 'task'
+						}
+					};
+				}
+				const target = tasks.get(taskId);
+				const targetParams = {
+					entity: target,
+					entityId: taskId,
+					entityKind: 'task' as const,
+					projectId: input.projectId,
+					operationIndex: index,
+					tool: operation.tool
+				};
+				const doneError = alreadyArchivedDiagnostic(targetParams);
+				if (doneError) return { ok: false, diagnostic: doneError };
+				const targetError = entityDiagnostic(targetParams);
+				if (targetError) return { ok: false, diagnostic: targetError };
+				if (
+					input.checkModelAlignment !== false &&
+					!projectSuggestionTextNamesEntity(targetText, target!.title)
+				) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'MODEL_ENTITY_MISMATCH',
+							message:
+								'Model-authored proposal text does not name the resolved archive target',
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: 'task',
+							entity_id: taskId,
+							resolved_entity_title: target!.title
+						}
+					};
+				}
+				archiveCounts.set(decoded.length, { documents: 0, tasks: 1 });
+				decoded.push({
+					key: `${operation.tool}:${taskId}:${index}`,
+					action: 'other',
+					actionLabel: 'Archive',
+					entityLabel: 'task',
+					target: target!.title,
+					summary: `Archive task "${target!.title}".`,
+					changes: [{ label: 'Archive', value: target!.title }]
+				});
+				structuralParts.push({
+					tool: operation.tool,
+					target_id: taskId,
+					target_project_id: target!.project_id,
+					target_state: target!.state_key
+				});
+				continue;
+			}
+
+			if (operation.tool === 'update_onto_project') {
+				const argsError = cleanupArgsDiagnostic(operation.tool, args, index);
+				if (argsError) return { ok: false, diagnostic: argsError };
+				const current: Record<ProjectUpdateField, string | null> = {
+					name: asString(project.name),
+					description:
+						typeof project.description === 'string'
+							? project.description.trim() || null
+							: null,
+					type_key: asString(project.type_key)?.toLowerCase() ?? null
+				};
+				const fields: Array<{
+					field: ProjectUpdateField;
+					proposed: string | null;
+					current: string | null;
+				}> = [];
+				for (const field of PROJECT_UPDATE_FIELDS) {
+					if (!hasOwnArg(args, field)) continue;
+					const proposed = readProposedProjectField(field, args[field]);
+					if (!proposed.ok) {
+						return {
+							ok: false,
+							diagnostic: {
+								code: 'INVALID_OPERATION',
+								message:
+									field === 'type_key'
+										? 'update_onto_project type_key must look like project.{realm}.{initiative}[.{variant}]'
+										: `update_onto_project has an invalid ${field}`,
+								operation_index: index,
+								tool: operation.tool,
+								entity_kind: 'project',
+								entity_id: input.projectId
+							}
+						};
+					}
+					fields.push({ field, proposed: proposed.value, current: current[field] });
+				}
+				if (fields.length === 0) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'INVALID_OPERATION',
+							message: 'update_onto_project requires name, description, or type_key',
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: 'project',
+							entity_id: input.projectId
+						}
+					};
+				}
+				// An exact echo of the current value is not a change; it is still
+				// fingerprinted, so a concurrent edit blocks approval.
+				const changed = fields.filter((entry) => entry.proposed !== entry.current);
+				if (changed.length === 0) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'NO_OP_OPERATION',
+							message: 'The project already has the proposed values',
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: 'project',
+							entity_id: input.projectId,
+							resolved_entity_title: current.name ?? undefined
+						}
+					};
+				}
+				const changes: DecodedLoopOperationFieldChange[] = changed.map((entry) =>
+					entry.field === 'description'
+						? {
+								label: PROJECT_UPDATE_FIELD_LABELS.description,
+								format: 'text_edit' as const,
+								before: entry.current ? editDisplayText(entry.current) : '(empty)',
+								value: entry.proposed
+									? editDisplayText(entry.proposed)
+									: '(removed)'
+							}
+						: {
+								label: PROJECT_UPDATE_FIELD_LABELS[entry.field],
+								before: formatLoopOperationValue(entry.current),
+								value: formatLoopOperationValue(entry.proposed)
+							}
+				);
+				const only = changed.length === 1 ? changed[0]! : null;
+				const summary =
+					only?.field === 'name'
+						? `Rename the project to "${only.proposed}".`
+						: only?.field === 'description'
+							? only.proposed
+								? 'Update the project description.'
+								: 'Clear the project description.'
+							: only?.field === 'type_key'
+								? `Change the project type to "${only.proposed}".`
+								: `Update the project ${listWithAnd(
+										changed.map((entry) =>
+											entry.field === 'type_key' ? 'type' : entry.field
+										)
+									)}.`;
+				decoded.push({
+					key: `${operation.tool}:${input.projectId}:${index}`,
+					action: 'update',
+					actionLabel: 'Update',
+					entityLabel: 'project',
+					target: current.name,
+					summary,
+					changes
+				});
+				structuralParts.push({
+					tool: operation.tool,
+					target_id: input.projectId,
+					proposed_fields: Object.fromEntries(
+						fields.map((entry) => [entry.field, entry.proposed])
+					),
+					current_fields: Object.fromEntries(
+						fields.map((entry) => [entry.field, entry.current])
+					)
+				});
+				continue;
+			}
 
 			if (operation.tool === 'move_document_in_tree') {
 				const documentId = asString(args.document_id);
@@ -1045,6 +1688,9 @@ export async function verifyProjectSuggestionIntegrity(
 					if (asRecord(args.props)) continue;
 				} else if ((spec.scalarFields as readonly string[]).includes(key)) {
 					continue;
+				} else if ((spec.textFields as readonly string[] | undefined)?.includes(key)) {
+					// Decoded with before and after values below.
+					continue;
 				} else if (spec.titleArgs.includes(key)) {
 					if (asString(args[key]) === entity!.title) continue;
 				} else if (key === 'calendar_sync') {
@@ -1102,7 +1748,53 @@ export async function verifyProjectSuggestionIntegrity(
 				scalars.push({ field, proposed: proposed.value, current });
 			}
 
+			const textChanges: Array<{
+				field: TextField;
+				proposed: string | null;
+				current: string | null;
+			}> = [];
+			let carriesTextEcho = false;
+			for (const field of spec.textFields ?? []) {
+				if (!hasOwnArg(args, field)) continue;
+				const proposed = readProposedTextField(field, args[field]);
+				if (!proposed.ok) {
+					return {
+						ok: false,
+						diagnostic: {
+							code: 'INVALID_OPERATION',
+							message: `${operation.tool} has an invalid ${field} value`,
+							operation_index: index,
+							tool: operation.tool,
+							entity_kind: entityKind,
+							entity_id: entityId
+						}
+					};
+				}
+				const current =
+					field === 'name' ? entity!.title : entity!.description?.trim() || null;
+				// An exact echo of the current value is tolerated, as a title echo always was.
+				if (proposed.value === current) {
+					carriesTextEcho = true;
+					continue;
+				}
+				textChanges.push({ field, proposed: proposed.value, current });
+			}
+
 			const changes: DecodedLoopOperationFieldChange[] = [
+				...textChanges.map(({ field, proposed, current }) =>
+					field === 'description'
+						? {
+								label: TEXT_FIELD_LABELS.description,
+								format: 'text_edit' as const,
+								before: current ? editDisplayText(current) : '(empty)',
+								value: proposed ? editDisplayText(proposed) : '(removed)'
+							}
+						: {
+								label: TEXT_FIELD_LABELS[field],
+								before: formatLoopOperationValue(current),
+								value: formatLoopOperationValue(proposed)
+							}
+				),
 				...scalars.map(({ field, proposed, current }) => ({
 					label: SCALAR_FIELD_LABELS[field],
 					value: formatScalarValue(field, proposed),
@@ -1117,29 +1809,43 @@ export async function verifyProjectSuggestionIntegrity(
 				}))
 			];
 			if (changes.length === 0) {
+				// A rename to the name the entity already has is already done.
 				return {
 					ok: false,
-					diagnostic: {
-						code: 'INVALID_OPERATION',
-						message: `${operation.tool} has no property changes`,
-						operation_index: index,
-						tool: operation.tool,
-						entity_kind: entityKind,
-						entity_id: entityId
-					}
+					diagnostic: carriesTextEcho
+						? {
+								code: 'NO_OP_OPERATION',
+								message: `${entityKind} "${entity!.title}" already reads as proposed`,
+								operation_index: index,
+								tool: operation.tool,
+								entity_kind: entityKind,
+								entity_id: entityId,
+								resolved_entity_title: entity!.title
+							}
+						: {
+								code: 'INVALID_OPERATION',
+								message: `${operation.tool} has no property changes`,
+								operation_index: index,
+								tool: operation.tool,
+								entity_kind: entityKind,
+								entity_id: entityId
+							}
 				};
 			}
 			const isOutdatedFlag =
 				entityKind === 'document' && asRecord(args.props)?.loop_flagged_outdated === true;
+			const onlyText = textChanges.length > 0 && !scalars.length && !asRecord(args.props);
 			const summary = isOutdatedFlag
 				? `Mark "${entity!.title}" as outdated.`
 				: documentEdits
 					? `Edit "${entity!.title}" (${documentEdits.length} change${documentEdits.length === 1 ? '' : 's'}).`
 					: conflictTask
 						? `Flag "${entity!.title}" for review against "${conflictTask.title}".`
-						: scalars.length && !asRecord(args.props)
-							? scalarSummary(entityKind, entity!.title, scalars)
-							: `Update ${entityKind} "${entity!.title}".`;
+						: onlyText
+							? textSummary(entityKind, entity!.title, textChanges)
+							: scalars.length && !asRecord(args.props) && !textChanges.length
+								? scalarSummary(entityKind, entity!.title, scalars)
+								: `Update ${entityKind} "${entity!.title}".`;
 			decoded.push({
 				key: `${operation.tool}:${entityId}:${index}`,
 				action: 'update',
@@ -1175,6 +1881,16 @@ export async function verifyProjectSuggestionIntegrity(
 			}
 			// Only edit-carrying shapes gain the key, so every other fingerprint is unchanged.
 			if (documentEdits) structuralPart.proposed_edits = documentEdits;
+			// Likewise only displayed renames and description rewrites add text keys; an
+			// exact echo adds nothing, so pre-existing echo shapes keep their fingerprint.
+			if (textChanges.length) {
+				structuralPart.proposed_text = Object.fromEntries(
+					textChanges.map(({ field, proposed }) => [field, proposed])
+				);
+				structuralPart.current_text = Object.fromEntries(
+					textChanges.map(({ field, current }) => [field, current])
+				);
+			}
 			structuralParts.push(structuralPart);
 		}
 
@@ -1196,11 +1912,12 @@ export async function verifyProjectSuggestionIntegrity(
 		return {
 			ok: true,
 			summary: {
-				headline: verifiedHeadline(decoded),
+				headline: verifiedHeadline(decoded, archiveCounts),
 				operation_count: decoded.length,
 				operations: decoded,
 				structural_fingerprint: fingerprint,
-				verified_at: new Date().toISOString()
+				verified_at: new Date().toISOString(),
+				...(cautions.length ? { cautions } : {})
 			}
 		};
 	} catch (error) {

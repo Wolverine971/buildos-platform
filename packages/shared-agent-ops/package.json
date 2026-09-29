@@ -327,6 +327,11 @@
 			"import": "./dist/inbox-index.mjs",
 			"require": "./dist/inbox-index.js"
 		},
+		"./project-cleanup": {
+			"types": "./dist/project-cleanup.d.ts",
+			"import": "./dist/project-cleanup.mjs",
+			"require": "./dist/project-cleanup.js"
+		},
 		"./project-audits": {
 			"types": "./dist/project-audits.d.ts",
 			"import": "./dist/project-audits.mjs",

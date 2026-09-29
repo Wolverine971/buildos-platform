@@ -1,30 +1,12 @@
 -- packages/shared-types/src/functions/onto_search_semantic.sql
 -- Source of truth for the semantic (pgvector) discovery search RPC used by explore_project.
--- Mirrors supabase/migrations/20260828120000_semantic_discovery_embeddings.sql — update both together.
+-- Mirrors the latest migration that replaces it (20260929150000_chat_reads_exclude_archived.sql) — update both together.
 
-CREATE OR REPLACE FUNCTION public.onto_search_semantic(
-	p_actor_id uuid,
-	p_query_embedding vector(1536),
-	p_project_id uuid DEFAULT NULL,
-	p_types text[] DEFAULT NULL,
-	p_limit integer DEFAULT 20,
-	p_min_similarity double precision DEFAULT 0.15
-)
-RETURNS TABLE(
-	type text,
-	id uuid,
-	project_id uuid,
-	project_name text,
-	title text,
-	snippet text,
-	score double precision,
-	state_key text,
-	type_key text,
-	chunk_anchor text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions, pg_temp
+CREATE OR REPLACE FUNCTION public.onto_search_semantic(p_actor_id uuid, p_query_embedding vector, p_project_id uuid DEFAULT NULL::uuid, p_types text[] DEFAULT NULL::text[], p_limit integer DEFAULT 20, p_min_similarity double precision DEFAULT 0.15)
+ RETURNS TABLE(type text, id uuid, project_id uuid, project_name text, title text, snippet text, score double precision, state_key text, type_key text, chunk_anchor text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'extensions', 'pg_temp'
 AS $function$
 DECLARE
 	v_limit integer := least(greatest(coalesce(p_limit, 20), 1), 50);
@@ -130,7 +112,7 @@ BEGIN
 			left(m.content_text, 280), m.similarity,
 			t.state_key::text, t.type_key::text, m.chunk_anchor
 		FROM matches m
-		JOIN public.onto_tasks t ON t.id = m.entity_id AND t.deleted_at IS NULL
+		JOIN public.onto_tasks t ON t.id = m.entity_id AND t.deleted_at IS NULL AND t.archived_at IS NULL
 		WHERE m.entity_type = 'task'
 
 		UNION ALL
@@ -140,7 +122,7 @@ BEGIN
 			left(m.content_text, 280), m.similarity,
 			g.state_key::text, g.type_key::text, m.chunk_anchor
 		FROM matches m
-		JOIN public.onto_goals g ON g.id = m.entity_id AND g.deleted_at IS NULL
+		JOIN public.onto_goals g ON g.id = m.entity_id AND g.deleted_at IS NULL AND g.archived_at IS NULL
 		WHERE m.entity_type = 'goal'
 
 		UNION ALL
@@ -150,7 +132,7 @@ BEGIN
 			left(m.content_text, 280), m.similarity,
 			pl.state_key::text, pl.type_key::text, m.chunk_anchor
 		FROM matches m
-		JOIN public.onto_plans pl ON pl.id = m.entity_id AND pl.deleted_at IS NULL
+		JOIN public.onto_plans pl ON pl.id = m.entity_id AND pl.deleted_at IS NULL AND pl.archived_at IS NULL
 		WHERE m.entity_type = 'plan'
 
 		UNION ALL
@@ -160,7 +142,7 @@ BEGIN
 			left(m.content_text, 280), m.similarity,
 			ms.state_key::text, ms.type_key::text, m.chunk_anchor
 		FROM matches m
-		JOIN public.onto_milestones ms ON ms.id = m.entity_id AND ms.deleted_at IS NULL
+		JOIN public.onto_milestones ms ON ms.id = m.entity_id AND ms.deleted_at IS NULL AND ms.archived_at IS NULL
 		WHERE m.entity_type = 'milestone'
 
 		UNION ALL
@@ -170,7 +152,8 @@ BEGIN
 			left(m.content_text, 280), m.similarity,
 			d.state_key::text, d.type_key::text, m.chunk_anchor
 		FROM matches m
-		JOIN public.onto_documents d ON d.id = m.entity_id AND d.deleted_at IS NULL
+		JOIN public.onto_documents d ON d.id = m.entity_id AND d.deleted_at IS NULL AND d.archived_at IS NULL
+			AND COALESCE(d.state_key::text, '') <> 'archived'
 		WHERE m.entity_type = 'document'
 
 		UNION ALL
@@ -180,7 +163,7 @@ BEGIN
 			left(m.content_text, 280), m.similarity,
 			rk.state_key::text, rk.type_key::text, m.chunk_anchor
 		FROM matches m
-		JOIN public.onto_risks rk ON rk.id = m.entity_id AND rk.deleted_at IS NULL
+		JOIN public.onto_risks rk ON rk.id = m.entity_id AND rk.deleted_at IS NULL AND rk.archived_at IS NULL
 		WHERE m.entity_type = 'risk'
 
 		UNION ALL
@@ -201,6 +184,12 @@ BEGIN
 			ev.state_key::text, ev.type_key::text, m.chunk_anchor
 		FROM matches m
 		JOIN public.onto_events ev ON ev.id = m.entity_id AND ev.deleted_at IS NULL
+			AND NOT EXISTS (
+			  SELECT 1 FROM onto_tasks owner_task
+			  WHERE ev.owner_entity_type = 'task'
+			    AND owner_task.id = ev.owner_entity_id
+			    AND (owner_task.deleted_at IS NOT NULL OR owner_task.archived_at IS NOT NULL)
+			)
 		WHERE m.entity_type = 'event'
 
 		UNION ALL
@@ -218,9 +207,3 @@ BEGIN
 	LIMIT v_limit;
 END;
 $function$;
-
-REVOKE ALL ON FUNCTION public.onto_search_semantic(uuid, vector, uuid, text[], integer, double precision) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.onto_search_semantic(uuid, vector, uuid, text[], integer, double precision) FROM anon;
-GRANT EXECUTE ON FUNCTION public.onto_search_semantic(uuid, vector, uuid, text[], integer, double precision) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.onto_search_semantic(uuid, vector, uuid, text[], integer, double precision) TO service_role;
-

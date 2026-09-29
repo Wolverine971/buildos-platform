@@ -3,7 +3,12 @@ import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-	syncInboxItemForSource: vi.fn()
+	syncInboxItemForSource: vi.fn(),
+	loadProjectCleanupView: vi.fn()
+}));
+
+vi.mock('@buildos/shared-agent-ops/project-cleanup', () => ({
+	loadProjectCleanupView: mocks.loadProjectCleanupView
 }));
 
 vi.mock('@buildos/shared-agent-ops/inbox-index', async () => {
@@ -239,8 +244,8 @@ describe('inbox service', () => {
 		});
 		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
 			expect.objectContaining({
-				sourceType: 'project_suggestion',
-				sourceRefId: 'suggestion-1'
+				sourceType: 'project_cleanup',
+				sourceRefId: 'project-1'
 			})
 		);
 	});
@@ -652,8 +657,8 @@ describe('inbox service', () => {
 		});
 		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
 			expect.objectContaining({
-				sourceType: 'project_suggestion',
-				sourceRefId: 'suggestion-1'
+				sourceType: 'project_cleanup',
+				sourceRefId: 'project-1'
 			})
 		);
 		expect(state.operations.some((operation) => operation.table === 'inbox_items')).toBe(true);
@@ -1074,7 +1079,7 @@ describe('inbox service', () => {
 		});
 	});
 
-	it('backfills linked audit recommendations as individual inbox items', async () => {
+	it('backfills one project cleanup item per project instead of one item per suggestion', async () => {
 		mocks.syncInboxItemForSource.mockImplementation(
 			async ({ sourceType, sourceRefId }: { sourceType: string; sourceRefId: string }) => ({
 				source_type: sourceType,
@@ -1095,13 +1100,12 @@ describe('inbox service', () => {
 					project_id: 'project-1',
 					status: 'pending',
 					title: 'Standalone suggestion'
-				}
-			],
-			project_audit_suggestions: [
+				},
 				{
-					audit_id: 'audit-1',
-					suggestion_id: 'suggestion-linked',
-					role: 'recommended_action'
+					id: 'suggestion-other-project',
+					project_id: 'project-2',
+					status: 'approved',
+					title: 'Other project'
 				}
 			],
 			project_audits: [
@@ -1112,43 +1116,133 @@ describe('inbox service', () => {
 					created_at: '2026-07-04T11:00:00.000Z'
 				}
 			],
-			inbox_items: [
-				{
-					id: 'inbox-linked',
-					source_type: 'project_suggestion',
-					source_ref_id: 'suggestion-linked',
-					status: 'pending',
-					project_id: 'project-1'
-				}
-			]
+			inbox_items: []
 		});
 
-		await listInboxItems({
+		const result = await listInboxItems({
 			supabase,
 			admin: supabase,
 			userId: 'user-1',
 			status: 'pending',
-			projectId: 'project-1',
 			limit: 20
 		});
 
-		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
-			expect.objectContaining({
-				sourceType: 'project_suggestion',
-				sourceRefId: 'suggestion-standalone'
-			})
+		const syncedSources = mocks.syncInboxItemForSource.mock.calls.map(
+			([call]: [{ sourceType: string; sourceRefId: string }]) =>
+				`${call.sourceType}:${call.sourceRefId}`
 		);
-		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
-			expect.objectContaining({
-				sourceType: 'project_audit',
-				sourceRefId: 'audit-1'
-			})
+		expect(syncedSources).toEqual(
+			expect.arrayContaining([
+				'project_cleanup:project-1',
+				'project_cleanup:project-2',
+				'project_audit:audit-1'
+			])
 		);
-		expect(mocks.syncInboxItemForSource).toHaveBeenCalledWith(
-			expect.objectContaining({
-				sourceType: 'project_suggestion',
-				sourceRefId: 'suggestion-linked'
-			})
-		);
+		expect(syncedSources.filter((key) => key === 'project_cleanup:project-1')).toHaveLength(1);
+		expect(syncedSources.some((key) => key.startsWith('project_suggestion:'))).toBe(false);
+		expect(result.backfilledCount).toBe(3);
+	});
+
+	it('hydrates a project cleanup item with its verified change set and write access', async () => {
+		const inboxItem = {
+			id: 'inbox-cleanup-1',
+			source_type: 'project_cleanup',
+			source_ref_id: 'project-1',
+			source_status: 'open:2',
+			user_id: null,
+			project_id: 'project-1',
+			audience: 'project_members',
+			status: 'pending',
+			title: 'Nine stale docs can go',
+			summary: 'Archive them (1 ready to apply · 1 needs your call)',
+			risk_tier: 2,
+			action_kinds: ['review', 'discuss', 'snooze'],
+			expires_at: null,
+			created_at: '2026-09-29T12:00:00.000Z'
+		};
+		const view = {
+			project_id: 'project-1',
+			items: [],
+			groups: [],
+			bottom_line: 'Nine stale docs can go',
+			recommendation: 'Archive them',
+			synthesized_at: null,
+			latest_run_id: null,
+			latest_audit: null,
+			counts: { total: 2, safe_cleanup: 1, needs_call: 1, note: 0 },
+			recently_closed: []
+		};
+		mocks.loadProjectCleanupView.mockResolvedValue(view);
+		const { supabase } = createSupabaseMock({
+			inbox_items: [inboxItem],
+			onto_projects: [{ id: 'project-1', name: 'Launch', deleted_at: null }]
+		});
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			sourceType: 'project_cleanup',
+			limit: 20,
+			includePayload: true,
+			repair: false
+		});
+
+		expect(mocks.loadProjectCleanupView).toHaveBeenCalledWith(supabase, 'project-1', {
+			verify: true
+		});
+		expect(result.items[0]).toMatchObject({
+			source_type: 'project_cleanup',
+			project: { id: 'project-1', name: 'Launch' },
+			can_decide: true,
+			decision_disabled_reason: null,
+			source_payload: view
+		});
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+			p_project_id: 'project-1',
+			p_required_access: 'write'
+		});
+	});
+
+	it('keeps a project cleanup item visible when its view fails to load', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		mocks.loadProjectCleanupView.mockRejectedValue(new Error('verify timed out'));
+		const { supabase } = createSupabaseMock({
+			inbox_items: [
+				{
+					id: 'inbox-cleanup-1',
+					source_type: 'project_cleanup',
+					source_ref_id: 'project-1',
+					user_id: null,
+					project_id: 'project-1',
+					audience: 'project_members',
+					status: 'pending',
+					title: 'Project cleanup',
+					action_kinds: ['review'],
+					created_at: '2026-09-29T12:00:00.000Z'
+				}
+			],
+			onto_projects: [{ id: 'project-1', name: 'Launch', deleted_at: null }]
+		});
+		supabase.rpc.mockResolvedValue({ data: false, error: null });
+
+		const result = await listInboxItems({
+			supabase,
+			admin: supabase,
+			userId: 'user-1',
+			status: 'pending',
+			limit: 20,
+			includePayload: true,
+			repair: false
+		});
+
+		expect(result.items).toHaveLength(1);
+		expect(result.items[0]).toMatchObject({
+			source_payload: null,
+			can_decide: false,
+			decision_disabled_reason: 'View-only project access'
+		});
+		warn.mockRestore();
 	});
 });

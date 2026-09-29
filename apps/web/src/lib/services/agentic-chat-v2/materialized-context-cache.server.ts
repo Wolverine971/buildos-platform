@@ -235,7 +235,7 @@ async function resolveInvalidationToken(params: {
 		{
 			p_context_type: params.contextType,
 			p_user_id: params.userId,
-			p_project_id: params.projectId ?? null
+			p_project_id: params.projectId ?? undefined
 		}
 	);
 	if (error) throw error;

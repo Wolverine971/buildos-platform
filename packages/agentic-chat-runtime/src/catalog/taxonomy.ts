@@ -79,7 +79,8 @@ export const TOOL_CATEGORIES = {
 			'get_document_outline',
 			'read_document_section',
 			'search_onto_assets',
-			'get_onto_asset'
+			'get_onto_asset',
+			'get_project_cleanup'
 		],
 		averageTokens: 350,
 		costTier: 'medium'

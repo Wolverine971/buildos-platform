@@ -63,7 +63,7 @@ describe('DocTreeNode control quality', () => {
 		});
 
 		const dragHandle = screen.getByRole('button', { name: 'Drag to reorder' });
-		const updatedAt = screen.getByText(/^Updated /);
+		const updatedAt = screen.getByText('Updated').closest('time')!;
 
 		expect(dragHandle).toHaveClass('order-last');
 		expect(updatedAt.tagName).toBe('TIME');

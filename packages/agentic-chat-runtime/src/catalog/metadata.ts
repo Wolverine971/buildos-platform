@@ -301,6 +301,19 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project'],
 		category: 'read'
 	},
+	// Tasker 112 (2026-09-29). Jev reads this summary to decide whether a message needs
+	// the tool, so it names the questions it answers in the user's terms.
+	get_project_cleanup: {
+		summary:
+			"The project's open cleanup set from the nightly Project Review: what is out of date, stale, duplicated, or should be archived.",
+		capabilities: [
+			'First read for cleanup, out-of-date, or what-to-archive questions about a project',
+			'Items grouped as ready to apply, needs your call, and worth knowing, with evidence records',
+			'The user applies items from the AI Inbox Project cleanup card'
+		],
+		contexts: ['project'],
+		category: 'read'
+	},
 
 	// ============================================
 	// CALENDAR TOOLS

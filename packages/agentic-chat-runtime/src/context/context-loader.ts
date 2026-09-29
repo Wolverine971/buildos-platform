@@ -2712,6 +2712,8 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				.eq('project_id', projectId)
 				.is('deleted_at', null)
 				.is('archived_at', null)
+				// Archived from the tree: archived_at stays NULL (tasker 113).
+				.neq('state_key', 'archived')
 				.order('updated_at', { ascending: false })
 				.limit(PROJECT_CONTEXT_DOCUMENT_FETCH_LIMIT),
 			supabase

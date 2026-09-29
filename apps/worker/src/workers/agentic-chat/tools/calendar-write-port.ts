@@ -971,6 +971,7 @@ class CalendarWriteExecution {
 		taskId: string,
 		expectedProjectId: string | null
 	): Promise<{ id: string; title: string; projectId: string }> {
+		// record-scope: a write resolves its named target by id; archived tasks are deleted.
 		const { data, error } = await this.client
 			.from('onto_tasks')
 			.select('id, title, project_id')

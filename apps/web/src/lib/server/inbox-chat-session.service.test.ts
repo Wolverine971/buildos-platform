@@ -4,7 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	createAgentRunChatSession: vi.fn(),
 	createOrReuseProjectAuditChatSession: vi.fn(),
-	ensureProjectSuggestionReviewIntegrity: vi.fn()
+	ensureProjectSuggestionReviewIntegrity: vi.fn(),
+	loadProjectCleanupView: vi.fn()
+}));
+
+vi.mock('@buildos/shared-agent-ops/project-cleanup', () => ({
+	loadProjectCleanupView: mocks.loadProjectCleanupView
 }));
 
 vi.mock('./agent-run-chat-session.service', () => ({
@@ -927,5 +932,199 @@ describe('createInboxChatSession', () => {
 				})
 			])
 		);
+	});
+	describe('project cleanup items', () => {
+		const rodItem = {
+			id: 'lineage-rod',
+			source: 'review' as const,
+			kind: 'doc_org' as const,
+			section: 'needs_call' as const,
+			title: 'Move the Rod folder to Beyond Exit Planning',
+			summary: 'Rod work now lives in another project.',
+			why_now: 'Seen again in the 09-29 pass.',
+			executable: false,
+			rows: [
+				{
+					suggestion_id: 'suggestion-rod',
+					kind: 'doc_org' as const,
+					title: 'Move the Rod folder',
+					operation_count: 0,
+					verified_headline: null,
+					verified_fingerprint: null,
+					updated_at: '2026-09-29T06:00:00.000Z'
+				}
+			],
+			evidence_refs: [
+				{ entity_type: 'document' as const, entity_id: 'doc-rod', title: 'Rod folder' }
+			],
+			seen_count: 2,
+			first_seen_at: '2026-09-04T06:00:00.000Z',
+			updated_at: '2026-09-29T06:00:00.000Z'
+		};
+		const archiveItem = {
+			...rodItem,
+			id: 'lineage-political',
+			section: 'safe_cleanup' as const,
+			title: 'Archive Political Analysis',
+			summary: 'Empty since May.',
+			executable: true,
+			seen_count: 1,
+			rows: [
+				{
+					...rodItem.rows[0]!,
+					suggestion_id: 'suggestion-political',
+					operation_count: 1,
+					title: 'Archive Political Analysis'
+				}
+			],
+			evidence_refs: []
+		};
+		const cleanupView = {
+			project_id: PROJECT_ID,
+			items: [archiveItem, rodItem],
+			groups: [],
+			bottom_line: 'Nine stale docs can go; the Rod work belongs elsewhere.',
+			recommendation: 'Archive the stale docs, then move the Rod folder.',
+			synthesized_at: '2026-09-29T06:00:00.000Z',
+			latest_run_id: 'run-1',
+			latest_audit: null,
+			counts: { total: 2, safe_cleanup: 1, needs_call: 1, note: 0 },
+			recently_closed: [
+				{
+					lineage_id: 'lineage-book',
+					title: 'Book Research folder',
+					reason: 'subject_archived' as const,
+					detail: 'You archived it',
+					at: '2026-09-29T06:00:00.000Z'
+				}
+			]
+		};
+		const cleanupInboxItem = {
+			id: 'inbox-cleanup-1',
+			source_type: 'project_cleanup' as const,
+			source_ref_id: PROJECT_ID,
+			source_status: 'open:2',
+			user_id: null,
+			project_id: PROJECT_ID,
+			audience: 'project_members' as const,
+			status: 'pending' as const,
+			title: cleanupView.bottom_line,
+			summary: cleanupView.recommendation,
+			risk_tier: 2,
+			action_kinds: ['review', 'discuss', 'snooze'],
+			created_at: '2026-09-29T06:00:00.000Z',
+			updated_at: '2026-09-29T06:00:00.000Z',
+			decided_at: null,
+			blocked_reason: null,
+			snoozed_until: null,
+			expires_at: null
+		};
+
+		beforeEach(() => {
+			mocks.loadProjectCleanupView.mockResolvedValue(cleanupView);
+		});
+
+		it('seeds a whole-card chat with the bottom line, recommendation and open sections', async () => {
+			const { supabase, operations } = createProjectSuggestionSupabaseMock();
+
+			const result = await createInboxChatSession({
+				supabase,
+				item: cleanupInboxItem,
+				userId: USER_ID
+			});
+
+			expect(result).toMatchObject({
+				created: true,
+				chat_session_id: SESSION_ID,
+				context_type: 'project',
+				project_id: PROJECT_ID
+			});
+			expect(mocks.loadProjectCleanupView).toHaveBeenCalledWith(supabase, PROJECT_ID);
+			const message = findOperation(operations, 'chat_messages', 'insert')?.payload as any;
+			expect(message.content).toContain('9takes — project cleanup');
+			expect(message.content).toContain(
+				'Bottom line: Nine stale docs can go; the Rod work belongs elsewhere.'
+			);
+			expect(message.content).toContain(
+				'Recommendation: Archive the stale docs, then move the Rod folder.'
+			);
+			expect(message.content).toContain('## Ready to apply (1)');
+			expect(message.content).toContain('1. Archive Political Analysis');
+			expect(message.content).toContain('## Needs your call (1)');
+			expect(message.content).not.toContain("Let's look at");
+			const llmText = message.metadata.proposal_context.llm_text as string;
+			expect(llmText).toContain('Lead with the bottom line and the recommendation.');
+			expect(llmText).toContain('item id lineage-rod');
+			expect(llmText).toContain('Book Research folder — subject_archived: You archived it');
+
+			const session = findOperation(operations, 'chat_sessions', 'insert')?.payload as any;
+			expect(session.agent_metadata).toMatchObject({
+				source: 'ai_inbox',
+				source_type: 'project_cleanup',
+				source_ref_id: PROJECT_ID,
+				source_label: 'Project cleanup',
+				cleanup_item_id: null
+			});
+			expect(findOperation(operations, 'chat_sessions', 'select')?.containsFilters).toEqual([
+				{
+					source: 'ai_inbox',
+					source_type: 'project_cleanup',
+					source_ref_id: PROJECT_ID,
+					cleanup_item_id: null
+				}
+			]);
+			expect(findOperation(operations, 'project_suggestions', 'update')).toBeUndefined();
+			expect(findOperation(operations, 'project_loop_runs', 'update')).toBeUndefined();
+		});
+
+		it('leads with the discussed item and keeps its chat separate', async () => {
+			const { supabase, operations } = createProjectSuggestionSupabaseMock();
+
+			const result = await createInboxChatSession({
+				supabase,
+				item: cleanupInboxItem,
+				userId: USER_ID,
+				focusCleanupItemId: 'lineage-rod'
+			});
+
+			expect(result.created).toBe(true);
+			const message = findOperation(operations, 'chat_messages', 'insert')?.payload as any;
+			const lines = (message.content as string).split('\n');
+			expect(lines[0]).toBe('9takes — project cleanup');
+			expect(lines[2]).toBe("Let's look at: Move the Rod folder to Beyond Exit Planning");
+			expect(lines[3]).toBe(
+				'Needs your call · from Project Review · seen in 2 reviews since 2026-09-04'
+			);
+			expect(message.content).toContain('Rod work now lives in another project.');
+			const llmText = message.metadata.proposal_context.llm_text as string;
+			expect(llmText).toContain(
+				'The user opened this chat from one item (item id lineage-rod).'
+			);
+			expect(llmText.indexOf('## Focused item')).toBeLessThan(
+				llmText.indexOf('## Open items')
+			);
+			const session = findOperation(operations, 'chat_sessions', 'insert')?.payload as any;
+			expect(session.title).toBe('Chat: Move the Rod folder to Beyond Exit Planning');
+			expect(session.agent_metadata.cleanup_item_id).toBe('lineage-rod');
+			expect(session.agent_metadata.proposal_context.evidence_summaries).toEqual([
+				'document: Rod folder (doc-rod)'
+			]);
+		});
+
+		it('falls back to the whole card when the discussed item has closed', async () => {
+			const { supabase, operations } = createProjectSuggestionSupabaseMock();
+
+			await createInboxChatSession({
+				supabase,
+				item: cleanupInboxItem,
+				userId: USER_ID,
+				focusCleanupItemId: 'lineage-gone'
+			});
+
+			const session = findOperation(operations, 'chat_sessions', 'insert')?.payload as any;
+			expect(session.agent_metadata.cleanup_item_id).toBeNull();
+			const message = findOperation(operations, 'chat_messages', 'insert')?.payload as any;
+			expect(message.content).not.toContain("Let's look at");
+		});
 	});
 });

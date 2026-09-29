@@ -5,6 +5,7 @@
 import type { ContextFinderProjectV1 } from './packets';
 import { START_HERE_TYPE_KEY } from './finder';
 import type { WorkspaceProjectInputV1 } from './workspace';
+import { isArchivedOrDeletedRecord } from '../tools/record-scope';
 
 type Query = {
 	select(columns: string): Query;
@@ -39,7 +40,11 @@ export const CONTEXT_FINDER_LOAD_LIMITS = Object.freeze({
 });
 
 const FAMILIES = [
-	['documents', 'onto_documents', 'id,title,description,type_key,content,updated_at,created_at'],
+	[
+		'documents',
+		'onto_documents',
+		'id,title,description,type_key,state_key,content,updated_at,created_at'
+	],
 	['tasks', 'onto_tasks', 'id,title,state_key,priority,due_at,description,updated_at,created_at'],
 	['goals', 'onto_goals', 'id,name,state_key,target_date,description,updated_at,created_at'],
 	['plans', 'onto_plans', 'id,name,state_key,description,updated_at,created_at'],
@@ -90,13 +95,20 @@ export async function loadContextFinderProject(
 			const result = rows[i]!;
 			if (result.error || !Array.isArray(result.data))
 				throw new ContextFinderLoadError(table);
-			return [key, result.data as Record<string, unknown>[]];
+			return [key, currentRows(key, result.data as Record<string, unknown>[])];
 		})
 	) as Omit<ContextFinderProjectV1, 'project'>;
 	return {
 		project: { id: row.id, name: String(row.name ?? ''), description: row.description ?? null },
 		...loaded
 	};
+}
+
+// A document archived from the tree keeps archived_at NULL and says so in state_key.
+function currentRows(key: string, rows: Record<string, unknown>[]): Record<string, unknown>[] {
+	return key === 'documents'
+		? rows.filter((row) => !isArchivedOrDeletedRecord(row, 'document'))
+		: rows;
 }
 
 /** Bounds for the global card load: titles only, so these stay cheap. */
@@ -108,7 +120,7 @@ export const WORKSPACE_LOAD_LIMITS = Object.freeze({
 });
 
 const WORKSPACE_FAMILIES = [
-	['documents', 'onto_documents', 'id,project_id,title,type_key,updated_at'],
+	['documents', 'onto_documents', 'id,project_id,title,type_key,state_key,updated_at'],
 	['tasks', 'onto_tasks', 'id,project_id,title,state_key,updated_at'],
 	['goals', 'onto_goals', 'id,project_id,name,state_key,updated_at'],
 	['plans', 'onto_plans', 'id,project_id,name,state_key,updated_at'],
@@ -204,7 +216,7 @@ export async function loadWorkspaceFinderProjects(
 	WORKSPACE_FAMILIES.forEach(([key, table], i) => {
 		const result = rows[i]!;
 		if (result.error || !Array.isArray(result.data)) throw new ContextFinderLoadError(table);
-		for (const row of result.data as Record<string, unknown>[]) {
+		for (const row of currentRows(key, result.data as Record<string, unknown>[])) {
 			const target = byProject.get(String(row.project_id));
 			if (!target) continue;
 			const content = key === 'documents' ? bodies.get(String(row.id)) : undefined;

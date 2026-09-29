@@ -371,7 +371,7 @@ async function inspectPreparedContextCurrency(params: {
 		{
 			p_context_type: params.row.context_type,
 			p_user_id: params.row.user_id,
-			p_project_id: params.row.project_id ?? null
+			p_project_id: params.row.project_id ?? undefined
 		}
 	);
 	const actualToken = !error && typeof data === 'string' ? data : null;

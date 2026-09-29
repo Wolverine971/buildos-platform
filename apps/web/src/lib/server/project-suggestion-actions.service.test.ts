@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
 	quarantineProjectSuggestionInboxItem: vi.fn(),
 	isProjectSuggestionFresh: vi.fn(),
 	finalizeProjectLoopRunIfComplete: vi.fn(),
-	captureServerEvent: vi.fn()
+	captureServerEvent: vi.fn(),
+	archiveDocumentInTree: vi.fn(),
+	archiveTaskCanonical: vi.fn(),
+	logUpdateAsync: vi.fn()
 }));
 
 vi.mock('@buildos/shared-agent-ops/gateway/op-execution-gateway', () => ({
@@ -29,7 +32,24 @@ vi.mock('@buildos/shared-agent-ops', () => ({
 	quarantineProjectSuggestionInboxItem: mocks.quarantineProjectSuggestionInboxItem,
 	readProjectSuggestionStructuralFingerprint: vi.fn(function () {
 		return null;
+	}),
+	// Same contract as the shared helper: absent means archive_children.
+	readDocumentArchiveChildrenMode: vi.fn(function (value: unknown) {
+		if (value === undefined || value === null) return 'archive_children';
+		return value === 'archive_children' || value === 'promote_children' ? value : null;
 	})
+}));
+
+vi.mock('$lib/services/ontology/doc-structure.service', () => ({
+	archiveDocumentInTree: mocks.archiveDocumentInTree
+}));
+
+vi.mock('$lib/server/task-archive.service', () => ({
+	archiveTaskCanonical: mocks.archiveTaskCanonical
+}));
+
+vi.mock('$lib/services/async-activity-logger', () => ({
+	logUpdateAsync: mocks.logUpdateAsync
 }));
 
 vi.mock('$lib/server/project-loop-snapshot.service', () => ({
@@ -46,6 +66,7 @@ vi.mock('$lib/server/posthog', () => ({
 
 import {
 	decideProjectSuggestion,
+	isReplayableLoopOperationTool,
 	replayLoopOperations
 } from './project-suggestion-actions.service';
 
@@ -54,6 +75,7 @@ type QueryResult = { data: unknown; error: null | { message: string } };
 function makeSupabase(script: Record<string, QueryResult[]>) {
 	const updates: Array<{ table: string; payload: Record<string, unknown> }> = [];
 	const supabase = {
+		rpc: vi.fn(async () => ({ data: 'actor-1', error: null })),
 		from: vi.fn(function (table: string) {
 			const builder: any = {
 				select: vi.fn(() => builder),
@@ -744,5 +766,495 @@ describe('replayLoopOperations', () => {
 		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
 		expect(replay.outcomes).toEqual([false]);
 		expect(replay.errors[0]?.error).toContain('internal tool-call markup');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Project cleanup operations (Tasker 112)
+// ---------------------------------------------------------------------------
+
+const CLEANUP_PROJECT_ID = '11111111-1111-4111-8111-111111111111';
+const CLEANUP_DOCUMENT_ID = '22222222-2222-4222-8222-222222222222';
+const CLEANUP_TASK_ID = '33333333-3333-4333-8333-333333333333';
+
+function archiveReplaySupabase(documentRow: Record<string, unknown> | null) {
+	const builder: any = {
+		select: vi.fn(() => builder),
+		eq: vi.fn(() => builder),
+		is: vi.fn(() => builder),
+		maybeSingle: vi.fn(async () => ({ data: documentRow, error: null }))
+	};
+	return {
+		builder,
+		supabase: {
+			rpc: vi.fn(async (name: string) =>
+				name === 'ensure_actor_for_user'
+					? { data: 'actor-1', error: null }
+					: { data: null, error: null }
+			),
+			from: vi.fn(() => builder)
+		}
+	};
+}
+
+const cleanupDocumentRow = {
+	id: CLEANUP_DOCUMENT_ID,
+	project_id: CLEANUP_PROJECT_ID,
+	title: 'Rod Chamberlin',
+	state_key: 'draft',
+	type_key: 'document.context.project',
+	updated_at: '2026-09-28T10:00:00.000Z'
+};
+
+describe('replayLoopOperations: cleanup operations', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.runGatewayWriteOp.mockResolvedValue({ ok: true, data: { project: { id: 'p' } } });
+		mocks.archiveDocumentInTree.mockResolvedValue({
+			document: { ...cleanupDocumentRow, state_key: 'archived' },
+			structure: null,
+			archivedDocumentIds: [CLEANUP_DOCUMENT_ID],
+			archiveMode: 'promote_children'
+		});
+		mocks.archiveTaskCanonical.mockResolvedValue({
+			ok: true,
+			archivedAt: '2026-09-29T10:00:00.000Z'
+		});
+	});
+
+	it('accepts the cleanup tools in the replay allowlist', () => {
+		expect(isReplayableLoopOperationTool('archive_onto_document')).toBe(true);
+		expect(isReplayableLoopOperationTool('archive_onto_task')).toBe(true);
+		expect(isReplayableLoopOperationTool('update_onto_project')).toBe(true);
+		expect(isReplayableLoopOperationTool('delete_onto_task')).toBe(false);
+	});
+
+	it('dispatches archives to the canonical paths and the project edit to the gateway', async () => {
+		const { supabase, builder } = archiveReplaySupabase(cleanupDocumentRow);
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: 'chat-1',
+			projectId: CLEANUP_PROJECT_ID,
+			operations: [
+				{
+					tool: 'archive_onto_document',
+					args: {
+						project_id: CLEANUP_PROJECT_ID,
+						document_id: CLEANUP_DOCUMENT_ID,
+						children: 'promote_children'
+					}
+				},
+				{
+					tool: 'archive_onto_task',
+					args: { project_id: CLEANUP_PROJECT_ID, task_id: CLEANUP_TASK_ID }
+				},
+				{
+					tool: 'update_onto_project',
+					args: {
+						project_id: CLEANUP_PROJECT_ID,
+						description: 'Consulting for Maryland creators.',
+						// Never shown by the verifier, so never replayed.
+						state_key: 'paused'
+					}
+				}
+			],
+			operationId: 'project_suggestion:cleanup-1'
+		});
+
+		expect(replay).toEqual({ appliedCount: 3, errors: [], outcomes: [true, true, true] });
+		expect(supabase.rpc).toHaveBeenCalledWith('ensure_actor_for_user', {
+			p_user_id: 'user-1'
+		});
+		expect(builder.is).toHaveBeenCalledWith('deleted_at', null);
+		expect(mocks.archiveDocumentInTree).toHaveBeenCalledWith(
+			supabase,
+			CLEANUP_PROJECT_ID,
+			CLEANUP_DOCUMENT_ID,
+			{ mode: 'promote_children', expectedUpdatedAt: cleanupDocumentRow.updated_at },
+			'actor-1'
+		);
+		expect(mocks.logUpdateAsync).toHaveBeenCalledWith(
+			supabase,
+			CLEANUP_PROJECT_ID,
+			'document',
+			CLEANUP_DOCUMENT_ID,
+			expect.objectContaining({ state_key: 'draft' }),
+			expect.objectContaining({ state_key: 'archived' }),
+			'user-1',
+			'agent_call',
+			'chat-1'
+		);
+		// One actor lookup serves every archive in the batch.
+		expect(
+			supabase.rpc.mock.calls.filter(([name]) => name === 'ensure_actor_for_user')
+		).toHaveLength(1);
+		expect(mocks.archiveTaskCanonical).toHaveBeenCalledWith({
+			supabase,
+			userId: 'user-1',
+			actorId: 'actor-1',
+			taskId: CLEANUP_TASK_ID,
+			projectId: CLEANUP_PROJECT_ID,
+			changeSource: 'agent_call',
+			chatSessionId: 'chat-1'
+		});
+		expect(mocks.runGatewayWriteOp).toHaveBeenCalledTimes(1);
+		expect(mocks.runGatewayWriteOp).toHaveBeenCalledWith({
+			admin: supabase,
+			userId: 'user-1',
+			scope: {
+				mode: 'read_write',
+				allowed_ops: ['onto.project.update'],
+				project_ids: [CLEANUP_PROJECT_ID],
+				write_project_ids: [CLEANUP_PROJECT_ID]
+			},
+			op: 'onto.project.update',
+			args: {
+				description: 'Consulting for Maryland creators.',
+				project_id: CLEANUP_PROJECT_ID
+			},
+			chatSessionId: 'chat-1'
+		});
+	});
+
+	it('defaults a document archive to archive_children', async () => {
+		const { supabase } = archiveReplaySupabase(cleanupDocumentRow);
+		await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: CLEANUP_PROJECT_ID,
+			operations: [
+				{
+					tool: 'archive_onto_document',
+					args: { project_id: CLEANUP_PROJECT_ID, document_id: CLEANUP_DOCUMENT_ID }
+				}
+			],
+			operationId: 'project_suggestion:cleanup-2'
+		});
+		expect(mocks.archiveDocumentInTree).toHaveBeenCalledWith(
+			supabase,
+			CLEANUP_PROJECT_ID,
+			CLEANUP_DOCUMENT_ID,
+			expect.objectContaining({ mode: 'archive_children' }),
+			'actor-1'
+		);
+	});
+
+	it('keeps per-operation outcomes aligned when one archive fails', async () => {
+		mocks.archiveDocumentInTree.mockRejectedValueOnce(
+			new Error('Failed to archive document: document_archive_access_denied')
+		);
+		const { supabase } = archiveReplaySupabase(cleanupDocumentRow);
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: CLEANUP_PROJECT_ID,
+			operations: [
+				{
+					tool: 'archive_onto_document',
+					args: { project_id: CLEANUP_PROJECT_ID, document_id: CLEANUP_DOCUMENT_ID }
+				},
+				{
+					tool: 'archive_onto_task',
+					args: { project_id: CLEANUP_PROJECT_ID, task_id: CLEANUP_TASK_ID }
+				}
+			],
+			operationId: 'project_suggestion:cleanup-3'
+		});
+		expect(replay).toEqual({
+			appliedCount: 1,
+			errors: [
+				{
+					tool: 'archive_onto_document',
+					error: 'You do not have write access to this project.'
+				}
+			],
+			outcomes: [false, true]
+		});
+		expect(mocks.logUpdateAsync).not.toHaveBeenCalled();
+	});
+
+	it('reports a task archive failure from the canonical helper', async () => {
+		mocks.archiveTaskCanonical.mockResolvedValueOnce({
+			ok: false,
+			status: 404,
+			error: 'Task not found in this project.'
+		});
+		const { supabase } = archiveReplaySupabase(null);
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: CLEANUP_PROJECT_ID,
+			operations: [
+				{
+					tool: 'archive_onto_task',
+					args: { project_id: CLEANUP_PROJECT_ID, task_id: CLEANUP_TASK_ID }
+				}
+			],
+			operationId: 'project_suggestion:cleanup-4'
+		});
+		expect(replay).toEqual({
+			appliedCount: 0,
+			errors: [{ tool: 'archive_onto_task', error: 'Task not found in this project.' }],
+			outcomes: [false]
+		});
+	});
+
+	it('does not archive a document outside the fenced project', async () => {
+		const { supabase } = archiveReplaySupabase({
+			...cleanupDocumentRow,
+			project_id: '99999999-9999-4999-8999-999999999999'
+		});
+		const replay = await replayLoopOperations({
+			supabase,
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: CLEANUP_PROJECT_ID,
+			operations: [
+				{
+					tool: 'archive_onto_document',
+					args: { project_id: CLEANUP_PROJECT_ID, document_id: CLEANUP_DOCUMENT_ID }
+				}
+			],
+			operationId: 'project_suggestion:cleanup-5'
+		});
+		expect(mocks.archiveDocumentInTree).not.toHaveBeenCalled();
+		expect(replay.outcomes).toEqual([false]);
+		expect(replay.errors[0]?.error).toBe('Document not found in this project.');
+	});
+
+	it.each([
+		[
+			'an unknown children mode',
+			{
+				tool: 'archive_onto_document',
+				args: {
+					project_id: CLEANUP_PROJECT_ID,
+					document_id: CLEANUP_DOCUMENT_ID,
+					children: 'unlink_children'
+				}
+			}
+		],
+		[
+			'a non-UUID document id',
+			{
+				tool: 'archive_onto_document',
+				args: { project_id: CLEANUP_PROJECT_ID, document_id: 'Rod folder' }
+			}
+		],
+		[
+			'a missing task id',
+			{ tool: 'archive_onto_task', args: { project_id: CLEANUP_PROJECT_ID } }
+		],
+		[
+			'another project',
+			{
+				tool: 'archive_onto_task',
+				args: {
+					project_id: '99999999-9999-4999-8999-999999999999',
+					task_id: CLEANUP_TASK_ID
+				}
+			}
+		]
+	])('refuses the whole batch before any write for %s', async (_label, bad) => {
+		const replay = await replayLoopOperations({
+			supabase: { from: vi.fn(), rpc: vi.fn() },
+			userId: 'user-1',
+			chatSessionId: null,
+			projectId: CLEANUP_PROJECT_ID,
+			operations: [
+				{
+					tool: 'update_onto_project',
+					args: { project_id: CLEANUP_PROJECT_ID, name: 'Wayne Strategies MD' }
+				},
+				bad
+			],
+			operationId: 'project_suggestion:cleanup-6'
+		});
+		expect(replay.appliedCount).toBe(0);
+		expect(replay.outcomes).toEqual([false, false]);
+		expect(mocks.runGatewayWriteOp).not.toHaveBeenCalled();
+		expect(mocks.archiveDocumentInTree).not.toHaveBeenCalled();
+		expect(mocks.archiveTaskCanonical).not.toHaveBeenCalled();
+	});
+});
+
+describe('decideProjectSuggestion with the fingerprint the user was shown', () => {
+	const operation = {
+		tool: 'archive_onto_task',
+		args: { project_id: 'project-1', task_id: CLEANUP_TASK_ID },
+		label: 'Archive Build referral pipeline'
+	};
+	let adminFrom: ReturnType<typeof vi.fn>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		adminFrom = vi.fn(function () {
+			const builder: any = {
+				select: vi.fn(() => builder),
+				eq: vi.fn(() => builder),
+				maybeSingle: vi.fn(async () => ({ data: null, error: null }))
+			};
+			return builder;
+		});
+		mocks.createAdminSupabaseClient.mockReturnValue({ from: adminFrom });
+		mocks.syncInboxItemForProjectSuggestion.mockResolvedValue(undefined);
+		mocks.quarantineProjectSuggestionInboxItem.mockResolvedValue(undefined);
+		mocks.archiveTaskCanonical.mockResolvedValue({
+			ok: true,
+			archivedAt: '2026-09-29T10:00:00.000Z'
+		});
+		mocks.verifyProjectSuggestionIntegrity.mockResolvedValue({
+			ok: true,
+			summary: {
+				headline: 'Archive task "Build referral pipeline".',
+				operation_count: 1,
+				operations: [],
+				structural_fingerprint: 'shown-fingerprint',
+				verified_at: '2026-09-29T09:00:00.000Z'
+			}
+		});
+	});
+
+	it('verifies against the shown fingerprint instead of the inbox row, then applies', async () => {
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [
+				{ data: pendingSuggestion({ operations: [operation] }), error: null },
+				{
+					data: pendingSuggestion({ status: 'approved', operations: [operation] }),
+					error: null
+				},
+				{
+					data: pendingSuggestion({ status: 'applied', operations: [operation] }),
+					error: null
+				}
+			],
+			project_loop_runs: [{ data: { chat_session_id: 'chat-1' }, error: null }]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve',
+			expectedStructuralFingerprint: 'shown-fingerprint'
+		});
+
+		expect(outcome).toMatchObject({ ok: true, result: { ok: true, applied_operations: 1 } });
+		expect(mocks.verifyProjectSuggestionIntegrity).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				expectedStructuralFingerprint: 'shown-fingerprint',
+				checkModelAlignment: false
+			})
+		);
+		// The inbox row's stored fingerprint is not consulted.
+		expect(adminFrom).not.toHaveBeenCalledWith('inbox_items');
+		// A verified fingerprint replaces the coarse project freshness guard.
+		expect(mocks.isProjectSuggestionFresh).not.toHaveBeenCalled();
+		expect(mocks.archiveTaskCanonical).toHaveBeenCalledWith(
+			expect.objectContaining({ taskId: CLEANUP_TASK_ID, projectId: 'project-1' })
+		);
+		expect(updates.map((update) => update.payload.status)).toEqual(['approved', 'applied']);
+	});
+
+	it('keeps a stale card item open for re-review instead of quarantining it', async () => {
+		mocks.verifyProjectSuggestionIntegrity.mockResolvedValueOnce({
+			ok: false,
+			diagnostic: {
+				code: 'EXPECTED_STATE_CHANGED',
+				message:
+					'The proposal structure or resolved entity state changed after verification'
+			}
+		});
+		const { supabase, updates } = makeSupabase({
+			project_suggestions: [
+				{ data: pendingSuggestion({ operations: [operation] }), error: null }
+			]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve',
+			expectedStructuralFingerprint: 'stale-fingerprint'
+		});
+
+		expect(outcome).toMatchObject({
+			ok: false,
+			status: 409,
+			code: 'EXPECTED_STATE_CHANGED',
+			message: expect.stringContaining('updated after you opened it')
+		});
+		expect(mocks.quarantineProjectSuggestionInboxItem).not.toHaveBeenCalled();
+		expect(mocks.archiveTaskCanonical).not.toHaveBeenCalled();
+		expect(updates).toHaveLength(0);
+	});
+
+	it('still quarantines other integrity failures and reports their code', async () => {
+		mocks.verifyProjectSuggestionIntegrity.mockResolvedValueOnce({
+			ok: false,
+			diagnostic: { code: 'ENTITY_NOT_FOUND', message: 'task no longer exists' }
+		});
+		const { supabase } = makeSupabase({
+			project_suggestions: [
+				{ data: pendingSuggestion({ operations: [operation] }), error: null }
+			]
+		});
+
+		const outcome = await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve',
+			expectedStructuralFingerprint: 'shown-fingerprint'
+		});
+
+		expect(outcome).toMatchObject({ ok: false, status: 409, code: 'ENTITY_NOT_FOUND' });
+		expect(mocks.quarantineProjectSuggestionInboxItem).toHaveBeenCalledTimes(1);
+	});
+
+	it('falls back to the inbox row fingerprint when none is sent', async () => {
+		mocks.isProjectSuggestionFresh.mockResolvedValue(true);
+		const { supabase } = makeSupabase({
+			project_suggestions: [
+				{ data: pendingSuggestion({ operations: [operation] }), error: null },
+				{
+					data: pendingSuggestion({ status: 'approved', operations: [operation] }),
+					error: null
+				},
+				{
+					data: pendingSuggestion({ status: 'applied', operations: [operation] }),
+					error: null
+				}
+			],
+			project_loop_runs: [{ data: { chat_session_id: null }, error: null }]
+		});
+
+		await decideProjectSuggestion({
+			supabase,
+			userId: 'user-1',
+			projectId: 'project-1',
+			suggestionId: 'suggestion-1',
+			action: 'approve',
+			expectedStructuralFingerprint: '   '
+		});
+
+		expect(adminFrom).toHaveBeenCalledWith('inbox_items');
+		expect(mocks.verifyProjectSuggestionIntegrity).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				expectedStructuralFingerprint: null,
+				checkModelAlignment: true
+			})
+		);
+		expect(mocks.isProjectSuggestionFresh).toHaveBeenCalled();
 	});
 });

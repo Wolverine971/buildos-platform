@@ -11,7 +11,10 @@ export const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
 // `steward` packet. Local dev and production share one database, so a
 // snapshot written by code that predates stewards must not satisfy code that
 // renders them (the steward would silently vanish until the snapshot expired).
-export const FASTCHAT_CONTEXT_CACHE_VERSION = 5;
+// 6 (2026-09-29, tasker 113): the context RPCs stopped returning archived
+// records. A snapshot built before that could still list archived tasks as
+// overdue live work.
+export const FASTCHAT_CONTEXT_CACHE_VERSION = 6;
 
 export type FastChatPromptContextSnapshot = {
 	contextType: ChatContextType;

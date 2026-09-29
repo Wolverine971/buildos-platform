@@ -59,6 +59,7 @@ export * from './gateway/change-set';
 
 // AI Inbox denormalized index maintenance
 export * from './inbox-index';
+export * from './project-cleanup';
 
 // Project Review Loop helpers
 export * from './project-loops';

@@ -12,10 +12,14 @@
 	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
 	import InboxManagerBriefControls from '$lib/components/inbox/InboxManagerBriefControls.svelte';
 	import InboxProjectBadge from '$lib/components/inbox/InboxProjectBadge.svelte';
+	import InboxProjectCleanup from '$lib/components/inbox/InboxProjectCleanup.svelte';
 	import InboxProjectManagerBrief from '$lib/components/inbox/InboxProjectManagerBrief.svelte';
 	import InboxReviewDetails from '$lib/components/inbox/InboxReviewDetails.svelte';
 	import InboxFreshnessReviewItems from '$lib/components/inbox/InboxFreshnessReviewItems.svelte';
-	import { formatInboxAttentionSummary } from '$lib/components/inbox/inbox-presentation';
+	import {
+		formatInboxAttentionSummary,
+		formatInboxSourceLabel
+	} from '$lib/components/inbox/inbox-presentation';
 	import type { VerifiedProjectSuggestionChangeSummary } from '@buildos/shared-agent-ops/proposal-context';
 	import type {
 		AgentChatResolutionAction,
@@ -34,9 +38,13 @@
 	import type {
 		ChatContextType,
 		ChangeSet,
+		ProjectCleanupItem,
+		ProjectCleanupView,
+		ProjectFocus,
 		ProjectSuggestion,
 		ProjectSuggestionEvidenceRef,
-		ProjectSuggestionResult
+		ProjectSuggestionResult,
+		ProjectSuggestionReviewItem
 	} from '@buildos/shared-types';
 
 	type InboxSourceType =
@@ -44,6 +52,7 @@
 		| 'project_suggestion'
 		| 'project_review'
 		| 'project_audit'
+		| 'project_cleanup'
 		| 'calendar_suggestion'
 		| 'integration_attention';
 	type InboxItemStatus = 'pending' | 'deciding' | 'decided' | 'blocked' | 'expired' | 'snoozed';
@@ -171,6 +180,9 @@
 	let chatSessionId = $state<string | null>(null);
 	let chatItemId = $state<string | null>(null);
 	let chatContext = $state<{ contextType: ChatContextType; entityId?: string } | null>(null);
+	// "Fix in chat" from the Project cleanup card: a fresh project chat with the request pre-filled.
+	let chatDraft = $state<string | null>(null);
+	let chatFocus = $state<ProjectFocus | null>(null);
 	let resolvingChatAction = $state<ChatResolutionAction | null>(null);
 	let explicitlyResolvedChatItemId = $state<string | null>(null);
 	let openingChatIds = $state<Set<string>>(new Set());
@@ -181,6 +193,8 @@
 
 	const inboxResolutionActions = $derived.by<AgentChatResolutionAction[]>(() => {
 		if (!chatItemId || !chatSessionId) return [];
+		// The cleanup card lives on; its items are decided on the card, not by closing a chat.
+		if (activeChatItem?.source_type === 'project_cleanup') return [];
 		return [
 			{
 				id: 'mark-handled-from-chat',
@@ -474,12 +488,12 @@
 	}
 
 	function sourceLabel(item: InboxItem): string {
-		if (item.source_type === 'agent_run') return 'Agent proposal';
-		if (item.source_type === 'project_review') return 'Project manager brief';
-		if (item.source_type === 'project_audit') return 'Project audit';
-		if (item.source_type === 'calendar_suggestion') return 'Calendar suggestion';
-		if (item.source_type === 'integration_attention') return 'Gmail access';
-		return 'Project review';
+		return formatInboxSourceLabel(item.source_type);
+	}
+
+	function projectCleanupView(item: InboxItem): ProjectCleanupView | null {
+		if (item.source_type !== 'project_cleanup') return null;
+		return sourcePayload(item) as unknown as ProjectCleanupView | null;
 	}
 
 	function isManagerBriefItem(item: InboxItem): boolean {
@@ -606,12 +620,21 @@
 		return typeof value === 'string' && value.trim() ? value.trim() : null;
 	}
 
-	async function openChat(item: InboxItem) {
+	async function openChat(item: InboxItem, options: { cleanupItemId?: string | null } = {}) {
 		if (!canChat(item) || isOpeningChat(item)) return;
 		openingChatIds = new Set(openingChatIds).add(item.id);
 		try {
 			await loadAgentChatModal();
-			const res = await fetch(`/api/inbox/${item.id}/chat-session`, { method: 'POST' });
+			const res = await fetch(
+				`/api/inbox/${item.id}/chat-session`,
+				options.cleanupItemId
+					? {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ cleanup_item_id: options.cleanupItemId })
+						}
+					: { method: 'POST' }
+			);
 			const json = await res.json();
 			if (!res.ok) throw new Error(json?.error ?? 'Failed to open chat');
 			const nextChatSessionId = json.data?.chat_session_id ?? json.data?.session?.id;
@@ -630,6 +653,8 @@
 				contextType: contextTypeForChat(item, result, session),
 				entityId: entityId ?? undefined
 			};
+			chatDraft = null;
+			chatFocus = null;
 			chatSessionId = nextChatSessionId;
 			chatItemId = item.id;
 		} catch (err) {
@@ -638,6 +663,47 @@
 			const next = new Set(openingChatIds);
 			next.delete(item.id);
 			openingChatIds = next;
+		}
+	}
+
+	/** Radar "Fix in chat": a fresh project chat on that record, with the request pre-filled. */
+	async function openFixInChat(item: InboxItem, reviewItem: ProjectSuggestionReviewItem) {
+		const project = itemProject(item);
+		const prompt = reviewItem.fix_in_chat_prompt?.trim();
+		if (!project || !prompt) return;
+		try {
+			await loadAgentChatModal();
+		} catch (err) {
+			toastService.error(err instanceof Error ? err.message : 'Failed to open chat');
+			return;
+		}
+		chatContext = { contextType: 'project', entityId: project.id };
+		chatFocus = {
+			focusType: reviewItem.entity_type,
+			focusEntityId: reviewItem.entity_id,
+			focusEntityName: reviewItem.title,
+			projectId: project.id,
+			projectName: project.name ?? 'Project'
+		};
+		chatSessionId = null;
+		chatDraft = prompt;
+		chatItemId = item.id;
+	}
+
+	function discussCleanup(item: InboxItem, cleanupItem: ProjectCleanupItem | null) {
+		void openChat(item, { cleanupItemId: cleanupItem?.id ?? null });
+	}
+
+	function handleCleanupDecided(
+		item: InboxItem,
+		summary: { handled: number; view: ProjectCleanupView | null }
+	) {
+		if (summary.handled > 0) changedCount += summary.handled;
+		const view = summary.view;
+		// With nothing left that needs a decision the server retires the card; follow suit.
+		if (view && view.counts.safe_cleanup + view.counts.needs_call === 0) {
+			removeItemById(item.id);
+			toastService.success('Project cleanup is clear. Nothing else needs you here.');
 		}
 	}
 
@@ -716,10 +782,18 @@
 	function closeChat(summary?: DataMutationSummary) {
 		const itemId = chatItemId;
 		const wasExplicitlyResolved = !!itemId && explicitlyResolvedChatItemId === itemId;
+		const wasCleanupChat = activeChatItem?.source_type === 'project_cleanup';
 		chatSessionId = null;
 		chatItemId = null;
 		chatContext = null;
+		chatDraft = null;
+		chatFocus = null;
 		resolvingChatAction = null;
+		if (wasCleanupChat) {
+			// Chat edits can close cleanup items; reload so the card shows what is still open.
+			if (summary?.hasChanges) void loadInbox({ silent: true });
+			return;
+		}
 		if (wasExplicitlyResolved) {
 			explicitlyResolvedChatItemId = null;
 			return;
@@ -1177,314 +1251,341 @@
 								<div
 									class="inbox-spotlight-item min-w-0 rounded-lg border border-border bg-card p-3 shadow-ink lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none"
 								>
-									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-									>
-										<div class="min-w-0 flex-1">
-											{#if isManagerBriefItem(item) && project}
-												<InboxProjectManagerBrief
-													brief={asRecord(
-														projectReviewPayload(item)?.brief
-													)}
-													audit={projectAuditPayload(item)}
-													projectId={project.id}
-												/>
-											{:else}
-												<InboxProjectBadge {project} variant="compact" />
-												<p
-													class="break-words text-sm font-semibold text-foreground"
-												>
-													{item.title ||
-														payload?.title ||
-														agent?.label ||
-														'Review item'}
-												</p>
-												{#if item.freshness_state === 'possibly_stale'}
-													<span
-														class="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
-														title={item.freshness_note ||
-															'Newer information may have made this outdated.'}
-													>
-														<span
-															class="h-1.5 w-1.5 rounded-full bg-warning"
-															aria-hidden="true"
-														></span>
-														May be outdated
-													</span>
-												{/if}
-												{#if payload?.why_now}
-													<p
-														class="mt-1 break-words text-xs text-foreground/80"
-													>
-														<span class="font-semibold">Why now:</span>
-														{payload.why_now}
-													</p>
-												{:else if item.summary || payload?.rationale || agent?.goal}
-													<p
-														class="mt-1 break-words text-xs text-muted-foreground"
-													>
-														{item.summary ??
-															payload?.rationale ??
-															agent?.goal}
-													</p>
-												{/if}
-												{#if payload?.kind === 'freshness_update' && payload.preview?.review_items?.length}
-													<InboxFreshnessReviewItems
-														items={payload.preview.review_items}
+									{#if item.source_type === 'project_cleanup' && project}
+										<InboxProjectCleanup
+											view={projectCleanupView(item)}
+											projectId={project.id}
+											canDecide={canDecide(item)}
+											decisionDisabledReason={item.decision_disabled_reason ??
+												null}
+											snoozing={pendingIds.has(item.id)}
+											openingChat={isOpeningChat(item)}
+											onSnooze={() => snooze(item)}
+											onDiscuss={(cleanupItem) =>
+												discussCleanup(item, cleanupItem)}
+											onFixInChat={(reviewItem) =>
+												openFixInChat(item, reviewItem)}
+											onDecided={(summary) =>
+												handleCleanupDecided(item, summary)}
+										/>
+									{:else}
+										<div
+											class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+										>
+											<div class="min-w-0 flex-1">
+												{#if isManagerBriefItem(item) && project}
+													<InboxProjectManagerBrief
+														brief={asRecord(
+															projectReviewPayload(item)?.brief
+														)}
+														audit={projectAuditPayload(item)}
+														projectId={project.id}
 													/>
-												{/if}
-												{#if item.source_type === 'calendar_suggestion' && calendar}
-													<div class="mt-2 space-y-2">
-														<div class="flex flex-wrap gap-1.5">
-															{#if calendar.event_count}
-																<span
-																	class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
-																>
-																	{calendar.event_count} event{calendar.event_count ===
-																	1
-																		? ''
-																		: 's'}
-																</span>
-															{/if}
-															{#if taskPreview.length}
-																<span
-																	class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
-																>
-																	{taskPreview.length} task{taskPreview.length ===
-																	1
-																		? ''
-																		: 's'}
-																</span>
-															{/if}
-															{#if dateRange}
-																<span
-																	class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
-																>
-																	{dateRange}
-																</span>
-															{/if}
-															{#if confidence}
-																<span
-																	class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
-																>
-																	{confidence}
-																</span>
-															{/if}
-														</div>
-														{#if calendar.suggested_description || calendar.suggested_context}
-															<p
-																class="line-clamp-3 break-words text-xs text-muted-foreground"
+												{:else}
+													<InboxProjectBadge
+														{project}
+														variant="compact"
+													/>
+													<p
+														class="break-words text-sm font-semibold text-foreground"
+													>
+														{item.title ||
+															payload?.title ||
+															agent?.label ||
+															'Review item'}
+													</p>
+													{#if item.freshness_state === 'possibly_stale'}
+														<span
+															class="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
+															title={item.freshness_note ||
+																'Newer information may have made this outdated.'}
+														>
+															<span
+																class="h-1.5 w-1.5 rounded-full bg-warning"
+																aria-hidden="true"
+															></span>
+															May be outdated
+														</span>
+													{/if}
+													{#if payload?.why_now}
+														<p
+															class="mt-1 break-words text-xs text-foreground/80"
+														>
+															<span class="font-semibold"
+																>Why now:</span
 															>
-																{calendar.suggested_description ??
-																	calendar.suggested_context}
-															</p>
-														{/if}
-														{#if taskPreview.length}
-															<div
-																class="rounded-md border border-border bg-muted/20 p-2"
-															>
-																<p
-																	class="micro-label text-muted-foreground"
-																>
-																	Suggested tasks
-																</p>
-																<div class="mt-1.5 space-y-1">
-																	{#each taskPreview.slice(0, 3) as task, index (`${task.title}-${task.start_date ?? index}`)}
-																		<div
-																			class="flex items-start justify-between gap-2 text-2xs"
-																		>
-																			<div class="min-w-0">
-																				<p
-																					class="truncate font-medium text-foreground"
-																				>
-																					{task.title}
-																				</p>
-																				{#if task.start_date || task.recurrence_pattern}
-																					<p
-																						class="mt-0.5 text-muted-foreground"
-																					>
-																						{formatShortDate(
-																							task.start_date
-																						) ??
-																							task.recurrence_pattern}
-																					</p>
-																				{/if}
-																			</div>
-																			{#if task.priority}
-																				<span
-																					class="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-2xs text-muted-foreground"
-																				>
-																					{task.priority}
-																				</span>
-																			{/if}
-																		</div>
-																	{/each}
-																</div>
-																{#if taskPreview.length > 3}
-																	<p
-																		class="mt-1.5 text-2xs text-muted-foreground"
+															{payload.why_now}
+														</p>
+													{:else if item.summary || payload?.rationale || agent?.goal}
+														<p
+															class="mt-1 break-words text-xs text-muted-foreground"
+														>
+															{item.summary ??
+																payload?.rationale ??
+																agent?.goal}
+														</p>
+													{/if}
+													{#if payload?.kind === 'freshness_update' && payload.preview?.review_items?.length}
+														<InboxFreshnessReviewItems
+															items={payload.preview.review_items}
+														/>
+													{/if}
+													{#if item.source_type === 'calendar_suggestion' && calendar}
+														<div class="mt-2 space-y-2">
+															<div class="flex flex-wrap gap-1.5">
+																{#if calendar.event_count}
+																	<span
+																		class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
 																	>
-																		+{taskPreview.length - 3} more
-																	</p>
+																		{calendar.event_count} event{calendar.event_count ===
+																		1
+																			? ''
+																			: 's'}
+																	</span>
+																{/if}
+																{#if taskPreview.length}
+																	<span
+																		class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
+																	>
+																		{taskPreview.length} task{taskPreview.length ===
+																		1
+																			? ''
+																			: 's'}
+																	</span>
+																{/if}
+																{#if dateRange}
+																	<span
+																		class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-2xs text-muted-foreground"
+																	>
+																		{dateRange}
+																	</span>
+																{/if}
+																{#if confidence}
+																	<span
+																		class="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-2xs text-accent"
+																	>
+																		{confidence}
+																	</span>
 																{/if}
 															</div>
-														{/if}
-													</div>
-												{/if}
-												<InboxReviewDetails
-													{metadata}
-													summary={changes > 0
-														? null
-														: (payload?.preview?.summary ?? null)}
-													evidence={evidence.map(evidenceLabel)}
-												/>
-												{#if item.source_type === 'project_suggestion' && changes > 0}
-													<InboxChangeDetails
-														verifiedChangeSummary={payload?.verified_change_summary ??
-															null}
+															{#if calendar.suggested_description || calendar.suggested_context}
+																<p
+																	class="line-clamp-3 break-words text-xs text-muted-foreground"
+																>
+																	{calendar.suggested_description ??
+																		calendar.suggested_context}
+																</p>
+															{/if}
+															{#if taskPreview.length}
+																<div
+																	class="rounded-md border border-border bg-muted/20 p-2"
+																>
+																	<p
+																		class="micro-label text-muted-foreground"
+																	>
+																		Suggested tasks
+																	</p>
+																	<div class="mt-1.5 space-y-1">
+																		{#each taskPreview.slice(0, 3) as task, index (`${task.title}-${task.start_date ?? index}`)}
+																			<div
+																				class="flex items-start justify-between gap-2 text-2xs"
+																			>
+																				<div
+																					class="min-w-0"
+																				>
+																					<p
+																						class="truncate font-medium text-foreground"
+																					>
+																						{task.title}
+																					</p>
+																					{#if task.start_date || task.recurrence_pattern}
+																						<p
+																							class="mt-0.5 text-muted-foreground"
+																						>
+																							{formatShortDate(
+																								task.start_date
+																							) ??
+																								task.recurrence_pattern}
+																						</p>
+																					{/if}
+																				</div>
+																				{#if task.priority}
+																					<span
+																						class="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-2xs text-muted-foreground"
+																					>
+																						{task.priority}
+																					</span>
+																				{/if}
+																			</div>
+																		{/each}
+																	</div>
+																	{#if taskPreview.length > 3}
+																		<p
+																			class="mt-1.5 text-2xs text-muted-foreground"
+																		>
+																			+{taskPreview.length -
+																				3} more
+																		</p>
+																	{/if}
+																</div>
+															{/if}
+														</div>
+													{/if}
+													<InboxReviewDetails
+														{metadata}
+														summary={changes > 0
+															? null
+															: (payload?.preview?.summary ?? null)}
+														evidence={evidence.map(evidenceLabel)}
 													/>
-												{:else if changes}
-													<p
-														class="mt-1.5 text-2xs text-muted-foreground"
-													>
-														{changes} proposed change{changes === 1
-															? ''
-															: 's'}
-													</p>
-												{/if}
-												{#if changeSet && canDecide(item)}
-													<div class="mt-3">
-														<ChangeSetReview
-															runId={item.source_ref_id}
-															{changeSet}
-															acceptLabel="Approve"
-															dismissLabel="Dismiss"
-															approveAllLabel="Approve"
-															rejectAllLabel="Dismiss"
-															chatLabel="Discuss"
-															openingChat={isOpeningChat(item)}
-															snoozing={pendingIds.has(item.id)}
-															onApplied={() =>
-																handleAgentRunApplied(item)}
-															onSnooze={() => snooze(item)}
-															onChat={canChat(item)
-																? () => openChat(item)
-																: undefined}
+													{#if item.source_type === 'project_suggestion' && changes > 0}
+														<InboxChangeDetails
+															verifiedChangeSummary={payload?.verified_change_summary ??
+																null}
 														/>
-													</div>
-												{:else if failedChangeSet}
-													<div class="mt-3">
-														<ChangeSetFailureSummary
-															changeSet={failedChangeSet}
-															openingChat={isOpeningChat(item)}
-															onChat={canChat(item)
-																? () => openChat(item)
-																: undefined}
-														/>
-													</div>
+													{:else if changes}
+														<p
+															class="mt-1.5 text-2xs text-muted-foreground"
+														>
+															{changes} proposed change{changes === 1
+																? ''
+																: 's'}
+														</p>
+													{/if}
+													{#if changeSet && canDecide(item)}
+														<div class="mt-3">
+															<ChangeSetReview
+																runId={item.source_ref_id}
+																{changeSet}
+																acceptLabel="Approve"
+																dismissLabel="Dismiss"
+																approveAllLabel="Approve"
+																rejectAllLabel="Dismiss"
+																chatLabel="Discuss"
+																openingChat={isOpeningChat(item)}
+																snoozing={pendingIds.has(item.id)}
+																onApplied={() =>
+																	handleAgentRunApplied(item)}
+																onSnooze={() => snooze(item)}
+																onChat={canChat(item)
+																	? () => openChat(item)
+																	: undefined}
+															/>
+														</div>
+													{:else if failedChangeSet}
+														<div class="mt-3">
+															<ChangeSetFailureSummary
+																changeSet={failedChangeSet}
+																openingChat={isOpeningChat(item)}
+																onChat={canChat(item)
+																	? () => openChat(item)
+																	: undefined}
+															/>
+														</div>
+													{/if}
 												{/if}
-											{/if}
-										</div>
+											</div>
 
-										{#if isManagerBriefItem(item)}
-											<InboxManagerBriefControls
-												pending={pendingIds.has(item.id)}
-												canApprove={canDecide(item) &&
-													managerBriefHasDirectRecommendation(item)}
-												canDismiss={item.source_type === 'project_review' &&
-													canDecide(item)}
-												canChat={canChat(item)}
-												openingChat={isOpeningChat(item)}
-												onApprove={() => decide(item, 'approve')}
-												onDismiss={() => decide(item, 'reject')}
-												onSnooze={() => snooze(item)}
-												onChat={() => openChat(item)}
-											/>
-										{:else if item.source_type === 'integration_attention'}
-											<div
-												class="flex w-full shrink-0 flex-col gap-2 sm:w-auto"
-											>
-												<Button
-													variant="primary"
-													size="sm"
-													loading={pendingIds.has(item.id)}
-													disabled={pendingIds.has(item.id)}
-													onclick={() => reconnectIntegration(item)}
-													class="min-h-11"
+											{#if isManagerBriefItem(item)}
+												<InboxManagerBriefControls
+													pending={pendingIds.has(item.id)}
+													canApprove={canDecide(item) &&
+														managerBriefHasDirectRecommendation(item)}
+													canDismiss={item.source_type ===
+														'project_review' && canDecide(item)}
+													canChat={canChat(item)}
+													openingChat={isOpeningChat(item)}
+													onApprove={() => decide(item, 'approve')}
+													onDismiss={() => decide(item, 'reject')}
+													onSnooze={() => snooze(item)}
+													onChat={() => openChat(item)}
+												/>
+											{:else if item.source_type === 'integration_attention'}
+												<div
+													class="flex w-full shrink-0 flex-col gap-2 sm:w-auto"
 												>
-													<RefreshCw class="mr-2 h-4 w-4" />
-													Reconnect
-												</Button>
+													<Button
+														variant="primary"
+														size="sm"
+														loading={pendingIds.has(item.id)}
+														disabled={pendingIds.has(item.id)}
+														onclick={() => reconnectIntegration(item)}
+														class="min-h-11"
+													>
+														<RefreshCw class="mr-2 h-4 w-4" />
+														Reconnect
+													</Button>
+													<Button
+														variant="outline"
+														size="sm"
+														disabled={pendingIds.has(item.id)}
+														onclick={() => snooze(item)}
+														class="min-h-11"
+													>
+														Snooze 1 day
+													</Button>
+													<a
+														href={resolve('/profile?tab=email')}
+														class="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+														title={integration?.email_address
+															? `Manage ${integration.email_address}`
+															: 'Manage Gmail accounts'}
+													>
+														<Settings class="mr-2 h-4 w-4" />
+														Manage accounts
+													</a>
+												</div>
+											{:else if canDecide(item) && !changeSet}
+												{#if isFinding(item)}
+													<InboxFindingControls
+														idPrefix={`dashboard-inbox-${item.id}`}
+														note={decisionNoteById[item.id] ?? ''}
+														pending={pendingIds.has(item.id)}
+														canChat={canChat(item)}
+														openingChat={isOpeningChat(item)}
+														layout="dashboard"
+														onNoteChange={(note) =>
+															updateDecisionNote(item, note)}
+														onAddress={(note) =>
+															decide(item, 'address', note)}
+														onReject={(note) =>
+															decide(item, 'reject', note)}
+														onSnooze={() => snooze(item)}
+														onChat={() => openChat(item)}
+													/>
+												{:else}
+													<InboxDecisionControls
+														pending={pendingIds.has(item.id)}
+														canChat={canChat(item)}
+														openingChat={isOpeningChat(item)}
+														layout="dashboard"
+														onApprove={() => decide(item, 'approve')}
+														onReject={() => decide(item, 'reject')}
+														onSnooze={() => snooze(item)}
+														onChat={() => openChat(item)}
+													/>
+												{/if}
+											{:else if canChat(item)}
 												<Button
 													variant="outline"
 													size="sm"
-													disabled={pendingIds.has(item.id)}
-													onclick={() => snooze(item)}
-													class="min-h-11"
+													loading={isOpeningChat(item)}
+													disabled={isOpeningChat(item)}
+													onclick={() => openChat(item)}
+													class="w-full shrink-0 sm:w-auto"
 												>
-													Snooze 1 day
+													<Sparkles class="mr-2 h-4 w-4" />
+													Open chat
 												</Button>
-												<a
-													href={resolve('/profile?tab=email')}
-													class="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-													title={integration?.email_address
-														? `Manage ${integration.email_address}`
-														: 'Manage Gmail accounts'}
+											{:else if !canDecide(item)}
+												<div
+													class="w-full max-w-full shrink-0 break-words rounded-md border border-border bg-muted/30 px-2.5 py-2 text-2xs font-medium text-muted-foreground sm:w-auto sm:max-w-56"
 												>
-													<Settings class="mr-2 h-4 w-4" />
-													Manage accounts
-												</a>
-											</div>
-										{:else if canDecide(item) && !changeSet}
-											{#if isFinding(item)}
-												<InboxFindingControls
-													idPrefix={`dashboard-inbox-${item.id}`}
-													note={decisionNoteById[item.id] ?? ''}
-													pending={pendingIds.has(item.id)}
-													canChat={canChat(item)}
-													openingChat={isOpeningChat(item)}
-													layout="dashboard"
-													onNoteChange={(note) =>
-														updateDecisionNote(item, note)}
-													onAddress={(note) =>
-														decide(item, 'address', note)}
-													onReject={(note) =>
-														decide(item, 'reject', note)}
-													onSnooze={() => snooze(item)}
-													onChat={() => openChat(item)}
-												/>
-											{:else}
-												<InboxDecisionControls
-													pending={pendingIds.has(item.id)}
-													canChat={canChat(item)}
-													openingChat={isOpeningChat(item)}
-													layout="dashboard"
-													onApprove={() => decide(item, 'approve')}
-													onReject={() => decide(item, 'reject')}
-													onSnooze={() => snooze(item)}
-													onChat={() => openChat(item)}
-												/>
+													{item.decision_disabled_reason ?? 'View only'}
+												</div>
 											{/if}
-										{:else if canChat(item)}
-											<Button
-												variant="outline"
-												size="sm"
-												loading={isOpeningChat(item)}
-												disabled={isOpeningChat(item)}
-												onclick={() => openChat(item)}
-												class="w-full shrink-0 sm:w-auto"
-											>
-												<Sparkles class="mr-2 h-4 w-4" />
-												Open chat
-											</Button>
-										{:else if !canDecide(item)}
-											<div
-												class="w-full max-w-full shrink-0 break-words rounded-md border border-border bg-muted/30 px-2.5 py-2 text-2xs font-medium text-muted-foreground sm:w-auto sm:max-w-56"
-											>
-												{item.decision_disabled_reason ?? 'View only'}
-											</div>
-										{/if}
-									</div>
+										</div>
+									{/if}
 								</div>
 							{/each}
 						</div>
@@ -1509,12 +1610,14 @@
 	</div>
 </Modal>
 
-{#if AgentChatModalComponent && chatSessionId}
+{#if AgentChatModalComponent && (chatSessionId || chatDraft)}
 	<AgentChatModalComponent
-		isOpen={Boolean(chatSessionId)}
+		isOpen={Boolean(chatSessionId || chatDraft)}
 		contextType={chatContext?.contextType ?? 'global'}
 		entityId={chatContext?.entityId}
 		initialChatSessionId={chatSessionId}
+		initialProjectFocus={chatFocus}
+		initialDraft={chatDraft}
 		{inboxResolutionActions}
 		onClose={closeChat}
 	/>

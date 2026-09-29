@@ -265,8 +265,6 @@
 
 	const workspaceReady = $derived(!isHydrating && !hydrationError);
 
-	const taskCount = $derived(tasksCoverage.total || tasks.length);
-
 	const activeGoals = $derived(
 		goals.filter(
 			(goal) => !goal.deleted_at && !['achieved', 'abandoned'].includes(goal.state_key)
@@ -1087,7 +1085,6 @@
 					>
 						<ListChecks class="hidden h-4 w-4 sm:block" />
 						Tasks
-						{#if workspaceReady}<span class="tab-count">{taskCount}</span>{/if}
 					</button>
 					<button
 						bind:this={tabButtons[2]}
@@ -1103,7 +1100,6 @@
 					>
 						<FileText class="hidden h-4 w-4 sm:block" />
 						Docs
-						{#if workspaceReady}<span class="tab-count">{documents.length}</span>{/if}
 					</button>
 					<button
 						bind:this={tabButtons[3]}
@@ -1165,7 +1161,7 @@
 			</div>
 		{/if}
 
-		{#if activeTab !== 'activity' && !hydrationError}
+		{#if (activeTab === 'overview' || activeTab === 'docs') && !hydrationError}
 			<div class="workspace-toolbar mb-3">
 				{#if isHydrating}
 					<div
@@ -1178,26 +1174,14 @@
 							projectId={project.id}
 							scope={activeTab}
 							variant="toolbar"
-							placeholder={activeTab === 'work'
-								? 'Search tasks...'
-								: activeTab === 'overview'
-									? 'Search goals, plans, milestones...'
-									: 'Search documents...'}
+							placeholder={activeTab === 'overview'
+								? 'Search goals, plans, milestones...'
+								: 'Search documents...'}
 							onSelectEntity={(type, id) => openEntity(type, id)}
 						/>
 					</div>
 				{/if}
-				{#if canEdit && activeTab === 'work'}
-					<Button
-						variant="outline"
-						size="sm"
-						icon={Plus}
-						onclick={() => (showTaskCreateModal = true)}
-					>
-						<span class="hidden sm:inline">New task</span>
-						<span class="sr-only sm:hidden">New task</span>
-					</Button>
-				{:else if canEdit && activeTab === 'overview'}
+				{#if canEdit && activeTab === 'overview'}
 					<Button
 						variant="outline"
 						size="sm"
@@ -1255,7 +1239,28 @@
 									state === 'archived' ? 'delete' : 'update'
 								)}
 							onLoadMoreTasks={loadMoreTasks}
-						/>
+						>
+							{#snippet search()}
+								<ProjectEntitySearchCombobox
+									projectId={project.id}
+									scope="work"
+									variant="toolbar"
+									placeholder="Search tasks..."
+									onSelectEntity={(type, id) => openEntity(type, id)}
+								/>
+							{/snippet}
+							{#snippet createAction()}
+								{#if canEdit}
+									<Button
+										variant="outline"
+										size="sm"
+										icon={Plus}
+										onclick={() => (showTaskCreateModal = true)}
+										>New task</Button
+									>
+								{/if}
+							{/snippet}
+						</TaskKanbanBoard>
 					{:catch boardError}
 						<div class="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
 							<p class="text-sm text-foreground">
@@ -2005,29 +2010,11 @@
 		color: hsl(var(--foreground));
 	}
 
-	.workspace-tab-active .tab-count {
-		background: hsl(var(--accent) / 0.12);
-		color: hsl(var(--accent));
-	}
-
-	.tab-count {
-		display: inline-flex;
-		min-width: 1.25rem;
-		align-items: center;
-		justify-content: center;
-		border-radius: 9999px;
-		background: hsl(var(--muted));
-		padding: 0.125rem 0.375rem;
-		font-size: 0.6875rem;
-		font-variant-numeric: tabular-nums;
-	}
-
 	.workspace-toolbar {
 		display: flex;
 		align-items: flex-start;
 		gap: 0.5rem;
-		border-bottom: 1px solid hsl(var(--border) / 0.7);
-		padding-bottom: 0.75rem;
+		padding-bottom: 0;
 	}
 
 	.view-all-row:focus-visible {

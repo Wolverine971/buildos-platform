@@ -143,6 +143,7 @@ BEGIN
           FROM onto_goals
           WHERE project_id = ANY(v_project_ids)
             AND deleted_at IS NULL
+            AND archived_at IS NULL
         ) g
       ) g
       WHERE g.project_rank <= 4
@@ -204,6 +205,7 @@ BEGIN
           FROM onto_milestones
           WHERE project_id = ANY(v_project_ids)
             AND deleted_at IS NULL
+            AND archived_at IS NULL
         ) m
       ) m
       WHERE m.project_rank <= 4
@@ -248,6 +250,7 @@ BEGIN
           FROM onto_plans
           WHERE project_id = ANY(v_project_ids)
             AND deleted_at IS NULL
+            AND archived_at IS NULL
         ) pl
       ) pl
       WHERE pl.project_rank <= 4
@@ -334,6 +337,7 @@ BEGIN
       FROM onto_goals g
       WHERE g.project_id = p_project_id
         AND g.deleted_at IS NULL
+        AND g.archived_at IS NULL
     ) g
     ORDER BY
       CASE WHEN g.is_completed THEN 1 ELSE 0 END ASC,
@@ -382,6 +386,7 @@ BEGIN
       FROM onto_milestones m
       WHERE m.project_id = p_project_id
         AND m.deleted_at IS NULL
+        AND m.archived_at IS NULL
     ) m
     ORDER BY
       CASE WHEN m.is_completed THEN 1 ELSE 0 END ASC,
@@ -426,6 +431,7 @@ BEGIN
       FROM onto_plans pl
       WHERE pl.project_id = p_project_id
         AND pl.deleted_at IS NULL
+        AND pl.archived_at IS NULL
     ) pl
     ORDER BY
       CASE WHEN pl.is_completed THEN 1 ELSE 0 END ASC,
@@ -478,6 +484,7 @@ BEGIN
       FROM onto_tasks t
       WHERE t.project_id = p_project_id
         AND t.deleted_at IS NULL
+        AND t.archived_at IS NULL
     ) t
     ORDER BY
       CASE WHEN t.is_completed THEN 1 ELSE 0 END ASC,
@@ -539,6 +546,8 @@ BEGIN
     LEFT JOIN linked_doc_ids l ON l.id = d.id::text
     WHERE d.project_id = p_project_id
       AND d.deleted_at IS NULL
+      AND d.archived_at IS NULL
+      AND COALESCE(d.state_key::text, '') <> 'archived'
   )
   SELECT
     COALESCE(jsonb_agg(to_jsonb(d)), '[]'::jsonb),
@@ -589,6 +598,12 @@ BEGIN
       FROM onto_events e
       WHERE e.project_id = p_project_id
         AND e.deleted_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM onto_tasks owner_task
+          WHERE e.owner_entity_type = 'task'
+            AND owner_task.id = e.owner_entity_id
+            AND (owner_task.deleted_at IS NOT NULL OR owner_task.archived_at IS NOT NULL)
+        )
         AND e.start_at >= (now() - interval '7 days')
         AND e.start_at <= (now() + interval '14 days')
     ) e
@@ -699,6 +714,7 @@ BEGIN
           FROM onto_tasks
           WHERE id IN (SELECT id FROM linked WHERE kind = 'task')
             AND deleted_at IS NULL
+            AND archived_at IS NULL
         ) t
       ), '[]'::jsonb),
       'plan', COALESCE((
@@ -708,6 +724,7 @@ BEGIN
           FROM onto_plans
           WHERE id IN (SELECT id FROM linked WHERE kind = 'plan')
             AND deleted_at IS NULL
+            AND archived_at IS NULL
         ) pl
       ), '[]'::jsonb),
       'goal', COALESCE((
@@ -717,6 +734,7 @@ BEGIN
           FROM onto_goals
           WHERE id IN (SELECT id FROM linked WHERE kind = 'goal')
             AND deleted_at IS NULL
+            AND archived_at IS NULL
         ) g
       ), '[]'::jsonb),
       'milestone', COALESCE((
@@ -726,6 +744,7 @@ BEGIN
           FROM onto_milestones
           WHERE id IN (SELECT id FROM linked WHERE kind = 'milestone')
             AND deleted_at IS NULL
+            AND archived_at IS NULL
         ) m
       ), '[]'::jsonb),
       'document', COALESCE((
@@ -735,6 +754,8 @@ BEGIN
           FROM onto_documents
           WHERE id IN (SELECT id FROM linked WHERE kind = 'document')
             AND deleted_at IS NULL
+            AND archived_at IS NULL
+            AND COALESCE(state_key::text, '') <> 'archived'
         ) d
       ), '[]'::jsonb),
       'event', COALESCE((
@@ -753,6 +774,7 @@ BEGIN
           FROM onto_risks
           WHERE id IN (SELECT id FROM linked WHERE kind = 'risk')
             AND deleted_at IS NULL
+            AND archived_at IS NULL
         ) r
       ), '[]'::jsonb),
       'requirement', COALESCE((

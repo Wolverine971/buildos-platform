@@ -139,7 +139,8 @@ describe('shared ontology structure reads', () => {
 				}
 			},
 			unlinked: [{ id: 'doc-unlinked', title: 'Notes', search_vector: "'notes':1" }],
-			message: 'Document tree loaded with 2 nodes. 1 documents are not in the tree structure.'
+			message:
+				'Document tree loaded with 2 nodes. 1 documents are not in the tree structure. 1 archived documents are hidden.'
 		});
 		expect(assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
 		expect(sharedOps.getDocTree).toHaveBeenCalledWith(context.client, PROJECT_ID, {
@@ -204,5 +205,79 @@ describe('shared ontology structure reads', () => {
 			project_id: PROJECT_ID,
 			message: 'Document path: Research > Brief'
 		});
+	});
+});
+
+// Tasker 113: 4 of 9 archived documents in prod still sat in doc_structure, and ws01's
+// tree read listed them as live. The chat graph showed connector-archived records too.
+describe('chat structure reads keep to the present', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('drops archived tree nodes, lifts their live children, and hides archived documents', async () => {
+		sharedOps.getDocTree.mockResolvedValue({
+			structure: {
+				version: 1,
+				root: [
+					{
+						id: 'doc-archived-folder',
+						title: 'Tacemus',
+						children: [{ id: 'doc-live-child', title: 'Still current' }]
+					},
+					{ id: 'doc-connector-archived', title: 'Rod recovery' },
+					{ id: 'doc-live', title: 'Brief' }
+				]
+			},
+			documents: {
+				'doc-archived-folder': { id: 'doc-archived-folder', state_key: 'archived' },
+				'doc-live-child': { id: 'doc-live-child', state_key: 'draft' },
+				'doc-connector-archived': {
+					id: 'doc-connector-archived',
+					state_key: 'draft',
+					archived_at: '2026-03-02T00:00:00.000Z'
+				},
+				'doc-live': { id: 'doc-live', state_key: 'ready' }
+			},
+			unlinked: [],
+			archived: [{ id: 'doc-archived-folder', state_key: 'archived' }]
+		});
+		const { context } = contextWith();
+
+		const result = await getDocumentTree(context, { project_id: PROJECT_ID });
+
+		expect(result.structure.root).toEqual([
+			{ id: 'doc-live-child', title: 'Still current' },
+			{ id: 'doc-live', title: 'Brief' }
+		]);
+		expect(result.documents).toEqual({});
+		expect(result.message).toContain('2 archived documents are hidden.');
+		expect(sharedOps.getDocTree).toHaveBeenCalledWith(context.client, PROJECT_ID, {
+			includeDocuments: true,
+			includeContent: false
+		});
+	});
+
+	it('drops archived graph records and every edge that reaches them', async () => {
+		sharedOps.loadProjectGraphData.mockResolvedValue({
+			project: { id: PROJECT_ID },
+			tasks: [{ id: 'task-live' }, { id: 'task-archived', archived_at: '2026-07-02T00:00:00Z' }],
+			goals: [{ id: 'goal-archived', archived_at: '2026-07-02T00:00:00Z' }],
+			documents: [{ id: 'doc-tree-archived', state_key: 'archived' }],
+			edges: [
+				{ src_id: 'task-live', dst_id: 'goal-archived' },
+				{ src_id: 'task-archived', dst_id: 'task-live' },
+				{ src_id: 'task-live', dst_id: 'doc-tree-archived' },
+				{ src_id: PROJECT_ID, dst_id: 'task-live' }
+			]
+		});
+		const { context } = contextWith();
+
+		const result = await getOntoProjectGraph(context, { project_id: PROJECT_ID });
+
+		expect(result.graph.tasks).toEqual([{ id: 'task-live' }]);
+		expect(result.graph.goals).toEqual([]);
+		expect(result.graph.documents).toEqual([]);
+		expect(result.graph.edges).toEqual([{ src_id: PROJECT_ID, dst_id: 'task-live' }]);
 	});
 });

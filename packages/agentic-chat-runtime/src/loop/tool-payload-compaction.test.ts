@@ -135,6 +135,38 @@ describe('buildToolPayloadForModel', () => {
 		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
 	});
 
+	// Tasker 112: one cleanup read replaces ~18 reads, so it rides the larger budget
+	// and a set the tool already fitted under 11,000 chars reaches the model whole.
+	it('keeps a get_project_cleanup payload whole under the larger budget', () => {
+		const items = Array.from({ length: 20 }, (_, index) => ({
+			id: `lineage-${index}`,
+			source: 'review',
+			title: `Archive the outdated outreach brief number ${index}`,
+			summary: 'The event passed and nothing links to the brief. '.repeat(3),
+			executable: true,
+			seen_count: 2,
+			first_seen_at: '2026-09-04T08:00:00.000Z',
+			records: [{ type: 'document', id: `doc-${index}`, title: 'Biz Expo brief' }]
+		}));
+		const result = {
+			project_id: 'project-1',
+			counts: { total: 20, safe_cleanup: 20, needs_call: 0, note: 0 },
+			groups: [{ title: 'Ready to apply', section: 'safe_cleanup', items }],
+			recently_closed: [],
+			message: '20 open cleanup items from the nightly Project Review.'
+		};
+		expect(JSON.stringify(result).length).toBeGreaterThan(6000);
+
+		const payload = buildToolPayloadForModel(
+			toolCall('get_project_cleanup'),
+			toolResult(result),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.groups[0].items).toEqual(items);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12000);
+	});
+
 	it('compacts ontology search results and strips internal fields', () => {
 		const payload = buildToolPayloadForModel(
 			toolCall('search_project'),

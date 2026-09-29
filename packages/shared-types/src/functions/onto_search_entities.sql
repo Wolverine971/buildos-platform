@@ -1,27 +1,11 @@
 -- packages/shared-types/src/functions/onto_search_entities.sql
 -- Source of truth for the ontology cross-entity search RPC used by agentic chat.
 
-CREATE OR REPLACE FUNCTION public.onto_search_entities(
-	p_actor_id uuid,
-	p_query text,
-	p_project_id uuid DEFAULT NULL::uuid,
-	p_types text[] DEFAULT NULL::text[],
-	p_limit integer DEFAULT 50
-)
-RETURNS TABLE(
-	type text,
-	id uuid,
-	project_id uuid,
-	project_name text,
-	title text,
-	snippet text,
-	score double precision,
-	state_key text,
-	type_key text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions, pg_temp
+CREATE OR REPLACE FUNCTION public.onto_search_entities(p_actor_id uuid, p_query text, p_project_id uuid DEFAULT NULL::uuid, p_types text[] DEFAULT NULL::text[], p_limit integer DEFAULT 50)
+ RETURNS TABLE(type text, id uuid, project_id uuid, project_name text, title text, snippet text, score double precision, state_key text, type_key text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'extensions', 'pg_temp'
 AS $function$
 declare
 	v_limit int := least(coalesce(p_limit, 50), 50);
@@ -146,6 +130,7 @@ begin
 		join params on true
 		join accessible p on p.id = t.project_id
 		where t.deleted_at is null
+			and t.archived_at is null
 			and (p_types is null or 'task' = any(p_types))
 			and (
 				params.tsq @@ t.search_vector
@@ -184,6 +169,7 @@ begin
 		join params on true
 		join accessible p on p.id = pl.project_id
 		where pl.deleted_at is null
+			and pl.archived_at is null
 			and (p_types is null or 'plan' = any(p_types))
 			and (
 				params.tsq @@ pl.search_vector
@@ -222,6 +208,7 @@ begin
 		join params on true
 		join accessible p on p.id = g.project_id
 		where g.deleted_at is null
+			and g.archived_at is null
 			and (p_types is null or 'goal' = any(p_types))
 			and (
 				params.tsq @@ g.search_vector
@@ -260,6 +247,7 @@ begin
 		join params on true
 		join accessible p on p.id = m.project_id
 		where m.deleted_at is null
+			and m.archived_at is null
 			and (p_types is null or 'milestone' = any(p_types))
 			and (
 				params.tsq @@ m.search_vector
@@ -298,6 +286,8 @@ begin
 		join params on true
 		join accessible p on p.id = d.project_id
 		where d.deleted_at is null
+			and d.archived_at is null
+			and COALESCE(d.state_key::text, '') <> 'archived'
 			and (p_types is null or 'document' = any(p_types))
 			and (
 				params.tsq @@ d.search_vector
@@ -336,6 +326,7 @@ begin
 		join params on true
 		join accessible p on p.id = rk.project_id
 		where rk.deleted_at is null
+			and rk.archived_at is null
 			and (p_types is null or 'risk' = any(p_types))
 			and (
 				params.tsq @@ rk.search_vector
@@ -417,11 +408,3 @@ begin
 	limit v_limit;
 end;
 $function$;
-
-REVOKE ALL ON FUNCTION public.onto_search_entities(uuid, text, uuid, text[], integer) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.onto_search_entities(uuid, text, uuid, text[], integer) FROM anon;
-GRANT EXECUTE ON FUNCTION public.onto_search_entities(uuid, text, uuid, text[], integer) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.onto_search_entities(uuid, text, uuid, text[], integer) TO service_role;
-
-COMMENT ON FUNCTION public.onto_search_entities(uuid, text, uuid, text[], integer) IS
-	'FTS + trigram ontology search scoped to projects the explicit actor owns or can read as an active member.';

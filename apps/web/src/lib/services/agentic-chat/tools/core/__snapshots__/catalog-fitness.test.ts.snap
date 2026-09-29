@@ -2,7 +2,7 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "905f629a78a7ff298974298e3c9d03d26035c43ffc273514c69f5be6603c638c",
+  "catalogSerializedSha256": "a663f1e60797dbcd8673adb9ee5f743e7ca6ff788ce05feeb5a50011fccb65f4",
   "contextSurfaces": [
     {
       "contextType": "global",
@@ -68,10 +68,10 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "project",
-      "estimatedTokens": 16774,
+      "estimatedTokens": 16917,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "0722930870175d0e58bcb752bbc224889467bd2d38db0830fc4ab36d4aee3dac",
-      "toolCount": 66,
+      "serializedDefinitionsSha256": "70ac94c3f9a5caf12706600cf47776dd99a2c45df286f69dc20105f0dc630dda",
+      "toolCount": 67,
       "toolNames": [
         "skill_search",
         "domain_search",
@@ -139,8 +139,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "search_onto_assets",
         "get_onto_asset",
         "update_onto_asset",
+        "get_project_cleanup",
       ],
-      "totalChars": 67096,
+      "totalChars": 67665,
     },
     {
       "contextType": "project_create",
@@ -344,10 +345,10 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "ontology",
-      "estimatedTokens": 16774,
+      "estimatedTokens": 16917,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "0722930870175d0e58bcb752bbc224889467bd2d38db0830fc4ab36d4aee3dac",
-      "toolCount": 66,
+      "serializedDefinitionsSha256": "70ac94c3f9a5caf12706600cf47776dd99a2c45df286f69dc20105f0dc630dda",
+      "toolCount": 67,
       "toolNames": [
         "skill_search",
         "domain_search",
@@ -415,8 +416,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "search_onto_assets",
         "get_onto_asset",
         "update_onto_asset",
+        "get_project_cleanup",
       ],
-      "totalChars": 67096,
+      "totalChars": 67665,
     },
     {
       "contextType": "daily_brief_update",
@@ -763,6 +765,12 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
       "serialized": "{"type":"function","function":{"name":"get_project_calendar","description":"Get the project calendar mapping for a project.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Project id"}},"required":["project_id"]}}}",
       "serializedChars": 256,
       "serializedSha256": "ba2720d3ea235423ac8c165d847c611b8326355ae88f239c9231f49d47f30361",
+    },
+    {
+      "name": "get_project_cleanup",
+      "serialized": "{"type":"function","function":{"name":"get_project_cleanup","description":"Open cleanup set from the nightly Project Review: what is out of date, stale, duplicated, or ready to archive, grouped as ready to apply, needs the user's call, and worth knowing, with evidence records. Call it first for cleanup or out-of-date questions, then confirm or add what it misses. The user applies its items from the AI Inbox Project cleanup card.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Project UUID."}},"required":["project_id"]}}}",
+      "serializedChars": 568,
+      "serializedSha256": "ed31b0944c548cb47a4a80b8e6c76bdaef777ad0499be345f010c562d767449e",
     },
     {
       "name": "get_project_overview",
@@ -1146,7 +1154,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/3ef11aa2",
+  "registryVersion": "tool-registry/c1d04a13",
   "staticProfiles": [
     {
       "contextType": "global",
@@ -1212,10 +1220,10 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "project",
-      "estimatedTokens": 16774,
+      "estimatedTokens": 16917,
       "profile": "project",
-      "serializedDefinitionsSha256": "0722930870175d0e58bcb752bbc224889467bd2d38db0830fc4ab36d4aee3dac",
-      "toolCount": 66,
+      "serializedDefinitionsSha256": "70ac94c3f9a5caf12706600cf47776dd99a2c45df286f69dc20105f0dc630dda",
+      "toolCount": 67,
       "toolNames": [
         "skill_search",
         "domain_search",
@@ -1283,8 +1291,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "search_onto_assets",
         "get_onto_asset",
         "update_onto_asset",
+        "get_project_cleanup",
       ],
-      "totalChars": 67096,
+      "totalChars": 67665,
     },
     {
       "contextType": "project_create",

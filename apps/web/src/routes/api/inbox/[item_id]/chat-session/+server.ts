@@ -11,11 +11,20 @@ const SUPPORTED_SOURCE_TYPES = new Set<InboxSourceType>([
 	'project_suggestion',
 	'project_review',
 	'project_audit',
+	'project_cleanup',
 	'calendar_suggestion'
 ]);
 
 function readString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+/** Project cleanup: which card item the user chose to discuss (absent = the whole card). */
+async function readFocusCleanupItemId(request: Request | undefined): Promise<string | null> {
+	if (!request) return null;
+	const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+	const id = readString(body?.cleanup_item_id);
+	return id && id.length <= 128 ? id : null;
 }
 
 async function loadInboxItem(params: {
@@ -31,7 +40,7 @@ async function loadInboxItem(params: {
 	return (data ?? null) as InboxIndexRow | null;
 }
 
-export const POST: RequestHandler = async ({ params, locals }) => {
+export const POST: RequestHandler = async ({ params, locals, request }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user?.id) return ApiResponse.unauthorized('Authentication required');
 
@@ -60,7 +69,8 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 	if (
 		item.source_type === 'project_suggestion' ||
 		item.source_type === 'project_review' ||
-		item.source_type === 'project_audit'
+		item.source_type === 'project_audit' ||
+		item.source_type === 'project_cleanup'
 	) {
 		if (!PROJECT_LOOPS_ENABLED) return ApiResponse.notFound('Inbox item');
 		if (!item.project_id) {
@@ -69,7 +79,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 					? 'Project audit is missing project_id'
 					: item.source_type === 'project_review'
 						? 'Project manager brief is missing project_id'
-						: 'Project suggestion is missing project_id'
+						: item.source_type === 'project_cleanup'
+							? 'Project cleanup is missing project_id'
+							: 'Project suggestion is missing project_id'
 			);
 		}
 
@@ -85,10 +97,13 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 	}
 
 	try {
+		const focusCleanupItemId =
+			item.source_type === 'project_cleanup' ? await readFocusCleanupItemId(request) : null;
 		const result = await createInboxChatSession({
 			supabase: locals.supabase as any,
 			item,
-			userId: user.id
+			userId: user.id,
+			...(focusCleanupItemId ? { focusCleanupItemId } : {})
 		});
 		return result.created ? ApiResponse.created(result) : ApiResponse.success(result);
 	} catch (error) {

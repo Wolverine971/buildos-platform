@@ -155,12 +155,28 @@ describe('PulseStrip', () => {
 		vi.useRealTimers();
 		fetchProjectLogsMock
 			.mockResolvedValueOnce({
-				logs: [createLog({ id: 'log-1', entity_name: 'First change' })],
+				logs: [
+					createLog({
+						id: 'log-1',
+						entity_id: 'shared-task',
+						entity_name: 'First change',
+						created_at: new Date().toISOString()
+					})
+				],
 				total: 2,
 				hasMore: true
 			})
 			.mockResolvedValueOnce({
-				logs: [createLog({ id: 'log-2', entity_name: 'Second change' })],
+				logs: [
+					createLog({
+						id: 'log-2',
+						entity_id: 'shared-task',
+						entity_name: 'Second change',
+						created_at: new Date(
+							new Date().setDate(new Date().getDate() - 1)
+						).toISOString()
+					})
+				],
 				total: 2,
 				hasMore: false
 			});
@@ -179,6 +195,9 @@ describe('PulseStrip', () => {
 				offset: 1
 			});
 			expect(screen.getAllByText('Second change').length).toBeGreaterThan(0);
+			expect(screen.getAllByText('First change').length).toBeGreaterThan(0);
+			expect(screen.getAllByRole('heading', { name: 'Today' })).toHaveLength(2);
+			expect(screen.getAllByRole('heading', { name: 'Yesterday' })).toHaveLength(2);
 		});
 	});
 
@@ -193,7 +212,7 @@ describe('PulseStrip', () => {
 		expect(screen.queryByRole('tab', { name: /Up next/ })).not.toBeInTheDocument();
 	});
 
-	it('labels workspace counts and hides implementation-only API sources', async () => {
+	it('keeps meaningful provenance without lifetime totals or implementation-only sources', async () => {
 		vi.useRealTimers();
 		fetchProjectLogsMock.mockResolvedValue({
 			logs: [
@@ -223,9 +242,10 @@ describe('PulseStrip', () => {
 			{ mode: 'workspace' }
 		);
 
-		expect(await screen.findByText('2 changes')).toBeInTheDocument();
-		expect(screen.getByText('1 item')).toBeInTheDocument();
-		expect(screen.getByText('via chat')).toBeInTheDocument();
+		expect((await screen.findAllByText('Discussed task')).length).toBeGreaterThan(0);
+		expect(screen.queryByText('2 changes')).not.toBeInTheDocument();
+		expect(screen.queryByText('1 item')).not.toBeInTheDocument();
+		expect(screen.getAllByText('via chat').length).toBeGreaterThan(0);
 		expect(screen.queryByText('via api')).not.toBeInTheDocument();
 	});
 });

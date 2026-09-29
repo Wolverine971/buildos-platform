@@ -77,27 +77,35 @@
 
 {#snippet freshnessStrip()}
 	{#if flaggedDocuments.length > 0}
-		<ul
-			class="space-y-1 border-b border-border px-3 py-2 sm:px-4"
-			aria-label="Documents that may be out of date"
-		>
-			{#each flaggedDocuments as document (document.id)}
-				<li class="flex min-w-0 items-center gap-2">
-					<button
-						type="button"
-						class="inline-flex min-h-9 min-w-0 items-center gap-2 rounded-md text-left text-sm font-medium text-foreground hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						onclick={() => onOpenDocument(document.id)}
-					>
-						<FileText
-							class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-							aria-hidden="true"
-						/>
-						<span class="truncate">{document.title}</span>
-					</button>
-					<FreshnessBadge kind="document" id={document.id} class="ml-auto shrink-0" />
-				</li>
-			{/each}
-		</ul>
+		<details class="group border-b border-border">
+			<summary
+				class="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-4"
+			>
+				<ChevronDown class="h-3.5 w-3.5 shrink-0 -rotate-90 group-open:rotate-0" />
+				Review documents that may be out of date
+			</summary>
+			<ul
+				class="space-y-1 border-b border-border px-3 py-2 sm:px-4"
+				aria-label="Documents that may be out of date"
+			>
+				{#each flaggedDocuments as document (document.id)}
+					<li class="flex min-w-0 items-center gap-2">
+						<button
+							type="button"
+							class="inline-flex min-h-11 min-w-0 items-center gap-2 rounded-md text-left text-sm font-medium text-foreground hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onclick={() => onOpenDocument(document.id)}
+						>
+							<FileText
+								class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+								aria-hidden="true"
+							/>
+							<span class="truncate">{document.title}</span>
+						</button>
+						<FreshnessBadge kind="document" id={document.id} class="ml-auto shrink-0" />
+					</li>
+				{/each}
+			</ul>
+		</details>
 	{/if}
 {/snippet}
 

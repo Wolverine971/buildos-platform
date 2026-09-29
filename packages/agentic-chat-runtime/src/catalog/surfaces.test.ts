@@ -162,7 +162,8 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'unlink_onto_edge',
 			'search_onto_assets',
 			'get_onto_asset',
-			'update_onto_asset'
+			'update_onto_asset',
+			'get_project_cleanup'
 		]);
 		expect([...global].filter((name) => !projectSet.has(name))).toEqual([
 			'search_onto_projects',

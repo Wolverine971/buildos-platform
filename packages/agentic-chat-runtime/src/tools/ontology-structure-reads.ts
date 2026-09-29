@@ -7,6 +7,7 @@ import { loadProjectGraphData } from '@buildos/shared-agent-ops/ontology/project
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import { stripInternalPayloadFields } from './ontology-reads';
 import { loadReadableOntologyDetailRow } from './ontology-detail-reads';
+import { isArchivedOrDeletedRecord, type RecordScopeEntity } from './record-scope';
 
 export interface SharedGetOntoProjectGraphArgs {
 	project_id: string;
@@ -53,6 +54,53 @@ function countDocumentTreeNodes(nodes: unknown): number {
 	return count;
 }
 
+const GRAPH_RECORD_KINDS: ReadonlyArray<[string, RecordScopeEntity]> = [
+	['tasks', 'task'],
+	['goals', 'goal'],
+	['plans', 'plan'],
+	['milestones', 'milestone'],
+	['risks', 'risk'],
+	['documents', 'document']
+];
+
+/**
+ * Chat's graph reads the present (tasker 113): archived records and the edges
+ * that reach them stay out. The web graph route keeps its own full view.
+ */
+export function currentGraphOnly(graph: Record<string, any>): Record<string, any> {
+	const dropped = new Set<string>();
+	const scoped: Record<string, any> = { ...graph };
+	for (const [key, entity] of GRAPH_RECORD_KINDS) {
+		if (!Array.isArray(graph[key])) continue;
+		scoped[key] = graph[key].filter((row: Record<string, any>) => {
+			if (!isArchivedOrDeletedRecord(row, entity)) return true;
+			dropped.add(row.id);
+			return false;
+		});
+	}
+	if (dropped.size > 0 && Array.isArray(graph.edges)) {
+		scoped.edges = graph.edges.filter(
+			(edge: Record<string, any>) => !dropped.has(edge.src_id) && !dropped.has(edge.dst_id)
+		);
+	}
+	return scoped;
+}
+
+// An archived document can still sit in doc_structure (the connector's archive
+// never touched the tree). Its live children move up to its place.
+function withoutArchivedNodes(nodes: unknown, archivedIds: ReadonlySet<string>): unknown {
+	if (!Array.isArray(nodes)) return nodes;
+	return nodes.flatMap((node) => {
+		if (!node || typeof node !== 'object') return [node];
+		const record = node as Record<string, unknown>;
+		const children = withoutArchivedNodes(record.children, archivedIds);
+		if (typeof record.id === 'string' && archivedIds.has(record.id)) {
+			return Array.isArray(children) ? children : [];
+		}
+		return [record.children === undefined ? record : { ...record, children }];
+	});
+}
+
 /** Route-compatible graph payload after project access has already been established. */
 export async function loadOntoProjectGraphPayload(
 	client: AgenticChatSharedReadContextV1['client'],
@@ -84,6 +132,7 @@ export async function getOntoProjectGraph(
 	const payload = await loadOntoProjectGraphPayload(context.client, args.project_id, now);
 	return {
 		...payload,
+		graph: currentGraphOnly(payload.graph),
 		message: 'Complete ontology project graph loaded.'
 	};
 }
@@ -106,28 +155,56 @@ export async function getDocumentTree(
 	await context.access.assertProjectAccess(args.project_id, 'read');
 	const includeDocuments = args.include_documents === true;
 	const includeContent = includeDocuments && args.include_content === true;
-	const rawTree = await loadDocumentTreePayload(context.client, args.project_id, {
-		includeDocuments,
+	// Document metadata is always read: it is how archived nodes are recognized.
+	// Unlike detail reads, this tool forwards the route payload without the
+	// internal-field sanitizer.
+	const tree = await loadDocumentTreePayload(context.client, args.project_id, {
+		includeDocuments: true,
 		includeContent
 	});
-	// Preserve the legacy doc-tree agent payload byte-for-byte. Unlike detail
-	// reads, this tool historically forwarded the route payload without applying
-	// the internal-field sanitizer.
-	const tree = rawTree;
 
-	const documentCount = countDocumentTreeNodes(tree.structure?.root);
-	const unlinkedCount = tree.unlinked.length;
+	// Chat reads the present (tasker 113): archived documents leave the tree, the
+	// document map and the unlinked list.
+	const archivedIds = new Set<string>([
+		...(tree.archived ?? []).map((doc: any) => String(doc?.id)),
+		...Object.values(tree.documents ?? {})
+			.filter((doc: any) => isArchivedOrDeletedRecord(doc ?? {}, 'document'))
+			.map((doc: any) => String(doc.id))
+	]);
+	const structure =
+		archivedIds.size > 0 && tree.structure
+			? {
+					...tree.structure,
+					root: withoutArchivedNodes(
+						tree.structure.root,
+						archivedIds
+					) as typeof tree.structure.root
+				}
+			: tree.structure;
+	const documents = includeDocuments
+		? Object.fromEntries(
+				Object.entries(tree.documents ?? {}).filter(([id]) => !archivedIds.has(id))
+			)
+		: {};
+	const unlinked = includeDocuments
+		? (tree.unlinked ?? []).filter((doc: any) => !archivedIds.has(String(doc?.id)))
+		: [];
+
+	const documentCount = countDocumentTreeNodes(structure?.root);
+	const unlinkedCount = unlinked.length;
 	const unlinkedMessage = includeDocuments
 		? unlinkedCount > 0
 			? `${unlinkedCount} documents are not in the tree structure.`
 			: 'All documents are organized in the tree.'
 		: 'Unlinked documents not included (set include_documents=true to list them).';
+	const archivedMessage =
+		archivedIds.size > 0 ? ` ${archivedIds.size} archived documents are hidden.` : '';
 
 	return {
-		structure: tree.structure,
-		documents: tree.documents ?? {},
-		unlinked: tree.unlinked ?? [],
-		message: `Document tree loaded with ${documentCount} nodes. ${unlinkedMessage}`
+		structure,
+		documents,
+		unlinked,
+		message: `Document tree loaded with ${documentCount} nodes. ${unlinkedMessage}${archivedMessage}`
 	};
 }
 

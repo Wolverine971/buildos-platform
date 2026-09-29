@@ -101,6 +101,8 @@ function writtenDocument(
 	};
 }
 
+// Capture writes these titles into START HERE, so archived records stay out: a title
+// captured here reads as current work forever after (tasker 113).
 async function loadEntities(projectId: string): Promise<PromptEntity[]> {
 	const [documents, goals, plans, milestones, tasks] = await Promise.all([
 		supabase
@@ -108,6 +110,8 @@ async function loadEntities(projectId: string): Promise<PromptEntity[]> {
 			.select('id, title, type_key')
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
+			.neq('state_key', 'archived')
 			.order('updated_at', { ascending: false })
 			.limit(40),
 		supabase
@@ -115,24 +119,28 @@ async function loadEntities(projectId: string): Promise<PromptEntity[]> {
 			.select('id, name')
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.limit(10),
 		supabase
 			.from('onto_plans')
 			.select('id, name')
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.limit(20),
 		supabase
 			.from('onto_milestones')
 			.select('id, title')
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.limit(20),
 		supabase
 			.from('onto_tasks')
 			.select('id, title')
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(60)
 	]);

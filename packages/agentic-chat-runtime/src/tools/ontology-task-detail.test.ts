@@ -1,7 +1,11 @@
 // packages/agentic-chat-runtime/src/tools/ontology-task-detail.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
-import { getOntoTaskDetails, loadOntoTaskDetail } from './ontology-task-detail';
+import {
+	getOntoTaskDetails,
+	loadOntoTaskDetail,
+	resolveTaskLinkedEntities
+} from './ontology-task-detail';
 
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
 const TASK_ID = '10000000-0000-4000-8000-000000000001';
@@ -233,3 +237,55 @@ describe('shared ontology task detail', () => {
 		expect(access.assertProjectAccess).not.toHaveBeenCalled();
 	});
 });
+
+// Tasker 113: chat's task detail links only current records; the web modal keeps its view.
+describe('task linked entities keep chat to the present', () => {
+	const GOAL_ID = '30000000-0000-4000-8000-000000000003';
+	const DOC_ID = '50000000-0000-4000-8000-000000000005';
+	const responses = () => ({
+		onto_edges: [
+			{
+				data: [
+					{ src_id: TASK_ID, dst_id: GOAL_ID, src_kind: 'task', dst_kind: 'goal', rel: 'supports_goal' },
+					{ src_id: TASK_ID, dst_id: DOC_ID, src_kind: 'task', dst_kind: 'document', rel: 'references' }
+				],
+				error: null
+			}
+		],
+		onto_goals: [{ data: [{ id: GOAL_ID, name: 'Grow', state_key: 'active' }], error: null }],
+		onto_documents: [
+			{ data: [{ id: DOC_ID, title: 'Old pitch', type_key: 'document.default', state_key: 'archived' }], error: null }
+		]
+	});
+
+	it('filters archived rows when current-only', async () => {
+		const { context, builders } = createContext(responses());
+
+		const result = await resolveTaskLinkedEntities(context.client, {
+			taskId: TASK_ID,
+			projectId: PROJECT_ID,
+			currentOnly: true
+		});
+
+		for (const { table, query } of builders.filter(({ table }) => table !== 'onto_edges')) {
+			expect(query.is, `${table} archive filter`).toHaveBeenCalledWith('archived_at', null);
+		}
+		expect(result.goals.map((goal) => goal.id)).toEqual([GOAL_ID]);
+		expect(result.documents).toEqual([]);
+	});
+
+	it('leaves the web view unchanged by default', async () => {
+		const { context, builders } = createContext(responses());
+
+		const result = await resolveTaskLinkedEntities(context.client, {
+			taskId: TASK_ID,
+			projectId: PROJECT_ID
+		});
+
+		for (const { query } of builders) {
+			expect(query.is).not.toHaveBeenCalledWith('archived_at', null);
+		}
+		expect(result.documents.map((doc) => doc.id)).toEqual([DOC_ID]);
+	});
+});
+

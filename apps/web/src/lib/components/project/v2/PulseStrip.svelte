@@ -284,6 +284,23 @@
 	// Display helpers
 	// ----------------------------------------------------------------
 
+	function historyDay(date: Date): string {
+		return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+	}
+
+	function historyDateLabel(date: Date): string {
+		const today = new Date();
+		if (historyDay(date) === historyDay(today)) return 'Today';
+		const yesterday = new Date(today);
+		yesterday.setDate(today.getDate() - 1);
+		if (historyDay(date) === historyDay(yesterday)) return 'Yesterday';
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric'
+		});
+	}
+
 	function relativeTime(date: Date): string {
 		const diffMs = Date.now() - date.getTime();
 		const diffSec = Math.round(diffMs / 1000);
@@ -426,9 +443,9 @@
 					: 'text-muted-foreground'}"
 			/>
 			<span>{mode === 'workspace' ? 'History' : 'Recent'}</span>
-			{#if !logsLoading && (mode === 'workspace' ? logsTotal : recentTiles.length) > 0}
+			{#if mode !== 'workspace' && !logsLoading && recentTiles.length > 0}
 				<span class="text-2xs text-muted-foreground/80">
-					({mode === 'workspace' ? logsTotal : recentTiles.length})
+					({recentTiles.length})
 				</span>
 			{/if}
 		</button>
@@ -453,9 +470,9 @@
 					: 'text-muted-foreground'}"
 			/>
 			<span>Schedule</span>
-			{#if upcomingItems.length > 0}
+			{#if mode !== 'workspace' && upcomingItems.length > 0}
 				<span class="text-2xs text-muted-foreground/80">
-					({mode === 'workspace' ? allUpcomingItems.length : upcomingItems.length})
+					({upcomingItems.length})
 				</span>
 			{/if}
 		</button>
@@ -470,10 +487,15 @@
 		>
 			{#if upcomingItems.length === 0}
 				<p class="text-xs text-muted-foreground px-2 py-4 text-center italic">
-					No dated work or events yet. Add a date to see it here.
+					No scheduled work yet.
 				</p>
 			{:else}
-				{#each upcomingItems as item (item.id)}
+				{#each upcomingItems as item, index (`${item.kind}:${item.id}`)}
+					{#if mode === 'workspace' && (index === 0 || item.isOverdue !== upcomingItems[index - 1]!.isOverdue)}
+						<h3 class="activity-group-label">
+							{item.isOverdue ? 'Overdue' : 'Upcoming'}
+						</h3>
+					{/if}
 					{@const Icon = entityIcon(item.kind)}
 					{@const future = relativeFuture(item.date)}
 					<button
@@ -562,7 +584,10 @@
 					Nothing logged yet. As you work, recent edits show up here.
 				</p>
 			{:else}
-				{#each recentTiles as tile (tile.key)}
+				{#each recentTiles as tile, index (tile.key)}
+					{#if mode === 'workspace' && (index === 0 || historyDay(tile.when) !== historyDay(recentTiles[index - 1]!.when))}
+						<h3 class="activity-group-label">{historyDateLabel(tile.when)}</h3>
+					{/if}
 					{@const Icon = entityIcon(tile.entityType)}
 					<button
 						type="button"
@@ -589,11 +614,22 @@
 								</div>
 								<p class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground">
 									<span>{activityActorPhrase(tile)}</span>
-									<span class="mx-1 text-muted-foreground/50">·</span>
-									<span class="capitalize">{tile.entityType}</span>
+									<span
+										class={mode === 'workspace'
+											? 'sr-only'
+											: 'mx-1 text-muted-foreground/50'}>·</span
+									>
+									<span class={mode === 'workspace' ? 'sr-only' : 'capitalize'}
+										>{tile.entityType}</span
+									>
 									{#if mode !== 'workspace'}
 										<span class="mx-1 text-muted-foreground/50">·</span>
 										<span class="stamp">{relativeTime(tile.when)}</span>
+									{/if}
+									{#if mode === 'workspace' && sourceLabel(tile.source ?? null)}
+										<span class="mx-1 text-muted-foreground/50">·</span><span
+											>via {sourceLabel(tile.source ?? null)}</span
+										>
 									{/if}
 								</p>
 							</div>
@@ -644,18 +680,14 @@
 					<p class="text-xs sm:text-sm font-semibold text-foreground">
 						{mode === 'workspace' ? 'Change history' : 'Recent activity'}
 					</p>
-					<p class="text-2xs text-muted-foreground sm:text-xs">
-						{mode === 'workspace'
-							? 'Recorded changes across this project'
-							: "What's moved in the last few days"}
-					</p>
+					{#if mode !== 'workspace'}<p class="text-2xs text-muted-foreground sm:text-xs">
+							What's moved in the last few days
+						</p>{/if}
 				</div>
 			</div>
-			{#if !logsLoading}
+			{#if mode !== 'workspace' && !logsLoading}
 				<span class="shrink-0 text-2xs font-medium text-muted-foreground">
-					{mode === 'workspace'
-						? `${logsTotal} ${logsTotal === 1 ? 'change' : 'changes'}`
-						: recentTiles.length}
+					{recentTiles.length}
 				</span>
 			{/if}
 		</header>
@@ -678,7 +710,10 @@
 					Nothing logged yet. As you work, recent edits show up here.
 				</p>
 			{:else}
-				{#each recentTiles as tile (tile.key)}
+				{#each recentTiles as tile, index (tile.key)}
+					{#if mode === 'workspace' && (index === 0 || historyDay(tile.when) !== historyDay(recentTiles[index - 1]!.when))}
+						<h3 class="activity-group-label">{historyDateLabel(tile.when)}</h3>
+					{/if}
 					{@const Icon = entityIcon(tile.entityType)}
 					<button
 						type="button"
@@ -711,8 +746,14 @@
 									class="mt-0.5 line-clamp-1 text-2xs text-muted-foreground sm:text-xs"
 								>
 									<span>{activityActorPhrase(tile)}</span>
-									<span class="mx-1 text-muted-foreground/50">·</span>
-									<span class="capitalize">{tile.entityType}</span>
+									<span
+										class={mode === 'workspace'
+											? 'sr-only'
+											: 'mx-1 text-muted-foreground/50'}>·</span
+									>
+									<span class={mode === 'workspace' ? 'sr-only' : 'capitalize'}
+										>{tile.entityType}</span
+									>
 									{#if mode !== 'workspace'}
 										<span class="mx-1 text-muted-foreground/50">·</span>
 										<span class="stamp">{relativeTime(tile.when)}</span>
@@ -762,27 +803,25 @@
 				</div>
 				<div>
 					<p class="text-xs sm:text-sm font-semibold text-foreground">Schedule</p>
-					<p class="text-2xs text-muted-foreground sm:text-xs">
-						Overdue and upcoming project dates
-					</p>
 				</div>
 			</div>
-			{#if upcomingItems.length > 0}
+			{#if mode !== 'workspace' && upcomingItems.length > 0}
 				<span class="shrink-0 text-2xs font-medium text-muted-foreground">
-					{mode === 'workspace'
-						? `${allUpcomingItems.length} ${allUpcomingItems.length === 1 ? 'item' : 'items'}`
-						: upcomingItems.length}
+					{upcomingItems.length}
 				</span>
 			{/if}
 		</header>
 
 		<div class={mode === 'workspace' ? 'activity-workspace-list' : 'space-y-1.5 p-2 sm:p-3'}>
 			{#if upcomingItems.length === 0}
-				<p class="text-xs text-muted-foreground px-1 py-3 italic">
-					No dated work or events yet. Add a date to see it here.
-				</p>
+				<p class="text-xs text-muted-foreground px-1 py-3 italic">No scheduled work yet.</p>
 			{:else}
-				{#each upcomingItems as item (item.id)}
+				{#each upcomingItems as item, index (`${item.kind}:${item.id}`)}
+					{#if mode === 'workspace' && (index === 0 || item.isOverdue !== upcomingItems[index - 1]!.isOverdue)}
+						<h3 class="activity-group-label">
+							{item.isOverdue ? 'Overdue' : 'Upcoming'}
+						</h3>
+					{/if}
 					{@const Icon = entityIcon(item.kind)}
 					{@const future = relativeFuture(item.date)}
 					<button
@@ -872,14 +911,12 @@
 		position: relative;
 	}
 
-	.activity-timeline-list::before {
-		position: absolute;
-		top: 1rem;
-		bottom: 1rem;
-		left: 1.125rem;
-		width: 1px;
-		background: hsl(var(--border));
-		content: '';
+	.activity-group-label {
+		margin: 0;
+		padding: 0.75rem 0.625rem 0.25rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: hsl(var(--muted-foreground));
 	}
 
 	.activity-timeline-row,

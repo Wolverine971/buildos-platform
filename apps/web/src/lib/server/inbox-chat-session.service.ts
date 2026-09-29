@@ -3,11 +3,18 @@ import {
 	buildProjectSuggestionProposalContext,
 	type ProposalContextLoopRun
 } from '@buildos/shared-agent-ops/proposal-context';
+import { loadProjectCleanupView } from '@buildos/shared-agent-ops/project-cleanup';
 import { createAgentRunChatSession } from './agent-run-chat-session.service';
 import { createOrReuseProjectAuditChatSession } from './project-audit-chat-session.service';
 import { ensureProjectSuggestionReviewIntegrity } from './project-suggestion-integrity.service';
 import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
-import type { Json } from '@buildos/shared-types';
+import type {
+	Json,
+	ProjectCleanupItem,
+	ProjectCleanupSection,
+	ProjectCleanupSource,
+	ProjectCleanupView
+} from '@buildos/shared-types';
 import {
 	appendSeedSection as appendSection,
 	compactSeedText,
@@ -21,8 +28,16 @@ type AnySupabase = any;
 
 type SupportedInboxSourceType = Extract<
 	InboxSourceType,
-	'agent_run' | 'project_suggestion' | 'project_review' | 'project_audit' | 'calendar_suggestion'
+	| 'agent_run'
+	| 'project_suggestion'
+	| 'project_review'
+	| 'project_audit'
+	| 'project_cleanup'
+	| 'calendar_suggestion'
 >;
+
+/** Sources whose payload is one row of one table (the cleanup card is a computed view). */
+type TableBackedInboxSourceType = Exclude<SupportedInboxSourceType, 'project_cleanup'>;
 
 type SourceContext = {
 	humanText: string;
@@ -58,7 +73,7 @@ export type InboxChatSessionResult = {
 	project_id: string | null;
 };
 
-const SOURCE_TABLE_BY_TYPE: Record<SupportedInboxSourceType, string> = {
+const SOURCE_TABLE_BY_TYPE: Record<TableBackedInboxSourceType, string> = {
 	agent_run: 'agent_runs',
 	project_suggestion: 'project_suggestions',
 	project_review: 'project_loop_runs',
@@ -71,8 +86,30 @@ const SOURCE_LABEL_BY_TYPE: Record<SupportedInboxSourceType, string> = {
 	project_suggestion: 'Project review item',
 	project_review: 'Project manager brief',
 	project_audit: 'Project audit',
+	project_cleanup: 'Project cleanup',
 	calendar_suggestion: 'Calendar project suggestion'
 };
+
+function isSupportedInboxChatSource(sourceType: string): sourceType is SupportedInboxSourceType {
+	return sourceType === 'project_cleanup' || sourceType in SOURCE_TABLE_BY_TYPE;
+}
+
+const CLEANUP_SECTION_ORDER: ProjectCleanupSection[] = ['safe_cleanup', 'needs_call', 'note'];
+
+const CLEANUP_SECTION_LABEL: Record<ProjectCleanupSection, string> = {
+	safe_cleanup: 'Ready to apply',
+	needs_call: 'Needs your call',
+	note: 'Worth knowing'
+};
+
+const CLEANUP_SOURCE_LABEL: Record<ProjectCleanupSource, string> = {
+	review: 'Project Review',
+	audit: 'Complete Project Audit',
+	radar: 'Freshness check'
+};
+
+/** Visible cap per section; the model gets every item. */
+const CLEANUP_VISIBLE_ITEMS_PER_SECTION = 8;
 
 function compactText(value: unknown, maxLength: number): string | null {
 	return compactSeedText(value, maxLength, { trimTruncatedEnd: false });
@@ -351,6 +388,154 @@ function buildProjectReviewContext(
 	};
 }
 
+function cleanupSeenText(item: ProjectCleanupItem): string | null {
+	if (item.seen_count <= 1) return null;
+	const since = readString(item.first_seen_at)?.slice(0, 10);
+	return since
+		? `seen in ${item.seen_count} reviews since ${since}`
+		: `seen in ${item.seen_count} reviews`;
+}
+
+function cleanupEvidenceLines(item: ProjectCleanupItem): string[] {
+	return (item.evidence_refs ?? []).flatMap((ref) => {
+		const title = readString(ref?.title);
+		if (!title) return [];
+		const id = readString(ref.entity_id);
+		return [`${ref.entity_type ?? 'source'}: ${title}${id ? ` (${id})` : ''}`];
+	});
+}
+
+/** One item, fully, for the model: ids, section, source, what it would change, and why. */
+function describeCleanupItemForModel(item: ProjectCleanupItem): string {
+	const parts = [
+		`[${CLEANUP_SECTION_LABEL[item.section] ?? item.section}] ${item.title}`,
+		`item id ${item.id}`,
+		`from ${CLEANUP_SOURCE_LABEL[item.source] ?? item.source}`,
+		`kind ${item.kind}`,
+		item.executable ? 'verified change the user can apply from the card' : 'finding, no change',
+		cleanupSeenText(item),
+		`suggestion ids ${item.rows.map((row) => row.suggestion_id).join(', ') || '(none)'}`
+	].filter(Boolean);
+	const lines = [parts.join(' — ')];
+	const summary = compactText(item.summary, 500);
+	if (summary) lines.push(`  Summary: ${summary}`);
+	const whyNow = compactText(item.why_now, 300);
+	if (whyNow) lines.push(`  Why now: ${whyNow}`);
+	const changes = item.rows
+		.map((row) => readString(row.verified_headline) ?? readString(row.title))
+		.filter((value): value is string => Boolean(value));
+	if (item.executable && changes.length) lines.push(`  Changes: ${changes.join('; ')}`);
+	const cautions = [...new Set(item.rows.flatMap((row) => row.cautions ?? []))];
+	if (cautions.length) lines.push(`  Cautions: ${cautions.join('; ')}`);
+	const evidence = cleanupEvidenceLines(item);
+	if (evidence.length) lines.push(`  Evidence: ${evidence.join('; ')}`);
+	for (const reviewItem of item.review_items ?? []) {
+		lines.push(
+			`  Out of date: ${reviewItem.entity_type} ${reviewItem.title} (${reviewItem.entity_id}) — ${reviewItem.reason} Suggested request: ${reviewItem.fix_in_chat_prompt}`
+		);
+	}
+	return lines.join('\n');
+}
+
+function buildProjectCleanupContext(params: {
+	item: InboxIndexRow;
+	view: ProjectCleanupView;
+	projectName: string | null;
+	focus: ProjectCleanupItem | null;
+}): SourceContext {
+	const { item, view, projectName, focus } = params;
+	const items = Array.isArray(view.items) ? view.items : [];
+	const bottomLine =
+		compactVisibleText(view.bottom_line, 420) ?? compactVisibleText(item.title, 420);
+	const recommendation = compactVisibleText(view.recommendation, 700);
+	const sections = CLEANUP_SECTION_ORDER.map((section) => ({
+		section,
+		items: items.filter((entry) => entry.section === section)
+	})).filter((entry) => entry.items.length > 0);
+
+	const visibleLines: string[] = [`${projectName ?? 'Project'} — project cleanup`, ''];
+	if (focus) {
+		visibleLines.push(`Let's look at: ${focus.title}`);
+		visibleLines.push(
+			[
+				CLEANUP_SECTION_LABEL[focus.section],
+				`from ${CLEANUP_SOURCE_LABEL[focus.source] ?? 'Project Review'}`,
+				cleanupSeenText(focus)
+			]
+				.filter(Boolean)
+				.join(' · ')
+		);
+		const summary = compactVisibleText(focus.summary, 500);
+		if (summary) visibleLines.push(summary);
+		const whyNow = compactVisibleText(focus.why_now, 300);
+		if (whyNow) visibleLines.push(`Why now: ${whyNow}`);
+		appendSection(
+			visibleLines,
+			'Out of date',
+			(focus.review_items ?? []).map((entry) => `${entry.title}: ${entry.reason}`)
+		);
+		visibleLines.push('');
+	}
+	if (bottomLine) visibleLines.push(`Bottom line: ${bottomLine}`);
+	if (recommendation) visibleLines.push(`Recommendation: ${recommendation}`);
+	for (const { section, items: sectionItems } of sections) {
+		const shown = sectionItems
+			.slice(0, CLEANUP_VISIBLE_ITEMS_PER_SECTION)
+			.map((entry, index) => `${index + 1}. ${entry.title}`);
+		if (sectionItems.length > shown.length) {
+			shown.push(`...and ${sectionItems.length - shown.length} more.`);
+		}
+		appendSection(
+			visibleLines,
+			`${CLEANUP_SECTION_LABEL[section]} (${sectionItems.length})`,
+			shown
+		);
+	}
+	visibleLines.push(
+		'',
+		'You can ask me to explain any item, check the records involved, or make a change you approve. Applying or dismissing items stays on the cleanup card.'
+	);
+
+	const llmLines = [
+		"You are discussing a BuildOS project cleanup list with the user: the project's open review findings, audit recommendations and freshness concerns, grouped into Ready to apply, Needs your call and Worth knowing.",
+		focus
+			? `The user opened this chat from one item (item id ${focus.id}). Lead with it; bring in other items only when they bear on it.`
+			: 'Lead with the bottom line and the recommendation.',
+		'Use project tools to inspect the records involved before making claims; do not invent evidence.',
+		'Items are applied, dismissed or marked done from the cleanup card. Only change the project directly when the user clearly asks you to.',
+		'',
+		`Project: ${projectName ?? view.project_id ?? 'Project'}`,
+		bottomLine ? `Bottom line: ${bottomLine}` : null,
+		recommendation ? `Recommendation: ${recommendation}` : null,
+		`Open: ${view.counts?.safe_cleanup ?? 0} ready to apply, ${view.counts?.needs_call ?? 0} need a call, ${view.counts?.note ?? 0} worth knowing`
+	].filter((line): line is string => line !== null);
+	appendSection(llmLines, 'Focused item', focus ? describeCleanupItemForModel(focus) : null);
+	appendSection(
+		llmLines,
+		'Open items',
+		items.filter((entry) => entry.id !== focus?.id).map(describeCleanupItemForModel)
+	);
+	appendSection(
+		llmLines,
+		'Closed since the last review',
+		(view.recently_closed ?? []).map(
+			(closed) =>
+				`${closed.title} — ${closed.reason}${closed.detail ? `: ${closed.detail}` : ''}`
+		)
+	);
+
+	const evidenceSource = focus ? [focus] : items;
+	return {
+		humanText: visibleLines.join('\n'),
+		llmText: llmLines.join('\n'),
+		displayTitle: focus?.title ?? bottomLine ?? 'Project cleanup',
+		operationSummaries: (focus?.rows ?? [])
+			.map((row) => readString(row.verified_headline) ?? readString(row.title))
+			.filter((value): value is string => Boolean(value)),
+		evidenceSummaries: [...new Set(evidenceSource.flatMap(cleanupEvidenceLines))].slice(0, 20)
+	};
+}
+
 async function loadProjectName(
 	supabase: AnySupabase,
 	projectId: string | null
@@ -368,7 +553,12 @@ async function loadSourcePayload(
 	supabase: AnySupabase,
 	item: InboxIndexRow
 ): Promise<Record<string, unknown> | null> {
-	const table = SOURCE_TABLE_BY_TYPE[item.source_type as SupportedInboxSourceType];
+	if (item.source_type === 'project_cleanup') {
+		// Keyed by the project; the chat seed reads the same change set the card shows.
+		const view = await loadProjectCleanupView(supabase, item.source_ref_id);
+		return view as unknown as Record<string, unknown>;
+	}
+	const table = SOURCE_TABLE_BY_TYPE[item.source_type as TableBackedInboxSourceType];
 	if (!table) return null;
 	const { data, error } = await supabase
 		.from(table)
@@ -530,12 +720,17 @@ function buildInboxSessionMetadata(params: {
 	item: InboxIndexRow;
 	scope: SessionScope;
 	context: SourceContext;
+	cleanupItemId?: string | null;
 }): Record<string, unknown> {
 	return {
 		source: 'ai_inbox',
 		inbox_item_id: params.item.id ?? null,
 		source_type: params.item.source_type,
 		source_ref_id: params.item.source_ref_id,
+		// One chat per cleanup item discussed, plus one for the whole card (null).
+		...(params.item.source_type === 'project_cleanup'
+			? { cleanup_item_id: params.cleanupItemId ?? null }
+			: {}),
 		source_status: params.item.source_status ?? null,
 		source_label: SOURCE_LABEL_BY_TYPE[params.item.source_type as SupportedInboxSourceType],
 		project_id: params.scope.projectId,
@@ -580,7 +775,28 @@ async function findExistingChatSession(params: {
 	item: InboxIndexRow;
 	sourcePayload: Record<string, unknown> | null;
 	userId: string;
+	cleanupItemId?: string | null;
 }): Promise<Record<string, unknown> | null> {
+	if (params.item.source_type === 'project_cleanup') {
+		// The card lives on across nights, so reuse is keyed by project and focused item,
+		// never just the inbox row (a whole-card chat must not reopen an item's chat).
+		const { data, error } = await params.supabase
+			.from('chat_sessions')
+			.select('*')
+			.eq('user_id', params.userId)
+			.eq('status', 'active')
+			.contains('agent_metadata', {
+				source: 'ai_inbox',
+				source_type: 'project_cleanup',
+				source_ref_id: params.item.source_ref_id,
+				cleanup_item_id: params.cleanupItemId ?? null
+			})
+			.order('updated_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		return !error && data ? (data as Record<string, unknown>) : null;
+	}
+
 	const linkedSessionId = readString(params.sourcePayload?.chat_session_id);
 	if (linkedSessionId) {
 		const { data, error } = await params.supabase
@@ -731,8 +947,10 @@ export async function createInboxChatSession(params: {
 	supabase: AnySupabase;
 	item: InboxIndexRow;
 	userId: string;
+	/** Project cleanup only: the card item the user chose to discuss (null = whole card). */
+	focusCleanupItemId?: string | null;
 }): Promise<InboxChatSessionResult> {
-	if (!SOURCE_TABLE_BY_TYPE[params.item.source_type as SupportedInboxSourceType]) {
+	if (!isSupportedInboxChatSource(params.item.source_type)) {
 		throw new Error(`Unsupported inbox source: ${params.item.source_type}`);
 	}
 
@@ -794,8 +1012,24 @@ export async function createInboxChatSession(params: {
 		projectName
 	});
 
-	const context =
-		params.item.source_type === 'project_review'
+	const cleanupView =
+		params.item.source_type === 'project_cleanup'
+			? (sourcePayload as unknown as ProjectCleanupView)
+			: null;
+	// A focus on an item that closed since the card loaded falls back to the whole card.
+	const cleanupFocus =
+		cleanupView && params.focusCleanupItemId
+			? ((cleanupView.items ?? []).find((entry) => entry.id === params.focusCleanupItemId) ??
+				null)
+			: null;
+	const context = cleanupView
+		? buildProjectCleanupContext({
+				item: params.item,
+				view: cleanupView,
+				projectName,
+				focus: cleanupFocus
+			})
+		: params.item.source_type === 'project_review'
 			? buildProjectReviewContext(params.item, sourcePayload, projectName)
 			: params.item.source_type === 'project_suggestion'
 				? await buildProjectSuggestionContext({
@@ -812,14 +1046,16 @@ export async function createInboxChatSession(params: {
 	const sessionMetadata = buildInboxSessionMetadata({
 		item: params.item,
 		scope,
-		context
+		context,
+		cleanupItemId: cleanupFocus?.id ?? null
 	});
 
 	const existingSession = await findExistingChatSession({
 		supabase: params.supabase,
 		item: params.item,
 		sourcePayload,
-		userId: params.userId
+		userId: params.userId,
+		cleanupItemId: cleanupFocus?.id ?? null
 	});
 	if (existingSession) {
 		const refreshedSession = await refreshExistingInboxChatSession({

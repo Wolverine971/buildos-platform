@@ -17,12 +17,19 @@ import {
 	verifyProjectSuggestionIntegrity,
 	type ProjectSuggestionIntegrityDiagnostic
 } from './proposal-context/verify-operations';
+import {
+	GROUPED_INTO_PROJECT_CLEANUP,
+	PROJECT_CLEANUP_KINDS,
+	loadProjectCleanupView,
+	projectCleanupInboxCopy
+} from './project-cleanup';
 
 export type InboxSourceType =
 	| 'agent_run'
 	| 'project_suggestion'
 	| 'project_review'
 	| 'project_audit'
+	| 'project_cleanup'
 	| 'calendar_suggestion'
 	| 'profile_fragment'
 	| 'contact_merge_candidate'
@@ -86,6 +93,8 @@ const INBOX_REVIEW_EXPIRY_MS_BY_SOURCE: Record<InboxSourceType, number> = {
 	project_suggestion: 7 * DAY_MS,
 	project_review: 14 * DAY_MS,
 	project_audit: 14 * DAY_MS,
+	// The cleanup card is living: it carries no expiry and leaves when its items do.
+	project_cleanup: 14 * DAY_MS,
 	calendar_suggestion: 7 * DAY_MS,
 	profile_fragment: 30 * DAY_MS,
 	contact_merge_candidate: 30 * DAY_MS,
@@ -1009,10 +1018,21 @@ export async function syncInboxItemForProjectReview(params: {
 			: null;
 	}
 
-	const row = mapProjectReviewToInboxItem(run);
-	if (row) return upsertInboxItem(params.supabase, row);
 	const runId = asString(run.id) ?? params.runId;
 	const runStatus = asString(run.status);
+	// A roll-up pass (brief v3) reports through the project's cleanup card, never a brief card.
+	if (asRecord(run.brief)?.version === 3) {
+		if (!runId || !runStatus || runStatus === 'queued' || runStatus === 'running') return null;
+		const projectId = asString(run.project_id);
+		if (projectId)
+			await syncInboxItemForProjectCleanup({ supabase: params.supabase, projectId });
+		return markProjectReviewInboxNoActionRequired(params.supabase, runId, {
+			sourceStatus: GROUPED_INTO_PROJECT_CLEANUP,
+			reason: 'This review reports through the project cleanup item'
+		});
+	}
+	const row = mapProjectReviewToInboxItem(run);
+	if (row) return upsertInboxItem(params.supabase, row);
 	if (!runId || !runStatus || runStatus === 'queued' || runStatus === 'running') return null;
 	const attentionLevel = projectReviewAttentionLevel(projectReviewBrief(run));
 	return markProjectReviewInboxNoActionRequired(params.supabase, runId, {
@@ -1029,6 +1049,107 @@ export async function syncInboxItemForProjectReview(params: {
 					? 'Project Review found only minor issues, which do not interrupt the AI Inbox'
 					: 'Project Review completed without anything that needs your attention'
 	});
+}
+
+async function markProjectCleanupInboxNoActionRequired(
+	supabase: AnySupabase,
+	projectId: string,
+	sourceStatus: string,
+	reason: string
+): Promise<InboxIndexRow | null> {
+	const { data, error } = await (supabase as any)
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: sourceStatus,
+			decided_at: new Date().toISOString(),
+			blocked_reason: reason,
+			snoozed_until: null,
+			expires_at: null
+		})
+		.eq('source_type', 'project_cleanup')
+		.eq('source_ref_id', projectId)
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
+		.select('*')
+		.maybeSingle();
+	if (error) throw error;
+	return (data ?? null) as InboxIndexRow | null;
+}
+
+/** Every per-item review, audit and suggestion row of the project folds into its cleanup card. */
+async function expireInboxItemsGroupedIntoProjectCleanup(params: {
+	supabase: AnySupabase;
+	projectId: string;
+}): Promise<number> {
+	const { data, error } = await (params.supabase as any)
+		.from('inbox_items')
+		.update({
+			status: 'expired',
+			source_status: GROUPED_INTO_PROJECT_CLEANUP,
+			decided_at: new Date().toISOString(),
+			blocked_reason: 'Grouped into the project cleanup item',
+			snoozed_until: null
+		})
+		.eq('project_id', params.projectId)
+		.in('source_type', ['project_suggestion', 'project_review', 'project_audit'])
+		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
+		.select('id');
+	if (error) throw error;
+	return (data ?? []).length;
+}
+
+/**
+ * Tasker 112: the project's one "Project cleanup" item, keyed by the project id and
+ * upserted in place. It has no expiry: it leaves the inbox when nothing actionable is open
+ * (only notes, or nothing at all), and comes back when a pass, an audit or the radar opens
+ * something. A snooze survives re-syncs until it runs out.
+ */
+export async function syncInboxItemForProjectCleanup(params: {
+	supabase: AnySupabase;
+	projectId: string;
+}): Promise<InboxIndexRow | null> {
+	const { supabase, projectId } = params;
+	const { data: project, error: projectError } = await (supabase as any)
+		.from('onto_projects')
+		.select('id, deleted_at, archived_at')
+		.eq('id', projectId)
+		.maybeSingle();
+	if (projectError) throw projectError;
+	if (!project || project.deleted_at) {
+		return markInboxItemExpired(supabase, 'project_cleanup', projectId);
+	}
+	const view = await loadProjectCleanupView(supabase, projectId);
+	await expireInboxItemsGroupedIntoProjectCleanup({ supabase, projectId });
+	const actionable = view.counts.safe_cleanup + view.counts.needs_call;
+	if (!actionable || project.archived_at) {
+		return markProjectCleanupInboxNoActionRequired(
+			supabase,
+			projectId,
+			project.archived_at ? 'project_archived' : 'nothing_actionable',
+			project.archived_at
+				? 'The project is archived'
+				: 'Nothing in the project cleanup needs you right now'
+		);
+	}
+	const copy = projectCleanupInboxCopy(view);
+	const row = await upsertInboxItem(supabase, {
+		source_type: 'project_cleanup',
+		source_ref_id: projectId,
+		source_status: `open:${view.counts.total}`,
+		user_id: null,
+		project_id: projectId,
+		audience: 'project_members',
+		status: 'pending',
+		title: compactText(copy.title, 180) ?? 'Project cleanup',
+		summary: compactText(copy.summary, 420),
+		risk_tier: 2,
+		action_kinds: ['review', 'discuss', 'snooze'],
+		blocked_reason: null,
+		decided_at: null,
+		expires_at: null
+	});
+	await applyProjectAttentionBudget({ supabase, projectId });
+	return row;
 }
 
 export async function syncInboxItemForProjectSuggestion(params: {
@@ -1053,6 +1174,26 @@ export async function syncInboxItemForProjectSuggestion(params: {
 	}
 	const suggestionId = asString(suggestion.id) ?? params.suggestionId;
 	const kind = asString(suggestion.kind);
+	const suggestionProjectId = asString(suggestion.project_id);
+	// Tasker 112: review findings, audit recommendations and the radar bundle reach the AI
+	// Inbox only through the project's one cleanup item.
+	if (
+		suggestionId &&
+		suggestionProjectId &&
+		kind &&
+		(PROJECT_CLEANUP_KINDS as readonly string[]).includes(kind)
+	) {
+		await expireProjectSuggestionInboxItem({
+			supabase: params.supabase,
+			suggestionId,
+			sourceStatus: GROUPED_INTO_PROJECT_CLEANUP,
+			reason: 'Grouped into the project cleanup item'
+		});
+		return syncInboxItemForProjectCleanup({
+			supabase: params.supabase,
+			projectId: suggestionProjectId
+		});
+	}
 	const existingSourceStatus = suggestionId
 		? await loadProjectSuggestionInboxSourceStatus(params.supabase, suggestionId)
 		: null;
@@ -1154,13 +1295,23 @@ export async function syncInboxItemForProjectAudit(params: {
 			? markInboxItemExpired(params.supabase, 'project_audit', params.auditId)
 			: null;
 	}
-	const row = mapProjectAuditToInboxItem(audit);
-	if (row) return upsertInboxItem(params.supabase, row);
 	const auditId = asString(audit.id) ?? params.auditId;
 	const auditStatus = asString(audit.status);
 	if (!auditId || !auditStatus || auditStatus === 'queued' || auditStatus === 'running') {
 		return null;
 	}
+	const row = mapProjectAuditToInboxItem(audit);
+	if (row && row.status === 'pending') {
+		// Tasker 112: the audit's recommendations are items in the project's cleanup card.
+		const projectId = asString(audit.project_id);
+		if (projectId)
+			await syncInboxItemForProjectCleanup({ supabase: params.supabase, projectId });
+		return markProjectAuditInboxNoActionRequired(params.supabase, auditId, {
+			sourceStatus: GROUPED_INTO_PROJECT_CLEANUP,
+			reason: 'Audit recommendations are in the project cleanup item'
+		});
+	}
+	if (row) return upsertInboxItem(params.supabase, row);
 	if (auditStatus === 'failed') {
 		return markProjectAuditInboxNoActionRequired(params.supabase, auditId, {
 			sourceStatus: 'failed',
@@ -1641,6 +1792,11 @@ export async function syncInboxItemForSource(params: {
 			return syncInboxItemForProjectAudit({
 				supabase: params.supabase,
 				auditId: params.sourceRefId
+			});
+		case 'project_cleanup':
+			return syncInboxItemForProjectCleanup({
+				supabase: params.supabase,
+				projectId: params.sourceRefId
 			});
 		case 'calendar_suggestion':
 			return syncInboxItemForCalendarSuggestion({

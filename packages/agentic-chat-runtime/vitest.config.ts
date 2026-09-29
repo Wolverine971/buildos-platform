@@ -25,6 +25,10 @@ export default defineConfig({
 				replacement: sharedAgentOpsSrc('index.ts')
 			},
 			{
+				find: /^@buildos\/shared-agent-ops\/project-cleanup$/,
+				replacement: sharedAgentOpsSrc('project-cleanup.ts')
+			},
+			{
 				find: /^@buildos\/shared-agent-ops\/ops\/gateway-op-aliases$/,
 				replacement: sharedAgentOpsSrc('ops/gateway-op-aliases.ts')
 			},

@@ -211,8 +211,8 @@ describe('ProjectWorkspace edge states', () => {
 		});
 		expect(await screen.findByText('Goal 1')).toBeInTheDocument();
 		expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-busy', 'false');
-		expect(screen.getByRole('tab', { name: 'Tasks 0' })).toBeInTheDocument();
-		expect(screen.getByRole('tab', { name: 'Docs 1' })).toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'Tasks' })).toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'Docs' })).toBeInTheDocument();
 		expect(
 			vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/full?'))
 		).toHaveLength(0);
@@ -264,7 +264,7 @@ describe('ProjectWorkspace edge states', () => {
 		);
 		expect(await screen.findByText('Goal 1')).toBeInTheDocument();
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-		expect(screen.getByRole('tab', { name: 'Docs 1' })).toBeInTheDocument();
+		expect(screen.getByRole('tab', { name: 'Docs' })).toBeInTheDocument();
 	});
 
 	it('allows another fresh retry after the endpoint fails', async () => {
@@ -444,9 +444,13 @@ describe('ProjectWorkspace edge states', () => {
 			undefined
 		);
 		expect(
-			vi.mocked(fetch).mock.calls.filter(
-				([url]) => String(url) === `/api/onto/projects/${PROJECT_ID}/doc-tree?include_content=false`
-			)
+			vi
+				.mocked(fetch)
+				.mock.calls.filter(
+					([url]) =>
+						String(url) ===
+						`/api/onto/projects/${PROJECT_ID}/doc-tree?include_content=false`
+				)
 		).toHaveLength(1);
 	});
 
@@ -620,8 +624,8 @@ describe('ProjectWorkspace edge states', () => {
 		expect(screen.getByRole('button', { name: 'Project options' })).toBeInTheDocument();
 		expect(screen.getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
 			'Overview',
-			'Tasks 0',
-			'Docs 0',
+			'Tasks',
+			'Docs',
 			'Activity'
 		]);
 
@@ -756,7 +760,7 @@ describe('ProjectWorkspace edge states', () => {
 			'aria-selected',
 			'true'
 		);
-		expect(screen.getByRole('tab', { name: 'Tasks 0' })).toHaveAttribute(
+		expect(screen.getByRole('tab', { name: 'Tasks' })).toHaveAttribute(
 			'aria-selected',
 			'false'
 		);
@@ -878,9 +882,9 @@ describe('ProjectWorkspace edge states', () => {
 		expect(within(overview).queryByText('Launch review')).not.toBeInTheDocument();
 		expect(within(overview).queryByText('START HERE - Project')).not.toBeInTheDocument();
 
-		await fireEvent.click(screen.getByRole('tab', { name: 'Docs 0' }));
+		await fireEvent.click(screen.getByRole('tab', { name: 'Docs' }));
 		await waitFor(() => {
-			expect(screen.getByRole('tabpanel', { name: 'Docs 0' })).toBeInTheDocument();
+			expect(screen.getByRole('tabpanel', { name: 'Docs' })).toBeInTheDocument();
 		});
 		expect(screen.queryByText('RECENTLY UPDATED')).not.toBeInTheDocument();
 	});
@@ -902,8 +906,8 @@ describe('ProjectWorkspace edge states', () => {
 			}
 		});
 
-		await fireEvent.click(screen.getByRole('tab', { name: 'Docs 1' }));
-		const docs = await screen.findByRole('tabpanel', { name: 'Docs 1' });
+		await fireEvent.click(screen.getByRole('tab', { name: 'Docs' }));
+		const docs = await screen.findByRole('tabpanel', { name: 'Docs' });
 
 		expect(
 			within(docs).getByRole('heading', { name: 'Project documents' })
@@ -936,15 +940,15 @@ describe('ProjectWorkspace edge states', () => {
 			}
 		});
 
-		await fireEvent.click(screen.getByRole('tab', { name: 'Docs 2' }));
-		const docs = await screen.findByRole('tabpanel', { name: 'Docs 2' });
+		await fireEvent.click(screen.getByRole('tab', { name: 'Docs' }));
+		const docs = await screen.findByRole('tabpanel', { name: 'Docs' });
 		expect(
 			await within(docs).findByRole('button', { name: /Unlinked documents \(1\)/ })
 		).toBeInTheDocument();
 		expect(
-			vi.mocked(fetch).mock.calls.some(([url]) =>
-				String(url).includes('/doc-tree?include_content=false')
-			)
+			vi
+				.mocked(fetch)
+				.mock.calls.some(([url]) => String(url).includes('/doc-tree?include_content=false'))
 		).toBe(false);
 	});
 

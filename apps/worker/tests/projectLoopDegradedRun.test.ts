@@ -202,19 +202,29 @@ const mocks = vi.hoisted(() => {
 				reversible: true
 			}
 		]),
-		generateProjectManagerBrief: vi.fn(async () => ({
-			version: 2,
-			attention_level: 'none',
-			decision_item_ids: [],
-			safe_cleanup_item_ids: [],
-			no_attention_reason: 'No action from completed checks.'
-		})),
-		buildHeuristicProjectManagerBrief: vi.fn(),
+		generateProjectCleanupSynthesis: vi.fn(),
+		emptySynthesis: () => ({
+			synthesis: {
+				bottom_line: null,
+				recommendation: null,
+				groups: [],
+				open_count: 0,
+				closed_this_pass: [],
+				generated_at: '2026-09-29T00:00:00.000Z',
+				source: 'llm'
+			},
+			verdicts: [],
+			merges: [],
+			sections: new Map(),
+			summaries: new Map(),
+			attentionLevel: 'none',
+			stateSummary: null,
+			nextBestAction: null
+		}),
 		rankTaskConflictPairs: vi.fn(),
 		captureWorkerEvent: vi.fn(),
 		logWorkerError: vi.fn(async () => undefined),
-		syncInboxItemForProjectReview: vi.fn(async () => undefined),
-		expireProjectSuggestionInboxItemsForManagerBrief: vi.fn(async () => 0)
+		syncInboxItemForProjectCleanup: vi.fn(async () => undefined)
 	};
 });
 
@@ -254,8 +264,7 @@ vi.mock('../src/workers/project-loop/generators', () => ({
 	generateOutdatedDocs: mocks.generateOutdatedDocs,
 	generateDrift: mocks.generateDrift,
 	generateTaskConflicts: mocks.generateTaskConflicts,
-	generateProjectManagerBrief: mocks.generateProjectManagerBrief,
-	buildHeuristicProjectManagerBrief: mocks.buildHeuristicProjectManagerBrief,
+	generateProjectCleanupSynthesis: mocks.generateProjectCleanupSynthesis,
 	withoutRadarOwnedFindings: (kept: unknown[]) => ({ kept, dropped: 0 }),
 	suggestionSuppressionKey: vi.fn((suggestion: { kind?: string; title?: string | null }) =>
 		suggestion.kind && suggestion.title ? `${suggestion.kind}:${suggestion.title}` : null
@@ -279,11 +288,8 @@ vi.mock('@buildos/shared-agent-ops/inbox-index', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@buildos/shared-agent-ops/inbox-index')>();
 	return {
 		...actual,
-		syncInboxItemForProjectReview: mocks.syncInboxItemForProjectReview,
-		expireProjectSuggestionInboxItemsForManagerBrief:
-			mocks.expireProjectSuggestionInboxItemsForManagerBrief,
-		syncInboxItemForProjectSuggestion: vi.fn(async () => undefined),
-		quarantineProjectSuggestionInboxItem: vi.fn(async () => undefined)
+		syncInboxItemForProjectCleanup: mocks.syncInboxItemForProjectCleanup,
+		syncInboxItemForProjectSuggestion: vi.fn(async () => undefined)
 	};
 });
 
@@ -335,16 +341,10 @@ describe('processProjectLoopJob detector degradation', () => {
 				reversible: true
 			}
 		]);
-		mocks.generateProjectManagerBrief.mockResolvedValue({
-			version: 2,
-			attention_level: 'none',
-			decision_item_ids: [],
-			safe_cleanup_item_ids: [],
-			no_attention_reason: 'No action from completed checks.'
-		});
+		mocks.generateProjectCleanupSynthesis.mockResolvedValue(mocks.emptySynthesis());
 	});
 
-	it('completes after a typed drift timeout without rotating old drift findings', async () => {
+	it('completes after a typed drift timeout and keeps the open drift finding', async () => {
 		mocks.generateDrift.mockRejectedValue(
 			new LLMRequestTimeoutError(120_000, 'deepseek/deepseek-v4-flash', {
 				generationId: 'gen-drift-timeout'
@@ -357,8 +357,16 @@ describe('processProjectLoopJob detector degradation', () => {
 		expect(result).toMatchObject({ success: true, runId: 'run-1', suggestionCount: 1 });
 		expect(mocks.generateTaskConflicts).toHaveBeenCalledOnce();
 		expect(mocks.state.inserts).toHaveLength(1);
-		expect(mocks.generateProjectManagerBrief).toHaveBeenCalledWith(
+		expect(mocks.generateProjectCleanupSynthesis).toHaveBeenCalledWith(
 			expect.objectContaining({ uncheckedLenses: ['drift'], signal: job.signal })
+		);
+		// The unchecked drift finding stays on the list, and the cleanup card is synced.
+		const synthesisInput = mocks.generateProjectCleanupSynthesis.mock.calls[0]?.[0] as {
+			items: Array<{ lineageId: string }>;
+		};
+		expect(synthesisInput.items.map((item) => item.lineageId)).toContain('old-drift');
+		expect(mocks.syncInboxItemForProjectCleanup).toHaveBeenCalledWith(
+			expect.objectContaining({ projectId: 'project-1' })
 		);
 		expect(
 			mocks.state.updates.some(
@@ -418,7 +426,7 @@ describe('processProjectLoopJob detector degradation', () => {
 		expect(mocks.generateTaskConflicts).not.toHaveBeenCalled();
 		expect(mocks.generateOutdatedDocs).toHaveBeenCalledOnce();
 		expect(mocks.generateDrift).toHaveBeenCalledOnce();
-		expect(mocks.generateProjectManagerBrief).toHaveBeenCalledWith(
+		expect(mocks.generateProjectCleanupSynthesis).toHaveBeenCalledWith(
 			expect.objectContaining({ uncheckedLenses: [] })
 		);
 	});
@@ -447,7 +455,7 @@ describe('processProjectLoopJob detector degradation', () => {
 
 		expect(result).toMatchObject({ success: true, runId: 'run-1', suggestionCount: 0 });
 		expect(mocks.generateTaskConflicts).not.toHaveBeenCalled();
-		expect(mocks.generateProjectManagerBrief).toHaveBeenCalledWith(
+		expect(mocks.generateProjectCleanupSynthesis).toHaveBeenCalledWith(
 			expect.objectContaining({ uncheckedLenses: ['task conflicts'] })
 		);
 		expect(mocks.captureWorkerEvent).toHaveBeenCalledWith(
@@ -513,20 +521,14 @@ describe('processProjectLoopJob detector degradation', () => {
 		expect(mocks.logWorkerError).not.toHaveBeenCalled();
 	});
 
-	it('does not finalize after ownership is lost as manager synthesis resolves', async () => {
+	it('does not finalize after ownership is lost as the roll-up call resolves', async () => {
 		const controller = new AbortController();
 		const cancellation = new Error('Queue ownership expired after manager response');
 		mocks.generateDrift.mockResolvedValue([]);
 		mocks.generateTaskConflicts.mockResolvedValue([]);
-		mocks.generateProjectManagerBrief.mockImplementation(async () => {
+		mocks.generateProjectCleanupSynthesis.mockImplementation(async () => {
 			controller.abort(cancellation);
-			return {
-				version: 2,
-				attention_level: 'none',
-				decision_item_ids: [],
-				safe_cleanup_item_ids: [],
-				no_attention_reason: 'No action from completed checks.'
-			};
+			return mocks.emptySynthesis();
 		});
 
 		await expect(processProjectLoopJob(createJob(controller))).rejects.toBe(cancellation);
@@ -539,7 +541,7 @@ describe('processProjectLoopJob detector degradation', () => {
 					)
 			)
 		).toBe(false);
-		expect(mocks.syncInboxItemForProjectReview).not.toHaveBeenCalled();
+		expect(mocks.syncInboxItemForProjectCleanup).not.toHaveBeenCalled();
 		expect(mocks.captureWorkerEvent).not.toHaveBeenCalled();
 		expect(mocks.logWorkerError).not.toHaveBeenCalled();
 	});

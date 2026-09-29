@@ -8,6 +8,7 @@ type InboxDecisionSourceType =
 	| 'project_suggestion'
 	| 'project_review'
 	| 'project_audit'
+	| 'project_cleanup'
 	| 'calendar_suggestion'
 	| 'integration_attention';
 type InboxDecisionAction = 'approve' | 'address' | 'reject' | 'snooze';
@@ -36,6 +37,7 @@ function decisionNoun(item: InboxDecisionNotificationItem): string {
 	if (item.source_type === 'agent_run') return 'agent proposal';
 	if (item.source_type === 'project_review') return 'project manager brief';
 	if (item.source_type === 'project_audit') return 'project audit';
+	if (item.source_type === 'project_cleanup') return 'project cleanup';
 	if (item.source_type === 'integration_attention') return 'account alert';
 	return 'review item';
 }

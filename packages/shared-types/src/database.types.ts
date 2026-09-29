@@ -798,6 +798,431 @@ export type Database = {
           },
         ]
       }
+      image_upload_cleanup_checks: {
+        Row: {
+          generation: number
+          last_outcome: string | null
+          lease_expires_at: string
+          lease_token: string
+          library_id: string
+          next_check_at: string
+          observed_at: string | null
+          status: string
+          target_id: string
+        }
+        Insert: {
+          generation: number
+          last_outcome?: string | null
+          lease_expires_at: string
+          lease_token: string
+          library_id: string
+          next_check_at: string
+          observed_at?: string | null
+          status: string
+          target_id: string
+        }
+        Update: {
+          generation?: number
+          last_outcome?: string | null
+          lease_expires_at?: string
+          lease_token?: string
+          library_id?: string
+          next_check_at?: string
+          observed_at?: string | null
+          status?: string
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_upload_cleanup_checks_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_upload_cleanup_checks_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: true
+            referencedRelation: "image_upload_cleanup_targets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_upload_cleanup_targets: {
+        Row: {
+          id: string
+          kind: string
+          library_id: string
+          object_path: string
+          publication_id: string | null
+          upload_id: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          library_id: string
+          object_path: string
+          publication_id?: string | null
+          upload_id: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          library_id?: string
+          object_path?: string
+          publication_id?: string | null
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_upload_cleanup_targets_publication_id_fkey"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "image_upload_publications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_upload_cleanup_targets_retirement_fk"
+            columns: ["library_id", "upload_id"]
+            isOneToOne: false
+            referencedRelation: "image_upload_retirements"
+            referencedColumns: ["library_id", "upload_id"]
+          },
+        ]
+      }
+      image_upload_controls: {
+        Row: {
+          admission_enabled: boolean
+          cleanup_enabled: boolean
+          library_id: string
+          max_daily: number
+          max_pending: number
+          processing_enabled: boolean
+        }
+        Insert: {
+          admission_enabled?: boolean
+          cleanup_enabled?: boolean
+          library_id: string
+          max_daily?: number
+          max_pending?: number
+          processing_enabled?: boolean
+        }
+        Update: {
+          admission_enabled?: boolean
+          cleanup_enabled?: boolean
+          library_id?: string
+          max_daily?: number
+          max_pending?: number
+          processing_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_upload_controls_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: true
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_upload_intents: {
+        Row: {
+          book_id: string
+          chapter_id: string | null
+          created_at: string
+          expires_at: string
+          file_metadata: Json
+          id: string
+          idempotency_key: string
+          library_id: string
+          object_path: string
+          requested_by: string
+          signing_deadline: string
+          status: string
+          submitted_at: string | null
+        }
+        Insert: {
+          book_id: string
+          chapter_id?: string | null
+          created_at?: string
+          expires_at: string
+          file_metadata: Json
+          id?: string
+          idempotency_key: string
+          library_id: string
+          object_path: string
+          requested_by: string
+          signing_deadline: string
+          status?: string
+          submitted_at?: string | null
+        }
+        Update: {
+          book_id?: string
+          chapter_id?: string | null
+          created_at?: string
+          expires_at?: string
+          file_metadata?: Json
+          id?: string
+          idempotency_key?: string
+          library_id?: string
+          object_path?: string
+          requested_by?: string
+          signing_deadline?: string
+          status?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_upload_intents_book_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "image_upload_intents_chapter_fk"
+            columns: ["library_id", "book_id", "chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["library_id", "book_id", "id"]
+          },
+          {
+            foreignKeyName: "image_upload_intents_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_upload_issuances: {
+        Row: {
+          attempted_at: string
+          library_id: string
+          object_path: string
+          observed_at: string | null
+          request_id: string
+          reservation_expires_at: string
+          sign_before: string
+          token_expires_at: string | null
+          upload_id: string
+        }
+        Insert: {
+          attempted_at: string
+          library_id: string
+          object_path: string
+          observed_at?: string | null
+          request_id: string
+          reservation_expires_at: string
+          sign_before: string
+          token_expires_at?: string | null
+          upload_id: string
+        }
+        Update: {
+          attempted_at?: string
+          library_id?: string
+          object_path?: string
+          observed_at?: string | null
+          request_id?: string
+          reservation_expires_at?: string
+          sign_before?: string
+          token_expires_at?: string | null
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_upload_issuances_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_upload_issuances_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: true
+            referencedRelation: "image_upload_intents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_upload_processing: {
+        Row: {
+          attempt: number
+          available_at: string
+          last_failure: string | null
+          lease_expires_at: string
+          lease_token: string
+          status: string
+          updated_at: string
+          upload_id: string
+        }
+        Insert: {
+          attempt: number
+          available_at: string
+          last_failure?: string | null
+          lease_expires_at: string
+          lease_token: string
+          status: string
+          updated_at: string
+          upload_id: string
+        }
+        Update: {
+          attempt?: number
+          available_at?: string
+          last_failure?: string | null
+          lease_expires_at?: string
+          lease_token?: string
+          status?: string
+          updated_at?: string
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_upload_processing_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: true
+            referencedRelation: "image_upload_intents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_upload_publications: {
+        Row: {
+          attempt: number
+          book_id: string
+          file_metadata: Json
+          followup_status: string | null
+          id: string
+          image_id: string | null
+          lease_token: string
+          library_id: string
+          object_path: string
+          prepared_at: string
+          published_at: string | null
+          source_id: string | null
+          status: string
+          storage_object_id: string | null
+          upload_id: string
+          verified_metadata: Json
+        }
+        Insert: {
+          attempt: number
+          book_id: string
+          file_metadata: Json
+          followup_status?: string | null
+          id?: string
+          image_id?: string | null
+          lease_token: string
+          library_id: string
+          object_path: string
+          prepared_at?: string
+          published_at?: string | null
+          source_id?: string | null
+          status?: string
+          storage_object_id?: string | null
+          upload_id: string
+          verified_metadata: Json
+        }
+        Update: {
+          attempt?: number
+          book_id?: string
+          file_metadata?: Json
+          followup_status?: string | null
+          id?: string
+          image_id?: string | null
+          lease_token?: string
+          library_id?: string
+          object_path?: string
+          prepared_at?: string
+          published_at?: string | null
+          source_id?: string | null
+          status?: string
+          storage_object_id?: string | null
+          upload_id?: string
+          verified_metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_upload_publications_book_fk"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "image_upload_publications_image_fk"
+            columns: ["library_id", "image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "image_upload_publications_source_fk"
+            columns: ["library_id", "source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "image_upload_publications_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "image_upload_intents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      image_upload_retirements: {
+        Row: {
+          inspect_after: string
+          library_id: string
+          outcome: string
+          protected_publication_id: string | null
+          retired_at: string
+          upload_id: string
+        }
+        Insert: {
+          inspect_after: string
+          library_id: string
+          outcome: string
+          protected_publication_id?: string | null
+          retired_at: string
+          upload_id: string
+        }
+        Update: {
+          inspect_after?: string
+          library_id?: string
+          outcome?: string
+          protected_publication_id?: string | null
+          retired_at?: string
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "image_upload_retirements_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_upload_retirements_protected_publication_id_fkey"
+            columns: ["protected_publication_id"]
+            isOneToOne: false
+            referencedRelation: "image_upload_publications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_upload_retirements_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: true
+            referencedRelation: "image_upload_intents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       images: {
         Row: {
           book_id: string
@@ -1058,6 +1483,164 @@ export type Database = {
           },
         ]
       }
+      ocr_asset_grants: {
+        Row: {
+          consumed_at: string | null
+          content_sha256: string
+          execution_generation: number
+          expected_ocr_version: number
+          expires_at: string
+          id: string
+          image_id: string
+          issued_at: string
+          lease_token: string
+          library_id: string
+          run_id: string
+          step_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          content_sha256: string
+          execution_generation: number
+          expected_ocr_version: number
+          expires_at: string
+          id?: string
+          image_id: string
+          issued_at?: string
+          lease_token: string
+          library_id: string
+          run_id: string
+          step_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          content_sha256?: string
+          execution_generation?: number
+          expected_ocr_version?: number
+          expires_at?: string
+          id?: string
+          image_id?: string
+          issued_at?: string
+          lease_token?: string
+          library_id?: string
+          run_id?: string
+          step_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocr_asset_grants_image_fk"
+            columns: ["library_id", "image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "ocr_asset_grants_step_fk"
+            columns: ["library_id", "run_id", "step_id"]
+            isOneToOne: false
+            referencedRelation: "research_steps"
+            referencedColumns: ["library_id", "run_id", "id"]
+          },
+        ]
+      }
+      ocr_batch_admissions: {
+        Row: {
+          confirmation_id: string
+          confirmed_at: string
+          confirmed_by: string | null
+          created_at: string
+          enqueued_at: string | null
+          id: string
+          library_id: string
+          manifest_sha256: string
+          run_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          confirmation_id: string
+          confirmed_at?: string
+          confirmed_by?: string | null
+          created_at?: string
+          enqueued_at?: string | null
+          id?: string
+          library_id: string
+          manifest_sha256: string
+          run_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          confirmation_id?: string
+          confirmed_at?: string
+          confirmed_by?: string | null
+          created_at?: string
+          enqueued_at?: string | null
+          id?: string
+          library_id?: string
+          manifest_sha256?: string
+          run_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocr_batch_admissions_run_fk"
+            columns: ["library_id", "run_id"]
+            isOneToOne: true
+            referencedRelation: "research_runs"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      ocr_batch_items: {
+        Row: {
+          created_at: string
+          expected_ocr_version: number
+          image_content_sha256: string
+          image_id: string
+          library_id: string
+          position: number
+          run_id: string
+          step_id: string
+        }
+        Insert: {
+          created_at?: string
+          expected_ocr_version: number
+          image_content_sha256: string
+          image_id: string
+          library_id: string
+          position: number
+          run_id: string
+          step_id: string
+        }
+        Update: {
+          created_at?: string
+          expected_ocr_version?: number
+          image_content_sha256?: string
+          image_id?: string
+          library_id?: string
+          position?: number
+          run_id?: string
+          step_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ocr_batch_items_image_fk"
+            columns: ["library_id", "image_id"]
+            isOneToOne: false
+            referencedRelation: "images"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "ocr_batch_items_step_fk"
+            columns: ["library_id", "run_id", "step_id"]
+            isOneToOne: true
+            referencedRelation: "research_steps"
+            referencedColumns: ["library_id", "run_id", "id"]
+          },
+        ]
+      }
       people: {
         Row: {
           bio: string | null
@@ -1102,6 +1685,346 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "libraries"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_cost_reservations: {
+        Row: {
+          actual_cost_microusd: number | null
+          completion_tokens: number | null
+          created_at: string
+          execution_generation: number
+          id: string
+          lease_token: string
+          library_id: string
+          model: string
+          prompt_tokens: number | null
+          provider: string
+          provider_request_id: string | null
+          release_reason: string | null
+          released_at: string | null
+          reservation_key: string
+          reserved_microusd: number
+          run_id: string
+          settled_at: string | null
+          started_at: string | null
+          status: string
+          step_id: string
+          updated_at: string
+        }
+        Insert: {
+          actual_cost_microusd?: number | null
+          completion_tokens?: number | null
+          created_at?: string
+          execution_generation: number
+          id?: string
+          lease_token: string
+          library_id: string
+          model: string
+          prompt_tokens?: number | null
+          provider: string
+          provider_request_id?: string | null
+          release_reason?: string | null
+          released_at?: string | null
+          reservation_key: string
+          reserved_microusd: number
+          run_id: string
+          settled_at?: string | null
+          started_at?: string | null
+          status?: string
+          step_id: string
+          updated_at?: string
+        }
+        Update: {
+          actual_cost_microusd?: number | null
+          completion_tokens?: number | null
+          created_at?: string
+          execution_generation?: number
+          id?: string
+          lease_token?: string
+          library_id?: string
+          model?: string
+          prompt_tokens?: number | null
+          provider?: string
+          provider_request_id?: string | null
+          release_reason?: string | null
+          released_at?: string | null
+          reservation_key?: string
+          reserved_microusd?: number
+          run_id?: string
+          settled_at?: string | null
+          started_at?: string | null
+          status?: string
+          step_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_cost_reservations_step_fk"
+            columns: ["library_id", "run_id", "step_id"]
+            isOneToOne: false
+            referencedRelation: "research_steps"
+            referencedColumns: ["library_id", "run_id", "id"]
+          },
+        ]
+      }
+      research_runs: {
+        Row: {
+          cancel_reason: string | null
+          cancel_requested_at: string | null
+          completed_steps: number
+          correlation_id: string
+          cost_budget_microusd: number | null
+          created_at: string
+          dead_letter_steps: number
+          deadline_at: string | null
+          error_class: string | null
+          error_message: string | null
+          execution_generation: number
+          failed_steps: number
+          finished_at: string | null
+          id: string
+          idempotency_key: string
+          kind: string
+          last_progress_at: string | null
+          library_id: string
+          max_attempts_per_step: number
+          max_concurrent_steps: number
+          max_depth: number
+          max_sources: number
+          max_steps: number
+          plan: Json
+          plan_version: number
+          planned_steps: number
+          queue_family: string
+          requested_by: string | null
+          requested_by_actor: string
+          result: Json
+          started_at: string | null
+          status: string
+          subject_id: string | null
+          subject_type: string
+          token_budget: number | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          cancel_requested_at?: string | null
+          completed_steps?: number
+          correlation_id?: string
+          cost_budget_microusd?: number | null
+          created_at?: string
+          dead_letter_steps?: number
+          deadline_at?: string | null
+          error_class?: string | null
+          error_message?: string | null
+          execution_generation?: number
+          failed_steps?: number
+          finished_at?: string | null
+          id?: string
+          idempotency_key: string
+          kind: string
+          last_progress_at?: string | null
+          library_id: string
+          max_attempts_per_step?: number
+          max_concurrent_steps?: number
+          max_depth?: number
+          max_sources?: number
+          max_steps?: number
+          plan?: Json
+          plan_version?: number
+          planned_steps?: number
+          queue_family: string
+          requested_by?: string | null
+          requested_by_actor?: string
+          result?: Json
+          started_at?: string | null
+          status?: string
+          subject_id?: string | null
+          subject_type: string
+          token_budget?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          cancel_requested_at?: string | null
+          completed_steps?: number
+          correlation_id?: string
+          cost_budget_microusd?: number | null
+          created_at?: string
+          dead_letter_steps?: number
+          deadline_at?: string | null
+          error_class?: string | null
+          error_message?: string | null
+          execution_generation?: number
+          failed_steps?: number
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          last_progress_at?: string | null
+          library_id?: string
+          max_attempts_per_step?: number
+          max_concurrent_steps?: number
+          max_depth?: number
+          max_sources?: number
+          max_steps?: number
+          plan?: Json
+          plan_version?: number
+          planned_steps?: number
+          queue_family?: string
+          requested_by?: string | null
+          requested_by_actor?: string
+          result?: Json
+          started_at?: string | null
+          status?: string
+          subject_id?: string | null
+          subject_type?: string
+          token_budget?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_runs_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_steps: {
+        Row: {
+          active_processing_token: string | null
+          active_queue_job_id: string | null
+          attempts: number
+          completed_at: string | null
+          completion_tokens: number | null
+          created_at: string
+          depth: number
+          error_class: string | null
+          error_message: string | null
+          estimated_cost_microusd: number | null
+          execution_generation: number
+          id: string
+          idempotency_key: string
+          kind: string
+          last_heartbeat_at: string | null
+          lease_expires_at: string | null
+          lease_owner: string | null
+          lease_token: string | null
+          leased_at: string | null
+          library_id: string
+          max_attempts: number
+          model: string | null
+          parent_step_id: string | null
+          payload: Json
+          payload_version: number
+          position: number
+          priority: number
+          prompt_tokens: number | null
+          provider: string | null
+          queue_family: string
+          result: Json
+          run_id: string
+          scheduled_for: string
+          stage: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          active_processing_token?: string | null
+          active_queue_job_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          completion_tokens?: number | null
+          created_at?: string
+          depth?: number
+          error_class?: string | null
+          error_message?: string | null
+          estimated_cost_microusd?: number | null
+          execution_generation?: number
+          id?: string
+          idempotency_key: string
+          kind: string
+          last_heartbeat_at?: string | null
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          lease_token?: string | null
+          leased_at?: string | null
+          library_id: string
+          max_attempts?: number
+          model?: string | null
+          parent_step_id?: string | null
+          payload?: Json
+          payload_version?: number
+          position: number
+          priority?: number
+          prompt_tokens?: number | null
+          provider?: string | null
+          queue_family: string
+          result?: Json
+          run_id: string
+          scheduled_for?: string
+          stage: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          active_processing_token?: string | null
+          active_queue_job_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          completion_tokens?: number | null
+          created_at?: string
+          depth?: number
+          error_class?: string | null
+          error_message?: string | null
+          estimated_cost_microusd?: number | null
+          execution_generation?: number
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          last_heartbeat_at?: string | null
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          lease_token?: string | null
+          leased_at?: string | null
+          library_id?: string
+          max_attempts?: number
+          model?: string | null
+          parent_step_id?: string | null
+          payload?: Json
+          payload_version?: number
+          position?: number
+          priority?: number
+          prompt_tokens?: number | null
+          provider?: string | null
+          queue_family?: string
+          result?: Json
+          run_id?: string
+          scheduled_for?: string
+          stage?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_steps_parent_run_library_fk"
+            columns: ["library_id", "run_id", "parent_step_id"]
+            isOneToOne: false
+            referencedRelation: "research_steps"
+            referencedColumns: ["library_id", "run_id", "id"]
+          },
+          {
+            foreignKeyName: "research_steps_run_library_fk"
+            columns: ["library_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "research_runs"
+            referencedColumns: ["library_id", "id"]
           },
         ]
       }
@@ -1600,7 +2523,415 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      account_deletion_library_ids: {
+        Args: { p_user_id: string }
+        Returns: string[]
+      }
+      account_deletion_storage_scope: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      authorize_image_upload_cleanup: {
+        Args: {
+          p_generation: number
+          p_lease_token: string
+          p_library_id: string
+          p_target_id: string
+        }
+        Returns: Json
+      }
+      authorize_image_upload_download: {
+        Args: {
+          p_attempt: number
+          p_lease_token: string
+          p_library_id: string
+          p_upload_id: string
+        }
+        Returns: Json
+      }
+      authorize_ocr_provider_call: {
+        Args: {
+          p_execution_generation: number
+          p_image_id: string
+          p_lease_token: string
+          p_processing_token: string
+          p_queue_row_id: string
+          p_reservation_id: string
+          p_step_id: string
+        }
+        Returns: {
+          authorized: boolean
+          max_output_chars: number
+          model: string
+          outcome: string
+          provider: string
+        }[]
+      }
+      begin_image_upload_issuance: {
+        Args: {
+          p_library_id: string
+          p_request_id: string
+          p_requested_by: string
+          p_upload_id: string
+        }
+        Returns: Json
+      }
+      claim_image_upload: {
+        Args: {
+          p_lease_token: string
+          p_library_id: string
+          p_upload_id: string
+        }
+        Returns: Json
+      }
+      claim_image_upload_cleanup: {
+        Args: {
+          p_lease_token: string
+          p_library_id: string
+          p_target_id: string
+        }
+        Returns: Json
+      }
+      confirm_explicit_ocr_batch_admission: {
+        Args: {
+          p_book_id: string
+          p_confirmation_id: string
+          p_expected_ocr_versions: number[]
+          p_image_content_sha256s: string[]
+          p_image_ids: string[]
+          p_library_id: string
+          p_manifest_sha256: string
+          p_requested_by: string
+          p_run_id: string
+          p_step_ids: string[]
+        }
+        Returns: {
+          admission_id: string
+          admission_status: string
+          created: boolean
+        }[]
+      }
+      consume_ocr_asset_grant: {
+        Args: { p_grant_id: string }
+        Returns: {
+          bucket_id: string
+          expires_at: string
+          mime_type: string
+          object_path: string
+        }[]
+      }
+      fail_image_upload: {
+        Args: {
+          p_attempt: number
+          p_failure_code: string
+          p_lease_token: string
+          p_library_id: string
+          p_upload_id: string
+        }
+        Returns: boolean
+      }
+      finalize_image_upload_publication: {
+        Args: {
+          p_attempt: number
+          p_lease_token: string
+          p_library_id: string
+          p_publication_id: string
+          p_storage_object_id: string
+          p_upload_id: string
+          p_verified: Json
+        }
+        Returns: Json
+      }
+      finalize_ocr_batch_admission_dispatch: {
+        Args: { p_admission_id: string; p_dispatch_expires_at: string }
+        Returns: {
+          admission_id: string
+          enqueued_at: string
+        }[]
+      }
+      finish_image_upload_cleanup: {
+        Args: {
+          p_generation: number
+          p_lease_token: string
+          p_library_id: string
+          p_outcome: string
+          p_target_id: string
+        }
+        Returns: boolean
+      }
+      issue_ocr_asset_grant: {
+        Args: {
+          p_execution_generation: number
+          p_image_id: string
+          p_lease_token: string
+          p_step_id: string
+        }
+        Returns: {
+          expires_at: string
+          grant_id: string
+        }[]
+      }
+      list_image_upload_candidates: {
+        Args: { p_library_id: string }
+        Returns: {
+          upload_id: string
+        }[]
+      }
+      list_image_upload_cleanup_candidates: {
+        Args: { p_library_id: string }
+        Returns: {
+          target_id: string
+        }[]
+      }
+      list_image_upload_retirement_candidates: {
+        Args: { p_library_id: string }
+        Returns: {
+          upload_id: string
+        }[]
+      }
+      lock_image_upload_cleanup: {
+        Args: { p_library_id: string; p_target_id: string }
+        Returns: {
+          id: string
+          kind: string
+          library_id: string
+          object_path: string
+          publication_id: string | null
+          upload_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "image_upload_cleanup_targets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      lock_image_upload_publication: {
+        Args: {
+          p_attempt: number
+          p_lease_token: string
+          p_library_id: string
+          p_upload_id: string
+        }
+        Returns: {
+          book_id: string
+          chapter_id: string | null
+          created_at: string
+          expires_at: string
+          file_metadata: Json
+          id: string
+          idempotency_key: string
+          library_id: string
+          object_path: string
+          requested_by: string
+          signing_deadline: string
+          status: string
+          submitted_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "image_upload_intents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      observe_image_upload_issuance: {
+        Args: {
+          p_library_id: string
+          p_request_id: string
+          p_token_expires_at: string
+          p_upload_id: string
+        }
+        Returns: boolean
+      }
+      persist_and_settle_ocr_result: {
+        Args: {
+          p_actual_cost_microusd: number
+          p_completion_tokens: number
+          p_confidence: number
+          p_execution_generation: number
+          p_extracted_text: string
+          p_image_id: string
+          p_language: string
+          p_lease_token: string
+          p_processing_token: string
+          p_prompt_tokens: number
+          p_provider_request_id: string
+          p_queue_row_id: string
+          p_reservation_id: string
+          p_step_id: string
+          p_summary: string
+        }
+        Returns: {
+          accepted: boolean
+          content_sha256: string
+          model: string
+          ocr_version: number
+          outcome: string
+          over_budget: boolean
+          provider: string
+          remaining_microusd: number
+          source_chunk_id: string
+          total_spent_microusd: number
+        }[]
+      }
+      plan_explicit_ocr_batch: {
+        Args: {
+          p_book_id: string
+          p_idempotency_key: string
+          p_image_ids: string[]
+          p_library_id: string
+          p_requested_by: string
+        }
+        Returns: {
+          created: boolean
+          run_id: string
+          step_ids: string[]
+        }[]
+      }
+      prepare_image_upload_publication: {
+        Args: {
+          p_attempt: number
+          p_lease_token: string
+          p_library_id: string
+          p_upload_id: string
+          p_verified: Json
+        }
+        Returns: Json
+      }
+      purge_account_deletion: { Args: { p_user_id: string }; Returns: Json }
+      release_provider_cost: {
+        Args: {
+          p_execution_generation: number
+          p_lease_token: string
+          p_reason: string
+          p_reservation_id: string
+        }
+        Returns: {
+          accepted: boolean
+          outcome: string
+          remaining_microusd: number
+        }[]
+      }
+      reserve_image_upload: {
+        Args: {
+          p_book_id: string
+          p_file: Json
+          p_idempotency_key: string
+          p_library_id: string
+        }
+        Returns: {
+          book_id: string
+          chapter_id: string | null
+          created_at: string
+          expires_at: string
+          file_metadata: Json
+          id: string
+          idempotency_key: string
+          library_id: string
+          object_path: string
+          requested_by: string
+          signing_deadline: string
+          status: string
+          submitted_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "image_upload_intents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reserve_provider_cost: {
+        Args: {
+          p_execution_generation: number
+          p_lease_token: string
+          p_model: string
+          p_provider: string
+          p_reservation_key: string
+          p_reserved_microusd: number
+          p_step_id: string
+        }
+        Returns: {
+          created: boolean
+          outcome: string
+          remaining_microusd: number
+          reservation_amount_microusd: number
+          reservation_id: string
+        }[]
+      }
+      retire_image_upload: {
+        Args: { p_library_id: string; p_upload_id: string }
+        Returns: Json
+      }
+      settle_provider_cost: {
+        Args: {
+          p_actual_cost_microusd: number
+          p_completion_tokens: number
+          p_execution_generation: number
+          p_lease_token: string
+          p_prompt_tokens: number
+          p_provider_request_id: string
+          p_reservation_id: string
+        }
+        Returns: {
+          accepted: boolean
+          outcome: string
+          over_budget: boolean
+          remaining_microusd: number
+          total_spent_microusd: number
+        }[]
+      }
+      start_provider_cost: {
+        Args: {
+          p_execution_generation: number
+          p_lease_token: string
+          p_reservation_id: string
+        }
+        Returns: {
+          authorized: boolean
+          outcome: string
+        }[]
+      }
+      submit_image_upload: {
+        Args: { p_library_id: string; p_upload_id: string }
+        Returns: {
+          book_id: string
+          chapter_id: string | null
+          created_at: string
+          expires_at: string
+          file_metadata: Json
+          id: string
+          idempotency_key: string
+          library_id: string
+          object_path: string
+          requested_by: string
+          signing_deadline: string
+          status: string
+          submitted_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "image_upload_intents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      validate_ocr_asset_lease: {
+        Args: {
+          p_execution_generation: number
+          p_image_id: string
+          p_lease_token: string
+          p_step_id: string
+        }
+        Returns: {
+          validated_content_sha256: string
+          validated_expected_ocr_version: number
+          validated_expires_at: string
+          validated_library_id: string
+          validated_run_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1623,6 +2954,7 @@ export type Database = {
           last_error: string | null
           lease_expires_at: string | null
           next_attempt_at: string | null
+          posthog_deletion_status: string | null
           processing_started_at: string | null
           requested_at: string
           scheduled_for: string
@@ -1641,6 +2973,7 @@ export type Database = {
           last_error?: string | null
           lease_expires_at?: string | null
           next_attempt_at?: string | null
+          posthog_deletion_status?: string | null
           processing_started_at?: string | null
           requested_at?: string
           scheduled_for?: string
@@ -1659,6 +2992,7 @@ export type Database = {
           last_error?: string | null
           lease_expires_at?: string | null
           next_attempt_at?: string | null
+          posthog_deletion_status?: string | null
           processing_started_at?: string | null
           requested_at?: string
           scheduled_for?: string
@@ -2904,6 +4238,155 @@ export type Database = {
           },
         ]
       }
+      agentic_chat_answer_comparison_candidates: {
+        Row: {
+          answer: string
+          answer_sha256: string
+          comparison_id: string
+          created_at: string
+          id: string
+          identity: Json
+          position: number
+          receipts: Json
+          source_packet_sha256: string
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          answer_sha256: string
+          comparison_id: string
+          created_at?: string
+          id: string
+          identity: Json
+          position: number
+          receipts: Json
+          source_packet_sha256: string
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          answer_sha256?: string
+          comparison_id?: string
+          created_at?: string
+          id?: string
+          identity?: Json
+          position?: number
+          receipts?: Json
+          source_packet_sha256?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_answer_comparison_candi_comparison_id_user_id_fkey"
+            columns: ["comparison_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_chat_answer_comparisons"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      agentic_chat_answer_comparison_votes: {
+        Row: {
+          choice: string
+          comparison_id: string
+          label_assignment: Json
+          preferred_candidate_id: string | null
+          reason: string
+          revealed_at: string | null
+          reviewer_user_id: string
+          rubric_scores: Json
+          voted_at: string
+        }
+        Insert: {
+          choice: string
+          comparison_id: string
+          label_assignment: Json
+          preferred_candidate_id?: string | null
+          reason: string
+          revealed_at?: string | null
+          reviewer_user_id: string
+          rubric_scores: Json
+          voted_at?: string
+        }
+        Update: {
+          choice?: string
+          comparison_id?: string
+          label_assignment?: Json
+          preferred_candidate_id?: string | null
+          reason?: string
+          revealed_at?: string | null
+          reviewer_user_id?: string
+          rubric_scores?: Json
+          voted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_answer_compariso_preferred_candidate_id_compa_fkey"
+            columns: ["preferred_candidate_id", "comparison_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_chat_answer_comparison_candidates"
+            referencedColumns: ["id", "comparison_id"]
+          },
+          {
+            foreignKeyName: "agentic_chat_answer_comparison_votes_comparison_id_fkey"
+            columns: ["comparison_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_chat_answer_comparisons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agentic_chat_answer_comparison_votes_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agentic_chat_answer_comparisons: {
+        Row: {
+          created_at: string
+          id: string
+          question: string
+          rubric: Json
+          set_kind: string
+          source_packet: Json
+          source_packet_sha256: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          question: string
+          rubric: Json
+          set_kind: string
+          source_packet: Json
+          source_packet_sha256: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question?: string
+          rubric?: Json
+          set_kind?: string
+          source_packet?: Json
+          source_packet_sha256?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_answer_comparisons_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agentic_chat_context_snapshots: {
         Row: {
           cache_key: string
@@ -3116,6 +4599,135 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      agentic_chat_specialist_drafts: {
+        Row: {
+          draft: Json
+          draft_hash: string
+          id: string
+          revision: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          draft: Json
+          draft_hash: string
+          id: string
+          revision: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          draft?: Json
+          draft_hash?: string
+          id?: string
+          revision?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_specialist_drafts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agentic_chat_specialist_recommendations: {
+        Row: {
+          attempt_token: string
+          created_at: string
+          expires_at: string
+          finished_at: string | null
+          id: string
+          input: Json
+          input_hash: string
+          project_id: string
+          question: string
+          result: Json | null
+          result_hash: string | null
+          user_id: string
+        }
+        Insert: {
+          attempt_token: string
+          created_at?: string
+          expires_at?: string
+          finished_at?: string | null
+          id: string
+          input: Json
+          input_hash: string
+          project_id: string
+          question: string
+          result?: Json | null
+          result_hash?: string | null
+          user_id: string
+        }
+        Update: {
+          attempt_token?: string
+          created_at?: string
+          expires_at?: string
+          finished_at?: string | null
+          id?: string
+          input?: Json
+          input_hash?: string
+          project_id?: string
+          question?: string
+          result?: Json | null
+          result_hash?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_specialist_recommendations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agentic_chat_specialist_versions: {
+        Row: {
+          created_at: string
+          draft_id: string
+          draft_revision: number
+          name: string
+          snapshot: Json
+          snapshot_hash: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          draft_id: string
+          draft_revision: number
+          name?: string
+          snapshot: Json
+          snapshot_hash: string
+          user_id: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          draft_id?: string
+          draft_revision?: number
+          name?: string
+          snapshot?: Json
+          snapshot_hash?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_specialist_versions_draft_id_user_id_fkey"
+            columns: ["draft_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_chat_specialist_drafts"
+            referencedColumns: ["id", "user_id"]
           },
         ]
       }
@@ -4583,6 +6195,13 @@ export type Database = {
             referencedRelation: "onto_documents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chat_capture_checkpoints_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       chat_compressions: {
@@ -5477,6 +7096,47 @@ export type Database = {
           },
         ]
       }
+      chat_turn_document_read_batches: {
+        Row: {
+          created_at: string
+          document_ids: Json
+          execution_generation: number
+          request_hash: string
+          result: Json
+          result_hash: string
+          step_attempt_id: string
+          turn_run_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_ids: Json
+          execution_generation: number
+          request_hash: string
+          result: Json
+          result_hash: string
+          step_attempt_id: string
+          turn_run_id: string
+        }
+        Update: {
+          created_at?: string
+          document_ids?: Json
+          execution_generation?: number
+          request_hash?: string
+          result?: Json
+          result_hash?: string
+          step_attempt_id?: string
+          turn_run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_turn_document_read_batches_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: true
+            referencedRelation: "chat_turn_workflow_runs"
+            referencedColumns: ["turn_run_id"]
+          },
+        ]
+      }
       chat_turn_effects: {
         Row: {
           canonical_argument_hash: string
@@ -5629,9 +7289,12 @@ export type Database = {
           created_at: string
           history: Json
           history_bytes: number
+          history_hash: string | null
           history_source: string
           id: string
-          prepared: Json
+          prepared: Json | null
+          request: Json | null
+          request_hash: string | null
           retain_until: string
           session_id: string
           source_prepared_prompt_id: string | null
@@ -5645,9 +7308,12 @@ export type Database = {
           created_at?: string
           history: Json
           history_bytes: number
+          history_hash?: string | null
           history_source: string
           id?: string
-          prepared: Json
+          prepared?: Json | null
+          request?: Json | null
+          request_hash?: string | null
           retain_until?: string
           session_id: string
           source_prepared_prompt_id?: string | null
@@ -5661,9 +7327,12 @@ export type Database = {
           created_at?: string
           history?: Json
           history_bytes?: number
+          history_hash?: string | null
           history_source?: string
           id?: string
-          prepared?: Json
+          prepared?: Json | null
+          request?: Json | null
+          request_hash?: string | null
           retain_until?: string
           session_id?: string
           source_prepared_prompt_id?: string | null
@@ -6025,6 +7694,100 @@ export type Database = {
           },
         ]
       }
+      chat_turn_specialist_selection_shadows: {
+        Row: {
+          attempt_token: string
+          completed_at: string | null
+          context_hash: string
+          context_id: string
+          created_at: string
+          execution_generation: number
+          input: Json
+          input_hash: string
+          request_hash: string
+          result: Json | null
+          result_hash: string | null
+          turn_run_id: string
+        }
+        Insert: {
+          attempt_token: string
+          completed_at?: string | null
+          context_hash: string
+          context_id: string
+          created_at?: string
+          execution_generation: number
+          input: Json
+          input_hash: string
+          request_hash: string
+          result?: Json | null
+          result_hash?: string | null
+          turn_run_id: string
+        }
+        Update: {
+          attempt_token?: string
+          completed_at?: string | null
+          context_hash?: string
+          context_id?: string
+          created_at?: string
+          execution_generation?: number
+          input?: Json
+          input_hash?: string
+          request_hash?: string
+          result?: Json | null
+          result_hash?: string | null
+          turn_run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_turn_specialist_selection_shadows_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: true
+            referencedRelation: "chat_turn_workflow_runs"
+            referencedColumns: ["turn_run_id"]
+          },
+        ]
+      }
+      chat_turn_specialist_snapshots: {
+        Row: {
+          created_at: string
+          project_id: string
+          request_hash: string
+          session_id: string
+          snapshot: Json
+          snapshot_hash: string
+          turn_run_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          project_id: string
+          request_hash: string
+          session_id: string
+          snapshot: Json
+          snapshot_hash: string
+          turn_run_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          project_id?: string
+          request_hash?: string
+          session_id?: string
+          snapshot?: Json
+          snapshot_hash?: string
+          turn_run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_turn_specialist_snapshots_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: true
+            referencedRelation: "chat_turn_workflow_runs"
+            referencedColumns: ["turn_run_id"]
+          },
+        ]
+      }
       chat_turn_stream_state: {
         Row: {
           assistant_text: string
@@ -6087,6 +7850,358 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "chat_turn_runs"
             referencedColumns: ["id", "session_id", "user_id"]
+          },
+        ]
+      }
+      chat_turn_workflow_dispatches: {
+        Row: {
+          actual_micro_usd: number | null
+          created_at: string
+          dispatch_id: string
+          dispatch_kind: string
+          dispatched_at: string | null
+          estimated_input_tokens: number
+          max_output_tokens: number
+          model_requested: string
+          physical_attempt: number
+          pricing: Json
+          provider_request_id: string | null
+          provider_usage: Json | null
+          reconciled_at: string | null
+          reconciliation_id: string | null
+          reconciliation_receipt: Json | null
+          reserved_at: string
+          reserved_generation: number
+          reserved_micro_usd: number
+          serialized_request_bytes: number
+          session_id: string
+          settled_at: string | null
+          settlement_token: string
+          state: string
+          step_attempt_id: string
+          step_key: string
+          turn_run_id: string
+          uncertain_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_micro_usd?: number | null
+          created_at?: string
+          dispatch_id: string
+          dispatch_kind: string
+          dispatched_at?: string | null
+          estimated_input_tokens: number
+          max_output_tokens: number
+          model_requested: string
+          physical_attempt: number
+          pricing: Json
+          provider_request_id?: string | null
+          provider_usage?: Json | null
+          reconciled_at?: string | null
+          reconciliation_id?: string | null
+          reconciliation_receipt?: Json | null
+          reserved_at?: string
+          reserved_generation: number
+          reserved_micro_usd: number
+          serialized_request_bytes: number
+          session_id: string
+          settled_at?: string | null
+          settlement_token?: string
+          state?: string
+          step_attempt_id: string
+          step_key: string
+          turn_run_id: string
+          uncertain_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_micro_usd?: number | null
+          created_at?: string
+          dispatch_id?: string
+          dispatch_kind?: string
+          dispatched_at?: string | null
+          estimated_input_tokens?: number
+          max_output_tokens?: number
+          model_requested?: string
+          physical_attempt?: number
+          pricing?: Json
+          provider_request_id?: string | null
+          provider_usage?: Json | null
+          reconciled_at?: string | null
+          reconciliation_id?: string | null
+          reconciliation_receipt?: Json | null
+          reserved_at?: string
+          reserved_generation?: number
+          reserved_micro_usd?: number
+          serialized_request_bytes?: number
+          session_id?: string
+          settled_at?: string | null
+          settlement_token?: string
+          state?: string
+          step_attempt_id?: string
+          step_key?: string
+          turn_run_id?: string
+          uncertain_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_turn_workflow_dispatches_turn_scope"
+            columns: ["turn_run_id", "session_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id", "session_id", "user_id"]
+          },
+        ]
+      }
+      chat_turn_workflow_runs: {
+        Row: {
+          answer_editor_step_attempt_id: string | null
+          answer_id: string | null
+          answer_last_batch_id: string | null
+          answer_text: string
+          answer_text_sha256: string | null
+          context_accepted_at: string | null
+          context_accepted_generation: number | null
+          context_bytes: number | null
+          context_hash: string | null
+          context_id: string | null
+          context_identity: Json | null
+          context_payload: Json | null
+          created_at: string
+          deadline_at: string | null
+          evidence_versions: Json | null
+          finished_at: string | null
+          first_execution_started_at: string | null
+          max_physical_dispatches: number
+          max_spend_micro_usd: number
+          max_step_attempts: number
+          phase: string
+          plan: Json | null
+          plan_hash: string | null
+          plan_installed_at: string | null
+          plan_installed_generation: number | null
+          plan_version: string | null
+          policy: Json
+          policy_ref: string
+          preparation_version: string | null
+          project_id: string
+          recovery_count: number
+          request_artifact_id: string
+          request_hash: string
+          session_id: string
+          synthesis_accepted_at: string | null
+          synthesis_headroom_micro_usd: number
+          synthesis_quality: string | null
+          synthesis_status: string
+          terminal_outcome: string | null
+          turn_run_id: string
+          updated_at: string
+          user_id: string
+          whole_run_lifetime_ms: number
+          workflow_version: string
+        }
+        Insert: {
+          answer_editor_step_attempt_id?: string | null
+          answer_id?: string | null
+          answer_last_batch_id?: string | null
+          answer_text?: string
+          answer_text_sha256?: string | null
+          context_accepted_at?: string | null
+          context_accepted_generation?: number | null
+          context_bytes?: number | null
+          context_hash?: string | null
+          context_id?: string | null
+          context_identity?: Json | null
+          context_payload?: Json | null
+          created_at?: string
+          deadline_at?: string | null
+          evidence_versions?: Json | null
+          finished_at?: string | null
+          first_execution_started_at?: string | null
+          max_physical_dispatches: number
+          max_spend_micro_usd: number
+          max_step_attempts: number
+          phase?: string
+          plan?: Json | null
+          plan_hash?: string | null
+          plan_installed_at?: string | null
+          plan_installed_generation?: number | null
+          plan_version?: string | null
+          policy: Json
+          policy_ref: string
+          preparation_version?: string | null
+          project_id: string
+          recovery_count?: number
+          request_artifact_id: string
+          request_hash: string
+          session_id: string
+          synthesis_accepted_at?: string | null
+          synthesis_headroom_micro_usd: number
+          synthesis_quality?: string | null
+          synthesis_status?: string
+          terminal_outcome?: string | null
+          turn_run_id: string
+          updated_at?: string
+          user_id: string
+          whole_run_lifetime_ms: number
+          workflow_version?: string
+        }
+        Update: {
+          answer_editor_step_attempt_id?: string | null
+          answer_id?: string | null
+          answer_last_batch_id?: string | null
+          answer_text?: string
+          answer_text_sha256?: string | null
+          context_accepted_at?: string | null
+          context_accepted_generation?: number | null
+          context_bytes?: number | null
+          context_hash?: string | null
+          context_id?: string | null
+          context_identity?: Json | null
+          context_payload?: Json | null
+          created_at?: string
+          deadline_at?: string | null
+          evidence_versions?: Json | null
+          finished_at?: string | null
+          first_execution_started_at?: string | null
+          max_physical_dispatches?: number
+          max_spend_micro_usd?: number
+          max_step_attempts?: number
+          phase?: string
+          plan?: Json | null
+          plan_hash?: string | null
+          plan_installed_at?: string | null
+          plan_installed_generation?: number | null
+          plan_version?: string | null
+          policy?: Json
+          policy_ref?: string
+          preparation_version?: string | null
+          project_id?: string
+          recovery_count?: number
+          request_artifact_id?: string
+          request_hash?: string
+          session_id?: string
+          synthesis_accepted_at?: string | null
+          synthesis_headroom_micro_usd?: number
+          synthesis_quality?: string | null
+          synthesis_status?: string
+          terminal_outcome?: string | null
+          turn_run_id?: string
+          updated_at?: string
+          user_id?: string
+          whole_run_lifetime_ms?: number
+          workflow_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_turn_workflow_runs_request"
+            columns: ["request_artifact_id", "turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_input_artifacts"
+            referencedColumns: ["id", "turn_run_id"]
+          },
+          {
+            foreignKeyName: "fk_chat_turn_workflow_runs_turn_scope"
+            columns: ["turn_run_id", "session_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id", "session_id", "user_id"]
+          },
+        ]
+      }
+      chat_turn_workflow_steps: {
+        Row: {
+          accepted_at: string | null
+          accepted_attempt_id: string | null
+          assignment: Json
+          attempt_ids: string[]
+          attempts_used: number
+          capability: string
+          claimed_at: string | null
+          created_at: string
+          current_attempt_generation: number | null
+          current_attempt_id: string | null
+          depends_on: string[]
+          failure_code: string | null
+          finished_at: string | null
+          input_evidence: Json | null
+          plan_version: string
+          quality: string | null
+          result: Json | null
+          result_bytes: number | null
+          result_hash: string | null
+          session_id: string
+          status: string
+          step_key: string
+          turn_run_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_attempt_id?: string | null
+          assignment: Json
+          attempt_ids?: string[]
+          attempts_used?: number
+          capability: string
+          claimed_at?: string | null
+          created_at?: string
+          current_attempt_generation?: number | null
+          current_attempt_id?: string | null
+          depends_on: string[]
+          failure_code?: string | null
+          finished_at?: string | null
+          input_evidence?: Json | null
+          plan_version: string
+          quality?: string | null
+          result?: Json | null
+          result_bytes?: number | null
+          result_hash?: string | null
+          session_id: string
+          status?: string
+          step_key: string
+          turn_run_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_attempt_id?: string | null
+          assignment?: Json
+          attempt_ids?: string[]
+          attempts_used?: number
+          capability?: string
+          claimed_at?: string | null
+          created_at?: string
+          current_attempt_generation?: number | null
+          current_attempt_id?: string | null
+          depends_on?: string[]
+          failure_code?: string | null
+          finished_at?: string | null
+          input_evidence?: Json | null
+          plan_version?: string
+          quality?: string | null
+          result?: Json | null
+          result_bytes?: number | null
+          result_hash?: string | null
+          session_id?: string
+          status?: string
+          step_key?: string
+          turn_run_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_chat_turn_workflow_steps_run"
+            columns: ["turn_run_id", "session_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_workflow_runs"
+            referencedColumns: ["turn_run_id", "session_id", "user_id"]
           },
         ]
       }
@@ -8214,6 +10329,54 @@ export type Database = {
           },
         ]
       }
+      email_scan_checks: {
+        Row: {
+          checked_at: string
+          connection_id: string
+          expires_at: string
+          message_key: string
+          relevance: number
+          relevant: boolean
+          scope_key: string
+          user_id: string
+        }
+        Insert: {
+          checked_at?: string
+          connection_id: string
+          expires_at?: string
+          message_key: string
+          relevance: number
+          relevant: boolean
+          scope_key: string
+          user_id: string
+        }
+        Update: {
+          checked_at?: string
+          connection_id?: string
+          expires_at?: string
+          message_key?: string
+          relevance?: number
+          relevant?: boolean
+          scope_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_scan_checks_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_scan_checks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_sequence_copy_overrides: {
         Row: {
           body: string
@@ -9127,6 +11290,142 @@ export type Database = {
           submission_count?: number | null
         }
         Relationships: []
+      }
+      freshness_concerns: {
+        Row: {
+          close_reason: string | null
+          closed_at: string | null
+          closed_scan_id: string | null
+          created_at: string
+          detail: Json
+          evidence: Json
+          evidence_count: number
+          first_flag_id: string | null
+          first_seen_at: string
+          id: string
+          last_evidence_at: string
+          last_flag_id: string | null
+          last_probability: number
+          last_seen_at: string
+          peak_probability: number
+          project_id: string
+          score: number
+          seen_count: number
+          status: string
+          subject_id: string
+          subject_kind: string
+          subject_snapshot: Json | null
+          subject_title: string
+          subject_updated_at: string | null
+          surfaced_at: string | null
+          surfaced_scan_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_scan_id?: string | null
+          created_at?: string
+          detail?: Json
+          evidence?: Json
+          evidence_count?: number
+          first_flag_id?: string | null
+          first_seen_at?: string
+          id?: string
+          last_evidence_at?: string
+          last_flag_id?: string | null
+          last_probability: number
+          last_seen_at?: string
+          peak_probability: number
+          project_id: string
+          score: number
+          seen_count?: number
+          status?: string
+          subject_id: string
+          subject_kind: string
+          subject_snapshot?: Json | null
+          subject_title: string
+          subject_updated_at?: string | null
+          surfaced_at?: string | null
+          surfaced_scan_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_scan_id?: string | null
+          created_at?: string
+          detail?: Json
+          evidence?: Json
+          evidence_count?: number
+          first_flag_id?: string | null
+          first_seen_at?: string
+          id?: string
+          last_evidence_at?: string
+          last_flag_id?: string | null
+          last_probability?: number
+          last_seen_at?: string
+          peak_probability?: number
+          project_id?: string
+          score?: number
+          seen_count?: number
+          status?: string
+          subject_id?: string
+          subject_kind?: string
+          subject_snapshot?: Json | null
+          subject_title?: string
+          subject_updated_at?: string | null
+          surfaced_at?: string | null
+          surfaced_scan_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freshness_concerns_closed_scan_id_fkey"
+            columns: ["closed_scan_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_concerns_first_flag_id_fkey"
+            columns: ["first_flag_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_flags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_concerns_last_flag_id_fkey"
+            columns: ["last_flag_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_flags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_concerns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_concerns_surfaced_scan_id_fkey"
+            columns: ["surfaced_scan_id"]
+            isOneToOne: false
+            referencedRelation: "freshness_scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "freshness_concerns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       freshness_flags: {
         Row: {
@@ -11071,6 +13370,7 @@ export type Database = {
           chat_session_id: string | null
           content: string
           created_at: string
+          deleted_at: string | null
           error_message: string | null
           id: string
           metadata: Json | null
@@ -11086,6 +13386,7 @@ export type Database = {
           chat_session_id?: string | null
           content: string
           created_at?: string
+          deleted_at?: string | null
           error_message?: string | null
           id?: string
           metadata?: Json | null
@@ -11101,6 +13402,7 @@ export type Database = {
           chat_session_id?: string | null
           content?: string
           created_at?: string
+          deleted_at?: string | null
           error_message?: string | null
           id?: string
           metadata?: Json | null
@@ -13727,6 +16029,33 @@ export type Database = {
           },
         ]
       }
+      privacy_purge_failures: {
+        Row: {
+          attempts: number
+          first_failed_at: string
+          last_failed_at: string
+          row_id: string
+          source_table: string
+          sqlstate: string
+        }
+        Insert: {
+          attempts?: number
+          first_failed_at?: string
+          last_failed_at?: string
+          row_id: string
+          source_table: string
+          sqlstate: string
+        }
+        Update: {
+          attempts?: number
+          first_failed_at?: string
+          last_failed_at?: string
+          row_id?: string
+          source_table?: string
+          sqlstate?: string
+        }
+        Relationships: []
+      }
       profile_access_audit: {
         Row: {
           access_type: string
@@ -15104,6 +17433,7 @@ export type Database = {
           freshness_state: string
           id: string
           kind: string
+          lineage_id: string | null
           operations: Json
           preview: Json | null
           project_id: string
@@ -15111,6 +17441,7 @@ export type Database = {
           result: Json | null
           reversible: boolean | null
           risk_tier: number
+          rollup: Json | null
           run_id: string | null
           sort_order: number
           source_fingerprint: string | null
@@ -15134,6 +17465,7 @@ export type Database = {
           freshness_state?: string
           id?: string
           kind: string
+          lineage_id?: string | null
           operations?: Json
           preview?: Json | null
           project_id: string
@@ -15141,6 +17473,7 @@ export type Database = {
           result?: Json | null
           reversible?: boolean | null
           risk_tier?: number
+          rollup?: Json | null
           run_id?: string | null
           sort_order?: number
           source_fingerprint?: string | null
@@ -15164,6 +17497,7 @@ export type Database = {
           freshness_state?: string
           id?: string
           kind?: string
+          lineage_id?: string | null
           operations?: Json
           preview?: Json | null
           project_id?: string
@@ -15171,6 +17505,7 @@ export type Database = {
           result?: Json | null
           reversible?: boolean | null
           risk_tier?: number
+          rollup?: Json | null
           run_id?: string | null
           sort_order?: number
           source_fingerprint?: string | null
@@ -18547,6 +20882,56 @@ export type Database = {
           },
         ]
       }
+      user_data_exports: {
+        Row: {
+          byte_size: number | null
+          completed_at: string | null
+          error_code: string | null
+          expires_at: string | null
+          id: string
+          part_count: number | null
+          requested_at: string
+          started_at: string | null
+          status: string
+          storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          byte_size?: number | null
+          completed_at?: string | null
+          error_code?: string | null
+          expires_at?: string | null
+          id?: string
+          part_count?: number | null
+          requested_at?: string
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          byte_size?: number | null
+          completed_at?: string | null
+          error_code?: string | null
+          expires_at?: string | null
+          id?: string
+          part_count?: number | null
+          requested_at?: string
+          started_at?: string | null
+          status?: string
+          storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_data_exports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       user_discounts: {
         Row: {
           applied_at: string | null
@@ -18588,48 +20973,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_data_exports: {
-        Row: {
-          byte_size: number | null
-          completed_at: string | null
-          error_code: string | null
-          expires_at: string | null
-          id: string
-          part_count: number | null
-          requested_at: string
-          started_at: string | null
-          status: string
-          storage_path: string | null
-          user_id: string
-        }
-        Insert: {
-          byte_size?: number | null
-          completed_at?: string | null
-          error_code?: string | null
-          expires_at?: string | null
-          id?: string
-          part_count?: number | null
-          requested_at?: string
-          started_at?: string | null
-          status?: string
-          storage_path?: string | null
-          user_id: string
-        }
-        Update: {
-          byte_size?: number | null
-          completed_at?: string | null
-          error_code?: string | null
-          expires_at?: string | null
-          id?: string
-          part_count?: number | null
-          requested_at?: string
-          started_at?: string | null
-          status?: string
-          storage_path?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       user_email_connections: {
         Row: {
@@ -19056,8 +21399,8 @@ export type Database = {
           onboarding_completed_at: string | null
           onboarding_intent: string | null
           onboarding_project_id: string | null
-          onboarding_step: number
           onboarding_stakes: string | null
+          onboarding_step: number
           onboarding_v2_skipped_calendar: boolean | null
           onboarding_v2_skipped_sms: boolean | null
           preferences: Json | null
@@ -19094,8 +21437,8 @@ export type Database = {
           onboarding_completed_at?: string | null
           onboarding_intent?: string | null
           onboarding_project_id?: string | null
-          onboarding_step?: number
           onboarding_stakes?: string | null
+          onboarding_step?: number
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
           preferences?: Json | null
@@ -19132,8 +21475,8 @@ export type Database = {
           onboarding_completed_at?: string | null
           onboarding_intent?: string | null
           onboarding_project_id?: string | null
-          onboarding_step?: number
           onboarding_stakes?: string | null
+          onboarding_step?: number
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
           preferences?: Json | null
@@ -19155,18 +21498,18 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "users_onboarding_project_id_fkey"
-            columns: ["onboarding_project_id"]
-            isOneToOne: false
-            referencedRelation: "onto_projects"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "users_id_fkey"
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "user_migration_stats"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "users_onboarding_project_id_fkey"
+            columns: ["onboarding_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "users_subscription_plan_id_fkey"
@@ -19786,7 +22129,15 @@ export type Database = {
           unique_resource_count: number | null
           usage_response_time_ms: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_execution_observations_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agentic_chat_read_planning_turn_summary: {
         Row: {
@@ -19809,7 +22160,15 @@ export type Database = {
           unique_exact_read_count: number | null
           unique_resource_count: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_execution_observations_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agentic_chat_worker_lifecycle_observations: {
         Row: {
@@ -20037,6 +22396,63 @@ export type Database = {
       }
     }
     Functions: {
+      accept_agentic_chat_workflow_context_v1: {
+        Args: {
+          p_context_bytes: number
+          p_context_hash: string
+          p_context_id: string
+          p_context_identity: Json
+          p_context_payload: Json
+          p_event_payload: Json
+          p_evidence_versions: Json
+          p_execution_generation: number
+          p_preparation_version: string
+          p_processing_token: string
+          p_projection: Json
+          p_queue_job_id: string
+          p_request_artifact_id: string
+          p_request_hash: string
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      accept_agentic_chat_workflow_step_result_v1: {
+        Args: {
+          p_event_payload: Json
+          p_execution_generation: number
+          p_plan_hash: string
+          p_processing_token: string
+          p_projection: Json
+          p_quality: string
+          p_queue_job_id: string
+          p_result: Json
+          p_result_bytes: number
+          p_result_hash: string
+          p_step_attempt_id: string
+          p_step_key: string
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      accept_agentic_chat_workflow_synthesis_v1: {
+        Args: {
+          p_answer_id: string
+          p_editor_step_attempt_id: string
+          p_event_payload: Json
+          p_execution_generation: number
+          p_processing_token: string
+          p_projection: Json
+          p_quality: string
+          p_queue_job_id: string
+          p_text_bytes: number
+          p_text_sha256: string
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       accept_project_invite: {
         Args: { p_actor_id: string; p_token_hash: string; p_user_email: string }
         Returns: {
@@ -20052,6 +22468,10 @@ export type Database = {
           project_id: string
           role_key: string
         }[]
+      }
+      account_deletion_purged_project_ids: {
+        Args: { p_user_id: string }
+        Returns: string[]
       }
       acknowledge_agentic_chat_stream_delivery: {
         Args: {
@@ -20084,6 +22504,10 @@ export type Database = {
           p_required_access?: string
         }
         Returns: boolean
+      }
+      add_answer_comparison_candidate_v1: {
+        Args: { p_candidate: Json; p_comparison_id: string; p_user_id: string }
+        Returns: Json
       }
       add_queue_job: {
         Args: {
@@ -20213,12 +22637,20 @@ export type Database = {
         Args: { p_proposal_ids: string[]; p_run_id: string }
         Returns: Json
       }
+      agentic_chat_canonical_json_v1: {
+        Args: { p_value: Json }
+        Returns: string
+      }
       agentic_chat_contract_effect_target_id_v1: {
         Args: { p_arguments: Json; p_result: Json; p_tool_name: string }
         Returns: string
       }
       agentic_chat_contract_tool_semantics_v1: {
         Args: { p_tool_name: string }
+        Returns: Json
+      }
+      agentic_chat_document_evidence_binding_v1: {
+        Args: { p_turn_run_id: string }
         Returns: Json
       }
       agentic_chat_domain_reference_map_v1_is_valid: {
@@ -20277,6 +22709,10 @@ export type Database = {
         }
         Returns: Json
       }
+      agentic_chat_normalize_text_v1: {
+        Args: { p_value: string }
+        Returns: string
+      }
       agentic_chat_recover_dead_turn_v1: {
         Args: {
           p_bare?: boolean
@@ -20294,6 +22730,15 @@ export type Database = {
         Args: { p_depth?: number; p_value: Json }
         Returns: string[]
       }
+      agentic_chat_sha256_hex_v1: { Args: { p_value: string }; Returns: string }
+      agentic_chat_source_instant_ms_v1: {
+        Args: { p_value: string }
+        Returns: number
+      }
+      agentic_chat_source_record_v1: {
+        Args: { p_evidence: Json; p_payload: Json; p_source: string }
+        Returns: Json
+      }
       agentic_chat_turn_lease_state_v1: {
         Args: {
           p_execution_generation: number
@@ -20304,6 +22749,127 @@ export type Database = {
           p_turn_status: string
         }
         Returns: string
+      }
+      agentic_chat_workflow_assert_service_role_v1: {
+        Args: { p_boundary: string }
+        Returns: undefined
+      }
+      agentic_chat_workflow_event_receipt_v1: {
+        Args: {
+          p_execution_generation: number
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      agentic_chat_workflow_evidence_refs_valid_v1: {
+        Args: { p_evidence: Json; p_min: number; p_refs: Json }
+        Returns: boolean
+      }
+      agentic_chat_workflow_exposure_micro_usd_v1: {
+        Args: { p_turn_run_id: string }
+        Returns: number
+      }
+      agentic_chat_workflow_fence_v1: {
+        Args: {
+          p_boundary: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: string
+      }
+      agentic_chat_workflow_fenced_receipt_v1: {
+        Args: {
+          p_execution_generation: number
+          p_outcome: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      agentic_chat_workflow_input_content_v1: {
+        Args: {
+          p_history: Json
+          p_history_hash: string
+          p_request: Json
+          p_request_hash: string
+        }
+        Returns: Json
+      }
+      agentic_chat_workflow_max_output_tokens_v1: {
+        Args: { p_step_key: string }
+        Returns: number
+      }
+      agentic_chat_workflow_plan_steps_for_version_v1: {
+        Args: { p_version: string }
+        Returns: Json
+      }
+      agentic_chat_workflow_plan_steps_v1: { Args: never; Returns: Json }
+      agentic_chat_workflow_plan_version_for_ref_v1: {
+        Args: { p_ref: string }
+        Returns: string
+      }
+      agentic_chat_workflow_planner_result_valid_v1: {
+        Args: { p_result: Json }
+        Returns: boolean
+      }
+      agentic_chat_workflow_policy_for_ref_v2: {
+        Args: { p_ref: string }
+        Returns: Json
+      }
+      agentic_chat_workflow_policy_v1: { Args: never; Returns: Json }
+      agentic_chat_workflow_pricing_valid_v1: {
+        Args: { p_model_requested: string; p_pricing: Json }
+        Returns: boolean
+      }
+      agentic_chat_workflow_project_access_v1: {
+        Args: { p_project_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      agentic_chat_workflow_publish_v1: {
+        Args: {
+          p_assistant_text?: string
+          p_event_payload: Json
+          p_execution_generation: number
+          p_phase: string
+          p_processing_token: string
+          p_projection: Json
+          p_queue_job_id: string
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      agentic_chat_workflow_request_hash_v1: {
+        Args: { p_request: Json }
+        Returns: string
+      }
+      agentic_chat_workflow_review_intent_v1: {
+        Args: { p_message: string }
+        Returns: Json
+      }
+      agentic_chat_workflow_role_report_valid_v1: {
+        Args: { p_evidence: Json; p_report: Json; p_role: string }
+        Returns: boolean
+      }
+      agentic_chat_workflow_role_report_valid_v2: {
+        Args: { p_evidence: Json; p_report: Json; p_role: string }
+        Returns: boolean
+      }
+      agentic_chat_workflow_role_report_valid_v3: {
+        Args: {
+          p_context_hash: string
+          p_evidence: Json
+          p_payload: Json
+          p_report: Json
+          p_role: string
+        }
+        Returns: boolean
+      }
+      agentic_chat_workflow_skip_editor_if_unsatisfiable_v1: {
+        Args: { p_plan_version: string; p_turn_run_id: string }
+        Returns: boolean
       }
       apply_agentic_chat_research_capture: {
         Args: {
@@ -20342,12 +22908,43 @@ export type Database = {
         }
         Returns: Json
       }
+      begin_agentic_chat_specialist_shadow_v1: {
+        Args: {
+          p_attempt_token: string
+          p_execution_generation: number
+          p_input: Json
+          p_input_hash: string
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       begin_agentic_chat_turn_execution: {
         Args: {
           p_execution_generation: number
           p_processing_token: string
           p_queue_job_id: string
           p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      begin_agentic_chat_workflow_dispatch_v1: {
+        Args: {
+          p_dispatch_id: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      begin_specialist_recommendation_v1: {
+        Args: {
+          p_id: string
+          p_project_id: string
+          p_question: string
+          p_user_id: string
         }
         Returns: Json
       }
@@ -20391,6 +22988,14 @@ export type Database = {
           queue_job_id: string
           status: string
         }[]
+      }
+      check_agentic_chat_turn_read_fence: {
+        Args: {
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
       }
       check_and_increment_sms_daily_limit: {
         Args: {
@@ -20465,6 +23070,18 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_agentic_chat_workflow_step_v1: {
+        Args: {
+          p_execution_generation: number
+          p_plan_hash: string
+          p_processing_token: string
+          p_queue_job_id: string
+          p_step_attempt_id: string
+          p_step_key: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       claim_cycle_run: {
         Args: {
           p_cycle_run_id: string
@@ -20494,6 +23111,7 @@ export type Database = {
           last_error: string | null
           lease_expires_at: string | null
           next_attempt_at: string | null
+          posthog_deletion_status: string | null
           processing_started_at: string | null
           requested_at: string
           scheduled_for: string
@@ -20615,6 +23233,12 @@ export type Database = {
           user_id: string
         }[]
       }
+      claim_privacy_expired_brief_audio: {
+        Args: { p_limit?: number }
+        Returns: {
+          object_name: string
+        }[]
+      }
       claim_question_tree_batch: {
         Args: { p_limit?: number; p_run_id: string; p_worker_id: string }
         Returns: {
@@ -20695,10 +23319,6 @@ export type Database = {
         }
         Returns: Json
       }
-      cleanup_expired_agentic_chat_context_snapshots: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
       cleanup_agentic_chat_sensitive_transcripts: {
         Args: { p_batch_size?: number; p_retention_days?: number }
         Returns: Json
@@ -20712,13 +23332,185 @@ export type Database = {
         }
         Returns: Json
       }
+      cleanup_agentic_chat_workflow_dispatches_v1: {
+        Args: {
+          p_batch_size?: number
+          p_dispatch_retention_days?: number
+          p_reconciled_retention_days?: number
+        }
+        Returns: Json
+      }
       cleanup_expired_agent_call_bootstrap_links: {
         Args: { p_batch_size?: number }
+        Returns: number
+      }
+      cleanup_expired_agentic_chat_context_snapshots: {
+        Args: never
         Returns: number
       }
       cleanup_expired_agentic_chat_prepared_prompts: {
         Args: never
         Returns: number
+      }
+      cleanup_privacy_access_audits: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_agent_oauth_artifacts: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_agent_tool_payloads: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_calendar_analyses: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_calendar_analysis_events: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_chat_answer_comparisons: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_chat_execution_observations: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_chat_prompt_evals: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_chat_turn_checkpoints: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_chat_turn_effects: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_chat_turn_recovery_failures: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_chat_turn_requests: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_chat_workflow_runs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_cron_logs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_deleted_connections: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_deleted_contacts: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_deleted_cycles: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_deleted_profile_documents: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_deleted_project_items: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_deleted_projects: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_deleted_voice_notes: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_email_bodies: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_email_relevance_runs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_email_scan_checks: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_error_logs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_llm_usage_logs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_native_search_cache: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_notification_logs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_notifications: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_oauth_states: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_public_page_views: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_queue_jobs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_security_logs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_sms_bodies: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_soft_deleted_braindumps: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_tracking_network_data: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_user_activity_logs: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_user_data_exports: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_web_page_evidence: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
+      cleanup_privacy_webhook_events: {
+        Args: { p_batch_size?: number }
+        Returns: Json
       }
       cleanup_security_events: {
         Args: {
@@ -20761,15 +23553,6 @@ export type Database = {
           p_result?: Json
         }
         Returns: boolean
-      }
-      complete_user_data_export: {
-        Args: {
-          p_byte_size: number
-          p_export_id: string
-          p_part_count: number
-          p_storage_path: string
-        }
-        Returns: string
       }
       complete_email_sequence_send: {
         Args: {
@@ -20829,6 +23612,15 @@ export type Database = {
         Args: { p_job_id: string; p_processing_token?: string; p_result?: Json }
         Returns: boolean
       }
+      complete_user_data_export: {
+        Args: {
+          p_byte_size: number
+          p_export_id: string
+          p_part_count: number
+          p_storage_path: string
+        }
+        Returns: string
+      }
       consume_calendar_oauth_state: {
         Args: {
           p_oauth_client_kind: string
@@ -20873,6 +23665,98 @@ export type Database = {
         Args: { p_job_metadata: Json; p_priority?: number; p_run: Json }
         Returns: Json
       }
+      create_agentic_chat_document_review_turn_v2: {
+        Args: {
+          p_cache_ref?: Json
+          p_client_turn_id: string
+          p_correlation_id: string
+          p_message: string
+          p_policy: Json
+          p_policy_ref: string
+          p_project_id: string
+          p_request_artifact_id: string
+          p_request_hash: string
+          p_review_intent: Json
+          p_session_id: string
+          p_specialist_snapshot: Json
+          p_specialist_snapshot_hash: string
+          p_stream_run_id: string
+          p_transport_decision_id: string
+          p_turn_run_id: string
+          p_user_id: string
+          p_user_message_id: string
+        }
+        Returns: Json
+      }
+      create_agentic_chat_document_review_turn_v3: {
+        Args: {
+          p_cache_ref?: Json
+          p_client_turn_id: string
+          p_correlation_id: string
+          p_message: string
+          p_policy: Json
+          p_policy_ref: string
+          p_project_id: string
+          p_request_artifact_id: string
+          p_request_hash: string
+          p_review_intent: Json
+          p_session_id: string
+          p_specialist_snapshot: Json
+          p_specialist_snapshot_hash: string
+          p_stream_run_id: string
+          p_transport_decision_id: string
+          p_turn_run_id: string
+          p_user_id: string
+          p_user_message_id: string
+        }
+        Returns: Json
+      }
+      create_agentic_chat_document_review_turn_v4: {
+        Args: {
+          p_cache_ref?: Json
+          p_client_turn_id: string
+          p_correlation_id: string
+          p_message: string
+          p_policy: Json
+          p_policy_ref: string
+          p_project_id: string
+          p_request_artifact_id: string
+          p_request_hash: string
+          p_review_intent: Json
+          p_session_id: string
+          p_specialist_snapshot: Json
+          p_specialist_snapshot_hash: string
+          p_stream_run_id: string
+          p_transport_decision_id: string
+          p_turn_run_id: string
+          p_user_id: string
+          p_user_message_id: string
+        }
+        Returns: Json
+      }
+      create_agentic_chat_published_review_turn_v1: {
+        Args: {
+          p_cache_ref?: Json
+          p_client_turn_id: string
+          p_correlation_id: string
+          p_message: string
+          p_policy: Json
+          p_policy_ref: string
+          p_project_id: string
+          p_request_artifact_id: string
+          p_request_hash: string
+          p_review_intent: Json
+          p_session_id: string
+          p_specialist_snapshot: Json
+          p_specialist_snapshot_hash: string
+          p_stream_run_id: string
+          p_transport_decision_id: string
+          p_turn_run_id: string
+          p_user_id: string
+          p_user_message_id: string
+        }
+        Returns: Json
+      }
       create_agentic_chat_turn_with_job: {
         Args: {
           p_artifact_content_bytes: number
@@ -20909,6 +23793,40 @@ export type Database = {
           p_user_message_content: string
           p_user_message_id: string
           p_user_message_metadata: Json
+        }
+        Returns: Json
+      }
+      create_agentic_chat_workflow_turn_with_job_v1: {
+        Args: {
+          p_cache_ref?: Json
+          p_client_turn_id: string
+          p_correlation_id: string
+          p_message: string
+          p_policy: Json
+          p_policy_ref: string
+          p_project_id: string
+          p_request_artifact_id: string
+          p_request_hash: string
+          p_review_intent: Json
+          p_session_id: string
+          p_stream_run_id: string
+          p_transport_decision_id: string
+          p_turn_run_id: string
+          p_user_id: string
+          p_user_message_id: string
+        }
+        Returns: Json
+      }
+      create_answer_comparison_v1: {
+        Args: {
+          p_candidates: Json
+          p_id: string
+          p_rubric: Json
+          p_set_kind: string
+          p_source_packet: Json
+          p_source_packet_sha256: string
+          p_title: string
+          p_user_id: string
         }
         Returns: Json
       }
@@ -21168,6 +24086,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      delete_my_braindump: { Args: { p_braindump_id: string }; Returns: Json }
+      delete_my_chat_session: { Args: { p_session_id: string }; Returns: Json }
       delete_old_completed_queue_jobs: {
         Args: {
           p_batch_size?: number
@@ -21314,6 +24234,23 @@ export type Database = {
         Args: { p_run_id: string; p_user_id: string }
         Returns: string
       }
+      fail_agentic_chat_workflow_step_attempt_v1: {
+        Args: {
+          p_event_payload: Json
+          p_execution_generation: number
+          p_failure_code: string
+          p_plan_hash: string
+          p_processing_token: string
+          p_projection: Json
+          p_queue_job_id: string
+          p_retryable: boolean
+          p_step_attempt_id: string
+          p_step_key: string
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       fail_cycle_run: {
         Args: {
           p_cycle_run_id: string
@@ -21444,6 +24381,26 @@ export type Database = {
       finalize_draft_project: {
         Args: { p_draft_id: string; p_user_id: string }
         Returns: string
+      }
+      finish_agentic_chat_specialist_shadow_v1: {
+        Args: {
+          p_attempt_token: string
+          p_result: Json
+          p_result_hash: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      finish_specialist_recommendation_v1: {
+        Args: {
+          p_attempt_token: string
+          p_id: string
+          p_input_hash: string
+          p_result: Json
+          p_result_hash: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       flush_agentic_chat_text_batches: {
         Args: { p_batches: Json }
@@ -21585,6 +24542,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_agentic_chat_context_invalidation_token: {
+        Args: {
+          p_context_type: string
+          p_project_id?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       get_allowed_transitions: {
         Args: { p_object_id: string; p_object_kind: string }
         Returns: {
@@ -21595,14 +24560,6 @@ export type Database = {
           guards: Json
           to_state: string
         }[]
-      }
-      get_agentic_chat_context_invalidation_token: {
-        Args: {
-          p_context_type: string
-          p_project_id?: string | null
-          p_user_id: string
-        }
-        Returns: string
       }
       get_brief_generation_stats: {
         Args: { end_date: string; start_date: string }
@@ -21660,6 +24617,12 @@ export type Database = {
           date: string
         }[]
       }
+      get_daily_brief_eligible_user_ids: {
+        Args: { user_ids: string[] }
+        Returns: {
+          user_id: string
+        }[]
+      }
       get_daily_visitors: {
         Args: { end_date: string; start_date: string }
         Returns: {
@@ -21680,7 +24643,6 @@ export type Database = {
         }
         Returns: Json
       }
-      get_my_data_summary: { Args: never; Returns: Json }
       get_latest_ontology_daily_briefs: {
         Args: { user_ids: string[] }
         Returns: {
@@ -21709,6 +24671,7 @@ export type Database = {
           run_id: string
         }[]
       }
+      get_my_data_summary: { Args: never; Returns: Json }
       get_notification_active_subscriptions: {
         Args: never
         Returns: {
@@ -22052,6 +25015,18 @@ export type Database = {
               users_sms_enabled: number
             }[]
           }
+      get_specialist_recommendation_v1: {
+        Args: {
+          p_draft_id: string
+          p_id: string
+          p_project_id: string
+          p_question: string
+          p_snapshot_hash: string
+          p_user_id: string
+          p_version: number
+        }
+        Returns: Json
+      }
       get_subscription_overview: {
         Args: never
         Returns: {
@@ -22153,22 +25128,38 @@ export type Database = {
         Args: { question_ids: string[] }
         Returns: undefined
       }
-      invalidate_native_search_cache: {
-        Args: { p_cache_key: string }
-        Returns: boolean
-      }
       inspect_agentic_chat_prepared_admission: {
         Args: {
           p_context_type: string
-          p_entity_id?: string | null
+          p_entity_id?: string
           p_nonce_sha256: string
           p_now?: string
           p_prepared_prompt_id: string
-          p_project_id?: string | null
+          p_project_id?: string
           p_session_id: string
           p_user_id: string
         }
         Returns: Json
+      }
+      install_agentic_chat_workflow_plan_v1: {
+        Args: {
+          p_context_id: string
+          p_event_payload: Json
+          p_execution_generation: number
+          p_plan: Json
+          p_plan_hash: string
+          p_plan_version: string
+          p_processing_token: string
+          p_projection: Json
+          p_queue_job_id: string
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      invalidate_native_search_cache: {
+        Args: { p_cache_key: string }
+        Returns: boolean
       }
       is_admin:
         | { Args: never; Returns: boolean }
@@ -22186,7 +25177,7 @@ export type Database = {
         Returns: Json
       }
       list_account_deletion_storage_objects: {
-        Args: { p_user_id: string }
+        Args: { p_libri_library_ids?: string[]; p_user_id: string }
         Returns: {
           bucket_id: string
           object_name: string
@@ -22244,6 +25235,34 @@ export type Database = {
           status: string
         }[]
       }
+      list_privacy_chat_temp_orphans: {
+        Args: { p_limit?: number }
+        Returns: {
+          object_name: string
+        }[]
+      }
+      list_privacy_deleted_asset_objects: {
+        Args: { p_limit?: number }
+        Returns: {
+          object_name: string
+        }[]
+      }
+      list_privacy_deleted_voice_note_objects: {
+        Args: { p_limit?: number }
+        Returns: {
+          object_name: string
+        }[]
+      }
+      list_privacy_expired_user_exports: {
+        Args: { p_limit?: number }
+        Returns: {
+          object_name: string
+        }[]
+      }
+      load_agentic_chat_project_review_evidence_v2: {
+        Args: { p_project_id: string; p_question: string; p_user_id: string }
+        Returns: Json
+      }
       load_agentic_chat_research_capture_evidence: {
         Args: {
           p_execution_generation: number
@@ -22278,6 +25297,7 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      lock_account_for_deletion: { Args: { p_user_id: string }; Returns: Json }
       log_client_error: { Args: { p_entry: Json }; Returns: string }
       log_notification_event: {
         Args: {
@@ -22844,6 +25864,23 @@ export type Database = {
         }
         Returns: Json
       }
+      persist_agentic_chat_workflow_text_batch_v1: {
+        Args: {
+          p_answer_id: string
+          p_assistant_text: string
+          p_batch_id: string
+          p_complete_text_sha256: string
+          p_delta_sha256: string
+          p_editor_step_attempt_id: string
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_start_byte: number
+          p_text_delta: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       persist_web_page_evidence_version: {
         Args: {
           p_bytes?: number
@@ -22890,9 +25927,35 @@ export type Database = {
         }
         Returns: boolean
       }
+      project_loop_activity: {
+        Args: { p_project_ids?: string[]; p_since: string }
+        Returns: {
+          created_by: string
+          last_activity_at: string
+          project_id: string
+        }[]
+      }
+      project_review_document_facts: {
+        Args: { p_project_id: string }
+        Returns: {
+          content_chars: number
+          document_id: string
+          is_public: boolean
+        }[]
+      }
       prune_stale_profile_fragments: {
         Args: { p_older_than_days?: number }
         Returns: number
+      }
+      publish_specialist_workbench_version_v1: {
+        Args: {
+          p_expected_revision: number
+          p_id: string
+          p_snapshot: Json
+          p_snapshot_hash: string
+          p_user_id: string
+        }
+        Returns: Json
       }
       purge_expired_email_relevance_metadata: {
         Args: { p_limit?: number }
@@ -22900,6 +25963,10 @@ export type Database = {
           candidates_deleted: number
           observations_deleted: number
         }[]
+      }
+      purge_privacy_onto_items: {
+        Args: { p_ids: string[]; p_kind: string }
+        Returns: number
       }
       question_tree_normalize_question: {
         Args: { p_question: string }
@@ -22930,6 +25997,17 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      read_agentic_chat_documents_v1: {
+        Args: {
+          p_document_ids: Json
+          p_execution_generation: number
+          p_processing_token: string
+          p_queue_job_id: string
+          p_step_attempt_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
       }
       reap_stale_legacy_agentic_chat_turns: {
         Args: { p_batch_size?: number; p_progress_stale_after_seconds?: number }
@@ -22973,6 +26051,28 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_agentic_chat_workflow_dispatch_v1: {
+        Args: {
+          p_actual_micro_usd?: number
+          p_dispatch_id: string
+          p_provider_receipt?: Json
+          p_reconciliation_id: string
+          p_target_state: string
+        }
+        Returns: Json
+      }
+      record_answer_comparison_vote_v1: {
+        Args: {
+          p_choice: string
+          p_comparison_id: string
+          p_label_assignment: Json
+          p_preferred_candidate_id: string
+          p_reason: string
+          p_rubric_scores: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
       record_email_relevance_adjudication: {
         Args: {
           p_corrected_project_id: string
@@ -22990,6 +26090,10 @@ export type Database = {
           adjudication_id: string
           replayed: boolean
         }[]
+      }
+      record_privacy_purge_failure: {
+        Args: { p_row_id: string; p_source_table: string; p_sqlstate: string }
+        Returns: undefined
       }
       record_sms_metric: {
         Args: {
@@ -23011,6 +26115,17 @@ export type Database = {
         Returns: Json
       }
       recover_agentic_chat_turn: {
+        Args: {
+          p_error_message?: string
+          p_execution_generation: number
+          p_failure_class: string
+          p_processing_token: string
+          p_queue_job_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
+      recover_agentic_chat_workflow_turn_v1: {
         Args: {
           p_error_message?: string
           p_execution_generation: number
@@ -23147,7 +26262,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      request_user_data_export: { Args: never; Returns: Json }
       request_account_deletion: {
         Args: { p_user_id: string }
         Returns: {
@@ -23166,6 +26280,7 @@ export type Database = {
         }
         Returns: Json
       }
+      request_user_data_export: { Args: never; Returns: Json }
       require_cycle_service_role: { Args: never; Returns: undefined }
       reserve_agent_run_cost: {
         Args: {
@@ -23196,6 +26311,24 @@ export type Database = {
         }
         Returns: Json
       }
+      reserve_agentic_chat_workflow_dispatch_v1: {
+        Args: {
+          p_dispatch_id: string
+          p_dispatch_kind: string
+          p_execution_generation: number
+          p_max_output_tokens: number
+          p_model_requested: string
+          p_physical_attempt: number
+          p_pricing_snapshot: Json
+          p_processing_token: string
+          p_queue_job_id: string
+          p_serialized_request_bytes: number
+          p_step_attempt_id: string
+          p_step_key: string
+          p_turn_run_id: string
+        }
+        Returns: Json
+      }
       reset_stalled_jobs: {
         Args: {
           p_exclude_job_types?: string[]
@@ -23207,6 +26340,18 @@ export type Database = {
       resolve_onto_public_page_slug_prefix: {
         Args: { p_actor_id: string }
         Returns: string
+      }
+      resume_agentic_chat_workflow_projection_v1: {
+        Args: {
+          p_event_payload: Json
+          p_execution_generation: number
+          p_processing_token: string
+          p_projection: Json
+          p_queue_job_id: string
+          p_transition_id: string
+          p_turn_run_id: string
+        }
+        Returns: Json
       }
       resume_cycle:
         | {
@@ -23383,6 +26528,10 @@ export type Database = {
         Args: { p_node_id: string; p_run_id: string }
         Returns: Json
       }
+      reveal_answer_comparison_v1: {
+        Args: { p_comparison_id: string; p_user_id: string }
+        Returns: Json
+      }
       rollup_security_events: {
         Args: { p_end_date?: string; p_start_date?: string }
         Returns: {
@@ -23501,6 +26650,16 @@ export type Database = {
         }
       }
       safe_inet: { Args: { p_value: string }; Returns: unknown }
+      save_specialist_workbench_draft_v1: {
+        Args: {
+          p_draft: Json
+          p_draft_hash: string
+          p_expected_revision: number
+          p_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       search_all_content: {
         Args: {
           current_user_id: string
@@ -23649,6 +26808,17 @@ export type Database = {
             }
             Returns: Json
           }
+      settle_agentic_chat_workflow_dispatch_v1: {
+        Args: {
+          p_actual_micro_usd: number
+          p_dispatch_id: string
+          p_outcome: string
+          p_provider_request_id: string
+          p_provider_usage: Json
+          p_settlement_token: string
+        }
+        Returns: Json
+      }
       settle_email_relevance_list_page: {
         Args: {
           p_actual_runtime_ms: number
@@ -24224,6 +27394,10 @@ export type Database = {
         | "admin_question_tree"
         | "run_cycle"
         | "embed_onto_entity"
+        | "libri_ingest"
+        | "libri_research"
+        | "libri_derive"
+        | "libri_maintenance"
         | "freshness_radar_scan"
         | "capture_chat_checkpoint"
         | "user_data_export"
@@ -24275,12 +27449,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -24304,11 +27478,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -24329,11 +27503,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -24354,11 +27528,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -24371,11 +27545,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -24493,6 +27667,10 @@ export const Constants = {
         "admin_question_tree",
         "run_cycle",
         "embed_onto_entity",
+        "libri_ingest",
+        "libri_research",
+        "libri_derive",
+        "libri_maintenance",
         "freshness_radar_scan",
         "capture_chat_checkpoint",
         "user_data_export",

@@ -354,12 +354,18 @@ describe('total assembled prompt size budget', () => {
 		// per pass. Only unnarrowed passes pay all of it. Caps at measured + ~0.5%.
 		// RE-BASELINED 2026-09-23 (tasker 100): the system-prompt lines above.
 		// Measured payload 78,178 chars / 19,545 est tokens. Caps at measured + ~0.5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(78_600);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(19_650);
+		// RE-BASELINED 2026-09-29 (tasker 112): get_project_cleanup joined the project
+		// surface (568 chars of schema) so "what's out of date?" starts from the nightly
+		// Project cleanup set instead of ~18 reads that missed ~40% of it on 09-29.
+		// Measured payload 78,844 chars / 19,711 est tokens, tool schemas 16,711 est
+		// tokens per pass. Jev mounts the tool only on turns that need it. Caps at
+		// measured + ~0.5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(79_250);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(19_810);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(58_950);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(49_920);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(59_430);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(50_380);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model

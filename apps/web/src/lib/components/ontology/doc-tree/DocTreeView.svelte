@@ -20,7 +20,15 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onMount, onDestroy } from 'svelte';
-	import { Archive, ChevronDown, FileText, Plus, RefreshCw, X } from '$lib/icons/lucide';
+	import {
+		Archive,
+		ChevronDown,
+		FileText,
+		ImagePlus,
+		Plus,
+		RefreshCw,
+		X
+	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		buildAbsolutePublicPageUrl,
@@ -747,7 +755,7 @@
 	{/if}
 
 	<!-- Images shelf: unfiled project images, front and center above the documents -->
-	{#if imagesLoaded && (treeImages.length > 0 || canEdit)}
+	{#if imagesLoaded && groupedImages.shelf.length > 0}
 		<DocTreeImageShelf
 			images={groupedImages.shelf}
 			filedCount={filedImageCount}
@@ -755,6 +763,23 @@
 			onOpenImage={openImage}
 			onAddImage={() => (uploadOpen = true)}
 		/>
+	{/if}
+
+	{#if imagesLoaded && canEdit && groupedImages.shelf.length === 0}
+		<div class="flex min-h-11 items-center justify-between gap-2 px-3">
+			<button
+				type="button"
+				onclick={() => (uploadOpen = true)}
+				class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+			>
+				<ImagePlus class="h-3.5 w-3.5" />Add image
+			</button>
+			{#if !loading && !error && enrichedTree.length > 0}<span
+					class="hidden text-2xs text-muted-foreground sm:inline {enableDragDrop
+						? 'mr-10'
+						: ''}">Updated</span
+				>{/if}
+		</div>
 	{/if}
 
 	<!-- Loading state -->
@@ -798,6 +823,15 @@
 			{/if}
 		</div>
 	{:else}
+		{#if !(imagesLoaded && canEdit && groupedImages.shelf.length === 0)}
+			<div
+				class="hidden justify-end px-4 pt-1 text-2xs text-muted-foreground sm:flex {enableDragDrop
+					? 'pr-16'
+					: ''}"
+			>
+				Updated
+			</div>
+		{/if}
 		<!-- Tree view -->
 		<div class="doc-tree py-1">
 			{#each enrichedTree as node (node.id)}

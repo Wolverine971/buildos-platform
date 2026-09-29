@@ -158,9 +158,14 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// (p02 resent 11K chars and failed). Descriptions trimmed first; measured
 		// project 64 tools / 62,523 B. Only passes that select update_onto_document
 		// pay it. Re-baselined with a small margin.
+		// 2026-09-29 (tasker 112): get_project_cleanup joined the project surface so a
+		// "what's out of date?" turn starts from the nightly Project cleanup set (09-29
+		// prod: ~18 reads, $0.13, ~40% missed without it). Its description carries the
+		// start-here and apply-from-the-card guidance. Measured project 65 tools /
+		// 63,134 B (+611 B); Jev mounts it only on turns that need it.
 		expect(global.openingBytes).toBeLessThanOrEqual(51_200);
-		expect(project.openingBytes).toBeLessThanOrEqual(62_600);
-		expect(project.admittedBytes).toBeLessThanOrEqual(62_600);
+		expect(project.openingBytes).toBeLessThanOrEqual(63_200);
+		expect(project.admittedBytes).toBeLessThanOrEqual(63_200);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_220);
 	});
 

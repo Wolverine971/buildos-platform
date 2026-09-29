@@ -20,8 +20,9 @@ describe('shared read dispatch', () => {
 		// get_project_calendar) + the five email tools it gained on 2026-09-04
 		// (get_external_account_status, request_email_account_connection,
 		// list_email_accounts, search_email_messages, get_email_message) + the two
-		// project image reads added 2026-09-22 (search_onto_assets, get_onto_asset).
-		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(46);
+		// project image reads added 2026-09-22 (search_onto_assets, get_onto_asset) + the
+		// Project cleanup read added 2026-09-29 (get_project_cleanup, tasker 112).
+		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(47);
 		for (const toolName of AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1) {
 			expect(TOOL_METADATA[toolName], `${toolName} is missing TOOL_METADATA`).toBeDefined();
 			expect(isAgenticChatSharedReadToolNameV1(toolName)).toBe(true);

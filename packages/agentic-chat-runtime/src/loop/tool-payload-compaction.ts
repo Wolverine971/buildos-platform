@@ -261,6 +261,10 @@ function resolvePayloadBudget(toolName: string | undefined): number {
 	// the 6K budget needed two, each costing a model round trip.
 	if (toolName?.trim().toLowerCase() === 'list_calendar_events')
 		return MAX_MODEL_WEB_PAYLOAD_CHARS;
+	// One Project cleanup read stands in for the ~18 reads chat used to re-derive
+	// the set (tasker 112); at 6K a 12-item set lost every item's summary.
+	if (toolName?.trim().toLowerCase() === 'get_project_cleanup')
+		return MAX_MODEL_WEB_PAYLOAD_CHARS;
 	return MAX_MODEL_TOOL_PAYLOAD_CHARS;
 }
 
@@ -801,6 +805,11 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	if (normalizedToolName === 'scan_email_inbox') {
 		// The scan tool already bounds itself (15 emails, short snippets, three
 		// body openings); the guard only trims if a host overshoots.
+		return applyToolPayloadSizeGuard(payload, WEB_COMPACT_TARGET_CHARS);
+	}
+	if (normalizedToolName === 'get_project_cleanup') {
+		// Fits itself under PROJECT_CLEANUP_CHAT_BUDGET_CHARS by trading detail
+		// before items; the guard only trims if a host overshoots.
 		return applyToolPayloadSizeGuard(payload, WEB_COMPACT_TARGET_CHARS);
 	}
 	if (

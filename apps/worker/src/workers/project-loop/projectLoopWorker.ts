@@ -44,14 +44,12 @@ import {
 	type LoopPriorDecision,
 	type LoopStartHere,
 	type LoopTask,
-	type ProjectReviewSynthesisCandidate,
 	type RadarConcernSubject,
 	type UsageEvent,
-	buildHeuristicProjectManagerBrief,
 	generateDocOrganization,
 	generateDrift,
 	generateOutdatedDocs,
-	generateProjectManagerBrief,
+	generateProjectCleanupSynthesis,
 	generateTaskConflicts,
 	suggestionSuppressionKey,
 	withoutRadarOwnedFindings
@@ -68,16 +66,13 @@ import {
 	loadProjectLoopSuggestionEntityStates,
 	projectLoopDocumentRecencyMs,
 	projectReviewSignalDedupKey,
-	summarizeProjectLoopDocTree,
-	syncInboxItemForProjectSuggestion
+	summarizeProjectLoopDocTree
 } from '@buildos/shared-agent-ops';
 import {
 	applyProjectAttentionBudget,
 	expireInboxItemsForProjectAuditChildSuggestions,
-	expireProjectSuggestionInboxItemsForManagerBrief,
-	quarantineProjectSuggestionInboxItem,
 	syncInboxItemForProjectAudit,
-	syncInboxItemForProjectReview
+	syncInboxItemForProjectCleanup
 } from '@buildos/shared-agent-ops/inbox-index';
 import { verifyProjectSuggestionIntegrity } from '@buildos/shared-agent-ops/proposal-context';
 import {
@@ -98,6 +93,33 @@ import {
 	loadProjectDriftEvidence
 } from './driftEvidence';
 import { PROJECT_REVIEW_CLIPPED_TEXT_RULE } from './promptText';
+import { randomUUID } from 'node:crypto';
+import type { ProjectCleanupSynthesis } from '@buildos/shared-types';
+import { type CleanupSynthesisResult, buildHeuristicCleanupSynthesis } from './cleanupSynthesis';
+import {
+	type RowVerification,
+	ancestorsFrom,
+	closedThisPass,
+	subjectLookup,
+	synthesisItems,
+	trackedFindings
+} from './cleanupPass';
+import {
+	type RollupCloseReason,
+	applyRollupJudgment,
+	applyRollupPass,
+	closeRollupRows
+} from './reviewRollup';
+import {
+	type OpenReviewRow,
+	type RollupWriteResult,
+	closeReasonForIntegrityCode,
+	lineagesFromRows,
+	loadOpenReviewRows,
+	loadSubjectStates,
+	writeLineageState,
+	writeRollupEvents
+} from './reviewRollupStore';
 
 function isProjectAuditTriggerReason(
 	value: ProjectLoopJobMetadata['triggerReason']
@@ -110,6 +132,10 @@ function isProjectAuditTriggerReason(
 	);
 }
 
+// project_suggestions.lineage_id / rollup (tasker 112) are newer than the generated types.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RollupColumnsDb = { from: (table: string) => any };
+
 const MAX_SUGGESTIONS = 25;
 const MAX_AUDIT_CHILD_SUGGESTIONS = 8;
 const PROJECT_LOOP_COST_CAP_USD = 0.35;
@@ -120,27 +146,18 @@ const PRIOR_DECISION_LOOKBACK_DAYS = 60;
 const COMPLETE_AUDIT_ACTIVITY_LOOKBACK_DAYS = 30;
 const AUDIT_MEMORY_LOOKBACK_DAYS = 90;
 const SUGGESTION_SUPPRESSION_LOOKBACK_DAYS = 60;
-// Statuses whose suggestions should suppress a fresh duplicate: still-open items
-// (pending/delegated), user dismissals (rejected), and already-applied work.
-// 'superseded' and 'failed' are intentionally excluded — the user never got to
-// act on those, so re-surfacing them after a fresh run is desirable.
-const SUGGESTION_SUPPRESSION_STATUSES = [
-	'pending',
-	'delegated',
-	'addressed',
-	'rejected',
-	'applied'
-];
-// A successful light run is a full refresh of the project's open reconciliation
-// findings: pendings from earlier runs that the new run re-confirms stay live,
-// and pendings the new run no longer emits rotate out once they outlive the
-// grace window. The grace absorbs one nondeterministic-LLM miss (~one nightly
-// cycle) before a finding is declared stale (tasker/28 WP-1).
-const SUGGESTION_ROTATION_GRACE_MS = 72 * 60 * 60 * 1000;
-const LIGHT_LOOP_ROTATION_KINDS = ['doc_org', 'doc_outdated', 'drift', 'task_conflict'];
-// runGenerator labels → suggestion kinds, so a generator that did not finish
-// never rotates out the findings it produced on earlier runs (no evidence
-// either way this run).
+// Statuses whose suggestions suppress a fresh duplicate: what the user decided (rejected,
+// addressed, applied) or handed to chat (delegated). Open findings are no longer suppressed:
+// the roll-up confirms them in place (tasker 112). 'superseded' and 'failed' are excluded —
+// the user never acted on those.
+const SUGGESTION_SUPPRESSION_STATUSES = ['delegated', 'addressed', 'rejected', 'applied'];
+// Only the user's own decisions teach the checks; superseded and delegated rows are not
+// decisions (tasker 112: they read as "previously reviewed" and silenced true findings).
+const PRIOR_DECISION_STATUSES = ['addressed', 'rejected', 'applied'];
+/** Older live documents listed compactly beyond the full-description window. */
+const MAX_COMPACT_CONTEXT_DOCUMENTS = 200;
+// runGenerator labels → suggestion kinds, so a generator that did not finish never ages
+// the findings it produced on earlier runs (no evidence either way this run).
 const GENERATOR_LABEL_TO_KIND: Record<string, string> = {
 	'doc organization': 'doc_org',
 	'outdated docs': 'doc_outdated',
@@ -242,79 +259,6 @@ export async function insertProjectLoopSuggestionRows(params: {
 	throw createCodedDatabaseError('Failed to insert suggestions', error);
 }
 
-async function loadProjectReviewSynthesisCandidates(
-	projectId: string
-): Promise<ProjectReviewSynthesisCandidate[]> {
-	const { data, error } = await supabase
-		.from('project_suggestions')
-		.select(
-			'id, project_id, kind, risk_tier, title, rationale, why_now, evidence_refs, preview, operations, reversible, created_at, updated_at'
-		)
-		.eq('project_id', projectId)
-		.eq('status', 'pending')
-		.in('kind', ['doc_org', 'doc_outdated', 'drift', 'task_conflict'])
-		.order('risk_tier', { ascending: false })
-		.order('updated_at', { ascending: false })
-		.limit(MAX_SUGGESTIONS);
-	if (error)
-		throw new Error(`Failed to load project review synthesis candidates: ${error.message}`);
-
-	const candidates: ProjectReviewSynthesisCandidate[] = [];
-	for (const row of (data ?? []) as Record<string, unknown>[]) {
-		const id = asString(row.id);
-		const kind = asString(row.kind);
-		const title = asString(row.title);
-		if (!id || !kind || !title) continue;
-		const operations = Array.isArray(row.operations) ? (row.operations as LoopOperation[]) : [];
-		let verifiedChangeHeadline: string | null = null;
-		if (operations.length > 0) {
-			const verification = await verifyProjectSuggestionIntegrity(supabase, {
-				projectId,
-				operations,
-				title,
-				preview: asRecord(row.preview),
-				checkModelAlignment: true
-			});
-			if (!verification.ok) {
-				await quarantineProjectSuggestionInboxItem({
-					supabase,
-					suggestion: row,
-					diagnostic: verification.diagnostic
-				});
-				continue;
-			}
-			verifiedChangeHeadline = verification.summary.headline;
-		}
-
-		const evidenceRefs = Array.isArray(row.evidence_refs)
-			? (row.evidence_refs as ProjectSuggestionEvidenceRef[]).filter(
-					(ref) =>
-						Boolean(ref) &&
-						typeof ref === 'object' &&
-						typeof ref.entity_type === 'string' &&
-						typeof ref.title === 'string'
-				)
-			: [];
-		candidates.push({
-			id,
-			kind,
-			risk_tier:
-				typeof row.risk_tier === 'number' && Number.isFinite(row.risk_tier)
-					? row.risk_tier
-					: 2,
-			title,
-			rationale: asString(row.rationale),
-			why_now: asString(row.why_now),
-			evidence_refs: evidenceRefs,
-			operations,
-			reversible: typeof row.reversible === 'boolean' ? row.reversible : null,
-			verified_change_headline: verifiedChangeHeadline
-		});
-	}
-
-	return candidates;
-}
-
 async function supersedeOlderProjectManagerBriefs(params: {
 	projectId: string;
 	runId?: string;
@@ -361,24 +305,6 @@ async function supersedeOlderProjectManagerBriefs(params: {
 	return olderRunIds.length;
 }
 
-async function projectHasActiveAuditManagerBrief(projectId: string): Promise<boolean> {
-	const { data, error } = await supabase
-		.from('inbox_items')
-		.select('id')
-		.eq('project_id', projectId)
-		.eq('source_type', 'project_audit')
-		.in('status', ['pending', 'deciding', 'snoozed', 'blocked', 'deferred'])
-		.limit(1);
-	if (error) {
-		console.warn(
-			`[ProjectReviews] Failed to check for an active audit packet for ${projectId}:`,
-			error.message
-		);
-		return false;
-	}
-	return Boolean(data?.length);
-}
-
 function nowIso(): string {
 	return new Date().toISOString();
 }
@@ -415,7 +341,7 @@ async function loadPriorDecisions(projectId: string): Promise<LoopPriorDecision[
 		.from('project_suggestions')
 		.select('title, kind, status, user_feedback, decided_at, updated_at')
 		.eq('project_id', projectId)
-		.in('status', ['addressed', 'rejected', 'applied', 'delegated', 'superseded'])
+		.in('status', PRIOR_DECISION_STATUSES)
 		.gte('updated_at', since)
 		.order('updated_at', { ascending: false })
 		.limit(30);
@@ -448,13 +374,12 @@ async function loadPriorDecisions(projectId: string): Promise<LoopPriorDecision[
 }
 
 /**
- * Suppression keys for the project's still-open and recently-decided suggestions,
- * so a fresh run does not re-emit a duplicate the user is already looking at (or
- * has already acted on). `rejected` keys are tracked separately so the caller can
- * count how often the model tries to re-surface something the user dismissed
+ * Suppression keys for the project's recently decided suggestions, so a fresh run does not
+ * re-raise what the user already acted on. `rejected` keys are tracked separately so the
+ * caller can count how often the model tries to re-surface something the user dismissed
  * (repeated-after-dismissal telemetry — audit Tier 1 #6).
  */
-async function loadExistingSuggestionKeys(
+async function loadDecidedSuggestionKeys(
 	projectId: string
 ): Promise<{ all: Set<string>; rejected: Set<string> }> {
 	const since = new Date(
@@ -495,7 +420,7 @@ async function loadExistingSuggestionKeys(
 async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	const { data: projectRow, error: projectError } = await supabase
 		.from('onto_projects')
-		.select('id, name, description, doc_structure, deleted_at, archived_at')
+		.select('id, name, description, type_key, doc_structure, deleted_at, archived_at')
 		.eq('id', projectId)
 		.maybeSingle();
 
@@ -509,11 +434,15 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	if (graphError) throw new Error(`Failed to load project graph: ${graphError.message}`);
 
 	const graph = parseProjectGraphContext(graphData);
-	const rawDocsAll = graph.documents;
+	// Tree-archived documents keep deleted_at null (tasker 113); they are not live work.
+	const rawDocsAll = graph.documents.filter((doc) => doc.state_key !== 'archived');
 	const rawTasks = graph.tasks;
 	const rawGoals = graph.goals;
 	const rawEdges = graph.edges;
-	const priorDecisions = await loadPriorDecisions(projectId);
+	const [priorDecisions, documentFacts] = await Promise.all([
+		loadPriorDecisions(projectId),
+		loadDocumentFacts(projectId)
+	]);
 
 	const parentMap = buildProjectLoopParentMap(projectRow.doc_structure);
 	// Titles for the whole tree stay complete so the doc-tree summary never
@@ -522,19 +451,33 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	const titleById = new Map<string, string>(
 		rawDocsAll.map((document) => [document.id, document.title || 'Untitled'])
 	);
-	const rawDocs = [...rawDocsAll]
-		.sort((a, b) => projectLoopDocumentRecencyMs(b) - projectLoopDocumentRecencyMs(a))
-		.slice(0, MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS);
-
-	const documents: LoopDocument[] = rawDocs.map((d) => ({
-		id: d.id,
-		title: d.title ?? 'Untitled',
-		type_key: d.type_key ?? null,
-		state_key: d.state_key ?? null,
-		description: d.description ?? null,
-		updated_at: d.updated_at ?? d.created_at ?? null,
-		parent_id: parentMap.get(d.id) ?? null
-	}));
+	const byRecency = [...rawDocsAll].sort(
+		(a, b) => projectLoopDocumentRecencyMs(b) - projectLoopDocumentRecencyMs(a)
+	);
+	const toLoopDocument = (d: (typeof rawDocsAll)[number]): LoopDocument => {
+		const facts = documentFacts.get(d.id);
+		return {
+			id: d.id,
+			title: d.title ?? 'Untitled',
+			type_key: d.type_key ?? null,
+			state_key: d.state_key ?? null,
+			description: d.description ?? null,
+			updated_at: d.updated_at ?? d.created_at ?? null,
+			parent_id: parentMap.get(d.id) ?? null,
+			...(facts ? { content_chars: facts.content_chars, is_public: facts.is_public } : {})
+		};
+	};
+	// The most recent documents in full; every other live document as one compact line, so
+	// the stalest ones stay in view (tasker 112).
+	const documents = byRecency.slice(0, MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS).map(toLoopDocument);
+	const moreDocuments = byRecency
+		.slice(
+			MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS,
+			MAX_PROJECT_LOOP_CONTEXT_DOCUMENTS + MAX_COMPACT_CONTEXT_DOCUMENTS
+		)
+		.map(toLoopDocument);
+	const startHereDocumentId =
+		byRecency.find((doc) => doc.type_key === START_HERE_DOCUMENT_TYPE_KEY)?.id ?? null;
 
 	const goalNameById = new Map<string, string>(
 		rawGoals.map((goal) => [goal.id, goal.name || goal.goal || 'Untitled goal'])
@@ -580,11 +523,19 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 		projectId,
 		projectName: projectRow.name ?? 'Untitled project',
 		projectDescription: projectRow.description ?? null,
-		goals: rawGoals.slice(0, 10).map((g) => ({
-			name: g.name ?? g.goal ?? 'Untitled goal',
-			description: g.description ?? null
-		})),
+		projectTypeKey: projectRow.type_key ?? null,
+		goals: rawGoals
+			.filter((g) => g.state_key !== 'archived')
+			.slice(0, 10)
+			.map((g) => ({
+				id: g.id,
+				name: g.name ?? g.goal ?? 'Untitled goal',
+				description: g.description ?? null,
+				state_key: g.state_key ?? null
+			})),
 		documents,
+		moreDocuments,
+		startHereDocumentId,
 		docStructureSummary: summarizeProjectLoopDocTree(projectRow.doc_structure, titleById),
 		tasks,
 		priorDecisions,
@@ -597,6 +548,43 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 			})),
 		startHere: await loadLoopStartHere(projectId)
 	};
+}
+
+/**
+ * Body size and public-page flag for every live document (tasker 112), so the checks can see
+ * empty placeholders and know an archive would touch a published page. A failed read (for
+ * example before the migration is applied) only loses these two facts.
+ */
+async function loadDocumentFacts(
+	projectId: string
+): Promise<Map<string, { content_chars: number; is_public: boolean }>> {
+	try {
+		// project_review_document_facts is newer than the generated database types.
+		const { data, error } = await (
+			supabase as unknown as {
+				rpc: (
+					name: string,
+					args: Record<string, unknown>
+				) => Promise<{ data: unknown; error: { message: string } | null }>;
+			}
+		).rpc('project_review_document_facts', { p_project_id: projectId });
+		if (error) throw new Error(error.message);
+		const facts = new Map<string, { content_chars: number; is_public: boolean }>();
+		for (const row of Array.isArray(data) ? (data as Array<Record<string, unknown>>) : []) {
+			if (typeof row.document_id !== 'string') continue;
+			facts.set(row.document_id, {
+				content_chars: typeof row.content_chars === 'number' ? row.content_chars : 0,
+				is_public: row.is_public === true
+			});
+		}
+		return facts;
+	} catch (error) {
+		console.warn(
+			`[ProjectLoops] Document facts unavailable for ${projectId}:`,
+			error instanceof Error ? error.message : error
+		);
+		return new Map();
+	}
 }
 
 /** START HERE's authored sections: where the project is, for the next-action judgment. */
@@ -757,183 +745,24 @@ async function supersedePendingSuggestionsForFailedRun(params: {
 		return 0;
 	}
 
-	for (const suggestion of updatedSuggestions ?? []) {
+	// Every row is a cleanup item now: one card sync per project covers them all.
+	const projectIds = new Set(
+		(updatedSuggestions ?? [])
+			.map((suggestion) => asString(suggestion.project_id))
+			.filter((id): id is string => Boolean(id))
+	);
+	for (const projectId of projectIds) {
 		try {
-			await syncInboxItemForProjectSuggestion({
-				supabase,
-				suggestion: suggestion as unknown as Record<string, unknown>
-			});
+			await syncInboxItemForProjectCleanup({ supabase, projectId });
 		} catch (syncError) {
 			console.warn(
-				`⚠️ Failed to sync AI Inbox item for superseded failed-run suggestion ${suggestion.id}:`,
+				`⚠️ Failed to sync the cleanup card after failed run ${params.runId}:`,
 				syncError instanceof Error ? syncError.message : syncError
 			);
 		}
 	}
 
 	return (updatedSuggestions ?? []).length;
-}
-
-/**
- * Rotate stale light-loop findings after a successful run (tasker/28 WP-1).
- * Prior-run pendings whose suppression key matches something this run emitted
- * are re-confirmed (updated_at bump restarts their grace window and extends the
- * inbox review expiry). Pendings the run did not re-confirm are superseded once
- * older than the grace window — unless their generator was cost-cap-skipped or
- * the user is actively engaging with them in the inbox (deciding/snoozed).
- * Audit children are excluded; audit supersede owns their rotation.
- */
-async function rotateUnconfirmedPendingSuggestions(params: {
-	projectId: string;
-	runId: string;
-	confirmedKeys: Set<string>;
-	skippedKinds: Set<string>;
-	log: (message: string) => Promise<unknown> | unknown;
-}): Promise<{ confirmedCount: number; rotatedCount: number }> {
-	const none = { confirmedCount: 0, rotatedCount: 0 };
-	const { data, error } = await supabase
-		.from('project_suggestions')
-		.select('id, kind, operations, evidence_refs, title, created_at, updated_at')
-		.eq('project_id', params.projectId)
-		.eq('status', 'pending')
-		.in('kind', LIGHT_LOOP_ROTATION_KINDS)
-		.neq('run_id', params.runId)
-		.limit(500);
-	if (error) {
-		console.warn(
-			`[ProjectLoops] Failed to load pending suggestions for rotation on project ${params.projectId}:`,
-			error.message
-		);
-		return none;
-	}
-	const rows = (data ?? []) as Record<string, unknown>[];
-	if (!rows.length) return none;
-
-	const rowIds = rows.map((row) => asString(row.id)).filter((id): id is string => Boolean(id));
-	const { data: engagedRows, error: engagedError } = await supabase
-		.from('inbox_items')
-		.select('source_ref_id, status')
-		.eq('source_type', 'project_suggestion')
-		.in('source_ref_id', rowIds)
-		.in('status', ['deciding', 'snoozed']);
-	if (engagedError) {
-		console.warn(
-			`[ProjectLoops] Failed to load inbox engagement for rotation on project ${params.projectId}:`,
-			engagedError.message
-		);
-		return none;
-	}
-	const userEngaged = new Set(
-		((engagedRows ?? []) as Record<string, unknown>[])
-			.map((row) => asString(row.source_ref_id))
-			.filter((id): id is string => Boolean(id))
-	);
-
-	const now = Date.now();
-	const confirmedIds: string[] = [];
-	const rotateIds: string[] = [];
-	for (const row of rows) {
-		const id = asString(row.id);
-		const kind = asString(row.kind) ?? '';
-		if (!id || userEngaged.has(id) || params.skippedKinds.has(kind)) continue;
-		const key = suggestionSuppressionKey({
-			kind,
-			operations: (row.operations as LoopOperation[] | null) ?? [],
-			evidence_refs: (row.evidence_refs as ProjectSuggestionEvidenceRef[] | null) ?? null,
-			title: asString(row.title)
-		});
-		if (key && params.confirmedKeys.has(key)) {
-			confirmedIds.push(id);
-			continue;
-		}
-		const freshBasis = asString(row.updated_at) ?? asString(row.created_at);
-		const age = freshBasis ? now - Date.parse(freshBasis) : Number.POSITIVE_INFINITY;
-		if (age > SUGGESTION_ROTATION_GRACE_MS) rotateIds.push(id);
-	}
-
-	if (confirmedIds.length) {
-		const { data: confirmedSuggestions, error: confirmError } = await supabase
-			.from('project_suggestions')
-			.update({ updated_at: nowIso() })
-			.in('id', confirmedIds)
-			.eq('status', 'pending')
-			.select('*');
-		if (confirmError) {
-			console.warn(
-				`[ProjectLoops] Failed to re-confirm pending suggestions on project ${params.projectId}:`,
-				confirmError.message
-			);
-		} else {
-			for (const suggestion of confirmedSuggestions ?? []) {
-				try {
-					await syncInboxItemForProjectSuggestion({
-						supabase,
-						suggestion: suggestion as unknown as Record<string, unknown>
-					});
-				} catch (syncError) {
-					console.warn(
-						`⚠️ Failed to sync AI Inbox item for re-confirmed suggestion ${suggestion.id}:`,
-						syncError instanceof Error ? syncError.message : syncError
-					);
-				}
-			}
-		}
-	}
-
-	let rotatedCount = 0;
-	if (rotateIds.length) {
-		const result = {
-			ok: false,
-			applied_operations: 0,
-			errors: [
-				{
-					tool: 'project_loop_rotation',
-					error: 'Not re-confirmed by the latest loop run.'
-				}
-			]
-		};
-		const { data: rotatedSuggestions, error: rotateError } = await supabase
-			.from('project_suggestions')
-			.update({
-				status: 'superseded',
-				decided_at: nowIso(),
-				result: result as unknown as Json
-			})
-			.in('id', rotateIds)
-			.eq('status', 'pending')
-			.select('*');
-		if (rotateError) {
-			console.warn(
-				`[ProjectLoops] Failed to rotate stale suggestions on project ${params.projectId}:`,
-				rotateError.message
-			);
-		} else {
-			rotatedCount = (rotatedSuggestions ?? []).length;
-			for (const suggestion of rotatedSuggestions ?? []) {
-				try {
-					await syncInboxItemForProjectSuggestion({
-						supabase,
-						suggestion: suggestion as unknown as Record<string, unknown>
-					});
-				} catch (syncError) {
-					console.warn(
-						`⚠️ Failed to sync AI Inbox item for rotated suggestion ${suggestion.id}:`,
-						syncError instanceof Error ? syncError.message : syncError
-					);
-				}
-			}
-		}
-	}
-
-	if (confirmedIds.length || rotatedCount) {
-		await params.log(
-			`Rotation: re-confirmed ${confirmedIds.length} still-open finding${
-				confirmedIds.length === 1 ? '' : 's'
-			}, rotated out ${rotatedCount} stale one${rotatedCount === 1 ? '' : 's'}.`
-		);
-	}
-
-	return { confirmedCount: confirmedIds.length, rotatedCount };
 }
 
 async function scheduleDebouncedProjectReviewSignalWakeup(params: {
@@ -2617,22 +2446,82 @@ async function createAuditChildSuggestions(params: {
 	const drafts = buildAuditChildSuggestionDrafts(params);
 	if (!drafts.length) return { generatedCount: 0, unresolvedCount: 0 };
 
-	const { data: insertedSuggestions, error: insertError } = await supabase
-		.from('project_suggestions')
-		.insert(drafts.map((draft) => draft.row))
-		.select('*');
-	if (insertError) {
-		throw new Error(`Failed to insert audit child suggestions: ${insertError.message}`);
+	// Tasker 112: a recommendation the previous audit already raised and the user has not
+	// decided carries forward on its existing row (same lineage, refreshed wording), linked
+	// to this audit too. Only new recommendations are inserted.
+	const openByKey = new Map<string, OpenReviewRow>();
+	for (const row of await loadOpenReviewRows(supabase, params.projectId)) {
+		const key = row.kind === 'audit_recommendation' ? recommendationMemoryKey(row.title) : null;
+		if (key && !openByKey.has(key)) openByKey.set(key, row);
+	}
+	const now = nowIso();
+	const carried: Array<{ suggestion: Record<string, unknown>; role: string }> = [];
+	const fresh: AuditChildSuggestionDraft[] = [];
+	for (const draft of drafts) {
+		const key = recommendationMemoryKey(String(draft.row.title ?? ''));
+		const existing = key ? openByKey.get(key) : undefined;
+		if (!existing) {
+			fresh.push(draft);
+			continue;
+		}
+		openByKey.delete(key as string);
+		const { data: refreshed, error: refreshError } = await supabase
+			.from('project_suggestions')
+			.update({
+				title: draft.row.title,
+				rationale: draft.row.rationale,
+				why_now: draft.row.why_now,
+				confidence: draft.row.confidence,
+				evidence_refs: draft.row.evidence_refs,
+				preview: draft.row.preview,
+				risk_tier: draft.row.risk_tier,
+				updated_at: now
+			})
+			.eq('id', existing.id)
+			.eq('status', 'pending')
+			.select('*')
+			.maybeSingle();
+		if (refreshError) {
+			throw new Error(
+				`Failed to carry an audit recommendation forward: ${refreshError.message}`
+			);
+		}
+		// Decided between the load and the refresh: raise it as new instead.
+		if (!refreshed) fresh.push(draft);
+		else carried.push({ suggestion: refreshed as Record<string, unknown>, role: draft.role });
 	}
 
-	const suggestions = insertedSuggestions ?? [];
+	let insertedSuggestions: Array<Record<string, unknown>> = [];
+	if (fresh.length) {
+		const rows = fresh.map((draft) => {
+			const id = randomUUID();
+			return { ...draft.row, id, lineage_id: id };
+		});
+		const { data, error: insertError } = await (supabase as unknown as RollupColumnsDb)
+			.from('project_suggestions')
+			.insert(rows)
+			.select('*');
+		if (insertError) {
+			throw new Error(`Failed to insert audit child suggestions: ${insertError.message}`);
+		}
+		insertedSuggestions = (data ?? []) as Array<Record<string, unknown>>;
+	}
+
+	const suggestions = [...carried.map((entry) => entry.suggestion), ...insertedSuggestions];
 	if (!suggestions.length) return { generatedCount: 0, unresolvedCount: 0 };
 
-	const linkRows = suggestions.map((suggestion, index) => ({
-		audit_id: params.auditId,
-		suggestion_id: suggestion.id,
-		role: drafts[index]?.role ?? 'recommended_action'
-	}));
+	const linkRows = [
+		...carried.map((entry) => ({
+			audit_id: params.auditId,
+			suggestion_id: String(entry.suggestion.id),
+			role: entry.role
+		})),
+		...insertedSuggestions.map((suggestion, index) => ({
+			audit_id: params.auditId,
+			suggestion_id: String(suggestion.id),
+			role: fresh[index]?.role ?? 'recommended_action'
+		}))
+	];
 	const { error: linkError } = await supabase.from('project_audit_suggestions').insert(linkRows);
 	if (linkError) {
 		const failedResult = {
@@ -2640,16 +2529,19 @@ async function createAuditChildSuggestions(params: {
 			applied_operations: 0,
 			errors: [{ tool: 'project_audit_suggestions', error: linkError.message }]
 		};
-		await supabase
-			.from('project_suggestions')
-			.update({
-				status: 'failed',
-				result: failedResult as unknown as Json
-			})
-			.in(
-				'id',
-				suggestions.map((suggestion) => suggestion.id)
-			);
+		// Only rows this audit created fail; carried-forward rows keep their earlier links.
+		if (insertedSuggestions.length) {
+			await supabase
+				.from('project_suggestions')
+				.update({
+					status: 'failed',
+					result: failedResult as unknown as Json
+				})
+				.in(
+					'id',
+					insertedSuggestions.map((suggestion) => String(suggestion.id))
+				);
+		}
 		throw new Error(`Failed to link audit child suggestions: ${linkError.message}`);
 	}
 
@@ -2732,17 +2624,28 @@ async function supersedeOlderReadyAudits(params: {
 		return { supersededAuditCount: oldAuditIds.length, supersededSuggestionCount: 0 };
 	}
 
+	// Recommendations the new audit carried forward stay open (tasker 112).
+	const { data: carriedLinks } = await supabase
+		.from('project_audit_suggestions')
+		.select('suggestion_id')
+		.eq('audit_id', params.auditId);
+	const carriedIds = new Set(
+		((carriedLinks ?? []) as Record<string, unknown>[])
+			.map((link) => asString(link.suggestion_id))
+			.filter((id): id is string => Boolean(id))
+	);
 	const suggestionIds = Array.from(
 		new Set(
 			((links ?? []) as Record<string, unknown>[])
 				.map((link) => asString(link.suggestion_id))
-				.filter((id): id is string => Boolean(id))
+				.filter((id): id is string => Boolean(id) && !carriedIds.has(id as string))
 		)
 	);
 	if (!suggestionIds.length) {
 		return { supersededAuditCount: oldAuditIds.length, supersededSuggestionCount: 0 };
 	}
 
+	const closeDetail = 'The latest project audit no longer raises it.';
 	const result = {
 		ok: false,
 		applied_operations: 0,
@@ -2753,42 +2656,53 @@ async function supersedeOlderReadyAudits(params: {
 			}
 		]
 	};
-	const { data: updatedSuggestions, error: suggestionUpdateError } = await supabase
+	const db = supabase as unknown as RollupColumnsDb;
+	const { data: closing, error: closingError } = await db
 		.from('project_suggestions')
-		.update({
-			status: 'superseded',
-			decided_at: params.now,
-			result: result as unknown as Json
-		})
+		.select('id, rollup')
 		.in('id', suggestionIds)
-		.eq('status', 'pending')
-		.select('*');
-	if (suggestionUpdateError) {
+		.eq('status', 'pending');
+	if (closingError) {
 		console.warn(
-			`[ProjectAudits] Failed to supersede child suggestions for older audits:`,
-			suggestionUpdateError.message
+			`[ProjectAudits] Failed to load child suggestions to supersede:`,
+			closingError.message
 		);
 		return { supersededAuditCount: oldAuditIds.length, supersededSuggestionCount: 0 };
 	}
-
-	for (const suggestion of updatedSuggestions ?? []) {
-		try {
-			await syncInboxItemForProjectSuggestion({
-				supabase,
-				suggestion: suggestion as unknown as Record<string, unknown>
-			});
-		} catch (syncError) {
+	let supersededSuggestionCount = 0;
+	for (const row of (closing ?? []) as Array<{ id: string; rollup: unknown }>) {
+		// The close is recorded on the lineage, so the card can say why it left.
+		const { data: updated, error: suggestionUpdateError } = await db
+			.from('project_suggestions')
+			.update({
+				status: 'superseded',
+				decided_at: params.now,
+				result: result as unknown as Json,
+				rollup: {
+					...(asRecord(row.rollup) ?? {}),
+					close: {
+						reason: 'no_longer_applies',
+						detail: closeDetail,
+						run_id: null,
+						at: params.now
+					}
+				}
+			})
+			.eq('id', row.id)
+			.eq('status', 'pending')
+			.select('id')
+			.maybeSingle();
+		if (suggestionUpdateError) {
 			console.warn(
-				`⚠️ Failed to sync AI Inbox item for superseded audit suggestion ${suggestion.id}:`,
-				syncError instanceof Error ? syncError.message : syncError
+				`[ProjectAudits] Failed to supersede audit follow-up ${row.id}:`,
+				suggestionUpdateError.message
 			);
+			continue;
 		}
+		if (updated) supersededSuggestionCount += 1;
 	}
 
-	return {
-		supersededAuditCount: oldAuditIds.length,
-		supersededSuggestionCount: (updatedSuggestions ?? []).length
-	};
+	return { supersededAuditCount: oldAuditIds.length, supersededSuggestionCount };
 }
 
 async function processCompleteProjectAuditJob(
@@ -3007,6 +2921,15 @@ async function processCompleteProjectAuditJob(
 		if (superseded.supersededAuditCount > 0) {
 			await job.log(
 				`Superseded ${superseded.supersededAuditCount} older ready audit${superseded.supersededAuditCount === 1 ? '' : 's'} and ${superseded.supersededSuggestionCount} pending follow-up${superseded.supersededSuggestionCount === 1 ? '' : 's'}.`
+			);
+		}
+		try {
+			// The audit's follow-ups are items in the project's cleanup card (tasker 112).
+			await syncInboxItemForProjectCleanup({ supabase, projectId });
+		} catch (syncError) {
+			console.warn(
+				`⚠️ Failed to sync the cleanup card after audit ${auditId}:`,
+				syncError instanceof Error ? syncError.message : syncError
 			);
 		}
 
@@ -3249,6 +3172,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 	let totalCompletionTokens = 0;
 	let totalTokens = 0;
 	let lastUsage: UsageEvent | null = null;
+	let rollupPersisted = false;
 	const onUsage = (event: UsageEvent): Promise<void> => {
 		totalCost += event.totalCost ?? 0;
 		totalPromptTokens += event.promptTokens ?? 0;
@@ -3344,6 +3268,13 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			})
 		]);
 		throwIfOwnershipLost();
+		// The open cleanup list, so the checks spend their output on new findings (tasker 112).
+		const openRowsAtStart = await loadOpenReviewRows(supabase, projectId);
+		ctx.tracked = trackedFindings(
+			lineagesFromRows(openRowsAtStart),
+			subjectLookup(ctx, new Map())
+		);
+		throwIfOwnershipLost();
 		const skipUnchangedLens = async (label: string): Promise<ProposedSuggestion[]> => {
 			await job.log(`Skipping ${label}: its inputs are unchanged since the last review`);
 			return [];
@@ -3421,12 +3352,10 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			})
 		]);
 
-		// Deterministic pre-insert suppression: drop proposals that duplicate a
-		// suggestion the user is already looking at or has already decided, keyed
-		// on the entities they touch (not their regenerated titles). This is the
-		// only reliable guard against the loop re-flagging the same undecided task
-		// pair or doc every run — prompt suppression has never had feedback data to
-		// work with. See project-loops-flow-audit-2026-07-04 §3/§4.
+		// Deterministic pre-insert suppression: drop proposals the user already decided or
+		// handed to chat, keyed on the entities they touch (not their regenerated titles), and
+		// duplicates within this pass. Open findings are not suppressed: the roll-up below
+		// confirms them in place (tasker 112).
 		const radarFiltered = withoutRadarOwnedFindings(
 			[...outdated, ...taskConflicts, ...docOrg, ...drift],
 			radarConcerns
@@ -3438,7 +3367,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		}
 		const generated: ProposedSuggestion[] = radarFiltered.kept;
 		throwIfOwnershipLost();
-		const existingKeys = await loadExistingSuggestionKeys(projectId);
+		const decidedKeys = await loadDecidedSuggestionKeys(projectId);
 		throwIfOwnershipLost();
 		const seenThisRunKeys = new Set<string>();
 		let suppressedCount = 0;
@@ -3447,11 +3376,11 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		for (const suggestion of generated) {
 			if (proposed.length >= MAX_SUGGESTIONS) break;
 			const key = suggestionSuppressionKey(suggestion);
-			if (key && (existingKeys.all.has(key) || seenThisRunKeys.has(key))) {
+			if (key && (decidedKeys.all.has(key) || seenThisRunKeys.has(key))) {
 				suppressedCount += 1;
 				// The model re-proposed something the user already dismissed — the
 				// signal that prompt-only suppression is unreliable (audit Tier 1 #6).
-				if (existingKeys.rejected.has(key)) repeatedAfterDismissalCount += 1;
+				if (decidedKeys.rejected.has(key)) repeatedAfterDismissalCount += 1;
 				continue;
 			}
 			if (key) seenThisRunKeys.add(key);
@@ -3459,9 +3388,9 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		}
 		if (suppressedCount) {
 			await job.log(
-				`Suppressed ${suppressedCount} duplicate suggestion${
+				`Suppressed ${suppressedCount} suggestion${
 					suppressedCount === 1 ? '' : 's'
-				} already open or previously decided for this project${
+				} the user already decided or that repeated within this pass${
 					repeatedAfterDismissalCount
 						? ` (${repeatedAfterDismissalCount} previously dismissed)`
 						: ''
@@ -3469,62 +3398,94 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			);
 		}
 
-		// Everything the run emitted — including proposals suppressed as
-		// duplicates of already-open findings — counts as re-confirmation for
-		// rotation. A suppressed duplicate literally means "the loop still sees
-		// this," so the matching pending row must stay live (tasker/28 WP-1).
-		const confirmedKeys = new Set<string>();
-		for (const suggestion of generated) {
-			const key = suggestionSuppressionKey(suggestion);
-			if (key) confirmedKeys.add(key);
-		}
+		// Kinds this pass did not check: their open findings get no evidence either way, so
+		// they neither age nor count as confirmed. Audit recommendations belong to the audit.
 		const skippedKinds = new Set<string>(
 			skippedLenses.map((lens) => lens.kind).filter((kind): kind is string => Boolean(kind))
 		);
+		for (const [label, kind] of Object.entries(GENERATOR_LABEL_TO_KIND)) {
+			if (
+				(label === 'doc organization' && unchangedInputs.documents) ||
+				(label === 'task conflicts' && unchangedInputs.tasks)
+			)
+				skippedKinds.add(kind);
+		}
+		skippedKinds.add('audit_recommendation');
 		const uncheckedLenses = skippedLenses
 			.filter((lens) => Boolean(lens.kind))
 			.map((lens) => GENERATOR_LABEL_TO_USER_FACING_LENS[lens.label] ?? lens.label);
 
-		if (proposed.length) {
-			await heartbeat('Writing suggestions');
-			throwIfOwnershipLost();
+		// ── Roll-up (tasker 112): carry every open finding forward as a lineage. ──
+		await heartbeat('Carrying forward open findings');
+		throwIfOwnershipLost();
+		const rollupAt = nowIso();
+		const candidateIds = proposed.map(() => randomUUID());
+		const openRows = await loadOpenReviewRows(supabase, projectId);
+		const previousItems = lineagesFromRows(openRows);
+		const subjectStates = await loadSubjectStates(
+			supabase,
+			projectId,
+			new Set(previousItems.flatMap((item) => item.subjects))
+		);
+		throwIfOwnershipLost();
+		const deterministic = applyRollupPass(
+			previousItems,
+			{
+				runId,
+				at: rollupAt,
+				candidates: proposed.map((suggestion, index) => ({
+					suggestionId: candidateIds[index],
+					runId,
+					kind: suggestion.kind,
+					title: suggestion.title,
+					operations: suggestion.operations,
+					evidenceRefs: suggestion.evidence_refs ?? []
+				})),
+				subjectState: (key) => subjectStates.get(key),
+				ancestorsOf: ancestorsFrom(ctx)
+			},
+			{ judgment: false }
+		);
 
-			// Stamp each suggestion with a freshness fingerprint scoped to just the
-			// entities its operations mutate (Tier 1 #4). Batch-load every referenced
-			// entity once, then hash each suggestion's subset. Suggestions that mutate
-			// nothing concrete (drift, audit follow-ups) get a null fingerprint and
-			// therefore no freshness guard. The web approval check recomputes this the
-			// same way, so the two are directly comparable.
-			const allTaskIds = new Set<string>();
-			const allDocIds = new Set<string>();
-			for (const s of proposed) {
-				const refs = extractProjectLoopSuggestionEntities(s.operations);
-				refs.taskIds.forEach((id) => allTaskIds.add(id));
-				refs.docIds.forEach((id) => allDocIds.add(id));
+		// Stamp each new or re-confirmed row with a freshness fingerprint scoped to just the
+		// entities its operations mutate (Tier 1 #4). Findings that mutate nothing concrete
+		// get a null fingerprint and therefore no freshness guard. The web approval check
+		// recomputes this the same way, so the two are directly comparable.
+		const allTaskIds = new Set<string>();
+		const allDocIds = new Set<string>();
+		for (const s of proposed) {
+			const refs = extractProjectLoopSuggestionEntities(s.operations);
+			refs.taskIds.forEach((id) => allTaskIds.add(id));
+			refs.docIds.forEach((id) => allDocIds.add(id));
+		}
+		const scopedStates = proposed.length
+			? await loadProjectLoopSuggestionEntityStates(supabase, projectId, {
+					taskIds: [...allTaskIds],
+					docIds: [...allDocIds]
+				})
+			: [];
+		throwIfOwnershipLost();
+		const scopedStateByKey = new Map<string, ProjectLoopScopedEntity>(
+			scopedStates.map((e) => [`${e.kind}:${e.id}`, e])
+		);
+		const scopedFingerprintFor = (s: ProposedSuggestion): string | null => {
+			const refs = extractProjectLoopSuggestionEntities(s.operations);
+			const entities: ProjectLoopScopedEntity[] = [];
+			for (const id of refs.taskIds) {
+				const entity = scopedStateByKey.get(`task:${id}`);
+				if (entity) entities.push(entity);
 			}
-			const scopedStates = await loadProjectLoopSuggestionEntityStates(supabase, projectId, {
-				taskIds: [...allTaskIds],
-				docIds: [...allDocIds]
-			});
-			throwIfOwnershipLost();
-			const scopedStateByKey = new Map<string, ProjectLoopScopedEntity>(
-				scopedStates.map((e) => [`${e.kind}:${e.id}`, e])
-			);
-			const scopedFingerprintFor = (s: ProposedSuggestion): string | null => {
-				const refs = extractProjectLoopSuggestionEntities(s.operations);
-				const entities: ProjectLoopScopedEntity[] = [];
-				for (const id of refs.taskIds) {
-					const entity = scopedStateByKey.get(`task:${id}`);
-					if (entity) entities.push(entity);
-				}
-				for (const id of refs.docIds) {
-					const entity = scopedStateByKey.get(`document:${id}`);
-					if (entity) entities.push(entity);
-				}
-				return buildScopedSuggestionFingerprint(entities);
-			};
-
-			const rows = proposed.map((s, index) => ({
+			for (const id of refs.docIds) {
+				const entity = scopedStateByKey.get(`document:${id}`);
+				if (entity) entities.push(entity);
+			}
+			return buildScopedSuggestionFingerprint(entities);
+		};
+		const insertRows = new Map<string, Record<string, unknown>>();
+		const refreshFields = new Map<string, Record<string, unknown>>();
+		proposed.forEach((s, index) => {
+			const fingerprint = scopedFingerprintFor(s);
+			insertRows.set(candidateIds[index], {
 				run_id: runId,
 				project_id: projectId,
 				kind: s.kind,
@@ -3539,104 +3500,211 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				freshness_state: s.freshness_state ?? 'fresh',
 				reversible: s.reversible ?? null,
 				undo_operations: (s.undo_operations ?? null) as unknown as Json | null,
-				source_fingerprint: scopedFingerprintFor(s),
+				source_fingerprint: fingerprint,
 				status: 'pending' as const,
 				sort_order: s.sort_order ?? index
-			}));
-			throwIfOwnershipLost();
-			const insertResult = await insertProjectLoopSuggestionRows({
-				rows,
-				runId,
-				projectId,
-				log: (message) => job.log(message)
 			});
-			if (insertResult.cancelled) {
-				return { success: true, runId, skipped: true };
-			}
-			throwIfOwnershipLost();
-		}
-
-		throwIfOwnershipLost();
-		const rotation = await rotateUnconfirmedPendingSuggestions({
+			// Same change, fresh words: the stored operations stay; what describes them and
+			// the state they were checked against are refreshed.
+			refreshFields.set(candidateIds[index], {
+				title: s.title,
+				rationale: s.rationale ?? null,
+				why_now: s.why_now ?? null,
+				confidence: s.confidence ?? null,
+				evidence_refs: (s.evidence_refs ?? []) as unknown as Json,
+				preview: (s.preview ?? null) as unknown as Json | null,
+				source_fingerprint: fingerprint,
+				updated_at: rollupAt
+			});
+		});
+		const writeCtx = {
+			db: supabase,
 			projectId,
 			runId,
-			confirmedKeys,
-			skippedKinds,
-			log: (message) => job.log(message)
-		});
+			at: rollupAt,
+			insertRows,
+			refreshFields,
+			log: (message: string) => job.log(message)
+		};
+		await heartbeat('Writing the cleanup list');
+		throwIfOwnershipLost();
+		let deterministicWrite: RollupWriteResult;
+		try {
+			deterministicWrite = await writeRollupEvents(writeCtx, deterministic.events);
+		} catch (writeError) {
+			if (
+				isProjectLoopCancellationInsertError(
+					writeError as { code?: string; message: string }
+				)
+			) {
+				await job.log(
+					`Project loop run ${runId} for project ${projectId} was deleted before suggestions were written; treating the work as cancelled.`
+				);
+				return { success: true, runId, skipped: true };
+			}
+			throw writeError;
+		}
+		// From here the lineage rows are the project's cleanup list; a later failure in this
+		// run must not supersede them.
+		rollupPersisted = true;
 		throwIfOwnershipLost();
 
-		// Final synthesis owns admission. It runs only after candidate insertion,
-		// deterministic suppression/rotation, and executable-candidate integrity
-		// verification, so the persisted brief can reconcile the actual current
-		// findings instead of describing the pre-review snapshot.
-		await heartbeat('Synthesizing project manager brief');
+		// Verify every live change against the project as it is now. A change that no longer
+		// resolves leaves the list with its reason; a transient failure only keeps it off
+		// "Ready to apply".
+		const liveRows = await loadOpenReviewRows(supabase, projectId);
+		const rowsById = new Map(liveRows.map((row) => [row.id, row]));
+		const verification = new Map<string, RowVerification>();
+		const integrityCloses = new Map<string, { reason: RollupCloseReason; detail: string }>();
+		for (const item of deterministic.items) {
+			if (item.status !== 'open') continue;
+			for (const rowRef of item.rows) {
+				const row = rowsById.get(rowRef.suggestionId);
+				if (!row?.operations.length) continue;
+				throwIfOwnershipLost();
+				const result = await verifyProjectSuggestionIntegrity(supabase, {
+					projectId,
+					operations: row.operations,
+					title: row.title,
+					preview: row.preview,
+					checkModelAlignment: true
+				});
+				if (result.ok) {
+					verification.set(row.id, {
+						headline: result.summary.headline,
+						cautions: result.summary.cautions ?? [],
+						verified: true
+					});
+				} else if (result.diagnostic.code === 'RESOLUTION_FAILED') {
+					verification.set(row.id, { headline: null, cautions: [], verified: false });
+				} else {
+					integrityCloses.set(row.id, {
+						reason: closeReasonForIntegrityCode(result.diagnostic.code),
+						detail: result.diagnostic.message
+					});
+				}
+			}
+		}
+		const afterIntegrity = closeRollupRows(
+			deterministic.items,
+			{ runId, at: rollupAt },
+			integrityCloses
+		);
+		await writeRollupEvents(writeCtx, afterIntegrity.events);
 		throwIfOwnershipLost();
-		const synthesisCandidates = await loadProjectReviewSynthesisCandidates(projectId);
+
+		// The roll-up call: one judgment over the whole list.
+		await heartbeat('Reviewing the cleanup list');
 		throwIfOwnershipLost();
-		let brief: ProjectLoopBrief;
+		const lookup = subjectLookup(ctx, subjectStates);
+		const openedThisPass = new Set(
+			deterministic.events
+				.filter((event) => event.type === 'opened')
+				.map((event) => event.lineageId)
+		);
+		const items = synthesisItems({
+			items: afterIntegrity.items,
+			rowsById,
+			verification,
+			openedThisPass,
+			lookup
+		});
+		const titleByLineage = new Map(
+			[...previousItems, ...afterIntegrity.items].map((item) => [item.lineageId, item.title])
+		);
+		const codeCloses = closedThisPass(
+			[...deterministic.events, ...afterIntegrity.events],
+			(id) => titleByLineage.get(id) ?? 'Review item'
+		);
+		let synthesis: CleanupSynthesisResult;
 		if (totalCost >= PROJECT_LOOP_COST_CAP_USD) {
-			skippedLenses.push({
-				label: 'project manager brief',
-				kind: null,
-				reason: 'cost_cap'
-			});
+			skippedLenses.push({ label: 'cleanup roll-up', kind: null, reason: 'cost_cap' });
 			await job.log(
-				`Skipping LLM project manager brief; cost cap reached ($${totalCost.toFixed(4)}) — using evidence-bound heuristic synthesis.`
+				`Skipping the roll-up call; cost cap reached ($${totalCost.toFixed(4)}) — every item stays open in its default section.`
 			);
-			brief = buildHeuristicProjectManagerBrief({
-				ctx,
-				candidates: synthesisCandidates,
-				uncheckedLenses
-			});
+			synthesis = buildHeuristicCleanupSynthesis({ items, generatedAt: rollupAt });
 		} else {
-			brief = await generateProjectManagerBrief({
+			synthesis = await generateProjectCleanupSynthesis({
 				llm,
 				ctx,
-				candidates: synthesisCandidates,
+				items,
+				closedThisPass: codeCloses.map((closed) => `"${closed.title}": ${closed.detail}`),
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
 				runId,
 				uncheckedLenses,
+				generatedAt: rollupAt,
 				signal: job.signal,
 				onUsage
 			});
 		}
 		throwIfOwnershipLost();
-		const synthesisRequiresAttention =
-			brief.attention_level === 'decision' || brief.attention_level === 'urgent';
-		const auditOwnsAttention =
-			synthesisRequiresAttention && (await projectHasActiveAuditManagerBrief(projectId));
+		const notCheckedThisPass = afterIntegrity.items
+			.filter((item) => item.status === 'open' && skippedKinds.has(item.kind))
+			.map((item) => item.lineageId);
+		const judged = applyRollupJudgment(afterIntegrity.items, {
+			runId,
+			at: rollupAt,
+			verdicts: synthesis.verdicts,
+			merges: synthesis.merges,
+			confirmed: new Set([...deterministic.confirmed, ...notCheckedThisPass])
+		});
+		await writeRollupEvents(writeCtx, judged.events);
+		await writeLineageState(writeCtx, judged.items, {
+			sections: synthesis.sections,
+			summaries: synthesis.summaries
+		});
 		throwIfOwnershipLost();
-		const managerAttentionRequired = synthesisRequiresAttention && !auditOwnsAttention;
-		if (auditOwnsAttention) {
-			await job.log(
-				'Kept this light review out of AI Inbox because a complete project audit already owns the project decision.'
-			);
-		}
-		if (managerAttentionRequired) {
-			throwIfOwnershipLost();
-			const supersededBriefCount = await supersedeOlderProjectManagerBriefs({
-				projectId,
-				runId
-			});
-			if (supersededBriefCount > 0) {
-				await job.log(
-					`Replaced ${supersededBriefCount} older unresolved project manager brief${supersededBriefCount === 1 ? '' : 's'}.`
-				);
-			}
-			throwIfOwnershipLost();
-		}
+
+		const closedItems = [
+			...codeCloses,
+			...closedThisPass(judged.events, (id) => titleByLineage.get(id) ?? 'Review item')
+		];
+		const openLineages = judged.items.filter((item) => item.status === 'open');
+		const cleanup: ProjectCleanupSynthesis = {
+			...synthesis.synthesis,
+			// Groups name only findings still open after the judgment.
+			groups: synthesis.synthesis.groups
+				.map((group) => ({
+					...group,
+					item_ids: group.item_ids.filter((id) =>
+						openLineages.some((item) => item.lineageId === id)
+					)
+				}))
+				.filter((group) => group.item_ids.length > 0),
+			open_count: openLineages.length,
+			closed_this_pass: closedItems
+		};
+		const brief: ProjectLoopBrief = {
+			version: 3,
+			cleanup,
+			attention_level: synthesis.attentionLevel,
+			state_summary: synthesis.stateSummary,
+			bottom_line: cleanup.bottom_line,
+			recommendation: cleanup.recommendation,
+			current_goal: null,
+			recent_changes: [],
+			open_decisions: [],
+			stale_assumptions: [],
+			contradictions_or_drift: [],
+			next_best_action: synthesis.nextBestAction,
+			generated_at: rollupAt,
+			source: synthesis.synthesis.source
+		};
 
 		const countKind = (kind: ProjectSuggestionKind): number =>
 			proposed.filter((s) => s.kind === kind).length;
-		const summaryBase = proposed.length
-			? `${proposed.length} suggestion${proposed.length === 1 ? '' : 's'}: ${countKind('doc_org')} organization, ${countKind('doc_outdated')} outdated-doc, ${countKind('drift')} drift, ${countKind('task_conflict')} task-conflict.`
+		const opened = deterministic.events.filter((event) => event.type === 'opened').length;
+		const reconfirmed =
+			deterministic.events.filter((event) => event.type === 'confirmed').length +
+			judged.events.filter((event) => event.type === 'reconfirmed').length;
+		const summaryBase = openLineages.length
+			? `Cleanup list: ${openLineages.length} open (${opened} new, ${reconfirmed} confirmed, ${closedItems.length} closed this pass).`
 			: uncheckedLenses.length
-				? 'No reconciliation suggestions from the checks that finished.'
-				: 'No reconciliation suggestions — project looks tidy.';
+				? 'No open cleanup items from the checks that finished.'
+				: 'No open cleanup items — project looks tidy.';
 		const summaryWithSuppressed = suppressedCount
-			? `${summaryBase} Suppressed ${suppressedCount} duplicate${suppressedCount === 1 ? '' : 's'}.`
+			? `${summaryBase} Suppressed ${suppressedCount} already decided.`
 			: summaryBase;
 		const skippedLensSummary = buildSkippedLensSummary(skippedLenses);
 		const summary = skippedLensSummary
@@ -3647,16 +3715,17 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		const { error: terminalError } = await supabase
 			.from('project_loop_runs')
 			.update({
-				status: managerAttentionRequired ? 'waiting_review' : 'completed',
+				// The cleanup card is the attention object; the run itself never waits on review.
+				status: 'completed',
 				brief: brief as unknown as Json,
 				summary,
-				suggestion_count: proposed.length,
+				suggestion_count: opened,
 				cost_usd: totalCost || null,
 				finished_at: nowIso()
 			})
 			.eq('id', runId);
 		if (terminalError) {
-			// The suggestions were written but the run row is still `running`.
+			// The findings were written but the run row is still `running`.
 			// Fail loudly and surface it through the catch path so the job does
 			// NOT report success against a run row stuck in a non-terminal state.
 			console.error(
@@ -3668,24 +3737,17 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		}
 
 		try {
-			if (!auditOwnsAttention) {
-				await syncInboxItemForProjectReview({
-					supabase,
-					runId
-				});
-			}
-			const groupedCount = await expireProjectSuggestionInboxItemsForManagerBrief({
-				supabase,
-				projectId
-			});
-			if (groupedCount > 0) {
+			// Older v2 briefs waiting on the user are replaced by the cleanup card.
+			const replacedBriefs = await supersedeOlderProjectManagerBriefs({ projectId, runId });
+			if (replacedBriefs > 0) {
 				await job.log(
-					`Grouped ${groupedCount} standalone review item${groupedCount === 1 ? '' : 's'} into the project manager brief.`
+					`Replaced ${replacedBriefs} older project manager brief${replacedBriefs === 1 ? '' : 's'} with the cleanup card.`
 				);
 			}
+			await syncInboxItemForProjectCleanup({ supabase, projectId });
 		} catch (inboxError) {
 			console.warn(
-				`[ProjectReviews] Failed to sync the manager brief for ${projectId}:`,
+				`[ProjectReviews] Failed to sync the cleanup card for ${projectId}:`,
 				inboxError instanceof Error ? inboxError.message : inboxError
 			);
 		}
@@ -3698,16 +3760,16 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			run_id: runId,
 			trigger_reason: run.trigger_reason,
 			generated_count: generated.length,
-			inserted_count: proposed.length,
+			inserted_count: deterministicWrite.inserted.length,
 			suppressed_count: suppressedCount,
 			repeated_after_dismissal_count: repeatedAfterDismissalCount,
-			reconfirmed_count: rotation.confirmedCount,
-			rotated_out_count: rotation.rotatedCount,
-			synthesis_candidate_count: synthesisCandidates.length,
+			rollup_open_count: openLineages.length,
+			rollup_opened_count: opened,
+			rollup_reconfirmed_count: reconfirmed,
+			rollup_closed_count: closedItems.length,
+			rollup_merged_count: synthesis.merges.length,
+			rollup_source: synthesis.synthesis.source,
 			brief_attention_level: brief.attention_level ?? 'legacy',
-			brief_admitted_count: managerAttentionRequired ? 1 : 0,
-			brief_decision_item_count: brief.decision_item_ids?.length ?? 0,
-			brief_safe_cleanup_item_count: brief.safe_cleanup_item_ids?.length ?? 0,
 			skipped_generators: skippedLenses.map((lens) => lens.label),
 			// Codes and ids only: `detail` is provider error text.
 			skipped_lenses: skippedLenses.map(({ label, kind, reason, providerRequestId }) => ({
@@ -3724,7 +3786,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		});
 
 		await job.log(`Project loop completed: ${summary}`);
-		return { success: true, runId, suggestionCount: proposed.length };
+		return { success: true, runId, suggestionCount: opened };
 	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : 'Unknown error';
 		if (job.signal.aborted) {
@@ -3734,7 +3796,8 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 		const usageForError = lastUsage as UsageEvent | null;
 		await job.log(`Project loop failed: ${message}`);
 		await failRun(runId, message, { totalCost });
-		await supersedePendingSuggestionsForFailedRun({ runId, message });
+		// Once the roll-up is written, this run's rows are the project's cleanup list.
+		if (!rollupPersisted) await supersedePendingSuggestionsForFailedRun({ runId, message });
 		await logWorkerError(error, {
 			userId: run.user_id,
 			projectId,

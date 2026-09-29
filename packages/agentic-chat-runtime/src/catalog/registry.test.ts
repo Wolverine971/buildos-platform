@@ -54,6 +54,9 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'get_onto_risk_details onto.risk.get read',
 	'get_onto_task_details onto.task.get read',
 	'get_project_calendar cal.project.get read',
+	// Added 2026-09-29 (tasker 112): chat reads the nightly Project cleanup change set.
+	// Chat-only; no external agent-call op exists for it.
+	'get_project_cleanup onto.project.cleanup.get read',
 	'get_project_overview util.project.overview read',
 	'get_user_profile_overview util.profile.overview read',
 	'get_workspace_overview util.workspace.overview read',

@@ -17,11 +17,18 @@ import {
 import { assertNoDurableTextViolations } from '@buildos/agentic-chat-runtime/loop';
 import {
 	quarantineProjectSuggestionInboxItem,
+	readDocumentArchiveChildrenMode,
 	readProjectSuggestionStructuralFingerprint,
 	syncInboxItemForProjectAudit,
 	syncInboxItemForProjectSuggestion,
-	verifyProjectSuggestionIntegrity
+	verifyProjectSuggestionIntegrity,
+	type DocumentArchiveChildrenMode,
+	type ProjectCleanupOperationTool,
+	type ProjectSuggestionIntegrityCode
 } from '@buildos/shared-agent-ops';
+import { archiveDocumentInTree } from '$lib/services/ontology/doc-structure.service';
+import { logUpdateAsync } from '$lib/services/async-activity-logger';
+import { archiveTaskCanonical } from '$lib/server/task-archive.service';
 import { isProjectSuggestionFresh } from '$lib/server/project-loop-snapshot.service';
 import { finalizeProjectLoopRunIfComplete } from '$lib/server/project-loop-run.service';
 import { captureServerEvent } from '$lib/server/posthog';
@@ -44,6 +51,8 @@ export type ProjectSuggestionDecisionOutcome =
 			ok: false;
 			status: number;
 			message: string;
+			/** Set when approval stopped at the integrity check. */
+			code?: ProjectSuggestionIntegrityCode;
 	  };
 
 /**
@@ -75,7 +84,9 @@ function emitSuggestionDecisionEvent(
 	);
 }
 
-async function syncProjectSuggestionInboxItem(suggestion: Record<string, unknown>): Promise<void> {
+async function syncProjectSuggestionInboxItemNow(
+	suggestion: Record<string, unknown>
+): Promise<void> {
 	try {
 		const admin = createAdminSupabaseClient();
 		await syncInboxItemForProjectSuggestion({
@@ -214,8 +225,10 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
  *     update_onto_task;
  *   - freshness radar (apps/worker/src/workers/freshness-radar/combine.ts `toolFor`
  *     + `undoPayloadFor` / `draftUndoOperation`): update_onto_task, update_onto_goal,
- *     update_onto_milestone.
- * It equals the set Project Review's integrity check can resolve
+ *     update_onto_milestone;
+ *   - the Project cleanup change set (Tasker 112): update_onto_project here, plus
+ *     the two archives in REPLAYABLE_ARCHIVE_OPERATION_TOOLS.
+ * Together they equal the set Project Review's integrity check can resolve
  * (packages/shared-agent-ops/src/proposal-context/verify-operations.ts). No
  * deletes, calendar, email, or external tools: anything else is refused before
  * any write.
@@ -225,15 +238,37 @@ export const REPLAYABLE_LOOP_OPERATION_OPS = Object.freeze({
 	update_onto_document: 'onto.document.update',
 	update_onto_goal: 'onto.goal.update',
 	update_onto_milestone: 'onto.milestone.update',
-	move_document_in_tree: 'onto.document.tree.move'
+	move_document_in_tree: 'onto.document.tree.move',
+	update_onto_project: 'onto.project.update'
 } as const satisfies Record<string, BuildosAgentAllowedOp>);
 
-export type ReplayableLoopOperationTool = keyof typeof REPLAYABLE_LOOP_OPERATION_OPS;
+/**
+ * Archives have no gateway op. They replay through the canonical paths the web
+ * app itself uses: the document tree archive (`archiveDocumentInTree`) and the
+ * board's task archive (`archiveTaskCanonical`).
+ */
+export const REPLAYABLE_ARCHIVE_OPERATION_TOOLS = Object.freeze([
+	'archive_onto_document',
+	'archive_onto_task'
+] as const satisfies readonly ProjectCleanupOperationTool[]);
+
+type GatewayReplayTool = keyof typeof REPLAYABLE_LOOP_OPERATION_OPS;
+type ArchiveReplayTool = (typeof REPLAYABLE_ARCHIVE_OPERATION_TOOLS)[number];
+
+export type ReplayableLoopOperationTool = GatewayReplayTool | ArchiveReplayTool;
+
+function isArchiveReplayTool(tool: unknown): tool is ArchiveReplayTool {
+	return (
+		typeof tool === 'string' &&
+		(REPLAYABLE_ARCHIVE_OPERATION_TOOLS as readonly string[]).includes(tool)
+	);
+}
 
 export function isReplayableLoopOperationTool(tool: unknown): tool is ReplayableLoopOperationTool {
 	return (
 		typeof tool === 'string' &&
-		Object.prototype.hasOwnProperty.call(REPLAYABLE_LOOP_OPERATION_OPS, tool)
+		(Object.prototype.hasOwnProperty.call(REPLAYABLE_LOOP_OPERATION_OPS, tool) ||
+			isArchiveReplayTool(tool))
 	);
 }
 
@@ -363,12 +398,17 @@ function documentTreeMoveArgs(
 	};
 }
 
+const PROJECT_UPDATE_FIELDS = ['name', 'description', 'type_key'] as const;
+
 function gatewayArgsFor(
-	tool: ReplayableLoopOperationTool,
+	tool: GatewayReplayTool,
 	args: Record<string, unknown>,
 	projectId: string
 ): Record<string, unknown> {
 	switch (tool) {
+		case 'update_onto_project':
+			// The fence is the only project a replay may update.
+			return { ...pickDefined(args, PROJECT_UPDATE_FIELDS), project_id: projectId };
 		case 'update_onto_task':
 			return {
 				...pickDefined(args, TASK_UPDATE_FIELDS),
@@ -386,11 +426,38 @@ function gatewayArgsFor(
 	}
 }
 
-type PreparedLoopOperation = {
-	tool: ReplayableLoopOperationTool;
-	op: BuildosAgentAllowedOp;
-	args: Record<string, unknown>;
-};
+type PreparedLoopOperation =
+	| {
+			tool: GatewayReplayTool;
+			op: BuildosAgentAllowedOp;
+			args: Record<string, unknown>;
+	  }
+	| {
+			tool: 'archive_onto_document';
+			op: null;
+			args: { document_id: string; mode: DocumentArchiveChildrenMode };
+	  }
+	| {
+			tool: 'archive_onto_task';
+			op: null;
+			args: { task_id: string };
+	  };
+
+/** Archive arguments, validated before any write; null refuses the whole batch. */
+function prepareArchiveOperation(
+	tool: ArchiveReplayTool,
+	args: Record<string, unknown>
+): PreparedLoopOperation | null {
+	if (tool === 'archive_onto_task') {
+		const taskId = typeof args.task_id === 'string' ? args.task_id.trim() : '';
+		return isValidUUID(taskId) ? { tool, op: null, args: { task_id: taskId } } : null;
+	}
+	const documentId = typeof args.document_id === 'string' ? args.document_id.trim() : '';
+	const mode = readDocumentArchiveChildrenMode(args.children);
+	return isValidUUID(documentId) && mode
+		? { tool, op: null, args: { document_id: documentId, mode } }
+		: null;
+}
 
 /**
  * Validate the whole batch before anything is written: every tool must be
@@ -451,18 +518,29 @@ function prepareLoopOperations(
 	}
 	const fence: string = projectId;
 
-	return {
-		ok: true,
-		projectId: fence,
-		prepared: operations.map((operation) => {
-			const tool = operation.tool as ReplayableLoopOperationTool;
-			return {
-				tool,
-				op: REPLAYABLE_LOOP_OPERATION_OPS[tool],
-				args: gatewayArgsFor(tool, operation.args, fence)
-			};
-		})
-	};
+	const prepared: PreparedLoopOperation[] = [];
+	for (const operation of operations) {
+		const tool = operation.tool as ReplayableLoopOperationTool;
+		if (isArchiveReplayTool(tool)) {
+			const archive = prepareArchiveOperation(tool, operation.args);
+			if (!archive) {
+				return {
+					ok: false,
+					tool,
+					error: `Operation ${tool} has invalid arguments; nothing was changed.`
+				};
+			}
+			prepared.push(archive);
+			continue;
+		}
+		prepared.push({
+			tool,
+			op: REPLAYABLE_LOOP_OPERATION_OPS[tool],
+			args: gatewayArgsFor(tool, operation.args, fence)
+		});
+	}
+
+	return { ok: true, projectId: fence, prepared };
 }
 
 // A doc-tree move reloads the latest tree on every attempt, so one retry after a
@@ -524,8 +602,31 @@ export async function replayLoopOperations(params: {
 	let appliedCount = 0;
 	let taskSync: TaskSyncPort | undefined;
 
+	// Archives need the caller's actor; resolve it once per batch, not per archive.
+	let actorIdPromise: Promise<string | null> | undefined;
+	const resolveActorId = () =>
+		(actorIdPromise ??= ensureReplayActorId(params.supabase, params.userId));
+
 	for (const operation of batch.prepared) {
 		try {
+			if (operation.op === null) {
+				const archived = await replayArchiveOperation({
+					supabase: params.supabase,
+					userId: params.userId,
+					projectId: batch.projectId,
+					chatSessionId: params.chatSessionId,
+					operation,
+					resolveActorId
+				});
+				if (archived.ok) {
+					appliedCount += 1;
+					outcomes.push(true);
+				} else {
+					errors.push({ tool: operation.tool, error: archived.error });
+					outcomes.push(false);
+				}
+				continue;
+			}
 			if (operation.tool !== 'move_document_in_tree') {
 				assertNoDurableTextViolations(operation.args, operation.tool);
 			}
@@ -577,6 +678,95 @@ export async function replayLoopOperations(params: {
 	}
 
 	return { appliedCount, errors, outcomes };
+}
+
+// Same change source the gateway records for every other replayed operation.
+const REPLAY_CHANGE_SOURCE = 'agent_call' as const;
+
+/**
+ * Archive one document or task through the canonical web path, on the caller's
+ * user-scoped client. The document archive RPC checks project write access
+ * itself; the task archive checks it the way the board's DELETE route does.
+ * Like gateway replays, these never queue a Project Review burst.
+ */
+async function ensureReplayActorId(supabase: AnySupabase, userId: string): Promise<string | null> {
+	const { data, error } = await supabase.rpc('ensure_actor_for_user', { p_user_id: userId });
+	return !error && typeof data === 'string' && data ? data : null;
+}
+
+async function replayArchiveOperation(params: {
+	supabase: AnySupabase;
+	userId: string;
+	projectId: string;
+	chatSessionId: string | null;
+	operation: Extract<PreparedLoopOperation, { op: null }>;
+	resolveActorId: () => Promise<string | null>;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+	const { supabase, userId, projectId, operation } = params;
+	const actorId = await params.resolveActorId();
+	if (!actorId) {
+		return { ok: false, error: 'Failed to resolve user actor; nothing was archived.' };
+	}
+	if (operation.tool === 'archive_onto_task') {
+		const result = await archiveTaskCanonical({
+			supabase,
+			userId,
+			actorId,
+			taskId: operation.args.task_id,
+			projectId,
+			changeSource: REPLAY_CHANGE_SOURCE,
+			chatSessionId: params.chatSessionId
+		});
+		return result.ok ? { ok: true } : { ok: false, error: result.error };
+	}
+
+	const documentId = operation.args.document_id;
+	const { data: document, error: documentError } = await supabase
+		.from('onto_documents')
+		.select('id, project_id, title, state_key, type_key, updated_at')
+		.eq('id', documentId)
+		.is('deleted_at', null)
+		.maybeSingle();
+	if (documentError) {
+		return { ok: false, error: `Failed to load document: ${documentError.message}` };
+	}
+	if (!document || document.project_id !== projectId || !document.updated_at) {
+		return { ok: false, error: 'Document not found in this project.' };
+	}
+
+	try {
+		// No retry on a version conflict: a retry would re-read the tree and could
+		// archive children the user was never shown.
+		const archived = await archiveDocumentInTree(
+			supabase,
+			projectId,
+			documentId,
+			{ mode: operation.args.mode, expectedUpdatedAt: document.updated_at as string },
+			actorId
+		);
+		logUpdateAsync(
+			supabase,
+			projectId,
+			'document',
+			documentId,
+			{ title: document.title, state_key: document.state_key, type_key: document.type_key },
+			{
+				title: archived.document.title,
+				state_key: archived.document.state_key,
+				type_key: archived.document.type_key
+			},
+			userId,
+			REPLAY_CHANGE_SOURCE,
+			params.chatSessionId ?? undefined
+		);
+		return { ok: true };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to archive document';
+		if (message.includes('document_archive_access_denied')) {
+			return { ok: false, error: 'You do not have write access to this project.' };
+		}
+		return { ok: false, error: message };
+	}
 }
 
 /** The task route emitted task_completed on a transition to done; keep that signal. */
@@ -688,10 +878,25 @@ export async function decideProjectSuggestion(params: {
 	suggestionId: string;
 	action: ProjectSuggestionDecisionAction;
 	feedback?: unknown;
+	/**
+	 * The structural fingerprint of the verified change the user was shown (the
+	 * Project cleanup card sends the one it displayed). Used instead of the one
+	 * stored on the suggestion's inbox row; approval then applies only if the
+	 * change still verifies to exactly that.
+	 */
+	expectedStructuralFingerprint?: string | null;
+	/**
+	 * A batch caller (the Project cleanup card) syncs the project's inbox card once after
+	 * the whole batch; every per-decision sync would rebuild the same card (tasker 112).
+	 */
+	deferInboxSync?: boolean;
 	/** @deprecated Ignored: approval replays through the write gateway, not /api/onto. */
 	fetchFn?: typeof fetch;
 }): Promise<ProjectSuggestionDecisionOutcome> {
 	const { supabase, userId, projectId, suggestionId, action } = params;
+	const syncProjectSuggestionInboxItem = params.deferInboxSync
+		? async (_suggestion: Record<string, unknown>): Promise<void> => undefined
+		: syncProjectSuggestionInboxItemNow;
 	const nowIso = new Date().toISOString();
 
 	let current: Record<string, unknown> | null;
@@ -826,12 +1031,19 @@ export async function decideProjectSuggestion(params: {
 	// This is deliberately separate from the display-time verification: entities
 	// can be moved, archived, deleted, or transferred after the inbox was read.
 	const admin = createAdminSupabaseClient();
+	const shownFingerprint =
+		typeof params.expectedStructuralFingerprint === 'string' &&
+		params.expectedStructuralFingerprint.trim()
+			? params.expectedStructuralFingerprint.trim()
+			: null;
 	let expectedStructuralFingerprint: string | null;
 	try {
-		expectedStructuralFingerprint = await loadVerifiedInboxStructuralFingerprint({
-			supabase: admin,
-			suggestionId
-		});
+		expectedStructuralFingerprint =
+			shownFingerprint ??
+			(await loadVerifiedInboxStructuralFingerprint({
+				supabase: admin,
+				suggestionId
+			}));
 	} catch (error) {
 		return {
 			ok: false,
@@ -856,6 +1068,16 @@ export async function decideProjectSuggestion(params: {
 		expectedStructuralFingerprint
 	});
 	if (!integrity.ok) {
+		if (shownFingerprint && integrity.diagnostic.code === 'EXPECTED_STATE_CHANGED') {
+			// The card the user approved from is stale, not the proposal: it still
+			// verifies, just not to what was shown. Keep it open for re-review.
+			return {
+				ok: false,
+				status: 409,
+				code: integrity.diagnostic.code,
+				message: 'This change was updated after you opened it. Review the new version.'
+			};
+		}
 		try {
 			await quarantineProjectSuggestionInboxItem({
 				supabase: admin as any,
@@ -871,6 +1093,7 @@ export async function decideProjectSuggestion(params: {
 		return {
 			ok: false,
 			status: 409,
+			code: integrity.diagnostic.code,
 			message: `This proposal can no longer be applied safely (${integrity.diagnostic.code}). Rerun Project Review.`
 		};
 	}

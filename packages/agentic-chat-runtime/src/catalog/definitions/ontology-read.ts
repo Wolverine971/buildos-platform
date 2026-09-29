@@ -989,6 +989,25 @@ Useful for showing where a document lives in the hierarchy.`,
 		}
 	},
 
+	{
+		type: 'function',
+		function: {
+			name: 'get_project_cleanup',
+			description:
+				"Open cleanup set from the nightly Project Review: what is out of date, stale, duplicated, or ready to archive, grouped as ready to apply, needs the user's call, and worth knowing, with evidence records. Call it first for cleanup or out-of-date questions, then confirm or add what it misses. The user applies its items from the AI Inbox Project cleanup card.",
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project UUID.'
+					}
+				},
+				required: ['project_id']
+			}
+		}
+	},
+
 	// ============================================
 	// RELATIONSHIP TOOLS
 	// ============================================

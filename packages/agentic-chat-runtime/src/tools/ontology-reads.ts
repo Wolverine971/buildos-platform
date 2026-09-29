@@ -446,6 +446,18 @@ function applyArchivedReadFilter(query: any, args: { archived?: boolean }): any 
 		: withoutDeleted.is('archived_at', null);
 }
 
+// Archived rows keep the state_key they had when archived ("todo", "active"), so an unmarked
+// archived row reads as live work. Mark rows and the message so the model cannot mix them up.
+function markArchivedRows<T>(rows: T[], args: { archived?: boolean }): T[] {
+	return args.archived === true ? rows.map((row) => ({ ...row, archived: true })) : rows;
+}
+
+function archivedReadNote(args: { archived?: boolean }): string {
+	return args.archived === true
+		? ' These are ARCHIVED records, not active work; state_key is their state when archived.'
+		: '';
+}
+
 function getCountedRows<T>(result: { data?: T[] | null }): T[] {
 	return Array.isArray(result.data) ? result.data : [];
 }
@@ -841,9 +853,9 @@ export async function listOntoTasks(
 	});
 
 	return {
-		tasks: normalized,
+		tasks: markArchivedRows(normalized, args),
 		total: count ?? normalized.length,
-		message: `Found ${normalized.length} ontology tasks.`
+		message: `Found ${normalized.length} ontology tasks.${archivedReadNote(args)}`
 	};
 }
 
@@ -873,9 +885,9 @@ export async function listOntoGoals(
 	if (error) throw error;
 
 	return {
-		goals: data ?? [],
+		goals: markArchivedRows(data ?? [], args),
 		total: count ?? data?.length ?? 0,
-		message: `Found ${data?.length ?? 0} ontology goals.`
+		message: `Found ${data?.length ?? 0} ontology goals.${archivedReadNote(args)}`
 	};
 }
 
@@ -907,9 +919,9 @@ export async function listOntoPlans(
 	if (error) throw error;
 
 	return {
-		plans: data ?? [],
+		plans: markArchivedRows(data ?? [], args),
 		total: count ?? data?.length ?? 0,
-		message: `Found ${data?.length ?? 0} ontology plans.`
+		message: `Found ${data?.length ?? 0} ontology plans.${archivedReadNote(args)}`
 	};
 }
 
@@ -947,9 +959,9 @@ export async function listOntoDocuments(
 	const documents = (data ?? []).map((document: any) => summarizeDocumentForList(document));
 
 	return {
-		documents,
+		documents: markArchivedRows(documents, args),
 		total: count ?? documents.length,
-		message: `Found ${documents.length} ontology documents. Use get_onto_document_details for full document content.`
+		message: `Found ${documents.length} ontology documents. Use get_onto_document_details for full document content.${archivedReadNote(args)}`
 	};
 }
 
@@ -983,9 +995,9 @@ export async function listOntoMilestones(
 	if (error) throw error;
 
 	return {
-		milestones: data ?? [],
+		milestones: markArchivedRows(data ?? [], args),
 		total: count ?? data?.length ?? 0,
-		message: `Found ${data?.length ?? 0} ontology milestones.`
+		message: `Found ${data?.length ?? 0} ontology milestones.${archivedReadNote(args)}`
 	};
 }
 
@@ -1023,9 +1035,9 @@ export async function listOntoRisks(
 	if (error) throw error;
 
 	return {
-		risks: data ?? [],
+		risks: markArchivedRows(data ?? [], args),
 		total: count ?? data?.length ?? 0,
-		message: `Found ${data?.length ?? 0} ontology risks.`
+		message: `Found ${data?.length ?? 0} ontology risks.${archivedReadNote(args)}`
 	};
 }
 
@@ -1143,9 +1155,9 @@ export async function searchOntoTasks(
 	});
 
 	return {
-		tasks: normalized,
+		tasks: markArchivedRows(normalized, args),
 		total: count ?? normalized.length,
-		message: `Found ${normalized.length} tasks matching "${searchTerm}".`
+		message: `Found ${normalized.length} tasks matching "${searchTerm}".${archivedReadNote(args)}`
 	};
 }
 
@@ -1182,9 +1194,9 @@ export async function searchOntoGoals(
 	if (error) throw error;
 
 	return {
-		goals: data ?? [],
+		goals: markArchivedRows(data ?? [], args),
 		total: count ?? data?.length ?? 0,
-		message: `Found ${data?.length ?? 0} goals matching "${searchTerm}".`
+		message: `Found ${data?.length ?? 0} goals matching "${searchTerm}".${archivedReadNote(args)}`
 	};
 }
 
@@ -1221,9 +1233,9 @@ export async function searchOntoPlans(
 	if (error) throw error;
 
 	return {
-		plans: data ?? [],
+		plans: markArchivedRows(data ?? [], args),
 		total: count ?? data?.length ?? 0,
-		message: `Found ${data?.length ?? 0} plans matching "${searchTerm}".`
+		message: `Found ${data?.length ?? 0} plans matching "${searchTerm}".${archivedReadNote(args)}`
 	};
 }
 
@@ -1270,9 +1282,9 @@ export async function searchOntoDocuments(
 	const documents = (data ?? []).map((document: any) => summarizeDocumentForList(document));
 
 	return {
-		documents,
+		documents: markArchivedRows(documents, args),
 		total: count ?? documents.length,
-		message: `Found ${documents.length} documents matching "${searchTerm}". Use get_onto_document_details for full document content.`
+		message: `Found ${documents.length} documents matching "${searchTerm}". Use get_onto_document_details for full document content.${archivedReadNote(args)}`
 	};
 }
 
@@ -1313,9 +1325,9 @@ export async function searchOntoMilestones(
 	if (error) throw error;
 
 	return {
-		milestones: data ?? [],
+		milestones: markArchivedRows(data ?? [], args),
 		total: count ?? data?.length ?? 0,
-		message: `Found ${data?.length ?? 0} milestones matching "${searchTerm}".`
+		message: `Found ${data?.length ?? 0} milestones matching "${searchTerm}".${archivedReadNote(args)}`
 	};
 }
 
@@ -1360,9 +1372,9 @@ export async function searchOntoRisks(
 	if (error) throw error;
 
 	return {
-		risks: data ?? [],
+		risks: markArchivedRows(data ?? [], args),
 		total: count ?? data?.length ?? 0,
-		message: `Found ${data?.length ?? 0} risks matching "${searchTerm}".`
+		message: `Found ${data?.length ?? 0} risks matching "${searchTerm}".${archivedReadNote(args)}`
 	};
 }
 

@@ -430,6 +430,7 @@ function workerReadOpForToolName(toolName: string): string {
 		get_document_path: 'onto.document.path.get',
 		list_task_documents: 'onto.task.docs.list',
 		get_onto_project_graph: 'onto.project.graph.get',
+		get_project_cleanup: 'onto.project.cleanup.get',
 		get_field_info: 'util.schema.field_info',
 		get_workspace_overview: 'util.workspace.overview',
 		get_project_overview: 'util.project.overview',

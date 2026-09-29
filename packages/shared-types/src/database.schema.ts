@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-09-28T16:16:59.152Z
+// Generated on: 2026-09-29T18:37:11.966Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -15,6 +15,7 @@ export type DatabaseSchema = {
 		last_error: string | null;
 		lease_expires_at: string | null;
 		next_attempt_at: string | null;
+		posthog_deletion_status: string | null;
 		processing_started_at: string | null;
 		requested_at: string;
 		scheduled_for: string;
@@ -307,6 +308,40 @@ export type DatabaseSchema = {
 		tool_name: string;
 		user_id: string;
 	};
+	agentic_chat_answer_comparison_candidates: {
+		answer: string;
+		answer_sha256: string;
+		comparison_id: string;
+		created_at: string;
+		id: string;
+		identity: Json;
+		position: number;
+		receipts: Json;
+		source_packet_sha256: string;
+		user_id: string;
+	};
+	agentic_chat_answer_comparison_votes: {
+		choice: string;
+		comparison_id: string;
+		label_assignment: Json;
+		preferred_candidate_id: string | null;
+		reason: string;
+		revealed_at: string | null;
+		reviewer_user_id: string;
+		rubric_scores: Json;
+		voted_at: string;
+	};
+	agentic_chat_answer_comparisons: {
+		created_at: string;
+		id: string;
+		question: string;
+		rubric: Json;
+		set_kind: string;
+		source_packet: Json;
+		source_packet_sha256: string;
+		title: string;
+		user_id: string;
+	};
 	agentic_chat_context_snapshots: {
 		cache_key: string;
 		context_cache_version: number;
@@ -362,6 +397,38 @@ export type DatabaseSchema = {
 		session_id: string | null;
 		updated_at: string;
 		user_id: string;
+	};
+	agentic_chat_specialist_drafts: {
+		draft: Json;
+		draft_hash: string;
+		id: string;
+		revision: number;
+		updated_at: string;
+		user_id: string;
+	};
+	agentic_chat_specialist_recommendations: {
+		attempt_token: string;
+		created_at: string;
+		expires_at: string;
+		finished_at: string | null;
+		id: string;
+		input: Json;
+		input_hash: string;
+		project_id: string;
+		question: string;
+		result: Json | null;
+		result_hash: string | null;
+		user_id: string;
+	};
+	agentic_chat_specialist_versions: {
+		created_at: string;
+		draft_id: string;
+		draft_revision: number;
+		name: string;
+		snapshot: Json;
+		snapshot_hash: string;
+		user_id: string;
+		version: number;
 	};
 	beta_event_attendance: {
 		attended: boolean | null;
@@ -949,6 +1016,16 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	chat_turn_document_read_batches: {
+		created_at: string;
+		document_ids: Json;
+		execution_generation: number;
+		request_hash: string;
+		result: Json;
+		result_hash: string;
+		step_attempt_id: string;
+		turn_run_id: string;
+	};
 	chat_turn_effects: {
 		canonical_argument_hash: string;
 		created_at: string;
@@ -992,9 +1069,12 @@ export type DatabaseSchema = {
 		created_at: string;
 		history: Json;
 		history_bytes: number;
+		history_hash: string | null;
 		history_source: string;
 		id: string;
-		prepared: Json;
+		prepared: Json | null;
+		request: Json | null;
+		request_hash: string | null;
 		retain_until: string;
 		session_id: string;
 		source_prepared_prompt_id: string | null;
@@ -1091,6 +1171,30 @@ export type DatabaseSchema = {
 		turn_run_id: string;
 		user_id: string;
 	};
+	chat_turn_specialist_selection_shadows: {
+		attempt_token: string;
+		completed_at: string | null;
+		context_hash: string;
+		context_id: string;
+		created_at: string;
+		execution_generation: number;
+		input: Json;
+		input_hash: string;
+		request_hash: string;
+		result: Json | null;
+		result_hash: string | null;
+		turn_run_id: string;
+	};
+	chat_turn_specialist_snapshots: {
+		created_at: string;
+		project_id: string;
+		request_hash: string;
+		session_id: string;
+		snapshot: Json;
+		snapshot_hash: string;
+		turn_run_id: string;
+		user_id: string;
+	};
 	chat_turn_stream_state: {
 		assistant_text: string;
 		created_at: string;
@@ -1105,6 +1209,110 @@ export type DatabaseSchema = {
 		reconcile_required: boolean;
 		session_id: string;
 		snapshot_sequence: number;
+		turn_run_id: string;
+		updated_at: string;
+		user_id: string;
+	};
+	chat_turn_workflow_dispatches: {
+		actual_micro_usd: number | null;
+		created_at: string;
+		dispatch_id: string;
+		dispatch_kind: string;
+		dispatched_at: string | null;
+		estimated_input_tokens: number;
+		max_output_tokens: number;
+		model_requested: string;
+		physical_attempt: number;
+		pricing: Json;
+		provider_request_id: string | null;
+		provider_usage: Json | null;
+		reconciled_at: string | null;
+		reconciliation_id: string | null;
+		reconciliation_receipt: Json | null;
+		reserved_at: string;
+		reserved_generation: number;
+		reserved_micro_usd: number;
+		serialized_request_bytes: number;
+		session_id: string;
+		settled_at: string | null;
+		settlement_token: string;
+		state: string;
+		step_attempt_id: string;
+		step_key: string;
+		turn_run_id: string;
+		uncertain_at: string | null;
+		updated_at: string;
+		user_id: string;
+	};
+	chat_turn_workflow_runs: {
+		answer_editor_step_attempt_id: string | null;
+		answer_id: string | null;
+		answer_last_batch_id: string | null;
+		answer_text: string;
+		answer_text_sha256: string | null;
+		context_accepted_at: string | null;
+		context_accepted_generation: number | null;
+		context_bytes: number | null;
+		context_hash: string | null;
+		context_id: string | null;
+		context_identity: Json | null;
+		context_payload: Json | null;
+		created_at: string;
+		deadline_at: string | null;
+		evidence_versions: Json | null;
+		finished_at: string | null;
+		first_execution_started_at: string | null;
+		max_physical_dispatches: number;
+		max_spend_micro_usd: number;
+		max_step_attempts: number;
+		phase: string;
+		plan: Json | null;
+		plan_hash: string | null;
+		plan_installed_at: string | null;
+		plan_installed_generation: number | null;
+		plan_version: string | null;
+		policy: Json;
+		policy_ref: string;
+		preparation_version: string | null;
+		project_id: string;
+		recovery_count: number;
+		request_artifact_id: string;
+		request_hash: string;
+		session_id: string;
+		synthesis_accepted_at: string | null;
+		synthesis_headroom_micro_usd: number;
+		synthesis_quality: string | null;
+		synthesis_status: string;
+		terminal_outcome: string | null;
+		turn_run_id: string;
+		updated_at: string;
+		user_id: string;
+		whole_run_lifetime_ms: number;
+		workflow_version: string;
+	};
+	chat_turn_workflow_steps: {
+		accepted_at: string | null;
+		accepted_attempt_id: string | null;
+		assignment: Json;
+		attempt_ids: string[];
+		attempts_used: number;
+		capability: string;
+		claimed_at: string | null;
+		created_at: string;
+		current_attempt_generation: number | null;
+		current_attempt_id: string | null;
+		depends_on: string[];
+		failure_code: string | null;
+		finished_at: string | null;
+		input_evidence: Json | null;
+		plan_version: string;
+		quality: string | null;
+		result: Json | null;
+		result_bytes: number | null;
+		result_hash: string | null;
+		session_id: string;
+		status: string;
+		step_key: string;
 		turn_run_id: string;
 		updated_at: string;
 		user_id: string;
@@ -1649,6 +1857,16 @@ export type DatabaseSchema = {
 		window_end: string;
 		window_start: string;
 	};
+	email_scan_checks: {
+		checked_at: string;
+		connection_id: string;
+		expires_at: string;
+		message_key: string;
+		relevance: number;
+		relevant: boolean;
+		scope_key: string;
+		user_id: string;
+	};
 	email_sequence_copy_overrides: {
 		body: string;
 		created_at: string;
@@ -1873,6 +2091,36 @@ export type DatabaseSchema = {
 		is_blocked: boolean | null;
 		last_submission: string | null;
 		submission_count: number | null;
+	};
+	freshness_concerns: {
+		close_reason: string | null;
+		closed_at: string | null;
+		closed_scan_id: string | null;
+		created_at: string;
+		detail: Json;
+		evidence: Json;
+		evidence_count: number;
+		first_flag_id: string | null;
+		first_seen_at: string;
+		id: string;
+		last_evidence_at: string;
+		last_flag_id: string | null;
+		last_probability: number;
+		last_seen_at: string;
+		peak_probability: number;
+		project_id: string;
+		score: number;
+		seen_count: number;
+		status: string;
+		subject_id: string;
+		subject_kind: string;
+		subject_snapshot: Json | null;
+		subject_title: string;
+		subject_updated_at: string | null;
+		surfaced_at: string | null;
+		surfaced_scan_id: string | null;
+		updated_at: string;
+		user_id: string;
 	};
 	freshness_flags: {
 		answers: Json;
@@ -2355,6 +2603,7 @@ export type DatabaseSchema = {
 		chat_session_id: string | null;
 		content: string;
 		created_at: string;
+		deleted_at: string | null;
 		error_message: string | null;
 		id: string;
 		metadata: Json | null;
@@ -2969,6 +3218,14 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	privacy_purge_failures: {
+		attempts: number;
+		first_failed_at: string;
+		last_failed_at: string;
+		row_id: string;
+		source_table: string;
+		sqlstate: string;
+	};
 	profile_access_audit: {
 		access_type: string;
 		actor_id: string | null;
@@ -3304,6 +3561,7 @@ export type DatabaseSchema = {
 		freshness_state: string;
 		id: string;
 		kind: string;
+		lineage_id: string | null;
 		operations: Json;
 		preview: Json | null;
 		project_id: string;
@@ -3311,6 +3569,7 @@ export type DatabaseSchema = {
 		result: Json | null;
 		reversible: boolean | null;
 		risk_tier: number;
+		rollup: Json | null;
 		run_id: string | null;
 		sort_order: number;
 		source_fingerprint: string | null;
@@ -4141,14 +4400,6 @@ export type DatabaseSchema = {
 		work_style: string | null;
 		workflows: string | null;
 	};
-	user_discounts: {
-		applied_at: string | null;
-		discount_code_id: string;
-		expires_at: string | null;
-		id: string;
-		stripe_subscription_id: string | null;
-		user_id: string;
-	};
 	user_data_exports: {
 		byte_size: number | null;
 		completed_at: string | null;
@@ -4160,6 +4411,14 @@ export type DatabaseSchema = {
 		started_at: string | null;
 		status: string;
 		storage_path: string | null;
+		user_id: string;
+	};
+	user_discounts: {
+		applied_at: string | null;
+		discount_code_id: string;
+		expires_at: string | null;
+		id: string;
+		stripe_subscription_id: string | null;
 		user_id: string;
 	};
 	user_email_connections: {
@@ -4281,8 +4540,8 @@ export type DatabaseSchema = {
 		onboarding_completed_at: string | null;
 		onboarding_intent: string | null;
 		onboarding_project_id: string | null;
-		onboarding_step: number;
 		onboarding_stakes: string | null;
+		onboarding_step: number;
 		onboarding_v2_skipped_calendar: boolean | null;
 		onboarding_v2_skipped_sms: boolean | null;
 		preferences: Json | null;
@@ -4468,9 +4727,15 @@ export const tableNames = [
 	'agent_run_signals',
 	'agent_runs',
 	'agent_tool_executions',
+	'agentic_chat_answer_comparison_candidates',
+	'agentic_chat_answer_comparison_votes',
+	'agentic_chat_answer_comparisons',
 	'agentic_chat_context_snapshots',
 	'agentic_chat_execution_observations',
 	'agentic_chat_prepared_prompts',
+	'agentic_chat_specialist_drafts',
+	'agentic_chat_specialist_recommendations',
+	'agentic_chat_specialist_versions',
 	'beta_event_attendance',
 	'beta_events',
 	'beta_feature_votes',
@@ -4504,13 +4769,19 @@ export const tableNames = [
 	'chat_sessions_projects',
 	'chat_tool_executions',
 	'chat_turn_checkpoints',
+	'chat_turn_document_read_batches',
 	'chat_turn_effects',
 	'chat_turn_events',
 	'chat_turn_input_artifacts',
 	'chat_turn_recovery_failures',
 	'chat_turn_runs',
 	'chat_turn_signals',
+	'chat_turn_specialist_selection_shadows',
+	'chat_turn_specialist_snapshots',
 	'chat_turn_stream_state',
+	'chat_turn_workflow_dispatches',
+	'chat_turn_workflow_runs',
+	'chat_turn_workflow_steps',
 	'cron_logs',
 	'customer_subscriptions',
 	'cycle_runs',
@@ -4538,6 +4809,7 @@ export const tableNames = [
 	'email_relevance_scan_projects',
 	'email_relevance_scan_reservations',
 	'email_relevance_scan_runs',
+	'email_scan_checks',
 	'email_sequence_copy_overrides',
 	'email_sequence_enrollments',
 	'email_sequence_events',
@@ -4553,6 +4825,7 @@ export const tableNames = [
 	'feature_flags',
 	'feedback',
 	'feedback_rate_limit',
+	'freshness_concerns',
 	'freshness_flags',
 	'freshness_radar_signals',
 	'freshness_scans',
@@ -4622,6 +4895,7 @@ export const tableNames = [
 	'payment_methods',
 	'phase_tasks',
 	'phases',
+	'privacy_purge_failures',
 	'profile_access_audit',
 	'profile_document_embeddings',
 	'profile_document_sources',
@@ -4686,8 +4960,8 @@ export const tableNames = [
 	'user_contact_observations',
 	'user_contacts',
 	'user_context',
-	'user_discounts',
 	'user_data_exports',
+	'user_discounts',
 	'user_email_connections',
 	'user_notification_preferences',
 	'user_notifications',

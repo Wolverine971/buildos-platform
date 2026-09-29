@@ -343,7 +343,9 @@
 			</span>
 
 			<!-- Title -->
-			<span class="min-w-0 flex-1 truncate text-sm">
+			<span
+				class="min-w-0 flex-1 line-clamp-2 break-words py-1 text-sm sm:line-clamp-none sm:truncate sm:py-0"
+			>
 				{node.title}
 			</span>
 
@@ -363,7 +365,7 @@
 				datetime={node.updated_at}
 				class="stamp ml-2 hidden shrink-0 whitespace-nowrap text-xs text-muted-foreground sm:inline"
 			>
-				Updated {formatRelativeTime(node.updated_at)}
+				<span class="sr-only">Updated </span>{' '}{formatRelativeTime(node.updated_at)}
 			</time>
 
 			<!-- Converting indicator -->

@@ -45,6 +45,10 @@ CREATE TABLE public.project_loop_runs (
 	user_id uuid NOT NULL,
 	trigger_reason text NOT NULL DEFAULT 'manual',
 	status text NOT NULL DEFAULT 'queued',
+	brief jsonb,
+	summary text,
+	started_at timestamptz,
+	finished_at timestamptz,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -75,6 +79,9 @@ CREATE TABLE public.project_suggestions (
 	sort_order int NOT NULL DEFAULT 0,
 	depends_on uuid REFERENCES public.project_suggestions(id) ON DELETE SET NULL,
 	result jsonb,
+	-- 20260929120000_project_cleanup_rollup (tasker 112).
+	lineage_id uuid,
+	rollup jsonb,
 	created_at timestamptz NOT NULL DEFAULT now(),
 	decided_at timestamptz,
 	applied_at timestamptz,

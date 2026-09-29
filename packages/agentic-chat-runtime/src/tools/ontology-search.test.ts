@@ -558,40 +558,23 @@ describe('shared ontology search', () => {
 		expect(builders.get('onto_tasks')?.in).toHaveBeenCalledWith('state_key', ['todo']);
 	});
 
-	it('searches archived tasks as live rows with archived_at set, never soft-deleted rows', async () => {
-		const archivedTask = {
-			id: 'archived-task',
-			project_id: PROJECT_ID,
-			title: 'Old launch plan',
-			description: null,
-			state_key: 'todo',
-			type_key: 'task.execution',
-			start_at: null,
-			due_at: null,
-			completed_at: null,
-			updated_at: '2026-08-01T00:00:00.000Z',
-			deleted_at: null,
-			archived_at: '2026-08-02T00:00:00.000Z',
-			priority: 1
-		};
+	// Tasker 113: "archived" in the query text no longer opens the archive.
+	it('never searches archived or deleted tasks, even when the query says archived', async () => {
 		const { context, builders } = contextWith({
 			rpc: vi.fn(async () => ({ data: [], error: null })),
-			tables: { onto_projects: [{ id: PROJECT_ID }], onto_tasks: [archivedTask] }
+			tables: { onto_projects: [{ id: PROJECT_ID }], onto_tasks: [] }
 		});
 
-		const payload = await searchOntologyEntities(
+		await searchOntologyEntities(
 			context,
-			{ query: 'archived tasks', project_id: PROJECT_ID, types: ['task'], limit: 10 },
+			{ query: 'archived overdue tasks', project_id: PROJECT_ID, types: ['task'], limit: 10 },
 			{ now: () => NOW }
 		);
 
 		const taskBuilder = builders.get('onto_tasks');
 		expect(taskBuilder?.is).toHaveBeenCalledWith('deleted_at', null);
-		expect(taskBuilder?.not).toHaveBeenCalledWith('archived_at', 'is', null);
-		expect(taskBuilder?.not).not.toHaveBeenCalledWith('deleted_at', 'is', null);
-		expect(payload.results).toEqual([
-			expect.objectContaining({ id: 'archived-task', bucket_key: 'archived' })
-		]);
+		expect(taskBuilder?.is).toHaveBeenCalledWith('archived_at', null);
+		expect(taskBuilder?.not).not.toHaveBeenCalledWith('archived_at', 'is', null);
 	});
 
 	it('keeps archived tasks out of non-archive task buckets', async () => {

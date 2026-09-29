@@ -485,6 +485,26 @@ describe('loadWorkspaceFinderProjects', () => {
 			expect(call.ops).toContainEqual(['in', 'project_id', ['p2', 'p1']]);
 	});
 
+	// Tasker 113: a document archived from the tree keeps archived_at NULL.
+	it('drops documents archived from the tree', async () => {
+		const { client } = fakeClient(
+			{
+				onto_actors: [{ id: 'actor-1' }],
+				onto_documents: [
+					{ id: 'd-live', project_id: 'p1', title: 'Brief', state_key: 'draft' },
+					{ id: 'd-archived', project_id: 'p1', title: 'Old pitch', state_key: 'archived' }
+				]
+			},
+			[{ id: 'p1', name: 'Only', state_key: 'active', updated_at: '2026-09-01T00:00:00Z' }]
+		);
+		const [project] = await loadWorkspaceFinderProjects(
+			client as never,
+			'user-1',
+			new AbortController().signal
+		);
+		expect(project!.documents.map((d) => d.id)).toEqual(['d-live']);
+	});
+
 	it('fails when the user has no actor or the RPC fails', async () => {
 		const noActor = fakeClient({ onto_actors: [] }, []);
 		await expect(
