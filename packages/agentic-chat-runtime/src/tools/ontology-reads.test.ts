@@ -75,3 +75,32 @@ describe('ontology list reads', () => {
 		expect(result.message).toContain('ARCHIVED records');
 	});
 });
+
+// Tasker 113: archived tasks now carry deleted_at too (board shape), so the archive read must
+// not require deleted_at IS NULL, or "double-check those were archived" finds nothing.
+describe('archived reads', () => {
+	function recordingContext(rows: unknown[]) {
+		const builder = makeBuilder(rows);
+		const context = contextWith(rows);
+		(context as any).client = { from: vi.fn(() => builder) };
+		return { context, builder };
+	}
+
+	it('finds archived tasks whatever their deleted_at', async () => {
+		const { context, builder } = recordingContext([]);
+		await listOntoTasks(context, { project_id: PROJECT_ID, archived: true });
+		expect(builder.not).toHaveBeenCalledWith('archived_at', 'is', null);
+		expect(builder.is).not.toHaveBeenCalledWith('deleted_at', null);
+	});
+
+	it('keeps deleted rows out of active task reads and other archive reads', async () => {
+		const tasks = recordingContext([]);
+		await listOntoTasks(tasks.context, { project_id: PROJECT_ID });
+		expect(tasks.builder.is).toHaveBeenCalledWith('deleted_at', null);
+		expect(tasks.builder.is).toHaveBeenCalledWith('archived_at', null);
+
+		const documents = recordingContext([]);
+		await listOntoDocuments(documents.context, { project_id: PROJECT_ID, archived: true });
+		expect(documents.builder.is).toHaveBeenCalledWith('deleted_at', null);
+	});
+});

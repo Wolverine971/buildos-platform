@@ -353,3 +353,145 @@ established by the project-page pass (`focus:outline-none focus-visible:ring-2 f
 sentence-casing the headers, the "Recent activity" missing header link, and the feed's silent `slice(0, 8)`. A live
 dark-mode screenshot pass is still worthwhile as a final confirmation, but the D5 changes are reductive (mute /
 retone to existing tokens) so they're low-regret by construction.
+
+## Part 6 — Scan-first reassessment (2026-09-29)
+
+**Status: audited; recommendations only. No dashboard UI code changed in this pass.**
+
+The current dashboard has evolved beyond the June banner design: TodayChip now consolidates the brief,
+overdue work, and inbox into a compact action row. Keep that improvement. The remaining problem is the
+amount of screen space devoted to project inventory before the user reaches recent work.
+
+### Scope and observed evidence
+
+Inspected the authenticated local `/dashboard` on `http://localhost:5174`, using the user's actual
+workspace data, at **1890 × 846** and **390 × 844 CSS px**, in light and dark themes. The existing browser
+zoom was preserved; viewport dimensions were measured from the DOM. This is local UI verification,
+not a claim about a production deployment.
+
+Regions: greeting/actions; Today chips and brief states; project launcher; recent activity; recent
+chats; totals footer; phone wrapping and keyboard semantics. Modal interiors and the calendar remain
+separate audits. Existing notifications were left intact and can overlap the captured lower-right area.
+
+| Observation                                   | Evidence                                                                                                                                           | Implication                                                                                                 |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Project inventory dominates the page          | 11 cards, each with task/goal/document counts; recent activity starts at y=669 on desktop, y=1013 on phone. Recent chats start at y=1533 on phone. | A dashboard-sized project preview would make recent work reachable sooner.                                  |
+| Heading doesn't match the selection precisely | “Active projects” includes planning projects. The component includes all nonterminal states from the recent-project payload.                       | “Recent projects” better describes the destination preview without implying every active project is listed. |
+| Compact chips have compact hit areas          | All three Today chips measure 32 px high. TodayChip uses unconditional `h-8`.                                                                      | Preserve the visual compactness while providing at least 44 px targets on coarse pointers.                  |
+| Brief tooltip contains the report             | The brief chip's native title contains **38,527 characters**, including links and report sections.                                                 | A hover/focus description should identify the action; the existing modal should own the report.             |
+| Chat names don't distinguish destinations     | All four visible entries read “Untitled chat session”; two share the same project and relative time.                                               | Layout alone will not fix recognition. Use structured title/summary/context data to identify chats.         |
+| Repeated state and totals                     | Activity has both “Done” badges and “Completed task” text; footer repeats four inventory totals.                                                   | Reserve emphasis and numbers for decisions such as overdue work and pending review.                         |
+
+### Tier 1 — cheap, high-impact
+
+1. **Remove incidental counts and quiet project rows.** Drop per-project task/goal/document totals and
+   the four-total footer. Retain overdue and review counts because those lead directly to work. Use
+   name, aligned update time, and meaningful collaboration/exception state; replace individual raised
+   card framing with restrained rows consistent with Today. **→ P3 + P4 + P6 + P22**
+2. **Make labels and actions consistent.** Rename the launcher “Recent projects,” sentence-case “New
+   project,” and align its treatment with `/projects`. The desktop Today button duplicates visible
+   navigation; simplify that action cluster while keeping Calendar discoverable. Remove a duplicate
+   Done badge when the activity action already says Completed; retain nonredundant state. **→ P4 + P6 + P8**
+3. **Replace the full-report tooltip.** Use a short action description such as “Open today's brief,”
+   with audio readiness available separately. Do not summarize the report by regex or hide long prose
+   in accessibility attributes. **→ P1 + P6 + P13**
+4. **Expand chip touch targets.** Give coarse-pointer chips 44 px minimum hit areas; retain the existing
+   wrapping, labels, focus treatment, and reduced-motion rules. This is a touch-density issue, not a
+   desktop alignment defect: the header buttons already align. **→ P1 + P13 + P26**
+
+### Tier 2 — structural within the surface
+
+5. **Bound the project preview.** Show six recent projects, with the existing All projects link clearly
+   available. This is a deliberate dashboard preview, not deletion or a limit on `/projects`. Retain
+   exceptional shared/recovery access. First validate that activity moves into the phone's initial
+   screen without squeezing targets. **→ P3 + P4 + P8 + P22**
+6. **Make recent work easier to scan.** Group activity by calendar day, following the project Activity
+   tab. Preserve the existing entity/action/project/time context and give the limited feed an explicit
+   route to broader history. Use existing structured timestamps; don't infer related changes from names.
+   This dashboard feed is an entity-update preview, not a complete audit log. **→ P4 + P6 + P8 + P22**
+7. **Improve chat identification before adding more chrome.** Preserve supplied titles/auto-titles;
+   for missing titles use existing summary/context/project fields and a distinguishing timestamp.
+   Keep all four distinct destinations. The service currently normalizes missing names to a generic
+   string, so address that structured fallback before presentation rather than detecting title meaning
+   with keywords. No extra model call is needed for the initial cleanup. **→ P1 + P4 + P6**
+
+The dashboard project DTO has a description but no next-step field. Matching the project-list row
+geometry does not require copying its entire component or adding a request per project. If a future
+pass includes next steps, extend the batched projection deliberately and use the existing stored cue.
+
+### Tier 3 — polish and accessibility
+
+- Ensure one main landmark: the rendered dashboard currently nests its own `<main>` inside the app
+  main. Preserve visible keyboard focus and reduced-motion behavior. No decorative animation is
+  warranted. **→ P11 + P13**
+- Keep the greeting's personality, the compact Today action row, and the desktop activity/chat split.
+  The main leverage is hierarchy and truthful labeling. **→ P3 + P4 + P6**
+
+### Verification and source anchors
+
+- Both measured widths have no page-level horizontal overflow. Light/dark screenshots captured.
+- Source and official Svelte analyzer reviewed: AnalyticsDashboard, TodayChip, DashboardBriefWidget.
+  All returned `issues: []`; AnalyticsDashboard also has existing state/effect/Map suggestions, not
+  treated as visual defects. No runtime tests or full typecheck were run for this read-only audit.
+- Original light theme and default desktop viewport restored. No brief generation, model calls,
+  project writes, notification actions, or modal submissions performed.
+- Anchors at audit time: `AnalyticsDashboard.svelte:216–256` selection/labels;
+  `:878–945` header; `:1108–1250` project launcher; `:1342–1450` activity;
+  `:1455–1540` recent chats; `:1543` totals. `TodayChip.svelte:95` target height;
+  `DashboardBriefWidget.svelte:91–101` full-text snippet and `:325` title attribute.
+- Captures: [desktop light](./assets/dashboard-projects-2026-09-29/dashboard-desktop-light.png),
+  [desktop dark](./assets/dashboard-projects-2026-09-29/dashboard-desktop-dark.png),
+  [recent work](./assets/dashboard-projects-2026-09-29/dashboard-recent-dark.png),
+  [phone light](./assets/dashboard-projects-2026-09-29/dashboard-mobile-light.png),
+  [phone dark](./assets/dashboard-projects-2026-09-29/dashboard-mobile-dark.png).
+
+This stacks on the existing [Projects list audit](./PROJECTS_LIST_PAGE_AUDIT_2026-06-26.md#part-11--scan-first-reassessment-2026-09-29)
+and the [project-tab cleanup](./PROJECT_WORKSPACE_V2_TILDA_REASSESSMENT_2026-07-22.md#scan-first-project-tabs-implementation--2026-09-29).
+
+## Part 7 — Scan-first implementation (2026-09-29)
+
+**Status: approved cleanup implemented and verified locally.** This completes Part 6.
+
+- Six recent current projects replace the unbounded launcher; All projects, exceptional shared
+  access, overdue indicators, and new-account onboarding remain. Both project sections use one local
+  row snippet, with name/update time and restrained shared/state metadata. Per-project inventories
+  and the totals footer are removed. **→ P1 + P3 + P4 + P8 + P22**
+- Header actions use aligned heights and sentence-case New project. Today remains a phone shortcut;
+  Calendar stays visible. The brief tooltip is now “Open today's brief,” with audio readiness retained.
+  Today chips and their loading placeholder use 44 px on coarse pointers and 32 px on fine pointers.
+  **→ P6 + P9 + P13 + P26**
+- All eight activity entries remain, grouped by local calendar day. Completed actions no longer repeat
+  a Done badge. All activity opens `/notifications`, the actual cross-project activity timeline.
+  The dashboard remains an entity-update preview. **→ P4 + P6 + P8**
+- Named/auto-titled chats keep their supplied title. A presentation adapter recognizes only the exact
+  fallback sentinel emitted by the existing RPC/service and uses existing summary/project/context plus
+  a timestamp. It does not classify free text or make another request. A user-created title identical
+  to that legacy sentinel would also receive a context preview; stored titles are untouched. The four
+  chat destinations remain distinct. **→ P1 + P4 + P6**
+- Removed the nested main landmark; app layout supplies the single main. **→ P13**
+
+### Validation and measured result
+
+- Authenticated actual-data local app at `localhost:5174`, light/dark, desktop **1887 × 905** and
+  phone **390 × 844 CSS px**, original zoom preserved. No horizontal overflow. Header action tops
+  and heights match (32 px fine-pointer controls). Exactly one main landmark.
+- Phone Recent activity moved from **y=1013 to y=565**, about **448 px sooner**; recent chats from
+  **y=1533 to y=1149**. Desktop activity now starts near y=388 (previously y=669).
+- Brief opens and closes normally; keyboard activation of All activity reaches the Activity timeline;
+  All projects reaches the launcher. No brief generation, paid calls, notification actions, or writes
+  to project data were performed. Light theme and default desktop viewport restored afterward.
+- **13 focused tests passed** across `dashboard-presentation.test.ts` and `project-list.test.ts`,
+  covering calendar/year boundaries, exact legacy-title fallback, distinct chat times, readable entity
+  references, and existing project scope/collaboration logic. Gated `pnpm --filter @buildos/web check`
+  passed after the final edits: **0 errors, 0 warnings**. Scoped formatting and `git diff --check` pass.
+- Official Svelte analyzer: no issues in all six edited components. Existing effect/Map suggestions
+  in AnalyticsDashboard and the projects route are unchanged. Browser console recorded no errors;
+  Vite development dependency-externalization warnings remain. The coarse-pointer media rule was
+  checked in source; a physical touch device was not available.
+- After captures: [desktop light](./assets/dashboard-projects-2026-09-29/after-dashboard-desktop-light.png),
+  [desktop dark](./assets/dashboard-projects-2026-09-29/after-dashboard-desktop-dark.png),
+  [phone light](./assets/dashboard-projects-2026-09-29/after-dashboard-mobile-light.png),
+  [phone dark](./assets/dashboard-projects-2026-09-29/after-dashboard-mobile-dark.png).
+
+Modal interiors and calendar remain separate audits. No API projection, migration, shared UI primitive,
+production deployment, or project-detail page changed.

@@ -23,7 +23,7 @@
 		CheckCircle2,
 		UserPlus,
 		XCircle
-	} from 'lucide-svelte';
+	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
 	import ProjectOverdueIndicator from './ProjectOverdueIndicator.svelte';
@@ -31,7 +31,11 @@
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import { getTaskStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import { getDashboardGreeting } from '$lib/utils/dashboard-greeting';
-	import type { UserDashboardAnalytics } from '$lib/types/dashboard-analytics';
+	import { formatActivityDay, getDashboardChatPresentation } from './dashboard-presentation';
+	import type {
+		DashboardProjectActivity,
+		UserDashboardAnalytics
+	} from '$lib/types/dashboard-analytics';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
@@ -240,12 +244,11 @@
 	// True when the user has absolutely nothing (brand new account)
 	const hasNoProjects = $derived(analytics.recent.projects.length === 0);
 	const projectsToDisplay = $derived(
-		activeProjects.length > 0 ? activeProjects : analytics.recent.projects.slice(0, 6)
+		(activeProjects.length > 0 ? activeProjects : analytics.recent.projects).slice(0, 6)
 	);
 	const showingFallbackProjects = $derived(
 		!hasNoProjects && activeProjects.length === 0 && projectsToDisplay.length > 0
 	);
-	const projectSectionTitle = $derived(showingFallbackProjects ? 'Projects' : 'Active projects');
 
 	const sharedProjects = $derived(analytics.recent.projects.filter((p) => p.is_shared));
 
@@ -855,6 +858,51 @@
 	}
 </script>
 
+{#snippet projectRow(project: DashboardProjectActivity)}
+	{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
+	{@const projectHref = resolveProjectHref(project)}
+	<a
+		href={projectHref}
+		onclick={(event) => handleProjectCardClick(event, project)}
+		aria-busy={isPendingNavigation(projectHref)}
+		class="group flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 pressable hover:border-border hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
+			projectHref
+		)}"
+	>
+		<FolderKanban class="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+		<p
+			class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
+			title={project.name}
+		>
+			{project.name}
+		</p>
+		{#if project.is_shared}
+			<span
+				class="inline-flex shrink-0 items-center gap-1 text-2xs text-muted-foreground"
+				title="Shared with you"
+				><Share2 class="h-3 w-3" aria-hidden="true" /><span class="sr-only sm:not-sr-only"
+					>Shared</span
+				></span
+			>
+		{/if}
+		{#if !isActiveProjectState(project.state_key)}
+			<span class="shrink-0 text-2xs text-muted-foreground"
+				>{formatStateLabel(project.state_key)}</span
+			>
+		{/if}
+		{#if overdueBatch}<ProjectOverdueIndicator batch={overdueBatch} class="shrink-0" />{/if}
+		<time
+			datetime={project.updated_at}
+			class="stamp shrink-0 whitespace-nowrap text-2xs text-muted-foreground"
+			>{formatRelativeTime(project.updated_at)}</time
+		>
+		<ArrowRight
+			class="hidden h-3 w-3 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
+			aria-hidden="true"
+		/>
+	</a>
+{/snippet}
+
 <PullToRefresh
 	onRefresh={handleRefresh}
 	disabled={isRefreshing ||
@@ -863,7 +911,7 @@
 		showOverdueTaskTriageModal ||
 		showDashboardInboxModal}
 >
-	<main class="min-h-screen bg-background transition-colors">
+	<div class="min-h-screen bg-background transition-colors">
 		<div
 			class="container mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 max-w-7xl space-y-3 sm:space-y-4"
 		>
@@ -878,21 +926,23 @@
 				</h1>
 				<div class="flex w-full items-center gap-1.5 sm:w-auto sm:shrink-0 sm:gap-2">
 					<Button
-						variant="outline"
+						variant="primary"
 						size="sm"
 						icon={Plus}
 						onclick={() => gotoWithPending('/projects/create')}
-						class="flex-1 whitespace-nowrap border-accent/30 bg-card text-accent hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus:ring-accent/40 sm:flex-none {dashboardLinkClass(
+						class="flex-1 whitespace-nowrap text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5 sm:flex-none {dashboardLinkClass(
 							'/projects/create'
 						)}"
 					>
-						New Project
+						New project
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
 						onclick={() => gotoWithPending('/today')}
-						class="shrink-0 px-2.5 sm:px-3 {dashboardLinkClass('/today')}"
+						class="shrink-0 text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5 px-2.5 sm:hidden {dashboardLinkClass(
+							'/today'
+						)}"
 						aria-label="Open today view"
 						title="Today"
 					>
@@ -907,7 +957,7 @@
 						onfocus={warmCalendarDashboard}
 						ontouchstart={warmCalendarDashboard}
 						disabled={isOpeningCalendar}
-						class="shrink-0 px-2.5 sm:px-3"
+						class="shrink-0 text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5 px-2.5 sm:px-3"
 						aria-label="Open calendar"
 						title="Calendar"
 					>
@@ -926,7 +976,7 @@
 						size="sm"
 						onclick={handleRefresh}
 						disabled={isRefreshing}
-						class="shrink-0 px-2.5"
+						class="shrink-0 text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5 px-2.5"
 						aria-label="Refresh dashboard"
 						title="Refresh"
 					>
@@ -1106,11 +1156,11 @@
 				{/if}
 			</section>
 
-			<!-- Active Projects -->
+			<!-- Recent projects: a short launcher into current work -->
 			<section class="min-w-0">
 				<div class="flex min-w-0 items-center justify-between gap-2 mb-2">
 					<h2 class="min-w-0 truncate text-sm sm:text-base font-semibold text-foreground">
-						{projectSectionTitle}
+						Recent projects
 					</h2>
 					{#if !hasNoProjects}
 						<a
@@ -1172,77 +1222,12 @@
 				{:else}
 					{#if showingFallbackProjects}
 						<div class="mb-2 text-xs text-muted-foreground px-1">
-							No active projects right now. Showing your most recent projects.
+							No current projects right now. Showing your most recent projects.
 						</div>
 					{/if}
-					<div class="grid min-w-0 grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
+					<div class="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1 lg:grid-cols-2">
 						{#each projectsToDisplay as project (project.id)}
-							{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
-							{@const projectHref = resolveProjectHref(project)}
-							<a
-								href={projectHref}
-								onclick={(event) => handleProjectCardClick(event, project)}
-								aria-busy={isPendingNavigation(projectHref)}
-								class="group relative block w-full min-w-0 wt-paper px-3 py-2.5
-								hover:border-accent/40 transition-colors pressable
-								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
-									projectHref
-								)}"
-							>
-								<div class="flex min-w-0 items-center justify-between gap-2">
-									<div class="flex min-w-0 flex-1 items-center gap-2">
-										<FolderKanban
-											class="h-3.5 w-3.5 shrink-0 {project.is_shared
-												? 'text-accent'
-												: 'text-muted-foreground'}"
-										/>
-										<p
-											class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
-										>
-											{project.name}
-										</p>
-										{#if project.is_shared}
-											<span
-												class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-2xs font-medium bg-accent/15 text-accent border border-accent/20"
-											>
-												<Share2 class="h-2.5 w-2.5" />
-												Shared
-											</span>
-										{/if}
-										{#if !isActiveProjectState(project.state_key)}
-											<span
-												class="shrink-0 text-2xs font-medium text-muted-foreground"
-											>
-												{formatStateLabel(project.state_key)}
-											</span>
-										{/if}
-									</div>
-									<div class="flex items-center gap-1 shrink-0">
-										<span
-											class="stamp text-2xs text-muted-foreground whitespace-nowrap"
-										>
-											{formatRelativeTime(project.updated_at)}
-										</span>
-										<ArrowRight
-											class="hidden h-3 w-3 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
-										/>
-									</div>
-								</div>
-								<div class="mt-0.5 flex min-w-0 items-center gap-2 pl-[22px]">
-									<p
-										class="min-w-0 flex-1 truncate text-2xs text-muted-foreground"
-									>
-										{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
-										docs
-									</p>
-									{#if overdueBatch}
-										<ProjectOverdueIndicator
-											batch={overdueBatch}
-											class="shrink-0"
-										/>
-									{/if}
-								</div>
-							</a>
+							{@render projectRow(project)}
 						{/each}
 					</div>
 				{/if}
@@ -1258,11 +1243,6 @@
 							>
 								Shared with me
 							</h2>
-							<span
-								class="inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-medium bg-accent/15 text-accent border border-accent/20"
-							>
-								{sharedNotActive.length}
-							</span>
 						</div>
 						<a
 							href="/projects"
@@ -1276,60 +1256,9 @@
 						</a>
 					</div>
 
-					<div class="grid min-w-0 grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
+					<div class="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1 lg:grid-cols-2">
 						{#each sharedNotActive as project (project.id)}
-							{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
-							{@const projectHref = resolveProjectHref(project)}
-							<a
-								href={projectHref}
-								onclick={(event) => handleProjectCardClick(event, project)}
-								aria-busy={isPendingNavigation(projectHref)}
-								class="group relative block w-full min-w-0 wt-paper px-3 py-2.5
-								hover:border-accent/40 transition-colors pressable
-								focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {dashboardLinkClass(
-									projectHref
-								)}"
-							>
-								<div class="flex min-w-0 items-center justify-between gap-2">
-									<div class="flex min-w-0 flex-1 items-center gap-2">
-										<FolderKanban class="h-3.5 w-3.5 text-accent shrink-0" />
-										<p
-											class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
-										>
-											{project.name}
-										</p>
-										<span
-											class="shrink-0 text-2xs font-medium text-muted-foreground"
-										>
-											{formatStateLabel(project.state_key)}
-										</span>
-									</div>
-									<div class="flex items-center gap-1 shrink-0">
-										<span
-											class="stamp text-2xs text-muted-foreground whitespace-nowrap"
-										>
-											{formatRelativeTime(project.updated_at)}
-										</span>
-										<ArrowRight
-											class="hidden h-3 w-3 text-accent opacity-0 transition-opacity group-hover:opacity-100 motion-reduce:transition-none sm:block"
-										/>
-									</div>
-								</div>
-								<div class="mt-0.5 flex min-w-0 items-center gap-2 pl-[22px]">
-									<p
-										class="min-w-0 flex-1 truncate text-2xs text-muted-foreground"
-									>
-										{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
-										docs
-									</p>
-									{#if overdueBatch}
-										<ProjectOverdueIndicator
-											batch={overdueBatch}
-											class="shrink-0"
-										/>
-									{/if}
-								</div>
-							</a>
+							{@render projectRow(project)}
 						{/each}
 					</div>
 				</section>
@@ -1339,9 +1268,19 @@
 			<div class="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3">
 				<!-- Unified Activity Feed (2/3 width on desktop) -->
 				<section class="min-w-0 lg:col-span-2">
-					<h2 class="text-sm sm:text-base font-semibold text-foreground mb-2">
-						Recent activity
-					</h2>
+					<div class="flex items-center justify-between gap-2 mb-2">
+						<h2 class="text-sm sm:text-base font-semibold text-foreground">
+							Recent activity
+						</h2>
+						<a
+							href="/notifications"
+							onclick={(event) => handleDashboardAnchorClick(event, '/notifications')}
+							aria-busy={isPendingNavigation('/notifications')}
+							class="shrink-0 text-sm text-muted-foreground hover:text-accent transition-colors {dashboardLinkClass(
+								'/notifications'
+							)}">All activity &rarr;</a
+						>
+					</div>
 
 					{#if unifiedFeed.length === 0}
 						<div class="wt-paper p-4 tx tx-frame tx-weak text-center">
@@ -1349,7 +1288,15 @@
 						</div>
 					{:else}
 						<div class="wt-paper min-w-0 divide-y divide-border overflow-hidden">
-							{#each unifiedFeed as item (item.kind + '-' + item.id)}
+							{#each unifiedFeed as item, index (item.kind + '-' + item.id)}
+								{@const dayLabel = formatActivityDay(item.updated_at)}
+								{#if index === 0 || dayLabel !== formatActivityDay(unifiedFeed[index - 1]!.updated_at)}
+									<h3
+										class="bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground"
+									>
+										{dayLabel}
+									</h3>
+								{/if}
 								<a
 									href={item.href}
 									onpointerenter={() => preloadActivityDestination(item.kind)}
@@ -1378,7 +1325,7 @@
 											>
 												{item.title}
 											</p>
-											{#if item.kind === 'task'}
+											{#if item.kind === 'task' && item.action_label !== 'Completed'}
 												<span
 													class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-2xs font-medium border {getTaskStateBadgeClass(
 														item.state_key
@@ -1480,6 +1427,7 @@
 					{:else}
 						<div class="wt-paper min-w-0 divide-y divide-border overflow-hidden">
 							{#each recentChats as session (session.id)}
+								{@const chat = getDashboardChatPresentation(session)}
 								{@const chatHref = `/history?type=chats&id=${session.id}&itemType=chat_session`}
 								<a
 									href={chatHref}
@@ -1498,16 +1446,12 @@
 												<p
 													class="text-sm font-medium text-foreground truncate"
 												>
-													{session.title}
+													{chat.title}
 												</p>
 												<p
 													class="text-2xs text-muted-foreground truncate mt-0.5"
 												>
-													{#if session.project_name}
-														{session.project_name}
-													{:else}
-														{session.context_label}
-													{/if}
+													{chat.subtitle}
 												</p>
 											</div>
 										</div>
@@ -1528,21 +1472,8 @@
 					{/if}
 				</section>
 			</div>
-
-			<!-- Compact Stats -->
-			<footer
-				class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground px-1"
-			>
-				<span>{analytics.snapshot.totalProjects} projects</span>
-				<span class="text-border">&middot;</span>
-				<span>{analytics.snapshot.totalTasks} tasks</span>
-				<span class="text-border">&middot;</span>
-				<span>{analytics.snapshot.totalGoals} goals</span>
-				<span class="text-border">&middot;</span>
-				<span>{analytics.snapshot.totalDocuments} docs</span>
-			</footer>
 		</div>
-	</main>
+	</div>
 </PullToRefresh>
 
 <!-- Daily Brief Modal (lazy loaded) -->

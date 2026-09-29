@@ -2,11 +2,29 @@
 import { describe, expect, it } from 'vitest';
 import {
 	addProjectCollaborationFlags,
+	formatProjectResumeCue,
 	formatProjectUpdatedLabel,
 	getProjectListScopeLabel,
 	matchesProjectListScope,
 	normalizeProjectListScope
 } from './project-list';
+
+describe('project resume cues', () => {
+	it('shows entity and markdown link labels without their source markup', () => {
+		expect(
+			formatProjectResumeCue(
+				'Review [[plan:abc-123|**Brand Foundation**]] and [the brief](/projects/123).'
+			)
+		).toBe('Review Brand Foundation and the brief.');
+	});
+
+	it('keeps literal prose and normalizes empty or multiline previews', () => {
+		expect(formatProjectResumeCue(null)).toBe('');
+		expect(formatProjectResumeCue('  Book a meeting\n with my business partner.  ')).toBe(
+			'Book a meeting with my business partner.'
+		);
+	});
+});
 
 describe('project collaboration flags', () => {
 	const projects = [

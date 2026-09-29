@@ -428,11 +428,16 @@ const SUBJECT_TABLES: Record<string, string> = {
 	milestone: 'onto_milestones'
 };
 
+/** A record id as the database stores it. Rows from before tasker 112 can cite ids the model
+ * invented ("goal-1"); querying one fails the whole pass with a uuid syntax error. */
+const RECORD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Archived or deleted state for every subject key (`type:id`). Both archive forms count
  * (tasker 113): a tree-archived document has state_key 'archived' and no archived_at; an
  * archived task has deleted_at and archived_at both set. A record the project no longer has
- * is deleted. Unknown subject types stay live.
+ * is deleted. Unknown subject types, and ids that are not record ids, stay live: they never
+ * named a real record, so they can't close a finding.
  */
 export async function loadSubjectStates(
 	db: RollupDb,
@@ -442,7 +447,7 @@ export async function loadSubjectStates(
 	const idsByType = new Map<string, Set<string>>();
 	for (const key of subjectKeys) {
 		const [type, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
-		if (!SUBJECT_TABLES[type] || !id) continue;
+		if (!SUBJECT_TABLES[type] || !RECORD_ID.test(id)) continue;
 		idsByType.set(type, (idsByType.get(type) ?? new Set()).add(id));
 	}
 	const states = new Map<string, RollupSubjectState>();

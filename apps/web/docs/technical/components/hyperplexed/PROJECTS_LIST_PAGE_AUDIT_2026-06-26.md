@@ -569,3 +569,133 @@ At a 390 CSS px phone width, rows retain the same 55 px height and all 35 curren
 No further restructuring or decorative effects are warranted for this dense launcher. The previously
 recorded permanent admin graph destination remains open; its direct route is preserved. No project
 backend, detail view, lifecycle semantics, creation behavior, or shared UI primitive changed.
+
+## Part 11 — Scan-first reassessment (2026-09-29)
+
+**Status: audited; recommendations only. No project-list UI code changed in this pass.**
+
+The September 4 density work holds up. Keep the list, visible search/Filters, two-line row structure,
+right-aligned update times, and Completed disclosure. This page needs a smaller pass than the dashboard.
+
+### Scope and evidence
+
+Inspected authenticated local `/projects` at `http://localhost:5174` with actual workspace data:
+**1890 × 846** desktop and **390 × 844 CSS px** phone, both light and dark. Browser zoom was preserved.
+Reviewed header/create, search, filters, result headings, solo/shared rows, next-step text, timestamps,
+Completed, and narrow-layout behavior. Graph/admin-tool interiors and entity modals are out of scope.
+
+- Default Current work contains 31 projects; Completed contains 3. Solo and collaborator rows remain
+  approximately **55 px** high, with **4 px** gaps. Both widths have no page-level horizontal overflow.
+- Names, state, and next steps already form a useful hierarchy. The default count and repeated card
+  surfaces are secondary cleanup opportunities, not a reason to rebuild the launcher.
+- The LinkedIn Posting Project visibly renders `[[plan:…|Brand Foundation]]`, including an ID, in its
+  next step. The title attribute and accessible row text also inherit the raw markup.
+- At 390 px, a solo Active row gives its next-step region about **290 px**. The BuildOS collaborator
+  row gives it about **192 px** because the full Collaborators label takes a second column. Several
+  long project names also lose their distinguishing suffixes to a one-line ellipsis.
+- Expanded Filters measures **415 px** and moves the first result to y≈628. Context/Scale/Stage are
+  admin-only; this density finding applies to DJ's admin view, not every user's filter panel.
+
+### Tier 1 — cheap, high-impact
+
+1. **Render internal references as readable labels.** The list should display “Brand Foundation” in
+   the next-step sentence, not its entity-link syntax or ID. Normalize supported structured markup
+   through the existing link/text utilities, including tooltips and accessible text, while keeping the
+   project row as the single navigation target. Avoid nested links inside the row anchor. This is
+   structured-format parsing, not classification of prose. **→ P1 + P4 + P6 + P13**
+2. **Give phone text more room.** Keep the collaboration glyph plus an accessible label on small
+   screens; retain “Collaborators” on desktop. Keep lifecycle state, timestamps, and role information.
+   This reclaims space before considering taller rows. **→ P1 + P4 + P9**
+3. **Reduce incidental framing.** Remove the default Current work total if following the user's
+   no-incidental-numbers preference, while retaining search-result/filter counts and the useful
+   Completed disclosure count. Shorten the desktop helper to “Recently updated” and keep the
+   Planning/Active definition in the status filter. Soften the individual row border/fill toward the
+   Today list treatment; preserve hover, focus, and row separation. **→ P3 + P4 + P6 + P22**
+
+### Tier 2 — structural within the surface
+
+4. **Make advanced admin filters secondary.** Keep Status and Ownership visible inside Filters.
+   Put Context, Scale, and Stage behind an “Advanced filters” disclosure, while keeping selected
+   values visible as removable chips even when collapsed. No new drawer, tab bar, or filter types.
+   **→ P4 + P7 + P8**
+5. **Protect long names selectively.** After reclaiming collaboration space, allow up to two title
+   lines on phones where needed, with the timestamp aligned to the first line. Keep ordinary rows
+   compact and the next-step line bounded. This trades a little density for recognizable project names;
+   validate it against the September 4 goal rather than expanding every row. **→ P1 + P3 + P4**
+
+### Tier 3 — preserve the working interaction model
+
+- No new grid/list switch, progress gauges, icon decoration, or animation is warranted. Keep the
+  existing neutral state treatment, keyboard focus, pointer-specific control sizing, reduced-motion
+  rules, skeleton geometry, and Completed recovery path. **→ P6 + P8 + P11 + P13 + P26**
+- Several stored next steps refer to old dates or contain generic instructions. That is a separate
+  content-freshness concern; don't silently rewrite project data or infer urgency from free text as
+  part of this visual cleanup. **→ P6 + P22**
+
+### Validation and source anchors
+
+- Search for LinkedIn returns three matching projects; Clear restores the full Current work list.
+- Completed status shows three rows at `?state=completed`; clearing the status restores the default.
+  The Completed disclosure responds to Enter and expands the displayed row count from 31 to 34.
+  Filters and disclosure were restored before leaving the page.
+- Official Svelte analyzer: no issues in the page or ProjectStateRow. The page's existing streaming,
+  store, and effect suggestions were not treated as UI findings. No source edits, runtime tests, or
+  full typecheck were needed for the read-only audit. Physical touch-device behavior was not tested;
+  viewport emulation retains the browser's fine-pointer input mode.
+- Anchors: `ProjectStateRow.svelte:31–41` cue/time derivation and `:49–110` row layout;
+  `projects/+page.svelte:366–380` heading/helper; `:598–746` search/filter panel;
+  `:848–902` results and Completed disclosure.
+- Captures: [desktop light](./assets/dashboard-projects-2026-09-29/projects-desktop-light.png),
+  [desktop dark](./assets/dashboard-projects-2026-09-29/projects-desktop-dark.png),
+  [raw link markup](./assets/dashboard-projects-2026-09-29/projects-link-markup-dark.png),
+  [phone light](./assets/dashboard-projects-2026-09-29/projects-mobile-light.png),
+  [phone dark](./assets/dashboard-projects-2026-09-29/projects-mobile-dark.png),
+  [phone filters](./assets/dashboard-projects-2026-09-29/projects-mobile-filters-light.png).
+
+Recommended sequence across both surfaces: correct the brief tooltip and project-link text; simplify
+dashboard counts/rows and cap its preview; reclaim phone text space; then tune activity/chat recognition
+and advanced filters. See the [dashboard reassessment](./DASHBOARD_AUDIT_2026-06-26.md#part-6--scan-first-reassessment-2026-09-29).
+
+## Part 12 — Scan-first implementation (2026-09-29)
+
+**Status: approved Part 11 cleanup implemented and verified locally.**
+
+- Next-step and description previews compose the existing structured entity-reference parser with
+  plain markdown formatting. Both visible labels and title attributes show readable text; the whole
+  row remains one link. The real LinkedIn Posting Project regression now reads “Brand Foundation”
+  instead of raw `[[plan:…|…]]` markup, including its accessible link name. **→ P1 + P6**
+- Flat rows keep spacing, hover/focus treatment, state, timestamps, and stored resume cues. Long names
+  can occupy two lines on phones; dates stay aligned to the first line. Collaborators uses a glyph and
+  accessible label on phones and keeps its visible desktop label. Skeleton framing matches. **→ P1 + P3 + P4 + P9 + P22**
+- Default Current work no longer repeats the project count; search/filter result counts and Completed
+  counts remain useful and visible. The desktop helper reads Recently updated; the Current work status
+  filter explains Planning and active projects. **→ P4 + P6**
+- Context/Scale/Stage are behind native Advanced filters disclosure. Selected chips remain outside the
+  disclosure, including when the whole filter panel is collapsed. No search/scope/ownership semantics
+  or URL state handling changed. **→ P7 + P8 + P13**
+
+### Validation and measured result
+
+- Authenticated real-data local app at `localhost:5174`: desktop **1887 × 905** and phone
+  **390 × 844 CSS px**, light/dark, original zoom preserved. No horizontal overflow. Ordinary rows
+  remain **55 px**; two-line names grow to **75 px**.
+- BuildOS phone resume-cue space increased from about **192 to 233 px**. Expanded filters with
+  Advanced filters collapsed take **266 px**, down from **415 px**, bringing the first row to y=479
+  instead of y=628. Long project names and first-line timestamps fit in both themes.
+- Verified search/clear (LinkedIn: three matches), clean tooltips and no nested row links; Enter opens
+  and closes Advanced filters; selecting client yields four matches and keeps its chip visible after
+  collapse; clearing restores the list. Completed sets `?state=completed` and shows three projects;
+  clearing restores `/projects` and Current work.
+- **13 focused tests pass** across project-list and dashboard-presentation. Gated full web Svelte check
+  after final edits: **0 errors, 0 warnings**. All edited components have no Svelte analyzer issues;
+  existing route effects were left within their existing scope. Scoped formatting and whitespace check
+  pass. No paid tests, project data writes, or deployment.
+- After captures: [desktop light](./assets/dashboard-projects-2026-09-29/after-projects-desktop-light.png),
+  [desktop dark](./assets/dashboard-projects-2026-09-29/after-projects-desktop-dark.png),
+  [phone light](./assets/dashboard-projects-2026-09-29/after-projects-mobile-light.png),
+  [phone dark](./assets/dashboard-projects-2026-09-29/after-projects-mobile-dark.png),
+  [phone filters](./assets/dashboard-projects-2026-09-29/after-projects-mobile-filters-light.png),
+  [phone search](./assets/dashboard-projects-2026-09-29/after-projects-mobile-search-light.png).
+
+Permanent admin graph destination remains the previously recorded deferral; this cleanup does not
+change lifecycle behavior, graph tools, project creation, detail tabs, or shared UI primitives.

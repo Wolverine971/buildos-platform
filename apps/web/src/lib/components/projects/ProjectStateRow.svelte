@@ -8,6 +8,7 @@
 		PROJECT_STATE_META
 	} from '$lib/config/project-states';
 	import {
+		formatProjectResumeCue,
 		formatProjectUpdatedLabel,
 		formatProjectUpdatedTitle,
 		type ProjectListSummary
@@ -27,11 +28,13 @@
 			? `Has collaborators · Your role: ${accessRoleLabel}`
 			: 'Has collaborators'
 	);
-	const hasNextStep = $derived(Boolean(project.next_step_short?.trim()));
+	const nextStep = $derived(formatProjectResumeCue(project.next_step_short));
+	const hasNextStep = $derived(Boolean(nextStep));
 	const resumeCue = $derived(
-		project.next_step_short?.trim() ||
-			project.description?.trim() ||
-			'Open this project to continue.'
+		nextStep || formatProjectResumeCue(project.description) || 'Open this project to continue.'
+	);
+	const resumeTitle = $derived(
+		(hasNextStep && formatProjectResumeCue(project.next_step_long)) || resumeCue
 	);
 	const updatedLabel = $derived(formatProjectUpdatedLabel(project.updated_at));
 	const compactUpdatedLabel = $derived(updatedLabel.replace(/^Updated /, ''));
@@ -45,10 +48,10 @@
 <a
 	href={resolve('/projects/[id]', { id: project.id })}
 	onclick={handleClick}
-	class="project-dossier-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-lg border border-border/70 bg-card px-3 py-2 pressable hover:border-border-strong hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+	class="project-dossier-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-lg border border-transparent px-3 py-2 pressable hover:border-border hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 >
 	<h3
-		class="min-w-0 truncate text-sm font-semibold text-foreground"
+		class="min-w-0 line-clamp-2 break-words text-sm font-semibold text-foreground sm:line-clamp-none sm:truncate"
 		style="view-transition-name: project-title-{project.id}; view-transition-class: project-title"
 		title={project.name}
 	>
@@ -58,7 +61,7 @@
 		datetime={project.updated_at}
 		title={updatedTitle}
 		aria-label={updatedLabel}
-		class="stamp justify-self-end whitespace-nowrap text-xs text-muted-foreground"
+		class="stamp self-start justify-self-end whitespace-nowrap text-xs leading-5 text-muted-foreground"
 	>
 		{compactUpdatedLabel}
 	</time>
@@ -69,10 +72,7 @@
 	>
 		<span class="shrink-0" aria-label="Project state: {stateLabel}">{stateLabel}</span>
 		<span aria-hidden="true" class="text-muted-foreground/50">·</span>
-		<p
-			class="flex min-w-0 items-center gap-1"
-			title={hasNextStep ? (project.next_step_long ?? resumeCue) : resumeCue}
-		>
+		<p class="flex min-w-0 items-center gap-1" title={resumeTitle}>
 			{#if hasNextStep}
 				<ListTodo class="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
 				<span class="sr-only">Next step: </span>
@@ -89,7 +89,7 @@
 			class="inline-flex items-center justify-self-end gap-1 whitespace-nowrap text-2xs text-muted-foreground"
 		>
 			<Users class="h-3 w-3 shrink-0" aria-hidden="true" />
-			Collaborators
+			<span class="hidden sm:inline">Collaborators</span>
 		</span>
 	{/if}
 </a>

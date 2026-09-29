@@ -1615,6 +1615,31 @@ describe('buildToolPayloadForModel', () => {
 			expect(payload.total).toBe(20);
 		});
 
+		// Tasker 113: an archived row keeps its old state_key, so the marker must survive.
+		it('keeps the archived marker on list_onto_tasks rows', () => {
+			const payload = buildToolPayloadForModel(
+				toolCall('list_onto_tasks'),
+				toolResult({
+					tasks: [
+						{
+							id: uuid(1),
+							title: 'Reach out to Julian',
+							state_key: 'todo',
+							archived: true
+						},
+						{ id: uuid(2), title: 'Send proofs', state_key: 'todo' }
+					],
+					total: 2,
+					message: 'Found 2 ontology tasks. These are ARCHIVED records, not active work.'
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expect(payload.tasks[0]).toMatchObject({ id: uuid(1), archived: true });
+			expect(payload.tasks[1].archived).toBeUndefined();
+			expect(payload.message).toContain('ARCHIVED records');
+		});
+
 		it('keeps a project detail with twelve described tasks under the budget', () => {
 			const payload = buildToolPayloadForModel(
 				toolCall('get_onto_project_details'),

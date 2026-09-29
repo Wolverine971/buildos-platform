@@ -7,6 +7,15 @@ import {
 } from '$lib/config/project-states';
 import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 import type { ProjectState } from '$lib/types/onto';
+import { stripEntityReferences } from '$lib/utils/entity-reference-parser';
+import { stripMarkdown } from '$lib/utils/markdown-text';
+
+/** Plain labels for a row that is already a link (including its tooltip). */
+export function formatProjectResumeCue(value: string | null | undefined): string {
+	return stripMarkdown(stripEntityReferences(value ?? ''))
+		.replace(/\s+/g, ' ')
+		.trim();
+}
 
 export type ProjectListScope = 'current' | 'all' | ProjectState;
 

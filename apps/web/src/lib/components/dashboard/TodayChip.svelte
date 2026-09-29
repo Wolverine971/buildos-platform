@@ -86,7 +86,7 @@
 	};
 
 	const baseClass =
-		'group inline-flex h-8 max-w-full shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors';
+		'group inline-flex min-h-11 [@media(pointer:fine)]:min-h-8 max-w-full shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors';
 	const interactiveClass =
 		'pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60 disabled:pointer-events-none';
 

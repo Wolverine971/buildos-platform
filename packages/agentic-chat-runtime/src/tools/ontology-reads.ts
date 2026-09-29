@@ -439,7 +439,13 @@ async function scopeEntityQueryToReadableProject(
 	return { q: query.in('project_id', readableProjectIds) };
 }
 
-function applyArchivedReadFilter(query: any, args: { archived?: boolean }): any {
+// An archived task has deleted_at and archived_at set together (20260924190350;
+// connector archives since tasker 113), so its archive read ignores deleted_at.
+// Every other entity archives with archived_at alone.
+function applyArchivedReadFilter(query: any, args: { archived?: boolean }, entity?: 'task'): any {
+	if (args.archived === true && entity === 'task') {
+		return query.not('archived_at', 'is', null);
+	}
 	const withoutDeleted = query.is('deleted_at', null);
 	return args.archived === true
 		? withoutDeleted.not('archived_at', 'is', null)
@@ -827,7 +833,7 @@ export async function listOntoTasks(
 		)
 		.order('updated_at', { ascending: false });
 
-	query = applyArchivedReadFilter(query, args);
+	query = applyArchivedReadFilter(query, args, 'task');
 	({ q: query } = await scopeEntityQueryToReadableProject(context, query, args.project_id));
 
 	const normalizedState = normalizeTaskStateInput(args.state_key);
@@ -1129,7 +1135,7 @@ export async function searchOntoTasks(
 
 	query = applyKeywordSearch(query, searchTerm, ['title', 'description']);
 
-	query = applyArchivedReadFilter(query, args);
+	query = applyArchivedReadFilter(query, args, 'task');
 	({ q: query } = await scopeEntityQueryToReadableProject(context, query, args.project_id));
 
 	const normalizedState = normalizeTaskStateInput(args.state_key);

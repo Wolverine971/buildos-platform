@@ -1999,6 +1999,8 @@ function compactTaskListPayload(payload: unknown): unknown {
 			start_at: task?.start_at ?? undefined,
 			due_at: task?.due_at ?? undefined,
 			completed_at: task?.completed_at ?? undefined,
+			// An archived row keeps the state_key it had when archived (tasker 113).
+			archived: task?.archived === true ? true : undefined,
 			facets:
 				task?.props && typeof task.props === 'object' && !Array.isArray(task.props)
 					? ((task.props as Record<string, unknown>).facets ?? undefined)

@@ -375,8 +375,8 @@
 		selectedScope === 'current'
 			? searchQuery.trim().length > 0
 				? 'Across all project states'
-				: 'Planning and active · Newest updates first'
-			: 'Newest updates first'
+				: 'Recently updated'
+			: 'Recently updated'
 	);
 
 	function toggleValue<T extends string>(list: T[], value: T): T[] {
@@ -667,6 +667,9 @@
 														? 'border-border text-muted-foreground/60'
 														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'}"
 												onclick={() => setProjectScope(scope)}
+												title={scope === 'current'
+													? 'Planning and active projects'
+													: undefined}
 												aria-pressed={selectedScope === scope}
 												disabled={scopeCount === 0 &&
 													selectedScope !== scope}
@@ -704,38 +707,49 @@
 								</div>
 
 								{#if isAdmin && hasFilterOptions}
-									<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-										<FilterGroup
-											label="Context"
-											options={availableContexts}
-											selected={selectedContexts}
-											onToggle={(ctx) =>
-												(selectedContexts = toggleValue(
-													selectedContexts,
-													ctx
-												))}
-										/>
-										<FilterGroup
-											label="Scale"
-											options={availableScales}
-											selected={selectedScales}
-											onToggle={(scale) =>
-												(selectedScales = toggleValue(
-													selectedScales,
-													scale
-												))}
-										/>
-										<FilterGroup
-											label="Stage"
-											options={availableStages}
-											selected={selectedStages}
-											onToggle={(stage) =>
-												(selectedStages = toggleValue(
-													selectedStages,
-													stage
-												))}
-										/>
-									</div>
+									<details class="group/advanced border-t border-border pt-1">
+										<summary
+											class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-md text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden [@media(pointer:fine)]:min-h-8"
+										>
+											Advanced filters
+											<ChevronDown
+												class="h-3.5 w-3.5 transition-transform group-open/advanced:rotate-180 motion-reduce:transition-none"
+												aria-hidden="true"
+											/>
+										</summary>
+										<div class="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
+											<FilterGroup
+												label="Context"
+												options={availableContexts}
+												selected={selectedContexts}
+												onToggle={(ctx) =>
+													(selectedContexts = toggleValue(
+														selectedContexts,
+														ctx
+													))}
+											/>
+											<FilterGroup
+												label="Scale"
+												options={availableScales}
+												selected={selectedScales}
+												onToggle={(scale) =>
+													(selectedScales = toggleValue(
+														selectedScales,
+														scale
+													))}
+											/>
+											<FilterGroup
+												label="Stage"
+												options={availableStages}
+												selected={selectedStages}
+												onToggle={(stage) =>
+													(selectedStages = toggleValue(
+														selectedStages,
+														stage
+													))}
+											/>
+										</div>
+									</details>
 								{/if}
 
 								{#if hasFilters}
@@ -854,9 +868,11 @@
 								>
 									{visibleSectionLabel}
 								</h2>
-								<span class="text-xs font-medium stamp text-muted-foreground">
-									{filteredProjects.length}
-								</span>
+								{#if hasFilters}
+									<span class="text-xs font-medium stamp text-muted-foreground">
+										{filteredProjects.length}
+									</span>
+								{/if}
 								<span
 									class="ml-auto hidden text-xs font-normal text-muted-foreground sm:inline"
 								>

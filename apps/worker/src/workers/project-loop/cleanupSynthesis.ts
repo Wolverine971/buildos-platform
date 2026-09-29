@@ -153,11 +153,14 @@ export function parseCleanupSynthesis(params: {
 		if (!entry || typeof entry !== 'object') continue;
 		const record = entry as Record<string, unknown>;
 		const keep = typeof record.keep === 'string' ? byHandle.get(record.keep) : undefined;
-		if (!keep?.judged) continue;
+		if (!keep) continue;
 		for (const handle of Array.isArray(record.absorb) ? record.absorb : []) {
 			const other = typeof handle === 'string' ? byHandle.get(handle) : undefined;
-			// Only same-kind review findings merge; audit and radar items keep their own rows.
-			if (!other?.judged || other === keep || other.kind !== keep.kind) continue;
+			// Only items of one kind merge: a review finding with a review finding, or an audit
+			// recommendation repeated by a later audit. A merge closes nothing; both rows stay open
+			// under the older item. The radar bundle is its own item and never merges.
+			if (!other || other === keep || other.kind !== keep.kind) continue;
+			if (keep.source === 'radar' || other.source === 'radar') continue;
 			merges.push({ lineageId: other.lineageId, into: keep.lineageId });
 		}
 	}

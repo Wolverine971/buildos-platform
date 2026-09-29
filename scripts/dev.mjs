@@ -149,6 +149,30 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 }
 
 async function main() {
+	const workspacePackagesReady = deferredOutputMatch(
+		/@buildos\/shared-agent-ops:dev:\s+CJS\s+.*Build success/,
+		120_000,
+		'the workspace packages to finish their initial build'
+	);
+	const packageWatchers = start(
+		'workspace package watchers',
+		['exec', 'turbo', 'dev', '--filter=./packages/*'],
+		workspacePackagesReady.observe
+	);
+	packageWatchers.once('exit', (code, signal) => {
+		workspacePackagesReady.reject(
+			new Error(
+				`Workspace package watchers exited before the initial build completed (${signal ? `signal ${signal}` : `code ${code ?? 1}`})`
+			)
+		);
+	});
+
+	// `shared-agent-ops` cleans its dist directory at the start of each tsup
+	// build. Starting the worker before that initial build completes leaves a
+	// window where package exports point at files that do not exist yet.
+	await workspacePackagesReady.promise;
+	console.info('[dev] Workspace packages are ready.');
+
 	const workerReady = deferredOutputMatch(
 		/API server running on port \d+/,
 		120_000,
@@ -162,10 +186,6 @@ async function main() {
 			)
 		);
 	});
-
-	// Keep the package watchers from the old `turbo dev` command running, but
-	// exclude both apps so their launch order is controlled here.
-	start('workspace package watchers', ['exec', 'turbo', 'dev', '--filter=./packages/*']);
 
 	await workerReady.promise;
 	console.info('[dev] Worker is ready.');

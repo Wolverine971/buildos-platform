@@ -14,7 +14,7 @@
 <div class="space-y-1">
 	{#each Array(Math.max(count, 3)) as _, i (i)}
 		<div
-			class="rounded-lg border border-border/70 bg-card px-3 py-2 animate-status-pulse motion-reduce:animate-none"
+			class="rounded-lg border border-transparent px-3 py-2 animate-status-pulse motion-reduce:animate-none"
 			aria-hidden="true"
 		>
 			<div class="flex items-center justify-between gap-3">

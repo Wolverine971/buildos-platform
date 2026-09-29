@@ -1608,7 +1608,7 @@ export async function generateProjectCleanupSynthesis(params: {
 		'- verdict "still_true" when the finding still holds given the current state shown, or "resolved" with a reason when the current state shows it no longer applies. Do not resolve an item just because it is old.',
 		'- section: "safe_cleanup" for a verified change the owner can apply without thinking twice; "needs_call" when it needs their judgment (direction, goals, public pages, anything between projects); "note" when approving it changes nothing. Use only the sections listed for that item.',
 		'- summary: one plain sentence on why it is worth doing now.',
-		'Merge two items only when they are the same finding about the same records (keep the older one).',
+		'Merge two items only when they are the same finding about the same records, or the same audit recommendation raised twice (keep the older one).',
 		'Group items the owner would decide together, for example "Archive 6 old drafts" or "Tidy the Research folder". Every group lists item ids of one section.',
 		'bottom_line says in one sentence what this list is about; recommendation names the one thing to do first. Use ordinary language. Name the records. Never invent an id, record, or fact.',
 		'Attention: none=nothing useful; minor=notes only; decision=changes or calls wait on the owner; urgent=blocked work or a material consequence.',

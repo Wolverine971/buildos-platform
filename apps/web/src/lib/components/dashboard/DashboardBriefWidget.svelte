@@ -2,14 +2,14 @@
 <!--
   Daily brief chip for the dashboard Today row, with ontology support.
   States: loading skeleton → generating (progress %) → brief ready (opens the
-  brief modal; the summary is the hover title) / generate CTA / retry on error.
+  brief modal with a short action tooltip) / generate CTA / retry on error.
 
   PERFORMANCE (Dec 2024):
   - Skeleton chip matches the final chip height, so the row doesn't shift
   - Brief data deferred - doesn't block initial page render
 -->
 <script lang="ts">
-	import { Sparkles, LoaderCircle, AlertCircle, Sun, Volume2 } from 'lucide-svelte';
+	import { Sparkles, LoaderCircle, AlertCircle, Sun, Volume2 } from '$lib/icons/lucide';
 	import TodayChip from './TodayChip.svelte';
 	import { browser } from '$app/environment';
 	import { getContext, onDestroy, onMount } from 'svelte';
@@ -85,17 +85,6 @@
 	let todayDate = $derived.by(() => {
 		if (!browser) return '';
 		return formatInTimeZone(new Date(), userTimezone, 'yyyy-MM-dd');
-	});
-
-	// Brief snippet - CSS handles the final truncation based on available width.
-	let briefSnippet = $derived.by(() => {
-		const content = brief?.summary_content || brief?.executive_summary || '';
-		if (!content) return '';
-		return content
-			.replace(/#{1,6}\s/g, '')
-			.replace(/\*\*/g, '')
-			.replace(/\s+/g, ' ')
-			.trim();
 	});
 
 	// Subscribe to streaming stores using onMount to avoid repeated subscriptions
@@ -288,7 +277,7 @@
 <!-- One chip in the dashboard Today row; the brief itself opens in the brief modal. -->
 {#if isLoading}
 	<span
-		class="inline-flex h-8 w-36 shrink-0 animate-pulse rounded-full bg-muted motion-reduce:animate-none"
+		class="inline-flex h-11 [@media(pointer:fine)]:h-8 w-36 shrink-0 animate-pulse rounded-full bg-muted motion-reduce:animate-none"
 		aria-hidden="true"
 	></span>
 {:else if isGenerating}
@@ -322,7 +311,7 @@
 			? Volume2
 			: undefined}
 		trailingLabel="Audio narration ready"
-		title={briefSnippet || 'Your daily brief is ready'}
+		title="Open today's brief"
 		onclick={handleClick}
 		onpreload={onpreloadbrief}
 	/>

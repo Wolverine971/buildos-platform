@@ -390,7 +390,7 @@ describe('parseCleanupSynthesis', () => {
 			{ lineageId: 'lin-1', verdict: 'still_true' },
 			{ lineageId: 'lin-3', verdict: 'resolved', reason: 'START HERE now says it.' }
 		]);
-		// Only same-kind review findings merge.
+		// Only same-kind items merge.
 		expect(result.merges).toEqual([{ lineageId: 'lin-2', into: 'lin-1' }]);
 		expect(result.sections.get('lin-1')).toBe('safe_cleanup');
 		// "safe_cleanup" is not allowed for a note; the audit item's allowed "note" stands.
@@ -407,6 +407,30 @@ describe('parseCleanupSynthesis', () => {
 		]);
 		expect(result.synthesis.open_count).toBe(2);
 		expect(result.attentionLevel).toBe('decision');
+	});
+
+	it('merges an audit recommendation a later audit repeated, but never resolves one', () => {
+		const audit = (n: number) =>
+			synthesisItem({
+				handle: `a${n}`,
+				lineageId: `aud-${n}`,
+				kind: 'audit_recommendation',
+				source: 'audit',
+				executable: false,
+				allowedSections: ['needs_call', 'note'],
+				judged: false
+			});
+		const result = parseCleanupSynthesis({
+			generatedAt: '2026-09-29T00:00:00.000Z',
+			items: [audit(1), audit(2)],
+			raw: {
+				items: [{ id: 'a2', verdict: 'resolved', reason: 'Done already.' }],
+				merges: [{ keep: 'a1', absorb: ['a2'] }]
+			}
+		});
+		expect(result.merges).toEqual([{ lineageId: 'aud-2', into: 'aud-1' }]);
+		expect(result.verdicts).toEqual([]);
+		expect(result.synthesis.open_count).toBe(1);
 	});
 
 	it("falls back to code's sections and counts without a model", () => {
@@ -497,25 +521,26 @@ describe('section floor for roll-up items', () => {
 });
 
 describe('loadSubjectStates', () => {
-	it('counts both archive forms and records the project no longer has as gone', async () => {
+	const id = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+	it('counts both archive forms, records the project no longer has as gone, and never queries invented ids', async () => {
 		const tables: Record<string, Array<Record<string, unknown>>> = {
 			onto_documents: [
 				{
-					id: 'd-tree',
+					id: id(1),
 					project_id: 'p',
 					state_key: 'archived',
 					archived_at: null,
 					deleted_at: null
 				},
 				{
-					id: 'd-live',
+					id: id(2),
 					project_id: 'p',
 					state_key: 'draft',
 					archived_at: null,
 					deleted_at: null
 				},
 				{
-					id: 'd-moved',
+					id: id(3),
 					project_id: 'other',
 					state_key: 'draft',
 					archived_at: null,
@@ -524,14 +549,14 @@ describe('loadSubjectStates', () => {
 			],
 			onto_tasks: [
 				{
-					id: 't-arch',
+					id: id(5),
 					project_id: 'p',
 					state_key: 'todo',
 					archived_at: '2026-09-20',
 					deleted_at: '2026-09-20'
 				},
 				{
-					id: 't-del',
+					id: id(6),
 					project_id: 'p',
 					state_key: 'todo',
 					archived_at: null,
@@ -539,31 +564,40 @@ describe('loadSubjectStates', () => {
 				}
 			]
 		};
+		const queried: string[] = [];
 		const db = {
 			from: (table: string) => ({
 				select: () => ({
-					in: async (_field: string, ids: string[]) => ({
-						data: (tables[table] ?? []).filter((row) => ids.includes(String(row.id))),
-						error: null
-					})
+					in: async (_field: string, ids: string[]) => {
+						queried.push(...ids);
+						return {
+							data: (tables[table] ?? []).filter((row) =>
+								ids.includes(String(row.id))
+							),
+							error: null
+						};
+					}
 				})
 			})
 		};
 		const states = await loadSubjectStates(db, 'p', [
-			'document:d-tree',
-			'document:d-live',
-			'document:d-moved',
-			'document:d-missing',
-			'task:t-arch',
-			'task:t-del',
+			`document:${id(1)}`,
+			`document:${id(2)}`,
+			`document:${id(3)}`,
+			`document:${id(4)}`,
+			`task:${id(5)}`,
+			`task:${id(6)}`,
+			// A pre-112 row cites a goal id the model invented; Postgres would reject it as a uuid.
+			'goal:goal-1',
 			'project:p'
 		]);
+		expect(queried).not.toContain('goal-1');
 		expect(Object.fromEntries(states)).toEqual({
-			'document:d-tree': { archived: true },
-			'document:d-moved': { deleted: true },
-			'document:d-missing': { deleted: true },
-			'task:t-arch': { archived: true },
-			'task:t-del': { deleted: true }
+			[`document:${id(1)}`]: { archived: true },
+			[`document:${id(3)}`]: { deleted: true },
+			[`document:${id(4)}`]: { deleted: true },
+			[`task:${id(5)}`]: { archived: true },
+			[`task:${id(6)}`]: { deleted: true }
 		});
 	});
 });
