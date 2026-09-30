@@ -526,6 +526,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						state.setCurrentRequest(request);
 					}
 					calls = disposition.calls;
+					// Preserve actor arguments before reserved server preview facts
+					// are injected, so repair can recall the whole unexecuted proposal.
+					const proposedCalls = calls;
 					const validationIssues = validateCompletedProviderCalls(
 						calls,
 						request,
@@ -615,7 +618,13 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 							return;
 						}
 					}
-					validationIssues.push(...state.validateApprovedMutations(calls));
+					// Schema/preview failures withhold the whole proposal before
+					// independent review. Execution authorization does not apply yet:
+					// adding legacy contract errors here falsely rejects every valid
+					// sibling call and asks for a control absent from the batch lane.
+					if (validationIssues.length === 0 || !this.mutationBatchLaneEnabled) {
+						validationIssues.push(...state.validateApprovedMutations(calls));
+					}
 					if (validationIssues.length > 0) {
 						const invalidCalls = callsWithValidationIssues(calls, validationIssues);
 						for (const call of invalidCalls) {
@@ -672,7 +681,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						const repairRequest = buildValidationRepairRequest(
 							request,
 							invalidCalls,
-							validationIssues
+							validationIssues,
+							this.mutationBatchLaneEnabled ? proposedCalls : undefined
 						);
 						state.setCurrentRequest(repairRequest);
 						keepLease = true;

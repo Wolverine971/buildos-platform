@@ -180,6 +180,28 @@ describe('workspace cards', () => {
 		expect(request.questions.scope).toMatchObject({ type: 'choice' });
 		expect(request.state.previous_focus).toEqual(['P1']);
 	});
+
+	it('labels parent and child cards and adds the organization rule only when labels exist', () => {
+		const plain = buildWorkspaceFinderRequest({
+			cards: buildWorkspaceCards([project(1), project(2)]),
+			message: 'hi'
+		});
+		expect(plain.state.projects[0]).not.toHaveProperty('part_of');
+		expect(plain.state.projects[0]).not.toHaveProperty('includes');
+		expect(plain.state.policy.join(' ')).not.toContain('part_of');
+
+		const hub = project(1);
+		const child = project(2);
+		const cards = buildWorkspaceCards([
+			{ ...hub, project: { ...hub.project, includes: ['Project 2', ''] } },
+			{ ...child, project: { ...child.project, part_of: 'Project 1' } }
+		]);
+		expect(cards[0]!.packet).toMatchObject({ includes: ['Project 2'] });
+		expect(cards[0]!.packet).not.toHaveProperty('part_of');
+		expect(cards[1]!.packet).toMatchObject({ part_of: 'Project 1' });
+		const labeled = buildWorkspaceFinderRequest({ cards, message: 'hi' });
+		expect(labeled.state.policy.join(' ')).toContain('part_of');
+	});
 });
 
 describe('selectWorkspaceProjects', () => {
@@ -492,7 +514,12 @@ describe('loadWorkspaceFinderProjects', () => {
 				onto_actors: [{ id: 'actor-1' }],
 				onto_documents: [
 					{ id: 'd-live', project_id: 'p1', title: 'Brief', state_key: 'draft' },
-					{ id: 'd-archived', project_id: 'p1', title: 'Old pitch', state_key: 'archived' }
+					{
+						id: 'd-archived',
+						project_id: 'p1',
+						title: 'Old pitch',
+						state_key: 'archived'
+					}
 				]
 			},
 			[{ id: 'p1', name: 'Only', state_key: 'active', updated_at: '2026-09-01T00:00:00Z' }]

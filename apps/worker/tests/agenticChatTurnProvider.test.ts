@@ -11905,6 +11905,113 @@ describe('SHA-bound mutation batch approval', () => {
 			expect(actorTool?.function.parameters.properties).not.toHaveProperty('_archive_review');
 		});
 
+		it('repairs one bad archive target before reviewing the whole corrected proposal', async () => {
+			const secondId = '10000000-0000-4000-8000-000000000003';
+			const badId = '10000000-0000-4000-8000-000000000004';
+			const archiveProjectId = '10000000-0000-4000-8000-000000000001';
+			const archiveInput = documentSurface();
+			archiveInput.requestPayload.message = 'Archive both of these old documents.';
+			archiveInput.requestPayload.context = {
+				type: 'project',
+				entityId: archiveProjectId,
+				projectId: archiveProjectId
+			};
+			const argsFor = (id: string) => ({
+				document_id: id,
+				state_key: 'archived',
+				archive_mode: 'archive_children'
+			});
+			const factsFor = (id: string) => ({
+				project_id: archiveProjectId,
+				document_id: id,
+				archive_mode: 'archive_children' as const,
+				target_updated_at: '2026-09-29T00:00:00Z',
+				tree_fingerprint: id,
+				archived_document_ids: [id],
+				documents: [{ id, title: 'Old document', effect: 'archive' as const }],
+				public_pages: []
+			});
+			const round = (second: string, suffix: string) => [
+				{
+					type: 'tool_call' as const,
+					toolCall: [DOCUMENT_ID, second].map((id, index) => ({
+						index,
+						id: `archive-${suffix}-${index}`,
+						type: 'function' as const,
+						function: {
+							name: 'update_onto_document',
+							arguments: JSON.stringify(argsFor(id))
+						}
+					}))
+				},
+				{ type: 'done' as const, finishedReason: 'tool_calls' }
+			];
+			const corrected = [DOCUMENT_ID, secondId].map((id, index) => ({
+				id: `archive-corrected-${index}`,
+				name: 'update_onto_document',
+				canonicalProviderArguments: canonicalizeAgenticChatJson({
+					...argsFor(id),
+					_archive_review: factsFor(id)
+				})
+			}));
+			const sha = mutationBatchSha256(buildMutationBatch(corrected));
+			const client = clientWithRounds([round(badId, 'bad'), round(secondId, 'corrected')]);
+			const semanticReviewer = clientWithRounds([reviewerApproval(sha)]);
+			const preview = vi.fn(async ({ args }: { args: Record<string, unknown> }) =>
+				args.document_id === badId
+					? {
+							ok: false as const,
+							error: { message: 'Document not found in the writable project scope.' }
+						}
+					: { ok: true as const, snapshot: factsFor(String(args.document_id)) }
+			);
+			const invocation = await new AgenticChatTurnProviderAdapter(
+				{
+					client,
+					semanticReviewer,
+					capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+					documentArchivePreview: { preview }
+				},
+				2_000,
+				16,
+				{ updateOntoDocument: true },
+				true
+			).prepare({
+				executionInput: archiveInput,
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			const steps = await collect(invocation.stream());
+			const repairText = JSON.stringify(client.stream.mock.calls[1]![0].messages);
+			expect(repairText).toContain('Document not found');
+			expect(repairText).not.toContain('outside the independently approved turn contract');
+			expect(repairText).toContain('Previous proposal (unexecuted');
+			expect(repairText).toContain(DOCUMENT_ID);
+			expect(repairText).not.toContain('_archive_review');
+			expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+			expect(steps.at(-1)).toMatchObject({
+				type: 'read_tool',
+				toolName: 'approve_mutation_batch_review'
+			});
+			const approvalStep = steps.at(-1)!;
+			if (approvalStep.type !== 'read_tool') throw new Error('Expected approval control');
+			const executionSteps = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedbackFor(
+							approvalStep.providerToolCallId,
+							approvalStep.toolName,
+							approvalStep.arguments,
+							{ status: 'mutation_batch_review_approved', batch_sha256: sha }
+						)
+					]
+				})
+			);
+			expect(executionSteps.filter((step) => step.type === 'mutating_tool')).toHaveLength(2);
+		});
+
 		it('returns a missed anchor to the acting model without spending a review', async () => {
 			const client = clientWithRounds([
 				editRound('provider-edit-1', '**Card 5 · People Are Paranoid**'),

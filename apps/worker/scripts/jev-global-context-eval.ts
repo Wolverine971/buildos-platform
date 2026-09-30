@@ -11,6 +11,10 @@
 //   Replay (free): ... --replay
 //   Dig check (paid): ... --live --hop1-only --cache cache-dig --base-cache cache [--hedge 800]
 //                  (re-asks hop 1 only; hop 2 answers come from the base cache)
+//   Structure (any mode): ... --scenarios <file> --structure <file> [--no-lean]
+//                  (folds and nests projects in memory before scoring, and remaps labels;
+//                  --no-lean skips the names-only card run. See
+//                  docs/research/project-structure-search-eval-2026-09-29/.)
 //
 // The dump is `supabase db query -o json` output with one row per accessible project,
 // `data = {project, documents, tasks, goals, plans, milestones, risks}`. It holds private
@@ -27,6 +31,7 @@ import {
 	rankWorkspaceZoom,
 	renderWorkspaceContextBlock,
 	selectWorkspaceProjects,
+	START_HERE_TYPE_KEY,
 	workspaceProjectBrief,
 	workspacePulseText,
 	workspaceZoomShare,
@@ -50,6 +55,8 @@ type Scenario = {
 	helpfulProjects: string[];
 	must: Label[];
 	helpful: Label[];
+	/** Records that would mislead if loaded without the current ones (older, superseded). */
+	stale?: Label[];
 	control?: boolean;
 	/** Needs a search inside a project (hop 2); null when either answer is defensible. */
 	expectDig?: boolean | null;
@@ -59,7 +66,8 @@ type Cached = {
 	key: string;
 	rep: number;
 	full: WorkspaceRankingV1;
-	lean: WorkspaceRankingV1;
+	/** Null when the run skipped the names-only cards (--no-lean). */
+	lean: WorkspaceRankingV1 | null;
 	/** Hop 2 for the top three projects of the full ranking, whatever the scope. */
 	zoom: Record<string, ContextFinderRankingV1>;
 };
@@ -77,6 +85,80 @@ const SCENARIOS = join(REPO, 'docs/research/jev-global-context-2026-09-23/scenar
 function loadDump(file: string): WorkspaceProjectInputV1[] {
 	const json = JSON.parse(readFileSync(file, 'utf8'));
 	return (json.rows as { data: WorkspaceProjectInputV1 }[]).map((row) => row.data);
+}
+
+// ---------------------------------------------------------------------------
+// Structure: fold whole projects into another, or label parents and children, in memory.
+
+type Structure = {
+	name: string;
+	/** Every record of each `from` project moves into `into`; the `from` cards disappear. */
+	fold?: { into: string; from: string[] }[];
+	/** Organization labels only: `part_of` on each child card, `includes` on the parent. */
+	nest?: { parent: string; children: string[] }[];
+};
+const FAMILIES = ['documents', 'tasks', 'goals', 'plans', 'milestones', 'risks'] as const;
+/** A folded project's START HERE becomes an ordinary document; the target keeps its own. */
+const FOLDED_START_HERE_TYPE_KEY = 'document.context.folded_project';
+
+function applyStructure(
+	input: WorkspaceProjectInputV1[],
+	scenarios: Scenario[],
+	structure: Structure
+): { projects: WorkspaceProjectInputV1[]; scenarios: Scenario[] } {
+	let projects = input.map((p) => ({ ...p, project: { ...p.project } }));
+	const find = (name: string) => {
+		const hit = projects.find((p) => p.project.name === name);
+		if (!hit) throw new Error(`structure ${structure.name}: no project "${name}"`);
+		return hit;
+	};
+	const time = (value: unknown) => Date.parse(String(value ?? '')) || 0;
+	const renamed = new Map<string, string>();
+	for (const fold of structure.fold ?? []) {
+		const target = find(fold.into);
+		for (const source of fold.from.map(find)) {
+			renamed.set(source.project.name, fold.into);
+			for (const family of FAMILIES) {
+				const moved = source[family].map((row) =>
+					family === 'documents' && row.type_key === START_HERE_TYPE_KEY
+						? { ...row, type_key: FOLDED_START_HERE_TYPE_KEY }
+						: row
+				);
+				target[family] = [...target[family], ...moved];
+			}
+			if (time(source.project.updated_at) > time(target.project.updated_at))
+				target.project.updated_at = source.project.updated_at;
+		}
+		for (const family of FAMILIES)
+			target[family] = [...target[family]].sort(
+				(a, b) => time(b.updated_at) - time(a.updated_at)
+			);
+		projects = projects.filter((p) => !fold.from.includes(p.project.name));
+	}
+	for (const nest of structure.nest ?? []) {
+		find(nest.parent).project.includes = nest.children;
+		for (const child of nest.children) find(child).project.part_of = nest.parent;
+	}
+	const rename = (name: string) => renamed.get(name) ?? name;
+	const names = (xs: string[] | undefined, drop = new Set<string>()) =>
+		[...new Set((xs ?? []).map(rename))].filter((name) => !drop.has(name));
+	const labels = (xs: Label[] | undefined) =>
+		(xs ?? []).map(([project, kind, title]) => [rename(project), kind, title] as Label);
+	return {
+		projects,
+		scenarios: scenarios.map((s) => {
+			const mustProjects = names(s.mustProjects);
+			return {
+				...s,
+				mustProjects,
+				helpfulProjects: names(s.helpfulProjects, new Set(mustProjects)),
+				previousFocus: s.previousFocus ? names(s.previousFocus) : undefined,
+				must: labels(s.must),
+				helpful: labels(s.helpful),
+				stale: labels(s.stale)
+			};
+		})
+	};
 }
 
 function resolveLabels(projects: WorkspaceProjectInputV1[], scenario: Scenario) {
@@ -105,7 +187,8 @@ function resolveLabels(projects: WorkspaceProjectInputV1[], scenario: Scenario) 
 		helpfulProjects: scenario.helpfulProjects.map((name) => byName(name).project.id),
 		previousFocus: (scenario.previousFocus ?? []).map((name) => byName(name).project.id),
 		must: scenario.must.map(record),
-		helpful: scenario.helpful.map(record)
+		helpful: scenario.helpful.map(record),
+		stale: (scenario.stale ?? []).map(record)
 	};
 }
 
@@ -157,7 +240,12 @@ function readKey(): string | undefined {
 // ---------------------------------------------------------------------------
 // Dry run: sizes, label resolution, today's baseline.
 
-function dry(projects: WorkspaceProjectInputV1[], scenarios: Scenario[], out: string[]) {
+function dry(
+	projects: WorkspaceProjectInputV1[],
+	scenarios: Scenario[],
+	out: string[],
+	withLean = true
+) {
 	const today = todayPromptText(projects).toLowerCase();
 	out.push('## Dry run', '');
 	const titleTotal = projects.reduce(
@@ -181,6 +269,21 @@ function dry(projects: WorkspaceProjectInputV1[], scenarios: Scenario[], out: st
 		'| --- | --- | --- | --- | --- | --- |'
 	);
 	let hop1Usd = 0;
+	let hop2Usd = 0;
+	const zoomTokens = projects
+		.map((p) =>
+			tokens(
+				bytes(
+					buildContextFinderRequest({
+						project: p.project,
+						entities: buildContextFinderEntities(p),
+						message: ''
+					})
+				)
+			)
+		)
+		.sort((a, b) => a - b);
+	const medianZoom = zoomTokens[Math.floor(zoomTokens.length / 2)] ?? 0;
 	for (const s of scenarios) {
 		const labels = resolveLabels(projects, s);
 		const full = capWorkspaceCards(projects, s.message, {
@@ -190,7 +293,9 @@ function dry(projects: WorkspaceProjectInputV1[], scenarios: Scenario[], out: st
 		const leanCards = capWorkspaceCards(lean(projects), s.message, {
 			recentConversation: s.recent
 		});
-		const usd = tokens(full.requestBytes + leanCards.requestBytes) * JEV_USD_PER_INPUT_TOKEN;
+		const usd =
+			tokens(full.requestBytes + (withLean ? leanCards.requestBytes : 0)) *
+			JEV_USD_PER_INPUT_TOKEN;
 		hop1Usd += usd;
 		const named = labels.must.filter((r) => today.includes(r.title.toLowerCase().slice(0, 40)));
 		const hop2 = labels.mustProjects.map((id) => {
@@ -203,13 +308,30 @@ function dry(projects: WorkspaceProjectInputV1[], scenarios: Scenario[], out: st
 			});
 			return `${entities.length} (${Math.round(bytes(request) / 1000)} KB)`;
 		});
+		// Hop 2 runs on the top three projects: the must projects, padded with a median one;
+		// the headings call adds roughly a quarter.
+		const mustZoom = labels.mustProjects.slice(0, HOP2_CANDIDATES).map((id) => {
+			const p = projects.find((x) => x.project.id === id)!;
+			return tokens(
+				bytes(
+					buildContextFinderRequest({
+						project: p.project,
+						entities: buildContextFinderEntities(p),
+						message: s.message
+					})
+				)
+			);
+		});
+		while (mustZoom.length < HOP2_CANDIDATES) mustZoom.push(medianZoom);
+		hop2Usd += mustZoom.reduce((n, t) => n + t, 0) * 1.25 * JEV_USD_PER_INPUT_TOKEN;
 		out.push(
 			`| ${s.key} | ${Math.round(full.requestBytes / 1000)} KB / ${Math.round(leanCards.requestBytes / 1000)} KB | ${full.titleCap} | $${usd.toFixed(5)} | ${named.length}/${labels.must.length} | ${hop2.join(', ') || '—'} |`
 		);
 	}
 	out.push(
 		'',
-		`Estimated hop 1 cost for one pass over all scenarios: $${hop1Usd.toFixed(4)}.`,
+		`Estimated hop 1 cost for one pass over all scenarios: $${hop1Usd.toFixed(4)}${withLean ? ' (full + lean cards)' : ' (full cards only)'}.`,
+		`Estimated hop 2 cost for one pass (top 3 projects, entities + headings): $${hop2Usd.toFixed(4)}.`,
 		''
 	);
 }
@@ -226,7 +348,8 @@ async function live(
 	/** Re-ask hop 1 only; lean and hop-2 answers are copied from this cache. */
 	baseCacheDir?: string,
 	/** Measure real hedged latency (JevClient hedgeAfterMs). */
-	hedgeAfterMs = 0
+	hedgeAfterMs = 0,
+	withLean = true
 ) {
 	const apiKey = readKey();
 	if (!apiKey) throw new Error('No PRIVATE_OPENROUTER_API_KEY');
@@ -269,7 +392,9 @@ async function live(
 			}
 			const [full, leanRanking] = await Promise.all([
 				rankWorkspaceProjects({ ...common, projects }),
-				rankWorkspaceProjects({ ...common, projects: lean(projects) })
+				withLean
+					? rankWorkspaceProjects({ ...common, projects: lean(projects) })
+					: Promise.resolve(null)
 			]);
 			const top = full.projects.slice(0, HOP2_CANDIDATES);
 			const zoomed = await Promise.all(
@@ -292,7 +417,7 @@ async function live(
 			};
 			const cost =
 				(full.costUsd ?? 0) +
-				(leanRanking.costUsd ?? 0) +
+				(leanRanking?.costUsd ?? 0) +
 				zoomed.reduce((n, [, r]) => n + (r.costUsd ?? 0), 0);
 			spent += cost;
 			writeFileSync(file, JSON.stringify(cached));
@@ -339,6 +464,8 @@ type Row = {
 	mustFull: number | null;
 	mustNamed: number | null;
 	helpfulNamed: number | null;
+	staleFull: number | null;
+	staleNamed: number | null;
 	controlClean: boolean | null;
 	chars: number;
 	latencyMs: number;
@@ -405,9 +532,13 @@ function evaluate(
 	const named = new Set([
 		...full,
 		...zoom.flatMap((z) => z.evidence?.summaries.map((x) => x.id) ?? []),
-		...[...labels.must, ...labels.helpful].filter((r) => briefs.includes(r.id)).map((r) => r.id)
+		...[...labels.must, ...labels.helpful, ...labels.stale]
+			.filter((r) => briefs.includes(r.id))
+			.map((r) => r.id)
 	]);
 	const zoomIds = new Set(selection.zoom.map((p) => p.id));
+	// A portfolio answer reaches a project through its pulse (START HERE current state).
+	const reached = new Set([...zoomIds, ...selection.pulse.map((p) => p.id)]);
 	const frac = (xs: Resolved[], set: Set<string>) =>
 		xs.length ? xs.filter((x) => set.has(x.id)).length / xs.length : null;
 	const hop2 = selection.dig ? selection.zoom.map((p) => cached.zoom[p.id]).filter(Boolean) : [];
@@ -433,13 +564,15 @@ function evaluate(
 				: null,
 		hop2Ran: selection.dig,
 		projRecall: labels.mustProjects.length
-			? labels.mustProjects.filter((id) => zoomIds.has(id)).length /
+			? labels.mustProjects.filter((id) => reached.has(id)).length /
 				labels.mustProjects.length
 			: null,
 		zoomCount: selection.zoom.length,
 		mustFull: frac(labels.must, full),
 		mustNamed: frac(labels.must, named),
 		helpfulNamed: frac(labels.helpful, named),
+		staleFull: frac(labels.stale, full),
+		staleNamed: frac(labels.stale, named),
 		controlClean: scenario.control ? selection.zoom.length === 0 : null,
 		chars: renderWorkspaceContextBlock(context)?.length ?? 0,
 		latencyMs: ranking.durationMs + (hop2.length ? hop2Ms : 0),
@@ -473,10 +606,12 @@ function replay(
 		const runs = caches.filter((c) => c.key === s.key);
 		if (!runs.length) continue;
 		const labels = resolveLabels(projects, s);
-		const ranks = (r: WorkspaceRankingV1) =>
-			labels.mustProjects
-				.map((id) => r.projects.findIndex((p) => p.id === id) + 1)
-				.join('+') || '—';
+		const ranks = (r: WorkspaceRankingV1 | null) =>
+			!r
+				? '—'
+				: labels.mustProjects
+						.map((id) => r.projects.findIndex((p) => p.id === id) + 1)
+						.join('+') || '—';
 		const scopes = runs.map((c) => c.full.scope?.choice ?? '∅').join('/');
 		const top = runs[0]!.full.projects
 			.slice(0, 3)
@@ -491,8 +626,8 @@ function replay(
 	out.push(
 		'### Policies (mean over scenarios × reps)',
 		'',
-		'| Policy | Scope right | Dig right | Hop 2 ran | Must project zoomed | Must records loaded | Must records named | Controls clean | Added chars | p50 / p95 latency | $/turn |',
-		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+		'| Policy | Scope right | Dig right | Hop 2 ran | Must project reached | Must records loaded | Must records named | Stale named | Controls clean | Added chars | p50 / p95 latency | $/turn |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
 	);
 	const detail: Row[] = [];
 	for (const policy of POLICIES) {
@@ -506,7 +641,7 @@ function replay(
 					.map(Number)
 			);
 		out.push(
-			`| ${policy.name} | ${pct(avg((r) => r.scopeOk))} | ${pct(avg((r) => r.digOk))} | ${pct(avg((r) => r.hop2Ran))} | ${pct(avg((r) => r.projRecall))} | ${pct(avg((r) => r.mustFull))} | ${pct(avg((r) => r.mustNamed))} | ${pct(avg((r) => r.controlClean))} | ${Math.round(avg((r) => r.chars)).toLocaleString()} | ${quantile(
+			`| ${policy.name} | ${pct(avg((r) => r.scopeOk))} | ${pct(avg((r) => r.digOk))} | ${pct(avg((r) => r.hop2Ran))} | ${pct(avg((r) => r.projRecall))} | ${pct(avg((r) => r.mustFull))} | ${pct(avg((r) => r.mustNamed))} | ${pct(avg((r) => r.staleNamed))} | ${pct(avg((r) => r.controlClean))} | ${Math.round(avg((r) => r.chars)).toLocaleString()} | ${quantile(
 				rows.map((r) => r.latencyMs),
 				0.5
 			)} / ${quantile(
@@ -517,8 +652,8 @@ function replay(
 	}
 	out.push('', '### Default policy, per scenario (mean over reps)', '');
 	out.push(
-		'| Scenario | Scope | Zoomed | Must project | Must loaded | Must named | Helpful named | Chars | Latency (speculative) |',
-		'| --- | --- | --- | --- | --- | --- | --- | --- | --- |'
+		'| Scenario | Scope | Zoomed | Must project | Must loaded | Must named | Helpful named | Stale named | Chars | Latency (speculative) |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |'
 	);
 	for (const s of scenarios) {
 		const rows = detail.filter((r) => r.key === s.key);
@@ -529,10 +664,36 @@ function replay(
 		};
 		const spec = rows.map((r) => r.speculativeMs).filter((x): x is number => x !== null);
 		out.push(
-			`| ${s.key} | ${rows.map((r) => r.scope).join('/')} | ${rows.map((r) => r.context.selection.zoom.map((p) => p.name.slice(0, 14)).join('+') || '∅').join(' / ')} | ${m((r) => r.projRecall)} | ${m((r) => r.mustFull)} | ${m((r) => r.mustNamed)} | ${m((r) => r.helpfulNamed)} | ${Math.round(mean(rows.map((r) => r.chars)))} | ${Math.round(mean(rows.map((r) => r.latencyMs)))} ms${spec.length ? ` (${Math.round(mean(spec))} ms)` : ''} |`
+			`| ${s.key} | ${rows.map((r) => r.scope).join('/')} | ${rows.map((r) => r.context.selection.zoom.map((p) => p.name.slice(0, 14)).join('+') || '∅').join(' / ')} | ${m((r) => r.projRecall)} | ${m((r) => r.mustFull)} | ${m((r) => r.mustNamed)} | ${m((r) => r.helpfulNamed)} | ${m((r) => r.staleNamed)} | ${Math.round(mean(rows.map((r) => r.chars)))} | ${Math.round(mean(rows.map((r) => r.latencyMs)))} ms${spec.length ? ` (${Math.round(mean(spec))} ms)` : ''} |`
 		);
 	}
 	out.push('');
+	// Per-scenario means under the default policy, for comparing structures side by side.
+	const summary = scenarios
+		.map((s) => {
+			const rows = detail.filter((r) => r.key === s.key);
+			if (!rows.length) return null;
+			const m = (pick: (r: Row) => number | boolean | null) => {
+				const xs = rows.map(pick).filter((x): x is number | boolean => x !== null);
+				return xs.length ? mean(xs.map(Number)) : null;
+			};
+			return {
+				key: s.key,
+				runs: rows.length,
+				scopeOk: m((r) => r.scopeOk),
+				projRecall: m((r) => r.projRecall),
+				mustFull: m((r) => r.mustFull),
+				mustNamed: m((r) => r.mustNamed),
+				helpfulNamed: m((r) => r.helpfulNamed),
+				staleFull: m((r) => r.staleFull),
+				staleNamed: m((r) => r.staleNamed),
+				controlClean: m((r) => r.controlClean),
+				chars: m((r) => r.chars),
+				zoomed: rows.map((r) => r.context.selection.zoom.map((p) => p.name))
+			};
+		})
+		.filter(Boolean);
+	writeFileSync(join(outDir, 'summary.json'), JSON.stringify(summary, null, 1));
 	// Private: the full blocks and selections, for the explainer.
 	writeFileSync(
 		join(outDir, 'explainer.json'),
@@ -543,6 +704,7 @@ function replay(
 					const s = byKey.get(r.key)!;
 					const labels = resolveLabels(projects, s);
 					const lean = caches.find((c) => c.key === r.key && c.rep === 0)!.lean;
+					const leanProjects = lean?.projects.slice(0, 10) ?? [];
 					return {
 						key: r.key,
 						source: s.source,
@@ -551,11 +713,12 @@ function replay(
 						control: !!s.control,
 						scope: r.context.ranking.scope,
 						projects: r.context.ranking.projects.slice(0, 10),
-						leanProjects: lean.projects.slice(0, 10),
+						leanProjects,
 						mustProjects: labels.mustProjects,
 						helpfulProjects: labels.helpfulProjects,
 						must: labels.must,
 						helpful: labels.helpful,
+						stale: labels.stale,
 						selection: r.context.selection,
 						zoom: r.context.zoom.map((z) => ({
 							project: z.project,
@@ -607,14 +770,21 @@ async function main() {
 	const dump = arg('--dump');
 	const outDir = arg('--out');
 	if (!dump || !outDir) throw new Error('--dump <file> --out <dir> are required');
-	const projects = loadDump(dump);
-	const scenarios = JSON.parse(
-		readFileSync(arg('--scenarios', SCENARIOS)!, 'utf8')
-	) as Scenario[];
+	const structureFile = arg('--structure');
+	const structured = applyStructure(
+		loadDump(dump),
+		JSON.parse(readFileSync(arg('--scenarios', SCENARIOS)!, 'utf8')) as Scenario[],
+		structureFile
+			? (JSON.parse(readFileSync(structureFile, 'utf8')) as Structure)
+			: { name: 'as saved' }
+	);
+	const { projects, scenarios } = structured;
+	const withLean = !argv.includes('--no-lean');
 	const cacheDir = join(outDir, arg('--cache', 'cache')!);
 	mkdirSync(cacheDir, { recursive: true });
 	const out = [`# Jev global context eval (${new Date().toISOString()})`, ''];
-	dry(projects, scenarios, out);
+	if (structureFile) out.push(`Structure: ${structureFile}`, '');
+	dry(projects, scenarios, out, withLean);
 	if (argv.includes('--live')) {
 		if (process.env.JEV_GLOBAL_EVAL_LIVE !== '1')
 			throw new Error('Live runs are paid: set JEV_GLOBAL_EVAL_LIVE=1 after approval');
@@ -625,7 +795,8 @@ async function main() {
 			cacheDir,
 			Number(arg('--max-usd', '0.25')),
 			argv.includes('--hop1-only') ? join(outDir, arg('--base-cache', 'cache')!) : undefined,
-			Number(arg('--hedge', '0'))
+			Number(arg('--hedge', '0')),
+			withLean
 		);
 		out.push(`Live spend by receipts this run: $${spent.toFixed(4)}.`, '');
 	}

@@ -447,7 +447,9 @@ export function buildContinuationRequest(
 export function buildValidationRepairRequest(
 	request: AgenticChatTurnProviderRequestV1,
 	calls: readonly CompletedProviderToolCall[],
-	issues: ToolValidationIssue[]
+	issues: ToolValidationIssue[],
+	/** Actor-only arguments before preview enrichment; none of this proposal ran. */
+	unexecutedProposal?: readonly CompletedProviderToolCall[]
 ): AgenticChatTurnProviderRequestV1 {
 	if (calls.length === 0) {
 		throw providerError('provider_tool_validation_issue_identity_mismatch', 'permanent');
@@ -478,6 +480,14 @@ export function buildValidationRepairRequest(
 			passRole: 'repair',
 			messages: [
 				...request.messages,
+				...(unexecutedProposal?.length
+					? [
+							{
+								role: 'assistant' as const,
+								content: `Previous proposal (unexecuted; neither approval nor saved effects):\n${JSON.stringify(unexecutedProposal.map((call) => ({ name: call.name, arguments: JSON.parse(call.canonicalProviderArguments) })))}`
+							}
+						]
+					: []),
 				{
 					role: 'assistant',
 					content: '',
@@ -497,7 +507,14 @@ export function buildValidationRepairRequest(
 						? 'auto'
 						: 'none'
 		},
-		buildToolValidationRepairInstruction(issues, false)
+		[
+			buildToolValidationRepairInstruction(issues, false),
+			...(unexecutedProposal?.length
+				? [
+						'The entire proposal above was withheld and none of its calls ran. Correct or omit invalid calls for this stage and retain the other still-needed calls. Repropose the stage for independent review; do not supply reserved server preview metadata.'
+					]
+				: [])
+		].join('\n')
 	);
 }
 
