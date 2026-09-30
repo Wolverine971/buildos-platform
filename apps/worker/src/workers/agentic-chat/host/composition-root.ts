@@ -1,4 +1,5 @@
 // apps/worker/src/workers/agentic-chat/host/composition-root.ts
+import { createGatewayDocumentArchivePreviewPort } from '../provider/document-archive-preview';
 import {
 	type AgenticChatPersistenceTraceSinkV1,
 	logAgenticChatPersistenceTrace
@@ -382,7 +383,12 @@ export function createAgenticChatCompositionRoot(options: {
 			...(options.toolSelector ? { toolSelector: options.toolSelector } : {}),
 			...(options.contextFinder ? { contextFinder: options.contextFinder } : {}),
 			...(mutationCapabilities.updateOntoDocument
-				? { documentEditPreview: createGatewayDocumentEditPreviewPort(options.client) }
+				? {
+						documentEditPreview: createGatewayDocumentEditPreviewPort(options.client),
+						documentArchivePreview: createGatewayDocumentArchivePreviewPort(
+							options.client
+						)
+					}
 				: {})
 		},
 		options.providerCooldownMs,

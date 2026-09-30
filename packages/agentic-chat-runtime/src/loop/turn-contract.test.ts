@@ -2544,3 +2544,55 @@ describe('write ledger gateway outcome', () => {
 		expect(buildWriteLedger([created])).toMatchObject([{ status: 'success' }]);
 	});
 });
+
+describe('atomic document archive receipts', () => {
+	it('credits only the descendants the receipt proves archived, excluding preview metadata', () => {
+		const args = {
+			document_id: 'parent',
+			state_key: 'archived',
+			archive_mode: 'archive_children',
+			_archive_review: { documents: [{ id: 'unproven' }] }
+		};
+		const saved = execution('update_onto_document', args, {
+			result: {
+				document: { id: 'parent', state_key: 'archived' },
+				archived_document_ids: ['parent', 'child', 'child']
+			}
+		});
+		const ledger = buildWriteLedger([saved]);
+		expect(ledger.map((e) => e.entityId)).toEqual(['parent', 'child']);
+		expect(ledger.map((e) => e.changedFields)).toEqual([['state_key'], ['state_key']]);
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					id: 'archive',
+					action: 'archive',
+					entity_kind: 'document',
+					target_ids: ['parent', 'child'],
+					minimum_successful_effects: 2
+				}
+			]
+		});
+		expect(resolveTurnContractOutcome({ contract, toolExecutions: [saved] }).fulfilled).toBe(
+			true
+		);
+		const failed = execution('update_onto_document', args, {
+			success: false,
+			result: { archived_document_ids: ['parent', 'child'] }
+		});
+		expect(buildWriteLedger([failed])).toHaveLength(1);
+		const promoted = execution(
+			'update_onto_document',
+			{ ...args, archive_mode: 'promote_children' },
+			{
+				result: {
+					document: { id: 'parent', state_key: 'archived' },
+					archived_document_ids: ['parent']
+				}
+			}
+		);
+		expect(resolveTurnContractOutcome({ contract, toolExecutions: [promoted] }).fulfilled).toBe(
+			false
+		);
+	});
+});

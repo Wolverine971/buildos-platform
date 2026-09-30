@@ -557,7 +557,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	update_onto_task: {
-		summary: 'Modify task status, assignment, or metadata.',
+		summary:
+			'Modify task status, assignment, or metadata, or archive a task without completing it.',
 		capabilities: [
 			'Supports partial updates',
 			'Validates ownership',
@@ -591,7 +592,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	update_onto_goal: {
-		summary: 'Modify goal details (priority, target date, KPIs).',
+		summary:
+			'Modify goal details (priority, target date, KPIs), or archive a goal without achieving it.',
 		capabilities: [
 			'Supports partial updates',
 			'Validates ownership',

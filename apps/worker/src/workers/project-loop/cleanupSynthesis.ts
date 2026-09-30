@@ -71,6 +71,27 @@ function text(value: unknown, max: number): string | null {
 	return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
 }
 
+/**
+ * The roll-up sees items as handles ("i3") and sometimes writes them into its prose. Handles
+ * are our own structured tokens, so code removes them from anything the user reads: a
+ * parenthetical of handles is dropped, and a bare handle becomes the item's title.
+ */
+function scrubHandles(
+	value: string | null,
+	byHandle: ReadonlyMap<string, CleanupSynthesisItem>
+): string | null {
+	if (!value) return value;
+	const scrubbed = value
+		.replace(/\s*\((?:\s*i\d+\s*[,;/&]?)+\s*\)/g, '')
+		.replace(/\bi\d+\b/g, (handle) => {
+			const item = byHandle.get(handle);
+			return item ? `"${item.title}"` : handle;
+		})
+		.replace(/\s{2,}/g, ' ')
+		.trim();
+	return scrubbed || null;
+}
+
 export function describeCleanupItems(items: readonly CleanupSynthesisItem[]): string {
 	if (!items.length) return '(none)';
 	return items
@@ -115,6 +136,7 @@ export function parseCleanupSynthesis(params: {
 	const raw =
 		params.raw && typeof params.raw === 'object' ? (params.raw as Record<string, unknown>) : {};
 	const byHandle = new Map(params.items.map((item) => [item.handle, item]));
+	const readable = (value: unknown, max: number) => scrubHandles(text(value, max), byHandle);
 	const verdicts: RollupVerdict[] = [];
 	const sections = new Map<string, ProjectCleanupSection>();
 	const summaries = new Map<string, string>();
@@ -125,7 +147,7 @@ export function parseCleanupSynthesis(params: {
 		const record = entry as Record<string, unknown>;
 		const item = typeof record.id === 'string' ? byHandle.get(record.id) : undefined;
 		if (!item) continue;
-		const summary = text(record.summary, 220);
+		const summary = readable(record.summary, 220);
 		if (summary) summaries.set(item.lineageId, summary);
 		if (
 			typeof record.section === 'string' &&
@@ -134,7 +156,7 @@ export function parseCleanupSynthesis(params: {
 			sections.set(item.lineageId, record.section as ProjectCleanupSection);
 		if (!item.judged) continue;
 		if (record.verdict === 'resolved') {
-			const reason = text(record.reason, 220);
+			const reason = readable(record.reason, 220);
 			// A close always carries its reason; a bare "resolved" is no opinion.
 			if (!reason) continue;
 			verdicts.push({ lineageId: item.lineageId, verdict: 'resolved', reason });
@@ -143,7 +165,9 @@ export function parseCleanupSynthesis(params: {
 			verdicts.push({
 				lineageId: item.lineageId,
 				verdict: 'still_true',
-				...(text(record.reason, 220) ? { reason: text(record.reason, 220) as string } : {})
+				...(readable(record.reason, 220)
+					? { reason: readable(record.reason, 220) as string }
+					: {})
 			});
 		}
 	}
@@ -176,7 +200,7 @@ export function parseCleanupSynthesis(params: {
 	for (const entry of Array.isArray(raw.groups) ? raw.groups : []) {
 		if (!entry || typeof entry !== 'object') continue;
 		const record = entry as Record<string, unknown>;
-		const title = text(record.title, 120);
+		const title = readable(record.title, 120);
 		const section = SECTIONS.includes(record.section as ProjectCleanupSection)
 			? (record.section as ProjectCleanupSection)
 			: null;
@@ -197,7 +221,7 @@ export function parseCleanupSynthesis(params: {
 			title,
 			section,
 			item_ids: members.map((member) => member.lineageId),
-			recommendation: text(record.recommendation, 220)
+			recommendation: readable(record.recommendation, 220)
 		});
 	}
 	groups.push(
@@ -216,8 +240,8 @@ export function parseCleanupSynthesis(params: {
 		: defaultAttention(open, sectionOf);
 	return {
 		synthesis: {
-			bottom_line: text(raw.bottom_line, 240),
-			recommendation: text(raw.recommendation, 240),
+			bottom_line: readable(raw.bottom_line, 240),
+			recommendation: readable(raw.recommendation, 240),
 			groups,
 			open_count: open.length,
 			closed_this_pass: [],
@@ -229,8 +253,8 @@ export function parseCleanupSynthesis(params: {
 		sections,
 		summaries,
 		attentionLevel,
-		stateSummary: text(raw.state_summary, 400),
-		nextBestAction: text(raw.next_best_action, 240)
+		stateSummary: readable(raw.state_summary, 400),
+		nextBestAction: readable(raw.next_best_action, 240)
 	};
 }
 

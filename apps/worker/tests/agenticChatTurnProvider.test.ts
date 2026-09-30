@@ -11776,6 +11776,135 @@ describe('SHA-bound mutation batch approval', () => {
 			});
 		}
 
+		it('binds archive publication facts to approval and executes only the reviewed snapshot', async () => {
+			const archiveProjectId = '10000000-0000-4000-8000-000000000001';
+			const archiveInput = documentSurface();
+			archiveInput.requestPayload.context = {
+				type: 'project',
+				entityId: archiveProjectId,
+				projectId: archiveProjectId
+			};
+			const snapshot = {
+				project_id: archiveProjectId,
+				document_id: DOCUMENT_ID,
+				archive_mode: 'archive_children' as const,
+				target_updated_at: '2026-09-29T00:00:00Z',
+				tree_fingerprint: 'reviewed-tree',
+				archived_document_ids: [DOCUMENT_ID],
+				documents: [
+					{
+						id: DOCUMENT_ID,
+						title: 'XML <function> reference',
+						effect: 'archive' as const
+					}
+				],
+				public_pages: [
+					{ document_id: DOCUMENT_ID, slug: 'public-document', status: 'published' }
+				]
+			};
+			const args = {
+				document_id: DOCUMENT_ID,
+				state_key: 'archived',
+				archive_mode: 'archive_children'
+			};
+			const reviewed = { ...args, _archive_review: snapshot };
+			const sha = mutationBatchSha256(
+				buildMutationBatch([
+					{
+						id: 'archive-1',
+						name: 'update_onto_document',
+						canonicalProviderArguments: canonicalizeAgenticChatJson(reviewed)
+					}
+				])
+			);
+			const expectation = {
+				outcomes: [
+					{
+						id: 'archive-doc',
+						action: 'archive',
+						entity_kind: 'document',
+						description: 'Archive the public document, keeping its page published',
+						target_ids: [DOCUMENT_ID],
+						minimum_successful_effects: 1
+					}
+				]
+			};
+			const client = clientWithRounds([
+				[
+					{
+						type: 'tool_call',
+						toolCall: [
+							{
+								index: 0,
+								id: 'archive-1',
+								type: 'function',
+								function: {
+									name: 'update_onto_document',
+									arguments: JSON.stringify(args)
+								}
+							}
+						]
+					},
+					{ type: 'done', finishedReason: 'tool_calls' }
+				]
+			]);
+			const semanticReviewer = clientWithRounds([reviewerApproval(sha, expectation)]);
+			const preview = vi.fn(async () => ({ ok: true as const, snapshot }));
+			const invocation = await new AgenticChatTurnProviderAdapter(
+				{
+					client,
+					semanticReviewer,
+					capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+					documentArchivePreview: { preview }
+				},
+				2_000,
+				16,
+				{ updateOntoDocument: true },
+				true
+			).prepare({
+				executionInput: archiveInput,
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			const reviewSteps = await collect(invocation.stream());
+			expect(reviewSteps.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(reviewSteps.at(-1)).toMatchObject({
+				type: 'read_tool',
+				toolName: 'approve_mutation_batch_review'
+			});
+			const reviewText = JSON.stringify(semanticReviewer.stream.mock.calls[0]![0].messages);
+			expect(reviewText).toContain('public-document');
+			expect(reviewText).toContain('explicitly authorized');
+			expect(reviewText).toContain(sha);
+			const executionSteps = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedbackFor(
+							'reviewer-approval-1',
+							'approve_mutation_batch_review',
+							{
+								reason: 'The user asked for exactly these four tasks.',
+								batch_sha256: sha,
+								reference_candidates: [],
+								request_expectation: expectation
+							},
+							{ status: 'mutation_batch_review_approved', batch_sha256: sha }
+						)
+					]
+				})
+			);
+			expect(executionSteps).toEqual([
+				expect.objectContaining({ type: 'mutating_tool', arguments: reviewed })
+			]);
+			expect(client.stream).toHaveBeenCalledTimes(1);
+			expect(preview).toHaveBeenCalledTimes(1);
+			const actorTool = client.stream.mock.calls[0]![0].tools.find(
+				(tool) => tool.function.name === 'update_onto_document'
+			);
+			expect(actorTool?.function.parameters.properties).not.toHaveProperty('_archive_review');
+		});
+
 		it('returns a missed anchor to the acting model without spending a review', async () => {
 			const client = clientWithRounds([
 				editRound('provider-edit-1', '**Card 5 · People Are Paranoid**'),
@@ -12459,6 +12588,117 @@ describe('SHA-bound mutation batch approval', () => {
 				return feedback;
 			});
 	}
+	it('credits a freshly verified preexisting archive without rewriting it or retrying a complete request', async () => {
+		const archivedId = 'b0000000-0000-4000-8000-000000000001';
+		const checklist = requestChecklist();
+		(checklist.outcomes as JsonObject[]).push({
+			id: 'old_task',
+			action: 'archive',
+			entity_kind: 'task',
+			target_ids: [archivedId],
+			required_fields: ['archived'],
+			changes: [{ field: 'archived', value: 'true' }],
+			minimum_successful_effects: 1
+		});
+		const client = clientWithRounds([
+			proposedBatchRound(),
+			[
+				{
+					type: 'text',
+					content: 'Created the four tasks; the old task was already archived.'
+				},
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const reviewer = approvingReviewer(undefined, checklist);
+		const invocation = await batchProvider(client, reviewer);
+		const review = await collect(invocation.stream());
+		const feedback = approvalFeedback(review);
+		feedback.execution.result.archive_postconditions = {
+			version: 1,
+			status: 'verified',
+			targets: [
+				{
+					entity_kind: 'task',
+					id: archivedId,
+					status: 'archived',
+					project_id: 'c0000000-0000-4000-8000-000000000001',
+					title: 'Old task',
+					archived_at: '2026-09-29T00:00:00Z'
+				}
+			]
+		};
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [feedback] })
+		);
+		expect(writes.filter((s) => s.type === 'mutating_tool')).toHaveLength(4);
+		expect(
+			writes.every((s) => s.type !== 'mutating_tool' || s.toolName === 'create_onto_task')
+		).toBe(true);
+		const end = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+		);
+		expect(end.at(-1)).toMatchObject({ finishedReason: 'stop' });
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+	});
+	it('names pending work as well as verified no-ops when no new write succeeds', async () => {
+		const archivedId = 'b0000000-0000-4000-8000-000000000001';
+		const checklist = requestChecklist();
+		(checklist.outcomes as JsonObject[]).push({
+			id: 'old_task',
+			action: 'archive',
+			entity_kind: 'task',
+			target_ids: [archivedId],
+			required_fields: ['archived'],
+			minimum_successful_effects: 1
+		});
+		const client = clientWithRounds([
+			proposedBatchRound(),
+			[
+				{ type: 'text', content: 'The cleanup is finished.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const invocation = await batchProvider(client, approvingReviewer(undefined, checklist));
+		const review = await collect(invocation.stream());
+		const feedback = approvalFeedback(review);
+		feedback.execution.result.archive_postconditions = {
+			version: 1,
+			status: 'verified',
+			targets: [
+				{
+					entity_kind: 'task',
+					id: archivedId,
+					status: 'archived',
+					project_id: 'c0000000-0000-4000-8000-000000000001',
+					title: 'Old task',
+					archived_at: '2026-09-29T00:00:00Z'
+				}
+			]
+		};
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [feedback] })
+		);
+		const results = successfulWrites(writes).map((f) =>
+			failedMutationFeedback({
+				providerToolCallId: f.providerToolCallId,
+				toolName: f.toolName,
+				arguments: f.arguments,
+				error: 'Validated rejection; no effect applied.'
+			})
+		);
+		const end = await collect(invocation.continueWithToolResults!({ round: 3, results }));
+		const text = end
+			.filter((s) => s.type === 'text_delta')
+			.map((s) => s.text)
+			.join('');
+		expect(text).toContain('Old task');
+		expect(text).toContain('Still pending');
+		expect(text).toContain('Permit');
+		expect(text).toContain('No new saved changes are confirmed');
+		expect(text).not.toContain('The cleanup is finished');
+	});
 	function replayProposal(
 		calls: Array<{ name: string; args: JsonObject }>
 	): AgenticChatTurnProviderClientEventV1[] {
@@ -13064,6 +13304,120 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(reviewer.stream).not.toHaveBeenCalled();
 	});
 	it.each([false, true])(
+		'ends exhausted output recovery with a truthful nonempty answer (prior writes=%s)',
+		async (priorWrites) => {
+			const capped: AgenticChatTurnProviderClientEventV1[] = [
+				{ type: 'text', content: 'Unsafe partial claim.' },
+				{ type: 'done', finishedReason: 'length' }
+			];
+			const client = clientWithRounds([
+				...(priorWrites ? [proposedBatchRound()] : []),
+				capped,
+				capped
+			]);
+			const reviewer = approvingReviewer();
+			const invocation = await batchProvider(client, reviewer);
+			let steps = await collect(invocation.stream());
+			if (priorWrites) {
+				const writes = await collect(
+					invocation.continueWithToolResults!({
+						round: 2,
+						results: [approvalFeedback(steps)]
+					})
+				);
+				steps = await collect(
+					invocation.continueWithToolResults!({
+						round: 3,
+						results: successfulWrites(writes)
+					})
+				);
+			}
+			const text = steps
+				.filter((step) => step.type === 'text_delta')
+				.map((step) => step.text)
+				.join('');
+			expect(text).toContain(priorWrites ? 'Created task: Permit' : 'Nothing was saved.');
+			expect(text).not.toContain('Unsafe partial claim');
+			expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(steps.at(-1)).toMatchObject({
+				type: 'finish',
+				finishedReason: 'output_budget_exhausted'
+			});
+			expect(client.stream).toHaveBeenCalledTimes(priorWrites ? 3 : 2);
+			expect(client.stream.mock.calls.at(-1)![0]).toMatchObject({
+				reasoningEffort: 'none',
+				outputBudgetRecovery: true
+			});
+			expect(reviewer.stream).toHaveBeenCalledTimes(priorWrites ? 1 : 0);
+		}
+	);
+
+	it('uses only one output-budget recovery across separately reviewed stages in the same turn', async () => {
+		const capped: AgenticChatTurnProviderClientEventV1[] = [
+			{ type: 'done', finishedReason: 'length' }
+		];
+		const client = clientWithRounds([capped, proposedBatchRound(), capped]);
+		const reviewer = approvingReviewer();
+		const invocation = await batchProvider(client, reviewer);
+		const first = await collect(invocation.stream());
+		expect(
+			first.filter(
+				(step) => step.type === 'semantic' && step.eventPayload.output_budget_recovery
+			)
+		).toHaveLength(1);
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(first)] })
+		);
+		const last = await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+		);
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(reviewer.stream).toHaveBeenCalledOnce();
+		expect(last.at(-1)).toMatchObject({
+			type: 'finish',
+			finishedReason: 'output_budget_exhausted'
+		});
+		expect(
+			last
+				.filter((step) => step.type === 'text_delta')
+				.map((step) => step.text)
+				.join('')
+		).toContain('Created task: Permit');
+	});
+
+	it('keeps reasoning off after pressure across review and durable execution without changing reviewer policy', async () => {
+		const round = proposedBatchRound();
+		round[round.length - 1] = {
+			type: 'done',
+			finishedReason: 'tool_calls',
+			outputBudget: {
+				kind: 'pressure',
+				limit: 12000,
+				completionTokens: 8066,
+				reasoningTokens: 7991
+			}
+		};
+		const client = clientWithRounds([
+			round,
+			[
+				{ type: 'text', content: 'Created the four tasks.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const reviewer = approvingReviewer();
+		const invocation = await batchProvider(client, reviewer);
+		const first = await collect(invocation.stream());
+		const writes = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(first)] })
+		);
+		await collect(
+			invocation.continueWithToolResults!({ round: 3, results: successfulWrites(writes) })
+		);
+		expect(client.stream.mock.calls[1]![0].reasoningEffort).toBe('none');
+		expect(reviewer.stream.mock.calls[0]![0].reasoningEffort).not.toBe('none');
+	});
+
+	it.each([false, true])(
 		'ends exhausted batch corrections with durable receipts, without asking permission (prior writes=%s)',
 		async (priorWrites) => {
 			const links = providerReadRound(
@@ -13153,9 +13507,7 @@ describe('SHA-bound mutation batch approval', () => {
 			if (priorWrites) expect(text).toContain("couldn't complete the remaining changes");
 			// Names what was held back, from the rejected batch's tool names.
 			expect(text).toContain(
-				priorWrites
-					? 'still found problems with the plan to link records'
-					: "I couldn't complete the plan to create 4 tasks"
+				priorWrites ? 'Wrong target.' : "I couldn't complete the plan to create 4 tasks"
 			);
 			expect(text).not.toContain('?');
 			expect(steps).toContainEqual(
@@ -13168,6 +13520,101 @@ describe('SHA-bound mutation batch approval', () => {
 			expect(reviewer.stream).toHaveBeenCalledTimes(priorWrites ? 4 : 3);
 		}
 	);
+	it('shows every structured blocker after revision exhaustion and keeps actor instructions out of terminal text', async () => {
+		const findings = [
+			{
+				code: 'uncommissioned_change',
+				target_ids: [],
+				message:
+					'The proposed cleanup included Julian Episode 390, which was not commissioned.',
+				required_correction: 'ACTOR_ONLY_REMOVE_JULIAN'
+			},
+			{
+				code: 'wrong_value',
+				target_ids: [],
+				message: 'Rod’s payment task was marked done instead of archived.',
+				required_correction: 'ACTOR_ONLY_ARCHIVE_ROD'
+			},
+			{
+				code: 'protected_target',
+				target_ids: [],
+				message: 'START HERE is protected from archive.',
+				required_correction: 'ACTOR_ONLY_REMOVE_CONTEXT'
+			}
+		];
+		const client = clientWithRounds(Array.from({ length: 3 }, () => proposedBatchRound()));
+		const reviewer = clientWithRounds(
+			Array.from({ length: 3 }, (_, i) =>
+				providerReadRound(
+					`revision-${i}`,
+					{
+						reason: 'Several cleanup effects are wrong.',
+						required_correction: 'Correct the named effects.',
+						reference_candidates: [],
+						findings
+					},
+					'request_proposal_revision'
+				)
+			)
+		);
+		const invocation = await batchProvider(client, reviewer);
+		let steps = await collect(invocation.stream());
+		for (let round = 2; round <= 4; round++) {
+			const control = steps.find(
+				(step) => step.type === 'read_tool' && step.toolName === 'request_proposal_revision'
+			);
+			if (!control || control.type !== 'read_tool')
+				throw new Error('Missing review decision');
+			steps = await collect(
+				invocation.continueWithToolResults!({
+					round,
+					results: [
+						durableReadFeedbackFor(
+							control.providerToolCallId,
+							control.toolName,
+							control.arguments,
+							{
+								status: 'revision_required',
+								reason: control.arguments.reason!,
+								required_correction: control.arguments.required_correction!,
+								findings
+							}
+						)
+					]
+				})
+			);
+		}
+		const text = steps
+			.filter((step) => step.type === 'text_delta')
+			.map((step) => step.text)
+			.join('');
+		for (const finding of findings) expect(text).toContain(finding.message);
+		expect(text).toContain('Nothing was saved');
+		expect(text).not.toContain('ACTOR_ONLY');
+		expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+		expect(steps.at(-1)).toMatchObject({ finishedReason: 'semantic_review_failed' });
+	});
+	it('publishes recovery progress before starting the physical retry', async () => {
+		const client = clientWithRounds([
+			[
+				{ type: 'text', content: 'Discarded claim.' },
+				{ type: 'done', finishedReason: 'length' }
+			],
+			proposedBatchRound()
+		]);
+		const invocation = await batchProvider(client, approvingReviewer());
+		const stream = invocation.stream();
+		const first = await stream.next();
+		expect(first.value).toMatchObject({
+			type: 'semantic',
+			currentActivity: 'Splitting this cleanup into smaller batches...',
+			eventPayload: { output_budget_recovery: { provider_attempt: 2 } }
+		});
+		expect(client.stream).toHaveBeenCalledTimes(1);
+		const rest = await collect(stream);
+		expect(rest.some((step) => step.type === 'text_delta')).toBe(false);
+		expect(client.stream).toHaveBeenCalledTimes(2);
+	});
 	it.each([false, true])(
 		'handles reconciled failed stages without replaying partially applied batches (partial=%s)',
 		async (partial) => {

@@ -36,6 +36,11 @@ import {
 } from '@buildos/agentic-chat-runtime/tools';
 import { createEmbeddingsClientFromEnv } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import {
+	readGatewayArchiveState,
+	type ArchiveStateTarget,
+	type ArchiveStateVerification
+} from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+import {
 	evaluateAgenticChatWebEgressProvenance,
 	executeAgenticChatStandardControlToolV1,
 	isAgenticChatContentFreeEmailToolNameV1,
@@ -43,6 +48,8 @@ import {
 	isAgenticChatWebEgressToolName,
 	normalizeAgenticChatWebSearchArguments,
 	parseRequestExpectation,
+	getRequestArchiveTargets,
+	parseMutationReviewFindings,
 	searchTelemetryColumns,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
@@ -179,20 +186,23 @@ const WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1: Readonly<
 		});
 	},
 	[REQUEST_PROPOSAL_REVISION_TOOL_NAME]: (args) => {
-		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 400) : '';
+		const reason = typeof args.reason === 'string' ? args.reason.trim().slice(0, 1200) : '';
 		const requiredCorrection =
 			typeof args.required_correction === 'string'
-				? args.required_correction.trim().slice(0, 400)
+				? args.required_correction.trim().slice(0, 2000)
 				: '';
 		if (!reason || !requiredCorrection) {
 			throw new Error(
 				'Proposal revision failed: state what is wrong with the proposal and the exact correction required.'
 			);
 		}
+		const findings = parseMutationReviewFindings(args.findings);
+		if (!findings) throw new Error('Proposal revision failed: invalid structured findings.');
 		return Promise.resolve({
 			status: 'revision_required',
 			reason,
 			required_correction: requiredCorrection,
+			...(findings.length ? { findings } : {}),
 			...(args.corrected_contract && typeof args.corrected_contract === 'object'
 				? { corrected_contract: args.corrected_contract }
 				: {}),
@@ -311,6 +321,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	private readonly maxTurnSecurityStatesPerUser: number;
 	private readonly turnSecurityStateTtlMs: number;
 	private readonly embeddings: AgenticChatEmbeddingsPortV1 | undefined;
+	private readonly verifyArchiveState: (input: {
+		userId: string;
+		projectId: string | null;
+		targets: ArchiveStateTarget[];
+		signal: AbortSignal;
+	}) => Promise<ArchiveStateVerification>;
 
 	constructor(
 		private readonly client: SupabaseClient<Database>,
@@ -322,6 +338,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			webNavigator?: WebNavigatePort;
 			webSearchReviewer?: AgenticChatWebSearchReviewPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
+			verifyArchiveState?: AgenticChatToolExecutionAdapter['verifyArchiveState'];
 			createCalendarPort?: (userId: string) => AgenticChatCalendarReadPortV1;
 			createEmailPort?: (
 				userId: string,
@@ -408,6 +425,19 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 					}
 				}));
 		this.embeddings = options.embeddings ?? createWorkerEmbeddingsPortFromEnv();
+		this.verifyArchiveState =
+			options.verifyArchiveState ??
+			((input) =>
+				readGatewayArchiveState({
+					admin: this.client as never,
+					userId: input.userId,
+					signal: input.signal,
+					targets: input.targets,
+					scope: {
+						mode: 'read_only',
+						...(input.projectId ? { project_ids: [input.projectId] } : {})
+					}
+				}));
 	}
 
 	async execute(
@@ -556,7 +586,31 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						});
 					}
 					if (reviewControlTool) {
-						return WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1[toolName](input.arguments);
+						const result = await WORKER_REVIEW_CONTROL_TOOL_RUNNERS_V1[toolName](
+							input.arguments
+						);
+						const expectation =
+							toolName === APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME
+								? parseRequestExpectation(result.request_expectation)
+								: null;
+						const targets = expectation ? getRequestArchiveTargets(expectation) : [];
+						if (!targets.length) return result;
+						// Server-only result metadata, never an actor/reviewer argument.
+						// Failure supplies no no-op credit; approved writes retain their
+						// normal independent authorization and execution checks.
+						const verification = await this.verifyArchiveState({
+							userId: input.executionInput.claim.userId,
+							projectId: focusProjectIdFromRequest(
+								input.executionInput.requestPayload
+							),
+							targets,
+							signal: deadlineSignal
+						}).catch(() => ({
+							version: 1 as const,
+							status: 'unavailable' as const,
+							targets: []
+						}));
+						return { ...result, archive_postconditions: verification };
 					}
 					if (input.toolName === WEB_NAVIGATE_TOOL_NAME) {
 						if (!this.webNavigator) {

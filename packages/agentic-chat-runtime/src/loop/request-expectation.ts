@@ -1,17 +1,20 @@
 // packages/agentic-chat-runtime/src/loop/request-expectation.ts
 import { canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import { APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME } from '../catalog/definitions/controls';
-import type { MutationBatch } from './mutation-batch';
 import type { FastToolExecution } from './shared';
 import { isWriteLedgerToolExecution } from './tool-classification';
+import type {
+	ArchiveStateTarget,
+	ArchiveStateVerification
+} from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+import { buildWriteLedger, type WriteLedgerEntry } from './write-ledger';
 import {
 	type TurnContract,
-	type TurnContractOutcome,
 	parseDeclaredTurnContract,
 	resolveTurnContractOutcome,
+	resolveTurnContractOutcomeFromLedger,
 	serializeTurnContractForDeclaration
 } from './turn-contract';
-import { buildWriteLedger } from './write-ledger';
 
 /** Reuse the outcome matcher, without granting a checklist any write authority. */
 export function parseRequestExpectation(value: unknown): TurnContract | null {
@@ -34,7 +37,17 @@ export function requestExpectationsMatch(a: TurnContract, b: TurnContract): bool
 export function extractReviewedRequestExpectation(
 	executions: readonly FastToolExecution[] | null | undefined
 ): TurnContract | null {
-	for (const execution of executions ?? []) {
+	return firstReviewedRequestApproval(executions)?.expectation ?? null;
+}
+
+function firstReviewedRequestApproval(
+	executions: readonly FastToolExecution[] | null | undefined
+): {
+	expectation: TurnContract;
+	execution: FastToolExecution;
+	index: number;
+} | null {
+	for (const [index, execution] of (executions ?? []).entries()) {
 		if (isWriteLedgerToolExecution(execution)) return null;
 		if (execution.toolCall.function.name !== APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME) continue;
 		if (!execution.result.success) continue;
@@ -52,7 +65,7 @@ export function extractReviewedRequestExpectation(
 			const proposed = parseRequestExpectation(args.request_expectation);
 			const persisted = parseRequestExpectation(result.request_expectation);
 			return proposed && persisted && requestExpectationsMatch(proposed, persisted)
-				? persisted
+				? { expectation: persisted, execution, index }
 				: null;
 		} catch {
 			return null;
@@ -61,79 +74,138 @@ export function extractReviewedRequestExpectation(
 	return null;
 }
 
-/**
- * Align a first-approval request expectation with the exact calls approved in
- * the same decision.
- *
- * Approval executes the held calls unchanged, so for an existing target that
- * the approved batch updates, the approved call IS the reviewed change. The
- * 2026-09-22 book loop reviewer demanded `name` on nine plan updates and a
- * retitle of one document, then approved calls that changed only their
- * descriptions/content. Every write succeeded, yet the turn told the user
- * "Done: 1 of 9 updates … could not finish". A required field the approved
- * calls never carry is a self-contradiction of the approval, not unfinished
- * user work.
- *
- * Only `update` outcomes whose every target is updated by this batch are
- * trimmed, and only of fields/values the approved calls do not carry. Targets
- * absent from the batch (later stages) keep the full expectation, and an
- * outcome that still cannot be matched is returned unchanged.
- */
-export function reconcileRequestExpectationWithApprovedBatch(
-	expectation: TurnContract,
-	batch: MutationBatch
-): TurnContract {
-	const executions: FastToolExecution[] = batch.calls.map((call) => ({
-		toolCall: {
-			id: call.id,
-			type: 'function',
-			function: { name: call.name, arguments: call.canonicalArguments }
-		},
-		result: { tool_call_id: call.id, success: true, result: null }
-	}));
-	const ledger = buildWriteLedger(executions).filter(
-		(entry) => entry.status === 'success' && entry.action === 'update' && entry.entityId
+/** Exact existing archive targets from the immutable reviewer checklist. */
+export function getRequestArchiveTargets(expectation: TurnContract): ArchiveStateTarget[] {
+	const targets = new Map<string, ArchiveStateTarget>();
+	for (const outcome of expectation.outcomes) {
+		if (
+			outcome.action !== 'archive' ||
+			!['task', 'goal', 'document'].includes(outcome.entityKind)
+		)
+			continue;
+		for (const id of outcome.targetIds)
+			targets.set(`${outcome.entityKind}:${id}`, {
+				entity_kind: outcome.entityKind as ArchiveStateTarget['entity_kind'],
+				id
+			});
+	}
+	return [...targets.values()];
+}
+
+export function extractReviewedArchiveState(
+	executions: readonly FastToolExecution[]
+): ArchiveStateVerification | null {
+	const approval = firstReviewedRequestApproval(executions);
+	if (!approval) return null;
+	const value = approval.execution.result.result?.archive_postconditions;
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const record = value as Record<string, unknown>;
+	if (
+		record.version !== 1 ||
+		record.status !== 'verified' ||
+		!Array.isArray(record.targets) ||
+		record.targets.length > 100
+	)
+		return null;
+	const allowed = new Set(
+		getRequestArchiveTargets(approval.expectation).map((t) => `${t.entity_kind}:${t.id}`)
 	);
-	const fulfilledAlone = (outcome: TurnContractOutcome) =>
-		resolveTurnContractOutcome({
-			contract: { ...expectation, outcomes: [outcome] },
-			toolExecutions: executions
-		}).fulfilled;
-	let changed = false;
-	const outcomes = expectation.outcomes.map((outcome) => {
-		if (outcome.action !== 'update' || outcome.targetIds.length === 0) return outcome;
-		if (outcome.label || outcome.parentLabel || outcome.srcLabel || outcome.dstLabel)
-			return outcome;
-		if (fulfilledAlone(outcome)) return outcome;
-		const fieldsByTarget = new Map<string, Set<string>>();
-		for (const entry of ledger) {
-			if (!outcome.targetIds.includes(entry.entityId!)) continue;
-			const fields = fieldsByTarget.get(entry.entityId!) ?? new Set<string>();
-			for (const field of entry.changedFields ?? []) fields.add(field);
-			fieldsByTarget.set(entry.entityId!, fields);
-		}
-		if (!outcome.targetIds.every((id) => fieldsByTarget.has(id))) return outcome;
-		const carriedByAll = (field: string) =>
-			outcome.targetIds.every((id) => fieldsByTarget.get(id)!.has(field));
-		const trimmed: TurnContractOutcome = {
-			...outcome,
-			requiredFields: outcome.requiredFields.filter(carriedByAll)
-		};
-		const changes = outcome.changes?.filter((change) => carriedByAll(change.field));
-		if (changes && changes.length > 0) trimmed.changes = changes;
-		else delete trimmed.changes;
-		const candidate = fulfilledAlone(trimmed)
-			? trimmed
-			: trimmed.changes
-				? (() => {
-						const withoutValues = { ...trimmed };
-						delete withoutValues.changes;
-						return fulfilledAlone(withoutValues) ? withoutValues : null;
-					})()
-				: null;
-		if (!candidate) return outcome;
-		changed = true;
-		return candidate;
-	});
-	return changed ? { ...expectation, outcomes } : expectation;
+	const seen = new Set<string>();
+	const targets: ArchiveStateVerification['targets'] = [];
+	for (const value of record.targets) {
+		if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+		const fact = value as Record<string, unknown>;
+		const key = `${fact.entity_kind}:${fact.id}`;
+		if (
+			!allowed.has(key) ||
+			seen.has(key) ||
+			!['archived', 'active', 'unavailable', 'inconsistent'].includes(String(fact.status))
+		)
+			return null;
+		if (
+			fact.status === 'archived' &&
+			(typeof fact.archived_at !== 'string' ||
+				!Number.isFinite(Date.parse(fact.archived_at)) ||
+				typeof fact.project_id !== 'string')
+		)
+			return null;
+		seen.add(key);
+		targets.push({
+			entity_kind: fact.entity_kind as ArchiveStateTarget['entity_kind'],
+			id: String(fact.id),
+			status: fact.status as ArchiveStateVerification['targets'][number]['status'],
+			...(typeof fact.project_id === 'string' ? { project_id: fact.project_id } : {}),
+			...(typeof fact.title === 'string' ? { title: fact.title } : {}),
+			...(typeof fact.archived_at === 'string' ? { archived_at: fact.archived_at } : {})
+		});
+	}
+	return { version: 1, status: 'verified', targets };
+}
+
+/**
+ * Already-satisfied reads stay outside the write ledger. A later attempted
+ * write invalidates the earlier read for that target, including a failed or
+ * uncertain attempt; it cannot be hidden by a pre-write archive observation.
+ */
+export function buildRequestCompletionLedger(executions: readonly FastToolExecution[]): {
+	writes: WriteLedgerEntry[];
+	alreadySatisfied: WriteLedgerEntry[];
+	ledger: WriteLedgerEntry[];
+} {
+	const writes = buildWriteLedger([...executions]);
+	const facts = extractReviewedArchiveState(executions)?.targets ?? [];
+	const alreadySatisfied: WriteLedgerEntry[] = facts
+		.filter(
+			(fact) =>
+				fact.status === 'archived' &&
+				!writes.some(
+					(entry) => entry.entityKind === fact.entity_kind && entry.entityId === fact.id
+				)
+		)
+		.map(
+			(fact): WriteLedgerEntry => ({
+				toolName: 'verified_archive_postcondition',
+				status: 'success',
+				action: 'archive',
+				entityKind: fact.entity_kind,
+				entityId: fact.id,
+				title: fact.title,
+				changedFields:
+					fact.entity_kind === 'document' ? ['archived', 'state_key'] : ['archived'],
+				changedValues:
+					fact.entity_kind === 'document'
+						? { archived: 'true', state_key: 'archived' }
+						: { archived: 'true' }
+			})
+		);
+	const latestByTarget = new Map<string, WriteLedgerEntry>();
+	for (const entry of writes)
+		if (entry.entityKind && entry.entityId)
+			latestByTarget.set(`${entry.entityKind}:${entry.entityId}`, entry);
+	// A later failed attempt may have committed. Earlier successes remain in
+	// the saved-write receipt, but cannot prove this target's final postcondition.
+	const completionWrites = writes.filter(
+		(entry) =>
+			entry.status !== 'success' ||
+			!entry.entityId ||
+			latestByTarget.get(`${entry.entityKind}:${entry.entityId}`)?.status !== 'failure'
+	);
+	return { writes, alreadySatisfied, ledger: [...alreadySatisfied, ...completionWrites] };
+}
+
+export function resolveRequestExpectationOutcome(params: {
+	contract?: TurnContract | null;
+	toolExecutions?: readonly FastToolExecution[] | null;
+	finishedReason?: string | null;
+}) {
+	if (!params.contract)
+		return resolveTurnContractOutcome({
+			contract: null,
+			finishedReason: params.finishedReason
+		});
+	return resolveTurnContractOutcomeFromLedger(
+		params.contract,
+		buildRequestCompletionLedger(params.toolExecutions ?? []).ledger,
+		params.finishedReason
+	);
 }

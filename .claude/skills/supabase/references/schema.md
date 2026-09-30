@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 253 tables, grouped by domain.
+Complete column listing for all 268 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-09-28T16:16:59.152Z
+**Schema generated:** 2026-09-30T00:25:07.157Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -17,18 +17,18 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [People & Contacts](#people--contacts) (6 tables)
 - [Ontology System](#ontology-system) (41 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
-- [Chat & Agents](#chat--agents) (35 tables)
+- [Chat & Agents](#chat--agents) (41 tables)
 - [Calendar](#calendar) (13 tables)
 - [Notifications](#notifications) (7 tables)
 - [SMS & Twilio](#sms--twilio) (7 tables)
-- [Email](#email) (28 tables)
+- [Email](#email) (29 tables)
 - [Billing](#billing) (14 tables)
 - [Beta Program](#beta-program) (6 tables)
 - [Queue & Jobs](#queue--jobs) (2 tables)
 - [Daily Briefs](#daily-briefs) (5 tables)
 - [Monitoring & Analytics](#monitoring--analytics) (10 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (48 tables)
+- [Other](#other) (56 tables)
 
 ---
 
@@ -36,7 +36,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 
 ### account_deletion_requests
 
-attempt_count `number` · billing_cancellation_error `string?` · billing_cancellation_status `string` · billing_subscription_ids `string[]` · completed_at `string?` · created_at `string` · id `string` · last_error `string?` · lease_expires_at `string?` · next_attempt_at `string?` · processing_started_at `string?` · requested_at `string` · scheduled_for `string` · status `string` · updated_at `string` · user_id `string`
+attempt_count `number` · billing_cancellation_error `string?` · billing_cancellation_status `string` · billing_subscription_ids `string[]` · completed_at `string?` · created_at `string` · id `string` · last_error `string?` · lease_expires_at `string?` · next_attempt_at `string?` · posthog_deletion_status `string?` · processing_started_at `string?` · requested_at `string` · scheduled_for `string` · status `string` · updated_at `string` · user_id `string`
 
 ### admin_users
 
@@ -52,7 +52,7 @@ actor_id `string?` · created_at `string` · doc_structure `Json` · extraction_
 
 ### users
 
-access_restricted `boolean?` · access_restricted_at `string?` · bio `string?` · created_at `string` · deletion_requested_at `string?` · deletion_scheduled_for `string?` · deletion_status `string?` · email `string` · id `string` · is_admin `boolean` · is_beta_user `boolean?` · last_visit `string?` · name `string?` · onboarding_completed_at `string?` · onboarding_intent `string?` · onboarding_project_id `string?` · onboarding_step `number` · onboarding_stakes `string?` · onboarding_v2_skipped_calendar `boolean?` · onboarding_v2_skipped_sms `boolean?` · preferences `Json?` · productivity_challenges `Json?` · referrer `string?` · signup_source `string?` · stripe_customer_id `string?` · subscription_plan_id `string?` · subscription_status `string?` · timezone `string` · trial_ends_at `string?` · updated_at `string` · usage_archetype `string?` · username `string?` · utm_campaign `string?` · utm_medium `string?` · utm_source `string?` · voice_narration_enabled `boolean`
+access_restricted `boolean?` · access_restricted_at `string?` · bio `string?` · created_at `string` · deletion_requested_at `string?` · deletion_scheduled_for `string?` · deletion_status `string?` · email `string` · id `string` · is_admin `boolean` · is_beta_user `boolean?` · last_visit `string?` · name `string?` · onboarding_completed_at `string?` · onboarding_intent `string?` · onboarding_project_id `string?` · onboarding_stakes `string?` · onboarding_step `number` · onboarding_v2_skipped_calendar `boolean?` · onboarding_v2_skipped_sms `boolean?` · preferences `Json?` · productivity_challenges `Json?` · referrer `string?` · signup_source `string?` · stripe_customer_id `string?` · subscription_plan_id `string?` · subscription_status `string?` · timezone `string` · trial_ends_at `string?` · updated_at `string` · usage_archetype `string?` · username `string?` · utm_campaign `string?` · utm_medium `string?` · utm_source `string?` · voice_narration_enabled `boolean`
 
 ### visitors
 
@@ -108,7 +108,7 @@ actor_id `string` · created_at `string` · id `string` · object_id `string` ·
 
 ### onto_braindumps
 
-chat_session_id `string?` · content `string` · created_at `string` · error_message `string?` · id `string` · metadata `Json?` · processed_at `string?` · status `string` · summary `string?` · title `string?` · topics `string[]?` · updated_at `string` · user_id `string`
+chat_session_id `string?` · content `string` · created_at `string` · deleted_at `string?` · error_message `string?` · id `string` · metadata `Json?` · processed_at `string?` · status `string` · summary `string?` · title `string?` · topics `string[]?` · updated_at `string` · user_id `string`
 
 ### onto_comment_mentions
 
@@ -320,7 +320,7 @@ activity_score `number` · created_at `string` · due_at `string` · entity_coun
 
 ### project_suggestions
 
-agent_run_id `string?` · applied_at `string?` · chat_session_id `string?` · confidence `number?` · created_at `string` · decided_at `string?` · depends_on `string?` · evidence_refs `Json` · freshness_scan_id `string?` · freshness_state `string` · id `string` · kind `string` · operations `Json` · preview `Json?` · project_id `string` · rationale `string?` · result `Json?` · reversible `boolean?` · risk_tier `number` · run_id `string?` · sort_order `number` · source_fingerprint `string?` · status `string` · title `string` · undo_operations `Json?` · updated_at `string` · user_feedback `Json?` · why_now `string?`
+agent_run_id `string?` · applied_at `string?` · chat_session_id `string?` · confidence `number?` · created_at `string` · decided_at `string?` · depends_on `string?` · evidence_refs `Json` · freshness_scan_id `string?` · freshness_state `string` · id `string` · kind `string` · lineage_id `string?` · operations `Json` · preview `Json?` · project_id `string` · rationale `string?` · result `Json?` · reversible `boolean?` · risk_tier `number` · rollup `Json?` · run_id `string?` · sort_order `number` · source_fingerprint `string?` · status `string` · title `string` · undo_operations `Json?` · updated_at `string` · user_feedback `Json?` · why_now `string?`
 
 ### project_synthesis
 
@@ -458,6 +458,10 @@ affected_entities `Json` · arguments `Json` · client_turn_id `string?` · crea
 
 checkpoint_type `string` · created_at `string` · digest `Json` · execution_generation `number?` · expires_at `string?` · id `string` · question `string?` · reason `string` · resume_context `Json` · resume_started_at `string?` · resume_turn_run_id `string?` · resumed_at `string?` · session_id `string` · status `string` · supervisor_decision `Json` · supervisor_sequence `number?` · supervisor_transition_id `string?` · turn_run_id `string` · updated_at `string` · user_id `string`
 
+### chat_turn_document_read_batches
+
+created_at `string` · document_ids `Json` · execution_generation `number` · request_hash `string` · result `Json` · result_hash `string` · step_attempt_id `string` · turn_run_id `string`
+
 ### chat_turn_effects
 
 canonical_argument_hash `string` · created_at `string` · downstream_idempotency_supported `boolean` · downstream_receipt `Json?` · execution_generation `number` · failure_code `string?` · finished_at `string?` · id `string` · operation_name `string` · provider_tool_call_id `string?` · reserved_at `string` · session_id `string` · started_at `string?` · state `string` · tool_name `string` · turn_run_id `string` · uncertain_reconciled_at `string?` · updated_at `string` · user_id `string`
@@ -468,7 +472,7 @@ created_at `string` · event_id `string` · event_type `string` · execution_gen
 
 ### chat_turn_input_artifacts
 
-artifact_version `string` · content_bytes `number` · content_hash `string` · created_at `string` · history `Json` · history_bytes `number` · history_source `string` · id `string` · prepared `Json` · retain_until `string` · session_id `string` · source_prepared_prompt_id `string?` · turn_run_id `string` · user_id `string`
+artifact_version `string` · content_bytes `number` · content_hash `string` · created_at `string` · history `Json` · history_bytes `number` · history_hash `string?` · history_source `string` · id `string` · prepared `Json?` · request `Json?` · request_hash `string?` · retain_until `string` · session_id `string` · source_prepared_prompt_id `string?` · turn_run_id `string` · user_id `string`
 
 ### chat_turn_recovery_failures
 
@@ -482,9 +486,29 @@ assistant_message_id `string?` · cache_age_seconds `number?` · cache_source `s
 
 consumed_at `string?` · consumed_by_generation `number?` · created_at `string` · id `string` · kind `string` · reason `string` · session_id `string` · signal_version `string` · source `string` · turn_run_id `string` · user_id `string`
 
+### chat_turn_specialist_selection_shadows
+
+attempt_token `string` · completed_at `string?` · context_hash `string` · context_id `string` · created_at `string` · execution_generation `number` · input `Json` · input_hash `string` · request_hash `string` · result `Json?` · result_hash `string?` · turn_run_id `string`
+
+### chat_turn_specialist_snapshots
+
+created_at `string` · project_id `string` · request_hash `string` · session_id `string` · snapshot `Json` · snapshot_hash `string` · turn_run_id `string` · user_id `string`
+
 ### chat_turn_stream_state
 
 assistant_text `string` · created_at `string` · durable_through_sequence `number` · execution_generation `number` · first_text_persisted_at `string?` · last_text_batch_id `string?` · last_text_end_bytes `number?` · last_text_sequence `number?` · projection `Json` · projection_durable_sequence `number` · reconcile_required `boolean` · session_id `string` · snapshot_sequence `number` · turn_run_id `string` · updated_at `string` · user_id `string`
+
+### chat_turn_workflow_dispatches
+
+actual_micro_usd `number?` · created_at `string` · dispatch_id `string` · dispatch_kind `string` · dispatched_at `string?` · estimated_input_tokens `number` · max_output_tokens `number` · model_requested `string` · physical_attempt `number` · pricing `Json` · provider_request_id `string?` · provider_usage `Json?` · reconciled_at `string?` · reconciliation_id `string?` · reconciliation_receipt `Json?` · reserved_at `string` · reserved_generation `number` · reserved_micro_usd `number` · serialized_request_bytes `number` · session_id `string` · settled_at `string?` · settlement_token `string` · state `string` · step_attempt_id `string` · step_key `string` · turn_run_id `string` · uncertain_at `string?` · updated_at `string` · user_id `string`
+
+### chat_turn_workflow_runs
+
+answer_editor_step_attempt_id `string?` · answer_id `string?` · answer_last_batch_id `string?` · answer_text `string` · answer_text_sha256 `string?` · context_accepted_at `string?` · context_accepted_generation `number?` · context_bytes `number?` · context_hash `string?` · context_id `string?` · context_identity `Json?` · context_payload `Json?` · created_at `string` · deadline_at `string?` · evidence_versions `Json?` · finished_at `string?` · first_execution_started_at `string?` · max_physical_dispatches `number` · max_spend_micro_usd `number` · max_step_attempts `number` · phase `string` · plan `Json?` · plan_hash `string?` · plan_installed_at `string?` · plan_installed_generation `number?` · plan_version `string?` · policy `Json` · policy_ref `string` · preparation_version `string?` · project_id `string` · recovery_count `number` · request_artifact_id `string` · request_hash `string` · session_id `string` · synthesis_accepted_at `string?` · synthesis_headroom_micro_usd `number` · synthesis_quality `string?` · synthesis_status `string` · terminal_outcome `string?` · turn_run_id `string` · updated_at `string` · user_id `string` · whole_run_lifetime_ms `number` · workflow_version `string`
+
+### chat_turn_workflow_steps
+
+accepted_at `string?` · accepted_attempt_id `string?` · assignment `Json` · attempt_ids `string[]` · attempts_used `number` · capability `string` · claimed_at `string?` · created_at `string` · current_attempt_generation `number?` · current_attempt_id `string?` · depends_on `string[]` · failure_code `string?` · finished_at `string?` · input_evidence `Json?` · plan_version `string` · quality `string?` · result `Json?` · result_bytes `number?` · result_hash `string?` · session_id `string` · status `string` · step_key `string` · turn_run_id `string` · updated_at `string` · user_id `string`
 
 ---
 
@@ -681,6 +705,10 @@ attempt `number` · checkpoint_version `number` · connection_scope_id `string` 
 ### email_relevance_scan_runs
 
 cancel_requested_at `string?` · completed_at `string?` · configuration `Json` · connection_count `number` · control_plane_version `string` · created_at `string` · expires_at `string` · gmail_quota_budget `number` · gmail_quota_reserved `number` · gmail_quota_used `number` · id `string` · idempotency_key_hash `string` · manifest_hash `string` · message_cap_per_connection `number` · messages_seen `number` · model_cost_budget_micros `number` · model_token_budget `number` · pause_requested_at `string?` · project_count `number` · query_policy_version `string` · quota_policy_version `string` · raw_content_byte_budget `number` · runtime_ms_budget `number` · runtime_ms_reserved `number` · runtime_ms_used `number` · serializer_version `string` · started_at `string?` · state `string` · steps_completed `number` · terminal_reason_code `string?` · updated_at `string` · user_id `string` · window_end `string` · window_start `string`
+
+### email_scan_checks
+
+checked_at `string` · connection_id `string` · expires_at `string` · message_key `string` · relevance `number` · relevant `boolean` · scope_key `string` · user_id `string`
 
 ### email_sequence_copy_overrides
 
@@ -914,6 +942,18 @@ attempts `number?` · created_at `string?` · error_message `string?` · event_i
 
 ## Other
 
+### agentic_chat_answer_comparison_candidates
+
+answer `string` · answer_sha256 `string` · comparison_id `string` · created_at `string` · id `string` · identity `Json` · position `number` · receipts `Json` · source_packet_sha256 `string` · user_id `string`
+
+### agentic_chat_answer_comparison_votes
+
+choice `string` · comparison_id `string` · label_assignment `Json` · preferred_candidate_id `string?` · reason `string` · revealed_at `string?` · reviewer_user_id `string` · rubric_scores `Json` · voted_at `string`
+
+### agentic_chat_answer_comparisons
+
+created_at `string` · id `string` · question `string` · rubric `Json` · set_kind `string` · source_packet `Json` · source_packet_sha256 `string` · title `string` · user_id `string`
+
 ### agentic_chat_context_snapshots
 
 cache_key `string` · context_cache_version `number` · context_payload `Json` · context_payload_sha256 `string` · context_type `string` · created_at `string` · entity_id `string?` · expires_at `string` · invalidation_token `string` · project_focus `Json?` · project_id `string?` · updated_at `string` · user_id `string`
@@ -925,6 +965,18 @@ event_type `string` · execution_generation `number` · id `number` · observati
 ### agentic_chat_prepared_prompts
 
 cache_key `string` · consumed_at `string?` · context_cache_version `number` · context_invalidation_token `string?` · context_payload `Json` · context_payload_sha256 `string` · context_type `string` · conversation_summary `string?` · created_at `string` · default_surface_profile `string` · entity_id `string?` · expires_at `string` · history_compressed `boolean?` · history_cutoff_at `string?` · history_for_model `Json` · history_for_model_count `number?` · history_strategy `string?` · id `string` · nonce_sha256 `string` · prepared_surfaces `Json` · project_focus `Json?` · project_id `string?` · prompt_variant `string` · raw_history_count `number?` · session_id `string?` · updated_at `string` · user_id `string`
+
+### agentic_chat_specialist_drafts
+
+draft `Json` · draft_hash `string` · id `string` · revision `number` · updated_at `string` · user_id `string`
+
+### agentic_chat_specialist_recommendations
+
+attempt_token `string` · created_at `string` · expires_at `string` · finished_at `string?` · id `string` · input `Json` · input_hash `string` · project_id `string` · question `string` · result `Json?` · result_hash `string?` · user_id `string`
+
+### agentic_chat_specialist_versions
+
+created_at `string` · draft_id `string` · draft_revision `number` · name `string` · snapshot `Json` · snapshot_hash `string` · user_id `string` · version `number`
 
 ### cycle_runs
 
@@ -965,6 +1017,10 @@ category `string` · created_at `string` · feedback_text `string` · id `string
 ### feedback_rate_limit
 
 first_submission `string?` · id `string` · ip_address `unknown` · is_blocked `boolean?` · last_submission `string?` · submission_count `number?`
+
+### freshness_concerns
+
+close_reason `string?` · closed_at `string?` · closed_scan_id `string?` · created_at `string` · detail `Json` · evidence `Json` · evidence_count `number` · first_flag_id `string?` · first_seen_at `string` · id `string` · last_evidence_at `string` · last_flag_id `string?` · last_probability `number` · last_seen_at `string` · peak_probability `number` · project_id `string` · score `number` · seen_count `number` · status `string` · subject_id `string` · subject_kind `string` · subject_snapshot `Json?` · subject_title `string` · subject_updated_at `string?` · surfaced_at `string?` · surfaced_scan_id `string?` · updated_at `string` · user_id `string`
 
 ### freshness_flags
 
@@ -1017,6 +1073,10 @@ expires_at `string?` · id `number` · locked_at `string?` · locked_by `string?
 ### native_search_cache
 
 adapter_version `string` · cache_key `string` · created_at `string` · expires_at `string` · fetched_at `string?` · hit_count `number` · last_hit_at `string?` · lease_expires_at `string?` · owner_token `string?` · provider `string?` · provider_credits `number?` · provider_request_id `string?` · response `Json?` · response_version `string` · status `string` · updated_at `string`
+
+### privacy_purge_failures
+
+attempts `number` · first_failed_at `string` · last_failed_at `string` · row_id `string` · source_table `string` · sqlstate `string`
 
 ### profile_access_audit
 

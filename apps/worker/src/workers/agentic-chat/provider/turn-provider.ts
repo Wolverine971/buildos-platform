@@ -3,6 +3,11 @@
 import { createHash } from 'node:crypto';
 
 import {
+	previewDocumentArchiveCalls,
+	isDocumentArchiveCall,
+	type AgenticChatDocumentArchivePreviewPort
+} from './document-archive-preview';
+import {
 	type AgenticChatPreparedProviderInvocationV1,
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderInputV1,
@@ -40,6 +45,7 @@ import {
 } from './document-edit-preview';
 import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
 import { streamBufferedProviderPass } from './provider-pass';
+import { isActingOutputPass, buildOutputBudgetRecoveryProgress } from './output-budget';
 import {
 	buildEmptyReplyRepairRequest,
 	buildRequiredPassProseFallbackRequest,
@@ -142,6 +148,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			 * reviewer with its verified diff. Fail-open.
 			 */
 			documentEditPreview?: AgenticChatDocumentEditPreviewPort;
+			documentArchivePreview?: AgenticChatDocumentArchivePreviewPort;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -252,7 +259,13 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					phase: 'continuation'
 				});
 			case 'review_exhaustion':
-				return streamReviewExhaustion(next.usage, state, next.heldToolNames);
+				return streamReviewExhaustion(
+					next.usage,
+					state,
+					next.heldToolNames,
+					next.reason,
+					next.findings
+				);
 			case 'turn_contract_review':
 				return streamTurnContractReview(
 					this.laneContext,
@@ -291,11 +304,18 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		client: AgenticChatTurnProviderClientPortV1 = this.ports.client
 	) {
 		state.recordProviderPass();
+		const actor = client === this.ports.client && isActingOutputPass(request);
 		return streamBufferedProviderPass(
-			request,
+			actor ? state.prepareOutputBudget(request) : request,
 			client,
 			this.ports.capacity,
-			this.retryableFailureCooldownMs
+			this.retryableFailureCooldownMs,
+			actor
+				? {
+						pressure: () => state.recordOutputBudgetPressure(),
+						claimRecovery: () => state.claimOutputBudgetRecovery()
+					}
+				: undefined
 		);
 	}
 
@@ -384,6 +404,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				}
 			}
 			for await (const event of openingPass ?? this.providerPass(request, state)) {
+				if (event.type === 'output_budget_recovery') {
+					yield buildOutputBudgetRecoveryProgress(request, event.providerAttempt);
+					continue;
+				}
 				throwIfAborted(request.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
@@ -399,6 +423,17 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					continue;
 				}
 				if (event.type === 'error') {
+					if (event.cause === 'output_budget_exhausted') {
+						yield state.textDelta(state.renderOutputBudgetFailure(), false);
+						this.ports.capacity.markAvailable(request.turnRunId);
+						state.advance({ type: 'finish' });
+						yield {
+							type: 'finish',
+							finishedReason: 'output_budget_exhausted',
+							usage: priorUsage
+						};
+						return;
+					}
 					if (event.retryable) {
 						this.ports.capacity.markTemporarilyUnavailable(
 							request.turnRunId,
@@ -497,6 +532,18 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						state.getAdmittedTools(),
 						state.getLoadedTaskSchedules()
 					);
+					if (validationIssues.length === 0) {
+						const archivePreview = await previewDocumentArchiveCalls(
+							this.mutationBatchLaneEnabled
+								? this.ports.documentArchivePreview
+								: undefined,
+							calls,
+							request
+						);
+						throwIfAborted(request.signal);
+						validationIssues.push(...archivePreview.issues);
+						calls = archivePreview.calls;
+					}
 					if (validationIssues.length === 0 && this.ports.documentEditPreview) {
 						const previewed = await previewDocumentEditCalls(
 							this.ports.documentEditPreview,
@@ -513,6 +560,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						// reviewer judges, so there is nothing to ask the model for
 						// before review and nothing to ask it for after approval.
 						const withheldBatch = state.takeWithheldMutationBatch(request, calls);
+						if (!withheldBatch && calls.some(isDocumentArchiveCall)) {
+							throw providerError(
+								'document_archive_independent_review_required',
+								'permanent'
+							);
+						}
 						if (withheldBatch && 'replayRepair' in withheldBatch) {
 							state.setCurrentRequest(withheldBatch.replayRepair);
 							keepLease = true;

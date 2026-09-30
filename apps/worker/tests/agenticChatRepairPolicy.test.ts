@@ -18,6 +18,7 @@ import type {
 } from '../src/workers/agentic-chat/provider/contracts';
 import {
 	buildEmptyReplyRepairRequest,
+	renderOutputBudgetFailure,
 	buildProviderPassBudgetSynthesisInstruction,
 	buildRequiredPassProseFallbackRequest,
 	buildReviewerMimicryRepairRequest,
@@ -253,5 +254,42 @@ describe('agentic chat required-pass prose fallback', () => {
 		);
 		expect(instruction).not.toContain('Withheld draft');
 		expect(instruction).toContain('no durable change was made in this turn');
+	});
+});
+
+describe('output budget failure receipts', () => {
+	it('distinguishes no attempted writes from unconfirmed writes', () => {
+		expect(renderOutputBudgetFailure([], [])).toContain('Nothing was saved.');
+		const text = renderOutputBudgetFailure(
+			[
+				{
+					toolName: 'update_onto_task',
+					status: 'failure',
+					entityKind: 'task',
+					entityId: 'task-1'
+				}
+			],
+			['Archive remaining tasks']
+		);
+		expect(text).toContain('No saved changes are confirmed.');
+		expect(text).not.toContain('Nothing was saved.');
+	});
+	it('names saved and outstanding effects after an interrupted later stage', () => {
+		const text = renderOutputBudgetFailure(
+			[
+				{
+					toolName: 'update_onto_task',
+					status: 'success',
+					action: 'update',
+					entityKind: 'task',
+					entityId: 'task-1',
+					title: 'Rod follow-up'
+				}
+			],
+			['Archive remaining documents']
+		);
+		expect(text).toContain('Updated task: Rod follow-up');
+		expect(text).toContain('Archive remaining documents');
+		expect(text).toContain('No further work is running.');
 	});
 });

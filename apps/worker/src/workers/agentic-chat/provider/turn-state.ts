@@ -14,6 +14,7 @@ import {
 	type FastToolExecution,
 	type LoadedTaskSchedule,
 	type MutationBatch,
+	type MutationReviewFinding,
 	NO_CHANGES_SAVED_NOTICE,
 	type ToolValidationIssue,
 	type TurnContract,
@@ -23,6 +24,9 @@ import {
 	buildOrganizeCommissionRepairInstruction,
 	buildRoundToolPattern,
 	buildWriteLedger,
+	buildCleanupManifest,
+	describePendingCleanupItems,
+	renderAlreadySatisfiedCleanupItems,
 	doesToolExecutionRequireUserAction,
 	extractReviewedRequestExpectation,
 	isControlToolName,
@@ -84,7 +88,8 @@ import {
 	buildProviderPassBudgetSynthesisInstruction,
 	buildValidationRepairExhaustedSynthesisInstruction,
 	renderDirectWriteReceipt,
-	renderWriteReceiptFallback
+	renderWriteReceiptFallback,
+	renderOutputBudgetFailure
 } from './repair-policy';
 import {
 	appendSystemInstruction,
@@ -138,11 +143,15 @@ export type ToolRoundStreamState = {
 	getContractRevisionCount(): number;
 	/** Count one model call at the single provider-pass entry. */
 	recordProviderPass(): void;
+	prepareOutputBudget(request: ClientRequest): ClientRequest;
+	recordOutputBudgetPressure(): void;
+	claimOutputBudgetRecovery(): boolean;
 	/** The turn has spent its whole provider-pass budget; only synthesis remains. */
 	providerPassBudgetExhausted(): boolean;
 	/** Receipt-grounded instruction for the answer that ends a capped turn. */
 	buildProviderPassBudgetInstruction(): string;
 	renderWriteReceiptFallback(introduction?: string): string | null;
+	renderOutputBudgetFailure(): string;
 	buildValidationRepairExhaustedInstruction(
 		rejected: readonly { toolName: string; errors: readonly string[] }[]
 	): string;
@@ -222,6 +231,8 @@ export type ToolRoundContinuation =
 			usage: AgenticChatProviderUsageV1 | null;
 			/** Tool names of the batch the reviewer kept rejecting. */
 			heldToolNames: readonly string[];
+			reason: string;
+			findings?: MutationReviewFinding[];
 	  }
 	| {
 			lane: 'turn_contract_review';
@@ -331,6 +342,8 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	private requestCompletionContinuationUsed = false;
 	private requestExpectation: TurnContract | null = null;
 	private batchRevisionCount = 0;
+	private outputBudgetPressure = false;
+	private outputBudgetRecoveryUsed = false;
 	// Every completed tool round this turn, so contract labels can bind to the
 	// entities created in earlier rounds before later writes are authorized.
 	private readonly turnToolExecutions: FastToolExecution[] = [];
@@ -537,16 +550,63 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.providerPassCount += 1;
 	}
 
+	prepareOutputBudget(request: ClientRequest): ClientRequest {
+		return this.outputBudgetPressure ? { ...request, reasoningEffort: 'none' } : request;
+	}
+
+	recordOutputBudgetPressure(): void {
+		this.outputBudgetPressure = true;
+	}
+
+	claimOutputBudgetRecovery(): boolean {
+		if (this.outputBudgetRecoveryUsed) return false;
+		this.outputBudgetRecoveryUsed = true;
+		return true;
+	}
+
 	providerPassBudgetExhausted(): boolean {
 		return this.providerPassCount >= MAX_PROVIDER_PASSES_PER_TURN;
 	}
 
 	renderWriteReceiptFallback(introduction?: string): string | null {
-		return renderWriteReceiptFallback(
+		const unfinished = this.unfinishedContractOutcomeDescriptions();
+		const receipt = renderWriteReceiptFallback(
 			buildWriteLedger(this.turnToolExecutions),
-			this.unfinishedContractOutcomeDescriptions(),
+			unfinished,
 			introduction
 		);
+		const manifest = this.requestExpectation
+			? buildCleanupManifest({
+					contract: this.requestExpectation,
+					toolExecutions: this.turnToolExecutions
+				})
+			: null;
+		const alreadySatisfied = manifest ? renderAlreadySatisfiedCleanupItems(manifest) : null;
+		if (!receipt && alreadySatisfied)
+			return [
+				'No new saved changes are confirmed.',
+				alreadySatisfied,
+				...(unfinished.length
+					? [`Still pending:\n\n${unfinished.map((item) => `- ${item}`).join('\n')}`]
+					: []),
+				'No further work is running.'
+			].join('\n\n');
+		return [receipt, alreadySatisfied].filter(Boolean).join('\n\n') || null;
+	}
+
+	renderOutputBudgetFailure(): string {
+		const failure = renderOutputBudgetFailure(
+			buildWriteLedger(this.turnToolExecutions),
+			this.unfinishedContractOutcomeDescriptions()
+		);
+		const manifest = this.requestExpectation
+			? buildCleanupManifest({
+					contract: this.requestExpectation,
+					toolExecutions: this.turnToolExecutions
+				})
+			: null;
+		const alreadySatisfied = manifest ? renderAlreadySatisfiedCleanupItems(manifest) : null;
+		return [failure, alreadySatisfied].filter(Boolean).join('\n\n');
 	}
 
 	buildProviderPassBudgetInstruction(): string {
@@ -813,6 +873,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			[
 				'The proposed final answer was withheld: the original request still has unfulfilled outcomes.',
 				`Frozen completion checklist (not write permission): ${JSON.stringify(serializeTurnContractForDeclaration(expectation))}`,
+				`Cleanup status (saved and verified no-ops are different): ${JSON.stringify(buildCleanupManifest({ contract: expectation, toolExecutions: this.turnToolExecutions }))}`,
 				`Still unfulfilled: ${JSON.stringify(remaining)}.`,
 				'Use the successful execution receipts and returned IDs already in the conversation. Complete only missing work; never repeat saved creates or retry uncertain writes. Any new mutation must pass the normal independent batch review. Do not change the checklist to match what happened.',
 				'If you cannot complete the missing work safely, say what remains undone. Do not claim the entire request is complete.'
@@ -829,11 +890,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			? 'Some requested work is still unfinished. These changes were saved:'
 			: 'I can confirm the saved changes below, but could not verify that the entire request is complete:';
 		return (
-			renderWriteReceiptFallback(
-				buildWriteLedger(this.turnToolExecutions),
-				remaining,
-				introduction
-			) ??
+			this.renderWriteReceiptFallback(introduction) ??
 			`No saved changes are confirmed. ${remaining.length ? `Still pending: ${remaining.join('; ')}.` : 'The entire request could not be verified.'}`
 		);
 	}
@@ -974,6 +1031,10 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				result: feedbackToChatToolResult(call.id, feedback)
 			};
 		});
+		// A new successful stage earns one more completion reminder; prose alone does not.
+		if (buildWriteLedger(roundExecutions).some((entry) => entry.status === 'success')) {
+			this.requestCompletionContinuationUsed = false;
+		}
 		this.turnToolExecutions.push(...roundExecutions);
 		this.requestExpectation = extractReviewedRequestExpectation(this.turnToolExecutions);
 		this.createReplayGuard.record(roundExecutions);
@@ -1063,7 +1124,9 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				return {
 					lane: 'review_exhaustion',
 					usage: completedToolRound.usage,
-					heldToolNames: rejected.calls.map((call) => call.name)
+					heldToolNames: rejected.calls.map((call) => call.name),
+					reason: proposalRevision.reason,
+					findings: proposalRevision.findings
 				};
 			}
 			return {
@@ -1465,6 +1528,13 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	private unfinishedContractOutcomeDescriptions(): string[] {
 		const expectation = this.requestExpectation ?? this.turnContract;
 		if (!expectation) return [];
+		if (this.requestExpectation)
+			return describePendingCleanupItems(
+				buildCleanupManifest({
+					contract: this.requestExpectation,
+					toolExecutions: this.turnToolExecutions
+				})
+			);
 		const resolution = resolveTurnContractOutcome({
 			contract: expectation,
 			toolExecutions: this.turnToolExecutions

@@ -1611,6 +1611,7 @@ export async function generateProjectCleanupSynthesis(params: {
 		'Merge two items only when they are the same finding about the same records, or the same audit recommendation raised twice (keep the older one).',
 		'Group items the owner would decide together, for example "Archive 6 old drafts" or "Tidy the Research folder". Every group lists item ids of one section.',
 		'bottom_line says in one sentence what this list is about; recommendation names the one thing to do first. Use ordinary language. Name the records. Never invent an id, record, or fact.',
+		'Item ids (i1, i2, ...) are only for the JSON fields that ask for them. Never write them in titles, summaries, reasons, bottom_line or recommendation; name the item instead.',
 		'Attention: none=nothing useful; minor=notes only; decision=changes or calls wait on the owner; urgent=blocked work or a material consequence.',
 		'next_best_action is the one concrete step that moves the project forward now, independent of the cleanup list: pick work from the earliest unfinished phase, preferably an existing open task. Use null when the evidence does not show one.',
 		'',
@@ -1888,9 +1889,9 @@ export async function generateOutdatedDocs(params: {
 		'- One suggestion per record. For a folder, use children "archive_children" to archive',
 		'  everything under it, or "promote_children" to keep its children and move them up a level.',
 		'',
-		'Operations (project_id is added automatically):',
-		'- archive_onto_document { "document_id": "<uuid>", "children": "archive_children"|"promote_children" }',
-		'- archive_onto_task { "task_id": "<uuid>" }',
+		'Each operation is written exactly like one of these (project_id is added automatically):',
+		'  { "tool": "archive_onto_document", "args": { "document_id": "<uuid>", "children": "archive_children" } }',
+		'  { "tool": "archive_onto_task", "args": { "task_id": "<uuid>" } }',
 		'',
 		'Return ONLY JSON: { "suggestions": [ {',
 		'  "title": string,        // e.g. "Archive \\"Q1 launch plan\\" (replaced by \\"Q2 plan\\")"',
@@ -1898,7 +1899,7 @@ export async function generateOutdatedDocs(params: {
 		'  "rationale": string,    // why the project no longer needs it',
 		'  "confidence": number,   // 0..1',
 		'  "evidence_refs": [ { "entity_type": "document"|"task", "entity_id": "<uuid>", "reason": string } ],',
-		'  "operations": [ one archive operation ]',
+		'  "operations": [ exactly ONE operation shaped as above ]',
 		'} ] }',
 		'If nothing is clearly finished with, return { "suggestions": [] }.'
 	].join('\n');
@@ -1945,31 +1946,62 @@ export async function generateOutdatedDocs(params: {
 
 	const suggestions: ProposedSuggestion[] = [];
 	const proposed = new Set<string>();
+	const dropped = new Map<string, number>();
+	const drop = (reason: string) => dropped.set(reason, (dropped.get(reason) ?? 0) + 1);
 	for (const s of raw) {
-		if (!s.title) continue;
-		const archive = buildArchiveOperation(s.operations, ctx, protectedIds);
-		if (!archive || proposed.has(archive.targetId)) continue;
-		proposed.add(archive.targetId);
-		suggestions.push({
-			kind: 'doc_outdated',
-			risk_tier: 1,
-			title: s.title.slice(0, 200),
-			rationale: s.rationale,
-			why_now: truncate(s.why_now, 220),
-			confidence: typeof s.confidence === 'number' ? s.confidence : undefined,
-			evidence_refs: sanitizeEvidenceRefs(s.evidence_refs, ctx),
-			preview: {
-				kind: 'outdated_flag',
-				summary: archive.operation.label ?? s.title.slice(0, 200),
-				...(archive.after.length ? { after: archive.after } : {}),
-				impact: archive.impact
-			},
-			freshness_state: 'fresh',
-			// Archived records can be restored; no replayable unarchive exists, so no undo ops.
-			reversible: true,
-			operations: [archive.operation],
-			undo_operations: []
-		});
+		const rawOps = Array.isArray(s.operations) ? s.operations : [];
+		if (!rawOps.length) drop('no_operation');
+		// One item per record: a suggestion that archives several records is split, so each can
+		// be applied on its own; the roll-up groups them again on the card.
+		const split = rawOps.length > 1;
+		for (const rawOp of rawOps) {
+			const result = buildArchiveOperation(rawOp, ctx, protectedIds);
+			if ('rejected' in result) {
+				drop(result.rejected);
+				continue;
+			}
+			const archive = result;
+			if (proposed.has(archive.targetId)) {
+				drop('duplicate');
+				continue;
+			}
+			const title = split || !s.title ? archive.operation.label : s.title;
+			if (!title) {
+				drop('no_title');
+				continue;
+			}
+			proposed.add(archive.targetId);
+			suggestions.push({
+				kind: 'doc_outdated',
+				risk_tier: 1,
+				title: title.slice(0, 200),
+				rationale: s.rationale,
+				why_now: truncate(s.why_now, 220),
+				confidence: typeof s.confidence === 'number' ? s.confidence : undefined,
+				evidence_refs: sanitizeEvidenceRefs(s.evidence_refs, ctx),
+				preview: {
+					kind: 'outdated_flag',
+					summary: archive.operation.label ?? title,
+					...(archive.after.length ? { after: archive.after } : {}),
+					impact: archive.impact
+				},
+				freshness_state: 'fresh',
+				// Archived records can be restored; no replayable unarchive exists, so no undo ops.
+				reversible: true,
+				operations: [archive.operation],
+				undo_operations: []
+			});
+		}
+	}
+	if (dropped.size) {
+		// Visible in the worker log: a check that answered but kept nothing is a defect, not a
+		// tidy project (tasker 112 acceptance: every proposal was dropped silently).
+		console.warn(
+			`[ProjectLoops] outdated check kept ${suggestions.length}, dropped ${[...dropped]
+				.map(([reason, count]) => `${count} ${reason}`)
+				.join(', ')}`,
+			{ projectId: ctx.projectId }
+		);
 	}
 	return suggestions;
 }
@@ -1989,18 +2021,34 @@ function protectedDocumentIds(ctx: LoopContext): Set<string> {
  * children mode; code writes the label and refuses anything that would take a protected
  * document with it.
  */
+type ArchiveProposal = {
+	operation: LoopOperation;
+	targetId: string;
+	after: string[];
+	impact: string;
+};
+
+/** The operation's arguments, whether the model wrapped them in "args" or wrote them flat. */
+function operationArgs(raw: unknown): Record<string, unknown> {
+	if (!raw || typeof raw !== 'object') return {};
+	const record = raw as Record<string, unknown>;
+	if (record.args && typeof record.args === 'object')
+		return record.args as Record<string, unknown>;
+	const { tool: _tool, label: _label, ...flat } = record;
+	return flat;
+}
+
 function buildArchiveOperation(
-	rawOps: RawSuggestion['operations'],
+	rawOp: unknown,
 	ctx: LoopContext,
 	protectedIds: Set<string>
-): { operation: LoopOperation; targetId: string; after: string[]; impact: string } | null {
-	if (!Array.isArray(rawOps) || rawOps.length !== 1) return null;
-	const raw = rawOps[0];
-	const args = raw?.args && typeof raw.args === 'object' ? raw.args : {};
+): ArchiveProposal | { rejected: string } {
+	const raw = rawOp && typeof rawOp === 'object' ? (rawOp as { tool?: unknown }) : null;
+	const args = operationArgs(rawOp);
 	if (raw?.tool === 'archive_onto_task') {
 		const taskId = typeof args.task_id === 'string' ? args.task_id : null;
 		const task = taskId ? ctx.tasks.find((t) => t.id === taskId) : undefined;
-		if (!taskId || !task) return null;
+		if (!taskId || !task) return { rejected: 'unknown_record' };
 		return {
 			operation: {
 				tool: 'archive_onto_task',
@@ -2012,15 +2060,16 @@ function buildArchiveOperation(
 			impact: 'The task leaves the board. It can be restored from the archive.'
 		};
 	}
-	if (raw?.tool !== 'archive_onto_document') return null;
+	if (raw?.tool !== 'archive_onto_document') return { rejected: 'unsupported_tool' };
 	const documents = allDocuments(ctx);
 	const documentId = typeof args.document_id === 'string' ? args.document_id : null;
 	const document = documentId ? documents.find((d) => d.id === documentId) : undefined;
-	if (!documentId || !document || protectedIds.has(documentId)) return null;
+	if (!documentId || !document) return { rejected: 'unknown_record' };
+	if (protectedIds.has(documentId)) return { rejected: 'protected' };
 	const children = args.children === 'promote_children' ? 'promote_children' : 'archive_children';
 	const descendants = descendantDocuments(documentId, documents);
 	if (children === 'archive_children' && descendants.some((d) => protectedIds.has(d.id)))
-		return null;
+		return { rejected: 'protected' };
 	const archivesTree = children === 'archive_children' && descendants.length > 0;
 	// Promote moves only the direct children up a level; their own children go with them.
 	const directChildren = descendants.filter((d) => d.parent_id === documentId).length;

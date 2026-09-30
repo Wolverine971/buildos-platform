@@ -38,11 +38,21 @@ export type AgenticChatTurnProviderToolV1 = {
 	};
 };
 
+export type AgenticChatOutputBudgetSignal = {
+	kind: 'pressure' | 'exhausted';
+	limit: number;
+	completionTokens: number | null;
+	reasoningTokens: number | null;
+};
+
 export type AgenticChatTurnProviderClientEventV1 =
 	| { type: 'text'; content: string }
+	/** Harness-owned progress emitted between discarded and recovery attempts. */
+	| { type: 'output_budget_recovery'; providerAttempt: number }
 	| {
 			type: 'done';
 			finishedReason?: string;
+			outputBudget?: AgenticChatOutputBudgetSignal;
 			usage?: {
 				promptTokens?: number;
 				completionTokens?: number;
@@ -62,10 +72,17 @@ export type AgenticChatTurnProviderClientEventV1 =
 			 * pressure. A truncated tool call (arguments cut off, or a finish reason
 			 * that contradicts the streamed calls) is retried on another route but
 			 * must not degrade the turn's capacity window the way a 429 does.
+			 * `output_budget_exhausted` discards the pass and permits one bounded
+			 * reasoning-off recovery, without blaming the endpoint.
 			 * `dispatch_denied` means a dispatch gate refused the physical request
 			 * before any network I/O; it is never produced without a gate.
 			 */
-			cause?: 'tool_arguments_truncated' | 'slow_stream' | 'dispatch_denied';
+			cause?:
+				| 'tool_arguments_truncated'
+				| 'slow_stream'
+				| 'dispatch_denied'
+				| 'output_budget_exhausted';
+			outputBudget?: AgenticChatOutputBudgetSignal;
 	  };
 
 /** One physical HTTP request the client is about to send (Tasker 87 dispatch hook). */
@@ -178,6 +195,8 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	 * it ignores `effort`). Ordinary calls keep their policy.
 	 */
 	reasoningEffort?: 'low' | 'none';
+	/** The one buffered retry for exhausted actor output; not a transport retry. */
+	outputBudgetRecovery?: boolean;
 	passRole?: AgenticChatProviderPassRoleV1;
 	providerAttempt?: number;
 	/** Only the atomic pass buffer may opt in, while its single retry remains. */

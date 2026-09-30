@@ -11,6 +11,11 @@ function getToolProperties(toolName: string): Record<string, unknown> {
 }
 
 describe('ontology write tool definitions', () => {
+	it.each(['task', 'goal'])('exposes archive separately from %s workflow states', (kind) => {
+		const properties = getToolProperties(`update_onto_${kind}`);
+		expect(properties.archived).toMatchObject({ type: 'boolean', enum: [true] });
+		expect((properties.state_key as { enum: string[] }).enum).not.toContain('archived');
+	});
 	it('constrains risk impact fields to severity enums', () => {
 		const expectedImpactSchema = expect.objectContaining({
 			type: 'string',

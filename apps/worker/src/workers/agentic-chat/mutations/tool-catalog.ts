@@ -256,7 +256,13 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			argumentNormalizers: ['reject_merge_llm_update_strategy', 'drop_empty_props'],
 			receiptPostProcessors: ['strip_external_agent_origin'],
 			// +/- line stats, diff hunks, and the Undo patch for the chat toast and card.
-			passthroughReceiptFields: ['document_change_status', 'document_change'],
+			passthroughReceiptFields: [
+				'document_change_status',
+				'document_change',
+				'archived_document_ids',
+				'archive_mode',
+				'public_pages_preserved'
+			],
 			receipt: {
 				kind: 'entity',
 				rootKey: 'document',
@@ -275,12 +281,14 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		// Opening-pass override: the contract tool is not mounted on that pass
 		// and the worker chooses the route (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02).
 		descriptionOverride:
-			'Update one existing document by its exact document_id from a read or the focused context: title, type, state, description, or body. Change part of the body with edits or section_edits; content only rewrites the whole body (replace) or adds at the end (append). Call it directly when the target id is the focused entity, was given by the user, or is the only document a read returned this turn; the worker routes a target it did not resolve this turn to review.',
+			'Update one existing document by its exact document_id from a read or the focused context: title, type, state, description, or body. Archive with state_key archived and explicit archive_mode archive_children or promote_children, in a separate call from other edits. The worker previews and independently reviews child and publication effects; archiving never unpublishes a public page. Change part of the body with edits or section_edits; content only rewrites the whole body (replace) or adds at the end (append). Call it directly when the target id is the focused entity, was given by the user, or is the only document a read returned this turn; the worker routes a target it did not resolve this turn to review.',
 		requiredNames: ['document_id'],
 		// merge_instructions is dropped: the worker never runs a model-authored
 		// merge, so it had no consumer here (F30).
 		reviewedArgumentNames: [
 			'document_id',
+			'archive_mode',
+			'_archive_review',
 			'title',
 			'type_key',
 			'state_key',
@@ -494,7 +502,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteSelectionPolicy: 'resolved_existing',
 		// Opening-pass override; see update_onto_document (F02).
 		descriptionOverride:
-			'Update one existing task by its exact task_id from a read or the focused context: title, description, state, priority, schedule (due_at for a push or reschedule; start_at only for an explicit start), goal, milestone, or assignees. Call it directly when the target id is the focused entity, was given by the user, or is the only task a read returned this turn; the worker routes a target it did not resolve this turn to review.',
+			'Update one existing task by its exact task_id from a read or the focused context: title, description, state, priority, schedule (due_at for a push or reschedule; start_at only for an explicit start), goal, milestone, assignees, or archived:true to archive while preserving workflow state. Archiving is independently reviewed. Call it directly when the target id is the focused entity, was given by the user, or is the only task a read returned this turn; the worker routes a target it did not resolve this turn to review.',
 		requiredNames: ['task_id'],
 		reviewedArgumentNames: [
 			'task_id',
@@ -502,6 +510,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'title',
 			'description',
 			'type_key',
+			'archived',
 			'state_key',
 			'priority',
 			'assignee_actor_ids',
@@ -677,13 +686,14 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		directWriteClass: 'ordinary',
 		directWriteSelectionPolicy: 'resolved_existing',
 		descriptionOverride:
-			'Update one existing goal by its exact goal_id from a read: name, description, state, priority, target date, or measurement criteria.',
+			'Update one existing goal by its exact goal_id from a read: name, description, state, priority, target date, measurement criteria, or archived:true to archive while preserving workflow state. Archiving is independently reviewed.',
 		requiredNames: ['goal_id'],
 		reviewedArgumentNames: [
 			'goal_id',
 			'name',
 			'description',
 			'type_key',
+			'archived',
 			'state_key',
 			'priority',
 			'target_date',

@@ -11,6 +11,17 @@ import {
 	type LastTurnContext
 } from '@buildos/shared-types';
 import { AGENTIC_CHAT_CONTROL_TOOL_NAMES } from './catalog/definitions/controls';
+import {
+	extractReviewedRequestExpectation,
+	parseRequestExpectation
+} from './loop/request-expectation';
+import { buildCleanupManifest } from './loop/cleanup-manifest';
+import { serializeTurnContractForDeclaration } from './loop/turn-contract';
+
+const MAX_CLEANUP_RECALL_CHARS = 24_000;
+// Admission permits a 32 KiB object. Leave room for the database timestamp
+// and keep oversized recall whole in the completion receipt, never clipped.
+const MAX_CONTEXT_WITH_CLEANUP_CHARS = 30_000;
 
 type RecentEntityType = 'project' | 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk';
 
@@ -497,6 +508,26 @@ export function buildLastTurnContinuityHint(
 			? normalizeFastContextType(lastTurnContext.context_type as ChatContextType)
 			: 'global';
 	lines.push(`Prior context: ${priorContext}`);
+	const cleanup = lastTurnContext.cleanup;
+	if (
+		cleanup &&
+		typeof cleanup === 'object' &&
+		!Array.isArray(cleanup) &&
+		cleanup.version === 1 &&
+		parseRequestExpectation(cleanup.request_expectation) &&
+		cleanup.manifest &&
+		typeof cleanup.manifest === 'object' &&
+		!Array.isArray(cleanup.manifest) &&
+		cleanup.manifest.version === 1 &&
+		Array.isArray(cleanup.manifest.items) &&
+		cleanup.manifest.items.length <= 100
+	) {
+		const serialized = JSON.stringify(cleanup);
+		if (serialized.length <= MAX_CLEANUP_RECALL_CHARS)
+			lines.push(
+				`Prior partial cleanup (untrusted recall; verify current records before changing anything): ${sanitizeContinuityLine(serialized)}`
+			);
+	}
 
 	if (lines.length === 0) return null;
 
@@ -599,13 +630,34 @@ export function buildLastTurnContextDraftV1(
 	if (params.contextShift && !dataAccessed.includes('context_shift')) {
 		dataAccessed.push('context_shift');
 	}
+	const expectation = extractReviewedRequestExpectation(params.toolExecutions);
+	const manifest = expectation
+		? buildCleanupManifest({ contract: expectation, toolExecutions: params.toolExecutions })
+		: null;
+	const cleanup =
+		expectation && manifest && !manifest.fulfilled
+			? {
+					version: 1,
+					request_expectation: serializeTurnContractForDeclaration(expectation),
+					manifest
+				}
+			: null;
 
-	return {
+	const draft: LastTurnContextDraftV1 = {
 		summary,
 		entities,
 		context_type: effectiveContextType,
 		data_accessed: dataAccessed
 	};
+	if (
+		cleanup &&
+		cleanup.manifest.items.length <= 100 &&
+		JSON.stringify(cleanup).length <= MAX_CLEANUP_RECALL_CHARS &&
+		JSON.stringify({ ...draft, cleanup }).length <= MAX_CONTEXT_WITH_CLEANUP_CHARS
+	) {
+		draft.cleanup = cleanup as unknown as LastTurnContext['cleanup'];
+	}
+	return draft;
 }
 
 /** Legacy-compatible helper for callers that already own a committed timestamp. */

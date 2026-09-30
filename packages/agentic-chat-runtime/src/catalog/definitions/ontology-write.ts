@@ -1054,6 +1054,12 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 						description:
 							'Work-mode taxonomy task.{work_mode}[.{specialization}]; modes: execute, create, refine, research, review, coordinate, admin, plan. Include it only when the user asks to reclassify the task.'
 					},
+					archived: {
+						type: 'boolean',
+						enum: [true],
+						description:
+							'Archive this record while preserving its workflow state and history. Never set done or achieved to mean archive. Omit for ordinary edits; restoring requires the archive UI.'
+					},
 					state_key: {
 						type: 'string',
 						enum: ['todo', 'in_progress', 'blocked', 'done'],
@@ -1235,6 +1241,12 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 						description:
 							'Goal type taxonomy: goal.{family}[.{variant}], e.g. goal.outcome.project or goal.metric.revenue.'
 					},
+					archived: {
+						type: 'boolean',
+						enum: [true],
+						description:
+							'Archive this record while preserving its workflow state and history. Never set done or achieved to mean archive. Omit for ordinary edits; restoring requires the archive UI.'
+					},
 					state_key: {
 						type: 'string',
 						enum: ['draft', 'active', 'achieved', 'abandoned'],
@@ -1349,6 +1361,12 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 						type: 'string',
 						enum: ['draft', 'in_review', 'ready', 'published', 'archived'],
 						description: 'Document state.'
+					},
+					archive_mode: {
+						type: 'string',
+						enum: ['archive_children', 'promote_children'],
+						description:
+							'Required for chat archive (state_key archived). archive_children archives the target and descendants; promote_children archives only the target and moves children up a level. Public pages stay published. Archive separately from content or metadata edits.'
 					},
 					content: {
 						type: 'string',

@@ -13,6 +13,12 @@ import { throwIfAborted } from '../shared/abortable-deadline';
 import { canonicalFinishedReason, providerError } from './protocol';
 import { providerClientRequest } from './request-builders';
 import {
+	ACTING_OUTPUT_TOKENS,
+	isActingOutputPass,
+	outputBudgetInstruction,
+	outputBudgetSignal
+} from './output-budget';
+import {
 	appendToolCallDelta,
 	createToolCallAccumulator,
 	detectToolCallPassTruncation
@@ -57,7 +63,9 @@ export function livePreviewPortFor(
  * finish reason that contradicts the calls) is treated the same way: nothing
  * from the buffered pass has reached the executor, so it is discarded and
  * retried once. The production client already marks the truncating route as
- * failed for the turn, so the retry lands on the next model/provider.
+ * failed for the turn, so the retry lands on the next model/provider. Actor
+ * output-budget exhaustion is separate: one reasoning-off recovery on the
+ * healthy endpoint, with no partial text or calls released.
  *
  * When the client carries a live-preview port, a user-facing pass also
  * forwards its visible text to that port as it arrives, before buffering.
@@ -69,9 +77,11 @@ export async function* streamBufferedProviderPass(
 	request: AgenticChatTurnProviderRequestV1,
 	client: AgenticChatTurnProviderClientPortV1,
 	capacity: Pick<AgenticChatProviderCapacity, 'markTemporarilyUnavailable'>,
-	retryableFailureCooldownMs: number
+	retryableFailureCooldownMs: number,
+	outputPolicy?: { pressure(): void; claimRecovery(): boolean }
 ): AsyncGenerator<AgenticChatTurnProviderClientEventV1> {
 	const firstAttempt = request.providerAttempt ?? 1;
+	let attemptRequest = request;
 	const previewPort = livePreviewPortFor(request, client);
 	for (let retryCount = 0; retryCount <= MAX_RETRYABLE_PROVIDER_PASS_RETRIES; retryCount += 1) {
 		const providerAttempt = firstAttempt + retryCount;
@@ -91,14 +101,67 @@ export async function* streamBufferedProviderPass(
 			const shadowToolCalls = createToolCallAccumulator();
 			let shadowObservable = true;
 
-			for await (const event of client.stream({
-				...providerClientRequest({ ...request, providerAttempt }),
-				allowSlowStreamRecovery: retriesRemain,
-				finalBufferedAttempt: !retriesRemain
+			for await (const received of client.stream({
+				...providerClientRequest({ ...attemptRequest, providerAttempt }),
+				allowSlowStreamRecovery: retriesRemain && !attemptRequest.outputBudgetRecovery,
+				finalBufferedAttempt: !retriesRemain || attemptRequest.outputBudgetRecovery === true
 			})) {
 				throwIfAborted(request.signal);
+				let event = received;
+				// Also cover compatible clients/fixtures which return length as done.
+				if (event.type === 'done' && isActingOutputPass(request)) {
+					const signal =
+						event.outputBudget ??
+						outputBudgetSignal(
+							request.maxOutputTokens ?? ACTING_OUTPUT_TOKENS,
+							canonicalFinishedReason(event.finishedReason),
+							null
+						);
+					if (signal?.kind === 'exhausted')
+						event = {
+							type: 'error',
+							error: 'Actor output budget exhausted',
+							retryable: true,
+							cause: 'output_budget_exhausted',
+							outputBudget: signal
+						};
+					else if (signal) outputPolicy?.pressure();
+				}
 				if (event.type === 'error') {
-					if (event.retryable && retriesRemain) {
+					const exhausted = event.cause === 'output_budget_exhausted';
+					if (exhausted) outputPolicy?.pressure();
+					// Leave at least five seconds for a viable attempt and five for finalization.
+					const recoveryTimeAvailable =
+						!request.budget || request.budget.deadlineAtMs - Date.now() >= 10_000;
+					const budgetRetry =
+						exhausted &&
+						isActingOutputPass(request) &&
+						recoveryTimeAvailable &&
+						retriesRemain &&
+						!attemptRequest.outputBudgetRecovery &&
+						(outputPolicy?.claimRecovery() ?? true);
+					if (budgetRetry) {
+						attemptRequest = {
+							...request,
+							reasoningEffort: 'none',
+							outputBudgetRecovery: true,
+							messages: [
+								...request.messages,
+								{
+									role: 'system',
+									content: `The previous pass exhausted its output budget and none of its calls executed. Emit only the next correct stage from existing evidence. Never repeat successful writes. ${outputBudgetInstruction(event.outputBudget?.limit ?? ACTING_OUTPUT_TOKENS)}`
+								}
+							]
+						};
+						retry = true;
+						break;
+					}
+					if (
+						!exhausted &&
+						!attemptRequest.outputBudgetRecovery &&
+						event.retryable &&
+						retriesRemain
+					) {
 						if (!event.cause) {
 							capacity.markTemporarilyUnavailable(
 								request.turnRunId,
@@ -115,11 +178,18 @@ export async function* streamBufferedProviderPass(
 					// decides whether it is usable (people-synthesis timeout,
 					// 2026-07-22). Every tool-enabled pass keeps the atomic boundary.
 					const recoverablePartial =
-						request.toolChoice === 'none'
+						request.toolChoice === 'none' &&
+						!exhausted &&
+						!attemptRequest.outputBudgetRecovery
 							? buffered.filter((candidate) => candidate.type === 'text')
 							: [];
 					buffered.length = 0;
-					buffered.push(...recoverablePartial, event);
+					buffered.push(
+						...recoverablePartial,
+						exhausted || attemptRequest.outputBudgetRecovery
+							? { ...event, cause: 'output_budget_exhausted', retryable: false }
+							: event
+					);
 					terminal = true;
 					terminalError = true;
 					break;
@@ -139,26 +209,56 @@ export async function* streamBufferedProviderPass(
 					}
 				}
 				if (event.type === 'done') {
+					if (
+						attemptRequest.outputBudgetRecovery &&
+						!buffered.some(
+							(candidate) =>
+								candidate.type === 'tool_call' ||
+								(candidate.type === 'text' && candidate.content.trim())
+						)
+					) {
+						buffered.length = 0;
+						buffered.push({
+							type: 'error',
+							error: 'Output budget recovery returned no output',
+							retryable: false,
+							cause: 'output_budget_exhausted'
+						});
+						terminalError = true;
+					}
 					terminal = true;
 					if (
 						shadowObservable &&
-						retriesRemain &&
 						detectToolCallPassTruncation(
 							shadowToolCalls,
 							canonicalFinishedReason(event.finishedReason),
 							request.toolChoice
 						)
 					) {
-						retry = true;
+						if (attemptRequest.outputBudgetRecovery) {
+							buffered.length = 0;
+							buffered.push({
+								type: 'error',
+								error: 'Output budget recovery returned incomplete calls',
+								retryable: false,
+								cause: 'output_budget_exhausted'
+							});
+							terminalError = true;
+						} else if (retriesRemain) retry = true;
 					}
 					break;
 				}
 			}
 
-			if (retry) continue;
+			if (retry) {
+				preview?.discard();
+				if (attemptRequest.outputBudgetRecovery && isActingOutputPass(request))
+					yield { type: 'output_budget_recovery', providerAttempt: providerAttempt + 1 };
+				continue;
+			}
 			if (!terminal) {
 				const incompleteToolCall = buffered.find((event) => event.type === 'tool_call');
-				if (incompleteToolCall) {
+				if (incompleteToolCall && !attemptRequest.outputBudgetRecovery) {
 					preview?.discard();
 					yield incompleteToolCall;
 					return;
@@ -170,6 +270,17 @@ export async function* streamBufferedProviderPass(
 			if (terminalError) preview?.discard();
 			else preview?.finish();
 			for (const event of buffered) yield event;
+			return;
+		} catch (error) {
+			throwIfAborted(request.signal);
+			if (!attemptRequest.outputBudgetRecovery) throw error;
+			preview?.discard();
+			yield {
+				type: 'error',
+				error: 'Output budget recovery could not finish',
+				retryable: false,
+				cause: 'output_budget_exhausted'
+			};
 			return;
 		} finally {
 			// Retried, thrown, aborted, or abandoned: the attempt's preview is void.

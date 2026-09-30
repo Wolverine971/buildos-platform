@@ -301,7 +301,7 @@ describe('work-type classification policy reaches the reviewer', () => {
 		}
 	);
 
-	it('freezes a first expectation aligned with the exact approved calls (book loop 2026-09-22)', () => {
+	it('preserves every requested field when the first approved stage only updates some of them', () => {
 		const PLAN_A = '39f201a1-c209-47d0-999d-6400b242cb90';
 		const PLAN_B = '4698bf3f-5bbc-4bd2-8315-2d37e804e9e8';
 		const request = requestFor('Fix the project so it fits a nonfiction book.');
@@ -375,7 +375,7 @@ describe('work-type classification policy reaches the reviewer', () => {
 			requestExpectation: null
 		});
 		const frozen = parseRequestExpectation(approved!.arguments.request_expectation)!;
-		expect(frozen.outcomes[0]!.requiredFields).toEqual(['description']);
+		expect(frozen.outcomes[0]!.requiredFields).toEqual(['name', 'description']);
 		expect(JSON.parse(approved!.canonicalArguments).request_expectation).toEqual(
 			approved!.arguments.request_expectation
 		);

@@ -38,6 +38,13 @@ import {
 	throwAbort
 } from './openrouter/canonical';
 import { throwIfAborted } from '../shared/abortable-deadline';
+import {
+	ACTING_OUTPUT_TOKENS,
+	isActingOutputPass,
+	outputBudgetSignal,
+	reportedReasoningTokens,
+	OUTPUT_RECOVERY_FIRST_PROGRESS_MS
+} from './output-budget';
 import { AgenticChatProviderNetworkError, AgenticChatSlowStreamError } from './openrouter/errors';
 import { type OpenRouteSettings, openProviderRoute, sentMaxTokens } from './openrouter/open-route';
 import { attributedProviderSlug, isRetryableUnknownError, routeFailure } from './openrouter/retry';
@@ -95,7 +102,7 @@ export const DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS = 5_000;
  * It ignores `reasoning.effort` and `reasoning.max_tokens`, so the only lever is
  * room: 12,000 leaves space for reasoning plus a batch of document-sized calls.
  */
-export const AGENTIC_CHAT_ACTING_MAX_TOKENS = 12_000;
+export const AGENTIC_CHAT_ACTING_MAX_TOKENS = ACTING_OUTPUT_TOKENS;
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_SSE_BUFFER_BYTES = 256 * 1024;
 
@@ -204,6 +211,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		let accounted = false;
 		let dispatchDenied = false;
 		let stopProgressWatch: (() => void) | undefined;
+		let firstProgressTimer: ReturnType<typeof setTimeout> | undefined;
 		const state: StreamState = {
 			rawUsage: null,
 			finishReason: null,
@@ -413,7 +421,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 							: 'provider_permanent_error',
 						usage: null
 					});
-					if (denied) break;
+					if (denied || input.outputBudgetRecovery) break;
 				}
 			}
 
@@ -441,6 +449,20 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				active.response.headers.get('x-openrouter-provider')
 			);
 			state.providerSlug = normalizeProviderSlug(state.provider) ?? null;
+			if (input.outputBudgetRecovery) {
+				const recovering = active;
+				firstProgressTimer = setTimeout(() => {
+					if (state.firstProgressAtMs === null && state.finishReason === null) {
+						recovering.abort(
+							new AgenticChatProviderNetworkError(
+								'Output budget recovery produced no progress within 15000ms',
+								true
+							)
+						);
+					}
+				}, OUTPUT_RECOVERY_FIRST_PROGRESS_MS);
+				firstProgressTimer.unref?.();
+			}
 			if (
 				attemptedRouteIds.length === 1 &&
 				active.route.kind === 'openrouter' &&
@@ -526,6 +548,18 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					? 'length'
 					: (state.finishReason ?? 'stop');
 			const attemptEndedAtMs = Date.now();
+			const outputBudget = isActingOutputPass(input)
+				? outputBudgetSignal(
+						sentMaxTokens(this.routeSettings.maxTokens, input),
+						finishedReason,
+						exactUsage
+							? {
+									completionTokens: exactUsage.completionTokens,
+									reasoningTokens: reportedReasoningTokens(state.rawUsage)
+								}
+							: null
+					)
+				: undefined;
 			const usagePayload = exactUsage
 				? {
 						prompt_tokens: exactUsage.promptTokens,
@@ -536,6 +570,51 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 						cache_write_tokens: exactUsage.cacheWriteTokens
 					}
 				: null;
+			if (outputBudget?.kind === 'exhausted') {
+				// A request limit is not evidence of an unhealthy endpoint. Preserve
+				// the route pin; the atomic buffer owns one changed, bounded retry.
+				this.routeHealth.observeSuccess(
+					input.turnRunId,
+					this.routeHealth.routingModel(state.modelUsed, active.route),
+					active.route.model,
+					state.providerSlug,
+					active.route.kind === 'openrouter'
+				);
+				this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+					round: input.providerRound,
+					logical_provider_round: input.logicalProviderRound,
+					pass_role: passRole,
+					provider_attempt: providerAttempt,
+					attempt_kind: activeAttemptKind ?? 'primary',
+					route_id: active.route.id,
+					model_requested: active.route.model,
+					model_used: state.modelUsed ?? active.route.model,
+					provider: state.provider ?? active.route.id,
+					status: 'failure',
+					duration_ms: boundedDuration(
+						activeAttemptStartedAtMs ?? requestStartedAtMs,
+						attemptEndedAtMs
+					),
+					provider_timing: providerAttemptTimingPayload(
+						active.timing(),
+						attemptEndedAtMs
+					),
+					finish_reason: finishedReason,
+					error_class: 'output_budget_exhausted',
+					output_budget: outputBudget,
+					usage: usagePayload
+				});
+				activeAttemptEnded = true;
+				account('failure', 'Actor output budget exhausted', true);
+				yield {
+					type: 'error',
+					error: 'Actor output budget exhausted',
+					retryable: true,
+					cause: 'output_budget_exhausted',
+					outputBudget
+				};
+				return;
+			}
 			// A streamed tool call the consumer cannot trust complete — the
 			// provider reported a finish reason other than tool calls (Alibaba
 			// returned `stop` on a 2,001-token tool-call response in the 2026-09-01
@@ -616,6 +695,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				finish_reason: finishedReason,
 				error_class: toolsDisabledViolation ? 'provider_tool_call_disabled' : null,
 				usage: usagePayload,
+				...(outputBudget ? { output_budget: outputBudget } : {}),
 				...rejectedToolCallPayload(state, input)
 			});
 			activeAttemptEnded = true;
@@ -654,6 +734,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			yield {
 				type: 'done',
 				finishedReason,
+				...(outputBudget ? { outputBudget } : {}),
 				usage: exactUsage
 					? {
 							promptTokens: exactUsage.promptTokens,
@@ -736,6 +817,26 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			};
 		} finally {
 			stopProgressWatch?.();
+			if (firstProgressTimer) clearTimeout(firstProgressTimer);
+			if (active && !activeAttemptEnded) {
+				// The consumer may close an iterator after a delta, before the normal
+				// end path. Every started physical request still needs a terminal receipt.
+				this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+					logical_provider_round: input.logicalProviderRound,
+					pass_role: passRole,
+					provider_attempt: providerAttempt,
+					route_id: active.route.id,
+					model_requested: active.route.model,
+					provider: state.provider ?? active.route.id,
+					status: input.signal.aborted ? 'aborted' : 'failure',
+					error_class: input.signal.aborted ? 'aborted' : 'provider_consumer_closed',
+					finish_reason: state.finishReason,
+					duration_ms: boundedDuration(
+						activeAttemptStartedAtMs ?? requestStartedAtMs,
+						Date.now()
+					)
+				});
+			}
 			if (!accounted) {
 				account(
 					input.signal.aborted ? 'aborted' : 'failure',
@@ -777,10 +878,13 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 		payload: JsonObject
 	): void {
 		if (!this.ports.executionObservations) return;
-		this.pendingEffects
-			.forTurn(input.turnRunId)
-			.enqueue(
-				persistProviderAttemptObservation(this.ports, input, route, eventType, payload)
-			);
+		this.pendingEffects.forTurn(input.turnRunId).enqueue(
+			persistProviderAttemptObservation(this.ports, input, route, eventType, {
+				...payload,
+				max_output_tokens: sentMaxTokens(this.routeSettings.maxTokens, input),
+				reasoning_effort: input.reasoningEffort ?? 'default',
+				output_budget_recovery: input.outputBudgetRecovery === true
+			})
+		);
 	}
 }

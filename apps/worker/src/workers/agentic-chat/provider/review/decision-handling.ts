@@ -4,7 +4,12 @@ import {
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
-import { type TurnContract, parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
+import {
+	type TurnContract,
+	parseDeclaredTurnContract,
+	parseMutationReviewFindings,
+	type MutationReviewFinding
+} from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from '../contracts';
 import { appendSystemInstruction } from '../request-builders';
 import type { CompletedProviderToolCall } from '../stream-tool-calls';
@@ -17,6 +22,7 @@ export type PendingProposalRevision = {
 	reason: string;
 	requiredCorrection: string;
 	correctedContract: TurnContract | null;
+	findings?: MutationReviewFinding[];
 };
 
 export type ReferenceCandidateGroup = {
@@ -24,21 +30,21 @@ export type ReferenceCandidateGroup = {
 	candidates: Array<{ id: string; title: string }>;
 };
 
-export function readProposalRevision(argumentsValue: JsonObject): {
-	reason: string;
-	requiredCorrection: string;
-	correctedContract: TurnContract | null;
-} {
+export function readProposalRevision(argumentsValue: JsonObject): PendingProposalRevision {
 	const reason =
-		typeof argumentsValue.reason === 'string' ? argumentsValue.reason.trim().slice(0, 400) : '';
+		typeof argumentsValue.reason === 'string'
+			? argumentsValue.reason.trim().slice(0, 1200)
+			: '';
 	const requiredCorrection =
 		typeof argumentsValue.required_correction === 'string'
-			? argumentsValue.required_correction.trim().slice(0, 400)
+			? argumentsValue.required_correction.trim().slice(0, 2000)
 			: '';
+	const findings = parseMutationReviewFindings(argumentsValue.findings) ?? [];
 	return {
 		reason,
 		requiredCorrection,
-		correctedContract: parseDeclaredTurnContract(argumentsValue.corrected_contract)
+		correctedContract: parseDeclaredTurnContract(argumentsValue.corrected_contract),
+		...(findings.length ? { findings } : {})
 	};
 }
 
@@ -332,6 +338,11 @@ export function buildContractRevisionRequest(
 			'Independent review returned your proposed contract to you for correction; it did not reach the user.',
 			`Reason: ${revision.reason || 'not stated'}.`,
 			`Required correction: ${revision.requiredCorrection || 'not stated'}.`,
+			...(revision.findings?.length
+				? [
+						`Structured findings (messages are explanation; required_correction is for you): ${JSON.stringify(revision.findings)}`
+					]
+				: []),
 			'Declare the corrected exact contract now with declare_turn_contract: one outcome per distinct change, exact target ids from the loaded context, and the full cardinality the user commissioned.',
 			'Request clarification only if a choice genuinely belongs to the user. Do not narrate this correction to the user.'
 		].join(' ')

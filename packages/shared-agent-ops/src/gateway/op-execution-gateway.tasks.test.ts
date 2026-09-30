@@ -866,6 +866,8 @@ describe('updateTask archive matches the board', () => {
 		expect(updates).toHaveLength(1);
 		expect(updates[0]!.archived_at).toEqual(expect.any(String));
 		expect(updates[0]!.deleted_at).toBe(updates[0]!.archived_at);
+		expect(updates[0]).not.toHaveProperty('state_key');
+		expect(updates[0]).not.toHaveProperty('completed_at');
 	});
 
 	it('restore clears both columns', async () => {
@@ -885,9 +887,9 @@ describe('updateTask archive matches the board', () => {
 			...liveTask,
 			deleted_at: '2026-09-01T00:00:00.000Z'
 		});
-		await expect(updateTask(context, { task_id: TASK_ID, archived: false })).rejects.toMatchObject(
-			{ code: 'NOT_FOUND' }
-		);
+		await expect(
+			updateTask(context, { task_id: TASK_ID, archived: false })
+		).rejects.toMatchObject({ code: 'NOT_FOUND' });
 		expect(updates).toHaveLength(0);
 	});
 });

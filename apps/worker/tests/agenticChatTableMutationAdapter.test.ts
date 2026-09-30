@@ -412,6 +412,29 @@ describe('table row update_onto_task', () => {
 		};
 	}
 
+	it('forwards an archive to the canonical writer without inventing completion or calendar effects', async () => {
+		const task = {
+			...gatewayTask(),
+			archived_at: '2026-09-29T00:00:00Z',
+			deleted_at: '2026-09-29T00:00:00Z'
+		};
+		const runGateway = vi.fn(async () => ({ ok: true, data: { task } }));
+		const result = await adapter({ runGateway }).execute(
+			input({ args: { task_id: TASK_ID, archived: true } })
+		);
+		expect(runGateway).toHaveBeenCalledWith(
+			expect.objectContaining({
+				op: 'onto.task.update',
+				args: { task_id: TASK_ID, archived: true, calendar_sync: 'none' }
+			})
+		);
+		expect(result.task).toMatchObject({
+			state_key: 'in_progress',
+			archived_at: task.archived_at,
+			deleted_at: task.deleted_at
+		});
+	});
+
 	it('executes the admitted canonical op through the project-fenced shared gateway', async () => {
 		const runGateway = vi.fn(async (_input: Record<string, unknown>) => ({
 			ok: true,
@@ -590,7 +613,7 @@ describe('table row update_onto_task', () => {
 	it('rejects fields outside the reviewed adapter subset before dispatch', async () => {
 		const runGateway = vi.fn();
 		const extra = input() as any;
-		extra.arguments.archived = true;
+		extra.arguments.deleted_at = '2026-09-29T00:00:00Z';
 
 		await expect(adapter({ runGateway }).execute(extra)).rejects.toMatchObject({
 			disposition: 'known_failed',
@@ -1181,6 +1204,29 @@ describe('table rows for reviewed gateway ontology entities', () => {
 			});
 		}
 	);
+
+	it('archives a goal through the canonical writer while preserving active state', async () => {
+		const goal = SUCCESS_CASES.find((entry) => entry.toolName === 'update_onto_goal')!;
+		const archived = {
+			...goal.entity,
+			state_key: 'active',
+			archived_at: '2026-09-29T00:00:00Z'
+		};
+		const runGateway = vi.fn(async () => ({ ok: true, data: { goal: archived } }));
+		const result = await adapter({ runGateway }).execute(
+			caseInput(goal, { goal_id: ENTITY_ID, archived: true })
+		);
+		expect(runGateway).toHaveBeenCalledWith(
+			expect.objectContaining({
+				op: 'onto.goal.update',
+				args: { goal_id: ENTITY_ID, archived: true }
+			})
+		);
+		expect(result.goal).toMatchObject({
+			state_key: 'active',
+			archived_at: archived.archived_at
+		});
+	});
 
 	it('rejects compound fields and merge_llm before gateway dispatch', async () => {
 		const runGateway = vi.fn();
@@ -2999,4 +3045,35 @@ describe('table row update_onto_document edits', () => {
 		expect(receipt.document_change_status).toBe('changed');
 		expect(receipt.document_change).toEqual(change);
 	});
+});
+
+describe('document archive dispatch', () => {
+	it.each(['archived', 'archive', ' ARCHIVED '])(
+		'never sends archive state %s through the plain row writer',
+		async (state_key) => {
+			const documentId = '10000000-0000-4000-8000-000000000001';
+			const projectId = '10000000-0000-4000-8000-000000000002';
+			const runGateway = vi.fn();
+			const archiveDocument = vi.fn(async () => ({
+				ok: false,
+				error: { code: 'VALIDATION_ERROR' as const, message: 'Review required' }
+			}));
+			await expect(
+				adapter({ runGateway, archiveDocument }).execute(
+					mutationInput({
+						toolName: 'update_onto_document',
+						operationName: 'onto.document.update',
+						projectContext: projectId,
+						args: {
+							document_id: documentId,
+							state_key,
+							archive_mode: 'archive_children'
+						}
+					})
+				)
+			).rejects.toBeInstanceOf(AgenticChatMutationAdapterError);
+			expect(archiveDocument).toHaveBeenCalledTimes(1);
+			expect(runGateway).not.toHaveBeenCalled();
+		}
+	);
 });

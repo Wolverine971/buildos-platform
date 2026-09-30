@@ -14,6 +14,8 @@ export * from './definition-types';
 export * from './durable-text-validation';
 export * from './entity-result-materialization';
 export * from './completion-receipt';
+export * from './cleanup-manifest';
+export * from './review-findings';
 export * from './request-expectation';
 export * from './finalization-guard';
 export * from './model-routing-types';

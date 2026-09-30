@@ -180,5 +180,23 @@ class EndToEndOffline(unittest.TestCase):
         self.assertIn('REHEARSAL FAILED', output)
 
 
+
+class DefaultChecks(unittest.TestCase):
+    def test_production_rehearsals_add_the_standing_invariants_once(self):
+        guard = rehearse.DEFAULT_CHECKS[0]
+        extra = Path('/tmp/extra.check.sql')
+        self.assertEqual(rehearse.checks_to_run([extra], rehearse.PRODUCTION_REF, True),
+                         [extra, *rehearse.DEFAULT_CHECKS])
+        self.assertEqual(rehearse.checks_to_run([guard], rehearse.PRODUCTION_REF, True),
+                         [guard, *rehearse.DEFAULT_CHECKS[1:]])
+
+    def test_other_schemas_and_opt_out_skip_them(self):
+        self.assertEqual(rehearse.checks_to_run([], 'testref', True), [])
+        self.assertEqual(rehearse.checks_to_run([], rehearse.PRODUCTION_REF, False), [])
+
+    def test_every_default_check_exists(self):
+        for check in rehearse.DEFAULT_CHECKS:
+            self.assertTrue(check.is_file(), check)
+
 if __name__ == '__main__':
     unittest.main()

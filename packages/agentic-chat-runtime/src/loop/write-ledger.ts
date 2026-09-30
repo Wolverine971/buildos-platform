@@ -123,6 +123,8 @@ const NON_EFFECT_ARGUMENTS = new Set([
 	'expected_source_project_id',
 	'destination_project_id',
 	'confirmation_token',
+	'_archive_review',
+	'archive_mode',
 	'update_strategy',
 	'merge_instructions',
 	'allow_large_deletion',
@@ -446,6 +448,31 @@ export function buildWriteLedger(toolExecutions: FastToolExecution[]): WriteLedg
 	for (const execution of toolExecutions) {
 		const entry = buildEntryFromExecution(execution);
 		if (entry) entries.push(entry);
+		// The atomic archive receipt proves each affected descendant. Do not
+		// mistake promoted children or proposed scope for successful archives.
+		const result = extractResultObject(execution.result.result);
+		if (
+			entry?.status === 'success' &&
+			entry.toolName === 'update_onto_document' &&
+			entry.stateKey === 'archived' &&
+			Array.isArray(result?.archived_document_ids)
+		) {
+			for (const id of new Set(result.archived_document_ids)) {
+				if (typeof id !== 'string' || !id || id === entry.entityId) continue;
+				entries.push({
+					toolName: entry.toolName,
+					op: entry.op,
+					effectId: entry.effectId,
+					status: 'success',
+					action: 'archive',
+					entityKind: 'document',
+					entityId: id,
+					stateKey: 'archived',
+					changedFields: ['state_key'],
+					changedValues: { state_key: 'archived' }
+				});
+			}
+		}
 	}
 	return entries;
 }

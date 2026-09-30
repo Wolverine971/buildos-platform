@@ -242,6 +242,106 @@ function requestFor(
 }
 
 describe('AgenticChatToolExecutionAdapter', () => {
+	it('persists structured review findings and complete correction fields without the old paragraph clipping', async () => {
+		const adapter = adapterWith(fakeSharedClient(), accessStub());
+		const findings = [
+			{
+				code: 'wrong_value',
+				target_ids: [TASK_ID],
+				message: 'Archive the task rather than marking it done.',
+				required_correction: 'Use archived true.'
+			}
+		];
+		const result = await adapter.execute(
+			requestFor('request_proposal_revision', {
+				reason: 'x'.repeat(600),
+				required_correction: 'y'.repeat(1000),
+				findings
+			})
+		);
+		expect(result.result).toMatchObject({
+			reason: 'x'.repeat(600),
+			required_correction: 'y'.repeat(1000),
+			findings
+		});
+	});
+	it('adds fresh server archive evidence to the first reviewer approval using trusted identity and scope', async () => {
+		const client = fakeSharedClient();
+		const facts = {
+			version: 1 as const,
+			status: 'verified' as const,
+			targets: [
+				{
+					entity_kind: 'task' as const,
+					id: TASK_ID,
+					status: 'archived' as const,
+					project_id: PROJECT_ID,
+					archived_at: '2026-09-29T00:00:00Z'
+				}
+			]
+		};
+		const verifyArchiveState = vi.fn(async () => facts);
+		const adapter = new AgenticChatToolExecutionAdapter(client as never, {
+			createAccessAdapter: () => accessStub(),
+			verifyArchiveState
+		});
+		const result = await adapter.execute(
+			requestFor('approve_mutation_batch_review', {
+				reason: 'Commissioned cleanup.',
+				batch_sha256: 'a'.repeat(64),
+				request_expectation: {
+					outcomes: [
+						{
+							id: 'archive',
+							action: 'archive',
+							entity_kind: 'task',
+							target_ids: [TASK_ID],
+							required_fields: ['archived'],
+							minimum_successful_effects: 1
+						}
+					]
+				},
+				archive_postconditions: { forged: true }
+			})
+		);
+		expect(verifyArchiveState).toHaveBeenCalledWith({
+			userId: USER_ID,
+			projectId: PROJECT_ID,
+			targets: [{ entity_kind: 'task', id: TASK_ID }],
+			signal: expect.any(AbortSignal)
+		});
+		expect(result.result).toHaveProperty('archive_postconditions', facts);
+		expect(client.from).not.toHaveBeenCalled();
+	});
+	it('gives no already-satisfied credit when archive verification is unavailable', async () => {
+		const adapter = new AgenticChatToolExecutionAdapter(fakeSharedClient() as never, {
+			verifyArchiveState: async () => {
+				throw new Error('offline');
+			}
+		});
+		const result = await adapter.execute(
+			requestFor('approve_mutation_batch_review', {
+				reason: 'Commissioned cleanup.',
+				batch_sha256: 'a'.repeat(64),
+				request_expectation: {
+					outcomes: [
+						{
+							id: 'archive',
+							action: 'archive',
+							entity_kind: 'task',
+							target_ids: [TASK_ID],
+							minimum_successful_effects: 1
+						}
+					]
+				}
+			})
+		);
+		expect(result.result).toHaveProperty('archive_postconditions', {
+			version: 1,
+			status: 'unavailable',
+			targets: []
+		});
+	});
 	it('persists the reviewer checklist with the batch approval without a database call', async () => {
 		const client = fakeSharedClient();
 		const adapter = adapterWith(client, accessStub());
@@ -1434,17 +1534,20 @@ describe('AgenticChatToolExecutionAdapter', () => {
 	});
 
 	it('dispatches document tree reads without the web route', async () => {
-		const client = fakeSharedClient({
-			onto_projects: [
-				{
-					id: PROJECT_ID,
-					doc_structure: {
-						version: 1,
-						root: [{ id: 'doc-1', order: 0, title: 'Project Brief' }]
+		const client = {
+			...fakeSharedClient({
+				onto_projects: [
+					{
+						id: PROJECT_ID,
+						doc_structure: {
+							version: 1,
+							root: [{ id: 'doc-1', order: 0, title: 'Project Brief' }]
+						}
 					}
-				}
-			]
-		});
+				]
+			}),
+			rpc: vi.fn(async () => ({ data: [], error: null }))
+		};
 		const access = accessStub();
 		const adapter = adapterWith(client, access);
 

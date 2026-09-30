@@ -1,6 +1,11 @@
 // apps/worker/src/workers/agentic-chat/provider/review/lanes.ts
 
-import type { MutationBatch, TurnContract } from '@buildos/agentic-chat-runtime/loop';
+import {
+	type MutationBatch,
+	type TurnContract,
+	type MutationReviewFinding,
+	renderMutationReviewFindings
+} from '@buildos/agentic-chat-runtime/loop';
 import {
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderStepV1,
@@ -133,6 +138,11 @@ export async function* streamMutationBatchReview(
 				primedReview = null;
 				for await (const event of reviewPass) {
 					throwIfAborted(request.signal);
+					if (event.type === 'output_budget_recovery')
+						throw providerError(
+							'provider_semantic_reviewer_unexpected_recovery',
+							'permanent'
+						);
 					if (finished) throw providerError('provider_event_after_done', 'unknown');
 					if (event.type === 'text') continue;
 					if (event.type === 'tool_call') {
@@ -265,15 +275,20 @@ export async function* streamMutationBatchReview(
 export async function* streamReviewExhaustion(
 	usage: AgenticChatProviderUsageV1 | null,
 	state: ToolRoundStreamState,
-	heldToolNames: readonly string[]
+	heldToolNames: readonly string[],
+	reason: string,
+	findings: readonly MutationReviewFinding[] = []
 ): AsyncGenerator<AgenticChatProviderStepV1> {
 	try {
 		const saved = state.renderWriteReceiptFallback('I saved these changes:');
 		const attempted = describeAttemptedWrites(heldToolNames);
+		const details = renderMutationReviewFindings(findings);
 		yield state.textDelta(
-			saved
-				? `${saved}\n\nI couldn't complete the remaining changes: my safety check still found problems with ${attempted} after repeated revisions. No additional changes were saved.`
-				: `I couldn't complete ${attempted}: my safety check still found problems with it after repeated revisions. Nothing was saved. Try again, or tell me exactly what to change.`,
+			details
+				? `${saved ? `${saved}\n\n` : 'Nothing was saved.\n\n'}I stopped before making the rejected changes:\n\n${details}\n\nNo additional changes were saved.`
+				: saved
+					? `${saved}\n\nI couldn't complete the remaining changes: ${reason} No additional changes were saved.`
+					: `I couldn't complete ${attempted}: ${reason} Nothing was saved.`,
 			false
 		);
 		state.advance({ type: 'finish' });
@@ -366,6 +381,11 @@ export async function* streamTurnContractReview(
 				primedReview = null;
 				for await (const event of reviewPass) {
 					throwIfAborted(request.signal);
+					if (event.type === 'output_budget_recovery')
+						throw providerError(
+							'provider_semantic_reviewer_unexpected_recovery',
+							'permanent'
+						);
 					if (finished) throw providerError('provider_event_after_done', 'unknown');
 					if (event.type === 'text') continue;
 					if (event.type === 'tool_call') {

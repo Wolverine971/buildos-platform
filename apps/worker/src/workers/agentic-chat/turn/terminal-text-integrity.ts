@@ -8,7 +8,7 @@ import {
 	collectGatewayWriteIntentOps,
 	enforceMutationOutcomeIntegrity,
 	extractReviewedRequestExpectation,
-	resolveTurnContractOutcome
+	resolveRequestExpectationOutcome
 } from '@buildos/agentic-chat-runtime/loop';
 import { resolveReviewedTurnContractFromExecutions } from './reviewed-turn-contract';
 
@@ -130,7 +130,11 @@ function collectUnfulfilledOutcomeDisclosures(
 	finishedReason: string
 ): UnfulfilledMutationOutcomeDisclosureV1[] {
 	if (!contract) return [];
-	const resolution = resolveTurnContractOutcome({ contract, toolExecutions, finishedReason });
+	const resolution = resolveRequestExpectationOutcome({
+		contract,
+		toolExecutions,
+		finishedReason
+	});
 	if (resolution.fulfilled) return [];
 	const outcomesById = new Map(contract.outcomes.map((outcome) => [outcome.id, outcome]));
 	let titles: Map<string, string> | null = null;

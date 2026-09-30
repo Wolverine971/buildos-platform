@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime/context';
 import {
 	buildAgenticChatCompletionReceiptV1,
-	resolveTurnContractOutcome
+	resolveRequestExpectationOutcome
 } from '@buildos/agentic-chat-runtime/loop';
 import { contractSha256 } from '../provider/validation';
 import { resolveReviewedTurnContractFromExecutions } from './reviewed-turn-contract';
@@ -376,7 +376,7 @@ export class AgenticChatTurnFinalizer {
 				: null;
 		const turnOutcome =
 			status === 'completed'
-				? resolveTurnContractOutcome({
+				? resolveRequestExpectationOutcome({
 						contract: turnContract,
 						toolExecutions: terminalEventContext?.terminalContext.toolExecutions,
 						finishedReason

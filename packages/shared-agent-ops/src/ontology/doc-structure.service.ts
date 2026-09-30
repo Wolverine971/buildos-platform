@@ -13,7 +13,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, JsonObject } from '@buildos/shared-types';
 import type {
 	DocStructure,
 	DocTreeNode,
@@ -55,6 +55,8 @@ export interface ArchiveDocumentOptions {
 	mode?: ArchiveDocumentChildrenMode;
 	/** Version read with the target row before the archive command starts. */
 	expectedUpdatedAt: string;
+	/** Worker-only server facts bound to the independently reviewed batch. */
+	expectedReviewSnapshot?: JsonObject;
 }
 
 export interface ArchiveDocumentResult {
@@ -865,7 +867,9 @@ export async function archiveDocumentInTree(
 	}
 
 	const { data, error } = await supabase.rpc(
-		'onto_document_archive_atomic' as never,
+		(options.expectedReviewSnapshot
+			? 'onto_document_archive_reviewed_atomic'
+			: 'onto_document_archive_atomic') as never,
 		{
 			p_project_id: projectId,
 			p_document_id: docId,
@@ -874,10 +878,21 @@ export async function archiveDocumentInTree(
 			p_expected_structure_version: expectedStructureVersion,
 			p_next_structure: nextStructure,
 			p_changed_by: actorId ?? null,
-			p_children_updates: childrenUpdates
+			p_children_updates: childrenUpdates,
+			...(options.expectedReviewSnapshot
+				? {
+						p_archive_mode: archiveMode,
+						p_expected_review_snapshot: options.expectedReviewSnapshot
+					}
+				: {})
 		} as never
 	);
 
+	if (error?.message.includes('document_archive_review_changed')) {
+		throw new Error(
+			'Document archive review changed: preview and review the current tree and public pages again'
+		);
+	}
 	if (error?.message.includes('document_archive_version_conflict')) {
 		throw new Error('Document version conflict: the document changed before archive');
 	}

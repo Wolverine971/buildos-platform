@@ -1330,7 +1330,8 @@ const SAFE_WRITE_TOOLS_BY_OUTCOME: Partial<
 		update: ['update_onto_task'],
 		move: ['move_onto_task'],
 		assign: ['update_onto_task'],
-		complete: ['update_onto_task']
+		complete: ['update_onto_task'],
+		archive: ['update_onto_task']
 	},
 	document: {
 		create: ['create_onto_document'],
@@ -1346,7 +1347,11 @@ const SAFE_WRITE_TOOLS_BY_OUTCOME: Partial<
 		schedule: ['create_calendar_event', 'update_calendar_event']
 	},
 	calendar: { set: ['set_project_calendar'], schedule: ['set_project_calendar'] },
-	goal: { create: ['create_onto_goal'], update: ['update_onto_goal'] },
+	goal: {
+		create: ['create_onto_goal'],
+		update: ['update_onto_goal'],
+		archive: ['update_onto_goal']
+	},
 	plan: { create: ['create_onto_plan'], update: ['update_onto_plan'] },
 	milestone: { create: ['create_onto_milestone'], update: ['update_onto_milestone'] },
 	risk: { create: ['create_onto_risk'], update: ['update_onto_risk'] },
@@ -1385,8 +1390,19 @@ function actionMatches(expected: TurnContractAction, entry: WriteLedgerEntry): b
 			)
 		);
 	}
-	if (expected === 'complete') return ['done', 'completed'].includes(entry.stateKey ?? '');
-	if (expected === 'archive') return ['archived', 'cancelled'].includes(entry.stateKey ?? '');
+	if (expected === 'complete')
+		return Boolean(
+			entry.changedFields?.includes('state_key') &&
+				['done', 'completed'].includes(entry.stateKey ?? '')
+		);
+	if (expected === 'archive')
+		return (
+			entry.changedValues?.archived === 'true' ||
+			Boolean(
+				entry.changedFields?.includes('state_key') &&
+					['archived', 'cancelled'].includes(entry.stateKey ?? '')
+			)
+		);
 	if (expected === 'restore') {
 		return Boolean(entry.stateKey && !['archived', 'cancelled'].includes(entry.stateKey));
 	}
@@ -1677,13 +1693,23 @@ export function resolveTurnContractOutcome(params: {
 		};
 	}
 	const ledger = buildWriteLedger(params.toolExecutions ?? []);
-	const bindings = bindTurnContractLabels(contract, ledger);
+	return resolveTurnContractOutcomeFromLedger(contract, ledger, params.finishedReason);
+}
+
+/** Completion evidence only; this never grants permission to execute a write. */
+export function resolveTurnContractOutcomeFromLedger(
+	contract: TurnContract,
+	ledger: WriteLedgerEntry[],
+	finishedReason?: string | null,
+	labelBindings?: TurnContractLabelBindings
+): TurnContractResolution {
+	const bindings = labelBindings ?? bindTurnContractLabels(contract, ledger);
 	const outcomes = contract.outcomes.map((outcome) => resolveOutcome(outcome, ledger, bindings));
 	const fulfilled = outcomes.every((outcome) => outcome.fulfilled);
 	return {
 		status: fulfilled
 			? 'fulfilled'
-			: params.finishedReason === 'supervisor_question'
+			: finishedReason === 'supervisor_question'
 				? 'blocked'
 				: 'unfulfilled',
 		fulfilled,

@@ -197,7 +197,14 @@ export function buildRecordFix(input: {
 	if (!raws.length) return { rejected: 'no_operation' };
 	if (raws.length > 1) return { rejected: 'invalid_shape' };
 	const raw = asRecord(raws[0]);
-	const args = asRecord(raw?.args);
+	// Models sometimes write the arguments flat instead of under "args".
+	const args =
+		asRecord(raw?.args) ??
+		(raw
+			? Object.fromEntries(
+					Object.entries(raw).filter(([key]) => key !== 'tool' && key !== 'label')
+				)
+			: null);
 	if (!args) return { rejected: 'invalid_shape' };
 
 	if (raw?.tool === 'update_onto_goal') {

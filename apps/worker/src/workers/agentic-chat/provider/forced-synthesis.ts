@@ -15,6 +15,7 @@ import {
 import type { AgenticChatProviderCapacity } from './provider-capacity';
 import { canonicalError, canonicalFinishedReason, normalizeUsage, providerError } from './protocol';
 import { throwIfAborted } from '../shared/abortable-deadline';
+import { buildOutputBudgetRecoveryProgress } from './output-budget';
 import { appendSystemInstruction, combineUsage, forceToolFreeRequest } from './request-builders';
 import {
 	type ClarificationRender,
@@ -139,6 +140,10 @@ export async function* streamForcedSynthesis(
 			let passUsage: AgenticChatProviderUsageV1 | null = null;
 
 			for await (const event of context.providerPass(currentRequest, state)) {
+				if (event.type === 'output_budget_recovery') {
+					yield buildOutputBudgetRecoveryProgress(currentRequest, event.providerAttempt);
+					continue;
+				}
 				throwIfAborted(currentRequest.signal);
 				if (finished) throw providerError('provider_event_after_done', 'unknown');
 				if (event.type === 'text') {
@@ -154,6 +159,22 @@ export async function* streamForcedSynthesis(
 					continue;
 				}
 				if (event.type === 'error') {
+					if (event.cause === 'output_budget_exhausted') {
+						yield state.textDelta(
+							clarification
+								? renderClarificationText(clarification)
+								: state.renderOutputBudgetFailure(),
+							false
+						);
+						context.ports.capacity.markAvailable(request.turnRunId);
+						state.advance({ type: 'finish' });
+						yield {
+							type: 'finish',
+							finishedReason: 'output_budget_exhausted',
+							usage: accumulatedUsage
+						};
+						return;
+					}
 					if (event.retryable) {
 						context.ports.capacity.markTemporarilyUnavailable(
 							request.turnRunId,

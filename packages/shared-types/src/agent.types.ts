@@ -54,6 +54,8 @@ export interface LastTurnContext {
 
 	// Tools/data accessed in last turn
 	data_accessed: string[];
+	/** Prior partial cleanup scope and receipts. Client-provided recall only, never write authority. */
+	cleanup?: Json;
 
 	// Strategy used in last turn
 	strategy_used?: 'planner_stream' | 'ask_clarifying_questions' | 'project_creation';

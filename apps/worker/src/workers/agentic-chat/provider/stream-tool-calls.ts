@@ -24,7 +24,7 @@ export type CompletedProviderToolCall = {
 	arguments: JsonObject;
 	/** Canonical domain-only arguments used by validation, review, and adapters. */
 	canonicalArguments: string;
-	/** Exact canonical provider arguments, including worker scheduling sidecars. */
+	/** Canonical provider arguments plus scheduling sidecars and any server archive preview bound before review. */
 	canonicalProviderArguments: string;
 	scheduling?: AgenticChatProviderToolSchedulingV1;
 	decidedBy?: AgenticChatControlDecisionAuthorV1;

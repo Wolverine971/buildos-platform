@@ -128,7 +128,10 @@ export function assessDirectWriteBatch(
 	}
 	if (
 		mutationCalls.some(
-			(call) => reviewedAgenticChatMutationSpecV1(call.name)?.directWriteClass !== 'ordinary'
+			(call) =>
+				reviewedAgenticChatMutationSpecV1(call.name)?.directWriteClass !== 'ordinary' ||
+				call.arguments.archived === true ||
+				call.arguments.state_key === 'archived'
 		)
 	) {
 		return {

@@ -1,7 +1,12 @@
 // packages/agentic-chat-runtime/src/loop/completion-receipt.ts
 import type { FastToolExecution } from './shared';
 import { isWriteLedgerToolExecution, didGatewayExecSucceed } from './tool-classification';
-import { extractReviewedRequestExpectation } from './request-expectation';
+import {
+	extractReviewedRequestExpectation,
+	resolveRequestExpectationOutcome
+} from './request-expectation';
+import { buildCleanupManifest, type CleanupManifest } from './cleanup-manifest';
+import { extractLastMutationReviewFindings, type MutationReviewFinding } from './review-findings';
 import {
 	type TurnContract,
 	type TurnContractOutcomeResult,
@@ -68,6 +73,9 @@ export type AgenticChatCompletionReceiptV1 = {
 	expectation: 'turn_contract' | 'reviewed_request' | 'none';
 	/** Frozen before writes by the first batch reviewer; never inferred from saved writes. */
 	requestExpectation?: TurnContract;
+	/** Verified no-ops remain distinct from new saved effects. */
+	cleanupManifest?: CleanupManifest;
+	reviewFindings?: MutationReviewFinding[];
 	stages: AgenticChatCompletionStageV1[];
 	/** Successful writes that ran outside any approved stage (simple direct writes). */
 	unreviewedWriteCallIds: string[];
@@ -129,14 +137,24 @@ export function buildAgenticChatCompletionReceiptV1(
 	if (open) stages.push(finishStage(open));
 
 	const requestExpectation = extractReviewedRequestExpectation(executions);
+	const reviewFindings =
+		input.finishedReason === 'semantic_review_failed'
+			? extractLastMutationReviewFindings(executions)
+			: [];
 	// An implicit contract describes attempted writes, not the user's request.
 	const declaredContract = input.contract?.source !== 'implicit' ? input.contract : null;
 	const expectation = requestExpectation ?? declaredContract;
-	const resolution = resolveTurnContractOutcome({
-		contract: expectation,
-		toolExecutions: executions,
-		finishedReason: input.finishedReason
-	});
+	const resolution = expectation
+		? resolveRequestExpectationOutcome({
+				contract: expectation,
+				toolExecutions: executions,
+				finishedReason: input.finishedReason
+			})
+		: resolveTurnContractOutcome({
+				contract: null,
+				toolExecutions: executions,
+				finishedReason: input.finishedReason
+			});
 	const reasons: string[] = [];
 	let disposition: AgenticChatCompletionRequestDispositionV1;
 	const partialFailureClass = input.partialFailureClass ?? null;
@@ -185,6 +203,17 @@ export function buildAgenticChatCompletionReceiptV1(
 				? 'turn_contract'
 				: 'none',
 		...(requestExpectation ? { requestExpectation } : {}),
+		...(reviewFindings.length ? { reviewFindings } : {}),
+		...(expectation
+			? {
+					cleanupManifest: buildCleanupManifest({
+						contract: expectation,
+						toolExecutions: executions,
+						finishedReason: input.finishedReason,
+						partialFailureClass: input.partialFailureClass
+					})
+				}
+			: {}),
 		stages,
 		unreviewedWriteCallIds,
 		failedUnreviewedWriteCallIds,

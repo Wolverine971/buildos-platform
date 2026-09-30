@@ -20,6 +20,11 @@ import { AgenticChatProviderNetworkError } from './errors';
 import { isRetryableStatus, orderedProviderSlug, responseError } from './retry';
 import { createStableAgenticChatProviderUsageLogIdV1 } from './usage';
 import {
+	isActingOutputPass,
+	outputBudgetInstruction,
+	OUTPUT_RECOVERY_TIMEOUT_MS
+} from '../output-budget';
+import {
 	abortableProviderRead,
 	attemptTimeoutMs,
 	createAttemptSignal,
@@ -96,7 +101,12 @@ export async function openProviderRoute(
 			)
 		: null;
 	onPromptDump(promptDump);
-	const timeoutMs = attemptTimeoutMs(settings.requestTimeoutMs, input);
+	const timeoutMs = attemptTimeoutMs(
+		input.outputBudgetRecovery
+			? Math.min(settings.requestTimeoutMs, OUTPUT_RECOVERY_TIMEOUT_MS)
+			: settings.requestTimeoutMs,
+		input
+	);
 	// The first header cutoff leaves a retry. On the buffer's final attempt,
 	// allow a slower connection instead of spending that last chance at the
 	// same speculative cutoff. The existing attempt/turn budget still wins.
@@ -217,6 +227,13 @@ function buildProviderRequestBody(
 	route: AgenticChatOpenAiCompatibleRouteV1,
 	input: ClientInput
 ): Record<string, unknown> {
+	const messages = input.messages.map(copyMessage);
+	if (isActingOutputPass(input)) {
+		messages.push({
+			role: 'system',
+			content: outputBudgetInstruction(sentMaxTokens(settings.maxTokens, input))
+		});
+	}
 	const toolSurface =
 		input.toolChoice !== 'none'
 			? { tools: input.tools.map(copyTool), tool_choice: input.toolChoice }
@@ -237,7 +254,7 @@ function buildProviderRequestBody(
 		return buildOpenRouterChatCompletionBody({
 			model: route.model,
 			models: route.fallbackModels ? [...route.fallbackModels] : undefined,
-			messages: input.messages.map(copyMessage),
+			messages,
 			...toolSurface,
 			temperature: settings.temperature,
 			max_tokens: sentMaxTokens(settings.maxTokens, input),
@@ -279,7 +296,7 @@ function buildProviderRequestBody(
 	}
 	return {
 		model: route.model,
-		messages: input.messages.map(copyMessage),
+		messages,
 		...toolSurface,
 		temperature: settings.temperature,
 		max_tokens: sentMaxTokens(settings.maxTokens, input),

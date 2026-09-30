@@ -80,7 +80,9 @@ function jevResponse(probabilities: Record<string, number>, status = 200) {
 			id: 'gen-dec-1',
 			model: 'typesafe/jev-1.13-20260917',
 			answers: Object.fromEntries(
-				Object.entries(probabilities).map(([name, noul]) => [name, { type: 'noul', noul }])
+				Object.entries({ current_turn_write_commission: 0, ...probabilities }).map(
+					([name, noul]) => [name, { type: 'noul', noul }]
+				)
 			),
 			usage: { input_tokens: 1_200, output_tokens: 40, cost: 0.0003 }
 		}),
@@ -182,7 +184,7 @@ describe('buildJevToolSelectionBody', () => {
 			{ role: 'assistant', content: 'Earlier reply' }
 		]);
 		expect(JSON.stringify(body)).not.toContain('Private system prompt');
-		expect(Object.keys(body.questions)).toEqual(SURFACE);
+		expect(Object.keys(body.questions)).toEqual(['current_turn_write_commission', ...SURFACE]);
 		expect(body.provider).toEqual({
 			allow_fallbacks: false,
 			data_collection: 'deny',
@@ -231,15 +233,16 @@ describe('JevToolSelector', () => {
 				reason: 'classified',
 				threshold: 0.3,
 				selectedToolNames: ['get_project_overview'],
-				probabilities: OVERVIEW_ONLY,
+				probabilities: { current_turn_write_commission: 0, ...OVERVIEW_ONLY },
 				costUsd: 0.0003
 			})
 		]);
 	});
 
-	it('marks a write commission only from mutation-tool scores at the commission threshold', async () => {
+	it('requires both a current write commission and a relevant mutation tool', async () => {
 		const surface = [...SURFACE, 'update_onto_task'].map(tool);
 		const scores = {
+			current_turn_write_commission: JEV_WRITE_COMMISSION_THRESHOLD,
 			get_project_overview: 0.2,
 			list_onto_tasks: 0.9,
 			web_search: 0.97,
@@ -256,6 +259,18 @@ describe('JevToolSelector', () => {
 		// mutation tools count, and the message text is never consulted.
 		expect(selected.commissionedWriteToolNames).toEqual(['update_onto_task']);
 		expect(receipts[0]?.commissionedWriteToolNames).toEqual(['update_onto_task']);
+		const readiness = selector(
+			vi.fn(async () =>
+				jevResponse({
+					...scores,
+					current_turn_write_commission: 0.1,
+					update_onto_task: 0.99
+				})
+			) as unknown as typeof fetch
+		);
+		const readOnly = await readiness.instance.select(request({ tools: surface }));
+		expect(readOnly.commissionedWriteToolNames).toBeUndefined();
+		expect(readOnly.tools.some((tool) => tool.function.name === 'update_onto_task')).toBe(true);
 
 		const below = selector(
 			vi.fn(async () =>
@@ -265,7 +280,11 @@ describe('JevToolSelector', () => {
 		const unselected = await below.instance.select(request({ tools: surface }));
 		expect(unselected.commissionedWriteToolNames).toBeUndefined();
 		expect(
-			commissionedWriteToolNamesFrom(surface, { update_onto_task: 0.8, web_search: 0.99 })
+			commissionedWriteToolNamesFrom(surface, {
+				current_turn_write_commission: 0.8,
+				update_onto_task: 0.8,
+				web_search: 0.99
+			})
 		).toEqual(['update_onto_task']);
 	});
 
@@ -333,7 +352,7 @@ describe('JevToolSelector', () => {
 				turnRunId: TURN_RUN_ID,
 				metadata: expect.objectContaining({
 					passRole: 'tool_selection',
-					probabilities: OVERVIEW_ONLY
+					probabilities: { current_turn_write_commission: 0, ...OVERVIEW_ONLY }
 				})
 			}),
 			expect.any(AbortSignal)

@@ -1,4 +1,10 @@
 // apps/worker/tests/agenticChatOpenRouterClient.test.ts
+import { streamBufferedProviderPass } from '../src/workers/agentic-chat/provider/provider-pass';
+import {
+	outputBudgetInstruction,
+	outputBudgetSignal,
+	reportedReasoningTokens
+} from '../src/workers/agentic-chat/provider/output-budget';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DOCUMENT_READ_TOOL } from '@buildos/agentic-chat-runtime/specialists';
 import { QWEN_38_27B_FREE_MODEL } from '@buildos/smart-llm';
@@ -116,6 +122,7 @@ function harness(
 	routes = [route()],
 	options: {
 		maxTokens?: number;
+		requestTimeoutMs?: number;
 		/** Settles each lifecycle observation; defaults to immediate success. */
 		settleObservation?: (observation: AgenticChatExecutionObservationInputV1) => Promise<void>;
 		onExecutionObservationError?: (error: unknown) => void;
@@ -147,7 +154,7 @@ function harness(
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Agentic Chat Worker',
 			fetchImpl,
-			requestTimeoutMs: 10_000,
+			requestTimeoutMs: options.requestTimeoutMs ?? 10_000,
 			...(options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens })
 		}
 	);
@@ -412,7 +419,8 @@ describe('AgenticChatOpenRouterClient', () => {
 			max_tokens: AGENTIC_CHAT_ACTING_MAX_TOKENS,
 			messages: [
 				{ role: 'system', content: 'System prompt' },
-				{ role: 'user', content: 'Current request' }
+				{ role: 'user', content: 'Current request' },
+				{ role: 'system', content: outputBudgetInstruction(12_000) }
 			],
 			tool_choice: 'none',
 			stream: true,
@@ -464,7 +472,10 @@ describe('AgenticChatOpenRouterClient', () => {
 					provider_attempt: 1,
 					attempt_kind: 'primary',
 					route_id: 'openrouter',
-					model_requested: 'provider/primary'
+					model_requested: 'provider/primary',
+					max_output_tokens: 12000,
+					reasoning_effort: 'default',
+					output_budget_recovery: false
 				}
 			}),
 			expect.objectContaining({
@@ -614,7 +625,7 @@ describe('AgenticChatOpenRouterClient', () => {
 			})
 		);
 		const body = JSON.parse(String(vi.mocked(fetchImpl).mock.calls[0]?.[1]?.body));
-		expect(body.messages).toEqual([
+		expect(body.messages.slice(0, 2)).toEqual([
 			{ role: 'system', content: 'System prompt' },
 			{
 				role: 'user',
@@ -2298,7 +2309,14 @@ describe('max-token truncation detection', () => {
 		const { client } = harness(fetchImpl as unknown as typeof fetch, [route()], {
 			maxTokens: 1_200
 		});
-		const events = await collect(client.stream({ ...input(), tools: [], toolChoice: 'none' }));
+		const events = await collect(
+			client.stream({
+				...input(),
+				passRole: 'contract_review',
+				tools: [],
+				toolChoice: 'none'
+			})
+		);
 		const done = events.find((event) => event.type === 'done');
 		expect(done).toMatchObject({ type: 'done', finishedReason: 'length' });
 	});
@@ -2316,7 +2334,14 @@ describe('max-token truncation detection', () => {
 		const { client } = harness(fetchImpl as unknown as typeof fetch, [route()], {
 			maxTokens: 1_200
 		});
-		const events = await collect(client.stream({ ...input(), tools: [], toolChoice: 'none' }));
+		const events = await collect(
+			client.stream({
+				...input(),
+				passRole: 'contract_review',
+				tools: [],
+				toolChoice: 'none'
+			})
+		);
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			finishedReason: 'tool_calls'
 		});
@@ -2329,7 +2354,14 @@ describe('max-token truncation detection', () => {
 			[route()],
 			{ maxTokens: 1_200 }
 		);
-		await collect(client.stream({ ...input(), tools: [], toolChoice: 'none' }));
+		await collect(
+			client.stream({
+				...input(),
+				passRole: 'contract_review',
+				tools: [],
+				toolChoice: 'none'
+			})
+		);
 		const ended = lifecycleObservations.find(
 			(observation) => observation.eventType === 'provider_attempt_ended'
 		);
@@ -2468,6 +2500,9 @@ describe('rejected tool-call receipt', () => {
 		expect(JSON.stringify(payload)).not.toContain('do-not-retain');
 		expect(Object.keys(payload).sort()).toEqual(
 			[
+				'max_output_tokens',
+				'reasoning_effort',
+				'output_budget_recovery',
 				'advertised_tool_count',
 				'attempt_kind',
 				'duration_ms',
@@ -3153,4 +3188,341 @@ describe('per-turn route health', () => {
 		expect(requests[2]?.provider).toMatchObject({ ignore: ['deepinfra'] });
 		expect(requests[2]?.provider).not.toMatchObject({ order: expect.anything() });
 	});
+});
+
+describe('acting output budget recovery', () => {
+	function completion(tokens: number, reasoning: number, finish = 'stop', text = '') {
+		return sseResponse([
+			JSON.stringify({
+				provider: 'DeepInfra',
+				model: 'provider/primary',
+				choices: [
+					{
+						delta: text ? { content: text } : { reasoning: 'private reasoning' },
+						finish_reason: finish
+					}
+				],
+				usage: {
+					prompt_tokens: 100,
+					completion_tokens: tokens,
+					total_tokens: 100 + tokens,
+					completion_tokens_details: { reasoning_tokens: reasoning }
+				}
+			}),
+			'[DONE]'
+		]);
+	}
+	it.each([
+		[12000, 12000, 'length'],
+		[12000, 10733, 'tool_calls']
+	])(
+		'retries cap %s/%s/%s once without reasoning and does not blacklist a healthy provider',
+		async (tokens, reasoning, finish) => {
+			const bodies: Record<string, any>[] = [];
+			const test = harness(
+				vi.fn(async (_url, init) => {
+					bodies.push(JSON.parse(String(init?.body)));
+					return bodies.length === 1
+						? completion(tokens, reasoning, finish, 'Discard this partial claim.')
+						: completion(100, 0, 'stop', 'Recovered answer.');
+				}) as typeof fetch
+			);
+			const policy = { pressure: vi.fn(), claimRecovery: vi.fn(() => true) };
+			const capacity = { markTemporarilyUnavailable: vi.fn() };
+			const events = await collect(
+				streamBufferedProviderPass(input(), test.client, capacity, 2000, policy)
+			);
+			expect(events.filter((event) => event.type === 'text')).toEqual([
+				{ type: 'text', content: 'Recovered answer.' }
+			]);
+			expect(bodies).toHaveLength(2);
+			expect(bodies[1]).toMatchObject({
+				model: 'provider/primary',
+				max_tokens: 12000,
+				reasoning: { enabled: false }
+			});
+			expect(bodies[1]!.provider.ignore).toBeUndefined();
+			expect(bodies[1]!.provider.order).toEqual(['deepinfra']);
+			expect(policy.claimRecovery).toHaveBeenCalledTimes(1);
+			expect(capacity.markTemporarilyUnavailable).not.toHaveBeenCalled();
+			const ended = test.lifecycleObservations.filter(
+				(entry) => entry.eventType === 'provider_attempt_ended'
+			);
+			expect(ended).toHaveLength(2);
+			expect(ended[0]!.payload).toMatchObject({
+				error_class: 'output_budget_exhausted',
+				output_budget: {
+					kind: 'exhausted',
+					completionTokens: tokens,
+					reasoningTokens: reasoning
+				}
+			});
+			expect(ended[1]!.payload).toMatchObject({
+				status: 'success',
+				reasoning_effort: 'none',
+				output_budget_recovery: true
+			});
+			expect(test.observations.map((entry) => entry.completionTokens)).toEqual([tokens, 100]);
+		}
+	);
+	it('discards a valid mutation prefix together with capped partial JSON before review or execution', async () => {
+		let attempt = 0;
+		const tool = {
+			type: 'function' as const,
+			function: {
+				name: 'update_onto_task',
+				description: 'Archive a task',
+				parameters: {
+					type: 'object',
+					properties: { task_id: { type: 'string' }, archived: { type: 'boolean' } }
+				}
+			}
+		};
+		const test = harness(
+			vi.fn(async () => {
+				attempt++;
+				const call = (id: string, index: number, args: string) => ({
+					index,
+					id,
+					type: 'function',
+					function: { name: tool.function.name, arguments: args }
+				});
+				return sseResponse([
+					JSON.stringify({
+						choices: [
+							{
+								delta: {
+									tool_calls:
+										attempt === 1
+											? [
+													call(
+														'discard-valid-prefix',
+														0,
+														'{"task_id":"one","archived":true}'
+													),
+													call('discard-partial', 1, '{"task_id":"tw')
+												]
+											: [
+													call(
+														'recovered-stage',
+														0,
+														'{"task_id":"one","archived":true}'
+													)
+												]
+								}
+							}
+						]
+					}),
+					JSON.stringify({
+						choices: [
+							{ delta: {}, finish_reason: attempt === 1 ? 'length' : 'tool_calls' }
+						],
+						usage: {
+							prompt_tokens: 100,
+							completion_tokens: attempt === 1 ? 12000 : 100,
+							total_tokens: attempt === 1 ? 12100 : 200
+						}
+					}),
+					'[DONE]'
+				]);
+			})
+		);
+		const events = await collect(
+			streamBufferedProviderPass(
+				{ ...input(), tools: [tool], toolChoice: 'auto' },
+				test.client,
+				{ markTemporarilyUnavailable: vi.fn() },
+				2000
+			)
+		);
+		expect(JSON.stringify(events)).not.toContain('discard-');
+		expect(JSON.stringify(events)).toContain('recovered-stage');
+		expect(events.at(-1)).toMatchObject({ type: 'done', finishedReason: 'tool_calls' });
+	});
+
+	it('keeps a complete reasoning-heavy pass and signals pressure for subsequent actor passes', async () => {
+		const test = harness(vi.fn(async () => completion(8066, 7991, 'stop', 'Complete answer.')));
+		const policy = { pressure: vi.fn(), claimRecovery: vi.fn(() => true) };
+		const events = await collect(
+			streamBufferedProviderPass(
+				input(),
+				test.client,
+				{ markTemporarilyUnavailable: vi.fn() },
+				2000,
+				policy
+			)
+		);
+		expect(events.at(-1)).toMatchObject({ type: 'done', outputBudget: { kind: 'pressure' } });
+		expect(policy.pressure).toHaveBeenCalledOnce();
+		expect(policy.claimRecovery).not.toHaveBeenCalled();
+		expect(
+			outputBudgetSignal(12000, 'stop', { completionTokens: 10000, reasoningTokens: 0 })?.kind
+		).toBe('pressure');
+		expect(outputBudgetSignal(12000, 'stop', null)).toBeUndefined();
+		expect(reportedReasoningTokens({ completion_tokens: 10000 })).toBeUndefined();
+		expect(
+			reportedReasoningTokens({ completion_tokens_details: { reasoning_tokens: 0 } })
+		).toBe(0);
+		expect(outputBudgetSignal(12000, 'length', null)).toMatchObject({
+			kind: 'exhausted',
+			completionTokens: null,
+			reasoningTokens: null
+		});
+	});
+	it.each(['length', 'empty'])(
+		'stops after a %s recovery without releasing truncated text or chaining an empty-reply retry',
+		async (failure) => {
+			let attempt = 0;
+			const fetchImpl = vi.fn(async () =>
+				++attempt === 1 || failure === 'length'
+					? completion(12000, 12000, 'length', 'Partial.')
+					: completion(12, 0)
+			);
+			const test = harness(fetchImpl);
+			const events = await collect(
+				streamBufferedProviderPass(
+					input(),
+					test.client,
+					{ markTemporarilyUnavailable: vi.fn() },
+					2000
+				)
+			);
+			expect(fetchImpl).toHaveBeenCalledTimes(2);
+			expect(events).toEqual([
+				expect.objectContaining({
+					type: 'error',
+					cause: 'output_budget_exhausted',
+					retryable: false
+				})
+			]);
+		}
+	);
+	it('does not recover again when the turn already used its allowance', async () => {
+		const fetchImpl = vi.fn(async () => completion(12000, 12000, 'length'));
+		const test = harness(fetchImpl);
+		const events = await collect(
+			streamBufferedProviderPass(
+				input(),
+				test.client,
+				{ markTemporarilyUnavailable: vi.fn() },
+				2000,
+				{ pressure: vi.fn(), claimRecovery: () => false }
+			)
+		);
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(events.at(-1)).toMatchObject({
+			type: 'error',
+			cause: 'output_budget_exhausted',
+			retryable: false
+		});
+	});
+	it.each([false, true])(
+		'bounds recovery after headers, counting reasoning as progress (%s)',
+		async (reasoningProgress) => {
+			vi.useFakeTimers();
+			const fetchImpl = vi.fn(
+				async (_url, init) =>
+					new Response(
+						new ReadableStream<Uint8Array>({
+							start(controller) {
+								if (reasoningProgress)
+									controller.enqueue(
+										new TextEncoder().encode(
+											'data: ' +
+												JSON.stringify({
+													choices: [
+														{
+															delta: {
+																reasoning: 'private reasoning'
+															}
+														}
+													]
+												}) +
+												'\n\n'
+										)
+									);
+								init?.signal?.addEventListener(
+									'abort',
+									() => controller.error(init.signal?.reason),
+									{ once: true }
+								);
+							}
+						}),
+						{ headers: { 'Content-Type': 'text/event-stream' } }
+					)
+			) as typeof fetch;
+			const test = harness(fetchImpl, [route()], { requestTimeoutMs: 90000 });
+			const pending = collect(
+				streamBufferedProviderPass(
+					{ ...input(), outputBudgetRecovery: true, reasoningEffort: 'none' },
+					test.client,
+					{ markTemporarilyUnavailable: vi.fn() },
+					2000
+				)
+			);
+			let settled = false;
+			void pending.then(() => {
+				settled = true;
+			});
+			const deadline = reasoningProgress ? 45000 : 15000;
+			await vi.advanceTimersByTimeAsync(deadline - 1);
+			expect(settled).toBe(false);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(await pending).toEqual([
+				expect.objectContaining({
+					type: 'error',
+					cause: 'output_budget_exhausted',
+					retryable: false
+				})
+			]);
+			expect(fetchImpl).toHaveBeenCalledOnce();
+			expect(
+				test.lifecycleObservations.filter(
+					(entry) => entry.eventType === 'provider_attempt_ended'
+				)
+			).toHaveLength(1);
+		}
+	);
+	it.each([true, false])(
+		'does not release incomplete calls from a compatible recovery client (terminal=%s)',
+		async (terminal) => {
+			let attempts = 0;
+			const client = {
+				async *stream() {
+					if (++attempts === 1) {
+						yield { type: 'done' as const, finishedReason: 'length' };
+						return;
+					}
+					yield {
+						type: 'tool_call' as const,
+						toolCall: [
+							{
+								index: 0,
+								id: 'incomplete',
+								type: 'function',
+								function: { name: 'update_onto_task', arguments: '{"task_id":' }
+							}
+						]
+					};
+					if (terminal) yield { type: 'done' as const, finishedReason: 'tool_calls' };
+				}
+			};
+			const events = await collect(
+				streamBufferedProviderPass(
+					{ ...input(), toolChoice: 'auto' },
+					client,
+					{ markTemporarilyUnavailable: vi.fn() },
+					2000
+				)
+			);
+			expect(events).toEqual([
+				expect.objectContaining({
+					type: 'error',
+					cause: 'output_budget_exhausted',
+					retryable: false
+				})
+			]);
+			expect(attempts).toBe(2);
+		}
+	);
 });

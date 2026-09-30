@@ -1,4 +1,9 @@
 // apps/worker/tests/agenticChatWriteRouting.test.ts
+import { parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
+import {
+	contractSha256,
+	validateApprovedTurnContractMutations
+} from '../src/workers/agentic-chat/provider/validation';
 import { describe, expect, it } from 'vitest';
 import type { JsonObject } from '@buildos/shared-types';
 import type { CompletedProviderToolCall } from '../src/workers/agentic-chat/provider/stream-tool-calls';
@@ -33,6 +38,46 @@ function call(
 }
 
 describe('direct write routing', () => {
+	it.each(['task', 'goal'])(
+		'authorizes only archive effects under an approved %s archive contract',
+		(kind) => {
+			const id = 'a0000000-0000-4000-8000-000000000001';
+			const contract = parseDeclaredTurnContract({
+				outcomes: [
+					{
+						id: 'archive',
+						action: 'archive',
+						entity_kind: kind,
+						target_ids: [id],
+						minimum_successful_effects: 1
+					}
+				]
+			})!;
+			const sha = contractSha256(contract);
+			expect(
+				validateApprovedTurnContractMutations(
+					[call(`update_onto_${kind}`, { [`${kind}_id`]: id, archived: true })],
+					contract,
+					sha
+				)
+			).toEqual([]);
+			expect(
+				validateApprovedTurnContractMutations(
+					[call(`update_onto_${kind}`, { [`${kind}_id`]: id, state_key: 'done' })],
+					contract,
+					sha
+				)
+			).toHaveLength(1);
+		}
+	);
+	it.each(['task', 'goal'])('reviews archiving even a focused %s', (kind) => {
+		expect(
+			assessDirectWriteBatch(
+				[call(`update_onto_${kind}`, { [`${kind}_id`]: '1', archived: true })],
+				{ contextType: kind, entityId: '1', projectId: '2' }
+			)
+		).toMatchObject({ kind: 'contract_required', reason: 'operation_requires_contract' });
+	});
 	it('also reviews a source-preservation create that omits the entire content argument', () => {
 		expect(
 			assessDirectWriteBatch(

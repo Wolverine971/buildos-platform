@@ -406,6 +406,20 @@ export function renderDirectWriteReceipt(ledger: readonly WriteLedgerEntry[]): s
 	].join('\n');
 }
 
+/** A failed model pass cannot establish whether an earlier unconfirmed write committed. */
+export function renderOutputBudgetFailure(
+	ledger: readonly WriteLedgerEntry[],
+	unfinished: readonly string[]
+): string {
+	const receipt = renderWriteReceiptFallback(ledger, unfinished, 'These changes were saved:');
+	if (receipt)
+		return `${receipt}\n\nThe generation limit prevented the next batch from finishing.`;
+	const savedStatus = ledger.length
+		? 'No saved changes are confirmed. Check the affected records before retrying.'
+		: 'Nothing was saved.';
+	return `${savedStatus} The generation limit prevented this request from finishing. No further work is running.`;
+}
+
 /** Last-resort user receipt, rendered only from this turn's durable ledger. */
 export function renderWriteReceiptFallback(
 	ledger: readonly WriteLedgerEntry[],

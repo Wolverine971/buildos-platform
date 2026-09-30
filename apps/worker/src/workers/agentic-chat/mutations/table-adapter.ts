@@ -16,7 +16,9 @@
 import { createWorkerTaskSyncPort } from '@buildos/shared-agent-ops/calendar/worker-task-event-mutation-port';
 import {
 	type TaskSyncPort,
-	runGatewayWriteOp
+	runGatewayWriteOp,
+	runReviewedDocumentArchive,
+	isDocumentArchiveState
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	type AtomicTaskMoveInput,
@@ -92,6 +94,7 @@ export { AGENTIC_CHAT_TABLE_MUTATION_TOOL_NAMES_V1 };
  */
 export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolPortV1 {
 	private readonly runGateway: GatewayRunner;
+	private readonly archiveDocument: typeof runReviewedDocumentArchive;
 	private readonly moveTask: TaskMoveRunner;
 	private readonly pingEntity: EntityPingRunner;
 	private readonly injectedTaskSync: TaskSyncPort | undefined;
@@ -103,6 +106,7 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		private readonly client: SupabaseClient<Database>,
 		options: {
 			runGateway?: GatewayRunner;
+			archiveDocument?: typeof runReviewedDocumentArchive;
 			taskSync?: TaskSyncPort;
 			moveTask?: TaskMoveRunner;
 			pingEntity?: EntityPingRunner;
@@ -110,6 +114,7 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		} = {}
 	) {
 		this.runGateway = options.runGateway ?? runGatewayWriteOp;
+		this.archiveDocument = options.archiveDocument ?? runReviewedDocumentArchive;
 		this.moveTask = options.moveTask ?? moveOntoTaskAtomic;
 		this.pingEntity = options.pingEntity ?? pingOntoEntity;
 		this.injectedTaskSync = options.taskSync;
@@ -224,7 +229,12 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		const op = operationName as BuildosAgentAllowedOp;
 		let result: Awaited<ReturnType<GatewayRunner>>;
 		try {
-			result = await this.runGateway({
+			const runner =
+				toolName === 'update_onto_document' &&
+				isDocumentArchiveState(context.args.state_key)
+					? this.archiveDocument
+					: this.runGateway;
+			result = await runner({
 				admin: this.client,
 				userId: input.executionInput.claim.userId,
 				scope: {

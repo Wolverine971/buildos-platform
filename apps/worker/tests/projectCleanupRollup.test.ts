@@ -182,6 +182,51 @@ describe('outdated check proposes archives', () => {
 		expect(suggestions).toEqual([]);
 	});
 
+	it('accepts archives written flat, splits a multi-archive proposal, and logs every drop', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const llm = makeLlm({
+			suggestions: [
+				{
+					title: 'Archive the old copies',
+					rationale: 'Replaced.',
+					evidence_refs: [],
+					operations: [
+						// Flat, the way DeepSeek wrote it in the 09-29 acceptance pass.
+						{
+							tool: 'archive_onto_document',
+							document_id: 'old-start',
+							children: 'archive_children'
+						},
+						{ tool: 'archive_onto_document', args: { document_id: 'empty' } },
+						{ tool: 'archive_onto_document', args: { document_id: 'start' } }
+					]
+				},
+				{ title: 'Nothing to do', rationale: 'x', evidence_refs: [], operations: [] }
+			]
+		});
+		const suggestions = await generateOutdatedDocs({
+			llm,
+			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+		// Split into one item per record, each titled by code.
+		expect(suggestions.map((s) => s.title)).toEqual([
+			'Archive "START HERE (old copy)"',
+			'Archive "Untitled"'
+		]);
+		expect(suggestions[0].operations[0].args).toEqual({
+			project_id: 'project-1',
+			document_id: 'old-start',
+			children: 'archive_children'
+		});
+		expect(warn).toHaveBeenCalledWith(
+			'[ProjectLoops] outdated check kept 2, dropped 1 protected, 1 no_operation',
+			{ projectId: 'project-1' }
+		);
+		warn.mockRestore();
+	});
+
 	it("keeps a folder's children when asked to promote them", async () => {
 		const llm = makeLlm({
 			suggestions: [
@@ -407,6 +452,23 @@ describe('parseCleanupSynthesis', () => {
 		]);
 		expect(result.synthesis.open_count).toBe(2);
 		expect(result.attentionLevel).toBe('decision');
+	});
+
+	it("never shows the model's item handles to the user", () => {
+		const result = parseCleanupSynthesis({
+			generatedAt: '2026-09-29T00:00:00.000Z',
+			items,
+			raw: {
+				bottom_line: 'Old drafts clutter the tree (i1, i2).',
+				recommendation: 'Activate the pipeline (i1) — it moves i3 forward.',
+				items: [{ id: 'i1', verdict: 'still_true', summary: 'Same as i2.' }]
+			}
+		});
+		expect(result.synthesis.bottom_line).toBe('Old drafts clutter the tree.');
+		expect(result.synthesis.recommendation).toBe(
+			'Activate the pipeline — it moves "Archive old drafts" forward.'
+		);
+		expect(result.summaries.get('lin-1')).toBe('Same as "Same drafts, again".');
 	});
 
 	it('merges an audit recommendation a later audit repeated, but never resolves one', () => {

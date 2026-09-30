@@ -53,6 +53,12 @@ HOSTED_ONLY_EXTENSIONS = ('hypopg', 'index_advisor', 'pgjwt', 'supabase_vault', 
                           'pg_net', 'pgsodium', 'pg_cron')
 BOOTSTRAP_EXTENSIONS = ('pgcrypto', 'uuid-ossp', 'pg_stat_statements')
 MIGRATION_NAME = re.compile(r'^(\d{14})_([a-z0-9_]+)\.sql$')
+# Invariants every production rehearsal re-proves after the named migrations, so a later
+# migration that quietly undoes one fails here instead of in production.
+DEFAULT_CHECKS = (
+    # Tasker 113: chat context and search RPCs never return archived records.
+    ROOT / 'supabase' / 'tests' / 'archived_scope_guard.check.sql',
+)
 
 FINGERPRINT_SQL = r"""
 WITH app_ns AS (
@@ -472,11 +478,21 @@ def resolve_pg_bin(explicit: str | None) -> Path:
     return Path(initdb).resolve().parent
 
 
+def checks_to_run(explicit: list[Path], project_ref: str, include_defaults: bool) -> list[Path]:
+    """Explicit checks first, then the standing invariants (production schema only)."""
+    if not include_defaults or project_ref != PRODUCTION_REF:
+        return list(explicit)
+    named = {path.resolve() for path in explicit}
+    return [*explicit, *(check for check in DEFAULT_CHECKS if check.resolve() not in named)]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('migrations', nargs='+', type=Path, help='migration files, applied in the order given')
     parser.add_argument('--check', type=Path, action='append', default=[],
                         help='assertion SQL to run after the migrations (repeatable; fails on any error)')
+    parser.add_argument('--no-default-checks', action='store_true',
+                        help='skip the standing invariant checks (DEFAULT_CHECKS)')
     parser.add_argument('--project-ref', default=PRODUCTION_REF, help='schema source (default: production)')
     parser.add_argument('--refresh', action='store_true', help='re-snapshot even if the cache is fresh')
     parser.add_argument('--max-age-hours', type=float, default=24.0)
@@ -487,8 +503,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--pg-bin', help='directory with initdb/pg_ctl/psql/pg_dump (default: from PATH)')
     parser.add_argument('--json', type=Path, help='also write the full report as JSON')
     args = parser.parse_args(argv)
+    checks = checks_to_run(args.check, args.project_ref, not args.no_default_checks)
 
-    for path in [*args.migrations, *args.check]:
+    for path in [*args.migrations, *checks]:
         if not path.is_file():
             raise RehearsalError(f'No such file: {path}')
     pg_bin = resolve_pg_bin(args.pg_bin)
@@ -560,7 +577,7 @@ def main(argv: list[str] | None = None) -> int:
             if any(regressions.values()):
                 failed = True
 
-        for check in [] if failed else args.check:
+        for check in [] if failed else checks:
             try:
                 cluster.psql(file=check.resolve())
                 print(f'\n✓ check {check.name} passed')

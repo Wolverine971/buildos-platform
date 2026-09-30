@@ -7,6 +7,7 @@ import {
 	TURN_CONTRACT_TOOL_DEFINITION
 } from '@buildos/agentic-chat-runtime/catalog';
 import type { AgenticChatTurnProviderToolV1 } from '../contracts';
+import { MUTATION_REVIEW_FINDINGS_SCHEMA } from '@buildos/agentic-chat-runtime/loop';
 
 /**
  * Reviewer-register commission guidance. Mounted only in the two reviewer
@@ -40,7 +41,7 @@ export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
  * tool (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02).
  */
 export const ACTOR_COMMISSION_GUIDANCE = Object.freeze([
-	'Commission rules: make every commissioned change by calling the mutation tools yourself, simple or complex. The system holds a complex batch of your calls for independent review and runs it on approval; a change you only describe is never staged, reviewed, or saved. Never say a change is done or underway unless its tool result in this turn confirms it. Submit a large commission in stages of a few calls per pass.',
+	'Commission rules: make every commissioned change by calling the mutation tools yourself, simple or complex. The system holds a complex batch of your calls for independent review and runs it on approval; a change you only describe is never staged, reviewed, or saved. Never say a change is done or underway unless its tool result in this turn confirms it. Submit a large commission in independently reviewed stages of at most 8 mutations per pass, fewer for large document bodies. Reuse prior reads and durable receipts; do not repeat saved writes. Archiving preserves workflow state and is never completing a task.',
 	'Ask for clarification (with request_turn_clarification, not in prose) only when the user still owns a genuine choice among loaded candidates; never guess among them, and never ask about a value the request, loaded context, or tool schema already resolves.',
 	'A past-tense report that tracked work was completed commissions the matching state change when exactly one loaded entity fits: complete it, carry any user-stated outcome or next step on that entity instead of a new one, omit unstated optional values, and never tell the user a stated next step will go unrecorded.',
 	'A priority, scheduling, or completion instruction commissions only that change; add no workflow-state transition the user did not state. A task push or reschedule changes due_at; use start_at only for an explicit task start.',
@@ -129,14 +130,16 @@ export const PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Object.free
 			additionalProperties: false,
 			required: ['reason', 'required_correction'],
 			properties: {
+				findings: MUTATION_REVIEW_FINDINGS_SCHEMA,
 				reason: {
 					type: 'string',
-					maxLength: 400,
-					description: 'What is wrong with the proposal, citing the turn evidence.'
+					maxLength: 1200,
+					description:
+						'A concise, complete user-facing explanation of the actual defect, naming the affected target and citing the turn evidence. This may be shown when review cannot finish. Keep correction instructions in required_correction.'
 				},
 				required_correction: {
 					type: 'string',
-					maxLength: 400,
+					maxLength: 2000,
 					description:
 						'The structural correction needed to match the user commission. For text edits, name the content postcondition and refer to the original user request for exact wording and preservation rules. Do not copy or abbreviate source text into this short field.'
 				}
@@ -230,7 +233,7 @@ export const MUTATION_BATCH_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV
 	function: {
 		...PROPOSAL_REVISION_TOOL.function,
 		description:
-			"Return the acting model's proposed calls for correction when the user's commission is clear but the calls misstate it: a call the user did not commission, a missing commissioned call, a wrong target, or a value the turn evidence resolves differently. Say what is wrong; the acting model proposes the corrected calls and they are reviewed again. Do not use this when a choice genuinely belongs to the user.",
+			"Return the acting model's proposed calls for correction when the user's commission is clear but the calls misstate it: a call the user did not commission, a missing prerequisite required for a held call to be safe, a wrong target, or a value the turn evidence resolves differently. Do not reject a correct bounded stage for omitting other independent changes. Give one concise, complete sentence per defect, naming the affected target and correction. Say what is wrong; the acting model proposes the corrected calls and they are reviewed again. Do not use this when a choice genuinely belongs to the user.",
 		parameters: {
 			...PROPOSAL_REVISION_TOOL.function.parameters,
 			required: ['reason', 'required_correction', 'reference_candidates'],

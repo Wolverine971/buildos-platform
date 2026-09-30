@@ -38,7 +38,21 @@ export function validateCompletedProviderCalls(
 	loadedTaskSchedules?: ReadonlyMap<string, LoadedTaskSchedule>
 ): ToolValidationIssue[] {
 	const issues = validateToolCalls(
-		calls.map(completedProviderCallToChatToolCall),
+		calls.map((call) => {
+			// Server archive facts contain existing titles, not authored durable
+			// text. Keep them in the review digest but out of text-write validation.
+			// The pre-review archive guard separately rejects actor-supplied facts.
+			if (
+				call.name !== 'update_onto_document' ||
+				!Object.hasOwn(call.arguments, '_archive_review')
+			)
+				return completedProviderCallToChatToolCall(call);
+			const { _archive_review: _facts, ...args } = call.arguments;
+			return completedProviderCallToChatToolCall({
+				...call,
+				canonicalArguments: canonicalizeAgenticChatJson(args)
+			});
+		}),
 		Array.from(request.tools) as unknown as ChatToolDefinition[],
 		{
 			projectId:
@@ -433,7 +447,9 @@ function outcomeActionAuthorizesCall(
 	}
 	if (outcome.action === 'archive') {
 		const stateKey = call.arguments.state_key;
-		return stateKey === 'archived' || stateKey === 'cancelled';
+		return (
+			call.arguments.archived === true || stateKey === 'archived' || stateKey === 'cancelled'
+		);
 	}
 	if (outcome.action === 'restore') {
 		const stateKey = call.arguments.state_key;

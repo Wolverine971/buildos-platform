@@ -1,12 +1,9 @@
 // packages/agentic-chat-runtime/src/loop/request-expectation.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildMutationBatch } from './mutation-batch';
-import {
-	parseRequestExpectation,
-	reconcileRequestExpectationWithApprovedBatch
-} from './request-expectation';
+import { parseRequestExpectation } from './request-expectation';
 import type { FastToolExecution } from './shared';
-import { resolveTurnContractOutcome } from './turn-contract';
+import { getSafeWriteToolNamesForTurnContract, resolveTurnContractOutcome } from './turn-contract';
 
 // Shape of the 2026-09-22 book-loop approval (session 36c6eeea…): the reviewer
 // required plan `name` and a document retitle, then approved calls that set only
@@ -92,49 +89,124 @@ function succeeded(): FastToolExecution[] {
 	}));
 }
 
-describe('reconcileRequestExpectationWithApprovedBatch', () => {
-	it('stops reporting approved, successful writes as unfinished', () => {
+describe('whole-request completion across stages', () => {
+	it('keeps omitted fields and scalar values outstanding even when every target was touched', () => {
 		const original = expectation();
+		const result = resolveTurnContractOutcome({
+			contract: original,
+			toolExecutions: succeeded()
+		});
+		expect(result.fulfilled).toBe(false);
+		expect(original.outcomes[0]!.requiredFields).toEqual(['name', 'description']);
+		expect(original.outcomes[1]!.changes).toEqual([
+			{ field: 'title', value: '100-Day Book Production System' }
+		]);
+	});
+
+	it('fulfills the unchanged checklist only after later stages supply the missing fields', () => {
+		const original = expectation();
+		const later = [
+			...PLAN_IDS.slice(1).map((id) => ({
+				name: 'update_onto_plan',
+				args: { plan_id: id, name: 'Nonfiction plan' }
+			})),
+			{
+				name: 'update_onto_document',
+				args: { document_id: RULES_DOC, title: '100-Day Book Production System' }
+			}
+		].map(
+			(call, index): FastToolExecution => ({
+				toolCall: {
+					id: `later-${index}`,
+					type: 'function',
+					function: { name: call.name, arguments: JSON.stringify(call.args) }
+				},
+				result: { tool_call_id: `later-${index}`, success: true, result: null }
+			})
+		);
+		expect(
+			resolveTurnContractOutcome({
+				contract: original,
+				toolExecutions: [...succeeded(), ...later]
+			}).fulfilled
+		).toBe(true);
+	});
+
+	it('keeps later-stage targets absent from the approved batch outstanding', () => {
+		const original = expectation([LATER_TASK]);
 		expect(
 			resolveTurnContractOutcome({ contract: original, toolExecutions: succeeded() })
 				.fulfilled
 		).toBe(false);
-		const reconciled = reconcileRequestExpectationWithApprovedBatch(original, batch);
-		expect(
-			resolveTurnContractOutcome({ contract: reconciled, toolExecutions: succeeded() })
-				.fulfilled
-		).toBe(true);
-		expect(reconciled.outcomes[0]!.requiredFields).toEqual(['description']);
-		expect(reconciled.outcomes[1]!.changes).toBeUndefined();
+		expect(original.outcomes.find((outcome) => outcome.id === 'tasks')!.targetIds).toEqual([
+			LATER_TASK
+		]);
 	});
+});
 
-	it('keeps later-stage targets absent from the approved batch outstanding', () => {
-		const reconciled = reconcileRequestExpectationWithApprovedBatch(
-			expectation([LATER_TASK]),
-			batch
-		);
-		const tasks = reconciled.outcomes.find((outcome) => outcome.id === 'tasks')!;
-		expect(tasks.targetIds).toEqual([LATER_TASK]);
-		expect(tasks.requiredFields).toEqual(['description']);
-		expect(
-			resolveTurnContractOutcome({ contract: reconciled, toolExecutions: succeeded() })
-				.fulfilled
-		).toBe(false);
-	});
-
-	it('returns the same expectation when the approved calls already satisfy it', () => {
-		const satisfied = parseRequestExpectation({
+describe('archive completion preserves workflow semantics', () => {
+	it.each(['task', 'goal'])('matches %s archived:true without completing the record', (kind) => {
+		const contract = parseRequestExpectation({
 			outcomes: [
 				{
-					id: 'plans',
-					action: 'update',
-					entity_kind: 'plan',
-					target_ids: PLAN_IDS,
-					required_fields: ['description'],
-					minimum_successful_effects: PLAN_IDS.length
+					id: 'archive',
+					action: 'archive',
+					entity_kind: kind,
+					target_ids: [LATER_TASK],
+					required_fields: ['archived'],
+					minimum_successful_effects: 1
 				}
 			]
 		})!;
-		expect(reconcileRequestExpectationWithApprovedBatch(satisfied, batch)).toBe(satisfied);
+		const toolName = `update_onto_${kind}`;
+		const write: FastToolExecution = {
+			toolCall: {
+				id: 'archive',
+				type: 'function',
+				function: {
+					name: toolName,
+					arguments: JSON.stringify({ [`${kind}_id`]: LATER_TASK, archived: true })
+				}
+			},
+			result: {
+				tool_call_id: 'archive',
+				success: true,
+				result: {
+					[kind]: {
+						id: LATER_TASK,
+						state_key: 'done',
+						archived_at: '2026-09-29T00:00:00Z'
+					}
+				}
+			}
+		};
+		expect(getSafeWriteToolNamesForTurnContract(contract)).toContain(toolName);
+		expect(resolveTurnContractOutcome({ contract, toolExecutions: [write] }).fulfilled).toBe(
+			true
+		);
+		const completion = {
+			...contract,
+			outcomes: contract.outcomes.map((outcome) => ({
+				...outcome,
+				action: 'complete' as const,
+				requiredFields: []
+			}))
+		};
+		expect(
+			resolveTurnContractOutcome({ contract: completion, toolExecutions: [write] }).fulfilled
+		).toBe(false);
+		const wrong = {
+			...write,
+			toolCall: {
+				...write.toolCall,
+				function: {
+					name: toolName,
+					arguments: JSON.stringify({ [`${kind}_id`]: LATER_TASK, state_key: 'done' })
+				}
+			}
+		};
+		expect(resolveTurnContractOutcome({ contract, toolExecutions: [wrong] }).fulfilled).toBe(
+			false
+		);
 	});
 });
