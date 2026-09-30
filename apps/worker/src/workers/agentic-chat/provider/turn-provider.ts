@@ -569,6 +569,19 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 								'permanent'
 							);
 						}
+						if (
+							!withheldBatch &&
+							calls.some(
+								(call) =>
+									call.name === 'update_onto_document' &&
+									Object.hasOwn(call.arguments, 'confirmation_token')
+							)
+						) {
+							throw providerError(
+								'shared_document_independent_review_required',
+								'permanent'
+							);
+						}
 						if (withheldBatch && 'replayRepair' in withheldBatch) {
 							state.setCurrentRequest(withheldBatch.replayRepair);
 							keepLease = true;

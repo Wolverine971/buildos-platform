@@ -7,6 +7,11 @@
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
 	"exports": {
+		"./permissions/proposal": {
+			"types": "./dist/permissions/proposal.d.ts",
+			"import": "./dist/permissions/proposal.mjs",
+			"require": "./dist/permissions/proposal.js"
+		},
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.mjs",

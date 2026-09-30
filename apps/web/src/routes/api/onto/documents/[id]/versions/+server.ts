@@ -241,6 +241,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 				is_open:
 					isNewest &&
 					!props.restore_of_version &&
+					!props.sealed &&
 					isVersionWindowOpen({ window, createdAt: v.created_at }, { now }),
 				is_restore: Boolean(props.restore_of_version),
 				restored_by_user_id: (props.restored_by_user_id as string) ?? null,

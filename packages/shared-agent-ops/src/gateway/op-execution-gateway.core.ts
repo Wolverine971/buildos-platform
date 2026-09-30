@@ -960,6 +960,19 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 	};
 
 	const existingDocument = await loadDocumentForWrite();
+	const guard = context.documentWriteGuard;
+	if (
+		guard &&
+		(guard.documentId !== documentId ||
+			guard.projectId !== existingDocument.project_id ||
+			guard.updatedAt !== existingDocument.updated_at)
+	) {
+		throw new ExternalToolGatewayError(
+			'CONFLICT',
+			'The shared document changed after confirmation. Request a fresh preview.',
+			{ confirmation_changed: true }
+		);
+	}
 
 	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
 	assertProjectWriteAccess(project, context.scope);
@@ -1084,7 +1097,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		args.state_key === undefined &&
 		archivedAtUpdate === undefined &&
 		args.props === undefined;
-	if (writeResult.status === 'conflict' && canRetryContentIntent) {
+	if (writeResult.status === 'conflict' && canRetryContentIntent && !guard) {
 		const refreshedDocument = await loadDocumentForWrite();
 		const retryUpdateData: Record<string, unknown> = {
 			...updateData,
@@ -1167,7 +1180,8 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 	if (writeResult.status === 'conflict') {
 		throw new ExternalToolGatewayError(
 			'CONFLICT',
-			'Document changed while the agent was editing it. Re-read and retry.'
+			'Document changed while the agent was editing it. Re-read and retry.',
+			guard ? { confirmation_changed: true } : undefined
 		);
 	}
 

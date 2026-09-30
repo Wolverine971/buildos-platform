@@ -7,10 +7,11 @@
 
 <svelte:head><title>Organize · {data.project.name} · BuildOS</title></svelte:head>
 
-{#key `${data.project.id}:${data.project.updated_at}:${data.secondaryProject?.id ?? ''}`}
+{#key `${data.project.id}:${data.project.updated_at}:${data.secondaryProject?.id ?? ''}:${data.initialRef?.id ?? ''}`}
 	<OrganizeView
 		project={data.project}
 		secondaryProject={data.secondaryProject}
 		relatedProjects={data.relatedProjects}
+		initialRef={data.initialRef}
 	/>
 {/key}

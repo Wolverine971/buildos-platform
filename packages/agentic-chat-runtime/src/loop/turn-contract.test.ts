@@ -55,6 +55,23 @@ function execution(
 }
 
 describe('semantic turn contracts', () => {
+	it('does not credit a shared-document confirmation preview as a saved edit', () => {
+		const args = { document_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', title: 'New title' };
+		const preview = execution('update_onto_document', args, {
+			result: {
+				status: 'confirmation_required',
+				confirmation_kind: 'shared_document_edit_v1',
+				requires_user_action: true
+			}
+		});
+		expect(buildWriteLedger([preview])).toEqual([]);
+		const saved = execution('update_onto_document', args, {
+			result: { document: { id: args.document_id, title: args.title } }
+		});
+		expect(buildWriteLedger([preview, saved])).toMatchObject([
+			{ status: 'success', entityId: args.document_id }
+		]);
+	});
 	it('does not turn a rejected proposal into extra unfinished work after its correction saves', () => {
 		const src = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 		const dst = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

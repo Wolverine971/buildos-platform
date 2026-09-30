@@ -100,7 +100,8 @@ export class OAuthConnectorError extends Error {
 		message: string,
 		public readonly status = 400,
 		public readonly code = 'invalid_request',
-		public readonly description = message
+		public readonly description = message,
+		public readonly recognizedCredential = false
 	) {
 		super(message);
 		this.name = 'OAuthConnectorError';
@@ -911,6 +912,12 @@ export async function approveOAuthAuthorization(params: {
 		redirect_uri: params.authorizationRequest.redirectUri,
 		resource: params.authorizationRequest.resource,
 		scope: grant.scope,
+		policy_snapshot: {
+			scope_mode: grant.scope_mode,
+			allowed_ops: grant.allowed_ops,
+			allowed_project_ids: grant.allowed_project_ids,
+			project_scope_mode: grant.project_scope_mode
+		},
 		code_challenge: params.authorizationRequest.codeChallenge,
 		code_challenge_method: 'S256',
 		expires_at: addSeconds(AUTHORIZATION_CODE_TTL_SECONDS)
@@ -995,56 +1002,41 @@ async function issueOAuthTokens(params: {
 	admin: any;
 	grant: AgentOAuthGrantRecord;
 	client: AgentOAuthClientRecord;
-	includeRefreshToken: boolean;
-	rotatedFromRefreshToken?: AgentOAuthRefreshTokenRecord;
+	kind: 'code' | 'refresh';
+	credentialId: string;
+	proof?: string;
+	redirectUri?: string;
+	requestedScope?: string | null;
+	onRefreshReuse?: () => Promise<void>;
 }): Promise<OAuthTokenIssueResult> {
 	const accessToken = randomToken('bo_at');
-	const accessTokenHash = hashSecret(accessToken);
-	const { error: accessError } = await params.admin.from('agent_oauth_access_tokens').insert({
-		grant_id: params.grant.id,
-		client_id: params.client.client_id,
-		user_id: params.grant.user_id,
-		external_agent_caller_id: params.grant.external_agent_caller_id,
-		token_hash: accessTokenHash,
-		token_prefix: accessToken.slice(0, 12),
-		resource: params.grant.resource,
-		scope: params.grant.scope,
-		expires_at: addSeconds(ACCESS_TOKEN_TTL_SECONDS)
+	const refreshToken = randomToken('bo_rt');
+	const { data, error } = await params.admin.rpc('exchange_agent_oauth_credential', {
+		p_kind: params.kind,
+		p_id: params.credentialId,
+		p_client: params.client.client_id,
+		p_resource: params.grant.resource,
+		p_proof: params.proof ?? null,
+		p_redirect: params.redirectUri ?? null,
+		p_requested_scope: params.requestedScope ?? null,
+		p_access: { hash: hashSecret(accessToken), prefix: accessToken.slice(0, 12) },
+		p_refresh: { hash: hashSecret(refreshToken), prefix: refreshToken.slice(0, 12) }
 	});
-
-	if (accessError) {
-		throw new OAuthConnectorError('Failed to issue access token', 500, 'server_error');
+	if (data?.reuse_detected) await params.onRefreshReuse?.();
+	if (error || data?.error) {
+		const invalidScope = error?.message?.includes('invalid_scope');
+		throw new OAuthConnectorError(
+			invalidScope
+				? 'Requested scope exceeds credential scope'
+				: 'Credential exchange failed; authorize again',
+			error && !['P0001', '23505'].includes(error.code) ? 500 : 400,
+			invalidScope ? 'invalid_scope' : 'invalid_grant'
+		);
 	}
-
-	let refreshToken: string | null = null;
-	if (params.includeRefreshToken) {
-		refreshToken = randomToken('bo_rt');
-		const familyId = params.rotatedFromRefreshToken?.family_id ?? randomUUID();
-		const { error: refreshError } = await params.admin
-			.from('agent_oauth_refresh_tokens')
-			.insert({
-				grant_id: params.grant.id,
-				client_id: params.client.client_id,
-				user_id: params.grant.user_id,
-				external_agent_caller_id: params.grant.external_agent_caller_id,
-				token_hash: hashSecret(refreshToken),
-				token_prefix: refreshToken.slice(0, 12),
-				family_id: familyId,
-				rotated_from_id: params.rotatedFromRefreshToken?.id ?? null,
-				resource: params.grant.resource,
-				scope: params.grant.scope,
-				expires_at: addSeconds(REFRESH_TOKEN_TTL_SECONDS)
-			});
-
-		if (refreshError) {
-			throw new OAuthConnectorError('Failed to issue refresh token', 500, 'server_error');
-		}
-	}
-
 	return {
 		accessToken,
-		refreshToken,
-		scope: params.grant.scope,
+		refreshToken: data.refresh ? refreshToken : null,
+		scope: data.scope,
 		expiresIn: ACCESS_TOKEN_TTL_SECONDS
 	};
 }
@@ -1101,25 +1093,14 @@ export async function exchangeOAuthAuthorizationCode(params: {
 	if (grant.status !== 'active')
 		throw new OAuthConnectorError('OAuth grant revoked', 400, 'invalid_grant');
 
-	const { data: consumedCode, error: consumeCodeError } = await params.admin
-		.from('agent_oauth_authorization_codes')
-		.update({ used_at: new Date().toISOString() })
-		.eq('id', authCode.id)
-		.is('used_at', null)
-		.select('id')
-		.maybeSingle();
-	if (consumeCodeError) {
-		throw new OAuthConnectorError('Failed to consume authorization code', 500, 'server_error');
-	}
-	if (!consumedCode) {
-		throw new OAuthConnectorError('Authorization code already used', 400, 'invalid_grant');
-	}
-
 	const tokens = await issueOAuthTokens({
 		admin: params.admin,
 		grant,
 		client,
-		includeRefreshToken: grant.scope.split(/\s+/).includes('offline_access')
+		kind: 'code',
+		credentialId: authCode.id,
+		proof: pkceChallenge(codeVerifier),
+		redirectUri
 	});
 
 	await logSecurityEvent(
@@ -1167,43 +1148,6 @@ export async function exchangeOAuthRefreshToken(params: {
 		throw new OAuthConnectorError('Refresh token does not match client', 400, 'invalid_grant');
 	}
 
-	// Reuse detection: a refresh token that was already rotated (`used_at`) or
-	// explicitly revoked is being presented again — a theft signal. Burn the
-	// whole family + grant + caller (RFC 9700 §4.14.2) and surface it loudly.
-	// NOTE: plain expiry below is NOT reuse and must not nuke the family.
-	if (current.used_at || current.revoked_at) {
-		await revokeRefreshTokenFamily({
-			admin: params.admin,
-			familyId: current.family_id,
-			grantId: current.grant_id,
-			externalAgentCallerId: current.external_agent_caller_id
-		});
-		await logSecurityEvent(
-			{
-				eventType: 'agent.oauth.refresh.reuse_detected',
-				category: 'agent',
-				outcome: 'blocked',
-				severity: 'high',
-				actorType: 'external_agent',
-				actorUserId: current.user_id,
-				externalAgentCallerId: current.external_agent_caller_id,
-				reason: 'refresh_token_reuse',
-				metadata: {
-					client_id: current.client_id,
-					grant_id: current.grant_id,
-					family_id: current.family_id,
-					token_prefix: current.token_prefix
-				}
-			},
-			{ ...(params.securityEventOptions ?? {}), supabase: params.admin }
-		);
-		throw new OAuthConnectorError('Refresh token is no longer valid', 400, 'invalid_grant');
-	}
-
-	if (new Date(current.expires_at).getTime() <= Date.now()) {
-		throw new OAuthConnectorError('Refresh token is no longer valid', 400, 'invalid_grant');
-	}
-
 	const { data: grantData, error: grantError } = await params.admin
 		.from('agent_oauth_grants')
 		.select('*')
@@ -1216,65 +1160,35 @@ export async function exchangeOAuthRefreshToken(params: {
 	if (grant.status !== 'active')
 		throw new OAuthConnectorError('OAuth grant revoked', 400, 'invalid_grant');
 
-	const { data: rotatedToken, error: rotateError } = await params.admin
-		.from('agent_oauth_refresh_tokens')
-		.update({ used_at: new Date().toISOString(), revoked_at: new Date().toISOString() })
-		.eq('id', current.id)
-		.is('used_at', null)
-		.is('revoked_at', null)
-		.select('id')
-		.maybeSingle();
-	if (rotateError) {
-		throw new OAuthConnectorError('Failed to rotate refresh token', 500, 'server_error');
-	}
-	if (!rotatedToken) {
-		throw new OAuthConnectorError('Refresh token is no longer valid', 400, 'invalid_grant');
-	}
-
 	return issueOAuthTokens({
 		admin: params.admin,
 		grant,
 		client,
-		includeRefreshToken: true,
-		rotatedFromRefreshToken: current
+		kind: 'refresh',
+		credentialId: current.id,
+		requestedScope: params.form.get('scope'),
+		onRefreshReuse: async () => {
+			await logSecurityEvent(
+				{
+					eventType: 'agent.oauth.refresh.reuse_detected',
+					category: 'agent',
+					outcome: 'blocked',
+					severity: 'high',
+					actorType: 'external_agent',
+					actorUserId: current.user_id,
+					externalAgentCallerId: current.external_agent_caller_id,
+					reason: 'refresh_token_reuse',
+					metadata: {
+						client_id: current.client_id,
+						grant_id: current.grant_id,
+						family_id: current.family_id,
+						token_prefix: current.token_prefix
+					}
+				},
+				{ ...(params.securityEventOptions ?? {}), supabase: params.admin }
+			);
+		}
 	});
-}
-
-/**
- * Refresh-token reuse response. Presenting a refresh token that was already
- * rotated (`used_at`) or revoked signals theft (OAuth 2.1 / RFC 9700 §4.14.2):
- * revoke the ENTIRE token family plus the grant, its outstanding access tokens,
- * and the external caller — not just the single replayed token. This forces the
- * legitimate client to re-authorize, which is the correct fail-safe when we
- * cannot distinguish the real client from an attacker.
- */
-async function revokeRefreshTokenFamily(params: {
-	admin: any;
-	familyId: string;
-	grantId: string;
-	externalAgentCallerId: string;
-}): Promise<void> {
-	const now = new Date().toISOString();
-	await Promise.all([
-		params.admin
-			.from('agent_oauth_refresh_tokens')
-			.update({ revoked_at: now })
-			.eq('family_id', params.familyId)
-			.is('revoked_at', null),
-		params.admin
-			.from('agent_oauth_access_tokens')
-			.update({ revoked_at: now })
-			.eq('grant_id', params.grantId)
-			.is('revoked_at', null),
-		params.admin
-			.from('agent_oauth_grants')
-			.update({ status: 'revoked' })
-			.eq('id', params.grantId),
-		params.admin
-			.from('external_agent_callers')
-			.update({ status: 'revoked' })
-			.eq('id', params.externalAgentCallerId)
-	]);
 }
 
 export async function revokeOAuthToken(params: {
@@ -1368,7 +1282,13 @@ export async function authenticateOAuthMcpRequest(params: {
 		accessToken.revoked_at ||
 		new Date(accessToken.expires_at).getTime() <= Date.now()
 	) {
-		throw new OAuthConnectorError('Bearer token is expired or revoked', 401, 'invalid_token');
+		throw new OAuthConnectorError(
+			'Bearer token is expired or revoked',
+			401,
+			'invalid_token',
+			undefined,
+			true
+		);
 	}
 
 	const [{ data: grantData }, { data: callerData }, owner] = await Promise.all([
@@ -1390,7 +1310,13 @@ export async function authenticateOAuthMcpRequest(params: {
 	]);
 
 	if (!grantData || !callerData) {
-		throw new OAuthConnectorError('OAuth grant is unavailable', 401, 'invalid_token');
+		throw new OAuthConnectorError(
+			'OAuth grant is unavailable',
+			401,
+			'invalid_token',
+			undefined,
+			true
+		);
 	}
 	const grant = mapGrantRecord(grantData as Record<string, unknown>);
 	const caller = callerData as ExternalAgentCallerRecord;
@@ -1399,13 +1325,25 @@ export async function authenticateOAuthMcpRequest(params: {
 		extractProjectScopeModeFromPolicy(caller.policy)
 	);
 	if (grant.status !== 'active' || caller.status !== 'trusted') {
-		throw new OAuthConnectorError('OAuth grant is revoked', 403, 'insufficient_scope');
+		throw new OAuthConnectorError(
+			'OAuth grant is revoked',
+			401,
+			'invalid_token',
+			undefined,
+			true
+		);
 	}
 	// Access ends when deletion is requested, even for a token minted before it.
 	if (owner.error)
 		throw new OAuthConnectorError('Failed to authenticate token', 500, 'server_error');
 	if (owner.data?.deletion_status) {
-		throw new OAuthConnectorError('Bearer token is expired or revoked', 401, 'invalid_token');
+		throw new OAuthConnectorError(
+			'Bearer token is expired or revoked',
+			401,
+			'invalid_token',
+			undefined,
+			true
+		);
 	}
 
 	// Effective scope binds to the grant the token was minted under, clamped by
@@ -1477,4 +1415,90 @@ export async function createMcpCallSession(params: {
 	}
 
 	return data.id as string;
+}
+
+export async function loadRetainedOAuthAccess(
+	admin: any,
+	userId: string,
+	request: OAuthAuthorizationRequest
+) {
+	const { data: feature } = await admin
+		.from('agent_permission_feature')
+		.select('enabled,epoch')
+		.eq('id', true)
+		.maybeSingle();
+	if (!feature?.enabled) return null;
+	const { data: grant } = await admin
+		.from('agent_oauth_grants')
+		.select('*')
+		.eq('user_id', userId)
+		.eq('client_id', request.clientId)
+		.eq('resource', request.resource)
+		.eq('status', 'active')
+		.maybeSingle();
+	if (!grant) return null;
+	const { data: rules } = await admin
+		.from('agent_permission_grants')
+		.select('id,project_id,capability')
+		.eq('grant_id', grant.id)
+		.eq('caller_id', grant.external_agent_caller_id)
+		.eq('epoch', feature.epoch)
+		.is('revoked_at', null)
+		.order('id');
+	if (!rules?.length || !request.scopes.includes('buildos.write')) return null;
+	return {
+		grant_id: grant.id,
+		policy: {
+			scope_mode: grant.scope_mode,
+			allowed_ops: grant.allowed_ops,
+			allowed_project_ids: grant.allowed_project_ids,
+			project_scope_mode: grant.project_scope_mode,
+			rules
+		}
+	};
+}
+export async function approveRetainedOAuthAccess(params: {
+	admin: any;
+	userId: string;
+	authorizationRequest: OAuthAuthorizationRequest;
+	grantId: string;
+	expected: unknown;
+}) {
+	const request = params.authorizationRequest;
+	const code = randomToken('bo_code');
+	const { error } = await params.admin.rpc('reauthorize_agent_scoped_writes', {
+		p_owner: params.userId,
+		p_grant: params.grantId,
+		p_expected: params.expected,
+		p_code: {
+			code_hash: hashSecret(code),
+			client_id: request.clientId,
+			resource: request.resource,
+			redirect_uri: request.redirectUri,
+			scope: request.scope,
+			code_challenge: request.codeChallenge
+		}
+	});
+	if (error) throw new OAuthConnectorError(error.message, 400, 'invalid_request');
+	await logSecurityEvent(
+		{
+			eventType: 'agent.oauth.authorized',
+			category: 'agent',
+			outcome: 'success',
+			severity: 'info',
+			actorType: 'user',
+			actorUserId: params.userId,
+			metadata: {
+				client_id: request.clientId,
+				grant_id: params.grantId,
+				retained_access: true,
+				rule_ids:
+					isRecord(params.expected) && Array.isArray(params.expected.rules)
+						? params.expected.rules.map((r: any) => r.id)
+						: []
+			}
+		},
+		{ supabase: params.admin }
+	);
+	return { code };
 }

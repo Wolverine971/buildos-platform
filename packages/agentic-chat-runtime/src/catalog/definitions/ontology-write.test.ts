@@ -108,5 +108,9 @@ describe('ontology write tool definitions', () => {
 		const documentProperties = getToolProperties('update_onto_document');
 		expect(documentProperties).toHaveProperty('update_strategy');
 		expect(documentProperties).toHaveProperty('merge_instructions');
+		expect(documentProperties.confirmation_token).toMatchObject({
+			type: 'string',
+			format: 'uuid'
+		});
 	});
 });

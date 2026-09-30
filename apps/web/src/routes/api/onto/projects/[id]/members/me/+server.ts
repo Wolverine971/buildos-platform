@@ -89,16 +89,10 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			);
 		}
 
-		const removedAt = new Date().toISOString();
-		const { data: removedMember, error: updateError } = await supabase
-			.from('onto_project_members')
-			.update({ removed_at: removedAt, removed_by_actor_id: actorId })
-			.eq('id', member.id)
-			.eq('project_id', projectId)
-			.eq('actor_id', actorId)
-			.is('removed_at', null)
-			.select('id, actor_id, role_key, access')
-			.maybeSingle();
+		const { data: removedMember, error: updateError } = await (supabase as any).rpc(
+			'update_project_membership_guarded',
+			{ p_project: projectId, p_member: member.id, p_action: 'leave' }
+		);
 
 		if (updateError) {
 			await logOntologyApiError({

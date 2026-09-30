@@ -1,4 +1,6 @@
 // apps/web/src/lib/server/agent-call/agent-call-service.ts
+import { PermissionRequestService, scopedPermissionTools } from './permission-requests.service';
+// apps/web/src/lib/server/agent-call/agent-call-service.ts
 import { isValidUUID } from '@buildos/shared-types';
 import type {
 	AgentCallScope,
@@ -551,9 +553,22 @@ export class BuildosAgentCallService {
 		);
 		const grantedScope = await this.resolveCurrentSessionScope(caller, session);
 
-		return {
-			tools: getPublicBuildosAgentTools(grantedScope)
-		};
+		const tools = getPublicBuildosAgentTools(grantedScope);
+		try {
+			const grants = await new PermissionRequestService(
+				this.admin,
+				{ kind: 'key', caller_id: caller.id, token_hash: caller.token_hash },
+				grantedScope
+			).grants();
+			tools.push(
+				...scopedPermissionTools(grants).filter(
+					(t) => !tools.some((existing) => existing.name === t.name)
+				)
+			);
+		} catch {
+			/* A disabled rollout preserves the existing tool surface. */
+		}
+		return { tools };
 	}
 
 	async callTool(request: Request, rawParams: unknown): Promise<BuildosAgentToolCallResponse> {
@@ -571,6 +586,7 @@ export class BuildosAgentCallService {
 		const toolName = ensureToolName(params.name);
 		const currentScope = await this.resolveCurrentSessionScope(caller, session);
 		const result = await executeBuildosAgentGatewayTool({
+			credential: { kind: 'key', caller_id: caller.id, token_hash: caller.token_hash },
 			admin: this.admin,
 			userId: session.user_id,
 			callerId: caller.id,
@@ -664,6 +680,16 @@ export class BuildosAgentCallService {
 		session: AgentCallSessionRecord
 	): Promise<AgentCallScope> {
 		const storedScope = normalizeScope(session.granted_scope, 'granted_scope');
+		const liveMode = extractScopeModeFromPolicy(caller.policy);
+		const mode = minimumScopeMode(storedScope.mode, liveMode);
+		const liveScope: AgentCallScope = {
+			...storedScope,
+			mode,
+			allowed_ops: intersectAllowedOps(
+				storedScope.allowed_ops ?? defaultAllowedOpsForMode(storedScope.mode),
+				extractAllowedOpsFromPolicy(caller.policy, liveMode)
+			).filter((op) => mode === 'read_write' || requiredScopeModeForOp(op) === 'read_only')
+		};
 		const projectScopeMode = normalizeProjectScopeMode(
 			caller.project_scope_mode,
 			extractProjectScopeModeFromPolicy(caller.policy)
@@ -673,8 +699,14 @@ export class BuildosAgentCallService {
 			userId: caller.user_id,
 			callerId: caller.id,
 			projectScopeMode,
-			scope: storedScope
+			scope: liveScope
 		});
+		const liveProjects = extractAllowedProjectIds(caller.policy, 'caller.policy');
+		resolvedScope.project_ids = intersectProjectIds(resolvedScope.project_ids, liveProjects);
+		resolvedScope.write_project_ids = intersectProjectIds(
+			resolvedScope.write_project_ids,
+			liveProjects
+		);
 		// The stored granted scope is a snapshot of every project at dial time.
 		// Only fence the session when the agent itself asked for specific
 		// projects; otherwise projects created or granted mid-session must count.

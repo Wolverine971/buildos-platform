@@ -12,6 +12,7 @@ import type { Json } from './database.types';
 // =====================================================
 
 export type EventType =
+  | "agent.permission.requested"
   // Admin Events (restricted to admin users)
   | "user.signup"
   | "user.trial_expired"

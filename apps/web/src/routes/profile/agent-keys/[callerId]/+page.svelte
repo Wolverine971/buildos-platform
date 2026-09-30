@@ -205,6 +205,12 @@
 	}
 </script>
 
+<div class="mx-auto max-w-6xl px-4 pt-4">
+	<a class="text-sm underline" href={`/profile/agent-keys/${caller.id}/requests`}
+		>Requests and ongoing permissions</a
+	>
+</div>
+
 <svelte:head>
 	<title>{installationDisplayName(caller)} Agent Usage - BuildOS</title>
 	<meta name="robots" content="noindex, nofollow" />

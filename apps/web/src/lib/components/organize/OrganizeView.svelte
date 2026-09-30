@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/organize/OrganizeView.svelte -->
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -9,6 +9,10 @@
 	import OrganizePane from './OrganizePane.svelte';
 	import OrganizeProjectPicker from './OrganizeProjectPicker.svelte';
 	import PendingChangesTray from './PendingChangesTray.svelte';
+	import OrganizeDialogs from './OrganizeDialogs.svelte';
+	import { createOrganizePersistence } from './useOrganizePersistence.svelte';
+	import { receiptMessage, type OrganizeReceipt } from './organize-api';
+	import { toastService } from '$lib/stores/toast.store';
 	import { createOrganizeDrag } from './useOrganizeDrag.svelte';
 	import {
 		flattenDocumentTree,
@@ -23,13 +27,16 @@
 	let {
 		project,
 		secondaryProject = null,
-		relatedProjects = []
+		relatedProjects = [],
+		initialRef = null
 	}: {
 		project: OrganizeProject;
 		secondaryProject?: OrganizeProject | null;
 		relatedProjects?: { id: string; name: string }[];
+		initialRef?: OrganizeRef | null;
 	} = $props();
-	let chosenProject = $state<OrganizeProject | null>(null);
+	let refreshedProject = $state.raw<OrganizeProject | null>(null);
+	let chosenProject = $state.raw<OrganizeProject | null>(null);
 	let moves = $state<OrganizeMove[]>([]);
 	let selected = $state<OrganizeRef | null>(null);
 	let picked = $state<OrganizeRef | null>(null);
@@ -41,10 +48,11 @@
 	let moveParent = $state('');
 	let message = $state('');
 	let loading = $state(false);
+	let needsRefresh = $state(false);
 	let leaveUrl = $state<string | null>(null);
 	let controller: AbortController | null = null;
 	const baseline = $derived([
-		project,
+		refreshedProject ?? project,
 		...((chosenProject ?? secondaryProject) ? [chosenProject ?? secondaryProject!] : [])
 	]);
 	const preview = $derived(previewOrganizePlan(baseline, moves));
@@ -63,6 +71,14 @@
 		keyboardTargets[Math.min(targetIndex, keyboardTargets.length - 1)] ?? null
 	);
 	const drag = createOrganizeDrag({ getProjects: () => preview.projects, onDrop: stage });
+	const persistence = createOrganizePersistence({
+		getProjectId: () => project.id,
+		onapplied: afterApply
+	});
+	const locked = $derived(
+		loading || persistence.busy || !!persistence.review || persistence.uncertain
+	);
+	const canUndo = $derived(!moves.length && !locked && !needsRefresh);
 	const activeTarget = $derived(
 		drag.target ??
 			(picked
@@ -71,9 +87,11 @@
 	);
 
 	function stage(move: OrganizeMove) {
+		if (locked || needsRefresh) return;
 		try {
 			previewOrganizePlan(baseline, [...moves, move]);
 			moves = [...moves, move];
+			persistence.clearError();
 			selected = { kind: move.kind, id: move.id, project_id: move.destination_project_id };
 			picked = null;
 			moveRef = null;
@@ -84,6 +102,7 @@
 	}
 
 	function movable(ref: OrganizeRef): boolean {
+		if (locked || needsRefresh) return false;
 		const source = preview.projects.find((project) => project.id === ref.project_id);
 		const reason = !source?.can_write
 			? 'This project is read only.'
@@ -165,6 +184,12 @@
 	}
 
 	function windowKey(event: KeyboardEvent) {
+		if (locked || persistence.historyOpen || moveRef) return;
+		if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+			event.preventDefault();
+			void reviewChanges();
+			return;
+		}
 		if (event.key === 'Escape') {
 			if (picked || drag.active) message = 'Move cancelled.';
 			picked = null;
@@ -192,7 +217,7 @@
 	}
 
 	async function chooseProject(id: string) {
-		if (moves.length || id === project.id) return;
+		if (moves.length || locked || needsRefresh || id === project.id) return;
 		controller?.abort();
 		const request = new AbortController();
 		controller = request;
@@ -211,6 +236,8 @@
 				throw new Error(body.error?.message ?? body.error ?? 'Could not open project.');
 			if (request.signal.aborted) return;
 			chosenProject = body.data.project;
+			if (moveRef) moveDestination = id;
+			moveParent = '';
 			mobilePane = 1;
 		} catch (error) {
 			if (!request.signal.aborted)
@@ -221,21 +248,126 @@
 	}
 
 	function resetPlan(undo = false) {
+		if (locked) return;
 		moves = undo ? moves.slice(0, -1) : [];
+		persistence.clearError();
 		selected = null;
 		picked = null;
 		drag.cancel();
 		message = undo ? 'Last staged move removed.' : 'Plan discarded.';
+		if (needsRefresh && !moves.length) void refreshProjects();
+	}
+
+	async function reviewChanges() {
+		if (!moves.length || locked || needsRefresh) return;
+		picked = null;
+		drag.cancel();
+		await persistence.prepare(
+			{
+				moves: moves.map((move) => ({ ...move })),
+				project_versions: Object.fromEntries(baseline.map((p) => [p.id, p.updated_at]))
+			},
+			'apply'
+		);
+	}
+	async function reviewUndo(id: string) {
+		if (!canUndo) {
+			message = 'Apply or discard the pending plan before undoing a saved batch.';
+			return;
+		}
+		picked = null;
+		drag.cancel();
+		await persistence.prepare({ source_batch_id: id }, 'undo');
+	}
+	async function refreshProjects(): Promise<boolean> {
+		if (loading || persistence.busy || persistence.uncertain) return false;
+		loading = true;
+		message = '';
+		picked = null;
+		drag.cancel();
+		controller?.abort();
+		const request = new AbortController();
+		controller = request;
+		try {
+			const fresh = await Promise.all(
+				baseline.map(async (p) => {
+					const response = await fetch(
+						`/api/onto/organize/snapshot?project_id=${encodeURIComponent(p.id)}`,
+						{ signal: request.signal }
+					);
+					const body = await response.json();
+					if (!response.ok)
+						throw new Error(
+							body.error?.message ?? body.error ?? 'Could not refresh the projects.'
+						);
+					return body.data.project as OrganizeProject;
+				})
+			);
+			if (request.signal.aborted) return false;
+			// Keep the old plan intact if newer content makes its replay impossible.
+			previewOrganizePlan(fresh, moves);
+			refreshedProject = fresh[0]!;
+			chosenProject = fresh[1] ?? null;
+			needsRefresh = false;
+			persistence.clearError();
+			message = moves.length
+				? 'Projects refreshed. Review the updated plan before applying.'
+				: 'Projects refreshed.';
+			return true;
+		} catch (error) {
+			if (!request.signal.aborted) {
+				needsRefresh = true;
+				message = `${error instanceof Error ? error.message : 'Could not refresh projects.'}${moves.length ? ' Discard the plan if it no longer fits the current projects.' : ' Retry refreshing before planning more moves.'}`;
+			}
+			return false;
+		} finally {
+			if (!request.signal.aborted) loading = false;
+		}
+	}
+	async function refreshAndReview() {
+		const current = persistence.review;
+		persistence.closeReview();
+		if (current?.mode === 'undo') {
+			await persistence.prepare(current.request, 'undo');
+		} else if (await refreshProjects()) await reviewChanges();
+	}
+	async function afterApply(receipt: OrganizeReceipt) {
+		moves = [];
+		selected = null;
+		picked = null;
+		moveRef = null;
+		drag.cancel();
+		needsRefresh = true;
+		toastService.add({
+			type: 'success',
+			message: receiptMessage(receipt),
+			duration: 10000,
+			action: {
+				label: 'Undo',
+				onClick: () => {
+					void reviewUndo(receipt.batch_id);
+				}
+			}
+		});
+		await refreshProjects();
 	}
 
 	beforeNavigate((navigation) => {
-		if (!moves.length) return;
+		if (!moves.length && !persistence.busy && !persistence.uncertain) return;
 		navigation.cancel();
+		if (persistence.busy || persistence.uncertain) {
+			message = 'Finish checking the current request before leaving.';
+			return;
+		}
 		if (!navigation.willUnload) leaveUrl = navigation.to?.url.href ?? null;
 	});
 	onDestroy(() => {
 		controller?.abort();
+		persistence.destroy();
 		drag.cancel();
+	});
+	onMount(() => {
+		if (initialRef) openMove(initialRef);
 	});
 </script>
 
@@ -261,17 +393,25 @@
 			<h1 class="mt-2 text-2xl font-semibold tracking-tight text-foreground">Organize</h1>
 			<p class="mt-1 text-sm text-muted-foreground">Plan where your docs and tasks belong.</p>
 		</div>
-		<OrganizeProjectPicker
-			excludeId={project.id}
-			disabled={moves.length > 0 || loading}
-			onchoose={chooseProject}
-		/>
+		<div class="flex flex-wrap items-center gap-2">
+			<Button variant="outline" disabled={locked} onclick={persistence.openHistory}
+				>History</Button
+			>
+			<Button variant="ghost" disabled={locked} onclick={() => refreshProjects()}
+				>Refresh projects</Button
+			>
+			<OrganizeProjectPicker
+				excludeId={project.id}
+				disabled={moves.length > 0 || locked || needsRefresh}
+				onchoose={chooseProject}
+			/>
+		</div>
 	</header>
 	<p
 		class="mb-4 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
 	>
-		Preview only — explore moves between projects. Your projects stay unchanged; saving and
-		batch undo are coming next.
+		Stage moves between projects, review their impact, then apply the plan. Saved moves are
+		available in History.
 	</p>
 	{#if relatedProjects.length && !moves.length}
 		<div class="mb-4 flex flex-wrap items-center gap-2">
@@ -279,7 +419,7 @@
 			{#each relatedProjects as related (related.id)}<Button
 					variant="outline"
 					size="sm"
-					disabled={loading}
+					disabled={locked || needsRefresh}
 					onclick={() => chooseProject(related.id)}>{related.name}</Button
 				>{/each}
 		</div>
@@ -294,14 +434,59 @@
 			>{/each}
 	</div>
 	<p class="mb-2 min-h-5 text-sm text-muted-foreground" role="status">
-		{loading ? 'Opening project…' : message}
+		{loading ? 'Loading projects…' : persistence.busy ? 'Checking changes…' : message}
 	</p>
+	{#if persistence.error && !persistence.review}<p
+			role="alert"
+			class="mb-3 text-sm text-destructive"
+		>
+			{persistence.error}
+		</p>{/if}
+	{#if persistence.notice && !persistence.historyOpen}<p
+			class="mb-3 text-sm text-muted-foreground"
+		>
+			{persistence.notice}
+		</p>{/if}
+	{#if !persistence.historyOpen}
+		{#each persistence.skipped as item, index (`${index}:${item.id}`)}<p
+				class="mb-2 text-sm text-muted-foreground"
+			>
+				{item.reason}
+			</p>{/each}
+	{/if}
+	{#if persistence.lastReceipt}
+		<div
+			class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card p-3"
+		>
+			<div>
+				<p class="text-sm font-medium">{receiptMessage(persistence.lastReceipt)}</p>
+				{#if persistence.lastReceipt.calendar_sync === 'queued'}<p
+						class="text-xs text-muted-foreground"
+					>
+						Calendar updates are queued.
+					</p>{/if}
+				{#if needsRefresh}<p class="text-xs text-muted-foreground">
+						Changes are saved. Refresh the projects to see their current contents.
+					</p>{/if}
+			</div>
+			<Button
+				variant="outline"
+				size="sm"
+				disabled={!canUndo ||
+					persistence.history.some(
+						(b) => b.inverse_of === persistence.lastReceipt?.batch_id
+					)}
+				onclick={() => reviewUndo(persistence.lastReceipt!.batch_id)}
+				>Undo saved moves</Button
+			>
+		</div>
+	{/if}
 	{#if picked}<p class="mb-2 text-sm font-medium text-foreground" aria-live="polite">
 			Destination: {keyboardProject.name} / {keyboardProject.documents.find(
 				(doc) => doc.id === keyboardParent
 			)?.title ?? 'Project root'}
 		</p>{/if}
-	<div class="grid gap-4 md:grid-cols-2">
+	<div class="grid gap-4 md:grid-cols-2" inert={locked || needsRefresh} aria-busy={loading}>
 		{#each preview.projects as pane, index (pane.id)}
 			<div class={mobilePane === index ? 'min-w-0' : 'hidden min-w-0 md:block'}>
 				<OrganizePane
@@ -325,10 +510,14 @@
 	</div>
 	<p class="mt-3 hidden text-xs text-muted-foreground md:block">
 		Drag a row, or press Space to pick it up. Use arrow keys to choose a destination, Enter to
-		drop, or M for “Move to…”.
+		drop, or M for “Move to…”. Press ⌘Enter or Ctrl+Enter to review your plan.
 	</p>
 	<PendingChangesTray
 		changes={preview.changes}
+		busy={persistence.busy || loading}
+		disabled={!!persistence.review || persistence.uncertain}
+		reviewDisabled={needsRefresh}
+		onreview={reviewChanges}
 		onundo={() => resetPlan(true)}
 		onclear={() => resetPlan()}
 	/>
@@ -343,6 +532,11 @@
 		onClose={() => (moveRef = null)}
 	>
 		<div class="space-y-4 p-4">
+			<OrganizeProjectPicker
+				excludeId={project.id}
+				disabled={moves.length > 0 || locked || needsRefresh}
+				onchoose={chooseProject}
+			/>
 			<label class="block text-sm font-medium"
 				>Project
 				<select
@@ -382,6 +576,15 @@
 		</div>
 	</Modal>
 {/if}
+
+<OrganizeDialogs
+	{persistence}
+	projects={baseline}
+	changes={preview.changes}
+	{canUndo}
+	onundo={reviewUndo}
+	onrefresh={refreshAndReview}
+/>
 
 {#if leaveUrl}
 	<ConfirmationModal

@@ -56,6 +56,7 @@
 	} from './DocumentProposalReview.svelte';
 	import DocumentVoiceNotesPanel from './DocumentVoiceNotesPanel.svelte';
 	import DocMoveModal from './doc-tree/DocMoveModal.svelte';
+	import OrganizeEntryButton from '$lib/components/organize/OrganizeEntryButton.svelte';
 	import DocDeleteConfirmModal from './doc-tree/DocDeleteConfirmModal.svelte';
 	import type { VersionListItem } from './DocumentVersionHistoryPanel.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
@@ -3374,6 +3375,16 @@
 			<FolderInput class="w-3.5 h-3.5" />
 			<span class="ml-1">Move to...</span>
 		</Button>
+		{#if activeDocumentId && !isArchivedDocument}
+			<OrganizeEntryButton
+				{projectId}
+				itemId={activeDocumentId}
+				kind="document"
+				label="Move between projects…"
+				disabled={isCloseBlocked || hasUnsavedChanges || sharedEditLocked}
+				onNavigate={requestClose}
+			/>
+		{/if}
 	{/if}
 {/snippet}
 

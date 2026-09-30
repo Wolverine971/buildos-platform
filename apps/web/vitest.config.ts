@@ -53,6 +53,7 @@ const workspacePackageRootAliases = [
 // of the canonical `@buildos/shared-agent-ops/...` specifiers, since the source
 // gateway's relative imports and the mocked subpaths dedupe to the same files.
 const sharedAgentOpsTestAliases = [
+	'permissions/proposal',
 	'dates/civil-date',
 	'calendar/google-calendar-runtime',
 	'calendar/google-calendar-feature',

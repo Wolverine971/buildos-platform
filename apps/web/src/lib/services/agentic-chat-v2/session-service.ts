@@ -25,6 +25,11 @@ import type { ChatHistorySnapshot } from './turn-admission';
 import '$lib/services/agentic-chat/tools/registry/install-loop-catalog';
 import { CONTROL_TOOL_NAMES, isLikelyWriteToolName } from '@buildos/agentic-chat-runtime/loop';
 import { renderFailedCleanupContinuation } from '@buildos/agentic-chat-runtime/context';
+import {
+	CHAT_CONTINUITY_EXECUTION_FILTER,
+	isSharedDocumentConfirmationRow,
+	sharedDocumentConfirmationHistory
+} from './shared-document-confirmation-history';
 
 const logger = createLogger('FastChatSession');
 
@@ -387,7 +392,11 @@ export function buildInterruptedToolHistorySummary(
 	const sorted = executions
 		.slice()
 		.sort((a, b) => (a.sequence_index ?? 0) - (b.sequence_index ?? 0))
-		.filter((row) => !CONTROL_TOOL_NAMES.has(row.tool_name.trim().toLowerCase()));
+		.filter(
+			(row) =>
+				!CONTROL_TOOL_NAMES.has(row.tool_name.trim().toLowerCase()) &&
+				!isSharedDocumentConfirmationRow(row)
+		);
 	const writes = sorted.filter(
 		(row) => row.success && isLikelyWriteToolName(row.tool_name, row.gateway_op)
 	);
@@ -544,6 +553,10 @@ function projectHistorySnapshotWithLineage(
 		const attachments = attachmentsByMessageId.get(msg.id) ?? [];
 		const attachmentContext = buildAttachmentContextBlock(attachments, { maxChars: 5000 });
 		const projected: FastChatHistoryMessageWithLineage[] = [
+			...sharedDocumentConfirmationHistory(
+				orderedContinuityExecutionRows,
+				latestMessage?.role === 'assistant' && latestMessage.id === msg.id ? msg.id : null
+			),
 			{
 				role: msg.role as FastChatHistoryMessage['role'],
 				content: attachmentContext ? `${msg.content}\n\n${attachmentContext}` : msg.content,
@@ -941,7 +954,7 @@ export function createFastChatSessionService(
 					'message_id, provider_tool_call_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
 				)
 				.in('message_id', assistantMessageIds)
-				.in('tool_name', ['skill_load', 'request_turn_clarification'])
+				.or(CHAT_CONTINUITY_EXECUTION_FILTER)
 				.eq('success', true)
 				.order('sequence_index', { ascending: true })
 				.limit(limit * 6);

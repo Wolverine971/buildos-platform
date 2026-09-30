@@ -1338,6 +1338,7 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 			name: 'update_onto_document',
 			description: [
 				'Update an existing ontology document: title, state, body markdown, or metadata.',
+				'A parent shared-shelf edit from a child chat first returns confirmation_required. Explain the edit and shared-project count, then wait for explicit user confirmation in a later turn before repeating the identical edit with confirmation_token. Never confirm on the user’s behalf. Open the parent project to archive a shared document.',
 				'Change part of the body with edits or section_edits; never resend the whole body to change a few lines. content is only for a whole-body rewrite (replace) or adding at the end (append).',
 				'Edit example: update_onto_document({ document_id, edits: [{ old_text: "- Launch: May 3", new_text: "- Launch: May 10" }] })'
 			].join(' '),
@@ -1345,6 +1346,12 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 				type: 'object',
 				additionalProperties: false,
 				properties: {
+					confirmation_token: {
+						type: 'string',
+						format: 'uuid',
+						description:
+							'Token from a shared-document preview, only after the user confirms that exact edit and shared impact in a later turn.'
+					},
 					document_id: {
 						type: 'string',
 						description: 'Document UUID'

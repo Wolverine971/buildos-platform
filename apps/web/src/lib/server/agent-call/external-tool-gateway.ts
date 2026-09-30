@@ -1,4 +1,7 @@
 // apps/web/src/lib/server/agent-call/external-tool-gateway.ts
+import type { AgentCredentialReference } from '@buildos/shared-types';
+import { PERMISSION_CONTROL_TOOLS, PermissionRequestService } from './permission-requests.service';
+// apps/web/src/lib/server/agent-call/external-tool-gateway.ts
 //
 // Web-side adapter + discovery surface for the BuildOS agent-call gateway.
 //
@@ -179,7 +182,7 @@ export function getBuildosAgentGatewayTools(scope: AgentCallScope): BuildosAgent
 		inputSchema: buildExternalDirectToolSchema(entry)
 	}));
 
-	return [...discoveryTools, ...directTools];
+	return [...discoveryTools, ...directTools, ...PERMISSION_CONTROL_TOOLS];
 }
 
 function buildExternalDirectToolSchema(entry: ExternalGatewayRegistryEntry): ToolJsonObjectSchema {
@@ -484,6 +487,7 @@ export function attachConnectorGrantLinks(
 }
 
 export async function executeBuildosAgentGatewayTool(params: {
+	credential?: AgentCredentialReference;
 	admin: any;
 	userId: string;
 	callerId?: string;
@@ -497,6 +501,80 @@ export async function executeBuildosAgentGatewayTool(params: {
 	/** Public origin used to build owner-facing grant links in scope denials. */
 	connectorOrigin?: string;
 }): Promise<Record<string, unknown>> {
+	if (params.credential) {
+		const permissions = new PermissionRequestService(
+			params.admin,
+			params.credential,
+			params.scope,
+			params.connectorOrigin
+		);
+		try {
+			if (PERMISSION_CONTROL_TOOLS.some((t) => t.name === params.toolName))
+				return {
+					ok: true,
+					...(await permissions.control(params.toolName, params.arguments ?? {}))
+				};
+			const known = getToolRegistry().byToolName[params.toolName];
+			const op = known ? normalizeGatewayOpName(known.op) : '';
+			if (op === 'onto.document.update' || op === 'onto.task.update') {
+				const kind = op === 'onto.document.update' ? 'document' : 'task';
+				const args = { ...params.arguments };
+				const id = args[`${kind}_id`] ?? args.id;
+				const key = args.idempotency_key;
+				const changes = { ...args };
+				delete changes.idempotency_key;
+				delete changes[`${kind}_id`];
+				delete changes.id;
+				delete changes.dry_run;
+				const proposal = { kind, target_id: id, changes };
+				const legacyCandidate =
+					findExternalDirectTool(params.scope, params.toolName) &&
+					params.scope.mode === 'read_write';
+				// A receipt survives later changes to base access or the target's project.
+				// Check a scoped retry before loading the target to select the legacy route.
+				if (legacyCandidate && key !== undefined && !args.dry_run) {
+					const replay = await permissions.replay(proposal, key);
+					if (replay) return { ok: true, ...replay };
+				}
+				const target = legacyCandidate
+					? (
+							await params.admin
+								.from(kind === 'document' ? 'onto_documents' : 'onto_tasks')
+								.select('project_id')
+								.eq('id', id)
+								.maybeSingle()
+						).data
+					: null;
+				const legacy =
+					legacyCandidate &&
+					target &&
+					params.scope.write_project_ids?.includes(target.project_id);
+				if (!legacy) {
+					if (args.dry_run)
+						return {
+							ok: false,
+							error: {
+								code: 'UNSUPPORTED',
+								message: 'Use request_buildos_permission to review a proposed edit.'
+							}
+						};
+					return { ok: true, ...(await permissions.apply(proposal, key)) };
+				}
+			}
+		} catch (error) {
+			return {
+				ok: false,
+				error: {
+					code:
+						error && typeof error === 'object' && 'code' in error
+							? error.code
+							: 'INVALID_ARGUMENTS',
+					message: error instanceof Error ? error.message : 'Permission request failed'
+				}
+			};
+		}
+	}
+
 	switch (params.toolName) {
 		case 'skill_load': {
 			const format =

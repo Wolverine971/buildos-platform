@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-09-30T18:30:47.557Z
+// Generated on: 2026-09-30T20:25:56.442Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -115,6 +115,7 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	agent_oauth_authorization_codes: {
+		policy_snapshot: Json | null;
 		client_id: string;
 		code_challenge: string;
 		code_challenge_method: string;
@@ -2017,6 +2018,7 @@ export type DatabaseSchema = {
 		user_id: string | null;
 	};
 	external_agent_callers: {
+		permission_requests_enabled: boolean;
 		caller_key: string;
 		created_at: string;
 		id: string;

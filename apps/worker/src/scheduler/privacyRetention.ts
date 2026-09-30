@@ -205,7 +205,10 @@ export const PRIVACY_RETENTION_TASKS: PrivacyRetentionTask[] = [
 	// (20260924190600_privacy_gaps.sql).
 	rpcTask('cleanup_privacy_notifications'),
 	rpcTask('cleanup_privacy_webhook_events'),
-	rpcTask('cleanup_privacy_soft_deleted_braindumps')
+	rpcTask('cleanup_privacy_soft_deleted_braindumps'),
+	// Permission proposal content expires separately from durable receipt fingerprints.
+	rpcTask('purge_agent_permission_payloads'),
+	rpcTask('maintain_agent_permission_work')
 ];
 
 // A store that still has rows after this many batches resumes on the next run.

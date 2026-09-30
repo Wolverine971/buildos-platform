@@ -150,17 +150,23 @@ describe('project family prompt section', () => {
 		expect(section.id).toBe('project_family');
 		expect(section.content).toContain(`Part of Wayne Strategies [${PARENT_ID}].`);
 		expect(section.content).toContain(
-			'Shared docs, owned by Wayne Strategies and shown in every sub-project (read-only from this chat):'
+			'Shared docs, owned by Wayne Strategies and shown in 5 sub-projects (edits require confirmation):'
 		);
 		expect(section.content).toContain(`- Shared doc 1 [${uuid(1)}]`);
 		// Nested shelf docs indent under their folder.
 		expect(section.content).toContain(`\n  - Rate card [${uuid(2)}]`);
-		expect(section.content).toContain(
-			'Open them by their document id with the document read tools.'
-		);
+		expect(section.content).toContain('wait for explicit user confirmation in a later turn');
 		// The gateway admits single shelf docs, not the parent's lists or search.
 		expect(section.content).not.toContain('project_id');
 		expect(section.content).not.toContain('more');
+	});
+	it('keeps the parent copy read-only when the viewer cannot edit the parent', () => {
+		const family = childFamily();
+		family.parent!.can_write = false;
+		const section = buildProjectFamilySection('project', { project_family: family })!;
+		expect(section.content).toContain('(read-only)');
+		expect(section.content).toContain('You cannot edit the parent’s copy');
+		expect(section.content).not.toContain('confirmation_token');
 	});
 
 	it('says so when the parent shares nothing yet', () => {
@@ -198,7 +204,7 @@ describe('project family prompt section', () => {
 		const longShelf = buildProjectFamilySection('project', { project_family: longTitles })!;
 		expect(longShelf.content.length).toBeLessThanOrEqual(PROJECT_FAMILY_SECTION_MAX_CHARS);
 		expect(longShelf.content).toMatch(/\+\d+ more/);
-		expect(longShelf.content).toContain('Open them by their document id');
+		expect(longShelf.content).toContain('Read by document id');
 
 		const hub = buildProjectFamilySection('project', { project_family: hubFamily(25) })!;
 		expect(hub.content.length).toBeLessThanOrEqual(PROJECT_FAMILY_SECTION_MAX_CHARS);

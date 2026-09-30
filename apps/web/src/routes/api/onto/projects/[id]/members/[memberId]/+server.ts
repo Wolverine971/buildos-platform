@@ -104,15 +104,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.success({ memberId });
 		}
 
-		const { data: updatedMember, error: updateError } = await supabase
-			.from('onto_project_members')
-			.update({ role_key: roleKey, access })
-			.eq('id', memberId)
-			.eq('project_id', projectId)
-			.is('removed_at', null)
-			.neq('role_key', 'owner')
-			.select('id, actor_id, role_key, access, removed_at')
-			.maybeSingle();
+		const { data: updatedMember, error: updateError } = await (supabase as any).rpc(
+			'update_project_membership_guarded',
+			{ p_project: projectId, p_member: memberId, p_action: 'role', p_role: roleKey }
+		);
 
 		if (updateError) {
 			await logOntologyApiError({
@@ -255,16 +250,10 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Owner role cannot be removed');
 		}
 
-		const removedAt = new Date().toISOString();
-		const { data: removedMember, error: updateError } = await supabase
-			.from('onto_project_members')
-			.update({ removed_at: removedAt, removed_by_actor_id: actorId })
-			.eq('id', memberId)
-			.eq('project_id', projectId)
-			.is('removed_at', null)
-			.neq('role_key', 'owner')
-			.select('id, actor_id, role_key, access, removed_at')
-			.maybeSingle();
+		const { data: removedMember, error: updateError } = await (supabase as any).rpc(
+			'update_project_membership_guarded',
+			{ p_project: projectId, p_member: memberId, p_action: 'remove' }
+		);
 
 		if (updateError) {
 			await logOntologyApiError({

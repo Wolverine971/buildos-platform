@@ -4,9 +4,21 @@
 	import type { PlannedChange } from './organize-plan';
 	let {
 		changes,
+		busy = false,
+		disabled = false,
+		reviewDisabled = false,
+		onreview,
 		onundo,
 		onclear
-	}: { changes: PlannedChange[]; onundo: () => void; onclear: () => void } = $props();
+	}: {
+		changes: PlannedChange[];
+		busy?: boolean;
+		disabled?: boolean;
+		reviewDisabled?: boolean;
+		onreview: () => void;
+		onundo: () => void;
+		onclear: () => void;
+	} = $props();
 </script>
 
 <section
@@ -19,15 +31,24 @@
 		<h2 class="text-sm font-semibold text-foreground" aria-live="polite">
 			{changes.length} pending {changes.length === 1 ? 'move' : 'moves'}
 		</h2>
-		<div class="flex items-center gap-2">
-			<Button variant="ghost" size="sm" disabled={!changes.length} onclick={onundo}
-				>Undo last</Button
+		<div class="flex flex-wrap items-center gap-2">
+			<Button
+				variant="ghost"
+				size="sm"
+				disabled={!changes.length || disabled || busy}
+				onclick={onundo}>Undo last</Button
 			>
-			<Button variant="ghost" size="sm" disabled={!changes.length} onclick={onclear}
-				>Discard all</Button
+			<Button
+				variant="ghost"
+				size="sm"
+				disabled={!changes.length || disabled || busy}
+				onclick={onclear}>Discard all</Button
 			>
-			<Button size="sm" disabled title="Saving moves is not available in this preview"
-				>Apply changes</Button
+			<Button
+				size="sm"
+				disabled={!changes.length || disabled || busy || reviewDisabled}
+				loading={busy}
+				onclick={onreview}>Review changes</Button
 			>
 		</div>
 	</div>
@@ -52,7 +73,7 @@
 		</ol>
 	{/if}
 	<p class="mt-2 text-xs text-muted-foreground">
-		Planning preview. Changes stay on this page and are not saved. Linked items and permissions
-		will need a fresh review before applying.
+		Changes are staged until you review their impact and apply them. Saved moves can be undone
+		from History.
 	</p>
 </section>

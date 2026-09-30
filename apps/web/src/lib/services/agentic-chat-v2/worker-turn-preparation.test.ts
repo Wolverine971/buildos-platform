@@ -175,6 +175,20 @@ function serviceClientWithTables(tables: Record<string, Array<Record<string, any
 			return this;
 		}
 
+		or(filter: string) {
+			expect(filter).toBe(
+				'tool_name.in.(skill_load,request_turn_clarification),and(tool_name.eq.update_onto_document,result->>confirmation_kind.eq.shared_document_edit_v1,result->>status.eq.confirmation_required)'
+			);
+			this.filters.push(
+				(row) =>
+					['skill_load', 'request_turn_clarification'].includes(row.tool_name) ||
+					(row.tool_name === 'update_onto_document' &&
+						row.result?.confirmation_kind === 'shared_document_edit_v1' &&
+						row.result?.status === 'confirmation_required')
+			);
+			return this;
+		}
+
 		order(column: string, options?: { ascending?: boolean }) {
 			this.orders.push({ column, ascending: options?.ascending !== false });
 			return this;
@@ -303,6 +317,87 @@ describe('Agentic Chat worker turn preparation', () => {
 		// the prepared-hit tests byte-exact and the miss tests on the envelope.
 		mocks.applyActiveDomainSignalsOverlay.mockImplementation((input) => input);
 		mocks.buildPendingTurnContractSystemMessage.mockReturnValue(null);
+	});
+
+	it('freezes the pending shared-document edit and receipt through the owned-history admission path', async () => {
+		const warningId = 'f2000000-0000-4000-8000-000000000001';
+		const edit = {
+			document_id: 'f3000000-0000-4000-8000-000000000001',
+			edits: [{ old_text: 'A & B\n', new_text: 'C < D\n' }]
+		};
+		const receipt = {
+			status: 'confirmation_required',
+			confirmation_kind: 'shared_document_edit_v1',
+			confirmation_token: 'f4000000-0000-4000-8000-000000000001',
+			shared_document: { shared_with_count: 3 }
+		};
+		const serviceClient = serviceClientWithTables({
+			chat_sessions: [
+				{
+					id: SESSION_ID,
+					user_id: USER_ID,
+					context_type: 'global',
+					entity_id: null,
+					summary: null,
+					agent_metadata: {}
+				}
+			],
+			chat_messages: [
+				{
+					id: warningId,
+					session_id: SESSION_ID,
+					user_id: USER_ID,
+					role: 'assistant',
+					content: 'This changes the shared copy for all 3 projects. Confirm?',
+					metadata: null,
+					created_at: '2026-08-03T10:01:00.000Z'
+				}
+			],
+			chat_message_attachments: [],
+			chat_tool_executions: [
+				{
+					message_id: warningId,
+					provider_tool_call_id: 'shared-preview-1',
+					tool_name: 'update_onto_document',
+					gateway_op: 'onto.document.update',
+					sequence_index: 1,
+					success: true,
+					error_message: null,
+					arguments: edit,
+					result: receipt
+				}
+			]
+		});
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: serviceClient as never,
+			userId: USER_ID,
+			command: command({
+				sessionId: SESSION_ID,
+				message: 'Yes, update the shared copy.'
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+		const history = result.args.p_artifact_history as Array<{
+			role: string;
+			content: string;
+			toolCalls: Array<{ function: { arguments: string } }>;
+		}>;
+		expect(
+			JSON.parse(
+				history.find((message) => message.toolCalls.length > 0)!.toolCalls[0]!.function
+					.arguments
+			)
+		).toEqual(edit);
+		expect(JSON.parse(history.find((message) => message.role === 'tool')!.content)).toEqual(
+			receipt
+		);
+		expect(history.at(-1)!.content).toContain('all 3 projects');
 	});
 
 	it('builds an inline-session RPC value with empty history, null lineage, exact hashes, and server ids', async () => {

@@ -86,6 +86,65 @@
 			</div>
 		</div>
 
+		{#if data.retainedAccess}
+			<form
+				method="POST"
+				action="?/authorize"
+				class="mb-6 space-y-4 rounded-lg border border-border bg-card p-6 shadow-ink"
+			>
+				{#each hiddenFields as [name, value] (name)}<input
+						type="hidden"
+						{name}
+						{value}
+					/>{/each}
+				<input type="hidden" name="grant_id" value={data.retainedAccess.grant_id} />
+				<input
+					type="hidden"
+					name="retained_policy"
+					value={JSON.stringify(data.retainedAccess.policy)}
+				/>
+				<h2 class="text-lg font-semibold">Reconnect with access you already approved</h2>
+				<p>
+					Access this connection retains: {data.retainedAccess.policy.scope_mode ===
+					'read_write'
+						? 'read and write'
+						: 'read-only'} base access to {data.retainedAccess.policy
+						.project_scope_mode === 'all_unrestricted'
+						? 'all eligible owned projects'
+						: 'selected projects'}.
+				</p>
+				<details>
+					<summary>Existing base operations and projects</summary>
+					<pre class="overflow-auto whitespace-pre-wrap text-xs">{JSON.stringify(
+							{
+								operations: data.retainedAccess.policy.allowed_ops,
+								projects: data.retainedAccess.policy.allowed_project_ids
+							},
+							null,
+							2
+						)}</pre>
+				</details>
+				<h3 class="font-medium">Additional access you approved</h3>
+				<ul class="list-inside list-disc">
+					{#each data.retainedAccess.policy.rules as rule (rule.id)}<li>
+							{rule.capability} in {data.projects.find(
+								(p) => p.id === rule.project_id
+							)?.name ?? 'an approved project'}
+						</li>{/each}
+				</ul>
+				<p class="text-sm text-muted-foreground">
+					This supplies a write-capable credential for those permissions. Chats using this
+					connection share its access. You can revoke access in connection settings.
+				</p>
+				<button
+					name="decision"
+					value="retain_scoped"
+					class="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+					>Reconnect with retained access</button
+				>
+			</form>
+			<h2 class="mb-4 font-semibold">Or explicitly replace base permissions</h2>
+		{/if}
 		<form method="POST" action="?/authorize" class="space-y-6">
 			{#each hiddenFields as [name, value] (name)}
 				<input type="hidden" {name} {value} />

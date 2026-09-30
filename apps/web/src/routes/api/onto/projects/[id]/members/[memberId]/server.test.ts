@@ -37,7 +37,13 @@ describe('PATCH /api/onto/projects/[id]/members/[memberId]', () => {
 		const event = createEvent({ role_key: 'editor' });
 		const supabase = event.locals.supabase as any;
 
-		supabase.rpc.mockResolvedValue({ data: true, error: null });
+		supabase.rpc.mockImplementation(async (name: string) => ({
+			data:
+				name === 'current_actor_has_project_member_access'
+					? true
+					: { id: 'member-1', actor_id: 'actor-2', role_key: 'editor', access: 'write' },
+			error: null
+		}));
 
 		const memberRow = {
 			id: 'member-1',
@@ -95,7 +101,12 @@ describe('PATCH /api/onto/projects/[id]/members/[memberId]', () => {
 
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
-		expect(update).toHaveBeenCalledWith({ role_key: 'editor', access: 'write' });
+		expect(supabase.rpc).toHaveBeenCalledWith('update_project_membership_guarded', {
+			p_project: 'project-1',
+			p_member: 'member-1',
+			p_action: 'role',
+			p_role: 'editor'
+		});
 	});
 
 	it('rejects invalid role updates', async () => {
@@ -111,7 +122,13 @@ describe('DELETE /api/onto/projects/[id]/members/[memberId]', () => {
 		const event = createEvent();
 		const supabase = event.locals.supabase as any;
 
-		supabase.rpc.mockResolvedValue({ data: true, error: null });
+		supabase.rpc.mockImplementation(async (name: string) => ({
+			data:
+				name === 'current_actor_has_project_member_access'
+					? true
+					: { id: 'member-1', actor_id: 'actor-2', role_key: 'editor', access: 'write' },
+			error: null
+		}));
 
 		const memberRow = {
 			id: 'member-1',
@@ -147,7 +164,13 @@ describe('DELETE /api/onto/projects/[id]/members/[memberId]', () => {
 		const event = createEvent();
 		const supabase = event.locals.supabase as any;
 
-		supabase.rpc.mockResolvedValue({ data: true, error: null });
+		supabase.rpc.mockImplementation(async (name: string) => ({
+			data:
+				name === 'current_actor_has_project_member_access'
+					? true
+					: { id: 'member-1', actor_id: 'actor-2', role_key: 'editor', access: 'write' },
+			error: null
+		}));
 
 		const memberRow = {
 			id: 'member-1',
@@ -206,8 +229,10 @@ describe('DELETE /api/onto/projects/[id]/members/[memberId]', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 
-		const updatePayload = update.mock.calls[0]![0];
-		expect(updatePayload.removed_by_actor_id).toBe('actor-1');
-		expect(typeof updatePayload.removed_at).toBe('string');
+		expect(supabase.rpc).toHaveBeenCalledWith('update_project_membership_guarded', {
+			p_project: 'project-1',
+			p_member: 'member-1',
+			p_action: 'remove'
+		});
 	});
 });

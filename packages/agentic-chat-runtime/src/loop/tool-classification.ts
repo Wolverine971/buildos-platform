@@ -233,6 +233,15 @@ export function isWriteLedgerToolExecution(execution: FastToolExecution): boolea
 		return false;
 	const toolName = execution.toolCall.function?.name?.trim() ?? '';
 	if (!toolName) return false;
+	// A shared-document preview completed successfully, but changed no content.
+	// It must not satisfy a write obligation or appear as a saved edit.
+	if (
+		toolName === 'update_onto_document' &&
+		execution.result.success === true &&
+		payload?.confirmation_kind === 'shared_document_edit_v1' &&
+		payload.status === 'confirmation_required'
+	)
+		return false;
 	if (toolName === 'move_onto_task' && execution.result.success === true) {
 		const payload = unwrapResultRecord(execution.result.result);
 		if (payload?.status !== 'moved') {

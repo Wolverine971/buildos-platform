@@ -14,6 +14,11 @@ import { hasDocumentEdits } from '@buildos/shared-agent-ops/ontology/document-ed
 import type { MutationBatch, ToolValidationIssue } from '@buildos/agentic-chat-runtime/loop';
 import { completedProviderCallToChatToolCall } from './feedback';
 import type { CompletedProviderToolCall } from './stream-tool-calls';
+import {
+	loadSharedDocumentTarget,
+	sharedDocumentEditArgs,
+	type SharedDocumentTarget
+} from '../mutations/shared-document-edit';
 
 export type DocumentEditPreviewV1 = {
 	document_id: string;
@@ -23,6 +28,7 @@ export type DocumentEditPreviewV1 = {
 	/** "+ text" / "- text" lines in document order, bounded. */
 	changed_lines: string[];
 	changed_lines_truncated: boolean;
+	shared_document?: SharedDocumentTarget;
 };
 
 export type DocumentEditPreviewOutcome =
@@ -60,6 +66,8 @@ export function createGatewayDocumentEditPreviewPort(
 ): AgenticChatDocumentEditPreviewPort {
 	return {
 		async preview({ userId, projectId, args, baseContent }) {
+			const editArgs = sharedDocumentEditArgs(args);
+			let shared: SharedDocumentTarget | null = null;
 			const scope: AgentCallScope = {
 				mode: 'read_write',
 				allowed_ops: ['onto.document.update'],
@@ -71,9 +79,35 @@ export function createGatewayDocumentEditPreviewPort(
 					admin: client as never,
 					userId,
 					scope,
-					args,
+					args: editArgs,
 					...(baseContent !== undefined ? { baseContent } : {})
 				});
+				if (
+					!result.ok &&
+					result.error.code === 'NOT_FOUND' &&
+					projectId &&
+					typeof args.document_id === 'string'
+				) {
+					shared = await loadSharedDocumentTarget(
+						client as never,
+						userId,
+						projectId,
+						args.document_id
+					);
+					if (shared)
+						result = await previewGatewayDocumentUpdate({
+							admin: client as never,
+							userId,
+							args: editArgs,
+							scope: {
+								...scope,
+								project_ids: [shared.parent_project_id],
+								write_project_ids: [shared.parent_project_id]
+							}
+							// Shared edits use the stored head, never a synthetic body
+							// produced by earlier unconfirmed calls.
+						});
+				}
 			} catch {
 				return { status: 'unavailable' };
 			}
@@ -105,7 +139,8 @@ export function createGatewayDocumentEditPreviewPort(
 					lines_added: change.lines_added,
 					lines_removed: change.lines_removed,
 					changed_lines: changedLines,
-					changed_lines_truncated: truncated
+					changed_lines_truncated: truncated,
+					...(shared ? { shared_document: shared } : {})
 				},
 				next_content: nextContent
 			};

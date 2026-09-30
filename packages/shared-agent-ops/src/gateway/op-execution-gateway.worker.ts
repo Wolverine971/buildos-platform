@@ -161,6 +161,7 @@ export async function runGatewayWriteOp(params: {
 	calendar?: CalendarPort;
 	taskSync?: TaskSyncPort;
 	downstreamIdempotencyKey?: string;
+	documentWriteGuard?: ToolExecutionContext['documentWriteGuard'];
 	/** Lookups shared across the writes of one chat turn. */
 	memo?: GatewayLookupMemo;
 }): Promise<GatewayWriteOpResult> {
@@ -194,6 +195,7 @@ export async function runGatewayWriteOp(params: {
 		calendar: params.calendar,
 		taskSync: params.taskSync,
 		downstreamIdempotencyKey: params.downstreamIdempotencyKey,
+		documentWriteGuard: params.documentWriteGuard,
 		memo: params.memo
 	};
 

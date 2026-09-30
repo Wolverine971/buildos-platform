@@ -847,6 +847,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	takeRequestCompletionContinuation(value: ClientRequest): ClientRequest | null {
+		if (this.awaitingUserAction()) return null;
 		const expectation = this.requestExpectation;
 		if (
 			!this.reviewedBatchExecuted ||
@@ -882,6 +883,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	getRequestCompletionFallback(): string | null {
+		if (this.awaitingUserAction()) return null;
 		if (!this.reviewedBatchExecuted) return null;
 		const expectation = this.requestExpectation;
 		const remaining = this.unfinishedContractOutcomeDescriptions();
@@ -1488,7 +1490,15 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	// move documents into them). The live organize failures all ended here:
 	// folders created, moves never proposed, prose accepted. One bounded
 	// continuation returns the model to the unfinished outcomes.
+	private awaitingUserAction(): boolean {
+		return this.turnToolExecutions.some(
+			(execution) => execution.result.success && doesToolExecutionRequireUserAction(execution)
+		);
+	}
+
 	private incompleteApprovedContractResolution() {
+		// Confirmation is a successful preview, not unfinished work to retry.
+		if (this.awaitingUserAction()) return null;
 		const turnContract = this.turnContract;
 		if (
 			!turnContract ||

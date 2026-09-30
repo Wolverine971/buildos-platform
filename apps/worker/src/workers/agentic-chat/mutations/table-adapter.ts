@@ -70,6 +70,13 @@ import {
 	reviewedAgenticChatMutationSpecV1
 } from './tool-catalog';
 import { gatewayMemoForTurn } from './gateway-turn-memo';
+import {
+	loadSharedDocumentTarget,
+	sharedDocumentConfirmation,
+	sharedDocumentEditArgs,
+	verifySharedDocumentConfirmation,
+	isSharedDocumentConfirmation
+} from './shared-document-edit';
 
 type GatewayRunner = typeof runGatewayWriteOp;
 type TaskMoveRunner = (input: AtomicTaskMoveInput) => Promise<TaskMoveResult>;
@@ -155,6 +162,11 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		}
 
 		const data = await this.dispatch(execution, spec.operationName, context);
+		if (input.toolName === 'update_onto_document' && isSharedDocumentConfirmation(data)) {
+			const receipt = canonicalMutationReceipt(data, input.toolName);
+			assertMutationReceiptSize(receipt, input.toolName);
+			return receipt;
+		}
 		const receipt =
 			execution.receipt.kind === 'builder'
 				? AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1[execution.receipt.builder](
@@ -227,6 +239,9 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		// Only rows whose runner is the shared gateway reach here, and the catalog
 		// keeps their operationName inside the external allowed-op vocabulary.
 		const op = operationName as BuildosAgentAllowedOp;
+		if (toolName === 'update_onto_document' && context.args.confirmation_token !== undefined) {
+			return this.runConfirmedSharedDocument(context);
+		}
 		let result: Awaited<ReturnType<GatewayRunner>>;
 		try {
 			const runner =
@@ -261,6 +276,22 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		}
 
 		if (!result.ok) {
+			// A failed scoped lookup wrote nothing. Only the authorized shared shelf
+			// can supply a preview; ordinary writes pay no extra hierarchy round trip.
+			if (
+				toolName === 'update_onto_document' &&
+				projectId &&
+				result.error?.code === 'NOT_FOUND' &&
+				!isDocumentArchiveState(context.args.state_key)
+			) {
+				const target = await loadSharedDocumentTarget(
+					this.client,
+					input.executionInput.claim.userId,
+					projectId,
+					String(context.args.document_id)
+				);
+				if (target) return sharedDocumentConfirmation(input, target, context.args);
+			}
 			if (
 				execution.failureClassifier === 'document_tree_title_branch' &&
 				context.expected.parentTitle !== undefined
@@ -274,6 +305,76 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 			}
 			throwGatewayResultFailure(toolName, result.error);
 		}
+		return result.data;
+	}
+
+	private async runConfirmedSharedDocument(
+		context: AgenticChatMutationExecutionContextV1
+	): Promise<Record<string, unknown> | undefined> {
+		const { input, args, projectId, toolName } = context;
+		if (
+			!projectId ||
+			isDocumentArchiveState(args.state_key) ||
+			args.archive_mode !== undefined ||
+			args._archive_review !== undefined
+		) {
+			throw knownFailure(
+				'shared_document_edit_only',
+				'Shared confirmation is only for editing a shared document from its child project. Open the parent project to archive it.'
+			);
+		}
+		const target = await loadSharedDocumentTarget(
+			this.client,
+			input.executionInput.claim.userId,
+			projectId,
+			String(args.document_id)
+		);
+		if (!target)
+			throw knownFailure(
+				'shared_document_not_accessible',
+				'This document is not on the writable shared shelf. Nothing was changed.'
+			);
+		await verifySharedDocumentConfirmation(this.client, input, target, args);
+		if (input.signal.aborted)
+			throw knownFailure(
+				'mutation_cancelled_before_dispatch',
+				'Mutation cancelled before dispatch'
+			);
+		let result: Awaited<ReturnType<GatewayRunner>>;
+		try {
+			result = await this.runGateway({
+				admin: this.client,
+				userId: input.executionInput.claim.userId,
+				scope: {
+					mode: 'read_write',
+					allowed_ops: ['onto.document.update'],
+					project_ids: [target.parent_project_id],
+					write_project_ids: [target.parent_project_id]
+				},
+				op: 'onto.document.update',
+				args: sharedDocumentEditArgs(args),
+				chatSessionId: input.executionInput.claim.sessionId,
+				documentWriteGuard: {
+					documentId: target.document_id,
+					projectId: target.parent_project_id,
+					updatedAt: target.updated_at
+				}
+				// Deliberately no turn memo: recheck current parent membership.
+			});
+		} catch (error) {
+			throw uncertainFailure(
+				`${toolName}_gateway_threw`,
+				canonicalGatewayError(error, toolName)
+			);
+		}
+		if (!result.ok) {
+			if (result.error?.details?.confirmation_changed === true)
+				throw knownFailure('shared_document_confirmation_changed', result.error.message);
+			throwGatewayResultFailure(toolName, result.error);
+		}
+		// Receipt validation follows this one authorized parent; subsequent calls
+		// still resolve the original child fence from the immutable turn context.
+		context.projectId = target.parent_project_id;
 		return result.data;
 	}
 

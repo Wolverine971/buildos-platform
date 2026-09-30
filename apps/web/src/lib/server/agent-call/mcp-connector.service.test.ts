@@ -286,7 +286,7 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			expect(body.error.code).toBe(-32001);
 		});
 
-		it('returns a complete insufficient-scope challenge for legacy and modern requests', async () => {
+		it('treats revoked connections as invalid credentials for legacy and modern requests', async () => {
 			const authorization = `Bearer ${REVOKED_OAUTH_TOKEN}`;
 			const responses = await Promise.all([
 				mcpPost(
@@ -303,10 +303,10 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			]);
 
 			for (const response of responses) {
-				expect(response.status).toBe(403);
+				expect(response.status).toBe(401);
 				const challenge = response.headers.get('WWW-Authenticate');
-				expect(challenge).toContain('error="insufficient_scope"');
-				expect(challenge).toContain('scope="buildos.read buildos.write offline_access"');
+				expect(challenge).not.toContain('error="insufficient_scope"');
+				expect(challenge).not.toContain('buildos.write');
 				expect(challenge).toContain(
 					'resource_metadata="https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos"'
 				);
@@ -410,9 +410,11 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 			for (const writeTool of WRITE_BUNDLE_TOOLS) {
 				expect(names).not.toContain(writeTool);
 			}
-			// Every exposed tool is annotated read-only under a read-only grant.
+			// Requesting approval changes approval state but cannot edit project data.
 			for (const tool of body.result.tools) {
-				expect(tool.annotations.readOnlyHint).toBe(true);
+				expect(tool.annotations.readOnlyHint).toBe(
+					tool.name !== 'request_buildos_permission'
+				);
 			}
 		});
 
@@ -1089,4 +1091,39 @@ describe('isAllowedMcpOrigin', () => {
 		expect(isAllowedMcpOrigin('http://localhost:6274', 'http://localhost:5173')).toBe(true);
 		expect(isAllowedMcpOrigin('http://localhost:6274', server)).toBe(false);
 	});
+});
+
+describe('permission credential step-up adapters', () => {
+	it.each(['legacy', 'modern'])(
+		'returns HTTP insufficient_scope for %s tools/call',
+		async (protocol) => {
+			gatewayMocks.executeBuildosAgentGatewayTool.mockResolvedValue({
+				ok: false,
+				error: { code: 'INSUFFICIENT_SCOPE', message: 'Reconnect' }
+			});
+			sessionMocks.createMcpCallSession.mockResolvedValue('call');
+			const response =
+				protocol === 'modern'
+					? await modernMcpPost(
+							staticKeyAdmin({ scope_mode: 'read_only' }),
+							'tools/call',
+							{ name: 'authorize_buildos_writes', arguments: {} },
+							{ ...STATIC_KEY_HEADER, 'Mcp-Name': 'authorize_buildos_writes' }
+						)
+					: await mcpPost(
+							staticKeyAdmin({ scope_mode: 'read_only' }),
+							{
+								jsonrpc: '2.0',
+								id: 1,
+								method: 'tools/call',
+								params: { name: 'authorize_buildos_writes', arguments: {} }
+							},
+							STATIC_KEY_HEADER
+						);
+			expect(response.status).toBe(403);
+			expect(response.headers.get('WWW-Authenticate')).toContain(
+				'error="insufficient_scope"'
+			);
+		}
+	);
 });

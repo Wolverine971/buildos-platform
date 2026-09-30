@@ -96,6 +96,7 @@ import {
 	projectWorkerFrozenHistorySnapshot,
 	type LoadedSkillExecutionSummaryRow
 } from './session-service';
+import { CHAT_CONTINUITY_EXECUTION_FILTER } from './shared-document-confirmation-history';
 import { loadFastChatPromptContext } from './context-loader';
 import { resolveMaterializedFastChatContext } from './materialized-context-cache.server';
 import { loadValidatedChatAttachments } from './stream-attachments';
@@ -1198,7 +1199,7 @@ async function loadOwnedWorkerHistory(params: {
 			serviceClient: params.serviceClient,
 			messageIds: assistantMessageIds,
 			limit: params.limit * 6,
-			toolNames: ['skill_load', 'request_turn_clarification']
+			continuityOnly: true
 		})
 	);
 	const attachmentRows = await attachmentRowsRead;
@@ -1376,7 +1377,7 @@ async function loadHistoryToolExecutions(params: {
 	serviceClient: FastChatSupabaseClient;
 	messageIds: string[];
 	limit: number;
-	toolNames?: string[];
+	continuityOnly?: boolean;
 }): Promise<ChatHistorySnapshot['interrupted_tool_executions']> {
 	if (params.messageIds.length === 0) return [];
 	let query = params.serviceClient
@@ -1385,8 +1386,8 @@ async function loadHistoryToolExecutions(params: {
 			'message_id, provider_tool_call_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
 		)
 		.in('message_id', params.messageIds);
-	if (params.toolNames) {
-		query = query.in('tool_name', params.toolNames).eq('success', true);
+	if (params.continuityOnly) {
+		query = query.or(CHAT_CONTINUITY_EXECUTION_FILTER).eq('success', true);
 	}
 	const { data, error } = await query
 		.order('sequence_index', { ascending: true })

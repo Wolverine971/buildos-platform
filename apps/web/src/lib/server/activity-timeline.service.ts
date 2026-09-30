@@ -213,6 +213,43 @@ async function fetchNotifications(
 	}
 
 	const rows = data ?? [];
+	// Resolve permission state in one batch. Delivery success only means the owner
+	// was notified; it must not make an unanswered approval look completed.
+	const permissionIds = rows.flatMap((row) => {
+		const event = row.notification_events as any;
+		const id =
+			event?.event_type === 'agent.permission.requested' && isRecord(event.payload)
+				? asString(event.payload.request_id)
+				: null;
+		return id ? [id] : [];
+	});
+	const permissionById = new Map<string, { caller_id: string; status: string }>();
+	if (permissionIds.length) {
+		const [requests, features] = await Promise.all([
+			supabase
+				.from('agent_permission_requests')
+				.select('id,caller_id,status,epoch,expires_at')
+				.eq('user_id', userId)
+				.in('id', permissionIds),
+			supabase
+				.from('agent_permission_feature')
+				.select('enabled,epoch')
+				.eq('id', true)
+				.limit(1)
+		]);
+		const feature = features.data?.[0];
+		for (const request of requests.data ?? []) {
+			const status =
+				request.status === 'pending'
+					? !feature?.enabled || feature.epoch !== request.epoch
+						? 'canceled'
+						: Date.parse(request.expires_at) <= Date.now()
+							? 'expired'
+							: 'pending'
+					: request.status;
+			permissionById.set(request.id, { caller_id: request.caller_id, status });
+		}
+	}
 
 	// One event fans out to several channel deliveries; collapse to one entry so the
 	// timeline reads as "this happened", not "this was emailed AND texted AND pushed".
@@ -241,6 +278,10 @@ async function fetchNotifications(
 		const eventType: string = event?.event_type ?? 'unknown';
 		const deliveryPayload = isRecord(row.payload) ? row.payload : {};
 		const eventPayload = isRecord(event?.payload) ? event.payload : {};
+		const permission =
+			eventType === 'agent.permission.requested'
+				? permissionById.get(asString(eventPayload.request_id) ?? '')
+				: undefined;
 
 		const projectId =
 			asString(eventPayload.project_id) ?? asString((eventPayload as any).projectId);
@@ -257,6 +298,7 @@ async function fetchNotifications(
 			asString(deliveryPayload.brief_date);
 
 		const stats: ActivityStat[] = [];
+		if (permission) stats.push({ label: 'Request', value: permission.status });
 		const channelList = Array.from(channels).sort();
 		stats.push({
 			label: 'Sent via',
@@ -287,15 +329,23 @@ async function fetchNotifications(
 			project_name: projectName,
 			actor: 'system',
 			actor_label: 'BuildOS',
-			status: notificationStatus(eventType, statuses),
+			status: permission
+				? permission.status === 'pending'
+					? 'pending'
+					: permission.status === 'applied'
+						? 'ok'
+						: 'warn'
+				: notificationStatus(eventType, statuses),
 			stats,
 			// A brief ping is about the brief, not the project it happens to mention,
 			// so it opens the brief itself — otherwise these pings link nowhere at all.
-			href: eventType.startsWith('brief.')
-				? DEEP_LINK.brief(briefDate)
-				: projectId
-					? DEEP_LINK.project(projectId)
-					: null,
+			href: permission
+				? `/profile/agent-keys/${permission.caller_id}/requests/${asString(eventPayload.request_id)}`
+				: eventType.startsWith('brief.')
+					? DEEP_LINK.brief(briefDate)
+					: projectId
+						? DEEP_LINK.project(projectId)
+						: null,
 			children: [],
 			count: statuses.length
 		});

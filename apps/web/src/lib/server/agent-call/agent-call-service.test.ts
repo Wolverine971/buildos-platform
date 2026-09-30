@@ -588,6 +588,10 @@ describe('BuildosAgentCallService', () => {
 		);
 
 		expect(executeBuildosAgentGatewayToolMock).toHaveBeenCalledWith({
+			credential: expect.objectContaining({
+				kind: 'key',
+				caller_id: '11111111-1111-1111-1111-111111111111'
+			}),
 			admin,
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			callerId: '11111111-1111-1111-1111-111111111111',
@@ -674,5 +678,41 @@ describe('BuildosAgentCallService', () => {
 		expect(executeBuildosAgentGatewayToolMock.mock.calls[0]?.[0].scope.project_ids).toEqual([
 			'44444444-4444-4444-4444-444444444444'
 		]);
+	});
+});
+
+describe('live session narrowing', () => {
+	it.each([
+		{ scope_mode: 'read_only' },
+		{ scope_mode: 'read_write', allowed_ops: ['onto.project.list'] }
+	])('clamps a previously write-capable session to %j', async (policy) => {
+		vi.clearAllMocks();
+		authenticateExternalAgentCallerMock.mockResolvedValue(createCaller({ policy }));
+		executeBuildosAgentGatewayToolMock.mockResolvedValue({
+			ok: false,
+			error: { code: 'FORBIDDEN' }
+		});
+		const session = createSessionRow({
+			status: 'active',
+			granted_scope: {
+				mode: 'read_write',
+				allowed_ops: ['onto.document.update', 'onto.project.list']
+			}
+		});
+		const { BuildosAgentCallService } = await import('./agent-call-service');
+		const service = new BuildosAgentCallService(
+			createAdminMock({ sessions: { [session.id]: session }, nextId: 1 })
+		);
+		await service.callTool(
+			new Request('https://example.com', { headers: { authorization: 'Bearer token' } }),
+			{
+				call_id: session.id,
+				name: 'update_onto_document',
+				arguments: { document_id: '44444444-4444-4444-4444-444444444444', title: 'Changed' }
+			}
+		);
+		const effective = executeBuildosAgentGatewayToolMock.mock.calls[0]?.[0].scope;
+		expect(effective.allowed_ops).not.toContain('onto.document.update');
+		if (policy.scope_mode === 'read_only') expect(effective.mode).toBe('read_only');
 	});
 });

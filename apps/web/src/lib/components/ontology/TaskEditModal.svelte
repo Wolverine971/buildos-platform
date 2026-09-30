@@ -40,6 +40,7 @@
 		Tag as TagIcon
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import OrganizeEntryButton from '$lib/components/organize/OrganizeEntryButton.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -150,7 +151,7 @@
 	let calendarLinkStatusController: AbortController | null = null;
 	let calendarLinkStatusRequestId = 0;
 	let taskSessionEpoch = 0;
-	let initialForm: ReturnType<typeof formSnapshot> | null = null;
+	let initialForm = $state.raw<ReturnType<typeof formSnapshot> | null>(null);
 
 	type TaskSession = {
 		taskId: string;
@@ -995,6 +996,18 @@
 {/snippet}
 
 {#snippet headerActions()}
+	<OrganizeEntryButton
+		projectId={task?.project_id ?? projectId}
+		itemId={taskId}
+		kind="task"
+		disabled={isLoading ||
+			isSaving ||
+			isDeleting ||
+			!task ||
+			!initialForm ||
+			Object.keys(changedFormFields(initialForm, formSnapshot())).length > 0}
+		onNavigate={handleClose}
+	/>
 	<!-- Chat about this task button -->
 	<button
 		type="button"

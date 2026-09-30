@@ -41,7 +41,7 @@ describe('Organize preview interactions', () => {
 				name: 'Research, planned move'
 			})
 		).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Apply changes' })).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Review changes' })).toBeEnabled();
 		expect(screen.getByText(/1 child doc moves too/)).toHaveTextContent(
 			'Shared with 3 sub-projects'
 		);

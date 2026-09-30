@@ -95,6 +95,8 @@ export type ToolExecutionContext = {
 	taskSync?: TaskSyncPort;
 	/** Stable downstream key for handlers with domain-level idempotency. */
 	downstreamIdempotencyKey?: string;
+	/** Worker-only, version-bound shared-document consent. Never a tool argument. */
+	documentWriteGuard?: { documentId: string; projectId: string; updatedAt: string };
 	/** Optional worker cancellation/deadline propagated to network-backed handlers. */
 	signal?: AbortSignal;
 	/**

@@ -5,6 +5,8 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { getSecurityEventLogOptions } from '$lib/server/security-event-logger';
 import {
 	approveOAuthAuthorization,
+	loadRetainedOAuthAccess,
+	approveRetainedOAuthAccess,
 	buildOAuthRedirect,
 	loadOAuthAuthorizationRequest,
 	loadVisibleProjectsForOAuth,
@@ -50,6 +52,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const projects = await loadVisibleProjectsForOAuth(admin, user.id);
 
 		return {
+			retainedAccess: await loadRetainedOAuthAccess(admin, user.id, authorizationRequest),
 			authorization: {
 				client_id: authorizationRequest.clientId,
 				client_name: authorizationRequest.client.client_name,
@@ -108,6 +111,20 @@ export const actions: Actions = {
 					state: authorizationRequest.state,
 					error: 'access_denied',
 					errorDescription: 'The BuildOS connector request was denied.'
+				});
+			} else if (decision === 'retain_scoped') {
+				const { code } = await approveRetainedOAuthAccess({
+					admin,
+					userId: user.id,
+					authorizationRequest,
+					grantId: String(form.get('grant_id')),
+					expected: JSON.parse(String(form.get('retained_policy')))
+				});
+				redirectTarget = buildOAuthRedirect({
+					redirectUri: authorizationRequest.redirectUri,
+					issuer: authorizationUrl.origin,
+					code,
+					state: authorizationRequest.state
 				});
 			} else {
 				const scopeMode =

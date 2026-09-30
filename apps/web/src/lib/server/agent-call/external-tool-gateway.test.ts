@@ -2657,7 +2657,7 @@ describe('external tool gateway', () => {
 		});
 	});
 
-	it('returns only discovery helpers when no scoped direct ops are available', async () => {
+	it('returns discovery and permission controls when no scoped direct ops are available', async () => {
 		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
 
 		const tools = getBuildosAgentGatewayTools({
@@ -2668,7 +2668,11 @@ describe('external tool gateway', () => {
 		expect(tools.map((tool) => tool.name)).toEqual([
 			'skill_load',
 			'tool_search',
-			'tool_schema'
+			'tool_schema',
+			'get_buildos_permissions',
+			'request_buildos_permission',
+			'get_buildos_permission_request',
+			'authorize_buildos_writes'
 		]);
 	});
 

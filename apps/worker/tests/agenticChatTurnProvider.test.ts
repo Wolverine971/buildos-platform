@@ -11777,6 +11777,262 @@ describe('SHA-bound mutation batch approval', () => {
 			});
 		}
 
+		it.each([false, true])(
+			'requires independent review for a shared-document confirmation (batch lane %s)',
+			async (batchEnabled) => {
+				const args = {
+					document_id: DOCUMENT_ID,
+					title: 'Confirmed title',
+					confirmation_token: '80000000-0000-4000-8000-000000000001'
+				};
+				const input = documentSurface();
+				input.requestPayload.message =
+					'Yes, make that title change in the shared copy for all three projects.';
+				input.artifact.history = [
+					{
+						sourceMessageId: null,
+						role: 'assistant',
+						content: '',
+						attachments: [],
+						toolCallId: null,
+						toolCalls: [
+							{
+								id: 'preview-1',
+								type: 'function',
+								function: {
+									name: 'update_onto_document',
+									arguments: JSON.stringify({
+										document_id: DOCUMENT_ID,
+										title: args.title
+									})
+								}
+							}
+						]
+					},
+					{
+						sourceMessageId: null,
+						role: 'tool',
+						content: JSON.stringify({
+							status: 'confirmation_required',
+							confirmation_token: args.confirmation_token,
+							shared_document: { document_id: DOCUMENT_ID, shared_with_count: 3 }
+						}),
+						attachments: [],
+						toolCalls: [],
+						toolCallId: 'preview-1'
+					},
+					{
+						sourceMessageId: null,
+						role: 'assistant',
+						content:
+							'Rename the shared copy to Confirmed title? This affects all 3 sub-projects.',
+						attachments: [],
+						toolCalls: [],
+						toolCallId: null
+					}
+				];
+				const client = clientWithRounds([
+					[
+						{
+							type: 'tool_call',
+							toolCall: [
+								{
+									index: 0,
+									id: 'shared-1',
+									type: 'function',
+									function: {
+										name: 'update_onto_document',
+										arguments: JSON.stringify(args)
+									}
+								}
+							]
+						},
+						{ type: 'done', finishedReason: 'tool_calls' }
+					]
+				]);
+				const sha = mutationBatchSha256(
+					buildMutationBatch([
+						{
+							id: 'shared-1',
+							name: 'update_onto_document',
+							canonicalProviderArguments: canonicalizeAgenticChatJson(args)
+						}
+					])
+				);
+				const expectation = {
+					outcomes: [
+						{
+							id: 'shared-edit',
+							action: 'update',
+							entity_kind: 'document',
+							description: 'Rename the confirmed shared document',
+							target_ids: [DOCUMENT_ID],
+							minimum_successful_effects: 1
+						}
+					]
+				};
+				const semanticReviewer = clientWithRounds([reviewerApproval(sha, expectation)]);
+				const invocation = await new AgenticChatTurnProviderAdapter(
+					{
+						client,
+						semanticReviewer,
+						capacity: new AgenticChatProviderCapacity({
+							configured: true,
+							concurrency: 1
+						})
+					},
+					2_000,
+					16,
+					{ updateOntoDocument: true },
+					batchEnabled
+				).prepare({
+					executionInput: input,
+					processingToken: PROCESSING_TOKEN,
+					signal: new AbortController().signal
+				});
+				if (!batchEnabled) {
+					await expect(collect(invocation.stream())).rejects.toMatchObject({
+						code: 'shared_document_independent_review_required'
+					});
+					return;
+				}
+				const held = await collect(invocation.stream());
+				expect(held.some((step) => step.type === 'mutating_tool')).toBe(false);
+				const reviewText = JSON.stringify(
+					semanticReviewer.stream.mock.calls[0]![0].messages
+				);
+				expect(reviewText).toContain('A token is not user permission');
+				expect(reviewText).toContain('confirmation_required');
+				expect(reviewText).toContain('This affects all 3 sub-projects');
+				expect(reviewText).toContain(input.requestPayload.message);
+				const executed = await collect(
+					invocation.continueWithToolResults!({
+						round: 2,
+						results: [
+							durableReadFeedbackFor(
+								'reviewer-approval-1',
+								'approve_mutation_batch_review',
+								{
+									reason: 'The user asked for exactly these four tasks.',
+									batch_sha256: sha,
+									reference_candidates: [],
+									request_expectation: expectation
+								},
+								{ status: 'mutation_batch_review_approved', batch_sha256: sha }
+							)
+						]
+					})
+				);
+				expect(executed).toEqual([
+					expect.objectContaining({ type: 'mutating_tool', arguments: args })
+				]);
+			}
+		);
+
+		it('ends a shared-document preview with the confirmation question, without crediting or retrying the edit', async () => {
+			const args = { document_id: DOCUMENT_ID, title: 'New shared title' };
+			const warning = 'This renames the shared copy for all 3 sub-projects. Confirm?';
+			const client = clientWithRounds([
+				[
+					{
+						type: 'tool_call',
+						toolCall: [
+							{
+								index: 0,
+								id: 'shared-preview',
+								type: 'function',
+								function: {
+									name: 'update_onto_document',
+									arguments: JSON.stringify(args)
+								}
+							}
+						]
+					},
+					{ type: 'done', finishedReason: 'tool_calls' }
+				],
+				[
+					{ type: 'text', content: warning },
+					{ type: 'done', finishedReason: 'stop' }
+				]
+			]);
+			const sha = mutationBatchSha256(
+				buildMutationBatch([
+					{
+						id: 'shared-preview',
+						name: 'update_onto_document',
+						canonicalProviderArguments: canonicalizeAgenticChatJson(args)
+					}
+				])
+			);
+			const expectation = {
+				outcomes: [
+					{
+						id: 'shared-edit',
+						action: 'update',
+						entity_kind: 'document',
+						description: 'Rename shared document',
+						target_ids: [DOCUMENT_ID],
+						minimum_successful_effects: 1
+					}
+				]
+			};
+			const semanticReviewer = clientWithRounds([reviewerApproval(sha, expectation)]);
+			const invocation = await new AgenticChatTurnProviderAdapter(
+				{
+					client,
+					semanticReviewer,
+					capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+				},
+				2_000,
+				16,
+				{ updateOntoDocument: true },
+				true
+			).prepare({
+				executionInput: documentSurface(),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			const held = await collect(invocation.stream());
+			const approval = held.find((step) => step.type === 'read_tool');
+			if (!approval || approval.type !== 'read_tool')
+				throw new Error('Missing independent review');
+			const dispatched = await collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedbackFor(
+							approval.providerToolCallId,
+							approval.toolName,
+							approval.arguments,
+							{ status: 'mutation_batch_review_approved', batch_sha256: sha }
+						)
+					]
+				})
+			);
+			const step = dispatched.find((step) => step.type === 'mutating_tool');
+			if (!step || step.type !== 'mutating_tool') throw new Error('Missing preview call');
+			const feedback = durableMutationFeedback({ ...step });
+			feedback.execution.result = {
+				status: 'confirmation_required',
+				confirmation_kind: 'shared_document_edit_v1',
+				confirmation_token: '80000000-0000-4000-8000-000000000001',
+				requires_user_action: true
+			};
+			feedback.execution.requiresUserAction = true;
+			const final = await collect(
+				invocation.continueWithToolResults!({ round: 3, results: [feedback] })
+			);
+			expect(
+				final
+					.filter((step) => step.type === 'text_delta')
+					.map((step) => step.text)
+					.join('')
+			).toBe(warning);
+			expect(final.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+			expect(client.stream).toHaveBeenCalledTimes(2);
+			expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
+		});
+
 		it('binds archive publication facts to approval and executes only the reviewed snapshot', async () => {
 			const archiveProjectId = '10000000-0000-4000-8000-000000000001';
 			const archiveInput = documentSurface();

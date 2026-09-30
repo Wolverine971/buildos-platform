@@ -14,7 +14,13 @@ import { DELETE } from './+server';
 
 const createEvent = (): RequestEvent => {
 	const supabase = {
-		from: vi.fn()
+		from: vi.fn(),
+		rpc: vi
+			.fn()
+			.mockResolvedValue({
+				data: { id: 'member-1', actor_id: 'actor-1', role_key: 'editor', access: 'write' },
+				error: null
+			})
 	};
 
 	return {
@@ -135,8 +141,10 @@ describe('DELETE /api/onto/projects/[id]/members/me', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 
-		const updatePayload = update.mock.calls[0]![0];
-		expect(updatePayload.removed_by_actor_id).toBe('actor-1');
-		expect(typeof updatePayload.removed_at).toBe('string');
+		expect(supabase.rpc).toHaveBeenCalledWith('update_project_membership_guarded', {
+			p_project: 'project-1',
+			p_member: 'member-1',
+			p_action: 'leave'
+		});
 	});
 });

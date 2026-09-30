@@ -131,7 +131,9 @@ export function assessDirectWriteBatch(
 			(call) =>
 				reviewedAgenticChatMutationSpecV1(call.name)?.directWriteClass !== 'ordinary' ||
 				call.arguments.archived === true ||
-				call.arguments.state_key === 'archived'
+				call.arguments.state_key === 'archived' ||
+				(call.name === 'update_onto_document' &&
+					Object.hasOwn(call.arguments, 'confirmation_token'))
 		)
 	) {
 		return {

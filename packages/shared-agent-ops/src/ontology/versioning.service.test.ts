@@ -285,3 +285,25 @@ describe('restore checkpoints', () => {
 		expect(inserts[0]?.props).not.toHaveProperty('restore_of_version');
 	});
 });
+
+describe('permission checkpoints', () => {
+	it('creates a new version even for an immediate edit by the checkpoint actor', async () => {
+		const { supabase, inserts } = makeSupabase({
+			latest: {
+				id: 'sealed',
+				number: 7,
+				created_by: ACTOR_ID,
+				created_at: new Date().toISOString(),
+				props: { sealed: true, snapshot: snapshot('approved') }
+			}
+		});
+		const result = await createOrMergeDocumentVersion({
+			supabase,
+			documentId: DOCUMENT_ID,
+			actorId: ACTOR_ID,
+			snapshot: snapshot('later')
+		});
+		expect(result.status).toBe('created');
+		expect(inserts[0]?.number).toBe(8);
+	});
+});

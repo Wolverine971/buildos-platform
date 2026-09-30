@@ -178,6 +178,39 @@ describe('agent gateway document concurrency', () => {
 
 		expect(writeDocumentHeadAndVersionMock).toHaveBeenCalledTimes(1);
 	});
+	it('never rebases a version-bound shared edit when its write conflicts', async () => {
+		writeDocumentHeadAndVersionMock.mockResolvedValue({ status: 'conflict' });
+		await expect(
+			EXTERNAL_OP_HANDLERS['onto.document.update'](
+				{
+					...buildContext(createAdmin([staleDocument])),
+					documentWriteGuard: {
+						documentId: staleDocument.id,
+						projectId: project.id,
+						updatedAt: staleDocument.updated_at
+					}
+				},
+				{ document_id: staleDocument.id, update_strategy: 'append', content: 'Shared note' }
+			)
+		).rejects.toMatchObject({ code: 'CONFLICT', details: { confirmation_changed: true } });
+		expect(writeDocumentHeadAndVersionMock).toHaveBeenCalledTimes(1);
+	});
+	it('rejects a shared confirmation for an older head before writing', async () => {
+		await expect(
+			EXTERNAL_OP_HANDLERS['onto.document.update'](
+				{
+					...buildContext(createAdmin([freshDocument])),
+					documentWriteGuard: {
+						documentId: staleDocument.id,
+						projectId: project.id,
+						updatedAt: staleDocument.updated_at
+					}
+				},
+				{ document_id: staleDocument.id, content: 'Shared replacement' }
+			)
+		).rejects.toMatchObject({ code: 'CONFLICT', details: { confirmation_changed: true } });
+		expect(writeDocumentHeadAndVersionMock).not.toHaveBeenCalled();
+	});
 
 	it('does not auto-retry metadata bundled with an append', async () => {
 		writeDocumentHeadAndVersionMock.mockResolvedValue({ status: 'conflict' });

@@ -1,4 +1,7 @@
 // apps/web/src/lib/server/agent-call/mcp-connector.service.ts
+import type { AgentCredentialReference } from '@buildos/shared-types';
+import { PermissionRequestService, scopedPermissionTools } from './permission-requests.service';
+// apps/web/src/lib/server/agent-call/mcp-connector.service.ts
 import { json } from '@sveltejs/kit';
 import {
 	createMcpHandler,
@@ -172,10 +175,13 @@ function mcpCorsHeaders(originHeader: string | null, serverOrigin: string): Reco
 
 function mcpAuthChallengeHeaders(
 	serverOrigin: string,
-	cors: Record<string, string>
+	cors: Record<string, string>,
+	authError?: OAuthConnectorError
 ): Record<string, string> {
 	return {
-		'WWW-Authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}", scope="${BUILDOS_MCP_CHALLENGE_SCOPE}"`,
+		'WWW-Authenticate': authError?.recognizedCredential
+			? `Bearer error="invalid_token", resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}"`
+			: `Bearer resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}", scope="${BUILDOS_MCP_CHALLENGE_SCOPE}"`,
 		'Cache-Control': 'no-store',
 		...cors
 	};
@@ -186,7 +192,7 @@ function mcpInsufficientScopeChallengeHeaders(
 	cors: Record<string, string>
 ): Record<string, string> {
 	return {
-		'WWW-Authenticate': `Bearer error="insufficient_scope", scope="${BUILDOS_MCP_CHALLENGE_SCOPE}", resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}"`,
+		'WWW-Authenticate': `Bearer error="insufficient_scope", scope="buildos.read buildos.write", resource_metadata="${protectedResourceMetadataUrl(serverOrigin)}"`,
 		'Cache-Control': 'no-store',
 		...cors
 	};
@@ -293,7 +299,10 @@ function isDestructiveOp(op: string): boolean {
 function toMcpTool(tool: ReturnType<typeof getPublicBuildosAgentTools>[number]) {
 	const op = inferToolOp(tool.name);
 	const requiredScopeMode = requiredScopeModeForOp(op);
-	const write = requiredScopeMode === 'read_write' || isWriteOp(op);
+	const write =
+		tool.name === 'request_buildos_permission' ||
+		requiredScopeMode === 'read_write' ||
+		isWriteOp(op);
 	const title = titleFromToolName(tool.name);
 
 	return {
@@ -301,6 +310,17 @@ function toMcpTool(tool: ReturnType<typeof getPublicBuildosAgentTools>[number]) 
 		title,
 		description: tool.description,
 		inputSchema: tool.inputSchema,
+		securitySchemes: [
+			{
+				type: 'oauth2',
+				scopes: [
+					'buildos.read',
+					...(write && tool.name !== 'request_buildos_permission'
+						? ['buildos.write']
+						: [])
+				]
+			}
+		],
 		// Every tool returns a JSON object as structuredContent (success or error
 		// envelope), so we declare a permissive object output schema. Per
 		// MCP 2025-06-18, a tool returning structuredContent should advertise one.
@@ -361,6 +381,7 @@ function scopeFromCallerPolicy(caller: ExternalAgentCallerRecord): AgentCallScop
  * downgraded to the static path.
  */
 type BuildosMcpAuthentication = {
+	credential: AgentCredentialReference;
 	caller: ExternalAgentCallerRecord;
 	scope: AgentCallScope;
 	oauthGrantId?: string;
@@ -382,6 +403,12 @@ async function authenticateBuildosMcpRequest(params: {
 		});
 		return {
 			caller: oauth.caller,
+			credential: {
+				kind: 'oauth',
+				caller_id: oauth.caller.id,
+				grant_id: oauth.grant.id,
+				access_token_id: oauth.accessToken.id
+			},
 			oauthGrantId: oauth.grant.id,
 			projectScopeMode: oauth.grant.project_scope_mode,
 			scope: await resolveEffectiveAgentProjectScope({
@@ -394,9 +421,12 @@ async function authenticateBuildosMcpRequest(params: {
 			})
 		};
 	} catch (oauthError) {
-		// Only fall back for "unrecognized token" (401). Explicit OAuth denials
-		// (403 insufficient_scope / revoked grant) must not be retried as a key.
-		if (!(oauthError instanceof OAuthConnectorError) || oauthError.status !== 401) {
+		// A recognized OAuth credential cannot become a static key after revocation.
+		if (
+			!(oauthError instanceof OAuthConnectorError) ||
+			oauthError.status !== 401 ||
+			oauthError.recognizedCredential
+		) {
 			throw oauthError;
 		}
 
@@ -413,6 +443,7 @@ async function authenticateBuildosMcpRequest(params: {
 			);
 			return {
 				caller,
+				credential: { kind: 'key', caller_id: caller.id, token_hash: caller.token_hash },
 				projectScopeMode,
 				scope: await resolveEffectiveAgentProjectScope({
 					admin: params.admin,
@@ -857,6 +888,17 @@ async function dispatchAuthenticatedMcpMethod(params: {
 				tools = MCP_SEARCH_FETCH_TOOLS;
 			} else {
 				let scoped = getPublicBuildosAgentTools(auth.scope);
+				try {
+					const grants = await new PermissionRequestService(
+						params.admin,
+						auth.credential,
+						auth.scope
+					).grants();
+					const extras = scopedPermissionTools(grants);
+					scoped.push(...extras.filter((t) => !scoped.some((s) => s.name === t.name)));
+				} catch {
+					/* Disabled feature leaves legacy discovery intact. */
+				}
 				if (profile === 'general') {
 					scoped = scoped.filter((tool) => !DISCOVERY_TOOL_NAMES.has(tool.name));
 				}
@@ -976,6 +1018,7 @@ async function dispatchAuthenticatedMcpMethod(params: {
 				scope: auth.scope
 			});
 			const result = await executeBuildosAgentGatewayTool({
+				credential: auth.credential,
 				admin: params.admin,
 				userId: auth.caller.user_id,
 				callerId: auth.caller.id,
@@ -988,6 +1031,21 @@ async function dispatchAuthenticatedMcpMethod(params: {
 				securityEventOptions: params.securityEventOptions,
 				connectorOrigin: params.url.origin
 			});
+			if (isRecord(result.error) && result.error.code === 'INSUFFICIENT_SCOPE') {
+				if (params.url.searchParams.get('auth_errors') === 'tool') {
+					return {
+						...wrapMcpToolResult(result),
+						_meta: {
+							'mcp/www_authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(origin)}", error="insufficient_scope", scope="buildos.read buildos.write"`
+						}
+					};
+				}
+				throw new OAuthConnectorError(
+					'Approved writes require reconnecting with buildos.write. Refresh tools after reconnecting.',
+					403,
+					'insufficient_scope'
+				);
+			}
 			return wrapMcpToolResult(result);
 		}
 
@@ -1044,6 +1102,17 @@ async function dispatchModernMcpMethod(params: {
 			throw new ProtocolError(-32601, error.description);
 		}
 
+		if (error instanceof OAuthConnectorError && error.code === 'insufficient_scope') {
+			return {
+				...wrapMcpToolResult({
+					ok: false,
+					error: { code: 'INSUFFICIENT_SCOPE', message: error.description }
+				}),
+				_meta: {
+					'mcp/www_authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(params.url.origin)}", error="insufficient_scope", scope="buildos.read buildos.write"`
+				}
+			};
+		}
 		if (error instanceof OAuthConnectorError) {
 			throw new ProtocolError(-32003, error.description);
 		}
@@ -1144,7 +1213,7 @@ async function handleBuildosModernMcpPost(params: {
 			return new Response(JSON.stringify(jsonRpcError(id, -32001, error.description)), {
 				status: 401,
 				headers: {
-					...mcpAuthChallengeHeaders(params.url.origin, params.cors),
+					...mcpAuthChallengeHeaders(params.url.origin, params.cors, error),
 					'Content-Type': 'application/json'
 				}
 			});
@@ -1186,15 +1255,29 @@ async function handleBuildosModernMcpPost(params: {
 		{ legacy: 'reject', responseMode: 'json' }
 	);
 	const response = await handler.fetch(params.request);
+	let scopeChallenge = false;
+	if (params.url.searchParams.get('auth_errors') !== 'tool') {
+		try {
+			const body = await response.clone().json();
+			scopeChallenge = Boolean(body?.result?._meta?.['mcp/www_authenticate']);
+		} catch {
+			/* Non-JSON protocol responses retain SDK status. */
+		}
+	}
 	const headers = new Headers(response.headers);
 	headers.set('Cache-Control', 'no-store');
+	if (scopeChallenge)
+		headers.set(
+			'WWW-Authenticate',
+			mcpInsufficientScopeChallengeHeaders(params.url.origin, {})['WWW-Authenticate']!
+		);
 	for (const [name, value] of Object.entries(params.cors)) {
 		headers.set(name, value);
 	}
 
 	return new Response(response.body, {
-		status: response.status,
-		statusText: response.statusText,
+		status: scopeChallenge ? 403 : response.status,
+		statusText: scopeChallenge ? 'Forbidden' : response.statusText,
 		headers
 	});
 }
@@ -1354,7 +1437,7 @@ export async function handleBuildosMcpPost(params: {
 			return new Response(JSON.stringify(jsonRpcError(id, -32001, error.description)), {
 				status: 401,
 				headers: {
-					...mcpAuthChallengeHeaders(serverOrigin, cors),
+					...mcpAuthChallengeHeaders(serverOrigin, cors, error),
 					'Content-Type': 'application/json'
 				}
 			});
@@ -1434,7 +1517,7 @@ export async function handleBuildosMcpGet(params: {
 		});
 	}
 
-	const unauthenticatedChallenge = (): Response =>
+	const unauthenticatedChallenge = (authError?: OAuthConnectorError): Response =>
 		new Response(
 			JSON.stringify({
 				name: BUILDOS_CONNECTOR_PUBLIC_NAME,
@@ -1445,7 +1528,7 @@ export async function handleBuildosMcpGet(params: {
 			{
 				status: 401,
 				headers: {
-					...mcpAuthChallengeHeaders(serverOrigin, cors),
+					...mcpAuthChallengeHeaders(serverOrigin, cors, authError),
 					'Content-Type': 'application/json'
 				}
 			}
@@ -1460,7 +1543,7 @@ export async function handleBuildosMcpGet(params: {
 		});
 	} catch (error) {
 		if (error instanceof OAuthConnectorError && error.status === 401) {
-			return unauthenticatedChallenge();
+			return unauthenticatedChallenge(error);
 		}
 		if (
 			error instanceof OAuthConnectorError &&

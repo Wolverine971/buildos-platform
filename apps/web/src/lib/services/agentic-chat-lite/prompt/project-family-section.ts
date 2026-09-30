@@ -1,8 +1,9 @@
 // apps/web/src/lib/services/agentic-chat-lite/prompt/project-family-section.ts
 //
-// Project hierarchy, phase 1. A project can sit under one parent (Wayne
+// Project hierarchy. A project can sit under one parent (Wayne
 // Strategies → its client projects). The parent's "Shared with sub-projects"
-// folder shows in each child as a read-only shelf. The context loader attaches
+// folder shows in each child as a shared shelf. Edits require confirmation.
+// The context loader attaches
 // `project_family` (onto_project_family_v1), already filtered to what the user
 // can open; this section tells the model where the project sits, which shared
 // docs it can open, and which sub-projects a hub holds.
@@ -104,14 +105,16 @@ export function buildProjectFamilySection(
 			const block = fitBlock({
 				header: [
 					...header,
-					`Shared docs, owned by ${parentName} and shown in every sub-project (read-only from this chat):`
+					`Shared docs, owned by ${parentName} and shown in ${family.parent.child_count} sub-projects${family.parent.can_write ? ' (edits require confirmation)' : ' (read-only)'}:`
 				],
 				items: family.shelf.map(
 					(doc) =>
 						`${'  '.repeat(Math.min(Math.max(doc.depth, 0), SHELF_MAX_INDENT))}- ${oneLine(doc.title, NAME_MAX_CHARS) || 'Untitled'} [${doc.id}]`
 				),
 				footer: [
-					`Open them by their document id with the document read tools. If one needs changing, tell the user to edit it in ${parentName}.`
+					family.parent.can_write
+						? 'Read by document id. To edit, call update_onto_document without a token for the shared-impact warning. Explain it and wait for explicit user confirmation in a later turn, then repeat the identical edit with its confirmation_token. Never self-confirm. Archive in the parent; Copy here in the UI makes a child-only copy.'
+						: `Read by document id. You cannot edit the parent’s copy; use Copy here in the UI for a child-only copy.`
 				],
 				lineLimit: SHELF_LINE_LIMIT,
 				// v1 nests one level, so a child has no children; if it ever does,

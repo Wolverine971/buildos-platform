@@ -6,6 +6,22 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Additive permission-request schema (migration 20260930185213).
+type PermissionTable<Row, Required extends keyof Row = never> = {
+ Row: Row; Insert: Pick<Row, Required> & Partial<Omit<Row, Required>>;
+ Update: Partial<Row>; Relationships: [];
+};
+type PermissionRequestRow = {
+ id:string;user_id:string;caller_id:string;grant_id:string|null;boundary:string;
+ project_id:string;target_id:string;capability:string;epoch:number;idempotency_key:string;
+ submission:Json|null;submission_fingerprint:string;reviewed_digest:string;before_snapshot:Json|null;
+ mutation:Json|null;reason:string|null;status:string;decision:string|null;receipt:Json|null;
+ created_at:string;expires_at:string;decided_at:string|null;
+};
+type PermissionGrantRow = {
+ id:string;user_id:string;caller_id:string;grant_id:string|null;boundary:string;project_id:string;
+ capability:string;epoch:number;source_request_id:string|null;created_at:string;revoked_at:string|null;
+};
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -2942,6 +2958,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_permission_feature: PermissionTable<{id:boolean;enabled:boolean;epoch:number}>;
+      agent_permission_requests: PermissionTable<PermissionRequestRow,'user_id'|'caller_id'|'project_id'|'target_id'|'capability'|'epoch'|'idempotency_key'|'submission_fingerprint'|'reviewed_digest'>;
+      agent_permission_grants: PermissionTable<PermissionGrantRow,'user_id'|'caller_id'|'project_id'|'capability'|'epoch'>;
+      agent_permission_keys: PermissionTable<{caller_id:string;boundary:string;key:string;fingerprint:string;request_id:string},'caller_id'|'boundary'|'key'|'fingerprint'|'request_id'>;
+      agent_permission_work: PermissionTable<{request_id:string;project_id:string;target_id:string;capability:string;created_at:string;processed_at:string|null},'request_id'|'project_id'|'target_id'|'capability'>;
+
       account_deletion_requests: {
         Row: {
           attempt_count: number
@@ -3437,6 +3459,7 @@ export type Database = {
       }
       agent_oauth_authorization_codes: {
         Row: {
+          policy_snapshot: Json | null
           client_id: string
           code_challenge: string
           code_challenge_method: string
@@ -3454,6 +3477,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          policy_snapshot?: Json | null
           client_id: string
           code_challenge: string
           code_challenge_method?: string
@@ -3471,6 +3495,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          policy_snapshot?: Json | null
           client_id?: string
           code_challenge?: string
           code_challenge_method?: string
@@ -10972,6 +10997,7 @@ export type Database = {
       }
       external_agent_callers: {
         Row: {
+          permission_requests_enabled:boolean;
           caller_key: string
           created_at: string
           id: string
@@ -10987,6 +11013,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          permission_requests_enabled?:boolean;
           caller_key: string
           created_at?: string
           id?: string
@@ -11002,6 +11029,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          permission_requests_enabled?:boolean;
           caller_key?: string
           created_at?: string
           id?: string
@@ -22476,6 +22504,20 @@ export type Database = {
       }
     }
     Functions: {
+      agent_edit_snapshot: {Args:{p_kind:string;p_id:string};Returns:Json};
+      agent_permission_credential: {Args:{p_ref:Json;p_write?:boolean};Returns:Json};
+      lookup_agent_permission_request: {Args:{p_ref:Json;p_key:string;p_submission:Json};Returns:Json};
+      create_agent_permission_request: {Args:{p_ref:Json;p_key:string;p_submission:Json;p_before:Json;p_mutation:Json;p_reason?:string|null;p_direct?:boolean};Returns:Json};
+      decide_agent_permission_request: {Args:{p_id:string;p_digest:string;p_decision:string};Returns:Json};
+      apply_scoped_agent_edit: {Args:{p_ref:Json;p_key:string;p_submission:Json;p_before:Json;p_mutation:Json};Returns:Json};
+      control_agent_permissions: {Args:{p_caller:string;p_action:string;p_grant?:string|null};Returns:undefined};
+      set_agent_permission_feature: {Args:{p_enabled:boolean};Returns:undefined};
+      purge_agent_permission_payloads: {Args:{p_batch_size?:number};Returns:number};
+      maintain_agent_permission_work: {Args:{p_batch_size?:number;p_request?:string|null};Returns:number};
+      update_project_membership_guarded: {Args:{p_project:string;p_member:string;p_action:string;p_role?:string|null};Returns:Json};
+      reauthorize_agent_scoped_writes: {Args:{p_owner:string;p_grant:string;p_expected:Json;p_code:Json};Returns:undefined};
+      exchange_agent_oauth_credential: {Args:{p_kind:string;p_id:string;p_client:string;p_resource:string;p_proof:string|null;p_redirect:string|null;p_requested_scope:string|null;p_access:Json;p_refresh:Json|null};Returns:Json};
+
       accept_agentic_chat_workflow_context_v1: {
         Args: {
           p_context_bytes: number

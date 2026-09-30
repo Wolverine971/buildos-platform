@@ -32,6 +32,20 @@ function createHistorySupabase(tableRows: Record<string, TestRow[]>) {
 			return this;
 		}
 
+		or(filter: string) {
+			expect(filter).toBe(
+				'tool_name.in.(skill_load,request_turn_clarification),and(tool_name.eq.update_onto_document,result->>confirmation_kind.eq.shared_document_edit_v1,result->>status.eq.confirmation_required)'
+			);
+			this.filters.push(
+				(row) =>
+					['skill_load', 'request_turn_clarification'].includes(row.tool_name) ||
+					(row.tool_name === 'update_onto_document' &&
+						row.result?.confirmation_kind === 'shared_document_edit_v1' &&
+						row.result?.status === 'confirmation_required')
+			);
+			return this;
+		}
+
 		order(column: string, options?: { ascending?: boolean }) {
 			this.orderSpec = { column, ascending: options?.ascending !== false };
 			return this;

@@ -611,6 +611,7 @@ export interface AgentOAuthGrantRecord {
 }
 
 export interface AgentOAuthAuthorizationCodeRecord {
+ policy_snapshot?: Record<string, unknown> | null;
 	id: string;
 	code_hash: string;
 	client_id: string;

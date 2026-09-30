@@ -281,7 +281,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		// Opening-pass override: the contract tool is not mounted on that pass
 		// and the worker chooses the route (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02).
 		descriptionOverride:
-			'Update one existing document by its exact document_id from a read or the focused context: title, type, state, description, or body. Archive with state_key archived and explicit archive_mode archive_children or promote_children, in a separate call from other edits. The worker previews and independently reviews child and publication effects; archiving never unpublishes a public page. Change part of the body with edits or section_edits; content only rewrites the whole body (replace) or adds at the end (append). Call it directly when the target id is the focused entity, was given by the user, or is the only document a read returned this turn; the worker routes a target it did not resolve this turn to review.',
+			'Update one existing document by its exact document_id from a read or the focused context: title, type, state, description, or body. A parent shared-shelf edit from a child chat first returns confirmation_required. Explain the exact edit and shared-project count; after explicit user confirmation in a later turn, repeat the identical edit with confirmation_token. Never confirm on the user’s behalf. Open the parent project to archive a shared document. Archive with state_key archived and explicit archive_mode archive_children or promote_children, in a separate call from other edits. The worker previews and independently reviews child and publication effects; archiving never unpublishes a public page. Change part of the body with edits or section_edits; content only rewrites the whole body (replace) or adds at the end (append). Call it directly when the target id is the focused entity, was given by the user, or is the only document a read returned this turn; the worker routes a target it did not resolve this turn to review.',
 		requiredNames: ['document_id'],
 		// merge_instructions is dropped: the worker never runs a model-authored
 		// merge, so it had no consumer here (F30).
@@ -289,6 +289,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'document_id',
 			'archive_mode',
 			'_archive_review',
+			'confirmation_token',
 			'title',
 			'type_key',
 			'state_key',
@@ -301,6 +302,12 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'props'
 		],
 		propertyOverrides: {
+			confirmation_token: {
+				type: 'string',
+				format: 'uuid',
+				description:
+					'Shared-document preview token. Only after explicit user confirmation of the exact edit and shared impact in a later turn. Never confirm on the user’s behalf.'
+			},
 			content: {
 				type: 'string',
 				description:

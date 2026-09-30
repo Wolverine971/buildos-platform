@@ -20,6 +20,7 @@ export type DocumentSnapshot = {
 };
 
 export type DocumentVersionProps = {
+	sealed?: boolean;
 	snapshot: DocumentSnapshot;
 	snapshot_hash: string;
 	previous_snapshot_hash?: string;
@@ -238,6 +239,7 @@ export async function createOrMergeDocumentVersion(
 		!restore &&
 		latestVersionRow &&
 		!latestProps.restore_of_version &&
+		!latestProps.sealed &&
 		latestVersionRow.created_by === actorId &&
 		withinWindow
 	) {
@@ -264,6 +266,9 @@ export async function createOrMergeDocumentVersion(
 			.single();
 
 		if (mergeError || !merged) {
+			if ((mergeError as { code?: string } | null)?.code === '55000') {
+				return createOrMergeDocumentVersion({ ...params, forceCreateVersion: true });
+			}
 			throw mergeError || new Error('Failed to merge document version');
 		}
 

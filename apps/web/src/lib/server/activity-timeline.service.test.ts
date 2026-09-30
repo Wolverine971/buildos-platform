@@ -323,6 +323,59 @@ describe('loadActivityTimeline', () => {
 	});
 
 	describe('deep links', () => {
+		it.each([
+			{ stored: 'pending', enabled: true, expected: 'pending' },
+			{ stored: 'pending', enabled: false, expected: 'canceled' },
+			{ stored: 'applied', enabled: true, expected: 'applied' }
+		])(
+			'links permission requests with current $expected state',
+			async ({ stored, enabled, expected }) => {
+				const queries: Array<[string, any]> = [];
+				const supabase = makeSupabase(
+					{
+						notification_deliveries: [
+							{
+								id: 'delivery',
+								channel: 'in_app',
+								status: 'delivered',
+								created_at: '2026-07-24T15:00:00Z',
+								event_id: 'event',
+								payload: { title: 'Agent requests an edit' },
+								notification_events: {
+									event_type: 'agent.permission.requested',
+									payload: { request_id: 'request' }
+								}
+							}
+						],
+						agent_permission_requests: [
+							{
+								id: 'request',
+								caller_id: 'caller',
+								status: stored,
+								epoch: 1,
+								expires_at: '2999-01-01T00:00:00Z'
+							}
+						],
+						agent_permission_feature: [{ enabled, epoch: 1 }]
+					},
+					(table, filters) => queries.push([table, filters])
+				);
+				const page = await loadActivityTimeline({ supabase, ...BASE_ARGS });
+				expect(page.entries[0]!.href).toBe('/profile/agent-keys/caller/requests/request');
+				expect(page.entries[0]!.stats).toContainEqual({
+					label: 'Request',
+					value: expected
+				});
+				expect(page.entries[0]!.status).toBe(
+					expected === 'pending' ? 'pending' : expected === 'applied' ? 'ok' : 'warn'
+				);
+				expect(
+					queries.find(([table]) => table === 'agent_permission_requests')?.[1][
+						'eq:user_id'
+					]
+				).toBe(BASE_ARGS.userId);
+			}
+		);
 		const briefDelivery = (eventPayload: Record<string, unknown>) => ({
 			id: 'd-1',
 			channel: 'email',

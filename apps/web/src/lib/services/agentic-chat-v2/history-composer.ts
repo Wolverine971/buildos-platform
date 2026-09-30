@@ -90,18 +90,26 @@ export function composeFastChatHistory(params: {
 	// Keep it whole: clipping JSON loses owed work or uncertainty evidence.
 	const cleanupRecall = history.findLast((msg) => msg.continuityKind === 'failed_cleanup_v1');
 	const latestAssistant = history.findLast((msg) => msg.role === 'assistant');
+	// Exact pending edits and their receipts must survive together. The owned
+	// projection bounds these packets to the immediately preceding assistant.
+	const confirmations = history.filter(
+		(msg) => msg.continuityKind === 'shared_document_confirmation_v1'
+	);
 	const rawTail = history
-		.filter((msg) => msg.continuityKind !== 'failed_cleanup_v1')
+		.filter((msg) => msg.continuityKind !== 'failed_cleanup_v1' && !confirmations.includes(msg))
 		.slice(-tailCount);
-	const tail = rawTail.map((msg) => ({
-		...msg,
-		// A follow-up can accept this entire proposal. Retain it by role and
-		// recency, without guessing acceptance or genre from either message.
-		content:
-			msg === latestAssistant && msg.content.length <= MAX_LATEST_ASSISTANT_CHARS
-				? msg.content
-				: summarizeText(msg.content, maxMessageChars)
-	}));
+	const tail = history
+		.filter((msg) => rawTail.includes(msg) || confirmations.includes(msg))
+		.map((msg) => ({
+			...msg,
+			// A follow-up can accept this entire proposal. Retain it by role and
+			// recency, without guessing acceptance or genre from either message.
+			content:
+				confirmations.includes(msg) ||
+				(msg === latestAssistant && msg.content.length <= MAX_LATEST_ASSISTANT_CHARS)
+					? msg.content
+					: summarizeText(msg.content, maxMessageChars)
+		}));
 	const retainedEarlierAssistant =
 		latestAssistant &&
 		latestAssistant.content.length <= MAX_LATEST_ASSISTANT_CHARS &&
@@ -160,7 +168,7 @@ function sanitizeHistoryForModel(history: FastChatHistoryMessage[]): FastChatHis
 		// scratchpad are no longer deleted (AGENTS.md "Never classify language
 		// with regex"); hidden reasoning is separated by the provider.
 		const cleanContent = repairAssistantAppLinks(message.content).trim();
-		if (!cleanContent) {
+		if (!cleanContent && !message.tool_calls?.length) {
 			continue;
 		}
 		sanitized.push({
