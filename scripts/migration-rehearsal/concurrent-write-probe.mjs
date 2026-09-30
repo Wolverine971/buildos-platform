@@ -46,6 +46,7 @@ const SCENARIOS = {
 	'plan-creates': repeat(() => planCreate),
 	'goal-create+task-creates': mixed(goalCreate),
 	'task-update-rel+task-creates': mixed(taskUpdateWithRelationships),
+	'task-update-assignees+task-creates': mixed(taskUpdateAssignees),
 	'goal-update-rel+task-creates': mixed(goalUpdateWithRelationships),
 	'plan-update-rel+task-creates': mixed(planUpdateWithRelationships),
 	'project-soft-delete+task-creates': mixed(projectSoftDelete),
@@ -299,6 +300,18 @@ async function taskUpdateWithRelationships(client, project) {
 				id: project.goalId
 			})
 		]
+	);
+}
+
+// A plain task update (no relationship plan) that also syncs assignees: the
+// update bumps the context version, then the assignee rows are written. Rounds
+// alternate between assigning and clearing so every round writes assignee rows.
+let assigneeToggle = false;
+async function taskUpdateAssignees(client, project) {
+	assigneeToggle = !assigneeToggle;
+	await client.query(
+		`SELECT public.onto_task_update_with_relationships_atomic($1, $2::jsonb, true, $3::uuid[], $4, NULL, 'manual')`,
+		[project.taskIds[0], { title: 'Probe assignee update' }, assigneeToggle ? [actorId] : [], actorId]
 	);
 }
 
