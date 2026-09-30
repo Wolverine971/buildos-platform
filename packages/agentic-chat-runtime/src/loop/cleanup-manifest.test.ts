@@ -171,7 +171,80 @@ describe('cleanup manifest', () => {
 				toolExecutions: executions,
 				partialFailureClass: 'uncertain_external_commit'
 			}).items[1]!.status
-		).toBe('uncertain');
+		).toBe('blocked');
+	});
+	it.each(['archive_children', 'promote_children'])(
+		'carries uncertain descendants only when %s actually archives them',
+		(mode) => {
+			const contract = parseRequestExpectation({
+				outcomes: [
+					{
+						id: 'docs',
+						action: 'archive',
+						entity_kind: 'document',
+						target_ids: IDS.slice(0, 3),
+						required_fields: ['state_key'],
+						changes: [{ field: 'state_key', value: 'archived' }],
+						minimum_successful_effects: 3
+					}
+				]
+			})!;
+			const call: FastToolExecution = {
+				toolCall: {
+					id: 'uncertain-doc',
+					type: 'function',
+					function: {
+						name: 'update_onto_document',
+						arguments: JSON.stringify({
+							document_id: IDS[0],
+							state_key: 'archived',
+							archive_mode: mode,
+							_archive_review: {
+								archived_document_ids:
+									mode === 'archive_children' ? IDS.slice(0, 2) : [IDS[0]],
+								documents: IDS.slice(0, 2).map((id) => ({ id, title: 'Doc' }))
+							}
+						})
+					}
+				},
+				result: {
+					tool_call_id: 'uncertain-doc',
+					success: false,
+					result: { effect_outcome: 'uncertain', effect_id: 'effect' }
+				}
+			};
+			expect(
+				buildCleanupManifest({
+					contract,
+					toolExecutions: [call],
+					partialFailureClass: 'uncertain_external_commit'
+				}).items.map((i) => i.status)
+			).toEqual(
+				mode === 'archive_children'
+					? ['uncertain', 'uncertain', 'pending']
+					: ['uncertain', 'pending', 'pending']
+			);
+		}
+	);
+	it('marks only the unsettled attempted target uncertain, leaving known failures blocked and unattempted work pending', () => {
+		const unsettled = archive(IDS[3]!, false);
+		unsettled.result.result = { effect_outcome: 'uncertain', effect_id: 'effect' };
+		const executions = [approval(), archive(IDS[1]!), archive(IDS[2]!, false), unsettled];
+		const receipt = buildAgenticChatCompletionReceiptV1({
+			contract: null,
+			contractSha256: null,
+			toolExecutions: executions,
+			finishedReason: 'error',
+			partialFailureClass: 'uncertain_external_commit'
+		});
+		expect(receipt.request.disposition).toBe('request_uncertain');
+		expect(receipt.cleanupManifest!.items.map((i) => i.status)).toEqual([
+			'already_satisfied',
+			'saved',
+			'blocked',
+			'uncertain',
+			'pending'
+		]);
 	});
 	it('persists saved, verified no-op, pending and blocked targets separately', () => {
 		const executions = [approval(), archive(IDS[1]!), archive(IDS[2]!, false)];
@@ -231,7 +304,7 @@ describe('cleanup manifest', () => {
 				toolExecutions: executions,
 				partialFailureClass: 'uncertain_external_commit'
 			}).items[0]!.status
-		).toBe('uncertain');
+		).toBe('blocked');
 	});
 	it.each(['argument', 'later', 'mismatched', 'malformed'])(
 		'rejects untrusted or stale no-op evidence: %s',

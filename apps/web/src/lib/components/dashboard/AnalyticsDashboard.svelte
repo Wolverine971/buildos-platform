@@ -251,6 +251,10 @@
 	);
 
 	const sharedProjects = $derived(analytics.recent.projects.filter((p) => p.is_shared));
+	// "· parent" on sub-projects whose parent is in the same recent list.
+	const recentProjectNames = $derived(
+		new Map(analytics.recent.projects.map((p) => [p.id, p.name]))
+	);
 
 	// Shared projects not already visible in the active list
 	const activeProjectIds = $derived(new Set(activeProjects.map((p) => p.id)));
@@ -860,6 +864,9 @@
 
 {#snippet projectRow(project: DashboardProjectActivity)}
 	{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
+	{@const parentName = project.parent_project_id
+		? recentProjectNames.get(project.parent_project_id)
+		: undefined}
 	{@const projectHref = resolveProjectHref(project)}
 	<a
 		href={projectHref}
@@ -872,9 +879,13 @@
 		<FolderKanban class="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
 		<p
 			class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
-			title={project.name}
+			title={parentName ? `${project.name} · Part of ${parentName}` : project.name}
 		>
-			{project.name}
+			{project.name}{#if parentName}<span class="font-normal text-muted-foreground"
+					><span aria-hidden="true"> · </span><span class="sr-only"
+						>, part of
+					</span>{parentName}</span
+				>{/if}
 		</p>
 		{#if project.is_shared}
 			<span

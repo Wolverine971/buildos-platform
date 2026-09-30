@@ -49,6 +49,12 @@
 			"import": "./dist/tools/milestone-state.mjs",
 			"require": "./dist/tools/milestone-state.js"
 		},
+		"./tools/activity-log-summary": {
+			"types": "./dist/tools/activity-log-summary.d.ts",
+			"development": "./src/tools/activity-log-summary.ts",
+			"import": "./dist/tools/activity-log-summary.mjs",
+			"require": "./dist/tools/activity-log-summary.js"
+		},
 		"./provenance": {
 			"types": "./dist/provenance.d.ts",
 			"development": "./src/provenance.mts",
@@ -69,8 +75,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/context/context-loader.ts src/loop/index.ts src/specialists/index.ts src/context-finder/index.ts src/tools/index.ts src/tools/milestone-state.ts src/provenance.mts --format cjs,esm --dts --sourcemap",
-		"build:types": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/context/context-loader.ts src/loop/index.ts src/specialists/index.ts src/context-finder/index.ts src/tools/index.ts src/tools/milestone-state.ts src/provenance.mts --format cjs,esm --dts --sourcemap",
+		"build": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/context/context-loader.ts src/loop/index.ts src/specialists/index.ts src/context-finder/index.ts src/tools/index.ts src/tools/milestone-state.ts src/tools/activity-log-summary.ts src/provenance.mts --format cjs,esm --dts --sourcemap",
+		"build:types": "tsup src/index.ts src/catalog/index.ts src/context/index.ts src/context/context-loader.ts src/loop/index.ts src/specialists/index.ts src/context-finder/index.ts src/tools/index.ts src/tools/milestone-state.ts src/tools/activity-log-summary.ts src/provenance.mts --format cjs,esm --dts --sourcemap",
 		"clean": "rm -rf dist .turbo",
 		"typecheck": "tsc --noEmit --skipLibCheck",
 		"test": "vitest",

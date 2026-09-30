@@ -12,6 +12,7 @@
  * - Maintain structure history for undo/redo
  */
 
+import { DocumentArchiveDatabaseError } from './document-archive-error';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, JsonObject } from '@buildos/shared-types';
 import type {
@@ -888,21 +889,13 @@ export async function archiveDocumentInTree(
 		} as never
 	);
 
-	if (error?.message.includes('document_archive_review_changed')) {
-		throw new Error(
-			'Document archive review changed: preview and review the current tree and public pages again'
-		);
-	}
-	if (error?.message.includes('document_archive_version_conflict')) {
-		throw new Error('Document version conflict: the document changed before archive');
-	}
-	if (error?.message.includes('doc_structure_version_conflict')) {
-		throw new Error(
-			`Structure version conflict: expected ${expectedStructureVersion}, but the structure changed before archive`
-		);
-	}
 	if (error) {
-		throw new Error(`Failed to archive document: ${error.message}`);
+		throw new DocumentArchiveDatabaseError(
+			error.code,
+			error.message,
+			error.details,
+			error.hint
+		);
 	}
 
 	const payload = data as unknown as {

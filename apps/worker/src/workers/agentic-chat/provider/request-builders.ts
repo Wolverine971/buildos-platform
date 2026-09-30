@@ -15,6 +15,7 @@ import {
 	parseToolArguments
 } from '@buildos/agentic-chat-runtime/loop';
 import { sha256Hex } from '../shared/identity-hash';
+import { collectLoadedEntityIds } from './review/grounded-ids';
 import type { AgenticChatWorkerExecutionInputV1 } from '../turn/execution-input';
 import type { AgenticChatProviderMutationCapabilitiesV1 } from '../mutations/tool-catalog';
 import {
@@ -331,6 +332,7 @@ export function buildBaseProviderRequest(
 	return {
 		admittedTools,
 		request: {
+			loadedEntityIds: collectLoadedEntityIds(input.artifact.prepared.contextPayload),
 			messages,
 			tools,
 			toolChoice: tools.length > 0 ? 'auto' : 'none',
@@ -417,6 +419,20 @@ export function buildContinuationRequest(
 	return {
 		...request,
 		logicalProviderRound: request.logicalProviderRound + 1,
+		...(request.loadedEntityIds !== undefined
+			? {
+					loadedEntityIds: [
+						...new Set([
+							...request.loadedEntityIds,
+							...feedback.flatMap((result) =>
+								isFailedToolFeedback(result)
+									? []
+									: collectLoadedEntityIds(result.execution.result)
+							)
+						])
+					]
+				}
+			: {}),
 		providerRound: 'synthesis',
 		passRole: 'acting',
 		// Every earlier tool result stays in the request at full length. The

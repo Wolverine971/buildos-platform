@@ -86,7 +86,9 @@ validation actually performed.
 
 Rehearse every new migration against production's schema with `pnpm db:rehearse
 supabase/migrations/<file>.sql` (free, read-only, ~3 s cached) and resolve its SECURITY
-findings before applying. Apply to production one file at a time, then record it:
+findings before applying. Every rehearsal also runs the standing checks in `DEFAULT_CHECKS`
+(today: chat context and search RPCs never return archived records). Fix the migration when one
+fails; do not skip it. Apply to production one file at a time, then record it:
 `supabase db query --linked -f <file>` and `supabase migration repair --status applied <version> --linked`
 (`--linked` is production). Never use `db push --include-all` or replay the historical
 unrecorded files. See `scripts/migration-rehearsal/README.md`.

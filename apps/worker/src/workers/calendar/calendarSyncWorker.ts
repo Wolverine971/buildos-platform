@@ -1,4 +1,5 @@
 // apps/worker/src/workers/calendar/calendarSyncWorker.ts
+import { isOrganizeTaskSync, processOrganizeTaskSync } from './organizeTaskSync';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import type { OntoProjectEventSyncJobMetadata } from '@buildos/shared-types';
 
@@ -25,6 +26,10 @@ export async function processCalendarSyncJob(job: ProcessingJob): Promise<{
 	status?: number;
 	error?: string;
 }> {
+	if (isOrganizeTaskSync(job.data)) {
+		const { supabase } = await import('../../lib/supabase.js');
+		return processOrganizeTaskSync({ ...job, data: job.data }, supabase);
+	}
 	if (!isProjectEventSyncMetadata(job.data)) {
 		await job.log('Skipping unsupported sync_calendar payload');
 		return {

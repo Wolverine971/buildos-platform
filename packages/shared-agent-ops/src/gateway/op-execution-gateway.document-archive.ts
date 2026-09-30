@@ -2,6 +2,7 @@
 // Worker archive seam: fresh user access, server facts bound to review, and
 // the existing atomic tree writer. Ordinary document edits stay on the gateway.
 import { isValidUUID, type JsonObject } from '@buildos/shared-types';
+import { DocumentArchiveDatabaseError } from '../ontology/document-archive-error';
 import { archiveDocumentInTree } from '../ontology/doc-structure.service';
 import { normalizeDocumentStateInput } from '../ontology/document-state';
 import { logUpdateAsync } from '../ops/async-activity-logger';
@@ -11,7 +12,11 @@ import {
 	contextActorId,
 	loadVisibleProjects
 } from './op-execution-gateway.access';
-import { ExternalToolGatewayError, normalizeGatewayError } from './op-execution-gateway.responses';
+import {
+	ExternalToolGatewayError,
+	normalizeGatewayError,
+	rolledBackWriteDetails
+} from './op-execution-gateway.responses';
 import { serializeExternalEntity } from './op-execution-gateway.serializers';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
 import type { GatewayWriteOpResult } from './op-execution-gateway.worker';
@@ -125,27 +130,34 @@ async function loadArchiveTarget(params: Params) {
 }
 
 function archiveFailure(error: unknown) {
-	// These structured database/service failures happen before any write. All
-	// unknown errors remain INTERNAL, so the executor records an uncertain outcome.
-	const message = error instanceof Error ? error.message : '';
-	const precommit = [
-		'document_archive_explicit_mode_required',
-		'document_archive_project_not_found',
-		'document_archive_scope_too_large',
-		'document_archive_target_missing_or_already_archived',
-		'document_archive_start_here_protected',
-		'document_archive_document_mismatch',
-		'document_archive_review_required',
-		'document_archive_review_changed',
-		'Document archive review changed:',
-		'Document version conflict:',
-		'Structure version conflict:'
-	];
-	if (precommit.some((code) => message.includes(code))) {
-		return {
-			code: 'VALIDATION_ERROR' as const,
-			message: `${message}. Nothing was archived; preview and review again.`
-		};
+	if (error instanceof DocumentArchiveDatabaseError) {
+		// A returned SQL exception aborts the only write RPC. Changed facts must
+		// be previewed and reviewed again; transient rollbacks use the executor's
+		// existing two-attempt cap. Never classify connection failures by prose.
+		const reviewFailures = new Set([
+			'document_archive_explicit_mode_required',
+			'document_archive_project_not_found',
+			'document_archive_scope_too_large',
+			'document_archive_target_missing_or_already_archived',
+			'document_archive_start_here_protected',
+			'document_archive_document_mismatch',
+			'document_archive_review_required',
+			'document_archive_review_changed',
+			'document_archive_version_conflict',
+			'doc_structure_version_conflict'
+		]);
+		if (
+			['22023', 'P0001', 'P0002', '40001'].includes(error.code) &&
+			reviewFailures.has(error.databaseMessage)
+		) {
+			return new ExternalToolGatewayError(
+				'VALIDATION_ERROR',
+				`${error.databaseMessage}. Nothing was archived; preview and review again.`,
+				{ database_code: error.code }
+			);
+		}
+		const rollback = rolledBackWriteDetails(error);
+		if (rollback) return new ExternalToolGatewayError('INTERNAL', error.message, rollback);
 	}
 	return normalizeGatewayError(error);
 }
@@ -166,7 +178,13 @@ export async function previewGatewayDocumentArchive(
 				p_archive_mode: params.args.archive_mode
 			} as never
 		);
-		if (error) throw new Error(error.message);
+		if (error)
+			throw new DocumentArchiveDatabaseError(
+				error.code,
+				error.message,
+				error.details,
+				error.hint
+			);
 		if (!isDocumentArchiveReviewSnapshot(data))
 			throw new ExternalToolGatewayError(
 				'INTERNAL',

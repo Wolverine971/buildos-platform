@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-09-30T00:25:07.157Z
+// Generated on: 2026-09-30T18:30:47.557Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2588,6 +2588,7 @@ export type DatabaseSchema = {
 		search_vector: unknown;
 		storage_bucket: string;
 		storage_path: string;
+		storage_project_id: string;
 		updated_at: string;
 		width: number | null;
 	};
@@ -2851,6 +2852,18 @@ export type DatabaseSchema = {
 		type_key: string | null;
 		updated_at: string | null;
 	};
+	onto_organize_batches: {
+		created_at: string;
+		effects: Json;
+		id: string;
+		inverse_of: string | null;
+		manifest: Json;
+		plan: Json;
+		project_ids: string[];
+		receipt: Json;
+		request_hash: string;
+		user_id: string;
+	};
 	onto_permissions: {
 		access: string;
 		actor_id: string | null;
@@ -2978,14 +2991,17 @@ export type DatabaseSchema = {
 		icon_svg: string | null;
 		id: string;
 		is_public: boolean | null;
+		merged_into_project_id: string | null;
 		name: string;
 		next_step_long: string | null;
 		next_step_short: string | null;
 		next_step_source: string | null;
 		next_step_updated_at: string | null;
 		org_id: string | null;
+		parent_project_id: string | null;
 		props: Json;
 		search_vector: unknown;
+		shared_folder_document_id: string | null;
 		start_at: string | null;
 		state_key: string;
 		type_key: string;
@@ -4870,6 +4886,7 @@ export const tableNames = [
 	'onto_metric_points',
 	'onto_metrics',
 	'onto_milestones',
+	'onto_organize_batches',
 	'onto_permissions',
 	'onto_plans',
 	'onto_project_icon_candidates',

@@ -45,6 +45,7 @@ import {
 	readStewardPromptPacket,
 	stewardProjectLabel
 } from './steward-sections';
+import { buildProjectFamilySection } from './project-family-section';
 
 // work_capability_* dropped 2026-07-10 (WP-7): normalizeGatewayToolName maps
 // the legacy names to outcome_card_* before definitions materialize, so tool
@@ -143,6 +144,7 @@ export const LITE_PROMPT_SECTION_ORDER: LitePromptSectionId[] = [
 	'focus_purpose',
 	'location_loaded_context',
 	'project_knowledge_map',
+	'project_family',
 	'current_time'
 ];
 
@@ -302,6 +304,8 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 			? buildStewardLiveFactsSection(steward, input.data, stewardProjectName, clock)
 			: null;
 	const knowledgeMapSection = steward ? null : buildProjectKnowledgeMapSection(focus, input.data);
+	// Project hierarchy: stewards keep it (it is not part of the doc map they drop).
+	const projectFamilySection = buildProjectFamilySection(focus.contextType, input.data);
 	const currentTimeSection = buildCurrentTimeSection(timeline);
 	const startHereSection = buildProjectStartHereSection(focus, input.data, clock, {
 		steward: Boolean(steward)
@@ -406,6 +410,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 						omitActivity: Boolean(steward)
 					}),
 					...(knowledgeMapSection ? [knowledgeMapSection] : []),
+					...(projectFamilySection ? [projectFamilySection] : []),
 					...(currentTimeSection ? [currentTimeSection] : [])
 				];
 

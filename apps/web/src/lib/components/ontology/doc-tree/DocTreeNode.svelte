@@ -25,7 +25,8 @@
 		FolderOpen,
 		Globe,
 		GripVertical,
-		ImageIcon
+		ImageIcon,
+		Share2
 	} from '$lib/icons/lucide';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
@@ -58,6 +59,9 @@
 		// Images filed under documents (onto_asset_links), keyed by document id
 		imagesByDocumentId?: Map<string, DocTreeImage[]>;
 		onOpenImage?: (imageId: string, documentId: string) => void;
+		// Project hierarchy: the folder shown on every sub-project's Docs tab
+		sharedFolderId?: string | null;
+		sharedCount?: number;
 	}
 
 	let {
@@ -76,7 +80,9 @@
 		cutNodeId = null,
 		onFocus,
 		imagesByDocumentId,
-		onOpenImage
+		onOpenImage,
+		sharedFolderId = null,
+		sharedCount = 0
 	}: Props = $props();
 
 	async function handleCopyPublicLink(e: MouseEvent) {
@@ -108,6 +114,10 @@
 	const indent = $derived(node.depth * indentPx);
 	const isCut = $derived(cutNodeId === node.id);
 	const justCreated = $derived(recentlyCreated?.has(node.id) ?? false);
+	const isSharedFolder = $derived(sharedFolderId !== null && sharedFolderId === node.id);
+	const sharedTitle = $derived(
+		`Shown in ${sharedCount} ${sharedCount === 1 ? 'sub-project' : 'sub-projects'}`
+	);
 
 	// Drag state derivations
 	const isDragging = $derived(dragState?.isDragging && dragState?.draggedNode?.id === node.id);
@@ -222,7 +232,7 @@
 
 	// Drag handlers - only from the drag handle
 	function handleDragHandleMouseDown(e: MouseEvent) {
-		if (!canDrag || !onDragStart || e.button !== 0) return;
+		if (!canDrag || isSharedFolder || !onDragStart || e.button !== 0) return;
 		e.stopPropagation();
 		if (nodeElement) {
 			onDragStart(e, node, nodeElement);
@@ -240,7 +250,7 @@
 	}
 
 	function handleDragHandleTouchStart(e: TouchEvent) {
-		if (!canDrag || !onTouchStart) return;
+		if (!canDrag || isSharedFolder || !onTouchStart) return;
 		if (nodeElement) {
 			onTouchStart(e, node, nodeElement);
 		}
@@ -285,7 +295,7 @@
 		style="padding-left: {indent + 4}px"
 	>
 		<!-- Keep the drag affordance at the action edge so it does not indent every document title. -->
-		{#if canDrag}
+		{#if canDrag && !isSharedFolder}
 			<button
 				type="button"
 				tabindex="-1"
@@ -396,6 +406,18 @@
 				Public
 			</button>
 		{/if}
+
+		<!-- Shared-with-sub-projects folder: same pill shape as Public, informational only -->
+		{#if isSharedFolder}
+			<span
+				class="mr-1 inline-flex flex-shrink-0 items-center gap-1 rounded-md bg-info/10 px-2 py-1 text-2xs font-semibold text-info"
+				title={sharedTitle}
+			>
+				<Share2 class="w-2.5 h-2.5" aria-hidden="true" />
+				<span aria-hidden="true">Shared · {sharedCount}</span>
+				<span class="sr-only">{sharedTitle}</span>
+			</span>
+		{/if}
 	</div>
 
 	<!-- Insertion line (after) -->
@@ -426,6 +448,8 @@
 						{onFocus}
 						{imagesByDocumentId}
 						{onOpenImage}
+						{sharedFolderId}
+						{sharedCount}
 					/>
 				</div>
 			{/each}

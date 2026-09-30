@@ -252,6 +252,9 @@ function buildPreparedPromptHarnessSha(params: {
 
 	return sha256Text(
 		stableStringify({
+			// Old prepared history clipped accepted proposals and omitted durable
+			// failed-cleanup recall. Reject it even when the system prompt is equal.
+			historyProjectionVersion: 2,
 			systemPrompt: canonicalEnvelope.systemPrompt,
 			tools: params.tools
 		})

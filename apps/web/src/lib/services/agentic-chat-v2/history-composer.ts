@@ -22,6 +22,7 @@ const DEFAULT_COMPRESSION_THRESHOLD_MESSAGES = 8;
 const DEFAULT_TAIL_MESSAGES_WHEN_COMPRESSED = 4;
 const DEFAULT_MAX_SUMMARY_CHARS = 420;
 const DEFAULT_MAX_MESSAGE_CHARS = 1200;
+const MAX_LATEST_ASSISTANT_CHARS = 24000;
 
 export function composeFastChatHistory(params: {
 	history: FastChatHistoryMessage[];
@@ -85,11 +86,33 @@ export function composeFastChatHistory(params: {
 		};
 	}
 
-	const tail = history.slice(-tailCount).map((msg) => ({
+	// The owned-history projection supplied this bounded structured packet.
+	// Keep it whole: clipping JSON loses owed work or uncertainty evidence.
+	const cleanupRecall = history.findLast((msg) => msg.continuityKind === 'failed_cleanup_v1');
+	const latestAssistant = history.findLast((msg) => msg.role === 'assistant');
+	const rawTail = history
+		.filter((msg) => msg.continuityKind !== 'failed_cleanup_v1')
+		.slice(-tailCount);
+	const tail = rawTail.map((msg) => ({
 		...msg,
-		content: summarizeText(msg.content, maxMessageChars)
+		// A follow-up can accept this entire proposal. Retain it by role and
+		// recency, without guessing acceptance or genre from either message.
+		content:
+			msg === latestAssistant && msg.content.length <= MAX_LATEST_ASSISTANT_CHARS
+				? msg.content
+				: summarizeText(msg.content, maxMessageChars)
 	}));
-	const summarizedCount = Math.max(0, history.length - tail.length);
+	const retainedEarlierAssistant =
+		latestAssistant &&
+		latestAssistant.content.length <= MAX_LATEST_ASSISTANT_CHARS &&
+		!latestAssistant.tool_calls?.length &&
+		!rawTail.includes(latestAssistant)
+			? latestAssistant
+			: null;
+	const summarizedCount = Math.max(
+		0,
+		history.length - tail.length - (retainedEarlierAssistant ? 1 : 0) - (cleanupRecall ? 1 : 0)
+	);
 
 	const summaryLines: string[] = ['Conversation memory (compressed):'];
 	if (sessionSummary) {
@@ -109,7 +132,12 @@ export function composeFastChatHistory(params: {
 	);
 
 	return {
-		historyForModel: [{ role: 'system', content: summaryLines.join('\n') }, ...tail],
+		historyForModel: [
+			{ role: 'system', content: summaryLines.join('\n') },
+			...(retainedEarlierAssistant ? [retainedEarlierAssistant] : []),
+			...tail,
+			...(cleanupRecall ? [cleanupRecall] : [])
+		],
 		compressed: true,
 		strategy: 'compressed_history',
 		rawHistoryCount: rawHistory.length,

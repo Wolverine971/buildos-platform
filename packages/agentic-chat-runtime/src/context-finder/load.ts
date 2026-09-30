@@ -158,7 +158,17 @@ export async function loadWorkspaceFinderProjects(
 		.slice(0, WORKSPACE_LOAD_LIMITS.projects);
 	if (!projects.length) return [];
 	const ids = projects.map((row) => String(row.id));
-	const [startHere, ...rows] = await Promise.all([
+	const [hierarchy, startHere, ...rows] = await Promise.all([
+		// Hierarchy labels (project hierarchy phase 1). Organization only; a failed read,
+		// including before the parent column exists, leaves the cards unlabeled.
+		Promise.resolve(
+			client
+				.from('onto_projects')
+				.select('id,parent_project_id')
+				.in('id', ids)
+				.is('deleted_at', null)
+				.abortSignal(signal)
+		).catch(() => ({ data: null, error: { message: 'onto_projects hierarchy' } })),
 		client
 			.from('onto_documents')
 			.select('id,project_id,content,updated_at')
@@ -192,6 +202,11 @@ export async function loadWorkspaceFinderProjects(
 				String(row.content ?? '').slice(0, WORKSPACE_LOAD_LIMITS.startHereChars)
 			);
 	}
+	const family = workspaceHierarchyLabels(
+		hierarchy.error ? [] : hierarchy.data,
+		summaries.data as Record<string, unknown>[],
+		ids
+	);
 	const byProject = new Map<string, WorkspaceProjectInputV1>(
 		projects.map((row) => [
 			String(row.id),
@@ -202,7 +217,8 @@ export async function loadWorkspaceFinderProjects(
 					description: (row.description as string | null) ?? null,
 					state_key: (row.state_key as string | null) ?? null,
 					next_step_short: (row.next_step_short as string | null) ?? null,
-					updated_at: (row.updated_at as string | null) ?? null
+					updated_at: (row.updated_at as string | null) ?? null,
+					...family.get(String(row.id))
 				},
 				documents: [],
 				tasks: [],
@@ -224,4 +240,41 @@ export async function loadWorkspaceFinderProjects(
 		}
 	});
 	return [...byProject.values()];
+}
+
+/**
+ * `part_of` / `includes` for the loaded cards. Both ends must be projects the user can access
+ * (the summaries RPC's answer), so a card never names a parent or child the user cannot open.
+ * Children are found among the loaded projects.
+ */
+function workspaceHierarchyLabels(
+	hierarchyRows: unknown,
+	accessible: Record<string, unknown>[],
+	loadedIds: readonly string[]
+): Map<string, { part_of?: string; includes?: string[] }> {
+	const names = new Map<string, string>();
+	for (const row of accessible) {
+		const name = typeof row.name === 'string' ? row.name.trim() : '';
+		if (typeof row.id === 'string' && name) names.set(row.id, name);
+	}
+	const parentOf = new Map<string, string>();
+	const rows = Array.isArray(hierarchyRows) ? (hierarchyRows as Record<string, unknown>[]) : [];
+	for (const row of rows) {
+		if (typeof row.id !== 'string' || typeof row.parent_project_id !== 'string') continue;
+		if (names.has(row.id) && names.has(row.parent_project_id))
+			parentOf.set(row.id, row.parent_project_id);
+	}
+	const labels = new Map<string, { part_of?: string; includes?: string[] }>();
+	// loadedIds is newest-first, so each includes list is too.
+	for (const id of loadedIds) {
+		const parentId = parentOf.get(id);
+		if (!parentId) continue;
+		const child = labels.get(id) ?? {};
+		child.part_of = names.get(parentId)!;
+		labels.set(id, child);
+		const parent = labels.get(parentId) ?? {};
+		parent.includes = [...(parent.includes ?? []), names.get(id)!];
+		labels.set(parentId, parent);
+	}
+	return labels;
 }

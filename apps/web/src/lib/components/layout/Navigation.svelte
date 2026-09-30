@@ -140,7 +140,9 @@
 	let navHidden = $state(false);
 
 	const currentPath: string = $derived($page.url.pathname);
-	const projectDetailMatch = $derived(currentPath.match(/^\/projects\/([^/]+)$/));
+	const projectDetailMatch = $derived(
+		currentPath.match(/^\/projects\/([^/]+)(?:\/organize)?\/?$/)
+	);
 	const projectTaskMatch = $derived(
 		currentPath.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)\/?$/)
 	);

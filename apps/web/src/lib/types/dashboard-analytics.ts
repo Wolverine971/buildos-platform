@@ -35,6 +35,8 @@ export interface DashboardProjectActivity {
 	task_count: number;
 	goal_count: number;
 	document_count: number;
+	/** Parent project, when the dashboard RPC reports it (project hierarchy). */
+	parent_project_id?: string | null;
 }
 
 export type DashboardActivityAction = 'Created' | 'Updated' | 'Completed';

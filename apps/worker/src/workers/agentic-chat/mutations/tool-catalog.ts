@@ -550,7 +550,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		},
 		directWriteClass: 'contract_required',
 		descriptionOverride:
-			'Move one standalone task from the focused source project to another writable project while preserving its ID, comments, and eligible assignees. Clean moves execute immediately. If relationships, project-local links, or incompatible assignees must be removed, the tool returns an exact impact preview and confirmation_token. Ask the user to confirm those effects, then call this tool in a later turn with that token. Never confirm or retry with the token in the same turn. Scheduled, recurring, asset-linked, and archived-destination moves are blocked.',
+			'Move one standalone task from the focused source project to another writable project while preserving its ID, comments, and eligible assignees. Clean moves execute immediately. If relationships, project-local links, or incompatible assignees must be removed, the tool returns an exact impact preview and confirmation_token. Ask the user to confirm those effects, then call this tool in a later turn with that token. Never confirm or retry with the token in the same turn. Dated tasks reconcile calendar events asynchronously. Assets move with their existing URLs; assets shared with items staying behind, recurring tasks, and archived destinations are blocked.',
 		requiredNames: ['task_id', 'expected_source_project_id', 'destination_project_id'],
 		reviewedArgumentNames: [
 			'task_id',

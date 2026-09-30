@@ -1,5 +1,6 @@
 // packages/agentic-chat-runtime/src/context/index.ts
 export * from '../last-turn-context';
+export * from './failed-cleanup-continuity';
 export type {
 	FastChatContextLoadSource,
 	FastChatContextLoaderPorts,

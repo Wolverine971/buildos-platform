@@ -1134,7 +1134,7 @@ Infer clear values and start minimal: goals for outcomes, tasks for actions, pla
 			description: `Move one standalone task from one project to another without changing chat context first. When a project is focused, it must be the source.
 This is a purpose-built cross-project operation: it verifies write access to both projects and preserves the task ID, comments, and eligible assignees.
 Clean moves execute immediately. If project relationships or plan/goal/milestone links must be cleared, or destination-ineligible assignees removed, the tool returns an impact preview and confirmation_token. Ask the user to confirm those exact effects, then call the tool in a later turn with that token. Never confirm on the user's behalf or retry with the token in the same turn.
-Archived destinations and tasks with project assets, schedules, or recurrence are blocked in this first version because their dependent state needs an explicit transfer policy. Generic update tools remain restricted to the current project.`,
+Dated tasks rebuild their calendar events asynchronously. Attached assets keep their IDs and URLs. Recurring tasks, assets shared with items staying behind, and archived destinations are blocked. Generic update tools remain restricted to the current project.`,
 			parameters: {
 				type: 'object',
 				properties: {

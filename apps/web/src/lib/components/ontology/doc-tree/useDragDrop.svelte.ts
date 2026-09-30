@@ -19,14 +19,15 @@ import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 // TYPES
 // ============================================
 
-export type DropZoneType = 'before' | 'after' | 'inside';
-
-export interface DropZone {
-	type: DropZoneType;
-	targetId: string;
-	parentId: string | null;
-	position: number;
-}
+export type { DropZoneType, DropZone } from './drop-geometry';
+import {
+	buildDropZone,
+	containsPinnedNode,
+	detectZoneType,
+	effectiveDropPosition,
+	validateDrop,
+	type DropZone
+} from './drop-geometry';
 
 export interface DragState {
 	isDragging: boolean;
@@ -87,6 +88,7 @@ export interface DragDropOptions {
 	getNodeIndex: (nodeId: string) => number;
 	getDescendantIds: (nodeId: string) => Set<string>;
 	getTreeContainer?: () => HTMLElement | null;
+	isPinned?: (nodeId: string) => boolean;
 	onUndo?: (entry: MoveHistoryEntry) => void;
 }
 
@@ -96,8 +98,6 @@ export interface DragDropOptions {
 
 const DRAG_THRESHOLD = 5; // pixels before drag starts
 const HOVER_TO_CONVERT_DELAY = 400; // ms to hover before converting doc to folder
-const ZONE_BEFORE_PERCENT = 0.3; // top 30% = insert before
-const ZONE_AFTER_PERCENT = 0.7; // bottom 30% = insert after
 const LONG_PRESS_DELAY = 500; // ms for mobile long press
 const AUTO_SCROLL_ZONE = 60; // pixels from edge to trigger auto-scroll
 const AUTO_SCROLL_SPEED = 8; // pixels per frame
@@ -152,6 +152,8 @@ export function createDragDropState(options: DragDropOptions) {
 		y: number,
 		isTouch = false
 	) {
+		if (containsPinnedNode(node.id, options)) return;
+
 		// Store original position for rollback
 		const parentId = options.getParentId(node.id);
 		const position = options.getNodeIndex(node.id);
@@ -302,10 +304,10 @@ export function createDragDropState(options: DragDropOptions) {
 		const zoneType = detectZoneType(relativeY, nodeHeight);
 
 		// Build drop zone
-		const dropZone = buildDropZone(zoneType, targetNode);
+		const dropZone = buildDropZone(zoneType, targetNode, options);
 
 		// Validate
-		const validation = validateDrop(state.draggedNode, dropZone, targetNode);
+		const validation = validateDrop(state.draggedNode.id, dropZone, options);
 
 		// Handle hover-to-convert for plain documents
 		if (zoneType === 'inside' && !targetNode.children?.length && validation.valid) {
@@ -339,89 +341,6 @@ export function createDragDropState(options: DragDropOptions) {
 		state.invalidReason = validation.reason ?? null;
 	}
 
-	function detectZoneType(relativeY: number, nodeHeight: number): DropZoneType {
-		const beforeThreshold = nodeHeight * ZONE_BEFORE_PERCENT;
-		const afterThreshold = nodeHeight * ZONE_AFTER_PERCENT;
-
-		if (relativeY < beforeThreshold) {
-			return 'before';
-		}
-
-		if (relativeY > afterThreshold) {
-			return 'after';
-		}
-
-		// Middle zone - 'inside' only if it's a folder or we're converting
-		return 'inside';
-	}
-
-	function buildDropZone(zoneType: DropZoneType, targetNode: EnrichedDocTreeNode): DropZone {
-		const targetParentId = options.getParentId(targetNode.id);
-		const targetIndex = options.getNodeIndex(targetNode.id);
-
-		switch (zoneType) {
-			case 'before':
-				return {
-					type: 'before',
-					targetId: targetNode.id,
-					parentId: targetParentId,
-					position: targetIndex
-				};
-
-			case 'after':
-				return {
-					type: 'after',
-					targetId: targetNode.id,
-					parentId: targetParentId,
-					position: targetIndex + 1
-				};
-
-			case 'inside':
-				return {
-					type: 'inside',
-					targetId: targetNode.id,
-					parentId: targetNode.id,
-					position: targetNode.children?.length ?? 0
-				};
-		}
-	}
-
-	function validateDrop(
-		draggedNode: EnrichedDocTreeNode,
-		dropZone: DropZone,
-		targetNode: EnrichedDocTreeNode
-	): { valid: boolean; reason?: string } {
-		// Rule 1: Cannot drop onto self
-		if (dropZone.parentId === draggedNode.id || targetNode.id === draggedNode.id) {
-			return { valid: false, reason: 'Cannot drop onto itself' };
-		}
-
-		// Rule 2: Cannot drop into own descendants
-		if (dropZone.parentId) {
-			const descendants = options.getDescendantIds(draggedNode.id);
-			if (descendants.has(dropZone.parentId)) {
-				return { valid: false, reason: 'Cannot move into its own contents' };
-			}
-		}
-
-		// Rule 3: Check if moving to same position (no-op)
-		const currentParentId = options.getParentId(draggedNode.id);
-		const currentIndex = options.getNodeIndex(draggedNode.id);
-
-		if (dropZone.parentId === currentParentId) {
-			// Same parent - check if position is actually different
-			let effectivePosition = dropZone.position;
-			if (currentIndex < effectivePosition) {
-				effectivePosition -= 1; // Account for removal
-			}
-			if (effectivePosition === currentIndex) {
-				return { valid: false, reason: 'Already in this position' };
-			}
-		}
-
-		return { valid: true };
-	}
-
 	// ============================================
 	// DRAG END
 	// ============================================
@@ -442,10 +361,11 @@ export function createDragDropState(options: DragDropOptions) {
 		}
 
 		// Calculate effective position (account for removal from same parent)
-		let effectivePosition = dropZone.position;
-		if (dropZone.parentId === originalParentId && originalPosition < dropZone.position) {
-			effectivePosition -= 1;
-		}
+		const effectivePosition = effectiveDropPosition(
+			dropZone.position,
+			dropZone.parentId === originalParentId,
+			originalPosition
+		);
 
 		// Call the move handler
 		try {
@@ -578,6 +498,7 @@ export function createDragDropState(options: DragDropOptions) {
 	// ============================================
 
 	function cutNode(node: EnrichedDocTreeNode) {
+		if (containsPinnedNode(node.id, options)) return;
 		const parentId = options.getParentId(node.id);
 		const position = options.getNodeIndex(node.id);
 
@@ -606,6 +527,10 @@ export function createDragDropState(options: DragDropOptions) {
 		}
 
 		const cutNodeData = state.cutNode;
+		if (containsPinnedNode(cutNodeData.id, options)) {
+			clearCut();
+			return { success: false, error: 'This folder is pinned to the project' };
+		}
 		const originalParentId = state.cutOriginalParentId;
 		const originalPosition = state.cutOriginalPosition;
 

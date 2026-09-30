@@ -16,10 +16,12 @@
 
 	interface Props {
 		project: ProjectListSummary;
+		/** Muted "· parent" label for a sub-project shown on its own row. */
+		parentName?: string | null;
 		onSelect?: (project: ProjectListSummary) => void;
 	}
 
-	const { project, onSelect }: Props = $props();
+	const { project, parentName = null, onSelect }: Props = $props();
 
 	const accessRoleLabel = $derived(formatAccessRole(project.access_role));
 	const stateLabel = $derived(PROJECT_STATE_META[normalizeProjectState(project.state_key)].label);
@@ -50,13 +52,24 @@
 	onclick={handleClick}
 	class="project-dossier-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-lg border border-transparent px-3 py-2 pressable hover:border-border hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 >
-	<h3
-		class="min-w-0 line-clamp-2 break-words text-sm font-semibold text-foreground sm:line-clamp-none sm:truncate"
-		style="view-transition-name: project-title-{project.id}; view-transition-class: project-title"
-		title={project.name}
-	>
-		{project.name}
-	</h3>
+	<div class="flex min-w-0 items-baseline gap-1.5">
+		<h3
+			class="min-w-0 line-clamp-2 break-words text-sm font-semibold text-foreground sm:line-clamp-none sm:truncate"
+			style="view-transition-name: project-title-{project.id}; view-transition-class: project-title"
+			title={project.name}
+		>
+			{project.name}
+		</h3>
+		{#if parentName}
+			<span
+				class="min-w-0 max-w-[45%] shrink truncate text-xs text-muted-foreground"
+				title="Part of {parentName}"
+				><span aria-hidden="true">· </span><span class="sr-only"
+					>Part of
+				</span>{parentName}</span
+			>
+		{/if}
+	</div>
 	<time
 		datetime={project.updated_at}
 		title={updatedTitle}

@@ -6,6 +6,8 @@
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import { DocTreeView } from '$lib/components/ontology/doc-tree';
 	import FreshnessBadge from '$lib/components/project/freshness/FreshnessBadge.svelte';
+	import InheritedDocsShelf from '$lib/components/project/InheritedDocsShelf.svelte';
+	import type { ProjectFamilyV1 } from '@buildos/shared-types';
 	import { getProjectFreshnessContext } from '$lib/components/project/freshness/freshness-context.svelte';
 	import type { Document } from '$lib/types/onto';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
@@ -29,7 +31,10 @@
 		initialArchived = [],
 		maxInitialDepth = 3,
 		pollInterval = 30000,
-		variant = 'collapsible'
+		variant = 'collapsible',
+		family = null,
+		onOpenInheritedDocument,
+		onCopyInheritedDocument
 	}: {
 		projectId: string;
 		documents: Document[];
@@ -55,7 +60,17 @@
 		maxInitialDepth?: number;
 		pollInterval?: number;
 		variant?: 'collapsible' | 'workspace';
+		/** Hierarchy: the parent's shared shelf (child) and the own shared folder (parent). */
+		family?: ProjectFamilyV1 | null;
+		onOpenInheritedDocument?: (docId: string) => void;
+		onCopyInheritedDocument?: (docId: string) => Promise<void>;
 	} = $props();
+
+	const inheritedParent = $derived(family?.parent ?? null);
+	const inheritedDocs = $derived(inheritedParent ? (family?.shelf ?? []) : []);
+	const sharedFolderId = $derived(
+		(family?.child_count ?? 0) > 0 ? (family?.own_shared_folder_document_id ?? null) : null
+	);
 
 	let docTreeViewRef = $state<{ refresh: () => void } | null>(null);
 
@@ -110,6 +125,15 @@
 {/snippet}
 
 {#snippet documentTree()}
+	{#if inheritedParent && onOpenInheritedDocument && onCopyInheritedDocument}
+		<InheritedDocsShelf
+			parentName={inheritedParent.name}
+			docs={inheritedDocs}
+			canCopy={canEdit}
+			onOpenDocument={onOpenInheritedDocument}
+			onCopyDocument={onCopyInheritedDocument}
+		/>
+	{/if}
 	{@render freshnessStrip()}
 	<DocTreeView
 		bind:this={docTreeViewRef}
@@ -128,6 +152,8 @@
 		{pollInterval}
 		enableDragDrop={canEdit}
 		selectedDocumentId={activeDocumentId}
+		{sharedFolderId}
+		sharedCount={family?.child_count ?? 0}
 	/>
 {/snippet}
 

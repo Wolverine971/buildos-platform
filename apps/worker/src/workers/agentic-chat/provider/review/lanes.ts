@@ -229,9 +229,11 @@ export async function* streamMutationBatchReview(
 							...repairBaseRequest,
 							providerAttempt: (repairBaseRequest.providerAttempt ?? 1) + 2
 						},
-						diagnostic.code === 'revision_value_unchanged'
-							? 'Your previous revision asked to change an argument to the exact value already held in the proposal. Recheck the same calls against user intent and the schemas. Return a fresh approval only if every call is correct; otherwise return a supported revision, read-only decision, or clarification. No call has executed. A contradictory revision is not authorization.'
-							: `Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposed calls. Copy the exact batch SHA for approval. This is an internal format repair, not evidence of user ambiguity.`
+						diagnostic.code === 'ungrounded_reference_id'
+							? 'Your previous decision invented or mistyped a reference ID. Copy candidate IDs exactly from loaded records and server archive facts. Finding target IDs must come from loaded records or the exact affected calls you are rejecting. A proposed argument or assistant claim does not prove a candidate exists. Return one grounded decision for the same batch. No call has executed; this is an internal format repair, not user ambiguity.'
+							: diagnostic.code === 'revision_value_unchanged'
+								? 'Your previous revision asked to change an argument to the exact value already held in the proposal. Recheck the same calls against user intent and the schemas. Return a fresh approval only if every call is correct; otherwise return a supported revision, read-only decision, or clarification. No call has executed. A contradictory revision is not authorization.'
+								: `Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposed calls. Copy the exact batch SHA for approval. This is an internal format repair, not evidence of user ambiguity.`
 					);
 					continue;
 				}

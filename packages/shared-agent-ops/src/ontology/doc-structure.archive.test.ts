@@ -1,5 +1,6 @@
 // packages/shared-agent-ops/src/ontology/doc-structure.archive.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { DocumentArchiveDatabaseError } from './document-archive-error';
 import { archiveDocumentInTree } from './doc-structure.service';
 
 const project = '10000000-0000-4000-8000-000000000001';
@@ -7,6 +8,34 @@ const parent = '10000000-0000-4000-8000-000000000002';
 const child = '10000000-0000-4000-8000-000000000003';
 
 describe('canonical archive with reviewed facts', () => {
+	it('preserves the database error code and diagnostic fields from the only write RPC', async () => {
+		const query = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			single: async () => ({
+				data: { doc_structure: { version: 7, root: [{ id: parent }] } },
+				error: null
+			})
+		};
+		const rpc = vi.fn(async () => ({
+			data: null,
+			error: { code: '40P01', message: 'deadlock detected', details: 'locks', hint: 'retry' }
+		}));
+		const request = archiveDocumentInTree(
+			{ from: () => query, rpc } as never,
+			project,
+			parent,
+			{ expectedUpdatedAt: '2026-09-29T00:00:00Z' }
+		);
+		await expect(request).rejects.toBeInstanceOf(DocumentArchiveDatabaseError);
+		await expect(request).rejects.toMatchObject({
+			code: '40P01',
+			databaseMessage: 'deadlock detected',
+			details: 'locks',
+			hint: 'retry'
+		});
+		expect(rpc).toHaveBeenCalledOnce();
+	});
 	it.each(['archive_children', 'promote_children'] as const)(
 		'uses one guarded RPC for %s, including the computed tree and child caches',
 		async (mode) => {

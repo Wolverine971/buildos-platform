@@ -6,7 +6,7 @@
   - Zero layout shift - exact number of cards rendered from start
 -->
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -52,6 +52,7 @@
 		PROJECT_LIST_SCOPE_OPTIONS,
 		getProjectListScopeLabel,
 		matchesProjectListScope,
+		nestProjectList,
 		normalizeProjectListScope,
 		type ProjectListScope,
 		type ProjectListSummary
@@ -337,6 +338,42 @@
 			)
 			.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
 	});
+
+	// Sub-projects sit under their parent; a search flattens the list and labels them instead.
+	const isSearching = $derived(searchQuery.trim().length > 0);
+	const projectGroups = $derived(
+		nestProjectList(filteredProjects, { flat: isSearching, lookup: projects })
+	);
+
+	const COLLAPSED_PARENTS_STORAGE_KEY = 'projects-list-collapsed-parents';
+	let collapsedParentIds = $state<Set<string>>(new Set());
+
+	onMount(() => {
+		try {
+			const parsed: unknown = JSON.parse(
+				localStorage.getItem(COLLAPSED_PARENTS_STORAGE_KEY) ?? '[]'
+			);
+			if (Array.isArray(parsed)) {
+				collapsedParentIds = new Set(
+					parsed.filter((id): id is string => typeof id === 'string')
+				);
+			}
+		} catch {
+			// Storage can be unavailable (private mode); everything stays expanded.
+		}
+	});
+
+	function toggleParentCollapsed(parentId: string) {
+		const next = new Set(collapsedParentIds);
+		if (next.has(parentId)) next.delete(parentId);
+		else next.add(parentId);
+		collapsedParentIds = next;
+		try {
+			localStorage.setItem(COLLAPSED_PARENTS_STORAGE_KEY, JSON.stringify([...next]));
+		} catch {
+			// Collapse still works for this visit.
+		}
+	}
 
 	function parseProjectUpdatedAt(project: ProjectListSummary): number {
 		const timestamp = Date.parse(project.updated_at);
@@ -880,8 +917,51 @@
 								</span>
 							</div>
 							<div class="space-y-1">
-								{#each filteredProjects as project (project.id)}
-									<ProjectStateRow {project} onSelect={handleProjectClick} />
+								{#each projectGroups as group (group.project.id)}
+									<ProjectStateRow
+										project={group.project}
+										parentName={group.parentName}
+										onSelect={handleProjectClick}
+									/>
+									{#if group.children.length > 0}
+										{@const collapsed = collapsedParentIds.has(
+											group.project.id
+										)}
+										{@const childCount = group.children.length}
+										<div class="ml-3 border-l border-border pl-2 sm:ml-4">
+											<button
+												type="button"
+												class="flex min-h-11 w-full items-center gap-1.5 rounded-md px-2 text-left text-xs font-medium text-muted-foreground pressable hover:bg-muted/40 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [@media(pointer:fine)]:min-h-7"
+												aria-expanded={!collapsed}
+												aria-controls="project-children-{group.project.id}"
+												onclick={() =>
+													toggleParentCollapsed(group.project.id)}
+											>
+												<ChevronDown
+													class="h-3.5 w-3.5 shrink-0 transition-transform motion-reduce:transition-none {collapsed
+														? '-rotate-90'
+														: ''}"
+													aria-hidden="true"
+												/>
+												<span class="stamp">{childCount}</span>
+												{childCount === 1 ? 'project' : 'projects'} inside
+												<span class="sr-only">{group.project.name}</span>
+											</button>
+											{#if !collapsed}
+												<div
+													id="project-children-{group.project.id}"
+													class="space-y-1"
+												>
+													{#each group.children as child (child.id)}
+														<ProjectStateRow
+															project={child}
+															onSelect={handleProjectClick}
+														/>
+													{/each}
+												</div>
+											{/if}
+										</div>
+									{/if}
 								{/each}
 							</div>
 						</section>

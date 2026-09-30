@@ -13,10 +13,13 @@
 	} from '$lib/components/project/project-page-data-controller';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { Document, Project } from '$lib/types/onto';
+	import type { ProjectFamilyV1 } from '@buildos/shared-types';
 	import {
 		Bell,
 		BellOff,
 		Calendar,
+		FolderUp,
+		Columns2,
 		MoreHorizontal,
 		Pencil,
 		Trash2,
@@ -30,7 +33,9 @@
 		canAdmin,
 		canOpenCollaboration,
 		canDeleteProject,
-		onProjectSaved
+		onProjectSaved,
+		family = null,
+		onFamilyChanged
 	}: {
 		project: Project;
 		contextDocument: Document | null;
@@ -39,6 +44,9 @@
 		canOpenCollaboration: boolean;
 		canDeleteProject: boolean;
 		onProjectSaved: () => void | Promise<void>;
+		/** This project's place in the hierarchy; null when the page has none. */
+		family?: ProjectFamilyV1 | null;
+		onFamilyChanged?: () => void | Promise<void>;
 	} = $props();
 
 	let showMenu = $state(false);
@@ -49,6 +57,9 @@
 	let showProjectCalendarModal = $state(false);
 	let showCollaborationModal = $state(false);
 	let showDeleteProjectModal = $state(false);
+	let showParentPickerModal = $state(false);
+	// Setting a parent needs admin on this project (the server also checks the parent).
+	const canMoveUnder = $derived(canAdmin && canEdit);
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let notificationSettings = $state<ProjectNotificationSettings | null>(null);
@@ -66,7 +77,7 @@
 	function openMenu(event: MouseEvent) {
 		const trigger = event.currentTarget as HTMLButtonElement;
 		const rect = trigger.getBoundingClientRect();
-		const estimatedMenuHeight = 284;
+		const estimatedMenuHeight = 380;
 		menuTrigger = trigger;
 		menuPosition = {
 			top: Math.max(
@@ -298,6 +309,36 @@
 				Calendar settings
 			</button>
 		{/if}
+		{#if canEdit}
+			<button
+				type="button"
+				role="menuitem"
+				tabindex="-1"
+				class="menu-item"
+				onclick={() => {
+					closeMenu(false);
+					void goto(`/projects/${project.id}/organize`);
+				}}
+			>
+				<Columns2 class="h-4 w-4 text-muted-foreground" />
+				Organize…
+			</button>
+		{/if}
+		{#if canMoveUnder}
+			<button
+				type="button"
+				role="menuitem"
+				tabindex="-1"
+				onclick={() => {
+					closeMenu(false);
+					showParentPickerModal = true;
+				}}
+				class="menu-item"
+			>
+				<FolderUp class="h-4 w-4 text-muted-foreground" />
+				Move under…
+			</button>
+		{/if}
 		{#if canDeleteProject}
 			<hr class="my-1 border-border" />
 			<button
@@ -344,6 +385,19 @@
 				showProjectEditModal = false;
 				void goto('/projects');
 			}}
+		/>
+	{/await}
+{/if}
+
+{#if showParentPickerModal && canMoveUnder}
+	{#await import('$lib/components/project/ProjectParentPickerModal.svelte') then { default: ProjectParentPickerModal }}
+		<ProjectParentPickerModal
+			isOpen={showParentPickerModal}
+			projectId={project.id}
+			projectName={project.name || 'Untitled project'}
+			{family}
+			onClose={() => (showParentPickerModal = false)}
+			onChanged={() => onFamilyChanged?.()}
 		/>
 	{/await}
 {/if}

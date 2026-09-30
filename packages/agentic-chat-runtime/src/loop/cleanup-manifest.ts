@@ -91,17 +91,15 @@ export function buildCleanupManifest(params: {
 			const terminalBlock = ['supervisor_question', 'semantic_review_failed'].includes(
 				params.finishedReason ?? ''
 			);
-			const status: CleanupManifestStatus = failure
-				? params.partialFailureClass === 'uncertain_external_commit'
-					? 'uncertain'
-					: 'blocked'
-				: saved.fulfilled
-					? 'saved'
-					: all.fulfilled
-						? 'already_satisfied'
-						: params.partialFailureClass === 'uncertain_external_commit'
-							? 'uncertain'
-							: failure || fact?.status === 'inconsistent' || terminalBlock
+			const status: CleanupManifestStatus = failure?.uncertain
+				? 'uncertain'
+				: failure
+					? 'blocked'
+					: saved.fulfilled
+						? 'saved'
+						: all.fulfilled
+							? 'already_satisfied'
+							: fact?.status === 'inconsistent' || terminalBlock
 								? 'blocked'
 								: 'pending';
 			const title = [...related].reverse().find((e) => e.title)?.title ?? fact?.title;

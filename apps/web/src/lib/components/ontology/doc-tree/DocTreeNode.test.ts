@@ -71,6 +71,29 @@ describe('DocTreeNode control quality', () => {
 		expect(screen.queryByText('Has content')).not.toBeInTheDocument();
 	});
 
+	it('hides the shared folder drag handle while keeping the folder usable', async () => {
+		const node = createNode({
+			id: 'shared',
+			title: 'Shared with sub-projects',
+			type: 'folder'
+		});
+		const onOpenDocument = vi.fn();
+		render(DocTreeNode, {
+			props: {
+				node,
+				expandedIds: new Set<string>(),
+				canDrag: true,
+				sharedFolderId: 'shared',
+				onToggleExpand: vi.fn(),
+				onOpenDocument,
+				onContextMenu: vi.fn()
+			}
+		});
+		expect(screen.queryByRole('button', { name: 'Drag to reorder' })).not.toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: /^Shared with sub-projects/ }));
+		expect(onOpenDocument).toHaveBeenCalledWith('shared');
+	});
+
 	it('opens the action menu from the standard keyboard shortcut', async () => {
 		const node = createNode();
 		const { onContextMenu } = renderNode(node);

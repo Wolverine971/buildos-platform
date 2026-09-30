@@ -4,8 +4,12 @@
 // partial-completion lane after durable writes, the terminal finalize with its
 // one timing-free retry, committed-event delivery, queue reconciliation, and
 // the billing and timing work that must settle before the terminal fence.
+import { buildFailedPartialText, collectUncertainEffects } from './failed-partial-receipt';
 import { randomUUID } from 'node:crypto';
-import { buildLastTurnContextDraftV1 } from '@buildos/agentic-chat-runtime/context';
+import {
+	buildLastTurnContextDraftV1,
+	buildFailedCleanupContinuation
+} from '@buildos/agentic-chat-runtime/context';
 import {
 	buildAgenticChatCompletionReceiptV1,
 	resolveRequestExpectationOutcome
@@ -71,6 +75,8 @@ export type FinalizeTurnInput = {
 		terminalContext: TerminalContextState;
 		runtimeTiming: AgenticChatRuntimeTimingTracker | null;
 	};
+	/** Server-built disclosure for a failed turn with saved writes and uncertainty. */
+	failedPartialDisclosure?: boolean;
 	/** The post-start failure a completed partial absorbed; telemetry still counts it. */
 	partialFailure?: {
 		failureClass: AgenticChatRecoveryFailureClassV1;
@@ -159,6 +165,12 @@ export class AgenticChatTurnFinalizer {
 				publicError !== undefined && receipt.failure_code !== failureClass
 					? AGENTIC_CHAT_GENERIC_FAILURE_COPY
 					: publicError;
+			const failedPartialText =
+				receipt.outcome === 'finalize_failed' &&
+				failureCode === 'uncertain_external_commit' &&
+				terminalEventContext
+					? buildFailedPartialText(terminalEventContext.terminalContext.toolExecutions)
+					: null;
 			return await this.finalize({
 				envelope,
 				claim,
@@ -168,7 +180,8 @@ export class AgenticChatTurnFinalizer {
 				usage: null,
 				projection,
 				publisherRegistered,
-				assistantTextOverride: assistantText ?? '',
+				assistantTextOverride: failedPartialText ?? assistantText ?? '',
+				failedPartialDisclosure: failedPartialText !== null,
 				interruptedReason,
 				publicError: terminalPublicError,
 				terminalEventContext
@@ -288,7 +301,8 @@ export class AgenticChatTurnFinalizer {
 		publicError,
 		reevaluateConsumptionBilling = false,
 		terminalEventContext,
-		partialFailure
+		partialFailure,
+		failedPartialDisclosure = false
 	}: FinalizeTurnInput): Promise<AgenticChatTurnExecutionResultV1> {
 		let assistantText =
 			assistantTextOverride ??
@@ -325,8 +339,17 @@ export class AgenticChatTurnFinalizer {
 		if (reevaluateConsumptionBilling) {
 			await this.evaluateConsumptionBilling(claim.userId);
 		}
+		const failedPartial =
+			failedPartialDisclosure &&
+			status === 'failed' &&
+			failureCode === 'uncertain_external_commit' &&
+			terminalEventContext &&
+			buildFailedPartialText(terminalEventContext.terminalContext.toolExecutions) ===
+				assistantText;
 		const shouldPersistMessage =
-			status === 'completed' || (status === 'cancelled' && assistantText.length > 0);
+			status === 'completed' ||
+			(status === 'cancelled' && assistantText.length > 0) ||
+			!!failedPartial;
 		const completedMessageMetadata =
 			status === 'completed'
 				? ({ completion_status: 'completed', answer_source: 'model' } as const)
@@ -369,7 +392,7 @@ export class AgenticChatTurnFinalizer {
 			: null;
 		const includesFailureEventPair = status === 'failed' && terminalEventContext;
 		const turnContract =
-			status === 'completed'
+			status === 'completed' || failedPartial
 				? resolveReviewedTurnContractFromExecutions(
 						terminalEventContext?.terminalContext.toolExecutions
 					)
@@ -384,17 +407,20 @@ export class AgenticChatTurnFinalizer {
 				: null;
 		// Tasker 92 C: a versioned, ledger-derived receipt that separates "this
 		// batch was approved" from "the verified effects fulfil the whole request".
-		// Computed only for completed terminals; cancelled, failed, stale, and
-		// pre-start paths leave none. Pure over the ledger, so a finalize replay
+		// Completed turns and server-owned failed partial disclosures carry one;
+		// raw failed prefixes, cancelled, stale, and pre-start paths leave none.
+		// Pure over the ledger, so a finalize replay
 		// yields the identical receipt and writes nothing else.
 		const completionReceipt =
-			status === 'completed' && terminalEventContext
+			(status === 'completed' || failedPartial) && terminalEventContext
 				? buildAgenticChatCompletionReceiptV1({
 						contract: turnContract,
 						contractSha256: turnContract ? contractSha256(turnContract) : null,
 						toolExecutions: terminalEventContext.terminalContext.toolExecutions,
 						finishedReason,
-						partialFailureClass: partialFailure?.failureClass ?? null
+						partialFailureClass: failedPartial
+							? 'uncertain_external_commit'
+							: (partialFailure?.failureClass ?? null)
 					})
 				: null;
 		const timingDraft =
@@ -442,6 +468,19 @@ export class AgenticChatTurnFinalizer {
 				tool_round_count: terminalEventContext?.terminalContext.toolRoundCount ?? 0,
 				tool_call_count: terminalEventContext?.terminalContext.toolExecutions.length ?? 0,
 				...completedMessageMetadata,
+				...(failedPartial
+					? {
+							completion_status: 'failed',
+							answer_source: 'harness',
+							failure_disclosure_version: 1,
+							cleanup_continuation: buildFailedCleanupContinuation(
+								terminalEventContext!.terminalContext.toolExecutions
+							),
+							uncertain_effects: collectUncertainEffects(
+								terminalEventContext!.terminalContext.toolExecutions
+							)
+						}
+					: {}),
 				...interruptedMessageMetadata,
 				...(partialFailure
 					? {

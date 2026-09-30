@@ -159,6 +159,8 @@ export const ACTING_PROMPT_SECTION_TITLES = Object.freeze([
 	'Current Focus and Purpose',
 	'Location and Loaded Context',
 	'Project Knowledge Map',
+	// Project hierarchy: parent, shared-docs shelf, sub-projects (web project-family-section.ts).
+	'Project Hierarchy',
 	'Current Time'
 ]);
 
@@ -178,6 +180,8 @@ export const REVIEWER_EVIDENCE_SECTION_TITLES = Object.freeze([
 	'Current Focus and Purpose',
 	'Location and Loaded Context',
 	'Project Knowledge Map',
+	// Project hierarchy: parent, shared-docs shelf, sub-projects (web project-family-section.ts).
+	'Project Hierarchy',
 	'Current Time'
 ]);
 

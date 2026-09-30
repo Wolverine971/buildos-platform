@@ -82,6 +82,10 @@
 		initialDocuments?: Record<string, OntoDocument>;
 		initialUnlinked?: OntoDocument[];
 		initialArchived?: OntoDocument[];
+		/** This project's "Shared with sub-projects" folder, badged in the tree. */
+		sharedFolderId?: string | null;
+		/** Sub-projects that see the shared folder. */
+		sharedCount?: number;
 	}
 
 	let {
@@ -99,7 +103,9 @@
 		initialStructure = null,
 		initialDocuments = {},
 		initialUnlinked = [],
-		initialArchived = []
+		initialArchived = [],
+		sharedFolderId = null,
+		sharedCount = 0
 	}: Props = $props();
 
 	function getInitialStructure() {
@@ -235,6 +241,7 @@
 				return collectDocIds(node.children);
 			},
 			getTreeContainer: () => treeContainerRef,
+			isPinned: (nodeId) => nodeId === sharedFolderId,
 			onUndo: () => {
 				// Refresh after undo
 				fetchTree(false);
@@ -851,6 +858,8 @@
 					onFocus={(nodeId) => dragDrop?.setFocusedNode(nodeId)}
 					imagesByDocumentId={groupedImages.byDocumentId}
 					onOpenImage={(imageId) => openImage(imageId)}
+					{sharedFolderId}
+					{sharedCount}
 				/>
 			{/each}
 		</div>

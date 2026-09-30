@@ -1,3 +1,4 @@
+// packages/shared-agent-ops/src/calendar/task-event-sync.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
 	buildTaskEventSpecs,
@@ -39,7 +40,7 @@ function event(id: string, overrides: Record<string, unknown> = {}) {
 	} as any;
 }
 
-function coordinatorClient(edgeIds: string[], events: any[]) {
+function coordinatorClient(edgeIds: string[], events: any[], failEdgeInsert = false) {
 	const edgeInserts: unknown[] = [];
 	const edgeDeletes: string[] = [];
 
@@ -83,6 +84,8 @@ function coordinatorClient(edgeIds: string[], events: any[]) {
 		}
 
 		private execute() {
+			if (failEdgeInsert && this.table === 'onto_edges' && this.action === 'insert')
+				return { data: null, error: { message: 'edge write failed' } };
 			if (this.table === 'onto_edges' && this.action === 'select') {
 				return { data: edgeIds.map((dst_id) => ({ dst_id })), error: null };
 			}
@@ -310,4 +313,20 @@ describe('task event scheduling parity', () => {
 		expect(mutations.deleteEvent).not.toHaveBeenCalled();
 		expect(mutations.createEvent).toHaveBeenCalledOnce();
 	});
+});
+
+it('throws when an event link fails so a durable caller retries instead of reporting success', async () => {
+	const { client } = coordinatorClient([], [], true);
+	const port = mutationPort();
+	await expect(
+		new TaskEventSyncCoordinator(client as any, port).syncTaskEvents('user', 'actor', {
+			id: 'task',
+			project_id: 'project-1',
+			title: 'Retry me',
+			state_key: 'todo',
+			start_at: '2026-10-01T09:00:00Z',
+			due_at: null
+		} as any)
+	).rejects.toThrow('edge write failed');
+	expect(port.createEvent).toHaveBeenCalledOnce();
 });

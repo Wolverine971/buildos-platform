@@ -167,9 +167,9 @@ async function main() {
 		);
 	});
 
-	// `shared-agent-ops` cleans its dist directory at the start of each tsup
-	// build. Starting the worker before that initial build completes leaves a
-	// window where package exports point at files that do not exist yet.
+	// On a fresh checkout, `shared-agent-ops` exports point at files that do
+	// not exist until its initial build completes. Wait before starting the
+	// worker so it can resolve those package exports.
 	await workspacePackagesReady.promise;
 	console.info('[dev] Workspace packages are ready.');
 

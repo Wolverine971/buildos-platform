@@ -16,6 +16,7 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import { addProjectCollaborationFlags } from '$lib/components/projects/project-list';
+import { loadVisibleParentIds } from '$lib/services/ontology/project-hierarchy.service';
 
 export const load: PageServerLoad = async ({ locals, depends }) => {
 	const { user } = await locals.safeGetSession();
@@ -63,21 +64,35 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	// STREAMED: Full project data loaded in background
 	// Skeletons will be hydrated when this resolves
 	const projects = fetchProjectSummaries(locals.supabase, actorId, locals.serverTiming)
-		.then(async (summaries) => {
-			if (summaries.length === 0) return addProjectCollaborationFlags(summaries, []);
+		.then(async (loaded) => {
+			if (loaded.length === 0) {
+				return addProjectCollaborationFlags(
+					loaded.map((project) => ({
+						...project,
+						parent_project_id: null as string | null
+					})),
+					[]
+				);
+			}
+			const projectIds = loaded.map((project) => project.id);
 
-			const { data: memberRows, error: memberRowsError } = await measure(
-				'db.project_members.collaboration_flags',
-				() =>
+			const [{ data: memberRows, error: memberRowsError }, parentIds] = await Promise.all([
+				measure('db.project_members.collaboration_flags', () =>
 					locals.supabase
 						.from('onto_project_members')
 						.select('project_id, actor_id')
-						.in(
-							'project_id',
-							summaries.map((project) => project.id)
-						)
+						.in('project_id', projectIds)
 						.is('removed_at', null)
-			);
+				),
+				// Nesting: a parent is named only when it's also in this viewer's list.
+				measure('db.project_parents', () =>
+					loadVisibleParentIds(locals.supabase, projectIds)
+				)
+			]);
+			const summaries = loaded.map((project) => ({
+				...project,
+				parent_project_id: parentIds.get(project.id) ?? null
+			}));
 
 			if (memberRowsError) {
 				console.error('[Projects] Failed to load collaborator metadata:', memberRowsError);

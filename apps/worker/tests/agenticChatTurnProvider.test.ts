@@ -768,6 +768,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			}
 		]);
 		expect(client.stream).toHaveBeenCalledWith({
+			loadedEntityIds: [],
 			allowSlowStreamRecovery: true,
 			finalBufferedAttempt: false,
 			messages: [
@@ -13710,15 +13711,15 @@ describe('SHA-bound mutation batch approval', () => {
 			proposedBatchRound()
 		]);
 		const invocation = await batchProvider(client, approvingReviewer());
-		const stream = invocation.stream();
-		const first = await stream.next();
+		const iterator = invocation.stream()[Symbol.asyncIterator]();
+		const first = await iterator.next();
 		expect(first.value).toMatchObject({
 			type: 'semantic',
 			currentActivity: 'Splitting this cleanup into smaller batches...',
 			eventPayload: { output_budget_recovery: { provider_attempt: 2 } }
 		});
 		expect(client.stream).toHaveBeenCalledTimes(1);
-		const rest = await collect(stream);
+		const rest = await collect({ [Symbol.asyncIterator]: () => iterator });
 		expect(rest.some((step) => step.type === 'text_delta')).toBe(false);
 		expect(client.stream).toHaveBeenCalledTimes(2);
 	});

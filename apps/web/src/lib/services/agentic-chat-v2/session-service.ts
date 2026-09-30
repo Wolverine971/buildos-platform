@@ -24,6 +24,7 @@ import {
 import type { ChatHistorySnapshot } from './turn-admission';
 import '$lib/services/agentic-chat/tools/registry/install-loop-catalog';
 import { CONTROL_TOOL_NAMES, isLikelyWriteToolName } from '@buildos/agentic-chat-runtime/loop';
+import { renderFailedCleanupContinuation } from '@buildos/agentic-chat-runtime/context';
 
 const logger = createLogger('FastChatSession');
 
@@ -560,6 +561,17 @@ function projectHistorySnapshotWithLineage(
 		}
 		return projected;
 	});
+
+	const latestAssistant = orderedMessages.findLast((message) => message.role === 'assistant');
+	const failedCleanupRecall = renderFailedCleanupContinuation(latestAssistant?.metadata);
+	if (failedCleanupRecall) {
+		historyMessages.push({
+			role: 'system',
+			content: failedCleanupRecall,
+			continuityKind: 'failed_cleanup_v1',
+			sourceMessageId: null
+		});
+	}
 
 	if (pendingClarificationHistorySummary) {
 		historyMessages.push({

@@ -21,6 +21,8 @@ export type ProjectListScope = 'current' | 'all' | ProjectState;
 
 export type ProjectListSummary = OntologyProjectSummary & {
 	has_collaborators: boolean;
+	/** Parent project when the viewer can open it (project hierarchy). */
+	parent_project_id?: string | null;
 };
 
 type ProjectCollaborationFields = Pick<
@@ -144,4 +146,111 @@ export function formatProjectUpdatedTitle(value: string): string {
 		hour: 'numeric',
 		minute: '2-digit'
 	})}`;
+}
+
+export interface NestableProject {
+	id: string;
+	name: string;
+	updated_at: string;
+	parent_project_id?: string | null;
+}
+
+/** One top-level row of the projects list, with the sub-projects shown under it. */
+export interface ProjectListGroup<T extends NestableProject> {
+	project: T;
+	/** Sub-projects nested under this row (newest first); empty in flat mode. */
+	children: T[];
+	/** Muted "· parent" label for a sub-project shown as its own row. */
+	parentName: string | null;
+}
+
+function updatedAtMs(project: NestableProject): number {
+	const ms = Date.parse(project.updated_at);
+	return Number.isNaN(ms) ? 0 : ms;
+}
+
+function parentIdOf(project: NestableProject): string | null {
+	const parentId = project.parent_project_id ?? null;
+	return parentId && parentId !== project.id ? parentId : null;
+}
+
+/**
+ * Group sub-projects under their parent when both are in `projects`.
+ *
+ * - Nested: a parent sorts by the newest activity among itself and its
+ *   sub-projects; sub-projects list newest first beneath it. One level only: a
+ *   project whose own parent is nested in the list stays a top-level row, so a
+ *   malformed chain or cycle never hides a project.
+ * - Flat (`flat: true`, e.g. while searching): input order is kept and every
+ *   sub-project carries its parent's name instead of nesting.
+ * - A sub-project whose parent isn't in `projects` is a normal top-level row; it
+ *   still gets the parent label when `lookup` (e.g. the unfiltered list) knows it.
+ */
+export function nestProjectList<T extends NestableProject>(
+	projects: readonly T[],
+	options: { flat?: boolean; lookup?: readonly NestableProject[] } = {}
+): Array<ProjectListGroup<T>> {
+	const namesById = new Map<string, string>();
+	for (const project of options.lookup ?? projects) namesById.set(project.id, project.name);
+	for (const project of projects) namesById.set(project.id, project.name);
+	const labelFor = (project: T): string | null => {
+		const parentId = parentIdOf(project);
+		return parentId ? (namesById.get(parentId) ?? null) : null;
+	};
+
+	if (options.flat) {
+		return projects.map((project) => ({
+			project,
+			children: [],
+			parentName: labelFor(project)
+		}));
+	}
+
+	const inList = new Map(projects.map((project) => [project.id, project]));
+	const isNestedChild = (project: NestableProject): boolean => {
+		const parentId = parentIdOf(project);
+		if (!parentId) return false;
+		const parent = inList.get(parentId);
+		if (!parent) return false;
+		// The parent must itself be top-level here (one level of nesting).
+		const grandparentId = parentIdOf(parent);
+		return !grandparentId || !inList.has(grandparentId);
+	};
+
+	const childrenByParent = new Map<string, T[]>();
+	const roots: T[] = [];
+	for (const project of projects) {
+		if (isNestedChild(project)) {
+			const parentId = parentIdOf(project)!;
+			const siblings = childrenByParent.get(parentId) ?? [];
+			siblings.push(project);
+			childrenByParent.set(parentId, siblings);
+		} else {
+			roots.push(project);
+		}
+	}
+
+	const order = new Map(projects.map((project, index) => [project.id, index]));
+	const byNewest = (a: T, b: T) =>
+		updatedAtMs(b) - updatedAtMs(a) || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0);
+
+	return roots
+		.map((project) => {
+			const children = (childrenByParent.get(project.id) ?? []).slice().sort(byNewest);
+			const activity = Math.max(updatedAtMs(project), ...children.map(updatedAtMs));
+			return {
+				group: {
+					project,
+					children,
+					parentName: labelFor(project)
+				},
+				activity
+			};
+		})
+		.sort(
+			(a, b) =>
+				b.activity - a.activity ||
+				(order.get(a.group.project.id) ?? 0) - (order.get(b.group.project.id) ?? 0)
+		)
+		.map(({ group }) => group);
 }

@@ -59,14 +59,14 @@
 			"components": ["EmailComposer", "EmailPreview"]
 		},
 		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["DashboardInboxModal", "WorkPanel"]
-		},
-		{
 			"file": "src/lib/components/landing/HomepageV2.svelte",
 			"type": "component",
 			"components": ["Modal", "PublicProjectView"]
+		},
+		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["DashboardInboxModal", "WorkPanel"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -237,6 +237,7 @@
 			"components": [
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal",
+				"ProjectParentPickerModal",
 				"ProjectCollaborationModal"
 			]
 		},
@@ -1328,10 +1329,51 @@
 			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
 		},
 		{
+			"file": "src/lib/components/organize/organize-fixtures.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["organizeFixtures"]
+		},
+		{
+			"file": "src/lib/components/organize/organize-plan.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"MAX_ORGANIZE_OPERATIONS",
+				"pinnedDocumentReason",
+				"visibleDocumentTree",
+				"flattenDocumentTree",
+				"previewOrganizePlan"
+			]
+		},
+		{
+			"file": "src/lib/components/organize/useOrganizeDrag.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["createOrganizeDrag"]
+		},
+		{
 			"file": "src/lib/components/ontology/document-agent-mutation.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["resolveDocumentAgentMutationAction"]
+		},
+		{
+			"file": "src/lib/components/profile/profile-tabs.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"BASE_PROFILE_TAB_IDS",
+				"getVisibleProfileTabIds",
+				"resolveProfileTab",
+				"getProfileTabHref"
+			]
+		},
+		{
+			"file": "src/lib/components/profile/settings-navigation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["SETTINGS_GROUPS", "getSettingsDestinations", "getSettingsGroupLabel"]
 		},
 		{
 			"file": "src/lib/components/projects/project-list.ts",
@@ -1345,7 +1387,8 @@
 				"matchesProjectListScope",
 				"addProjectCollaborationFlags",
 				"formatProjectUpdatedLabel",
-				"formatProjectUpdatedTitle"
+				"formatProjectUpdatedTitle",
+				"nestProjectList"
 			]
 		},
 		{
@@ -1387,6 +1430,18 @@
 				"isEventPast",
 				"getUpcomingEvents",
 				"getProjectEventBuckets"
+			]
+		},
+		{
+			"file": "src/lib/components/project/project-family.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"ProjectFamilyRequestError",
+				"fetchProjectFamily",
+				"setProjectParent",
+				"copyInheritedDocument",
+				"pluralizeProjects"
 			]
 		},
 		{
@@ -1440,23 +1495,6 @@
 				"buildProjectEntityOpenHref",
 				"resolveEntityOpenAction"
 			]
-		},
-		{
-			"file": "src/lib/components/profile/profile-tabs.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"BASE_PROFILE_TAB_IDS",
-				"getVisibleProfileTabIds",
-				"resolveProfileTab",
-				"getProfileTabHref"
-			]
-		},
-		{
-			"file": "src/lib/components/profile/settings-navigation.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["SETTINGS_GROUPS", "getSettingsDestinations", "getSettingsGroupLabel"]
 		},
 		{
 			"file": "src/lib/components/ui/rich-markdown-editor-voice.ts",
@@ -1523,6 +1561,18 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ontology/doc-tree/drop-geometry.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"detectZoneType",
+				"buildDropZone",
+				"effectiveDropPosition",
+				"containsPinnedNode",
+				"validateDrop"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/doc-tree/tree-images.ts",
 			"type": "component",
 			"components": [],
@@ -1570,17 +1620,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_FRESHNESS_CONTEXT_KEY",
-				"ProjectFreshnessState",
-				"setProjectFreshnessContext",
-				"getProjectFreshnessContext"
-			]
-		},
-		{
 			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
 			"type": "component",
 			"components": [],
@@ -1591,6 +1630,17 @@
 				"presentCycleStatus",
 				"formatCycleTimestamp",
 				"presentCycle"
+			]
+		},
+		{
+			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_FRESHNESS_CONTEXT_KEY",
+				"ProjectFreshnessState",
+				"setProjectFreshnessContext",
+				"getProjectFreshnessContext"
 			]
 		},
 		{
@@ -1798,8 +1848,8 @@
 	},
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
-		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
+		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
@@ -1849,26 +1899,31 @@
 		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/inbox/project-cleanup-presentation.ts",
 		"src/lib/components/notifications/notification-preview.ts",
+		"src/lib/components/organize/organize-fixtures.ts",
+		"src/lib/components/organize/organize-plan.ts",
+		"src/lib/components/organize/useOrganizeDrag.svelte.ts",
 		"src/lib/components/ontology/document-agent-mutation.ts",
+		"src/lib/components/profile/profile-tabs.ts",
+		"src/lib/components/profile/settings-navigation.ts",
 		"src/lib/components/projects/project-list.ts",
 		"src/lib/components/project/entity-modal-data.ts",
 		"src/lib/components/project/project-entity-modal-loader.ts",
 		"src/lib/components/project/project-event-filters.ts",
+		"src/lib/components/project/project-family.ts",
 		"src/lib/components/project/project-mutation-refresh.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
-		"src/lib/components/profile/profile-tabs.ts",
-		"src/lib/components/profile/settings-navigation.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
+		"src/lib/components/ontology/doc-tree/drop-geometry.ts",
 		"src/lib/components/ontology/doc-tree/tree-images.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/profile/cycles/cycle-presenter.ts",
+		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",

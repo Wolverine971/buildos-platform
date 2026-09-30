@@ -38,6 +38,17 @@ export const load: PageServerLoad = async ({ params, fetch, locals, url }) => {
 		)
 	]);
 
+	// The full-document endpoint checks access to its current project. Resolve
+	// moved documents before handling the former project's missing/access state.
+	const loadedDocumentData = documentResponse.ok ? await documentResponse.json() : null;
+	const currentDocument = loadedDocumentData?.data?.document;
+	if (currentDocument?.project_id && currentDocument.project_id !== projectId) {
+		throw redirect(
+			307,
+			`/projects/${currentDocument.project_id}/documents/${documentId}${url.search}`
+		);
+	}
+
 	if (!projectResponse.ok) {
 		if (projectResponse.status === 401) {
 			throw redirect(303, loginRedirect);
@@ -84,7 +95,7 @@ export const load: PageServerLoad = async ({ params, fetch, locals, url }) => {
 
 	const [projectData, documentData] = await Promise.all([
 		projectResponse.json(),
-		documentResponse.json()
+		Promise.resolve(loadedDocumentData)
 	]);
 	const eventsData = eventsResponse.ok ? await eventsResponse.json() : null;
 	const linkedData = linkedResponse.ok ? await linkedResponse.json() : null;

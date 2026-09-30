@@ -192,7 +192,7 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 				activityLog
 			});
 
-			await this.supabase.from('onto_edges').insert({
+			const { error: linkError } = await this.supabase.from('onto_edges').insert({
 				project_id: task.project_id,
 				src_id: task.id,
 				src_kind: 'task',
@@ -200,6 +200,7 @@ export class TaskEventSyncCoordinator implements TaskSyncPort {
 				dst_kind: 'event',
 				rel: 'has_event'
 			});
+			if (linkError) throw new Error(linkError.message);
 			usedEventIds.add(result.event.id);
 			syncedEvents.push({
 				id: result.event.id,

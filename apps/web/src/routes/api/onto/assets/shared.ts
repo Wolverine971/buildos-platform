@@ -133,10 +133,13 @@ export async function ensureAssetAccess(
 export function isCanonicalAssetStorageLocation(asset: {
 	id: string;
 	project_id: string;
+	storage_project_id?: string | null;
 	storage_bucket: string | null;
 	storage_path: string | null;
 }): boolean {
-	const prefix = `projects/${asset.project_id}/assets/${asset.id}/`;
+	// The database pins this physical owner at upload; project_id controls current access.
+	// Fallback supports a code-first rollout before the migration adds the anchor.
+	const prefix = `projects/${asset.storage_project_id ?? asset.project_id}/assets/${asset.id}/`;
 	return (
 		asset.storage_bucket === 'onto-assets' &&
 		typeof asset.storage_path === 'string' &&

@@ -22,8 +22,11 @@ pnpm db:rehearse my_change.sql --role-probe   # grants/policies: prove anon + si
    names are read through the Management API with `read_only: true`. The cache lives in
    `~/.cache/buildos/migration-rehearsal/<ref>/` (mode 0600), outside the repo.
 2. **Rehearse.** A disposable, socket-only PostgreSQL loads the snapshot (~1 s). It applies each
-   file with `ON_ERROR_STOP`, then runs optional `--check` assertion SQL. The cluster is deleted
-   afterwards unless you pass `--keep`.
+   file with `ON_ERROR_STOP`, then runs optional `--check` assertion SQL, then the standing
+   invariants in `DEFAULT_CHECKS` (production schema only; `--no-default-checks` skips them).
+   Today that is `supabase/tests/archived_scope_guard.check.sql` (Tasker 113): no chat context or
+   search RPC may return an archived record. The cluster is deleted afterwards unless you pass
+   `--keep`.
 3. **Report.** Every object each migration added (+), removed (-) or changed (~): tables, columns,
    constraints, indexes, views, functions (including `SECURITY DEFINER`, `search_path`, and
    grants), policies, triggers, default privileges, and enum/domain types. It also reports the production size of

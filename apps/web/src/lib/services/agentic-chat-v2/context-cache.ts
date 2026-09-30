@@ -14,7 +14,10 @@ export const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
 // 6 (2026-09-29, tasker 113): the context RPCs stopped returning archived
 // records. A snapshot built before that could still list archived tasks as
 // overdue live work.
-export const FASTCHAT_CONTEXT_CACHE_VERSION = 6;
+// 7 (2026-09-30, project hierarchy phase 1): project snapshots can carry a
+// `project_family` (parent, shared-docs shelf, sub-projects). A snapshot from
+// code that predates it would hide the hierarchy until it expired.
+export const FASTCHAT_CONTEXT_CACHE_VERSION = 7;
 
 export type FastChatPromptContextSnapshot = {
 	contextType: ChatContextType;

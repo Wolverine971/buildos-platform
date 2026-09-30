@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/assets/shared.storage-location.test.ts
-import { describe, expect, it } from 'vitest';
-import { isCanonicalAssetStorageLocation } from './shared';
+import { describe, expect, it, vi } from 'vitest';
+import { isCanonicalAssetStorageLocation, ensureAssetAccess } from './shared';
 
 const ASSET = {
 	id: 'asset-1',
@@ -27,5 +27,43 @@ describe('isCanonicalAssetStorageLocation', () => {
 		expect(isCanonicalAssetStorageLocation({ ...ASSET, storage_bucket: 'avatars' })).toBe(
 			false
 		);
+	});
+});
+
+it('keeps a moved asset canonical at its immutable upload path', () => {
+	expect(
+		isCanonicalAssetStorageLocation({
+			...ASSET,
+			project_id: 'destination',
+			storage_project_id: 'project-1'
+		})
+	).toBe(true);
+	expect(
+		isCanonicalAssetStorageLocation({
+			...ASSET,
+			project_id: 'destination',
+			storage_project_id: 'unrelated'
+		})
+	).toBe(false);
+});
+it('authorizes the new project while rendering the original storage path', async () => {
+	const asset = { ...ASSET, project_id: 'destination', storage_project_id: 'project-1' };
+	const query: any = {
+		select: () => query,
+		eq: () => query,
+		is: () => query,
+		maybeSingle: async () => ({ data: asset, error: null })
+	};
+	const client: any = {
+		from: () => query,
+		rpc: vi.fn(async (name: string) => ({
+			data: name === 'ensure_actor_for_user' ? 'actor' : true,
+			error: null
+		}))
+	};
+	expect(await ensureAssetAccess(client, 'asset-1', 'user', 'read')).toMatchObject({ asset });
+	expect(client.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+		p_project_id: 'destination',
+		p_required_access: 'read'
 	});
 });

@@ -1,5 +1,5 @@
 // packages/agentic-chat-runtime/src/context/context-models.ts
-import type { Database } from '@buildos/shared-types';
+import type { Database, ProjectFamilyV1 } from '@buildos/shared-types';
 import type { DocStructure, DocTreeNode } from '@buildos/shared-agent-ops/ontology/onto-api';
 import type { ProjectStewardPacket } from './steward-packet';
 
@@ -319,6 +319,11 @@ export type ProjectContextData = {
 	context_meta: ProjectContextMeta;
 	/** Present only when the user has an active, approved steward for this project. */
 	steward?: ProjectStewardPacket | null;
+	/**
+	 * Project hierarchy (phase 1): the parent, its shared-docs shelf, and the sub-projects, all
+	 * filtered to what the user can open. Present only when the project has a parent or children.
+	 */
+	project_family?: ProjectFamilyV1 | null;
 };
 
 export type EntityContextData = ProjectContextData & {

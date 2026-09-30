@@ -700,6 +700,57 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 		);
 	});
 
+	it('persists only an explicit harness failed receipt and verifies its database-owned message timestamp', async () => {
+		const publicError = 'An attempted change has an uncertain outcome.';
+		const timingDraft = { ...asyncTimingDraft(), finished_reason: 'error' };
+		const committedAt = '2026-08-03T12:00:00.123456Z';
+		const { adapter, rpc } = adapterFor([
+			terminalReceipt({
+				status: 'failed',
+				finished_reason: 'error',
+				failure_code: 'uncertain_external_commit',
+				terminalized_at: committedAt,
+				preterminal_events: [
+					committedErrorReceipt(publicError),
+					committedTimingReceipt(timingDraft, {}, committedAt, 3_123.456, committedAt)
+				]
+			})
+		]);
+		const assistantMetadata = {
+			completion_status: 'failed',
+			answer_source: 'harness',
+			failure_disclosure_version: 1,
+			completion_receipt: {
+				version: 1,
+				request: { disposition: 'request_uncertain' },
+				stages: [{ executedCallIds: ['saved-call'] }],
+				unreviewedWriteCallIds: []
+			}
+		};
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					status: 'failed',
+					finishedReason: 'error',
+					failureCode: 'uncertain_external_commit',
+					assistantText: 'Saved changes are retained. An attempted change is uncertain.',
+					assistantMetadata,
+					promptTokens: null,
+					completionTokens: null,
+					totalTokens: null,
+					publicError,
+					errorTransitionId: ERROR_TRANSITION_ID,
+					timingDraft,
+					timingTransitionId: TIMING_TRANSITION_ID
+				})
+			)
+		).resolves.toMatchObject({ status: 'failed', assistant_message_id: ASSISTANT_MESSAGE_ID });
+		expect(rpc).toHaveBeenCalledWith(
+			'finalize_agentic_chat_turn_with_failure_events',
+			expect.objectContaining({ p_assistant_message_id: ASSISTANT_MESSAGE_ID })
+		);
+	});
+
 	it('keeps failed partial text in stream state without creating an assistant history row', async () => {
 		const { adapter, rpc } = adapterFor([
 			terminalReceipt({

@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-cache.test.ts
 import { afterEach, describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import type { ChatToolDefinition } from '@buildos/shared-types';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import {
@@ -45,6 +46,48 @@ describe('isPreparedPromptPrewarmEnabled', () => {
 });
 
 describe('prepared-prompt-cache', () => {
+	it('rejects old prepared history even when its prompt and tool schemas still match', () => {
+		const contextPayload = { contextType: 'global' };
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			tools: [],
+			now: '2026-01-01T00:00:00.000Z',
+			timezone: 'UTC',
+			productSurface: '__prepared_prompt_canonical__',
+			conversationPosition: 'prepared prompt canonical',
+			conversationSummary: null
+		});
+		const surface = buildPreparedPromptSurface({
+			surfaceProfile: 'global',
+			contextType: 'global',
+			contextPayload,
+			conversationSummary: null,
+			tools: [],
+			envelope,
+			createdAt: '2026-09-30T00:00:00.000Z'
+		});
+		const legacyHarness = createHash('sha256')
+			.update(JSON.stringify({ systemPrompt: envelope.systemPrompt, tools: [] }))
+			.digest('hex');
+		expect(
+			isPreparedPromptSurfaceCurrent({
+				surface,
+				contextType: 'global',
+				contextPayload,
+				tools: [],
+				conversationSummary: null
+			})
+		).toBe(true);
+		expect(
+			isPreparedPromptSurfaceCurrent({
+				surface: { ...surface, harness_sha256: legacyHarness },
+				contextType: 'global',
+				contextPayload,
+				tools: [],
+				conversationSummary: null
+			})
+		).toBe(false);
+	});
 	it('stores compact section summaries instead of duplicating section content', () => {
 		const tools = [tool('get_workspace_overview', 'Get a workspace overview.')];
 		const envelope = buildLitePromptEnvelope({

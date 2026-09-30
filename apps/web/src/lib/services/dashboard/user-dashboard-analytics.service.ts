@@ -126,6 +126,7 @@ function normalizeRecentProjects(raw: unknown): DashboardProjectActivity[] {
 
 		const id = toTrimmedString(entry.id) ?? toTrimmedString(entry.project_id);
 		if (!id) return [];
+		const parentProjectId = toTrimmedString(entry.parent_project_id);
 
 		return [
 			{
@@ -140,7 +141,8 @@ function normalizeRecentProjects(raw: unknown): DashboardProjectActivity[] {
 				updated_at: toIsoTimestamp(entry.updated_at),
 				task_count: toNonNegativeInt(entry.task_count),
 				goal_count: toNonNegativeInt(entry.goal_count),
-				document_count: toNonNegativeInt(entry.document_count)
+				document_count: toNonNegativeInt(entry.document_count),
+				...(parentProjectId ? { parent_project_id: parentProjectId } : {})
 			}
 		];
 	});

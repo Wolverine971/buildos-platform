@@ -3389,6 +3389,7 @@ describe('acting output budget recovery', () => {
 			);
 			expect(fetchImpl).toHaveBeenCalledTimes(2);
 			expect(events).toEqual([
+				{ type: 'output_budget_recovery', providerAttempt: 2 },
 				expect.objectContaining({
 					type: 'error',
 					cause: 'output_budget_exhausted',
@@ -3516,6 +3517,7 @@ describe('acting output budget recovery', () => {
 				)
 			);
 			expect(events).toEqual([
+				{ type: 'output_budget_recovery', providerAttempt: 2 },
 				expect.objectContaining({
 					type: 'error',
 					cause: 'output_budget_exhausted',

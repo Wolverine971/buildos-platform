@@ -1,9 +1,90 @@
 // apps/worker/tests/agenticChatToolExecutionPolicy.test.ts
 import { describe, expect, it } from 'vitest';
+import type { JsonObject } from '@buildos/shared-types';
 import { compileAgenticChatToolExecutionGraphV1 } from '../src/workers/agentic-chat/tools/execution-graph';
 import { resolveAgenticChatToolExecutionPolicyV1 } from '../src/workers/agentic-chat/tools/execution-policy';
 
 describe('Agentic Chat tool execution policy', () => {
+	it('orders reviewed archives and document creates by their shared project tree', () => {
+		const project = '10000000-0000-4000-8000-000000000001';
+		const otherProject = '10000000-0000-4000-8000-000000000002';
+		const docs = [3, 4, 5, 6].map((id) => `10000000-0000-4000-8000-00000000000${id}`);
+		const archive = (documentId: string, projectId: string, children: string[] = []) => ({
+			toolName: 'update_onto_document',
+			arguments: {
+				document_id: documentId,
+				state_key: 'archived',
+				archive_mode: 'archive_children',
+				_archive_review: {
+					project_id: projectId,
+					document_id: documentId,
+					archive_mode: 'archive_children',
+					target_updated_at: '2026-09-29T00:00:00Z',
+					tree_fingerprint: 'reviewed',
+					archived_document_ids: [documentId, ...children],
+					documents: [documentId, ...children].map((id) => ({
+						id,
+						title: 'Doc',
+						effect: 'archive'
+					})),
+					public_pages: []
+				}
+			} as JsonObject
+		});
+		const calls = [
+			archive(docs[0]!, project, [docs[3]!]),
+			archive(docs[1]!, project),
+			archive(docs[2]!, otherProject),
+			{
+				toolName: 'update_onto_plan',
+				arguments: { plan_id: 'plan', state_key: 'completed' }
+			},
+			{
+				toolName: 'update_onto_document',
+				arguments: { document_id: docs[3]!, title: 'Updated child' }
+			},
+			{
+				toolName: 'create_onto_document',
+				arguments: { project_id: project, title: 'New doc' }
+			}
+		];
+		const graph = compileAgenticChatToolExecutionGraphV1({
+			batchId: 'reviewed-mixed-cleanup',
+			maxCalls: 8,
+			calls: calls.map((call, providerCallIndex) => ({
+				...call,
+				kind: 'mutation' as const,
+				providerCallIndex,
+				providerToolCallId: `call-${providerCallIndex}`,
+				...resolveAgenticChatToolExecutionPolicyV1({
+					...call,
+					kind: 'mutation',
+					concurrentReadsEnabled: true,
+					concurrentMutationsEnabled: true
+				})
+			}))
+		});
+		expect(graph.layers.map((layer) => layer.providerToolCallIds)).toEqual([
+			['call-0', 'call-2', 'call-3'],
+			['call-1', 'call-4'],
+			['call-5']
+		]);
+	});
+
+	it.each(['archived', 'archive'])(
+		'keeps %s archives without server facts serial',
+		(state_key) => {
+			expect(
+				resolveAgenticChatToolExecutionPolicyV1({
+					toolName: 'update_onto_document',
+					kind: 'mutation',
+					arguments: { document_id: 'doc', state_key, project_id: 'actor-supplied' },
+					concurrentReadsEnabled: true,
+					concurrentMutationsEnabled: true
+				})
+			).toEqual({ executionPolicy: 'serial', resources: [] });
+		}
+	);
 	it('allows independent row-local mutations to run concurrently', () => {
 		expect(
 			resolveAgenticChatToolExecutionPolicyV1({

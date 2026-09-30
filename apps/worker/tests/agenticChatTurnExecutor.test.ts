@@ -462,7 +462,7 @@ function createHarness(
 				return terminalReceipt('failed', terminalSequence, {
 					finished_reason: input.finishedReason,
 					failure_code: input.failureCode,
-					assistant_message_id: null,
+					assistant_message_id: input.assistantMessageId,
 					terminalized_at: terminalCommittedAt,
 					preterminal_events: [
 						{
@@ -513,7 +513,9 @@ function createHarness(
 								type: 'timing',
 								timing: {
 									...timingDraft,
-									assistant_persisted_at: null,
+									assistant_persisted_at: input.assistantMessageId
+										? terminalCommittedAt
+										: null,
 									done_emitted_at: null,
 									terminal_committed_at: terminalCommittedAt,
 									phases: { ...draftPhases, total_request_ms: 3_000 }
@@ -6407,6 +6409,87 @@ describe('AgenticChatTurnExecutor', () => {
 			expect(harness.control.finalize).toHaveBeenCalledWith(
 				expect.objectContaining({ status: 'failed' })
 			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('persists a server receipt after saved writes and an uncertain attempt while keeping the turn failed', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'uncertain_external_commit' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'uncertain_external_commit'
+				})
+			]
+		});
+		const targets = [...MOVE_TASK_IDS.slice(0, 2), '10000000-0000-4000-8000-000000000099'];
+		installMoveContractFixture(harness, targets, targets.slice(0, 2), [], true);
+		harness.mutation.execute.mockReset();
+		harness.mutation.execute
+			.mockResolvedValueOnce({
+				effectId: EFFECT_ID,
+				canonicalArgumentHash: 'a'.repeat(64),
+				downstreamIdempotencyKey: 'key',
+				downstreamReceipt: { status: 'moved', task: { id: targets[0]!, title: 'Task A' } },
+				replayed: false
+			})
+			.mockRejectedValueOnce(
+				new AgenticChatEffectExecutionError(
+					'uncertain_external_commit',
+					SECOND_EFFECT_ID,
+					'connection closed after possible commit'
+				)
+			);
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			expect(harness.mutation.execute).toHaveBeenCalledTimes(2);
+			const terminal = harness.control.finalize.mock.calls[0]![0];
+			expect(terminal).toMatchObject({
+				status: 'failed',
+				failureCode: 'uncertain_external_commit',
+				assistantMessageId: expect.any(String),
+				assistantMetadata: {
+					completion_status: 'failed',
+					answer_source: 'harness',
+					failure_disclosure_version: 1,
+					cleanup_continuation: {
+						version: 1,
+						manifest: {
+							items: [
+								{ targetId: targets[0], status: 'saved' },
+								{ targetId: targets[1], status: 'uncertain' },
+								{ targetId: targets[2], status: 'pending' }
+							]
+						}
+					},
+					uncertain_effects: [
+						{ effect_id: SECOND_EFFECT_ID, tool_name: 'move_onto_task' }
+					],
+					completion_receipt: {
+						request: { disposition: 'request_uncertain' },
+						cleanupManifest: {
+							items: [
+								{ targetId: targets[0], status: 'saved' },
+								{ targetId: targets[1], status: 'uncertain' },
+								{ targetId: targets[2], status: 'pending' }
+							]
+						}
+					}
+				}
+			});
+			expect(terminal.assistantText).toContain('Task A');
+			expect(terminal.assistantText).toContain(targets[1]);
+			expect(terminal.assistantText).toContain(
+				'Reconcile the uncertain attempts before retrying'
+			);
+			expect(terminal.lastTurnContext).toBeNull();
+			expect(terminal.promptTokens).toBeNull();
 		} finally {
 			await harness.publisher.stop();
 		}

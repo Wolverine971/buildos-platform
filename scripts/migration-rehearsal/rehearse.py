@@ -362,6 +362,44 @@ def risk_findings(changes: list[dict], sizes: dict) -> list[str]:
     return findings
 
 
+FOREIGN_KEY_TARGET = re.compile(r'^FOREIGN KEY \([^)]*\) REFERENCES (?:"?(\w+)"?\.)?"?(\w+)"?\(')
+
+
+def foreign_key_pair(kind: str, ident: str, info: dict | None) -> tuple[str, ...] | None:
+    """The public table pair a foreign key joins (sorted), or None for anything PostgREST does not embed."""
+    if kind != 'constraint':
+        return None
+    match = FOREIGN_KEY_TARGET.match((info or {}).get('def') or '')
+    schema, table = ident.split('.')[:2]
+    if not match or schema != 'public' or (match.group(1) or 'public') != 'public':
+        return None
+    return tuple(sorted((table, match.group(2))))
+
+
+def embed_ambiguity_findings(before: list[dict], changes: list[dict]) -> list[str]:
+    """PostgREST embeds (`select('*, other(...)')`) resolve only while exactly one foreign key joins two
+    tables. Going from one to two breaks every existing unhinted embed with PGRST201 — in production, at
+    once (20260930130000 did this to onto_documents <-> onto_projects). Pairs already at two or more must
+    name their constraint already, so only the one-to-two step is reported."""
+    counts: dict[tuple[str, ...], int] = {}
+    for item in before:
+        pair = foreign_key_pair(item['kind'], item['id'], item.get('info'))
+        if pair:
+            counts[pair] = counts.get(pair, 0) + 1
+    findings, reported = [], set()
+    for change in changes:
+        pair = foreign_key_pair(change['kind'], change['id'], change.get('detail')) if change['op'] == '+' else None
+        # Only a pair that already had exactly one relationship can have unhinted embeds to break.
+        if pair and counts.get(pair) == 1 and pair not in reported:
+            reported.add(pair)
+            left, right = pair[0], pair[-1]
+            findings.append(f'API: {change["id"]} adds a second foreign key between public.{left} and '
+                            f'public.{right}. Every existing PostgREST embed between them (e.g. '
+                            f"select('*, {right}(...)')) then fails with PGRST201 unless it names its constraint "
+                            '(table!constraint_name). Drop the constraint, or hint every embed and ship that first.')
+    return findings
+
+
 def ledger_warnings(files: list[Path], recorded: set[str], local_versions: list[str]) -> list[str]:
     warnings = []
     targets = []
@@ -555,7 +593,8 @@ def main(argv: list[str] | None = None) -> int:
             for line in notices[:10]:
                 print(f'    {line}')
             print_changes(changes, meta.get('tables') or {})
-            findings = risk_findings(changes, meta.get('tables') or {})
+            findings = (risk_findings(changes, meta.get('tables') or {})
+                        + embed_ambiguity_findings(before, changes))
             for finding in findings:
                 print(f'  ⚠︎ {finding}')
             report['migrations'].append({'file': migration.name, 'ok': True, 'changes': changes,
@@ -592,9 +631,11 @@ def main(argv: list[str] | None = None) -> int:
     findings = [f for m in report['migrations'] for f in m.get('findings', [])]
     if findings:
         security = sum(f.startswith('SECURITY') for f in findings)
+        api = sum(f.startswith('API') for f in findings)
         data = sum(f.startswith('DATA') for f in findings)
-        notes = len(findings) - security - data
-        print(f'\n{security} security, {data} data finding(s) and {notes} note(s) above: review before applying.')
+        notes = len(findings) - security - api - data
+        print(f'\n{security} security, {api} API, {data} data finding(s) and {notes} note(s) above: '
+              'review before applying.')
     print('\nREHEARSAL FAILED' if failed else '\nREHEARSAL PASSED — nothing was written to any hosted database.')
     return 1 if failed else 0
 

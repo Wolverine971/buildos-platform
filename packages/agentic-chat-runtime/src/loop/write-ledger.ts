@@ -22,6 +22,8 @@ export type WriteLedgerEntry = {
 	toolName: string;
 	op?: string;
 	status: 'success' | 'failure';
+	/** Host-recorded unsettled effect; never a normal known-failed write. */
+	uncertain?: true;
 	/** Semantic effect dimensions used by turn-contract fulfillment. */
 	action?: string;
 	entityKind?: string;
@@ -373,6 +375,7 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 				: undefined,
 		status: succeeded ? 'success' : 'failure'
 	};
+	if (!succeeded && result?.effect_outcome === 'uncertain') entry.uncertain = true;
 	if (action) entry.action = action;
 	if (entityKind) entry.entityKind = entityKind;
 	if (execution.toolCall.id) entry.effectId = execution.toolCall.id;
@@ -451,6 +454,23 @@ export function buildWriteLedger(toolExecutions: FastToolExecution[]): WriteLedg
 		// The atomic archive receipt proves each affected descendant. Do not
 		// mistake promoted children or proposed scope for successful archives.
 		const result = extractResultObject(execution.result.result);
+		// An uncertain recursive archive also leaves each reviewed descendant
+		// uncertain. Use server-bound archived IDs, never the whole document list
+		// (promoted children are not being archived).
+		const args = extractArgs(execution.toolCall);
+		const archiveReview = extractResultObject(args._archive_review);
+		if (
+			entry?.uncertain &&
+			entry.toolName === 'update_onto_document' &&
+			entry.stateKey === 'archived' &&
+			Array.isArray(archiveReview?.archived_document_ids)
+		) {
+			for (const id of new Set(archiveReview.archived_document_ids)) {
+				if (typeof id === 'string' && id && id !== entry.entityId) {
+					entries.push({ ...entry, entityId: id, action: 'archive' });
+				}
+			}
+		}
 		if (
 			entry?.status === 'success' &&
 			entry.toolName === 'update_onto_document' &&

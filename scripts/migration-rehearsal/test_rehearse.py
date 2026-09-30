@@ -116,6 +116,44 @@ class Findings(unittest.TestCase):
         self.assertTrue(any('DISABLED' in f for f in found))
 
 
+class EmbedAmbiguity(unittest.TestCase):
+    # The 2026-09-30 incident: onto_documents.project_id existed, then
+    # onto_projects.shared_folder_document_id -> onto_documents made embeds ambiguous.
+    before = [{'kind': 'constraint', 'id': 'public.onto_documents.onto_documents_project_id_fkey',
+               'info': {'def': 'FOREIGN KEY (project_id) REFERENCES onto_projects(id) ON DELETE CASCADE'}},
+              {'kind': 'constraint', 'id': 'public.tasks.tasks_user_fkey',
+               'info': {'def': 'FOREIGN KEY (user_id) REFERENCES auth.users(id)'}}]
+
+    def fk(self, ident, definition):
+        return {'op': '+', 'kind': 'constraint', 'id': ident, 'detail': {'def': definition}}
+
+    def test_second_relationship_in_either_direction_is_reported(self):
+        [finding] = rehearse.embed_ambiguity_findings(self.before, [self.fk(
+            'public.onto_projects.onto_projects_shared_folder_document_id_fkey',
+            'FOREIGN KEY (shared_folder_document_id) REFERENCES onto_documents(id) ON DELETE SET NULL')])
+        self.assertTrue(finding.startswith('API') and 'PGRST201' in finding)
+
+    def test_first_relationship_other_schemas_and_non_fks_are_quiet(self):
+        changes = [self.fk('public.onto_projects.onto_projects_parent_project_id_fkey',
+                           'FOREIGN KEY (parent_project_id) REFERENCES onto_projects(id) ON DELETE SET NULL'),
+                   self.fk('public.tasks.tasks_owner_fkey', 'FOREIGN KEY (owner_id) REFERENCES auth.users(id)'),
+                   self.fk('public.tasks.tasks_title_check', 'CHECK ((char_length(title) > 0))')]
+        self.assertEqual(rehearse.embed_ambiguity_findings(self.before, changes), [])
+
+    def test_pairs_new_in_this_migration_are_quiet(self):
+        # No embed can rely on a relationship that did not exist yet.
+        self.assertEqual(rehearse.embed_ambiguity_findings([], [
+            self.fk('public.onto_projects.a_fkey', 'FOREIGN KEY (a) REFERENCES onto_projects(id)'),
+            self.fk('public.onto_projects.b_fkey', 'FOREIGN KEY (b) REFERENCES public.onto_projects(id)')]), [])
+
+    def test_several_additions_to_one_pair_are_reported_once(self):
+        findings = rehearse.embed_ambiguity_findings(self.before, [
+            self.fk('public.onto_projects.a_fkey', 'FOREIGN KEY (a) REFERENCES public.onto_documents(id)'),
+            self.fk('public.onto_documents.b_fkey', 'FOREIGN KEY (b) REFERENCES onto_projects(id)')])
+        self.assertEqual(len(findings), 1)
+        self.assertIn('public.onto_projects.a_fkey', findings[0])
+
+
 class Ledger(unittest.TestCase):
     def test_already_recorded_and_pending_before(self):
         files = [Path('20260926000000_new_thing.sql')]

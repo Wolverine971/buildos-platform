@@ -6,6 +6,7 @@ import {
 	formatProjectUpdatedLabel,
 	getProjectListScopeLabel,
 	matchesProjectListScope,
+	nestProjectList,
 	normalizeProjectListScope
 } from './project-list';
 
@@ -90,5 +91,84 @@ describe('project update labels', () => {
 		expect(formatProjectUpdatedLabel(threeDaysAgo.toISOString(), now)).toBe(
 			`Updated ${weekday}`
 		);
+	});
+});
+
+describe('nestProjectList', () => {
+	const project = (id: string, updated_at: string, parent_project_id: string | null = null) => ({
+		id,
+		name: id.toUpperCase(),
+		updated_at,
+		parent_project_id
+	});
+
+	it('groups sub-projects under their parent and sorts the parent by the newest activity', () => {
+		const groups = nestProjectList([
+			project('solo', '2026-09-20T00:00:00Z'),
+			project('wayne', '2026-09-01T00:00:00Z'),
+			project('redline', '2026-09-10T00:00:00Z', 'wayne'),
+			project('cadre', '2026-09-25T00:00:00Z', 'wayne')
+		]);
+
+		expect(groups.map((group) => group.project.id)).toEqual(['wayne', 'solo']);
+		expect(groups[0]!.children.map((child) => child.id)).toEqual(['cadre', 'redline']);
+		expect(groups.every((group) => group.parentName === null)).toBe(true);
+	});
+
+	it('keeps a sub-project top-level when its parent is not in the list, labeled from the lookup', () => {
+		const all = [
+			project('wayne', '2026-09-01T00:00:00Z'),
+			project('redline', '2026-09-10T00:00:00Z', 'wayne')
+		];
+		const groups = nestProjectList([all[1]!], { lookup: all });
+
+		expect(groups).toEqual([{ project: all[1], children: [], parentName: 'WAYNE' }]);
+		expect(nestProjectList([all[1]!])[0]!.parentName).toBeNull();
+	});
+
+	it('stays flat in search mode with parent labels on sub-projects', () => {
+		const list = [
+			project('redline', '2026-09-10T00:00:00Z', 'wayne'),
+			project('wayne', '2026-09-01T00:00:00Z')
+		];
+		const groups = nestProjectList(list, { flat: true });
+
+		expect(groups.map((group) => [group.project.id, group.parentName, group.children])).toEqual(
+			[
+				['redline', 'WAYNE', []],
+				['wayne', null, []]
+			]
+		);
+	});
+
+	it('never nests more than one level or hides projects in a malformed chain or cycle', () => {
+		const chain = nestProjectList([
+			project('a', '2026-09-03T00:00:00Z'),
+			project('b', '2026-09-02T00:00:00Z', 'a'),
+			project('c', '2026-09-01T00:00:00Z', 'b')
+		]);
+		expect(chain.map((group) => group.project.id)).toEqual(['a', 'c']);
+		expect(chain[0]!.children.map((child) => child.id)).toEqual(['b']);
+		expect(chain[1]!.parentName).toBe('B');
+
+		const cycle = nestProjectList([
+			project('x', '2026-09-02T00:00:00Z', 'y'),
+			project('y', '2026-09-01T00:00:00Z', 'x'),
+			project('self', '2026-09-03T00:00:00Z', 'self')
+		]);
+		expect(cycle.map((group) => group.project.id)).toEqual(['self', 'x', 'y']);
+		expect(cycle.every((group) => group.children.length === 0)).toBe(true);
+		expect(cycle[0]!.parentName).toBeNull();
+	});
+
+	it('treats a missing parent field as a plain project', () => {
+		const groups = nestProjectList([{ id: 'p', name: 'P', updated_at: 'not a date' }]);
+		expect(groups).toEqual([
+			{
+				project: { id: 'p', name: 'P', updated_at: 'not a date' },
+				children: [],
+				parentName: null
+			}
+		]);
 	});
 });

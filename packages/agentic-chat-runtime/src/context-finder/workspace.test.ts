@@ -502,9 +502,83 @@ describe('loadWorkspaceFinderProjects', () => {
 		expect(projects.flatMap((p) => p.documents.map((d) => d.id))).not.toContain('dx');
 		// Every family query is scoped to the accessible ids.
 		for (const call of calls.filter(
-			(c) => c.table.startsWith('onto_') && c.table !== 'onto_actors'
+			(c) =>
+				c.table.startsWith('onto_') && !['onto_actors', 'onto_projects'].includes(c.table)
 		))
 			expect(call.ops).toContainEqual(['in', 'project_id', ['p2', 'p1']]);
+		// The hierarchy read is one query over the same ids.
+		const hierarchy = calls.filter((c) => c.table === 'onto_projects');
+		expect(hierarchy).toHaveLength(1);
+		expect(hierarchy[0]!.ops).toContainEqual(['in', 'id', ['p2', 'p1']]);
+		// No parent rows: no labels.
+		expect(projects.every((p) => !p.project.part_of && !p.project.includes)).toBe(true);
+	});
+
+	// Project hierarchy phase 1: cards carry the tested "part of" labels, naming only
+	// projects the user can access.
+	it('labels parents and children among accessible projects only', async () => {
+		const { client } = fakeClient(
+			{
+				onto_actors: [{ id: 'actor-1' }],
+				onto_projects: [
+					{ id: 'hub', parent_project_id: null },
+					{ id: 'redline', parent_project_id: 'hub' },
+					{ id: 'cadre', parent_project_id: 'hub' },
+					// Parent the user cannot open: no label either way.
+					{ id: 'side', parent_project_id: 'hidden-parent' }
+				]
+			},
+			[
+				{ id: 'hub', name: 'Wayne Strategies', updated_at: '2026-09-01T00:00:00Z' },
+				{ id: 'redline', name: 'Redline', updated_at: '2026-09-20T00:00:00Z' },
+				{ id: 'cadre', name: 'The Cadre', updated_at: '2026-09-10T00:00:00Z' },
+				{ id: 'side', name: 'Side Project', updated_at: '2026-09-05T00:00:00Z' }
+			]
+		);
+		const projects = await loadWorkspaceFinderProjects(
+			client as never,
+			'user-1',
+			new AbortController().signal
+		);
+		const byId = new Map(projects.map((p) => [p.project.id, p.project]));
+		expect(byId.get('redline')!.part_of).toBe('Wayne Strategies');
+		expect(byId.get('cadre')!.part_of).toBe('Wayne Strategies');
+		expect(byId.get('hub')!.includes).toEqual(['Redline', 'The Cadre']);
+		expect(byId.get('hub')!.part_of).toBeUndefined();
+		expect(byId.get('side')!.part_of).toBeUndefined();
+		expect(byId.get('side')!.includes).toBeUndefined();
+	});
+
+	it('leaves cards unlabeled when the hierarchy read fails', async () => {
+		// Rows that would label Kid if the read had succeeded.
+		const { client } = fakeClient(
+			{
+				onto_actors: [{ id: 'actor-1' }],
+				onto_projects: [{ id: 'kid', parent_project_id: 'hub' }]
+			},
+			[
+				{ id: 'hub', name: 'Hub', updated_at: '2026-09-01T00:00:00Z' },
+				{ id: 'kid', name: 'Kid', updated_at: '2026-09-02T00:00:00Z' }
+			]
+		);
+		const from = client.from;
+		client.from = (table: string) => {
+			const chain = from(table) as Record<string, unknown>;
+			if (table !== 'onto_projects') return chain;
+			chain.then = (resolve: (value: unknown) => unknown) =>
+				Promise.resolve({
+					data: null,
+					error: { message: 'column onto_projects.parent_project_id does not exist' }
+				}).then(resolve);
+			return chain;
+		};
+		const projects = await loadWorkspaceFinderProjects(
+			client as never,
+			'user-1',
+			new AbortController().signal
+		);
+		expect(projects.map((p) => p.project.name)).toEqual(['Kid', 'Hub']);
+		expect(projects.every((p) => !p.project.part_of && !p.project.includes)).toBe(true);
 	});
 
 	// Tasker 113: a document archived from the tree keeps archived_at NULL.

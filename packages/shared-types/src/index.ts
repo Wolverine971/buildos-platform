@@ -38,6 +38,9 @@ export * from './consumption-billing';
 // Export OCR transition helpers
 export * from './asset-ocr';
 
+// Project hierarchy: parent, shared-docs shelf, children (onto_project_family_v1)
+export * from './project-family.types';
+
 // Export project activity logging types
 export * from './project-activity.types';
 

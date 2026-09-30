@@ -11,7 +11,10 @@ export const AGENTIC_CHAT_RUNTIME_SOURCE_ENTRYPOINTS = {
 	'@buildos/agentic-chat-runtime/specialists': './src/specialists/index.ts',
 	'@buildos/agentic-chat-runtime/context-finder': './src/context-finder/index.ts',
 	'@buildos/agentic-chat-runtime/tools': './src/tools/index.ts',
-	'@buildos/agentic-chat-runtime/tools/milestone-state': './src/tools/milestone-state.ts'
+	'@buildos/agentic-chat-runtime/tools/milestone-state': './src/tools/milestone-state.ts',
+	// Pure helper the browser imports; the tools barrel pulls server-only code.
+	'@buildos/agentic-chat-runtime/tools/activity-log-summary':
+		'./src/tools/activity-log-summary.ts'
 } as const;
 
 export type AgenticChatRuntimeSourceAlias = {

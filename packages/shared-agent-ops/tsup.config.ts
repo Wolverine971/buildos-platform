@@ -89,7 +89,11 @@ export default defineConfig({
 	// limit. `tsc --emitDeclarationOnly` runs after tsup and emits the same
 	// exported declaration paths without that single-worker memory spike.
 	dts: false,
-	clean: true,
+	// Build and dev/watch can write to this directory concurrently. tsup's
+	// cleanup uses a non-atomic existsSync/unlinkSync pair, so overlapping
+	// cleanups can fail with ENOENT and remove another build's output. Keep
+	// cleanup explicit via `pnpm run clean` when no builds are running.
+	clean: false,
 	splitting: false,
 	sourcemap: false
 });

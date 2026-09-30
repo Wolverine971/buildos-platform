@@ -112,7 +112,7 @@ export async function moveOntoTaskAtomic(input: AtomicTaskMoveInput): Promise<Ta
 	if (response.error) throw mapTaskMoveRpcError(response.error);
 	const result = validateTaskMoveResult(response.data, input);
 
-	if (result.status === 'moved' && input.activity) {
+	if (result.status === 'moved' && input.activity && !result.applied?.activity_logged) {
 		await logMovedTaskActivity(input.client, result, input.activity);
 	}
 
@@ -288,7 +288,7 @@ function compactTaskForToolContext(task: TaskMoveTask): Record<string, unknown> 
 
 function mapTaskMoveRpcError(error: unknown): TaskMoveServiceError {
 	const detail = rpcErrorMessage(error);
-	if (detail.includes('task_move_access_denied')) {
+	if (detail.includes('task_move_access_denied') || detail.includes('organize_access_denied')) {
 		return new TaskMoveServiceError(
 			'access_denied',
 			'Write access to both the source and destination projects is required',
@@ -308,14 +308,20 @@ function mapTaskMoveRpcError(error: unknown): TaskMoveServiceError {
 			error
 		);
 	}
-	if (detail.includes('task_move_destination_archived')) {
+	if (
+		detail.includes('task_move_destination_archived') ||
+		detail.includes('organize_project_archived')
+	) {
 		return new TaskMoveServiceError(
 			'destination_archived',
 			'The destination project is archived. Restore it or choose an active project.',
 			error
 		);
 	}
-	if (detail.includes('task_move_impact_changed')) {
+	if (
+		detail.includes('task_move_impact_changed') ||
+		detail.includes('organize_entity_conflict')
+	) {
 		return new TaskMoveServiceError(
 			'impact_changed',
 			'The task relationships or assignees changed during the move. Review the latest impact and try again.',

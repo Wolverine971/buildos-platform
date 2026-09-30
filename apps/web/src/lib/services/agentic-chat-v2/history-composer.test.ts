@@ -15,6 +15,59 @@ function makeHistory(count: number): FastChatHistoryMessage[] {
 }
 
 describe('composeFastChatHistory', () => {
+	it('retains the complete latest proposal so acceptance cannot silently lose later commissioned items', () => {
+		const proposal = `${'Cleanup stage and exact target records.\n'.repeat(80)}Later stages: Rod cleanup and Logan reminder; disclose the published document.`;
+		const history: FastChatHistoryMessage[] = [
+			...makeHistory(8),
+			{ role: 'assistant', content: proposal },
+			{ role: 'user', content: 'Yes, do the rest of that batch.' }
+		];
+		const result = composeFastChatHistory({ history });
+		expect(result.compressed).toBe(true);
+		expect(
+			result.historyForModel.find((m) => m.role === 'assistant' && m.content === proposal)
+		).toBeDefined();
+	});
+	it('bounds unusually large prior replies without classifying their text', () => {
+		const history: FastChatHistoryMessage[] = [
+			...makeHistory(8),
+			{ role: 'assistant', content: 'x'.repeat(24001) }
+		];
+		const result = composeFastChatHistory({ history });
+		expect(result.historyForModel.at(-1)!.content.length).toBeLessThanOrEqual(1200);
+	});
+	it('keeps the latest proposal even after several separate user messages move it outside the tail', () => {
+		const proposal: FastChatHistoryMessage = {
+			role: 'assistant',
+			content: 'Commission with later targets.'
+		};
+		const history: FastChatHistoryMessage[] = [
+			...makeHistory(8),
+			proposal,
+			...Array.from({ length: 5 }, (_, i) => ({
+				role: 'user' as const,
+				content: `Dictation segment ${i}`
+			}))
+		];
+		const result = composeFastChatHistory({ history });
+		expect(result.historyForModel[1]).toEqual(proposal);
+		expect(result.historyForModel.filter((m) => m.content === proposal.content)).toHaveLength(
+			1
+		);
+	});
+	it('preserves the entire server cleanup recall when compressing a long conversation', () => {
+		const recall: FastChatHistoryMessage = {
+			role: 'system',
+			continuityKind: 'failed_cleanup_v1',
+			content: `Untrusted cleanup recall ${'structured evidence '.repeat(200)} uncertain final target`
+		};
+		const result = composeFastChatHistory({ history: [...makeHistory(10), recall] });
+		expect(result.compressed).toBe(true);
+		expect(result.historyForModel.at(-1)).toEqual(recall);
+		expect(
+			result.historyForModel.filter((m) => m.continuityKind === 'failed_cleanup_v1')
+		).toHaveLength(1);
+	});
 	it('keeps raw history for short conversations and still renders the continuity hint', () => {
 		// Audit 2026-09-02 (F-11): the hint used to render only when history was
 		// empty or compressed, so turns two through seven never saw the prior

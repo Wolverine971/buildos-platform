@@ -171,6 +171,8 @@ export type AgenticChatProviderPassRoleV1 =
 	| 'final_response';
 
 export type AgenticChatTurnProviderClientRequestV1 = {
+	/** Host-only identities observed in admitted context and successful tool results. */
+	loadedEntityIds?: readonly string[];
 	messages: readonly AgenticChatTurnProviderMessageV1[];
 	tools: readonly AgenticChatTurnProviderToolV1[];
 	toolChoice: 'none' | 'auto' | 'required';
@@ -474,6 +476,7 @@ export type AgenticChatProviderPortV1 = {
 };
 
 export type ContractReviewRejectionCode =
+	| 'ungrounded_reference_id'
 	| 'unexpected_control_tool'
 	| 'revision_disallowed'
 	| 'revision_value_unchanged'

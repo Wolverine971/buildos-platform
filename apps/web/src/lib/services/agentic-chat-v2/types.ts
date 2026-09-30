@@ -108,6 +108,8 @@ export type FastAgentStreamEvent =
 	  };
 
 export type FastChatHistoryMessage = {
+	/** Server projection marker; never derived from message prose. */
+	continuityKind?: 'failed_cleanup_v1';
 	role: 'user' | 'assistant' | 'system' | 'tool';
 	content: string;
 	attachments?: ChatAttachmentRef[];

@@ -27,8 +27,9 @@
 
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
+import { tryGetProjectFamily } from '$lib/services/ontology/project-hierarchy.service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
-import type { Database } from '@buildos/shared-types';
+import type { Database, ProjectFamilyV1 } from '@buildos/shared-types';
 import {
 	decorateMilestonesWithGoals,
 	type GoalMilestoneEdge
@@ -106,6 +107,8 @@ interface ProjectSkeletonWithAccessResponse {
 export interface ProjectSkeletonData {
 	skeleton: true;
 	projectId: string;
+	/** Parent, shared-docs shelf, and sub-projects; null when unavailable. */
+	family: ProjectFamilyV1 | null;
 	deferredFullData: Promise<DeferredProjectFullData>;
 	access: {
 		canEdit: boolean;
@@ -211,6 +214,9 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 	const supabase = locals.supabase;
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
+	// Parent, shared-docs shelf and sub-projects; runs alongside the skeleton RPC so it
+	// adds no round trip. Null when the viewer can't read it or the RPC is unavailable.
+	const familyPromise = measure('db.project_family_v1', () => tryGetProjectFamily(supabase, id));
 	// Single round-trip: ensures actor, resolves read access, returns skeleton + access.
 	const { data: bundleRaw, error: bundleError } = await measure(
 		'db.project_skeleton_with_access_v2',
@@ -241,6 +247,7 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 		);
 		return {
 			...fallbackData,
+			family: await familyPromise,
 			access: normalizeAccess(
 				{
 					current_actor_id: fallbackActorId,
@@ -270,6 +277,7 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 	return {
 		skeleton: true,
 		projectId: id,
+		family: await familyPromise,
 		deferredFullData: startDeferredFullDataLoad(fetch, id),
 		project: {
 			id: bundle.id,

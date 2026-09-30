@@ -4,4 +4,4 @@ export {
 	type ActivityLogFieldChange,
 	type ActivityLogSummary,
 	type ActivityLogSummaryInput
-} from '@buildos/agentic-chat-runtime/tools';
+} from '@buildos/agentic-chat-runtime/tools/activity-log-summary';

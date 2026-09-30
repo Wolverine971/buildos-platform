@@ -1,6 +1,7 @@
 // apps/worker/src/workers/agentic-chat/provider/review/decision-completion.ts
 
 import { createHash } from 'node:crypto';
+import { groundedMutationReviewIds, reviewerReferencesAreGrounded } from './grounded-ids';
 import { type JsonObject, canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
@@ -102,6 +103,18 @@ export function completeMutationBatchReviewDecision(
 		if (resolvedCode) {
 			resolvedFallback =
 				'Independent semantic review returned an invalid or unbound decision.';
+		}
+		if (
+			!resolvedFallback &&
+			!reviewerReferencesAreGrounded(
+				call.arguments,
+				groundedMutationReviewIds(input.actingRequest, input.batch),
+				input.batch
+			)
+		) {
+			resolvedCode = 'ungrounded_reference_id';
+			resolvedFallback =
+				'Reviewer reference IDs must come from loaded records or exact rejected targets.';
 		}
 		if (
 			approval &&

@@ -1,0 +1,101 @@
+// apps/web/src/lib/components/project/project-family.ts
+//
+// Client calls for the project hierarchy (Phase 1): a project's family, moving
+// it under a parent, and copying a shared doc from the parent's shelf.
+// Types only from shared-types so the browser bundle never depends on a
+// freshly built dist for these calls.
+import type { ProjectFamilyV1, ProjectSetParentResultV1 } from '@buildos/shared-types';
+import { parseApiResponse } from '$lib/utils/api-client-helpers';
+
+/** Shown on a shared doc that a sub-project opens from its shelf. */
+export type DocumentInheritance = {
+	/** The parent project that owns the document. */
+	ownerProjectId: string;
+	ownerName: string;
+	/** Every sub-project of the owner ("shown in N projects"). */
+	sharedWithCount: number;
+	/** Whether the viewer may edit the owner's copy. */
+	canEditOwner: boolean;
+	/** The sub-project the viewer opened it from; "Copy here" lands there. */
+	inheritedIntoProjectId: string;
+	/** Whether the viewer may add documents to the sub-project. */
+	canCopy?: boolean;
+};
+
+export type CopiedDocument = { id: string; title: string };
+
+/** A failed call with the server's message and machine code (e.g. `project_has_children`). */
+export class ProjectFamilyRequestError extends Error {
+	readonly status: number;
+	readonly code: string | null;
+
+	constructor(message: string, status: number, code: string | null) {
+		super(message);
+		this.name = 'ProjectFamilyRequestError';
+		this.status = status;
+		this.code = code;
+	}
+}
+
+async function requestData<T>(
+	url: string,
+	fallback: string,
+	init?: { method: 'PUT' | 'POST'; body: unknown }
+): Promise<T> {
+	const response = await fetch(url, {
+		method: init?.method ?? 'GET',
+		headers: init
+			? { Accept: 'application/json', 'Content-Type': 'application/json' }
+			: { Accept: 'application/json' },
+		body: init ? JSON.stringify(init.body) : undefined
+	});
+	const result = await parseApiResponse<T>(response);
+	if (!response.ok || !result.success || result.data === undefined) {
+		throw new ProjectFamilyRequestError(
+			result.error || fallback,
+			response.status,
+			result.code ?? null
+		);
+	}
+	return result.data;
+}
+
+export async function fetchProjectFamily(projectId: string): Promise<ProjectFamilyV1 | null> {
+	const data = await requestData<ProjectFamilyV1 | null>(
+		`/api/onto/projects/${projectId}/family`,
+		'Failed to load related projects'
+	);
+	return data && typeof data === 'object' && typeof data.project_id === 'string' ? data : null;
+}
+
+export function setProjectParent(
+	projectId: string,
+	parentProjectId: string | null
+): Promise<ProjectSetParentResultV1> {
+	return requestData<ProjectSetParentResultV1>(
+		`/api/onto/projects/${projectId}/parent`,
+		parentProjectId ? 'Failed to move this project' : 'Failed to remove the parent project',
+		{ method: 'PUT', body: { parent_project_id: parentProjectId } }
+	);
+}
+
+export async function copyInheritedDocument(
+	projectId: string,
+	documentId: string
+): Promise<CopiedDocument> {
+	const data = await requestData<{ document?: { id?: unknown; title?: unknown } }>(
+		`/api/onto/projects/${projectId}/inherited-docs/copy`,
+		'Failed to copy document',
+		{ method: 'POST', body: { document_id: documentId } }
+	);
+	const id = typeof data.document?.id === 'string' ? data.document.id : null;
+	if (!id) throw new ProjectFamilyRequestError('Failed to copy document', 500, null);
+	return {
+		id,
+		title: typeof data.document?.title === 'string' ? data.document.title : 'Untitled'
+	};
+}
+
+export function pluralizeProjects(count: number): string {
+	return `${count} ${count === 1 ? 'project' : 'projects'}`;
+}

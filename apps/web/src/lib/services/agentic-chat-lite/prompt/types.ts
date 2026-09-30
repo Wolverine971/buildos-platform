@@ -41,6 +41,9 @@ export type LitePromptSectionId =
 	| 'focus_purpose'
 	| 'location_loaded_context'
 	| 'project_knowledge_map'
+	// Project hierarchy phase 1: renders only when the project has a parent or
+	// readable sub-projects (project-family-section.ts).
+	| 'project_family'
 	| 'current_time'
 	| 'tool_surface_dynamic'
 	| 'final_response_contract';

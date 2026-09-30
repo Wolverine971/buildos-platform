@@ -73,3 +73,25 @@ describe('document focus page load', () => {
 		expect(fetchMock).toHaveBeenCalledWith(`/api/onto/documents/${DOCUMENT_ID}/full`);
 	});
 });
+
+it('redirects a moved document even when the former project is inaccessible', async () => {
+	const destination = '33333333-3333-4333-8333-333333333333';
+	const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+		String(input).includes('/documents/')
+			? jsonResponse({ data: { document: { id: DOCUMENT_ID, project_id: destination } } })
+			: jsonResponse({ error: 'Not found' }, 404)
+	);
+	await expect(
+		load({
+			params: { id: PROJECT_ID, document_id: DOCUMENT_ID },
+			fetch: fetchMock,
+			locals: { supabase: { rpc: vi.fn() } },
+			url: new URL(
+				`https://buildos.test/projects/${PROJECT_ID}/documents/${DOCUMENT_ID}?view=full`
+			)
+		} as any)
+	).rejects.toMatchObject({
+		status: 307,
+		location: `/projects/${destination}/documents/${DOCUMENT_ID}?view=full`
+	});
+});

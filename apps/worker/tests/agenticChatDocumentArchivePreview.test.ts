@@ -52,7 +52,7 @@ describe('document archive preview', () => {
 			call_ref: 'cleanup'
 		});
 		const result = await previewDocumentArchiveCalls(
-			{ preview: vi.fn(async () => ({ ok: true, snapshot: facts })) },
+			{ preview: vi.fn(async () => ({ ok: true as const, snapshot: facts })) },
 			[original],
 			request
 		);

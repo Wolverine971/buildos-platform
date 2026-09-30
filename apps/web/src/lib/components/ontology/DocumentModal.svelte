@@ -104,7 +104,20 @@
 		MoreHorizontal,
 		Printer
 	} from 'lucide-svelte';
-	import { MessageCircle, PanelRightClose, PanelRightOpen } from '$lib/icons/lucide';
+	import {
+		Copy,
+		MessageCircle,
+		PanelRightClose,
+		PanelRightOpen,
+		Pencil,
+		Share2
+	} from '$lib/icons/lucide';
+	import {
+		copyInheritedDocument,
+		pluralizeProjects,
+		type CopiedDocument,
+		type DocumentInheritance
+	} from '$lib/components/project/project-family';
 	import { handleRovingTabKeydown } from '$lib/components/project/v2/board-a11y';
 	import type {
 		DataMutationSummary,
@@ -146,6 +159,13 @@
 		onMoveRequested?: () => void;
 		/** Called when user wants to create a child document */
 		onCreateChildRequested?: (parentId: string) => void;
+		/**
+		 * Set when a sub-project opens its parent's shared doc from the shelf.
+		 * `projectId` is then the owner (parent) project, so loads and saves go there.
+		 */
+		inheritance?: DocumentInheritance | null;
+		/** Called after "Copy here" created the sub-project's own copy. */
+		onCopiedHere?: (document: CopiedDocument) => void;
 	}
 
 	let {
@@ -159,7 +179,9 @@
 		onDeleted,
 		onLoaded,
 		onMoveRequested,
-		onCreateChildRequested
+		onCreateChildRequested,
+		inheritance = null,
+		onCopiedHere
 	}: Props = $props();
 
 	let loading = $state(false);
@@ -404,6 +426,41 @@
 
 	// Active document ID - prefers internal state (for newly created docs)
 	const activeDocumentId = $derived(internalDocumentId);
+
+	// Project hierarchy: a parent's shared doc opened from a sub-project. It stays
+	// read-only until the viewer confirms editing the shared copy (once per doc in
+	// this modal), or for good when they can't edit the parent.
+	let sharedEditConfirmedFor = $state<string | null>(null);
+	let sharedEditConfirmOpen = $state(false);
+	let copyingHere = $state(false);
+	const sharedEditLocked = $derived(
+		Boolean(inheritance) &&
+			!(inheritance?.canEditOwner && sharedEditConfirmedFor === activeDocumentId)
+	);
+	const sharedWithLabel = $derived(pluralizeProjects(inheritance?.sharedWithCount ?? 0));
+
+	function confirmSharedEdit() {
+		sharedEditConfirmedFor = activeDocumentId;
+		sharedEditConfirmOpen = false;
+		void tick().then(() => markdownEditorRef?.focus?.());
+	}
+
+	async function handleCopyHere() {
+		if (!inheritance || !activeDocumentId || copyingHere) return;
+		copyingHere = true;
+		try {
+			const copied = await copyInheritedDocument(
+				inheritance.inheritedIntoProjectId,
+				activeDocumentId
+			);
+			toastService.success(`Copied “${copied.title}” into this project`);
+			onCopiedHere?.(copied);
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Failed to copy document');
+		} finally {
+			copyingHere = false;
+		}
+	}
 	const documentChatFocus = $derived<ProjectFocus | null>(
 		activeDocumentId
 			? {
@@ -2159,6 +2216,7 @@
 
 	async function handleAutosave() {
 		if (
+			sharedEditLocked ||
 			!isEditing ||
 			!hasUnsavedChanges ||
 			saving ||
@@ -2173,7 +2231,7 @@
 
 	async function handleSave(event?: SubmitEvent) {
 		event?.preventDefault();
-		if (documentMutationLocked) return;
+		if (documentMutationLocked || sharedEditLocked) return;
 		if (autosaveTimer) {
 			clearTimeout(autosaveTimer);
 			autosaveTimer = null;
@@ -2727,6 +2785,7 @@
 	// Version history handlers
 	function handleRestoreRequested(version: VersionListItem) {
 		if (
+			sharedEditLocked ||
 			documentMutationLocked ||
 			loading ||
 			editorIsRecording ||
@@ -3230,7 +3289,7 @@
 				error={Boolean(titleFieldError)}
 				size="sm"
 				class="text-sm font-medium"
-				disabled={documentControlsLocked}
+				disabled={documentControlsLocked || sharedEditLocked}
 			/>
 		</FormField>
 
@@ -3247,7 +3306,7 @@
 				bind:value={description}
 				placeholder="Short summary"
 				rows={2}
-				disabled={documentControlsLocked}
+				disabled={documentControlsLocked || sharedEditLocked}
 				size="sm"
 			/>
 		</FormField>
@@ -3265,7 +3324,7 @@
 				bind:value={stateKey}
 				size="sm"
 				class="w-full text-xs"
-				disabled={documentControlsLocked || isArchivedDocument}
+				disabled={documentControlsLocked || isArchivedDocument || sharedEditLocked}
 			>
 				{#each stateOptions as option (option.value)}
 					<option value={option.value}>{option.label}</option>
@@ -3302,18 +3361,71 @@
 {/snippet}
 
 {#snippet moveButton()}
-	<Button
-		type="button"
-		variant="ghost"
-		size="sm"
-		onclick={openMoveModal}
-		disabled={documentControlsLocked || treeLoading}
-		class="w-full text-xs justify-start px-2 h-8 pressable"
-		title="Move to another location"
-	>
-		<FolderInput class="w-3.5 h-3.5" />
-		<span class="ml-1">Move to...</span>
-	</Button>
+	{#if !inheritance}
+		<Button
+			type="button"
+			variant="ghost"
+			size="sm"
+			onclick={openMoveModal}
+			disabled={documentControlsLocked || treeLoading}
+			class="w-full text-xs justify-start px-2 h-8 pressable"
+			title="Move to another location"
+		>
+			<FolderInput class="w-3.5 h-3.5" />
+			<span class="ml-1">Move to...</span>
+		</Button>
+	{/if}
+{/snippet}
+
+{#snippet inheritanceBanner()}
+	{#if inheritance}
+		<div
+			class="flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-info/30 bg-info/10 px-3 py-2 tx tx-thread tx-weak"
+			role="note"
+			aria-label="Shared document"
+		>
+			<div class="flex min-w-0 flex-1 items-center gap-2">
+				<Share2 class="h-3.5 w-3.5 shrink-0 text-info" aria-hidden="true" />
+				<p class="min-w-0 text-xs text-foreground">
+					From <span class="font-semibold">{inheritance.ownerName}</span>
+					<span class="text-muted-foreground"> · shown in {sharedWithLabel}</span>
+				</p>
+			</div>
+			<div class="flex flex-wrap items-center gap-1.5">
+				{#if !inheritance.canEditOwner}
+					<p class="text-xs text-muted-foreground">
+						Only {inheritance.ownerName} editors can change this
+					</p>
+				{:else if sharedEditLocked}
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						icon={Pencil}
+						disabled={loading}
+						onclick={() => (sharedEditConfirmOpen = true)}
+					>
+						Edit shared copy
+					</Button>
+				{:else}
+					<p class="text-xs text-muted-foreground">Editing the shared copy</p>
+				{/if}
+				{#if inheritance.canCopy !== false}
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						icon={Copy}
+						loading={copyingHere}
+						disabled={loading || copyingHere}
+						onclick={handleCopyHere}
+					>
+						Copy here
+					</Button>
+				{/if}
+			</div>
+		</div>
+	{/if}
 {/snippet}
 
 {#snippet publicPagePanel()}
@@ -3727,7 +3839,7 @@
 					<button
 						type="button"
 						onclick={toggleDocumentInteract}
-						disabled={loading || documentControlsLocked}
+						disabled={loading || documentControlsLocked || sharedEditLocked}
 						class="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold shadow-ink transition-all pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper {isDocumentInteractOpen
 							? 'border-accent bg-accent text-accent-foreground hover:bg-accent/90'
 							: 'border-accent/30 bg-accent/10 text-accent hover:border-accent/60 hover:bg-accent/15'}"
@@ -4082,6 +4194,7 @@
 
 						<!-- Main content area -->
 						<div class="flex-1 flex flex-col min-w-0 min-h-0">
+							{@render inheritanceBanner()}
 							{#if comparisonMode && activeDocumentId}
 								<!-- Comparison view replaces the editor -->
 								<DocumentComparisonView
@@ -4108,7 +4221,7 @@
 											bind:this={markdownEditorRef}
 											bind:value={body}
 											onSave={handleSave}
-											disabled={documentMutationLocked}
+											disabled={documentMutationLocked || sharedEditLocked}
 											maxLength={50000}
 											helpText=""
 											fillHeight={true}
@@ -4475,7 +4588,7 @@
 							<Trash2 class="w-3.5 h-3.5" />
 							<span class="hidden sm:inline ml-1">Delete Permanently</span>
 						</Button>
-					{:else}
+					{:else if !inheritance}
 						<Button
 							type="button"
 							variant="ghost"
@@ -4524,6 +4637,7 @@
 					loading={documentControlsLocked}
 					disabled={saving ||
 						documentMutationLocked ||
+						sharedEditLocked ||
 						isArchivedDocument ||
 						saveStatus === 'conflict'}
 					class="text-xs h-8 pressable tx tx-grain tx-weak wt-card"
@@ -4575,6 +4689,26 @@
 		</p>
 	{/snippet}
 </ConfirmationModal>
+
+{#if inheritance?.canEditOwner}
+	<ConfirmationModal
+		isOpen={sharedEditConfirmOpen}
+		title="Edit the shared copy?"
+		confirmText="Edit shared copy"
+		icon="warning"
+		onconfirm={confirmSharedEdit}
+		oncancel={() => (sharedEditConfirmOpen = false)}
+	>
+		{#snippet content()}
+			<p class="text-sm text-muted-foreground">
+				This document belongs to <span class="font-semibold text-foreground"
+					>{inheritance?.ownerName}</span
+				>. Changes appear in {sharedWithLabel}. To change only this project's version, use
+				Copy here instead.
+			</p>
+		{/snippet}
+	</ConfirmationModal>
+{/if}
 
 <ConfirmationModal
 	isOpen={discardChangesModalOpen}

@@ -1,7 +1,7 @@
 // packages/agentic-chat-runtime/src/context/context-loader.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ChatContextType, Database } from '@buildos/shared-types';
-import { Constants } from '@buildos/shared-types';
+import type { ChatContextType, Database, ProjectFamilyV1 } from '@buildos/shared-types';
+import { Constants, parseProjectFamilyV1 } from '@buildos/shared-types';
 import type { ProjectFocus } from '@buildos/shared-types';
 import { buildFocusedDocumentContent } from './focused-document-context';
 import type { DocStructure } from '@buildos/shared-agent-ops/ontology/onto-api';
@@ -2311,12 +2311,65 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			: null;
 	}
 
+	// Until the hierarchy migration (20260930130000) is applied the family RPC does
+	// not exist; say so once per process instead of on every project turn.
+	let projectFamilyRpcMissingReported = false;
+
 	/**
-	 * START HERE and, for a user with an active steward on this project, the
-	 * steward packet (project stewards beta). Both load only after the project
-	 * RPC (or the fallback loader) has authorized and returned the project, and
-	 * they run side by side: a user without a steward pays one small read that
-	 * finishes inside the START HERE round trips.
+	 * Project hierarchy, phase 1: the parent with its "Shared with sub-projects"
+	 * shelf, and the sub-projects, as `onto_project_family_v1` returns them —
+	 * already filtered to what this user can open. A signed-in client resolves
+	 * its own actor. A service client (the worker's workflow preparation) is
+	 * refused without one, so only then is the actor resolved and the call
+	 * repeated. Fails open: any error means no family, never a failed load.
+	 */
+	async function loadProjectFamily(
+		supabase: SupabaseClient<Database>,
+		projectId: string,
+		userId: string,
+		onError?: LoadContextParams['onError']
+	): Promise<ProjectFamilyV1 | null> {
+		const call = (actorId: string | null) =>
+			supabase.rpc('onto_project_family_v1', {
+				p_project_id: projectId,
+				...(actorId ? { p_actor_id: actorId } : {})
+			});
+		try {
+			let result = await call(null);
+			if (result.error?.code === '42501') {
+				result = await call(await ensureActorId(supabase as any, userId));
+			}
+			if (result.error) {
+				if (result.error.code === 'PGRST202') {
+					if (!projectFamilyRpcMissingReported) {
+						projectFamilyRpcMissingReported = true;
+						logger.warn(
+							'Project family RPC is not deployed; chat skips the hierarchy',
+							{
+								projectId
+							}
+						);
+					}
+					return null;
+				}
+				reportContextLoadError(onError, 'rpc.project_family', result.error, { projectId });
+				return null;
+			}
+			const family = parseProjectFamilyV1(result.data);
+			return family && (family.parent || family.children.length > 0) ? family : null;
+		} catch (error) {
+			reportContextLoadError(onError, 'rpc.project_family', error, { projectId });
+			return null;
+		}
+	}
+
+	/**
+	 * START HERE, the project family (hierarchy phase 1), and, for a user with an
+	 * active steward on this project, the steward packet (project stewards beta).
+	 * All load only after the project RPC (or the fallback loader) has authorized
+	 * and returned the project, and they run side by side: a user without a
+	 * steward or a family pays small reads that finish inside the START HERE
+	 * round trips.
 	 */
 	async function attachProjectStartHere<T extends ProjectContextData | EntityContextData | null>(
 		supabase: SupabaseClient<Database>,
@@ -2326,7 +2379,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 	): Promise<T> {
 		if (!data?.project?.id) return data;
 		const projectId = data.project.id;
-		const [startHere, steward] = await Promise.all([
+		const [startHere, steward, family] = await Promise.all([
 			loadProjectStartHereDocument(supabase, projectId, onError),
 			loadProjectStewardPacket({
 				supabase,
@@ -2337,13 +2390,15 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			}).catch((error: unknown) => {
 				reportContextLoadError(onError, 'query.steward', error, { projectId });
 				return null;
-			})
+			}),
+			loadProjectFamily(supabase, projectId, userId, onError)
 		]);
-		if (!startHere && !steward) return data;
+		if (!startHere && !steward && !family) return data;
 		return {
 			...data,
 			...(startHere ? { start_here: startHere } : {}),
-			...(steward ? { steward } : {})
+			...(steward ? { steward } : {}),
+			...(family ? { project_family: family } : {})
 		} as T;
 	}
 

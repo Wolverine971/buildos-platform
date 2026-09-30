@@ -71,6 +71,64 @@ function createHistorySupabase(tableRows: Record<string, TestRow[]>) {
 }
 
 describe('fast chat session service helpers', () => {
+	it('projects the latest failed cleanup receipt from owned history without replaying an older failure', () => {
+		const metadata = {
+			completion_status: 'failed',
+			answer_source: 'harness',
+			failure_disclosure_version: 1,
+			completion_receipt: { version: 1, request: { disposition: 'request_uncertain' } },
+			cleanup_continuation: {
+				version: 1,
+				request_expectation: {
+					outcomes: [
+						{ action: 'create', entity_kind: 'task', minimum_successful_effects: 3 }
+					]
+				},
+				manifest: {
+					version: 1,
+					items: [
+						{ status: 'uncertain', targetId: 'uncertain-task' },
+						{ status: 'pending', targetId: 'later-task' }
+					]
+				}
+			}
+		};
+		const snapshot = {
+			messages: [
+				{
+					id: 'failed',
+					role: 'assistant',
+					content: 'Saved one change.',
+					metadata,
+					created_at: null
+				}
+			],
+			attachments: [],
+			interrupted_tool_executions: [],
+			loaded_skill_executions: []
+		};
+		const failed = projectChatHistorySnapshot(snapshot as any);
+		expect(failed.at(-1)).toMatchObject({
+			role: 'system',
+			continuityKind: 'failed_cleanup_v1'
+		});
+		expect(failed.at(-1)!.content).toContain('later-task');
+		expect(failed.at(-1)!.content).toContain('uncertain-task');
+		const completed = projectChatHistorySnapshot({
+			...snapshot,
+			messages: [
+				...snapshot.messages,
+				{
+					id: 'later',
+					role: 'assistant',
+					content: 'Finished.',
+					metadata: {},
+					created_at: null
+				}
+			]
+		} as any);
+		expect(completed.some((m) => m.continuityKind === 'failed_cleanup_v1')).toBe(false);
+	});
 	it('reports the canonical lookup error after a 23505 winner cannot be resolved', async () => {
 		const insertError = { code: '23505', message: 'duplicate idempotency key' };
 		const winnerError = { code: '57014', message: 'canonical lookup timed out' };

@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 268 tables, grouped by domain.
+Complete column listing for all 269 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-09-30T00:25:07.157Z
+**Schema generated:** 2026-09-30T18:30:47.557Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -15,7 +15,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 
 - [Users & Auth](#users--auth) (6 tables)
 - [People & Contacts](#people--contacts) (6 tables)
-- [Ontology System](#ontology-system) (41 tables)
+- [Ontology System](#ontology-system) (42 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
 - [Chat & Agents](#chat--agents) (41 tables)
 - [Calendar](#calendar) (13 tables)
@@ -100,7 +100,7 @@ asset_id `string` · created_at `string` · created_by `string` · entity_id `st
 
 ### onto_assets
 
-alt_text `string?` · caption `string?` · checksum_sha256 `string?` · content_type `string` · created_at `string` · created_by `string` · deleted_at `string?` · extracted_text `string?` · extracted_text_source `string` · extracted_text_updated_at `string?` · extracted_text_updated_by `string?` · extraction_metadata `Json` · extraction_summary `string?` · file_size_bytes `number` · height `number?` · id `string` · kind `string` · metadata `Json` · ocr_completed_at `string?` · ocr_error `string?` · ocr_model `string?` · ocr_started_at `string?` · ocr_status `string` · ocr_version `number` · original_filename `string?` · project_id `string` · search_vector `unknown` · storage_bucket `string` · storage_path `string` · updated_at `string` · width `number?`
+alt_text `string?` · caption `string?` · checksum_sha256 `string?` · content_type `string` · created_at `string` · created_by `string` · deleted_at `string?` · extracted_text `string?` · extracted_text_source `string` · extracted_text_updated_at `string?` · extracted_text_updated_by `string?` · extraction_metadata `Json` · extraction_summary `string?` · file_size_bytes `number` · height `number?` · id `string` · kind `string` · metadata `Json` · ocr_completed_at `string?` · ocr_error `string?` · ocr_model `string?` · ocr_started_at `string?` · ocr_status `string` · ocr_version `number` · original_filename `string?` · project_id `string` · search_vector `unknown` · storage_bucket `string` · storage_path `string` · storage_project_id `string` · updated_at `string` · width `number?`
 
 ### onto_assignments
 
@@ -178,6 +178,10 @@ created_at `string` · created_by `string` · definition `string?` · id `string
 
 archived_at `string?` · completed_at `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · due_at `string?` · id `string` · milestone `string?` · project_id `string` · props `Json` · search_vector `unknown` · state_key `string` · title `string` · type_key `string?` · updated_at `string?`
 
+### onto_organize_batches
+
+created_at `string` · effects `Json` · id `string` · inverse_of `string?` · manifest `Json` · plan `Json` · project_ids `string[]` · receipt `Json` · request_hash `string` · user_id `string`
+
 ### onto_permissions
 
 access `string` · actor_id `string?` · created_at `string` · id `string` · object_id `string` · object_kind `string` · role_key `string?`
@@ -212,7 +216,7 @@ change_type `string` · changed_at `string?` · changed_by `string?` · doc_stru
 
 ### onto_projects
 
-archived_at `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · doc_structure `Json?` · end_at `string?` · external_agent_access `string` · facet_context `string?` · facet_scale `string?` · facet_stage `string?` · icon_concept `string?` · icon_generated_at `string?` · icon_generation_prompt `string?` · icon_generation_source `string?` · icon_svg `string?` · id `string` · is_public `boolean?` · name `string` · next_step_long `string?` · next_step_short `string?` · next_step_source `string?` · next_step_updated_at `string?` · org_id `string?` · props `Json` · search_vector `unknown` · start_at `string?` · state_key `string` · type_key `string` · updated_at `string`
+archived_at `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · doc_structure `Json?` · end_at `string?` · external_agent_access `string` · facet_context `string?` · facet_scale `string?` · facet_stage `string?` · icon_concept `string?` · icon_generated_at `string?` · icon_generation_prompt `string?` · icon_generation_source `string?` · icon_svg `string?` · id `string` · is_public `boolean?` · merged_into_project_id `string?` · name `string` · next_step_long `string?` · next_step_short `string?` · next_step_source `string?` · next_step_updated_at `string?` · org_id `string?` · parent_project_id `string?` · props `Json` · search_vector `unknown` · shared_folder_document_id `string?` · start_at `string?` · state_key `string` · type_key `string` · updated_at `string`
 
 ### onto_public_page_review_attempts
 

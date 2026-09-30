@@ -36,6 +36,15 @@
 	import { DocDeleteConfirmModal, DocMoveModal } from '$lib/components/ontology/doc-tree';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import ProjectMemoryCard from '$lib/components/project/ProjectMemoryCard.svelte';
+	import ProjectBreadcrumb from '$lib/components/project/ProjectBreadcrumb.svelte';
+	import ProjectChildrenSection from '$lib/components/project/ProjectChildrenSection.svelte';
+	import {
+		copyInheritedDocument,
+		fetchProjectFamily,
+		type CopiedDocument,
+		type DocumentInheritance
+	} from '$lib/components/project/project-family';
+	import type { ProjectFamilyV1 } from '@buildos/shared-types';
 	import ProjectEntitySearchCombobox from '$lib/components/project/v2/ProjectEntitySearchCombobox.svelte';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
 	import OnTrackGauge from '$lib/components/project/freshness/OnTrackGauge.svelte';
@@ -151,6 +160,16 @@
 			: (source.project as Project);
 	}
 
+	/** The page load adds `family` (hierarchy); older loads and skeleton fallbacks may omit it. */
+	function familyFromPageData(source: PageData): ProjectFamilyV1 | null {
+		const value = (source as unknown as { family?: unknown }).family;
+		return value &&
+			typeof value === 'object' &&
+			typeof (value as ProjectFamilyV1).project_id === 'string'
+			? (value as ProjectFamilyV1)
+			: null;
+	}
+
 	function coverageFromPageData(source: PageData): ProjectTasksCoverage {
 		if (source.skeleton) return createCompleteProjectTasksCoverage([]);
 		return (
@@ -220,6 +239,8 @@
 	let contextDocument = $state.raw<Document | null>(
 		initialData.skeleton ? null : ((initialData.context_document ?? null) as Document | null)
 	);
+	let family = $state.raw<ProjectFamilyV1 | null>(familyFromPageData(initialData));
+	let familyRequest = 0;
 
 	let docTreeStructure = $state<DocStructure | null>(null);
 	let docTreeDocuments = $state<Record<string, OntoDocument>>({});
@@ -264,6 +285,25 @@
 	const canEdit = $derived(access.canEdit);
 
 	const workspaceReady = $derived(!isHydrating && !hydrationError);
+
+	// A parent's shared doc opened from this project's shelf edits the parent's copy.
+	const inheritedDocument = $derived(
+		activeDocumentId && family?.parent
+			? (family.shelf.find((document) => document.id === activeDocumentId) ?? null)
+			: null
+	);
+	const documentInheritance = $derived<DocumentInheritance | null>(
+		inheritedDocument && family?.parent
+			? {
+					ownerProjectId: family.parent.id,
+					ownerName: family.parent.name || 'the parent project',
+					sharedWithCount: family.parent.child_count,
+					canEditOwner: family.parent.can_write,
+					inheritedIntoProjectId: project.id,
+					canCopy: canEdit
+				}
+			: null
+	);
 
 	const activeGoals = $derived(
 		goals.filter(
@@ -471,6 +511,35 @@
 
 	function refreshProject() {
 		return refreshQueue.enqueue();
+	}
+
+	async function refreshFamily() {
+		const request = ++familyRequest;
+		try {
+			const next = await fetchProjectFamily(project.id);
+			if (!workspaceActive || request !== familyRequest) return;
+			family = next;
+		} catch (error) {
+			console.warn('[Project workspace] Failed to refresh related projects', error);
+		}
+	}
+
+	async function copyInheritedDocumentHere(documentId: string) {
+		try {
+			const copied = await copyInheritedDocument(project.id, documentId);
+			toastService.success(`Copied “${copied.title}” into this project`, {
+				action: { label: 'Open', onClick: () => openEntity('document', copied.id) }
+			});
+			void refreshEntity('document', copied.id, 'create');
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Failed to copy document');
+		}
+	}
+
+	// "Copy here" from inside the shared doc: keep working in this project's copy.
+	function handleInheritedCopyFromModal(copied: CopiedDocument) {
+		void refreshEntity('document', copied.id, 'create');
+		openEntity('document', copied.id);
 	}
 
 	function refreshEntity(
@@ -993,6 +1062,7 @@
 							size="md"
 						/>
 						<div class="min-w-0 flex-1">
+							<ProjectBreadcrumb parent={family?.parent ?? null} />
 							<h1
 								class="min-w-0 flex-1 truncate text-xl font-semibold leading-tight tracking-tight text-foreground sm:text-2xl"
 								style:view-transition-name="project-title-{project.id}"
@@ -1041,6 +1111,8 @@
 						canOpenCollaboration={access.canViewLogs}
 						canDeleteProject={access.isOwner}
 						onProjectSaved={refreshProject}
+						{family}
+						onFamilyChanged={refreshFamily}
 					/>
 				</div>
 			</div>
@@ -1303,6 +1375,13 @@
 								? createStartHere
 								: undefined}
 							onShown={handleMemorySnapshotShown}
+						/>
+
+						<ProjectChildrenSection
+							projectId={project.id}
+							{canEdit}
+							subProjects={family?.children ?? []}
+							totalCount={family?.child_count ?? 0}
 						/>
 
 						<ProjectProgressOverview
@@ -1776,6 +1855,9 @@
 								maxInitialDepth={1}
 								pollInterval={30000}
 								variant="workspace"
+								{family}
+								onOpenInheritedDocument={(id) => openEntity('document', id)}
+								onCopyInheritedDocument={copyInheritedDocumentHere}
 							/>
 						{/await}
 					{/if}
@@ -1854,16 +1936,23 @@
 	{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
 		<DocumentModal
 			isOpen={showDocumentModal}
-			projectId={project.id}
+			projectId={documentInheritance?.ownerProjectId ?? project.id}
 			documentId={activeDocumentId}
 			{parentDocumentId}
+			inheritance={documentInheritance}
+			onCopiedHere={handleInheritedCopyFromModal}
 			onClose={closeDocumentModal}
-			onSaved={() => void refreshEntity('document', activeDocumentId)}
+			onSaved={() =>
+				documentInheritance
+					? void refreshFamily()
+					: void refreshEntity('document', activeDocumentId)}
 			onDeleted={() => {
 				void refreshEntity('document', activeDocumentId, 'delete');
 				closeDocumentModal();
 			}}
-			onCreateChildRequested={(parentId) => createDocument(parentId)}
+			onCreateChildRequested={documentInheritance
+				? undefined
+				: (parentId) => createDocument(parentId)}
 		/>
 	{/await}
 {/if}

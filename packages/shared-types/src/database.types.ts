@@ -13237,6 +13237,7 @@ export type Database = {
           search_vector: unknown
           storage_bucket: string
           storage_path: string
+          storage_project_id: string
           updated_at: string
           width: number | null
         }
@@ -13270,6 +13271,7 @@ export type Database = {
           search_vector?: unknown
           storage_bucket?: string
           storage_path: string
+          storage_project_id: string
           updated_at?: string
           width?: number | null
         }
@@ -13303,6 +13305,7 @@ export type Database = {
           search_vector?: unknown
           storage_bucket?: string
           storage_path?: string
+          storage_project_id?: string
           updated_at?: string
           width?: number | null
         }
@@ -14437,6 +14440,60 @@ export type Database = {
           },
         ]
       }
+      onto_organize_batches: {
+        Row: {
+          created_at: string
+          effects: Json
+          id: string
+          inverse_of: string | null
+          manifest: Json
+          plan: Json
+          project_ids: string[]
+          receipt: Json
+          request_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          effects: Json
+          id: string
+          inverse_of?: string | null
+          manifest: Json
+          plan: Json
+          project_ids: string[]
+          receipt: Json
+          request_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          effects?: Json
+          id?: string
+          inverse_of?: string | null
+          manifest?: Json
+          plan?: Json
+          project_ids?: string[]
+          receipt?: Json
+          request_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_organize_batches_inverse_of_fkey"
+            columns: ["inverse_of"]
+            isOneToOne: false
+            referencedRelation: "onto_organize_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_organize_batches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_permissions: {
         Row: {
           access: string
@@ -14952,14 +15009,17 @@ export type Database = {
           icon_svg: string | null
           id: string
           is_public: boolean | null
+          merged_into_project_id: string | null
           name: string
           next_step_long: string | null
           next_step_short: string | null
           next_step_source: string | null
           next_step_updated_at: string | null
           org_id: string | null
+          parent_project_id: string | null
           props: Json
           search_vector: unknown
+          shared_folder_document_id: string | null
           start_at: string | null
           state_key: Database["public"]["Enums"]["project_state"]
           type_key: string
@@ -14984,14 +15044,17 @@ export type Database = {
           icon_svg?: string | null
           id?: string
           is_public?: boolean | null
+          merged_into_project_id?: string | null
           name: string
           next_step_long?: string | null
           next_step_short?: string | null
           next_step_source?: string | null
           next_step_updated_at?: string | null
           org_id?: string | null
+          parent_project_id?: string | null
           props?: Json
           search_vector?: unknown
+          shared_folder_document_id?: string | null
           start_at?: string | null
           state_key?: Database["public"]["Enums"]["project_state"]
           type_key: string
@@ -15016,14 +15079,17 @@ export type Database = {
           icon_svg?: string | null
           id?: string
           is_public?: boolean | null
+          merged_into_project_id?: string | null
           name?: string
           next_step_long?: string | null
           next_step_short?: string | null
           next_step_source?: string | null
           next_step_updated_at?: string | null
           org_id?: string | null
+          parent_project_id?: string | null
           props?: Json
           search_vector?: unknown
+          shared_folder_document_id?: string | null
           start_at?: string | null
           state_key?: Database["public"]["Enums"]["project_state"]
           type_key?: string
@@ -15035,6 +15101,20 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_projects_merged_into_project_id_fkey"
+            columns: ["merged_into_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_projects_parent_project_id_fkey"
+            columns: ["parent_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -22662,6 +22742,15 @@ export type Database = {
         Args: { p_intent: Json }
         Returns: Json
       }
+      agentic_chat_failed_partial_receipt_valid: {
+        Args: {
+          p_failure_code: string
+          p_metadata: Json
+          p_status: string
+          p_text: string
+        }
+        Returns: boolean
+      }
       agentic_chat_finalize_dead_turn_v1: {
         Args: {
           p_bare?: boolean
@@ -23183,6 +23272,10 @@ export type Database = {
           p_response_version: string
         }
         Returns: Json
+      }
+      claim_organize_calendar_sync: {
+        Args: { p_task_id: string; p_token: string }
+        Returns: boolean
       }
       claim_pending_email_sequence_sends: {
         Args: { p_limit?: number; p_sequence_key: string }
@@ -24630,6 +24723,10 @@ export type Database = {
           visitor_count: number
         }[]
       }
+      get_document_route_location: {
+        Args: { p_document_id: string }
+        Returns: Json
+      }
       get_history_page_v1: {
         Args: {
           p_limit?: number
@@ -25382,6 +25479,29 @@ export type Database = {
         }
         Returns: Json
       }
+      onto_document_archive_review_snapshot: {
+        Args: {
+          p_archive_mode: string
+          p_document_id: string
+          p_project_id: string
+        }
+        Returns: Json
+      }
+      onto_document_archive_reviewed_atomic: {
+        Args: {
+          p_archive_mode: string
+          p_changed_by: string
+          p_children_updates: Json
+          p_document_id: string
+          p_document_ids: string[]
+          p_expected_review_snapshot: Json
+          p_expected_structure_version: number
+          p_expected_updated_at: string
+          p_next_structure: Json
+          p_project_id: string
+        }
+        Returns: Json
+      }
       onto_document_delete_atomic: {
         Args: {
           p_changed_by?: string
@@ -25444,6 +25564,24 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: boolean
       }
+      onto_lock_projects_for_write: {
+        Args: { p_project_ids: string[] }
+        Returns: number
+      }
+      onto_organize_apply_atomic: {
+        Args: {
+          p_batch_id: string
+          p_confirmation_token: string
+          p_inverse_of?: string
+          p_plan: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      onto_organize_preview: {
+        Args: { p_inverse_of?: string; p_plan: Json; p_user_id: string }
+        Returns: Json
+      }
       onto_plan_create_atomic: {
         Args: { p_plan: Json; p_relationship_plan: Json }
         Returns: Json
@@ -25461,6 +25599,14 @@ export type Database = {
           p_next_structure: Json
           p_project_id: string
         }
+        Returns: Json
+      }
+      onto_project_family_v1: {
+        Args: { p_actor_id?: string; p_project_id: string }
+        Returns: Json
+      }
+      onto_project_set_parent_atomic: {
+        Args: { p_parent_project_id: string; p_project_id: string }
         Returns: Json
       }
       onto_relationship_entity_in_project: {
@@ -26171,6 +26317,10 @@ export type Database = {
       release_native_search_cache: {
         Args: { p_cache_key: string; p_owner_token: string }
         Returns: boolean
+      }
+      release_organize_calendar_sync: {
+        Args: { p_task_id: string; p_token: string }
+        Returns: undefined
       }
       renew_agentic_chat_turn_lease: {
         Args: {

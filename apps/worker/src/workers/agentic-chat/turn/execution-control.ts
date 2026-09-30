@@ -1,4 +1,5 @@
 // apps/worker/src/workers/agentic-chat/turn/execution-control.ts
+import { isFailedPartialReceipt } from './failed-partial-receipt';
 import {
 	AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1,
 	type AgenticChatExecutionStartRpcResultV1,
@@ -289,7 +290,8 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		}
 		const persistsAssistantMessage =
 			input.status === 'completed' ||
-			(input.status === 'cancelled' && input.assistantText.length > 0);
+			(input.status === 'cancelled' && input.assistantText.length > 0) ||
+			isFailedPartialReceipt(input);
 		if (persistsAssistantMessage !== (input.assistantMessageId !== null)) {
 			throw protocolError(
 				'terminal status, assistant text, and assistant message id are inconsistent'
@@ -353,12 +355,12 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		if (publicError !== null && errorTransitionId !== null) {
 			if (
 				input.status !== 'failed' ||
-				input.assistantMessageId !== null ||
+				(input.assistantMessageId !== null && !isFailedPartialReceipt(input)) ||
 				lastTurnContext !== null ||
 				timingDraft === null
 			) {
 				throw protocolError(
-					'failed terminal events require no assistant message, no last-turn context, and timing'
+					'failed terminal events require a server partial receipt or no assistant message, no last-turn context, and timing'
 				);
 			}
 			if (!canonicalText(publicError, 512)) {
@@ -712,7 +714,7 @@ function parseFinalizeReceipt(
 						receipt.terminal_sequence_index - 1,
 						receipt.terminalized_at,
 						receipt.session_id,
-						false
+						expected.assistantMessageId !== null
 					))) ||
 			(receipt.outcome === 'already_terminal' &&
 				(preterminal !== undefined || preterminals !== undefined)) ||

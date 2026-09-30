@@ -1,5 +1,9 @@
 // apps/worker/src/workers/agentic-chat/tools/execution-policy.ts
 import type { JsonObject } from '@buildos/shared-types';
+import {
+	isDocumentArchiveReviewSnapshot,
+	isDocumentArchiveState
+} from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import type {
 	AgenticChatToolExecutionCallKindV1,
 	AgenticChatToolExecutionResourceV1
@@ -91,6 +95,32 @@ export function resolveAgenticChatToolExecutionPolicyV1(
 	}
 	if (!input.concurrentMutationsEnabled) {
 		return { executionPolicy: 'serial', resources: [] };
+	}
+	if (
+		input.toolName === 'update_onto_document' &&
+		isDocumentArchiveState(input.arguments.state_key)
+	) {
+		const snapshot = input.arguments._archive_review;
+		// Distinct targets still rewrite one canonical project tree. Use only
+		// server facts bound to batch review; actor-supplied project IDs are not
+		// a concurrency boundary. Hold affected children against row edits too.
+		if (
+			!isDocumentArchiveReviewSnapshot(snapshot) ||
+			snapshot.document_id !== input.arguments.document_id ||
+			snapshot.archive_mode !== input.arguments.archive_mode
+		) {
+			return { executionPolicy: 'serial', resources: [] };
+		}
+		return {
+			executionPolicy: 'parallel_safe',
+			resources: [
+				{ key: `project:${snapshot.project_id}`, access: 'write' },
+				...snapshot.documents.map((document) => ({
+					key: `document:${document.id}`,
+					access: 'write' as const
+				}))
+			]
+		};
 	}
 
 	const endpoints = LINK_ENDPOINTS.get(input.toolName);

@@ -5,6 +5,7 @@ import {
 	runReviewedDocumentArchive,
 	type DocumentArchiveReviewSnapshot
 } from './op-execution-gateway.document-archive';
+import { DocumentArchiveDatabaseError } from '../ontology/document-archive-error';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 
 const { archive, writeAccess, visible } = vi.hoisted(() => ({
@@ -142,7 +143,9 @@ describe('reviewed document archive gateway', () => {
 		}
 	);
 	it('returns a known no-write failure on changed reviewed facts and never retries', async () => {
-		archive.mockRejectedValue(new Error('Document archive review changed: preview again'));
+		archive.mockRejectedValue(
+			new DocumentArchiveDatabaseError('40001', 'document_archive_review_changed')
+		);
 		expect(await runReviewedDocumentArchive(params())).toMatchObject({
 			ok: false,
 			error: {
@@ -151,6 +154,39 @@ describe('reviewed document archive gateway', () => {
 			}
 		});
 		expect(archive).toHaveBeenCalledTimes(1);
+	});
+	it.each(['40001', '40P01', '55P03', '57014'])(
+		'exposes confirmed %s rollback to the bounded executor retry',
+		async (code) => {
+			archive.mockRejectedValue(
+				new DocumentArchiveDatabaseError(code, 'transaction aborted')
+			);
+			expect(await runReviewedDocumentArchive(params())).toMatchObject({
+				ok: false,
+				error: {
+					code: 'INTERNAL',
+					details: { write_rolled_back: true, database_code: code }
+				}
+			});
+			expect(archive).toHaveBeenCalledTimes(1);
+		}
+	);
+	it.each(['document_archive_version_conflict', 'doc_structure_version_conflict'])(
+		'requires a fresh review after %s',
+		async (message) => {
+			archive.mockRejectedValue(new DocumentArchiveDatabaseError('P0001', message));
+			expect(await runReviewedDocumentArchive(params())).toMatchObject({
+				ok: false,
+				error: { code: 'VALIDATION_ERROR' }
+			});
+		}
+	);
+	it('does not turn transport prose resembling a database marker into a rollback receipt', async () => {
+		archive.mockRejectedValue(new Error('document_archive_review_changed: connection lost'));
+		expect(await runReviewedDocumentArchive(params())).toMatchObject({
+			ok: false,
+			error: { code: 'INTERNAL' }
+		});
 	});
 	it('keeps a lost database response uncertain', async () => {
 		archive.mockRejectedValue(new Error('connection closed'));

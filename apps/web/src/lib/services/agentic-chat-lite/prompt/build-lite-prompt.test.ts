@@ -174,6 +174,8 @@ describe('buildLitePromptEnvelope', () => {
 				(id) =>
 					id !== 'project_knowledge_map' &&
 					id !== 'project_start_here' &&
+					// Project hierarchy renders only for a project with a parent or sub-projects.
+					id !== 'project_family' &&
 					// Steward sections render only with a project steward packet.
 					id !== 'steward_charter' &&
 					id !== 'steward_live_facts' &&

@@ -140,6 +140,29 @@ export class AgenticChatMutationToolRunner {
 			});
 		} catch (error) {
 			if (
+				error instanceof AgenticChatEffectExecutionError &&
+				error.failureClass === 'uncertain_external_commit'
+			) {
+				// Effect reconciliation is authoritative. Carry only its uncertain
+				// disposition and exact attempted arguments into the terminal receipt;
+				// this is not a success or permission to retry the effect.
+				recordTerminalToolExecution(
+					terminalContext,
+					sequenceIndex,
+					providerToolCall(step),
+					{
+						tool_call_id: step.providerToolCallId,
+						success: false,
+						error: 'The attempted change has an uncertain outcome. Reconcile it before retrying.',
+						result: {
+							effect_outcome: 'uncertain',
+							effect_id: error.effectId,
+							failure_code: error.failureCode
+						}
+					}
+				);
+			}
+			if (
 				!(error instanceof AgenticChatEffectExecutionError) ||
 				error.failureClass !== 'permanent'
 			) {
