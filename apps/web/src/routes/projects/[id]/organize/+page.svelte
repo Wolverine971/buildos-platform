@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/projects/[id]/organize/+page.svelte -->
 <script lang="ts">
+	import { page } from '$app/state';
 	import OrganizeView from '$lib/components/organize/OrganizeView.svelte';
 	import type { PageData } from './$types';
 	let { data }: { data: PageData } = $props();
@@ -13,5 +14,6 @@
 		secondaryProject={data.secondaryProject}
 		relatedProjects={data.relatedProjects}
 		initialRef={data.initialRef}
+		initialHistory={page.url.searchParams.get('history') === '1'}
 	/>
 {/key}

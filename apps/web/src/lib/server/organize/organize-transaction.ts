@@ -25,9 +25,27 @@ export interface ManifestStep {
 }
 export type SkippedMove = { id: string; kind: string; reason: string };
 
+/** A move the planner rejected; its message was written for the user. */
+export class OrganizePlanError extends Error {}
+
+/** The shared browser planner rejects moves by throwing plain `Error`s with
+ * user-facing messages. Any other error type (TypeError, RangeError, ...) is a
+ * defect whose message must never reach a client. */
+export function isPlannerRejection(error: unknown): error is Error {
+	return (
+		error instanceof OrganizePlanError ||
+		(error instanceof Error && Object.getPrototypeOf(error) === Error.prototype)
+	);
+}
+
 export function compileOrganizePlan(projects: OrganizeProject[], moves: OrganizeMove[]) {
-	if (!moves.length) throw new Error('Choose at least one move.');
-	const preview = previewOrganizePlan(projects, moves);
+	if (!moves.length) throw new OrganizePlanError('Choose at least one move.');
+	let preview: ReturnType<typeof previewOrganizePlan>;
+	try {
+		preview = previewOrganizePlan(projects, moves);
+	} catch (error) {
+		throw isPlannerRejection(error) ? new OrganizePlanError(error.message) : error;
+	}
 	return {
 		projects: projects.map(({ id, updated_at }) => ({ id, updated_at })),
 		moves,
@@ -111,8 +129,12 @@ export function buildOrganizeInverse(projects: OrganizeProject[], manifest: Mani
 				staged = previewOrganizePlan(staged, [move]).projects;
 				moves.push(move);
 			} catch (error) {
-				reason =
-					error instanceof Error ? error.message : 'The inverse move is no longer valid.';
+				// Skip reasons reach the client; only planner rejections carry safe messages.
+				if (isPlannerRejection(error)) reason = error.message;
+				else {
+					console.error('[Organize] Inverse planning failed', error);
+					reason = 'The inverse move is no longer valid.';
+				}
 			}
 		}
 		if (reason) {

@@ -3,13 +3,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST as preview } from '../../../routes/api/onto/organize/preview/+server';
 import { POST as apply } from '../../../routes/api/onto/organize/apply/+server';
 import { POST as undo } from '../../../routes/api/onto/organize/undo/+server';
-import { previewOrApplyOrganize, undoOrganize } from './organize-service';
+import {
+	previewOrApplyOrganize,
+	undoOrganize,
+	OrganizeError,
+	OrganizeSnapshotError
+} from './organize-service';
 vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: vi.fn(() => ({})) }));
-vi.mock('./organize-service', () => ({
+// Real error classes, so the error-to-HTTP mapping below is exercised for real.
+vi.mock('./organize-service', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./organize-service')>()),
 	previewOrApplyOrganize: vi.fn(async () => ({ confirmation_token: 'token' })),
-	undoOrganize: vi.fn(async () => ({ status: 'applied' })),
-	OrganizeError: class extends Error {},
-	OrganizeSnapshotError: class extends Error {}
+	undoOrganize: vi.fn(async () => ({ status: 'applied' }))
 }));
 const a = '11111111-1111-4111-8111-111111111111',
 	b = '22222222-2222-4222-8222-222222222222';
@@ -53,6 +58,55 @@ describe('Organize HTTP boundary', () => {
 				.status
 		).toBe(422);
 		expect(previewOrApplyOrganize).not.toHaveBeenCalled();
+	});
+	it('caps the distinct projects a batch can touch', async () => {
+		const project = (i: number) => `${String(i).padStart(8, '0')}-1111-4111-8111-111111111111`;
+		const chain = (projects: number) =>
+			Array.from({ length: projects - 1 }, (_, i) => ({
+				...body.moves[0],
+				project_id: project(i),
+				destination_project_id: project(i + 1)
+			}));
+		expect((await preview(event({ ...body, moves: chain(21) }))).status).toBe(422);
+		expect(previewOrApplyOrganize).not.toHaveBeenCalled();
+		expect((await preview(event({ ...body, moves: chain(20) }))).status).toBe(200);
+	});
+	it('maps Organize errors to their status and message', async () => {
+		const cases: [Error, number, string][] = [
+			[
+				new OrganizeError('Edit access to every project is required.', 403),
+				403,
+				'Edit access to every project is required.'
+			],
+			[
+				new OrganizeError(
+					'A project changed since it was opened. Refresh before previewing.'
+				),
+				409,
+				'A project changed since it was opened. Refresh before previewing.'
+			],
+			[
+				new OrganizeSnapshotError('Archived projects cannot be organized.', 409),
+				409,
+				'Archived projects cannot be organized.'
+			]
+		];
+		for (const [error, status, message] of cases) {
+			vi.mocked(previewOrApplyOrganize).mockRejectedValueOnce(error);
+			const response = await preview(event(body));
+			expect(response.status).toBe(status);
+			expect((await response.json()).error).toBe(message);
+		}
+	});
+	it('hides unexpected failures behind a generic 500', async () => {
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.mocked(undoOrganize).mockRejectedValueOnce(
+			new TypeError('relation private.organize_rollout does not exist')
+		);
+		const response = await undo(event({ source_batch_id: a }));
+		expect(response.status).toBe(500);
+		expect(JSON.stringify(await response.json())).not.toContain('organize_rollout');
+		log.mockRestore();
 	});
 	it('does not accept client-built tree payloads', async () => {
 		expect((await preview(event({ ...body, trees: [] }))).status).toBe(422);

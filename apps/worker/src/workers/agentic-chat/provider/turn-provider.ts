@@ -20,6 +20,7 @@ import {
 import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from './provider-capacity';
 import type { AgenticChatLiveVisionResolverPortV1 } from '../tools/live-vision';
 import { type AgenticChatProviderMutationCapabilitiesV1 } from '../mutations/tool-catalog';
+import type { AgenticChatSharedDocumentConfirmationPort } from '../mutations/shared-document-edit';
 import {
 	buildProjectCreateInitialContractGateRequest,
 	reconcileSemanticDispositionCalls
@@ -61,6 +62,7 @@ import {
 	buildValidationRepairRequest,
 	combineUsage
 } from './request-builders';
+import { completedProviderCallToChatToolCall } from './feedback';
 import {
 	type CompletedProviderToolCall,
 	appendToolCallDelta,
@@ -85,6 +87,7 @@ import {
 	validateCompletedProviderCalls,
 	validationIssuesForCall
 } from './validation';
+import type { ToolValidationIssue } from '@buildos/agentic-chat-runtime/loop';
 
 export { describeUnappliedWrites } from './review/lanes';
 
@@ -149,6 +152,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			 */
 			documentEditPreview?: AgenticChatDocumentEditPreviewPort;
 			documentArchivePreview?: AgenticChatDocumentArchivePreviewPort;
+			/**
+			 * Read-only token check for confirmed shared-document edits, run before
+			 * the paid review. A stale, expired, or wrong-session token fails here with
+			 * the dispatch error. Optional and advisory: dispatch always re-checks.
+			 */
+			sharedDocumentConfirmation?: AgenticChatSharedDocumentConfirmationPort;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -557,6 +566,16 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						validationIssues.push(...previewed.issues);
 						state.recordDocumentEditPreviews(previewed.previews);
 					}
+					if (validationIssues.length === 0 && this.ports.sharedDocumentConfirmation) {
+						validationIssues.push(
+							...(await checkSharedDocumentConfirmationCalls(
+								this.ports.sharedDocumentConfirmation,
+								calls,
+								state.executionInput
+							))
+						);
+						throwIfAborted(request.signal);
+					}
 					if (validationIssues.length === 0) {
 						// SHA-bound batch approval takes precedence over the contract
 						// gate: the calls the model just wrote are the artifact the
@@ -569,14 +588,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 								'permanent'
 							);
 						}
-						if (
-							!withheldBatch &&
-							calls.some(
-								(call) =>
-									call.name === 'update_onto_document' &&
-									Object.hasOwn(call.arguments, 'confirmation_token')
-							)
-						) {
+						// Reached only when no reviewer lane can hold the call (review
+						// off or unavailable): a confirmed shared edit never runs unreviewed.
+						if (!withheldBatch && calls.some(isConfirmedSharedDocumentCall)) {
 							throw providerError(
 								'shared_document_independent_review_required',
 								'permanent'
@@ -903,4 +917,41 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			if (!pendingExecution) state.release();
 		}
 	}
+}
+
+function isConfirmedSharedDocumentCall(call: CompletedProviderToolCall): boolean {
+	return (
+		call.name === 'update_onto_document' && Object.hasOwn(call.arguments, 'confirmation_token')
+	);
+}
+
+/**
+ * Token-bearing calls are checked read-only before review. A failure becomes a
+ * validation issue carrying the dispatch error, so the actor gets the same
+ * correction ("request a fresh preview…") without a reviewer pass.
+ */
+async function checkSharedDocumentConfirmationCalls(
+	port: AgenticChatSharedDocumentConfirmationPort,
+	calls: readonly CompletedProviderToolCall[],
+	executionInput: ToolRoundStreamState['executionInput']
+): Promise<ToolValidationIssue[]> {
+	const confirmed = calls.filter(isConfirmedSharedDocumentCall);
+	const failures = await Promise.all(
+		confirmed.map((call) =>
+			port.check({ executionInput, args: { ...call.arguments } }).catch((): null => null)
+		)
+	);
+	return confirmed.flatMap((call, index) => {
+		const failure = failures[index];
+		return failure
+			? [
+					{
+						toolCall: completedProviderCallToChatToolCall(call),
+						toolName: call.name,
+						op: 'onto.document.update',
+						errors: [failure.message]
+					}
+				]
+			: [];
+	});
 }

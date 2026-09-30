@@ -18,21 +18,63 @@ const request = {
 			position: 0
 		}
 	],
-	project_versions: { source: '2026-09-30T12:00:00Z', dest: '2026-09-30T12:00:00Z' }
+	project_versions: { source: '4', dest: '8' }
 };
-function client(batch: unknown = null) {
-	const query: any = {};
-	for (const method of ['select', 'eq', 'contains', 'order', 'limit'])
-		query[method] = vi.fn(() => query);
-	query.maybeSingle = vi.fn(async () => ({ data: batch, error: null }));
-	query.then = (resolve: any) =>
-		Promise.resolve({ data: batch ?? [], error: null }).then(resolve);
+const confirmed = { ...request, batch_id: 'batch', confirmation_token: 'token' };
+type Row = Record<string, unknown>;
+const savedBatch = (overrides: Row = {}): Row => ({
+	id: 'batch',
+	user_id: 'user',
+	project_ids: ['dest', 'source'],
+	inverse_of: null,
+	plan: { moves: request.moves, projects: [], trees: [] },
+	receipt: { status: 'applied', batch_id: 'batch', replayed: false },
+	created_at: 'today',
+	...overrides
+});
+/** Admin client over an in-memory journal. Filters are applied rather than
+ * ignored, so dropping `.eq('user_id', userId)` (the only cross-user barrier,
+ * since the admin client bypasses RLS) makes these tests see other users' rows. */
+function admin(rows: Row[] = []) {
+	const filters: [string, string, unknown][] = [];
+	const from = vi.fn(() => {
+		let result = [...rows];
+		const query: any = {};
+		for (const method of ['select', 'order', 'limit']) query[method] = vi.fn(() => query);
+		query.eq = vi.fn((column: string, value: unknown) => {
+			filters.push(['eq', column, value]);
+			result = result.filter((row) => row[column] === value);
+			return query;
+		});
+		query.contains = vi.fn((column: string, value: unknown[]) => {
+			filters.push(['contains', column, value]);
+			result = result.filter((row) =>
+				value.every((item) => (row[column] as unknown[]).includes(item))
+			);
+			return query;
+		});
+		query.maybeSingle = vi.fn(async () =>
+			result.length > 1
+				? { data: null, error: { message: 'multiple rows' } }
+				: { data: result[0] ?? null, error: null }
+		);
+		query.then = (resolve: any, reject: any) =>
+			Promise.resolve({ data: result, error: null }).then(resolve, reject);
+		return query;
+	});
+	const rpc = vi.fn(async () => ({
+		data: { confirmation_token: 'token', impact: [] },
+		error: null
+	}));
+	return { from, rpc, rows, filters } as any;
+}
+/** Session client whose only job here is the per-project write check. */
+function session(canWrite: (id: string) => boolean = () => true) {
 	return {
-		rpc: vi.fn(async () => ({
-			data: { confirmation_token: 'token', impact: [] },
+		rpc: vi.fn(async (_name: string, args: { p_project_id: string }) => ({
+			data: canWrite(args.p_project_id),
 			error: null
-		})),
-		from: vi.fn(() => query)
+		}))
 	} as any;
 }
 beforeEach(() => {
@@ -43,17 +85,23 @@ beforeEach(() => {
 	}));
 });
 describe('Organize service', () => {
-	it('compiles from authorized snapshots and calls only the preview RPC', async () => {
-		const admin = client();
+	it('compiles from write-checked snapshots and calls only the preview RPC', async () => {
+		const privileged = admin();
+		const user = session();
 		await previewOrApplyOrganize({
-			session: client(),
-			admin,
+			session: user,
+			admin: privileged,
 			userId: 'user',
 			request,
 			apply: false
 		});
-		expect(admin.rpc).toHaveBeenCalledOnce();
-		expect(admin.rpc).toHaveBeenCalledWith(
+		expect(user.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+			p_project_id: 'source',
+			p_required_access: 'write'
+		});
+		expect(loadOrganizeSnapshot).toHaveBeenCalledWith(user, 'source', { writeChecked: true });
+		expect(privileged.rpc).toHaveBeenCalledOnce();
+		expect(privileged.rpc).toHaveBeenCalledWith(
 			'onto_organize_preview',
 			expect.objectContaining({
 				p_user_id: 'user',
@@ -61,104 +109,271 @@ describe('Organize service', () => {
 			})
 		);
 	});
-	it('rejects stale project versions before the privileged RPC', async () => {
-		const admin = client();
+	it('checks edit access to every project before loading any contents', async () => {
+		const privileged = admin();
 		await expect(
 			previewOrApplyOrganize({
-				session: client(),
-				admin,
-				userId: 'user',
-				request: { ...request, project_versions: {} },
-				apply: false
-			})
-		).rejects.toThrow('project changed');
-		expect(admin.rpc).not.toHaveBeenCalled();
-	});
-	it('rejects read-only panes before the privileged RPC', async () => {
-		vi.mocked(loadOrganizeSnapshot).mockImplementation(async (_client, id) => ({
-			project: { ...organizeFixtures().find((p) => p.id === id)!, can_write: false },
-			related_projects: []
-		}));
-		const admin = client();
-		await expect(
-			previewOrApplyOrganize({
-				session: client(),
-				admin,
+				session: session((id) => id !== 'dest'),
+				admin: privileged,
 				userId: 'user',
 				request,
 				apply: false
 			})
 		).rejects.toMatchObject({ status: 403 });
-		expect(admin.rpc).not.toHaveBeenCalled();
+		expect(loadOrganizeSnapshot).not.toHaveBeenCalled();
+		expect(privileged.rpc).not.toHaveBeenCalled();
+	});
+	it('caps distinct projects before any access check', async () => {
+		const user = session();
+		const moves = Array.from({ length: 11 }, (_, i) => ({
+			...request.moves[0]!,
+			project_id: `p${2 * i}`,
+			destination_project_id: `p${2 * i + 1}`
+		}));
+		await expect(
+			previewOrApplyOrganize({
+				session: user,
+				admin: admin(),
+				userId: 'user',
+				request: { ...request, moves },
+				apply: false
+			})
+		).rejects.toMatchObject({ status: 400 });
+		expect(user.rpc).not.toHaveBeenCalled();
+		expect(loadOrganizeSnapshot).not.toHaveBeenCalled();
+	});
+	it('rejects stale project versions before the privileged RPC', async () => {
+		const privileged = admin();
+		await expect(
+			previewOrApplyOrganize({
+				session: session(),
+				admin: privileged,
+				userId: 'user',
+				request: { ...request, project_versions: {} },
+				apply: false
+			})
+		).rejects.toThrow('project changed');
+		expect(privileged.rpc).not.toHaveBeenCalled();
+	});
+	it('returns planner rejections but hides planner defects', async () => {
+		await expect(
+			previewOrApplyOrganize({
+				session: session(),
+				admin: admin(),
+				userId: 'user',
+				request: { ...request, moves: [{ ...request.moves[0]!, id: 'start' }] },
+				apply: false
+			})
+		).rejects.toMatchObject({ status: 400, message: expect.stringContaining('START HERE') });
+
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.mocked(loadOrganizeSnapshot).mockImplementation(async (_client, id) => ({
+			project: {
+				...organizeFixtures().find((p) => p.id === id)!,
+				documents: undefined as never
+			},
+			related_projects: []
+		}));
+		const failure = await previewOrApplyOrganize({
+			session: session(),
+			admin: admin(),
+			userId: 'user',
+			request,
+			apply: false
+		}).catch((error) => error);
+		expect(failure).toMatchObject({ status: 400 });
+		expect(failure.message).toBe(
+			'These moves could not be planned. Refresh the projects and preview again.'
+		);
+		expect(log).toHaveBeenCalled();
+		log.mockRestore();
 	});
 	it('passes the exact confirmation token and idempotency key on apply', async () => {
-		const admin = client();
+		const privileged = admin();
 		await previewOrApplyOrganize({
-			session: client(),
-			admin,
+			session: session(),
+			admin: privileged,
 			userId: 'user',
-			request: { ...request, batch_id: 'batch', confirmation_token: 'token' },
+			request: confirmed,
 			apply: true
 		});
-		expect(admin.rpc).toHaveBeenCalledWith(
+		expect(privileged.rpc).toHaveBeenCalledWith(
 			'onto_organize_apply_atomic',
 			expect.objectContaining({ p_batch_id: 'batch', p_confirmation_token: 'token' })
 		);
 	});
-	it('replays successful requests without requiring the old snapshot to still exist', async () => {
-		const admin = client({
-			plan: { moves: request.moves, projects: [], trees: [] },
-			inverse_of: null
-		});
-		vi.mocked(loadOrganizeSnapshot).mockRejectedValueOnce(new Error('must not load'));
-		await previewOrApplyOrganize({
-			session: client(),
-			admin,
+	it('returns a saved batch receipt before any snapshot, version or access work', async () => {
+		const privileged = admin([savedBatch()]);
+		const user = session(() => false);
+		const result = await previewOrApplyOrganize({
+			session: user,
+			admin: privileged,
 			userId: 'user',
-			request: { ...request, batch_id: 'batch', confirmation_token: 'token' },
+			// Versions moved on and access was lost after the batch saved.
+			request: { ...confirmed, project_versions: {} },
 			apply: true
 		});
+		expect(result).toEqual({ status: 'applied', batch_id: 'batch', replayed: true });
+		expect(user.rpc).not.toHaveBeenCalled();
 		expect(loadOrganizeSnapshot).not.toHaveBeenCalled();
-		expect(admin.rpc).toHaveBeenCalledWith(
+		expect(privileged.rpc).not.toHaveBeenCalled();
+		expect(privileged.filters).toContainEqual(['eq', 'user_id', 'user']);
+	});
+	it("never replays another user's batch", async () => {
+		const privileged = admin([
+			savedBatch({ user_id: 'other', receipt: { status: 'applied', secret: true } })
+		]);
+		const result = await previewOrApplyOrganize({
+			session: session(),
+			admin: privileged,
+			userId: 'user',
+			request: confirmed,
+			apply: true
+		});
+		expect(result).not.toHaveProperty('secret');
+		// SQL then rejects the reused id with organize_idempotency_conflict.
+		expect(privileged.rpc).toHaveBeenCalledWith(
 			'onto_organize_apply_atomic',
-			expect.objectContaining({ p_batch_id: 'batch' })
+			expect.objectContaining({ p_user_id: 'user', p_batch_id: 'batch' })
 		);
 	});
-	it('turns a database stale-token failure into a conflict', async () => {
-		const admin = client();
-		admin.rpc.mockResolvedValue({
+	it('rejects a batch id reused for a different request', async () => {
+		const privileged = admin([
+			savedBatch({ plan: { moves: [{ ...request.moves[0], position: 1 }] } })
+		]);
+		await expect(
+			previewOrApplyOrganize({
+				session: session(),
+				admin: privileged,
+				userId: 'user',
+				request: confirmed,
+				apply: true
+			})
+		).rejects.toMatchObject({ status: 409, message: expect.stringContaining('already used') });
+		expect(privileged.rpc).not.toHaveBeenCalled();
+	});
+	it('returns the saved receipt when a concurrent retry commits first', async () => {
+		const privileged = admin();
+		privileged.rpc.mockImplementation(async () => {
+			privileged.rows.push(savedBatch());
+			return { data: null, error: { message: 'organize_stale_preview', code: 'P0001' } };
+		});
+		await expect(
+			previewOrApplyOrganize({
+				session: session(),
+				admin: privileged,
+				userId: 'user',
+				request: confirmed,
+				apply: true
+			})
+		).resolves.toEqual({ status: 'applied', batch_id: 'batch', replayed: true });
+	});
+	it('keeps the rejection when the batch did not save', async () => {
+		const privileged = admin();
+		privileged.rpc.mockResolvedValue({
 			data: null,
 			error: { message: 'organize_stale_preview', code: 'P0001' }
 		});
 		await expect(
 			previewOrApplyOrganize({
-				session: client(),
-				admin,
+				session: session(),
+				admin: privileged,
+				userId: 'user',
+				request: confirmed,
+				apply: true
+			})
+		).rejects.toMatchObject({ status: 409, message: expect.stringContaining('Preview again') });
+		// Checked before the write and again after it failed.
+		expect(privileged.from).toHaveBeenCalledTimes(2);
+	});
+	it('turns a database stale-token failure into a conflict', async () => {
+		const privileged = admin();
+		privileged.rpc.mockResolvedValue({
+			data: null,
+			error: { message: 'organize_stale_preview', code: 'P0001' }
+		});
+		await expect(
+			previewOrApplyOrganize({
+				session: session(),
+				admin: privileged,
 				userId: 'user',
 				request,
 				apply: false
 			})
 		).rejects.toMatchObject({ status: 409 });
 	});
-	it('reports missing undo targets without exposing another user journal', async () => {
+	it("does not undo another user's batch", async () => {
+		const privileged = admin([savedBatch({ id: 'theirs', user_id: 'other' })]);
 		await expect(
 			undoOrganize({
-				session: client(),
-				admin: client(),
+				session: session(),
+				admin: privileged,
 				userId: 'user',
-				sourceBatchId: 'other'
+				sourceBatchId: 'theirs'
 			})
 		).rejects.toMatchObject({ status: 404 });
+		expect(privileged.filters).toContainEqual(['eq', 'user_id', 'user']);
+		expect(loadOrganizeSnapshot).not.toHaveBeenCalled();
 	});
-	it('filters history when access to the other project has been lost', async () => {
-		const session = client();
-		session.rpc.mockImplementation(async (_name: string, args: { p_project_id: string }) => ({
-			data: args.p_project_id === 'source',
-			error: null
-		}));
-		const admin = client([
-			{ id: 'batch', project_ids: ['source', 'dest'], receipt: {}, created_at: 'today' }
+	it('reports a concurrent undo as saved rather than nothing to undo', async () => {
+		const source = savedBatch({
+			id: 'source-batch',
+			manifest: [
+				{
+					kind: 'task',
+					id: 'task',
+					before: { project_id: 'source', parent_id: null, position: 0 },
+					after: { project_id: 'dest', parent_id: null, position: 0 },
+					subtree: null
+				}
+			]
+		});
+		const privileged = admin([source]);
+		const undoReceipt = { status: 'applied', batch_id: 'undo', inverse_of: 'source-batch' };
+		// The first request commits while this retry is loading the projects.
+		const user = session(() => {
+			if (!privileged.rows.some((row: Row) => row.id === 'undo'))
+				privileged.rows.push(
+					savedBatch({ id: 'undo', inverse_of: 'source-batch', receipt: undoReceipt })
+				);
+			return true;
+		});
+		await expect(
+			undoOrganize({
+				session: user,
+				admin: privileged,
+				userId: 'user',
+				sourceBatchId: 'source-batch',
+				batchId: 'undo',
+				confirmationToken: 'token'
+			})
+		).resolves.toEqual({ ...undoReceipt, replayed: true });
+		expect(privileged.rpc).not.toHaveBeenCalled();
+	});
+	it("lists only this user's batches whose projects are still editable", async () => {
+		const privileged = admin([
+			savedBatch({ id: 'mine' }),
+			savedBatch({ id: 'lost', project_ids: ['source', 'gone'] }),
+			savedBatch({ id: 'theirs', user_id: 'other', project_ids: ['source'] })
 		]);
-		expect(await organizeHistory(session, admin, 'user', 'source')).toEqual([]);
+		const user = session((id) => id !== 'gone');
+		const history = await organizeHistory(user, privileged, 'user', 'source');
+		expect(history.map((batch) => batch.id)).toEqual(['mine']);
+		expect(history[0]).not.toHaveProperty('user_id');
+		expect(privileged.filters).toContainEqual(['eq', 'user_id', 'user']);
+		// One write check per distinct project.
+		expect(user.rpc).toHaveBeenCalledTimes(3);
+	});
+	it('refuses history without edit access to the project', async () => {
+		const privileged = admin([savedBatch()]);
+		await expect(
+			organizeHistory(
+				session(() => false),
+				privileged,
+				'user',
+				'source'
+			)
+		).rejects.toMatchObject({ status: 403 });
+		expect(privileged.from).not.toHaveBeenCalled();
 	});
 });

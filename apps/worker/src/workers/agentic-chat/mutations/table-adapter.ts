@@ -71,10 +71,10 @@ import {
 } from './tool-catalog';
 import { gatewayMemoForTurn } from './gateway-turn-memo';
 import {
+	authorizeConfirmedSharedDocumentEdit,
 	loadSharedDocumentTarget,
 	sharedDocumentConfirmation,
 	sharedDocumentEditArgs,
-	verifySharedDocumentConfirmation,
 	isSharedDocumentConfirmation
 } from './shared-document-edit';
 
@@ -312,29 +312,14 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		context: AgenticChatMutationExecutionContextV1
 	): Promise<Record<string, unknown> | undefined> {
 		const { input, args, projectId, toolName } = context;
-		if (
-			!projectId ||
-			isDocumentArchiveState(args.state_key) ||
-			args.archive_mode !== undefined ||
-			args._archive_review !== undefined
-		) {
-			throw knownFailure(
-				'shared_document_edit_only',
-				'Shared confirmation is only for editing a shared document from its child project. Open the parent project to archive it.'
-			);
-		}
-		const target = await loadSharedDocumentTarget(
+		// The same read-only authorization the provider ran before review, repeated
+		// here because only this check is adjacent to the guarded write.
+		const target = await authorizeConfirmedSharedDocumentEdit(
 			this.client,
-			input.executionInput.claim.userId,
+			input,
 			projectId,
-			String(args.document_id)
+			args
 		);
-		if (!target)
-			throw knownFailure(
-				'shared_document_not_accessible',
-				'This document is not on the writable shared shelf. Nothing was changed.'
-			);
-		await verifySharedDocumentConfirmation(this.client, input, target, args);
 		if (input.signal.aborted)
 			throw knownFailure(
 				'mutation_cancelled_before_dispatch',

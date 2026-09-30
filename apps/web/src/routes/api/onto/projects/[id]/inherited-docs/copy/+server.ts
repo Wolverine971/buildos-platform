@@ -22,6 +22,12 @@ import {
 } from '$lib/services/ontology/versioning.service';
 import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
 import { START_HERE_DOCUMENT_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/start-here';
+import { THINKING_LOG_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/thinking-log';
+
+const SINGLETON_CONTEXT_TYPE_KEYS = new Set<string>([
+	START_HERE_DOCUMENT_TYPE_KEY,
+	THINKING_LOG_TYPE_KEY
+]);
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
 	const { user } = await locals.safeGetSession();
@@ -97,10 +103,11 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		.insert({
 			project_id: projectId,
 			title: source.title,
-			type_key:
-				source.type_key === START_HERE_DOCUMENT_TYPE_KEY
-					? 'document.default'
-					: source.type_key,
+			// A project has one START HERE and one thinking log; copies of the
+			// parent's become ordinary documents here.
+			type_key: SINGLETON_CONTEXT_TYPE_KEYS.has(source.type_key)
+				? 'document.default'
+				: source.type_key,
 			state_key: 'draft',
 			content,
 			description: source.description,

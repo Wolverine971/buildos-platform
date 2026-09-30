@@ -14,6 +14,8 @@ export type ProjectFamilyParentV1 = {
 	shared_folder_document_id: string | null;
 	/** Every child of the parent, including ones the viewer can't open ("shown in N projects"). */
 	child_count: number;
+	/** Whether the viewer may detach this project from the parent (admin on either side). */
+	can_detach: boolean;
 };
 
 /** A live document under the parent's "Shared with sub-projects" folder. */
@@ -36,6 +38,8 @@ export type ProjectFamilyChildV1 = {
 	state_key: string | null;
 	next_step_short: string | null;
 	updated_at: string;
+	/** Whether the viewer may detach this child (admin on this project or on the child). */
+	can_detach: boolean;
 };
 
 export type ProjectFamilyV1 = {
@@ -82,7 +86,8 @@ export function parseProjectFamilyV1(raw: unknown): ProjectFamilyV1 | null {
 					state_key: str(parentRow.state_key),
 					can_write: parentRow.can_write === true,
 					shared_folder_document_id: str(parentRow.shared_folder_document_id),
-					child_count: num(parentRow.child_count)
+					child_count: num(parentRow.child_count),
+					can_detach: parentRow.can_detach === true
 				}
 			: null;
 	const shelf = parent
@@ -114,7 +119,8 @@ export function parseProjectFamilyV1(raw: unknown): ProjectFamilyV1 | null {
 				name: str(child.name) ?? '',
 				state_key: str(child.state_key),
 				next_step_short: str(child.next_step_short),
-				updated_at: str(child.updated_at) ?? ''
+				updated_at: str(child.updated_at) ?? '',
+				can_detach: child.can_detach === true
 			}
 		];
 	});

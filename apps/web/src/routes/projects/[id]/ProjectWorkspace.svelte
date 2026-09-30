@@ -292,6 +292,10 @@
 			? (family.shelf.find((document) => document.id === activeDocumentId) ?? null)
 			: null
 	);
+	// Same pin as the doc tree: a hub's "Shared with sub-projects" folder stays put.
+	const sharedFolderId = $derived(
+		(family?.child_count ?? 0) > 0 ? (family?.own_shared_folder_document_id ?? null) : null
+	);
 	const documentInheritance = $derived<DocumentInheritance | null>(
 		inheritedDocument && family?.parent
 			? {
@@ -1379,9 +1383,11 @@
 
 						<ProjectChildrenSection
 							projectId={project.id}
+							projectName={project.name || 'this project'}
 							{canEdit}
 							subProjects={family?.children ?? []}
 							totalCount={family?.child_count ?? 0}
+							onFamilyChanged={refreshFamily}
 						/>
 
 						<ProjectProgressOverview
@@ -1940,6 +1946,7 @@
 			documentId={activeDocumentId}
 			{parentDocumentId}
 			inheritance={documentInheritance}
+			sharedFolderId={documentInheritance ? null : sharedFolderId}
 			onCopiedHere={handleInheritedCopyFromModal}
 			onClose={closeDocumentModal}
 			onSaved={() =>
@@ -1965,6 +1972,7 @@
 		documentTitle={moveDocumentTitle}
 		structure={docTreeStructure}
 		documents={docTreeDocuments}
+		pinned={moveDocumentId === sharedFolderId}
 		onClose={closeMoveDocumentModal}
 		onMove={confirmMoveDocument}
 	/>

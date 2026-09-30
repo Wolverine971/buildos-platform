@@ -96,6 +96,16 @@ export async function copyInheritedDocument(
 	};
 }
 
+/** Take a project out of its parent (admin on either side). */
+export function detachProject(projectId: string): Promise<ProjectSetParentResultV1> {
+	return setProjectParent(projectId, null);
+}
+
+/** "Wayne Strategies' shared docs", "Redline's shared docs". */
+export function possessive(name: string): string {
+	return name.toLowerCase().endsWith('s') ? `${name}'` : `${name}'s`;
+}
+
 export function pluralizeProjects(count: number): string {
 	return `${count} ${count === 1 ? 'project' : 'projects'}`;
 }

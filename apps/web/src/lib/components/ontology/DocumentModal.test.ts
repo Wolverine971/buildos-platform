@@ -1305,4 +1305,122 @@ describe('DocumentModal document loading', () => {
 		expect(screen.queryByText('A Parent')).not.toBeInTheDocument();
 		expect(screen.queryByText('99')).not.toBeInTheDocument();
 	});
+
+	describe('project hierarchy guards', () => {
+		function stubDocument(document: { type_key?: string; props?: Record<string, unknown> }) {
+			// Run deferred loads (public page state) right away.
+			Object.defineProperty(window, 'requestIdleCallback', {
+				configurable: true,
+				writable: true,
+				value: vi.fn((callback: IdleRequestCallback) => {
+					callback({ didTimeout: false, timeRemaining: () => 50 });
+					return 1;
+				})
+			});
+			const fetchMock = vi.fn((input: RequestInfo | URL) => {
+				const url = String(input);
+				if (url.includes('/documents/document-a/full')) {
+					return Promise.resolve(
+						jsonResponse({
+							data: {
+								editor_revision: 'editor:document-a',
+								document: {
+									id: 'document-a',
+									title: 'Document A',
+									type_key: document.type_key ?? 'document.default',
+									state_key: 'draft',
+									description: '',
+									content: 'Shared brand notes',
+									props: document.props ?? {},
+									created_at: '2026-01-01T00:00:00.000Z',
+									updated_at: '2026-01-01T00:00:00.000Z'
+								}
+							}
+						})
+					);
+				}
+				if (url.includes('/api/onto/edges/linked?')) {
+					return Promise.resolve(emptyLinkedEntitiesResponse());
+				}
+				return Promise.resolve(jsonResponse({ data: {} }));
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			return fetchMock;
+		}
+		const organizeEntry = () =>
+			screen.queryByRole('button', { name: 'Move between projects…', hidden: true });
+
+		it('keeps publishing locked on an inherited shared doc until editing is confirmed', async () => {
+			const fetchMock = stubDocument({});
+			render(DocumentModal, {
+				props: {
+					projectId: 'project-1',
+					documentId: 'document-a',
+					isOpen: true,
+					inheritance: {
+						ownerProjectId: 'project-1',
+						ownerName: 'Wayne Strategies',
+						sharedWithCount: 2,
+						canEditOwner: true,
+						inheritedIntoProjectId: 'child-project',
+						canCopy: true
+					}
+				}
+			});
+			// Expand the panel once its state loaded (loading collapses a draft's panel).
+			await waitFor(() =>
+				expect(
+					fetchMock.mock.calls.some(([url]) => String(url).endsWith('/public-page'))
+				).toBe(true)
+			);
+			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			await fireEvent.click(
+				screen.getByRole('button', { name: /PUBLIC PAGE/, hidden: true })
+			);
+			const share = await screen.findByRole('button', {
+				name: 'Share publicly',
+				hidden: true
+			});
+			expect(share).toBeDisabled();
+			await fireEvent.click(screen.getByRole('button', { name: 'Edit shared copy' }));
+			const confirm = await screen.findAllByRole('button', { name: 'Edit shared copy' });
+			await fireEvent.click(confirm.at(-1)!);
+			await waitFor(() =>
+				expect(
+					screen.getByRole('button', { name: 'Share publicly', hidden: true })
+				).toBeEnabled()
+			);
+		});
+
+		it.each([
+			['START HERE', { type_key: 'document.context.project' }, null],
+			['the thinking log', { type_key: 'document.context.thinking_log' }, null],
+			['the shared folder', {}, 'document-a'],
+			[
+				'a shared folder found by its role',
+				{ props: { role: 'shared_with_sub_projects' } },
+				null
+			]
+		])('hides the cross-project move for %s', async (_label, document, sharedFolderId) => {
+			stubDocument(document);
+			render(DocumentModal, {
+				props: {
+					projectId: 'project-1',
+					documentId: 'document-a',
+					isOpen: true,
+					sharedFolderId
+				}
+			});
+			await screen.findByDisplayValue('Document A');
+			expect(organizeEntry()).toBeNull();
+		});
+
+		it('offers the cross-project move for an ordinary document', async () => {
+			stubDocument({});
+			render(DocumentModal, {
+				props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+			});
+			await waitFor(() => expect(organizeEntry()).not.toBeNull());
+		});
+	});
 });

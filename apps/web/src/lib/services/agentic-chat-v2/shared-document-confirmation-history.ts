@@ -45,7 +45,10 @@ export function sharedDocumentConfirmationHistory(
 		if (args.length + result.length > remainingChars) continue;
 		remainingChars -= args.length + result.length;
 		const token = (row.result as { confirmation_token: string }).confirmation_token;
-		const callId = row.provider_tool_call_id || `shared-preview-${token}`;
+		// Never reuse the recalled provider call id: providers that number ids by
+		// index ("call_0") would collide with this turn's own calls. The token is
+		// a server-minted UUID, so this id is unique across turns.
+		const callId = `shared-preview-${token}`;
 		history.push(
 			{
 				role: 'assistant',

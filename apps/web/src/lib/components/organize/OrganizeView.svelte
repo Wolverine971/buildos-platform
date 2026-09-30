@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/organize/OrganizeView.svelte -->
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -28,12 +28,15 @@
 		project,
 		secondaryProject = null,
 		relatedProjects = [],
-		initialRef = null
+		initialRef = null,
+		initialHistory = false
 	}: {
 		project: OrganizeProject;
 		secondaryProject?: OrganizeProject | null;
 		relatedProjects?: { id: string; name: string }[];
 		initialRef?: OrganizeRef | null;
+		/** Open History on arrival (a saved-move toast's Undo used after leaving Organize). */
+		initialHistory?: boolean;
 	} = $props();
 	let refreshedProject = $state.raw<OrganizeProject | null>(null);
 	let chosenProject = $state.raw<OrganizeProject | null>(null);
@@ -51,6 +54,13 @@
 	let needsRefresh = $state(false);
 	let leaveUrl = $state<string | null>(null);
 	let controller: AbortController | null = null;
+	let refreshing: Promise<boolean> | null = null;
+	let root: HTMLElement | undefined = $state();
+	// Plain flags: read by navigation guards and toast callbacks, never rendered.
+	let leaving = false;
+	let destroyed = false;
+	let reviewReturn: Element | null = null;
+	let reviewWasOpen = false;
 	const baseline = $derived([
 		refreshedProject ?? project,
 		...((chosenProject ?? secondaryProject) ? [chosenProject ?? secondaryProject!] : [])
@@ -70,7 +80,10 @@
 	const keyboardParent = $derived(
 		keyboardTargets[Math.min(targetIndex, keyboardTargets.length - 1)] ?? null
 	);
-	const drag = createOrganizeDrag({ getProjects: () => preview.projects, onDrop: stage });
+	const drag = createOrganizeDrag({
+		getProjects: () => preview.projects,
+		onDrop: (move) => stage(move)
+	});
 	const persistence = createOrganizePersistence({
 		getProjectId: () => project.id,
 		onapplied: afterApply
@@ -78,7 +91,8 @@
 	const locked = $derived(
 		loading || persistence.busy || !!persistence.review || persistence.uncertain
 	);
-	const canUndo = $derived(!moves.length && !locked && !needsRefresh);
+	// Undo is rebuilt by the server from fresh snapshots, so a pending pane refresh never blocks it.
+	const canUndo = $derived(!moves.length && !locked);
 	const activeTarget = $derived(
 		drag.target ??
 			(picked
@@ -86,20 +100,68 @@
 				: null)
 	);
 
-	function stage(move: OrganizeMove) {
+	function stage(move: OrganizeMove, focusMoved = false) {
 		if (locked || needsRefresh) return;
 		try {
 			previewOrganizePlan(baseline, [...moves, move]);
 			moves = [...moves, move];
 			persistence.clearError();
-			selected = { kind: move.kind, id: move.id, project_id: move.destination_project_id };
+			const moved = { kind: move.kind, id: move.id, project_id: move.destination_project_id };
+			selected = moved;
 			picked = null;
 			moveRef = null;
 			message = 'Move added to the plan. Nothing has been saved.';
+			// The row is recreated in its new pane; keep keyboard focus on it.
+			if (focusMoved) focusSoon(() => [rowElement(moved), trayHeading()]);
 		} catch (error) {
 			message = error instanceof Error ? error.message : 'Cannot plan this move.';
 		}
 	}
+
+	function rowElement(ref: OrganizeRef | null): HTMLElement | null {
+		if (!ref || !root) return null;
+		return (
+			Array.from(root.querySelectorAll<HTMLElement>('[data-organize-row]')).find(
+				(row) =>
+					row.dataset.organizeId === ref.id && row.dataset.projectId === ref.project_id
+			) ?? null
+		);
+	}
+	function trayHeading(): HTMLElement | null {
+		return root?.querySelector<HTMLElement>('[data-organize-tray-heading]') ?? null;
+	}
+	/** Focus the first live candidate after the DOM settles and any closing dialog
+	 * has restored focus to its (possibly removed) opener. */
+	function focusSoon(candidates: () => (Element | null | undefined)[]) {
+		void tick().then(() =>
+			requestAnimationFrame(() => {
+				// A dialog opened meanwhile owns focus.
+				if (destroyed || moveRef || persistence.review || persistence.historyOpen) return;
+				for (const element of candidates()) {
+					if (!(element instanceof HTMLElement) || !element.isConnected) continue;
+					if (element.closest('[inert]')) continue;
+					element.focus();
+					if (document.activeElement === element) return;
+				}
+			})
+		);
+	}
+	function returnFocusAfterReview() {
+		const origin = reviewReturn;
+		reviewReturn = null;
+		focusSoon(() => [origin, rowElement(selected), trayHeading()]);
+	}
+	// DOM side effect only: when a review closes, focus a live element instead of
+	// the <body> the inert grid and removed dialog would leave behind.
+	$effect(() => {
+		if (persistence.review) {
+			reviewWasOpen = true;
+			return;
+		}
+		if (!reviewWasOpen) return;
+		reviewWasOpen = false;
+		returnFocusAfterReview();
+	});
 
 	function movable(ref: OrganizeRef): boolean {
 		if (locked || needsRefresh) return false;
@@ -114,6 +176,13 @@
 			return false;
 		}
 		return true;
+	}
+
+	function closeMoveSheet() {
+		const ref = moveRef;
+		moveRef = null;
+		// An entry from an editor has no opener on this page to return to.
+		focusSoon(() => [document.activeElement === document.body ? rowElement(ref) : null]);
 	}
 
 	function openMove(ref: OrganizeRef) {
@@ -183,6 +252,29 @@
 		}
 	}
 
+	function cancelCarry() {
+		if (picked || drag.active) message = 'Move cancelled.';
+		picked = null;
+		drag.cancel();
+	}
+
+	/** A carry only answers keys pressed on the picked-up row or the page itself,
+	 * so typing in a field or pressing another button keeps its normal meaning. */
+	function carriesKey(event: KeyboardEvent): boolean {
+		const target = event.target;
+		if (!(target instanceof HTMLElement)) return true;
+		if (target.isContentEditable || target.closest('input, textarea, select')) return false;
+		const control = target.closest<HTMLElement>(
+			'button, a[href], summary, [role="button"], [role="menuitem"], [role="option"]'
+		);
+		if (!control) return true;
+		return (
+			control.hasAttribute('data-organize-row') &&
+			control.dataset.organizeId === picked?.id &&
+			control.dataset.projectId === picked?.project_id
+		);
+	}
+
 	function windowKey(event: KeyboardEvent) {
 		if (locked || persistence.historyOpen || moveRef) return;
 		if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
@@ -190,12 +282,8 @@
 			void reviewChanges();
 			return;
 		}
-		if (event.key === 'Escape') {
-			if (picked || drag.active) message = 'Move cancelled.';
-			picked = null;
-			drag.cancel();
-		}
-		if (!picked || moveRef) return;
+		if (event.key === 'Escape') cancelCarry();
+		if (!picked || moveRef || !carriesKey(event)) return;
 		if (['ArrowLeft', 'ArrowRight'].includes(event.key)) {
 			event.preventDefault();
 			keyboardPane = event.key === 'ArrowLeft' ? 0 : Math.min(1, preview.projects.length - 1);
@@ -212,7 +300,7 @@
 			);
 		} else if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
-			stage(appendMove(picked, keyboardProject, keyboardParent));
+			stage(appendMove(picked, keyboardProject, keyboardParent), true);
 		}
 	}
 
@@ -262,24 +350,45 @@
 		if (!moves.length || locked || needsRefresh) return;
 		picked = null;
 		drag.cancel();
+		reviewReturn = document.activeElement;
 		await persistence.prepare(
 			{
 				moves: moves.map((move) => ({ ...move })),
-				project_versions: Object.fromEntries(baseline.map((p) => [p.id, p.updated_at]))
+				project_versions: Object.fromEntries(
+					baseline.map((p) => [p.id, String(p.structure.version)])
+				)
 			},
 			'apply'
 		);
+		if (!persistence.review) returnFocusAfterReview();
 	}
 	async function reviewUndo(id: string) {
-		if (!canUndo) {
+		if (moves.length) {
 			message = 'Apply or discard the pending plan before undoing a saved batch.';
+			return;
+		}
+		// A post-save refresh may still be loading; let it land so panes show the undo.
+		if (refreshing) await refreshing;
+		if (destroyed) return;
+		if (moves.length || persistence.busy || persistence.uncertain || persistence.review) {
+			message = 'Finish the current review before undoing a saved batch.';
 			return;
 		}
 		picked = null;
 		drag.cancel();
+		reviewReturn = document.activeElement;
 		await persistence.prepare({ source_batch_id: id }, 'undo');
+		if (!persistence.review) returnFocusAfterReview();
 	}
-	async function refreshProjects(): Promise<boolean> {
+	function refreshProjects(): Promise<boolean> {
+		const run = loadFreshProjects();
+		refreshing = run;
+		void run.finally(() => {
+			if (refreshing === run) refreshing = null;
+		});
+		return run;
+	}
+	async function loadFreshProjects(): Promise<boolean> {
 		if (loading || persistence.busy || persistence.uncertain) return false;
 		loading = true;
 		message = '';
@@ -338,6 +447,7 @@
 		moveRef = null;
 		drag.cancel();
 		needsRefresh = true;
+		const historyUrl = `${resolve('/projects/[id]/organize', { id: project.id })}?history=1`;
 		toastService.add({
 			type: 'success',
 			message: receiptMessage(receipt),
@@ -345,14 +455,40 @@
 			action: {
 				label: 'Undo',
 				onClick: () => {
-					void reviewUndo(receipt.batch_id);
+					// After leaving Organize this view is gone; reopen it on History.
+					if (destroyed) void goto(historyUrl);
+					else void reviewUndo(receipt.batch_id);
 				}
 			}
 		});
 		await refreshProjects();
 	}
 
+	async function discardAndLeave() {
+		const target = leaveUrl;
+		leaveUrl = null;
+		if (!target) return;
+		if (persistence.busy || persistence.uncertain) {
+			message = 'Finish checking the current request before leaving.';
+			return;
+		}
+		// Not resetPlan(): it refuses while a review is open or a refresh is loading.
+		persistence.closeReview();
+		moves = [];
+		selected = null;
+		picked = null;
+		moveRef = null;
+		drag.cancel();
+		leaving = true;
+		try {
+			await goto(target);
+		} finally {
+			leaving = false;
+		}
+	}
+
 	beforeNavigate((navigation) => {
+		if (leaving) return;
 		if (!moves.length && !persistence.busy && !persistence.uncertain) return;
 		navigation.cancel();
 		if (persistence.busy || persistence.uncertain) {
@@ -362,12 +498,14 @@
 		if (!navigation.willUnload) leaveUrl = navigation.to?.url.href ?? null;
 	});
 	onDestroy(() => {
+		destroyed = true;
 		controller?.abort();
 		persistence.destroy();
 		drag.cancel();
 	});
 	onMount(() => {
 		if (initialRef) openMove(initialRef);
+		else if (initialHistory) void persistence.openHistory();
 	});
 </script>
 
@@ -380,6 +518,7 @@
 />
 
 <div
+	bind:this={root}
 	class="mx-auto max-w-7xl px-3 py-5 sm:px-6"
 	class:select-none={!!drag.active}
 	class:pb-64={moves.length > 0}
@@ -403,6 +542,7 @@
 			<OrganizeProjectPicker
 				excludeId={project.id}
 				disabled={moves.length > 0 || locked || needsRefresh}
+				onopen={cancelCarry}
 				onchoose={chooseProject}
 			/>
 		</div>
@@ -524,17 +664,12 @@
 </div>
 
 {#if moveRef}
-	<Modal
-		isOpen={true}
-		title="Move to…"
-		size="sm"
-		variant="bottom-sheet"
-		onClose={() => (moveRef = null)}
-	>
+	<Modal isOpen={true} title="Move to…" size="sm" variant="bottom-sheet" onClose={closeMoveSheet}>
 		<div class="space-y-4 p-4">
 			<OrganizeProjectPicker
 				excludeId={project.id}
 				disabled={moves.length > 0 || locked || needsRefresh}
+				inline
 				onchoose={chooseProject}
 			/>
 			<label class="block text-sm font-medium"
@@ -570,7 +705,7 @@
 				class="w-full"
 				onclick={() => {
 					if (moveRef && destination)
-						stage(appendMove(moveRef, destination, moveParent || null));
+						stage(appendMove(moveRef, destination, moveParent || null), true);
 				}}>Add to plan</Button
 			>
 		</div>
@@ -592,12 +727,7 @@
 		title="Discard this plan?"
 		confirmText="Discard and leave"
 		oncancel={() => (leaveUrl = null)}
-		onconfirm={() => {
-			const target = leaveUrl!;
-			leaveUrl = null;
-			resetPlan();
-			void goto(target);
-		}}
+		onconfirm={discardAndLeave}
 	>
 		{#snippet content()}<p class="text-sm text-muted-foreground">
 				The {moves.length} staged moves on this page have not been saved.

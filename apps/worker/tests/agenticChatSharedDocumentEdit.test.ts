@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AgenticChatTableMutationAdapter } from '../src/workers/agentic-chat/mutations/table-adapter';
 import type { MutationInput } from '../src/workers/agentic-chat/mutations/adapter-boundary';
+import { createSharedDocumentConfirmationCheckPort } from '../src/workers/agentic-chat/mutations/shared-document-edit';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const [USER, SESSION, CHILD, PARENT, DOC, FOLDER, EFFECT, TURN, MESSAGE, ACTOR] = Array.from(
@@ -121,6 +122,7 @@ function fixture() {
 		rpc,
 		runGateway,
 		adapter,
+		client,
 		input,
 		preview,
 		get effect() {
@@ -270,5 +272,98 @@ describe('shared-document confirmation boundary', () => {
 			failureCode: 'shared_document_confirmation_changed'
 		});
 		expect(f.runGateway).not.toHaveBeenCalled();
+	});
+
+	describe('pre-review check', () => {
+		const check = (f: ReturnType<typeof fixture>, input: MutationInput) =>
+			createSharedDocumentConfirmationCheckPort(f.client).check({
+				executionInput: input.executionInput,
+				args: { ...input.arguments }
+			});
+		const dispatchFailure = async (f: ReturnType<typeof fixture>, input: MutationInput) => {
+			const error = await f.adapter.execute(input).then(
+				() => null,
+				(caught: { failureCode: string; message: string }) => caught
+			);
+			return error && { code: error.failureCode, message: error.message };
+		};
+
+		it('passes the exact later-turn edit without writing, then dispatch still re-checks', async () => {
+			const f = fixture();
+			await f.preview();
+			f.from.mockClear();
+			// drop_empty_props runs before hashing at dispatch; the check must match it.
+			const input = f.input(true, { props: {} });
+			await expect(check(f, input)).resolves.toBeNull();
+			expect(f.runGateway).not.toHaveBeenCalled();
+			expect(f.from.mock.calls.map(([table]) => table)).toEqual([
+				'onto_actors',
+				'chat_turn_effects'
+			]);
+			await expect(f.adapter.execute(input)).resolves.toHaveProperty(
+				'document.project_id',
+				PARENT
+			);
+			expect(f.from.mock.calls.filter(([table]) => table === 'chat_turn_effects')).toHaveLength(
+				2
+			);
+		});
+
+		it.each([
+			'same turn',
+			'same user message',
+			'another session',
+			'expired',
+			'changed edit',
+			'changed document',
+			'wrong token',
+			'not shared',
+			'archive'
+		])('fails %s with the identical dispatch error and no write', async (scenario) => {
+			const f = fixture();
+			await f.preview();
+			const input = f.input(true);
+			switch (scenario) {
+				case 'same turn':
+					input.executionInput.claim.turnRunId = TURN;
+					break;
+				case 'same user message':
+					input.executionInput.claim.userMessageId = MESSAGE;
+					break;
+				case 'another session':
+					f.effect.session_id = id(99);
+					break;
+				case 'expired':
+					input.executionInput.timingBaseline.admittedAt = '2026-10-02T12:03:00Z';
+					break;
+				case 'changed edit':
+					input.arguments.content = 'Other rates';
+					break;
+				case 'changed document':
+					f.family.shelf[0]!.updated_at = '2026-09-30T12:01:30Z';
+					break;
+				case 'wrong token':
+					input.arguments.confirmation_token = id(99);
+					break;
+				case 'not shared':
+					f.family.shelf = [];
+					break;
+				case 'archive':
+					input.arguments.state_key = 'archived';
+					break;
+			}
+			const early = await check(f, input);
+			expect(early).not.toBeNull();
+			expect(early).toEqual(await dispatchFailure(f, input));
+			expect(f.runGateway).not.toHaveBeenCalled();
+		});
+
+		it('leaves undecidable infrastructure failures to the dispatch check', async () => {
+			const f = fixture();
+			await f.preview();
+			f.rpc.mockResolvedValueOnce({ data: null, error: { message: 'timeout' } } as never);
+			await expect(check(f, f.input(true))).resolves.toBeNull();
+			expect(f.runGateway).not.toHaveBeenCalled();
+		});
 	});
 });

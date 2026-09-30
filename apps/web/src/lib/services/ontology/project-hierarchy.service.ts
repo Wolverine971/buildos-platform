@@ -2,8 +2,9 @@
 //
 // Project hierarchy, phase 1: set a project's parent and read its family
 // (parent, shared-docs shelf, children). Both go through RPCs that decide
-// access themselves (supabase/migrations/20260930130000_project_hierarchy_shared_shelf.sql),
-// so pass the signed-in user's client, never the admin client.
+// access themselves from auth.uid() (supabase/migrations/20260930130000_project_hierarchy_shared_shelf.sql,
+// 20260930211000_project_hierarchy_attach_detach.sql), so pass the signed-in
+// user's client, never the admin client, and don't pre-check roles in TypeScript.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -17,6 +18,7 @@ type Client = SupabaseClient<Database>;
 
 export type ProjectHierarchyErrorCode =
 	| 'access_denied'
+	| 'parent_admin_required'
 	| 'not_found'
 	| 'parent_not_found'
 	| 'parent_self'
@@ -41,11 +43,18 @@ const RPC_ERRORS: Record<
 	string,
 	{ code: ProjectHierarchyErrorCode; status: number; message: string }
 > = {
+	// Nesting needs admin on both projects; taking a project out needs admin on
+	// it or on its current parent. The RPC decides, and does not reveal whether
+	// a parent the caller cannot read exists.
 	project_parent_access_denied: {
 		code: 'access_denied',
 		status: 403,
-		message:
-			'You need admin access on this project and edit access on the parent project to do that.'
+		message: 'You need admin access to change where this project is nested.'
+	},
+	project_parent_admin_required: {
+		code: 'parent_admin_required',
+		status: 403,
+		message: 'Only an admin of the parent project can nest projects under it.'
 	},
 	project_family_access_denied: {
 		code: 'access_denied',

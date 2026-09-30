@@ -35,7 +35,8 @@ function childFamily(shelfCount = 3): ProjectFamilyV1 {
 			state_key: 'active',
 			can_write: true,
 			shared_folder_document_id: uuid(999),
-			child_count: 5
+			child_count: 5,
+			can_detach: false
 		},
 		shelf: Array.from({ length: shelfCount }, (_, index) => ({
 			id: uuid(index + 1),
@@ -63,7 +64,8 @@ function hubFamily(childCount = 3): ProjectFamilyV1 {
 			name: index === 0 ? 'Redline' : `Client ${index + 1}`,
 			state_key: index === 2 ? null : 'active',
 			next_step_short: index === 0 ? 'Send the Q4 proposal' : null,
-			updated_at: '2026-09-28T00:00:00Z'
+			updated_at: '2026-09-28T00:00:00Z',
+			can_detach: false
 		})),
 		own_shared_folder_document_id: uuid(999),
 		child_count: childCount + 1

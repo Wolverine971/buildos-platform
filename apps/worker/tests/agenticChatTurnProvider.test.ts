@@ -12033,6 +12033,169 @@ describe('SHA-bound mutation batch approval', () => {
 			expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 		});
 
+		describe('confirmed shared-document edit admission', () => {
+			const TOKEN = '80000000-0000-4000-8000-000000000001';
+			const confirmedArgs = {
+				document_id: DOCUMENT_ID,
+				title: 'Confirmed title',
+				confirmation_token: TOKEN
+			};
+			function confirmedEditRound(): AgenticChatTurnProviderClientEventV1[] {
+				return [
+					{
+						type: 'tool_call',
+						toolCall: [
+							{
+								index: 0,
+								id: 'shared-1',
+								type: 'function',
+								function: {
+									name: 'update_onto_document',
+									arguments: JSON.stringify(confirmedArgs)
+								}
+							}
+						]
+					},
+					{ type: 'done', finishedReason: 'tool_calls' }
+				];
+			}
+			function confirmedEditProvider(
+				client: AgenticChatTurnProviderClientPortV1,
+				semanticReviewer: AgenticChatTurnProviderClientPortV1,
+				check?: ReturnType<typeof vi.fn>
+			) {
+				const input = executionInputWithReadSurface(
+					[
+						readOnlyTurnToolDefinition(),
+						clarificationToolDefinition(),
+						ONTOLOGY_WRITE_TOOLS.find((tool) => tool.function.name === 'create_onto_task')!,
+						ONTOLOGY_WRITE_TOOLS.find(
+							(tool) => tool.function.name === 'update_onto_document'
+						)!
+					],
+					[
+						'declare_read_only_turn',
+						'request_turn_clarification',
+						'create_onto_task',
+						'update_onto_document'
+					]
+				);
+				input.requestPayload.message =
+					'Yes, rename the shared copy for all three projects, and add a follow-up task.';
+				const invocation = new AgenticChatTurnProviderAdapter(
+					{
+						client,
+						semanticReviewer,
+						capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+						...(check ? { sharedDocumentConfirmation: { check: check as never } } : {})
+					},
+					2_000,
+					16,
+					{ createOntoTask: true, updateOntoDocument: true },
+					true
+				).prepare({
+					executionInput: input,
+					processingToken: PROCESSING_TOKEN,
+					signal: new AbortController().signal
+				});
+				return { input, invocation };
+			}
+
+			it('reviews a confirmed edit proposed after an unreviewed direct write instead of failing the turn', async () => {
+				const client = clientWithRounds([
+					[
+						{
+							type: 'tool_call',
+							toolCall: [
+								{
+									index: 0,
+									id: 'direct-create',
+									type: 'function',
+									function: {
+										name: 'create_onto_task',
+										arguments: JSON.stringify({
+											project_id: PROJECT_ID,
+											title: 'Follow up'
+										})
+									}
+								}
+							]
+						},
+						{ type: 'done', finishedReason: 'tool_calls' }
+					],
+					confirmedEditRound()
+				]);
+				const reviewer = approvingReviewer();
+				const check = vi.fn(async () => null);
+				const { input, invocation } = confirmedEditProvider(client, reviewer, check);
+				const prepared = await invocation;
+				const opening = await collect(prepared.stream());
+				const direct = opening.find((step) => step.type === 'mutating_tool');
+				if (!direct || direct.type !== 'mutating_tool') throw new Error('Missing direct write');
+				expect(reviewer.stream).not.toHaveBeenCalled();
+				// The direct write reached execution, so the turn is now `mutating`
+				// without a reviewed stage behind it.
+				const held = await collect(
+					prepared.continueWithToolResults!({
+						round: 2,
+						results: [
+							failedMutationFeedback({
+								providerToolCallId: direct.providerToolCallId,
+								toolName: 'create_onto_task',
+								arguments: direct.arguments,
+								error: 'Task create failed; nothing was saved.'
+							})
+						]
+					})
+				);
+				expect(held.some((step) => step.type === 'mutating_tool')).toBe(false);
+				expect(reviewer.stream).toHaveBeenCalledTimes(1);
+				expect(check).toHaveBeenCalledTimes(1);
+				expect(check).toHaveBeenCalledWith({ executionInput: input, args: confirmedArgs });
+				const executed = await collect(
+					prepared.continueWithToolResults!({
+						round: 3,
+						results: [approvalFeedback(held)]
+					})
+				);
+				expect(executed.filter((step) => step.type === 'mutating_tool')).toEqual([
+					expect.objectContaining({
+						toolName: 'update_onto_document',
+						arguments: confirmedArgs
+					})
+				]);
+			});
+
+			it('fails a stale confirmation before the paid review with the dispatch error', async () => {
+				const failure = {
+					code: 'shared_document_confirmation_changed',
+					message:
+						'This confirmation is missing, expired, or no longer matches the edit and shared document. Request a fresh preview without a token, then wait for the user to confirm in a later turn. Nothing was changed.'
+				};
+				const check = vi.fn(async () => failure);
+				const client = clientWithRounds([
+					confirmedEditRound(),
+					[
+						{ type: 'text', content: 'That confirmation expired, so nothing changed.' },
+						{ type: 'done', finishedReason: 'stop' }
+					]
+				]);
+				const reviewer = clientWithRounds([]);
+				const { invocation } = confirmedEditProvider(client, reviewer, check);
+				const steps = await collect((await invocation).stream());
+				expect(reviewer.stream).not.toHaveBeenCalled();
+				expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+				const rejected = steps.find(
+					(step) => step.type === 'read_tool' && step.validationFailure
+				);
+				expect(JSON.stringify(rejected)).toContain(failure.message);
+				expect(JSON.stringify(client.stream.mock.calls[1]![0].messages)).toContain(
+					failure.message
+				);
+				expect(steps.at(-1)).toMatchObject({ type: 'finish' });
+			});
+		});
+
 		it('binds archive publication facts to approval and executes only the reviewed snapshot', async () => {
 			const archiveProjectId = '10000000-0000-4000-8000-000000000001';
 			const archiveInput = documentSurface();
@@ -13598,6 +13761,46 @@ describe('SHA-bound mutation batch approval', () => {
 		expect(final.at(-1)).toMatchObject({ finishedReason: 'mutation_unfulfilled' });
 		expect(client.stream).toHaveBeenCalledTimes(3);
 		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+	});
+	it('still owes unfinished work when a saved write only needs a calendar reconnect', async () => {
+		const done = [
+			{ type: 'text', content: 'Everything is done.' },
+			{ type: 'done', finishedReason: 'stop' }
+		] as AgenticChatTurnProviderClientEventV1[];
+		const client = clientWithRounds([proposedBatchRound(), done, done]);
+		const reviewer = approvingReviewer(undefined, requestChecklist(true));
+		const invocation = await batchProvider(client, reviewer);
+		const review = await collect(invocation.stream());
+		const creates = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [approvalFeedback(review)] })
+		);
+		const results = successfulWrites(creates);
+		// The BuildOS record saved; only its Google copy waits on a reconnect.
+		results[0]!.execution.result = {
+			...results[0]!.execution.result,
+			error_code: 'reconnect_required',
+			status: 'browser_handoff_required',
+			requires_user_action: true,
+			client_action: {
+				kind: 'connect_google_calendar',
+				mode: 'reconnect',
+				title: 'Reconnect Google Calendar'
+			}
+		};
+		results[0]!.execution.requiresUserAction = true;
+		const final = await collect(invocation.continueWithToolResults!({ round: 3, results }));
+		expect(client.stream).toHaveBeenCalledTimes(3);
+		expect(client.stream.mock.calls[2]![0]).toMatchObject({
+			passRole: 'repair',
+			toolChoice: 'auto'
+		});
+		const text = final
+			.filter((step) => step.type === 'text_delta')
+			.map((step) => step.text)
+			.join('');
+		expect(text).toContain('Cabinets depends on Permit');
+		expect(text).not.toContain('Everything is done');
+		expect(final.at(-1)).toMatchObject({ finishedReason: 'mutation_unfulfilled' });
 	});
 	it.each(['Nothing more to propose:', 'Creating the tasks was completed successfully.'])(
 		'does not trigger a wording-based repair after the complete checklist is satisfied: %s',

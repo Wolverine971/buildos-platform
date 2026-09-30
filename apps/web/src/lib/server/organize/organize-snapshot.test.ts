@@ -1,7 +1,8 @@
 // apps/web/src/lib/server/organize/organize-snapshot.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadOrganizeSnapshot } from './organize-snapshot';
 import { organizeFixtures } from '$lib/components/organize/organize-fixtures';
+import { tryGetProjectFamily } from '$lib/services/ontology/project-hierarchy.service';
 
 vi.mock('$lib/services/ontology/project-hierarchy.service', () => ({
 	tryGetProjectFamily: vi.fn(async () => ({ child_count: 0, parent: null, children: [] }))
@@ -68,6 +69,7 @@ function mockClient(
 }
 
 describe('Organize snapshot reads', () => {
+	beforeEach(() => vi.clearAllMocks());
 	it('does not read project contents without membership', async () => {
 		const { client, from } = mockClient({ read: false });
 		await expect(loadOrganizeSnapshot(client, 'source')).rejects.toMatchObject({ status: 403 });
@@ -97,6 +99,22 @@ describe('Organize snapshot reads', () => {
 		await expect(
 			loadOrganizeSnapshot(mockClient({ documentsError: true }).client, 'source')
 		).rejects.toThrow('Could not load project items');
+	});
+	it('skips access and family lookups when the caller already checked edit access', async () => {
+		const { client, rpc, calls } = mockClient({ read: false, write: false });
+		const result = await loadOrganizeSnapshot(client, 'source', { writeChecked: true });
+		expect(rpc).not.toHaveBeenCalled();
+		expect(tryGetProjectFamily).not.toHaveBeenCalled();
+		expect(result.project.can_write).toBe(true);
+		expect(result.project.shared_with_count).toBeNull();
+		expect(result.related_projects).toEqual([]);
+		expect(calls).toContainEqual(['onto_documents', 'neq', ['state_key', 'archived']]);
+	});
+	it('still rejects archived projects on the write path', async () => {
+		const { client } = mockClient({ archived: true });
+		await expect(
+			loadOrganizeSnapshot(client, 'source', { writeChecked: true })
+		).rejects.toMatchObject({ status: 409 });
 	});
 	it('rejects archived projects before loading their entities', async () => {
 		const { client, from } = mockClient({ archived: true });

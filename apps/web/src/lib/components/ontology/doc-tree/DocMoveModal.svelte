@@ -25,6 +25,8 @@
 		documents: Record<string, OntoDocument>;
 		onClose: () => void;
 		onMove: (newParentId: string | null) => void;
+		/** The project's "Shared with sub-projects" folder (or a folder holding it) stays put. */
+		pinned?: boolean;
 	}
 
 	let {
@@ -34,7 +36,8 @@
 		structure,
 		documents,
 		onClose,
-		onMove
+		onMove,
+		pinned = false
 	}: Props = $props();
 
 	let selectedParentId = $state<string | null>(null);
@@ -104,6 +107,7 @@
 	}
 
 	function handleMove() {
+		if (pinned) return;
 		if (selectedParentId === currentParentId) {
 			onClose();
 			return;
@@ -134,6 +138,11 @@
 				{documentTitle}
 			</p>
 		</div>
+		{#if pinned}
+			<p class="px-4 text-sm text-muted-foreground" role="note">
+				This folder is pinned to the project so its sub-projects keep seeing what's inside.
+			</p>
+		{/if}
 
 		<!-- Destination picker -->
 		<div class="border border-border rounded-lg max-h-[300px] overflow-y-auto">
@@ -263,7 +272,7 @@
 			class="flex justify-end gap-3 px-3 sm:px-4 py-3 sm:py-4 border-t border-border bg-muted/30"
 		>
 			<Button variant="ghost" onclick={handleClose} disabled={moving}>Cancel</Button>
-			<Button variant="primary" onclick={handleMove} disabled={moving}>
+			<Button variant="primary" onclick={handleMove} disabled={moving || pinned}>
 				{#if moving}
 					<Loader class="w-4 h-4 animate-spin mr-2" />
 				{/if}

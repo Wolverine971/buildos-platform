@@ -28,7 +28,13 @@
 	aria-label="Pending changes"
 >
 	<div class="flex flex-wrap items-center justify-between gap-2">
-		<h2 class="text-sm font-semibold text-foreground" aria-live="polite">
+		<!-- Focus fallback after a staged move or review when its row is gone. -->
+		<h2
+			class="rounded text-sm font-semibold text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+			aria-live="polite"
+			tabindex="-1"
+			data-organize-tray-heading
+		>
 			{changes.length} pending {changes.length === 1 ? 'move' : 'moves'}
 		</h2>
 		<div class="flex flex-wrap items-center gap-2">

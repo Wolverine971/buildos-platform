@@ -1,7 +1,7 @@
 // apps/web/src/lib/server/organize/organize-http.ts
 import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
-import { OrganizeError, OrganizeSnapshotError } from './organize-service';
+import { MAX_ORGANIZE_PROJECTS, OrganizeError, OrganizeSnapshotError } from './organize-service';
 const uuid = z.string().uuid();
 export const organizeRequest = z
 	.object({
@@ -19,8 +19,15 @@ export const organizeRequest = z
 					.strict()
 			)
 			.min(1)
-			.max(200),
-		project_versions: z.record(uuid, z.string().datetime({ offset: true }))
+			.max(200)
+			// Checked before any project is read (SQL enforces the same cap under lock).
+			.refine(
+				(moves) =>
+					new Set(moves.flatMap((m) => [m.project_id, m.destination_project_id])).size <=
+					MAX_ORGANIZE_PROJECTS,
+				`A batch can touch at most ${MAX_ORGANIZE_PROJECTS} projects.`
+			),
+		project_versions: z.record(uuid, z.string().min(1).max(64))
 	})
 	.strict();
 export const organizeApplyRequest = organizeRequest.extend({

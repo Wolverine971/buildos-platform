@@ -52,6 +52,7 @@ import {
 import type { AgenticChatProviderCapacityLeaseV1 } from './provider-capacity';
 import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
 import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
+import { isSharedDocumentConfirmation } from '../mutations/shared-document-edit';
 import {
 	buildContractCompletionRequest,
 	buildTurnContractWriteCarveOutRequest
@@ -137,6 +138,8 @@ export type PendingToolRound = {
 
 export type ToolRoundStreamState = {
 	turnRunId: string;
+	/** The immutable admitted turn: claim, timing baseline, and request context. */
+	readonly executionInput: AgenticChatProviderInputV1['executionInput'];
 	release(): void;
 	getAdmittedTools(): readonly AgenticChatTurnProviderToolV1[];
 	setPendingToolRound(value: PendingToolRound): void;
@@ -293,6 +296,7 @@ type HeldMutationBatch = {
  */
 export class ProviderTurnState implements ToolRoundStreamState {
 	readonly turnRunId: string;
+	readonly executionInput: AgenticChatProviderInputV1['executionInput'];
 
 	private readonly baseRequest: ClientRequest;
 	private readonly admittedTools: readonly AgenticChatTurnProviderToolV1[];
@@ -380,6 +384,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	constructor(init: ProviderTurnStateInit) {
 		this.baseRequest = init.baseRequest;
 		this.turnRunId = init.baseRequest.turnRunId;
+		this.executionInput = init.executionInput;
 		this.admittedTools = init.admittedTools;
 		this.lease = init.lease;
 		this.semanticReviewRequired = init.semanticReviewRequired;
@@ -665,11 +670,16 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		| { replayRefusal: true; fallback: string; finishedReason: 'stop' | 'mutation_unfulfilled' }
 		| null {
 		if (!this.semanticReviewRequired || !this.mutationBatchLaneEnabled) return null;
+		// A confirmed shared-document edit has no direct lane: it always takes
+		// independent review, including after an unreviewed direct write already
+		// ran this turn ("Yes, and mark task X done"). Refusing it there failed the
+		// whole turn after a write had landed.
+		const confirmedSharedEdit = calls.some(isConfirmedSharedDocumentCall);
 		if (
 			!(
 				dispositionPending(this.phase) ||
 				this.phase === 'batch_withheld' ||
-				(this.phase === 'mutating' && this.reviewedBatchExecuted)
+				(this.phase === 'mutating' && (this.reviewedBatchExecuted || confirmedSharedEdit))
 			) ||
 			!calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))
 		) {
@@ -677,6 +687,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		}
 		if (
 			!this.reviewedBatchExecuted &&
+			!confirmedSharedEdit &&
 			assessDirectWriteBatch(calls, this.directWriteContext(value)).kind === 'simple'
 		) {
 			return null;
@@ -847,7 +858,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	takeRequestCompletionContinuation(value: ClientRequest): ClientRequest | null {
-		if (this.awaitingUserAction()) return null;
+		if (this.awaitingSharedDocumentConfirmation()) return null;
 		const expectation = this.requestExpectation;
 		if (
 			!this.reviewedBatchExecuted ||
@@ -883,7 +894,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	getRequestCompletionFallback(): string | null {
-		if (this.awaitingUserAction()) return null;
+		if (this.awaitingSharedDocumentConfirmation()) return null;
 		if (!this.reviewedBatchExecuted) return null;
 		const expectation = this.requestExpectation;
 		const remaining = this.unfinishedContractOutcomeDescriptions();
@@ -1485,20 +1496,26 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			: new Map();
 	}
 
+	/**
+	 * A shared-document preview saved nothing and ends the turn on the user's
+	 * confirmation question, so it must not be retried or replaced with an
+	 * unfinished-work fallback. Only that structured receipt counts. Other
+	 * `requires_user_action` results (a calendar reconnect after a saved write,
+	 * an email or task-move confirmation, a clarification) leave the rest of
+	 * the request owed, and the completion checks still apply to them.
+	 */
+	private awaitingSharedDocumentConfirmation(): boolean {
+		return this.turnToolExecutions.some(isPendingSharedDocumentPreview);
+	}
+
 	// After the first mutation round the write carve-out is spent, yet the
 	// approved contract may still have outcomes left (create folders, then
 	// move documents into them). The live organize failures all ended here:
 	// folders created, moves never proposed, prose accepted. One bounded
 	// continuation returns the model to the unfinished outcomes.
-	private awaitingUserAction(): boolean {
-		return this.turnToolExecutions.some(
-			(execution) => execution.result.success && doesToolExecutionRequireUserAction(execution)
-		);
-	}
-
 	private incompleteApprovedContractResolution() {
 		// Confirmation is a successful preview, not unfinished work to retry.
-		if (this.awaitingUserAction()) return null;
+		if (this.awaitingSharedDocumentConfirmation()) return null;
 		const turnContract = this.turnContract;
 		if (
 			!turnContract ||
@@ -1587,4 +1604,20 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			attachedAssetIds: this.attachedAssetIds
 		};
 	}
+}
+
+/** The token-bearing repeat of a previewed shared-document edit. */
+function isConfirmedSharedDocumentCall(call: CompletedProviderToolCall): boolean {
+	return (
+		call.name === 'update_onto_document' && Object.hasOwn(call.arguments, 'confirmation_token')
+	);
+}
+
+/** Structured receipt fields only; the adapter returns the preview receipt as the result. */
+function isPendingSharedDocumentPreview(execution: FastToolExecution): boolean {
+	return (
+		execution.result.success === true &&
+		execution.toolCall.function?.name === 'update_onto_document' &&
+		isSharedDocumentConfirmation(execution.result.result)
+	);
 }

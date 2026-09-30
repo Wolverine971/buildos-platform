@@ -79,18 +79,24 @@ async function defaultHandler(path: string, body: any): Promise<Response> {
 	if (path.includes('/history?')) return respond({ batches });
 	throw new Error(`Unexpected request: ${path}`);
 }
-function setup(initialRef = false) {
+function setup(initialRef = false, initialHistory = false) {
 	const [project, secondaryProject] = organizeFixtures();
 	return render(OrganizeView, {
 		project: project!,
 		secondaryProject,
+		initialHistory,
 		...(initialRef
 			? { initialRef: { kind: 'document' as const, id: 'brief', project_id: 'source' } }
 			: {})
 	});
 }
+function leaveTo(href: string) {
+	const cancel = vi.fn();
+	nav.beforeNavigate.mock.calls[0]![0]({ cancel, willUnload: false, to: { url: new URL(href) } });
+	return cancel;
+}
 async function stage() {
-	await fireEvent.keyDown(screen.getByRole('button', { name: 'Brief', exact: true }), {
+	await fireEvent.keyDown(screen.getByRole('button', { name: 'Brief' }), {
 		key: ' '
 	});
 	await fireEvent.keyDown(window, { key: 'ArrowRight' });
@@ -143,15 +149,14 @@ describe('Organize persistence', () => {
 		expect(screen.getByText('0 pending moves')).toBeInTheDocument();
 		expect(
 			within(screen.getByRole('region', { name: 'Business' })).getByRole('button', {
-				name: 'Brief',
-				exact: true
+				name: 'Brief'
 			})
 		).toBeInTheDocument();
 		const written = requests.filter((r) => r.path.endsWith('/apply'));
 		expect(written).toHaveLength(1);
 		expect(written[0]!.body).toMatchObject({
 			confirmation_token: token,
-			project_versions: { source: '2026-09-30T12:00:00Z', dest: '2026-09-30T12:00:00Z' }
+			project_versions: { source: '4', dest: '8' }
 		});
 		expect(written[0]!.body.batch_id).toMatch(/^[a-f0-9-]{36}$/);
 		expect(written[0]!.body).not.toHaveProperty('trees');
@@ -206,7 +211,11 @@ describe('Organize persistence', () => {
 		let writes = 0;
 		handler = (path, body) => {
 			if (path.endsWith('/apply') && ++writes === 1) {
-				projects = projects.map((p) => ({ ...p, updated_at: '2026-09-30T14:00:00Z' }));
+				projects = projects.map((p) => ({
+					...p,
+					updated_at: '2026-09-30T14:00:00Z',
+					structure: { ...p.structure, version: p.structure.version + 1 }
+				}));
 				return respond(
 					'The projects or move impact changed. Preview again before applying.',
 					409
@@ -220,7 +229,7 @@ describe('Organize persistence', () => {
 		const apply = await screen.findByRole('button', { name: 'Apply changes' });
 		expect(
 			requests.filter((r) => r.path.endsWith('/preview')).at(-1)!.body.project_versions.source
-		).toBe('2026-09-30T14:00:00Z');
+		).toBe('5');
 		await fireEvent.click(apply);
 		await waitFor(() => expect(screen.getByText('Applied 1 move')).toBeInTheDocument());
 	});
@@ -300,6 +309,71 @@ describe('Organize persistence', () => {
 		expect(await screen.findByRole('button', { name: 'Add to plan' })).toBeInTheDocument();
 		expect(screen.getByRole('combobox', { name: 'Project' })).toHaveValue('dest');
 		expect(requests).toHaveLength(0);
+	});
+	it('discards and leaves even while the review is open', async () => {
+		setup();
+		await reviewPlan();
+		expect(leaveTo('http://localhost/projects')).toHaveBeenCalledOnce();
+		const reentries: ReturnType<typeof leaveTo>[] = [];
+		// The real goto runs beforeNavigate again before it leaves.
+		nav.goto.mockImplementation(async () => {
+			reentries.push(leaveTo('http://localhost/projects'));
+		});
+		await fireEvent.click(await screen.findByRole('button', { name: 'Discard and leave' }));
+		expect(nav.goto).toHaveBeenCalledWith('http://localhost/projects');
+		expect(reentries).toHaveLength(1);
+		expect(reentries[0]).not.toHaveBeenCalled();
+		await waitFor(() => expect(screen.queryByText('Discard this plan?')).toBeNull());
+		expect(screen.queryByRole('button', { name: 'Apply changes' })).toBeNull();
+		expect(requests.some((r) => r.path.endsWith('/apply'))).toBe(false);
+	});
+	it('lets the toast Undo review a saved batch while the pane refresh is loading', async () => {
+		let release!: () => void;
+		const refreshGate = new Promise<void>((resolve) => (release = resolve));
+		handler = async (path, body) => {
+			if (path.includes('/snapshot?')) await refreshGate;
+			return defaultHandler(path, body);
+		};
+		setup();
+		await fireEvent.click(await reviewPlan());
+		await waitFor(() => expect(toast.add).toHaveBeenCalled());
+		toast.add.mock.calls[0]![0].action.onClick();
+		expect(screen.queryByText(/Apply or discard the pending plan/)).toBeNull();
+		release();
+		expect(await screen.findByRole('button', { name: 'Apply undo' })).toBeEnabled();
+	});
+	it('lets the toast Undo review a saved batch after the pane refresh failed', async () => {
+		handler = (path, body) =>
+			path.includes('/snapshot?')
+				? respond('Refresh unavailable', 503)
+				: defaultHandler(path, body);
+		setup();
+		await fireEvent.click(await reviewPlan());
+		await screen.findByText(
+			'Changes are saved. Refresh the projects to see their current contents.'
+		);
+		toast.add.mock.calls[0]![0].action.onClick();
+		expect(await screen.findByRole('button', { name: 'Apply undo' })).toBeEnabled();
+	});
+	it('sends the toast Undo to Organize History after leaving the page', async () => {
+		const view = setup();
+		await save();
+		view.unmount();
+		toast.add.mock.calls[0]![0].action.onClick();
+		expect(nav.goto).toHaveBeenCalledWith('/projects/source/organize?history=1');
+	});
+	it('opens History on arrival from that link', async () => {
+		setup(false, true);
+		expect(await screen.findByText('No saved Organize moves yet.')).toBeInTheDocument();
+	});
+	it('returns focus to the review button when the review closes', async () => {
+		setup();
+		await stage();
+		const review = screen.getByRole('button', { name: 'Review changes' });
+		review.focus();
+		await fireEvent.click(review);
+		await fireEvent.click(await screen.findByRole('button', { name: 'Back to plan' }));
+		await waitFor(() => expect(document.activeElement).toBe(review));
 	});
 	it('supports the command-enter review shortcut without saving immediately', async () => {
 		setup();

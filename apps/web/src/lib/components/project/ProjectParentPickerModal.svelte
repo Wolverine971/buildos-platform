@@ -3,7 +3,9 @@
 	"Move under…": pick the project this one belongs to, or remove it from its
 	current parent. One level only: a project with sub-projects can't move under
 	another, and the server rejects loops and child-as-parent with a 409 whose
-	message is shown as-is.
+	message is shown as-is (as is a 403 when the viewer isn't an admin of the
+	chosen parent). A parent's admin who can't move this project sees only
+	"Remove from …" (`canMove` false).
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
@@ -31,13 +33,14 @@
 		X
 	} from '$lib/icons/lucide';
 	import type { ProjectFamilyV1, ProjectSetParentResultV1 } from '@buildos/shared-types';
-	import { setProjectParent } from './project-family';
+	import { possessive, setProjectParent } from './project-family';
 
 	let {
 		isOpen = $bindable(false),
 		projectId,
 		projectName,
 		family,
+		canMove = true,
 		onClose,
 		onChanged
 	}: {
@@ -45,6 +48,8 @@
 		projectId: string;
 		projectName: string;
 		family: ProjectFamilyV1 | null;
+		/** Whether the viewer may put this project under another (admin here). */
+		canMove?: boolean;
 		onClose: () => void;
 		onChanged?: (result: ProjectSetParentResultV1) => void | Promise<void>;
 	} = $props();
@@ -61,6 +66,7 @@
 
 	const displayName = $derived(projectName || 'This project');
 	const currentParent = $derived(family?.parent ?? null);
+	const canRemove = $derived(canMove || currentParent?.can_detach === true);
 	const subProjectCount = $derived(family?.child_count ?? 0);
 	const hasSubProjects = $derived(subProjectCount > 0);
 	const subProjectIds = $derived(new Set((family?.children ?? []).map((child) => child.id)));
@@ -105,7 +111,7 @@
 
 	// Load while open; searches are debounced, the default list loads at once.
 	$effect(() => {
-		if (!browser || !isOpen || hasSubProjects) return;
+		if (!browser || !isOpen || hasSubProjects || !canMove) return;
 		const search = normalizedSearch;
 		if (!search) {
 			untrack(() => void loadResults(''));
@@ -158,17 +164,21 @@
 <Modal
 	bind:isOpen
 	onClose={close}
-	title="Move under another project"
+	title={canMove
+		? 'Move under another project'
+		: `Remove from ${currentParent?.name || 'parent project'}`}
 	size="md"
 	variant="bottom-sheet"
 	closeOnEscape={!saving}
 	closeOnBackdrop={!saving}
 >
 	<div class="space-y-3 p-3 sm:p-4">
-		<p class="text-sm text-muted-foreground">
-			Put <span class="font-semibold text-foreground">{displayName}</span> inside the project it
-			belongs to. Documents shared by that project will show on this project's Docs tab.
-		</p>
+		{#if canMove}
+			<p class="text-sm text-muted-foreground">
+				Put <span class="font-semibold text-foreground">{displayName}</span> inside the project
+				it belongs to. Documents shared by that project will show on this project's Docs tab.
+			</p>
+		{/if}
 
 		{#if currentParent}
 			<div
@@ -181,20 +191,28 @@
 						{currentParent.name || 'Untitled project'}
 					</p>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					icon={X}
-					loading={saving === 'remove'}
-					disabled={saving !== null}
-					onclick={() => applyParent(null, currentParent?.name || 'the parent project')}
-				>
-					Remove from {currentParent.name || 'parent'}
-				</Button>
+				{#if canRemove}
+					<Button
+						variant="outline"
+						size="sm"
+						icon={X}
+						loading={saving === 'remove'}
+						disabled={saving !== null}
+						onclick={() =>
+							applyParent(null, currentParent?.name || 'the parent project')}
+					>
+						Remove from {currentParent.name || 'parent'}
+					</Button>
+					<p class="basis-full text-xs text-muted-foreground">
+						It keeps all its docs and tasks. It will stop showing {possessive(
+							currentParent.name || 'the parent project'
+						)} shared docs.
+					</p>
+				{/if}
 			</div>
 		{/if}
 
-		{#if hasSubProjects}
+		{#if canMove && hasSubProjects}
 			<div
 				class="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 tx tx-static tx-weak"
 				role="note"
@@ -206,7 +224,7 @@
 					another project. Projects nest one level deep for now.
 				</p>
 			</div>
-		{:else}
+		{:else if canMove}
 			<div class="relative tx tx-grid tx-weak rounded-lg">
 				<Search
 					class="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -215,6 +233,7 @@
 				<input
 					type="search"
 					bind:value={searchTerm}
+					data-autofocus
 					placeholder="Search projects..."
 					aria-label="Search projects"
 					class="relative min-h-11 w-full rounded-lg border border-border-strong bg-background py-2 pl-9 pr-3 text-base text-foreground shadow-ink-inner placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring sm:text-sm [&::-webkit-search-cancel-button]:appearance-none"
@@ -302,25 +321,25 @@
 				{/if}
 			</div>
 		{/if}
+	</div>
 
+	{#snippet footer()}
+		<!-- Errors sit by the buttons that caused them; the list above may be scrolled. -->
 		{#if errorMessage}
 			<p
-				class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-foreground"
+				class="mx-3 my-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-foreground sm:mx-4"
 				role="alert"
 			>
 				{errorMessage}
 			</p>
 		{/if}
-	</div>
-
-	{#snippet footer()}
 		<div
 			class="flex items-center justify-end gap-2 border-t border-border px-3 py-2 sm:px-4 sm:py-3"
 		>
 			<Button variant="ghost" size="sm" onclick={close} disabled={saving !== null}>
 				Cancel
 			</Button>
-			{#if !hasSubProjects}
+			{#if canMove && !hasSubProjects}
 				<Button
 					variant="primary"
 					size="sm"

@@ -40,7 +40,15 @@ describe('parseProjectFamilyV1', () => {
 			project_id: 'child',
 			parent: null,
 			shelf: [{ id: 'leak', title: 'Should not appear' }],
-			children: [{ id: 'kid', name: 'Redline', state_key: 'active', next_step_short: null }],
+			children: [
+				{
+					id: 'kid',
+					name: 'Redline',
+					state_key: 'active',
+					next_step_short: null,
+					can_detach: true
+				}
+			],
 			own_shared_folder_document_id: 'folder',
 			child_count: 2
 		});
@@ -52,7 +60,8 @@ describe('parseProjectFamilyV1', () => {
 				name: 'Redline',
 				state_key: 'active',
 				next_step_short: null,
-				updated_at: ''
+				updated_at: '',
+				can_detach: true
 			}
 		]);
 		expect(family?.child_count).toBe(2);

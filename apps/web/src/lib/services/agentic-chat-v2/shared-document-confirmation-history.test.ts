@@ -72,9 +72,32 @@ describe('shared document confirmation history', () => {
 		expect(history.map((message) => message.role)).toEqual(['assistant', 'tool', 'assistant']);
 		expect(JSON.parse(history[0]!.tool_calls![0]!.function.arguments)).toEqual(row.arguments);
 		expect(JSON.parse(history[1]!.content)).toEqual(row.result);
-		expect(history[1]!.tool_call_id).toBe('preview-1');
+		expect(history[0]!.tool_calls![0]!.id).toBe('shared-preview-token');
+		expect(history[1]!.tool_call_id).toBe('shared-preview-token');
 		expect(history[0]!.sourceMessageId).toBeNull();
 		expect(history[2]!.sourceMessageId).toBe('warning');
+	});
+
+	it('never reuses a recalled provider call id that could collide with this turn', () => {
+		const history = sharedDocumentConfirmationHistory(
+			[
+				{ ...row, provider_tool_call_id: 'call_0' },
+				{
+					...row,
+					provider_tool_call_id: null,
+					result: { ...row.result, confirmation_token: 'token-2' }
+				}
+			],
+			'warning'
+		);
+		expect(history.map((message) => message.tool_calls?.[0]?.id ?? message.tool_call_id)).toEqual(
+			[
+				'shared-preview-token',
+				'shared-preview-token',
+				'shared-preview-token-2',
+				'shared-preview-token-2'
+			]
+		);
 	});
 
 	it('does not resurrect older, failed, or committed document edits as confirmations', () => {

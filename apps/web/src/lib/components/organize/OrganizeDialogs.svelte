@@ -145,7 +145,7 @@
 				Your latest 30 batches for this project. Undo preserves content edits and skips
 				items moved or reordered since the batch. Undo a reversal to redo its moves.
 			</p>
-			{#if !canUndo}<p class="text-sm text-muted-foreground">
+			{#if changes.length}<p class="text-sm text-muted-foreground">
 					Apply or discard your pending plan before undoing a saved batch.
 				</p>{/if}
 			{#if persistence.historyLoading}<p role="status" class="text-sm text-muted-foreground">

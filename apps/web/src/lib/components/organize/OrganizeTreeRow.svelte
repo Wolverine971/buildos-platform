@@ -42,6 +42,7 @@
 		type="button"
 		class="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left hover:bg-muted/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
 		data-organize-row
+		data-organize-id={ref.id}
 		data-organize-drop
 		data-project-id={ref.project_id}
 		data-document-id={ref.kind === 'document' ? ref.id : undefined}

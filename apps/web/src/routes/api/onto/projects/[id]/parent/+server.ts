@@ -1,9 +1,11 @@
 // apps/web/src/routes/api/onto/projects/[id]/parent/+server.ts
 //
 // PUT { parent_project_id: string | null } — place this project under a parent
-// project, or take it out (null). Needs admin on this project and write on the
-// parent; the RPC checks both and creates the parent's "Shared with
-// sub-projects" folder on first use.
+// project, or take it out (null). Nesting needs admin on this project and on
+// the parent; taking it out needs admin on this project or on its current
+// parent. The RPC decides from the session (so no role pre-check here, which
+// would block a parent admin from detaching) and creates the parent's "Shared
+// with sub-projects" folder on first use.
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';

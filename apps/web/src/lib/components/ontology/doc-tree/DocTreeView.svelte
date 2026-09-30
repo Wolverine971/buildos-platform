@@ -53,6 +53,7 @@
 	import { projectImageEvents } from '$lib/stores/projectImageEvents';
 	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { createDragDropState } from './useDragDrop.svelte';
+	import { containsPinnedNode } from './drop-geometry';
 	import { enrichTreeNodes, collectDocIds } from '$lib/services/ontology/doc-structure.service';
 	import type {
 		DocStructure,
@@ -581,6 +582,18 @@
 		contextMenuNode = null;
 	}
 
+	function movePinned(nodeId: string): boolean {
+		return containsPinnedNode(nodeId, {
+			getParentId: (id) => parentMap.get(id) ?? null,
+			getNodeIndex: (id) => indexMap.get(id) ?? 0,
+			getDescendantIds: (id) => {
+				const node = nodeMap.get(id);
+				return node?.children ? collectDocIds(node.children) : new Set<string>();
+			},
+			isPinned: (id) => id === sharedFolderId
+		});
+	}
+
 	// Context menu actions
 	function handleContextAction(action: string) {
 		if (!contextMenuNode) return;
@@ -593,6 +606,11 @@
 				onCreateDocument(contextMenuNode.id);
 				break;
 			case 'move':
+				// Same pin as drag and cut/paste: the shared folder (or a folder holding it) stays put.
+				if (movePinned(contextMenuNode.id)) {
+					toastService.info('This folder is pinned to the project');
+					break;
+				}
 				onMoveDocument?.(contextMenuNode.id);
 				break;
 			case 'archive':

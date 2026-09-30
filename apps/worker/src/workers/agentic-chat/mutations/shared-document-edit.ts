@@ -2,6 +2,7 @@
 // The ordinary gateway stays project-fenced. This exception is only for one
 // live document on the focused child's shared shelf, after a later user turn.
 import { createHash } from 'node:crypto';
+import { isDocumentArchiveState } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	canonicalizeAgenticChatJson,
 	parseProjectFamilyV1,
@@ -9,7 +10,18 @@ import {
 	type JsonObject
 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { canonicalUuid, isRecord, knownFailure, type MutationInput } from './adapter-boundary';
+import {
+	canonicalUuid,
+	isRecord,
+	knownFailure,
+	requestProjectId,
+	requiredUuid,
+	type MutationInput
+} from './adapter-boundary';
+import { AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1 } from './argument-normalizers';
+import type { AgenticChatMutationExecutionContextV1 } from './execution-context';
+import { AgenticChatMutationAdapterError } from './mutation-executor';
+import { reviewedAgenticChatMutationSpecV1 } from './tool-catalog';
 
 export type SharedDocumentTarget = {
 	child_project_id: string;
@@ -23,6 +35,10 @@ export type SharedDocumentTarget = {
 };
 const CONFIRMATION_KIND = 'shared_document_edit_v1';
 const MAX_CONFIRMATION_AGE_MS = 24 * 60 * 60 * 1000;
+
+/** The immutable turn a confirmation is bound to. The provider holds the same
+ * execution input the adapter later receives, so both can run the same check. */
+type SharedDocumentTurn = Pick<MutationInput, 'executionInput'>;
 
 /** No broad document lookup: the family RPC authorizes the user before exposing IDs. */
 export async function loadSharedDocumentTarget(
@@ -85,7 +101,7 @@ function editHash(target: SharedDocumentTarget, args: Record<string, unknown>) {
 		)
 		.digest('hex');
 }
-function assertHumanTurn(input: MutationInput) {
+function assertHumanTurn(input: SharedDocumentTurn) {
 	const claim = input.executionInput.claim;
 	if (
 		!canonicalUuid(claim.turnRunId) ||
@@ -122,7 +138,7 @@ export function sharedDocumentConfirmation(
  * The gateway's exact-head CAS prevents concurrent or later successful reuse. */
 export async function verifySharedDocumentConfirmation(
 	client: SupabaseClient<Database>,
-	input: MutationInput,
+	input: SharedDocumentTurn,
 	target: SharedDocumentTarget,
 	args: Record<string, unknown>
 ): Promise<void> {
@@ -179,4 +195,117 @@ export function isSharedDocumentConfirmation(value: unknown): value is JsonObjec
 		value.confirmation_kind === CONFIRMATION_KIND &&
 		value.status === 'confirmation_required'
 	);
+}
+
+/**
+ * Everything a confirmed edit must pass before it may write: edit-only shape,
+ * current writable shelf membership, and the bound preview receipt. Reads
+ * only. The adapter runs it at dispatch (after the paid review, immediately
+ * before the guarded write); the provider runs it before review so a stale
+ * token fails cheaply with the identical error.
+ */
+export async function authorizeConfirmedSharedDocumentEdit(
+	client: SupabaseClient<Database>,
+	input: SharedDocumentTurn,
+	projectId: string | null,
+	args: Record<string, unknown>
+): Promise<SharedDocumentTarget> {
+	if (
+		!projectId ||
+		isDocumentArchiveState(args.state_key) ||
+		args.archive_mode !== undefined ||
+		args._archive_review !== undefined
+	) {
+		throw knownFailure(
+			'shared_document_edit_only',
+			'Shared confirmation is only for editing a shared document from its child project. Open the parent project to archive it.'
+		);
+	}
+	const target = await loadSharedDocumentTarget(
+		client,
+		input.executionInput.claim.userId,
+		projectId,
+		String(args.document_id)
+	);
+	if (!target)
+		throw knownFailure(
+			'shared_document_not_accessible',
+			'This document is not on the writable shared shelf. Nothing was changed.'
+		);
+	await verifySharedDocumentConfirmation(client, input, target, args);
+	return target;
+}
+
+export type SharedDocumentConfirmationFailure = { code: string; message: string };
+
+/** Pre-review check for token-bearing update_onto_document calls. */
+export type AgenticChatSharedDocumentConfirmationPort = {
+	/**
+	 * The known failure dispatch would produce for this call right now, or null
+	 * when it would pass or the check could not decide. Null never authorizes
+	 * anything: dispatch repeats the full check before the guarded write.
+	 */
+	check(input: {
+		executionInput: MutationInput['executionInput'];
+		args: Record<string, unknown>;
+	}): Promise<SharedDocumentConfirmationFailure | null>;
+};
+
+// Infrastructure hiccups say nothing about the token. Letting the call reach
+// review costs one pass; rejecting would push the actor to drop a valid token.
+const UNDECIDED_FAILURE_CODES = new Set([
+	'shared_document_access_unavailable',
+	'shared_document_confirmation_unavailable'
+]);
+
+/**
+ * Replays the adapter's pre-write steps for the table row (uuid arguments,
+ * project fence, argument normalizers) so the edit hash is computed over the
+ * same arguments dispatch will hash, then the shared authorization above.
+ */
+export function createSharedDocumentConfirmationCheckPort(
+	client: SupabaseClient<Database>
+): AgenticChatSharedDocumentConfirmationPort {
+	return {
+		async check({ executionInput, args }) {
+			const toolName = 'update_onto_document';
+			const execution = reviewedAgenticChatMutationSpecV1(toolName)?.execution;
+			// Only the row shape this replay mirrors; anything else is left to dispatch.
+			if (execution?.executor !== 'table' || execution.scope.mode !== 'context_project')
+				return null;
+			// The normalizers and the fence read only the immutable execution input.
+			const input = { toolName, arguments: args, executionInput } as unknown as MutationInput;
+			try {
+				for (const argument of execution.requiredUuidArguments ?? []) {
+					requiredUuid(args[argument], argument);
+				}
+				const context: AgenticChatMutationExecutionContextV1 = {
+					toolName,
+					input,
+					args: { ...args },
+					projectId: requestProjectId(input),
+					expected: {}
+				};
+				for (const normalizerId of execution.argumentNormalizers ?? []) {
+					AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1[normalizerId](context);
+				}
+				await authorizeConfirmedSharedDocumentEdit(
+					client,
+					input,
+					context.projectId,
+					context.args
+				);
+				return null;
+			} catch (error) {
+				if (
+					error instanceof AgenticChatMutationAdapterError &&
+					error.disposition === 'known_failed' &&
+					!UNDECIDED_FAILURE_CODES.has(error.failureCode)
+				) {
+					return { code: error.failureCode, message: error.message };
+				}
+				return null;
+			}
+		}
+	};
 }

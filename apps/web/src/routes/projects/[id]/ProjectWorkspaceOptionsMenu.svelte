@@ -60,6 +60,12 @@
 	let showParentPickerModal = $state(false);
 	// Setting a parent needs admin on this project (the server also checks the parent).
 	const canMoveUnder = $derived(canAdmin && canEdit);
+	// A parent's admin may take this project out even without admin here.
+	const canDetachFromParent = $derived(family?.parent?.can_detach === true);
+	// Organize refuses archived projects, so its entry would dead-end.
+	const isArchivedProject = $derived(
+		Boolean((project as Project & { archived_at?: string | null }).archived_at)
+	);
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let notificationSettings = $state<ProjectNotificationSettings | null>(null);
@@ -309,7 +315,7 @@
 				Calendar settings
 			</button>
 		{/if}
-		{#if canEdit}
+		{#if canEdit && !isArchivedProject}
 			<button
 				type="button"
 				role="menuitem"
@@ -324,7 +330,7 @@
 				Organize…
 			</button>
 		{/if}
-		{#if canMoveUnder}
+		{#if canMoveUnder || canDetachFromParent}
 			<button
 				type="button"
 				role="menuitem"
@@ -336,7 +342,9 @@
 				class="menu-item"
 			>
 				<FolderUp class="h-4 w-4 text-muted-foreground" />
-				Move under…
+				{canMoveUnder
+					? 'Move under…'
+					: `Remove from ${family?.parent?.name || 'parent project'}…`}
 			</button>
 		{/if}
 		{#if canDeleteProject}
@@ -389,13 +397,14 @@
 	{/await}
 {/if}
 
-{#if showParentPickerModal && canMoveUnder}
+{#if showParentPickerModal && (canMoveUnder || canDetachFromParent)}
 	{#await import('$lib/components/project/ProjectParentPickerModal.svelte') then { default: ProjectParentPickerModal }}
 		<ProjectParentPickerModal
 			isOpen={showParentPickerModal}
 			projectId={project.id}
 			projectName={project.name || 'Untitled project'}
 			{family}
+			canMove={canMoveUnder}
 			onClose={() => (showParentPickerModal = false)}
 			onChanged={() => onFamilyChanged?.()}
 		/>

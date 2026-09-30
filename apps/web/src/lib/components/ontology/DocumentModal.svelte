@@ -167,6 +167,8 @@
 		inheritance?: DocumentInheritance | null;
 		/** Called after "Copy here" created the sub-project's own copy. */
 		onCopiedHere?: (document: CopiedDocument) => void;
+		/** The project's pinned "Shared with sub-projects" folder; it can't be moved. */
+		sharedFolderId?: string | null;
 	}
 
 	let {
@@ -182,7 +184,8 @@
 		onMoveRequested,
 		onCreateChildRequested,
 		inheritance = null,
-		onCopiedHere
+		onCopiedHere,
+		sharedFolderId = null
 	}: Props = $props();
 
 	let loading = $state(false);
@@ -203,6 +206,7 @@
 	let createdAt = $state<string | null>(null);
 	let updatedAt = $state<string | null>(null);
 	let documentProps = $state<Record<string, unknown> | null>(null);
+	let documentTypeKey = $state<string | null>(null);
 
 	// ============================================
 	// Autosave State
@@ -439,6 +443,18 @@
 			!(inheritance?.canEditOwner && sharedEditConfirmedFor === activeDocumentId)
 	);
 	const sharedWithLabel = $derived(pluralizeProjects(inheritance?.sharedWithCount ?? 0));
+	// Same pin as the doc tree's drag and cut/paste: the shared folder stays put.
+	const isSharedFolder = $derived(
+		Boolean(activeDocumentId) &&
+			(activeDocumentId === sharedFolderId ||
+				documentProps?.role === 'shared_with_sub_projects')
+	);
+	// START HERE and the thinking log stay in their project, so Organize would dead-end.
+	const canOrganizeDocument = $derived(
+		!isSharedFolder &&
+			documentTypeKey !== 'document.context.project' &&
+			documentTypeKey !== 'document.context.thinking_log'
+	);
 
 	function confirmSharedEdit() {
 		sharedEditConfirmedFor = activeDocumentId;
@@ -1282,7 +1298,7 @@
 	}
 
 	async function handleMakeDocumentPublic() {
-		if (!activeDocumentId || blockingSave || loading) return;
+		if (!activeDocumentId || blockingSave || loading || sharedEditLocked) return;
 		if (!validateForm()) return;
 		const session = captureDocumentSession();
 		const requestedDocumentId = activeDocumentId;
@@ -1364,7 +1380,7 @@
 	}
 
 	async function handleConfirmPublicPage() {
-		if (!activeDocumentId || !publicPageDraft) return;
+		if (!activeDocumentId || !publicPageDraft || sharedEditLocked) return;
 		const session = captureDocumentSession();
 		const requestedDocumentId = activeDocumentId;
 		const requestedDraft = { ...publicPageDraft };
@@ -1477,7 +1493,7 @@
 	}
 
 	async function handleLiveSyncToggle(nextEnabled: boolean) {
-		if (!activeDocumentId || !publicPageState) return;
+		if (!activeDocumentId || !publicPageState || sharedEditLocked) return;
 
 		const session = captureDocumentSession();
 		const requestedDocumentId = activeDocumentId;
@@ -1537,7 +1553,7 @@
 	}
 
 	async function handleUnpublishPublicPage() {
-		if (!activeDocumentId || !publicPageState) return;
+		if (!activeDocumentId || !publicPageState || sharedEditLocked) return;
 		if (publicPageActionLoading) return;
 		const session = captureDocumentSession();
 		const requestedDocumentId = activeDocumentId;
@@ -1600,6 +1616,7 @@
 		createdAt = null;
 		updatedAt = null;
 		documentProps = null;
+		documentTypeKey = null;
 		lastLoadedId = null;
 		lastLoadedProjectId = null;
 		// Reset autosave state
@@ -1675,6 +1692,7 @@
 			createdAt = document.created_at ?? null;
 			updatedAt = document.updated_at ?? null;
 			documentProps = document.props ?? null;
+			documentTypeKey = typeof document.type_key === 'string' ? document.type_key : null;
 			lastLoadedId = context.documentId;
 			lastLoadedProjectId = context.projectId;
 
@@ -2652,6 +2670,7 @@
 	}) {
 		if (!activeDocumentId || !selection.markdown || loading) return;
 		if (
+			sharedEditLocked ||
 			documentMutationLocked ||
 			documentProposalVoiceBusy ||
 			editorIsRecording ||
@@ -3362,7 +3381,7 @@
 {/snippet}
 
 {#snippet moveButton()}
-	{#if !inheritance}
+	{#if !inheritance && !isSharedFolder}
 		<Button
 			type="button"
 			variant="ghost"
@@ -3375,7 +3394,7 @@
 			<FolderInput class="w-3.5 h-3.5" />
 			<span class="ml-1">Move to...</span>
 		</Button>
-		{#if activeDocumentId && !isArchivedDocument}
+		{#if activeDocumentId && !isArchivedDocument && canOrganizeDocument}
 			<OrganizeEntryButton
 				{projectId}
 				itemId={activeDocumentId}
@@ -3428,7 +3447,10 @@
 						size="sm"
 						icon={Copy}
 						loading={copyingHere}
-						disabled={loading || copyingHere}
+						disabled={loading || copyingHere || hasUnsavedChanges}
+						title={hasUnsavedChanges
+							? 'Save your edits to the shared copy before copying it here.'
+							: undefined}
 						onclick={handleCopyHere}
 					>
 						Copy here
@@ -3515,14 +3537,15 @@
 				<button
 					type="button"
 					onclick={handleMakeDocumentPublic}
-					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent transition-colors pressable hover:bg-accent/10"
+					disabled={sharedEditLocked}
+					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent transition-colors pressable hover:bg-accent/10 disabled:opacity-50"
 				>
 					{livePageHasUnpublishedChanges ? 'Review changes' : 'Edit settings'}
 				</button>
 				<button
 					type="button"
 					onclick={handleUnpublishPublicPage}
-					disabled={publicPageActionLoading}
+					disabled={publicPageActionLoading || sharedEditLocked}
 					aria-label="Unpublish public page"
 					class="inline-flex min-h-[36px] items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
 				>
@@ -3534,6 +3557,7 @@
 				<input
 					type="checkbox"
 					checked={publicPageState.live_sync_enabled}
+					disabled={sharedEditLocked}
 					onchange={(event) =>
 						handleLiveSyncToggle((event.currentTarget as HTMLInputElement).checked)}
 					class="h-3.5 w-3.5 rounded border-border"
@@ -3563,7 +3587,10 @@
 				variant="outline"
 				size="sm"
 				onclick={handleMakeDocumentPublic}
-				disabled={documentControlsLocked || publicPageActionLoading || isArchivedDocument}
+				disabled={documentControlsLocked ||
+					publicPageActionLoading ||
+					isArchivedDocument ||
+					sharedEditLocked}
 				class="w-full text-xs justify-center"
 			>
 				<Globe class="w-3.5 h-3.5" />
@@ -3971,7 +3998,9 @@
 										entityType="document"
 										entityId={activeDocumentId}
 										entityTitle={title || 'Document'}
-										disabled={documentControlsLocked || isArchivedDocument}
+										disabled={documentControlsLocked ||
+											isArchivedDocument ||
+											sharedEditLocked}
 									/>
 								{/if}
 
@@ -4239,7 +4268,8 @@
 											bind:isRecording={editorIsRecording}
 											bind:isTranscribing={editorIsTranscribing}
 											onInsertImageRequested={openImageInsertModal}
-											onProposeSelection={activeDocumentId
+											onProposeSelection={activeDocumentId &&
+											!sharedEditLocked
 												? handleDocumentProposalSelection
 												: undefined}
 											voiceNoteSource="document-modal"
@@ -4359,7 +4389,8 @@
 													entityId={activeDocumentId}
 													entityTitle={title || 'Document'}
 													disabled={documentControlsLocked ||
-														isArchivedDocument}
+														isArchivedDocument ||
+														sharedEditLocked}
 												/>
 											{/if}
 
@@ -5105,6 +5136,7 @@
 		documentTitle={title || 'Untitled'}
 		structure={docTreeStructure}
 		documents={docTreeDocuments}
+		pinned={isSharedFolder}
 		onClose={() => closeMoveModal(modalSession)}
 		onMove={(newParentId) => handleMove(newParentId, modalSession)}
 	/>

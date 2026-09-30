@@ -21,6 +21,7 @@ describe('toProjectHierarchyError', () => {
 	it('maps the RPC identifiers to statuses and plain messages', () => {
 		const cases: Array<[string, number, string]> = [
 			['project_parent_access_denied', 403, 'project_parent_access_denied'],
+			['project_parent_admin_required', 403, 'project_parent_admin_required'],
 			['project_parent_is_a_child', 409, 'project_parent_is_a_child'],
 			['project_has_children', 409, 'project_has_children'],
 			['project_parent_self', 409, 'project_parent_self'],
@@ -32,6 +33,20 @@ describe('toProjectHierarchyError', () => {
 			expect(hierarchyErrorApiCode(mapped)).toBe(apiCode);
 			expect(mapped.message).not.toContain('_');
 		}
+	});
+
+	it('explains the parent-admin rule without revealing an unreadable parent', () => {
+		const adminRequired = toProjectHierarchyError({
+			code: '42501',
+			message: 'project_parent_admin_required'
+		});
+		expect(adminRequired).toMatchObject({ code: 'parent_admin_required', status: 403 });
+		expect(adminRequired.message).toBe(
+			'Only an admin of the parent project can nest projects under it.'
+		);
+		const denied = toProjectHierarchyError({ message: 'project_parent_access_denied' });
+		expect(denied).toMatchObject({ code: 'access_denied', status: 403 });
+		expect(denied.message).not.toMatch(/parent project/i);
 	});
 
 	it('falls back to a generic 500 for unknown errors', () => {
@@ -84,6 +99,19 @@ describe('setProjectParent', () => {
 			p_project_id: 'child',
 			p_parent_project_id: null
 		});
+	});
+
+	it('leaves detach permission to the RPC and maps its admin rule', async () => {
+		const { client, rpc } = rpcClient({
+			error: { code: '42501', message: 'project_parent_admin_required' }
+		});
+		await expect(setProjectParent(client, 'child', 'hub')).rejects.toMatchObject({
+			code: 'parent_admin_required',
+			status: 403
+		});
+		// One call, straight to the RPC: no role lookups that could block a parent admin.
+		expect(rpc).toHaveBeenCalledOnce();
+		expect((client as { from?: unknown }).from).toBeUndefined();
 	});
 
 	it('throws the mapped error', async () => {
