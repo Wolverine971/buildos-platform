@@ -48,6 +48,7 @@ import {
 	WEB_RESEARCH_RULES_INSTRUCTION
 } from '../src/workers/agentic-chat/provider/request-builders';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
+import { MUTATION_BATCH_REVIEW_SYSTEM_PROMPT } from '../src/workers/agentic-chat/provider/review/mutation-batch';
 import type { AgenticChatDocumentEditPreviewPort } from '../src/workers/agentic-chat/provider/document-edit-preview';
 import { AgenticChatOpenRouterClient } from '../src/workers/agentic-chat/provider/openrouter-client';
 
@@ -11777,161 +11778,9 @@ describe('SHA-bound mutation batch approval', () => {
 			});
 		}
 
-		it.each([false, true])(
-			'requires independent review for a shared-document confirmation (batch lane %s)',
-			async (batchEnabled) => {
-				const args = {
-					document_id: DOCUMENT_ID,
-					title: 'Confirmed title',
-					confirmation_token: '80000000-0000-4000-8000-000000000001'
-				};
-				const input = documentSurface();
-				input.requestPayload.message =
-					'Yes, make that title change in the shared copy for all three projects.';
-				input.artifact.history = [
-					{
-						sourceMessageId: null,
-						role: 'assistant',
-						content: '',
-						attachments: [],
-						toolCallId: null,
-						toolCalls: [
-							{
-								id: 'preview-1',
-								type: 'function',
-								function: {
-									name: 'update_onto_document',
-									arguments: JSON.stringify({
-										document_id: DOCUMENT_ID,
-										title: args.title
-									})
-								}
-							}
-						]
-					},
-					{
-						sourceMessageId: null,
-						role: 'tool',
-						content: JSON.stringify({
-							status: 'confirmation_required',
-							confirmation_token: args.confirmation_token,
-							shared_document: { document_id: DOCUMENT_ID, shared_with_count: 3 }
-						}),
-						attachments: [],
-						toolCalls: [],
-						toolCallId: 'preview-1'
-					},
-					{
-						sourceMessageId: null,
-						role: 'assistant',
-						content:
-							'Rename the shared copy to Confirmed title? This affects all 3 sub-projects.',
-						attachments: [],
-						toolCalls: [],
-						toolCallId: null
-					}
-				];
-				const client = clientWithRounds([
-					[
-						{
-							type: 'tool_call',
-							toolCall: [
-								{
-									index: 0,
-									id: 'shared-1',
-									type: 'function',
-									function: {
-										name: 'update_onto_document',
-										arguments: JSON.stringify(args)
-									}
-								}
-							]
-						},
-						{ type: 'done', finishedReason: 'tool_calls' }
-					]
-				]);
-				const sha = mutationBatchSha256(
-					buildMutationBatch([
-						{
-							id: 'shared-1',
-							name: 'update_onto_document',
-							canonicalProviderArguments: canonicalizeAgenticChatJson(args)
-						}
-					])
-				);
-				const expectation = {
-					outcomes: [
-						{
-							id: 'shared-edit',
-							action: 'update',
-							entity_kind: 'document',
-							description: 'Rename the confirmed shared document',
-							target_ids: [DOCUMENT_ID],
-							minimum_successful_effects: 1
-						}
-					]
-				};
-				const semanticReviewer = clientWithRounds([reviewerApproval(sha, expectation)]);
-				const invocation = await new AgenticChatTurnProviderAdapter(
-					{
-						client,
-						semanticReviewer,
-						capacity: new AgenticChatProviderCapacity({
-							configured: true,
-							concurrency: 1
-						})
-					},
-					2_000,
-					16,
-					{ updateOntoDocument: true },
-					batchEnabled
-				).prepare({
-					executionInput: input,
-					processingToken: PROCESSING_TOKEN,
-					signal: new AbortController().signal
-				});
-				if (!batchEnabled) {
-					await expect(collect(invocation.stream())).rejects.toMatchObject({
-						code: 'shared_document_independent_review_required'
-					});
-					return;
-				}
-				const held = await collect(invocation.stream());
-				expect(held.some((step) => step.type === 'mutating_tool')).toBe(false);
-				const reviewText = JSON.stringify(
-					semanticReviewer.stream.mock.calls[0]![0].messages
-				);
-				expect(reviewText).toContain('A token is not user permission');
-				expect(reviewText).toContain('confirmation_required');
-				expect(reviewText).toContain('This affects all 3 sub-projects');
-				expect(reviewText).toContain(input.requestPayload.message);
-				const executed = await collect(
-					invocation.continueWithToolResults!({
-						round: 2,
-						results: [
-							durableReadFeedbackFor(
-								'reviewer-approval-1',
-								'approve_mutation_batch_review',
-								{
-									reason: 'The user asked for exactly these four tasks.',
-									batch_sha256: sha,
-									reference_candidates: [],
-									request_expectation: expectation
-								},
-								{ status: 'mutation_batch_review_approved', batch_sha256: sha }
-							)
-						]
-					})
-				);
-				expect(executed).toEqual([
-					expect.objectContaining({ type: 'mutating_tool', arguments: args })
-				]);
-			}
-		);
-
-		it('ends a shared-document preview with the confirmation question, without crediting or retrying the edit', async () => {
+		it('ends a shared-document confirm card turn on the reply, without crediting or retrying the edit', async () => {
 			const args = { document_id: DOCUMENT_ID, title: 'New shared title' };
-			const warning = 'This renames the shared copy for all 3 sub-projects. Confirm?';
+			const warning = 'I’d rename the shared copy for all 3 sub-projects. Choose in the card below.';
 			const client = clientWithRounds([
 				[
 					{
@@ -12015,8 +11864,10 @@ describe('SHA-bound mutation batch approval', () => {
 			feedback.execution.result = {
 				status: 'confirmation_required',
 				confirmation_kind: 'shared_document_edit_v1',
-				confirmation_token: '80000000-0000-4000-8000-000000000001',
-				requires_user_action: true
+				card_version: 2,
+				card_id: '80000000-0000-4000-8000-000000000001',
+				requires_user_action: true,
+				client_action: { kind: 'confirm_shared_document_edit' }
 			};
 			feedback.execution.requiresUserAction = true;
 			const final = await collect(
@@ -12033,167 +11884,11 @@ describe('SHA-bound mutation batch approval', () => {
 			expect(semanticReviewer.stream).toHaveBeenCalledTimes(1);
 		});
 
-		describe('confirmed shared-document edit admission', () => {
-			const TOKEN = '80000000-0000-4000-8000-000000000001';
-			const confirmedArgs = {
-				document_id: DOCUMENT_ID,
-				title: 'Confirmed title',
-				confirmation_token: TOKEN
-			};
-			function confirmedEditRound(): AgenticChatTurnProviderClientEventV1[] {
-				return [
-					{
-						type: 'tool_call',
-						toolCall: [
-							{
-								index: 0,
-								id: 'shared-1',
-								type: 'function',
-								function: {
-									name: 'update_onto_document',
-									arguments: JSON.stringify(confirmedArgs)
-								}
-							}
-						]
-					},
-					{ type: 'done', finishedReason: 'tool_calls' }
-				];
-			}
-			function confirmedEditProvider(
-				client: AgenticChatTurnProviderClientPortV1,
-				semanticReviewer: AgenticChatTurnProviderClientPortV1,
-				check?: ReturnType<typeof vi.fn>
-			) {
-				const input = executionInputWithReadSurface(
-					[
-						readOnlyTurnToolDefinition(),
-						clarificationToolDefinition(),
-						ONTOLOGY_WRITE_TOOLS.find((tool) => tool.function.name === 'create_onto_task')!,
-						ONTOLOGY_WRITE_TOOLS.find(
-							(tool) => tool.function.name === 'update_onto_document'
-						)!
-					],
-					[
-						'declare_read_only_turn',
-						'request_turn_clarification',
-						'create_onto_task',
-						'update_onto_document'
-					]
-				);
-				input.requestPayload.message =
-					'Yes, rename the shared copy for all three projects, and add a follow-up task.';
-				const invocation = new AgenticChatTurnProviderAdapter(
-					{
-						client,
-						semanticReviewer,
-						capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
-						...(check ? { sharedDocumentConfirmation: { check: check as never } } : {})
-					},
-					2_000,
-					16,
-					{ createOntoTask: true, updateOntoDocument: true },
-					true
-				).prepare({
-					executionInput: input,
-					processingToken: PROCESSING_TOKEN,
-					signal: new AbortController().signal
-				});
-				return { input, invocation };
-			}
-
-			it('reviews a confirmed edit proposed after an unreviewed direct write instead of failing the turn', async () => {
-				const client = clientWithRounds([
-					[
-						{
-							type: 'tool_call',
-							toolCall: [
-								{
-									index: 0,
-									id: 'direct-create',
-									type: 'function',
-									function: {
-										name: 'create_onto_task',
-										arguments: JSON.stringify({
-											project_id: PROJECT_ID,
-											title: 'Follow up'
-										})
-									}
-								}
-							]
-						},
-						{ type: 'done', finishedReason: 'tool_calls' }
-					],
-					confirmedEditRound()
-				]);
-				const reviewer = approvingReviewer();
-				const check = vi.fn(async () => null);
-				const { input, invocation } = confirmedEditProvider(client, reviewer, check);
-				const prepared = await invocation;
-				const opening = await collect(prepared.stream());
-				const direct = opening.find((step) => step.type === 'mutating_tool');
-				if (!direct || direct.type !== 'mutating_tool') throw new Error('Missing direct write');
-				expect(reviewer.stream).not.toHaveBeenCalled();
-				// The direct write reached execution, so the turn is now `mutating`
-				// without a reviewed stage behind it.
-				const held = await collect(
-					prepared.continueWithToolResults!({
-						round: 2,
-						results: [
-							failedMutationFeedback({
-								providerToolCallId: direct.providerToolCallId,
-								toolName: 'create_onto_task',
-								arguments: direct.arguments,
-								error: 'Task create failed; nothing was saved.'
-							})
-						]
-					})
-				);
-				expect(held.some((step) => step.type === 'mutating_tool')).toBe(false);
-				expect(reviewer.stream).toHaveBeenCalledTimes(1);
-				expect(check).toHaveBeenCalledTimes(1);
-				expect(check).toHaveBeenCalledWith({ executionInput: input, args: confirmedArgs });
-				const executed = await collect(
-					prepared.continueWithToolResults!({
-						round: 3,
-						results: [approvalFeedback(held)]
-					})
-				);
-				expect(executed.filter((step) => step.type === 'mutating_tool')).toEqual([
-					expect.objectContaining({
-						toolName: 'update_onto_document',
-						arguments: confirmedArgs
-					})
-				]);
-			});
-
-			it('fails a stale confirmation before the paid review with the dispatch error', async () => {
-				const failure = {
-					code: 'shared_document_confirmation_changed',
-					message:
-						'This confirmation is missing, expired, or no longer matches the edit and shared document. Request a fresh preview without a token, then wait for the user to confirm in a later turn. Nothing was changed.'
-				};
-				const check = vi.fn(async () => failure);
-				const client = clientWithRounds([
-					confirmedEditRound(),
-					[
-						{ type: 'text', content: 'That confirmation expired, so nothing changed.' },
-						{ type: 'done', finishedReason: 'stop' }
-					]
-				]);
-				const reviewer = clientWithRounds([]);
-				const { invocation } = confirmedEditProvider(client, reviewer, check);
-				const steps = await collect((await invocation).stream());
-				expect(reviewer.stream).not.toHaveBeenCalled();
-				expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
-				const rejected = steps.find(
-					(step) => step.type === 'read_tool' && step.validationFailure
-				);
-				expect(JSON.stringify(rejected)).toContain(failure.message);
-				expect(JSON.stringify(client.stream.mock.calls[1]![0].messages)).toContain(
-					failure.message
-				);
-				expect(steps.at(-1)).toMatchObject({ type: 'finish' });
-			});
+		it('tells the reviewer a shared-document call only shows the confirm card', () => {
+			// Consent for a shared-document edit is the user's click on the card; no
+			// token exists for the model or the reviewer to accept.
+			expect(MUTATION_BATCH_REVIEW_SYSTEM_PROMPT).toContain('only their click can apply it');
+			expect(MUTATION_BATCH_REVIEW_SYSTEM_PROMPT).not.toContain('confirmation_token');
 		});
 
 		it('binds archive publication facts to approval and executes only the reviewed snapshot', async () => {

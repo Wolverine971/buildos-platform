@@ -41,13 +41,18 @@ export const nothingSchema = z.object({
 	status: z.literal('nothing_to_undo'),
 	skipped: z.array(skippedSchema)
 });
+const namedMoveSchema = z.object({ kind: z.string(), title: z.string(), child_count: count });
 export const historySchema = z.object({
 	batches: z.array(
 		z.object({
 			id: z.string(),
 			inverse_of: z.string().nullable(),
 			created_at: z.string(),
-			receipt: receiptSchema
+			receipt: receiptSchema,
+			/** Items the viewer can still read, named at read time (at most a few). */
+			moved: z.array(namedMoveSchema).optional(),
+			/** Every item the batch moved, named or not. */
+			moved_count: count.optional()
 		})
 	)
 });
@@ -116,6 +121,20 @@ export function blockerMessage(code: string) {
 }
 export function receiptMessage(receipt: OrganizeReceipt) {
 	return `${receipt.inverse_of ? 'Reversed' : 'Applied'} ${receipt.operations} ${receipt.operations === 1 ? 'move' : 'moves'}${receipt.skipped.length ? ` · ${receipt.skipped.length} skipped` : ''}`;
+}
+/** "Research + 1 child doc · Brand guide · +2 more", or null when nothing is nameable. */
+export function movedItemsLine(
+	moved: OrganizeBatch['moved'] = [],
+	total: number = moved.length
+): string | null {
+	if (!moved.length) return null;
+	const named = moved.map(({ title, child_count }) =>
+		child_count
+			? `${title} + ${child_count} child ${child_count === 1 ? 'doc' : 'docs'}`
+			: title
+	);
+	const more = Math.max(0, total - moved.length);
+	return [...named, ...(more ? [`+${more} more`] : [])].join(' · ');
 }
 export function impactLines(impact: OrganizeImpact): string[] {
 	const lines: string[] = [];

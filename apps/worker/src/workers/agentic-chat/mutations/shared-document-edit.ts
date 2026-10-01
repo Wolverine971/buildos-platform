@@ -1,27 +1,34 @@
 // apps/worker/src/workers/agentic-chat/mutations/shared-document-edit.ts
-// The ordinary gateway stays project-fenced. This exception is only for one
-// live document on the focused child's shared shelf, after a later user turn.
-import { createHash } from 'node:crypto';
-import { isDocumentArchiveState } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+//
+// The ordinary gateway stays project-fenced. When a child project's chat edits
+// a document from its parent's "Shared with sub-projects" folder, nothing is
+// written: the call returns a confirm card instead. The card's receipt holds
+// the exact normalized edit, the previewed document version and the ids in this
+// effect's service-only ledger row. Only the user's click on the card (web:
+// POST /api/chat/shared-document-edits/[id]) can apply, copy, or cancel it, so
+// the model has no way to confirm a shared edit itself.
 import {
-	canonicalizeAgenticChatJson,
-	parseProjectFamilyV1,
-	type Database,
-	type JsonObject
-} from '@buildos/shared-types';
+	type previewGatewayDocumentUpdate,
+	type GatewayDocumentUpdatePreviewResult
+} from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+import {
+	SHARED_DOCUMENT_EDIT_CARD_KIND,
+	SHARED_DOCUMENT_EDIT_CARD_VERSION,
+	SHARED_DOCUMENT_EDIT_CLIENT_ACTION_KIND,
+	isSharedDocumentEditPreview,
+	sharedDocumentEditCardExpiresAt,
+	type SharedDocumentEditClientActionV1,
+	type SharedDocumentEditFieldChangeV1
+} from '@buildos/shared-agent-ops/ontology/shared-document-edit-card';
+import { parseProjectFamilyV1, type Database, type JsonObject } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+	canonicalMutationReceipt,
 	canonicalUuid,
-	isRecord,
 	knownFailure,
-	requestProjectId,
-	requiredUuid,
+	throwGatewayResultFailure,
 	type MutationInput
 } from './adapter-boundary';
-import { AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1 } from './argument-normalizers';
-import type { AgenticChatMutationExecutionContextV1 } from './execution-context';
-import { AgenticChatMutationAdapterError } from './mutation-executor';
-import { reviewedAgenticChatMutationSpecV1 } from './tool-catalog';
 
 export type SharedDocumentTarget = {
 	child_project_id: string;
@@ -33,12 +40,6 @@ export type SharedDocumentTarget = {
 	title: string;
 	updated_at: string;
 };
-const CONFIRMATION_KIND = 'shared_document_edit_v1';
-const MAX_CONFIRMATION_AGE_MS = 24 * 60 * 60 * 1000;
-
-/** The immutable turn a confirmation is bound to. The provider holds the same
- * execution input the adapter later receives, so both can run the same check. */
-type SharedDocumentTurn = Pick<MutationInput, 'executionInput'>;
 
 /** No broad document lookup: the family RPC authorizes the user before exposing IDs. */
 export async function loadSharedDocumentTarget(
@@ -87,26 +88,45 @@ export async function loadSharedDocumentTarget(
 	};
 }
 
-export function sharedDocumentEditArgs(args: Record<string, unknown>) {
-	const { confirmation_token: _token, ...edit } = args;
-	return edit;
+/** A card receipt (or a retired v1 token preview): it saved nothing. */
+export function isSharedDocumentEditCard(value: unknown): value is JsonObject {
+	return isSharedDocumentEditPreview(value);
 }
-function editHash(target: SharedDocumentTarget, args: Record<string, unknown>) {
-	return createHash('sha256')
-		.update(
-			canonicalizeAgenticChatJson({
-				target,
-				args: sharedDocumentEditArgs(args)
-			} as unknown as JsonObject)
-		)
-		.digest('hex');
+
+type DocumentPreview = Extract<GatewayDocumentUpdatePreviewResult, { ok: true }>['data'];
+const PRECOMMIT_PREVIEW_CODES = new Set(['VALIDATION_ERROR', 'NOT_FOUND', 'FORBIDDEN']);
+export type SharedDocumentPreviewRunner = typeof previewGatewayDocumentUpdate;
+
+function fieldChanges(
+	target: SharedDocumentTarget,
+	preview: DocumentPreview,
+	args: Record<string, unknown>
+): SharedDocumentEditFieldChangeV1[] {
+	const changes: SharedDocumentEditFieldChangeV1[] = [];
+	const value = (raw: unknown) => (typeof raw === 'string' ? raw : null);
+	if (args.title !== undefined)
+		changes.push({ field: 'title', from: preview.title ?? target.title, to: value(args.title) });
+	if (args.description !== undefined)
+		changes.push({
+			field: 'description',
+			from: preview.base.description,
+			to: value(args.description)
+		});
+	if (args.state_key !== undefined)
+		changes.push({ field: 'state', from: preview.base.state_key, to: value(args.state_key) });
+	if (args.type_key !== undefined)
+		changes.push({ field: 'type', from: preview.base.type_key, to: value(args.type_key) });
+	if (args.props !== undefined) changes.push({ field: 'metadata', from: null, to: null });
+	return changes;
 }
-function assertHumanTurn(input: SharedDocumentTurn) {
+
+function assertHumanTurn(input: MutationInput) {
 	const claim = input.executionInput.claim;
 	if (
 		!canonicalUuid(claim.turnRunId) ||
 		!canonicalUuid(claim.sessionId) ||
-		!canonicalUuid(claim.userMessageId)
+		!canonicalUuid(claim.userMessageId) ||
+		!canonicalUuid(input.effectId)
 	)
 		throw knownFailure(
 			'shared_document_turn_required',
@@ -115,197 +135,102 @@ function assertHumanTurn(input: SharedDocumentTurn) {
 	return claim;
 }
 
-/** The effect executor persists this receipt before it can become a token. */
-export function sharedDocumentConfirmation(
-	input: MutationInput,
-	target: SharedDocumentTarget,
-	args: Record<string, unknown>
-): JsonObject {
+/**
+ * Dry-run the edit against the parent's stored copy (read-only, the parent is
+ * the only widened scope) and return the confirm card. The effect executor
+ * persists this receipt; its effect id is the card id the browser sends back.
+ */
+export async function sharedDocumentEditCard(params: {
+	client: SupabaseClient<Database>;
+	input: MutationInput;
+	target: SharedDocumentTarget;
+	args: Record<string, unknown>;
+	preview: SharedDocumentPreviewRunner;
+	now?: Date;
+}): Promise<JsonObject> {
+	const { input, target, args } = params;
 	const claim = assertHumanTurn(input);
-	return {
-		status: 'confirmation_required',
-		requires_user_action: true,
-		confirmation_kind: CONFIRMATION_KIND,
-		confirmation_token: input.effectId,
-		source_user_message_id: claim.userMessageId,
-		edit_hash: editHash(target, args),
-		shared_document: { ...target },
-		message: `Nothing was changed. This edits "${target.title}" in "${target.parent_name}", shared with ${target.shared_with_count} sub-projects. Explain the exact edit and this shared impact, then ask the user to confirm. Only after their explicit confirmation in a later turn, repeat the identical edit with this confirmation_token. Never confirm on the user's behalf. To make a child-only edit, use Copy here in the document window instead.`
-	};
-}
-
-/** Tokens are server-written ledger receipts, never hashes the model can mint.
- * The gateway's exact-head CAS prevents concurrent or later successful reuse. */
-export async function verifySharedDocumentConfirmation(
-	client: SupabaseClient<Database>,
-	input: SharedDocumentTurn,
-	target: SharedDocumentTarget,
-	args: Record<string, unknown>
-): Promise<void> {
-	const claim = assertHumanTurn(input);
-	const token = args.confirmation_token;
-	if (!canonicalUuid(token))
+	let result: GatewayDocumentUpdatePreviewResult;
+	try {
+		result = await params.preview({
+			admin: params.client,
+			userId: claim.userId,
+			scope: {
+				mode: 'read_write',
+				allowed_ops: ['onto.document.update'],
+				project_ids: [target.parent_project_id],
+				write_project_ids: [target.parent_project_id]
+			},
+			args
+		});
+	} catch {
 		throw knownFailure(
-			'shared_document_confirmation_invalid',
-			'Use the confirmation token returned by the shared-document preview.'
-		);
-	const { data, error } = await client
-		.from('chat_turn_effects')
-		.select('turn_run_id,finished_at,downstream_receipt')
-		.eq('id', token)
-		.eq('user_id', claim.userId)
-		.eq('session_id', claim.sessionId)
-		.eq('tool_name', 'update_onto_document')
-		.eq('operation_name', 'onto.document.update')
-		.eq('state', 'succeeded')
-		.maybeSingle();
-	if (error)
-		throw knownFailure(
-			'shared_document_confirmation_unavailable',
-			'Could not check confirmation. Nothing was changed.'
-		);
-	const receipt = data?.downstream_receipt;
-	const admittedAt = Date.parse(input.executionInput.timingBaseline?.admittedAt ?? '');
-	const finishedAt = Date.parse(data?.finished_at ?? '');
-	if (
-		!data ||
-		!isRecord(receipt) ||
-		receipt.confirmation_kind !== CONFIRMATION_KIND ||
-		receipt.status !== 'confirmation_required' ||
-		receipt.confirmation_token !== token ||
-		!canonicalUuid(receipt.source_user_message_id) ||
-		data.turn_run_id === claim.turnRunId ||
-		receipt.source_user_message_id === claim.userMessageId ||
-		!Number.isFinite(admittedAt) ||
-		!Number.isFinite(finishedAt) ||
-		finishedAt >= admittedAt ||
-		admittedAt - finishedAt > MAX_CONFIRMATION_AGE_MS ||
-		receipt.edit_hash !== editHash(target, args)
-	) {
-		throw knownFailure(
-			'shared_document_confirmation_changed',
-			'This confirmation is missing, expired, or no longer matches the edit and shared document. Request a fresh preview without a token, then wait for the user to confirm in a later turn. Nothing was changed.'
+			'shared_document_preview_unavailable',
+			'Could not preview the change to the shared document. Nothing was changed.'
 		);
 	}
-}
-
-export function isSharedDocumentConfirmation(value: unknown): value is JsonObject {
-	return (
-		isRecord(value) &&
-		value.confirmation_kind === CONFIRMATION_KIND &&
-		value.status === 'confirmation_required'
-	);
-}
-
-/**
- * Everything a confirmed edit must pass before it may write: edit-only shape,
- * current writable shelf membership, and the bound preview receipt. Reads
- * only. The adapter runs it at dispatch (after the paid review, immediately
- * before the guarded write); the provider runs it before review so a stale
- * token fails cheaply with the identical error.
- */
-export async function authorizeConfirmedSharedDocumentEdit(
-	client: SupabaseClient<Database>,
-	input: SharedDocumentTurn,
-	projectId: string | null,
-	args: Record<string, unknown>
-): Promise<SharedDocumentTarget> {
-	if (
-		!projectId ||
-		isDocumentArchiveState(args.state_key) ||
-		args.archive_mode !== undefined ||
-		args._archive_review !== undefined
-	) {
+	if (!result.ok) {
+		// An edit that cannot apply goes back to the model to fix, like any edit.
+		if (PRECOMMIT_PREVIEW_CODES.has(result.error.code))
+			throwGatewayResultFailure(input.toolName, result.error);
+		// A dry run writes nothing, so no other failure can leave an uncertain outcome.
 		throw knownFailure(
-			'shared_document_edit_only',
-			'Shared confirmation is only for editing a shared document from its child project. Open the parent project to archive it.'
+			'shared_document_preview_unavailable',
+			'Could not preview the change to the shared document. Nothing was changed.'
 		);
 	}
-	const target = await loadSharedDocumentTarget(
-		client,
-		input.executionInput.claim.userId,
-		projectId,
-		String(args.document_id)
-	);
-	if (!target)
+	const preview = result.data;
+	const version = preview.base.updated_at;
+	if (!version)
 		throw knownFailure(
-			'shared_document_not_accessible',
-			'This document is not on the writable shared shelf. Nothing was changed.'
+			'shared_document_preview_unavailable',
+			'Could not preview the change to the shared document. Nothing was changed.'
 		);
-	await verifySharedDocumentConfirmation(client, input, target, args);
-	return target;
-}
-
-export type SharedDocumentConfirmationFailure = { code: string; message: string };
-
-/** Pre-review check for token-bearing update_onto_document calls. */
-export type AgenticChatSharedDocumentConfirmationPort = {
-	/**
-	 * The known failure dispatch would produce for this call right now, or null
-	 * when it would pass or the check could not decide. Null never authorizes
-	 * anything: dispatch repeats the full check before the guarded write.
-	 */
-	check(input: {
-		executionInput: MutationInput['executionInput'];
-		args: Record<string, unknown>;
-	}): Promise<SharedDocumentConfirmationFailure | null>;
-};
-
-// Infrastructure hiccups say nothing about the token. Letting the call reach
-// review costs one pass; rejecting would push the actor to drop a valid token.
-const UNDECIDED_FAILURE_CODES = new Set([
-	'shared_document_access_unavailable',
-	'shared_document_confirmation_unavailable'
-]);
-
-/**
- * Replays the adapter's pre-write steps for the table row (uuid arguments,
- * project fence, argument normalizers) so the edit hash is computed over the
- * same arguments dispatch will hash, then the shared authorization above.
- */
-export function createSharedDocumentConfirmationCheckPort(
-	client: SupabaseClient<Database>
-): AgenticChatSharedDocumentConfirmationPort {
-	return {
-		async check({ executionInput, args }) {
-			const toolName = 'update_onto_document';
-			const execution = reviewedAgenticChatMutationSpecV1(toolName)?.execution;
-			// Only the row shape this replay mirrors; anything else is left to dispatch.
-			if (execution?.executor !== 'table' || execution.scope.mode !== 'context_project')
-				return null;
-			// The normalizers and the fence read only the immutable execution input.
-			const input = { toolName, arguments: args, executionInput } as unknown as MutationInput;
-			try {
-				for (const argument of execution.requiredUuidArguments ?? []) {
-					requiredUuid(args[argument], argument);
-				}
-				const context: AgenticChatMutationExecutionContextV1 = {
-					toolName,
-					input,
-					args: { ...args },
-					projectId: requestProjectId(input),
-					expected: {}
-				};
-				for (const normalizerId of execution.argumentNormalizers ?? []) {
-					AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1[normalizerId](context);
-				}
-				await authorizeConfirmedSharedDocumentEdit(
-					client,
-					input,
-					context.projectId,
-					context.args
-				);
-				return null;
-			} catch (error) {
-				if (
-					error instanceof AgenticChatMutationAdapterError &&
-					error.disposition === 'known_failed' &&
-					!UNDECIDED_FAILURE_CODES.has(error.failureCode)
-				) {
-					return { code: error.failureCode, message: error.message };
-				}
-				return null;
+	const change = preview.document_change
+		? {
+				lines_added: preview.document_change.lines_added,
+				lines_removed: preview.document_change.lines_removed,
+				hunks: preview.document_change.hunks,
+				hunks_truncated: preview.document_change.hunks_truncated
 			}
-		}
+		: null;
+	const title = preview.title ?? target.title;
+	const cardId = input.effectId;
+	const clientAction: SharedDocumentEditClientActionV1 = {
+		kind: SHARED_DOCUMENT_EDIT_CLIENT_ACTION_KIND,
+		action_id: cardId,
+		card_id: cardId,
+		session_id: claim.sessionId!,
+		document_id: target.document_id,
+		document_title: title,
+		parent_project_id: target.parent_project_id,
+		parent_name: target.parent_name,
+		child_project_id: target.child_project_id,
+		shared_with_count: target.shared_with_count,
+		change,
+		field_changes: fieldChanges(target, preview, args),
+		expires_at: sharedDocumentEditCardExpiresAt(params.now ?? new Date())
 	};
+	return canonicalMutationReceipt(
+		{
+			status: 'confirmation_required',
+			requires_user_action: true,
+			confirmation_kind: SHARED_DOCUMENT_EDIT_CARD_KIND,
+			card_version: SHARED_DOCUMENT_EDIT_CARD_VERSION,
+			card_id: cardId,
+			source_user_message_id: claim.userMessageId,
+			pending_edit: {
+				document_id: target.document_id,
+				child_project_id: target.child_project_id,
+				parent_project_id: target.parent_project_id,
+				shared_folder_id: target.shared_folder_id,
+				shared_with_count: target.shared_with_count,
+				document_version: version,
+				arguments: { ...args }
+			},
+			client_action: clientAction,
+			message: `Nothing has changed yet. "${title}" belongs to ${target.parent_name} and is shared with ${target.shared_with_count} sub-projects. The user now sees a card under your reply with this exact change and three choices: Update shared doc (edits the copy every sub-project sees), Copy here (this project gets its own copy with the change), or Cancel. In one or two sentences, say what you would change and ask them to choose in the card. Do not say it is done, do not ask them to type yes, and do not repeat this edit. Their choice reaches you with their next message.`
+		},
+		input.toolName
+	);
 }

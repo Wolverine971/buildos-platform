@@ -466,6 +466,51 @@ function toChatActivity(
 	});
 }
 
+type ProjectParentLabel = { id: string; name: string };
+
+/**
+ * Parent labels for sub-projects. The analytics RPC doesn't report nesting, so
+ * this reads it through the viewer's client: RLS returns only projects the
+ * viewer can open, and a child is labeled only when its parent came back too.
+ * A project becomes a parent only through onto_project_set_parent_atomic, which
+ * always gives it a shared folder, so one small query returns every visible
+ * child and hub. Runs alongside the RPC; fails open to no labels.
+ */
+async function loadProjectParentLabels(
+	client: TypedSupabaseClient
+): Promise<Map<string, ProjectParentLabel>> {
+	const labels = new Map<string, ProjectParentLabel>();
+	const { data, error } = await client
+		.from('onto_projects')
+		.select('id, name, parent_project_id')
+		.is('deleted_at', null)
+		.or('parent_project_id.not.is.null,shared_folder_document_id.not.is.null');
+	if (error || !Array.isArray(data)) return labels;
+	const rows = data as { id: string; name: string | null; parent_project_id: string | null }[];
+	const names = new Map(rows.map((row) => [row.id, row.name]));
+	for (const row of rows) {
+		if (!row.parent_project_id || !names.has(row.parent_project_id)) continue;
+		labels.set(row.id, {
+			id: row.parent_project_id,
+			name: names.get(row.parent_project_id) || 'Untitled project'
+		});
+	}
+	return labels;
+}
+
+function withParentLabels(
+	projects: DashboardProjectActivity[],
+	labels: Map<string, ProjectParentLabel>
+): DashboardProjectActivity[] {
+	if (labels.size === 0) return projects;
+	return projects.map((project) => {
+		const parent = labels.get(project.id);
+		return parent
+			? { ...project, parent_project_id: parent.id, parent_project_name: parent.name }
+			: project;
+	});
+}
+
 async function countUpdatedRows(
 	client: TypedSupabaseClient,
 	table: 'onto_tasks' | 'onto_documents' | 'onto_goals',
@@ -548,6 +593,9 @@ export async function getUserDashboardAnalytics(
 		timing ? timing.measure(name, fn) : fn();
 
 	const payload = createEmptyUserDashboardAnalytics();
+	const parentLabels = Promise.resolve(
+		measure('dashboard.db.project_parents', () => loadProjectParentLabels(client))
+	).catch(() => new Map<string, ProjectParentLabel>());
 
 	try {
 		const actorId =
@@ -564,7 +612,12 @@ export async function getUserDashboardAnalytics(
 		);
 
 		if (!rpcError && rpcPayload) {
-			return normalizeDashboardAnalyticsPayload(rpcPayload);
+			const analytics = normalizeDashboardAnalyticsPayload(rpcPayload);
+			analytics.recent.projects = withParentLabels(
+				analytics.recent.projects,
+				await parentLabels
+			);
+			return analytics;
 		}
 
 		if (rpcError) {
@@ -802,6 +855,7 @@ export async function getUserDashboardAnalytics(
 		});
 
 		payload.recent.chatSessions = toChatActivity(recentChatSessions, projectById);
+		payload.recent.projects = withParentLabels(payload.recent.projects, await parentLabels);
 
 		return payload;
 	} catch (error) {

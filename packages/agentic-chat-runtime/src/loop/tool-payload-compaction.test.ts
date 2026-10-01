@@ -1771,6 +1771,70 @@ describe('buildToolPayloadForModel', () => {
 			expect(JSON.stringify(payload)).not.toContain('body_markdown');
 		});
 
+		it('shows a shared-document confirm card to the model without the server-held edit', () => {
+			const payload = buildToolPayloadForModel(
+				toolCall('update_onto_document'),
+				toolResult({
+					status: 'confirmation_required',
+					requires_user_action: true,
+					confirmation_kind: 'shared_document_edit_v1',
+					card_version: 2,
+					card_id: uuid(9),
+					source_user_message_id: uuid(8),
+					pending_edit: {
+						document_id: uuid(1),
+						arguments: { document_id: uuid(1), content: 'SECRET-BODY '.repeat(50) }
+					},
+					client_action: {
+						kind: 'confirm_shared_document_edit',
+						card_id: uuid(9),
+						document_id: uuid(1),
+						document_title: 'Rate card',
+						parent_project_id: uuid(50),
+						parent_name: 'Wayne Strategies',
+						shared_with_count: 5,
+						change: {
+							lines_added: 1,
+							lines_removed: 1,
+							hunks_truncated: false,
+							hunks: [
+								{
+									old_start: 1,
+									new_start: 1,
+									lines: [
+										{ kind: 'remove', text: 'Strategy session: $1,500' },
+										{ kind: 'add', text: 'Strategy session: $1,800' }
+									]
+								}
+							]
+						},
+						field_changes: []
+					},
+					message: 'Nothing has changed yet. Ask them to choose in the card.'
+				}),
+				parseArgs
+			) as Record<string, any>;
+
+			expectStructured(payload);
+			expect(payload).toMatchObject({
+				status: 'confirmation_required',
+				saved: false,
+				card_id: uuid(9),
+				shared_document: {
+					title: 'Rate card',
+					owner_project: 'Wayne Strategies',
+					shared_with_count: 5
+				},
+				proposed_change: {
+					changed_lines: ['- Strategy session: $1,500', '+ Strategy session: $1,800']
+				},
+				message: 'Nothing has changed yet. Ask them to choose in the card.'
+			});
+			expect(JSON.stringify(payload)).not.toContain('SECRET-BODY');
+			expect(payload).not.toHaveProperty('client_action');
+			expect(payload).not.toHaveProperty('pending_edit');
+		});
+
 		it('gives the model the changed lines of a surgical edit, not the Undo patch', () => {
 			const payload = buildToolPayloadForModel(
 				toolCall('update_onto_document'),

@@ -38,24 +38,6 @@ function call(
 }
 
 describe('direct write routing', () => {
-	it('requires independent review for shared confirmation even on a resolved target', () => {
-		expect(
-			assessDirectWriteBatch(
-				[
-					call('update_onto_document', {
-						document_id: '1',
-						content: 'New',
-						confirmation_token: 'token'
-					})
-				],
-				{
-					contextType: 'document',
-					entityId: '1',
-					projectId: '2'
-				}
-			)
-		).toMatchObject({ kind: 'contract_required', reason: 'operation_requires_contract' });
-	});
 	it.each(['task', 'goal'])(
 		'authorizes only archive effects under an approved %s archive contract',
 		(kind) => {

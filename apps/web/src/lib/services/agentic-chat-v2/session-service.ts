@@ -27,9 +27,9 @@ import { CONTROL_TOOL_NAMES, isLikelyWriteToolName } from '@buildos/agentic-chat
 import { renderFailedCleanupContinuation } from '@buildos/agentic-chat-runtime/context';
 import {
 	CHAT_CONTINUITY_EXECUTION_FILTER,
-	isSharedDocumentConfirmationRow,
-	sharedDocumentConfirmationHistory
-} from './shared-document-confirmation-history';
+	isSharedDocumentEditCardRow,
+	sharedDocumentEditCardNotes
+} from './shared-document-edit-card-history';
 
 const logger = createLogger('FastChatSession');
 
@@ -395,7 +395,7 @@ export function buildInterruptedToolHistorySummary(
 		.filter(
 			(row) =>
 				!CONTROL_TOOL_NAMES.has(row.tool_name.trim().toLowerCase()) &&
-				!isSharedDocumentConfirmationRow(row)
+				!isSharedDocumentEditCardRow(row)
 		);
 	const writes = sorted.filter(
 		(row) => row.success && isLikelyWriteToolName(row.tool_name, row.gateway_op)
@@ -547,22 +547,22 @@ function projectHistorySnapshotWithLineage(
 		executions: orderedContinuityExecutionRows,
 		pendingAssistantMessageId: latestMessage?.role === 'assistant' ? latestMessage.id : null
 	});
+	// Each confirm card's state (the user resolves it between turns) follows the
+	// reply that showed it.
+	const cardNotes = sharedDocumentEditCardNotes(orderedContinuityExecutionRows);
 
 	const historyMessages = orderedMessages.flatMap((message) => {
 		const msg = message as RecentChatMessageRow;
 		const attachments = attachmentsByMessageId.get(msg.id) ?? [];
 		const attachmentContext = buildAttachmentContextBlock(attachments, { maxChars: 5000 });
 		const projected: FastChatHistoryMessageWithLineage[] = [
-			...sharedDocumentConfirmationHistory(
-				orderedContinuityExecutionRows,
-				latestMessage?.role === 'assistant' && latestMessage.id === msg.id ? msg.id : null
-			),
 			{
 				role: msg.role as FastChatHistoryMessage['role'],
 				content: attachmentContext ? `${msg.content}\n\n${attachmentContext}` : msg.content,
 				attachments: attachments.length > 0 ? attachments : undefined,
 				sourceMessageId: msg.id
-			}
+			},
+			...(msg.role === 'assistant' ? (cardNotes.get(msg.id) ?? []) : [])
 		];
 		if (isInterruptedAssistantMessage(msg)) {
 			const summary = buildInterruptedToolHistorySummary(

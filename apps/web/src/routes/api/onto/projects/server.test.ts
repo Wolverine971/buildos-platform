@@ -1,14 +1,19 @@
 // apps/web/src/routes/api/onto/projects/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureActorIdMock, fetchProjectSelectorSummariesMock } = vi.hoisted(() => ({
-	ensureActorIdMock: vi.fn(),
-	fetchProjectSelectorSummariesMock: vi.fn()
-}));
+const { ensureActorIdMock, fetchProjectSelectorSummariesMock, loadParentCandidateFactsMock } =
+	vi.hoisted(() => ({
+		ensureActorIdMock: vi.fn(),
+		fetchProjectSelectorSummariesMock: vi.fn(),
+		loadParentCandidateFactsMock: vi.fn()
+	}));
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: ensureActorIdMock,
 	fetchProjectSelectorSummaries: fetchProjectSelectorSummariesMock
+}));
+vi.mock('$lib/services/ontology/project-hierarchy.service', () => ({
+	loadParentCandidateFacts: loadParentCandidateFactsMock
 }));
 
 import { GET } from './+server';
@@ -54,5 +59,49 @@ describe('GET /api/onto/projects', () => {
 			{ search: 'apollo', limit: 12 },
 			undefined
 		);
+	});
+
+	it('adds nesting and access facts only when the picker asks for them', async () => {
+		const request = (query: string) =>
+			(
+				GET({
+					url: new URL(`http://localhost/api/onto/projects${query}`),
+					locals: {
+						supabase: {},
+						serverTiming: undefined,
+						safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+					}
+				} as any) as Promise<Response>
+			).then((response) => response.json());
+
+		const plain = await request('?limit=12');
+		expect(loadParentCandidateFactsMock).not.toHaveBeenCalled();
+		expect(plain.data.projects[0]).not.toHaveProperty('access_level');
+
+		loadParentCandidateFactsMock.mockResolvedValue(
+			new Map([
+				[
+					'project-1',
+					{
+						parent_project_id: 'hub',
+						parent_project_name: 'Wayne Strategies',
+						has_children: false,
+						access_level: 'admin'
+					}
+				]
+			])
+		);
+		const withFacts = await request('?limit=12&include=hierarchy');
+		expect(loadParentCandidateFactsMock).toHaveBeenCalledWith(
+			{},
+			'actor-1',
+			expect.arrayContaining([expect.objectContaining({ id: 'project-1' })])
+		);
+		expect(withFacts.data.projects[0]).toMatchObject({
+			id: 'project-1',
+			parent_project_id: 'hub',
+			parent_project_name: 'Wayne Strategies',
+			access_level: 'admin'
+		});
 	});
 });

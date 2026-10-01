@@ -2,7 +2,8 @@
 //
 // Project hierarchy. A project can sit under one parent (Wayne
 // Strategies → its client projects). The parent's "Shared with sub-projects"
-// folder shows in each child as a shared shelf. Edits require confirmation.
+// folder shows in each child as a shared shelf. An edit to one shows the user a
+// confirm card; only their click changes anything.
 // The context loader attaches
 // `project_family` (onto_project_family_v1), already filtered to what the user
 // can open; this section tells the model where the project sits, which shared
@@ -105,7 +106,7 @@ export function buildProjectFamilySection(
 			const block = fitBlock({
 				header: [
 					...header,
-					`Shared docs, owned by ${parentName} and shown in ${family.parent.child_count} sub-projects${family.parent.can_write ? ' (edits require confirmation)' : ' (read-only)'}:`
+					`Shared docs, owned by ${parentName} and shown in ${family.parent.child_count} sub-projects${family.parent.can_write ? ' (edits go through a confirm card)' : ' (read-only)'}:`
 				],
 				items: family.shelf.map(
 					(doc) =>
@@ -113,7 +114,7 @@ export function buildProjectFamilySection(
 				),
 				footer: [
 					family.parent.can_write
-						? 'Read by document id. To edit, call update_onto_document without a token for the shared-impact warning. Explain it and wait for explicit user confirmation in a later turn, then repeat the identical edit with its confirmation_token. Never self-confirm. Archive in the parent; Copy here in the UI makes a child-only copy.'
+						? 'Read by document id. To change one, call update_onto_document with the exact edit: nothing is saved, the user gets a card with that change and chooses Update shared doc, Copy here, or Cancel. Say what you would change and to choose in the card. Never ask them to type yes, claim it is done, or repeat the edit. Archive in the parent.'
 						: `Read by document id. You cannot edit the parent’s copy; use Copy here in the UI for a child-only copy.`
 				],
 				lineLimit: SHELF_LINE_LIMIT,

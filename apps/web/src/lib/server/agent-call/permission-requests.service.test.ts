@@ -83,7 +83,7 @@ describe('permission retries', () => {
 		const { service } = fixture({ expired: true, read: false });
 		const r = await service.submit({ proposal: input, idempotency_key: 'stable' });
 		expect(r.status).toBe('expired');
-		expect(r.receipt).toBeNull();
+		expect('receipt' in r ? r.receipt : undefined).toBeNull();
 	});
 	it('never passes caller-provided identity or approval fields', async () => {
 		const { service, rpc } = fixture();

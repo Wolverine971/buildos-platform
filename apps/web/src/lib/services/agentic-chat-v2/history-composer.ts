@@ -90,10 +90,10 @@ export function composeFastChatHistory(params: {
 	// Keep it whole: clipping JSON loses owed work or uncertainty evidence.
 	const cleanupRecall = history.findLast((msg) => msg.continuityKind === 'failed_cleanup_v1');
 	const latestAssistant = history.findLast((msg) => msg.role === 'assistant');
-	// Exact pending edits and their receipts must survive together. The owned
-	// projection bounds these packets to the immediately preceding assistant.
+	// Confirm-card state notes are small, bounded by the owned projection, and
+	// the only record of a click made between turns: keep them whole.
 	const confirmations = history.filter(
-		(msg) => msg.continuityKind === 'shared_document_confirmation_v1'
+		(msg) => msg.continuityKind === 'shared_document_edit_card_v1'
 	);
 	const rawTail = history
 		.filter((msg) => msg.continuityKind !== 'failed_cleanup_v1' && !confirmations.includes(msg))

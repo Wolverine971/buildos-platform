@@ -195,3 +195,107 @@ export async function loadVisibleParentIds(
 	}
 	return parents;
 }
+
+export type ProjectAccessLevel = 'read' | 'write' | 'admin';
+
+/** What "Move under…" shows about a candidate parent before the viewer picks it. */
+export type ParentCandidateFacts = {
+	/** Set only when the viewer can open that parent (owner or member). */
+	parent_project_id: string | null;
+	parent_project_name: string | null;
+	/** Live sub-projects the viewer can see. */
+	has_children: boolean;
+	access_level: ProjectAccessLevel | null;
+};
+
+const ACCESS_LEVELS = new Set<string>(['read', 'write', 'admin']);
+
+/**
+ * Lets the "Move under…" picker grey out parents the RPC would refuse
+ * (already nested, no admin access). Advisory only:
+ * onto_project_set_parent_atomic still decides. Reads go through the viewer's
+ * client, so RLS limits them to projects the viewer can open; a parent is named
+ * only when it's one of those. One parallel round trip, plus one more only when
+ * a visible parent isn't among `projects`. Fails open to no facts.
+ */
+export async function loadParentCandidateFacts(
+	supabase: Client,
+	actorId: string,
+	projects: readonly { id: string; name: string }[]
+): Promise<Map<string, ParentCandidateFacts>> {
+	const facts = new Map<string, ParentCandidateFacts>();
+	if (!projects.length) return facts;
+	const ids = projects.map((project) => project.id);
+	const names = new Map(projects.map((project) => [project.id, project.name]));
+	try {
+		const [rowsResult, childrenResult, membersResult] = await Promise.all([
+			supabase
+				.from('onto_projects')
+				.select('id, parent_project_id, created_by')
+				.in('id', ids),
+			supabase
+				.from('onto_projects')
+				.select('parent_project_id')
+				.in('parent_project_id', ids)
+				.is('deleted_at', null),
+			supabase
+				.from('onto_project_members')
+				.select('project_id, access')
+				.eq('actor_id', actorId)
+				.is('removed_at', null)
+		]);
+		if (rowsResult.error || childrenResult.error || membersResult.error) return facts;
+
+		const access = new Map<string, ProjectAccessLevel>();
+		for (const row of (membersResult.data ?? []) as { project_id: string; access: string }[]) {
+			if (ACCESS_LEVELS.has(row.access)) {
+				access.set(row.project_id, row.access as ProjectAccessLevel);
+			}
+		}
+		const withChildren = new Set(
+			((childrenResult.data ?? []) as { parent_project_id: string | null }[])
+				.map((row) => row.parent_project_id)
+				.filter((id): id is string => Boolean(id))
+		);
+		const rows = (rowsResult.data ?? []) as {
+			id: string;
+			parent_project_id: string | null;
+			created_by: string | null;
+		}[];
+		const visibleParent = (id: string | null) =>
+			id && (names.has(id) || access.has(id)) ? id : null;
+
+		const missingNames = [
+			...new Set(
+				rows
+					.map((row) => visibleParent(row.parent_project_id))
+					.filter((id): id is string => Boolean(id) && !names.has(id as string))
+			)
+		];
+		if (missingNames.length) {
+			const { data, error } = await supabase
+				.from('onto_projects')
+				.select('id, name')
+				.in('id', missingNames)
+				.is('deleted_at', null);
+			if (!error) {
+				for (const row of (data ?? []) as { id: string; name: string | null }[]) {
+					names.set(row.id, row.name || 'Untitled project');
+				}
+			}
+		}
+
+		for (const row of rows) {
+			const parentId = visibleParent(row.parent_project_id);
+			facts.set(row.id, {
+				parent_project_id: parentId,
+				parent_project_name: parentId ? (names.get(parentId) ?? null) : null,
+				has_children: withChildren.has(row.id),
+				access_level: row.created_by === actorId ? 'admin' : (access.get(row.id) ?? null)
+			});
+		}
+	} catch {
+		facts.clear();
+	}
+	return facts;
+}

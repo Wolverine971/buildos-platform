@@ -1,7 +1,9 @@
 // apps/web/src/routes/api/onto/projects/+server.ts
 /**
  * GET /api/onto/projects
- * Returns lightweight project summaries for selection and browsing surfaces
+ * Returns lightweight project summaries for selection and browsing surfaces.
+ * `include=hierarchy` adds what "Move under…" needs to grey out invalid parents
+ * (visible parent, sub-projects, the viewer's access level).
  */
 
 import type { RequestHandler } from './$types';
@@ -10,6 +12,7 @@ import {
 	ensureActorId,
 	fetchProjectSelectorSummaries
 } from '$lib/services/ontology/ontology-projects.service';
+import { loadParentCandidateFacts } from '$lib/services/ontology/project-hierarchy.service';
 
 const DEFAULT_PROJECT_LIST_LIMIT = 24;
 const MAX_PROJECT_LIST_LIMIT = 100;
@@ -59,6 +62,23 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		} catch (summaryError) {
 			console.error('[Ontology API] Failed to fetch projects:', summaryError);
 			return ApiResponse.error('Failed to fetch ontology projects', 500);
+		}
+
+		if (url.searchParams.get('include') === 'hierarchy') {
+			const facts = await measure('db.projects.selector_hierarchy', () =>
+				loadParentCandidateFacts(supabase, actorId, projects)
+			);
+			return ApiResponse.success({
+				projects: projects.map((project) => ({
+					...project,
+					...(facts.get(project.id) ?? {
+						parent_project_id: null,
+						parent_project_name: null,
+						has_children: false,
+						access_level: null
+					})
+				}))
+			});
 		}
 
 		return ApiResponse.success({

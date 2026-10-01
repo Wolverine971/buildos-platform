@@ -96,6 +96,66 @@ export async function copyInheritedDocument(
 	};
 }
 
+/** A project "Move under…" can offer, with what decides whether it's a valid parent. */
+export type ParentCandidate = {
+	id: string;
+	name: string;
+	stateKey: string;
+	updatedAt: string;
+	/** Only when the viewer can open that parent. */
+	parentProjectId: string | null;
+	parentProjectName: string | null;
+	hasChildren: boolean;
+	/** Null when unknown; the server still decides. */
+	accessLevel: 'read' | 'write' | 'admin' | null;
+};
+
+const str = (value: unknown) => (typeof value === 'string' && value ? value : null);
+
+/** Projects for "Move under…", with nesting and access facts (one request). */
+export async function fetchParentCandidates(params: {
+	search: string;
+	limit: number;
+	signal?: AbortSignal;
+}): Promise<ParentCandidate[]> {
+	const query = new URLSearchParams({ limit: String(params.limit), include: 'hierarchy' });
+	if (params.search) query.set('search', params.search);
+	const response = await fetch(`/api/onto/projects?${query.toString()}`, {
+		headers: { Accept: 'application/json' },
+		cache: 'no-store',
+		signal: params.signal
+	});
+	const result = await parseApiResponse<{ projects?: unknown }>(response);
+	if (!response.ok || !result.success) {
+		throw new ProjectFamilyRequestError(
+			result.error || 'Failed to load projects',
+			response.status,
+			result.code ?? null
+		);
+	}
+	const projects = result.data?.projects;
+	const rows: unknown[] = Array.isArray(projects) ? projects : [];
+	return rows.flatMap((raw) => {
+		const row = (raw ?? {}) as Record<string, unknown>;
+		const id = str(row.id);
+		if (!id) return [];
+		const access = str(row.access_level);
+		return [
+			{
+				id,
+				name: str(row.name) ?? 'Untitled project',
+				stateKey: str(row.state_key) ?? 'planning',
+				updatedAt: str(row.updated_at) ?? '',
+				parentProjectId: str(row.parent_project_id),
+				parentProjectName: str(row.parent_project_name),
+				hasChildren: row.has_children === true,
+				accessLevel:
+					access === 'read' || access === 'write' || access === 'admin' ? access : null
+			}
+		];
+	});
+}
+
 /** Take a project out of its parent (admin on either side). */
 export function detachProject(projectId: string): Promise<ProjectSetParentResultV1> {
 	return setProjectParent(projectId, null);

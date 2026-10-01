@@ -1127,10 +1127,11 @@ describe('inbox service', () => {
 			limit: 20
 		});
 
-		const syncedSources = mocks.syncInboxItemForSource.mock.calls.map(
-			([call]: [{ sourceType: string; sourceRefId: string }]) =>
-				`${call.sourceType}:${call.sourceRefId}`
-		);
+		const syncedSources = (
+			mocks.syncInboxItemForSource.mock.calls as unknown as Array<
+				[{ sourceType: string; sourceRefId: string }]
+			>
+		).map(([call]) => `${call.sourceType}:${call.sourceRefId}`);
 		expect(syncedSources).toEqual(
 			expect.arrayContaining([
 				'project_cleanup:project-1',

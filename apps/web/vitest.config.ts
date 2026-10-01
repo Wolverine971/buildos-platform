@@ -76,6 +76,7 @@ const sharedAgentOpsTestAliases = [
 	'ontology/instantiation.service',
 	'ontology/document-patch',
 	'ontology/document-edits',
+	'ontology/shared-document-edit-card',
 	'ops/async-activity-logger',
 	'ops/entity-mention-notification.service',
 	'ops/entity-mention-ping.service',

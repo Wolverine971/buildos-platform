@@ -9,6 +9,12 @@
 	import DocumentChangeCards from './DocumentChangeCards.svelte';
 	import FreshnessRadarCard from './FreshnessRadarCard.svelte';
 	import CaptureReceiptChip from './CaptureReceiptChip.svelte';
+	import SharedDocumentEditCard from './SharedDocumentEditCard.svelte';
+	import {
+		placeSharedDocumentEditCards,
+		type SharedDocumentEditCardPlacement
+	} from './shared-document-edit-cards';
+	import type { SharedDocumentEditResolutionV1 } from '@buildos/shared-agent-ops/ontology/shared-document-edit-card';
 	import { ArrowDown } from '$lib/icons/lucide';
 	import { getProseClasses } from '$lib/utils/markdown';
 	import {
@@ -63,6 +69,8 @@
 			card: DocumentChangeCard,
 			document: Record<string, unknown> | null
 		) => void;
+		/** A shared-document confirm card was resolved by the user's click. */
+		onSharedDocumentEditResolved?: (resolution: SharedDocumentEditResolutionV1) => void;
 		reviewProjectId?: string | null;
 		reviewDisabled?: boolean;
 		selectedContextType?: ChatContextType | null;
@@ -91,6 +99,7 @@
 		onDraftInChat,
 		onReviewDeeper,
 		onDocumentChangeUndone,
+		onSharedDocumentEditResolved,
 		reviewProjectId = null,
 		reviewDisabled = false,
 		selectedContextType = null,
@@ -102,6 +111,9 @@
 
 	const proseClasses = getProseClasses('sm');
 	const rowKey = messageRenderKey;
+
+	// Shared-document confirm cards render under the reply that showed them.
+	const sharedEditCards = $derived(placeSharedDocumentEditCards(messages));
 
 	// ── Streaming text ──────────────────────────────────────────────────────
 	// Streaming and finalized assistant bubbles share one render branch: a
@@ -741,6 +753,18 @@
 	}
 </script>
 
+{#snippet sharedEditCardGroup(placement: SharedDocumentEditCardPlacement)}
+	<div class="flex min-w-0 flex-col gap-2" data-testid="shared-document-edit-cards">
+		{#each placement.cards as card (card.action.card_id)}
+			<SharedDocumentEditCard
+				{card}
+				turnActive={placement.turnActive}
+				onResolved={onSharedDocumentEditResolved}
+			/>
+		{/each}
+	</div>
+{/snippet}
+
 <!-- INKPRINT message container with muted background -->
 <!--
 	Scroll policy lives in this component (see "Conversation scroll policy"):
@@ -908,6 +932,7 @@
 					</div>
 				{:else if message.type === 'assistant'}
 					{@const body = assistantBody(message, message.id === streamingMessageId)}
+					{@const editCards = sharedEditCards.get(message.id)}
 					<!-- INKPRINT assistant message with Frame texture -->
 					<div
 						data-testid="agent-chat-assistant-message"
@@ -958,6 +983,9 @@
 							{formatTime(message.timestamp)}
 						</span>
 					</div>
+					{#if editCards}
+						{@render sharedEditCardGroup(editCards)}
+					{/if}
 				{:else if message.type === 'agent_peer'}
 					<!-- INKPRINT agent peer: neutral palette + round avatar (amber reserved for warnings) -->
 					<div class="flex min-w-0 gap-2 sm:gap-3">
@@ -990,11 +1018,15 @@
 						</div>
 					</div>
 				{:else if message.type === 'thinking_block'}
+					{@const editCards = sharedEditCards.get(message.id)}
 					<ThinkingBlock
 						block={message as ThinkingBlockMessage}
 						onToggleCollapse={onToggleThinkingBlock}
 						{onClientActionComplete}
 					/>
+					{#if editCards}
+						{@render sharedEditCardGroup(editCards)}
+					{/if}
 				{:else if message.type === 'clarification'}
 					<!-- INKPRINT clarification: accent palette ("your turn" kin to user bubble) -->
 					<div class="flex min-w-0 gap-2 sm:gap-3">

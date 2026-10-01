@@ -289,6 +289,22 @@ describe('Organize persistence', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Apply undo' }));
 		await waitFor(() => expect(screen.getByText('Reversed 1 move')).toBeInTheDocument());
 	});
+	it('names what each saved batch moved', async () => {
+		const saved = receipt({ batch_id: 'old-batch' });
+		batches = [
+			{
+				id: saved.batch_id,
+				inverse_of: null,
+				receipt: saved,
+				created_at: '2026-09-30T12:00:00Z',
+				moved: [{ kind: 'document', title: 'Research', child_count: 1 }],
+				moved_count: 3
+			}
+		];
+		setup();
+		await fireEvent.click(screen.getByRole('button', { name: 'History' }));
+		expect(await screen.findByText('Research + 1 child doc · +2 more')).toBeInTheDocument();
+	});
 	it('does not let history Undo replace a staged plan', async () => {
 		const saved = receipt({ batch_id: 'old-batch' });
 		batches = [

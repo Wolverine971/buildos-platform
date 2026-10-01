@@ -137,6 +137,11 @@
 			"import": "./dist/ontology/document-edits.mjs",
 			"require": "./dist/ontology/document-edits.js"
 		},
+		"./ontology/shared-document-edit-card": {
+			"types": "./dist/ontology/shared-document-edit-card.d.ts",
+			"import": "./dist/ontology/shared-document-edit-card.mjs",
+			"require": "./dist/ontology/shared-document-edit-card.js"
+		},
 		"./ops/update-value-validation": {
 			"types": "./dist/ops/update-value-validation.d.ts",
 			"import": "./dist/ops/update-value-validation.mjs",

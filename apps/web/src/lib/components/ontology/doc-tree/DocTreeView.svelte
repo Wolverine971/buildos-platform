@@ -317,6 +317,10 @@
 		dragDrop?.handleTouchStart(e, node, element);
 	}
 
+	function handleDropInside(node: EnrichedDocTreeNode) {
+		dragDrop?.setDropInside(node);
+	}
+
 	// Global mouse/touch handlers for drag
 	function handleGlobalMouseMove(e: MouseEvent) {
 		dragDrop?.handleMouseMove(e);
@@ -871,6 +875,7 @@
 					onDragStart={enableDragDrop ? handleDragStart : undefined}
 					onDragOver={enableDragDrop ? handleDragOver : undefined}
 					onTouchStart={enableDragDrop ? handleTouchStart : undefined}
+					onDropInside={enableDragDrop ? handleDropInside : undefined}
 					canDrag={enableDragDrop}
 					cutNodeId={dragDrop?.state.cutNode?.id ?? null}
 					onFocus={(nodeId) => dragDrop?.setFocusedNode(nodeId)}

@@ -268,6 +268,80 @@ export async function undoOrganize(input: {
 		return { ...result, skipped };
 	});
 }
+/** History names at most this many items per batch; the rest are counted. */
+const NAMED_MOVES_PER_BATCH = 3;
+export type NamedMove = { kind: 'document' | 'task'; title: string; child_count: number };
+
+function subtreeSize(node: ManifestStep['subtree']): number {
+	return node ? 1 + (node.children ?? []).reduce((sum, child) => sum + subtreeSize(child), 0) : 0;
+}
+
+/** Each moved item once, in first-move order, with its last move's subtree. */
+function distinctMoves(manifest: ManifestStep[] | null | undefined) {
+	const steps = new Map<string, ManifestStep>();
+	for (const step of Array.isArray(manifest) ? manifest : []) {
+		if ((step?.kind === 'document' || step?.kind === 'task') && typeof step.id === 'string')
+			steps.set(`${step.kind}:${step.id}`, step);
+	}
+	return [...steps.values()];
+}
+
+/**
+ * Titles for what each batch moved, read now through the viewer's session client:
+ * RLS returns only items the viewer can read today, and titles never live in the
+ * journal. One query per entity table for the whole page; fails open to counts.
+ */
+async function nameMoves(session: Client, batches: Pick<Batch, 'id' | 'manifest'>[]) {
+	const moves = new Map(batches.map((batch) => [batch.id, distinctMoves(batch.manifest)]));
+	const wanted = { document: new Set<string>(), task: new Set<string>() };
+	for (const steps of moves.values())
+		for (const step of steps.slice(0, NAMED_MOVES_PER_BATCH)) wanted[step.kind].add(step.id);
+	const titles = new Map<string, string>();
+	try {
+		const none = { data: [] as { id: string; title: string | null }[], error: null };
+		const lookups = await Promise.all([
+			wanted.document.size
+				? session
+						.from('onto_documents')
+						.select('id,title')
+						.in('id', [...wanted.document])
+						.is('deleted_at', null)
+				: none,
+			wanted.task.size
+				? session
+						.from('onto_tasks')
+						.select('id,title')
+						.in('id', [...wanted.task])
+						.is('deleted_at', null)
+				: none
+		]);
+		(['document', 'task'] as const).forEach((kind, index) => {
+			const { data, error } = lookups[index]!;
+			if (error) throw error;
+			for (const row of (data ?? []) as { id: string; title: string | null }[])
+				titles.set(`${kind}:${row.id}`, row.title || 'Untitled');
+		});
+	} catch (error) {
+		console.error('[Organize] Could not name history items', error);
+		titles.clear();
+	}
+	return new Map(
+		[...moves].map(([id, steps]) => {
+			const named: NamedMove[] = [];
+			for (const step of steps.slice(0, NAMED_MOVES_PER_BATCH)) {
+				const title = titles.get(`${step.kind}:${step.id}`);
+				if (title)
+					named.push({
+						kind: step.kind,
+						title,
+						child_count: Math.max(0, subtreeSize(step.subtree) - 1)
+					});
+			}
+			return [id, { moved: named, moved_count: steps.length }];
+		})
+	);
+}
+
 export async function organizeHistory(
 	session: Client,
 	admin: Client,
@@ -278,7 +352,7 @@ export async function organizeHistory(
 		throw new OrganizeError('Edit access to this project is required.', 403);
 	const { data, error } = await admin
 		.from('onto_organize_batches' as never)
-		.select('id,user_id,project_ids,inverse_of,receipt,created_at')
+		.select('id,user_id,project_ids,inverse_of,manifest,receipt,created_at')
 		.eq('user_id', userId)
 		.contains('project_ids', [projectId])
 		.order('created_at', { ascending: false })
@@ -290,13 +364,14 @@ export async function organizeHistory(
 	);
 	const allowed = await writableProjects(session, others);
 	allowed.add(projectId);
-	return batches
-		.filter((batch) => batch.project_ids.every((id) => allowed.has(id)))
-		.map(({ id, inverse_of, receipt, created_at }) => ({
-			id,
-			inverse_of,
-			receipt,
-			created_at
-		}));
+	const visible = batches.filter((batch) => batch.project_ids.every((id) => allowed.has(id)));
+	const named = await nameMoves(session, visible);
+	return visible.map(({ id, inverse_of, receipt, created_at }) => ({
+		id,
+		inverse_of,
+		receipt,
+		created_at,
+		...named.get(id)!
+	}));
 }
 export { OrganizeSnapshotError };

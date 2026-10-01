@@ -96,7 +96,7 @@ import {
 	projectWorkerFrozenHistorySnapshot,
 	type LoadedSkillExecutionSummaryRow
 } from './session-service';
-import { CHAT_CONTINUITY_EXECUTION_FILTER } from './shared-document-confirmation-history';
+import { CHAT_CONTINUITY_EXECUTION_FILTER } from './shared-document-edit-card-history';
 import { loadFastChatPromptContext } from './context-loader';
 import { resolveMaterializedFastChatContext } from './materialized-context-cache.server';
 import { loadValidatedChatAttachments } from './stream-attachments';

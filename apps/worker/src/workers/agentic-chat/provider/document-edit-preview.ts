@@ -16,7 +16,6 @@ import { completedProviderCallToChatToolCall } from './feedback';
 import type { CompletedProviderToolCall } from './stream-tool-calls';
 import {
 	loadSharedDocumentTarget,
-	sharedDocumentEditArgs,
 	type SharedDocumentTarget
 } from '../mutations/shared-document-edit';
 
@@ -66,7 +65,6 @@ export function createGatewayDocumentEditPreviewPort(
 ): AgenticChatDocumentEditPreviewPort {
 	return {
 		async preview({ userId, projectId, args, baseContent }) {
-			const editArgs = sharedDocumentEditArgs(args);
 			let shared: SharedDocumentTarget | null = null;
 			const scope: AgentCallScope = {
 				mode: 'read_write',
@@ -79,7 +77,7 @@ export function createGatewayDocumentEditPreviewPort(
 					admin: client as never,
 					userId,
 					scope,
-					args: editArgs,
+					args,
 					...(baseContent !== undefined ? { baseContent } : {})
 				});
 				if (
@@ -94,18 +92,20 @@ export function createGatewayDocumentEditPreviewPort(
 						projectId,
 						args.document_id
 					);
+					// The adapter turns this call into a confirm card (nothing is
+					// written), so review sees the same diff the user will see.
 					if (shared)
 						result = await previewGatewayDocumentUpdate({
 							admin: client as never,
 							userId,
-							args: editArgs,
+							args,
 							scope: {
 								...scope,
 								project_ids: [shared.parent_project_id],
 								write_project_ids: [shared.parent_project_id]
 							}
 							// Shared edits use the stored head, never a synthetic body
-							// produced by earlier unconfirmed calls.
+							// produced by earlier calls in the batch.
 						});
 				}
 			} catch {

@@ -16,6 +16,7 @@
 import { createWorkerTaskSyncPort } from '@buildos/shared-agent-ops/calendar/worker-task-event-mutation-port';
 import {
 	type TaskSyncPort,
+	previewGatewayDocumentUpdate,
 	runGatewayWriteOp,
 	runReviewedDocumentArchive,
 	isDocumentArchiveState
@@ -71,11 +72,10 @@ import {
 } from './tool-catalog';
 import { gatewayMemoForTurn } from './gateway-turn-memo';
 import {
-	authorizeConfirmedSharedDocumentEdit,
+	type SharedDocumentPreviewRunner,
+	isSharedDocumentEditCard,
 	loadSharedDocumentTarget,
-	sharedDocumentConfirmation,
-	sharedDocumentEditArgs,
-	isSharedDocumentConfirmation
+	sharedDocumentEditCard
 } from './shared-document-edit';
 
 type GatewayRunner = typeof runGatewayWriteOp;
@@ -104,6 +104,7 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 	private readonly archiveDocument: typeof runReviewedDocumentArchive;
 	private readonly moveTask: TaskMoveRunner;
 	private readonly pingEntity: EntityPingRunner;
+	private readonly previewSharedDocument: SharedDocumentPreviewRunner;
 	private readonly injectedTaskSync: TaskSyncPort | undefined;
 	private memoizedTaskSync: TaskSyncPort | undefined;
 	private readonly injectedCalendarWrites: AgenticChatCalendarWritePortV1 | undefined;
@@ -118,12 +119,14 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 			moveTask?: TaskMoveRunner;
 			pingEntity?: EntityPingRunner;
 			calendarWrites?: AgenticChatCalendarWritePortV1;
+			previewSharedDocument?: SharedDocumentPreviewRunner;
 		} = {}
 	) {
 		this.runGateway = options.runGateway ?? runGatewayWriteOp;
 		this.archiveDocument = options.archiveDocument ?? runReviewedDocumentArchive;
 		this.moveTask = options.moveTask ?? moveOntoTaskAtomic;
 		this.pingEntity = options.pingEntity ?? pingOntoEntity;
+		this.previewSharedDocument = options.previewSharedDocument ?? previewGatewayDocumentUpdate;
 		this.injectedTaskSync = options.taskSync;
 		this.injectedCalendarWrites = options.calendarWrites;
 	}
@@ -162,7 +165,8 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		}
 
 		const data = await this.dispatch(execution, spec.operationName, context);
-		if (input.toolName === 'update_onto_document' && isSharedDocumentConfirmation(data)) {
+		// A confirm card saved nothing; its receipt is already canonical.
+		if (input.toolName === 'update_onto_document' && isSharedDocumentEditCard(data)) {
 			const receipt = canonicalMutationReceipt(data, input.toolName);
 			assertMutationReceiptSize(receipt, input.toolName);
 			return receipt;
@@ -239,9 +243,6 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 		// Only rows whose runner is the shared gateway reach here, and the catalog
 		// keeps their operationName inside the external allowed-op vocabulary.
 		const op = operationName as BuildosAgentAllowedOp;
-		if (toolName === 'update_onto_document' && context.args.confirmation_token !== undefined) {
-			return this.runConfirmedSharedDocument(context);
-		}
 		let result: Awaited<ReturnType<GatewayRunner>>;
 		try {
 			const runner =
@@ -277,7 +278,8 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 
 		if (!result.ok) {
 			// A failed scoped lookup wrote nothing. Only the authorized shared shelf
-			// can supply a preview; ordinary writes pay no extra hierarchy round trip.
+			// can turn it into a confirm card; ordinary writes pay no extra hierarchy
+			// round trip. The card writes nothing: the user's click decides.
 			if (
 				toolName === 'update_onto_document' &&
 				projectId &&
@@ -290,7 +292,14 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 					projectId,
 					String(context.args.document_id)
 				);
-				if (target) return sharedDocumentConfirmation(input, target, context.args);
+				if (target)
+					return sharedDocumentEditCard({
+						client: this.client,
+						input,
+						target,
+						args: context.args,
+						preview: this.previewSharedDocument
+					});
 			}
 			if (
 				execution.failureClassifier === 'document_tree_title_branch' &&
@@ -305,61 +314,6 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 			}
 			throwGatewayResultFailure(toolName, result.error);
 		}
-		return result.data;
-	}
-
-	private async runConfirmedSharedDocument(
-		context: AgenticChatMutationExecutionContextV1
-	): Promise<Record<string, unknown> | undefined> {
-		const { input, args, projectId, toolName } = context;
-		// The same read-only authorization the provider ran before review, repeated
-		// here because only this check is adjacent to the guarded write.
-		const target = await authorizeConfirmedSharedDocumentEdit(
-			this.client,
-			input,
-			projectId,
-			args
-		);
-		if (input.signal.aborted)
-			throw knownFailure(
-				'mutation_cancelled_before_dispatch',
-				'Mutation cancelled before dispatch'
-			);
-		let result: Awaited<ReturnType<GatewayRunner>>;
-		try {
-			result = await this.runGateway({
-				admin: this.client,
-				userId: input.executionInput.claim.userId,
-				scope: {
-					mode: 'read_write',
-					allowed_ops: ['onto.document.update'],
-					project_ids: [target.parent_project_id],
-					write_project_ids: [target.parent_project_id]
-				},
-				op: 'onto.document.update',
-				args: sharedDocumentEditArgs(args),
-				chatSessionId: input.executionInput.claim.sessionId,
-				documentWriteGuard: {
-					documentId: target.document_id,
-					projectId: target.parent_project_id,
-					updatedAt: target.updated_at
-				}
-				// Deliberately no turn memo: recheck current parent membership.
-			});
-		} catch (error) {
-			throw uncertainFailure(
-				`${toolName}_gateway_threw`,
-				canonicalGatewayError(error, toolName)
-			);
-		}
-		if (!result.ok) {
-			if (result.error?.details?.confirmation_changed === true)
-				throw knownFailure('shared_document_confirmation_changed', result.error.message);
-			throwGatewayResultFailure(toolName, result.error);
-		}
-		// Receipt validation follows this one authorized parent; subsequent calls
-		// still resolve the original child fence from the immutable turn context.
-		context.projectId = target.parent_project_id;
 		return result.data;
 	}
 

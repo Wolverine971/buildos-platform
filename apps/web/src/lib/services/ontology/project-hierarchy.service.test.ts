@@ -4,6 +4,7 @@ import {
 	ProjectHierarchyError,
 	getProjectFamily,
 	hierarchyErrorApiCode,
+	loadParentCandidateFacts,
 	loadVisibleParentIds,
 	setProjectParent,
 	toProjectHierarchyError,
@@ -151,5 +152,120 @@ describe('loadVisibleParentIds', () => {
 		);
 		expect(parents.size).toBe(0);
 		expect((await loadVisibleParentIds(tableClient([]), [])).size).toBe(0);
+	});
+});
+
+describe('loadParentCandidateFacts', () => {
+	type Row = Record<string, unknown>;
+	/** Tables as RLS returns them to this viewer; filters are applied, not ignored. */
+	function tablesClient(tables: Record<string, Row[]>) {
+		const from = vi.fn((table: string) => {
+			let rows = [...(tables[table] ?? [])];
+			const query: any = {
+				select: vi.fn(() => query),
+				in: vi.fn((column: string, values: unknown[]) => {
+					rows = rows.filter((row) => values.includes(row[column]));
+					return query;
+				}),
+				eq: vi.fn((column: string, value: unknown) => {
+					rows = rows.filter((row) => row[column] === value);
+					return query;
+				}),
+				is: vi.fn((column: string, value: unknown) => {
+					rows = rows.filter((row) => (row[column] ?? null) === value);
+					return query;
+				}),
+				then: (resolve: any, reject: any) =>
+					Promise.resolve({ data: rows, error: null }).then(resolve, reject)
+			};
+			return query;
+		});
+		return { client: { from } as never, from };
+	}
+
+	const project = (id: string, extra: Row = {}): Row => ({
+		id,
+		name: id,
+		parent_project_id: null,
+		created_by: 'someone-else',
+		deleted_at: null,
+		...extra
+	});
+
+	it('names visible parents, flags hubs, and reports the viewer access level', async () => {
+		const { client, from } = tablesClient({
+			onto_projects: [
+				project('hub', { name: 'Wayne Strategies', created_by: 'me' }),
+				project('redline', { parent_project_id: 'hub' }),
+				project('cadre'),
+				// Its parent is outside what this viewer can open: never named or revealed.
+				project('client-of-hidden', { parent_project_id: 'hidden-hub' }),
+				project('nested-elsewhere', { parent_project_id: 'other-hub' }),
+				project('other-hub', { name: 'Other hub' })
+			],
+			onto_project_members: [
+				{ actor_id: 'me', project_id: 'redline', access: 'admin', removed_at: null },
+				{ actor_id: 'me', project_id: 'cadre', access: 'write', removed_at: null },
+				{
+					actor_id: 'me',
+					project_id: 'client-of-hidden',
+					access: 'admin',
+					removed_at: null
+				},
+				{
+					actor_id: 'me',
+					project_id: 'nested-elsewhere',
+					access: 'admin',
+					removed_at: null
+				},
+				{ actor_id: 'me', project_id: 'other-hub', access: 'read', removed_at: null },
+				{ actor_id: 'you', project_id: 'cadre', access: 'admin', removed_at: null }
+			]
+		});
+		const facts = await loadParentCandidateFacts(client, 'me', [
+			{ id: 'hub', name: 'Wayne Strategies' },
+			{ id: 'redline', name: 'Redline' },
+			{ id: 'cadre', name: 'The Cadre' },
+			{ id: 'client-of-hidden', name: 'Client' },
+			{ id: 'nested-elsewhere', name: 'Nested' }
+		]);
+		expect(facts.get('hub')).toEqual({
+			parent_project_id: null,
+			parent_project_name: null,
+			has_children: true,
+			access_level: 'admin'
+		});
+		expect(facts.get('redline')).toMatchObject({
+			parent_project_id: 'hub',
+			parent_project_name: 'Wayne Strategies',
+			access_level: 'admin'
+		});
+		expect(facts.get('cadre')).toMatchObject({ access_level: 'write', has_children: false });
+		expect(facts.get('client-of-hidden')).toMatchObject({
+			parent_project_id: null,
+			parent_project_name: null
+		});
+		// A visible parent outside the list costs one more lookup, for its name only.
+		expect(facts.get('nested-elsewhere')).toMatchObject({
+			parent_project_id: 'other-hub',
+			parent_project_name: 'Other hub'
+		});
+		expect(from).toHaveBeenCalledTimes(4);
+	});
+
+	it('fails open to no facts', async () => {
+		const failing = {
+			from: vi.fn(() => {
+				const query: any = {};
+				for (const method of ['select', 'in', 'eq', 'is']) query[method] = () => query;
+				query.then = (resolve: any) =>
+					Promise.resolve({ data: null, error: { message: 'boom' } }).then(resolve);
+				return query;
+			})
+		} as never;
+		expect((await loadParentCandidateFacts(failing, 'me', [{ id: 'a', name: 'A' }])).size).toBe(
+			0
+		);
+		expect((await loadParentCandidateFacts(failing, 'me', [])).size).toBe(0);
 	});
 });

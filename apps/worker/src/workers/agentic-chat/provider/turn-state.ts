@@ -52,7 +52,7 @@ import {
 import type { AgenticChatProviderCapacityLeaseV1 } from './provider-capacity';
 import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
 import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
-import { isSharedDocumentConfirmation } from '../mutations/shared-document-edit';
+import { isSharedDocumentEditCard } from '../mutations/shared-document-edit';
 import {
 	buildContractCompletionRequest,
 	buildTurnContractWriteCarveOutRequest
@@ -670,16 +670,11 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		| { replayRefusal: true; fallback: string; finishedReason: 'stop' | 'mutation_unfulfilled' }
 		| null {
 		if (!this.semanticReviewRequired || !this.mutationBatchLaneEnabled) return null;
-		// A confirmed shared-document edit has no direct lane: it always takes
-		// independent review, including after an unreviewed direct write already
-		// ran this turn ("Yes, and mark task X done"). Refusing it there failed the
-		// whole turn after a write had landed.
-		const confirmedSharedEdit = calls.some(isConfirmedSharedDocumentCall);
 		if (
 			!(
 				dispositionPending(this.phase) ||
 				this.phase === 'batch_withheld' ||
-				(this.phase === 'mutating' && (this.reviewedBatchExecuted || confirmedSharedEdit))
+				(this.phase === 'mutating' && this.reviewedBatchExecuted)
 			) ||
 			!calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))
 		) {
@@ -687,7 +682,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		}
 		if (
 			!this.reviewedBatchExecuted &&
-			!confirmedSharedEdit &&
 			assessDirectWriteBatch(calls, this.directWriteContext(value)).kind === 'simple'
 		) {
 			return null;
@@ -1497,12 +1491,12 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	/**
-	 * A shared-document preview saved nothing and ends the turn on the user's
-	 * confirmation question, so it must not be retried or replaced with an
-	 * unfinished-work fallback. Only that structured receipt counts. Other
-	 * `requires_user_action` results (a calendar reconnect after a saved write,
-	 * an email or task-move confirmation, a clarification) leave the rest of
-	 * the request owed, and the completion checks still apply to them.
+	 * A shared-document confirm card saved nothing and ends the turn on the
+	 * card: the user's click decides, so the edit must not be retried or
+	 * replaced with an unfinished-work fallback. Only that structured receipt
+	 * counts. Other `requires_user_action` results (a calendar reconnect after a
+	 * saved write, an email or task-move confirmation, a clarification) leave
+	 * the rest of the request owed, and the completion checks still apply.
 	 */
 	private awaitingSharedDocumentConfirmation(): boolean {
 		return this.turnToolExecutions.some(isPendingSharedDocumentPreview);
@@ -1514,7 +1508,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	// folders created, moves never proposed, prose accepted. One bounded
 	// continuation returns the model to the unfinished outcomes.
 	private incompleteApprovedContractResolution() {
-		// Confirmation is a successful preview, not unfinished work to retry.
+		// A confirm card is a successful preview, not unfinished work to retry.
 		if (this.awaitingSharedDocumentConfirmation()) return null;
 		const turnContract = this.turnContract;
 		if (
@@ -1606,18 +1600,11 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 }
 
-/** The token-bearing repeat of a previewed shared-document edit. */
-function isConfirmedSharedDocumentCall(call: CompletedProviderToolCall): boolean {
-	return (
-		call.name === 'update_onto_document' && Object.hasOwn(call.arguments, 'confirmation_token')
-	);
-}
-
-/** Structured receipt fields only; the adapter returns the preview receipt as the result. */
+/** Structured receipt fields only; the adapter returns the card receipt as the result. */
 function isPendingSharedDocumentPreview(execution: FastToolExecution): boolean {
 	return (
 		execution.result.success === true &&
 		execution.toolCall.function?.name === 'update_onto_document' &&
-		isSharedDocumentConfirmation(execution.result.result)
+		isSharedDocumentEditCard(execution.result.result)
 	);
 }

@@ -4,15 +4,26 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/sv
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectFamilyV1 } from '@buildos/shared-types';
 import ProjectParentPickerModal from './ProjectParentPickerModal.svelte';
+import { fetchParentCandidates, type ParentCandidate } from './project-family';
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('$lib/stores/toast.store', () => ({ toastService: toast }));
-vi.mock('$lib/components/chat/project-selector-browser', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/components/chat/project-selector-browser')>()),
-	fetchProjectSelectionSummaries: vi.fn(async () => [
-		{ id: 'hub', name: 'Wayne Strategies', stateKey: 'active', updatedAt: null }
-	])
+vi.mock('./project-family', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./project-family')>()),
+	fetchParentCandidates: vi.fn()
 }));
+
+const candidate = (overrides: Partial<ParentCandidate> = {}): ParentCandidate => ({
+	id: 'hub',
+	name: 'Wayne Strategies',
+	stateKey: 'active',
+	updatedAt: '',
+	parentProjectId: null,
+	parentProjectName: null,
+	hasChildren: false,
+	accessLevel: 'admin',
+	...overrides
+});
 
 const family = (parent: ProjectFamilyV1['parent']): ProjectFamilyV1 => ({
 	project_id: 'redline',
@@ -32,6 +43,7 @@ describe('ProjectParentPickerModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.stubGlobal('scrollTo', vi.fn());
+		vi.mocked(fetchParentCandidates).mockResolvedValue([candidate()]);
 	});
 	afterEach(() => {
 		cleanup();
@@ -103,5 +115,36 @@ describe('ProjectParentPickerModal', () => {
 		expect(await screen.findByRole('alert')).toHaveTextContent(
 			'You need admin access to Wayne Strategies.'
 		);
+	});
+
+	it('greys out parents the server would refuse, with the reason', async () => {
+		vi.mocked(fetchParentCandidates).mockResolvedValue([
+			candidate({ hasChildren: true }),
+			candidate({
+				id: 'redline',
+				name: 'Redline',
+				parentProjectId: 'hub',
+				parentProjectName: 'Wayne Strategies'
+			}),
+			candidate({ id: 'cadre', name: 'The Cadre', accessLevel: 'write' }),
+			candidate({ id: 'studio', name: 'DJ Wayne Studio', accessLevel: null })
+		]);
+		render(ProjectParentPickerModal, {
+			isOpen: true,
+			projectId: 'beyond-exit',
+			projectName: 'Beyond Exit',
+			family: family(null),
+			onClose: vi.fn()
+		});
+		const hub = await screen.findByRole('button', { name: /^Wayne Strategies/ });
+		expect(hub).toBeEnabled();
+		expect(hub).toHaveTextContent('Has sub-projects');
+		expect(screen.getByRole('button', { name: /^Redline/ })).toBeDisabled();
+		expect(screen.getByText('Already inside Wayne Strategies')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /^The Cadre/ })).toBeDisabled();
+		expect(screen.getByText('Needs admin access')).toBeInTheDocument();
+		// Unknown access is left to the server.
+		expect(screen.getByRole('button', { name: /^DJ Wayne Studio/ })).toBeEnabled();
+		expect(fetchParentCandidates).toHaveBeenCalledWith(expect.objectContaining({ search: '' }));
 	});
 });

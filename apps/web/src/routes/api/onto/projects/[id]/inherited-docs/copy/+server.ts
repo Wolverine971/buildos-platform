@@ -15,19 +15,8 @@ import {
 	hierarchyErrorApiCode,
 	toProjectHierarchyError
 } from '$lib/services/ontology/project-hierarchy.service';
-import { addDocumentToTree } from '$lib/services/ontology/doc-structure.service';
-import {
-	createOrMergeDocumentVersion,
-	toDocumentSnapshot
-} from '$lib/services/ontology/versioning.service';
-import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
-import { START_HERE_DOCUMENT_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/start-here';
-import { THINKING_LOG_TYPE_KEY } from '@buildos/shared-agent-ops/ontology/thinking-log';
-
-const SINGLETON_CONTEXT_TYPE_KEYS = new Set<string>([
-	START_HERE_DOCUMENT_TYPE_KEY,
-	THINKING_LOG_TYPE_KEY
-]);
+import { getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import { copyInheritedDocument } from '$lib/server/inherited-doc-copy';
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
 	const { user } = await locals.safeGetSession();
@@ -87,86 +76,21 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		return ApiResponse.error(mapped.message, mapped.status, hierarchyErrorApiCode(mapped));
 	}
 
-	const { data: source, error: sourceError } = await locals.supabase
-		.from('onto_documents')
-		.select('title, description, content, type_key, state_key')
-		.eq('id', documentId)
-		.eq('project_id', parentId)
-		.is('deleted_at', null)
-		.maybeSingle();
-	if (sourceError) return ApiResponse.databaseError(sourceError);
-	if (!source) return ApiResponse.notFound('Shared document');
-
-	const content = source.content ?? null;
-	const { data: document, error: insertError } = await locals.supabase
-		.from('onto_documents')
-		.insert({
-			project_id: projectId,
-			title: source.title,
-			// A project has one START HERE and one thinking log; copies of the
-			// parent's become ordinary documents here.
-			type_key: SINGLETON_CONTEXT_TYPE_KEYS.has(source.type_key)
-				? 'document.default'
-				: source.type_key,
-			state_key: 'draft',
-			content,
-			description: source.description,
-			props: {
-				...(content ? { body_markdown: content } : {}),
-				copied_from: {
-					document_id: documentId,
-					project_id: parentId,
-					copied_at: new Date().toISOString()
-				}
-			},
-			created_by: actorId
-		})
-		.select('*')
-		.single();
-	if (insertError || !document) return ApiResponse.databaseError(insertError);
-
-	const warnings: string[] = [];
-	try {
-		await createOrMergeDocumentVersion({
-			supabase: locals.supabase,
-			documentId: document.id,
-			actorId,
-			snapshot: toDocumentSnapshot(document),
-			changeSource: getChangeSourceFromRequest(request)
-		});
-	} catch {
-		warnings.push(
-			'The copy was created, but its first version could not be recorded in history.'
-		);
-	}
-	try {
-		await addDocumentToTree(
-			locals.supabase,
-			projectId,
-			document.id,
-			{
-				parentId: null,
-				title: document.title ?? null,
-				description: document.description ?? null
-			},
-			actorId
-		);
-	} catch {
-		warnings.push('The copy was created but could not be placed in the document tree.');
-	}
-
-	logCreateAsync(
-		locals.supabase,
+	const copied = await copyInheritedDocument({
+		supabase: locals.supabase,
+		userId: user.id,
+		actorId,
 		projectId,
-		'document',
-		document.id,
-		{ title: document.title, type_key: document.type_key, state_key: document.state_key },
-		user.id,
-		getChangeSourceFromRequest(request)
-	);
+		parentId,
+		documentId,
+		changeSource: getChangeSourceFromRequest(request)
+	});
+	if (copied.status === 'not_found' || copied.status === 'changed')
+		return ApiResponse.notFound('Shared document');
+	if (copied.status === 'error') return ApiResponse.databaseError(copied.error);
 
 	return ApiResponse.success(
-		{ document: { id: document.id, title: document.title } },
-		warnings.length ? warnings.join(' ') : 'Copied into this project'
+		{ document: copied.document },
+		copied.warnings.length ? copied.warnings.join(' ') : 'Copied into this project'
 	);
 };

@@ -152,12 +152,15 @@ describe('project family prompt section', () => {
 		expect(section.id).toBe('project_family');
 		expect(section.content).toContain(`Part of Wayne Strategies [${PARENT_ID}].`);
 		expect(section.content).toContain(
-			'Shared docs, owned by Wayne Strategies and shown in 5 sub-projects (edits require confirmation):'
+			'Shared docs, owned by Wayne Strategies and shown in 5 sub-projects (edits go through a confirm card):'
 		);
 		expect(section.content).toContain(`- Shared doc 1 [${uuid(1)}]`);
 		// Nested shelf docs indent under their folder.
 		expect(section.content).toContain(`\n  - Rate card [${uuid(2)}]`);
-		expect(section.content).toContain('wait for explicit user confirmation in a later turn');
+		// Consent is the click on the confirm card, never typed text.
+		expect(section.content).toContain('chooses Update shared doc, Copy here, or Cancel');
+		expect(section.content).toContain('Never ask them to type yes, claim it is done, or repeat the edit');
+		expect(section.content).not.toContain('confirmation_token');
 		// The gateway admits single shelf docs, not the parent's lists or search.
 		expect(section.content).not.toContain('project_id');
 		expect(section.content).not.toContain('more');

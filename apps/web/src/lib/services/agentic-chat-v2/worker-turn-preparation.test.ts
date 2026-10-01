@@ -319,17 +319,58 @@ describe('Agentic Chat worker turn preparation', () => {
 		mocks.buildPendingTurnContractSystemMessage.mockReturnValue(null);
 	});
 
-	it('freezes the pending shared-document edit and receipt through the owned-history admission path', async () => {
+	it('carries a confirm card’s state into the next turn through the owned-history admission path', async () => {
 		const warningId = 'f2000000-0000-4000-8000-000000000001';
+		const id = (n: number) => `f${n}000000-0000-4000-8000-000000000001`;
 		const edit = {
-			document_id: 'f3000000-0000-4000-8000-000000000001',
+			document_id: id(3),
 			edits: [{ old_text: 'A & B\n', new_text: 'C < D\n' }]
 		};
 		const receipt = {
 			status: 'confirmation_required',
+			requires_user_action: true,
 			confirmation_kind: 'shared_document_edit_v1',
-			confirmation_token: 'f4000000-0000-4000-8000-000000000001',
-			shared_document: { shared_with_count: 3 }
+			card_version: 2,
+			card_id: id(4),
+			source_user_message_id: id(5),
+			pending_edit: {
+				document_id: id(3),
+				child_project_id: id(6),
+				parent_project_id: id(7),
+				shared_folder_id: id(8),
+				shared_with_count: 3,
+				document_version: '2026-08-03T10:00:00+00:00',
+				arguments: edit
+			},
+			client_action: {
+				kind: 'confirm_shared_document_edit',
+				action_id: id(4),
+				card_id: id(4),
+				session_id: SESSION_ID,
+				document_id: id(3),
+				document_title: 'Rate card',
+				parent_project_id: id(7),
+				parent_name: 'Wayne Strategies',
+				child_project_id: id(6),
+				shared_with_count: 3,
+				change: null,
+				field_changes: [],
+				expires_at: '2026-08-04T10:01:00.000Z'
+			},
+			message: 'Nothing has changed yet.',
+			card_resolution: {
+				version: 1,
+				card_id: id(4),
+				choice: 'apply',
+				outcome: 'applied',
+				resolved_at: '2026-08-03T10:02:00.000Z',
+				document_id: id(3),
+				document_title: 'Rate card',
+				parent_project_id: id(7),
+				parent_name: 'Wayne Strategies',
+				shared_with_count: 3,
+				copy: null
+			}
 		};
 		const serviceClient = serviceClientWithTables({
 			chat_sessions: [
@@ -348,7 +389,7 @@ describe('Agentic Chat worker turn preparation', () => {
 					session_id: SESSION_ID,
 					user_id: USER_ID,
 					role: 'assistant',
-					content: 'This changes the shared copy for all 3 projects. Confirm?',
+					content: 'I’d update the shared copy for all 3 projects. Choose in the card below.',
 					metadata: null,
 					created_at: '2026-08-03T10:01:00.000Z'
 				}
@@ -357,7 +398,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			chat_tool_executions: [
 				{
 					message_id: warningId,
-					provider_tool_call_id: 'shared-preview-1',
+					provider_tool_call_id: 'call_0',
 					tool_name: 'update_onto_document',
 					gateway_op: 'onto.document.update',
 					sequence_index: 1,
@@ -374,7 +415,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			userId: USER_ID,
 			command: command({
 				sessionId: SESSION_ID,
-				message: 'Yes, update the shared copy.'
+				message: 'Great, what is next?'
 			}) as never,
 			lease: {
 				decisionId: DECISION_ID,
@@ -386,18 +427,17 @@ describe('Agentic Chat worker turn preparation', () => {
 		const history = result.args.p_artifact_history as Array<{
 			role: string;
 			content: string;
-			toolCalls: Array<{ function: { arguments: string } }>;
+			toolCalls: unknown[];
 		}>;
-		expect(
-			JSON.parse(
-				history.find((message) => message.toolCalls.length > 0)!.toolCalls[0]!.function
-					.arguments
-			)
-		).toEqual(edit);
-		expect(JSON.parse(history.find((message) => message.role === 'tool')!.content)).toEqual(
-			receipt
-		);
-		expect(history.at(-1)!.content).toContain('all 3 projects');
+		expect(history.map((message) => message.role)).toEqual(['assistant', 'system']);
+		expect(history.every((message) => message.toolCalls.length === 0)).toBe(true);
+		const note = history.at(-1)!.content;
+		expect(JSON.parse(note.slice(note.indexOf('{')))).toMatchObject({
+			card_id: id(4),
+			state: 'applied',
+			owner_project: 'Wayne Strategies'
+		});
+		expect(note).not.toContain('C < D');
 	});
 
 	it('builds an inline-session RPC value with empty history, null lineage, exact hashes, and server ids', async () => {

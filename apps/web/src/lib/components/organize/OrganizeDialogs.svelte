@@ -2,7 +2,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { blockerMessage, impactLines, receiptMessage } from './organize-api';
+	import { blockerMessage, impactLines, movedItemsLine, receiptMessage } from './organize-api';
 	import type { createOrganizePersistence } from './useOrganizePersistence.svelte';
 	import type { OrganizeProject, PlannedChange } from './organize-plan';
 	let {
@@ -161,12 +161,16 @@
 			{:else}
 				<ol class="space-y-3">
 					{#each persistence.history as batch (batch.id)}
+						{@const moved = movedItemsLine(batch.moved, batch.moved_count)}
 						<li class="rounded-lg border border-border p-3">
 							<div class="flex flex-wrap items-start justify-between gap-2">
-								<div>
+								<div class="min-w-0">
 									<h3 class="text-sm font-medium">
 										{receiptMessage(batch.receipt)}
 									</h3>
+									{#if moved}<p class="mt-1 break-words text-sm text-foreground">
+											{moved}
+										</p>{/if}
 									<p class="mt-1 text-xs text-muted-foreground">
 										<time datetime={batch.created_at}
 											>{new Date(batch.created_at).toLocaleString()}</time

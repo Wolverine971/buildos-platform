@@ -94,6 +94,52 @@ describe('DocTreeNode control quality', () => {
 		expect(onOpenDocument).toHaveBeenCalledWith('shared');
 	});
 
+	it('shows an empty shared folder where shared docs go, and takes drops there', async () => {
+		const folder = createNode({ id: 'shared', title: 'Shared with sub-projects' });
+		const onDropInside = vi.fn();
+		const props = {
+			node: folder,
+			expandedIds: new Set<string>(),
+			onToggleExpand: vi.fn(),
+			onOpenDocument: vi.fn(),
+			onContextMenu: vi.fn(),
+			sharedFolderId: 'shared',
+			sharedCount: 3,
+			onDropInside
+		};
+		const view = render(DocTreeNode, { props: { ...props, canDrag: true } });
+		const ghost = screen.getByRole('note');
+		expect(ghost).toHaveTextContent('Drop docs here to share them with 3 sub-projects');
+
+		// Hovering without a drag does nothing; during a drag the ghost is the target.
+		await fireEvent.mouseEnter(ghost);
+		expect(onDropInside).not.toHaveBeenCalled();
+		await view.rerender({
+			dragState: { isDragging: true, dropZone: null, isValidDrop: false } as never
+		});
+		await fireEvent.mouseMove(ghost);
+		expect(onDropInside).toHaveBeenCalledWith(folder);
+		view.unmount();
+
+		// Read-only viewers and folders that already hold docs get no ghost.
+		const readOnly = render(DocTreeNode, { props: { ...props, canDrag: false } });
+		expect(screen.queryByRole('note')).toBeNull();
+		readOnly.unmount();
+		render(DocTreeNode, {
+			props: {
+				...props,
+				canDrag: true,
+				node: createNode({
+					id: 'shared',
+					title: 'Shared with sub-projects',
+					type: 'folder',
+					children: [createNode({ id: 'brand', title: 'Brand', depth: 1 })]
+				})
+			}
+		});
+		expect(screen.queryByRole('note')).toBeNull();
+	});
+
 	it('opens the action menu from the standard keyboard shortcut', async () => {
 		const node = createNode();
 		const { onContextMenu } = renderNode(node);

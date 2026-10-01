@@ -251,7 +251,8 @@
 	);
 
 	const sharedProjects = $derived(analytics.recent.projects.filter((p) => p.is_shared));
-	// "· parent" on sub-projects whose parent is in the same recent list.
+	// "· parent" on sub-projects: named by the service when the viewer can open the
+	// parent, else found in the same recent list.
 	const recentProjectNames = $derived(
 		new Map(analytics.recent.projects.map((p) => [p.id, p.name]))
 	);
@@ -864,9 +865,9 @@
 
 {#snippet projectRow(project: DashboardProjectActivity)}
 	{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
-	{@const parentName = project.parent_project_id
-		? recentProjectNames.get(project.parent_project_id)
-		: undefined}
+	{@const parentName =
+		project.parent_project_name ??
+		(project.parent_project_id ? recentProjectNames.get(project.parent_project_id) : undefined)}
 	{@const projectHref = resolveProjectHref(project)}
 	<a
 		href={projectHref}

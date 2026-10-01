@@ -126,7 +126,6 @@ import {
 	type AgenticChatProviderMutationCapabilitiesV1,
 	normalizeAgenticChatMutationCapabilitiesV1
 } from '../mutations/tool-catalog';
-import { createSharedDocumentConfirmationCheckPort } from '../mutations/shared-document-edit';
 import { AgenticChatTableMutationAdapter } from '../mutations/table-adapter';
 import { SupabaseAgenticChatLiveVisionResolver } from '../tools/live-vision';
 import {
@@ -387,9 +386,6 @@ export function createAgenticChatCompositionRoot(options: {
 				? {
 						documentEditPreview: createGatewayDocumentEditPreviewPort(options.client),
 						documentArchivePreview: createGatewayDocumentArchivePreviewPort(
-							options.client
-						),
-						sharedDocumentConfirmation: createSharedDocumentConfirmationCheckPort(
 							options.client
 						)
 					}

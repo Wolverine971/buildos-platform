@@ -3816,6 +3816,23 @@
 									<ExternalLink class="w-3.5 h-3.5 shrink-0" />
 									Open document page
 								</button>
+								<!-- Same entry as the Details panel's, easier to find here. -->
+								{#if !inheritance && !isArchivedDocument && canOrganizeDocument}
+									<OrganizeEntryButton
+										variant="menuitem"
+										{projectId}
+										itemId={activeDocumentId}
+										kind="document"
+										label="Move between projects…"
+										disabled={isCloseBlocked ||
+											hasUnsavedChanges ||
+											sharedEditLocked}
+										onNavigate={() => {
+											showExportMenu = false;
+											requestClose();
+										}}
+									/>
+								{/if}
 								<div class="my-1 border-t border-border/60"></div>
 							{/if}
 							<div class="px-3 pb-1 pt-1.5" role="presentation">

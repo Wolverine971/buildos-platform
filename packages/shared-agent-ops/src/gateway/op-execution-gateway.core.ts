@@ -854,6 +854,17 @@ export async function previewDocumentUpdate(
 	edits_applied?: AppliedDocumentEdit[];
 	/** The body this call would store (the next chained preview's base); null when unchanged. */
 	next_content: string | null;
+	/**
+	 * The stored document this preview read: its version (`updated_at`) and the
+	 * fields a confirm card shows "from" values for. A write guarded by this
+	 * version applies exactly the previewed change or nothing.
+	 */
+	base: {
+		updated_at: string | null;
+		description: string | null;
+		state_key: string | null;
+		type_key: string | null;
+	};
 }> {
 	const documentId = args.document_id;
 	if (typeof documentId !== 'string' || !isValidUUID(documentId)) {
@@ -917,7 +928,19 @@ export async function previewDocumentUpdate(
 		title,
 		document_change: documentChange,
 		...(bodyUpdate.appliedEdits ? { edits_applied: bodyUpdate.appliedEdits } : {}),
-		next_content: summary ? (bodyUpdate.nextContent ?? null) : null
+		next_content: summary ? (bodyUpdate.nextContent ?? null) : null,
+		base: {
+			updated_at:
+				typeof existingDocument.updated_at === 'string' ? existingDocument.updated_at : null,
+			description:
+				typeof existingDocument.description === 'string'
+					? existingDocument.description
+					: null,
+			state_key:
+				typeof existingDocument.state_key === 'string' ? existingDocument.state_key : null,
+			type_key:
+				typeof existingDocument.type_key === 'string' ? existingDocument.type_key : null
+		}
 	};
 }
 

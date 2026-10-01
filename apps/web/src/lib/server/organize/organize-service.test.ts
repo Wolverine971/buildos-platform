@@ -364,6 +364,91 @@ describe('Organize service', () => {
 		// One write check per distinct project.
 		expect(user.rpc).toHaveBeenCalledTimes(3);
 	});
+	it('names moved items the viewer can read now, in one query per table', async () => {
+		const step = (kind: string, id: string, children: unknown[] = []) => ({
+			kind,
+			id,
+			before: { project_id: 'source', parent_id: null, position: 0 },
+			after: { project_id: 'dest', parent_id: null, position: 0 },
+			subtree: kind === 'document' ? { id, children } : null
+		});
+		const privileged = admin([
+			savedBatch({
+				id: 'docs',
+				manifest: [
+					step('document', 'research', [{ id: 'notes', children: [] }]),
+					step('document', 'secret'),
+					step('task', 'call'),
+					step('document', 'research', [{ id: 'notes', children: [] }]),
+					step('document', 'fourth')
+				]
+			}),
+			savedBatch({ id: 'old', manifest: undefined })
+		]);
+		const user = session();
+		const tables: Record<string, Row[]> = {
+			// RLS already left out "secret": the viewer can't read it any more.
+			onto_documents: [
+				{ id: 'research', title: 'Research', deleted_at: null },
+				{ id: 'fourth', title: 'Fourth', deleted_at: null }
+			],
+			onto_tasks: [{ id: 'call', title: 'Call Redline', deleted_at: null }]
+		};
+		const reads: { table: string; ids: unknown[] }[] = [];
+		user.from = vi.fn((table: string) => {
+			let rows = [...(tables[table] ?? [])];
+			const query: any = {
+				select: vi.fn(() => query),
+				in: vi.fn((_column: string, ids: unknown[]) => {
+					reads.push({ table, ids });
+					rows = rows.filter((row) => ids.includes(row.id));
+					return query;
+				}),
+				is: vi.fn(() => query),
+				then: (resolve: any, reject: any) =>
+					Promise.resolve({ data: rows, error: null }).then(resolve, reject)
+			};
+			return query;
+		});
+		const history = await organizeHistory(user, privileged, 'user', 'source');
+		const docs = history.find((batch) => batch.id === 'docs')!;
+		expect(docs.moved).toEqual([
+			{ kind: 'document', title: 'Research', child_count: 1 },
+			{ kind: 'task', title: 'Call Redline', child_count: 0 }
+		]);
+		expect(docs.moved_count).toBe(4);
+		expect(history.find((batch) => batch.id === 'old')).toMatchObject({
+			moved: [],
+			moved_count: 0
+		});
+		// Only the first few items per batch are looked up, through the session client.
+		expect(reads).toEqual([
+			{ table: 'onto_documents', ids: ['research', 'secret'] },
+			{ table: 'onto_tasks', ids: ['call'] }
+		]);
+	});
+	it('keeps history when item titles cannot be read', async () => {
+		const privileged = admin([
+			savedBatch({
+				manifest: [
+					{
+						kind: 'task',
+						id: 'call',
+						before: { project_id: 'source', parent_id: null, position: 0 },
+						after: { project_id: 'dest', parent_id: null, position: 0 },
+						subtree: null
+					}
+				]
+			})
+		]);
+		const user = session();
+		user.from = vi.fn(() => {
+			throw new Error('connection reset');
+		});
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const [batch] = await organizeHistory(user, privileged, 'user', 'source');
+		expect(batch).toMatchObject({ id: 'batch', moved: [], moved_count: 1 });
+	});
 	it('refuses history without edit access to the project', async () => {
 		const privileged = admin([savedBatch()]);
 		await expect(

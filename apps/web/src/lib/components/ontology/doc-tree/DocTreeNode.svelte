@@ -52,6 +52,8 @@
 		onDragStart?: (e: MouseEvent, node: EnrichedDocTreeNode, element: HTMLElement) => void;
 		onDragOver?: (e: MouseEvent, node: EnrichedDocTreeNode, element: HTMLElement) => void;
 		onTouchStart?: (e: TouchEvent, node: EnrichedDocTreeNode, element: HTMLElement) => void;
+		/** Drop straight into this node (the empty shared folder's ghost row). */
+		onDropInside?: (node: EnrichedDocTreeNode) => void;
 		canDrag?: boolean;
 		// Cut/paste props
 		cutNodeId?: string | null;
@@ -76,6 +78,7 @@
 		onDragStart,
 		onDragOver,
 		onTouchStart,
+		onDropInside,
 		canDrag = true,
 		cutNodeId = null,
 		onFocus,
@@ -118,6 +121,10 @@
 	const sharedTitle = $derived(
 		`Shown in ${sharedCount} ${sharedCount === 1 ? 'sub-project' : 'sub-projects'}`
 	);
+	// An empty shared folder says what it is for, and takes drops for editors.
+	const showShareGhost = $derived(
+		isSharedFolder && sharedCount > 0 && childDocs.length === 0 && canDrag
+	);
 
 	// Drag state derivations
 	const isDragging = $derived(dragState?.isDragging && dragState?.draggedNode?.id === node.id);
@@ -139,6 +146,7 @@
 			dragState?.isValidDrop
 	);
 	const isValidDropTarget = $derived(isDropTarget && dragState?.isValidDrop);
+	const isGhostDropTarget = $derived(showShareGhost && isValidDropTarget);
 	const isConverting = $derived(isDropTarget && dragState?.isConverting && !isFolder);
 	const isInvalidTarget = $derived(
 		dragState?.isDragging &&
@@ -247,6 +255,11 @@
 	function handleMouseMove(e: MouseEvent) {
 		if (!dragState?.isDragging || !onDragOver || !nodeElement) return;
 		onDragOver(e, node, nodeElement);
+	}
+
+	function handleGhostDragOver() {
+		if (!dragState?.isDragging) return;
+		onDropInside?.(node);
 	}
 
 	function handleDragHandleTouchStart(e: TouchEvent) {
@@ -425,6 +438,26 @@
 		<div class="doc-tree-insertion-line" style="margin-left: {indent + 8}px"></div>
 	{/if}
 
+	<!-- Empty shared folder: where shared docs go (a drop target while dragging) -->
+	{#if showShareGhost}
+		<div
+			class="doc-tree-share-ghost mb-1 mr-2 flex min-h-11 items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs transition-colors motion-reduce:transition-none {isGhostDropTarget
+				? 'border-accent bg-accent/10 text-accent'
+				: 'border-border-strong/60 bg-muted/30 text-muted-foreground'}"
+			style="margin-left: {indent + indentPx + 4}px"
+			role="note"
+			data-share-ghost
+			onmouseenter={handleGhostDragOver}
+			onmousemove={handleGhostDragOver}
+		>
+			<Share2 class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+			<span class="min-w-0">
+				Drop docs here to share them with {sharedCount}
+				{sharedCount === 1 ? 'sub-project' : 'sub-projects'}
+			</span>
+		</div>
+	{/if}
+
 	<!-- Children (if expanded): child documents, then images filed under this document -->
 	{#if isExpandable && isExpanded && childDocs.length + images.length > 0}
 		<div class="doc-tree-children" style="--tree-line-left: {indent + 16}px">
@@ -443,6 +476,7 @@
 						{onDragStart}
 						{onDragOver}
 						{onTouchStart}
+						{onDropInside}
 						{canDrag}
 						{cutNodeId}
 						{onFocus}

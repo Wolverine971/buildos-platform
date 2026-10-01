@@ -252,9 +252,9 @@ function buildPreparedPromptHarnessSha(params: {
 
 	return sha256Text(
 		stableStringify({
-			// Version 3 preserves shared-document confirmation calls and receipts.
-			// Reject older history even when the system prompt is equal.
-			historyProjectionVersion: 3,
+			// Version 4 replaces recalled shared-document previews with confirm-card
+			// state notes. Reject older history even when the system prompt is equal.
+			historyProjectionVersion: 4,
 			systemPrompt: canonicalEnvelope.systemPrompt,
 			tools: params.tools
 		})

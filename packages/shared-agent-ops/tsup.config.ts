@@ -35,6 +35,7 @@ export default defineConfig({
 		'src/ontology/document-write.service.ts',
 		'src/ontology/document-patch.ts',
 		'src/ontology/document-edits.ts',
+		'src/ontology/shared-document-edit-card.ts',
 		'src/ops/update-value-validation.ts',
 		'src/ops/async-activity-logger.ts',
 		'src/ops/tracked-in-app-notification.service.ts',

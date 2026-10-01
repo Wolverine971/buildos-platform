@@ -108,9 +108,15 @@ describe('ontology write tool definitions', () => {
 		const documentProperties = getToolProperties('update_onto_document');
 		expect(documentProperties).toHaveProperty('update_strategy');
 		expect(documentProperties).toHaveProperty('merge_instructions');
-		expect(documentProperties.confirmation_token).toMatchObject({
-			type: 'string',
-			format: 'uuid'
-		});
+	});
+
+	it('gives the model no way to confirm a shared-document edit itself', () => {
+		// Consent is the user's click on the confirm card (project hierarchy Phase 2).
+		expect(getToolProperties('update_onto_document')).not.toHaveProperty('confirmation_token');
+		const description =
+			ONTOLOGY_WRITE_TOOLS.find((tool) => tool.function.name === 'update_onto_document')!
+				.function.description ?? '';
+		expect(description).toContain('Update shared doc, Copy here, or Cancel');
+		expect(description).toContain('never ask them to type yes');
 	});
 });

@@ -341,6 +341,26 @@ export function createDragDropState(options: DragDropOptions) {
 		state.invalidReason = validation.reason ?? null;
 	}
 
+	/**
+	 * An explicit "drop inside this folder" target, such as the empty shared
+	 * folder's ghost row: the intent is already clear, so no hover-to-convert wait.
+	 */
+	function setDropInside(targetNode: EnrichedDocTreeNode) {
+		if (!state.isDragging || !state.draggedNode) return;
+		if (hoverTimer) {
+			clearTimeout(hoverTimer);
+			hoverTimer = null;
+		}
+		const dropZone = buildDropZone('inside', targetNode, options);
+		const validation = validateDrop(state.draggedNode.id, dropZone, options);
+		// Not a hover on the row itself: moving back onto the row starts its own wait.
+		state.hoverTargetId = null;
+		state.isConverting = false;
+		state.dropZone = dropZone;
+		state.isValidDrop = validation.valid;
+		state.invalidReason = validation.reason ?? null;
+	}
+
 	// ============================================
 	// DRAG END
 	// ============================================
@@ -804,6 +824,7 @@ export function createDragDropState(options: DragDropOptions) {
 		startDrag,
 		updateDrag,
 		updateDropZone,
+		setDropInside,
 		endDrag,
 		cancelDrag,
 

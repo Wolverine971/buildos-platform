@@ -1422,5 +1422,29 @@ describe('DocumentModal document loading', () => {
 			});
 			await waitFor(() => expect(organizeEntry()).not.toBeNull());
 		});
+
+		it.each([
+			['an ordinary document', {}, true],
+			['START HERE', { type_key: 'document.context.project' }, false]
+		])(
+			'lists the cross-project move in the header menu for %s',
+			async (_label, document, offered) => {
+				stubDocument(document);
+				render(DocumentModal, {
+					props: { projectId: 'project-1', documentId: 'document-a', isOpen: true }
+				});
+				await screen.findByDisplayValue('Document A');
+				const more = screen.getByRole('button', { name: 'More actions', hidden: true });
+				await waitFor(() => expect(more).toBeEnabled());
+				await fireEvent.click(more);
+				await screen.findByRole('menuitem', { name: 'Copy document URL', hidden: true });
+				const entry = screen.queryByRole('menuitem', {
+					name: 'Move between projects…',
+					hidden: true
+				});
+				if (offered) expect(entry).toBeEnabled();
+				else expect(entry).toBeNull();
+			}
+		);
 	});
 });

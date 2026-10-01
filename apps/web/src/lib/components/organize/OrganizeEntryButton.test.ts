@@ -90,3 +90,21 @@ it('keeps an editor with pending changes in place', async () => {
 	expect(nav.goto).not.toHaveBeenCalled();
 	expect(onNavigate).not.toHaveBeenCalled();
 });
+
+it('works as a row in an open menu, waiting for Organize before closing it', async () => {
+	const onNavigate = vi.fn();
+	render(OrganizeEntryButton, {
+		projectId: 'project',
+		itemId: 'item',
+		kind: 'document',
+		variant: 'menuitem',
+		label: 'Move between projects…',
+		onNavigate
+	});
+	uninstall = installRouter(() => {});
+	const item = screen.getByRole('menuitem', { name: 'Move between projects…' });
+	await fireEvent.click(item);
+	expect(item).toBeDisabled();
+	await waitFor(() => expect(onNavigate).toHaveBeenCalledOnce());
+	expect(window.location.search).toBe('?document=item');
+});

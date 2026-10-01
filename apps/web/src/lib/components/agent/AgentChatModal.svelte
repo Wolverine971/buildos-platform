@@ -188,6 +188,7 @@
 		createAttachmentController
 	} from './agent-chat-attachments.svelte';
 	import type { AgentClientActionCompletion } from './agent-chat-client-actions';
+	import type { SharedDocumentEditResolutionV1 } from '@buildos/shared-agent-ops/ontology/shared-document-edit-card';
 	import {
 		createAgentChatShellRouter,
 		type AutoInitProjectConfig,
@@ -2526,6 +2527,33 @@
 		);
 	}
 
+	/**
+	 * A shared-document confirm card was resolved by the user's click. Report a
+	 * saved change like any chat mutation so open views refresh, and drop the
+	 * prewarmed prompt: its history predates the click, and the next turn must
+	 * see the card's outcome.
+	 */
+	function handleSharedDocumentEditResolved(resolution: SharedDocumentEditResolutionV1) {
+		prewarm.clearPreparedPrompt();
+		const saved =
+			resolution.outcome === 'applied'
+				? { documentId: resolution.document_id, projectId: resolution.parent_project_id }
+				: resolution.outcome === 'copied' && resolution.copy
+					? {
+							documentId: resolution.copy.document_id,
+							projectId: resolution.copy.project_id
+						}
+					: null;
+		if (!saved) return;
+		presenter.recordDataMutation(
+			'update_onto_document',
+			{ document_id: saved.documentId, project_id: saved.projectId },
+			true,
+			{ result: { document: { id: saved.documentId, project_id: saved.projectId } } },
+			{ turnId: null }
+		);
+	}
+
 	function beginWorkerGeneration(input: {
 		handle: WorkerTurnHandle;
 		executionGeneration: number;
@@ -2969,6 +2997,7 @@
 		onClientActionComplete={handleClientActionComplete}
 		onDraftInChat={handleFreshnessDraftInChat}
 		onDocumentChangeUndone={handleDocumentChangeUndone}
+		onSharedDocumentEditResolved={handleSharedDocumentEditResolved}
 		onReviewDeeper={projectReviewAvailable ? handleReviewDeeper : undefined}
 		{reviewProjectId}
 		{reviewDisabled}

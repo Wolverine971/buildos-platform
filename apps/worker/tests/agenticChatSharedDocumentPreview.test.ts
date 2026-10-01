@@ -5,9 +5,7 @@ vi.mock('@buildos/shared-agent-ops/gateway/op-execution-gateway', () => ({
 	previewGatewayDocumentUpdate: mocks.preview
 }));
 vi.mock('../src/workers/agentic-chat/mutations/shared-document-edit', () => ({
-	loadSharedDocumentTarget: mocks.target,
-	sharedDocumentEditArgs: ({ confirmation_token: _token, ...args }: Record<string, unknown>) =>
-		args
+	loadSharedDocumentTarget: mocks.target
 }));
 import { createGatewayDocumentEditPreviewPort } from '../src/workers/agentic-chat/provider/document-edit-preview';
 const target = { parent_project_id: 'parent', shared_with_count: 4, document_id: 'doc' };
@@ -29,13 +27,13 @@ const ready = {
 const request = {
 	userId: 'user',
 	projectId: 'child',
-	args: { document_id: 'doc', content: 'New rate', confirmation_token: 'token' }
+	args: { document_id: 'doc', content: 'New rate' }
 };
 beforeEach(() => {
 	vi.resetAllMocks();
 });
 describe('shared-document dry run', () => {
-	it('previews a writable shelf document in the exact parent and strips the confirmation argument', async () => {
+	it('previews a writable shelf document in the exact parent, as the confirm card will show it', async () => {
 		mocks.preview.mockResolvedValueOnce(missing).mockResolvedValueOnce(ready);
 		mocks.target.mockResolvedValue(target);
 		const result = await createGatewayDocumentEditPreviewPort({} as never).preview({
@@ -51,8 +49,6 @@ describe('shared-document dry run', () => {
 			args: { document_id: 'doc', content: 'New rate' }
 		});
 		expect(mocks.preview.mock.calls[1]![0]).not.toHaveProperty('baseContent');
-		for (const [call] of mocks.preview.mock.calls)
-			expect(call.args).not.toHaveProperty('confirmation_token');
 	});
 	it('does not broaden preview scope for other parent or sibling documents', async () => {
 		mocks.preview.mockResolvedValue(missing);

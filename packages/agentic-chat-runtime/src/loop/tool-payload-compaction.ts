@@ -2452,6 +2452,13 @@ function compactDocumentMutationReceipt(payload: unknown): unknown {
 			? (record.result as Record<string, any>)
 			: null;
 	const holder = envelope ?? record;
+	const card = compactSharedDocumentEditCard(holder);
+	if (card) {
+		return applyToolPayloadSizeGuard(
+			envelope ? { ...record, result: card } : card,
+			TOOL_COMPACT_TARGET_CHARS
+		);
+	}
 	const document =
 		holder.document && typeof holder.document === 'object' && !Array.isArray(holder.document)
 			? (holder.document as Record<string, any>)
@@ -2493,6 +2500,44 @@ function compactDocumentMutationReceipt(payload: unknown): unknown {
 		envelope ? { ...record, result: compactHolder } : compactHolder,
 		TOOL_COMPACT_TARGET_CHARS
 	);
+}
+
+/**
+ * A shared-document confirm card (project hierarchy Phase 2) saved nothing.
+ * The model gets what it proposed, where, and the instruction; never the
+ * server-held edit or the card's render data, which only the web reads.
+ */
+function compactSharedDocumentEditCard(
+	holder: Record<string, any>
+): Record<string, unknown> | null {
+	if (
+		holder.confirmation_kind !== 'shared_document_edit_v1' ||
+		holder.status !== 'confirmation_required' ||
+		!holder.client_action ||
+		typeof holder.client_action !== 'object'
+	) {
+		return null;
+	}
+	const action = holder.client_action as Record<string, any>;
+	const change = compactDocumentChange(action.change);
+	return {
+		status: holder.status,
+		requires_user_action: holder.requires_user_action === true,
+		saved: false,
+		card_id: holder.card_id,
+		shared_document: {
+			document_id: action.document_id,
+			title: action.document_title,
+			owner_project: action.parent_name,
+			owner_project_id: action.parent_project_id,
+			shared_with_count: action.shared_with_count
+		},
+		...(change ? { proposed_change: change } : {}),
+		...(Array.isArray(action.field_changes) && action.field_changes.length > 0
+			? { proposed_field_changes: action.field_changes }
+			: {}),
+		message: holder.message
+	};
 }
 
 const DOCUMENT_CHANGE_MODEL_HUNK_LINES = 24;

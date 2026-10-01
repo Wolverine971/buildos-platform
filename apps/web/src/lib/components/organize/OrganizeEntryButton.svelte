@@ -12,6 +12,7 @@
 		kind,
 		disabled = false,
 		label = 'Move to…',
+		variant = 'button',
 		onNavigate
 	}: {
 		projectId: string;
@@ -19,10 +20,17 @@
 		kind: 'document' | 'task';
 		disabled?: boolean;
 		label?: string;
+		/** `menuitem` renders a row for an open menu, which stays open until Organize loads. */
+		variant?: 'button' | 'menuitem';
 		/** Closes an editor that is still open after Organize loaded (one hosted outside the page). */
 		onNavigate?: () => void;
 	} = $props();
-	let navigating = false;
+	let navigating = $state(false);
+	const title = $derived(
+		disabled
+			? 'Save pending edits before moving this item.'
+			: 'Choose a project and review this move in Organize'
+	);
 	let mounted = true;
 	onDestroy(() => {
 		mounted = false;
@@ -47,15 +55,22 @@
 	}
 </script>
 
-<Button
-	variant="ghost"
-	size="sm"
-	{disabled}
-	onclick={openOrganize}
-	title={disabled
-		? 'Save pending edits before moving this item.'
-		: 'Choose a project and review this move in Organize'}
->
-	<FolderInput class="h-4 w-4" />
-	{label}
-</Button>
+{#if variant === 'menuitem'}
+	<button
+		type="button"
+		role="menuitem"
+		disabled={disabled || navigating}
+		aria-busy={navigating}
+		onclick={openOrganize}
+		{title}
+		class="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+	>
+		<FolderInput class="w-3.5 h-3.5 shrink-0" />
+		{label}
+	</button>
+{:else}
+	<Button variant="ghost" size="sm" {disabled} onclick={openOrganize} {title}>
+		<FolderInput class="h-4 w-4" />
+		{label}
+	</Button>
+{/if}

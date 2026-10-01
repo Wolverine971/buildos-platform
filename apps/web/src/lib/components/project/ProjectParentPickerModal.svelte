@@ -2,10 +2,10 @@
 <!--
 	"Move under…": pick the project this one belongs to, or remove it from its
 	current parent. One level only: a project with sub-projects can't move under
-	another, and the server rejects loops and child-as-parent with a 409 whose
-	message is shown as-is (as is a 403 when the viewer isn't an admin of the
-	chosen parent). A parent's admin who can't move this project sees only
-	"Remove from …" (`canMove` false).
+	another. Parents the server would refuse (already inside another project, no
+	admin access) are greyed out with the reason up front; the server still
+	decides, and its 409/403 message is shown as-is. A parent's admin who can't
+	move this project sees only "Remove from …" (`canMove` false).
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
@@ -16,10 +16,8 @@
 		DEFAULT_PROJECT_SELECTOR_LIMIT,
 		MAX_PROJECT_SELECTOR_LIMIT,
 		PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS,
-		fetchProjectSelectionSummaries,
 		formatRelativeProjectUpdate,
-		normalizeProjectSelectionSearch,
-		type ProjectSelectionSummary
+		normalizeProjectSelectionSearch
 	} from '$lib/components/chat/project-selector-browser';
 	import { normalizeProjectState, PROJECT_STATE_META } from '$lib/config/project-states';
 	import { toastService } from '$lib/stores/toast.store';
@@ -33,7 +31,12 @@
 		X
 	} from '$lib/icons/lucide';
 	import type { ProjectFamilyV1, ProjectSetParentResultV1 } from '@buildos/shared-types';
-	import { possessive, setProjectParent } from './project-family';
+	import {
+		fetchParentCandidates,
+		possessive,
+		setProjectParent,
+		type ParentCandidate
+	} from './project-family';
 
 	let {
 		isOpen = $bindable(false),
@@ -55,7 +58,7 @@
 	} = $props();
 
 	let searchTerm = $state('');
-	let results = $state<ProjectSelectionSummary[]>([]);
+	let results = $state<ParentCandidate[]>([]);
 	let loadingResults = $state(false);
 	let resultsError = $state<string | null>(null);
 	let selectedId = $state<string | null>(null);
@@ -73,10 +76,18 @@
 	const normalizedSearch = $derived(normalizeProjectSelectionSearch(searchTerm));
 	const selectedProject = $derived(results.find((result) => result.id === selectedId) ?? null);
 
-	function unavailableReason(candidateId: string): string | null {
-		if (candidateId === projectId) return 'This project';
-		if (candidateId === currentParent?.id) return 'Current';
-		if (subProjectIds.has(candidateId)) return 'Inside this project';
+	function unavailableReason(candidate: ParentCandidate): string | null {
+		if (candidate.id === projectId) return 'This project';
+		if (candidate.id === currentParent?.id) return 'Current';
+		if (subProjectIds.has(candidate.id)) return 'Inside this project';
+		// One level of nesting: a project that is already inside another can't hold this one.
+		if (candidate.parentProjectId) {
+			return `Already inside ${candidate.parentProjectName || 'another project'}`;
+		}
+		// Nesting needs admin on both projects; unknown access is left to the server.
+		if (candidate.accessLevel && candidate.accessLevel !== 'admin') {
+			return 'Needs admin access';
+		}
 		return null;
 	}
 
@@ -88,7 +99,7 @@
 		loadingResults = true;
 		resultsError = null;
 		try {
-			const projects = await fetchProjectSelectionSummaries({
+			const projects = await fetchParentCandidates({
 				search,
 				limit: search ? MAX_PROJECT_SELECTOR_LIMIT : DEFAULT_PROJECT_SELECTOR_LIMIT,
 				signal: controller.signal
@@ -265,7 +276,7 @@
 				{:else}
 					<ul class="space-y-0.5" aria-label="Projects">
 						{#each results as candidate (candidate.id)}
-							{@const reason = unavailableReason(candidate.id)}
+							{@const reason = unavailableReason(candidate)}
 							{@const isSelected = selectedId === candidate.id}
 							{@const stateLabel =
 								PROJECT_STATE_META[normalizeProjectState(candidate.stateKey)].label}
@@ -299,12 +310,13 @@
 										<span class="block truncate text-xs text-muted-foreground">
 											{stateLabel} · {formatRelativeProjectUpdate(
 												candidate.updatedAt
-											)}
+											)}{candidate.hasChildren ? ' · Has sub-projects' : ''}
 										</span>
 									</span>
 									{#if reason}
 										<span
-											class="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
+											class="max-w-[50%] shrink-0 truncate rounded-md bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground"
+											title={reason}
 										>
 											{reason}
 										</span>
