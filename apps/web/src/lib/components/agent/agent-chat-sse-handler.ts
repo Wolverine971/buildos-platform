@@ -37,8 +37,12 @@ import type {
 	ThinkingBlockMessage,
 	UIMessage
 } from './agent-chat.types';
-import type { OntologyEntityKind, ToolPresenter } from './agent-chat-tool-presenter';
-import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
+import {
+	toolResultAwaitsUser,
+	type OntologyEntityKind,
+	type ToolPresenter
+} from './agent-chat-tool-presenter';
+import { CONTEXT_DESCRIPTORS, isInternalAgenticControlToolName } from './agent-chat.constants';
 import { buildProjectWideFocus, isProjectContext } from './agent-chat-session';
 import { buildSkillLoadActivityEvent } from './agent-chat-skill-activity';
 import { deriveContextOverheadTokens } from './agent-chat-formatters';
@@ -58,20 +62,7 @@ import { extractDocumentChangeReceipt, type DocumentChangeReceipt } from './docu
 const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_LIMIT = 8;
 const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_MAX_STRING_LENGTH = 240;
 const TOOL_RESULT_ACTIVITY_STREAM_EVENTS_PREVIEW_MAX_DEPTH = 3;
-const INTERNAL_AGENTIC_CONTROL_TOOL_NAMES = new Set([
-	'declare_turn_contract',
-	'declare_read_only_turn',
-	'request_turn_clarification',
-	'cancel_turn_contract',
-	'approve_turn_contract_review',
-	'approve_read_only_turn_review',
-	'approve_mutation_batch_review',
-	'request_proposal_revision'
-]);
-
-export function isInternalAgenticControlToolName(toolName: string | undefined): boolean {
-	return Boolean(toolName && INTERNAL_AGENTIC_CONTROL_TOOL_NAMES.has(toolName));
-}
+export { isInternalAgenticControlToolName };
 
 /** Compute the user-visible `currentActivity` label for an `agent_state` event. */
 export function computeAgentStateActivity(state: AgentLoopState, details?: string): string {
@@ -463,8 +454,12 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		showToast?: boolean;
 	}): void {
 		const { toolName, args, success, toolResult, turnId, showToast = false } = params;
-		const documentChange = success ? extractDocumentChangeReceipt(toolResult) : null;
-		if (showToast && toolName && args !== undefined) {
+		// A held change (shared-doc confirm card, move preview) saved nothing yet:
+		// no "Updated" toast and no diff + Undo card; its own card carries the choice.
+		const awaitsUser = success && toolResultAwaitsUser(toolResult);
+		const documentChange =
+			success && !awaitsUser ? extractDocumentChangeReceipt(toolResult) : null;
+		if (showToast && !awaitsUser && toolName && args !== undefined) {
 			if (documentChange) {
 				presenter.showDocumentChangeToast(documentChange);
 			} else {

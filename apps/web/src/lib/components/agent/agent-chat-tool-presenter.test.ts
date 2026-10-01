@@ -13,6 +13,7 @@ import {
 	formatCalendarDateLabel,
 	formatDateOnlyLabel,
 	formatErrorMessage,
+	toolResultAwaitsUser,
 	type ToolPresenterContext
 } from './agent-chat-tool-presenter';
 
@@ -77,6 +78,31 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		expect(
 			presenter.formatToolMessage('update_onto_task', { task_id: 'task-1' }, 'completed')
 		).toBe('Updated task: "Refactor modal"');
+	});
+
+	it('labels a held change as waiting for the user, not as done', () => {
+		const h = makeHarness();
+		const presenter = createToolPresenter(h.ctx);
+		presenter.cacheEntityName('document', 'doc-1', 'Rate card');
+		expect(
+			presenter.formatToolMessage(
+				'update_onto_document',
+				{ document_id: 'doc-1' },
+				'awaiting_user'
+			)
+		).toBe('Needs your choice to update document: "Rate card"');
+	});
+
+	it('reads requires_user_action at any result wrapping', () => {
+		expect(toolResultAwaitsUser({ requires_user_action: true })).toBe(true);
+		expect(toolResultAwaitsUser({ result: { requires_user_action: true } })).toBe(true);
+		expect(toolResultAwaitsUser({ result: { result: { requires_user_action: true } } })).toBe(
+			true
+		);
+		expect(toolResultAwaitsUser({ data: { requires_user_action: true } })).toBe(true);
+		expect(toolResultAwaitsUser({ result: { requires_user_action: false } })).toBe(false);
+		expect(toolResultAwaitsUser({ result: { document: { id: 'doc-1' } } })).toBe(false);
+		expect(toolResultAwaitsUser(undefined)).toBe(false);
 	});
 
 	it('falls back to simplified format when no target is available', () => {

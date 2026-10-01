@@ -36,9 +36,12 @@ import type {
 import {
 	createToolPresenter,
 	extractCreatedEntityFromResult,
+	toAwaitingChoiceAction,
 	toFailureAction,
+	toolResultAwaitsUser,
 	toPastTenseAction
 } from './agent-chat-tool-presenter';
+import { isInternalAgenticControlToolName } from './agent-chat.constants';
 import { formatElapsedDuration } from './agent-chat-formatters';
 import { timelineItemsFromMessages } from './agent-chat-timeline';
 import { buildFreshnessCardUIMessage, isFreshnessCardMetadata } from './freshness-radar-card';
@@ -548,6 +551,12 @@ function formatRestoredToolActivity(source: RestoredToolActivitySource): string 
 	}
 
 	const targetSuffix = descriptor.target ? `: "${descriptor.target}"` : '';
+	if (
+		source.success &&
+		(source.requiresUserAction === true || toolResultAwaitsUser(resultRecord))
+	) {
+		return `${toAwaitingChoiceAction(descriptor.action, descriptor.target)}${durationSuffix}`;
+	}
 	if (source.success) {
 		return `${toPastTenseAction(descriptor.action)}${targetSuffix}${durationSuffix}`;
 	}
@@ -573,7 +582,13 @@ function mapToolExecutionsToSources(
 	toolExecutions: LoadedChatToolExecution[] | undefined
 ): RestoredToolActivitySource[] {
 	return (toolExecutions ?? [])
-		.filter((execution) => execution?.id && execution?.tool_name)
+		.filter(
+			(execution) =>
+				execution?.id &&
+				execution?.tool_name &&
+				// Live turns hide worker review controls; a reload must too.
+				!isInternalAgenticControlToolName(execution.tool_name)
+		)
 		.map((execution) => ({
 			id: execution.id,
 			source: 'tool_execution' as const,
@@ -609,7 +624,7 @@ function parseMetadataToolTrace(
 		.map((entry, index): RestoredToolActivitySource | null => {
 			if (!isRecord(entry)) return null;
 			const toolName = stringValue(entry.tool_name) ?? stringValue(entry.toolName);
-			if (!toolName) return null;
+			if (!toolName || isInternalAgenticControlToolName(toolName)) return null;
 			const toolCallId = stringValue(entry.tool_call_id) ?? stringValue(entry.toolCallId);
 			return {
 				id: toolCallId ?? `${messageId}-trace-${index}`,

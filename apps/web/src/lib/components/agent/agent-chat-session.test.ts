@@ -242,6 +242,56 @@ describe('agent-chat-session helpers', () => {
 		]);
 	});
 
+	it('buildAgentChatSessionSnapshot hides review controls and labels a held edit as waiting', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Change the strategy session price to $1,800.',
+					created_at: '2026-10-01T12:57:00.000Z'
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Choose in the card under this reply.',
+					created_at: '2026-10-01T12:57:30.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-review',
+					message_id: 'assistant-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'approve_mutation_batch_review',
+					sequence_index: 1,
+					arguments: {},
+					result: { status: 'mutation_batch_review_approved' },
+					success: true,
+					created_at: '2026-10-01T12:57:10.000Z'
+				},
+				{
+					id: 'exec-card',
+					message_id: 'assistant-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'update_onto_document',
+					sequence_index: 2,
+					arguments: { document_id: 'doc-1', document_title: 'Rate card' },
+					result: { status: 'confirmation_required', requires_user_action: true },
+					requires_user_action: true,
+					success: true,
+					created_at: '2026-10-01T12:57:20.000Z'
+				}
+			] as any
+		});
+
+		const block = snapshot.messages.find((message) => message.type === 'thinking_block');
+		expect((block as any).activities.map((activity: any) => activity.content)).toEqual([
+			'Needs your choice to update document: "Rate card"'
+		]);
+	});
+
 	it('buildAgentChatSessionSnapshot inserts created-entity chips inline after the turn that made them', () => {
 		const snapshot = buildAgentChatSessionSnapshot({
 			session: makeSession(),

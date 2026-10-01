@@ -1347,6 +1347,39 @@ describe('createSSEHandler — document change receipts', () => {
 		expect(h.calls.addDocumentChangesMessage).toEqual([]);
 	});
 
+	it('shows no toast and no change card for a held shared-doc edit', () => {
+		const h = createHarness();
+		const plainToast = vi.spyOn(h.presenter, 'showToolResultToast');
+		const changeToast = vi.spyOn(h.presenter, 'showDocumentChangeToast');
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'update_onto_document',
+			args: { document_id: 'document-1' }
+		});
+
+		h.handler({
+			type: 'tool_result',
+			turn_run_id: 'turn-run-1',
+			result: {
+				tool_call_id: 'call-card',
+				success: true,
+				tool_name: 'update_onto_document',
+				result: {
+					status: 'confirmation_required',
+					requires_user_action: true,
+					card_id: 'card-1',
+					message: 'Nothing has changed yet.',
+					document_change: change
+				}
+			}
+		});
+		h.handler({ type: 'done' });
+
+		expect(plainToast).not.toHaveBeenCalled();
+		expect(changeToast).not.toHaveBeenCalled();
+		expect(h.calls.addDocumentChangesMessage).toEqual([]);
+	});
+
 	it('still surfaces applied edits when the turn ends in an error', () => {
 		const h = createHarness();
 		h.nextActivityUpdateResult({

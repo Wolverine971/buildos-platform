@@ -77,7 +77,7 @@ export interface ToolPresenter {
 	formatToolMessage(
 		toolName: string,
 		args: string | Record<string, any>,
-		status: 'pending' | 'completed' | 'failed',
+		status: 'pending' | 'completed' | 'awaiting_user' | 'failed',
 		errorMessage?: string
 	): string;
 	/**
@@ -339,6 +339,27 @@ function toFailureAction(action: string): string {
 		TOOL_ACTION_BASE_FORM[verb] ??
 		(verb.toLowerCase().endsWith('ing') ? verb.toLowerCase().slice(0, -3) : verb.toLowerCase());
 	return [baseVerb, ...rest].join(' ').toLowerCase();
+}
+
+/**
+ * A tool result that holds a change for the user to decide (the shared-doc
+ * confirm card, a task-move preview) instead of reporting a finished one. Reads
+ * the structured `requires_user_action` flag at any of the result's wrappings.
+ */
+export function toolResultAwaitsUser(toolResult: unknown): boolean {
+	const isObject = (value: unknown): value is Record<string, unknown> =>
+		Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+	if (!isObject(toolResult)) return false;
+	const nested = isObject(toolResult.result) ? toolResult.result : null;
+	return [toolResult, nested, toolResult.data, nested?.result].some(
+		(candidate) => isObject(candidate) && candidate.requires_user_action === true
+	);
+}
+
+/** Activity line for a held change: nothing was saved, the user chooses next. */
+export function toAwaitingChoiceAction(action: string, target?: string): string {
+	const label = `Needs your choice to ${toFailureAction(action)}`;
+	return target ? `${label}: "${target}"` : label;
 }
 
 function formatErrorMessage(error: unknown, maxLength = 160): string | undefined {
@@ -1733,7 +1754,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 	function formatToolMessage(
 		toolName: string,
 		argsJson: string | Record<string, any>,
-		status: 'pending' | 'completed' | 'failed',
+		status: 'pending' | 'completed' | 'awaiting_user' | 'failed',
 		errorMessage?: string
 	): string {
 		const errorSuffix = status === 'failed' ? formatErrorSuffix(errorMessage) : '';
@@ -1768,6 +1789,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		if (!formatter) {
 			if (status === 'pending') return `Using tool: ${toolName}`;
 			if (status === 'completed') return `Tool ${toolName} completed`;
+			if (status === 'awaiting_user') return `Tool ${toolName} needs your choice`;
 			return `Tool ${toolName} failed${errorSuffix}`;
 		}
 
@@ -1781,6 +1803,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 				return `Tool ${toolName} failed${errorSuffix}`;
 			}
 			const { action, target } = descriptor;
+			if (status === 'awaiting_user') return toAwaitingChoiceAction(action, target);
 
 			if (!target) {
 				if (status === 'pending') {

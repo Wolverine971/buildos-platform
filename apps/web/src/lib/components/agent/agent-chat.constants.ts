@@ -44,3 +44,19 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		subtitle: 'Work with the ontology system (projects, tasks, docs, goals).'
 	}
 };
+
+/** Worker turn-control tools: never shown as user-facing activity, live or restored. */
+const INTERNAL_AGENTIC_CONTROL_TOOL_NAMES = new Set([
+	'declare_turn_contract',
+	'declare_read_only_turn',
+	'request_turn_clarification',
+	'cancel_turn_contract',
+	'approve_turn_contract_review',
+	'approve_read_only_turn_review',
+	'approve_mutation_batch_review',
+	'request_proposal_revision'
+]);
+
+export function isInternalAgenticControlToolName(toolName: string | undefined): boolean {
+	return Boolean(toolName && INTERNAL_AGENTIC_CONTROL_TOOL_NAMES.has(toolName));
+}

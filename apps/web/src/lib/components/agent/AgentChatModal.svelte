@@ -139,6 +139,7 @@
 	} from './agent-chat-skill-activity';
 	import {
 		createToolPresenter,
+		toolResultAwaitsUser,
 		type OntologyEntityKind,
 		type ToolPresenter
 	} from './agent-chat-tool-presenter';
@@ -1898,7 +1899,16 @@
 				'';
 			foundToolName = toolName;
 			foundArgs = args;
-			const newContent = presenter.formatToolMessage(toolName, args, status, errorMessage);
+			const displayStatus =
+				status === 'completed' && toolResultAwaitsUser(toolResult)
+					? 'awaiting_user'
+					: status;
+			const newContent = presenter.formatToolMessage(
+				toolName,
+				args,
+				displayStatus,
+				errorMessage
+			);
 			const skillActivity =
 				toolName === 'skill_load' && status === 'completed'
 					? buildSkillLoadActivityEvent('loaded', args)
