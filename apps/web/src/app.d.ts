@@ -27,6 +27,12 @@ declare global {
 			getCalendarTokens(): Promise<CalendarTokens | null>;
 			csrfToken?: string;
 		}
+		interface PageState {
+			/** Projects desktop: the open project card (shallow history, so Back closes it). */
+			desktopCard?: string;
+			/** How many card entries the desktop pushed, so Collapse can return past all of them. */
+			desktopDepth?: number;
+		}
 		interface PageData {
 			user: User | null;
 			url?: string;

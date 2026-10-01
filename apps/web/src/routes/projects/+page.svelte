@@ -6,7 +6,7 @@
   - Zero layout shift - exact number of cards rendered from start
 -->
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -15,7 +15,6 @@
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import Button from '$lib/components/ui/Button.svelte';
 	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
-	import ProjectListSkeleton from '$lib/components/projects/ProjectListSkeleton.svelte';
 	import type {
 		ViewMode,
 		GraphNode,
@@ -41,8 +40,9 @@
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
-	import CollapsibleStateSection from '$lib/components/projects/CollapsibleStateSection.svelte';
-	import ProjectStateRow from '$lib/components/projects/ProjectStateRow.svelte';
+	import ProjectDesktop, {
+		type ProjectPatch
+	} from '$lib/components/projects/desktop/ProjectDesktop.svelte';
 	import {
 		normalizeProjectState,
 		isPrimaryTier,
@@ -52,7 +52,6 @@
 		PROJECT_LIST_SCOPE_OPTIONS,
 		getProjectListScopeLabel,
 		matchesProjectListScope,
-		nestProjectList,
 		normalizeProjectListScope,
 		type ProjectListScope,
 		type ProjectListSummary
@@ -339,40 +338,16 @@
 			.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
 	});
 
-	// Sub-projects sit under their parent; a search flattens the list and labels them instead.
 	const isSearching = $derived(searchQuery.trim().length > 0);
-	const projectGroups = $derived(
-		nestProjectList(filteredProjects, { flat: isSearching, lookup: projects })
-	);
+	// A desktop card takes the page; search and filters come back when it closes.
+	const desktopCardOpen = $derived(Boolean($page.state.desktopCard));
 
-	const COLLAPSED_PARENTS_STORAGE_KEY = 'projects-list-collapsed-parents';
-	let collapsedParentIds = $state<Set<string>>(new Set());
-
-	onMount(() => {
-		try {
-			const parsed: unknown = JSON.parse(
-				localStorage.getItem(COLLAPSED_PARENTS_STORAGE_KEY) ?? '[]'
-			);
-			if (Array.isArray(parsed)) {
-				collapsedParentIds = new Set(
-					parsed.filter((id): id is string => typeof id === 'string')
-				);
-			}
-		} catch {
-			// Storage can be unavailable (private mode); everything stays expanded.
-		}
-	});
-
-	function toggleParentCollapsed(parentId: string) {
-		const next = new Set(collapsedParentIds);
-		if (next.has(parentId)) next.delete(parentId);
-		else next.add(parentId);
-		collapsedParentIds = next;
-		try {
-			localStorage.setItem(COLLAPSED_PARENTS_STORAGE_KEY, JSON.stringify([...next]));
-		} catch {
-			// Collapse still works for this visit.
-		}
+	function applyProjectPatches(patches: ProjectPatch[]) {
+		const byId = new Map(patches.map(({ id, patch }) => [id, patch]));
+		projectSummaries = projectSummaries.map((project) => {
+			const patch = byId.get(project.id);
+			return patch ? { ...project, ...patch } : project;
+		});
 	}
 
 	function parseProjectUpdatedAt(project: ProjectListSummary): number {
@@ -403,19 +378,6 @@
 			searchQuery.trim().length === 0 &&
 			completedProjects.length > 0
 	);
-	const visibleSectionLabel = $derived(
-		selectedScope === 'current' && searchQuery.trim().length > 0
-			? 'Search results'
-			: getProjectListScopeLabel(selectedScope)
-	);
-	const visibleSectionHelper = $derived(
-		selectedScope === 'current'
-			? searchQuery.trim().length > 0
-				? 'Across all project states'
-				: 'Recently updated'
-			: 'Recently updated'
-	);
-
 	function toggleValue<T extends string>(list: T[], value: T): T[] {
 		return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 	}
@@ -558,6 +520,25 @@
 	<title>Projects | BuildOS</title>
 </svelte:head>
 
+{#snippet tileSkeleton(count: number)}
+	<div
+		class="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-1 sm:grid-cols-[repeat(auto-fill,minmax(104px,1fr))]"
+		aria-busy="true"
+		aria-label="Loading projects"
+	>
+		{#each Array.from({ length: Math.min(count, 48) }, (_, index) => index) as index (index)}
+			<div class="flex flex-col items-center gap-2 px-1 pb-2 pt-2.5">
+				<div
+					class="h-14 w-14 animate-pulse rounded-xl bg-muted motion-reduce:animate-none"
+				></div>
+				<div
+					class="h-3 w-16 animate-pulse rounded bg-muted motion-reduce:animate-none"
+				></div>
+			</div>
+		{/each}
+	</div>
+{/snippet}
+
 <PullToRefresh
 	onRefresh={handlePullRefresh}
 	disabled={isPullRefreshing || showChatModal || projectsLoading}
@@ -608,10 +589,8 @@
 		{#if activeTab === 'overview'}
 			<section class="space-y-4">
 				{#if projectsLoading && !showSkeletons}
-					<!-- Fallback loading state when projectCount is 0 or unknown.
-					     Use the same vertical dossier-row skeleton as the real list so
-					     the loading shape matches what hydrates in (zero layout shift). -->
-					<ProjectListSkeleton count={3} />
+					<!-- Fallback loading state when projectCount is 0 or unknown. -->
+					{@render tileSkeleton(6)}
 				{:else if projectsError}
 					<div class="wt-card p-6 text-center tx tx-static tx-weak">
 						<h2 class="text-base font-semibold text-foreground">
@@ -630,7 +609,7 @@
 							</Button>
 						</div>
 					</div>
-				{:else}
+				{:else if !desktopCardOpen}
 					<div class="space-y-2">
 						<div class="flex min-w-0 items-stretch gap-2">
 							<div class="relative min-w-0 flex-1">
@@ -873,7 +852,7 @@
 
 			<!-- SKELETON LOADING: Show exact number of skeleton cards while loading -->
 			{#if showSkeletons}
-				<ProjectListSkeleton count={projectCount} />
+				{@render tileSkeleton(projectCount)}
 			{:else if projects.length === 0 && !projectsLoading}
 				<div
 					class="wt-paper border-dashed px-4 py-12 text-center tx tx-thread tx-weak sm:px-6 sm:py-16"
@@ -894,109 +873,35 @@
 						</Button>
 					</div>
 				</div>
-			{:else}
-				<div class="space-y-3">
-					{#if filteredProjects.length > 0}
-						<section class="space-y-2" aria-labelledby="project-list-heading">
-							<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-								<h2
-									id="project-list-heading"
-									class="text-sm font-semibold text-foreground"
-								>
-									{visibleSectionLabel}
-								</h2>
-								{#if hasFilters}
-									<span class="text-xs font-medium stamp text-muted-foreground">
-										{filteredProjects.length}
-									</span>
-								{/if}
-								<span
-									class="ml-auto hidden text-xs font-normal text-muted-foreground sm:inline"
-								>
-									{visibleSectionHelper}
-								</span>
-							</div>
-							<div class="space-y-1">
-								{#each projectGroups as group (group.project.id)}
-									<ProjectStateRow
-										project={group.project}
-										parentName={group.parentName}
-										onSelect={handleProjectClick}
-									/>
-									{#if group.children.length > 0}
-										{@const collapsed = collapsedParentIds.has(
-											group.project.id
-										)}
-										{@const childCount = group.children.length}
-										<div class="ml-3 border-l border-border pl-2 sm:ml-4">
-											<button
-												type="button"
-												class="flex min-h-11 w-full items-center gap-1.5 rounded-md px-2 text-left text-xs font-medium text-muted-foreground pressable hover:bg-muted/40 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [@media(pointer:fine)]:min-h-7"
-												aria-expanded={!collapsed}
-												aria-controls="project-children-{group.project.id}"
-												onclick={() =>
-													toggleParentCollapsed(group.project.id)}
-											>
-												<ChevronDown
-													class="h-3.5 w-3.5 shrink-0 transition-transform motion-reduce:transition-none {collapsed
-														? '-rotate-90'
-														: ''}"
-													aria-hidden="true"
-												/>
-												<span class="stamp">{childCount}</span>
-												{childCount === 1 ? 'project' : 'projects'} inside
-												<span class="sr-only">{group.project.name}</span>
-											</button>
-											{#if !collapsed}
-												<div
-													id="project-children-{group.project.id}"
-													class="space-y-1"
-												>
-													{#each group.children as child (child.id)}
-														<ProjectStateRow
-															project={child}
-															onSelect={handleProjectClick}
-														/>
-													{/each}
-												</div>
-											{/if}
-										</div>
-									{/if}
-								{/each}
-							</div>
-						</section>
-					{:else}
-						<div
-							class="wt-paper border-dashed px-4 py-8 text-center tx tx-thread tx-weak"
-						>
-							<p class="text-sm font-semibold text-foreground">
-								{selectedScope === 'current' && !searchQuery.trim()
-									? 'No current projects'
-									: 'No matching projects'}
-							</p>
-							<p class="mt-1 text-xs text-muted-foreground">
-								{selectedScope === 'current' && !searchQuery.trim()
-									? 'Planning and active projects will appear here.'
-									: 'Adjust your search or clear filters to explore more.'}
-							</p>
-							{#if hasFilters}
-								<div class="mt-4 flex justify-center">
-									<Button variant="outline" size="sm" onclick={clearFilters}>
-										Clear filters
-									</Button>
-								</div>
-							{/if}
+			{:else if filteredProjects.length === 0 && completedProjects.length === 0 && !desktopCardOpen}
+				<div class="wt-paper border-dashed px-4 py-8 text-center tx tx-thread tx-weak">
+					<p class="text-sm font-semibold text-foreground">
+						{selectedScope === 'current' && !searchQuery.trim()
+							? 'No current projects'
+							: 'No matching projects'}
+					</p>
+					<p class="mt-1 text-xs text-muted-foreground">
+						{selectedScope === 'current' && !searchQuery.trim()
+							? 'Planning and active projects will appear here.'
+							: 'Adjust your search or clear filters to explore more.'}
+					</p>
+					{#if hasFilters}
+						<div class="mt-4 flex justify-center">
+							<Button variant="outline" size="sm" onclick={clearFilters}>
+								Clear filters
+							</Button>
 						</div>
 					{/if}
-
-					{#if showCompletedDisclosure}
-						<CollapsibleStateSection
-							projectState="completed"
-							projects={completedProjects}
-							onSelect={handleProjectClick}
-						/>
-					{/if}
 				</div>
+			{:else}
+				<ProjectDesktop
+					{projects}
+					visible={filteredProjects}
+					completed={showCompletedDisclosure ? completedProjects : []}
+					searching={isSearching}
+					onPatch={applyProjectPatches}
+					onOpenFull={handleProjectClick}
+				/>
 			{/if}
 			<!-- Graph view - Admin Only -->
 		{:else if isAdmin}

@@ -26,6 +26,7 @@
 	- Safe area support for notched devices
 -->
 <div
+	data-toast-region
 	class="
 		fixed z-[10000]
 		flex flex-col pointer-events-none

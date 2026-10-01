@@ -1,0 +1,374 @@
+// apps/web/src/lib/components/projects/desktop/ProjectDesktop.test.ts
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProjectListSummary } from '../project-list';
+
+const mocks = vi.hoisted(() => ({
+	setProjectParent: vi.fn(),
+	toastAdd: vi.fn(
+		(_toast: { message: string; action?: { label: string; onClick: () => void } }) => 'toast-1'
+	),
+	toastRemove: vi.fn(),
+	toastSuccess: vi.fn(),
+	toastError: vi.fn()
+}));
+
+vi.mock('$app/state', async () => await import('./__fixtures__/page-state.svelte'));
+vi.mock('$app/navigation', async () => {
+	const { page } = await import('./__fixtures__/page-state.svelte');
+	return {
+		pushState: vi.fn((_url: string, state: App.PageState) => (page.state = state)),
+		replaceState: vi.fn((_url: string, state: App.PageState) => (page.state = state))
+	};
+});
+vi.mock('$app/paths', () => ({
+	resolve: (route: string, params?: Record<string, string>) =>
+		route.replace('[id]', params?.id ?? '')
+}));
+vi.mock('$lib/components/project/project-family', () => ({
+	setProjectParent: mocks.setProjectParent
+}));
+vi.mock('$lib/stores/toast.store', () => ({
+	TOAST_DURATION: { STANDARD: 5000, LONG: 7000 },
+	toastService: {
+		add: mocks.toastAdd,
+		remove: mocks.toastRemove,
+		success: mocks.toastSuccess,
+		error: mocks.toastError
+	}
+}));
+
+import { pushState } from '$app/navigation';
+import { page } from './__fixtures__/page-state.svelte';
+import ProjectDesktop from './ProjectDesktop.svelte';
+
+const NOW = '2026-10-01T12:00:00.000Z';
+
+function project(
+	id: string,
+	name: string,
+	extra: Partial<ProjectListSummary> = {}
+): ProjectListSummary {
+	return {
+		id,
+		name,
+		description: null,
+		icon_svg: null,
+		icon_concept: null,
+		icon_generated_at: null,
+		icon_generation_source: null,
+		icon_generation_prompt: null,
+		type_key: 'project.business.consulting',
+		state_key: 'active',
+		props: {},
+		facet_context: null,
+		facet_scale: null,
+		facet_stage: null,
+		created_at: NOW,
+		updated_at: NOW,
+		task_count: 2,
+		goal_count: 0,
+		plan_count: 0,
+		document_count: 3,
+		owner_actor_id: 'actor-1',
+		access_role: 'owner',
+		access_level: 'admin',
+		is_shared: false,
+		next_step_short: null,
+		next_step_long: null,
+		next_step_source: null,
+		next_step_updated_at: null,
+		has_collaborators: false,
+		parent_project_id: null,
+		...extra
+	};
+}
+
+const PROJECTS = [
+	project('ws', 'Wayne Strategies'),
+	project('redline', 'Redline', { parent_project_id: 'ws' }),
+	project('nine', '9takes', { document_count: 0 }),
+	project('shared', 'Shared Thing', { access_level: 'read', access_role: 'viewer' })
+];
+
+function snapshot(id: string) {
+	const name = PROJECTS.find((candidate) => candidate.id === id)?.name ?? id;
+	if (id !== 'ws')
+		return {
+			id,
+			name,
+			updated_at: NOW,
+			can_write: true,
+			shared_folder_document_id: null,
+			shared_with_count: null,
+			structure: { version: 7, root: [] },
+			documents: [],
+			tasks: []
+		};
+	return {
+		id,
+		name,
+		updated_at: NOW,
+		can_write: true,
+		shared_folder_document_id: null,
+		shared_with_count: null,
+		structure: {
+			version: 3,
+			root: [
+				{
+					id: 'd1',
+					title: 'Pricing notes',
+					order: 0,
+					children: [{ id: 'd2', title: 'Old prices', order: 0 }]
+				},
+				{ id: 'start', title: 'START HERE', order: 1 }
+			]
+		},
+		documents: [
+			{ id: 'd1', title: 'Pricing notes', type_key: 'document.default', updated_at: NOW },
+			{ id: 'd2', title: 'Old prices', type_key: 'document.default', updated_at: NOW },
+			{
+				id: 'start',
+				title: 'START HERE',
+				type_key: 'document.context.project',
+				updated_at: NOW
+			}
+		],
+		tasks: [
+			{
+				id: 't1',
+				title: 'Call Ana',
+				state_key: 'todo',
+				updated_at: NOW,
+				start_at: null,
+				due_at: null
+			},
+			{
+				id: 't2',
+				title: 'Launch day',
+				state_key: 'todo',
+				updated_at: NOW,
+				start_at: null,
+				due_at: '2026-10-09T15:00:00.000Z'
+			}
+		]
+	};
+}
+
+const IMPACT = {
+	source_project_id: 'ws',
+	destination_project_id: 'nine',
+	blockers: [],
+	items: 2,
+	relationships_to_detach: 0,
+	assignees_to_remove: 0,
+	finished_proposals_to_remove: 0,
+	task_links_to_clear: 0,
+	events_to_rebuild: 0,
+	tasks_to_reconcile: 0,
+	assets_to_move: 0,
+	comments_to_move: 0,
+	public_pages_to_move: 0,
+	relationships_to_move: 0
+};
+
+function ok(data: unknown) {
+	return new Response(JSON.stringify({ success: true, data }), {
+		status: 200,
+		headers: { 'Content-Type': 'application/json' }
+	});
+}
+
+const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+	if (url.endsWith('/card')) return ok({ project: snapshot(url.split('/')[4]!), goals: [] });
+	const body = init?.body ? JSON.parse(String(init.body)) : {};
+	if (url === '/api/onto/organize/preview')
+		return ok({
+			confirmation_token: 'a'.repeat(32),
+			impact: [IMPACT],
+			manifest: [],
+			skipped: []
+		});
+	if (url === '/api/onto/organize/apply')
+		return ok({
+			status: 'applied',
+			batch_id: body.batch_id,
+			inverse_of: null,
+			operations: 2,
+			impact: [IMPACT],
+			skipped: [],
+			restoration: {},
+			calendar_sync: 'not_needed',
+			replayed: false
+		});
+	throw new Error(`Unexpected fetch ${url}`);
+});
+
+function renderDesktop() {
+	const onPatch = vi.fn();
+	const onOpenFull = vi.fn();
+	render(ProjectDesktop, {
+		props: {
+			projects: PROJECTS,
+			visible: PROJECTS,
+			completed: [],
+			searching: false,
+			onPatch,
+			onOpenFull
+		}
+	});
+	return { onPatch, onOpenFull };
+}
+
+describe('ProjectDesktop', () => {
+	beforeEach(() => {
+		page.state = {};
+		vi.stubGlobal('fetch', fetchMock);
+		Element.prototype.scrollIntoView = vi.fn();
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			}
+		);
+		mocks.setProjectParent.mockResolvedValue({});
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.clearAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it('shows top-level projects as tiles and sub-projects inside their folder', () => {
+		renderDesktop();
+
+		expect(
+			screen.getByRole('link', { name: 'Wayne Strategies, holds 1 project, active' })
+		).toBeTruthy();
+		expect(screen.getByText('1 inside')).toBeTruthy();
+		expect(screen.getByRole('link', { name: '9takes, active' })).toBeTruthy();
+		expect(screen.queryByRole('link', { name: /^Redline/ })).toBeNull();
+	});
+
+	it('nests a project from the keyboard: M, pick, confirm, then Undo', async () => {
+		const { onPatch } = renderDesktop();
+		const tile = screen.getByRole('link', { name: '9takes, active' });
+		tile.focus();
+
+		await fireEvent.keyDown(tile, { key: 'm' });
+		const picker = screen.getByRole('dialog', { name: 'Move “9takes” to…' });
+		const shared = within(picker).getByRole('button', { name: /Shared Thing/ });
+		expect((shared as HTMLButtonElement).disabled).toBe(true);
+		expect(shared.textContent).toContain('needs admin access on both');
+
+		await fireEvent.click(within(picker).getByRole('button', { name: /Wayne Strategies/ }));
+		const confirm = screen.getByRole('dialog', { name: 'Put 9takes inside Wayne Strategies?' });
+		await fireEvent.click(within(confirm).getByRole('button', { name: 'Move inside' }));
+
+		await waitFor(() => expect(mocks.setProjectParent).toHaveBeenCalledWith('nine', 'ws'));
+		await waitFor(() =>
+			expect(onPatch).toHaveBeenCalledWith([
+				{ id: 'nine', patch: { parent_project_id: 'ws' } }
+			])
+		);
+		await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+		const toast = mocks.toastAdd.mock.calls.at(-1)![0];
+		expect(toast.message).toBe('9takes is now inside Wayne Strategies.');
+
+		toast.action!.onClick();
+		// Undo spends the toast so it can't be pressed twice.
+		expect(mocks.toastRemove).toHaveBeenCalledWith('toast-1');
+		await waitFor(() => expect(mocks.setProjectParent).toHaveBeenLastCalledWith('nine', null));
+	});
+
+	it('explains why a project that holds others cannot go inside one', async () => {
+		renderDesktop();
+		const tile = screen.getByRole('link', { name: /^Wayne Strategies/ });
+		tile.focus();
+
+		await fireEvent.keyDown(tile, { key: 'M' });
+		const option = within(screen.getByRole('dialog')).getByRole('button', { name: /9takes/ });
+		expect((option as HTMLButtonElement).disabled).toBe(true);
+		expect(option.textContent).toContain('Wayne Strategies holds projects');
+	});
+
+	it('opens a card in shallow history and moves a doc with its nested docs', async () => {
+		const { onPatch } = renderDesktop();
+
+		await fireEvent.click(screen.getByRole('link', { name: /^Wayne Strategies/ }));
+		expect(pushState).toHaveBeenCalledWith('', { desktopCard: 'ws', desktopDepth: 1 });
+		// A project that holds others opens on Inside.
+		const inside = await screen.findByRole('tab', { name: /Inside/ });
+		expect(inside.getAttribute('aria-selected')).toBe('true');
+		expect(screen.getByRole('button', { name: /Redline/ })).toBeTruthy();
+
+		await fireEvent.click(screen.getByRole('tab', { name: /Docs/ }));
+		await screen.findByText('Pricing notes');
+		// START HERE never leaves its project.
+		expect(screen.getByTitle('START HERE stays in this project.')).toBeTruthy();
+		// Dated tasks are locked while calendar moves are off.
+		await fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }));
+		expect(
+			screen.getByTitle("Dated tasks can't move yet: calendar moves are off.")
+		).toBeTruthy();
+		await fireEvent.click(screen.getByRole('tab', { name: /Docs/ }));
+
+		const row = screen.getByText('Pricing notes').closest('[data-drag-kind]') as HTMLElement;
+		await fireEvent.click(within(row).getByRole('button', { name: 'Move' }));
+		const picker = screen.getByRole('dialog', { name: 'Move “Pricing notes” to…' });
+		expect(within(picker).getByRole('button', { name: /Shared Thing/ }).textContent).toContain(
+			'You can view Shared Thing but not add to it.'
+		);
+		await fireEvent.click(within(picker).getByRole('button', { name: /9takes/ }));
+
+		const confirm = screen.getByRole('dialog', { name: 'Move “Pricing notes” to 9takes?' });
+		await within(confirm).findByText('Its 1 nested doc moves with it. Links keep working.');
+		const move = within(confirm).getByRole('button', { name: 'Move' }) as HTMLButtonElement;
+		await waitFor(() => expect(move.disabled).toBe(false));
+		await fireEvent.click(move);
+
+		await waitFor(() =>
+			expect(onPatch).toHaveBeenCalledWith([
+				{ id: 'ws', patch: { document_count: 1 } },
+				{ id: 'nine', patch: { document_count: 2 } }
+			])
+		);
+		const apply = fetchMock.mock.calls.find(([url]) => url === '/api/onto/organize/apply')!;
+		expect(JSON.parse(String(apply[1]!.body))).toMatchObject({
+			confirmation_token: 'a'.repeat(32),
+			moves: [
+				{
+					kind: 'document',
+					id: 'd1',
+					project_id: 'ws',
+					destination_project_id: 'nine',
+					parent_id: null,
+					position: 0
+				}
+			],
+			project_versions: { ws: '3', nine: '7' }
+		});
+		expect(mocks.toastAdd.mock.calls.at(-1)![0].message).toBe(
+			'Moved “Pricing notes” to 9takes.'
+		);
+	});
+
+	it('collapses back past every card it pushed', async () => {
+		const go = vi.spyOn(history, 'go').mockImplementation(() => undefined);
+		page.state = { desktopCard: 'redline', desktopDepth: 2 };
+		renderDesktop();
+
+		await screen.findByRole('heading', { name: 'Redline' });
+		// One button for wide screens, one under the header on phones.
+		expect(
+			screen.getAllByRole('button', { name: /Take out of Wayne Strategies/ })
+		).toHaveLength(2);
+		await fireEvent.keyDown(window, { key: 'Escape' });
+
+		expect(go).toHaveBeenCalledWith(-2);
+	});
+});
