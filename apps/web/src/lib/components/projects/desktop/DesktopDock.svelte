@@ -68,7 +68,7 @@
 				draggable="false"
 				onclick={() => onOpen(project.id)}
 			>
-				<DesktopTile {project} {inside} size="sm" dot={false} />
+				<DesktopTile {project} {inside} size="sm" />
 				<span class="d-label">{shortName(project.name, 24)}</span>
 			</button>
 			{#if inside.length}
@@ -102,7 +102,7 @@
 							draggable="false"
 							onclick={() => onOpen(child.id)}
 						>
-							<DesktopTile project={child} size="xs" dot={false} />
+							<DesktopTile project={child} size="xs" />
 							<span class="d-label">{shortName(child.name, 24)}</span>
 						</button>
 					</div>

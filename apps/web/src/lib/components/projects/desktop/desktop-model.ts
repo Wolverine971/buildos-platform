@@ -1,14 +1,12 @@
 // apps/web/src/lib/components/projects/desktop/desktop-model.ts
 //
 // Pure shaping for the Projects desktop: which projects sit on the desktop and
-// which live inside a parent, their order, and how a tile is drawn. No fetches.
-import { normalizeProjectState } from '$lib/config/project-states';
+// which live inside a parent, their order, and how a tile is labeled. No fetches.
 import type { ProjectListSummary } from '../project-list';
+import { PULSES, PULSE_META, type Pulse } from './desktop-signals';
 
-export type DesktopSort = 'recent' | 'state';
-
-/** Six print inks; a project's type family picks one so related work shares a color. */
-export const INK_COUNT = 6;
+/** Recent: one group, most recently active first. By activity: one group per pulse. */
+export type DesktopSort = 'recent' | 'activity';
 
 const MONOGRAM_SKIP = new Set(['the', 'a', 'an', 'of', 'for', 'and', 'to', 'with', 'in', 'on']);
 
@@ -23,14 +21,6 @@ export function monogram(name: string): string {
 	if (!first) return '·';
 	const second = words[1]?.[0] ?? first[1] ?? '';
 	return `${first[0]}${second}`.toUpperCase();
-}
-
-/** 1–6, stable per type family (`project.{family}.…`). */
-export function inkIndex(typeKey: string | null | undefined): number {
-	const family = (typeKey ?? '').split('.')[1] || 'base';
-	let hash = 0;
-	for (const char of family) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-	return (hash % INK_COUNT) + 1;
 }
 
 /** A project name short enough for a sentence ("Specialist Pilot Smoke — Synthetic…" → "Specialist Pilot Smoke"). */
@@ -89,29 +79,26 @@ export function sortRecent(
 	return [...projects].sort((a, b) => byRecent(a, b, index.activity));
 }
 
-export const STATE_GROUPS = [
-	{ key: 'active', label: 'Active', states: ['active'] },
-	{ key: 'planning', label: 'Planning', states: ['planning'] },
-	{ key: 'paused', label: 'Paused', states: ['paused'] },
-	{ key: 'done', label: 'Done and cancelled', states: ['completed', 'cancelled'] }
-] as const;
-
 export type DesktopGroup = { key: string; label: string; projects: ProjectListSummary[] };
 
-/** Recent: one group. By state: Active, Planning, Paused, then Done; empty groups dropped. */
+const ACTIVITY_GROUPS: { key: Pulse | 'unknown'; label: string }[] = [
+	...PULSES.map((pulse) => ({ key: pulse, label: PULSE_META[pulse].label })),
+	{ key: 'unknown', label: 'No history yet' }
+];
+
+/** Recent: one group. By activity: Moving, Being shaped, Gone quiet, Parked; empty groups dropped. */
 export function groupDesktop(
 	projects: readonly ProjectListSummary[],
 	index: DesktopIndex,
-	sort: DesktopSort
+	sort: DesktopSort,
+	pulseOf: (project: ProjectListSummary) => Pulse | null = () => null
 ): DesktopGroup[] {
 	const ordered = sortRecent(projects, index);
 	if (sort === 'recent') return [{ key: 'all', label: 'Recent', projects: ordered }];
-	return STATE_GROUPS.map((group) => ({
+	return ACTIVITY_GROUPS.map((group) => ({
 		key: group.key,
 		label: group.label,
-		projects: ordered.filter((project) =>
-			(group.states as readonly string[]).includes(normalizeProjectState(project.state_key))
-		)
+		projects: ordered.filter((project) => (pulseOf(project) ?? 'unknown') === group.key)
 	})).filter((group) => group.projects.length > 0);
 }
 

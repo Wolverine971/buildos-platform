@@ -6,6 +6,7 @@ import {
 	normalizeProjectState
 } from '$lib/config/project-states';
 import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
+import type { ProjectSignals } from './desktop/desktop-signals';
 import type { ProjectState } from '$lib/types/onto';
 import { stripEntityReferences } from '$lib/utils/entity-reference-parser';
 import { stripMarkdown } from '$lib/utils/markdown-text';
@@ -23,6 +24,8 @@ export type ProjectListSummary = OntologyProjectSummary & {
 	has_collaborators: boolean;
 	/** Parent project when the viewer can open it (project hierarchy). */
 	parent_project_id?: string | null;
+	/** What the desktop tile shows (activity and task mix); null when it couldn't load. */
+	signals?: ProjectSignals | null;
 };
 
 type ProjectCollaborationFields = Pick<

@@ -4,7 +4,6 @@ import type { ProjectListSummary } from '../project-list';
 import {
 	groupDesktop,
 	indexProjects,
-	inkIndex,
 	isOnDesktop,
 	monogram,
 	relativeDay,
@@ -73,20 +72,24 @@ describe('desktop model', () => {
 		expect(index.children.get('hub')!.map((p) => p.id)).toEqual(['redline']);
 	});
 
-	it('groups by state in a fixed order and drops empty groups', () => {
-		const groups = groupDesktop([hub, uxm, shared], index, 'state');
-		expect(groups.map((g) => [g.key, g.projects.length])).toEqual([
-			['active', 2],
-			['paused', 1]
+	it('groups by activity in a fixed order and drops empty groups', () => {
+		const pulses: Record<string, 'moving' | 'parked' | null> = {
+			hub: 'parked',
+			uxm: 'moving',
+			shared: null
+		};
+		const groups = groupDesktop([hub, uxm, shared], index, 'activity', (p) => pulses[p.id]!);
+		expect(groups.map((g) => [g.key, g.projects.map((p) => p.id)])).toEqual([
+			['moving', ['uxm']],
+			['parked', ['hub']],
+			['unknown', ['shared']]
 		]);
 	});
 
-	it('draws stable monograms, inks and short names', () => {
+	it('draws stable monograms and short names', () => {
 		expect(monogram('The Cadre Content Operations')).toBe('CC');
 		expect(monogram('9takes')).toBe('9T');
 		expect(monogram('Libri')).toBe('LI');
-		expect(inkIndex('project.business.consulting')).toBe(inkIndex('project.business.event'));
-		expect(inkIndex(null)).toBeGreaterThanOrEqual(1);
 		expect(shortName('Specialist Pilot Smoke — Synthetic Sep 20')).toBe(
 			'Specialist Pilot Smoke'
 		);

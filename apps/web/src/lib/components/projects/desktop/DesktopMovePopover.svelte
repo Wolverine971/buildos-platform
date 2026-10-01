@@ -222,12 +222,7 @@
 					onclick={() => onPick(option.key)}
 				>
 					{#if option.project}
-						<DesktopTile
-							project={option.project}
-							inside={option.inside}
-							size="xs"
-							dot={false}
-						/>
+						<DesktopTile project={option.project} inside={option.inside} size="xs" />
 					{:else}
 						<span
 							class="grid h-7 w-7 place-items-center rounded-md border border-dashed border-border-strong text-muted-foreground"

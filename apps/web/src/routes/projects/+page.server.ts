@@ -17,6 +17,7 @@ import {
 } from '$lib/services/ontology/ontology-projects.service';
 import { addProjectCollaborationFlags } from '$lib/components/projects/project-list';
 import { loadVisibleParentIds } from '$lib/services/ontology/project-hierarchy.service';
+import { loadProjectSignals } from '$lib/server/projects/desktop-signals';
 
 export const load: PageServerLoad = async ({ locals, depends }) => {
 	const { user } = await locals.safeGetSession();
@@ -76,22 +77,31 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 			}
 			const projectIds = loaded.map((project) => project.id);
 
-			const [{ data: memberRows, error: memberRowsError }, parentIds] = await Promise.all([
-				measure('db.project_members.collaboration_flags', () =>
-					locals.supabase
-						.from('onto_project_members')
-						.select('project_id, actor_id')
-						.in('project_id', projectIds)
-						.is('removed_at', null)
-				),
-				// Nesting: a parent is named only when it's also in this viewer's list.
-				measure('db.project_parents', () =>
-					loadVisibleParentIds(locals.supabase, projectIds)
-				)
-			]);
+			const [{ data: memberRows, error: memberRowsError }, parentIds, signals] =
+				await Promise.all([
+					measure('db.project_members.collaboration_flags', () =>
+						locals.supabase
+							.from('onto_project_members')
+							.select('project_id, actor_id')
+							.in('project_id', projectIds)
+							.is('removed_at', null)
+					),
+					// Nesting: a parent is named only when it's also in this viewer's list.
+					measure('db.project_parents', () =>
+						loadVisibleParentIds(locals.supabase, projectIds)
+					),
+					// Desktop tiles: last real change and the open-task mix per project.
+					measure('db.project_desktop_signals', () =>
+						loadProjectSignals(locals.supabase, projectIds).catch((err) => {
+							console.error('[Projects] Failed to load desktop signals:', err);
+							return null;
+						})
+					)
+				]);
 			const summaries = loaded.map((project) => ({
 				...project,
-				parent_project_id: parentIds.get(project.id) ?? null
+				parent_project_id: parentIds.get(project.id) ?? null,
+				signals: signals?.get(project.id) ?? null
 			}));
 
 			if (memberRowsError) {

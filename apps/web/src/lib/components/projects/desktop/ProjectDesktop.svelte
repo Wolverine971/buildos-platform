@@ -17,7 +17,9 @@
 	import { setProjectParent } from '$lib/components/project/project-family';
 	import { isPrimaryTier, normalizeProjectState } from '$lib/config/project-states';
 	import type { ProjectListSummary } from '../project-list';
+	import './desktop-colors.css';
 	import DesktopTile from './DesktopTile.svelte';
+	import DesktopKey from './DesktopKey.svelte';
 	import DesktopHoverCard from './DesktopHoverCard.svelte';
 	import DesktopDock from './DesktopDock.svelte';
 	import DesktopProjectCard, { type CardTab } from './DesktopProjectCard.svelte';
@@ -50,6 +52,8 @@
 		type PreparedMove
 	} from './desktop-moves';
 	import { createDesktopDrag, readItem } from './useDesktopDrag.svelte';
+	import { setDesktopLooks } from './desktop-context';
+	import { PULSE_META, buildLooks, shiftTask } from './desktop-signals';
 
 	export type ProjectPatch = { id: string; patch: Partial<ProjectListSummary> };
 
@@ -78,7 +82,7 @@
 	const SORT_KEY = 'projects-desktop-sort';
 	const SORTS: { value: DesktopSort; label: string }[] = [
 		{ value: 'recent', label: 'Recent' },
-		{ value: 'state', label: 'By state' }
+		{ value: 'activity', label: 'By activity' }
 	];
 
 	type Allowed = Extract<NonNullable<DropVerdict>, { ok: true }>;
@@ -114,6 +118,10 @@
 
 	const cache = createCardCache();
 	const index = $derived(indexProjects(projects));
+	// Every tile's color, bars and task mix, computed once and read by tiles
+	// anywhere below (desktop, dock, card, Move list).
+	const looks = $derived(buildLooks(projects, Date.now()));
+	setDesktopLooks((id) => looks.get(id));
 
 	// ---------- Desktop ----------
 
@@ -122,7 +130,9 @@
 	onMount(() => {
 		try {
 			const saved = localStorage.getItem(SORT_KEY);
-			if (saved === 'recent' || saved === 'state') sort = saved;
+			// 'state' is the old name of By activity.
+			if (saved === 'recent') sort = saved;
+			else if (saved === 'activity' || saved === 'state') sort = 'activity';
 		} catch {
 			// Storage can be unavailable (private mode); Recent stays.
 		}
@@ -151,7 +161,9 @@
 					childrenOf(project.id).some((child) => shown.has(child.id)))
 		);
 	});
-	const groups = $derived(groupDesktop(tiles, index, sort));
+	const groups = $derived(
+		groupDesktop(tiles, index, sort, (project) => looks.get(project.id)?.pulse ?? null)
+	);
 	const completedTiles = $derived.by(() => {
 		if (searching) return [];
 		const placed = new Set(tiles.map((project) => project.id));
@@ -170,11 +182,15 @@
 	function tileLabel(project: ProjectListSummary): string {
 		const inside = childrenOf(project.id).length;
 		const parent = parentOf(project);
+		const look = looks.get(project.id);
 		return [
 			project.name,
 			inside ? `holds ${inside} ${inside === 1 ? 'project' : 'projects'}` : '',
 			parent ? `inside ${parent.name}` : '',
-			normalizeProjectState(project.state_key)
+			look?.pulse ? PULSE_META[look.pulse].label.toLowerCase() : '',
+			look?.mix.overdue ? `${look.mix.overdue} overdue` : '',
+			look ? `${look.open} open ${look.open === 1 ? 'task' : 'tasks'}` : '',
+			`${project.document_count} ${project.document_count === 1 ? 'doc' : 'docs'}`
 		]
 			.filter(Boolean)
 			.join(', ');
@@ -617,7 +633,15 @@
 		}
 	}
 
-	function shiftCounts(item: ContentItem, from: string, to: string, count: number) {
+	type TaskFacts = { state_key: string; start_at: string | null; due_at: string | null };
+
+	function shiftCounts(
+		item: ContentItem,
+		from: string,
+		to: string,
+		count: number,
+		task?: TaskFacts
+	) {
 		const field = item.kind === 'document' ? 'document_count' : 'task_count';
 		const patch = (id: string, delta: number): ProjectPatch[] => {
 			const project = index.byId.get(id);
@@ -633,7 +657,23 @@
 				}
 			];
 		};
-		onPatch([...patch(from, -count), ...patch(to, count)]);
+		const patches = [...patch(from, -count), ...patch(to, count)];
+		// A task also moves between the projects' T bars.
+		if (task) {
+			const now = Date.now();
+			for (const entry of patches) {
+				const signals = index.byId.get(entry.id)?.signals;
+				const shifted = shiftTask(signals, task, entry.id === from ? -1 : 1, now);
+				if (shifted) entry.patch = { ...entry.patch, signals: shifted };
+			}
+		}
+		onPatch(patches);
+	}
+
+	function cardTask(item: ContentItem): TaskFacts | undefined {
+		if (item.kind !== 'task') return undefined;
+		const data = card?.id === item.projectId ? card.data : null;
+		return data?.project.tasks.find((task) => task.id === item.id);
 	}
 
 	async function applyContent(
@@ -642,9 +682,10 @@
 		targetId: string,
 		title: string
 	) {
+		const task = cardTask(item);
 		const receipt = await applyContentMove(prepared);
 		const count = item.kind === 'document' ? 1 + prepared.nestedCount : 1;
-		shiftCounts(item, item.projectId, targetId, count);
+		shiftCounts(item, item.projectId, targetId, count, task);
 		refreshCards(item.projectId, targetId);
 		const message = `Moved “${shortName(title, 48)}” to ${shortName(index.byId.get(targetId)?.name ?? '')}.`;
 		announcement = message;
@@ -656,7 +697,7 @@
 				label: 'Undo',
 				onClick: () => {
 					toastService.remove(toastId);
-					void undoContent(receipt.batch_id, item, targetId, count);
+					void undoContent(receipt.batch_id, item, targetId, count, task);
 				}
 			}
 		});
@@ -666,7 +707,8 @@
 		batchId: string,
 		item: ContentItem,
 		targetId: string,
-		count: number
+		count: number,
+		task?: TaskFacts
 	) {
 		try {
 			const result = await undoContentMove(batchId);
@@ -677,7 +719,7 @@
 				});
 				return;
 			}
-			shiftCounts(item, targetId, item.projectId, count);
+			shiftCounts(item, targetId, item.projectId, count, task);
 			refreshCards(item.projectId, targetId);
 			toastService.success('Moved back.');
 		} catch (cause) {
@@ -822,15 +864,14 @@
 			/>
 		</div>
 	{:else}
-		<div class="flex flex-wrap items-center justify-between gap-2">
+		{#if searching}
 			<p class="text-xs text-muted-foreground">
-				{#if searching}
-					{tiles.length} {tiles.length === 1 ? 'match' : 'matches'} across all states
-				{:else}
-					Drag a project onto another to put it inside. Right-click or press M to move
-					without dragging.
-				{/if}
+				{tiles.length}
+				{tiles.length === 1 ? 'match' : 'matches'} across all states
 			</p>
+		{/if}
+		<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+			<DesktopKey />
 			<div
 				class="inline-flex rounded-md bg-muted p-0.5 text-xs font-semibold"
 				role="group"
@@ -853,8 +894,8 @@
 		</div>
 
 		{#each groups as group (group.key)}
-			<section class="grid gap-2" aria-label={sort === 'state' ? group.label : 'Projects'}>
-				{#if sort === 'state'}
+			<section class="grid gap-2" aria-label={sort === 'activity' ? group.label : 'Projects'}>
+				{#if sort === 'activity'}
 					<h2 class="micro-label text-muted-foreground">
 						{group.label.toUpperCase()} · {group.projects.length}
 					</h2>
@@ -929,6 +970,7 @@
 		inside={childrenOf(hoverProject.id)}
 		parentName={parentOf(hoverProject)?.name ?? null}
 		updatedAt={index.activity(hoverProject)}
+		look={looks.get(hoverProject.id)}
 		anchor={hover.anchor}
 	/>
 {/if}
@@ -948,7 +990,6 @@
 					project={ghostProject}
 					inside={childrenOf(ghostProject.id)}
 					size="xs"
-					dot={false}
 				/>
 			{:else}
 				<span class="glyph">

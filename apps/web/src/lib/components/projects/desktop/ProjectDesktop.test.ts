@@ -85,10 +85,33 @@ function project(
 	};
 }
 
+const DAY = 86_400_000;
+const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
 const PROJECTS = [
-	project('ws', 'Wayne Strategies'),
+	// Finished tasks this week: moving.
+	project('ws', 'Wayne Strategies', {
+		signals: {
+			last_touch_at: ago(0),
+			done_recent: 3,
+			overdue: 0,
+			in_progress: 0,
+			scheduled: 0,
+			backlog: 10
+		}
+	}),
 	project('redline', 'Redline', { parent_project_id: 'ws' }),
-	project('nine', '9takes', { document_count: 0 }),
+	// Worked on, nothing finished: being shaped, with overdue tasks.
+	project('nine', '9takes', {
+		document_count: 0,
+		signals: {
+			last_touch_at: ago(3),
+			done_recent: 0,
+			overdue: 11,
+			in_progress: 2,
+			scheduled: 0,
+			backlog: 21
+		}
+	}),
 	project('shared', 'Shared Thing', { access_level: 'read', access_role: 'viewer' })
 ];
 
@@ -224,6 +247,7 @@ function renderDesktop() {
 describe('ProjectDesktop', () => {
 	beforeEach(() => {
 		page.state = {};
+		localStorage.clear();
 		vi.stubGlobal('fetch', fetchMock);
 		Element.prototype.scrollIntoView = vi.fn();
 		vi.stubGlobal(
@@ -247,16 +271,23 @@ describe('ProjectDesktop', () => {
 		renderDesktop();
 
 		expect(
-			screen.getByRole('link', { name: 'Wayne Strategies, holds 1 project, active' })
+			screen.getByRole('link', {
+				name: 'Wayne Strategies, holds 1 project, moving, 10 open tasks, 3 docs'
+			})
 		).toBeTruthy();
 		expect(screen.getByText('1 inside')).toBeTruthy();
-		expect(screen.getByRole('link', { name: '9takes, active' })).toBeTruthy();
+		const nine = screen.getByRole('link', {
+			name: '9takes, being shaped, 11 overdue, 34 open tasks, 0 docs'
+		});
+		// The red overdue count sits on the tile.
+		expect(nine.querySelector('.badge')?.textContent).toBe('11');
+		expect(screen.getByRole('group', { name: 'What the colors mean' })).toBeTruthy();
 		expect(screen.queryByRole('link', { name: /^Redline/ })).toBeNull();
 	});
 
 	it('nests a project from the keyboard: M, pick, confirm, then Undo', async () => {
 		const { onPatch } = renderDesktop();
-		const tile = screen.getByRole('link', { name: '9takes, active' });
+		const tile = screen.getByRole('link', { name: /^9takes/ });
 		tile.focus();
 
 		await fireEvent.keyDown(tile, { key: 'm' });
@@ -283,6 +314,17 @@ describe('ProjectDesktop', () => {
 		// Undo spends the toast so it can't be pressed twice.
 		expect(mocks.toastRemove).toHaveBeenCalledWith('toast-1');
 		await waitFor(() => expect(mocks.setProjectParent).toHaveBeenLastCalledWith('nine', null));
+	});
+
+	it('groups tiles by what actually happened', async () => {
+		renderDesktop();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'By activity' }));
+
+		const headings = screen
+			.getAllByRole('heading', { level: 2 })
+			.map((h) => h.textContent?.trim());
+		expect(headings).toEqual(['MOVING · 1', 'BEING SHAPED · 1', 'NO HISTORY YET · 1']);
 	});
 
 	it('explains why a project that holds others cannot go inside one', async () => {

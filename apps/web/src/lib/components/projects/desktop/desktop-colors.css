@@ -1,0 +1,28 @@
+/* apps/web/src/lib/components/projects/desktop/desktop-colors.css
+ *
+ * One meaning per color across the Projects desktop: tiles, bars, the key, the
+ * hover card and the card's Tasks tab. HSL triples, used as hsl(var(--desk-…)),
+ * built on the Inkprint tokens so light and dark follow them.
+ *   green  = moving (projects) and in progress (tasks)
+ *   purple = being shaped
+ *   amber  = gone quiet
+ *   gray   = parked (projects) and backlog (tasks)
+ *   red    = overdue
+ *   blue   = scheduled
+ *   ink    = documents
+ */
+:root {
+	--desk-moving: var(--success);
+	--desk-shaping: 268 48% 50%;
+	--desk-quiet: var(--warning);
+	--desk-parked: var(--muted-foreground);
+	--desk-overdue: var(--destructive);
+	--desk-in-progress: var(--success);
+	--desk-scheduled: var(--info);
+	--desk-backlog: var(--border-strong);
+	--desk-docs: var(--foreground);
+}
+
+.dark {
+	--desk-shaping: 268 66% 72%;
+}

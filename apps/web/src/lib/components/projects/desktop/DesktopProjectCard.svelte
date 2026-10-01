@@ -34,8 +34,12 @@
 	} from '$lib/components/organize/organize-plan';
 	import type { DocTreeNode } from '$lib/types/onto-api';
 	import { formatProjectResumeCue, type ProjectListSummary } from '../project-list';
+	import './desktop-colors.css';
 	import DesktopTile from './DesktopTile.svelte';
+	import DesktopTaskMix from './DesktopTaskMix.svelte';
+	import { getDesktopLook } from './desktop-context';
 	import { relativeDay, shortName } from './desktop-model';
+	import { PULSE_META, TASK_BUCKETS, taskBucket, type TaskBucket } from './desktop-signals';
 	import { SCHEDULED_TASK_MOVES_ENABLED, isDatedTask, type DesktopCard } from './desktop-moves';
 	import type { DesktopItem } from './desktop-rules';
 
@@ -89,6 +93,10 @@
 	const href = $derived(resolve('/projects/[id]', { id: project.id }));
 	const canWrite = $derived(Boolean(data?.project.can_write));
 
+	const lookUp = getDesktopLook();
+	const look = $derived(lookUp(project.id));
+	const now = Date.now();
+
 	const tree = $derived(data ? visibleDocumentTree(data.project) : []);
 	const titles = $derived(new Map(data?.project.documents.map((doc) => [doc.id, doc.title])));
 	const tasks = $derived(
@@ -98,6 +106,18 @@
 	);
 	const openTasks = $derived(tasks.filter((task) => task.state_key !== 'done'));
 	const doneTasks = $derived(tasks.filter((task) => task.state_key === 'done'));
+	// The same split as the tile's T bar, from the card's fresher task list.
+	const taskMix = $derived.by(() => {
+		const mix = Object.fromEntries(TASK_BUCKETS.map((bucket) => [bucket, 0])) as Record<
+			TaskBucket,
+			number
+		>;
+		for (const task of openTasks) {
+			const bucket = taskBucket(task, now);
+			if (bucket !== 'done') mix[bucket] += 1;
+		}
+		return mix;
+	});
 
 	const tabs = $derived.by(() => {
 		const list: { key: CardTab; label: string; count: number }[] = [];
@@ -189,14 +209,15 @@
 				<div
 					class="mt-1.5 flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground"
 				>
-					<span
-						class="rounded-full px-1.5 py-0.5 text-[10.5px] font-medium uppercase tracking-wide {PROJECT_STATE_META[
-							projectState
-						].chipClass}"
-					>
-						{PROJECT_STATE_META[projectState].label}
-					</span>
-					<span>Updated {relativeDay(new Date(updatedAt).toISOString())}</span>
+					{#if look?.pulse}
+						<span class="pulse pulse-{look.pulse}" title={look.reason}>
+							{PULSE_META[look.pulse].label}
+						</span>
+						<span>{look.reason}</span>
+					{:else}
+						<span>Updated {relativeDay(new Date(updatedAt).toISOString())}</span>
+					{/if}
+					<span>· Status {PROJECT_STATE_META[projectState].label.toLowerCase()}</span>
 					{#if parent}<span>· Part of {shortName(parent.name)}</span>{/if}
 				</div>
 			</div>
@@ -349,6 +370,7 @@
 			{/if}
 		{:else if tab === 'tasks'}
 			{#if tasks.length}
+				<div class="px-2 pb-2 pt-1"><DesktopTaskMix mix={taskMix} /></div>
 				{#if canWrite}
 					<p class="hint">
 						Drag a task onto a project in the dock to move it.{SCHEDULED_TASK_MOVES_ENABLED
@@ -470,6 +492,7 @@
 	{@const dated = isDatedTask(task)}
 	{@const locked = dated && !SCHEDULED_TASK_MOVES_ENABLED}
 	{@const movable = canWrite && !locked}
+	{@const bucket = taskBucket(task, now)}
 	<div
 		class="row"
 		class:lifted={lifted === `task:${task.id}`}
@@ -478,7 +501,7 @@
 		data-drag-project={movable ? project.id : undefined}
 	>
 		<span></span>
-		<span class="glyph state-{task.state_key}">
+		<span class="glyph bucket-{bucket}">
 			{#if task.state_key === 'done'}<CircleCheck
 					class="h-4 w-4"
 				/>{:else if task.state_key === 'in_progress'}<CircleDot
@@ -494,8 +517,10 @@
 		>
 		{#if locked}
 			<span
-				class="chip inline-flex items-center gap-1"
-				title="Dated tasks can't move yet: calendar moves are off."
+				class="chip date-{bucket} inline-flex items-center gap-1"
+				title="{bucket === 'overdue'
+					? 'Overdue. '
+					: ''}Dated tasks can't move yet: calendar moves are off."
 			>
 				<Lock class="h-3 w-3" />
 				{shortDate(task.due_at ?? task.start_at ?? '')}
@@ -683,14 +708,46 @@
 		background: hsl(var(--muted));
 		color: hsl(var(--muted-foreground));
 	}
-	.state-done {
-		color: hsl(var(--success));
+	/* Task colors match the tile's T bar (desktop-colors.css). */
+	.bucket-overdue {
+		color: hsl(var(--desk-overdue));
 	}
-	.state-in_progress {
-		color: hsl(var(--warning));
+	.bucket-in_progress {
+		color: hsl(var(--desk-in-progress));
 	}
-	.state-blocked {
-		color: hsl(var(--destructive));
+	.bucket-scheduled {
+		color: hsl(var(--desk-scheduled));
+	}
+	.chip.date-overdue {
+		border-color: hsl(var(--desk-overdue) / 0.5);
+		color: hsl(var(--desk-overdue));
+	}
+	.chip.date-scheduled {
+		border-color: hsl(var(--desk-scheduled) / 0.5);
+		color: hsl(var(--desk-scheduled));
+	}
+	.pulse {
+		border-radius: 99px;
+		border: 1px solid hsl(var(--c) / 0.5);
+		background: hsl(var(--c) / 0.14);
+		padding: 2px 7px;
+		font-size: 10.5px;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: color-mix(in oklab, hsl(var(--c)) 80%, hsl(var(--foreground)));
+	}
+	.pulse-moving {
+		--c: var(--desk-moving);
+	}
+	.pulse-shaping {
+		--c: var(--desk-shaping);
+	}
+	.pulse-quiet {
+		--c: var(--desk-quiet);
+	}
+	.pulse-parked {
+		--c: var(--desk-parked);
 	}
 	.toggle {
 		display: grid;
