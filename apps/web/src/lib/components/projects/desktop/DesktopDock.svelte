@@ -43,11 +43,11 @@
 		type="button"
 		class="dock-item slot {dropClass('desktop')}"
 		data-drop-kind="desktop"
-		title="Desktop: drop a sub-project here to take it out"
+		title="Projects: drop a sub-project here to take it out to the top level"
 		onclick={onDesktop}
 	>
 		<span class="slot-tile"><LayoutGrid class="h-[18px] w-[18px]" /></span>
-		<span class="d-label">Desktop</span>
+		<span class="d-label">Projects</span>
 	</button>
 	<span class="sep" aria-hidden="true"></span>
 	{#each items as { project, inside } (project.id)}

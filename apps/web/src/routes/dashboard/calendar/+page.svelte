@@ -762,9 +762,9 @@
 			>
 				{#snippet toolbarStart()}
 					<a
-						href={resolve('/dashboard')}
+						href={resolve('/projects')}
 						data-sveltekit-preload-data="hover"
-						aria-label="Back to dashboard"
+						aria-label="Back to projects"
 						class="-ml-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 					>
 						<ArrowLeft class="h-4 w-4" />

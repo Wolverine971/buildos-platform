@@ -74,7 +74,7 @@ function projectVerdict(id: string, target: DropTarget, index: DesktopIndex): Dr
 			reason: `${destinationName} is inside ${shortName(destinationParent.name)}. Projects nest one level deep.`
 		};
 	if ((index.children.get(project.id) ?? []).length > 0)
-		return { ok: false, reason: `${name} holds projects, so it stays on the desktop.` };
+		return { ok: false, reason: `${name} holds projects, so it stays at the top level.` };
 	if (!isAdmin(project) || !isAdmin(destination))
 		return {
 			ok: false,
@@ -102,7 +102,7 @@ export function confirmCopy(
 		if (action === 'unnest')
 			return {
 				title: `Take ${name} out of ${fromName}?`,
-				body: `It goes back on your desktop and stops seeing ${fromName}'s shared docs.`,
+				body: `It goes back to the top level of Projects and stops seeing ${fromName}'s shared docs.`,
 				cta: 'Take out'
 			};
 		if (action === 'renest')

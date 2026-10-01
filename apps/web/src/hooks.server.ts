@@ -485,7 +485,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	// page, data, and form-action request passes. (/api/admin handlers check for themselves.)
 	if (pathname === '/admin' || pathname.startsWith('/admin/')) {
 		if (!event.locals.user) throw redirect(303, '/auth/login');
-		if (!event.locals.user.is_admin) throw redirect(303, '/dashboard');
+		if (!event.locals.user.is_admin) throw redirect(303, '/projects');
 	}
 
 	// Keep the public homepage out of the authenticated app bundle and data path.

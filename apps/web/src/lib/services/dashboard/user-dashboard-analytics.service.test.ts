@@ -77,6 +77,20 @@ describe('dashboard parent labels', () => {
 		expect(supabase.filters).toContainEqual(['is', 'deleted_at', null]);
 	});
 
+	it('skips the label read when the caller does not show recent projects', async () => {
+		const supabase = client([{ id: 'redline', name: 'Redline', parent_project_id: 'hub' }]);
+		const analytics = await getUserDashboardAnalytics(
+			supabase as never,
+			'user-1',
+			undefined,
+			'actor-1',
+			{ projectParents: false }
+		);
+		expect(supabase.rpc).toHaveBeenCalledOnce();
+		expect(supabase.from).not.toHaveBeenCalled();
+		expect(analytics.recent.projects[0]).not.toHaveProperty('parent_project_name');
+	});
+
 	it('keeps the dashboard when the label read fails', async () => {
 		const analytics = await getUserDashboardAnalytics(
 			client(null, { message: 'timeout' }) as never,

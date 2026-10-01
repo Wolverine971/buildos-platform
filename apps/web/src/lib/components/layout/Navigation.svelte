@@ -6,7 +6,6 @@
 	import { onMount, tick } from 'svelte';
 	import {
 		FolderOpen,
-		Home,
 		StickyNote,
 		User,
 		LogOut,
@@ -229,7 +228,6 @@
 
 	const baseNavItems = [
 		{ href: '/today', label: 'Today', icon: Sun },
-		{ href: '/dashboard', label: 'Dashboard', icon: Home },
 		{ href: '/projects', label: 'Projects', icon: FolderOpen },
 		// { href: '/time-blocks', label: 'Time Blocks', icon: Clock },
 		{ href: '/history', label: 'History', icon: StickyNote }
@@ -807,9 +805,9 @@
 					{#if user}
 						<!-- Authenticated: Text logo -->
 						<a
-							href="/dashboard"
+							href="/projects"
 							class="flex items-center group"
-							onclick={() => handleMenuItemClick('/dashboard')}
+							onclick={() => handleMenuItemClick('/projects')}
 						>
 							<span class="sr-only">BuildOS</span>
 							<span

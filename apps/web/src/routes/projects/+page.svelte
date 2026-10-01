@@ -8,7 +8,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { get } from 'svelte/store';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, invalidate, invalidateAll, preloadData } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
@@ -28,6 +28,7 @@
 	} from '$lib/components/ontology/graph/lib/graph.filters';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import {
+		Calendar,
 		LoaderCircle,
 		Plus,
 		SlidersHorizontal,
@@ -40,6 +41,10 @@
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
+	import TodayRow from '$lib/components/dashboard/TodayRow.svelte';
+	import RecentActivityPanels from '$lib/components/dashboard/RecentActivityPanels.svelte';
+	import { prefetchDashboardCalendar } from '$lib/services/dashboard-calendar-cache';
+	import type { UserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	import ProjectDesktop, {
 		type ProjectPatch
 	} from '$lib/components/projects/desktop/ProjectDesktop.svelte';
@@ -63,6 +68,8 @@
 	let showChatModal = $state(false);
 	let AgentChatModal = $state<any>(null);
 	let isPullRefreshing = $state(false);
+	let todayModalOpen = $state(false);
+	let isOpeningCalendar = $state(false);
 
 	async function handleCreateProject() {
 		// Lazy load the AgentChatModal
@@ -90,8 +97,29 @@
 		}
 	}
 
+	// Hover/focus/touch intent: start the calendar's route data and items before the click
+	// lands, so it paints with data instead of a loading state.
+	function warmCalendar() {
+		prefetchDashboardCalendar();
+		void preloadData('/dashboard/calendar').catch(() => undefined);
+	}
+
+	async function openCalendar() {
+		if (isOpeningCalendar) return;
+		isOpeningCalendar = true;
+		try {
+			await goto(resolve('/dashboard/calendar'));
+		} finally {
+			isOpeningCalendar = false;
+		}
+	}
+
+	async function refreshToday() {
+		await invalidate('dashboard:analytics');
+	}
+
 	async function handlePullRefresh() {
-		if (isPullRefreshing || showChatModal) return;
+		if (isPullRefreshing || showChatModal || todayModalOpen) return;
 
 		isPullRefreshing = true;
 		try {
@@ -200,7 +228,9 @@
 		projectsError = null;
 
 		if (isPromiseLike<ProjectListSummary[]>(incoming)) {
-			projectsLoading = true;
+			// A refresh (pull, or a Today modal that changed things) keeps the tiles on
+			// screen and swaps them when the new list lands; skeletons are for first load.
+			projectsLoading = untrack(() => projectSummaries.length === 0);
 
 			incoming
 				.then((result) => {
@@ -222,6 +252,20 @@
 	});
 
 	const projects = $derived(projectSummaries);
+
+	// Streamed analytics for the Today row and the activity panels. Null until the first
+	// payload lands; later refreshes keep the last payload until the new one arrives.
+	let dashboard = $state<UserDashboardAnalytics | null>(null);
+	let dashboardStreamVersion = 0;
+	$effect(() => {
+		const incoming = data.dashboard;
+		const currentVersion = ++dashboardStreamVersion;
+		void Promise.resolve(incoming)
+			.then((result) => {
+				if (currentVersion === dashboardStreamVersion) dashboard = result ?? null;
+			})
+			.catch(() => undefined);
+	});
 	// Admin-only ontology facets stay available inside the secondary filter panel.
 	const availableContexts = $derived(
 		Array.from(
@@ -541,11 +585,15 @@
 
 <PullToRefresh
 	onRefresh={handlePullRefresh}
-	disabled={isPullRefreshing || showChatModal || projectsLoading}
+	disabled={isPullRefreshing || showChatModal || todayModalOpen || projectsLoading}
 >
 	<div class="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-3">
-		<header class="flex items-center justify-between gap-3">
-			<div class="min-w-0 flex-1 space-y-1">
+		<!-- Title, the Today row (brief / overdue / AI inbox chips), then Calendar + New project.
+		     One line on wide screens; on phones the chips wrap onto their own row. -->
+		<header
+			class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 lg:grid-cols-[auto_minmax(0,1fr)_auto]"
+		>
+			<div class="min-w-0 space-y-1">
 				<div class="flex items-center gap-2.5">
 					<h1 class="text-2xl font-semibold tracking-tight text-foreground">
 						{activeTab === 'overview' ? 'Projects' : 'Ontology graph'}
@@ -564,15 +612,56 @@
 			</div>
 
 			{#if activeTab === 'overview'}
-				<Button
-					variant="primary"
-					size="sm"
-					icon={Plus}
-					onclick={handleCreateProject}
-					class="shrink-0 whitespace-nowrap text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5"
+				<div
+					class="col-start-2 row-start-1 flex items-center gap-1.5 sm:gap-2 lg:col-start-3"
 				>
-					New project
-				</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={openCalendar}
+						onpointerenter={warmCalendar}
+						onfocus={warmCalendar}
+						ontouchstart={warmCalendar}
+						disabled={isOpeningCalendar}
+						class="shrink-0 px-2.5 text-xs sm:px-3 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5"
+						aria-label="Open calendar"
+						title="Calendar"
+					>
+						{#if isOpeningCalendar}
+							<LoaderCircle
+								class="h-3.5 w-3.5 animate-spin motion-reduce:animate-none sm:mr-1.5"
+							/>
+						{:else}
+							<Calendar class="h-3.5 w-3.5 sm:mr-1.5" />
+						{/if}
+						<span class="hidden sm:inline">Calendar</span>
+					</Button>
+					<Button
+						variant="primary"
+						size="sm"
+						icon={Plus}
+						onclick={handleCreateProject}
+						class="shrink-0 whitespace-nowrap text-xs [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:py-1.5"
+					>
+						New project
+					</Button>
+				</div>
+				{#if data.user}
+					<TodayRow
+						user={{
+							id: data.user.id,
+							email: data.user.email,
+							is_admin: data.user.is_admin,
+							timezone: data.userTimezone
+						}}
+						overdueTasks={dashboard?.attention.overdueTasks ?? null}
+						pendingInvites={data.pendingInvites ?? []}
+						showAgentConnectionCta={!data.hasConnectedAgents}
+						onrefresh={refreshToday}
+						bind:modalOpen={todayModalOpen}
+						class="col-span-full lg:col-span-1 lg:col-start-2 lg:row-start-1"
+					/>
+				{/if}
 			{:else}
 				<Button
 					variant="outline"
@@ -902,6 +991,14 @@
 					onPatch={applyProjectPatches}
 					onOpenFull={handleProjectClick}
 				/>
+			{/if}
+
+			<!-- What moved lately across every project, and the latest chats. Hidden while a
+			     card has the page and for an empty account (nothing to show yet). -->
+			{#if !desktopCardOpen && !(projects.length === 0 && !projectsLoading)}
+				<div class="border-t border-border pt-4">
+					<RecentActivityPanels recent={dashboard?.recent ?? null} />
+				</div>
 			{/if}
 			<!-- Graph view - Admin Only -->
 		{:else if isAdmin}

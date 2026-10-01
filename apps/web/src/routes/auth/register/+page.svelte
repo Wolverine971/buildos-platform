@@ -325,7 +325,7 @@
 					? null
 					: await resolvePendingInviteRedirect();
 				const destination =
-					redirectTarget ?? pendingRedirect ?? '/dashboard?onboarding=true';
+					redirectTarget ?? pendingRedirect ?? '/projects?onboarding=true';
 
 				// Auto-login successful - navigate to destination
 				await goto(destination, {

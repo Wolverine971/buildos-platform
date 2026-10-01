@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals, coo
 
 	return handler.handleCallback(url, {
 		redirectPath: '/auth/register',
-		successPath: '/dashboard',
+		successPath: '/projects',
 		isRegistration: true,
 		legalAcceptanceToken
 	});

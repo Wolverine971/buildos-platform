@@ -543,7 +543,7 @@
 				options.push({ ...option, reason: verdict.ok ? undefined : verdict.reason });
 		};
 		if (item.kind === 'project' && index.byId.get(item.id)?.parent_project_id)
-			consider({ kind: 'desktop' }, { key: 'desktop', label: 'Desktop (top level)' });
+			consider({ kind: 'desktop' }, { key: 'desktop', label: 'Projects (top level)' });
 		const top = sortRecent(
 			projects.filter((project) => isOnDesktop(project, index)),
 			index
@@ -606,7 +606,7 @@
 		cache.invalidate(id);
 		const message = targetId
 			? `${name} is now inside ${targetName}.`
-			: `${name} is back on your desktop.`;
+			: `${name} is back at the top level of Projects.`;
 		announcement = message;
 		const toastId: string = toastService.add({
 			type: 'success',

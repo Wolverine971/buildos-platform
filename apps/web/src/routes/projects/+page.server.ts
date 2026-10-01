@@ -18,6 +18,8 @@ import {
 import { addProjectCollaborationFlags } from '$lib/components/projects/project-list';
 import { loadVisibleParentIds } from '$lib/services/ontology/project-hierarchy.service';
 import { loadProjectSignals } from '$lib/server/projects/desktop-signals';
+import { getUserDashboardAnalytics } from '$lib/services/dashboard/user-dashboard-analytics.service';
+import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 
 export const load: PageServerLoad = async ({ locals, depends }) => {
 	const { user } = await locals.safeGetSession();
@@ -26,6 +28,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	}
 
 	depends('ontology:projects');
+	depends('dashboard:analytics');
 
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
@@ -116,9 +119,24 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 			throw err;
 		});
 
+	// STREAMED: the Today row's overdue count and the recent activity / chats panels
+	// under the desktop (what the old dashboard showed). One RPC, never blocks the tiles.
+	const dashboard = Promise.resolve(
+		measure('dashboard.analytics', () =>
+			getUserDashboardAnalytics(locals.supabase, user.id, locals.serverTiming, actorId, {
+				projectParents: false
+			})
+		)
+	).catch((err) => {
+		console.error('[Projects] Failed to load dashboard analytics:', err);
+		return createEmptyUserDashboardAnalytics();
+	});
+
 	return {
 		actorId,
 		projects,
-		projectCount
+		projectCount,
+		dashboard,
+		userTimezone: user.timezone ?? null
 	};
 };

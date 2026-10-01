@@ -187,7 +187,7 @@
 			class="flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted-foreground"
 			aria-label="Where this project lives"
 		>
-			<button type="button" class="crumb" onclick={onCollapse}>Desktop</button>
+			<button type="button" class="crumb" onclick={onCollapse}>Projects</button>
 			<span aria-hidden="true">/</span>
 			{#if parent}
 				<button type="button" class="crumb" onclick={() => onOpenProject(parent.id)}>
@@ -240,7 +240,7 @@
 					type="button"
 					class="action quiet"
 					onclick={onCollapse}
-					aria-label="Collapse and go back to the desktop"
+					aria-label="Collapse and go back to all projects"
 				>
 					<Minimize2 class="h-4 w-4" />
 					<span class="hidden sm:inline">Collapse</span>

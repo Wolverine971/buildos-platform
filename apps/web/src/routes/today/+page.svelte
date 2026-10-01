@@ -883,12 +883,12 @@
 					</Button>
 				{/if}
 				<a
-					href="/dashboard"
+					href="/projects"
 					class="ml-auto inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					title="Open dashboard"
-					aria-label="Open dashboard"
+					title="Open projects"
+					aria-label="Open projects"
 				>
-					<span class="hidden sm:inline">Dashboard</span>
+					<span class="hidden sm:inline">Projects</span>
 					<ArrowUpRight class="h-4 w-4 shrink-0" />
 				</a>
 				<Button

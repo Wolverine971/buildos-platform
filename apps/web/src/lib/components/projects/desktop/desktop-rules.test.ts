@@ -106,7 +106,7 @@ describe('drop rules', () => {
 		).toEqual({ ok: true, action: 'nest', targetId: 'hub' });
 	});
 
-	it('moves a sub-project to another parent and takes it out to the desktop', () => {
+	it('moves a sub-project to another parent and takes it out to the top level', () => {
 		expect(
 			dropVerdict({ kind: 'project', id: 'redline' }, { kind: 'project', id: 'uxm' }, index)
 		).toEqual({ ok: true, action: 'renest', targetId: 'uxm' });
@@ -147,7 +147,7 @@ describe('drop rules', () => {
 			dropVerdict({ kind: 'project', id: 'hub' }, { kind: 'project', id: 'uxm' }, index)
 		).toEqual({
 			ok: false,
-			reason: 'Wayne Strategies holds projects, so it stays on the desktop.'
+			reason: 'Wayne Strategies holds projects, so it stays at the top level.'
 		});
 	});
 

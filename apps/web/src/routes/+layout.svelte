@@ -257,8 +257,9 @@
 	let needsOnboarding = $derived(Boolean(user && !completedOnboarding));
 	let showOnboardingModal = $derived.by(() => {
 		if (!needsOnboarding) return false;
-		const isDashboard = $page?.url?.pathname === '/dashboard';
-		if (!isDashboard) return false;
+		// Projects is the home surface (the dashboard folded into it, 2026-10-01).
+		const isHome = $page?.url?.pathname === '/projects';
+		if (!isHome) return false;
 		return forceOnboardingActive || (onboardingProgress < 25 && !checkModalDismissed());
 	});
 

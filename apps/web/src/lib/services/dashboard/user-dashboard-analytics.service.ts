@@ -587,15 +587,22 @@ export async function getUserDashboardAnalytics(
 	client: TypedSupabaseClient,
 	userId: string,
 	timing?: ServerTiming,
-	actorIdOverride?: string | null
+	actorIdOverride?: string | null,
+	options: {
+		/** Parent labels only decorate recent.projects; skip the query when that list isn't shown. */
+		projectParents?: boolean;
+	} = {}
 ): Promise<UserDashboardAnalytics> {
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		timing ? timing.measure(name, fn) : fn();
 
 	const payload = createEmptyUserDashboardAnalytics();
-	const parentLabels = Promise.resolve(
-		measure('dashboard.db.project_parents', () => loadProjectParentLabels(client))
-	).catch(() => new Map<string, ProjectParentLabel>());
+	const parentLabels =
+		options.projectParents === false
+			? Promise.resolve(new Map<string, ProjectParentLabel>())
+			: Promise.resolve(
+					measure('dashboard.db.project_parents', () => loadProjectParentLabels(client))
+				).catch(() => new Map<string, ProjectParentLabel>());
 
 	try {
 		const actorId =
