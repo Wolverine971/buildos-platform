@@ -1,0 +1,95 @@
+-- supabase/tests/agent_permission_requests.check.sql
+-- Disposable rehearsal database only: no hosted data or paid calls.
+\set ON_ERROR_STOP on
+BEGIN;
+CREATE FUNCTION pg_temp.assert_true(value boolean,message text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN IF NOT coalesce(value,false) THEN RAISE EXCEPTION 'assertion_failed: %',message; END IF; END $$;
+CREATE FUNCTION pg_temp.fail_checkpoint() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN IF current_setting('permission_test.fail_version',true)='yes' THEN RAISE EXCEPTION 'forced_checkpoint_failure'; END IF; RETURN NEW; END $$;
+CREATE TRIGGER permission_test_checkpoint BEFORE INSERT ON public.onto_document_versions FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_checkpoint();
+DO $$
+DECLARE uid uuid:=gen_random_uuid(); actor uuid:=gen_random_uuid(); project uuid:=gen_random_uuid(); other_project uuid:=gen_random_uuid();
+ caller uuid:=gen_random_uuid(); doc uuid:=gen_random_uuid(); other_doc uuid:=gen_random_uuid(); task uuid:=gen_random_uuid(); ref jsonb; proposal jsonb; before jsonb; r jsonb; alias_row jsonb; applied jsonb; state_before jsonb; caught boolean;
+BEGIN
+ INSERT INTO auth.users(id,email) VALUES(uid,'permission-fixture@example.test');
+ INSERT INTO public.users(id,email) VALUES(uid,'permission-fixture@example.test') ON CONFLICT DO NOTHING;
+ INSERT INTO public.onto_actors(id,user_id,kind,name) VALUES(actor,uid,'human','Permission owner');
+ INSERT INTO public.onto_projects(id,name,type_key,created_by) VALUES(project,'Permission project','project.base',actor),(other_project,'Other','project.base',actor);
+ INSERT INTO public.external_agent_callers(id,user_id,provider,caller_key,token_prefix,token_hash,policy,project_scope_mode)
+ VALUES(caller,uid,'test','Fixture','fixture','fixture-hash','{"scope_mode":"read_only"}','all_unrestricted');
+ INSERT INTO public.onto_documents(id,project_id,title,type_key,created_by,content) VALUES(doc,project,'Before','document.base',actor,'Body');
+ INSERT INTO public.onto_documents(id,project_id,title,type_key,created_by,content) VALUES(other_doc,other_project,'Other','document.base',actor,'Body');
+ INSERT INTO public.onto_tasks(id,project_id,title,created_by) VALUES(task,project,'Task before',actor);
+ ref:=jsonb_build_object('kind','key','caller_id',caller,'token_hash','fixture-hash');
+ proposal:=jsonb_build_object('kind','document','target_id',doc,'changes',jsonb_build_object('title','After'));
+ before:=public.agent_edit_snapshot('document.edit.v1',doc);
+ caught:=false;
+ BEGIN PERFORM public.create_agent_permission_request(ref,'first',proposal,before,'{"title":"After"}'); EXCEPTION WHEN OTHERS THEN caught:=true; END;
+ PERFORM pg_temp.assert_true(caught,'feature defaults off');
+ PERFORM public.set_agent_permission_feature(true);
+ r:=public.create_agent_permission_request(ref,'first',proposal,before,'{"title":"After"}');
+ PERFORM pg_temp.assert_true(r->>'status'='pending','read-only key can request');
+ PERFORM pg_temp.assert_true((SELECT title='Before' FROM public.onto_documents WHERE id=doc),'request does not write');
+ PERFORM pg_temp.assert_true((SELECT count(*)=1 FROM public.notification_events WHERE payload->>'request_id'=r->>'id'),'atomic event');
+ PERFORM pg_temp.assert_true((SELECT count(*)=1 FROM public.user_notifications WHERE data->>'request_id'=r->>'id'),'atomic bell notification');
+ alias_row:=public.create_agent_permission_request(ref,'alias',proposal,before,'{"title":"After"}');
+ PERFORM pg_temp.assert_true(alias_row->>'id'=r->>'id','pending dedupe');
+ caught:=false; BEGIN PERFORM public.lookup_agent_permission_request(ref,'alias',proposal||'{"changes":{"title":"Different"}}'); EXCEPTION WHEN OTHERS THEN caught:=true; END;
+ PERFORM pg_temp.assert_true(caught,'alias key is reserved');
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',gen_random_uuid(),'role','authenticated')::text,true);
+ caught:=false;BEGIN PERFORM public.decide_agent_permission_request((r->>'id')::uuid,r->>'reviewed_digest','once');EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ PERFORM pg_temp.assert_true(caught,'cross-owner decision denied');
+ PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',uid,'role','authenticated')::text,true);
+ caught:=false;BEGIN PERFORM public.decide_agent_permission_request((r->>'id')::uuid,NULL,NULL);EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ PERFORM pg_temp.assert_true(caught,'missing digest and decision cannot apply');
+ caught:=false;BEGIN PERFORM public.decide_agent_permission_request((r->>'id')::uuid,'tampered','once');EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ PERFORM pg_temp.assert_true(caught,'tampered digest denied');
+ PERFORM set_config('permission_test.fail_version','yes',true);
+ caught:=false;BEGIN PERFORM public.decide_agent_permission_request((r->>'id')::uuid,r->>'reviewed_digest','always');EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ PERFORM set_config('permission_test.fail_version','no',true);
+ PERFORM pg_temp.assert_true(caught AND (SELECT title='Before' FROM public.onto_documents WHERE id=doc),'checkpoint failure rolls back mutation');
+ PERFORM pg_temp.assert_true(NOT EXISTS(SELECT 1 FROM public.agent_permission_grants WHERE caller_id=caller),'checkpoint failure rolls back ongoing grant');
+ applied:=public.decide_agent_permission_request((r->>'id')::uuid,r->>'reviewed_digest','always');
+ PERFORM pg_temp.assert_true(applied->>'status'='applied' AND applied->'receipt'->>'version_id' IS NOT NULL,'approval commits receipt and checkpoint');
+ PERFORM pg_temp.assert_true(public.decide_agent_permission_request((r->>'id')::uuid,r->>'reviewed_digest','always')=applied,'same decision replays receipt');
+ caught:=false;BEGIN PERFORM public.decide_agent_permission_request((r->>'id')::uuid,r->>'reviewed_digest','deny');EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ PERFORM pg_temp.assert_true(caught,'contradictory decision conflicts');
+ caught:=false;BEGIN UPDATE public.onto_document_versions SET props='{}' WHERE id=(applied->'receipt'->>'version_id')::uuid;EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ PERFORM pg_temp.assert_true(caught,'sealed checkpoint immutable');
+ PERFORM pg_temp.assert_true(public.lookup_agent_permission_request(ref,'first',proposal)->>'status'='applied','retry after head change finds receipt');
+ before:=public.agent_edit_snapshot('document.edit.v1',doc);
+ proposal:=jsonb_build_object('kind','document','target_id',doc,'changes',jsonb_build_object('title','Direct'));
+ applied:=public.apply_scoped_agent_edit(ref,'direct',proposal,before,'{"title":"Direct"}');
+ PERFORM pg_temp.assert_true(applied->>'status'='applied','standing document rule permits bounded direct edit');
+ before:=public.agent_edit_snapshot('document.edit.v1',other_doc);
+ proposal:=jsonb_build_object('kind','document','target_id',other_doc,'changes',jsonb_build_object('title','Unauthorized'));
+ caught:=false;BEGIN PERFORM public.apply_scoped_agent_edit(ref,'other-project',proposal,before,'{"title":"Unauthorized"}');EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ PERFORM pg_temp.assert_true(caught,'document capability is limited to its exact project');
+ before:=public.agent_edit_snapshot('task.edit.v1',task);
+ proposal:=jsonb_build_object('kind','task','target_id',task,'changes',jsonb_build_object('state_key','done'));
+ caught:=false;BEGIN PERFORM public.apply_scoped_agent_edit(ref,'task-direct',proposal,before,'{"state_key":"done"}');EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ PERFORM pg_temp.assert_true(caught,'document capability cannot authorize task edit');
+ r:=public.create_agent_permission_request(ref,'task-once',proposal,before,'{"state_key":"done"}');
+ applied:=public.decide_agent_permission_request((r->>'id')::uuid,r->>'reviewed_digest','once');
+ PERFORM pg_temp.assert_true((SELECT state_key='done' AND completed_at IS NOT NULL FROM public.onto_tasks WHERE id=task),'task completion timestamp generated');
+ before:=public.agent_edit_snapshot('document.edit.v1',doc);
+ proposal:=jsonb_build_object('kind','document','target_id',doc,'changes',jsonb_build_object('title','Stale'));
+ r:=public.create_agent_permission_request(ref,'stale',proposal,before,'{"title":"Stale"}');
+ UPDATE public.onto_documents SET title='New head' WHERE id=doc;
+ PERFORM pg_temp.assert_true(public.decide_agent_permission_request((r->>'id')::uuid,r->>'reviewed_digest','once')->>'status'='stale','changed head never reanchored');
+ UPDATE public.agent_permission_requests SET decided_at=now()-interval '31 days' WHERE caller_id=caller AND status<>'pending';
+ PERFORM public.purge_agent_permission_payloads();
+ proposal:=jsonb_build_object('kind','document','target_id',doc,'changes',jsonb_build_object('title','After'));
+ applied:=public.lookup_agent_permission_request(ref,'alias',proposal);
+ PERFORM pg_temp.assert_true(applied->>'status'='applied' AND applied->>'submission' IS NULL AND applied->'receipt'->>'version_id' IS NOT NULL,'alias retry survives payload purge');
+ PERFORM pg_temp.assert_true(EXISTS(SELECT 1 FROM public.onto_document_versions WHERE id=(applied->'receipt'->>'version_id')::uuid),'payload purge preserves sealed history');
+ PERFORM public.control_agent_permissions(caller,'disable_requests');
+ PERFORM pg_temp.assert_true(EXISTS(SELECT 1 FROM public.agent_permission_grants WHERE caller_id=caller AND revoked_at IS NULL),'disable requests preserves standing access');
+ PERFORM public.control_agent_permissions(caller,'read_only');
+ PERFORM pg_temp.assert_true(NOT EXISTS(SELECT 1 FROM public.agent_permission_grants WHERE caller_id=caller AND revoked_at IS NULL),'read-only revokes all scoped writes');
+ PERFORM pg_temp.assert_true(NOT has_function_privilege('authenticated','public.apply_scoped_agent_edit(jsonb,text,jsonb,jsonb,jsonb)','EXECUTE'),'browser cannot execute service write RPC');
+ PERFORM pg_temp.assert_true(NOT has_function_privilege('anon','public.decide_agent_permission_request(uuid,text,text)','EXECUTE'),'anonymous cannot decide');
+ PERFORM public.set_agent_permission_feature(false); PERFORM public.set_agent_permission_feature(true);
+ PERFORM pg_temp.assert_true((SELECT epoch=2 FROM public.agent_permission_feature),'disable increments durable epoch');
+END $$;
+ROLLBACK;

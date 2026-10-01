@@ -26,8 +26,8 @@ BEGIN
     (d,p,'Parent','document.default','draft',a), (c,p,'Public child','document.default','draft',a),
     (s,p,'Independent sibling','document.default','draft',a), (h,p,'Start Here','document.context.project','draft',a);
   tree := jsonb_build_object('version',1,'root',jsonb_build_array(
-    jsonb_build_object('id',d,'children',jsonb_build_array(jsonb_build_object('id',c))),
-    jsonb_build_object('id',s),jsonb_build_object('id',h)));
+    jsonb_build_object('id',d,'order',0,'children',jsonb_build_array(jsonb_build_object('id',c,'order',0))),
+    jsonb_build_object('id',s,'order',1),jsonb_build_object('id',h,'order',2)));
   UPDATE public.onto_projects SET doc_structure=tree WHERE id=p;
   PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
 
@@ -49,6 +49,21 @@ BEGIN
   INSERT INTO public.onto_public_pages (project_id,document_id,slug,title,status,public_status,created_by,updated_by)
     VALUES (p,h,'archive-review-unrelated','Uncommissioned public document','published','live',a,a);
   snap := public.onto_document_archive_review_snapshot(p,d,'archive_children');
+  -- Harmless ordering changes are tolerated at every depth, while moves and
+  -- changes to attributes in the target subtree still invalidate review.
+  UPDATE public.onto_projects SET doc_structure=jsonb_set(jsonb_set(tree,
+    '{root,0,order}', '9'), '{root,0,children,0,order}', '8') WHERE id=p;
+  ASSERT public.onto_document_archive_review_snapshot(p,d,'archive_children')=snap,
+    'incidental node order invalidated review';
+  UPDATE public.onto_projects SET doc_structure=jsonb_set(tree,
+    '{root,0,children,0,kind}', '"changed"') WHERE id=p;
+  ASSERT public.onto_document_archive_review_snapshot(p,d,'archive_children')<>snap,
+    'descendant attribute change escaped review';
+  UPDATE public.onto_projects SET doc_structure=jsonb_build_object('version',1,'root',jsonb_build_array(
+    jsonb_build_object('id',s,'children',jsonb_build_array(tree->'root'->0)),tree->'root'->2)) WHERE id=p;
+  ASSERT public.onto_document_archive_review_snapshot(p,d,'archive_children')<>snap,
+    'target parent move escaped review';
+  UPDATE public.onto_projects SET doc_structure=tree WHERE id=p;
   ASSERT jsonb_array_length(snap->'archived_document_ids')=2;
   ASSERT jsonb_array_length(snap->'public_pages')=0, 'included an unrelated publication';
   UPDATE public.onto_documents SET title='Child edited after review' WHERE id=c;
@@ -85,7 +100,7 @@ BEGIN
   ASSERT jsonb_array_length(snap->'documents')=2;
   sibling_snap := public.onto_document_archive_review_snapshot(p,s,'archive_children');
   out := public.onto_document_archive_reviewed_atomic(p,d,ARRAY[d],(snap->>'target_updated_at')::timestamptz,
-    1,jsonb_build_object('version',2,'root',jsonb_build_array(jsonb_build_object('id',c),jsonb_build_object('id',s),jsonb_build_object('id',h))),
+    1,jsonb_build_object('version',2,'root',jsonb_build_array(jsonb_build_object('id',c,'order',1),jsonb_build_object('id',s,'order',0),jsonb_build_object('id',h,'order',2))),
     a,'[]','promote_children',snap);
   ASSERT (SELECT state_key='archived' FROM public.onto_documents WHERE id=d);
   ASSERT (SELECT state_key='draft' FROM public.onto_documents WHERE id=c);
