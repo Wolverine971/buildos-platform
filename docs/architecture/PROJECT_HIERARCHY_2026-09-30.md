@@ -12,7 +12,7 @@ Status (2026-09-30, evening, after the adversarial review and its fixes):
 | Phase | Scope                                                             | State                                                                                                                                                                                                                                                           |
 | ----- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | Nesting and the shared-docs shelf                                 | **Live in production** (web `ef69ffd8c`, 18:50 UTC). No real project is nested yet. Attach/detach rules changed by `20260930211000` (see the review section).                                                                                                   |
-| 2     | Moving docs and tasks between projects, Organize view, batch undo | **Schema + code live** (`39886266d` pushed 20:51 UTC). Review fixes applied and pushed (`e10cd5e68`). Live check passed 2026-10-01; image moves ON, dated-task moves OFF. Shared-doc consent → confirm card (DJ's pick): built 2026-10-01, not yet live-tested. |
+| 2     | Moving docs and tasks between projects, Organize view, batch undo | **Schema + code live** (`39886266d` pushed 20:51 UTC). Review fixes applied and pushed (`e10cd5e68`). Live check passed 2026-10-01; image moves ON, dated-task moves OFF. Shared-doc consent → confirm card (DJ's pick): shipped, **prod live test passed 2026-10-01** ($0.035); misleading-toast fix `1ba3ef008` local. |
 | 3     | Combine (fold one project into another), pre-sort, unfold         | Database foundation built and rehearsed (2026-10-01), **not applied**; 4 product questions open.                                                                                                                                                                |
 
 Read **"Adversarial review and fixes (2026-09-30 evening)"** below first: it records what changed after the
@@ -590,6 +590,32 @@ canonical schema, and the project surface is over its byte cap (this change shri
 against a throwaway local Postgres with the real table and triggers. **Not verified:** browser
 click-through, phone width, deployed web/worker, live model wording. Deploy web and worker
 together with rebuilt packages. Version-1 (token) previews can't be resolved by the card.
+
+**Production live test (2026-10-01, DJ-approved, $0.035 total).** Shipped in `4328cf7f4`. The test
+used throwaway projects nested parent → child (soft-deleted afterwards), a "Rate card" on the
+parent's shelf, three chat turns in the child on DeepSeek V4.1 Flash, and the deployed web and
+worker. Desktop only.
+
+- **Update shared doc.** Turn 1 asked for $1,500 → $1,800. Nothing was written until the click;
+  the reply named the parent and told the user to choose in the card. The click wrote the parent
+  copy, and the card read "Updated in … · shown in 1 project · Open".
+- **Single use.** A second POST to the same card, with a different choice, returned the first
+  resolution and wrote nothing.
+- **Copy here.** In turn 2, the model said the first change was already saved and the new one was
+  not. The click created the child's own Rate card ($4,500, with `props.copied_from`) and left the
+  parent unchanged.
+- **Cancel.** Turn 3 named "the parent's shared Rate card" after the child had its own copy. The
+  model picked the parent doc, and Cancel changed nothing.
+- **Reload.** Reopened from History, all three cards came back resolved: Updated, Copied,
+  Cancelled.
+- **Bug found and fixed (`1ba3ef008`, local).** The held edit showed an "Updated document" toast
+  and activity line. Results with `requires_user_action` now skip the toast and the diff card,
+  and read "Needs your choice to update document: …". Reopened sessions also listed worker review
+  steps ("Used approve mutation batch review"). They are now hidden, as in the live stream.
+- **Observed, not fixed.** The reviewer bounced a correct card edit once in turns 2 and 3
+  (`request_proposal_revision`, then approve). That cost turn 2 two extra calls ($0.015 vs $0.006).
+  Every chat document edit stamps `props.origin = external_agent` (gateway default), including
+  card applies.
 
 ### Moves
 
