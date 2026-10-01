@@ -171,16 +171,25 @@ async function claimedMeter(configure?: (store: WorkflowStoreFake) => void) {
 	return { store, meter, gate, stepAttemptId };
 }
 
+// An acting pass that spends the whole completion budget it was sent is
+// exhausted, whatever finish_reason the provider reports. Since Tasker 114 it
+// ends as a retryable error the atomic buffer retries once, not as a `done`.
+const exhaustedAt = (limit: number) => ({
+	type: 'error',
+	retryable: true,
+	cause: 'output_budget_exhausted',
+	outputBudget: { kind: 'exhausted', limit }
+});
+
 describe('per-request length relabel', () => {
-	it('labels a response that reached a smaller per-request ceiling as truncated', async () => {
+	it('treats a response that reached a smaller per-request ceiling as exhausted', async () => {
 		const fetchImpl = vi.fn(async () => sse(800));
 		const events = await collect(
 			client(fetchImpl as unknown as typeof fetch).stream(input({ maxOutputTokens: 800 }))
 		);
 		expect(bodyOf(fetchImpl).max_tokens).toBe(800);
-		expect(events.find((event) => event.type === 'done')).toMatchObject({
-			finishedReason: 'length'
-		});
+		expect(events.find((event) => event.type === 'done')).toBeUndefined();
+		expect(events.find((event) => event.type === 'error')).toMatchObject(exhaustedAt(800));
 	});
 
 	it('leaves a response under the per-request ceiling untouched', async () => {
@@ -207,9 +216,7 @@ describe('per-request length relabel', () => {
 		const atCap = await collect(
 			client(capped as unknown as typeof fetch, [route()], 1_200).stream(input())
 		);
-		expect(atCap.find((event) => event.type === 'done')).toMatchObject({
-			finishedReason: 'length'
-		});
+		expect(atCap.find((event) => event.type === 'error')).toMatchObject(exhaustedAt(1_200));
 	});
 
 	it('uses the client maximum when a per-request ceiling is larger', async () => {
@@ -220,9 +227,7 @@ describe('per-request length relabel', () => {
 			)
 		);
 		expect(bodyOf(fetchImpl).max_tokens).toBe(1_200);
-		expect(events.find((event) => event.type === 'done')).toMatchObject({
-			finishedReason: 'length'
-		});
+		expect(events.find((event) => event.type === 'error')).toMatchObject(exhaustedAt(1_200));
 	});
 });
 

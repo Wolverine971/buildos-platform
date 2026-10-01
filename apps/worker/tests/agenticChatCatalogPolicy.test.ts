@@ -51,6 +51,9 @@ describe('Agentic Chat worker/catalog policy compatibility', () => {
 	});
 
 	it('keeps reviewed worker mutation arguments inside canonical schemas', () => {
+		// Facts the worker inserts before review; the model-facing schema must not
+		// offer them, and the archive preview rejects any model-supplied copy.
+		const serverInsertedArgumentNames = new Set(['_archive_review']);
 		for (const [toolName, spec] of Object.entries(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)) {
 			const definition = directDefinitionByName.get(toolName);
 			expect(definition, `${toolName} canonical definition`).toBeDefined();
@@ -58,7 +61,9 @@ describe('Agentic Chat worker/catalog policy compatibility', () => {
 
 			expect(
 				spec.reviewedArgumentNames.filter(
-					(name) => !Object.hasOwn(canonicalProperties, name)
+					(name) =>
+						!Object.hasOwn(canonicalProperties, name) &&
+						!serverInsertedArgumentNames.has(name)
 				),
 				`${toolName} reviewed arguments`
 			).toEqual([]);

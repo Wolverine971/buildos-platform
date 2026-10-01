@@ -252,7 +252,14 @@ function documentReadSuite(sharedEvidence: boolean) {
 			expect(state?.steps.risk_reviewer?.inputEvidence).toBeUndefined();
 			expect(state?.plan?.plan.version).toBe('agentic_chat_project_review_plan_v1');
 		}
-		expect(provider.callsFor('project_analyst')[1]!.body.messages.at(-1)).toMatchObject({
+		// Acting passes end with the output-budget system note (Tasker 114); the
+		// read result is still the last conversational message the analyst sees.
+		expect(
+			provider
+				.callsFor('project_analyst')[1]!
+				.body.messages.filter((message: { role: string }) => message.role !== 'system')
+				.at(-1)
+		).toMatchObject({
 			role: 'tool',
 			tool_call_id: 'read-1'
 		});

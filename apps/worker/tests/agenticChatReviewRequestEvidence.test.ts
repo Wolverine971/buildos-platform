@@ -524,7 +524,11 @@ describe('actor-facing commission guidance', () => {
 		// the model on claim-shaped prose, and the exact-ID / state_key write
 		// rules moved here from the web prompt's lexically triggered write block;
 		// measured 2,957 / 3,820.
-		expect(deferred!.length).toBeLessThan(3_000);
-		expect(full!.length).toBeLessThan(3_870);
+		// 2026-09-29 (tasker 114 large-batch cleanup): the commission line now bounds
+		// each stage ("at most 8 mutations per pass, fewer for large document bodies")
+		// and says to reuse prior reads, so a big cleanup stops overrunning the
+		// output budget; measured 3,156 / 4,019.
+		expect(deferred!.length).toBeLessThan(3_200);
+		expect(full!.length).toBeLessThan(4_070);
 	});
 });

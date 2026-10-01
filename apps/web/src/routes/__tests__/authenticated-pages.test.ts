@@ -39,7 +39,9 @@ function createCountQuery(count: number) {
 		select: vi.fn(() => query),
 		eq: vi.fn(() => query),
 		in: vi.fn(() => ({
-			is: vi.fn(() => Promise.resolve({ data: [], error: null }))
+			is: vi.fn(() => Promise.resolve({ data: [], error: null })),
+			// Project hierarchy: the list loads visible parent ids.
+			not: vi.fn(() => Promise.resolve({ data: [], error: null }))
 		})),
 		is: vi.fn(() => Promise.resolve({ count, error: null }))
 	};
@@ -158,7 +160,12 @@ describe('Authenticated Pages', () => {
 			expect(result.actorId).toBe('actor-1');
 			expect(result.projectCount).toBe(3);
 			expect(await result.projects).toEqual([
-				{ id: 'proj-1', name: 'Test project', has_collaborators: false }
+				{
+					id: 'proj-1',
+					name: 'Test project',
+					has_collaborators: false,
+					parent_project_id: null
+				}
 			]);
 		});
 

@@ -224,9 +224,11 @@ describe('tool surface size report', () => {
 		// 2026-09-12: the same reviewed task-schema guidance moves the complete
 		// plan bundle to 4,577 estimated tokens. Retain 23 tokens of headroom.
 		// 2026-09-21: the tasker 92 type_key policy moves it to 4,620.
-		expect(plan?.estimatedTokens).toBeLessThanOrEqual(4_650);
+		// 2026-09-30: archived:true on update_onto_task/update_onto_goal (archive
+		// without completing) moves it to 4,678.
+		expect(plan?.estimatedTokens).toBeLessThanOrEqual(4_700);
 		expect(Math.max(...reports.map((report) => report.estimatedTokens))).toBeLessThanOrEqual(
-			4_650
+			4_700
 		);
 	});
 });

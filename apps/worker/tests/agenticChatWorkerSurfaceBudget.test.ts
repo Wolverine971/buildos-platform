@@ -163,9 +163,15 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// prod: ~18 reads, $0.13, ~40% missed without it). Its description carries the
 		// start-here and apply-from-the-card guidance. Measured project 65 tools /
 		// 63,134 B (+611 B); Jev mounts it only on turns that need it.
+		// 2026-09-30: chat archiving (archived:true on update_onto_task and
+		// update_onto_goal, archive_mode on update_onto_document), the shared-document
+		// confirm card rule on update_onto_document (project hierarchy: a child chat's
+		// edit to a parent's shared doc becomes a card, never a write) and the task
+		// mover's dated-task/asset transfer text. Measured project 65 tools /
+		// 64,863 B (+1,729 B); only passes that select those tools pay it.
 		expect(global.openingBytes).toBeLessThanOrEqual(51_200);
-		expect(project.openingBytes).toBeLessThanOrEqual(63_200);
-		expect(project.admittedBytes).toBeLessThanOrEqual(63_200);
+		expect(project.openingBytes).toBeLessThanOrEqual(64_900);
+		expect(project.admittedBytes).toBeLessThanOrEqual(64_900);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_220);
 	});
 

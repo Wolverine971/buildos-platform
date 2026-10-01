@@ -360,12 +360,17 @@ describe('total assembled prompt size budget', () => {
 		// Measured payload 78,844 chars / 19,711 est tokens, tool schemas 16,711 est
 		// tokens per pass. Jev mounts the tool only on turns that need it. Caps at
 		// measured + ~0.5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(79_250);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(19_810);
+		// RE-BASELINED 2026-09-30: chat archiving (archived:true on update_onto_task and
+		// update_onto_goal, archive_mode on update_onto_document), the shared-document
+		// confirm card rule on update_onto_document (project hierarchy) and the task
+		// mover's dated-task/asset transfer text. Measured payload 80,039 chars / 20,010
+		// est tokens, tool schemas 17,009 est tokens per pass. Caps at measured + ~0.5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(80_450);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(20_110);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(59_430);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(50_380);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(60_330);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(51_280);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model
@@ -373,9 +378,10 @@ describe('total assembled prompt size budget', () => {
 		// estimated tokens. Pin its identity and retain about 5% headroom.
 		// 2026-09-12: reviewed task evidence/recurrence guidance raises it to 854;
 		// keep its identity pinned and 46 estimated tokens of headroom.
+		// 2026-09-30: archived:true (archive without completing) raises it to 926.
 		expect(
 			toolSurface.tools.find((tool) => tool.estimatedTokens === largestToolSchemaTokens)?.name
 		).toBe('update_onto_task');
-		expect(largestToolSchemaTokens).toBeLessThanOrEqual(900);
+		expect(largestToolSchemaTokens).toBeLessThanOrEqual(950);
 	});
 });
