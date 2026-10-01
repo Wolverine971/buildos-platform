@@ -208,6 +208,40 @@ class EndToEndOffline(unittest.TestCase):
         self.assertIn('SECURITY: public.peek() is SECURITY DEFINER and executable by PUBLIC', output)
         self.assertIn('REHEARSAL PASSED', output)
 
+    def run_main_with(self, *args):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = rehearse.main([*map(str, args), '--project-ref', 'testref'])
+        return code, out.getvalue()
+
+    def test_fold_coverage_check_needs_every_project_column_classified(self):
+        coverage = rehearse.ROOT / 'supabase' / 'tests' / 'project_fold_table_coverage.check.sql'
+        schema = self.write('20260102000000_projects.sql',
+                            'CREATE SCHEMA private;\n'
+                            'CREATE TABLE public.onto_projects (id uuid PRIMARY KEY);\n'
+                            'CREATE TABLE public.onto_tasks (id uuid PRIMARY KEY, project_id uuid REFERENCES public.onto_projects(id));\n')
+        # Before the fold foundation exists, the standing check is a no-op.
+        code, output = self.run_main_with(schema, '--check', coverage)
+        self.assertEqual(code, 0, output)
+        policy = self.write('20260103000000_policy.sql',
+                            'CREATE TABLE private.project_fold_table_policy (table_schema text, table_name text, '
+                            'column_name text, action text, reason text);\n'
+                            "INSERT INTO private.project_fold_table_policy VALUES "
+                            "('public', 'onto_tasks', 'project_id', 'move', 'tasks move');\n")
+        code, output = self.run_main_with(schema, policy, '--check', coverage)
+        self.assertEqual(code, 0, output)
+        added = self.write('20260104000000_unclassified.sql',
+                           'CREATE TABLE public.notes_by_project (id uuid, owner_project_id uuid);\n'
+                           'CREATE TABLE public.pins (id uuid, pinned uuid REFERENCES public.onto_projects(id));\n'
+                           "INSERT INTO private.project_fold_table_policy VALUES "
+                           "('public', 'dropped_table', 'project_id', 'leave_behind', 'gone');\n")
+        code, output = self.run_main_with(schema, policy, added, '--check', coverage)
+        self.assertEqual(code, 1, output)
+        for gap in ('unclassified column public.notes_by_project.owner_project_id',
+                    'unclassified column public.pins.pinned',
+                    'policy row names a missing column public.dropped_table.project_id'):
+            self.assertIn(gap, output)
+
     def test_failing_migration_stops_and_exits_nonzero(self):
         broken = self.write('20260102000000_broken.sql', 'ALTER TABLE public.missing ADD COLUMN x int;\n')
         never = self.write('20260103000000_never.sql', 'CREATE TABLE public.never (id int);\n')
@@ -235,6 +269,10 @@ class DefaultChecks(unittest.TestCase):
     def test_every_default_check_exists(self):
         for check in rehearse.DEFAULT_CHECKS:
             self.assertTrue(check.is_file(), check)
+
+    def test_project_fold_coverage_is_a_standing_check(self):
+        self.assertIn(rehearse.ROOT / 'supabase' / 'tests' / 'project_fold_table_coverage.check.sql',
+                      rehearse.DEFAULT_CHECKS)
 
 if __name__ == '__main__':
     unittest.main()

@@ -9,11 +9,11 @@
 
 Status (2026-09-30, evening, after the adversarial review and its fixes):
 
-| Phase | Scope                                                             | State                                                                                                                                                                                                                                             |
-| ----- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Nesting and the shared-docs shelf                                 | **Live in production** (web `ef69ffd8c`, 18:50 UTC). No real project is nested yet. Attach/detach rules changed by `20260930211000` (see the review section).                                                                                       |
-| 2     | Moving docs and tasks between projects, Organize view, batch undo | **Schema + code live** (`39886266d` pushed 20:51 UTC). Review fixes: migrations `210000`–`212000` applied; code fixes committed locally, not pushed. Rollout flags still false. Shared-doc consent UX is being redesigned with DJ. No live write test run yet. |
-| 3     | Combine (fold one project into another), pre-sort, unfold         | Not started.                                                                                                                                                                                                                                      |
+| Phase | Scope                                                             | State                                                                                                                                                                                                                                                           |
+| ----- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Nesting and the shared-docs shelf                                 | **Live in production** (web `ef69ffd8c`, 18:50 UTC). No real project is nested yet. Attach/detach rules changed by `20260930211000` (see the review section).                                                                                                   |
+| 2     | Moving docs and tasks between projects, Organize view, batch undo | **Schema + code live** (`39886266d` pushed 20:51 UTC). Review fixes applied and pushed (`e10cd5e68`). Live check passed 2026-10-01; image moves ON, dated-task moves OFF. Shared-doc consent → confirm card (DJ's pick): built 2026-10-01, not yet live-tested. |
+| 3     | Combine (fold one project into another), pre-sort, unfold         | Database foundation built and rehearsed (2026-10-01), **not applied**; 4 product questions open.                                                                                                                                                                |
 
 Read **"Adversarial review and fixes (2026-09-30 evening)"** below first: it records what changed after the
 progress sections were written, and which older statements are superseded.
@@ -397,6 +397,8 @@ was both false at 17:45 UTC; DJ's deployment has not been independently verified
 
 ### Phase 2 progress: confirmed shared-document edits in chat (2026-09-30)
 
+> Superseded by "Phase 2 progress: confirm card for shared-doc edits" below; the token flow is removed.
+
 Built locally. No new migration is needed: confirmation uses the existing service-only
 `chat_turn_effects` ledger and the document writer's version comparison. Deploy the web and
 worker together, with rebuilt `shared-agent-ops` and `agentic-chat-runtime` packages.
@@ -483,7 +485,7 @@ the ledger):**
 **Code fixes (committed locally with the review, not pushed):**
 
 - Chat: the turn-completion check that shipped in `39886266d` suppressed the "unfinished work"
-  continuation for *any* `requires_user_action` result (for example a calendar reconnect on a write that
+  continuation for _any_ `requires_user_action` result (for example a calendar reconnect on a write that
   saved). It now holds back only for a pending shared-document preview. A confirmed shared edit after a
   direct write in the same turn is held for review instead of failing the turn. Stale or invalid tokens
   are rejected before the paid reviewer pass (wired in `composition-root.ts`). Recalled preview calls
@@ -501,6 +503,28 @@ the ledger):**
   unsaved edits; pickers take typing immediately; phone picker fits; 44px touch targets; dead-end
   entries hidden; detach controls on both sides; `exact: true` removed from tests (CI red since
   `ef69ffd8c`).
+
+**Production live check (2026-10-01, 01:05–01:25 UTC, DJ-approved free checks):** web `e10cd5e68`,
+worker deployed 00:44 UTC. Two throwaway projects (`15bc0d0a…`, `d0e1a21e…`) were created without a
+description (no paid icon call), used, and soft-deleted afterwards. The image asset skipped `/complete`,
+which would queue a paid OCR call.
+
+- Organize keyboard move → server review ("No linked items need to change") → Apply → toast + receipt
+  → Undo from the receipt → redo offered from the reversal toast. All passed.
+- Doc with an image: blocked with a plain reason while `asset_access_ready` was false; after enabling it,
+  the move applied, the asset followed (`project_id` B, `storage_project_id` A), `/render` returned
+  200 image/png, and undo restored it. **`asset_access_ready` is now true. `calendar_sync_ready` stays
+  false** until DJ approves a calendar test (it would touch his Google Calendar).
+- A folder with a child (Research + Notes) moved and undid from History; the trees nested correctly;
+  every Organize write recorded a `move` row in `onto_project_structure_history`; the journal held 3
+  applies + 2 reversals.
+- Hierarchy: "Move under…" nested B under A (breadcrumb, hub row, `can_detach`); the shared folder was
+  pinned with "Shared · 1"; its "Move to…" was refused; the editor's "Move between projects…" now
+  lands on Organize with the item preselected; hub "Remove from A" asked to confirm and detached.
+- Found and fixed (`9b728800f`, local): the notification stack covered the tray's Review button; the
+  shared folder offered Archive / Share publicly (archiving it silently empties every shelf).
+- Found, queued: History rows don't name what moved; "Move between projects…" is only in the
+  collapsed Details panel; no "drop docs here" ghost row yet.
 
 **Corrections to statements above:**
 
@@ -525,6 +549,47 @@ the ledger):**
 - The tree's right-click menu still shows "Move to…" on the shared folder (it now refuses with a message).
 - Collaborator (second-account) browser pass, phone pass, and approved live move/undo and shared-edit
   checks. Readiness flags stay false until the worker/web deploys are verified.
+
+### Phase 2 progress: confirm card for shared-doc edits (2026-09-30, late)
+
+DJ's pick: a click on a card is the only consent, never typed text. This replaces the
+`confirmation_token` flow in "confirmed shared-document edits in chat" above, and closes the
+"Shared-doc consent redesign" item under "Still open". It is built locally, uncommitted and not deployed.
+No migration was added.
+
+- **Flow.** From a child chat, `update_onto_document` on a writable parent's shelf document saves
+  nothing. It previews the edit as a dry run, then returns a card receipt (contract:
+  `@buildos/shared-agent-ops/ontology/shared-document-edit-card`, client action kind
+  `confirm_shared_document_edit`). The card shows title · parent, "Shared with N sub-projects", the
+  diff, and **Update shared doc / Copy here / Cancel**. The turn ends on the card. The model sees
+  only a compacted change, never the held edit, and is told to ask the user to choose in the card.
+- **Click.** `POST /api/chat/shared-document-edits/[id]` takes `{choice, session_id}`. The edit
+  arguments and document version are read from the card's `chat_turn_effects` row (admin client,
+  ledger only), which is filtered to this user and session.
+    - The card is single-use: the PK insert of a resolution row whose id is derived from the card
+      claims it atomically, so a second click gets the first click's result.
+    - Cards expire after 24h and can't be used while the turn is still running.
+    - Apply re-checks parent write access, that the doc is still on the shelf, and the exact
+      version. It then writes through `runGatewayWriteOp` with the user-scoped client and
+      `documentWriteGuard`, and never rebases.
+    - Copy re-checks child write access, then runs the shared `copyInheritedDocument` helper (the
+      same one the inherited-docs copy route now uses) and applies the edit to the copy.
+- **Outcome.** The resolution is recorded in the ledger row (succeeded / failed = stale /
+  uncertain = unknown) and mirrored onto the card's `chat_tool_executions.result`, so the card
+  comes back resolved after reload. The next turn gets one system note per card through the
+  existing continuity query (no extra query). History compression keeps these notes whole, and
+  prepared history is now v4.
+- **Removed.** The token argument (both catalogs), the token dispatch and mandatory review, the
+  composition-root check port, and web confirmation-history recall
+  (`shared-document-confirmation-history.ts`).
+
+Validation (free only): shared-agent-ops 6, runtime 60, worker 681 of 683, and web 158 focused
+tests pass. The 2 worker failures fail without this change too: `_archive_review` is not in the
+canonical schema, and the project surface is over its byte cap (this change shrinks it by about
+190 B). Runtime and worker typechecks pass. The resolver's exact ledger write sequence was run
+against a throwaway local Postgres with the real table and triggers. **Not verified:** browser
+click-through, phone width, deployed web/worker, live model wording. Deploy web and worker
+together with rebuilt packages. Version-1 (token) previews can't be resolved by the card.
 
 ### Moves
 
@@ -588,6 +653,38 @@ the ledger):**
     - applying each migration to prod, one file at a time;
     - live chat checks (paid);
     - any browser walkthrough that writes data.
+
+## Phase 3 progress: database foundation (2026-10-01) — NOT applied to production
+
+`20260930220000_project_fold_foundation.sql` and `20260930220100_project_unfold.sql`, with checks
+`supabase/tests/20260930220000_project_fold.check.sql` and the standing
+`supabase/tests/project_fold_table_coverage.check.sql` (registered in `DEFAULT_CHECKS`; it skips with a
+notice until the policy table exists). The full rehearsal passes (0 SECURITY / 0 API). **Not applied:**
+the product questions below can change the contracts, and nothing calls these RPCs yet.
+
+- **Contracts** (service-only, explicit user id; admin on both projects):
+  `onto_project_fold_preview(user, source, dest, member_additions)` → `{confirmation_token, impact, info}`;
+  `onto_project_fold_apply(user, source, dest, token, fold_id, member_additions)` (idempotent by fold id);
+  `onto_project_unfold_preview(user, fold_id)` / `onto_project_unfold_apply(user, fold_id, token)`;
+  `get_project_route_redirect(project_id)` (authenticated; only to readers of the destination);
+  `cleanup_privacy_project_fold_manifests()` (30-day manifest purge; not yet wired to the cron).
+- **Table policy:** 97 project-pointing columns classified — move 21, repoint 3 (chats, chat↔project
+  links, contact links), rebuild 10, leave_behind 61 (logs, members, grants, proposals, calendars…).
+  Any new `project_id` column now fails rehearsal until classified.
+- **Behaviour:** the source tree lands under "From <source>"; START HERE / thinking log are demoted (and
+  restored by unfold when possible); the source is archived with `merged_into_project_id`; 15 blockers
+  (members missing, sub-projects, pending proposals, recurring/standalone events, rollout flags, size
+  caps: 1,000 entities, 300 docs, 5,000 edges, 2,000 embeddings, 50 docs in one folder).
+- **Timing:** DJ's largest projects fold in ≈0.3 s; at every cap ≈2.4 s (under the 8 s PostgREST
+  timeout).
+- **Landmine:** a document's `children` index overflows past ≈60 direct children; folds block with
+  `too_many_documents_in_one_folder` (production's widest is 17).
+- **Open for DJ:** should chats follow the fold (today: yes); should standalone/recurring events block
+  (today) or get a re-home job; should members added by a fold stay after unfold (today: yes); should
+  email rules stay with the source (today: yes).
+- **Next slices:** worker bridge, gateway/writer forwarding (writes queued behind a fold currently land
+  in the archived source), post-commit rebuilds, model pre-sort, the Combine UI. If
+  `20260930185213_agent_permission_requests.sql` reaches production after this, it needs policy rows.
 
 ## Phase 3 (later): combine
 

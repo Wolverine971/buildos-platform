@@ -25,8 +25,10 @@ pnpm db:rehearse my_change.sql --role-probe   # grants/policies: prove anon + si
    file with `ON_ERROR_STOP`, then runs optional `--check` assertion SQL, then the standing
    invariants in `DEFAULT_CHECKS` (production schema only; `--no-default-checks` skips them).
    Today that is `supabase/tests/archived_scope_guard.check.sql` (Tasker 113): no chat context or
-   search RPC may return an archived record. The cluster is deleted afterwards unless you pass
-   `--keep`.
+   search RPC may return an archived record; and `supabase/tests/project_fold_table_coverage.check.sql`:
+   every column pointing at a project is classified in `private.project_fold_table_policy` (move,
+   repoint, rebuild or leave_behind), so a new `project_id` table needs a policy row in the same
+   migration. The cluster is deleted afterwards unless you pass `--keep`.
 3. **Report.** Every object each migration added (+), removed (-) or changed (~): tables, columns,
    constraints, indexes, views, functions (including `SECURITY DEFINER`, `search_path`, and
    grants), policies, triggers, default privileges, and enum/domain types. It also reports the production size of

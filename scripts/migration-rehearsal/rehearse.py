@@ -58,6 +58,9 @@ MIGRATION_NAME = re.compile(r'^(\d{14})_([a-z0-9_]+)\.sql$')
 DEFAULT_CHECKS = (
     # Tasker 113: chat context and search RPCs never return archived records.
     ROOT / 'supabase' / 'tests' / 'archived_scope_guard.check.sql',
+    # Project fold (Combine): every column that points at a project is classified in
+    # private.project_fold_table_policy, so a fold never strands rows in the archived source.
+    ROOT / 'supabase' / 'tests' / 'project_fold_table_coverage.check.sql',
 )
 
 FINGERPRINT_SQL = r"""
