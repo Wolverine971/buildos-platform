@@ -19,9 +19,28 @@
 		onundo: () => void;
 		onclear: () => void;
 	} = $props();
+
+	// While docked at the bottom, publish the tray's height so floating layers
+	// (the notification stack) sit above it instead of covering Review changes.
+	let tray = $state<HTMLElement | null>(null);
+	$effect(() => {
+		const element = tray;
+		if (!changes.length || !element) return;
+		const root = document.documentElement;
+		const publish = () =>
+			root.style.setProperty('--app-bottom-dock', `${element.offsetHeight + 8}px`);
+		publish();
+		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publish);
+		observer?.observe(element);
+		return () => {
+			observer?.disconnect();
+			root.style.removeProperty('--app-bottom-dock');
+		};
+	});
 </script>
 
 <section
+	bind:this={tray}
 	class="z-30 rounded-xl border border-border bg-card p-3 shadow-ink-strong sm:p-4 {changes.length
 		? 'fixed bottom-2 left-3 right-3 mx-auto max-w-7xl'
 		: 'mt-4'}"

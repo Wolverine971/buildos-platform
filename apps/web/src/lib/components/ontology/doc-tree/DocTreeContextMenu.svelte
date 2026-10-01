@@ -27,23 +27,27 @@
 		position: { x: number; y: number };
 		node: EnrichedDocTreeNode;
 		canEdit?: boolean;
+		/** The parent's "Shared with sub-projects" folder: it can't be moved, shared or archived here. */
+		pinned?: boolean;
 		onAction: (action: string) => void;
 		onClose: () => void;
 	}
 
-	let { position, node, canEdit = true, onAction, onClose }: Props = $props();
+	let { position, node, canEdit = true, pinned = false, onAction, onClose }: Props = $props();
 
 	let menuRef = $state<HTMLDivElement | null>(null);
 
 	const isFolder = $derived(node.type === 'folder');
 	const isPublic = $derived(!isFolder && node.is_public === true);
+	// Pinned: only Open and Create child remain (no share, move or archive).
+	const manageable = $derived(canEdit && !pinned);
 	const menuItemCount = $derived(
 		1 +
 			(canEdit ? 1 : 0) +
-			(!isFolder ? (isPublic ? 2 + (canEdit ? 1 : 0) : canEdit ? 1 : 0) : 0) +
-			(canEdit ? 2 : 0)
+			(!isFolder && !pinned ? (isPublic ? 2 + (canEdit ? 1 : 0) : canEdit ? 1 : 0) : 0) +
+			(manageable ? 2 : 0)
 	);
-	const dividerCount = $derived((!isFolder ? 1 : 0) + (canEdit ? 2 : 0));
+	const dividerCount = $derived((!isFolder && !pinned ? 1 : 0) + (manageable ? 2 : 0));
 
 	// Position the menu within viewport
 	const menuStyle = $derived.by(() => {
@@ -147,7 +151,7 @@
 		{/if}
 
 		<!-- Public page actions (documents only) -->
-		{#if !isFolder}
+		{#if !isFolder && !pinned}
 			<div class="my-1 border-t border-border" role="separator"></div>
 			{#if isPublic}
 				<button
@@ -192,7 +196,7 @@
 			{/if}
 		{/if}
 
-		{#if canEdit}
+		{#if manageable}
 			<div class="my-1 border-t border-border" role="separator"></div>
 
 			<!-- Move -->

@@ -87,7 +87,7 @@
 
 {#if count > 0}
 	<div
-		class="pointer-events-auto fixed inset-x-3 bottom-3 z-50 flex flex-col gap-2 sm:left-auto sm:right-4 sm:bottom-4 sm:w-[380px]"
+		class="pointer-events-auto fixed inset-x-3 bottom-[calc(0.75rem+var(--app-bottom-dock,0px))] z-50 flex flex-col gap-2 sm:left-auto sm:right-4 sm:bottom-[calc(1rem+var(--app-bottom-dock,0px))] sm:w-[380px]"
 		role="region"
 		aria-label="Notification stack"
 	>
@@ -97,7 +97,7 @@
 			id={LIST_ID}
 			onscroll={updateFades}
 			style={fadeMask}
-			class="-m-1.5 max-h-[min(70dvh,calc(100dvh-6rem))] flex-col gap-2 overflow-y-auto overscroll-contain p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {open
+			class="-m-1.5 max-h-[min(70dvh,calc(100dvh-6rem-var(--app-bottom-dock,0px)))] flex-col gap-2 overflow-y-auto overscroll-contain p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {open
 				? 'flex'
 				: 'hidden'} {collapsible ? '' : 'sm:flex'}"
 		>

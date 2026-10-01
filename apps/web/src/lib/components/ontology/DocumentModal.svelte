@@ -4631,16 +4631,19 @@
 							<span class="hidden sm:inline ml-1">Delete Permanently</span>
 						</Button>
 					{:else if !inheritance}
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onclick={() => (archiveModalOpen = true)}
-							class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
-						>
-							<Archive class="w-3.5 h-3.5" />
-							<span class="hidden sm:inline ml-1">Archive</span>
-						</Button>
+						<!-- The shared folder feeds every sub-project's shelf; it isn't archived from here. -->
+						{#if !isSharedFolder}
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								onclick={() => (archiveModalOpen = true)}
+								class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+							>
+								<Archive class="w-3.5 h-3.5" />
+								<span class="hidden sm:inline ml-1">Archive</span>
+							</Button>
+						{/if}
 						<!-- Create Child button -->
 						{#if onCreateChildRequested}
 							<div class="w-px h-5 bg-border mx-0.5" aria-hidden="true"></div>

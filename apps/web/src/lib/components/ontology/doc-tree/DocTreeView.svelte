@@ -1002,6 +1002,7 @@
 			position={contextMenuPosition}
 			node={contextMenuNode}
 			{canEdit}
+			pinned={contextMenuNode.id === sharedFolderId}
 			onAction={handleContextAction}
 			onClose={closeContextMenu}
 		/>
