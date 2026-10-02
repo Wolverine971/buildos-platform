@@ -5,6 +5,7 @@ import type {
 	CycleQueueJobMetadata,
 	EmbedOntoEntityJobMetadata,
 	GenerateBriefAudioJobMetadata,
+	PickProjectEmojiJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	ProjectIconGenerationJobMetadata,
 	ProjectLoopJobMetadata,
@@ -35,6 +36,7 @@ import { processEmbedOntoEntity } from './workers/embeddings/embedEntityWorker';
 import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
+import { processPickProjectEmojiJob } from './workers/project-emoji/projectEmojiWorker';
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processFreshnessRadarScanJob } from './workers/freshness-radar/signalJob';
 import { processCaptureChatCheckpointJob } from './workers/chat/checkpoint/checkpointJob';
@@ -376,6 +378,22 @@ async function processProjectIcon(job: ProcessingJob<ProjectIconGenerationJobMet
 }
 
 /**
+ * Project tile emoji processor (pick_project_emoji, queued on project insert)
+ */
+async function processPickProjectEmoji(job: ProcessingJob<PickProjectEmojiJobMetadata>) {
+	try {
+		const result = await processPickProjectEmojiJob(job);
+		await job.log(
+			`Project emoji: ${result.outcome}${result.glyphs ? ` ${result.glyphs.join('')}` : ''}`
+		);
+		return result;
+	} catch (error) {
+		await job.log(`Project emoji job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Project loop (reconciliation suggestions) processor
  */
 async function processProjectLoop(job: ProcessingJob<ProjectLoopJobMetadata>) {
@@ -469,6 +487,7 @@ export async function startWorker() {
 
 	// Register project icon generation processor
 	queue.process('generate_project_icon', processProjectIcon);
+	queue.process('pick_project_emoji', processPickProjectEmoji);
 
 	// Register project loop (reconciliation suggestions) processor
 	queue.process('buildos_project_loop', processProjectLoop);

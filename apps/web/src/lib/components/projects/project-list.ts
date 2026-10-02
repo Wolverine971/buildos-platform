@@ -26,6 +26,8 @@ export type ProjectListSummary = OntologyProjectSummary & {
 	parent_project_id?: string | null;
 	/** What the desktop tile shows (activity and task mix); null when it couldn't load. */
 	signals?: ProjectSignals | null;
+	/** Emojis the tile shows instead of initials (onto_projects.icon_emoji); null → initials. */
+	emoji?: string[] | null;
 };
 
 type ProjectCollaborationFields = Pick<

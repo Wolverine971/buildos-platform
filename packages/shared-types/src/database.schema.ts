@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-01T20:22:27.219Z
+// Generated on: 2026-10-02T15:45:19.944Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2987,6 +2987,7 @@ export type DatabaseSchema = {
 		facet_scale: string | null;
 		facet_stage: string | null;
 		icon_concept: string | null;
+		icon_emoji: Json | null;
 		icon_generated_at: string | null;
 		icon_generation_prompt: string | null;
 		icon_generation_source: string | null;

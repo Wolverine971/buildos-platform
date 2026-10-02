@@ -34,7 +34,8 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { DocDeleteConfirmModal, DocMoveModal } from '$lib/components/ontology/doc-tree';
-	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
+	import ProjectEmojiButton from '$lib/components/project/emoji/ProjectEmojiButton.svelte';
+	import type { ProjectEmoji } from '$lib/components/project/emoji/project-emoji';
 	import ProjectMemoryCard from '$lib/components/project/ProjectMemoryCard.svelte';
 	import ProjectBreadcrumb from '$lib/components/project/ProjectBreadcrumb.svelte';
 	import ProjectChildrenSection from '$lib/components/project/ProjectChildrenSection.svelte';
@@ -240,6 +241,10 @@
 		initialData.skeleton ? null : ((initialData.context_document ?? null) as Document | null)
 	);
 	let family = $state.raw<ProjectFamilyV1 | null>(familyFromPageData(initialData));
+	/** Header emoji; the picker updates it in place (page data loads it beside the skeleton). */
+	let projectEmoji = $state.raw<ProjectEmoji | null>(
+		'projectEmoji' in initialData ? (initialData.projectEmoji ?? null) : null
+	);
 	let familyRequest = 0;
 
 	let docTreeStructure = $state<DocStructure | null>(null);
@@ -1060,10 +1065,12 @@
 			<div class="flex min-w-0 items-center justify-between gap-2 pb-2 sm:gap-3 sm:pb-3">
 				<div class="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
 					<div class="flex min-w-0 flex-1 items-center gap-2 py-1">
-						<ProjectIcon
-							svg={project.icon_svg ?? null}
-							concept={project.icon_concept ?? null}
-							size="md"
+						<ProjectEmojiButton
+							projectId={project.id}
+							projectName={project.name || 'Untitled project'}
+							emoji={projectEmoji}
+							{canEdit}
+							onChange={(next) => (projectEmoji = next)}
 						/>
 						<div class="min-w-0 flex-1">
 							<ProjectBreadcrumb parent={family?.parent ?? null} />

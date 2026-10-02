@@ -325,6 +325,21 @@ export interface EmbedOntoEntityJobMetadata {
 	deleted?: boolean;
 }
 
+/** Pick a new project's tile emoji (onto_projects.icon_emoji); queued by an insert trigger. */
+export interface PickProjectEmojiJobMetadata {
+	projectId: string;
+	userId: string;
+}
+
+export interface PickProjectEmojiResult {
+	success: boolean;
+	projectId: string;
+	/** skipped: deleted, already has emoji, or someone chose their own meanwhile. */
+	outcome: 'picked' | 'skipped' | 'failed';
+	glyphs?: string[];
+	reason?: string;
+}
+
 export interface EmbedOntoEntityResult {
 	success: boolean;
 	entityType: string;
@@ -366,6 +381,7 @@ export interface JobMetadataMap {
 	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
 	extract_onto_asset_ocr: AssetOcrJobMetadata;
 	embed_onto_entity: EmbedOntoEntityJobMetadata;
+	pick_project_emoji: PickProjectEmojiJobMetadata;
 	admin_question_tree: AdminQuestionTreeJobMetadata;
 	run_cycle: CycleQueueJobMetadata;
 	freshness_radar_scan: FreshnessScanJobMetadata;
@@ -498,6 +514,7 @@ export interface JobResultMap {
 	project_activity_batch_flush: ProjectActivityBatchFlushResult;
 	extract_onto_asset_ocr: AssetOcrResult;
 	embed_onto_entity: EmbedOntoEntityResult;
+	pick_project_emoji: PickProjectEmojiResult;
 	run_cycle: CycleQueueJobResult;
 	other: unknown;
 }
@@ -652,6 +669,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isAssetOcrMetadata(metadata);
 		case 'embed_onto_entity':
 			return isEmbedOntoEntityMetadata(metadata);
+		case 'pick_project_emoji':
+			return isPickProjectEmojiMetadata(metadata);
 		case 'generate_project_icon':
 			return isProjectIconGenerationMetadata(metadata);
 		case 'project_activity_batch_flush':
@@ -887,6 +906,12 @@ function isEmbedOntoEntityMetadata(obj: unknown): obj is EmbedOntoEntityJobMetad
 		typeof meta.projectId === 'string' &&
 		typeof meta.userId === 'string'
 	);
+}
+
+function isPickProjectEmojiMetadata(obj: unknown): obj is PickProjectEmojiJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return typeof meta.projectId === 'string' && typeof meta.userId === 'string';
 }
 
 function isProjectIconGenerationMetadata(obj: unknown): obj is ProjectIconGenerationJobMetadata {

@@ -21,6 +21,7 @@ import type {
 	ProjectActivityBatchFlushJobMetadata,
 	AssetOcrJobMetadata,
 	EmbedOntoEntityJobMetadata,
+	PickProjectEmojiJobMetadata,
 	AgentRunJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	OntoBraindumpProcessingJobMetadata
@@ -771,6 +772,20 @@ const EMBED_ONTO_ENTITY_TYPES = [
 	'image'
 ] as const;
 
+export function validatePickProjectEmojiMetadata(metadata: unknown): PickProjectEmojiJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+	const meta = metadata as Record<string, unknown>;
+	if (typeof meta.projectId !== 'string' || !isValidUUID(meta.projectId)) {
+		throw new ValidationError('projectId', meta.projectId, 'valid UUID');
+	}
+	if (typeof meta.userId !== 'string' || !isValidUUID(meta.userId)) {
+		throw new ValidationError('userId', meta.userId, 'valid UUID');
+	}
+	return { projectId: meta.projectId, userId: meta.userId };
+}
+
 export function validateEmbedOntoEntityMetadata(metadata: unknown): EmbedOntoEntityJobMetadata {
 	if (!metadata || typeof metadata !== 'object') {
 		throw new ValidationError('metadata', metadata, 'object');
@@ -1075,6 +1090,8 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateAssetOcrMetadata(metadata) as JobMetadataMap[T];
 		case 'embed_onto_entity':
 			return validateEmbedOntoEntityMetadata(metadata) as JobMetadataMap[T];
+		case 'pick_project_emoji':
+			return validatePickProjectEmojiMetadata(metadata) as JobMetadataMap[T];
 		case 'project_activity_batch_flush':
 			return validateProjectActivityBatchFlushMetadata(metadata) as JobMetadataMap[T];
 		case 'agent_run':

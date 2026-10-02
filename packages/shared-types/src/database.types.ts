@@ -15031,6 +15031,7 @@ export type Database = {
           facet_scale: string | null
           facet_stage: string | null
           icon_concept: string | null
+          icon_emoji: Json | null
           icon_generated_at: string | null
           icon_generation_prompt: string | null
           icon_generation_source: string | null
@@ -15066,6 +15067,7 @@ export type Database = {
           facet_scale?: string | null
           facet_stage?: string | null
           icon_concept?: string | null
+          icon_emoji?: Json | null
           icon_generated_at?: string | null
           icon_generation_prompt?: string | null
           icon_generation_source?: string | null
@@ -15101,6 +15103,7 @@ export type Database = {
           facet_scale?: string | null
           facet_stage?: string | null
           icon_concept?: string | null
+          icon_emoji?: Json | null
           icon_generated_at?: string | null
           icon_generation_prompt?: string | null
           icon_generation_source?: string | null
@@ -27578,6 +27581,7 @@ export type Database = {
         | "build_project_context_snapshot"
         | "project_activity_batch_flush"
         | "generate_project_icon"
+        | "pick_project_emoji"
         | "extract_onto_asset_ocr"
         | "generate_brief_audio"
         | "buildos_project_loop"
@@ -27851,6 +27855,7 @@ export const Constants = {
         "build_project_context_snapshot",
         "project_activity_batch_flush",
         "generate_project_icon",
+        "pick_project_emoji",
         "extract_onto_asset_ocr",
         "generate_brief_audio",
         "buildos_project_loop",

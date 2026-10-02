@@ -68,6 +68,7 @@ function createHarness(options: HarnessOptions = {}) {
 		next_step_long: null,
 		next_step_source: null,
 		next_step_updated_at: null,
+		icon_emoji: { glyphs: ['📖', '🔚'], source: 'llm', ranked: [['📖', 0.3]] },
 		access
 	};
 	const bundleData = options.bundleData === undefined ? baseBundleData : options.bundleData;
@@ -151,6 +152,12 @@ describe('projects/[id] +page.server load', () => {
 
 		const result = await loadProjectPage(event);
 
+		// The header emoji rides in the same bundle; no second query.
+		expect(result.projectEmoji).toEqual({
+			glyphs: ['📖', '🔚'],
+			source: 'llm',
+			suggestions: ['📖']
+		});
 		expect(result.access).toEqual({
 			canEdit: true,
 			canAdmin: true,

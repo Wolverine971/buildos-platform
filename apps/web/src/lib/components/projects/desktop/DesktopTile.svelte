@@ -4,9 +4,9 @@
 	shaped, gone quiet, parked: see desktop-signals.ts). At full size it also
 	carries two bars, D for documents and T for open tasks split into overdue,
 	in progress, scheduled and backlog, plus a red count when tasks are overdue.
-	A project that holds others gets a folder tab. Generated project icons are
-	switched off app-wide (ProjectIcon), so the two letters are the identity.
-	Decorative: the caller labels the control.
+	A project that holds others gets a folder tab. Its identity is the two emojis
+	picked for it (project.emoji; one at dock sizes, faded when parked), or
+	its initials until it has a pick. Decorative: the caller labels the control.
 -->
 <script lang="ts">
 	import './desktop-colors.css';
@@ -37,6 +37,12 @@
 	const folder = $derived(inside.length > 0);
 	const full = $derived(size === 'lg' && Boolean(look));
 	const overdue = $derived(full ? (look?.mix.overdue ?? 0) : 0);
+	/** Two emojis read at tile sizes; the dock and pickers have room for one. */
+	const glyphs = $derived.by(() => {
+		const emoji = project.emoji;
+		if (!emoji?.length) return null;
+		return size === 'sm' || size === 'xs' ? emoji.slice(0, 1) : emoji.slice(0, 2);
+	});
 </script>
 
 <span
@@ -46,7 +52,13 @@
 	style:--size="{PX[size]}px"
 	aria-hidden="true"
 >
-	<span class="mono">{monogram(project.name)}</span>
+	{#if glyphs}
+		<span class="mono emoji" class:pair={glyphs.length > 1}>
+			{#each glyphs as glyph, index (index)}<span>{glyph}</span>{/each}
+		</span>
+	{:else}
+		<span class="mono">{monogram(project.name)}</span>
+	{/if}
 	{#if full && look}
 		<span class="meters">
 			<span class="meter">
@@ -137,6 +149,32 @@
 	.mono {
 		display: grid;
 		place-items: center;
+	}
+	.emoji {
+		grid-auto-flow: column;
+		justify-content: center;
+		gap: calc(var(--size) * 0.02);
+		font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+		font-size: calc(var(--size) * 0.5);
+		letter-spacing: 0;
+	}
+	.emoji.pair {
+		font-size: calc(var(--size) * 0.33);
+	}
+	.full .emoji.pair {
+		font-size: calc(var(--size) * 0.31);
+	}
+	/* Parked work fades, emoji included, so the pulse still reads at a glance. */
+	.pulse-parked .emoji {
+		filter: saturate(0.5);
+		opacity: 0.85;
+	}
+	/* Dark glyphs (🔚 🦇 🕴️) vanish on dark tiles without a faint light edge. */
+	:global(.dark) .emoji {
+		filter: drop-shadow(0 0 1.5px hsl(0 0% 100% / 0.35));
+	}
+	:global(.dark) .pulse-parked .emoji {
+		filter: saturate(0.5) drop-shadow(0 0 1.5px hsl(0 0% 100% / 0.3));
 	}
 	.meters {
 		display: grid;

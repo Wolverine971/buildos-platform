@@ -34,8 +34,18 @@ before the user acts.
 
 ## Writing
 
-- Write tools exist only when the user approved write access. If a write fails with a scope
-  error, say so and offer the read-only summary instead of retrying.
+- If an edit needs permission, use `request_buildos_permission` with the exact document/task
+  proposal and a stable idempotency key. Give the owner its BuildOS review link. They can apply
+  once, apply and allow that capability in the project, or deny. Never approve your own request
+  through an owner browser session or use browser edits to bypass the permission boundary.
+- Check `get_buildos_permission_request` sparingly while active. An applied receipt means the
+  edit already happened: never replay the original mutation. After a timeout, reuse the same
+  key or check status. A completed chat may need a user message to resume.
+- For ongoing OAuth access, call `authorize_buildos_writes` and follow the client's reconnect
+  flow, then refresh tools. Never collect tokens in tool arguments. Chats sharing a connection
+  share permissions; BuildOS approval does not override the client's own confirmation rules.
+- The search/fetch data-app profile cannot request or execute edits. Use the action-capable
+  general connection. Permission changes cannot add tools to that profile.
 - Save durable artifacts with `create_onto_document` (markdown stored as-is, 200 KB cap).
   Pass an `idempotency_key` so a retried call never duplicates the document.
 - Prefer updating an existing task or document over creating a near-duplicate. Search first.

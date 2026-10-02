@@ -18,6 +18,7 @@ import {
 import { addProjectCollaborationFlags } from '$lib/components/projects/project-list';
 import { loadVisibleParentIds } from '$lib/services/ontology/project-hierarchy.service';
 import { loadProjectSignals } from '$lib/server/projects/desktop-signals';
+import { loadProjectEmojis } from '$lib/server/projects/project-emoji';
 import { getUserDashboardAnalytics } from '$lib/services/dashboard/user-dashboard-analytics.service';
 import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 
@@ -80,7 +81,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 			}
 			const projectIds = loaded.map((project) => project.id);
 
-			const [{ data: memberRows, error: memberRowsError }, parentIds, signals] =
+			const [{ data: memberRows, error: memberRowsError }, parentIds, signals, emojis] =
 				await Promise.all([
 					measure('db.project_members.collaboration_flags', () =>
 						locals.supabase
@@ -99,12 +100,20 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 							console.error('[Projects] Failed to load desktop signals:', err);
 							return null;
 						})
+					),
+					// Tile emojis (picked automatically or by the owner); without one, initials.
+					measure('db.project_emojis', () =>
+						loadProjectEmojis(locals.supabase, projectIds).catch((err) => {
+							console.error('[Projects] Failed to load project emojis:', err);
+							return null;
+						})
 					)
 				]);
 			const summaries = loaded.map((project) => ({
 				...project,
 				parent_project_id: parentIds.get(project.id) ?? null,
-				signals: signals?.get(project.id) ?? null
+				signals: signals?.get(project.id) ?? null,
+				emoji: emojis?.get(project.id) ?? null
 			}));
 
 			if (memberRowsError) {

@@ -28,6 +28,7 @@
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 import { tryGetProjectFamily } from '$lib/services/ontology/project-hierarchy.service';
+import { readProjectEmoji, type ProjectEmoji } from '$lib/components/project/emoji/project-emoji';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import type { Database, ProjectFamilyV1 } from '@buildos/shared-types';
 import {
@@ -84,6 +85,8 @@ interface ProjectSkeletonWithAccessResponse {
 	icon_generated_at: string | null;
 	icon_generation_source: 'auto' | 'manual' | null;
 	icon_generation_prompt: string | null;
+	/** onto_projects.icon_emoji, raw; read with readProjectEmoji. */
+	icon_emoji?: unknown;
 	state_key: string;
 	type_key?: string;
 	next_step_short: string | null;
@@ -109,6 +112,8 @@ export interface ProjectSkeletonData {
 	projectId: string;
 	/** Parent, shared-docs shelf, and sub-projects; null when unavailable. */
 	family: ProjectFamilyV1 | null;
+	/** The header's emoji and the picker's suggestions; null when the project has no pick. */
+	projectEmoji: ProjectEmoji | null;
 	deferredFullData: Promise<DeferredProjectFullData>;
 	access: {
 		canEdit: boolean;
@@ -248,6 +253,7 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 		return {
 			...fallbackData,
 			family: await familyPromise,
+			projectEmoji: readProjectEmoji(fallbackData?.project?.icon_emoji),
 			access: normalizeAccess(
 				{
 					current_actor_id: fallbackActorId,
@@ -278,6 +284,7 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 		skeleton: true,
 		projectId: id,
 		family: await familyPromise,
+		projectEmoji: readProjectEmoji(bundle.icon_emoji),
 		deferredFullData: startDeferredFullDataLoad(fetch, id),
 		project: {
 			id: bundle.id,
