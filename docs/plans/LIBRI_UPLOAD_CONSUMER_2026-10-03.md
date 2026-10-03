@@ -17,7 +17,7 @@ The separate publication follow-up record remains pending for a future dispatche
 - Scope requires a library UUID, upload UUID and stable lease-token UUID. Preserve that
   token across process restarts. An ambiguous claim retries at most three times with
   the same token, without creating a new attempt.
-- Before claiming, a machine-authenticated broker read checks the durable publication
+- Before claiming and again after taking the lease, a machine-authenticated broker read checks the durable publication
   ledger. A matching committed publication is reported complete. Any unresolved prior
   publication halts the consumer before signing or writing. Inspection returns only a
   small status value, never raw ledger records or object paths.
@@ -57,7 +57,7 @@ Normal deployment keeps worker, database controls and signing switches disabled.
 
 ## Qualification and remaining boundaries
 
-Validation on October 3: 146 worker tests and 40 broker tests passed. The worker source
+Validation on October 3: 147 worker tests and 40 broker tests passed. The worker source
 and test typechecks, targeted source lint and changed-file formatting checks passed.
 
 Focused tests cover the consumer lifecycle, broker request boundaries, publication

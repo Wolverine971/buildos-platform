@@ -92,6 +92,19 @@ afterEach(() => {
 });
 
 describe('exact upload consumer', () => {
+	it('rechecks publications after taking over a lease from another process', async () => {
+		const f = fixture();
+		f.publisher.inspect
+			.mockResolvedValueOnce('fresh')
+			.mockResolvedValueOnce('recovery_required');
+		await f.consumer.start();
+		await vi.advanceTimersByTimeAsync(10);
+		expect(f.processing.claim).toHaveBeenCalledOnce();
+		expect(f.downloader.downloadAndVerify).not.toHaveBeenCalled();
+		expect(f.publisher.publish).not.toHaveBeenCalled();
+		expect(f.consumer.getHealth()).toMatchObject({ reason: 'upload_reconciliation_required' });
+		await f.consumer.stop();
+	});
 	it.each(['published', 'recovery_required'] as const)(
 		'restarts against existing %s state without a claim or write',
 		async (state) => {

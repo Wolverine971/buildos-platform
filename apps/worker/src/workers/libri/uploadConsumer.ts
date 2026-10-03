@@ -163,6 +163,20 @@ export class LibriUploadConsumer {
 			claim.leaseToken !== this.scope.leaseToken
 		)
 			return this.halt('upload_invalid_claim');
+		// Another process may have prepared a publication while this consumer was
+		// waiting for the lease. Recheck after acquiring ownership, before any bytes
+		// are fetched or written; an earlier fresh observation is not sufficient.
+		const publicationState = await this.options.publisher.inspect({
+			...this.scope,
+			signal: this.abort.signal
+		});
+		if (!this.authorized()) return;
+		if (publicationState === 'published') {
+			this.completed = 1;
+			this.clearTimers();
+			return;
+		}
+		if (publicationState !== 'fresh') return this.halt('upload_reconciliation_required');
 		this.lastClaim = new Date().toISOString();
 		const leaseRemaining = Date.parse(claim.leaseExpiresAt) - Date.now() - 2_000;
 		if (!Number.isFinite(leaseRemaining) || leaseRemaining <= 0 || leaseRemaining > 90_000)
