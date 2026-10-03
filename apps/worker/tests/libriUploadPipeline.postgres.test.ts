@@ -15,7 +15,9 @@ import { type LibriPublicationPorts } from '../src/workers/libri/uploadPublicati
 import { createLibriUploadPublicationTransport } from '../src/workers/libri/uploadPublicationTransport';
 import { createLibriUploadPublicationBroker } from '../../web/src/lib/server/libri/upload-publication';
 import { signLibriUploadDownload } from '../../web/src/lib/server/libri/upload-download-signing';
-import { createLibriUploadCleanupExecutor } from '../../web/src/lib/server/libri/upload-cleanup';
+import { createLibriUploadMaintenanceBroker } from '../../web/src/lib/server/libri/upload-maintenance';
+import { createLibriUploadMaintenanceTransport } from '../src/workers/libri/uploadMaintenanceTransport';
+import { LibriUploadMaintenanceConsumer } from '../src/workers/libri/uploadMaintenanceConsumer';
 import { signLibriUserUpload } from '../../web/src/lib/server/libri/user-upload-signing';
 import { trackPoolDisconnections } from './helpers/trackPoolDisconnections';
 
@@ -97,7 +99,8 @@ describePostgres(
 				'supabase/migrations/20260907043724_libri_upload_claim_deadline_refresh.sql',
 				'supabase/migrations/20260907154152_libri_upload_retirement_tombstones.sql',
 				'supabase/migrations/20260908192820_libri_upload_cleanup_leases.sql',
-				'supabase/migrations/20260909165112_libri_upload_capability_issuance.sql'
+				'supabase/migrations/20260909165112_libri_upload_capability_issuance.sql',
+				'supabase/migrations/20260910170101_libri_unissued_upload_quota_settlement.sql'
 			])
 				execFileSync('psql', [...psql, '-f', resolve(root, file)], {
 					stdio: 'pipe',
@@ -190,6 +193,132 @@ describePostgres(
 				client.release();
 			}
 		}
+		function maintenanceTransport(provider: typeof fetch) {
+			const broker = createLibriUploadMaintenanceBroker();
+			return createLibriUploadMaintenanceTransport({
+				endpointUrl: 'https://build-os.com/api/internal/libri/uploads/maintain',
+				bearerToken: brokerToken,
+				fetchImpl: async (url, init) =>
+					broker(new Request(String(url), init), {
+						enabled: true,
+						url: origin,
+						serviceKey: 'disposable-service-fixture',
+						brokerToken,
+						fetchImpl: provider
+					})
+			});
+		}
+		it.each(['unissued', 'issued', 'not_expired', 'lost_retirement', 'lost_settlement'])(
+			'maintains one exact upload through worker and machine broker: %s',
+			async (scenario) => {
+				const intent = await reserveForIssuance();
+				if (scenario === 'issued')
+					await service.query('SELECT libri.begin_image_upload_issuance($1,$2,$3,$4)', [
+						libraryId,
+						intent.id,
+						userId,
+						randomUUID()
+					]);
+				if (scenario !== 'not_expired')
+					await admin.query(
+						"UPDATE libri.image_upload_intents SET created_at=statement_timestamp()-interval '3 hours',signing_deadline=statement_timestamp()-interval '170 minutes',expires_at=statement_timestamp()-interval '45 minutes'"
+					);
+				const operations: string[] = [];
+				const provider: typeof fetch = async (input, init) => {
+					const url = new URL(String(input));
+					expect(url.origin).toBe(origin);
+					const action = url.pathname.split('/').at(-1)!;
+					operations.push(action);
+					const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+					if (
+						action === 'retire_image_upload' ||
+						action === 'release_unissued_image_upload_slot'
+					) {
+						expect(body).toEqual({ p_library_id: libraryId, p_upload_id: intent.id });
+						const query =
+							action === 'retire_image_upload'
+								? 'SELECT libri.retire_image_upload($1,$2) AS receipt'
+								: 'SELECT libri.release_unissued_image_upload_slot($1,$2) AS receipt';
+						const receipt = (await service.query(query, [libraryId, intent.id])).rows[0]
+							.receipt;
+						if (
+							(action === 'retire_image_upload' && scenario === 'lost_retirement') ||
+							(action === 'release_unissued_image_upload_slot' &&
+								scenario === 'lost_settlement')
+						)
+							throw new Error('Lost committed reply');
+						return Response.json(receipt);
+					}
+					if (action === 'image_upload_cleanup_targets') {
+						expect(url.searchParams.get('library_id')).toBe(`eq.${libraryId}`);
+						expect(url.searchParams.get('upload_id')).toBe(`eq.${intent.id}`);
+						return Response.json(
+							(
+								await service.query(
+									'SELECT id,library_id,upload_id FROM libri.image_upload_cleanup_targets WHERE library_id=$1 AND upload_id=$2',
+									[libraryId, intent.id]
+								)
+							).rows
+						);
+					}
+					if (action === 'claim_image_upload_cleanup')
+						return Response.json(
+							(
+								await service.query(
+									'SELECT libri.claim_image_upload_cleanup($1,$2,$3) AS receipt',
+									[body.p_library_id, body.p_target_id, body.p_lease_token]
+								)
+							).rows[0].receipt
+						);
+					throw new Error('Unexpected authority or Storage call');
+				};
+				const consumer = new LibriUploadMaintenanceConsumer({
+					scope: { libraryId, uploadId: intent.id, leaseToken: randomUUID() },
+					expiresAtMs: Date.now() + 120_000,
+					transport: maintenanceTransport(provider)
+				});
+				await consumer.start();
+				await vi.waitFor(() => expect(consumer.getHealth().activeJobs).toBe(0), {
+					timeout: 3000,
+					interval: 10
+				});
+				const unknown = scenario.startsWith('lost_');
+				expect(consumer.getHealth()).toMatchObject({
+					healthy: !unknown,
+					completedJobs: unknown ? 0 : 1
+				});
+				const durable = (
+					await admin.query(
+						'SELECT status,pending_slot_released_at FROM libri.image_upload_intents WHERE id=$1',
+						[intent.id]
+					)
+				).rows[0];
+				expect(durable.status).toBe(
+					scenario === 'not_expired' ? 'reserved' : 'cleanup_pending'
+				);
+				expect(durable.pending_slot_released_at !== null).toBe(
+					['unissued', 'lost_settlement'].includes(scenario)
+				);
+				if (scenario === 'not_expired' || scenario === 'lost_retirement')
+					expect(operations).toEqual(['retire_image_upload']);
+				else if (scenario === 'lost_settlement')
+					expect(operations).toEqual([
+						'retire_image_upload',
+						'release_unissued_image_upload_slot'
+					]);
+				else {
+					expect(consumer.getHealth().maintenance.targetsDeferred).toBe(1);
+					expect(
+						(
+							await admin.query(
+								'SELECT count(*)::int AS n FROM libri.image_upload_cleanup_checks'
+							)
+						).rows[0].n
+					).toBe(0);
+				}
+				await consumer.stop();
+			}
+		);
 		it.each([
 			'same_request',
 			'different_request',
@@ -503,6 +632,17 @@ describePostgres(
 				expect(url.origin).toBe(origin);
 				const body = init?.body ? JSON.parse(String(init.body)) : undefined;
 				const base = body ? [body.p_library_id, body.p_target_id, body.p_lease_token] : [];
+				if (url.pathname.endsWith('/image_upload_cleanup_targets')) {
+					expect(url.searchParams.get('id')).toBe(`eq.${target.id}`);
+					return Response.json(
+						(
+							await service.query(
+								'SELECT id,library_id,upload_id FROM libri.image_upload_cleanup_targets WHERE library_id=$1 AND upload_id=$2 AND id=$3',
+								[libraryId, uploadId, target.id]
+							)
+						).rows
+					);
+				}
 				if (url.pathname.endsWith('/claim_image_upload_cleanup'))
 					return Response.json(
 						(
@@ -565,30 +705,29 @@ describePostgres(
 				}
 				throw new Error('Unexpected cleanup request');
 			};
-			const executor = createLibriUploadCleanupExecutor({
-				enabled: true,
-				url: origin,
-				serviceKey: 'disposable-service-fixture',
-				fetchImpl: provider
-			});
-			const execution = executor.run({
-				libraryId,
-				targetId: target.id,
-				leaseToken: randomUUID(),
-				signal: new AbortController().signal
-			});
+			const execution = maintenanceTransport(provider).request(
+				{
+					action: 'cleanup',
+					libraryId,
+					uploadId,
+					targetId: target.id,
+					leaseToken: randomUUID()
+				},
+				new AbortController().signal
+			);
 			if (['kill_before_delete', 'stale_fence', 'lost_finish'].includes(scenario))
-				await expect(execution).rejects.toThrow(
-					scenario === 'lost_finish' ? 'outcome unknown' : 'unavailable'
-				);
-			else
-				expect((await execution).status).toBe(
+				await expect(execution).rejects.toThrow('outcome unknown');
+			else {
+				const receipt = await execution;
+				if (receipt.action !== 'cleanup') throw new Error('Unexpected maintenance receipt');
+				expect(receipt.status).toBe(
 					scenario === 'disabled'
 						? 'unclaimed'
 						: ['delete_outage', 'late_arrival'].includes(scenario)
 							? 'unavailable'
 							: 'absent'
 				);
+			}
 			const checks = (
 				await admin.query(
 					'SELECT status,last_outcome FROM libri.image_upload_cleanup_checks'

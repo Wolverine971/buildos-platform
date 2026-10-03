@@ -34,6 +34,7 @@ export type LibriWorkerBootstrapHealth = {
 		consecutiveProbeFailures: number;
 	};
 	upload?: LibriMaintenanceConsumerHealth;
+	uploadMaintenance?: LibriMaintenanceConsumerHealth;
 	queue: {
 		enabled: boolean;
 		registeredJobTypes: readonly LibriQueueType[];
@@ -102,7 +103,8 @@ export class LibriWorkerBootstrap {
 		const connected =
 			this.lastSuccessfulProbeAtMs !== null && this.consecutiveProbeFailures === 0;
 		const consumerHealth = this.safeConsumerHealth();
-		const uploadMode = this.config.activationMode === 'upload_canary';
+		const maintenanceMode = this.config.activationMode === 'upload_maintenance_canary';
+		const uploadMode = this.config.activationMode === 'upload_canary' || maintenanceMode;
 		const queueHealth = uploadMode ? null : consumerHealth;
 		const consumerHealthy = this.config.queueEnabled ? consumerHealth?.healthy === true : true;
 		const healthy = this.state === 'running' && connected && consumerHealthy;
@@ -119,6 +121,7 @@ export class LibriWorkerBootstrap {
 			...(this.config.activationMode === 'upload_canary' && consumerHealth
 				? { upload: consumerHealth }
 				: {}),
+			...(maintenanceMode && consumerHealth ? { uploadMaintenance: consumerHealth } : {}),
 			startedAt: this.startedAtMs ? new Date(this.startedAtMs).toISOString() : null,
 			database: {
 				connected,
@@ -128,9 +131,8 @@ export class LibriWorkerBootstrap {
 				consecutiveProbeFailures: this.consecutiveProbeFailures
 			},
 			queue: {
-				enabled: this.config.queueEnabled && this.config.activationMode !== 'upload_canary',
-				registeredJobTypes:
-					this.config.activationMode === 'upload_canary' ? [] : LIBRI_QUEUE_TYPES,
+				enabled: this.config.queueEnabled && !uploadMode,
+				registeredJobTypes: uploadMode ? [] : LIBRI_QUEUE_TYPES,
 				activeJobs: queueHealth?.activeJobs ?? 0,
 				availableConcurrency:
 					queueHealth?.availableConcurrency ?? (uploadMode ? 0 : this.config.concurrency),
