@@ -165,6 +165,7 @@ describe('Authenticated Pages', () => {
 					name: 'Test project',
 					has_collaborators: false,
 					parent_project_id: null,
+					emoji: null,
 					// The mock can't serve the desktop-signal reads; tiles fall back to no color.
 					signals: null
 				}
