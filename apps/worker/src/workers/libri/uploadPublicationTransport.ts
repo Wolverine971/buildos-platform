@@ -1,5 +1,9 @@
 // Trusted configuration only. Small broker requests; exact verified bytes go directly to Storage.
-import { type LibriPublicationPorts, createLibriUploadPublisher } from './uploadPublication';
+import {
+	type LibriPublicationPorts,
+	type LibriPublicationReceipt,
+	createLibriUploadPublisher
+} from './uploadPublication';
 
 const ORIGIN = 'https://iwifjtlebphefldmwbkh.supabase.co';
 const PATH = '/api/internal/libri/uploads/publish';
@@ -119,6 +123,7 @@ export function createLibriUploadPublicationTransport(options: {
 		throw new Error('Invalid publication broker configuration');
 	const fetchImpl = options.fetchImpl ?? fetch;
 	let grant: ReturnType<typeof capability> | undefined;
+	let recovery: Parameters<LibriPublicationPorts['finalize']>[0] | undefined;
 	const fetchJson = async (url: string, init: RequestInit, signal: AbortSignal) => {
 		signal.throwIfAborted();
 		const response = await fetchImpl(url, {
@@ -156,11 +161,18 @@ export function createLibriUploadPublicationTransport(options: {
 		leaseToken: claim.leaseToken,
 		attempt: claim.attempt
 	});
-	return createLibriUploadPublisher({
+	const publisher = createLibriUploadPublisher({
 		prepare: async ({ claim, verified, signal }) => {
 			grant = undefined;
+			recovery = undefined;
 			const value = await broker({ action: 'prepare', ...fence(claim), verified }, signal);
 			grant = capability(value, claim.leaseExpiresAt);
+			recovery = {
+				claim,
+				verified,
+				publicationId: String(grant.preparation.publication_id),
+				signal
+			};
 			return grant.preparation;
 		},
 		createObject: async ({ publication, bytes, verified, upsert, signal }) => {
@@ -199,4 +211,65 @@ export function createLibriUploadPublicationTransport(options: {
 		finalize: ({ claim, publicationId, verified, signal }) =>
 			broker({ action: 'finalize', ...fence(claim), publicationId, verified }, signal)
 	});
+	return {
+		...publisher,
+		async inspect(input: {
+			libraryId: string;
+			uploadId: string;
+			leaseToken: string;
+			signal: AbortSignal;
+		}): Promise<'fresh' | 'published' | 'recovery_required'> {
+			const { signal: caller, ...scope } = input;
+			const signal = AbortSignal.any([caller, AbortSignal.timeout(5_000)]);
+			const result = await broker({ action: 'inspect', ...scope }, signal);
+			if (
+				!object(result) ||
+				Object.keys(result).length !== 1 ||
+				!['fresh', 'published', 'recovery_required'].includes(String(result.state))
+			)
+				return fail();
+			return result.state as 'fresh' | 'published' | 'recovery_required';
+		},
+		async reconcile(
+			input: Parameters<typeof publisher.publish>[0]
+		): Promise<LibriPublicationReceipt | null> {
+			const saved = recovery;
+			if (
+				publisher.isBusy() ||
+				!saved ||
+				saved.claim.libraryId !== input.claim.libraryId ||
+				saved.claim.uploadId !== input.claim.uploadId ||
+				saved.claim.leaseToken !== input.claim.leaseToken ||
+				saved.claim.attempt !== input.claim.attempt
+			)
+				return null;
+			// Finalize only: the server re-reads and hashes the stored object, or returns
+			// the committed receipt. Never sign another capability or PUT bytes here.
+			const signal = AbortSignal.any([input.signal, AbortSignal.timeout(5_000)]);
+			const result = await broker(
+				{
+					action: 'finalize',
+					...fence(saved.claim),
+					publicationId: saved.publicationId,
+					verified: saved.verified
+				},
+				signal
+			);
+			if (
+				!object(result) ||
+				result.publication_id !== saved.publicationId ||
+				result.image_id !== saved.publicationId ||
+				result.source_id !== saved.publicationId ||
+				result.status !== 'published' ||
+				typeof result.already_published !== 'boolean'
+			)
+				return fail();
+			return {
+				publicationId: saved.publicationId,
+				imageId: saved.publicationId,
+				sourceId: saved.publicationId,
+				alreadyPublished: result.already_published
+			};
+		}
+	};
 }

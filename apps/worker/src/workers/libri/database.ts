@@ -1,4 +1,5 @@
 // apps/worker/src/workers/libri/database.ts
+import { createLibriUploadProcessing } from './uploadProcessing';
 import { Pool, type PoolConfig, type QueryResult } from 'pg';
 import {
 	type DispatchLibriOcrAdmissionInput,
@@ -126,6 +127,7 @@ export type LibriDatabasePort = LibriLifecyclePort &
 	} & {
 		[key in keyof LibriAdmissionReconcilerPort]: LibriAdmissionReconcilerPort[key];
 	} & {
+		uploads: ReturnType<typeof createLibriUploadProcessing>;
 		probe: () => Promise<void>;
 		close: () => Promise<void>;
 	};
@@ -175,6 +177,7 @@ function normalizeCaCertificate(value: string): string {
 }
 
 class LibriDatabase implements LibriDatabasePort {
+	readonly uploads: ReturnType<typeof createLibriUploadProcessing>;
 	private readonly lifecycle: LibriLifecyclePort;
 	private readonly costLedger: LibriCostLedgerPort;
 	private readonly assetGrants: LibriAssetGrantPort;
@@ -183,6 +186,7 @@ class LibriDatabase implements LibriDatabasePort {
 	private readonly admissionReconciler: LibriAdmissionReconcilerPort;
 
 	constructor(private readonly pool: LibriPgPool) {
+		this.uploads = createLibriUploadProcessing(pool);
 		this.lifecycle = createLibriLifecycle(pool);
 		this.costLedger = createLibriCostLedger(pool);
 		this.assetGrants = createLibriAssetGrantIssuer(pool);

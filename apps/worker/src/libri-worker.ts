@@ -18,6 +18,7 @@ import {
 	LibriMaintenanceConsumer,
 	createSyntheticLibriMaintenanceProcessor
 } from './workers/libri/maintenanceConsumer';
+import { createLibriUploadConsumer } from './workers/libri/uploadRuntime';
 import { createLibriOcrProcessor } from './workers/libri/ocrProcessor';
 import { createOpenRouterLibriOcrProvider } from './workers/libri/ocrProvider';
 
@@ -99,6 +100,7 @@ function shutdownAndExit(
 			await ownedService.stop();
 		} catch (error) {
 			console.error('Dedicated Libri worker drain failed:', error);
+			exitCode = 1;
 		} finally {
 			clearTimeout(hardKill);
 			process.exit(exitCode);
@@ -136,7 +138,9 @@ function createConsumer(
 	config: LibriWorkerConfig,
 	database: LibriDatabasePort,
 	environment: NodeJS.ProcessEnv
-): LibriMaintenanceConsumer {
+) {
+	if (config.queueEnabled && config.upload)
+		return createLibriUploadConsumer(config.upload, database.uploads);
 	const shared = {
 		lifecycle: database,
 		workerId: resolveWorkerId(environment),

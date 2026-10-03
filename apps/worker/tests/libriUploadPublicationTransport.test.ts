@@ -67,6 +67,7 @@ function fixture() {
 		putPending?: boolean;
 		prepareResponse?: () => Response;
 		finalResult?: unknown;
+		inspectionState?: string;
 	} = {};
 	const completed = {
 		publication_id: publicationId,
@@ -76,41 +77,53 @@ function fixture() {
 		already_published: false
 	};
 	const calls: string[] = [];
-	const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-		const url = String(input),
-			headers = new Headers(init?.headers);
-		expect(init?.redirect).toBe('error');
-		expect(init?.credentials).toBe('omit');
-		if (url === endpointUrl) {
-			expect(headers.get('authorization')).toBe('Bearer ' + token);
+	const fetchImpl = vi.fn(
+		async (input: string | URL | Request, init?: globalThis.RequestInit) => {
+			const url = String(input),
+				headers = new Headers(init?.headers);
+			expect(init?.redirect).toBe('error');
+			expect(init?.credentials).toBe('omit');
+			if (url === endpointUrl) {
+				expect(headers.get('authorization')).toBe('Bearer ' + token);
+				expect(headers.has('apikey')).toBe(false);
+				const body = JSON.parse(String(init?.body));
+				calls.push(body.action);
+				if (body.action === 'inspect') {
+					expect(body).toEqual({
+						action: 'inspect',
+						libraryId,
+						uploadId: claim.uploadId,
+						leaseToken: claim.leaseToken
+					});
+					return Response.json({ state: options.inspectionState ?? 'fresh' });
+				}
+				expect(body).not.toHaveProperty('storageObjectId');
+				expect(body).not.toHaveProperty('bytes');
+				expect(body.verified).toEqual(metadata);
+				if (body.action === 'prepare')
+					return (
+						options.prepareResponse?.() ??
+						Response.json(options.capability ?? capability())
+					);
+				expect(body.action).toBe('finalize');
+				expect(body.publicationId).toBe(publicationId);
+				return Response.json(options.finalResult ?? completed);
+			}
+			calls.push('put');
+			expect(url).toBe(capability().uploadUrl);
+			expect(init?.method).toBe('PUT');
+			expect(headers.has('authorization')).toBe(false);
 			expect(headers.has('apikey')).toBe(false);
-			const body = JSON.parse(String(init?.body));
-			calls.push(body.action);
-			expect(body).not.toHaveProperty('storageObjectId');
-			expect(body).not.toHaveProperty('bytes');
-			expect(body.verified).toEqual(metadata);
-			if (body.action === 'prepare')
-				return (
-					options.prepareResponse?.() ?? Response.json(options.capability ?? capability())
-				);
-			expect(body.action).toBe('finalize');
-			expect(body.publicationId).toBe(publicationId);
-			return Response.json(options.finalResult ?? completed);
+			expect(headers.get('x-upsert')).toBe('false');
+			expect(headers.get('cache-control')).toBe('max-age=0');
+			expect(headers.get('content-type')).toBe('image/png');
+			expect(Buffer.from(init!.body as Uint8Array)).toEqual(bytes);
+			if (options.putPending) return new Promise<Response>(() => {});
+			return Response.json(options.putResult ?? { Key: 'libri-assets/' + path }, {
+				status: options.putStatus ?? 200
+			});
 		}
-		calls.push('put');
-		expect(url).toBe(capability().uploadUrl);
-		expect(init?.method).toBe('PUT');
-		expect(headers.has('authorization')).toBe(false);
-		expect(headers.has('apikey')).toBe(false);
-		expect(headers.get('x-upsert')).toBe('false');
-		expect(headers.get('cache-control')).toBe('max-age=0');
-		expect(headers.get('content-type')).toBe('image/png');
-		expect(Buffer.from(init!.body as Uint8Array)).toEqual(bytes);
-		if (options.putPending) return new Promise<Response>(() => {});
-		return Response.json(options.putResult ?? { Key: 'libri-assets/' + path }, {
-			status: options.putStatus ?? 200
-		});
-	});
+	);
 	const transport = createLibriUploadPublicationTransport({
 		endpointUrl,
 		bearerToken: token,
@@ -139,6 +152,44 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 describe('Libri direct Storage publication transport', () => {
+	it.each(['fresh', 'published', 'recovery_required', 'unknown'])(
+		'bounds the restart inspection response %s',
+		async (state) => {
+			const f = fixture();
+			f.options.inspectionState = state;
+			const result = f.transport.inspect({
+				libraryId,
+				uploadId: f.input.claim.uploadId,
+				leaseToken: f.input.claim.leaseToken,
+				signal: f.input.signal
+			});
+			if (state === 'unknown') await expect(result).rejects.toThrow('unavailable');
+			else expect(await result).toBe(state);
+			expect(f.calls).toEqual(['inspect']);
+		}
+	);
+
+	it('reconciles a lost completion with only a finalize request', async () => {
+		const f = fixture();
+		f.options.finalResult = { invalid: 'lost completion receipt' };
+		await expect(f.transport.publish(f.input)).rejects.toMatchObject({
+			mayHaveWrittenObject: true
+		});
+		f.options.finalResult = { ...f.completed, already_published: true };
+		expect(await f.transport.reconcile(f.input)).toMatchObject({
+			imageId: publicationId,
+			alreadyPublished: true
+		});
+		expect(f.calls).toEqual(['prepare', 'put', 'finalize', 'finalize']);
+	});
+	it('refuses reconciliation for a different lease or with no retained preparation', async () => {
+		const f = fixture();
+		expect(await f.transport.reconcile(f.input)).toBeNull();
+		await f.transport.publish(f.input);
+		f.input.claim.leaseToken = '11111111-1111-4111-8111-111111111111';
+		expect(await f.transport.reconcile(f.input)).toBeNull();
+		expect(f.calls).toEqual(['prepare', 'put', 'finalize']);
+	});
 	it('uploads exact bytes without forwarding the machine secret and lets the server own Storage identity', async () => {
 		const f = fixture();
 		expect(await f.transport.publish(f.input)).toEqual({
