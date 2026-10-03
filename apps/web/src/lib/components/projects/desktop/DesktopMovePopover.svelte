@@ -154,7 +154,7 @@
 	aria-labelledby="desktop-move-title"
 	tabindex="-1"
 >
-	<h2 id="desktop-move-title" class="text-[15px] font-semibold leading-snug text-foreground">
+	<h2 id="desktop-move-title" class="text-base font-semibold leading-snug text-foreground">
 		{view.title}
 	</h2>
 	{#if view.mode === 'confirm'}
@@ -186,7 +186,7 @@
 			</p>
 		{/if}
 		<div class="mt-1 flex items-center justify-end gap-2">
-			<span class="mr-auto hidden font-mono text-[10.5px] text-muted-foreground sm:inline">
+			<span class="mr-auto hidden font-mono text-2xs text-muted-foreground sm:inline">
 				Enter · Esc
 			</span>
 			<button
