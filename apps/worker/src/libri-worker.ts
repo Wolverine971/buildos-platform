@@ -1,3 +1,4 @@
+import { createLibriUploadQueueRuntime } from './workers/libri/uploadQueueRuntime';
 // apps/worker/src/libri-worker.ts
 // Dedicated Libri Railway process. This entrypoint must never import the
 // general worker, scheduler, or any non-Libri processor tree.
@@ -143,6 +144,8 @@ function createConsumer(
 	database: LibriDatabasePort,
 	environment: NodeJS.ProcessEnv
 ) {
+	if (config.queueEnabled && config.uploadQueue)
+		return createLibriUploadQueueRuntime(config.uploadQueue, database.uploads);
 	if (config.queueEnabled && config.activationMode === 'research') {
 		return createLibriResearchRuntime({
 			database,
