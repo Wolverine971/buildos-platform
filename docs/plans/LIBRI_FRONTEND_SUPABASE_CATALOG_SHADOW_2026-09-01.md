@@ -299,3 +299,50 @@ Security advisors show exactly the four reviewed new authenticated-only definer 
 `admit_research_task_batch`). All other finding identities/counts are unchanged. These
 are expected bounded RPC entry points with explicit `auth.uid()`/current membership
 checks, not unreviewed privilege additions. No hosted user-data or paid provider test ran.
+
+## Bounded book synthesis processor (October 4)
+
+Migration `20261004031434_libri_book_synthesis_execution.sql` provides two worker-only
+capabilities for an active fenced `synthesize_book` root step. The read derives the book
+from the admitted step; it checks lease generation/token, task kind/type, current owner,
+controls and deadline before returning bounded context. The completion repeats that
+check and pins the reservation, queue/processing identity, book and model. Both functions
+are intentionally SECURITY DEFINER to avoid granting the worker raw catalog, private-note
+or artifact mutation access. They use fixed search paths, no client/service-role grants,
+and no shared-schema access. The rehearsal's server-only notes are intentional; do not
+add authenticated grants.
+
+The prompt retains the existing analysis fields: overview, key ideas, chapter references,
+people, terms, chapter insights, takeaways, questions, blind spots and measured coverage.
+Reference IDs must exist in the input and linked idea IDs must exist in the output. Thin
+evidence stays `insufficient_evidence`. Only shared notes enter this library-visible
+artifact; private note bodies are never sent. Version-2 input snapshots record that scope,
+and the app compares the same shared-note population while preserving legacy snapshot
+semantics. Current summaries can be reused for 24 hours only when the source fingerprint
+matches. Explicit force tasks create a new version.
+
+The input includes a full revision fingerprint in addition to bounded samples. A changed
+source at completion saves an `outdated` artifact. Versions are serialized on the book;
+previous artifacts remain in history and dependent agent knowledge documents are marked
+outdated. Rebuilding those documents remains a separate processor requirement.
+
+The worker transaction holds queue/step/run ownership, persists the analysis and cost
+settlement, completes the queue/root step, and updates the run/task outcome together.
+Invalid settlement rolls everything back. Lost authorization, provider, or completion
+replies require reconciliation; there is no automatic provider retry or model fallback.
+The OpenRouter request uses the established private/ZDR policy, one allowlisted model,
+4,500 output tokens, a 200 KB context bound and a 512 KB response bound. Usage cost and
+request ID must be present; response models and structured references are checked.
+
+API contracts were checked against OpenRouter's official [chat API](https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion),
+[usage accounting](https://openrouter.ai/docs/cookbook/administration/usage-accounting), and
+[structured output](https://openrouter.ai/docs/guides/features/structured-outputs) documentation.
+No pricing estimate or live model qualification is claimed. Before activating a sustained
+profile, qualify its acting model and conservative reservation against provider pricing
+and the configured run/day budgets under the repository's per-run paid-test approval rule.
+
+Validation: 66 focused tests pass across synthesis, restricted-role PostgreSQL completion,
+and database-port suites. The SQL capability contract denies raw/client access. Source and
+test typechecks pass; source ESLint passes. Production-schema rehearsal preserves both
+standing checks and role probes, with no new client-definer finding. This implementation
+is exposed on the database port but no operating profile or admission switch is enabled.
