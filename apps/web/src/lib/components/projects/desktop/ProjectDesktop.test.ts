@@ -29,6 +29,9 @@ vi.mock('$app/paths', () => ({
 vi.mock('$lib/components/project/project-family', () => ({
 	setProjectParent: mocks.setProjectParent
 }));
+vi.mock('$lib/components/agent/AgentChatModal.svelte', async () => ({
+	default: (await import('./__fixtures__/ModalStub.svelte')).default
+}));
 vi.mock('$lib/stores/toast.store', () => ({
 	TOAST_DURATION: { STANDARD: 5000, LONG: 7000 },
 	toastService: {
@@ -39,7 +42,7 @@ vi.mock('$lib/stores/toast.store', () => ({
 	}
 }));
 
-import { pushState } from '$app/navigation';
+import { pushState, replaceState } from '$app/navigation';
 import { page } from './__fixtures__/page-state.svelte';
 import ProjectDesktop from './ProjectDesktop.svelte';
 
@@ -205,6 +208,33 @@ function ok(data: unknown) {
 
 const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
 	if (url.endsWith('/card')) return ok({ project: snapshot(url.split('/')[4]!), goals: [] });
+	const full = url.match(/^\/api\/onto\/(documents|tasks)\/([^/]+)\/full/);
+	if (full?.[1] === 'documents')
+		return ok({
+			document: {
+				id: full[2],
+				title: full[2],
+				content: `Body of ${full[2]}`,
+				state_key: 'draft',
+				updated_at: NOW
+			},
+			editor_revision: 'r1'
+		});
+	if (full?.[1] === 'tasks')
+		return ok({
+			task: {
+				id: full[2],
+				title: 'Call Ana',
+				description: 'Ask about the pilot.',
+				state_key: 'todo',
+				priority: 2,
+				due_at: null,
+				start_at: null,
+				updated_at: NOW
+			}
+		});
+	if (url.startsWith('/api/onto/tasks/') && init?.method === 'PATCH')
+		return ok({ task: { id: url.split('/')[4], state_key: 'done' } });
 	const body = init?.body ? JSON.parse(String(init.body)) : {};
 	if (url === '/api/onto/organize/preview')
 		return ok({
@@ -231,6 +261,7 @@ const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
 function renderDesktop() {
 	const onPatch = vi.fn();
 	const onOpenFull = vi.fn();
+	const onDataChanged = vi.fn();
 	render(ProjectDesktop, {
 		props: {
 			projects: PROJECTS,
@@ -238,10 +269,11 @@ function renderDesktop() {
 			completed: [],
 			searching: false,
 			onPatch,
-			onOpenFull
+			onOpenFull,
+			onDataChanged
 		}
 	});
-	return { onPatch, onOpenFull };
+	return { onPatch, onOpenFull, onDataChanged };
 }
 
 describe('ProjectDesktop', () => {
@@ -259,6 +291,17 @@ describe('ProjectDesktop', () => {
 			}
 		);
 		mocks.setProjectParent.mockResolvedValue({});
+		// jsdom has no matchMedia; the card asks whether it is on a phone.
+		vi.stubGlobal('matchMedia', (query: string) => ({
+			matches: false,
+			media: query,
+			onchange: null,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+			addListener: () => undefined,
+			removeListener: () => undefined,
+			dispatchEvent: () => false
+		}));
 	});
 
 	afterEach(() => {
@@ -275,7 +318,7 @@ describe('ProjectDesktop', () => {
 				name: 'Wayne Strategies, holds 1 project, moving, 10 open tasks, 3 docs'
 			})
 		).toBeTruthy();
-		expect(screen.getByText('1 inside')).toBeTruthy();
+		expect(screen.getByText('1 nested')).toBeTruthy();
 		const nine = screen.getByRole('link', {
 			name: '9takes, being shaped, 11 overdue, 34 open tasks, 0 docs'
 		});
@@ -343,9 +386,10 @@ describe('ProjectDesktop', () => {
 
 		await fireEvent.click(screen.getByRole('link', { name: /^Wayne Strategies/ }));
 		expect(pushState).toHaveBeenCalledWith('', { desktopCard: 'ws', desktopDepth: 1 });
-		// A project that holds others opens on Inside.
-		const inside = await screen.findByRole('tab', { name: /Inside/ });
+		// A project that holds others opens on its nested projects, first in line.
+		const inside = await screen.findByRole('tab', { name: /Nested projects/ });
 		expect(inside.getAttribute('aria-selected')).toBe('true');
+		expect(screen.getAllByRole('tab')[0]).toBe(inside);
 		expect(screen.getByRole('button', { name: /Redline/ })).toBeTruthy();
 
 		await fireEvent.click(screen.getByRole('tab', { name: /Docs/ }));
@@ -397,6 +441,58 @@ describe('ProjectDesktop', () => {
 		expect(mocks.toastAdd.mock.calls.at(-1)![0].message).toBe(
 			'Moved “Pricing notes” to 9takes.'
 		);
+	});
+
+	it('reads docs and tasks beside the list, walks them and chats about them', async () => {
+		const back = vi.spyOn(history, 'back').mockImplementation(() => undefined);
+		page.state = { desktopCard: 'ws', desktopDepth: 1 };
+		const { onDataChanged } = renderDesktop();
+
+		await fireEvent.click(await screen.findByRole('tab', { name: /Docs/ }));
+		await fireEvent.click(await screen.findByRole('button', { name: 'Pricing notes' }));
+		// Opening pushes one entry, so Back closes the reader before the card.
+		expect(pushState).toHaveBeenLastCalledWith('', {
+			desktopCard: 'ws',
+			desktopDepth: 2,
+			desktopPeek: { kind: 'document', id: 'd1' },
+			desktopPeekPushed: true
+		});
+		expect(await screen.findByText('Body of d1')).toBeTruthy();
+		// The card stays a card: no modal opened.
+		expect(screen.queryByRole('dialog')).toBeNull();
+
+		// J walks into the folder: the next doc is nested, and its folder opens.
+		await fireEvent.keyDown(window, { key: 'j' });
+		expect(replaceState).toHaveBeenLastCalledWith(
+			'',
+			expect.objectContaining({ desktopPeek: { kind: 'document', id: 'd2' } })
+		);
+		expect(await screen.findByText('Body of d2')).toBeTruthy();
+		const nested = screen.getByRole('button', { name: 'Old prices' });
+		expect(nested.getAttribute('aria-current')).toBe('true');
+
+		// A task changes state in one tap; the list and tiles catch up.
+		await fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Call Ana' }));
+		await fireEvent.click(await screen.findByRole('button', { name: 'Mark done' }));
+		await waitFor(() =>
+			expect(
+				fetchMock.mock.calls.find(
+					([url, init]) => url === '/api/onto/tasks/t1' && init?.method === 'PATCH'
+				)?.[1]?.body
+			).toBe(JSON.stringify({ state_key: 'done' }))
+		);
+		await waitFor(() => expect(onDataChanged).toHaveBeenCalled());
+
+		// The reader's brain bolt chats about the task, beside it.
+		await fireEvent.click(screen.getByRole('button', { name: 'Chat about this task' }));
+		expect(await screen.findByRole('region', { name: 'chat task in ws' })).toBeTruthy();
+
+		// Esc backs out one step at a time: chat, then the reader.
+		await fireEvent.keyDown(window, { key: 'Escape' });
+		expect(screen.queryByRole('region', { name: 'chat task in ws' })).toBeNull();
+		await fireEvent.keyDown(window, { key: 'Escape' });
+		await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
 	});
 
 	it('collapses back past every card it pushed', async () => {

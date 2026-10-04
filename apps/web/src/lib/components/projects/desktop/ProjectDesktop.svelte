@@ -5,7 +5,8 @@
 	dragging puts projects inside each other and moves docs and tasks between
 	projects. Every drop asks first and offers Undo after. The no-drag path
 	(Move buttons, right-click, the M key) opens the same rules as a list.
-	The open card lives in shallow history, so Back closes it.
+	The open card lives in shallow history, so Back closes it; a doc, task or goal
+	open in the card's reader gets one more entry, so Back closes the reader first.
 -->
 <script lang="ts">
 	import { onMount, tick, untrack } from 'svelte';
@@ -14,6 +15,7 @@
 	import { page } from '$app/state';
 	import { ChevronRight, Circle, FileText } from '$lib/icons/lucide';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
+	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import { setProjectParent } from '$lib/components/project/project-family';
 	import { isPrimaryTier, normalizeProjectState } from '$lib/config/project-states';
 	import type { ProjectListSummary } from '../project-list';
@@ -23,6 +25,7 @@
 	import DesktopHoverCard from './DesktopHoverCard.svelte';
 	import DesktopDock from './DesktopDock.svelte';
 	import DesktopProjectCard, { type CardTab } from './DesktopProjectCard.svelte';
+	import type { ReaderItem } from './reader-model';
 	import DesktopMovePopover, {
 		type PickerOption,
 		type PopoverView
@@ -63,7 +66,8 @@
 		completed,
 		searching,
 		onPatch,
-		onOpenFull
+		onOpenFull,
+		onDataChanged
 	}: {
 		/** Everything the viewer can see; the rules and folders need the whole family. */
 		projects: readonly ProjectListSummary[];
@@ -75,6 +79,8 @@
 		onPatch: (patches: ProjectPatch[]) => void;
 		/** Leaving for the full project page (skeleton data for an instant open). */
 		onOpenFull: (project: ProjectListSummary) => void;
+		/** A modal or chat opened from a card changed something; reload the tiles. */
+		onDataChanged?: () => void;
 	} = $props();
 
 	const HOVER_MS = 320;
@@ -254,9 +260,57 @@
 		pushState('', {
 			...page.state,
 			desktopCard: id,
+			desktopDepth: (page.state.desktopDepth ?? 0) + 1,
+			desktopPeek: undefined,
+			desktopPeekPushed: undefined
+		});
+	}
+
+	// ---------- Reader (shallow history) ----------
+
+	const peek = $derived(openId ? (page.state.desktopPeek ?? null) : null);
+	let readerReload = $state(0);
+	let cardApi = $state<{ handleKey: (event: KeyboardEvent) => boolean } | null>(null);
+
+	// Opening pushes one entry; moving to another item replaces it, so Back
+	// leaves the reader in one step instead of walking every item read.
+	function openItem(item: ReaderItem) {
+		if (peek?.kind === item.kind && peek.id === item.id) return;
+		if (peek) {
+			replaceState('', { ...page.state, desktopPeek: item });
+			return;
+		}
+		pushState('', {
+			...page.state,
+			desktopPeek: item,
+			desktopPeekPushed: true,
 			desktopDepth: (page.state.desktopDepth ?? 0) + 1
 		});
 	}
+
+	function closeItem() {
+		if (!peek) return;
+		if (page.state.desktopPeekPushed) history.back();
+		else replaceState('', { ...page.state, desktopPeek: undefined });
+	}
+
+	// The chat (and anything else that announces a change) may have touched this
+	// project: reload the card, the open item and the tiles.
+	onMount(() => {
+		// The store replays its last event on subscribe; only new ones count.
+		let primed = false;
+		return dataMutationEvents.subscribe((event) => {
+			if (!primed) {
+				primed = true;
+				return;
+			}
+			const id = untrack(() => openId);
+			if (!event || !id || !mutationAffectsProject(event.summary, id)) return;
+			refreshCards(id);
+			readerReload += 1;
+			onDataChanged?.();
+		});
+	});
 
 	function closeCard() {
 		if (!openId) return;
@@ -764,6 +818,16 @@
 
 	function keydown(event: KeyboardEvent) {
 		if (event.defaultPrevented || pending) return;
+		// The reader and chat take their keys first; a modal over them keeps its own.
+		if (
+			openId &&
+			!drag.dragging &&
+			!document.querySelector('[role="dialog"]') &&
+			cardApi?.handleKey(event)
+		) {
+			event.preventDefault();
+			return;
+		}
 		if (event.key === 'Escape') {
 			if (drag.dragging) {
 				event.preventDefault();
@@ -813,6 +877,11 @@
 		<div class="opened" bind:this={openedEl}>
 			{#key openProject.id}
 				<DesktopProjectCard
+					bind:this={cardApi}
+					reader={peek}
+					reloadKey={readerReload}
+					onOpenItem={openItem}
+					onCloseItem={closeItem}
 					project={openProject}
 					parent={openParent}
 					inside={openInside}
@@ -850,6 +919,10 @@
 					}}
 					onMove={openPicker}
 					onRetry={() => refreshCards(openProject.id)}
+					onChanged={() => {
+						refreshCards(openProject.id);
+						onDataChanged?.();
+					}}
 				/>
 			{/key}
 			<DesktopDock
@@ -957,7 +1030,7 @@
 		<DesktopTile {project} {inside} />
 		<span class="label">{project.name}</span>
 		{#if inside.length}
-			<span class="sub">{inside.length} inside</span>
+			<span class="sub">{inside.length} nested</span>
 		{:else if parent}
 			<span class="where">in {shortName(parent.name, 24)}</span>
 		{/if}
