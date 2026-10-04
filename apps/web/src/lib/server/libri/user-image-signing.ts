@@ -139,7 +139,8 @@ export async function signLibriUserImages(request: Request, config: Config): Pro
 				!(MIME_EXTENSIONS[row.mime_type] ?? []).some(
 					(ext) =>
 						row.object_path ===
-						`${LIBRARY_ID}/books/${row.book_id}/images/${row.id}/original.${ext}`
+							`${LIBRARY_ID}/books/${row.book_id}/images/${row.id}/original.${ext}` ||
+						row.object_path === `${LIBRARY_ID}/images/${row.id}/original.${ext}`
 				)
 			)
 				error(503, 'Invalid stored image');

@@ -153,3 +153,31 @@ and uncertain publication halts. Thirty-nine focused tests, worker source/test t
 and focused lint pass. Hosted Storage qualification, mixed upload/research operation,
 OCR follow-up dispatch and original UI submission remain unfinished. No activation
 flag or provider setting was changed.
+
+
+## Upload progress and published-image reads (October 4)
+
+`read_image_upload_status` returns caller-owned intake fields and a bounded progress
+projection to a current library owner/editor. It distinguishes reserved, awaiting
+verification, verifying, publishing, published, retry waiting, blocked, expired and
+reconciliation-required states. Published requires the durable publication, canonical
+image and matching processing fence; OCR status is independent. Prepared work without
+a matching live lease stays uncertain. No read mutates processing, returns lease
+credentials/paths, releases quota or starts OCR. Other requesters' intents are hidden.
+The authenticated SECURITY DEFINER grant is intentional: private processing/publication
+ledgers remain inaccessible directly, and the function verifies auth.uid(), current
+membership, library and requester before reading them.
+
+The user image broker now signs both imported book/image paths and the canonical
+image paths produced by upload publication, after the same caller-scoped lookup.
+Both formats must match the fixed library, exact image UUID, allowed MIME/extension
+and expected bucket. Staging paths, other image/library IDs and provider URL changes
+are rejected. The existing catalog-cover broker already accepts the canonical layout.
+
+Local qualification: 26 focused broker tests and lint pass; disposable PostgreSQL
+contracts cover requester isolation, permission revocation, every progress phase,
+publication-fence mismatch, safe projection and no mutation. Production-schema rehearsal
+with role probes and both standing checks passes; the sole new privilege is the
+reviewed authenticated status RPC. The first rehearsal invocation stopped on a mistyped
+existing filename after its SQL contract passed; the corrected rehearsal passes.
+No hosted upload/provider test has run, and activation remains off.

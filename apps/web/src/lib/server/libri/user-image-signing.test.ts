@@ -110,6 +110,38 @@ describe('user-scoped Libri image signing', () => {
 		expect(f.calls[3]?.body).toEqual({ paths: [path], expiresIn: 300 });
 		expect(f.calls.every((call) => call.signal)).toBe(true);
 	});
+	it.each([
+		['image/jpeg', 'jpeg'],
+		['image/jpeg', 'jpg'],
+		['image/png', 'png'],
+		['image/webp', 'webp']
+	])(
+		'signs the published canonical path after caller-scoped lookup: %s %s',
+		async (mime, ext) => {
+			const publishedPath = `${library}/images/${image}/original.${ext}`;
+			const f = fixture({
+				rows: [{ ...row, object_path: publishedPath, mime_type: mime }],
+				signed: [
+					{
+						path: publishedPath,
+						signedURL: `/object/sign/libri-assets/${publishedPath}?token=opaque`,
+						error: null
+					}
+				]
+			});
+			const response = await signLibriUserImages(f.request(), f.config);
+			expect(response.status).toBe(200);
+			expect(await response.json()).toEqual({
+				images: [
+					{
+						imageId: image,
+						url: `${f.config.url}/storage/v1/object/sign/libri-assets/${publishedPath}?token=opaque`
+					}
+				]
+			});
+			expect(f.calls[3]?.body).toEqual({ paths: [publishedPath], expiresIn: 300 });
+		}
+	);
 	it('does not accept cookies or the old cover credential as user identity', async () => {
 		const f = fixture();
 		expect((await signLibriUserImages(f.request(undefined, ''), f.config)).status).toBe(401);
@@ -144,6 +176,11 @@ describe('user-scoped Libri image signing', () => {
 		{ ...row, bucket_id: 'onto-assets' },
 		{ ...row, object_path: path.replace(library, book) },
 		{ ...row, object_path: path + '/../../secret' },
+		{ ...row, object_path: `${book}/images/${image}/original.webp` },
+		{ ...row, object_path: `${library}/images/${book}/original.webp` },
+		{ ...row, object_path: `${library}/uploads/${image}/original.webp` },
+		{ ...row, object_path: `${library}/images/${image}/original.png` },
+		{ ...row, object_path: `${library}/images/${image}/original.webp/../secret` },
 		{ ...row, id: book },
 		{ ...row, mime_type: 'image/svg+xml' }
 	])('refuses unsafe stored paths before signing: %j', async (invalid) => {
