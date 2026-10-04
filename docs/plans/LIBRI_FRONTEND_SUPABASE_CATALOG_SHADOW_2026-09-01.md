@@ -87,3 +87,44 @@ finding.
 
 Do not create the reader password or deploy the endpoint until both repository commits and the CI
 gate are green. Do not retire Convex during the shadow period.
+
+## Original-app activity and current completeness (October 4)
+
+The standalone Libri app now has a local-qualified replacement for owner activity
+reads, search/book/chapter/domain activity logging, and live completeness. The original
+screens and layouts stay in the Libri repository. Application activation remains off.
+
+`20261004012951_libri_application_activity.sql` adds an append-only activity table with
+forced RLS and owner-only reads. The session RPC pins `auth.uid()`, checks and locks
+owner membership before any subject lookup, accepts only four explicit event types,
+checks library/book/chapter scope, bounds text, and serializes duplicate calls. Clients
+cannot directly append/update/delete events or supply an actor. The note trigger writes
+one content-free creation event in the note transaction; a rollback removes both.
+Imports without a user identity produce no new activity. Library and auth-user cascades
+cover deletion without changing shared purge routines. Archived Convex events stay archived.
+
+Security review of the rehearsal finding: `log_application_activity` is intentionally
+callable by `authenticated`, because it is the original application's session write API.
+The definer is necessary to keep raw event insertion unavailable to clients and to lock
+membership for concurrent dedupe/revocation. It fixes its search path, rejects missing
+identity and non-owner/foreign membership, validates subjects in that library, exposes
+no arbitrary SQL or event type, and has no public/anonymous/worker/reader grant. The
+note trigger has no client EXECUTE grant. PostgreSQL tests cover the negative boundaries,
+revocation, note rollback/privacy, simultaneous dedupe, and actor/library deletion.
+
+`20261004013540_libri_live_completeness_reads.sql` is a STABLE SECURITY INVOKER read with
+caller RLS and 1–100 unique book IDs per call. It calculates the existing factor weights,
+rounding, tiers and gaps from current canonical chapters, artifacts, sources, edges,
+authors and visible notes. Archived OCR and rejected/superseded artifacts are excluded;
+scans, uploaded files and transcript sources are not external-source points. Latest note
+edits/count changes mark saved analysis stale. No old score is overwritten, and no
+research queue or provider is invoked. The frontend requires a complete, validated score
+response for each requested book, in bounded sequential batches. Catalog sorting and
+book detail both use these current scores. Research-gap task lifecycle still needs its
+own replacement; this read does not claim to migrate it.
+
+Local PostgreSQL 16 contracts and the combined production-schema rehearsal pass. The
+rehearsal has 36 intended Libri changes, no new client read failures, and both standing
+shared-schema checks pass. Its one intentional session-definer finding is reviewed above.
+The actual hosted PostgreSQL 15 CI gate and production application are still pending.
+No hosted writes, provider calls, activation, or historical replay occurred here.
