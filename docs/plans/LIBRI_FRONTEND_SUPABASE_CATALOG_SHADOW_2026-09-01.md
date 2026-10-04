@@ -487,3 +487,40 @@ owner membership before any data access. PUBLIC/anon/service/worker execution is
 No new API or data findings. The receipt table forces RLS with owner-only reads.
 
 App integration and hosted qualification are still in progress; no research activation.
+
+## Durable chapter workflow prerequisites (October 4)
+
+The next worker slice separates each chapter's paid search and extraction into distinct
+steps under a nonterminal `waiting` parent. The parent remains in progress in the existing
+queue DTO until every child reaches a terminal outcome. Failed prerequisites skip their
+unstarted dependents; any failure or insufficient/outdated result prevents successful
+parent completion. Parent completion, counters and task outcomes commit together, and
+maintenance can repeat after restarts without double counting.
+
+A restricted planner creates only ordered search/extraction pairs for chapters of the
+root task's own book. It checks the exact lease, current execution authority, admitted
+run/task/depth limits, duplicate stages and backward-only same-chapter prerequisites.
+The worker receives no raw step/dependency insertion or canonical catalog writes. The
+new dependency table forces RLS and is readable only by the restricted worker. A database
+trigger also refuses enqueue/claim transitions before prerequisites finish. Per-task
+capacity can now be configured up to 1,000 steps; its existing default and stored values
+remain unchanged. The planner refuses oversized work without creating partial stages.
+
+The durable dispatcher reconciles lost enqueue replies through actual transport state.
+Batch acknowledgement accepts the original planner job after its parent starts waiting.
+Cancellation still closes the waiting parent and children through the existing lifecycle.
+Paid-search recovery preserves the existing generation fence: an unstarted reservation
+can retry; an authorized request with an unknown outcome cannot automatically call again.
+
+Validation: 11 real PostgreSQL workflow tests plus 5 existing dispatcher tests pass;
+source/test typechecks, source ESLint, formatting and SQL scope/inventory pass. Production
+schema rehearsal passed with no new security/API/data findings from this migration,
+unchanged role probes and both standing invariants. The prerequisite book-admission
+migration retains its previously reviewed authenticated RPC finding. This workflow module
+is not yet registered as an actual chapter provider; provider implementations and runtime
+integration follow. No hosted test or model/search request ran.
+
+Libri app PR8 is merged as `9b3193d9d7a5e56d94bfef4294c772731d85df26`.
+Production `dpl_5qukQJKb2LMmXXZCqhRue3YxtjFS` is Ready, with that exact source identified
+in build logs. Original synthesis/agent buttons passed local browser checks, including
+force confirmation and queued receipts. The app/backend activation switches remain off.
