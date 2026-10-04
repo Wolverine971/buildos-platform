@@ -593,3 +593,34 @@ the reviewed owner-authorized `enqueue_book_research` authenticated RPC finding;
 other findings are unchanged. Receipt RLS is forced, anonymous RPC and worker inserts
 are denied, and tasks/enabled libraries remain zero. Chapter processor PR48 is awaiting
 CI; no paid qualification or activation has occurred.
+
+### Durable workflow release — October 4
+
+BuildOS PR47 passed CI `37176948725` on
+`8699cbef5354e5607829444d89a180b7752c7b77` and merged as
+`64a2c621b1ddf0779aca0a16a55e8d37a3b871b0`. Migration
+`20261004041654_libri_research_workflow_dependencies.sql` was applied individually
+and recorded. SHA-256: `e9848d64dbcecf77992c4ac9cbce2207ea56bde16b558d4a39a101adb81bcfcb`.
+Shared schema remained unchanged at 10,569 signatures /
+`46fa4609fd51a11c27b72cf7179f062c`; all eight security-advisor groups matched.
+Postflight confirmed forced RLS on dependencies, worker-only workflow preparation,
+no raw worker INSERT, zero tasks and zero enabled research libraries.
+
+### Individual chapter admission — October 4
+
+The original chapter-detail action can admit exactly one current-library chapter,
+with owner authorization, durable request receipts, active-task deduplication and
+atomic budget checks. Replaying an old receipt never starts new work. Request-key
+reuse with changed chapter, mode, priority or operation is refused. The worker plan
+selects only that chapter. Whole-book research now requires a confirmed TOC both
+at admission and execution; an individual chapter does not require a full-book TOC.
+Titles are bounded to the existing 240-character task limit. Controls remain off.
+
+Eight free real-PostgreSQL tests cover concurrent admission, replay, altered requests,
+force intent, budget rollback, owner/scope revocation, exact chapter planning, TOC
+revocation and long titles. Worker source/test types, scope inventory and diff checks
+pass. The final production-schema rehearsal (snapshot 2026-10-04T04:38:58Z) passes
+client role probes and both standing checks. Its two SECURITY notices are the explicit
+authenticated book/chapter admission RPCs; each checks current auth.uid() ownership
+before data access, and is unavailable to anon, worker and service_role. No additional
+API/data findings. Migration release and live qualification remain pending.
