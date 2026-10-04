@@ -1,3 +1,7 @@
+import {
+	createLibriResearchReadiness,
+	createLibriResearchRuntime
+} from '../src/workers/libri/researchRuntime';
 import { randomUUID } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -144,11 +148,11 @@ describe.skipIf(!available)('book synthesis restricted-role PostgreSQL completio
 			c.release();
 		}
 	}
-	async function claim(force = false): Promise<ClaimedLibriStep> {
+	async function admit(force = false, taskType = 'synthesize_book') {
 		await ownerQuery("SELECT libri.manage_research_tasks($1,'create',$2::jsonb)", [
 			library,
 			JSON.stringify({
-				type: 'synthesize_book',
+				type: taskType,
 				bookId: book,
 				title: 'Synthesize book',
 				priority: 'high',
@@ -164,6 +168,9 @@ describe.skipIf(!available)('book synthesis restricted-role PostgreSQL completio
 			library,
 			randomUUID()
 		]);
+	}
+	async function claim(force = false): Promise<ClaimedLibriStep> {
+		await admit(force);
 		await createLibriTaskDispatcher(worker, lifecycle).dispatchPending(signal);
 		const c = await lifecycle.claimNextStep({
 			workerId: 'offline-synthesis',
@@ -172,6 +179,141 @@ describe.skipIf(!available)('book synthesis restricted-role PostgreSQL completio
 		if (!c || c.kind !== 'claimed') throw new Error('Expected claim');
 		return c;
 	}
+
+	it('runs admission through the sustained runtime and serves the saved analysis without paying again', async () => {
+		const fake = provider();
+		const makeRuntime = () =>
+			createLibriResearchRuntime({
+				database: {
+					researchReadiness: createLibriResearchReadiness(worker),
+					tasks: createLibriTaskDispatcher(worker, lifecycle),
+					synthesis: execution,
+					reserveProviderCost: (input) => ledger.reserveProviderCost(input),
+					authorizeProviderCall: (input) => ledger.authorizeProviderCall(input),
+					settleProviderCost: (input) => ledger.settleProviderCost(input),
+					releaseProviderCost: (input) => ledger.releaseProviderCost(input),
+					claimNextStep: (input) => lifecycle.claimNextStep(input),
+					heartbeatStep: (input) => lifecycle.heartbeatStep(input),
+					completeStep: (input) => lifecycle.completeStep(input),
+					failStep: (input) => lifecycle.failStep(input),
+					recoverStaleLeases: (input) => lifecycle.recoverStaleLeases(input)
+				},
+				config: {
+					openRouterApiKey: 'offline',
+					model: 'offline/synthesis',
+					reservedMicrousd: 100n,
+					maintenanceIntervalMs: 1000,
+					consumer: {
+						leaseDurationMs: 30000,
+						workerTimeoutMs: 20000,
+						heartbeatIntervalMs: 10000
+					}
+				},
+				concurrency: 2,
+				workerId: 'offline-runtime',
+				provider: fake
+			});
+		await admit();
+		let runtime = makeRuntime();
+		try {
+			await runtime.start();
+			await vi.waitFor(
+				async () =>
+					expect(
+						(
+							await admin.query(
+								"SELECT count(*)::int n FROM libri.research_tasks WHERE status='complete'"
+							)
+						).rows[0].n
+					).toBe(1),
+				{ timeout: 5000 }
+			);
+		} finally {
+			await runtime.stop();
+		}
+		expect(fake.execute).toHaveBeenCalledOnce();
+		await admit();
+		runtime = makeRuntime();
+		try {
+			await runtime.start();
+			await vi.waitFor(
+				async () =>
+					expect(
+						(
+							await admin.query(
+								"SELECT count(*)::int n FROM libri.research_tasks WHERE status='complete'"
+							)
+						).rows[0].n
+					).toBe(2),
+				{ timeout: 5000 }
+			);
+		} finally {
+			await runtime.stop();
+		}
+		expect(fake.execute).toHaveBeenCalledOnce();
+		expect(
+			(
+				await admin.query(
+					"SELECT count(*)::int n FROM libri.derived_artifacts WHERE artifact_type='book_analysis'"
+				)
+			).rows[0].n
+		).toBe(1);
+		expect(
+			(
+				await admin.query(
+					"SELECT count(*)::int n FROM libri.provider_cost_reservations WHERE status='settled'"
+				)
+			).rows[0].n
+		).toBe(1);
+	});
+	it('checks processor and reservation readiness against live controls using the restricted role', async () => {
+		const ready = createLibriResearchReadiness(worker);
+		await expect(ready.assertReady(100n)).resolves.toBeUndefined();
+		await expect(ready.assertReady(1001n)).rejects.toThrow('not ready');
+		await admin.query(
+			"UPDATE libri.research_queue_controls SET supported_task_types=ARRAY['synthesize_book','find_book_info']"
+		);
+		await expect(ready.assertReady(100n)).rejects.toThrow('not ready');
+		await admin.query('UPDATE libri.research_queue_controls SET dispatch_enabled=false');
+		await expect(ready.assertReady(100n)).resolves.toBeUndefined();
+		await admin.query(
+			'REVOKE EXECUTE ON FUNCTION libri.read_book_synthesis_input(uuid,integer,uuid) FROM libri_worker'
+		);
+		try {
+			await expect(ready.assertReady(100n)).rejects.toThrow('not ready');
+		} finally {
+			await admin.query(
+				'GRANT EXECUTE ON FUNCTION libri.read_book_synthesis_input(uuid,integer,uuid) TO libri_worker'
+			);
+		}
+	});
+	it('leaves unsupported queued tasks untouched while claiming implemented tasks', async () => {
+		await admin.query(
+			"UPDATE libri.research_queue_controls SET supported_task_types=ARRAY['synthesize_book','find_book_info']"
+		);
+		await admit(false, 'find_book_info');
+		await createLibriTaskDispatcher(worker, lifecycle).dispatchPending(signal);
+		expect(
+			await lifecycle.claimNextStep({
+				workerId: 'synthesis-only',
+				leaseDurationMs: 60000,
+				queueTypes: ['libri_research'],
+				taskTypes: ['synthesize_book']
+			})
+		).toBeNull();
+		expect(
+			(await admin.query('SELECT status,attempts FROM libri.research_steps')).rows
+		).toEqual([{ status: 'queued', attempts: 0 }]);
+		await admit();
+		await createLibriTaskDispatcher(worker, lifecycle).dispatchPending(signal);
+		const next = await lifecycle.claimNextStep({
+			workerId: 'synthesis-only',
+			leaseDurationMs: 60000,
+			queueTypes: ['libri_research'],
+			taskTypes: ['synthesize_book']
+		});
+		expect(next).toMatchObject({ kind: 'claimed', payload: { taskType: 'synthesize_book' } });
+	});
 	const provider = () => ({
 		execute: vi.fn(async (input: SynthesisInput, model: string) => ({
 			analysis: validateBookAnalysis(analysis, input),
