@@ -157,3 +157,33 @@ against the fresh production schema passes both standing checks and adds no role
 failures; the two intentional client-definer findings (activity and editing) are reviewed.
 Exact-head PostgreSQL 15 CI, production application and hosted qualification remain pending.
 Libri's original forms use `PRIVATE_LIBRI_CATALOG_EDITS_ENABLED`, still off by default.
+
+## Research task management (October 4)
+
+Migration `20261004021418_libri_research_task_management.sql` introduces current task
+planning and manual status management. It does not import or activate the historical
+Convex backlog. Tasks retain bounded type/priority/status, scoped parent references,
+actor, immutable creation identity, exact edit versions, and an optional active run.
+The original queue controls use a default-off `PRIVATE_LIBRI_TASK_WRITES_ENABLED` flag.
+Research dispatch, gap generation, dashboard/run history and legacy archive reads remain
+separate unfinished paths; the adapter never advertises unfinished dispatch as available.
+
+The rehearsal's `manage_research_tasks` authenticated SECURITY DEFINER finding is
+intentional and reviewed: task/activity writes must commit together without raw client
+write privileges. The fixed-search-path function checks and locks current owner membership
+before lookup, pins actor/source, validates scoped parents, and serializes bounded task
+mutations across owners. An idempotency key only replays the same creator/payload; changed
+requests conflict. Exact versions and deterministic locks make bulk edits atomic. A task
+linked to any worker run refuses manual changes. Future dispatch must use the same library
+then task lock order and clear the active link only when its run terminates. Read pagination
+is an invoker RPC under member RLS; internal creation payloads never leave the function.
+There are no queue/provider writes, new worker grants, or shared-schema changes.
+
+The local SQL contract covers owner/editor/revoked/cross-library denial, idempotency,
+bulk rollback, exact counts/filtering/priority/pagination, preserved actor and activity.
+Four real concurrent/rollback tests pass, including competing owners and active-run
+protection. The combined production-schema rehearsal passes both standing checks, with
+the same pre-existing anon failure and no authenticated read failures. All three
+intentional session-definer findings (activity, edits, tasks) are reviewed here.
+Hosted PostgreSQL 15 CI, production application and full original-queue qualification
+are pending. No historical work, live provider call or hosted task was created.
