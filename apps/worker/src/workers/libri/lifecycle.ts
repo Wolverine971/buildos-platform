@@ -1100,7 +1100,24 @@ class LibriLifecycle implements LibriLifecyclePort {
 					cancelled += 1;
 					continue;
 				}
-				if (step.attempts < step.max_attempts) {
+				// The step/run locks fence authorization while we distinguish an unpaid
+				// reservation from a provider request with an unknown or persisted outcome.
+				const paid = await client.query<{ crossed_paid_boundary: boolean }>(
+					`SELECT EXISTS (
+						SELECT 1 FROM libri.provider_cost_reservations
+						WHERE step_id = $1 AND status IN ('started', 'settled')
+					) AS crossed_paid_boundary`,
+					[step.step_id]
+				);
+				const crossedPaidBoundary = paid.rows[0]?.crossed_paid_boundary !== false;
+				await client.query(
+					`UPDATE libri.provider_cost_reservations
+					SET status = 'released', released_at = clock_timestamp(),
+						release_reason = 'expired_lease_before_provider_start'
+					WHERE step_id = $1 AND status = 'reserved'`,
+					[step.step_id]
+				);
+				if (!crossedPaidBoundary && step.attempts < step.max_attempts) {
 					const scheduledFor = new Date(Date.now() + retryDelayMs(step.attempts));
 					await client.query(
 						`UPDATE public.queue_jobs
@@ -1133,11 +1150,18 @@ class LibriLifecycle implements LibriLifecyclePort {
 							attempts = $3,
 							completed_at = now(),
 							updated_at = now(),
-							error_message = 'stale_lease_exhausted'
+							error_message = $4
 						WHERE id = $1 AND processing_token = $2 AND status = 'processing'`,
-						[step.queue_row_id, step.processing_token, step.attempts]
+						[
+							step.queue_row_id,
+							step.processing_token,
+							step.attempts,
+							crossedPaidBoundary
+								? 'provider_reconciliation_required'
+								: 'stale_lease_exhausted'
+						]
 					);
-					await resetStaleStep(client, step, 'dead_letter', null);
+					await resetStaleStep(client, step, 'dead_letter', null, crossedPaidBoundary);
 					await client.query(
 						`UPDATE libri.research_runs
 						SET
@@ -1165,7 +1189,8 @@ async function resetStaleStep(
 	client: LibriTransactionClient,
 	step: LeasedStepRow,
 	status: 'queued' | 'dead_letter',
-	scheduledFor: string | null
+	scheduledFor: string | null,
+	crossedPaidBoundary = false
 ): Promise<void> {
 	await client.query(
 		`UPDATE libri.research_steps
@@ -1179,8 +1204,9 @@ async function resetStaleStep(
 			lease_expires_at = NULL,
 			last_heartbeat_at = NULL,
 			completed_at = CASE WHEN $4 = 'dead_letter' THEN now() ELSE NULL END,
-			error_class = 'stale_lease',
+			error_class = CASE WHEN $6 THEN 'provider_reconciliation_required' ELSE 'stale_lease' END,
 			error_message = CASE
+				WHEN $6 THEN 'provider_reconciliation_required'
 				WHEN $4 = 'dead_letter' THEN 'stale_lease_exhausted'
 				ELSE 'stale_lease'
 			END,
@@ -1189,7 +1215,14 @@ async function resetStaleStep(
 			AND active_queue_job_id = $2
 			AND active_processing_token = $3
 			AND status = 'leased'`,
-		[step.step_id, step.queue_row_id, step.processing_token, status, scheduledFor]
+		[
+			step.step_id,
+			step.queue_row_id,
+			step.processing_token,
+			status,
+			scheduledFor,
+			crossedPaidBoundary
+		]
 	);
 }
 

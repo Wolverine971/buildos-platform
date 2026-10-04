@@ -129,7 +129,6 @@ shared-schema checks pass. Its one intentional session-definer finding is review
 The actual hosted PostgreSQL 15 CI gate and production application are still pending.
 No hosted writes, provider calls, activation, or historical replay occurred here.
 
-
 ## Original book, chapter and prompt edits (October 4)
 
 Migration `20261004015552_libri_manual_book_edits.sql` adds one session RPC for the
@@ -250,3 +249,53 @@ These reads add no security-definer function or shared-schema mutation. The curr
 scheduler and task processors are still unqualified and disabled; UI reads must not
 advertise an enabled scheduler. Final-delta history refresh and hosted qualification
 remain part of the cutover gate.
+
+## Paid-attempt recovery and execution authority (October 4)
+
+Migration `20261004030625_libri_provider_attempt_fencing.sql` refuses a new cost
+reservation after any earlier generation of that step reached `started` or `settled`.
+Changing the reservation key or model does not bypass the check. A table trigger applies
+the same rule to direct inserts and authorization updates, and checks current task-batch
+owner membership, enabled dispatch/type, cancellation and deadline before paid authority.
+The functions remain SECURITY INVOKER with fixed search paths and worker-only execution;
+no new client privilege, SECURITY DEFINER function, or shared-schema change is introduced.
+
+Expired-lease recovery now checks durable cost state under the step/run locks. It releases
+only reservations that never started, then retries within the existing attempt limit.
+A started or settled provider attempt is dead-lettered as
+`provider_reconciliation_required`; known cost and unresolved holds remain intact. This
+also covers a crash after result settlement but before normal step completion. No provider
+is called by these tests. The executable SQL contract proves cross-generation and raw-write
+replay denial plus owner/control/type revocation at authorization. Restricted-role PostgreSQL
+recovery tests cover unpaid, unknown, and settled outcomes.
+
+The production-schema rehearsal preserves both standing checks and role-probe results.
+The four client-definer findings belong to the reviewed prerequisite migrations; the
+attempt-fencing migration introduces none. Actual research processors and sustained
+worker qualification remain required before activation.
+
+## Production release receipt: activity through dispatch (October 4)
+
+PR37–40 passed full repository CI and the PostgreSQL 15 Libri safety job at their exact
+heads. Each prospective merge tree matched the qualified tree before merging. Releases:
+
+| PR  | Qualified head                             | Merge                                      | CI run        |
+| --- | ------------------------------------------ | ------------------------------------------ | ------------- |
+| 37  | `c2d3e81e0dc15d1418b72a35c2e7aa3d2c9a84c0` | `1081e632352cbf11e96fdbd74817d80a5f176b3b` | `37171449439` |
+| 38  | `ad246227c6512e1bb9ef93eb5c62fb8124180c16` | `f5d5cc825f4fd4ba7ded44b686bd8eb0d8d5f5a0` | `37171452494` |
+| 39  | `fc9af8b3b65d2405b96fb3ea5611535ed24c2dcd` | `3850582cdeda112b0c8370ec8034331afe014219` | `37171457683` |
+| 40  | `a4383c9fa85391dc0c27547fec2e2cd1cbbfdea4` | `30163b084bdf1d95085365ed869de2828f85f4ca` | `37171979732` |
+
+Applied one exact file at a time and repaired history separately: versions
+`20261004012951`, `20261004013540`, `20261004015552`, `20261004021418`, and
+`20261004022726`. The fresh pre-release and post-release non-Libri fingerprint both equal
+`2ecb98e613300c76fc40f21fb59b4080` over 10,489 signatures. All 40 Libri tables have
+forced RLS; worker and reader remain non-super/non-bypass with connection limits of three.
+All 408 private image rows and objects remain. Activity, tasks, batches, and enabled
+libraries are zero: this release did not import historical executable tasks or activate work.
+
+Security advisors show exactly the four reviewed new authenticated-only definer APIs
+(`log_application_activity`, `edit_application_record`, `manage_research_tasks`, and
+`admit_research_task_batch`). All other finding identities/counts are unchanged. These
+are expected bounded RPC entry points with explicit `auth.uid()`/current membership
+checks, not unreviewed privilege additions. No hosted user-data or paid provider test ran.
