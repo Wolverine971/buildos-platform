@@ -7,6 +7,7 @@ export type LibriWorkerConfig = {
 	activationMode:
 		| 'disabled'
 		| 'research'
+		| 'uploads'
 		| 'synthetic_canary'
 		| 'ocr_canary'
 		| 'upload_canary'
@@ -15,6 +16,7 @@ export type LibriWorkerConfig = {
 	canaryAdmissionId: string | null;
 	canaryExpiresAtMs: number | null;
 	upload?: LibriUploadRuntimeConfig;
+	uploadQueue?: LibriUploadQueueRuntimeConfig;
 	uploadMaintenance?: LibriUploadMaintenanceRuntimeConfig;
 };
 
@@ -27,6 +29,11 @@ export type LibriUploadRuntimeConfig = {
 	publicationBrokerUrl: string;
 	brokerToken: string;
 };
+
+export type LibriUploadQueueRuntimeConfig = Omit<
+	LibriUploadRuntimeConfig,
+	'uploadId' | 'leaseToken' | 'expiresAtMs'
+> & { pollIntervalMs: number };
 
 export type LibriUploadMaintenanceRuntimeConfig = Omit<
 	LibriUploadRuntimeConfig,
@@ -87,7 +94,7 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 	}
 	const config = loadLibriWorkerConfig(environment);
 	if (!config.queueEnabled && !config.admissionDispatchEnabled) return;
-	if (config.activationMode === 'research') return; // validated in all environments
+	if (config.activationMode === 'research' || config.activationMode === 'uploads') return; // validated in all environments
 	if (config.admissionDispatchEnabled) {
 		if (config.queueEnabled || config.activationMode !== 'disabled') {
 			throw new Error(
@@ -257,6 +264,10 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 	);
 	const activationMode = parseActivationMode(environment.LIBRI_WORKER_ACTIVATION_MODE);
 	if (enabled && activationMode === 'research') loadLibriResearchRuntimeConfig(environment);
+	const uploadQueue =
+		enabled && activationMode === 'uploads'
+			? loadLibriUploadQueueRuntimeConfig(environment)
+			: undefined;
 	const upload =
 		enabled && activationMode === 'upload_canary'
 			? loadLibriUploadRuntimeConfig(environment)
@@ -284,6 +295,7 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 		),
 		queueEnabled: enabled,
 		...(upload ? { upload } : {}),
+		...(uploadQueue ? { uploadQueue } : {}),
 		...(uploadMaintenance ? { uploadMaintenance } : {}),
 		admissionDispatchEnabled,
 		activationMode,
@@ -316,6 +328,7 @@ function parseActivationMode(value: string | undefined): LibriWorkerConfig['acti
 	if (value === undefined || value.trim() === '' || value === 'disabled') return 'disabled';
 	if (
 		value === 'research' ||
+		value === 'uploads' ||
 		value === 'synthetic_canary' ||
 		value === 'ocr_canary' ||
 		value === 'upload_canary' ||
@@ -323,7 +336,7 @@ function parseActivationMode(value: string | undefined): LibriWorkerConfig['acti
 	)
 		return value;
 	throw new Error(
-		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, research, synthetic_canary, ocr_canary, upload_canary, or upload_maintenance_canary'
+		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, research, uploads, synthetic_canary, ocr_canary, upload_canary, or upload_maintenance_canary'
 	);
 }
 
@@ -465,6 +478,73 @@ export function loadLibriUploadMaintenanceRuntimeConfig(
 		endpointUrl: endpoint(
 			'LIBRI_UPLOAD_MAINTENANCE_BROKER_URL',
 			'/api/internal/libri/uploads/maintain'
+		)
+	};
+}
+
+export function loadLibriUploadQueueRuntimeConfig(
+	environment: NodeJS.ProcessEnv
+): LibriUploadQueueRuntimeConfig {
+	if (
+		environment.LIBRI_WORKER_CONCURRENCY !== '1' ||
+		parseBoolean(
+			environment.LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED,
+			false,
+			'LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED'
+		) ||
+		[
+			'LIBRI_WORKER_CANARY_LIBRARY_ID',
+			'LIBRI_WORKER_CANARY_UPLOAD_ID',
+			'LIBRI_WORKER_CANARY_UPLOAD_LEASE_TOKEN',
+			'LIBRI_WORKER_CANARY_STEP_ID',
+			'LIBRI_WORKER_CANARY_ADMISSION_ID',
+			'LIBRI_WORKER_CANARY_EXPIRES_AT'
+		].some((key) => environment[key]?.trim())
+	)
+		throw new Error(
+			'Sustained uploads require concurrency 1, no canary overrides and no OCR admission dispatch'
+		);
+	const libraryId = requireValue(environment.LIBRI_UPLOAD_LIBRARY_ID, 'LIBRI_UPLOAD_LIBRARY_ID');
+	if (libraryId !== 'f09948c4-e4e0-581c-8689-7258bea2f501')
+		throw new Error('Unexpected upload library');
+	const endpoint = (key: string, path: string) => {
+		const raw = requireValue(environment[key], key);
+		const url = new URL(raw);
+		if (
+			url.origin !== 'https://build-os.com' ||
+			url.pathname !== path ||
+			url.username ||
+			url.password ||
+			url.search ||
+			url.hash ||
+			url.href !== raw
+		)
+			throw new Error(`Invalid ${key}`);
+		return raw;
+	};
+	const brokerToken = requireValue(
+		environment.PRIVATE_LIBRI_ASSET_BROKER_TOKEN,
+		'PRIVATE_LIBRI_ASSET_BROKER_TOKEN'
+	);
+	if (!/^[A-Za-z0-9._~+/-]{32,512}={0,2}$/.test(brokerToken) || brokerToken.length > 512)
+		throw new Error('Invalid upload broker credential');
+	return {
+		libraryId,
+		brokerToken,
+		downloadBrokerUrl: endpoint(
+			'LIBRI_UPLOAD_DOWNLOAD_BROKER_URL',
+			'/api/internal/libri/uploads/download'
+		),
+		publicationBrokerUrl: endpoint(
+			'LIBRI_UPLOAD_PUBLICATION_BROKER_URL',
+			'/api/internal/libri/uploads/publish'
+		),
+		pollIntervalMs: parseInteger(
+			environment.LIBRI_UPLOAD_POLL_INTERVAL_MS,
+			3000,
+			1000,
+			60000,
+			'LIBRI_UPLOAD_POLL_INTERVAL_MS'
 		)
 	};
 }

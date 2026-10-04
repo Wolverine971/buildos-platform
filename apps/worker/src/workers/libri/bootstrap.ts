@@ -104,7 +104,10 @@ export class LibriWorkerBootstrap {
 			this.lastSuccessfulProbeAtMs !== null && this.consecutiveProbeFailures === 0;
 		const consumerHealth = this.safeConsumerHealth();
 		const maintenanceMode = this.config.activationMode === 'upload_maintenance_canary';
-		const uploadMode = this.config.activationMode === 'upload_canary' || maintenanceMode;
+		const uploadMode =
+			this.config.activationMode === 'upload_canary' ||
+			this.config.activationMode === 'uploads' ||
+			maintenanceMode;
 		const queueHealth = uploadMode ? null : consumerHealth;
 		const consumerHealthy = this.config.queueEnabled ? consumerHealth?.healthy === true : true;
 		const healthy = this.state === 'running' && connected && consumerHealthy;
@@ -118,7 +121,9 @@ export class LibriWorkerBootstrap {
 			healthy,
 			state: this.state,
 			...(reason ? { reason } : {}),
-			...(this.config.activationMode === 'upload_canary' && consumerHealth
+			...((this.config.activationMode === 'upload_canary' ||
+				this.config.activationMode === 'uploads') &&
+			consumerHealth
 				? { upload: consumerHealth }
 				: {}),
 			...(maintenanceMode && consumerHealth ? { uploadMaintenance: consumerHealth } : {}),

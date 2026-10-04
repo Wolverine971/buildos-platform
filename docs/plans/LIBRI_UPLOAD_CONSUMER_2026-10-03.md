@@ -117,3 +117,39 @@ Activation remains off.
 A normal user-facing OCR confirmation/admission flow and sustained worker activation
 are still required. This receipt closes the publication ledger's bookkeeping gap; it
 does not authorize automatically turning every upload into paid OCR.
+
+
+## Sustained upload queue implementation (October 4)
+
+A separate `uploads` activation mode now composes the existing exact-upload consumer
+for successive admitted uploads in the fixed Libri library. It reads at most ten
+candidates, runs one upload at a time, and fully drains the consumer before releasing
+that slot. Each attempt retains one UUID token, including its bounded claim retries.
+The existing database controls, membership checks, attempt limit and publication
+inspection continue to gate every write. No database migration is required.
+
+The process remains disabled in production. Later activation requires
+`LIBRI_WORKER_ENABLED=true`, `LIBRI_WORKER_ACTIVATION_MODE=uploads`,
+`LIBRI_WORKER_CONCURRENCY=1`, `LIBRI_UPLOAD_LIBRARY_ID` set to the existing Libri
+library, both existing upload broker URLs and the machine broker credential.
+`LIBRI_UPLOAD_POLL_INTERVAL_MS` defaults to 3000 and permits 1000–60000. Canary
+overrides and OCR admission dispatch are rejected. `/health` reports upload state
+and does not advertise research/OCR queue consumption in this mode.
+
+Each selected upload has a two-minute execution window; ownership still uses the
+existing shorter database lease and network bounds. Empty queues continue polling.
+Candidate-read failures recover without writes, but three consecutive failures halt.
+An acknowledged verification failure releases the slot after draining; the database
+controls whether a later bounded retry is eligible. An unacknowledged failure or
+uncertain publication outcome stops the runtime for operator review, without quota
+release, object deletion or re-upload. A process restart mints a new attempt token but must inspect
+all durable publication state before claiming or downloading; an earlier prepared
+or mismatched committed publication requires reconciliation.
+
+Local validation covers two sequential publications using real exact consumers with
+synthetic byte/provider ports, no overlapping slots, shutdown during a pending read,
+mandatory drain, invalid candidates, bounded listing failures, configuration denial
+and uncertain publication halts. Thirty-nine focused tests, worker source/test typechecks, production worker build
+and focused lint pass. Hosted Storage qualification, mixed upload/research operation,
+OCR follow-up dispatch and original UI submission remain unfinished. No activation
+flag or provider setting was changed.

@@ -338,3 +338,19 @@ describe('upload activation and health', () => {
 		expect(database.close).toHaveBeenCalledOnce();
 	});
 });
+
+it('does not classify a refused failure receipt as a settled verification failure', async () => {
+	const f = fixture();
+	f.downloader.downloadAndVerify.mockRejectedValue(
+		new LibriUploadVerificationError('invalid_image', false)
+	);
+	f.processing.fail.mockResolvedValue(false);
+	await f.consumer.start();
+	await vi.advanceTimersByTimeAsync(1000);
+	expect(f.consumer.getSettledFailure()).toBe(false);
+	expect(f.consumer.getHealth()).toMatchObject({
+		state: 'failed',
+		reason: 'upload_failure_outcome_unknown'
+	});
+	await f.consumer.stop();
+});

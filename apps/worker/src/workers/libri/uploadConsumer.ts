@@ -50,6 +50,7 @@ export class LibriUploadConsumer {
 	private stopPromise?: Promise<void>;
 	private reason?: string;
 	private completed = 0;
+	private settledFailure = false;
 	private inspected = false;
 	private failures = 0;
 	private claimFailures = 0;
@@ -93,6 +94,11 @@ export class LibriUploadConsumer {
 		this.abort.abort();
 		this.stopPromise = this.drain();
 		return this.stopPromise;
+	}
+
+	/** Only a definitive database acknowledgement permits the queue to continue. */
+	getSettledFailure(): boolean {
+		return this.settledFailure;
 	}
 
 	getHealth(): LibriMaintenanceConsumerHealth {
@@ -194,11 +200,13 @@ export class LibriUploadConsumer {
 					cause instanceof LibriUploadVerificationError && !cause.retryable
 						? 'invalid_image'
 						: 'verification_unavailable';
-				await this.options.processing.fail({
+				const accepted = await this.options.processing.fail({
 					...this.scope,
 					attempt: claim.attempt,
 					failureCode
 				});
+				if (!accepted) return this.halt('upload_failure_outcome_unknown');
+				this.settledFailure = true;
 				this.failures++;
 				return this.halt('upload_verification_failed');
 			}
