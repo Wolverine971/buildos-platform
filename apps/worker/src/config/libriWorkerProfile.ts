@@ -4,11 +4,33 @@ export type LibriWorkerConfig = {
 	databaseProbeIntervalMs: number;
 	queueEnabled: boolean;
 	admissionDispatchEnabled: boolean;
-	activationMode: 'disabled' | 'synthetic_canary' | 'ocr_canary';
+	activationMode:
+		| 'disabled'
+		| 'synthetic_canary'
+		| 'ocr_canary'
+		| 'upload_canary'
+		| 'upload_maintenance_canary';
 	canaryStepId: string | null;
 	canaryAdmissionId: string | null;
 	canaryExpiresAtMs: number | null;
+	upload?: LibriUploadRuntimeConfig;
+	uploadMaintenance?: LibriUploadMaintenanceRuntimeConfig;
 };
+
+export type LibriUploadRuntimeConfig = {
+	libraryId: string;
+	uploadId: string;
+	leaseToken: string;
+	expiresAtMs: number;
+	downloadBrokerUrl: string;
+	publicationBrokerUrl: string;
+	brokerToken: string;
+};
+
+export type LibriUploadMaintenanceRuntimeConfig = Omit<
+	LibriUploadRuntimeConfig,
+	'downloadBrokerUrl' | 'publicationBrokerUrl'
+> & { endpointUrl: string };
 
 export type LibriOcrRuntimeConfig = {
 	assetBrokerUrl: string;
@@ -66,6 +88,11 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 		assertCanaryExpiry(config.canaryExpiresAtMs);
 		return;
 	}
+	if (
+		config.activationMode === 'upload_canary' ||
+		config.activationMode === 'upload_maintenance_canary'
+	)
+		return; // validated in every environment below
 	if (!['synthetic_canary', 'ocr_canary'].includes(config.activationMode)) {
 		throw new Error(
 			'Enabled production Libri worker requires an exact synthetic_canary or ocr_canary activation mode'
@@ -147,6 +174,15 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 		'LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED'
 	);
 	const activationMode = parseActivationMode(environment.LIBRI_WORKER_ACTIVATION_MODE);
+	const upload =
+		enabled && activationMode === 'upload_canary'
+			? loadLibriUploadRuntimeConfig(environment)
+			: undefined;
+
+	const uploadMaintenance =
+		enabled && activationMode === 'upload_maintenance_canary'
+			? loadLibriUploadMaintenanceRuntimeConfig(environment)
+			: undefined;
 
 	return {
 		concurrency: parseInteger(
@@ -164,6 +200,8 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 			'LIBRI_WORKER_DATABASE_PROBE_INTERVAL_MS'
 		),
 		queueEnabled: enabled,
+		...(upload ? { upload } : {}),
+		...(uploadMaintenance ? { uploadMaintenance } : {}),
 		admissionDispatchEnabled,
 		activationMode,
 		canaryStepId: parseOptionalUuid(environment.LIBRI_WORKER_CANARY_STEP_ID),
@@ -193,9 +231,15 @@ function parseBoolean(value: string | undefined, fallback: boolean, name: string
 
 function parseActivationMode(value: string | undefined): LibriWorkerConfig['activationMode'] {
 	if (value === undefined || value.trim() === '' || value === 'disabled') return 'disabled';
-	if (value === 'synthetic_canary' || value === 'ocr_canary') return value;
+	if (
+		value === 'synthetic_canary' ||
+		value === 'ocr_canary' ||
+		value === 'upload_canary' ||
+		value === 'upload_maintenance_canary'
+	)
+		return value;
 	throw new Error(
-		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, synthetic_canary, or ocr_canary'
+		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, synthetic_canary, ocr_canary, upload_canary, or upload_maintenance_canary'
 	);
 }
 
@@ -263,4 +307,80 @@ function parsePositiveBigint(value: string, maximum: bigint, name: string): bigi
 		throw new Error(`${name} must be between 1 and ${maximum.toString()}`);
 	}
 	return parsed;
+}
+
+function loadLibriUploadScope(environment: NodeJS.ProcessEnv) {
+	if (
+		environment.LIBRI_WORKER_CONCURRENCY !== '1' ||
+		parseBoolean(
+			environment.LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED,
+			false,
+			'LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED'
+		)
+	)
+		throw new Error('Upload canary requires concurrency 1 and admission dispatch disabled');
+	const exact = (key: string) => {
+		const value = parseOptionalUuid(environment[key], key);
+		if (!value) throw new Error(`${key} is required for the exact upload canary`);
+		return value.toLowerCase();
+	};
+	const expiresAtMs = parseOptionalTimestamp(environment.LIBRI_WORKER_CANARY_EXPIRES_AT);
+	assertCanaryExpiry(expiresAtMs);
+	const endpoint = (key: string, path: string) => {
+		const raw = environment[key];
+		if (!raw) throw new Error(`${key} is required for the upload canary`);
+		const url = new URL(raw);
+		if (
+			url.protocol !== 'https:' ||
+			url.username ||
+			url.password ||
+			url.search ||
+			url.hash ||
+			url.pathname !== path ||
+			url.href !== raw
+		)
+			throw new Error(`Invalid ${key}`);
+		return raw;
+	};
+	const brokerToken = environment.PRIVATE_LIBRI_ASSET_BROKER_TOKEN?.trim() ?? '';
+	if (!/^[A-Za-z0-9._~+/-]{32,512}={0,2}$/.test(brokerToken) || brokerToken.length > 512)
+		throw new Error('Invalid upload broker credential');
+	return {
+		libraryId: exact('LIBRI_WORKER_CANARY_LIBRARY_ID'),
+		uploadId: exact('LIBRI_WORKER_CANARY_UPLOAD_ID'),
+		leaseToken: exact('LIBRI_WORKER_CANARY_UPLOAD_LEASE_TOKEN'),
+		expiresAtMs: expiresAtMs!,
+		brokerToken,
+		endpoint
+	};
+}
+
+export function loadLibriUploadRuntimeConfig(
+	environment: NodeJS.ProcessEnv
+): LibriUploadRuntimeConfig {
+	const { endpoint, ...scope } = loadLibriUploadScope(environment);
+	return {
+		...scope,
+		downloadBrokerUrl: endpoint(
+			'LIBRI_UPLOAD_DOWNLOAD_BROKER_URL',
+			'/api/internal/libri/uploads/download'
+		),
+		publicationBrokerUrl: endpoint(
+			'LIBRI_UPLOAD_PUBLICATION_BROKER_URL',
+			'/api/internal/libri/uploads/publish'
+		)
+	};
+}
+
+export function loadLibriUploadMaintenanceRuntimeConfig(
+	environment: NodeJS.ProcessEnv
+): LibriUploadMaintenanceRuntimeConfig {
+	const { endpoint, ...scope } = loadLibriUploadScope(environment);
+	return {
+		...scope,
+		endpointUrl: endpoint(
+			'LIBRI_UPLOAD_MAINTENANCE_BROKER_URL',
+			'/api/internal/libri/uploads/maintain'
+		)
+	};
 }

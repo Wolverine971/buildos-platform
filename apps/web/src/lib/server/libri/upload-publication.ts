@@ -278,6 +278,48 @@ export function createLibriUploadPublicationBroker() {
 					if (isHttpError(cause) || signal.aborted) throw cause;
 					error(400, 'Invalid JSON');
 				}
+				// Machine-authenticated, library-scoped restart check. No signing, storage
+				// I/O, raw paths, ledger mutation, or authority change on this branch.
+				if (object(input) && input.action === 'inspect') {
+					if (
+						Object.keys(input).length !== 4 ||
+						input.libraryId !== LIBRARY ||
+						!uuid(input.uploadId) ||
+						!uuid(input.leaseToken)
+					)
+						error(400, 'Invalid request');
+					const query = new URLSearchParams({
+						select: 'id,status,lease_token,attempt',
+						library_id: `eq.${LIBRARY}`,
+						upload_id: `eq.${input.uploadId}`,
+						limit: '4'
+					});
+					const rows = await provider('/rest/v1/image_upload_publications?' + query);
+					if (
+						!Array.isArray(rows) ||
+						rows.length > 3 ||
+						rows.some(
+							(row) =>
+								!object(row) ||
+								!uuid(row.id) ||
+								!uuid(row.lease_token) ||
+								!['prepared', 'published'].includes(String(row.status)) ||
+								!Number.isSafeInteger(row.attempt) ||
+								Number(row.attempt) < 1 ||
+								Number(row.attempt) > 3
+						)
+					)
+						error(503, 'Invalid publication state');
+					const published = rows.filter((row) => row.status === 'published');
+					if (published.length > 1) error(503, 'Invalid publication state');
+					const state =
+						published.length === 1 && published[0].lease_token === input.leaseToken
+							? 'published'
+							: rows.length
+								? 'recovery_required'
+								: 'fresh';
+					return json({ state }, { headers: HEADERS });
+				}
 				if (
 					!object(input) ||
 					!['prepare', 'finalize'].includes(String(input.action)) ||

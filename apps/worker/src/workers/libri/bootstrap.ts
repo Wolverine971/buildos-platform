@@ -33,6 +33,8 @@ export type LibriWorkerBootstrapHealth = {
 		lastSuccessfulProbeAt: string | null;
 		consecutiveProbeFailures: number;
 	};
+	upload?: LibriMaintenanceConsumerHealth;
+	uploadMaintenance?: LibriMaintenanceConsumerHealth;
 	queue: {
 		enabled: boolean;
 		registeredJobTypes: readonly LibriQueueType[];
@@ -101,6 +103,9 @@ export class LibriWorkerBootstrap {
 		const connected =
 			this.lastSuccessfulProbeAtMs !== null && this.consecutiveProbeFailures === 0;
 		const consumerHealth = this.safeConsumerHealth();
+		const maintenanceMode = this.config.activationMode === 'upload_maintenance_canary';
+		const uploadMode = this.config.activationMode === 'upload_canary' || maintenanceMode;
+		const queueHealth = uploadMode ? null : consumerHealth;
 		const consumerHealthy = this.config.queueEnabled ? consumerHealth?.healthy === true : true;
 		const healthy = this.state === 'running' && connected && consumerHealthy;
 		const reason = healthy
@@ -113,6 +118,10 @@ export class LibriWorkerBootstrap {
 			healthy,
 			state: this.state,
 			...(reason ? { reason } : {}),
+			...(this.config.activationMode === 'upload_canary' && consumerHealth
+				? { upload: consumerHealth }
+				: {}),
+			...(maintenanceMode && consumerHealth ? { uploadMaintenance: consumerHealth } : {}),
 			startedAt: this.startedAtMs ? new Date(this.startedAtMs).toISOString() : null,
 			database: {
 				connected,
@@ -122,17 +131,18 @@ export class LibriWorkerBootstrap {
 				consecutiveProbeFailures: this.consecutiveProbeFailures
 			},
 			queue: {
-				enabled: this.config.queueEnabled,
-				registeredJobTypes: LIBRI_QUEUE_TYPES,
-				activeJobs: consumerHealth?.activeJobs ?? 0,
+				enabled: this.config.queueEnabled && !uploadMode,
+				registeredJobTypes: uploadMode ? [] : LIBRI_QUEUE_TYPES,
+				activeJobs: queueHealth?.activeJobs ?? 0,
 				availableConcurrency:
-					consumerHealth?.availableConcurrency ?? this.config.concurrency,
-				concurrency: consumerHealth?.concurrency ?? this.config.concurrency,
-				consumerHealthy: this.config.queueEnabled
-					? (consumerHealth?.healthy ?? false)
-					: null,
-				lastSuccessfulClaimAt: consumerHealth?.lastSuccessfulClaimAt ?? null,
-				consecutiveClaimFailures: consumerHealth?.consecutiveClaimFailures ?? 0
+					queueHealth?.availableConcurrency ?? (uploadMode ? 0 : this.config.concurrency),
+				concurrency: queueHealth?.concurrency ?? (uploadMode ? 0 : this.config.concurrency),
+				consumerHealthy:
+					this.config.queueEnabled && !uploadMode
+						? (queueHealth?.healthy ?? false)
+						: null,
+				lastSuccessfulClaimAt: queueHealth?.lastSuccessfulClaimAt ?? null,
+				consecutiveClaimFailures: queueHealth?.consecutiveClaimFailures ?? 0
 			}
 		};
 	}
