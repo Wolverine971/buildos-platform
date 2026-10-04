@@ -346,3 +346,57 @@ and database-port suites. The SQL capability contract denies raw/client access. 
 test typechecks pass; source ESLint passes. Production-schema rehearsal preserves both
 standing checks and role probes, with no new client-definer finding. This implementation
 is exposed on the database port but no operating profile or admission switch is enabled.
+
+## Queue history release and import receipt (October 4)
+
+PR41 qualified at `c60b2998ee08bc5d892b8600d561a4e9eb38f6ff` in CI `37172510184`
+and merged as `52b7ea97f7103c18e25712b4c5dc4880aae52c7f`. Migration
+`20261004024537` was applied individually and recorded; its SHA-256 is
+`1b42c62668575d3787735b6e316cc2ad7bb0fcef4a31670fa3c84b7df1a6511f`.
+All 41 Libri tables have forced RLS. The shared-schema fingerprint remains
+`2ecb98e613300c76fc40f21fb59b4080`; security findings are unchanged from the
+reviewed activity-through-dispatch release above.
+
+Imported and verified 2,606 archive-only queue receipts from the August 29 snapshot.
+The source ZIP SHA-256 is `394b791860b04978af9bd58a22bdc19b0fa8d0aca80ba22a5cc3bc9dc2783bbc`;
+the transformed bundle SHA-256 is `d60380eaaca7d35c3c889fe963f29612cf1a4bd0fc9e134f808b182896608a49`.
+Dry-run planned 2,606 inserts; postflight verified all 2,606 with zero remaining inserts.
+An authenticated member saw all 2,606 receipts through a bounded 50-row list and a real
+120-outcome detail record. The worker cannot read the archive and members cannot insert.
+No executable run/step was created by this import; current tasks/batches/enabled libraries
+remain zero. All 408 image rows and private objects remain. This is historical preservation,
+not the final Convex delta import.
+
+Libri app PR6 (shared-note synthesis freshness) qualified at
+`4aac1adbae8c303a1ab33e84155ac08fc6c61754` and merged as
+`0006f15db92102c9b2893bec90e09e2f54d0fce5`. Production deployment
+`dpl_9czzj3WQPvs8kEgQSqhcyNeDSkRJ` is READY and its build logs identify that merge.
+The live backend remains Convex.
+
+## Sustained research runtime (October 4)
+
+The dedicated entrypoint now supports explicit `research` activation with one configured
+model, a required conservative integer microusd reservation, and concurrency 1–2. It
+rejects canary/admission overrides and retains disabled defaults. No environment or database
+control is enabled by this change. Only `synthesize_book` is registered.
+
+Startup validates the restricted worker's synthesis capabilities and every enabled library's
+processor set and per-task reservation capacity before touching queues. The same readiness
+check runs before claims and each maintenance cycle. The SQL claim filter selects implemented
+`task_execute` payload types before taking ownership, leaving unsupported tasks untouched.
+Database authority is still rechecked at claim, paid authorization and persistence.
+
+A serialized loop recovers at most 10 stale research leases and drains at most five admitted
+batches per cycle (default five seconds). The existing consumer owns bounded claims, heartbeats,
+provider timeouts and atomic processor completion. Recovery is limited to `libri_research`;
+other queue families are untouched. Maintenance failures degrade readiness without exposing
+raw database errors, and later successful cycles restore it. Shutdown aborts dispatch, begins
+provider/claim draining immediately, and waits for all owned database work before pool closure.
+
+Validation: 90 focused unit tests and 17 disposable PostgreSQL integration tests pass.
+The integration uses the actual restricted role to run admission → outbox → consumer →
+simulated provider → saved artifact/task/cost, then restarts and reuses the analysis without
+a second provider call. It also verifies unsupported tasks remain queued with zero attempts,
+capability revocation and oversized reservations fail readiness, and existing paid/unpaid
+lease recovery fencing remains intact. Source/test typechecks and source ESLint pass;
+Libri migration scope validation passes. No live model call or hosted qualification is claimed.
