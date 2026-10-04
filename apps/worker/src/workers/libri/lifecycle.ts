@@ -144,6 +144,8 @@ type EnqueueContextRow = {
 	max_attempts: number;
 	active_queue_job_id: string | null;
 	run_status: string;
+	run_kind: string;
+	deadline_expired: boolean;
 	correlation_id: string;
 	created_by: string;
 };
@@ -168,7 +170,10 @@ type ClaimContextRow = {
 	max_attempts: number;
 	payload: Record<string, unknown>;
 	run_status: string;
+	run_kind: string;
+	deadline_expired: boolean;
 	cancel_requested_at: string | null;
+	max_concurrent_steps: number;
 };
 
 type LeasedStepRow = {
@@ -211,6 +216,8 @@ class LibriLifecycle implements LibriLifecyclePort {
 					step.max_attempts,
 					step.active_queue_job_id,
 					run.status AS run_status,
+					run.kind AS run_kind,
+					(run.deadline_at IS NOT NULL AND run.deadline_at <= clock_timestamp()) AS deadline_expired,
 					run.correlation_id,
 					library.created_by
 				FROM libri.research_steps step
@@ -231,6 +238,14 @@ class LibriLifecycle implements LibriLifecyclePort {
 			}
 			if (!['queued', 'running'].includes(context.run_status)) {
 				throw new Error(`Libri research run cannot accept work from ${context.run_status}`);
+			}
+
+			if (
+				context.deadline_expired ||
+				(context.run_kind === 'task_batch' &&
+					!(await taskExecutionAllowed(client, context.step_id)))
+			) {
+				throw new Error('Libri research execution authority expired or was revoked');
 			}
 
 			const dedupKey = `libri:research-step:${context.step_id}`;
@@ -363,7 +378,10 @@ class LibriLifecycle implements LibriLifecyclePort {
 					step.max_attempts,
 					step.payload,
 					run.status AS run_status,
-					run.cancel_requested_at
+					run.kind AS run_kind,
+					(run.deadline_at IS NOT NULL AND run.deadline_at <= clock_timestamp()) AS deadline_expired,
+					run.cancel_requested_at,
+					run.max_concurrent_steps
 				FROM libri.research_steps step
 				JOIN libri.research_runs run ON run.id = step.run_id
 					AND run.library_id = step.library_id
@@ -383,6 +401,51 @@ class LibriLifecycle implements LibriLifecyclePort {
 				isTerminalRunStatus(context.run_status)
 			) {
 				return quarantineQueueJob(client, queueJob, 'libri_queue_step_contract_invalid');
+			}
+
+			if (
+				context.deadline_expired ||
+				(context.run_kind === 'task_batch' &&
+					!(await taskExecutionAllowed(client, context.step_id)))
+			) {
+				const reason = context.deadline_expired
+					? 'libri_run_deadline_expired'
+					: 'libri_execution_authority_revoked';
+				await client.query(
+					`UPDATE libri.research_steps SET status='failed', completed_at=now(),
+                    error_class=$2, error_message=$2, updated_at=now() WHERE id=$1 AND status='queued'`,
+					[context.step_id, reason]
+				);
+				await client.query(
+					`UPDATE libri.research_runs SET failed_steps=failed_steps+1, updated_at=now() WHERE id=$1`,
+					[context.run_id]
+				);
+				const quarantined = await quarantineQueueJob(client, queueJob, reason);
+				await finalizeRunIfDone(client, context.run_id);
+				return quarantined;
+			}
+			// All claimers hold the same run row before reading the leased count.
+			// Use a fresh statement snapshot after the lock wait, so concurrent
+			// processes cannot both observe a free slot and exceed this run's cap.
+			const occupied = await client.query<{ leased_steps: number }>(
+				`SELECT count(*)::integer AS leased_steps FROM libri.research_steps WHERE run_id=$1 AND status='leased'`,
+				[context.run_id]
+			);
+			const leased = occupied.rows[0]?.leased_steps;
+			if (
+				!Number.isSafeInteger(leased) ||
+				!Number.isSafeInteger(context.max_concurrent_steps) ||
+				context.max_concurrent_steps < 1
+			) {
+				throw new Error('Libri run concurrency limit could not be verified');
+			}
+			if (leased >= context.max_concurrent_steps) {
+				// Let another run advance without burning this step's attempt.
+				await client.query(
+					`UPDATE public.queue_jobs SET scheduled_for=clock_timestamp()+interval '1 second', updated_at=now() WHERE id=$1 AND status='pending'`,
+					[queueJob.id]
+				);
+				return null;
 			}
 
 			const queueUpdate = await client.query<{ id: string }>(
@@ -1128,6 +1191,17 @@ async function resetStaleStep(
 			AND status = 'leased'`,
 		[step.step_id, step.queue_row_id, step.processing_token, status, scheduledFor]
 	);
+}
+
+async function taskExecutionAllowed(
+	client: LibriTransactionClient,
+	stepId: string
+): Promise<boolean> {
+	const result = await client.query<{ allowed: boolean }>(
+		'SELECT libri.research_task_execution_allowed($1) AS allowed',
+		[stepId]
+	);
+	return result.rows.length === 1 && result.rows[0].allowed === true;
 }
 
 async function touchRun(client: LibriTransactionClient, runId: string): Promise<void> {
