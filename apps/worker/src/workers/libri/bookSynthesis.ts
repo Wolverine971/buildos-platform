@@ -1,4 +1,4 @@
-import { OPENROUTER_PRIVATE_PROVIDER } from '@buildos/smart-llm';
+import { createBookResearchProvider } from './bookResearchProvider';
 import type { ClaimedLibriStep } from './lifecycle';
 import type { LibriCostLedgerPort } from './costLedger';
 import {
@@ -61,93 +61,16 @@ export function createBookSynthesisProvider(options: {
 	allowedModels: readonly string[];
 	fetchImpl?: typeof fetch;
 }): SynthesisProvider {
-	if (!options.apiKey.trim() || options.apiKey.length > 512 || /[\r\n]/.test(options.apiKey))
-		throw new Error('Invalid synthesis provider credential');
-	const models = new Set(options.allowedModels);
-	if (
-		!models.size ||
-		models.size > 10 ||
-		[...models].some((m) => !/^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(m))
-	)
-		throw new Error('Invalid synthesis model allowlist');
+	const provider = createBookResearchProvider({
+		...options,
+		system: SYSTEM,
+		maxTokens: 4500,
+		validate: validateBookAnalysis
+	});
 	return {
 		async execute(input, model, signal) {
-			if (!models.has(model)) throw new Error('Synthesis model is not allowed');
-			const dataset = JSON.stringify(input.dataset);
-			if (Buffer.byteLength(dataset) > 200000)
-				throw new Error('Synthesis dataset exceeds context limit');
-			signal.throwIfAborted();
-			const response = await (options.fetchImpl ?? fetch)(
-				'https://openrouter.ai/api/v1/chat/completions',
-				{
-					method: 'POST',
-					redirect: 'error',
-					signal,
-					headers: {
-						Authorization: `Bearer ${options.apiKey}`,
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						model,
-						max_tokens: 4500,
-						stream: false,
-						response_format: { type: 'json_object' },
-						provider: {
-							...OPENROUTER_PRIVATE_PROVIDER,
-							allow_fallbacks: false,
-							require_parameters: true
-						},
-						messages: [
-							{ role: 'system', content: SYSTEM },
-							{
-								role: 'user',
-								content: `Synthesize this book from the following dataset:\n${dataset}`
-							}
-						]
-					})
-				}
-			);
-			if (!response.ok)
-				throw new Error(`Synthesis provider returned HTTP ${response.status}`);
-			if (!response.body) throw new Error('Synthesis response is missing');
-			const reader = response.body.getReader();
-			const chunks: Uint8Array[] = [];
-			let bytes = 0;
-			try {
-				while (true) {
-					const chunk = await reader.read();
-					if (chunk.done) break;
-					bytes += chunk.value.byteLength;
-					if (bytes > 512000) throw new Error('Synthesis response exceeds limit');
-					chunks.push(chunk.value);
-				}
-			} finally {
-				await reader.cancel().catch(() => undefined);
-				reader.releaseLock();
-			}
-			const root = object(JSON.parse(Buffer.concat(chunks).toString('utf8')));
-			if (root.model !== model) throw new Error('Synthesis response model mismatch');
-			const choices = array(root.choices, 1);
-			if (choices.length !== 1) throw new Error('Synthesis requires one result');
-			const choice = object(choices[0]);
-			if (choice.finish_reason !== 'stop') throw new Error('Synthesis result is incomplete');
-			const content = text(object(choice.message).content, 100000);
-			const usage = object(root.usage);
-			if (
-				typeof usage.cost !== 'number' ||
-				!Number.isFinite(usage.cost) ||
-				usage.cost < 0 ||
-				!Number.isSafeInteger(Math.ceil(usage.cost * 1000000))
-			)
-				throw new Error('Synthesis cost is unknown');
-			return {
-				analysis: validateBookAnalysis(JSON.parse(content), input),
-				model,
-				providerRequestId: text(root.id, 256),
-				costMicrousd: BigInt(Math.ceil(usage.cost * 1000000)),
-				promptTokens: BigInt(integer(usage.prompt_tokens)),
-				completionTokens: BigInt(integer(usage.completion_tokens))
-			};
+			const { output, ...usage } = await provider.execute(input, model, signal);
+			return { ...usage, analysis: output };
 		}
 	};
 }

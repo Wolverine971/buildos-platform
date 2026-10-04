@@ -1,3 +1,4 @@
+import { createBookAgentExecution } from './bookAgentExecution';
 import { createLibriResearchReadiness } from './researchRuntime';
 // apps/worker/src/workers/libri/database.ts
 import { createLibriTaskDispatcher } from './taskDispatcher';
@@ -133,6 +134,7 @@ export type LibriDatabasePort = LibriLifecyclePort &
 		researchReadiness: ReturnType<typeof createLibriResearchReadiness>;
 		tasks: ReturnType<typeof createLibriTaskDispatcher>;
 		synthesis: ReturnType<typeof createBookSynthesisExecution>;
+		bookAgent: ReturnType<typeof createBookAgentExecution>;
 		uploads: ReturnType<typeof createLibriUploadProcessing>;
 		probe: () => Promise<void>;
 		close: () => Promise<void>;
@@ -186,6 +188,7 @@ class LibriDatabase implements LibriDatabasePort {
 	readonly researchReadiness: ReturnType<typeof createLibriResearchReadiness>;
 	readonly tasks: ReturnType<typeof createLibriTaskDispatcher>;
 	readonly synthesis: ReturnType<typeof createBookSynthesisExecution>;
+	readonly bookAgent: ReturnType<typeof createBookAgentExecution>;
 	readonly uploads: ReturnType<typeof createLibriUploadProcessing>;
 	private readonly lifecycle: LibriLifecyclePort;
 	private readonly costLedger: LibriCostLedgerPort;
@@ -197,6 +200,7 @@ class LibriDatabase implements LibriDatabasePort {
 	constructor(private readonly pool: LibriPgPool) {
 		this.researchReadiness = createLibriResearchReadiness(pool);
 		this.synthesis = createBookSynthesisExecution(pool);
+		this.bookAgent = createBookAgentExecution(pool);
 		this.uploads = createLibriUploadProcessing(pool);
 		this.lifecycle = createLibriLifecycle(pool);
 		this.tasks = createLibriTaskDispatcher(pool, this.lifecycle);

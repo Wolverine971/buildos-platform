@@ -400,3 +400,67 @@ a second provider call. It also verifies unsupported tasks remain queued with ze
 capability revocation and oversized reservations fail readiness, and existing paid/unpaid
 lease recovery fencing remains intact. Source/test typechecks and source ESLint pass;
 Libri migration scope validation passes. No live model call or hosted qualification is claimed.
+
+## Synthesis and queue release receipts (October 4)
+
+PR42 merged as `58053eead1a7c19173cba6bd7e0e1bbe1c7ed4aa` after CI
+`37173480238`. Migration `20261004030625` (SHA-256
+`e1b6092dff4a07ede407d6b7e503abbee61521df950a128357ccbfc085220500`)
+was applied and recorded individually. The provider attempt guard is enabled and invoker-only.
+
+PR43 qualified at `35e60d9eedb7e677dfadd29e7ea42d03478b74cf` in CI
+`37174497737`, including the PostgreSQL 15 safety gate. It merged as
+`fae2ea9643522f702cb4d13f820c4d560b1ad8b3`. The exact synthesis migration
+`20261004031434` (SHA-256
+`35ed1a305941eae33e246cc09d7005cf80fec4215f1cdd2eec560a47e71ee549`)
+was applied and recorded individually. Before/after shared-schema fingerprints were both
+`2ecb98e613300c76fc40f21fb59b4080` across 10,489 signatures. Security advisor findings
+were unchanged. Restricted worker capability granted; authenticated execution denied;
+zero executable tasks and zero enabled libraries; 408 image records and 408 private
+`libri-assets` objects remain. An initial object-count check named an incorrect bucket;
+the corrected `libri-assets` count is 408.
+
+Libri app PR7 qualified at `437de472bcf1cb8eb4a331b44749128b11258b8f`
+and merged as `b4a5d2912dfd1766ccd33dcddaaa2789bddeb3f2`. Production deployment
+`dpl_DiUPaCZHWTdspTtcGruzo13M226X` is READY and its build log identifies that merge.
+The default-off Supabase path can admit bounded queue selections and show pending run
+history. Local HTTP/browser qualification covered this; no hosted research was activated.
+
+## Book expert execution
+
+The next processor implements `generate_agent_profile` through the same fenced runtime.
+It shares a bounded OpenRouter transport and atomic task-completion helper with synthesis.
+A single model call returns a structured blueprint and the ordered, evidence-grounded
+expert prompt; a deterministic source briefing requires no second model call. The prompt
+requires explicit coverage, uncertainty, citations and runtime tool availability. Existing
+model routing, enabled tools and active status are preserved on regeneration.
+
+Worker capabilities select context through the exact active task lease. A private invoker
+helper keeps synthesis behavior unchanged and cannot be called by clients or the worker.
+Only shared notes enter either processor; legacy analyses without shared-note provenance
+are excluded from expert context. Full source revisions, including current safe analysis,
+produce the freshness fingerprint. Prompt and briefing versions remain historical.
+
+Existing manual prompts are preserved unless explicitly forced; their source briefing may
+refresh deterministically. Even force generation cannot replace a newer prompt revision
+saved during the model call. That paid result remains a non-current outdated candidate,
+with its cost settled. The SQL capability independently enforces manual-prompt protection.
+Changed source material marks generated content outdated. Unknown paid outcomes require
+reconciliation and cannot be retried as a second provider attempt.
+
+Validation uses deterministic, free providers: provider privacy/model/cost/output checks,
+ordered prompt sections, thin evidence, source quoting, lost authorization, durable reuse,
+manual refresh/force, concurrent manual edits, SQL overwrite protection, stale sources,
+atomic rollback, restricted-role admission through runtime, and original synthesis regressions.
+Fresh production-schema rehearsal has no new SECURITY/API/DATA findings; anon has the same
+one baseline read failure and authenticated has none; both standing checks pass.
+Hosted qualification, live pricing and activation remain pending. Other task processors,
+chat/tool execution, intake and final cutover remain incomplete.
+
+PR44 qualified at `6bdbfde48da18fe83af3468777ea496ccc98c2ba` in CI
+`37174554582` (full checks and PostgreSQL 15 safety) and merged as
+`001fdbea703f71fb69e5a7e07caa3d884dcf9c64`. No dedicated worker activation or
+hosted qualification was performed. Final expert-processor local validation passed
+60 worker checks, 4 privacy-fitness checks, source/test types and source ESLint;
+changed-file formatting and SQL inventory/scope passed. The final migration revision
+was rehearsed again after adding the SQL-level manual protection.
