@@ -11,6 +11,7 @@ type QueryPort = {
 type Batch = { batch_id: string; library_id: string; step_ids: string[] };
 const DISPATCHABLE = new Set(['pending', 'retry_wait', 'queued']);
 const ALREADY_CONSUMED = new Set([
+	'waiting',
 	'leased',
 	'completed',
 	'failed',
