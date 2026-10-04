@@ -3,7 +3,7 @@
 Complete column listing for all 269 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-09-30T18:30:47.557Z
+**Schema generated:** 2026-10-03T20:41:24.554Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -216,7 +216,7 @@ change_type `string` · changed_at `string?` · changed_by `string?` · doc_stru
 
 ### onto_projects
 
-archived_at `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · doc_structure `Json?` · end_at `string?` · external_agent_access `string` · facet_context `string?` · facet_scale `string?` · facet_stage `string?` · icon_concept `string?` · icon_generated_at `string?` · icon_generation_prompt `string?` · icon_generation_source `string?` · icon_svg `string?` · id `string` · is_public `boolean?` · merged_into_project_id `string?` · name `string` · next_step_long `string?` · next_step_short `string?` · next_step_source `string?` · next_step_updated_at `string?` · org_id `string?` · parent_project_id `string?` · props `Json` · search_vector `unknown` · shared_folder_document_id `string?` · start_at `string?` · state_key `string` · type_key `string` · updated_at `string`
+archived_at `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · doc_structure `Json?` · end_at `string?` · external_agent_access `string` · facet_context `string?` · facet_scale `string?` · facet_stage `string?` · icon_concept `string?` · icon_emoji `Json?` · icon_generated_at `string?` · icon_generation_prompt `string?` · icon_generation_source `string?` · icon_svg `string?` · id `string` · is_public `boolean?` · merged_into_project_id `string?` · name `string` · next_step_long `string?` · next_step_short `string?` · next_step_source `string?` · next_step_updated_at `string?` · org_id `string?` · parent_project_id `string?` · props `Json` · search_vector `unknown` · shared_folder_document_id `string?` · start_at `string?` · state_key `string` · type_key `string` · updated_at `string`
 
 ### onto_public_page_review_attempts
 
@@ -372,7 +372,7 @@ client_id `string` · created_at `string` · expires_at `string` · external_age
 
 ### agent_oauth_authorization_codes
 
-client_id `string` · code_challenge `string` · code_challenge_method `string` · code_hash `string` · created_at `string` · expires_at `string` · external_agent_caller_id `string` · grant_id `string` · id `string` · redirect_uri `string` · resource `string` · scope `string` · updated_at `string` · used_at `string?` · user_id `string`
+policy_snapshot `Json?` · client_id `string` · code_challenge `string` · code_challenge_method `string` · code_hash `string` · created_at `string` · expires_at `string` · external_agent_caller_id `string` · grant_id `string` · id `string` · redirect_uri `string` · resource `string` · scope `string` · updated_at `string` · used_at `string?` · user_id `string`
 
 ### agent_oauth_clients
 

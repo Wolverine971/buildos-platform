@@ -990,6 +990,7 @@
 					searching={isSearching}
 					onPatch={applyProjectPatches}
 					onOpenFull={handleProjectClick}
+					onDataChanged={() => void invalidate('ontology:projects')}
 				/>
 			{/if}
 

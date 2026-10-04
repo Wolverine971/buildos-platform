@@ -32,6 +32,10 @@ declare global {
 			desktopCard?: string;
 			/** How many card entries the desktop pushed, so Collapse can return past all of them. */
 			desktopDepth?: number;
+			/** The doc, task or goal open in the card's reader (Back closes it first). */
+			desktopPeek?: { kind: 'document' | 'task' | 'goal'; id: string };
+			/** The reader pushed its own entry, so closing it goes Back instead of replacing. */
+			desktopPeekPushed?: boolean;
 		}
 		interface PageData {
 			user: User | null;
