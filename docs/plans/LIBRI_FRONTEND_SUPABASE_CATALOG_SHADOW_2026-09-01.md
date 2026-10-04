@@ -187,3 +187,42 @@ the same pre-existing anon failure and no authenticated read failures. All three
 intentional session-definer findings (activity, edits, tasks) are reviewed here.
 Hosted PostgreSQL 15 CI, production application and full original-queue qualification
 are pending. No historical work, live provider call or hosted task was created.
+
+## Bounded current-task admission and durable dispatch (October 4)
+
+Migration `20261004022726_libri_research_task_dispatch.sql` adds per-library controls,
+immutable batch manifests, and owner-authorized admission to the existing fenced worker
+lifecycle. Controls default disabled with no supported task types. Admission serializes
+owners against a conservative UTC daily reservation cap, pins actor/request identity, and
+creates bounded runs plus pending root steps atomically with task status and activity.
+A replay only returns the same actor/payload receipt. Unsupported/manual tasks and
+unconfirmed tasks are excluded. No archived work is imported or made runnable.
+
+The session-callable `admit_research_task_batch` SECURITY DEFINER finding is intentional
+and reviewed: it checks `auth.uid()` and locks current owner membership, then the library
+and controls before task selection. Search paths and grants are explicit; users cannot
+write controls, manifests, runs or steps directly. The other new definer functions are
+worker-only or trigger-only. Member reads use forced RLS. The acknowledgement's sole
+shared-table access is a reviewed read of `public.queue_jobs`; only a Libri receipt is
+written. It requires matching family, IDs, actor, dedup key, payload/correlation metadata,
+state and processing token. Nullable mismatches fail closed. A never-enqueued step
+retired by bounded authority reconciliation is recorded as a failed task, not success.
+
+The worker dispatcher validates manifests, uses the existing atomic queue lifecycle,
+and reconciles lost replies from stored state and independent queue evidence. Enqueue
+and claim recheck current owner membership, supported type, dispatch switch and deadline.
+All claimers lock the run before counting leased steps in a fresh statement snapshot;
+a full run defers its queue item without spending an attempt. Expired/revoked queued
+steps fail without a lease/provider attempt. Bounded reconciliation clears task ownership
+when a pending admission expires before enqueue. Completed root steps publish task
+outcomes only while the task still belongs to that run.
+
+This is infrastructure only: it is exposed on the database port but no runtime profile
+polls it yet, and no production controls are enabled. Before activation, implement the
+actual task processors, recheck execution authority at paid-call authorization, handle
+child-step completion and cancellation, wire original app actions/history, and qualify
+the sustained worker. No hosted task or provider call is part of these local checks.
+The combined production-schema rehearsal passes both standing checks and preserves
+role-probe results (one existing anon failure; zero authenticated failures). Four
+intentional client-definer findings, including the three preceding migrations, are
+reviewed here; worker-only execute notes are expected.

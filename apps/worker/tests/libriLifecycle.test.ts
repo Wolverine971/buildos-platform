@@ -13,6 +13,7 @@ const LEASE_TOKEN = '70000000-0000-4000-8000-000000000001';
 describe('Libri transactional lifecycle', () => {
 	it('atomically enqueues an existing step with an enum-typed Libri job', async () => {
 		const harness = fakeTransaction((sql) => {
+			if (sql.includes('AS leased_steps')) return result([{ leased_steps: 0 }]);
 			if (sql.includes('FROM libri.research_steps step')) {
 				return result([
 					{
@@ -83,6 +84,7 @@ describe('Libri transactional lifecycle', () => {
 					}
 				]);
 			}
+			if (sql.includes('AS leased_steps')) return result([{ leased_steps: 0 }]);
 			if (sql.includes('FROM libri.research_steps step')) {
 				return result([
 					{
@@ -96,7 +98,8 @@ describe('Libri transactional lifecycle', () => {
 						max_attempts: 3,
 						payload: { canary: true },
 						run_status: 'queued',
-						cancel_requested_at: null
+						cancel_requested_at: null,
+						max_concurrent_steps: 2
 					}
 				]);
 			}
@@ -202,7 +205,7 @@ describe('Libri transactional lifecycle', () => {
 				return result([{ run_id: RUN_ID }]);
 			}
 			if (sql.includes('FROM libri.research_runs') && sql.includes('FOR UPDATE')) {
-				return result([{ cancel_requested_at: null }]);
+				return result([{ cancel_requested_at: null, max_concurrent_steps: 2 }]);
 			}
 			if (sql.includes('UPDATE public.queue_jobs')) return result([{ id: QUEUE_ROW_ID }]);
 			if (sql.includes('UPDATE libri.research_steps')) return result([{ id: STEP_ID }]);
@@ -232,6 +235,7 @@ describe('Libri transactional lifecycle', () => {
 
 	it('rolls back the whole lifecycle transaction on any write failure', async () => {
 		const harness = fakeTransaction((sql) => {
+			if (sql.includes('AS leased_steps')) return result([{ leased_steps: 0 }]);
 			if (sql.includes('FROM libri.research_steps step')) {
 				return result([
 					{
