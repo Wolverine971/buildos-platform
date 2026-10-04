@@ -665,3 +665,26 @@ unchanged client role probes (one existing anonymous failure, zero authenticated
 This migration adds no SECURITY/API/DATA finding; the preceding chapter admission retains
 its reviewed owner-only finding. SQL scope checks pass for all 48 marked migrations.
 Hosted archive import waits for release. No provider or paid qualification test ran.
+
+
+### Manual cover and TOC edits
+
+`edit_application_image` ports the original owner-selected cover and manual TOC actions.
+It verifies current owner membership before reading subjects, locks the book before images
+and chapters, and requires exact book/image versions. Processing images are refused.
+Cover selection demotes other covers while preserving object bytes and OCR provenance.
+Manual TOC application adds missing exact number/title identities in input order without
+replacing existing chapters, notes or research. Prior OCR chunks are archived with timestamps,
+not deleted; the original manual text, structured lines, actor and time remain on the image.
+The OCR version advances to fence stale results. TOC readiness, image/book metadata, stale
+derived-context markers and activity commit together. Neither action creates jobs or calls
+providers.
+
+Disposable SQL checks cover owner/editor/revoked/foreign access, stale book/image refusal,
+transaction rollback, cover uniqueness, additive TOC deduplication, ordering, preserved
+research and OCR evidence, null initial TOC, derived status and zero task creation. The null
+TOC regression was found by the first run and fixed before qualification. Final assertions
+and production-schema rehearsal pass; role probes remain unchanged and both standing
+checks pass. The only new SECURITY finding is the intentionally authenticated owner RPC,
+which checks auth.uid() itself and grants no execution to anon, worker or service_role.
+SQL scope checks pass. Production release and app integration are pending.
