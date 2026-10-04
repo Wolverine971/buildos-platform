@@ -87,3 +87,604 @@ finding.
 
 Do not create the reader password or deploy the endpoint until both repository commits and the CI
 gate are green. Do not retire Convex during the shadow period.
+
+## Original-app activity and current completeness (October 4)
+
+The standalone Libri app now has a local-qualified replacement for owner activity
+reads, search/book/chapter/domain activity logging, and live completeness. The original
+screens and layouts stay in the Libri repository. Application activation remains off.
+
+`20261004012951_libri_application_activity.sql` adds an append-only activity table with
+forced RLS and owner-only reads. The session RPC pins `auth.uid()`, checks and locks
+owner membership before any subject lookup, accepts only four explicit event types,
+checks library/book/chapter scope, bounds text, and serializes duplicate calls. Clients
+cannot directly append/update/delete events or supply an actor. The note trigger writes
+one content-free creation event in the note transaction; a rollback removes both.
+Imports without a user identity produce no new activity. Library and auth-user cascades
+cover deletion without changing shared purge routines. Archived Convex events stay archived.
+
+Security review of the rehearsal finding: `log_application_activity` is intentionally
+callable by `authenticated`, because it is the original application's session write API.
+The definer is necessary to keep raw event insertion unavailable to clients and to lock
+membership for concurrent dedupe/revocation. It fixes its search path, rejects missing
+identity and non-owner/foreign membership, validates subjects in that library, exposes
+no arbitrary SQL or event type, and has no public/anonymous/worker/reader grant. The
+note trigger has no client EXECUTE grant. PostgreSQL tests cover the negative boundaries,
+revocation, note rollback/privacy, simultaneous dedupe, and actor/library deletion.
+
+`20261004013540_libri_live_completeness_reads.sql` is a STABLE SECURITY INVOKER read with
+caller RLS and 1–100 unique book IDs per call. It calculates the existing factor weights,
+rounding, tiers and gaps from current canonical chapters, artifacts, sources, edges,
+authors and visible notes. Archived OCR and rejected/superseded artifacts are excluded;
+scans, uploaded files and transcript sources are not external-source points. Latest note
+edits/count changes mark saved analysis stale. No old score is overwritten, and no
+research queue or provider is invoked. The frontend requires a complete, validated score
+response for each requested book, in bounded sequential batches. Catalog sorting and
+book detail both use these current scores. Research-gap task lifecycle still needs its
+own replacement; this read does not claim to migrate it.
+
+Local PostgreSQL 16 contracts and the combined production-schema rehearsal pass. The
+rehearsal has 36 intended Libri changes, no new client read failures, and both standing
+shared-schema checks pass. Its one intentional session-definer finding is reviewed above.
+The actual hosted PostgreSQL 15 CI gate and production application are still pending.
+No hosted writes, provider calls, activation, or historical replay occurred here.
+
+## Original book, chapter and prompt edits (October 4)
+
+Migration `20261004015552_libri_manual_book_edits.sql` adds one session RPC for the
+existing forms. The authenticated SECURITY DEFINER finding is intentional and reviewed:
+atomic domain replacement, activity and versioned artifacts require a transaction, while
+clients retain no raw artifact/activity write grants. The function fixes its search path,
+checks `auth.uid()`, locks current owner membership before lookup, scopes every subject,
+rejects unknown/bounded fields, and compares the exact saved timestamp under a row lock.
+Anonymous, service, worker and reader execution are revoked. Existing shared permissions
+and private-note policies are unchanged.
+
+Book edits keep established URLs stable, normalize title/ISBN matching, and replace scoped
+domain links atomically. Chapter edits retain order and research/evidence. Both add one
+content-free activity event and mark saved book analysis/knowledge documents outdated
+without deleting them. Prompt edits require both profile and current-artifact versions,
+retain the prior artifact, increment versions, and hash the manually saved content.
+No provider or queue calls occur. Automatic knowledge rebuilding and research-gap task
+lifecycle still require the replacement worker before activation.
+
+Local qualification: the disposable PostgreSQL contract covers actor/scope denial,
+invalid fields, stale edits, rollback, normalized domains/ISBN/accented titles, retained
+research and prompt provenance. Three real concurrent/rollback tests prove one winner
+for edits by different owners and for simultaneous first-prompt creation. Rehearsal
+against the fresh production schema passes both standing checks and adds no role-read
+failures; the two intentional client-definer findings (activity and editing) are reviewed.
+Exact-head PostgreSQL 15 CI, production application and hosted qualification remain pending.
+Libri's original forms use `PRIVATE_LIBRI_CATALOG_EDITS_ENABLED`, still off by default.
+
+## Research task management (October 4)
+
+Migration `20261004021418_libri_research_task_management.sql` introduces current task
+planning and manual status management. It does not import or activate the historical
+Convex backlog. Tasks retain bounded type/priority/status, scoped parent references,
+actor, immutable creation identity, exact edit versions, and an optional active run.
+The original queue controls use a default-off `PRIVATE_LIBRI_TASK_WRITES_ENABLED` flag.
+Research dispatch, gap generation, dashboard/run history and legacy archive reads remain
+separate unfinished paths; the adapter never advertises unfinished dispatch as available.
+
+The rehearsal's `manage_research_tasks` authenticated SECURITY DEFINER finding is
+intentional and reviewed: task/activity writes must commit together without raw client
+write privileges. The fixed-search-path function checks and locks current owner membership
+before lookup, pins actor/source, validates scoped parents, and serializes bounded task
+mutations across owners. An idempotency key only replays the same creator/payload; changed
+requests conflict. Exact versions and deterministic locks make bulk edits atomic. A task
+linked to any worker run refuses manual changes. Future dispatch must use the same library
+then task lock order and clear the active link only when its run terminates. Read pagination
+is an invoker RPC under member RLS; internal creation payloads never leave the function.
+There are no queue/provider writes, new worker grants, or shared-schema changes.
+
+The local SQL contract covers owner/editor/revoked/cross-library denial, idempotency,
+bulk rollback, exact counts/filtering/priority/pagination, preserved actor and activity.
+Four real concurrent/rollback tests pass, including competing owners and active-run
+protection. The combined production-schema rehearsal passes both standing checks, with
+the same pre-existing anon failure and no authenticated read failures. All three
+intentional session-definer findings (activity, edits, tasks) are reviewed here.
+Hosted PostgreSQL 15 CI, production application and full original-queue qualification
+are pending. No historical work, live provider call or hosted task was created.
+
+## Bounded current-task admission and durable dispatch (October 4)
+
+Migration `20261004022726_libri_research_task_dispatch.sql` adds per-library controls,
+immutable batch manifests, and owner-authorized admission to the existing fenced worker
+lifecycle. Controls default disabled with no supported task types. Admission serializes
+owners against a conservative UTC daily reservation cap, pins actor/request identity, and
+creates bounded runs plus pending root steps atomically with task status and activity.
+A replay only returns the same actor/payload receipt. Unsupported/manual tasks and
+unconfirmed tasks are excluded. No archived work is imported or made runnable.
+
+The session-callable `admit_research_task_batch` SECURITY DEFINER finding is intentional
+and reviewed: it checks `auth.uid()` and locks current owner membership, then the library
+and controls before task selection. Search paths and grants are explicit; users cannot
+write controls, manifests, runs or steps directly. The other new definer functions are
+worker-only or trigger-only. Member reads use forced RLS. The acknowledgement's sole
+shared-table access is a reviewed read of `public.queue_jobs`; only a Libri receipt is
+written. It requires matching family, IDs, actor, dedup key, payload/correlation metadata,
+state and processing token. Nullable mismatches fail closed. A never-enqueued step
+retired by bounded authority reconciliation is recorded as a failed task, not success.
+
+The worker dispatcher validates manifests, uses the existing atomic queue lifecycle,
+and reconciles lost replies from stored state and independent queue evidence. Enqueue
+and claim recheck current owner membership, supported type, dispatch switch and deadline.
+All claimers lock the run before counting leased steps in a fresh statement snapshot;
+a full run defers its queue item without spending an attempt. Expired/revoked queued
+steps fail without a lease/provider attempt. Bounded reconciliation clears task ownership
+when a pending admission expires before enqueue. Completed root steps publish task
+outcomes only while the task still belongs to that run.
+
+This is infrastructure only: it is exposed on the database port but no runtime profile
+polls it yet, and no production controls are enabled. Before activation, implement the
+actual task processors, recheck execution authority at paid-call authorization, handle
+child-step completion and cancellation, wire original app actions/history, and qualify
+the sustained worker. No hosted task or provider call is part of these local checks.
+The combined production-schema rehearsal passes both standing checks and preserves
+role-probe results (one existing anon failure; zero authenticated failures). Four
+intentional client-definer findings, including the three preceding migrations, are
+reviewed here; worker-only execute notes are expected.
+
+## Queue dashboard and historical run reads (October 4)
+
+Migration `20261004024537_libri_research_queue_reads.sql` provides member-scoped invoker
+RPCs for exact queue counts, bounded current task samples, and current/archive run history.
+Dashboard counts are not truncated by a task-page limit. Failure samples retain the exact
+microsecond edit version; execution start time comes from the real root step. Run list
+summaries use stored/derived aggregate counts and load detailed outcomes only for one
+selected run. Each history branch is limited before combining the newest results.
+
+`research_queue_history` stores immutable import receipts separately from executable
+runs and tasks. Members can read; authenticated clients and the worker cannot mutate it,
+and the worker has no read grant. The archive has forced RLS and a current membership
+policy. It retains original counters, bounded outcomes, timestamps and dispatch filters,
+with source-record and archive hashes. No history row creates or links to executable work.
+Legacy running records display as archived, and the app labels historical sources clearly.
+The preserved August 29 export contains 2,606 queue runs; the app-side transform verifies
+its recorded SHA-256 before extraction. Import is idempotent, refuses conflicting stored
+records, and verifies every row after insertion. The archive ZIP remains unchanged.
+
+These reads add no security-definer function or shared-schema mutation. The current
+scheduler and task processors are still unqualified and disabled; UI reads must not
+advertise an enabled scheduler. Final-delta history refresh and hosted qualification
+remain part of the cutover gate.
+
+## Paid-attempt recovery and execution authority (October 4)
+
+Migration `20261004030625_libri_provider_attempt_fencing.sql` refuses a new cost
+reservation after any earlier generation of that step reached `started` or `settled`.
+Changing the reservation key or model does not bypass the check. A table trigger applies
+the same rule to direct inserts and authorization updates, and checks current task-batch
+owner membership, enabled dispatch/type, cancellation and deadline before paid authority.
+The functions remain SECURITY INVOKER with fixed search paths and worker-only execution;
+no new client privilege, SECURITY DEFINER function, or shared-schema change is introduced.
+
+Expired-lease recovery now checks durable cost state under the step/run locks. It releases
+only reservations that never started, then retries within the existing attempt limit.
+A started or settled provider attempt is dead-lettered as
+`provider_reconciliation_required`; known cost and unresolved holds remain intact. This
+also covers a crash after result settlement but before normal step completion. No provider
+is called by these tests. The executable SQL contract proves cross-generation and raw-write
+replay denial plus owner/control/type revocation at authorization. Restricted-role PostgreSQL
+recovery tests cover unpaid, unknown, and settled outcomes.
+
+The production-schema rehearsal preserves both standing checks and role-probe results.
+The four client-definer findings belong to the reviewed prerequisite migrations; the
+attempt-fencing migration introduces none. Actual research processors and sustained
+worker qualification remain required before activation.
+
+## Production release receipt: activity through dispatch (October 4)
+
+PR37–40 passed full repository CI and the PostgreSQL 15 Libri safety job at their exact
+heads. Each prospective merge tree matched the qualified tree before merging. Releases:
+
+| PR  | Qualified head                             | Merge                                      | CI run        |
+| --- | ------------------------------------------ | ------------------------------------------ | ------------- |
+| 37  | `c2d3e81e0dc15d1418b72a35c2e7aa3d2c9a84c0` | `1081e632352cbf11e96fdbd74817d80a5f176b3b` | `37171449439` |
+| 38  | `ad246227c6512e1bb9ef93eb5c62fb8124180c16` | `f5d5cc825f4fd4ba7ded44b686bd8eb0d8d5f5a0` | `37171452494` |
+| 39  | `fc9af8b3b65d2405b96fb3ea5611535ed24c2dcd` | `3850582cdeda112b0c8370ec8034331afe014219` | `37171457683` |
+| 40  | `a4383c9fa85391dc0c27547fec2e2cd1cbbfdea4` | `30163b084bdf1d95085365ed869de2828f85f4ca` | `37171979732` |
+
+Applied one exact file at a time and repaired history separately: versions
+`20261004012951`, `20261004013540`, `20261004015552`, `20261004021418`, and
+`20261004022726`. The fresh pre-release and post-release non-Libri fingerprint both equal
+`2ecb98e613300c76fc40f21fb59b4080` over 10,489 signatures. All 40 Libri tables have
+forced RLS; worker and reader remain non-super/non-bypass with connection limits of three.
+All 408 private image rows and objects remain. Activity, tasks, batches, and enabled
+libraries are zero: this release did not import historical executable tasks or activate work.
+
+Security advisors show exactly the four reviewed new authenticated-only definer APIs
+(`log_application_activity`, `edit_application_record`, `manage_research_tasks`, and
+`admit_research_task_batch`). All other finding identities/counts are unchanged. These
+are expected bounded RPC entry points with explicit `auth.uid()`/current membership
+checks, not unreviewed privilege additions. No hosted user-data or paid provider test ran.
+
+## Bounded book synthesis processor (October 4)
+
+Migration `20261004031434_libri_book_synthesis_execution.sql` provides two worker-only
+capabilities for an active fenced `synthesize_book` root step. The read derives the book
+from the admitted step; it checks lease generation/token, task kind/type, current owner,
+controls and deadline before returning bounded context. The completion repeats that
+check and pins the reservation, queue/processing identity, book and model. Both functions
+are intentionally SECURITY DEFINER to avoid granting the worker raw catalog, private-note
+or artifact mutation access. They use fixed search paths, no client/service-role grants,
+and no shared-schema access. The rehearsal's server-only notes are intentional; do not
+add authenticated grants.
+
+The prompt retains the existing analysis fields: overview, key ideas, chapter references,
+people, terms, chapter insights, takeaways, questions, blind spots and measured coverage.
+Reference IDs must exist in the input and linked idea IDs must exist in the output. Thin
+evidence stays `insufficient_evidence`. Only shared notes enter this library-visible
+artifact; private note bodies are never sent. Version-2 input snapshots record that scope,
+and the app compares the same shared-note population while preserving legacy snapshot
+semantics. Current summaries can be reused for 24 hours only when the source fingerprint
+matches. Explicit force tasks create a new version.
+
+The input includes a full revision fingerprint in addition to bounded samples. A changed
+source at completion saves an `outdated` artifact. Versions are serialized on the book;
+previous artifacts remain in history and dependent agent knowledge documents are marked
+outdated. Rebuilding those documents remains a separate processor requirement.
+
+The worker transaction holds queue/step/run ownership, persists the analysis and cost
+settlement, completes the queue/root step, and updates the run/task outcome together.
+Invalid settlement rolls everything back. Lost authorization, provider, or completion
+replies require reconciliation; there is no automatic provider retry or model fallback.
+The OpenRouter request uses the established private/ZDR policy, one allowlisted model,
+4,500 output tokens, a 200 KB context bound and a 512 KB response bound. Usage cost and
+request ID must be present; response models and structured references are checked.
+
+API contracts were checked against OpenRouter's official [chat API](https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion),
+[usage accounting](https://openrouter.ai/docs/cookbook/administration/usage-accounting), and
+[structured output](https://openrouter.ai/docs/guides/features/structured-outputs) documentation.
+No pricing estimate or live model qualification is claimed. Before activating a sustained
+profile, qualify its acting model and conservative reservation against provider pricing
+and the configured run/day budgets under the repository's per-run paid-test approval rule.
+
+Validation: 66 focused tests pass across synthesis, restricted-role PostgreSQL completion,
+and database-port suites. The SQL capability contract denies raw/client access. Source and
+test typechecks pass; source ESLint passes. Production-schema rehearsal preserves both
+standing checks and role probes, with no new client-definer finding. This implementation
+is exposed on the database port but no operating profile or admission switch is enabled.
+
+## Queue history release and import receipt (October 4)
+
+PR41 qualified at `c60b2998ee08bc5d892b8600d561a4e9eb38f6ff` in CI `37172510184`
+and merged as `52b7ea97f7103c18e25712b4c5dc4880aae52c7f`. Migration
+`20261004024537` was applied individually and recorded; its SHA-256 is
+`1b42c62668575d3787735b6e316cc2ad7bb0fcef4a31670fa3c84b7df1a6511f`.
+All 41 Libri tables have forced RLS. The shared-schema fingerprint remains
+`2ecb98e613300c76fc40f21fb59b4080`; security findings are unchanged from the
+reviewed activity-through-dispatch release above.
+
+Imported and verified 2,606 archive-only queue receipts from the August 29 snapshot.
+The source ZIP SHA-256 is `394b791860b04978af9bd58a22bdc19b0fa8d0aca80ba22a5cc3bc9dc2783bbc`;
+the transformed bundle SHA-256 is `d60380eaaca7d35c3c889fe963f29612cf1a4bd0fc9e134f808b182896608a49`.
+Dry-run planned 2,606 inserts; postflight verified all 2,606 with zero remaining inserts.
+An authenticated member saw all 2,606 receipts through a bounded 50-row list and a real
+120-outcome detail record. The worker cannot read the archive and members cannot insert.
+No executable run/step was created by this import; current tasks/batches/enabled libraries
+remain zero. All 408 image rows and private objects remain. This is historical preservation,
+not the final Convex delta import.
+
+Libri app PR6 (shared-note synthesis freshness) qualified at
+`4aac1adbae8c303a1ab33e84155ac08fc6c61754` and merged as
+`0006f15db92102c9b2893bec90e09e2f54d0fce5`. Production deployment
+`dpl_9czzj3WQPvs8kEgQSqhcyNeDSkRJ` is READY and its build logs identify that merge.
+The live backend remains Convex.
+
+## Sustained research runtime (October 4)
+
+The dedicated entrypoint now supports explicit `research` activation with one configured
+model, a required conservative integer microusd reservation, and concurrency 1–2. It
+rejects canary/admission overrides and retains disabled defaults. No environment or database
+control is enabled by this change. Only `synthesize_book` is registered.
+
+Startup validates the restricted worker's synthesis capabilities and every enabled library's
+processor set and per-task reservation capacity before touching queues. The same readiness
+check runs before claims and each maintenance cycle. The SQL claim filter selects implemented
+`task_execute` payload types before taking ownership, leaving unsupported tasks untouched.
+Database authority is still rechecked at claim, paid authorization and persistence.
+
+A serialized loop recovers at most 10 stale research leases and drains at most five admitted
+batches per cycle (default five seconds). The existing consumer owns bounded claims, heartbeats,
+provider timeouts and atomic processor completion. Recovery is limited to `libri_research`;
+other queue families are untouched. Maintenance failures degrade readiness without exposing
+raw database errors, and later successful cycles restore it. Shutdown aborts dispatch, begins
+provider/claim draining immediately, and waits for all owned database work before pool closure.
+
+Validation: 90 focused unit tests and 17 disposable PostgreSQL integration tests pass.
+The integration uses the actual restricted role to run admission → outbox → consumer →
+simulated provider → saved artifact/task/cost, then restarts and reuses the analysis without
+a second provider call. It also verifies unsupported tasks remain queued with zero attempts,
+capability revocation and oversized reservations fail readiness, and existing paid/unpaid
+lease recovery fencing remains intact. Source/test typechecks and source ESLint pass;
+Libri migration scope validation passes. No live model call or hosted qualification is claimed.
+
+## Synthesis and queue release receipts (October 4)
+
+PR42 merged as `58053eead1a7c19173cba6bd7e0e1bbe1c7ed4aa` after CI
+`37173480238`. Migration `20261004030625` (SHA-256
+`e1b6092dff4a07ede407d6b7e503abbee61521df950a128357ccbfc085220500`)
+was applied and recorded individually. The provider attempt guard is enabled and invoker-only.
+
+PR43 qualified at `35e60d9eedb7e677dfadd29e7ea42d03478b74cf` in CI
+`37174497737`, including the PostgreSQL 15 safety gate. It merged as
+`fae2ea9643522f702cb4d13f820c4d560b1ad8b3`. The exact synthesis migration
+`20261004031434` (SHA-256
+`35ed1a305941eae33e246cc09d7005cf80fec4215f1cdd2eec560a47e71ee549`)
+was applied and recorded individually. Before/after shared-schema fingerprints were both
+`2ecb98e613300c76fc40f21fb59b4080` across 10,489 signatures. Security advisor findings
+were unchanged. Restricted worker capability granted; authenticated execution denied;
+zero executable tasks and zero enabled libraries; 408 image records and 408 private
+`libri-assets` objects remain. An initial object-count check named an incorrect bucket;
+the corrected `libri-assets` count is 408.
+
+Libri app PR7 qualified at `437de472bcf1cb8eb4a331b44749128b11258b8f`
+and merged as `b4a5d2912dfd1766ccd33dcddaaa2789bddeb3f2`. Production deployment
+`dpl_DiUPaCZHWTdspTtcGruzo13M226X` is READY and its build log identifies that merge.
+The default-off Supabase path can admit bounded queue selections and show pending run
+history. Local HTTP/browser qualification covered this; no hosted research was activated.
+
+## Book expert execution
+
+The next processor implements `generate_agent_profile` through the same fenced runtime.
+It shares a bounded OpenRouter transport and atomic task-completion helper with synthesis.
+A single model call returns a structured blueprint and the ordered, evidence-grounded
+expert prompt; a deterministic source briefing requires no second model call. The prompt
+requires explicit coverage, uncertainty, citations and runtime tool availability. Existing
+model routing, enabled tools and active status are preserved on regeneration.
+
+Worker capabilities select context through the exact active task lease. A private invoker
+helper keeps synthesis behavior unchanged and cannot be called by clients or the worker.
+Only shared notes enter either processor; legacy analyses without shared-note provenance
+are excluded from expert context. Full source revisions, including current safe analysis,
+produce the freshness fingerprint. Prompt and briefing versions remain historical.
+
+Existing manual prompts are preserved unless explicitly forced; their source briefing may
+refresh deterministically. Even force generation cannot replace a newer prompt revision
+saved during the model call. That paid result remains a non-current outdated candidate,
+with its cost settled. The SQL capability independently enforces manual-prompt protection.
+Changed source material marks generated content outdated. Unknown paid outcomes require
+reconciliation and cannot be retried as a second provider attempt.
+
+Validation uses deterministic, free providers: provider privacy/model/cost/output checks,
+ordered prompt sections, thin evidence, source quoting, lost authorization, durable reuse,
+manual refresh/force, concurrent manual edits, SQL overwrite protection, stale sources,
+atomic rollback, restricted-role admission through runtime, and original synthesis regressions.
+Fresh production-schema rehearsal has no new SECURITY/API/DATA findings; anon has the same
+one baseline read failure and authenticated has none; both standing checks pass.
+Hosted qualification, live pricing and activation remain pending. Other task processors,
+chat/tool execution, intake and final cutover remain incomplete.
+
+PR44 qualified at `6bdbfde48da18fe83af3468777ea496ccc98c2ba` in CI
+`37174554582` (full checks and PostgreSQL 15 safety) and merged as
+`001fdbea703f71fb69e5a7e07caa3d884dcf9c64`. No dedicated worker activation or
+hosted qualification was performed. Final expert-processor local validation passed
+60 worker checks, 4 privacy-fitness checks, source/test types and source ESLint;
+changed-file formatting and SQL inventory/scope passed. The final migration revision
+was rehearsed again after adding the SQL-level manual protection.
+
+## Book-page research actions
+
+The original Synthesize and Generate Agent Profile buttons now have an atomic admission
+capability for Supabase. The owner selects `missing`, `gaps` or `force`; mode is retained
+in the durable task and step. Default-off controls and supported processor checks run
+before creating work. Task creation and bounded budget admission share one transaction,
+so an exhausted budget leaves no stranded task. Concurrent clicks deduplicate an active
+book/type/mode task. Each request key stores a scoped receipt, including deduplicated
+clicks, so retrying after completion never starts another paid run. A new force request
+remains separate from a pending gaps request.
+
+Six free restricted-role PostgreSQL tests cover mode, concurrent dedupe, historical
+receipt replay, conflicting requests, budget rollback, paused controls, unsupported
+processors, book scope and owner revocation. The matching SQL contract denies raw
+receipt insertion, anonymous calls and worker impersonation. Rehearsal against current
+production plus the pending expert migration passes role probes and both standing
+checks. Its one SECURITY finding is the intentional authenticated entry point:
+`enqueue_book_research` explicitly checks `auth.uid()` and locks the caller's current
+owner membership before any data access. PUBLIC/anon/service/worker execution is revoked.
+No new API or data findings. The receipt table forces RLS with owner-only reads.
+
+App integration and hosted qualification are still in progress; no research activation.
+
+## Durable chapter workflow prerequisites (October 4)
+
+The next worker slice separates each chapter's paid search and extraction into distinct
+steps under a nonterminal `waiting` parent. The parent remains in progress in the existing
+queue DTO until every child reaches a terminal outcome. Failed prerequisites skip their
+unstarted dependents; any failure or insufficient/outdated result prevents successful
+parent completion. Parent completion, counters and task outcomes commit together, and
+maintenance can repeat after restarts without double counting.
+
+A restricted planner creates only ordered search/extraction pairs for chapters of the
+root task's own book. It checks the exact lease, current execution authority, admitted
+run/task/depth limits, duplicate stages and backward-only same-chapter prerequisites.
+The worker receives no raw step/dependency insertion or canonical catalog writes. The
+new dependency table forces RLS and is readable only by the restricted worker. A database
+trigger also refuses enqueue/claim transitions before prerequisites finish. Per-task
+capacity can now be configured up to 1,000 steps; its existing default and stored values
+remain unchanged. The planner refuses oversized work without creating partial stages.
+
+The durable dispatcher reconciles lost enqueue replies through actual transport state.
+Batch acknowledgement accepts the original planner job after its parent starts waiting.
+Cancellation still closes the waiting parent and children through the existing lifecycle.
+Paid-search recovery preserves the existing generation fence: an unstarted reservation
+can retry; an authorized request with an unknown outcome cannot automatically call again.
+
+Validation: 11 real PostgreSQL workflow tests plus 5 existing dispatcher tests pass;
+source/test typechecks, source ESLint, formatting and SQL scope/inventory pass. Production
+schema rehearsal passed with no new security/API/data findings from this migration,
+unchanged role probes and both standing invariants. The prerequisite book-admission
+migration retains its previously reviewed authenticated RPC finding. This workflow module
+is not yet registered as an actual chapter provider; provider implementations and runtime
+integration follow. No hosted test or model/search request ran.
+
+Libri app PR8 is merged as `9b3193d9d7a5e56d94bfef4294c772731d85df26`.
+Production `dpl_5qukQJKb2LMmXXZCqhRue3YxtjFS` is Ready, with that exact source identified
+in build logs. Original synthesis/agent buttons passed local browser checks, including
+force confirmation and queued receipts. The app/backend activation switches remain off.
+
+## Chapter search and extraction execution (October 4)
+
+`find_book_info` now plans one saved Tavily advanced-search stage and one OpenRouter
+extraction stage for each incomplete chapter. Missing/gaps modes preserve existing
+chapter fields; force requests regenerate requested fields. The original `chapter_details`
+book-page action uses the owner-scoped atomic admission and historical request receipt.
+Planning reads the complete bounded table of contents under book/chapter locks, validates
+optional chapter scope and admitted capacity, then creates all prerequisites atomically.
+
+Search receives only catalog identity, never notes or chapter passages. Saved evidence is
+bounded, provenance retains exact URLs, and extraction rejects unknown citations. Thin
+sources produce insufficient-evidence outcomes rather than invented completeness. Each
+provider stage has its own reservation and generation fence. Unknown paid outcomes require
+reconciliation; extraction cannot run before durable search completion. Concurrent manual
+changes preserve current fields and save generated candidates as non-current outdated
+artifacts. Field persistence, evidence/artifact versions, cost settlement and queue completion
+are transactional. Book synthesis and expert context now read topic/concept fields from the
+canonical enrichment payload used by imports and the chapter writer.
+
+The dedicated runtime registers chapters only with `LIBRI_CHAPTER_RESEARCH_ENABLED=true`,
+a Tavily key and an explicit positive per-credit micro-USD estimate. There is no assumed
+billing rate; usage records label the configured estimate rather than claiming invoice cost.
+All deployment/research switches remain off. No hosted test or paid provider call ran.
+
+Free validation: 60 focused worker/PostgreSQL regression checks passed; a final 24-test
+chapter/admission run additionally verifies original book action, force regeneration and
+historical replay. Source/test types, ESLint, formatting, SQL scope/inventory passed. The
+final four-migration rehearsal used a fresh production schema captured at 04:38:58 UTC,
+passed both standing invariants and retained identical role probes (one baseline anon
+failure, no authenticated failures). Its sole SECURITY finding is the previously reviewed
+owner-only authenticated admission RPC; all chapter lease capabilities are worker-only.
+
+PR45 qualified at `4ffa88765afb8aead03499fe8ad13af54d1b991a` in CI `37175888299`
+and merged as `e35ba6f07b74c2bbb7e3b810600d55c47040b553`. The exact migration
+`20261004035255` (SHA-256
+`81a9a113a3419525b3876d4c4b30f172c88853cee72dfe2df2bb4a202c4ad387`)
+was applied and recorded individually after fresh rehearsal. Shared-schema signatures
+changed before this release due to independent work; the new before/after baseline is
+identical at `46fa4609fd51a11c27b72cf7179f062c` across 10,569 signatures. All eight
+security advisor findings remain identical. Worker capability exists, authenticated access
+is denied, and production still has zero executable tasks and zero enabled libraries.
+
+## Original chapter research history
+
+A separate inert archive preserves each original `aiResearchRuns` record, mapped book,
+chapter and parent identifiers, source/archive SHA-256 and timestamps. Only the library
+owner can read legacy raw input/output payloads; ordinary members retain the sanitized
+current worker status projection. Neither clients nor the worker can create or consume
+archival entries. Current chapter workflow parents and extraction steps are projected into
+the original book/chapter history shape. Waiting parents stay running; insufficient or
+outdated results never become successful history entries. A historical unfinished record
+is marked archived with its original status retained, never reactivated.
+
+The read RPC uses invoker rights, explicit membership, same-library/book/chapter validation,
+indexed limits and a bounded response size. Free PostgreSQL assertions cover owner/viewer
+privacy, foreign library/book references, invalid limits, revoked membership, pending and
+waiting work, insufficient evidence, and remapped archived identity. Fresh-schema rehearsal
+passes both standing checks and unchanged client role probes; this migration adds no
+SECURITY/API/DATA findings. Historical data transformation and app integration follow.
+
+PR46 passed CI `37176114600` at `5bb2e5ccbfc012e5ace30ce986af75455aaf390c`,
+merged as `3341bc6c70f561594ef0dee8dfe625e31a5b1da3`, and migration `20261004040345`
+was applied/recorded individually. Shared-schema fingerprint remained
+`46fa4609fd51a11c27b72cf7179f062c` (10,569 signatures). Security advisors added only
+the reviewed owner-authorized `enqueue_book_research` authenticated RPC finding; the
+other findings are unchanged. Receipt RLS is forced, anonymous RPC and worker inserts
+are denied, and tasks/enabled libraries remain zero. Chapter processor PR48 is awaiting
+CI; no paid qualification or activation has occurred.
+
+### Durable workflow release — October 4
+
+BuildOS PR47 passed CI `37176948725` on
+`8699cbef5354e5607829444d89a180b7752c7b77` and merged as
+`64a2c621b1ddf0779aca0a16a55e8d37a3b871b0`. Migration
+`20261004041654_libri_research_workflow_dependencies.sql` was applied individually
+and recorded. SHA-256: `e9848d64dbcecf77992c4ac9cbce2207ea56bde16b558d4a39a101adb81bcfcb`.
+Shared schema remained unchanged at 10,569 signatures /
+`46fa4609fd51a11c27b72cf7179f062c`; all eight security-advisor groups matched.
+Postflight confirmed forced RLS on dependencies, worker-only workflow preparation,
+no raw worker INSERT, zero tasks and zero enabled research libraries.
+
+### Individual chapter admission — October 4
+
+The original chapter-detail action can admit exactly one current-library chapter,
+with owner authorization, durable request receipts, active-task deduplication and
+atomic budget checks. Replaying an old receipt never starts new work. Request-key
+reuse with changed chapter, mode, priority or operation is refused. The worker plan
+selects only that chapter. Whole-book research now requires a confirmed TOC both
+at admission and execution; an individual chapter does not require a full-book TOC.
+Titles are bounded to the existing 240-character task limit. Controls remain off.
+
+Eight free real-PostgreSQL tests cover concurrent admission, replay, altered requests,
+force intent, budget rollback, owner/scope revocation, exact chapter planning, TOC
+revocation and long titles. Worker source/test types, scope inventory and diff checks
+pass. The final production-schema rehearsal (snapshot 2026-10-04T04:38:58Z) passes
+client role probes and both standing checks. Its two SECURITY notices are the explicit
+authenticated book/chapter admission RPCs; each checks current auth.uid() ownership
+before data access, and is unavailable to anon, worker and service_role. No additional
+API/data findings. Migration release and live qualification remain pending.
+
+
+### Research-history and individual-chapter releases — October 4
+
+PR49 passed full CI and PostgreSQL 15 safety in run `37178163105` at
+`a64eb16cfdb1ec5678d2227c6f2c9357369604c3`, then merged as
+`e86acf81e56876ff191ae5aedec6a43f162586f6`. Migration `20261004044437`
+(SHA-256 `b8f9ecf5493813068198a85b232122d00040c9972a753051579b428b2495d9f4`)
+was applied and recorded individually. Advisors were unchanged, research archive RLS
+is forced, and anonymous/worker raw reads and authenticated inserts are denied.
+
+PR50 passed full CI and PostgreSQL 15 safety in run `37178835924` at
+`da1e3fb05eeeee832be0389444d3207c710f8894`, then merged as
+`a966afe0d927466550125ac97e6dd8b655366717`. Migration `20261004045659`
+(SHA-256 `bab2986e8a3610c9b9fd45698d149b404aa2f9dbbccef646c755b67c2a550252`)
+was applied and recorded individually. The only new advisor finding is the explicitly
+owner-authorized authenticated `enqueue_chapter_research` RPC. Anonymous and worker
+admission remain denied. Both releases preserve the shared-schema fingerprint
+`46fa4609fd51a11c27b72cf7179f062c` across 10,569 signatures. Postflight confirms
+zero executable research tasks and zero enabled libraries.
+
+### Owner intake history
+
+Migration `20261004051536_libri_import_history_reads.sql` preserves original book and
+video intake records in an inert owner-only archive. Each row retains original payload,
+status, timestamps and source/archive SHA-256 with mapped canonical references. Deleting
+a canonical subject clears its link while retaining history. Forced RLS denies member,
+anonymous and worker reads; authenticated owners can only SELECT. The invoker read RPC
+validates current ownership, kind and bounds, and projects original UI IDs and linked
+book/video metadata. Snapshot reads omit raw input, extracted content and photos. All
+archived entries are explicitly inactive, including formerly incomplete records, and
+never enter the executable queue.
+
+Free disposable PostgreSQL assertions pass for original payload preservation, mapped
+references, snapshots, kind/limit validation, cross-library access, viewers, revoked
+ownership, deleted canonical records and zero task creation. Rehearsal against a fresh
+production snapshot captured at 2026-10-04T05:20:20Z passes both standing invariants and
+unchanged client role probes (one existing anonymous failure, zero authenticated failures).
+This migration adds no SECURITY/API/DATA finding; the preceding chapter admission retains
+its reviewed owner-only finding. SQL scope checks pass for all 48 marked migrations.
+Hosted archive import waits for release. No provider or paid qualification test ran.
+
+
+### Manual cover and TOC edits
+
+`edit_application_image` ports the original owner-selected cover and manual TOC actions.
+It verifies current owner membership before reading subjects, locks the book before images
+and chapters, and requires exact book/image versions. Processing images are refused.
+Cover selection demotes other covers while preserving object bytes and OCR provenance.
+Manual TOC application adds missing exact number/title identities in input order without
+replacing existing chapters, notes or research. Prior OCR chunks are archived with timestamps,
+not deleted; the original manual text, structured lines, actor and time remain on the image.
+The OCR version advances to fence stale results. TOC readiness, image/book metadata, stale
+derived-context markers and activity commit together. Neither action creates jobs or calls
+providers.
+
+Disposable SQL checks cover owner/editor/revoked/foreign access, stale book/image refusal,
+transaction rollback, cover uniqueness, additive TOC deduplication, ordering, preserved
+research and OCR evidence, null initial TOC, derived status and zero task creation. The null
+TOC regression was found by the first run and fixed before qualification. Final assertions
+and production-schema rehearsal pass; role probes remain unchanged and both standing
+checks pass. The only new SECURITY finding is the intentionally authenticated owner RPC,
+which checks auth.uid() itself and grants no execution to anon, worker or service_role.
+SQL scope checks pass. Production release and app integration are pending.

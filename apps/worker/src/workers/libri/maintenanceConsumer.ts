@@ -60,6 +60,7 @@ export type LibriMaintenanceConsumerOptions = {
 	workerId: string;
 	config?: Partial<LibriMaintenanceConsumerConfig>;
 	claimStepIds?: readonly string[];
+	claimTaskTypes?: readonly string[];
 	claimDeadlineMs?: number;
 	claimQueueTypes?: readonly LibriQueueType[];
 	processorManagesCompletion?: boolean;
@@ -219,6 +220,9 @@ export class LibriMaintenanceConsumer {
 					workerId: this.options.workerId,
 					leaseDurationMs: this.config.leaseDurationMs,
 					queueTypes: this.queueTypes,
+					...(this.options.claimTaskTypes
+						? { taskTypes: this.options.claimTaskTypes }
+						: {}),
 					...(this.options.claimStepIds ? { stepIds: this.options.claimStepIds } : {})
 				});
 				this.consecutiveClaimFailures = 0;

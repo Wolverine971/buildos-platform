@@ -38,6 +38,8 @@ export type ClaimLibriStepInput = {
 	leaseDurationMs: number;
 	queueTypes?: readonly LibriQueueType[];
 	stepIds?: readonly string[];
+	/** Restrict ownership to implemented task processors before mutating queue state. */
+	taskTypes?: readonly string[];
 };
 
 export type ClaimedLibriStep = {
@@ -112,6 +114,7 @@ export type CancelLibriRunReceipt = {
 };
 
 export type RecoverStaleLibriLeasesInput = {
+	queueTypes?: readonly LibriQueueType[];
 	limit?: number;
 };
 
@@ -144,6 +147,8 @@ type EnqueueContextRow = {
 	max_attempts: number;
 	active_queue_job_id: string | null;
 	run_status: string;
+	run_kind: string;
+	deadline_expired: boolean;
 	correlation_id: string;
 	created_by: string;
 };
@@ -168,7 +173,10 @@ type ClaimContextRow = {
 	max_attempts: number;
 	payload: Record<string, unknown>;
 	run_status: string;
+	run_kind: string;
+	deadline_expired: boolean;
 	cancel_requested_at: string | null;
+	max_concurrent_steps: number;
 };
 
 type LeasedStepRow = {
@@ -211,6 +219,8 @@ class LibriLifecycle implements LibriLifecyclePort {
 					step.max_attempts,
 					step.active_queue_job_id,
 					run.status AS run_status,
+					run.kind AS run_kind,
+					(run.deadline_at IS NOT NULL AND run.deadline_at <= clock_timestamp()) AS deadline_expired,
 					run.correlation_id,
 					library.created_by
 				FROM libri.research_steps step
@@ -231,6 +241,14 @@ class LibriLifecycle implements LibriLifecyclePort {
 			}
 			if (!['queued', 'running'].includes(context.run_status)) {
 				throw new Error(`Libri research run cannot accept work from ${context.run_status}`);
+			}
+
+			if (
+				context.deadline_expired ||
+				(context.run_kind === 'task_batch' &&
+					!(await taskExecutionAllowed(client, context.step_id)))
+			) {
+				throw new Error('Libri research execution authority expired or was revoked');
 			}
 
 			const dedupKey = `libri:research-step:${context.step_id}`;
@@ -327,6 +345,7 @@ class LibriLifecycle implements LibriLifecyclePort {
 		assertLeaseDuration(input.leaseDurationMs);
 		const queueTypes = normalizeQueueTypes(input.queueTypes);
 		const stepIds = normalizeStepIds(input.stepIds);
+		const taskTypes = normalizeTaskTypes(input.taskTypes);
 		const processingToken = randomUUID();
 		const leaseToken = randomUUID();
 		const leaseExpiresAt = new Date(Date.now() + input.leaseDurationMs);
@@ -338,11 +357,18 @@ class LibriLifecycle implements LibriLifecyclePort {
 					WHERE status = 'pending'
 						AND job_type = ANY($1::public.queue_type[])
 						AND ($2::text[] IS NULL OR metadata->>'researchStepId' = ANY($2::text[]))
+						AND ($3::text[] IS NULL OR EXISTS (
+							SELECT 1 FROM libri.research_steps supported
+							WHERE supported.active_queue_job_id = queue_jobs.id
+							 AND supported.id::text = queue_jobs.metadata->>'researchStepId'
+							 AND supported.kind = 'task_execute'
+							 AND supported.payload->>'taskType' = ANY($3::text[])
+						))
 						AND scheduled_for <= now()
 				ORDER BY priority ASC, scheduled_for ASC
 				LIMIT 1
 				FOR UPDATE SKIP LOCKED`,
-				[queueTypes, stepIds]
+				[queueTypes, stepIds, taskTypes]
 			);
 			const queueJob = queueResult.rows[0];
 			if (!queueJob) return null;
@@ -363,7 +389,10 @@ class LibriLifecycle implements LibriLifecyclePort {
 					step.max_attempts,
 					step.payload,
 					run.status AS run_status,
-					run.cancel_requested_at
+					run.kind AS run_kind,
+					(run.deadline_at IS NOT NULL AND run.deadline_at <= clock_timestamp()) AS deadline_expired,
+					run.cancel_requested_at,
+					run.max_concurrent_steps
 				FROM libri.research_steps step
 				JOIN libri.research_runs run ON run.id = step.run_id
 					AND run.library_id = step.library_id
@@ -383,6 +412,51 @@ class LibriLifecycle implements LibriLifecyclePort {
 				isTerminalRunStatus(context.run_status)
 			) {
 				return quarantineQueueJob(client, queueJob, 'libri_queue_step_contract_invalid');
+			}
+
+			if (
+				context.deadline_expired ||
+				(context.run_kind === 'task_batch' &&
+					!(await taskExecutionAllowed(client, context.step_id)))
+			) {
+				const reason = context.deadline_expired
+					? 'libri_run_deadline_expired'
+					: 'libri_execution_authority_revoked';
+				await client.query(
+					`UPDATE libri.research_steps SET status='failed', completed_at=now(),
+                    error_class=$2, error_message=$2, updated_at=now() WHERE id=$1 AND status='queued'`,
+					[context.step_id, reason]
+				);
+				await client.query(
+					`UPDATE libri.research_runs SET failed_steps=failed_steps+1, updated_at=now() WHERE id=$1`,
+					[context.run_id]
+				);
+				const quarantined = await quarantineQueueJob(client, queueJob, reason);
+				await finalizeRunIfDone(client, context.run_id);
+				return quarantined;
+			}
+			// All claimers hold the same run row before reading the leased count.
+			// Use a fresh statement snapshot after the lock wait, so concurrent
+			// processes cannot both observe a free slot and exceed this run's cap.
+			const occupied = await client.query<{ leased_steps: number }>(
+				`SELECT count(*)::integer AS leased_steps FROM libri.research_steps WHERE run_id=$1 AND status='leased'`,
+				[context.run_id]
+			);
+			const leased = occupied.rows[0]?.leased_steps;
+			if (
+				!Number.isSafeInteger(leased) ||
+				!Number.isSafeInteger(context.max_concurrent_steps) ||
+				context.max_concurrent_steps < 1
+			) {
+				throw new Error('Libri run concurrency limit could not be verified');
+			}
+			if (leased >= context.max_concurrent_steps) {
+				// Let another run advance without burning this step's attempt.
+				await client.query(
+					`UPDATE public.queue_jobs SET scheduled_for=clock_timestamp()+interval '1 second', updated_at=now() WHERE id=$1 AND status='pending'`,
+					[queueJob.id]
+				);
+				return null;
 			}
 
 			const queueUpdate = await client.query<{ id: string }>(
@@ -962,6 +1036,7 @@ class LibriLifecycle implements LibriLifecyclePort {
 	recoverStaleLeases(
 		input: RecoverStaleLibriLeasesInput = {}
 	): Promise<RecoverStaleLibriLeasesReceipt> {
+		const queueTypes = normalizeQueueTypes(input.queueTypes);
 		const limit = input.limit ?? 10;
 		if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
 			throw new Error('limit must be an integer between 1 and 50');
@@ -987,7 +1062,7 @@ class LibriLifecycle implements LibriLifecyclePort {
 				ORDER BY step.lease_expires_at ASC, step.id ASC
 				LIMIT $2
 				FOR UPDATE OF job, step SKIP LOCKED`,
-				[LIBRI_QUEUE_TYPES, limit]
+				[queueTypes, limit]
 			);
 			let retried = 0;
 			let deadLettered = 0;
@@ -1037,7 +1112,24 @@ class LibriLifecycle implements LibriLifecyclePort {
 					cancelled += 1;
 					continue;
 				}
-				if (step.attempts < step.max_attempts) {
+				// The step/run locks fence authorization while we distinguish an unpaid
+				// reservation from a provider request with an unknown or persisted outcome.
+				const paid = await client.query<{ crossed_paid_boundary: boolean }>(
+					`SELECT EXISTS (
+						SELECT 1 FROM libri.provider_cost_reservations
+						WHERE step_id = $1 AND status IN ('started', 'settled')
+					) AS crossed_paid_boundary`,
+					[step.step_id]
+				);
+				const crossedPaidBoundary = paid.rows[0]?.crossed_paid_boundary !== false;
+				await client.query(
+					`UPDATE libri.provider_cost_reservations
+					SET status = 'released', released_at = clock_timestamp(),
+						release_reason = 'expired_lease_before_provider_start'
+					WHERE step_id = $1 AND status = 'reserved'`,
+					[step.step_id]
+				);
+				if (!crossedPaidBoundary && step.attempts < step.max_attempts) {
 					const scheduledFor = new Date(Date.now() + retryDelayMs(step.attempts));
 					await client.query(
 						`UPDATE public.queue_jobs
@@ -1070,11 +1162,18 @@ class LibriLifecycle implements LibriLifecyclePort {
 							attempts = $3,
 							completed_at = now(),
 							updated_at = now(),
-							error_message = 'stale_lease_exhausted'
+							error_message = $4
 						WHERE id = $1 AND processing_token = $2 AND status = 'processing'`,
-						[step.queue_row_id, step.processing_token, step.attempts]
+						[
+							step.queue_row_id,
+							step.processing_token,
+							step.attempts,
+							crossedPaidBoundary
+								? 'provider_reconciliation_required'
+								: 'stale_lease_exhausted'
+						]
 					);
-					await resetStaleStep(client, step, 'dead_letter', null);
+					await resetStaleStep(client, step, 'dead_letter', null, crossedPaidBoundary);
 					await client.query(
 						`UPDATE libri.research_runs
 						SET
@@ -1102,7 +1201,8 @@ async function resetStaleStep(
 	client: LibriTransactionClient,
 	step: LeasedStepRow,
 	status: 'queued' | 'dead_letter',
-	scheduledFor: string | null
+	scheduledFor: string | null,
+	crossedPaidBoundary = false
 ): Promise<void> {
 	await client.query(
 		`UPDATE libri.research_steps
@@ -1116,8 +1216,9 @@ async function resetStaleStep(
 			lease_expires_at = NULL,
 			last_heartbeat_at = NULL,
 			completed_at = CASE WHEN $4 = 'dead_letter' THEN now() ELSE NULL END,
-			error_class = 'stale_lease',
+			error_class = CASE WHEN $6 THEN 'provider_reconciliation_required' ELSE 'stale_lease' END,
 			error_message = CASE
+				WHEN $6 THEN 'provider_reconciliation_required'
 				WHEN $4 = 'dead_letter' THEN 'stale_lease_exhausted'
 				ELSE 'stale_lease'
 			END,
@@ -1126,8 +1227,26 @@ async function resetStaleStep(
 			AND active_queue_job_id = $2
 			AND active_processing_token = $3
 			AND status = 'leased'`,
-		[step.step_id, step.queue_row_id, step.processing_token, status, scheduledFor]
+		[
+			step.step_id,
+			step.queue_row_id,
+			step.processing_token,
+			status,
+			scheduledFor,
+			crossedPaidBoundary
+		]
 	);
+}
+
+async function taskExecutionAllowed(
+	client: LibriTransactionClient,
+	stepId: string
+): Promise<boolean> {
+	const result = await client.query<{ allowed: boolean }>(
+		'SELECT libri.research_task_execution_allowed($1) AS allowed',
+		[stepId]
+	);
+	return result.rows.length === 1 && result.rows[0].allowed === true;
 }
 
 async function touchRun(client: LibriTransactionClient, runId: string): Promise<void> {
@@ -1330,4 +1449,17 @@ function assertNonemptyText(value: string, name: string, maximumLength: number):
 	if (value.trim().length < 1 || value.length > maximumLength) {
 		throw new Error(`${name} must contain between 1 and ${maximumLength} characters`);
 	}
+}
+
+function normalizeTaskTypes(taskTypes: readonly string[] | undefined): string[] | null {
+	if (taskTypes === undefined) return null;
+	if (
+		!taskTypes.length ||
+		taskTypes.length > 10 ||
+		new Set(taskTypes).size !== taskTypes.length ||
+		taskTypes.some((type) => !/^[a-z][a-z_]{0,63}$/.test(type))
+	) {
+		throw new Error('taskTypes must contain 1 to 10 unique task identifiers');
+	}
+	return [...taskTypes];
 }

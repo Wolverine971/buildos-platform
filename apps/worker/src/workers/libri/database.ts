@@ -1,4 +1,10 @@
+import { createChapterResearchExecution } from './chapterResearchExecution';
+import { createLibriResearchWorkflow } from './researchWorkflow';
+import { createBookAgentExecution } from './bookAgentExecution';
+import { createLibriResearchReadiness } from './researchRuntime';
 // apps/worker/src/workers/libri/database.ts
+import { createLibriTaskDispatcher } from './taskDispatcher';
+import { createBookSynthesisExecution } from './bookSynthesisExecution';
 import { createLibriUploadProcessing } from './uploadProcessing';
 import { Pool, type PoolConfig, type QueryResult } from 'pg';
 import {
@@ -127,6 +133,12 @@ export type LibriDatabasePort = LibriLifecyclePort &
 	} & {
 		[key in keyof LibriAdmissionReconcilerPort]: LibriAdmissionReconcilerPort[key];
 	} & {
+		researchReadiness: ReturnType<typeof createLibriResearchReadiness>;
+		tasks: ReturnType<typeof createLibriTaskDispatcher>;
+		synthesis: ReturnType<typeof createBookSynthesisExecution>;
+		bookAgent: ReturnType<typeof createBookAgentExecution>;
+		chapterResearch: ReturnType<typeof createChapterResearchExecution>;
+		workflow: ReturnType<typeof createLibriResearchWorkflow>;
 		uploads: ReturnType<typeof createLibriUploadProcessing>;
 		probe: () => Promise<void>;
 		close: () => Promise<void>;
@@ -177,6 +189,12 @@ function normalizeCaCertificate(value: string): string {
 }
 
 class LibriDatabase implements LibriDatabasePort {
+	readonly researchReadiness: ReturnType<typeof createLibriResearchReadiness>;
+	readonly tasks: ReturnType<typeof createLibriTaskDispatcher>;
+	readonly synthesis: ReturnType<typeof createBookSynthesisExecution>;
+	readonly bookAgent: ReturnType<typeof createBookAgentExecution>;
+	chapterResearch: ReturnType<typeof createChapterResearchExecution>;
+	workflow: ReturnType<typeof createLibriResearchWorkflow>;
 	readonly uploads: ReturnType<typeof createLibriUploadProcessing>;
 	private readonly lifecycle: LibriLifecyclePort;
 	private readonly costLedger: LibriCostLedgerPort;
@@ -186,8 +204,14 @@ class LibriDatabase implements LibriDatabasePort {
 	private readonly admissionReconciler: LibriAdmissionReconcilerPort;
 
 	constructor(private readonly pool: LibriPgPool) {
+		this.researchReadiness = createLibriResearchReadiness(pool);
+		this.synthesis = createBookSynthesisExecution(pool);
+		this.bookAgent = createBookAgentExecution(pool);
 		this.uploads = createLibriUploadProcessing(pool);
 		this.lifecycle = createLibriLifecycle(pool);
+		this.chapterResearch = createChapterResearchExecution(pool, this.lifecycle);
+		this.workflow = createLibriResearchWorkflow(pool, this.lifecycle);
+		this.tasks = createLibriTaskDispatcher(pool, this.lifecycle);
 		this.costLedger = createLibriCostLedger(pool);
 		this.assetGrants = createLibriAssetGrantIssuer(pool);
 		this.ocrExecution = createLibriOcrExecution(pool);

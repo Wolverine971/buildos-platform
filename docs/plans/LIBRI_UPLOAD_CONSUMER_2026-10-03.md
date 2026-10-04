@@ -75,3 +75,109 @@ data reconciliation and Convex retirement remain separate unfinished migration w
 The pending quota migration `20260910170101` was applied separately on October 3 after
 its original exact-commit CI and a fresh production-schema rehearsal. Its production
 receipt is in Libri's `LIBRI_UPLOAD_QUOTA_SETTLEMENT_2026-09-10.md`.
+
+## Explicit OCR handoff receipt (October 4 follow-up)
+
+Migration `20261004012059_libri_upload_ocr_handoff_receipt.sql` connects a published
+upload to the **existing explicitly confirmed OCR dispatcher**. It records the first
+admission UUID, step UUID and enqueue timestamp in the same transaction as queue
+finalization. It never plans a batch, invents confirmation, starts a provider call,
+or changes activation switches. Imported images without an upload publication use
+the existing dispatcher unchanged.
+
+The existing admission BEFORE trigger validates the complete immutable manifest and
+queue evidence. The new AFTER trigger matches pending published images by library,
+book and verified content hash, rechecks the confirmer's editor/owner membership,
+and records the receipt. A mismatch rolls back finalization; a lost commit reply
+retains both the queue and receipt. Subsequent dispatches do not overwrite the first
+receipt. The invoker function grants no new authority to browser, worker or reader
+roles. Receipt FKs preserve the existing publication-before-admission account purge
+order. Existing dispatched publications without a receipt would fail migration
+validation rather than receive invented evidence.
+
+Local PostgreSQL 16 tests cover no automatic work/activation, denied direct authority,
+confirmation without dispatch, missing queue evidence, mismatched image hashes,
+revoked membership, exact receipts, rollback, replay and purge ordering. The final
+production-schema rehearsal includes client role probes and standing archived/project
+coverage checks. Read-only hosted preflight found zero publications and zero admissions.
+Production release (October 4): PR #36 passed full CI and PostgreSQL 15 safety on
+`5a1feb3f92246db59a359f44a5afcb6186d0e646` (run `37167968422`) and merged as
+`ebe4960a980b2ff5242d94cd918d8de7ab556097`. A fresh production-schema rehearsal
+passed before applying this one file; migration history `20261004012059` is recorded.
+The file SHA-256 is `f19ebe75743f1c8e793f5b6ca27564b1a10405b074212e6ac0f88cd47cbd9b3d`.
+Read-only verification found all three receipt columns and the enabled trigger, no
+client/worker direct function execution, zero publications/admissions, and all 408
+images/private objects. Shared-schema fingerprint `7343e7b85fd83c998518322907ba0918`
+(17,988 signatures), forced RLS, role boundaries and people policy matched before/after.
+All 274 security findings in eight advisor groups were unchanged (observation times excluded).
+The first CLI history repair could not find the new file in the original checkout;
+linking this isolated worktree and repairing from its exact file succeeded. DDL was not replayed.
+Activation remains off.
+
+A normal user-facing OCR confirmation/admission flow and sustained worker activation
+are still required. This receipt closes the publication ledger's bookkeeping gap; it
+does not authorize automatically turning every upload into paid OCR.
+
+
+## Sustained upload queue implementation (October 4)
+
+A separate `uploads` activation mode now composes the existing exact-upload consumer
+for successive admitted uploads in the fixed Libri library. It reads at most ten
+candidates, runs one upload at a time, and fully drains the consumer before releasing
+that slot. Each attempt retains one UUID token, including its bounded claim retries.
+The existing database controls, membership checks, attempt limit and publication
+inspection continue to gate every write. No database migration is required.
+
+The process remains disabled in production. Later activation requires
+`LIBRI_WORKER_ENABLED=true`, `LIBRI_WORKER_ACTIVATION_MODE=uploads`,
+`LIBRI_WORKER_CONCURRENCY=1`, `LIBRI_UPLOAD_LIBRARY_ID` set to the existing Libri
+library, both existing upload broker URLs and the machine broker credential.
+`LIBRI_UPLOAD_POLL_INTERVAL_MS` defaults to 3000 and permits 1000–60000. Canary
+overrides and OCR admission dispatch are rejected. `/health` reports upload state
+and does not advertise research/OCR queue consumption in this mode.
+
+Each selected upload has a two-minute execution window; ownership still uses the
+existing shorter database lease and network bounds. Empty queues continue polling.
+Candidate-read failures recover without writes, but three consecutive failures halt.
+An acknowledged verification failure releases the slot after draining; the database
+controls whether a later bounded retry is eligible. An unacknowledged failure or
+uncertain publication outcome stops the runtime for operator review, without quota
+release, object deletion or re-upload. A process restart mints a new attempt token but must inspect
+all durable publication state before claiming or downloading; an earlier prepared
+or mismatched committed publication requires reconciliation.
+
+Local validation covers two sequential publications using real exact consumers with
+synthetic byte/provider ports, no overlapping slots, shutdown during a pending read,
+mandatory drain, invalid candidates, bounded listing failures, configuration denial
+and uncertain publication halts. Thirty-nine focused tests, worker source/test typechecks, production worker build
+and focused lint pass. Hosted Storage qualification, mixed upload/research operation,
+OCR follow-up dispatch and original UI submission remain unfinished. No activation
+flag or provider setting was changed.
+
+
+## Upload progress and published-image reads (October 4)
+
+`read_image_upload_status` returns caller-owned intake fields and a bounded progress
+projection to a current library owner/editor. It distinguishes reserved, awaiting
+verification, verifying, publishing, published, retry waiting, blocked, expired and
+reconciliation-required states. Published requires the durable publication, canonical
+image and matching processing fence; OCR status is independent. Prepared work without
+a matching live lease stays uncertain. No read mutates processing, returns lease
+credentials/paths, releases quota or starts OCR. Other requesters' intents are hidden.
+The authenticated SECURITY DEFINER grant is intentional: private processing/publication
+ledgers remain inaccessible directly, and the function verifies auth.uid(), current
+membership, library and requester before reading them.
+
+The user image broker now signs both imported book/image paths and the canonical
+image paths produced by upload publication, after the same caller-scoped lookup.
+Both formats must match the fixed library, exact image UUID, allowed MIME/extension
+and expected bucket. Staging paths, other image/library IDs and provider URL changes
+are rejected. The existing catalog-cover broker already accepts the canonical layout.
+
+Local qualification: 26 focused broker tests and lint pass; disposable PostgreSQL
+contracts cover requester isolation, permission revocation, every progress phase,
+publication-fence mismatch, safe projection and no mutation. Production-schema rehearsal
+with role probes and both standing checks passes; the sole new privilege is the
+reviewed authenticated status RPC. The first rehearsal invocation stopped on a mistyped
+existing filename after its SQL contract passed; the corrected rehearsal passes.
+No hosted upload/provider test has run, and activation remains off.

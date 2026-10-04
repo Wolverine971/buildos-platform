@@ -1,10 +1,13 @@
+import { createLibriUploadQueueRuntime } from './workers/libri/uploadQueueRuntime';
 // apps/worker/src/libri-worker.ts
 // Dedicated Libri Railway process. This entrypoint must never import the
 // general worker, scheduler, or any non-Libri processor tree.
 import 'dotenv/config';
+import { createLibriResearchRuntime } from './workers/libri/researchRuntime';
 import {
 	type LibriWorkerConfig,
 	loadLibriOcrRuntimeConfig,
+	loadLibriResearchRuntimeConfig,
 	loadLibriWorkerConfig,
 	requireActiveLibriCanaryExpiry,
 	requireDedicatedLibriWorkerProductionProfile
@@ -141,6 +144,16 @@ function createConsumer(
 	database: LibriDatabasePort,
 	environment: NodeJS.ProcessEnv
 ) {
+	if (config.queueEnabled && config.uploadQueue)
+		return createLibriUploadQueueRuntime(config.uploadQueue, database.uploads);
+	if (config.queueEnabled && config.activationMode === 'research') {
+		return createLibriResearchRuntime({
+			database,
+			config: loadLibriResearchRuntimeConfig(environment),
+			concurrency: config.concurrency,
+			workerId: resolveWorkerId(environment)
+		});
+	}
 	if (config.queueEnabled && config.uploadMaintenance) {
 		const maintenance = config.uploadMaintenance;
 		return new LibriUploadMaintenanceConsumer({

@@ -58,6 +58,10 @@ const OPENROUTER_ALLOWLIST: Record<string, AllowlistEntry> = {
 		policy: 'OPENROUTER_PRIVATE_PROVIDER',
 		reason: 'Image OCR body carries the private provider policy.'
 	},
+	'apps/worker/src/workers/libri/bookResearchProvider.ts': {
+		policy: 'OPENROUTER_PRIVATE_PROVIDER',
+		reason: 'Libri book synthesis sends its bounded dataset with the private provider policy.'
+	},
 	'apps/worker/src/workers/libri/ocrProvider.ts': {
 		policy: 'OPENROUTER_PRIVATE_PROVIDER',
 		reason: 'Libri OCR body carries the private provider policy.'
