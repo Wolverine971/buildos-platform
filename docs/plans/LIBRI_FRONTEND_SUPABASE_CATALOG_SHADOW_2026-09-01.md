@@ -128,3 +128,32 @@ rehearsal has 36 intended Libri changes, no new client read failures, and both s
 shared-schema checks pass. Its one intentional session-definer finding is reviewed above.
 The actual hosted PostgreSQL 15 CI gate and production application are still pending.
 No hosted writes, provider calls, activation, or historical replay occurred here.
+
+
+## Original book, chapter and prompt edits (October 4)
+
+Migration `20261004015552_libri_manual_book_edits.sql` adds one session RPC for the
+existing forms. The authenticated SECURITY DEFINER finding is intentional and reviewed:
+atomic domain replacement, activity and versioned artifacts require a transaction, while
+clients retain no raw artifact/activity write grants. The function fixes its search path,
+checks `auth.uid()`, locks current owner membership before lookup, scopes every subject,
+rejects unknown/bounded fields, and compares the exact saved timestamp under a row lock.
+Anonymous, service, worker and reader execution are revoked. Existing shared permissions
+and private-note policies are unchanged.
+
+Book edits keep established URLs stable, normalize title/ISBN matching, and replace scoped
+domain links atomically. Chapter edits retain order and research/evidence. Both add one
+content-free activity event and mark saved book analysis/knowledge documents outdated
+without deleting them. Prompt edits require both profile and current-artifact versions,
+retain the prior artifact, increment versions, and hash the manually saved content.
+No provider or queue calls occur. Automatic knowledge rebuilding and research-gap task
+lifecycle still require the replacement worker before activation.
+
+Local qualification: the disposable PostgreSQL contract covers actor/scope denial,
+invalid fields, stale edits, rollback, normalized domains/ISBN/accented titles, retained
+research and prompt provenance. Three real concurrent/rollback tests prove one winner
+for edits by different owners and for simultaneous first-prompt creation. Rehearsal
+against the fresh production schema passes both standing checks and adds no role-read
+failures; the two intentional client-definer findings (activity and editing) are reviewed.
+Exact-head PostgreSQL 15 CI, production application and hosted qualification remain pending.
+Libri's original forms use `PRIVATE_LIBRI_CATALOG_EDITS_ENABLED`, still off by default.
