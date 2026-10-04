@@ -566,3 +566,30 @@ changed before this release due to independent work; the new before/after baseli
 identical at `46fa4609fd51a11c27b72cf7179f062c` across 10,569 signatures. All eight
 security advisor findings remain identical. Worker capability exists, authenticated access
 is denied, and production still has zero executable tasks and zero enabled libraries.
+
+## Original chapter research history
+
+A separate inert archive preserves each original `aiResearchRuns` record, mapped book,
+chapter and parent identifiers, source/archive SHA-256 and timestamps. Only the library
+owner can read legacy raw input/output payloads; ordinary members retain the sanitized
+current worker status projection. Neither clients nor the worker can create or consume
+archival entries. Current chapter workflow parents and extraction steps are projected into
+the original book/chapter history shape. Waiting parents stay running; insufficient or
+outdated results never become successful history entries. A historical unfinished record
+is marked archived with its original status retained, never reactivated.
+
+The read RPC uses invoker rights, explicit membership, same-library/book/chapter validation,
+indexed limits and a bounded response size. Free PostgreSQL assertions cover owner/viewer
+privacy, foreign library/book references, invalid limits, revoked membership, pending and
+waiting work, insufficient evidence, and remapped archived identity. Fresh-schema rehearsal
+passes both standing checks and unchanged client role probes; this migration adds no
+SECURITY/API/DATA findings. Historical data transformation and app integration follow.
+
+PR46 passed CI `37176114600` at `5bb2e5ccbfc012e5ace30ce986af75455aaf390c`,
+merged as `3341bc6c70f561594ef0dee8dfe625e31a5b1da3`, and migration `20261004040345`
+was applied/recorded individually. Shared-schema fingerprint remained
+`46fa4609fd51a11c27b72cf7179f062c` (10,569 signatures). Security advisors added only
+the reviewed owner-authorized `enqueue_book_research` authenticated RPC finding; the
+other findings are unchanged. Receipt RLS is forced, anonymous RPC and worker inserts
+are denied, and tasks/enabled libraries remain zero. Chapter processor PR48 is awaiting
+CI; no paid qualification or activation has occurred.
