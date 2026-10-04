@@ -4,11 +4,17 @@ export type LibriWorkerConfig = {
 	databaseProbeIntervalMs: number;
 	queueEnabled: boolean;
 	admissionDispatchEnabled: boolean;
-	activationMode: 'disabled' | 'synthetic_canary' | 'ocr_canary' | 'upload_canary';
+	activationMode:
+		| 'disabled'
+		| 'synthetic_canary'
+		| 'ocr_canary'
+		| 'upload_canary'
+		| 'upload_maintenance_canary';
 	canaryStepId: string | null;
 	canaryAdmissionId: string | null;
 	canaryExpiresAtMs: number | null;
 	upload?: LibriUploadRuntimeConfig;
+	uploadMaintenance?: LibriUploadMaintenanceRuntimeConfig;
 };
 
 export type LibriUploadRuntimeConfig = {
@@ -20,6 +26,11 @@ export type LibriUploadRuntimeConfig = {
 	publicationBrokerUrl: string;
 	brokerToken: string;
 };
+
+export type LibriUploadMaintenanceRuntimeConfig = Omit<
+	LibriUploadRuntimeConfig,
+	'downloadBrokerUrl' | 'publicationBrokerUrl'
+> & { endpointUrl: string };
 
 export type LibriOcrRuntimeConfig = {
 	assetBrokerUrl: string;
@@ -77,7 +88,11 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 		assertCanaryExpiry(config.canaryExpiresAtMs);
 		return;
 	}
-	if (config.activationMode === 'upload_canary') return; // validated in every environment below
+	if (
+		config.activationMode === 'upload_canary' ||
+		config.activationMode === 'upload_maintenance_canary'
+	)
+		return; // validated in every environment below
 	if (!['synthetic_canary', 'ocr_canary'].includes(config.activationMode)) {
 		throw new Error(
 			'Enabled production Libri worker requires an exact synthetic_canary or ocr_canary activation mode'
@@ -164,6 +179,11 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 			? loadLibriUploadRuntimeConfig(environment)
 			: undefined;
 
+	const uploadMaintenance =
+		enabled && activationMode === 'upload_maintenance_canary'
+			? loadLibriUploadMaintenanceRuntimeConfig(environment)
+			: undefined;
+
 	return {
 		concurrency: parseInteger(
 			environment.LIBRI_WORKER_CONCURRENCY,
@@ -181,6 +201,7 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 		),
 		queueEnabled: enabled,
 		...(upload ? { upload } : {}),
+		...(uploadMaintenance ? { uploadMaintenance } : {}),
 		admissionDispatchEnabled,
 		activationMode,
 		canaryStepId: parseOptionalUuid(environment.LIBRI_WORKER_CANARY_STEP_ID),
@@ -210,10 +231,15 @@ function parseBoolean(value: string | undefined, fallback: boolean, name: string
 
 function parseActivationMode(value: string | undefined): LibriWorkerConfig['activationMode'] {
 	if (value === undefined || value.trim() === '' || value === 'disabled') return 'disabled';
-	if (value === 'synthetic_canary' || value === 'ocr_canary' || value === 'upload_canary')
+	if (
+		value === 'synthetic_canary' ||
+		value === 'ocr_canary' ||
+		value === 'upload_canary' ||
+		value === 'upload_maintenance_canary'
+	)
 		return value;
 	throw new Error(
-		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, synthetic_canary, ocr_canary, or upload_canary'
+		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, synthetic_canary, ocr_canary, upload_canary, or upload_maintenance_canary'
 	);
 }
 
@@ -283,9 +309,7 @@ function parsePositiveBigint(value: string, maximum: bigint, name: string): bigi
 	return parsed;
 }
 
-export function loadLibriUploadRuntimeConfig(
-	environment: NodeJS.ProcessEnv
-): LibriUploadRuntimeConfig {
+function loadLibriUploadScope(environment: NodeJS.ProcessEnv) {
 	if (
 		environment.LIBRI_WORKER_CONCURRENCY !== '1' ||
 		parseBoolean(
@@ -327,6 +351,16 @@ export function loadLibriUploadRuntimeConfig(
 		leaseToken: exact('LIBRI_WORKER_CANARY_UPLOAD_LEASE_TOKEN'),
 		expiresAtMs: expiresAtMs!,
 		brokerToken,
+		endpoint
+	};
+}
+
+export function loadLibriUploadRuntimeConfig(
+	environment: NodeJS.ProcessEnv
+): LibriUploadRuntimeConfig {
+	const { endpoint, ...scope } = loadLibriUploadScope(environment);
+	return {
+		...scope,
 		downloadBrokerUrl: endpoint(
 			'LIBRI_UPLOAD_DOWNLOAD_BROKER_URL',
 			'/api/internal/libri/uploads/download'
@@ -334,6 +368,19 @@ export function loadLibriUploadRuntimeConfig(
 		publicationBrokerUrl: endpoint(
 			'LIBRI_UPLOAD_PUBLICATION_BROKER_URL',
 			'/api/internal/libri/uploads/publish'
+		)
+	};
+}
+
+export function loadLibriUploadMaintenanceRuntimeConfig(
+	environment: NodeJS.ProcessEnv
+): LibriUploadMaintenanceRuntimeConfig {
+	const { endpoint, ...scope } = loadLibriUploadScope(environment);
+	return {
+		...scope,
+		endpointUrl: endpoint(
+			'LIBRI_UPLOAD_MAINTENANCE_BROKER_URL',
+			'/api/internal/libri/uploads/maintain'
 		)
 	};
 }
