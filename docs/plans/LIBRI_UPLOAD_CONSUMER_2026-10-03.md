@@ -75,3 +75,33 @@ data reconciliation and Convex retirement remain separate unfinished migration w
 The pending quota migration `20260910170101` was applied separately on October 3 after
 its original exact-commit CI and a fresh production-schema rehearsal. Its production
 receipt is in Libri's `LIBRI_UPLOAD_QUOTA_SETTLEMENT_2026-09-10.md`.
+
+## Explicit OCR handoff receipt (October 4 follow-up)
+
+Migration `20261004012059_libri_upload_ocr_handoff_receipt.sql` connects a published
+upload to the **existing explicitly confirmed OCR dispatcher**. It records the first
+admission UUID, step UUID and enqueue timestamp in the same transaction as queue
+finalization. It never plans a batch, invents confirmation, starts a provider call,
+or changes activation switches. Imported images without an upload publication use
+the existing dispatcher unchanged.
+
+The existing admission BEFORE trigger validates the complete immutable manifest and
+queue evidence. The new AFTER trigger matches pending published images by library,
+book and verified content hash, rechecks the confirmer's editor/owner membership,
+and records the receipt. A mismatch rolls back finalization; a lost commit reply
+retains both the queue and receipt. Subsequent dispatches do not overwrite the first
+receipt. The invoker function grants no new authority to browser, worker or reader
+roles. Receipt FKs preserve the existing publication-before-admission account purge
+order. Existing dispatched publications without a receipt would fail migration
+validation rather than receive invented evidence.
+
+Local PostgreSQL 16 tests cover no automatic work/activation, denied direct authority,
+confirmation without dispatch, missing queue evidence, mismatched image hashes,
+revoked membership, exact receipts, rollback, replay and purge ordering. The final
+production-schema rehearsal includes client role probes and standing archived/project
+coverage checks. Read-only hosted preflight found zero publications and zero admissions.
+This change is not applied to production yet; exact-commit CI and release remain.
+
+A normal user-facing OCR confirmation/admission flow and sustained worker activation
+are still required. This receipt closes the publication ledger's bookkeeping gap; it
+does not authorize automatically turning every upload into paid OCR.
