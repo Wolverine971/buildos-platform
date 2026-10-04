@@ -624,3 +624,44 @@ client role probes and both standing checks. Its two SECURITY notices are the ex
 authenticated book/chapter admission RPCs; each checks current auth.uid() ownership
 before data access, and is unavailable to anon, worker and service_role. No additional
 API/data findings. Migration release and live qualification remain pending.
+
+
+### Research-history and individual-chapter releases — October 4
+
+PR49 passed full CI and PostgreSQL 15 safety in run `37178163105` at
+`a64eb16cfdb1ec5678d2227c6f2c9357369604c3`, then merged as
+`e86acf81e56876ff191ae5aedec6a43f162586f6`. Migration `20261004044437`
+(SHA-256 `b8f9ecf5493813068198a85b232122d00040c9972a753051579b428b2495d9f4`)
+was applied and recorded individually. Advisors were unchanged, research archive RLS
+is forced, and anonymous/worker raw reads and authenticated inserts are denied.
+
+PR50 passed full CI and PostgreSQL 15 safety in run `37178835924` at
+`da1e3fb05eeeee832be0389444d3207c710f8894`, then merged as
+`a966afe0d927466550125ac97e6dd8b655366717`. Migration `20261004045659`
+(SHA-256 `bab2986e8a3610c9b9fd45698d149b404aa2f9dbbccef646c755b67c2a550252`)
+was applied and recorded individually. The only new advisor finding is the explicitly
+owner-authorized authenticated `enqueue_chapter_research` RPC. Anonymous and worker
+admission remain denied. Both releases preserve the shared-schema fingerprint
+`46fa4609fd51a11c27b72cf7179f062c` across 10,569 signatures. Postflight confirms
+zero executable research tasks and zero enabled libraries.
+
+### Owner intake history
+
+Migration `20261004051536_libri_import_history_reads.sql` preserves original book and
+video intake records in an inert owner-only archive. Each row retains original payload,
+status, timestamps and source/archive SHA-256 with mapped canonical references. Deleting
+a canonical subject clears its link while retaining history. Forced RLS denies member,
+anonymous and worker reads; authenticated owners can only SELECT. The invoker read RPC
+validates current ownership, kind and bounds, and projects original UI IDs and linked
+book/video metadata. Snapshot reads omit raw input, extracted content and photos. All
+archived entries are explicitly inactive, including formerly incomplete records, and
+never enter the executable queue.
+
+Free disposable PostgreSQL assertions pass for original payload preservation, mapped
+references, snapshots, kind/limit validation, cross-library access, viewers, revoked
+ownership, deleted canonical records and zero task creation. Rehearsal against a fresh
+production snapshot captured at 2026-10-04T05:20:20Z passes both standing invariants and
+unchanged client role probes (one existing anonymous failure, zero authenticated failures).
+This migration adds no SECURITY/API/DATA finding; the preceding chapter admission retains
+its reviewed owner-only finding. SQL scope checks pass for all 48 marked migrations.
+Hosted archive import waits for release. No provider or paid qualification test ran.
