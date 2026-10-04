@@ -464,3 +464,26 @@ hosted qualification was performed. Final expert-processor local validation pass
 60 worker checks, 4 privacy-fitness checks, source/test types and source ESLint;
 changed-file formatting and SQL inventory/scope passed. The final migration revision
 was rehearsed again after adding the SQL-level manual protection.
+
+## Book-page research actions
+
+The original Synthesize and Generate Agent Profile buttons now have an atomic admission
+capability for Supabase. The owner selects `missing`, `gaps` or `force`; mode is retained
+in the durable task and step. Default-off controls and supported processor checks run
+before creating work. Task creation and bounded budget admission share one transaction,
+so an exhausted budget leaves no stranded task. Concurrent clicks deduplicate an active
+book/type/mode task. Each request key stores a scoped receipt, including deduplicated
+clicks, so retrying after completion never starts another paid run. A new force request
+remains separate from a pending gaps request.
+
+Six free restricted-role PostgreSQL tests cover mode, concurrent dedupe, historical
+receipt replay, conflicting requests, budget rollback, paused controls, unsupported
+processors, book scope and owner revocation. The matching SQL contract denies raw
+receipt insertion, anonymous calls and worker impersonation. Rehearsal against current
+production plus the pending expert migration passes role probes and both standing
+checks. Its one SECURITY finding is the intentional authenticated entry point:
+`enqueue_book_research` explicitly checks `auth.uid()` and locks the caller's current
+owner membership before any data access. PUBLIC/anon/service/worker execution is revoked.
+No new API or data findings. The receipt table forces RLS with owner-only reads.
+
+App integration and hosted qualification are still in progress; no research activation.
