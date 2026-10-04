@@ -44,7 +44,8 @@
 		getSkillPromise,
 		getTryInBuildOsPath,
 		getTryPackInBuildOsPath,
-		humanize
+		humanize,
+		isIndexableHub
 	} from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
 
@@ -55,6 +56,8 @@
 	let pack = $derived(data.pack);
 	let postBySlug = $derived(buildPostBySlug(data.posts));
 	let startSkill = $derived((pack.skills[0] ?? null) as Skill | null);
+	// A one-skill path only repeats the skill page, so it stays out of search.
+	let isThinPath = $derived(!isIndexableHub(pack.skills.length));
 	let PathIcon = $derived(pack.kind === 'Stack' ? Workflow : Package);
 	let totalReferences = $derived(
 		pack.skills.reduce((total, skill) => total + skill.references.length, 0)
@@ -143,7 +146,7 @@
 	<meta name="twitter:description" content={pack.job} />
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
-	<meta name="robots" content="index, follow" />
+	<meta name="robots" content={isThinPath ? 'noindex, follow' : 'index, follow'} />
 
 	{@html jsonLdScriptHtml}
 </svelte:head>

@@ -15,6 +15,7 @@ import type { Database, Json } from '@buildos/shared-types';
 import {
 	CONSOLIDATION_LIMITS,
 	answeredOps,
+	answersFingerprint,
 	chosenMerge,
 	mergePieceKey,
 	parseConsolidationQuestion,
@@ -177,10 +178,11 @@ export async function loadConsolidationView(
 	if (!seen.has(owned.root_project_id))
 		throw new ConsolidationError('Consolidation not found.', 404);
 	const run = await recoverStale(admin, owned);
-	const [questions, merges] = await Promise.all([
+	const [questions, stored] = await Promise.all([
 		runQuestions(admin, runId),
 		runMerges(admin, runId)
 	]);
+	const merges = currentMerges(stored, questions);
 	const ops = run.plan
 		? planOps(run.plan, questions, mergeStatuses(merges))
 		: { ready: [], waiting: [] };
@@ -267,10 +269,9 @@ function stalled(status: string, updatedAt: string): boolean {
 	);
 }
 
-async function runMerges(
-	admin: Client,
-	runId: string
-): Promise<Array<MergeDraftView & { stalled?: boolean }>> {
+type MergeView = MergeDraftView & { stalled?: boolean; updated_at: string };
+
+async function runMerges(admin: Client, runId: string): Promise<MergeView[]> {
 	const { data, error } = await admin
 		.from('consolidation_merges')
 		.select(MERGE_COLUMNS)
@@ -288,8 +289,33 @@ async function runMerges(
 		coverage: (row.coverage as unknown as MergeCoverage | null) ?? null,
 		error: row.error,
 		created_document_id: row.created_document_id,
-		...(stalled(row.status, row.updated_at) ? { stalled: true } : {})
+		updated_at: row.updated_at
 	}));
+}
+
+/**
+ * Merges as they stand against the answers so far. A draft marked ready but
+ * written before the latest answer (it can land between the cards going up
+ * and the rewrite starting) is still being rewritten: it shows as writing and
+ * Apply holds it. An unfinished merge nobody has touched for a while is stalled.
+ */
+function currentMerges(merges: MergeView[], questions: ConsolidationQuestion[]): MergeView[] {
+	return merges.map((merge) => {
+		const behind =
+			merge.status === 'ready' &&
+			merge.ledger?.written_for !==
+				answersFingerprint(
+					questions.filter(
+						(question) => mergePieceKey(question.piece) === merge.cluster_key
+					)
+				);
+		const status: MergeStatus = behind ? 'writing' : merge.status;
+		return {
+			...merge,
+			status,
+			...(stalled(status, merge.updated_at) ? { stalled: true } : {})
+		};
+	});
 }
 
 function mergeStatuses(merges: MergeDraftView[]): Map<string, MergeStatus> {
@@ -327,10 +353,11 @@ async function recoverStale(admin: Client, run: ConsolidationRunRow): Promise<Co
 
 /** Back to `waiting` while any card or typed answer is pending, else `review`. */
 async function refreshStatus(admin: Client, runId: string, plan: ConsolidationPlan | null) {
-	const [questions, merges] = await Promise.all([
+	const [questions, stored] = await Promise.all([
 		runQuestions(admin, runId),
 		runMerges(admin, runId)
 	]);
+	const merges = currentMerges(stored, questions);
 	const open = questions.some((question) => question.status === 'open');
 	const waiting = plan
 		? planOps(plan, questions, mergeStatuses(merges)).waiting.length > 0
@@ -576,7 +603,9 @@ async function startMerge(
 			userId,
 			runId,
 			{ action: 'merge', clusterKey },
-			`consolidation:${runId}:merge:${clusterKey}`
+			// Fresh per start: a stalled job still holding the old key must not swallow
+			// the retry. It stops by itself once its next versioned save misses.
+			`consolidation:${runId}:merge:${clusterKey}:${now}`
 		);
 	} catch {
 		// The group shows the failure with a Retry; the answer itself stands.
@@ -1246,10 +1275,11 @@ export async function applyConsolidationRun(params: {
 	const plan = run.plan ?? before.plan;
 	const inFamily = (projectId: string) => run.project_ids.includes(projectId);
 
-	const [questions, merges] = await Promise.all([
+	const [questions, stored] = await Promise.all([
 		runQuestions(admin, run.id),
 		runMerges(admin, run.id)
 	]);
+	const merges = currentMerges(stored, questions);
 	const { ready, waiting } = planOps(plan, questions, mergeStatuses(merges));
 	const receipt: ConsolidationReceipt = {
 		applied_at: new Date().toISOString(),

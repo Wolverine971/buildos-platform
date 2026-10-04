@@ -518,6 +518,20 @@ export function mergePieceKey(piece: string): string | null {
 }
 
 /**
+ * What the owner has said so far on one merge's live (not withdrawn) cards. The
+ * worker stores it with each draft as `written_for`; a draft written from an
+ * older state gets another pass, and Apply holds it until then.
+ */
+export function answersFingerprint(questions: readonly ConsolidationQuestion[]): string {
+	return JSON.stringify(
+		questions
+			.filter((question) => question.status !== 'withdrawn')
+			.map((question) => [question.id, question.status, question.answer])
+			.sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+	);
+}
+
+/**
  * The fact edits a merge question contributes to the draft: the chosen
  * option's, or, while unanswered, the recommended option's when it only keeps
  * or notes facts (an unanswered card never drops, replaces or folds in a fact).

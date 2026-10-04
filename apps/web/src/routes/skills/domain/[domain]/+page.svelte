@@ -48,6 +48,7 @@
 		getTryInBuildOsPath,
 		groupSkillsByFamily,
 		humanize,
+		isIndexableHub,
 		normalizeSearchText
 	} from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
@@ -60,6 +61,8 @@
 	let query = $state('');
 
 	let domain = $derived(data.domain);
+	// A one-skill domain only repeats the skill page, so it stays out of search.
+	let isThinDomain = $derived(!isIndexableHub(domain.skills.length + domain.previews.length));
 	let postBySlug = $derived(buildPostBySlug(data.posts));
 	let normalizedQuery = $derived(normalizeSearchText(query));
 	let featuredSkill = $derived(data.featuredSkill as Skill | null);
@@ -197,7 +200,7 @@
 	<meta name="twitter:description" content={domain.promise} />
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
-	<meta name="robots" content="index, follow" />
+	<meta name="robots" content={isThinDomain ? 'noindex, follow' : 'index, follow'} />
 
 	{@html jsonLdScriptHtml}
 </svelte:head>

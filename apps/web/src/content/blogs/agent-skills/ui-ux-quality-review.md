@@ -1,7 +1,8 @@
 ---
 title: 'UI/UX Quality Review: An Agent Skill For Product Interface Audits'
 seoTitle: 'UI/UX Review Skill for Claude Code (SKILL.md)'
-seoDescription: 'Free Claude Code and Codex skill (SKILL.md) for auditing product screens, dashboards, and mobile flows with checkable rules and concrete fixes. Download it, or run it in BuildOS.'
+seoDescription: 'Audit screens, dashboards, and mobile flows with checkable rules and concrete fixes. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.'
+portableDescription: 'Review product screens and flows for hierarchy, clarity, spacing, type, color, consistency, states, charts, and responsive fit. Use when auditing a screen, dashboard, landing page, or mobile flow, or when checking AI-generated UI before it ships. Returns evidence-backed findings with severity and concrete fixes.'
 description: 'A source-lineaged agent skill for reviewing product screens, landing pages, dashboards, and mobile flows. Each principle ships in two layers: human-readable principle + agent-checkable rules with thresholds and named patterns.'
 author: 'DJ Wayne'
 date: '2026-05-02'
@@ -28,7 +29,7 @@ providers: ['YouTube source analysis', 'BuildOS YouTube library']
 compatibleAgents: ['BuildOS-compatible agents', 'Claude Code', 'Codex', 'portable Agent Skills']
 stackWith:
     [
-        'accessibility-and-inclusive-ui-review',
+        'accessibility-inclusive-ui-review',
         'visual-craft-fundamentals',
         'marketing-site-design-review',
         'delightful-product-review'
@@ -463,7 +464,7 @@ The review is complete when:
 `stackWith` is not just metadata. The full workflow chains four sibling skills:
 
 1. **`ui-ux-quality-review`** (this skill) — foundational pass. Catches the obviously broken: missing states, cramped spacing, tiny touch targets, inconsistent components, mystery icons, no feedback on click.
-2. **`accessibility-and-inclusive-ui-review`** — when WCAG 2.2 AA, semantics, keyboard navigation, focus order, or screen-reader behavior matter. This skill emits accessibility-adjacent findings (contrast, touch targets, label requirements); accessibility-and-inclusive-ui-review goes deeper.
+2. **`accessibility-inclusive-ui-review`** — when WCAG 2.2 AA, semantics, keyboard navigation, focus order, or screen-reader behavior matter. This skill emits accessibility-adjacent findings (contrast, touch targets, label requirements); accessibility-inclusive-ui-review goes deeper.
 3. **`visual-craft-fundamentals`** — level-up pass once the foundational review clears. Two-part shadows, hue rotation, single-hue palettes, up-pop/down-pop, named text-on-image methods. The corrective lens for AI-generated UI.
 4. **`marketing-site-design-review`** — section-by-section landing-page review (different rubric for hero, social proof, pricing).
 5. **`delightful-product-review`** — full delight pass when foundational + craft passes are complete. The §12 delight check here is a triage; the delightful-product-review skill is the dedicated rubric.

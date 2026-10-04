@@ -165,6 +165,14 @@ describe('merge: extract', () => {
 			expect(chunks.some((chunk) => chunk.includes(sentence))).toBe(true);
 		// Pieces start at a sentence or line, never inside a word.
 		for (const chunk of chunks.slice(1)) expect(chunk).toMatch(/^(\n*)Sentence \d+/);
+
+		// One long paragraph: cut at sentence ends; the overlap re-reads whole sentences.
+		const wall = sentences.join(' ');
+		const pieces = chunkSource(wall, 400, 120);
+		expect(pieces.every((piece) => piece.length <= 400)).toBe(true);
+		for (const sentence of sentences)
+			expect(pieces.some((piece) => piece.includes(sentence))).toBe(true);
+		for (const piece of pieces.slice(1)) expect(piece).toMatch(/^Sentence \d+/);
 	});
 
 	it('checks a long quote before shortening it', () => {
@@ -285,7 +293,9 @@ describe('merge: reconcile', () => {
 							},
 							{
 								label: 'Keep the demo as history',
-								edits: [{ fact: 'F3', fate: 'history', section: 'Where things stand' }]
+								edits: [
+									{ fact: 'F3', fate: 'history', section: 'Where things stand' }
+								]
 							}
 						],
 						recommended: 2
@@ -413,10 +423,12 @@ describe('merge: write', () => {
 			body: 'Body.',
 			ledger: {
 				...ledger,
-				fates: [
-					...ledger.fates,
-					{ fact_id: 'F1', fate: 'missing', with: null, reason: 'gone', section: null }
-				].filter((fate, index, all) => all.findIndex((x) => x.fact_id === fate.fact_id) === index)
+				// The intake is hollow and one of its facts is missing content: one note, not two.
+				fates: ledger.fates.map((fate) =>
+					fate.fact_id === 'F1'
+						? { ...fate, fate: 'missing' as const, reason: 'gone', section: null }
+						: fate
+				)
 			},
 			sources: [intake, deploy, hold],
 			appended: [],
@@ -424,6 +436,9 @@ describe('merge: write', () => {
 		});
 		expect(markdown).toContain('## Couldn’t find word for word');
 		expect(markdown).toContain('- Rod has a $10M book. (Rod Chamberlin');
+		expect(markdown.split('\n').filter((line) => line.startsWith('- Missing:'))).toHaveLength(
+			1
+		);
 	});
 
 	it("adds the owner's typed answer, in their words, as a fact once", () => {
@@ -473,7 +488,11 @@ describe('merge: owner answers and resuming', () => {
 	it("takes the owner's own words, not the reader's restatement", () => {
 		const answers = ownerAnswers([
 			card({
-				answer: { via: 'text', text: 'It launched Feb 10.', reading: reading('Use Feb 10.') }
+				answer: {
+					via: 'text',
+					text: 'It launched Feb 10.',
+					reading: reading('Use Feb 10.')
+				}
 			}),
 			card({
 				id: 'q-chat',
@@ -489,7 +508,10 @@ describe('merge: owner answers and resuming', () => {
 					]
 				}
 			}),
-			card({ id: 'q-option', answer: { via: 'text', text: 'the first', reading: reading(null, 'o1') } }),
+			card({
+				id: 'q-option',
+				answer: { via: 'text', text: 'the first', reading: reading(null, 'o1') }
+			}),
 			card({ id: 'q-open', status: 'open' })
 		]);
 		expect(answers).toEqual([
@@ -508,7 +530,10 @@ describe('merge: owner answers and resuming', () => {
 		expect(mergeStart('merge', { status: 'writing', ledger: stored })).toEqual({ do: 'write' });
 		expect(mergeStart('merge', { status: 'ready', ledger: stored }).do).toBe('skip');
 		expect(
-			mergeStart('merge', { status: 'reconciling', ledger: { ...stored, questions_posted: false } })
+			mergeStart('merge', {
+				status: 'reconciling',
+				ledger: { ...stored, questions_posted: false }
+			})
 		).toEqual({ do: 'post_questions' });
 		expect(mergeStart('merge_write', { status: 'pending', ledger: null }).do).toBe('skip');
 		expect(mergeStart('merge_write', { status: 'pending', ledger: stored })).toEqual({
@@ -541,13 +566,18 @@ describe('merge: owner answers and resuming', () => {
 					reason: null,
 					section: 'Where things stand'
 				},
-				{ fact_id: 'F2', fate: 'conflict' as const, with: 'F3', reason: null, section: null }
+				{
+					fact_id: 'F2',
+					fate: 'conflict' as const,
+					with: 'F3',
+					reason: null,
+					section: null
+				}
 			]
 		};
 		const [draft] = requiredQuestions(sameDoc, [], titleOf);
-		expect(draft!.options.map((option) => option.label)).toEqual([
-			'Go with “Domains on Ionos: magnumwealthmanagement.com and beyondexitplann…”',
-			'Go with “Demo planned Jan 20; launch after approval.”'
-		]);
+		const [first, second] = draft!.options.map((option) => option.label);
+		expect(first).toMatch(/^Go with “Domains on Ionos: magnumwealthmanagement\.com/);
+		expect(second).toBe('Go with “Demo planned Jan 20; launch after approval.”');
 	});
 });

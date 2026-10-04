@@ -66,8 +66,21 @@ export const PORTABLE_INTERNAL_LEFTOVER_STRINGS = [
 	'internal-default',
 	'not available at runtime',
 	'internal source analyses',
-	'the upcoming `'
+	'the upcoming `',
+	'dated analyses linked below'
 ] as const;
+
+/**
+ * Router vocabulary that opens some runtime skill summaries ("Root skill for…", "Child skill
+ * under…"). It means nothing to a downloader, so a portable `description` must not open with it;
+ * set `portableDescription` in the post frontmatter instead. Fixed-prefix check on our own copy.
+ */
+export const PORTABLE_DESCRIPTION_INTERNAL_OPENERS = ['Root skill', 'Child skill'] as const;
+
+/** Section labels in the generated download footer; the validator parses the footer by them. */
+export const PORTABLE_FOOTER_DOWNLOADS_LABEL = 'Also free to download:';
+export const PORTABLE_FOOTER_RUN_IN_BUILDOS_LABEL =
+	'Run inside BuildOS (free to start; each page has a Try in BuildOS link):';
 
 export type PublicAgentSkillReference = {
 	id: string;
@@ -405,6 +418,12 @@ const LIST_ITEM_PREFIX_PATTERN = /^(\s*(?:[-*+]|\d+[.)])\s+)/;
 // just keeps or drops one maintainer-facing sentence.
 const SENTENCE_BOUNDARY_PATTERN = /(?<=[.!?]["')\]_*]*)\s+(?=\S)/;
 
+/**
+ * Fixed asides in runtime skill sources that point at repo-only material the sanitizer strips
+ * (e.g. dated analyses under docs/). Removed verbatim; the surrounding sentence stays.
+ */
+const PORTABLE_STRIPPED_CONTENT_ASIDES = [' (dated analyses linked below)'];
+
 /** Fixed maintainer notes in runtime skill sources that mean nothing outside the repo. */
 const PORTABLE_MAINTAINER_NOTE_MARKERS = [
 	'This is the runtime BuildOS skill',
@@ -447,8 +466,31 @@ function dropMaintainerOnlySentences(line: string): string | null {
 	return `${prefix}${kept.join(' ')}`;
 }
 
+function isRepoPathOnlyBlock(block: string): boolean {
+	const lines = block.split(/\r?\n/).filter((line) => line.trim());
+	return (
+		lines.length > 0 &&
+		lines.every((line) => INTERNAL_REPO_PATH_ONLY_LINE_PATTERN.test(line.trim()))
+	);
+}
+
+/**
+ * Drops a one-line lead-in ending in ":" when the block after it is nothing but repo paths: once
+ * the paths are stripped, the lead-in ("Underlying analyses live at:") introduces nothing.
+ */
+function dropLeadInsToRepoPathLists(body: string): string {
+	const blocks = body.split(/\n{2,}/);
+	return blocks
+		.filter((block, index) => {
+			const next = blocks[index + 1];
+			const isLeadIn = !block.trim().includes('\n') && block.trimEnd().endsWith(':');
+			return !(isLeadIn && next !== undefined && isRepoPathOnlyBlock(next));
+		})
+		.join('\n\n');
+}
+
 function scrubInternalRepoPaths(body: string): string {
-	return body
+	return dropLeadInsToRepoPathLists(body)
 		.split(/\r?\n/)
 		.filter((line) => !INTERNAL_REPO_PATH_ONLY_LINE_PATTERN.test(line.trim()))
 		.map((line) => line.replace(MARKDOWN_LINK_INTERNAL_REPO_PATH_PATTERN, '$1'))
@@ -462,7 +504,11 @@ function scrubInternalRepoPaths(body: string): string {
  * tag in the runtime sources meaning "BuildOS's own default, not a sourced threshold".
  */
 function rewriteInternalVocabulary(body: string): string {
-	return body
+	const withoutStrippedAsides = PORTABLE_STRIPPED_CONTENT_ASIDES.reduce(
+		(text, aside) => text.replaceAll(aside, ''),
+		body
+	);
+	return withoutStrippedAsides
 		.replace(/\binternal-default\b/g, 'BuildOS default')
 		.replace(/\binternal (default)(s?)\b/g, 'BuildOS $1$2')
 		.replace(/\bthe upcoming (`[a-z0-9_-]+`)/g, 'the $1');
@@ -642,15 +688,15 @@ function withSkillMdAttribution(url: string, slug: string): string {
 	return parsed.toString();
 }
 
-function getReferencedSkillLabel(skillId: string): string {
-	const publicLink = resolvePublicSkillLink(skillId);
-	if (publicLink) return publicLink.title;
-	return getSkillByReference(skillId)?.name ?? skillId;
+function formatFooterSkillLine(skillId: string, link: PublicSkillLink, slug: string): string {
+	return `- \`${skillId}\` — ${link.title}: <${withSkillMdAttribution(`${SITE_URL}${link.href}`, slug)}>`;
 }
 
 /**
- * Generated footer for every downloadable SKILL.md: where the skill lives, which mentioned
- * skills run inside BuildOS, and how to connect BuildOS projects to the reader's agent.
+ * Generated footer for every downloadable SKILL.md: where the skill lives, which mentioned skills
+ * are also free to download, which run inside BuildOS (preview pages with a Try path), and how to
+ * connect BuildOS projects to the reader's agent. Mentioned skills with no public page are left
+ * out: the footer only lists what a reader can actually open.
  */
 function buildPortableSkillFooter(post: BlogPost, referencedSkillIds: string[]): string {
 	const canonicalUrl = withSkillMdAttribution(`${SITE_URL}/agent-skills/${post.slug}`, post.slug);
@@ -660,16 +706,20 @@ function buildPortableSkillFooter(post: BlogPost, referencedSkillIds: string[]):
 		`This skill is part of the BuildOS skill library. Guide, updates, and source lineage: <${canonicalUrl}>`
 	];
 
-	if (referencedSkillIds.length > 0) {
-		lines.push('', 'Skills mentioned above that are not bundled here run inside BuildOS:', '');
-		for (const skillId of referencedSkillIds) {
-			const label = getReferencedSkillLabel(skillId);
-			const publicLink = resolvePublicSkillLink(skillId);
-			const link = publicLink
-				? `: <${withSkillMdAttribution(`${SITE_URL}${publicLink.href}`, post.slug)}>`
-				: '';
-			const download = publicLink?.kind === 'agent-skill' ? ' (free SKILL.md download)' : '';
-			lines.push(`- \`${skillId}\` — ${label}${download}${link}`);
+	const linked = referencedSkillIds.flatMap((skillId) => {
+		const link = resolvePublicSkillLink(skillId);
+		return link ? [{ skillId, link }] : [];
+	});
+	const sections = [
+		{ label: PORTABLE_FOOTER_DOWNLOADS_LABEL, kind: 'agent-skill' },
+		{ label: PORTABLE_FOOTER_RUN_IN_BUILDOS_LABEL, kind: 'preview' }
+	] as const;
+	for (const section of sections) {
+		const entries = linked.filter((entry) => entry.link.kind === section.kind);
+		if (entries.length === 0) continue;
+		lines.push('', section.label, '');
+		for (const { skillId, link } of entries) {
+			lines.push(formatFooterSkillLine(skillId, link, post.slug));
 		}
 	}
 
@@ -697,7 +747,10 @@ function buildPortableSkillMarkdown(
 	}
 
 	const name = toPortableSkillName(post, runtimeSkill);
-	const description = runtimeSkill?.summary ?? post.description;
+	// Runtime summaries are written for the in-product router; posts can override them with copy
+	// that says what the skill does and when to use it.
+	const description =
+		post.portableDescription?.trim() || runtimeSkill?.summary || post.description;
 	const sourceMarkdown = runtimeSkill?.rawMarkdown ?? embeddedPortable;
 	const body = sourceMarkdown
 		? stripFrontmatter(sourceMarkdown)
@@ -1300,14 +1353,58 @@ export function findPortableInternalLeftovers(content: string): string[] {
 }
 
 /**
- * Download-quality gate for one bundle: Agent Skills spec (`name` format, `name` === folder,
- * description length), the BuildOS footer (canonical link, connect-agents link, every referenced
- * skill listed), and no repo-only leftovers in any shipped file.
+ * The public pages a download footer may link: published agent-skill articles and gallery
+ * previews. Built from the catalog being validated, not from the footer generator.
+ */
+export type PublicSkillPageIndex = {
+	agentSkillSlugs: ReadonlySet<string>;
+	/** Runtime skill ids (snake_case) that have a published agent-skill article. */
+	agentSkillRuntimeIds: ReadonlySet<string>;
+	previewSlugs: ReadonlySet<string>;
+};
+
+export function buildPublicSkillPageIndex(
+	agentSkills: Array<{ slug: string; runtimeSkillId?: string }>
+): PublicSkillPageIndex {
+	const agentSkillRuntimeIds = new Set(
+		agentSkills
+			.map((skill) => skill.runtimeSkillId)
+			.filter((skillId): skillId is string => Boolean(skillId))
+	);
+	const registeredIds = new Set(listAllSkills().map((skill) => skill.id));
+	const previewSlugs = new Set(
+		Object.keys(previewSkillMetadataByRuntimeId)
+			.filter((skillId) => registeredIds.has(skillId) && !agentSkillRuntimeIds.has(skillId))
+			.map(runtimeSkillIdToPreviewSlug)
+	);
+
+	return {
+		agentSkillSlugs: new Set(agentSkills.map((skill) => skill.slug)),
+		agentSkillRuntimeIds,
+		previewSlugs
+	};
+}
+
+function hasPublicSkillPage(skillId: string, pages: PublicSkillPageIndex): boolean {
+	const slug = runtimeSkillIdToPreviewSlug(skillId);
+	return (
+		pages.agentSkillRuntimeIds.has(skillId) ||
+		pages.agentSkillSlugs.has(slug) ||
+		pages.previewSlugs.has(slug)
+	);
+}
+
+/**
+ * Download-quality gate for one bundle: Agent Skills spec (`name` and `description` present and
+ * well formed, `name` === folder), the BuildOS footer (canonical link, connect-agents link, every
+ * listed skill links a real public page in the right section, every mentioned skill that has a
+ * page is listed), and no repo-only leftovers in any shipped file.
  */
 export function validatePortableAgentSkillBundle(
 	post: BlogPost,
 	bundle: PortableAgentSkillBundle,
-	runtimeSkill: SkillDefinition | undefined
+	runtimeSkill: SkillDefinition | undefined,
+	pages: PublicSkillPageIndex = buildPublicSkillPageIndex(listPublicAgentSkillEntries())
 ): AgentSkillValidationIssue[] {
 	const issues: AgentSkillValidationIssue[] = [];
 	const slug = post.slug || '(missing-slug)';
@@ -1315,7 +1412,7 @@ export function validatePortableAgentSkillBundle(
 
 	if (portableSkill?.trim()) {
 		validatePortableSkillSpec(issues, slug, portableSkill, bundle.directory);
-		validatePortableSkillFooter(issues, post, portableSkill, runtimeSkill);
+		validatePortableSkillFooter(issues, post, portableSkill, runtimeSkill, pages);
 	}
 
 	for (const [path, content] of Object.entries(bundle.files)) {
@@ -1345,7 +1442,7 @@ export function validatePortableAgentSkillBundle(
 	return issues;
 }
 
-/** Agent Skills spec: `name` format, `name` === install folder, description length. */
+/** Agent Skills spec: `name` and `description` present, `name` format and folder, length. */
 function validatePortableSkillSpec(
 	issues: AgentSkillValidationIssue[],
 	slug: string,
@@ -1353,10 +1450,19 @@ function validatePortableSkillSpec(
 	folder: string
 ) {
 	const frontmatter = readPortableFrontmatter(portableSkill);
-	const name = typeof frontmatter.name === 'string' ? frontmatter.name : '';
-	const description = typeof frontmatter.description === 'string' ? frontmatter.description : '';
+	const name = typeof frontmatter.name === 'string' ? frontmatter.name.trim() : '';
+	const description =
+		typeof frontmatter.description === 'string' ? frontmatter.description.trim() : '';
 
-	if (name && (name.length > 64 || !AGENT_SKILL_NAME_PATTERN.test(name))) {
+	if (!name) {
+		addValidationIssue(
+			issues,
+			'error',
+			'missing_portable_name',
+			'Portable SKILL.md frontmatter is missing a non-empty name.',
+			slug
+		);
+	} else if (name.length > 64 || !AGENT_SKILL_NAME_PATTERN.test(name)) {
 		addValidationIssue(
 			issues,
 			'error',
@@ -1374,6 +1480,15 @@ function validatePortableSkillSpec(
 			slug
 		);
 	}
+	if (!description) {
+		addValidationIssue(
+			issues,
+			'error',
+			'missing_portable_description',
+			'Portable SKILL.md frontmatter is missing a non-empty description.',
+			slug
+		);
+	}
 	if (description.length > AGENT_SKILL_DESCRIPTION_MAX_LENGTH) {
 		addValidationIssue(
 			issues,
@@ -1383,14 +1498,35 @@ function validatePortableSkillSpec(
 			slug
 		);
 	}
+	const jargonOpener = PORTABLE_DESCRIPTION_INTERNAL_OPENERS.find((opener) =>
+		description.startsWith(opener)
+	);
+	if (jargonOpener) {
+		addValidationIssue(
+			issues,
+			'error',
+			'portable_description_internal_jargon',
+			`Portable SKILL.md description opens with BuildOS router vocabulary ("${jargonOpener}"); set portableDescription in the post frontmatter.`,
+			slug
+		);
+	}
 }
 
-/** Every download must lead back to BuildOS and name each referenced skill it does not ship. */
+const FOOTER_LINK_PATTERN = /<(https?:\/\/[^>\s]+)>/g;
+const FOOTER_SKILL_ID_PATTERN = /^- `([a-z0-9_-]+)`/;
+
+/**
+ * Every download must lead back to BuildOS, and its footer may only promise pages that exist:
+ * each listed skill links a published agent-skill article (under "Also free to download") or a
+ * gallery preview with a Try path (under "Run inside BuildOS"), and every mentioned skill that
+ * has such a page is listed.
+ */
 function validatePortableSkillFooter(
 	issues: AgentSkillValidationIssue[],
 	post: BlogPost,
 	portableSkill: string,
-	runtimeSkill: SkillDefinition | undefined
+	runtimeSkill: SkillDefinition | undefined,
+	pages: PublicSkillPageIndex
 ) {
 	const slug = post.slug || '(missing-slug)';
 	const footerIndex = portableSkill.lastIndexOf(`\n${PORTABLE_SKILL_FOOTER_HEADING}\n`);
@@ -1418,23 +1554,104 @@ function validatePortableSkillFooter(
 		);
 	}
 
+	const listedSkillIds = new Set<string>();
+	let section: 'download' | 'run' | null = null;
+	for (const line of footer.split('\n')) {
+		const trimmed = line.trim();
+		if (trimmed === PORTABLE_FOOTER_DOWNLOADS_LABEL) section = 'download';
+		if (trimmed === PORTABLE_FOOTER_RUN_IN_BUILDOS_LABEL) section = 'run';
+		if (!trimmed.startsWith('- ')) continue;
+
+		const skillId = trimmed.match(FOOTER_SKILL_ID_PATTERN)?.[1];
+		if (skillId) listedSkillIds.add(skillId);
+		const links = [...trimmed.matchAll(FOOTER_LINK_PATTERN)].map((match) => match[1] ?? '');
+		if (links.length === 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'portable_footer_unlinked_skill',
+				`Portable SKILL.md footer lists a skill with no public page: ${trimmed}`,
+				slug
+			);
+			continue;
+		}
+
+		for (const link of links) {
+			const problem = getFooterSkillLinkProblem(link, section, pages);
+			if (problem) {
+				addValidationIssue(
+					issues,
+					'error',
+					problem,
+					problem === 'portable_footer_misfiled_link'
+						? `Portable SKILL.md footer files ${link} under the wrong section.`
+						: `Portable SKILL.md footer links ${link}, which is not a public skill page.`,
+					slug
+				);
+			}
+		}
+	}
+
 	const unlisted = listReferencedRuntimeSkillIds(stripFrontmatter(body), runtimeSkill).filter(
-		(skillId) => !footer.includes(`\`${skillId}\``)
+		(skillId) => hasPublicSkillPage(skillId, pages) && !listedSkillIds.has(skillId)
 	);
 	if (unlisted.length > 0) {
 		addValidationIssue(
 			issues,
 			'error',
 			'portable_unlisted_skill_reference',
-			`Portable SKILL.md references skills that are neither bundled nor listed in the footer: ${unlisted.join(', ')}.`,
+			`Portable SKILL.md mentions skills with a public page that the footer does not list: ${unlisted.join(', ')}.`,
 			slug
 		);
 	}
 }
 
+function getFooterSkillLinkProblem(
+	link: string,
+	section: 'download' | 'run' | null,
+	pages: PublicSkillPageIndex
+): 'portable_footer_unknown_link' | 'portable_footer_misfiled_link' | null {
+	let pathname: string;
+	try {
+		const url = new URL(link);
+		if (url.origin !== new URL(SITE_URL).origin) return 'portable_footer_unknown_link';
+		pathname = url.pathname;
+	} catch {
+		return 'portable_footer_unknown_link';
+	}
+
+	const agentSkillSlug = pathname.match(/^\/agent-skills\/([a-z0-9-]+)$/)?.[1];
+	if (agentSkillSlug && pages.agentSkillSlugs.has(agentSkillSlug)) {
+		return section === 'download' ? null : 'portable_footer_misfiled_link';
+	}
+	const previewSlug = pathname.match(/^\/skills\/preview\/([a-z0-9-]+)$/)?.[1];
+	if (previewSlug && pages.previewSlugs.has(previewSlug)) {
+		return section === 'run' ? null : 'portable_footer_misfiled_link';
+	}
+	return 'portable_footer_unknown_link';
+}
+
+/**
+ * `stackWith` entries are slugs: a published skill, a gallery preview, or a registered BuildOS
+ * skill (kebab-case of its runtime id). Free text and typos fail.
+ */
+function isKnownSkillSlug(reference: string, pages: PublicSkillPageIndex): boolean {
+	if (!AGENT_SKILL_NAME_PATTERN.test(reference)) return false;
+	if (pages.agentSkillSlugs.has(reference) || pages.previewSlugs.has(reference)) return true;
+	const runtimeId = kebabToSnake(reference);
+	return listAllSkills().some((skill) => skill.id === runtimeId);
+}
+
 export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillValidationReport {
 	const issues: AgentSkillValidationIssue[] = [];
 	const slugs = new Set<string>();
+	const portableNameOwners = new Map<string, string>();
+	const pages = buildPublicSkillPageIndex(
+		posts.map((post) => ({
+			slug: post.slug,
+			runtimeSkillId: resolveRuntimeSkillForPost(post)?.id
+		}))
+	);
 	let runtimeSkillCount = 0;
 	let embeddedPortableCount = 0;
 	let publicReferenceCount = 0;
@@ -1493,6 +1710,17 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 				'Skill is missing skillCategory metadata.',
 				slug
 			);
+		}
+		for (const reference of post.stackWith ?? []) {
+			if (!isKnownSkillSlug(reference, pages)) {
+				addValidationIssue(
+					issues,
+					'error',
+					'unknown_stack_with_skill',
+					`stackWith entry "${reference}" is not the slug of a published skill, preview, or registered BuildOS skill.`,
+					slug
+				);
+			}
 		}
 		if (!post.compatibleAgents?.length) {
 			addValidationIssue(
@@ -1721,27 +1949,6 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 					slug
 				);
 			}
-			if (!portableSkill.includes('\nname:') && !portableSkill.includes('\nname: ')) {
-				addValidationIssue(
-					issues,
-					'error',
-					'missing_portable_name',
-					'Portable SKILL.md frontmatter is missing name.',
-					slug
-				);
-			}
-			if (
-				!portableSkill.includes('\ndescription:') &&
-				!portableSkill.includes('\ndescription: ')
-			) {
-				addValidationIssue(
-					issues,
-					'error',
-					'missing_portable_description',
-					'Portable SKILL.md frontmatter is missing description.',
-					slug
-				);
-			}
 			if (portableSkill.includes('skill_reference_load')) {
 				addValidationIssue(
 					issues,
@@ -1775,7 +1982,23 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 				);
 			}
 		}
-		issues.push(...validatePortableAgentSkillBundle(post, bundle, runtimeSkill));
+		issues.push(...validatePortableAgentSkillBundle(post, bundle, runtimeSkill, pages));
+
+		const portableName = readPortableFrontmatter(portableSkill ?? '').name;
+		if (typeof portableName === 'string' && portableName.trim()) {
+			const owner = portableNameOwners.get(portableName);
+			if (owner && owner !== slug) {
+				addValidationIssue(
+					issues,
+					'error',
+					'duplicate_portable_name',
+					`Portable SKILL.md name "${portableName}" is also used by ${owner}; installs would overwrite each other.`,
+					slug
+				);
+			} else {
+				portableNameOwners.set(portableName, slug);
+			}
+		}
 
 		if (!buildOsMetadata?.trim()) {
 			addValidationIssue(

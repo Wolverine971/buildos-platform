@@ -61,18 +61,26 @@ import {
 } from './consolidation.service';
 
 type Row = Record<string, any>;
-let db: Record<string, Row[]>;
+type Table =
+	| 'consolidation_runs'
+	| 'consolidation_questions'
+	| 'consolidation_merges'
+	| 'onto_documents'
+	| 'onto_tasks'
+	| 'onto_projects'
+	| 'onto_organize_batches';
+let db: Record<Table, Row[]>;
 let clock = 0;
 const tick = () => new Date(Date.UTC(2026, 9, 4, 12, 0, clock++)).toISOString();
 
 /** Just enough of the Supabase query builder for the service's calls. */
 function fakeClient() {
 	return {
-		from(table: string) {
+		from(table: Table) {
 			const filters: Array<(row: Row) => boolean> = [];
 			let mode: 'select' | 'update' | 'insert' | 'upsert' = 'select';
 			let payload: Row | null = null;
-			const rows = () => (db[table] ??= []);
+			const rows = () => db[table];
 			const run = () => {
 				if (mode === 'insert') {
 					const row = {
@@ -139,7 +147,7 @@ function fakeClient() {
 }
 
 const USER = 'user-1';
-const RUN = 'run-1';
+const RUN = '00000000-0000-4000-8000-000000000001';
 const [WAYNE, BEYOND] = ['p-wayne', 'p-beyond'];
 
 function doc(id: string, project_id = WAYNE, extra: Row = {}): Row {
@@ -314,7 +322,8 @@ describe('applyConsolidationRun', () => {
 							source_versions: {
 								a: '2026-10-01T00:00:00.000Z',
 								b: '2026-10-01T00:00:00.000Z'
-							}
+							},
+							written_for: '[]'
 						},
 						coverage: null,
 						error: null,
@@ -329,6 +338,91 @@ describe('applyConsolidationRun', () => {
 		expect('receipt' in result && result.receipt.created).toEqual([]);
 		expect(db.consolidation_merges[0]).toMatchObject({ status: 'failed' });
 		expect(db.onto_documents.every((row) => row.state_key === 'draft')).toBe(true);
+	});
+
+	it('holds a draft written before the latest answer to its cards', async () => {
+		seed(
+			[
+				{
+					ops: [
+						{
+							op: 'merge',
+							document_ids: ['a', 'b'],
+							target_project_id: WAYNE,
+							title: 'AB'
+						}
+					]
+				}
+			],
+			{
+				docs: [doc('a'), doc('b')],
+				merges: [
+					{
+						run_id: RUN,
+						cluster_key: 'c1',
+						status: 'ready',
+						title: 'AB',
+						target_project_id: WAYNE,
+						source_ids: ['a', 'b'],
+						markdown: '# AB',
+						ledger: {
+							facts: [],
+							fates: [],
+							sections: [],
+							flags: [],
+							unverified: [],
+							source_versions: {
+								a: '2026-10-01T00:00:00.000Z',
+								b: '2026-10-01T00:00:00.000Z'
+							},
+							// Written before any card was answered.
+							written_for: '[]'
+						},
+						coverage: null,
+						error: null,
+						created_document_id: null,
+						updated_at: '2026-10-04T00:00:00.000Z'
+					}
+				]
+			}
+		);
+		// Merge cards only ever keep; their real effect is the fact edits.
+		const CARD_DOC = '00000000-0000-4000-8000-0000000000bb';
+		db.consolidation_questions.push({
+			id: '00000000-0000-4000-8000-0000000000aa',
+			run_id: RUN,
+			piece: 'merge:c1:1',
+			header: 'Which date?',
+			question: 'The sources disagree on the date.',
+			evidence: [],
+			options: [
+				{
+					id: 'o1',
+					label: 'Keep both',
+					description: '',
+					ops: [{ op: 'keep', document_ids: [CARD_DOC] }]
+				},
+				{
+					id: 'later',
+					label: 'Decide later',
+					description: '',
+					ops: [{ op: 'keep', document_ids: [CARD_DOC] }]
+				}
+			],
+			recommended_option_id: 'o1',
+			skip_option_id: 'later',
+			priority: 40,
+			status: 'answered',
+			answer: { via: 'option', option_id: 'o1' },
+			answered_at: '2026-10-04T00:00:01.000Z',
+			draft: null,
+			created_at: '2026-10-04T00:00:00.000Z',
+			updated_at: '2026-10-04T00:00:01.000Z'
+		});
+		const result = await applyConsolidationRun(params());
+		expect(calls).toEqual([]);
+		expect('receipt' in result && result.receipt.created).toEqual([]);
+		expect('receipt' in result && result.receipt.unanswered).toEqual(['c1']);
 	});
 
 	it('never archives both copies of a pair in favor of each other', async () => {
@@ -393,7 +487,7 @@ describe('undoConsolidationRun', () => {
 			doc('new', BEYOND),
 			doc('m', BEYOND)
 		);
-		organizeUndo.mockImplementation(async ({ confirmationToken }: any) => {
+		organizeUndo.mockImplementation(async ({ confirmationToken }) => {
 			calls.push(confirmationToken ? 'organize-undo' : 'organize-preview');
 			return confirmationToken
 				? { status: 'applied', skipped: [] }
@@ -407,13 +501,14 @@ describe('undoConsolidationRun', () => {
 
 	it('lists what Organize could not put back instead of claiming it', async () => {
 		appliedRun({});
-		organizeUndo.mockImplementation(async ({ confirmationToken }: any) =>
+		organizeUndo.mockImplementation(async ({ confirmationToken }) =>
 			confirmationToken
 				? {
 						status: 'applied',
 						skipped: [
 							{
 								id: 'm',
+								kind: 'document',
 								reason: 'The document was moved or reordered after this batch.'
 							}
 						]

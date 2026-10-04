@@ -1,7 +1,7 @@
 ---
 title: 'Google Calendar For AI Agents: Search Before You Create'
 seoTitle: 'Google Calendar Skill for Claude Code & Codex'
-seoDescription: 'Free Claude Code and Codex skill (SKILL.md) for Google Calendar: search before you create, keep event IDs paired with their account, and treat recurring events as high risk.'
+seoDescription: 'Let your agent use Google Calendar without duplicate events or broken recurring series. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.'
 description: 'A portable Google Calendar skill for AI agents: choose scope first, search before creating events, use exact IDs for mutations, and treat recurrence as high risk.'
 author: 'DJ Wayne'
 date: '2026-04-27'
@@ -26,7 +26,6 @@ skillType: 'provider'
 skillCategory: 'google-workspace'
 providers: ['Google Calendar', 'Google Workspace']
 compatibleAgents: ['BuildOS-compatible agents', 'Claude Code', 'Codex', 'portable Agent Skills']
-stackWith: ['OAuth 2.0 for agents', 'Gmail for agents', 'Founder assistant stack']
 skillSource: 'apps/web/src/lib/services/agentic-chat/tools/skills/definitions/google_calendar/SKILL.md'
 lineagePath: 'apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md'
 lineageStats:

@@ -35,48 +35,8 @@ import {
 } from '$lib/server/calendar-token-crypto';
 import { createCrossSiteFormPostResponse } from '$lib/server/csrf';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
+import { getLegacyRedirectPath } from '$lib/utils/legacy-redirects';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
-
-const LEGACY_FEATURE_PATHS = new Set(['/features', '/features/']);
-const LEGACY_PATH_REDIRECTS = new Map<string, string>([
-	['/community', '/contact'],
-	['/community/', '/contact'],
-	['/s-build-os.webp', '/twitter_card_light.webp'],
-	// Merged into the irresistible-hooks deep-read (combined build formula + diagnostic).
-	[
-		'/blogs/source-analyses/kallaway-hooks-impossible-to-skip',
-		'/blogs/source-analyses/kallaway-irresistible-hooks'
-	],
-	[
-		'/blogs/source-analyses/kallaway-hooks-impossible-to-skip/',
-		'/blogs/source-analyses/kallaway-irresistible-hooks'
-	]
-]);
-const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;
-
-function getLegacyRedirectPath(pathname: string): string | null {
-	const redirectedPath = LEGACY_PATH_REDIRECTS.get(pathname);
-	if (redirectedPath) {
-		return redirectedPath;
-	}
-
-	if (LEGACY_FEATURE_PATHS.has(pathname)) {
-		return '/';
-	}
-
-	const legacyBlogPathMatch = pathname.match(LEGACY_BLOG_MARKDOWN_PATH);
-	if (!legacyBlogPathMatch) {
-		return null;
-	}
-
-	const [, category, rawSlug] = legacyBlogPathMatch;
-	if (!category || !rawSlug) {
-		return null;
-	}
-
-	const slug = rawSlug.replace(/\.md$/i, '');
-	return `/blogs/${category}/${slug}`;
-}
 
 function getRequestSearch(event: RequestEvent): string {
 	const queryStart = event.request.url.indexOf('?');

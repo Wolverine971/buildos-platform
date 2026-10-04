@@ -2,7 +2,8 @@
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
-import { getFamilyId, MIN_INDEXABLE_FAMILY_SIZE } from '../src/lib/skills/skill-gallery';
+import { getFamilyId, isIndexableHub } from '../src/lib/skills/skill-gallery';
+import { getLegacyRedirectPath } from '../src/lib/utils/legacy-redirects';
 import { skillExperts } from '../src/lib/skills/skill-experts';
 import {
 	packDefinitions,
@@ -97,8 +98,9 @@ const STATIC_URLS: SitemapUrl[] = [
 		priority: '0.7'
 	},
 	{
+		// lastmod is replaced with the latest skill or preview change in generateSkillGalleryUrls.
 		loc: `${BASE_URL}/skills`,
-		lastmod: '2026-10-04',
+		lastmod: SKILL_GALLERY_LASTMOD,
 		changefreq: 'weekly',
 		priority: '0.8'
 	},
@@ -455,6 +457,21 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 	// URLs). /skills/<slug> canonicalizes to it, and /skills/preview/<slug> pages are noindexed
 	// thin synopses, so neither belongs in the sitemap.
 	const urls: SitemapUrl[] = [];
+
+	// The gallery index changes whenever a public skill or a preview does.
+	const galleryRootUrl = STATIC_URLS.find((url) => url.loc === `${BASE_URL}/skills`);
+	if (galleryRootUrl) {
+		const latestChange = [
+			SKILL_GALLERY_LASTMOD,
+			...posts.map(getPostLastMod),
+			...Object.values(previewSkillMetadataByRuntimeId).map((metadata) =>
+				formatDateToYYYYMMDD(metadata.lastUpdated)
+			)
+		].reduce((latest, date) => (date > latest ? date : latest));
+		galleryRootUrl.lastmod = latestChange;
+		console.log(`📅 Updated skill gallery lastmod to: ${latestChange}`);
+	}
+
 	urls.push({
 		loc: `${BASE_URL}/skills/people`,
 		lastmod: SKILL_GALLERY_LASTMOD,
@@ -471,15 +488,22 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 		});
 	}
 
-	const domainIds = new Set(
-		posts
-			.map((post) => post.skillCategory)
-			.filter((domainId): domainId is string => Boolean(domainId))
-	);
+	// Domain, family, and path hubs need at least MIN_INDEXABLE_HUB_SIZE skills + previews;
+	// smaller ones are noindexed on the page itself and stay out of the sitemap.
+	const domainSizes = new Map<string, number>();
+	const countDomainMember = (domainId: string | undefined) => {
+		if (!domainId) return;
+		domainSizes.set(domainId, (domainSizes.get(domainId) ?? 0) + 1);
+	};
+	for (const post of posts) countDomainMember(post.skillCategory);
 	for (const metadata of Object.values(previewSkillMetadataByRuntimeId)) {
-		domainIds.add(metadata.domainId);
+		countDomainMember(metadata.domainId);
 	}
-	for (const domainId of domainIds) {
+	for (const [domainId, size] of domainSizes) {
+		if (!isIndexableHub(size)) {
+			console.log(`⏩ Skipping thin skill domain '${domainId}' (${size} skill)`);
+			continue;
+		}
 		urls.push({
 			loc: `${BASE_URL}/skills/domain/${domainId}`,
 			lastmod: SKILL_GALLERY_LASTMOD,
@@ -488,8 +512,6 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 		});
 	}
 
-	// Family pages need at least MIN_INDEXABLE_FAMILY_SIZE skills + previews; smaller ones are
-	// noindexed on the page itself.
 	const familySizes = new Map<string, number>();
 	const countFamilyMember = (familyName: string | undefined) => {
 		if (!familyName) return;
@@ -500,7 +522,7 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 		countFamilyMember(metadata.family);
 	}
 	for (const [familyName, size] of familySizes) {
-		if (size < MIN_INDEXABLE_FAMILY_SIZE) {
+		if (!isIndexableHub(size)) {
 			console.log(`⏩ Skipping thin skill family '${familyName}' (${size} skill)`);
 			continue;
 		}
@@ -514,7 +536,11 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 
 	const publishedSlugs = new Set(posts.map((post) => post.slug));
 	for (const pack of packDefinitions) {
-		if (!pack.slugs.some((slug) => publishedSlugs.has(slug))) continue;
+		const size = pack.slugs.filter((slug) => publishedSlugs.has(slug)).length;
+		if (!isIndexableHub(size)) {
+			console.log(`⏩ Skipping thin skill path '${pack.id}' (${size} skill)`);
+			continue;
+		}
 		urls.push({
 			loc: `${BASE_URL}/skills/path/${pack.id}`,
 			lastmod: SKILL_GALLERY_LASTMOD,
@@ -595,6 +621,15 @@ function generateSitemap(): void {
 		} else {
 			console.log('📝 No blog context found, using static URLs only');
 		}
+
+		// A redirect source is not a page; list only where it lands.
+		allUrls = allUrls.filter((url) => {
+			const redirectTarget = getLegacyRedirectPath(url.loc.slice(BASE_URL.length) || '/');
+			if (redirectTarget) {
+				console.log(`⏩ Skipping redirect source ${url.loc} → ${redirectTarget}`);
+			}
+			return !redirectTarget;
+		});
 
 		// Sort URLs by priority (descending) then alphabetically
 		allUrls.sort((a, b) => {

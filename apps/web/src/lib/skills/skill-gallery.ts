@@ -96,8 +96,15 @@ export const packDefinitions: PackDefinition[] = curatedPackDefinitions;
 export const TRY_IN_BUILDOS_NEXT_STEP =
 	'Free to start. Create an account and the skill opens in BuildOS chat with the prompt already drafted. Nothing runs until you send it.';
 
-/** Families with fewer skills and previews than this stay out of search (noindex, no sitemap). */
-export const MIN_INDEXABLE_FAMILY_SIZE = 2;
+/**
+ * Skill hubs (family, domain, and path pages) with fewer skills and previews than this stay out
+ * of search (noindex, no sitemap): a one-skill hub only repeats that skill's page.
+ */
+export const MIN_INDEXABLE_HUB_SIZE = 2;
+
+export function isIndexableHub(memberCount: number): boolean {
+	return memberCount >= MIN_INDEXABLE_HUB_SIZE;
+}
 
 function fromPublicGalleryMetadata(
 	metadata?: PublicSkillGalleryMetadata
@@ -152,9 +159,16 @@ export function getNumericStat(skill: GallerySkill, key: string): number {
 	return typeof value === 'number' ? value : 0;
 }
 
+/** Primary link for a public skill: its agent-skill article, the one canonical page. */
 export function getSkillPath(skill: Pick<GallerySkill, 'slug'>): string {
+	return getAgentRepositoryPath(skill);
+}
+
+/** The gallery workflow view: starter prompts and Try links. Its canonical is the article. */
+export function getSkillWorkflowPath(skill: Pick<GallerySkill, 'slug'>): string {
 	return `/skills/${skill.slug}`;
 }
+
 export function getPreviewSkillPath(preview: Pick<RuntimeSkillGalleryPreview, 'slug'>): string {
 	return `/skills/preview/${preview.slug}`;
 }
@@ -199,10 +213,6 @@ export function getAgentRepositoryPath(skill: Pick<GallerySkill, 'slug'>): strin
 
 export function getAgentFilePath(skill: Pick<GallerySkill, 'slug'>): string {
 	return `/agent-skills/${skill.slug}/portable/SKILL.md`;
-}
-
-export function getBuildOsSkillPath(skill: Pick<GallerySkill, 'slug'>): string {
-	return `/agent-skills/${skill.slug}/skill.md`;
 }
 
 export function getBundlePath(skill: Pick<GallerySkill, 'slug'>): string {

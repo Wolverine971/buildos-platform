@@ -100,7 +100,8 @@ export class OAuthConnectorError extends Error {
 		public readonly status = 400,
 		public readonly code = 'invalid_request',
 		public readonly description = message,
-		public readonly recognizedCredential = false
+		public readonly recognizedCredential = false,
+		public readonly databaseCode?: string
 	) {
 		super(message);
 		this.name = 'OAuthConnectorError';
@@ -1023,12 +1024,33 @@ async function issueOAuthTokens(params: {
 	});
 	if (data?.reuse_detected) await params.onRefreshReuse?.();
 	if (error || data?.error) {
-		const invalidScope = error?.message?.includes('invalid_scope');
+		// Only the RPC's explicit credential/policy rejections require new consent.
+		// SQL faults (e.g. 42725), missing schema, and outages cannot be repaired by
+		// reconnecting. Keep them server_error and retain only the code for logging.
+		const invalidScope = error?.code === 'P0001' && error.message === 'invalid_scope';
+		const invalidGrant =
+			(!error && data?.error === 'invalid_grant') ||
+			(error?.code === 'P0001' &&
+				[
+					'invalid_grant',
+					'invalid_grant: consent changed',
+					'invalid_grant: consent invalidated'
+				].includes(error.message));
+		if (!invalidScope && !invalidGrant) {
+			throw new OAuthConnectorError(
+				'BuildOS could not complete the token exchange. Try again later.',
+				500,
+				'server_error',
+				undefined,
+				false,
+				error?.code
+			);
+		}
 		throw new OAuthConnectorError(
 			invalidScope
 				? 'Requested scope exceeds credential scope'
 				: 'Credential exchange failed; authorize again',
-			error && !['P0001', '23505'].includes(error.code) ? 500 : 400,
+			400,
 			invalidScope ? 'invalid_scope' : 'invalid_grant'
 		);
 	}

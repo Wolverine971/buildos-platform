@@ -10,10 +10,13 @@ import {
 	getFamilyPath,
 	getPreviewSearchText,
 	getPreviewSkillPath,
+	getSkillPath,
 	getSkillSearchMatches,
+	getSkillWorkflowPath,
 	getTryInBuildOsPath,
 	getTryPackInBuildOsPath,
 	groupSkillsByFamily,
+	isIndexableHub,
 	type GallerySkill,
 	type RuntimeSkillGalleryPreview
 } from './skill-gallery';
@@ -31,6 +34,17 @@ function gallerySkill(slug: string, overrides: Partial<GallerySkill> = {}): Gall
 }
 
 describe('skill gallery discovery helpers', () => {
+	it('sends primary skill links to the canonical article and keeps the workflow view reachable', () => {
+		const skill = gallerySkill('hook-craft-short-form');
+		expect(getSkillPath(skill)).toBe('/agent-skills/hook-craft-short-form');
+		expect(getSkillWorkflowPath(skill)).toBe('/skills/hook-craft-short-form');
+	});
+
+	it('keeps one-skill hubs out of search', () => {
+		expect(isIndexableHub(1)).toBe(false);
+		expect(isIndexableHub(2)).toBe(true);
+	});
+
 	it('builds stable family IDs and routes', () => {
 		expect(getFamilyId('Cold Outreach')).toBe('cold-outreach');
 		expect(getFamilyPath({ name: 'Cold Outreach' })).toBe('/skills/family/cold-outreach');

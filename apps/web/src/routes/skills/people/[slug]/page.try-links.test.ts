@@ -35,7 +35,7 @@ describe('skill expert page', () => {
 		);
 		expect(screen.getByRole('link', { name: /Hook Craft For Short-Form/ })).toHaveAttribute(
 			'href',
-			'/skills/hook-craft-short-form'
+			'/agent-skills/hook-craft-short-form'
 		);
 	});
 });

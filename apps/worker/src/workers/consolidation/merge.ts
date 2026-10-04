@@ -289,14 +289,8 @@ export function ownerAnswers(questions: readonly ConsolidationQuestion[]): Owner
 	});
 }
 
-/** What the owner has said so far; a draft written from an older state gets another pass. */
-export function answersFingerprint(questions: readonly ConsolidationQuestion[]): string {
-	return JSON.stringify(
-		questions
-			.map((question) => [question.id, question.status, question.answer])
-			.sort((a, b) => String(a[0]).localeCompare(String(b[0])))
-	);
-}
+/** Shared with the web, which holds a draft at Apply unless it was written for these answers. */
+export { answersFingerprint } from '@buildos/shared-agent-ops/consolidation';
 
 /** What a merge job does first, given the row as stored. */
 export type MergeStart =
@@ -315,7 +309,8 @@ export function mergeStart(
 	mode: 'merge' | 'merge_write',
 	row: { status: string; ledger: MergeLedger | null }
 ): MergeStart {
-	if (mode === 'merge' && row.status === 'ready') return { do: 'skip', reason: 'already written' };
+	if (mode === 'merge' && row.status === 'ready')
+		return { do: 'skip', reason: 'already written' };
 	if (!row.ledger)
 		return mode === 'merge'
 			? { do: 'extract' }
@@ -495,7 +490,11 @@ export function parseReconcile(
 			.filter((option) => option.label && option.edits.length)
 			.slice(0, 3);
 		if (kept.length < 2) continue;
-		const options = kept.map(({ label, description, edits }) => ({ label, description, edits }));
+		const options = kept.map(({ label, description, edits }) => ({
+			label,
+			description,
+			edits
+		}));
 		const ids = (Array.isArray(item.facts) ? item.facts : []).filter(
 			(id): id is string => typeof id === 'string' && factIds.has(id)
 		);

@@ -118,8 +118,11 @@
 		return `${getSkillPath(skill)}/bundle.zip`;
 	}
 
+	// Same file name as the install steps on the skill page: the SKILL.md name, which is also
+	// the folder the bundle unzips into.
 	function getBundleCommand(skill: Skill): string {
-		return `curl -L ${skill.bundle_zip_url} -o ${skill.slug}.zip`;
+		const skillName = data.skillNames[skill.slug] ?? skill.slug;
+		return `curl -L ${skill.bundle_zip_url} -o ${skillName}.zip`;
 	}
 
 	async function copyBundleCommand(skill: Skill) {

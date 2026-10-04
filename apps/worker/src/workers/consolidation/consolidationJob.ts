@@ -530,7 +530,8 @@ async function patchCluster(
 	throw new Error('The plan kept changing; will retry.');
 }
 
-const REPLAN_FAILED = 'I could not turn that answer into a plan. Pick an option, or say it another way.';
+const REPLAN_FAILED =
+	'I could not turn that answer into a plan. Pick an option, or say it another way.';
 const REPLAN_CAPPED =
 	'This consolidation reached its spending cap, so I can’t re-plan this group from your words. Pick one of the options.';
 

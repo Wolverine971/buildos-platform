@@ -18,8 +18,20 @@
 		SITE_NAME
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
-	import { ArrowLeft, Calendar, Clock, History, PlayCircle, Tag } from '$lib/icons/lucide';
-	import { getTryInBuildOsPath, TRY_IN_BUILDOS_NEXT_STEP } from '$lib/skills/skill-gallery';
+	import {
+		ArrowLeft,
+		ArrowRight,
+		Calendar,
+		Clock,
+		History,
+		PlayCircle,
+		Tag
+	} from '$lib/icons/lucide';
+	import {
+		getSkillWorkflowPath,
+		getTryInBuildOsPath,
+		TRY_IN_BUILDOS_NEXT_STEP
+	} from '$lib/skills/skill-gallery';
 	import {
 		getSkillExpertByName,
 		getSkillExpertLineageRelationship,
@@ -71,6 +83,7 @@
 	const skillBundleUrl = $derived(`${articleUrl}/bundle.zip`);
 	const agentSkillIndexUrl = `${SITE_URL}/agent-skills/index.json`;
 	const tryInBuildOsPath = $derived(getTryInBuildOsPath(data.post));
+	const skillWorkflowPath = $derived(getSkillWorkflowPath(data.post));
 	// SEO meta title: prefer a trimmed `seoTitle` (kept under ~60 chars incl. " | BuildOS")
 	// while the visible H1 keeps the full `title`. Falls back to `title` when unset.
 	const metaTitle = $derived(`${data.post.seoTitle ?? data.post.title} | BuildOS`);
@@ -624,6 +637,13 @@
 							<p class="mt-1 text-sm leading-6 text-muted-foreground">
 								{TRY_IN_BUILDOS_NEXT_STEP}
 							</p>
+							<a
+								href={skillWorkflowPath}
+								class="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								Workflow and starter prompts
+								<ArrowRight class="h-3.5 w-3.5" aria-hidden="true" />
+							</a>
 						</div>
 						<a
 							href={tryInBuildOsPath}

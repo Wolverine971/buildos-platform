@@ -28,6 +28,8 @@ export interface BlogPost {
 	seoTitle?: string;
 	/** Optional SEO-only meta description. Keeps the visible subtitle (`description`) intact. Falls back to `description` when unset. */
 	seoDescription?: string;
+	/** Agent-skill posts only: the downloadable SKILL.md `description` (what the skill does and when to use it). Falls back to the runtime skill summary when unset. */
+	portableDescription?: string;
 	description: string;
 	author: string;
 	date: string;
@@ -270,6 +272,10 @@ function buildBlogPost(
 		seoTitle: typeof metadata.seoTitle === 'string' ? metadata.seoTitle : undefined,
 		seoDescription:
 			typeof metadata.seoDescription === 'string' ? metadata.seoDescription : undefined,
+		portableDescription:
+			typeof metadata.portableDescription === 'string'
+				? metadata.portableDescription
+				: undefined,
 		description,
 		author: typeof metadata.author === 'string' ? metadata.author : 'BuildOS Team',
 		date: normalizedDate,

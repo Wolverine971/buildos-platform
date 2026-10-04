@@ -45,7 +45,7 @@
 		getSkillPath,
 		getSkillPromise,
 		getTryInBuildOsPath,
-		MIN_INDEXABLE_FAMILY_SIZE,
+		isIndexableHub,
 		normalizeSearchText
 	} from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
@@ -98,9 +98,7 @@
 	});
 	let startSkill = $derived(data.startSkill ?? null);
 	// A one-skill family page only repeats the skill page, so it stays out of search.
-	let isThinFamily = $derived(
-		family.skills.length + data.previews.length < MIN_INDEXABLE_FAMILY_SIZE
-	);
+	let isThinFamily = $derived(!isIndexableHub(family.skills.length + data.previews.length));
 	let startPreview = $derived(data.startPreview ?? null);
 
 	function childMatches(child: Child, normalized: string): boolean {

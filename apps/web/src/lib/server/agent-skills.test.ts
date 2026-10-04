@@ -14,6 +14,8 @@ import {
 	findAgentSkillPostByPortableName,
 	findPortableInternalLeftovers,
 	formatAgentSkillValidationReport,
+	PORTABLE_FOOTER_DOWNLOADS_LABEL,
+	PORTABLE_FOOTER_RUN_IN_BUILDOS_LABEL,
 	getAgentSkillDownloadHeaders,
 	resolvePublicSkillLink,
 	validatePortableAgentSkillBundle,
@@ -399,7 +401,7 @@ describe('public agent skill serving', () => {
 		expect(parseYaml(frontmatter ?? '')).toEqual({
 			name: 'ui-ux-quality-review',
 			description:
-				'Child skill under Build Quality UI/UX for foundational screen and flow review across hierarchy, clarity, spacing, type, color, consistency, states, charts, and responsive fit. Returns evidence-backed findings with severity and concrete fixes; includes an AI-generated-UI smoke test.'
+				'Review product screens and flows for hierarchy, clarity, spacing, type, color, consistency, states, charts, and responsive fit. Use when auditing a screen, dashboard, landing page, or mobile flow, or when checking AI-generated UI before it ships. Returns evidence-backed findings with severity and concrete fixes.'
 		});
 		expect(bundle.files['SKILL.md']).toContain('## Portable References');
 		expect(bundle.files['SKILL.md']).toContain('references/foundation-checks.md');
@@ -519,6 +521,16 @@ describe('portable skill downloads lead back to BuildOS', () => {
 		expect(footer).toContain(
 			'https://build-os.com/docs/connect-agents?utm_source=skill_md&utm_medium=download&utm_campaign=cold-email-engagement-first-outreach'
 		);
+		// Free downloads and BuildOS-only previews sit in separate, honestly labelled lists.
+		const downloadsAt = footer.indexOf(PORTABLE_FOOTER_DOWNLOADS_LABEL);
+		const runAt = footer.indexOf(PORTABLE_FOOTER_RUN_IN_BUILDOS_LABEL);
+		expect(downloadsAt).toBeGreaterThan(0);
+		expect(runAt).toBeGreaterThan(downloadsAt);
+		const downloads = footer.slice(downloadsAt, runAt);
+		const runInBuildOs = footer.slice(runAt);
+		expect(downloads).toContain(
+			'- `cold_email_icp_signal_design` — Cold Email ICP And Signal Design: <https://build-os.com/agent-skills/cold-email-icp-signal-design?utm_source=skill_md'
+		);
 		for (const child of [
 			'cold_email_offer_lab',
 			'cold_email_research_anchors',
@@ -528,20 +540,42 @@ describe('portable skill downloads lead back to BuildOS', () => {
 			'cold_email_reply_os',
 			'cold_email_learning_review'
 		]) {
-			expect(footer).toContain(`\`${child}\``);
-			expect(footer).toContain(
+			expect(runInBuildOs).toContain(`\`${child}\``);
+			expect(runInBuildOs).toContain(
 				`/skills/preview/${child.replace(/_/g, '-')}?utm_source=skill_md`
 			);
 		}
-		expect(footer).toContain('/agent-skills/cold-email-icp-signal-design?utm_source=skill_md');
+		expect(footer).not.toContain('(free SKILL.md download)');
+		expect(footer).not.toContain('not bundled here run inside BuildOS');
 
 		const hook = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'hook-craft-short-form');
 		const hookMd = requireTestValue(buildPortableAgentSkillBundle(hook).files['SKILL.md']);
-		// A referenced skill with no public page is listed as plain text, not linked.
-		expect(hookMd).toContain(
-			'- `viral_video_script_structure` — Viral Video Script Structure\n'
-		);
+		const hookFooter = hookMd.slice(hookMd.indexOf('## More From BuildOS'));
+		// A referenced skill with no public page is left out of the footer entirely.
+		expect(hookFooter).not.toContain('viral_video_script_structure');
+		expect(hookFooter).not.toContain(PORTABLE_FOOTER_DOWNLOADS_LABEL);
+		expect(hookFooter).toContain(PORTABLE_FOOTER_RUN_IN_BUILDOS_LABEL);
 		expect(hookMd).not.toContain('the upcoming `viral-video-script-structure`');
+	});
+
+	it('leads every portable description with what the skill does, not router vocabulary', async () => {
+		for (const post of await loadAgentSkillPosts()) {
+			const skillMd = requireTestValue(buildPortableAgentSkillBundle(post).files['SKILL.md']);
+			const description = String(readFrontmatter(skillMd).description ?? '');
+			expect(description, post.slug).not.toMatch(/^(Root|Child) skill/);
+			expect(description.length, post.slug).toBeLessThanOrEqual(1024);
+		}
+	});
+
+	it('drops pointers at stripped repo-only material', async () => {
+		const hook = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'hook-craft-short-form');
+		const hookMd = requireTestValue(buildPortableAgentSkillBundle(hook).files['SKILL.md']);
+
+		expect(hookMd).not.toContain('linked below');
+		expect(hookMd).not.toContain('Underlying Kallaway analyses live at:');
+		expect(hookMd).toContain("Kane Kallaway's four videos are the **PRIMARY** creator source;");
+		// The YouTube source list that is actually shipped stays.
+		expect(hookMd).toContain('Distilled from four Kallaway videos:');
 	});
 
 	it('ships no repo-only leftovers in any downloadable file', async () => {
@@ -598,6 +632,110 @@ describe('portable skill downloads lead back to BuildOS', () => {
 				'portable_unlisted_skill_reference',
 				'portable_internal_leftover',
 				'portable_reference_internal_infrastructure_leak'
+			])
+		);
+	});
+
+	it('only lets the footer promise pages that exist, in the right section', async () => {
+		const post = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'hook-craft-short-form');
+		const issues = validatePortableAgentSkillBundle(
+			post,
+			{
+				slug: post.slug,
+				directory: 'hook-craft-short-form',
+				files: {
+					'SKILL.md': [
+						'---',
+						'name: hook-craft-short-form',
+						'description: Draft and audit hooks.',
+						'---',
+						'',
+						'Pair with `content-strategy-beyond-blogging` and `viral-video-script-structure`.',
+						'',
+						'## More From BuildOS',
+						'',
+						'Guide: <https://build-os.com/agent-skills/hook-craft-short-form?utm_source=skill_md>',
+						'',
+						PORTABLE_FOOTER_DOWNLOADS_LABEL,
+						'',
+						'- `content_strategy_beyond_blogging` — Content Strategy: <https://build-os.com/skills/preview/content-strategy-beyond-blogging?utm_source=skill_md>',
+						'- `made_up_skill` — Made Up: <https://build-os.com/agent-skills/made-up-skill?utm_source=skill_md>',
+						'',
+						PORTABLE_FOOTER_RUN_IN_BUILDOS_LABEL,
+						'',
+						'- `viral_video_script_structure` — Viral Video Script Structure',
+						'',
+						'Connect: <https://build-os.com/docs/connect-agents?utm_source=skill_md>'
+					].join('\n')
+				}
+			},
+			undefined
+		);
+
+		expect(issues.map((issue) => issue.code).sort()).toEqual([
+			'portable_footer_misfiled_link',
+			'portable_footer_unknown_link',
+			'portable_footer_unlinked_skill'
+		]);
+	});
+
+	it('fails empty frontmatter, router-vocabulary descriptions, bad stack slugs, and duplicate names', async () => {
+		const post = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'hook-craft-short-form');
+		const emptyIssues = validatePortableAgentSkillBundle(
+			post,
+			{
+				slug: post.slug,
+				directory: 'hook-craft-short-form',
+				files: { 'SKILL.md': "---\nname: ''\ndescription: '  '\n---\n\nBody.\n" }
+			},
+			undefined
+		).map((issue) => issue.code);
+		expect(emptyIssues).toEqual(
+			expect.arrayContaining(['missing_portable_name', 'missing_portable_description'])
+		);
+
+		const jargonIssues = validatePortableAgentSkillBundle(
+			post,
+			{
+				slug: post.slug,
+				directory: 'hook-craft-short-form',
+				files: {
+					'SKILL.md':
+						'---\nname: hook-craft-short-form\ndescription: Child skill for hooks.\n---\n'
+				}
+			},
+			undefined
+		).map((issue) => issue.code);
+		expect(jargonIssues).toContain('portable_description_internal_jargon');
+
+		const hook = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'hook-craft-short-form');
+		const report = validateAgentSkillCatalogPosts([
+			{
+				...hook,
+				stackWith: [
+					'story-driven-content-craft',
+					'content-strategy-beyond-blogging',
+					'viral-video-script-structure',
+					'accessibility-and-inclusive-ui-review',
+					'OAuth 2.0 for agents'
+				]
+			},
+			// A second post whose SKILL.md name collides with hook-craft's.
+			{ ...hook, slug: 'hook-craft-copy' }
+		]);
+		const stackIssues = report.issues.filter(
+			(issue) => issue.code === 'unknown_stack_with_skill'
+		);
+		expect(stackIssues.map((issue) => issue.message)).toEqual([
+			expect.stringContaining('"accessibility-and-inclusive-ui-review"'),
+			expect.stringContaining('"OAuth 2.0 for agents"')
+		]);
+		expect(report.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'duplicate_portable_name',
+					slug: 'hook-craft-copy'
+				})
 			])
 		);
 	});

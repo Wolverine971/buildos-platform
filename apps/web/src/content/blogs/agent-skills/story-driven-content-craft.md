@@ -1,7 +1,7 @@
 ---
 title: 'Story-Driven Content Craft: An Agent Skill For Nonfiction That Holds Attention'
 seoTitle: 'Story-Driven Content Skill for Claude Code'
-seoDescription: 'Free Claude Code and Codex skill (SKILL.md) for structuring essays, video scripts, and founder posts so they hold attention. Download it, or run it in BuildOS.'
+seoDescription: 'Structure essays, video scripts, and founder posts so people keep reading. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.'
 description: 'A source-lineaged agent skill for structuring founder essays, video scripts, social posts, and pitch narratives with stronger loops, rhythm, lens, payoff, and retention craft.'
 author: 'DJ Wayne'
 date: '2026-05-02'

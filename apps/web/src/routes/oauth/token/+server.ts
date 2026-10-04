@@ -14,6 +14,16 @@ import { logRouteError } from '$lib/server/route-error';
 
 async function tokenError(event: RequestEvent, error: unknown) {
 	if (error instanceof OAuthConnectorError) {
+		if (error.status >= 500) {
+			// Do not log token request bodies or database error messages/details:
+			// they can contain credentials. The stage and structured code suffice.
+			await logRouteError(event, new Error('OAuth token exchange failed'), {
+				operation: 'oauth.token',
+				severity: 'error',
+				status: error.status,
+				metadata: { oauth_error: error.code, database_code: error.databaseCode }
+			});
+		}
 		return json(
 			{
 				error: error.code,

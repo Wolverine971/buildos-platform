@@ -7,6 +7,7 @@ import {
 	fateCounts,
 	quoteFound,
 	repairLedger,
+	safeEdits,
 	sectionFacts,
 	type LedgerFact,
 	type LedgerFate,
@@ -129,6 +130,51 @@ describe('fact ledger', () => {
 		expect(repaired.sections.at(-1)).toBe(OTHER_NOTES_SECTION);
 	});
 
+	it('never lets a replaced fact vanish: cycles and replacements the doc does not show are kept', () => {
+		const cycle = repairLedger({
+			...rod,
+			fates: [
+				...rod.fates.filter((item) => item.fact_id !== 'F3' && item.fact_id !== 'F4'),
+				fate('F3', 'superseded', { with: 'F4' }),
+				fate('F4', 'superseded', { with: 'F3' })
+			]
+		});
+		expect(checkLedger(cycle)).toEqual([]);
+		const byId = new Map(cycle.fates.map((item) => [item.fact_id, item]));
+		// Neither side of the cycle silently wins: both stay, as history.
+		expect(byId.get('F3')).toMatchObject({ fate: 'history', section: OTHER_NOTES_SECTION });
+		expect(byId.get('F4')).toMatchObject({ fate: 'history', section: OTHER_NOTES_SECTION });
+
+		const intoDropped = {
+			...rod,
+			fates: rod.fates.map((item) =>
+				item.fact_id === 'F3' ? fate('F3', 'superseded', { with: 'F5' }) : item
+			)
+		};
+		expect(checkLedger(intoDropped).map((problem) => problem.fact_id)).toEqual(['F3']);
+		expect(repairLedger(intoDropped).fates.find((item) => item.fact_id === 'F3')).toMatchObject(
+			{ fate: 'history', section: OTHER_NOTES_SECTION }
+		);
+
+		// A chain that ends at a fact the doc shows is fine.
+		const chain = {
+			...rod,
+			fates: rod.fates.map((item) =>
+				item.fact_id === 'F3' ? fate('F3', 'superseded', { with: 'F2' }) : item
+			)
+		};
+		expect(checkLedger(chain)).toEqual([]);
+	});
+
+	it('treats only edits that keep a fact’s words visible as safe to apply unasked', () => {
+		expect(
+			safeEdits([fate('F1', 'keep', { section: 'Who Rod is' }), fate('F6', 'missing')])
+		).toBe(true);
+		expect(safeEdits([fate('F2', 'merged', { with: 'F1' })])).toBe(false);
+		expect(safeEdits([fate('F3', 'superseded', { with: 'F4' })])).toBe(false);
+		expect(safeEdits([fate('F5', 'dropped', { reason: 'junk' })])).toBe(false);
+	});
+
 	it('finds quotes regardless of whitespace and case', () => {
 		expect(
 			quoteFound(
@@ -146,5 +192,10 @@ describe('fact ledger', () => {
 		).toBe(true);
 		expect(quoteFound('**Offer:** $1,200 pilot', 'Offer: $2,400 pilot')).toBe(false);
 		expect(quoteFound('anything', 'an')).toBe(false);
+		// Short quotes count when they stand on their own.
+		expect(quoteFound('Retainer: $40 per hour.', '$40')).toBe(true);
+		expect(quoteFound('Owner: Ana.', 'Ana')).toBe(true);
+		expect(quoteFound('Banana bread.', 'ana')).toBe(false);
+		expect(quoteFound('anything', '')).toBe(false);
 	});
 });

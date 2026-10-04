@@ -14,5 +14,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error(404, 'Skill not found in this domain');
 	}
 
+	// Old domain-scoped alias: send it straight to the skill's canonical article.
 	throw redirect(308, getSkillPath(skill));
 };

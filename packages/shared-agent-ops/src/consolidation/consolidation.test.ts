@@ -306,6 +306,55 @@ describe('task moves', () => {
 		).toBe('Moves 1 task to Beyond Exit Planning.');
 	});
 
+	it('counts length in characters, so an emoji at the limit still parses', () => {
+		const label = `${'a'.repeat(78)}🧭`;
+		expect(Array.from(label)).toHaveLength(79);
+		expect(label.length).toBe(80);
+		const card = parseConsolidationQuestion({
+			...row(),
+			options: row().options.map((option, index) =>
+				index === 0 ? { ...option, label: `${label}b` } : option
+			)
+		});
+		expect(card?.options[0]?.label).toBe(`${label}b`);
+	});
+
+	it('takes no edits from a withdrawn card or an unanswered recommendation that folds a fact in', () => {
+		const merge = (overrides: Record<string, unknown>) =>
+			parseConsolidationQuestion({
+				...row(),
+				piece: 'merge:c3:1',
+				options: [
+					{
+						id: 'o1',
+						label: 'Same note',
+						description: '',
+						ops: [{ op: 'keep', document_ids: [IAN] }],
+						edits: [{ fact_id: 'F2', fate: 'merged', with: 'F1' }]
+					},
+					{
+						id: 'later',
+						label: 'Decide later',
+						description: '',
+						ops: [{ op: 'keep', document_ids: [IAN] }],
+						edits: []
+					}
+				],
+				recommended_option_id: 'o1',
+				skip_option_id: 'later',
+				...overrides
+			})!;
+		expect(questionEdits(merge({}))).toEqual([]);
+		expect(
+			questionEdits(
+				merge({ status: 'withdrawn', answer: { via: 'option', option_id: 'o1' } })
+			)
+		).toEqual([]);
+		expect(
+			questionEdits(merge({ status: 'answered', answer: { via: 'option', option_id: 'o1' } }))
+		).toHaveLength(1);
+	});
+
 	it('counts the sub-docs a moved folder carries along, once', () => {
 		const [FOLDER, CHILD, GRANDCHILD, OTHER] = ['f', 'c', 'g', 'o'];
 		const inside = (docId: string) =>

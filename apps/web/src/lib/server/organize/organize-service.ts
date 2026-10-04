@@ -7,7 +7,8 @@ import {
 	compileOrganizePlan,
 	buildOrganizeInverse,
 	OrganizePlanError,
-	type ManifestStep
+	type ManifestStep,
+	type SkippedMove
 } from './organize-transaction';
 
 type Client = SupabaseClient<Database>;
@@ -27,6 +28,8 @@ export interface OrganizeRequest {
 	confirmation_token?: string;
 	batch_id?: string;
 }
+/** Preserve RPC receipt fields when adding skipped moves; object-spread inference drops them. */
+export type OrganizeUndoResult = Record<string, unknown> & { skipped?: SkippedMove[] };
 type Batch = {
 	id: string;
 	user_id: string;
@@ -236,7 +239,7 @@ export async function undoOrganize(input: {
 	sourceBatchId: string;
 	batchId?: string;
 	confirmationToken?: string;
-}) {
+}): Promise<OrganizeUndoResult> {
 	const { session, admin, userId, sourceBatchId, batchId, confirmationToken } = input;
 	const batch = { id: batchId, token: confirmationToken, inverseOf: sourceBatchId };
 	return confirmedWrite(admin, userId, batch, async () => {

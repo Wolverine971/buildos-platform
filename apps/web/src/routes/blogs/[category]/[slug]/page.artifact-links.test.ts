@@ -58,6 +58,10 @@ describe('agent skill artifact links', () => {
 			'/skills/try/cold-email-engagement-first-outreach'
 		);
 		expect(screen.getByText(/Free to start/)).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Workflow and starter prompts' })).toHaveAttribute(
+			'href',
+			'/skills/cold-email-engagement-first-outreach'
+		);
 		expect(
 			screen.getByText(
 				/unzip -o cold-email-engagement-first-outreach\.zip -d ~\/\.claude\/skills\//

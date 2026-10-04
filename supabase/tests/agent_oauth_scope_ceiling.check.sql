@@ -1,6 +1,9 @@
 -- supabase/tests/agent_oauth_scope_ceiling.check.sql
 \set ON_ERROR_STOP on
 BEGIN;
+-- A schema-only production snapshot has no singleton data. Seed it only inside
+-- this rolled-back local fixture so retained-access acceptance is actually tested.
+INSERT INTO public.agent_permission_feature(id,enabled,epoch) VALUES(true,false,1) ON CONFLICT DO NOTHING;
 CREATE FUNCTION pg_temp.assert_true(value boolean,message text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN IF NOT coalesce(value,false) THEN RAISE EXCEPTION 'assertion_failed: %',message; END IF; END $$;
 CREATE FUNCTION pg_temp.fail_refresh() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -18,39 +21,58 @@ BEGIN
  VALUES(grant_id,uid,'fixture-client',caller,'https://build.example.test/mcp','buildos.read buildos.write offline_access','read_write');
  INSERT INTO public.agent_oauth_authorization_codes(id,code_hash,client_id,user_id,grant_id,external_agent_caller_id,redirect_uri,resource,scope,code_challenge,expires_at)
  VALUES(code_id,'code-hash','fixture-client',uid,grant_id,caller,'https://client.example.test/callback','https://build.example.test/mcp','buildos.read offline_access','proof',now()+interval '5 minutes');
+ -- Normal consent always supplies a snapshot. A NULL-only happy path missed the
+ -- production 42725 operator-precedence error; expected denials must match why.
+ UPDATE public.agent_oauth_authorization_codes SET policy_snapshot=(SELECT jsonb_build_object('scope_mode',scope_mode,'allowed_ops',allowed_ops,'allowed_project_ids',allowed_project_ids,'project_scope_mode',project_scope_mode) FROM public.agent_oauth_grants WHERE id=fixture.grant_id) WHERE id=code_id;
  PERFORM set_config('permission_test.fail_refresh','yes',true);
  caught:=false;BEGIN
   PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"access-rollback","prefix":"at"}','{"hash":"refresh-rollback","prefix":"rt"}');
- EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ EXCEPTION WHEN SQLSTATE 'P0001' THEN caught:=SQLERRM='forced_refresh_failure';END;
  PERFORM pg_temp.assert_true(caught AND NOT EXISTS(SELECT 1 FROM public.agent_oauth_access_tokens WHERE token_hash='access-rollback'),'pair failure rolls back access insert');
  PERFORM pg_temp.assert_true((SELECT used_at IS NULL FROM public.agent_oauth_authorization_codes WHERE id=code_id),'pair failure does not consume code');
  PERFORM set_config('permission_test.fail_refresh','no',true);
- caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','wrong','https://client.example.test/callback',NULL,'{"hash":"wrong-proof","prefix":"at"}',NULL);EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','wrong','https://client.example.test/callback',NULL,'{"hash":"wrong-proof","prefix":"at"}',NULL);EXCEPTION WHEN SQLSTATE 'P0001' THEN caught:=SQLERRM='invalid_grant';END;
  PERFORM pg_temp.assert_true(caught,'PKCE rechecked in transaction');
- caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp',NULL,NULL,NULL,'{"hash":"null-proof","prefix":"at"}',NULL);EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp',NULL,NULL,NULL,'{"hash":"null-proof","prefix":"at"}',NULL);EXCEPTION WHEN SQLSTATE 'P0001' THEN caught:=SQLERRM='invalid_grant';END;
  PERFORM pg_temp.assert_true(caught,'NULL PKCE and redirect fail closed');
  result:=public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"access-ok","prefix":"at"}','{"hash":"refresh-ok","prefix":"rt"}');
  PERFORM pg_temp.assert_true(result->>'scope'='buildos.read offline_access','stale read code cannot gain later write scope');
+ PERFORM pg_temp.assert_true((SELECT used_at IS NOT NULL FROM public.agent_oauth_authorization_codes WHERE id=code_id),'valid consent snapshot exchanges and consumes the code');
+ PERFORM pg_temp.assert_true(result->>'refresh'='true','valid consent issues refresh credentials');
+ caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"replayed-code","prefix":"at"}',NULL);EXCEPTION WHEN SQLSTATE 'P0001' THEN caught:=SQLERRM='invalid_grant';END;
+ PERFORM pg_temp.assert_true(caught,'a consumed authorization code cannot be replayed');
  SELECT id INTO old_refresh FROM public.agent_oauth_refresh_tokens WHERE token_hash='refresh-ok';
+ UPDATE public.agent_oauth_access_tokens SET expires_at=now()-interval '1 second' WHERE token_hash='access-ok';
+ result:=public.exchange_agent_oauth_credential('refresh',old_refresh,'fixture-client','https://build.example.test/mcp',NULL,NULL,NULL,'{"hash":"access-rotated","prefix":"at"}','{"hash":"refresh-rotated","prefix":"rt"}');
+ PERFORM pg_temp.assert_true(result->>'refresh'='true' AND result->>'scope'='buildos.read offline_access','expired access refreshes without widening scope');
+ PERFORM pg_temp.assert_true((SELECT used_at IS NOT NULL AND revoked_at IS NOT NULL FROM public.agent_oauth_refresh_tokens WHERE id=old_refresh),'rotation consumes the previous refresh token');
+ PERFORM pg_temp.assert_true((SELECT rotated_from_id=old_refresh FROM public.agent_oauth_refresh_tokens WHERE token_hash='refresh-rotated'),'rotation persists its replacement');
+ SELECT id INTO old_refresh FROM public.agent_oauth_refresh_tokens WHERE token_hash='refresh-rotated';
  UPDATE public.agent_oauth_refresh_tokens SET expires_at=now()-interval '1 second' WHERE id=old_refresh;
- caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('refresh',old_refresh,'fixture-client','https://build.example.test/mcp',NULL,NULL,NULL,'{"hash":"expired","prefix":"at"}',NULL);EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('refresh',old_refresh,'fixture-client','https://build.example.test/mcp',NULL,NULL,NULL,'{"hash":"expired","prefix":"at"}',NULL);EXCEPTION WHEN SQLSTATE 'P0001' THEN caught:=SQLERRM='invalid_grant';END;
  PERFORM pg_temp.assert_true(caught AND (SELECT status='trusted' FROM public.external_agent_callers WHERE id=caller),'plain expiry does not revoke family');
  UPDATE public.agent_oauth_refresh_tokens SET expires_at=now()+interval '1 day' WHERE id=old_refresh;
- caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('refresh',old_refresh,'fixture-client','https://build.example.test/mcp',NULL,NULL,'buildos.read buildos.write','{"hash":"widened","prefix":"at"}',NULL);EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('refresh',old_refresh,'fixture-client','https://build.example.test/mcp',NULL,NULL,'buildos.read buildos.write','{"hash":"widened","prefix":"at"}',NULL);EXCEPTION WHEN SQLSTATE 'P0001' THEN caught:=SQLERRM='invalid_scope';END;
  PERFORM pg_temp.assert_true(caught,'refresh cannot request scope outside original ceiling');
  result:=public.exchange_agent_oauth_credential('refresh',old_refresh,'fixture-client','https://build.example.test/mcp',NULL,NULL,'buildos.read','{"hash":"narrow","prefix":"at"}','{"hash":"no-offline","prefix":"rt"}');
  PERFORM pg_temp.assert_true(result->>'scope'='buildos.read' AND result->>'refresh'='false','narrow refresh honored and offline access dropped');
  -- A consented code cannot pick up an expanded base policy while waiting to exchange.
  UPDATE public.agent_oauth_authorization_codes SET used_at=NULL,policy_snapshot=(SELECT jsonb_build_object('scope_mode',scope_mode,'allowed_ops',allowed_ops,'allowed_project_ids',allowed_project_ids,'project_scope_mode',project_scope_mode) FROM public.agent_oauth_grants WHERE id=fixture.grant_id) WHERE id=code_id;
  UPDATE public.agent_oauth_grants SET scope_mode='read_only' WHERE id=fixture.grant_id;
- caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"changed-consent","prefix":"at"}',NULL);EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"changed-consent","prefix":"at"}',NULL);EXCEPTION WHEN SQLSTATE 'P0001' THEN caught:=SQLERRM='invalid_grant: consent changed';END;
  PERFORM pg_temp.assert_true(caught,'changed base consent invalidates old authorization code');
  -- Retained scoped consent is also invalid after a kill-switch epoch change.
  PERFORM public.set_agent_permission_feature(true);
  UPDATE public.agent_oauth_authorization_codes SET policy_snapshot=(SELECT jsonb_build_object('scope_mode',scope_mode,'allowed_ops',allowed_ops,'allowed_project_ids',allowed_project_ids,'project_scope_mode',project_scope_mode,'epoch',(SELECT epoch FROM public.agent_permission_feature)) FROM public.agent_oauth_grants WHERE id=fixture.grant_id) WHERE id=code_id;
+ result:=public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"retained-consent","prefix":"at"}','{"hash":"retained-refresh","prefix":"rt"}');
+ PERFORM pg_temp.assert_true(result->>'scope'='buildos.read offline_access' AND result->>'refresh'='true','current retained-access epoch exchanges successfully');
+ UPDATE public.agent_oauth_authorization_codes SET used_at=NULL WHERE id=code_id;
  PERFORM public.set_agent_permission_feature(false);
- caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"killed-consent","prefix":"at"}',NULL);EXCEPTION WHEN OTHERS THEN caught:=true;END;
+ caught:=false;BEGIN PERFORM public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"killed-consent","prefix":"at"}',NULL);EXCEPTION WHEN SQLSTATE 'P0001' THEN caught:=SQLERRM='invalid_grant: consent invalidated';END;
  PERFORM pg_temp.assert_true(caught,'kill switch invalidates retained consent code');
+ UPDATE public.agent_oauth_authorization_codes SET policy_snapshot=NULL WHERE id=code_id;
+ result:=public.exchange_agent_oauth_credential('code',code_id,'fixture-client','https://build.example.test/mcp','proof','https://client.example.test/callback',NULL,'{"hash":"legacy-consent","prefix":"at"}',NULL);
+ PERFORM pg_temp.assert_true(result->>'scope'='buildos.read offline_access','legacy codes without snapshots still exchange');
  UPDATE public.agent_oauth_refresh_tokens SET expires_at=now()-interval '1 second' WHERE id=old_refresh;
  result:=public.exchange_agent_oauth_credential('refresh',old_refresh,'fixture-client','https://build.example.test/mcp',NULL,NULL,NULL,'{"hash":"reuse","prefix":"at"}','{"hash":"reuse-refresh","prefix":"rt"}');
  PERFORM pg_temp.assert_true(result->>'error'='invalid_grant','refresh reuse denied');

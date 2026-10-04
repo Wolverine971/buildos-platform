@@ -6,7 +6,7 @@ const { getFeed, needsOnboarding } = vi.hoisted(() => ({
 }));
 vi.mock('$lib/server/today-feed.service', () => ({ getTodayFeed: getFeed }));
 vi.mock('$lib/server/project-visibility', () => ({ needsOnboarding }));
-import { CHAT_LAUNCH_GRACE_COOKIE, load } from './+page.server';
+import { _CHAT_LAUNCH_GRACE_COOKIE, load } from './+page.server';
 
 function fakeCookies(initial: Record<string, string> = {}) {
 	const jar = new Map(Object.entries(initial));
@@ -98,11 +98,15 @@ describe('Today onboarding gate', () => {
 		needsOnboarding.mockResolvedValue(true);
 		const user = { id: 'user-1', onboarding_completed_at: null, timezone: 'UTC' };
 		const cookies = fakeCookies();
-		const launch = new URLSearchParams({ open: 'agent-chat', skill: 'going_viral', prompt: 'hi' });
+		const launch = new URLSearchParams({
+			open: 'agent-chat',
+			skill: 'going_viral',
+			prompt: 'hi'
+		});
 
 		await loadToday(user, `https://example.test/today?${launch}`, cookies);
 		expect(cookies.set).toHaveBeenCalledWith(
-			CHAT_LAUNCH_GRACE_COOKIE,
+			_CHAT_LAUNCH_GRACE_COOKIE,
 			'1',
 			expect.objectContaining({ path: '/today', httpOnly: true, maxAge: 3600 })
 		);

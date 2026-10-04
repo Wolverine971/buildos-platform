@@ -158,7 +158,7 @@
 				<li>
 					{plural(unverified.length, 'note')} the reader could not find word for word in its
 					source {unverified.length === 1 ? 'is' : 'are'} kept apart at the end of the draft,
-					for you to check.
+					under “Couldn’t find word for word”, for you to check.
 					<button
 						type="button"
 						class="toggle"

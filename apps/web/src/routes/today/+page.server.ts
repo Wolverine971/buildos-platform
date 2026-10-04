@@ -8,7 +8,7 @@ import { isAgentChatLaunch } from '$lib/utils/agent-chat-launch';
 // Set when a new user arrives with a chat launch. Navigation strips the launch params with a real
 // navigation, which re-runs this load without them; the cookie keeps that re-run (and any feed
 // invalidation during the chat) from bouncing them to /onboarding mid-conversation.
-export const CHAT_LAUNCH_GRACE_COOKIE = 'buildos_chat_launch_grace';
+export const _CHAT_LAUNCH_GRACE_COOKIE = 'buildos_chat_launch_grace';
 const CHAT_LAUNCH_GRACE_SECONDS = 60 * 60;
 
 export const load: PageServerLoad = async ({
@@ -38,14 +38,14 @@ export const load: PageServerLoad = async ({
 	// not re-run this load on its own.
 	const arrivedWithLaunch = untrack(() => isAgentChatLaunch(url.searchParams));
 	if (arrivedWithLaunch) {
-		cookies.set(CHAT_LAUNCH_GRACE_COOKIE, '1', {
+		cookies.set(_CHAT_LAUNCH_GRACE_COOKIE, '1', {
 			path: '/today',
 			httpOnly: true,
 			sameSite: 'lax',
 			maxAge: CHAT_LAUNCH_GRACE_SECONDS
 		});
 	}
-	const inLaunchGrace = arrivedWithLaunch || cookies.get(CHAT_LAUNCH_GRACE_COOKIE) === '1';
+	const inLaunchGrace = arrivedWithLaunch || cookies.get(_CHAT_LAUNCH_GRACE_COOKIE) === '1';
 	if (!inLaunchGrace && (await needsOnboarding(supabase, user))) {
 		throw redirect(303, '/onboarding');
 	}
