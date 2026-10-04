@@ -132,7 +132,11 @@ export class LibriWorkerBootstrap {
 			},
 			queue: {
 				enabled: this.config.queueEnabled && !uploadMode,
-				registeredJobTypes: uploadMode ? [] : LIBRI_QUEUE_TYPES,
+				registeredJobTypes: uploadMode
+					? []
+					: this.config.activationMode === 'research'
+						? ['libri_research']
+						: LIBRI_QUEUE_TYPES,
 				activeJobs: queueHealth?.activeJobs ?? 0,
 				availableConcurrency:
 					queueHealth?.availableConcurrency ?? (uploadMode ? 0 : this.config.concurrency),

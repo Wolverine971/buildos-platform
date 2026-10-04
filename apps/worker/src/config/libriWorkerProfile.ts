@@ -6,6 +6,7 @@ export type LibriWorkerConfig = {
 	admissionDispatchEnabled: boolean;
 	activationMode:
 		| 'disabled'
+		| 'research'
 		| 'synthetic_canary'
 		| 'ocr_canary'
 		| 'upload_canary'
@@ -31,6 +32,18 @@ export type LibriUploadMaintenanceRuntimeConfig = Omit<
 	LibriUploadRuntimeConfig,
 	'downloadBrokerUrl' | 'publicationBrokerUrl'
 > & { endpointUrl: string };
+
+export type LibriResearchRuntimeConfig = {
+	openRouterApiKey: string;
+	model: string;
+	reservedMicrousd: bigint;
+	maintenanceIntervalMs: number;
+	consumer: {
+		workerTimeoutMs: number;
+		leaseDurationMs: number;
+		heartbeatIntervalMs: number;
+	};
+};
 
 export type LibriOcrRuntimeConfig = {
 	assetBrokerUrl: string;
@@ -61,9 +74,8 @@ const MAX_CANARY_WINDOW_MS = 30 * 60_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
- * Hosted production can consume only through the short-lived, exact-step
- * synthetic canary profile. Local tests may enable the consumer without the
- * hosted activation envelope to prove the owned start/drain path.
+ * Hosted consumption requires an explicit canary or sustained research profile.
+ * Research still requires separate database dispatch controls and bounded budgets.
  */
 export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS.ProcessEnv): void {
 	if (!isHostedProduction(environment)) return;
@@ -74,6 +86,7 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 	}
 	const config = loadLibriWorkerConfig(environment);
 	if (!config.queueEnabled && !config.admissionDispatchEnabled) return;
+	if (config.activationMode === 'research') return; // validated in all environments
 	if (config.admissionDispatchEnabled) {
 		if (config.queueEnabled || config.activationMode !== 'disabled') {
 			throw new Error(
@@ -106,6 +119,51 @@ export function requireDedicatedLibriWorkerProductionProfile(environment: NodeJS
 	}
 	assertCanaryExpiry(config.canaryExpiresAtMs);
 	if (config.activationMode === 'ocr_canary') loadLibriOcrRuntimeConfig(environment);
+}
+
+export function loadLibriResearchRuntimeConfig(
+	environment: NodeJS.ProcessEnv
+): LibriResearchRuntimeConfig {
+	if (
+		parseBoolean(
+			environment.LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED,
+			false,
+			'LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED'
+		) ||
+		[
+			environment.LIBRI_WORKER_CANARY_STEP_ID,
+			environment.LIBRI_WORKER_CANARY_ADMISSION_ID,
+			environment.LIBRI_WORKER_CANARY_EXPIRES_AT
+		].some((value) => value?.trim())
+	) {
+		throw new Error('Libri research cannot use admission or canary overrides');
+	}
+	const model = requireValue(environment.LIBRI_RESEARCH_MODEL, 'LIBRI_RESEARCH_MODEL');
+	if (!/^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(model))
+		throw new Error('Invalid Libri research model');
+	return {
+		openRouterApiKey: requireValue(
+			environment.PRIVATE_OPENROUTER_API_KEY,
+			'PRIVATE_OPENROUTER_API_KEY'
+		),
+		model,
+		reservedMicrousd: parsePositiveBigint(
+			requireValue(
+				environment.LIBRI_RESEARCH_RESERVED_MICROUSD,
+				'LIBRI_RESEARCH_RESERVED_MICROUSD'
+			),
+			10_000_000n,
+			'LIBRI_RESEARCH_RESERVED_MICROUSD'
+		),
+		maintenanceIntervalMs: parseInteger(
+			environment.LIBRI_RESEARCH_MAINTENANCE_INTERVAL_MS,
+			5000,
+			1000,
+			60000,
+			'LIBRI_RESEARCH_MAINTENANCE_INTERVAL_MS'
+		),
+		consumer: { workerTimeoutMs: 110000, leaseDurationMs: 120000, heartbeatIntervalMs: 20000 }
+	};
 }
 
 export function loadLibriOcrRuntimeConfig(environment: NodeJS.ProcessEnv): LibriOcrRuntimeConfig {
@@ -174,6 +232,7 @@ export function loadLibriWorkerConfig(environment: NodeJS.ProcessEnv): LibriWork
 		'LIBRI_WORKER_ADMISSION_DISPATCH_ENABLED'
 	);
 	const activationMode = parseActivationMode(environment.LIBRI_WORKER_ACTIVATION_MODE);
+	if (enabled && activationMode === 'research') loadLibriResearchRuntimeConfig(environment);
 	const upload =
 		enabled && activationMode === 'upload_canary'
 			? loadLibriUploadRuntimeConfig(environment)
@@ -232,6 +291,7 @@ function parseBoolean(value: string | undefined, fallback: boolean, name: string
 function parseActivationMode(value: string | undefined): LibriWorkerConfig['activationMode'] {
 	if (value === undefined || value.trim() === '' || value === 'disabled') return 'disabled';
 	if (
+		value === 'research' ||
 		value === 'synthetic_canary' ||
 		value === 'ocr_canary' ||
 		value === 'upload_canary' ||
@@ -239,7 +299,7 @@ function parseActivationMode(value: string | undefined): LibriWorkerConfig['acti
 	)
 		return value;
 	throw new Error(
-		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, synthetic_canary, ocr_canary, upload_canary, or upload_maintenance_canary'
+		'LIBRI_WORKER_ACTIVATION_MODE must be disabled, research, synthetic_canary, ocr_canary, upload_canary, or upload_maintenance_canary'
 	);
 }
 
@@ -296,7 +356,7 @@ function parseInteger(
 
 function requireValue(value: string | undefined, name: string): string {
 	const normalized = value?.trim();
-	if (!normalized) throw new Error(`${name} is required for Libri OCR activation`);
+	if (!normalized) throw new Error(`${name} is required for Libri activation`);
 	return normalized;
 }
 

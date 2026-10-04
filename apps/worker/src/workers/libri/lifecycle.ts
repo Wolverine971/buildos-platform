@@ -38,6 +38,8 @@ export type ClaimLibriStepInput = {
 	leaseDurationMs: number;
 	queueTypes?: readonly LibriQueueType[];
 	stepIds?: readonly string[];
+	/** Restrict ownership to implemented task processors before mutating queue state. */
+	taskTypes?: readonly string[];
 };
 
 export type ClaimedLibriStep = {
@@ -112,6 +114,7 @@ export type CancelLibriRunReceipt = {
 };
 
 export type RecoverStaleLibriLeasesInput = {
+	queueTypes?: readonly LibriQueueType[];
 	limit?: number;
 };
 
@@ -342,6 +345,7 @@ class LibriLifecycle implements LibriLifecyclePort {
 		assertLeaseDuration(input.leaseDurationMs);
 		const queueTypes = normalizeQueueTypes(input.queueTypes);
 		const stepIds = normalizeStepIds(input.stepIds);
+		const taskTypes = normalizeTaskTypes(input.taskTypes);
 		const processingToken = randomUUID();
 		const leaseToken = randomUUID();
 		const leaseExpiresAt = new Date(Date.now() + input.leaseDurationMs);
@@ -353,11 +357,18 @@ class LibriLifecycle implements LibriLifecyclePort {
 					WHERE status = 'pending'
 						AND job_type = ANY($1::public.queue_type[])
 						AND ($2::text[] IS NULL OR metadata->>'researchStepId' = ANY($2::text[]))
+						AND ($3::text[] IS NULL OR EXISTS (
+							SELECT 1 FROM libri.research_steps supported
+							WHERE supported.active_queue_job_id = queue_jobs.id
+							 AND supported.id::text = queue_jobs.metadata->>'researchStepId'
+							 AND supported.kind = 'task_execute'
+							 AND supported.payload->>'taskType' = ANY($3::text[])
+						))
 						AND scheduled_for <= now()
 				ORDER BY priority ASC, scheduled_for ASC
 				LIMIT 1
 				FOR UPDATE SKIP LOCKED`,
-				[queueTypes, stepIds]
+				[queueTypes, stepIds, taskTypes]
 			);
 			const queueJob = queueResult.rows[0];
 			if (!queueJob) return null;
@@ -1025,6 +1036,7 @@ class LibriLifecycle implements LibriLifecyclePort {
 	recoverStaleLeases(
 		input: RecoverStaleLibriLeasesInput = {}
 	): Promise<RecoverStaleLibriLeasesReceipt> {
+		const queueTypes = normalizeQueueTypes(input.queueTypes);
 		const limit = input.limit ?? 10;
 		if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
 			throw new Error('limit must be an integer between 1 and 50');
@@ -1050,7 +1062,7 @@ class LibriLifecycle implements LibriLifecyclePort {
 				ORDER BY step.lease_expires_at ASC, step.id ASC
 				LIMIT $2
 				FOR UPDATE OF job, step SKIP LOCKED`,
-				[LIBRI_QUEUE_TYPES, limit]
+				[queueTypes, limit]
 			);
 			let retried = 0;
 			let deadLettered = 0;
@@ -1437,4 +1449,17 @@ function assertNonemptyText(value: string, name: string, maximumLength: number):
 	if (value.trim().length < 1 || value.length > maximumLength) {
 		throw new Error(`${name} must contain between 1 and ${maximumLength} characters`);
 	}
+}
+
+function normalizeTaskTypes(taskTypes: readonly string[] | undefined): string[] | null {
+	if (taskTypes === undefined) return null;
+	if (
+		!taskTypes.length ||
+		taskTypes.length > 10 ||
+		new Set(taskTypes).size !== taskTypes.length ||
+		taskTypes.some((type) => !/^[a-z][a-z_]{0,63}$/.test(type))
+	) {
+		throw new Error('taskTypes must contain 1 to 10 unique task identifiers');
+	}
+	return [...taskTypes];
 }

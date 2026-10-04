@@ -1,3 +1,4 @@
+import { createLibriResearchReadiness } from './researchRuntime';
 // apps/worker/src/workers/libri/database.ts
 import { createLibriTaskDispatcher } from './taskDispatcher';
 import { createBookSynthesisExecution } from './bookSynthesisExecution';
@@ -129,6 +130,7 @@ export type LibriDatabasePort = LibriLifecyclePort &
 	} & {
 		[key in keyof LibriAdmissionReconcilerPort]: LibriAdmissionReconcilerPort[key];
 	} & {
+		researchReadiness: ReturnType<typeof createLibriResearchReadiness>;
 		tasks: ReturnType<typeof createLibriTaskDispatcher>;
 		synthesis: ReturnType<typeof createBookSynthesisExecution>;
 		uploads: ReturnType<typeof createLibriUploadProcessing>;
@@ -181,6 +183,7 @@ function normalizeCaCertificate(value: string): string {
 }
 
 class LibriDatabase implements LibriDatabasePort {
+	readonly researchReadiness: ReturnType<typeof createLibriResearchReadiness>;
 	readonly tasks: ReturnType<typeof createLibriTaskDispatcher>;
 	readonly synthesis: ReturnType<typeof createBookSynthesisExecution>;
 	readonly uploads: ReturnType<typeof createLibriUploadProcessing>;
@@ -192,6 +195,7 @@ class LibriDatabase implements LibriDatabasePort {
 	private readonly admissionReconciler: LibriAdmissionReconcilerPort;
 
 	constructor(private readonly pool: LibriPgPool) {
+		this.researchReadiness = createLibriResearchReadiness(pool);
 		this.synthesis = createBookSynthesisExecution(pool);
 		this.uploads = createLibriUploadProcessing(pool);
 		this.lifecycle = createLibriLifecycle(pool);
