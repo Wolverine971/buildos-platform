@@ -40,7 +40,7 @@ Environment variables:
 > not resolve. Build it locally and point your client at the bundled entrypoint:
 
 ```bash
-git clone https://github.com/buildos/buildos-platform   # or use your existing checkout
+git clone https://github.com/Wolverine971/buildos-platform   # or use your existing checkout
 cd buildos-platform
 pnpm install
 pnpm --filter @buildos/mcp-server build                  # produces packages/buildos-mcp-server/dist/index.js

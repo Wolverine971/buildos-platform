@@ -64,6 +64,7 @@ import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry'
 import {
 	resolveOperationalSkillPreload,
 	resolveSkillGatePreload,
+	resolveUserLaunchSkillPreload,
 	type SkillGatePreload
 } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { buildEntityResolutionHint } from './entity-resolution';
@@ -191,6 +192,12 @@ const TEMP_ATTACHMENT_PATH_PREFIX = 'users';
  */
 export const SKILL_PRELOADED_ID_METADATA_KEY = 'skill_preloaded_id';
 export const SKILL_PRELOAD_SOURCE_METADATA_KEY = 'skill_preload_source';
+/**
+ * The skill a "Try in BuildOS" launch chose, kept on the session it created so every later turn
+ * in that chat renders it again. The worker cannot load skills itself, so without this the
+ * playbook vanished after the first turn.
+ */
+export const SESSION_LAUNCH_SKILL_METADATA_KEY = 'launch_skill_id';
 const SCAFFOLD = resolveFastChatScaffoldConfigFromEnv(process.env);
 // The dedicated worker executes the reviewed direct/control surface only. It
 // cannot run the web-owned dynamic skill discovery tools, so its prompt must
@@ -211,6 +218,12 @@ export type AgenticChatWorkerCommandInput = {
 	lastTurnContext: LastTurnContext | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
+	/**
+	 * The skill a chat launch named (public "Try in BuildOS" link), sent on the
+	 * launch's first turn only. A request, never trusted: preparation preloads
+	 * it only after it resolves in the skill registry.
+	 */
+	requestedSkillId?: string | null;
 };
 
 export type AgenticChatWorkerLeaseAuthority = {
@@ -575,6 +588,7 @@ async function prepareWorkerAdmission(
 	let preparedSurfaceForOverlay: PreparedPromptSurface | null = null;
 	let envelopeForOverlay: LitePromptEnvelope | null = null;
 	let windowLoadedSkillIds: string[] = [];
+	let windowLaunchSkillId: string | null = null;
 
 	if (preparedInspection.hit) {
 		historySource = 'prepared_prompt';
@@ -611,6 +625,7 @@ async function prepareWorkerAdmission(
 		admissionWindowReads ??= startAdmissionWindowReads(sessionIntent.session);
 		const ownedHistory = await admissionWindowReads.ownedHistory;
 		windowLoadedSkillIds = ownedHistory?.loadedSkillIds ?? [];
+		windowLaunchSkillId = ownedHistory?.launchSkillId ?? null;
 		const historyComposition = composeFastChatHistory({
 			history: ownedHistory?.history ?? [],
 			continuityHint,
@@ -684,7 +699,13 @@ async function prepareWorkerAdmission(
 		message: messageForModel,
 		toolNames: workerPromptToolNames,
 		turnDomainSensing: turnPreparation.turnDomainSensing,
-		alreadyLoadedCraftSkillIds: windowLoadedSkillIds
+		alreadyLoadedCraftSkillIds: windowLoadedSkillIds,
+		// This turn's launch, else the one that started this chat (session metadata, or the
+		// history window for a launch made inside an existing session).
+		requestedSkillId:
+			input.command.requestedSkillId ??
+			readSessionLaunchSkillId(sessionIntent.session?.agent_metadata) ??
+			windowLaunchSkillId
 	});
 	// An unresolved dynamic skill gate would ask the worker to call a tool it
 	// cannot execute. Only carry domain sensing into the worker prompt after the
@@ -910,8 +931,15 @@ async function prepareWorkerAdmission(
 		surfaceProfile: turnPreparation.selectedSurfaceProfile,
 		preparedPromptId,
 		preparedAdmissionLease: preparedAdmissionLeaseMetadata,
+		requestedSkillId: input.command.requestedSkillId ?? null,
 		skillPreload: workerSkillPreload
-			? { skillId: workerSkillPreload.skillId, source: workerSkillPreload.source }
+			? {
+					skillId: workerSkillPreload.skillId,
+					source: workerSkillPreload.source,
+					...(workerSkillPreload.companionSkillIds?.length
+						? { companionSkillIds: workerSkillPreload.companionSkillIds }
+						: {})
+				}
 			: null
 	});
 	return {
@@ -949,7 +977,9 @@ async function prepareWorkerAdmission(
 			p_prepared_context_payload_sha256: preparedContextPayloadSha256,
 			p_prepared_surface_profile: preparedSurfaceProfile,
 			p_session_agent_metadata: toJsonObject(
-				sessionIntent.session ? {} : turnPreparation.sessionMetadata
+				sessionIntent.session
+					? {}
+					: withSessionLaunchSkill(turnPreparation.sessionMetadata, workerSkillPreload)
 			) as Json,
 			// Kept true while the RPC parameter remains in the deployed contract.
 			// Admission no longer treats transient worker pressure as a rejection.
@@ -1152,7 +1182,11 @@ async function loadOwnedWorkerHistory(params: {
 	userId: string;
 	sessionId: string;
 	limit: number;
-}): Promise<{ history: HistoryWithLineage[]; loadedSkillIds: string[] }> {
+}): Promise<{
+	history: HistoryWithLineage[];
+	loadedSkillIds: string[];
+	launchSkillId: string | null;
+}> {
 	const { data, error } = await params.serviceClient
 		.from('chat_messages')
 		.select('id, role, content, metadata, created_at')
@@ -1222,8 +1256,36 @@ async function loadOwnedWorkerHistory(params: {
 		loadedSkillIds: collectWindowLoadedSkillIds({
 			userRows: rows,
 			continuityRows: continuityToolExecutions
-		})
+		}),
+		launchSkillId: findWindowLaunchSkillId(rows)
 	};
+}
+
+function readSessionLaunchSkillId(agentMetadata: unknown): string | null {
+	if (!isRecord(agentMetadata)) return null;
+	const raw = agentMetadata[SESSION_LAUNCH_SKILL_METADATA_KEY];
+	return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+}
+
+/** The launched skill recorded on an earlier user message in this window, if any. */
+function findWindowLaunchSkillId(
+	userRows: ReadonlyArray<{ role: string; metadata: unknown }>
+): string | null {
+	for (const row of userRows) {
+		if (row.role !== 'user' || !isRecord(row.metadata)) continue;
+		if (row.metadata[SKILL_PRELOAD_SOURCE_METADATA_KEY] !== 'user_launch') continue;
+		const raw = row.metadata[SKILL_PRELOADED_ID_METADATA_KEY];
+		if (typeof raw === 'string' && raw.trim()) return raw.trim();
+	}
+	return null;
+}
+
+function withSessionLaunchSkill(
+	sessionMetadata: Record<string, unknown>,
+	preload: SkillGatePreload | null
+): Record<string, unknown> {
+	if (preload?.source !== 'user_launch') return sessionMetadata;
+	return { ...sessionMetadata, [SESSION_LAUNCH_SKILL_METADATA_KEY]: preload.skillId };
 }
 
 /**
@@ -1273,6 +1335,7 @@ function resolveWorkerSkillPreload(params: {
 	toolNames: string[];
 	turnDomainSensing: DomainSensingResult | null;
 	alreadyLoadedCraftSkillIds: string[];
+	requestedSkillId: string | null;
 }): SkillGatePreload | null {
 	if (!SCAFFOLD.routing.skillPreload) return null;
 	// Operational skills first (Decision 4): they carry the tool packaging and
@@ -1288,10 +1351,20 @@ function resolveWorkerSkillPreload(params: {
 		toolNames: params.toolNames,
 		craftAlternateSkillIds: craftCandidateSkillIds
 	});
+	// A skill the user picked at launch leads; an operational playbook for a
+	// different skill renders right after it in the same block. An unknown id,
+	// or a skill whose tools are not mounted, is ignored and routing continues.
+	const launched = resolveUserLaunchSkillPreload({
+		skillId: params.requestedSkillId,
+		toolNames: params.toolNames,
+		operationalPreload: operational
+	}).preload;
+	if (launched) return launched;
 	if (operational) return operational;
 	return resolveSkillGatePreload(params.turnDomainSensing, {
 		allowFollowupSkillLoad: false,
-		alreadyLoadedSkillIds: params.alreadyLoadedCraftSkillIds
+		alreadyLoadedSkillIds: params.alreadyLoadedCraftSkillIds,
+		mountedToolNames: params.toolNames
 	});
 }
 

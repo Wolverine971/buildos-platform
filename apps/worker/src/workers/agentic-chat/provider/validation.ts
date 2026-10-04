@@ -462,12 +462,22 @@ function contractTargetIdsForCall(
 	outcome: TurnContractOutcome,
 	argumentsValue: JsonObject
 ): string[] {
+	// An ontology event is addressed by onto_event_id (event_id is the Google
+	// id). Contract targets are canonical UUIDs, so an approved reschedule of an
+	// ontology event names that UUID; reading only event_id rejected every such
+	// call as outside the approved contract.
 	const keys =
 		outcome.entityKind === 'relationship'
 			? ['src_id', 'dst_id', 'edge_id']
 			: outcome.entityKind === 'calendar'
 				? ['project_id']
-				: [`${outcome.entityKind}_id`];
+				: outcome.entityKind === 'event'
+					? [
+							typeof argumentsValue.onto_event_id === 'string'
+								? 'onto_event_id'
+								: 'event_id'
+						]
+					: [`${outcome.entityKind}_id`];
 	return keys
 		.map((key) => argumentsValue[key])
 		.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)

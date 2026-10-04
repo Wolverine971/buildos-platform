@@ -79,8 +79,11 @@ or executor.
 
 The three initial Gmail/Workspace accounts are connected independently with active `read` capability
 rows and encrypted `gmail_read` credentials containing `gmail.readonly` and identity scopes only.
-The Google OAuth app remains in External/Testing mode, so restricted-scope verification and the
-testing-mode refresh-token lifetime remain rollout constraints.
+The integration Google OAuth project was confirmed **External / In production** on October 4,
+2026, with 3 users against the 100-user unverified cap. Branding is now verified and published;
+restricted-scope data-access verification remains pending. The former Testing-mode token-lifetime
+constraint is historical for this project; existing expired or revoked grants can still require
+reconnection. See the [current verification runbook](../../../../../docs/integrations/GOOGLE_OAUTH_VERIFICATION_RUNBOOK_2026-08-15.md).
 
 The first Phase 2 vertical slice is deployed to production: a GET-only Gmail provider gateway,
 explicit account selection, bounded multi-account search, on-demand message retrieval,

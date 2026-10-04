@@ -14,5 +14,5 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error(404, 'Skill not found in this domain');
 	}
 
-	throw redirect(307, getSkillPath(skill));
+	throw redirect(308, getSkillPath(skill));
 };

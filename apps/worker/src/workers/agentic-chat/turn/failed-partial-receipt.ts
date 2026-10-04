@@ -1,10 +1,10 @@
 // apps/worker/src/workers/agentic-chat/turn/failed-partial-receipt.ts
 import {
-	buildWriteLedger,
 	type AgenticChatCompletionReceiptV1,
-	type FastToolExecution
+	type FastToolExecution,
+	buildWriteLedger
 } from '@buildos/agentic-chat-runtime/loop';
-import { isValidUUID, type JsonObject } from '@buildos/shared-types';
+import { type JsonObject, isValidUUID } from '@buildos/shared-types';
 
 /** Matches the server-only SQL predicate; raw failed model prefixes never qualify. */
 export function isFailedPartialReceipt(input: {

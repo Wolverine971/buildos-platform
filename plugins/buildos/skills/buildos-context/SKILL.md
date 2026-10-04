@@ -1,7 +1,6 @@
 ---
 name: buildos-context
 description: How to work inside a user's BuildOS workspace through the BuildOS MCP tools. Use whenever BuildOS tools are available and the user mentions their projects, tasks, documents, goals, plans, milestones, risks, or asks what needs attention.
-path: plugins/buildos/skills/buildos-context/SKILL.md
 ---
 
 # Working with BuildOS
@@ -9,6 +8,10 @@ path: plugins/buildos/skills/buildos-context/SKILL.md
 BuildOS is the user's thinking environment. It holds many projects, each with tasks,
 documents, goals, plans, milestones, risks, and calendar events. The MCP tools expose the
 same ontology the BuildOS app uses.
+
+Tool names below are the BuildOS MCP server's (`buildos`) bare names. Your client may prefix
+them: in Claude Code they appear as `mcp__plugin_buildos_buildos__<name>` (or
+`mcp__buildos__<name>` when added with `claude mcp add`).
 
 ## First moves
 

@@ -76,7 +76,7 @@ The BuildOS repository is also a plugin marketplace. The same `plugins/buildos` 
 
 ```bash
 # Claude Code
-claude plugin marketplace add buildos/buildos-platform
+claude plugin marketplace add Wolverine971/buildos-platform
 claude plugin install buildos@buildos
 # then /mcp → buildos → approve the BuildOS consent screen
 

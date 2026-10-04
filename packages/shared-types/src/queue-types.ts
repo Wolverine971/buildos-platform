@@ -279,6 +279,21 @@ export interface ProjectLoopJobMetadata {
 	triggerEvaluationId?: string;
 }
 
+/** Document consolidation run (docs/research/doc-task-consolidation-2026-10-03). */
+export interface ConsolidationRunJobMetadata {
+	runId: string;
+	userId: string;
+	/**
+	 * survey: inventory + groups + questions. replan: re-decide one group after a
+	 * typed or chat answer. merge: read the group's sources into a fact ledger
+	 * and write the merged draft. merge_write: rewrite that draft after the
+	 * owner answered one of its questions.
+	 */
+	action: 'survey' | 'replan' | 'merge' | 'merge_write';
+	questionId?: string;
+	clusterKey?: string;
+}
+
 export interface ProjectIconGenerationJobMetadata {
 	generationId: string;
 	projectId: string;
@@ -387,6 +402,7 @@ export interface JobMetadataMap {
 	freshness_radar_scan: FreshnessScanJobMetadata;
 	capture_chat_checkpoint: CaptureChatCheckpointJobMetadata;
 	user_data_export: UserDataExportJobMetadata;
+	consolidation_run: ConsolidationRunJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -683,6 +699,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isCaptureChatCheckpointMetadata(metadata);
 		case 'user_data_export':
 			return isUserDataExportMetadata(metadata);
+		case 'consolidation_run':
+			return isConsolidationRunMetadata(metadata);
 		case 'other':
 			return true;
 		default:
@@ -708,6 +726,24 @@ function isCaptureChatCheckpointMetadata(obj: unknown): obj is CaptureChatCheckp
 		meta.userId.length > 0 &&
 		typeof meta.trigger === 'string' &&
 		CAPTURE_CHAT_CHECKPOINT_TRIGGERS.has(meta.trigger)
+	);
+}
+
+function isConsolidationRunMetadata(obj: unknown): obj is ConsolidationRunJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.runId === 'string' &&
+		meta.runId.length > 0 &&
+		typeof meta.userId === 'string' &&
+		meta.userId.length > 0 &&
+		(meta.action === 'survey' ||
+			(meta.action === 'replan' &&
+				typeof meta.questionId === 'string' &&
+				meta.questionId.length > 0) ||
+			((meta.action === 'merge' || meta.action === 'merge_write') &&
+				typeof meta.clusterKey === 'string' &&
+				meta.clusterKey.length > 0))
 	);
 }
 

@@ -36,20 +36,20 @@ import {
 } from '@buildos/agentic-chat-runtime/tools';
 import { createEmbeddingsClientFromEnv } from '@buildos/shared-agent-ops/embeddings/openai-embeddings';
 import {
-	readGatewayArchiveState,
 	type ArchiveStateTarget,
-	type ArchiveStateVerification
+	type ArchiveStateVerification,
+	readGatewayArchiveState
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	evaluateAgenticChatWebEgressProvenance,
 	executeAgenticChatStandardControlToolV1,
+	getRequestArchiveTargets,
 	isAgenticChatContentFreeEmailToolNameV1,
 	isAgenticChatStandardControlToolNameV1,
 	isAgenticChatWebEgressToolName,
 	normalizeAgenticChatWebSearchArguments,
-	parseRequestExpectation,
-	getRequestArchiveTargets,
 	parseMutationReviewFindings,
+	parseRequestExpectation,
 	searchTelemetryColumns,
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';

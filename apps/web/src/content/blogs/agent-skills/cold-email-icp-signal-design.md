@@ -1,6 +1,7 @@
 ---
 title: 'Cold Email ICP And Signal Design: An Agent Skill For Right-Person Outreach'
-seoTitle: 'Cold Email ICP & Signal Design: Agent Skill'
+seoTitle: 'Cold Email ICP & Signal Skill for Claude Code'
+seoDescription: 'Free Claude Code and Codex skill (SKILL.md) that defines the right person, buying signal, timing, and disqualifiers before you write a cold email. Download it, or run it in BuildOS.'
 description: 'A source-lineaged child skill for defining the right person, right moment, segment, buying signal, timing thesis, buying committee map, and disqualifiers before cold outreach.'
 author: 'DJ Wayne'
 date: '2026-05-15'

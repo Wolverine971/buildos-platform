@@ -19,7 +19,8 @@ import {
 } from '$lib/services/agentic-chat/tools/skills/registry';
 import { loadSkillReference } from '$lib/services/agentic-chat/tools/skills/skill-reference-load';
 import { canReadSkillReference } from '$lib/services/agentic-chat/tools/skills/skill-reference-visibility';
-import { stringify as stringifyYaml } from 'yaml';
+import { strToU8, zipSync } from 'fflate';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import type {
 	SkillDefinition,
 	SkillLinkedResource,
@@ -43,6 +44,30 @@ const agentSkillEvalModules = import.meta.glob(
 );
 
 const PUBLIC_AGENT_SKILL_SURFACE: SkillReferenceLoadSurface = 'public_portable';
+
+/** Schema URI for the Agent Skills well-known discovery index (Cloudflare RFC v0.2.0). */
+export const AGENT_SKILLS_DISCOVERY_SCHEMA =
+	'https://schemas.agentskills.io/discovery/0.2.0/schema.json';
+export const CONNECT_AGENTS_DOCS_URL = `${SITE_URL}/docs/connect-agents`;
+/** Heading that opens the generated footer at the end of every downloadable SKILL.md. */
+export const PORTABLE_SKILL_FOOTER_HEADING = '## More From BuildOS';
+/** Agent Skills spec: 1-64 chars, lowercase alphanumerics and single hyphens, no edge hyphens. */
+const AGENT_SKILL_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const AGENT_SKILL_DESCRIPTION_MAX_LENGTH = 1024;
+
+/**
+ * Strings that only make sense inside the BuildOS repo. The sanitizer removes them from
+ * downloads and `agent-skills:check` fails if any survive in a published file.
+ */
+export const PORTABLE_INTERNAL_LEFTOVER_STRINGS = [
+	'internal BuildOS source notes',
+	'This is the runtime BuildOS skill',
+	'should point back to this file',
+	'internal-default',
+	'not available at runtime',
+	'internal source analyses',
+	'the upcoming `'
+] as const;
 
 export type PublicAgentSkillReference = {
 	id: string;
@@ -215,7 +240,9 @@ function getRuntimeIdFromSkillSource(skillSource?: string): string | undefined {
 	return skillSource?.match(/\/definitions\/([^/]+)\/SKILL\.md$/)?.[1];
 }
 
-function getSkillReferenceCandidates(post: BlogPost): string[] {
+type RuntimeSkillLookupPost = Pick<BlogPost, 'slug' | 'skillId' | 'skillSource' | 'lineagePath'>;
+
+function getSkillReferenceCandidates(post: RuntimeSkillLookupPost): string[] {
 	const publicSkillLeaf = post.skillId ? getLastPathSegment(post.skillId) : undefined;
 	const sourceRuntimeId = getRuntimeIdFromSkillSource(post.skillSource);
 	const candidates = [
@@ -232,7 +259,9 @@ function getSkillReferenceCandidates(post: BlogPost): string[] {
 	return [...new Set(candidates)];
 }
 
-export function resolveRuntimeSkillForPost(post: BlogPost): SkillDefinition | undefined {
+export function resolveRuntimeSkillForPost(
+	post: RuntimeSkillLookupPost
+): SkillDefinition | undefined {
 	for (const candidate of getSkillReferenceCandidates(post)) {
 		const skill = getSkillByReference(candidate);
 		if (skill) return skill;
@@ -362,10 +391,6 @@ const INTERNAL_REPO_PATH_PATTERN = new RegExp(
 	'\\b' + INTERNAL_REPO_PATH_PREFIX_PATTERN + '[^\\s)\\]`]+',
 	'g'
 );
-const BACKTICKED_INTERNAL_REPO_PATH_PATTERN = new RegExp(
-	'`' + INTERNAL_REPO_PATH_PREFIX_PATTERN + '[^`]*`',
-	'g'
-);
 const MARKDOWN_LINK_INTERNAL_REPO_PATH_PATTERN = new RegExp(
 	'\\[([^\\]]+)\\]\\(' + INTERNAL_REPO_PATH_PREFIX_PATTERN + '[^)]+\\)',
 	'g'
@@ -373,7 +398,21 @@ const MARKDOWN_LINK_INTERNAL_REPO_PATH_PATTERN = new RegExp(
 const INTERNAL_REPO_PATH_ONLY_LINE_PATTERN = new RegExp(
 	'^\\s*(?:[-*]\\s+)?`?' + INTERNAL_REPO_PATH_PREFIX_PATTERN + '[^`\\s)]*`?\\s*\\.?\\s*$'
 );
-const INTERNAL_REPO_PATH_REPLACEMENT = 'internal BuildOS source notes';
+const INTERNAL_REPO_PATH_TEST_PATTERN = new RegExp('\\b' + INTERNAL_REPO_PATH_PREFIX_PATTERN);
+const LIST_ITEM_PREFIX_PATTERN = /^(\s*(?:[-*+]|\d+[.)])\s+)/;
+// Splits a markdown line into sentences at terminal punctuation followed by whitespace. Used
+// only to drop maintainer notes that cite repo paths or the fixed markers below; a misfire
+// just keeps or drops one maintainer-facing sentence.
+const SENTENCE_BOUNDARY_PATTERN = /(?<=[.!?]["')\]_*]*)\s+(?=\S)/;
+
+/** Fixed maintainer notes in runtime skill sources that mean nothing outside the repo. */
+const PORTABLE_MAINTAINER_NOTE_MARKERS = [
+	'This is the runtime BuildOS skill',
+	'should point back to this file',
+	'internal source analyses',
+	'not available at runtime',
+	"match the draft's `lineage.yaml`"
+];
 
 function removeBlocksContainingMarkers(body: string, markers: string[]): string {
 	if (markers.length === 0) return body;
@@ -384,14 +423,49 @@ function removeBlocksContainingMarkers(body: string, markers: string[]): string 
 		.join('\n\n');
 }
 
+function isMaintainerOnlySentence(sentence: string): boolean {
+	return (
+		INTERNAL_REPO_PATH_TEST_PATTERN.test(sentence) ||
+		PORTABLE_MAINTAINER_NOTE_MARKERS.some((marker) => sentence.includes(marker))
+	);
+}
+
+/**
+ * Drops sentences that point at repo-only material (internal paths, maintainer notes) while
+ * keeping the rest of the line. Returns null when nothing user-facing is left.
+ */
+function dropMaintainerOnlySentences(line: string): string | null {
+	if (!isMaintainerOnlySentence(line)) return line;
+
+	const prefix = line.match(LIST_ITEM_PREFIX_PATTERN)?.[1] ?? '';
+	const kept = line
+		.slice(prefix.length)
+		.split(SENTENCE_BOUNDARY_PATTERN)
+		.filter((sentence) => !isMaintainerOnlySentence(sentence));
+
+	if (kept.length === 0) return null;
+	return `${prefix}${kept.join(' ')}`;
+}
+
 function scrubInternalRepoPaths(body: string): string {
 	return body
 		.split(/\r?\n/)
 		.filter((line) => !INTERNAL_REPO_PATH_ONLY_LINE_PATTERN.test(line.trim()))
-		.join('\n')
-		.replace(MARKDOWN_LINK_INTERNAL_REPO_PATH_PATTERN, '$1')
-		.replace(BACKTICKED_INTERNAL_REPO_PATH_PATTERN, INTERNAL_REPO_PATH_REPLACEMENT)
-		.replace(INTERNAL_REPO_PATH_PATTERN, INTERNAL_REPO_PATH_REPLACEMENT);
+		.map((line) => line.replace(MARKDOWN_LINK_INTERNAL_REPO_PATH_PATTERN, '$1'))
+		.map(dropMaintainerOnlySentences)
+		.filter((line): line is string => line !== null)
+		.join('\n');
+}
+
+/**
+ * Rewrites repo vocabulary into words a downloader can read. `internal-default` is a provenance
+ * tag in the runtime sources meaning "BuildOS's own default, not a sourced threshold".
+ */
+function rewriteInternalVocabulary(body: string): string {
+	return body
+		.replace(/\binternal-default\b/g, 'BuildOS default')
+		.replace(/\binternal (default)(s?)\b/g, 'BuildOS $1$2')
+		.replace(/\bthe upcoming (`[a-z0-9_-]+`)/g, 'the $1');
 }
 
 function sanitizePortableSkillBody(body: string, runtimeSkill?: SkillDefinition): string {
@@ -401,10 +475,21 @@ function sanitizePortableSkillBody(body: string, runtimeSkill?: SkillDefinition)
 		getInternalReferenceLeakMarkers(runtimeSkill)
 	);
 
-	return scrubInternalRepoPaths(withoutPrivateReferenceBlocks)
+	return rewriteInternalVocabulary(scrubInternalRepoPaths(withoutPrivateReferenceBlocks))
 		.replace(/[ \t]+\n/g, '\n')
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();
+}
+
+/** Reference files ship as-is apart from repo-only comments, paths, and vocabulary. */
+function sanitizePortableReferenceContent(content: string): string {
+	const sanitized = rewriteInternalVocabulary(
+		scrubInternalRepoPaths(content.replace(HTML_COMMENT_PATTERN, '').trim())
+	)
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+	return `${sanitized}\n`;
 }
 
 function buildPortableReferenceSection(references: PublicAgentSkillReference[]): string {
@@ -427,6 +512,175 @@ function buildPortableReferenceSection(references: PublicAgentSkillReference[]):
 	return lines.join('\n');
 }
 
+type PublicAgentSkillEntry = {
+	slug: string;
+	title: string;
+	runtimeSkillId?: string;
+};
+
+export type PublicSkillLink = {
+	/** Runtime skill id (snake_case) when one exists, else the public slug. */
+	id: string;
+	title: string;
+	/** Site-relative path to the skill's public page. */
+	href: string;
+	kind: 'agent-skill' | 'preview';
+};
+
+let publicAgentSkillEntriesCache: PublicAgentSkillEntry[] | null = null;
+
+/**
+ * Published agent-skill posts, resolved synchronously from the raw markdown so the SKILL.md
+ * generator can link sibling skills without an async catalog load.
+ */
+function listPublicAgentSkillEntries(): PublicAgentSkillEntry[] {
+	if (publicAgentSkillEntriesCache) return publicAgentSkillEntriesCache;
+
+	const entries: PublicAgentSkillEntry[] = [];
+	for (const [path, rawContent] of Object.entries(agentSkillBlogModules)) {
+		const slug = path.split('/').at(-1)?.replace(/\.md$/, '');
+		const frontmatterSource = rawContent.match(/^---\s*\n([\s\S]*?)\n---/)?.[1];
+		if (!slug || !frontmatterSource) continue;
+
+		let frontmatter: Record<string, unknown> | null = null;
+		try {
+			frontmatter = parseYaml(frontmatterSource) as Record<string, unknown> | null;
+		} catch {
+			continue;
+		}
+		if (!frontmatter || frontmatter.published !== true) continue;
+
+		const lookupPost: RuntimeSkillLookupPost = { slug };
+		if (typeof frontmatter.skillId === 'string') lookupPost.skillId = frontmatter.skillId;
+		if (typeof frontmatter.skillSource === 'string') {
+			lookupPost.skillSource = frontmatter.skillSource;
+		}
+		if (typeof frontmatter.lineagePath === 'string') {
+			lookupPost.lineagePath = frontmatter.lineagePath;
+		}
+
+		entries.push({
+			slug,
+			title: getDisplayTitle({
+				title: typeof frontmatter.title === 'string' ? frontmatter.title : slug
+			}),
+			runtimeSkillId: resolveRuntimeSkillForPost(lookupPost)?.id
+		});
+	}
+
+	publicAgentSkillEntriesCache = entries;
+	return entries;
+}
+
+/**
+ * Resolves a skill slug or runtime id to its public page: the long-form agent-skill article when
+ * the skill is published, else its gallery preview. Returns null when no public page exists.
+ */
+export function resolvePublicSkillLink(reference: string): PublicSkillLink | null {
+	const runtimeId = kebabToSnake(reference.trim());
+	const slug = runtimeId.replace(/_/g, '-');
+	const publicEntry = listPublicAgentSkillEntries().find(
+		(entry) => entry.slug === slug || entry.runtimeSkillId === runtimeId
+	);
+	if (publicEntry) {
+		return {
+			id: publicEntry.runtimeSkillId ?? publicEntry.slug,
+			title: publicEntry.title,
+			href: `/agent-skills/${publicEntry.slug}`,
+			kind: 'agent-skill'
+		};
+	}
+
+	const preview = previewSkillMetadataByRuntimeId[runtimeId];
+	if (preview) {
+		return {
+			id: runtimeId,
+			title: preview.displayTitle,
+			href: `/skills/preview/${runtimeSkillIdToPreviewSlug(runtimeId)}`,
+			kind: 'preview'
+		};
+	}
+
+	return null;
+}
+
+const BACKTICKED_IDENTIFIER_PATTERN = /`([a-z0-9]+(?:[_-][a-z0-9]+)+)`/g;
+const SNAKE_CASE_IDENTIFIER_PATTERN = /\b[a-z0-9]+(?:_[a-z0-9]+)+\b/g;
+
+/**
+ * Other BuildOS skills a SKILL.md body points at: declared child skills plus any registered
+ * runtime skill id (snake_case, or its kebab-case form in backticks) that appears in the text.
+ * Matches structured identifiers against the registry, never free-text meaning.
+ */
+export function listReferencedRuntimeSkillIds(
+	body: string,
+	runtimeSkill?: Pick<SkillDefinition, 'id' | 'childSkills'>
+): string[] {
+	const registeredIds = new Set(listAllSkills().map((skill) => skill.id));
+	const referenced = new Set<string>();
+
+	for (const child of runtimeSkill?.childSkills ?? []) {
+		if (registeredIds.has(child.id)) referenced.add(child.id);
+	}
+	for (const match of body.matchAll(BACKTICKED_IDENTIFIER_PATTERN)) {
+		const candidate = kebabToSnake(match[1] ?? '');
+		if (registeredIds.has(candidate)) referenced.add(candidate);
+	}
+	for (const match of body.matchAll(SNAKE_CASE_IDENTIFIER_PATTERN)) {
+		if (registeredIds.has(match[0])) referenced.add(match[0]);
+	}
+
+	if (runtimeSkill?.id) referenced.delete(runtimeSkill.id);
+	return [...referenced];
+}
+
+function withSkillMdAttribution(url: string, slug: string): string {
+	const parsed = new URL(url);
+	parsed.searchParams.set('utm_source', 'skill_md');
+	parsed.searchParams.set('utm_medium', 'download');
+	parsed.searchParams.set('utm_campaign', slug);
+	return parsed.toString();
+}
+
+function getReferencedSkillLabel(skillId: string): string {
+	const publicLink = resolvePublicSkillLink(skillId);
+	if (publicLink) return publicLink.title;
+	return getSkillByReference(skillId)?.name ?? skillId;
+}
+
+/**
+ * Generated footer for every downloadable SKILL.md: where the skill lives, which mentioned
+ * skills run inside BuildOS, and how to connect BuildOS projects to the reader's agent.
+ */
+function buildPortableSkillFooter(post: BlogPost, referencedSkillIds: string[]): string {
+	const canonicalUrl = withSkillMdAttribution(`${SITE_URL}/agent-skills/${post.slug}`, post.slug);
+	const lines = [
+		PORTABLE_SKILL_FOOTER_HEADING,
+		'',
+		`This skill is part of the BuildOS skill library. Guide, updates, and source lineage: <${canonicalUrl}>`
+	];
+
+	if (referencedSkillIds.length > 0) {
+		lines.push('', 'Skills mentioned above that are not bundled here run inside BuildOS:', '');
+		for (const skillId of referencedSkillIds) {
+			const label = getReferencedSkillLabel(skillId);
+			const publicLink = resolvePublicSkillLink(skillId);
+			const link = publicLink
+				? `: <${withSkillMdAttribution(`${SITE_URL}${publicLink.href}`, post.slug)}>`
+				: '';
+			const download = publicLink?.kind === 'agent-skill' ? ' (free SKILL.md download)' : '';
+			lines.push(`- \`${skillId}\` — ${label}${download}${link}`);
+		}
+	}
+
+	lines.push(
+		'',
+		`Connect your BuildOS projects to Claude Code, Codex, or another agent: <${withSkillMdAttribution(CONNECT_AGENTS_DOCS_URL, post.slug)}>`
+	);
+
+	return lines.join('\n');
+}
+
 function buildPortableSkillMarkdown(
 	post: BlogPost,
 	runtimeSkill: SkillDefinition | undefined,
@@ -434,7 +688,12 @@ function buildPortableSkillMarkdown(
 ): string {
 	const embeddedPortable = extractEmbeddedPortableSkillMarkdown(post);
 	if (!runtimeSkill && embeddedPortable) {
-		return `${embeddedPortable.trim()}\n`;
+		const embeddedBody = embeddedPortable.trim();
+		const footer = buildPortableSkillFooter(
+			post,
+			listReferencedRuntimeSkillIds(stripFrontmatter(embeddedBody))
+		);
+		return `${embeddedBody}\n\n${footer}\n`;
 	}
 
 	const name = toPortableSkillName(post, runtimeSkill);
@@ -448,6 +707,10 @@ function buildPortableSkillMarkdown(
 		runtimeSkill
 	);
 	const referenceSection = buildPortableReferenceSection(references);
+	const footer = buildPortableSkillFooter(
+		post,
+		listReferencedRuntimeSkillIds(`${rewrittenBody}\n${referenceSection}`, runtimeSkill)
+	);
 
 	const frontmatter = stringifyYaml({
 		name,
@@ -460,7 +723,8 @@ function buildPortableSkillMarkdown(
 		'---',
 		'',
 		rewrittenBody,
-		referenceSection ? `\n${referenceSection}` : ''
+		referenceSection ? `\n${referenceSection}` : '',
+		`\n${footer}`
 	]
 		.join('\n')
 		.trimEnd()
@@ -579,7 +843,7 @@ export function getAgentSkillMarkdown(post: BlogPost): AgentSkillMarkdownResult 
 	const embeddedPortableSkill = extractEmbeddedPortableSkillMarkdown(post);
 	if (embeddedPortableSkill) {
 		return {
-			content: embeddedPortableSkill,
+			content: buildPortableSkillMarkdown(post, undefined, []),
 			source: 'embedded-portable'
 		};
 	}
@@ -690,6 +954,26 @@ function loadPublicReferenceContent(
 	return payload.content;
 }
 
+/**
+ * The SKILL.md `name`. The Agent Skills spec requires it to match the install folder, so the
+ * bundle directory and the well-known archive name both use this value.
+ */
+export function getPortableAgentSkillName(post: BlogPost): string {
+	return resolvePortableSkillName(post, resolveRuntimeSkillForPost(post));
+}
+
+function resolvePortableSkillName(post: BlogPost, runtimeSkill?: SkillDefinition): string {
+	if (!runtimeSkill) {
+		// Portable-only skills ship their embedded SKILL.md as written, so its name is the folder.
+		const embedded = extractEmbeddedPortableSkillMarkdown(post);
+		const declared = embedded ? readPortableFrontmatter(embedded).name : undefined;
+		if (typeof declared === 'string' && AGENT_SKILL_NAME_PATTERN.test(declared)) {
+			return declared;
+		}
+	}
+	return toPortableSkillName(post, runtimeSkill);
+}
+
 export function buildPortableAgentSkillBundle(post: BlogPost): PortableAgentSkillBundle {
 	const runtimeSkill = resolveRuntimeSkillForPost(post);
 	const references = listPublicAgentSkillReferences(post, runtimeSkill);
@@ -701,14 +985,133 @@ export function buildPortableAgentSkillBundle(post: BlogPost): PortableAgentSkil
 	for (const reference of references) {
 		const content = loadPublicReferenceContent(runtimeSkill, reference);
 		if (content) {
-			files[reference.path] = content.endsWith('\n') ? content : `${content}\n`;
+			files[reference.path] = sanitizePortableReferenceContent(content);
 		}
 	}
 
 	return {
 		slug: post.slug,
-		directory: post.slug,
+		directory: resolvePortableSkillName(post, runtimeSkill),
 		files
+	};
+}
+
+const FALLBACK_BUNDLE_MTIME = new Date(2026, 0, 1, 12, 0, 0);
+
+/** Zip entries carry a fixed timestamp so identical content always yields identical bytes. */
+function getBundleMtime(post: BlogPost): Date {
+	const day = (post.lastmod || post.date || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+	if (!day) return FALLBACK_BUNDLE_MTIME;
+	const mtime = new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]), 12, 0, 0);
+	return Number.isNaN(mtime.getTime()) || mtime.getFullYear() < 1980
+		? FALLBACK_BUNDLE_MTIME
+		: mtime;
+}
+
+export type AgentSkillZipLayout = 'directory' | 'root';
+
+/**
+ * Deterministic zip of a portable bundle. `directory` nests files under `<name>/` so the
+ * download unzips straight into a skills folder; `root` puts SKILL.md at the archive root as the
+ * well-known discovery RFC requires.
+ */
+export function buildAgentSkillBundleZip(
+	post: BlogPost,
+	layout: AgentSkillZipLayout = 'directory',
+	bundle: PortableAgentSkillBundle = buildPortableAgentSkillBundle(post)
+): { name: string; bytes: Uint8Array<ArrayBuffer> } {
+	const mtime = getBundleMtime(post);
+	const files: Record<string, Uint8Array> = {};
+
+	for (const [path, content] of Object.entries(bundle.files)) {
+		files[layout === 'directory' ? `${bundle.directory}/${path}` : path] = strToU8(content);
+	}
+
+	return {
+		name: bundle.directory,
+		bytes: new Uint8Array(zipSync(files, { level: 6, mtime }))
+	};
+}
+
+async function sha256Digest(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+	const hash = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+	const hex = Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0'));
+	return `sha256:${hex.join('')}`;
+}
+
+function readPortableFrontmatter(markdown: string): Record<string, unknown> {
+	const source = markdown.match(/^---\s*\n([\s\S]*?)\n---/)?.[1];
+	if (!source) return {};
+	try {
+		const parsed = parseYaml(source);
+		return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+	} catch {
+		return {};
+	}
+}
+
+export function getWellKnownAgentSkillArchivePath(name: string): string {
+	return `/.well-known/agent-skills/${name}.zip`;
+}
+
+export type AgentSkillsDiscoveryIndex = {
+	$schema: typeof AGENT_SKILLS_DISCOVERY_SCHEMA;
+	skills: Array<{
+		name: string;
+		type: 'archive';
+		description: string;
+		url: string;
+		digest: string;
+	}>;
+};
+
+/**
+ * `/.well-known/agent-skills/index.json` per the Agent Skills discovery RFC v0.2.0, so tools
+ * like `npx skills add https://build-os.com` can list and install the public skills.
+ */
+export async function buildAgentSkillsDiscoveryIndex(): Promise<AgentSkillsDiscoveryIndex> {
+	const posts = await loadAgentSkillPosts();
+	const skills = await Promise.all(
+		posts.map(async (post) => {
+			const bundle = buildPortableAgentSkillBundle(post);
+			const archive = buildAgentSkillBundleZip(post, 'root', bundle);
+			const frontmatter = readPortableFrontmatter(bundle.files['SKILL.md'] ?? '');
+			const description =
+				typeof frontmatter.description === 'string'
+					? frontmatter.description
+					: post.description;
+
+			return {
+				name: archive.name,
+				type: 'archive' as const,
+				description: description.slice(0, AGENT_SKILL_DESCRIPTION_MAX_LENGTH),
+				url: getWellKnownAgentSkillArchivePath(archive.name),
+				digest: await sha256Digest(archive.bytes)
+			};
+		})
+	);
+
+	return {
+		$schema: AGENT_SKILLS_DISCOVERY_SCHEMA,
+		skills
+	};
+}
+
+export async function findAgentSkillPostByPortableName(
+	name: string
+): Promise<BlogPost | undefined> {
+	const posts = await loadAgentSkillPosts();
+	return posts.find((post) => getPortableAgentSkillName(post) === name);
+}
+
+/**
+ * Raw downloads (.md, .yaml, .zip, references) stay out of search results and point search
+ * engines at the skill's one canonical page.
+ */
+export function getAgentSkillDownloadHeaders(slug: string): Record<string, string> {
+	return {
+		'x-robots-tag': 'noindex',
+		link: `<${SITE_URL}/agent-skills/${slug}>; rel="canonical"`
 	};
 }
 
@@ -768,7 +1171,7 @@ export function getAgentSkillReference(
 	}
 
 	return {
-		content: payload.content,
+		content: sanitizePortableReferenceContent(payload.content),
 		contentType: 'text/markdown; charset=utf-8',
 		runtimeSkillId: runtimeSkill.id,
 		referenceId: reference.id
@@ -803,6 +1206,14 @@ export function buildAgentSkillIndexItem(post: BlogPost): AgentSkillIndexItem {
 	};
 }
 
+/** Catalog version = the most recent content change across published skills (YYYY-MM-DD). */
+function getAgentSkillCatalogVersion(posts: BlogPost[]): string {
+	return posts.reduce((latest, post) => {
+		const changed = post.lastmod || post.date || '';
+		return changed > latest ? changed : latest;
+	}, '2026-07-10');
+}
+
 export async function loadAgentSkillIndex(): Promise<{
 	version: string;
 	generated_at: string;
@@ -833,7 +1244,7 @@ export async function loadAgentSkillIndex(): Promise<{
 	};
 
 	return {
-		version: '2026-07-10',
+		version: getAgentSkillCatalogVersion(posts),
 		generated_at: new Date().toISOString(),
 		skills,
 		previews,
@@ -879,6 +1290,143 @@ function validateRequiredUrl(
 			'error',
 			`invalid_${label}`,
 			`${label} should start with ${SITE_URL}${expectedPath}.`,
+			slug
+		);
+	}
+}
+
+export function findPortableInternalLeftovers(content: string): string[] {
+	return PORTABLE_INTERNAL_LEFTOVER_STRINGS.filter((marker) => content.includes(marker));
+}
+
+/**
+ * Download-quality gate for one bundle: Agent Skills spec (`name` format, `name` === folder,
+ * description length), the BuildOS footer (canonical link, connect-agents link, every referenced
+ * skill listed), and no repo-only leftovers in any shipped file.
+ */
+export function validatePortableAgentSkillBundle(
+	post: BlogPost,
+	bundle: PortableAgentSkillBundle,
+	runtimeSkill: SkillDefinition | undefined
+): AgentSkillValidationIssue[] {
+	const issues: AgentSkillValidationIssue[] = [];
+	const slug = post.slug || '(missing-slug)';
+	const portableSkill = bundle.files['SKILL.md'];
+
+	if (portableSkill?.trim()) {
+		validatePortableSkillSpec(issues, slug, portableSkill, bundle.directory);
+		validatePortableSkillFooter(issues, post, portableSkill, runtimeSkill);
+	}
+
+	for (const [path, content] of Object.entries(bundle.files)) {
+		const leftovers = findPortableInternalLeftovers(content);
+		if (leftovers.length > 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'portable_internal_leftover',
+				`${path} still contains repo-only text: ${leftovers.join(', ')}.`,
+				slug
+			);
+		}
+		if (path === 'SKILL.md' || path === 'buildos.yaml') continue;
+		const referenceLeaks = findPortableInfrastructureLeaks(content);
+		if (referenceLeaks.length > 0) {
+			addValidationIssue(
+				issues,
+				'error',
+				'portable_reference_internal_infrastructure_leak',
+				`${path} exposes internal infrastructure markers: ${referenceLeaks.join(', ')}.`,
+				slug
+			);
+		}
+	}
+
+	return issues;
+}
+
+/** Agent Skills spec: `name` format, `name` === install folder, description length. */
+function validatePortableSkillSpec(
+	issues: AgentSkillValidationIssue[],
+	slug: string,
+	portableSkill: string,
+	folder: string
+) {
+	const frontmatter = readPortableFrontmatter(portableSkill);
+	const name = typeof frontmatter.name === 'string' ? frontmatter.name : '';
+	const description = typeof frontmatter.description === 'string' ? frontmatter.description : '';
+
+	if (name && (name.length > 64 || !AGENT_SKILL_NAME_PATTERN.test(name))) {
+		addValidationIssue(
+			issues,
+			'error',
+			'invalid_portable_name',
+			`Portable SKILL.md name "${name}" must be 1-64 lowercase letters, digits, and single hyphens.`,
+			slug
+		);
+	}
+	if (name && name !== folder) {
+		addValidationIssue(
+			issues,
+			'error',
+			'portable_name_folder_mismatch',
+			`Portable SKILL.md name "${name}" must match its folder "${folder}".`,
+			slug
+		);
+	}
+	if (description.length > AGENT_SKILL_DESCRIPTION_MAX_LENGTH) {
+		addValidationIssue(
+			issues,
+			'error',
+			'portable_description_too_long',
+			`Portable SKILL.md description is ${description.length} characters; the limit is ${AGENT_SKILL_DESCRIPTION_MAX_LENGTH}.`,
+			slug
+		);
+	}
+}
+
+/** Every download must lead back to BuildOS and name each referenced skill it does not ship. */
+function validatePortableSkillFooter(
+	issues: AgentSkillValidationIssue[],
+	post: BlogPost,
+	portableSkill: string,
+	runtimeSkill: SkillDefinition | undefined
+) {
+	const slug = post.slug || '(missing-slug)';
+	const footerIndex = portableSkill.lastIndexOf(`\n${PORTABLE_SKILL_FOOTER_HEADING}\n`);
+	if (footerIndex < 0) {
+		addValidationIssue(
+			issues,
+			'error',
+			'missing_portable_footer',
+			`Portable SKILL.md is missing the "${PORTABLE_SKILL_FOOTER_HEADING}" footer.`,
+			slug
+		);
+		return;
+	}
+
+	const body = portableSkill.slice(0, footerIndex);
+	const footer = portableSkill.slice(footerIndex);
+	const canonicalLink = `${SITE_URL}/agent-skills/${post.slug}?utm_source=skill_md`;
+	if (!footer.includes(canonicalLink) || !footer.includes(CONNECT_AGENTS_DOCS_URL)) {
+		addValidationIssue(
+			issues,
+			'error',
+			'incomplete_portable_footer',
+			'Portable SKILL.md footer must link the canonical skill page and the connect-agents docs.',
+			slug
+		);
+	}
+
+	const unlisted = listReferencedRuntimeSkillIds(stripFrontmatter(body), runtimeSkill).filter(
+		(skillId) => !footer.includes(`\`${skillId}\``)
+	);
+	if (unlisted.length > 0) {
+		addValidationIssue(
+			issues,
+			'error',
+			'portable_unlisted_skill_reference',
+			`Portable SKILL.md references skills that are neither bundled nor listed in the footer: ${unlisted.join(', ')}.`,
 			slug
 		);
 	}
@@ -1227,6 +1775,7 @@ export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillVal
 				);
 			}
 		}
+		issues.push(...validatePortableAgentSkillBundle(post, bundle, runtimeSkill));
 
 		if (!buildOsMetadata?.trim()) {
 			addValidationIssue(

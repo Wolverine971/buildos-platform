@@ -20,13 +20,12 @@ import {
 	type TurnContract,
 	type TurnContractOutcome,
 	bindTurnContractLabels,
+	buildCleanupManifest,
 	buildMutationBatch,
 	buildOrganizeCommissionRepairInstruction,
 	buildRoundToolPattern,
 	buildWriteLedger,
-	buildCleanupManifest,
 	describePendingCleanupItems,
-	renderAlreadySatisfiedCleanupItems,
 	doesToolExecutionRequireUserAction,
 	extractReviewedRequestExpectation,
 	isControlToolName,
@@ -34,6 +33,7 @@ import {
 	mutationBatchSha256,
 	parseDeclaredTurnContract,
 	parseRequestExpectation,
+	renderAlreadySatisfiedCleanupItems,
 	requestExpectationsMatch,
 	resolveTurnContractOutcome,
 	serializeMutationBatchForReview,
@@ -89,8 +89,8 @@ import {
 	buildProviderPassBudgetSynthesisInstruction,
 	buildValidationRepairExhaustedSynthesisInstruction,
 	renderDirectWriteReceipt,
-	renderWriteReceiptFallback,
-	renderOutputBudgetFailure
+	renderOutputBudgetFailure,
+	renderWriteReceiptFallback
 } from './repair-policy';
 import {
 	appendSystemInstruction,

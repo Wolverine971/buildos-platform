@@ -3,8 +3,8 @@
 import type {
 	AgenticChatOutputBudgetSignal,
 	AgenticChatProviderStepV1,
-	AgenticChatTurnProviderRequestV1,
-	AgenticChatTurnProviderClientRequestV1
+	AgenticChatTurnProviderClientRequestV1,
+	AgenticChatTurnProviderRequestV1
 } from './contracts';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../tools/read-tool-identity';
 

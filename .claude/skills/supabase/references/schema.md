@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 269 tables, grouped by domain.
+Complete column listing for all 272 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-03T20:41:24.554Z
+**Schema generated:** 2026-10-04T16:25:04.489Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -28,7 +28,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [Daily Briefs](#daily-briefs) (5 tables)
 - [Monitoring & Analytics](#monitoring--analytics) (10 tables)
 - [Web & Webhooks](#web--webhooks) (4 tables)
-- [Other](#other) (56 tables)
+- [Other](#other) (59 tables)
 
 ---
 
@@ -981,6 +981,18 @@ attempt_token `string` · created_at `string` · expires_at `string` · finished
 ### agentic_chat_specialist_versions
 
 created_at `string` · draft_id `string` · draft_revision `number` · name `string` · snapshot `Json` · snapshot_hash `string` · user_id `string` · version `number`
+
+### consolidation_merges
+
+cluster_key `string` · coverage `Json?` · cost_usd `number` · created_at `string` · created_document_id `string?` · error `string?` · id `string` · ledger `Json?` · markdown `string?` · run_id `string` · source_ids `string[]` · status `string` · target_project_id `string` · title `string` · updated_at `string`
+
+### consolidation_questions
+
+answer `Json?` · answered_at `string?` · created_at `string` · draft `Json?` · evidence `Json` · header `string` · id `string` · options `Json` · piece `string` · priority `number` · question `string` · recommended_option_id `string?` · run_id `string` · skip_option_id `string` · status `string` · updated_at `string`
+
+### consolidation_runs
+
+cost_usd `number` · created_at `string` · error `string?` · finished_at `string?` · id `string` · plan `Json?` · progress `Json` · project_ids `string[]` · receipt `Json?` · request `string?` · root_project_id `string` · status `string` · updated_at `string` · user_id `string`
 
 ### cycle_runs
 

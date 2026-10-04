@@ -651,6 +651,55 @@ describe('AgentChatStreamController', () => {
 		});
 	});
 
+	it('sends the launch skill as a structured field with the first admitted turn only', async () => {
+		let launchSkillId: string | null = 'going_viral';
+		const h = createHarness({ inputValue: 'Use the Going Viral skill on my launch post.' });
+		h.deps.getRequestedSkillId = () => launchSkillId;
+		h.deps.clearRequestedSkillId = () => {
+			launchSkillId = null;
+		};
+
+		await h.controller.sendMessage();
+		expect(parseBody(h.admissionCalls[0]!)).toMatchObject({
+			message: 'Use the Going Viral skill on my launch post.',
+			requestedSkillId: 'going_viral'
+		});
+		expect(launchSkillId).toBeNull();
+
+		const handle = h.controller.activeTurnHandle;
+		if (!handle || handle.executionMode !== 'worker_realtime')
+			throw new Error('Expected an admitted worker turn');
+		h.controller.finishWorkerTurn(handle, 'completed');
+		await h.controller.sendMessage('Now a shorter version for LinkedIn.');
+		expect(parseBody(h.admissionCalls[1]!)).not.toHaveProperty('requestedSkillId');
+	});
+
+	it('keeps the launch skill for the retry when admission provably did not happen', async () => {
+		let launchSkillId: string | null = 'going_viral';
+		const h = createHarness({
+			inputValue: 'Use the Going Viral skill on my launch post.',
+			admissionFetchImpl: vi.fn<typeof fetch>(async () =>
+				Response.json(
+					{
+						success: false,
+						error: 'Worker turn capacity is temporarily unavailable',
+						code: 'WORKER_CAPACITY_EXCEEDED'
+					},
+					{ status: 503 }
+				)
+			) as unknown as typeof fetch
+		});
+		h.deps.getRequestedSkillId = () => launchSkillId;
+		h.deps.clearRequestedSkillId = () => {
+			launchSkillId = null;
+		};
+
+		await h.controller.sendMessage();
+		expect(parseBody(h.admissionCalls[0]!).requestedSkillId).toBe('going_viral');
+		expect(h.messages).toHaveLength(0);
+		expect(launchSkillId).toBe('going_viral');
+	});
+
 	it('lets admission create the session inline on a new chat first send', async () => {
 		const wait = vi.fn();
 		const h = createHarness({

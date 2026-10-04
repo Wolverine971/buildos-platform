@@ -22,6 +22,8 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/calendar_m
   This file is skill_type: procedure at task altitude, so Procedure carries the weight (the ordered
   calendar runbook); Contract states what to report; Policy holds the guardrails. It routes to no sibling
   skills, so there is no Routing block; there are no external sources, so Provenance holds operational notes.
+  The turn-contract shapes in Procedure step 9 are checked against the worker's real contract validator by
+  apps/worker/tests/agenticChatSkillContractExamples.test.ts.
 -->
 
 ## Identity
@@ -46,6 +48,9 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 6. Treat words such as "all", "every", "clean up", or a category like "shooting-related" as an exhaustive lookup request. Do not use a project overview or an upcoming-only list as the candidate set. Query an explicit window broad enough for the user's wording, paginate until exhausted, and include past or in-progress events unless the user limited the request to future events.
 7. For first-time or complex writes, inspect the existing event and verify the exact scope and fields before calling the paired direct calendar tool.
 8. After a bulk update/delete, repeat the same bounded lookup and verify that no active matches remain. Report local deletion and provider-sync status separately; a queued or failed provider sync is not a completed Google Calendar deletion.
+9. Declare a turn contract only when the system holds your writes and asks for one (it does for more than three writes or an event picked from broad context instead of a read this turn). Declare each event change, then make only those calls: a write outside the approved contract is rejected. Shapes:
+    - create: `{"outcomes":[{"action":"create","entity_kind":"event","changes":[{"field":"title","value":"Call with Ana"},{"field":"start_at","value":"2026-10-06T15:00:00-04:00"}],"minimum_successful_effects":1}]}`
+    - reschedule an event a read returned (pass that same UUID as onto_event_id): `{"outcomes":[{"action":"update","entity_kind":"event","target_ids":["<onto_event_id UUID>"],"required_fields":["start_at"],"changes":[{"field":"start_at","value":"2026-10-07T15:00:00-04:00"}],"minimum_successful_effects":1}]}`
 
 ## Contract
 

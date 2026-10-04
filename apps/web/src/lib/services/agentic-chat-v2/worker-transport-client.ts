@@ -43,6 +43,8 @@ export type AgenticChatWorkerCommand = {
 	preparedPromptKey: string | null;
 	reviewIntent?: 'project_review' | 'document_organization' | null;
 	publishedSpecialist?: PublishedSpecialistReference | null;
+	/** Skill a chat launch named; sent on that launch's first turn only. */
+	requestedSkillId?: string | null;
 };
 
 export async function requestAgenticChatWorkerAdmission(input: {
@@ -168,6 +170,7 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 		lastTurnContext: command.lastTurnContext,
 		voiceNoteGroupId: command.voiceNoteGroupId,
 		preparedPromptKey: command.preparedPromptKey,
+		...(command.requestedSkillId ? { requestedSkillId: command.requestedSkillId } : {}),
 		...(command.reviewIntent ? { reviewIntent: command.reviewIntent } : {}),
 		...(command.reviewIntent === 'document_organization' && command.publishedSpecialist
 			? {

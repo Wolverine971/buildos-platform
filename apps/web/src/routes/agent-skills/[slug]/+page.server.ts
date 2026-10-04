@@ -2,6 +2,11 @@
 import type { PageServerLoad } from './$types';
 import { AGENT_SKILLS_CATEGORY_KEY, getRelatedPosts, loadBlogPostMetadata } from '$lib/utils/blog';
 import { renderMarkdown } from '$lib/utils/markdown';
+import {
+	getPortableAgentSkillName,
+	resolvePublicSkillLink,
+	type PublicSkillLink
+} from '$lib/server/agent-skills';
 
 const blogContentModules = import.meta.glob<string>('/src/content/blogs/**/*.md', {
 	eager: true,
@@ -30,9 +35,19 @@ export const load: PageServerLoad = async ({ params }) => {
 		? renderMarkdown(stripLeadingH1(stripFrontmatter(rawContent)))
 		: '';
 
+	// "Stacks with" lists slugs; only the ones with a public page are worth showing.
+	const stackWithLinks = (post.stackWith ?? [])
+		.map((reference) => resolvePublicSkillLink(reference))
+		.filter(
+			(link): link is PublicSkillLink =>
+				link !== null && link.href !== `/agent-skills/${post.slug}`
+		);
+
 	return {
 		post,
 		relatedPosts,
-		contentHtml
+		contentHtml,
+		stackWithLinks,
+		skillName: getPortableAgentSkillName(post)
 	};
 };

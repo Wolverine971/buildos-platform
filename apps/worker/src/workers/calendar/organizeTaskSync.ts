@@ -4,9 +4,9 @@ import type { Database, Json, OntoProjectEventSyncJobMetadata } from '@buildos/s
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { WorkerTaskEventMutationPort } from '@buildos/shared-agent-ops/calendar/worker-task-event-mutation-port';
 import {
-	TaskEventSyncCoordinator,
 	type TaskEventMutationPort,
-	type TaskEventRow
+	type TaskEventRow,
+	TaskEventSyncCoordinator
 } from '@buildos/shared-agent-ops/calendar/task-event-sync';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 

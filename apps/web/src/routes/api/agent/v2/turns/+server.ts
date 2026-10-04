@@ -142,7 +142,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			projectFocus: parsed.data.projectFocus as ProjectFocus | null,
 			lastTurnContext: parsed.data.lastTurnContext as LastTurnContext | null,
 			voiceNoteGroupId: parsed.data.voiceNoteGroupId,
-			preparedPromptKey: parsed.data.preparedPromptKey
+			preparedPromptKey: parsed.data.preparedPromptKey,
+			requestedSkillId: parsed.data.requestedSkillId
 		};
 		const leaseAuthority = {
 			decisionId: decision.decisionId,

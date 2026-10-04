@@ -40,6 +40,7 @@ import { processPickProjectEmojiJob } from './workers/project-emoji/projectEmoji
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processFreshnessRadarScanJob } from './workers/freshness-radar/signalJob';
 import { processCaptureChatCheckpointJob } from './workers/chat/checkpoint/checkpointJob';
+import { processConsolidationRun } from './workers/consolidation/consolidationJob';
 import { processUserDataExportJob } from './workers/export/userDataExportWorker';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { processQuestionTreeJob } from './workers/question-tree/questionTreeWorker';
@@ -497,6 +498,9 @@ export async function startWorker() {
 
 	// Register chat checkpoint capture (tasker/95): thinking log + START HERE, off the turn path.
 	queue.process('capture_chat_checkpoint', processCaptureChatCheckpointJob);
+
+	// Document consolidation runs: survey a project family, re-decide groups the owner answered in their own words, and draft merges.
+	queue.process('consolidation_run', processConsolidationRun);
 
 	// Register "Download my data" exports (Settings → Your data).
 	queue.process('user_data_export', processUserDataExportJob);

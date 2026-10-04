@@ -58,10 +58,9 @@ const OPERATIONAL_SKILL_BY_ENTITY: Record<OperationalEntityKind, OperationalSkil
 
 /**
  * A skill is only eligible when at least one of its write tools is mounted on
- * the surface the model will actually see. Task and calendar writes are on the
- * global and project surfaces, document writes on the project surface; plan
- * tools are on no surface today, so plan_management stays silent until they
- * are mounted, without a code change here.
+ * the surface the model will actually see. Task, calendar, and plan-layer
+ * writes (plans, goals, milestones, risks since 2026-09-18) are on the global
+ * and project surfaces; document writes are on the project surface only.
  */
 const OPERATIONAL_SKILL_TOOL_REQUIREMENTS: Record<OperationalEntityKind, readonly string[]> = {
 	task: ['create_onto_task', 'update_onto_task'],
@@ -260,16 +259,22 @@ export function isOperationalSkillEligibleForTools(
 
 /**
  * Pick the operational skill for this turn: the strongest entity intent whose
- * write tools are mounted. Returns null for read turns and for surfaces that
- * cannot act on the sensed entity.
+ * write tools are mounted and whose playbook the caller can preload. An
+ * ineligible entity falls through to the next sensed one rather than ending
+ * the route. Returns null for read turns and for surfaces that cannot act on
+ * any sensed entity.
  */
 export function resolveOperationalSkillForTurn(params: {
 	message: string | null | undefined;
 	toolNames: readonly string[];
+	/** Caller-side playbook eligibility (preload allowlist, mounted skill tools). */
+	isSkillEligible?: (skillId: OperationalSkillId) => boolean;
 }): OperationalSkillResolution | null {
 	const intent = classifyOperationalTurnIntent(params.message);
-	const eligible = intent.entityKinds.filter((entityKind) =>
-		isOperationalSkillEligibleForTools(entityKind, params.toolNames)
+	const eligible = intent.entityKinds.filter(
+		(entityKind) =>
+			isOperationalSkillEligibleForTools(entityKind, params.toolNames) &&
+			(params.isSkillEligible?.(OPERATIONAL_SKILL_BY_ENTITY[entityKind]) ?? true)
 	);
 	const [primary, ...rest] = eligible;
 	if (!primary) return null;

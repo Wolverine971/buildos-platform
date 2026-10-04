@@ -2,20 +2,14 @@
 <script lang="ts">
 	import { ArrowRight } from '$lib/icons/lucide';
 	import { getSkillExpertPath, type SkillExpertProfile } from '$lib/skills/skill-experts';
+	import SkillExpertMonogram from './SkillExpertMonogram.svelte';
 
 	let { expert }: { expert: SkillExpertProfile } = $props();
 </script>
 
 <article class="overflow-hidden rounded-md border border-border bg-background">
 	<div class="flex min-w-0 items-start gap-3 p-3">
-		<img
-			src={expert.portrait.src}
-			alt={expert.portrait.alt}
-			width="64"
-			height="64"
-			loading="lazy"
-			class="h-16 w-16 shrink-0 rounded-md border border-border object-cover shadow-ink"
-		/>
+		<SkillExpertMonogram name={expert.name} size="md" />
 		<div class="min-w-0 flex-1">
 			<p class="truncate font-semibold text-foreground">{expert.name}</p>
 			<p class="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground">

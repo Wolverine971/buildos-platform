@@ -177,6 +177,21 @@ FROM (VALUES
 ) AS v(table_name, reason)
 WHERE to_regclass('public.' || v.table_name) IS NOT NULL;
 
+-- Consolidation runs (20261003150100) likewise; that file classifies itself when
+-- it lands after this one.
+INSERT INTO private.project_fold_table_policy (table_schema, table_name, column_name, action, reason)
+SELECT 'public', 'consolidation_runs', v.column_name, 'leave_behind', v.reason
+FROM (VALUES
+	('root_project_id', 'Consolidation runs are history of the project they ran on; a fold does not move them.'),
+	('project_ids', 'Consolidation runs keep the scope they ran with; a fold does not rewrite it.')
+) AS v(column_name, reason)
+WHERE to_regclass('public.consolidation_runs') IS NOT NULL;
+
+INSERT INTO private.project_fold_table_policy (table_schema, table_name, column_name, action, reason)
+SELECT 'public', 'consolidation_merges', 'target_project_id', 'leave_behind',
+	'A merge draft is history of the run that wrote it; the created doc moves with its project.'
+WHERE to_regclass('public.consolidation_merges') IS NOT NULL;
+
 -- The move/repoint columns the fold below implements. Changing either side
 -- without the other is reported by project_fold_policy_gaps().
 CREATE FUNCTION private.project_fold_implemented()

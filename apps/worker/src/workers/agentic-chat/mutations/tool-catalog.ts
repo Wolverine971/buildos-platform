@@ -941,7 +941,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		// validateToolCalls applies schema defaults before it runs
 		// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F29).
 		descriptionOverride:
-			'Create one standard project and its generated Context document. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support custom Context documents, clarifications, embedded child records, or relationships. Synthetic QA data is supported.',
+			'Create one standard project and its generated Context document. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support custom Context documents, clarifications, embedded child records, or relationships. project.props accepts only facets (context, scale, stage); put any other detail in project.description. Synthetic QA data is supported.',
 		requiredNames: ['project'],
 		reviewedArgumentNames: ['project', 'entities', 'relationships'],
 		propertyOverrides: {

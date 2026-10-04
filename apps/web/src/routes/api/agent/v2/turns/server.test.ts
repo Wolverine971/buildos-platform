@@ -279,7 +279,11 @@ describe('POST /api/agent/v2/turns', () => {
 			admissionBody({ turnRunId: TURN_ID }),
 			// The retired transport lease is refused like any other unknown field.
 			admissionBody({ leaseToken: 'actl1.retired-transport-lease' }),
-			admissionBody({ leaseToken: '' })
+			admissionBody({ leaseToken: '' }),
+			admissionBody({ requestedSkillId: ' task_management ' }),
+			admissionBody({ requestedSkillId: '' }),
+			admissionBody({ requestedSkillId: 'x'.repeat(129) }),
+			admissionBody({ requestedSkillId: 42 })
 		]) {
 			response = await POST(postEvent({ body }) as never);
 			expect(response.status).toBe(422);
@@ -395,6 +399,27 @@ describe('POST /api/agent/v2/turns', () => {
 		expect(response.status).toBe(503);
 		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(1);
 		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(1);
+	});
+
+	it('hands a launch skill request to preparation, which decides whether to trust it', async () => {
+		let response = await POST(
+			postEvent({ body: admissionBody({ requestedSkillId: 'task_management' }) }) as never
+		);
+		expect(response.status).toBe(202);
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				command: expect.objectContaining({ requestedSkillId: 'task_management' })
+			})
+		);
+
+		resetAgenticChatTurnRateLimitForTests();
+		response = await POST(postEvent() as never);
+		expect(response.status).toBe(202);
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				command: expect.objectContaining({ requestedSkillId: null })
+			})
+		);
 	});
 
 	it('passes strict attachment references into trusted worker preparation', async () => {

@@ -25,6 +25,8 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/document_w
   create_onto_document, update_onto_document, move_document_in_tree, link_onto_entities). Related Tools stays in
   dotted op ids: it is the external gateway contract and the source of materialized_tools. Examples open with the
   update-by-exact-id case (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71).
+  The turn-contract shapes in Procedure step 8 are checked against the worker's real contract validator by
+  apps/worker/tests/agenticChatSkillContractExamples.test.ts.
 -->
 
 ## Identity
@@ -41,12 +43,15 @@ Project document hierarchy playbook: create, update, place, and reorganize proje
 ## Procedure
 
 1. For an update, reuse the exact document_id from the focused context, the user's message, or a read this turn; otherwise find it with search_project, list_onto_documents, or get_document_tree before writing. If several documents fit, ask one clarification instead of guessing.
-2. To change part of an existing body, use edits, never a resent body: find the exact text with get_document_outline (pass find with a word from the target) or read_document_section, then send `edits: [{ old_text, new_text }]` with old_text copied exactly and kept to the smallest unique span, usually one line, one edit per changed line, never a whole block (empty new_text deletes), or section_edits for a whole section by its anchor. content is only for a whole-body rewrite (update_strategy "replace", the default) or adding at the end ("append", non-empty content). A title-only or description-only update needs no content at all.
+2. To change part of an existing body, use edits, never a resent body: find the exact text this turn with get_document_outline (pass find with a word from the target) or read_document_section, then send `edits: [{ old_text, new_text }]` with old_text copied exactly from that result, never from memory or an earlier turn, and kept to the smallest unique span, usually one line, one edit per changed line, never a whole block (empty new_text deletes), or section_edits for a whole section by its anchor exactly as the outline lists it. content is only for a whole-body rewrite (update_strategy "replace", the default) or adding at the end ("append", non-empty content). A title-only or description-only update needs no content at all.
 3. For a create, call create_onto_document with project_id, title, and description; pass content when the user gave it, and parent_id (plus optional position) only when a read already returned that parent.
 4. The hierarchy lives in the document tree, not in entity edges. Use move_document_in_tree to place, nest, or rehome an existing document: prefer new_parent_title for grouping, and pass new_parent_id only for a parent UUID a read returned.
 5. For reorganization or unlinked docs, call get_document_tree once with include_documents true, plan every move from that result, then issue the moves; read the tree again only if a move fails.
 6. Claim "nested under X" or "placed in" only after the create returned without a tree placement error or the move returned success.
 7. Use link_onto_entities only for a real relationship between a document and another entity, never to represent folder structure.
+8. Declare a turn contract only when the system holds your writes and asks for one (it does for a move or organize, more than three writes, text the user asked you to preserve, or a document picked from broad context instead of the focus or a read). Name every document you will touch with its exact UUID and the fields that change, then write only those: an edit to any other document is rejected as outside the approved contract. Shapes:
+    - text edit: `{"outcomes":[{"action":"update","entity_kind":"document","target_ids":["<document UUID>"],"required_fields":["content"],"description":"Tighten only the Rollback section","minimum_successful_effects":1}]}`
+    - new folder plus two moves (then pass new_parent_title "Research" on each move): `{"outcomes":[{"action":"create","entity_kind":"document","label":"research","changes":[{"field":"title","value":"Research"}],"minimum_successful_effects":1},{"action":"move","entity_kind":"document","target_ids":["<document UUID>","<second document UUID>"],"parent_label":"research","required_fields":["parent_id"],"minimum_successful_effects":2}]}`
 
 ## Contract
 
@@ -60,7 +65,8 @@ After a document write, report:
 
 - Do not use entity edges or a graph reorganization to model document hierarchy; the tree is the source of truth.
 - Do not call update_onto_document with update_strategy "append" and no content; the executor rejects it.
-- Do not rebuild a long document from section reads to change a few lines; an edit that fails returns the closest real lines, so fix old_text and retry.
+- Do not rebuild a long document from section reads to change a few lines; an edit that fails (ANCHOR_NOT_FOUND) returns the closest real lines, so copy one of them exactly and retry.
+- Do not edit inside a START HERE document's status or map region: it rebuilds itself and an edit there fails (MANAGED_REGION_BOUNDARY). Edit the authored text outside it.
 - Do not invent a parent UUID; use new_parent_title, or a UUID a read returned.
 - Task workspace documents are a separate surface that is not reachable here; say so instead of filing a task document in the project tree.
 

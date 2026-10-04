@@ -20,6 +20,7 @@
 		Calendar,
 		FolderUp,
 		Columns2,
+		Layers,
 		MoreHorizontal,
 		Pencil,
 		Trash2,
@@ -66,6 +67,31 @@
 	const isArchivedProject = $derived(
 		Boolean((project as Project & { archived_at?: string | null }).archived_at)
 	);
+	let isStartingConsolidation = $state(false);
+
+	/** Starts (or reopens) a consolidation of this project and its sub-projects. */
+	async function startConsolidation() {
+		if (isStartingConsolidation) return;
+		isStartingConsolidation = true;
+		try {
+			const response = await fetch('/api/consolidation/runs', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ project_id: project.id })
+			});
+			const body = await response.json().catch(() => null);
+			const runId = body?.data?.run_id;
+			if (!response.ok || typeof runId !== 'string')
+				throw new Error(body?.error || 'Could not start consolidating.');
+			await goto(`/projects/${project.id}/consolidate/${runId}`);
+		} catch (error) {
+			toastService.error(
+				error instanceof Error ? error.message : 'Could not start consolidating.'
+			);
+		} finally {
+			isStartingConsolidation = false;
+		}
+	}
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let notificationSettings = $state<ProjectNotificationSettings | null>(null);
@@ -328,6 +354,20 @@
 			>
 				<Columns2 class="h-4 w-4 text-muted-foreground" />
 				Organize…
+			</button>
+			<button
+				type="button"
+				role="menuitem"
+				tabindex="-1"
+				class="menu-item"
+				disabled={isStartingConsolidation}
+				onclick={() => {
+					closeMenu(false);
+					void startConsolidation();
+				}}
+			>
+				<Layers class="h-4 w-4 text-muted-foreground" />
+				Consolidate docs…
 			</button>
 		{/if}
 		{#if canMoveUnder || canDetachFromParent}

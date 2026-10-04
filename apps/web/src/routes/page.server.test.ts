@@ -64,6 +64,29 @@ describe('public home route', () => {
 		});
 	});
 
+	it('sends a new visitor with a Try in BuildOS chat launch to /today, not onboarding', async () => {
+		const { load } = await import('./+page.server');
+		needsOnboarding.mockResolvedValue(true);
+		const search = `?${new URLSearchParams({
+			open: 'agent-chat',
+			skill: 'going_viral',
+			prompt: 'Use the Going Viral skill.\n\nStarting ask: help me'
+		})}`;
+
+		await expect(
+			load({
+				locals: {
+					safeGetSession: vi.fn(async () => ({
+						session: {},
+						user: { id: 'user-1', onboarding_completed_at: null }
+					})),
+					supabase: {}
+				},
+				url: new URL(`https://build-os.com/${search}`)
+			} as any)
+		).rejects.toMatchObject({ status: 303, location: `/today${search}` });
+	});
+
 	it('sends a returning visitor with projects to /today even when the flag is null', async () => {
 		const { load } = await import('./+page.server');
 		needsOnboarding.mockResolvedValue(false);

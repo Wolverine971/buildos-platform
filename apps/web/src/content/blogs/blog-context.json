@@ -71,7 +71,8 @@
 			"posts": {
 				"cold-email-engagement-first-outreach": {
 					"title": "Cold Email Engagement-First Outreach: An Agent Skill For 2026 Cold Campaigns",
-					"seoTitle": "Cold Email Engagement-First Outreach",
+					"seoTitle": "Cold Email Outreach Skill for Claude Code",
+					"seoDescription": "Free Claude Code and Codex skill (SKILL.md) for planning, drafting, and auditing cold outreach that earns replies without burning trust. Download it, or run it in BuildOS.",
 					"description": "A source-lineaged root combo skill for planning, drafting, auditing, and rewriting cold outreach. Distilled from seven cold-email source analyses into one master playbook for high-volume campaigns, strategic accounts, single-target relationship outreach, reply revival, investor fundraising, founder-led outreach, recruiting, PR, partnerships, and customer research.",
 					"author": "DJ Wayne",
 					"date": "2026-05-14",
@@ -198,7 +199,8 @@
 				},
 				"cold-email-icp-signal-design": {
 					"title": "Cold Email ICP And Signal Design: An Agent Skill For Right-Person Outreach",
-					"seoTitle": "Cold Email ICP & Signal Design: Agent Skill",
+					"seoTitle": "Cold Email ICP & Signal Skill for Claude Code",
+					"seoDescription": "Free Claude Code and Codex skill (SKILL.md) that defines the right person, buying signal, timing, and disqualifiers before you write a cold email. Download it, or run it in BuildOS.",
 					"description": "A source-lineaged child skill for defining the right person, right moment, segment, buying signal, timing thesis, buying committee map, and disqualifiers before cold outreach.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -307,11 +309,12 @@
 				},
 				"google-calendar-for-ai-agents-search-before-you-create": {
 					"title": "Google Calendar For AI Agents: Search Before You Create",
-					"seoTitle": "Google Calendar For AI Agents: Agent Skill",
+					"seoTitle": "Google Calendar Skill for Claude Code & Codex",
+					"seoDescription": "Free Claude Code and Codex skill (SKILL.md) for Google Calendar: search before you create, keep event IDs paired with their account, and treat recurring events as high risk.",
 					"description": "A portable Google Calendar skill for AI agents: choose scope first, search before creating events, use exact IDs for mutations, and treat recurrence as high risk.",
 					"author": "DJ Wayne",
 					"date": "2026-04-27",
-					"lastmod": "2026-04-27",
+					"lastmod": "2026-10-04",
 					"changefreq": "monthly",
 					"priority": "0.9",
 					"published": true,
@@ -415,7 +418,8 @@
 				},
 				"hook-craft-short-form": {
 					"title": "Hook Craft For Short-Form: An Agent Skill For Better Openers",
-					"seoTitle": "Hook Craft For Short-Form: Agent Skill",
+					"seoTitle": "Short-Form Hook Skill for Claude Code (SKILL.md)",
+					"seoDescription": "Free Claude Code and Codex skill (SKILL.md) for drafting, auditing, and rewriting hooks for short-form video, blog leads, social posts, and pitch openers. Download it, or run it in BuildOS.",
 					"description": "A source-lineaged agent skill for drafting, auditing, and rewriting hooks across short-form video, blog leads, social posts, demo openers, and pitch slide 1.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
@@ -508,7 +512,8 @@
 				},
 				"landing-page-scorecard-funnel": {
 					"title": "Landing Page Scorecard Funnel: An Agent Skill For Qualified Lead Capture",
-					"seoTitle": "Landing Page Scorecard: An Agent Skill",
+					"seoTitle": "Landing Page Scorecard Skill for Claude Code",
+					"seoDescription": "Free Claude Code and Codex skill (SKILL.md) for designing scorecard landing pages that qualify leads, personalize results, and route by fit. Download it, or run it in BuildOS.",
 					"description": "A portable agent skill for designing assessment-driven landing pages that sell the scorecard, capture useful signals, personalize results, and route leads by fit.",
 					"author": "DJ Wayne",
 					"date": "2026-05-01",
@@ -599,7 +604,8 @@
 				},
 				"story-driven-content-craft": {
 					"title": "Story-Driven Content Craft: An Agent Skill For Nonfiction That Holds Attention",
-					"seoTitle": "Story-Driven Content Craft: Agent Skill",
+					"seoTitle": "Story-Driven Content Skill for Claude Code",
+					"seoDescription": "Free Claude Code and Codex skill (SKILL.md) for structuring essays, video scripts, and founder posts so they hold attention. Download it, or run it in BuildOS.",
 					"description": "A source-lineaged agent skill for structuring founder essays, video scripts, social posts, and pitch narratives with stronger loops, rhythm, lens, payoff, and retention craft.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
@@ -682,7 +688,8 @@
 				},
 				"ui-ux-quality-review": {
 					"title": "UI/UX Quality Review: An Agent Skill For Product Interface Audits",
-					"seoTitle": "UI/UX Quality Review: An Agent Skill",
+					"seoTitle": "UI/UX Review Skill for Claude Code (SKILL.md)",
+					"seoDescription": "Free Claude Code and Codex skill (SKILL.md) for auditing product screens, dashboards, and mobile flows with checkable rules and concrete fixes. Download it, or run it in BuildOS.",
 					"description": "A source-lineaged agent skill for reviewing product screens, landing pages, dashboards, and mobile flows. Each principle ships in two layers: human-readable principle + agent-checkable rules with thresholds and named patterns.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
@@ -805,7 +812,8 @@
 				},
 				"viral-content-for-boring-brands": {
 					"title": "Viral Content For Boring Brands: An Agent Skill For Brand-Account Content",
-					"seoTitle": "Viral Content For Boring Brands: Agent Skill",
+					"seoTitle": "Boring-Brand Viral Content Skill for Claude Code",
+					"seoDescription": "Free Claude Code and Codex skill (SKILL.md) for brand-account content that survives the first two seconds, built on six attention filters. Download it, or run it in BuildOS.",
 					"description": "A source-lineaged agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.",
 					"author": "DJ Wayne",
 					"date": "2026-05-10",
@@ -3135,7 +3143,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-10-03T20:41:25.768Z",
+	"generatedAt": "2026-10-04T16:25:05.747Z",
 	"totalPosts": 67,
 	"totalCategories": 8
 }

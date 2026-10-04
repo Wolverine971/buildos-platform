@@ -17,7 +17,7 @@ function safeDecode(value: string): string | null {
 /**
  * Reduce a `?redirect=` candidate to a same-origin path (path + search + hash), or null.
  * Mirrors the server's `getSafeLocalRedirect`, and additionally refuses backslashes and
- * control characters even when percent-encoded (`/%09/evil.com`).
+ * control characters in the path even when percent-encoded (`/%09/evil.com`).
  */
 export function normalizeRedirectPath(value: string | null | undefined): string | null {
 	if (!value) return null;
@@ -25,9 +25,17 @@ export function normalizeRedirectPath(value: string | null | undefined): string 
 	const trimmed = value.trim();
 	if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
 	if (UNSAFE_RAW_CHARS.test(trimmed)) return null;
+	if (safeDecode(trimmed) === null) return null;
 
-	const decoded = safeDecode(trimmed);
-	if (decoded === null || UNSAFE_DECODED_CHARS.test(decoded) || decoded.startsWith('//')) {
+	// Only the path can turn into another origin once decoded. Query and hash values are data:
+	// a "Try in BuildOS" launch draft legitimately carries encoded newlines (`prompt=...%0A%0A...`),
+	// and refusing those dropped every skill launch at signup.
+	const decodedPath = safeDecode(trimmed.split(/[?#]/, 1)[0] ?? '');
+	if (
+		decodedPath === null ||
+		UNSAFE_DECODED_CHARS.test(decodedPath) ||
+		decodedPath.startsWith('//')
+	) {
 		return null;
 	}
 

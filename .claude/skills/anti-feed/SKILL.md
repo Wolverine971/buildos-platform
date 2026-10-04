@@ -1,6 +1,6 @@
 ---
 name: anti-feed
-description: Dispatch the BuildOS anti-feed cluster — drafts the next ranked blog, builds full publish kits (Twitter + LinkedIn + Instagram + 2 TikTok scripts + Reddit angles), generates standalone TikTok scripts, captures receipts, and shows WS09/WS10 status. Triggers on "/anti-feed", "start anti-feed work", "draft next cluster blog", "TikTok script for X", "publish kit for Y", "anti-feed status".
+description: Dispatch the BuildOS anti-feed cluster — builds full publish kits (Twitter + LinkedIn + Instagram + 2 TikTok scripts + Reddit angles), generates standalone TikTok scripts, captures receipts, and shows WS09/WS10 status. Blog drafting is handled by the `draft-anti-feed-blog` skill. Triggers on "/anti-feed", "start anti-feed work", "TikTok script for X", "publish kit for Y", "anti-feed status".
 ---
 
 # Anti-Feed Cluster Dispatcher
@@ -37,13 +37,9 @@ Present these five options when the user invokes the skill without specifying wh
 
 ### 1. Draft the next ranked blog
 
-Read WS09 status dashboard. Pick the first 🟡 / ⚪ row after the last ✅. Confirm with user before drafting.
+Hand off to the `draft-anti-feed-blog` skill. It owns the drafting flow, voice checks, and output path (`docs/marketing/anti-feed/blog-context.md` is its single source).
 
-- Target: 1,200–2,000 words, one-day first draft
-- Flow: [references/draft-blog.md](references/draft-blog.md)
-- Output: `apps/web/src/content/blogs/philosophy/{slug}.md`
-- Required: `Article` JSON-LD, `dateModified`, links to ≥2 prior cluster posts
-- After draft: update three places (WS09 dashboard, README task map, `buildos-strat-tasks.md`) — see [references/status-drift.md](references/status-drift.md)
+- After the draft lands: update three places (WS09 dashboard, README task map, `buildos-strat-tasks.md`) — see [references/status-drift.md](references/status-drift.md)
 
 ### 2. Build a publish kit for a blog
 
@@ -130,7 +126,6 @@ Every content artifact this skill produces triggers status writes in three place
 
 ## References
 
-- [references/draft-blog.md](references/draft-blog.md) — cluster blog drafting flow + voice checks
 - [references/build-publish-kit.md](references/build-publish-kit.md) — full 5-lane publish kit flow
 - [references/tiktok-scripts.md](references/tiktok-scripts.md) — 30–45s + 60–90s script templates + rejection rubric
 - [references/capture-receipt.md](references/capture-receipt.md) — receipts library format

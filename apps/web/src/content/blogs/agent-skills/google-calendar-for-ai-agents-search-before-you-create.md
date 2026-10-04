@@ -1,10 +1,11 @@
 ---
 title: 'Google Calendar For AI Agents: Search Before You Create'
-seoTitle: 'Google Calendar For AI Agents: Agent Skill'
+seoTitle: 'Google Calendar Skill for Claude Code & Codex'
+seoDescription: 'Free Claude Code and Codex skill (SKILL.md) for Google Calendar: search before you create, keep event IDs paired with their account, and treat recurring events as high risk.'
 description: 'A portable Google Calendar skill for AI agents: choose scope first, search before creating events, use exact IDs for mutations, and treat recurrence as high risk.'
 author: 'DJ Wayne'
 date: '2026-04-27'
-lastmod: '2026-04-27'
+lastmod: '2026-10-04'
 changefreq: 'monthly'
 priority: '0.9'
 published: true
@@ -108,6 +109,7 @@ The skill teaches the agent to:
 - search before creating new events
 - avoid duplicate event creation
 - use exact event IDs for updates and deletes
+- keep each event ID paired with the calendar and account it came from
 - handle time zones and all-day events carefully
 - treat recurring events as high-risk mutations
 - separate lookup flows from sync flows
@@ -130,7 +132,7 @@ Before a calendar write, the agent should know:
 1. Which calendar scope am I operating in?
 2. What exact time window am I talking about?
 3. Is there already an event that matches this intent?
-4. Do I have a local mapping or external event ID for it?
+4. Do I have a local mapping or external event ID for it, and which calendar and account did that ID come from?
 5. Is this actually an update, not a create?
 6. Is this a recurring event or a single event?
 7. Will this notify attendees?
@@ -181,7 +183,7 @@ Create only after choosing scope, inspecting the relevant time window, and decid
 3. Search for likely matches by title, time overlap, attendees, linked task/project metadata, local mapping, and external event IDs.
 4. If a likely event exists, update it, ask, or confirm whether the user wants an additional event.
 5. Create only when no reasonable match exists or the user explicitly wants another event.
-6. For update/delete, use exact IDs. Prefer local mapping, then external event ID plus calendar ID.
+6. For update/delete, use exact IDs. Prefer a local mapping. Otherwise carry the event ID together with the calendar and account it came from, unchanged from the lookup result through read, update, and delete. Never swap in a different calendar ID, an account label, or a guess.
 7. Treat recurring events as high risk. Clarify whether the user means one instance, future instances, or the whole series.
 8. Report what changed and mention attendee notifications or sync implications when relevant.
 
@@ -204,6 +206,7 @@ Create only after choosing scope, inspecting the relevant time window, and decid
 ## Update and Delete Rules
 
 - Use exact event IDs or local mapped IDs.
+- Keep each event ID paired with the calendar and account it was read from. When more than one Google account is connected, the same event ID can exist in several of them, so an ID on its own can edit the wrong person's event.
 - Verify calendar scope before mutation.
 - Verify whether attendees may be notified.
 - For important or complex writes, read the existing event first and merge intended changes.
@@ -341,7 +344,7 @@ Calendar mutation should use stable identity whenever possible.
 The best write path is:
 
 1. local mapped event ID
-2. external Google Calendar event ID plus calendar ID
+2. external Google Calendar event ID plus the calendar and account it was read from
 3. strong match from a narrow lookup
 4. ask the user
 
@@ -352,6 +355,18 @@ The weak write path is:
 3. mutation
 
 That path is how agents move the wrong meeting.
+
+### The wrong-account trap
+
+There is one more identity rule once an agent can see more than one Google account, such as a work calendar and a personal calendar.
+
+A Google event ID is only guaranteed to be unique inside its own calendar. The same ID can show up under two connected accounts. If the agent keeps the ID but drops where it came from, the next update or delete can land on the other account's event. The API call succeeds. The wrong person's meeting moves.
+
+So the skill treats the event ID and its source as one value:
+
+- carry the event ID together with the calendar and account it was read from
+- pass that pair, unchanged, from the lookup into the detail read, the update, and the delete
+- never replace the source with a different calendar ID, an account label, or a best guess
 
 ## Recurrence is high risk
 

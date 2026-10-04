@@ -232,7 +232,8 @@ Do not over-quote transcripts. Use short excerpts only when they are necessary; 
 The `SKILL.md` inside the article should be concise and agent-readable:
 
 - YAML frontmatter with only `name` and `description`
-- clear "When to Use" section
+- the canonical block headings from `apps/web/src/lib/services/agentic-chat/tools/skills/AUTHORING_GUIDE.md` (`## Identity`, `## Activation`, `## Procedure`, `## Contract`, `## Policy`, `## Examples` …); legacy headings like `## When to Use` fail the runtime linter
+- the BuildOS job it serves: which BuildOS data or tools the procedure reads or writes (projects, docs, tasks, calendar). If it touches none, say so and treat it as a portable-only craft skill. Restating what the source teaches is not a skill; a frontier model already knows general advice
 - 3-7 step core workflow, or a decision framework if the skill is not procedural
 - guardrails and stop conditions
 - examples when they make behavior concrete
@@ -261,17 +262,13 @@ When combining several transcripts or notes:
 After creating or editing a blog article:
 
 1. Check the frontmatter parses as valid YAML.
-2. From `apps/web`, run the nearest blog utility test:
+2. Run the nearest blog utility test (pnpm only):
 
 ```bash
-npm run test -- src/lib/utils/blog.test.ts
+pnpm --filter web exec vitest run src/lib/utils/blog.test.ts
 ```
 
-3. If route or metadata code changed, also run:
-
-```bash
-npm run check
-```
+3. If route or metadata code changed, also run `pnpm --filter web agent-skills:check`.
 
 ## Final Response
 

@@ -18,7 +18,6 @@
 		ArrowLeft,
 		ArrowRight,
 		BookOpen,
-		Brain,
 		Check,
 		CheckCircle2,
 		Code2,
@@ -36,6 +35,7 @@
 		Workflow
 	} from '$lib/icons/lucide';
 	import SkillExpertCard from '$lib/components/skills/SkillExpertCard.svelte';
+	import SkillInstallSteps from '$lib/components/skills/SkillInstallSteps.svelte';
 	import {
 		getSkillExpertLineageRelationship,
 		getSkillExpertPath,
@@ -45,7 +45,6 @@
 		getAgentFilePath,
 		getAgentRepositoryPath,
 		getBuildOsMetadataPath,
-		getBuildOsSkillPath,
 		getBundlePath,
 		getDisplayTitle,
 		getFallbackGuardrails,
@@ -61,7 +60,8 @@
 		getSkillPromise,
 		getTryInBuildOsPath,
 		getTryPackInBuildOsPath,
-		humanize
+		humanize,
+		TRY_IN_BUILDOS_NEXT_STEP
 	} from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
 
@@ -92,6 +92,9 @@
 	let runtimeExamples = $derived(runtime?.examples.slice(0, 3) ?? []);
 	let lineagePeople = $derived(data.lineagePeople);
 	let lineageSources = $derived(data.lineageSources);
+	// The gallery page is a browsing view; the agent-skill article is the one indexable page.
+	let canonicalUrl = $derived(`${SITE_URL}${getAgentRepositoryPath(skill)}`);
+	let bundleUrl = $derived(`${SITE_URL}${getBundlePath(skill)}`);
 	let copiedPrompt = $state<string | null>(null);
 
 	async function copyPrompt(prompt: string) {
@@ -111,12 +114,12 @@
 	}
 
 	function generateJsonLd() {
-		const skillUrl = `${SITE_URL}${getSkillPath(skill)}`;
+		const skillUrl = canonicalUrl;
 		return JSON.stringify(
 			{
 				'@context': 'https://schema.org',
 				'@type': 'CreativeWork',
-				'@id': skillUrl,
+				'@id': `${skillUrl}#skill`,
 				name: displayTitle,
 				description: skill.description,
 				url: skillUrl,
@@ -155,10 +158,10 @@
 <svelte:head>
 	<title>{displayTitle} - BuildOS Skill Gallery</title>
 	<meta name="description" content={promise} />
-	<link rel="canonical" href={`${SITE_URL}${getSkillPath(skill)}`} />
+	<link rel="canonical" href={canonicalUrl} />
 
 	<meta property="og:type" content="article" />
-	<meta property="og:url" content={`${SITE_URL}${getSkillPath(skill)}`} />
+	<meta property="og:url" content={canonicalUrl} />
 	<meta property="og:title" content={`${displayTitle} - BuildOS Skill Gallery`} />
 	<meta property="og:description" content={promise} />
 	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
@@ -172,7 +175,7 @@
 	<link rel="image_src" href={DEFAULT_SOCIAL_IMAGE_URL} />
 
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:url" content={`${SITE_URL}${getSkillPath(skill)}`} />
+	<meta name="twitter:url" content={canonicalUrl} />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
 	<meta name="twitter:title" content={`${displayTitle} - BuildOS Skill Gallery`} />
@@ -250,6 +253,9 @@
 							SKILL.md
 						</a>
 					</div>
+					<p class="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+						{TRY_IN_BUILDOS_NEXT_STEP}
+					</p>
 				</div>
 
 				<div class="grid grid-cols-2 gap-2">
@@ -327,6 +333,9 @@
 					<h2 id="try-it" class="mt-1 text-2xl font-semibold text-foreground">
 						Start with one of these prompts.
 					</h2>
+					<p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+						{TRY_IN_BUILDOS_NEXT_STEP}
+					</p>
 					<div class="mt-5 grid gap-3 md:grid-cols-2">
 						{#each tryPrompts as prompt}
 							<div
@@ -487,7 +496,7 @@
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<FileText class="h-4 w-4" />
-							Portable SKILL.md
+							SKILL.md
 						</a>
 						<a
 							href={getBundlePath(skill)}
@@ -506,20 +515,15 @@
 							buildos.yaml
 						</a>
 						<a
-							href={getBuildOsSkillPath(skill)}
-							data-sveltekit-reload
-							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						>
-							<Brain class="h-4 w-4" />
-							BuildOS SKILL.md
-						</a>
-						<a
 							href={getAgentRepositoryPath(skill)}
 							class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							<BookOpen class="h-4 w-4" />
 							Repository guide
 						</a>
+					</div>
+					<div class="mt-4 border-t border-border pt-4">
+						<SkillInstallSteps skillName={data.skillName} {bundleUrl} />
 					</div>
 					{#if runtime?.id}
 						<p class="mt-4 truncate font-mono text-xs text-muted-foreground">
@@ -563,14 +567,12 @@
 							<p class="text-xs text-muted-foreground">Catalog</p>
 							<p class="mt-1 font-semibold">{data.catalogVersion}</p>
 						</div>
-						<div class="rounded-md border border-border bg-background p-2">
-							<p class="text-xs text-muted-foreground">Evals</p>
-							<p class="mt-1 font-semibold">
-								{skill.gallery.trust.eval_status === 'covered'
-									? 'Covered'
-									: 'Not covered'}
-							</p>
-						</div>
+						{#if skill.gallery.trust.eval_status === 'covered'}
+							<div class="rounded-md border border-border bg-background p-2">
+								<p class="text-xs text-muted-foreground">Evals</p>
+								<p class="mt-1 font-semibold">Covered</p>
+							</div>
+						{/if}
 						<div class="rounded-md border border-border bg-background p-2">
 							<p class="text-xs text-muted-foreground">Updated</p>
 							<p class="mt-1 truncate font-semibold">

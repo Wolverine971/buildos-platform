@@ -1,6 +1,6 @@
 ---
 name: draft-anti-feed-blog
-description: Draft a single ranked blog post for the BuildOS anti-feed / thinking-environment cluster. Reads the consolidated brief at docs/marketing/anti-feed/blog-context.md, picks the next-up T## from the WS09 dashboard (or a user-specified topic), produces a 1,200–2,000 word draft with frontmatter and cross-links, and saves it under apps/web/src/content/blogs/philosophy/. Triggers on "/draft-anti-feed-blog", "draft the next anti-feed blog", "write the next cluster blog", "draft T## blog", "write T## post". Does NOT build publish kits, TikTok scripts, or non-cluster blog posts — use the old `anti-feed` skill for those.
+description: Draft a single ranked blog post for the BuildOS anti-feed / thinking-environment cluster. Reads the consolidated brief at docs/marketing/anti-feed/blog-context.md, picks the next-up T## from the WS09 dashboard (or a user-specified topic), produces a 1,200–2,000 word draft with frontmatter and cross-links, and saves it under apps/web/src/content/blogs/philosophy/. Triggers on "/draft-anti-feed-blog", "draft the next anti-feed blog", "write the next cluster blog", "draft T## blog", "write T## post". Does NOT build publish kits, TikTok scripts, or non-cluster blog posts — use the `anti-feed` skill for those.
 ---
 
 # Draft Anti-Feed Cluster Blog

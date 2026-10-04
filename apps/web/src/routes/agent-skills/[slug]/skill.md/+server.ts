@@ -1,7 +1,7 @@
 // apps/web/src/routes/agent-skills/[slug]/skill.md/+server.ts
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getAgentSkillMarkdown } from '$lib/server/agent-skills';
+import { getAgentSkillMarkdown, getAgentSkillDownloadHeaders } from '$lib/server/agent-skills';
 import { AGENT_SKILLS_CATEGORY_KEY, loadBlogPostMetadata } from '$lib/utils/blog';
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -16,6 +16,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		headers: {
 			'content-type': 'text/markdown; charset=utf-8',
 			'cache-control': 'public, max-age=300',
+			...getAgentSkillDownloadHeaders(post.slug),
 			'x-buildos-skill-source': result.source,
 			...(result.runtimeSkillId
 				? { 'x-buildos-runtime-skill-id': result.runtimeSkillId }

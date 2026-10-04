@@ -2,6 +2,11 @@
 <script lang="ts">
 	import {
 		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_SOCIAL_IMAGE_ALT,
+		DEFAULT_SOCIAL_IMAGE_HEIGHT,
+		DEFAULT_SOCIAL_IMAGE_TYPE,
+		DEFAULT_SOCIAL_IMAGE_URL,
+		DEFAULT_SOCIAL_IMAGE_WIDTH,
 		DEFAULT_TWITTER_SITE,
 		DEFAULT_WEBSITE_ID,
 		SITE_NAME,
@@ -14,11 +19,17 @@
 		BriefcaseBusiness,
 		ExternalLink,
 		GitBranch,
+		PlayCircle,
 		Quote,
 		Sparkles
 	} from '$lib/icons/lucide';
 	import { getSkillExpertPath } from '$lib/skills/skill-experts';
-	import { getSkillPath } from '$lib/skills/skill-gallery';
+	import {
+		getSkillPath,
+		getTryInBuildOsPath,
+		TRY_IN_BUILDOS_NEXT_STEP
+	} from '$lib/skills/skill-gallery';
+	import SkillExpertMonogram from '$lib/components/skills/SkillExpertMonogram.svelte';
 	import { escapeSerializedJsonLd } from '$lib/utils/json-ld';
 	import type { PageData } from './$types';
 
@@ -49,7 +60,6 @@
 					'@id': `${profileUrl}#person`,
 					name: expert.name,
 					description: expert.shortBio,
-					image: `${SITE_URL}${expert.portrait.src}`,
 					knowsAbout: expert.specialties,
 					sameAs: expert.sources.map((source) => source.url)
 				},
@@ -79,18 +89,19 @@
 	<meta property="og:url" content={`${SITE_URL}${profilePath}`} />
 	<meta property="og:title" content={`${expert.name} - Skill Gallery Expert Profile`} />
 	<meta property="og:description" content={description} />
-	<meta property="og:image" content={`${SITE_URL}${expert.portrait.src}`} />
-	<meta property="og:image:width" content={String(expert.portrait.width)} />
-	<meta property="og:image:height" content={String(expert.portrait.height)} />
-	<meta property="og:image:alt" content={expert.portrait.alt} />
+	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:type" content={DEFAULT_SOCIAL_IMAGE_TYPE} />
+	<meta property="og:image:width" content={String(DEFAULT_SOCIAL_IMAGE_WIDTH)} />
+	<meta property="og:image:height" content={String(DEFAULT_SOCIAL_IMAGE_HEIGHT)} />
+	<meta property="og:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 	<meta property="og:site_name" content="BuildOS" />
 
-	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:title" content={`${expert.name} - Skill Gallery Expert Profile`} />
 	<meta name="twitter:description" content={description} />
-	<meta name="twitter:image" content={`${SITE_URL}${expert.portrait.src}`} />
-	<meta name="twitter:image:alt" content={expert.portrait.alt} />
+	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 	<meta name="robots" content="index, follow" />
 
 	{@html jsonLdScriptHtml}
@@ -118,27 +129,9 @@
 			<div
 				class="mt-8 grid gap-6 md:grid-cols-[12rem_minmax(0,1fr)] md:items-center lg:gap-10"
 			>
-				<figure class="m-0 max-w-48">
-					<img
-						src={expert.portrait.src}
-						alt={expert.portrait.alt}
-						width={expert.portrait.width}
-						height={expert.portrait.height}
-						fetchpriority="high"
-						class="aspect-square w-full rounded-lg border border-border object-cover shadow-ink"
-					/>
-					<figcaption class="mt-2 text-xs text-muted-foreground">
-						Portrait:
-						<a
-							href={expert.portrait.sourceUrl}
-							target="_blank"
-							rel="noreferrer"
-							class="underline decoration-border underline-offset-2 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						>
-							{expert.portrait.sourceLabel}
-						</a>
-					</figcaption>
-				</figure>
+				<div class="max-w-48">
+					<SkillExpertMonogram name={expert.name} size="lg" />
+				</div>
 
 				<div class="min-w-0 max-w-4xl">
 					<p class="micro-label">Independent editorial profile</p>
@@ -194,7 +187,7 @@
 					<div class="flex items-center gap-2">
 						<GitBranch class="h-5 w-5 shrink-0 text-accent" />
 						<h2 id="skills-informed" class="text-2xl font-bold">
-							Skills informed by this work
+							Skills built from this person's work
 						</h2>
 					</div>
 					<p class="mt-2 text-sm leading-6 text-muted-foreground">
@@ -208,35 +201,48 @@
 							: 's'}.
 					</p>
 
+					{#if data.relatedSkills.length}
+						<p class="mt-2 text-sm leading-6 text-muted-foreground">
+							{TRY_IN_BUILDOS_NEXT_STEP}
+						</p>
+					{/if}
+
 					<div class="mt-5 grid gap-3 sm:grid-cols-2">
-						{#each data.relatedSkills as skill}
-							<a
-								href={getSkillPath(skill)}
-								class="group rounded-md border border-border bg-background p-4 transition-colors hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						{#each data.relatedSkills as skill (skill.slug)}
+							<article
+								class="flex flex-col rounded-md border border-border bg-background p-4"
 							>
-								<div class="flex min-w-0 items-start justify-between gap-3">
-									<div class="min-w-0">
-										<p class="micro-label">
-											{skill.sourceCount} reviewed {skill.sourceCount === 1
-												? 'source'
-												: 'sources'}
-										</p>
-										<h3
-											class="mt-1 text-lg font-semibold text-foreground group-hover:text-accent"
-										>
-											{skill.title}
-										</h3>
-									</div>
-									<ArrowRight
-										class="mt-1 h-4 w-4 shrink-0 text-muted-foreground group-hover:text-accent"
-									/>
-								</div>
+								<p class="micro-label">
+									{skill.sourceCount} reviewed {skill.sourceCount === 1
+										? 'source'
+										: 'sources'}
+								</p>
+								<h3 class="mt-1 text-lg font-semibold text-foreground">
+									<a
+										href={getSkillPath(skill)}
+										class="group inline-flex min-h-[44px] items-center gap-2 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									>
+										{skill.title}
+										<ArrowRight
+											class="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-accent"
+										/>
+									</a>
+								</h3>
 								<p
-									class="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground"
+									class="mt-1 line-clamp-3 text-sm leading-6 text-muted-foreground"
 								>
 									{skill.description}
 								</p>
-							</a>
+								<div class="mt-auto pt-4">
+									<a
+										href={getTryInBuildOsPath(skill)}
+										class="pressable inline-flex min-h-[44px] items-center gap-2 rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+									>
+										<PlayCircle class="h-4 w-4" aria-hidden="true" />
+										Try in BuildOS
+									</a>
+								</div>
+							</article>
 						{/each}
 					</div>
 				</section>

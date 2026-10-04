@@ -22,7 +22,7 @@ function fixture(
 		receipt: { target_id: id }
 	};
 	const rpc = vi.fn(async () => ({ data: row, error: null }));
-	const from = vi.fn((table: string) => {
+	const from = vi.fn((_table: string) => {
 		const b: any = {
 			select: () => b,
 			eq: () => b,

@@ -5,10 +5,10 @@ import {
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
+	type MutationReviewFinding,
 	type TurnContract,
 	parseDeclaredTurnContract,
-	parseMutationReviewFindings,
-	type MutationReviewFinding
+	parseMutationReviewFindings
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from '../contracts';
 import { appendSystemInstruction } from '../request-builders';

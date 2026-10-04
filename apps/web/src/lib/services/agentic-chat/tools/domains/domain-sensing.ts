@@ -847,7 +847,8 @@ export function getSkillGateCandidateSkillLoadFormats(
 	);
 }
 
-export type DomainSensingPreloadSource = 'domain_sensing' | 'operational_intent';
+/** `user_launch`: a registry-resolved skill the user picked before the chat opened. */
+export type DomainSensingPreloadSource = 'domain_sensing' | 'operational_intent' | 'user_launch';
 
 export function renderDomainSensingPromptContent(
 	result: DomainSensingResult | null,

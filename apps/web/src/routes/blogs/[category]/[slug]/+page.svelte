@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/blogs/[category]/[slug]/+page.svelte -->
 <script lang="ts">
 	import SkillExpertLink from '$lib/components/skills/SkillExpertLink.svelte';
+	import SkillInstallSteps from '$lib/components/skills/SkillInstallSteps.svelte';
 	import {
 		DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		DEFAULT_ORGANIZATION_ID,
@@ -17,7 +18,8 @@
 		SITE_NAME
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
-	import { ArrowLeft, Calendar, Clock, History, Tag } from '$lib/icons/lucide';
+	import { ArrowLeft, Calendar, Clock, History, PlayCircle, Tag } from '$lib/icons/lucide';
+	import { getTryInBuildOsPath, TRY_IN_BUILDOS_NEXT_STEP } from '$lib/skills/skill-gallery';
 	import {
 		getSkillExpertByName,
 		getSkillExpertLineageRelationship,
@@ -39,7 +41,13 @@
 	} from '$lib/utils/blog';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 
-	let { data }: { data: PageData } = $props();
+	// The agent-skills route renders this page with a few extra fields (see its +page.server.ts).
+	type AgentSkillPageExtras = {
+		stackWithLinks?: Array<{ id: string; title: string; href: string }>;
+		skillName?: string;
+	};
+
+	let { data }: { data: PageData & AgentSkillPageExtras } = $props();
 
 	const publishedDate = $derived(parseBlogDate(data.post.date));
 	const formattedDate = $derived(formatBlogDate(data.post.date, 'MMMM dd, yyyy'));
@@ -59,20 +67,20 @@
 	const categoryUrl = $derived(getContentCollectionUrl(SITE_URL, data.post.category));
 
 	const articleUrl = $derived(getContentPostUrl(SITE_URL, data.post));
-	const agentSkillMarkdownUrl = $derived(`${articleUrl}/skill.md`);
 	const portableSkillMarkdownUrl = $derived(`${articleUrl}/portable/SKILL.md`);
 	const skillBundleUrl = $derived(`${articleUrl}/bundle.zip`);
-	const skillBundleCommand = $derived(`curl -L ${skillBundleUrl} -o ${data.post.slug}.zip`);
-	const portableSkillCommand = $derived(`curl -L ${portableSkillMarkdownUrl}`);
 	const agentSkillIndexUrl = `${SITE_URL}/agent-skills/index.json`;
+	const tryInBuildOsPath = $derived(getTryInBuildOsPath(data.post));
 	// SEO meta title: prefer a trimmed `seoTitle` (kept under ~60 chars incl. " | BuildOS")
 	// while the visible H1 keeps the full `title`. Falls back to `title` when unset.
 	const metaTitle = $derived(`${data.post.seoTitle ?? data.post.title} | BuildOS`);
+	// SEO meta description: `seoDescription` when set; the visible subtitle keeps `description`.
+	const metaDescription = $derived(data.post.seoDescription ?? data.post.description);
 	const lineageSources = $derived(data.post.lineageSources ?? []);
 	const lineagePeople = $derived(data.post.lineagePeople ?? []);
 	const resolvedLineagePeople = $derived(resolveSkillExperts(lineagePeople));
 	const lineageStatEntries = $derived(Object.entries(data.post.lineageStats ?? {}));
-	const stackWith = $derived(data.post.stackWith ?? []);
+	const stackWithLinks = $derived(data.stackWithLinks ?? []);
 	const relatedSkills = $derived(data.post.relatedSkills ?? []);
 
 	type JsonLdNode = Record<string, unknown>;
@@ -461,7 +469,7 @@
 
 <svelte:head>
 	<title>{metaTitle}</title>
-	<meta name="description" content={data.post.description} />
+	<meta name="description" content={metaDescription} />
 	<meta name="author" content={data.post.author || 'BuildOS Team'} />
 	<link rel="canonical" href={articleUrl} />
 
@@ -469,7 +477,7 @@
 	<meta property="og:type" content="article" />
 	<meta property="og:url" content={articleUrl} />
 	<meta property="og:title" content={metaTitle} />
-	<meta property="og:description" content={data.post.description} />
+	<meta property="og:description" content={metaDescription} />
 	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta property="og:image:type" content={DEFAULT_SOCIAL_IMAGE_TYPE} />
@@ -495,7 +503,7 @@
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
 	<meta name="twitter:title" content={metaTitle} />
-	<meta name="twitter:description" content={data.post.description} />
+	<meta name="twitter:description" content={metaDescription} />
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 
@@ -602,8 +610,33 @@
 			</div>
 
 			{#if isAgentSkillPost}
+				<section
+					aria-labelledby="run-in-buildos"
+					class="mt-6 rounded-lg border border-accent/40 bg-card p-4 shadow-ink tx tx-bloom tx-weak"
+				>
+					<div
+						class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+					>
+						<div class="min-w-0">
+							<h2 id="run-in-buildos" class="text-base font-semibold text-foreground">
+								Run this in BuildOS
+							</h2>
+							<p class="mt-1 text-sm leading-6 text-muted-foreground">
+								{TRY_IN_BUILDOS_NEXT_STEP}
+							</p>
+						</div>
+						<a
+							href={tryInBuildOsPath}
+							class="pressable inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-accent bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+						>
+							<PlayCircle class="h-4 w-4" aria-hidden="true" />
+							Try it in BuildOS
+						</a>
+					</div>
+				</section>
+
 				<div
-					class="mt-6 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground shadow-ink"
+					class="mt-4 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground shadow-ink"
 				>
 					<span class="micro-label block text-foreground">For agents</span>
 					<div class="mt-2 flex flex-wrap gap-2">
@@ -612,7 +645,7 @@
 							data-sveltekit-reload
 							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
 						>
-							Portable SKILL.md
+							SKILL.md
 						</a>
 						<a
 							href={skillBundleUrl}
@@ -622,13 +655,6 @@
 							bundle.zip
 						</a>
 						<a
-							href={agentSkillMarkdownUrl}
-							data-sveltekit-reload
-							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
-						>
-							BuildOS SKILL.md
-						</a>
-						<a
 							href={agentSkillIndexUrl}
 							data-sveltekit-reload
 							class="inline-flex min-h-11 items-center rounded-md border border-border bg-muted px-3 text-xs font-medium text-foreground transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
@@ -636,18 +662,14 @@
 							index.json
 						</a>
 					</div>
-					<div class="mt-3 grid gap-2">
-						<code
-							class="block overflow-x-auto rounded border border-border bg-muted px-3 py-2 text-xs text-foreground"
-						>
-							{skillBundleCommand}
-						</code>
-						<code
-							class="block overflow-x-auto rounded border border-border bg-muted px-3 py-2 text-xs text-foreground"
-						>
-							{portableSkillCommand}
-						</code>
-					</div>
+					{#if data.skillName}
+						<div class="mt-4">
+							<SkillInstallSteps
+								skillName={data.skillName}
+								bundleUrl={skillBundleUrl}
+							/>
+						</div>
+					{/if}
 				</div>
 			{/if}
 
@@ -682,10 +704,15 @@
 							{/each}
 						</div>
 					{/if}
-					{#if stackWith.length}
+					{#if stackWithLinks.length}
 						<p class="mt-2 text-xs">
 							<span class="font-medium text-foreground">Stacks with:</span>
-							{stackWith.join(', ')}
+							{#each stackWithLinks as link, index (link.href)}
+								{#if index > 0}<span>, </span>{/if}
+								<a href={link.href} class="text-accent hover:underline">
+									{link.title}
+								</a>
+							{/each}
 						</p>
 					{/if}
 					{#if relatedSkills.length}

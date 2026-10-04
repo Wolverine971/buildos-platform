@@ -87,6 +87,10 @@ export interface StreamControllerDeps {
 	getReviewIntent?(): AgenticChatWorkerCommand['reviewIntent'];
 	getPublishedSpecialist?(): PublishedSpecialistSelection | null | undefined;
 	onReviewAdmitted?(): void;
+	/** Skill the chat was launched with ("Try in BuildOS"); rides one admitted turn. */
+	getRequestedSkillId?(): string | null;
+	/** The launch skill reached admission (or may have); stop sending it. */
+	clearRequestedSkillId?(): void;
 	setInputValue(value: string): void;
 	getSelectedContextType(): ChatContextType | null;
 	getSelectedEntityId(): string | undefined;
@@ -474,6 +478,8 @@ export class AgentChatStreamController {
 		// Only an explicit selection (Review / Organize documents, or a host's launched
 		// review) makes a review turn; message text never does.
 		const reviewIntent = this.#deps.getReviewIntent?.() ?? null;
+		// The launch's chosen skill is a structured field on the first ordinary turn.
+		const requestedSkillId = reviewIntent ? null : (this.#deps.getRequestedSkillId?.() ?? null);
 		const effectiveProjectId = selectedSpecialist
 			? resolveEffectiveProjectId({
 					contextType: normalizeFastContextType(
@@ -700,7 +706,8 @@ export class AgentChatStreamController {
 					voiceNoteGroupId: activeVoiceNoteGroupId,
 					preparedPromptKey: matchingPreparedPrompt?.key ?? null,
 					reviewIntent,
-					publishedSpecialist
+					publishedSpecialist,
+					requestedSkillId
 				}
 			});
 
@@ -734,6 +741,7 @@ export class AgentChatStreamController {
 				delivery: 'sent',
 				session_id: descriptor.handle.sessionId
 			});
+			if (requestedSkillId) this.#deps.clearRequestedSkillId?.();
 			await this.#deps.adoptWorkerAdmissionResponse(admission.payload);
 			if (reviewIntent) this.#deps.onReviewAdmitted?.();
 		} catch (err) {
@@ -756,6 +764,8 @@ export class AgentChatStreamController {
 			this.finalizeClientStreamTiming(runId, 'error');
 
 			if (workerAdmissionAttempted) {
+				// The launch skill rode this attempt, so it is spent either way.
+				if (requestedSkillId) this.#deps.clearRequestedSkillId?.();
 				// Possibly admitted: keep the bubble (a duplicate turn is worse than
 				// a lost one) and let discovery adopt the turn if it exists.
 				this.#deps.thinking.finalize('error');

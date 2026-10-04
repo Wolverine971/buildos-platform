@@ -15,7 +15,7 @@ to work inside a BuildOS workspace.
 ## Claude Code
 
 ```bash
-claude plugin marketplace add buildos/buildos-platform   # or a local checkout path
+claude plugin marketplace add Wolverine971/buildos-platform   # or a local checkout path
 claude plugin install buildos@buildos
 ```
 

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-03T20:41:24.554Z
+// Generated on: 2026-10-04T16:25:04.489Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1315,6 +1315,57 @@ export type DatabaseSchema = {
 		status: string;
 		step_key: string;
 		turn_run_id: string;
+		updated_at: string;
+		user_id: string;
+	};
+	consolidation_merges: {
+		cluster_key: string;
+		coverage: Json | null;
+		cost_usd: number;
+		created_at: string;
+		created_document_id: string | null;
+		error: string | null;
+		id: string;
+		ledger: Json | null;
+		markdown: string | null;
+		run_id: string;
+		source_ids: string[];
+		status: string;
+		target_project_id: string;
+		title: string;
+		updated_at: string;
+	};
+	consolidation_questions: {
+		answer: Json | null;
+		answered_at: string | null;
+		created_at: string;
+		draft: Json | null;
+		evidence: Json;
+		header: string;
+		id: string;
+		options: Json;
+		piece: string;
+		priority: number;
+		question: string;
+		recommended_option_id: string | null;
+		run_id: string;
+		skip_option_id: string;
+		status: string;
+		updated_at: string;
+	};
+	consolidation_runs: {
+		cost_usd: number;
+		created_at: string;
+		error: string | null;
+		finished_at: string | null;
+		id: string;
+		plan: Json | null;
+		progress: Json;
+		project_ids: string[];
+		receipt: Json | null;
+		request: string | null;
+		root_project_id: string;
+		status: string;
 		updated_at: string;
 		user_id: string;
 	};
@@ -4801,6 +4852,9 @@ export const tableNames = [
 	'chat_turn_workflow_dispatches',
 	'chat_turn_workflow_runs',
 	'chat_turn_workflow_steps',
+	'consolidation_merges',
+	'consolidation_questions',
+	'consolidation_runs',
 	'cron_logs',
 	'customer_subscriptions',
 	'cycle_runs',

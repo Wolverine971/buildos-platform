@@ -8,26 +8,26 @@
 // POST /api/chat/shared-document-edits/[id]) can apply, copy, or cancel it, so
 // the model has no way to confirm a shared edit itself.
 import {
-	type previewGatewayDocumentUpdate,
-	type GatewayDocumentUpdatePreviewResult
+	type GatewayDocumentUpdatePreviewResult,
+	type previewGatewayDocumentUpdate
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	SHARED_DOCUMENT_EDIT_CARD_KIND,
 	SHARED_DOCUMENT_EDIT_CARD_VERSION,
 	SHARED_DOCUMENT_EDIT_CLIENT_ACTION_KIND,
-	isSharedDocumentEditPreview,
-	sharedDocumentEditCardExpiresAt,
 	type SharedDocumentEditClientActionV1,
-	type SharedDocumentEditFieldChangeV1
+	type SharedDocumentEditFieldChangeV1,
+	isSharedDocumentEditPreview,
+	sharedDocumentEditCardExpiresAt
 } from '@buildos/shared-agent-ops/ontology/shared-document-edit-card';
-import { parseProjectFamilyV1, type Database, type JsonObject } from '@buildos/shared-types';
+import { type Database, type JsonObject, parseProjectFamilyV1 } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+	type MutationInput,
 	canonicalMutationReceipt,
 	canonicalUuid,
 	knownFailure,
-	throwGatewayResultFailure,
-	type MutationInput
+	throwGatewayResultFailure
 } from './adapter-boundary';
 
 export type SharedDocumentTarget = {
@@ -72,8 +72,7 @@ export async function loadSharedDocumentTarget(
 		family.project_id !== projectId ||
 		!parent?.can_write ||
 		!parent.shared_folder_document_id ||
-		!doc ||
-		!doc.updated_at
+		!doc?.updated_at
 	)
 		return null;
 	return {
@@ -105,7 +104,11 @@ function fieldChanges(
 	const changes: SharedDocumentEditFieldChangeV1[] = [];
 	const value = (raw: unknown) => (typeof raw === 'string' ? raw : null);
 	if (args.title !== undefined)
-		changes.push({ field: 'title', from: preview.title ?? target.title, to: value(args.title) });
+		changes.push({
+			field: 'title',
+			from: preview.title ?? target.title,
+			to: value(args.title)
+		});
 	if (args.description !== undefined)
 		changes.push({
 			field: 'description',

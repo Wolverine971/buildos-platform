@@ -8,7 +8,7 @@
 		"url": "https://build-os.com"
 	},
 	"homepage": "https://build-os.com/docs/connect-agents",
-	"repository": "https://github.com/buildos/buildos-platform",
+	"repository": "https://github.com/Wolverine971/buildos-platform",
 	"keywords": ["buildos", "project management", "project context", "productivity", "mcp"],
 	"apps": "./.app.json",
 	"interface": {

@@ -1,6 +1,7 @@
 ---
 title: 'UI/UX Quality Review: An Agent Skill For Product Interface Audits'
-seoTitle: 'UI/UX Quality Review: An Agent Skill'
+seoTitle: 'UI/UX Review Skill for Claude Code (SKILL.md)'
+seoDescription: 'Free Claude Code and Codex skill (SKILL.md) for auditing product screens, dashboards, and mobile flows with checkable rules and concrete fixes. Download it, or run it in BuildOS.'
 description: 'A source-lineaged agent skill for reviewing product screens, landing pages, dashboards, and mobile flows. Each principle ships in two layers: human-readable principle + agent-checkable rules with thresholds and named patterns.'
 author: 'DJ Wayne'
 date: '2026-05-02'

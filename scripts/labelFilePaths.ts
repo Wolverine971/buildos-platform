@@ -103,6 +103,12 @@ function shouldProcessFile(filePath: string): boolean {
 		return false;
 	}
 
+	// Plugin skills ship to external agents under the Agent Skills spec, which allows only
+	// name/description-style frontmatter; a `path:` label breaks the published plugin.
+	if (fileName === 'SKILL.md' && filePath.split(path.sep).includes('plugins')) {
+		return false;
+	}
+
 	// Skip files without extensions or unsupported extensions
 	if (!ext || !COMMENT_PATTERNS[ext as keyof typeof COMMENT_PATTERNS]) {
 		return false;

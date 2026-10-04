@@ -26,6 +26,8 @@ Disallow: /projects/
 Disallow: /brain-dump
 Disallow: /briefs
 Disallow: /history
+# Try-in-BuildOS links only redirect to signup
+Disallow: /skills/try/
 
 # Allow specific public pages
 Allow: /about

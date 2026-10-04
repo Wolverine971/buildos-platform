@@ -29,7 +29,8 @@
 		getFamilyPath,
 		getPreviewSkillPath,
 		getTryInBuildOsPath,
-		humanize
+		humanize,
+		TRY_IN_BUILDOS_NEXT_STEP
 	} from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
 
@@ -92,7 +93,8 @@
 	<meta name="twitter:description" content={preview.description} />
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
-	<meta name="robots" content="index, follow" />
+	<!-- Thin synopsis pages: reachable from the gallery, kept out of search. -->
+	<meta name="robots" content="noindex, follow" />
 	{@html jsonLdScriptHtml}
 </svelte:head>
 
@@ -143,14 +145,13 @@
 				</div>
 
 				<div class="rounded-lg border border-border bg-background/85 p-4 shadow-ink-inner">
-					<p class="micro-label text-accent">Publication status</p>
-					<p class="mt-2 text-lg font-semibold">Preview, not yet portable</p>
+					<p class="micro-label text-accent">Where it runs</p>
+					<p class="mt-2 text-lg font-semibold">Runs inside BuildOS</p>
 					<p class="mt-2 text-sm leading-6 text-muted-foreground">
-						This reviewed synopsis can launch an editable workflow draft. The full
-						internal definition and reference files are not published here.
+						{TRY_IN_BUILDOS_NEXT_STEP}
 					</p>
 					<div class="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">
-						Updated {preview.trust.last_updated} · Eval {preview.trust.eval_status}
+						Updated {preview.trust.last_updated}
 					</div>
 				</div>
 			</div>

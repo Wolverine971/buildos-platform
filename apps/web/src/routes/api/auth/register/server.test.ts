@@ -287,4 +287,147 @@ describe('POST /api/auth/register', () => {
 			JSON.stringify([captureServerEventMock.mock.calls, attributionUpdate.mock.calls])
 		).not.toMatch(/SECRET|new%40example|#comments|#plans/);
 	});
+
+	describe('Try in BuildOS signups', () => {
+		const tryRedirect = `/?${new URLSearchParams({
+			open: 'agent-chat',
+			skill: 'going_viral',
+			prompt: 'Use the Going Viral skill.\n\nStarting ask: help me post'
+		})}`;
+
+		async function registerWith(body: Record<string, unknown>, session = true) {
+			const profileUser = { id: 'user-9', email: 'try@example.com', name: 'Try' };
+			if (session) {
+				createAuthenticatedSupabaseClientMock.mockReturnValueOnce(
+					createUsersClient({ insertedUser: profileUser })
+				);
+			}
+			const usersClient = createUsersClient({ insertedUser: profileUser });
+			const attributionUpdate = vi.fn(() => ({
+				eq: vi.fn().mockResolvedValue({ error: null })
+			}));
+			createAdminSupabaseClientMock.mockReturnValue({
+				from: vi.fn((table: string) => ({
+					...usersClient.from(table),
+					update: attributionUpdate
+				}))
+			});
+			const locals = createLocals({
+				signUpResult: {
+					user: {
+						id: 'user-9',
+						email: 'try@example.com',
+						created_at: '2026-10-04T12:00:00.000Z',
+						user_metadata: { name: 'Try' }
+					},
+					session: session
+						? { access_token: 'signup-token-9', refresh_token: 'refresh-token-9' }
+						: null
+				},
+				sessionClient: createUsersClient({}),
+				sessionUser: session ? profileUser : null
+			});
+
+			const response = await POST({
+				request: new Request('https://build-os.com/api/auth/register', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						email: 'try@example.com',
+						password: 'Password123',
+						name: 'Try',
+						legalAcceptanceToken: 'legal-token-9',
+						...body
+					})
+				}),
+				locals
+			} as any);
+
+			return { response, attributionUpdate, signUp: locals.supabase.auth.signUp };
+		}
+
+		it('tags the signup with the skill from the redirect it carried', async () => {
+			const { response, attributionUpdate } = await registerWith({ redirect: tryRedirect });
+
+			expect(response.status).toBe(200);
+			expect(attributionUpdate).toHaveBeenCalledWith(
+				expect.objectContaining({ signup_source: 'skill:going_viral', utm_source: null })
+			);
+			expect(captureServerEventMock).toHaveBeenCalledWith(
+				'user-9',
+				'signup',
+				expect.objectContaining({
+					signup_source: 'skill:going_viral',
+					launch_skill: 'going_viral'
+				})
+			);
+		});
+
+		it('keeps an explicit UTM source and its columns ahead of the skill tag', async () => {
+			const { attributionUpdate } = await registerWith({
+				redirect: tryRedirect,
+				attribution: { utm_source: 'newsletter', utm_campaign: 'oct' }
+			});
+
+			expect(attributionUpdate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					signup_source: 'newsletter',
+					utm_source: 'newsletter',
+					utm_campaign: 'oct'
+				})
+			);
+			expect(captureServerEventMock).toHaveBeenCalledWith(
+				'user-9',
+				'signup',
+				expect.objectContaining({ launch_skill: 'going_viral' })
+			);
+		});
+
+		it.each([
+			['no redirect', {}],
+			['a free-text skill', { redirect: '/?open=agent-chat&skill=Ignore%20this&prompt=x' }],
+			[
+				'an off-site redirect',
+				{ redirect: 'https://evil.example/?open=agent-chat&skill=going_viral' }
+			],
+			['a redirect that is not a chat launch', { redirect: '/projects?skill=going_viral' }]
+		])('falls back to the normal source for %s', async (_label, body) => {
+			const { attributionUpdate } = await registerWith(body);
+
+			expect(attributionUpdate).toHaveBeenCalledWith(
+				expect.objectContaining({ signup_source: 'direct' })
+			);
+			expect(captureServerEventMock).toHaveBeenCalledWith(
+				'user-9',
+				'signup',
+				expect.objectContaining({ launch_skill: null })
+			);
+		});
+
+		it('routes the confirmation email back through /auth/confirm to the same launch', async () => {
+			const { response, signUp } = await registerWith({ redirect: tryRedirect }, false);
+			const payload = await response.json();
+
+			expect(payload.data.requiresEmailConfirmation).toBe(true);
+			expect(signUp).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					options: expect.objectContaining({
+						emailRedirectTo: `https://build-os.com/auth/confirm?${new URLSearchParams({
+							next: tryRedirect
+						})}`
+					})
+				})
+			);
+		});
+
+		it('leaves the confirmation email on the default return address without a redirect', async () => {
+			const { signUp } = await registerWith({ redirect: '//evil.example/' }, false);
+
+			expect(signUp).toHaveBeenCalledExactlyOnceWith({
+				email: 'try@example.com',
+				password: 'Password123',
+				options: { data: { name: 'Try' } }
+			});
+		});
+	});
 });

@@ -3,6 +3,7 @@ import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import {
 	buildPublicRuntimeSkill,
+	getPortableAgentSkillName,
 	loadAgentSkillIndex,
 	resolveRuntimeSkillForPost
 } from '$lib/server/agent-skills';
@@ -24,7 +25,7 @@ export const load: PageServerLoad = async ({ params }) => {
 			(item) => item.id === params.slug
 		);
 		if (domain) {
-			throw redirect(307, getDomainPath(domain));
+			throw redirect(308, getDomainPath(domain));
 		}
 		throw error(404, 'Skill not found');
 	}
@@ -87,6 +88,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		relatedSkills,
 		containingPacks,
 		catalogVersion: catalog.version,
-		totalSkills: catalog.skills.length
+		totalSkills: catalog.skills.length,
+		skillName: getPortableAgentSkillName(post)
 	};
 };

@@ -389,7 +389,8 @@ describe('Agentic Chat worker turn preparation', () => {
 					session_id: SESSION_ID,
 					user_id: USER_ID,
 					role: 'assistant',
-					content: 'I’d update the shared copy for all 3 projects. Choose in the card below.',
+					content:
+						'I’d update the shared copy for all 3 projects. Choose in the card below.',
 					metadata: null,
 					created_at: '2026-08-03T10:01:00.000Z'
 				}
@@ -1109,6 +1110,218 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		expect(result.args.p_request_payload).toMatchObject({
 			skillPreload: { skillId: 'task_management', source: 'operational_intent' }
+		});
+	});
+
+	// "Try in BuildOS": the launch's chosen skill arrives as a structured field
+	// on its first turn and is trusted only once it resolves in the registry.
+	describe('user-launched skill', () => {
+		async function admitProjectTurn(message: string, requestedSkillId: string | null) {
+			mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+				...mocks.resolveFastChatTurnPreparation(),
+				selectedSurfaceProfile: 'project',
+				tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
+			});
+			mocks.loadFastChatPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				entityId: PROJECT_ID,
+				projectId: PROJECT_ID,
+				data: { source: 'server' }
+			});
+			return prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: {} as never,
+				userId: USER_ID,
+				command: command({
+					context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
+					message,
+					requestedSkillId
+				}) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: dependencies()
+			});
+		}
+
+		it('preloads a registered skill on a read turn and records it as user_launch', async () => {
+			const result = await admitProjectTurn(
+				'Help me shape outreach to newsletter creators.',
+				'cold_email_engagement_first_outreach'
+			);
+
+			expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					skillGatePreload: expect.objectContaining({
+						skillId: 'cold_email_engagement_first_outreach',
+						source: 'user_launch',
+						reason: 'user_launch'
+					})
+				})
+			);
+			expect(result.args.p_user_message_metadata).toMatchObject({
+				skill_preloaded_id: 'cold_email_engagement_first_outreach',
+				skill_preload_source: 'user_launch'
+			});
+			expect(result.args.p_request_payload).toMatchObject({
+				requestedSkillId: 'cold_email_engagement_first_outreach',
+				skillPreload: {
+					skillId: 'cold_email_engagement_first_outreach',
+					source: 'user_launch'
+				}
+			});
+		});
+
+		it('leads with the launched skill and keeps the operational write playbook', async () => {
+			const result = await admitProjectTurn(
+				'add a task to draft the cold email sequence for the newsletter creators',
+				'cold_email_engagement_first_outreach'
+			);
+
+			const overlay = mocks.applyActiveDomainSignalsOverlay.mock.calls[0]?.[1];
+			expect(overlay?.skillGatePreload?.promptContent).toContain(
+				'Playbook for task writes this turn:'
+			);
+			expect(result.args.p_request_payload).toMatchObject({
+				skillPreload: {
+					skillId: 'cold_email_engagement_first_outreach',
+					source: 'user_launch',
+					companionSkillIds: ['task_management']
+				}
+			});
+		});
+
+		it('ignores an unregistered id and routes the turn as usual', async () => {
+			const result = await admitProjectTurn('mark the intro call done', 'not_a_real_skill');
+
+			expect(result.args.p_user_message_metadata).toMatchObject({
+				skill_preloaded_id: 'task_management',
+				skill_preload_source: 'operational_intent'
+			});
+			expect(result.args.p_request_payload).toMatchObject({
+				requestedSkillId: 'not_a_real_skill',
+				skillPreload: { skillId: 'task_management', source: 'operational_intent' }
+			});
+		});
+
+		it('stores the launched skill on the session it creates', async () => {
+			const result = await admitProjectTurn(
+				'Help me shape outreach to newsletter creators.',
+				'cold_email_engagement_first_outreach'
+			);
+			expect(result.args.p_session_agent_metadata).toMatchObject({
+				launch_skill_id: 'cold_email_engagement_first_outreach'
+			});
+		});
+
+		async function admitFollowUp(sessionMetadata: Record<string, unknown>, priorMetadata: unknown) {
+			const serviceClient = serviceClientWithTables({
+				chat_sessions: [
+					{
+						id: SESSION_ID,
+						user_id: USER_ID,
+						context_type: 'project',
+						entity_id: PROJECT_ID,
+						summary: null,
+						agent_metadata: sessionMetadata
+					}
+				],
+				chat_messages: [
+					{
+						id: 'e2000000-0000-4000-8000-000000000001',
+						session_id: SESSION_ID,
+						user_id: USER_ID,
+						role: 'user',
+						content: 'Help me shape outreach to newsletter creators.',
+						metadata: priorMetadata,
+						created_at: '2026-08-03T10:00:00.000Z'
+					}
+				],
+				chat_message_attachments: [],
+				chat_tool_executions: []
+			});
+			mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+				...mocks.resolveFastChatTurnPreparation(),
+				selectedSurfaceProfile: 'project',
+				tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
+			});
+			mocks.loadFastChatPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				entityId: PROJECT_ID,
+				projectId: PROJECT_ID,
+				data: { source: 'server' }
+			});
+			return prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({
+					sessionId: SESSION_ID,
+					context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
+					message: 'They are mostly B2B SaaS writers with 5-20k subscribers.',
+					requestedSkillId: null
+				}) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: dependencies()
+			});
+		}
+
+		it('keeps the launched skill on later turns of that chat (session metadata)', async () => {
+			const result = await admitFollowUp(
+				{ launch_skill_id: 'cold_email_engagement_first_outreach' },
+				null
+			);
+			expect(result.args.p_user_message_metadata).toMatchObject({
+				skill_preloaded_id: 'cold_email_engagement_first_outreach',
+				skill_preload_source: 'user_launch'
+			});
+			// An existing session is never re-written by admission.
+			expect(result.args.p_session_agent_metadata).toEqual({});
+		});
+
+		it('keeps the launched skill on later turns of that chat (history window)', async () => {
+			const result = await admitFollowUp(
+				{},
+				{
+					skill_preloaded_id: 'cold_email_engagement_first_outreach',
+					skill_preload_source: 'user_launch'
+				}
+			);
+			expect(result.args.p_user_message_metadata).toMatchObject({
+				skill_preloaded_id: 'cold_email_engagement_first_outreach',
+				skill_preload_source: 'user_launch'
+			});
+		});
+
+		it('does not treat a one-shot craft preload in history as a launch', async () => {
+			const result = await admitFollowUp(
+				{},
+				{
+					skill_preloaded_id: 'cold_email_engagement_first_outreach',
+					skill_preload_source: 'domain_sensing'
+				}
+			);
+			expect(result.args.p_user_message_metadata).not.toMatchObject({
+				skill_preload_source: 'user_launch'
+			});
+		});
+
+		it('preloads nothing extra when no skill was requested', async () => {
+			const result = await admitProjectTurn(
+				'Help me shape outreach to newsletter creators.',
+				null
+			);
+			expect(result.args.p_user_message_metadata).not.toMatchObject({
+				skill_preload_source: 'user_launch'
+			});
+			expect(result.args.p_request_payload).toMatchObject({ requestedSkillId: null });
 		});
 	});
 

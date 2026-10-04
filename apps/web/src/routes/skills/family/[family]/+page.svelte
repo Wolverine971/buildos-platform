@@ -33,6 +33,7 @@
 	import {
 		buildPostBySlug,
 		getAgentFilePath,
+		getAgentRepositoryPath,
 		getDisplayTitle,
 		getDomainPath,
 		getFamilyPath,
@@ -44,6 +45,7 @@
 		getSkillPath,
 		getSkillPromise,
 		getTryInBuildOsPath,
+		MIN_INDEXABLE_FAMILY_SIZE,
 		normalizeSearchText
 	} from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
@@ -95,6 +97,10 @@
 		);
 	});
 	let startSkill = $derived(data.startSkill ?? null);
+	// A one-skill family page only repeats the skill page, so it stays out of search.
+	let isThinFamily = $derived(
+		family.skills.length + data.previews.length < MIN_INDEXABLE_FAMILY_SIZE
+	);
 	let startPreview = $derived(data.startPreview ?? null);
 
 	function childMatches(child: Child, normalized: string): boolean {
@@ -137,7 +143,7 @@
 						...family.skills.map((skill) => ({
 							name: getDisplayTitle(skill),
 							description: skill.description,
-							url: `${SITE_URL}${getSkillPath(skill)}`
+							url: `${SITE_URL}${getAgentRepositoryPath(skill)}`
 						})),
 						...data.previews.map((preview) => ({
 							name: preview.title,
@@ -202,7 +208,7 @@
 	/>
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
-	<meta name="robots" content="index, follow" />
+	<meta name="robots" content={isThinFamily ? 'noindex, follow' : 'index, follow'} />
 	{@html jsonLdScriptHtml}
 </svelte:head>
 

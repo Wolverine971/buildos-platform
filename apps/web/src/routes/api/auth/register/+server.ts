@@ -15,6 +15,8 @@ import { analyticsUrl } from '$lib/utils/analytics-url';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { consumeLegalAcceptanceIntent } from '$lib/server/legal-acceptance';
 import { inferAuthUserJustCreated } from '$lib/utils/auth-profile';
+import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
+import { launchSkillIdFromRedirect, skillSignupSource } from '$lib/utils/agent-chat-launch';
 
 const registerRequestSchema = z
 	.object({
@@ -22,6 +24,9 @@ const registerRequestSchema = z
 		password: z.string(),
 		name: z.string().nullable().optional(),
 		attribution: z.unknown().optional(),
+		// Where the user goes after signup (same-origin path, e.g. a Try in BuildOS chat launch).
+		// An oversized or malformed value is dropped, never allowed to fail the signup itself.
+		redirect: z.string().max(4096).nullable().optional().catch(null),
 		legalAcceptanceToken: z.string().min(1)
 	})
 	.strict();
@@ -52,8 +57,16 @@ function sanitizeAttribution(raw: unknown): SignupAttribution | null {
 	return attribution.utm_source || attribution.referrer ? attribution : null;
 }
 
-function deriveSignupSource(attribution: SignupAttribution | null): string {
+/**
+ * Explicit first-touch UTM wins; then the skill whose Try link brought them (first-party, read
+ * from the redirect they clicked, so no consent gate); then referrer host; else direct.
+ */
+function deriveSignupSource(
+	attribution: SignupAttribution | null,
+	launchSkillId: string | null = null
+): string {
 	if (attribution?.utm_source) return attribution.utm_source;
+	if (launchSkillId) return skillSignupSource(launchSkillId);
 	if (attribution?.referrer) {
 		try {
 			return new URL(attribution.referrer).hostname;
@@ -136,12 +149,29 @@ async function ensureUserProfileForRegistration({
 	}
 }
 
+/**
+ * Confirmation-email return address. It goes through /auth/confirm, which exchanges the code and
+ * forwards to the redirect, so a Try in BuildOS launch survives email confirmation. Supabase only
+ * honors allow-listed URLs and otherwise falls back to the Site URL (the old behavior).
+ */
+function buildEmailRedirectTo(
+	requestUrl: string,
+	redirectTarget: string | null
+): string | undefined {
+	if (!redirectTarget) return undefined;
+	const confirmUrl = new URL('/auth/confirm', requestUrl);
+	confirmUrl.searchParams.set('next', redirectTarget);
+	return confirmUrl.toString();
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const parsed = await parseJsonRequest(request, registerRequestSchema);
 	if (!parsed.ok) return parsed.response;
 	const payload = parsed.data;
 
 	const { email, password, name, legalAcceptanceToken } = payload ?? {};
+	const redirectTarget = normalizeRedirectPath(payload?.redirect);
+	const launchSkillId = launchSkillIdFromRedirect(redirectTarget);
 	const { supabase, safeGetSession } = locals;
 	const errorLogger = ErrorLoggerService.getInstance(supabase);
 	const emailDomain = typeof email === 'string' ? getEmailDomain(email) : null;
@@ -206,13 +236,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Create the user (use validated/normalized email)
 		const validatedEmail = emailValidation.email!;
+		const emailRedirectTo = buildEmailRedirectTo(request.url, redirectTarget);
 		const { data, error: signUpError } = await supabase.auth.signUp({
 			email: validatedEmail,
 			password,
 			options: {
 				data: {
 					name: name || validatedEmail.split('@')[0]
-				}
+				},
+				...(emailRedirectTo ? { emailRedirectTo } : {})
 			}
 		});
 
@@ -343,7 +375,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Signup analytics + durable first-touch attribution (both best-effort)
 		if (data.user) {
 			const attribution = sanitizeAttribution(payload?.attribution);
-			const signupSource = deriveSignupSource(attribution);
+			const signupSource = deriveSignupSource(attribution, launchSkillId);
 
 			if (profileUser?.id) {
 				try {
@@ -369,6 +401,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				email_domain: emailDomain,
 				signup_source: signupSource,
 				landing_page: attribution?.landing_page ?? null,
+				launch_skill: launchSkillId,
 				$set_once: {
 					signup_source: signupSource,
 					utm_source: attribution?.utm_source ?? null,

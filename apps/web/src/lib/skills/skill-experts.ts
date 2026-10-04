@@ -22,14 +22,6 @@ export type SkillExpertProfile = {
 	specialties: string[];
 	work: SkillExpertWork[];
 	sources: SkillExpertSource[];
-	portrait: {
-		src: string;
-		alt: string;
-		sourceUrl: string;
-		sourceLabel: string;
-		width: number;
-		height: number;
-	};
 	lineageAliases?: {
 		creatorNames?: string[];
 		channelNames?: string[];
@@ -116,14 +108,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Public representation profile on Rakugo Media.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/kane-kallaway.jpg',
-			alt: 'Kane Kallaway wearing a black cap against a dark background',
-			sourceUrl: 'https://x.com/kanekallaway',
-			sourceLabel: 'Public X profile image',
-			width: 400,
-			height: 400
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -191,14 +175,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Public professional background and prior operating roles.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/lenny-rachitsky.jpg',
-			alt: 'Lenny Rachitsky smiling in front of a wooden bookshelf',
-			sourceUrl: 'https://x.com/lennysan',
-			sourceLabel: 'Public X profile image',
-			width: 400,
-			height: 400
-		},
 		lineageAliases: {
 			channelNames: ["Lenny's Podcast"]
 		},
@@ -265,14 +241,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Public description of the design community he helped organize.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/kole-jain.jpg',
-			alt: 'Kole Jain in a dark shirt against a pale blue background',
-			sourceUrl: 'https://www.youtube.com/@KoleJain',
-			sourceLabel: 'Public YouTube profile image',
-			width: 900,
-			height: 900
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -338,17 +306,9 @@ export const skillExperts: SkillExpertProfile[] = [
 			{
 				label: 'Positioning Show',
 				url: 'https://www.youtube.com/@positioningshow',
-				description: "April's public video channel and portrait source."
+				description: "April's public video channel."
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/april-dunford.jpg',
-			alt: 'April Dunford smiling in a navy blazer against a light background',
-			sourceUrl: 'https://www.youtube.com/@positioningshow',
-			sourceLabel: 'Public YouTube profile image',
-			width: 900,
-			height: 900
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -405,7 +365,7 @@ export const skillExperts: SkillExpertProfile[] = [
 			{
 				label: 'ScoreApp author profile',
 				url: 'https://www.scoreapp.com/author/daniel-priestley/',
-				description: 'Current company profile and portrait source.'
+				description: 'Current company profile.'
 			},
 			{
 				label: 'Dent profile',
@@ -418,14 +378,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Primary source reviewed for the Landing Page Scorecard Funnel skill.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/daniel-priestley.jpg',
-			alt: 'Daniel Priestley smiling against a green background',
-			sourceUrl: 'https://www.scoreapp.com/author/daniel-priestley/',
-			sourceLabel: 'Public ScoreApp author image',
-			width: 596,
-			height: 596
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -482,7 +434,7 @@ export const skillExperts: SkillExpertProfile[] = [
 			{
 				label: 'Maven profile',
 				url: 'https://maven.com/nesrine-changuel',
-				description: 'Current teaching profile, biography, and portrait source.'
+				description: 'Current teaching profile and biography.'
 			},
 			{
 				label: 'Product Delight summary',
@@ -495,14 +447,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Primary source reviewed for the UI/UX Quality Review skill.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/nesrine-changuel.jpg',
-			alt: 'Nesrine Changuel smiling in a navy top against a light background',
-			sourceUrl: 'https://maven.com/nesrine-changuel',
-			sourceLabel: 'Public Maven instructor image',
-			width: 750,
-			height: 750
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -542,7 +486,7 @@ export const skillExperts: SkillExpertProfile[] = [
 			{
 				label: 'YouTube channel',
 				url: 'https://www.youtube.com/@tuann_lee',
-				description: 'Primary publishing channel and portrait source.'
+				description: 'Primary publishing channel.'
 			},
 			{
 				label: 'Reviewed video',
@@ -555,14 +499,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Public professional profile and shortscut affiliation.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/tuan-le.jpg',
-			alt: 'Tuan Le smiling against an orange background',
-			sourceUrl: 'https://www.youtube.com/@tuann_lee',
-			sourceLabel: 'Public YouTube profile image',
-			width: 900,
-			height: 900
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -615,7 +551,7 @@ export const skillExperts: SkillExpertProfile[] = [
 				label: 'Y Combinator profile',
 				url: 'https://www.ycombinator.com/people/michael-seibel',
 				description:
-					'Official career profile, writing archive, videos, and portrait source.'
+					'Official career profile, writing archive, and videos.'
 			},
 			{
 				label: 'Partner Emeritus announcement',
@@ -633,14 +569,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'First-party essays and videos about building early-stage startups.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/michael-seibel.jpg',
-			alt: 'Michael Seibel wearing glasses and a black shirt',
-			sourceUrl: 'https://www.ycombinator.com/people/michael-seibel',
-			sourceLabel: 'Public Y Combinator profile image',
-			width: 628,
-			height: 628
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -686,7 +614,7 @@ export const skillExperts: SkillExpertProfile[] = [
 			{
 				label: 'Connor Murray channel',
 				url: 'https://www.youtube.com/@Connor-Murray',
-				description: 'Public creator channel and portrait source.'
+				description: 'Public creator channel.'
 			},
 			{
 				label: 'Higher Levels',
@@ -704,14 +632,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Primary source reviewed for Engagement-First Outreach.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/connor-murray.jpg',
-			alt: 'Connor Murray speaking against a blue background',
-			sourceUrl: 'https://www.youtube.com/@Connor-Murray',
-			sourceLabel: 'Public YouTube profile image',
-			width: 900,
-			height: 900
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -761,7 +681,7 @@ export const skillExperts: SkillExpertProfile[] = [
 			{
 				label: 'YouTube channel',
 				url: 'https://www.youtube.com/@AaronxShepherd',
-				description: 'Primary publishing channel and portrait source.'
+				description: 'Primary publishing channel.'
 			},
 			{
 				label: 'GrowthFlare',
@@ -779,14 +699,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Primary source reviewed for Engagement-First Outreach.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/aaron-shepherd.jpg',
-			alt: 'Aaron Shepherd seated in a dark office',
-			sourceUrl: 'https://www.youtube.com/@AaronxShepherd',
-			sourceLabel: 'Public YouTube profile image',
-			width: 900,
-			height: 900
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -837,7 +749,7 @@ export const skillExperts: SkillExpertProfile[] = [
 				label: 'Official team profile',
 				url: 'https://www.samsalesconsulting.com/meet-samsales/',
 				description:
-					'Primary biography, company background, methodology, and portrait source.'
+					'Primary biography, company background, and methodology.'
 			},
 			{
 				label: 'LinkedIn profile',
@@ -855,14 +767,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'Primary source reviewed for Engagement-First Outreach.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/sam-mckenna.jpg',
-			alt: 'Sam McKenna smiling in a white top against a light background',
-			sourceUrl: 'https://www.samsalesconsulting.com/meet-samsales/',
-			sourceLabel: 'Public #samsales team image',
-			width: 980,
-			height: 980
-		},
 		lastReviewed: '2026-07-10'
 	},
 	{
@@ -909,7 +813,7 @@ export const skillExperts: SkillExpertProfile[] = [
 				label: 'Close author profile',
 				url: 'https://close.com/author/steli-efti',
 				description:
-					'Official biography, writing archive, current role, and portrait source.'
+					'Official biography, writing archive, and current role.'
 			},
 			{
 				label: 'Close sales resources',
@@ -927,14 +831,6 @@ export const skillExperts: SkillExpertProfile[] = [
 				description: 'First-party long-form sales teaching from Steli and Close.'
 			}
 		],
-		portrait: {
-			src: '/images/skill-people/steli-efti.jpg',
-			alt: 'Steli Efti pointing upward against a dark background',
-			sourceUrl: 'https://close.com/author/steli-efti',
-			sourceLabel: 'Public Close author image',
-			width: 800,
-			height: 800
-		},
 		lastReviewed: '2026-07-10'
 	}
 ];

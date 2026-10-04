@@ -14,81 +14,56 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/plan_manag
 # Plan Management
 
 <!--
-  BLOCK ONTOLOGY (canonical order). Each block answers exactly one question; no concept is taught twice.
-  Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance.
-  This file is skill_type: procedure, so the ordered Procedure (the 13-step plan runbook) carries the weight.
-  Judgment holds the standalone scoping/quality heuristics; Knowledge holds the BuildOS entity taxonomy and
-  plan-family vocabulary. There is no Routing block: this skill does not delegate to sibling skills (its
-  Related Tools are ontology tools, not routed skills).
+  BLOCK ONTOLOGY (canonical order). Identity → Activation → Procedure → Contract → Policy → Related Tools → Examples → Provenance.
+  skill_type: procedure. The acting worker renders Activation, the Procedure steps, Policy, Contract, and one Example
+  under a one-line heading with no follow-up skill calls, so every tool named in those blocks is mounted on both
+  worker surfaces (global and project) since the 2026-09-18 planning layer; link_onto_entities is project-only and
+  is deliberately not named. Examples open with the update-by-exact-id case (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
+  F71). The turn-contract shapes in Procedure step 8 are checked against the worker's real contract validator by
+  apps/worker/tests/agenticChatSkillContractExamples.test.ts.
 -->
 
 ## Identity
 
-BuildOS plan workflow playbook for turning a goal or milestone into a durable execution source of truth with scope, timeline, tasks, dependencies, owners, risks, and update rules.
-
-This is a **procedure** skill at **domain** altitude. The ordered plan runbook is its spine; the decision heuristics and BuildOS entity taxonomy support that runbook rather than replacing it.
+Plan workflow: turn a goal or milestone into one durable plan with the right tasks under it, using the goal, milestone, plan, risk, and task tools on the current surface. This is a **procedure** skill at **domain** altitude.
 
 ## Activation
 
-- The user asks to create, improve, review, or execute a plan
-- A goal needs an execution structure before tasks are created
-- A milestone needs a concrete path from current state to completion
-- Existing tasks are floating and need to be organized under a coherent execution plan
-- Dates, dependencies, owners, risks, or resources need to be coordinated across multiple tasks
-- A plan has drifted and needs to become the current source of truth again
-
-## Judgment
-
-- Plan scope should usually be smaller than the whole goal when a goal has milestones. The default shape is goal -> milestone -> plan -> tasks.
-- The plan body should be readable by a future agent that needs to continue execution without the original conversation. Include enough rationale, assumptions, dependencies, and task intent for adaptation.
-- A useful task breakdown names owner, timing, dependency, and completion signal when known. Missing fields can remain TBD if they do not block starting.
-- For plans with many tasks, create the immediate/critical tasks first and leave later candidate tasks in the plan body until they become actionable.
-- For updates, prefer preserving the plan as one current source of truth over creating a second plan with overlapping scope.
+- Create or revise a plan for a goal or milestone
+- Create or update a goal, milestone, or risk
+- Put floating tasks under a plan, goal, or milestone
 
 ## Procedure
 
-1. Load the relevant project context before writing: project, candidate goal, existing milestones, existing plans, current tasks, risks, and any documents that materially shape execution. Reuse exact IDs from current context when already known; otherwise use list/search/get tools first.
-2. Decide whether a plan is warranted. Use direct tasks for trivial one-step work. Use a plan when work spans multiple tasks, people, dependencies, dates, milestones, or decisions.
-3. Choose the plan scope before drafting. Prefer a milestone-scoped plan when the goal already has milestones. Use a goal-scoped plan only when the goal has no milestones, the user explicitly asks for a goal-level plan, or the plan coordinates multiple milestones as a roadmap/campaign/process.
-4. Keep ontology boundaries clean: the goal is the outcome and success criteria; milestones are major checkpoints, usually dated and under goals; the plan is the execution method for one milestone or a small goal scope; tasks are the atomic future work under the plan.
-5. Draft the plan body as the durable source of truth, not as a one-paragraph description. Put the short synopsis in description and the full plan in plan. A strong plan body includes Objective, Scope, Success Criteria, Context/Rationale, Timeline, Task Breakdown, Dependencies, Owners/Resources, Assumptions/Risks, and Review Cadence.
-6. Build the timeline from known facts. Use exact dates only when supplied or already present on milestones/tasks. If dates are missing, use relative sequencing such as Week 1, Phase A, or Before the milestone, and ask one concise question only when exact scheduling is required to proceed.
-7. Create or update the plan with project_id, name, description, plan, type_key, state_key, and the right parent relationship. Add goal_id or milestone_id when known; prefer milestone_id for milestone-scoped plans.
-8. Break the plan into concrete tasks only after the plan scope is clear. Each task should start with a verb, be bounded, have one owner when known, include due/start dates only when known, and be linked to the plan with plan_id or parent. Also attach goal_id or supporting_milestone_id when that relationship is clear.
-9. Represent real checkpoints as milestones, not plan subheadings, when they need independent tracking, due dates, or status. Do not create duplicate milestones just because the plan body has phases or timeline sections.
-10. Capture dependencies and blockers explicitly. Use task ordering in the plan body for lightweight sequencing; create dependency edges or blocking tasks only when the relationship must be tracked operationally.
-11. Link supporting documents, risks, or references when they materially affect execution. Use documents for source context and risks for things that could derail the plan; do not bury critical constraints only in prose.
-12. Treat the plan as living state. When tasks are completed, dates move, blockers appear, or scope changes, update the plan body with append or merge_llm rather than leaving an obsolete plan beside newer tasks.
-13. After writes, summarize what changed in user-facing terms: the plan scope, the target goal/milestone, task count, important dates, and any unresolved assumptions.
+1. Read before writing: reuse exact IDs from the focused context or the message; otherwise call list_onto_goals, list_onto_milestones, and list_onto_plans (or search_onto_plans) for the project. If several fit, ask one clarification instead of guessing.
+2. Pick the smallest structure: a goal is an outcome (create_onto_goal with name and an optional target_date); a milestone is a dated checkpoint (create_onto_milestone with title, and due_at only from a date the user gave); a plan is how one milestone or a small goal gets done; tasks are future human work. One-step work is a task, not a plan.
+3. Prefer a milestone-scoped plan when the goal already has milestones; use a goal-scoped plan only when the goal has none or the user asks for one.
+4. Create the plan with create_onto_plan: project_id, name, a one-line description, and the full body in plan (Objective, Scope, Success criteria, Timeline, Task breakdown, Dependencies, Risks). create_onto_plan takes no goal or milestone argument: name the milestone or goal in the plan body, and attach the tasks to it instead.
+5. Create only the tasks needed now with create_onto_task, passing plan_id from the plan's receipt (plus goal_id or supporting_milestone_id when known); keep later work in the plan body.
+6. update_onto_plan, update_onto_goal, and update_onto_milestone replace the fields you pass. To revise a plan body, read it with get_onto_plan_details, compose the full new body, and send it in one update_onto_plan call.
+7. Create a risk with create_onto_risk only when the user named one. Owners, dates, and budgets you were not given stay TBD in the plan body.
+8. Declare a turn contract only when the system holds your writes and asks for one (it does for more than three writes, dependent writes, or a goal or plan picked from broad context instead of the focus or a read). Declare one outcome per change with the exact UUIDs, then make only those writes: a write outside the approved contract is rejected. Shapes:
+    - new plan plus its first task: `{"outcomes":[{"action":"create","entity_kind":"plan","changes":[{"field":"name","value":"Beta rollout"}],"minimum_successful_effects":1},{"action":"create","entity_kind":"task","changes":[{"field":"title","value":"Run the staging QA pass"}],"minimum_successful_effects":1}]}`
+    - move a goal's target date: `{"outcomes":[{"action":"update","entity_kind":"goal","target_ids":["<goal UUID>"],"required_fields":["target_date"],"changes":[{"field":"target_date","value":"2026-12-01"}],"minimum_successful_effects":1}]}`
+9. After the receipts return, report the plan scope, the goal or milestone it serves, the tasks created, key dates, and open assumptions.
 
 ## Contract
 
-After a plan write, summarize in user-facing terms:
+After a plan write, report in user-facing terms:
 
-- Plan scope and the goal or milestone it executes toward.
-- The plan body anatomy you wrote or revised (Objective, Scope, Success Criteria, Timeline, Task Breakdown, Dependencies, Risks, Review Cadence) — note any section deliberately left TBD.
-- Task count created or updated under the plan, plus the important dates.
-- Unresolved assumptions or open questions that still block execution.
+- The plan's scope and the goal or milestone it executes toward.
+- The tasks created or updated under it, with any dates the user gave.
+- Owners, dates, or dependencies left TBD, and any assumption that still blocks execution.
 
-Stop conditions before replying: the detailed plan lives in `plan`, not only `description`; the plan references goals/milestones rather than redefining them; no exact owners, dates, or dependencies were invented (TBD instead); tasks are linked to the plan rather than left floating; you have not reported the plan as written until the tool call returned success.
+Stop conditions before replying: the detailed plan lives in `plan`, not only `description`; tasks created for the plan carry its plan_id; no owner, date, or dependency was invented; nothing is reported as written until its tool result returned success.
 
 ## Policy
 
-- Do not create a plan for vague brainstorming unless the user explicitly asks to structure it.
-- Do not duplicate the definitions of goals or milestones inside the plan as separate competing outcomes. Reference them and execute toward them.
-- Do not create a project-wide mega-plan when a goal or milestone-scoped plan would be clearer.
-- Do not create multiple plans for the same milestone unless they are genuinely separate lanes of work with separate owners or cadences.
-- Do not store the detailed execution plan only in description. description is the synopsis; plan is the detailed body.
-- Do not invent exact owners, dates, budgets, or dependencies. Mark them TBD in the plan body or ask if the missing detail blocks execution.
-- Do not create tasks that the agent can complete immediately in chat. Tasks are for future human or external work.
-- Do not leave tasks floating if they are clearly part of the plan.
-- Do not use invalid states. Plans use draft, active, completed. Tasks use todo, in_progress, blocked, done. Milestones use pending, in_progress, completed, missed.
-- Do not flatten a milestone into a task or a task list into a plan when the user is asking for a real checkpoint or outcome structure.
-
-## Knowledge
-
-- A BuildOS plan is the execution bridge between intent and tracked work. Project = broad container and why. Goal = outcome. Milestone = checkpoint toward a goal. Plan = how and when to reach one checkpoint or small goal scope. Task = who does what next. — [internal-default]
-- Use plan families intentionally: timebox for fixed windows, pipeline for stage flows, campaign for coordinated pushes, roadmap for longer directional sequencing, process for repeatable workflows, phase for large project phases. — [internal-default]
+- description is the synopsis; plan is the detailed body. Never store the detailed plan only in description.
+- Do not create a plan for vague brainstorming, a second plan for the same milestone, or a project-wide mega-plan when a milestone- or goal-scoped plan is clearer.
+- Do not invent owners, dates, budgets, or dependencies; mark them TBD, or ask one question when the gap blocks execution.
+- Valid states: plans draft, active, completed; goals draft, active, achieved, abandoned; milestones pending, in_progress, completed, missed; tasks todo, in_progress, blocked, done.
+- Refuse to inflate structure: one action is a task, not a plan; a dated checkpoint is a milestone, not a plan heading.
 
 ## Related Tools
 
@@ -97,51 +72,33 @@ Stop conditions before replying: the detailed plan lives in `plan`, not only `de
 - `onto.plan.list`
 - `onto.plan.search`
 - `onto.plan.update`
-- `onto.task.create`
-- `onto.task.list`
-- `onto.task.search`
-- `onto.task.update`
+- `onto.goal.create`
 - `onto.goal.get`
 - `onto.goal.list`
+- `onto.goal.update`
 - `onto.milestone.create`
-- `onto.milestone.get`
 - `onto.milestone.list`
-- `onto.document.get`
-- `onto.edge.link`
+- `onto.milestone.update`
+- `onto.risk.create`
+- `onto.task.create`
+- `onto.task.list`
 
 ## Examples
 
-### Create a milestone-scoped execution plan
+### Update an existing plan by its exact id
 
-- Load the goal and milestone first when their IDs are not already in context. Confirm the plan target is the milestone, not the whole project.
-- Create the plan with a short description and a detailed plan body:
-  `create_onto_plan({ project_id: "<project_id>", milestone_id: "<milestone_id>", name: "MVP launch readiness plan", description: "Execution plan for reaching the MVP launch readiness milestone.", plan: "## Objective\nReach the MVP launch readiness milestone with the critical user flow working, documented, and reviewed.\n\n## Scope\nIncludes onboarding, QA, release notes, and launch decision prep. Excludes post-launch analytics work.\n\n## Success Criteria\n- Critical path works in staging\n- Known launch blockers are resolved or explicitly accepted\n- Release notes and owner checklist are ready\n\n## Timeline\n1. Confirm scope and blockers\n2. Finish implementation tasks\n3. Run QA and review\n4. Prepare launch decision\n\n## Task Breakdown\n- Confirm launch blocker list\n- Finish onboarding copy updates\n- Run staging QA pass\n- Draft release notes\n\n## Dependencies\nQA depends on implementation tasks finishing.\n\n## Risks\nScope creep could push the milestone; defer non-critical analytics.\n\n## Review Cadence\nReview progress every Friday until the milestone is complete.", type_key: "plan.phase.launch", state_key: "active" })`
-- Then create only the concrete future-work tasks under the returned plan_id, adding supporting_milestone_id when the milestone is known.
+- Reuse the plan_id from the focused context or a read; otherwise find it with list_onto_plans or search_onto_plans.
+- Read the current body with `get_onto_plan_details({ plan_id: "<plan_id>" })`, compose the full revised body, then send it whole:
+  `update_onto_plan({ plan_id: "<plan_id>", plan: "<full revised plan body>", description: "<short synopsis>" })`
+- Then add or update tasks so they match the revised plan.
 
-### Create a goal-scoped plan only when the goal has no milestones
+### Create a milestone-scoped plan
 
-- If the goal has no milestones and the user wants execution structure, create a goal-scoped plan with goal_id.
-- Use the plan body to propose the sequence and call out whether milestones should be added next. Do not silently create milestones unless the user gave real checkpoints or dates.
-- Add the first bounded tasks under the plan so the goal has an actionable starting point.
-
-### Refine a weak existing plan
-
-- Read the existing plan and tasks before updating. Preserve useful context instead of replacing it blindly.
-- If the plan is just a paragraph, rewrite it into the full anatomy: Objective, Scope, Success Criteria, Context/Rationale, Timeline, Task Breakdown, Dependencies, Owners/Resources, Assumptions/Risks, and Review Cadence.
-- `update_onto_plan` replaces fields directly — it does not append or merge server-side.
-- When replacing a weak plan, pass the full revised plan body:
-  `update_onto_plan({ plan_id: "<plan_id>", plan: "<revised detailed plan body>", description: "<short synopsis>" })`
-- When the plan is mostly good but stale, first read the current plan body, compose the merged text yourself (preserve the current structure, update timeline and dependencies, and keep completed work as context only when it affects remaining execution), then write the full merged body back in a single `update_onto_plan` call.
-- After updating the plan body, add, update, or retire tasks so the task graph matches the plan.
-
-### Turn an unstructured request into a plan and tasks
-
-- Extract the desired outcome, known constraints, deadline, available owners/resources, and any stated risks.
-- If the user gave a date-driven checkpoint, create or use the milestone first, then create the plan under that milestone.
-- If the user gave only a broad goal, create or use the goal first, then create a focused goal-scoped plan and suggest milestones only if they would clarify execution.
-- Create tasks only for concrete follow-up work. Keep uncertain items as assumptions or open questions in the plan body.
+- Load the goal and milestone first when their IDs are not already in context.
+- `create_onto_plan({ project_id: "<project_id>", name: "MVP launch readiness", description: "Execution plan for the MVP launch readiness milestone.", plan: "## Objective\nShip the critical flow, reviewed.\n\n## Timeline\n1. Confirm blockers\n2. Finish implementation\n3. QA and review\n\n## Task breakdown\n- Confirm the launch blocker list\n- Run the staging QA pass\n\n## Risks\nScope creep; defer analytics work.", state_key: "active" })`
+- Then create only the immediate tasks: `create_onto_task({ project_id: "<project_id>", plan_id: "<plan_id from the receipt>", title: "Run the staging QA pass" })`
 
 ## Provenance
 
-- This skill is BuildOS-internal execution doctrine; all claims are [internal-default] (no external creator or official source cited).
+- BuildOS-internal execution doctrine; every claim is [internal-default].
 - Legacy id: `onto.plan.skill` (see `legacy_paths`).

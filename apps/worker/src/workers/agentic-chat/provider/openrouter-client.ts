@@ -40,10 +40,10 @@ import {
 import { throwIfAborted } from '../shared/abortable-deadline';
 import {
 	ACTING_OUTPUT_TOKENS,
+	OUTPUT_RECOVERY_FIRST_PROGRESS_MS,
 	isActingOutputPass,
 	outputBudgetSignal,
-	reportedReasoningTokens,
-	OUTPUT_RECOVERY_FIRST_PROGRESS_MS
+	reportedReasoningTokens
 } from './output-budget';
 import { AgenticChatProviderNetworkError, AgenticChatSlowStreamError } from './openrouter/errors';
 import { type OpenRouteSettings, openProviderRoute, sentMaxTokens } from './openrouter/open-route';

@@ -41,6 +41,9 @@ path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/task_manag
   that carries task writes (list_onto_tasks, get_onto_task_details, create_onto_task, update_onto_task,
   move_onto_task). Related Tools stays in dotted op ids: it is the external gateway contract and the source of
   materialized_tools. Examples open with the update-by-exact-id case (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71).
+  The turn-contract shapes in Procedure step 7 are checked against the worker's real contract validator by
+  apps/worker/tests/agenticChatSkillContractExamples.test.ts; the step never names the contract tool because the
+  opening pass does not mount it (F02).
 -->
 
 ## Identity
@@ -62,7 +65,10 @@ Task workflow playbook: decide when work becomes a tracked task, then create, up
 4. When the user reports real progress (started, in progress, blocked, finished), include state_key in update_onto_task alongside any other field change. Valid states are todo, in_progress, blocked, and done.
 5. description is a full replacement on update_onto_task: to keep existing detail, read the task first and write the composed value.
 6. Use move_onto_task only to move a task to another project; changing its goal or milestone is update_onto_task.
-7. After the tool result returns, report what changed and name any owner, due date, or parent that still matters.
+7. Declare a turn contract only when the system holds your writes and asks for one (it does for more than three writes, a move or archive, dependent writes, or a task picked from broad context instead of the focus or a read). Declare one outcome per change with the exact task UUIDs and every field you will set, then make only those writes: a write outside the approved contract is rejected. Shapes:
+    - complete one task and reschedule another: `{"outcomes":[{"action":"update","entity_kind":"task","target_ids":["<task UUID>"],"required_fields":["state_key"],"changes":[{"field":"state_key","value":"done"}],"minimum_successful_effects":1},{"action":"update","entity_kind":"task","target_ids":["<other task UUID>"],"required_fields":["due_at"],"changes":[{"field":"due_at","value":"2026-10-09"}],"minimum_successful_effects":1}]}`
+    - two new tasks where one waits on the other (project chats only; global chat cannot link): give each create a label with its title in changes, then add one link outcome naming src_label, dst_label, and a rel change.
+8. After the tool result returns, report what changed and name any owner, due date, or parent that still matters.
 
 ## Contract
 

@@ -16,10 +16,10 @@
 import { createWorkerTaskSyncPort } from '@buildos/shared-agent-ops/calendar/worker-task-event-mutation-port';
 import {
 	type TaskSyncPort,
+	isDocumentArchiveState,
 	previewGatewayDocumentUpdate,
 	runGatewayWriteOp,
-	runReviewedDocumentArchive,
-	isDocumentArchiveState
+	runReviewedDocumentArchive
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	type AtomicTaskMoveInput,

@@ -1,6 +1,7 @@
+// apps/web/src/routes/agent-skills/[slug]/portable/SKILL.md/+server.ts
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getPortableAgentSkillFile } from '$lib/server/agent-skills';
+import { getPortableAgentSkillFile, getAgentSkillDownloadHeaders } from '$lib/server/agent-skills';
 import { AGENT_SKILLS_CATEGORY_KEY, loadBlogPostMetadata } from '$lib/utils/blog';
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -14,7 +15,8 @@ export const GET: RequestHandler = async ({ params }) => {
 	return new Response(result.content, {
 		headers: {
 			'content-type': result.contentType,
-			'cache-control': 'public, max-age=300'
+			'cache-control': 'public, max-age=300',
+			...getAgentSkillDownloadHeaders(post.slug)
 		}
 	});
 };

@@ -40,10 +40,25 @@
 		return normalizeRedirectPath($page.url.searchParams.get('redirect'));
 	}
 
+	// The state rides in a cookie (4 KB cap, and base64 adds a third). A long Try-launch draft
+	// would push it over, the browser would drop the cookie, and Google signup would fail with a
+	// state mismatch. Keep the skill and drop the draft instead; chat falls back to a short prompt.
+	const MAX_OAUTH_STATE_REDIRECT_CHARS = 2000;
+
+	function fitRedirectForOAuthState(redirectPath: string | null): string | null {
+		if (!redirectPath || redirectPath.length <= MAX_OAUTH_STATE_REDIRECT_CHARS) {
+			return redirectPath;
+		}
+		const url = new URL(redirectPath, window.location.origin);
+		url.searchParams.delete('prompt');
+		const trimmed = `${url.pathname}${url.search}`;
+		return trimmed.length <= MAX_OAUTH_STATE_REDIRECT_CHARS ? trimmed : null;
+	}
+
 	function encodeOAuthState(redirectPath: string | null) {
 		const payload = {
 			nonce: crypto.randomUUID(),
-			redirect: redirectPath
+			redirect: fitRedirectForOAuthState(redirectPath)
 		};
 		const json = JSON.stringify(payload);
 		const base64 = btoa(json);
@@ -268,6 +283,9 @@
 					password,
 					name: name || undefined,
 					attribution: getFirstTouchAttribution() || undefined,
+					// Lets the server tag Try-link signups and route the confirmation email back
+					// to the same launch.
+					redirect: resolveRedirectTarget() ?? undefined,
 					legalAcceptanceToken
 				})
 			});

@@ -1,6 +1,7 @@
 ---
 title: 'Landing Page Scorecard Funnel: An Agent Skill For Qualified Lead Capture'
-seoTitle: 'Landing Page Scorecard: An Agent Skill'
+seoTitle: 'Landing Page Scorecard Skill for Claude Code'
+seoDescription: 'Free Claude Code and Codex skill (SKILL.md) for designing scorecard landing pages that qualify leads, personalize results, and route by fit. Download it, or run it in BuildOS.'
 description: 'A portable agent skill for designing assessment-driven landing pages that sell the scorecard, capture useful signals, personalize results, and route leads by fit.'
 author: 'DJ Wayne'
 date: '2026-05-01'

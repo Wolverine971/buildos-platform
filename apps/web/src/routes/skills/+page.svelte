@@ -305,10 +305,10 @@
 </script>
 
 <svelte:head>
-	<title>Skill Gallery - BuildOS</title>
+	<title>Skill Gallery: Claude Code & Codex Skills | BuildOS</title>
 	<meta
 		name="description"
-		content="Browse BuildOS skills by domain, pack, stack, and user job. Open practical playbooks for humans and portable SKILL.md files for agents."
+		content="Browse BuildOS skills by job and domain. Run one in BuildOS with the prompt already drafted, or take the free SKILL.md to Claude Code or Codex."
 	/>
 	<meta
 		name="keywords"
@@ -318,7 +318,7 @@
 
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content={`${SITE_URL}/skills`} />
-	<meta property="og:title" content="BuildOS Skill Gallery" />
+	<meta property="og:title" content="Skill Gallery: Claude Code & Codex Skills | BuildOS" />
 	<meta
 		property="og:description"
 		content="Browse practical BuildOS skills by domain, pack, stack, and user job before opening the agent files."
@@ -337,7 +337,7 @@
 	<meta name="twitter:url" content={`${SITE_URL}/skills`} />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
-	<meta name="twitter:title" content="BuildOS Skill Gallery" />
+	<meta name="twitter:title" content="Skill Gallery: Claude Code & Codex Skills | BuildOS" />
 	<meta
 		name="twitter:description"
 		content="A user-first gallery for BuildOS skills, packs, stacks, and agent-readable files."

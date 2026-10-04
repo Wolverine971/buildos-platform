@@ -3,9 +3,9 @@
 import { createHash } from 'node:crypto';
 
 import {
-	previewDocumentArchiveCalls,
+	type AgenticChatDocumentArchivePreviewPort,
 	isDocumentArchiveCall,
-	type AgenticChatDocumentArchivePreviewPort
+	previewDocumentArchiveCalls
 } from './document-archive-preview';
 import {
 	type AgenticChatPreparedProviderInvocationV1,
@@ -45,7 +45,7 @@ import {
 } from './document-edit-preview';
 import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
 import { streamBufferedProviderPass } from './provider-pass';
-import { isActingOutputPass, buildOutputBudgetRecoveryProgress } from './output-budget';
+import { buildOutputBudgetRecoveryProgress, isActingOutputPass } from './output-budget';
 import {
 	buildEmptyReplyRepairRequest,
 	buildRequiredPassProseFallbackRequest,

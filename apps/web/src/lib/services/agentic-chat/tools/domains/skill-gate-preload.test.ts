@@ -13,6 +13,8 @@ import {
 	resolveOperationalSkillPreload,
 	resolveSkillGatePreload,
 	resolveSkillGatePreloadDecision,
+	resolveUserLaunchSkillPreload,
+	skillToolsAreMounted,
 	WORKER_PRELOAD_MAX_CHARS
 } from './skill-gate-preload';
 import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-usage';
@@ -211,21 +213,23 @@ describe('productivity preload allowlist', () => {
 			expect(getSkillById(skillId)?.id, skillId).toBe(skillId);
 		}
 		// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F70: only skills a preload route
-		// can reach. The six dropped ids are in no domain, outcome card, or
-		// mounted intent kind; they stay registered for skill_search / skill_load.
+		// can reach. plan_management joined once plan-layer writes were mounted on
+		// both worker surfaces; context_engineering_for_agent_work and
+		// project_forecast left (never fired, not a BuildOS user job). The rest
+		// stay registered for an explicit ask and the external gateway.
 		expect([...PRODUCTIVITY_PRELOAD_ALLOWLIST]).toEqual([
 			'calendar_management',
-			'context_engineering_for_agent_work',
 			'document_workspace',
+			'plan_management',
 			'project_audit',
-			'project_forecast',
 			'task_management'
 		]);
 		for (const unreachable of [
+			'context_engineering_for_agent_work',
 			'google_calendar',
 			'people_context',
-			'plan_management',
 			'project_creation',
+			'project_forecast',
 			'research_capture',
 			'task_state_updates'
 		]) {
@@ -503,6 +507,16 @@ describe('worker playbook crosscheck against the mounted surface', () => {
 			message: 'move the standup to 3pm',
 			profile: 'project',
 			skillId: 'calendar_management'
+		},
+		{
+			message: 'create a plan for the beta launch',
+			profile: 'project',
+			skillId: 'plan_management'
+		},
+		{
+			message: 'create a plan for the beta launch',
+			profile: 'global',
+			skillId: 'plan_management'
 		}
 	];
 
@@ -515,6 +529,10 @@ describe('worker playbook crosscheck against the mounted surface', () => {
 		expect(lines.length, block).toBeLessThanOrEqual(40);
 		expect(block).not.toMatch(/\b(?:onto|cal|util)\.[a-z_]+(?:\.[a-z_]+)*/);
 		expect(block).not.toContain('declare_turn_contract');
+		// The turn-contract shapes render whole inside the character cap
+		// (apps/worker/tests/agenticChatSkillContractExamples.test.ts validates them).
+		expect(block).toContain('{"outcomes":');
+		expect(block).not.toContain('[Playbook truncated');
 		const namedTools = [...new Set(block.match(/\b[a-z]+(?:_[a-z]+)+\b/g) ?? [])].filter(
 			(token) => registeredToolNames.has(token)
 		);
@@ -589,5 +607,161 @@ describe('renderDomainSensingPromptContent with a preload', () => {
 		expect(content).toContain('Skill-load gate: ACTIVE.');
 		expect(content).toContain('Next step: Skill-load gate is ACTIVE');
 		expect(content).not.toContain('SATISFIED BY PRELOAD');
+	});
+});
+
+/** The worker's mounted tool names for one launch surface. */
+function workerSurfaceToolNames(profile: GatewaySurfaceProfileName): string[] {
+	const omitted = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
+	return getGatewayDirectToolNamesForProfile(profile).filter((name) => !omitted.has(name));
+}
+
+// 2026-10-04: plan-layer writes have been mounted on both worker surfaces
+// since 2026-09-18, but plan_management was off the allowlist, so a
+// plan-primary write turn got no playbook.
+describe('plan-layer operational playbook', () => {
+	it.each(['project', 'global'] as const)(
+		'preloads plan_management on the %s surface',
+		(profile) => {
+			const preload = resolveOperationalSkillPreload({
+				message: 'create a plan for the beta launch',
+				toolNames: workerSurfaceToolNames(profile)
+			});
+			expect(preload?.skillId).toBe('plan_management');
+			expect(preload?.reason).toBe('productivity_allowlist');
+			expect(preload?.promptContent).toMatch(/^Playbook for plan writes this turn:\n/);
+			expect(preload?.promptContent).toContain('create_onto_plan');
+			expect(preload!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
+		}
+	);
+});
+
+describe('mounted-tool admission on the worker', () => {
+	it('refuses a playbook whose declared tools the worker cannot run (people_context)', () => {
+		const payload = loadSkill('people_context', { format: 'short', surface: 'chat_internal' });
+		if (!isSkillHelpPayload(payload)) throw new Error('people_context should load');
+		expect(payload.materialized_tools?.length).toBeGreaterThan(0);
+		for (const profile of ['global', 'project'] as const) {
+			const toolNames = workerSurfaceToolNames(profile);
+			expect(skillToolsAreMounted(payload, toolNames), profile).toBe(false);
+			expect(
+				resolveUserLaunchSkillPreload({ skillId: 'people_context', toolNames }),
+				profile
+			).toEqual({ preload: null, gate_suppressed_by: 'tools_unmounted' });
+		}
+	});
+
+	it('treats a skill that declares no tools as advisory', () => {
+		expect(skillToolsAreMounted({ materialized_tools: [] }, [])).toBe(true);
+		expect(skillToolsAreMounted({}, [])).toBe(true);
+		expect(skillToolsAreMounted({ materialized_tools: ['a_tool', 'b_tool'] }, ['b_tool'])).toBe(
+			true
+		);
+	});
+
+	it('applies the same check to a sensed craft preload', () => {
+		const sensing = senseDomains({
+			currentUserMessage: 'audit this project for blockers and stale work',
+			limit: 3
+		});
+		expect(
+			resolveSkillGatePreloadDecision(sensing, {
+				allowFollowupSkillLoad: false,
+				mountedToolNames: workerSurfaceToolNames('project')
+			}).preload?.skillId
+		).toBe('project_audit');
+		expect(
+			resolveSkillGatePreloadDecision(sensing, {
+				allowFollowupSkillLoad: false,
+				mountedToolNames: ['create_calendar_event']
+			})
+		).toEqual({ preload: null, gate_suppressed_by: 'tools_unmounted' });
+	});
+});
+
+// "Try in BuildOS" carries the chosen skill as a structured request field on
+// the launch's first turn; the server trusts it only after a registry lookup.
+describe('user-launched skill preload', () => {
+	const globalTools = workerSurfaceToolNames('global');
+
+	it('preloads a registered craft skill off the allowlist as user_launch', () => {
+		const skillId = 'cold_email_engagement_first_outreach';
+		expect(isProductivityPreloadSkill(skillId)).toBe(false);
+		const { preload } = resolveUserLaunchSkillPreload({ skillId, toolNames: globalTools });
+		expect(preload).toMatchObject({ skillId, source: 'user_launch', reason: 'user_launch' });
+		expect(preload!.promptContent).toMatch(/^Playbook the user chose for this chat \(/);
+		expect(preload!.promptContent).not.toContain('skill_load');
+		expect(preload!.companionSkillIds).toBeUndefined();
+	});
+
+	it.each([
+		null,
+		undefined,
+		'',
+		'not_a_registered_skill',
+		'onto.task.skill',
+		'../task_management'
+	])('ignores %j, which the registry does not resolve', (skillId) => {
+		expect(resolveUserLaunchSkillPreload({ skillId, toolNames: globalTools })).toEqual({
+			preload: null
+		});
+	});
+
+	it("keeps this turn's operational write playbook after a different launched skill", () => {
+		const operational = resolveOperationalSkillPreload({
+			message: 'add a task to draft the cold email sequence for the newsletter creators',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+		expect(operational?.skillId).toBe('task_management');
+		const { preload } = resolveUserLaunchSkillPreload({
+			skillId: 'cold_email_engagement_first_outreach',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
+			operationalPreload: operational
+		});
+		expect(preload?.skillId).toBe('cold_email_engagement_first_outreach');
+		expect(preload?.source).toBe('user_launch');
+		expect(preload?.companionSkillIds).toEqual(['task_management']);
+		const content = preload!.promptContent;
+		expect(content.indexOf('Playbook the user chose for this chat')).toBe(0);
+		expect(content).toContain(operational!.promptContent);
+		expect(preload!.materializedToolNames).toEqual(
+			expect.arrayContaining(operational!.materializedToolNames)
+		);
+	});
+
+	it('relabels the operational playbook when the user launched that same skill', () => {
+		const operational = resolveOperationalSkillPreload({
+			message: 'add a task to call the roofer back on Tuesday',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
+		});
+		const { preload } = resolveUserLaunchSkillPreload({
+			skillId: 'task_management',
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
+			operationalPreload: operational
+		});
+		expect(preload).toMatchObject({
+			skillId: 'task_management',
+			source: 'user_launch',
+			reason: 'user_launch',
+			promptContent: operational!.promptContent
+		});
+		expect(preload?.companionSkillIds).toBeUndefined();
+	});
+
+	it('renders project_creation with its contract shape where the create tool is mounted', () => {
+		const { preload } = resolveUserLaunchSkillPreload({
+			skillId: 'project_creation',
+			toolNames: globalTools
+		});
+		expect(preload?.promptContent).toContain('{"outcomes":');
+		expect(preload?.promptContent).toContain('create_onto_goal');
+		expect(preload?.promptContent).not.toContain('[Playbook truncated');
+		// The project surface does not mount create_onto_project.
+		expect(
+			resolveUserLaunchSkillPreload({
+				skillId: 'project_creation',
+				toolNames: workerSurfaceToolNames('project')
+			}).gate_suppressed_by
+		).toBe('tools_unmounted');
 	});
 });

@@ -2,7 +2,7 @@
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
-import { getFamilyId } from '../src/lib/skills/skill-gallery';
+import { getFamilyId, MIN_INDEXABLE_FAMILY_SIZE } from '../src/lib/skills/skill-gallery';
 import { skillExperts } from '../src/lib/skills/skill-experts';
 import {
 	packDefinitions,
@@ -98,7 +98,7 @@ const STATIC_URLS: SitemapUrl[] = [
 	},
 	{
 		loc: `${BASE_URL}/skills`,
-		lastmod: SKILL_GALLERY_LASTMOD,
+		lastmod: '2026-10-04',
 		changefreq: 'weekly',
 		priority: '0.8'
 	},
@@ -451,12 +451,10 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 	const posts = Object.entries(blogContext.categories[AGENT_SKILLS_CATEGORY_KEY]?.posts ?? {})
 		.map(([slug, post]) => (post?.published ? { ...post, slug } : null))
 		.filter((post): post is BlogPost => Boolean(post));
-	const urls: SitemapUrl[] = posts.map((post) => ({
-		loc: `${BASE_URL}/skills/${post.slug}`,
-		lastmod: SKILL_GALLERY_LASTMOD,
-		changefreq: 'monthly',
-		priority: '0.8'
-	}));
+	// Skill pages: /agent-skills/<slug> is the one canonical page per skill (added with the blog
+	// URLs). /skills/<slug> canonicalizes to it, and /skills/preview/<slug> pages are noindexed
+	// thin synopses, so neither belongs in the sitemap.
+	const urls: SitemapUrl[] = [];
 	urls.push({
 		loc: `${BASE_URL}/skills/people`,
 		lastmod: SKILL_GALLERY_LASTMOD,
@@ -470,15 +468,6 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 			lastmod: expert.lastReviewed,
 			changefreq: 'monthly',
 			priority: '0.7'
-		});
-	}
-
-	for (const runtimeSkillId of Object.keys(previewSkillMetadataByRuntimeId)) {
-		urls.push({
-			loc: `${BASE_URL}/skills/preview/${runtimeSkillId.replace(/_/g, '-')}`,
-			lastmod: SKILL_GALLERY_LASTMOD,
-			changefreq: 'monthly',
-			priority: '0.6'
 		});
 	}
 
@@ -499,15 +488,22 @@ function generateSkillGalleryUrls(blogContext: BlogContext): SitemapUrl[] {
 		});
 	}
 
-	const familyNames = new Set(
-		posts
-			.map((post) => skillMetadataBySlug[post.slug]?.family)
-			.filter((familyName): familyName is string => Boolean(familyName))
-	);
+	// Family pages need at least MIN_INDEXABLE_FAMILY_SIZE skills + previews; smaller ones are
+	// noindexed on the page itself.
+	const familySizes = new Map<string, number>();
+	const countFamilyMember = (familyName: string | undefined) => {
+		if (!familyName) return;
+		familySizes.set(familyName, (familySizes.get(familyName) ?? 0) + 1);
+	};
+	for (const post of posts) countFamilyMember(skillMetadataBySlug[post.slug]?.family);
 	for (const metadata of Object.values(previewSkillMetadataByRuntimeId)) {
-		familyNames.add(metadata.family);
+		countFamilyMember(metadata.family);
 	}
-	for (const familyName of familyNames) {
+	for (const [familyName, size] of familySizes) {
+		if (size < MIN_INDEXABLE_FAMILY_SIZE) {
+			console.log(`⏩ Skipping thin skill family '${familyName}' (${size} skill)`);
+			continue;
+		}
 		urls.push({
 			loc: `${BASE_URL}/skills/family/${getFamilyId(familyName)}`,
 			lastmod: SKILL_GALLERY_LASTMOD,

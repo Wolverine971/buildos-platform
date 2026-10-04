@@ -1,6 +1,7 @@
 ---
 title: 'Viral Content For Boring Brands: An Agent Skill For Brand-Account Content'
-seoTitle: 'Viral Content For Boring Brands: Agent Skill'
+seoTitle: 'Boring-Brand Viral Content Skill for Claude Code'
+seoDescription: 'Free Claude Code and Codex skill (SKILL.md) for brand-account content that survives the first two seconds, built on six attention filters. Download it, or run it in BuildOS.'
 description: 'A source-lineaged agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.'
 author: 'DJ Wayne'
 date: '2026-05-10'

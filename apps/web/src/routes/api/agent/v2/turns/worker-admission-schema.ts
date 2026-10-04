@@ -165,7 +165,11 @@ export const workerAdmissionRequestSchema = z
 			.enum(['project_review', 'document_organization'])
 			.nullable()
 			.optional()
-			.default(null)
+			.default(null),
+		// The skill a chat launch named ("Try in BuildOS"), sent on the launch's
+		// first turn. A request only: preparation preloads it after it resolves
+		// in the skill registry and ignores anything else.
+		requestedSkillId: canonicalText(128).nullable().optional().default(null)
 	})
 	.strict()
 	.superRefine((value, context) => {

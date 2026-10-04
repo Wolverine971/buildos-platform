@@ -1,12 +1,22 @@
 // apps/web/src/lib/server/agent-skills.test.ts
+import { createHash } from 'node:crypto';
 import { requireTestValue } from '$lib/test-helpers/require-test-value';
+import { strFromU8, unzipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 import {
+	AGENT_SKILLS_DISCOVERY_SCHEMA,
+	buildAgentSkillBundleZip,
+	buildAgentSkillsDiscoveryIndex,
 	buildPublicSkillGalleryMetadata,
 	buildPublicRuntimeSkill,
 	buildPortableAgentSkillBundle,
+	findAgentSkillPostByPortableName,
+	findPortableInternalLeftovers,
 	formatAgentSkillValidationReport,
+	getAgentSkillDownloadHeaders,
+	resolvePublicSkillLink,
+	validatePortableAgentSkillBundle,
 	getAgentSkillMarkdown,
 	getAgentSkillReference,
 	getRuntimeSkillPublicationStatus,
@@ -17,7 +27,12 @@ import {
 	validatePublicAgentSkillCatalog
 } from './agent-skills';
 import type { SkillDefinition } from '$lib/services/agentic-chat/tools/skills/types';
-import { AGENT_SKILLS_CATEGORY_KEY, loadBlogPostMetadata, type BlogPost } from '$lib/utils/blog';
+import {
+	AGENT_SKILLS_CATEGORY_KEY,
+	loadAgentSkillPosts,
+	loadBlogPostMetadata,
+	type BlogPost
+} from '$lib/utils/blog';
 
 describe('public agent skill serving', () => {
 	it('builds a machine-readable index for published agent skills', async () => {
@@ -466,5 +481,181 @@ describe('public agent skill serving', () => {
 				expect.objectContaining({ severity: 'error', code: 'missing_agent_markdown' })
 			])
 		);
+	});
+});
+
+function readFrontmatter(markdown: string): Record<string, unknown> {
+	return parseYaml(markdown.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '') as Record<string, unknown>;
+}
+
+describe('portable skill downloads lead back to BuildOS', () => {
+	it('names the Google Calendar bundle folder after its SKILL.md name', async () => {
+		const post = await loadBlogPostMetadata(
+			AGENT_SKILLS_CATEGORY_KEY,
+			'google-calendar-for-ai-agents-search-before-you-create'
+		);
+		const bundle = buildPortableAgentSkillBundle(post);
+
+		expect(bundle.directory).toBe('google-calendar');
+		expect(readFrontmatter(requireTestValue(bundle.files['SKILL.md'])).name).toBe(
+			'google-calendar'
+		);
+		expect(await findAgentSkillPostByPortableName('google-calendar')).toMatchObject({
+			slug: 'google-calendar-for-ai-agents-search-before-you-create'
+		});
+	});
+
+	it('appends a footer with the canonical link, unbundled skills, and connect-agents docs', async () => {
+		const root = await loadBlogPostMetadata(
+			AGENT_SKILLS_CATEGORY_KEY,
+			'cold-email-engagement-first-outreach'
+		);
+		const skillMd = requireTestValue(buildPortableAgentSkillBundle(root).files['SKILL.md']);
+		const footer = skillMd.slice(skillMd.indexOf('## More From BuildOS'));
+
+		expect(footer).toContain(
+			'https://build-os.com/agent-skills/cold-email-engagement-first-outreach?utm_source=skill_md&utm_medium=download&utm_campaign=cold-email-engagement-first-outreach'
+		);
+		expect(footer).toContain(
+			'https://build-os.com/docs/connect-agents?utm_source=skill_md&utm_medium=download&utm_campaign=cold-email-engagement-first-outreach'
+		);
+		for (const child of [
+			'cold_email_offer_lab',
+			'cold_email_research_anchors',
+			'cold_email_outreach_compiler',
+			'cold_email_taste_review',
+			'cold_email_deliverability_readiness',
+			'cold_email_reply_os',
+			'cold_email_learning_review'
+		]) {
+			expect(footer).toContain(`\`${child}\``);
+			expect(footer).toContain(
+				`/skills/preview/${child.replace(/_/g, '-')}?utm_source=skill_md`
+			);
+		}
+		expect(footer).toContain('/agent-skills/cold-email-icp-signal-design?utm_source=skill_md');
+
+		const hook = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'hook-craft-short-form');
+		const hookMd = requireTestValue(buildPortableAgentSkillBundle(hook).files['SKILL.md']);
+		// A referenced skill with no public page is listed as plain text, not linked.
+		expect(hookMd).toContain(
+			'- `viral_video_script_structure` — Viral Video Script Structure\n'
+		);
+		expect(hookMd).not.toContain('the upcoming `viral-video-script-structure`');
+	});
+
+	it('ships no repo-only leftovers in any downloadable file', async () => {
+		const posts = await loadAgentSkillPosts();
+
+		for (const post of posts) {
+			const bundle = buildPortableAgentSkillBundle(post);
+			for (const [path, content] of Object.entries(bundle.files)) {
+				expect(findPortableInternalLeftovers(content), `${post.slug}/${path}`).toEqual([]);
+				expect(content, `${post.slug}/${path}`).not.toContain('<!--');
+				expect(content, `${post.slug}/${path}`).not.toContain('apps/web/src/');
+			}
+		}
+
+		const icp = await loadBlogPostMetadata(
+			AGENT_SKILLS_CATEGORY_KEY,
+			'cold-email-icp-signal-design'
+		);
+		const icpMd = requireTestValue(buildPortableAgentSkillBundle(icp).files['SKILL.md']);
+		expect(icpMd).toContain('are BuildOS defaults (assembled, not sourced).');
+		expect(icpMd).not.toContain('root source map');
+	});
+
+	it('flags name/folder mismatches, leftovers, and unlisted skill references', async () => {
+		const post = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'hook-craft-short-form');
+		const issues = validatePortableAgentSkillBundle(
+			post,
+			{
+				slug: post.slug,
+				directory: 'hook-craft',
+				files: {
+					'SKILL.md': [
+						'---',
+						'name: hook-craft-short-form',
+						'description: Test skill.',
+						'---',
+						'',
+						'Pair with `story-driven-content-craft`. See internal BuildOS source notes.',
+						'',
+						'## More From BuildOS',
+						'',
+						'No links here.'
+					].join('\n'),
+					'references/notes.md': '<!-- apps/web/src/notes.md -->\nNotes.\n'
+				}
+			},
+			undefined
+		);
+
+		expect(issues.map((issue) => issue.code)).toEqual(
+			expect.arrayContaining([
+				'portable_name_folder_mismatch',
+				'incomplete_portable_footer',
+				'portable_unlisted_skill_reference',
+				'portable_internal_leftover',
+				'portable_reference_internal_infrastructure_leak'
+			])
+		);
+	});
+
+	it('links stack slugs only when a public page exists', () => {
+		expect(resolvePublicSkillLink('hook-craft-short-form')).toMatchObject({
+			href: '/agent-skills/hook-craft-short-form',
+			kind: 'agent-skill'
+		});
+		expect(resolvePublicSkillLink('content-strategy-beyond-blogging')).toMatchObject({
+			href: '/skills/preview/content-strategy-beyond-blogging',
+			kind: 'preview'
+		});
+		expect(resolvePublicSkillLink('viral-video-script-structure')).toBeNull();
+		expect(resolvePublicSkillLink('OAuth 2.0 for agents')).toBeNull();
+	});
+
+	it('marks raw downloads noindex with a canonical link to the skill page', () => {
+		expect(getAgentSkillDownloadHeaders('hook-craft-short-form')).toEqual({
+			'x-robots-tag': 'noindex',
+			link: '<https://build-os.com/agent-skills/hook-craft-short-form>; rel="canonical"'
+		});
+	});
+
+	it('publishes a well-known discovery index whose digests match the archives', async () => {
+		const index = await buildAgentSkillsDiscoveryIndex();
+		const posts = await loadAgentSkillPosts();
+
+		expect(index.$schema).toBe(AGENT_SKILLS_DISCOVERY_SCHEMA);
+		expect(index.skills).toHaveLength(posts.length);
+
+		for (const entry of index.skills) {
+			// Same validation the `skills` CLI applies to v0.2.0 entries.
+			expect(entry.name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+			expect(entry.name.length).toBeLessThanOrEqual(64);
+			expect(entry.description.length).toBeGreaterThan(0);
+			expect(entry.description.length).toBeLessThanOrEqual(1024);
+			expect(entry.type).toBe('archive');
+			expect(entry.url).toBe(`/.well-known/agent-skills/${entry.name}.zip`);
+			expect(entry.digest).toMatch(/^sha256:[a-f0-9]{64}$/);
+
+			const post = requireTestValue(await findAgentSkillPostByPortableName(entry.name));
+			const archive = buildAgentSkillBundleZip(post, 'root');
+			expect(`sha256:${createHash('sha256').update(archive.bytes).digest('hex')}`).toBe(
+				entry.digest
+			);
+
+			const files = unzipSync(archive.bytes);
+			const skillMd = strFromU8(requireTestValue(files['SKILL.md']));
+			expect(readFrontmatter(skillMd)).toMatchObject({
+				name: entry.name,
+				description: entry.description
+			});
+		}
+
+		const directoryZip = unzipSync(
+			buildAgentSkillBundleZip(requireTestValue(posts[0]), 'directory').bytes
+		);
+		expect(Object.keys(directoryZip).every((path) => path.includes('/'))).toBe(true);
 	});
 });

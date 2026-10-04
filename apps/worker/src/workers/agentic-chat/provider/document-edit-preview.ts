@@ -15,8 +15,8 @@ import type { MutationBatch, ToolValidationIssue } from '@buildos/agentic-chat-r
 import { completedProviderCallToChatToolCall } from './feedback';
 import type { CompletedProviderToolCall } from './stream-tool-calls';
 import {
-	loadSharedDocumentTarget,
-	type SharedDocumentTarget
+	type SharedDocumentTarget,
+	loadSharedDocumentTarget
 } from '../mutations/shared-document-edit';
 
 export type DocumentEditPreviewV1 = {

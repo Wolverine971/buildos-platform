@@ -215,6 +215,9 @@
 		initialBrainDumpContext?: AgentBrainDumpContext | null;
 		initialProjectFocus?: ProjectFocus | null;
 		initialDraft?: string | null;
+		/** Skill the launch named ("Try in BuildOS"). Sent as a structured field with
+		 * the first turn after initialDraft lands in the composer, then dropped. */
+		initialSkillId?: string | null;
 		/** Send initialDraft automatically once it lands in the composer (i.e. the
 		 * user's submit already happened on the launching surface). Only meaningful
 		 * with a selector-free context — with 'global' the draft waits on the
@@ -259,6 +262,7 @@
 		initialBrainDumpContext = null,
 		initialProjectFocus = null,
 		initialDraft = null,
+		initialSkillId = null,
 		autoSendInitialDraft = false,
 		initialReviewIntent = null,
 		onInitialReviewUnavailable,
@@ -685,6 +689,9 @@
 	// Plain flags: only the initial-draft effect reads/writes them.
 	let appliedInitialDraftKey = '';
 	let autoSentDraftKey = '';
+	// The launch's skill, armed when its draft lands; the stream controller sends it
+	// with the next admitted turn and clears it. Plain: nothing renders from it.
+	let launchSkillId: string | null = null;
 	const attachments = createAttachmentController({
 		getBrowser: () => browser,
 		getProjectId: () => attachmentProjectId,
@@ -785,6 +792,10 @@
 			workerRealtime?.coordinator.inbox.requestReconciliation(turnRunId, 'reconcile_hint'),
 		getReviewIntent: () => selectedReviewIntent,
 		getPublishedSpecialist: () => publishedSpecialist,
+		getRequestedSkillId: () => launchSkillId,
+		clearRequestedSkillId: () => {
+			launchSkillId = null;
+		},
 		onReviewAdmitted: () => {
 			reviewSelection = null;
 		},
@@ -1020,6 +1031,7 @@
 		if (!isOpen) {
 			appliedInitialDraftKey = '';
 			autoSentDraftKey = '';
+			launchSkillId = null;
 			return;
 		}
 		if (!draft) return;
@@ -1065,6 +1077,7 @@
 
 		inputValue = draft;
 		appliedInitialDraftKey = draftKey;
+		launchSkillId = initialSkillId?.trim() || null;
 		if (review?.kind === 'ready') {
 			reviewSelection = { ...review.selection, sessionId: currentSession?.id ?? null };
 		}
@@ -1311,6 +1324,7 @@
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
 		const { preserveContext = true } = options;
 		reviewSelection = null;
+		launchSkillId = null;
 
 		voice.stop();
 

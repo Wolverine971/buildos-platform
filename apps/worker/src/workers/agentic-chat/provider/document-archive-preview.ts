@@ -1,12 +1,12 @@
 // apps/worker/src/workers/agentic-chat/provider/document-archive-preview.ts
 // Archive facts must be available before review and must travel inside its SHA.
-import { canonicalizeAgenticChatJson, type JsonObject } from '@buildos/shared-types';
+import { type JsonObject, canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-	previewGatewayDocumentArchive,
+	type DocumentArchiveReviewSnapshot,
 	isDocumentArchiveReviewSnapshot,
 	isDocumentArchiveState,
-	type DocumentArchiveReviewSnapshot
+	previewGatewayDocumentArchive
 } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import type { ToolValidationIssue } from '@buildos/agentic-chat-runtime/loop';
 import { completedProviderCallToChatToolCall } from './feedback';

@@ -206,6 +206,41 @@ describe('Agentic Chat worker transport client', () => {
 		expect(fetchImpl.mock.calls[0]?.[0]).toBe('/api/agent/v2/turns');
 	});
 
+	it('sends a launch skill request as a structured field only when one is set', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			Response.json({ success: true, data: { outcome: 'newly_admitted' } }, { status: 202 })
+		);
+		const command = {
+			clientTurnId: request.clientTurnId,
+			streamRunId: request.streamRunId,
+			sessionId: null,
+			context: request.context,
+			message: 'Use the Going Viral skill on my launch post.',
+			attachments: [],
+			projectFocus: null,
+			lastTurnContext: null,
+			voiceNoteGroupId: null,
+			preparedPromptKey: null
+		};
+		await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command: { ...command, requestedSkillId: 'going_viral' }
+		});
+		await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command: { ...command, requestedSkillId: null }
+		});
+		const [launched, later] = fetchImpl.mock.calls.map((call) =>
+			JSON.parse(String(call[1]?.body))
+		);
+		expect(launched.requestedSkillId).toBe('going_viral');
+		expect(later).not.toHaveProperty('requestedSkillId');
+		const parsed = workerAdmissionRequestSchema.safeParse(launched);
+		expect(parsed.success).toBe(true);
+		expect(parsed.data?.requestedSkillId).toBe('going_viral');
+		expect(workerAdmissionRequestSchema.parse(later).requestedSkillId).toBeNull();
+	});
+
 	it('returns non-success admission responses without parsing them as authority', async () => {
 		const response = Response.json({ code: 'WORKER_CAPACITY_EXCEEDED' }, { status: 503 });
 		const result = await requestAgenticChatWorkerAdmission({

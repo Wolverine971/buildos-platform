@@ -92,6 +92,13 @@ export type GalleryFamily<TSkill extends GallerySkill = GallerySkill> = {
 export const domainGuides: DomainGuide[] = curatedDomainGuides;
 export const packDefinitions: PackDefinition[] = curatedPackDefinitions;
 
+/** The honest "what happens next" line shown with every Try-in-BuildOS link. */
+export const TRY_IN_BUILDOS_NEXT_STEP =
+	'Free to start. Create an account and the skill opens in BuildOS chat with the prompt already drafted. Nothing runs until you send it.';
+
+/** Families with fewer skills and previews than this stay out of search (noindex, no sitemap). */
+export const MIN_INDEXABLE_FAMILY_SIZE = 2;
+
 function fromPublicGalleryMetadata(
 	metadata?: PublicSkillGalleryMetadata
 ): SkillGalleryMetadata | undefined {
@@ -148,7 +155,6 @@ export function getNumericStat(skill: GallerySkill, key: string): number {
 export function getSkillPath(skill: Pick<GallerySkill, 'slug'>): string {
 	return `/skills/${skill.slug}`;
 }
-
 export function getPreviewSkillPath(preview: Pick<RuntimeSkillGalleryPreview, 'slug'>): string {
 	return `/skills/preview/${preview.slug}`;
 }
@@ -186,6 +192,7 @@ export function getTryPackInBuildOsPath(pack: Pick<PackDefinition, 'id'> | strin
 	return `/skills/try/path/${packId}`;
 }
 
+/** The long-form agent-skill article: the one canonical, indexable page for a public skill. */
 export function getAgentRepositoryPath(skill: Pick<GallerySkill, 'slug'>): string {
 	return `/agent-skills/${skill.slug}`;
 }

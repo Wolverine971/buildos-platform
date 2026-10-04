@@ -22,13 +22,14 @@
 		Code2,
 		Copy,
 		Download,
-		ExternalLink,
 		FileText,
 		GitBranch,
 		Layers3,
+		PlayCircle,
 		Search
 	} from '$lib/icons/lucide';
 	import { resolveSkillExperts } from '$lib/skills/skill-experts';
+	import { getTryInBuildOsPath } from '$lib/skills/skill-gallery';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -117,10 +118,6 @@
 		return `${getSkillPath(skill)}/bundle.zip`;
 	}
 
-	function getBuildOsSkillPath(skill: Skill): string {
-		return `${getSkillPath(skill)}/skill.md`;
-	}
-
 	function getBundleCommand(skill: Skill): string {
 		return `curl -L ${skill.bundle_zip_url} -o ${skill.slug}.zip`;
 	}
@@ -203,10 +200,10 @@
 </script>
 
 <svelte:head>
-	<title>Agent Skills - BuildOS | Skill Repository</title>
+	<title>Free Claude Code & Codex Skills (SKILL.md) | BuildOS</title>
 	<meta
 		name="description"
-		content="Browse public BuildOS agent skills with human guides, portable SKILL.md files, downloadable bundles, source lineage, and machine-readable metadata."
+		content="Free agent skills for Claude Code, Codex, and any SKILL.md-compatible agent. Each one has a human guide, a SKILL.md download, and traced sources. Or run it inside BuildOS."
 	/>
 	<meta
 		name="keywords"
@@ -216,10 +213,10 @@
 
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content={`${SITE_URL}/agent-skills`} />
-	<meta property="og:title" content="BuildOS Agent Skills Repository" />
+	<meta property="og:title" content="Free Claude Code & Codex Skills (SKILL.md) | BuildOS" />
 	<meta
 		property="og:description"
-		content="Public BuildOS agent skills with portable SKILL.md files, bundles, references, and source lineage."
+		content="Free SKILL.md skills for Claude Code and Codex, with human guides and traced sources. Download one, or run it inside BuildOS."
 	/>
 	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
@@ -235,10 +232,10 @@
 	<meta name="twitter:url" content={`${SITE_URL}/agent-skills`} />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
-	<meta name="twitter:title" content="BuildOS Agent Skills Repository" />
+	<meta name="twitter:title" content="Free Claude Code & Codex Skills (SKILL.md) | BuildOS" />
 	<meta
 		name="twitter:description"
-		content="Portable agent skills with human guides, SKILL.md files, bundles, references, and source lineage."
+		content="Free SKILL.md skills for Claude Code and Codex, with human guides and traced sources. Download one, or run it inside BuildOS."
 	/>
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
@@ -481,11 +478,11 @@
 
 							<div class="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
 								<a
-									href={getBuildOsSkillPath(skill)}
-									data-sveltekit-reload
-									class="inline-flex items-center gap-1 hover:text-accent"
+									href={getTryInBuildOsPath(skill)}
+									class="inline-flex min-h-[44px] items-center gap-1 font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
-									BuildOS runtime <ExternalLink class="h-3 w-3" />
+									<PlayCircle class="h-3.5 w-3.5" aria-hidden="true" />
+									Try in BuildOS
 								</a>
 								{#if skill.runtime_skill_id}
 									<span class="font-mono">{skill.runtime_skill_id}</span>

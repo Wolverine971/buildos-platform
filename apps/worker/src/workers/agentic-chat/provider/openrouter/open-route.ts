@@ -20,9 +20,9 @@ import { AgenticChatProviderNetworkError } from './errors';
 import { isRetryableStatus, orderedProviderSlug, responseError } from './retry';
 import { createStableAgenticChatProviderUsageLogIdV1 } from './usage';
 import {
+	OUTPUT_RECOVERY_TIMEOUT_MS,
 	isActingOutputPass,
-	outputBudgetInstruction,
-	OUTPUT_RECOVERY_TIMEOUT_MS
+	outputBudgetInstruction
 } from '../output-budget';
 import {
 	abortableProviderRead,

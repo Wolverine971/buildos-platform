@@ -17,6 +17,7 @@ import { getAuthUserCreatedAt, inferAuthUserJustCreated } from '$lib/utils/auth-
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
 import { captureServerEvent } from '$lib/server/posthog';
 import { consumeLegalAcceptanceIntent } from '$lib/server/legal-acceptance';
+import { launchSkillIdFromRedirect, skillSignupSource } from '$lib/utils/agent-chat-launch';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -217,6 +218,27 @@ export class GoogleOAuthHandler {
 		);
 	}
 
+	/**
+	 * Tag a brand-new account that started from a Try in BuildOS link. The post-login redirect rode
+	 * the OAuth state, so this is the link the user clicked (first-party, no consent gate). Never
+	 * overwrites a source that is already set, and never blocks sign-in.
+	 */
+	private async recordLaunchSignupSource(userId: string, launchSkillId: string | null) {
+		if (!launchSkillId) return;
+		try {
+			// The session client signInWithIdToken just authenticated; RLS lets a user write
+			// their own (unguarded) attribution columns.
+			const { error } = await this.supabase
+				.from('users')
+				.update({ signup_source: skillSignupSource(launchSkillId) })
+				.eq('id', userId)
+				.is('signup_source', null);
+			if (error) console.error('Failed to record Google signup source:', error);
+		} catch (error) {
+			console.error('Failed to record Google signup source:', error);
+		}
+	}
+
 	private async clearAuthSession(): Promise<void> {
 		try {
 			await this.supabase.auth.signOut({ scope: 'local' });
@@ -391,6 +413,7 @@ export class GoogleOAuthHandler {
 		const error = url.searchParams.get('error');
 		const state = url.searchParams.get('state');
 		const stateRedirect = decodeOAuthRedirect(state);
+		const launchSkillId = launchSkillIdFromRedirect(stateRedirect);
 		const flow = config.isRegistration ? 'register' : 'login';
 
 		console.log(`Google ${flow} callback received:`, {
@@ -587,8 +610,11 @@ export class GoogleOAuthHandler {
 
 			// UTM attribution can't ride the OAuth redirect; the client-side
 			// identify() attaches first-touch person properties after login.
+			// The Try in BuildOS launch does ride it (state.redirect).
 			await captureServerEvent(authResult.user.id, 'signup', {
-				signup_method: 'google_oauth'
+				signup_method: 'google_oauth',
+				launch_skill: launchSkillId,
+				...(launchSkillId ? { signup_source: skillSignupSource(launchSkillId) } : {})
 			});
 
 			try {
@@ -614,6 +640,10 @@ export class GoogleOAuthHandler {
 					}
 				});
 			}
+		}
+
+		if (authResult.isNewUser) {
+			await this.recordLaunchSignupSource(authResult.user.id, launchSkillId);
 		}
 
 		// Step 4: Add delay to ensure everything propagates

@@ -113,7 +113,11 @@ export const productionConfig: Partial<QueueConfiguration> = {
 // ABOVE the domain budget plus cleanup margin, or a legitimate run outlives
 // its own claim and a retry can attach while it still executes.
 const DEFAULT_WORKER_TIMEOUT_BY_TYPE: Record<string, number> = {
-	agent_run: 23 * 60 * 1000 // 20 min max budget + 3 min finalize margin
+	agent_run: 23 * 60 * 1000, // 20 min max budget + 3 min finalize margin
+	// A big merge reads a dozen docs in pieces, then reconciles (up to 6 min a call,
+	// retried once) and writes; 10 min cut real merges off mid-write. A retry resumes
+	// from the saved ledger.
+	consolidation_run: 20 * 60 * 1000
 };
 
 /**

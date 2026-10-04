@@ -1,5 +1,5 @@
 // apps/web/src/lib/server/agent-call/oauth-connector.service.ts
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import type {
 	AgentCallScope,
 	AgentOAuthAccessTokenRecord,
@@ -58,7 +58,6 @@ export const BUILDOS_MCP_RESOURCE_SCOPES = [
 export const BUILDOS_MCP_CHALLENGE_SCOPE = BUILDOS_MCP_RESOURCE_SCOPES.join(' ');
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
-const REFRESH_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;
 const AUTHORIZATION_CODE_TTL_SECONDS = 5 * 60;
 const DEFAULT_SCOPES: BuildosAgentOAuthScope[] = ['buildos.read', 'offline_access'];
 export const BUILDOS_OAUTH_READ_WRITE_OPS = [

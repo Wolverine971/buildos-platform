@@ -8230,6 +8230,206 @@ export type Database = {
           },
         ]
       }
+      consolidation_merges: {
+        Row: {
+          cluster_key: string
+          coverage: Json | null
+          cost_usd: number
+          created_at: string
+          created_document_id: string | null
+          error: string | null
+          id: string
+          ledger: Json | null
+          markdown: string | null
+          run_id: string
+          source_ids: string[]
+          status: string
+          target_project_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cluster_key: string
+          coverage?: Json | null
+          cost_usd?: number
+          created_at?: string
+          created_document_id?: string | null
+          error?: string | null
+          id?: string
+          ledger?: Json | null
+          markdown?: string | null
+          run_id: string
+          source_ids: string[]
+          status?: string
+          target_project_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cluster_key?: string
+          coverage?: Json | null
+          cost_usd?: number
+          created_at?: string
+          created_document_id?: string | null
+          error?: string | null
+          id?: string
+          ledger?: Json | null
+          markdown?: string | null
+          run_id?: string
+          source_ids?: string[]
+          status?: string
+          target_project_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consolidation_merges_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "consolidation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consolidation_merges_target_project_id_fkey"
+            columns: ["target_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consolidation_questions: {
+        Row: {
+          answer: Json | null
+          answered_at: string | null
+          created_at: string
+          draft: Json | null
+          evidence: Json
+          header: string
+          id: string
+          options: Json
+          piece: string
+          priority: number
+          question: string
+          recommended_option_id: string | null
+          run_id: string
+          skip_option_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          answer?: Json | null
+          answered_at?: string | null
+          created_at?: string
+          draft?: Json | null
+          evidence?: Json
+          header: string
+          id?: string
+          options: Json
+          piece: string
+          priority?: number
+          question: string
+          recommended_option_id?: string | null
+          run_id: string
+          skip_option_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: Json | null
+          answered_at?: string | null
+          created_at?: string
+          draft?: Json | null
+          evidence?: Json
+          header?: string
+          id?: string
+          options?: Json
+          piece?: string
+          priority?: number
+          question?: string
+          recommended_option_id?: string | null
+          run_id?: string
+          skip_option_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consolidation_questions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "consolidation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consolidation_runs: {
+        Row: {
+          cost_usd: number
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          plan: Json | null
+          progress: Json
+          project_ids: string[]
+          receipt: Json | null
+          request: string | null
+          root_project_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          plan?: Json | null
+          progress?: Json
+          project_ids: string[]
+          receipt?: Json | null
+          request?: string | null
+          root_project_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cost_usd?: number
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          plan?: Json | null
+          progress?: Json
+          project_ids?: string[]
+          receipt?: Json | null
+          request?: string | null
+          root_project_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consolidation_runs_root_project_id_fkey"
+            columns: ["root_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consolidation_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cron_logs: {
         Row: {
           created_at: string | null
@@ -27597,6 +27797,7 @@ export type Database = {
         | "freshness_radar_scan"
         | "capture_chat_checkpoint"
         | "user_data_export"
+        | "consolidation_run"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -27871,6 +28072,7 @@ export const Constants = {
         "freshness_radar_scan",
         "capture_chat_checkpoint",
         "user_data_export",
+        "consolidation_run",
       ],
       recurrence_end_reason: [
         "indefinite",

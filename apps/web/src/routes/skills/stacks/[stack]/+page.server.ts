@@ -14,5 +14,5 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error(404, 'Skill stack not found');
 	}
 
-	throw redirect(307, getPackPath(stack));
+	throw redirect(308, getPackPath(stack));
 };

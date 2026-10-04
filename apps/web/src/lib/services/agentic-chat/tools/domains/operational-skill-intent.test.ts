@@ -161,8 +161,8 @@ describe('resolveOperationalSkillForTurn', () => {
 	});
 
 	it('never names a skill whose write tools are not mounted', () => {
-		// Plan tools are on no surface today, and this fixture surface carries
-		// no calendar writes. Both must stay silent until mounted.
+		// This fixture surface carries no plan or calendar writes (the real worker
+		// surfaces mount both). Each stays silent until its writes are mounted.
 		expect(
 			resolveOperationalSkillForTurn({
 				message: 'Plan out the next sprint for the mobile app',
@@ -181,6 +181,25 @@ describe('resolveOperationalSkillForTurn', () => {
 				toolNames: [...PROJECT_WRITE_DOCUMENT_TOOLS, 'create_onto_plan']
 			})
 		).toMatchObject({ skillId: 'plan_management' });
+	});
+
+	it('falls through to the next sensed entity when the primary playbook is ineligible', () => {
+		const message =
+			'Chapter 2 is complete — reorganize the docs under Drafts and add a task to draft chapter 3';
+		expect(
+			resolveOperationalSkillForTurn({
+				message,
+				toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
+				isSkillEligible: (skillId) => skillId !== 'task_management'
+			})
+		).toMatchObject({ skillId: 'document_workspace', alternateSkillIds: [] });
+		expect(
+			resolveOperationalSkillForTurn({
+				message,
+				toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
+				isSkillEligible: () => false
+			})
+		).toBeNull();
 	});
 
 	it('stays null on read-only surfaces and read turns', () => {

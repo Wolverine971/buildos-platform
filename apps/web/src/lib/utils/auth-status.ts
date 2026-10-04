@@ -16,6 +16,7 @@ export const AUTH_ERROR_COPY = {
 	session_failed: 'We couldn’t start your session. Please try again.',
 	account_setup_failed: 'Account setup failed. Please try signing in again.',
 	policy_unverified: 'We could not verify your policy acceptance. Please try again.',
+	email_link_failed: 'That email link didn’t sign you in. Sign in below to continue.',
 	timeout: 'Signing in took too long. Please try again.'
 } as const;
 

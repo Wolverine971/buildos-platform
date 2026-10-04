@@ -60,9 +60,9 @@ describe('skill expert profiles', () => {
 		]);
 		expect(new Set(skillExperts.map((expert) => expert.slug)).size).toBe(skillExperts.length);
 		for (const expert of skillExperts) {
-			expect(expert.portrait.src).toMatch(/^\/images\/skill-people\/.+\.jpg$/);
-			expect(expert.portrait.width).toBeGreaterThan(0);
-			expect(expert.portrait.height).toBeGreaterThan(0);
+			// No photos or generated likenesses of real people: profiles render initials only.
+			expect(expert).not.toHaveProperty('portrait');
+			expect(JSON.stringify(expert)).not.toMatch(/\.(jpe?g|png|webp|avif|gif)\b/i);
 			expect(expert.sources.length).toBeGreaterThanOrEqual(3);
 		}
 	});

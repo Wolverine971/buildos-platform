@@ -14,5 +14,5 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw error(404, 'Skill pack not found');
 	}
 
-	throw redirect(307, getPackPath(pack));
+	throw redirect(308, getPackPath(pack));
 };

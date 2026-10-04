@@ -2,7 +2,11 @@
 <script lang="ts">
 	import { BRAND_TAGLINE, START_PROJECT_CTA } from '$lib/constants/brand';
 	import { page } from '$app/stores';
-	import { replaceState } from '$app/navigation';
+	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
+	import {
+		AGENT_CHAT_LAUNCH_PARAMS,
+		readAgentChatLaunchRequest
+	} from './agent-chat-launch-params';
 	import { onMount, tick } from 'svelte';
 	import {
 		FolderOpen,
@@ -109,6 +113,7 @@
 	let chatInitialSessionId = $state<string | null>(null);
 	let chatInitialBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
 	let chatInitialDraft = $state<string | null>(null);
+	let chatInitialSkillId = $state<string | null>(null);
 	let chatOverrideContextType = $state<ChatContextType | null>(null);
 	let chatOverrideEntityId = $state<string | undefined>(undefined);
 	let chatUsePageFocus = $state(true);
@@ -549,6 +554,7 @@
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft = null;
+		chatInitialSkillId = null;
 		chatOverrideContextType = null;
 		chatOverrideEntityId = undefined;
 		chatUsePageFocus = true;
@@ -594,6 +600,7 @@
 		await ensureFreshChatSurface();
 		closeAllMenus();
 		chatInitialBrainDumpContext = null;
+		chatInitialSkillId = null;
 		chatInitialDraft =
 			typeof detail?.initialDraft === 'string' && detail.initialDraft.trim()
 				? detail.initialDraft.trim()
@@ -611,18 +618,13 @@
 		showChatModal = true;
 	}
 
-	function normalizeLaunchDraft(value: string | null): string | null {
-		const trimmed = value?.trim();
-		if (!trimmed) return null;
-		return trimmed.length > 2400 ? `${trimmed.slice(0, 2400)}...` : trimmed;
-	}
-
-	async function openAgentChatLaunch(draft: string) {
+	async function openAgentChatLaunch(draft: string, skillId: string | null) {
 		closeAllMenus();
 		await ensureFreshChatSurface();
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft = draft;
+		chatInitialSkillId = skillId;
 		chatUsePageFocus = false;
 		chatOverrideContextType = 'global';
 		chatOverrideEntityId = undefined;
@@ -630,29 +632,21 @@
 		showChatModal = true;
 	}
 
-	$effect(() => {
-		if (!browser || !user) return;
-
-		const url = $page.url;
-		if (url.searchParams.get('open') !== 'agent-chat') return;
-
-		const skillSlug = url.searchParams.get('skill')?.trim() ?? '';
-		const draft =
-			normalizeLaunchDraft(url.searchParams.get('prompt')) ??
-			(skillSlug ? `Use the ${skillSlug} skill on my current work.` : null);
-		if (!draft) return;
-
-		const launchKey = `${url.pathname}|${skillSlug}|${draft}`;
-		if (handledAgentChatLaunchKey === launchKey) return;
-		handledAgentChatLaunchKey = launchKey;
-
-		void openAgentChatLaunch(draft);
-
-		const cleanUrl = new URL(url);
-		cleanUrl.searchParams.delete('open');
-		cleanUrl.searchParams.delete('skill');
-		cleanUrl.searchParams.delete('prompt');
-		replaceState(`${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`, {});
+	// `?open=agent-chat&skill=&prompt=` (the public "Try in BuildOS" link) opens chat
+	// with the draft, once. Email-confirm and Google OAuth returns land here as full page
+	// loads, where an $effect + shallow replaceState throws before the router starts
+	// (see one-time-url-params.ts). Another consumer's cleanup navigation (the layout's
+	// onboarding flag) can carry these params back once; the launch key strips them
+	// again without opening a second chat.
+	consumeOneTimeUrlParams((url) => {
+		if (!user) return [];
+		const launch = readAgentChatLaunchRequest(url);
+		if (!launch) return [];
+		if (handledAgentChatLaunchKey !== launch.key) {
+			handledAgentChatLaunchKey = launch.key;
+			void openAgentChatLaunch(launch.draft, launch.skillId);
+		}
+		return AGENT_CHAT_LAUNCH_PARAMS;
 	});
 
 	$effect(() => {
@@ -691,6 +685,7 @@
 		chatInitialSessionId = null;
 		chatInitialBrainDumpContext = null;
 		chatInitialDraft = null;
+		chatInitialSkillId = null;
 		chatOverrideContextType = null;
 		chatOverrideEntityId = undefined;
 		chatUsePageFocus = true;
@@ -1644,6 +1639,7 @@
 			initialBrainDumpContext={chatInitialBrainDumpContext}
 			initialProjectFocus={effectiveChatInitialProjectFocus}
 			initialDraft={chatInitialDraft}
+			initialSkillId={chatInitialSkillId}
 			onClose={handleChatClose}
 			onParked={handleChatParked}
 			onSessionChange={(sessionId) => (activeChatSessionId = sessionId)}

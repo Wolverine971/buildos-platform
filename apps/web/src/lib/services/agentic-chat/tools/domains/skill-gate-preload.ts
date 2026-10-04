@@ -18,9 +18,10 @@
  * no note about reference modules the worker cannot load
  * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71).
  *
- * Operational skills (task_management, document_workspace, calendar_management)
- * are in no domain or outcome card, so they arrive via the deterministic intent
- * map in operational-skill-intent.ts rather than sensing, and they render on
+ * Operational skills (task_management, document_workspace, plan_management,
+ * calendar_management) are in no domain or outcome card, so they arrive via the
+ * deterministic intent map in operational-skill-intent.ts rather than sensing,
+ * and they render on
  * every turn their intent fires: the system prompt is rebuilt per turn, so a
  * per-window dedupe just removed the playbook from the next write turn (F69).
  * Craft preloads (sensing, explicit ask) are one-shot and still dedupe against
@@ -33,6 +34,17 @@
  * `gate_suppressed_by: 'not_allowlisted'`. Domain sensing itself is unchanged —
  * craft domains still arrive as routing hints, and skill_search / skill_load
  * still reach every registered skill.
+ *
+ * Two more admission rules (2026-10-04):
+ * - Mounted tools. On the worker, a skill whose declared tools
+ *   (`materialized_tools`) are all absent from the turn's surface is refused
+ *   with `gate_suppressed_by: 'tools_unmounted'`: its playbook would commission
+ *   calls the turn cannot make (people_context's contact tools have no worker
+ *   adapter). A skill that declares no tools is advisory and always passes.
+ * - User launch. A skill the user picked before the chat opened (the public
+ *   "Try in BuildOS" link) arrives as the structured `requestedSkillId` on the
+ *   launch's first turn, is trusted only once it resolves in the registry, and
+ *   preloads with source `user_launch` regardless of the allowlist.
  */
 
 import { loadSkill } from '../skills/skill-load';
@@ -55,10 +67,14 @@ import {
 export type SkillGatePreloadSource = DomainSensingPreloadSource;
 
 /**
- * Why a preload was admitted. `productivity_allowlist` is the automatic route
- * and `explicit_ask` is the narrow escape a craft skill has to earn per turn.
+ * Why a preload was admitted. `productivity_allowlist` is the automatic route,
+ * `explicit_ask` is the narrow escape a craft skill has to earn per turn, and
+ * `user_launch` is a skill the user picked before the chat opened.
  */
-export type SkillPreloadReason = 'productivity_allowlist' | 'explicit_ask';
+export type SkillPreloadReason = 'productivity_allowlist' | 'explicit_ask' | 'user_launch';
+
+/** Why a candidate was refused: a sensing guard, the allowlist, or the surface. */
+export type SkillPreloadRefusalReason = SkillGateSuppressionReason | 'tools_unmounted';
 
 /**
  * Skills the runtime may preload automatically (founder decision 2026-09-03).
@@ -66,19 +82,21 @@ export type SkillPreloadReason = 'productivity_allowlist' | 'explicit_ask';
  * only on an explicit ask. Marketing skills stay registered, searchable, and
  * loadable; they just stop riding into every turn's prompt for free.
  *
- * Only skills a preload route can actually reach are listed: the three
- * operational skills whose write tools are mounted on a worker surface, the
- * two outcome-card skills, and the one single-skill domain. A skill in no
- * domain, outcome card, or intent kind — or whose tools are on no surface —
- * cannot fire and does not belong here (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08
- * F70). skill_search / skill_load and the external gateway are unaffected.
+ * Only skills a preload route can actually reach are listed: the four
+ * operational skills whose write tools are mounted on a worker surface (plan,
+ * goal, milestone, and risk writes joined both surfaces on 2026-09-18) and the
+ * project_audit outcome card. A skill in no domain, outcome card, or intent
+ * kind — or whose tools are on no surface — cannot fire and does not belong
+ * here (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F70). context_engineering_for_
+ * agent_work and project_forecast left on 2026-10-04: neither ever fired and
+ * neither is a BuildOS user job; an explicit ask still reaches them.
+ * skill_search / skill_load and the external gateway are unaffected.
  */
 export const PRODUCTIVITY_PRELOAD_ALLOWLIST: readonly string[] = [
 	'calendar_management',
-	'context_engineering_for_agent_work',
 	'document_workspace',
+	'plan_management',
 	'project_audit',
-	'project_forecast',
 	'task_management'
 ];
 
@@ -96,6 +114,11 @@ export type SkillGatePreload = {
 	payload: SkillHelpPayload;
 	promptContent: string;
 	materializedToolNames: string[];
+	/**
+	 * Other playbooks rendered in the same block. A user-launched skill keeps
+	 * this turn's operational write playbook beside it instead of dropping it.
+	 */
+	companionSkillIds?: string[];
 };
 
 /**
@@ -105,7 +128,7 @@ export type SkillGatePreload = {
  */
 export type SkillGatePreloadDecision = {
 	preload: SkillGatePreload | null;
-	gate_suppressed_by?: SkillGateSuppressionReason;
+	gate_suppressed_by?: SkillPreloadRefusalReason;
 };
 
 const PRELOAD_LIST_LIMIT = 6;
@@ -124,6 +147,11 @@ type SkillPreloadOptions = {
 	workerHeading?: string;
 	/** Worker-lane example selection; falls back to the first example. */
 	workerExampleHint?: OperationalExampleHint | null;
+	/**
+	 * Worker lane: the tool names mounted this turn. A skill whose declared
+	 * tools are all absent is refused (see skillToolsAreMounted).
+	 */
+	mountedToolNames?: readonly string[];
 };
 
 export function resolveSkillGatePreload(
@@ -200,9 +228,15 @@ export function resolveOperationalSkillPreload(params: {
 	toolNames: readonly string[];
 	craftAlternateSkillIds?: string[];
 }): (SkillGatePreload & { skillId: OperationalSkillId }) | null {
+	// An entity whose playbook this turn cannot preload (off the allowlist, or
+	// its tools unmounted) falls through to the next sensed entity instead of
+	// ending the route with no playbook at all.
 	const resolution = resolveOperationalSkillForTurn({
 		message: params.message,
-		toolNames: params.toolNames
+		toolNames: params.toolNames,
+		isSkillEligible: (skillId) =>
+			isProductivityPreloadSkill(skillId) &&
+			isSkillPreloadableOnTools(skillId, params.toolNames)
 	});
 	if (!resolution) return null;
 	const alternates = uniqueIds([
@@ -216,11 +250,79 @@ export function resolveOperationalSkillPreload(params: {
 		{
 			allowFollowupSkillLoad: false,
 			workerHeading: `Playbook for ${resolution.entityKind} writes this turn:`,
-			workerExampleHint: resolution.exampleHint
+			workerExampleHint: resolution.exampleHint,
+			mountedToolNames: params.toolNames
 		},
 		{ explicitAsk: false }
 	).preload;
 	return preload ? { ...preload, skillId: resolution.skillId } : null;
+}
+
+/**
+ * A skill the user picked before the chat opened (the public "Try in BuildOS"
+ * link), carried as the structured `requestedSkillId` on the launch's first
+ * turn. The client value is only a request: it must resolve in the registry,
+ * and the skill's tools must be mounted. It skips the productivity allowlist —
+ * a deliberate pick is the most explicit ask there is. When this turn's
+ * operational write playbook fired for a different skill, both render, the
+ * chosen skill first: dropping either would silently lose the user's pick or
+ * the write rules this turn's mutations depend on.
+ */
+export function resolveUserLaunchSkillPreload(params: {
+	skillId: string | null | undefined;
+	toolNames: readonly string[];
+	operationalPreload?: SkillGatePreload | null;
+}): SkillGatePreloadDecision {
+	const requestedId = (params.skillId ?? '').trim().toLowerCase();
+	const skill = requestedId ? getSkillById(requestedId) : undefined;
+	if (!skill) return { preload: null };
+	const operational = params.operationalPreload ?? null;
+	if (operational?.skillId === skill.id) {
+		return { preload: { ...operational, source: 'user_launch', reason: 'user_launch' } };
+	}
+	const decision = resolveSkillPreload(
+		skill.id,
+		[],
+		'user_launch',
+		{
+			allowFollowupSkillLoad: false,
+			workerHeading: `Playbook the user chose for this chat (${skill.name}):`,
+			mountedToolNames: params.toolNames
+		},
+		{ explicitAsk: false, userLaunch: true }
+	);
+	if (!decision.preload || !operational) return decision;
+	return {
+		preload: {
+			...decision.preload,
+			promptContent: `${decision.preload.promptContent}\n\n${operational.promptContent}`,
+			materializedToolNames: uniqueIds([
+				...decision.preload.materializedToolNames,
+				...operational.materializedToolNames
+			]),
+			companionSkillIds: [operational.skillId]
+		}
+	};
+}
+
+/**
+ * Structural surface check: a skill that declares tools needs at least one of
+ * them mounted this turn, or its playbook can only commission calls the turn
+ * cannot make. A skill that declares none is advisory and always passes.
+ */
+export function skillToolsAreMounted(
+	payload: Pick<SkillHelpPayload, 'materialized_tools'>,
+	mountedToolNames: readonly string[]
+): boolean {
+	const declared = payload.materialized_tools ?? [];
+	if (declared.length === 0) return true;
+	const mounted = new Set(mountedToolNames);
+	return declared.some((name) => mounted.has(name));
+}
+
+function isSkillPreloadableOnTools(skillId: string, mountedToolNames: readonly string[]): boolean {
+	const payload = loadSkill(skillId, { format: 'short', surface: 'chat_internal' });
+	return isSkillHelpPayload(payload) && skillToolsAreMounted(payload, mountedToolNames);
 }
 
 /**
@@ -231,6 +333,7 @@ function resolvePreloadReason(
 	skillId: string,
 	admission: SkillPreloadAdmission
 ): SkillPreloadReason | null {
+	if (admission.userLaunch) return 'user_launch';
 	if (isProductivityPreloadSkill(skillId)) return 'productivity_allowlist';
 	return admission.explicitAsk ? 'explicit_ask' : null;
 }
@@ -238,6 +341,8 @@ function resolvePreloadReason(
 type SkillPreloadAdmission = {
 	/** True when this turn earned a craft preload (see isExplicitSkillAskTurn). */
 	explicitAsk: boolean;
+	/** True for a registry-resolved skill the user picked at chat launch. */
+	userLaunch?: boolean;
 };
 
 function resolveSkillPreload(
@@ -263,6 +368,9 @@ function resolveSkillPreload(
 	const payload = loadSkill(skillId, { format: 'short', surface: 'chat_internal' });
 	if (!isSkillHelpPayload(payload)) {
 		return { preload: null };
+	}
+	if (options.mountedToolNames && !skillToolsAreMounted(payload, options.mountedToolNames)) {
+		return { preload: null, gate_suppressed_by: 'tools_unmounted' };
 	}
 
 	return {
