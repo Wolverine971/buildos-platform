@@ -1,10 +1,12 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Pool } from 'pg';
 import { trackPoolDisconnections } from './helpers/trackPoolDisconnections';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createLibriLifecycle, type LibriLifecyclePort } from '../src/workers/libri/lifecycle';
+import { createLibriCostLedger } from '../src/workers/libri/costLedger';
 import {
 	LibriMaintenanceConsumer,
 	createSyntheticLibriMaintenanceProcessor
@@ -84,7 +86,7 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 
 		const repositoryRoot = resolve(process.cwd(), '../..');
 		applySqlFile(
-			resolve(repositoryRoot, 'supabase/tests/fixtures/libri_worker_access_boundary_base.sql')
+			resolve(repositoryRoot, 'supabase/tests/fixtures/libri_provider_cost_ledger_base.sql')
 		);
 		applySql(`
 			INSERT INTO auth.users (id) VALUES ('${USER_ID}');
@@ -443,6 +445,92 @@ describePostgres('Libri lifecycle restricted-role PostgreSQL contract', () => {
 		`);
 		expect(terminal?.rows[0]).toEqual({ step_status: 'dead_letter', run_status: 'failed' });
 	}, 15_000);
+
+	it.each(['reserved', 'started', 'settled'] as const)(
+		'recovers an expired %s reservation without repeating paid work',
+		async (costStatus) => {
+			if (!adminPool || !workerPool) throw new Error('Missing disposable database');
+			const runId = randomUUID();
+			const stepId = randomUUID();
+			await adminPool.query(
+				`INSERT INTO libri.research_runs (
+				id, library_id, idempotency_key, queue_family, kind, subject_type,
+				requested_by_actor, planned_steps, cost_budget_microusd
+			) VALUES ($1::uuid,$2,($1::uuid)::text,'libri_maintenance','synthetic_paid','maintenance','system',1,100)`,
+				[runId, LIBRARY_ID]
+			);
+			await adminPool.query(
+				`INSERT INTO libri.research_steps (
+				id,library_id,run_id,idempotency_key,queue_family,kind,stage,position,max_attempts
+			) VALUES ($1::uuid,$2,$3,($1::uuid)::text,'libri_maintenance','synthetic_paid','resolve_subject',0,3)`,
+				[stepId, LIBRARY_ID, runId]
+			);
+			await lifecycle.enqueueStep({ stepId, priority: 1 });
+			const claim = await lifecycle.claimNextStep({
+				workerId: 'libri-worker:cost-recovery',
+				leaseDurationMs: 60_000,
+				stepIds: [stepId]
+			});
+			if (!claim || claim.kind !== 'claimed') throw new Error('Expected claim');
+			const ledger = createLibriCostLedger(workerPool);
+			const reservation = await ledger.reserveProviderCost({
+				stepId,
+				executionGeneration: claim.executionGeneration,
+				leaseToken: claim.leaseToken,
+				reservationKey: 'provider-call',
+				provider: 'openrouter',
+				model: 'offline-model',
+				reservedMicrousd: 50n
+			});
+			if (!reservation.reservationId) throw new Error('Missing reservation');
+			const identity = {
+				reservationId: reservation.reservationId,
+				executionGeneration: claim.executionGeneration,
+				leaseToken: claim.leaseToken
+			};
+			if (costStatus !== 'reserved') {
+				expect((await ledger.authorizeProviderCall(identity)).authorized).toBe(true);
+			}
+			if (costStatus === 'settled') {
+				await ledger.settleProviderCost({
+					...identity,
+					actualCostMicrousd: 30n,
+					promptTokens: 10n,
+					completionTokens: 5n,
+					providerRequestId: 'offline-result'
+				});
+			}
+			await adminPool.query(
+				`UPDATE libri.research_steps SET leased_at=now()-interval '2 minutes',
+				last_heartbeat_at=now()-interval '2 minutes',lease_expires_at=now()-interval '1 minute' WHERE id=$1`,
+				[stepId]
+			);
+			expect(await lifecycle.recoverStaleLeases()).toEqual({
+				retried: costStatus === 'reserved' ? 1 : 0,
+				deadLettered: costStatus === 'reserved' ? 0 : 1,
+				cancelled: 0
+			});
+			const state = await adminPool.query(
+				`SELECT step.status, step.error_class, cost.status AS cost_status,
+				cost.actual_cost_microusd::text AS actual_cost, run.status AS run_status
+				FROM libri.research_steps step JOIN libri.research_runs run ON run.id=step.run_id
+				JOIN libri.provider_cost_reservations cost ON cost.step_id=step.id WHERE step.id=$1`,
+				[stepId]
+			);
+			expect(state.rows[0]).toMatchObject({
+				status: costStatus === 'reserved' ? 'queued' : 'dead_letter',
+				cost_status: costStatus === 'reserved' ? 'released' : costStatus,
+				actual_cost: costStatus === 'settled' ? '30' : null,
+				error_class:
+					costStatus === 'reserved' ? 'stale_lease' : 'provider_reconciliation_required',
+				run_status: costStatus === 'reserved' ? 'running' : 'failed'
+			});
+			// Keep the unpaid retry out of the subsequent consumer test's queue.
+			if (costStatus === 'reserved')
+				await lifecycle.cancelRun({ runId, reason: 'offline_test_complete' });
+		},
+		15_000
+	);
 
 	it('runs the maintenance consumer end to end through the restricted login', async () => {
 		await lifecycle.enqueueStep({ stepId: CONSUMER_DECOY_STEP_ID, priority: 1 });
