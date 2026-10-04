@@ -1,16 +1,22 @@
+import {
+	type BookAgentProvider,
+	createBookAgentProcessor,
+	createBookAgentProvider
+} from './bookAgentProfile';
+import { LibriMaintenanceProcessorError } from './maintenanceConsumer';
 import type { LibriResearchRuntimeConfig } from '../../config/libriWorkerProfile';
 import type { LibriDatabasePort, LibriPgPool } from './database';
 import {
+	type SynthesisProvider,
 	createBookSynthesisProcessor,
-	createBookSynthesisProvider,
-	type SynthesisProvider
+	createBookSynthesisProvider
 } from './bookSynthesis';
 import {
 	LibriMaintenanceConsumer,
 	type LibriMaintenanceConsumerHealth
 } from './maintenanceConsumer';
 
-export const LIBRI_RESEARCH_TASK_TYPES = ['synthesize_book'] as const;
+export const LIBRI_RESEARCH_TASK_TYPES = ['synthesize_book', 'generate_agent_profile'] as const;
 
 /** Read-only readiness check. It neither changes controls nor admits work. */
 export function createLibriResearchReadiness(database: Pick<LibriPgPool, 'query'>) {
@@ -21,6 +27,8 @@ export function createLibriResearchReadiness(database: Pick<LibriPgPool, 'query'
 			 SELECT
 			  coalesce(has_function_privilege(current_user, to_regprocedure('libri.read_book_synthesis_input(uuid,integer,uuid)'), 'EXECUTE'), false)
 			  AND coalesce(has_function_privilege(current_user, to_regprocedure('libri.persist_book_synthesis_result(uuid,integer,uuid,uuid,uuid,uuid,text,jsonb,jsonb,bigint,bigint,bigint,text)'), 'EXECUTE'), false)
+			  AND coalesce(has_function_privilege(current_user,to_regprocedure('libri.read_book_agent_input(uuid,integer,uuid)'), 'EXECUTE'),false)
+			  AND coalesce(has_function_privilege(current_user,to_regprocedure('libri.persist_book_agent_result(uuid,integer,uuid,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,text,bigint,bigint,bigint,text)'), 'EXECUTE'),false)
 			  AND NOT EXISTS (
 			   SELECT 1 FROM libri.research_queue_controls
 			   WHERE dispatch_enabled AND (NOT supported_task_types <@ $1::text[] OR task_budget_microusd < $2::bigint)
@@ -166,6 +174,7 @@ export function createLibriResearchRuntime(options: {
 		| 'researchReadiness'
 		| 'tasks'
 		| 'synthesis'
+		| 'bookAgent'
 		| 'reserveProviderCost'
 		| 'authorizeProviderCall'
 		| 'settleProviderCost'
@@ -181,9 +190,37 @@ export function createLibriResearchRuntime(options: {
 	workerId: string;
 	/** Offline verification can provide a deterministic, free provider. */
 	provider?: SynthesisProvider;
+	agentProvider?: BookAgentProvider;
 }): LibriResearchRuntime {
 	const { database, config } = options;
 	const assertReady = () => database.researchReadiness.assertReady(config.reservedMicrousd);
+	const synthesis = createBookSynthesisProcessor(
+		{
+			execution: database.synthesis,
+			ledger: database,
+			provider:
+				options.provider ??
+				createBookSynthesisProvider({
+					apiKey: config.openRouterApiKey,
+					allowedModels: [config.model]
+				})
+		},
+		{ model: config.model, reservedMicrousd: config.reservedMicrousd }
+	);
+	const bookAgent = createBookAgentProcessor(
+		{
+			execution: database.bookAgent,
+			ledger: database,
+			provider:
+				options.agentProvider ??
+				createBookAgentProvider({
+					apiKey: config.openRouterApiKey,
+					allowedModels: [config.model]
+				})
+		},
+		{ model: config.model, reservedMicrousd: config.reservedMicrousd }
+	);
+
 	const consumer = new LibriMaintenanceConsumer({
 		lifecycle: {
 			claimNextStep: async (input) => {
@@ -194,19 +231,19 @@ export function createLibriResearchRuntime(options: {
 			completeStep: (input) => database.completeStep(input),
 			failStep: (input) => database.failStep(input)
 		},
-		processor: createBookSynthesisProcessor(
-			{
-				execution: database.synthesis,
-				ledger: database,
-				provider:
-					options.provider ??
-					createBookSynthesisProvider({
-						apiKey: config.openRouterApiKey,
-						allowedModels: [config.model]
-					})
-			},
-			{ model: config.model, reservedMicrousd: config.reservedMicrousd }
-		),
+		processor: {
+			execute(claim, signal) {
+				if (claim.payload.taskType === 'synthesize_book')
+					return synthesis.execute(claim, signal);
+				if (claim.payload.taskType === 'generate_agent_profile')
+					return bookAgent.execute(claim, signal);
+				throw new LibriMaintenanceProcessorError(
+					'unsupported_research_task',
+					'Research processor unavailable',
+					false
+				);
+			}
+		},
 		workerId: options.workerId,
 		config: { concurrency: options.concurrency, ...config.consumer },
 		claimQueueTypes: ['libri_research'],

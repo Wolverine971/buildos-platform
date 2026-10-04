@@ -1,3 +1,4 @@
+import { createBookAgentExecution } from '../src/workers/libri/bookAgentExecution';
 import {
 	createLibriResearchReadiness,
 	createLibriResearchRuntime
@@ -188,6 +189,7 @@ describe.skipIf(!available)('book synthesis restricted-role PostgreSQL completio
 					researchReadiness: createLibriResearchReadiness(worker),
 					tasks: createLibriTaskDispatcher(worker, lifecycle),
 					synthesis: execution,
+					bookAgent: createBookAgentExecution(worker),
 					reserveProviderCost: (input) => ledger.reserveProviderCost(input),
 					authorizeProviderCall: (input) => ledger.authorizeProviderCall(input),
 					settleProviderCost: (input) => ledger.settleProviderCost(input),
