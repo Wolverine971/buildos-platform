@@ -100,7 +100,19 @@ confirmation without dispatch, missing queue evidence, mismatched image hashes,
 revoked membership, exact receipts, rollback, replay and purge ordering. The final
 production-schema rehearsal includes client role probes and standing archived/project
 coverage checks. Read-only hosted preflight found zero publications and zero admissions.
-This change is not applied to production yet; exact-commit CI and release remain.
+Production release (October 4): PR #36 passed full CI and PostgreSQL 15 safety on
+`5a1feb3f92246db59a359f44a5afcb6186d0e646` (run `37167968422`) and merged as
+`ebe4960a980b2ff5242d94cd918d8de7ab556097`. A fresh production-schema rehearsal
+passed before applying this one file; migration history `20261004012059` is recorded.
+The file SHA-256 is `f19ebe75743f1c8e793f5b6ca27564b1a10405b074212e6ac0f88cd47cbd9b3d`.
+Read-only verification found all three receipt columns and the enabled trigger, no
+client/worker direct function execution, zero publications/admissions, and all 408
+images/private objects. Shared-schema fingerprint `7343e7b85fd83c998518322907ba0918`
+(17,988 signatures), forced RLS, role boundaries and people policy matched before/after.
+All 274 security findings in eight advisor groups were unchanged (observation times excluded).
+The first CLI history repair could not find the new file in the original checkout;
+linking this isolated worktree and repairing from its exact file succeeded. DDL was not replayed.
+Activation remains off.
 
 A normal user-facing OCR confirmation/admission flow and sustained worker activation
 are still required. This receipt closes the publication ledger's bookkeeping gap; it
