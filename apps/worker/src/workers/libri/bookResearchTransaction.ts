@@ -1,5 +1,6 @@
 import type { ClaimedLibriStep, LibriTransactionClient, LibriTransactionalPool } from './lifecycle';
 export type BookResearchUsage = {
+	provider?: 'openrouter' | 'tavily';
 	model: string;
 	providerRequestId: string;
 	costMicrousd: bigint;
@@ -68,7 +69,7 @@ export async function finishResearchClaim(
 			claim.executionGeneration,
 			claim.leaseToken,
 			JSON.stringify(result),
-			usage ? 'openrouter' : null,
+			usage ? (usage.provider ?? 'openrouter') : null,
 			usage?.model ?? null,
 			usage?.promptTokens.toString() ?? null,
 			usage?.completionTokens.toString() ?? null,

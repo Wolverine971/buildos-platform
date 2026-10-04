@@ -1,3 +1,5 @@
+import { createChapterExtractionProvider, createChapterSearchProvider } from './chapterResearch';
+import { createChapterResearchProcessor } from './chapterResearchProcessor';
 import {
 	type BookAgentProvider,
 	createBookAgentProcessor,
@@ -21,7 +23,10 @@ export const LIBRI_RESEARCH_TASK_TYPES = ['synthesize_book', 'generate_agent_pro
 /** Read-only readiness check. It neither changes controls nor admits work. */
 export function createLibriResearchReadiness(database: Pick<LibriPgPool, 'query'>) {
 	return {
-		async assertReady(reservedMicrousd: bigint): Promise<void> {
+		async assertReady(
+			reservedMicrousd: bigint,
+			taskTypes: readonly string[] = LIBRI_RESEARCH_TASK_TYPES
+		): Promise<void> {
 			const result = await database.query<{ ready: boolean }>(
 				`
 			 SELECT
@@ -29,11 +34,17 @@ export function createLibriResearchReadiness(database: Pick<LibriPgPool, 'query'
 			  AND coalesce(has_function_privilege(current_user, to_regprocedure('libri.persist_book_synthesis_result(uuid,integer,uuid,uuid,uuid,uuid,text,jsonb,jsonb,bigint,bigint,bigint,text)'), 'EXECUTE'), false)
 			  AND coalesce(has_function_privilege(current_user,to_regprocedure('libri.read_book_agent_input(uuid,integer,uuid)'), 'EXECUTE'),false)
 			  AND coalesce(has_function_privilege(current_user,to_regprocedure('libri.persist_book_agent_result(uuid,integer,uuid,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,text,bigint,bigint,bigint,text)'), 'EXECUTE'),false)
-			  AND NOT EXISTS (
+			  AND (NOT 'find_book_info'=ANY($1::text[]) OR (
+ coalesce(has_function_privilege(current_user,to_regprocedure('libri.read_chapter_research_plan(uuid,integer,uuid)'), 'EXECUTE'),false)
+ AND coalesce(has_function_privilege(current_user,to_regprocedure('libri.prepare_research_workflow(uuid,integer,uuid,jsonb)'), 'EXECUTE'),false)
+ AND coalesce(has_function_privilege(current_user,to_regprocedure('libri.read_chapter_research_input(uuid,integer,uuid)'), 'EXECUTE'),false)
+ AND coalesce(has_function_privilege(current_user,to_regprocedure('libri.persist_chapter_search_result(uuid,integer,uuid,uuid,text,jsonb,jsonb,bigint,text)'), 'EXECUTE'),false)
+ AND coalesce(has_function_privilege(current_user,to_regprocedure('libri.persist_chapter_research_result(uuid,integer,uuid,uuid,text,jsonb,jsonb,bigint,bigint,bigint,text)'), 'EXECUTE'),false)))
+ AND NOT EXISTS (
 			   SELECT 1 FROM libri.research_queue_controls
 			   WHERE dispatch_enabled AND (NOT supported_task_types <@ $1::text[] OR task_budget_microusd < $2::bigint)
 			  ) AS ready`,
-				[LIBRI_RESEARCH_TASK_TYPES, reservedMicrousd.toString()]
+				[taskTypes, reservedMicrousd.toString()]
 			);
 			if (result.rows.length !== 1 || result.rows[0].ready !== true) {
 				throw new Error(
@@ -184,16 +195,54 @@ export function createLibriResearchRuntime(options: {
 		| 'completeStep'
 		| 'failStep'
 		| 'recoverStaleLeases'
-	>;
+	> &
+		Partial<Pick<LibriDatabasePort, 'chapterResearch' | 'workflow'>>;
 	config: LibriResearchRuntimeConfig;
 	concurrency: number;
 	workerId: string;
 	/** Offline verification can provide a deterministic, free provider. */
 	provider?: SynthesisProvider;
 	agentProvider?: BookAgentProvider;
+	chapterSearchProvider?: ReturnType<typeof createChapterSearchProvider>;
+	chapterExtractionProvider?: ReturnType<typeof createChapterExtractionProvider>;
 }): LibriResearchRuntime {
 	const { database, config } = options;
-	const assertReady = () => database.researchReadiness.assertReady(config.reservedMicrousd);
+	const taskTypes = config.chapter
+		? [...LIBRI_RESEARCH_TASK_TYPES, 'find_book_info']
+		: LIBRI_RESEARCH_TASK_TYPES;
+	const assertReady = () =>
+		database.researchReadiness.assertReady(
+			config.reservedMicrousd + (config.chapter ? config.chapter.creditMicrousd * 2n : 0n),
+			taskTypes
+		);
+	if (config.chapter && (!database.chapterResearch || !database.workflow))
+		throw new Error('Chapter research capabilities unavailable');
+	const chapter =
+		config.chapter && database.chapterResearch
+			? createChapterResearchProcessor(
+					{
+						execution: database.chapterResearch,
+						ledger: database,
+						search:
+							options.chapterSearchProvider ??
+							createChapterSearchProvider({
+								apiKey: config.chapter.tavilyApiKey,
+								creditMicrousd: config.chapter.creditMicrousd
+							}),
+						extract:
+							options.chapterExtractionProvider ??
+							createChapterExtractionProvider({
+								apiKey: config.openRouterApiKey,
+								allowedModels: [config.model]
+							})
+					},
+					{
+						model: config.model,
+						searchReservedMicrousd: config.chapter.creditMicrousd * 2n,
+						extractionReservedMicrousd: config.reservedMicrousd
+					}
+				)
+			: null;
 	const synthesis = createBookSynthesisProcessor(
 		{
 			execution: database.synthesis,
@@ -233,6 +282,8 @@ export function createLibriResearchRuntime(options: {
 		},
 		processor: {
 			execute(claim, signal) {
+				if (claim.payload.taskType === 'find_book_info' && chapter)
+					return chapter.execute(claim, signal);
 				if (claim.payload.taskType === 'synthesize_book')
 					return synthesis.execute(claim, signal);
 				if (claim.payload.taskType === 'generate_agent_profile')
@@ -247,14 +298,20 @@ export function createLibriResearchRuntime(options: {
 		workerId: options.workerId,
 		config: { concurrency: options.concurrency, ...config.consumer },
 		claimQueueTypes: ['libri_research'],
-		claimTaskTypes: LIBRI_RESEARCH_TASK_TYPES,
+		claimTaskTypes: taskTypes,
 		processorManagesCompletion: true
 	});
 	return new LibriResearchRuntime({
 		consumer,
 		assertReady,
 		recover: () => database.recoverStaleLeases({ limit: 10, queueTypes: ['libri_research'] }),
-		dispatch: (signal) => database.tasks.dispatchPending(signal, 5),
+		dispatch: async (signal) => {
+			await database.tasks.dispatchPending(signal, 5);
+			if (chapter && database.workflow) {
+				await database.workflow.reconcile(signal, 30);
+				await database.workflow.dispatch(signal, 30);
+			}
+		},
 		maintenanceIntervalMs: config.maintenanceIntervalMs
 	});
 }

@@ -524,3 +524,45 @@ Libri app PR8 is merged as `9b3193d9d7a5e56d94bfef4294c772731d85df26`.
 Production `dpl_5qukQJKb2LMmXXZCqhRue3YxtjFS` is Ready, with that exact source identified
 in build logs. Original synthesis/agent buttons passed local browser checks, including
 force confirmation and queued receipts. The app/backend activation switches remain off.
+
+## Chapter search and extraction execution (October 4)
+
+`find_book_info` now plans one saved Tavily advanced-search stage and one OpenRouter
+extraction stage for each incomplete chapter. Missing/gaps modes preserve existing
+chapter fields; force requests regenerate requested fields. The original `chapter_details`
+book-page action uses the owner-scoped atomic admission and historical request receipt.
+Planning reads the complete bounded table of contents under book/chapter locks, validates
+optional chapter scope and admitted capacity, then creates all prerequisites atomically.
+
+Search receives only catalog identity, never notes or chapter passages. Saved evidence is
+bounded, provenance retains exact URLs, and extraction rejects unknown citations. Thin
+sources produce insufficient-evidence outcomes rather than invented completeness. Each
+provider stage has its own reservation and generation fence. Unknown paid outcomes require
+reconciliation; extraction cannot run before durable search completion. Concurrent manual
+changes preserve current fields and save generated candidates as non-current outdated
+artifacts. Field persistence, evidence/artifact versions, cost settlement and queue completion
+are transactional. Book synthesis and expert context now read topic/concept fields from the
+canonical enrichment payload used by imports and the chapter writer.
+
+The dedicated runtime registers chapters only with `LIBRI_CHAPTER_RESEARCH_ENABLED=true`,
+a Tavily key and an explicit positive per-credit micro-USD estimate. There is no assumed
+billing rate; usage records label the configured estimate rather than claiming invoice cost.
+All deployment/research switches remain off. No hosted test or paid provider call ran.
+
+Free validation: 60 focused worker/PostgreSQL regression checks passed; a final 24-test
+chapter/admission run additionally verifies original book action, force regeneration and
+historical replay. Source/test types, ESLint, formatting, SQL scope/inventory passed. The
+final four-migration rehearsal used a fresh production schema captured at 04:38:58 UTC,
+passed both standing invariants and retained identical role probes (one baseline anon
+failure, no authenticated failures). Its sole SECURITY finding is the previously reviewed
+owner-only authenticated admission RPC; all chapter lease capabilities are worker-only.
+
+PR45 qualified at `4ffa88765afb8aead03499fe8ad13af54d1b991a` in CI `37175888299`
+and merged as `e35ba6f07b74c2bbb7e3b810600d55c47040b553`. The exact migration
+`20261004035255` (SHA-256
+`81a9a113a3419525b3876d4c4b30f172c88853cee72dfe2df2bb4a202c4ad387`)
+was applied and recorded individually after fresh rehearsal. Shared-schema signatures
+changed before this release due to independent work; the new before/after baseline is
+identical at `46fa4609fd51a11c27b72cf7179f062c` across 10,569 signatures. All eight
+security advisor findings remain identical. Worker capability exists, authenticated access
+is denied, and production still has zero executable tasks and zero enabled libraries.

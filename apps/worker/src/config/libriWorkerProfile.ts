@@ -34,6 +34,7 @@ export type LibriUploadMaintenanceRuntimeConfig = Omit<
 > & { endpointUrl: string };
 
 export type LibriResearchRuntimeConfig = {
+	chapter?: { tavilyApiKey: string; creditMicrousd: bigint };
 	openRouterApiKey: string;
 	model: string;
 	reservedMicrousd: bigint;
@@ -141,7 +142,30 @@ export function loadLibriResearchRuntimeConfig(
 	const model = requireValue(environment.LIBRI_RESEARCH_MODEL, 'LIBRI_RESEARCH_MODEL');
 	if (!/^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(model))
 		throw new Error('Invalid Libri research model');
+	const chapterEnabled = parseBoolean(
+		environment.LIBRI_CHAPTER_RESEARCH_ENABLED,
+		false,
+		'LIBRI_CHAPTER_RESEARCH_ENABLED'
+	);
 	return {
+		...(chapterEnabled
+			? {
+					chapter: {
+						tavilyApiKey: requireValue(
+							environment.PRIVATE_TAVILY_API_KEY,
+							'PRIVATE_TAVILY_API_KEY'
+						),
+						creditMicrousd: parsePositiveBigint(
+							requireValue(
+								environment.LIBRI_TAVILY_CREDIT_MICROUSD,
+								'LIBRI_TAVILY_CREDIT_MICROUSD'
+							),
+							1000000n,
+							'LIBRI_TAVILY_CREDIT_MICROUSD'
+						)
+					}
+				}
+			: {}),
 		openRouterApiKey: requireValue(
 			environment.PRIVATE_OPENROUTER_API_KEY,
 			'PRIVATE_OPENROUTER_API_KEY'
