@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { Pool } from 'pg';
 import sharp from 'sharp';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LibriUploadConsumer } from '../src/workers/libri/uploadConsumer';
 import { createLibriUploadProcessing } from '../src/workers/libri/uploadProcessing';
 import { createLibriUploadDownloadAuthorizer } from '../src/workers/libri/uploadDownloadAuthorizer';
 import { createLibriUploadImageDownloader } from '../src/workers/libri/uploadImageDownload';
@@ -662,7 +663,10 @@ describePostgres(
 			const claim = await processing.claim({ libraryId, uploadId, leaseToken: randomUUID() });
 			if (!claim) throw new Error('Expected actual worker claim');
 			let rpcCalls = 0;
-			const provider = async (input: string | URL | Request, init?: RequestInit) => {
+			const provider = async (
+				input: string | URL | Request,
+				init?: globalThis.RequestInit
+			) => {
 				const body = JSON.parse(String(init?.body));
 				if (
 					new URL(String(input)).pathname ===
@@ -758,9 +762,19 @@ describePostgres(
 			).toBe('awaiting_verification');
 		});
 
-		it.each(['published', 'revoked', 'unknown_commit', 'failed_storage', 'rollback'])(
+		it.each([
+			'published',
+			'revoked',
+			'unknown_commit',
+			'failed_storage',
+			'rollback',
+			'consumer_published',
+			'consumer_unknown_commit'
+		])(
 			'publishes verified bytes through real SQL roles without unsafe compensation: %s',
-			async (scenario) => {
+			async (scenarioName) => {
+				const viaConsumer = scenarioName.startsWith('consumer_');
+				const scenario = viaConsumer ? scenarioName.slice(9) : scenarioName;
 				const declaration = {
 					filename: 'page.png',
 					imageType: 'page',
@@ -848,7 +862,7 @@ describePostgres(
 							if (scenario === 'rollback')
 								throw new Error('Simulated failed transaction');
 							await connection.query('COMMIT');
-							if (scenario === 'unknown_commit')
+							if (scenario === 'unknown_commit' && !result.already_published)
 								throw new Error('Simulated lost commit response');
 							return result;
 						} catch (cause) {
@@ -910,6 +924,21 @@ describePostgres(
 								'?token=' +
 								token
 						});
+					}
+					if (
+						url.pathname === '/rest/v1/image_upload_publications' &&
+						url.searchParams.get('select') === 'id,status,lease_token,attempt'
+					) {
+						expect(url.searchParams.get('library_id')).toBe('eq.' + libraryId);
+						expect(url.searchParams.get('upload_id')).toBe('eq.' + uploadId);
+						return Response.json(
+							(
+								await service.query(
+									'SELECT id,status,lease_token,attempt FROM libri.image_upload_publications WHERE library_id=$1 AND upload_id=$2 LIMIT 4',
+									[libraryId, uploadId]
+								)
+							).rows
+						);
 					}
 					if (url.pathname === '/rest/v1/image_upload_publications')
 						return Response.json(
@@ -1003,17 +1032,44 @@ describePostgres(
 						return Response.json({ Key: 'libri-assets/' + preparedRow.object_path });
 					}
 				});
-				const result = publisher.publish({
-					claim,
-					verified,
-					signal: new AbortController().signal
-				});
-				if (scenario === 'published') expect((await result).alreadyPublished).toBe(false);
-				else
-					await expect(result).rejects.toMatchObject({
-						code: 'publication_outcome_unknown',
-						mayHaveWrittenObject: true
+				if (viaConsumer) {
+					// Exercise the owned consumer with real restricted-role claims and the
+					// real server publication broker. No hosted I/O or paid OCR.
+					const consumer = new LibriUploadConsumer({
+						scope: { libraryId, uploadId, leaseToken: claim.leaseToken },
+						expiresAtMs: Date.now() + 120_000,
+						processing,
+						publisher,
+						verifier: { isBusy: () => false },
+						downloader: { isBusy: () => false, downloadAndVerify: async () => verified }
 					});
+					try {
+						await consumer.start();
+						await vi.waitFor(
+							() =>
+								expect(consumer.getHealth()).toMatchObject({
+									healthy: true,
+									completedJobs: 1
+								}),
+							{ timeout: 3_000 }
+						);
+					} finally {
+						await consumer.stop();
+					}
+				} else {
+					const result = publisher.publish({
+						claim,
+						verified,
+						signal: new AbortController().signal
+					});
+					if (scenario === 'published')
+						expect((await result).alreadyPublished).toBe(false);
+					else
+						await expect(result).rejects.toMatchObject({
+							code: 'publication_outcome_unknown',
+							mayHaveWrittenObject: true
+						});
+				}
 				expect(createObject).toHaveBeenCalledOnce();
 				const committed = ['published', 'unknown_commit'].includes(scenario);
 				const pub = (await admin.query('SELECT * FROM libri.image_upload_publications'))

@@ -1,5 +1,12 @@
 <!-- apps/web/docs/features/ontology/OVERDUE_TASK_TRIAGE_MODAL_SPEC.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Historical design proposal (July 7, 2026).** The original dashboard entrypoint has
+> since been removed, and the optional card/picker components below were proposed paths,
+> not a current implementation inventory. The triage modal still exists, but verify its
+> current callers and behavior in code before using this document as an implementation plan.
+
 # Overdue Task Triage Modal Spec
 
 **Last Updated**: July 7, 2026

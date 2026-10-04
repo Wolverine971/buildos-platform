@@ -184,7 +184,7 @@
 >
 	<header class="grid gap-3 border-b border-border px-4 pb-3.5 pt-4 sm:px-5">
 		<nav
-			class="flex flex-wrap items-center gap-1.5 text-[12.5px] text-muted-foreground"
+			class="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
 			aria-label="Where this project lives"
 		>
 			<button type="button" class="crumb" onclick={onCollapse}>Projects</button>
@@ -206,9 +206,7 @@
 				>
 					{project.name}
 				</h2>
-				<div
-					class="mt-1.5 flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground"
-				>
+				<div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 					{#if look?.pulse}
 						<span class="pulse pulse-{look.pulse}" title={look.reason}>
 							{PULSE_META[look.pulse].label}
@@ -252,7 +250,7 @@
 			<p class="max-w-[72ch] text-sm text-foreground">{nextStep || 'No next step yet.'}</p>
 		</div>
 		{#if description}
-			<p class="line-clamp-3 max-w-[72ch] text-[13px] text-muted-foreground">
+			<p class="line-clamp-3 max-w-[72ch] text-sm text-muted-foreground">
 				{description}
 			</p>
 		{/if}

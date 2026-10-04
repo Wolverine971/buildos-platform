@@ -998,7 +998,7 @@
 						/>{/if}
 				</span>
 			{/if}
-			<span class="truncate text-[13px] font-semibold text-foreground">
+			<span class="truncate text-sm font-semibold text-foreground">
 				{itemTitle(ghost.item)}
 			</span>
 		</div>

@@ -65,7 +65,7 @@
 	aria-hidden="true"
 >
 	<div class="flex items-start justify-between gap-2.5">
-		<span class="text-[14.5px] font-semibold leading-snug text-foreground text-balance">
+		<span class="text-sm font-semibold leading-snug text-foreground text-balance">
 			{project.name}
 		</span>
 		{#if look?.pulse}
@@ -78,7 +78,7 @@
 	{#if look}
 		<DesktopTaskMix mix={look.mix} />
 	{/if}
-	<p class="font-mono text-[11px] text-muted-foreground">
+	<p class="font-mono text-2xs text-muted-foreground">
 		{project.document_count}
 		{project.document_count === 1 ? 'doc' : 'docs'} · status {PROJECT_STATE_META[
 			projectState
@@ -88,21 +88,21 @@
 	{#if nextStep}
 		<div class="grid gap-0.5">
 			<span class="micro-label text-accent">NEXT STEP</span>
-			<p class="line-clamp-3 text-[13px] text-foreground">{nextStep}</p>
+			<p class="line-clamp-3 text-sm text-foreground">{nextStep}</p>
 		</div>
 	{/if}
 	{#if description}
-		<p class="line-clamp-3 text-[13px] text-muted-foreground">{description}</p>
+		<p class="line-clamp-3 text-sm text-muted-foreground">{description}</p>
 	{/if}
 	{#if inside.length}
-		<p class="text-[13px] text-foreground">
+		<p class="text-sm text-foreground">
 			<span class="micro-label text-muted-foreground">INSIDE</span>
 			{inside.map((child) => shortName(child.name, 28)).join(', ')}
 		</p>
 	{:else if parentName}
-		<p class="text-[13px] text-muted-foreground">Part of {parentName}</p>
+		<p class="text-sm text-muted-foreground">Part of {parentName}</p>
 	{/if}
-	<p class="border-t border-border pt-2 text-[11.5px] text-muted-foreground">
+	<p class="border-t border-border pt-2 text-xs text-muted-foreground">
 		Click to open · drag onto another project to put it inside
 	</p>
 </div>

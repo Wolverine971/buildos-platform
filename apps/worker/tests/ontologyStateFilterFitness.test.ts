@@ -131,7 +131,10 @@ describe('ontology state filter fitness', () => {
 		).flatMap(invalidStateFilters);
 
 		expect(findings).toEqual([]);
-	});
+	}, // This scans both apps and packages. Coverage instrumentation plus concurrent
+	// CI suites can exceed Vitest's five-second unit-test default; retain the
+	// complete scan and exact assertion while bounding the repository-wide pass.
+	30_000);
 
 	it('catches the 2026-07-06 brief filter', () => {
 		expect(enums.task_state).not.toContain('cancelled');

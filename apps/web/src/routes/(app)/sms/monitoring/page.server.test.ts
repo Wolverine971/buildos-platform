@@ -17,7 +17,7 @@ describe('/sms/monitoring page server', () => {
 		});
 	});
 
-	it('redirects non-admin users to the dashboard', async () => {
+	it('redirects non-admin users to projects', async () => {
 		await expect(
 			load({
 				locals: {
@@ -27,7 +27,7 @@ describe('/sms/monitoring page server', () => {
 				},
 				url: new URL('https://build-os.com/sms/monitoring')
 			} as any)
-		).rejects.toMatchObject({ status: 303, location: '/dashboard' });
+		).rejects.toMatchObject({ status: 303, location: '/projects' });
 	});
 
 	it('loads for admin users', async () => {

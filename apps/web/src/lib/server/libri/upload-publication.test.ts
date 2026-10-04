@@ -78,6 +78,7 @@ function fixture() {
 		streamResponse?: () => Response;
 		pending?: string;
 		providerStatus?: number;
+		inspectionRows?: unknown;
 	} = {};
 	let authorizations = 0,
 		infos = 0;
@@ -112,6 +113,12 @@ function fixture() {
 			});
 		}
 		if (url.pathname === '/rest/v1/image_upload_publications') {
+			if (url.searchParams.get('select') === 'id,status,lease_token,attempt') {
+				expect(url.searchParams.get('library_id')).toBe('eq.' + libraryId);
+				expect(url.searchParams.get('upload_id')).toBe('eq.' + uploadId);
+				expect(url.searchParams.get('limit')).toBe('4');
+				return Response.json(options.inspectionRows ?? []);
+			}
 			expect(url.searchParams.get('id')).toBe('eq.' + publicationId);
 			expect(url.searchParams.get('lease_token')).toBe('eq.' + leaseToken);
 			return Response.json([row]);
@@ -160,8 +167,9 @@ function fixture() {
 			headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				action,
-				...fence,
-				verified: v,
+				...(action === 'inspect'
+					? { libraryId, uploadId, leaseToken }
+					: { ...fence, verified: v }),
 				...(action === 'finalize' ? { publicationId } : {}),
 				...extra
 			})
@@ -177,6 +185,47 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 describe('Libri publication server control plane', () => {
+	it.each(['fresh', 'published', 'prepared', 'foreign_lease', 'invalid'])(
+		'inspects %s without issuing capabilities or modifying records',
+		async (mode) => {
+			const f = fixture();
+			if (mode !== 'fresh')
+				f.options.inspectionRows = [
+					{
+						id: publicationId,
+						status: mode === 'prepared' ? 'prepared' : 'published',
+						attempt: mode === 'invalid' ? 4 : 1,
+						lease_token: mode === 'foreign_lease' ? publicationId : leaseToken
+					}
+				];
+			const response = await f.broker(f.request('inspect'), f.config);
+			expect(response.status).toBe(mode === 'invalid' ? 503 : 200);
+			if (mode !== 'invalid')
+				expect(await response.json()).toEqual({
+					state: mode === 'fresh' || mode === 'published' ? mode : 'recovery_required'
+				});
+			expect(f.calls.map((c) => c.path)).toEqual(['/rest/v1/image_upload_publications']);
+		}
+	);
+	it.each(['unauthenticated', 'wrong_library', 'extra_fields', 'disabled'])(
+		'refuses %s inspection before provider access',
+		async (mode) => {
+			const f = fixture();
+			const request = f.request(
+				'inspect',
+				mode === 'wrong_library'
+					? { libraryId: uploadId }
+					: mode === 'extra_fields'
+						? { arbitrary: true }
+						: {}
+			);
+			if (mode === 'unauthenticated') request.headers.delete('authorization');
+			if (mode === 'disabled') f.config.enabled = false;
+			expect((await f.broker(request, f.config)).status).toBeGreaterThanOrEqual(400);
+			expect(f.fetchImpl).not.toHaveBeenCalled();
+		}
+	);
+
 	it('prepares one create-only capability and reauthorizes before disclosure', async () => {
 		const f = fixture(),
 			r = await f.broker(f.request(), f.config);
