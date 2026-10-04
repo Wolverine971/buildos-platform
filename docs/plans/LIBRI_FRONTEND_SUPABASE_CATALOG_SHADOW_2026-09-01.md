@@ -226,3 +226,27 @@ The combined production-schema rehearsal passes both standing checks and preserv
 role-probe results (one existing anon failure; zero authenticated failures). Four
 intentional client-definer findings, including the three preceding migrations, are
 reviewed here; worker-only execute notes are expected.
+
+## Queue dashboard and historical run reads (October 4)
+
+Migration `20261004024537_libri_research_queue_reads.sql` provides member-scoped invoker
+RPCs for exact queue counts, bounded current task samples, and current/archive run history.
+Dashboard counts are not truncated by a task-page limit. Failure samples retain the exact
+microsecond edit version; execution start time comes from the real root step. Run list
+summaries use stored/derived aggregate counts and load detailed outcomes only for one
+selected run. Each history branch is limited before combining the newest results.
+
+`research_queue_history` stores immutable import receipts separately from executable
+runs and tasks. Members can read; authenticated clients and the worker cannot mutate it,
+and the worker has no read grant. The archive has forced RLS and a current membership
+policy. It retains original counters, bounded outcomes, timestamps and dispatch filters,
+with source-record and archive hashes. No history row creates or links to executable work.
+Legacy running records display as archived, and the app labels historical sources clearly.
+The preserved August 29 export contains 2,606 queue runs; the app-side transform verifies
+its recorded SHA-256 before extraction. Import is idempotent, refuses conflicting stored
+records, and verifies every row after insertion. The archive ZIP remains unchanged.
+
+These reads add no security-definer function or shared-schema mutation. The current
+scheduler and task processors are still unqualified and disabled; UI reads must not
+advertise an enabled scheduler. Final-delta history refresh and hosted qualification
+remain part of the cutover gate.
