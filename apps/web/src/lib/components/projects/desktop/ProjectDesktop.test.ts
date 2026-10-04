@@ -474,7 +474,10 @@ describe('ProjectDesktop', () => {
 		// A task changes state in one tap; the list and tiles catch up.
 		await fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Call Ana' }));
-		await fireEvent.click(await screen.findByRole('button', { name: 'Mark done' }));
+		const markDone = (await screen.findByRole('button', { name: 'Mark done' })) as HTMLButtonElement;
+		// The reader renders this control before its full task has loaded.
+		await waitFor(() => expect(markDone.disabled).toBe(false));
+		await fireEvent.click(markDone);
 		await waitFor(() =>
 			expect(
 				fetchMock.mock.calls.find(
