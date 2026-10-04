@@ -1,8 +1,10 @@
 -- PSQL-ONLY / DISPOSABLE DATABASE ONLY. Never run against a linked database.
 \set ON_ERROR_STOP on
 \ir fixtures/libri_chapter_note_core_base.sql
-CREATE ROLE libri_worker NOLOGIN;
-CREATE ROLE libri_frontend_reader NOLOGIN;
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='libri_worker') THEN CREATE ROLE libri_worker NOLOGIN; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='libri_frontend_reader') THEN CREATE ROLE libri_frontend_reader NOLOGIN; END IF;
+END $$;
 \ir ../migrations/20261004012951_libri_application_activity.sql
 CREATE FUNCTION pg_temp.assert_true(value boolean, message text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN IF value IS DISTINCT FROM true THEN RAISE EXCEPTION '%',message; END IF; END $$;
