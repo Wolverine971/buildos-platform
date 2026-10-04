@@ -3,7 +3,12 @@ import {
 	lockResearchClaim,
 	researchTransaction
 } from './bookResearchTransaction';
-import type { ClaimedLibriStep, LibriLifecyclePort, LibriTransactionalPool } from './lifecycle';
+import type {
+	ClaimedLibriStep,
+	LibriLifecyclePort,
+	LibriTransactionClient,
+	LibriTransactionalPool
+} from './lifecycle';
 
 export type ChapterWorkflowStage = {
 	phase: 'chapter_search' | 'chapter_extract';
@@ -20,11 +25,17 @@ export function createLibriResearchWorkflow(
 	lifecycle: Pick<LibriLifecyclePort, 'enqueueStep'>
 ) {
 	return {
-		plan(claim: ClaimedLibriStep, stages: ChapterWorkflowStage[]) {
-			if (!Array.isArray(stages) || stages.length > 999)
-				throw new Error('Invalid workflow plan');
+		plan(
+			claim: ClaimedLibriStep,
+			input:
+				| ChapterWorkflowStage[]
+				| ((client: LibriTransactionClient) => Promise<ChapterWorkflowStage[]>)
+		) {
 			return researchTransaction(pool, async (client) => {
 				await lockResearchClaim(client, claim);
+				const stages = typeof input === 'function' ? await input(client) : input;
+				if (!Array.isArray(stages) || stages.length > 999)
+					throw new Error('Invalid workflow plan');
 				const authority = await client.query<{ allowed: boolean }>(
 					'SELECT libri.research_task_execution_allowed($1) AS allowed',
 					[claim.stepId]
