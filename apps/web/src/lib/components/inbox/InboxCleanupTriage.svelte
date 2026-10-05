@@ -37,7 +37,7 @@
 		TRIAGE_KEYS,
 		TRIAGE_VERDICT_LABEL,
 		buildTriageSteps,
-		chunkDecisions,
+		chunkQueuedEntries,
 		expandBatchStep,
 		groupQueuedByProject,
 		triageDecisionsFor,
@@ -169,32 +169,8 @@
 		await Promise.all(
 			groupQueuedByProject(batch).flatMap(({ projectId, entries }) =>
 				// Whole entries per request, so one item's rows never split across two saves.
-				chunkEntries(entries).map((chunk) => send(projectId, chunk, options))
+				chunkQueuedEntries(entries).map((chunk) => send(projectId, chunk, options))
 			)
-		);
-	}
-
-	function chunkEntries(entries: QueuedTriageDecision[]): QueuedTriageDecision[][] {
-		const chunks: QueuedTriageDecision[][] = [];
-		let currentChunk: QueuedTriageDecision[] = [];
-		let size = 0;
-		for (const entry of entries) {
-			if (currentChunk.length && size + entry.decisions.length > 40) {
-				chunks.push(currentChunk);
-				currentChunk = [];
-				size = 0;
-			}
-			currentChunk.push(entry);
-			size += entry.decisions.length;
-		}
-		if (currentChunk.length) chunks.push(currentChunk);
-		// A single item with more than 40 rows still goes, split by decisions.
-		return chunks.flatMap((chunk) =>
-			chunk.length === 1 && chunk[0].decisions.length > 40
-				? chunkDecisions(chunk[0].decisions).map((decisions) => [
-						{ ...chunk[0], decisions }
-					])
-				: [chunk]
 		);
 	}
 
@@ -287,7 +263,7 @@
 		if (!step || step.kind !== 'item') return;
 		if (!verdicts.includes(verdict)) return;
 		if (verdict === 'note') {
-			openNote();
+			void openNote();
 			return;
 		}
 		if (verdict === 'skip') {
@@ -343,9 +319,12 @@
 		void focusRoot();
 	}
 
-	function openNote() {
+	async function openNote() {
 		noteOpen = true;
 		noteText = '';
+		// Ready to type (or tap the mic) the moment it opens.
+		await tick();
+		rootEl?.querySelector<HTMLTextAreaElement>('textarea')?.focus();
 	}
 
 	function closeNote() {
@@ -487,7 +466,8 @@
 	} as const;
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- Keyboard shortcuts live on the region so they work wherever focus sits inside it. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
 	bind:this={rootEl}
 	tabindex="-1"

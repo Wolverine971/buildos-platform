@@ -313,6 +313,12 @@
 	}
 
 	function selectGroup(key: string, options: { focus?: boolean } = {}) {
+		if (key !== activeGroupKey && typeof document !== 'undefined') {
+			// Each project opens at its top, not wherever the last one was scrolled to.
+			void tick().then(() =>
+				document.querySelector('.inbox-spotlight-group')?.scrollTo(0, 0)
+			);
+		}
 		activeGroupKey = key;
 		if (options.focus && typeof document !== 'undefined') {
 			queueMicrotask(() => document.getElementById(groupTabId(key))?.focus());
@@ -1144,7 +1150,7 @@
 	showDragHandle={false}
 >
 	<div
-		class="flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4.25rem-var(--keyboard-height,0px))] min-h-0 flex-col overflow-hidden sm:h-auto sm:min-h-[55vh]"
+		class="flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4.25rem-var(--keyboard-height,0px))] min-h-0 flex-col overflow-hidden sm:h-[min(85dvh,60rem)]"
 	>
 		<div class="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
 			<div class="min-w-0">
@@ -1201,7 +1207,7 @@
 		</div>
 
 		{#if triageProjects}
-			<div class="flex min-h-0 flex-1 flex-col sm:max-h-[min(75vh,760px)]">
+			<div class="flex min-h-0 flex-1 flex-col">
 				<InboxCleanupTriage
 					projects={triageProjects}
 					onSendNote={triageSendNote}
@@ -1243,7 +1249,7 @@
 				class="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden lg:grid-cols-[240px_minmax(0,1fr)]"
 			>
 				<div
-					class="min-w-0 shrink-0 border-b border-border p-2 lg:max-h-[calc(85dvh-8rem)] lg:overflow-y-auto lg:border-b-0 lg:border-r"
+					class="min-w-0 shrink-0 border-b border-border p-2 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r"
 				>
 					<div
 						role="tablist"

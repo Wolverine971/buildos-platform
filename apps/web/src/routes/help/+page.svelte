@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/help/+page.svelte -->
 <script lang="ts">
+	import BuildOSLogo from '$lib/components/layout/BuildOSLogo.svelte';
 	import {
 		Brain,
 		Target,
@@ -81,24 +82,7 @@
 	<div class="bg-card py-20 rounded-lg">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 			<div class="flex justify-center mb-8">
-				<video
-					class="w-16 h-16 rounded-md"
-					autoplay
-					loop
-					muted
-					playsinline
-					aria-label="BuildOS Icon"
-				>
-					<!-- HEVC first: Safari drops VP9 alpha and paints a black square. -->
-					<source
-						src="/onboarding-assets/animations/brain-bolt-electric-icon.mov"
-						type={'video/quicktime; codecs="hvc1"'}
-					/>
-					<source
-						src="/onboarding-assets/animations/brain-bolt-electric-icon.webm"
-						type="video/webm"
-					/>
-				</video>
+				<BuildOSLogo class="w-16 h-16 rounded-md" alt="BuildOS" />
 			</div>
 			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-6">
 				How can we help you?

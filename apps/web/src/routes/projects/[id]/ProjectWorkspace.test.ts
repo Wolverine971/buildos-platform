@@ -565,7 +565,7 @@ describe('ProjectWorkspace edge states', () => {
 		vi.clearAllMocks();
 	});
 
-	it('loads a goal once and refreshes only that goal after a form save', async () => {
+	it('reads a goal in the reader, edits it in its form, and refreshes only that goal', async () => {
 		const originalFetch = vi.mocked(fetch).getMockImplementation()!;
 		let goal = { ...goals(1)[0]!, name: 'Launch goal', project_id: PROJECT_ID };
 		vi.mocked(fetch).mockImplementation(async (input, init) => {
@@ -579,16 +579,20 @@ describe('ProjectWorkspace edge states', () => {
 		});
 		render(ProjectWorkspace, { data: projectData({ goals: [goal] }) as any });
 		await fireEvent.click(screen.getByRole('button', { name: /Launch goal/ }));
-		// The real editor is lazy-loaded. Wait for its import separately so a cold
-		// CI transform is not mistaken for a missing form by the DOM query timeout.
+		// The reader is lazy-loaded. Wait for its import separately so a cold CI
+		// transform is not mistaken for a missing reader by the DOM query timeout.
 		await vi.dynamicImportSettled();
-		await screen.findByDisplayValue('Launch goal');
+		await screen.findByRole('heading', { name: 'Launch goal' });
+		// The click starts the read; the reader takes it instead of reading again.
 		expect(
 			vi
 				.mocked(fetch)
 				.mock.calls.filter(([url]) => String(url).includes(`/goals/${goal.id}/full`))
 		).toHaveLength(1);
-		await fireEvent.input(screen.getByDisplayValue('Launch goal'), {
+
+		await fireEvent.click(screen.getByRole('button', { name: /Edit goal/ }));
+		await vi.dynamicImportSettled();
+		await fireEvent.input(await screen.findByDisplayValue('Launch goal'), {
 			target: { value: 'Updated launch goal' }
 		});
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -919,6 +923,39 @@ describe('ProjectWorkspace edge states', () => {
 		expect(within(docs).getByText('Launch research')).toBeInTheDocument();
 		expect(within(docs).queryByText('RECENTLY UPDATED')).not.toBeInTheDocument();
 		expect(within(docs).queryByText('Quick access')).not.toBeInTheDocument();
+	});
+
+	it('opens a doc in the reader beside the tree instead of a modal', async () => {
+		const originalFetch = vi.mocked(fetch).getMockImplementation()!;
+		const document = { ...projectDocument(), content: 'Body of the research doc' };
+		vi.mocked(fetch).mockImplementation(async (input, init) => {
+			if (String(input).includes(`/api/onto/documents/${document.id}/full`)) {
+				return apiResponse({ document });
+			}
+			return originalFetch(input, init);
+		});
+		render(ProjectWorkspace, {
+			props: {
+				data: projectData({
+					documents: [document],
+					project: {
+						...projectData().project,
+						doc_structure: { version: 1, root: [{ id: document.id, order: 0 }] }
+					}
+				}) as any
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('tab', { name: 'Docs' }));
+		const docs = await screen.findByRole('tabpanel', { name: 'Docs' });
+		await fireEvent.click(await within(docs).findByText('Launch research'));
+		await vi.dynamicImportSettled();
+
+		expect(await screen.findByText('Body of the research doc')).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'Launch research' })).toBeInTheDocument();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+		// The tree stays beside the reader.
+		expect(within(docs).getByLabelText('Project document tree')).toBeInTheDocument();
 	});
 
 	it('lists documents missing from the tree as unlinked without refetching the tree', async () => {

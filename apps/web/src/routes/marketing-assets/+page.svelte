@@ -21,12 +21,13 @@
 	let bannerKind = $state('profile');
 	let disruptedTheme = $state('paper');
 	let status = $state('');
+	const motion = manifest.assets.filter((asset) => asset.category === 'motion');
 	const tabs: { id: Category; label: string }[] = [
 		{ id: 'all', label: 'Full collection' },
 		{ id: 'logos', label: 'Logo system' },
 		{ id: 'social', label: 'Social & covers' },
 		{ id: 'elements', label: 'Separated elements' },
-		{ id: 'motion', label: 'Motion' }
+		...(motion.length > 0 ? [{ id: 'motion' as const, label: 'Motion' }] : [])
 	];
 	const getAsset = (id: string) => manifest.assets.find((asset) => asset.id === id)!;
 	let logos = $derived(
@@ -44,7 +45,6 @@
 			(asset) => asset.category === 'elements' && !asset.id.endsWith('-ink')
 		)
 	);
-	const motion = manifest.assets.filter((asset) => asset.category === 'motion');
 	const colors = [
 		{ name: 'Signal', hex: '#F97316' },
 		{ name: 'Ink', hex: '#18181B' },
@@ -69,7 +69,7 @@
 	<title>Marketing assets · BuildOS</title>
 	<meta
 		name="description"
-		content="The BuildOS brand toolkit. Download Brainbolt logos, LinkedIn banners, social graphics, separated brand elements, and animation loops."
+		content="The BuildOS brand toolkit. Download Brainbolt logos, LinkedIn banners, social graphics, and separated brand elements."
 	/>
 </svelte:head>
 
@@ -133,8 +133,8 @@
 				/></a
 			>
 			<p>
-				{manifest.archive.fileCount} files · {formatBytes(manifest.archive.bytes)} · PNG, SVG
-				& video
+				{manifest.archive.fileCount} files · {formatBytes(manifest.archive.bytes)} · PNG &amp;
+				SVG{motion.length > 0 ? ' & video' : ''}
 			</p>
 		</div>
 	</header>
@@ -347,7 +347,7 @@
 		</section>
 	{/if}
 
-	{#if visible('motion')}
+	{#if motion.length > 0 && visible('motion')}
 		<section class="collection-section" aria-labelledby="motion-title">
 			<div class="section-heading">
 				<div>
@@ -403,7 +403,7 @@
 		<section class="collection-section essentials" aria-labelledby="essentials-title">
 			<div class="section-heading">
 				<div>
-					<p class="eyebrow">05 / Keep it BuildOS</p>
+					<p class="eyebrow">{motion.length > 0 ? '05' : '04'} / Keep it BuildOS</p>
 					<h2 id="essentials-title">The essentials</h2>
 				</div>
 				<a class="text-link" href="/marketing-assets/README.md" download

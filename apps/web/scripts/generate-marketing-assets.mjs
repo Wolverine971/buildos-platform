@@ -7,6 +7,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { zipSync } from 'fflate';
 
+sharp.concurrency(1);
 const web = fileURLToPath(new URL('..', import.meta.url));
 const root = path.resolve(web, '../..');
 const out = path.join(web, 'static/marketing-assets');
@@ -18,8 +19,9 @@ const archive = {};
 const assets = [];
 const embedded = async (file) =>
 	`data:image/png;base64,${(await readFile(file)).toString('base64')}`;
-const electricSource = path.join(web, 'brand-source/brain-bolt-big.png');
+const electricSource = path.join(web, 'brand-source/brain-bolt-refined.png');
 const electricOriginal = await embedded(electricSource);
+const electricSize = await sharp(electricSource).metadata();
 // 800px exceeds the largest placed mark (588px); retain the full standalone source.
 const electric = `data:image/png;base64,${(await sharp(electricSource).resize({ width: 800 }).png().toBuffer()).toString('base64')}`;
 const outline = await embedded(path.join(web, 'brand-source/brain-bolt-icon.png'));
@@ -140,11 +142,11 @@ await save({
 	id: 'brainbolt-electric',
 	name: 'Brainbolt · electric',
 	category: 'elements',
-	width: 1582,
-	height: 1380,
-	body: `<image href="${electricOriginal}" width="1582" height="1380"/>`,
+	width: electricSize.width,
+	height: electricSize.height,
+	body: `<image href="${electricOriginal}" width="${electricSize.width}" height="${electricSize.height}"/>`,
 	theme: 'ink',
-	description: 'The original electric Brainbolt on a transparent canvas.'
+	description: 'The approved refined Brainbolt on a transparent canvas.'
 });
 await save({
 	id: 'brainbolt-outline',
@@ -269,39 +271,10 @@ for (const [id, name, file] of [
 	});
 }
 
-for (const [key, name, description] of [
-	['electric', 'Electric', 'A quick spark for product reveals and energetic transitions.'],
-	['consistent-pulse', 'Steady pulse', 'An even rhythm for ambient brand moments.'],
-	['pulse', 'Pulse', 'A pronounced pulse for intros and emphasis.']
-]) {
-	const files = [];
-	for (const [label, suffix] of [
-		['WebM · alpha', '-transparent.webm'],
-		['MP4', '.mp4']
-	]) {
-		const filename = `brain-bolt-${key}${suffix}`;
-		const bytes = await readFile(
-			path.join(web, 'static/onboarding-assets/animations', filename)
-		);
-		archive[`motion/${filename}`] = [bytes, { level: 0 }];
-		files.push({
-			label,
-			url: `/onboarding-assets/animations/${filename}`,
-			bytes: bytes.length
-		});
-	}
-	assets.push({
-		id: `motion-${key}`,
-		name,
-		category: 'motion',
-		description,
-		preview: '/brain-bolt-electric-poster.webp',
-		theme: 'ink',
-		files
-	});
-}
+// The legacy motion loops contain the previous mark. Keep them out of the
+// current brand package until animation using the refined master is available.
 
-const guide = `# BuildOS marketing package\n\nThe original Brainbolt artwork, reusable logo compositions, social graphics, and existing motion loops.\n\n## Start here\n- Use logos/lockup-horizontal-paper.png on light backgrounds; the ink version uses light lettering for dark backgrounds.\n- Transparent PNGs drop into slides, documents, websites, and email signatures.\n- SVG compositions contain editable Arial text and embedded raster Brainbolt artwork. They are NOT fully vector masters. Use PNG for consistent typography across devices.\n- The standalone electric mark retains the existing 1582 × 1380 pixel source. Compositions embed an 800-pixel version, above their largest placed mark size, to keep files lighter. For oversized print, commission a fully vector master.\n- Elements contains the Brainbolt, Build, and OS separately. Blueprint brain and bolt include the original paper treatment.\n- Disrupted compositions intentionally pull the identity apart; use the intact horizontal lockup for routine identification.\n\n## Formats\n- LinkedIn profile: 1584 × 396 PNG, under 8 MB. Main copy avoids the lower-left profile photo. Preview the crop on LinkedIn before applying.\n- LinkedIn company: 4200 × 700 PNG. Preview the company cover crop before applying.\n- Square: 1080 × 1080; portrait: 1080 × 1350; story: 1080 × 1920; presentation: 1920 × 1080.\n- Story copy stays away from the top and bottom interface areas.\n- Motion: transparent WebM for compatible browsers/editors, original MP4 for broad support. MP4 includes the original background; it is not transparent.\n\n## Brand\nSignal orange #F97316. Ink #18181B. Paper #FAF9F6. Use deep orange #B85214 for small orange text on paper.\nKeep at least one quarter of the Brainbolt width clear around an intact logo. Do not stretch or crop the Brainbolt.\nUse a dark background behind light lettering. Keep the electric artwork in its original colors.\n\n## Messaging\nCategory: Thinking environment for people making complex things.\nPromise: Turn messy thinking into structured work.\nDifferentiator: The project remembers what matters.\n\n## Sources\nExisting repository assets; no new generated imagery or footage.\nBrand guide: docs/marketing/brand/brand-guide-1-pager.md.\nLinkedIn profile specifications: https://www.linkedin.com/help/linkedin/answer/a568217/add-or-change-the-background-photo-on-your-profile\n\nRebuild: pnpm --filter @buildos/web exec node scripts/generate-marketing-assets.mjs\n`;
+const guide = `# BuildOS marketing package\n\nThe approved refined Brainbolt, reusable logo compositions, and social graphics.\n\n## Start here\n- Use logos/lockup-horizontal-paper.png on light backgrounds; the ink version uses light lettering for dark backgrounds.\n- Transparent PNGs drop into slides, documents, websites, and email signatures.\n- SVG compositions contain editable Arial text and embedded raster Brainbolt artwork. They are NOT fully vector masters. Use PNG for consistent typography across devices.\n- The standalone electric mark uses the approved 1254 × 1254 pixel master. Compositions embed an 800-pixel version, above their largest placed mark size, to keep files lighter. For oversized print, commission a fully vector master.\n- Elements contains the Brainbolt, Build, and OS separately. Blueprint brain and bolt include the original paper treatment.\n- Disrupted compositions intentionally pull the identity apart; use the intact horizontal lockup for routine identification.\n\n## Formats\n- LinkedIn profile: 1584 × 396 PNG, under 8 MB. Main copy avoids the lower-left profile photo. Preview the crop on LinkedIn before applying.\n- LinkedIn company: 4200 × 700 PNG. Preview the company cover crop before applying.\n- Square: 1080 × 1080; portrait: 1080 × 1350; story: 1080 × 1920; presentation: 1920 × 1080.\n- Story copy stays away from the top and bottom interface areas.\n- Legacy motion loops are not included because they contain the previous Brainbolt artwork.\n\n## Brand\nSignal orange #F97316. Ink #18181B. Paper #FAF9F6. Use deep orange #B85214 for small orange text on paper.\nKeep at least one quarter of the Brainbolt width clear around an intact logo. Do not stretch or crop the Brainbolt.\nUse a dark background behind light lettering. Keep the electric artwork in its original colors.\n\n## Messaging\nCategory: Thinking environment for people making complex things.\nPromise: Turn messy thinking into structured work.\nDifferentiator: The project remembers what matters.\n\n## Sources\nRefined Brainbolt approved on 2026-10-05; master: apps/web/brand-source/brain-bolt-refined.png. Other illustrations retain their existing source artwork.\nBrand guide: docs/marketing/brand/brand-guide-1-pager.md.\nLinkedIn profile specifications: https://www.linkedin.com/help/linkedin/answer/a568217/add-or-change-the-background-photo-on-your-profile\n\nRebuild: pnpm --filter @buildos/web exec node scripts/generate-marketing-assets.mjs\n`;
 await writeFile(path.join(out, 'README.md'), guide);
 archive['README.md'] = Buffer.from(guide);
 const manifest = {

@@ -1,5 +1,25 @@
 # BuildOS Logo Files
 
+## Current Brainbolt symbol
+
+The refined purple/blue Brainbolt was approved on 2026-10-05. Its master is
+`apps/web/brand-source/brain-bolt-refined.png` (1254 × 1254, transparent PNG).
+Use `BuildOSLogo.svelte` for the shared UI mark, `/brain-bolt.webp` for image-only
+placements, and `/brain-bolt-80.png` for connector metadata. Existing email,
+favicon, app-install, notification, and plugin image URLs now use this artwork.
+
+Regenerate deployed icons and social previews with:
+`pnpm --filter @buildos/web exec node scripts/generate-brand-icons.mjs`.
+Rebuild the downloadable brand kit with:
+`pnpm --filter @buildos/web exec node scripts/generate-marketing-assets.mjs`.
+
+Legacy video loops contain the previous symbol. They are retained as source
+material but are no longer displayed in the app or included in the current
+marketing package. The wordmark and separate outline/blueprint illustrations
+remain independent assets.
+
+## Wordmark files
+
 This directory contains the BuildOS logo with gradient text matching the Navigation component styling.
 
 ## Available Files

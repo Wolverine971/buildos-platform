@@ -149,6 +149,39 @@ export function chunkDecisions<T>(list: T[], size = MAX_DECISIONS_PER_REQUEST): 
 	return chunks;
 }
 
+/**
+ * Whole entries per request, so one item's rows never split across two saves. An item with
+ * more rows than one request takes is the only thing split, by its decisions.
+ */
+export function chunkQueuedEntries(
+	entries: QueuedTriageDecision[],
+	size = MAX_DECISIONS_PER_REQUEST
+): QueuedTriageDecision[][] {
+	const chunks: QueuedTriageDecision[][] = [];
+	let current: QueuedTriageDecision[] = [];
+	let count = 0;
+	for (const entry of entries) {
+		if (entry.decisions.length > size) {
+			if (current.length) chunks.push(current);
+			current = [];
+			count = 0;
+			for (const decisions of chunkDecisions(entry.decisions, size)) {
+				chunks.push([{ ...entry, decisions }]);
+			}
+			continue;
+		}
+		if (current.length && count + entry.decisions.length > size) {
+			chunks.push(current);
+			current = [];
+			count = 0;
+		}
+		current.push(entry);
+		count += entry.decisions.length;
+	}
+	if (current.length) chunks.push(current);
+	return chunks;
+}
+
 /** Items a run covers, for "4 of 19". A batch counts every change in it. */
 export function triageItemCount(steps: TriageStep[]): number {
 	return steps.reduce(

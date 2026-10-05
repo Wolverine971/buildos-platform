@@ -5,6 +5,8 @@
 	tap; task and goal details open their usual editors. The header carries
 	Prev/Next and the depth toggles (list, focus, full page). On phones the same
 	actions sit in a thumb bar, and the handle (data-sheet-drag) drags the sheet.
+	A doc's "All details" opens the full doc editor (archive, add child, comments,
+	links); a task lists the docs made for it, which open here too.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
@@ -20,6 +22,7 @@
 		CircleCheck,
 		CircleDot,
 		CircleSlash,
+		FilePlus,
 		FileText,
 		Maximize2,
 		Minimize2,
@@ -40,6 +43,10 @@
 	} from '$lib/components/table-surfaces/document-embeds';
 	import { tableEmbedInsertion } from '$lib/components/table-surfaces/table-surface-utils';
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
+	import {
+		fetchTaskDocuments,
+		type TaskWorkspaceDocument
+	} from '$lib/services/ontology/task-document.service';
 	import {
 		KIND_WORD,
 		TASK_STATES,
@@ -93,12 +100,16 @@
 		fallbackTitle,
 		layout,
 		listShown,
+		canShowList = true,
 		chatOn,
 		phone,
 		detent = 'peek',
 		reloadKey = 0,
+		seed = null,
+		pageLink = true,
 		onClose,
 		onStep,
+		onOpen,
 		onToggleFocus,
 		onToggleList,
 		onChat,
@@ -115,13 +126,21 @@
 		fallbackTitle: string;
 		layout: ReaderLayout;
 		listShown: boolean;
+		/** False where there is no list to bring back (the reader always reads across). */
+		canShowList?: boolean;
 		chatOn: boolean;
 		phone: boolean;
 		detent?: SheetDetent;
 		/** Bumped when something else (chat, a move) may have changed the item. */
 		reloadKey?: number;
+		/** The item's first read, already made by the page (its own route). */
+		seed?: Record<string, unknown> | null;
+		/** False on the item's own page: there is no fuller page to open. */
+		pageLink?: boolean;
 		onClose: () => void;
 		onStep: (id: string) => void;
+		/** Open another item here (a doc made for the open task). */
+		onOpen?: (item: ReaderItem) => void;
 		onToggleFocus: () => void;
 		onToggleList: () => void;
 		onChat: () => void;
@@ -139,7 +158,19 @@
 
 	// ---------- Loading ----------
 
-	let loaded = $state<Loaded | null>(null);
+	function fromPayload(k: string, data: Record<string, any>): Loaded {
+		return {
+			key: k,
+			doc: data.document,
+			task: data.task,
+			goal: data.goal,
+			revision: data.editor_revision ?? null
+		};
+	}
+
+	let loaded = $state<Loaded | null>(untrack(() => (seed ? fromPayload(key, seed) : null)));
+	// The seeded item skips its first read; a reload still reads it fresh.
+	let seededKey: string | null = untrack(() => (seed ? key : null));
 	let loadError = $state('');
 	let reloadTick = $state(0);
 	const current = $derived(loaded?.key === key ? loaded : null);
@@ -149,6 +180,11 @@
 		const { kind, id } = item;
 		void reloadKey;
 		void reloadTick;
+		if (seededKey === k) {
+			seededKey = null;
+			return;
+		}
+		seededKey = null;
 		// An open editor keeps its text; it saves against the version it opened.
 		if (untrack(() => editing && loaded?.key === k)) return;
 		const controller = new AbortController();
@@ -157,14 +193,7 @@
 			.then(async (response) => {
 				const payload = await response.json().catch(() => null);
 				if (!response.ok) throw new Error(payload?.error || `Could not load this ${word}.`);
-				const data = payload?.data ?? {};
-				loaded = {
-					key: k,
-					doc: data.document,
-					task: data.task,
-					goal: data.goal,
-					revision: data.editor_revision ?? null
-				};
+				loaded = fromPayload(k, payload?.data ?? {});
 			})
 			.catch((cause) => {
 				if (controller.signal.aborted) return;
@@ -407,7 +436,42 @@
 	// ---------- Tasks and goals ----------
 
 	let taskBusy = $state(false);
-	let detailEditor = $state<'task' | 'goal' | null>(null);
+	// 'document' opens the open doc's full editor; 'task-doc' starts a doc for the open task.
+	let detailEditor = $state<'task' | 'goal' | 'document' | 'task-doc' | null>(null);
+
+	async function openDocDetails() {
+		if (editing) await finishEdit();
+		if (editing) return;
+		detailEditor = 'document';
+	}
+
+	// The docs made for a task (its old Workspace tab), loaded with the task.
+	let taskDocs = $state<{ taskId: string; docs: TaskWorkspaceDocument[] } | null>(null);
+	let taskDocsTick = $state(0);
+	const taskDocList = $derived(
+		taskDocs && taskDocs.taskId === current?.task?.id ? taskDocs.docs : null
+	);
+	$effect(() => {
+		const taskId = current?.task?.id;
+		void reloadKey;
+		void taskDocsTick;
+		if (!taskId) return;
+		let live = true;
+		fetchTaskDocuments(taskId)
+			.then((result) => {
+				if (!live) return;
+				taskDocs = {
+					taskId,
+					docs: result.documents.filter((entry) => entry.edge?.props?.role !== 'scratch')
+				};
+			})
+			.catch(() => {
+				if (live) taskDocs = { taskId, docs: [] };
+			});
+		return () => {
+			live = false;
+		};
+	});
 
 	async function setTaskState(next: string) {
 		const task = current?.task;
@@ -442,6 +506,11 @@
 
 	function detailsChanged() {
 		reloadTick += 1;
+		onChanged();
+	}
+
+	function taskDocMade() {
+		taskDocsTick += 1;
 		onChanged();
 	}
 
@@ -513,7 +582,7 @@
 		<div class="grab" data-sheet-drag aria-hidden="true"><span></span></div>
 	{/if}
 	<header class="head" data-sheet-drag={phone ? '' : undefined}>
-		{#if !phone}
+		{#if !phone && canShowList}
 			<button
 				type="button"
 				class="ib"
@@ -544,6 +613,16 @@
 						>Due {shortDate(current.task.due_at)}</span
 					>{/if}
 				{#if editing}<span class="save save-{saveState}">{SAVE_LABEL[saveState]}</span>{/if}
+				{#if item.kind === 'document' && current?.doc}
+					<button
+						type="button"
+						class="meta-link"
+						onclick={() => void openDocDetails()}
+						title="Archive, add a nested doc, comments, links and Document Interact"
+					>
+						All details
+					</button>
+				{/if}
 			</div>
 		</div>
 		{#if phone}
@@ -622,28 +701,32 @@
 						<Check class="h-4 w-4" />
 					</button>
 				{/if}
-				<button
-					type="button"
-					class="ib"
-					onclick={onToggleFocus}
-					aria-pressed={layout === 'focus' && !listShown}
-					title={layout === 'focus' ? 'Back to split (F)' : 'Focus (F)'}
-					aria-label={layout === 'focus' ? 'Back to split' : 'Focus'}
-				>
-					{#if layout === 'focus'}<Minimize2 class="h-4 w-4" />{:else}<Maximize2
-							class="h-4 w-4"
-						/>{/if}
-				</button>
-				<a
-					href={pageHref}
-					class="ib"
-					onclick={() => void flush()}
-					data-sveltekit-preload-data="hover"
-					title="Open the full page"
-					aria-label="Open the full page"
-				>
-					<ArrowUpRight class="h-4 w-4" />
-				</a>
+				{#if canShowList}
+					<button
+						type="button"
+						class="ib"
+						onclick={onToggleFocus}
+						aria-pressed={layout === 'focus' && !listShown}
+						title={layout === 'focus' ? 'Back to split (F)' : 'Focus (F)'}
+						aria-label={layout === 'focus' ? 'Back to split' : 'Focus'}
+					>
+						{#if layout === 'focus'}<Minimize2 class="h-4 w-4" />{:else}<Maximize2
+								class="h-4 w-4"
+							/>{/if}
+					</button>
+				{/if}
+				{#if pageLink}
+					<a
+						href={pageHref}
+						class="ib"
+						onclick={() => void flush()}
+						data-sveltekit-preload-data="hover"
+						title="Open the full page"
+						aria-label="Open the full page"
+					>
+						<ArrowUpRight class="h-4 w-4" />
+					</a>
+				{/if}
 				<button
 					type="button"
 					class="ib"
@@ -657,7 +740,12 @@
 		{/if}
 	</header>
 
-	<div class="body" class:table-body={isTable} data-autoscroll>
+	<div
+		class="body"
+		class:table-body={isTable}
+		class:across={!phone && !listShown}
+		data-autoscroll
+	>
 		{#if !current}
 			{#if loadError}
 				<div class="note" role="alert">
@@ -793,6 +881,54 @@
 			{:else}
 				<p class="muted">No description.</p>
 			{/if}
+			<section class="task-docs" aria-label="Docs for this task">
+				<div class="task-docs-head">
+					<span class="micro">Docs for this task</span>
+					{#if taskDocList?.length}<span class="count">{taskDocList.length}</span>{/if}
+					{#if canWrite}
+						<button
+							type="button"
+							class="act"
+							onclick={() => (detailEditor = 'task-doc')}
+						>
+							<FilePlus class="h-3.5 w-3.5" /> New doc
+						</button>
+					{/if}
+				</div>
+				{#if taskDocList === null}
+					<div
+						class="h-9 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
+						aria-busy="true"
+						aria-label="Loading docs"
+					></div>
+				{:else if taskDocList.length}
+					<ul>
+						{#each taskDocList as entry (entry.document.id)}
+							<li>
+								<button
+									type="button"
+									onclick={() =>
+										onOpen?.({ kind: 'document', id: entry.document.id })}
+								>
+									<FileText class="h-4 w-4 shrink-0 text-muted-foreground" />
+									<span class="truncate"
+										>{entry.document.title || 'Untitled'}</span
+									>
+									{#if entry.document.state_key}
+										<span class="tag"
+											>{stateLabel(entry.document.state_key)}</span
+										>
+									{/if}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="muted">
+						None yet. Notes, drafts and research for this task live here.
+					</p>
+				{/if}
+			</section>
 		{:else if current.goal}
 			{@const goal = current.goal}
 			{@const description = goal.description ?? goal.props?.description ?? ''}
@@ -822,7 +958,7 @@
 	{#if !phone}
 		<footer class="keys">
 			<span><kbd>↑</kbd> <kbd>↓</kbd> walk the list</span>
-			<span><kbd>F</kbd> focus</span>
+			{#if canShowList}<span><kbd>F</kbd> focus</span>{/if}
 			{#if item.kind === 'document' && canWrite && !isTable}<span><kbd>E</kbd> edit</span
 				>{/if}
 			<span><kbd>Esc</kbd> back out</span>
@@ -872,9 +1008,15 @@
 				<img src="/brain-bolt.webp" alt="" class="h-5 w-5 rounded object-cover" />
 				<span>Chat</span>
 			</button>
-			<a href={pageHref} onclick={() => void flush()}>
-				<ArrowUpRight class="h-5 w-5" /><span>Page</span>
-			</a>
+			{#if pageLink}
+				<a href={pageHref} onclick={() => void flush()}>
+					<ArrowUpRight class="h-5 w-5" /><span>Page</span>
+				</a>
+			{:else}
+				<button type="button" onclick={onClose}>
+					<X class="h-5 w-5" /><span>Close</span>
+				</button>
+			{/if}
 			<button
 				type="button"
 				disabled={!near.next}
@@ -899,7 +1041,23 @@
 	{/await}
 {/if}
 
-{#if detailEditor === 'task' && current?.task}
+{#if (detailEditor === 'document' && current?.doc) || (detailEditor === 'task-doc' && current?.task)}
+	{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
+		<DocumentModal
+			isOpen={true}
+			{projectId}
+			taskId={detailEditor === 'task-doc' ? (current?.task?.id ?? null) : null}
+			documentId={detailEditor === 'document' ? (current?.doc?.id ?? null) : null}
+			onClose={() => (detailEditor = null)}
+			onSaved={detailEditor === 'task-doc' ? taskDocMade : detailsChanged}
+			onDeleted={() => {
+				detailEditor = null;
+				onChanged();
+				if (item.kind === 'document') onClose();
+			}}
+		/>
+	{/await}
+{:else if detailEditor === 'task' && current?.task}
 	{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
 		<TaskEditModal
 			taskId={current.task.id}
@@ -1158,6 +1316,72 @@
 	.muted {
 		font-size: 13.5px;
 		color: hsl(var(--muted-foreground));
+	}
+	/* Reading across the whole width: the text keeps its measure, centered. */
+	.body.across > :global(*) {
+		margin-inline: auto;
+	}
+	.meta-link {
+		color: hsl(var(--muted-foreground));
+		text-decoration: underline;
+		text-decoration-color: hsl(var(--border-strong));
+		text-underline-offset: 3px;
+	}
+	.meta-link:hover {
+		color: hsl(var(--foreground));
+	}
+	.task-docs {
+		display: grid;
+		gap: 8px;
+		margin-top: 24px;
+		border-top: 1px solid hsl(var(--border));
+		padding-top: 14px;
+	}
+	.task-docs-head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.task-docs-head .act {
+		margin-left: auto;
+	}
+	.micro {
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: hsl(var(--muted-foreground));
+	}
+	.count {
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 11px;
+		color: hsl(var(--muted-foreground));
+	}
+	.task-docs ul {
+		display: grid;
+		gap: 2px;
+	}
+	.task-docs li button {
+		display: flex;
+		width: 100%;
+		min-height: 40px;
+		align-items: center;
+		gap: 10px;
+		border-radius: 8px;
+		padding: 6px 8px;
+		text-align: left;
+		font-size: 13.5px;
+		color: hsl(var(--foreground));
+	}
+	.task-docs li button:hover {
+		background: hsl(var(--muted));
+	}
+	.task-docs li button:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: -2px;
+	}
+	.task-docs .tag {
+		margin-left: auto;
 	}
 	.states {
 		display: inline-flex;

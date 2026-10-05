@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/onboarding/OnboardingModal.svelte -->
 <script lang="ts">
-	import { User, ChevronRight, Sparkles } from '$lib/icons/lucide';
-	import { prefersReducedMotion } from 'svelte/motion';
+	import { User, ChevronRight } from '$lib/icons/lucide';
+	import BuildOSLogo from '$lib/components/layout/BuildOSLogo.svelte';
 	import { onboardingStorageKey } from '$lib/utils/onboarding-state';
 	import { goto } from '$app/navigation';
 	import WelcomeModal from '$lib/components/ui/WelcomeModal.svelte';
@@ -43,26 +43,7 @@
 			<div
 				class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border border-border bg-muted shadow-ink-inner"
 			>
-				{#if prefersReducedMotion.current}
-					<Sparkles class="h-7 w-7 text-accent" />
-				{:else}<video
-						autoplay
-						loop
-						muted
-						playsinline
-						class="h-full w-full object-contain"
-						aria-label="BuildOS brain animation"
-					>
-						<!-- HEVC first: Safari drops VP9 alpha and paints a black square. -->
-						<source
-							src="/onboarding-assets/animations/brain-bolt-consistent-pulse-icon.mov"
-							type={'video/quicktime; codecs="hvc1"'}
-						/>
-						<source
-							src="/onboarding-assets/animations/brain-bolt-consistent-pulse-icon.webm"
-							type="video/webm"
-						/>
-					</video>{/if}
+				<BuildOSLogo class="h-full w-full" />
 			</div>
 		</div>
 	{/snippet}

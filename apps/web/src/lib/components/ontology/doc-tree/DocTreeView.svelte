@@ -856,7 +856,7 @@
 				</button>
 			</div>
 			{#if !loading && !error && enrichedTree.length > 0}<span
-					class="hidden text-2xs text-muted-foreground sm:inline {enableDragDrop
+					class="doc-tree-updated-head hidden text-2xs text-muted-foreground sm:inline {enableDragDrop
 						? 'mr-10'
 						: ''}">Updated</span
 				>{/if}
@@ -916,7 +916,7 @@
 	{:else}
 		{#if !(imagesLoaded && canEdit)}
 			<div
-				class="hidden justify-end px-4 pt-1 text-2xs text-muted-foreground sm:flex {enableDragDrop
+				class="doc-tree-updated-head hidden justify-end px-4 pt-1 text-2xs text-muted-foreground sm:flex {enableDragDrop
 					? 'pr-16'
 					: ''}"
 			>

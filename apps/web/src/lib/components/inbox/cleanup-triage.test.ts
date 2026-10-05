@@ -4,6 +4,7 @@ import type { ProjectCleanupItem, ProjectCleanupView } from '@buildos/shared-typ
 import {
 	buildTriageSteps,
 	chunkDecisions,
+	chunkQueuedEntries,
 	expandBatchStep,
 	groupQueuedByProject,
 	triageDecisionsFor,
@@ -163,6 +164,25 @@ describe('saving', () => {
 			['p1', ['1', '3']],
 			['p2', ['2']]
 		]);
+	});
+
+	it('keeps each item whole across requests and splits only an oversized item', () => {
+		const entry = (key: string, rows: number) => ({
+			stepKey: key,
+			projectId: 'p1',
+			items: [],
+			decisions: Array.from({ length: rows }, (_, index) => ({
+				suggestion_id: `${key}-${index}`,
+				action: 'dismiss' as const
+			}))
+		});
+		const chunks = chunkQueuedEntries(
+			[entry('a', 3), entry('b', 2), entry('c', 7), entry('d', 2)],
+			5
+		);
+		expect(
+			chunks.map((chunk) => chunk.map((e) => `${e.stepKey}:${e.decisions.length}`))
+		).toEqual([['a:3', 'b:2'], ['c:5'], ['c:2'], ['d:2']]);
 	});
 
 	it('chunks to the endpoint limit', () => {

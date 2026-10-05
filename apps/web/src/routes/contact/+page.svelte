@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/contact/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import BuildOSLogo from '$lib/components/layout/BuildOSLogo.svelte';
 	import {
 		ArrowRight,
 		ExternalLink,
@@ -12,32 +12,6 @@
 		Twitter
 	} from '$lib/icons/lucide';
 	import SEOHead from '$lib/components/SEOHead.svelte';
-
-	let brandVideo: HTMLVideoElement;
-
-	onMount(() => {
-		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-		const syncPlayback = () => {
-			if (mediaQuery.matches) {
-				brandVideo.pause();
-				try {
-					brandVideo.currentTime = 0;
-				} catch {
-					// Metadata may not be ready yet; pausing still honors the preference.
-				}
-				return;
-			}
-
-			void brandVideo.play().catch(() => {
-				// Browser autoplay policy may keep the decorative video paused.
-			});
-		};
-
-		syncPlayback();
-		mediaQuery.addEventListener('change', syncPlayback);
-		return () => mediaQuery.removeEventListener('change', syncPlayback);
-	});
 
 	const contactPaths = [
 		{
@@ -96,36 +70,7 @@
 					<div
 						class="flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-card shadow-ink"
 					>
-						<video
-							bind:this={brandVideo}
-							poster="/brain-bolt-80.png"
-							class="h-10 w-10 motion-reduce:hidden"
-							width="40"
-							height="40"
-							preload="metadata"
-							loop
-							muted
-							playsinline
-							aria-hidden="true"
-						>
-							<!-- HEVC first: Safari drops VP9 alpha and paints a black square. -->
-							<source
-								src="/onboarding-assets/animations/brain-bolt-electric-icon.mov"
-								type={'video/quicktime; codecs="hvc1"'}
-							/>
-							<source
-								src="/onboarding-assets/animations/brain-bolt-electric-icon.webm"
-								type="video/webm"
-							/>
-						</video>
-						<img
-							src="/brain-bolt-80.png"
-							alt=""
-							class="hidden h-10 w-10 motion-reduce:block"
-							width="40"
-							height="40"
-							aria-hidden="true"
-						/>
+						<BuildOSLogo class="h-10 w-10" />
 					</div>
 				</div>
 

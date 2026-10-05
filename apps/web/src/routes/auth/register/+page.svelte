@@ -10,7 +10,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import AuthShell from '$lib/components/auth/AuthShell.svelte';
-	import AnimatedBrainBolt from '$lib/components/layout/AnimatedBrainBolt.svelte';
+	import BuildOSLogo from '$lib/components/layout/BuildOSLogo.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 	import { authErrorMessage } from '$lib/utils/auth-status';
@@ -416,7 +416,7 @@
 
 <AuthShell width="md">
 	<div class="text-center">
-		<AnimatedBrainBolt class="mx-auto w-12 rounded-lg" />
+		<BuildOSLogo class="mx-auto w-12 rounded-lg" />
 		<h1 class="mt-5 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
 			Join BuildOS
 		</h1>

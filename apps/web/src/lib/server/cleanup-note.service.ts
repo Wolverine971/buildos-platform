@@ -207,6 +207,9 @@ export async function actOnCleanupNote(params: {
 	}
 
 	const [lead, ...rest] = item.rows;
+	if (!lead) {
+		return { ok: false, status: 404, message: 'This item is no longer in the cleanup list.' };
+	}
 	const clarification = [
 		`Owner's note: ${note}`,
 		reading.agentBrief ? `What to do: ${reading.agentBrief}` : null,

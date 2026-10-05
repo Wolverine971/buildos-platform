@@ -10,6 +10,11 @@
 
 	The route intentionally reuses the production project loader and existing task/document
 	editors. It is a live prototype, not a static mock.
+
+	Docs, tasks and goals open in the reader (the Projects card's): beside the doc tree or
+	the task list on wide screens (the board folds into a list while one is open), across
+	the page on Overview and Activity, and as a sheet on phones. The URL keeps
+	`?entity=…&entity_id=…`, so Back closes it and links still land on the item.
 -->
 <script lang="ts">
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
@@ -28,6 +33,18 @@
 	} from '$lib/components/project/project-mutation-refresh';
 	import { browser } from '$app/environment';
 	import { goto, pushState, replaceState } from '$app/navigation';
+	import { MediaQuery } from 'svelte/reactivity';
+	import ReaderPanes from '$lib/components/projects/desktop/ReaderPanes.svelte';
+	import ReaderTaskList from '$lib/components/projects/desktop/ReaderTaskList.svelte';
+	import {
+		groupTasksForReader,
+		taskReaderOrder
+	} from '$lib/components/projects/desktop/reader-task-groups';
+	import type {
+		ChatScope,
+		ReaderItem,
+		ReaderKind
+	} from '$lib/components/projects/desktop/reader-model';
 	import { buildRecordHref } from '@buildos/shared-types';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -285,6 +302,92 @@
 	let showAllRisks = $state(false);
 	let entityHistoryOwned = false;
 	let entityClosePending = false;
+
+	// ---------- Reader ----------
+
+	type PanesApi = {
+		open: (item: ReaderItem) => void;
+		close: () => Promise<void>;
+		handleKey: (event: KeyboardEvent) => boolean;
+	};
+	let panes = $state<PanesApi | null>(null);
+	let readerItem = $state<ReaderItem | null>(null);
+	let readerReload = $state(0);
+	let readerChatOpen = $state(false);
+	let readerChatScope = $state<ChatScope>('project');
+	let showDoneTasks = $state(false);
+	const phoneQuery = new MediaQuery('max-width: 767px', false);
+	const phone = $derived(phoneQuery.current);
+	/** Wide screens read beside a list; the page then holds still and its panes scroll. */
+	const readingWide = $derived(Boolean(readerItem) && !phone);
+	const readerHasList = $derived(activeTab === 'docs' || activeTab === 'work');
+
+	const taskGroups = $derived(groupTasksForReader(tasks));
+	const docOrder = $derived.by(() => {
+		const ids: string[] = [];
+		const walk = (nodes: { id: string; children?: unknown[] }[]) => {
+			for (const node of nodes) {
+				ids.push(node.id);
+				walk((node.children ?? []) as { id: string; children?: unknown[] }[]);
+			}
+		};
+		walk((docTreeStructure?.root ?? []) as { id: string; children?: unknown[] }[]);
+		return ids;
+	});
+
+	function readerOrder(kind: ReaderKind): string[] {
+		if (kind === 'document') return docOrder;
+		if (kind === 'task') return taskReaderOrder(taskGroups, showDoneTasks);
+		return activeGoals.map((goal) => goal.id);
+	}
+
+	function readerTitle(item: ReaderItem): string {
+		if (item.kind === 'document') {
+			return (
+				docTreeDocuments[item.id]?.title ??
+				documents.find((document) => document.id === item.id)?.title ??
+				''
+			);
+		}
+		if (item.kind === 'task') return tasks.find((task) => task.id === item.id)?.title ?? '';
+		return goals.find((goal) => goal.id === item.id)?.name ?? '';
+	}
+
+	function readerChanged() {
+		if (readerItem) void refreshEntity(readerItem.kind, readerItem.id);
+		else void refreshProject();
+	}
+
+	// The page holds still while reading on wide screens: the panes fill the window
+	// below the header and scroll on their own. Where the page was is restored after.
+	let readerHost = $state<HTMLElement | null>(null);
+	let readerHostTop = $state(0);
+	let scrollBeforeReading = 0;
+	let wasReadingWide = false;
+	$effect(() => {
+		const wide = readingWide;
+		untrack(() => {
+			if (wide === wasReadingWide) return;
+			wasReadingWide = wide;
+			if (wide) {
+				scrollBeforeReading = window.scrollY;
+				window.scrollTo({ top: 0 });
+				void tick().then(() => {
+					readerHostTop = Math.max(0, readerHost?.getBoundingClientRect().top ?? 0);
+				});
+			} else {
+				const restore = scrollBeforeReading;
+				void tick().then(() => window.scrollTo({ top: restore }));
+			}
+		});
+	});
+
+	function readerKeydown(event: KeyboardEvent) {
+		if (event.defaultPrevented || (!readerItem && !readerChatOpen)) return;
+		// A modal over the reader keeps its own keys.
+		if (document.querySelector('[role="dialog"]')) return;
+		if (panes?.handleKey(event)) event.preventDefault();
+	}
 
 	const access = $derived((data.access ?? DEFAULT_ACCESS) as Access);
 	const canEdit = $derived(access.canEdit);
@@ -566,14 +669,25 @@
 	}
 
 	function selectTab(tab: WorkspaceTab, updateUrl = true) {
+		// A new tab shows its own content: the reader closes with the switch.
+		const closingReader = Boolean(readerItem) && tab !== activeTab;
+		if (closingReader) {
+			resetEntityEditors();
+			entityHistoryOwned = false;
+		}
 		activeTab = tab;
 		const tabIndex = TAB_ORDER.indexOf(tab);
 		void tick().then(() => {
 			tabButtons[tabIndex]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
 		});
-		if (!browser || !updateUrl) return;
+		if (!browser || (!updateUrl && !closingReader)) return;
 		const url = new URL(window.location.href);
 		url.searchParams.set('view', tab);
+		if (closingReader) {
+			url.searchParams.delete('entity');
+			url.searchParams.delete('entity_id');
+			url.searchParams.delete('id');
+		}
 		replaceState(resolve(`${url.pathname}${url.search}${url.hash}` as `/projects/${string}`), {
 			...page.state
 		});
@@ -720,6 +834,7 @@
 	}
 
 	function resetEntityEditors() {
+		readerItem = null;
 		editingTaskId = null;
 		showDocumentModal = false;
 		activeDocumentId = null;
@@ -731,13 +846,18 @@
 		resetEntityEditors();
 		switch (action.kind) {
 			case 'task':
-				editingTaskId = action.entityId;
+			case 'goal':
+				readerItem = { kind: action.kind, id: action.entityId };
 				break;
 			case 'document':
-				activeDocumentId = action.entityId;
-				showDocumentModal = true;
+				// A parent's shared doc keeps its modal: it reads and saves in the parent.
+				if (family?.parent && family.shelf.some((doc) => doc.id === action.entityId)) {
+					activeDocumentId = action.entityId;
+					showDocumentModal = true;
+				} else {
+					readerItem = { kind: 'document', id: action.entityId };
+				}
 				break;
-			case 'goal':
 			case 'plan':
 			case 'milestone':
 			case 'risk':
@@ -760,9 +880,11 @@
 		}
 
 		prepareEntityModalData(resolution.action.kind, resolution.action.entityId);
-		void preloadProjectEntityModal(resolution.action.kind).catch((error) => {
-			console.warn('[Project workspace] Failed to preload entity editor', error);
-		});
+		if (!['document', 'task', 'goal'].includes(resolution.action.kind)) {
+			void preloadProjectEntityModal(resolution.action.kind).catch((error) => {
+				console.warn('[Project workspace] Failed to preload entity editor', error);
+			});
+		}
 		entityClosePending = false;
 
 		if (browser) {
@@ -1036,6 +1158,7 @@
 				return;
 			}
 			if (!event || !mutationAffectsProject(event.summary, project.id)) return;
+			if (readerItem) readerReload += 1;
 			void refreshQueue.enqueue(event.summary);
 			freshness.scheduleRefresh();
 		});
@@ -1048,6 +1171,7 @@
 
 <svelte:window
 	onpopstate={handleWorkspacePopState}
+	onkeydown={readerKeydown}
 	onfocus={() => void hydrateContextDocument(true)}
 />
 
@@ -1206,7 +1330,11 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-7xl px-2 py-3 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
+	<main
+		class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 {readingWide
+			? 'py-3'
+			: 'py-3 sm:py-5 lg:py-6'}"
+	>
 		{#if hydrationError}
 			<div
 				class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak"
@@ -1244,7 +1372,7 @@
 			</div>
 		{/if}
 
-		{#if (activeTab === 'overview' || activeTab === 'docs') && !hydrationError}
+		{#if (activeTab === 'overview' || activeTab === 'docs') && !hydrationError && !readingWide}
 			<div class="workspace-toolbar mb-3">
 				{#if isHydrating}
 					<div
@@ -1288,628 +1416,737 @@
 			</div>
 		{/if}
 
-		{#if activeTab === 'work'}
-			<div
-				id="workspace-work"
-				class="workspace-panel"
-				role="tabpanel"
-				aria-labelledby="workspace-tab-work"
-				aria-busy={isHydrating}
-				tabindex="0"
+		<div
+			class="reader-host"
+			class:reading={readingWide}
+			bind:this={readerHost}
+			style:--host-top="{readerHostTop}px"
+		>
+			<ReaderPanes
+				bind:this={panes}
+				bind:chatOpen={readerChatOpen}
+				bind:chatScope={readerChatScope}
+				projectId={project.id}
+				projectName={project.name || 'Untitled project'}
+				canWrite={canEdit}
+				reader={readerItem}
+				reloadKey={readerReload}
+				hasList={readerHasList}
+				order={readerOrder}
+				titleOf={readerTitle}
+				onOpenItem={(item) => openEntity(item.kind, item.id)}
+				onCloseItem={closeEntityEditor}
+				onChanged={readerChanged}
 			>
-				{#if isHydrating}
-					<div
-						class="min-h-[430px] animate-pulse border-y border-border bg-card motion-reduce:animate-none"
-						aria-label="Loading task board"
-					></div>
-				{:else if workspaceReady}
-					{#await import('$lib/components/project/v2/TaskKanbanBoard.svelte')}
+				{#snippet list()}
+					{#if activeTab === 'work'}
 						<div
-							class="min-h-[430px] animate-pulse border-y border-border bg-card motion-reduce:animate-none"
-							aria-label="Loading task board"
-						></div>
-					{:then { default: TaskKanbanBoard }}
-						<TaskKanbanBoard
-							projectId={project.id}
-							{tasks}
-							{tasksCoverage}
-							{canEdit}
-							onEditTask={(id) => openEntity('task', id)}
-							onTaskMoved={(id, state) =>
-								void refreshEntity(
-									'task',
-									id,
-									state === 'archived' ? 'delete' : 'update'
-								)}
-							onLoadMoreTasks={loadMoreTasks}
+							id="workspace-work"
+							class="workspace-panel"
+							role="tabpanel"
+							aria-labelledby="workspace-tab-work"
+							aria-busy={isHydrating}
+							tabindex="0"
 						>
-							{#snippet search()}
-								<ProjectEntitySearchCombobox
-									projectId={project.id}
-									scope="work"
-									variant="toolbar"
-									placeholder="Search tasks..."
-									onSelectEntity={(type, id) => openEntity(type, id)}
-								/>
-							{/snippet}
-							{#snippet createAction()}
-								{#if canEdit}
-									<Button
-										variant="outline"
-										size="sm"
-										icon={Plus}
-										onclick={() => (showTaskCreateModal = true)}
-										>New task</Button
-									>
+							{#if isHydrating}
+								<div
+									class="min-h-[430px] animate-pulse border-y border-border bg-card motion-reduce:animate-none"
+									aria-label="Loading task board"
+								></div>
+							{:else if workspaceReady}
+								{#if readingWide}
+									<ReaderTaskList
+										groups={taskGroups}
+										selectedId={readerItem?.kind === 'task'
+											? readerItem.id
+											: null}
+										bind:showDone={showDoneTasks}
+										onOpen={(id) => panes?.open({ kind: 'task', id })}
+									/>
 								{/if}
-							{/snippet}
-						</TaskKanbanBoard>
-					{:catch boardError}
-						<div class="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-							<p class="text-sm text-foreground">
-								{boardError instanceof Error
-									? boardError.message
-									: 'The task board could not be loaded.'}
-							</p>
-						</div>
-					{/await}
-				{/if}
-			</div>
-		{:else if activeTab === 'overview'}
-			<div
-				id="workspace-overview"
-				class="workspace-panel"
-				role="tabpanel"
-				aria-labelledby="workspace-tab-overview"
-				aria-busy={isHydrating}
-				tabindex="0"
-			>
-				{#if isHydrating}
-					<div
-						class="min-h-[430px] animate-pulse rounded-lg border border-border bg-card motion-reduce:animate-none"
-						role="status"
-					>
-						<span class="sr-only">Loading project overview</span>
-					</div>
-				{:else if workspaceReady}
-					<div class="space-y-5">
-						<ProjectMemoryCard
-							document={contextDocument}
-							contentLoading={isContextDocumentContentLoading}
-							creating={isCreatingStartHere}
-							sourceUpdatedAt={memorySourceUpdatedAt}
-							nextStepShort={project.next_step_short ?? null}
-							{canEdit}
-							onOpenStartHere={openStartHereFromMemory}
-							onUpdateProject={openMemoryUpdateChat}
-							onCreateStartHere={['planning', 'active'].includes(project.state_key)
-								? createStartHere
-								: undefined}
-							onShown={handleMemorySnapshotShown}
-						/>
-
-						<ProjectChildrenSection
-							projectId={project.id}
-							projectName={project.name || 'this project'}
-							{canEdit}
-							subProjects={family?.children ?? []}
-							totalCount={family?.child_count ?? 0}
-							onFamilyChanged={refreshFamily}
-						/>
-
-						<ProjectProgressOverview
-							{project}
-							{tasksCoverage}
-							{milestones}
-							{risks}
-							onOpenTasks={() => selectTab('work')}
-							onOpenMilestone={(milestoneId) => openEntity('milestone', milestoneId)}
-						/>
-
-						<div
-							class="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]"
-						>
-							<div class="min-w-0 space-y-5">
-								<section
-									class="overview-section"
-									aria-labelledby="overview-direction-title"
-								>
-									<header class="overview-section-header">
-										<div class="flex min-w-0 items-center gap-2">
-											<Target class="h-4 w-4 shrink-0 text-warning" />
-											<h2
-												id="overview-direction-title"
-												class="text-sm font-semibold"
-											>
-												Direction
-											</h2>
-										</div>
-										{#if activeGoals.length > 0 || activePlans.length > 0}
-											<span
-												class="shrink-0 text-2xs font-medium text-muted-foreground"
-											>
-												{activeGoals.length} goals · {activePlans.length} plans
-											</span>
-										{/if}
-									</header>
-									{#if activeGoals.length === 0 && activePlans.length === 0}
-										<div class="section-empty-state">
-											<Target
-												class="h-5 w-5 shrink-0 text-muted-foreground"
-											/>
-											<div class="min-w-0 flex-1">
-												<p class="text-sm font-semibold">
-													No direction set yet
-												</p>
-												<p class="text-xs text-muted-foreground">
-													Add a goal or plan when the path becomes clear.
-												</p>
-											</div>
-											{#if canEdit}
-												<div
-													class="flex shrink-0 flex-wrap justify-end gap-1"
-												>
-													<button
-														type="button"
-														class="section-empty-action"
-														onclick={() =>
-															createWorkspaceEntity('goal')}
-													>
-														Add goal
-													</button>
-													<button
-														type="button"
-														class="section-empty-action"
-														onclick={() =>
-															createWorkspaceEntity('plan')}
-													>
-														Add plan
-													</button>
-												</div>
-											{/if}
-										</div>
-									{:else}
+								<div hidden={readingWide}>
+									{#await import('$lib/components/project/v2/TaskKanbanBoard.svelte')}
 										<div
-											class="grid gap-0 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
+											class="min-h-[430px] animate-pulse border-y border-border bg-card motion-reduce:animate-none"
+											aria-label="Loading task board"
+										></div>
+									{:then { default: TaskKanbanBoard }}
+										<TaskKanbanBoard
+											projectId={project.id}
+											{tasks}
+											{tasksCoverage}
+											{canEdit}
+											onEditTask={(id) => openEntity('task', id)}
+											onTaskMoved={(id, state) =>
+												void refreshEntity(
+													'task',
+													id,
+													state === 'archived' ? 'delete' : 'update'
+												)}
+											onLoadMoreTasks={loadMoreTasks}
 										>
-											<div class="p-3 sm:p-4">
-												<p class="micro-label mb-2">GOALS</p>
-												<div class="space-y-2">
-													{#each visibleGoals as goal (goal.id)}
-														{@const goalMilestones = milestones.filter(
-															(milestone) =>
-																milestone.goal_id === goal.id
-														)}
-														{@const goalGauge = freshness.gaugeFor(
-															'goal',
-															goal.id
-														)}
-														<button
-															type="button"
-															class="entity-row"
-															onclick={() =>
-																openEntity('goal', goal.id)}
-															use:preloadEntityModal={'goal'}
-														>
-															<div class="min-w-0 flex-1">
-																<p
-																	class="truncate text-sm font-semibold"
-																>
-																	{goal.name}
-																</p>
-																<p
-																	class="truncate text-xs text-muted-foreground"
-																>
-																	{goalMilestones.length} milestone{goalMilestones.length ===
-																	1
-																		? ''
-																		: 's'}
-																	{goal.target_date
-																		? ` · target ${formatDate(goal.target_date)}`
-																		: ''}
-																</p>
-															</div>
-															{#if goalGauge}
-																<OnTrackGauge
-																	gauge={goalGauge.gauge}
-																	size="xs"
-																/>
-															{/if}
-															<ChevronRight
-																class="h-4 w-4 shrink-0 text-muted-foreground"
-															/>
-														</button>
-													{:else}
-														<div class="empty-row">
-															<Target class="h-5 w-5" />
-															<p>No active goals yet</p>
-														</div>
-													{/each}
-													{#if activeGoals.length > 5}
-														<button
-															type="button"
-															class="view-all-row"
-															aria-expanded={showAllGoals}
-															onclick={() =>
-																(showAllGoals = !showAllGoals)}
-														>
-															{showAllGoals
-																? 'Show fewer goals'
-																: `Show all ${activeGoals.length} goals`}
-														</button>
-													{/if}
-													{#if canEdit}
-														<button
-															type="button"
-															class="entity-create-row"
-															onclick={() =>
-																createWorkspaceEntity('goal')}
-														>
-															<Plus class="h-3.5 w-3.5" />
-															Add goal
-														</button>
-													{/if}
-												</div>
-											</div>
-											<div class="p-3 sm:p-4">
-												<p class="micro-label mb-2">PLANS</p>
-												<div class="space-y-2">
-													{#each visiblePlans as plan (plan.id)}
-														<button
-															type="button"
-															class="entity-row"
-															onclick={() =>
-																openEntity('plan', plan.id)}
-														>
-															<div class="min-w-0 flex-1">
-																<p
-																	class="truncate text-sm font-semibold"
-																>
-																	{plan.name}
-																</p>
-																<p
-																	class="truncate text-xs text-muted-foreground"
-																>
-																	{humanize(plan.state_key)}
-																	{plan.description
-																		? ` · ${plan.description}`
-																		: ''}
-																</p>
-															</div>
-															<ChevronRight
-																class="h-4 w-4 shrink-0 text-muted-foreground"
-															/>
-														</button>
-													{:else}
-														<div class="empty-row">
-															<Workflow class="h-5 w-5" />
-															<p>No active plans yet</p>
-														</div>
-													{/each}
-													{#if activePlans.length > 5}
-														<button
-															type="button"
-															class="view-all-row"
-															aria-expanded={showAllPlans}
-															onclick={() =>
-																(showAllPlans = !showAllPlans)}
-														>
-															{showAllPlans
-																? 'Show fewer plans'
-																: `Show all ${activePlans.length} plans`}
-														</button>
-													{/if}
-													{#if canEdit}
-														<button
-															type="button"
-															class="entity-create-row"
-															onclick={() =>
-																createWorkspaceEntity('plan')}
-														>
-															<Plus class="h-3.5 w-3.5" />
-															Add plan
-														</button>
-													{/if}
-												</div>
-											</div>
-										</div>
-									{/if}
-								</section>
-							</div>
-
-							<aside class="min-w-0 space-y-5">
-								<section
-									class="overview-section"
-									aria-labelledby="overview-milestones-title"
-								>
-									<header class="overview-section-header">
-										<div class="flex min-w-0 items-center gap-2">
-											<Flag class="h-4 w-4 shrink-0 text-accent" />
-											<h2
-												id="overview-milestones-title"
-												class="text-sm font-semibold"
-											>
-												Milestones
-											</h2>
-										</div>
-										{#if upcomingMilestones.length > 0}
-											<span
-												class="text-2xs font-medium text-muted-foreground"
-											>
-												{upcomingMilestones.length} upcoming
-											</span>
-										{/if}
-									</header>
-									<div class="pt-2">
-										{#if visibleMilestones.length > 0}
-											{#each visibleMilestones as milestone (milestone.id)}
-												<button
-													type="button"
-													class="entity-row"
-													onclick={() =>
-														openEntity('milestone', milestone.id)}
-												>
-													<div
-														class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
-													>
-														<Flag class="h-3.5 w-3.5 text-accent" />
-													</div>
-													<div class="min-w-0 flex-1">
-														<p class="truncate text-sm font-semibold">
-															{milestone.title}
-														</p>
-														<p
-															class="truncate text-xs text-muted-foreground"
-														>
-															{milestone.due_at
-																? formatDate(milestone.due_at, true)
-																: 'No target date'}
-														</p>
-													</div>
-												</button>
-											{/each}
-											{#if upcomingMilestones.length > 5}
-												<button
-													type="button"
-													class="view-all-row"
-													aria-expanded={showAllMilestones}
-													onclick={() =>
-														(showAllMilestones = !showAllMilestones)}
-												>
-													{showAllMilestones
-														? 'Show fewer milestones'
-														: `Show all ${upcomingMilestones.length} milestones`}
-												</button>
-											{/if}
-											{#if canEdit}
-												<button
-													type="button"
-													class="entity-create-row"
-													onclick={() =>
-														createWorkspaceEntity('milestone')}
-												>
-													<Plus class="h-3.5 w-3.5" />
-													Add milestone
-												</button>
-											{/if}
-										{:else}
-											<div class="section-empty-state">
-												<Flag
-													class="h-5 w-5 shrink-0 text-muted-foreground"
+											{#snippet search()}
+												<ProjectEntitySearchCombobox
+													projectId={project.id}
+													scope="work"
+													variant="toolbar"
+													placeholder="Search tasks..."
+													onSelectEntity={(type, id) =>
+														openEntity(type, id)}
 												/>
-												<div class="min-w-0 flex-1">
-													<p class="text-sm font-semibold">
-														No milestones yet
-													</p>
-													<p class="text-xs text-muted-foreground">
-														Add key commitments when dates matter.
-													</p>
-												</div>
+											{/snippet}
+											{#snippet createAction()}
 												{#if canEdit}
-													<button
-														type="button"
-														class="section-empty-action shrink-0"
-														onclick={() =>
-															createWorkspaceEntity('milestone')}
+													<Button
+														variant="outline"
+														size="sm"
+														icon={Plus}
+														onclick={() => (showTaskCreateModal = true)}
+														>New task</Button
 													>
-														Add milestone
-													</button>
 												{/if}
-											</div>
-										{/if}
-									</div>
-								</section>
-
-								<section
-									class="overview-section"
-									aria-labelledby="overview-risks-title"
-								>
-									<header class="overview-section-header">
-										<div class="flex min-w-0 items-center gap-2">
-											<AlertTriangle
-												class="h-4 w-4 shrink-0 text-destructive"
-											/>
-											<h2
-												id="overview-risks-title"
-												class="text-sm font-semibold"
-											>
-												Risks
-											</h2>
+											{/snippet}
+										</TaskKanbanBoard>
+									{:catch boardError}
+										<div
+											class="rounded-lg border border-destructive/30 bg-destructive/10 p-4"
+										>
+											<p class="text-sm text-foreground">
+												{boardError instanceof Error
+													? boardError.message
+													: 'The task board could not be loaded.'}
+											</p>
 										</div>
-										{#if openRisks.length > 0}
-											<span
-												class="text-2xs font-medium text-muted-foreground"
-											>
-												{openRisks.length} open
-											</span>
-										{/if}
-									</header>
-									<div class="pt-2">
-										{#if visibleRisks.length > 0}
-											{#each visibleRisks as risk (risk.id)}
-												<button
-													type="button"
-													class="entity-row"
-													onclick={() => openEntity('risk', risk.id)}
-												>
-													<div class="min-w-0 flex-1">
-														<p class="truncate text-sm font-semibold">
-															{risk.title}
-														</p>
-														<p
-															class="truncate text-xs text-muted-foreground"
-														>
-															{humanize(risk.impact)} impact
-															{risk.probability !== null &&
-															risk.probability !== undefined
-																? ` · ${Math.round(risk.probability * 100)}% likelihood`
-																: ''}
-														</p>
-													</div>
-													<span
-														class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
-													>
-														{humanize(risk.state_key)}
-													</span>
-												</button>
-											{/each}
-											{#if openRisks.length > 5}
-												<button
-													type="button"
-													class="view-all-row"
-													aria-expanded={showAllRisks}
-													onclick={() => (showAllRisks = !showAllRisks)}
-												>
-													{showAllRisks
-														? 'Show fewer risks'
-														: `Show all ${openRisks.length} risks`}
-												</button>
-											{/if}
-											{#if canEdit}
-												<button
-													type="button"
-													class="entity-create-row"
-													onclick={() => createWorkspaceEntity('risk')}
-												>
-													<Plus class="h-3.5 w-3.5" />
-													Add risk
-												</button>
-											{/if}
-										{:else}
-											<div class="section-empty-state">
-												<AlertTriangle
-													class="h-5 w-5 shrink-0 text-muted-foreground"
-												/>
-												<div class="min-w-0 flex-1">
-													<p class="text-sm font-semibold">
-														No open risks
-													</p>
-													<p class="text-xs text-muted-foreground">
-														Nothing is currently flagged.
-													</p>
-												</div>
-												{#if canEdit}
-													<button
-														type="button"
-														class="section-empty-action shrink-0"
-														onclick={() =>
-															createWorkspaceEntity('risk')}
-													>
-														Add risk
-													</button>
-												{/if}
-											</div>
-										{/if}
-									</div>
-								</section>
-							</aside>
+									{/await}
+								</div>
+							{/if}
 						</div>
-					</div>
-				{/if}
-			</div>
-		{:else if activeTab === 'docs'}
-			<div
-				id="workspace-docs"
-				class="workspace-panel"
-				role="tabpanel"
-				aria-labelledby="workspace-tab-docs"
-				aria-busy={isHydrating}
-				tabindex="0"
-			>
-				<h2 class="sr-only">Project documents</h2>
-
-				<div class="min-w-0">
-					{#if isHydrating}
+					{:else if activeTab === 'overview'}
 						<div
-							class="min-h-[420px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
-							aria-label="Loading project documents"
-						></div>
-					{:else if workspaceReady}
-						{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
-							<div
-								class="min-h-[420px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
-								aria-label="Loading project documents"
-							></div>
-						{:then { default: ProjectDocumentsSection }}
-							<ProjectDocumentsSection
-								projectId={project.id}
-								{documents}
-								{canEdit}
-								{activeDocumentId}
-								onCreateDocument={createDocument}
-								onOpenDocument={(id) => openEntity('document', id)}
-								onMoveDocument={moveDocument}
-								onDeleteDocument={archiveDocument}
-								onDataLoaded={handleDocTreeDataLoaded}
-								initialStructure={docTreeStructure}
-								initialDocuments={docTreeDocuments}
-								initialUnlinked={docTreeUnlinked}
-								initialArchived={docTreeArchived}
-								maxInitialDepth={1}
-								pollInterval={30000}
-								variant="workspace"
-								{family}
-								onOpenInheritedDocument={(id) => openEntity('document', id)}
-								onCopyInheritedDocument={copyInheritedDocumentHere}
-							/>
-						{/await}
+							id="workspace-overview"
+							class="workspace-panel"
+							role="tabpanel"
+							aria-labelledby="workspace-tab-overview"
+							aria-busy={isHydrating}
+							tabindex="0"
+						>
+							{#if isHydrating}
+								<div
+									class="min-h-[430px] animate-pulse rounded-lg border border-border bg-card motion-reduce:animate-none"
+									role="status"
+								>
+									<span class="sr-only">Loading project overview</span>
+								</div>
+							{:else if workspaceReady}
+								<div class="space-y-5">
+									<ProjectMemoryCard
+										document={contextDocument}
+										contentLoading={isContextDocumentContentLoading}
+										creating={isCreatingStartHere}
+										sourceUpdatedAt={memorySourceUpdatedAt}
+										nextStepShort={project.next_step_short ?? null}
+										{canEdit}
+										onOpenStartHere={openStartHereFromMemory}
+										onUpdateProject={openMemoryUpdateChat}
+										onCreateStartHere={['planning', 'active'].includes(
+											project.state_key
+										)
+											? createStartHere
+											: undefined}
+										onShown={handleMemorySnapshotShown}
+									/>
+
+									<ProjectChildrenSection
+										projectId={project.id}
+										projectName={project.name || 'this project'}
+										{canEdit}
+										subProjects={family?.children ?? []}
+										totalCount={family?.child_count ?? 0}
+										onFamilyChanged={refreshFamily}
+									/>
+
+									<ProjectProgressOverview
+										{project}
+										{tasksCoverage}
+										{milestones}
+										{risks}
+										onOpenTasks={() => selectTab('work')}
+										onOpenMilestone={(milestoneId) =>
+											openEntity('milestone', milestoneId)}
+									/>
+
+									<div
+										class="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,0.8fr)]"
+									>
+										<div class="min-w-0 space-y-5">
+											<section
+												class="overview-section"
+												aria-labelledby="overview-direction-title"
+											>
+												<header class="overview-section-header">
+													<div class="flex min-w-0 items-center gap-2">
+														<Target
+															class="h-4 w-4 shrink-0 text-warning"
+														/>
+														<h2
+															id="overview-direction-title"
+															class="text-sm font-semibold"
+														>
+															Direction
+														</h2>
+													</div>
+													{#if activeGoals.length > 0 || activePlans.length > 0}
+														<span
+															class="shrink-0 text-2xs font-medium text-muted-foreground"
+														>
+															{activeGoals.length} goals · {activePlans.length}
+															plans
+														</span>
+													{/if}
+												</header>
+												{#if activeGoals.length === 0 && activePlans.length === 0}
+													<div class="section-empty-state">
+														<Target
+															class="h-5 w-5 shrink-0 text-muted-foreground"
+														/>
+														<div class="min-w-0 flex-1">
+															<p class="text-sm font-semibold">
+																No direction set yet
+															</p>
+															<p
+																class="text-xs text-muted-foreground"
+															>
+																Add a goal or plan when the path
+																becomes clear.
+															</p>
+														</div>
+														{#if canEdit}
+															<div
+																class="flex shrink-0 flex-wrap justify-end gap-1"
+															>
+																<button
+																	type="button"
+																	class="section-empty-action"
+																	onclick={() =>
+																		createWorkspaceEntity(
+																			'goal'
+																		)}
+																>
+																	Add goal
+																</button>
+																<button
+																	type="button"
+																	class="section-empty-action"
+																	onclick={() =>
+																		createWorkspaceEntity(
+																			'plan'
+																		)}
+																>
+																	Add plan
+																</button>
+															</div>
+														{/if}
+													</div>
+												{:else}
+													<div
+														class="grid gap-0 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0"
+													>
+														<div class="p-3 sm:p-4">
+															<p class="micro-label mb-2">GOALS</p>
+															<div class="space-y-2">
+																{#each visibleGoals as goal (goal.id)}
+																	{@const goalMilestones =
+																		milestones.filter(
+																			(milestone) =>
+																				milestone.goal_id ===
+																				goal.id
+																		)}
+																	{@const goalGauge =
+																		freshness.gaugeFor(
+																			'goal',
+																			goal.id
+																		)}
+																	<button
+																		type="button"
+																		class="entity-row"
+																		onclick={() =>
+																			openEntity(
+																				'goal',
+																				goal.id
+																			)}
+																		use:preloadEntityModal={'goal'}
+																	>
+																		<div class="min-w-0 flex-1">
+																			<p
+																				class="truncate text-sm font-semibold"
+																			>
+																				{goal.name}
+																			</p>
+																			<p
+																				class="truncate text-xs text-muted-foreground"
+																			>
+																				{goalMilestones.length}
+																				milestone{goalMilestones.length ===
+																				1
+																					? ''
+																					: 's'}
+																				{goal.target_date
+																					? ` · target ${formatDate(goal.target_date)}`
+																					: ''}
+																			</p>
+																		</div>
+																		{#if goalGauge}
+																			<OnTrackGauge
+																				gauge={goalGauge.gauge}
+																				size="xs"
+																			/>
+																		{/if}
+																		<ChevronRight
+																			class="h-4 w-4 shrink-0 text-muted-foreground"
+																		/>
+																	</button>
+																{:else}
+																	<div class="empty-row">
+																		<Target class="h-5 w-5" />
+																		<p>No active goals yet</p>
+																	</div>
+																{/each}
+																{#if activeGoals.length > 5}
+																	<button
+																		type="button"
+																		class="view-all-row"
+																		aria-expanded={showAllGoals}
+																		onclick={() =>
+																			(showAllGoals =
+																				!showAllGoals)}
+																	>
+																		{showAllGoals
+																			? 'Show fewer goals'
+																			: `Show all ${activeGoals.length} goals`}
+																	</button>
+																{/if}
+																{#if canEdit}
+																	<button
+																		type="button"
+																		class="entity-create-row"
+																		onclick={() =>
+																			createWorkspaceEntity(
+																				'goal'
+																			)}
+																	>
+																		<Plus class="h-3.5 w-3.5" />
+																		Add goal
+																	</button>
+																{/if}
+															</div>
+														</div>
+														<div class="p-3 sm:p-4">
+															<p class="micro-label mb-2">PLANS</p>
+															<div class="space-y-2">
+																{#each visiblePlans as plan (plan.id)}
+																	<button
+																		type="button"
+																		class="entity-row"
+																		onclick={() =>
+																			openEntity(
+																				'plan',
+																				plan.id
+																			)}
+																	>
+																		<div class="min-w-0 flex-1">
+																			<p
+																				class="truncate text-sm font-semibold"
+																			>
+																				{plan.name}
+																			</p>
+																			<p
+																				class="truncate text-xs text-muted-foreground"
+																			>
+																				{humanize(
+																					plan.state_key
+																				)}
+																				{plan.description
+																					? ` · ${plan.description}`
+																					: ''}
+																			</p>
+																		</div>
+																		<ChevronRight
+																			class="h-4 w-4 shrink-0 text-muted-foreground"
+																		/>
+																	</button>
+																{:else}
+																	<div class="empty-row">
+																		<Workflow class="h-5 w-5" />
+																		<p>No active plans yet</p>
+																	</div>
+																{/each}
+																{#if activePlans.length > 5}
+																	<button
+																		type="button"
+																		class="view-all-row"
+																		aria-expanded={showAllPlans}
+																		onclick={() =>
+																			(showAllPlans =
+																				!showAllPlans)}
+																	>
+																		{showAllPlans
+																			? 'Show fewer plans'
+																			: `Show all ${activePlans.length} plans`}
+																	</button>
+																{/if}
+																{#if canEdit}
+																	<button
+																		type="button"
+																		class="entity-create-row"
+																		onclick={() =>
+																			createWorkspaceEntity(
+																				'plan'
+																			)}
+																	>
+																		<Plus class="h-3.5 w-3.5" />
+																		Add plan
+																	</button>
+																{/if}
+															</div>
+														</div>
+													</div>
+												{/if}
+											</section>
+										</div>
+
+										<aside class="min-w-0 space-y-5">
+											<section
+												class="overview-section"
+												aria-labelledby="overview-milestones-title"
+											>
+												<header class="overview-section-header">
+													<div class="flex min-w-0 items-center gap-2">
+														<Flag
+															class="h-4 w-4 shrink-0 text-accent"
+														/>
+														<h2
+															id="overview-milestones-title"
+															class="text-sm font-semibold"
+														>
+															Milestones
+														</h2>
+													</div>
+													{#if upcomingMilestones.length > 0}
+														<span
+															class="text-2xs font-medium text-muted-foreground"
+														>
+															{upcomingMilestones.length} upcoming
+														</span>
+													{/if}
+												</header>
+												<div class="pt-2">
+													{#if visibleMilestones.length > 0}
+														{#each visibleMilestones as milestone (milestone.id)}
+															<button
+																type="button"
+																class="entity-row"
+																onclick={() =>
+																	openEntity(
+																		'milestone',
+																		milestone.id
+																	)}
+															>
+																<div
+																	class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
+																>
+																	<Flag
+																		class="h-3.5 w-3.5 text-accent"
+																	/>
+																</div>
+																<div class="min-w-0 flex-1">
+																	<p
+																		class="truncate text-sm font-semibold"
+																	>
+																		{milestone.title}
+																	</p>
+																	<p
+																		class="truncate text-xs text-muted-foreground"
+																	>
+																		{milestone.due_at
+																			? formatDate(
+																					milestone.due_at,
+																					true
+																				)
+																			: 'No target date'}
+																	</p>
+																</div>
+															</button>
+														{/each}
+														{#if upcomingMilestones.length > 5}
+															<button
+																type="button"
+																class="view-all-row"
+																aria-expanded={showAllMilestones}
+																onclick={() =>
+																	(showAllMilestones =
+																		!showAllMilestones)}
+															>
+																{showAllMilestones
+																	? 'Show fewer milestones'
+																	: `Show all ${upcomingMilestones.length} milestones`}
+															</button>
+														{/if}
+														{#if canEdit}
+															<button
+																type="button"
+																class="entity-create-row"
+																onclick={() =>
+																	createWorkspaceEntity(
+																		'milestone'
+																	)}
+															>
+																<Plus class="h-3.5 w-3.5" />
+																Add milestone
+															</button>
+														{/if}
+													{:else}
+														<div class="section-empty-state">
+															<Flag
+																class="h-5 w-5 shrink-0 text-muted-foreground"
+															/>
+															<div class="min-w-0 flex-1">
+																<p class="text-sm font-semibold">
+																	No milestones yet
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	Add key commitments when dates
+																	matter.
+																</p>
+															</div>
+															{#if canEdit}
+																<button
+																	type="button"
+																	class="section-empty-action shrink-0"
+																	onclick={() =>
+																		createWorkspaceEntity(
+																			'milestone'
+																		)}
+																>
+																	Add milestone
+																</button>
+															{/if}
+														</div>
+													{/if}
+												</div>
+											</section>
+
+											<section
+												class="overview-section"
+												aria-labelledby="overview-risks-title"
+											>
+												<header class="overview-section-header">
+													<div class="flex min-w-0 items-center gap-2">
+														<AlertTriangle
+															class="h-4 w-4 shrink-0 text-destructive"
+														/>
+														<h2
+															id="overview-risks-title"
+															class="text-sm font-semibold"
+														>
+															Risks
+														</h2>
+													</div>
+													{#if openRisks.length > 0}
+														<span
+															class="text-2xs font-medium text-muted-foreground"
+														>
+															{openRisks.length} open
+														</span>
+													{/if}
+												</header>
+												<div class="pt-2">
+													{#if visibleRisks.length > 0}
+														{#each visibleRisks as risk (risk.id)}
+															<button
+																type="button"
+																class="entity-row"
+																onclick={() =>
+																	openEntity('risk', risk.id)}
+															>
+																<div class="min-w-0 flex-1">
+																	<p
+																		class="truncate text-sm font-semibold"
+																	>
+																		{risk.title}
+																	</p>
+																	<p
+																		class="truncate text-xs text-muted-foreground"
+																	>
+																		{humanize(risk.impact)} impact
+																		{risk.probability !==
+																			null &&
+																		risk.probability !==
+																			undefined
+																			? ` · ${Math.round(risk.probability * 100)}% likelihood`
+																			: ''}
+																	</p>
+																</div>
+																<span
+																	class="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-2xs font-semibold text-destructive"
+																>
+																	{humanize(risk.state_key)}
+																</span>
+															</button>
+														{/each}
+														{#if openRisks.length > 5}
+															<button
+																type="button"
+																class="view-all-row"
+																aria-expanded={showAllRisks}
+																onclick={() =>
+																	(showAllRisks = !showAllRisks)}
+															>
+																{showAllRisks
+																	? 'Show fewer risks'
+																	: `Show all ${openRisks.length} risks`}
+															</button>
+														{/if}
+														{#if canEdit}
+															<button
+																type="button"
+																class="entity-create-row"
+																onclick={() =>
+																	createWorkspaceEntity('risk')}
+															>
+																<Plus class="h-3.5 w-3.5" />
+																Add risk
+															</button>
+														{/if}
+													{:else}
+														<div class="section-empty-state">
+															<AlertTriangle
+																class="h-5 w-5 shrink-0 text-muted-foreground"
+															/>
+															<div class="min-w-0 flex-1">
+																<p class="text-sm font-semibold">
+																	No open risks
+																</p>
+																<p
+																	class="text-xs text-muted-foreground"
+																>
+																	Nothing is currently flagged.
+																</p>
+															</div>
+															{#if canEdit}
+																<button
+																	type="button"
+																	class="section-empty-action shrink-0"
+																	onclick={() =>
+																		createWorkspaceEntity(
+																			'risk'
+																		)}
+																>
+																	Add risk
+																</button>
+															{/if}
+														</div>
+													{/if}
+												</div>
+											</section>
+										</aside>
+									</div>
+								</div>
+							{/if}
+						</div>
+					{:else if activeTab === 'docs'}
+						<div
+							id="workspace-docs"
+							class="workspace-panel"
+							role="tabpanel"
+							aria-labelledby="workspace-tab-docs"
+							aria-busy={isHydrating}
+							tabindex="0"
+						>
+							<h2 class="sr-only">Project documents</h2>
+
+							<div class="min-w-0" class:compact-tree={readingWide}>
+								{#if isHydrating}
+									<div
+										class="min-h-[420px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
+										aria-label="Loading project documents"
+									></div>
+								{:else if workspaceReady}
+									{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
+										<div
+											class="min-h-[420px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
+											aria-label="Loading project documents"
+										></div>
+									{:then { default: ProjectDocumentsSection }}
+										<ProjectDocumentsSection
+											projectId={project.id}
+											{documents}
+											{canEdit}
+											activeDocumentId={readerItem?.kind === 'document'
+												? readerItem.id
+												: activeDocumentId}
+											onCreateDocument={createDocument}
+											onOpenDocument={(id) => openEntity('document', id)}
+											onMoveDocument={moveDocument}
+											onDeleteDocument={archiveDocument}
+											onDataLoaded={handleDocTreeDataLoaded}
+											initialStructure={docTreeStructure}
+											initialDocuments={docTreeDocuments}
+											initialUnlinked={docTreeUnlinked}
+											initialArchived={docTreeArchived}
+											maxInitialDepth={1}
+											pollInterval={30000}
+											variant="workspace"
+											{family}
+											onOpenInheritedDocument={(id) =>
+												openEntity('document', id)}
+											onCopyInheritedDocument={copyInheritedDocumentHere}
+										/>
+									{/await}
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<div
+							id="workspace-activity"
+							class="workspace-panel"
+							role="tabpanel"
+							aria-labelledby="workspace-tab-activity"
+							aria-busy={isHydrating}
+							tabindex="0"
+						>
+							<h2 class="sr-only">Project activity</h2>
+
+							{#if isHydrating}
+								<div
+									class="min-h-[360px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
+									aria-label="Loading project activity"
+								></div>
+							{:else if workspaceReady}
+								<ProjectRecentChats
+									projectId={project.id}
+									onOpenChat={openRecentChat}
+								/>
+
+								<div class="mt-6">
+									<PulseStrip
+										projectId={project.id}
+										{tasks}
+										{milestones}
+										{goals}
+										{events}
+										loadActivity={true}
+										mode="workspace"
+										onOpenEntity={(type, id) => openEntity(type, id)}
+									/>
+								</div>
+							{/if}
+						</div>
 					{/if}
-				</div>
-			</div>
-		{:else}
-			<div
-				id="workspace-activity"
-				class="workspace-panel"
-				role="tabpanel"
-				aria-labelledby="workspace-tab-activity"
-				aria-busy={isHydrating}
-				tabindex="0"
-			>
-				<h2 class="sr-only">Project activity</h2>
-
-				{#if isHydrating}
-					<div
-						class="min-h-[360px] animate-pulse border-y border-border bg-card/40 motion-reduce:animate-none"
-						aria-label="Loading project activity"
-					></div>
-				{:else if workspaceReady}
-					<ProjectRecentChats projectId={project.id} onOpenChat={openRecentChat} />
-
-					<div class="mt-6">
-						<PulseStrip
-							projectId={project.id}
-							{tasks}
-							{milestones}
-							{goals}
-							{events}
-							loadActivity={true}
-							mode="workspace"
-							onOpenEntity={(type, id) => openEntity(type, id)}
-						/>
-					</div>
-				{/if}
-			</div>
-		{/if}
+				{/snippet}
+			</ReaderPanes>
+		</div>
 	</main>
 </div>
 
@@ -2267,6 +2504,37 @@
 	.workspace-panel {
 		min-width: 0;
 		border-radius: 0.75rem;
+	}
+
+	.reader-host {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+	}
+
+	/* Reading on a wide screen: the panes fill the window below the header. */
+	@media (min-width: 768px) {
+		.reader-host.reading {
+			--list-w: 360px;
+			height: calc(100dvh - var(--host-top, 220px) - 12px);
+			min-height: 420px;
+			overflow: hidden;
+			border: 1px solid hsl(var(--border));
+			border-radius: 14px;
+			background: hsl(var(--card));
+			box-shadow: var(--shadow-ink);
+		}
+
+		.reader-host.reading .workspace-panel {
+			animation: none;
+			padding: 6px 4px;
+		}
+	}
+
+	/* The doc tree beside a reader drops its dates to fit the column. */
+	.compact-tree :global(.stamp),
+	.compact-tree :global(.doc-tree-updated-head) {
+		display: none;
 	}
 
 	.workspace-panel:focus-visible {

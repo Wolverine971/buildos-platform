@@ -32,7 +32,7 @@
 	} from '$lib/icons/lucide';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
-	import AnimatedBrainBolt from './AnimatedBrainBolt.svelte';
+	import BuildOSLogo from './BuildOSLogo.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { logout } from '$lib/utils/auth';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
@@ -978,7 +978,7 @@
 					>
 						<div class="relative flex items-center justify-center">
 							<!-- Full button height: the brain fills ~60% of the frame, so smaller reads tiny. -->
-							<AnimatedBrainBolt class="w-11" />
+							<BuildOSLogo class="w-11" />
 							<!-- Overlay icon - changes based on modal state -->
 							{#if showChatModal}
 								<!-- Zap icon when modal is open - centered on brain-bolt -->

@@ -31,13 +31,9 @@
 		Target
 	} from '$lib/icons/lucide';
 	import { isTableTypeKey, type LoadedTable } from '@buildos/shared-agent-ops/tables';
-	import { onMount, tick, untrack } from 'svelte';
-	import { fade, fly } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
-	import { prefersReducedMotion } from 'svelte/motion';
+	import { untrack } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { resolve } from '$app/paths';
-	import { portal } from '$lib/actions/portal';
 	import { PROJECT_STATE_META, normalizeProjectState } from '$lib/config/project-states';
 	import {
 		pinnedDocumentReason,
@@ -53,20 +49,8 @@
 	import { PULSE_META, TASK_BUCKETS, taskBucket, type TaskBucket } from './desktop-signals';
 	import { SCHEDULED_TASK_MOVES_ENABLED, isDatedTask, type DesktopCard } from './desktop-moves';
 	import type { DesktopItem } from './desktop-rules';
-	import DesktopChatPane from './DesktopChatPane.svelte';
-	import {
-		loadReaderLayout,
-		neighbors,
-		paneMode,
-		saveReaderLayout,
-		sheetAfterDrag,
-		showsList,
-		type ChatScope,
-		type ReaderItem,
-		type ReaderKind,
-		type ReaderLayout,
-		type SheetDetent
-	} from './reader-model';
+	import ReaderPanes from './ReaderPanes.svelte';
+	import type { ChatScope, ReaderItem, ReaderKind } from './reader-model';
 
 	let {
 		project,
@@ -221,37 +205,15 @@
 	const phoneQuery = new MediaQuery('max-width: 767px', false);
 	const phone = $derived(phoneQuery.current);
 
-	type ReaderComponent = typeof import('./DesktopReader.svelte').default;
-	type ReaderApi = { handleKey: (event: KeyboardEvent) => boolean; settle: () => Promise<void> };
-	let Reader = $state<ReaderComponent | null>(null);
-	let readerApi = $state<ReaderApi | null>(null);
-	// Load the reader with the card, so the first click opens without a wait.
-	onMount(() => {
-		void import('./DesktopReader.svelte').then((module) => (Reader = module.default));
-	});
-
-	let layout = $state<ReaderLayout>(loadReaderLayout());
-	// A table opens at full card width (Focus) without changing the saved
-	// preference; toggling back to split clears it for that table.
-	let tableFocusId = $state<string | null>(null);
-	const effectiveLayout = $derived<ReaderLayout>(
-		reader && tableFocusId === reader.id ? 'focus' : layout
-	);
+	type PanesApi = {
+		open: (item: ReaderItem) => void;
+		openChat: (scope: ChatScope) => void;
+		handleKey: (event: KeyboardEvent) => boolean;
+	};
+	let panes = $state<PanesApi | null>(null);
 	let newTableOpen = $state(false);
 	let chatOpen = $state(false);
 	let chatScope = $state<ChatScope>('project');
-	let listWithChat = $state(false);
-	let detent = $state<SheetDetent>('peek');
-	let localReload = $state(0);
-	const mode = $derived(
-		paneMode({
-			reading: Boolean(reader),
-			layout: effectiveLayout,
-			chat: chatOpen,
-			listWithChat
-		})
-	);
-	const listShown = $derived(showsList(mode));
 
 	const docOrder = $derived.by(() => {
 		const ids: string[] = [];
@@ -283,27 +245,19 @@
 		return (data?.goals ?? []).map((goal) => goal.id);
 	}
 
-	// Prev/Next walk the list as it stood when an item was opened from it, so
-	// marking a task done (which moves it to Done) doesn't lose your place.
-	let walk = $state<{ kind: ReaderKind; ids: string[] } | null>(null);
-	const known = $derived(
+	const knownIds = $derived(
 		new Set([
 			...docOrder,
 			...tasks.map((task) => task.id),
 			...(data?.goals ?? []).map((g) => g.id)
 		])
 	);
-	function orderOf(kind: ReaderKind): string[] {
-		if (walk?.kind !== kind) return listOrder(kind);
-		return data ? walk.ids.filter((id) => known.has(id)) : walk.ids;
-	}
 
-	const readerTitle = $derived.by(() => {
-		if (!reader) return '';
-		if (reader.kind === 'document') return titles.get(reader.id) ?? '';
-		if (reader.kind === 'task') return tasks.find((task) => task.id === reader.id)?.title ?? '';
-		return data?.goals.find((goal) => goal.id === reader.id)?.name ?? '';
-	});
+	function titleOf(item: ReaderItem): string {
+		if (item.kind === 'document') return titles.get(item.id) ?? '';
+		if (item.kind === 'task') return tasks.find((task) => task.id === item.id)?.title ?? '';
+		return data?.goals.find((goal) => goal.id === item.id)?.name ?? '';
+	}
 
 	// A doc opened from Prev/Next may sit in a collapsed folder: open the way to it.
 	$effect(() => {
@@ -315,161 +269,13 @@
 		});
 	});
 
-	let listEl = $state<HTMLElement | null>(null);
-	$effect(() => {
-		const id = reader?.id;
-		if (!id) return;
-		void tick().then(() =>
-			listEl
-				?.querySelector<HTMLElement>(`[data-row-id="${id}"]`)
-				?.scrollIntoView({ block: 'nearest' })
-		);
-	});
-
 	function openItem(kind: ReaderKind, id: string) {
-		if (!reader) detent = 'peek';
-		walk = { kind, ids: listOrder(kind) };
-		onOpenItem({ kind, id });
-	}
-
-	function step(direction: 1 | -1) {
-		if (!reader) return;
-		const near = neighbors(orderOf(reader.kind), reader.id);
-		const id = direction > 0 ? near.next : near.prev;
-		if (id) onOpenItem({ kind: reader.kind, id });
-	}
-
-	async function closeItem() {
-		await readerApi?.settle();
-		if (chatOpen && chatScope === 'item') chatOpen = false;
-		detent = 'peek';
-		onCloseItem();
-	}
-
-	function toggleFocus() {
-		if (phone) {
-			detent = detent === 'full' ? 'peek' : 'full';
-			return;
-		}
-		if (!chatOpen && reader && tableFocusId === reader.id && layout !== 'focus') {
-			tableFocusId = null;
-			return;
-		}
-		if (chatOpen) {
-			chatOpen = false;
-			layout = 'focus';
-		} else {
-			layout = layout === 'focus' ? 'peek' : 'focus';
-		}
-		saveReaderLayout(layout);
-	}
-
-	function toggleList() {
-		if (chatOpen) {
-			listWithChat = !listWithChat;
-			return;
-		}
-		if (reader && tableFocusId === reader.id && layout !== 'focus') {
-			tableFocusId = null;
-			return;
-		}
-		layout = layout === 'focus' ? 'peek' : 'focus';
-		saveReaderLayout(layout);
-	}
-
-	function openChat(scope: ChatScope) {
-		if (chatOpen && chatScope === scope) {
-			chatOpen = false;
-			return;
-		}
-		chatScope = scope;
-		chatOpen = true;
+		panes?.open({ kind, id });
 	}
 
 	/** Keys for the reader and chat; the desktop asks first and stops when one is used. */
 	export function handleKey(event: KeyboardEvent): boolean {
-		const target = event.target instanceof Element ? event.target : null;
-		// A table grid owns its keys (cell moves, type-to-edit), like a text field.
-		const typing = Boolean(
-			target?.closest(
-				'input, textarea, select, [contenteditable="true"], [role="textbox"], [role="grid"]'
-			)
-		);
-		if ((!typing || event.key === 'Escape') && readerApi?.handleKey(event)) return true;
-		if (typing || event.metaKey || event.ctrlKey || event.altKey) return false;
-		if (event.key === 'Escape') {
-			if (chatOpen) {
-				chatOpen = false;
-				return true;
-			}
-			if (reader) {
-				void closeItem();
-				return true;
-			}
-			return false;
-		}
-		if (!reader) return false;
-		// Arrow keys inside the reader scroll it; J and K always walk the list.
-		const inReader = Boolean(target?.closest('[data-reader-pane]'));
-		const key = event.key.toLowerCase();
-		if (key === 'j' || (event.key === 'ArrowDown' && !inReader)) {
-			step(1);
-			return true;
-		}
-		if (key === 'k' || (event.key === 'ArrowUp' && !inReader)) {
-			step(-1);
-			return true;
-		}
-		if (key === 'f') {
-			toggleFocus();
-			return true;
-		}
-		return false;
-	}
-
-	// ---------- Phone sheet ----------
-
-	let dragTop = $state<number | null>(null);
-	let sheetDrag: { y0: number; top0: number; dy: number; moved: boolean } | null = null;
-	const sheetMotion = $derived({
-		y: 480,
-		duration: prefersReducedMotion.current ? 0 : 260,
-		easing: cubicOut
-	});
-
-	function sheetDown(event: PointerEvent) {
-		const target = event.target instanceof Element ? event.target : null;
-		if (!target?.closest('[data-sheet-drag]') || target.closest('button, a')) return;
-		const sheet = event.currentTarget as HTMLElement;
-		sheetDrag = {
-			y0: event.clientY,
-			top0: sheet.getBoundingClientRect().top,
-			dy: 0,
-			moved: false
-		};
-		sheet.setPointerCapture?.(event.pointerId);
-	}
-
-	function sheetMove(event: PointerEvent) {
-		if (!sheetDrag) return;
-		sheetDrag.dy = event.clientY - sheetDrag.y0;
-		if (Math.abs(sheetDrag.dy) > 6) sheetDrag.moved = true;
-		if (sheetDrag.moved) dragTop = Math.max(0, sheetDrag.top0 + sheetDrag.dy);
-	}
-
-	function sheetUp() {
-		if (!sheetDrag) return;
-		const { dy, moved } = sheetDrag;
-		sheetDrag = null;
-		dragTop = null;
-		const next = sheetAfterDrag(detent, dy, moved);
-		if (next === 'closed') void closeItem();
-		else detent = next;
-	}
-
-	function scrimClick() {
-		if (chatOpen) chatOpen = false;
-		else void closeItem();
+		return panes?.handleKey(event) ?? false;
 	}
 
 	function shortDate(value: string): string {
@@ -537,7 +343,7 @@
 				<button
 					type="button"
 					class="action bolt"
-					onclick={() => openChat('project')}
+					onclick={() => panes?.openChat('project')}
 					aria-pressed={chatOpen && chatScope === 'project'}
 					title="Chat about this project"
 					aria-label="Chat about {project.name}"
@@ -600,223 +406,191 @@
 		{/each}
 	</div>
 
-	<div class="panes mode-{phone ? 'list' : mode}">
-		<div
-			class="body"
-			bind:this={listEl}
-			id="desktop-tabpanel"
-			role="tabpanel"
-			aria-labelledby="desktop-tab-{tab}"
-			data-autoscroll
-			inert={!phone && !listShown}
-		>
-			{#if tab === 'inside'}
-				{#if inside.length}
-					<p class="hint">
-						Drag a nested project onto Projects in the dock to take it out, or onto
-						another project to move it there.
-					</p>
-				{/if}
-				{#each inside as child (child.id)}
-					{@const cue =
-						formatProjectResumeCue(child.next_step_short) ||
-						formatProjectResumeCue(child.description)}
-					<div
-						class="row {dropClass(`project:${child.id}`)}"
-						class:lifted={lifted === `project:${child.id}`}
-						data-drag-kind="project"
-						data-drag-id={child.id}
-						data-drop-kind="project"
-						data-drop-id={child.id}
-					>
-						<GripVertical class="grip h-3.5 w-3.5" />
-						<DesktopTile project={child} size="sm" />
-						<button
-							type="button"
-							class="min-w-0 text-left"
-							draggable="false"
-							onclick={() => onOpenProject(child.id)}
+	<ReaderPanes
+		bind:this={panes}
+		bind:chatOpen
+		bind:chatScope
+		projectId={project.id}
+		projectName={project.name}
+		{canWrite}
+		{reader}
+		{reloadKey}
+		order={listOrder}
+		known={(_, id) => !data || knownIds.has(id)}
+		{titleOf}
+		listAttrs={{
+			id: 'desktop-tabpanel',
+			role: 'tabpanel',
+			'aria-labelledby': `desktop-tab-${tab}`
+		}}
+		{onOpenItem}
+		{onCloseItem}
+		{onChanged}
+	>
+		{#snippet list()}
+			<div class="body">
+				{#if tab === 'inside'}
+					{#if inside.length}
+						<p class="hint">
+							Drag a nested project onto Projects in the dock to take it out, or onto
+							another project to move it there.
+						</p>
+					{/if}
+					{#each inside as child (child.id)}
+						{@const cue =
+							formatProjectResumeCue(child.next_step_short) ||
+							formatProjectResumeCue(child.description)}
+						<div
+							class="row {dropClass(`project:${child.id}`)}"
+							class:lifted={lifted === `project:${child.id}`}
+							data-drag-kind="project"
+							data-drag-id={child.id}
+							data-drop-kind="project"
+							data-drop-id={child.id}
 						>
-							<span class="block truncate text-sm text-foreground">{child.name}</span>
-							<span class="block truncate text-xs text-muted-foreground">
-								{cue || 'No next step yet.'}
-							</span>
-						</button>
-						<button
-							type="button"
-							class="mv"
-							data-nodrag
-							onclick={(event) => move(event, { kind: 'project', id: child.id })}
-						>
-							Move
-						</button>
-					</div>
-				{/each}
-				<div class="empty-drop">
-					Drag a project from the dock into this card to nest it in {shortName(
-						project.name
-					)}.
-				</div>
-			{:else if !data}
-				{#if error}
-					<div class="empty-drop grid justify-items-center gap-2" role="alert">
-						<span>{error}</span>
-						<button type="button" class="action" onclick={onRetry}>
-							<RefreshCw class="h-3.5 w-3.5" /> Try again
-						</button>
-					</div>
-				{:else}
-					<div class="grid gap-1.5 px-2 py-1" aria-busy="true" aria-label="Loading">
-						{#each [0, 1, 2, 3] as index (index)}
-							<div
-								class="h-9 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
-							></div>
-						{/each}
-					</div>
-				{/if}
-			{:else if tab === 'docs'}
-				{#if tree.length}
-					<p class="hint">
-						Click a doc to open it.{canWrite
-							? ' Drag it onto a project in the dock to move it, with any docs nested under it.'
-							: ''}
-					</p>
-					{@render docRows(tree, 0)}
-					{#if canWrite}
-						<div class="flex justify-start px-2 pb-1 pt-2">
+							<GripVertical class="grip h-3.5 w-3.5" />
+							<DesktopTile project={child} size="sm" />
 							<button
 								type="button"
-								class="action quiet"
-								onclick={() => (newTableOpen = true)}
+								class="min-w-0 text-left"
+								draggable="false"
+								onclick={() => onOpenProject(child.id)}
 							>
-								<Table class="h-3.5 w-3.5" /> New table
+								<span class="block truncate text-sm text-foreground"
+									>{child.name}</span
+								>
+								<span class="block truncate text-xs text-muted-foreground">
+									{cue || 'No next step yet.'}
+								</span>
+							</button>
+							<button
+								type="button"
+								class="mv"
+								data-nodrag
+								onclick={(event) => move(event, { kind: 'project', id: child.id })}
+							>
+								Move
 							</button>
 						</div>
+					{/each}
+					<div class="empty-drop">
+						Drag a project from the dock into this card to nest it in {shortName(
+							project.name
+						)}.
+					</div>
+				{:else if !data}
+					{#if error}
+						<div class="empty-drop grid justify-items-center gap-2" role="alert">
+							<span>{error}</span>
+							<button type="button" class="action" onclick={onRetry}>
+								<RefreshCw class="h-3.5 w-3.5" /> Try again
+							</button>
+						</div>
+					{:else}
+						<div class="grid gap-1.5 px-2 py-1" aria-busy="true" aria-label="Loading">
+							{#each [0, 1, 2, 3] as index (index)}
+								<div
+									class="h-9 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
+								></div>
+							{/each}
+						</div>
 					{/if}
-				{:else}
-					<div class="empty-drop grid justify-items-center gap-2">
-						<span>No docs yet.</span>
+				{:else if tab === 'docs'}
+					{#if tree.length}
+						<p class="hint">
+							Click a doc to open it.{canWrite
+								? ' Drag it onto a project in the dock to move it, with any docs nested under it.'
+								: ''}
+						</p>
+						{@render docRows(tree, 0)}
 						{#if canWrite}
+							<div class="flex justify-start px-2 pb-1 pt-2">
+								<button
+									type="button"
+									class="action quiet"
+									onclick={() => (newTableOpen = true)}
+								>
+									<Table class="h-3.5 w-3.5" /> New table
+								</button>
+							</div>
+						{/if}
+					{:else}
+						<div class="empty-drop grid justify-items-center gap-2">
+							<span>No docs yet.</span>
+							{#if canWrite}
+								<button
+									type="button"
+									class="action"
+									onclick={() => (newTableOpen = true)}
+								>
+									<Table class="h-3.5 w-3.5" /> New table
+								</button>
+							{/if}
+						</div>
+					{/if}
+				{:else if tab === 'tasks'}
+					{#if tasks.length}
+						<div class="px-2 pb-2 pt-1"><DesktopTaskMix mix={taskMix} /></div>
+						<p class="hint">
+							Click a task to open it.{canWrite
+								? ` Drag it onto a project in the dock to move it.${SCHEDULED_TASK_MOVES_ENABLED ? '' : ' Dated tasks stay put for now.'}`
+								: ''}
+						</p>
+						{#each openTasks as task (task.id)}
+							{@render taskRow(task)}
+						{/each}
+						{#if doneTasks.length}
 							<button
 								type="button"
-								class="action"
-								onclick={() => (newTableOpen = true)}
+								class="mt-1 flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-left text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+								aria-expanded={showDone}
+								onclick={() => (showDone = !showDone)}
 							>
-								<Table class="h-3.5 w-3.5" /> New table
+								<ChevronRight
+									class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {showDone
+										? 'rotate-90'
+										: ''}"
+								/>
+								Done · {doneTasks.length}
 							</button>
+							{#if showDone}
+								{#each doneTasks as task (task.id)}
+									{@render taskRow(task)}
+								{/each}
+							{/if}
 						{/if}
-					</div>
-				{/if}
-			{:else if tab === 'tasks'}
-				{#if tasks.length}
-					<div class="px-2 pb-2 pt-1"><DesktopTaskMix mix={taskMix} /></div>
-					<p class="hint">
-						Click a task to open it.{canWrite
-							? ` Drag it onto a project in the dock to move it.${SCHEDULED_TASK_MOVES_ENABLED ? '' : ' Dated tasks stay put for now.'}`
-							: ''}
-					</p>
-					{#each openTasks as task (task.id)}
-						{@render taskRow(task)}
-					{/each}
-					{#if doneTasks.length}
-						<button
-							type="button"
-							class="mt-1 flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-left text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-							aria-expanded={showDone}
-							onclick={() => (showDone = !showDone)}
-						>
-							<ChevronRight
-								class="h-3.5 w-3.5 transition-transform motion-reduce:transition-none {showDone
-									? 'rotate-90'
-									: ''}"
-							/>
-							Done · {doneTasks.length}
-						</button>
-						{#if showDone}
-							{#each doneTasks as task (task.id)}
-								{@render taskRow(task)}
-							{/each}
-						{/if}
+					{:else}
+						<div class="empty-drop">No tasks yet.</div>
 					{/if}
+				{:else if data.goals.length}
+					<p class="hint">
+						Click a goal to open it. Goals stay with their project for now.
+					</p>
+					{#each data.goals as goal (goal.id)}
+						{@const selected = reader?.kind === 'goal' && reader.id === goal.id}
+						<div class="row" class:sel={selected} data-row-id={goal.id}>
+							<span></span>
+							<Target class="h-4 w-4 text-accent" />
+							<button
+								type="button"
+								class="open truncate text-sm text-foreground"
+								aria-current={selected ? 'true' : undefined}
+								onclick={() => openItem('goal', goal.id)}
+							>
+								{goal.name}
+							</button>
+							<span class="chip">
+								{goal.target_date ? shortDate(goal.target_date) : goal.state_key}
+							</span>
+						</div>
+					{/each}
 				{:else}
-					<div class="empty-drop">No tasks yet.</div>
-				{/if}
-			{:else if data.goals.length}
-				<p class="hint">Click a goal to open it. Goals stay with their project for now.</p>
-				{#each data.goals as goal (goal.id)}
-					{@const selected = reader?.kind === 'goal' && reader.id === goal.id}
-					<div class="row" class:sel={selected} data-row-id={goal.id}>
-						<span></span>
-						<Target class="h-4 w-4 text-accent" />
-						<button
-							type="button"
-							class="open truncate text-sm text-foreground"
-							aria-current={selected ? 'true' : undefined}
-							onclick={() => openItem('goal', goal.id)}
-						>
-							{goal.name}
-						</button>
-						<span class="chip">
-							{goal.target_date ? shortDate(goal.target_date) : goal.state_key}
-						</span>
-					</div>
-				{/each}
-			{:else}
-				<div class="empty-drop">No goals yet.</div>
-			{/if}
-		</div>
-		{#if !phone}
-			<div class="reader-col" data-reader-pane inert={!reader || mode === 'list-chat'}>
-				{#if reader}
-					{@render readerView(reader)}
+					<div class="empty-drop">No goals yet.</div>
 				{/if}
 			</div>
-			<div class="chat-col" inert={!chatOpen}>
-				{#if chatOpen}
-					{@render chatView()}
-				{/if}
-			</div>
-		{/if}
-	</div>
+		{/snippet}
+	</ReaderPanes>
 </article>
-
-{#if phone && (reader || chatOpen)}
-	<div use:portal class="sheet-layer">
-		<button
-			type="button"
-			class="scrim"
-			tabindex="-1"
-			aria-label="Close"
-			onclick={scrimClick}
-			transition:fade|global={{ duration: sheetMotion.duration }}
-		></button>
-		{#if reader}
-			<section
-				class="sheet reader-sheet {chatOpen ? 'under-chat' : detent}"
-				class:dragging={dragTop !== null}
-				style:top={dragTop !== null ? `${dragTop}px` : null}
-				aria-label={readerTitle || 'Reader'}
-				data-reader-pane
-				onpointerdown={sheetDown}
-				onpointermove={sheetMove}
-				onpointerup={sheetUp}
-				onpointercancel={sheetUp}
-				transition:fly|global={sheetMotion}
-			>
-				{@render readerView(reader)}
-			</section>
-		{/if}
-		{#if chatOpen}
-			<section
-				class="sheet chat-sheet"
-				class:tall={!reader}
-				transition:fly|global={sheetMotion}
-			>
-				{@render chatView()}
-			</section>
-		{/if}
-	</div>
-{/if}
 
 {#if newTableOpen && canWrite}
 	{#await import('$lib/components/tables/NewTableDialog.svelte') then { default: NewTableDialog }}
@@ -831,53 +605,6 @@
 		/>
 	{/await}
 {/if}
-
-{#snippet readerView(item: ReaderItem)}
-	{#if Reader}
-		<Reader
-			bind:this={readerApi}
-			{item}
-			projectId={project.id}
-			{canWrite}
-			order={orderOf(item.kind)}
-			fallbackTitle={readerTitle}
-			layout={effectiveLayout}
-			{listShown}
-			chatOn={chatOpen && chatScope === 'item'}
-			{phone}
-			{detent}
-			reloadKey={reloadKey + localReload}
-			onClose={() => void closeItem()}
-			onStep={(id) => onOpenItem({ kind: item.kind, id })}
-			onToggleFocus={toggleFocus}
-			onToggleList={toggleList}
-			onChat={() => openChat('item')}
-			{onChanged}
-			onDetent={(next) => (detent = next)}
-			onTableShown={(id) => {
-				if (!phone) tableFocusId = id;
-			}}
-		/>
-	{:else}
-		<div class="grid h-full place-items-center text-sm text-muted-foreground" aria-busy="true">
-			Opening…
-		</div>
-	{/if}
-{/snippet}
-
-{#snippet chatView()}
-	<DesktopChatPane
-		projectId={project.id}
-		projectName={project.name}
-		item={reader}
-		itemTitle={readerTitle}
-		scope={reader ? chatScope : 'project'}
-		{phone}
-		onScope={(scope) => (chatScope = scope)}
-		onClose={() => (chatOpen = false)}
-		onDocumentChanged={() => (localReload += 1)}
-	/>
-{/snippet}
 
 {#snippet docRows(nodes: DocTreeNode[], depth: number)}
 	{#each nodes as node (node.id)}
@@ -1140,79 +867,6 @@
 		min-height: 12rem;
 		padding: 10px 10px 16px;
 	}
-	/* The card body: list | reader | chat. Tracks keep one shape so width changes animate.
-	   The chat lays out at its final width (--chat-w) while its column slides open, so
-	   nothing inside it measures itself mid-animation. */
-	@media (min-width: 768px) {
-		.panes {
-			--chat-w: 380px;
-			display: grid;
-			flex: 1;
-			min-height: 0;
-			grid-template-rows: minmax(0, 1fr);
-			grid-template-columns: minmax(0, 1fr) 0px 0px;
-			transition: grid-template-columns 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
-		}
-		.mode-peek {
-			grid-template-columns: 340px minmax(0, 1fr) 0px;
-		}
-		.mode-focus {
-			grid-template-columns: 0px minmax(0, 1fr) 0px;
-		}
-		.mode-reader-chat {
-			grid-template-columns: 0px minmax(0, 1fr) var(--chat-w);
-		}
-		.mode-all {
-			--chat-w: 340px;
-			grid-template-columns: 280px minmax(0, 1fr) var(--chat-w);
-		}
-		.mode-list-chat {
-			grid-template-columns: minmax(0, 1fr) 0px var(--chat-w);
-		}
-		.chat-col > :global(*) {
-			width: var(--chat-w);
-		}
-		.body {
-			min-height: 0;
-			overflow-y: auto;
-			overscroll-behavior: contain;
-		}
-		.mode-focus .body,
-		.mode-reader-chat .body {
-			visibility: hidden;
-			padding-inline: 0;
-		}
-		.reader-col,
-		.chat-col {
-			min-width: 0;
-			min-height: 0;
-			overflow: hidden;
-			border-left: 1px solid hsl(var(--border));
-		}
-		.mode-list .reader-col,
-		.mode-list .chat-col,
-		.mode-peek .chat-col,
-		.mode-focus .chat-col,
-		.mode-list-chat .reader-col,
-		.mode-focus .reader-col,
-		.mode-reader-chat .reader-col {
-			border-left: 0;
-		}
-	}
-	/* Under ~1180px there is no room for the list beside a reader: Peek reads like Focus. */
-	@media (min-width: 768px) and (max-width: 1179px) {
-		.mode-peek {
-			grid-template-columns: 0px minmax(0, 1fr) 0px;
-		}
-		.panes,
-		.mode-all {
-			--chat-w: 320px;
-		}
-		.mode-all,
-		.mode-reader-chat {
-			grid-template-columns: 0px minmax(0, 1fr) var(--chat-w);
-		}
-	}
 	.hint {
 		padding: 2px 8px 8px;
 		font-size: 12.5px;
@@ -1392,66 +1046,7 @@
 		font-size: 13px;
 		color: hsl(var(--muted-foreground));
 	}
-	/* ---------- Phone sheets (portaled to body) ---------- */
-	.sheet-layer {
-		display: contents;
-	}
-	.scrim {
-		position: fixed;
-		inset: 0;
-		z-index: 200;
-		background: hsl(0 0% 0% / 0.45);
-		touch-action: none;
-	}
-	.sheet {
-		position: fixed;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		z-index: 201;
-		display: flex;
-		flex-direction: column;
-		overflow: hidden;
-		border-top: 1px solid hsl(var(--border));
-		border-radius: 18px 18px 0 0;
-		background: hsl(var(--background));
-		box-shadow: 0 -12px 40px -16px hsl(0 0% 0% / 0.5);
-		transition:
-			top 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
-			border-radius 280ms ease;
-	}
-	.sheet.dragging {
-		transition: none;
-	}
-	.reader-sheet.peek {
-		top: 34dvh;
-	}
-	.reader-sheet.full,
-	.reader-sheet.under-chat {
-		top: env(safe-area-inset-top, 0px);
-		border-radius: 0;
-		border-top: 0;
-	}
-	/* Reading while chatting: the doc keeps the top of the screen and scrolls clear of the chat. */
-	.reader-sheet.under-chat :global(.body) {
-		padding-bottom: 58dvh;
-	}
-	.chat-sheet {
-		z-index: 202;
-		top: 46dvh;
-		background: hsl(var(--card));
-	}
-	.chat-sheet.tall {
-		top: 10dvh;
-	}
-	.chat-sheet :global(.chat) {
-		padding-bottom: env(safe-area-inset-bottom, 0px);
-	}
 	@media (prefers-reduced-motion: reduce) {
-		.sheet,
-		.panes {
-			transition: none;
-		}
 		.card {
 			animation: none;
 		}

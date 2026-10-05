@@ -8,6 +8,7 @@
 	stays for later. Triage walks every item one at a time.
 -->
 <script lang="ts">
+	import { tick } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import InboxCleanupChangeList from './InboxCleanupChangeList.svelte';
@@ -266,6 +267,12 @@
 		}
 		notingId = item.id;
 		noteText = '';
+		void tick().then(() =>
+			document
+				.getElementById(`${uid}-item-${item.id}-note`)
+				?.querySelector<HTMLTextAreaElement>('textarea')
+				?.focus()
+		);
 	}
 
 	async function sendNote(item: ProjectCleanupItem) {
