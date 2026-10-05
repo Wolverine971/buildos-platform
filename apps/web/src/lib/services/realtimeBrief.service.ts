@@ -137,7 +137,11 @@ export class RealtimeBriefService {
 				`user-brief-notifications:${this.state.userId}`
 			);
 
-			// Set up event handlers
+			// Set up event handlers. Only bind postgres_changes to tables in the
+			// supabase_realtime publication: Realtime subscribes a channel's table bindings
+			// all-or-nothing, so one unpublished table (ontology_daily_briefs was one) silently
+			// drops queue_jobs too while subscribe() still reports SUBSCRIBED. The job row
+			// carries progress and the terminal status, so it is the only table needed.
 			this.state.channel
 				.on(
 					'postgres_changes',
@@ -149,22 +153,17 @@ export class RealtimeBriefService {
 					},
 					(payload) => this.handleJobUpdate(payload)
 				)
-				.on(
-					'postgres_changes',
-					{
-						event: '*',
-						schema: 'public',
-						table: 'ontology_daily_briefs',
-						filter: `user_id=eq.${this.state.userId}`
-					},
-					(payload) => this.handleBriefUpdate(payload)
-				)
 				.on('broadcast', { event: 'brief_completed' }, (payload) =>
 					this.handleBriefCompleted(payload)
 				)
 				.on('broadcast', { event: 'brief_failed' }, (payload) =>
 					this.handleBriefFailed(payload)
-				);
+				)
+				.on('system', {}, (payload: any) => {
+					if (payload?.status === 'error') {
+						console.error('Brief realtime binding rejected:', payload.message);
+					}
+				});
 
 			// Subscribe to the channel
 			const subscription = await this.state.channel.subscribe((status) => {
@@ -589,7 +588,11 @@ export class RealtimeBriefService {
 			const stepMessages: Record<string, string> = {
 				starting: 'Starting brief generation...',
 				fetching_projects: 'Fetching your projects...',
+				loading_ontology_data: 'Reading your projects...',
+				preparing_brief_data: 'Preparing your brief...',
 				generating_project_briefs: 'Generating project briefs...',
+				generating_executive_summary: 'Writing your summary...',
+				llm_analysis: 'Analyzing your priorities...',
 				consolidating_briefs: 'Consolidating briefs...',
 				finalizing: 'Finalizing your brief...',
 				completed: 'Brief completed!'
@@ -605,39 +608,6 @@ export class RealtimeBriefService {
 			default:
 				return 'Processing...';
 		}
-	}
-
-	/**
-	 * Handle daily brief updates
-	 */
-	private static handleBriefUpdate(payload: any): void {
-		const newRecord = payload.new;
-
-		// Only process completed briefs
-		if (!newRecord || newRecord.generation_status !== 'completed') {
-			return;
-		}
-
-		// Check if we're currently showing a generating status for this brief
-		const currentStatus = get(briefNotificationStatus);
-		const shouldNotify =
-			currentStatus.isGenerating && currentStatus.briefDate === newRecord.brief_date;
-
-		if (shouldNotify) {
-			// Show success notification
-			const relativeTime = getRelativeTime(
-				newRecord.generation_completed_at || newRecord.updated_at,
-				this.state.userTimezone
-			);
-			toastService.success(`Your daily brief is ready! (${relativeTime})`);
-		}
-
-		// Clear the status - don't keep showing completed briefs
-		if (currentStatus.briefDate === newRecord.brief_date) {
-			briefNotificationStatus.set({ isGenerating: false });
-		}
-
-		this.emitCompletionEvent(newRecord.brief_date);
 	}
 
 	/**
@@ -769,6 +739,16 @@ export class RealtimeBriefService {
 	static clearStatus(): void {
 		briefNotificationStatus.set({ isGenerating: false });
 		this.state.activeJobsByDate.clear();
+	}
+
+	/**
+	 * Clear the nav indicator when polling saw this date's generation end, so the
+	 * indicator never depends on realtime alone to stop spinning.
+	 */
+	static clearStatusForDate(briefDate: string): void {
+		if (get(briefNotificationStatus).briefDate === briefDate) {
+			briefNotificationStatus.set({ isGenerating: false });
+		}
 	}
 
 	/**

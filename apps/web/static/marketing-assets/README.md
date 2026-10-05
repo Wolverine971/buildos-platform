@@ -3,6 +3,7 @@
 The approved refined Brainbolt, reusable logo compositions, and social graphics.
 
 ## Start here
+
 - Use logos/lockup-horizontal-paper.png on light backgrounds; the ink version uses light lettering for dark backgrounds.
 - Transparent PNGs drop into slides, documents, websites, and email signatures.
 - SVG compositions contain editable Arial text and embedded raster Brainbolt artwork. They are NOT fully vector masters. Use PNG for consistent typography across devices.
@@ -11,6 +12,7 @@ The approved refined Brainbolt, reusable logo compositions, and social graphics.
 - Disrupted compositions intentionally pull the identity apart; use the intact horizontal lockup for routine identification.
 
 ## Formats
+
 - LinkedIn profile: 1584 × 396 PNG, under 8 MB. Main copy avoids the lower-left profile photo. Preview the crop on LinkedIn before applying.
 - LinkedIn company: 4200 × 700 PNG. Preview the company cover crop before applying.
 - Square: 1080 × 1080; portrait: 1080 × 1350; story: 1080 × 1920; presentation: 1920 × 1080.
@@ -18,16 +20,19 @@ The approved refined Brainbolt, reusable logo compositions, and social graphics.
 - Legacy motion loops are not included because they contain the previous Brainbolt artwork.
 
 ## Brand
+
 Signal orange #F97316. Ink #18181B. Paper #FAF9F6. Use deep orange #B85214 for small orange text on paper.
 Keep at least one quarter of the Brainbolt width clear around an intact logo. Do not stretch or crop the Brainbolt.
 Use a dark background behind light lettering. Keep the electric artwork in its original colors.
 
 ## Messaging
+
 Category: Thinking environment for people making complex things.
 Promise: Turn messy thinking into structured work.
 Differentiator: The project remembers what matters.
 
 ## Sources
+
 Refined Brainbolt approved on 2026-10-05; master: apps/web/brand-source/brain-bolt-refined.png. Other illustrations retain their existing source artwork.
 Brand guide: docs/marketing/brand/brand-guide-1-pager.md.
 LinkedIn profile specifications: https://www.linkedin.com/help/linkedin/answer/a568217/add-or-change-the-background-photo-on-your-profile

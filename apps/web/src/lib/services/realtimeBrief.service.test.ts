@@ -6,7 +6,8 @@ vi.mock('$lib/stores/toast.store', () => ({
 	toastService: { error: vi.fn(), success: vi.fn(), info: vi.fn() }
 }));
 
-import { RealtimeBriefService } from './realtimeBrief.service';
+import { get } from 'svelte/store';
+import { RealtimeBriefService, briefNotificationStatus } from './realtimeBrief.service';
 
 function createClient() {
 	const statusCallbacks: Array<(status: string) => void> = [];
@@ -60,5 +61,29 @@ describe('RealtimeBriefService reconnect', () => {
 		const removeOrder = client.removeChannel.mock.invocationCallOrder[0];
 		const recreateOrder = client.channel.mock.invocationCallOrder[1];
 		expect(removeOrder).toBeLessThan(recreateOrder);
+	});
+
+	it('binds postgres_changes only to queue_jobs (published for realtime)', async () => {
+		const { client, channels } = createClient();
+
+		await RealtimeBriefService.initialize('user-1', client, 'UTC');
+
+		// One unpublished table makes Realtime reject every table binding on the channel.
+		const tables = channels[0].on.mock.calls
+			.filter(([type]: [string]) => type === 'postgres_changes')
+			.map(([, config]: [string, { table: string }]) => config.table);
+		expect(tables).toEqual(['queue_jobs']);
+	});
+});
+
+describe('RealtimeBriefService.clearStatusForDate', () => {
+	it('clears the nav indicator only for the matching brief date', () => {
+		briefNotificationStatus.set({ isGenerating: true, briefDate: '2026-10-05', progress: 10 });
+
+		RealtimeBriefService.clearStatusForDate('2026-10-04');
+		expect(get(briefNotificationStatus).isGenerating).toBe(true);
+
+		RealtimeBriefService.clearStatusForDate('2026-10-05');
+		expect(get(briefNotificationStatus).isGenerating).toBe(false);
 	});
 });

@@ -629,6 +629,8 @@ export class BriefClientService {
 				0
 			);
 
+			RealtimeBriefService.clearStatusForDate(briefDate);
+
 			// Emit completion event that components can listen to
 			briefGenerationCompletedWritable.set({
 				briefDate,
@@ -651,6 +653,10 @@ export class BriefClientService {
 	private static handleGenerationError(error: unknown): void {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		console.error('Brief generation error:', errorMessage, error);
+
+		if (this.generationState.briefDate) {
+			RealtimeBriefService.clearStatusForDate(this.generationState.briefDate);
+		}
 
 		// Don't show error for expected cancellations
 		if (

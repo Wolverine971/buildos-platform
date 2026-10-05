@@ -1,3 +1,4 @@
+// apps/web/scripts/generate-brand-icons.mjs
 // Generate every deployed raster Brainbolt icon from the approved master.
 // Run: pnpm --filter @buildos/web exec node scripts/generate-brand-icons.mjs
 import { readFile, readdir, writeFile } from 'node:fs/promises';
