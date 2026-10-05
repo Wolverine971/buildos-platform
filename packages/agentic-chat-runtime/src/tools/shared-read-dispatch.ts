@@ -44,6 +44,7 @@ import { getOntoTaskDetails } from './ontology-task-detail';
 import { listTaskDocuments } from './ontology-task-documents';
 import { getFieldInfo, getProjectOverview, getWorkspaceOverview } from './overview-reads';
 import { getProjectCleanup } from './project-cleanup-reads';
+import { getOntoTableDetails, readTableRows } from './table-reads';
 import { projectReadResultInstantsToTimezone } from './read-result-timezone';
 
 type SharedReadToolRunnerV1 = (
@@ -98,6 +99,10 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	// Tasker 112 (2026-09-29): the nightly Project cleanup change set, the same view the
 	// AI Inbox card shows, so cleanup questions start from it instead of re-deriving it.
 	get_project_cleanup: getProjectCleanup,
+	// BuildOS Tables (2026-10-04): a table document's schema + first rows, and the
+	// structured row query. Both call the shared core in @buildos/shared-agent-ops/tables.
+	get_onto_table_details: getOntoTableDetails,
+	read_table_rows: readTableRows,
 	// Calendar READS only. The calendar writes execute on the worker through
 	// the reviewed mutation catalog, not through this dispatch table.
 	list_calendar_events: listCalendarEvents,

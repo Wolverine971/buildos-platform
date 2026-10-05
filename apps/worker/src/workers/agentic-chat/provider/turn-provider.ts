@@ -43,6 +43,7 @@ import {
 	type AgenticChatDocumentEditPreviewPort,
 	previewDocumentEditCalls
 } from './document-edit-preview';
+import { type AgenticChatTableEditPreviewPort, previewTableEditCalls } from './table-edit-preview';
 import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
 import { streamBufferedProviderPass } from './provider-pass';
 import { buildOutputBudgetRecoveryProgress, isActingOutputPass } from './output-budget';
@@ -149,6 +150,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			 */
 			documentEditPreview?: AgenticChatDocumentEditPreviewPort;
 			documentArchivePreview?: AgenticChatDocumentArchivePreviewPort;
+			/**
+			 * Dry-runs table row batches the same way (BuildOS Tables): an unknown
+			 * row handle or column returns to the actor, a valid batch reaches the
+			 * reviewer as counts plus sample cell diffs. Fail-open.
+			 */
+			tableEditPreview?: AgenticChatTableEditPreviewPort;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -556,6 +563,16 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						throwIfAborted(request.signal);
 						validationIssues.push(...previewed.issues);
 						state.recordDocumentEditPreviews(previewed.previews);
+					}
+					if (validationIssues.length === 0 && this.ports.tableEditPreview) {
+						const previewedTables = await previewTableEditCalls(
+							this.ports.tableEditPreview,
+							calls,
+							request
+						);
+						throwIfAborted(request.signal);
+						validationIssues.push(...previewedTables.issues);
+						state.recordTableEditPreviews(previewedTables.previews);
 					}
 					if (validationIssues.length === 0) {
 						// SHA-bound batch approval takes precedence over the contract

@@ -62,6 +62,8 @@ import {
 import { getDomainIdsForSkillReference } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import {
+	isFocusedTableContextPayload,
+	resolveFocusedTableSkillPreload,
 	resolveOperationalSkillPreload,
 	resolveSkillGatePreload,
 	resolveUserLaunchSkillPreload,
@@ -696,6 +698,7 @@ async function prepareWorkerAdmission(
 	// prepared hit skips the history query and so carries no such window
 	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69).
 	const workerSkillPreload = resolveWorkerSkillPreload({
+		surfaceProfile: turnPreparation.selectedSurfaceProfile,
 		message: messageForModel,
 		toolNames: workerPromptToolNames,
 		turnDomainSensing: turnPreparation.turnDomainSensing,
@@ -705,7 +708,8 @@ async function prepareWorkerAdmission(
 		requestedSkillId:
 			input.command.requestedSkillId ??
 			readSessionLaunchSkillId(sessionIntent.session?.agent_metadata) ??
-			windowLaunchSkillId
+			windowLaunchSkillId,
+		focusedTable: isFocusedTableContextPayload(preparedArtifact.contextPayload)
 	});
 	// An unresolved dynamic skill gate would ask the worker to call a tool it
 	// cannot execute. Only carry domain sensing into the worker prompt after the
@@ -1331,13 +1335,19 @@ export async function loadWorkerSkillPreloadLedgerMessage(_params: {
 }
 
 function resolveWorkerSkillPreload(params: {
+	surfaceProfile: string;
 	message: string;
 	toolNames: string[];
 	turnDomainSensing: DomainSensingResult | null;
 	alreadyLoadedCraftSkillIds: string[];
 	requestedSkillId: string | null;
+	/** The chat's focused entity is a table document (BuildOS Tables). */
+	focusedTable?: boolean;
 }): SkillGatePreload | null {
 	if (!SCAFFOLD.routing.skillPreload) return null;
+	// Project creation is a bounded shell-first surface with its own prompt; a task or plan
+	// playbook would describe update/move/link tools it does not mount.
+	if (params.surfaceProfile === 'project_create') return null;
 	// Operational skills first (Decision 4): they carry the tool packaging and
 	// stop conditions the reviewed lane depends on, and their intent map cannot
 	// misfire on prose. A craft candidate from sensing rides along as the
@@ -1360,6 +1370,14 @@ function resolveWorkerSkillPreload(params: {
 		operationalPreload: operational
 	}).preload;
 	if (launched) return launched;
+	// A table in focus brings its own playbook; this turn's operational write
+	// playbook (task follow-ups from rows, say) renders right after it.
+	const focusedTable = resolveFocusedTableSkillPreload({
+		focusedTable: params.focusedTable === true,
+		toolNames: params.toolNames,
+		operationalPreload: operational
+	});
+	if (focusedTable) return focusedTable;
 	if (operational) return operational;
 	return resolveSkillGatePreload(params.turnDomainSensing, {
 		allowFollowupSkillLoad: false,

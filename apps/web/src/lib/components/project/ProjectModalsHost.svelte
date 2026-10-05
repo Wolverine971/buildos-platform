@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/project/ProjectModalsHost.svelte -->
 <script lang="ts">
-	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import ProjectDeleteConfirmModal from './ProjectDeleteConfirmModal.svelte';
 	import { DocMoveModal, DocDeleteConfirmModal } from '$lib/components/ontology/doc-tree';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type { Document, Goal, Project, Task } from '$lib/types/onto';
@@ -103,6 +103,7 @@
 		onCollaborationMembersChanged,
 		onProjectDeleteConfirm,
 		onCancelProjectDelete,
+		onHandOffProject,
 		onCloseGraphModal,
 		onGraphNodeClick,
 		onEntityModalLoaded
@@ -198,6 +199,8 @@
 		onCollaborationMembersChanged?: () => void | Promise<void>;
 		onProjectDeleteConfirm: () => void | Promise<void>;
 		onCancelProjectDelete: () => void;
+		/** "Hand it off instead" in the delete dialog: close it and open collaboration settings. */
+		onHandOffProject?: () => void;
 		onCloseGraphModal: () => void;
 		onGraphNodeClick: (node: GraphNode) => void;
 		onEntityModalLoaded?: () => void;
@@ -451,31 +454,16 @@
 
 <!-- Project Delete Confirmation -->
 {#if showDeleteProjectModal}
-	<ConfirmationModal
-		title="Delete project"
-		confirmText="Delete"
-		confirmVariant="danger"
+	<ProjectDeleteConfirmModal
 		isOpen={showDeleteProjectModal}
+		projectId={project.id}
+		projectName={project.name || 'This project'}
 		loading={isDeletingProject}
+		error={deleteProjectError}
 		onconfirm={onProjectDeleteConfirm}
 		oncancel={onCancelProjectDelete}
-	>
-		{#snippet content()}
-			<p class="text-sm text-muted-foreground">
-				This will permanently delete <span class="font-semibold text-foreground"
-					>{project.name}</span
-				>
-				and all related data. This action cannot be undone.
-			</p>
-		{/snippet}
-		{#snippet details()}
-			{#if deleteProjectError}
-				<p class="mt-2 text-sm text-destructive">
-					{deleteProjectError}
-				</p>
-			{/if}
-		{/snippet}
-	</ConfirmationModal>
+		onHandOff={canOpenCollabModal ? onHandOffProject : undefined}
+	/>
 {/if}
 
 <!-- Project Graph Modal -->

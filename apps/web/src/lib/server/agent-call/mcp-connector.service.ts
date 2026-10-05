@@ -39,6 +39,7 @@ import {
 import { executeBuildosAgentGatewayTool } from './external-tool-gateway';
 import { getPublicBuildosAgentTools } from './public-tool-registry';
 import { getToolRegistry } from '@buildos/agentic-chat-runtime/catalog';
+import { EXTERNAL_CUSTOM_OPS } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import {
 	extractAllowedOpsFromPolicy,
@@ -274,9 +275,18 @@ function logMcpTransportRejection(params: {
 	);
 }
 
+/** Gateway-owned tools (e.g. the table tools) that the chat catalog may not mount. */
+function customOpForToolName(toolName: string): { op: string; tool_name: string } | null {
+	return (
+		Object.values(EXTERNAL_CUSTOM_OPS).find((entry) => entry?.tool_name === toolName) ?? null
+	);
+}
+
 function inferToolOp(toolName: string): string {
 	const registryEntry = getToolRegistry().byToolName[toolName];
-	return registryEntry?.op ?? normalizeGatewayOpName(toolName);
+	return (
+		registryEntry?.op ?? customOpForToolName(toolName)?.op ?? normalizeGatewayOpName(toolName)
+	);
 }
 
 function titleFromToolName(toolName: string): string {
@@ -569,14 +579,24 @@ const MCP_SEARCH_FETCH_TOOLS = [
 	}
 ];
 
-const MCP_FETCH_CONFIG: Record<string, { op: string; idArg: string; resultKey: string }> = {
+const MCP_FETCH_CONFIG: Record<
+	string,
+	{ op: string; idArg: string; resultKey: string; extraArgs?: Record<string, unknown> }
+> = {
 	project: { op: 'onto.project.get', idArg: 'project_id', resultKey: 'project' },
 	task: { op: 'onto.task.get', idArg: 'task_id', resultKey: 'task' },
 	document: { op: 'onto.document.get', idArg: 'document_id', resultKey: 'document' },
 	goal: { op: 'onto.goal.get', idArg: 'goal_id', resultKey: 'goal' },
 	plan: { op: 'onto.plan.get', idArg: 'plan_id', resultKey: 'plan' },
 	milestone: { op: 'onto.milestone.get', idArg: 'milestone_id', resultKey: 'milestone' },
-	risk: { op: 'onto.risk.get', idArg: 'risk_id', resultKey: 'risk' }
+	risk: { op: 'onto.risk.get', idArg: 'risk_id', resultKey: 'risk' },
+	// A table fetch returns the whole table as CSV text (table.content).
+	table: {
+		op: 'onto.table.get',
+		idArg: 'table_id',
+		resultKey: 'table',
+		extraArgs: { format: 'csv', row_limit: 0 }
+	}
 };
 
 /**
@@ -596,7 +616,10 @@ function readOnlyScopeFrom(scope: AgentCallScope): AgentCallScope {
 }
 
 function resolveGatewayToolName(op: string): string | undefined {
-	return getToolRegistry().ops[op]?.tool_name;
+	return (
+		getToolRegistry().ops[op]?.tool_name ??
+		(EXTERNAL_CUSTOM_OPS as Record<string, { tool_name: string } | undefined>)[op]?.tool_name
+	);
 }
 
 /**
@@ -705,7 +728,7 @@ async function runMcpFetch(params: {
 		callSessionId,
 		scope: readScope,
 		toolName,
-		arguments: { [config.idArg]: entityId },
+		arguments: { [config.idArg]: entityId, ...(config.extraArgs ?? {}) },
 		securityEventOptions: params.securityEventOptions,
 		connectorOrigin: params.origin
 	});
@@ -730,11 +753,15 @@ async function runMcpFetch(params: {
 	if (type === 'project' && startHere && typeof startHere.content === 'string') {
 		text = text ? `${startHere.content}\n\n---\n\n${text}` : startHere.content;
 	}
+	const entityPath =
+		type === 'table' && typeof entity.url === 'string' && entity.url.startsWith('/')
+			? entity.url
+			: `/projects/${String(entity.project_id ?? entityId)}`;
 	return {
 		id: params.id,
 		title,
 		text,
-		url: `${params.origin}/projects/${String(entity.project_id ?? entityId)}`,
+		url: `${params.origin}${entityPath}`,
 		metadata: {
 			type,
 			project_id: entity.project_id ?? null,
@@ -797,7 +824,7 @@ function paginateMcpList<T>(
 // ---------------------------------------------------------------------------
 
 const MCP_RESOURCE_SCHEME = 'buildos';
-const MCP_RESOURCE_FETCHABLE_TYPES = new Set(['project', 'document']);
+const MCP_RESOURCE_FETCHABLE_TYPES = new Set(['project', 'document', 'table']);
 
 function resourceUriFor(type: string, id: string): string {
 	return `${MCP_RESOURCE_SCHEME}://${type}/${id}`;
@@ -929,7 +956,7 @@ async function dispatchAuthenticatedMcpMethod(params: {
 			if (!parsedResource) {
 				throw new ProtocolError(
 					-32602,
-					`Unsupported resource uri "${uri}". Expected "buildos://project/<id>" or "buildos://document/<id>".`
+					`Unsupported resource uri "${uri}". Expected "buildos://project/<id>", "buildos://document/<id>", or "buildos://table/<id>".`
 				);
 			}
 			const result = await runMcpFetch({
@@ -951,7 +978,7 @@ async function dispatchAuthenticatedMcpMethod(params: {
 				contents: [
 					{
 						uri,
-						mimeType: 'text/markdown',
+						mimeType: parsedResource.type === 'table' ? 'text/csv' : 'text/markdown',
 						text: typeof result.text === 'string' ? result.text : ''
 					}
 				]

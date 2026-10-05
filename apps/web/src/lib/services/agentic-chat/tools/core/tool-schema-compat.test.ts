@@ -219,7 +219,9 @@ describe('Chat tool schema compatibility', () => {
 			delegate_task: {
 				scope_mode: 'read_only',
 				effort: 'standard',
-				run_template: 'agent',
+				// run_template is no longer offered (deep_research is parked
+				// behind PRIVATE_DEEP_RESEARCH_ENABLED); runs default to 'agent'.
+				run_template: undefined,
 				review: false
 			},
 			commit_change_set: { default_decision: 'approved' }

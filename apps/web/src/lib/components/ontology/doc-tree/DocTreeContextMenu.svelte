@@ -5,6 +5,7 @@
 		Actions:
 		- Open document
 		- Create child document
+		- New table inside (opens NewTableDialog)
 		- Move document
 		- Archive document
 		- Publish / Manage / Copy link / Open public page (documents only)
@@ -19,7 +20,8 @@
 		Globe,
 		Link,
 		Move,
-		Settings2
+		Settings2,
+		Table2 as Table
 	} from '$lib/icons/lucide';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 
@@ -43,7 +45,7 @@
 	const manageable = $derived(canEdit && !pinned);
 	const menuItemCount = $derived(
 		1 +
-			(canEdit ? 1 : 0) +
+			(canEdit ? 2 : 0) +
 			(!isFolder && !pinned ? (isPublic ? 2 + (canEdit ? 1 : 0) : canEdit ? 1 : 0) : 0) +
 			(manageable ? 2 : 0)
 	);
@@ -147,6 +149,16 @@
 			>
 				<FolderPlus class="w-4 h-4 text-muted-foreground" />
 				Create child
+			</button>
+			<!-- New table nested under this document -->
+			<button
+				type="button"
+				role="menuitem"
+				onclick={() => handleAction('create-table')}
+				class="menu-item pressable"
+			>
+				<Table class="w-4 h-4 text-muted-foreground" />
+				New table inside
 			</button>
 		{/if}
 

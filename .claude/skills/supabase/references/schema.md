@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 272 tables, grouped by domain.
+Complete column listing for all 273 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-04T20:27:24.748Z
+**Schema generated:** 2026-10-05T00:00:24.790Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -15,7 +15,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 
 - [Users & Auth](#users--auth) (6 tables)
 - [People & Contacts](#people--contacts) (6 tables)
-- [Ontology System](#ontology-system) (42 tables)
+- [Ontology System](#ontology-system) (43 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
 - [Chat & Agents](#chat--agents) (41 tables)
 - [Calendar](#calendar) (13 tables)
@@ -92,7 +92,7 @@ confidence `number` · created_at `string` · deleted_at `string?` · display_na
 
 ### onto_actors
 
-created_at `string` · email `string?` · id `string` · kind `string` · metadata `Json` · name `string` · org_id `string?` · user_id `string?`
+account_deleted_at `string?` · created_at `string` · email `string?` · id `string` · kind `string` · metadata `Json` · name `string` · org_id `string?` · user_id `string?`
 
 ### onto_asset_links
 
@@ -125,6 +125,10 @@ body `string` · body_format `string` · created_at `string` · created_by `stri
 ### onto_document_proposals
 
 applied_at `string?` · applied_by_actor_id `string?` · base_content_hash `string` · conflict_reason `string?` · created_at `string` · created_by_actor_id `string` · document_id `string` · id `string` · instruction `string` · patch `Json` · patch_hash `string` · project_id `string` · result_content_hash `string` · status `string` · updated_at `string` · version_warning `string?`
+
+### onto_document_rows
+
+cell_meta `Json` · cells `Json` · created_at `string` · created_by `string?` · deleted_at `string?` · document_id `string` · id `string` · position `number` · row_number `number` · updated_at `string` · updated_by `string?` · version `number`
 
 ### onto_document_versions
 

@@ -62,6 +62,8 @@ export const AGENTIC_CHAT_TOOL_STORAGE_CLASSES_V1: Readonly<
 	get_workspace_overview: 'workspace',
 	get_project_overview: 'workspace',
 	get_project_cleanup: 'workspace',
+	get_onto_table_details: 'workspace',
+	read_table_rows: 'workspace',
 	get_entity_relationships: 'workspace',
 	get_linked_entities: 'workspace',
 	get_user_profile_overview: 'workspace',

@@ -73,7 +73,9 @@ describe('Agentic Chat Phase 5 reliability contract audit', () => {
 		// 21 -> 25 on 2026-09-04: the four calendar writes are table rows, so they
 		// add no adapter file; they cross the same boundary through the table.
 		// 25 -> 26 on 2026-09-22: update_onto_asset is a table row too.
-		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(26);
+		// 26 -> 29 on 2026-10-04 (Tables tool suite): create_onto_table,
+		// update_onto_table, update_onto_table_rows are table rows; no adapter file.
+		expect(AGENTIC_CHAT_MUTATION_SURFACE_AUDIT_V1.reviewedToolNames).toHaveLength(29);
 	});
 
 	it('limits automatic uncertain-commit replay to the reviewed idempotent downstreams', () => {
@@ -82,6 +84,7 @@ describe('Agentic Chat Phase 5 reliability contract audit', () => {
 			.map(([toolName]) => toolName)
 			.sort();
 		expect(retryable).toEqual(['create_onto_task', 'create_task_document']);
-		expect(Object.keys(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)).toHaveLength(26);
+		// 26 -> 29 on 2026-10-04: the three table writes (no downstream idempotency).
+		expect(Object.keys(AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1)).toHaveLength(29);
 	});
 });

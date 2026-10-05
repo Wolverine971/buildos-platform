@@ -130,11 +130,63 @@ function version(row: Row): string {
 	return text(row.updated_at || row.created_at || 'unknown').slice(0, 128);
 }
 
+/** Structured type_key check (mirrors `isTableTypeKey` in shared-agent-ops/tables). */
+function isTableDocument(doc: Row): boolean {
+	const typeKey = doc.type_key;
+	return (
+		typeof typeKey === 'string' &&
+		(typeKey === 'document.table' || typeKey.startsWith('document.table.'))
+	);
+}
+
+const TABLE_PACKET_COLUMNS = 12;
+
+/**
+ * A table document's packet (BuildOS Tables, 2026-10-04): row count and column
+ * names from `props.table`, in place of headings its generated body never has.
+ */
+function tablePacketFields(doc: Row): { rows: number; columns: string[] } | null {
+	if (!isTableDocument(doc)) return null;
+	const schema = doc.table && typeof doc.table === 'object' ? (doc.table as Row) : {};
+	const rows = typeof schema.row_count === 'number' ? schema.row_count : 0;
+	const columns = (Array.isArray(schema.columns) ? schema.columns : [])
+		.map((column) => (column && typeof column === 'object' ? (column as Row).name : undefined))
+		.filter((name): name is string => typeof name === 'string' && name.length > 0)
+		.slice(0, TABLE_PACKET_COLUMNS)
+		.map((name) => clipContextText(name, CONTEXT_FINDER_PACKET_LIMITS.headingChars));
+	return { rows, columns };
+}
+
 export function buildContextFinderEntities(project: ContextFinderProjectV1): ContextFinderEntity[] {
 	const limits = CONTEXT_FINDER_PACKET_LIMITS;
 	const out: ContextFinderEntity[] = [];
 	project.documents.forEach((doc, i) => {
 		const title = text(doc.title);
+		const table = tablePacketFields(doc);
+		if (table) {
+			out.push({
+				ref: `d${i}`,
+				id: text(doc.id),
+				kind: 'document',
+				title,
+				version: version(doc),
+				packet: {
+					kind: 'document',
+					title,
+					description:
+						clipContextWords(doc.description, limits.documentDescriptionChars) ||
+						undefined,
+					type: doc.type_key ?? undefined,
+					table
+				},
+				// The body is the row projection (a markdown table); loading it in
+				// full brings in its header and first rows.
+				fullText: text(doc.content),
+				sections: [],
+				packetHeadings: []
+			});
+			return;
+		}
 		const sections = parseContextFinderSections(text(doc.content));
 		const packetHeadings = pickPacketHeadings(title, sections);
 		out.push({

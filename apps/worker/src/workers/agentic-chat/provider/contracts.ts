@@ -257,6 +257,13 @@ export type AgenticChatTurnProviderRequestV1 = AgenticChatTurnProviderClientRequ
 	 */
 	toolSelectionPins?: readonly string[];
 	/**
+	 * The table document the chat is focused on (BuildOS Tables, 2026-10-04),
+	 * from the admitted context's structured focus entity and its type_key, never
+	 * from message text. Pins the table tools and resolves the table as the
+	 * focused entity for direct row writes.
+	 */
+	focusedTableId?: string;
+	/**
 	 * Mutation tools the schema selector (Jev) scored at or above
 	 * JEV_WRITE_COMMISSION_THRESHOLD for the current message: a structured,
 	 * model-judged signal that the message asks for a durable change. Set only

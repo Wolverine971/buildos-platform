@@ -9,6 +9,7 @@ import type {
 	ProjectContextSnapshotJobMetadata,
 	ProjectIconGenerationJobMetadata,
 	ProjectLoopJobMetadata,
+	QueueJobType,
 	VoiceNoteTranscriptionJobMetadata
 } from '@buildos/shared-types';
 import type { ProcessingJob } from './lib/supabaseQueue';
@@ -44,6 +45,11 @@ import { processConsolidationRun } from './workers/consolidation/consolidationJo
 import { processUserDataExportJob } from './workers/export/userDataExportWorker';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { processQuestionTreeJob } from './workers/question-tree/questionTreeWorker';
+import {
+	TABLE_AI_FILL_JOB_TYPE,
+	TABLE_AI_FILL_WORKER_TIMEOUT_MS,
+	processTableAiFillJob
+} from './workers/tables/tableAiFillWorker';
 import type { QuestionTreeJobMetadata } from './workers/question-tree/questionTreeContracts';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { processCycleRun } from './workers/cycle/cycleWorker';
@@ -411,6 +417,18 @@ async function processProjectLoop(job: ProcessingJob<ProjectLoopJobMetadata>) {
 }
 
 /**
+ * Tables: AI question-column fill (table_ai_fill, queued by "Fill" on a column)
+ */
+async function processTableAiFill(job: ProcessingJob) {
+	try {
+		return await processTableAiFillJob(job);
+	} catch (error) {
+		await job.log(`Table AI fill job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Calendar sync projection processor
  */
 async function processCalendarSync(job: ProcessingJob) {
@@ -443,9 +461,11 @@ async function processQuestionTree(job: ProcessingJob<QuestionTreeJobMetadata>) 
 }
 
 /**
- * Start the Supabase-based worker
+ * Start the Supabase-based worker. `scheduledWork` (config/scheduledWork.ts)
+ * gates the startup queue purge and the queue alert monitor; queue consumers
+ * always start.
  */
-export async function startWorker() {
+export async function startWorker({ scheduledWork }: { scheduledWork: boolean }) {
 	console.log('🚀 Starting worker...');
 	const lifecycle = getOrCreateGeneralWorkerRuntimeLifecycle();
 
@@ -505,6 +525,13 @@ export async function startWorker() {
 	// Register "Download my data" exports (Settings → Your data).
 	queue.process('user_data_export', processUserDataExportJob);
 
+	// Tables: AI question columns. Big research runs outlast the default queue timeout; a
+	// timed-out run resumes on retry from the cells still pending. The cast goes away once
+	// `pnpm gen:all` picks up the queue_type value (migration 20261004233000).
+	queue.process(TABLE_AI_FILL_JOB_TYPE as string as QueueJobType, processTableAiFill, {
+		workerTimeoutMs: TABLE_AI_FILL_WORKER_TIMEOUT_MS
+	});
+
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);
 
@@ -528,28 +555,33 @@ export async function startWorker() {
 	}
 
 	// Run queue cleanup on startup to cancel stale jobs and enforce retention
-	try {
-		console.log('🧹 Running startup cleanup check...');
-		const cleanupResult = await cleanupStaleJobs({
-			staleThresholdHours: config.staleJobThresholdHours,
-			oldFailedJobsDays: config.oldFailedJobsDays,
-			completedJobsRetentionDays: config.completedJobsRetentionDays,
-			maxDeletionBatchSize: config.cleanupBatchSize,
-			dryRun: false
-		});
+	// (a production purge, so deployed workers only).
+	if (scheduledWork) {
+		try {
+			console.log('🧹 Running startup cleanup check...');
+			const cleanupResult = await cleanupStaleJobs({
+				staleThresholdHours: config.staleJobThresholdHours,
+				oldFailedJobsDays: config.oldFailedJobsDays,
+				completedJobsRetentionDays: config.completedJobsRetentionDays,
+				maxDeletionBatchSize: config.cleanupBatchSize,
+				dryRun: false
+			});
 
-		if (cleanupResult.staleCancelled > 0) {
-			console.log(`✅ Cancelled ${cleanupResult.staleCancelled} stale job(s) on startup`);
+			if (cleanupResult.staleCancelled > 0) {
+				console.log(`✅ Cancelled ${cleanupResult.staleCancelled} stale job(s) on startup`);
+			}
+			if (cleanupResult.completedDeleted > 0) {
+				console.log(
+					`✅ Deleted ${cleanupResult.completedDeleted} completed job(s) on startup`
+				);
+			}
+			if (cleanupResult.errors.length > 0) {
+				console.warn('⚠️  Cleanup had errors:', cleanupResult.errors);
+			}
+		} catch (error) {
+			console.error('❌ Startup cleanup failed:', getErrorMessage(error));
+			// Continue startup even if cleanup fails - don't block the worker
 		}
-		if (cleanupResult.completedDeleted > 0) {
-			console.log(`✅ Deleted ${cleanupResult.completedDeleted} completed job(s) on startup`);
-		}
-		if (cleanupResult.errors.length > 0) {
-			console.warn('⚠️  Cleanup had errors:', cleanupResult.errors);
-		}
-	} catch (error) {
-		console.error('❌ Startup cleanup failed:', getErrorMessage(error));
-		// Continue startup even if cleanup fails - don't block the worker
 	}
 
 	// Agentic Chat is owned exclusively by chat-worker.ts. This process starts
@@ -559,7 +591,7 @@ export async function startWorker() {
 	// Run actionable queue alert checks without dumping cumulative queue history
 	// on every tick. The queue_jobs_stats view remains available for on-demand
 	// diagnostics, while alerts cover recent failure spikes and runnable backlog.
-	if (config.enableHealthChecks) {
+	if (scheduledWork && config.enableHealthChecks) {
 		queueMonitoringInterval = setInterval(async () => {
 			// Alert tripwires: failed-job spikes + oldest runnable pending age.
 			try {

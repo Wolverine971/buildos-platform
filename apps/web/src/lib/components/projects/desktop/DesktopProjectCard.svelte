@@ -27,8 +27,10 @@
 		Lock,
 		Minimize2,
 		RefreshCw,
+		Table2 as Table,
 		Target
 	} from '$lib/icons/lucide';
+	import { isTableTypeKey, type LoadedTable } from '@buildos/shared-agent-ops/tables';
 	import { onMount, tick, untrack } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -135,6 +137,13 @@
 
 	const tree = $derived(data ? visibleDocumentTree(data.project) : []);
 	const titles = $derived(new Map(data?.project.documents.map((doc) => [doc.id, doc.title])));
+	const tableDocIds = $derived(
+		new Set(
+			(data?.project.documents ?? [])
+				.filter((doc) => isTableTypeKey(doc.type_key))
+				.map((doc) => doc.id)
+		)
+	);
 	const tasks = $derived(
 		[...(data?.project.tasks ?? [])].sort(
 			(a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)
@@ -222,13 +231,25 @@
 	});
 
 	let layout = $state<ReaderLayout>(loadReaderLayout());
+	// A table opens at full card width (Focus) without changing the saved
+	// preference; toggling back to split clears it for that table.
+	let tableFocusId = $state<string | null>(null);
+	const effectiveLayout = $derived<ReaderLayout>(
+		reader && tableFocusId === reader.id ? 'focus' : layout
+	);
+	let newTableOpen = $state(false);
 	let chatOpen = $state(false);
 	let chatScope = $state<ChatScope>('project');
 	let listWithChat = $state(false);
 	let detent = $state<SheetDetent>('peek');
 	let localReload = $state(0);
 	const mode = $derived(
-		paneMode({ reading: Boolean(reader), layout, chat: chatOpen, listWithChat })
+		paneMode({
+			reading: Boolean(reader),
+			layout: effectiveLayout,
+			chat: chatOpen,
+			listWithChat
+		})
 	);
 	const listShown = $derived(showsList(mode));
 
@@ -330,6 +351,10 @@
 			detent = detent === 'full' ? 'peek' : 'full';
 			return;
 		}
+		if (!chatOpen && reader && tableFocusId === reader.id && layout !== 'focus') {
+			tableFocusId = null;
+			return;
+		}
 		if (chatOpen) {
 			chatOpen = false;
 			layout = 'focus';
@@ -342,6 +367,10 @@
 	function toggleList() {
 		if (chatOpen) {
 			listWithChat = !listWithChat;
+			return;
+		}
+		if (reader && tableFocusId === reader.id && layout !== 'focus') {
+			tableFocusId = null;
 			return;
 		}
 		layout = layout === 'focus' ? 'peek' : 'focus';
@@ -360,8 +389,11 @@
 	/** Keys for the reader and chat; the desktop asks first and stops when one is used. */
 	export function handleKey(event: KeyboardEvent): boolean {
 		const target = event.target instanceof Element ? event.target : null;
+		// A table grid owns its keys (cell moves, type-to-edit), like a text field.
 		const typing = Boolean(
-			target?.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')
+			target?.closest(
+				'input, textarea, select, [contenteditable="true"], [role="textbox"], [role="grid"]'
+			)
 		);
 		if ((!typing || event.key === 'Escape') && readerApi?.handleKey(event)) return true;
 		if (typing || event.metaKey || event.ctrlKey || event.altKey) return false;
@@ -650,8 +682,30 @@
 							: ''}
 					</p>
 					{@render docRows(tree, 0)}
+					{#if canWrite}
+						<div class="flex justify-start px-2 pb-1 pt-2">
+							<button
+								type="button"
+								class="action quiet"
+								onclick={() => (newTableOpen = true)}
+							>
+								<Table class="h-3.5 w-3.5" /> New table
+							</button>
+						</div>
+					{/if}
 				{:else}
-					<div class="empty-drop">No docs yet.</div>
+					<div class="empty-drop grid justify-items-center gap-2">
+						<span>No docs yet.</span>
+						{#if canWrite}
+							<button
+								type="button"
+								class="action"
+								onclick={() => (newTableOpen = true)}
+							>
+								<Table class="h-3.5 w-3.5" /> New table
+							</button>
+						{/if}
+					</div>
 				{/if}
 			{:else if tab === 'tasks'}
 				{#if tasks.length}
@@ -764,6 +818,20 @@
 	</div>
 {/if}
 
+{#if newTableOpen && canWrite}
+	{#await import('$lib/components/tables/NewTableDialog.svelte') then { default: NewTableDialog }}
+		<NewTableDialog
+			projectId={project.id}
+			onCreated={(table: LoadedTable) => {
+				newTableOpen = false;
+				onChanged();
+				openItem('document', table.document.id);
+			}}
+			onClose={() => (newTableOpen = false)}
+		/>
+	{/await}
+{/if}
+
 {#snippet readerView(item: ReaderItem)}
 	{#if Reader}
 		<Reader
@@ -773,7 +841,7 @@
 			{canWrite}
 			order={orderOf(item.kind)}
 			fallbackTitle={readerTitle}
-			{layout}
+			layout={effectiveLayout}
 			{listShown}
 			chatOn={chatOpen && chatScope === 'item'}
 			{phone}
@@ -786,6 +854,9 @@
 			onChat={() => openChat('item')}
 			{onChanged}
 			onDetent={(next) => (detent = next)}
+			onTableShown={(id) => {
+				if (!phone) tableFocusId = id;
+			}}
 		/>
 	{:else}
 		<div class="grid h-full place-items-center text-sm text-muted-foreground" aria-busy="true">
@@ -841,7 +912,9 @@
 				<span></span>
 			{/if}
 			<span class="glyph">
-				{#if children.length}<FolderOpen class="h-4 w-4" />{:else}<FileText
+				{#if tableDocIds.has(node.id)}<Table
+						class="h-4 w-4"
+					/>{:else if children.length}<FolderOpen class="h-4 w-4" />{:else}<FileText
 						class="h-4 w-4"
 					/>{/if}
 			</span>

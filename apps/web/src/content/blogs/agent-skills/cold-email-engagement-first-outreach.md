@@ -3,7 +3,7 @@ title: 'Cold Email Engagement-First Outreach: An Agent Skill For 2026 Cold Campa
 seoTitle: 'Cold Email Outreach Skill for Claude Code'
 seoDescription: 'Plan, draft, and audit cold outreach that earns replies without burning trust. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.'
 portableDescription: 'Plan, draft, audit, and route cold outreach to strangers across B2B sales, founder-led outreach, investor fundraising, recruiting, partnerships, PR, podcasts, and customer research. Use when you need a campaign bundle, one targeted email, reply handling, or a trust-preserving outreach workflow.'
-description: 'A source-lineaged root combo skill for planning, drafting, auditing, and rewriting cold outreach. Distilled from seven cold-email source analyses into one master playbook for high-volume campaigns, strategic accounts, single-target relationship outreach, reply revival, investor fundraising, founder-led outreach, recruiting, PR, partnerships, and customer research.'
+description: 'A skill for planning, drafting, auditing, and rewriting cold outreach. Distilled from seven cold-email source analyses into one playbook for high-volume campaigns, strategic accounts, single-target relationship outreach, reply revival, investor fundraising, founder-led outreach, recruiting, PR, partnerships, and customer research.'
 author: 'DJ Wayne'
 date: '2026-05-14'
 lastmod: '2026-05-15'

@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/today/+page.svelte -->
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { getContext, onMount, untrack } from 'svelte';
 	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';
 	import ProjectCreationRecovery from '$lib/components/agent/ProjectCreationRecovery.svelte';
 	import {
@@ -18,6 +18,10 @@
 	import TodayAgendaRow from '$lib/components/today/TodayAgendaRow.svelte';
 	import TodayTaskGroups from '$lib/components/today/TodayTaskGroups.svelte';
 	import WhatChangedSection from '$lib/components/today/WhatChangedSection.svelte';
+	import DashboardBriefWidget from '$lib/components/dashboard/DashboardBriefWidget.svelte';
+	import { ensureTodaysBrief } from '$lib/services/ensure-today-brief';
+	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
+	import type { DailyBrief } from '$lib/types/daily-brief';
 	import { loadTaskEditModal } from '$lib/components/project/project-entity-modal-loader';
 	import {
 		loadAgentChatModal,
@@ -160,6 +164,75 @@
 			return false;
 		} finally {
 			captureLoading = false;
+		}
+	}
+
+	// Today's brief: the same chip and modals as the Projects Today row. The page also starts
+	// today's brief on open (shared helper: one request per tab and day, even if the chip and
+	// Projects ask too).
+	const supabase = getContext<any>('supabase');
+	const briefUser = $derived({
+		id: data.user.id,
+		email: data.user.email,
+		is_admin: data.user.is_admin,
+		timezone: data.user.timezone
+	});
+	let DailyBriefModalComponent = $state<any>(null);
+	let BriefChatModalComponent = $state<any>(null);
+	let briefModalBrief = $state<DailyBrief | null>(null);
+	let briefChatBrief = $state<DailyBrief | null>(null);
+	let briefChatSessionId = $state<string | null>(null);
+
+	function preloadBriefModals() {
+		void Promise.allSettled([
+			import('$lib/components/briefs/DailyBriefModal.svelte').then((module) => {
+				DailyBriefModalComponent ??= module.default;
+			}),
+			import('$lib/components/briefs/BriefChatModal.svelte').then((module) => {
+				BriefChatModalComponent ??= module.default;
+			})
+		]);
+	}
+
+	async function openBrief(brief: DailyBrief) {
+		try {
+			DailyBriefModalComponent ??= (
+				await import('$lib/components/briefs/DailyBriefModal.svelte')
+			).default;
+		} catch {
+			toastService.error('Could not open the brief');
+			return;
+		}
+		briefModalBrief = brief;
+		trackLoopEvent('loop_surface_opened', 'today', {
+			source_type: 'daily_brief',
+			source_ref_id: brief.id
+		});
+	}
+
+	async function openBriefChat(brief: DailyBrief) {
+		briefModalBrief = null;
+		try {
+			BriefChatModalComponent ??= (
+				await import('$lib/components/briefs/BriefChatModal.svelte')
+			).default;
+		} catch {
+			toastService.error('Could not open the brief chat');
+			return;
+		}
+		briefChatSessionId = briefChatSessionStore.get(brief.id);
+		briefChatBrief = brief;
+	}
+
+	function handleBriefChatClose(summary?: DataMutationSummary) {
+		if (briefChatBrief && summary?.sessionId) {
+			briefChatSessionStore.set(briefChatBrief.id, summary.sessionId);
+		}
+		briefChatBrief = null;
+		briefChatSessionId = null;
+		if (summary?.hasChanges) {
+			refresh();
+			loadChanges();
 		}
 	}
 
@@ -429,6 +502,7 @@
 	}
 
 	onMount(() => {
+		void ensureTodaysBrief({ user: briefUser, supabaseClient: supabase });
 		loadInboxCount();
 		changesSince = resolveChangesSince();
 		try {
@@ -860,6 +934,15 @@
 			{/if}
 
 			<div class="mt-2 flex flex-wrap items-center border-b border-border/70 pb-1">
+				{#if hasProjects}
+					<div class="mr-1.5 flex py-0.5">
+						<DashboardBriefWidget
+							user={briefUser}
+							onviewbrief={openBrief}
+							onpreloadbrief={preloadBriefModals}
+						/>
+					</div>
+				{/if}
 				{#if inboxCount > 0}
 					<Button
 						onclick={openInbox}
@@ -1341,6 +1424,25 @@
 		initialDraft={chatConfig.draft ?? null}
 		autoSendInitialDraft={chatConfig.autoSend ?? false}
 		onClose={handleChatClose}
+	/>
+{/if}
+
+{#if DailyBriefModalComponent && briefModalBrief}
+	<DailyBriefModalComponent
+		isOpen={true}
+		brief={briefModalBrief}
+		briefDate={briefModalBrief.brief_date}
+		onClose={() => (briefModalBrief = null)}
+		onchat={openBriefChat}
+	/>
+{/if}
+
+{#if BriefChatModalComponent && briefChatBrief}
+	<BriefChatModalComponent
+		isOpen={true}
+		brief={briefChatBrief}
+		initialChatSessionId={briefChatSessionId}
+		onClose={handleBriefChatClose}
 	/>
 {/if}
 

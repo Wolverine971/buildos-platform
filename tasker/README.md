@@ -2,12 +2,15 @@
 
 # Tasker — Open Work
 
-**Audited 2026-08-31.** Sixteen completed trackers were removed; trackers 76–79 now hold the
-paid-launch readiness program. **2026-09-01:** tracker 72 reached its exit condition and was
-deleted — the pushed worker release (`4a5e29cfc`, deployed 2026-08-29 ~20:00 UTC) processed a real
-production image asset at 22:27 UTC the same day (`queue_jobs` completed, `ocr_status=complete`,
-`extraction_summary` populated, zero OCR failures since). 36 active, parked, or explicitly deferred
-trackers remain.
+**Audited 2026-10-04.** All 69 trackers were checked against git history, the code, and deploy status.
+Each tracker now carries a dated `> **Audit 2026-10-04 — …**` block under its title. All code on
+`main` is pushed and deployed: `df81f97dc` has Vercel and all three Railway workers green. Notes
+inside older trackers that say "uncommitted" or "not deployed" are stale. The QA branch and
+`pnpm agentic:gate` were retired on 09-24, so steps that wait on "the gate" are obsolete; live checks
+now use `pnpm agentic:prod-battery`.
+
+**Result:** 12 active, 6 parked, 2 to move to `docs/marketing/`, and **49 ready to delete**. Deletion
+waits for the owner's OK; move each tracker's residual first, as listed in the deletion section below.
 
 This folder is an active-work queue, not a build log. Completed work belongs in feature docs,
 verification receipts, commits, and git history. A tracker stays here only while it has at least one
@@ -24,163 +27,116 @@ When a tracker reaches its exit condition:
 Do not keep a completed file around as an archive. Do not mark a tracker complete when deployment,
 live verification, or a named exit gate is still pending.
 
-## Current focus
+## Do next (ranked)
 
-- **Gate failures from the tasker 100 run (2026-09-24):** the gate scored 48/52 but failed on two
-  turns. [101 — Case 2 latency](101-gate-case2-task-batch-latency.md): not a hang. Two review
-  rounds, because dependencies need a second batch, plus ~15 serial DB round trips per write put the
-  floor near 45 s against a 60 s limit, so one slow provider sample tips it over.
-  **2026-09-25:** case 2 now passes in the prod battery at 26.5 s median (was 53 s). Fixes: the
-  reviewer no longer re-copies its checklist, streamed reasoning counts as progress, task creates
-  run in parallel, and the task-create RPC locks its project first. Residuals moved to
-  [105 — One lock order for every project write](105-project-write-lock-order.md): goal/plan creates,
-  plan and task updates, and document RPCs still upgrade their project lock mid-transaction. After
-  that, widen parallel writes (goal/plan/milestone/risk creates; links, which need dedupe first).
-  [102 — Case 13 dead turn](102-gate-case13-db-stall-permanent-failure.md): a 40 s gate-DB stall, a
-  prompt-snapshot RPC holding the turn row lock, and the executor classifying the retryable `57014`
-  as permanent. Both are ready for another agent; paid reruns need DJ's approval.
-- **Surgical document edits (2026-09-23):**
-  [99 — Remove or replace a line without rewriting the doc](99-surgical-document-edits.md)
-  shipped in 5014e3ef5 (p04 passed) and preview-before-review in 4ebe44389. The p05 replay and
-  the gate still need DJ's approval.
-- **Specialist workflow readiness (2026-09-23):**
-  [98 — Step limits, speed audit, value test](98-specialist-workflow-step-limits-speed-value.md)
-  is ready for another agent. The planner failed validation in 11 of 12 pilot reviews (likely hidden
-  reasoning tokens against 1,200/4,000-token caps, enforced in code and SQL); reviews take 15–171 s.
-  Fix the limits, audit where the time goes, then test whether specialists beat one chat answer with
-  the same evidence. Paid runs need DJ's approval; the OpenRouter balance is low.
-- **Supervisor reliability and specialist quality (2026-09-21):**
-  [92 — Takeover handoff](92-agentic-chat-supervisor-reliability-and-specialist-handoff.md)
-  starts with the retained ownership-check timeout, then task-classification policy, explicit
-  completion receipts, and answer comparison. The latest gate failed 48/52. Every paid test or
-  rerun requires DJ's explicit approval; begin with existing evidence and free local tests.
-- **Workflow Lab inspection (2026-09-20):** [91 — Multi-agent trace and export](91-workflow-lab-audit-and-export.md)
-  is ready for another implementation agent: lab log links, specialist flow/evidence inspection,
-  and a complete offline audit bundle. See its current production/local scope before starting.
-- **Start here for Agentic Chat (2026-09-19):**
-  [handoff](../docs/technical/reviews/AGENTIC_CHAT_HANDOFF_2026-09-19.md).
-    - The Jev freshness radar ([88](88-chat-workflow-ordinary-chat.md)) is live for DJ, with
-      auto-apply off.
-    - The 86/87 workflow is merged and deployed with its switches off.
-    - One final acceptance run remains at [89](89-chat-workflow-integration-acceptance.md).
-- **Chat workflow implementation:** [81](81-chat-workflow-implementation-program.md)
-  coordinates the new chat-first pilot. DJ closed the Task 90 testing handoff after
-  the focused repairs and deferred calendar work; see the
-  [closeout](../docs/technical/reviews/CHAT_WORKFLOW_TASK90_CLOSEOUT_2026-09-14.md).
-  Task 83 (bounded reviews and prompt snapshots) closed on 2026-09-14; see its
-  [receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK83_BOUNDED_REVIEWS_2026-09-14.md).
-  [85](85-chat-workflow-durable-contracts.md) froze the interfaces and built storage and
-  readers with writers off on 2026-09-14, and QA has its migrations. See its
-  [receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK85_DURABLE_CONTRACTS_2026-09-14.md).
-  Next are the combined 82+83+84+85 gate and 86/87/88 against the frozen contract.
-  Grounding follow-up stays in [82](82-chat-workflow-regression-repairs.md), and
-  [89](89-chat-workflow-integration-acceptance.md) retains acceptance evidence.
-- **Paid-launch gate:** [76](76-production-database-security-containment.md) owns the confirmed live
-  privileged-function exposure; [77](77-billing-commercial-contract-reconciliation.md) owns the
-  commercial decision and payment proof; [78](78-product-promise-production-proof.md) owns the
-  cross-journey production evidence packet; and [79](79-customer-visible-paid-launch-polish.md)
-  owns visible launch defects and the remaining core-surface audit.
-- **Highest-risk open work:** [20](20-agentic-chat-wave3-security-brief.md) has the security and D4b
-  implementation in source; finish the pending production/Preview verification gates before
-  treating the lane as closed.
-- **Time-sensitive evaluation:** [36](36-gmail-project-relevance-phase-a.md) needs its review surface
-  deployed and the 300-item sample adjudicated before source retention expires.
-- **Closest to deletion:** [50](50-worker-provider-execution-hardening-slice16.md) needs its follow-up
-  canary and two operator gates.
-- **Main Agentic Chat engineering lane after security verification:**
-  [70](70-agentic-chat-production-battery-remediation.md) needs the final bounded compiler deploy,
-  classified receipt, and complete production battery. [65](65-agentic-chat-read-default-cost-program.md)
-  is now only the cache-measurement plus prompt-cleanup/experiment residual. [67](67-agentic-chat-redundant-read-round-planning.md)
-  has a healthy no-duplicate baseline; exact-read observability is in progress, while prompt changes
-  remain gated on a fresh reproduction.
+1. **P0 — Account deletion fails in prod** ([103](103-privacy-audit-trustworthy-data-handling.md)).
+   `finalize_account_deletion_database` sets `user_id` to NULL on human actors, which violates
+   `chk_actor_identity`, so the whole delete rolls back. The user is locked out at request time, yet
+   `/privacy` promises deletion. There have been 0 requests so far.
+2. **P1 — No structural review of writes after email or web content is read**
+   ([20](20-agentic-chat-wave3-security-brief.md)). The S1 rule died with the legacy engine
+   (`35bbbd3c5`). Only prompt framing remains, plus egress taint, which still blocks exfiltration.
+   Then run [35](35-agentic-chat-gmail-tools.md)'s seeded malicious-email test.
+3. **P1 — A local worker runs production crons.** `apps/worker` `bootstrap.ts` starts the scheduler
+   with no guard, and `apps/worker/.env` points at the prod DB, so any local `pnpm dev` can
+   double-send briefs and loops. Owned by [109](109-agentic-chat-session-spend.md) (from 108's
+   "scheduler guard").
+4. **P1 — CI is red on `main`.** `20260930220000_project_fold_foundation.sql` was edited in place,
+   and the migration ledger check fails every push since `97a8d5004`. Restore the file and put the
+   change in a new migration.
+5. **P1 — Activation gauges are unverified** ([38](38-live-verification-debt.md) §4). PostHog prod
+   ingestion was never confirmed, the fresh-account onboarding walk was never done, and the funnel
+   snapshot dates from July.
+6. **P1 — One free live-click session (~30 min)** clears these:
+    - [116](116-buildos-plugin-reconnect-loop.md): reconnect, then `search`/`fetch`.
+    - [115](115-skills-jev-playbooks-and-connector-pack.md): the Supabase `/auth/confirm` allow-list and a Try signup.
+    - [114](114-large-batch-cleanup-budget-and-review-deadlock.md): reconcile effect `094a68ea`, then the first click on the cleanup card.
+    - [96](96-capture-followups-from-book-loop.md): the receipt chip and Undo.
+    - [38](38-live-verification-debt.md): the calendar pass.
+7. **P1 — New users' first chat turns took 78–102 s** ([109](109-agentic-chat-session-spend.md)),
+   unmeasured since 09-25. Also there: a ~$0.01 calendar-write check on the fallback path most users hit.
+8. **Owner decisions:**
+    - Pick one home: password sign-in lands on `/today`, while Google sign-in and the logo land on
+      `/projects`. Only `/projects` triggers `ensure-today`.
+    - Hide or keep Deep Research ([29](29-deep-research-production-track.md)). It is live via
+      `delegate_task`, has no quota, and failed its quality gate.
+    - Switch off and delete the specialist/workflow pilot code. It is still live for DJ, specialists
+      went 0/4 in the 09-23 blind read, and stewards replaced the direction.
 
 ## Active trackers
 
-### Chat workflow pilot — ordered by Tasker 81
+| Tracker                                                                                        | Status        | Pri | What's left                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------- | ------------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [103 — Privacy audit](103-privacy-audit-trustworthy-data-handling.md)                          | ACTIVE        | P0  | Fix account deletion and prove it end to end; owner env/key items; ZDR check (paid); DATA_INVENTORY items 13–18.                                                                |
+| [20 — Agentic Chat security](20-agentic-chat-wave3-security-brief.md)                          | ACTIVE        | P1  | Worker-side "review writes after external content" rule; seeded malicious-email test (absorbs 35).                                                                              |
+| [116 — BuildOS plugin reconnect loop](116-buildos-plugin-reconnect-loop.md)                    | VERIFY LIVE   | P1  | SQL repair and web error handling are live. One deliberate reconnect plus `search`/`fetch`, then expiry/refresh.                                                                |
+| [109 — Chat spend and speed](109-agentic-chat-session-spend.md)                                | VERIFY LIVE   | P1  | New-user first-turn latency; calendar-write check (~$0.01); context-finder measurement; scheduler guard, key split, brief tasks > 0, reviewer replay (~$0.03), from 108 and 65. |
+| [38 — Live verification debt](38-live-verification-debt.md)                                    | VERIFY LIVE   | P1  | PostHog ingestion, fresh-account walk, funnel rerun; 74's calendar pass; 78's signup → capture → return → delete smoke.                                                         |
+| [115 — Skills: Jev playbooks + connector pack](115-skills-jev-playbooks-and-connector-pack.md) | ACTIVE        | P1  | Lean pass live. Supabase redirect allow-list, post-deploy smoke, then Phase 1 tests before any ambitious build (P2).                                                            |
+| [76 — Production database security](76-production-database-security-containment.md)            | ACTIVE        | P2  | Core exposure contained by 104. Left: 104's 5 guard fixes, leaked-password protection, OTP expiry, Postgres patch, Supabase's 2026-10-30 default-exposure change.               |
+| [88 — Freshness radar](88-chat-workflow-ordinary-chat.md)                                      | VERIFY LIVE   | P2  | Live for DJ only. auto_apply decision (~20 clean scans), backtest, widen beyond DJ.                                                                                             |
+| [96 — Capture follow-ups](96-capture-followups-from-book-loop.md)                              | VERIFY LIVE   | P2  | Click the receipt chip + Undo once; delete the dead `reconcileStartHereAuthoredSections`.                                                                                       |
+| [114 — Large write batches](114-large-batch-cleanup-budget-and-review-deadlock.md)             | VERIFY LIVE   | P2  | Reconcile effect `094a68ea`; first live click on 112's cleanup card; then one approved batch turn (~$0.06–0.10).                                                                |
+| [110 — Project steward beta](110-project-steward-beta.md)                                      | WAITING ON DJ | P2  | Behind the `project_steward` flag (DJ only). Approve or reject pending charter edits; 9takes scorecard; second project?                                                         |
+| [29 — Deep Research](29-deep-research-production-track.md)                                     | WAITING ON DJ | P2  | Hide or keep `deep_research`; quotas and an eval only if it stays (absorbs 32).                                                                                                 |
 
-The package numbers identify owners, not a strictly numeric execution sequence.
-82/84 form the first coordinated repair change set. Subsequent integration is
-83 (closed 2026-09-14) → 85 → 86 → 87 → 88, with 89 owning acceptance throughout. Parallel development
-and shared-file handoffs are specified in 81; all full gates run sequentially.
+## Parked
 
-| Tracker                                                                                                                | Remaining kernel                                                                                                                                                 |
-| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [81 — Workflow implementation program](81-chat-workflow-implementation-program.md)                                     | Coordinate source baseline, task dependencies, file ownership, integration gates and pilot completion.                                                           |
-| [82 — Regression repairs](82-chat-workflow-regression-repairs.md)                                                      | Repair dependency completion, exact document text and status grounding/read bounds; pass the full strict gate with 84.                                           |
-| [84 — Delivery and stall visibility](84-chat-workflow-delivery-and-stall-visibility.md)                                | Let computation advance after durable acceptance, preserve ordered delivery/reconciliation and expose per-turn progress age.                                     |
-| [85 — Durable contracts](85-chat-workflow-durable-contracts.md)                                                        | Freeze interfaces; add compatible v4 readers and fenced request/context/step/cost/recovery storage with writers off.                                             |
-| [86 — Lightweight submission](86-chat-workflow-lightweight-submission.md)                                              | Save raw requests atomically, gather context in the worker, preserve ordinary admission and measure acknowledgement latency.                                     |
-| [87 — Recoverable steps](87-chat-workflow-recoverable-steps.md)                                                        | Reuse accepted work after restart, meter every physical dispatch and reconcile streaming without duplicate answers.                                              |
-| [88 — Jev freshness radar](88-chat-workflow-ordinary-chat.md)                                                          | After a brain dump, Jev flags stale tasks/docs/goals, auto-applies very-confident low-risk edits with undo, drafts the rest, retires obsolete inbox items.       |
-| [89 — Integration acceptance](89-chat-workflow-integration-acceptance.md)                                              | Prove browser/restart/fault behavior, compare latency/cost/usefulness and publish a repeatable local test handoff.                                               |
-| [91 — Workflow Lab trace and export](91-workflow-lab-audit-and-export.md)                                              | Add lab log links, a multi-agent execution/evidence inspector, and a complete Markdown/ZIP audit export.                                                         |
-| [92 — Supervisor reliability and specialist handoff](92-agentic-chat-supervisor-reliability-and-specialist-handoff.md) | Repair stalled ownership checks, align task classification, define complete-request receipts, and compare specialist answers; paid validation requires approval. |
+| Tracker                                                                                         | Wake condition                                                  |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| [73 — Libri post-migration safety audit](73-libri-post-migration-safety-audit.md)               | Libri's live backend cuts over from Convex.                     |
+| [77 — Billing commercial contract](77-billing-commercial-contract-reconciliation.md)            | The owner decides to charge (Stripe flag is off).               |
+| [111 — Loop unit economics](111-loop-unit-economics.md)                                         | Building the digest pass (= the Project Pulse reconciler).      |
+| [46 — Legacy project-generation retirement](46-legacy-project-generation-retirement.md)         | Someone needs the legacy tables gone.                           |
+| [48 — `DocumentModal` decomposition](48-document-modal-decomposition.md)                        | Before the next document feature (now 5,193 lines and growing). |
+| [62 — Agent Chat modal decomposition](62-agent-chat-modal-state-orchestration-decomposition.md) | A chat-modal feature that the 3,365-line component blocks.      |
 
-### Paid launch readiness
+**Move to `docs/marketing/`** (not engineering work):
+[10 — Creator outreach](10-creator-outreach-swyx-riley.md) (the Simon email is drafted; re-run the
+MCP security self-audit before sending) and
+[12 — Personal-brand throughline](12-personal-brand-throughline.md) (an idea note).
 
-| Tracker                                                                                     | Remaining kernel                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [76 — Production database security](76-production-database-security-containment.md)         | Contain the three confirmed anonymous privileged-function exposures, audit every definer grant, update platform security, and add continuous permission guards.                   |
-| [77 — Billing commercial contract](77-billing-commercial-contract-reconciliation.md)        | Ratify one pricing/entitlement contract, align product/legal/Stripe behavior, and prove the complete payment lifecycle before enabling billing.                                   |
-| [78 — Product promise production proof](78-product-promise-production-proof.md)             | Ratify the product promise, build the golden-journey evidence matrix, close proof gaps through owning trackers, and issue the paid-launch decision.                               |
-| [79 — Customer-visible paid-launch polish](79-customer-visible-paid-launch-polish.md)       | Fix exposed internal content, obstruction and mobile issues, public prototype/content hygiene, unaudited core surfaces, and the missing performance baseline.                     |
-| [80 — Agentic chat post-audit follow-through](80-agentic-chat-post-audit-follow-through.md) | Prove the 09-02 turn-executor fixes in production, retire the legacy web chat lane, make turns resumable, canary a cheaper reviewer, finish skill quality and telemetry hygiene.  |
-| [103 — Privacy audit](103-privacy-audit-trustworthy-data-handling.md)                       | Inventory every store and AI processor, enforce ZDR everywhere, backfill the Gmail-content redaction, make deletion complete, and rewrite `/privacy` so every claim maps to code. |
+## Ready to delete (49) — owner OK pending
 
-### Agentic Chat, platform reliability, and verification
+Move the residual first where an arrow shows one.
 
-| Tracker                                                                                              | Remaining kernel                                                                                                                                                                                                                                                                                                                                                    |
-| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [104 — Supabase fitness](104-supabase-fitness-sizing-and-efficiency.md)                              | **Claude (took over from Codex).** Security containment LIVE + preflight 29/29. 5 s wake-aware polling LIVE (~48 vs ~240 idle claims/min). QA branch deleted (−$9.81/mo) and replaced by `pnpm db:rehearse` (prod-schema migration rehearsal). Open: 24 h polling receipt, busy-window sizing sample, stream-state HOT updates, Libri quota after its prerequisite. |
-| [17 — Skill ontology follow-ups](17-skill-refactor-followups.md)                                     | Run the full post-fix live suite, fidelity-check the named skills, and close the DJ rulings.                                                                                                                                                                                                                                                                        |
-| [20 — Agentic Chat Wave 3 security](20-agentic-chat-wave3-security-brief.md)                         | Finish the source-complete security wave's deploy receipts and D4b Preview detach/reconcile gate; keep its Production lifecycle flag off until that proof.                                                                                                                                                                                                          |
-| [35 — Agentic Chat Gmail tools](35-agentic-chat-gmail-tools.md)                                      | Gmail reads are generally available; local draft proposals, seeded injection testing, and ZDR enforcement remain.                                                                                                                                                                                                                                                   |
-| [38 — Live verification debt](38-live-verification-debt.md)                                          | Batch the manual pentest, calendar, audit, onboarding, rotation, and inbox smokes and record each result.                                                                                                                                                                                                                                                           |
-| [50 — Worker execution hardening](50-worker-provider-execution-hardening-slice16.md)                 | Deploy/canary the follow-up and run the constraint-diff and deliberate budget-overrun gates.                                                                                                                                                                                                                                                                        |
-| [60 — Fair-share queue claiming](60-agentic-chat-fair-share-queue-claiming.md)                       | Measure starvation risk and choose a fair claiming policy without weakening durable admission.                                                                                                                                                                                                                                                                      |
-| [61 — Multi-replica capacity observability](61-agentic-chat-multi-replica-capacity-observability.md) | Add fleet-level heartbeat and capacity attribution across worker replicas.                                                                                                                                                                                                                                                                                          |
-| [62 — Agent Chat modal decomposition](62-agent-chat-modal-state-orchestration-decomposition.md)      | Separate state/orchestration boundaries with transition coverage.                                                                                                                                                                                                                                                                                                   |
-| [63 — Supabase migration ledger reconciliation](63-supabase-migration-ledger-reconciliation.md)      | Classify historical drift, repair the hosted ledger safely, and add divergence checks.                                                                                                                                                                                                                                                                              |
-| [65 — Read-default and cost program](65-agentic-chat-read-default-cost-program.md)                   | WP-1 mechanics, WP-2 mechanics, and WP-3 are implemented; close the live cache/span receipts, then WP-4 prompt cleanup, D2/D3, and WP-5 experiments.                                                                                                                                                                                                                |
-| [67 — Redundant read-round planning](67-agentic-chat-redundant-read-round-planning.md)               | Current production baseline has zero duplicates; finish exact-read/resource telemetry, and require a fresh reproduction before any planner prompt experiment.                                                                                                                                                                                                       |
-| [70 — Production battery remediation](70-agentic-chat-production-battery-remediation.md)             | Deploy the independently reviewed schedule compiler, obtain its classified ≤6-pass receipt, then run the isolated and full zero-retry production battery.                                                                                                                                                                                                           |
-| [73 — Libri post-migration safety audit](73-libri-post-migration-safety-audit.md)                    | Activate after Libri cutover; prove data reconciliation, BuildOS isolation/performance, and Railway worker recovery before Convex retirement.                                                                                                                                                                                                                       |
-| [74 — Calendar legacy-surface cleanup](74-calendar-legacy-surface-cleanup.md)                        | Reconcile legacy connection status and task recurrence editing with the multi-source ontology calendar model.                                                                                                                                                                                                                                                       |
-| [75 — Prepared-admission lease](75-agentic-chat-prepared-admission-lease.md)                         | Production canary is green; collect the 100–500-turn control/treatment latency and safety receipt before closing the lane.                                                                                                                                                                                                                                          |
+- **Chat workflow pilot.** Shipped; its exit gates needed the retired QA gate: 81, 82, 84, 85, 86,
+  87, 89, 91, 92.
+- **Gate latency and stall chain.** Done in prod: 99, 100, 101, 102, 105.
+- **Specialist readiness.** Superseded by stewards: 98.
+- **Capture, loops, and review roll-up.** Done or absorbed: 93, 94, 97, 106, 107 → 111 (audit
+  timeout check), 112 → 114 (card click-through).
+- **Older Agentic Chat lanes:** 50, 67, 70, 75, 80, 60, 61 (premature scale work); 65 → 109;
+  35 → 20.
+- **Platform:** 63 (replaced by `pnpm db:rehearse`); 104 → 76 (5 guard fixes); 74 → 38;
+  108 → 109.
+- **Product and IA.** Overtaken by the 10-01 Projects fold, stewards, and the cleanup card: 27, 34,
+  40, 52, 53. Never realistic at current user volume: 41, 43, 44. Expired: 36.
+- **Paid-launch program:** 78 → 38 (fresh-account smoke), 79.
+- **Research:** 32 → 29.
+- **Marketing and skills.** Superseded or never started: 17, 18, 24.
 
-### Product, IA, and experiments
+## Unowned residue
 
-| Tracker                                                                                           | Remaining kernel                                                                                                                                                                                                                                                                                                         |
-| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [27 — `/today` migration and IA](27-today-migration-ia-consolidation.md)                          | Live-verify WP-0/WP-2, finish the redirect flip, then resolve the remaining IA packages and owner decisions.                                                                                                                                                                                                             |
-| [34 — Holistic Project Review synthesis](34-project-review-holistic-synthesis.md)                 | Build and evaluate the evidence-bound cross-family synthesis.                                                                                                                                                                                                                                                            |
-| [40 — Working notes and artifacts](40-working-notes-artifacts.md)                                 | Decide the durable note contract and build the channel-agnostic human-facing refresh path.                                                                                                                                                                                                                               |
-| [41 — Open-brief cohort 1](41-open-brief-cohort-1.md)                                             | Clear the veto packet, finish both runners, execute the paid cohort, and produce the blind readout.                                                                                                                                                                                                                      |
-| [43 — Re-entry Compass](43-reentry-compass-experiment.md)                                         | Parked after a failed Phase 0 gate; revisit only when the stated user-volume and routing preconditions exist.                                                                                                                                                                                                            |
-| [44 — One Clear Next Move](44-one-clear-next-move-experiment.md)                                  | Run Phase 0 before authorizing a treatment or production experiment.                                                                                                                                                                                                                                                     |
-| [48 — `DocumentModal` decomposition](48-document-modal-decomposition.md)                          | Explicitly deferred by owner; resume only as a focused workstream with characterization first.                                                                                                                                                                                                                           |
-| [52 — AI Inbox review-loop remediation](52-ai-inbox-review-loop-remediation.md)                   | WP-1/WP-2 are applied and WP-3 is local; deploy the runtime and verify the one-brief behavior live.                                                                                                                                                                                                                      |
-| [53 — Projects list simplification](53-projects-list-purpose-simplification.md)                   | Validate the page purpose, ratify the wireframe, then implement and journey-test the simplified launcher.                                                                                                                                                                                                                |
-| [93 — START HERE capture reconciles, not appends](93-start-here-capture-synthesize-not-append.md) | Superseded by checkpoint capture (tasker 95, live in `6660f80ce`). Only the damaged-doc cleanup remains, and DJ deferred it.                                                                                                                                                                                             |
-| [96 — Capture follow-ups from the book loop](96-capture-followups-from-book-loop.md)              | Second pass built 2026-09-23 and uncommitted. Current state now needs cited evidence plus write receipts (status reads 11/11), and `restates`/`kind` are verified. Open: a request recorded as done (~1/3; structural fix documented, DJ holding), stale untouched lines, Finding 8, and the receipt-chip browser check. |
-| [97 — Chat as a writing partner](97-chat-as-writing-partner.md)                                   | Built 2026-09-23 and uncommitted. Re-entry answers lead with the work, interviews ask at most 3 questions, and START HERE shows when newer docs exist. DJ declined the gate for now; the prompt-size payload cap is nearly exhausted.                                                                                    |
+No tracker owns these. Pick them up or drop them knowingly.
 
-### Research, data, and model migration
-
-| Tracker                                                                                  | Remaining kernel                                                                                                           |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| [29 — Deep Research production track](29-deep-research-production-track.md)              | Parked with local code complete; deployment, reconciliation, provenance gating, and the quality architecture remain.       |
-| [32 — Deep Research chat and progress UX](32-deep-research-chat-tool-and-progress-ui.md) | Build the bounded launch, confirmation, durable progress, controls, and report experience after Tasker 29 clears its gate. |
-| [36 — Gmail relevance Phase A](36-gmail-project-relevance-phase-a.md)                    | Deploy review-off, adjudicate 300 samples, record the aggregate decision, and produce the retention receipt.               |
-| [46 — Legacy project-generation retirement](46-legacy-project-generation-retirement.md)  | Resolve unmapped rows and dependencies, archive safely, then retire the legacy model.                                      |
-
-### Marketing and owner decisions
-
-| Tracker                                                                  | Remaining kernel                                                                                                  |
-| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| [10 — Creator outreach](10-creator-outreach-swyx-riley.md)               | Send the ready outreach, verify Riley, build the Swyx artifact, and work the candidate pipeline.                  |
-| [12 — Personal-brand throughline](12-personal-brand-throughline.md)      | Write and ratify the single throughline across DJ's ventures.                                                     |
-| [18 — Worldbuilding follow-ons](18-worldbuilding-program.md)             | Close the canon decisions, write the specificity/world-bible artifacts, and run the remaining cross-project work. |
-| [24 — Creator acquisition pilot](24-creator-social-acquisition-pilot.md) | Resolve the campaign decisions, then run the real 30-day Writer acquisition and return loop.                      |
+- **Migration rehearsal skips the lock-first rule.** `project_write_lock_first.check.sql` is not in
+  `DEFAULT_CHECKS` in `scripts/migration-rehearsal/rehearse.py`, so the organize, fold and
+  attach/detach migrations were never checked against it. Free to add (from 105).
+- **`/history` fails soft.** A broken RPC shows users an empty archive instead of an error (from 27).
+- **Duplicate creates.** Only byte-identical re-proposals are blocked (from 82/92).
+- **Calendar buffer (Case 10) never re-verified.** The prod-battery harness account has no calendar,
+  so the battery can't cover it.
+- **Saving a static key in Agent keys rotates its secret.** This breaks the keychain stdio bridge
+  (from 94).
+- **P3 hardening from 102.** The prompt-snapshot RPC holds the turn row `FOR UPDATE`, and finalize
+  never retries a transient DB code.
+- **Dormant code to delete.** The specialist/workflow pilot (v4 admission/prep/execution, Workflow
+  Lab, the comparison lab); Gmail Phase A routes and their hourly retention cron (36); the
+  caller-less `/api/search` (46).
+- **Public-content hygiene (from 79).** Blog TODO comment blocks and "Start your free trial" CTAs
+  in 4 posts; some prototype routes are still public.
+- **Stale acceptance doc.** `docs/testing/chat-workflow-pilot-acceptance.md` still reads
+  "implementation in progress"; mark it point-in-time when 89 is deleted.
 
 Marketing content cadence itself belongs in `docs/marketing/ops/queue.json`, not in Tasker.

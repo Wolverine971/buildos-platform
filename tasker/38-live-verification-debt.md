@@ -2,6 +2,12 @@
 
 # 38 — Live verification debt (one place for "built, never exercised live")
 
+> **Audit 2026-10-04 — SHIPPED, VERIFY LIVE.** Two items are moot: the §2 primary-calendar hardcode was fixed in 833f4b21a (now `providerCalendarId`), and the §5 rotation was replaced by 112 lineages (fbc7b79fa). The §1 R1–R8 were written for the v2 web chat route, which was deleted in 35bbbd3c5 (09-04); re-base them on the worker runtime or fold them into `pnpm agentic:prod-battery`.
+> **Left:** §4 onboarding fresh-account branches + PostHog prod ingestion + funnel snapshot rerun (highest value); Agent Run calendar port; Complete Project Audit e2e; agent-run notification; second-user read-only guard; legacy-chat caller smokes.
+> **Priority:** P1 for §4 (the activation gauges), plus the absorbed items: 74's signed-in calendar
+> pass and 78's fresh-account smoke (signup → capture → return → delete). The rest is P2.
+> **Recommend:** keep as the single live-verification list (prune §2b/§5, re-scope §1).
+
 **Created 2026-07-24** by consolidating the verification residuals out of taskers 06, 08, 13, 14,
 26, and 28 (all now deleted — their build state is recorded in git history and in the feature docs
 cited below).
@@ -124,3 +130,17 @@ deleted because its migration and caller-cutover build are complete.
 
 Every box above is checked and its result recorded here (green/red + date). Anything that comes
 back red becomes its own tracker; anything green gets deleted with the section.
+
+## Absorbed from 74 — 74 — Reconcile legacy calendar surfaces with the ontology calendar model (2026-10-04)
+
+74 was deleted in the 2026-10-04 tasker cleanup. Its audit verdict, including the residual now owned here:
+
+**Audit 2026-10-04 — SHIPPED, VERIFY LIVE.** Both defects are fixed, pushed, and deployed. W1: `/time-blocks` and `GET /api/calendar` now share `hasUsableGoogleCalendarConnection` (fed8fd476, 09-01). W2: `20260830163828_fix_task_series_enable_schema_drift` (aa4b5c609) is recorded in the prod ledger. No live check is recorded.
+**Left:** W3 only: one signed-in pass where `/time-blocks` shows connected, a task recurrence is added, changed, and removed, and the test data is cleaned up. **Priority:** P2. **Recommend:** merge into 38.
+
+## Absorbed from 78 — 78 — Product promise production-proof program (2026-10-04)
+
+78 was deleted in the 2026-10-04 tasker cleanup. Its audit verdict, including the residual now owned here:
+
+**Audit 2026-10-04 — STALE — RETIRE.** The paid-launch go/no-go frame is premature: billing is off, 77 is parked, and blocker 76 is contained (fe3a44c12). The WP-2 fresh-account run is still the check that matters for activation. A signup blocker went unnoticed from 09-09 to 09-24 (0 of 2 signups completed), and account deletion fails in prod on `chk_actor_identity` (see 103).
+**Left:** a repeatable fresh-account smoke: signup → onboarding → capture → return → delete account. **Priority:** none for this tracker; the salvaged smoke is P1. **Recommend:** merge into 38.

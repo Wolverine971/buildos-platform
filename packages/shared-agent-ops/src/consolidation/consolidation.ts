@@ -9,10 +9,11 @@
 // first, plus "type something" and "chat about this" in the UI.
 //
 // Rules the code enforces, not the model:
-// - Every option is a list of operations from a closed set (move, archive, keep).
+// - Every option is a list of operations from a closed set (see ConsolidationOp).
 // - The skip option only keeps things: nothing that loses or closes anything
 //   is ever applied on a default.
-// - Archiving anything that is not an exact twin is always asked.
+// - Archiving anything that is not an exact twin is always asked, and so is
+//   every merge (docs or tasks) and every task closed (ALWAYS_ASKED_OPS).
 //
 // Client-safe: no Node imports. Readers parse structured fields only.
 
@@ -37,7 +38,13 @@ export const CONSOLIDATION_CLUSTER_KINDS = [
 	'misfiled',
 	'fragments',
 	'versions',
-	'superseded'
+	'superseded',
+	// Task-only groups (DJ's picks, 2026-10-04: docs/research/doc-task-consolidation-2026-10-03).
+	'duplicate_tasks',
+	'task_parts',
+	'task_sequence',
+	'sibling_tasks',
+	'finished_tasks'
 ] as const;
 export type ConsolidationClusterKind = (typeof CONSOLIDATION_CLUSTER_KINDS)[number];
 
@@ -51,11 +58,66 @@ export type ConsolidationOp =
 	| { op: 'archive'; document_ids: string[]; replaced_by_id: string | null }
 	| { op: 'merge'; document_ids: string[]; target_project_id: string; title: string }
 	| { op: 'keep'; document_ids: string[]; task_ids?: string[] }
-	/** Tasks only ever move (misfiled work); they land at the top of the destination. */
-	| { op: 'move_tasks'; task_ids: string[]; target_project_id: string };
+	/** Misfiled tasks move; they land at the top of the destination. */
+	| { op: 'move_tasks'; task_ids: string[]; target_project_id: string }
+	/**
+	 * Duplicates become one task: `keep_id` gains a checklist line per merged
+	 * task (its title and notes), and `task_ids` are archived pointing to it.
+	 */
+	| { op: 'merge_tasks'; task_ids: string[]; keep_id: string }
+	/**
+	 * A new plan in `project_id` holds `task_ids` in this order: the pieces of a
+	 * bigger task (the big one first), or the steps of a sequence. With
+	 * `sequence`, each task also waits on the one before it.
+	 */
+	| {
+			op: 'plan_tasks';
+			task_ids: string[];
+			project_id: string;
+			name: string;
+			sequence: boolean;
+	  }
+	/**
+	 * Siblings across sub-projects: one new task in `project_id` (their parent)
+	 * with a checklist linking each of `task_ids`, which stay where they are.
+	 */
+	| { op: 'rollup_tasks'; task_ids: string[]; project_id: string; title: string }
+	/**
+	 * Tasks the evidence settles. `done`: the work happened, as the evidence
+	 * doc shows; marked done as of that doc's date, citing it. `archived`:
+	 * replaced or dropped. `note` says why, in the owner's words.
+	 */
+	| {
+			op: 'close_tasks';
+			task_ids: string[];
+			how: 'done' | 'archived';
+			evidence_document_id: string | null;
+			note: string;
+	  };
 
-/** Ops that act on documents, i.e. everything but task moves. */
-export type ConsolidationDocOp = Exclude<ConsolidationOp, { op: 'move_tasks' }>;
+export type ConsolidationTaskOp = Extract<
+	ConsolidationOp,
+	{ op: 'move_tasks' | 'merge_tasks' | 'plan_tasks' | 'rollup_tasks' | 'close_tasks' }
+>;
+/** Ops that act on documents. */
+export type ConsolidationDocOp = Exclude<ConsolidationOp, ConsolidationTaskOp>;
+
+export function isTaskOp(op: ConsolidationOp): op is ConsolidationTaskOp {
+	return (
+		op.op === 'move_tasks' ||
+		op.op === 'merge_tasks' ||
+		op.op === 'plan_tasks' ||
+		op.op === 'rollup_tasks' ||
+		op.op === 'close_tasks'
+	);
+}
+
+/** Ops that lose or close something, so they never apply without the owner's answer. */
+export const ALWAYS_ASKED_OPS: readonly ConsolidationOp['op'][] = [
+	'merge',
+	'merge_tasks',
+	'close_tasks'
+];
 
 export type ConsolidationEvidence = {
 	document_id: string;
@@ -172,7 +234,10 @@ export const CONSOLIDATION_LIMITS = {
 	maxEvidence: 3,
 	maxQuote: 280,
 	maxThread: 12,
-	maxTypedText: 2000
+	maxTypedText: 2000,
+	maxTasksPerCluster: 12,
+	maxTaskTitle: 120,
+	maxTaskNote: 240
 } as const;
 
 // ---------- parsing ----------
@@ -207,6 +272,52 @@ function uuids(value: unknown): string[] | null {
 
 export function parseConsolidationOp(value: unknown): ConsolidationOp | null {
 	if (!isRecord(value)) return null;
+	if (value.op === 'merge_tasks') {
+		const taskIds = uuids(value.task_ids);
+		const keep = uuid(value.keep_id);
+		return taskIds && keep && !taskIds.includes(keep)
+			? { op: 'merge_tasks', task_ids: taskIds, keep_id: keep }
+			: null;
+	}
+	if (value.op === 'plan_tasks') {
+		const taskIds = uuids(value.task_ids);
+		const project = uuid(value.project_id);
+		const name = str(value.name, CONSOLIDATION_LIMITS.maxTaskTitle);
+		return taskIds && taskIds.length >= 2 && project && name
+			? {
+					op: 'plan_tasks',
+					task_ids: taskIds,
+					project_id: project,
+					name,
+					sequence: value.sequence === true
+				}
+			: null;
+	}
+	if (value.op === 'rollup_tasks') {
+		const taskIds = uuids(value.task_ids);
+		const project = uuid(value.project_id);
+		const title = str(value.title, CONSOLIDATION_LIMITS.maxTaskTitle);
+		return taskIds && taskIds.length >= 2 && project && title
+			? { op: 'rollup_tasks', task_ids: taskIds, project_id: project, title }
+			: null;
+	}
+	if (value.op === 'close_tasks') {
+		const taskIds = uuids(value.task_ids);
+		const how = value.how === 'done' || value.how === 'archived' ? value.how : null;
+		const evidence =
+			value.evidence_document_id == null ? null : uuid(value.evidence_document_id);
+		const note = str(value.note, CONSOLIDATION_LIMITS.maxTaskNote);
+		if (value.evidence_document_id != null && !evidence) return null;
+		// "Done" only on evidence that the work happened.
+		if (!taskIds || !how || !note || (how === 'done' && !evidence)) return null;
+		return {
+			op: 'close_tasks',
+			task_ids: taskIds,
+			how,
+			evidence_document_id: evidence,
+			note
+		};
+	}
 	if (value.op === 'move_tasks') {
 		const taskIds = uuids(value.task_ids);
 		const target = uuid(value.target_project_id);
@@ -418,10 +529,14 @@ type Names = {
 	document: (id: string) => string;
 	/** Docs under a doc in its tree, which travel with it when it moves. */
 	inside?: (id: string) => readonly string[];
+	task?: (id: string) => string;
 };
 
 function docs(count: number): string {
 	return `${count} doc${count === 1 ? '' : 's'}`;
+}
+function tasks(count: number): string {
+	return `${count} task${count === 1 ? '' : 's'}`;
 }
 
 /** " and the 4 inside it": sub-docs a move carries along that the op does not list itself. */
@@ -449,7 +564,19 @@ export function describeOps(ops: readonly ConsolidationOp[], names: Names): stri
 			if (op.op === 'merge')
 				return `merges ${docs(op.document_ids.length)} into “${op.title}” in ${names.project(op.target_project_id)}, archiving the originals`;
 			if (op.op === 'move_tasks')
-				return `moves ${op.task_ids.length} task${op.task_ids.length === 1 ? '' : 's'} to ${names.project(op.target_project_id)}`;
+				return `moves ${tasks(op.task_ids.length)} to ${names.project(op.target_project_id)}`;
+			if (op.op === 'merge_tasks')
+				return `merges ${tasks(op.task_ids.length + 1)} into “${names.task?.(op.keep_id) ?? 'one task'}”, archiving the other ${op.task_ids.length === 1 ? 'one' : op.task_ids.length}`;
+			if (op.op === 'plan_tasks')
+				return op.sequence
+					? `puts ${tasks(op.task_ids.length)} in order in a new plan “${op.name}”, each waiting on the one before`
+					: `gathers ${tasks(op.task_ids.length)} in a new plan “${op.name}”`;
+			if (op.op === 'rollup_tasks')
+				return `adds “${op.title}” to ${names.project(op.project_id)}, with a checklist of ${tasks(op.task_ids.length)} that stay where they are`;
+			if (op.op === 'close_tasks')
+				return op.how === 'done'
+					? `marks ${tasks(op.task_ids.length)} done, citing “${op.evidence_document_id ? names.document(op.evidence_document_id) : 'the evidence'}”`
+					: `archives ${tasks(op.task_ids.length)}: ${op.note}`;
 			return '';
 		})
 		.filter(Boolean);
@@ -462,9 +589,31 @@ export function describeOps(ops: readonly ConsolidationOp[], names: Names): stri
 export function touchedDocuments(ops: readonly ConsolidationOp[]): string[] {
 	const out = new Set<string>();
 	for (const op of ops)
-		if (op.op !== 'keep' && op.op !== 'move_tasks')
-			for (const id of op.document_ids) out.add(id);
+		if (op.op !== 'keep' && !isTaskOp(op)) for (const id of op.document_ids) out.add(id);
 	return [...out];
+}
+
+/** Every task a set of operations changes or links, for overlap checks. */
+export function touchedTasks(ops: readonly ConsolidationOp[]): string[] {
+	const out = new Set<string>();
+	for (const op of ops) {
+		if (!isTaskOp(op)) continue;
+		for (const id of op.task_ids) out.add(id);
+		if (op.op === 'merge_tasks') out.add(op.keep_id);
+	}
+	return [...out];
+}
+
+/** Docs and tasks an Apply would change: what the Apply button counts. */
+export function changeCount(ops: readonly ConsolidationOp[]): number {
+	return ops.reduce((total, op) => {
+		if (op.op === 'keep') return total;
+		if (op.op === 'merge_tasks') return total + op.task_ids.length + 1;
+		// The new task counts too.
+		if (op.op === 'rollup_tasks') return total + op.task_ids.length + 1;
+		if (isTaskOp(op)) return total + op.task_ids.length;
+		return total + op.document_ids.length;
+	}, 0);
 }
 
 /** Final operations for the whole plan, given its questions. Clusters still waiting are left out. */

@@ -14,6 +14,12 @@ vi.mock('$lib/utils/ontology-client-logger', () => ({
 	logOntologyClientError: logOntologyClientErrorMock
 }));
 
+const { toastSuccessMock } = vi.hoisted(() => ({ toastSuccessMock: vi.fn() }));
+
+vi.mock('$lib/stores/toast.store', () => ({
+	toastService: { success: toastSuccessMock, error: vi.fn(), info: vi.fn() }
+}));
+
 const PROJECT_A_ID = '11111111-1111-4111-8111-111111111111';
 const PROJECT_B_ID = '22222222-2222-4222-8222-222222222222';
 
@@ -287,5 +293,116 @@ describe('ProjectCollaborationModal request coordination', () => {
 		expect(
 			screen.getByRole('checkbox', { name: /Notify me about project activity/i })
 		).toBeChecked();
+	});
+});
+
+describe('ProjectCollaborationModal ownership handoff', () => {
+	let ownershipBodies: unknown[];
+
+	beforeEach(() => {
+		ownershipBodies = [];
+		toastSuccessMock.mockReset();
+		Object.defineProperty(window, 'scrollTo', {
+			configurable: true,
+			writable: true,
+			value: vi.fn()
+		});
+		Object.defineProperty(Element.prototype, 'animate', {
+			configurable: true,
+			writable: true,
+			value: vi.fn(() => ({
+				cancel: vi.fn(),
+				commitStyles: vi.fn(),
+				finished: Promise.resolve(),
+				play: vi.fn()
+			}))
+		});
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				if (url.endsWith('/ownership')) {
+					ownershipBodies.push(JSON.parse(String(init?.body)));
+					return jsonResponse({
+						success: true,
+						data: {
+							project_id: PROJECT_A_ID,
+							new_owner_actor_id: 'actor-sam',
+							previous_owner_left: true
+						}
+					});
+				}
+				if (url.endsWith('/members')) {
+					return jsonResponse({
+						data: {
+							actorId: 'actor-dana',
+							members: [
+								{
+									id: 'member-dana',
+									actor_id: 'actor-dana',
+									role_key: 'owner',
+									access: 'admin',
+									actor: {
+										id: 'actor-dana',
+										name: 'Dana',
+										email: 'dana@example.com'
+									}
+								},
+								{
+									id: 'member-sam',
+									actor_id: 'actor-sam',
+									role_key: 'editor',
+									access: 'write',
+									actor: {
+										id: 'actor-sam',
+										name: 'Sam',
+										email: 'sam@example.com'
+									}
+								}
+							]
+						}
+					});
+				}
+				return responseFor(url, PROJECT_A_ID, 'Unused');
+			})
+		);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
+	});
+
+	it('lets the owner hand the project off and leave', async () => {
+		const onLeftProject = vi.fn();
+		const onOwnershipChanged = vi.fn();
+		render(ProjectCollaborationModal, {
+			props: {
+				isOpen: true,
+				projectId: PROJECT_A_ID,
+				projectName: 'Garden plan',
+				canManageMembers: true,
+				onLeftProject,
+				onOwnershipChanged
+			}
+		});
+
+		await fireEvent.click(await screen.findByRole('button', { name: 'Make owner' }));
+		expect(screen.getByText('Make Sam the owner of Garden plan?')).toBeInTheDocument();
+		expect(screen.getByText(/You’ll stay on as an editor\./)).toBeInTheDocument();
+
+		await fireEvent.click(
+			screen.getByRole('checkbox', { name: 'Leave the project after handing it off' })
+		);
+		expect(screen.getByText(/You’ll leave the project and lose access\./)).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Hand off and leave' }));
+
+		await waitFor(() => expect(onLeftProject).toHaveBeenCalledTimes(1));
+		expect(ownershipBodies).toEqual([{ member_id: 'member-sam', leave: true }]);
+		expect(toastSuccessMock).toHaveBeenCalledWith(
+			'Sam now owns Garden plan. You’ve left the project.'
+		);
+		// Leaving navigates away, so the page's permissions are not reloaded.
+		expect(onOwnershipChanged).not.toHaveBeenCalled();
 	});
 });

@@ -34,6 +34,19 @@ export type DirectWriteRouteContext = {
 	 * resolved the way the focused entity is.
 	 */
 	attachedAssetIds?: ReadonlySet<string>;
+	/**
+	 * Tools that put externally authored content in front of the model earlier
+	 * in this turn (S1, `agenticChatReadIngestsExternalContentV1`). Any entry
+	 * closes the direct lane for the rest of the turn.
+	 */
+	externalContentSources?: ReadonlySet<string>;
+	/**
+	 * Ids of the entity the user focused the chat on, from the structured turn
+	 * focus (never parsed from text). Today only a focused table document
+	 * (BuildOS Tables, 2026-10-04): a row edit on the open table is resolved the
+	 * way the focused project is.
+	 */
+	focusedEntityIds?: ReadonlySet<string>;
 };
 
 /**
@@ -66,6 +79,7 @@ export type DirectWriteBatchAssessment =
 				| 'mutation_count_exceeded'
 				| 'operation_requires_contract'
 				| 'ordered_or_dependent_batch'
+				| 'external_content_requires_review'
 				| 'source_fidelity_requires_review'
 				| 'target_resolution_requires_review';
 			mutationCount: number;
@@ -93,6 +107,12 @@ export type DirectWriteBatchAssessment =
  * every id-valued argument is resolved is direct, whether that is one call or
  * three. Splitting the same resolved work into separate reviewed rounds bought
  * latency and reviewer cost, not safety.
+ *
+ * S1: after a turn has read externally authored content (an email, a web page,
+ * a Google Calendar event someone else can write), nothing is simple. An
+ * injected instruction can name a resolved target and a plausible value just
+ * as easily as the user can, so every write in that turn goes to independent
+ * review. Turns that read only the user's own BuildOS data keep the direct lane.
  */
 export function assessDirectWriteBatch(
 	calls: readonly CompletedProviderToolCall[],
@@ -131,7 +151,8 @@ export function assessDirectWriteBatch(
 			(call) =>
 				reviewedAgenticChatMutationSpecV1(call.name)?.directWriteClass !== 'ordinary' ||
 				call.arguments.archived === true ||
-				call.arguments.state_key === 'archived'
+				call.arguments.state_key === 'archived' ||
+				deletesTableRows(call)
 		)
 	) {
 		return {
@@ -192,7 +213,27 @@ export function assessDirectWriteBatch(
 			mutationCount: mutationCalls.length
 		};
 	}
+	if ((context?.externalContentSources?.size ?? 0) > 0) {
+		return {
+			kind: 'contract_required',
+			reason: 'external_content_requires_review',
+			mutationCount: mutationCalls.length
+		};
+	}
 	return { kind: 'simple', mutationCount: mutationCalls.length };
+}
+
+/**
+ * Deleting table rows is destructive even though it is undoable: a row batch
+ * that deletes anything goes to independent review, and the reviewer sees the
+ * server preview of exactly which rows go (structured argument, not text).
+ */
+function deletesTableRows(call: CompletedProviderToolCall): boolean {
+	return (
+		call.name === 'update_onto_table_rows' &&
+		Array.isArray(call.arguments.delete) &&
+		call.arguments.delete.length > 0
+	);
 }
 
 /**
@@ -234,7 +275,9 @@ const ARGUMENT_ENTITY_KINDS: Readonly<Record<string, string>> = {
 	risk_id: 'risk',
 	project_id: 'project',
 	edge_id: 'edge',
-	asset_id: 'asset'
+	asset_id: 'asset',
+	// A table is a document (BuildOS Tables): its id resolves like a document id.
+	table_id: 'document'
 };
 
 function entityKindForArgument(name: string, args: CompletedProviderToolCall['arguments']) {
@@ -328,6 +371,7 @@ function isDeterministicallyResolvedId(
 	}
 	if (resolvedKindMatches(context.resolvedEntityIds?.get(normalized), kind)) return true;
 	if (kind === 'asset' && context.attachedAssetIds?.has(normalized)) return true;
+	if (context.focusedEntityIds?.has(normalized)) return true;
 	if (!userMessageNamesId(context.userMessage, normalized)) return false;
 	return resolvedKindMatches(context.turnSeenEntityIds?.get(normalized), kind);
 }
@@ -345,6 +389,8 @@ export function directWriteContractInstruction(
 				return 'At least one proposed operation is destructive, organizational, high-impact, or otherwise contract-only.';
 			case 'ordered_or_dependent_batch':
 				return 'The proposal contains explicit ordering or dependencies.';
+			case 'external_content_requires_review':
+				return 'This turn read externally authored content (email, web, or calendar events others can write), so every change requires independent review against the user message.';
 			case 'source_fidelity_requires_review':
 				return 'The user requested source preservation; the document content must be independently compared with the original user message before execution.';
 			case 'target_resolution_requires_review':

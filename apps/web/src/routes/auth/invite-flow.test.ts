@@ -273,6 +273,44 @@ describe('Auth invite flow', () => {
 		expect(toastSuccessMock).not.toHaveBeenCalled();
 	});
 
+	it('lands on /today after an instant registration with no redirect or pending invite', async () => {
+		setPageUrl('http://localhost/auth/register');
+		(global.fetch as any).mockImplementation((input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url === '/api/legal/acceptance-intent') {
+				return okJson({ success: true, data: { token: 'legal-token' } });
+			}
+			if (url === '/api/auth/register') {
+				return okJson({ success: true, data: { requiresEmailConfirmation: false } });
+			}
+			if (url === '/api/onto/invites/pending') {
+				return okJson({ success: true, data: { invites: [] } });
+			}
+			throw new Error(`Unhandled fetch: ${url}`);
+		});
+
+		render(RegisterPage);
+
+		await fireEvent.input(screen.getByLabelText(/email address/i), {
+			target: { value: 'new@example.com' }
+		});
+		await fireEvent.input(screen.getByLabelText(/^password/i), {
+			target: { value: 'Password1' }
+		});
+		await fireEvent.input(screen.getByLabelText(/confirm password/i), {
+			target: { value: 'Password1' }
+		});
+		await fireEvent.click(
+			screen.getByRole('checkbox', { name: /terms of use.*privacy policy/i })
+		);
+		await fireEvent.click(screen.getByRole('button', { name: /^create account$/i }));
+
+		// Home is /today; it sends a brand-new account on into onboarding.
+		await waitFor(() => {
+			expect(gotoMock).toHaveBeenCalledWith('/today', { invalidateAll: true });
+		});
+	});
+
 	it('keeps the invite redirect on the sign-in link after registration requires email confirmation', async () => {
 		setPageUrl('http://localhost/auth/register?redirect=/invites/invite-token');
 		(global.fetch as any).mockImplementation((input: RequestInfo | URL) => {

@@ -128,7 +128,10 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'search_onto_risks',
 			'get_onto_risk_details',
 			'create_onto_risk',
-			'update_onto_risk'
+			'update_onto_risk',
+			// 2026-10-04 (Tables tool suite): table reads on both surfaces.
+			'get_onto_table_details',
+			'read_table_rows'
 		]);
 	});
 
@@ -163,7 +166,11 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'search_onto_assets',
 			'get_onto_asset',
 			'update_onto_asset',
-			'get_project_cleanup'
+			'get_project_cleanup',
+			// 2026-10-04 (Tables tool suite): table writes are project-scoped.
+			'create_onto_table',
+			'update_onto_table',
+			'update_onto_table_rows'
 		]);
 		expect([...global].filter((name) => !projectSet.has(name))).toEqual([
 			'search_onto_projects',

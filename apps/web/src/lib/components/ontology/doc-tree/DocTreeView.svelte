@@ -27,8 +27,11 @@
 		ImagePlus,
 		Plus,
 		RefreshCw,
+		Table2 as Table,
 		X
 	} from '$lib/icons/lucide';
+	import type { LoadedTable } from '@buildos/shared-agent-ops/tables';
+	import { tableRowCountOf } from '$lib/components/table-surfaces/table-surface-utils';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		buildAbsolutePublicPageUrl,
@@ -147,6 +150,10 @@
 	let viewerImageId = $state<string | null>(null);
 	let viewerOpen = $state(false);
 	let uploadOpen = $state(false);
+
+	// New table (a document.table placed in this tree)
+	let newTableOpen = $state(false);
+	let newTableParentId = $state<string | null>(null);
 
 	// Parent snapshots arrive after chat/editor writes. Preserve disclosure and
 	// selection state while replacing the data, without a second tree request.
@@ -371,6 +378,37 @@
 		if (!structure || !structure.root) return [];
 		return enrichTreeNodes(structure.root, documents, 0, []);
 	});
+
+	/** Row-count pills for table nodes, read from props.table.row_count (no rows loaded). */
+	const tableRowCounts = $derived.by(() => {
+		const counts = new Map<string, number>();
+		for (const doc of [...Object.values(documents), ...unlinked]) {
+			const count = tableRowCountOf(doc as { props?: unknown });
+			if (count !== null) counts.set(doc.id, count);
+		}
+		return counts;
+	});
+
+	function openNewTable(parentId: string | null) {
+		newTableParentId = parentId;
+		newTableOpen = true;
+	}
+
+	function closeNewTable() {
+		newTableOpen = false;
+		newTableParentId = null;
+	}
+
+	function handleTableCreated(table: LoadedTable) {
+		const parentId = newTableParentId;
+		closeNewTable();
+		if (parentId && !expandedIds.has(parentId)) {
+			expandedIds = new Set([...expandedIds, parentId]);
+			saveExpandedState();
+		}
+		void fetchTree(false);
+		onOpenDocument(table.document.id);
+	}
 
 	const groupedImages = $derived(
 		groupTreeImages(treeImages, treeImageLinks, new Set(nodeMap.keys()))
@@ -609,6 +647,9 @@
 			case 'create-child':
 				onCreateDocument(contextMenuNode.id);
 				break;
+			case 'create-table':
+				openNewTable(contextMenuNode.id);
+				break;
 			case 'move':
 				// Same pin as drag and cut/paste: the shared folder (or a folder holding it) stays put.
 				if (movePinned(contextMenuNode.id)) {
@@ -794,15 +835,26 @@
 		/>
 	{/if}
 
-	{#if imagesLoaded && canEdit && groupedImages.shelf.length === 0}
+	{#if imagesLoaded && canEdit}
 		<div class="flex min-h-11 items-center justify-between gap-2 px-3">
-			<button
-				type="button"
-				onclick={() => (uploadOpen = true)}
-				class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
-			>
-				<ImagePlus class="h-3.5 w-3.5" />Add image
-			</button>
+			<div class="flex items-center gap-1">
+				{#if groupedImages.shelf.length === 0}
+					<button
+						type="button"
+						onclick={() => (uploadOpen = true)}
+						class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+					>
+						<ImagePlus class="h-3.5 w-3.5" />Add image
+					</button>
+				{/if}
+				<button
+					type="button"
+					onclick={() => openNewTable(null)}
+					class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+				>
+					<Table class="h-3.5 w-3.5" />New table
+				</button>
+			</div>
 			{#if !loading && !error && enrichedTree.length > 0}<span
 					class="hidden text-2xs text-muted-foreground sm:inline {enableDragDrop
 						? 'mr-10'
@@ -841,18 +893,28 @@
 				<p class="text-xs text-muted-foreground">Add notes, research, or drafts</p>
 			</div>
 			{#if canEdit}
-				<button
-					type="button"
-					onclick={() => onCreateDocument(null)}
-					class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
-				>
-					<Plus class="w-3.5 h-3.5" />
-					Create document
-				</button>
+				<div class="flex flex-wrap items-center justify-center gap-2">
+					<button
+						type="button"
+						onclick={() => onCreateDocument(null)}
+						class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
+					>
+						<Plus class="w-3.5 h-3.5" />
+						Create document
+					</button>
+					<button
+						type="button"
+						onclick={() => openNewTable(null)}
+						class="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-accent/50 hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card motion-reduce:transition-none pressable"
+					>
+						<Table class="w-3.5 h-3.5" />
+						New table
+					</button>
+				</div>
 			{/if}
 		</div>
 	{:else}
-		{#if !(imagesLoaded && canEdit && groupedImages.shelf.length === 0)}
+		{#if !(imagesLoaded && canEdit)}
 			<div
 				class="hidden justify-end px-4 pt-1 text-2xs text-muted-foreground sm:flex {enableDragDrop
 					? 'pr-16'
@@ -883,6 +945,7 @@
 					onOpenImage={(imageId) => openImage(imageId)}
 					{sharedFolderId}
 					{sharedCount}
+					{tableRowCounts}
 				/>
 			{/each}
 		</div>
@@ -999,6 +1062,17 @@
 				void fetchImages();
 			}}
 		/>
+	{/if}
+
+	{#if canEdit && newTableOpen}
+		{#await import('$lib/components/tables/NewTableDialog.svelte') then { default: NewTableDialog }}
+			<NewTableDialog
+				{projectId}
+				parentId={newTableParentId}
+				onCreated={handleTableCreated}
+				onClose={closeNewTable}
+			/>
+		{/await}
 	{/if}
 
 	<!-- Context menu -->

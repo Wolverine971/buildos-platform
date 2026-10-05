@@ -84,7 +84,10 @@ export default defineConfig({
 		'src/utils/validation-utils.ts',
 		'src/utils/document-outline.ts',
 		'src/embeddings/entity-embedding.ts',
-		'src/embeddings/openai-embeddings.ts'
+		'src/embeddings/openai-embeddings.ts',
+		// Tables: index for server/worker, browser for client bundles (no node:crypto).
+		'src/tables/index.ts',
+		'src/tables/browser.ts'
 	],
 	format: ['cjs', 'esm'],
 	// Rollup's declaration bundler builds every entrypoint in one worker. This

@@ -413,7 +413,7 @@
 					</div>
 				{/if}
 				<a
-					href="/dashboard"
+					href="/today"
 					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					aria-label="Open main app"
 					title="Open main app"

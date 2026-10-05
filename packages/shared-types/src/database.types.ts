@@ -13337,6 +13337,7 @@ export type Database = {
       }
       onto_actors: {
         Row: {
+          account_deleted_at: string | null
           created_at: string
           email: string | null
           id: string
@@ -13347,6 +13348,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          account_deleted_at?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -13357,6 +13359,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          account_deleted_at?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -13935,6 +13938,73 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_document_rows: {
+        Row: {
+          cell_meta: Json
+          cells: Json
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          document_id: string
+          id: string
+          position: number
+          row_number: number
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          cell_meta?: Json
+          cells?: Json
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          document_id: string
+          id?: string
+          position: number
+          row_number: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          cell_meta?: Json
+          cells?: Json
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          document_id?: string
+          id?: string
+          position?: number
+          row_number?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_document_rows_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_document_rows_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_document_rows_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
             referencedColumns: ["id"]
           },
         ]
@@ -22714,6 +22784,21 @@ export type Database = {
       decide_agent_permission_request: {Args:{p_id:string;p_digest:string;p_decision:string};Returns:Json};
       apply_scoped_agent_edit: {Args:{p_ref:Json;p_key:string;p_submission:Json;p_before:Json;p_mutation:Json};Returns:Json};
       control_agent_permissions: {Args:{p_caller:string;p_action:string;p_grant?:string|null};Returns:undefined};
+      onto_document_table_apply: {
+        Args: {
+          p_actor_id?: string
+          p_document_id: string
+          p_expected_revision?: number
+          p_ops?: Json
+          p_table?: Json
+        }
+        Returns: Json
+      }
+      onto_document_table_render_markdown: {
+        Args: { p_document_id: string; p_table: Json }
+        Returns: string
+      }
+      onto_table_cell_text: { Args: { p_value: Json }; Returns: string }
       set_agent_permission_feature: {Args:{p_enabled:boolean};Returns:undefined};
       purge_agent_permission_payloads: {Args:{p_batch_size?:number};Returns:number};
       maintain_agent_permission_work: {Args:{p_batch_size?:number;p_request?:string|null};Returns:number};
@@ -25558,6 +25643,25 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_my_deleted_onto_projects: {
+        Args: never
+        Returns: {
+          deleted_at: string
+          erase_after: string
+          icon_emoji: Json
+          id: string
+          member_count: number
+          name: string
+        }[]
+      }
+      list_my_shared_owned_onto_projects: {
+        Args: never
+        Returns: {
+          members: Json
+          project_id: string
+          project_name: string
+        }[]
+      }
       list_pending_project_invites: {
         Args: never
         Returns: {
@@ -26820,6 +26924,10 @@ export type Database = {
               isSetofReturn: false
             }
           }
+      restore_onto_project: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       resume_cycle_impl: {
         Args: {
           p_cycle_id: string
@@ -27385,6 +27493,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      transfer_onto_project_ownership: {
+        Args: { p_leave?: boolean; p_new_owner_member_id: string; p_project_id: string }
+        Returns: Json
+      }
       unaccent: { Args: { "": string }; Returns: string }
       update_cycle: {
         Args: {
@@ -27798,6 +27910,7 @@ export type Database = {
         | "capture_chat_checkpoint"
         | "user_data_export"
         | "consolidation_run"
+        | "table_ai_fill"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -28073,6 +28186,7 @@ export const Constants = {
         "capture_chat_checkpoint",
         "user_data_export",
         "consolidation_run",
+        "table_ai_fill",
       ],
       recurrence_end_reason: [
         "indefinite",

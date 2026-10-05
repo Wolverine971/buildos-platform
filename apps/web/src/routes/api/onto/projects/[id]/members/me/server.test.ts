@@ -15,12 +15,10 @@ import { DELETE } from './+server';
 const createEvent = (): RequestEvent => {
 	const supabase = {
 		from: vi.fn(),
-		rpc: vi
-			.fn()
-			.mockResolvedValue({
-				data: { id: 'member-1', actor_id: 'actor-1', role_key: 'editor', access: 'write' },
-				error: null
-			})
+		rpc: vi.fn().mockResolvedValue({
+			data: { id: 'member-1', actor_id: 'actor-1', role_key: 'editor', access: 'write' },
+			error: null
+		})
 	};
 
 	return {
@@ -61,7 +59,7 @@ describe('DELETE /api/onto/projects/[id]/members/me', () => {
 		const payload = await response.json();
 
 		expect(response.status).toBe(400);
-		expect(payload.error).toContain('Project owners cannot leave');
+		expect(payload.error).toContain('Hand the project to another member');
 	});
 
 	it('lets non-owner members leave a shared project', async () => {

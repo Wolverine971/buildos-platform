@@ -157,6 +157,11 @@
 		type DocumentChangeCard,
 		type DocumentChangeReceipt
 	} from './document-change-cards';
+	import {
+		buildTableChangeCards,
+		type TableChangeCard,
+		type TableChangeReceipt
+	} from './table-change-cards';
 	import { createVoiceAdapter } from './agent-chat-voice.svelte';
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
 	import {
@@ -2410,6 +2415,7 @@
 		processedToolResultIds,
 		addCreatedEntitiesMessage,
 		addDocumentChangesMessage,
+		addTableChangesMessage,
 		isDev: dev
 	};
 
@@ -2512,6 +2518,60 @@
 				timestamp: new Date()
 			}
 		];
+	}
+
+	function addTableChangesMessage(receipts: TableChangeReceipt[]) {
+		// Same replay guard as document cards: a card already shown is never repeated.
+		const shownIds = new Set<string>();
+		for (const message of messages) {
+			if (message.type !== 'table_changes') continue;
+			for (const card of (message.data?.changes ?? []) as TableChangeCard[]) {
+				if (card?.id) shownIds.add(card.id);
+			}
+		}
+		const fresh = buildTableChangeCards(receipts).filter((card) => !shownIds.has(card.id));
+		if (fresh.length === 0) return;
+		messages = [
+			...messages,
+			{
+				id: crypto.randomUUID(),
+				type: 'table_changes',
+				content: '',
+				data: { changes: fresh },
+				timestamp: new Date()
+			}
+		];
+	}
+
+	/**
+	 * Undo from a table change card changed the table: keep "Undone" on a fully
+	 * undone card across re-renders, and report the write like any chat mutation
+	 * so an open table view reloads and the close-time broadcast refreshes.
+	 */
+	function handleTableChangeUndone(messageId: string, card: TableChangeCard, complete: boolean) {
+		if (complete) {
+			messages = messages.map((message) =>
+				message.id === messageId && message.type === 'table_changes'
+					? {
+							...message,
+							data: {
+								...message.data,
+								changes: ((message.data?.changes ?? []) as TableChangeCard[]).map(
+									(entry) =>
+										entry.id === card.id ? { ...entry, undone: true } : entry
+								)
+							}
+						}
+					: message
+			);
+		}
+		presenter.recordDataMutation(
+			'update_onto_table_rows',
+			{ table_id: card.documentId },
+			true,
+			{ result: { document: { id: card.documentId, project_id: card.projectId } } },
+			{ turnId: null }
+		);
 	}
 
 	/**
@@ -3021,6 +3081,7 @@
 		onClientActionComplete={handleClientActionComplete}
 		onDraftInChat={handleFreshnessDraftInChat}
 		onDocumentChangeUndone={handleDocumentChangeUndone}
+		onTableChangeUndone={handleTableChangeUndone}
 		onSharedDocumentEditResolved={handleSharedDocumentEditResolved}
 		onReviewDeeper={projectReviewAvailable ? handleReviewDeeper : undefined}
 		{reviewProjectId}

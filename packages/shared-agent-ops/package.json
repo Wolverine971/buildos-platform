@@ -401,6 +401,12 @@
 			"types": "./dist/embeddings/openai-embeddings.d.ts",
 			"import": "./dist/embeddings/openai-embeddings.mjs",
 			"require": "./dist/embeddings/openai-embeddings.js"
+		},
+		"./tables": {
+			"types": "./dist/tables/index.d.ts",
+			"browser": "./dist/tables/browser.mjs",
+			"import": "./dist/tables/index.mjs",
+			"require": "./dist/tables/index.js"
 		}
 	},
 	"scripts": {

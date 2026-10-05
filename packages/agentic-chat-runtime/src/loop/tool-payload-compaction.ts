@@ -265,6 +265,10 @@ function resolvePayloadBudget(toolName: string | undefined): number {
 	// the set (tasker 112); at 6K a 12-item set lost every item's summary.
 	if (toolName?.trim().toLowerCase() === 'get_project_cleanup')
 		return MAX_MODEL_WEB_PAYLOAD_CHARS;
+	// A 25-row page of an 8-column table is ~6K; at the 6K budget every page read
+	// would need a second round trip. Table reads fit themselves by whole rows.
+	if (TABLE_READ_TOOL_NAMES.has(toolName?.trim().toLowerCase() ?? ''))
+		return MAX_MODEL_WEB_PAYLOAD_CHARS;
 	return MAX_MODEL_TOOL_PAYLOAD_CHARS;
 }
 
@@ -811,6 +815,12 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 		// Fits itself under PROJECT_CLEANUP_CHAT_BUDGET_CHARS by trading detail
 		// before items; the guard only trims if a host overshoots.
 		return applyToolPayloadSizeGuard(payload, WEB_COMPACT_TARGET_CHARS);
+	}
+	if (TABLE_READ_TOOL_NAMES.has(normalizedToolName)) {
+		return compactTableReadPayload(payload);
+	}
+	if (TABLE_WRITE_TOOL_NAMES.has(normalizedToolName)) {
+		return compactTableMutationReceipt(payload);
 	}
 	if (
 		normalizedToolName === 'search_project' ||
@@ -2437,6 +2447,86 @@ function compactCalendarEventListPayload(payload: unknown): unknown {
 		}
 	}
 	return applyToolPayloadSizeGuard(buildPayload(rows.slice(0, shown)), TOOL_COMPACT_TARGET_CHARS);
+}
+
+// ---------------------------------------------------------------------------
+// BuildOS Tables (2026-10-04)
+// ---------------------------------------------------------------------------
+
+const TABLE_READ_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'get_onto_table_details',
+	'read_table_rows'
+]);
+const TABLE_WRITE_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'create_onto_table',
+	'update_onto_table',
+	'update_onto_table_rows'
+]);
+const TABLE_RECEIPT_MAX_HANDLES = 50;
+
+/**
+ * Table reads arrive already fitted by whole rows (tools/table-reads.ts). The
+ * generic guard would shrink the formatted rows string and cut a cell value
+ * mid-word, so a host overshoot drops the rows outright and asks for a smaller
+ * page instead: a missing page is recoverable, a silently trimmed cell is not.
+ */
+function compactTableReadPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+	if (!exceedsTarget(payload, WEB_COMPACT_TARGET_CHARS)) return payload;
+	const record = { ...(payload as Record<string, unknown>) };
+	if (typeof record.rows === 'string') {
+		delete record.rows;
+		record.rows_omitted_for_size = true;
+		record.message =
+			'The rows did not fit in one result. Read again with a smaller limit or fewer columns.';
+	}
+	return applyToolPayloadSizeGuard(record, WEB_COMPACT_TARGET_CHARS);
+}
+
+function compactTableChange(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const change = value as Record<string, any>;
+	return {
+		rows_added: change.rows_added,
+		rows_updated: change.rows_updated,
+		rows_deleted: change.rows_deleted,
+		cells_changed: change.cells_changed,
+		...(Array.isArray(change.columns_changed) && change.columns_changed.length > 0
+			? { columns_changed: change.columns_changed }
+			: {}),
+		...(Array.isArray(change.sample) && change.sample.length > 0
+			? { sample: change.sample.slice(0, 8) }
+			: {})
+	};
+}
+
+/**
+ * A table write receipt proves the write. The model needs the counts, a few
+ * sample cell diffs, and the handles of rows it added; the Undo ops and the
+ * prior column schema (`inverse_ops`, `inverse_schema`) are for the chat card.
+ */
+function compactTableMutationReceipt(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+	const record = payload as Record<string, any>;
+	const envelope =
+		record.result && typeof record.result === 'object' && !Array.isArray(record.result)
+			? (record.result as Record<string, any>)
+			: null;
+	const holder = envelope ?? record;
+	const compact: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(holder)) {
+		if (key === 'table_change') continue;
+		compact[key] = value;
+	}
+	const change = compactTableChange(holder.table_change);
+	if (change) compact.table_change = change;
+	if (Array.isArray(holder.rows_added_handles)) {
+		compact.rows_added_handles = holder.rows_added_handles.slice(0, TABLE_RECEIPT_MAX_HANDLES);
+	}
+	return applyToolPayloadSizeGuard(
+		envelope ? { ...record, result: compact } : compact,
+		TOOL_COMPACT_TARGET_CHARS
+	);
 }
 
 // A document write receipt proves the write; the body the model just sent

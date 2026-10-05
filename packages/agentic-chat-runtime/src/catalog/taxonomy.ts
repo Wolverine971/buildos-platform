@@ -80,7 +80,9 @@ export const TOOL_CATEGORIES = {
 			'read_document_section',
 			'search_onto_assets',
 			'get_onto_asset',
-			'get_project_cleanup'
+			'get_project_cleanup',
+			'get_onto_table_details',
+			'read_table_rows'
 		],
 		averageTokens: 350,
 		costTier: 'medium'
@@ -109,6 +111,9 @@ export const TOOL_CATEGORIES = {
 			'update_onto_milestone',
 			'update_onto_risk',
 			'update_onto_asset',
+			'create_onto_table',
+			'update_onto_table',
+			'update_onto_table_rows',
 			'delete_onto_task',
 			'delete_onto_goal',
 			'delete_onto_plan',

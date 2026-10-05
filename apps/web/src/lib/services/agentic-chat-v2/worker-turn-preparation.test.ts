@@ -1217,7 +1217,10 @@ describe('Agentic Chat worker turn preparation', () => {
 			});
 		});
 
-		async function admitFollowUp(sessionMetadata: Record<string, unknown>, priorMetadata: unknown) {
+		async function admitFollowUp(
+			sessionMetadata: Record<string, unknown>,
+			priorMetadata: unknown
+		) {
 			const serviceClient = serviceClientWithTables({
 				chat_sessions: [
 					{
@@ -2739,6 +2742,20 @@ describe('Agentic Chat worker turn preparation', () => {
 			expect(names).not.toContain('skill_search');
 			expect(names).not.toContain('domain_search');
 			expect(names).not.toContain('declare_read_only_turn');
+		});
+
+		it('never preloads a write playbook on the project-create surface', async () => {
+			const result = await admit({
+				context: { type: 'project_create', entityId: null, projectId: null },
+				message:
+					'Start a project for the Cedar House renovation and add a task to get three quotes.'
+			});
+
+			expect(result.args.p_artifact_prepared).toMatchObject({
+				surfaceProfile: 'project_create'
+			});
+			expect(result.args.p_user_message_metadata).not.toHaveProperty('skill_preloaded_id');
+			expect(result.args.p_request_payload).toMatchObject({ skillPreload: null });
 		});
 
 		it('gives a project-create turn the shell, its child creates, and the controls', async () => {

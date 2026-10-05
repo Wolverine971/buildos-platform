@@ -16,8 +16,10 @@ import {
 	CONSOLIDATION_LIMITS,
 	answeredOps,
 	answersFingerprint,
+	changeCount,
 	chosenMerge,
 	mergePieceKey,
+	isTaskOp,
 	parseConsolidationQuestion,
 	planOps,
 	type ConsolidationAnswer,
@@ -51,6 +53,12 @@ import {
 } from '$lib/server/organize/organize-service';
 import { blockerMessage } from '$lib/components/organize/organize-api';
 import {
+	applyTaskOps,
+	emptyTaskReceipt,
+	isTaskChangeOp,
+	undoTaskChanges
+} from './consolidation-tasks';
+import {
 	createOrMergeDocumentVersion,
 	toDocumentSnapshot
 } from '$lib/services/ontology/versioning.service';
@@ -64,6 +72,7 @@ import type {
 type Client = SupabaseClient<Database>;
 
 export type { ConsolidationReceipt, ConsolidationRunRow, ConsolidationRunView };
+export { changeCount };
 
 export class ConsolidationError extends Error {
 	constructor(
@@ -191,23 +200,10 @@ export async function loadConsolidationView(
 		questions,
 		merges,
 		ready_count: changeCount(ops.ready),
+		ready_ops: ops.ready,
 		waiting: ops.waiting
 	};
 	return seen.size < run.project_ids.length ? withoutHidden(view, seen) : view;
-}
-
-/** Docs and tasks an Apply would change: what the Apply button counts. */
-export function changeCount(ops: readonly ConsolidationOp[]): number {
-	return ops.reduce(
-		(total, op) =>
-			total +
-			(op.op === 'keep'
-				? 0
-				: op.op === 'move_tasks'
-					? op.task_ids.length
-					: op.document_ids.length),
-		0
-	);
 }
 
 /**
@@ -630,15 +626,17 @@ export async function retryMerge(params: {
 	if (run.status !== 'waiting' && run.status !== 'review')
 		throw new ConsolidationError('This consolidation can no longer be changed.', 409);
 	const cluster = run.plan?.clusters.find((item) => item.key === params.clusterKey);
-	const merge = cluster ? chosenMerge(cluster, await runQuestions(params.admin, run.id)) : null;
+	const [questions, stored] = await Promise.all([
+		runQuestions(params.admin, run.id),
+		runMerges(params.admin, run.id)
+	]);
+	const merge = cluster ? chosenMerge(cluster, questions) : null;
 	if (!cluster || !merge) throw new ConsolidationError('This group is not being merged.', 404);
-	const { data } = await params.admin
-		.from('consolidation_merges')
-		.select('status, updated_at')
-		.eq('run_id', run.id)
-		.eq('cluster_key', cluster.key)
-		.maybeSingle();
-	if (data && data.status !== 'failed' && !stalled(data.status, data.updated_at))
+	// Judged the way the page shows it, so a draft the page offers to start over can be.
+	const current = currentMerges(stored, questions).find(
+		(item) => item.cluster_key === cluster.key
+	);
+	if (current && current.status !== 'failed' && !current.stalled)
 		throw new ConsolidationError('This merge is already under way.', 409);
 	await startMerge(params.admin, params.userId, run.id, cluster.key, merge);
 	await refreshStatus(params.admin, run.id, run.plan);
@@ -1295,11 +1293,7 @@ export async function applyConsolidationRun(params: {
 	const saveReceipt = () =>
 		patchRun(admin, run.id, { receipt: receipt as unknown as Json }).catch(() => false);
 	const touched = [
-		...new Set(
-			ready.flatMap((op) =>
-				op.op === 'keep' || op.op === 'move_tasks' ? [] : op.document_ids
-			)
-		)
+		...new Set(ready.flatMap((op) => (op.op === 'keep' || isTaskOp(op) ? [] : op.document_ids)))
 	];
 	// As they were before anything moved: merges compare these with what their draft read.
 	const docs = await readDocs(session, touched);
@@ -1535,7 +1529,27 @@ export async function applyConsolidationRun(params: {
 		}
 	}
 
-	// 3. Archives, one by one, reading each doc fresh (a move can touch a folder's row).
+	// 3. Task merges, plans, roll-ups and closings.
+	const taskOps = ready.filter(isTaskChangeOp);
+	if (taskOps.length) {
+		receipt.tasks = emptyTaskReceipt();
+		await applyTaskOps(
+			{
+				session,
+				actorId,
+				runId: run.id,
+				ops: taskOps,
+				inFamily,
+				projectName: (id) => plan.projects[id]?.name ?? 'another project',
+				documentTitle: (id) => plan.documents[id]?.title ?? 'a document',
+				save: saveReceipt
+			},
+			receipt.tasks,
+			receipt.failures
+		);
+	}
+
+	// 4. Archives, one by one, reading each doc fresh (a move can touch a folder's row).
 	// A doc is never archived in favor of one that is itself being archived: two
 	// groups each archiving one of a pair of copies would lose both.
 	const archiving = new Set(archives.flatMap((op) => op.ids));
@@ -1589,6 +1603,7 @@ export async function applyConsolidationRun(params: {
 		.update({ status: 'withdrawn', updated_at: new Date().toISOString() })
 		.eq('run_id', run.id)
 		.eq('status', 'open');
+	receipt.applied_ops = ready;
 	await patchRun(admin, run.id, {
 		status: 'applied',
 		receipt: receipt as unknown as Json,
@@ -1599,8 +1614,9 @@ export async function applyConsolidationRun(params: {
 
 /**
  * Puts back what Apply changed, in reverse: archived docs first (restored to
- * their old place with the sub-docs archiving lifted out), then the merged
- * docs (archived, so edits made to them are kept), then the Organize batch,
+ * their old place with the sub-docs archiving lifted out), then task changes
+ * (consolidation-tasks.ts), then the merged docs (archived, so edits made to
+ * them are kept), then the Organize batch,
  * which only reverses items still exactly where Apply left them. Items that
  * changed since are left where they are and listed. Progress is saved as it
  * goes; anything that failed keeps the run `applied` so Undo can be pressed
@@ -1627,6 +1643,7 @@ export async function undoConsolidationRun(params: {
 		removed: [...(receipt.undo?.removed ?? [])],
 		restored: [...(receipt.undo?.restored ?? [])],
 		left: [...(receipt.undo?.left ?? [])],
+		tasks_undone: [...(receipt.undo?.tasks_undone ?? [])],
 		failures: [] as string[]
 	};
 	const next = (): ConsolidationReceipt => ({ ...receipt, undo });
@@ -1686,6 +1703,15 @@ export async function undoConsolidationRun(params: {
 			undo.failures.push(`${item.title}: ${message(error, 'could not restore')}`);
 		}
 	}
+	if (receipt.tasks)
+		await undoTaskChanges({
+			session,
+			tasks: receipt.tasks,
+			undone: undo.tasks_undone,
+			left: undo.left,
+			failures: undo.failures,
+			save
+		});
 	// Merged docs are archived (restorable, edits kept).
 	for (const item of receipt.created ?? []) {
 		if (undo.removed.includes(item.id)) continue;

@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { buildWelcomeEmailContent } from './welcome-sequence.content';
 import {
 	determineNextWelcomeAction,
+	getWelcomeBacklogSkip,
 	hasReturnedForSecondSession,
+	isOutsideWelcomeWindow,
+	WELCOME_SEQUENCE_WINDOW_DAYS,
 	type WelcomeSequenceProductState,
 	type WelcomeSequenceProgress
 } from './welcome-sequence.logic';
@@ -167,5 +170,71 @@ describe('welcome sequence logic', () => {
 		expect(email.body).toContain("Hi D'Angelo,");
 		expect(email.body).not.toContain('D&#39;Angelo');
 		expect(email.html).toContain('<p>Hi D&#39;Angelo,</p>');
+	});
+});
+
+describe('welcome sequence backlog guard', () => {
+	it('derives the window from the last step day plus the lateness allowance', () => {
+		expect(WELCOME_SEQUENCE_WINDOW_DAYS).toBe(12);
+		expect(
+			isOutsideWelcomeWindow('2026-03-01T10:00:00.000Z', new Date('2026-03-13T10:00:00.000Z'))
+		).toBe(false);
+		expect(
+			isOutsideWelcomeWindow('2026-03-01T10:00:00.000Z', new Date('2026-03-13T10:00:01.000Z'))
+		).toBe(true);
+	});
+
+	it('lets an on-time step through to the normal decision', () => {
+		const progress = createProgress({ sentAt: { email_1: '2026-03-01T10:01:00.000Z' } });
+
+		expect(getWelcomeBacklogSkip(progress, new Date('2026-03-02T10:30:00.000Z'))).toBeNull();
+	});
+
+	it('keeps a step held from Friday evening to Monday morning sendable', () => {
+		// Thursday 17:30 signup: email_2 falls due Friday 17:30, first send window is Monday 09:00.
+		const progress = createProgress({
+			startedAt: '2026-03-05T17:30:00.000Z',
+			sentAt: { email_1: '2026-03-05T17:31:00.000Z' }
+		});
+
+		expect(getWelcomeBacklogSkip(progress, new Date('2026-03-09T09:00:00.000Z'))).toBeNull();
+	});
+
+	it('skips a step that is more than three days overdue', () => {
+		const progress = createProgress({ sentAt: { email_1: '2026-03-01T10:01:00.000Z' } });
+
+		expect(getWelcomeBacklogSkip(progress, new Date('2026-03-05T10:30:00.000Z'))).toEqual({
+			action: 'skip',
+			step: 'email_2',
+			reason: 'step_overdue'
+		});
+	});
+
+	it('skips the welcome itself for a signup past the window', () => {
+		expect(
+			getWelcomeBacklogSkip(createProgress(), new Date('2026-09-01T10:00:00.000Z'))
+		).toEqual({
+			action: 'skip',
+			step: 'email_1',
+			reason: 'outside_welcome_window'
+		});
+	});
+
+	it('fails closed when the start time cannot be read', () => {
+		expect(
+			getWelcomeBacklogSkip(
+				createProgress({ startedAt: 'not-a-date' }),
+				new Date('2026-03-01T10:00:00.000Z')
+			)
+		).toMatchObject({ action: 'skip', step: 'email_1', reason: 'outside_welcome_window' });
+	});
+
+	it('leaves finished sequences alone', () => {
+		expect(
+			getWelcomeBacklogSkip(
+				createProgress({ status: 'completed' }),
+				new Date('2026-09-01T10:00:00.000Z')
+			)
+		).toBeNull();
 	});
 });

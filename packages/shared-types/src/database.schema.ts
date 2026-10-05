@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-04T20:27:24.748Z
+// Generated on: 2026-10-04T23:05:50.934Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2591,6 +2591,7 @@ export type DatabaseSchema = {
 		short_code: string;
 	};
 	onto_actors: {
+		account_deleted_at: string | null;
 		created_at: string;
 		email: string | null;
 		id: string;
@@ -2720,6 +2721,20 @@ export type DatabaseSchema = {
 		status: string;
 		updated_at: string;
 		version_warning: string | null;
+	};
+	onto_document_rows: {
+		cell_meta: Json;
+		cells: Json;
+		created_at: string;
+		created_by: string | null;
+		deleted_at: string | null;
+		document_id: string;
+		id: string;
+		position: number;
+		row_number: number;
+		updated_at: string;
+		updated_by: string | null;
+		version: number;
 	};
 	onto_document_versions: {
 		created_at: string;
@@ -4930,6 +4945,7 @@ export const tableNames = [
 	'onto_comment_read_states',
 	'onto_comments',
 	'onto_document_proposals',
+	'onto_document_rows',
 	'onto_document_versions',
 	'onto_documents',
 	'onto_edges',

@@ -47,6 +47,7 @@ import {
 import { planSkill } from './plan.skill';
 import { projectCreateSkill } from './project-create.skill';
 import { researchCaptureSkill } from './research-capture.skill';
+import { tableSkill } from './table.skill';
 import { taskStateUpdatesSkill } from './task-state-updates.skill';
 import { taskSkill } from './task.skill';
 import type { SkillDefinition } from './types';
@@ -67,6 +68,7 @@ const ALL_SKILLS: SkillDefinition[] = [
 	calendarSkill,
 	googleCalendarSkill,
 	documentSkill,
+	tableSkill,
 	fictionStoryCraftSkill,
 	planSkill,
 	projectCreateSkill,

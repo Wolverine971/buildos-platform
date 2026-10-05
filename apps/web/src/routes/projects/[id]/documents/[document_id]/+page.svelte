@@ -39,8 +39,12 @@
 		RefreshCw,
 		RotateCcw,
 		Save,
+		Table2 as TableIcon,
 		Target
 	} from 'lucide-svelte';
+	import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
+	import type { MakeLiveTableClick } from '$lib/components/table-surfaces/document-embeds';
+	import { tableEmbedInsertion } from '$lib/components/table-surfaces/table-surface-utils';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -96,6 +100,60 @@
 	const risks = $derived(risksOverride ?? data.risks ?? []);
 	const events = $derived(eventsOverride ?? data.events ?? []);
 	const linkedEntities = $derived(linkedEntitiesOverride ?? data.linkedEntities ?? {});
+
+	// A table document shows its grid; its body is a projection of the rows and is
+	// never edited or saved as text here.
+	const isTableDocument = $derived(isTableTypeKey(document?.type_key));
+	type TableWorkspaceLazy = typeof import('$lib/components/tables/TableWorkspace.svelte').default;
+	let TableWorkspaceComponent = $state<TableWorkspaceLazy | null>(null);
+	$effect(() => {
+		if (!isTableDocument || TableWorkspaceComponent) return;
+		void import('$lib/components/tables/TableWorkspace.svelte').then(
+			(module) => (TableWorkspaceComponent = module.default)
+		);
+	});
+	let contentEditor = $state<{ insertAtCursor: (markdown: string) => Promise<void> } | null>(
+		null
+	);
+	let tablePickerOpen = $state(false);
+
+	function insertTableEmbed(table: { id: string }) {
+		tablePickerOpen = false;
+		void contentEditor?.insertAtCursor(tableEmbedInsertion(table.id));
+	}
+
+	let liftingTable = false;
+	async function handleMakeLiveTable(click: MakeLiveTableClick) {
+		const projectId = project?.id;
+		const documentId = document?.id;
+		if (!projectId || !documentId || liftingTable) return;
+		liftingTable = true;
+		click.button.disabled = true;
+		click.button.textContent = 'Making table…';
+		try {
+			const { makeLiveTable } = await import(
+				'$lib/components/table-surfaces/make-live-table'
+			);
+			const result = await makeLiveTable({
+				projectId,
+				documentId,
+				documentTitle: title,
+				content,
+				renderedIndex: click.renderedIndex,
+				renderedHeaders: click.renderedHeaders
+			});
+			content = result.content;
+			await handleSave();
+		} catch (cause) {
+			toastService.error(
+				cause instanceof Error ? cause.message : 'Could not make the table.'
+			);
+			click.button.disabled = false;
+			click.button.textContent = 'Make live table';
+		} finally {
+			liftingTable = false;
+		}
+	}
 
 	let title = $state('');
 	let description = $state('');
@@ -253,15 +311,19 @@
 			const body: Record<string, unknown> = {
 				title: title.trim(),
 				description: description.trim() || null,
-				content,
 				state_key: stateKey,
 				force_version: true
 			};
-			if (typeKey.trim()) {
-				body.type_key = typeKey.trim();
-			}
-			if (serverUpdatedAt) {
-				body.expected_updated_at = serverUpdatedAt;
+			// Tables: metadata only. Row edits regenerate the body and move
+			// updated_at, so the text body, type and recency check stay out.
+			if (!isTableDocument) {
+				body.content = content;
+				if (typeKey.trim()) {
+					body.type_key = typeKey.trim();
+				}
+				if (serverUpdatedAt) {
+					body.expected_updated_at = serverUpdatedAt;
+				}
 			}
 
 			const response = await fetch(`/api/onto/documents/${document.id}`, {
@@ -564,7 +626,7 @@
 									<TextInput
 										id="document-type"
 										bind:value={typeKey}
-										disabled={isSaving || isArchivedDocument}
+										disabled={isSaving || isArchivedDocument || isTableDocument}
 										size="sm"
 									/>
 								</FormField>
@@ -599,18 +661,45 @@
 				<section
 					class="bg-card border border-border shadow-ink tx tx-grain tx-weak wt-paper overflow-hidden"
 				>
-					<div class="p-2 sm:p-3">
-						<RichMarkdownEditor
-							bind:value={content}
-							fillHeight={true}
-							maxLength={50000}
-							size="base"
-							label="Document Content"
-							helpText="Markdown supported"
-							disabled={isSaving || isArchivedDocument}
-							onSave={handleSave}
-						/>
-					</div>
+					{#if isTableDocument && document?.id && project?.id}
+						<div class="flex h-[min(78dvh,60rem)] min-h-96 flex-col">
+							{#if TableWorkspaceComponent}
+								<TableWorkspaceComponent
+									documentId={document.id}
+									projectId={project.id}
+									layout="page"
+									readonly={isArchivedDocument}
+									onAsk={() => (isDocumentInteractOpen = true)}
+								/>
+							{:else}
+								<div
+									class="m-3 flex flex-1 items-center justify-center gap-2 rounded-lg bg-muted/50 text-sm text-muted-foreground"
+									aria-busy="true"
+								>
+									<TableIcon class="h-4 w-4" /> Loading table…
+								</div>
+							{/if}
+						</div>
+					{:else}
+						<div class="p-2 sm:p-3">
+							<RichMarkdownEditor
+								bind:this={contentEditor}
+								bind:value={content}
+								fillHeight={true}
+								maxLength={50000}
+								size="base"
+								label="Document Content"
+								helpText="Markdown supported"
+								disabled={isSaving || isArchivedDocument}
+								onSave={handleSave}
+								onInsertTableRequested={() => (tablePickerOpen = true)}
+								embedProjectId={project?.id ?? null}
+								onMakeLiveTable={isArchivedDocument
+									? undefined
+									: handleMakeLiveTable}
+							/>
+						</div>
+					{/if}
 					<div
 						class="flex items-center justify-between gap-2 px-2 sm:px-3 py-2 border-t border-border bg-muted/30"
 					>
@@ -1108,6 +1197,18 @@
 </div>
 
 {#if project?.id && document?.id}
+	{#if tablePickerOpen && project?.id && document?.id}
+		{#await import('$lib/components/table-surfaces/TableInsertPicker.svelte') then { default: TableInsertPicker }}
+			<TableInsertPicker
+				projectId={project.id}
+				parentId={document.id}
+				excludeId={document.id}
+				onPick={insertTableEmbed}
+				onClose={() => (tablePickerOpen = false)}
+			/>
+		{/await}
+	{/if}
+
 	<DocumentInteractDock
 		bind:isOpen={isDocumentInteractOpen}
 		projectId={project.id}

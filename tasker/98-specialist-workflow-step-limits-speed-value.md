@@ -2,6 +2,9 @@
 
 # 98 — Specialist workflow: step limits, speed audit, value test
 
+> **Audit 2026-10-04 — SUPERSEDED.** Everything built here is pushed + deployed (routing 406cacc3d; planner bound + report fitting 5014e3ef5; reasoning setting + nested-plan parser 4ebe44389), but published specialists stay off by default. DJ's 0-of-4 blind read and "ownership" reframe became the project-agents plan and the steward beta (tasker 110). Caps were never binding, so the Phase 1 cap/migration plan and the gate steps are moot.
+> **Left:** nothing here. Deleting the Workflow Lab specialist code and the no-op `AGENTIC_CHAT_WORKFLOW_REASONING_OFF_STEPS` setting is decision 5 in `docs/product/project-agents-plan-2026-09-25.md`; "finder into chat" is 108 item 4a / 109 fix 3. **Priority:** none. **Recommend:** retire.
+
 **Created:** 2026-09-23. **Status (2026-09-23 afternoon):** Free investigation done and
 independently audited (see "Findings" and "Audit round"). The routing fix and planner codes
 shipped in `406cacc3d` (DJ's "updates" commit). The Railway `agentic-chat-worker` deployed at

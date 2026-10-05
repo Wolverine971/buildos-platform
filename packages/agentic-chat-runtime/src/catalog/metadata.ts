@@ -874,7 +874,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Creates and queues an agent run without blocking the chat turn',
 			'Supports read-only or explicitly requested read-write scope',
 			'Can request a higher-reasoning deep lane with a bounded observed-cost budget',
-			'Supports a bounded two-researcher deep-research template',
 			'Can stage read-write changes for later review before commit'
 		],
 		contexts: ['global', 'project'],
@@ -890,6 +889,63 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		contexts: ['global', 'project'],
 		timeoutMs: 60000,
+		category: 'write'
+	},
+
+	// ============================================
+	// TABLE TOOLS (BuildOS Tables, 2026-10-04)
+	// ============================================
+	// A table is a document (type document.table). Jev picks tools from these
+	// summaries, so they name the jobs in the user's words: rows of things being
+	// tracked, "which ones", counts and totals, filling a column, adding rows.
+	get_onto_table_details: {
+		summary:
+			'Open a table (rows of tracked things like applications, leads, expenses): its columns, row count, totals, and first rows.',
+		capabilities: [
+			'First read for any question or change about a table',
+			'Returns row handles (r12) used to address rows'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	read_table_rows: {
+		summary:
+			'Filter, sort, group, count, and total the rows of a table ("which ones haven\'t heard back", "group by status").',
+		capabilities: [
+			'Structured filters, sort, paging, group_by, and aggregates (count, sum, avg, min, max)',
+			'Use for every count or total instead of computing from rows'
+		],
+		contexts: ['global', 'project'],
+		category: 'read'
+	},
+	create_onto_table: {
+		summary:
+			'Create a table with typed columns and starting rows, or from pasted CSV, to track a list of things in a project.',
+		capabilities: [
+			'Typed columns: text, number, date, select, checkbox, url, email, link',
+			'Saves research results or a pasted spreadsheet as a table in one call'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_table: {
+		summary:
+			"Change a table's columns (add a column, rename, change type or choices, delete), title, or description; fill question columns; archive it.",
+		capabilities: [
+			'Column changes by name in one call',
+			'Starts a per-row fill of question columns'
+		],
+		contexts: ['project'],
+		category: 'write'
+	},
+	update_onto_table_rows: {
+		summary:
+			'Add rows, fill or change cells, or delete rows in a table, with sources for researched values.',
+		capabilities: [
+			'Up to 200 rows per call, addressed by row handle (r12) and column name',
+			'Records the sources behind researched cell values; every change can be undone'
+		],
+		contexts: ['project'],
 		category: 'write'
 	}
 };

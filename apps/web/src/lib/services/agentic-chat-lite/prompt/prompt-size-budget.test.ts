@@ -365,12 +365,20 @@ describe('total assembled prompt size budget', () => {
 		// confirm card rule on update_onto_document (project hierarchy) and the task
 		// mover's dated-task/asset transfer text. Measured payload 80,039 chars / 20,010
 		// est tokens, tool schemas 17,009 est tokens per pass. Caps at measured + ~0.5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(80_450);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(20_110);
+		// RE-BASELINED 2026-10-04 (Tables tool suite): get_onto_table_details and
+		// read_table_rows joined both surfaces, create_onto_table, update_onto_table and
+		// update_onto_table_rows the project surface (7,452 chars of schema; the two
+		// cell-value/source descriptions were trimmed first). Every count and total
+		// comes from read_table_rows instead of model arithmetic, which is the point
+		// of the suite. Measured payload 87,116 chars / 21,779 est tokens (+7,077 /
+		// +1,769), tool schemas 18,779 est tokens per pass (+1,770). Jev mounts the
+		// table tools only on turns that need them. Caps at measured + ~0.5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(87_550);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(21_890);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(60_330);
-		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(51_280);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(65_670);
+		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(56_620);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.
 		// 2026-09-10: the batch lane removed the contract DSL from acting-model

@@ -848,7 +848,12 @@ export function getSkillGateCandidateSkillLoadFormats(
 }
 
 /** `user_launch`: a registry-resolved skill the user picked before the chat opened. */
-export type DomainSensingPreloadSource = 'domain_sensing' | 'operational_intent' | 'user_launch';
+export type DomainSensingPreloadSource =
+	| 'domain_sensing'
+	| 'operational_intent'
+	| 'user_launch'
+	/** The focused entity's own playbook (a table in focus, BuildOS Tables 2026-10-04). */
+	| 'focused_entity';
 
 export function renderDomainSensingPromptContent(
 	result: DomainSensingResult | null,

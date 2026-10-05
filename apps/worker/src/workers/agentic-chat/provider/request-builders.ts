@@ -90,6 +90,51 @@ function isStewardPrompt(promptSections: readonly JsonObject[] | undefined): boo
 	return (promptSections ?? []).some((section) => section.id === 'steward_charter');
 }
 
+/**
+ * BuildOS Tables (2026-10-04): the table tools a turn focused on a table keeps
+ * through relevance selection. "Group by status" or "add a column for remote
+ * policy" never names the table, so Jev cannot be trusted to tie it to them.
+ */
+export const FOCUSED_TABLE_TOOL_PINS = [
+	'get_onto_table_details',
+	'read_table_rows',
+	'update_onto_table',
+	'update_onto_table_rows'
+] as const;
+
+const UUID_TEXT = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function jsonRecord(value: unknown): Record<string, unknown> | null {
+	return value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+/**
+ * The focused document's id when it is a table, read from the admitted
+ * context's structured focus entity and its type_key (document.table or
+ * document.table.*). Never from the message text.
+ */
+export function focusedTableIdFromContextPayload(contextPayload: unknown): string | null {
+	const data = jsonRecord(jsonRecord(contextPayload)?.data);
+	if (!data || data.focus_entity_type !== 'document') return null;
+	const focus = jsonRecord(data.focus_entity_full);
+	const typeKey = focus?.type_key;
+	if (
+		typeof typeKey !== 'string' ||
+		(typeKey !== 'document.table' && !typeKey.startsWith('document.table.'))
+	) {
+		return null;
+	}
+	const id =
+		typeof focus?.id === 'string'
+			? focus.id
+			: typeof data.focus_entity_id === 'string'
+				? data.focus_entity_id
+				: null;
+	return id && UUID_TEXT.test(id) ? id : null;
+}
+
 export function appendWebResearchRules(
 	request: AgenticChatTurnProviderRequestV1
 ): AgenticChatTurnProviderRequestV1 {
@@ -313,6 +358,7 @@ export function buildBaseProviderRequest(
 		messages.push({ role: 'system', content: TOOL_EXECUTION_BATCHING_INSTRUCTION });
 	}
 	messages.push({ role: 'user', content: userMessage });
+	const focusedTableId = focusedTableIdFromContextPayload(input.artifact.prepared.contextPayload);
 	const toolSelectionPins = [
 		// A project image attached to this message may need naming or filing;
 		// keep that schema through relevance selection (structured, not text).
@@ -327,7 +373,9 @@ export function buildBaseProviderRequest(
 		// (its section id, structured, not text).
 		...(isStewardPrompt(input.artifact.prepared.promptSections)
 			? STEWARD_PLANNING_TOOL_PINS
-			: [])
+			: []),
+		// A chat focused on a table keeps the table tools (structured focus).
+		...(focusedTableId ? FOCUSED_TABLE_TOOL_PINS : [])
 	];
 	return {
 		admittedTools,
@@ -353,6 +401,7 @@ export function buildBaseProviderRequest(
 			signal,
 			...(budget ? { budget } : {}),
 			...(toolSelectionPins.length > 0 ? { toolSelectionPins } : {}),
+			...(focusedTableId ? { focusedTableId } : {}),
 			...(liveVisionEnabled && currentTurn?.liveVision?.requested
 				? {
 						liveVisionRequest: {

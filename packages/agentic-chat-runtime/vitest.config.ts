@@ -28,6 +28,11 @@ export default defineConfig({
 				find: /^@buildos\/shared-agent-ops\/project-cleanup$/,
 				replacement: sharedAgentOpsSrc('project-cleanup.ts')
 			},
+			// BuildOS Tables (2026-10-04): the shared table core, from source.
+			{
+				find: /^@buildos\/shared-agent-ops\/tables$/,
+				replacement: sharedAgentOpsSrc('tables/index.ts')
+			},
 			{
 				find: /^@buildos\/shared-agent-ops\/ops\/gateway-op-aliases$/,
 				replacement: sharedAgentOpsSrc('ops/gateway-op-aliases.ts')

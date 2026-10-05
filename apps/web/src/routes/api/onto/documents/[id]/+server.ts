@@ -12,6 +12,7 @@ import {
 	getDocumentEditorRevision
 } from '$lib/server/document-editor-revision';
 import { DOCUMENT_STATES, isValidTypeKey } from '$lib/types/onto';
+import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
@@ -512,6 +513,37 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				structure: restoreResult.structure,
 				restored: true
 			});
+		}
+
+		// A table's body is a projection of its rows (onto_document_table_apply); a text
+		// write here would be overwritten by the next row edit. Rows, columns and the
+		// table type itself change only through /api/onto/tables.
+		const isTableDocument = isTableTypeKey(document.type_key);
+		const requestedTypeKey = typeof type_key === 'string' ? type_key.trim() : '';
+		if (isTableDocument) {
+			if (content !== undefined || body_markdown !== undefined) {
+				return ApiResponse.badRequest(
+					'This document is a table. Edit its rows and columns instead of its text.'
+				);
+			}
+			if (requestedTypeKey && requestedTypeKey !== document.type_key) {
+				return ApiResponse.badRequest(
+					'A table cannot be changed into another document type.'
+				);
+			}
+			if (
+				props &&
+				typeof props === 'object' &&
+				'table' in (props as Record<string, unknown>)
+			) {
+				return ApiResponse.badRequest(
+					'Table columns change through the table, not document props.'
+				);
+			}
+		} else if (requestedTypeKey && isTableTypeKey(requestedTypeKey)) {
+			return ApiResponse.badRequest(
+				'Create tables with New table instead of retyping a document.'
+			);
 		}
 
 		let hasUpdates = false;

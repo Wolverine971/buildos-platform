@@ -23,4 +23,19 @@ describe('worker provider tool surface', () => {
 		expect(parameters.additionalProperties).toBe(false);
 		expect(reviewed?.function.description).toContain('plain text');
 	});
+
+	it('never lets the chat model pick the parked deep_research template', () => {
+		const canonical = UTILITY_TOOL_DEFINITIONS.find(
+			(definition) => definition.function.name === 'delegate_task'
+		);
+		expect(canonical).toBeDefined();
+		const reviewed = reviewedWorkerProviderToolDefinitionV1(canonical as never);
+		const parameters = reviewed?.function.parameters as {
+			properties?: Record<string, unknown>;
+			additionalProperties?: boolean;
+		};
+		expect(parameters.properties?.run_template).toBeUndefined();
+		expect(parameters.additionalProperties).toBe(false);
+		expect(JSON.stringify(reviewed).toLowerCase()).not.toMatch(/deep[ _-]research/);
+	});
 });

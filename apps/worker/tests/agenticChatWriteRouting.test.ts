@@ -130,6 +130,44 @@ describe('direct write routing', () => {
 		).toEqual({ kind: 'simple', mutationCount: 1 });
 	});
 
+	it('sends an otherwise simple write to review once the turn read external content (S1)', () => {
+		const focused = { contextType: 'project', entityId: '2', projectId: '2' };
+		const calls = [call('create_onto_task', { project_id: '2', title: 'Ship' })];
+		expect(assessDirectWriteBatch(calls, focused)).toEqual({
+			kind: 'simple',
+			mutationCount: 1
+		});
+		expect(
+			assessDirectWriteBatch(calls, { ...focused, externalContentSources: new Set() })
+		).toEqual({ kind: 'simple', mutationCount: 1 });
+		const tainted = assessDirectWriteBatch(calls, {
+			...focused,
+			externalContentSources: new Set(['get_email_message'])
+		});
+		expect(tainted).toEqual({
+			kind: 'contract_required',
+			reason: 'external_content_requires_review',
+			mutationCount: 1
+		});
+		if (tainted.kind !== 'contract_required') throw new Error('Expected review');
+		expect(directWriteContractInstruction(tainted)).toContain(
+			'read externally authored content'
+		);
+		// The focused entity and a single-hit read still prove the target, but
+		// not that the user, rather than the email, asked for the change.
+		expect(
+			assessDirectWriteBatch(
+				[call('update_onto_task', { task_id: '1', state_key: 'done' })],
+				{
+					contextType: 'task',
+					entityId: '1',
+					projectId: '2',
+					externalContentSources: new Set(['web_search'])
+				}
+			)
+		).toMatchObject({ kind: 'contract_required', reason: 'external_content_requires_review' });
+	});
+
 	it('accepts one same-round batch of up to three ordinary mutations', () => {
 		const focused = { contextType: 'project', entityId: '2', projectId: '2' };
 		expect(

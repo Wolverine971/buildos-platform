@@ -454,3 +454,254 @@ describe('consolidation survey: misfiled tasks', () => {
 		expect(decision.cluster.task_ids).toEqual([T(1)]);
 	});
 });
+
+describe('consolidation survey: task groups (DJ picks, 2026-10-04)', () => {
+	const T = (n: number) => `ffffffff-0000-4000-8000-${String(n).padStart(12, '0')}`;
+	const [HANNIBAL, JULIAN, NOMTASTIC] = [11, 12, 13].map(
+		(n) => `aaaaaaaa-0000-4000-8000-0000000000${n}`
+	) as [string, string, string];
+	const SCRIPT = D(20);
+	const task = (n: number, title: string, project_id = WAYNE) => ({
+		id: T(n),
+		project_id,
+		title,
+		description: null,
+		state: 'todo',
+		due_at: null,
+		created_at: '2026-09-01T00:00:00Z'
+	});
+	const taskInventory: Inventory = {
+		projects: [
+			{ id: WAYNE, name: 'Wayne Strategies', description: 'Agency', parent: true },
+			{ id: HANNIBAL, name: 'Hannibal Is Hungry', description: null, parent: false },
+			{ id: JULIAN, name: 'Julian Dorey', description: null, parent: false },
+			{ id: NOMTASTIC, name: 'Nomtastic Kim', description: null, parent: false }
+		],
+		documents: [
+			doc(SCRIPT, {
+				title: 'Launch video script',
+				created_at: '2026-09-19T00:00:00Z',
+				content:
+					'# 90-second launch video\n\n**HOOK:** You have 40 tabs open and none of them are the work.\n\nCUT TO: the brain dump.'
+			})
+		],
+		tasks: [
+			task(1, 'Twitter brand kit: icon + 3 templates + rollout note'),
+			task(2, 'Create Twitter visual brand guidelines for BuildOS'),
+			task(3, 'Define color palette and typography for Twitter posts'),
+			task(4, 'Create User Guide Suite (ADHD/TPM/Writers/Devs)'),
+			task(5, 'Create detailed BuildOS guide for people with ADHD'),
+			task(6, 'Decide hackathon format and set date'),
+			task(7, 'Define the hackathon scenario / challenge prompt'),
+			task(8, 'Build hackathon landing page + signup flow'),
+			task(9, 'Recruit pilot test group for hackathon'),
+			task(10, 'Finalize and send Hannibal outreach', HANNIBAL),
+			task(11, 'Finalize and send JDP team outreach', JULIAN),
+			task(12, 'Finalize and send Nomtastic Kim outreach', NOMTASTIC),
+			task(13, 'Script 90-second launch video targeting overwhelmed solo founders'),
+			task(14, 'Compile mood board for Tacemus brand imagery', HANNIBAL)
+		]
+	};
+	const taskKeys = buildKeys(taskInventory);
+	const group = (
+		kind: FoundGroup['kind'],
+		tasks: number[],
+		extra: Partial<FoundGroup> = {}
+	): FoundGroup => ({
+		kind,
+		title: 'Tasks',
+		document_ids: [],
+		task_ids: tasks.map(T),
+		belongs_in: null,
+		newer_id: null,
+		reason: '',
+		...extra
+	});
+	const decide = (found: FoundGroup, raw: unknown) =>
+		buildDecision({
+			key: 'c1',
+			group: found,
+			raw,
+			inventory: taskInventory,
+			keys: taskKeys,
+			twins: new Map()
+		});
+	const sure = { confidence: 'high', needs_owner: false };
+
+	it('finds task-only groups in order, with each task in one group', () => {
+		const groups = parseGroups(
+			{
+				groups: [
+					{ kind: 'duplicate_tasks', title: 'Twitter kit', tasks: ['T1', 'T2', 'T3'] },
+					{ kind: 'task_sequence', title: 'Hackathon', tasks: ['T6', 'T7', 'T8', 'T9'] },
+					{ kind: 'finished_tasks', title: 'Script', tasks: ['T13'], documents: ['D1'] },
+					// T2 is taken: one task left, too few for duplicates.
+					{ kind: 'duplicate_tasks', title: 'Again', tasks: ['T2', 'T14'] },
+					{ kind: 'sibling_tasks', title: 'Outreach', tasks: ['T10', 'T11', 'T12'] }
+				]
+			},
+			taskInventory,
+			taskKeys
+		);
+		expect(groups.map((found) => [found.kind, found.task_ids])).toEqual([
+			['duplicate_tasks', [T(1), T(2), T(3)]],
+			['task_sequence', [T(6), T(7), T(8), T(9)]],
+			['finished_tasks', [T(13)]],
+			['sibling_tasks', [T(10), T(11), T(12)]]
+		]);
+		expect(groups[2]).toMatchObject({ document_ids: [], evidence_id: SCRIPT });
+		expect(groupsUserPrompt(taskInventory, taskKeys)).not.toContain(T(1));
+	});
+
+	it('always asks before merging duplicates, and names tasks instead of keys', () => {
+		const decision = decide(group('duplicate_tasks', [1, 2, 3]), {
+			...sure,
+			recommended: {
+				label: 'Merge into T1',
+				description: 'T2 and T3 repeat it.',
+				actions: [{ merge_tasks: ['T2', 'T3'], into: 'T1' }]
+			},
+			header: 'Twitter tasks',
+			question: 'Merge T2 and T3 into T1?'
+		});
+		expect(decision.cluster.ops).toEqual([
+			{ op: 'merge_tasks', task_ids: [T(2), T(3)], keep_id: T(1) }
+		]);
+		expect(decision.question).not.toBeNull();
+		expect(decision.question!.question).not.toMatch(/\bT\d+\b/);
+		expect(decision.question!.options[0]!.label).toBe(
+			'Merge into “Twitter brand kit: icon + 3 templates + rollout note”'
+		);
+		const leave = decision.question!.options.find((option) => option.id === 'leave')!;
+		expect(leave.ops).toEqual([{ op: 'keep', document_ids: [], task_ids: [T(1), T(2), T(3)] }]);
+	});
+
+	it('gathers a task and its pieces in a plan without asking', () => {
+		const decision = decide(group('task_parts', [4, 5]), {
+			...sure,
+			recommended: {
+				label: 'Gather them in a plan',
+				description: '',
+				actions: [{ plan: ['T4', 'T5'], name: 'User Guide Suite', in_order: false }]
+			}
+		});
+		expect(decision.question).toBeNull();
+		expect(decision.cluster.ops).toEqual([
+			{
+				op: 'plan_tasks',
+				task_ids: [T(4), T(5)],
+				project_id: WAYNE,
+				name: 'User Guide Suite',
+				sequence: false
+			}
+		]);
+	});
+
+	it('keeps a sequence in its order, each step waiting on the last', () => {
+		const decision = decide(group('task_sequence', [6, 7, 8, 9]), {
+			...sure,
+			recommended: {
+				label: 'Put them in order',
+				description: '',
+				actions: [{ plan: ['T6', 'T7', 'T8', 'T9'], name: 'Hackathon', in_order: true }]
+			}
+		});
+		expect(decision.cluster.ops[0]).toMatchObject({
+			op: 'plan_tasks',
+			task_ids: [T(6), T(7), T(8), T(9)],
+			sequence: true
+		});
+	});
+
+	it('rolls siblings up into one task in the parent project', () => {
+		const decision = decide(group('sibling_tasks', [10, 11, 12]), {
+			...sure,
+			recommended: {
+				label: 'Add one outreach task',
+				description: '',
+				actions: [{ rollup: ['T10', 'T11', 'T12'], title: 'Send creator outreach (3)' }]
+			}
+		});
+		expect(decision.question).toBeNull();
+		expect(decision.cluster.ops).toEqual([
+			{
+				op: 'rollup_tasks',
+				task_ids: [T(10), T(11), T(12)],
+				project_id: WAYNE,
+				title: 'Send creator outreach (3)'
+			}
+		]);
+	});
+
+	it('refuses a plan whose tasks sit in different projects', () => {
+		const decision = decide(group('task_parts', [6, 14]), {
+			...sure,
+			recommended: {
+				label: 'Gather them',
+				description: '',
+				actions: [{ plan: ['T6', 'T14'], name: 'Mixed' }]
+			}
+		});
+		expect(decision.cluster.ops).toEqual([
+			{ op: 'keep', document_ids: [], task_ids: [T(6), T(14)] }
+		]);
+		expect(decision.question).toBeNull();
+	});
+
+	it('marks a task done only on a quote found in the doc, and always asks', () => {
+		const finished = group('finished_tasks', [13], { evidence_id: SCRIPT });
+		const done = decide(finished, {
+			...sure,
+			recommended: {
+				label: 'Mark it done',
+				description: 'The script is written.',
+				actions: [
+					{
+						done: ['T13'],
+						evidence: 'D1',
+						quote: 'HOOK: You have 40 tabs open and none of them are the work.',
+						note: 'The script exists as a doc from September 19.'
+					}
+				]
+			}
+		});
+		expect(done.cluster.ops).toEqual([
+			{
+				op: 'close_tasks',
+				task_ids: [T(13)],
+				how: 'done',
+				evidence_document_id: SCRIPT,
+				note: 'The script exists as a doc from September 19.'
+			}
+		]);
+		expect(done.question).not.toBeNull();
+		expect(done.question!.evidence).toEqual([
+			{
+				document_id: SCRIPT,
+				source: 'Launch video script',
+				quote: 'HOOK: You have 40 tabs open and none of them are the work.'
+			}
+		]);
+
+		const unproven = decide(finished, {
+			...sure,
+			recommended: {
+				label: 'Mark it done',
+				description: '',
+				actions: [{ done: ['T13'], evidence: 'D1', quote: 'The video shipped on Sep 30.' }]
+			},
+			alternatives: [
+				{
+					label: 'Archive it',
+					description: '',
+					actions: [{ archive_tasks: ['T13'], note: 'The launch plan changed.' }]
+				}
+			]
+		});
+		const everyOp = unproven.question!.options.flatMap((option) => option.ops);
+		expect(everyOp.some((op) => op.op === 'close_tasks' && op.how === 'done')).toBe(false);
+		// The alternative stands in, and is asked, not decided.
+		expect(unproven.cluster.ops[0]).toMatchObject({ op: 'close_tasks', how: 'archived' });
+		expect(unproven.question!.recommended_option_id).toBe('alt1');
+	});
+});

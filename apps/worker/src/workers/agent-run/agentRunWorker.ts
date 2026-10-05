@@ -64,10 +64,16 @@ import {
 import {
 	DEEP_RESEARCH_CHILD_ROLE,
 	isDeepResearchCoordinator,
+	isDeepResearchTreeRun,
 	isRetryableDeepResearchState,
 	maybeQueueDeepResearchParent,
 	processDeepResearchCoordinator
 } from './deepResearchOrchestrator';
+import {
+	DEEP_RESEARCH_DISABLED_ERROR,
+	DEEP_RESEARCH_DISABLED_MESSAGE,
+	isDeepResearchEnabled
+} from '../../config/deepResearch';
 import {
 	formatAgentRunTranscriptArgs,
 	formatAgentRunTranscriptResult
@@ -580,6 +586,111 @@ async function injectChatCompletionMessage(
 	if (error && error.code !== '23505') {
 		console.error('[agentRunWorker] failed to inject chat completion message', error.message);
 	}
+}
+
+const DEEP_RESEARCH_REFUSABLE_STATUSES = new Set<AgentRunRow['status']>([
+	'queued',
+	'running',
+	'paused',
+	'needs_input',
+	'proposal_ready'
+]);
+
+/**
+ * PRIVATE_DEEP_RESEARCH_ENABLED kill switch, worker side. Runs before the claim,
+ * the model client, and any cost reservation, so a deep-research job that
+ * reaches the worker while the switch is off — a stale client, an old session,
+ * a resume, a stranded-sweep re-enqueue, or a job queued before the switch went
+ * off — is cancelled without a single provider call. The cancel is a
+ * compare-and-swap that also bumps execution_generation, so it fences out any
+ * executor still holding an older claim exactly like a normal claim would.
+ */
+async function refuseDisabledDeepResearchRun(
+	run: AgentRunRow,
+	log?: (message: string) => Promise<unknown> | unknown
+): Promise<
+	AgentRunProcessorResult | { success: true; run_id: string; status: 'skipped'; message: string }
+> {
+	if (!DEEP_RESEARCH_REFUSABLE_STATUSES.has(run.status)) {
+		await log?.(
+			`Agent Run ${run.id} skipped; deep research is disabled and run is ${run.status}`
+		);
+		return {
+			success: true,
+			run_id: run.id,
+			status: 'skipped' as const,
+			message: `Deep research is disabled; run is already ${run.status}`
+		};
+	}
+
+	const previousGeneration =
+		typeof (run as Record<string, unknown>).execution_generation === 'number'
+			? ((run as Record<string, unknown>).execution_generation as number)
+			: 0;
+	const priorResult =
+		run.result && typeof run.result === 'object' && !Array.isArray(run.result)
+			? (run.result as Record<string, unknown>)
+			: {};
+	const result: Record<string, unknown> = {
+		...priorResult,
+		summary: DEEP_RESEARCH_DISABLED_MESSAGE,
+		answer: '',
+		error: DEEP_RESEARCH_DISABLED_ERROR
+	};
+
+	// Same ordering as finalize: the chat thread reloads when it sees a session
+	// run go terminal, so the explanation must already be there.
+	await injectChatCompletionMessage(run, 'cancelled', result);
+
+	const { data: cancelled, error } = await supabase
+		.from('agent_runs')
+		.update({
+			status: 'cancelled',
+			error: DEEP_RESEARCH_DISABLED_ERROR,
+			result: result as never,
+			completed_at: new Date().toISOString(),
+			execution_generation: previousGeneration + 1
+		} as never)
+		.eq('id', run.id)
+		.eq('status', run.status)
+		.eq('execution_generation', previousGeneration)
+		.select('id')
+		.maybeSingle();
+	if (error) {
+		// Throw so the queue retries the refusal; nothing paid has happened.
+		throw new Error(`Failed to cancel disabled deep-research run ${run.id}: ${error.message}`);
+	}
+	if (!cancelled) {
+		await log?.(`Agent Run ${run.id} skipped; deep research is disabled and the run moved on`);
+		return {
+			success: true,
+			run_id: run.id,
+			status: 'skipped' as const,
+			message: 'Deep research is disabled; run state changed before it could be cancelled'
+		};
+	}
+
+	await emitEvent(run.id, 'run.narration', { note: DEEP_RESEARCH_DISABLED_MESSAGE });
+	await emitEvent(run.id, 'run.status', { status: 'cancelled' });
+	// A refused researcher child lets its coordinator settle (the coordinator's
+	// own job is then refused the same way) instead of waiting for the sweep.
+	if (run.parent_run_id) {
+		try {
+			await maybeQueueDeepResearchParent(run.parent_run_id);
+		} catch (wakeError) {
+			console.warn(
+				`⚠️ Failed to wake deep-research parent ${run.parent_run_id}:`,
+				wakeError instanceof Error ? wakeError.message : wakeError
+			);
+		}
+	}
+	await log?.(`Agent Run ${run.id} cancelled: deep research is disabled`);
+	return {
+		success: false,
+		run_id: run.id,
+		status: 'cancelled',
+		message: DEEP_RESEARCH_DISABLED_MESSAGE
+	};
 }
 
 function readNonEmptyString(value: unknown): string | null {
@@ -1208,6 +1319,11 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		};
 	}
 	const initialRun = runData as AgentRunRow;
+	// Deep Research kill switch: refuse before the claim, the model client, or
+	// any cost reservation (tasker 29 parks the template; default off).
+	if (isDeepResearchTreeRun(initialRun) && !isDeepResearchEnabled()) {
+		return refuseDisabledDeepResearchRun(initialRun, job.log);
+	}
 	// Resume/answer jobs are continuations: rebuild transcript
 	// + budget below instead of starting fresh. The input arrives as a pending
 	// signal. Stale jobs without this marker may only claim freshly queued runs.

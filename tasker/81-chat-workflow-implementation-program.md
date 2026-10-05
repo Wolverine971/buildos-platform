@@ -2,6 +2,9 @@
 
 # 81 — Chat workflow implementation program
 
+> **Audit 2026-10-04 — SUPERSEDED.** Every package shipped and is pushed + deployed: 85 schema (`bd356380b`); 86/87 admission, runner and recovery (`a8521ae14`, `7702ca006`, `b90e573bf`); and 88, reshaped into the live freshness radar. The pilot ran live for DJ's account on 09-20, with two complete reviews costing under $0.01. The direction was then overtaken: specialists lost DJ's 09-23 blind read 0/4 (tasker 98), and DJ moved to project stewards on 09-26.
+> **Left:** nothing worth doing; the unchecked coordinator boxes all depend on the QA gate, which was retired 2026-09-24. **Priority:** none. **Recommend:** retire, together with 82, 84–87 and 89.
+
 **Created:** 2026-09-12  
 **Status:** Implementation and verification remain open. The 82/84 stabilization gate is not accepted: the September 14 isolated run scored **45/52**, with Case 8 latency and Case 9/10/14 content/quality failures. Source provenance was stable. See [Task 90 closeout](../docs/technical/reviews/CHAT_WORKFLOW_TASK90_CLOSEOUT_2026-09-14.md).
 

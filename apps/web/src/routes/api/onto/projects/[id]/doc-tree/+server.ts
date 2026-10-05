@@ -15,6 +15,7 @@ import { loadDocumentTreePayload } from '@buildos/agentic-chat-runtime/tools';
 import type { DocStructure, DocTreeNode } from '$lib/types/onto';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { attachTableRowCounts } from '$lib/server/tables/doc-tree-table-counts';
 
 const VALID_CHANGE_TYPES = new Set<ChangeType>([
 	'create',
@@ -104,6 +105,11 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 				includeDocuments
 			}
 		);
+
+		if (includeDocuments) {
+			// Table nodes show a row-count pill; the metadata path drops props.
+			await attachTableRowCounts(supabase, id, [documents, unlinked, archived]);
+		}
 
 		return ApiResponse.success({ structure, documents, unlinked, archived });
 	} catch (error) {

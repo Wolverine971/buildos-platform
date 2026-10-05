@@ -19,6 +19,7 @@ import {
 	type ToolValidationIssue,
 	type TurnContract,
 	type TurnContractOutcome,
+	agenticChatReadIngestsExternalContentV1,
 	bindTurnContractLabels,
 	buildCleanupManifest,
 	buildMutationBatch,
@@ -82,6 +83,7 @@ import {
 } from './feedback';
 import { providerError } from './protocol';
 import type { DocumentEditPreviewV1 } from './document-edit-preview';
+import type { TableEditPreviewV1 } from './table-edit-preview';
 import { TurnCreateReplayGuard, createReplayRepairInstruction } from './create-replay';
 import {
 	type SurfaceRepairContext,
@@ -114,6 +116,7 @@ import {
 	collectAttachedProjectAssetIds,
 	collectReadResultEntityRefs,
 	directWriteContractInstruction,
+	normalizeId,
 	selectSingleHitEntityIds
 } from './write-routing';
 
@@ -185,6 +188,8 @@ export type ToolRoundStreamState = {
 		sha256: string;
 	} | null;
 	getBatchRevisionCount(): number;
+	/** Tools that read externally authored content earlier in this turn (S1). */
+	getExternalContentSources(): ReadonlySet<string>;
 	takePreMutationSemanticDispositionGate(
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[]
@@ -209,6 +214,9 @@ export type ToolRoundStreamState = {
 	/** Verified document-edit previews by provider call id, for the batch reviewer. */
 	recordDocumentEditPreviews(previews: ReadonlyMap<string, DocumentEditPreviewV1>): void;
 	getDocumentEditPreviews(): ReadonlyMap<string, DocumentEditPreviewV1>;
+	/** Verified table row-batch previews by provider call id (BuildOS Tables). */
+	recordTableEditPreviews(previews: ReadonlyMap<string, TableEditPreviewV1>): void;
+	getTableEditPreviews(): ReadonlyMap<string, TableEditPreviewV1>;
 	/**
 	 * The one way a pass emits prose. Text from different passes is one reply
 	 * to the user, so the first text of a pass is separated from the previous
@@ -370,7 +378,13 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	// A reschedule to one of these changes nothing, so it is rejected before
 	// execution instead of succeeding and being reported as a move.
 	private readonly turnTaskSchedules = new Map<string, LoadedTaskSchedule>();
+	// S1: tools that put externally authored content (email, web, Google
+	// Calendar events) in front of the model this turn. Unlike the read
+	// evidence above, a write never clears it: injected text stays in the
+	// conversation for the rest of the turn, so every later write is reviewed.
+	private readonly externalContentSources = new Set<string>();
 	private readonly documentEditPreviews = new Map<string, DocumentEditPreviewV1>();
+	private readonly tableEditPreviews = new Map<string, TableEditPreviewV1>();
 	private readonly currentUserMessage: unknown;
 	// Images the user attached to this message: a structured selection, so
 	// naming/filing one of them needs no reviewer (write-routing).
@@ -537,6 +551,14 @@ export class ProviderTurnState implements ToolRoundStreamState {
 
 	getDocumentEditPreviews(): ReadonlyMap<string, DocumentEditPreviewV1> {
 		return this.documentEditPreviews;
+	}
+
+	recordTableEditPreviews(previews: ReadonlyMap<string, TableEditPreviewV1>): void {
+		for (const [callId, preview] of previews) this.tableEditPreviews.set(callId, preview);
+	}
+
+	getTableEditPreviews(): ReadonlyMap<string, TableEditPreviewV1> {
+		return this.tableEditPreviews;
 	}
 
 	textDelta(text: string, continuesPass: boolean): AgenticChatProviderStepV1 {
@@ -796,6 +818,10 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		return this.batchRevisionCount;
 	}
 
+	getExternalContentSources(): ReadonlySet<string> {
+		return this.externalContentSources;
+	}
+
 	/**
 	 * Replaces the 2026-08 receipt-grounded gate, which pattern-matched the final
 	 * prose for completion claims ("marking X done") and unresolved-choice
@@ -1002,6 +1028,18 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		const roundExecutions = completedToolRound.calls.map((call, index) => {
 			const feedback = input.results[index]!;
 			validateToolFeedback(call, feedback);
+			if (call.kind === 'read' && !isMutationFeedback(feedback)) {
+				const failed = isFailedToolFeedback(feedback);
+				if (
+					agenticChatReadIngestsExternalContentV1({
+						toolName: call.name,
+						succeeded: !failed,
+						result: failed ? undefined : feedback.execution.result
+					})
+				) {
+					this.externalContentSources.add(call.name);
+				}
+			}
 			if (
 				!roundContainsMutation &&
 				call.kind === 'read' &&
@@ -1595,7 +1633,11 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				typeof this.currentUserMessage === 'string' ? this.currentUserMessage : null,
 			resolvedEntityIds: this.turnResolvedEntityIds,
 			turnSeenEntityIds: this.turnSeenEntityIds,
-			attachedAssetIds: this.attachedAssetIds
+			attachedAssetIds: this.attachedAssetIds,
+			externalContentSources: this.externalContentSources,
+			...(value.focusedTableId
+				? { focusedEntityIds: new Set([normalizeId(value.focusedTableId)]) }
+				: {})
 		};
 	}
 }

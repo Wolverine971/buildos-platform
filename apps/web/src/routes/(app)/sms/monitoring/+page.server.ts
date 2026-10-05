@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		);
 	}
 	if (!user.is_admin) {
-		throw redirect(303, '/projects');
+		throw redirect(303, '/today');
 	}
 
 	return {};

@@ -45,8 +45,15 @@
  *   "Try in BuildOS" link) arrives as the structured `requestedSkillId` on the
  *   launch's first turn, is trusted only once it resolves in the registry, and
  *   preloads with source `user_launch` regardless of the allowlist.
+ *
+ * Focused table (BuildOS Tables, 2026-10-04): when the chat's focused entity
+ * is a table document (a structured fact from the prepared context, never the
+ * message text), table_workspace preloads with source `focused_entity`, and
+ * this turn's operational write playbook (task follow-ups, say) rides along
+ * as a companion. Table words never enter operational-skill-intent.ts.
  */
 
+import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
 import { loadSkill } from '../skills/skill-load';
 import { getSkillById } from '../skills/registry';
 import { isSkillHelpPayload, type SkillExample, type SkillHelpPayload } from '../skills/types';
@@ -90,6 +97,8 @@ export type SkillPreloadRefusalReason = SkillGateSuppressionReason | 'tools_unmo
  * here (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F70). context_engineering_for_
  * agent_work and project_forecast left on 2026-10-04: neither ever fired and
  * neither is a BuildOS user job; an explicit ask still reaches them.
+ * table_workspace joined on 2026-10-04 (BuildOS Tables): the focused-table
+ * route reaches it and its tools are mounted on the project surface.
  * skill_search / skill_load and the external gateway are unaffected.
  */
 export const PRODUCTIVITY_PRELOAD_ALLOWLIST: readonly string[] = [
@@ -97,6 +106,7 @@ export const PRODUCTIVITY_PRELOAD_ALLOWLIST: readonly string[] = [
 	'document_workspace',
 	'plan_management',
 	'project_audit',
+	'table_workspace',
 	'task_management'
 ];
 
@@ -302,6 +312,65 @@ export function resolveUserLaunchSkillPreload(params: {
 			]),
 			companionSkillIds: [operational.skillId]
 		}
+	};
+}
+
+export const TABLE_WORKSPACE_SKILL_ID = 'table_workspace';
+
+/**
+ * True when a prepared chat context (`{ data: { focus_entity_type,
+ * focus_entity_full } }`) is focused on a table document. Reads the structured
+ * focus (entity type + type_key), never the message; the worker reads the same
+ * fields for its table tool pins (request-builders.ts
+ * focusedTableIdFromContextPayload).
+ */
+export function isFocusedTableContextPayload(contextPayload: unknown): boolean {
+	const record = (value: unknown): Record<string, unknown> | null =>
+		value && typeof value === 'object' && !Array.isArray(value)
+			? (value as Record<string, unknown>)
+			: null;
+	const data = record(record(contextPayload)?.data);
+	if (!data || data.focus_entity_type !== 'document') return false;
+	const typeKey = record(data.focus_entity_full)?.type_key;
+	return typeof typeKey === 'string' && isTableTypeKey(typeKey);
+}
+
+/**
+ * The table playbook for a turn whose focused entity is a table (structured:
+ * the caller reads the prepared context's focus entity type_key). It leads the
+ * block; an operational playbook for a different skill renders right after it,
+ * because "make follow-up tasks for anything in Interview" needs both the table
+ * read rules and the task write rules.
+ */
+export function resolveFocusedTableSkillPreload(params: {
+	focusedTable: boolean;
+	toolNames: readonly string[];
+	operationalPreload?: SkillGatePreload | null;
+}): SkillGatePreload | null {
+	if (!params.focusedTable) return null;
+	const operational = params.operationalPreload ?? null;
+	if (operational?.skillId === TABLE_WORKSPACE_SKILL_ID) return operational;
+	const preload = resolveSkillPreload(
+		TABLE_WORKSPACE_SKILL_ID,
+		[],
+		'focused_entity',
+		{
+			allowFollowupSkillLoad: false,
+			workerHeading: 'Playbook for the table in focus:',
+			mountedToolNames: params.toolNames
+		},
+		{ explicitAsk: false }
+	).preload;
+	if (!preload) return operational;
+	if (!operational) return preload;
+	return {
+		...preload,
+		promptContent: `${preload.promptContent}\n\n${operational.promptContent}`,
+		materializedToolNames: uniqueIds([
+			...preload.materializedToolNames,
+			...operational.materializedToolNames
+		]),
+		companionSkillIds: [operational.skillId]
 	};
 }
 

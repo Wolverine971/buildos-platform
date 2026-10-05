@@ -66,6 +66,7 @@ import {
 import type { AgenticChatToolSelectorPort } from '../provider/jev-tool-selector';
 import type { AgenticChatContextFinderPort } from '../provider/chat-context-finder';
 import { createGatewayDocumentEditPreviewPort } from '../provider/document-edit-preview';
+import { createGatewayTableEditPreviewPort } from '../provider/table-edit-preview';
 import { AgenticChatTurnProviderAdapter } from '../provider/turn-provider';
 import { AgenticChatToolExecutionAdapter } from '../tools/execution-adapter';
 import {
@@ -385,6 +386,7 @@ export function createAgenticChatCompositionRoot(options: {
 			...(mutationCapabilities.updateOntoDocument
 				? {
 						documentEditPreview: createGatewayDocumentEditPreviewPort(options.client),
+						tableEditPreview: createGatewayTableEditPreviewPort(options.client),
 						documentArchivePreview: createGatewayDocumentArchivePreviewPort(
 							options.client
 						)

@@ -3,7 +3,7 @@ title: 'Cold Email ICP And Signal Design: An Agent Skill For Right-Person Outrea
 seoTitle: 'Cold Email ICP & Signal Skill for Claude Code'
 seoDescription: 'Define the right person, buying signal, and timing before you write a cold email. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.'
 portableDescription: 'Define the right person, the right moment, and the reasons to skip a prospect before any cold outreach — segment, buying signal, timing thesis, buying committee map, and disqualifiers. Use when a target list is vague or a campaign needs a reason to reach out now. Returns a persona × signal × reason-now row, a graded signal scorecard, disqualifier results, and a committee map ready for drafting.'
-description: 'A source-lineaged child skill for defining the right person, right moment, segment, buying signal, timing thesis, buying committee map, and disqualifiers before cold outreach.'
+description: 'A skill for defining the right person, right moment, segment, buying signal, timing thesis, buying committee map, and disqualifiers before cold outreach.'
 author: 'DJ Wayne'
 date: '2026-05-15'
 lastmod: '2026-06-01'

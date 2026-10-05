@@ -64,7 +64,19 @@ function extractResultObject(result: unknown): ParsedArgs | null {
 	return result as ParsedArgs;
 }
 
+/**
+ * BuildOS Tables (2026-10-04): a table is a document (type document.table), so
+ * its writes are document effects. Turn contracts, receipts, and record links
+ * all use the document kind and the document record route.
+ */
+const TABLE_WRITE_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'create_onto_table',
+	'update_onto_table',
+	'update_onto_table_rows'
+]);
+
 function resolveEntityKind(toolName: string): string | null {
+	if (TABLE_WRITE_TOOL_NAMES.has(toolName)) return 'document';
 	if (toolName === 'move_onto_task') return 'task';
 	if (toolName === 'move_document_in_tree' || toolName === 'create_task_document') {
 		return 'document';
@@ -118,6 +130,7 @@ const NON_EFFECT_ARGUMENTS = new Set([
 	'milestone_id',
 	'risk_id',
 	'asset_id',
+	'table_id',
 	'edge_id',
 	'entity_id',
 	'new_parent_id',
@@ -165,10 +178,86 @@ function assetSelectsPlacement(toolName: string, args: ParsedArgs): boolean {
 	return toolName === 'update_onto_asset' && Object.hasOwn(args, 'document_id');
 }
 
+/** A column name as a contract field: lowercase, spaces as underscores. */
+function tableColumnField(name: unknown): string | null {
+	if (typeof name !== 'string') return null;
+	const field = name.trim().toLowerCase().split(/\s+/).join('_');
+	return field.length > 0 && field.length <= 80 ? field : null;
+}
+
+/**
+ * Table writes change rows and columns, not scalar document fields. A row batch
+ * records `rows` + `cells` and the columns it wrote (so an outcome naming the
+ * column it fills is provable); a column change records `columns` and the names
+ * it touched. Keys only — cell values are never read here.
+ */
+function tableEffectFields(toolName: string, args: ParsedArgs): string[] {
+	const fields: string[] = [];
+	if (toolName === 'update_onto_table_rows' || toolName === 'create_onto_table') {
+		const batches = [args.add, args.update, args.rows].filter(Array.isArray) as unknown[][];
+		const deletes = Array.isArray(args.delete) ? args.delete.length : 0;
+		if (batches.some((batch) => batch.length > 0) || deletes > 0 || args.csv) {
+			fields.push('rows');
+		}
+		for (const batch of batches) {
+			for (const item of batch) {
+				const record = extractResultObject(item);
+				const values =
+					toolName === 'create_onto_table' ? record : extractResultObject(record?.values);
+				if (!values) continue;
+				fields.push('cells');
+				for (const key of Object.keys(values)) {
+					const field = tableColumnField(key);
+					if (field) fields.push(field);
+				}
+			}
+		}
+	}
+	if (toolName === 'update_onto_table' || toolName === 'create_onto_table') {
+		const changes = Array.isArray(args.column_changes)
+			? args.column_changes
+			: Array.isArray(args.columns)
+				? args.columns
+				: [];
+		if (changes.length > 0) fields.push('columns');
+		for (const change of changes) {
+			const record = extractResultObject(change);
+			for (const name of [record?.column, record?.name]) {
+				const field = tableColumnField(name);
+				if (field) fields.push(field);
+			}
+		}
+	}
+	return fields;
+}
+
 function taskDurationProps(toolName: string, args: ParsedArgs): ParsedArgs | null {
 	if (toolName !== 'create_onto_task' && toolName !== 'update_onto_task') return null;
 	const props = extractResultObject(args.props);
 	return props && Object.hasOwn(props, 'duration_minutes') ? props : null;
+}
+
+/**
+ * create_onto_project nests the project's own fields under `project` (beside
+ * `entities` and `relationships`). Those nested fields are the durable effect;
+ * without them a reviewer checklist naming the project's name, type, state or
+ * facets could never be proved, and every Project Setup turn (a new user's
+ * first turn) spent a completion-repair pass and then reported the created
+ * project as unfinished (production 2026-09-24 and 2026-09-26).
+ */
+function projectCreateFields(toolName: string, args: ParsedArgs): ParsedArgs | null {
+	return toolName === 'create_onto_project' ? extractResultObject(args.project) : null;
+}
+
+/** Standard project facets (`props.facets.context|scale|stage`) written by this call. */
+function projectFacets(toolName: string, args: ParsedArgs): ParsedArgs | null {
+	const props =
+		toolName === 'create_onto_project'
+			? extractResultObject(projectCreateFields(toolName, args)?.props)
+			: toolName === 'update_onto_project'
+				? extractResultObject(args.props)
+				: null;
+	return extractResultObject(props?.facets);
 }
 
 /** Canonical effect fields recorded for these tool arguments, excluding routing metadata. */
@@ -186,7 +275,18 @@ export function getWriteLedgerChangedFields(toolName: string, args: ParsedArgs):
 		fields.push('parent_id');
 	}
 	if (assetSelectsPlacement(toolName, args)) fields.push('document_id');
+	fields.push(...tableEffectFields(toolName, args));
 	if (taskDurationProps(toolName, args)) fields.push('props.duration_minutes');
+	const project = projectCreateFields(toolName, args);
+	if (project) {
+		for (const [key, value] of Object.entries(project)) {
+			const field = normalizeFieldName(key);
+			if (!NON_EFFECT_ARGUMENTS.has(field) && value !== undefined) fields.push(field);
+		}
+	}
+	for (const [key, value] of Object.entries(projectFacets(toolName, args) ?? {})) {
+		if (value !== undefined) fields.push(`props.facets.${normalizeFieldName(key)}`);
+	}
 	return Array.from(new Set(fields)).sort();
 }
 
@@ -226,6 +326,16 @@ function extractChangedValues(
 		const canonical = canonicalScalarEffectValue(value);
 		if (canonical !== undefined) values['props.duration_minutes'] = canonical;
 	}
+	for (const [key, value] of Object.entries(projectCreateFields(toolName, args) ?? {})) {
+		const field = normalizeFieldName(key);
+		if (NON_EFFECT_ARGUMENTS.has(field) || value === undefined) continue;
+		const canonical = canonicalScalarEffectValue(value);
+		if (canonical !== undefined) values[field] = canonical;
+	}
+	for (const [key, value] of Object.entries(projectFacets(toolName, args) ?? {})) {
+		const canonical = canonicalScalarEffectValue(value);
+		if (canonical !== undefined) values[`props.facets.${normalizeFieldName(key)}`] = canonical;
+	}
 	if (moveSelectsParent(toolName, args)) {
 		// The receipt's resolved parent wins: a parent selected by title only
 		// has an id after execution, and an exact-id move echoes the same id.
@@ -248,6 +358,9 @@ function extractChangedValues(
 
 function extractIdFromArgs(entityKind: string | null, args: ParsedArgs): string | undefined {
 	if (entityKind === 'relationship') return readString(args.edge_id); // project_id is not the edge identity
+	// A table write names its document as table_id.
+	const tableId = entityKind === 'document' ? readString(args.table_id) : undefined;
+	if (tableId) return tableId;
 	if (entityKind) {
 		const direct = readString(args[`${entityKind}_id`]);
 		if (direct) return direct;
@@ -389,14 +502,19 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	// successful one. Preserve the requested/result state on failures so a
 	// failed archive/restore/complete call remains evidence for its declaration
 	// instead of becoming an unrelated generic update obligation.
-	const stateKey = extractStateKey(result, args);
+	const project = projectCreateFields(toolName, args);
+	const stateKey = extractStateKey(result, args) ?? readString(project?.state_key);
 	if (stateKey) entry.stateKey = stateKey;
 
 	if (succeeded) {
 		const title =
-			extractTitleFromResult(result) ?? readString(args.title) ?? readString(args.name);
+			extractTitleFromResult(result) ??
+			readString(args.title) ??
+			readString(args.name) ??
+			readString(project?.name);
 		if (title) entry.title = title;
-		const typeKey = extractTypeKey(result) ?? readString(args.type_key);
+		const typeKey =
+			extractTypeKey(result) ?? readString(args.type_key) ?? readString(project?.type_key);
 		if (typeKey) entry.typeKey = typeKey;
 		if (toolName === 'move_document_in_tree') {
 			const parentId = extractParentIdFromMove(args, result);

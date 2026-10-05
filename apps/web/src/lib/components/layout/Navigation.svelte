@@ -798,11 +798,11 @@
 				<!-- Logo - different styles for authenticated vs unauthenticated -->
 				<div class="flex-shrink-0 flex items-center">
 					{#if user}
-						<!-- Authenticated: Text logo -->
+						<!-- Authenticated: Text logo; home is Today -->
 						<a
-							href="/projects"
+							href="/today"
 							class="flex items-center group"
-							onclick={() => handleMenuItemClick('/projects')}
+							onclick={() => handleMenuItemClick('/today')}
 						>
 							<span class="sr-only">BuildOS</span>
 							<span

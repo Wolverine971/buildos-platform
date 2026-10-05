@@ -9,6 +9,8 @@ import {
 import {
 	isProductivityPreloadSkill,
 	PRODUCTIVITY_PRELOAD_ALLOWLIST,
+	resolveFocusedTableSkillPreload,
+	isFocusedTableContextPayload,
 	renderWorkerPreloadedSkillPromptContent,
 	resolveOperationalSkillPreload,
 	resolveSkillGatePreload,
@@ -217,11 +219,14 @@ describe('productivity preload allowlist', () => {
 		// both worker surfaces; context_engineering_for_agent_work and
 		// project_forecast left (never fired, not a BuildOS user job). The rest
 		// stay registered for an explicit ask and the external gateway.
+		// 2026-10-04 (Tables tool suite): table_workspace joined; the focused-table
+		// route reaches it and its tools are mounted on the project surface.
 		expect([...PRODUCTIVITY_PRELOAD_ALLOWLIST]).toEqual([
 			'calendar_management',
 			'document_workspace',
 			'plan_management',
 			'project_audit',
+			'table_workspace',
 			'task_management'
 		]);
 		for (const unreachable of [
@@ -763,5 +768,91 @@ describe('user-launched skill preload', () => {
 				toolNames: workerSurfaceToolNames('project')
 			}).gate_suppressed_by
 		).toBe('tools_unmounted');
+	});
+});
+
+// BuildOS Tables (2026-10-04): a table in focus (structured: the prepared
+// context's focus type_key) brings table_workspace; this turn's operational
+// write playbook rides along after it. The message text never selects it.
+describe('focused table playbook', () => {
+	const omitted = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
+	const projectTools = getGatewayDirectToolNamesForProfile('project').filter(
+		(name) => !omitted.has(name)
+	);
+	const registeredToolNames = new Set(Object.keys(getToolRegistry().byToolName));
+
+	it('detects a focused table from the structured context only', () => {
+		const focused = (type: string, typeKey: unknown) => ({
+			data: { focus_entity_type: type, focus_entity_full: { id: 'x', type_key: typeKey } }
+		});
+		expect(isFocusedTableContextPayload(focused('document', 'document.table'))).toBe(true);
+		expect(isFocusedTableContextPayload(focused('document', 'document.table.crm'))).toBe(true);
+		expect(isFocusedTableContextPayload(focused('document', 'document.note'))).toBe(false);
+		expect(isFocusedTableContextPayload(focused('task', 'document.table'))).toBe(false);
+		expect(isFocusedTableContextPayload({ data: { project: {} } })).toBe(false);
+		expect(isFocusedTableContextPayload(null)).toBe(false);
+	});
+
+	it('is off unless the focused entity is a table', () => {
+		expect(
+			resolveFocusedTableSkillPreload({ focusedTable: false, toolNames: projectTools })
+		).toBeNull();
+	});
+
+	it('renders a whole worker playbook that names only mounted project tools', () => {
+		const preload = resolveFocusedTableSkillPreload({
+			focusedTable: true,
+			toolNames: projectTools
+		});
+		expect(preload).toMatchObject({
+			skillId: 'table_workspace',
+			source: 'focused_entity',
+			reason: 'productivity_allowlist'
+		});
+		const block = preload!.promptContent;
+		expect(block.startsWith('Playbook for the table in focus:')).toBe(true);
+		expect(block).not.toContain('[Playbook truncated');
+		expect(block).not.toMatch(/\b(?:onto|cal|util)\.[a-z_]+(?:\.[a-z_]+)*/);
+		expect(block).toContain('read_table_rows');
+		const namedTools = [...new Set(block.match(/\b[a-z]+(?:_[a-z]+)+\b/g) ?? [])].filter(
+			(token) => registeredToolNames.has(token)
+		);
+		const mounted = new Set(projectTools);
+		for (const tool of namedTools) {
+			expect(mounted.has(tool), `table_workspace names ${tool}, not mounted`).toBe(true);
+		}
+		expect(preload!.materializedToolNames).toEqual(
+			expect.arrayContaining([
+				'get_onto_table_details',
+				'read_table_rows',
+				'update_onto_table_rows'
+			])
+		);
+	});
+
+	it('is refused when no table tool is mounted', () => {
+		expect(
+			resolveFocusedTableSkillPreload({
+				focusedTable: true,
+				toolNames: ['create_onto_project']
+			})
+		).toBeNull();
+	});
+
+	it("keeps this turn's task playbook after the table playbook", () => {
+		const operational = resolveOperationalSkillPreload({
+			message: 'add a task to call the roofer back on Tuesday',
+			toolNames: projectTools
+		});
+		expect(operational?.skillId).toBe('task_management');
+		const preload = resolveFocusedTableSkillPreload({
+			focusedTable: true,
+			toolNames: projectTools,
+			operationalPreload: operational
+		});
+		expect(preload?.skillId).toBe('table_workspace');
+		expect(preload?.companionSkillIds).toEqual(['task_management']);
+		expect(preload!.promptContent.indexOf('Playbook for the table in focus:')).toBe(0);
+		expect(preload!.promptContent).toContain(operational!.promptContent);
 	});
 });

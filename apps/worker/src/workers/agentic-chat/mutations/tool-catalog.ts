@@ -28,6 +28,9 @@ export type AgenticChatMutationCapabilityNameV1 =
 	| 'createOntoProject'
 	| 'updateOntoProject'
 	| 'updateOntoAsset'
+	| 'createOntoTable'
+	| 'updateOntoTable'
+	| 'updateOntoTableRows'
 	| 'delegateTask'
 	| 'createCalendarEvent'
 	| 'updateCalendarEvent'
@@ -88,6 +91,7 @@ export type AgenticChatMutationArgumentNormalizerIdV1 =
 	| 'normalize_task_move_arguments'
 	| 'normalize_entity_ping_arguments'
 	| 'normalize_asset_update_arguments'
+	| 'normalize_table_column_choices'
 	| 'strip_calendar_attendees_and_reminders'
 	| 'default_calendar_sync_none';
 
@@ -107,6 +111,7 @@ export type AgenticChatMutationReceiptBuilderIdV1 =
 	| 'task_move'
 	| 'entity_ping'
 	| 'asset_update'
+	| 'table_change'
 	| 'calendar_event'
 	| 'project_calendar';
 
@@ -941,7 +946,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 		// validateToolCalls applies schema defaults before it runs
 		// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F29).
 		descriptionOverride:
-			'Create one standard project and its generated Context document. After it returns project_id, create requested goals or tasks only with the available tools. This tool does not support custom Context documents, clarifications, embedded child records, or relationships. project.props accepts only facets (context, scale, stage); put any other detail in project.description. Synthetic QA data is supported.',
+			'Create one standard project and its generated Context document. Then create requested goals or tasks with their own tools, using the returned project_id. No custom Context documents, clarifications, embedded child records, or relationships. project.props accepts only facets (context, scale, stage); put other detail in project.description. Synthetic QA data is supported.',
 		requiredNames: ['project'],
 		reviewedArgumentNames: ['project', 'entities', 'relationships'],
 		propertyOverrides: {
@@ -1099,6 +1104,86 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			"Name or file an existing project image (images attached in a project chat are already stored in the project's images). Pass the asset_id from the attachment context or an asset read.",
 		requiredNames: ['asset_id'],
 		reviewedArgumentNames: ['asset_id', 'caption', 'alt_text', 'document_id']
+	},
+	// -----------------------------------------------------------------------
+	// BuildOS Tables (2026-10-04, docs/specs/tables/CONTRACT.md). A table is a
+	// document (type document.table); its id is the document id. All three run
+	// through the shared gateway (op-execution-gateway.tables.ts) and return a
+	// `table_change` receipt (counts, sample cell diffs, and the inverse ops the
+	// chat card's Undo applies). No new adapter: three spec rows.
+	// -----------------------------------------------------------------------
+	create_onto_table: {
+		capability: 'createOntoTable',
+		operationName: 'onto.table.create',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'argument_project', argument: 'project_id', required: true },
+			argumentNormalizers: ['normalize_table_column_choices'],
+			receipt: { kind: 'builder', builder: 'table_change' }
+		},
+		// A new table in the focused project is a new entity; a parent document
+		// picked from broader context still needs a unique read or review.
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'new_entity',
+		directWriteExistingReferenceNames: ['parent_id'],
+		requiredNames: ['project_id', 'title'],
+		reviewedArgumentNames: [
+			'project_id',
+			'title',
+			'description',
+			'columns',
+			'rows',
+			'csv',
+			'parent_id'
+		]
+	},
+	update_onto_table: {
+		capability: 'updateOntoTable',
+		operationName: 'onto.table.update',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: true },
+			requiredUuidArguments: ['table_id'],
+			argumentNormalizers: ['normalize_table_column_choices'],
+			receipt: { kind: 'builder', builder: 'table_change' }
+		},
+		// Column changes rewrite every row's cells (a retype coerces, a delete
+		// clears) and question-column fills spend model calls per row, so schema
+		// edits are always independently reviewed.
+		directWriteClass: 'contract_required',
+		requiredNames: ['table_id'],
+		reviewedArgumentNames: [
+			'table_id',
+			'title',
+			'description',
+			'column_changes',
+			'fill_ai_columns',
+			'archived'
+		]
+	},
+	update_onto_table_rows: {
+		capability: 'updateOntoTableRows',
+		operationName: 'onto.table.rows.update',
+		downstreamIdempotencySupported: false,
+		execution: {
+			executor: 'table',
+			runner: 'gateway',
+			scope: { mode: 'context_project', required: true },
+			requiredUuidArguments: ['table_id'],
+			receipt: { kind: 'builder', builder: 'table_change' }
+		},
+		// One call is one batch, however many rows it carries (the RPC applies it
+		// atomically). A focused or uniquely resolved table writes directly; any
+		// row delete goes to review (write-routing), and the worker previews every
+		// call against the stored table first (provider/table-edit-preview.ts).
+		directWriteClass: 'ordinary',
+		directWriteSelectionPolicy: 'resolved_existing',
+		requiredNames: ['table_id'],
+		reviewedArgumentNames: ['table_id', 'add', 'update', 'delete', 'allow_large_deletion']
 	},
 	delegate_task: {
 		capability: 'delegateTask',

@@ -34,7 +34,6 @@ import {
 	usageTracker
 } from './runtime';
 import {
-	DECIDE_SYSTEM_PROMPT,
 	type FoundGroup,
 	GROUPS_SYSTEM_PROMPT,
 	type GroupDecision,
@@ -42,6 +41,7 @@ import {
 	type InventoryDocument,
 	buildDecision,
 	buildKeys,
+	decideSystemPrompt,
 	decideUserPrompt,
 	emptyPlan,
 	enforceTwinSurvivors,
@@ -122,10 +122,10 @@ export async function loadInventory(run: RunRow): Promise<Inventory> {
 	// Past the cap, the newest docs matter most (they are what supersedes the rest).
 	const rows = [...(documents ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
-	// Open tasks, for misfiled work only (tasks never archive or merge here).
+	// Open tasks: misfiled work, duplicates, pieces, sequences, siblings, and ones a doc shows are done.
 	const { data: tasks, error: taskError } = await supabase
 		.from('onto_tasks')
-		.select('id, project_id, title, description, state_key')
+		.select('id, project_id, title, description, state_key, due_at, created_at')
 		.in(
 			'project_id',
 			live.map((project) => project.id)
@@ -174,7 +174,9 @@ export async function loadInventory(run: RunRow): Promise<Inventory> {
 			project_id: task.project_id,
 			title: task.title ?? 'Untitled task',
 			description: task.description,
-			state: task.state_key
+			state: task.state_key,
+			due_at: task.due_at,
+			created_at: task.created_at
 		})),
 		documents: rows.map((row) => ({
 			id: row.id,
@@ -211,7 +213,7 @@ async function decideGroup(params: {
 	onUsage: (event: JSONUsageEvent) => Promise<void>;
 }): Promise<GroupDecision> {
 	const raw = await params.llm.getJSONResponse<Record<string, unknown>>({
-		systemPrompt: DECIDE_SYSTEM_PROMPT,
+		systemPrompt: decideSystemPrompt(params.group),
 		userPrompt: decideUserPrompt({
 			group: params.group,
 			inventory: params.inventory,
@@ -437,6 +439,10 @@ async function replan(job: ProcessingJob<ConsolidationRunJobMetadata>, run: RunR
 	const keys = buildKeys(inventory);
 	const live = new Set(inventory.documents.map((document) => document.id));
 	const liveTasks = new Set((inventory.tasks ?? []).map((task) => task.id));
+	// A finished-tasks group keeps the doc its "done" options stood on.
+	const evidence = [...cluster.ops, ...question.options.flatMap((option) => option.ops)].find(
+		(op) => op.op === 'close_tasks' && op.evidence_document_id
+	);
 	const group: FoundGroup = {
 		kind: cluster.kind,
 		title: cluster.title,
@@ -444,7 +450,13 @@ async function replan(job: ProcessingJob<ConsolidationRunJobMetadata>, run: RunR
 		task_ids: (cluster.task_ids ?? []).filter((id) => liveTasks.has(id)),
 		belongs_in: null,
 		newer_id: null,
-		reason: cluster.reason
+		reason: cluster.reason,
+		evidence_id:
+			evidence?.op === 'close_tasks' &&
+			evidence.evidence_document_id &&
+			live.has(evidence.evidence_document_id)
+				? evidence.evidence_document_id
+				: null
 	};
 	const decision = await decideGroup({
 		llm,

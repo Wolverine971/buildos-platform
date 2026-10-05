@@ -2,6 +2,9 @@
 
 # 88 — Jev freshness radar: after a brain dump, catch what went stale
 
+> **Audit 2026-10-04 — SHIPPED, VERIFY LIVE.** Radar v1 has been live for DJ only since 09-19 (`262e86bfc`), with surfaces and inbox cleanup on and auto_apply off. Review project / Review deeper shipped in `8951b7dc9`, and the v2 roll-up in `7552426f7` (tracker 106). All pushed + deployed.
+> **Left:** the auto_apply decision, which waits on about 20 clean scans (the ledger had about 9 on 09-24); the backtest (needs DJ's OK); and widening the cohort beyond DJ. **Priority:** P2. **Recommend:** keep as the single freshness-radar tracker. 106 is done and closes.
+
 **Created:** 2026-09-12. **Reshaped by DJ:** 2026-09-18.
 **Follow-up (2026-09-19, ~21:10 UTC):** two real live scans completed successfully for DJ Wayne
 Studio, with no card-worthy result. A repeated-message cursor defect was reproduced on real local

@@ -2,6 +2,9 @@
 
 # 85 — Define and implement the durable workflow contracts
 
+> **Audit 2026-10-04 — DONE.** The contract and all three migrations are in the repo (`bd356380b`) and applied in prod. Consumers 86/87 integrated with no amendment (`a8521ae14`), and the generated types now include the workflow tables. Pushed + deployed.
+> **Left:** nothing; the "combined gate" item depends on the retired QA gate. **Priority:** none. **Recommend:** close & delete.
+
 **Created:** 2026-09-12  
 **Status:** Interface frozen and storage/readers implemented with writers off (2026-09-14; [receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK85_DURABLE_CONTRACTS_2026-09-14.md)). Production migrations applied 2026-09-15; the files were committed 2026-09-18 (`bd356380b`). Consumers 86 and 87 are integrated on `main` with no contract amendment or new migration. Open: schema ownership and consumer integration through 86–88; live combined-gate acceptance remains unproven and DJ explicitly declined another run.  
 **Depends on:** 81 baseline; 82/84 accepted before runtime work; 83 done on 2026-09-14 ([receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK83_BOUNDED_REVIEWS_2026-09-14.md)).  

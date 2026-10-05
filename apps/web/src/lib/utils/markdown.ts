@@ -1,6 +1,7 @@
 // apps/web/src/lib/utils/markdown.ts
-import { marked } from 'marked';
+import { Marked, marked, type TokenizerAndRendererExtension } from 'marked';
 import { gfmHeadingId } from 'marked-gfm-heading-id';
+import { buildRecordHref } from '@buildos/shared-types';
 import sanitizeHtml from 'sanitize-html';
 import { normalizeMarkdownTables } from './markdown-text';
 import { repairAssistantAppLinkHref } from './assistant-app-links';
@@ -289,6 +290,84 @@ export function renderMarkdown(text: string | null | undefined): string {
 		console.error('Error rendering markdown:', error);
 		// Fallback to escaped plain text
 		return escapeHtml(text);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Document bodies: entity references render as links
+//
+// `[[document:<uuid>|Label]]` (also task/project) is BuildOS's mention grammar
+// (packages/shared-agent-ops/src/utils/entity-reference-parser.ts). Document
+// bodies render it as an in-app link. It is a marked inline extension, so code
+// spans and fences keep the literal text. A separate Marked instance keeps the
+// global `marked` (chat, comments, blog) unchanged.
+// ---------------------------------------------------------------------------
+
+const ENTITY_REF_PATTERN =
+	/^\[\[(document|task|project):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\|([^\]\n]{1,200})\]\]/i;
+
+type EntityRefToken = {
+	type: 'buildosEntityRef';
+	raw: string;
+	kind: 'document' | 'task' | 'project';
+	id: string;
+	label: string;
+};
+
+// Set for the duration of one synchronous parse (marked runs with async: false).
+let entityRefProjectId: string | null = null;
+
+const entityRefExtension: TokenizerAndRendererExtension = {
+	name: 'buildosEntityRef',
+	level: 'inline',
+	start(src: string) {
+		const index = src.indexOf('[[');
+		return index < 0 ? undefined : index;
+	},
+	tokenizer(src: string) {
+		const match = ENTITY_REF_PATTERN.exec(src);
+		if (!match) return undefined;
+		return {
+			type: 'buildosEntityRef',
+			raw: match[0],
+			kind: match[1]!.toLowerCase() as EntityRefToken['kind'],
+			id: match[2]!.toLowerCase(),
+			label: match[3]!.trim()
+		} satisfies EntityRefToken;
+	},
+	renderer(token) {
+		const ref = token as unknown as EntityRefToken;
+		const label = escapeHtml(ref.label);
+		const href = buildRecordHref(ref.kind, ref.id, entityRefProjectId ?? undefined);
+		return href ? `<a href="${escapeHtml(href)}">${label}</a>` : label;
+	}
+};
+
+const documentMarked = new Marked({ breaks: true, gfm: true, async: false }, gfmHeadingId(), {
+	extensions: [entityRefExtension]
+});
+
+/**
+ * Render a document body: same sanitizer as `renderMarkdown`, plus
+ * `[[document:id|Label]]` links (scoped to `projectId`). Fenced
+ * `buildos-table` blocks pass through as `code.language-buildos-table` for
+ * post-render embedding (see table-surfaces/document-embeds.ts).
+ */
+export function renderDocumentMarkdown(
+	text: string | null | undefined,
+	options: { projectId?: string | null } = {}
+): string {
+	if (!text || typeof text !== 'string') return '';
+
+	try {
+		entityRefProjectId = options.projectId ?? null;
+		const html = documentMarked.parse(normalizeMarkdownTables(text.trim())) as string;
+		return sanitizeHtml(html, sanitizeOptions);
+	} catch (error) {
+		console.error('Error rendering document markdown:', error);
+		return escapeHtml(text);
+	} finally {
+		entityRefProjectId = null;
 	}
 }
 

@@ -2,7 +2,7 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "9948b12d109a886ec2134dc9be3e4f3bc5ab6b16ba25c131cb42ea1ea23849f2",
+  "catalogSerializedSha256": "89427df94d19164d105df90c7667a9788d14b8543c2410928a7c746aebdf78ff",
   "contextSurfaces": [
     {
       "contextType": "global",
@@ -68,9 +68,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "project",
-      "estimatedTokens": 17215,
+      "estimatedTokens": 17122,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "a557c12e4c849b521b4c2033aab9a8e1215603bf269857b051d7370a7455f02b",
+      "serializedDefinitionsSha256": "3f8b9d3452fbca2f8f958a651a185d8611214045b3aa429fbd5a17b9eae0f6b4",
       "toolCount": 67,
       "toolNames": [
         "skill_search",
@@ -141,7 +141,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_asset",
         "get_project_cleanup",
       ],
-      "totalChars": 68860,
+      "totalChars": 68486,
     },
     {
       "contextType": "project_create",
@@ -345,9 +345,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "ontology",
-      "estimatedTokens": 17215,
+      "estimatedTokens": 17122,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "a557c12e4c849b521b4c2033aab9a8e1215603bf269857b051d7370a7455f02b",
+      "serializedDefinitionsSha256": "3f8b9d3452fbca2f8f958a651a185d8611214045b3aa429fbd5a17b9eae0f6b4",
       "toolCount": 67,
       "toolNames": [
         "skill_search",
@@ -418,7 +418,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_asset",
         "get_project_cleanup",
       ],
-      "totalChars": 68860,
+      "totalChars": 68486,
     },
     {
       "contextType": "daily_brief_update",
@@ -570,9 +570,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "delegate_task",
-      "serialized": "{"type":"function","function":{"name":"delegate_task","description":"Dispatch a self-contained background Agent Run that reports back here without blocking chat. Use when the user asks for background work or the task is better completed autonomously; answer inline when it fits one turn.\\nFor a broad, coherent project change that spans several entities, first gather and read the current working set in chat. Then dispatch a project-scoped read_write run with review=true, passing the exact discovered entity IDs and intended per-entity outcomes in the instructions. That run stages one reviewable change set; it must not apply anything before the user approves the proposal.\\nA prose plan or proposal document is not a staged change set. When the user already asked to stage a reviewable change set, call this tool after gathering instead of asking for permission to delegate.\\nThe tool returns { run_ids }; announce dispatch, then do not poll because completion posts automatically. Use read_write only for explicitly requested changes. Scope project work with context_type=project and project_id, otherwise global.\\nUse deep only for genuinely difficult analysis. Use deep_research for multi-source work with two bounded read-only researchers and synthesis; it must be read-only, costs at least $0.25, defaults to $0.50, and cannot exceed $1.","parameters":{"type":"object","properties":{"goal":{"type":"string","description":"The task the background agent should accomplish (a clear, self-contained objective)."},"label":{"type":"string","description":"Short human-readable label for the run (optional; defaults to a slice of the goal)."},"instructions":{"type":"string","description":"Optional extra constraints or preferences for how to do the task."},"expected_output":{"type":"string","description":"Optional description of what a good result looks like."},"context_type":{"type":"string","enum":["project","global"],"description":"Use 'project' to scope to one project (requires project_id); 'global' for cross-project. Defaults to the current chat context."},"project_id":{"type":"string","description":"Project UUID. Required when context_type is 'project'."},"scope_mode":{"type":"string","enum":["read_only","read_write"],"default":"read_only","description":"'read_only' analyzes; 'read_write' may change data only when explicitly requested."},"effort":{"type":"string","enum":["standard","deep"],"default":"standard","description":"'deep' spends more time reasoning."},"run_template":{"type":"string","enum":["agent","deep_research"],"default":"agent","description":"'agent' runs one autonomous loop; 'deep_research' runs plan → two web researchers → synthesis."},"max_tool_calls":{"type":"integer","minimum":1,"maximum":40,"description":"Operation budget cap."},"max_cost_usd":{"type":"number","exclusiveMinimum":0,"maximum":1,"description":"Observed LLM-usage ceiling in USD; excludes paid web-tool charges."},"review":{"type":"boolean","default":false,"description":"For read_write runs, stage changes as a proposal for the user to review and apply. Ignored for read_only."}},"required":["goal"]}}}",
-      "serializedChars": 3116,
-      "serializedSha256": "a07289bd1a0c2f5c9b6e8f65ae2164d7a856a0974a2663ab24a74b5434b8f8c7",
+      "serialized": "{"type":"function","function":{"name":"delegate_task","description":"Dispatch a self-contained background Agent Run that reports back here without blocking chat. Use when the user asks for background work or the task is better completed autonomously; answer inline when it fits one turn.\\nFor a broad, coherent project change that spans several entities, first gather and read the current working set in chat. Then dispatch a project-scoped read_write run with review=true, passing the exact discovered entity IDs and intended per-entity outcomes in the instructions. That run stages one reviewable change set; it must not apply anything before the user approves the proposal.\\nA prose plan or proposal document is not a staged change set. When the user already asked to stage a reviewable change set, call this tool after gathering instead of asking for permission to delegate.\\nThe tool returns { run_ids }; announce dispatch, then do not poll because completion posts automatically. Use read_write only for explicitly requested changes. Scope project work with context_type=project and project_id, otherwise global.\\nUse deep only for genuinely difficult analysis.","parameters":{"type":"object","properties":{"goal":{"type":"string","description":"The task the background agent should accomplish (a clear, self-contained objective)."},"label":{"type":"string","description":"Short human-readable label for the run (optional; defaults to a slice of the goal)."},"instructions":{"type":"string","description":"Optional extra constraints or preferences for how to do the task."},"expected_output":{"type":"string","description":"Optional description of what a good result looks like."},"context_type":{"type":"string","enum":["project","global"],"description":"Use 'project' to scope to one project (requires project_id); 'global' for cross-project. Defaults to the current chat context."},"project_id":{"type":"string","description":"Project UUID. Required when context_type is 'project'."},"scope_mode":{"type":"string","enum":["read_only","read_write"],"default":"read_only","description":"'read_only' analyzes; 'read_write' may change data only when explicitly requested."},"effort":{"type":"string","enum":["standard","deep"],"default":"standard","description":"'deep' spends more time reasoning."},"max_tool_calls":{"type":"integer","minimum":1,"maximum":40,"description":"Operation budget cap."},"max_cost_usd":{"type":"number","exclusiveMinimum":0,"maximum":1,"description":"Observed LLM-usage ceiling in USD; excludes paid web-tool charges."},"review":{"type":"boolean","default":false,"description":"For read_write runs, stage changes as a proposal for the user to review and apply. Ignored for read_only."}},"required":["goal"]}}}",
+      "serializedChars": 2742,
+      "serializedSha256": "0a8547bee7e39aa604f525d202f3d37a1b2ff589a125225e6a1c196ec82bd4dd",
     },
     {
       "name": "delete_calendar_event",
@@ -1154,7 +1154,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/ba7a15a5",
+  "registryVersion": "tool-registry/c57c7782",
   "staticProfiles": [
     {
       "contextType": "global",
@@ -1220,9 +1220,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "project",
-      "estimatedTokens": 17215,
+      "estimatedTokens": 17122,
       "profile": "project",
-      "serializedDefinitionsSha256": "a557c12e4c849b521b4c2033aab9a8e1215603bf269857b051d7370a7455f02b",
+      "serializedDefinitionsSha256": "3f8b9d3452fbca2f8f958a651a185d8611214045b3aa429fbd5a17b9eae0f6b4",
       "toolCount": 67,
       "toolNames": [
         "skill_search",
@@ -1293,7 +1293,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_asset",
         "get_project_cleanup",
       ],
-      "totalChars": 68860,
+      "totalChars": 68486,
     },
     {
       "contextType": "project_create",

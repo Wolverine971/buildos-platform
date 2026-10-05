@@ -136,6 +136,8 @@ export interface UIMessage {
 		| 'created_entities'
 		/** Documents the agent edited this turn; `data.changes` is DocumentChangeCard[]. */
 		| 'document_changes'
+		/** Tables the agent wrote this turn; `data.changes` is TableChangeCard[] (BuildOS Tables). */
+		| 'table_changes'
 		/** Freshness radar card (Tasker 88); `data.card` is a FreshnessCardPayloadV1. */
 		| 'freshness_card'
 		/** Chat checkpoint receipt (tasker/95); `data.receipt` is a CaptureReceipt. Never sent to the model. */

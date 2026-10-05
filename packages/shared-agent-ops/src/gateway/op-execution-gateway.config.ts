@@ -9,6 +9,10 @@ import {
 	type ToolJsonObjectSchema
 } from '@buildos/shared-types';
 import { DOCUMENT_STATES } from '../ontology/onto';
+import {
+	TABLE_EXTERNAL_CUSTOM_OPS,
+	TABLE_EXTERNAL_WRITE_OP_SCHEMAS
+} from './op-execution-gateway.tables.schemas';
 
 export type ExternalEntityKind =
 	| 'project'
@@ -215,7 +219,10 @@ export const EXTERNAL_CUSTOM_OPS: Partial<Record<BuildosAgentAllowedOp, Registry
 		entity: 'asset',
 		action: 'get',
 		chat_discoverable: false
-	}
+	},
+	// Tables: every table op owns its external contract (MCP lists these
+	// schemas even before/without a chat catalog tool for the op).
+	...TABLE_EXTERNAL_CUSTOM_OPS
 };
 
 export const CORE_ENTITY_CONFIG: Record<ExternalEntityKind, CoreEntityConfig> = {
@@ -739,7 +746,8 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			}
 		},
 		required: ['asset_id']
-	}
+	},
+	...TABLE_EXTERNAL_WRITE_OP_SCHEMAS
 };
 
 const EXTERNAL_ARCHIVABLE_UPDATE_OPS = new Set<BuildosAgentAllowedOp>([

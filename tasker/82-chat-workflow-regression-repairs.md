@@ -2,6 +2,9 @@
 
 # 82 — Repair the current Agentic Chat regression gate
 
+> **Audit 2026-10-04 — SUPERSEDED.** The repairs shipped in `24c8effb9` (evidence-coverage record, claim readback) and are pushed + deployed. Later trackers finished the named gate failures: 92 (`fca3363ac`); 101/102 (case 2 passed 3/3 on the prod battery 09-25); and 113's grounding rules (`bd45c65b8`).
+> **Left:** only the Case 10 calendar-buffer violation, which has never been re-verified because the prod-battery harness account has no calendar. Move it to a calendar owner. **Priority:** none. **Recommend:** close & delete.
+
 **Created:** 2026-09-12  
 **Status:** Combined 82/84 acceptance remains blocked. The September 14 isolated gate scored **45/52**: Case 8 r3 exceeded 30s, Case 9 r2 omitted commissioned quoted text, Case 10 r3 violated the calendar buffer, and Case 14 r2 made an ungrounded claim. Cases 2/4 and Case 14 time/read limits pass; startup/final provenance match. See [Task 90 closeout](../docs/technical/reviews/CHAT_WORKFLOW_TASK90_CLOSEOUT_2026-09-14.md).
 

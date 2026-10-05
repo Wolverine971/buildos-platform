@@ -78,9 +78,9 @@
 	// Handle click navigation
 	function handleClick() {
 		if (isGenerating && briefDate) {
-			goto(`/projects?tab=briefs&date=${briefDate}`);
+			goto(`/briefs?date=${encodeURIComponent(briefDate)}&view=single`);
 		} else if (isGenerating) {
-			goto('/projects?tab=briefs');
+			goto('/briefs');
 		}
 	}
 

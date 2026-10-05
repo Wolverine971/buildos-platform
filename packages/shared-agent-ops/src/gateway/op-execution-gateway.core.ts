@@ -201,6 +201,16 @@ import {
 	serializeProjectGraphData
 } from './op-execution-gateway.serializers';
 import { truncateText } from './op-execution-gateway.text';
+import {
+	assertDocumentUpdateAllowedForTable,
+	assertNotTableTypeForDocumentCreate,
+	createTable,
+	getTable,
+	listTables,
+	queryTableRows,
+	updateTable,
+	updateTableRows
+} from './op-execution-gateway.tables';
 
 type GatewaySupabaseClient = SupabaseClient<Database>;
 
@@ -272,6 +282,9 @@ export const EXTERNAL_OP_HANDLERS: Record<
 	'onto.risk.get': getRisk,
 	'onto.asset.search': searchAssets,
 	'onto.asset.get': getAsset,
+	'onto.table.get': getTable,
+	'onto.table.rows.query': queryTableRows,
+	'onto.table.list': listTables,
 	'onto.entity.relationships.get': getEntityRelationships,
 	'onto.entity.links.get': getLinkedEntities,
 	'onto.search': searchOntology,
@@ -294,7 +307,10 @@ export const EXTERNAL_OP_HANDLERS: Record<
 	'onto.risk.update': updateRisk,
 	'onto.edge.link': linkOntoEntities,
 	'onto.edge.unlink': unlinkOntoEdge,
-	'onto.asset.update': updateAsset
+	'onto.asset.update': updateAsset,
+	'onto.table.create': createTable,
+	'onto.table.update': updateTable,
+	'onto.table.rows.update': updateTableRows
 };
 
 function normalizeMaxChars(value: unknown, fallback = 20000): number {
@@ -475,6 +491,13 @@ async function assertStartHereTypeNotAgentCreated(
 	);
 }
 
+/** The type_key an update asks for (raw, so a table type is seen before fallback), else the stored one. */
+function requestedDocumentTypeKey(args: Record<string, unknown>, existing: unknown): unknown {
+	return typeof args.type_key === 'string' && args.type_key.trim()
+		? args.type_key.trim()
+		: existing;
+}
+
 function normalizeDocumentPosition(value: unknown, fieldName: string): number | undefined {
 	if (value === undefined) return undefined;
 	if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
@@ -572,6 +595,7 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 	const normalizedContent = normalizeMarkdownInput(rawContent);
 	assertContentWithinCap(normalizedContent, 'content');
 
+	assertNotTableTypeForDocumentCreate(args.type_key);
 	const typeKey = resolveDocumentTypeKey(args.type_key);
 	await assertStartHereTypeNotAgentCreated(context, project.id, typeKey);
 
@@ -886,6 +910,11 @@ export async function previewDocumentUpdate(
 	if (!existingDocument) throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
 	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
 	assertProjectWriteAccess(project, context.scope);
+	assertDocumentUpdateAllowedForTable(
+		existingDocument.type_key,
+		args,
+		requestedDocumentTypeKey(args, existingDocument.type_key)
+	);
 	const baseDocument =
 		typeof options.base_content === 'string'
 			? {
@@ -931,7 +960,9 @@ export async function previewDocumentUpdate(
 		next_content: summary ? (bodyUpdate.nextContent ?? null) : null,
 		base: {
 			updated_at:
-				typeof existingDocument.updated_at === 'string' ? existingDocument.updated_at : null,
+				typeof existingDocument.updated_at === 'string'
+					? existingDocument.updated_at
+					: null,
 			description:
 				typeof existingDocument.description === 'string'
 					? existingDocument.description
@@ -999,6 +1030,11 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 
 	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
 	assertProjectWriteAccess(project, context.scope);
+	assertDocumentUpdateAllowedForTable(
+		existingDocument.type_key,
+		args,
+		requestedDocumentTypeKey(args, existingDocument.type_key)
+	);
 	const actorId = await contextActorId(context);
 
 	const updateData: Record<string, unknown> = {
@@ -1589,6 +1625,7 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 			);
 		}
 		const props = normalizeProps(args.props, 'props') ?? {};
+		assertNotTableTypeForDocumentCreate(args.type_key);
 		const taskDocumentTypeKey =
 			typeof args.type_key === 'string' && args.type_key.trim()
 				? args.type_key.trim()

@@ -2,6 +2,9 @@
 
 # 84 — Separate durable progress from slow delivery and expose stalled turns
 
+> **Audit 2026-10-04 — DONE.** The split between durable acceptance and delivery, plus per-turn progress health, shipped in `199a6ba44`/`24c8effb9` (`stream/stream-publisher.ts`, `host/delivery-health.ts`). It is pushed + deployed, and later speed work built on it (`71bdfb068`). It never passed the full QA gate, which was retired 2026-09-24.
+> **Left:** nothing; the "make timing spans inspectable" note is optional. **Priority:** none. **Recommend:** close & delete.
+
 **Created:** 2026-09-12  
 **Status:** No repair gate accepted. The September 14 isolated run scored **45/52**, with Case 8 r3 at 34.521s and Case 9/10/14 content/quality failures. The Case 8 miss contains a slow-stream abort plus V4 fallback; its publisher requests peaked at 404ms with no persistence retries. Cases 2/4 and Case 14 time/read limits pass; startup/final provenance match. See [Task 90 closeout](../docs/technical/reviews/CHAT_WORKFLOW_TASK90_CLOSEOUT_2026-09-14.md).
 

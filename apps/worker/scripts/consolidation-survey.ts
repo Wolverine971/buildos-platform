@@ -13,12 +13,13 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { supabase } from '../src/lib/supabase';
 import { SmartLLMService, type JSONUsageEvent } from '../src/lib/services/smart-llm-service';
+import { describeOps } from '@buildos/shared-agent-ops/consolidation';
 import { loadInventory } from '../src/workers/consolidation/consolidationJob';
 import {
-	DECIDE_SYSTEM_PROMPT,
 	GROUPS_SYSTEM_PROMPT,
 	buildDecision,
 	buildKeys,
+	decideSystemPrompt,
 	decideUserPrompt,
 	findTwins,
 	groupsUserPrompt,
@@ -66,7 +67,8 @@ async function main() {
 		project_ids: [projectId, ...(children ?? []).map((child) => child.id)],
 		status: 'surveying',
 		plan: null,
-		cost_usd: 0
+		cost_usd: 0,
+		created_at: new Date().toISOString()
 	};
 
 	const inventory = await loadInventory(run);
@@ -107,12 +109,14 @@ async function main() {
 		metadata: { consolidation_run_id: 'survey-script' },
 		onUsage
 	});
+	// Saved first: the calls are paid, and a crash below must not lose them.
+	writeFileSync(join(out, 'groups-raw.json'), JSON.stringify(raw, null, 2));
 	const groups = parseGroups(raw, inventory, keys);
 	const twins = twinMap(inventory);
 	const decisions = [];
 	for (const [index, group] of groups.entries()) {
 		const decided = await llm.getJSONResponse<Record<string, unknown>>({
-			systemPrompt: DECIDE_SYSTEM_PROMPT,
+			systemPrompt: decideSystemPrompt(group),
 			userPrompt: decideUserPrompt({ group, inventory, keys, twins }),
 			userId: run.user_id,
 			profile: 'balanced',
@@ -129,34 +133,39 @@ async function main() {
 			raw: decided,
 			...buildDecision({ key: `c${index + 1}`, group, raw: decided, inventory, keys, twins })
 		});
+		writeFileSync(join(out, 'decisions-raw.json'), JSON.stringify(decisions, null, 2));
 	}
 	const title = (id: string) =>
 		inventory.documents.find((document) => document.id === id)?.title ?? id;
 	const project = (id: string) => inventory.projects.find((item) => item.id === id)?.name ?? id;
+	const names = {
+		project,
+		document: title,
+		task: (id: string) => inventory.tasks?.find((task) => task.id === id)?.title ?? id
+	};
 	const readable = decisions.map((decision) => ({
 		key: decision.cluster.key,
 		kind: decision.cluster.kind,
 		title: decision.cluster.title,
 		documents: decision.cluster.document_ids.map(title),
 		reason: decision.cluster.reason,
-		decided: decision.question
-			? null
-			: decision.cluster.ops.map((op) =>
-					op.op === 'move'
-						? `move ${op.document_ids.length} → ${project(op.target_project_id)}`
-						: `${op.op} ${op.document_ids.length}`
-				),
+		decided: decision.question ? null : describeOps(decision.cluster.ops, names),
+		tasks: (decision.cluster.task_ids ?? []).map(
+			(id) => inventory.tasks?.find((task) => task.id === id)?.title ?? id
+		),
 		question: decision.question && {
 			header: decision.question.header,
 			question: decision.question.question,
 			evidence: decision.question.evidence.map((item) => `${item.source}: “${item.quote}”`),
+			does: decision.question.options.map(
+				(option) => `${option.label}: ${describeOps(option.ops, names)}`
+			),
 			options: decision.question.options.map(
 				(option) =>
 					`${option.id === decision.question!.recommended_option_id ? '★ ' : ''}${option.label}`
 			)
 		}
 	}));
-	writeFileSync(join(out, 'groups-raw.json'), JSON.stringify(raw, null, 2));
 	writeFileSync(
 		join(out, 'decisions.json'),
 		JSON.stringify({ cost_usd: cost, readable, decisions }, null, 2)

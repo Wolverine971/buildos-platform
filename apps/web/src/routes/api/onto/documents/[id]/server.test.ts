@@ -58,7 +58,8 @@ class QueryBuilderMock {
 
 	constructor(
 		private readonly table: string,
-		private readonly documentState = 'draft'
+		private readonly documentState = 'draft',
+		private readonly typeKey = 'document.default'
 	) {}
 
 	select() {
@@ -86,7 +87,7 @@ class QueryBuilderMock {
 					id: 'doc-1',
 					project_id: 'project-1',
 					title: 'Doc',
-					type_key: 'document.default',
+					type_key: this.typeKey,
 					state_key: this.documentState,
 					updated_at: '2026-08-03T12:00:00Z'
 				},
@@ -110,7 +111,7 @@ class QueryBuilderMock {
 	}
 }
 
-function createSupabaseMock(documentState = 'draft') {
+function createSupabaseMock(documentState = 'draft', typeKey = 'document.default') {
 	return {
 		rpc: vi.fn(async (fn: string) => {
 			if (fn === 'ensure_actor_for_user') {
@@ -121,7 +122,7 @@ function createSupabaseMock(documentState = 'draft') {
 			}
 			return { data: null, error: null };
 		}),
-		from: (table: string) => new QueryBuilderMock(table, documentState)
+		from: (table: string) => new QueryBuilderMock(table, documentState, typeKey)
 	};
 }
 
@@ -249,6 +250,45 @@ describe('PATCH /api/onto/documents/[id]', () => {
 			},
 			'actor-1'
 		);
+	});
+});
+
+describe('PATCH /api/onto/documents/[id] on tables', () => {
+	async function patchWith(body: Record<string, unknown>, typeKey: string) {
+		const { PATCH } = await import('./+server');
+		const supabase = createSupabaseMock('draft', typeKey);
+		return PATCH({
+			params: { id: 'doc-1' },
+			request: new Request('http://localhost/api/onto/documents/doc-1', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			}),
+			url: new URL('http://localhost/api/onto/documents/doc-1'),
+			locals: {
+				supabase: supabase as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+	}
+
+	it('refuses a text body write on a table document', async () => {
+		const response = await patchWith({ content: '| a |\n| --- |' }, 'document.table');
+		expect(response.status).toBe(400);
+	});
+
+	it('refuses retyping a table or patching its column schema through props', async () => {
+		expect((await patchWith({ type_key: 'document.default' }, 'document.table')).status).toBe(
+			400
+		);
+		expect(
+			(await patchWith({ props: { table: { columns: [] } } }, 'document.table')).status
+		).toBe(400);
+	});
+
+	it('refuses turning a plain document into a table', async () => {
+		const response = await patchWith({ type_key: 'document.table' }, 'document.default');
+		expect(response.status).toBe(400);
 	});
 });
 

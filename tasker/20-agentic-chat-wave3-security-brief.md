@@ -2,6 +2,14 @@
 
 # Task 20 — Agentic Chat Backend: Wave 3 (Security) + Wave 2 tail
 
+> **Audit 2026-10-04 — ACTIVE (new gap).** The original scope shipped by 08-30. D4b's off-in-Production flag is moot: the
+> legacy engine it gated was deleted (`35bbbd3c5`, merged `6d787284c`, 09-04). **Left:** nothing listed here.
+> New gap: S1's "writes need review after email/web content is read" rule lived in the deleted
+> `turn-security-policy.ts`. I found no worker equivalent, and calendar writes go through the direct-write lane.
+> (Re-checked: `write-routing.ts` review reasons cover only target resolution and source fidelity. Email
+> text is framed as untrusted in the prompt, and web egress taint still blocks exfiltration.)
+> **Priority:** P1 (that gap). **Recommend:** keep (rescope to that gap + 35's injection test).
+
 > **2026-08-30 implementation update:** the Wave 3 security work is implemented and deployed. The
 > immediate boundary slice is live: **S2** blocks automatic third-party images only in assistant Markdown; **C1**
 > authorizes every resolved project in legacy/prewarm and fails closed on unusable project RPC
@@ -180,3 +188,13 @@ helper, not the original `event.platform` proposal. `waitUntil` remains bounded 
   deployment complete; the Production lifecycle flag remains off until the
   Preview detach/reconcile smoke passes.
 - Any new migration flagged for `pnpm gen:types` + prod apply; any shared-package edit flagged for dist rebuild.
+
+## Absorbed from 35 — 35 — Agentic Chat Gmail Tools (Read + Local Draft Proposals) (2026-10-04)
+
+35 was deleted in the 2026-10-04 tasker cleanup. Its audit verdict, including the residual now owned here:
+
+**Audit 2026-10-04 — DONE.** Gmail reads are GA and run on the worker (legacy lane deleted 09-04,
+`6d787284c`). They first worked after the 09-24 Railway env fix, and `scan_email_inbox` was verified live
+09-25 (`1c5377810`). ZDR is now forced on every model call (`76302509d`). **Left:** the seeded malicious-email
+injection test (never run; see 20). WP-3 draft proposals and thread reads are an unbuilt idea.
+**Priority:** P2. **Recommend:** merge into 20.

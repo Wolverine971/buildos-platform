@@ -2,6 +2,10 @@
 
 # 46 — Finish and retire the legacy project/task/phase generation
 
+> **Audit 2026-10-04 — PARKED.** Nothing has moved since 08-04. The legacy `projects`/`tasks`/`phases`/`phase_tasks` tables and the admin migration UI (`routes/admin/migration`) remain. `search_all_content` still reads legacy tables, but its `/api/search` endpoint has no UI caller. Tasker 104 contained the legacy admin RPCs (`20260924202321`).
+> **Left:** W1–W4 (258 unmapped rows, FK cutover, archive, guarded drop). There's no user-facing payoff.
+> **Priority:** P3. **Recommend:** park.
+
 **Created:** 2026-08-04  
 **Status:** Open — migration completeness and dependency cutover required  
 **Mission:** Make ontology projects/tasks/plans the only project model, then archive and remove the legacy project generation safely.

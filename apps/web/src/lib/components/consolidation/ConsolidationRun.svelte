@@ -18,6 +18,8 @@
 	import type { ConsolidationRunView } from './consolidation-types';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConsolidationMerge from './ConsolidationMerge.svelte';
+	import ConsolidationPicture from './ConsolidationPicture.svelte';
+	import { consolidationPicture } from './consolidation-picture';
 	import ConsolidationQuestionCard from './ConsolidationQuestionCard.svelte';
 	import { ArrowLeft, LoaderCircle, RotateCcw } from '$lib/icons/lucide';
 
@@ -96,9 +98,13 @@
 	function docTitle(id: string) {
 		return plan?.documents[id]?.title ?? 'a document';
 	}
+	function taskTitle(id: string) {
+		return plan?.tasks?.[id]?.title ?? 'a task';
+	}
 	const names = {
 		project: projectName_,
 		document: docTitle,
+		task: taskTitle,
 		inside: (id: string) => plan?.documents[id]?.inside ?? []
 	};
 
@@ -243,7 +249,12 @@
 		fragments: 'Scattered notes',
 		versions: 'Versions',
 		superseded: 'Replaced',
-		twins: 'Identical copies'
+		twins: 'Identical copies',
+		duplicate_tasks: 'Duplicate tasks',
+		task_parts: 'Pieces of a bigger task',
+		task_sequence: 'Steps in order',
+		sibling_tasks: 'Same work across projects',
+		finished_tasks: 'Done or no longer needed'
 	};
 
 	const stageText = $derived.by(() => {
@@ -255,7 +266,23 @@
 		return 'Starting';
 	});
 
+	const TASK_CHANGE = {
+		merged: 'Merged into another task:',
+		merged_into: 'Added a checklist of duplicates to',
+		done: 'Marked done:',
+		archived: 'Archived task'
+	} as const;
+
 	const receipt = $derived(run.receipt);
+	// Before → after: what Apply will do while the run is open, what it did after.
+	const preview = $derived(
+		plan && view.ready_ops?.length ? consolidationPicture(view.ready_ops, plan, names) : null
+	);
+	const appliedPicture = $derived(
+		plan && receipt?.applied_ops?.length
+			? consolidationPicture(receipt.applied_ops, plan, names)
+			: null
+	);
 </script>
 
 <div class="grid gap-6">
@@ -324,6 +351,10 @@
 					</p>
 				{/if}
 			</section>
+		{/if}
+
+		{#if preview}
+			<ConsolidationPicture picture={preview} />
 		{/if}
 
 		{#if decided.length}
@@ -514,6 +545,10 @@
 		</div>
 	{/if}
 
+	{#if run.status === 'applied' && appliedPicture}
+		<ConsolidationPicture picture={appliedPicture} applied />
+	{/if}
+
 	{#if (run.status === 'applied' || run.status === 'undone') && receipt}
 		<section class="grid gap-3" aria-labelledby="receipt">
 			<h2 id="receipt" class="section-title">
@@ -542,6 +577,27 @@
 							Archived <b>{item.title}</b>{#if item.replaced_by_id}; see “{docTitle(
 									item.replaced_by_id
 								)}”{/if}
+						</p>
+					</li>
+				{/each}
+				{#each receipt.tasks?.created_plans ?? [] as item (item.id)}
+					<li>
+						<p class="text-sm text-foreground">
+							Created plan <b>{item.name}</b> in {projectName_(item.project_id)}
+						</p>
+					</li>
+				{/each}
+				{#each receipt.tasks?.created_tasks ?? [] as item (item.id)}
+					<li>
+						<p class="text-sm text-foreground">
+							Created task <b>{item.title}</b> in {projectName_(item.project_id)}
+						</p>
+					</li>
+				{/each}
+				{#each receipt.tasks?.changed ?? [] as item (item.id + item.how)}
+					<li>
+						<p class="text-sm text-foreground">
+							{TASK_CHANGE[item.how]} <b>{item.title}</b>
 						</p>
 					</li>
 				{/each}

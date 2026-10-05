@@ -43,7 +43,8 @@ const FAMILIES = [
 	[
 		'documents',
 		'onto_documents',
-		'id,title,description,type_key,state_key,content,updated_at,created_at'
+		// table: only the props.table schema, null for ordinary documents (BuildOS Tables).
+		'id,title,description,type_key,state_key,content,updated_at,created_at,table:props->table'
 	],
 	['tasks', 'onto_tasks', 'id,title,state_key,priority,due_at,description,updated_at,created_at'],
 	['goals', 'onto_goals', 'id,name,state_key,target_date,description,updated_at,created_at'],

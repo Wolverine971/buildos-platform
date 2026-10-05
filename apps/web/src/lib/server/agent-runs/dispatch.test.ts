@@ -1,5 +1,9 @@
 // apps/web/src/lib/server/agent-runs/dispatch.test.ts
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const privateEnv = vi.hoisted(() => ({}) as Record<string, string | undefined>);
+vi.mock('$env/dynamic/private', () => ({ env: privateEnv }));
+
 import {
 	MAX_AGENT_RUN_COST_USD,
 	MAX_AGENT_RUN_TOKENS,
@@ -120,45 +124,47 @@ describe('agent run effort and cost budgets', () => {
 	});
 });
 
-describe('dispatchAgentRun atomic admission', () => {
-	function fakeAdmin(options: {
-		activeCount?: number;
-		rpcResult?: { data: unknown; error: { message: string } | null };
-	}) {
-		const rpcCalls: Array<{ fn: string; args: Record<string, unknown> }> = [];
-		const admin = {
-			from(_table: string) {
-				return {
-					select() {
-						return {
-							eq() {
-								return {
-									in: async () => ({
-										count: options.activeCount ?? 0,
-										error: null
-									})
-								};
-							}
-						};
-					}
-				};
-			},
-			rpc: async (fn: string, args: Record<string, unknown>) => {
-				rpcCalls.push({ fn, args });
-				if (fn === 'create_agent_run_with_job') {
-					return (
-						options.rpcResult ?? {
-							data: { run: { id: 'run-1', status: 'queued' }, job_id: 'job-1' },
-							error: null
+function fakeAdmin(options: {
+	activeCount?: number;
+	rpcResult?: { data: unknown; error: { message: string } | null };
+}) {
+	const rpcCalls: Array<{ fn: string; args: Record<string, unknown> }> = [];
+	const fromCalls: string[] = [];
+	const admin = {
+		from(table: string) {
+			fromCalls.push(table);
+			return {
+				select() {
+					return {
+						eq() {
+							return {
+								in: async () => ({
+									count: options.activeCount ?? 0,
+									error: null
+								})
+							};
 						}
-					);
+					};
 				}
-				return { data: null, error: null };
+			};
+		},
+		rpc: async (fn: string, args: Record<string, unknown>) => {
+			rpcCalls.push({ fn, args });
+			if (fn === 'create_agent_run_with_job') {
+				return (
+					options.rpcResult ?? {
+						data: { run: { id: 'run-1', status: 'queued' }, job_id: 'job-1' },
+						error: null
+					}
+				);
 			}
-		};
-		return { admin: admin as never, rpcCalls };
-	}
+			return { data: null, error: null };
+		}
+	};
+	return { admin: admin as never, rpcCalls, fromCalls };
+}
 
+describe('dispatchAgentRun atomic admission', () => {
 	it('creates the run and queue job through one atomic RPC', async () => {
 		const { admin, rpcCalls } = fakeAdmin({});
 		const outcome = await dispatchAgentRun({
@@ -216,5 +222,79 @@ describe('dispatchAgentRun atomic admission', () => {
 			expect(outcome.status).toBe(429);
 		}
 		expect(rpcCalls).toHaveLength(0);
+	});
+});
+
+describe('dispatchAgentRun deep research kill switch', () => {
+	const USER_ID = '00000000-0000-4000-8000-000000000001';
+
+	afterEach(() => {
+		delete privateEnv.PRIVATE_DEEP_RESEARCH_ENABLED;
+	});
+
+	it('refuses deep_research by default before any database read or write', async () => {
+		const { admin, rpcCalls, fromCalls } = fakeAdmin({});
+		const outcome = await dispatchAgentRun({
+			userId: USER_ID,
+			goal: 'Research the market',
+			runTemplate: 'deep_research',
+			admin
+		});
+
+		expect(outcome.ok).toBe(false);
+		if (!outcome.ok) {
+			expect(outcome.status).toBe(403);
+			expect(outcome.code).toBe('DEEP_RESEARCH_DISABLED');
+			expect(outcome.message).toContain('Deep research is turned off');
+			expect(outcome.message).toContain('nothing was charged');
+		}
+		expect(fromCalls).toEqual([]);
+		expect(rpcCalls).toEqual([]);
+	});
+
+	it('still refuses when the switch holds anything other than "true"', async () => {
+		privateEnv.PRIVATE_DEEP_RESEARCH_ENABLED = 'yes';
+		const { admin, rpcCalls } = fakeAdmin({});
+		const outcome = await dispatchAgentRun({
+			userId: USER_ID,
+			goal: 'Research the market',
+			runTemplate: 'deep_research',
+			admin
+		});
+
+		expect(outcome.ok).toBe(false);
+		expect(rpcCalls).toEqual([]);
+	});
+
+	it('keeps ordinary agent runs working with the switch off', async () => {
+		const { admin, rpcCalls } = fakeAdmin({});
+		const outcome = await dispatchAgentRun({
+			userId: USER_ID,
+			goal: 'Summarize project state',
+			runTemplate: 'agent',
+			effort: 'deep',
+			admin
+		});
+
+		expect(outcome.ok).toBe(true);
+		const createCall = rpcCalls.find((call) => call.fn === 'create_agent_run_with_job');
+		expect((createCall?.args.p_run as Record<string, unknown>).run_template).toBe('agent');
+	});
+
+	it('admits deep_research only when explicitly enabled', async () => {
+		privateEnv.PRIVATE_DEEP_RESEARCH_ENABLED = 'true';
+		const { admin, rpcCalls } = fakeAdmin({});
+		const outcome = await dispatchAgentRun({
+			userId: USER_ID,
+			goal: 'Research the market',
+			runTemplate: 'deep_research',
+			admin
+		});
+
+		expect(outcome.ok).toBe(true);
+		const createCall = rpcCalls.find((call) => call.fn === 'create_agent_run_with_job');
+		expect((createCall?.args.p_run as Record<string, unknown>).run_template).toBe(
+			'deep_research'
+		);
 	});
 });

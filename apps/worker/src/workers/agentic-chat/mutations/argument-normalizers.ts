@@ -326,6 +326,40 @@ export const AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1: Readonly<
 	},
 
 	/**
+	 * The chat schema takes select choices as plain strings; the table schema
+	 * stores `{ value }` objects. Convert both `columns` (create) and
+	 * `column_changes` (update) so the stored schema never depends on the
+	 * gateway accepting either shape. Objects pass through unchanged.
+	 */
+	normalize_table_column_choices: ({ args }) => {
+		for (const key of ['columns', 'column_changes'] as const) {
+			const list = args[key];
+			if (!Array.isArray(list)) continue;
+			args[key] = list.map((column) => {
+				if (!isRecord(column) || !isRecord(column.options)) return column;
+				const choices = column.options.choices;
+				if (!Array.isArray(choices)) return column;
+				return {
+					...column,
+					options: {
+						...column.options,
+						choices: choices
+							.map((choice) =>
+								typeof choice === 'string' ? { value: choice.trim() } : choice
+							)
+							.filter(
+								(choice) =>
+									isRecord(choice) &&
+									typeof choice.value === 'string' &&
+									choice.value.length > 0
+							)
+					}
+				};
+			});
+		}
+	},
+
+	/**
 	 * BuildOS never invites anyone or sets a reminder on a user's behalf. Neither
 	 * field is a canonical calendar argument, so the admitted-argument fence
 	 * already refuses them; this is the second lock, and it records what it took

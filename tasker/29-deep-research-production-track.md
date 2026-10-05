@@ -2,6 +2,10 @@
 
 # 29 — Deep Research: V0.1 → production track
 
+> **Audit 2026-10-04 — WAITING ON DJ.** "Never deployed" is stale: the runtime has been on main since July (b45fca994 … 955efa25b, last touched 162722903), so it is pushed + deployed, and project chat can call it via `delegate_task` `run_template:'deep_research'` ($0.25–$1/run, one active run per user, no daily quota). The July quality gate still failed; Tracks A/B/D are untouched; the cost reconciler defaults off (`AGENT_RUN_COST_RECONCILIATION_ENABLED=false`, prod env unverified).
+> **Left:** DJ call — hide `deep_research` from the tool until an eval passes, or accept it as-is; the rest (quotas, price registry, citation synthesis, corpus/bakeoff) only matters if research becomes a selling point.
+> **Priority:** P2. **Recommend:** park after the hide/keep call; merge 32 here.
+
 **Consolidated 2026-07-24** from taskers 29 (cost ledger), 30 (evidence + report persistence),
 31 (deploy + reconciliation), and 33 (evaluation + provider bakeoff). The UI/chat surface stays
 separate in [32](32-deep-research-chat-tool-and-progress-ui.md).
@@ -147,3 +151,11 @@ wall-clock-bounded terminalization.
   duplicate children, paid calls, or final chat messages.
 - The chosen architecture beats or justifies its cost against the sequential baseline on a recorded
   eval, and no route change can reach broad rollout without one.
+
+## Absorbed from 32 — 32 — Deep Research Chat Tool & Progress Experience (2026-10-04)
+
+32 was deleted in the 2026-10-04 tasker cleanup. Its audit verdict, including the residual now owned here:
+
+**Audit 2026-10-04 — PARKED.** WP-1–WP-5 were never built. Dispatch goes through the generic `delegate_task` (`run_template:'deep_research'`, `packages/agentic-chat-runtime/src/catalog/definitions/utility.ts`), and progress uses the generic agent-run dock/modal (`AgentRunDock.svelte`, ffbd9f1f2). There is no cost-confirmation step and no report surface.
+**Left:** all WPs, and they're worth doing only if 29's quality gate ever passes.
+**Priority:** P3. **Recommend:** merge into 29.

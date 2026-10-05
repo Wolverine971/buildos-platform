@@ -1,5 +1,5 @@
 // apps/worker/tests/generalWorkerBootstrap.test.ts
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const harness = vi.hoisted(() => {
 	const events: string[] = [];
@@ -76,13 +76,30 @@ vi.mock('../src/worker', () => ({
 import { startGeneralWorkerProcess } from '../src/bootstrap';
 
 const originalPort = process.env.PORT;
+// Scheduled-work gate inputs (src/config/scheduledWork.ts). Each test starts from
+// a deployed Railway worker unless it says otherwise.
+const SCHEDULED_WORK_KEYS = [
+	'WORKER_SCHEDULER_ENABLED',
+	'RAILWAY_ENVIRONMENT_ID',
+	'RAILWAY_ENVIRONMENT',
+	'RAILWAY_ENVIRONMENT_NAME',
+	'RAILWAY_SERVICE_ID'
+] as const;
+const originalScheduledWorkEnv = Object.fromEntries(
+	SCHEDULED_WORK_KEYS.map((key) => [key, process.env[key]])
+);
 let processOnSpy: { mockRestore(): void };
 let processExitSpy: { mockRestore(): void };
+let consoleLogSpy: MockInstance<typeof console.log>;
 
 beforeEach(() => {
 	harness.events.length = 0;
 	harness.signalHandlers.clear();
 	process.env.PORT = '4107';
+	for (const key of SCHEDULED_WORK_KEYS) delete process.env[key];
+	process.env.RAILWAY_ENVIRONMENT_ID = 'railway-env-id';
+	process.env.RAILWAY_ENVIRONMENT_NAME = 'production';
+	consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
 	harness.createGeneralWorkerApp.mockReset().mockReturnValue(harness.app);
 	harness.getWorkerHealth.mockReset();
@@ -138,10 +155,16 @@ beforeEach(() => {
 afterEach(() => {
 	processOnSpy.mockRestore();
 	processExitSpy.mockRestore();
+	consoleLogSpy.mockRestore();
 	if (originalPort === undefined) {
 		delete process.env.PORT;
 	} else {
 		process.env.PORT = originalPort;
+	}
+	for (const key of SCHEDULED_WORK_KEYS) {
+		const value = originalScheduledWorkEnv[key];
+		if (value === undefined) delete process.env[key];
+		else process.env[key] = value;
 	}
 });
 
@@ -150,6 +173,7 @@ describe('general worker process bootstrap', () => {
 		await startGeneralWorkerProcess();
 
 		expect(harness.events).toEqual(['worker-start', 'scheduler-start', 'http-listen']);
+		expect(harness.startWorker).toHaveBeenCalledWith({ scheduledWork: true });
 		expect(harness.createGeneralWorkerApp).toHaveBeenCalledWith({
 			eventLoopLagMonitor: expect.any(Object),
 			getWorkerHealth: harness.getWorkerHealth,
@@ -201,3 +225,56 @@ describe('general worker process bootstrap', () => {
 		expect(harness.events).toEqual(['worker-stop', 'exit:1']);
 	});
 });
+
+describe('general worker scheduled-work gate', () => {
+	it('keeps a local worker off production crons, purges, and alerts by default', async () => {
+		for (const key of SCHEDULED_WORK_KEYS) delete process.env[key];
+
+		await startGeneralWorkerProcess();
+
+		expect(harness.startWorker).toHaveBeenCalledWith({ scheduledWork: false });
+		expect(harness.startScheduler).not.toHaveBeenCalled();
+		expect(harness.events).toEqual(['worker-start', 'http-listen']);
+		expect(scheduledWorkLogLines()).toEqual([
+			expect.stringContaining('Scheduled work OFF (not a Railway deployment)')
+		]);
+		expect(scheduledWorkLogLines()[0]).toContain('WORKER_SCHEDULER_ENABLED=true');
+	});
+
+	it('starts the scheduler locally only on explicit opt-in', async () => {
+		for (const key of SCHEDULED_WORK_KEYS) delete process.env[key];
+		process.env.WORKER_SCHEDULER_ENABLED = 'true';
+
+		await startGeneralWorkerProcess();
+
+		expect(harness.startWorker).toHaveBeenCalledWith({ scheduledWork: true });
+		expect(harness.events).toEqual(['worker-start', 'scheduler-start', 'http-listen']);
+		expect(scheduledWorkLogLines()).toEqual([
+			expect.stringContaining('Scheduled work ON (WORKER_SCHEDULER_ENABLED=true)')
+		]);
+	});
+
+	it('starts the scheduler on Railway and logs the environment', async () => {
+		await startGeneralWorkerProcess();
+
+		expect(harness.startScheduler).toHaveBeenCalledTimes(1);
+		expect(scheduledWorkLogLines()).toEqual([
+			expect.stringContaining('Scheduled work ON (Railway environment "production")')
+		]);
+	});
+
+	it('lets an explicit kill switch stop scheduled work on Railway', async () => {
+		process.env.WORKER_SCHEDULER_ENABLED = 'false';
+
+		await startGeneralWorkerProcess();
+
+		expect(harness.startWorker).toHaveBeenCalledWith({ scheduledWork: false });
+		expect(harness.startScheduler).not.toHaveBeenCalled();
+	});
+});
+
+function scheduledWorkLogLines(): string[] {
+	return consoleLogSpy.mock.calls
+		.map((call) => String(call[0]))
+		.filter((line) => line.includes('Scheduled work'));
+}

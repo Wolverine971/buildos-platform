@@ -32,6 +32,7 @@ import {
 } from './agent-chat-skill-activity';
 import { isProjectContext } from './agent-chat-session';
 import type { DocumentChangeReceipt } from './document-change-cards';
+import { buildTableChangeToastMessage, type TableChangeReceipt } from './table-change-cards';
 
 export type OntologyEntityKind =
 	| 'project'
@@ -140,6 +141,8 @@ export interface ToolPresenter {
 	): void;
 	/** Toast for a document body edit that carries a change receipt. */
 	showDocumentChangeToast(change: DocumentChangeReceipt): void;
+	/** "Job applications · +3 rows · 7 cells" toast for a table write's change receipt. */
+	showTableChangeToast(change: TableChangeReceipt): void;
 
 	// Catalog (exposed for callers that still gate on the set directly)
 	readonly MUTATION_TRACKED_TOOLS: ReadonlySet<string>;
@@ -194,6 +197,11 @@ const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 	move_document_in_tree: { toast: true, trackMutation: true },
 	// No entity kind maps to an asset, so the receipt triggers a full project refresh.
 	update_onto_asset: { toast: true, trackMutation: true },
+	// BuildOS Tables (2026-10-04). A row/column change with a table_change receipt
+	// gets the rich "+N rows · M cells" toast and an Undo card instead.
+	create_onto_table: { toast: true, trackMutation: true },
+	update_onto_table: { toast: true, trackMutation: true },
+	update_onto_table_rows: { toast: true, trackMutation: true },
 
 	// Tracked but no user-facing toast (quieter effects)
 	create_task_document: { toast: false, trackMutation: true },
@@ -227,7 +235,18 @@ const DOCUMENT_MUTATION_TOOLS = new Set([
 	'update_onto_document',
 	'delete_onto_document',
 	'create_task_document',
-	'move_document_in_tree'
+	'move_document_in_tree',
+	// A table is a document (type document.table); open views refresh the same way.
+	'create_onto_table',
+	'update_onto_table',
+	'update_onto_table_rows'
+]);
+
+/** Table writes: the entity they change is the table document (`table_id`). */
+const TABLE_MUTATION_TOOLS = new Set([
+	'create_onto_table',
+	'update_onto_table',
+	'update_onto_table_rows'
 ]);
 
 // ---------------------------------------------------------------------------
@@ -266,7 +285,9 @@ const CREATE_TOOL_KINDS: Record<string, OntologyEntityKind> = {
 	create_onto_plan: 'plan',
 	create_onto_document: 'document',
 	create_onto_milestone: 'milestone',
-	create_onto_risk: 'risk'
+	create_onto_risk: 'risk',
+	// A new table is a new document; its chip opens it like any document.
+	create_onto_table: 'document'
 };
 
 // ---------------------------------------------------------------------------
@@ -339,6 +360,51 @@ function toFailureAction(action: string): string {
 		TOOL_ACTION_BASE_FORM[verb] ??
 		(verb.toLowerCase().endsWith('ing') ? verb.toLowerCase().slice(0, -3) : verb.toLowerCase());
 	return [baseVerb, ...rest].join(' ').toLowerCase();
+}
+
+function arrayCount(value: unknown): number {
+	return Array.isArray(value) ? value.length : 0;
+}
+
+function plural(count: number, noun: string): string {
+	return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/** "Grouping table rows" / "Totaling table rows" / "Reading table rows" from structured args. */
+function tableReadAction(args: Record<string, any> | null | undefined): string {
+	if (typeof args?.group_by === 'string' && args.group_by.trim()) return 'Grouping table rows';
+	if (arrayCount(args?.aggregates) > 0) return 'Totaling table rows';
+	if (arrayCount(args?.filters) > 0 || (typeof args?.search === 'string' && args.search.trim()))
+		return 'Filtering table rows';
+	return 'Reading table rows';
+}
+
+/** "Adding 3 rows" / "Updating 2 rows" / "Deleting 1 row" — counts from the call's arrays. */
+function tableRowsAction(args: Record<string, any> | null | undefined): string {
+	const added = arrayCount(args?.add);
+	const updated = arrayCount(args?.update);
+	const deleted = arrayCount(args?.delete);
+	const parts = [
+		added > 0 ? `adding ${plural(added, 'row')}` : null,
+		updated > 0 ? `updating ${plural(updated, 'row')}` : null,
+		deleted > 0 ? `deleting ${plural(deleted, 'row')}` : null
+	].filter((part): part is string => part !== null);
+	if (parts.length === 0) return 'Updating table rows';
+	const text = parts.join(', ');
+	return `${text.charAt(0).toUpperCase()}${text.slice(1)} in table`;
+}
+
+function tableUpdateAction(args: Record<string, any> | null | undefined): string {
+	if (args?.archived === true) return 'Archiving table';
+	const changes = Array.isArray(args?.column_changes) ? args.column_changes : [];
+	if (changes.length > 0) {
+		const adds = changes.filter((change: any) => change?.action === 'add').length;
+		if (adds === changes.length)
+			return adds === 1 ? 'Adding a column' : `Adding ${adds} columns`;
+		return changes.length === 1 ? 'Changing a column' : `Changing ${changes.length} columns`;
+	}
+	if (arrayCount(args?.fill_ai_columns) > 0) return 'Filling question column';
+	return 'Updating table';
 }
 
 /**
@@ -1445,6 +1511,27 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Loading document path',
 			target: resolveEntityName('document', args?.document_id)
 		}),
+		// BuildOS Tables (2026-10-04). Plain words: table, rows, columns.
+		get_onto_table_details: (args) => ({
+			action: 'Opening table',
+			target: resolveEntityName('document', args?.table_id)
+		}),
+		read_table_rows: (args) => ({
+			action: tableReadAction(args),
+			target: resolveEntityName('document', args?.table_id)
+		}),
+		create_onto_table: (args) => ({
+			action: 'Creating table',
+			target: args?.title || args?.name
+		}),
+		update_onto_table: (args) => ({
+			action: tableUpdateAction(args),
+			target: buildEntityTarget(args?.title, args?.table_id, 'document')
+		}),
+		update_onto_table_rows: (args) => ({
+			action: tableRowsAction(args),
+			target: resolveEntityName('document', args?.table_id)
+		}),
 		get_onto_project_graph: (args) => ({
 			action: 'Loading project graph',
 			target: resolveEntityName('project', args?.project_id)
@@ -1896,6 +1983,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		const candidates = [
 			args.document_id,
 			args.documentId,
+			TABLE_MUTATION_TOOLS.has(toolName) ? args.table_id : undefined,
 			payload?.document?.id,
 			payload?.document_id,
 			payload?.entity_id,
@@ -1995,7 +2083,9 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			);
 		const entityKind: DataMutation['entityKind'] = match
 			? (match[2] as DataMutation['entityKind'])
-			: toolName === 'create_task_document' || toolName === 'move_document_in_tree'
+			: toolName === 'create_task_document' ||
+				  toolName === 'move_document_in_tree' ||
+				  TABLE_MUTATION_TOOLS.has(toolName)
 				? 'document'
 				: /^(create|update|delete)_calendar_event$/.test(toolName)
 					? 'event'
@@ -2096,6 +2186,10 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		toast.success(title ? `Updated document: "${title}"` : 'Updated document');
 	}
 
+	function showTableChangeToast(change: TableChangeReceipt): void {
+		ctx.toast?.success(buildTableChangeToastMessage(change));
+	}
+
 	return {
 		formatToolMessage,
 		describeToolDisplay,
@@ -2111,6 +2205,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		buildMutationSummary,
 		showToolResultToast,
 		showDocumentChangeToast,
+		showTableChangeToast,
 		MUTATION_TRACKED_TOOLS: MUTATION_TRACKED_TOOLS_SET,
 		DATA_MUTATION_TOOLS: DATA_MUTATION_TOOLS_SET
 	};

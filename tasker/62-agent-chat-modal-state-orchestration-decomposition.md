@@ -2,6 +2,12 @@
 
 # 62 — Agent Chat modal state/orchestration decomposition
 
+> **Audit 2026-10-04 — PARKED.** Never started. `AgentChatModal.svelte` grew from ~2,990 to 3,365 lines
+> after 08-25. No controller has been extracted since June; later chat UI work (leases, live preview,
+> shared-doc cards) kept landing in the modal.
+> **Left:** the whole refactor. Users won't see it, so pick it up only when a modal change gets hard to land.
+> **Priority:** P3. **Recommend:** park.
+
 **Created:** 2026-08-25
 
 **Status:** Open

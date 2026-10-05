@@ -40,3 +40,4 @@ export * from './mutation-batch';
 export * from './turn-contract';
 export * from './write-ledger';
 export * from './web-egress-policy';
+export * from './external-content-policy';

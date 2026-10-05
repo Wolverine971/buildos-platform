@@ -24,6 +24,7 @@ import {
 import { createToolPresenter, type ToolPresenter } from './agent-chat-tool-presenter';
 import { summarizeDocumentChange } from '@buildos/shared-agent-ops/ontology/document-edits';
 import type { DocumentChangeReceipt } from './document-change-cards';
+import type { TableChangeReceipt } from './table-change-cards';
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -394,6 +395,7 @@ interface HandlerHarness {
 		}>;
 		addCreatedEntitiesMessage: CreatedEntityRef[][];
 		addDocumentChangesMessage: DocumentChangeReceipt[][];
+		addTableChangesMessage: TableChangeReceipt[][];
 		updateBlocks: ThinkingBlockMessage[];
 	};
 	snapshot: {
@@ -452,6 +454,7 @@ function createHarness(
 		markAssistantCompletion: [],
 		addCreatedEntitiesMessage: [],
 		addDocumentChangesMessage: [],
+		addTableChangesMessage: [],
 		updateBlocks: []
 	};
 
@@ -591,6 +594,9 @@ function createHarness(
 		processedToolResultIds,
 		addCreatedEntitiesMessage: (entities) => {
 			calls.addCreatedEntitiesMessage.push(entities);
+		},
+		addTableChangesMessage: (changes) => {
+			calls.addTableChangesMessage.push([...changes]);
 		},
 		addDocumentChangesMessage: (changes) => {
 			calls.addDocumentChangesMessage.push([...changes]);
@@ -1408,6 +1414,88 @@ describe('createSSEHandler — document change receipts', () => {
 		h.handler({ type: 'done' });
 
 		expect(h.calls.addDocumentChangesMessage).toEqual([]);
+	});
+});
+
+// BuildOS Tables (2026-10-04): a table write's structured table_change receipt
+// gets the "Title · +3 rows · 7 cells" toast and a change card at turn end.
+describe('createSSEHandler — table change cards', () => {
+	const tableChange: TableChangeReceipt = {
+		kind: 'table_change',
+		document_id: 'table-1',
+		project_id: 'project-1',
+		title: 'Job applications',
+		revision: 4,
+		applied_revision: 5,
+		rows_added: 3,
+		rows_updated: 0,
+		rows_deleted: 0,
+		cells_changed: 7,
+		columns_changed: [],
+		sample: [],
+		inverse_ops: [] as TableChangeReceipt['inverse_ops']
+	};
+	function tableRowsResult(callId: string, change?: TableChangeReceipt) {
+		return {
+			type: 'tool_result' as const,
+			turn_run_id: 'turn-run-1',
+			result: {
+				tool_call_id: callId,
+				success: true,
+				tool_name: 'update_onto_table_rows',
+				result: {
+					document: { id: 'table-1', project_id: 'project-1', title: 'Job applications' },
+					...(change ? { table_change: change } : {}),
+					message: 'Updated table'
+				}
+			}
+		};
+	}
+
+	it('shows the table toast instead of the plain one and flushes a card on done', () => {
+		const h = createHarness();
+		const plainToast = vi.spyOn(h.presenter, 'showToolResultToast');
+		const tableToast = vi.spyOn(h.presenter, 'showTableChangeToast');
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'update_onto_table_rows',
+			args: { table_id: 'table-1' }
+		});
+
+		h.handler(tableRowsResult('call-rows', tableChange));
+
+		expect(tableToast).toHaveBeenCalledWith(tableChange);
+		expect(plainToast).not.toHaveBeenCalled();
+		expect(h.calls.addTableChangesMessage).toEqual([]);
+
+		h.handler({ type: 'done' });
+
+		expect(h.calls.addTableChangesMessage).toEqual([[tableChange]]);
+		expect(h.calls.addDocumentChangesMessage).toEqual([]);
+	});
+
+	it('adds no card for a result without a structured receipt', () => {
+		const h = createHarness();
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'update_onto_table_rows',
+			args: { table_id: 'table-1' }
+		});
+		h.handler(tableRowsResult('call-rows'));
+		h.handler({ type: 'done' });
+		expect(h.calls.addTableChangesMessage).toEqual([]);
+	});
+
+	it('still flushes committed table writes when the turn errors', () => {
+		const h = createHarness();
+		h.nextActivityUpdateResult({
+			matched: true,
+			toolName: 'update_onto_table_rows',
+			args: { table_id: 'table-1' }
+		});
+		h.handler(tableRowsResult('call-rows', tableChange));
+		h.handler({ type: 'error', error: 'boom' } as never);
+		expect(h.calls.addTableChangesMessage).toEqual([[tableChange]]);
 	});
 });
 

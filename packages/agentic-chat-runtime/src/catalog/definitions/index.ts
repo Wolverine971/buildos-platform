@@ -1,3 +1,4 @@
+// packages/agentic-chat-runtime/src/catalog/definitions/index.ts
 import type { ChatToolDefinition } from '@buildos/shared-types';
 import { CALENDAR_TOOL_DEFINITIONS } from './calendar';
 import {
@@ -10,6 +11,7 @@ import { GATEWAY_TOOL_DEFINITIONS } from './discovery';
 import { EMAIL_TOOL_DEFINITIONS } from './email';
 import { ONTOLOGY_READ_TOOLS } from './ontology-read';
 import { ONTOLOGY_WRITE_TOOLS } from './ontology-write';
+import { TABLE_TOOL_DEFINITIONS } from './tables';
 import { UTILITY_TOOL_DEFINITIONS } from './utility';
 
 export * from './calendar';
@@ -18,6 +20,7 @@ export * from './discovery';
 export * from './email';
 export * from './ontology-read';
 export * from './ontology-write';
+export * from './tables';
 export * from './utility';
 
 /**
@@ -29,7 +32,10 @@ export const CHAT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	...ONTOLOGY_WRITE_TOOLS,
 	...UTILITY_TOOL_DEFINITIONS,
 	...CALENDAR_TOOL_DEFINITIONS,
-	...EMAIL_TOOL_DEFINITIONS
+	...EMAIL_TOOL_DEFINITIONS,
+	// BuildOS Tables (2026-10-04). Appended so the existing definitions keep
+	// their order.
+	...TABLE_TOOL_DEFINITIONS
 ];
 
 export const AGENTIC_CHAT_TOOL_DEFINITIONS = CHAT_TOOL_DEFINITIONS;

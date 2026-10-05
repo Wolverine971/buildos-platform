@@ -46,6 +46,38 @@ export type AgenticChatMutationReceiptBuilderV1 = (
 
 const KNOWN_TASK_MOVE_STATUSES = ['moved', 'already_moved', 'confirmation_required', 'blocked'];
 
+function firstFiniteNumber(...values: unknown[]): number | null {
+	for (const value of values) {
+		if (typeof value === 'number' && Number.isFinite(value)) return value;
+	}
+	return null;
+}
+
+/** "Updated table “Job applications”: +3 rows · 7 cells · 1 deleted." */
+function tableReceiptMessage(
+	toolName: string,
+	title: string,
+	change: Record<string, unknown> | null,
+	rowCount: number | null
+): string {
+	const count = (key: string) =>
+		typeof change?.[key] === 'number' ? (change[key] as number) : 0;
+	const parts = [
+		count('rows_added') > 0 ? `+${count('rows_added')} rows` : null,
+		count('cells_changed') > 0 ? `${count('cells_changed')} cells` : null,
+		count('rows_deleted') > 0 ? `${count('rows_deleted')} deleted` : null,
+		Array.isArray(change?.columns_changed) && change.columns_changed.length > 0
+			? `columns: ${(change.columns_changed as unknown[]).join(', ')}`
+			: null
+	].filter((part): part is string => part !== null);
+	if (toolName === 'create_onto_table') {
+		return `Created table "${title}"${rowCount !== null ? ` with ${rowCount} rows` : ''}.`;
+	}
+	return parts.length > 0
+		? `Updated table "${title}": ${parts.join(' · ')}.`
+		: `Updated table "${title}".`;
+}
+
 // ---------------------------------------------------------------------------
 // Entity-receipt post-processors
 // ---------------------------------------------------------------------------
@@ -308,6 +340,108 @@ export const AGENTIC_CHAT_MUTATION_RECEIPT_BUILDERS_V1: Readonly<
 	 * — when a placement was requested — exactly that placement. Only the
 	 * compact name + placement reach the model.
 	 */
+	/**
+	 * BuildOS Tables (2026-10-04). Every table write returns the table summary
+	 * (`table`: id, project_id, title, revision, row_count, ...; gateway
+	 * op-execution-gateway.tables.ts) plus a `table_change` receipt
+	 * (TableChangeReceipt: counts, sample cell diffs, inverse ops for Undo). The
+	 * receipt is proved against the table the call named and the admitted
+	 * project; the change rides along whole so the chat card can undo it. The
+	 * model sees a compacted copy (no inverse ops).
+	 */
+	table_change: (value, context) => {
+		const toolName = context.toolName;
+		if (!value) throw invalidReceipt(toolName, 'returned no table receipt');
+		const table = isRecord(value.table) ? value.table : null;
+		const document = isRecord(value.document)
+			? value.document
+			: table && typeof table.id === 'string'
+				? table
+				: isRecord(table?.document)
+					? table.document
+					: null;
+		if (!document || !canonicalUuid(document.id) || !canonicalUuid(document.project_id)) {
+			throw invalidReceipt(toolName, 'returned no table document');
+		}
+		const expectedId = context.args.table_id;
+		if (typeof expectedId === 'string' && document.id !== expectedId) {
+			throw invalidReceipt(toolName, 'returned a different table');
+		}
+		if (context.projectId !== null && document.project_id !== context.projectId) {
+			throw invalidReceipt(toolName, 'returned a table outside the admitted project');
+		}
+		const change = isRecord(value.table_change) ? value.table_change : null;
+		if (
+			change &&
+			(change.kind !== 'table_change' ||
+				change.document_id !== document.id ||
+				!Array.isArray(change.inverse_ops))
+		) {
+			throw invalidReceipt(toolName, 'returned a mismatched table change');
+		}
+		const apply = isRecord(value.apply) ? value.apply : null;
+		const schema = isRecord(table?.schema) ? table.schema : null;
+		const rowCount = firstFiniteNumber(
+			value.row_count,
+			table?.row_count,
+			apply?.row_count,
+			schema?.row_count
+		);
+		const revision = firstFiniteNumber(
+			table?.revision,
+			apply?.revision,
+			schema?.revision,
+			change?.applied_revision,
+			change?.revision
+		);
+		// Handles of inserted rows, so the model can address them later this turn:
+		// the gateway's `added_rows`, else the raw apply results.
+		const addedHandles = Array.isArray(value.added_rows)
+			? value.added_rows.filter(
+					(handle: unknown): handle is string => typeof handle === 'string'
+				)
+			: (Array.isArray(apply?.results) ? apply.results : [])
+					.filter(
+						(result: unknown) =>
+							isRecord(result) &&
+							result.op === 'insert' &&
+							typeof result.row_number === 'number'
+					)
+					.map((result: Record<string, unknown>) => `r${result.row_number as number}`);
+		const warnings = Array.isArray(value.warnings)
+			? value.warnings.filter((warning): warning is string => typeof warning === 'string')
+			: [];
+		const title = typeof document.title === 'string' ? document.title : 'Table';
+		return canonicalMutationReceipt(
+			{
+				document: {
+					id: document.id,
+					project_id: document.project_id,
+					title,
+					type_key:
+						typeof document.type_key === 'string' ? document.type_key : 'document.table'
+				},
+				...(rowCount !== null || revision !== null
+					? {
+							table: {
+								...(rowCount !== null ? { row_count: rowCount } : {}),
+								...(revision !== null ? { revision } : {})
+							}
+						}
+					: {}),
+				...(change ? { table_change: change } : {}),
+				...(addedHandles.length > 0 ? { rows_added_handles: addedHandles } : {}),
+				...(warnings.length > 0 ? { warnings: warnings.slice(0, 20) } : {}),
+				...(Array.isArray(value.ai_fill_runs) ? { ai_fill_runs: value.ai_fill_runs } : {}),
+				...(Array.isArray(value.ai_fill_errors)
+					? { ai_fill_errors: value.ai_fill_errors }
+					: {}),
+				message: tableReceiptMessage(toolName, title, change, rowCount)
+			},
+			toolName
+		);
+	},
+
 	asset_update: (value, context) => {
 		const toolName = context.toolName;
 		if (!value || !isRecord(value.asset) || !isRecord(value.placement)) {

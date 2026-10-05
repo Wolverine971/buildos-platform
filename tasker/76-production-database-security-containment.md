@@ -2,6 +2,9 @@
 
 # 76 — Production database security containment
 
+> **Audit 2026-10-04 — ACTIVE.** The P0 is closed. The 3 named exposures were contained by `20260924202321` (8e05790b2), and 73 more anon-callable definers by `20260925013000`/`013100` (fe3a44c12); both are verified live. New functions are private by default (`20260925013200`), and no migration since has granted `anon`. Only low-severity residue is left.
+> **Left:** 5 guard fixes from 104: the `is_admin(uuid)` oracle, `resolve_onto_public_page_slug_prefix`, `increment_question_display_count`, the inviter email in the invite preview, and `log_client_error` spam. From WP-4: leaked-password protection, OTP expiry, and the Postgres 15.8 upgrade. Also check whether the Supabase 2026-10-30 default-exposure change affects this project. **Priority:** P2. **Recommend:** keep, trimmed to these residuals, without the paid-launch framing.
+
 **Created:** 2026-08-31
 
 **Status:** Ready — live exposure is confirmed; containment and full privileged-function audit are
@@ -149,3 +152,10 @@ unexplained privileged functions.
 - Rewriting sound RLS or privileged functions merely to reduce a warning count.
 - Folding migration-ledger reconciliation into this tracker.
 - Enabling billing before the separate commercial and payment gates are complete.
+
+## Absorbed from 104 — Tasker 104 — Supabase fitness: are we sized, configured, and using Postgres well? (2026-10-04)
+
+104 was deleted in the 2026-10-04 tasker cleanup. Its audit verdict, including the residual now owned here:
+
+**Audit 2026-10-04 — DONE.** Delivered: the health kit and sizing brief (prod stays on Micro), wake-aware polling (8e05790b2; −77% queue claims measured 09-25), definer containment and private-by-default functions (fe3a44c12), the QA branch replaced by `pnpm db:rehearse`, and CI green at 0cdead19e. All of it is pushed and deployed, and the doc records live checks.
+**Left:** move the 5 low-severity guard fixes to 76. Leave stream-state zero-HOT updates and busy-window paging until there is real load. **Priority:** none. **Recommend:** close & delete.

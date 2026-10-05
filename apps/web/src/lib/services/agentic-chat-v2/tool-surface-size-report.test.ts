@@ -182,7 +182,10 @@ describe('tool surface size report', () => {
 		// every pass carries: the worker sends the opening pass only the schemas Jev
 		// selects (~18.5k chars on average across the 90-run live eval in
 		// docs/research/jev-tool-selection-2026-09-18). Caps at measured + ~5%.
-		expect(global?.totalChars).toBeLessThanOrEqual(58_100);
+		// RE-BASELINED 2026-10-04 (Tables tool suite): the two table reads
+		// (get_onto_table_details, read_table_rows; 2,461 chars) joined global.
+		// Measured 54 tools / 59,770 chars. Cap at measured + ~1%.
+		expect(global?.totalChars).toBeLessThanOrEqual(60_400);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These
@@ -190,7 +193,11 @@ describe('tool surface size report', () => {
 		// Do not remove capabilities to fit the old surface or relax other caps.
 		// 2026-09-23: surgical document edits add edits and section_edits to
 		// update_onto_document. Measured 67,096 chars; retain about 5% headroom.
-		expect(project?.totalChars).toBeLessThanOrEqual(70_500);
+		// RE-BASELINED 2026-10-04 (Tables tool suite): the five table tools (7,452
+		// chars: two reads, create_onto_table, update_onto_table,
+		// update_onto_table_rows) joined. Measured 72 tools / 75,937 chars. Cap at
+		// measured + ~1%.
+		expect(project?.totalChars).toBeLessThanOrEqual(76_700);
 		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
 		// create_onto_task description work noted above, and +516 already present
 		// on this branch from the control-tool descriptions (declare_turn_contract).

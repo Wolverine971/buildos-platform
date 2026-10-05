@@ -2,6 +2,9 @@
 
 # 86 — Admit the request quickly and prepare context in the worker
 
+> **Audit 2026-10-04 — DONE.** Merged in `a8521ae14` and pushed + deployed. The flags are off by default in code. The 09-20 pilot (`docs/technical/reviews/SPECIALIST_PILOT_ROLLOUT_2026-09-20.md`) turned admission and preparation on for DJ's account only, and two live reviews completed. The composer's Review project entry now sends the review intent (`8951b7dc9`).
+> **Left:** the context cache reference is always null, so context loads fresh each time (a minor optimization). **Priority:** none. **Recommend:** close & delete.
+
 **Created:** 2026-09-12  
 **Status (2026-09-18):** Built and merged on `main` (`a8521ae14`, pushed) behind default-off switches: web `AGENTIC_CHAT_WORKFLOW_V4_ADMISSION_ENABLED`, worker `AGENTIC_CHAT_WORKFLOW_V4_PREPARATION_ENABLED` (enable the worker switch first). An eligible explicit review is admitted with one pre-queue RPC (the ordinary path does roughly 9–12 round trips plus prompt construction, estimated from code); the worker gathers context after claim and accepts the immutable checkpoint through 85's fenced RPC. Focused web/worker tests and local disposable-Postgres proofs pass. DJ waived per-change-set gates on 2026-09-18; the live gate and browser acceptance move to [89](89-chat-workflow-integration-acceptance.md). Known limits: the context cache reference is always null (fresh load), and no UI sends `reviewIntent` yet.  
 **Depends on:** [85](85-chat-workflow-durable-contracts.md) contracts; accepted schema/readers before integration.  

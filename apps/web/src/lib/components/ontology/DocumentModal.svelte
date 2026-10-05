@@ -111,8 +111,12 @@
 		PanelRightClose,
 		PanelRightOpen,
 		Pencil,
-		Share2
+		Share2,
+		Table2 as TableIcon
 	} from '$lib/icons/lucide';
+	import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
+	import type { MakeLiveTableClick } from '$lib/components/table-surfaces/document-embeds';
+	import { tableEmbedInsertion } from '$lib/components/table-surfaces/table-surface-utils';
 	import {
 		copyInheritedDocument,
 		pluralizeProjects,
@@ -207,6 +211,18 @@
 	let updatedAt = $state<string | null>(null);
 	let documentProps = $state<Record<string, unknown> | null>(null);
 	let documentTypeKey = $state<string | null>(null);
+	// A table document shows its grid instead of the markdown editor; its body is a
+	// projection of the rows and is never saved from here.
+	const isTableDocument = $derived(isTableTypeKey(documentTypeKey));
+	type TableWorkspaceLazy = typeof import('$lib/components/tables/TableWorkspace.svelte').default;
+	let TableWorkspaceComponent = $state<TableWorkspaceLazy | null>(null);
+	$effect(() => {
+		if (!isTableDocument || TableWorkspaceComponent) return;
+		void import('$lib/components/tables/TableWorkspace.svelte').then(
+			(module) => (TableWorkspaceComponent = module.default)
+		);
+	});
+	let showTableInsertPicker = $state(false);
 
 	// ============================================
 	// Autosave State
@@ -1999,9 +2015,10 @@
 			const payload: Record<string, unknown> = {
 				title: snapshotAtRequest.title.trim(),
 				state_key: snapshotAtRequest.stateKey,
-				description: snapshotAtRequest.description.trim() || null,
-				content: snapshotAtRequest.body
+				description: snapshotAtRequest.description.trim() || null
 			};
+			// A table's body is regenerated from its rows; only metadata saves here.
+			if (!isTableDocument) payload.content = snapshotAtRequest.body;
 			const requestLiveSync =
 				!wasCreating &&
 				!silent &&
@@ -2014,8 +2031,9 @@
 				payload.sync_public_page = true;
 			}
 
-			// Include expected_updated_at for conflict detection (editing existing docs only)
-			if (requestedDocumentId && expectedUpdatedAt) {
+			// Include expected_updated_at for conflict detection (editing existing docs only).
+			// Table row edits move updated_at constantly; their metadata saves skip the check.
+			if (requestedDocumentId && expectedUpdatedAt && !isTableDocument) {
 				payload.expected_updated_at = expectedUpdatedAt;
 				if (expectedEditorRevision) {
 					payload.expected_editor_revision = expectedEditorRevision;
@@ -3245,6 +3263,48 @@
 		imageInsertModalSession = null;
 	}
 
+	function insertTableEmbed(table: { id: string }) {
+		showTableInsertPicker = false;
+		void markdownEditorRef?.insertAtCursor(tableEmbedInsertion(table.id));
+	}
+
+	// "Make live table" from Preview: lift the markdown table into a child table
+	// document, swap the block for an embed, and save the body right away.
+	let liftingTable = false;
+	async function handleMakeLiveTable(click: MakeLiveTableClick) {
+		if (!activeDocumentId || !projectId || liftingTable) return;
+		const session = captureDocumentSession();
+		const requestedDocumentId = activeDocumentId;
+		liftingTable = true;
+		click.button.disabled = true;
+		click.button.textContent = 'Making table…';
+		try {
+			const { makeLiveTable } = await import(
+				'$lib/components/table-surfaces/make-live-table'
+			);
+			const result = await makeLiveTable({
+				projectId,
+				documentId: requestedDocumentId,
+				documentTitle: title,
+				content: body,
+				renderedIndex: click.renderedIndex,
+				renderedHeaders: click.renderedHeaders
+			});
+			if (!isCurrentDocumentMutation(session, requestedDocumentId)) return;
+			body = result.content;
+			await performSave({ silent: true });
+			toastService.success('Live table made. It sits under this document.');
+		} catch (cause) {
+			toastService.error(
+				cause instanceof Error ? cause.message : 'Could not make the table.'
+			);
+			click.button.disabled = false;
+			click.button.textContent = 'Make live table';
+		} finally {
+			liftingTable = false;
+		}
+	}
+
 	async function handleInsertImageAsset(asset: InsertableAsset, session: DocumentSession | null) {
 		if (!session || !activeDocumentId || !isCurrentDocumentSession(session)) return;
 		const requestedDocumentId = activeDocumentId;
@@ -3674,6 +3734,7 @@
 	bind:isOpen
 	onClose={closeModal}
 	onBeforeClose={handleModalBeforeClose}
+	contentScrollable={!isTableDocument}
 	size="xl"
 	closeOnBackdrop={false}
 	closeOnEscape={!documentControlsLocked}
@@ -3690,7 +3751,11 @@
 				<div
 					class="flex h-9 w-9 items-center justify-center rounded-md bg-accent/10 text-accent shrink-0"
 				>
-					<FileText class="w-5 h-5" />
+					{#if isTableDocument}
+						<TableIcon class="w-5 h-5" />
+					{:else}
+						<FileText class="w-5 h-5" />
+					{/if}
 				</div>
 				<div class="min-w-0 flex-1">
 					<!-- Breadcrumb path for nested documents -->
@@ -4270,6 +4335,27 @@
 									onExit={handleExitComparison}
 									onNavigate={handleComparisonNavigate}
 								/>
+							{:else if isTableDocument && activeDocumentId}
+								<!-- A table's grid is the main surface; it owns its scroll. -->
+								<div class="flex min-h-[60dvh] flex-1 flex-col sm:min-h-[70dvh]">
+									{#if TableWorkspaceComponent}
+										<TableWorkspaceComponent
+											documentId={activeDocumentId}
+											{projectId}
+											layout="panel"
+											readonly={documentMutationLocked ||
+												sharedEditLocked ||
+												isArchivedDocument}
+											onAsk={openChatAbout}
+										/>
+									{:else}
+										<div
+											class="m-2 h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
+											aria-busy="true"
+											aria-label="Loading table"
+										></div>
+									{/if}
+								</div>
 							{:else}
 								<!-- The editor is the entire main surface; title and metadata live in Details. -->
 								<div class="flex min-h-0 flex-1 flex-col p-1.5 sm:p-2">
@@ -4285,6 +4371,12 @@
 											bind:isRecording={editorIsRecording}
 											bind:isTranscribing={editorIsTranscribing}
 											onInsertImageRequested={openImageInsertModal}
+											onInsertTableRequested={() =>
+												(showTableInsertPicker = true)}
+											embedProjectId={projectId}
+											onMakeLiveTable={activeDocumentId && !sharedEditLocked
+												? handleMakeLiveTable
+												: undefined}
 											onProposeSelection={activeDocumentId &&
 											!sharedEditLocked
 												? handleDocumentProposalSelection
@@ -4819,6 +4911,18 @@
 			</div>
 		{/snippet}
 	</Modal>
+{/if}
+
+{#if activeDocumentId && showTableInsertPicker}
+	{#await import('$lib/components/table-surfaces/TableInsertPicker.svelte') then { default: TableInsertPicker }}
+		<TableInsertPicker
+			{projectId}
+			parentId={activeDocumentId}
+			excludeId={activeDocumentId}
+			onPick={insertTableEmbed}
+			onClose={() => (showTableInsertPicker = false)}
+		/>
+	{/await}
 {/if}
 
 {#if activeDocumentId && publicPageDraft && publicPagePreview}

@@ -33,6 +33,10 @@ export const AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1 = Object.free
 	'create_onto_project',
 	'update_onto_project',
 	'update_onto_asset',
+	// BuildOS Tables (2026-10-04): reviewed gateway writes, one spec row each.
+	'create_onto_table',
+	'update_onto_table',
+	'update_onto_table_rows',
 	'delegate_task',
 	// Calendar writes moved to the worker on 2026-09-04. They call Google
 	// directly from Railway through the shared calendar write stack.

@@ -159,6 +159,16 @@ export function extractWriteEntityMeta(params: {
 		}
 	}
 
+	if (params.op.startsWith('onto.table.')) {
+		// Table results carry the table document as `table` (create/update/get)
+		// or nothing entity-shaped (list).
+		const table = params.result.table;
+		if (table && typeof table === 'object' && !Array.isArray(table)) {
+			return metaFromEntityRecord('document', table as Record<string, unknown>);
+		}
+		return {};
+	}
+
 	if (params.op === 'onto.document.tree.move') {
 		return metaFromEntityRecord('document', params.result, {
 			idField: 'document_id',

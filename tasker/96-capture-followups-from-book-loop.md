@@ -2,6 +2,12 @@
 
 # Tasker 96 — Capture follow-ups found by the book loop (after tasker 95)
 
+> **Audit 2026-10-04 — SHIPPED, VERIFY LIVE.** The first batch shipped in `f212700b1`, the second
+> pass in `406cacc3d` + `8a492ff3b`; all deployed. 106/107 now cover Finding 11. **Left:** click the
+> receipt chip + Undo once (free), and delete the dead `reconcileStartHereAuthoredSections`. The paid
+> fiction check, the latency number and Finding 8 are optional. Request-as-result stays on DJ's hold.
+> **Priority:** P2. **Recommend:** keep.
+
 **Status:** Second pass 2026-09-23: Finding 10 fixed, and findings 1, 5, 6 and 7 verified or fixed (see
 "Results, 2026-09-23 second pass" at the end). Uncommitted. Open: one product fork on Current state,
 Finding 8, and three small leftovers · **Opened:** 2026-09-22 · **Source:** book dogfood loop, isolated QA DB,

@@ -303,6 +303,23 @@ export type GlobalContextData = {
 	};
 };
 
+/**
+ * One table document of the project (BuildOS Tables, 2026-10-04), from
+ * `props.table`. Rendered as a Knowledge Map line
+ * `- Title · table · N rows · Col, Col… [id: …]`.
+ */
+export type ProjectTableContext = {
+	id: string;
+	title: string;
+	description: string | null;
+	type_key: string;
+	updated_at: string | null;
+	row_count: number;
+	column_count: number;
+	/** Visible column names, first 12. */
+	columns: string[];
+};
+
 export type ProjectContextData = {
 	project: LightProject;
 	doc_structure: DocStructureSummary | null;
@@ -324,6 +341,8 @@ export type ProjectContextData = {
 	 * filtered to what the user can open. Present only when the project has a parent or children.
 	 */
 	project_family?: ProjectFamilyV1 | null;
+	/** Table documents in the project; present only when it has at least one. */
+	project_tables?: ProjectTableContext[];
 };
 
 export type EntityContextData = ProjectContextData & {

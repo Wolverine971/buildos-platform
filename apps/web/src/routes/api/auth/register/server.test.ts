@@ -420,14 +420,24 @@ describe('POST /api/auth/register', () => {
 			);
 		});
 
-		it('leaves the confirmation email on the default return address without a redirect', async () => {
-			const { signUp } = await registerWith({ redirect: '//evil.example/' }, false);
+		it.each([
+			['no redirect', {}],
+			['an off-site redirect', { redirect: '//evil.example/' }]
+		])(
+			'still routes the confirmation through /auth/confirm (home) with %s',
+			async (_label, body) => {
+				const { signUp } = await registerWith(body, false);
 
-			expect(signUp).toHaveBeenCalledExactlyOnceWith({
-				email: 'try@example.com',
-				password: 'Password123',
-				options: { data: { name: 'Try' } }
-			});
-		});
+				// No `next`: /auth/confirm signs them in and lands them on /today.
+				expect(signUp).toHaveBeenCalledExactlyOnceWith({
+					email: 'try@example.com',
+					password: 'Password123',
+					options: {
+						data: { name: 'Try' },
+						emailRedirectTo: 'https://build-os.com/auth/confirm'
+					}
+				});
+			}
+		);
 	});
 });

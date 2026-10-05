@@ -255,6 +255,23 @@ export function isDeepResearchCoordinator(run: AgentRunRow): boolean {
 	return run.run_template === 'deep_research' && run.depth === 0;
 }
 
+/**
+ * True for any run in a deep-research tree: the `deep_research` root, or a
+ * researcher child the coordinator dispatched (an ordinary `agent` template run
+ * marked by `orchestration_state.role`). The PRIVATE_DEEP_RESEARCH_ENABLED kill
+ * switch refuses both, so a child queued before the switch went off cannot
+ * keep spending on web research.
+ */
+export function isDeepResearchTreeRun(
+	run: Pick<AgentRunRow, 'run_template' | 'parent_run_id' | 'orchestration_state'>
+): boolean {
+	if (run.run_template === 'deep_research') return true;
+	return (
+		Boolean(run.parent_run_id) &&
+		readRecord(run.orchestration_state)?.role === DEEP_RESEARCH_CHILD_ROLE
+	);
+}
+
 export function isRetryableDeepResearchState(value: unknown): boolean {
 	// A coordinator that crashed between claim and its first checkpoint has an
 	// empty orchestration_state. That is pre-planning work: the entry path

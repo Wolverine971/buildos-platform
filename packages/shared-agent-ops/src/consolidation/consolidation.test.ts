@@ -1,13 +1,16 @@
 // packages/shared-agent-ops/src/consolidation/consolidation.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	ALWAYS_ASKED_OPS,
 	answeredOps,
+	changeCount,
 	describeOps,
 	orderedOptions,
 	parseConsolidationOp,
 	parseConsolidationQuestion,
 	planOps,
 	questionEdits,
+	touchedTasks,
 	type ConsolidationPlan,
 	type ConsolidationQuestion
 } from './consolidation';
@@ -373,5 +376,93 @@ describe('task moves', () => {
 			'Moves 3 docs and the 1 inside them to Beyond Exit Planning.'
 		);
 		expect(describeOps([move([OTHER])], names)).toBe('Moves 1 doc to Beyond Exit Planning.');
+	});
+});
+
+describe('task operations (DJ picks, 2026-10-04)', () => {
+	const T = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+	const [KIT, GUIDES, PALETTE, FORMAT, SCENARIO] = [1, 2, 3, 4, 5].map(T) as string[];
+	const WAYNE = '66666666-6666-4666-8666-666666666666';
+	const SCRIPT_DOC = '77777777-7777-4777-8777-777777777777';
+	const names = {
+		project: () => 'Wayne Strategies',
+		document: () => 'Launch video script',
+		task: (id: string) => (id === KIT ? 'Twitter brand kit' : 'a task')
+	};
+
+	it('parses each task op and refuses unsafe shapes', () => {
+		const merge = { op: 'merge_tasks', task_ids: [GUIDES, PALETTE], keep_id: KIT };
+		expect(parseConsolidationOp(merge)).toEqual(merge);
+		// The survivor can't also be merged away.
+		expect(
+			parseConsolidationOp({ op: 'merge_tasks', task_ids: [KIT], keep_id: KIT })
+		).toBeNull();
+		const plan = {
+			op: 'plan_tasks',
+			task_ids: [FORMAT, SCENARIO],
+			project_id: WAYNE,
+			name: 'Hackathon',
+			sequence: true
+		};
+		expect(parseConsolidationOp(plan)).toEqual(plan);
+		expect(parseConsolidationOp({ ...plan, task_ids: [FORMAT] })).toBeNull();
+		expect(
+			parseConsolidationOp({
+				op: 'rollup_tasks',
+				task_ids: [FORMAT, SCENARIO],
+				project_id: WAYNE,
+				title: 'Send creator outreach (2)'
+			})
+		).not.toBeNull();
+		// "Done" needs evidence that the work happened; "archived" does not.
+		const close = {
+			op: 'close_tasks',
+			task_ids: [KIT],
+			how: 'done',
+			note: 'The script exists.'
+		};
+		expect(parseConsolidationOp({ ...close, evidence_document_id: null })).toBeNull();
+		expect(parseConsolidationOp({ ...close, evidence_document_id: SCRIPT_DOC })).not.toBeNull();
+		expect(
+			parseConsolidationOp({
+				...close,
+				how: 'archived',
+				evidence_document_id: null,
+				note: 'Replaced by the rebrand.'
+			})
+		).not.toBeNull();
+	});
+
+	it('says what each does, counts what changes, and asks before merging or closing', () => {
+		const ops = [
+			{ op: 'merge_tasks' as const, task_ids: [GUIDES, PALETTE], keep_id: KIT },
+			{
+				op: 'plan_tasks' as const,
+				task_ids: [FORMAT, SCENARIO],
+				project_id: WAYNE,
+				name: 'Hackathon',
+				sequence: true
+			}
+		];
+		expect(describeOps(ops, names)).toBe(
+			'Merges 3 tasks into “Twitter brand kit”, archiving the other 2 · puts 2 tasks in order in a new plan “Hackathon”, each waiting on the one before.'
+		);
+		expect(changeCount(ops)).toBe(5);
+		expect(touchedTasks(ops).sort()).toEqual([KIT, GUIDES, PALETTE, FORMAT, SCENARIO].sort());
+		expect(ALWAYS_ASKED_OPS).toEqual(expect.arrayContaining(['merge_tasks', 'close_tasks']));
+		expect(
+			describeOps(
+				[
+					{
+						op: 'close_tasks',
+						task_ids: [KIT],
+						how: 'done',
+						evidence_document_id: SCRIPT_DOC,
+						note: 'The script exists.'
+					}
+				],
+				names
+			)
+		).toBe('Marks 1 task done, citing “Launch video script”.');
 	});
 });

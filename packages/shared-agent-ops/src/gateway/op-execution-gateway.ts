@@ -10,3 +10,9 @@ export * from './op-execution-gateway.worker';
 export * from './op-execution-gateway.staging';
 export * from './op-execution-gateway.document-archive';
 export * from './op-execution-gateway.archive-state';
+export {
+	previewGatewayTableRowsUpdate,
+	previewTableRowsUpdate,
+	tableCsvPath,
+	type GatewayTableRowsPreviewResult
+} from './op-execution-gateway.tables';

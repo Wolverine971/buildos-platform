@@ -35,6 +35,7 @@ interface MockState {
 	emailSequenceUpserts?: Array<Record<string, any>>;
 	emailSequenceRpcCalls?: Array<{ fn: string; args: Record<string, any> }>;
 	failEmailSequenceEnrollmentRpc?: boolean;
+	failClaimPendingRpc?: boolean;
 }
 
 class QueryBuilderMock implements PromiseLike<any> {
@@ -745,6 +746,10 @@ function createMockSupabase(state: MockState) {
 			}
 
 			if (fn === 'claim_pending_email_sequence_sends') {
+				if (state.failClaimPendingRpc) {
+					return { data: null, error: { message: 'claim rpc unavailable' } };
+				}
+
 				const sequence = ensureMockSequence(state);
 				state.emailSequenceEnrollments ??= {};
 				for (const row of Object.values(state.welcomeRows)) {
@@ -853,6 +858,10 @@ describe('WelcomeSequenceService failure recovery', () => {
 	});
 
 	it('creates a sequence row before full state loading so cron can recover later', async () => {
+		// Signup happens now; the welcome window is measured from created_at.
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'));
+
 		const state: MockState = {
 			users: {
 				'user-1': {
@@ -939,6 +948,10 @@ describe('WelcomeSequenceService failure recovery', () => {
 	});
 
 	it('falls back to direct actor creation when actor RPC fails', async () => {
+		// Signup happens now; the welcome window is measured from created_at.
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'));
+
 		const state: MockState = {
 			users: {
 				'user-1': {
@@ -1124,6 +1137,10 @@ describe('WelcomeSequenceService failure recovery', () => {
 	});
 
 	it('cancels a suppressed user at sequence start without sending email_1', async () => {
+		// Signup happens now; the welcome window is measured from created_at.
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'));
+
 		const state: MockState = {
 			users: {
 				'user-1': {
@@ -1196,15 +1213,18 @@ describe('WelcomeSequenceService failure recovery', () => {
 	});
 
 	it('defers a claimed queue step to the next weekday send window', async () => {
+		// Friday signup: email_2 falls due Saturday morning and waits for Monday.
 		const row = createSequenceRow('user-1');
-		row.email_1_sent_at = '2026-03-01T10:01:00.000Z';
+		row.started_at = '2026-03-06T10:00:00.000Z';
+		row.created_at = '2026-03-06T10:00:00.000Z';
+		row.email_1_sent_at = '2026-03-06T10:01:00.000Z';
 		const state: MockState = {
 			users: {
 				'user-1': {
 					id: 'user-1',
 					email: 'user@example.com',
 					name: 'Alex Builder',
-					created_at: '2026-03-01T10:00:00.000Z',
+					created_at: '2026-03-06T10:00:00.000Z',
 					last_visit: null,
 					onboarding_completed_at: null,
 					onboarding_intent: 'plan',
@@ -1305,6 +1325,10 @@ describe('WelcomeSequenceService failure recovery', () => {
 	});
 
 	it('falls back to updated_at when the legacy sequence table is missing last_evaluated_at', async () => {
+		// Signup happens now; the welcome window is measured from created_at.
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'));
+
 		const state: MockState = {
 			users: {
 				'user-1': {
@@ -1358,6 +1382,10 @@ describe('WelcomeSequenceService failure recovery', () => {
 	});
 
 	it('best-effort sends when the legacy sequence table is missing both evaluation columns', async () => {
+		// Signup happens now; the welcome window is measured from created_at.
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'));
+
 		const state: MockState = {
 			users: {
 				'user-1': {
@@ -1401,5 +1429,177 @@ describe('WelcomeSequenceService failure recovery', () => {
 		});
 		expect(state.updates[0]?.updates).not.toHaveProperty('last_evaluated_at');
 		expect(state.updates[0]?.updates).not.toHaveProperty('updated_at');
+	});
+});
+
+describe('WelcomeSequenceService backlog guard', () => {
+	beforeEach(() => {
+		sendEmailMock.mockReset();
+		sendEmailMock.mockResolvedValue({ success: true, messageId: 'msg-1', emailId: 'email-1' });
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	function createUser(createdAt: string) {
+		return {
+			id: 'user-1',
+			email: 'user@example.com',
+			name: 'Alex Builder',
+			created_at: createdAt,
+			last_visit: null,
+			onboarding_completed_at: null,
+			onboarding_intent: 'plan',
+			timezone: 'UTC'
+		};
+	}
+
+	function skipReasons(state: MockState) {
+		return (state.emailSequenceRpcCalls ?? [])
+			.filter((call) => call.fn === 'skip_email_sequence_step')
+			.map((call) => call.args.p_reason);
+	}
+
+	it('skips every remaining step for a months-old signup and sends nothing', async () => {
+		// Production shape: email_1 went out at signup and the cron never ran.
+		const row = createSequenceRow('user-1');
+		row.email_1_sent_at = '2026-03-01T10:01:00.000Z';
+		const state: MockState = {
+			users: { 'user-1': createUser('2026-03-01T10:00:00.000Z') },
+			welcomeRows: { 'user-1': row },
+			updates: [],
+			failRpc: false,
+			actorId: 'actor-1'
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+		// A weekday inside the send window, three months after signup.
+		const now = new Date('2026-06-02T10:00:00.000Z');
+
+		for (let run = 0; run < 4; run += 1) {
+			const result = await service.processDueSequences({ now });
+			expect(result).toMatchObject({ sent: 0, skipped: 1, deferred: 0 });
+		}
+
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		expect(skipReasons(state)).toEqual(Array(4).fill('outside_welcome_window'));
+		expect(state.emailSequenceEnrollments?.['sequence-1:user-1']).toMatchObject({
+			status: 'completed',
+			next_step_number: null
+		});
+		expect(state.welcomeRows['user-1']).toMatchObject({
+			status: 'completed',
+			email_2_sent_at: null,
+			email_5_sent_at: null,
+			email_5_skipped_at: '2026-06-02T10:00:00.000Z'
+		});
+	});
+
+	it('never sends a late welcome on the legacy fallback path', async () => {
+		// Pre-queue rows that never got email_1, processed when the claim RPC fails.
+		const state: MockState = {
+			users: { 'user-1': createUser('2026-03-01T10:00:00.000Z') },
+			welcomeRows: { 'user-1': createSequenceRow('user-1') },
+			updates: [],
+			failRpc: false,
+			actorId: 'actor-1',
+			failClaimPendingRpc: true
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+		const result = await service.processDueSequences({
+			now: new Date('2026-06-02T10:00:00.000Z')
+		});
+
+		expect(result).toMatchObject({ claimed: 0, evaluated: 1, sent: 0, skipped: 1 });
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		expect(state.welcomeRows['user-1']).toMatchObject({
+			email_1_sent_at: null,
+			email_1_skipped_at: '2026-06-02T10:00:00.000Z'
+		});
+	});
+
+	it('does not enroll a signup older than the welcome window', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-14T10:00:00.000Z'));
+
+		const state: MockState = {
+			users: { 'user-1': createUser('2026-03-01T10:00:00.000Z') },
+			welcomeRows: {},
+			updates: [],
+			failRpc: false,
+			emailSequenceEnrollCalls: []
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+
+		await expect(
+			service.startSequenceForUser({ userId: 'user-1', signupMethod: 'email' })
+		).resolves.toBeUndefined();
+
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		expect(state.welcomeRows['user-1']).toBeUndefined();
+		expect(state.emailSequenceEnrollCalls).toHaveLength(0);
+	});
+
+	it('sends email_1 from the cron to a new signup when it is due', async () => {
+		// The signup-time send did not land, so the cron picks email_1 up an hour later.
+		const state: MockState = {
+			users: { 'user-1': createUser('2026-03-01T10:00:00.000Z') },
+			welcomeRows: { 'user-1': createSequenceRow('user-1') },
+			updates: [],
+			failRpc: false,
+			actorId: 'actor-1'
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+		const result = await service.processDueSequences({
+			now: new Date('2026-03-01T11:00:00.000Z')
+		});
+
+		expect(result).toMatchObject({ sent: 1, skipped: 0 });
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		expect(sendEmailMock.mock.calls[0]?.[0]).toMatchObject({
+			to: 'user@example.com',
+			metadata: expect.objectContaining({ sequence_step: 'email_1', branch_key: 'welcome' })
+		});
+		expect(state.emailSequenceEnrollments?.['sequence-1:user-1']).toMatchObject({
+			status: 'active',
+			current_step_number: 1,
+			next_step_number: 2
+		});
+		expect(state.welcomeRows['user-1']?.email_1_sent_at).toBe('2026-03-01T11:00:00.000Z');
+	});
+
+	it('skips overdue steps for a recent signup instead of sending them back to back', async () => {
+		// Day 10, as for the youngest production enrollment: only the day-9 check-in is still timely.
+		const row = createSequenceRow('user-1');
+		row.email_1_sent_at = '2026-03-01T10:01:00.000Z';
+		const state: MockState = {
+			users: { 'user-1': createUser('2026-03-01T10:00:00.000Z') },
+			welcomeRows: { 'user-1': row },
+			updates: [],
+			failRpc: false,
+			actorId: 'actor-1'
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+		const now = new Date('2026-03-11T10:00:00.000Z');
+
+		for (let run = 0; run < 4; run += 1) {
+			await service.processDueSequences({ now });
+		}
+
+		expect(skipReasons(state)).toEqual(['step_overdue', 'step_overdue', 'step_overdue']);
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		expect(sendEmailMock.mock.calls[0]?.[0]).toMatchObject({
+			metadata: expect.objectContaining({ sequence_step: 'email_5' })
+		});
 	});
 });

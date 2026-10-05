@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals: { s
 	const code = url.searchParams.get('code');
 	const oauthError = url.searchParams.get('error');
 	const state = url.searchParams.get('state');
-	const next = url.searchParams.get('next') ?? '/projects';
+	const next = url.searchParams.get('next') ?? '/today';
 	const requestContext = getSecurityRequestContext(request);
 	const securityEventOptions = getSecurityEventLogOptions(platform);
 	const baseErrorContext = {
@@ -230,7 +230,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals: { s
 	}
 
 	// Clean and build redirect URL
-	const sanitizedNext = next.startsWith('/') ? next : '/projects';
+	const sanitizedNext = next.startsWith('/') ? next : '/today';
 	const redirectUrl = new URL(sanitizedNext, url.origin);
 	redirectUrl.searchParams.set('auth_success', 'true');
 

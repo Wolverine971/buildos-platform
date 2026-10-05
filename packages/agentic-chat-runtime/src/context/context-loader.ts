@@ -4,6 +4,13 @@ import type { ChatContextType, Database, ProjectFamilyV1 } from '@buildos/shared
 import { Constants, parseProjectFamilyV1 } from '@buildos/shared-types';
 import type { ProjectFocus } from '@buildos/shared-types';
 import { buildFocusedDocumentContent } from './focused-document-context';
+import {
+	isTableTypeKey,
+	normalizeTableSchema,
+	summarizeTableForContext,
+	type LoadedTable,
+	type TableRow
+} from '@buildos/shared-agent-ops/tables';
 import type { DocStructure } from '@buildos/shared-agent-ops/ontology/onto-api';
 import type {
 	DailyBriefContextData,
@@ -28,6 +35,7 @@ import type {
 	ProjectStartHereDocument,
 	LightTask,
 	ProjectContextData,
+	ProjectTableContext,
 	ProjectTaskRollup,
 	LinkedEdge
 } from './context-models';
@@ -80,6 +88,17 @@ const PROJECT_CONTEXT_TASK_FETCH_LIMIT = PROJECT_CONTEXT_TASK_LIMIT * 4;
 const PROJECT_CONTEXT_DOCUMENT_FETCH_LIMIT = PROJECT_CONTEXT_DOCUMENT_LIMIT * 3;
 const GLOBAL_CONTEXT_ENTITY_FETCH_LIMIT = GLOBAL_CONTEXT_PROJECT_LIMIT * 4;
 const START_HERE_CANDIDATE_FETCH_LIMIT = 20;
+/** Table documents listed for the Knowledge Map (BuildOS Tables, 2026-10-04). */
+const PROJECT_TABLES_CONTEXT_LIMIT = 40;
+const PROJECT_TABLE_COLUMNS_CONTEXT_LIMIT = 12;
+/** Rows shown for a focused table; the rest are one read_table_rows call away. */
+const FOCUSED_TABLE_SAMPLE_ROWS = 15;
+const FOCUSED_TABLE_SUMMARY_MAX_CHARS = 3_000;
+type LoadedProjectTable = ProjectTableContext & { schema: ReturnType<typeof normalizeTableSchema> };
+const TABLE_DOCUMENT_SELECT = 'id, title, description, type_key, updated_at, table:props->table';
+type FocusedTableLoad = { table: LoadedProjectTable; rows: TableRow[] };
+const TABLE_ROW_SELECT =
+	'id, row_number, position, cells, cell_meta, version, created_by, updated_by, created_at, updated_at';
 const PROJECT_DESCRIPTION_MAX_CHARS = 320;
 const ENTITY_DESCRIPTION_MAX_CHARS = 220;
 const TASK_DESCRIPTION_MAX_CHARS = 280;
@@ -1889,6 +1908,40 @@ export type FastChatContextLoaderPorts = {
 	logger: { warn(message: string, metadata?: Record<string, unknown>): void };
 };
 
+/** One table document row (`TABLE_DOCUMENT_SELECT`) as context data, or null. */
+function toLoadedProjectTable(value: unknown): LoadedProjectTable | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const row = value as Record<string, unknown>;
+	if (typeof row.id !== 'string' || !isTableTypeKey(row.type_key as string | null | undefined)) {
+		return null;
+	}
+	const schema = normalizeTableSchema(row.table ?? null);
+	const visible = schema.columns.filter((column) => column.hidden !== true);
+	return {
+		id: row.id,
+		title: typeof row.title === 'string' && row.title.trim() ? row.title : 'Untitled table',
+		description: typeof row.description === 'string' ? row.description : null,
+		type_key: row.type_key as string,
+		updated_at: typeof row.updated_at === 'string' ? row.updated_at : null,
+		row_count: schema.row_count,
+		column_count: visible.length,
+		columns: visible.slice(0, PROJECT_TABLE_COLUMNS_CONTEXT_LIMIT).map((column) => column.name),
+		schema
+	};
+}
+
+/**
+ * The focused-table prompt block. The context loader reads only the first rows, so the
+ * stored row count is passed through for the header and the read-more hint.
+ */
+function summarizeFocusedTable(table: LoadedTable, rowCount: number): string {
+	return summarizeTableForContext(table, {
+		sampleRows: FOCUSED_TABLE_SAMPLE_ROWS,
+		maxChars: FOCUSED_TABLE_SUMMARY_MAX_CHARS,
+		totalRows: rowCount
+	});
+}
+
 /**
  * Portable data loading and projection used by web admission and, later, workers.
  * The caller must supply the trusted acting user and a correctly scoped client.
@@ -2379,7 +2432,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 	): Promise<T> {
 		if (!data?.project?.id) return data;
 		const projectId = data.project.id;
-		const [startHere, steward, family] = await Promise.all([
+		const [startHere, steward, family, tables] = await Promise.all([
 			loadProjectStartHereDocument(supabase, projectId, onError),
 			loadProjectStewardPacket({
 				supabase,
@@ -2391,15 +2444,196 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				reportContextLoadError(onError, 'query.steward', error, { projectId });
 				return null;
 			}),
-			loadProjectFamily(supabase, projectId, userId, onError)
+			loadProjectFamily(supabase, projectId, userId, onError),
+			loadProjectTableDocuments(supabase, projectId, onError)
 		]);
-		if (!startHere && !steward && !family) return data;
+		const projectTables = tables?.map(({ schema: _schema, ...summary }) => summary) ?? [];
+		if (!startHere && !steward && !family && projectTables.length === 0) {
+			return data;
+		}
 		return {
 			...data,
 			...(startHere ? { start_here: startHere } : {}),
 			...(steward ? { steward } : {}),
-			...(family ? { project_family: family } : {})
+			...(family ? { project_family: family } : {}),
+			...(projectTables.length > 0 ? { project_tables: projectTables } : {})
 		} as T;
+	}
+
+	/**
+	 * The focused table, when the focus is a table document (structured
+	 * type_key on the already-loaded focus row, never the message text): its
+	 * schema and first rows, loaded in parallel. Any other focus costs no query.
+	 * Runs beside attachProjectStartHere, because the RPC path builds the focus
+	 * entity after the project context. Fail-open: null keeps the plain preview.
+	 */
+	async function loadFocusedTableContext(
+		supabase: SupabaseClient<Database>,
+		focus: Record<string, unknown> | null | undefined,
+		focusType: string | null | undefined,
+		focusEntityId: string | null | undefined,
+		onError?: LoadContextParams['onError']
+	): Promise<FocusedTableLoad | null> {
+		if (focusType !== 'document' || !focus) return null;
+		if (!isTableTypeKey(focus.type_key as string | null | undefined)) return null;
+		const tableId =
+			typeof focus.id === 'string' && isUuid(focus.id)
+				? focus.id
+				: isUuid(focusEntityId)
+					? focusEntityId
+					: null;
+		if (!tableId) return null;
+		const [table, rows] = await Promise.all([
+			loadTableDocumentById(supabase, tableId, onError),
+			loadFocusedTableRows(supabase, tableId, onError)
+		]);
+		return table && rows ? { table, rows } : null;
+	}
+
+	function applyFocusedTableContext<T extends ProjectContextData | EntityContextData | null>(
+		data: T,
+		focused: FocusedTableLoad | null
+	): T {
+		if (!focused || !data || !('focus_entity_full' in data) || !data.focus_entity_full) {
+			return data;
+		}
+		return {
+			...data,
+			focus_entity_full: withFocusedTableSummary(
+				data.focus_entity_full,
+				focused.table,
+				focused.rows
+			)
+		} as T;
+	}
+
+	async function loadTableDocumentById(
+		supabase: SupabaseClient<Database>,
+		tableId: string,
+		onError?: LoadContextParams['onError']
+	): Promise<LoadedProjectTable | null> {
+		try {
+			const { data, error } = await (supabase as any)
+				.from('onto_documents')
+				.select(TABLE_DOCUMENT_SELECT)
+				.eq('id', tableId)
+				.is('deleted_at', null)
+				.maybeSingle();
+			if (error) {
+				reportContextLoadError(onError, 'query.project.focus_table', error, { tableId });
+				return null;
+			}
+			return toLoadedProjectTable(data);
+		} catch (error) {
+			reportContextLoadError(onError, 'query.project.focus_table', error, { tableId });
+			return null;
+		}
+	}
+
+	/**
+	 * Every live table document in the project with its column schema (one small
+	 * query reading only `props->table`). Fail-open: a failure drops the table
+	 * lines from the Knowledge Map, nothing else.
+	 */
+	async function loadProjectTableDocuments(
+		supabase: SupabaseClient<Database>,
+		projectId: string,
+		onError?: LoadContextParams['onError']
+	): Promise<LoadedProjectTable[] | null> {
+		try {
+			const { data, error } = await (supabase as any)
+				.from('onto_documents')
+				.select(TABLE_DOCUMENT_SELECT)
+				.eq('project_id', projectId)
+				.like('type_key', 'document.table%')
+				.is('deleted_at', null)
+				.is('archived_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(PROJECT_TABLES_CONTEXT_LIMIT);
+			if (error) {
+				reportContextLoadError(onError, 'query.project.tables', error, { projectId });
+				return null;
+			}
+			if (!Array.isArray(data)) return null;
+			return data
+				.map((row: unknown) => toLoadedProjectTable(row))
+				.filter((table): table is LoadedProjectTable => table !== null);
+		} catch (error) {
+			reportContextLoadError(onError, 'query.project.tables', error, { projectId });
+			return null;
+		}
+	}
+
+	/** The focused table's first rows in display order (never the whole table). */
+	async function loadFocusedTableRows(
+		supabase: SupabaseClient<Database>,
+		documentId: string,
+		onError?: LoadContextParams['onError']
+	): Promise<TableRow[] | null> {
+		try {
+			// onto_document_rows is newer than the generated types (migration
+			// 20261004230000); the query is typed loosely until `pnpm gen:all`.
+			const { data, error } = await (supabase as any)
+				.from('onto_document_rows')
+				.select(TABLE_ROW_SELECT)
+				.eq('document_id', documentId)
+				.is('deleted_at', null)
+				.order('position', { ascending: true })
+				.order('row_number', { ascending: true })
+				.limit(FOCUSED_TABLE_SAMPLE_ROWS);
+			if (error) {
+				reportContextLoadError(onError, 'query.project.focus_table_rows', error, {
+					documentId
+				});
+				return null;
+			}
+			return Array.isArray(data) ? (data as TableRow[]) : null;
+		} catch (error) {
+			reportContextLoadError(onError, 'query.project.focus_table_rows', error, {
+				documentId
+			});
+			return null;
+		}
+	}
+
+	/**
+	 * A focused table replaces the 16K markdown preview (its body is a generated
+	 * projection of the rows) with the schema + row count + first rows, ≤3K chars.
+	 */
+	function withFocusedTableSummary(
+		focus: Record<string, unknown>,
+		table: LoadedProjectTable,
+		rows: TableRow[]
+	): Record<string, unknown> {
+		const {
+			content_preview: _preview,
+			content_length: _length,
+			content_truncated: _truncated,
+			...rest
+		} = focus;
+		const summary = summarizeFocusedTable(
+			{
+				document: {
+					id: table.id,
+					project_id: typeof focus.project_id === 'string' ? focus.project_id : '',
+					title: table.title,
+					description: table.description,
+					type_key: table.type_key,
+					state_key: typeof focus.state_key === 'string' ? focus.state_key : null,
+					updated_at: table.updated_at ?? ''
+				},
+				schema: table.schema,
+				rows
+			},
+			table.row_count
+		);
+		return {
+			...rest,
+			table_summary: summary,
+			table_row_count: table.row_count,
+			table_rows_shown: Math.min(rows.length, table.row_count),
+			table_columns: table.columns
+		};
 	}
 
 	async function loadGlobalContextData(
@@ -3364,12 +3598,26 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				} else {
 					const projectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
 					if (projectContext) {
-						const projectContextWithStartHere = await attachProjectStartHere(
-							supabase,
-							projectContext,
-							userId,
-							params.onError
-						);
+						const [projectContextWithStartHere, focusedTable] = await Promise.all([
+							attachProjectStartHere(
+								supabase,
+								projectContext,
+								userId,
+								params.onError
+							),
+							focusType && focusEntityId
+								? loadFocusedTableContext(
+										supabase,
+										rpcPayload.focus_entity_full as Record<
+											string,
+											unknown
+										> | null,
+										focusType,
+										focusEntityId,
+										params.onError
+									)
+								: Promise.resolve(null)
+						]);
 						const resolvedProjectName =
 							projectContextWithStartHere.project.name ??
 							baseContext.projectName ??
@@ -3389,7 +3637,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 								focusEntityName:
 									resolvedFocusName ?? baseContext.focusEntityName ?? null,
 								contextLoadSource: 'rpc',
-								data
+								data: applyFocusedTableContext(data, focusedTable)
 							};
 						}
 
@@ -3446,19 +3694,23 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 					focusEntityId,
 					onError: params.onError
 				});
-				const dataWithStartHere = await attachProjectStartHere(
-					supabase,
-					data,
-					userId,
-					params.onError
-				);
+				const [dataWithStartHere, focusedTable] = await Promise.all([
+					attachProjectStartHere(supabase, data, userId, params.onError),
+					loadFocusedTableContext(
+						supabase,
+						data?.focus_entity_full,
+						focusType,
+						focusEntityId,
+						params.onError
+					)
+				]);
 				return {
 					...baseContext,
 					projectId,
 					projectName: projectFocus?.projectName ?? baseContext.projectName,
 					focusEntityName: focusEntityName ?? baseContext.focusEntityName ?? null,
 					contextLoadSource: fallbackContextLoadSource,
-					data: dataWithStartHere
+					data: applyFocusedTableContext(dataWithStartHere, focusedTable)
 				};
 			}
 

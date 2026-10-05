@@ -26,8 +26,11 @@
 		Globe,
 		GripVertical,
 		ImageIcon,
-		Share2
+		Share2,
+		Table2 as Table
 	} from '$lib/icons/lucide';
+	import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
+	import { formatRowCount } from '$lib/components/table-surfaces/table-surface-utils';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
 	import type { DragState } from './useDragDrop.svelte';
@@ -64,6 +67,8 @@
 		// Project hierarchy: the folder shown on every sub-project's Docs tab
 		sharedFolderId?: string | null;
 		sharedCount?: number;
+		/** Live row counts for table documents (props.table.row_count), keyed by document id. */
+		tableRowCounts?: Map<string, number>;
 	}
 
 	let {
@@ -85,7 +90,8 @@
 		imagesByDocumentId,
 		onOpenImage,
 		sharedFolderId = null,
-		sharedCount = 0
+		sharedCount = 0,
+		tableRowCounts
 	}: Props = $props();
 
 	async function handleCopyPublicLink(e: MouseEvent) {
@@ -108,6 +114,8 @@
 	let nodeElement: HTMLElement | null = $state(null);
 
 	const isFolder = $derived(node.type === 'folder');
+	const isTable = $derived(isTableTypeKey(node.type_key));
+	const tableRowCount = $derived(isTable ? (tableRowCounts?.get(node.id) ?? null) : null);
 	const images = $derived(imagesByDocumentId?.get(node.id) ?? []);
 	const childDocs = $derived(isFolder ? (node.children ?? []) : []);
 	// A document with filed images expands like a folder; its images list after child docs.
@@ -354,7 +362,9 @@
 		>
 			<!-- Icon -->
 			<span class="flex h-4 w-4 flex-shrink-0 items-center justify-center">
-				{#if isFolder}
+				{#if isTable}
+					<Table class="w-4 h-4 text-accent" aria-hidden="true" />
+				{:else if isFolder}
 					{#if isExpanded}
 						<FolderOpen class="w-4 h-4 text-accent" />
 					{:else}
@@ -371,6 +381,17 @@
 			>
 				{node.title}
 			</span>
+
+			<!-- Tables show how many rows they hold without loading them. -->
+			{#if tableRowCount !== null}
+				<span
+					class="inline-flex shrink-0 items-center rounded-md bg-muted px-1.5 py-0.5 text-2xs font-medium tabular-nums text-muted-foreground"
+					aria-label={formatRowCount(tableRowCount)}
+					title={formatRowCount(tableRowCount)}
+				>
+					{tableRowCount.toLocaleString('en-US')}
+				</span>
+			{/if}
 
 			<!-- Collapsed documents still show that they hold images. -->
 			{#if images.length > 0 && !isExpanded}
@@ -484,6 +505,7 @@
 						{onOpenImage}
 						{sharedFolderId}
 						{sharedCount}
+						{tableRowCounts}
 					/>
 				</div>
 			{/each}

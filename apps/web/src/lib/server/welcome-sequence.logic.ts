@@ -50,6 +50,25 @@ const STEP_DAY_OFFSETS: Record<WelcomeSequenceStep, number> = {
 
 const SEND_WINDOW_START_HOUR = 9;
 const SEND_WINDOW_END_HOUR = 17;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Backlog guard: the longest a due step may wait and still be sent. Normal
+ * operation holds a step until the next weekday 9am in the user's timezone,
+ * at most about 2.7 days (due Friday just after 5pm, sent Monday 9am). A step
+ * later than this means the cron was off or failing. Sending it would deliver
+ * stale copy, often several steps back to back, so it is skipped instead.
+ */
+export const WELCOME_STEP_MAX_LATENESS_DAYS = 3;
+
+/**
+ * How long after signup a user may still enter or continue the welcome
+ * sequence: the last step's day (email_5, day 9) plus the lateness allowance
+ * above. Every step is stale by then. Older users are not enrolled, and any
+ * pending steps are skipped, so they never receive a welcome email.
+ */
+export const WELCOME_SEQUENCE_WINDOW_DAYS =
+	STEP_DAY_OFFSETS.email_5 + WELCOME_STEP_MAX_LATENESS_DAYS;
 
 function safeTimezone(timezone: string | null | undefined): string {
 	if (!timezone) {
@@ -134,6 +153,48 @@ export function isWithinWelcomeSendWindow(
 ): boolean {
 	const localHour = getLocalHour(safeTimezone(timezone), now);
 	return localHour >= SEND_WINDOW_START_HOUR && localHour < SEND_WINDOW_END_HOUR;
+}
+
+export function isOutsideWelcomeWindow(startedAt: string, now: Date = new Date()): boolean {
+	const startedAtMs = Date.parse(startedAt);
+	// Fail closed: without a usable start time we cannot tell how late a step is.
+	if (Number.isNaN(startedAtMs)) {
+		return true;
+	}
+
+	return now.getTime() - startedAtMs > WELCOME_SEQUENCE_WINDOW_DAYS * DAY_MS;
+}
+
+/**
+ * Send paths call this before determineNextWelcomeAction. It returns a skip for
+ * the next pending step when the user is past the welcome window or the step is
+ * more than WELCOME_STEP_MAX_LATENESS_DAYS overdue, and null when the normal
+ * decision applies. It stays separate from determineNextWelcomeAction, which
+ * the admin previews evaluate at a fixed clock.
+ */
+export function getWelcomeBacklogSkip(
+	progress: WelcomeSequenceProgress,
+	now: Date = new Date()
+): WelcomeStepAction | null {
+	if (progress.status !== 'active') {
+		return null;
+	}
+
+	const step = WELCOME_SEQUENCE_STEPS.find((candidate) => !isStepFinalized(progress, candidate));
+	if (!step) {
+		return null;
+	}
+
+	if (isOutsideWelcomeWindow(progress.startedAt, now)) {
+		return { action: 'skip', step, reason: 'outside_welcome_window' };
+	}
+
+	const dueAt = addDays(progress.startedAt, STEP_DAY_OFFSETS[step]);
+	if (now.getTime() - dueAt.getTime() > WELCOME_STEP_MAX_LATENESS_DAYS * DAY_MS) {
+		return { action: 'skip', step, reason: 'step_overdue' };
+	}
+
+	return null;
 }
 
 export function determineNextWelcomeAction(

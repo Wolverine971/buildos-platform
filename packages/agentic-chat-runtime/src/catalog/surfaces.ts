@@ -158,7 +158,12 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	'search_onto_risks',
 	'get_onto_risk_details',
 	'create_onto_risk',
-	'update_onto_risk'
+	'update_onto_risk',
+	// BuildOS Tables (2026-10-04). A table is a document, so its two reads join
+	// the document scan→read pair on both surfaces: a search on a global turn can
+	// name a table. Jev drops them on turns that are not about a table.
+	'get_onto_table_details',
+	'read_table_rows'
 ] as const;
 
 /**
@@ -203,7 +208,12 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 	'update_onto_asset',
 	// Tasker 112 (2026-09-29): the nightly Project cleanup change set. A cleanup or
 	// "what's out of date?" turn starts from it instead of re-deriving it with ~18 reads.
-	'get_project_cleanup'
+	'get_project_cleanup',
+	// BuildOS Tables (2026-10-04): table writes are project-only, like the
+	// document writes. Row batches are one call; column changes are reviewed.
+	'create_onto_table',
+	'update_onto_table',
+	'update_onto_table_rows'
 ] as const;
 
 /**

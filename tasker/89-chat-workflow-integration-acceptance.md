@@ -5,6 +5,9 @@
 
 # 89 — Prove the integrated workflow and prepare the test handoff
 
+> **Audit 2026-10-04 — STALE — RETIRE.** Its harness (`scripts/agentic/gate.ts`, `workflow-prototype.ts` and the QA DB) was deleted in `5fdf750c2` on 09-24. A complete live review already passed in prod for DJ on 09-20. The usefulness comparison it planned was answered by tasker 98's blind read: specialists 0/4 against single chat.
+> **Left:** nothing worth doing. If specialists return, re-scope this as a `pnpm agentic:prod-battery` case and mark `docs/testing/chat-workflow-pilot-acceptance.md` point-in-time. **Priority:** none. **Recommend:** retire.
+
 **Created:** 2026-09-12  
 **Status:** Test planning can proceed; final execution depends on 82–88. The 82/84 stabilization gate remains unaccepted: September 14 isolated result **45/52**, with Case 8 latency and Case 9/10/14 content/quality failures. See [Task 90 closeout](../docs/technical/reviews/CHAT_WORKFLOW_TASK90_CLOSEOUT_2026-09-14.md).
 

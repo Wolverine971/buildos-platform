@@ -42,6 +42,14 @@ const UPDATE_TOOL_PREFIX = 'update_onto_';
 const NULLABLE_UPDATE_FIELDS: Readonly<Record<string, readonly string[]>> = {
 	update_onto_asset: ['document_id']
 };
+/**
+ * Update tools whose target id is not `<entity>_id` derived from the name.
+ * `update_onto_table_rows` edits rows of the table named by `table_id`
+ * (BuildOS Tables, 2026-10-04).
+ */
+const UPDATE_TOOL_ID_KEYS: Readonly<Record<string, string>> = {
+	update_onto_table_rows: 'table_id'
+};
 const UUID_VALIDATED_TOOL_NAMES = new Set([
 	'list_task_documents',
 	'create_task_document',
@@ -71,10 +79,12 @@ const UUID_ARG_KEYS = new Set([
 	'parent_document_id',
 	'new_parent_id',
 	'supporting_milestone_id',
-	'asset_id'
+	'asset_id',
+	'table_id'
 ]);
 const STRICT_UUID_ARG_KEYS = new Set([
 	'asset_id',
+	'table_id',
 	'task_id',
 	'goal_id',
 	'plan_id',
@@ -444,7 +454,7 @@ function validateUpdateToolArgs(
 	const entity = toolName.slice(UPDATE_TOOL_PREFIX.length);
 	if (!entity) return;
 
-	const idKey = `${entity}_id`;
+	const idKey = UPDATE_TOOL_ID_KEYS[toolName] ?? `${entity}_id`;
 	const rawId = args[idKey];
 	const trimmedId = typeof rawId === 'string' ? rawId.trim() : rawId;
 	if (!trimmedId || typeof trimmedId !== 'string') {

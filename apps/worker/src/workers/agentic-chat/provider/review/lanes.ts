@@ -16,6 +16,7 @@ import {
 } from '../contracts';
 import { createStableAgenticChatReadToolTransitionIdV1 } from '../../tools/read-tool-identity';
 import { formatDocumentEditPreviewsForReview } from '../document-edit-preview';
+import { formatTableEditPreviewsForReview } from '../table-edit-preview';
 import {
 	type ProviderLaneContext,
 	type ProviderPass,
@@ -97,7 +98,14 @@ export async function* streamMutationBatchReview(
 		allowReadOnlyCorrection,
 		allowRevision,
 		state.getRequestExpectation(),
-		formatDocumentEditPreviewsForReview(batch, state.getDocumentEditPreviews())
+		// Document diffs and table row-batch previews share the one preview slot.
+		[
+			formatDocumentEditPreviewsForReview(batch, state.getDocumentEditPreviews()),
+			formatTableEditPreviewsForReview(batch, state.getTableEditPreviews())
+		]
+			.filter((preview): preview is string => preview !== null)
+			.join('\n') || null,
+		[...state.getExternalContentSources()]
 	);
 	let accumulatedReviewUsage = priorUsage;
 	let pendingReviewTool = false;

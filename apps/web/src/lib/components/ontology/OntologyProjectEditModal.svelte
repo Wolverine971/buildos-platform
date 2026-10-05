@@ -40,7 +40,7 @@
 		Eye,
 		Edit
 	} from 'lucide-svelte';
-	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import ProjectDeleteConfirmModal from '$lib/components/project/ProjectDeleteConfirmModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import EntityModalDetailsDrawer from './EntityModalDetailsDrawer.svelte';
@@ -75,6 +75,8 @@
 		onClose?: () => void;
 		onSaved?: (project: Project) => void;
 		onDeleted?: () => void;
+		/** Offered in the delete dialog: hand the project to someone instead of deleting it. */
+		onHandOff?: () => void;
 	}
 
 	const FACET_CONTEXT_OPTIONS = [
@@ -107,7 +109,8 @@
 		canManageExternalAgentAccess = false,
 		onClose,
 		onSaved,
-		onDeleted
+		onDeleted,
+		onHandOff
 	}: Props = $props();
 	const projectEditFormInstanceId = $props.id();
 	const projectEditFormId = `project-edit-form-${projectEditFormInstanceId}`;
@@ -402,7 +405,7 @@
 				throw new Error(result.error ?? 'Failed to delete project');
 			}
 
-			toastService.success('Project deleted');
+			toastService.success('Moved to Trash. Restore it from Projects within 30 days.');
 			onDeleted?.();
 			onClose?.();
 		} catch (err) {
@@ -1454,25 +1457,21 @@
 	{/snippet}
 </Modal>
 
-{#if canDeleteProject && showDeleteConfirm}
-	<ConfirmationModal
+{#if canDeleteProject && showDeleteConfirm && project}
+	<ProjectDeleteConfirmModal
 		isOpen={showDeleteConfirm}
-		title="Delete Project"
-		confirmText="Delete Project"
-		confirmVariant="danger"
+		projectId={project.id}
+		projectName={project.name || 'This project'}
 		loading={isDeleting}
-		loadingText="Deleting..."
-		icon="danger"
 		onconfirm={handleDelete}
 		oncancel={() => (showDeleteConfirm = false)}
-	>
-		{#snippet content()}
-			<p class="text-sm text-muted-foreground">
-				This action cannot be undone. The project and all its associated data will be
-				permanently deleted.
-			</p>
-		{/snippet}
-	</ConfirmationModal>
+		onHandOff={onHandOff
+			? () => {
+					showDeleteConfirm = false;
+					onHandOff?.();
+				}
+			: undefined}
+	/>
 {/if}
 
 <!-- Chat About Modal (Lazy Loaded) -->

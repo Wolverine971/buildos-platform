@@ -151,7 +151,14 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	list_email_accounts: { op: 'email.accounts.list', kind: 'read' },
 	search_email_messages: { op: 'email.messages.search', kind: 'read' },
 	scan_email_inbox: { op: 'email.messages.scan', kind: 'read' },
-	get_email_message: { op: 'email.messages.get', kind: 'read' }
+	get_email_message: { op: 'email.messages.get', kind: 'read' },
+	// --- Tables (2026-10-04, BuildOS Tables). A table is a document; these ops
+	// are implemented by the shared gateway (op-execution-gateway.tables.ts). ---
+	get_onto_table_details: { op: 'onto.table.get', kind: 'read' },
+	read_table_rows: { op: 'onto.table.rows.query', kind: 'read' },
+	create_onto_table: { op: 'onto.table.create', kind: 'write' },
+	update_onto_table: { op: 'onto.table.update', kind: 'write' },
+	update_onto_table_rows: { op: 'onto.table.rows.update', kind: 'write' }
 });
 
 let cachedRegistry: ToolRegistry | null = null;

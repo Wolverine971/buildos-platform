@@ -130,6 +130,23 @@ export const GATEWAY_MUTATION_COMMANDS: Record<BuildosAgentWriteOp, GatewayMutat
 		entityKind: 'asset',
 		proposedChangeAction: 'update'
 	},
+	// Tables are documents (type_key document.table): bookkeeping and activity
+	// rows use entity_type 'document' (onto_project_logs has no table type).
+	'onto.table.create': {
+		entityKind: 'document',
+		proposedChangeAction: 'create',
+		activity: { entityType: 'document', action: 'created' }
+	},
+	'onto.table.update': {
+		entityKind: 'document',
+		proposedChangeAction: 'update',
+		activity: { entityType: 'document', action: 'updated' }
+	},
+	'onto.table.rows.update': {
+		entityKind: 'document',
+		proposedChangeAction: 'update',
+		activity: { entityType: 'document', action: 'updated' }
+	},
 	'cal.event.create': {
 		entityKind: 'event',
 		proposedChangeAction: 'create',

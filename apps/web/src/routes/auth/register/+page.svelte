@@ -342,8 +342,7 @@
 				const pendingRedirect = redirectTarget
 					? null
 					: await resolvePendingInviteRedirect();
-				const destination =
-					redirectTarget ?? pendingRedirect ?? '/projects?onboarding=true';
+				const destination = redirectTarget ?? pendingRedirect ?? '/today';
 
 				// Auto-login successful - navigate to destination
 				await goto(destination, {

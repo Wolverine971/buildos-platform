@@ -1,10 +1,10 @@
 <!-- apps/web/src/routes/projects/[id]/ProjectWorkspaceOptionsMenu.svelte -->
 <!-- Project-level controls restored from the original project workspace. -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { portal } from '$lib/actions/portal';
 	import Button from '$lib/components/ui/Button.svelte';
-	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import ProjectDeleteConfirmModal from '$lib/components/project/ProjectDeleteConfirmModal.svelte';
 	import {
 		deleteProject,
 		fetchProjectNotificationSettings,
@@ -221,7 +221,7 @@
 		deleteProjectError = null;
 		try {
 			await deleteProject(project.id);
-			toastService.success('Project deleted');
+			toastService.success('Moved to Trash. Restore it from Projects within 30 days.');
 			showDeleteProjectModal = false;
 			await goto('/projects');
 		} catch (error) {
@@ -231,6 +231,14 @@
 		} finally {
 			isDeletingProject = false;
 		}
+	}
+
+	/** "Hand it off instead": leave the delete flow for collaboration settings. */
+	function openHandOff() {
+		showDeleteProjectModal = false;
+		showProjectEditModal = false;
+		deleteProjectError = null;
+		showCollaborationModal = true;
 	}
 
 	$effect(() => {
@@ -433,6 +441,7 @@
 				showProjectEditModal = false;
 				void goto('/projects');
 			}}
+			onHandOff={canOpenCollaboration ? openHandOff : undefined}
 		/>
 	{/await}
 {/if}
@@ -460,35 +469,23 @@
 			canManageMembers={canAdmin}
 			onLeftProject={() => void goto('/projects')}
 			onMembersChanged={() => void ensureNotificationSettingsLoaded(true)}
+			onOwnershipChanged={() => void invalidateAll()}
 			onClose={() => (showCollaborationModal = false)}
 		/>
 	{/await}
 {/if}
 
 {#if showDeleteProjectModal}
-	<ConfirmationModal
-		title="Delete project"
-		confirmText="Delete"
-		confirmVariant="danger"
+	<ProjectDeleteConfirmModal
 		isOpen={showDeleteProjectModal}
+		projectId={project.id}
+		projectName={project.name || 'This project'}
 		loading={isDeletingProject}
+		error={deleteProjectError}
 		onconfirm={confirmProjectDelete}
 		oncancel={() => (showDeleteProjectModal = false)}
-	>
-		{#snippet content()}
-			<p class="text-sm text-muted-foreground">
-				This will permanently delete <span class="font-semibold text-foreground"
-					>{project.name}</span
-				>
-				and all related data. This action cannot be undone.
-			</p>
-		{/snippet}
-		{#snippet details()}
-			{#if deleteProjectError}
-				<p class="mt-2 text-sm text-destructive">{deleteProjectError}</p>
-			{/if}
-		{/snippet}
-	</ConfirmationModal>
+		onHandOff={canOpenCollaboration ? openHandOff : undefined}
+	/>
 {/if}
 
 <style>

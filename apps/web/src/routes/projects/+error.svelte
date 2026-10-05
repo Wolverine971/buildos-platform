@@ -48,8 +48,8 @@
 		window.location.href = '/';
 	}
 
-	function handleGoToDashboard() {
-		window.location.href = '/ontology';
+	function handleGoToToday() {
+		window.location.href = '/today';
 	}
 </script>
 
@@ -104,8 +104,8 @@
 							Go Home
 						</Button>
 					{:else if status === 404}
-						<Button variant="primary" size="md" onclick={handleGoToDashboard}>
-							Go to Dashboard
+						<Button variant="primary" size="md" onclick={handleGoToToday}>
+							Go to Today
 						</Button>
 					{:else}
 						<Button variant="primary" size="md" onclick={handleRetry}>

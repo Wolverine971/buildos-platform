@@ -27,11 +27,18 @@
 		PanelLeftOpen,
 		Pencil,
 		RefreshCw,
+		Table2 as Table,
 		Target,
 		X
 	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
-	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
+	import { getProseClasses, renderDocumentMarkdown, renderMarkdown } from '$lib/utils/markdown';
+	import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
+	import {
+		documentEmbeds,
+		type MakeLiveTableClick
+	} from '$lib/components/table-surfaces/document-embeds';
+	import { tableEmbedInsertion } from '$lib/components/table-surfaces/table-surface-utils';
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
 	import {
 		KIND_WORD,
@@ -48,6 +55,7 @@
 		content: string | null;
 		description?: string | null;
 		state_key: string;
+		type_key?: string | null;
 		updated_at: string;
 	};
 	type TaskData = {
@@ -95,7 +103,8 @@
 		onToggleList,
 		onChat,
 		onChanged,
-		onDetent
+		onDetent,
+		onTableShown
 	}: {
 		item: ReaderItem;
 		projectId: string;
@@ -119,6 +128,8 @@
 		/** A task or goal changed: the card list and tiles should catch up. */
 		onChanged: () => void;
 		onDetent?: (detent: SheetDetent) => void;
+		/** A table opened: the card gives it the full width (Focus) for this item. */
+		onTableShown?: (id: string) => void;
 	} = $props();
 
 	const word = $derived(KIND_WORD[item.kind]);
@@ -168,6 +179,102 @@
 	const stateKey = $derived(
 		current?.doc?.state_key ?? current?.task?.state_key ?? current?.goal?.state_key ?? ''
 	);
+
+	// ---------- Tables ----------
+
+	// A table is a document whose body is a grid; it never opens the text editor.
+	const isTable = $derived(Boolean(current?.doc && isTableTypeKey(current.doc.type_key)));
+	type WorkspaceComponent = typeof import('$lib/components/tables/TableWorkspace.svelte').default;
+	let Workspace = $state<WorkspaceComponent | null>(null);
+	let tableShownKey = '';
+
+	$effect(() => {
+		if (!isTable) return;
+		const k = key;
+		untrack(() => {
+			if (tableShownKey === k) return;
+			tableShownKey = k;
+			if (phone) onDetent?.('full');
+			else onTableShown?.(item.id);
+		});
+		if (!Workspace) {
+			void import('$lib/components/tables/TableWorkspace.svelte').then(
+				(module) => (Workspace = module.default)
+			);
+		}
+	});
+
+	function askAboutTable() {
+		if (!chatOn) onChat();
+	}
+
+	// "Make live table" on a markdown table in a doc being read.
+	let liftingTable = false;
+	async function handleMakeLiveTable(click: MakeLiveTableClick) {
+		const doc = current?.doc;
+		const k = key;
+		if (!doc || !canWrite || liftingTable || editing) return;
+		liftingTable = true;
+		click.button.disabled = true;
+		click.button.textContent = 'Making table…';
+		try {
+			const { makeLiveTable } = await import(
+				'$lib/components/table-surfaces/make-live-table'
+			);
+			const result = await makeLiveTable({
+				projectId,
+				documentId: doc.id,
+				documentTitle: doc.title,
+				content: doc.content ?? '',
+				renderedIndex: click.renderedIndex,
+				renderedHeaders: click.renderedHeaders
+			});
+			const payload: Record<string, unknown> = {
+				content: result.content,
+				expected_updated_at: doc.updated_at
+			};
+			if (current?.revision) payload.expected_editor_revision = current.revision;
+			const response = await fetch(`/api/onto/documents/${doc.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			const saved = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(
+					response.status === 409
+						? 'The table was made, but this doc changed somewhere else, so it still shows the old text. Reload and replace it with the embed.'
+						: saved?.error || 'The table was made, but this doc could not be updated.'
+				);
+			}
+			const next = saved?.data?.document as Partial<DocData> | undefined;
+			if (loaded?.key === k && loaded.doc) {
+				loaded = {
+					...loaded,
+					doc: { ...loaded.doc, ...next, content: result.content },
+					revision: saved?.data?.editor_revision ?? null
+				};
+			}
+			toastService.success('Live table made. It sits under this doc.');
+			onChanged();
+		} catch (cause) {
+			toastService.error(
+				cause instanceof Error ? cause.message : 'Could not make the table.'
+			);
+			click.button.disabled = false;
+			click.button.textContent = 'Make live table';
+		} finally {
+			liftingTable = false;
+		}
+	}
+
+	// The editor's "Table" button: pick a table and embed it at the cursor.
+	let tablePickerOpen = $state(false);
+	let editorApi = $state<{ insertAtCursor: (markdown: string) => Promise<void> } | null>(null);
+	function insertTableEmbed(table: { id: string }) {
+		tablePickerOpen = false;
+		void editorApi?.insertAtCursor(tableEmbedInsertion(table.id));
+	}
 
 	// ---------- Doc editing ----------
 
@@ -386,7 +493,8 @@
 			!editing &&
 			item.kind === 'document' &&
 			canWrite &&
-			current?.doc
+			current?.doc &&
+			!isTable
 		) {
 			void startEdit();
 			return true;
@@ -420,7 +528,7 @@
 			</button>
 		{/if}
 		<span class="glyph" class:goal={item.kind === 'goal'}>
-			{#if item.kind === 'document'}<FileText
+			{#if isTable}<Table class="h-4 w-4" />{:else if item.kind === 'document'}<FileText
 					class="h-4 w-4"
 				/>{:else if item.kind === 'goal'}<Target class="h-4 w-4" />{:else}<Circle
 					class="h-4 w-4"
@@ -488,7 +596,7 @@
 				>
 					<img src="/brain-bolt.webp" alt="" class="h-5 w-5 rounded object-cover" />
 				</button>
-				{#if item.kind === 'document' && canWrite}
+				{#if item.kind === 'document' && canWrite && !isTable}
 					<button
 						type="button"
 						class="ib"
@@ -549,7 +657,7 @@
 		{/if}
 	</header>
 
-	<div class="body" data-autoscroll>
+	<div class="body" class:table-body={isTable} data-autoscroll>
 		{#if !current}
 			{#if loadError}
 				<div class="note" role="alert">
@@ -570,6 +678,22 @@
 					{/each}
 				</div>
 			{/if}
+		{:else if current.doc && isTable}
+			{#if Workspace}
+				<Workspace
+					documentId={current.doc.id}
+					{projectId}
+					layout={phone ? 'sheet' : 'panel'}
+					readonly={!canWrite}
+					onAsk={askAboutTable}
+				/>
+			{:else}
+				<div
+					class="m-4 h-64 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
+					aria-busy="true"
+					aria-label="Loading table"
+				></div>
+			{/if}
 		{:else if current.doc}
 			{#if editing}
 				{#if saveState === 'conflict'}
@@ -589,12 +713,15 @@
 				<div class="editor">
 					{#if Editor}
 						<Editor
+							bind:this={editorApi}
 							bind:value={draft}
 							onDocChange={(next: string) => {
 								draft = next;
 								scheduleSave();
 							}}
 							onSave={() => void flush()}
+							onInsertTableRequested={() => (tablePickerOpen = true)}
+							embedProjectId={projectId}
 							maxLength={50000}
 							helpText=""
 							fillHeight={true}
@@ -606,8 +733,17 @@
 					{/if}
 				</div>
 			{:else if current.doc.content?.trim()}
-				<div class="{prose} text-foreground">
-					{@html renderMarkdown(current.doc.content)}
+				{@const bodyHtml = renderDocumentMarkdown(current.doc.content, { projectId })}
+				<div
+					class="{prose} text-foreground"
+					{@attach documentEmbeds({
+						projectId,
+						html: bodyHtml,
+						onMakeLiveTable: canWrite ? handleMakeLiveTable : undefined,
+						onOpenTable: (tableId) => onStep(tableId)
+					})}
+				>
+					{@html bodyHtml}
 				</div>
 			{:else}
 				<p class="muted">
@@ -687,7 +823,8 @@
 		<footer class="keys">
 			<span><kbd>↑</kbd> <kbd>↓</kbd> walk the list</span>
 			<span><kbd>F</kbd> focus</span>
-			{#if item.kind === 'document' && canWrite}<span><kbd>E</kbd> edit</span>{/if}
+			{#if item.kind === 'document' && canWrite && !isTable}<span><kbd>E</kbd> edit</span
+				>{/if}
 			<span><kbd>Esc</kbd> back out</span>
 		</footer>
 	{:else}
@@ -711,7 +848,7 @@
 					<Check class="h-5 w-5" />
 					<span>{current?.task?.state_key === 'done' ? 'Reopen' : 'Mark done'}</span>
 				</button>
-			{:else if item.kind === 'document' && canWrite}
+			{:else if item.kind === 'document' && canWrite && !isTable}
 				<button
 					type="button"
 					disabled={!current?.doc}
@@ -749,6 +886,18 @@
 		</nav>
 	{/if}
 </div>
+
+{#if tablePickerOpen && editing}
+	{#await import('$lib/components/table-surfaces/TableInsertPicker.svelte') then { default: TableInsertPicker }}
+		<TableInsertPicker
+			{projectId}
+			parentId={item.id}
+			excludeId={item.id}
+			onPick={insertTableEmbed}
+			onClose={() => (tablePickerOpen = false)}
+		/>
+	{/await}
+{/if}
 
 {#if detailEditor === 'task' && current?.task}
 	{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
@@ -952,6 +1101,18 @@
 	}
 	.body > :global(*) {
 		max-width: 72ch;
+	}
+	/* A table owns its scroll (sticky headers need one bounded scroller) and the full width. */
+	.body.table-body {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		padding: 0;
+	}
+	.body.table-body > :global(*) {
+		max-width: none;
+		flex: 1;
+		min-height: 0;
 	}
 	@keyframes rise {
 		from {

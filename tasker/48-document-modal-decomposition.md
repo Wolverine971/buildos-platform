@@ -2,6 +2,10 @@
 
 # 48 — Decompose `DocumentModal` around a document session controller
 
+> **Audit 2026-10-04 — PARKED.** DJ deferred it on 08-26 and nothing has started (no `document-modal/` directory). Since then `DocumentModal.svelte` has grown from 4,647 to 5,193 lines over 14 commits and still has 18 direct `fetch` calls (last touched 4328cf7f4, 09-30).
+> **Left:** W0–W6. Worth doing the next time document editing becomes a focus.
+> **Priority:** P3. **Recommend:** park.
+
 **Created:** 2026-08-04  
 **Updated:** 2026-08-26
 **Status:** Deferred by owner direction — ready, but intentionally skipped in the current cleanup pass

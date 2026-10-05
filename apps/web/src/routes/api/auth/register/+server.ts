@@ -150,17 +150,15 @@ async function ensureUserProfileForRegistration({
 }
 
 /**
- * Confirmation-email return address. It goes through /auth/confirm, which exchanges the code and
- * forwards to the redirect, so a Try in BuildOS launch survives email confirmation. Supabase only
- * honors allow-listed URLs and otherwise falls back to the Site URL (the old behavior).
+ * Confirmation-email return address. Every confirmation goes through /auth/confirm, which
+ * exchanges the code (so the new user arrives signed in) and forwards to the redirect, or to
+ * /today without one. That keeps a Try in BuildOS launch alive through email confirmation.
+ * Supabase only honors allow-listed URLs and otherwise falls back to the Site URL (the old
+ * behavior: a signed-out landing).
  */
-function buildEmailRedirectTo(
-	requestUrl: string,
-	redirectTarget: string | null
-): string | undefined {
-	if (!redirectTarget) return undefined;
+function buildEmailRedirectTo(requestUrl: string, redirectTarget: string | null): string {
 	const confirmUrl = new URL('/auth/confirm', requestUrl);
-	confirmUrl.searchParams.set('next', redirectTarget);
+	if (redirectTarget) confirmUrl.searchParams.set('next', redirectTarget);
 	return confirmUrl.toString();
 }
 
@@ -244,7 +242,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				data: {
 					name: name || validatedEmail.split('@')[0]
 				},
-				...(emailRedirectTo ? { emailRedirectTo } : {})
+				emailRedirectTo
 			}
 		});
 

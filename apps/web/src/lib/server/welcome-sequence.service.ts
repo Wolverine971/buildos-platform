@@ -16,6 +16,8 @@ import {
 } from './email-sequence-rpcs';
 import {
 	determineNextWelcomeAction,
+	getWelcomeBacklogSkip,
+	isOutsideWelcomeWindow,
 	type WelcomeSequenceProductState,
 	type WelcomeSequenceProgress,
 	type WelcomeSequenceStep,
@@ -338,7 +340,8 @@ export class WelcomeSequenceService {
 
 	async startSequenceForUser(input: WelcomeSequenceStartInput): Promise<void> {
 		const row = await this.ensureSequenceRow(input);
-		if (!row) {
+		// Signups older than the welcome window never enter the sequence.
+		if (!row || isOutsideWelcomeWindow(row.started_at)) {
 			return;
 		}
 
@@ -511,7 +514,9 @@ export class WelcomeSequenceService {
 				}
 
 				const progress = toProgress(row);
-				const action = determineNextWelcomeAction(progress, state, now);
+				const action =
+					getWelcomeBacklogSkip(progress, now) ??
+					determineNextWelcomeAction(progress, state, now);
 
 				if (action.action === 'wait') {
 					await this.updateSequenceRow(row.user_id, {
@@ -628,7 +633,12 @@ export class WelcomeSequenceService {
 			return { ...emptyOutcome, cancelled: 1, suppressed: 1 };
 		}
 
+		const progress = this.progressFromEnrollment(enrollment);
+		// A stale step is skipped at once, without waiting for a send window.
+		const backlogSkip = getWelcomeBacklogSkip(progress, now);
+
 		if (
+			!backlogSkip &&
 			!options.immediate &&
 			step !== 'email_1' &&
 			!isWithinQueueSendWindow(state.timezone, now)
@@ -645,8 +655,7 @@ export class WelcomeSequenceService {
 			return { ...emptyOutcome, deferred: 1 };
 		}
 
-		const progress = this.progressFromEnrollment(enrollment);
-		const action = determineNextWelcomeAction(progress, state, now);
+		const action = backlogSkip ?? determineNextWelcomeAction(progress, state, now);
 
 		if (action.action === 'wait') {
 			const nextSendAt = this.resolveQueueDeferTime(
@@ -1041,7 +1050,7 @@ export class WelcomeSequenceService {
 		}
 
 		const seed = await this.loadSequenceSeedState(input.userId);
-		if (!seed) {
+		if (!seed || isOutsideWelcomeWindow(seed.createdAt)) {
 			return null;
 		}
 

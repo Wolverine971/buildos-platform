@@ -71,6 +71,7 @@ const DOCUMENT_READS = [
 	...LOOKUPS
 ];
 const PROJECT_READS = ['get_onto_project_details', 'list_onto_projects', ...LOOKUPS];
+const TABLE_READS = ['get_onto_table_details', 'read_table_rows'];
 const planningReads = (entity: 'goal' | 'plan' | 'milestone' | 'risk') => [
 	`list_onto_${entity}s`,
 	`search_onto_${entity}s`,
@@ -111,6 +112,13 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 	set_project_calendar: ['get_project_calendar'],
 	// Filing an image under a document needs the document found first.
 	update_onto_asset: [...DOCUMENT_READS, 'search_onto_assets', 'get_onto_asset'],
+	// BuildOS Tables (2026-10-04): a table is read schema-first, then queried; a
+	// row or column change needs the table's columns and row handles first.
+	get_onto_table_details: ['read_table_rows'],
+	read_table_rows: ['get_onto_table_details'],
+	update_onto_table_rows: [...TABLE_READS, ...LOOKUPS],
+	update_onto_table: [...TABLE_READS, ...LOOKUPS],
+	create_onto_table: ['get_document_tree'],
 	// A scan needs no account list first; its results open with get_email_message.
 	scan_email_inbox: ['get_email_message'],
 	search_email_messages: ['list_email_accounts', 'get_email_message'],

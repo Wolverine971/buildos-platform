@@ -54,6 +54,7 @@ import {
 	WORKER_QUEUE_TIMEOUT_NOTE
 } from './agent-chat-worker-status';
 import { extractDocumentChangeReceipt, type DocumentChangeReceipt } from './document-change-cards';
+import { extractTableChangeReceipt, type TableChangeReceipt } from './table-change-cards';
 
 // ---------------------------------------------------------------------------
 // Pure helpers — testable standalone
@@ -421,6 +422,9 @@ export interface SSEHandlerDeps {
 	/** Document change cards (diff + Undo) appended at the end of a turn that edited documents. */
 	addDocumentChangesMessage?(changes: DocumentChangeReceipt[]): void;
 
+	/** Table change cards (counts, sample diffs, Undo) appended at the end of a turn that wrote tables. */
+	addTableChangesMessage?(changes: TableChangeReceipt[]): void;
+
 	isDev?: boolean;
 }
 
@@ -443,6 +447,8 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	let createdEntitiesBuffer: CreatedEntityRef[] = [];
 	// Document body edits (change receipts) this turn; flushed as change cards on `done`.
 	let documentChangesBuffer: DocumentChangeReceipt[] = [];
+	// Table writes (structured table_change receipts) this turn; flushed as table cards on `done`.
+	let tableChangesBuffer: TableChangeReceipt[] = [];
 	const internalControlToolCallIds = new Set<string>();
 
 	function applyToolResultSideEffects(params: {
@@ -459,15 +465,24 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		const awaitsUser = success && toolResultAwaitsUser(toolResult);
 		const documentChange =
 			success && !awaitsUser ? extractDocumentChangeReceipt(toolResult) : null;
+		const tableChange =
+			success && !awaitsUser && !documentChange
+				? extractTableChangeReceipt(toolResult)
+				: null;
 		if (showToast && !awaitsUser && toolName && args !== undefined) {
 			if (documentChange) {
 				presenter.showDocumentChangeToast(documentChange);
+			} else if (tableChange) {
+				presenter.showTableChangeToast(tableChange);
 			} else {
 				presenter.showToolResultToast(toolName, args, success);
 			}
 		}
 		if (documentChange) {
 			documentChangesBuffer.push(documentChange);
+		}
+		if (tableChange) {
+			tableChangesBuffer.push(tableChange);
 		}
 
 		presenter.recordDataMutation(toolName, args, success, toolResult, { turnId });
@@ -717,8 +732,12 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		if (documentChangesBuffer.length > 0) {
 			deps.addDocumentChangesMessage?.(documentChangesBuffer);
 		}
+		if (tableChangesBuffer.length > 0) {
+			deps.addTableChangesMessage?.(tableChangesBuffer);
+		}
 		createdEntitiesBuffer = [];
 		documentChangesBuffer = [];
+		tableChangesBuffer = [];
 	}
 
 	function handleError(event: Extract<AgentSSEMessage, { type: 'error' }>): void {
@@ -733,6 +752,11 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			deps.addDocumentChangesMessage?.(documentChangesBuffer);
 		}
 		documentChangesBuffer = [];
+		// Table writes committed too and stay undoable.
+		if (tableChangesBuffer.length > 0) {
+			deps.addTableChangesMessage?.(tableChangesBuffer);
+		}
+		tableChangesBuffer = [];
 		if (thinking.getCurrentBlockId()) {
 			thinking.addActivity(
 				streamErrorMessage,
@@ -914,6 +938,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	handleSSEMessage.resetTurnState = () => {
 		createdEntitiesBuffer = [];
 		documentChangesBuffer = [];
+		tableChangesBuffer = [];
 		internalControlToolCallIds.clear();
 	};
 

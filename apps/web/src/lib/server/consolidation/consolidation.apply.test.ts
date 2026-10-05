@@ -55,6 +55,7 @@ import {
 import {
 	applyConsolidationRun,
 	changeCount,
+	retryMerge,
 	undoConsolidationRun,
 	withoutHidden,
 	type ConsolidationRunView
@@ -539,6 +540,94 @@ describe('undoConsolidationRun', () => {
 		expect(calls).toEqual([]);
 		expect(receipt.undo?.restored).toEqual(['s']);
 		expect(runRow().status).toBe('undone');
+	});
+});
+
+describe('retryMerge', () => {
+	it('starts over a draft written before these fixes, which the page shows as stalled', async () => {
+		seed(
+			[
+				{
+					ops: [
+						{
+							op: 'merge',
+							document_ids: ['a', 'b'],
+							target_project_id: WAYNE,
+							title: 'AB'
+						}
+					]
+				}
+			],
+			{
+				docs: [doc('a'), doc('b')],
+				merges: [
+					{
+						id: 'm1',
+						run_id: RUN,
+						cluster_key: 'c1',
+						status: 'ready',
+						title: 'AB',
+						target_project_id: WAYNE,
+						source_ids: ['a', 'b'],
+						markdown: '# AB',
+						// No written_for: it predates answer tracking.
+						ledger: { facts: [], fates: [], sections: [], flags: [], unverified: [] },
+						coverage: null,
+						error: null,
+						created_document_id: null,
+						updated_at: '2026-10-04T05:09:34.119Z'
+					}
+				]
+			}
+		);
+		await retryMerge({ ...params(), clusterKey: 'c1' });
+		expect(db.consolidation_merges[0]).toMatchObject({ status: 'pending', ledger: null });
+	});
+
+	it('refuses while a draft is current', async () => {
+		seed(
+			[
+				{
+					ops: [
+						{
+							op: 'merge',
+							document_ids: ['a', 'b'],
+							target_project_id: WAYNE,
+							title: 'AB'
+						}
+					]
+				}
+			],
+			{
+				merges: [
+					{
+						id: 'm1',
+						run_id: RUN,
+						cluster_key: 'c1',
+						status: 'ready',
+						title: 'AB',
+						target_project_id: WAYNE,
+						source_ids: ['a', 'b'],
+						markdown: '# AB',
+						ledger: {
+							facts: [],
+							fates: [],
+							sections: [],
+							flags: [],
+							unverified: [],
+							written_for: '[]'
+						},
+						coverage: null,
+						error: null,
+						created_document_id: null,
+						updated_at: '2026-10-04T05:09:34.119Z'
+					}
+				]
+			}
+		);
+		await expect(retryMerge({ ...params(), clusterKey: 'c1' })).rejects.toThrow(
+			'already under way'
+		);
 	});
 });
 

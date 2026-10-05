@@ -117,6 +117,21 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 		directPaths: ['onto.document', 'onto.document.tree', 'onto.document.path', 'onto.task.docs']
 	},
 	{
+		id: 'tables',
+		path: 'capabilities.tables',
+		name: 'Project tables',
+		status: 'available',
+		summary:
+			'Read, query, research, and edit project tables: filter, group, and total rows with tools, write researched cells with sources, and change columns.',
+		whatYouCanDo: [
+			'Answer which / how many / grouped-by questions over a table with exact counts and totals',
+			'Add, fill, or correct rows and cells, including web research with sources',
+			'Add, rename, retype, or remove columns, or create a new table'
+		],
+		skillIds: ['table_workspace'],
+		directPaths: ['onto.table', 'onto.table.rows']
+	},
+	{
 		id: 'calendar',
 		path: 'capabilities.calendar',
 		name: 'Calendar management',

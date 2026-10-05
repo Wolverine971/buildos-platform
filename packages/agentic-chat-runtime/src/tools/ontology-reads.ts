@@ -20,6 +20,7 @@ import {
 	getSectionByAnchor
 } from '@buildos/shared-agent-ops/utils/document-outline';
 import { findInDocument } from '@buildos/shared-agent-ops/ontology/document-edits';
+import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
 import {
 	AGENTIC_CHAT_NO_READABLE_PROJECTS_SENTINEL,
 	readableProjectIdsFromSummaries,
@@ -1422,6 +1423,16 @@ export async function getOntoDocumentDetails(
 			listTool: 'list_onto_documents',
 			searchTool: 'search_onto_documents'
 		});
+	}
+
+	// A table document's body is a generated markdown projection of its rows; the
+	// table tools read it typed and paged, and edit it by row (BuildOS Tables).
+	if (isTableTypeKey((details.document as Record<string, unknown>).type_key as string)) {
+		return {
+			...details,
+			message:
+				'This document is a table. Use get_onto_table_details and read_table_rows to read it, and update_onto_table_rows / update_onto_table to change it; its body cannot be edited directly.'
+		};
 	}
 
 	return {

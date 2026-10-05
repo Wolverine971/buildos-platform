@@ -611,7 +611,7 @@
 				/>
 			</Button>
 			<a
-				href="/projects?tab=briefs"
+				href="/briefs?view=list"
 				class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-md hover:bg-accent/10 transition-colors motion-reduce:transition-none pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset min-h-[44px]"
 			>
 				View All

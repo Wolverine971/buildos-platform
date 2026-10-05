@@ -35,7 +35,13 @@ const ROW_LOCAL_MUTATIONS = new Map<string, readonly string[]>([
 	['create_onto_goal', ['project_id']],
 	['create_onto_plan', ['project_id']],
 	['create_onto_milestone', ['project_id']],
-	['create_onto_risk', ['project_id']]
+	['create_onto_risk', ['project_id']],
+	// BuildOS Tables (2026-10-04). A row batch or column change holds its table
+	// (the RPC bumps one revision); a table create rewrites the project's
+	// document tree like a document create, so it stays exclusive on the project.
+	['update_onto_table_rows', ['table_id']],
+	['update_onto_table', ['table_id']],
+	['create_onto_table', ['project_id']]
 ]);
 
 /**
@@ -186,5 +192,7 @@ function resourceKey(fieldName: string, value: string): string {
 		.replace(/^expected_source_/, '')
 		.replace(/^destination_/, '')
 		.replace(/_id$/, '');
-	return `${normalizedField}:${value}`;
+	// A table id is a document id: table reads/writes order against document
+	// writes and document-endpoint links on the same record.
+	return `${normalizedField === 'table' ? 'document' : normalizedField}:${value}`;
 }

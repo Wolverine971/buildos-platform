@@ -28,6 +28,7 @@ import {
 } from '$lib/utils/project-props-sanitizer';
 import { TYPE_KEY_PATTERNS } from '@buildos/shared-agent-ops/ontology/onto';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { notifyMembersProjectDeleted } from '$lib/server/project-sharing-notifications';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 import {
 	attachLastChangedByActorToTasks,
@@ -932,21 +933,12 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		const projectDataForLog = { name: project.name, type_key: project.type_key };
 
-		// Determine delete strategy based on environment:
-		// - Development: Hard delete (permanent removal for clean dev iterations)
-		// - Production: Soft delete (preserve data, set deleted_at timestamp)
-		const isProduction = process.env.NODE_ENV === 'production';
-		const deleteRpcName = isProduction ? 'soft_delete_onto_project' : 'delete_onto_project';
-
-		const { error: deleteError } = await supabase.rpc(deleteRpcName, {
+		const { error: deleteError } = await supabase.rpc('soft_delete_onto_project', {
 			p_project_id: id
 		});
 
 		if (deleteError) {
-			console.error(
-				`[Project DELETE] Failed to ${isProduction ? 'soft' : 'hard'} delete project:`,
-				deleteError
-			);
+			console.error('[Project DELETE] Failed to soft delete project:', deleteError);
 			await logOntologyApiError({
 				supabase,
 				error: deleteError,
@@ -958,52 +950,62 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				entityId: id,
 				operation: 'project_delete',
 				tableName: 'onto_projects',
-				metadata: { deleteRpcName }
+				metadata: { deleteRpcName: 'soft_delete_onto_project' }
 			});
 			return ApiResponse.error('Failed to delete project', 500);
 		}
 
-		if (deleteRpcName === 'soft_delete_onto_project') {
-			try {
-				const admin = createAdminSupabaseClient();
-				const nowIso = new Date().toISOString();
-				const { error: cancelProposalError } = await admin
-					.from('agent_runs')
-					.update({
-						status: 'cancelled',
-						error: 'Project was deleted before proposal review',
-						completed_at: nowIso,
-						commit_started_at: null
-					} as never)
-					.eq('project_id', id)
-					.eq('status', 'proposal_ready');
-				if (cancelProposalError) throw cancelProposalError;
+		try {
+			const admin = createAdminSupabaseClient();
+			const nowIso = new Date().toISOString();
+			const { error: cancelProposalError } = await admin
+				.from('agent_runs')
+				.update({
+					status: 'cancelled',
+					error: 'Project was deleted before proposal review',
+					completed_at: nowIso,
+					commit_started_at: null
+				} as never)
+				.eq('project_id', id)
+				.eq('status', 'proposal_ready');
+			if (cancelProposalError) throw cancelProposalError;
 
-				await expireInboxItemsForProject({
-					supabase: admin as any,
-					projectId: id
-				});
-			} catch (inboxError) {
-				console.warn('[Project DELETE] Failed to expire project inbox items:', inboxError);
-			}
-
-			// Only log when the project row remains (soft delete) to avoid FK errors.
-			logDeleteAsync(
-				supabase,
-				id,
-				'project',
-				id,
-				projectDataForLog,
-				session.user.id,
-				getChangeSourceFromRequest(request),
-				chatSessionId
-			);
+			await expireInboxItemsForProject({
+				supabase: admin as any,
+				projectId: id
+			});
+		} catch (inboxError) {
+			console.warn('[Project DELETE] Failed to expire project inbox items:', inboxError);
 		}
+
+		// The project row remains (soft delete), so the log row can reference it.
+		logDeleteAsync(
+			supabase,
+			id,
+			'project',
+			id,
+			projectDataForLog,
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
+		);
+
+		const restorableUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+		await notifyMembersProjectDeleted({
+			projectId: id,
+			projectName: project.name,
+			ownerName: session.user.name || session.user.email || 'The owner',
+			excludeUserId: session.user.id,
+			restorableUntil,
+			reason: 'deleted',
+			senderUserId: session.user.id
+		});
 
 		return ApiResponse.success({
 			id,
-			message: isProduction ? 'Project archived' : 'Project deleted',
-			deleteType: isProduction ? 'soft' : 'hard'
+			message: 'Project moved to Trash',
+			deleteType: 'soft',
+			restorable_until: restorableUntil
 		});
 	} catch (err) {
 		console.error('[Project DELETE] Unexpected error:', err);

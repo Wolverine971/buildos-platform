@@ -51,6 +51,11 @@ export const BUILDOS_AGENT_READ_OPS = [
 	'onto.risk.get',
 	'onto.asset.search',
 	'onto.asset.get',
+	// Tables (docs/specs/tables/CONTRACT.md): a table is a document.table
+	// document whose rows live in onto_document_rows.
+	'onto.table.get',
+	'onto.table.rows.query',
+	'onto.table.list',
 	'onto.entity.relationships.get',
 	'onto.entity.links.get',
 	'onto.search',
@@ -81,6 +86,11 @@ export const BUILDOS_AGENT_WRITE_OPS = [
 	// Name a project image and file it under a document (or back on the
 	// project's Images shelf). Metadata + asset links only; never media bytes.
 	'onto.asset.update',
+	// Tables: create, change title/columns/question fills/archive, and add,
+	// change, or delete rows by handle.
+	'onto.table.create',
+	'onto.table.update',
+	'onto.table.rows.update',
 	'cal.event.create',
 	'cal.event.update',
 	'cal.event.delete',

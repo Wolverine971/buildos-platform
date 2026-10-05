@@ -2,6 +2,9 @@
 
 # 77 — Billing and commercial-contract reconciliation
 
+> **Audit 2026-10-04 — PARKED.** Nothing has changed since 08-31. Billing is off (`PRIVATE_ENABLE_STRIPE` defaults to false, and pricing shows "Create free account"), so the trial-vs-usage contradiction is dormant. The `price_placeholder` fallback (`api/stripe/checkout/+server.ts:69`) and the invoice `enabled: false // TODO` are still in place. With few users and no paid motion, ratifying a commercial contract now is premature.
+> **Left:** the whole tracker, once DJ decides to charge. **Priority:** P3. **Recommend:** park.
+
 **Created:** 2026-08-31
 
 **Status:** Research and owner decision required — keep paid billing disabled until one contract is

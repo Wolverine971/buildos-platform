@@ -51,8 +51,10 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (project.created_by === actorId) {
-			return ApiResponse.badRequest(
-				'Project owners cannot leave their own project. Delete it instead.'
+			return ApiResponse.error(
+				'Hand the project to another member before you leave.',
+				400,
+				'owner_must_hand_off'
 			);
 		}
 
@@ -84,8 +86,10 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (member.role_key === 'owner') {
-			return ApiResponse.badRequest(
-				'Project owners cannot leave their own project. Delete it instead.'
+			return ApiResponse.error(
+				'Hand the project to another member before you leave.',
+				400,
+				'owner_must_hand_off'
 			);
 		}
 

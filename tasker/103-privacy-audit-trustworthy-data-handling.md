@@ -2,6 +2,9 @@
 
 # Tasker 103 — Privacy audit: keep less, delete for real, say exactly what we do
 
+> **Audit 2026-10-04 — ACTIVE.** The code is pushed and deployed (76302509d + ef6840078), all 10 migrations `190000`–`190600` are applied, the crons run, and the first purge ran clean (memory, 09-25). The "uncommitted / not deployed" status below is stale. The exit is blocked: **account deletion fails in prod**. `finalize_account_deletion_database` (`20260924190100`, line 674) sets human actors' `user_id` to NULL, which violates `chk_actor_identity`. This was found on 09-30 and noted in e10cd5e68; there have been 0 deletion requests so far.
+> **Left:** fix deletion, then prove it end to end on a test account. DJ's env items: Railway models, removing the dead non-ZDR keys, and turning OpenRouter logging off. The paid ZDR check needs DJ's OK. Retention windows and delete edge cases are in DATA_INVENTORY Open items 13–18. **Priority:** P0. **Recommend:** keep.
+
 **Status:** Migrations applied to prod (2026-09-24, all 10 in `190000`–`190600`, recorded in history). Code is uncommitted and not deployed. See
 "Progress" below. · **Opened:** 2026-09-24 · **Owner:** DJ (approvals)
 **Source:** building `scan_email_inbox` (`docs/architecture/JEV_EMAIL_SCAN_2026-09-24.md`) exposed a

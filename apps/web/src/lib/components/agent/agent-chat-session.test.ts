@@ -367,6 +367,72 @@ describe('agent-chat-session helpers', () => {
 		]);
 	});
 
+	it('buildAgentChatSessionSnapshot restores table change cards after the turn that wrote rows', () => {
+		const tableChange = {
+			kind: 'table_change',
+			document_id: 't1',
+			project_id: 'p1',
+			title: 'Job applications',
+			revision: 4,
+			applied_revision: 5,
+			rows_added: 3,
+			rows_updated: 0,
+			rows_deleted: 0,
+			cells_changed: 7,
+			columns_changed: [],
+			sample: [],
+			inverse_ops: []
+		};
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Add the three new applications.',
+					created_at: '2026-10-04T10:00:00.000Z'
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Added three rows.',
+					created_at: '2026-10-04T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'e1',
+					message_id: 'assistant-1',
+					tool_name: 'update_onto_table_rows',
+					sequence_index: 1,
+					arguments: { table_id: 't1' },
+					result: JSON.stringify({
+						document: { id: 't1', project_id: 'p1', title: 'Job applications' },
+						table_change: tableChange
+					}),
+					success: true,
+					created_at: '2026-10-04T10:00:20.000Z'
+				}
+			] as any
+		});
+
+		expect(snapshot.messages.map((m) => m.type)).toEqual([
+			'user',
+			'thinking_block',
+			'assistant',
+			'table_changes'
+		]);
+		expect((snapshot.messages[3] as any).data.changes).toEqual([
+			expect.objectContaining({
+				id: 't1:5',
+				documentId: 't1',
+				title: 'Job applications',
+				rowsAdded: 3,
+				cellsChanged: 7
+			})
+		]);
+	});
+
 	it('buildAgentChatSessionSnapshot restores document change cards after the turn that edited', () => {
 		const change = summarizeDocumentChange({
 			project_id: 'p1',

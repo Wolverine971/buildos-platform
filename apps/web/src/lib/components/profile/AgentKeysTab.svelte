@@ -103,6 +103,23 @@
 			description: 'Allow the agent to rename project images and file them under documents.'
 		},
 		{
+			op: 'onto.table.create',
+			label: 'Create tables',
+			description:
+				'Allow the agent to create tables, with columns and rows, in permitted projects.'
+		},
+		{
+			op: 'onto.table.update',
+			label: 'Change tables',
+			description:
+				'Allow the agent to rename tables, change their columns, start AI column fills, and archive tables.'
+		},
+		{
+			op: 'onto.table.rows.update',
+			label: 'Edit table rows',
+			description: 'Allow the agent to add, change, and delete rows in tables.'
+		},
+		{
 			op: 'onto.project.create',
 			label: 'Create projects',
 			description: 'Allow the agent to spin up new projects. Use carefully.'

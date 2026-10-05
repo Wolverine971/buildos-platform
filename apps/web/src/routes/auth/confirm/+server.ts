@@ -5,9 +5,10 @@ import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 
 /**
  * Return address for signup confirmation emails. The register endpoint sets it as
- * `emailRedirectTo` when the signup carries a redirect (a Try in BuildOS chat launch, an invite).
- * Supabase confirms the email, then sends the browser here with a PKCE `code`. Exchanging it signs
- * the user in and forwards to `next`.
+ * `emailRedirectTo` on every signup, with `next` when the signup carries a redirect (a Try in
+ * BuildOS chat launch, an invite). Supabase confirms the email, then sends the browser here with a
+ * PKCE `code`. Exchanging it signs the user in and forwards to `next`, or to /today (home; it sends
+ * a brand-new user on to onboarding).
  *
  * Only the PKCE code is accepted. It is bound to this browser by the code-verifier cookie set at
  * signup, so a link cannot sign someone into another person's account. A bare `token_hash` is not:

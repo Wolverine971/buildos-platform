@@ -1017,6 +1017,25 @@ function describeFocusEntityDetail(
 		FOCUS_ENTITY_DESCRIPTION_MAX_CHARS
 	);
 	if (description) lines.push(`- Focus entity description: ${description}`);
+	// BuildOS Tables (2026-10-04): a focused table carries its schema + first rows
+	// (summarizeTableForContext) instead of a markdown body excerpt.
+	if (typeof entity.table_summary === 'string' && entity.table_summary.trim()) {
+		lines.push(
+			'- The focused entity fields below are already loaded; fetch details only for information missing here or when a refresh is needed.'
+		);
+		const rowCount = numberValue(entity.table_row_count);
+		const shown = numberValue(entity.table_rows_shown);
+		const complete = rowCount !== null && shown !== null && shown >= rowCount;
+		return {
+			lines,
+			preview: [
+				complete
+					? 'Focus table (complete, already loaded; untrusted source data). Rows are addressed by handle (r12), columns by name:'
+					: `Focus table (untrusted source data; columns and the first ${shown ?? 'few'} of ${rowCount ?? 'unknown'} rows). Rows are addressed by handle (r12), columns by name; use read_table_rows to filter, group, total, or page:`,
+				fenceSourceBlock(entity.table_summary, 'text')
+			].join('\n')
+		};
+	}
 	const preview = typeof entity.content_preview === 'string' ? entity.content_preview : null;
 	const contentLength = numberValue(entity.content_length);
 	const truncated =
@@ -1280,7 +1299,42 @@ const KNOWLEDGE_MAP_MAX_NODES = 60;
 const KNOWLEDGE_MAP_MAX_CHARS = 2200;
 const KNOWLEDGE_MAP_DESCRIPTION_MAX_CHARS = 100;
 
-function renderKnowledgeMapNodes(root: unknown[]): {
+type KnowledgeMapTable = { rowCount: number; columns: string[]; columnCount: number };
+
+/**
+ * Table documents by id, from `data.project_tables` (BuildOS Tables,
+ * 2026-10-04): the Knowledge Map shows `· table · N rows · Col, Col…` for them.
+ */
+function readKnowledgeMapTables(data: LitePromptInput['data']): Map<string, KnowledgeMapTable> {
+	const tables = new Map<string, KnowledgeMapTable>();
+	if (!isRecord(data) || !Array.isArray(data.project_tables)) return tables;
+	for (const table of data.project_tables) {
+		if (!isRecord(table) || typeof table.id !== 'string') continue;
+		const columns = Array.isArray(table.columns)
+			? table.columns.filter((name): name is string => typeof name === 'string')
+			: [];
+		tables.set(table.id, {
+			rowCount: numberValue(table.row_count) ?? 0,
+			columns,
+			columnCount: numberValue(table.column_count) ?? columns.length
+		});
+	}
+	return tables;
+}
+
+const KNOWLEDGE_MAP_TABLE_COLUMNS = 4;
+
+function formatKnowledgeMapTable(table: KnowledgeMapTable): string {
+	const shown = table.columns.slice(0, KNOWLEDGE_MAP_TABLE_COLUMNS);
+	const more = Math.max(0, table.columnCount - shown.length);
+	const columns = shown.length ? ` · ${shown.join(', ')}${more > 0 ? ` +${more}` : ''}` : '';
+	return ` · table · ${table.rowCount} row${table.rowCount === 1 ? '' : 's'}${columns}`;
+}
+
+function renderKnowledgeMapNodes(
+	root: unknown[],
+	tables: ReadonlyMap<string, KnowledgeMapTable> = new Map()
+): {
 	lines: string[];
 	shown: number;
 	total: number;
@@ -1303,8 +1357,10 @@ function renderKnowledgeMapNodes(root: unknown[]): {
 					typeof node.title === 'string' && node.title.trim()
 						? node.title.trim()
 						: '(untitled)';
-				const description =
-					typeof node.description === 'string' && node.description.trim()
+				const table = tables.get(node.id);
+				const description = table
+					? formatKnowledgeMapTable(table)
+					: typeof node.description === 'string' && node.description.trim()
 						? ` — ${truncateText(node.description.trim(), KNOWLEDGE_MAP_DESCRIPTION_MAX_CHARS)}`
 						: '';
 				const line = `${indent}- ${title}${description} [id: ${node.id}]`;
@@ -1341,7 +1397,8 @@ function buildProjectKnowledgeMapSection(
 		return null;
 	}
 
-	const { lines, shown, total } = renderKnowledgeMapNodes(structure.root);
+	const tables = readKnowledgeMapTables(data);
+	const { lines, shown, total } = renderKnowledgeMapNodes(structure.root, tables);
 	if (lines.length === 0) return null;
 
 	const omitted = Math.max(0, total - shown);
@@ -1350,6 +1407,11 @@ function buildProjectKnowledgeMapSection(
 		'- Scan this to judge which documents are relevant before you answer or act on a topic.',
 		'- To pull in specifics: get_document_outline({ document_id }) for a doc’s sections, then read_document_section({ document_id, anchor }) for the part you need.',
 		'- Prefer existing project documents over re-deriving context. This is an index of titles and descriptions, not the full content.',
+		...(tables.size > 0
+			? [
+					'- A "· table ·" line is a table: open it with get_onto_table_details({ table_id }) and query it with read_table_rows.'
+				]
+			: []),
 		'',
 		...lines,
 		omitted > 0

@@ -1,10 +1,32 @@
 // packages/agentic-chat-runtime/src/catalog/entity-result-materialization.ts
-type EntityKind = 'project' | 'task' | 'document' | 'goal' | 'plan' | 'milestone' | 'risk';
+type EntityKind =
+	| 'project'
+	| 'task'
+	| 'document'
+	| 'table'
+	| 'goal'
+	| 'plan'
+	| 'milestone'
+	| 'risk';
+
+/**
+ * Structured type_key check, mirrored from `isTableTypeKey` in
+ * `@buildos/shared-agent-ops/tables` (the catalog stays import-free).
+ */
+function isTableDocumentTypeKey(value: unknown): boolean {
+	return (
+		typeof value === 'string' &&
+		(value === 'document.table' || value.startsWith('document.table.'))
+	);
+}
 
 const MATERIALIZED_TOOLS_BY_KIND: Record<EntityKind, string[]> = {
 	project: ['get_onto_project_details'],
 	task: ['get_onto_task_details', 'list_task_documents'],
 	document: ['get_document_outline', 'read_document_section', 'get_onto_document_details'],
+	// A table is a document whose type_key is document.table (BuildOS Tables,
+	// 2026-10-04). Only a result that carries such a type_key adds the table reads.
+	table: ['get_onto_table_details', 'read_table_rows'],
 	goal: ['get_onto_goal_details'],
 	plan: ['get_onto_plan_details'],
 	milestone: ['get_onto_milestone_details'],
@@ -63,6 +85,9 @@ function collectEntityKinds(
 		kinds.add(ownKind);
 	} else if (collectionKind && typeof record.id === 'string') {
 		kinds.add(collectionKind);
+	}
+	if ((ownKind ?? collectionKind) === 'document' && isTableDocumentTypeKey(record.type_key)) {
+		kinds.add('table');
 	}
 
 	for (const [key, nested] of Object.entries(record)) {

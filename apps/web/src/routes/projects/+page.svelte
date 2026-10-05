@@ -43,6 +43,7 @@
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
 	import TodayRow from '$lib/components/dashboard/TodayRow.svelte';
 	import RecentActivityPanels from '$lib/components/dashboard/RecentActivityPanels.svelte';
+	import ProjectTrashSection from '$lib/components/project/ProjectTrashSection.svelte';
 	import { prefetchDashboardCalendar } from '$lib/services/dashboard-calendar-cache';
 	import type { UserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	import ProjectDesktop, {
@@ -1000,6 +1001,13 @@
 				<div class="border-t border-border pt-4">
 					<RecentActivityPanels recent={dashboard?.recent ?? null} />
 				</div>
+			{/if}
+
+			<!-- Deleted projects (30 days to restore). Mounts once the tiles have landed and
+			     reads the trash on its own, so it stays off the page's critical load. Shown
+			     even with no projects left, so deleting the last one is never a dead end. -->
+			{#if !desktopCardOpen && !projectsLoading}
+				<ProjectTrashSection />
 			{/if}
 			<!-- Graph view - Admin Only -->
 		{:else if isAdmin}

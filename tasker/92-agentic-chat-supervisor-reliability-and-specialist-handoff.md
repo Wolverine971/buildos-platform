@@ -2,6 +2,9 @@
 
 # 92 — Supervisor reliability and specialist quality: takeover handoff
 
+> **Audit 2026-10-04 — DONE.** Slices A–D shipped in `3a407d688`. The post-gate fixes shipped in `fca3363ac`/`5f69e79bd`: batch replay protection, the empty-reply re-ask, provider-pool health and the request-level completion expectation. The case-14 absence rule landed via 113 (`bd45c65b8`). All pushed + deployed. The DeepSeek re-gate is obsolete because the QA gate was retired.
+> **Left:** an entity-level duplicate check for near-identical re-proposals, which is unowned; move it. The comparison lab was never browser-walked, which is moot after tasker 98. **Priority:** none. **Recommend:** close & delete.
+
 **Created:** 2026-09-21. **Owner:** next implementation agent; DJ owns paid-run approval.
 **Status (2026-09-21, pass 3):** A, B, C, and D built; DJ committed all source and test files in `3a407d688` (2026-09-21 21:23 local). Still uncommitted: the applied comparisons migration file `20260922002140` (production is ahead of the repo until it lands), the four slice documents, `docs/research/specialist-quality-2026-09-21/`, this tracker, `tasker/README.md`, and `AGENTS.md` with the paid-test rule. Nothing pushed or deployed. The search-reliability worktree and its fully merged branch were removed on 2026-09-21 after verifying main held everything. DJ chose to
 stack A and B, chose the ambitious comparison lab fed by real pilot runs for D, and deferred

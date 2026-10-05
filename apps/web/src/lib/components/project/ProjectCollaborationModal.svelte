@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/project/ProjectCollaborationModal.svelte -->
 <script lang="ts">
+	import { tick } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import TabNav from '$lib/components/ui/TabNav.svelte';
 	import type { Tab } from '$lib/components/ui/TabNav.svelte';
@@ -59,6 +60,8 @@
 		onClose?: () => void;
 		onLeftProject?: () => void;
 		onMembersChanged?: () => void | Promise<void>;
+		/** After a handoff: the viewer's own access changed, so page permissions need a reload. */
+		onOwnershipChanged?: () => void | Promise<void>;
 		projectId: string;
 		projectName: string;
 		canManageMembers?: boolean;
@@ -74,6 +77,7 @@
 		onClose,
 		onLeftProject,
 		onMembersChanged,
+		onOwnershipChanged,
 		projectId,
 		projectName,
 		canManageMembers = false
@@ -108,6 +112,14 @@
 	let settingsError = $state<string | null>(null);
 	let settingsActionType = $state<'member' | 'project' | null>(null);
 	let isLeavingProject = $state(false);
+	// Ownership handoff: the member being offered the project (a snapshot, so the
+	// confirm panel and its error survive a members reload), and whether the owner leaves.
+	let handoffTarget = $state<MemberRow | null>(null);
+	let handoffLeave = $state(false);
+	let handoffSaving = $state(false);
+	let handoffError = $state<string | null>(null);
+	let handoffPanel = $state<HTMLFormElement | null>(null);
+	let handoffTrigger: HTMLElement | null = null;
 	let activeTab = $state<'sharing' | 'my-role'>('sharing');
 	let shareDataRequestId = 0;
 	let shareDataAbortController: AbortController | null = null;
@@ -171,6 +183,11 @@
 		settingsError = null;
 		settingsActionType = null;
 		isLeavingProject = false;
+		handoffTarget = null;
+		handoffLeave = false;
+		handoffSaving = false;
+		handoffError = null;
+		handoffTrigger = null;
 		activeTab = 'sharing';
 	}
 
@@ -360,6 +377,13 @@
 			: null
 	);
 	const canLeaveProject = $derived(Boolean(currentMember && currentMember.role_key !== 'owner'));
+	const isProjectOwner = $derived(currentMember?.role_key === 'owner');
+	const handoffTargetIsMember = $derived(
+		handoffTarget ? members.some((member) => member.id === handoffTarget?.id) : false
+	);
+	const memberActionsBusy = $derived(
+		memberActionId !== null || memberRoleProfileSaving || handoffSaving
+	);
 
 	function getMemberLabel(member: MemberRow): string {
 		return member.actor?.name || member.actor?.email || member.actor_id;
@@ -1163,6 +1187,110 @@
 		}
 	}
 
+	async function handleStartHandoff(member: MemberRow, event: MouseEvent) {
+		if (!isProjectOwner || memberActionsBusy || member.role_key === 'owner') return;
+		handoffTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+		handoffTarget = member;
+		handoffLeave = false;
+		handoffError = null;
+		await tick();
+		handoffPanel?.focus();
+	}
+
+	function handleCancelHandoff() {
+		if (handoffSaving) return;
+		handoffTarget = null;
+		handoffLeave = false;
+		handoffError = null;
+		const trigger = handoffTrigger;
+		handoffTrigger = null;
+		if (trigger?.isConnected) trigger.focus();
+	}
+
+	async function handleConfirmHandoff(event: Event) {
+		event.preventDefault();
+		const target = handoffTarget;
+		if (!target || !isProjectOwner || handoffSaving || !handoffTargetIsMember) return;
+		const session = captureProjectSession();
+		const leave = handoffLeave;
+		const label = getMemberLabel(target);
+		const requestedProjectName = projectName || 'this project';
+
+		handoffSaving = true;
+		handoffError = null;
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${session.projectId}/ownership`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify({ member_id: target.id, leave })
+			});
+
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!isCurrentProjectSession(session)) return;
+
+			if (!response.ok || payload?.success === false) {
+				if (payload?.code === 'handoff_member_not_found') {
+					handoffError = `${label} isn’t on this project anymore. Pick someone else.`;
+					await loadShareData(session.projectId);
+					return;
+				}
+				throw new Error(
+					response.status === 403
+						? 'Only the owner can hand off this project.'
+						: payload?.error || 'Could not hand off this project'
+				);
+			}
+
+			const left = payload?.data?.previous_owner_left === true || leave;
+			toastService.success(
+				left
+					? `${label} now owns ${requestedProjectName}. You’ve left the project.`
+					: `${label} now owns ${requestedProjectName}`
+			);
+			handoffTarget = null;
+			handoffLeave = false;
+			handoffTrigger = null;
+
+			if (left) {
+				handleClose();
+				onLeftProject?.();
+				return;
+			}
+
+			// Now an editor: the page's permissions (delete, member admin) need a reload.
+			void onOwnershipChanged?.();
+			await loadShareData(session.projectId);
+			if (!isCurrentProjectSession(session)) return;
+			void onMembersChanged?.();
+		} catch (err) {
+			if (!isCurrentProjectSession(session)) return;
+
+			console.error('[ProjectCollaborationModal] Failed to hand off ownership:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${session.projectId}/ownership`,
+				method: 'POST',
+				projectId: session.projectId,
+				entityType: 'project_member',
+				entityId: target.id,
+				operation: 'project_ownership_handoff',
+				metadata: {
+					source: 'project_collaboration_modal',
+					status: responseStatus,
+					leave
+				}
+			});
+			handoffError = err instanceof Error ? err.message : 'Could not hand off this project';
+		} finally {
+			if (isCurrentProjectSession(session)) {
+				handoffSaving = false;
+			}
+		}
+	}
+
 	function formatRole(roleKey: string) {
 		switch (roleKey) {
 			case 'viewer':
@@ -1271,10 +1399,10 @@
 					<div class="space-y-1">
 						{#each members as member (member.id)}
 							<div
-								class="flex items-center justify-between gap-2 px-2 py-1.5 -mx-2 rounded-md
+								class="flex flex-wrap items-center justify-between gap-2 px-2 py-1.5 -mx-2 rounded-md
 									hover:bg-muted transition-colors"
 							>
-								<div class="min-w-0 flex-1">
+								<div class="min-w-[9rem] flex-1">
 									<p class="text-sm text-foreground truncate">
 										{getMemberLabel(member)}
 									</p>
@@ -1292,7 +1420,9 @@
 										</p>
 									{/if}
 								</div>
-								<div class="flex items-center gap-1.5 shrink-0">
+								<div
+									class="ml-auto flex flex-wrap items-center justify-end gap-1.5"
+								>
 									{#if member.role_key === 'owner' || !canManageMembers}
 										<span
 											class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
@@ -1305,8 +1435,7 @@
 											size="sm"
 											class="min-w-[110px]"
 											placeholder=""
-											disabled={memberActionId !== null ||
-												memberRoleProfileSaving}
+											disabled={memberActionsBusy}
 											onchange={(value) =>
 												handleMemberRoleChange(member, value as MemberRole)}
 										>
@@ -1319,13 +1448,24 @@
 										<Button
 											variant="ghost"
 											size="sm"
-											disabled={memberActionId !== null ||
-												memberRoleProfileSaving}
+											disabled={memberActionsBusy}
 											onclick={() => handleStartMemberRoleProfileEdit(member)}
 										>
 											{editingMemberRoleProfileId === member.id
 												? 'Editing...'
 												: 'Edit Profile'}
+										</Button>
+									{/if}
+
+									{#if isProjectOwner && member.role_key !== 'owner' && member.actor_id !== currentActorId}
+										<Button
+											variant="ghost"
+											size="sm"
+											aria-expanded={handoffTarget?.id === member.id}
+											disabled={memberActionsBusy}
+											onclick={(event) => handleStartHandoff(member, event)}
+										>
+											Make owner
 										</Button>
 									{/if}
 
@@ -1336,8 +1476,7 @@
 											class="text-destructive hover:bg-destructive/10"
 											loading={memberActionId === member.id &&
 												memberActionType === 'remove'}
-											disabled={memberActionId !== null ||
-												memberRoleProfileSaving}
+											disabled={memberActionsBusy}
 											onclick={() => handleMemberRemove(member)}
 										>
 											Remove
@@ -1347,6 +1486,67 @@
 							</div>
 						{/each}
 					</div>
+
+					{#if handoffTarget}
+						{@const handoffLabel = getMemberLabel(handoffTarget)}
+						<form
+							bind:this={handoffPanel}
+							tabindex="-1"
+							aria-labelledby="handoff-heading"
+							class="mt-3 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onsubmit={handleConfirmHandoff}
+						>
+							<div class="space-y-1">
+								<p id="handoff-heading" class="text-sm font-medium text-foreground">
+									Make {handoffLabel} the owner of {projectName ||
+										'this project'}?
+								</p>
+								<p class="text-xs text-muted-foreground">
+									They get full control, including deleting it.
+									{handoffLeave
+										? 'You’ll leave the project and lose access.'
+										: 'You’ll stay on as an editor.'}
+								</p>
+							</div>
+
+							<label class="flex items-start gap-2.5 cursor-pointer">
+								<input
+									type="checkbox"
+									class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+									bind:checked={handoffLeave}
+									disabled={handoffSaving}
+								/>
+								<span class="text-sm text-foreground">
+									Leave the project after handing it off
+								</span>
+							</label>
+
+							{#if handoffError}
+								<p class="text-xs text-destructive" role="alert">{handoffError}</p>
+							{/if}
+
+							<div class="flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									disabled={handoffSaving}
+									onclick={handleCancelHandoff}
+								>
+									Cancel
+								</Button>
+								<Button
+									type="submit"
+									variant="primary"
+									size="sm"
+									loading={handoffSaving}
+									disabled={handoffSaving || !handoffTargetIsMember}
+								>
+									{handoffLeave ? 'Hand off and leave' : 'Make owner'}
+								</Button>
+							</div>
+						</form>
+					{/if}
 
 					{#if editingMemberRoleProfile}
 						<div
@@ -1426,9 +1626,7 @@
 							size="sm"
 							class="text-destructive hover:bg-destructive/10"
 							loading={isLeavingProject}
-							disabled={isLeavingProject ||
-								memberActionId !== null ||
-								memberRoleProfileSaving}
+							disabled={isLeavingProject || memberActionsBusy}
 							onclick={handleLeaveProject}
 						>
 							Leave project
@@ -1437,6 +1635,10 @@
 							You can rejoin only if someone invites you again.
 						</p>
 					</div>
+				{:else if isProjectOwner && members.length > 1}
+					<p class="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+						Want to leave? Make someone else the owner, then choose to leave.
+					</p>
 				{/if}
 			</div>
 

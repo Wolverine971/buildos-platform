@@ -10,6 +10,10 @@ import { TOOL_OPERATIONS, buildToolRegistry, getToolDiscoveryPolicyVersion } fro
  * external contract for MCP and agent-call, so this list is a contract fixture:
  * a row may be added when a tool is added, but an existing op name may not move
  * without a deliberate external-contract change.
+ *
+ * 2026-10-04 (Tables tool suite): five table rows added (onto.table.get,
+ * onto.table.rows.query, onto.table.create, onto.table.update,
+ * onto.table.rows.update); no existing op moved.
  */
 const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'call_corsair_mcp_tool util.corsair_mcp.tool.call write',
@@ -21,6 +25,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'create_onto_plan onto.plan.create write',
 	'create_onto_project onto.project.create write',
 	'create_onto_risk onto.risk.create write',
+	'create_onto_table onto.table.create write',
 	'create_onto_task onto.task.create write',
 	'create_task_document onto.task.docs.create_or_attach write',
 	'delegate_task util.agent.delegate write',
@@ -52,6 +57,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'get_onto_project_details onto.project.get read',
 	'get_onto_project_graph onto.project.graph.get read',
 	'get_onto_risk_details onto.risk.get read',
+	'get_onto_table_details onto.table.get read',
 	'get_onto_task_details onto.task.get read',
 	'get_project_calendar cal.project.get read',
 	// Added 2026-09-29 (tasker 112): chat reads the nightly Project cleanup change set.
@@ -77,6 +83,7 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'move_document_in_tree onto.document.tree.move write',
 	'move_onto_task onto.task.move write',
 	'read_document_section x.misc.read_document_section read',
+	'read_table_rows onto.table.rows.query read',
 	'reorganize_onto_project_graph onto.project.graph.reorganize write',
 	'request_email_account_connection email.accounts.connect write',
 	'resolve_user_contact_candidate util.contact.candidate.resolve write',
@@ -107,6 +114,8 @@ const FROZEN_TOOL_OPERATION_ROWS_2026_09_04: readonly string[] = Object.freeze([
 	'update_onto_plan onto.plan.update write',
 	'update_onto_project onto.project.update write',
 	'update_onto_risk onto.risk.update write',
+	'update_onto_table onto.table.update write',
+	'update_onto_table_rows onto.table.rows.update write',
 	'update_onto_task onto.task.update write',
 	'upsert_user_contact util.contact.upsert write',
 	'web_navigate util.web.navigate read',
@@ -193,6 +202,28 @@ describe('catalog registry versioning', () => {
 		for (const name of nonDirectNames) {
 			expect(TOOL_OPERATIONS[name], `${name} must carry no gateway op`).toBeUndefined();
 		}
+	});
+
+	it('never offers the parked paid deep_research template to the model', () => {
+		// Deep Research is parked behind PRIVATE_DEEP_RESEARCH_ENABLED (default
+		// off, tasker 29). No schema, enum, description, or capability line may
+		// advertise it, or a model could pick a $0.25–$1 run by accident.
+		const delegate = CHAT_TOOL_DEFINITIONS.find(
+			(tool) => tool.function.name === 'delegate_task'
+		);
+		expect(delegate).toBeDefined();
+		const properties = delegate!.function.parameters.properties as Record<string, unknown>;
+		expect(properties.run_template).toBeUndefined();
+		// Other delegate_task knobs are unchanged.
+		expect(Object.keys(properties)).toEqual(
+			expect.arrayContaining(['goal', 'scope_mode', 'effort', 'max_cost_usd', 'review'])
+		);
+
+		const advertised = JSON.stringify([
+			...AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY,
+			TOOL_METADATA
+		]).toLowerCase();
+		expect(advertised).not.toMatch(/deep[ _-]research/);
 	});
 
 	it('rejects an unknown tool name instead of inventing an op for it', () => {

@@ -225,7 +225,7 @@ describe('GoogleOAuthHandler Try in BuildOS launch', () => {
 		try {
 			await handler.handleCallback(url, {
 				redirectPath: '/auth/register',
-				successPath: '/projects',
+				successPath: '/today',
 				isRegistration: true,
 				legalAcceptanceToken: 'legal-token'
 			});
@@ -291,7 +291,7 @@ describe('GoogleOAuthHandler Try in BuildOS launch', () => {
 		);
 
 		expect(destination.origin).toBe('https://build-os.com');
-		expect(destination.pathname).toBe('/projects');
+		expect(destination.pathname).toBe('/today');
 		expect(update).not.toHaveBeenCalled();
 	});
 });

@@ -169,9 +169,16 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// edit to a parent's shared doc becomes a card, never a write) and the task
 		// mover's dated-task/asset transfer text. Measured project 65 tools /
 		// 64,863 B (+1,729 B); only passes that select those tools pay it.
-		expect(global.openingBytes).toBeLessThanOrEqual(51_200);
-		expect(project.openingBytes).toBeLessThanOrEqual(64_900);
-		expect(project.admittedBytes).toBeLessThanOrEqual(64_900);
+		// 2026-10-04 (Tables tool suite): get_onto_table_details and read_table_rows
+		// joined both surfaces; create_onto_table, update_onto_table and
+		// update_onto_table_rows joined project (two cell-value/source descriptions
+		// trimmed first). Every count and total now comes from read_table_rows, not
+		// model arithmetic. Measured global 52 tools / 53,357 B, project 70 tools /
+		// 72,326 B (opening == all passes). Jev mounts the table tools only on turns
+		// that need them. Caps at measured + ~0.5%.
+		expect(global.openingBytes).toBeLessThanOrEqual(53_620);
+		expect(project.openingBytes).toBeLessThanOrEqual(72_690);
+		expect(project.admittedBytes).toBeLessThanOrEqual(72_690);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_220);
 	});
 

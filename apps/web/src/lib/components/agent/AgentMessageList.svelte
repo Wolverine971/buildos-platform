@@ -7,6 +7,7 @@
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import CreatedEntityCards from './CreatedEntityCards.svelte';
 	import DocumentChangeCards from './DocumentChangeCards.svelte';
+	import TableChangeCards from './TableChangeCards.svelte';
 	import FreshnessRadarCard from './FreshnessRadarCard.svelte';
 	import CaptureReceiptChip from './CaptureReceiptChip.svelte';
 	import SharedDocumentEditCard from './SharedDocumentEditCard.svelte';
@@ -49,6 +50,10 @@
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { AgentClientActionCompletion } from './agent-chat-client-actions';
 	import type { DocumentChangeCard } from './document-change-cards';
+	import type { TableChangeCard } from './table-change-cards';
+	// Tables (web-data stream): "Save as table" on tables the agent renders.
+	import SaveAsTableHost from '$lib/components/table-surfaces/SaveAsTableHost.svelte';
+	import { chatTableSaveButtons } from '$lib/components/table-surfaces/chat-table-save';
 
 	interface Props {
 		messages: UIMessage[];
@@ -69,6 +74,8 @@
 			card: DocumentChangeCard,
 			document: Record<string, unknown> | null
 		) => void;
+		/** A table change card's Undo changed the table (refresh open views, persist "Undone"). */
+		onTableChangeUndone?: (messageId: string, card: TableChangeCard, complete: boolean) => void;
 		/** A shared-document confirm card was resolved by the user's click. */
 		onSharedDocumentEditResolved?: (resolution: SharedDocumentEditResolutionV1) => void;
 		reviewProjectId?: string | null;
@@ -99,6 +106,7 @@
 		onDraftInChat,
 		onReviewDeeper,
 		onDocumentChangeUndone,
+		onTableChangeUndone,
 		onSharedDocumentEditResolved,
 		reviewProjectId = null,
 		reviewDisabled = false,
@@ -111,6 +119,9 @@
 
 	const proseClasses = getProseClasses('sm');
 	const rowKey = messageRenderKey;
+	let saveAsTableHost = $state<{
+		open: (data: { headers: string[]; rows: string[][] }) => void;
+	} | null>(null);
 
 	// Shared-document confirm cards render under the reply that showed them.
 	const sharedEditCards = $derived(placeSharedDocumentEditCards(messages));
@@ -777,6 +788,7 @@
 	<div
 		bind:this={container}
 		{@attach observeAgentMarkdownTables}
+		{@attach chatTableSaveButtons((data) => saveAsTableHost?.open(data))}
 		{@attach trackScroller}
 		onscroll={handleScroll}
 		class="agent-chat-scroll relative flex-1 min-h-0 overflow-y-auto overscroll-contain {compact
@@ -1089,6 +1101,15 @@
 								onDocumentChangeUndone?.(message.id, card, document)}
 						/>
 					{/if}
+				{:else if message.type === 'table_changes'}
+					{#if message.data?.changes?.length}
+						<TableChangeCards
+							changes={message.data.changes}
+							animateEntrance={playsEntrance(message)}
+							onUndone={(card, complete) =>
+								onTableChangeUndone?.(message.id, card, complete)}
+						/>
+					{/if}
 				{:else if message.type === 'freshness_card'}
 					{#if message.data?.card}
 						<FreshnessRadarCard
@@ -1164,6 +1185,10 @@
 			<ArrowDown class="h-4 w-4" aria-hidden="true" />
 		</button>
 	{/if}
+	<SaveAsTableHost
+		bind:this={saveAsTableHost}
+		projectId={resolvedProjectFocus?.projectId ?? reviewProjectId ?? null}
+	/>
 </div>
 
 <style>

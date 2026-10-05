@@ -51,7 +51,9 @@ describe('GET /auth/confirm', () => {
 	it.each(['signup', 'email', 'recovery', 'magiclink'])(
 		'never verifies a bare token_hash (type=%s): it is not bound to this browser',
 		async (type) => {
-			const result = await runConfirm(confirmUrl({ next: tryLaunch, token_hash: 'hash', type }));
+			const result = await runConfirm(
+				confirmUrl({ next: tryLaunch, token_hash: 'hash', type })
+			);
 
 			expect(result.verifyOtp).not.toHaveBeenCalled();
 			expect(result.exchangeCodeForSession).not.toHaveBeenCalled();
@@ -77,6 +79,21 @@ describe('GET /auth/confirm', () => {
 		});
 
 		expect(result.location).toBe(tryLaunch);
+	});
+
+	it('lands a plain signup confirmation (no next) on Today, signed in', async () => {
+		const result = await runConfirm(confirmUrl({ code: 'auth-code' }));
+
+		expect(result.exchangeCodeForSession).toHaveBeenCalledWith('auth-code');
+		expect(result.location).toBe('/today');
+	});
+
+	it('sends a failed plain confirmation to sign-in without a redirect', async () => {
+		const result = await runConfirm(confirmUrl({ code: 'used-code' }), {
+			exchangeError: { code: 'flow_state_not_found' }
+		});
+
+		expect(result.location).toBe('/auth/login?error=email_link_failed');
 	});
 
 	it.each(['https://evil.example/', '//evil.example/', '/\\evil.example'])(

@@ -2,6 +2,9 @@
 
 # 73 — Libri post-migration BuildOS safety audit
 
+> **Audit 2026-10-04 — PARKED.** This audit has not been triggered. Libri's live backend is still Convex, and the 10-03/10-04 upload and research PRs (#34–#56, e.g. 6bdbfde48, 85504f4c2) say they "do not complete the Convex exit". The libri-worker is deployed, but uploads and research sit behind default-off switches. The 09-01 conditional pass still stands.
+> **Left:** after cutover: the activation receipt plus 5 open checks (no Convex calls, non-Libri schema fingerprint, BuildOS performance through the rollback window, worker queue/cost limits, global backlog/enqueue caps). **Priority:** P2. **Recommend:** park until the Libri frontend cutover, then reopen.
+
 **Created 2026-08-29. Status: active — first production audit recorded 2026-09-01 with a
 conditional pass. Convex retirement remains blocked until the frontend cutover, exact real-image
 canary, and observation window pass.**

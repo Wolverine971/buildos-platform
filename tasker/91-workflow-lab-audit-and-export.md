@@ -2,6 +2,9 @@
 
 # 91 — Workflow Lab: multi-agent trace inspector and export
 
+> **Audit 2026-10-04 — DONE.** The inspector (`/admin/chat/workflows`), the lab's Logs/Trace/Export actions and the Markdown/ZIP export shipped in `62c5e374f`/`6c55811c3` (09-20). They are pushed + deployed and were browser-verified on the pilot session. The "input_evidence migration unapplied" note is stale: it was applied 09-20.
+> **Left:** the export download click and the lab header actions were never exercised. That is cosmetic, since the feature only serves the parked specialist pilot. **Priority:** none. **Recommend:** close & delete.
+
 **Created:** 2026-09-20. **Status:** Built locally on `main` (uncommitted, not deployed); see
 [Implementation status](#implementation-status-2026-09-20). Tracker stays open until deployed
 and the lab actions are checked against a real review.

@@ -2,6 +2,9 @@
 
 # 87 — Make workflow steps recoverable with durable spending limits
 
+> **Audit 2026-10-04 — DONE.** Slices A–C shipped (`a8521ae14`, `7702ca006`, `b90e573bf`) and are pushed + deployed. Execution is off by default and has been enabled for DJ's account only since 09-20. It ran live against real OpenRouter: nine dispatches settled for $0.0065.
+> **Left:** the Railway process-kill proof and the V4 Flash price recheck. Both matter only if specialist workflows come back; they lost 0/4 in tasker 98. **Priority:** none. **Recommend:** close & delete.
+
 **Created:** 2026-09-12  
 **Status (2026-09-18):** Slices A, B, and C are built on `main` behind `AGENTIC_CHAT_WORKFLOW_EXECUTION_ENABLED` (default off; refuses to start without 86's preparation switch). A persistent runner behind 86's runner port; per-physical-request budget reservation and idempotent settlement (`max_price`, uncertain charges retained); fenced read-only recovery in the stall sweep; a priced DeepSeek V4 Flash fallback; and stall/Stop outcomes built from durable truth (accepted answer → visible prefix + notice → model-free partial from accepted reports → failure). Slice C crash cuts (before synthesis, mid-stream, after acceptance, Stop) pass on real SQL. They found and fixed a stuck-forever stall when a generation's last write was answer text (`7702ca006`). A real SIGKILL/restart against local disposable Postgres with a stub provider proved the accepted analyst was not called again (`b90e573bf`). Remaining acceptance for [89](89-chat-workflow-integration-acceptance.md): real OpenRouter and a Railway process kill. Recheck V4 Flash prices, whose cache-read rate is the contract ceiling rather than an observed price.  
 **Depends on:** 83 role contract (done on 2026-09-14; [receipt](../docs/technical/reviews/CHAT_WORKFLOW_TASK83_BOUNDED_REVIEWS_2026-09-14.md)), 84 delivery boundary, 85 storage; 86 accepted before real integration.  

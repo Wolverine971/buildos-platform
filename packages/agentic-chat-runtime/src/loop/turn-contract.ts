@@ -261,10 +261,24 @@ function normalizeAction(value: unknown): TurnContractAction | null {
 		: null;
 }
 
+/**
+ * Enum aliases for the kinds a contract may name. A table is a document
+ * (type document.table, BuildOS Tables 2026-10-04): its writes land in the
+ * ledger as document effects, so a declared `table` or `table_row` outcome is a
+ * document outcome. Exact enum values only; no free text is interpreted.
+ */
+const ENTITY_KIND_ALIASES: Readonly<Record<string, TurnContractEntityKind>> = Object.freeze({
+	table: 'document',
+	table_row: 'document',
+	row: 'document'
+});
+
 function normalizeEntityKind(value: unknown): TurnContractEntityKind | null {
 	const normalized = readString(value, 40)?.toLowerCase();
 	if (!normalized) return null;
 	const singular = normalized.endsWith('s') ? normalized.slice(0, -1) : normalized;
+	const aliased = ENTITY_KIND_ALIASES[singular];
+	if (aliased) return aliased;
 	return TURN_CONTRACT_ENTITY_KINDS.includes(singular as TurnContractEntityKind)
 		? (singular as TurnContractEntityKind)
 		: null;
@@ -291,7 +305,22 @@ const OUTCOME_FIELD_ALIASES: Readonly<
 	// Goal persistence and its provider tools use name/target_date. Models often
 	// borrow title/due_at from task creates when one project-create contract
 	// contains both entity kinds; these aliases are unambiguous for goals.
-	goal: Object.freeze({ title: 'name', due_at: 'target_date' })
+	goal: Object.freeze({ title: 'name', due_at: 'target_date' }),
+	// A project's standard facets live in props.facets (the only place
+	// create_onto_project and update_onto_project write them). Reviewers name
+	// them bare (2026-09-24 Project Setup checklist); the write ledger records
+	// them by path.
+	project: Object.freeze({
+		context: 'props.facets.context',
+		scale: 'props.facets.scale',
+		stage: 'props.facets.stage',
+		facet_context: 'props.facets.context',
+		facet_scale: 'props.facets.scale',
+		facet_stage: 'props.facets.stage',
+		'facets.context': 'props.facets.context',
+		'facets.scale': 'props.facets.scale',
+		'facets.stage': 'props.facets.stage'
+	})
 });
 
 function normalizeOutcomeFieldName(value: string, entityKind: TurnContractEntityKind): string {
@@ -1333,13 +1362,14 @@ const SAFE_WRITE_TOOLS_BY_OUTCOME: Partial<
 		complete: ['update_onto_task'],
 		archive: ['update_onto_task']
 	},
+	// Table writes are document effects (BuildOS Tables, 2026-10-04).
 	document: {
-		create: ['create_onto_document'],
-		update: ['update_onto_document'],
+		create: ['create_onto_document', 'create_onto_table'],
+		update: ['update_onto_document', 'update_onto_table', 'update_onto_table_rows'],
 		move: ['move_document_in_tree'],
 		organize: ['move_document_in_tree', 'create_onto_document'],
-		archive: ['update_onto_document'],
-		restore: ['update_onto_document']
+		archive: ['update_onto_document', 'update_onto_table'],
+		restore: ['update_onto_document', 'update_onto_table']
 	},
 	event: {
 		create: ['create_calendar_event'],

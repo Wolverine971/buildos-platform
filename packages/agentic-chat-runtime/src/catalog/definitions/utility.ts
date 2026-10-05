@@ -595,7 +595,7 @@ It responds with a structured guide that walks through onboarding, planning, aut
 For a broad, coherent project change that spans several entities, first gather and read the current working set in chat. Then dispatch a project-scoped read_write run with review=true, passing the exact discovered entity IDs and intended per-entity outcomes in the instructions. That run stages one reviewable change set; it must not apply anything before the user approves the proposal.
 A prose plan or proposal document is not a staged change set. When the user already asked to stage a reviewable change set, call this tool after gathering instead of asking for permission to delegate.
 The tool returns { run_ids }; announce dispatch, then do not poll because completion posts automatically. Use read_write only for explicitly requested changes. Scope project work with context_type=project and project_id, otherwise global.
-Use deep only for genuinely difficult analysis. Use deep_research for multi-source work with two bounded read-only researchers and synthesis; it must be read-only, costs at least $0.25, defaults to $0.50, and cannot exceed $1.`,
+Use deep only for genuinely difficult analysis.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -641,13 +641,12 @@ Use deep only for genuinely difficult analysis. Use deep_research for multi-sour
 						default: 'standard',
 						description: "'deep' spends more time reasoning."
 					},
-					run_template: {
-						type: 'string',
-						enum: ['agent', 'deep_research'],
-						default: 'agent',
-						description:
-							"'agent' runs one autonomous loop; 'deep_research' runs plan → two web researchers → synthesis."
-					},
+					// 2026-10-04: `run_template` (and with it the paid 'deep_research'
+					// option, $0.25–$1 per run) is no longer offered to the model.
+					// Deep Research is parked behind PRIVATE_DEEP_RESEARCH_ENABLED
+					// (default off) until its quality gate passes — see
+					// tasker/29-deep-research-production-track.md. Every chat run
+					// uses the default 'agent' template.
 					max_tool_calls: {
 						type: 'integer',
 						minimum: 1,

@@ -1,5 +1,6 @@
 // packages/agentic-chat-runtime/src/loop/context-gathering-ledger.ts
-import type { ChatToolCall, ContextUsageSnapshot } from '@buildos/shared-types';
+import type { ChatToolCall, ContextUsageSnapshot, JsonValue } from '@buildos/shared-types';
+import { canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import { getAgenticChatLoopToolCatalog } from './tool-catalog';
 import { extractSearchResultCount } from './search-telemetry';
 import { parseToolArguments } from './tool-arguments';
@@ -497,6 +498,13 @@ function extractDetailReadEvidenceKey(toolCall: ChatToolCall): string | null {
 	if (!toolName) return null;
 	const parsed = parseToolArguments(toolCall.function?.arguments);
 	const args = parsed.args ?? {};
+	// A table query returns rows by handle, not entity ids, so each distinct query
+	// (filters, grouping, paging) is its own evidence; a repeat is served by the
+	// read memo. Without this every table read after the first looks like a
+	// zero-novelty round (BuildOS Tables, 2026-10-04).
+	if (toolName === 'read_table_rows') {
+		return `${toolName}|${canonicalizeAgenticChatJson(args as JsonValue)}`;
+	}
 	const locationKeys = [
 		'anchor',
 		'section',

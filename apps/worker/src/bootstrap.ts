@@ -4,6 +4,7 @@ import type { Server } from 'node:http';
 import { createGeneralWorkerApp } from './app';
 import { logProjectLoopProviderConfiguration } from './config/projectLoops';
 import { logQueueConfiguration } from './config/queueConfig';
+import { describeScheduledWorkGate, resolveScheduledWorkGate } from './config/scheduledWork';
 import { logWorkerError } from './lib/errorLogger';
 import { shutdownPostHog } from './lib/posthog';
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
@@ -17,10 +18,14 @@ const HARD_SHUTDOWN_TIMEOUT_MS = 28_000;
 
 /**
  * Start the single Railway process that owns the general HTTP API, queue
- * consumer, and scheduler. Agentic Chat has a separate entrypoint.
+ * consumer, and scheduler. Agentic Chat has a separate entrypoint. Scheduled
+ * work (crons, purges, queue alerts) starts only on a deployed worker; see
+ * config/scheduledWork.ts.
  */
 export async function startGeneralWorkerProcess(): Promise<void> {
 	logStartupConfiguration();
+	const scheduledWork = resolveScheduledWorkGate(process.env);
+	console.log(describeScheduledWorkGate(scheduledWork));
 
 	const port = parsePort(process.env.PORT);
 	const eventLoopLagMonitor = new WorkerEventLoopLagMonitor();
@@ -105,8 +110,8 @@ export async function startGeneralWorkerProcess(): Promise<void> {
 	process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
 	try {
-		await startWorker();
-		startScheduler();
+		await startWorker({ scheduledWork: scheduledWork.enabled });
+		if (scheduledWork.enabled) startScheduler();
 		server = app.listen(port, '0.0.0.0', () => {
 			console.log(`🚀 API server running on port ${port}`);
 			console.log(`📊 Queue dashboard: http://localhost:${port}/queue/stats`);

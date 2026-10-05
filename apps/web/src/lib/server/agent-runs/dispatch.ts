@@ -3,6 +3,11 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { withQueueCorrelationMetadata } from '$lib/server/queue-job-id';
 import { HttpStatus } from '$lib/utils/api-response';
 import { validateAgentRunMetadata, type AgentRunStatus, type Json } from '@buildos/shared-types';
+import {
+	DEEP_RESEARCH_DISABLED_CODE,
+	DEEP_RESEARCH_DISABLED_MESSAGE,
+	isDeepResearchEnabled
+} from './deep-research-flag';
 
 export { normalizeAgentRunAllowedOps } from './normalization';
 
@@ -290,6 +295,16 @@ export async function dispatchAgentRun(
 	const contextType = params.contextType === 'project' ? 'project' : 'global';
 	const scopeMode = params.scopeMode === 'read_write' ? 'read_write' : 'read_only';
 	const runTemplate = params.runTemplate === 'deep_research' ? 'deep_research' : 'agent';
+	// Kill switch: refuse before any DB read or write, so a disabled deep
+	// research request never creates a run, a queue job, or a cost reservation.
+	if (runTemplate === 'deep_research' && !isDeepResearchEnabled()) {
+		return {
+			ok: false,
+			status: HttpStatus.FORBIDDEN,
+			code: DEEP_RESEARCH_DISABLED_CODE,
+			message: DEEP_RESEARCH_DISABLED_MESSAGE
+		};
+	}
 	const effort =
 		runTemplate === 'deep_research' || params.effort === 'deep' ? 'deep' : 'standard';
 	const reviewRequired = params.reviewRequired === true;

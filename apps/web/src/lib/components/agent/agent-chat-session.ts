@@ -51,6 +51,12 @@ import {
 	type DocumentChangeCard,
 	type DocumentChangeReceipt
 } from './document-change-cards';
+import {
+	buildTableChangeCards,
+	extractTableChangeReceipt,
+	type TableChangeCard,
+	type TableChangeReceipt
+} from './table-change-cards';
 
 export type PreparedPromptClient = {
 	id: string;
@@ -842,6 +848,7 @@ function mapLoadedMessagesToUI(
 	// Ids already turned into chips, so an entity never gets a duplicate chip.
 	const seenCreatedIds = new Set<string>();
 	const seenDocumentChangeIds = new Set<string>();
+	const seenTableChangeIds = new Set<string>();
 	const assistantWorkflowTurns = new Set(
 		messages.flatMap((msg) => {
 			const turnId = workflowMessageTurnId(msg.metadata);
@@ -861,6 +868,7 @@ function mapLoadedMessagesToUI(
 		}
 		let createdForTurn: CreatedEntityRef[] = [];
 		let documentChangesForTurn: DocumentChangeCard[] = [];
+		let tableChangesForTurn: TableChangeCard[] = [];
 		if (msg.role === 'assistant') {
 			const metadata = msg.metadata as Record<string, any> | undefined;
 			const workflow = readAgentChatWorkflowProgress(metadata?.chat_workflow_v1);
@@ -896,6 +904,10 @@ function mapLoadedMessagesToUI(
 				directSources,
 				seenDocumentChangeIds
 			);
+			tableChangesForTurn = deriveTableChangeCardsFromSources(
+				directSources,
+				seenTableChangeIds
+			);
 		}
 
 		uiMessages.push(mapLoadedMessageToUI(msg));
@@ -916,6 +928,10 @@ function mapLoadedMessagesToUI(
 			uiMessages.push(
 				buildDocumentChangesMessage(documentChangesForTurn, msg.id, msg.created_at)
 			);
+		}
+		// And the tables it wrote: counts, sample diffs, Undo.
+		if (tableChangesForTurn.length > 0) {
+			uiMessages.push(buildTableChangesMessage(tableChangesForTurn, msg.id, msg.created_at));
 		}
 	}
 
@@ -940,6 +956,13 @@ function mapLoadedMessagesToUI(
 	);
 	if (unlinkedDocumentChanges.length > 0) {
 		uiMessages.push(buildDocumentChangesMessage(unlinkedDocumentChanges, 'unlinked'));
+	}
+	const unlinkedTableChanges = deriveTableChangeCardsFromSources(
+		unlinkedSources,
+		seenTableChangeIds
+	);
+	if (unlinkedTableChanges.length > 0) {
+		uiMessages.push(buildTableChangesMessage(unlinkedTableChanges, 'unlinked'));
 	}
 
 	return uiMessages;
@@ -1029,6 +1052,42 @@ function buildDocumentChangesMessage(
 	return {
 		id: `document-changes-${idSuffix}`,
 		type: 'document_changes',
+		content: '',
+		data: { changes },
+		timestamp: timestamp ? new Date(timestamp) : new Date(),
+		created_at: timestamp ?? undefined
+	};
+}
+
+/**
+ * Rebuild a turn's table change cards from its stored tool results (source order
+ * = write order), from the structured `table_change` receipt only. Restored
+ * cards do not know whether Undo already ran; a second Undo is refused by the
+ * endpoint's revision/row conflict check and the card says so.
+ */
+function deriveTableChangeCardsFromSources(
+	sources: RestoredToolActivitySource[],
+	seen: Set<string>
+): TableChangeCard[] {
+	const receipts: TableChangeReceipt[] = [];
+	for (const source of [...sources].sort(sortRestoredToolSources)) {
+		if (!source.success) continue;
+		const receipt = extractTableChangeReceipt(parseRecord(source.result));
+		if (receipt) receipts.push(receipt);
+	}
+	const cards = buildTableChangeCards(receipts).filter((card) => !seen.has(card.id));
+	for (const card of cards) seen.add(card.id);
+	return cards;
+}
+
+export function buildTableChangesMessage(
+	changes: TableChangeCard[],
+	idSuffix: string,
+	timestamp?: string | null
+): UIMessage {
+	return {
+		id: `table-changes-${idSuffix}`,
+		type: 'table_changes',
 		content: '',
 		data: { changes },
 		timestamp: timestamp ? new Date(timestamp) : new Date(),

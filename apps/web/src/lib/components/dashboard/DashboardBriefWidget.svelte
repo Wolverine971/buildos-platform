@@ -1,8 +1,9 @@
 <!-- apps/web/src/lib/components/dashboard/DashboardBriefWidget.svelte -->
 <!--
-  Daily brief chip for the dashboard Today row, with ontology support.
+  Daily brief chip for the Projects Today row and the /today header, with ontology support.
   States: loading skeleton → generating (progress %) → brief ready (opens the
   brief modal with a short action tooltip) / generate CTA / retry on error.
+  Auto-start goes through $lib/services/ensure-today-brief (one request per tab and day).
 
   PERFORMANCE (Dec 2024):
   - Skeleton chip matches the final chip height, so the row doesn't shift
@@ -18,6 +19,7 @@
 		streamingStatus,
 		briefGenerationCompleted
 	} from '$lib/services/briefClient.service';
+	import { ensureTodaysBrief } from '$lib/services/ensure-today-brief';
 	import { formatInTimeZone } from 'date-fns-tz';
 	import type { DailyBrief, StreamingStatus } from '$lib/types/daily-brief';
 
@@ -27,25 +29,6 @@
 		onviewbrief?: (brief: DailyBrief) => void;
 		onpreloadbrief?: () => void;
 	}
-
-	type EnsureTodayResponse = {
-		state:
-			| 'completed'
-			| 'in_flight'
-			| 'queued'
-			| 'skipped_no_actor'
-			| 'skipped_no_projects'
-			| 'skipped_recent_failure';
-		briefDate: string;
-		timezone: string;
-		queued: boolean;
-		brief?: DailyBrief | null;
-		job?: {
-			queue_job_id?: string | null;
-			status?: string;
-			scheduled_for?: string;
-		} | null;
-	};
 
 	let { user, onviewbrief, onpreloadbrief }: Props = $props();
 
@@ -124,7 +107,7 @@
 		try {
 			await fetchTodaysBrief();
 			if (!brief) {
-				await ensureTodaysBrief();
+				await autoStartBrief();
 			}
 		} catch (err) {
 			console.error('Failed to initialize brief widget:', err);
@@ -197,53 +180,25 @@
 		}
 	}
 
-	async function ensureTodaysBrief() {
+	// App-open trigger, shared with /today: one request per tab and day, so moving between the
+	// two pages never asks twice (other tabs are deduped server-side). The helper also follows a
+	// queued job.
+	async function autoStartBrief() {
 		if (!todayDate || !user?.id) return;
 
 		const requestToken = ++ensureRequestToken;
-		try {
-			const response = await fetch('/api/daily-briefs/ensure-today', {
-				method: 'POST'
-			});
+		const result = await ensureTodaysBrief({ user, supabaseClient: supabase });
+		if (!result || requestToken !== ensureRequestToken) return;
 
-			if (!response.ok) {
-				console.warn('Daily brief ensure request failed:', response.status);
-				return;
-			}
+		// The server resolves the canonical brief date from users.timezone; adopt
+		// it so todayDate (and the completion-event comparison against it) can't
+		// drift from the ensured brief when the local fallback timezone differs.
+		if (result.timezone && result.timezone !== userTimezone) {
+			userTimezone = result.timezone;
+		}
 
-			const payload = await response.json();
-			const result = payload?.data as EnsureTodayResponse | undefined;
-			if (!result) return;
-			if (requestToken !== ensureRequestToken) return;
-
-			// The server resolves the canonical brief date from users.timezone; adopt
-			// it so todayDate (and the completion-event comparison against it) can't
-			// drift from the ensured brief when the local fallback timezone differs.
-			if (result.timezone && result.timezone !== userTimezone) {
-				userTimezone = result.timezone;
-			}
-
-			if (result.state === 'completed' && result.brief) {
-				brief = result.brief;
-				return;
-			}
-
-			const jobId = result.job?.queue_job_id;
-			if ((result.state === 'queued' || result.state === 'in_flight') && jobId) {
-				await BriefClientService.monitorQueuedGeneration({
-					briefDate: result.briefDate || todayDate,
-					jobId,
-					user: {
-						id: user.id,
-						email: user.email || '',
-						is_admin: user.is_admin || false
-					},
-					timezone: result.timezone || userTimezone,
-					supabaseClient: supabase
-				});
-			}
-		} catch (err) {
-			console.warn('Unable to auto-start daily brief generation:', err);
+		if (result.state === 'completed' && result.brief) {
+			brief = result.brief;
 		}
 	}
 

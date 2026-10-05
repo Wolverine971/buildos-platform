@@ -263,19 +263,24 @@ function call(
 		validation: { retryOnParseError: true, maxRetries: 1 },
 		operationType,
 		// Reconcile and write see every fact at once; the 120 s default is too tight for a big group.
-		// Reconcile (reasoning on) took 234 s for 69 facts on 10-04.
+		// Reconcile with reasoning on took 234 s for 69 facts and 330 s for 141 on 10-04.
 		timeoutMs:
 			operationType === 'consolidation_merge_reconcile'
 				? 360_000
 				: operationType === 'consolidation_merge_extract'
 					? 120_000
 					: 240_000,
-		// Reading facts out, writing them up and checking them are mechanical: hidden
-		// reasoning only slows them (an extract ran past 120 s on 10-04). Deciding fates
-		// is judgment and keeps it. DeepSeek V4 Flash honors `enabled: false`.
-		...(operationType === 'consolidation_merge_reconcile'
-			? {}
-			: { reasoning: { enabled: false } }),
+		// Hidden reasoning off for every step (DeepSeek V4 Flash honors `enabled: false`).
+		// Extract ran past 120 s with it on 10-04. Reconcile kept it until a 141-fact run
+		// that afternoon: both DeepSeek answers spent the whole 8,192-token output on
+		// reasoning and came back cut off ($0.025 billed), while the fallback's ledger,
+		// about 2,500 tokens with no long reasoning, passed every check.
+		reasoning: { enabled: false },
+		// Room for a big group: the 141-fact draft took 4,174 tokens.
+		...(operationType === 'consolidation_merge_reconcile' ||
+		operationType === 'consolidation_merge_write'
+			? { maxTokens: 16_000 }
+			: {}),
 		projectId: ctx.run.root_project_id,
 		metadata: { consolidation_run_id: ctx.run.id, consolidation_cluster: ctx.key },
 		onUsage: ctx.usage.onUsage

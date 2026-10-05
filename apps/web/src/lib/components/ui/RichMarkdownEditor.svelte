@@ -21,9 +21,14 @@
 		Edit3,
 		MoreHorizontal,
 		ChevronUp,
-		Sparkles
+		Sparkles,
+		Table2 as TableIcon
 	} from 'lucide-svelte';
-	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
+	import { renderMarkdown, renderDocumentMarkdown, getProseClasses } from '$lib/utils/markdown';
+	import {
+		documentEmbeds,
+		type MakeLiveTableClick
+	} from '$lib/components/table-surfaces/document-embeds';
 	import VoiceMicButton from '$lib/components/voice/VoiceMicButton.svelte';
 	import VoiceStatusLine from '$lib/components/voice/VoiceStatusLine.svelte';
 	import { VoiceDictation } from '$lib/voice/dictation-session.svelte';
@@ -48,7 +53,8 @@
 		| 'quote'
 		| 'code'
 		| 'link'
-		| 'image';
+		| 'image'
+		| 'table';
 	type EditorViewState = {
 		anchor: number;
 		head: number;
@@ -90,6 +96,15 @@
 		onSave?: () => void;
 		/** Optional handler to launch image insert picker */
 		onInsertImageRequested?: () => void;
+		/** Optional handler to launch the table picker (inserts a `buildos-table` embed). */
+		onInsertTableRequested?: () => void;
+		/**
+		 * Document bodies: when set, Preview renders `[[document:id|label]]` links for this
+		 * project and mounts embedded tables. Leave unset for non-document fields.
+		 */
+		embedProjectId?: string | null;
+		/** Document bodies: offer "Make live table" on markdown tables in Preview. */
+		onMakeLiveTable?: (click: MakeLiveTableClick) => void | Promise<void>;
 		/** Called on every document change (replaces onchange/oninput) */
 		onDocChange?: (value: string) => void;
 		/** Launch an agent proposal for the currently selected Markdown. */
@@ -134,6 +149,9 @@
 		onVoiceNoteSegmentError,
 		onSave,
 		onInsertImageRequested,
+		onInsertTableRequested,
+		embedProjectId,
+		onMakeLiveTable,
 		onDocChange,
 		onProposeSelection,
 		// Bindable voice state
@@ -246,6 +264,10 @@
 			buttons.push({ id: 'image', icon: ImageIcon, label: 'Image' });
 		}
 
+		if (onInsertTableRequested) {
+			buttons.push({ id: 'table', icon: TableIcon, label: 'Table' });
+		}
+
 		return buttons;
 	});
 
@@ -341,6 +363,9 @@
 				break;
 			case 'image':
 				onInsertImageRequested?.();
+				break;
+			case 'table':
+				onInsertTableRequested?.();
 				break;
 		}
 	}
@@ -725,9 +750,25 @@
 					: 'min-h-[200px]'}"
 			>
 				{#if value.trim()}
-					<div class={`${proseClasses} text-foreground`}>
-						{@html renderMarkdown(value)}
-					</div>
+					{#if embedProjectId !== undefined}
+						{@const previewHtml = renderDocumentMarkdown(value, {
+							projectId: embedProjectId
+						})}
+						<div
+							class={`${proseClasses} text-foreground`}
+							{@attach documentEmbeds({
+								projectId: embedProjectId,
+								html: previewHtml,
+								onMakeLiveTable: disabled ? undefined : onMakeLiveTable
+							})}
+						>
+							{@html previewHtml}
+						</div>
+					{:else}
+						<div class={`${proseClasses} text-foreground`}>
+							{@html renderMarkdown(value)}
+						</div>
+					{/if}
 				{:else}
 					<p class="text-muted-foreground text-sm">
 						Nothing to preview yet. Switch back to edit mode to start writing.

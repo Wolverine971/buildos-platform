@@ -1,9 +1,10 @@
 <!-- apps/web/src/lib/components/profile/AccountTab.svelte -->
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { User, Lock, Trash2, TriangleAlert, CircleCheck, Eye, EyeOff } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TabNav from '$lib/components/ui/TabNav.svelte';
 	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
@@ -11,6 +12,11 @@
 	import TabHeader from './_shared/TabHeader.svelte';
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import {
+		countPeople,
+		formatPeopleList,
+		personLabel
+	} from '$lib/components/project/project-sharing-copy';
 
 	type AccountUser = {
 		id?: string;
@@ -27,6 +33,25 @@
 	};
 
 	type AccountSection = 'profile' | 'password' | 'danger';
+
+	/** A shared project the user owns, with the members who can take it over (best first). */
+	type SharedProjectMember = {
+		member_id: string;
+		actor_id: string;
+		name: string | null;
+		email: string | null;
+		role_key: string;
+		access: string;
+	};
+	type SharedProject = {
+		project_id: string;
+		project_name: string;
+		members: SharedProjectMember[];
+	};
+	type SharedProjectChoice = { action: 'handoff' | 'delete'; member_id: string };
+	type SharedProjectDecision =
+		| { project_id: string; action: 'handoff'; member_id: string }
+		| { project_id: string; action: 'delete' };
 
 	interface Props {
 		user: AccountUser;
@@ -52,6 +77,13 @@
 	let showNewPassword = $state(false);
 	let showConfirmPassword = $state(false);
 	let showDeleteConfirmation = $state(false);
+
+	// Shared-projects step of account deletion: null while closed.
+	let checkingSharedProjects = $state(false);
+	let sharedProjects = $state<SharedProject[] | null>(null);
+	let sharedProjectChoices = $state<Record<string, SharedProjectChoice>>({});
+	let sharedProjectsNotice = $state<string | null>(null);
+	let sharedProjectsHeading = $state<HTMLElement | null>(null);
 
 	// Profile form
 	// This component is scoped to the authenticated user for its lifetime. Initialize the editable
@@ -275,6 +307,135 @@
 		}
 	}
 
+	function readSharedProjects(value: unknown): SharedProject[] {
+		if (!Array.isArray(value)) return [];
+		return value
+			.filter(
+				(project): project is SharedProject =>
+					typeof project?.project_id === 'string' && Array.isArray(project?.members)
+			)
+			.map((project) => ({
+				project_id: project.project_id,
+				project_name: project.project_name?.trim() || 'Untitled project',
+				members: project.members.filter(
+					(member: Partial<SharedProjectMember> | null): member is SharedProjectMember =>
+						typeof member?.member_id === 'string'
+				)
+			}));
+	}
+
+	function memberName(member: SharedProjectMember): string {
+		return personLabel(member.name, member.email);
+	}
+
+	function deleteForEveryoneLabel(memberCount: number): string {
+		if (memberCount === 0) return 'Delete it for everyone';
+		const verb = memberCount === 1 ? 'loses' : 'lose';
+		return `Delete it for everyone — ${countPeople(memberCount)} ${verb} access`;
+	}
+
+	/** Opens the step; keeps earlier picks for projects still listed, else hands each to its best candidate. */
+	async function openSharedProjectsStep(projects: SharedProject[], notice: string | null = null) {
+		const previous = sharedProjectChoices;
+		const choices: Record<string, SharedProjectChoice> = {};
+		for (const project of projects) {
+			const firstMemberId = project.members[0]?.member_id ?? '';
+			const kept = previous[project.project_id];
+			const memberId =
+				kept && project.members.some((member) => member.member_id === kept.member_id)
+					? kept.member_id
+					: firstMemberId;
+			choices[project.project_id] = {
+				action: !firstMemberId || kept?.action === 'delete' ? 'delete' : 'handoff',
+				member_id: memberId
+			};
+		}
+		sharedProjectChoices = choices;
+		sharedProjects = projects;
+		sharedProjectsNotice = notice;
+		await tick();
+		sharedProjectsHeading?.focus();
+	}
+
+	async function closeSharedProjectsStep() {
+		sharedProjects = null;
+		sharedProjectsNotice = null;
+		await tick();
+		document.getElementById('delete-account-button')?.focus();
+	}
+
+	function chooseSharedProjectAction(projectId: string, action: SharedProjectChoice['action']) {
+		const current = sharedProjectChoices[projectId];
+		if (!current) return;
+		sharedProjectChoices[projectId] = { ...current, action };
+	}
+
+	function chooseSharedProjectOwner(projectId: string, memberId: string) {
+		const current = sharedProjectChoices[projectId];
+		if (!current) return;
+		sharedProjectChoices[projectId] = { action: 'handoff', member_id: memberId };
+	}
+
+	const sharedProjectDecisions = $derived(
+		(sharedProjects ?? []).map((project): SharedProjectDecision => {
+			const choice = sharedProjectChoices[project.project_id];
+			return choice?.action === 'handoff' && choice.member_id
+				? { project_id: project.project_id, action: 'handoff', member_id: choice.member_id }
+				: { project_id: project.project_id, action: 'delete' };
+		})
+	);
+
+	// A handoff with nobody picked must not quietly become a delete.
+	const sharedProjectsReady = $derived(
+		(sharedProjects ?? []).every((project) => {
+			const choice = sharedProjectChoices[project.project_id];
+			return choice?.action === 'delete' || Boolean(choice?.member_id);
+		})
+	);
+
+	const sharedProjectsSummary = $derived.by(() => {
+		const handedOff = sharedProjectDecisions.filter((d) => d.action === 'handoff').length;
+		const deleted = sharedProjectDecisions.length - handedOff;
+		const parts = [
+			handedOff ? `${handedOff} handed off` : null,
+			deleted ? `${deleted} deleted for everyone` : null
+		].filter(Boolean);
+		return parts.length ? `Shared projects: ${parts.join(', ')}.` : '';
+	});
+
+	/** "Delete My Account": shared projects you own get a decision before the final confirmation. */
+	async function startAccountDeletion() {
+		if (loading || checkingSharedProjects) return;
+		errors = [];
+		checkingSharedProjects = true;
+		let projects: SharedProject[] = [];
+		try {
+			const response = await fetch('/api/account/shared-projects', {
+				credentials: 'same-origin'
+			});
+			const result = await response.json().catch(() => null);
+			if (response.ok) projects = readSharedProjects(result?.data?.projects);
+		} catch (error) {
+			// Fall through to the confirmation: the delete request refuses (409) while a
+			// shared project still needs a decision, and that reopens this step.
+			console.error('Shared projects check failed:', error);
+		} finally {
+			checkingSharedProjects = false;
+		}
+
+		if (projects.length > 0) {
+			await openSharedProjectsStep(projects);
+		} else {
+			sharedProjects = null;
+			showDeleteConfirmation = true;
+		}
+	}
+
+	function continueToFinalConfirmation() {
+		if (!sharedProjectsReady) return;
+		showDeleteConfirmation = true;
+	}
+
 	async function deleteAccount() {
 		if (loading) return;
 
@@ -283,12 +444,14 @@
 
 		try {
 			const response = await fetch('/api/account/settings', {
-				method: 'DELETE'
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ shared_projects: sharedProjectDecisions })
 			});
 
-			const result = await response.json();
+			const result = await response.json().catch(() => null);
 
-			if (response.ok && result.success) {
+			if (response.ok && result?.success) {
 				toastService.success('Deletion scheduled. Your account is now signed out.');
 				onsuccess?.({
 					message: 'Deletion scheduled. Your account is now signed out.'
@@ -297,8 +460,18 @@
 				setTimeout(() => {
 					window.location.href = '/';
 				}, 1500);
+			} else if (
+				response.status === 409 &&
+				result?.code === 'shared_projects_decision_required' &&
+				readSharedProjects(result?.details?.projects).length > 0
+			) {
+				showDeleteConfirmation = false;
+				await openSharedProjectsStep(
+					readSharedProjects(result.details.projects),
+					'Your shared projects changed. Check each one, then continue.'
+				);
 			} else {
-				const message = result.error || 'Failed to delete account';
+				const message = result?.error || 'Failed to delete account';
 				reportOperationError(message);
 			}
 		} catch (error) {
@@ -644,31 +817,168 @@
 							<ul
 								class="list-disc list-inside mt-1 text-muted-foreground space-y-0.5"
 							>
-								<li>Projects you solely own and their tasks</li>
+								<li>Projects only you are in, and their tasks</li>
 								<li>Daily briefs and project context</li>
 								<li>Calendar integration settings</li>
 								<li>Your active subscription and account profile</li>
 							</ul>
 							<p class="mt-2 text-muted-foreground">
-								Contributions in someone else’s shared project may remain under
-								“Deleted user” so their workspace is not damaged.
+								Shared projects you own: you choose who takes each one over, or
+								delete it for everyone. Your contributions to other people’s
+								projects stay under “Deleted user”.
 							</p>
 						</div>
 					</div>
 				</div>
 
-				<div class="flex justify-end">
-					<Button
-						onclick={() => (showDeleteConfirmation = true)}
-						disabled={loading}
-						variant="outline"
-						size="sm"
-						class="text-destructive hover:text-destructive-foreground hover:bg-destructive border-destructive shadow-ink pressable"
-						icon={Trash2}
-					>
-						Delete My Account
-					</Button>
-				</div>
+				{#if sharedProjects}
+					<section aria-labelledby="shared-projects-heading" class="space-y-3">
+						<div class="space-y-0.5">
+							<h4
+								id="shared-projects-heading"
+								bind:this={sharedProjectsHeading}
+								tabindex="-1"
+								class="text-sm font-semibold text-foreground focus:outline-none"
+							>
+								Shared projects
+							</h4>
+							<p class="text-xs text-muted-foreground">
+								Other people work in {sharedProjects.length === 1
+									? 'a project'
+									: 'projects'} you own. Choose what happens to each one.
+							</p>
+						</div>
+
+						{#if sharedProjectsNotice}
+							<p
+								role="status"
+								class="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-foreground"
+							>
+								{sharedProjectsNotice}
+							</p>
+						{/if}
+
+						{#each sharedProjects as project (project.project_id)}
+							{@const choice = sharedProjectChoices[project.project_id]}
+							{@const radioName = `shared-project-${project.project_id}`}
+							<div
+								class="min-w-0 rounded-lg border border-border bg-card p-3 shadow-ink tx tx-thread tx-weak"
+							>
+								<fieldset class="m-0 min-w-0 space-y-2.5 border-0 p-0">
+									<legend
+										class="mb-0.5 w-full truncate p-0 text-sm font-medium text-foreground"
+									>
+										{project.project_name}
+									</legend>
+									{#if project.members.length > 0}
+										<p class="text-xs text-muted-foreground">
+											With {formatPeopleList(project.members.map(memberName))}
+										</p>
+										<div
+											class="flex flex-col gap-2 sm:flex-row sm:items-center"
+										>
+											<label
+												class="flex min-h-11 shrink-0 cursor-pointer items-center gap-2.5 text-sm text-foreground sm:min-h-0"
+											>
+												<input
+													type="radio"
+													name={radioName}
+													value="handoff"
+													checked={choice?.action === 'handoff'}
+													onchange={() =>
+														chooseSharedProjectAction(
+															project.project_id,
+															'handoff'
+														)}
+													disabled={loading}
+													class="h-4 w-4 border-border-strong text-accent focus:ring-accent"
+												/>
+												Give it to
+											</label>
+											<Select
+												size="sm"
+												placeholder=""
+												class="sm:min-w-[12rem]"
+												aria-label="New owner of {project.project_name}"
+												value={choice?.member_id ?? ''}
+												disabled={loading}
+												onchange={(value) =>
+													chooseSharedProjectOwner(
+														project.project_id,
+														String(value)
+													)}
+											>
+												{#each project.members as member (member.member_id)}
+													<option value={member.member_id}
+														>{memberName(member)}</option
+													>
+												{/each}
+											</Select>
+										</div>
+									{:else}
+										<p class="text-xs text-muted-foreground">
+											No one on it can take it over.
+										</p>
+									{/if}
+									<label
+										class="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-foreground sm:min-h-0"
+									>
+										<input
+											type="radio"
+											name={radioName}
+											value="delete"
+											checked={choice?.action === 'delete'}
+											onchange={() =>
+												chooseSharedProjectAction(
+													project.project_id,
+													'delete'
+												)}
+											disabled={loading}
+											class="h-4 w-4 shrink-0 border-border-strong text-destructive focus:ring-destructive"
+										/>
+										<span>{deleteForEveryoneLabel(project.members.length)}</span
+										>
+									</label>
+								</fieldset>
+							</div>
+						{/each}
+
+						<div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+							<Button
+								variant="ghost"
+								size="sm"
+								disabled={loading}
+								onclick={closeSharedProjectsStep}
+							>
+								Cancel
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={loading || !sharedProjectsReady}
+								onclick={continueToFinalConfirmation}
+								class="text-destructive hover:text-destructive-foreground hover:bg-destructive border-destructive shadow-ink pressable"
+							>
+								Continue
+							</Button>
+						</div>
+					</section>
+				{:else}
+					<div class="flex justify-end">
+						<Button
+							id="delete-account-button"
+							onclick={startAccountDeletion}
+							disabled={loading || checkingSharedProjects}
+							loading={checkingSharedProjects}
+							variant="outline"
+							size="sm"
+							class="text-destructive hover:text-destructive-foreground hover:bg-destructive border-destructive shadow-ink pressable"
+							icon={Trash2}
+						>
+							Delete My Account
+						</Button>
+					</div>
+				{/if}
 			</div>
 		</SettingsCard>
 	{/if}
@@ -688,5 +998,5 @@
 >
 	Are you sure? You will be signed out immediately, subscription renewal will be canceled, and
 	your active-system account data will be permanently deleted within 30 days. This cannot be
-	undone.
+	undone.{sharedProjectsSummary ? ` ${sharedProjectsSummary}` : ''}
 </ConfirmationModal>
