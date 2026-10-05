@@ -14,8 +14,12 @@ const pendingLoads = new Map<string, PendingLoad>();
 const MAX_PENDING_LOADS = 4;
 const HANDOFF_TIMEOUT_MS = 10_000;
 
-function endpoint(kind: EntityModalKind, id: string) {
-	return `/api/onto/${kind}s/${id}/full?include_linked=false`;
+/** The reader also lists a task's own docs; the edit modals don't. */
+export type EntityReadOptions = { withTaskDocuments?: boolean };
+
+function endpoint(kind: EntityModalKind, id: string, options: EntityReadOptions = {}) {
+	const taskDocuments = kind === 'task' && options.withTaskDocuments;
+	return `/api/onto/${kind}s/${id}/full?include_linked=false${taskDocuments ? '&include_task_documents=true' : ''}`;
 }
 
 function discard(key: string) {
@@ -27,9 +31,13 @@ function discard(key: string) {
 }
 
 /** Start the read on click, before waiting for the dynamic import. */
-export function prepareEntityModalData(kind: string, id: string): void {
+export function prepareEntityModalData(
+	kind: string,
+	id: string,
+	options: EntityReadOptions = {}
+): void {
 	if (!browser || !id || !['task', 'document', 'goal'].includes(kind)) return;
-	const key = endpoint(kind as EntityModalKind, id);
+	const key = endpoint(kind as EntityModalKind, id, options);
 	discard(key);
 	if (pendingLoads.size >= MAX_PENDING_LOADS) discard(pendingLoads.keys().next().value!);
 	const controller = new AbortController();
@@ -49,9 +57,10 @@ export function prepareEntityModalData(kind: string, id: string): void {
 export function fetchEntityModalData(
 	kind: EntityModalKind,
 	id: string,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	options: EntityReadOptions = {}
 ): Promise<Response> {
-	const key = endpoint(kind, id);
+	const key = endpoint(kind, id, options);
 	const pending = pendingLoads.get(key);
 	if (!pending) return fetch(key, signal ? { signal } : undefined);
 	pendingLoads.delete(key);

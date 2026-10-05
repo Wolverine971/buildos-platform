@@ -84,7 +84,11 @@ export async function loadReadableOntologyDetailRow(
 	if (error) {
 		throw new AgenticChatDetailReadQueryError(input.table, error, entityRef.project_id);
 	}
-	return data ?? null;
+	if (!data) return null;
+	// `*` includes search_vector, Postgres's full-text index of the row (as large as
+	// its text). No caller reads it; the web routes would ship it to the browser.
+	const { search_vector: _searchVector, ...row } = data as Record<string, any>;
+	return row;
 }
 
 export async function loadOntoGoalDetail(

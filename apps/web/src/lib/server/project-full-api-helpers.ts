@@ -210,3 +210,21 @@ export async function loadInitialProjectEventWindow(
 		}
 	};
 }
+
+/** Enough description for the board's one-line preview, at any width. */
+export const BOARD_DESCRIPTION_PREVIEW_CHARS = 240;
+
+/**
+ * The project page's initial payload sends each task's description as the board
+ * shows it: one line, and none for done tasks. The reader and the edit modal read
+ * each task in full when it opens, so whole descriptions here only cost bytes.
+ */
+export function toBoardTask<T extends { state_key?: unknown; description?: unknown }>(task: T): T {
+	if (task.state_key === 'done') return { ...task, description: null };
+	const description = task.description;
+	if (typeof description !== 'string' || description.length <= BOARD_DESCRIPTION_PREVIEW_CHARS) {
+		return task;
+	}
+	const preview = Array.from(description).slice(0, BOARD_DESCRIPTION_PREVIEW_CHARS).join('');
+	return { ...task, description: preview };
+}

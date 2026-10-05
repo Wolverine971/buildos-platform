@@ -13,6 +13,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { ArrowLeft } from '$lib/icons/lucide';
+	import { onReturnAfterAway } from '$lib/utils/return-refresh';
 	import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
 	import { visibleDocumentTree } from '$lib/components/organize/organize-plan';
 	import type { DocTreeNode } from '$lib/types/onto-api';
@@ -157,13 +158,12 @@
 	}
 	onMount(() => {
 		measure();
-		// The project's later changes (chat, another tab) catch up on return.
-		const onFocus = () => {
+		// Changes made elsewhere (another device, an agent) catch up after a real
+		// absence, not on every alt-tab.
+		return onReturnAfterAway(() => {
 			reloadKey += 1;
 			void refreshCard();
-		};
-		window.addEventListener('focus', onFocus);
-		return () => window.removeEventListener('focus', onFocus);
+		});
 	});
 </script>
 

@@ -4,7 +4,21 @@
 
 This document explains how BuildOS persists and tracks outgoing email, the tables involved, and the service layer APIs you should use.
 
-**Last Updated**: 2026-03-16
+**Last Updated**: 2026-10-05
+
+## Mailing address
+
+BuildOS's mailing address is **BuildOS, PO Box 662, Glen Burnie, MD 21061-0662**.
+`packages/shared-types/src/company.ts` supplies the public address to the contact, privacy,
+and terms pages, the shared email templates (including admin and beta emails), and the web
+and worker email senders. HTML and plain-text emails include it even when tracking is disabled
+or caller-provided content already contains an unsubscribe link.
+
+`PRIVATE_POSTAL_ADDRESS` can override the email address in the web and worker environments;
+an unset or blank value falls back to the shared address. Keep the Vercel production, preview,
+and development values and Railway's `daily-brief-worker` production value in sync when the
+address changes. Hosting-variable changes take effect on the next deployment. No email needs
+to be sent to verify this setting; use the mocked email service and worker tests.
 
 ## Quick Links
 

@@ -97,7 +97,7 @@ describe('document page load', () => {
 				return jsonResponse({ error: 'Archived projects cannot be organized.' }, 409);
 			}
 			if (path === DOCUMENT_PATH) return jsonResponse({ data: { document } });
-			if (path === `/api/onto/projects/${PROJECT_ID}`) {
+			if (path === `/api/onto/projects/${PROJECT_ID}?view=access`) {
 				return jsonResponse({ data: { project: { id: PROJECT_ID, name: 'Archived' } } });
 			}
 			return jsonResponse({ error: 'Unexpected read' }, 500);

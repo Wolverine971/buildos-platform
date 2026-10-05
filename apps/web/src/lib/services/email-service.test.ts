@@ -232,6 +232,63 @@ describe('EmailService lifecycle compliance', () => {
 		);
 	});
 
+	it.each([undefined, '   '])(
+		'defaults to the P.O. box when the address is %s',
+		async (address) => {
+			privateEnv.PRIVATE_POSTAL_ADDRESS = address;
+			const service = new EmailService(createSupabaseMock() as any);
+			await service.sendEmail({
+				to: 'user@example.com',
+				subject: 'BuildOS update',
+				body: 'Here is your update.',
+				html: '<html><body><p>Here is your update.</p></body></html>',
+				trackingEnabled: false
+			});
+
+			const mailOptions = sendMailMock.mock.calls[0]?.[0];
+			const addressText = 'BuildOS, PO Box 662, Glen Burnie, MD 21061-0662';
+			expect(mailOptions.text).toContain(addressText);
+			expect(mailOptions.html).toContain(addressText);
+			expect(mailOptions.html.indexOf(addressText)).toBeLessThan(
+				mailOptions.html.indexOf('</body>')
+			);
+		}
+	);
+
+	it('adds the address when caller content already contains an unsubscribe link', async () => {
+		const service = new EmailService(createSupabaseMock() as any);
+		const unsubscribeUrl = 'https://build-os.com/api/email-tracking/existing-id/unsubscribe';
+		await service.sendEmail({
+			to: 'user@example.com',
+			subject: 'Welcome to BuildOS',
+			body: `Welcome.\nUnsubscribe: ${unsubscribeUrl}`,
+			html: `<p>Welcome.</p><a href="${unsubscribeUrl}">Unsubscribe</a>`,
+			metadata: { campaign_type: 'lifecycle', trackingId: 'existing-id' }
+		});
+
+		const mailOptions = sendMailMock.mock.calls[0]?.[0];
+		for (const body of [mailOptions.text, mailOptions.html]) {
+			expect(body).toContain('PO Box 662, Glen Burnie, MD 21061-0662');
+			expect(body.split(unsubscribeUrl)).toHaveLength(2);
+		}
+	});
+
+	it('preserves worker footers without repeating their address', async () => {
+		const service = new EmailService(createSupabaseMock() as any);
+		const address = 'BuildOS, PO Box 662, Glen Burnie, MD 21061-0662';
+		await service.sendEmail({
+			to: 'user@example.com',
+			subject: 'BuildOS Daily Brief',
+			body: `Your brief is ready.\n${address}`,
+			html: `<p>Your brief is ready.</p><p>${address}</p>`,
+			metadata: { category: 'daily_brief' }
+		});
+
+		const mailOptions = sendMailMock.mock.calls[0]?.[0];
+		expect(mailOptions.text.split(address)).toHaveLength(2);
+		expect(mailOptions.html.split(address)).toHaveLength(2);
+	});
+
 	it('routes lifecycle emails to the local log sink without calling Gmail', async () => {
 		privateEnv.PRIVATE_LIFECYCLE_EMAIL_SINK = 'log';
 		const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => undefined);

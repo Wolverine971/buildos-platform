@@ -260,4 +260,46 @@ describe('GET /api/onto/projects/[id]/full', () => {
 		expect(payload.data.tasks_coverage).toEqual(coverage);
 		expect(payload.data.pulse_tasks).toEqual([pulseOnlyTask]);
 	});
+
+	it('sends task descriptions as the board shows them: one line, none for done tasks', async () => {
+		const event = createEvent('?profile=v2-initial');
+		const supabase = event.locals.supabase as any;
+		const base = {
+			project_id: PROJECT_ID,
+			deleted_at: null,
+			due_at: null,
+			start_at: null,
+			completed_at: null,
+			priority: 1,
+			updated_at: '2026-07-15T12:00:00.000Z'
+		};
+		const long = `${'Context that runs on. '.repeat(40)}🎯 end`;
+		supabase.rpc.mockResolvedValue({
+			data: projectFullPayload({
+				tasks: [
+					{ ...base, id: 'open', title: 'Open', state_key: 'todo', description: long },
+					{
+						...base,
+						id: 'short',
+						title: 'Short',
+						state_key: 'todo',
+						description: 'Brief.'
+					},
+					{ ...base, id: 'done', title: 'Done', state_key: 'done', description: long }
+				]
+			}),
+			error: null
+		});
+		listProjectEventsMock.mockResolvedValue([]);
+
+		const payload = await (await GET(event)).json();
+		const byId = Object.fromEntries(
+			payload.data.tasks.map((task: { id: string }) => [task.id, task])
+		);
+
+		expect(Array.from(byId.open.description as string)).toHaveLength(240);
+		expect(long.startsWith(byId.open.description)).toBe(true);
+		expect(byId.short.description).toBe('Brief.');
+		expect(byId.done.description).toBeNull();
+	});
 });

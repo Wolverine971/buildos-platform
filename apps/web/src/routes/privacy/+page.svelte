@@ -5,6 +5,7 @@
 	Change a claim here → update CLAIMS.md in the same commit (and bump CURRENT_PRIVACY_VERSION).
 -->
 <script lang="ts">
+	import { BUILDOS_MAILING_ADDRESS_LINES } from '@buildos/shared-types';
 	import { Archive, Clock, Download, EyeOff, Shield, Sparkles, Trash2 } from '$lib/icons/lucide';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 
@@ -709,15 +710,20 @@
 					Questions or requests: <a
 						href="mailto:dj@build-os.com"
 						class="text-accent hover:text-accent/80 underline">dj@build-os.com</a
-					>.<br />
-					BuildOS, Glen Burnie, Maryland, United States
+					>.
 				</p>
+				<address class="mt-3 not-italic text-muted-foreground">
+					{#each BUILDOS_MAILING_ADDRESS_LINES as line (line)}
+						{line}<br />
+					{/each}
+					United States
+				</address>
 			</section>
 
 			<div class="border-t border-border pt-6 flex items-center gap-2">
 				<Clock class="w-4 h-4 text-muted-foreground" />
 				<p class="text-sm text-muted-foreground">
-					Effective and last updated: September 24, 2026 (version 2026-09-24)
+					Effective and last updated: October 5, 2026 (version 2026-10-05)
 				</p>
 			</div>
 		</div>

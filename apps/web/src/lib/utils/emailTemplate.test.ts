@@ -4,6 +4,32 @@ import { generateMinimalEmailHTML, generatePlainEmailHTML } from './emailTemplat
 import { generateSafeEmailPreviewHTML } from './emailPreview';
 
 describe('email template safety', () => {
+	it('includes the mailing address in branded, plain, and preview templates', () => {
+		for (const render of [
+			generateMinimalEmailHTML,
+			generatePlainEmailHTML,
+			generateSafeEmailPreviewHTML
+		]) {
+			const html = render({ subject: 'BuildOS update', content: '<p>Hello</p>' });
+			expect(html).toContain('BuildOS, PO Box 662, Glen Burnie, MD 21061-0662');
+		}
+	});
+
+	it('escapes address overrides and avoids repeating an existing address', () => {
+		for (const render of [generateMinimalEmailHTML, generatePlainEmailHTML]) {
+			const data = {
+				subject: 'Update',
+				content: '<p>Hello</p>',
+				postalAddress: 'BuildOS & Co <Mail>'
+			};
+			const html = render(data);
+			expect(html).toContain('BuildOS &amp; Co &lt;Mail&gt;');
+			expect(html).not.toContain('<Mail>');
+			const existing = render({ ...data, content: '<p>BuildOS &amp; Co &lt;Mail&gt;</p>' });
+			expect(existing.split('BuildOS &amp; Co &lt;Mail&gt;')).toHaveLength(2);
+		}
+	});
+
 	it('escapes subjects in generated document titles', () => {
 		const subject = '</title><script>globalThis.compromised = true</script>';
 

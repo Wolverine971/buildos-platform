@@ -54,7 +54,10 @@ export async function loadProjectItemPage({
 
 	const [cardResponse, itemResponse] = await Promise.all([
 		fetch(`/api/onto/projects/${projectId}/card`),
-		fetch(`/api/onto/${word.plural}/${itemId}/full?include_linked=false`)
+		// A task's read also lists its docs, so the reader opens with them.
+		fetch(
+			`/api/onto/${word.plural}/${itemId}/full?include_linked=false${kind === 'task' ? '&include_task_documents=true' : ''}`
+		)
 	]);
 
 	// The item endpoint checks access to its current project. Resolve a moved doc
@@ -97,7 +100,7 @@ export async function loadProjectItemPage({
 			throw error(403, 'You do not have access to this project.');
 		}
 		// No card (an archived project, or a read that failed): the item still opens.
-		const fallback = await fetch(`/api/onto/projects/${projectId}`);
+		const fallback = await fetch(`/api/onto/projects/${projectId}?view=access`);
 		if (!fallback.ok) throw error(500, 'Failed to load project');
 		const payload = await fallback.json().catch(() => null);
 		projectName = payload?.data?.project?.name ?? '';

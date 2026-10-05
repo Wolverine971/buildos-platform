@@ -91,6 +91,7 @@
 	import { collectDocIds, parseDocStructure } from '$lib/services/ontology/doc-structure.service';
 	import { createCompleteProjectTasksCoverage } from '$lib/utils/project-task-board';
 	import { toastService } from '$lib/stores/toast.store';
+	import { onReturnAfterAway } from '$lib/utils/return-refresh';
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import type { Document, Goal, Milestone, Plan, Project, Risk, Task } from '$lib/types/onto';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
@@ -353,9 +354,17 @@
 		return goals.find((goal) => goal.id === item.id)?.name ?? '';
 	}
 
+	// The reader announces its own changes so the lists catch up; it already shows
+	// them (or reads the item again itself), so that announcement must not reload it.
+	let readerAnnouncing = false;
 	function readerChanged() {
-		if (readerItem) void refreshEntity(readerItem.kind, readerItem.id);
-		else void refreshProject();
+		readerAnnouncing = true;
+		try {
+			if (readerItem) refreshEntity(readerItem.kind, readerItem.id);
+			else void refreshProject();
+		} finally {
+			readerAnnouncing = false;
+		}
 	}
 
 	// The page holds still while reading on wide screens: the panes fill the window
@@ -879,7 +888,10 @@
 			return;
 		}
 
-		prepareEntityModalData(resolution.action.kind, resolution.action.entityId);
+		// Tasks open in the reader, which reads a task's docs with it.
+		prepareEntityModalData(resolution.action.kind, resolution.action.entityId, {
+			withTaskDocuments: true
+		});
 		if (!['document', 'task', 'goal'].includes(resolution.action.kind)) {
 			void preloadProjectEntityModal(resolution.action.kind).catch((error) => {
 				console.warn('[Project workspace] Failed to preload entity editor', error);
@@ -1158,22 +1170,22 @@
 				return;
 			}
 			if (!event || !mutationAffectsProject(event.summary, project.id)) return;
-			if (readerItem) readerReload += 1;
+			if (readerItem && !readerAnnouncing) readerReload += 1;
 			void refreshQueue.enqueue(event.summary);
 			freshness.scheduleRefresh();
 		});
+		// Project memory catches up after a real absence (another device or an agent
+		// may have refreshed it), not on every alt-tab: it is the page's largest read.
+		const stopReturnRefresh = onReturnAfterAway(() => void hydrateContextDocument(true));
 		return () => {
 			unsubscribe();
+			stopReturnRefresh();
 			freshness.destroy();
 		};
 	});
 </script>
 
-<svelte:window
-	onpopstate={handleWorkspacePopState}
-	onkeydown={readerKeydown}
-	onfocus={() => void hydrateContextDocument(true)}
-/>
+<svelte:window onpopstate={handleWorkspacePopState} onkeydown={readerKeydown} />
 
 <svelte:head>
 	<title>{project.name || 'Project'} · BuildOS</title>

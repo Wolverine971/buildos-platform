@@ -471,12 +471,33 @@ describe('ProjectWorkspace edge states', () => {
 				.content.replace('2026-07-22T12:00:00.000Z', '2026-08-15T12:00:00.000Z')
 				.replace('4 open tasks', '5 open tasks')
 		};
-		vi.mocked(fetch).mockResolvedValueOnce(apiResponse({ document: refreshed }));
-		await fireEvent.focus(window);
-		await waitFor(() =>
-			expect(screen.queryByText(/Snapshot out of date/)).not.toBeInTheDocument()
-		);
-		expect(screen.getByText(/5 open tasks/)).toBeInTheDocument();
+		const documentReads = () =>
+			vi
+				.mocked(fetch)
+				.mock.calls.filter(([url]) =>
+					String(url).startsWith(`/api/onto/documents/${contextDocument().id}`)
+				).length;
+		const start = Date.now();
+		const clock = vi.spyOn(Date, 'now').mockReturnValue(start);
+		try {
+			// A quick alt-tab reads nothing again.
+			const readsBefore = documentReads();
+			await fireEvent.blur(window);
+			await fireEvent.focus(window);
+			expect(documentReads()).toBe(readsBefore);
+
+			// Back after a real absence: the snapshot catches up.
+			await fireEvent.blur(window);
+			clock.mockReturnValue(start + 61_000);
+			vi.mocked(fetch).mockResolvedValueOnce(apiResponse({ document: refreshed }));
+			await fireEvent.focus(window);
+			await waitFor(() =>
+				expect(screen.queryByText(/Snapshot out of date/)).not.toBeInTheDocument()
+			);
+			expect(screen.getByText(/5 open tasks/)).toBeInTheDocument();
+		} finally {
+			clock.mockRestore();
+		}
 	});
 	beforeEach(() => {
 		window.history.replaceState({}, '', '/workspace?view=overview');

@@ -157,7 +157,7 @@
 		void tick().then(() =>
 			listEl
 				?.querySelector<HTMLElement>(`[data-row-id="${id}"], [data-node-id="${id}"]`)
-				?.scrollIntoView({ block: 'nearest' })
+				?.scrollIntoView?.({ block: 'nearest' })
 		);
 	});
 

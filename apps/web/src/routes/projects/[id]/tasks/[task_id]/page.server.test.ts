@@ -6,7 +6,7 @@ import { load } from './+page.server';
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const TASK_ID = '22222222-2222-4222-8222-222222222222';
 const CARD_PATH = `/api/onto/projects/${PROJECT_ID}/card`;
-const TASK_PATH = `/api/onto/tasks/${TASK_ID}/full?include_linked=false`;
+const TASK_PATH = `/api/onto/tasks/${TASK_ID}/full?include_linked=false&include_task_documents=true`;
 
 async function loadTaskPage(event: Parameters<typeof load>[0]) {
 	const result = await load(event);

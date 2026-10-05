@@ -270,7 +270,7 @@ const METRIC_COLUMNS = [
 	'unit'
 ].join(',');
 
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params, locals, url }) => {
 	try {
 		const { id } = params;
 
@@ -324,6 +324,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Return 404 for soft-deleted projects (they shouldn't be accessed directly)
 		if (project.deleted_at) {
 			return ApiResponse.notFound('Project');
+		}
+
+		// `?view=access` answers "can this viewer read the project?" with its id and
+		// name: same checks, none of the full payload (which runs to hundreds of KB).
+		if (url.searchParams.get('view') === 'access') {
+			return ApiResponse.success({ project: { id: project.id, name: project.name } });
 		}
 
 		// OPTIMIZATION: Fetch ALL related entities in a single parallel batch

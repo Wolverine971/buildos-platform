@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/contact/+page.svelte -->
 <script lang="ts">
+	import { BUILDOS_MAILING_ADDRESS_LINES } from '@buildos/shared-types';
 	import BuildOSLogo from '$lib/components/layout/BuildOSLogo.svelte';
 	import {
 		ArrowRight,
@@ -109,7 +110,7 @@
 			</header>
 
 			<div class="mx-auto grid max-w-5xl gap-4 md:grid-cols-3">
-				{#each contactPaths as path}
+				{#each contactPaths as path (path.href)}
 					{@const PathIcon = path.icon}
 					<a
 						href={path.href}
@@ -136,6 +137,16 @@
 						</span>
 					</a>
 				{/each}
+			</div>
+
+			<div class="mx-auto mt-8 max-w-5xl border-t border-border pt-6 text-center">
+				<h2 class="text-lg font-semibold text-foreground">Mailing address</h2>
+				<address class="mt-2 text-sm not-italic leading-relaxed text-muted-foreground">
+					{#each BUILDOS_MAILING_ADDRESS_LINES as line (line)}
+						{line}<br />
+					{/each}
+					United States
+				</address>
 			</div>
 		</div>
 	</section>
@@ -200,7 +211,7 @@
 				</p>
 
 				<div class="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-					{#each socialLinks as social}
+					{#each socialLinks as social (social.href)}
 						{@const SocialIcon = social.icon}
 						<a
 							href={social.href}

@@ -44,10 +44,6 @@
 	import { tableEmbedInsertion } from '$lib/components/table-surfaces/table-surface-utils';
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
 	import {
-		fetchTaskDocuments,
-		type TaskWorkspaceDocument
-	} from '$lib/services/ontology/task-document.service';
-	import {
 		KIND_WORD,
 		TASK_STATES,
 		neighbors,
@@ -84,11 +80,15 @@
 		props?: { priority?: string | null; description?: string | null } | null;
 		updated_at: string;
 	};
+	/** A doc made for the task, as listed under it (it opens here). */
+	type TaskDocSummary = { id: string; title: string; state_key: string };
 	type Loaded = {
 		key: string;
 		doc?: DocData;
 		task?: TaskData;
 		goal?: GoalData;
+		/** Read with the task, in the same request. */
+		taskDocs: TaskDocSummary[];
 		revision: string | null;
 	};
 
@@ -164,6 +164,7 @@
 			doc: data.document,
 			task: data.task,
 			goal: data.goal,
+			taskDocs: Array.isArray(data.task_documents) ? data.task_documents : [],
 			revision: data.editor_revision ?? null
 		};
 	}
@@ -189,7 +190,7 @@
 		if (untrack(() => editing && loaded?.key === k)) return;
 		const controller = new AbortController();
 		loadError = '';
-		fetchEntityModalData(kind, id, controller.signal)
+		fetchEntityModalData(kind, id, controller.signal, { withTaskDocuments: true })
 			.then(async (response) => {
 				const payload = await response.json().catch(() => null);
 				if (!response.ok) throw new Error(payload?.error || `Could not load this ${word}.`);
@@ -445,33 +446,8 @@
 		detailEditor = 'document';
 	}
 
-	// The docs made for a task (its old Workspace tab), loaded with the task.
-	let taskDocs = $state<{ taskId: string; docs: TaskWorkspaceDocument[] } | null>(null);
-	let taskDocsTick = $state(0);
-	const taskDocList = $derived(
-		taskDocs && taskDocs.taskId === current?.task?.id ? taskDocs.docs : null
-	);
-	$effect(() => {
-		const taskId = current?.task?.id;
-		void reloadKey;
-		void taskDocsTick;
-		if (!taskId) return;
-		let live = true;
-		fetchTaskDocuments(taskId)
-			.then((result) => {
-				if (!live) return;
-				taskDocs = {
-					taskId,
-					docs: result.documents.filter((entry) => entry.edge?.props?.role !== 'scratch')
-				};
-			})
-			.catch(() => {
-				if (live) taskDocs = { taskId, docs: [] };
-			});
-		return () => {
-			live = false;
-		};
-	});
+	// The docs made for a task (its old Workspace tab) come with the task's read.
+	const taskDocList = $derived(current?.taskDocs ?? []);
 
 	async function setTaskState(next: string) {
 		const task = current?.task;
@@ -506,11 +482,6 @@
 
 	function detailsChanged() {
 		reloadTick += 1;
-		onChanged();
-	}
-
-	function taskDocMade() {
-		taskDocsTick += 1;
 		onChanged();
 	}
 
@@ -884,7 +855,7 @@
 			<section class="task-docs" aria-label="Docs for this task">
 				<div class="task-docs-head">
 					<span class="micro">Docs for this task</span>
-					{#if taskDocList?.length}<span class="count">{taskDocList.length}</span>{/if}
+					{#if taskDocList.length}<span class="count">{taskDocList.length}</span>{/if}
 					{#if canWrite}
 						<button
 							type="button"
@@ -895,29 +866,18 @@
 						</button>
 					{/if}
 				</div>
-				{#if taskDocList === null}
-					<div
-						class="h-9 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
-						aria-busy="true"
-						aria-label="Loading docs"
-					></div>
-				{:else if taskDocList.length}
+				{#if taskDocList.length}
 					<ul>
-						{#each taskDocList as entry (entry.document.id)}
+						{#each taskDocList as entry (entry.id)}
 							<li>
 								<button
 									type="button"
-									onclick={() =>
-										onOpen?.({ kind: 'document', id: entry.document.id })}
+									onclick={() => onOpen?.({ kind: 'document', id: entry.id })}
 								>
 									<FileText class="h-4 w-4 shrink-0 text-muted-foreground" />
-									<span class="truncate"
-										>{entry.document.title || 'Untitled'}</span
-									>
-									{#if entry.document.state_key}
-										<span class="tag"
-											>{stateLabel(entry.document.state_key)}</span
-										>
+									<span class="truncate">{entry.title || 'Untitled'}</span>
+									{#if entry.state_key}
+										<span class="tag">{stateLabel(entry.state_key)}</span>
 									{/if}
 								</button>
 							</li>
@@ -1049,7 +1009,7 @@
 			taskId={detailEditor === 'task-doc' ? (current?.task?.id ?? null) : null}
 			documentId={detailEditor === 'document' ? (current?.doc?.id ?? null) : null}
 			onClose={() => (detailEditor = null)}
-			onSaved={detailEditor === 'task-doc' ? taskDocMade : detailsChanged}
+			onSaved={detailsChanged}
 			onDeleted={() => {
 				detailEditor = null;
 				onChanged();

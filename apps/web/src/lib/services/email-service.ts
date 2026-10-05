@@ -2,6 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { createTransport } from 'nodemailer';
+import { BUILDOS_MAILING_ADDRESS } from '@buildos/shared-types';
 
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
@@ -13,7 +14,11 @@ import {
 	type EmailSender,
 	type SenderType
 } from '$lib/utils/email-config';
-import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
+import {
+	appendEmailPostalAddressHtml,
+	appendEmailPostalAddressText,
+	generateMinimalEmailHTML
+} from '$lib/utils/emailTemplate';
 import { ErrorLoggerService } from './errorLogger.service';
 
 type LifecycleEmailSink = 'log' | 'smtp' | 'gmail';
@@ -91,16 +96,23 @@ export class EmailService {
 			? `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`
 			: '';
 
-		const textBody = this.composeTextBody(data.body, unsubscribeUrl, optOutScope);
-		const htmlBody = this.composeHtmlBody({
-			subject: data.subject,
-			html: data.html,
-			textBody,
-			trackingPixel,
-			trackingId,
-			unsubscribeUrl,
-			optOutScope
-		});
+		const postalAddress = this.getPostalAddress();
+		const textBody = appendEmailPostalAddressText(
+			this.composeTextBody(data.body, unsubscribeUrl, optOutScope),
+			postalAddress
+		);
+		const htmlBody = appendEmailPostalAddressHtml(
+			this.composeHtmlBody({
+				subject: data.subject,
+				html: data.html,
+				textBody,
+				trackingPixel,
+				trackingId,
+				unsubscribeUrl,
+				optOutScope
+			}),
+			postalAddress
+		);
 		const replyTo = data.replyTo ?? (optOutScope ? sender.email : undefined);
 		const headers = this.buildOptOutHeaders({
 			sender,
@@ -425,7 +437,8 @@ export class EmailService {
 		return generateMinimalEmailHTML({
 			subject,
 			content,
-			trackingPixel
+			trackingPixel,
+			postalAddress: this.getPostalAddress()
 		});
 	}
 
@@ -450,7 +463,7 @@ export class EmailService {
 		return `${textBody.trimEnd()}
 
 ${message}
-${unsubscribeUrl}${this.getPostalAddressText()}`;
+${unsubscribeUrl}`;
 	}
 
 	private rewriteLinksForTracking(html: string, trackingId: string): string {
@@ -505,7 +518,6 @@ ${unsubscribeUrl}${this.getPostalAddressText()}`;
 			<p style="font-size: 12px; line-height: 1.5; color: #6B625C;">
 				${message}
 				<a href="${this.escapeHtml(unsubscribeUrl)}" style="color: #6B625C;">here</a>.
-				${this.getPostalAddressHtml()}
 			</p>
 		`;
 
@@ -579,23 +591,9 @@ ${unsubscribeUrl}${this.getPostalAddressText()}`;
 		return null;
 	}
 
-	private getPostalAddress(): string | null {
+	private getPostalAddress(): string {
 		const postalAddress = env.PRIVATE_POSTAL_ADDRESS?.trim();
-		return postalAddress || null;
-	}
-
-	private getPostalAddressText(): string {
-		const postalAddress = this.getPostalAddress();
-		return postalAddress ? `\n\nBuildOS mailing address:\n${postalAddress}` : '';
-	}
-
-	private getPostalAddressHtml(): string {
-		const postalAddress = this.getPostalAddress();
-		if (!postalAddress) {
-			return '';
-		}
-
-		return `<br /><span>BuildOS mailing address: ${this.escapeHtml(postalAddress)}</span>`;
+		return postalAddress || BUILDOS_MAILING_ADDRESS;
 	}
 
 	private buildOptOutHeaders({

@@ -9,8 +9,9 @@
  * - Task data with project verification
  * - Linked entities (plans, goals, milestones, documents, tasks)
  *
- * Note: Workspace documents are NOT included here as they are deferred
- * to when the user switches to the workspace tab.
+ * Note: Workspace documents are NOT included by default. The reader passes
+ * `include_task_documents=true` for a short list of them (id, title, state), so
+ * opening a task there is one request.
  *
  * Documentation:
  * - Ontology System: /apps/web/docs/features/ontology/README.md
@@ -22,9 +23,14 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { TASK_DETAIL_COLUMNS } from '$lib/server/onto-detail-columns';
 import { resolveLinkedEntities } from '../../task-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { attachAssigneesToTask, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
+import {
+	loadTaskDocumentSummaries,
+	type TaskDocumentSummary
+} from '$lib/server/task-document-summaries';
 
 export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const session = await locals.safeGetSession();
@@ -35,6 +41,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 	const supabase = locals.supabase;
 	const taskId = params.id;
 	const includeLinkedEntities = url.searchParams.get('include_linked') !== 'false';
+	const includeTaskDocuments = url.searchParams.get('include_task_documents') === 'true';
 
 	try {
 		// Phase 1: Parallelize initial queries
@@ -44,7 +51,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 				.from('onto_tasks')
 				.select(
 					`
-					*,
+					${TASK_DETAIL_COLUMNS},
 					project:onto_projects!inner(
 						id,
 						name
@@ -126,23 +133,40 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			return ApiResponse.forbidden('Access denied');
 		}
 
-		const linkedEntities = includeLinkedEntities
-			? await resolveLinkedEntities(supabase, taskId, task.project_id)
-			: null;
-
 		// Extract project data and include project name in response
 		const { project, ...taskData } = task;
-		let taskWithAssignees = { ...taskData, assignees: [] as unknown[] };
-		try {
-			const assigneeMap = await fetchTaskAssigneesMap({ supabase, taskIds: [taskId] });
-			taskWithAssignees = attachAssigneesToTask(taskData, assigneeMap);
-		} catch (assigneeError) {
-			console.warn('[Task Full GET] Failed to enrich assignees in response:', assigneeError);
-		}
+		const [linkedEntities, assigneeMap, taskDocuments] = await Promise.all([
+			includeLinkedEntities
+				? resolveLinkedEntities(supabase, taskId, task.project_id)
+				: Promise.resolve(null),
+			fetchTaskAssigneesMap({ supabase, taskIds: [taskId] }).catch((assigneeError) => {
+				console.warn(
+					'[Task Full GET] Failed to enrich assignees in response:',
+					assigneeError
+				);
+				return null;
+			}),
+			includeTaskDocuments
+				? loadTaskDocumentSummaries(supabase, {
+						taskId,
+						projectId: task.project_id
+					}).catch((documentsError): TaskDocumentSummary[] | null => {
+						console.warn(
+							'[Task Full GET] Failed to load task documents:',
+							documentsError
+						);
+						return null;
+					})
+				: Promise.resolve(null)
+		]);
+		const taskWithAssignees = assigneeMap
+			? attachAssigneesToTask(taskData, assigneeMap)
+			: { ...taskData, assignees: [] as unknown[] };
 
 		return ApiResponse.success({
 			task: { ...taskWithAssignees, project: { name: project.name } },
-			...(linkedEntities ? { linkedEntities } : {})
+			...(linkedEntities ? { linkedEntities } : {}),
+			...(taskDocuments ? { task_documents: taskDocuments } : {})
 		});
 	} catch (error) {
 		console.error('[Task Full GET] Error fetching task data:', error);

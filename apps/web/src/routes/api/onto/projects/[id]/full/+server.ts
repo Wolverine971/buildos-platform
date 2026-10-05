@@ -42,6 +42,7 @@ import {
 	loadInitialProjectEventWindow,
 	resolveProfile,
 	shouldSampleProjectFullPerf,
+	toBoardTask,
 	type ProjectEventWindowResult,
 	type PublicPageCounts
 } from '$lib/server/project-full-api-helpers';
@@ -280,9 +281,9 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			current_actor_id: actorId,
 			goals,
 			plans: data.plans || [],
-			tasks: tasksWithAssignees,
+			tasks: isV2InitialProfile ? tasksWithAssignees.map(toBoardTask) : tasksWithAssignees,
 			tasks_coverage: taskWindow.coverage,
-			pulse_tasks: pulseTasks,
+			pulse_tasks: isV2InitialProfile ? pulseTasks.map(toBoardTask) : pulseTasks,
 			documents: data.documents || [],
 			milestones: decoratedMilestones,
 			risks: data.risks || [],

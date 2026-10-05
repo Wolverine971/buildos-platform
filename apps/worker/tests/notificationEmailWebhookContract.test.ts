@@ -7,6 +7,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
 	const originalEnv = {
+		PRIVATE_POSTAL_ADDRESS: process.env.PRIVATE_POSTAL_ADDRESS,
 		PUBLIC_APP_URL: process.env.PUBLIC_APP_URL,
 		PRIVATE_BUILDOS_WEBHOOK_SECRET: process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET
 	};
@@ -86,6 +87,7 @@ function jsonResponse(status: number, body: unknown) {
 }
 
 beforeEach(() => {
+	delete process.env.PRIVATE_POSTAL_ADDRESS;
 	process.env.PUBLIC_APP_URL = 'https://build-os.test';
 	process.env.PRIVATE_BUILDOS_WEBHOOK_SECRET = 'secret';
 	fetchMock.mockReset();
@@ -109,6 +111,9 @@ describe('email adapter webhook status contract', () => {
 		const result = await sendEmailNotification(delivery(), mocks.noopLogger);
 
 		expect(result).toEqual({ success: true, external_id: 'email-1' });
+		const payload = JSON.parse(fetchMock.mock.calls[0]![1].body);
+		expect(payload.htmlContent).toContain('BuildOS, PO Box 662, Glen Burnie, MD 21061-0662');
+		expect(payload.textContent).toContain('BuildOS, PO Box 662, Glen Burnie, MD 21061-0662');
 	});
 
 	it('treats a 409 preference block as a cancel, never as sent', async () => {

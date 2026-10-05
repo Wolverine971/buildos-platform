@@ -3021,7 +3021,7 @@
 		try {
 			// Try to fetch project details - if user can access, they likely have write access
 			// The restore endpoint enforces admin access server-side
-			const response = await fetch(`/api/onto/projects/${requestedProjectId}`);
+			const response = await fetch(`/api/onto/projects/${requestedProjectId}?view=access`);
 			if (!isCurrentDocumentSession(session)) return;
 			if (response.ok) {
 				// User has at least read access; show restore button (server will validate)

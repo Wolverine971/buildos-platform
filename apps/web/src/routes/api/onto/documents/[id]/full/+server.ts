@@ -19,6 +19,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { DOCUMENT_DETAIL_COLUMNS } from '$lib/server/onto-detail-columns';
 import { getDocumentEditorRevision } from '$lib/server/document-editor-revision';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
@@ -48,7 +49,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 					.from('onto_documents')
 					.select(
 						`
-						*,
+						${DOCUMENT_DETAIL_COLUMNS},
 						project:onto_projects!inner(
 							id
 						)

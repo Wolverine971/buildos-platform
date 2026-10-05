@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/terms/+page.svelte -->
 <script lang="ts">
+	import { BUILDOS_MAILING_ADDRESS_LINES } from '@buildos/shared-types';
 	import { FileText, AlertTriangle, Shield, Users, DollarSign } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 </script>
@@ -625,15 +626,20 @@
 					<a
 						href="mailto:dj@build-os.com"
 						class="text-accent hover:text-accent/80 underline">dj@build-os.com</a
-					><br />
-					BuildOS — Glen Burnie, Maryland, United States
+					>
 				</p>
+				<address class="mt-3 not-italic text-muted-foreground">
+					{#each BUILDOS_MAILING_ADDRESS_LINES as line (line)}
+						{line}<br />
+					{/each}
+					United States
+				</address>
 			</section>
 
 			<!-- Last Updated -->
 			<div class="border-t border-border pt-6">
 				<p class="text-sm text-muted-foreground">
-					Effective and last updated: September 24, 2026 (version 2026-09-24)
+					Effective and last updated: October 5, 2026 (version 2026-10-05)
 				</p>
 			</div>
 		</div>

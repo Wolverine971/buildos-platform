@@ -1,9 +1,11 @@
 // apps/web/src/lib/utils/emailTemplate.ts
+import { BUILDOS_MAILING_ADDRESS } from '@buildos/shared-types';
 
 export interface EmailTemplateData {
 	subject: string;
 	content: string;
 	trackingPixel?: string;
+	postalAddress?: string;
 }
 
 export interface EmailTemplateRenderOptions {
@@ -20,6 +22,26 @@ export function escapeHtmlText(value: string): string {
 		.replace(/'/g, '&#39;');
 }
 
+export function appendEmailPostalAddressText(
+	text: string,
+	postalAddress = BUILDOS_MAILING_ADDRESS
+): string {
+	if (text.includes(postalAddress)) return text;
+	return `${text.trimEnd()}\n\nBuildOS mailing address:\n${postalAddress}`;
+}
+
+export function appendEmailPostalAddressHtml(
+	html: string,
+	postalAddress = BUILDOS_MAILING_ADDRESS
+): string {
+	const escapedAddress = escapeHtmlText(postalAddress);
+	if (html.includes(escapedAddress)) return html;
+	const footer = `<p style="font-size: 12px; line-height: 1.5; color: #6B625C; margin-top: 16px;">BuildOS mailing address: ${escapedAddress}</p>`;
+	return html.includes('</body>')
+		? html.replace('</body>', `${footer}</body>`)
+		: `${html}${footer}`;
+}
+
 function escapeHtmlAttribute(value: string): string {
 	return value
 		.replace(/&/g, '&amp;')
@@ -32,7 +54,7 @@ function renderMinimalEmailHTML(
 	data: EmailTemplateData,
 	options: EmailTemplateRenderOptions = {}
 ): string {
-	const { subject, content, trackingPixel = '' } = data;
+	const { subject, content, trackingPixel = '', postalAddress = BUILDOS_MAILING_ADDRESS } = data;
 	const contentSecurityPolicy = options.contentSecurityPolicy
 		? `<meta http-equiv="Content-Security-Policy" content="${escapeHtmlAttribute(options.contentSecurityPolicy)}">`
 		: '';
@@ -289,6 +311,7 @@ function renderMinimalEmailHTML(
 			<p>
 				Sent by BuildOS • <a href="https://build-os.com">build-os.com</a>
 			</p>
+			${content.includes(escapeHtmlText(postalAddress)) ? '' : `<p style="font-size: 12px; margin-top: 8px;">${escapeHtmlText(postalAddress)}</p>`}
 		</div>
 	</div>
 	${trackingPixel}
@@ -304,11 +327,12 @@ export function generateMinimalEmailHTML(
 	return renderMinimalEmailHTML(data, options);
 }
 
-// Alternative even more minimal template (no header/footer)
+// Alternative minimal template with the mailing address and no branded header.
 export function generatePlainEmailHTML(data: EmailTemplateData): string {
 	const { subject, content, trackingPixel = '' } = data;
 
-	return `
+	return appendEmailPostalAddressHtml(
+		`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -345,5 +369,7 @@ export function generatePlainEmailHTML(data: EmailTemplateData): string {
 	${trackingPixel}
 </body>
 </html>
-	`.trim();
+	`.trim(),
+		data.postalAddress
+	);
 }

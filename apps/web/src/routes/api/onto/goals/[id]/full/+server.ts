@@ -19,6 +19,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { GOAL_DETAIL_COLUMNS } from '$lib/server/onto-detail-columns';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
 
@@ -40,7 +41,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 				.from('onto_goals')
 				.select(
 					`
-					*,
+					${GOAL_DETAIL_COLUMNS},
 					project:onto_projects!inner(
 						id,
 						name

@@ -138,18 +138,18 @@ describe('shared ontology detail reads', () => {
 		});
 	});
 
-	it('keeps the route-only document loader on the full UI payload', async () => {
+	it('keeps the route-only document loader on the full UI payload, minus the search index', async () => {
 		const document = {
 			id: 'doc-1',
 			project_id: PROJECT_ID,
 			title: 'Specs',
-			content: '# Full UI body',
-			search_vector: "'specs':1"
+			content: '# Full UI body'
 		};
 		const { context } = createContext({
 			onto_documents: [
 				{ data: { id: 'doc-1', project_id: PROJECT_ID }, error: null },
-				{ data: document, error: null }
+				// search_vector is as large as the text; nothing outside Postgres reads it.
+				{ data: { ...document, search_vector: "'specs':1" }, error: null }
 			]
 		});
 

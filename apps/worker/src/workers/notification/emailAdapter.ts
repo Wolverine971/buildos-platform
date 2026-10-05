@@ -7,6 +7,7 @@
 
 import { createServiceClient } from '@buildos/supabase-client';
 import {
+	BUILDOS_MAILING_ADDRESS,
 	type NotificationDelivery,
 	getNotificationBoolean,
 	getNotificationString
@@ -119,9 +120,9 @@ function isSentEmailStatus(status: string | null | undefined): boolean {
 	);
 }
 
-function getPostalAddress(): string | null {
+function getPostalAddress(): string {
 	const postalAddress = process.env.PRIVATE_POSTAL_ADDRESS?.trim();
-	return postalAddress || null;
+	return postalAddress || BUILDOS_MAILING_ADDRESS;
 }
 
 function escapeHtml(value: string): string {
