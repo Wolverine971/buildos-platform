@@ -6,11 +6,11 @@ One plugin directory, two plugin systems. It connects an agent to the remote Bui
 connector at `https://build-os.com/mcp/buildos` and ships a skill that teaches the agent how
 to work inside a BuildOS workspace.
 
-| Client      | Manifest                     | Transport                                                      |
-| ----------- | ---------------------------- | -------------------------------------------------------------- |
-| Claude Code | `.claude-plugin/plugin.json` | inline `mcpServers` → remote HTTP MCP with OAuth               |
-| Codex       | `.codex-plugin/plugin.json`  | `.app.json` → the BuildOS ChatGPT app (Apps SDK)               |
-| Both        | `skills/buildos-context/`    | Skill loaded by either plugin system                           |
+| Client      | Manifest                     | Transport                                        |
+| ----------- | ---------------------------- | ------------------------------------------------ |
+| Claude Code | `.claude-plugin/plugin.json` | inline `mcpServers` → remote HTTP MCP with OAuth |
+| Codex       | `.codex-plugin/plugin.json`  | `.app.json` → the BuildOS ChatGPT app (Apps SDK) |
+| Both        | `skills/buildos-context/`    | Skill loaded by either plugin system             |
 
 Keep the Claude Code MCP server inline in its manifest. Do not add a root `.mcp.json`: Codex
 loads one automatically, and its cloud threads cannot complete OAuth for a direct server, so

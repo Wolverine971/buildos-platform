@@ -2,6 +2,12 @@
 
 # Skill Refactor Inventory & Synthesis
 
+> **Snapshot (July 2026), not maintained.** The block-ontology migration it planned is done. It
+> still lists `libri_knowledge` (deleted 2026-08-13) and omits `fiction_story_craft` and
+> `research_capture`. For the current catalog read
+> `apps/web/src/lib/services/agentic-chat/tools/skills/registry.ts`; for quality and usage see
+> `tasker/115-skills-jev-playbooks-and-connector-pack.md`.
+
 Structural migration of 51 skills onto the canonical block ontology (Identity → Activation → Judgment → Procedure → Routing → Contract → Policy → Knowledge → Related Tools → Examples → Provenance). "Migrated" is gated on a `## Identity` H2 (§12.1). This report is **recommendation-only** — it does not act, rewrite content, merge/split skills, or extract references (all §7 non-goals). Golden reference: `going_viral/SKILL.md`.
 
 - **Total:** 51 skills

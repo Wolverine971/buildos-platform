@@ -43,8 +43,12 @@ should be reusable elsewhere. The current draft schema lives at
 
 ## Promotion Stamps
 
-The draft is canonical; the runtime skill and blog post are derived from it. When a
-draft is promoted, stamp its frontmatter so the draft stays the source of truth:
+Once promoted, the **runtime skill is canonical**:
+`apps/web/src/lib/services/agentic-chat/tools/skills/definitions/<id>/SKILL.md`. The public
+download (`/agent-skills/<slug>/portable/SKILL.md`) is generated from it on request; edit the
+runtime file, not the draft. Most drafts here were frozen in June/July 2026 while the runtime
+files kept changing, so a draft is a source record, not the current skill. When a draft is
+promoted, stamp its frontmatter so the lineage stays traceable:
 
 - `status`: `registered | queued | archived | superseded-by: <id>`
 - `promoted_to`: path to the runtime skill (when registered in the agentic-chat skill

@@ -417,7 +417,7 @@
 					"title": "Hook Craft For Short-Form: An Agent Skill For Better Openers",
 					"seoTitle": "Short-Form Hook Skill for Claude Code (SKILL.md)",
 					"seoDescription": "Draft, audit, and rewrite hooks for short-form video, blog leads, and social posts. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.",
-					"description": "A source-lineaged agent skill for drafting, auditing, and rewriting hooks across short-form video, blog leads, social posts, demo openers, and pitch slide 1.",
+					"description": "An agent skill for drafting, auditing, and rewriting hooks across short-form video, blog leads, social posts, demo openers, and pitch slide 1.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
 					"lastmod": "2026-05-02",
@@ -603,7 +603,7 @@
 					"title": "Story-Driven Content Craft: An Agent Skill For Nonfiction That Holds Attention",
 					"seoTitle": "Story-Driven Content Skill for Claude Code",
 					"seoDescription": "Structure essays, video scripts, and founder posts so people keep reading. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.",
-					"description": "A source-lineaged agent skill for structuring founder essays, video scripts, social posts, and pitch narratives with stronger loops, rhythm, lens, payoff, and retention craft.",
+					"description": "An agent skill for structuring founder essays, video scripts, social posts, and pitch narratives with stronger loops, rhythm, lens, payoff, and retention craft.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
 					"lastmod": "2026-05-02",
@@ -688,7 +688,7 @@
 					"seoTitle": "UI/UX Review Skill for Claude Code (SKILL.md)",
 					"seoDescription": "Audit screens, dashboards, and mobile flows with checkable rules and concrete fixes. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.",
 					"portableDescription": "Review product screens and flows for hierarchy, clarity, spacing, type, color, consistency, states, charts, and responsive fit. Use when auditing a screen, dashboard, landing page, or mobile flow, or when checking AI-generated UI before it ships. Returns evidence-backed findings with severity and concrete fixes.",
-					"description": "A source-lineaged agent skill for reviewing product screens, landing pages, dashboards, and mobile flows. Each principle ships in two layers: human-readable principle + agent-checkable rules with thresholds and named patterns.",
+					"description": "An agent skill for reviewing product screens, landing pages, dashboards, and mobile flows. Each principle ships in two layers: human-readable principle + agent-checkable rules with thresholds and named patterns.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
 					"lastmod": "2026-05-03",
@@ -811,8 +811,9 @@
 				"viral-content-for-boring-brands": {
 					"title": "Viral Content For Boring Brands: An Agent Skill For Brand-Account Content",
 					"seoTitle": "Boring-Brand Viral Content Skill for Claude Code",
+					"portableDescription": "Design or audit brand-account and founder-account content for products that are not inherently exciting (B2B SaaS, dev tools, project-management software, supplements, commodity consumables) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds. Covers format steal with a moral edge, curiosity gaps, identity ladders, honest credentials, the one-line sharer test, and the story skeleton, with overlays that reject slop formats and performative authority. Not for creator-led personal-brand content, sentence-level hook polish, or narrative arcs; use hook-craft-short-form and story-driven-content-craft for those.",
 					"seoDescription": "Content for unexciting products that survives the first two seconds of a scroll. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.",
-					"description": "A source-lineaged agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.",
+					"description": "An agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.",
 					"author": "DJ Wayne",
 					"date": "2026-05-10",
 					"lastmod": "2026-05-10",
@@ -3141,7 +3142,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-10-05T01:29:47.088Z",
+	"generatedAt": "2026-10-05T03:57:45.167Z",
 	"totalPosts": 67,
 	"totalCategories": 8
 }

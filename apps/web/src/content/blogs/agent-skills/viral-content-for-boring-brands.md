@@ -1,8 +1,9 @@
 ---
 title: 'Viral Content For Boring Brands: An Agent Skill For Brand-Account Content'
 seoTitle: 'Boring-Brand Viral Content Skill for Claude Code'
+portableDescription: 'Design or audit brand-account and founder-account content for products that are not inherently exciting (B2B SaaS, dev tools, project-management software, supplements, commodity consumables) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds. Covers format steal with a moral edge, curiosity gaps, identity ladders, honest credentials, the one-line sharer test, and the story skeleton, with overlays that reject slop formats and performative authority. Not for creator-led personal-brand content, sentence-level hook polish, or narrative arcs; use hook-craft-short-form and story-driven-content-craft for those.'
 seoDescription: 'Content for unexciting products that survives the first two seconds of a scroll. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.'
-description: 'A source-lineaged agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.'
+description: 'An agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.'
 author: 'DJ Wayne'
 date: '2026-05-10'
 lastmod: '2026-05-10'

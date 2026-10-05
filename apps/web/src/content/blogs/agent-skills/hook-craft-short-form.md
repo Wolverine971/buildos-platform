@@ -2,7 +2,7 @@
 title: 'Hook Craft For Short-Form: An Agent Skill For Better Openers'
 seoTitle: 'Short-Form Hook Skill for Claude Code (SKILL.md)'
 seoDescription: 'Draft, audit, and rewrite hooks for short-form video, blog leads, and social posts. Free SKILL.md for Claude Code and Codex, or run it in BuildOS.'
-description: 'A source-lineaged agent skill for drafting, auditing, and rewriting hooks across short-form video, blog leads, social posts, demo openers, and pitch slide 1.'
+description: 'An agent skill for drafting, auditing, and rewriting hooks across short-form video, blog leads, social posts, demo openers, and pitch slide 1.'
 author: 'DJ Wayne'
 date: '2026-05-02'
 lastmod: '2026-05-02'

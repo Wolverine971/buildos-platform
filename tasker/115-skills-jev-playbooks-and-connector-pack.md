@@ -163,13 +163,32 @@ typecheck clean, 26 focused web test files (389 tests) + worker contract-example
   there via the any-mounted-tool check; test proven to fail without the guard); "root combo / child
   skill" jargon removed from two article descriptions.
 
+**Final sweep (10-05, after DJ's push `f52586c25`)**
+
+- Vercel web + workers deployed. CI's worker lane is green, so the surface budget fix landed. CI is
+  still red only on the web typecheck in `cleanup-note.service.ts` and `InboxCleanupTriage.svelte`
+  (`'lead' is possibly 'undefined'`, `QueuedTriageDecision[][]`). That is the inbox cleanup work,
+  not skills. The "Libri migration safety" job only restates the main job's failure.
+- `npx skills add https://build-os.com` verified end to end in a sandbox: 8 skills discovered,
+  one installed.
+- `viral-content-for-boring-brands` got a `portableDescription` that names only public slugs, so
+  the download no longer points at BuildOS-internal child skills. "Source-lineaged" jargon was
+  dropped from 4 article descriptions; `blog-context.json` was regenerated.
+- `skill-drafts/README.md` now says the runtime skill is canonical once a draft is promoted;
+  `SKILL_REFACTOR_INVENTORY.md` is marked as a snapshot.
+- Tracker 116's plugin change (no root `.mcp.json`, MCP server inline in
+  `.claude-plugin/plugin.json`) is consistent with the plugin README and `connect-agents.md`; no
+  doc still tells users to rely on `.mcp.json`.
+
 **Before / after deploy**
 
 - Deploy the worker with or before web (the reschedule fix backs the calendar example).
 - (Verified 10-04) Supabase redirect allow-list covers `/auth/confirm` via the Site URL host match.
-- After deploy: `curl -I` a download for the headers; `npx skills add https://build-os.com`;
-  resubmit the sitemap and request reindex of the 8 articles in Search Console; look at the article,
-  gallery and a people page at phone width; one throwaway Try signup (email and Google).
+- (Done 10-05) `curl -I` download headers, discovery index, robots/llms, people photos 404,
+  `npx skills add https://build-os.com`.
+- **Still DJ's:** resubmit the sitemap and request reindex of the 8 articles in Search Console;
+  look at the article, gallery and a people page at phone width; one throwaway Try signup (email
+  and Google).
 - The index holds some of these files staged by another session in pre-format versions; re-add the
   paths before committing.
 
