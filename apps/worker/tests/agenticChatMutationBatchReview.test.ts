@@ -16,7 +16,8 @@ import type { AgenticChatTurnProviderRequestV1 } from '../src/workers/agentic-ch
 import {
 	buildMutationBatchReviewRequest,
 	buildMutationBatchRevisionRequest,
-	formatMutationBatchForReview
+	formatMutationBatchForReview,
+	tableChecklistNotice
 } from '../src/workers/agentic-chat/provider/review/mutation-batch';
 import { completeMutationBatchReviewDecision } from '../src/workers/agentic-chat/provider/review/decision-completion';
 import {
@@ -436,5 +437,27 @@ describe('work-type classification policy reaches the reviewer', () => {
 		expect(system).toContain(
 			'A priority, scheduling, or completion instruction commissions only that change.'
 		);
+	});
+});
+
+describe('table checklist vocabulary reaches the reviewer only for table writes', () => {
+	it('names the provable table fields when the batch writes a table', () => {
+		const notice = tableChecklistNotice(
+			batchWith(
+				{
+					table_id: INSPECTION_ID,
+					update: [{ row: 'r1', values: { 'Salary range': '$1' } }]
+				},
+				'update_onto_table_rows'
+			)
+		);
+		expect(notice).toContain('columns');
+		expect(notice).toContain('rows');
+		expect(notice).toContain('cells');
+		expect(notice).toContain('salary_range');
+	});
+
+	it('adds nothing to batches without a table write', () => {
+		expect(tableChecklistNotice(batchWith(LINK_ARGUMENTS))).toBeNull();
 	});
 });

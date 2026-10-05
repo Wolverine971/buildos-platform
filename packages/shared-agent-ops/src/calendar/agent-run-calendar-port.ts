@@ -24,6 +24,10 @@ import {
 	parseAgentCalendarRangeBound,
 	type NormalizedAgentCalendarEventTiming
 } from './calendar-event-timing';
+import {
+	applyGoogleCalendarPropertyChange,
+	GOOGLE_CALENDAR_LEGACY_FULL_SCOPE
+} from './google-calendar-scopes';
 
 type SupabaseAdmin = any;
 type CalendarScope = 'user' | 'project' | 'calendar_id';
@@ -1041,7 +1045,8 @@ class AgentRunCalendarPort implements CalendarPort {
 			refresh_token: tokens.refresh_token,
 			expiry_date: tokens.expiry_date ?? undefined,
 			token_type: tokens.token_type || 'Bearer',
-			scope: tokens.scope || 'https://www.googleapis.com/auth/calendar'
+			// Rows saved before scopes were recorded were granted the full legacy scope.
+			scope: tokens.scope || GOOGLE_CALENDAR_LEGACY_FULL_SCOPE
 		});
 
 		oauth2Client.on('tokens', (newTokens) => {
@@ -1790,10 +1795,14 @@ class AgentRunCalendarPort implements CalendarPort {
 		if (input.name) calendarPatch.summary = input.name;
 		if (input.description) calendarPatch.description = input.description;
 		if (Object.keys(calendarPatch).length > 0) {
-			await calendar.calendars.patch({
-				calendarId: existing.calendar_id,
-				requestBody: calendarPatch
-			});
+			// A linked calendar BuildOS did not create keeps its Google name under the narrow
+			// Calendar grant; the mapping below still stores the new name.
+			await applyGoogleCalendarPropertyChange(() =>
+				calendar.calendars.patch({
+					calendarId: existing.calendar_id,
+					requestBody: calendarPatch
+				})
+			);
 		}
 		if (colorId) {
 			await this.patchCalendarListColor(existing.calendar_id, colorId).catch(() => undefined);
@@ -2120,14 +2129,20 @@ export function createLegacyGoogleCalendarClient(
 					if (updates.summary) patch.summary = updates.summary;
 					if (updates.description) patch.description = updates.description;
 					if (updates.timeZone) patch.timeZone = updates.timeZone;
+					// Linked calendars BuildOS did not create keep their Google name/color
+					// under the narrow Calendar grant; the caller stores the change.
 					if (Object.keys(patch).length > 0) {
-						await calendar.calendars.patch({ calendarId, requestBody: patch });
+						await applyGoogleCalendarPropertyChange(() =>
+							calendar.calendars.patch({ calendarId, requestBody: patch })
+						);
 					}
 					if (updates.colorId) {
-						await calendar.calendarList.patch({
-							calendarId,
-							requestBody: { colorId: updates.colorId }
-						});
+						await applyGoogleCalendarPropertyChange(() =>
+							calendar.calendarList.patch({
+								calendarId,
+								requestBody: { colorId: updates.colorId }
+							})
+						);
 					}
 					return { success: true as const };
 				},

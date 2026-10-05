@@ -3,11 +3,13 @@
 	Tasker 112: a project's one living "Project cleanup" change set in the AI Inbox.
 	Pick verified changes and apply them together; each still applies through its own
 	suggestion decision (own verification, result and trail), so one failure never blocks
-	the rest. Findings are marked done or not needed; judgment calls go to chat. Anything
-	not picked stays for later.
+	the rest. Findings are marked done or not needed in one tap; a quick note hands an item
+	to Jev, who applies it, sets it aside or passes it to an agent. Anything not picked
+	stays for later. Triage walks every item one at a time.
 -->
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
+	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import InboxCleanupChangeList from './InboxCleanupChangeList.svelte';
 	import InboxProjectManagerBrief from './InboxProjectManagerBrief.svelte';
 	import {
@@ -22,16 +24,18 @@
 		ListChecks,
 		MessageCircle,
 		RefreshCw,
+		Send,
 		Target,
-		X
+		X,
+		Zap
 	} from '$lib/icons/lucide';
 	import type {
 		ProjectCleanupItem,
 		ProjectCleanupView,
 		ProjectSuggestionReviewItem
 	} from '@buildos/shared-types';
+	import { sendCleanupNote } from './cleanup-note.client';
 	import {
-		CLEANUP_DISMISS_REASONS,
 		CLEANUP_SECTION_LABEL,
 		CLEANUP_SOURCE_LABEL,
 		addressDecisionsFor,
@@ -47,12 +51,12 @@
 		orderedCleanupGroups,
 		summarizeCleanupItemOutcome,
 		type CleanupDecision,
-		type CleanupDismissReason,
 		type CleanupItemResult,
 		type CleanupOutcome
 	} from './project-cleanup-presentation';
 
 	type Receipt = CleanupItemResult & { id: string; title: string };
+	type JevReply = { id: string; title: string; reply: string; ok: boolean };
 	type PendingKind = 'apply' | 'dismiss' | 'address' | 'reload';
 
 	let {
@@ -65,6 +69,7 @@
 		onSnooze,
 		onDiscuss,
 		onFixInChat,
+		onTriage,
 		onDecided
 	}: {
 		view?: ProjectCleanupView | null;
@@ -77,6 +82,8 @@
 		/** Discuss the whole card (null) or one item. */
 		onDiscuss?: (item: ProjectCleanupItem | null) => void;
 		onFixInChat?: (reviewItem: ProjectSuggestionReviewItem, item: ProjectCleanupItem) => void;
+		/** Walk every item one at a time. */
+		onTriage?: () => void;
 		/** After a save: items handled and the freshly verified view. */
 		onDecided?: (summary: { handled: number; view: ProjectCleanupView | null }) => void;
 	} = $props();
@@ -95,9 +102,10 @@
 	let receipts = $state.raw<Receipt[]>([]);
 	let changedIds = $state.raw<Set<string>>(new Set());
 	let requestError = $state<string | null>(null);
-	let dismissingId = $state<string | null>(null);
-	let dismissReason = $state<CleanupDismissReason>('not_relevant');
-	let dismissNote = $state('');
+	let notingId = $state<string | null>(null);
+	let noteText = $state('');
+	let noteSendingIds = $state.raw<Set<string>>(new Set());
+	let jevReplies = $state.raw<JevReply[]>([]);
 	let auditOpen = $state(false);
 	let auditLoading = $state(false);
 	let auditError = $state<string | null>(null);
@@ -123,6 +131,9 @@
 	);
 	const allReadySelected = $derived(
 		readyIds.length > 0 && readyIds.every((id) => selected.has(id))
+	);
+	const openCount = $derived(
+		current ? current.counts.safe_cleanup + current.counts.needs_call + current.counts.note : 0
 	);
 	const headline = $derived(
 		current ? (current.bottom_line ?? cleanupCountsLine(current.counts)) : 'Project cleanup'
@@ -173,6 +184,19 @@
 
 	function selectAllReady() {
 		selected = new Set([...selected, ...readyIds]);
+	}
+
+	function groupPickIds(items: ProjectCleanupItem[]): string[] {
+		return items.filter((item) => isCleanupItemSelectable(item)).map((item) => item.id);
+	}
+
+	function toggleGroup(ids: string[], checked: boolean) {
+		const next = new Set(selected);
+		for (const id of ids) {
+			if (checked) next.add(id);
+			else next.delete(id);
+		}
+		selected = next;
 	}
 
 	async function submit(
@@ -230,26 +254,53 @@
 		void submit('address', addressDecisionsFor(item), [item], item.id);
 	}
 
-	function toggleDismiss(item: ProjectCleanupItem) {
-		if (dismissingId === item.id) {
-			dismissingId = null;
-			return;
-		}
-		dismissingId = item.id;
-		dismissReason = 'not_relevant';
-		dismissNote = '';
+	// One tap: "Not needed" never asks why. A reason, if there is one, goes in a note to Jev.
+	function markNotNeeded(item: ProjectCleanupItem) {
+		void submit('dismiss', dismissDecisionsFor(item, 'not_relevant'), [item], item.id);
 	}
 
-	async function confirmDismiss(item: ProjectCleanupItem) {
-		const saved = await submit(
-			'dismiss',
-			dismissDecisionsFor(item, dismissReason, dismissNote),
-			[item],
-			item.id
-		);
-		if (saved) {
-			dismissingId = null;
-			dismissNote = '';
+	function toggleNote(item: ProjectCleanupItem) {
+		if (notingId === item.id) {
+			notingId = null;
+			return;
+		}
+		notingId = item.id;
+		noteText = '';
+	}
+
+	async function sendNote(item: ProjectCleanupItem) {
+		const note = noteText.trim();
+		if (!note || noteSendingIds.has(item.id)) return;
+		noteSendingIds = new Set(noteSendingIds).add(item.id);
+		notingId = null;
+		noteText = '';
+		const result = await sendCleanupNote({ projectId, item, note });
+		const sending = new Set(noteSendingIds);
+		sending.delete(item.id);
+		noteSendingIds = sending;
+		jevReplies = [
+			...jevReplies.filter((entry) => entry.id !== item.id),
+			{
+				id: item.id,
+				title: item.title,
+				reply: result.ok ? result.reply : result.message,
+				ok: result.ok
+			}
+		];
+		if (result.ok && result.view) {
+			selected = new Set([...selected].filter((id) => id !== item.id));
+			override = { base: view, view: result.view };
+			onDecided?.({ handled: 1, view: result.view });
+		}
+	}
+
+	function handleNoteKeydown(event: KeyboardEvent, item: ProjectCleanupItem) {
+		if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+			event.preventDefault();
+			void sendNote(item);
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			notingId = null;
 		}
 	}
 
@@ -337,6 +388,18 @@
 					{/each}
 				</ul>
 			{/if}
+			{#if onTriage && canDecide && openCount > 0}
+				<Button
+					variant="primary"
+					size="sm"
+					icon={Zap}
+					onclick={() => onTriage?.()}
+					disabled={busy}
+					class="mt-2 w-full text-xs sm:w-auto"
+				>
+					Triage {openCount} item{openCount === 1 ? '' : 's'} one at a time
+				</Button>
+			{/if}
 			{#if current.latest_audit}
 				<button
 					type="button"
@@ -369,7 +432,33 @@
 			{/if}
 		</div>
 
-		<div aria-live="polite">
+		<div aria-live="polite" class="space-y-2">
+			{#if jevReplies.length}
+				<div class="rounded-md border border-accent/25 bg-accent/5 p-2.5">
+					<p class="micro-label text-accent">Jev</p>
+					<ul class="mt-1 space-y-1">
+						{#each jevReplies as entry (entry.id)}
+							<li class="flex min-w-0 items-start gap-1.5 text-xs">
+								{#if entry.ok}
+									<MessageCircle
+										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent"
+										aria-hidden="true"
+									/>
+								{:else}
+									<X
+										class="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive"
+										aria-hidden="true"
+									/>
+								{/if}
+								<span class="min-w-0 break-words text-foreground">
+									<span class="font-semibold">{entry.title}:</span>
+									{entry.reply}
+								</span>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 			{#if receipts.length}
 				<div class="rounded-md border border-border bg-muted/30 p-2.5">
 					<p class="micro-label text-muted-foreground">Just now</p>
@@ -431,6 +520,7 @@
 		{/if}
 
 		{#each groups as group, groupIndex (group.key)}
+			{@const pickIds = canDecide ? groupPickIds(group.items) : []}
 			<section aria-labelledby={`${uid}-group-${groupIndex}`} class="min-w-0">
 				<div class="flex flex-wrap items-baseline justify-between gap-x-2">
 					<h3
@@ -452,6 +542,22 @@
 					<p class="mt-0.5 break-words text-xs text-muted-foreground">
 						{group.recommendation}
 					</p>
+				{/if}
+				{#if pickIds.length > 1}
+					{@const pickedCount = pickIds.filter((id) => selected.has(id)).length}
+					<label
+						class="-ml-1 mt-1 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-1 text-xs font-semibold text-foreground focus-within:ring-2 focus-within:ring-ring"
+					>
+						<input
+							type="checkbox"
+							checked={pickedCount === pickIds.length}
+							indeterminate={pickedCount > 0 && pickedCount < pickIds.length}
+							disabled={busy}
+							onchange={(event) => toggleGroup(pickIds, event.currentTarget.checked)}
+							class="h-4 w-4 rounded border-border-strong text-accent focus:ring-accent"
+						/>
+						Select all {pickIds.length}
+					</label>
 				{/if}
 
 				<ul class="mt-2 space-y-2">
@@ -636,98 +742,99 @@
 												variant="ghost"
 												size="sm"
 												icon={X}
-												onclick={() => toggleDismiss(item)}
-												disabled={busy}
-												aria-expanded={dismissingId === item.id}
-												aria-controls={`${itemDomId}-dismiss`}
+												onclick={() => markNotNeeded(item)}
+												disabled={busy || noteSendingIds.has(item.id)}
+												loading={itemBusy && pending?.kind === 'dismiss'}
 												aria-label={`Not needed: ${item.title}`}
 												class="text-xs"
 											>
 												Not needed
 											</Button>
-											{#if onDiscuss}
-												<Button
-													variant="ghost"
-													size="sm"
-													icon={MessageCircle}
-													onclick={() => onDiscuss?.(item)}
-													disabled={openingChat}
-													aria-label={`Discuss: ${item.title}`}
-													class="text-xs"
-												>
-													Discuss
-												</Button>
-											{/if}
-										</div>
-										{#if dismissingId === item.id}
-											<fieldset
-												id={`${itemDomId}-dismiss`}
-												class="mt-2 min-w-0 rounded-md border border-border bg-card p-2.5"
+											<Button
+												variant="ghost"
+												size="sm"
+												icon={MessageCircle}
+												onclick={() => toggleNote(item)}
+												disabled={noteSendingIds.has(item.id)}
+												loading={noteSendingIds.has(item.id)}
+												aria-expanded={notingId === item.id}
+												aria-controls={`${itemDomId}-note`}
+												aria-label={`Discuss: ${item.title}`}
+												class="text-xs"
 											>
-												<legend
-													class="px-1 text-xs font-semibold text-foreground"
-												>
-													Why isn't this needed?
-												</legend>
-												<div class="flex flex-wrap gap-1.5">
-													{#each CLEANUP_DISMISS_REASONS as reason (reason.value)}
-														<label
-															class="inline-flex min-h-11 cursor-pointer items-center rounded-md border px-2.5 text-xs focus-within:ring-2 focus-within:ring-ring {dismissReason ===
-															reason.value
-																? 'border-accent/50 bg-accent/10 font-semibold text-foreground'
-																: 'border-border bg-background text-muted-foreground'}"
-														>
-															<input
-																type="radio"
-																name={`${itemDomId}-reason`}
-																value={reason.value}
-																bind:group={dismissReason}
-																class="sr-only"
-															/>
-															{reason.label}
-														</label>
-													{/each}
-												</div>
-												<label
-													for={`${itemDomId}-note`}
-													class="mt-2 block text-2xs font-medium text-muted-foreground"
-												>
-													Note (optional)
-												</label>
-												<input
-													id={`${itemDomId}-note`}
-													type="text"
-													maxlength="1000"
-													bind:value={dismissNote}
-													disabled={busy}
-													placeholder="What should the reviewer learn?"
-													class="mt-1 h-11 w-full rounded-md border border-border-strong bg-background px-3 text-base text-foreground shadow-ink-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-accent focus:ring-1 focus:ring-accent/30 motion-reduce:transition-none disabled:opacity-60 sm:text-sm"
+												{noteSendingIds.has(item.id)
+													? 'Jev is reading…'
+													: 'Discuss'}
+											</Button>
+										</div>
+										{#if notingId === item.id}
+											<div
+												id={`${itemDomId}-note`}
+												class="mt-2 min-w-0 rounded-md border border-accent/30 bg-card p-2.5"
+											>
+												<p class="text-xs font-semibold text-foreground">
+													Quick note to Jev
+												</p>
+												<p class="mt-0.5 text-2xs text-muted-foreground">
+													Say what should happen. Jev applies it, sets it
+													aside, or hands bigger edits to an agent.
+												</p>
+												<TextareaWithVoice
+													bind:value={noteText}
+													rows={2}
+													maxRows={6}
+													autoResize
+													autofocus
+													placeholder="e.g. Keep it, I'm still talking to them."
+													voiceNoteSource="ai_inbox_cleanup"
+													onkeydown={(event: KeyboardEvent) =>
+														handleNoteKeydown(event, item)}
+													class="mt-2"
 												/>
 												<div
-													class="mt-2 flex flex-wrap justify-end gap-1.5"
+													class="mt-2 flex flex-wrap items-center justify-between gap-1.5"
 												>
-													<Button
-														variant="ghost"
-														size="sm"
-														onclick={() => (dismissingId = null)}
-														disabled={busy}
-														class="text-xs"
-													>
-														Cancel
-													</Button>
-													<Button
-														variant="primary"
-														size="sm"
-														onclick={() => confirmDismiss(item)}
-														disabled={busy}
-														loading={itemBusy &&
-															pending?.kind === 'dismiss'}
-														class="text-xs"
-													>
-														Mark not needed
-													</Button>
+													{#if onDiscuss}
+														<button
+															type="button"
+															onclick={() => {
+																notingId = null;
+																onDiscuss?.(item);
+															}}
+															disabled={openingChat}
+															class="inline-flex min-h-11 items-center gap-1 rounded-md px-1 text-xs font-medium text-accent hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+														>
+															<MessageCircle
+																class="h-3.5 w-3.5"
+																aria-hidden="true"
+															/>
+															Open the full chat
+														</button>
+													{:else}
+														<span></span>
+													{/if}
+													<div class="flex gap-1.5">
+														<Button
+															variant="ghost"
+															size="sm"
+															onclick={() => (notingId = null)}
+															class="text-xs"
+														>
+															Cancel
+														</Button>
+														<Button
+															variant="primary"
+															size="sm"
+															icon={Send}
+															onclick={() => sendNote(item)}
+															disabled={!noteText.trim()}
+															class="text-xs"
+														>
+															Send to Jev
+														</Button>
+													</div>
 												</div>
-											</fieldset>
+											</div>
 										{/if}
 									{/if}
 								</div>
@@ -762,40 +869,44 @@
 			</details>
 		{/if}
 
-		<div class="space-y-2 border-t border-border pt-3">
-			{#if canDecide && selectableCount > 0}
-				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-					<p class="text-2xs text-muted-foreground">
-						Anything you don't pick stays here for later.
-					</p>
-					<div class="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
-						{#if readyIds.length}
-							<Button
-								variant="outline"
-								size="sm"
-								onclick={selectAllReady}
-								disabled={busy || allReadySelected}
-								class="text-xs"
-							>
-								Select all ready
-							</Button>
-						{/if}
+		{#if canDecide && selectableCount > 0}
+			<div
+				class="sticky bottom-0 z-10 -mx-1 flex flex-col gap-2 rounded-md border border-border bg-card/95 p-2 shadow-ink backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between"
+			>
+				<p class="text-2xs text-muted-foreground">
+					Anything you don't pick stays here for later.
+				</p>
+				<div class="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+					{#if readyIds.length}
 						<Button
-							variant="primary"
+							variant="outline"
 							size="sm"
-							icon={Check}
-							onclick={applySelected}
-							disabled={busy || selectedItems.length === 0}
-							loading={pending?.kind === 'apply'}
-							class="text-xs {readyIds.length ? '' : 'col-span-2'}"
+							onclick={selectAllReady}
+							disabled={busy || allReadySelected}
+							class="text-xs"
 						>
-							{pending?.kind === 'apply'
-								? 'Applying…'
-								: `Apply ${selectedItems.length} selected`}
+							Select all ready
 						</Button>
-					</div>
+					{/if}
+					<Button
+						variant="primary"
+						size="sm"
+						icon={Check}
+						onclick={applySelected}
+						disabled={busy || selectedItems.length === 0}
+						loading={pending?.kind === 'apply'}
+						class="text-xs {readyIds.length ? '' : 'col-span-2'}"
+					>
+						{pending?.kind === 'apply'
+							? 'Applying…'
+							: `Apply ${selectedItems.length} selected`}
+					</Button>
 				</div>
-			{:else if !canDecide && decisionDisabledReason}
+			</div>
+		{/if}
+
+		<div class="space-y-2 border-t border-border pt-3">
+			{#if !canDecide && decisionDisabledReason}
 				<p class="text-2xs text-muted-foreground">{decisionDisabledReason}</p>
 			{/if}
 			{#if (onDiscuss && canDecide) || onSnooze}

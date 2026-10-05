@@ -30,6 +30,8 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { ONBOARDING_V3_CONFIG, type OnboardingIntent } from '$lib/config/onboarding.config';
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
+	import { calendarConnectErrorMessage } from '$lib/utils/calendar-connect-error';
+	import { getGoogleCalendarConnectUrl } from '$lib/utils/google-calendar-connect-url';
 	import { trackLoopEvent } from '$lib/services/loop-telemetry';
 	import { fade, scale } from 'svelte/transition';
 	import { prefersReducedMotion } from 'svelte/motion';
@@ -439,23 +441,7 @@
 			isConnectingCalendar = true;
 			connectionError = null;
 
-			const redirectPath = '/onboarding';
-			const encodedRedirect = encodeURIComponent(redirectPath);
-			const response = await fetch(`/profile/calendar?redirect=${encodedRedirect}`);
-			const payload = await response.json().catch(() => null);
-			const result = payload?.success === true && 'data' in payload ? payload.data : payload;
-
-			if (!response.ok) {
-				throw new Error(
-					payload?.error || payload?.message || 'Failed to get calendar auth URL'
-				);
-			}
-
-			if (!result.calendarAuthUrl) {
-				throw new Error('No auth URL returned');
-			}
-
-			window.location.href = result.calendarAuthUrl;
+			window.location.href = await getGoogleCalendarConnectUrl('/onboarding');
 		} catch (error) {
 			console.error('Calendar connection error:', error);
 			connectionError =
@@ -524,25 +510,7 @@
 
 			// Handle error callback
 			if (params.get('calendar') === '1' && params.get('error')) {
-				const error = params.get('error');
-				let errorMessage = 'Failed to connect Google Calendar';
-
-				switch (error) {
-					case 'access_denied':
-						errorMessage = 'Access to Google Calendar was denied';
-						break;
-					case 'no_authorization_code':
-						errorMessage = 'No authorization code received from Google';
-						break;
-					case 'invalid_state':
-						errorMessage = 'Invalid security token. Please try again.';
-						break;
-					case 'token_exchange_failed':
-						errorMessage = 'Failed to exchange authorization code for tokens';
-						break;
-					default:
-						errorMessage = `Calendar connection failed: ${error}`;
-				}
+				const errorMessage = calendarConnectErrorMessage(params.get('error') ?? '');
 
 				connectionError = errorMessage;
 

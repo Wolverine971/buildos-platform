@@ -12,7 +12,7 @@ import {
 import type { FastToolExecution } from './shared';
 import { parseToolArguments } from './tool-arguments';
 import { didGatewayExecSucceed, isWriteLedgerToolExecution } from './tool-classification';
-import { buildWriteLedger, type WriteLedgerEntry } from './write-ledger';
+import { TABLE_WRITE_TOOL_NAMES, buildWriteLedger, type WriteLedgerEntry } from './write-ledger';
 
 export {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
@@ -1543,6 +1543,65 @@ export function bindTurnContractLabels(
 	return bindings;
 }
 
+/** Fields every table write can prove (write-ledger `tableEffectFields`). */
+const TABLE_CORE_EFFECT_FIELDS: ReadonlySet<string> = new Set(['columns', 'rows', 'cells']);
+/** Scalar document fields a table write can carry as exact values. */
+const TABLE_SCALAR_CHANGE_FIELDS: ReadonlySet<string> = new Set(['title', 'description']);
+
+/**
+ * BuildOS Tables (2026-10-04): a table write proves `columns`, `rows`, `cells`
+ * and the snake_case names of the columns it wrote, never which row or what
+ * value (the ledger records keys only). A reviewer checklist that names table
+ * work as a field ("Salary range cell for Palantir (JOB-001)") or as a value
+ * change ("column name" = "Salary range") can therefore never be proven, and
+ * every such turn closed as unfinished after the writes landed (prod, Oct 4).
+ *
+ * For an outcome whose successful effects on its targets all came from table
+ * writes, keep only the provable vocabulary: core fields, column fields some
+ * table write produced, and scalar title/description changes. Everything else
+ * stays in the outcome description. This compares declared field names with a
+ * fixed set and the ledger, so it reads no prose.
+ */
+function scopeTableOutcomeToProvableFields(
+	outcome: TurnContractOutcome,
+	ledger: WriteLedgerEntry[]
+): TurnContractOutcome {
+	if (outcome.entityKind !== 'document') return outcome;
+	const targetEntries = ledger.filter(
+		(entry) =>
+			entry.status === 'success' &&
+			entry.entityKind === 'document' &&
+			(outcome.targetIds.length === 0 ||
+				Boolean(entry.entityId && outcome.targetIds.includes(entry.entityId)))
+	);
+	if (
+		targetEntries.length === 0 ||
+		!targetEntries.every((entry) => TABLE_WRITE_TOOL_NAMES.has(entry.toolName))
+	) {
+		return outcome;
+	}
+	const writtenFields = new Set(
+		targetEntries.flatMap((entry) => (entry.changedFields ?? []).map(normalizeFieldName))
+	);
+	// Column fields are recorded snake_case ("Salary range" → salary_range).
+	const toColumnField = (field: string): string =>
+		normalizeOutcomeFieldName(field, outcome.entityKind).split(/\s+/).join('_');
+	const requiredFields = outcome.requiredFields
+		.map(toColumnField)
+		.filter((field) => TABLE_CORE_EFFECT_FIELDS.has(field) || writtenFields.has(field));
+	const changes = outcome.changes?.filter((change) =>
+		TABLE_SCALAR_CHANGE_FIELDS.has(normalizeOutcomeFieldName(change.field, outcome.entityKind))
+	);
+	if (
+		requiredFields.length === outcome.requiredFields.length &&
+		requiredFields.every((field, index) => field === outcome.requiredFields[index]) &&
+		(changes?.length ?? 0) === (outcome.changes?.length ?? 0)
+	) {
+		return outcome;
+	}
+	return { ...outcome, requiredFields, changes };
+}
+
 function resolveOutcome(
 	outcome: TurnContractOutcome,
 	ledger: WriteLedgerEntry[],
@@ -1597,6 +1656,7 @@ function resolveOutcome(
 		}
 		outcome = { ...outcome, targetIds: [boundCreateId], requiredFields, changes };
 	}
+	outcome = scopeTableOutcomeToProvableFields(outcome, ledger);
 	const boundParentId = outcome.parentLabel ? bindings.get(outcome.parentLabel) : undefined;
 	if (outcome.parentLabel && !boundParentId) {
 		return {

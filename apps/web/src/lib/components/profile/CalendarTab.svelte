@@ -5,6 +5,7 @@
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
+	import { calendarConnectErrorMessage } from '$lib/utils/calendar-connect-error';
 	import {
 		Calendar,
 		CircleCheck,
@@ -173,26 +174,7 @@
 		}
 
 		if (calendarFlag && errorCode) {
-			let errorMessage = 'Failed to connect Google Calendar';
-
-			switch (errorCode) {
-				case 'access_denied':
-					errorMessage = 'Access to Google Calendar was denied';
-					break;
-				case 'no_authorization_code':
-					errorMessage = 'No authorization code received from Google';
-					break;
-				case 'invalid_state':
-					errorMessage = 'Invalid security token. Please try again.';
-					break;
-				case 'token_exchange_failed':
-					errorMessage = 'Failed to exchange authorization code for tokens';
-					break;
-				default:
-					errorMessage = `Calendar connection failed: ${errorCode}`;
-			}
-
-			onerror?.({ message: errorMessage });
+			onerror?.({ message: calendarConnectErrorMessage(errorCode) });
 			return ['calendar', 'error'];
 		}
 

@@ -9,6 +9,11 @@ import {
 	buildEncryptedCalendarTokenPatch,
 	decodeStoredCalendarTokens
 } from '$lib/server/calendar-token-crypto';
+import {
+	GOOGLE_CALENDAR_LEGACY_FULL_SCOPE,
+	GOOGLE_CALENDAR_SCOPES,
+	hasRequiredGoogleCalendarScopes
+} from '@buildos/shared-agent-ops/calendar/google-calendar-credential.service';
 
 const LEGACY_REVOKE_TIMEOUT_MS = 5000;
 
@@ -48,21 +53,26 @@ export interface AutoRefreshResult {
 	requiresReconnect?: boolean;
 }
 
-const LEGACY_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
+const CALENDAR_IDENTITY_SCOPES = ['https://www.googleapis.com/auth/userinfo.email', 'openid'];
+const CALENDAR_REQUESTED_SCOPES = [...GOOGLE_CALENDAR_SCOPES, ...CALENDAR_IDENTITY_SCOPES];
 const LEGACY_CALENDAR_ALLOWED_SCOPES = new Set([
-	LEGACY_CALENDAR_SCOPE,
-	'https://www.googleapis.com/auth/userinfo.email',
-	'openid'
+	GOOGLE_CALENDAR_LEGACY_FULL_SCOPE,
+	...CALENDAR_REQUESTED_SCOPES
 ]);
 
-function hasSafeLegacyCalendarScopes(scope: unknown): boolean {
-	if (scope == null || scope === '') return true;
-	if (typeof scope !== 'string') return false;
+type CalendarScopeCheck = 'ok' | 'missing' | 'unexpected';
+
+/**
+ * Checks a fresh Calendar grant. People can untick permissions on Google's consent screen, so
+ * a partial grant is reported separately from an over-scoped (unexpected) one.
+ */
+function checkCalendarGrantScopes(scope: unknown): CalendarScopeCheck {
+	if (typeof scope !== 'string' || scope.trim() === '') return 'missing';
 	const scopes = scope.split(/\s+/).filter(Boolean);
-	return (
-		scopes.includes(LEGACY_CALENDAR_SCOPE) &&
-		scopes.every((grantedScope) => LEGACY_CALENDAR_ALLOWED_SCOPES.has(grantedScope))
-	);
+	if (!scopes.every((grantedScope) => LEGACY_CALENDAR_ALLOWED_SCOPES.has(grantedScope))) {
+		return 'unexpected';
+	}
+	return hasRequiredGoogleCalendarScopes(scopes) ? 'ok' : 'missing';
 }
 
 function getPrivateEnv(name: string): string | undefined {
@@ -396,11 +406,7 @@ export class GoogleOAuthService {
 		userId: string,
 		options?: { redirectPath?: string }
 	): string {
-		const scopes = [
-			'https://www.googleapis.com/auth/calendar', // Full calendar access
-			'https://www.googleapis.com/auth/userinfo.email',
-			'openid'
-		].join(' ');
+		const scopes = CALENDAR_REQUESTED_SCOPES.join(' ');
 
 		const state: CalendarAuthState = {
 			userId,
@@ -510,7 +516,8 @@ export class GoogleOAuthService {
 			refresh_token: tokens.refresh_token,
 			expiry_date: tokens.expiry_date,
 			token_type: tokens.token_type || 'Bearer',
-			scope: tokens.scope || 'https://www.googleapis.com/auth/calendar'
+			// Rows saved before scopes were recorded were granted the full legacy scope.
+			scope: tokens.scope || GOOGLE_CALENDAR_LEGACY_FULL_SCOPE
 		});
 
 		// Set up automatic token refresh event listener
@@ -1095,7 +1102,7 @@ export class GoogleOAuthService {
 		redirectUri: string,
 		userId: string,
 		userEmail?: string
-	): Promise<{ success: boolean; error?: string }> {
+	): Promise<{ success: boolean; error?: string; errorCode?: 'scope_mismatch' }> {
 		try {
 			// Exchange code for tokens
 			const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -1125,10 +1132,18 @@ export class GoogleOAuthService {
 			if (!tokens.access_token) {
 				return { success: false, error: 'No access token received' };
 			}
-			if (!hasSafeLegacyCalendarScopes(tokens.scope)) {
+			const scopeCheck = checkCalendarGrantScopes(tokens.scope);
+			if (scopeCheck === 'unexpected') {
 				return {
 					success: false,
 					error: 'Google returned an unexpected OAuth scope set. Please reconnect Google Calendar.'
+				};
+			}
+			if (scopeCheck === 'missing') {
+				return {
+					success: false,
+					errorCode: 'scope_mismatch',
+					error: 'Google did not grant every Calendar permission BuildOS needs.'
 				};
 			}
 
@@ -1177,7 +1192,7 @@ export class GoogleOAuthService {
 				expiry_date: expiryDate,
 				google_user_id: profile.id,
 				google_email: profile.email,
-				scope: tokens.scope || LEGACY_CALENDAR_SCOPE,
+				scope: tokens.scope,
 				token_type: tokens.token_type || 'Bearer',
 				updated_at: new Date().toISOString()
 			};
@@ -1309,7 +1324,9 @@ export class GoogleOAuthService {
 		// Method 4: Calendar API fallback
 		try {
 			const response = await fetch(
-				'https://www.googleapis.com/calendar/v3/calendars/primary',
+				// calendarList.get works under the narrow calendarlist.readonly grant;
+				// calendars.get on the primary calendar does not.
+				'https://www.googleapis.com/calendar/v3/users/me/calendarList/primary',
 				{
 					headers: {
 						Authorization: `Bearer ${accessToken}`,

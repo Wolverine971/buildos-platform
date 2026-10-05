@@ -7,7 +7,10 @@ import {
 	type GoogleCalendarTokenContext
 } from './google-calendar-token-crypto';
 import {
-	GOOGLE_CALENDAR_SCOPE,
+	GOOGLE_CALENDAR_LEGACY_FULL_SCOPE as GOOGLE_CALENDAR_SCOPE,
+	GOOGLE_CALENDAR_SCOPES
+} from '@buildos/shared-agent-ops/calendar/google-calendar-credential.service';
+import {
 	GoogleCalendarConnectionService,
 	normalizeGoogleCalendarSourcePreferences
 } from './google-calendar-connection.service';
@@ -152,11 +155,74 @@ describe('GoogleCalendarConnectionService', () => {
 			expect.objectContaining({
 				access_type: 'offline',
 				prompt: 'consent select_account',
-				scope: ['openid', 'email', GOOGLE_CALENDAR_SCOPE],
+				scope: ['openid', 'email', ...GOOGLE_CALENDAR_SCOPES],
 				state: 'opaque-calendar-state',
 				include_granted_scopes: false,
 				code_challenge: 'calendar-pkce-challenge'
 			})
+		);
+	});
+
+	it('requests the narrow Calendar scopes, never the full calendar scope', () => {
+		expect(GOOGLE_CALENDAR_SCOPES).toEqual([
+			'https://www.googleapis.com/auth/calendar.events',
+			'https://www.googleapis.com/auth/calendar.events.freebusy',
+			'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
+			'https://www.googleapis.com/auth/calendar.app.created'
+		]);
+		expect(GOOGLE_CALENDAR_SCOPES).not.toContain(GOOGLE_CALENDAR_SCOPE);
+	});
+
+	it('refuses to store a connection when Calendar permissions were unticked on consent', async () => {
+		const { admin, rpc } = createAdmin({ connectionCount: 0 });
+		const oauthClient = createOAuthClient({
+			getToken: vi.fn().mockResolvedValue({
+				tokens: {
+					access_token: 'partial-access-token',
+					refresh_token: 'partial-refresh-token',
+					id_token: 'partial-id-token',
+					expiry_date: Date.parse('2026-08-11T18:00:00.000Z')
+				}
+			}),
+			verifyIdToken: vi.fn().mockResolvedValue({
+				getPayload: () => ({
+					sub: 'google-sub-1',
+					email: 'calendar@example.com',
+					email_verified: true,
+					nonce: 'calendar-nonce',
+					iss: 'https://accounts.google.com'
+				})
+			}),
+			getTokenInfo: vi.fn().mockResolvedValue({
+				aud: 'calendar-client',
+				sub: 'google-sub-1',
+				// calendar.app.created was unticked on Google's consent screen.
+				scopes: ['openid', 'email', ...GOOGLE_CALENDAR_SCOPES.slice(0, 3)]
+			})
+		});
+		const service = new GoogleCalendarConnectionService(admin, {
+			dedicatedClientId: 'calendar-client',
+			dedicatedClientSecret: 'calendar-secret',
+			createOAuthClient: vi.fn().mockReturnValue(oauthClient)
+		});
+
+		await expect(
+			service.exchangeAuthorizationCode({
+				userId: 'user-1',
+				code: 'calendar-code',
+				redirectUri: 'https://app.example.com/auth/google/calendar-callback',
+				state: {
+					state_id: 'state-1',
+					redirect_path: '/profile?tab=calendar',
+					nonce: 'calendar-nonce',
+					code_verifier: 'calendar-pkce-verifier',
+					connection_id: null
+				}
+			})
+		).rejects.toMatchObject({ code: 'scope_mismatch' });
+		expect(rpc).not.toHaveBeenCalledWith(
+			'upsert_google_calendar_connection',
+			expect.anything()
 		);
 	});
 

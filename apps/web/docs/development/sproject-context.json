@@ -1364,12 +1364,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/consolidation/consolidation-picture.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["consolidationPicture"]
-		},
-		{
 			"file": "src/lib/components/chat/project-selector-browser.ts",
 			"type": "component",
 			"components": [],
@@ -1387,6 +1381,12 @@
 				"clearProjectSelectionBrowserCache",
 				"fetchProjectSelectionSummaries"
 			]
+		},
+		{
+			"file": "src/lib/components/consolidation/consolidation-picture.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["consolidationPicture"]
 		},
 		{
 			"file": "src/lib/components/dashboard/dashboard-presentation.ts",
@@ -1436,23 +1436,6 @@
 			"type": "component",
 			"components": [],
 			"exports": ["getNotificationPreview", "notificationPreviewAriaLabel"]
-		},
-		{
-			"file": "src/lib/components/profile/profile-tabs.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"BASE_PROFILE_TAB_IDS",
-				"getVisibleProfileTabIds",
-				"resolveProfileTab",
-				"getProfileTabHref"
-			]
-		},
-		{
-			"file": "src/lib/components/profile/settings-navigation.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["SETTINGS_GROUPS", "getSettingsDestinations", "getSettingsGroupLabel"]
 		},
 		{
 			"file": "src/lib/components/ontology/document-agent-mutation.ts",
@@ -1634,6 +1617,23 @@
 			"type": "component",
 			"components": [],
 			"exports": ["countPeople", "formatPeopleList", "personLabel"]
+		},
+		{
+			"file": "src/lib/components/profile/profile-tabs.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"BASE_PROFILE_TAB_IDS",
+				"getVisibleProfileTabIds",
+				"resolveProfileTab",
+				"getProfileTabHref"
+			]
+		},
+		{
+			"file": "src/lib/components/profile/settings-navigation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["SETTINGS_GROUPS", "getSettingsDestinations", "getSettingsGroupLabel"]
 		},
 		{
 			"file": "src/lib/components/table-surfaces/chat-table-save.ts",
@@ -1899,19 +1899,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"presentCycleKind",
-				"formatCycleSchedule",
-				"presentCycleCadence",
-				"presentCycleStatus",
-				"formatCycleTimestamp",
-				"presentCycle"
-			]
-		},
-		{
 			"file": "src/lib/components/ontology/doc-tree/drop-geometry.ts",
 			"type": "component",
 			"components": [],
@@ -1941,33 +1928,36 @@
 			"exports": ["createDragDropState"]
 		},
 		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"file": "src/lib/components/project/emoji/emoji-catalog.generated.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["EMOJI_CATALOG"]
+		},
+		{
+			"file": "src/lib/components/project/emoji/project-emoji.ts",
 			"type": "component",
 			"components": [],
 			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
+				"MAX_PROJECT_EMOJIS",
+				"isEmojiGlyph",
+				"tileGlyphs",
+				"readProjectEmoji",
+				"normalizeEmojiSelection",
+				"slotsFrom",
+				"slotGlyphs",
+				"placeEmoji",
+				"searchCatalog"
 			]
 		},
 		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
 			"type": "component",
 			"components": [],
 			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
+				"PROJECT_FRESHNESS_CONTEXT_KEY",
+				"ProjectFreshnessState",
+				"setProjectFreshnessContext",
+				"getProjectFreshnessContext"
 			]
 		},
 		{
@@ -2053,36 +2043,33 @@
 			"exports": ["itemKey", "targetKey", "readItem", "readTarget", "createDesktopDrag"]
 		},
 		{
-			"file": "src/lib/components/project/emoji/emoji-catalog.generated.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["EMOJI_CATALOG"]
-		},
-		{
-			"file": "src/lib/components/project/emoji/project-emoji.ts",
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 			"type": "component",
 			"components": [],
 			"exports": [
-				"MAX_PROJECT_EMOJIS",
-				"isEmojiGlyph",
-				"tileGlyphs",
-				"readProjectEmoji",
-				"normalizeEmojiSelection",
-				"slotsFrom",
-				"slotGlyphs",
-				"placeEmoji",
-				"searchCatalog"
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
 			]
 		},
 		{
-			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 			"type": "component",
 			"components": [],
 			"exports": [
-				"PROJECT_FRESHNESS_CONTEXT_KEY",
-				"ProjectFreshnessState",
-				"setProjectFreshnessContext",
-				"getProjectFreshnessContext"
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
 			]
 		},
 		{
@@ -2090,6 +2077,30 @@
 			"type": "component",
 			"components": [],
 			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
+		},
+		{
+			"file": "src/lib/components/profile/cycles/cycle-presenter.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"presentCycleKind",
+				"formatCycleSchedule",
+				"presentCycleCadence",
+				"presentCycleStatus",
+				"formatCycleTimestamp",
+				"presentCycle"
+			]
+		},
+		{
+			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_COMMANDERS",
+				"DEFAULT_PUBLIC_PROJECT_ID",
+				"getCommander",
+				"formatTimelineYearRange"
+			]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -2139,17 +2150,6 @@
 				"getVoiceDictationTarget",
 				"buildDictationCommit",
 				"voiceWidgetExtension"
-			]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
 			]
 		},
 		{
@@ -2364,15 +2364,13 @@
 		"src/lib/components/agent/shared-document-edit-card-state.svelte.ts",
 		"src/lib/components/agent/shared-document-edit-cards.ts",
 		"src/lib/components/agent/table-change-cards.ts",
-		"src/lib/components/consolidation/consolidation-picture.ts",
 		"src/lib/components/chat/project-selector-browser.ts",
+		"src/lib/components/consolidation/consolidation-picture.ts",
 		"src/lib/components/dashboard/dashboard-presentation.ts",
 		"src/lib/components/inbox/inbox-presentation.ts",
 		"src/lib/components/inbox/project-cleanup-presentation.ts",
 		"src/lib/components/layout/agent-chat-launch-params.ts",
 		"src/lib/components/notifications/notification-preview.ts",
-		"src/lib/components/profile/profile-tabs.ts",
-		"src/lib/components/profile/settings-navigation.ts",
 		"src/lib/components/ontology/document-agent-mutation.ts",
 		"src/lib/components/organize/organize-api.ts",
 		"src/lib/components/organize/organize-fixtures.ts",
@@ -2388,6 +2386,8 @@
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/project/project-sharing-copy.ts",
+		"src/lib/components/profile/profile-tabs.ts",
+		"src/lib/components/profile/settings-navigation.ts",
 		"src/lib/components/table-surfaces/chat-table-save.ts",
 		"src/lib/components/table-surfaces/document-embeds.ts",
 		"src/lib/components/table-surfaces/make-live-table.ts",
@@ -2403,12 +2403,12 @@
 		"src/lib/components/admin/chat-users/chat-user-export.ts",
 		"src/lib/components/admin/chat-users/chat-user-ui.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
-		"src/lib/components/profile/cycles/cycle-presenter.ts",
 		"src/lib/components/ontology/doc-tree/drop-geometry.ts",
 		"src/lib/components/ontology/doc-tree/tree-images.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+		"src/lib/components/project/emoji/emoji-catalog.generated.ts",
+		"src/lib/components/project/emoji/project-emoji.ts",
+		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/projects/desktop/desktop-context.ts",
 		"src/lib/components/projects/desktop/desktop-model.ts",
 		"src/lib/components/projects/desktop/desktop-moves.ts",
@@ -2416,15 +2416,15 @@
 		"src/lib/components/projects/desktop/desktop-signals.ts",
 		"src/lib/components/projects/desktop/reader-model.ts",
 		"src/lib/components/projects/desktop/useDesktopDrag.svelte.ts",
-		"src/lib/components/project/emoji/emoji-catalog.generated.ts",
-		"src/lib/components/project/emoji/project-emoji.ts",
-		"src/lib/components/project/freshness/freshness-context.svelte.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
+		"src/lib/components/profile/cycles/cycle-presenter.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",

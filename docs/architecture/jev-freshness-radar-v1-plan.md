@@ -4,6 +4,12 @@
 > **Status:** Frozen implementation plan and interfaces for the Jev freshness radar (reshaped Tasker 88), 2026-09-18.
 > Product decisions are DJ's (tracker 88); section 10 lists the defaults the coordinator adopted. Lanes code against
 > sections 2–4 and must not change them independently. Request amendments through the coordinator.
+>
+> **Amendment 2026-09-29 (tasker 112):** the `freshness_update` bundle no longer gets its own AI
+> Inbox row. It is one item in the project's `project_cleanup` card
+> (`docs/product/PROJECT_CLEANUP_CHANGE_SET.md`). The inbox "retire" lane (R3) cannot reach review
+> findings, because they no longer have rows of their own; the review roll-up closes those
+> instead.
 
 # Jev freshness radar (reshaped Tasker 88): plan and frozen interfaces
 

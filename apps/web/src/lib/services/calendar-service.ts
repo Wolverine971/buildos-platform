@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { GoogleOAuthService, GoogleOAuthConnectionError } from './google-oauth-service';
+import { applyGoogleCalendarPropertyChange } from '@buildos/shared-agent-ops/calendar/google-calendar-credential.service';
 import { ErrorLoggerService } from './errorLogger.service';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
@@ -1800,20 +1801,26 @@ export class CalendarService {
 				if (updates.description) calendarUpdates.description = updates.description;
 				if (updates.timeZone) calendarUpdates.timeZone = updates.timeZone;
 
-				await calendar.calendars.patch({
-					calendarId: calendarId,
-					requestBody: calendarUpdates
-				});
+				// Under the narrow Calendar grant, Google only lets BuildOS rename calendars it
+				// created. A linked calendar keeps its Google name; BuildOS stores the change.
+				await applyGoogleCalendarPropertyChange(() =>
+					calendar.calendars.patch({
+						calendarId: calendarId,
+						requestBody: calendarUpdates
+					})
+				);
 			}
 
 			// Update color in calendar list (color is a property of the calendar list, not the calendar itself)
 			if (updates.colorId) {
-				await calendar.calendarList.patch({
-					calendarId: calendarId,
-					requestBody: {
-						colorId: updates.colorId
-					}
-				});
+				await applyGoogleCalendarPropertyChange(() =>
+					calendar.calendarList.patch({
+						calendarId: calendarId,
+						requestBody: {
+							colorId: updates.colorId
+						}
+					})
+				);
 			}
 
 			return { success: true };
@@ -1907,94 +1914,6 @@ export class CalendarService {
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Failed to list calendars'
-			};
-		}
-	}
-
-	/**
-	 * Share a calendar with other users
-	 */
-	async shareCalendar(
-		userId: string,
-		calendarId: string,
-		shares: Array<{
-			email: string;
-			role: 'reader' | 'writer' | 'owner';
-		}>
-	): Promise<{ success: boolean; error?: string }> {
-		try {
-			const auth = await this.oAuthService.getAuthenticatedClient(userId);
-			const calendar = google.calendar({ version: 'v3', auth });
-
-			// Add ACL rules for each share
-			for (const share of shares) {
-				await calendar.acl.insert({
-					calendarId: calendarId,
-					requestBody: {
-						role: share.role,
-						scope: {
-							type: 'user',
-							value: share.email
-						}
-					}
-				});
-			}
-
-			return { success: true };
-		} catch (error) {
-			console.error('Error sharing calendar:', error);
-			if (error instanceof GoogleOAuthConnectionError) {
-				await this.handleConnectionFailure(userId, error.message);
-				return { success: false, error: 'Connection error: ' + error.message };
-			}
-			return {
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to share calendar'
-			};
-		}
-	}
-
-	/**
-	 * Remove calendar sharing for specific users
-	 */
-	async unshareCalendar(
-		userId: string,
-		calendarId: string,
-		emails: string[]
-	): Promise<{ success: boolean; error?: string }> {
-		try {
-			const auth = await this.oAuthService.getAuthenticatedClient(userId);
-			const calendar = google.calendar({ version: 'v3', auth });
-
-			// List all ACL rules
-			const aclResponse = await calendar.acl.list({
-				calendarId: calendarId
-			});
-
-			// Find and delete ACL rules for specified emails
-			const rulesToDelete = aclResponse.data.items?.filter(
-				(rule) => rule.scope?.type === 'user' && emails.includes(rule.scope.value || '')
-			);
-
-			for (const rule of rulesToDelete || []) {
-				if (rule.id) {
-					await calendar.acl.delete({
-						calendarId: calendarId,
-						ruleId: rule.id
-					});
-				}
-			}
-
-			return { success: true };
-		} catch (error) {
-			console.error('Error unsharing calendar:', error);
-			if (error instanceof GoogleOAuthConnectionError) {
-				await this.handleConnectionFailure(userId, error.message);
-				return { success: false, error: 'Connection error: ' + error.message };
-			}
-			return {
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to unshare calendar'
 			};
 		}
 	}

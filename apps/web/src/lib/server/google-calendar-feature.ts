@@ -4,5 +4,7 @@
 export {
 	MULTI_CALENDAR_ENABLED_ENV,
 	MULTI_CALENDAR_USER_IDS_ENV,
+	MULTI_CALENDAR_ALL_USERS_ENV,
+	MULTI_CALENDAR_EXCLUDED_USER_IDS_ENV,
 	isMultiCalendarUserAllowed
 } from '@buildos/shared-agent-ops/calendar/google-calendar-feature';

@@ -8,7 +8,7 @@ import type {
 } from './google-calendar-source.service';
 import { GoogleCalendarTargetService, type CalendarTarget } from './google-calendar-target.service';
 
-type CalendarApi = Pick<calendar_v3.Calendar, 'calendars' | 'calendarList' | 'acl'>;
+type CalendarApi = Pick<calendar_v3.Calendar, 'calendars' | 'calendarList'>;
 
 export type GoogleCalendarProjectResourceServiceOptions = {
 	connectionService: GoogleCalendarAuthPort & GoogleCalendarSourceRegistrationPort;
@@ -180,7 +180,10 @@ export class GoogleCalendarProjectResourceService {
 				}
 			});
 		}
-		if (params.colorId) {
+		// BuildOS changes Google-side properties only on calendars it created: the narrow
+		// calendar.app.created grant covers nothing else. A linked calendar keeps its Google
+		// color; the caller still stores the chosen color in BuildOS.
+		if (params.providerResourceManaged && params.colorId) {
 			await api.calendarList.patch({
 				calendarId: target.providerCalendarId,
 				requestBody: { colorId: params.colorId }
@@ -202,28 +205,6 @@ export class GoogleCalendarProjectResourceService {
 			// Deletion is intentionally idempotent: the provider may have succeeded before a
 			// later local mapping cleanup failed, so a retry must be allowed to finish.
 			if (!isNotFoundError(error)) throw error;
-		}
-	}
-
-	async shareCalendar(params: {
-		userId: string;
-		calendarSourceId: string;
-		shares: Array<{ email: string; role: 'reader' | 'writer' | 'owner' }>;
-	}): Promise<void> {
-		const target = await this.targetService.resolveExplicitSource(
-			params.userId,
-			params.calendarSourceId,
-			'write'
-		);
-		const api = await this.apiForTarget(params.userId, target);
-		for (const share of params.shares) {
-			await api.acl.insert({
-				calendarId: target.providerCalendarId,
-				requestBody: {
-					role: share.role,
-					scope: { type: 'user', value: share.email }
-				}
-			});
 		}
 	}
 }

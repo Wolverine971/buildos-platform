@@ -24,11 +24,29 @@ pnpm db:rehearse my_change.sql --role-probe   # grants/policies: prove anon + si
 2. **Rehearse.** A disposable, socket-only PostgreSQL loads the snapshot (~1 s). It applies each
    file with `ON_ERROR_STOP`, then runs optional `--check` assertion SQL, then the standing
    invariants in `DEFAULT_CHECKS` (production schema only; `--no-default-checks` skips them).
-   Today that is `supabase/tests/archived_scope_guard.check.sql` (Tasker 113): no chat context or
-   search RPC may return an archived record; and `supabase/tests/project_fold_table_coverage.check.sql`:
-   every column pointing at a project is classified in `private.project_fold_table_policy` (move,
-   repoint, rebuild or leave_behind), so a new `project_id` table needs a policy row in the same
-   migration. The cluster is deleted afterwards unless you pass `--keep`.
+   Today that is:
+    - `supabase/tests/archived_scope_guard.check.sql` (Tasker 113): no chat context or search RPC
+      may return an archived record.
+    - `supabase/tests/project_fold_table_coverage.check.sql`: every column pointing at a project
+      is classified in `private.project_fold_table_policy` (move, repoint, rebuild or
+      leave_behind), so a new `project_id` table needs a policy row in the same migration.
+    - `supabase/tests/project_write_lock_first.check.sql` (Tasker 105): every function that takes
+      the project row lock (`public.onto_lock_project_for_write` or the multi-project
+      `onto_lock_projects_for_write`, `FOR UPDATE` or an `UPDATE` of `onto_projects`, or a call
+      into a command that does) takes it before its first write, so concurrent project writes
+      cannot deadlock. A new project-write RPC takes that lock before any `INSERT`, `UPDATE` or
+      `DELETE`. The match is static (function source text), so a new indirect lock-taker needs
+      adding to the check.
+    - `supabase/tests/account_deletion_purge.check.sql` (Tasker 103): the full account-deletion
+      pipeline runs for a person who has a row in every table a generic seeder can fill (plus
+      `fixtures/account_deletion_purge_seed.sql`). The pipeline is request, claim, storage listing,
+      Libri purge, `finalize_account_deletion_database` and the auth delete. Afterwards no
+      column that references the person still holds them, their email is in no column anywhere,
+      and their files are gone. A new table with a person foreign key the purge can't get past
+      fails here. Tables the seeder can't fill print as WARNINGs.
+
+    The cluster is deleted afterwards unless you pass `--keep`.
+
 3. **Report.** Every object each migration added (+), removed (-) or changed (~): tables, columns,
    constraints, indexes, views, functions (including `SECURITY DEFINER`, `search_path`, and
    grants), policies, triggers, default privileges, and enum/domain types. It also reports the production size of

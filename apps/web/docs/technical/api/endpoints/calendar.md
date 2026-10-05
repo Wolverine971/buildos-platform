@@ -472,8 +472,10 @@ Accepts partial updates of any preference fields.
 - `updateCalendarProperties`: Update calendar settings
 - `deleteProjectCalendar`: Delete project's calendar
 - `listUserCalendars`: List all user calendars
-- `shareCalendar`: Share calendar with others
-- `unshareCalendar`: Remove calendar sharing
+
+Calendar sharing (`shareCalendar` / `unshareCalendar`) was removed in October 2026: BuildOS no
+longer requests Google's calendar-sharing permission. Name and color changes reach Google only
+for calendars BuildOS created; a linked calendar keeps its Google name and color.
 
 #### Response
 

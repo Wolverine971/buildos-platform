@@ -7,8 +7,6 @@ const {
 	legacyDisconnectMock,
 	legacyHasStoredConnectionMock,
 	targetHasActiveMock,
-	legacyShareMock,
-	legacyUnshareMock,
 	writeCreateMock,
 	writeUpdateMock,
 	writeDeleteMock,
@@ -29,8 +27,6 @@ const {
 		legacyDisconnectMock: vi.fn(),
 		legacyHasStoredConnectionMock: vi.fn(),
 		targetHasActiveMock: vi.fn().mockResolvedValue(true),
-		legacyShareMock: vi.fn(),
-		legacyUnshareMock: vi.fn(),
 		writeCreateMock: vi.fn(),
 		writeUpdateMock: vi.fn(),
 		writeDeleteMock: vi.fn(),
@@ -63,9 +59,7 @@ vi.mock('$lib/services/calendar-service', () => ({
 			hasStoredConnection: legacyHasStoredConnectionMock,
 			updateCalendarEvent: legacyUpdateMock,
 			deleteCalendarEvent: legacyDeleteMock,
-			disconnectCalendar: legacyDisconnectMock,
-			shareCalendar: legacyShareMock,
-			unshareCalendar: legacyUnshareMock
+			disconnectCalendar: legacyDisconnectMock
 		};
 	})
 }));
@@ -544,48 +538,21 @@ describe('multi-account /api/calendar mutations', () => {
 		consoleError.mockRestore();
 	});
 
-	it('passes calendar sharing through the legacy service response contract', async () => {
-		legacyShareMock.mockResolvedValue({ success: true });
+	it.each(['shareCalendar', 'unshareCalendar'])(
+		'rejects %s: BuildOS no longer requests Google calendar-sharing permission',
+		async (method) => {
+			const response = await POST(
+				eventFor({
+					method,
+					params: {
+						calendarId: 'project-calendar@example.com',
+						shares: [{ email: 'reader@example.com', role: 'reader' }],
+						emails: ['reader@example.com']
+					}
+				})
+			);
 
-		const response = await POST(
-			eventFor({
-				method: 'shareCalendar',
-				params: {
-					calendarId: 'project-calendar@example.com',
-					shares: [{ email: 'reader@example.com', role: 'reader' }]
-				}
-			})
-		);
-		const payload = await response.json();
-
-		expect(response.status).toBe(200);
-		expect(legacyShareMock).toHaveBeenCalledWith('user-1', 'project-calendar@example.com', [
-			{ email: 'reader@example.com', role: 'reader' }
-		]);
-		expect(payload.data).toEqual({ success: true });
-	});
-
-	it.each([
-		{ result: { success: true } },
-		{ result: { success: false, error: 'Failed to remove ACL rule' } }
-	])('passes through the unshareCalendar branch result $result', async ({ result }) => {
-		legacyUnshareMock.mockResolvedValue(result);
-
-		const response = await POST(
-			eventFor({
-				method: 'unshareCalendar',
-				params: {
-					calendarId: 'project-calendar@example.com',
-					emails: ['reader@example.com']
-				}
-			})
-		);
-		const payload = await response.json();
-
-		expect(response.status).toBe(200);
-		expect(legacyUnshareMock).toHaveBeenCalledWith('user-1', 'project-calendar@example.com', [
-			'reader@example.com'
-		]);
-		expect(payload.data).toEqual(result);
-	});
+			expect(response.status).toBe(400);
+		}
+	);
 });

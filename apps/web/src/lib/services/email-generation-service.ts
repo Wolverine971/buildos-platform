@@ -314,6 +314,7 @@ export class EmailGenerationService {
 			dailyBriefsResult,
 			documentsResult,
 			calendarTokensResult,
+			calendarConnectionsResult,
 			chatSessionsResult,
 			emailHistoryResult
 		] = await Promise.all([
@@ -371,11 +372,19 @@ export class EmailGenerationService {
 				.is('deleted_at', null)
 				.gte('created_at', thirtyDaysAgoISO),
 
-			// Calendar connection
+			// Calendar connection (legacy single-account grant)
 			this.supabase
 				.from('user_calendar_tokens')
 				.select('*', { count: 'exact', head: true })
 				.eq('user_id', userId),
+
+			// Calendar connection (multi-account, dedicated OAuth client)
+			this.supabase
+				.from('user_calendar_connections')
+				.select('id', { count: 'exact', head: true })
+				.eq('user_id', userId)
+				.eq('status', 'active')
+				.is('deleted_at', null),
 
 			// Current chat sessions (30d)
 			this.supabase
@@ -421,6 +430,9 @@ export class EmailGenerationService {
 		const { count: dailyBriefsCount } = dailyBriefsResult;
 		const { count: documentsCount } = documentsResult;
 		const { count: calendarTokensCount } = calendarTokensResult;
+		const calendarConnectionsCount = calendarConnectionsResult.error
+			? 0
+			: (calendarConnectionsResult.count ?? 0);
 		const { data: chatSessions } = chatSessionsResult;
 		const { data: emailHistory } = emailHistoryResult;
 
@@ -485,7 +497,7 @@ export class EmailGenerationService {
 			notes_count: documentsCount || 0,
 			agentic_sessions_count: agenticSessionsCount,
 			agentic_messages_count: agenticMessagesCount,
-			calendar_connected: (calendarTokensCount || 0) > 0,
+			calendar_connected: (calendarTokensCount || 0) > 0 || calendarConnectionsCount > 0,
 			recent_projects:
 				projects?.map((p) => ({
 					id: p.id,

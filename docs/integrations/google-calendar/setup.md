@@ -94,10 +94,13 @@ email
 https://www.googleapis.com/auth/calendar
 ```
 
-The full Calendar scope is required because BuildOS reads availability, creates and updates events,
-manages project calendars, and registers Calendar webhooks. In **Data Access**, confirm that the
-Google Calendar scope is declared and approved for the app. Google documents the available Calendar
-scopes in its [Calendar authorization guide](https://developers.google.com/workspace/calendar/api/auth).
+The implementation currently requests and validates the full Calendar scope for availability,
+events, project calendar resources, and sharing. Those operations do not by themselves establish
+that the broad scope is the minimum: Google supports granular Calendar scopes, including for
+webhooks. Before verification, use the [October 4 scope audit](../GOOGLE_OAUTH_SUBMISSION_PACKET_2026-10-04.md)
+to freeze a justified scope set. Changing the Console alone will not change authorization URLs or
+token validators. Google documents the options in its
+[Calendar authorization guide](https://developers.google.com/workspace/calendar/api/auth).
 
 If the project has not previously been verified for the Calendar scope, Google may require OAuth app
 verification before a broad public rollout. The existing BuildOS Calendar integration may mean this

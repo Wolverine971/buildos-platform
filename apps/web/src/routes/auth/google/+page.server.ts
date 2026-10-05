@@ -1,6 +1,6 @@
 // apps/web/src/routes/auth/google/+page.server.ts
 import { redirect } from '@sveltejs/kit';
-import { GoogleOAuthService } from '$lib/services/google-oauth-service';
+import { createCalendarConnectUrl } from '$lib/server/calendar-connect-url';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -11,9 +11,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		throw redirect(303, '/auth/login?redirect=/profile?tab=calendar');
 	}
 
-	// Updated to use the new calendar callback URL
-	const redirectUri = `${url.origin}/auth/google/calendar-callback`;
-	const authUrl = new GoogleOAuthService(supabase).generateCalendarAuthUrl(redirectUri, user.id, {
+	const authUrl = await createCalendarConnectUrl({
+		supabase,
+		userId: user.id,
+		origin: url.origin,
 		redirectPath: '/profile?tab=calendar&calendar=1'
 	});
 

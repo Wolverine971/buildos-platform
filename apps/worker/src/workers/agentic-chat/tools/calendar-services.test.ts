@@ -1,7 +1,7 @@
 // apps/worker/src/workers/agentic-chat/tools/calendar-services.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
-	GOOGLE_CALENDAR_SCOPE,
+	GOOGLE_CALENDAR_LEGACY_FULL_SCOPE as GOOGLE_CALENDAR_SCOPE,
 	GoogleCalendarTargetError,
 	GoogleCalendarWriteError
 } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';

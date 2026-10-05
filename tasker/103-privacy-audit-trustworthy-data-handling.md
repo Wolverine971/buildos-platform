@@ -5,6 +5,79 @@
 > **Audit 2026-10-04 — ACTIVE.** The code is pushed and deployed (76302509d + ef6840078), all 10 migrations `190000`–`190600` are applied, the crons run, and the first purge ran clean (memory, 09-25). The "uncommitted / not deployed" status below is stale. The exit is blocked: **account deletion fails in prod**. `finalize_account_deletion_database` (`20260924190100`, line 674) sets human actors' `user_id` to NULL, which violates `chk_actor_identity`. This was found on 09-30 and noted in e10cd5e68; there have been 0 deletion requests so far.
 > **Left:** fix deletion, then prove it end to end on a test account. DJ's env items: Railway models, removing the dead non-ZDR keys, and turning OpenRouter logging off. The paid ZDR check needs DJ's OK. Retention windows and delete edge cases are in DATA_INVENTORY Open items 13–18. **Priority:** P0. **Recommend:** keep.
 
+## Deletion fix (2026-10-04): APPLIED to prod 2026-10-04 (recorded in the ledger); standing check in DEFAULT_CHECKS
+
+- **Scope.** Deletion failed for every account, not only edge cases: all 82 human actors would hit
+  `chk_actor_identity`, and the bug dates back to `20260716000000`. The stub contract missed it because its
+  `onto_actors` had no such constraint.
+- **Second bug.** Deleting a project with a project-scoped `agent_operatives` row also failed. The FK is
+  `SET NULL`, but a CHECK requires `project_id`. This hit the account purge and the 30-day purge.
+  Production has 0 such rows today.
+- **Fix: `supabase/migrations/20261004213000_account_deletion_actor_tombstone.sql`.**
+    - The actor becomes a tombstone (`onto_actors.account_deleted_at`), which `chk_actor_identity` now
+      allows.
+    - finalize applies each actor reference's own FK rule:
+        - CASCADE rows (assignments, task assignees, read states) go;
+        - SET NULL columns (contact links) clear;
+        - RESTRICT authorship stays.
+    - Operatives now CASCADE with their project.
+    - No app deploy is needed. Once applied, the hourly cron works.
+- **Proof.** `supabase/tests/account_deletion_purge.check.sql` runs the real pipeline on production's schema:
+  request → claim → storage listing → Libri purge → finalize → auth delete.
+    - The test person has rows in ~200 tables. A generic seeder fills them, and
+      `fixtures/account_deletion_purge_seed.sql` covers the ones it can't.
+    - Afterwards nothing points at them, their email appears in no column anywhere, and their files are gone.
+    - Both mutations tried were caught.
+    - `pnpm db:rehearse` passed with and without the 8 pending Libri/OAuth migrations.
+    - The stub CI contract now has the constraint and asserts that both bugs fail before the fix.
+- **Live proof tool.** `scripts/account-deletion-proof/run.sh <user_id> [actor_id]` prints a read-only count
+  receipt from prod.
+- **Next (DJ approval):**
+    1. Apply `20261004213000` to prod and record it.
+    2. Add the check to `DEFAULT_CHECKS` in `scripts/migration-rehearsal/rehearse.py`. Do this only after
+       the apply, or every other rehearsal fails on the unfixed prod schema.
+    3. Run the live test account through the UI, then run the receipt.
+
+## Shared projects: handoff, leave, and Trash (2026-10-04): migration APPLIED to prod 2026-10-04; web NOT deployed
+
+DJ picked the ambitious version: a shared project never disappears by surprise.
+
+- **Migration `20261004220000_project_handoff_and_trash.sql`.** It adds four signed-in RPCs:
+    - `transfer_onto_project_ownership` moves `created_by` and the owner membership; the old owner becomes an
+      editor, or leaves.
+    - `restore_onto_project` brings back exactly the rows the delete stamped.
+    - `list_my_deleted_onto_projects` lists the owner's Trash.
+    - `list_my_shared_owned_onto_projects` lists the shared projects the caller owns.
+- **Proof.** `supabase/tests/project_handoff_and_trash.check.sql` covers the following, as real signed-in
+  users on production's schema, and it passed rehearsal:
+    - only the owner can hand off or restore;
+    - removed members and members whose account is being deleted can't take over;
+    - access follows the new owner;
+    - restore leaves earlier deletes and archives alone.
+- **API.** - `POST /api/onto/projects/[id]/ownership`, `POST .../restore`, `GET /api/onto/projects/trash`,
+  `GET /api/account/shared-projects`. - `DELETE /api/account/settings` requires a decision for each shared project (`409
+shared_projects_decision_required`). - Project DELETE always soft-deletes now, dev included, so dev no longer hard-deletes on the prod DB. - Collaborators get emails (`lib/server/project-sharing-notifications.ts`).
+- **UI.**
+    - The collaboration modal has "Make owner" and "Hand off and leave".
+    - The shared `ProjectDeleteConfirmModal` names who loses access and offers "Hand it off instead". It is
+      used from the options menu and the edit modal.
+    - `/projects` has a Trash section with Restore.
+    - The AccountTab has a shared-projects step.
+- **Checks.** svelte-check has 0 errors in these files; the 2 remaining errors are in the tables work. 66
+  focused tests pass.
+- **Defaults DJ can veto:**
+    - Handoff is instant, with no accept step.
+    - The account step preselects the most-involved member.
+    - "Delete for everyone" during account deletion can't be restored.
+    - A restored project's events don't return to Google Calendar.
+- **Found, not fixed:** leaving or being removed from a project never unlinks that person's
+  `project_calendars` row. This is pre-existing and affects regular leave too.
+- **Next:**
+    1. Apply `213000`, then `220000`.
+    2. Deploy web.
+    3. Run a live check with two test accounts: share, hand off, delete, restore, and account deletion with a
+       handoff, then run the receipt.
+
 **Status:** Migrations applied to prod (2026-09-24, all 10 in `190000`–`190600`, recorded in history). Code is uncommitted and not deployed. See
 "Progress" below. · **Opened:** 2026-09-24 · **Owner:** DJ (approvals)
 **Source:** building `scan_email_inbox` (`docs/architecture/JEV_EMAIL_SCAN_2026-09-24.md`) exposed a

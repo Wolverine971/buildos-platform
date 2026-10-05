@@ -4,6 +4,7 @@
 	import { Calendar, ArrowRight, Shield, Clock } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { portal } from '$lib/actions/portal';
+	import { getGoogleCalendarConnectUrl } from '$lib/utils/google-calendar-connect-url';
 
 	let isConnecting = $state(false);
 	let hasError = $state(false);
@@ -17,23 +18,8 @@
 		errorMessage = '';
 
 		try {
-			// Fetch the calendar auth URL with redirect back to time-blocks
-			const response = await fetch('/profile/calendar?redirect=/time-blocks');
-			const payload = await response.json().catch(() => null);
-			const data = payload?.success === true && 'data' in payload ? payload.data : payload;
-
-			if (!response.ok) {
-				throw new Error(
-					payload?.error || payload?.message || 'Failed to get calendar authorization URL'
-				);
-			}
-
-			if (!data.calendarAuthUrl) {
-				throw new Error('No authorization URL received');
-			}
-
-			// Redirect to Google OAuth
-			window.location.href = data.calendarAuthUrl;
+			// Redirect to Google OAuth, returning to time-blocks
+			window.location.href = await getGoogleCalendarConnectUrl('/time-blocks');
 		} catch (error) {
 			console.error('Calendar connection error:', error);
 			hasError = true;

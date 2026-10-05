@@ -252,6 +252,10 @@ VALUES ('d8000000-0000-4000-8000-000000000020', 'd1000000-0000-4000-8000-0000000
 INSERT INTO public.agent_run_cost_entries (root_run_id, leaf_run_id)
 VALUES ('d8000000-0000-4000-8000-000000000020', 'd8000000-0000-4000-8000-000000000020');
 
+-- U's operative scoped to their solo project (it must go with the project).
+INSERT INTO public.agent_operatives (id, user_id, context_type, project_id)
+VALUES ('d8000000-0000-4000-8000-000000000025', 'd1000000-0000-4000-8000-000000000001', 'project', 'd4000000-0000-4000-8000-000000000001');
+
 INSERT INTO public.cycles (id, user_id, project_id)
 VALUES
 	('d8000000-0000-4000-8000-000000000021', 'd1000000-0000-4000-8000-000000000001', NULL),
@@ -415,6 +419,28 @@ SELECT pg_temp.expect(
 \ir ../migrations/20260924190100_account_deletion_completeness.sql
 -- Re-applying is a no-op.
 \ir ../migrations/20260924190100_account_deletion_completeness.sql
+
+-- 20260924190100 alone still failed in production: deleting the solo project
+-- nulls its operative's project_id, which agent_operatives_project_context
+-- forbids, and the actor tombstone broke chk_actor_identity right after.
+SELECT pg_temp.expect(
+	pg_temp.error_of($$SELECT public.finalize_account_deletion_database('d1000000-0000-4000-8000-000000000001')$$)
+		LIKE '%agent_operatives_project_context%',
+	'the 20260924190100 finalize fails on a project-scoped operative'
+);
+UPDATE public.agent_operatives SET context_type = 'global', project_id = NULL
+WHERE id = 'd8000000-0000-4000-8000-000000000025';
+SELECT pg_temp.expect(
+	pg_temp.error_of($$SELECT public.finalize_account_deletion_database('d1000000-0000-4000-8000-000000000001')$$)
+		LIKE '%chk_actor_identity%',
+	'the 20260924190100 finalize fails on the actor tombstone'
+);
+UPDATE public.agent_operatives SET context_type = 'project', project_id = 'd4000000-0000-4000-8000-000000000001'
+WHERE id = 'd8000000-0000-4000-8000-000000000025';
+
+\ir ../migrations/20261004213000_account_deletion_actor_tombstone.sql
+-- Re-applying is a no-op.
+\ir ../migrations/20261004213000_account_deletion_actor_tombstone.sql
 
 SET client_min_messages = warning;
 
@@ -585,7 +611,7 @@ SELECT pg_temp.expect(
 	AND (SELECT status = 'cancelled' AND exit_reason = 'user_deleted' AND next_send_at IS NULL
 		FROM public.email_sequence_enrollments WHERE user_id = 'd1000000-0000-4000-8000-000000000001')
 	AND (SELECT status FROM public.welcome_email_sequences WHERE user_id = 'd1000000-0000-4000-8000-000000000001') = 'cancelled'
-	AND (SELECT NOT schedule_enabled AND next_run_at IS NULL FROM public.agent_operatives
+	AND (SELECT bool_and(NOT schedule_enabled AND next_run_at IS NULL) FROM public.agent_operatives
 		WHERE user_id = 'd1000000-0000-4000-8000-000000000001'),
 	'briefs, notifications, SMS, push, lifecycle email and scheduled agents stop'
 );
@@ -712,9 +738,13 @@ SELECT pg_temp.expect(
 	'chat turns, agent runs with cost entries, and cycle runs are gone'
 );
 SELECT pg_temp.expect(
-	(SELECT user_id IS NULL AND email IS NULL AND name = 'Deleted user'
+	(SELECT user_id IS NULL AND email IS NULL AND name = 'Deleted user' AND account_deleted_at IS NOT NULL
 		FROM public.onto_actors WHERE id = 'd5000000-0000-4000-8000-000000000001'),
 	'actor anonymized'
+);
+SELECT pg_temp.expect(
+	NOT EXISTS (SELECT 1 FROM public.agent_operatives WHERE id = 'd8000000-0000-4000-8000-000000000025'),
+	'the project-scoped operative went with its project'
 );
 SELECT pg_temp.expect(
 	NOT EXISTS (SELECT 1 FROM public.onto_projects WHERE id = 'd4000000-0000-4000-8000-000000000001')

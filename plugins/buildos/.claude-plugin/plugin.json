@@ -9,5 +9,12 @@
 	},
 	"homepage": "https://build-os.com/docs/connect-agents",
 	"repository": "https://github.com/Wolverine971/buildos-platform",
-	"keywords": ["buildos", "project management", "project context", "productivity", "mcp"]
+	"keywords": ["buildos", "project management", "project context", "productivity", "mcp"],
+	"mcpServers": {
+		"buildos": {
+			"type": "http",
+			"url": "https://build-os.com/mcp/buildos",
+			"oauth_resource": "https://build-os.com/mcp/buildos"
+		}
+	}
 }

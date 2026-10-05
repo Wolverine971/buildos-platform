@@ -159,3 +159,23 @@ wall-clock-bounded terminalization.
 **Audit 2026-10-04 — PARKED.** WP-1–WP-5 were never built. Dispatch goes through the generic `delegate_task` (`run_template:'deep_research'`, `packages/agentic-chat-runtime/src/catalog/definitions/utility.ts`), and progress uses the generic agent-run dock/modal (`AgentRunDock.svelte`, ffbd9f1f2). There is no cost-confirmation step and no report surface.
 **Left:** all WPs, and they're worth doing only if 29's quality gate ever passes.
 **Priority:** P3. **Recommend:** merge into 29.
+
+## Progress 2026-10-04 — kill switch (built, uncommitted, needs web + worker deploy)
+
+**Correction to the audit:** project chat couldn't start Deep Research after 09-23 (`a63be9294` removed
+the web executor, and the worker strips `run_template`). The real open door was `POST /api/agent-runs`,
+which any signed-in user could call with `run_template: 'deep_research'`.
+
+**Switch:** `PRIVATE_DEEP_RESEARCH_ENABLED`, off unless `true`, needed on both web and worker.
+
+- **Catalog:** `delegate_task` no longer advertises `run_template` or deep research.
+- **Web:** `dispatchAgentRun` returns 403 `DEEP_RESEARCH_DISABLED` before any DB read or write.
+- **Worker:** `processAgentRunJob` cancels deep-research roots or children before claiming them,
+  building a client, or reserving cost.
+- Tests: `agentRunDeepResearchKillSwitch.test.ts`, `dispatch.test.ts`, and the catalog/schema tests.
+
+**History:** 12 runs ever, all manual July bakeoff runs by one user, all ended `partial`; the last was
+2026-07-22. Spend was ~$0.77 in the ledger, ~$1.30 worst case. Nothing is queued.
+
+**Still able to spend on research:** chat's `web_search`/`web_visit`/`web_navigate`, and ordinary
+`delegate_task` agent runs ($0.50 default, $1 max each).

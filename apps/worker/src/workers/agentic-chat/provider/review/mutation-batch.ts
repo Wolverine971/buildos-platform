@@ -100,6 +100,23 @@ export function externalContentReviewNotice(sources: readonly string[]): string 
 	].join(' ');
 }
 
+const TABLE_WRITE_TOOLS: ReadonlySet<string> = new Set([
+	'create_onto_table',
+	'update_onto_table',
+	'update_onto_table_rows'
+]);
+
+/**
+ * BuildOS Tables: the checklist vocabulary a table write can prove. Rendered
+ * only when the batch writes a table, so other reviews keep a byte-identical
+ * user message. Without it reviewers named table work in prose ("Salary range
+ * cell for Palantir") that no ledger field can prove (prod, 2026-10-04).
+ */
+export function tableChecklistNotice(batch: MutationBatch): string | null {
+	if (!batch.calls.some((call) => TABLE_WRITE_TOOLS.has(call.name))) return null;
+	return 'Table writes in this batch: in request_expectation a table is entity_kind document targeting the table id. Its provable required_fields are columns (column added, renamed, retyped, or removed), rows (rows added or deleted), cells (cell values written), and the snake_case name of a column whose cells are written (e.g. salary_range). Name the rows and values in description, never in required_fields or changes; changes on a table are only title or description.';
+}
+
 export function formatMutationBatchForReview(batch: MutationBatch): string {
 	const calls = serializeMutationBatchForReview(batch).map((call) =>
 		call.tool === 'link_onto_entities'
@@ -143,6 +160,7 @@ export function buildMutationBatchReviewRequest(
 	const proposedSchemas = availableTools.filter((tool: AgenticChatTurnProviderToolV1) =>
 		proposedToolNames.has(tool.function.name)
 	);
+	const tableNotice = tableChecklistNotice(batch);
 	return {
 		...request,
 		messages: [
@@ -157,6 +175,7 @@ export function buildMutationBatchReviewRequest(
 					...(externalContentSources.length > 0
 						? [externalContentReviewNotice(externalContentSources)]
 						: []),
+					...(tableNotice ? [tableNotice] : []),
 					`Admitted capabilities for subsequent stages: ${availableTools.map((tool) => tool.function.name).join(', ')}.`,
 					requestExpectation
 						? `Frozen request expectation (completion only, not write authority): ${JSON.stringify(serializeTurnContractForDeclaration(requestExpectation))}`

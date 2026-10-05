@@ -1121,3 +1121,16 @@ review, if desired, is separate work rather than permission to trust actor compl
 deployed. Paid acceptance passed ($0.029). **Left:** only non-blocking follow-ups. Move the one
 that matters to 114: click through the card live (apply, "Not needed", phone, then archive → next
 pass closes it). **Priority:** none. **Recommend:** close & delete.
+
+## Progress 2026-10-04 (read-only check)
+
+- Effect `094a68ea` ("AI Workshop Outline at iCode 2") **never landed**. The batch's archive is one
+  transaction, and the doc is still a draft in the tree. Nothing on the Wayne project is
+  half-applied. The other writes landed (Maryland plan completed, goal renamed and set to draft,
+  "Julian Pitch" and the first iCode outline archived), and Book Research failed cleanly.
+- The safe reconcile (not applied) marks the effect failed:
+  `UPDATE chat_turn_effects SET state='failed' WHERE id='094a68ea-f479-542c-853d-c2f985636ab3' AND state='uncertain'`
+  Then archive iCode 2 normally if it should go. This is the only uncertain effect in prod.
+- **Cleanup cards:** 8 are live in prod, and 0 decisions have ever been applied or rejected. The Wayne
+  card (refreshed 10-02) is stale: it still asks about the Maryland goal parked on 09-30. The first
+  click-through is tracker 38's checklist, steps 3 and 10–11.

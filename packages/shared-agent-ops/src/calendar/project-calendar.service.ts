@@ -49,7 +49,7 @@ export interface UpdateProjectCalendarOptions {
 
 export type ProjectCalendarResourceGateway = Pick<
 	GoogleCalendarProjectResourceService,
-	'resolveLinkedSource' | 'createCalendar' | 'updateCalendar' | 'deleteCalendar' | 'shareCalendar'
+	'resolveLinkedSource' | 'createCalendar' | 'updateCalendar' | 'deleteCalendar'
 >;
 
 /**

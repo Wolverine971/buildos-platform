@@ -404,7 +404,9 @@ export const load: PageServerLoad = async ({
 			}
 		});
 		const target = buildCalendarRedirect(resolvedRedirectPath, {
-			error: 'token_exchange_failed'
+			// A partial grant (permissions unticked on Google's consent screen) gets its own
+			// message telling the person to leave every Calendar box checked.
+			error: result.errorCode ?? 'token_exchange_failed'
 		});
 		throw redirect(303, target);
 	}

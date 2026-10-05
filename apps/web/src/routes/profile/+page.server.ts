@@ -1,12 +1,12 @@
 // apps/web/src/routes/profile/+page.server.ts
 import { redirect, fail, type Actions, type RequestEvent } from '@sveltejs/kit';
 import { CalendarService } from '$lib/services/calendar-service';
-import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { StripeService } from '$lib/services/stripe-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { CalendarDisconnectService } from '$lib/services/calendar-disconnect-service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { createCalendarConnectUrl } from '$lib/server/calendar-connect-url';
 import type { Database } from '@buildos/shared-types';
 import { FEATURE_KEYS, isFeatureEnabled } from '$lib/utils/feature-flags';
 import { resolveProfileTab } from '$lib/components/profile/profile-tabs';
@@ -241,15 +241,14 @@ export const actions: Actions = {
 		try {
 			console.log('Initiating calendar connection for user:', user.id);
 
-			// Generate the enhanced auth URL
-			const calendarRedirectUri = `${url.origin}/auth/google/calendar-callback`;
-			const calendarAuthUrl = new GoogleOAuthService(supabase).generateCalendarAuthUrl(
-				calendarRedirectUri,
-				user.id,
-				{ redirectPath: getCalendarReturnPath() }
-			);
+			const calendarAuthUrl = await createCalendarConnectUrl({
+				supabase,
+				userId: user.id,
+				origin: url.origin,
+				redirectPath: getCalendarReturnPath()
+			});
 
-			console.log('Redirecting to Google OAuth with enhanced scopes');
+			console.log('Redirecting to Google OAuth for Calendar');
 			throw redirect(303, calendarAuthUrl);
 		} catch (error) {
 			if (error instanceof Response) {
@@ -386,13 +385,13 @@ export const actions: Actions = {
 			const calendarService = new CalendarService(createAdminSupabaseClient());
 			await calendarService.disconnectCalendar(user.id);
 
-			// Then redirect to new OAuth flow with enhanced scopes
-			const calendarRedirectUri = `${url.origin}/auth/google/calendar-callback`;
-			const calendarAuthUrl = new GoogleOAuthService(supabase).generateCalendarAuthUrl(
-				calendarRedirectUri,
-				user.id,
-				{ redirectPath: getCalendarReturnPath() }
-			);
+			// Then redirect to the OAuth flow for this user's Calendar runtime
+			const calendarAuthUrl = await createCalendarConnectUrl({
+				supabase,
+				userId: user.id,
+				origin: url.origin,
+				redirectPath: getCalendarReturnPath()
+			});
 
 			console.log('Redirecting to Google OAuth for reconnection');
 			throw redirect(303, calendarAuthUrl);

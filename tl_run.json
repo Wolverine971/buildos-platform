@@ -1,0 +1,7 @@
+{
+	"_tag": "Error",
+	"error": {
+		"code": "LegacyDbQueryReadFileError",
+		"message": "failed to read SQL file: NotFound: FileSystem.readFile (/Users/djwayne/buildos-platform/tl_run.sql)"
+	}
+}

@@ -274,5 +274,9 @@ class DefaultChecks(unittest.TestCase):
         self.assertIn(rehearse.ROOT / 'supabase' / 'tests' / 'project_fold_table_coverage.check.sql',
                       rehearse.DEFAULT_CHECKS)
 
+    def test_project_write_lock_order_is_a_standing_check(self):
+        self.assertIn(rehearse.ROOT / 'supabase' / 'tests' / 'project_write_lock_first.check.sql',
+                      rehearse.DEFAULT_CHECKS)
+
 if __name__ == '__main__':
     unittest.main()

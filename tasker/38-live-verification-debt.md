@@ -144,3 +144,69 @@ back red becomes its own tracker; anything green gets deleted with the section.
 
 **Audit 2026-10-04 — STALE — RETIRE.** The paid-launch go/no-go frame is premature: billing is off, 77 is parked, and blocker 76 is contained (fe3a44c12). The WP-2 fresh-account run is still the check that matters for activation. A signup blocker went unnoticed from 09-09 to 09-24 (0 of 2 signups completed), and account deletion fails in prod on `chk_actor_identity` (see 103).
 **Left:** a repeatable fresh-account smoke: signup → onboarding → capture → return → delete account. **Priority:** none for this tracker; the salvaged smoke is P1. **Recommend:** merge into 38.
+
+## Live-click checklist — prepared 2026-10-04 (~30 min, signed in at build-os.com)
+
+Prepared from read-only prod checks. Calendar: both Google connections are active (last verified
+10-02). Steps 1–6 are read-only; steps 7–12 change data.
+
+**Read-only**
+
+1. Open https://build-os.com/time-blocks. **Pass:** the calendar and "Create Block" show, with no
+   "Connect Google Calendar" overlay. Then open https://build-os.com/api/calendar. **Pass:**
+   `"connected":true`.
+2. Open https://build-os.com/history?id=bd9426ed-4cfe-4fd6-818b-23b51017b6e1&itemType=chat_session.
+   **Pass:** a chip reads "Saved to START HERE · thinking log · 2 changes to review · Undo", and its
+   links open the docs. Don't click Undo yet (tracker 96).
+3. Go to https://build-os.com/projects and click the AI Inbox icon. **Pass:** the Wayne "Project
+   cleanup" card shows its counts and lists. Repeat at phone width (tracker 114).
+4. In ChatGPT, open a new chat with BuildOS on and ask "search BuildOS for Wayne Strategies", then
+   fetch one result. Repeat in your original chat. **Pass:** results come back with no reconnect
+   prompt (tracker 116).
+5. Do the same in Codex. See 116: Codex's direct connection is still calling with no auth header.
+6. Open the calendar skill article
+   (https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create),
+   /skills and /skills/people at phone width. **Pass:** no sideways scroll, and Try is visible. Then
+   resubmit the sitemap in Search Console (tracker 115).
+
+**These change data**
+
+7. In an incognito window, open
+   https://build-os.com/skills/try/google-calendar-for-ai-agents-search-before-you-create and sign
+   up with a `+try` alias, then click the emailed link. **Pass:** you land signed in on /today with
+   the chat open and the prompt drafted, and no bounce to /onboarding or `email_link_failed`. Don't
+   send the prompt; that's a paid turn. Don't delete this account until tracker 103 is fixed.
+8. Optionally repeat step 7 with a second Google account.
+9. Back on the step 2 chip, click **Undo**. **Pass:** "Capture undone" (tracker 96).
+10. On the Wayne cleanup card, tick only "Archive empty blog placeholder 'Political Analysis'" and
+    click **Apply 1 selected**. **Pass:** the item leaves the card and the ready count drops by one.
+    Don't apply "Book Research"; it's 114's replay target.
+11. Click **Not needed** on one duplicate. **Pass:** it disappears and records a reason.
+12. Create a task called "zz recurrence test", due tomorrow. Click Repeat → Weekly → Make Recurring,
+    move one instance's due date, then Delete Series → Delete Upcoming. **Pass:** no errors, and any
+    Google events disappear (from 74).
+
+## Progress 2026-10-04 — activation gauges (read-only)
+
+Full write-up: `docs/research/activation-funnel-2026-10-04.md`, with the funnel, first-run path map,
+and a 10-minute walk in §4.
+
+**PostHog:** prod ingestion is unknown but probably working. The key is set in Vercel and built into
+the site, and no server capture failure has ever been logged. The events can't be read without the
+key stored in Vercel; §1.4 has DJ's 2-minute check. Even if ingestion works, the dashboard can't
+show the real funnel:
+
+- `project_created` never fires for chat-created projects, because the chat worker has no PostHog key.
+- `brain_dump_created` has been dead since May.
+- `onboarding_completed` is rare.
+- `signup` misses brand-new Google accounts created from the login page.
+- Browser events only cover visitors who opted in on the privacy banner.
+
+**Funnel (database, last 12 weeks):** 14 real signups → 7 made a project → 8 sent a first message →
+0 active on a later day → 0 active in week 2. There have been no signups since 09-24.
+
+**Biggest leak, verified:** the day 1/3/6/9 welcome emails have never been sent. Vercel's Root
+Directory is `apps/web`, so the crons in the root `vercel.json` never run: welcome-sequence,
+reactivation-sequence, trial-reminders, dunning, and billing-ops-monitoring. `cron_logs` only has the
+`apps/web/vercel.json` jobs. A fix with a backlog guard is in progress (welcome only; the rest are DJ
+decisions).

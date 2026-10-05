@@ -196,3 +196,107 @@ describe('table tool argument validation', () => {
 		).toEqual([]);
 	});
 });
+
+describe('reviewer checklists for table work (prod 2026-10-04 "add a column and fill it")', () => {
+	// The exact request_expectation the batch reviewer froze in prod: table work
+	// named as a value change ("column name") and as prose required fields.
+	const reviewerExpectation = parseDeclaredTurnContract({
+		outcomes: [
+			{
+				id: 'salary-col',
+				action: 'update',
+				entity_kind: 'document',
+				target_ids: [TABLE_ID],
+				required_fields: ['columns'],
+				changes: [{ field: 'column name', value: 'Salary range' }],
+				minimum_successful_effects: 1,
+				description: 'Add the requested salary-range column to the Job applications table.'
+			},
+			{
+				id: 'salary-palantir',
+				action: 'update',
+				entity_kind: 'document',
+				target_ids: [TABLE_ID],
+				required_fields: ['Salary range cell for Palantir (JOB-001)'],
+				changes: [],
+				minimum_successful_effects: 1,
+				description: 'Populate the Palantir salary cell with a sourced range.'
+			}
+		],
+		summary: 'Add a Salary range column and fill it.'
+	})!;
+	const result = {
+		document: { id: TABLE_ID, project_id: PROJECT_ID, title: 'Job applications' }
+	};
+	const addColumn = execution(
+		'update_onto_table',
+		{
+			table_id: TABLE_ID,
+			column_changes: [{ action: 'add', name: 'Salary range', type: 'text' }]
+		},
+		result
+	);
+	const fillCells = execution(
+		'update_onto_table_rows',
+		{ table_id: TABLE_ID, update: [{ row: 'r1', values: { 'Salary range': '$135k–$200k' } }] },
+		result
+	);
+
+	it('counts the landed column add and cell fill instead of reporting them unfinished', () => {
+		const outcome = resolveTurnContractOutcomeFromLedger(
+			reviewerExpectation,
+			buildWriteLedger([addColumn, fillCells]),
+			'stop'
+		);
+		expect(outcome.fulfilled).toBe(true);
+		expect(outcome.outcomes.every((entry) => entry.fulfilled)).toBe(true);
+	});
+
+	it('still reports the fill as owed when only the column was added', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					id: 'fill',
+					action: 'update',
+					entity_kind: 'document',
+					target_ids: [TABLE_ID],
+					required_fields: ['cells', 'Salary range'],
+					minimum_successful_effects: 1
+				}
+			]
+		})!;
+		const outcome = resolveTurnContractOutcomeFromLedger(
+			contract,
+			buildWriteLedger([addColumn]),
+			'stop'
+		);
+		expect(outcome.fulfilled).toBe(false);
+	});
+
+	it('leaves document text outcomes untouched', () => {
+		const contract = parseDeclaredTurnContract({
+			outcomes: [
+				{
+					id: 'text',
+					action: 'update',
+					entity_kind: 'document',
+					target_ids: [TABLE_ID],
+					required_fields: ['Salary range cell for Palantir (JOB-001)'],
+					minimum_successful_effects: 1
+				}
+			]
+		})!;
+		const outcome = resolveTurnContractOutcomeFromLedger(
+			contract,
+			buildWriteLedger([
+				execution(
+					'update_onto_document',
+					{ document_id: TABLE_ID, content: 'text' },
+					{ document: { id: TABLE_ID, project_id: PROJECT_ID, title: 'Notes' } }
+				)
+			]),
+			'stop'
+		);
+		expect(outcome.fulfilled).toBe(false);
+	});
+});

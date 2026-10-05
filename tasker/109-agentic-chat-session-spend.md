@@ -3,6 +3,7 @@
 # Tasker 109 — Agentic Chat spend per session and per turn
 
 > **Audit 2026-10-04 — SHIPPED, VERIFY LIVE.** Every built fix is pushed + deployed:
+>
 > - the minute clock moved out of the cached prefix (e2ffeac9c);
 > - the web-search review retry, the no-op-revision rule and legacy calendar reads (ef6840078; reads verified live 09-25 23:36);
 > - legacy calendar writes and the battery cost line (9e2327f92).
@@ -247,9 +248,60 @@ Surface" prose is still in `build-lite-prompt.ts`, D2 is undecided, and the WP-5
 
 **Audit 2026-10-04 — SHIPPED, VERIFY LIVE.** Items 2/3/5 are pushed + deployed (e2ffeac9c, 1196612b9, 84a022484; both migrations in prod). Tracker 111's 09-27 prod read confirms the loop gate (since 09-26 only 1 of 5 end-of-day runs hit an unchanged project, down from 66%) and shows the brief calls tagged and running on GPT-6 Luna. Item 4 lives in 109.
 **Left:**
+
 - a read-only check that briefs load more than 0 tasks with no `length` finishes;
 - the GPT-6 reviewer replay at medium reasoning (~$0.03, needs DJ's OK);
 - item 1, the key split (deferred; the prod key is in 6 local env files);
 - the scheduler guard: not built, so `bootstrap.ts` starts crons unconditionally and `apps/worker/.env` targets the prod DB.
 
 **Priority:** P2. **Recommend:** merge into 109.
+
+## Progress 2026-10-04 — first-turn latency (read-only measurement + one free fix)
+
+**Data:** only 2 new users have chatted in the worker era (09-11 and 09-24), and none since 09-24. A new
+user's first turn is always a Project Setup (onboarding capture) turn.
+
+| Cohort                                                 | n   | Wall (s)  | Acting passes | Synthesis/repair | Review    |
+| ------------------------------------------------------ | --- | --------- | ------------- | ---------------- | --------- |
+| New user, turn 1 (09-11, 09-24)                        | 2   | 51 / 22   | 25.6 / 11.0   | 8.0 / 5.4        | 4.3 / 3.7 |
+| New user, turns 2–3 (09-24)                            | 2   | 78 / 102  | 45 / 55       | 3.5 / 28.6       | 0         |
+| DJ, first turn of session (median / p90), 09-25..10-04 | 19  | 16.6 / 52 | 11.8 / 40     | 0 / 1.6          | 0 / 5.4   |
+| Test-account Project Setup, 09-26                      | 1   | 51.8      | 12.6          | 20.3             | 15.0      |
+
+Queue, prep, Jev, and delivery are each 1 s or less; the time is serial model passes.
+
+**Causes**
+
+1. **Fixed, needs a worker redeploy.** The completion check couldn't see a created project's own
+   fields, so every Project Setup turn since 09-22 took an extra repair pass (5–15 s). It then told the
+   new user "Some requested work is still unfinished… Created project: <raw id>". The fix is in
+   `packages/agentic-chat-runtime/src/loop/write-ledger.ts` and `turn-contract.ts`, with the new test
+   `project-create-completion.test.ts`. Receipts now name the project.
+2. **The reviewer runs in series** (~4.6 s per GPT-6 Luna review), and it marks correctly created
+   tasks unfinished over small title differences.
+3. **Slow model output on 09-24**, mostly fixed by the 09-25 switch to v4.1-flash on Together
+   (~316 vs ~36 tokens/s).
+
+The answer text isn't streamed: the first words arrive at about 99% of total time.
+
+**Proposals (not built):**
+
+- Drop checklist fields no tool can write.
+- Title-tolerant completion check (needs a paid check).
+- Skip the review for a project-only create on Project Setup (−4.6 s, but removes a gate).
+- Stream the answer, or show interim progress.
+- Make prod-battery case 1 fail on `mutation_unfulfilled`.
+
+**Paid confirmation (needs DJ's OK, ~$0.06–0.08):** after the deploy, run
+`pnpm agentic:prod-battery --preflight-only` (free), then `--confirm-prod --cases=1` (3 runs), plus 2
+vague Project Setup turns. The acting model is `deepseek/deepseek-v4.1-flash` (confirm in preflight),
+and the reviewer is gpt-6-luna.
+
+## Progress 2026-10-04 — local worker no longer runs prod crons
+
+Built, uncommitted. In `apps/worker/src/config/scheduledWork.ts`, scheduled work runs only on Railway
+(`RAILWAY_ENVIRONMENT_ID`/`RAILWAY_ENVIRONMENT`/`RAILWAY_SERVICE_ID`), or with
+`WORKER_SCHEDULER_ENABLED=true` as a local opt-in (`false` is a kill switch). The guard covers the
+scheduler, the startup brief and Operative runs, the startup queue purge, and the queue-alert timer.
+Tests: `scheduledWork.test.ts` and `generalWorkerBootstrap.test.ts`. **Still open (DJ decision):** a
+local `pnpm dev` worker still claims all 24 job types from the prod queue.

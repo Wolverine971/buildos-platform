@@ -227,24 +227,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return ApiResponse.success(result);
 			}
 
-			case 'shareCalendar': {
-				const result = await calendarService.shareCalendar(
-					user.id,
-					params.calendarId,
-					params.shares
-				);
-				return ApiResponse.success(result);
-			}
-
-			case 'unshareCalendar': {
-				const result = await calendarService.unshareCalendar(
-					user.id,
-					params.calendarId,
-					params.emails
-				);
-				return ApiResponse.success(result);
-			}
-
 			default:
 				return ApiResponse.badRequest(`Unknown method: ${method}`);
 		}

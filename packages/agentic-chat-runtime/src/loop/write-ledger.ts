@@ -69,7 +69,7 @@ function extractResultObject(result: unknown): ParsedArgs | null {
  * its writes are document effects. Turn contracts, receipts, and record links
  * all use the document kind and the document record route.
  */
-const TABLE_WRITE_TOOL_NAMES: ReadonlySet<string> = new Set([
+export const TABLE_WRITE_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'create_onto_table',
 	'update_onto_table',
 	'update_onto_table_rows'

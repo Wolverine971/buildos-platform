@@ -61,6 +61,13 @@ DEFAULT_CHECKS = (
     # Project fold (Combine): every column that points at a project is classified in
     # private.project_fold_table_policy, so a fold never strands rows in the archived source.
     ROOT / 'supabase' / 'tests' / 'project_fold_table_coverage.check.sql',
+    # Tasker 105: every function that takes the project row lock takes it before its first
+    # write, so concurrent project writes cannot deadlock.
+    ROOT / 'supabase' / 'tests' / 'project_write_lock_first.check.sql',
+    # Tasker 103: account deletion runs end to end for a person with a row in every table the
+    # seeder can fill, and nothing pointing at them survives. A new table that references a
+    # person with a foreign key the purge can't get past fails here.
+    ROOT / 'supabase' / 'tests' / 'account_deletion_purge.check.sql',
 )
 
 FINGERPRINT_SQL = r"""

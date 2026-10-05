@@ -68,8 +68,7 @@ describe('ProjectCalendarService.createProjectCalendarRecord', () => {
 				resolveLinkedSource: vi.fn(),
 				createCalendar: vi.fn(),
 				updateCalendar: vi.fn(),
-				deleteCalendar: vi.fn(),
-				shareCalendar: vi.fn()
+				deleteCalendar: vi.fn()
 			} as any
 		});
 
@@ -143,8 +142,7 @@ describe('ProjectCalendarService.createProjectCalendarRecord', () => {
 				}),
 				createCalendar: vi.fn(),
 				updateCalendar: vi.fn(),
-				deleteCalendar: vi.fn(),
-				shareCalendar: vi.fn()
+				deleteCalendar: vi.fn()
 			} as any
 		});
 
@@ -217,8 +215,7 @@ describe('ProjectCalendarService.updateProjectCalendarRecord', () => {
 				resolveLinkedSource: vi.fn(),
 				createCalendar: vi.fn(),
 				updateCalendar: vi.fn(),
-				deleteCalendar: vi.fn(),
-				shareCalendar: vi.fn()
+				deleteCalendar: vi.fn()
 			} as any
 		});
 

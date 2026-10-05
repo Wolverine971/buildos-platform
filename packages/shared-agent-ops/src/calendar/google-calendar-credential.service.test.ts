@@ -1,7 +1,8 @@
 // packages/shared-agent-ops/src/calendar/google-calendar-credential.service.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
-	GOOGLE_CALENDAR_SCOPE,
+	GOOGLE_CALENDAR_LEGACY_FULL_SCOPE as GOOGLE_CALENDAR_SCOPE,
+	GOOGLE_CALENDAR_SCOPES,
 	GoogleCalendarCredentialService
 } from './google-calendar-credential.service';
 import {
@@ -177,7 +178,12 @@ describe('GoogleCalendarCredentialService', () => {
 	it.each([
 		{ aud: 'different-client', sub: 'google-sub-1', scopes: [GOOGLE_CALENDAR_SCOPE] },
 		{ aud: 'calendar-client', sub: 'different-account', scopes: [GOOGLE_CALENDAR_SCOPE] },
-		{ aud: 'calendar-client', sub: 'google-sub-1', scopes: ['openid'] }
+		{ aud: 'calendar-client', sub: 'google-sub-1', scopes: ['openid'] },
+		{
+			aud: 'calendar-client',
+			sub: 'google-sub-1',
+			scopes: GOOGLE_CALENDAR_SCOPES.filter((scope) => !scope.endsWith('.freebusy'))
+		}
 	])('rejects a refreshed authorization with mismatched policy: %j', async (tokenInfo) => {
 		const { service, admin, oauth, queries } = fixture();
 		oauth.getTokenInfo.mockResolvedValueOnce(tokenInfo);
@@ -197,6 +203,22 @@ describe('GoogleCalendarCredentialService', () => {
 		expect(JSON.stringify(queries.calendar_access_audit_events.insert.mock.calls)).not.toMatch(
 			/new-access|old-refresh|configured-secret/
 		);
+	});
+
+	it('refreshes a narrow-scope grant and records the scopes Google returned', async () => {
+		const { service, admin, oauth } = fixture();
+		oauth.getTokenInfo.mockResolvedValueOnce({
+			aud: 'calendar-client',
+			sub: 'google-sub-1',
+			scopes: ['openid', ...GOOGLE_CALENDAR_SCOPES]
+		});
+		expect(await service.getAuthenticatedClient('user-1', 'connection-1')).toBe(oauth);
+		const [name, rotation] = admin.rpc.mock.calls[0]!;
+		expect(name).toBe('rotate_google_calendar_credentials');
+		expect(rotation.p_granted_scopes).toEqual(
+			expect.arrayContaining([...GOOGLE_CALENDAR_SCOPES])
+		);
+		expect(rotation.p_granted_scopes).not.toContain(GOOGLE_CALENDAR_SCOPE);
 	});
 
 	it('marks revoked grants for reconnect but leaves transient provider failures retryable', async () => {

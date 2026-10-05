@@ -11,9 +11,10 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { google, type calendar_v3 } from 'googleapis';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import {
-	GOOGLE_CALENDAR_SCOPE,
+	GOOGLE_CALENDAR_SCOPES,
 	GoogleCalendarConnectionError,
-	GoogleCalendarCredentialService
+	GoogleCalendarCredentialService,
+	hasRequiredGoogleCalendarScopes
 } from '@buildos/shared-agent-ops/calendar/google-calendar-credential.service';
 import {
 	GoogleCalendarSourceService,
@@ -35,7 +36,7 @@ import type {
 	GoogleCalendarSourceSummary
 } from '$lib/types/google-calendar-integration';
 
-export { GOOGLE_CALENDAR_SCOPE, GoogleCalendarConnectionError };
+export { GoogleCalendarConnectionError };
 export const MAX_GOOGLE_CALENDAR_CONNECTIONS = 5;
 
 export type GoogleCalendarSourcePreferences = {
@@ -519,7 +520,7 @@ export class GoogleCalendarConnectionService {
 		return oauthClient.generateAuthUrl({
 			access_type: 'offline',
 			prompt: 'consent select_account',
-			scope: ['openid', 'email', GOOGLE_CALENDAR_SCOPE],
+			scope: ['openid', 'email', ...GOOGLE_CALENDAR_SCOPES],
 			state,
 			nonce,
 			include_granted_scopes: false,
@@ -620,10 +621,10 @@ export class GoogleCalendarConnectionService {
 		}
 
 		const grantedScopes = normalizeScopeList(tokenInfo.scopes ?? tokens.scope);
-		if (!grantedScopes.includes(GOOGLE_CALENDAR_SCOPE)) {
+		if (!hasRequiredGoogleCalendarScopes(grantedScopes)) {
 			throw new GoogleCalendarConnectionError(
 				'scope_mismatch',
-				'Google did not grant Calendar access',
+				'Google did not grant every Calendar permission BuildOS needs',
 				params.state.redirect_path
 			);
 		}
@@ -1372,7 +1373,7 @@ export class GoogleCalendarConnectionService {
 		if (
 			tokenInfo.aud !== sharedCredentials.clientId ||
 			tokenInfo.sub !== legacy.google_user_id ||
-			!grantedScopes.includes(GOOGLE_CALENDAR_SCOPE)
+			!hasRequiredGoogleCalendarScopes(grantedScopes)
 		) {
 			await this.audit({
 				userId,

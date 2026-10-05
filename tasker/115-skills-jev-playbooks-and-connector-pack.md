@@ -147,11 +147,26 @@ typecheck clean, 26 focused web test files (389 tests) + worker contract-example
 - Review fixes after 15:20 (public-page round 2, `/today` rename, tasker, `legacy-redirects.ts`,
   `robots.txt` is in) are uncommitted.
 
+**Post-deploy check (10-04, after DJ's push `df81f97dc`)**
+
+- Vercel web deploy succeeded; workers deployed.
+- Supabase auth (read live via Management API): Site URL `https://build-os.com`; allow-list has
+  `https://build-os.com`. GoTrue accepts any redirect whose scheme+host match the Site URL
+  (`IsRedirectURLValid`), so `/auth/confirm?next=…` is covered with no change. Every email
+  template uses `{{ .ConfirmationURL }}` (PKCE code), confirming the token_hash removal was safe.
+  `www.build-os.com` 308s to the apex.
+- CI red on `df81f97dc`: the worker surface budget test (project_create 8,230 B > 8,220 B) after
+  the `create_onto_project` props sentence. Fixed by tightening the description (404 → 374 chars,
+  rule kept); the web "failures" in that run were the suite being cancelled mid-run. Local full
+  suites green: worker 3,693 tests, web 5,547 tests. Fix is local, needs a push.
+- Also fixed: preload skipped entirely on the `project_create` surface (a task playbook leaked
+  there via the any-mounted-tool check; test proven to fail without the guard); "root combo / child
+  skill" jargon removed from two article descriptions.
+
 **Before / after deploy**
 
 - Deploy the worker with or before web (the reschedule fix backs the calendar example).
-- Supabase Auth → URL configuration: make sure `https://build-os.com/**` (covers `/auth/confirm`)
-  is on the redirect allow-list, or confirmations fall back to the Site URL (old behavior).
+- (Verified 10-04) Supabase redirect allow-list covers `/auth/confirm` via the Site URL host match.
 - After deploy: `curl -I` a download for the headers; `npx skills add https://build-os.com`;
   resubmit the sitemap and request reindex of the 8 articles in Search Console; look at the article,
   gallery and a people page at phone width; one throwaway Try signup (email and Google).

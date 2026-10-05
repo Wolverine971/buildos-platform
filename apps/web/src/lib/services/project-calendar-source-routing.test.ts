@@ -78,8 +78,7 @@ function gateway() {
 			colorId: '7'
 		}),
 		updateCalendar: vi.fn().mockResolvedValue(undefined),
-		deleteCalendar: vi.fn().mockResolvedValue(undefined),
-		shareCalendar: vi.fn().mockResolvedValue(undefined)
+		deleteCalendar: vi.fn().mockResolvedValue(undefined)
 	};
 }
 
@@ -216,35 +215,5 @@ describe('ProjectCalendarService source routing', () => {
 			userId: 'user-1',
 			calendarSourceId: 'created-source'
 		});
-	});
-
-	it('shares through the project source instead of the singleton account', async () => {
-		const supabase = createSupabase({
-			projectCalendar: {
-				id: 'mapping-1',
-				project_id: 'project-1',
-				user_id: 'user-1',
-				calendar_id: 'work@example.com',
-				calendar_source_id: 'source-b',
-				provider_resource_managed: false
-			}
-		});
-		const resources = gateway();
-		const service = new ProjectCalendarService(supabase.client, {
-			projectResourceService: resources
-		});
-		const legacyShare = vi.spyOn((service as any).calendarService, 'shareCalendar');
-
-		const response = await service.shareProjectCalendar('project-1', 'user-1', [
-			{ email: 'teammate@example.com', role: 'writer' }
-		]);
-
-		expect(response.status).toBe(200);
-		expect(resources.shareCalendar).toHaveBeenCalledWith({
-			userId: 'user-1',
-			calendarSourceId: 'source-b',
-			shares: [{ email: 'teammate@example.com', role: 'writer' }]
-		});
-		expect(legacyShare).not.toHaveBeenCalled();
 	});
 });

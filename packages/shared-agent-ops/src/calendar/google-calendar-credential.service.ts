@@ -12,8 +12,11 @@ import {
 	type GoogleCalendarTokenContext,
 	type GoogleCalendarTokenKeyResolver
 } from './google-calendar-token-crypto';
+import { hasRequiredGoogleCalendarScopes } from './google-calendar-scopes';
 
-export const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar';
+// Scope constants travel with the credential service: the package's
+// `calendar/google-calendar-credential.service` subpath is what web and workers import.
+export * from './google-calendar-scopes';
 
 export type GoogleCalendarCredentialClient = {
 	from(table: string): any;
@@ -348,7 +351,7 @@ export class GoogleCalendarCredentialService<
 		if (
 			tokenInfo.aud !== clientCredentials.clientId ||
 			(tokenInfo.sub && tokenInfo.sub !== connection.provider_account_id) ||
-			!grantedScopes.includes(GOOGLE_CALENDAR_SCOPE)
+			!hasRequiredGoogleCalendarScopes(grantedScopes)
 		) {
 			await this.markReconnectRequired(
 				userId,

@@ -198,3 +198,34 @@ helper, not the original `event.platform` proposal. `waitUntil` remains bounded 
 09-25 (`1c5377810`). ZDR is now forced on every model call (`76302509d`). **Left:** the seeded malicious-email
 injection test (never run; see 20). WP-3 draft proposals and thread reads are an unbuilt idea.
 **Priority:** P2. **Recommend:** merge into 20.
+
+## Progress 2026-10-04 — S1 restored on the worker (built, uncommitted, needs a worker deploy)
+
+**Rule:** once a turn reads Gmail message content, web search/visit/navigate results, or a Google
+Calendar event, every write in that turn goes to the independent batch reviewer. Turns that read only
+BuildOS data keep the direct lane.
+
+- Policy: `packages/agentic-chat-runtime/src/loop/external-content-policy.ts` (+ test).
+- Routing reason `external_content_requires_review` in `provider/write-routing.ts`.
+- The taint persists in `provider/turn-state.ts`, and the reviewer is told which tools brought in
+  untrusted text (`review/mutation-batch.ts`, `review/lanes.ts`).
+- 35's seeded malicious email is now a free test (`apps/worker/tests/agenticChatExternalContentReview.test.ts`):
+  the injected write is held for review and never executes.
+
+Worker typecheck is clean. 176 turn-provider tests and 425 runtime loop tests pass.
+
+**Cost:** one extra review pass (~3–8 s) per tainted write turn. In the last 30 days, 2 of 126 turns
+would have paid it.
+
+**DJ veto point:** Google Calendar events count as external, because anyone can send an invite or
+book a slot with arbitrary text. So "check my calendar and move my 3pm" waits one extra review.
+
+**Remaining gaps:**
+
+- Second-order content: an email pasted into a doc, or a collaborator's text, isn't external when
+  read back.
+- A next turn acting on an email summary isn't covered (the old S1 design treated it as confirmation).
+- The automatic Research Log append after web reads isn't reviewed (fixed target, 600-character cap).
+- `CHAT_MUTATION_BATCH_LANE=false` falls back to contract review, which checks targets only.
+- A paid prod-battery case with the seeded email (a few cents) would prove the reviewer resists the
+  injection. It needs DJ's OK.

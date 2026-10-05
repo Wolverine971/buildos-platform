@@ -55,9 +55,6 @@ function setup() {
 		},
 		calendarList: {
 			patch: vi.fn().mockResolvedValue({ data: {} })
-		},
-		acl: {
-			insert: vi.fn().mockResolvedValue({ data: {} })
 		}
 	};
 	const service = new GoogleCalendarProjectResourceService({} as any, {
@@ -179,22 +176,18 @@ describe('GoogleCalendarProjectResourceService', () => {
 		).rejects.toEqual({ response: { status: 503 } });
 	});
 
-	it('shares through the exact stored source connection', async () => {
-		const { service, connection, api } = setup();
+	it('leaves a linked calendar Google name and color alone', async () => {
+		const { service, api } = setup();
 
-		await service.shareCalendar({
+		await service.updateCalendar({
 			userId: 'user-1',
 			calendarSourceId: 'source-a',
-			shares: [{ email: 'teammate@example.com', role: 'writer' }]
+			providerResourceManaged: false,
+			name: 'Renamed',
+			colorId: '8'
 		});
 
-		expect(connection.getAuthenticatedClient).toHaveBeenCalledWith('user-1', 'connection-a');
-		expect(api.acl.insert).toHaveBeenCalledWith({
-			calendarId: 'primary-a@example.com',
-			requestBody: {
-				role: 'writer',
-				scope: { type: 'user', value: 'teammate@example.com' }
-			}
-		});
+		expect(api.calendars.patch).not.toHaveBeenCalled();
+		expect(api.calendarList.patch).not.toHaveBeenCalled();
 	});
 });

@@ -2,12 +2,19 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { Inbox, LoaderCircle, RefreshCw, Settings, Sparkles } from '$lib/icons/lucide';
+	import { Inbox, LoaderCircle, RefreshCw, Settings, Sparkles, Zap } from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ChangeSetFailureSummary from '$lib/components/notifications/types/agent-run/ChangeSetFailureSummary.svelte';
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
 	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
+	import InboxCleanupTriage from '$lib/components/inbox/InboxCleanupTriage.svelte';
+	import type {
+		TriageNoteResult,
+		TriageProject,
+		TriageSummary
+	} from '$lib/components/inbox/cleanup-triage';
+	import { sendCleanupNote } from '$lib/components/inbox/cleanup-note.client';
 	import InboxDecisionControls from '$lib/components/inbox/InboxDecisionControls.svelte';
 	import InboxFindingControls from '$lib/components/inbox/InboxFindingControls.svelte';
 	import InboxManagerBriefControls from '$lib/components/inbox/InboxManagerBriefControls.svelte';
@@ -187,6 +194,7 @@
 	let explicitlyResolvedChatItemId = $state<string | null>(null);
 	let openingChatIds = $state<Set<string>>(new Set());
 	let decisionNoteById = $state<Record<string, string>>({});
+	let triageProjects = $state.raw<TriageProject[] | null>(null);
 	const activeChatItem = $derived(
 		chatItemId ? (items.find((item) => item.id === chatItemId) ?? null) : null
 	);
@@ -272,6 +280,13 @@
 	});
 	const activeGroup = $derived(
 		groupedItems.find((group) => group.key === activeGroupKey) ?? groupedItems[0] ?? null
+	);
+	// Open cleanup items across every project card, for "Triage all".
+	const triageableCount = $derived(
+		items.reduce((total, item) => {
+			if (item.source_type !== 'project_cleanup' || !canDecide(item)) return total;
+			return total + (projectCleanupView(item)?.items.length ?? 0);
+		}, 0)
 	);
 	const pendingProjectCount = $derived(
 		new Set(items.map((item) => itemProject(item)?.id ?? item.project_id).filter(Boolean)).size
@@ -694,6 +709,56 @@
 		void openChat(item, { cleanupItemId: cleanupItem?.id ?? null });
 	}
 
+	/** Every decidable project cleanup card, the one the user started from first. */
+	function startTriage(startItem: InboxItem | null = null) {
+		const projects: TriageProject[] = [];
+		for (const group of groupedItems) {
+			for (const item of group.items) {
+				const project = itemProject(item);
+				const view = projectCleanupView(item);
+				if (!project || !view?.items.length || !canDecide(item)) continue;
+				projects.push({
+					projectId: project.id,
+					projectName: project.name ?? group.label,
+					inboxItemId: item.id,
+					view
+				});
+			}
+		}
+		if (startItem) {
+			const first = projects.findIndex((project) => project.inboxItemId === startItem.id);
+			if (first > 0) projects.unshift(...projects.splice(first, 1));
+		}
+		if (projects.length) triageProjects = projects;
+	}
+
+	function exitTriage(summary: TriageSummary) {
+		triageProjects = null;
+		if (summary.handled > 0) changedCount += summary.handled;
+		// Fresh cards: what was handled drops off, revised items come back verified.
+		if (summary.projectIds.length) void loadInbox({ silent: true, showErrorToast: true });
+	}
+
+	async function triageSendNote(
+		project: TriageProject,
+		cleanupItem: ProjectCleanupItem,
+		note: string
+	): Promise<TriageNoteResult> {
+		const result = await sendCleanupNote({
+			projectId: project.projectId,
+			item: cleanupItem,
+			note
+		});
+		return result.ok
+			? { ok: true, message: result.reply }
+			: { ok: false, message: result.message };
+	}
+
+	function triageOpenChat(project: TriageProject, cleanupItem: ProjectCleanupItem) {
+		const item = items.find((candidate) => candidate.id === project.inboxItemId);
+		if (item) discussCleanup(item, cleanupItem);
+	}
+
 	function handleCleanupDecided(
 		item: InboxItem,
 		summary: { handled: number; view: ProjectCleanupView | null }
@@ -1104,22 +1169,47 @@
 					</p>
 				{/if}
 			</div>
-			<Button
-				variant="outline"
-				size="sm"
-				onclick={() => loadInbox({ repair: true })}
-				disabled={loading || loadingMore}
-				class="h-11 w-11 p-0"
-				title="Refresh inbox"
-				aria-label="Refresh inbox"
-			>
-				<LoaderCircle
-					class="h-3.5 w-3.5 {loading ? 'animate-spin motion-reduce:animate-none' : ''}"
-				/>
-			</Button>
+			<div class="flex shrink-0 items-center gap-2">
+				{#if !triageProjects && triageableCount > 1}
+					<Button
+						variant="primary"
+						size="sm"
+						icon={Zap}
+						onclick={() => startTriage(activeGroup?.items[0] ?? null)}
+						disabled={loading}
+						class="text-xs"
+					>
+						Triage {triageableCount} items
+					</Button>
+				{/if}
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => loadInbox({ repair: true })}
+					disabled={loading || loadingMore}
+					class="h-11 w-11 p-0"
+					title="Refresh inbox"
+					aria-label="Refresh inbox"
+				>
+					<LoaderCircle
+						class="h-3.5 w-3.5 {loading
+							? 'animate-spin motion-reduce:animate-none'
+							: ''}"
+					/>
+				</Button>
+			</div>
 		</div>
 
-		{#if loading}
+		{#if triageProjects}
+			<div class="flex min-h-0 flex-1 flex-col sm:max-h-[min(75vh,760px)]">
+				<InboxCleanupTriage
+					projects={triageProjects}
+					onSendNote={triageSendNote}
+					onOpenChat={triageOpenChat}
+					onExit={exitTriage}
+				/>
+			</div>
+		{:else if loading}
 			<div class="space-y-2 p-3">
 				{#each Array(4) as _, index (index)}
 					<div
@@ -1265,6 +1355,7 @@
 												discussCleanup(item, cleanupItem)}
 											onFixInChat={(reviewItem) =>
 												openFixInChat(item, reviewItem)}
+											onTriage={() => startTriage(item)}
 											onDecided={(summary) =>
 												handleCleanupDecided(item, summary)}
 										/>

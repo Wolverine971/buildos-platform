@@ -1,6 +1,8 @@
 -- supabase/tests/project_write_lock_first.check.sql
 -- Assertions for 20260925020000 + 20260925020100 (Tasker 105): every function that takes the
--- project row lock takes it before its first write. Run with:
+-- project row lock takes it before its first write. A standing rehearsal check since 2026-10-04
+-- (scripts/migration-rehearsal/rehearse.py DEFAULT_CHECKS), so every production rehearsal runs it.
+-- Originally run with:
 --   pnpm db:rehearse supabase/migrations/20260925020000_project_write_lock_first.sql \
 --     supabase/migrations/20260925020100_edge_link_atomic.sql \
 --     --role-probe --check supabase/tests/project_write_lock_first.check.sql
@@ -24,8 +26,9 @@ BEGIN
   ASSERT has_function_privilege('service_role', f, 'EXECUTE'), 'service_role cannot execute ' || f;
 
   -- Static lock order. A function "takes the project lock" when it locks onto_projects
-  -- (FOR UPDATE, an UPDATE of the row, the helper) or calls something that does (the
-  -- relationship-plan appliers, the document-structure command). Its first project lock must
+  -- (FOR UPDATE, an UPDATE of the row, the single- or multi-project helper) or calls something
+  -- that does (the relationship-plan appliers, the document-structure command, the project
+  -- fold/unfold prepare step, which locks both projects when apply calls it). Its first project lock must
   -- come no later than its first write: an insert, an update or delete of another table, or a
   -- call to the task create/update commands. Comments are stripped before matching.
   WITH bodies AS (
@@ -38,11 +41,12 @@ BEGIN
   positions AS (
     SELECT fn,
       nullif(least(
-        coalesce(nullif(regexp_instr(src, 'onto_lock_project_for_write\s*\('), 0), 2147483647),
+        coalesce(nullif(regexp_instr(src, 'onto_lock_projects?_for_write\s*\('), 0), 2147483647),
         coalesce(nullif(regexp_instr(src, 'from\s+(public\.)?onto_projects\M[^;]*\mfor\s+update\M'), 0), 2147483647),
         coalesce(nullif(regexp_instr(src, '\mupdate\s+(public\.)?onto_projects\M'), 0), 2147483647),
         coalesce(nullif(regexp_instr(src, 'onto_apply_(task_update_)?relationship_plan_atomic\s*\('), 0), 2147483647),
-        coalesce(nullif(regexp_instr(src, 'onto_project_doc_structure_update_atomic\s*\('), 0), 2147483647)
+        coalesce(nullif(regexp_instr(src, 'onto_project_doc_structure_update_atomic\s*\('), 0), 2147483647),
+        coalesce(nullif(regexp_instr(src, 'project_(un)?fold_prepare\s*\('), 0), 2147483647)
       ), 2147483647) AS first_lock,
       nullif(least(
         coalesce(nullif(regexp_instr(src, '\minsert\s+into\M'), 0), 2147483647),

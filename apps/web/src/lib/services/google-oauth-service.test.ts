@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/google-oauth-service.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decryptCalendarToken, encryptCalendarToken } from '$lib/server/calendar-token-crypto';
+import { GOOGLE_CALENDAR_SCOPES as NARROW_CALENDAR_SCOPES } from '@buildos/shared-agent-ops/calendar/google-calendar-credential.service';
 
 const { logAPIErrorMock, logDatabaseErrorMock } = vi.hoisted(() => ({
 	logAPIErrorMock: vi.fn(),
@@ -127,6 +128,91 @@ describe('GoogleOAuthService calendar token exchange', () => {
 		expect(service.verifyCalendarState('dXNlci0x', now)).toBeNull();
 		expect(service.verifyCalendarState(state, now + 11 * 60_000)).toBeNull();
 		expect(authUrl.searchParams.get('include_granted_scopes')).toBe('false');
+	});
+
+	it('asks Google for the narrow Calendar scopes instead of full calendar access', () => {
+		const service = new GoogleOAuthService({} as any, {
+			clientId: 'google-client-id',
+			clientSecret: 'state-signing-secret'
+		});
+		const authUrl = new URL(
+			service.generateCalendarAuthUrl(
+				'https://app.example.com/auth/google/calendar-callback',
+				'user-1'
+			)
+		);
+
+		expect(authUrl.searchParams.get('scope')?.split(' ')).toEqual([
+			...NARROW_CALENDAR_SCOPES,
+			'https://www.googleapis.com/auth/userinfo.email',
+			'openid'
+		]);
+	});
+
+	it('reports a partial Calendar grant as scope_mismatch without saving tokens', async () => {
+		fetchMock.mockResolvedValueOnce(
+			createJsonResponse({
+				access_token: 'partial-access-token',
+				refresh_token: 'refresh-token',
+				expires_in: 3600,
+				token_type: 'Bearer',
+				// calendar.events.freebusy was unticked on Google's consent screen.
+				scope: NARROW_CALENDAR_SCOPES.filter((scope) => !scope.endsWith('.freebusy')).join(
+					' '
+				)
+			})
+		);
+		const { supabase, insertMock, updateMock } = createTokenSupabase(null);
+		const service = new GoogleOAuthService(supabase as any);
+
+		await expect(
+			service.exchangeCodeForTokens(
+				'code-1',
+				'https://app.example.com/auth/google/calendar-callback',
+				'user-1'
+			)
+		).resolves.toEqual({
+			success: false,
+			errorCode: 'scope_mismatch',
+			error: 'Google did not grant every Calendar permission BuildOS needs.'
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(insertMock).not.toHaveBeenCalled();
+		expect(updateMock).not.toHaveBeenCalled();
+	});
+
+	it('saves a complete narrow-scope Calendar grant with the scopes Google returned', async () => {
+		const grantedScope = [...NARROW_CALENDAR_SCOPES, 'openid'].join(' ');
+		fetchMock
+			.mockResolvedValueOnce(
+				createJsonResponse({
+					access_token: 'narrow-access-token',
+					refresh_token: 'narrow-refresh-token',
+					expires_in: 3600,
+					token_type: 'Bearer',
+					scope: grantedScope
+				})
+			)
+			.mockResolvedValueOnce(
+				createJsonResponse({
+					id: 'google-user-1',
+					email: 'user@example.com'
+				})
+			);
+		const { supabase, insertMock } = createTokenSupabase(null);
+		const service = new GoogleOAuthService(supabase as any);
+
+		const result = await service.exchangeCodeForTokens(
+			'code-1',
+			'https://app.example.com/auth/google/calendar-callback',
+			'user-1',
+			'user@example.com'
+		);
+
+		expect(result).toEqual({ success: true });
+		expect(insertMock).toHaveBeenCalledWith(
+			expect.objectContaining({ user_id: 'user-1', scope: grantedScope })
+		);
 	});
 
 	it('rejects a Calendar token response containing an unrelated high-risk scope', async () => {

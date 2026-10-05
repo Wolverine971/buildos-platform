@@ -1392,7 +1392,8 @@ export class WelcomeSequenceService {
 			briefPrefsResult,
 			notificationPrefsResult,
 			smsPrefsResult,
-			calendarTokensResult
+			calendarTokensResult,
+			calendarConnectionsResult
 		] = await Promise.all([
 			this.loadWelcomeProjects(userId, actorId),
 			this.supabase
@@ -1415,7 +1416,14 @@ export class WelcomeSequenceService {
 			this.supabase
 				.from('user_calendar_tokens')
 				.select('user_id', { count: 'exact', head: true })
+				.eq('user_id', userId),
+			// Multi-account Calendar connections (dedicated OAuth client) live in their own table.
+			this.supabase
+				.from('user_calendar_connections')
+				.select('id', { count: 'exact', head: true })
 				.eq('user_id', userId)
+				.eq('status', 'active')
+				.is('deleted_at', null)
 		]);
 
 		if (briefPrefsResult.error) {
@@ -1461,7 +1469,9 @@ export class WelcomeSequenceService {
 			latestProjectId: projectLookup.latestProject?.id ?? null,
 			emailDailyBriefEnabled,
 			smsChannelEnabled,
-			calendarConnected: (calendarTokensResult.count ?? 0) > 0,
+			calendarConnected:
+				(calendarTokensResult.count ?? 0) > 0 ||
+				(!calendarConnectionsResult.error && (calendarConnectionsResult.count ?? 0) > 0),
 			lastVisit: user.last_visit
 		};
 	}

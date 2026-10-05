@@ -2,11 +2,11 @@
 
 # 116 — Fix the BuildOS plugin reconnect loop in ChatGPT / Codex
 
-> **Audit 2026-10-04 — SHIPPED, VERIFY LIVE.** The SQL repair is live in prod (20261004192534), and
-> the web error-handling changes (`oauth-connector.service.ts`, `oauth/token`) shipped in `df81f97dc`
-> (Vercel deployed). **Left:** one deliberate reconnect in ChatGPT/Codex → `search`/`fetch` in the
-> original and a fresh session; then expiry/refresh. **Priority:** P1 (free, ~10 min, unblocks the
-> connector). **Recommend:** keep until the reconnect passes, then close & delete.
+> **2026-10-05: RECOVERED; awaiting the final click check.** The ChatGPT app connection works again:
+> reconnect completed at 19:50 UTC, then ChatGPT refreshed tokens and read successfully at 23:51 and
+> 23:56 UTC. A second Codex path, the plugin's direct `.mcp.json` server, could never sign in from
+> cloud threads; it is removed locally (UNCOMMITTED) and the Codex plugin is reinstalled. **Left:** restart Codex,
+> then run one BuildOS `search` in a cloud thread (see Resolution below). **Priority:** P1.
 
 **Status:** SQL REPAIR LIVE — applied and recorded in production on 2026-10-04;
 web error-handling deployment and live client acceptance remain pending.
@@ -270,3 +270,37 @@ the repo's worker caps and test-gate. Any paid run requires separate explicit ap
 **Exit condition:** a supported diagnosis and repair (or verified host-side resolution), plus recorded
 acceptance evidence for the affected surface. Move the durable resolution receipt into feature or
 operations docs, then remove this tracker and its index row under the Tasker maintenance rule.
+
+## Resolution 2026-10-05 ~00:15 UTC — app path recovered; second failing path removed
+
+Codex reaches BuildOS three ways. Sources: Codex desktop logs
+(`~/Library/Logs/com.openai.codex/2026/10/`), Codex thread history, and read-only production queries.
+
+| Path                                                                                 | Used by                          | State                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ChatGPT app `asdk_app_6a59…` (`codex_apps` → `buildos.search`/`fetch`, OpenAI-held OAuth) | Local and cloud ("durable") threads | **Recovered.** Codex logged `App connect OAuth callback request completed` at 19:50:17 and 19:50:49. Earlier attempts at 00:54, 04:25 (×2), 04:26, 18:51, and 18:52 failed with OpenAI's “authorization is invalid or has expired” (the 42725 crash). ChatGPT later rotated refresh tokens unaided at **23:02:43** and **23:54:28**, with reads at **23:51:40** and **23:56:29**. |
+| Local stdio bridge (`[mcp_servers.buildos]` in `~/.codex/config.toml`, static key)   | Local threads                    | Healthy throughout. Local `search_onto_*`/`get_onto_*` calls succeeded during the incident.                                                                                                                                                                                                                                                                                  |
+| Plugin root `.mcp.json` → direct HTTP `https://build-os.com/mcp/buildos`             | Cloud threads, via the exec-server | **Never worked.** Codex auto-loads a plugin's root `.mcp.json`; locally the same-named stdio bridge hid it. Cloud threads tried it without credentials: `MCP server failed to start`. These match every `codex-mcp-client/0.0.0` “Missing authorization header” event from DJ's IP to the second (e.g., 19:19:39 ×2, 19:33:42, and 19:48:28).                             |
+
+The original incident thread `01a0f002-863d-…` is a cloud thread. Its `codex_apps` server reports
+`ready` after the fix.
+
+**Fix (local, UNCOMMITTED):** Claude Code's MCP server now lives inline in
+`plugins/buildos/.claude-plugin/plugin.json` (`claude plugin validate` passes), and the root
+`plugins/buildos/.mcp.json` is deleted. The README explains the rule. The Codex plugin was
+reinstalled from the repo (`codex plugin add buildos@personal`).
+
+Codex app-server `plugin/read` proves the mechanism:
+
+- A root `.mcp.json` under a probe name resolves as `mcpServers: ["buildos-probe"]`.
+- After the fix, it resolves as `mcpServers: []` with the app intact.
+- Codex ignores the Claude manifest's inline server.
+
+**Left:**
+
+- Quit and reopen Codex so cloud threads rediscover plugins.
+- In the original cloud thread, run one BuildOS `search`. Then confirm that a new cloud thread
+  shows no BuildOS startup failure. Production should log no new `codex-mcp-client` “Missing
+  authorization header” events.
+- Hygiene, not blocking: two older refresh tokens stay unrevoked: the 09-30 17:55 token and the
+  10-04 19:50:16 token from the duplicate reconnect.

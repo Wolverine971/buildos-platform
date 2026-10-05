@@ -1,7 +1,7 @@
 // apps/web/src/lib/components/inbox/InboxProjectCleanup.test.ts
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectCleanupItem, ProjectCleanupView } from '@buildos/shared-types';
 import InboxProjectCleanup from './InboxProjectCleanup.svelte';
@@ -190,7 +190,9 @@ describe('InboxProjectCleanup', () => {
 		expect(
 			screen.queryByRole('checkbox', { name: 'Maryland Content Authority goal drifted' })
 		).not.toBeInTheDocument();
-		expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+		// Two item checkboxes in the ready group, its "Select all", and the cautious change.
+		expect(screen.getByRole('checkbox', { name: 'Select all 2' })).toBeInTheDocument();
+		expect(screen.getAllByRole('checkbox')).toHaveLength(4);
 
 		expect(screen.getByText(/^Seen in 3 reviews since /)).toBeInTheDocument();
 		expect(screen.getByText('This folder has 4 documents inside.')).toBeInTheDocument();
@@ -275,7 +277,7 @@ describe('InboxProjectCleanup', () => {
 		expect(screen.getByRole('checkbox', { name: 'Archive the Rod folder' })).not.toBeChecked();
 	});
 
-	it('records a real rejection with a reason and optional note', async () => {
+	it('marks an item not needed in one tap, without asking why', async () => {
 		fetchMock.mockResolvedValue(
 			jsonResponse({
 				outcomes: [{ suggestion_id: 's-political', ok: true, status: 'rejected' }],
@@ -289,28 +291,104 @@ describe('InboxProjectCleanup', () => {
 		await fireEvent.click(
 			screen.getByRole('button', { name: 'Not needed: Archive Political Analysis' })
 		);
-		const picker = screen.getByRole('group', { name: "Why isn't this needed?" });
-		await fireEvent.click(within(picker).getByRole('radio', { name: 'Too risky' }));
-		await fireEvent.input(within(picker).getByLabelText('Note (optional)'), {
-			target: { value: 'Still quoting it in the book' }
-		});
-		await fireEvent.click(within(picker).getByRole('button', { name: 'Mark not needed' }));
 
 		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 		expect(JSON.parse(fetchMock.mock.calls[0]![1].body).decisions).toEqual([
-			{
-				suggestion_id: 's-political',
-				action: 'dismiss',
-				reason: 'too_risky',
-				note: 'Still quoting it in the book'
-			}
+			{ suggestion_id: 's-political', action: 'dismiss', reason: 'not_relevant' }
 		]);
-		await waitFor(() =>
-			expect(
-				screen.queryByRole('group', { name: "Why isn't this needed?" })
-			).not.toBeInTheDocument()
+		expect(screen.queryByText("Why isn't this needed?")).not.toBeInTheDocument();
+		await waitFor(() => expect(screen.getByText('Marked not needed:')).toBeInTheDocument());
+	});
+
+	it('selects a whole group of ready changes from its header', async () => {
+		render(InboxProjectCleanup, {
+			props: { view: cleanupView(), projectId: 'project-1', canDecide: true }
+		});
+
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'Select all 2' }));
+		expect(screen.getByRole('checkbox', { name: 'Archive Political Analysis' })).toBeChecked();
+		expect(
+			screen.getByRole('checkbox', { name: 'Archive the empty blog stubs' })
+		).toBeChecked();
+		expect(screen.getByRole('button', { name: /Apply 2 selected/ })).toBeEnabled();
+
+		await fireEvent.click(screen.getByRole('checkbox', { name: 'Select all 2' }));
+		expect(
+			screen.getByRole('checkbox', { name: 'Archive Political Analysis' })
+		).not.toBeChecked();
+	});
+
+	it('sends a quick note to Jev from Discuss and shows the reply', async () => {
+		const nextView = cleanupView({
+			items: [archivePolitical, archiveStubs, goalCall, radar],
+			counts: { total: 4, safe_cleanup: 2, needs_call: 2, note: 0 }
+		});
+		fetchMock.mockResolvedValue(
+			jsonResponse({
+				decision: 'not_needed',
+				reply: 'Kept it. You still need that folder.',
+				agent_run_id: null,
+				outcomes: [{ suggestion_id: 's-rod', ok: true, status: 'rejected' }],
+				view: nextView
+			})
 		);
-		expect(screen.getByText('Marked not needed:')).toBeInTheDocument();
+		const onDiscuss = vi.fn();
+		const onDecided = vi.fn();
+		render(InboxProjectCleanup, {
+			props: {
+				view: cleanupView(),
+				projectId: 'project-1',
+				canDecide: true,
+				onDiscuss,
+				onDecided
+			}
+		});
+
+		await fireEvent.click(
+			screen.getByRole('button', { name: 'Discuss: Archive the Rod folder' })
+		);
+		expect(onDiscuss).not.toHaveBeenCalled();
+		const box = screen.getByRole('textbox');
+		await fireEvent.input(box, { target: { value: 'Keep it, I still use those docs' } });
+		await fireEvent.keyDown(box, { key: 'Enter' });
+
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+		expect(fetchMock.mock.calls[0]![0]).toBe('/api/onto/projects/project-1/cleanup/note');
+		expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual({
+			cleanup_item_id: 'cautious',
+			note: 'Keep it, I still use those docs',
+			expected_fingerprints: { 's-rod': 'fp-rod' }
+		});
+		await waitFor(() =>
+			expect(screen.getByText('Kept it. You still need that folder.')).toBeInTheDocument()
+		);
+		expect(onDecided).toHaveBeenCalledWith({ handled: 1, view: nextView });
+		expect(
+			screen.queryByRole('button', { name: 'Discuss: Archive the Rod folder' })
+		).not.toBeInTheDocument();
+	});
+
+	it('offers triage and the full chat from the note box', async () => {
+		const onDiscuss = vi.fn();
+		const onTriage = vi.fn();
+		render(InboxProjectCleanup, {
+			props: {
+				view: cleanupView(),
+				projectId: 'project-1',
+				canDecide: true,
+				onDiscuss,
+				onTriage
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /Triage 5 items/ }));
+		expect(onTriage).toHaveBeenCalled();
+
+		await fireEvent.click(
+			screen.getByRole('button', { name: 'Discuss: Archive the Rod folder' })
+		);
+		await fireEvent.click(screen.getByRole('button', { name: 'Open the full chat' }));
+		expect(onDiscuss).toHaveBeenCalledWith(cautious);
 	});
 
 	it('marks findings done and hands judgment calls to chat', async () => {
@@ -351,11 +429,6 @@ describe('InboxProjectCleanup', () => {
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Fix in chat: Rod goal' }));
 		expect(onFixInChat).toHaveBeenCalledWith(radar.review_items![0], radar);
-
-		await fireEvent.click(
-			screen.getByRole('button', { name: 'Discuss: Archive the Rod folder' })
-		);
-		expect(onDiscuss).toHaveBeenCalledWith(cautious);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Discuss cleanup' }));
 		expect(onDiscuss).toHaveBeenLastCalledWith(null);

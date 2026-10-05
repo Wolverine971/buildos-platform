@@ -22,6 +22,12 @@ ALTER TABLE public.users
 ALTER TABLE public.onto_actors
 	ADD CONSTRAINT onto_actors_user_id_fkey
 	FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+-- Production's actor identity rule (20250601000001). Without it this contract
+-- passed while every production purge failed on it (Tasker 103).
+ALTER TABLE public.onto_actors
+	ADD CONSTRAINT chk_actor_identity CHECK (
+		(kind = 'human' AND user_id IS NOT NULL) OR (kind = 'agent' AND user_id IS NULL)
+	);
 ALTER TABLE public.onto_project_members
 	ADD CONSTRAINT onto_project_members_project_id_fkey
 	FOREIGN KEY (project_id) REFERENCES public.onto_projects(id) ON DELETE CASCADE,
@@ -498,9 +504,16 @@ CREATE TABLE public.agent_operatives (
 	schedule_time_of_day time,
 	next_run_at timestamptz,
 	updated_at timestamptz NOT NULL DEFAULT now(),
+	context_type text NOT NULL DEFAULT 'global',
+	project_id uuid CONSTRAINT agent_operatives_project_id_fkey
+		REFERENCES public.onto_projects(id) ON DELETE SET NULL,
 	CONSTRAINT agent_operatives_enabled_schedule_shape CHECK (
 		schedule_enabled = false
 		OR (schedule_frequency IS NOT NULL AND schedule_time_of_day IS NOT NULL)
+	),
+	CONSTRAINT agent_operatives_project_context CHECK (
+		(context_type = 'global' AND project_id IS NULL)
+		OR (context_type = 'project' AND project_id IS NOT NULL)
 	)
 );
 
