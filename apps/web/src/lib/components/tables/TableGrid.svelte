@@ -16,12 +16,14 @@
 		TableCellValue,
 		TableColumn,
 		TableRow,
+		TableRowTask,
 		TableSort
 	} from '@buildos/shared-agent-ops/tables';
 	import {
 		ArrowDown,
 		ArrowUp,
 		ChevronDown,
+		ListChecks,
 		Maximize2,
 		MoreHorizontal,
 		Plus,
@@ -62,6 +64,7 @@
 		readonly = false,
 		projectId,
 		flashKeys,
+		rowTasks = {},
 		coerce,
 		label = 'Table',
 		resolveRowId = (id: string) => id,
@@ -89,6 +92,8 @@
 		readonly?: boolean;
 		projectId: string;
 		flashKeys: ReadonlySet<string>;
+		/** Tasks made from rows, by row id: the gutter marks rows that have any. */
+		rowTasks?: Record<string, TableRowTask[]>;
 		coerce: CoerceCell;
 		label?: string;
 		resolveRowId?: (id: string) => string;
@@ -745,14 +750,24 @@
 				{#each windowRows as row, wi (row.id)}
 					{@const ri = win.start + wi}
 					{@const rowActive = active?.row === ri}
+					{@const taskCount = rowTasks[row.id]?.length ?? 0}
 					<div
 						role="row"
 						aria-rowindex={ri + 2}
 						class="grid-row body-row group/row {rowActive ? 'row-active' : ''}"
 					>
 						<div role="rowheader" aria-colindex={1} class="cell gutter pinned-0">
-							<span class="row-num stamp text-2xs text-muted-foreground"
-								>{row.row_number}</span
+							<span
+								class="row-num stamp inline-flex items-center gap-1 text-2xs text-muted-foreground"
+								>{row.row_number}{#if taskCount}<span
+										class="inline-flex items-center gap-0.5 text-accent"
+										><ListChecks
+											class="h-3 w-3"
+											aria-hidden="true"
+										/>{#if taskCount > 1}{taskCount}{/if}</span
+									><span class="sr-only"
+										>, {taskCount} {taskCount === 1 ? 'task' : 'tasks'}</span
+									>{/if}</span
 							>
 							<span class="row-actions">
 								<button

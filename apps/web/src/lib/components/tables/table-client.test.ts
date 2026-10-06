@@ -25,6 +25,7 @@ describe('table client', () => {
 		const result = await client.getTable('doc/1');
 		expect(result.table.document.title).toBe('Job applications');
 		expect(result.totals).toEqual({ c: 1 });
+		expect(result.rowTasks).toEqual({});
 		expect(fetcher).toHaveBeenCalledWith(
 			'/api/onto/tables/doc%2F1',
 			expect.objectContaining({ method: 'GET' })

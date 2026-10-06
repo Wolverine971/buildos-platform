@@ -430,7 +430,8 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			passthroughReceiptFields: [
 				'calendar_sync',
 				'calendar_events',
-				'removed_calendar_event_count'
+				'removed_calendar_event_count',
+				'table_row'
 			],
 			receipt: {
 				kind: 'entity',
@@ -468,6 +469,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'goal_id',
 			'supporting_milestone_id',
 			'parent',
+			'table_row',
 			'start_at',
 			'due_at',
 			'calendar_sync',

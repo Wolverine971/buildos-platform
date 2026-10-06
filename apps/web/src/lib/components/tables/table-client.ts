@@ -13,6 +13,7 @@ import type {
 	TableColumnChange,
 	TableColumnInput,
 	TableRowOp,
+	TableRowTask,
 	TableSchema,
 	TableView
 } from '@buildos/shared-agent-ops/tables';
@@ -99,9 +100,12 @@ export interface CreatedTaskSummary {
 
 export interface TableClient {
 	createTable(input: CreateTableInput): Promise<{ table: LoadedTable; warnings: string[] }>;
-	getTable(
-		documentId: string
-	): Promise<{ table: LoadedTable; totals: Record<string, TableAggregateValue> }>;
+	getTable(documentId: string): Promise<{
+		table: LoadedTable;
+		totals: Record<string, TableAggregateValue>;
+		/** Tasks made from rows, by row id. */
+		rowTasks: Record<string, TableRowTask[]>;
+	}>;
 	patchTable(
 		documentId: string,
 		input: PatchTableInput
@@ -209,10 +213,15 @@ export function createTableClient(fetcher: FetchLike = (input, init) => fetch(in
 				warnings: data.warnings ?? []
 			})),
 		getTable: (documentId) =>
-			requestTableApi<{ table: LoadedTable; totals?: Record<string, TableAggregateValue> }>(
-				fetcher,
-				tablePath(documentId)
-			).then((data) => ({ table: data.table, totals: data.totals ?? {} })),
+			requestTableApi<{
+				table: LoadedTable;
+				totals?: Record<string, TableAggregateValue>;
+				row_tasks?: Record<string, TableRowTask[]>;
+			}>(fetcher, tablePath(documentId)).then((data) => ({
+				table: data.table,
+				totals: data.totals ?? {},
+				rowTasks: data.row_tasks ?? {}
+			})),
 		patchTable: (documentId, input) =>
 			requestTableApi<{ table: LoadedTable; receipt?: TableChangeReceipt | null }>(
 				fetcher,

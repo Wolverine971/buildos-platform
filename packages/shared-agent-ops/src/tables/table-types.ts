@@ -292,6 +292,20 @@ export function rowHandle(rowNumber: number): string {
 	return `r${rowNumber}`;
 }
 
+/**
+ * A task made from a row links to the table with a `task_has_document` edge
+ * whose props carry `role: 'table_row'` and the row's `row_id`/`row_number`.
+ * The task's own `props.table_row` repeats the anchor.
+ */
+export const TABLE_ROW_EDGE_ROLE = 'table_row';
+
+/** A follow-up task made from a row, as the table shows it. */
+export interface TableRowTask {
+	id: string;
+	title: string;
+	state_key: string;
+}
+
 /** 'r12' / 'R12' / '12' → 12; anything else → null. */
 export function parseRowHandle(handle: string | number): number | null {
 	if (typeof handle === 'number') {

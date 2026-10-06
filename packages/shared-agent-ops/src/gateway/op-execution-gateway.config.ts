@@ -395,6 +395,17 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 				required: ['kind', 'id'],
 				description: 'Optional explicit primary containment parent.'
 			},
+			table_row: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					table_id: { type: 'string', format: 'uuid' },
+					row: { type: 'string' }
+				},
+				required: ['table_id', 'row'],
+				description:
+					'Optional. Make this the follow-up task for one table row: table_id plus the row handle ("r12") from a table read. Links the task to the table and that row.'
+			},
 			start_at: {
 				type: ['string', 'null'],
 				description:

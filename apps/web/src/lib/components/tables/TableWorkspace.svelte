@@ -753,6 +753,7 @@
 						{readonly}
 						{projectId}
 						flashKeys={controller.flashKeys}
+						rowTasks={controller.rowTasks}
 						{coerce}
 						label={table.document.title}
 						resolveRowId={(id) => controller.resolveRowId(id)}
@@ -1083,6 +1084,7 @@
 		{schema}
 		row={detailRow}
 		{projectId}
+		tasks={controller.rowTasks[detailRow.id] ?? []}
 		{readonly}
 		{coerce}
 		position={detailPosition}

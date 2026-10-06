@@ -95,6 +95,17 @@ export const ONTOLOGY_WRITE_TOOLS = [
 							is_primary: { type: 'boolean' }
 						}
 					},
+					table_row: {
+						type: 'object',
+						description: 'Follow-up for one table row: links the task to that row.',
+						properties: {
+							table_id: { type: 'string' },
+							row: {
+								type: 'string',
+								description: 'Row handle from a table read, e.g. r12'
+							}
+						}
+					},
 					start_at: {
 						type: 'string',
 						description:

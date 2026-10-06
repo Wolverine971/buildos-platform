@@ -16,6 +16,7 @@ import {
 	type TableChangeReceipt,
 	type TableColumnChange,
 	type TableRowOp,
+	type TableRowTask,
 	type TableView
 } from '@buildos/shared-agent-ops/tables';
 import {
@@ -154,6 +155,8 @@ export class TableController {
 	aiFill = $state.raw<AiFillState | null>(null);
 	flashKeys = $state.raw<ReadonlySet<string>>(new Set());
 	lastSavedAt = $state<number | null>(null);
+	/** Tasks made from rows, by row id (from the last full load, plus tasks made here). */
+	rowTasks = $state.raw<Record<string, TableRowTask[]>>({});
 
 	canUndo = $derived(this.undoStack.length > 0);
 	saving = $derived(this.inflight > 0);
@@ -473,6 +476,15 @@ export class TableController {
 					...(input.linkColumnId ? { link_column: input.linkColumnId } : {})
 				});
 				if (response.apply) this.#ackApply(new Set(), response.apply, {});
+				const made: TableRowTask = {
+					id: response.task.id,
+					title: response.task.title ?? '',
+					state_key:
+						typeof response.task.state_key === 'string'
+							? response.task.state_key
+							: 'todo'
+				};
+				this.rowTasks = { ...this.rowTasks, [id]: [...(this.rowTasks[id] ?? []), made] };
 				return response.task;
 			});
 		} catch (error) {
@@ -622,9 +634,10 @@ export class TableController {
 
 	async #fetchServer(): Promise<void> {
 		if (this.#disposed) return;
-		const { table } = await this.#client.getTable(this.documentId);
+		const { table, rowTasks } = await this.#client.getTable(this.documentId);
 		if (this.#disposed) return;
 		this.loadError = null;
+		this.rowTasks = rowTasks;
 		this.#setServer(table, true);
 	}
 

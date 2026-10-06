@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/onto/tables/[id]/+server.ts
 /**
- * GET   /api/onto/tables/[id] — the table (schema + live rows) and footer totals.
+ * GET   /api/onto/tables/[id] — the table (schema + live rows), footer totals, and
+ *                             the tasks made from its rows.
  * PATCH /api/onto/tables/[id] — title/description, column changes, saved views,
  *                               primary column.
  *
@@ -25,6 +26,7 @@ import {
 	requireTableAccess,
 	tableErrorResponse
 } from '$lib/server/tables/table-api';
+import { loadTableRowTasks } from '$lib/server/tables/table-row-task';
 import {
 	TABLE_LIMITS,
 	applyColumnChanges,
@@ -56,7 +58,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (!access.ok) return access.response;
 
 		const totals = computeColumnTotals(access.table.schema, access.table.rows);
-		return ApiResponse.success({ table: access.table, totals });
+		const rowTasks = await loadTableRowTasks(
+			access.supabase,
+			access.table.document.project_id,
+			access.table.document.id
+		);
+		return ApiResponse.success({ table: access.table, totals, row_tasks: rowTasks });
 	} catch (error) {
 		const mapped = tableErrorResponse(error);
 		if (mapped) return mapped;

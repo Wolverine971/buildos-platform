@@ -10,13 +10,17 @@
 		TableCellValue,
 		TableColumn,
 		TableRow,
+		TableRowTask,
 		TableSchema
 	} from '@buildos/shared-agent-ops/tables';
+	import { buildRecordHref } from '@buildos/shared-types';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import {
 		AlertCircle,
 		Bot,
+		CheckCircle2,
 		ChevronDown,
+		Circle,
 		ChevronUp,
 		ExternalLink,
 		EyeOff,
@@ -36,6 +40,7 @@
 		schema,
 		row,
 		projectId,
+		tasks = [],
 		readonly = false,
 		coerce,
 		position = null,
@@ -50,6 +55,8 @@
 		schema: TableSchema;
 		row: TableRow;
 		projectId: string;
+		/** Tasks made from this row. */
+		tasks?: TableRowTask[];
 		readonly?: boolean;
 		coerce: CoerceCell;
 		/** "3 of 12" in the current view, for stepping. */
@@ -149,6 +156,42 @@
 
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="grid gap-4 px-4 py-4 sm:px-5" onkeydown={handleKeydown}>
+		{#if tasks.length}
+			<section class="grid gap-1.5" aria-label="Tasks from this row">
+				<p class="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+					<ListChecks class="h-3.5 w-3.5 text-accent" />
+					<span class="text-foreground/90">Tasks</span>
+				</p>
+				<ul class="grid gap-1">
+					{#each tasks as task (task.id)}
+						{@const done = task.state_key === 'done'}
+						<li>
+							<a
+								href={buildRecordHref('task', task.id, projectId) ?? undefined}
+								class="flex min-h-9 items-center gap-2 rounded-md border border-border bg-card px-2.5 text-sm hover:border-accent"
+							>
+								{#if done}
+									<CheckCircle2
+										class="h-4 w-4 shrink-0 text-accent"
+										aria-label="Done"
+									/>
+								{:else}
+									<Circle
+										class="h-4 w-4 shrink-0 text-muted-foreground"
+										aria-hidden="true"
+									/>
+								{/if}
+								<span
+									class="min-w-0 flex-1 truncate {done
+										? 'text-muted-foreground line-through'
+										: 'text-foreground'}">{task.title || 'Untitled task'}</span
+								>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
 		{#each [...visible, ...(showHidden ? hidden : [])] as column (column.id)}
 			{@const meta = row.cell_meta?.[column.id]}
 			<div class="grid gap-1.5">

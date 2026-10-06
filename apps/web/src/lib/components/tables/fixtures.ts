@@ -516,7 +516,7 @@ export function createMemoryTableClient(
 		},
 		async getTable() {
 			await wait();
-			return { table: snapshot(), totals: {} };
+			return { table: snapshot(), totals: {}, rowTasks: {} };
 		},
 		async patchTable(_documentId, input) {
 			await wait();

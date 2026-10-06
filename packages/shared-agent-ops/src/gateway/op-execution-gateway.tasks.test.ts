@@ -893,3 +893,163 @@ describe('updateTask archive matches the board', () => {
 		expect(updates).toHaveLength(0);
 	});
 });
+
+describe('createTask table_row anchor', () => {
+	const TABLE_ID = '99999999-9999-4999-8999-999999999999';
+	const ROW_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+	function adminFor(opts: {
+		document?: { id: string; type_key: string } | null;
+		row?: { id: string; row_number: number } | null;
+		edgeError?: { message: string } | null;
+	}) {
+		const capture: {
+			task?: Record<string, unknown>;
+			edge?: Record<string, unknown>;
+			filters: Record<string, Array<[string, unknown]>>;
+		} = { filters: {} };
+		const rpc = vi.fn(async (name: string, args?: Record<string, unknown>) => {
+			if (name === 'ensure_actor_for_user') return { data: OWNER_ACTOR_ID, error: null };
+			if (name === 'get_onto_project_summaries_v1') {
+				return { data: [projectSummary()], error: null };
+			}
+			if (name === 'onto_task_create_with_relationships_atomic') {
+				capture.task = args?.p_task as Record<string, unknown>;
+				return {
+					data: {
+						task: { ...capture.task },
+						added_actor_ids: [],
+						idempotent_replay: false
+					},
+					error: null
+				};
+			}
+			throw new Error(`unexpected rpc ${name}`);
+		});
+		const from = vi.fn((table: string) => {
+			const filters: Array<[string, unknown]> = (capture.filters[table] ??= []);
+			const single = async () => {
+				if (table === 'onto_documents') return { data: opts.document ?? null, error: null };
+				if (table === 'onto_document_rows') return { data: opts.row ?? null, error: null };
+				return { data: null, error: null };
+			};
+			const chain = {
+				select: () => chain,
+				eq: (column: string, value: unknown) => {
+					filters.push([column, value]);
+					return chain;
+				},
+				is: () => chain,
+				order: async () => ({ data: [], error: null }),
+				maybeSingle: single,
+				insert: async (row: Record<string, unknown>) => {
+					capture.edge = row;
+					return { error: opts.edgeError ?? null };
+				}
+			};
+			return chain;
+		});
+		return { admin: { rpc, from }, capture };
+	}
+
+	function contextFor(admin: unknown) {
+		return {
+			admin,
+			userId: USER_ID,
+			scope: {
+				mode: 'read_write',
+				allowed_ops: ['onto.task.create'],
+				project_ids: [PROJECT_ID],
+				write_project_ids: [PROJECT_ID]
+			}
+		} as never;
+	}
+
+	it('anchors the task to the row: task props, a row edge, and the receipt', async () => {
+		const { admin, capture } = adminFor({
+			document: { id: TABLE_ID, type_key: 'document.table' },
+			row: { id: ROW_ID, row_number: 12 }
+		});
+		const result = (await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Prep for the Twenty screen',
+			table_row: { table_id: TABLE_ID, row: 'r12' }
+		})) as Record<string, unknown>;
+
+		expect(capture.filters.onto_documents).toEqual(
+			expect.arrayContaining([
+				['id', TABLE_ID],
+				['project_id', PROJECT_ID]
+			])
+		);
+		expect(capture.filters.onto_document_rows).toEqual(
+			expect.arrayContaining([
+				['document_id', TABLE_ID],
+				['row_number', 12]
+			])
+		);
+		expect(capture.task?.props).toEqual({
+			table_row: { document_id: TABLE_ID, row_id: ROW_ID, row_number: 12 }
+		});
+		expect(capture.edge).toMatchObject({
+			project_id: PROJECT_ID,
+			src_kind: 'task',
+			src_id: capture.task?.id,
+			rel: 'task_has_document',
+			dst_kind: 'document',
+			dst_id: TABLE_ID,
+			props: { role: 'table_row', row_id: ROW_ID, row_number: 12 }
+		});
+		expect(result.table_row).toEqual({ table_id: TABLE_ID, row: 'r12', linked: true });
+	});
+
+	it('reports linked false when the task saved but the row edge did not', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const { admin } = adminFor({
+			document: { id: TABLE_ID, type_key: 'document.table' },
+			row: { id: ROW_ID, row_number: 3 },
+			edgeError: { message: 'boom' }
+		});
+		const result = (await createTask(contextFor(admin), {
+			project_id: PROJECT_ID,
+			title: 'Follow up',
+			table_row: { table_id: TABLE_ID, row: 'r3' }
+		})) as Record<string, unknown>;
+		expect(result.table_row).toEqual({ table_id: TABLE_ID, row: 'r3', linked: false });
+		warn.mockRestore();
+	});
+
+	it('fails before creating anything for a missing row or a non-table document', async () => {
+		const missingRow = adminFor({
+			document: { id: TABLE_ID, type_key: 'document.table' },
+			row: null
+		});
+		await expect(
+			createTask(contextFor(missingRow.admin), {
+				project_id: PROJECT_ID,
+				title: 'Follow up',
+				table_row: { table_id: TABLE_ID, row: 'r40' }
+			})
+		).rejects.toThrow(/Row r40 is not in that table/);
+		expect(missingRow.capture.task).toBeUndefined();
+
+		const notTable = adminFor({ document: { id: TABLE_ID, type_key: 'document.default' } });
+		await expect(
+			createTask(contextFor(notTable.admin), {
+				project_id: PROJECT_ID,
+				title: 'Follow up',
+				table_row: { table_id: TABLE_ID, row: 'r1' }
+			})
+		).rejects.toThrow(/not a table/);
+
+		const badHandle = adminFor({});
+		await expect(
+			createTask(contextFor(badHandle.admin), {
+				project_id: PROJECT_ID,
+				title: 'Follow up',
+				table_row: { table_id: TABLE_ID, row: 'Stripe' }
+			})
+		).rejects.toThrow(/row handle|handle such as/);
+		expect(badHandle.capture.task).toBeUndefined();
+	});
+});

@@ -12,14 +12,15 @@ import {
 	cellToText,
 	primaryColumn,
 	rowHandle,
+	TABLE_ROW_EDGE_ROLE,
 	type TableDocumentSummary,
 	type TableRow,
+	type TableRowTask,
 	type TableSchema
 } from '@buildos/shared-agent-ops/tables';
 
 type Supabase = App.Locals['supabase'];
 
-export const TABLE_ROW_EDGE_ROLE = 'table_row';
 const MAX_TASK_TITLE_CHARS = 200;
 
 /** The row's title for a task: its primary cell, else "<table> · r12". */
@@ -153,4 +154,46 @@ export async function createTaskForTableRow(args: {
 			props: edgeProps
 		}
 	};
+}
+
+const MAX_ROW_TASKS = 1000;
+
+/**
+ * Live tasks made from this table's rows, keyed by row id. Both paths that
+ * make one (the table's "Make a task" and the agent's create_onto_task with
+ * table_row) stamp `props.table_row` on the task, so one indexed-by-project
+ * read finds them without walking edges.
+ */
+export async function loadTableRowTasks(
+	supabase: Supabase,
+	projectId: string,
+	documentId: string
+): Promise<Record<string, TableRowTask[]>> {
+	const { data, error } = await supabase
+		.from('onto_tasks')
+		.select('id, title, state_key, row_id:props->table_row->>row_id')
+		.eq('project_id', projectId)
+		.eq('props->table_row->>document_id', documentId)
+		.is('deleted_at', null)
+		.order('created_at', { ascending: true })
+		.limit(MAX_ROW_TASKS);
+	if (error) {
+		console.warn('[Tables API] Could not load row tasks:', error);
+		return {};
+	}
+	const byRow: Record<string, TableRowTask[]> = {};
+	for (const task of (data ?? []) as Array<{
+		id: string;
+		title: string;
+		state_key: string;
+		row_id: string | null;
+	}>) {
+		if (!task.row_id) continue;
+		(byRow[task.row_id] ??= []).push({
+			id: task.id,
+			title: task.title,
+			state_key: task.state_key
+		});
+	}
+	return byRow;
 }

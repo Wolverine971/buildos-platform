@@ -176,10 +176,15 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// model arithmetic. Measured global 52 tools / 53,357 B, project 70 tools /
 		// 72,326 B (opening == all passes). Jev mounts the table tools only on turns
 		// that need them. Caps at measured + ~0.5%.
+		// 2026-10-06: create_onto_task gained table_row { table_id, row } so a task
+		// made from a row is anchored to it in the same call (it was create + a
+		// separate link that never reached the row). Global 53,583 B and project
+		// 72,552 B still fit; project_create mounts create_onto_task too and
+		// measured 8,426 B (+206 B), re-baselined.
 		expect(global.openingBytes).toBeLessThanOrEqual(53_620);
 		expect(project.openingBytes).toBeLessThanOrEqual(72_690);
 		expect(project.admittedBytes).toBeLessThanOrEqual(72_690);
-		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_220);
+		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_470);
 	});
 
 	it('mounts document reads on the global worker surface', () => {

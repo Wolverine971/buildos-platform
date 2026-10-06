@@ -4,7 +4,8 @@ import type {
 	LoadedTable,
 	TableApplyResult,
 	TableChangeReceipt,
-	TableRowOp
+	TableRowOp,
+	TableRowTask
 } from '@buildos/shared-agent-ops/tables';
 import { TableClientError, type TableClient } from './table-client';
 import { createTableController, type TableNotifier } from './table-controller.svelte';
@@ -78,7 +79,11 @@ function applyFor(ops: TableRowOp[]): TableApplyResult {
 function mockClient(overrides: Partial<TableClient> = {}) {
 	const client = {
 		createTable: vi.fn(),
-		getTable: vi.fn(async () => ({ table: buildJobApplicationsTable(), totals: {} })),
+		getTable: vi.fn(async () => ({
+			table: buildJobApplicationsTable(),
+			totals: {},
+			rowTasks: {} as Record<string, TableRowTask[]>
+		})),
 		patchTable: vi.fn(),
 		applyRows: vi.fn(async (_id: string, input: { ops: TableRowOp[] }) => ({
 			apply: applyFor(input.ops),
@@ -389,6 +394,36 @@ describe('TableController loading', () => {
 		expect(controller.loadError).toBe('This table no longer exists.');
 		expect(controller.table).toBeNull();
 		expect(tempRowId('x')).toBe('tmp:x');
+	});
+
+	it("keeps each row's tasks from the load and adds a task made from a row", async () => {
+		const table = buildJobApplicationsTable();
+		const [first, second] = table.rows;
+		const existing: TableRowTask = { id: 'task-old', title: 'Old', state_key: 'done' };
+		const client = mockClient({
+			getTable: vi.fn(async () => ({
+				table,
+				totals: {},
+				rowTasks: { [first!.id]: [existing] }
+			})),
+			createTaskFromRow: vi.fn(async () => ({
+				task: { id: 'task-new', title: 'Follow up', state_key: 'todo' },
+				apply: null
+			}))
+		});
+		const controller = createTableController({
+			documentId: FIXTURE_DOCUMENT_ID,
+			projectId: FIXTURE_PROJECT_ID,
+			client
+		});
+		await controller.load();
+		expect(controller.rowTasks).toEqual({ [first!.id]: [existing] });
+
+		await controller.makeTask(second!.id);
+		expect(controller.rowTasks[second!.id]).toEqual([
+			{ id: 'task-new', title: 'Follow up', state_key: 'todo' }
+		]);
+		expect(controller.rowTasks[first!.id]).toEqual([existing]);
 	});
 });
 

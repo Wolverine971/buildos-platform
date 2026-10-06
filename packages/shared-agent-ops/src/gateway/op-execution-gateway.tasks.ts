@@ -47,6 +47,13 @@ import {
 	resolveGatewayTaskAssignees
 } from './op-execution-gateway.task-assignment';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
+import { TASK_DOCUMENT_REL } from './op-execution-gateway.edges';
+import {
+	isTableTypeKey,
+	parseRowHandle,
+	rowHandle,
+	TABLE_ROW_EDGE_ROLE
+} from '../tables/table-types';
 
 type AtomicTaskUpdateResult = {
 	task?: Record<string, unknown>;
@@ -58,6 +65,101 @@ type AtomicTaskCreateResult = AtomicTaskUpdateResult & {
 };
 
 const ALLOWED_TASK_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
+
+type TableRowAnchor = { documentId: string; rowId: string; rowNumber: number };
+
+/**
+ * `table_row: { table_id, row: "r12" }` on a task create: the row must be a
+ * live row of a table in the task's project. Resolved before the task exists
+ * so a bad handle fails the call instead of leaving an unanchored task.
+ */
+async function resolveTaskTableRowAnchor(
+	context: ToolExecutionContext,
+	projectId: string,
+	value: unknown
+): Promise<TableRowAnchor | null> {
+	if (value === undefined || value === null) return null;
+	if (typeof value !== 'object' || Array.isArray(value)) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'table_row must be { table_id, row } with a row handle such as "r12"'
+		);
+	}
+	const raw = value as Record<string, unknown>;
+	const tableId = normalizeOptionalUuid(raw.table_id, 'table_row.table_id');
+	const rowNumber =
+		typeof raw.row === 'string' || typeof raw.row === 'number' ? parseRowHandle(raw.row) : null;
+	if (!tableId || rowNumber === null) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'table_row needs table_id and row, a handle such as "r12" copied from read_table_rows'
+		);
+	}
+
+	const { data: document, error: documentError } = await context.admin
+		.from('onto_documents')
+		.select('id, type_key')
+		.eq('id', tableId)
+		.eq('project_id', projectId)
+		.is('deleted_at', null)
+		.maybeSingle();
+	if (documentError) {
+		throw new ExternalToolGatewayError('INTERNAL', 'Failed to load the table for table_row');
+	}
+	if (!document || !isTableTypeKey(document.type_key)) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			"table_row.table_id is not a table in this task's project"
+		);
+	}
+
+	const { data: row, error: rowError } = await context.admin
+		.from('onto_document_rows')
+		.select('id, row_number')
+		.eq('document_id', tableId)
+		.eq('row_number', rowNumber)
+		.is('deleted_at', null)
+		.maybeSingle();
+	if (rowError) {
+		throw new ExternalToolGatewayError('INTERNAL', 'Failed to load the row for table_row');
+	}
+	if (!row) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`Row ${rowHandle(rowNumber)} is not in that table. Copy a handle from read_table_rows.`
+		);
+	}
+	return { documentId: tableId, rowId: row.id, rowNumber: row.row_number };
+}
+
+/** The row-anchored table link, the same edge the table's "Make a task" writes. */
+async function linkTaskToTableRow(
+	context: ToolExecutionContext,
+	args: { projectId: string; taskId: string; actorId: string; anchor: TableRowAnchor }
+): Promise<boolean> {
+	const { projectId, taskId, actorId, anchor } = args;
+	const { error } = await context.admin.from('onto_edges').insert({
+		project_id: projectId,
+		src_kind: 'task',
+		src_id: taskId,
+		rel: TASK_DOCUMENT_REL,
+		dst_kind: 'document',
+		dst_id: anchor.documentId,
+		props: {
+			role: TABLE_ROW_EDGE_ROLE,
+			row_id: anchor.rowId,
+			row_number: anchor.rowNumber,
+			origin_task_id: taskId,
+			created_at: new Date().toISOString(),
+			created_by: actorId
+		}
+	});
+	if (error) {
+		console.warn('[External Tool Gateway] Task created but its table row link failed:', error);
+		return false;
+	}
+	return true;
+}
 
 function hasOwn(record: Record<string, unknown>, key: string): boolean {
 	return Object.prototype.hasOwnProperty.call(record, key);
@@ -381,6 +483,7 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 	} catch (error) {
 		relationshipPlanningError(error);
 	}
+	const tableRowAnchor = await resolveTaskTableRowAnchor(context, project.id, args.table_row);
 
 	const taskId = crypto.randomUUID();
 	let relationshipPlan: Awaited<ReturnType<typeof prepareRelationshipMutationPlan>>;
@@ -411,7 +514,16 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 		props: {
 			...(props ?? {}),
 			...(goalId ? { goal_id: goalId } : {}),
-			...(milestoneId ? { supporting_milestone_id: milestoneId } : {})
+			...(milestoneId ? { supporting_milestone_id: milestoneId } : {}),
+			...(tableRowAnchor
+				? {
+						table_row: {
+							document_id: tableRowAnchor.documentId,
+							row_id: tableRowAnchor.rowId,
+							row_number: tableRowAnchor.rowNumber
+						}
+					}
+				: {})
 		}
 	};
 
@@ -441,6 +553,17 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 			'Task idempotency key resolved outside the requested project'
 		);
 	}
+
+	// A replayed create already linked its row the first time.
+	const tableRowLinked = tableRowAnchor
+		? atomic.idempotent_replay ||
+			(await linkTaskToTableRow(context, {
+				projectId: project.id,
+				taskId: String(task.id),
+				actorId,
+				anchor: tableRowAnchor
+			}))
+		: null;
 
 	let calendarReceipt: GatewayCalendarSyncReceipt = { calendar_sync: 'unchanged' };
 	if (!atomic.idempotent_replay) {
@@ -488,6 +611,15 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 			...responseTask,
 			project_name: project.name
 		},
+		...(tableRowAnchor
+			? {
+					table_row: {
+						table_id: tableRowAnchor.documentId,
+						row: rowHandle(tableRowAnchor.rowNumber),
+						linked: tableRowLinked === true
+					}
+				}
+			: {}),
 		...calendarReceipt
 	};
 }
@@ -532,7 +664,10 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 	}
 
 	// Restoring un-archives; it never brings back a deleted task that was not archived.
-	if (!existingTask || (archivedAtUpdate === null && existingTask.deleted_at && !existingTask.archived_at)) {
+	if (
+		!existingTask ||
+		(archivedAtUpdate === null && existingTask.deleted_at && !existingTask.archived_at)
+	) {
 		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
 	}
 

@@ -64,6 +64,7 @@ vi.mock('@buildos/shared-agent-ops/tables', () => {
 			typeof key === 'string' &&
 			(key === 'document.table' || key.startsWith('document.table.')),
 		rowHandle: (n: number) => `r${n}`,
+		TABLE_ROW_EDGE_ROLE: 'table_row',
 		resolveColumn,
 		primaryColumn: (schema: any) => schema.columns[0] ?? null,
 		cellToText: (_column: unknown, value: unknown) => (value == null ? '' : String(value)),
@@ -224,6 +225,9 @@ type SupabaseState = {
 	updates: Array<{ table: string; payload: any }>;
 	rpcCalls: Array<{ fn: string; args: any }>;
 	taskRpcResult: { data: unknown; error: unknown };
+	/** onto_tasks rows the row-task read returns. */
+	rowTaskRows: Array<Record<string, unknown>>;
+	taskFilters: Record<string, unknown>;
 };
 
 function createSupabase(overrides: Partial<SupabaseState> = {}) {
@@ -235,6 +239,8 @@ function createSupabase(overrides: Partial<SupabaseState> = {}) {
 		inserts: [],
 		updates: [],
 		rpcCalls: [],
+		rowTaskRows: [],
+		taskFilters: {},
 		taskRpcResult: {
 			data: {
 				task: { id: 'task-1', title: 'Acme', type_key: 'task.default', state_key: 'todo' }
@@ -262,6 +268,14 @@ function createSupabase(overrides: Partial<SupabaseState> = {}) {
 			},
 			is: () => chain,
 			in: () => chain,
+			order: () => chain,
+			limit: () => {
+				if (table === 'onto_tasks') {
+					state.taskFilters = filters;
+					return Promise.resolve({ data: state.rowTaskRows, error: null });
+				}
+				return Promise.resolve(result());
+			},
 			maybeSingle: () => Promise.resolve(result()),
 			single: () => Promise.resolve(result()),
 			insert: (payload: unknown) => {
@@ -547,9 +561,15 @@ describe('POST /api/onto/tables', () => {
 // ---------------------------------------------------------------------------
 
 describe('GET /api/onto/tables/[id]', () => {
-	it('returns the table and footer totals', async () => {
+	it('returns the table, footer totals, and the tasks made from its rows', async () => {
 		const { GET } = await import('./[id]/+server');
-		const { supabase } = createSupabase();
+		const { supabase, state } = createSupabase({
+			rowTaskRows: [
+				{ id: 'task-1', title: 'Prep', state_key: 'todo', row_id: ROW_ID },
+				{ id: 'task-2', title: 'Thank-you note', state_key: 'done', row_id: ROW_ID },
+				{ id: 'task-3', title: 'Unanchored', state_key: 'todo', row_id: null }
+			]
+		});
 		tables.computeColumnTotals.mockReturnValue({ c_salary: 150000, c_company: 2 });
 
 		const response = await GET(
@@ -565,6 +585,16 @@ describe('GET /api/onto/tables/[id]', () => {
 		const payload = await readJson(response);
 		expect(payload.data.table.rows).toHaveLength(2);
 		expect(payload.data.totals).toEqual({ c_salary: 150000, c_company: 2 });
+		expect(payload.data.row_tasks).toEqual({
+			[ROW_ID]: [
+				{ id: 'task-1', title: 'Prep', state_key: 'todo' },
+				{ id: 'task-2', title: 'Thank-you note', state_key: 'done' }
+			]
+		});
+		expect(state.taskFilters).toMatchObject({
+			project_id: PROJECT_ID,
+			'props->table_row->>document_id': TABLE_ID
+		});
 	});
 
 	it('maps a non-table document to 400 NOT_A_TABLE', async () => {

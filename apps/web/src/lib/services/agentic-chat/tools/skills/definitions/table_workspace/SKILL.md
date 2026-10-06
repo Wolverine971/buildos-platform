@@ -46,7 +46,7 @@ Project table playbook: read a table's columns and rows, answer questions with s
 4. A read returns at most 100 rows. When next_offset is set and the answer needs more, read again with that offset, or narrow with filters or columns.
 5. To research a row: read the row, use web_search and web_visit, then write the finding with update_onto_table_rows update [{ row, values, sources }], where sources maps each written column to { urls: [the page it came from] }. Write only what a source supports; leave the cell empty otherwise.
 6. Batch row writes: one update_onto_table_rows call carries add, update, and delete (up to 200 each). A new column is one update_onto_table call with column_changes [{ action: "add", name, type }]; fill it in the same turn with update_onto_table_rows, or pass fill_ai_columns when the column has an AI prompt.
-7. Follow-up tasks from rows: read the rows, then one batch of create_onto_task, one per row, naming the row's key value in the title. With the task ids those creates return, one batch of link_onto_entities (src_kind task, dst_kind document, dst_id the table_id, rel references).
+7. Follow-up tasks from rows: read the rows, then one batch of create_onto_task, one per row, each with table_row { table_id, row: "r12" } and the row's key value in the title. table_row links the task to the table and that row, so no link_onto_entities call is needed; a receipt with table_row.linked false needs one link_onto_entities (src_kind task, dst_kind document, dst_id the table_id).
 8. Deleting rows or columns, or changing many rows at once, needs the user's explicit ask this turn. When the ask is ambiguous, say what would change and ask first.
 
 ## Contract
@@ -91,8 +91,7 @@ After a table read or write, report:
 ### Make follow-up tasks for rows
 
 - `read_table_rows({ table_id, filters: [{ column: "Status", op: "eq", value: "Interview" }] })`
-- One batch: `create_onto_task({ project_id, title: "Follow up with Stripe (interview)" })` per row.
-- Then one batch: `link_onto_entities({ src_kind: "task", src_id: "<new task id>", dst_kind: "document", dst_id: table_id, rel: "references" })` per task.
+- One batch, one per row: `create_onto_task({ project_id, title: "Follow up with Stripe (interview)", table_row: { table_id, row: "r4" } })`. Each task is linked to its row; nothing else to call.
 
 ### Create a table
 
