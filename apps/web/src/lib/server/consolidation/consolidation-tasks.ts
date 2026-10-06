@@ -198,7 +198,7 @@ export async function applyTaskOps(
 				});
 				const description = [
 					keep.description?.trimEnd() ?? '',
-					`Merged in on ${today} (duplicates):\n${lines.join('\n')}`
+					`Merged in on ${today}:\n${lines.join('\n')}`
 				]
 					.filter(Boolean)
 					.join('\n\n');

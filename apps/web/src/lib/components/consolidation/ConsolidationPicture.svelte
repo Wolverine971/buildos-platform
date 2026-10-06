@@ -140,7 +140,7 @@
 							<span class="t">{row.into.title}</span>
 							<span class="p"
 								>{row.what === 'task'
-									? `+ ${row.from.length - 1} as checklist lines`
+									? `+ ${row.from.length - 1} as checklist line${row.from.length === 2 ? '' : 's'}`
 									: `new doc · ${row.into.project}`}</span
 							>
 						</div>

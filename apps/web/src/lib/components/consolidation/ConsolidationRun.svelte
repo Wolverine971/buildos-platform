@@ -40,6 +40,7 @@
 	const docCount = $derived(
 		typeof run.progress.documents === 'number' ? (run.progress.documents as number) : null
 	);
+	const taskCount = $derived(Object.keys(plan?.tasks ?? {}).length);
 	const openQuestions = $derived(view.questions.filter((question) => question.status === 'open'));
 	// A card stays in its slot until answered: new cards arriving mid-poll (merge
 	// questions rank first) must not push out one the owner is typing into.
@@ -268,12 +269,19 @@
 
 	const TASK_CHANGE = {
 		merged: 'Merged into another task:',
-		merged_into: 'Added a checklist of duplicates to',
+		merged_into: 'Added merged tasks as checklist lines to',
 		done: 'Marked done:',
 		archived: 'Archived task'
 	} as const;
 
 	const receipt = $derived(run.receipt);
+	/** The task a merged task was folded into, from the operations Apply ran. */
+	function mergedInto(id: string): string | null {
+		const op = receipt?.applied_ops?.find(
+			(item) => item.op === 'merge_tasks' && item.task_ids.includes(id)
+		);
+		return op?.op === 'merge_tasks' ? names.task(op.keep_id) : null;
+	}
 	// Before → after: what Apply will do while the run is open, what it did after.
 	const preview = $derived(
 		plan && view.ready_ops?.length ? consolidationPicture(view.ready_ops, plan, names) : null
@@ -297,7 +305,9 @@
 		<p class="text-sm text-muted-foreground">
 			{projectName}{projectCount > 1
 				? ` and ${projectCount - 1} sub-project${projectCount === 2 ? '' : 's'}`
-				: ''}{docCount !== null ? ` · ${docCount} docs` : ''}
+				: ''}{docCount !== null ? ` · ${docCount} docs` : ''}{taskCount
+				? ` · ${taskCount} open task${taskCount === 1 ? '' : 's'}`
+				: ''}
 		</p>
 	</header>
 
@@ -597,7 +607,11 @@
 				{#each receipt.tasks?.changed ?? [] as item (item.id + item.how)}
 					<li>
 						<p class="text-sm text-foreground">
-							{TASK_CHANGE[item.how]} <b>{item.title}</b>
+							{#if item.how === 'merged' && mergedInto(item.id)}
+								Merged <b>{item.title}</b> into <b>{mergedInto(item.id)}</b>
+							{:else}
+								{TASK_CHANGE[item.how]} <b>{item.title}</b>
+							{/if}
 						</p>
 					</li>
 				{/each}

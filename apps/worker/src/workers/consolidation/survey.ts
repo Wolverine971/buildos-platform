@@ -193,8 +193,8 @@ export const RULE_DATA =
 // ---------- call 1: find groups ----------
 
 export const GROUPS_SYSTEM_PROMPT = [
-	'You help someone tidy the documents of one project family: a parent project and its sub-projects.',
-	'Find groups of documents where something should change. Kinds:',
+	'You help someone tidy the documents and open tasks of one project family: a parent project and its sub-projects.',
+	'Find groups where something should change. Go through every task as carefully as every document: task groups matter as much as document groups. Kinds of document groups:',
 	'- misfiled: documents mainly about one project of the family (its client, product or work) that live in a different project. Say which project they belong in.',
 	'- fragments: three or more short documents about one subject that belong together.',
 	'- versions: two or more versions of the same document, such as "Outline" and "Outline 2".',

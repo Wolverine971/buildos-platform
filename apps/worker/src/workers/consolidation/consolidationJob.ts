@@ -324,6 +324,10 @@ async function survey(job: ProcessingJob<ConsolidationRunJobMetadata>, run: RunR
 		operationType: 'consolidation_find_groups',
 		// One call over the whole family (88 docs ≈ 36K chars) ran past the 120 s default on 10-04.
 		timeoutMs: 240_000,
+		// On 10-06 DeepSeek spent 8,022 of the default 8,192 output tokens reasoning over 30 docs and
+		// 89 tasks and was cut off; the fallback found 3 groups. Reasoning stays on (this call is the
+		// judgment) with room left for the answer.
+		maxTokens: 24_000,
 		projectId: run.root_project_id,
 		metadata: { consolidation_run_id: run.id },
 		onUsage: usage.onUsage
