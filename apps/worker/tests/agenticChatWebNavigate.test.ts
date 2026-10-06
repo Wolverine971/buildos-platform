@@ -217,7 +217,13 @@ describe('createWorkerWebNavigatePort', () => {
 			})
 		};
 		const steps: string[] = [];
-		const port = createWorkerWebNavigatePort({ jev, fetcher, tavilyApiKey: null });
+		const logUsageToDatabase = vi.fn(async () => undefined);
+		const port = createWorkerWebNavigatePort({
+			jev,
+			fetcher,
+			tavilyApiKey: null,
+			usage: { logUsageToDatabase }
+		});
 		const payload = await port.navigate(
 			{
 				url: 'https://chamber.test/events',
@@ -225,10 +231,12 @@ describe('createWorkerWebNavigatePort', () => {
 			},
 			{
 				onStep: (s) => steps.push(describeWebNavigationStep(s).message),
-				usage: { operationType: 'test' }
+				usage: { operationType: 'test', userId: 'user-1' }
 			}
 		);
 		expect(payload.outcome).toBe('found');
+		// No Tavily extract ran, so no paid row (Jev logs its own decisions).
+		expect(logUsageToDatabase).not.toHaveBeenCalled();
 		expect(payload.answer_page?.url).toBe('https://chamber.test/events/lunch-1874154');
 		expect(payload.answer_page?.content).toContain('7400 Ritchie Hwy');
 		expect(payload.path.map((p) => p.clicked?.label)).toEqual([

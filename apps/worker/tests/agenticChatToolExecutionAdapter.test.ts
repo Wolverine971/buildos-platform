@@ -15,6 +15,7 @@ import {
 import type { AgenticChatTurnProviderClientRequestV1 } from '../src/workers/agentic-chat/provider/contracts';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import type { WebNavigatePort } from '../src/workers/agentic-chat/tools/web-navigate';
+import type { TavilyUsageLogger } from '../src/workers/agentic-chat/tools/tavily-usage';
 import type { EmailSearchProvenanceJudge } from '../src/workers/agentic-chat/tools/email-search-provenance';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import {
@@ -134,6 +135,7 @@ function adapterWith(
 		embeddings?: AgenticChatEmbeddingsPortV1;
 		webResearchTimeoutMs?: number;
 		webResearch?: WebResearchPort;
+		usage?: TavilyUsageLogger;
 		webNavigator?: WebNavigatePort;
 		webSearchReviewer?: AgenticChatWebSearchReviewPort;
 		securityNow?: () => number;
@@ -844,6 +846,51 @@ describe('AgenticChatToolExecutionAdapter', () => {
 				)
 			)
 		).resolves.toMatchObject({ result: { query: 'pricing' } });
+	});
+
+	it('logs a paid search under the user and turn, and nothing for a cache hit', async () => {
+		const logUsageToDatabase = vi.fn(async () => undefined);
+		const billing = {
+			provider: 'tavily',
+			credits: 2,
+			unit_cost_usd: 0.008,
+			cost_usd: 0.016,
+			source: 'provider_reported',
+			provider_request_id: 'req-1'
+		};
+		const search = vi
+			.fn()
+			.mockResolvedValueOnce({ query: 'pricing', results: [], info: { billing } })
+			.mockResolvedValueOnce({ query: 'pricing', results: [], info: {} });
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			webResearch: { search, visit: vi.fn() },
+			usage: { logUsageToDatabase }
+		});
+		const request = requestFor('web_search', { query: 'pricing' }, { userMessage: 'pricing' });
+
+		await adapter.execute(request);
+		await vi.waitFor(() => expect(logUsageToDatabase).toHaveBeenCalledOnce());
+		expect(logUsageToDatabase).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: USER_ID,
+				operationType: 'agentic_chat_web_search',
+				provider: 'tavily',
+				modelUsed: 'tavily/search-advanced',
+				totalTokens: 0,
+				totalCost: 0.016,
+				chatSessionId: executionInput().claim.sessionId,
+				turnRunId: executionInput().claim.turnRunId,
+				metadata: expect.objectContaining({
+					tavily_credits: 2,
+					provider_request_id: 'req-1',
+					charge_source: 'provider_reported'
+				})
+			})
+		);
+
+		await adapter.execute(request);
+		expect(search).toHaveBeenCalledTimes(2);
+		expect(logUsageToDatabase).toHaveBeenCalledOnce();
 	});
 
 	it('fails web research closed when its worker port is unavailable', async () => {

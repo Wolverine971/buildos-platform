@@ -16,6 +16,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AGENTIC_CHAT_TURN_LEASE_POLICY_V1, type Database } from '@buildos/shared-types';
 import type { WebResearchPort } from '@buildos/shared-agent-ops';
 import { createAgentRunWebResearchPort } from '../../agent-run/webResearchPort';
+import type { TavilyUsageLogger } from '../tools/tavily-usage';
 import type { WebNavigatePort } from '../tools/web-navigate';
 import type { EmailSearchProvenanceJudge } from '../tools/email-search-provenance';
 import type { JevDecider } from '@buildos/smart-llm';
@@ -233,6 +234,8 @@ export function createAgenticChatCompositionRoot(options: {
 	concurrentMutationsEnabled?: boolean;
 	/** Injectable for tests; production reuses the worker's SSRF-safe native web port. */
 	webResearch?: WebResearchPort;
+	/** Records chat web_search spend in llm_usage_logs. */
+	usage?: TavilyUsageLogger;
 	webNavigator?: WebNavigatePort;
 	/** Jev relevance scores for `scan_email_inbox`. */
 	emailRelevanceDecider?: JevDecider;
@@ -401,6 +404,7 @@ export function createAgenticChatCompositionRoot(options: {
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),
+		...(options.usage ? { usage: options.usage } : {}),
 		...(options.webNavigator ? { webNavigator: options.webNavigator } : {}),
 		...(options.emailRelevanceDecider
 			? { emailRelevanceDecider: options.emailRelevanceDecider }

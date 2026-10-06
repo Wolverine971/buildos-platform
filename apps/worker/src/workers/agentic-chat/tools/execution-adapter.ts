@@ -61,6 +61,8 @@ import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 import { loadEmailScanProjectBrief } from './email-scan';
 import { type EmailScanLedger, SupabaseEmailScanLedger } from './email-scan-ledger';
+import { readPaidToolCharge } from '../../agent-run/webResearchPort';
+import { type TavilyUsageLogger, logTavilyCharge } from './tavily-usage';
 import type { EmailSearchProvenanceJudge } from './email-search-provenance';
 import type { AgenticChatWebSearchReviewPort } from './web-search-review';
 import {
@@ -335,6 +337,8 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			timeoutMs?: number;
 			webResearchTimeoutMs?: number;
 			webResearch?: WebResearchPort;
+			/** Logs each paid web_search under the user and turn. */
+			usage?: TavilyUsageLogger;
 			webNavigator?: WebNavigatePort;
 			webSearchReviewer?: AgenticChatWebSearchReviewPort;
 			createAccessAdapter?: (userId: string) => AgenticChatToolAccessPortV1;
@@ -381,6 +385,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			Math.floor(options.turnSecurityStateTtlMs ?? TURN_SECURITY_STATE_TTL_MS)
 		);
 		this.webResearch = options.webResearch;
+		this.usage = options.usage;
 		this.webNavigator = options.webNavigator;
 		this.webSearchReviewer = options.webSearchReviewer;
 		this.createAccessAdapter =
@@ -700,9 +705,39 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 							);
 					}
 					throwIfAborted(deadlineSignal);
-					return requireResultRecord(
+					const startedAt = Date.now();
+					const researched = requireResultRecord(
 						await executeWebResearch(webArguments, deadlineSignal)
 					);
+					// Only a search that reached Tavily carries a charge (cache hits are free).
+					const charge =
+						input.toolName === 'web_search' ? readPaidToolCharge(researched) : null;
+					if (charge) {
+						const claim = input.executionInput.claim;
+						void logTavilyCharge(
+							this.usage,
+							{
+								model: `tavily/search-${charge.credits === 1 ? 'basic' : 'advanced'}`,
+								credits: charge.credits,
+								costUsd: charge.cost_usd,
+								providerRequestId: charge.provider_request_id ?? null,
+								source: charge.source
+							},
+							{
+								operationType: 'agentic_chat_web_search',
+								userId: claim.userId,
+								chatSessionId: claim.sessionId,
+								turnRunId: claim.turnRunId,
+								startedAt,
+								metadata: {
+									streamRunId: input.executionInput.streamRunId,
+									clientTurnId: input.executionInput.clientTurnId,
+									providerToolCallId: input.providerToolCallId
+								}
+							}
+						);
+					}
+					return researched;
 				}
 			});
 		} catch (error) {
@@ -986,6 +1021,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	}
 
 	private readonly webResearch: WebResearchPort | undefined;
+	private readonly usage: TavilyUsageLogger | undefined;
 	private readonly webNavigator: WebNavigatePort | undefined;
 	private readonly emailSearchProvenance: EmailSearchProvenanceJudge | undefined;
 	private readonly webSearchReviewer: AgenticChatWebSearchReviewPort | undefined;

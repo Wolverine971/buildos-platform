@@ -28,6 +28,7 @@ import {
 	readHtmlPage
 } from '@buildos/shared-agent-ops/web/navigation';
 import type { AgenticChatReadToolProgressV1 } from '../turn/executor-contracts';
+import { type TavilyUsageLogger, logTavilyCharge } from './tavily-usage';
 
 export const WEB_NAVIGATE_TOOL_NAME = 'web_navigate';
 export const WEB_NAVIGATE_USER_AGENT = 'BuildOS-AgentRun/1.0';
@@ -556,12 +557,15 @@ export function createWorkerWebNavigatePort(options: {
 	tavilyApiKey?: string | null;
 	tavilyCreditCostUsd?: number;
 	fetchFn?: typeof fetch;
+	/** Logs the Tavily extract fallback's spend under the navigation's usage context. */
+	usage?: TavilyUsageLogger;
 }): WebNavigatePort {
 	const fetcher = options.fetcher ?? sharedPoliteWebFetcher();
 	const loadPage = createPoliteWebPageLoader(fetcher);
 	const creditCostUsd = options.tavilyCreditCostUsd ?? resolveTavilyExtractCreditCostUsd();
 	return {
 		async navigate(args, { signal, onStep, usage }) {
+			const startedAt = Date.now();
 			const normalized = normalizeWebNavigateArguments(args);
 			let extractCredits = 0;
 			const baseRender = options.tavilyApiKey
@@ -589,6 +593,27 @@ export function createWorkerWebNavigatePort(options: {
 				decide: createJevPageDecider(options.jev, usage),
 				onStep
 			});
+			if (result.escalation_cost_usd > 0 && usage.userId) {
+				void logTavilyCharge(
+					options.usage,
+					{
+						model: 'tavily/extract-advanced',
+						credits: round(extractCredits, 3),
+						costUsd: round(result.escalation_cost_usd, 6)
+					},
+					{
+						operationType: usage.operationType,
+						userId: usage.userId,
+						chatSessionId: usage.chatSessionId ?? null,
+						turnRunId:
+							typeof usage.metadata?.turnRunId === 'string'
+								? usage.metadata.turnRunId
+								: null,
+						startedAt,
+						metadata: { ...(usage.metadata ?? {}), pages_rendered: result.escalations }
+					}
+				);
+			}
 			return buildWebNavigatePayload(result, round(extractCredits, 3));
 		}
 	};

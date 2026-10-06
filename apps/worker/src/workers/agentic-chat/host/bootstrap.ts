@@ -562,7 +562,10 @@ function createDefaultComposition(
 			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {})
 		}),
 		tavilyApiKey:
-			process.env.PRIVATE_TAVILY_API_KEY?.trim() || process.env.TAVILY_API_KEY?.trim() || null
+			process.env.PRIVATE_TAVILY_API_KEY?.trim() ||
+			process.env.TAVILY_API_KEY?.trim() ||
+			null,
+		usage: usageLogger
 	});
 	// scan_email_inbox scores relevance and search_email_messages authorizes its
 	// query with Jev; one hedged client serves both (same OpenRouter credential).
@@ -597,6 +600,7 @@ function createDefaultComposition(
 		...(toolSelector ? { toolSelector } : {}),
 		...(contextFinder ? { contextFinder } : {}),
 		webNavigator,
+		usage: usageLogger,
 		emailRelevanceDecider: emailJev,
 		emailSearchProvenance: new JevEmailSearchProvenanceJudge(emailJev),
 		providerConfigured: true,
