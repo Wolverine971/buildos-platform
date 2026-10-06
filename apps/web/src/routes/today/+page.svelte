@@ -1542,7 +1542,7 @@
 											<h2
 												class="text-sm font-semibold tracking-tight text-foreground"
 											>
-												{#if feed.overdueCount > 0}
+												{#if (feed?.overdueCount ?? 0) > 0}
 													Nothing due today
 												{:else}
 													Clear day ahead
@@ -1551,8 +1551,8 @@
 											<p
 												class="mt-1 text-sm leading-relaxed text-muted-foreground"
 											>
-												{#if feed.overdueCount > 0}
-													Nothing scheduled today. You have {feed.overdueCount}
+												{#if (feed?.overdueCount ?? 0) > 0}
+													Nothing scheduled today. You have {feed?.overdueCount}
 													overdue — triage them or plan the day with a chat.
 												{:else}
 													Nothing scheduled and no tasks due. Capture
