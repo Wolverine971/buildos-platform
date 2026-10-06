@@ -60,7 +60,9 @@
 	let installPromptCleanup = $state<(() => void) | void>(undefined);
 
 	const initialSupabase = initialData.supabase;
-	// Use the Supabase client from +layout.ts (avoids duplicate clients and auth listeners)
+	// Use the Supabase client from +layout.ts (avoids duplicate clients and auth listeners).
+	// Context is set once, so it stays empty when the first page loaded signed out and the user
+	// signed in later: components read it via getSupabaseContext() ($lib/supabase/context).
 	let supabase = $state<any>(initialSupabase);
 	if (initialSupabase) {
 		setContext('supabase', initialSupabase);

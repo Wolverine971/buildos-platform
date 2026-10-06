@@ -215,7 +215,10 @@ export async function getTodayFeed({
 		name: project.name,
 		state_key: project.state_key,
 		next_step_short: project.next_step_short ?? null,
-		next_step_long: project.next_step_long ?? null
+		next_step_long: project.next_step_long ?? null,
+		can_write: project.access_level
+			? project.access_level !== 'read'
+			: project.access_role !== 'viewer'
 	}));
 
 	return {

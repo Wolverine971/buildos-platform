@@ -1,52 +1,28 @@
 <!-- apps/web/src/lib/components/today/TodayTaskGroups.svelte -->
 <script lang="ts">
 	import { FolderKanban } from '$lib/icons/lucide';
-	import type { TodayTask, TodayTaskBucket } from '$lib/types/today';
+	import type { TodayTask } from '$lib/types/today';
 	import TodayAgendaRow from './TodayAgendaRow.svelte';
+	import { groupTodayTasks } from './today-task-order';
 
 	let {
 		tasks,
 		doneIds,
+		selectedId = null,
 		onOpenTask,
 		onToggleDone,
 		onChat
 	}: {
 		tasks: TodayTask[];
 		doneIds: Set<string>;
+		/** The task open in the reader. */
+		selectedId?: string | null;
 		onOpenTask: (task: TodayTask) => void;
 		onToggleDone: (task: TodayTask) => void;
 		onChat: (task: TodayTask) => void;
 	} = $props();
 
-	const buckets: { key: TodayTaskBucket; label: string }[] = [
-		{ key: 'due_today', label: 'Due today' },
-		{ key: 'starts_today', label: 'Starting today' },
-		{ key: 'in_progress', label: 'In progress' }
-	];
-
-	const groups = $derived.by(() => {
-		// Preserve urgency before grouping by project. IDs keep equally named projects
-		// separate; insertion order preserves the agenda's ordering within each group.
-		const byBucket = new Map(
-			buckets.map((bucket) => [bucket.key, new Map<string, TodayTask[]>()])
-		);
-		for (const task of tasks) {
-			const projects = byBucket.get(task.bucket)!;
-			const projectTasks = projects.get(task.project_id);
-			if (projectTasks) projectTasks.push(task);
-			else projects.set(task.project_id, [task]);
-		}
-		return buckets
-			.map((bucket) => ({
-				...bucket,
-				projects: Array.from(byBucket.get(bucket.key)!, ([id, items]) => ({
-					id,
-					name: items[0]!.project_name,
-					tasks: items
-				}))
-			}))
-			.filter((bucket) => bucket.projects.length > 0);
-	});
+	const groups = $derived(groupTodayTasks(tasks));
 </script>
 
 <div class="space-y-5">
@@ -76,6 +52,8 @@
 									<TodayAgendaRow
 										kind="task"
 										title={task.title}
+										rowId={task.id}
+										selected={task.id === selectedId}
 										stateKey={task.state_key}
 										showProgressState={bucket.key !== 'in_progress'}
 										done={doneIds.has(task.id)}

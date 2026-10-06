@@ -2,13 +2,17 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { MediaQuery } from 'svelte/reactivity';
-	import { PanelRightClose, PanelRightOpen } from '$lib/icons/lucide';
+	import { ChevronDown, PanelRightClose, PanelRightOpen } from '$lib/icons/lucide';
 
 	interface Props {
 		panelLabel: string;
 		children: Snippet;
 		mobileDetailsFirst?: boolean;
 		showDesktopHeader?: boolean;
+		/** Below lg, fold the panel behind a tappable "Details" bar instead of stacking it inline. */
+		mobileCollapsible?: boolean;
+		/** One-line glance shown on the folded bar, e.g. state · priority · due. */
+		mobileSummary?: Snippet;
 		class?: string;
 	}
 
@@ -17,6 +21,8 @@
 		children,
 		mobileDetailsFirst = false,
 		showDesktopHeader = false,
+		mobileCollapsible = false,
+		mobileSummary,
 		class: className = ''
 	}: Props = $props();
 
@@ -32,6 +38,27 @@
 	function togglePanel() {
 		hasOpened = true;
 		open = !open;
+	}
+
+	// The phone fold is remembered across opens so "always show details" sticks.
+	const MOBILE_OPEN_KEY = 'buildos:entity-details-mobile-open';
+	function readMobileOpen(): boolean {
+		try {
+			return localStorage.getItem(MOBILE_OPEN_KEY) === '1';
+		} catch {
+			return false;
+		}
+	}
+	let mobileOpen = $state(readMobileOpen());
+	const foldedOnMobile = $derived(mobileCollapsible && !isDesktop.current && !mobileOpen);
+
+	function toggleMobile() {
+		mobileOpen = !mobileOpen;
+		try {
+			localStorage.setItem(MOBILE_OPEN_KEY, mobileOpen ? '1' : '0');
+		} catch {
+			// Storage can be unavailable (private mode); the fold still works for this open.
+		}
 	}
 </script>
 
@@ -95,11 +122,37 @@
 			</div>
 		{/if}
 
+		{#if mobileCollapsible}
+			<button
+				type="button"
+				onclick={toggleMobile}
+				class="flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left shadow-ink pressable hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden {mobileOpen
+					? 'mb-2'
+					: ''}"
+				aria-expanded={mobileOpen}
+				aria-controls={`${panelId}-content`}
+			>
+				<span class="micro-label shrink-0 text-foreground">Details</span>
+				{#if mobileSummary}
+					<span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+						{@render mobileSummary()}
+					</span>
+				{:else}
+					<span class="flex-1"></span>
+				{/if}
+				<ChevronDown
+					class="h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none {mobileOpen
+						? 'rotate-180'
+						: ''}"
+				/>
+			</button>
+		{/if}
+
 		<div
 			id={`${panelId}-content`}
 			class="min-w-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:py-2 lg:pl-4 lg:[scrollbar-gutter:stable] {className}"
 		>
-			{#if !hiddenFromDesktopFlow || hasOpened}
+			{#if (!hiddenFromDesktopFlow || hasOpened) && !foldedOnMobile}
 				{@render children()}
 			{/if}
 		</div>

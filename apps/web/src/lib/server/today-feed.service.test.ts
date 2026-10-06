@@ -177,4 +177,33 @@ describe('getTodayFeed', () => {
 		expect(feed.projects).toHaveLength(4);
 		expect(feed.degradedSections).toEqual([]);
 	});
+
+	it('marks view-only shares as not writable so the reader hides edit controls', async () => {
+		ontologyMocks.fetchProjectSummaries.mockResolvedValue([
+			{ ...project('owned', 'active'), access_role: 'owner', access_level: 'admin' },
+			{ ...project('edits', 'active'), access_role: 'editor', access_level: 'write' },
+			{ ...project('views', 'active'), access_role: 'viewer', access_level: 'read' },
+			{ ...project('legacy', 'active'), access_role: null, access_level: null }
+		]);
+		const supabase = {
+			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+			from: vi
+				.fn()
+				.mockReturnValueOnce(makeQuery({ data: [] }))
+				.mockReturnValueOnce(makeQuery({ count: 0 }))
+		};
+
+		const feed = await getTodayFeed({
+			supabase: supabase as never,
+			userId: 'user-1',
+			timezone: 'UTC'
+		});
+
+		expect(Object.fromEntries(feed.projects.map((p) => [p.id, p.can_write]))).toEqual({
+			owned: true,
+			edits: true,
+			views: false,
+			legacy: true
+		});
+	});
 });

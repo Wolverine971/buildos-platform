@@ -37,12 +37,12 @@
 </script>
 
 <script lang="ts">
-	import { onDestroy, getAbortSignal, getContext, tick, untrack } from 'svelte';
+	import { onDestroy, getAbortSignal, tick, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+	import type { RealtimeChannel } from '@supabase/supabase-js';
 	import type { Database, FreshnessCardPayloadV1 } from '@buildos/shared-types';
 	import { browser, dev } from '$app/environment';
-	import { createSupabaseBrowser } from '$lib/supabase';
+	import { getSupabaseContext } from '$lib/supabase/context';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
 	import ProjectFocusSelector from './ProjectFocusSelector.svelte';
@@ -403,12 +403,9 @@
 	// the result always shows even if chat_messages isn't in the publication.
 	type ChatMessageRow = Database['public']['Tables']['chat_messages']['Row'];
 	type WorkerTurnHandle = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
-	// A public-page layout can mount before its client exists, then survive
-	// sign-in without providing context. Resolve the shared browser singleton
-	// here as well so an accepted turn always has a UI observer.
-	const supabaseClient =
-		getContext<SupabaseClient | undefined>('supabase') ??
-		(browser ? createSupabaseBrowser() : undefined);
+	// Falls back to the browser singleton when the layout has no context (public page, then
+	// sign-in), so an accepted turn always has a UI observer.
+	const supabaseClient = getSupabaseContext();
 	let workerAdoption: AgenticChatWorkerTurnAdoption | null = null;
 	let workerRealtimeUserId: string | null = null;
 	const workerRealtime = supabaseClient

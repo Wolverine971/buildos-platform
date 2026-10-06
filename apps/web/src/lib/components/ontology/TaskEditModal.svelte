@@ -19,6 +19,7 @@
 	- Create Modal: /apps/web/src/lib/components/ontology/TaskCreateModal.svelte
 -->
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { slideMotion } from '$lib/components/project/v2/board-a11y';
 	import {
@@ -37,13 +38,17 @@
 		SlidersHorizontal,
 		Link as LinkIcon,
 		Image as ImageIcon,
-		Tag as TagIcon
+		Tag as TagIcon,
+		Eye,
+		Pencil,
+		CircleCheck,
+		RotateCcw
 	} from 'lucide-svelte';
+	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
 	import Button from '$lib/components/ui/Button.svelte';
 	import OrganizeEntryButton from '$lib/components/organize/OrganizeEntryButton.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -164,6 +169,8 @@
 	// Form fields
 	let title = $state('');
 	let description = $state('');
+	// Read-first: a written description renders as markdown until the user asks to edit it.
+	let descriptionEditing = $state(false);
 	let priority = $state<number>(3);
 	let stateKey = $state('todo');
 	let typeKey = $state('task.default');
@@ -579,6 +586,7 @@
 			if (loadedTask) {
 				title = loadedTask.title || '';
 				description = loadedTask.description || '';
+				descriptionEditing = !description.trim();
 				priority = loadedTask.priority || 3;
 				stateKey = loadedTask.state_key || 'todo';
 				typeKey = loadedTask.type_key || 'task.default';
@@ -976,6 +984,19 @@
 		}
 	}
 
+	async function toggleDescriptionEditing() {
+		descriptionEditing = !descriptionEditing;
+		if (!descriptionEditing) return;
+		await tick();
+		document.getElementById(descriptionInputId)?.focus();
+	}
+
+	// One-tap completion: flips state and saves with any other pending edits.
+	function toggleDone() {
+		stateKey = stateKey === 'done' ? 'todo' : 'done';
+		void handleSave();
+	}
+
 	// Chat about this task handlers
 	async function openChatAbout() {
 		if (!task || !projectId) return;
@@ -1128,25 +1149,61 @@
 										</div>
 									</div>
 
-									<FormField
-										label="Description"
-										labelFor={descriptionInputId}
-										uppercase={false}
-										showOptional={false}
-									>
-										<Textarea
-											id={descriptionInputId}
-											bind:value={description}
-											enterkeyhint="next"
-											placeholder="Add the context, expected outcome, or handoff notes..."
-											rows={4}
-											autoResize={true}
-											maxRows={16}
-											class="min-h-28"
-											disabled={isSaving}
-											size="md"
-										/>
-									</FormField>
+									<div class="space-y-2">
+										<div class="flex items-center justify-between gap-2">
+											{#if descriptionEditing}
+												<label
+													for={descriptionInputId}
+													class="block text-sm font-semibold text-foreground"
+												>
+													Description
+												</label>
+											{:else}
+												<h3 class="text-sm font-semibold text-foreground">
+													Description
+												</h3>
+											{/if}
+											{#if !descriptionEditing || description.trim()}
+												<button
+													type="button"
+													onclick={toggleDescriptionEditing}
+													disabled={isSaving}
+													class="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground pressable hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 [@media(pointer:fine)]:min-h-7"
+													aria-pressed={!descriptionEditing}
+												>
+													{#if descriptionEditing}
+														<Eye class="h-3.5 w-3.5" />
+														Preview
+													{:else}
+														<Pencil class="h-3.5 w-3.5" />
+														Edit
+													{/if}
+												</button>
+											{/if}
+										</div>
+										{#if descriptionEditing}
+											<Textarea
+												id={descriptionInputId}
+												bind:value={description}
+												enterkeyhint="next"
+												placeholder="Add the context, expected outcome, or handoff notes..."
+												rows={4}
+												autoResize={true}
+												maxRows={16}
+												class="min-h-28"
+												disabled={isSaving}
+												size="md"
+											/>
+										{:else}
+											<div
+												class="{getProseClasses(
+													'sm'
+												)} max-w-none rounded-lg border border-border/70 bg-card px-3 py-2.5 text-foreground [overflow-wrap:anywhere]"
+											>
+												{@html renderMarkdown(description)}
+											</div>
+										{/if}
+									</div>
 								</CardBody>
 							</Card>
 
@@ -1161,7 +1218,16 @@
 					</div>
 
 					<!-- Sidebar (right column, row 1) -->
-					<EntityModalDetailsDrawer panelLabel="Task details" showDesktopHeader={true}>
+					<EntityModalDetailsDrawer
+						panelLabel="Task details"
+						showDesktopHeader={true}
+						mobileCollapsible={true}
+					>
+						{#snippet mobileSummary()}
+							{stateMeta.label} · {priorityMeta.label}{dueMeta
+								? ` · ${dueMeta.note}`
+								: ''}
+						{/snippet}
 						<Card variant="elevated" class="wt-card">
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
@@ -1639,6 +1705,22 @@
 					</Button>
 				</div>
 				<div class="flex items-center gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onclick={toggleDone}
+						disabled={isSaving || isDeleting || !title.trim()}
+						class="text-xs h-8 pressable"
+					>
+						{#if stateKey === 'done'}
+							<RotateCcw class="w-3.5 h-3.5" />
+							<span class="ml-1">Reopen</span>
+						{:else}
+							<CircleCheck class="w-3.5 h-3.5" />
+							<span class="ml-1">Mark done</span>
+						{/if}
+					</Button>
 					<Button
 						type="button"
 						variant="ghost"

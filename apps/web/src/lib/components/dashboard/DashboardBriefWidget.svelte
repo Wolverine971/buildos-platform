@@ -13,13 +13,15 @@
 	import { Sparkles, LoaderCircle, AlertCircle, Sun, Volume2 } from '$lib/icons/lucide';
 	import TodayChip from './TodayChip.svelte';
 	import { browser } from '$app/environment';
-	import { getContext, onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import {
 		BriefClientService,
 		streamingStatus,
 		briefGenerationCompleted
 	} from '$lib/services/briefClient.service';
 	import { ensureTodaysBrief } from '$lib/services/ensure-today-brief';
+	import { getSupabaseContext } from '$lib/supabase/context';
+	import { mapOntologyDailyBriefRow } from '$lib/services/dailyBrief/ontology-mappers';
 	import { formatInTimeZone } from 'date-fns-tz';
 	import type { DailyBrief, StreamingStatus } from '$lib/types/daily-brief';
 
@@ -36,8 +38,7 @@
 		return browser ? user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
 	}
 
-	// Get supabase client from context
-	const supabase = getContext<any>('supabase');
+	const supabase = getSupabaseContext();
 
 	// State
 	let brief = $state<DailyBrief | null>(null);
@@ -76,12 +77,17 @@
 			currentStreamingStatus = value;
 		});
 
+		// The store replays its last event on subscribe; initializeWidget already does the first
+		// fetch, so only react to completions that happen while mounted.
+		let replayed = true;
 		const unsubCompletion = briefGenerationCompleted.subscribe((value) => {
+			if (replayed) return;
 			if (value && value.briefDate === todayDate) {
 				// Refresh brief when generation completes
 				void fetchTodaysBrief();
 			}
 		});
+		replayed = false;
 
 		return () => {
 			unsubStatus();
@@ -117,6 +123,10 @@
 
 	async function fetchTodaysBrief() {
 		if (!todayDate) return;
+		if (!supabase) {
+			isLoading = false;
+			return;
+		}
 
 		const requestToken = ++briefRequestToken;
 		isLoading = true;
@@ -137,28 +147,7 @@
 				.maybeSingle();
 
 			if (ontologyBrief) {
-				nextBrief = {
-					id: ontologyBrief.id,
-					user_id: ontologyBrief.user_id,
-					brief_date: ontologyBrief.brief_date,
-					summary_content: ontologyBrief.executive_summary,
-					executive_summary: ontologyBrief.executive_summary,
-					llm_analysis: ontologyBrief.llm_analysis,
-					priority_actions: ontologyBrief.priority_actions || [],
-					generation_status: ontologyBrief.generation_status,
-					created_at: ontologyBrief.created_at,
-					updated_at: ontologyBrief.updated_at,
-					audio_status: ontologyBrief.audio_status,
-					audio_storage_path: ontologyBrief.audio_storage_path,
-					audio_voice: ontologyBrief.audio_voice,
-					audio_model: ontologyBrief.audio_model,
-					audio_duration_ms: ontologyBrief.audio_duration_ms,
-					audio_generation_ms: ontologyBrief.audio_generation_ms,
-					audio_requested_at: ontologyBrief.audio_requested_at,
-					audio_generation_started_at: ontologyBrief.audio_generation_started_at,
-					audio_generated_at: ontologyBrief.audio_generated_at,
-					audio_error: ontologyBrief.audio_error
-				} as DailyBrief;
+				nextBrief = mapOntologyDailyBriefRow(ontologyBrief);
 			} else if (!ontologyError || ontologyError.code === 'PGRST116') {
 				nextBrief = null;
 			} else {

@@ -24,6 +24,7 @@
 		CircleSlash,
 		FilePlus,
 		FileText,
+		FolderKanban,
 		Maximize2,
 		Minimize2,
 		PanelLeftClose,
@@ -115,7 +116,9 @@
 		onChat,
 		onChanged,
 		onDetent,
-		onTableShown
+		onTableShown,
+		projectName = null,
+		onTaskState
 	}: {
 		item: ReaderItem;
 		projectId: string;
@@ -149,6 +152,10 @@
 		onDetent?: (detent: SheetDetent) => void;
 		/** A table opened: the card gives it the full width (Focus) for this item. */
 		onTableShown?: (id: string) => void;
+		/** Shown (and linked) in the header where items from many projects are read (Today). */
+		projectName?: string | null;
+		/** A host that tracks task state itself hears it here instead of through onChanged. */
+		onTaskState?: (id: string, state: string, previous: string) => void;
 	} = $props();
 
 	const word = $derived(KIND_WORD[item.kind]);
@@ -469,7 +476,8 @@
 			const result = await response.json().catch(() => null);
 			if (!response.ok) throw new Error(result?.error || 'Could not update this task.');
 			if (next === 'done') toastService.success('Marked done.');
-			onChanged();
+			if (onTaskState) onTaskState(task.id, next, previous);
+			else onChanged();
 		} catch (cause) {
 			patch(previous);
 			toastService.error(
@@ -583,6 +591,17 @@
 				{#if current?.task?.due_at}<span class:due-late={overdue}
 						>Due {shortDate(current.task.due_at)}</span
 					>{/if}
+				{#if projectName}
+					<a
+						href={resolve('/projects/[id]', { id: projectId })}
+						class="meta-link project-link"
+						onclick={() => void flush()}
+						title="Open {projectName}"
+					>
+						<FolderKanban class="h-3 w-3 shrink-0" aria-hidden="true" />
+						<span class="truncate">{projectName}</span>
+					</a>
+				{/if}
 				{#if editing}<span class="save save-{saveState}">{SAVE_LABEL[saveState]}</span>{/if}
 				{#if item.kind === 'document' && current?.doc}
 					<button
@@ -1289,6 +1308,13 @@
 	}
 	.meta-link:hover {
 		color: hsl(var(--foreground));
+	}
+	.project-link {
+		display: inline-flex;
+		min-width: 0;
+		max-width: 100%;
+		align-items: center;
+		gap: 4px;
 	}
 	.task-docs {
 		display: grid;

@@ -1,6 +1,8 @@
 <!-- apps/web/src/routes/today/+page.svelte -->
 <script lang="ts">
-	import { getContext, onMount, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
+	import { MediaQuery } from 'svelte/reactivity';
+	import { getSupabaseContext } from '$lib/supabase/context';
 	import ActivationReceipt from '$lib/components/onboarding-v3/ActivationReceipt.svelte';
 	import ProjectCreationRecovery from '$lib/components/agent/ProjectCreationRecovery.svelte';
 	import {
@@ -22,12 +24,18 @@
 	import { ensureTodaysBrief } from '$lib/services/ensure-today-brief';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
 	import type { DailyBrief } from '$lib/types/daily-brief';
-	import { loadTaskEditModal } from '$lib/components/project/project-entity-modal-loader';
 	import {
 		loadAgentChatModal,
 		warmAgentChatModal
 	} from '$lib/components/agent/load-agent-chat-modal';
 	import { prepareEntityModalData } from '$lib/components/project/entity-modal-data';
+	import ReaderPanes from '$lib/components/projects/desktop/ReaderPanes.svelte';
+	import type {
+		ChatScope,
+		ReaderItem,
+		ReaderKind
+	} from '$lib/components/projects/desktop/reader-model';
+	import { todayTaskOrder } from '$lib/components/today/today-task-order';
 	import {
 		AlertCircle,
 		ArrowUpRight,
@@ -170,7 +178,7 @@
 	// Today's brief: the same chip and modals as the Projects Today row. The page also starts
 	// today's brief on open (shared helper: one request per tab and day, even if the chip and
 	// Projects ask too).
-	const supabase = getContext<any>('supabase');
+	const supabase = getSupabaseContext();
 	const briefUser = $derived({
 		id: data.user.id,
 		email: data.user.email,
@@ -240,11 +248,23 @@
 	let inboxOpen = $state(false);
 	let OverdueModalComponent = $state<any>(null);
 	let overdueOpen = $state(false);
-	type TaskEditModalLazy =
-		| typeof import('$lib/components/ontology/TaskEditModal.svelte').default
-		| null;
-	let TaskEditModalComponent = $state<TaskEditModalLazy>(null);
-	let selectedTask = $state<TodayTask | null>(null);
+
+	// Tasks open in the reader the project page uses: a sheet over the day on phones,
+	// beside the day's list on wider screens. Prev/Next walk the day in page order.
+	type PanesApi = {
+		open: (item: ReaderItem) => void;
+		openChat: (scope: ChatScope) => void;
+		handleKey: (event: KeyboardEvent) => boolean;
+	};
+	let panes = $state<PanesApi | null>(null);
+	let readerItem = $state<ReaderItem | null>(null);
+	// Today mixes projects; the reader works in the open task's.
+	let readerProjectId = $state<string | null>(null);
+	let readerChatOpen = $state(false);
+	let readerChatScope = $state<ChatScope>('item');
+	const phoneQuery = new MediaQuery('max-width: 767px', false);
+	/** Wide screens read beside the day's list; the page then holds still and its panes scroll. */
+	const readingWide = $derived(Boolean(readerItem) && !phoneQuery.current);
 
 	const timezone = $derived(feed?.timezone ?? 'UTC');
 	const dateLabel = $derived(
@@ -584,18 +604,11 @@
 		}
 	}
 
-	async function openTaskChat(task: TodayTask, chatSource: 'task' | 'event_task' = 'task') {
-		await ensureChatModal();
-		chatConfig = {
-			focus: {
-				focusType: 'task',
-				focusEntityId: task.id,
-				focusEntityName: task.title,
-				projectId: task.project_id,
-				projectName: task.project_name
-			}
-		};
-		chatOpen = true;
+	// A task's chat opens with the task: the reader shows it and chat sits beside
+	// (a sheet under the chat on phones), so the work and the talk stay together.
+	function openTaskChat(task: TodayTask, chatSource: 'task' | 'event_task' = 'task') {
+		openTask(task);
+		if (!(readerChatOpen && readerChatScope === 'item')) panes?.openChat('item');
 		trackLoopEvent('loop_chat_opened', 'today', {
 			chat_source: chatSource,
 			source_ref_id: task.id,
@@ -624,36 +637,124 @@
 		});
 	}
 
-	async function openTask(task: TodayTask) {
-		selectedTask = task;
-		prepareEntityModalData('task', task.id);
-		try {
-			TaskEditModalComponent = (await loadTaskEditModal()).default;
-			trackLoopEvent('loop_surface_opened', 'today', {
-				source_type: 'task_details',
-				source_ref_id: task.id,
-				project_id: task.project_id
-			});
-		} catch {
-			selectedTask = null;
-			toastService.error('Could not open the task');
+	// Tasks seen this visit, so a task finished (and refreshed off the feed) still knows its project.
+	const seenTasks = new Map<string, TodayTask>();
+	$effect(() => {
+		for (const task of feed?.tasks ?? []) seenTasks.set(task.id, task);
+	});
+
+	const readerProject = $derived(
+		feed?.projects.find((project) => project.id === readerProjectId) ?? null
+	);
+	const readerTaskOrder = $derived(
+		todayTaskOrder(
+			agenda.schedule.map((entry) => entry.task ?? entry.linkedTask),
+			agenda.anytime
+		)
+	);
+
+	function readerOrder(kind: ReaderKind): string[] {
+		return kind === 'task' ? readerTaskOrder : [];
+	}
+
+	function readerTitle(item: ReaderItem): string {
+		return item.kind === 'task' ? (seenTasks.get(item.id)?.title ?? '') : '';
+	}
+
+	function openReaderItem(item: ReaderItem) {
+		if (item.kind === 'task') {
+			const task = seenTasks.get(item.id);
+			if (task) readerProjectId = task.project_id;
 		}
+		readerItem = item;
 	}
 
-	function closeTask() {
-		selectedTask = null;
+	function openTask(task: TodayTask) {
+		readerProjectId = task.project_id;
+		// Start the read now; the reader picks it up when it mounts.
+		prepareEntityModalData('task', task.id, { withTaskDocuments: true });
+		panes?.open({ kind: 'task', id: task.id });
+		trackLoopEvent('loop_surface_opened', 'today', {
+			source_type: 'task_reader',
+			source_ref_id: task.id,
+			project_id: task.project_id
+		});
 	}
 
-	function handleTaskChanged() {
+	// The reader already shows its own changes; the day's list and receipts catch up.
+	function handleReaderChanged() {
 		void refresh();
 		void loadChanges();
 	}
+
+	// State changes from the reader behave like the row circle: a finished task stays
+	// on the day, struck through, instead of vanishing on the next feed read.
+	function handleReaderTaskState(id: string, state: string, previous: string) {
+		if (state === 'done') {
+			prevStateById.set(id, previous);
+			doneIds = new Set(doneIds).add(id);
+		} else if (doneIds.has(id)) {
+			const next = new Set(doneIds);
+			next.delete(id);
+			doneIds = next;
+		}
+		if (feed && state !== 'done' && !feed.tasks.some((task) => task.id === id)) {
+			void refresh();
+		} else if (feed && state !== 'done') {
+			feed = {
+				...feed,
+				tasks: feed.tasks.map((task) =>
+					task.id === id ? { ...task, state_key: state } : task
+				)
+			};
+		}
+		const task = seenTasks.get(id);
+		trackLoopEvent('loop_decision_made', 'today', {
+			source_type: 'task_reader',
+			action: state === 'done' ? 'done' : `state_${state}`,
+			source_ref_id: id,
+			project_id: task?.project_id ?? null,
+			bucket: task?.bucket ?? null
+		});
+		void loadChanges();
+	}
+
+	function readerKeydown(event: KeyboardEvent) {
+		if (event.defaultPrevented || (!readerItem && !readerChatOpen)) return;
+		// A modal over the reader keeps its own keys.
+		if (document.querySelector('[role="dialog"]')) return;
+		if (panes?.handleKey(event)) event.preventDefault();
+	}
+
+	// Reading on a wide screen: the panes fill the window below the header and scroll on
+	// their own. Where the page was is restored after.
+	let readerHost = $state<HTMLElement | null>(null);
+	let readerHostTop = $state(0);
+	let scrollBeforeReading = 0;
+	let wasReadingWide = false;
+	$effect(() => {
+		const wide = readingWide;
+		untrack(() => {
+			if (wide === wasReadingWide) return;
+			wasReadingWide = wide;
+			if (wide) {
+				scrollBeforeReading = window.scrollY;
+				window.scrollTo({ top: 0 });
+				void tick().then(() => {
+					readerHostTop = Math.max(0, readerHost?.getBoundingClientRect().top ?? 0);
+				});
+			} else {
+				const restore = scrollBeforeReading;
+				void tick().then(() => window.scrollTo({ top: restore }));
+			}
+		});
+	});
 
 	async function openEventChat(entry: ScheduleEntry) {
 		const event = entry.event;
 		if (!event) return;
 		if (entry.linkedTask) {
-			await openTaskChat(entry.linkedTask, 'event_task');
+			openTaskChat(entry.linkedTask, 'event_task');
 			return;
 		}
 		await ensureChatModal();
@@ -890,8 +991,10 @@
 	<title>Today | BuildOS</title>
 </svelte:head>
 
+<svelte:window onkeydown={readerKeydown} />
+
 <div class="min-h-screen bg-background">
-	<main class="mx-auto max-w-3xl px-3 py-4 sm:px-5 sm:py-6">
+	<main class="mx-auto px-3 sm:px-5 {readingWide ? 'max-w-7xl py-3' : 'max-w-3xl py-4 sm:py-6'}">
 		<header>
 			<div class="flex items-center justify-between gap-3">
 				<div class="min-w-0">
@@ -992,165 +1095,169 @@
 			</div>
 		</header>
 
-		{#if creationSessionId}
-			<div class="mt-4">
-				<ProjectCreationRecovery
-					sessionId={creationSessionId}
-					paused={chatOpen}
-					busy={captureLoading}
-					onResume={resumeCreation}
-					onCreated={handleCreationRecovered}
-				/>
-			</div>
-		{/if}
-		{#if activationId}
-			<section class="mt-4" aria-label="Your first project">
-				<ActivationReceipt
-					packet={activationPacket}
-					sourceText={activationSource}
-					loading={activationLoading}
-					error={activationError}
-					onRetry={loadActivationReceipt}
-					showNextMove={false}
-				/>
-				{#if activationError}
-					<Button
-						variant="ghost"
-						class="mt-2"
+		{#if !readingWide}
+			{#if creationSessionId}
+				<div class="mt-4">
+					<ProjectCreationRecovery
+						sessionId={creationSessionId}
+						paused={chatOpen}
+						busy={captureLoading}
+						onResume={resumeCreation}
+						onCreated={handleCreationRecovered}
+					/>
+				</div>
+			{/if}
+			{#if activationId}
+				<section class="mt-4" aria-label="Your first project">
+					<ActivationReceipt
+						packet={activationPacket}
+						sourceText={activationSource}
+						loading={activationLoading}
+						error={activationError}
+						onRetry={loadActivationReceipt}
+						showNextMove={false}
+					/>
+					{#if activationError}
+						<Button
+							variant="ghost"
+							class="mt-2"
+							onclick={() => {
+								activationId = null;
+								activationPacket = null;
+								activationSource = '';
+								activationError = null;
+							}}>Dismiss this summary</Button
+						>
+					{/if}
+				</section>
+			{/if}
+			{#if activationProject}
+				<section
+					class="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-4 sm:p-5"
+					aria-label="Your next move"
+				>
+					<p class="micro-label text-muted-foreground">
+						Your next move · {activationProject.name}
+					</p>
+					<h2
+						class="mt-2 text-lg font-semibold leading-relaxed text-foreground [overflow-wrap:anywhere]"
+					>
+						{activationProject.next_step_short ??
+							'Open your project and choose your first task.'}
+					</h2>
+					<a
+						href={`/projects/${activationProject.id}`}
 						onclick={() => {
 							activationId = null;
-							activationPacket = null;
 							activationSource = '';
-							activationError = null;
-						}}>Dismiss this summary</Button
+						}}
+						class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						>Continue with this project <ArrowUpRight class="h-4 w-4" /></a
 					>
-				{/if}
-			</section>
-		{/if}
-		{#if activationProject}
-			<section
-				class="mt-4 rounded-lg border border-accent/30 bg-accent/5 p-4 sm:p-5"
-				aria-label="Your next move"
-			>
-				<p class="micro-label text-muted-foreground">
-					Your next move · {activationProject.name}
-				</p>
-				<h2
-					class="mt-2 text-lg font-semibold leading-relaxed text-foreground [overflow-wrap:anywhere]"
+				</section>
+			{/if}
+			{#if captureError}<p
+					class="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground"
+					role="alert"
 				>
-					{activationProject.next_step_short ??
-						'Open your project and choose your first task.'}
-				</h2>
-				<a
-					href={`/projects/${activationProject.id}`}
-					onclick={() => {
-						activationId = null;
-						activationSource = '';
-					}}
-					class="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					>Continue with this project <ArrowUpRight class="h-4 w-4" /></a
-				>
-			</section>
-		{/if}
-		{#if captureError}<p
-				class="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground"
-				role="alert"
-			>
-				{captureError}
-			</p>{/if}
-		{#if feed && !hasProjects && !activationId}
-			<!-- First-run: no projects yet. Lead with the relief promise and a prominent
+					{captureError}
+				</p>{/if}
+			{#if feed && !hasProjects && !activationId}
+				<!-- First-run: no projects yet. Lead with the relief promise and a prominent
 			     first-project brain-dump instead of the generic "what changed?" bar. -->
-			<section class="mt-4" aria-label="Start your first project">
-				<div
-					class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak flex flex-col items-center gap-4 p-5 text-center sm:p-8"
-				>
-					<div class="rounded-md border border-accent/20 bg-accent/10 p-2.5">
-						<Sparkles class="h-5 w-5 text-accent" />
-					</div>
-					<div class="max-w-md">
-						<h2 class="text-lg font-semibold text-foreground sm:text-xl">
-							Get it out of your head
-						</h2>
-						<p class="mt-1.5 text-sm text-muted-foreground">
-							Brain-dump whatever you're working on — messy is fine. BuildOS turns it
-							into a structured project with tasks and a clear next move.
-						</p>
-					</div>
-					<div class="w-full max-w-md">
-						<div
-							class="rounded-md border border-border bg-background p-2 text-left focus-within:border-accent sm:p-2.5"
-							onkeydown={handleFirstProjectKeydown}
-							role="presentation"
-						>
-							<TextareaWithVoice
-								bind:value={captureText}
-								bind:isRecording={captureVoiceRecording}
-								bind:isTranscribing={captureVoiceFinishing}
-								placeholder="What are you working on? Dump it all here…"
-								onfocus={warmAgentChatModal}
-								rows={3}
-								maxRows={10}
-								autoResize={true}
-								showStatusRow={false}
-								aria-label="Describe your first project"
-								textareaClass="border-0 bg-transparent px-1 py-1 text-base sm:text-sm shadow-none focus:ring-0"
-							/>
+				<section class="mt-4" aria-label="Start your first project">
+					<div
+						class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak flex flex-col items-center gap-4 p-5 text-center sm:p-8"
+					>
+						<div class="rounded-md border border-accent/20 bg-accent/10 p-2.5">
+							<Sparkles class="h-5 w-5 text-accent" />
 						</div>
-						<div class="mt-3 flex justify-center">
+						<div class="max-w-md">
+							<h2 class="text-lg font-semibold text-foreground sm:text-xl">
+								Get it out of your head
+							</h2>
+							<p class="mt-1.5 text-sm text-muted-foreground">
+								Brain-dump whatever you're working on — messy is fine. BuildOS turns
+								it into a structured project with tasks and a clear next move.
+							</p>
+						</div>
+						<div class="w-full max-w-md">
+							<div
+								class="rounded-md border border-border bg-background p-2 text-left focus-within:border-accent sm:p-2.5"
+								onkeydown={handleFirstProjectKeydown}
+								role="presentation"
+							>
+								<TextareaWithVoice
+									bind:value={captureText}
+									bind:isRecording={captureVoiceRecording}
+									bind:isTranscribing={captureVoiceFinishing}
+									placeholder="What are you working on? Dump it all here…"
+									onfocus={warmAgentChatModal}
+									rows={3}
+									maxRows={10}
+									autoResize={true}
+									showStatusRow={false}
+									aria-label="Describe your first project"
+									textareaClass="border-0 bg-transparent px-1 py-1 text-base sm:text-sm shadow-none focus:ring-0"
+								/>
+							</div>
+							<div class="mt-3 flex justify-center">
+								<Button
+									onclick={submitFirstProject}
+									variant="primary"
+									size="sm"
+									icon={Send}
+									loading={captureLoading}
+									disabled={!captureText.trim() ||
+										captureVoiceBusy ||
+										captureLoading}
+								>
+									Structure my first project
+								</Button>
+							</div>
+						</div>
+					</div>
+				</section>
+			{:else if hasProjects && !activationProject}
+				<section class="mt-3" aria-label="Quick capture">
+					<div
+						class="rounded-lg border border-border bg-card px-2 py-1 focus-within:border-accent/60"
+						onkeydown={handleCaptureKeydown}
+						role="presentation"
+					>
+						<h2 class="sr-only">Quick capture</h2>
+						<div class="flex items-end gap-2">
+							<div class="min-w-0 flex-1">
+								<TextareaWithVoice
+									bind:value={captureText}
+									bind:isRecording={captureVoiceRecording}
+									bind:isTranscribing={captureVoiceFinishing}
+									aria-label="Quick update for your projects"
+									placeholder="What changed today?"
+									onfocus={warmAgentChatModal}
+									rows={1}
+									maxRows={6}
+									autoResize={true}
+									showStatusRow={false}
+									textareaClass="border-0 bg-transparent px-1 py-1.5 text-base sm:text-sm shadow-none focus:ring-0 [@media(pointer:fine)]:min-h-8"
+								/>
+							</div>
 							<Button
-								onclick={submitFirstProject}
-								variant="primary"
-								size="sm"
-								icon={Send}
+								onclick={submitCapture}
 								loading={captureLoading}
 								disabled={!captureText.trim() || captureVoiceBusy || captureLoading}
+								variant="ghost"
+								size="sm"
+								class="shrink-0 px-2 text-accent [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
+								title="Send update to BuildOS"
+								aria-label="Send update to BuildOS"
 							>
-								Structure my first project
+								<Send class="h-4 w-4" />
 							</Button>
 						</div>
 					</div>
-				</div>
-			</section>
-		{:else if hasProjects && !activationProject}
-			<section class="mt-3" aria-label="Quick capture">
-				<div
-					class="rounded-lg border border-border bg-card px-2 py-1 focus-within:border-accent/60"
-					onkeydown={handleCaptureKeydown}
-					role="presentation"
-				>
-					<h2 class="sr-only">Quick capture</h2>
-					<div class="flex items-end gap-2">
-						<div class="min-w-0 flex-1">
-							<TextareaWithVoice
-								bind:value={captureText}
-								bind:isRecording={captureVoiceRecording}
-								bind:isTranscribing={captureVoiceFinishing}
-								aria-label="Quick update for your projects"
-								placeholder="What changed today?"
-								onfocus={warmAgentChatModal}
-								rows={1}
-								maxRows={6}
-								autoResize={true}
-								showStatusRow={false}
-								textareaClass="border-0 bg-transparent px-1 py-1.5 text-base sm:text-sm shadow-none focus:ring-0 [@media(pointer:fine)]:min-h-8"
-							/>
-						</div>
-						<Button
-							onclick={submitCapture}
-							loading={captureLoading}
-							disabled={!captureText.trim() || captureVoiceBusy || captureLoading}
-							variant="ghost"
-							size="sm"
-							class="shrink-0 px-2 text-accent [@media(pointer:fine)]:min-h-8 [@media(pointer:fine)]:min-w-8 [@media(pointer:fine)]:py-1"
-							title="Send update to BuildOS"
-							aria-label="Send update to BuildOS"
-						>
-							<Send class="h-4 w-4" />
-						</Button>
-					</div>
-				</div>
-			</section>
+				</section>
+			{/if}
 		{/if}
 
 		{#if !feed}
@@ -1186,225 +1293,290 @@
 				</div>
 			{/if}
 
-			{#if agenda.allDay.length > 0}
-				<section class="mt-4" aria-label="All-day events">
-					<h2 class="mb-3 text-sm font-semibold tracking-tight text-foreground">
-						All day
-					</h2>
-					<div class="flex flex-wrap items-center gap-2">
-						{#each agenda.allDay as event (event.calendar_item_id)}
-							{@const eventTitle = event.title ?? 'Untitled event'}
-							{@const eventProjectName = projectNameFor(event.project_id)}
-							<span
-								class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs text-foreground"
-								title={eventProjectName
-									? `${eventTitle} · ${eventProjectName}`
-									: eventTitle}
-							>
-								<Calendar class="h-3 w-3 shrink-0 text-accent" />
-								<span class="min-w-0 truncate">{eventTitle}</span>
-								{#if eventProjectName}
-									<span class="shrink-0 text-muted-foreground" aria-hidden="true"
-										>·</span
+			<div
+				class="reader-host"
+				class:reading={readingWide}
+				bind:this={readerHost}
+				style:--host-top="{readerHostTop}px"
+			>
+				<ReaderPanes
+					bind:this={panes}
+					bind:chatOpen={readerChatOpen}
+					bind:chatScope={readerChatScope}
+					projectId={readerProjectId ?? ''}
+					projectName={readerProject?.name ??
+						projectNameFor(readerProjectId) ??
+						'Project'}
+					canWrite={readerProject?.can_write ?? true}
+					reader={readerItem}
+					order={readerOrder}
+					titleOf={readerTitle}
+					showProject={true}
+					onOpenItem={openReaderItem}
+					onCloseItem={() => (readerItem = null)}
+					onChanged={handleReaderChanged}
+					onTaskState={handleReaderTaskState}
+				>
+					{#snippet list()}
+						<div class="today-list">
+							{#if agenda.allDay.length > 0}
+								<section class="mt-4" aria-label="All-day events">
+									<h2
+										class="mb-3 text-sm font-semibold tracking-tight text-foreground"
 									>
-									<span class="min-w-0 truncate text-muted-foreground">
-										{eventProjectName}
-									</span>
-								{/if}
-							</span>
-						{/each}
-					</div>
-				</section>
-			{/if}
-
-			{#if agenda.schedule.length > 0}
-				<section class="mt-4" aria-label="Today's schedule">
-					<div class="mb-1.5 flex items-center gap-2">
-						<h2 class="text-sm font-semibold tracking-tight text-foreground">
-							Schedule
-						</h2>
-						<span class="text-xs stamp text-muted-foreground"
-							>{agenda.schedule.length}</span
-						>
-					</div>
-					<div class="border-y border-border/70">
-						{#each agenda.schedule as entry, index (entry.key)}
-							{#if index === nowMarkerIndex}
-								<div class="flex items-center gap-2" aria-hidden="true">
-									<div
-										class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium stamp text-accent"
-									>
-										{fmtTime(new Date(nowMs).toISOString())}
+										All day
+									</h2>
+									<div class="flex flex-wrap items-center gap-2">
+										{#each agenda.allDay as event (event.calendar_item_id)}
+											{@const eventTitle = event.title ?? 'Untitled event'}
+											{@const eventProjectName = projectNameFor(
+												event.project_id
+											)}
+											<span
+												class="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs text-foreground"
+												title={eventProjectName
+													? `${eventTitle} · ${eventProjectName}`
+													: eventTitle}
+											>
+												<Calendar class="h-3 w-3 shrink-0 text-accent" />
+												<span class="min-w-0 truncate">{eventTitle}</span>
+												{#if eventProjectName}
+													<span
+														class="shrink-0 text-muted-foreground"
+														aria-hidden="true">·</span
+													>
+													<span
+														class="min-w-0 truncate text-muted-foreground"
+													>
+														{eventProjectName}
+													</span>
+												{/if}
+											</span>
+										{/each}
 									</div>
-									<div class="h-px flex-1 bg-accent/40"></div>
-								</div>
+								</section>
 							{/if}
-							<TodayAgendaRow
-								kind={entry.kind}
-								title={entry.title}
-								timeLabel={entry.timeLabel}
-								metaLabel={entry.metaLabel}
-								stateKey={entry.task?.state_key ??
-									entry.linkedTask?.state_key ??
-									null}
-								done={entry.task
-									? doneIds.has(entry.task.id)
-									: entry.linkedTask
-										? doneIds.has(entry.linkedTask.id)
-										: false}
-								past={entryIsPast(entry)}
-								current={entryIsCurrent(entry)}
-								projectName={entry.task?.project_name ??
-									entry.linkedTask?.project_name ??
-									projectNameFor(entry.event?.project_id ?? null)}
-								projectHref={entry.task
-									? `/projects/${entry.task.project_id}`
-									: entry.linkedTask
-										? `/projects/${entry.linkedTask.project_id}`
-										: entry.event?.project_id
-											? `/projects/${entry.event.project_id}`
-											: null}
-								onChat={() =>
-									entry.kind === 'task' && entry.task
-										? openTaskChat(entry.task)
-										: openEventChat(entry)}
-								onOpenTask={entry.task
-									? () => openTask(entry.task!)
-									: entry.linkedTask
-										? () => openTask(entry.linkedTask!)
-										: null}
-								onToggleDone={entry.task
-									? () => toggleDone(entry.task!)
-									: entry.linkedTask
-										? () => toggleDone(entry.linkedTask!)
-										: null}
-							/>
-						{/each}
-						{#if nowMarkerIndex === agenda.schedule.length}
-							<div class="flex items-center gap-2" aria-hidden="true">
-								<div
-									class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium stamp text-accent"
-								>
-									{fmtTime(new Date(nowMs).toISOString())}
-								</div>
-								<div class="h-px flex-1 bg-accent/40"></div>
-							</div>
-						{/if}
-					</div>
-				</section>
-			{/if}
 
-			{#if agenda.anytime.length > 0}
-				<section class="mt-4" aria-label="Tasks without a set time">
-					<div class="mb-1.5 flex items-center gap-2">
-						<h2 class="text-sm font-semibold tracking-tight text-foreground">
-							Anytime today
-						</h2>
-						<span class="text-xs stamp text-muted-foreground"
-							>{agenda.anytime.length}</span
-						>
-					</div>
-					<TodayTaskGroups
-						tasks={agenda.anytime}
-						{doneIds}
-						onChat={openTaskChat}
-						onOpenTask={openTask}
-						onToggleDone={toggleDone}
-					/>
-				</section>
-			{/if}
-
-			{#if isClearDay && hasProjects && !activationProject}
-				{#if waitingProjects.length > 0}
-					<!-- Nothing dated today, but there's undated work. Surface each project's
-					     next move so the day is never a dead end. -->
-					<section class="mt-4" aria-label="What's waiting">
-						<div class="rounded-lg border border-border bg-card p-4 shadow-ink sm:p-6">
-							<div class="mb-3 flex items-center gap-2">
-								<Sparkles class="h-4 w-4 shrink-0 text-accent" />
-								<h2 class="text-sm font-semibold tracking-tight text-foreground">
-									Here's what's waiting
-								</h2>
-							</div>
-							<ul class="flex flex-col gap-1">
-								{#each waitingProjects as project (project.id)}
-									<li>
-										<a
-											href={`/projects/${project.id}`}
-											class="group flex min-h-11 items-start gap-3 rounded-md py-3 motion-reduce:transition-none hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-											title={project.next_step_long ??
-												project.next_step_short ??
-												project.name}
+							{#if agenda.schedule.length > 0}
+								<section class="mt-4" aria-label="Today's schedule">
+									<div class="mb-1.5 flex items-center gap-2">
+										<h2
+											class="text-sm font-semibold tracking-tight text-foreground"
 										>
-											<span class="micro-label mt-1 shrink-0 text-accent">
-												Next
-											</span>
-											<span class="min-w-0 flex-1">
-												<span
-													class="block text-sm leading-relaxed text-foreground [overflow-wrap:anywhere]"
+											Schedule
+										</h2>
+										<span class="text-xs stamp text-muted-foreground"
+											>{agenda.schedule.length}</span
+										>
+									</div>
+									<div class="border-y border-border/70">
+										{#each agenda.schedule as entry, index (entry.key)}
+											{#if index === nowMarkerIndex}
+												<div
+													class="flex items-center gap-2"
+													aria-hidden="true"
 												>
-													{project.next_step_short}
-												</span>
-												<span
-													class="mt-1 block truncate text-xs text-muted-foreground"
+													<div
+														class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium stamp text-accent"
+													>
+														{fmtTime(new Date(nowMs).toISOString())}
+													</div>
+													<div class="h-px flex-1 bg-accent/40"></div>
+												</div>
+											{/if}
+											<TodayAgendaRow
+												kind={entry.kind}
+												title={entry.title}
+												rowId={entry.task?.id ??
+													entry.linkedTask?.id ??
+													null}
+												selected={readerItem?.kind === 'task' &&
+													readerItem.id ===
+														(entry.task?.id ?? entry.linkedTask?.id)}
+												timeLabel={entry.timeLabel}
+												metaLabel={entry.metaLabel}
+												stateKey={entry.task?.state_key ??
+													entry.linkedTask?.state_key ??
+													null}
+												done={entry.task
+													? doneIds.has(entry.task.id)
+													: entry.linkedTask
+														? doneIds.has(entry.linkedTask.id)
+														: false}
+												past={entryIsPast(entry)}
+												current={entryIsCurrent(entry)}
+												projectName={entry.task?.project_name ??
+													entry.linkedTask?.project_name ??
+													projectNameFor(entry.event?.project_id ?? null)}
+												projectHref={entry.task
+													? `/projects/${entry.task.project_id}`
+													: entry.linkedTask
+														? `/projects/${entry.linkedTask.project_id}`
+														: entry.event?.project_id
+															? `/projects/${entry.event.project_id}`
+															: null}
+												onChat={() =>
+													entry.kind === 'task' && entry.task
+														? openTaskChat(entry.task)
+														: openEventChat(entry)}
+												onOpenTask={entry.task
+													? () => openTask(entry.task!)
+													: entry.linkedTask
+														? () => openTask(entry.linkedTask!)
+														: null}
+												onToggleDone={entry.task
+													? () => toggleDone(entry.task!)
+													: entry.linkedTask
+														? () => toggleDone(entry.linkedTask!)
+														: null}
+											/>
+										{/each}
+										{#if nowMarkerIndex === agenda.schedule.length}
+											<div class="flex items-center gap-2" aria-hidden="true">
+												<div
+													class="w-12 shrink-0 text-right text-2xs sm:w-16 font-medium stamp text-accent"
 												>
-													{project.name}
-												</span>
-											</span>
-										</a>
-									</li>
-								{/each}
-							</ul>
-							<div class="mt-3">
-								<Button
-									onclick={openDayChat}
-									variant="outline"
-									size="sm"
-									icon={MessageCircle}
-								>
-									Plan my day
-								</Button>
-							</div>
-						</div>
-					</section>
-				{:else}
-					<div
-						class="mt-8 flex flex-col items-center gap-4 rounded-lg border border-border bg-card p-6 shadow-ink sm:p-10 text-center"
-					>
-						<div class="p-2 sm:p-3 rounded-md bg-accent/10 border border-accent/20">
-							<Sparkles class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
-						</div>
-						<div>
-							<h2 class="text-sm font-semibold tracking-tight text-foreground">
-								{#if feed.overdueCount > 0}
-									Nothing due today
+													{fmtTime(new Date(nowMs).toISOString())}
+												</div>
+												<div class="h-px flex-1 bg-accent/40"></div>
+											</div>
+										{/if}
+									</div>
+								</section>
+							{/if}
+
+							{#if agenda.anytime.length > 0}
+								<section class="mt-4" aria-label="Tasks without a set time">
+									<div class="mb-1.5 flex items-center gap-2">
+										<h2
+											class="text-sm font-semibold tracking-tight text-foreground"
+										>
+											Anytime today
+										</h2>
+										<span class="text-xs stamp text-muted-foreground"
+											>{agenda.anytime.length}</span
+										>
+									</div>
+									<TodayTaskGroups
+										tasks={agenda.anytime}
+										{doneIds}
+										selectedId={readerItem?.kind === 'task'
+											? readerItem.id
+											: null}
+										onChat={openTaskChat}
+										onOpenTask={openTask}
+										onToggleDone={toggleDone}
+									/>
+								</section>
+							{/if}
+
+							{#if isClearDay && hasProjects && !activationProject}
+								{#if waitingProjects.length > 0}
+									<!-- Nothing dated today, but there's undated work. Surface each project's
+					     next move so the day is never a dead end. -->
+									<section class="mt-4" aria-label="What's waiting">
+										<div
+											class="rounded-lg border border-border bg-card p-4 shadow-ink sm:p-6"
+										>
+											<div class="mb-3 flex items-center gap-2">
+												<Sparkles class="h-4 w-4 shrink-0 text-accent" />
+												<h2
+													class="text-sm font-semibold tracking-tight text-foreground"
+												>
+													Here's what's waiting
+												</h2>
+											</div>
+											<ul class="flex flex-col gap-1">
+												{#each waitingProjects as project (project.id)}
+													<li>
+														<a
+															href={`/projects/${project.id}`}
+															class="group flex min-h-11 items-start gap-3 rounded-md py-3 motion-reduce:transition-none hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+															title={project.next_step_long ??
+																project.next_step_short ??
+																project.name}
+														>
+															<span
+																class="micro-label mt-1 shrink-0 text-accent"
+															>
+																Next
+															</span>
+															<span class="min-w-0 flex-1">
+																<span
+																	class="block text-sm leading-relaxed text-foreground [overflow-wrap:anywhere]"
+																>
+																	{project.next_step_short}
+																</span>
+																<span
+																	class="mt-1 block truncate text-xs text-muted-foreground"
+																>
+																	{project.name}
+																</span>
+															</span>
+														</a>
+													</li>
+												{/each}
+											</ul>
+											<div class="mt-3">
+												<Button
+													onclick={openDayChat}
+													variant="outline"
+													size="sm"
+													icon={MessageCircle}
+												>
+													Plan my day
+												</Button>
+											</div>
+										</div>
+									</section>
 								{:else}
-									Clear day ahead
+									<div
+										class="mt-8 flex flex-col items-center gap-4 rounded-lg border border-border bg-card p-6 shadow-ink sm:p-10 text-center"
+									>
+										<div
+											class="p-2 sm:p-3 rounded-md bg-accent/10 border border-accent/20"
+										>
+											<Sparkles class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+										</div>
+										<div>
+											<h2
+												class="text-sm font-semibold tracking-tight text-foreground"
+											>
+												{#if feed.overdueCount > 0}
+													Nothing due today
+												{:else}
+													Clear day ahead
+												{/if}
+											</h2>
+											<p
+												class="mt-1 text-sm leading-relaxed text-muted-foreground"
+											>
+												{#if feed.overdueCount > 0}
+													Nothing scheduled today. You have {feed.overdueCount}
+													overdue — triage them or plan the day with a chat.
+												{:else}
+													Nothing scheduled and no tasks due. Capture
+													what's on your mind or plan the day with a chat.
+												{/if}
+											</p>
+										</div>
+										<Button
+											onclick={openDayChat}
+											variant="outline"
+											size="sm"
+											icon={MessageCircle}
+										>
+											Plan my day
+										</Button>
+									</div>
 								{/if}
-							</h2>
-							<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
-								{#if feed.overdueCount > 0}
-									Nothing scheduled today. You have {feed.overdueCount} overdue — triage
-									them or plan the day with a chat.
-								{:else}
-									Nothing scheduled and no tasks due. Capture what's on your mind
-									or plan the day with a chat.
-								{/if}
-							</p>
+							{/if}
 						</div>
-						<Button
-							onclick={openDayChat}
-							variant="outline"
-							size="sm"
-							icon={MessageCircle}
-						>
-							Plan my day
-						</Button>
-					</div>
-				{/if}
-			{/if}
+					{/snippet}
+				</ReaderPanes>
+			</div>
 		{/if}
-		{#if changesFeed}
+		{#if changesFeed && !readingWide}
 			<WhatChangedSection feed={changesFeed} onChatAboutEntry={openReceiptChat} />
 		{/if}
 	</main>
@@ -1454,12 +1626,30 @@
 	<OverdueModalComponent isOpen={overdueOpen} onClose={handleOverdueClose} />
 {/if}
 
-{#if TaskEditModalComponent && selectedTask}
-	<TaskEditModalComponent
-		taskId={selectedTask.id}
-		projectId={selectedTask.project_id}
-		onClose={closeTask}
-		onUpdated={handleTaskChanged}
-		onDeleted={handleTaskChanged}
-	/>
-{/if}
+<style>
+	.reader-host {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+	}
+
+	/* Reading on a wide screen: the day's list and the open task fill the window below the
+	   header, like the project page. */
+	@media (min-width: 768px) {
+		.reader-host.reading {
+			--list-w: 380px;
+			height: calc(100dvh - var(--host-top, 160px) - 12px);
+			min-height: 420px;
+			margin-top: 12px;
+			overflow: hidden;
+			border: 1px solid hsl(var(--border));
+			border-radius: 14px;
+			background: hsl(var(--card));
+			box-shadow: var(--shadow-ink);
+		}
+
+		.reader-host.reading .today-list {
+			padding: 0 10px 12px;
+		}
+	}
+</style>

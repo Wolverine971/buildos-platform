@@ -8,7 +8,6 @@
 		MessageCircle,
 		SquarePen
 	} from '$lib/icons/lucide';
-	import { preloadEntityModal } from '$lib/actions/preload-entity-modal';
 
 	interface Props {
 		kind: 'event' | 'task';
@@ -28,6 +27,10 @@
 		onChat: () => void;
 		onOpenTask?: (() => void) | null;
 		onToggleDone?: (() => void) | null;
+		/** The task id, so the reader can scroll its row into view. */
+		rowId?: string | null;
+		/** Open in the reader beside the list. */
+		selected?: boolean;
 	}
 
 	let {
@@ -44,7 +47,9 @@
 		projectHref = null,
 		onChat,
 		onOpenTask = null,
-		onToggleDone = null
+		onToggleDone = null,
+		rowId = null,
+		selected = false
 	}: Props = $props();
 
 	const showInProgress = $derived(!done && stateKey === 'in_progress' && showProgressState);
@@ -54,7 +59,7 @@
 	);
 </script>
 
-<div class="flex min-w-0 items-stretch gap-2">
+<div class="flex min-w-0 items-stretch gap-2" data-row-id={rowId}>
 	{#if timeLabel}
 		<div
 			class="w-12 shrink-0 pt-3 text-right text-2xs tabular-nums sm:w-16 sm:text-xs {current
@@ -65,15 +70,17 @@
 		</div>
 	{/if}
 	<div
-		class="group min-w-0 flex-1 border-l-2 px-1 py-1.5 sm:px-2 {current
+		class="group relative min-w-0 flex-1 border-l-2 px-1 py-1.5 sm:px-2 {current || selected
 			? 'border-accent bg-accent/5'
 			: 'border-transparent hover:bg-muted/50 focus-within:bg-muted/50'}"
+		aria-current={selected ? 'true' : undefined}
 	>
 		<div class="flex items-center gap-1 sm:gap-2">
+			<!-- Phones get no left control: the row opens the task, which holds Mark done. -->
 			{#if onToggleDone}
 				<button
 					onclick={onToggleDone}
-					class="group/check flex h-11 w-11 shrink-0 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="group/check relative z-10 hidden sm:flex h-11 w-11 shrink-0 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					title={done ? 'Mark as not done' : 'Mark done'}
 					aria-label={done ? `Mark "${title}" as not done` : `Mark "${title}" done`}
 					aria-pressed={done}
@@ -88,7 +95,7 @@
 				</button>
 			{:else}
 				<div
-					class="flex h-11 w-11 shrink-0 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7"
+					class="hidden h-11 w-11 shrink-0 items-center justify-center sm:flex [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7"
 					aria-hidden="true"
 				>
 					<Calendar class="h-4 w-4 {current ? 'text-accent' : 'text-muted-foreground'}" />
@@ -97,9 +104,8 @@
 			<div class="min-w-0 flex-1">
 				{#if onOpenTask}
 					<button
-						use:preloadEntityModal={'task'}
 						onclick={onOpenTask}
-						class="flex min-h-6 w-full min-w-0 items-center gap-1.5 rounded-md text-left text-sm font-medium leading-5 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring {done
+						class="flex min-h-6 w-full min-w-0 items-center gap-1.5 rounded-md text-left text-sm font-medium leading-5 after:absolute after:inset-0 after:content-[''] hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring {done
 							? 'text-muted-foreground'
 							: 'text-foreground'}"
 						{title}
@@ -113,13 +119,23 @@
 					</button>
 				{:else}
 					<p
-						class="text-sm font-medium leading-5 line-clamp-2 sm:line-clamp-1 [overflow-wrap:anywhere] {done
+						class="flex min-w-0 items-start gap-1.5 text-sm font-medium leading-5 {done
 							? 'text-muted-foreground line-through'
 							: kind === 'event' && past && !current
 								? 'text-muted-foreground'
 								: 'text-foreground'}"
 					>
-						{title}
+						{#if kind === 'event'}
+							<Calendar
+								class="mt-0.5 h-3.5 w-3.5 shrink-0 sm:hidden {current
+									? 'text-accent'
+									: 'text-muted-foreground'}"
+								aria-hidden="true"
+							/>
+						{/if}
+						<span class="min-w-0 line-clamp-2 sm:line-clamp-1 [overflow-wrap:anywhere]"
+							>{title}</span
+						>
 					</p>
 				{/if}
 				{#if hasMetadata}<div
@@ -153,7 +169,7 @@
 								data-sveltekit-preload-code="viewport"
 								class="{timeLabel
 									? 'max-[360px]:basis-full'
-									: ''} inline-flex min-h-6 min-w-0 items-center gap-1 rounded-md underline decoration-border-strong underline-offset-2 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									: ''} relative z-10 inline-flex min-h-6 min-w-0 items-center gap-1 rounded-md underline decoration-border-strong underline-offset-2 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								title={`Open ${projectName}`}
 								aria-label={`Open project ${projectName}`}
 							>
@@ -163,12 +179,11 @@
 						{/if}
 					</div>{/if}
 			</div>
-			<div class="flex shrink-0 items-center">
+			<div class="relative z-10 flex shrink-0 items-center">
 				{#if onOpenTask}
 					<button
-						use:preloadEntityModal={'task'}
 						onclick={onOpenTask}
-						class="flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="hidden sm:flex h-11 w-11 items-center justify-center [@media(pointer:fine)]:h-7 [@media(pointer:fine)]:w-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						title="Edit task"
 						aria-label={`Edit task "${title}"`}
 					>

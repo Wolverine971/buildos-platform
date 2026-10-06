@@ -18,7 +18,11 @@ function deferred<T>(): Deferred<T> {
 	return { promise, resolve };
 }
 
-function taskResponse(id: string, title: string): Response {
+function taskResponse(
+	id: string,
+	title: string,
+	overrides: Record<string, unknown> = {}
+): Response {
 	return new Response(
 		JSON.stringify({
 			data: {
@@ -30,7 +34,8 @@ function taskResponse(id: string, title: string): Response {
 					state_key: 'todo',
 					type_key: 'task.default',
 					assignees: [],
-					props: {}
+					props: {},
+					...overrides
 				}
 			}
 		}),
@@ -124,7 +129,7 @@ describe('TaskEditModal task loading', () => {
 		);
 	});
 
-	it('keeps task details available inline below the desktop breakpoint', async () => {
+	it('folds task details behind a summary bar below the desktop breakpoint', async () => {
 		Object.defineProperty(window, 'matchMedia', {
 			configurable: true,
 			writable: true,
@@ -158,10 +163,70 @@ describe('TaskEditModal task loading', () => {
 
 		expect(panel).toHaveAttribute('aria-hidden', 'false');
 		expect((panel as HTMLElement & { inert: boolean }).inert).toBe(false);
+
+		const fold = screen.getByRole('button', { name: /^Details/ });
+		expect(fold).toHaveAttribute('aria-expanded', 'false');
+		expect(fold).toHaveTextContent('To do · P3 Medium');
+		expect(screen.queryByText('Workflow')).not.toBeInTheDocument();
+
+		await fireEvent.click(fold);
+
+		expect(fold).toHaveAttribute('aria-expanded', 'true');
+		expect(screen.getByText('Workflow')).toBeInTheDocument();
+		expect(localStorage.getItem('buildos:entity-details-mobile-open')).toBe('1');
+	});
+
+	it('reads a written description as markdown and edits it on request', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() =>
+				Promise.resolve(
+					taskResponse('task-a', 'Task A', {
+						description: '## Plan\n\n- **Ship** the reader'
+					})
+				)
+			)
+		);
+
+		render(TaskEditModal, { taskId: 'task-a', projectId: 'project-1', onClose: vi.fn() });
+
+		await screen.findByDisplayValue('Task A');
+		expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument();
+		expect(screen.getByText('Ship').tagName).toBe('STRONG');
+		expect(screen.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+		expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue(
+			'## Plan\n\n- **Ship** the reader'
+		);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+		expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument();
+	});
+
+	it('marks a task done in one tap', async () => {
+		const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+			taskResponse('task-a', 'Task A')
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const onClose = vi.fn();
+		const onUpdated = vi.fn();
+		render(TaskEditModal, { taskId: 'task-a', projectId: 'project-1', onClose, onUpdated });
+
+		await screen.findByDisplayValue('Task A');
+		await fireEvent.click(screen.getByRole('button', { name: 'Mark done' }));
+
+		await waitFor(() => expect(onClose).toHaveBeenCalled());
+		const write = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+		expect(JSON.parse(String(write?.[1]?.body))).toEqual({ state_key: 'done' });
+		expect(onUpdated).toHaveBeenCalledTimes(1);
 	});
 
 	afterEach(() => {
 		cleanup();
+		localStorage.clear();
 		vi.unstubAllGlobals();
 		vi.clearAllMocks();
 	});

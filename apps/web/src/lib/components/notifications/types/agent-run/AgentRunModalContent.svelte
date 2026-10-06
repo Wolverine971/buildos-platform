@@ -4,7 +4,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { getContext, onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import {
 		LoaderCircle,
@@ -19,7 +19,8 @@
 		Activity
 	} from '$lib/icons/lucide';
 	import { formatDistanceToNow } from 'date-fns';
-	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+	import type { RealtimeChannel } from '@supabase/supabase-js';
+	import { getSupabaseContext } from '$lib/supabase/context';
 	import type { Database, AgentRunStatus, ChangeSet } from '@buildos/shared-types';
 	import type { AgentRunNotification } from '$lib/types/notification.types';
 	import { toastService } from '$lib/stores/toast.store';
@@ -54,7 +55,7 @@
 		onCancel?: () => void;
 	} = $props();
 
-	const supabase = getContext<SupabaseClient | undefined>('supabase');
+	const supabase = getSupabaseContext();
 
 	let runId = $derived(notification?.data.runId ?? '');
 	let runStatus = $derived<AgentRunStatus>(notification?.data.runStatus ?? 'cancelled');

@@ -46,6 +46,8 @@
 		onOpenItem,
 		onCloseItem,
 		onChanged,
+		showProject = false,
+		onTaskState,
 		chatOpen = $bindable(false),
 		chatScope = $bindable<ChatScope>('project')
 	}: {
@@ -77,6 +79,10 @@
 		onCloseItem: () => void;
 		/** Something changed in the reader: the list should catch up. */
 		onChanged: () => void;
+		/** The list mixes projects (Today): the reader names the open item's project. */
+		showProject?: boolean;
+		/** The host tracks task state itself; state changes skip onChanged. */
+		onTaskState?: (id: string, state: string, previous: string) => void;
 		chatOpen?: boolean;
 		chatScope?: ChatScope;
 	} = $props();
@@ -401,6 +407,8 @@
 			onToggleList={toggleList}
 			onChat={() => openChat('item')}
 			{onChanged}
+			{onTaskState}
+			projectName={showProject ? projectName : null}
 			onDetent={(next) => (detent = next)}
 			onTableShown={(id) => {
 				if (!phone) tableFocusId = id;

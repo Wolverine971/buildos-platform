@@ -1,8 +1,9 @@
 <!-- apps/web/src/routes/briefs/+page.svelte -->
 <script lang="ts">
-	import { onMount, onDestroy, getContext, type Component } from 'svelte';
+	import { onMount, onDestroy, type Component } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
+	import { getSupabaseContext } from '$lib/supabase/context';
 	import { replaceState } from '$app/navigation';
 	import { captureEvent } from '$lib/services/posthog';
 	import {
@@ -51,29 +52,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Get supabase client from context (set by layout)
-	// Note: getContext must be called during component initialization
-	let supabaseClient: any = null;
-	try {
-		supabaseClient = getContext('supabase');
-	} catch (e) {
-		// Context might not be available in some cases
-		console.warn('Supabase context not available, will skip realtime service:', e);
-		// We can still generate briefs without realtime updates
-	}
-
-	async function resolveSupabaseClient() {
-		if (supabaseClient || !browser) return supabaseClient;
-
-		try {
-			const { createSupabaseBrowser } = await import('$lib/supabase');
-			supabaseClient = createSupabaseBrowser();
-		} catch (error) {
-			console.warn('Unable to create Supabase browser client for briefs:', error);
-		}
-
-		return supabaseClient;
-	}
+	const supabaseClient = getSupabaseContext();
 
 	// Initialize with minimal data from server
 	let currentDate = $state('');
@@ -395,8 +374,6 @@
 
 	// Initialize on mount
 	onMount(async () => {
-		await resolveSupabaseClient();
-
 		// Get user's timezone from browser
 		userTimezone = getUserTimezone();
 

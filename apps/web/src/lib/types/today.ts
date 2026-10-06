@@ -26,6 +26,8 @@ export interface TodayProject {
 	/** AI/user "next move" for the project — powers the "what's waiting" empty-agenda state */
 	next_step_short: string | null;
 	next_step_long: string | null;
+	/** False for view-only shares: the reader hides its edit controls. */
+	can_write: boolean;
 }
 
 export interface TodayFeed {

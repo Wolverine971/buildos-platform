@@ -36,4 +36,32 @@ describe('TodayAgendaRow', () => {
 
 		expect(onOpenTask).toHaveBeenCalledTimes(1);
 	});
+
+	it('keeps phone rows to open + chat: the done circle and pencil are wider-screen only', () => {
+		render(TodayAgendaRow, {
+			props: {
+				kind: 'task',
+				title: 'Write launch plan',
+				onChat: vi.fn(),
+				onOpenTask: vi.fn(),
+				onToggleDone: vi.fn()
+			}
+		});
+
+		expect(screen.getByRole('button', { name: 'Mark "Write launch plan" done' })).toHaveClass(
+			'hidden',
+			'sm:flex'
+		);
+		expect(screen.getByRole('button', { name: 'Edit task "Write launch plan"' })).toHaveClass(
+			'hidden',
+			'sm:flex'
+		);
+		expect(
+			screen.getByRole('button', { name: 'Chat about "Write launch plan"' })
+		).not.toHaveClass('hidden');
+		// The title stretches over the row so a tap anywhere opens the task.
+		expect(
+			screen.getByRole('button', { name: 'Open task details for "Write launch plan"' })
+		).toHaveClass('after:absolute', 'after:inset-0');
+	});
 });
