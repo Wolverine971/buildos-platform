@@ -91,17 +91,15 @@ describe('buildTriageSteps', () => {
 	it('leaves an unverified change out of the batch', () => {
 		const unverified = item({ id: 'u1', rows: [row('s-u1', null)] });
 		const steps = buildTriageSteps([project('p1', [ready('r1'), ready('r2'), unverified])]);
-		expect(steps[0]).toMatchObject({ kind: 'batch' });
-		expect(steps[0].kind === 'batch' && steps[0].items.map((entry) => entry.id)).toEqual([
-			'r1',
-			'r2'
-		]);
+		const first = steps[0];
+		if (first?.kind !== 'batch') throw new Error('expected a batch');
+		expect(first.items.map((entry) => entry.id)).toEqual(['r1', 'r2']);
 		expect(steps[1]).toMatchObject({ kind: 'item', item: { id: 'u1' } });
 	});
 
 	it('expands a batch into one card per change', () => {
 		const [batch] = buildTriageSteps([project('p1', [ready('r1'), ready('r2')])]);
-		if (batch.kind !== 'batch') throw new Error('expected a batch');
+		if (batch?.kind !== 'batch') throw new Error('expected a batch');
 		expect(expandBatchStep(batch).map((step) => step.key)).toEqual(['p1:r1', 'p1:r2']);
 	});
 });

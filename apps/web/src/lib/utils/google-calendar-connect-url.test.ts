@@ -22,7 +22,10 @@ describe('getGoogleCalendarConnectUrl', () => {
 			'https://legacy'
 		);
 		expect(fetchImpl).toHaveBeenCalledOnce();
-		expect(fetchImpl.mock.calls[0][0]).toBe('/profile/calendar?redirect=%2Fonboarding');
+		expect(fetchImpl).toHaveBeenCalledWith(
+			'/profile/calendar?redirect=%2Fonboarding',
+			expect.anything()
+		);
 	});
 
 	it('starts the dedicated flow for multi-account users', async () => {
