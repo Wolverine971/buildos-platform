@@ -16,6 +16,7 @@
 //                 several tasks at once.
 //   Task list:    --task-file <file> with one task id per line, instead of --task.
 //   All users:    --all [--limit N] instead of --user-email (live backfill, newest first).
+//   Recent only:  --updated-since <ISO date> with --all or --user-email (e.g. the last 2 months).
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -66,6 +67,10 @@ async function main() {
 		taskFile ? readFileSync(taskFile, 'utf8').split(/\s+/) : (arg('--task') ?? '').split(',')
 	).filter(Boolean);
 	const email = arg('--user-email');
+	const updatedSince = arg('--updated-since');
+	if (updatedSince && Number.isNaN(Date.parse(updatedSince))) {
+		throw new Error(`--updated-since is not a date: ${updatedSince}`);
+	}
 
 	const columns = 'id, project_id, title, description, created_by';
 	let rows: TaskRow[] = [];
@@ -88,6 +93,7 @@ async function main() {
 		.select(columns)
 		.is('deleted_at', null)
 		.order('updated_at', { ascending: false });
+	if (updatedSince) query = query.gte('updated_at', new Date(updatedSince).toISOString());
 	if (taskIds.length) {
 		// Loaded above.
 	} else if (email) {

@@ -85,7 +85,7 @@ export type ExtractedTaskEntity = {
 	data: Record<string, unknown>;
 };
 
-export const MAX_TASK_ENTITIES = 16;
+export const MAX_TASK_ENTITIES = 24;
 const MAX_DISPLAY = 80;
 const MAX_ABOUT = 120;
 const MAX_QUOTE = 400;
