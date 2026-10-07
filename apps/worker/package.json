@@ -63,7 +63,7 @@
 		"pg": "^8.23.0",
 		"posthog-node": "^5.39.2",
 		"sanitize-html": "2.17.5",
-		"sharp": "0.35.4",
+		"sharp": "0.35.5",
 		"web-push": "^3.6.7"
 	},
 	"devDependencies": {
