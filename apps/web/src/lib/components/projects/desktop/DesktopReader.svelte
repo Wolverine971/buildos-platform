@@ -36,7 +36,12 @@
 		X
 	} from '$lib/icons/lucide';
 	import { toastService } from '$lib/stores/toast.store';
-	import { getProseClasses, renderDocumentMarkdown, renderMarkdown } from '$lib/utils/markdown';
+	import {
+		getProseClasses,
+		renderDocumentMarkdown,
+		renderMarkdown,
+		renderTaskMarkdown
+	} from '$lib/utils/markdown';
 	import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
 	import {
 		documentEmbeds,
@@ -44,6 +49,7 @@
 	} from '$lib/components/table-surfaces/document-embeds';
 	import { tableEmbedInsertion } from '$lib/components/table-surfaces/table-surface-utils';
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
+	import TaskEntityStrip from '$lib/components/task-entities/TaskEntityStrip.svelte';
 	import {
 		KIND_WORD,
 		TASK_STATES,
@@ -866,8 +872,17 @@
 					</button>
 				{/if}
 			</div>
+			<TaskEntityStrip
+				taskId={task.id}
+				title={task.title}
+				description={task.description}
+				canEdit={canWrite}
+				class="-mt-2 mb-4"
+			/>
 			{#if task.description?.trim()}
-				<div class="{prose} text-foreground">{@html renderMarkdown(task.description)}</div>
+				<div class="{prose} text-foreground">
+					{@html renderTaskMarkdown(task.description)}
+				</div>
 			{:else}
 				<p class="muted">No description.</p>
 			{/if}

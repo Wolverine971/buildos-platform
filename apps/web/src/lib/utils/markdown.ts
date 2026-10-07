@@ -5,6 +5,7 @@ import { buildRecordHref } from '@buildos/shared-types';
 import sanitizeHtml from 'sanitize-html';
 import { normalizeMarkdownTables } from './markdown-text';
 import { repairAssistantAppLinkHref } from './assistant-app-links';
+import { normalizePhone } from '@buildos/shared-agent-ops/task-entities';
 
 export {
 	getProseClasses,
@@ -368,6 +369,56 @@ export function renderDocumentMarkdown(
 		return escapeHtml(text);
 	} finally {
 		entityRefProjectId = null;
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Task descriptions: phone numbers render as tap-to-call links
+//
+// GFM already links URLs and emails; phone numbers are the missing fixed format
+// (docs/research/task-entity-layer-2026-10-07.md). A structured format, so a
+// pattern is fine here. Its own Marked instance keeps chat, comments and blog
+// rendering unchanged; code spans and fences keep the literal text.
+// ---------------------------------------------------------------------------
+
+const PHONE_START = /(?<![\w/.@#=-])(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]\d{4}(?!\d)/;
+const PHONE_AT_START = /^(?:\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]\d{4}(?!\d)/;
+
+type PhoneLinkToken = { type: 'buildosPhoneLink'; raw: string; e164: string };
+
+const phoneLinkExtension: TokenizerAndRendererExtension = {
+	name: 'buildosPhoneLink',
+	level: 'inline',
+	start(src: string) {
+		const match = PHONE_START.exec(src);
+		return match ? match.index : undefined;
+	},
+	tokenizer(src: string) {
+		const match = PHONE_AT_START.exec(src);
+		const e164 = match ? normalizePhone(match[0]) : null;
+		if (!match || !e164) return undefined;
+		return { type: 'buildosPhoneLink', raw: match[0], e164 } satisfies PhoneLinkToken;
+	},
+	renderer(token) {
+		const phone = token as unknown as PhoneLinkToken;
+		return `<a href="tel:${phone.e164}">${escapeHtml(phone.raw)}</a>`;
+	}
+};
+
+const taskMarked = new Marked({ breaks: true, gfm: true, async: false }, gfmHeadingId(), {
+	extensions: [phoneLinkExtension]
+});
+
+/** Render a task description: same sanitizer as `renderMarkdown`, plus tap-to-call numbers. */
+export function renderTaskMarkdown(text: string | null | undefined): string {
+	if (!text || typeof text !== 'string') return '';
+
+	try {
+		const html = taskMarked.parse(normalizeMarkdownTables(text.trim())) as string;
+		return sanitizeHtml(html, sanitizeOptions);
+	} catch (error) {
+		console.error('Error rendering task markdown:', error);
+		return escapeHtml(text);
 	}
 }
 

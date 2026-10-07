@@ -54,6 +54,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import type { CalendarItem } from '$lib/types/calendar-items';
 	import type { TodayFeed, TodayTask, WhatChangedEntry, WhatChangedFeed } from '$lib/types/today';
+	import type { TaskEntityRecord } from '@buildos/shared-agent-ops/task-entities';
 
 	let { data }: { data: PageData } = $props();
 
@@ -68,6 +69,40 @@
 	// Session-local done tracking: tasks stay visible with a strike-through so the
 	// day keeps its shape (and the action can be undone) until the next refresh.
 	let doneIds = $state<Set<string>>(new Set());
+
+	// Join / Call / Map chips on task rows: one request for every task on the page.
+	let entitiesByTask = $state<Record<string, TaskEntityRecord[]>>({});
+	const entityTaskIds = $derived(
+		feed ? [...new Set(feed.tasks.map((task) => task.id))].sort().join(',') : ''
+	);
+	$effect(() => {
+		const ids = entityTaskIds;
+		if (!ids) return;
+		const controller = new AbortController();
+		const chunks: string[][] = [];
+		const all = ids.split(',');
+		for (let i = 0; i < all.length; i += 100) chunks.push(all.slice(i, i + 100));
+		void Promise.all(
+			chunks.map(async (chunk) => {
+				const response = await fetch(
+					`/api/onto/task-entities?task_ids=${encodeURIComponent(chunk.join(','))}`,
+					{ signal: controller.signal }
+				);
+				if (!response.ok) return [] as TaskEntityRecord[];
+				const body = await response.json();
+				return (body?.data?.entities ?? []) as TaskEntityRecord[];
+			})
+		)
+			.then((lists) => {
+				const next: Record<string, TaskEntityRecord[]> = {};
+				for (const row of lists.flat()) (next[row.task_id] ??= []).push(row);
+				entitiesByTask = next;
+			})
+			.catch(() => {
+				// Chips are a convenience; rows still show their detected numbers and links.
+			});
+		return () => controller.abort();
+	});
 	let pendingDoneIds = $state<Set<string>>(new Set());
 	const prevStateById = new Map<string, string>();
 
@@ -1429,6 +1464,10 @@
 													: entry.linkedTask
 														? () => toggleDone(entry.linkedTask!)
 														: null}
+												entityTask={entry.task ?? entry.linkedTask ?? null}
+												entities={entitiesByTask[
+													(entry.task ?? entry.linkedTask)?.id ?? ''
+												] ?? null}
 											/>
 										{/each}
 										{#if nowMarkerIndex === agenda.schedule.length}
@@ -1466,6 +1505,7 @@
 										onChat={openTaskChat}
 										onOpenTask={openTask}
 										onToggleDone={toggleDone}
+										{entitiesByTask}
 									/>
 								</section>
 							{/if}

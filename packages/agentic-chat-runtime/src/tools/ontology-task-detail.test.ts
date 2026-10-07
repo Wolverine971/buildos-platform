@@ -22,7 +22,7 @@ function createContext(responses: Record<string, QueryResponse[]>) {
 			positions.set(table, index + 1);
 			const response = responses[table]?.[index] ?? { data: [], error: null };
 			const query: Record<string, any> = {};
-			for (const method of ['select', 'eq', 'is', 'in', 'or', 'order']) {
+			for (const method of ['select', 'eq', 'neq', 'is', 'in', 'or', 'order', 'limit']) {
 				query[method] = vi.fn(() => query);
 			}
 			query.maybeSingle = vi.fn(async () => {
@@ -58,6 +58,86 @@ function createContext(responses: Record<string, QueryResponse[]>) {
 }
 
 describe('shared ontology task detail', () => {
+	it('includes the entities read from the task text, fenced to its project, without dismissed ones', async () => {
+		const { context, builders } = createContext({
+			onto_tasks: [
+				{ data: { id: TASK_ID, project_id: PROJECT_ID }, error: null },
+				{
+					data: {
+						id: TASK_ID,
+						project_id: PROJECT_ID,
+						title: 'Call Chesapeake Tax: ask for Pat S.',
+						project: { id: PROJECT_ID, created_by: 'actor-1' }
+					},
+					error: null
+				}
+			],
+			onto_task_entities: [
+				{
+					data: [
+						{
+							kind: 'phone',
+							value: '+14105550144',
+							display: '410-555-0144',
+							role: 'primary',
+							about: 'Chesapeake Tax',
+							status: 'suggested',
+							in_text: true,
+							position: 1
+						},
+						{
+							kind: 'person',
+							value: 'Pat S.',
+							display: 'Pat S.',
+							role: 'primary',
+							about: 'Chesapeake Tax',
+							status: 'confirmed',
+							in_text: true,
+							position: 0
+						},
+						{
+							kind: 'time',
+							value: '2026-10-05',
+							display: 'Oct 5',
+							role: 'log',
+							about: null,
+							status: 'suggested',
+							in_text: true,
+							position: 2
+						}
+					],
+					error: null
+				}
+			]
+		});
+
+		const details = await loadOntoTaskDetail(context, TASK_ID);
+		expect(details?.entities).toEqual([
+			{
+				kind: 'person',
+				value: 'Pat S.',
+				display: 'Pat S.',
+				role: 'primary',
+				about: 'Chesapeake Tax',
+				status: 'confirmed',
+				in_text: true
+			},
+			{
+				kind: 'phone',
+				value: '+14105550144',
+				display: '410-555-0144',
+				role: 'primary',
+				about: 'Chesapeake Tax',
+				status: 'suggested',
+				in_text: true
+			}
+		]);
+		const query = builders.find((builder) => builder.table === 'onto_task_entities')!.query;
+		expect(query.eq).toHaveBeenCalledWith('project_id', PROJECT_ID);
+		expect(query.eq).toHaveBeenCalledWith('task_id', TASK_ID);
+		expect(query.neq).toHaveBeenCalledWith('status', 'dismissed');
+	});
+
 	it('fences the task, graph fan-out, linked rows, and assignees to one authorized project', async () => {
 		const { context, access, builders, events } = createContext({
 			onto_tasks: [
@@ -246,15 +326,37 @@ describe('task linked entities keep chat to the present', () => {
 		onto_edges: [
 			{
 				data: [
-					{ src_id: TASK_ID, dst_id: GOAL_ID, src_kind: 'task', dst_kind: 'goal', rel: 'supports_goal' },
-					{ src_id: TASK_ID, dst_id: DOC_ID, src_kind: 'task', dst_kind: 'document', rel: 'references' }
+					{
+						src_id: TASK_ID,
+						dst_id: GOAL_ID,
+						src_kind: 'task',
+						dst_kind: 'goal',
+						rel: 'supports_goal'
+					},
+					{
+						src_id: TASK_ID,
+						dst_id: DOC_ID,
+						src_kind: 'task',
+						dst_kind: 'document',
+						rel: 'references'
+					}
 				],
 				error: null
 			}
 		],
 		onto_goals: [{ data: [{ id: GOAL_ID, name: 'Grow', state_key: 'active' }], error: null }],
 		onto_documents: [
-			{ data: [{ id: DOC_ID, title: 'Old pitch', type_key: 'document.default', state_key: 'archived' }], error: null }
+			{
+				data: [
+					{
+						id: DOC_ID,
+						title: 'Old pitch',
+						type_key: 'document.default',
+						state_key: 'archived'
+					}
+				],
+				error: null
+			}
 		]
 	});
 
@@ -288,4 +390,3 @@ describe('task linked entities keep chat to the present', () => {
 		expect(result.documents.map((doc) => doc.id)).toEqual([DOC_ID]);
 	});
 });
-

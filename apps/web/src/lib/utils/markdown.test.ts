@@ -4,7 +4,8 @@ import {
 	hasMarkdownFormatting,
 	normalizeMarkdownTables,
 	renderBlogMarkdown,
-	renderMarkdown
+	renderMarkdown,
+	renderTaskMarkdown
 } from './markdown';
 
 describe('markdown utils', () => {
@@ -103,5 +104,28 @@ describe('renderBlogMarkdown (first-party rich HTML)', () => {
 		const html = renderBlogMarkdown(`# Title\n\nSome **bold** text.`);
 
 		expect(html).toContain('<strong>bold</strong>');
+	});
+});
+
+describe('renderTaskMarkdown', () => {
+	it('turns phone numbers into tap-to-call links next to the linked emails', () => {
+		const html = renderTaskMarkdown(
+			'**Phone:** 410-555-0144 · pat@chesapeaketax.example\nBusiness line: (443) 555-2190.'
+		);
+		expect(html).toContain('<a href="tel:+14105550144">410-555-0144</a>');
+		expect(html).toContain('<a href="tel:+14435552190">(443) 555-2190</a>');
+		expect(html).toContain('href="mailto:pat@chesapeaketax.example"');
+	});
+
+	it('leaves numbers inside links, code, dates and reference ids alone', () => {
+		const html = renderTaskMarkdown(
+			'Join https://zoom.us/j/555-012-3456 · `410-555-0144` · due 2026-10-12 · RFI 2027-NLS-0075'
+		);
+		expect(html).not.toContain('tel:');
+		expect(html).toContain('<code>410-555-0144</code>');
+	});
+
+	it('does not change the shared renderer', () => {
+		expect(renderMarkdown('Call 410-555-0144')).not.toContain('tel:');
 	});
 });

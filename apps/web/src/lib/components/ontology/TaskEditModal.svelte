@@ -44,7 +44,7 @@
 		CircleCheck,
 		RotateCcw
 	} from 'lucide-svelte';
-	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
+	import { getProseClasses, renderTaskMarkdown } from '$lib/utils/markdown';
 	import Button from '$lib/components/ui/Button.svelte';
 	import OrganizeEntryButton from '$lib/components/organize/OrganizeEntryButton.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -56,6 +56,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TaskEntityStrip from '$lib/components/task-entities/TaskEntityStrip.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
@@ -1149,6 +1150,15 @@
 										</div>
 									</div>
 
+									{#if task}
+										<TaskEntityStrip
+											{taskId}
+											title={task.title ?? ''}
+											description={task.description ?? null}
+											canEdit={true}
+										/>
+									{/if}
+
 									<div class="space-y-2">
 										<div class="flex items-center justify-between gap-2">
 											{#if descriptionEditing}
@@ -1200,7 +1210,7 @@
 													'sm'
 												)} max-w-none rounded-lg border border-border/70 bg-card px-3 py-2.5 text-foreground [overflow-wrap:anywhere]"
 											>
-												{@html renderMarkdown(description)}
+												{@html renderTaskMarkdown(description)}
 											</div>
 										{/if}
 									</div>

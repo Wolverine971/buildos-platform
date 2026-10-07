@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/today/TodayTaskGroups.svelte -->
 <script lang="ts">
 	import { FolderKanban } from '$lib/icons/lucide';
+	import type { TaskEntityRecord } from '@buildos/shared-agent-ops/task-entities';
 	import type { TodayTask } from '$lib/types/today';
 	import TodayAgendaRow from './TodayAgendaRow.svelte';
 	import { groupTodayTasks } from './today-task-order';
@@ -11,7 +12,8 @@
 		selectedId = null,
 		onOpenTask,
 		onToggleDone,
-		onChat
+		onChat,
+		entitiesByTask = {}
 	}: {
 		tasks: TodayTask[];
 		doneIds: Set<string>;
@@ -20,6 +22,8 @@
 		onOpenTask: (task: TodayTask) => void;
 		onToggleDone: (task: TodayTask) => void;
 		onChat: (task: TodayTask) => void;
+		/** Stored entities per task id, loaded once for the page. */
+		entitiesByTask?: Record<string, TaskEntityRecord[]>;
 	} = $props();
 
 	const groups = $derived(groupTodayTasks(tasks));
@@ -60,6 +64,8 @@
 										onChat={() => onChat(task)}
 										onOpenTask={() => onOpenTask(task)}
 										onToggleDone={() => onToggleDone(task)}
+										entityTask={task}
+										entities={entitiesByTask[task.id] ?? null}
 									/>
 								</li>
 							{/each}

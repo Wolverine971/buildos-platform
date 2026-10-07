@@ -734,7 +734,7 @@ Use when you need to reorganize or analyze the complete project graph structure.
 		type: 'function',
 		function: {
 			name: 'get_onto_task_details',
-			description: `Get a known task's missing details, such as assignees or relationships needed for the request.
+			description: `Get a known task's missing details, such as assignees, relationships, or the people, places, times, phone numbers, emails and links read from its text (entities) needed for the request.
 Task lists include statuses, dates, priorities and description previews. Do not reopen every listed task for a status summary; read details only to fill a specific missing fact.`,
 			parameters: {
 				type: 'object',

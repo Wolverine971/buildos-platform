@@ -2,6 +2,10 @@
 // Phase 4 Slice 18 S3-T7: task detail, linked entities, and assignee hydration.
 
 import type { TaskAssignee } from '@buildos/shared-agent-ops/ontology/onto';
+import {
+	type TaskEntityRecord,
+	summarizeTaskEntitiesForAgent
+} from '@buildos/shared-agent-ops/task-entities';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import { buildDetailNotFoundPayload, stripInternalPayloadFields } from './ontology-reads';
 import { loadReadableOntologyDetailRow } from './ontology-detail-reads';
@@ -258,11 +262,43 @@ export function attachAssigneesToTask<T extends { id: string }>(
 	return { ...task, assignees: assigneeMap.get(task.id) ?? [] };
 }
 
+export type TaskEntitySummary = ReturnType<typeof summarizeTaskEntitiesForAgent>[number];
+
+/**
+ * The people, places, times, phone numbers, emails and links read from a task's text
+ * (onto_task_entities): what the task's chips show. Empty when none were read or the read
+ * fails; task details never fail on it.
+ */
+export async function loadTaskEntitySummaries(
+	client: unknown,
+	params: { taskId: string; projectId: string }
+): Promise<TaskEntitySummary[]> {
+	try {
+		// Not in the generated Database types until `pnpm gen:all` (migration 20261007120000).
+		const { data, error } = await (client as any)
+			.from('onto_task_entities')
+			.select('kind, value, display, role, about, status, in_text, position')
+			.eq('project_id', params.projectId)
+			.eq('task_id', params.taskId)
+			.neq('status', 'dismissed')
+			.order('position', { ascending: true })
+			.limit(24);
+		if (error || !Array.isArray(data)) return [];
+		return summarizeTaskEntitiesForAgent(data as TaskEntityRecord[]);
+	} catch {
+		return [];
+	}
+}
+
 export async function loadOntoTaskDetail(
 	context: AgenticChatSharedReadContextV1,
 	taskId: string,
 	options: { onAssigneeError?: (error: unknown) => void } = {}
-): Promise<{ task: Record<string, any>; linkedEntities: TaskLinkedEntitiesResult } | null> {
+): Promise<{
+	task: Record<string, any>;
+	linkedEntities: TaskLinkedEntitiesResult;
+	entities: TaskEntitySummary[];
+} | null> {
 	const row = await loadReadableOntologyDetailRow(context, {
 		table: 'onto_tasks',
 		id: taskId,
@@ -271,7 +307,7 @@ export async function loadOntoTaskDetail(
 	if (!row) return null;
 
 	const { project: _project, ...task } = row;
-	const [linkedEntities, assigneeMap] = await Promise.all([
+	const [linkedEntities, assigneeMap, entities] = await Promise.all([
 		resolveTaskLinkedEntities(context.client, {
 			taskId,
 			projectId: row.project_id,
@@ -283,12 +319,14 @@ export async function loadOntoTaskDetail(
 		}).catch((error) => {
 			options.onAssigneeError?.(error);
 			return new Map<string, TaskAssignee[]>();
-		})
+		}),
+		loadTaskEntitySummaries(context.client, { taskId, projectId: row.project_id })
 	]);
 
 	return {
 		task: attachAssigneesToTask(task as { id: string } & Record<string, any>, assigneeMap),
-		linkedEntities
+		linkedEntities,
+		entities
 	};
 }
 

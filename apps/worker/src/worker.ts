@@ -50,6 +50,10 @@ import {
 	TABLE_AI_FILL_WORKER_TIMEOUT_MS,
 	processTableAiFillJob
 } from './workers/tables/tableAiFillWorker';
+import {
+	EXTRACT_TASK_ENTITIES_JOB_TYPE,
+	processExtractTaskEntitiesJob
+} from './workers/task-entities/extractTaskEntitiesWorker';
 import type { QuestionTreeJobMetadata } from './workers/question-tree/questionTreeContracts';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { processCycleRun } from './workers/cycle/cycleWorker';
@@ -429,6 +433,27 @@ async function processTableAiFill(job: ProcessingJob) {
 }
 
 /**
+ * Task entities: people, places, times, phones, emails and links read from a task's text
+ * (extract_task_entities, queued by a trigger when a task's title or description changes)
+ */
+async function processExtractTaskEntities(job: ProcessingJob) {
+	try {
+		const result = await processExtractTaskEntitiesJob(job);
+		await job.log(
+			`Task entities: ${result.outcome}${result.reason ? ` (${result.reason})` : ''}${
+				result.inserted !== undefined
+					? ` +${result.inserted} ~${result.updated ?? 0} -${result.removed ?? 0}`
+					: ''
+			}`
+		);
+		return result;
+	} catch (error) {
+		await job.log(`Task entities job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Calendar sync projection processor
  */
 async function processCalendarSync(job: ProcessingJob) {
@@ -531,6 +556,13 @@ export async function startWorker({ scheduledWork }: { scheduledWork: boolean })
 	queue.process(TABLE_AI_FILL_JOB_TYPE as string as QueueJobType, processTableAiFill, {
 		workerTimeoutMs: TABLE_AI_FILL_WORKER_TIMEOUT_MS
 	});
+
+	// Task entities (chips on tasks). The cast goes away once `pnpm gen:all` picks up the
+	// queue_type value (migration 20261007120000).
+	queue.process(
+		EXTRACT_TASK_ENTITIES_JOB_TYPE as string as QueueJobType,
+		processExtractTaskEntities
+	);
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);

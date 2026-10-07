@@ -1,5 +1,7 @@
 <!-- apps/web/src/lib/components/today/TodayAgendaRow.svelte -->
 <script lang="ts">
+	import type { TaskEntityRecord } from '@buildos/shared-agent-ops/task-entities';
+	import TaskEntityStrip from '$lib/components/task-entities/TaskEntityStrip.svelte';
 	import {
 		AlertCircle,
 		Calendar,
@@ -31,6 +33,10 @@
 		rowId?: string | null;
 		/** Open in the reader beside the list. */
 		selected?: boolean;
+		/** The row's task text, for its Join / Call / Map chips. */
+		entityTask?: { id: string; title: string; description: string | null } | null;
+		/** Its stored entities, loaded once for the whole page. */
+		entities?: TaskEntityRecord[] | null;
 	}
 
 	let {
@@ -49,7 +55,9 @@
 		onOpenTask = null,
 		onToggleDone = null,
 		rowId = null,
-		selected = false
+		selected = false,
+		entityTask = null,
+		entities = null
 	}: Props = $props();
 
 	const showInProgress = $derived(!done && stateKey === 'in_progress' && showProgressState);
@@ -178,6 +186,16 @@
 							</a>
 						{/if}
 					</div>{/if}
+				{#if entityTask && !done}
+					<TaskEntityStrip
+						taskId={entityTask.id}
+						title={entityTask.title}
+						description={entityTask.description}
+						entities={entities ?? []}
+						compact
+						class="relative z-10 mt-0.5"
+					/>
+				{/if}
 			</div>
 			<div class="relative z-10 flex shrink-0 items-center">
 				{#if onOpenTask}

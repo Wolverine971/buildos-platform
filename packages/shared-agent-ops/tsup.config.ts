@@ -87,7 +87,9 @@ export default defineConfig({
 		'src/embeddings/openai-embeddings.ts',
 		// Tables: index for server/worker, browser for client bundles (no node:crypto).
 		'src/tables/index.ts',
-		'src/tables/browser.ts'
+		'src/tables/browser.ts',
+		// Task entities: browser-safe (chips, detector, merge rules).
+		'src/task-entities/index.ts'
 	],
 	format: ['cjs', 'esm'],
 	// Rollup's declaration bundler builds every entrypoint in one worker. This

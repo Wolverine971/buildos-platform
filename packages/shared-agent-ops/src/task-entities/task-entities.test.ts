@@ -1,0 +1,424 @@
+// packages/shared-agent-ops/src/task-entities/task-entities.test.ts
+import { describe, expect, it } from 'vitest';
+import {
+	buildTaskEntityChips,
+	detectTaskTextEntities,
+	normalizeExtractedTaskEntities,
+	normalizePhone,
+	planTaskEntityMerge,
+	quoteInText,
+	type TaskEntityRecord
+} from './task-entities';
+
+// Shapes of real tasks, with dummy numbers and emails.
+const CINDYS = `Walk in: Cindy's Hot Shots, ask for John M.
+**Where:** Cindy's Hot Shots, 115-C Holsum Way, Glen Burnie. Go to Cindy's, not 201 Holsum Way, where JW's Google pin sits. Open Tue 10–8 (checked Oct 5).
+**Directions:** https://www.google.com/maps/dir/?api=1&destination=115-C%20Holsum%20Way
+**Who:** John M., owner of JW Firearms Training. His cell is printed on his course pages (443-555-0183); use whatever number he gives you.`;
+
+const TRUE_NORTH = `Call True North Roofing: ask for Bruce P. or Anthony D. (443-555-0164)
+Phone: 443-555-0164 · info@tnrmd.example.com
+Ask for 20 minutes at the Millersville office (around 3:00 today fits the route), or Zoom if they're on job sites.
+Voicemail: your name, Glen Burnie, the idea, 410-555-0152, try again Thursday.`;
+
+function row(partial: Partial<TaskEntityRecord> & Pick<TaskEntityRecord, 'kind' | 'natural_key'>) {
+	return {
+		id: partial.id ?? `${partial.kind}:${partial.natural_key}`,
+		task_id: 't1',
+		project_id: 'p1',
+		value: partial.natural_key,
+		display: partial.natural_key,
+		role: 'primary',
+		about: null,
+		quote: null,
+		confidence: 'medium',
+		source: 'llm',
+		status: 'suggested',
+		in_text: true,
+		position: 0,
+		data: {},
+		source_hash: null,
+		extractor_version: 1,
+		status_changed_at: null,
+		created_at: '',
+		updated_at: '',
+		...partial
+	} as TaskEntityRecord;
+}
+
+describe('detectTaskTextEntities', () => {
+	it('finds the phone, email and links in a field-sales task, once each', () => {
+		const found = detectTaskTextEntities(TRUE_NORTH);
+		expect(found.map((entity) => [entity.kind, entity.value])).toEqual([
+			['phone', '+14435550164'],
+			['email', 'info@tnrmd.example.com'],
+			['phone', '+14105550152']
+		]);
+	});
+
+	it('reads a maps URL as one link and does not mine its digits for phone numbers', () => {
+		const found = detectTaskTextEntities(CINDYS);
+		expect(found.map((entity) => entity.kind)).toEqual(['link', 'phone']);
+		expect(found[0].display).toBe('google.com/maps/dir');
+		expect(found[1].display).toBe('443-555-0183');
+	});
+
+	it('marks meeting links and keeps bare domains, without echoing an email domain', () => {
+		const found = detectTaskTextEntities(
+			'Meeting Thu 10:00: https://zoom.us/j/5550123456?pwd=x. RFI on sam.gov, questions to pat@chesapeaketax.com'
+		);
+		expect(found).toEqual([
+			expect.objectContaining({ kind: 'meeting_link', display: 'Zoom' }),
+			expect.objectContaining({
+				kind: 'link',
+				value: 'https://sam.gov/',
+				display: 'sam.gov'
+			}),
+			expect.objectContaining({ kind: 'email', value: 'pat@chesapeaketax.com' })
+		]);
+	});
+
+	it('ignores dates and reference numbers that only look numeric', () => {
+		expect(
+			detectTaskTextEntities('Due 2026-10-12, RFI 2027-NLS-0075, $159,000–$263,000')
+		).toEqual([]);
+	});
+});
+
+describe('normalizePhone', () => {
+	it('canonicalizes North American and international numbers', () => {
+		expect(normalizePhone('(443) 555-2190')).toBe('+14435552190');
+		expect(normalizePhone('1-410-555-0144')).toBe('+14105550144');
+		expect(normalizePhone('+44 20 7946 0958')).toBe('+442079460958');
+		expect(normalizePhone('555-0144')).toBeNull();
+	});
+});
+
+describe('normalizeExtractedTaskEntities', () => {
+	it('keeps checked entities, drops invented ones, and marks the owner', () => {
+		const { entities, dropped } = normalizeExtractedTaskEntities(
+			{
+				entities: [
+					{
+						kind: 'person',
+						value: 'Bruce P.',
+						display: 'Bruce P.',
+						quote: 'Bruce P.',
+						role: 'primary',
+						about: 'True North Roofing'
+					},
+					{
+						kind: 'phone',
+						value: '443 555 0164',
+						quote: '443-555-0164',
+						role: 'primary',
+						about: 'True North Roofing'
+					},
+					{
+						kind: 'phone',
+						value: '+14105550152',
+						quote: '410-555-0152',
+						role: 'primary'
+					},
+					{
+						kind: 'time',
+						value: '2026-10-06T15:00:00-04:00',
+						display: 'Tue 3:00 PM',
+						quote: 'around 3:00 today',
+						role: 'meeting',
+						confidence: 'low'
+					},
+					{
+						kind: 'person',
+						value: 'Laura P.',
+						quote: 'Laura P. decides',
+						role: 'secondary'
+					},
+					{
+						kind: 'time',
+						value: 'next Thursday',
+						quote: 'try again Thursday',
+						role: 'follow_up'
+					},
+					{ kind: 'mystery', value: 'x', quote: 'Glen Burnie' }
+				]
+			},
+			TRUE_NORTH,
+			{ owner: { phones: ['410-555-0152'], emails: ['dj@example.com'] } }
+		);
+		expect(entities.map((entity) => [entity.kind, entity.value, entity.role])).toEqual([
+			['person', 'Bruce P.', 'primary'],
+			['phone', '+14435550164', 'primary'],
+			['phone', '+14105550152', 'owner_self'],
+			['time', '2026-10-06T15:00:00-04:00', 'meeting']
+		]);
+		expect(entities[1].display).toBe('443-555-0164');
+		expect(entities.map((entity) => entity.position)).toEqual([0, 1, 2, 3]);
+		expect(dropped).toEqual([
+			'person: quote not in the text',
+			'time: value is not an ISO date or date-time',
+			'unknown kind mystery'
+		]);
+	});
+
+	it('adds fixed-format values the model left out, as secondary', () => {
+		const { entities } = normalizeExtractedTaskEntities(
+			{ entities: [{ kind: 'person', value: 'Bruce P.', quote: 'Bruce P.' }] },
+			TRUE_NORTH,
+			{ detected: detectTaskTextEntities(TRUE_NORTH), owner: { phones: ['+14105550152'] } }
+		);
+		expect(entities.map((entity) => [entity.kind, entity.role])).toEqual([
+			['person', 'primary'],
+			['phone', 'secondary'],
+			['email', 'secondary'],
+			['phone', 'owner_self']
+		]);
+		expect(entities[1].data).toEqual({ detector_only: true });
+	});
+
+	it('drops a phone, email or link the text never wrote, but keeps one quoted in a sentence', () => {
+		const text =
+			'Tandem CPA asked me to use the contact form on their website. Email india@tandemcpa.example to confirm.';
+		const { entities, dropped } = normalizeExtractedTaskEntities(
+			{
+				entities: [
+					{
+						kind: 'link',
+						value: 'https://tandemcpa.example/contact',
+						display: 'Contact form',
+						quote: 'contact form on their website'
+					},
+					{
+						kind: 'email',
+						value: 'india@tandemcpa.example',
+						quote: 'Email india@tandemcpa.example to confirm'
+					},
+					{ kind: 'phone', value: '+14105550199', quote: 'Tandem CPA' },
+					{ kind: 'email', value: 'info@tandemcpa.example', quote: 'Tandem CPA' }
+				]
+			},
+			text
+		);
+		expect(entities.map((entity) => [entity.kind, entity.value])).toEqual([
+			['email', 'india@tandemcpa.example']
+		]);
+		expect(dropped).toEqual([
+			'link: address not in the text',
+			'phone: number not in the text',
+			'email: address not in the text'
+		]);
+	});
+
+	it('reclassifies a video link the model called a plain link', () => {
+		const text = 'Join here: https://meet.google.com/abc-defg-hij';
+		const { entities } = normalizeExtractedTaskEntities(
+			{
+				entities: [
+					{
+						kind: 'link',
+						value: 'https://meet.google.com/abc-defg-hij',
+						quote: 'https://meet.google.com/abc-defg-hij'
+					}
+				]
+			},
+			text
+		);
+		expect(entities[0]).toMatchObject({
+			kind: 'meeting_link',
+			display: 'Google Meet',
+			data: { provider: 'Google Meet' }
+		});
+	});
+});
+
+describe('quoteInText', () => {
+	it('ignores case, spacing and markdown emphasis', () => {
+		expect(quoteInText('**Where:** Cindy’s  Hot Shots', "where: cindy's hot shots")).toBe(true);
+		expect(quoteInText('Call Pat', 'Call Laura')).toBe(false);
+	});
+});
+
+describe('planTaskEntityMerge', () => {
+	const V2 = `Call True North Roofing: Bruce P. called back and wants the Zoom.
+Meeting Thu 10:00 AM: https://zoom.us/j/5550123456
+Bruce's cell 443-555-0177. Ask for Anthony D. too.`;
+
+	it('keeps confirmed rows, holds dismissed ones back, and replaces machine suggestions', () => {
+		const existing = [
+			row({
+				id: 'bruce',
+				kind: 'person',
+				natural_key: 'bruce p.',
+				status: 'confirmed',
+				quote: 'Bruce P.'
+			}),
+			row({
+				id: 'anthony',
+				kind: 'person',
+				natural_key: 'anthony d.',
+				status: 'dismissed',
+				quote: 'Anthony D.'
+			}),
+			row({
+				id: 'office',
+				kind: 'phone',
+				natural_key: '+14435550164',
+				quote: '443-555-0164'
+			}),
+			row({
+				id: 'agent-note',
+				kind: 'reference',
+				natural_key: 'job-7',
+				source: 'agent',
+				quote: 'JOB-7'
+			})
+		];
+		const { entities } = normalizeExtractedTaskEntities(
+			{
+				entities: [
+					{ kind: 'person', value: 'Bruce P.', quote: 'Bruce P.' },
+					{
+						kind: 'meeting_link',
+						value: 'https://zoom.us/j/5550123456',
+						quote: 'https://zoom.us/j/5550123456'
+					},
+					{
+						kind: 'phone',
+						value: '443-555-0177',
+						quote: '443-555-0177',
+						about: 'Bruce P.'
+					},
+					{ kind: 'person', value: 'Anthony D.', quote: 'Anthony D.' }
+				]
+			},
+			V2
+		);
+		const plan = planTaskEntityMerge(existing, entities, V2);
+		expect(plan.insert.map((entity) => entity.kind)).toEqual(['meeting_link', 'phone']);
+		expect(plan.update).toEqual([
+			{ id: 'bruce', patch: { quote: 'Bruce P.', position: 0 } },
+			{ id: 'agent-note', patch: { in_text: false } }
+		]);
+		expect(plan.remove).toEqual(['office']);
+	});
+
+	it('flags a confirmed row whose words left the text instead of deleting it', () => {
+		const plan = planTaskEntityMerge(
+			[
+				row({
+					id: 'pat',
+					kind: 'person',
+					natural_key: 'pat s.',
+					status: 'confirmed',
+					quote: 'Pat S.'
+				})
+			],
+			[],
+			'Call the Catonsville office instead.'
+		);
+		expect(plan).toEqual({
+			insert: [],
+			update: [{ id: 'pat', patch: { in_text: false } }],
+			remove: []
+		});
+	});
+});
+
+describe('buildTaskEntityChips', () => {
+	it('orders chips Join, When, Map, Who, Call and leaves out hidden rows', () => {
+		const chips = buildTaskEntityChips({
+			entities: [
+				row({
+					id: 'a',
+					kind: 'phone',
+					natural_key: '+14435550177',
+					value: '+14435550177',
+					display: '443-555-0177'
+				}),
+				row({ id: 'b', kind: 'person', natural_key: 'bruce p.', display: 'Bruce P.' }),
+				row({
+					id: 'c',
+					kind: 'place',
+					natural_key: '201 holsum way',
+					value: '201 Holsum Way',
+					display: '201 Holsum Way',
+					role: 'avoid'
+				}),
+				row({
+					id: 'd',
+					kind: 'meeting_link',
+					natural_key: 'zoom.us/j/1',
+					value: 'https://zoom.us/j/1',
+					display: 'Zoom'
+				}),
+				row({ id: 'e', kind: 'phone', natural_key: '+14105550152', role: 'owner_self' }),
+				row({
+					id: 'f',
+					kind: 'place',
+					natural_key: '115-c holsum way',
+					value: '115-C Holsum Way, Glen Burnie',
+					display: '115-C Holsum Way'
+				}),
+				row({ id: 'ref', kind: 'reference', natural_key: 'rfi 2027', display: 'RFI 2027' }),
+				row({ id: 'g', kind: 'person', natural_key: 'anthony d.', status: 'dismissed' }),
+				row({
+					id: 'h',
+					kind: 'time',
+					natural_key: 't|meeting',
+					value: '2026-10-08T10:00:00-04:00',
+					display: 'Thu 10:00 AM',
+					role: 'meeting'
+				})
+			]
+		});
+		expect(chips.map((chip) => `${chip.label} ${chip.display}`)).toEqual([
+			'Join Zoom',
+			'When Thu 10:00 AM',
+			'Map 115-C Holsum Way',
+			'Who Bruce P.',
+			'Call 443-555-0177',
+			'Not this 201 Holsum Way'
+		]);
+		expect(chips[2].href).toBe(
+			'https://www.google.com/maps/search/?api=1&query=115-C%20Holsum%20Way%2C%20Glen%20Burnie'
+		);
+		expect(chips[4]).toMatchObject({
+			href: 'tel:+14435550177',
+			tone: 'detected',
+			confirmable: false
+		});
+		expect(chips[3]).toMatchObject({ tone: 'understood', confirmable: true });
+		expect(chips[5]).toMatchObject({ tone: 'avoid', href: null });
+	});
+
+	it('adds fixed formats the stored rows do not cover yet, and never a dismissed one', () => {
+		const chips = buildTaskEntityChips({
+			entities: [
+				row({
+					id: 'gone',
+					kind: 'phone',
+					natural_key: '+14435550164',
+					status: 'dismissed'
+				}),
+				row({ id: 'bruce', kind: 'person', natural_key: 'bruce p.', display: 'Bruce P.' })
+			],
+			detected: detectTaskTextEntities(TRUE_NORTH)
+		});
+		expect(chips.map((chip) => [chip.label, chip.display, chip.id])).toEqual([
+			['Who', 'Bruce P.', 'bruce'],
+			['Call', '410-555-0152', null],
+			['Email', 'info@tnrmd.example.com', null]
+		]);
+	});
+
+	it('falls back to detected fixed formats before a model has read the task', () => {
+		const chips = buildTaskEntityChips({
+			entities: [],
+			detected: detectTaskTextEntities(CINDYS)
+		});
+		expect(chips.map((chip) => [chip.label, chip.id])).toEqual([
+			['Call', null],
+			['Link', null]
+		]);
+	});
+});

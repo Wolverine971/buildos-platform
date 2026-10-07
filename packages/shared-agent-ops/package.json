@@ -407,6 +407,11 @@
 			"browser": "./dist/tables/browser.mjs",
 			"import": "./dist/tables/index.mjs",
 			"require": "./dist/tables/index.js"
+		},
+		"./task-entities": {
+			"types": "./dist/task-entities/index.d.ts",
+			"import": "./dist/task-entities/index.mjs",
+			"require": "./dist/task-entities/index.js"
 		}
 	},
 	"scripts": {
