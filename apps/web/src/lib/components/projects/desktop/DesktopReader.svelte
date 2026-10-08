@@ -49,7 +49,11 @@
 	} from '$lib/components/table-surfaces/document-embeds';
 	import { tableEmbedInsertion } from '$lib/components/table-surfaces/table-surface-utils';
 	import { fetchEntityModalData } from '$lib/components/project/entity-modal-data';
-	import TaskEntityStrip from '$lib/components/task-entities/TaskEntityStrip.svelte';
+	import TaskEntityPopover from '$lib/components/task-entities/TaskEntityPopover.svelte';
+	import TaskKeyDetails from '$lib/components/task-entities/TaskKeyDetails.svelte';
+	import TaskMentionText from '$lib/components/task-entities/TaskMentionText.svelte';
+	import { entityMentions } from '$lib/components/task-entities/entity-mentions';
+	import { TaskEntities } from '$lib/components/task-entities/task-entities.svelte';
 	import {
 		KIND_WORD,
 		TASK_STATES,
@@ -222,6 +226,13 @@
 	const stateKey = $derived(
 		current?.doc?.state_key ?? current?.task?.state_key ?? current?.goal?.state_key ?? ''
 	);
+
+	// People, organizations and places in the task's words open a card; key details sit on top.
+	const taskEntities = new TaskEntities(() => ({
+		taskId: current?.task?.id ?? null,
+		title: current?.task?.title ?? '',
+		description: current?.task?.description ?? null
+	}));
 
 	// ---------- Tables ----------
 
@@ -589,7 +600,12 @@
 				/>{/if}
 		</span>
 		<div class="min-w-0 flex-1">
-			<h3 class="title">{title}</h3>
+			<h3 class="title">
+				{#if current?.task}<TaskMentionText
+						text={title}
+						entities={taskEntities}
+					/>{:else}{title}{/if}
+			</h3>
 			<div class="meta">
 				{#if stateKey}<span class="state state-{stateKey}">{stateLabel(stateKey)}</span
 					>{/if}
@@ -872,16 +888,18 @@
 					</button>
 				{/if}
 			</div>
-			<TaskEntityStrip
-				taskId={task.id}
-				title={task.title}
-				description={task.description}
-				canEdit={canWrite}
-				class="-mt-2 mb-4"
-			/>
+			<TaskKeyDetails chips={taskEntities.keyChips} class="-mt-2 mb-4" />
 			{#if task.description?.trim()}
-				<div class="{prose} text-foreground">
-					{@html renderTaskMarkdown(task.description)}
+				{@const descriptionHtml = renderTaskMarkdown(task.description)}
+				<div
+					class="{prose} text-foreground"
+					{@attach entityMentions({
+						html: descriptionHtml,
+						targets: taskEntities.targets,
+						onOpen: (id, trigger) => taskEntities.openCardFor(id, trigger)
+					})}
+				>
+					{@html descriptionHtml}
 				</div>
 			{:else}
 				<p class="muted">No description.</p>
@@ -1022,6 +1040,10 @@
 		</nav>
 	{/if}
 </div>
+
+{#if current?.task}
+	<TaskEntityPopover entities={taskEntities} taskId={current.task.id} canEdit={canWrite} />
+{/if}
 
 {#if tablePickerOpen && editing}
 	{#await import('$lib/components/table-surfaces/TableInsertPicker.svelte') then { default: TableInsertPicker }}

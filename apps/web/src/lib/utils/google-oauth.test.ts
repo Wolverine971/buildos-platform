@@ -295,3 +295,101 @@ describe('GoogleOAuthHandler Try in BuildOS launch', () => {
 		expect(update).not.toHaveBeenCalled();
 	});
 });
+
+describe('GoogleOAuthHandler sign-in with a brand-new Google account', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	// Google creates the account on the sign-in path too (the same button, a Google account
+	// that has never signed in), so it must get the sign-up treatment.
+	function newAccountOnSignIn() {
+		const isNull = vi.fn().mockResolvedValue({ error: null });
+		const eq = vi.fn(() => ({ is: isNull }));
+		const update = vi.fn(() => ({ eq }));
+		const from = vi.fn(() => ({ update }));
+		const supabase = {
+			from,
+			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+			auth: { signOut: vi.fn().mockResolvedValue({ error: null }) }
+		};
+		const locals = {
+			session: { access_token: 'token' },
+			user: { id: 'new-user' }
+		};
+		const handler = new GoogleOAuthHandler(supabase as any, locals as any);
+		vi.spyOn(handler, 'exchangeCodeForTokens').mockResolvedValue({
+			access_token: 'access',
+			id_token: 'id'
+		});
+		vi.spyOn(handler, 'authenticateWithSupabase').mockResolvedValue({
+			session: { access_token: 'token' },
+			user: { id: 'new-user' },
+			isNewUser: true
+		});
+		return { handler, locals };
+	}
+
+	async function runLoginCallback(handler: GoogleOAuthHandler, legalAcceptanceToken?: string) {
+		try {
+			await handler.handleCallback(
+				new URL('https://build-os.com/auth/google/login-callback?code=abc'),
+				{
+					redirectPath: '/auth/login',
+					successPath: '/today',
+					isRegistration: false,
+					legalAcceptanceToken
+				}
+			);
+		} catch (error: any) {
+			expect(error.status).toBe(303);
+			return new URL(error.location, 'https://build-os.com');
+		}
+		throw new Error('Expected redirect');
+	}
+
+	it('records consent, the signup event and the welcome sequence like a sign-up', async () => {
+		consumeLegalAcceptanceIntentMock.mockResolvedValue(true);
+		const { handler } = newAccountOnSignIn();
+
+		const destination = await runLoginCallback(handler, 'legal-token');
+
+		expect(destination.pathname).toBe('/today');
+		expect(consumeLegalAcceptanceIntentMock).toHaveBeenCalledWith({
+			token: 'legal-token',
+			userId: 'new-user',
+			surface: 'google_signup'
+		});
+		expect(captureServerEventMock).toHaveBeenCalledWith(
+			'new-user',
+			'signup',
+			expect.objectContaining({ signup_method: 'google_oauth', signup_flow: 'login' })
+		);
+		expect(startSequenceForUserMock).toHaveBeenCalledWith({
+			userId: 'new-user',
+			signupMethod: 'google_oauth'
+		});
+	});
+
+	it('removes the account and sends it to sign-up when no consent intent rode along', async () => {
+		const deleteUser = vi.fn().mockResolvedValue({ error: null });
+		const eq = vi.fn().mockResolvedValue({ error: null });
+		const deleteQuery = vi.fn(() => ({ eq }));
+		createAdminSupabaseClientMock.mockReturnValue({
+			from: vi.fn(() => ({ delete: deleteQuery })),
+			auth: { admin: { deleteUser } }
+		});
+		const { handler, locals } = newAccountOnSignIn();
+
+		const destination = await runLoginCallback(handler);
+
+		expect(destination.pathname).toBe('/auth/register');
+		expect(destination.searchParams.get('error')).toBe('policy_unverified');
+		expect(eq).toHaveBeenCalledWith('id', 'new-user');
+		expect(deleteUser).toHaveBeenCalledWith('new-user');
+		expect(locals.session).toBeNull();
+		expect(consumeLegalAcceptanceIntentMock).not.toHaveBeenCalled();
+		expect(captureServerEventMock).not.toHaveBeenCalled();
+		expect(startSequenceForUserMock).not.toHaveBeenCalled();
+	});
+});

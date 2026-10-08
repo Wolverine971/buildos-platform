@@ -570,7 +570,10 @@ export class GoogleOAuthHandler {
 			throw redirect(303, authNoticePath('/auth/login', 'account_exists'));
 		}
 
-		if (config.isRegistration && authResult.isNewUser) {
+		// A Google account that has never signed in is created on the sign-in path as well as
+		// the sign-up path, so every brand-new account gets the same treatment: policy
+		// acceptance, the signup event, and the welcome sequence.
+		if (authResult.isNewUser) {
 			let legalAcceptanceRecorded = false;
 			try {
 				legalAcceptanceRecorded = config.legalAcceptanceToken
@@ -613,6 +616,7 @@ export class GoogleOAuthHandler {
 			// The Try in BuildOS launch does ride it (state.redirect).
 			await captureServerEvent(authResult.user.id, 'signup', {
 				signup_method: 'google_oauth',
+				signup_flow: flow,
 				launch_skill: launchSkillId,
 				...(launchSkillId ? { signup_source: skillSignupSource(launchSkillId) } : {})
 			});
@@ -636,7 +640,7 @@ export class GoogleOAuthHandler {
 					operationType: 'welcome_sequence_start',
 					metadata: {
 						flow: 'google_oauth',
-						isRegistration: true
+						isRegistration: Boolean(config.isRegistration)
 					}
 				});
 			}

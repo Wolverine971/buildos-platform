@@ -17,7 +17,12 @@ export {
 
 export const resolveWebGoogleCalendarTokenKey: GoogleCalendarTokenKeyResolver = (version) => {
 	const name = `PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY_V${version}`;
-	return privateEnv[name] ?? process.env[name];
+	// A blank placeholder in the kit env snapshot (CI copies `.env.example`) must not shadow
+	// a value set on process.env.
+	const kitValue = privateEnv[name];
+	return typeof kitValue === 'string' && kitValue.trim().length > 0
+		? kitValue
+		: process.env[name];
 };
 
 export function encryptGoogleCalendarToken(

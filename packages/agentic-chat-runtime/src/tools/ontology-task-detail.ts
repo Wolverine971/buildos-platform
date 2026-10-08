@@ -266,8 +266,9 @@ export type TaskEntitySummary = ReturnType<typeof summarizeTaskEntitiesForAgent>
 
 /**
  * The people, places, times, phone numbers, emails and links read from a task's text
- * (onto_task_entities): what the task's chips show. Empty when none were read or the read
- * fails; task details never fail on it.
+ * (onto_task_entities), with `about` linking a number or person to who it belongs to and `key`
+ * marking the few details the owner needs at hand. Empty when none were read or the read fails;
+ * task details never fail on it.
  */
 export async function loadTaskEntitySummaries(
 	client: unknown,
@@ -277,7 +278,7 @@ export async function loadTaskEntitySummaries(
 		// Not in the generated Database types until `pnpm gen:all` (migration 20261007120000).
 		const { data, error } = await (client as any)
 			.from('onto_task_entities')
-			.select('kind, value, display, role, about, status, in_text, position')
+			.select('kind, value, display, role, about, status, in_text, position, data')
 			.eq('project_id', params.projectId)
 			.eq('task_id', params.taskId)
 			.neq('status', 'dismissed')

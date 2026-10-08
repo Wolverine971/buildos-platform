@@ -50,7 +50,12 @@ describe('Google OAuth sign-in landing', () => {
 
 		expect(handleCallbackMock).toHaveBeenCalledWith(
 			expect.any(URL),
-			expect.objectContaining({ redirectPath: '/auth/login', successPath: '/today' })
+			expect.objectContaining({
+				redirectPath: '/auth/login',
+				successPath: '/today',
+				isRegistration: false,
+				legalAcceptanceToken: 'legal-token'
+			})
 		);
 	});
 

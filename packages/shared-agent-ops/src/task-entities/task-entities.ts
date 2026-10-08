@@ -86,6 +86,8 @@ export type ExtractedTaskEntity = {
 };
 
 export const MAX_TASK_ENTITIES = 24;
+/** Shown above a task's text: the few details the owner needs at hand (a model's `key` flag). */
+export const MAX_KEY_TASK_ENTITIES = 3;
 const MAX_DISPLAY = 80;
 const MAX_ABOUT = 120;
 const MAX_QUOTE = 400;
@@ -385,6 +387,7 @@ export function normalizeExtractedTaskEntities(
 	const entities: ExtractedTaskEntity[] = [];
 	const dropped: string[] = [];
 	const seen = new Set<string>();
+	let keyCount = 0;
 	// A phone number, email or link must be written in the text itself: the quote parses as
 	// that value, or the detector found it, or the model's value is literally there. A model
 	// that composes "https://tandemcpa.com/contact" from "the contact form on their website"
@@ -515,18 +518,35 @@ export function normalizeExtractedTaskEntities(
 			if (!display) display = cleanText(named, MAX_DISPLAY) ?? named;
 		}
 
-		push({
-			kind,
-			naturalKey,
-			value,
-			display: display ?? value,
-			role,
-			about,
-			quote,
-			confidence,
-			position: 0,
-			data
-		});
+		// The few things the owner needs at hand to do the task (v5 prompt). Not for the owner's
+		// own details, things to avoid, or past background.
+		if (
+			entry.key === true &&
+			keyCount < MAX_KEY_TASK_ENTITIES &&
+			role !== 'owner_self' &&
+			role !== 'avoid' &&
+			role !== 'log'
+		) {
+			data.key = true;
+		}
+
+		if (
+			push({
+				kind,
+				naturalKey,
+				value,
+				display: display ?? value,
+				role,
+				about,
+				quote,
+				confidence,
+				position: 0,
+				data
+			}) &&
+			data.key
+		) {
+			keyCount += 1;
+		}
 	}
 
 	for (const found of opts.detected ?? []) {
@@ -667,6 +687,8 @@ export type TaskEntityChip = {
 	faded: boolean;
 	/** Whether ✓ means something (people, places, times, orgs). */
 	confirmable: boolean;
+	/** A detail the owner needs at hand: a model's `key` flag, or any link to join a meeting. */
+	isKey: boolean;
 };
 
 type ChipSource = Pick<
@@ -683,7 +705,7 @@ type ChipSource = Pick<
 	| 'status'
 	| 'in_text'
 	| 'position'
->;
+> & { data?: Record<string, unknown> | null };
 
 const FIXED_FORMAT_KINDS = new Set<TaskEntityKind>(['phone', 'email', 'link', 'meeting_link']);
 const HIDDEN_ROLES = new Set<TaskEntityRole>(['owner_self', 'log']);
@@ -776,7 +798,8 @@ export function buildTaskEntityChips(input: {
 			tone: 'detected',
 			status: 'suggested',
 			faded: false,
-			confirmable: false
+			confirmable: false,
+			isKey: found.kind === 'meeting_link'
 		});
 	}
 	for (const row of input.entities ?? []) {
@@ -803,7 +826,8 @@ export function buildTaskEntityChips(input: {
 				row.role === 'secondary' ||
 				row.confidence === 'low' ||
 				(!row.in_text && row.status === 'confirmed'),
-			confirmable: !fixed && row.role !== 'avoid'
+			confirmable: !fixed && row.role !== 'avoid',
+			isKey: row.role !== 'avoid' && (row.data?.key === true || row.kind === 'meeting_link')
 		});
 	}
 	const rank = (chip: TaskEntityChip, index: number) =>
@@ -818,6 +842,166 @@ export function buildTaskEntityChips(input: {
 	return typeof input.limit === 'number' ? ranked.slice(0, input.limit) : ranked;
 }
 
+/**
+ * The details shown above a task's text: at most three things the owner needs at hand (the link
+ * to join, when the meeting is, where to go, the one number to call). A model marks them `key`
+ * (prompt v5); a meeting link always counts. Everything else lives in the text itself.
+ */
+export function pickKeyTaskEntityChips(input: {
+	entities?: ChipSource[] | null;
+	detected?: DetectedTaskEntity[] | null;
+}): TaskEntityChip[] {
+	return buildTaskEntityChips(input)
+		.filter((chip) => chip.isKey && !chip.faded && chip.tone !== 'avoid')
+		.slice(0, MAX_KEY_TASK_ENTITIES);
+}
+
+// ---------------------------------------------------------------------------
+// Linking: who and what a task's people, organizations and places come with
+// ---------------------------------------------------------------------------
+
+export type TaskEntityCardKind = 'person' | 'org' | 'place';
+
+export type TaskEntityContact = {
+	id: string;
+	kind: 'phone' | 'email' | 'link' | 'meeting_link' | 'place';
+	display: string;
+	value: string;
+	href: string | null;
+	role: TaskEntityRole;
+};
+
+export type TaskEntityCard = {
+	id: string;
+	kind: TaskEntityCardKind;
+	/** natural_key: the same person or organization in another task has the same one. */
+	key: string;
+	name: string;
+	/** Full value: a place's whole address, a person's name as written. */
+	value: string;
+	role: TaskEntityRole;
+	status: TaskEntityStatus;
+	quote: string | null;
+	/** Person: the organization they are with. Place: whose place it is. */
+	partOf: { id: string | null; name: string } | null;
+	/** Numbers, emails, links and addresses the task ties to this entity. */
+	contacts: TaskEntityContact[];
+	/** Organization: its people. Person: others at the same organization. */
+	people: Array<{ id: string; name: string; contact: TaskEntityContact | null }>;
+	/** Words to find in the text, longest first (quote, label, value). */
+	mentions: string[];
+};
+
+const CARD_KINDS = new Set<TaskEntityKind>(['person', 'org', 'place']);
+const CONTACT_KINDS = new Set<TaskEntityKind>(['phone', 'email', 'link', 'meeting_link', 'place']);
+const CONTACT_ORDER: Record<TaskEntityContact['kind'], number> = {
+	phone: 0,
+	email: 1,
+	meeting_link: 2,
+	link: 3,
+	place: 4
+};
+
+function visibleRow(row: ChipSource): boolean {
+	return row.status !== 'dismissed' && !HIDDEN_ROLES.has(row.role);
+}
+
+/**
+ * The people, organizations and places a task names, each linked to what the task ties to it
+ * through the model's `about` field: Casey Fenske → Dauntless Dogs, 410-360-6761; Dauntless
+ * Dogs → Casey, Angela, its email and address. Matching is by the collapsed name only, never by
+ * reading the prose.
+ */
+export function buildTaskEntityCards(entities: ChipSource[] | null | undefined): TaskEntityCard[] {
+	const rows = (entities ?? []).filter(visibleRow);
+	const named = rows.filter((row) => CARD_KINDS.has(row.kind));
+	const byName = new Map<string, ChipSource>();
+	for (const row of named) {
+		for (const name of [
+			row.natural_key,
+			entityTextKey(row.display),
+			entityTextKey(row.value)
+		]) {
+			if (name && !byName.has(name)) byName.set(name, row);
+		}
+	}
+	const target = (about: string | null) =>
+		about ? (byName.get(entityTextKey(about)) ?? null) : null;
+
+	const contactsFor = (row: ChipSource): TaskEntityContact[] =>
+		rows
+			.filter(
+				(other) =>
+					other.id !== row.id &&
+					CONTACT_KINDS.has(other.kind) &&
+					other.role !== 'avoid' &&
+					target(other.about)?.id === row.id
+			)
+			.map((other) => ({
+				id: other.id,
+				kind: other.kind as TaskEntityContact['kind'],
+				display: other.display,
+				value: other.value,
+				href: chipHref(other.kind, other.value, other.role),
+				role: other.role
+			}))
+			.sort(
+				(a, b) =>
+					CONTACT_ORDER[a.kind] - CONTACT_ORDER[b.kind] ||
+					Number(a.role === 'secondary') - Number(b.role === 'secondary')
+			);
+
+	return named.map((row) => {
+		const kind = row.kind as TaskEntityCardKind;
+		const owner = target(row.about);
+		const partOf =
+			kind === 'org'
+				? null
+				: owner && owner.id !== row.id
+					? { id: owner.id, name: owner.display }
+					: row.about
+						? { id: null, name: row.about }
+						: null;
+		const group = kind === 'org' ? row : owner?.kind === 'org' ? owner : null;
+		const people = group
+			? named
+					.filter(
+						(other) =>
+							other.kind === 'person' &&
+							other.id !== row.id &&
+							target(other.about)?.id === group.id
+					)
+					.map((other) => ({
+						id: other.id,
+						name: other.display,
+						contact:
+							contactsFor(other).find((contact) => contact.kind !== 'place') ?? null
+					}))
+			: [];
+		const mentions = [
+			...new Set(
+				[row.quote, row.display, row.value]
+					.map((text) => text?.trim() ?? '')
+					.filter((text) => text.length >= 2)
+			)
+		].sort((a, b) => b.length - a.length);
+		return {
+			id: row.id,
+			kind,
+			key: row.natural_key,
+			name: row.display,
+			value: row.value,
+			role: row.role,
+			status: row.status,
+			quote: row.quote,
+			partOf,
+			contacts: contactsFor(row),
+			people,
+			mentions
+		};
+	});
+}
+
 /** Compact entity lines for agents (task details): what a person would see on the chips. */
 export function summarizeTaskEntitiesForAgent(entities: ChipSource[]): Array<{
 	kind: TaskEntityKind;
@@ -827,6 +1011,7 @@ export function summarizeTaskEntitiesForAgent(entities: ChipSource[]): Array<{
 	about: string | null;
 	status: TaskEntityStatus;
 	in_text: boolean;
+	key?: true;
 }> {
 	return entities
 		.filter((row) => row.status !== 'dismissed' && row.role !== 'log')
@@ -838,6 +1023,7 @@ export function summarizeTaskEntitiesForAgent(entities: ChipSource[]): Array<{
 			role: row.role,
 			about: row.about,
 			status: row.status,
-			in_text: row.in_text
+			in_text: row.in_text,
+			...(row.data?.key === true ? { key: true as const } : {})
 		}));
 }

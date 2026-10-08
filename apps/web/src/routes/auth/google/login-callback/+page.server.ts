@@ -12,7 +12,11 @@ import {
 export const load: PageServerLoad = async ({ url, request, platform, locals, cookies }) => {
 	const state = url.searchParams.get('state');
 	const expectedState = cookies.get('buildos_oauth_state');
+	// The sign-in page records a policy-acceptance intent before sending anyone to Google,
+	// because a Google account that has never signed in is created on this path too.
+	const legalAcceptanceToken = cookies.get('buildos_legal_acceptance');
 	cookies.delete('buildos_oauth_state', { path: '/' });
+	cookies.delete('buildos_legal_acceptance', { path: '/' });
 	const securityEventOptions = getSecurityEventLogOptions(platform);
 
 	if (!state || !expectedState || state !== expectedState) {
@@ -43,6 +47,7 @@ export const load: PageServerLoad = async ({ url, request, platform, locals, coo
 	return handler.handleCallback(url, {
 		redirectPath: '/auth/login',
 		successPath: '/today',
-		isRegistration: false
+		isRegistration: false,
+		legalAcceptanceToken
 	});
 };

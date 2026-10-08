@@ -154,7 +154,11 @@ type GoogleCalendarConnectionServiceOptions = {
 };
 
 function getPrivateEnv(name: string): string | undefined {
-	const value = privateEnv[name] ?? process.env[name];
+	// SvelteKit snapshots `.env` at build time, so a blank placeholder there must not shadow
+	// a value set on process.env (CI copies `.env.example`; tests set the key per case).
+	const kitValue = privateEnv[name];
+	const value =
+		typeof kitValue === 'string' && kitValue.trim().length > 0 ? kitValue : process.env[name];
 	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 

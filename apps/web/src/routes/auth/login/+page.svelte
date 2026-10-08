@@ -12,6 +12,7 @@
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 	import { authErrorMessage, authNoticeMessage } from '$lib/utils/auth-status';
 	import { logAuthClientError } from '$lib/utils/auth-client-logger';
+	import { CURRENT_POLICY_VERSIONS } from '$lib/legal/policy-versions';
 
 	// Status handed over in the URL (sign-out, OAuth failures) is read once so the server render
 	// already shows it. The URL carries only codes; the copy comes from a fixed table so a
@@ -221,6 +222,35 @@
 		}
 	}
 
+	// A Google account that has never signed in gets created on this path too, so the policy
+	// acceptance intent is recorded before the redirect, the same as on the sign-up page. The
+	// callback consumes it only for a brand-new account. Returning users are never blocked on
+	// it: if the call fails, sign-in still proceeds and the failure is logged.
+	async function recordGoogleAcceptanceIntent() {
+		try {
+			const response = await fetch('/api/legal/acceptance-intent', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					surface: 'google_signup',
+					accepted: true,
+					termsVersion: CURRENT_POLICY_VERSIONS.terms,
+					privacyVersion: CURRENT_POLICY_VERSIONS.privacy
+				})
+			});
+			if (!response.ok) {
+				throw new Error(`Acceptance intent failed with status ${response.status}`);
+			}
+		} catch (intentError) {
+			void logAuthClientError(intentError, {
+				endpoint: '/api/legal/acceptance-intent',
+				method: 'POST',
+				operation: 'auth_login_google_acceptance_intent',
+				metadata: { flow: 'google' }
+			});
+		}
+	}
+
 	// Google OAuth remains the same but simplified
 	async function handleGoogleLogin() {
 		if (googleLoading || loading) return;
@@ -235,6 +265,8 @@
 			googleLoading = false;
 			return;
 		}
+
+		await recordGoogleAcceptanceIntent();
 
 		const redirectUri = `${$page.url.origin}/auth/google/login-callback`;
 		const state = encodeOAuthState(resolveRedirectTarget());
@@ -369,6 +401,16 @@
 			{/if}
 			{googleLoading ? 'Opening Google…' : 'Continue with Google'}
 		</Button>
+		<p class="mt-2 text-center text-xs text-muted-foreground">
+			New here? Continuing with Google creates your account, and you agree to the
+			<a class="font-medium text-accent underline underline-offset-2" href="/terms"
+				>Terms of Use</a
+			>
+			and acknowledge the
+			<a class="font-medium text-accent underline underline-offset-2" href="/privacy"
+				>Privacy Policy</a
+			>.
+		</p>
 
 		<div class="my-5 flex items-center gap-3 text-xs text-muted-foreground" aria-hidden="true">
 			<span class="h-px flex-1 bg-border"></span>

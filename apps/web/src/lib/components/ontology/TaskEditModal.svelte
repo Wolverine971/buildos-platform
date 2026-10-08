@@ -56,7 +56,10 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
-	import TaskEntityStrip from '$lib/components/task-entities/TaskEntityStrip.svelte';
+	import TaskEntityPopover from '$lib/components/task-entities/TaskEntityPopover.svelte';
+	import TaskKeyDetails from '$lib/components/task-entities/TaskKeyDetails.svelte';
+	import { entityMentions } from '$lib/components/task-entities/entity-mentions';
+	import { TaskEntities } from '$lib/components/task-entities/task-entities.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
@@ -142,6 +145,12 @@
 
 	let modalOpen = $state(true);
 	let task = $state<any>(null);
+	// Names in the description open a card; the few key details sit under the title.
+	const taskEntities = new TaskEntities(() => ({
+		taskId: task ? taskId : null,
+		title: task?.title ?? '',
+		description: task?.description ?? null
+	}));
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
@@ -1151,10 +1160,10 @@
 									</div>
 
 									{#if task}
-										<TaskEntityStrip
+										<TaskKeyDetails chips={taskEntities.keyChips} />
+										<TaskEntityPopover
+											entities={taskEntities}
 											{taskId}
-											title={task.title ?? ''}
-											description={task.description ?? null}
 											canEdit={true}
 										/>
 									{/if}
@@ -1205,12 +1214,20 @@
 												size="md"
 											/>
 										{:else}
+											{@const descriptionHtml =
+												renderTaskMarkdown(description)}
 											<div
 												class="{getProseClasses(
 													'sm'
 												)} max-w-none rounded-lg border border-border/70 bg-card px-3 py-2.5 text-foreground [overflow-wrap:anywhere]"
+												{@attach entityMentions({
+													html: descriptionHtml,
+													targets: taskEntities.targets,
+													onOpen: (id, trigger) =>
+														taskEntities.openCardFor(id, trigger)
+												})}
 											>
-												{@html renderTaskMarkdown(description)}
+												{@html descriptionHtml}
 											</div>
 										{/if}
 									</div>

@@ -1,10 +1,12 @@
 // packages/shared-agent-ops/src/task-entities/task-entities.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	buildTaskEntityCards,
 	buildTaskEntityChips,
 	detectTaskTextEntities,
 	normalizeExtractedTaskEntities,
 	normalizePhone,
+	pickKeyTaskEntityChips,
 	planTaskEntityMerge,
 	quoteInText,
 	type TaskEntityRecord
@@ -419,6 +421,151 @@ describe('buildTaskEntityChips', () => {
 		expect(chips.map((chip) => [chip.label, chip.id])).toEqual([
 			['Call', null],
 			['Link', null]
+		]);
+	});
+});
+
+describe('key details', () => {
+	const DAUNTLESS = `Call Dauntless Dogs: ask for Casey Fenske (410-555-0161)
+Front desk: Angela. Email Contact@DauntlessDogs.example.com if no answer.
+Join: https://zoom.us/j/123456789`;
+
+	it('keeps the model’s key flag on at most three entities, never on avoid or owner rows', () => {
+		const { entities } = normalizeExtractedTaskEntities(
+			[
+				{
+					kind: 'phone',
+					value: '+14105550161',
+					quote: '410-555-0161',
+					role: 'primary',
+					key: true
+				},
+				{ kind: 'person', value: 'Casey Fenske', quote: 'Casey Fenske', key: true },
+				{ kind: 'org', value: 'Dauntless Dogs', quote: 'Dauntless Dogs', key: true },
+				{ kind: 'person', value: 'Angela', quote: 'Angela', key: true },
+				{
+					kind: 'email',
+					value: 'contact@dauntlessdogs.example.com',
+					quote: 'Contact@DauntlessDogs.example.com',
+					role: 'avoid',
+					key: true
+				}
+			],
+			DAUNTLESS
+		);
+		expect(
+			entities.filter((entity) => entity.data.key).map((entity) => entity.display)
+		).toEqual(['410-555-0161', 'Casey Fenske', 'Dauntless Dogs']);
+	});
+
+	it('shows only flagged details and meeting links above the text', () => {
+		const chips = pickKeyTaskEntityChips({
+			entities: [
+				row({ kind: 'person', natural_key: 'casey fenske', display: 'Casey Fenske' }),
+				row({
+					kind: 'phone',
+					natural_key: '+14105550161',
+					display: '410-555-0161',
+					data: { key: true }
+				}),
+				row({ kind: 'place', natural_key: 'glen burnie', display: 'Glen Burnie' })
+			],
+			detected: detectTaskTextEntities(DAUNTLESS)
+		});
+		expect(chips.map((chip) => chip.label)).toEqual(['Join', 'Call']);
+	});
+});
+
+describe('buildTaskEntityCards', () => {
+	const rows = [
+		row({ kind: 'org', natural_key: 'dauntless dogs', display: 'Dauntless Dogs' }),
+		row({
+			kind: 'person',
+			natural_key: 'casey fenske',
+			display: 'Casey Fenske',
+			about: 'Dauntless Dogs'
+		}),
+		row({ kind: 'person', natural_key: 'angela', display: 'Angela', about: 'Dauntless Dogs' }),
+		row({
+			kind: 'phone',
+			natural_key: '+14105550161',
+			value: '+14105550161',
+			display: '410-555-0161',
+			about: 'Casey Fenske'
+		}),
+		row({
+			kind: 'email',
+			natural_key: 'contact@dauntlessdogs.example.com',
+			display: 'contact@dauntlessdogs.example.com',
+			about: 'dauntless  dogs'
+		}),
+		row({
+			kind: 'place',
+			natural_key: '7609 energy pkwy curtis bay',
+			value: '7609 Energy Pkwy, Curtis Bay',
+			display: '7609 Energy Pkwy',
+			about: 'Dauntless Dogs'
+		}),
+		row({
+			kind: 'phone',
+			natural_key: '+14105550152',
+			display: '410-555-0152',
+			about: 'Casey Fenske',
+			role: 'owner_self'
+		}),
+		row({
+			kind: 'person',
+			natural_key: 'rod',
+			display: 'Rod',
+			about: 'Dauntless Dogs',
+			status: 'dismissed'
+		})
+	];
+
+	it('links a person to their organization, number and colleagues', () => {
+		const cards = buildTaskEntityCards(rows);
+		const casey = cards.find((card) => card.name === 'Casey Fenske');
+		expect(casey?.partOf).toEqual({ id: 'org:dauntless dogs', name: 'Dauntless Dogs' });
+		expect(casey?.contacts.map((contact) => [contact.kind, contact.href])).toEqual([
+			['phone', 'tel:+14105550161']
+		]);
+		expect(casey?.people.map((person) => person.name)).toEqual(['Angela']);
+	});
+
+	it('gives an organization its people (with their number), email and address', () => {
+		const org = buildTaskEntityCards(rows).find((card) => card.kind === 'org');
+		expect(org?.people).toEqual([
+			{
+				id: 'person:casey fenske',
+				name: 'Casey Fenske',
+				contact: expect.objectContaining({ display: '410-555-0161' })
+			},
+			{ id: 'person:angela', name: 'Angela', contact: null }
+		]);
+		expect(org?.contacts.map((contact) => contact.kind)).toEqual(['email', 'place']);
+	});
+
+	it('leaves out dismissed entities and the owner’s own details', () => {
+		const cards = buildTaskEntityCards(rows);
+		expect(cards.some((card) => card.name === 'Rod')).toBe(false);
+		const casey = cards.find((card) => card.name === 'Casey Fenske');
+		expect(casey?.contacts.some((contact) => contact.display === '410-555-0152')).toBe(false);
+	});
+
+	it('lists the words to look for, longest first', () => {
+		const place = buildTaskEntityCards([
+			row({
+				kind: 'place',
+				natural_key: 'x',
+				value: '7609 Energy Pkwy, Curtis Bay',
+				display: '7609 Energy Pkwy',
+				quote: '7609 (or 7601) Energy Pkwy, Suite 1001, Curtis Bay'
+			})
+		])[0];
+		expect(place.mentions).toEqual([
+			'7609 (or 7601) Energy Pkwy, Suite 1001, Curtis Bay',
+			'7609 Energy Pkwy, Curtis Bay',
+			'7609 Energy Pkwy'
 		]);
 	});
 });
