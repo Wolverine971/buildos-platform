@@ -41,6 +41,8 @@ import { attachAssigneesToTasks, type TaskAssignee } from '$lib/server/task-assi
 import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.service';
 import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 import { requireApiData } from '$lib/utils/api-client-helpers';
+import { getRequestIdFromHeaders } from '$lib/server/error-tracking';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import type {
 	DeferredProjectFullData,
 	ProjectFullData
@@ -48,6 +50,12 @@ import type {
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
+
+type ProjectLoadLogContext = {
+	routeId: string | null;
+	projectId: string;
+	requestId: string | null;
+};
 
 const CONTEXT_DOCUMENT_COLUMNS = [
 	'archived_at',
@@ -190,7 +198,7 @@ function normalizeAccess(
 	};
 }
 
-export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
+export const load: PageServerLoad = async ({ params, locals, url, fetch, request, route }) => {
 	const { id } = params;
 
 	if (!id) {
@@ -216,6 +224,22 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 		throw redirect(307, `/projects/${id}${suffix}`);
 	}
 
+	// Layout and page loads run concurrently (and data navigation can skip the layout).
+	// These RPCs intentionally deny anon execution; don't start them while a layout
+	// redirects a logged-out visitor. The hook already caches this session lookup.
+	const { user } = await locals.safeGetSession();
+	if (!user) {
+		const destination = `${url.pathname}${url.search}`;
+		throw redirect(303, `/auth/login?redirect=${encodeURIComponent(destination)}`);
+	}
+
+	// Embed the origin: the platform's log-row attribution alone was insufficient
+	// in the October 7 incident. No query strings, cookies or user content.
+	const logContext: ProjectLoadLogContext = {
+		routeId: route.id,
+		projectId: id,
+		requestId: getRequestIdFromHeaders(request.headers) ?? null
+	};
 	const supabase = locals.supabase;
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
@@ -232,9 +256,11 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 	);
 
 	if (bundleError) {
-		console.error('[Project Page] Skeleton+access RPC error:', bundleError);
+		console.error('[Project Page] Skeleton+access RPC error:', {
+			...logContext,
+			error: sanitizeLogData(bundleError)
+		});
 		// Fall back to full fetch so the page still loads if the RPC misbehaves.
-		const { user } = await locals.safeGetSession();
 		const isAuthenticated = Boolean(user);
 		let fallbackActorId: string | null = null;
 		if (user) {
@@ -243,12 +269,15 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 					ensureActorId(supabase, user.id)
 				);
 			} catch (err) {
-				console.error('[Project Page] Failed to get actor ID for fallback:', err);
+				console.error('[Project Page] Failed to get actor ID for fallback:', {
+					...logContext,
+					error: sanitizeLogData(err)
+				});
 				throw error(500, 'Failed to resolve user');
 			}
 		}
 		const fallbackData = await measure('db.project_full_fallback', () =>
-			loadFullData(id, supabase, fallbackActorId)
+			loadFullData(id, supabase, fallbackActorId, logContext)
 		);
 		return {
 			...fallbackData,
@@ -323,7 +352,8 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch }) => {
 async function loadFullData(
 	id: string,
 	supabase: App.Locals['supabase'],
-	actorId: string | null
+	actorId: string | null,
+	logContext: ProjectLoadLogContext
 ): Promise<any> {
 	const { data: rawData, error: rpcError } = await supabase.rpc('get_project_full', {
 		p_project_id: id,
@@ -331,7 +361,10 @@ async function loadFullData(
 	});
 
 	if (rpcError) {
-		console.error('[Project Page] Full RPC error:', rpcError);
+		console.error('[Project Page] Full RPC error:', {
+			...logContext,
+			error: sanitizeLogData(rpcError)
+		});
 		throw error(500, 'Failed to load project');
 	}
 
@@ -354,10 +387,10 @@ async function loadFullData(
 			.limit(20);
 
 		if (contextDocumentError) {
-			console.warn(
-				'[Project Page] Failed to load context document fallback:',
-				contextDocumentError
-			);
+			console.warn('[Project Page] Failed to load context document fallback:', {
+				...logContext,
+				error: sanitizeLogData(contextDocumentError)
+			});
 		} else {
 			data.context_document =
 				pickStartHereDocument(

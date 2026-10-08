@@ -78,11 +78,6 @@
 			"components": ["DashboardInboxModal", "WorkPanel"]
 		},
 		{
-			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
 			"type": "component",
 			"components": [
@@ -101,6 +96,11 @@
 				"CalendarAnalysisModalContent",
 				"TimeBlockModalContent"
 			]
+		},
+		{
+			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/ontology/DocumentInteractDock.svelte",
@@ -218,11 +218,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/ProjectWorkspace.svelte",
 			"type": "component",
 			"components": [
@@ -261,6 +256,11 @@
 				"ProjectParentPickerModal",
 				"ProjectCollaborationModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/admin/chat/SessionFlowVisuals.svelte",
@@ -954,25 +954,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"PROJECT_RECENCY_RECENT_MAX_DAYS",
-				"PROJECT_RECENCY_OLDER_MAX_DAYS",
-				"parseProjectUpdatedAt",
-				"formatRelativeProjectUpdate",
-				"groupProjectsByRecency",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-attachments.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -1369,16 +1350,35 @@
 			]
 		},
 		{
-			"file": "src/lib/components/dashboard/dashboard-presentation.ts",
+			"file": "src/lib/components/chat/project-selector-browser.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["formatActivityDay", "getDashboardChatPresentation"]
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"normalizeProjectSelectionSearch",
+				"PROJECT_RECENCY_RECENT_MAX_DAYS",
+				"PROJECT_RECENCY_OLDER_MAX_DAYS",
+				"parseProjectUpdatedAt",
+				"formatRelativeProjectUpdate",
+				"groupProjectsByRecency",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
+			]
 		},
 		{
 			"file": "src/lib/components/consolidation/consolidation-picture.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["consolidationPicture"]
+		},
+		{
+			"file": "src/lib/components/dashboard/dashboard-presentation.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["formatActivityDay", "getDashboardChatPresentation"]
 		},
 		{
 			"file": "src/lib/components/inbox/cleanup-note.client.ts",
@@ -1999,6 +1999,39 @@
 			]
 		},
 		{
+			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_FRESHNESS_CONTEXT_KEY",
+				"ProjectFreshnessState",
+				"setProjectFreshnessContext",
+				"getProjectFreshnessContext"
+			]
+		},
+		{
+			"file": "src/lib/components/project/emoji/emoji-catalog.generated.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["EMOJI_CATALOG"]
+		},
+		{
+			"file": "src/lib/components/project/emoji/project-emoji.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"MAX_PROJECT_EMOJIS",
+				"isEmojiGlyph",
+				"tileGlyphs",
+				"readProjectEmoji",
+				"normalizeEmojiSelection",
+				"slotsFrom",
+				"slotGlyphs",
+				"placeEmoji",
+				"searchCatalog"
+			]
+		},
+		{
 			"file": "src/lib/components/projects/desktop/desktop-context.ts",
 			"type": "component",
 			"components": [],
@@ -2087,54 +2120,10 @@
 			"exports": ["itemKey", "targetKey", "readItem", "readTarget", "createDesktopDrag"]
 		},
 		{
-			"file": "src/lib/components/project/emoji/emoji-catalog.generated.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["EMOJI_CATALOG"]
-		},
-		{
-			"file": "src/lib/components/project/emoji/project-emoji.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"MAX_PROJECT_EMOJIS",
-				"isEmojiGlyph",
-				"tileGlyphs",
-				"readProjectEmoji",
-				"normalizeEmojiSelection",
-				"slotsFrom",
-				"slotGlyphs",
-				"placeEmoji",
-				"searchCatalog"
-			]
-		},
-		{
-			"file": "src/lib/components/project/freshness/freshness-context.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_FRESHNESS_CONTEXT_KEY",
-				"ProjectFreshnessState",
-				"setProjectFreshnessContext",
-				"getProjectFreshnessContext"
-			]
-		},
-		{
 			"file": "src/lib/components/project/v2/board-a11y.ts",
 			"type": "component",
 			"components": [],
 			"exports": ["handleRovingTabKeydown", "slideMotion", "fadeMotion"]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
-			]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -2191,6 +2180,17 @@
 			"type": "component",
 			"components": [],
 			"exports": ["prepareAgentRunChatEventDetail"]
+		},
+		{
+			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_COMMANDERS",
+				"DEFAULT_PUBLIC_PROJECT_ID",
+				"getCommander",
+				"formatTimelineYearRange"
+			]
 		},
 		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
@@ -2336,9 +2336,9 @@
 		"src/lib/components/dashboard/TodayRow.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
-		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
+		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/ontology/DocumentInteractDock.svelte",
 		"src/lib/components/table-surfaces/SaveAsTableHost.svelte",
 		"src/lib/components/ui/Toast.svelte",
@@ -2352,7 +2352,6 @@
 		"src/lib/components/projects/desktop/DesktopProjectCard.svelte",
 		"src/lib/components/projects/desktop/ReaderPanes.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-attachments.svelte.ts",
 		"src/lib/components/agent/agent-chat-client-actions.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
@@ -2389,8 +2388,9 @@
 		"src/lib/components/agent/shared-document-edit-card-state.svelte.ts",
 		"src/lib/components/agent/shared-document-edit-cards.ts",
 		"src/lib/components/agent/table-change-cards.ts",
-		"src/lib/components/dashboard/dashboard-presentation.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/consolidation/consolidation-picture.ts",
+		"src/lib/components/dashboard/dashboard-presentation.ts",
 		"src/lib/components/inbox/cleanup-note.client.ts",
 		"src/lib/components/inbox/cleanup-triage.ts",
 		"src/lib/components/inbox/inbox-presentation.ts",
@@ -2438,6 +2438,9 @@
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/profile/cycles/cycle-presenter.ts",
+		"src/lib/components/project/freshness/freshness-context.svelte.ts",
+		"src/lib/components/project/emoji/emoji-catalog.generated.ts",
+		"src/lib/components/project/emoji/project-emoji.ts",
 		"src/lib/components/projects/desktop/desktop-context.ts",
 		"src/lib/components/projects/desktop/desktop-model.ts",
 		"src/lib/components/projects/desktop/desktop-moves.ts",
@@ -2446,16 +2449,13 @@
 		"src/lib/components/projects/desktop/reader-model.ts",
 		"src/lib/components/projects/desktop/reader-task-groups.ts",
 		"src/lib/components/projects/desktop/useDesktopDrag.svelte.ts",
-		"src/lib/components/project/emoji/emoji-catalog.generated.ts",
-		"src/lib/components/project/emoji/project-emoji.ts",
-		"src/lib/components/project/freshness/freshness-context.svelte.ts",
 		"src/lib/components/project/v2/board-a11y.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
 		"src/lib/components/notifications/types/agent-run/agent-run-chat-session.client.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.layout.ts",

@@ -61,6 +61,16 @@
 
 	const card = $derived(entities.openCard);
 
+	// Moving between cards (Casey → Dauntless Dogs) replaces the button that had focus: put focus
+	// on the new card's name so Esc still closes and a screen reader hears where it went.
+	let heading = $state<HTMLElement | null>(null);
+	let shownId: string | null = null;
+	$effect(() => {
+		const id = card?.id ?? null;
+		if (shownId && id && id !== shownId) heading?.focus({ preventScroll: true });
+		shownId = id;
+	});
+
 	$effect(() => {
 		const open = card;
 		related = null;
@@ -97,10 +107,10 @@
 		place: 'Place'
 	};
 
-	// Numbers and emails other tasks tie to this entity, that this task does not already show.
+	// Numbers and emails other tasks tie to this entity, that this task does not already hold.
 	const elsewhere = $derived.by(() => {
 		if (!card || !related) return [];
-		const here = new Set(card.contacts.map((contact) => `${contact.kind}:${contact.value}`));
+		const here = new Set(entities.entities.map((row) => `${row.kind}:${row.value}`));
 		return related.contacts
 			.filter((contact) => !here.has(`${contact.kind}:${contact.value}`))
 			.slice(0, 4);
@@ -184,7 +194,7 @@
 		width="w-80"
 		onClose={() => entities.close()}
 	>
-		<div class="grid gap-3 p-3.5">
+		<div class="flex min-w-0 flex-col gap-3 p-3.5">
 			<div class="flex items-start gap-2">
 				<span
 					class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
@@ -197,7 +207,13 @@
 						/>{/if}
 				</span>
 				<div class="min-w-0 flex-1">
-					<p class="text-sm font-semibold leading-snug text-foreground">{card.name}</p>
+					<p
+						bind:this={heading}
+						tabindex="-1"
+						class="text-sm font-semibold leading-snug text-foreground focus:outline-none"
+					>
+						{card.name}
+					</p>
 					<p
 						class="flex min-w-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground"
 					>
@@ -231,13 +247,13 @@
 			</div>
 
 			{#if card.kind === 'place'}
-				<ul class="-mx-2 grid gap-0.5">
+				<ul class="-mx-2 flex min-w-0 flex-col gap-0.5">
 					{@render contactRow({ kind: 'place', value: card.value, display: card.value })}
 				</ul>
 			{/if}
 
 			{#if card.contacts.length}
-				<ul class="-mx-2 grid gap-0.5" aria-label="Contact">
+				<ul class="-mx-2 flex min-w-0 flex-col gap-0.5" aria-label="Contact">
 					{#each card.contacts as contact (contact.id)}
 						{@render contactRow(
 							contact,
@@ -248,7 +264,7 @@
 			{/if}
 
 			{#if card.people.length}
-				<div class="grid gap-1">
+				<div class="flex min-w-0 flex-col gap-1">
 					<p class="micro-label text-muted-foreground">
 						{card.kind === 'org'
 							? 'People'
@@ -256,7 +272,7 @@
 								? `Also at ${card.partOf.name}`
 								: 'With'}
 					</p>
-					<ul class="-mx-2 grid gap-0.5">
+					<ul class="-mx-2 flex min-w-0 flex-col gap-0.5">
 						{#each card.people as person (person.id)}
 							<li>
 								<button
@@ -285,9 +301,9 @@
 			{/if}
 
 			{#if elsewhere.length}
-				<div class="grid gap-1">
+				<div class="flex min-w-0 flex-col gap-1">
 					<p class="micro-label text-muted-foreground">From other tasks</p>
-					<ul class="-mx-2 grid gap-0.5">
+					<ul class="-mx-2 flex min-w-0 flex-col gap-0.5">
 						{#each elsewhere as contact (`${contact.kind}:${contact.value}`)}
 							{@render contactRow(contact)}
 						{/each}
@@ -296,11 +312,11 @@
 			{/if}
 
 			{#if related?.tasks.length}
-				<div class="grid gap-1">
+				<div class="flex min-w-0 flex-col gap-1">
 					<p class="micro-label text-muted-foreground">
 						Also in {related.total} other task{related.total === 1 ? '' : 's'}
 					</p>
-					<ul class="-mx-2 grid gap-0.5">
+					<ul class="-mx-2 flex min-w-0 flex-col gap-0.5">
 						{#each related.tasks as other (other.id)}
 							<li>
 								<a

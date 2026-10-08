@@ -1,12 +1,17 @@
 // apps/web/src/routes/projects/[id]/page.server.test.ts
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureActorIdMock } = vi.hoisted(() => ({
-	ensureActorIdMock: vi.fn()
+const { ensureActorIdMock, tryGetProjectFamilyMock } = vi.hoisted(() => ({
+	ensureActorIdMock: vi.fn(),
+	tryGetProjectFamilyMock: vi.fn()
 }));
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: ensureActorIdMock
+}));
+
+vi.mock('$lib/services/ontology/project-hierarchy.service', () => ({
+	tryGetProjectFamily: tryGetProjectFamilyMock
 }));
 
 import { load } from './+page.server';
@@ -32,7 +37,10 @@ type BundleAccess = {
 type HarnessOptions = {
 	userId?: string | null;
 	bundleData?: Record<string, unknown> | null;
-	bundleError?: { message: string } | null;
+	bundleError?: { message: string; code?: string; details?: string } | null;
+	fallbackData?: Record<string, unknown> | null;
+	fallbackError?: { message: string; code?: string } | null;
+	requestId?: string;
 	access?: BundleAccess;
 	pathname?: string;
 	fullDataResponse?: Response;
@@ -86,6 +94,13 @@ function createHarness(options: HarnessOptions = {}) {
 				error: options.bundleError ?? null
 			});
 		}
+		if (fn === 'get_project_full') {
+			operations.push(`rpc:${fn}`);
+			return Promise.resolve({
+				data: options.fallbackData ?? null,
+				error: options.fallbackError ?? null
+			});
+		}
 		throw new Error(`Unexpected RPC requested: ${fn}`);
 	});
 
@@ -107,6 +122,10 @@ function createHarness(options: HarnessOptions = {}) {
 
 	const event = {
 		params: { id: PROJECT_ID },
+		route: { id: '/projects/[id]' },
+		request: new Request(`https://buildos.test/projects/${PROJECT_ID}`, {
+			headers: { 'x-vercel-id': options.requestId ?? 'iad1::project-request' }
+		}),
 		url: new URL(`https://buildos.test${options.pathname ?? `/projects/${PROJECT_ID}`}`),
 		fetch,
 		locals: {
@@ -136,7 +155,15 @@ describe('projects/[id] +page.server load', () => {
 	beforeEach(() => {
 		ensureActorIdMock.mockReset();
 		ensureActorIdMock.mockResolvedValue('actor-1');
+		tryGetProjectFamilyMock.mockReset();
+		tryGetProjectFamilyMock.mockResolvedValue(null);
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.mocked(console.error).mockClear();
+		vi.mocked(console.warn).mockClear();
 	});
+
+	afterEach(() => vi.restoreAllMocks());
 
 	it('owner access returns full owner/admin privileges from the RPC bundle', async () => {
 		const { event, operations, from, safeGetSession } = createHarness({
@@ -177,7 +204,7 @@ describe('projects/[id] +page.server load', () => {
 			data: { project: { id: PROJECT_ID, name: 'Project 1' } }
 		});
 		expect(from).not.toHaveBeenCalled();
-		expect(safeGetSession).not.toHaveBeenCalled();
+		expect(safeGetSession).toHaveBeenCalledOnce();
 		expect(ensureActorIdMock).not.toHaveBeenCalled();
 	});
 
@@ -247,28 +274,107 @@ describe('projects/[id] +page.server load', () => {
 		});
 	});
 
-	it('anonymous requests return skeleton data without any fan-out queries', async () => {
-		const { event, operations, from, safeGetSession } = createHarness({ userId: null });
+	it('redirects logged-out requests before project RPCs even when the layout is skipped', async () => {
+		const destination = `/projects/${PROJECT_ID}?tab=tasks`;
+		const { event, operations, rpc, from, fetch, safeGetSession } = createHarness({
+			userId: null,
+			pathname: destination,
+			bundleError: {
+				code: '42501',
+				message: 'permission denied for function get_project_skeleton_with_access_v2'
+			}
+		});
+
+		await expect(load(event)).rejects.toMatchObject({
+			status: 303,
+			location: `/auth/login?redirect=${encodeURIComponent(destination)}`
+		});
+		expect(operations).toEqual([]);
+		expect(rpc).not.toHaveBeenCalled();
+		expect(fetch).not.toHaveBeenCalled();
+		expect(from).not.toHaveBeenCalled();
+		expect(tryGetProjectFamilyMock).not.toHaveBeenCalled();
+		expect(safeGetSession).toHaveBeenCalledOnce();
+		expect(ensureActorIdMock).not.toHaveBeenCalled();
+		expect(console.error).not.toHaveBeenCalled();
+	});
+
+	it('waits for session validation before starting project reads', async () => {
+		const { event, rpc, safeGetSession } = createHarness();
+		let finishSession!: (session: { user: { id: string } }) => void;
+		safeGetSession.mockReturnValueOnce(
+			new Promise((resolve) => {
+				finishSession = resolve;
+			})
+		);
+
+		const pendingLoad = loadProjectPage(event);
+		expect(rpc).not.toHaveBeenCalled();
+		expect(tryGetProjectFamilyMock).not.toHaveBeenCalled();
+		finishSession({ user: { id: 'user-1' } });
+		await pendingLoad;
+		expect(rpc).toHaveBeenCalledOnce();
+	});
+
+	it('recovers a skeleton transport failure with a single full-data fallback', async () => {
+		const { event, operations, safeGetSession } = createHarness({
+			bundleError: { code: 'UND_ERR_SOCKET', message: 'fetch failed' },
+			fallbackData: {
+				project: { id: PROJECT_ID, name: 'Project 1' },
+				context_document: { id: 'context-1' }
+			}
+		});
 
 		const result = await loadProjectPage(event);
-
-		expect(result.skeleton).toBe(true);
-		expect(result.access).toEqual({
-			canEdit: false,
-			canAdmin: false,
-			canInvite: false,
-			canViewLogs: false,
-			isOwner: false,
-			isAuthenticated: false,
-			currentActorId: null
-		});
+		expect(result.skeleton).toBe(false);
+		expect(result.project.id).toBe(PROJECT_ID);
 		expect(operations).toEqual([
 			'rpc:get_project_skeleton_with_access_v2',
-			'fetch:project-full-v2'
+			'rpc:get_project_full'
 		]);
-		expect(from).not.toHaveBeenCalled();
-		expect(safeGetSession).not.toHaveBeenCalled();
-		expect(ensureActorIdMock).not.toHaveBeenCalled();
+		expect(safeGetSession).toHaveBeenCalledOnce();
+	});
+
+	it.each(['ETIMEDOUT', '42501'])(
+		'ends a failed fallback without retrying and correlates %s failures to their request',
+		async (code) => {
+			const { event, operations } = createHarness({
+				requestId: 'iad1::origin-request',
+				pathname: `/projects/${PROJECT_ID}?private_note=do-not-log`,
+				bundleError: { code, message: 'RPC unavailable' },
+				fallbackError: { code, message: 'RPC unavailable' }
+			});
+
+			await expect(load(event)).rejects.toMatchObject({ status: 500 });
+			expect(operations).toEqual([
+				'rpc:get_project_skeleton_with_access_v2',
+				'rpc:get_project_full'
+			]);
+			for (const prefix of ['Skeleton+access', 'Full']) {
+				expect(console.error).toHaveBeenCalledWith(`[Project Page] ${prefix} RPC error:`, {
+					routeId: '/projects/[id]',
+					projectId: PROJECT_ID,
+					requestId: 'iad1::origin-request',
+					error: { code, message: '[redacted]' }
+				});
+			}
+			expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain('do-not-log');
+		}
+	);
+
+	it('redacts secrets in RPC errors while preserving diagnostic codes', async () => {
+		const { event } = createHarness({
+			bundleError: {
+				code: '42501',
+				message: 'RPC unavailable',
+				details: 'Authorization: Bearer secret-value'
+			}
+		});
+
+		await expect(load(event)).rejects.toMatchObject({ status: 404 });
+		const logs = JSON.stringify(vi.mocked(console.error).mock.calls);
+		expect(logs).toContain('42501');
+		expect(logs).not.toContain('secret-value');
 	});
 
 	it('not-found short-circuits to a 404', async () => {
