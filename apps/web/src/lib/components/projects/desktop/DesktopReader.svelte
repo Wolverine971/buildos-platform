@@ -888,7 +888,7 @@
 					</button>
 				{/if}
 			</div>
-			<TaskKeyDetails chips={taskEntities.keyChips} class="-mt-2 mb-4" />
+			<TaskKeyDetails chips={taskEntities.keyChips} entities={taskEntities} class="-mt-2 mb-4" />
 			{#if task.description?.trim()}
 				{@const descriptionHtml = renderTaskMarkdown(task.description)}
 				<div

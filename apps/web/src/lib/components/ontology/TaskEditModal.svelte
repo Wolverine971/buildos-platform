@@ -1160,7 +1160,7 @@
 									</div>
 
 									{#if task}
-										<TaskKeyDetails chips={taskEntities.keyChips} />
+										<TaskKeyDetails chips={taskEntities.keyChips} entities={taskEntities} />
 										<TaskEntityPopover
 											entities={taskEntities}
 											{taskId}

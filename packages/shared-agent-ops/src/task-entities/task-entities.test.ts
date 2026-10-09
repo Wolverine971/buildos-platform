@@ -4,6 +4,7 @@ import {
 	buildTaskEntityCards,
 	buildTaskEntityChips,
 	detectTaskTextEntities,
+	looksLikeFileName,
 	normalizeExtractedTaskEntities,
 	normalizePhone,
 	pickKeyTaskEntityChips,
@@ -474,6 +475,40 @@ Join: https://zoom.us/j/123456789`;
 		});
 		expect(chips.map((chip) => chip.label)).toEqual(['Join', 'Call']);
 	});
+
+	it('leaves out key times that have already passed', () => {
+		const now = new Date(2026, 9, 8, 9, 0);
+		const chips = pickKeyTaskEntityChips({
+			now,
+			entities: [
+				row({
+					kind: 'time',
+					natural_key: 'past',
+					value: '2026-10-06T12:00:00-04:00',
+					display: 'Tue Oct 6, 12:00 PM',
+					role: 'meeting',
+					data: { key: true }
+				}),
+				row({
+					kind: 'time',
+					natural_key: 'today',
+					value: '2026-10-08',
+					display: 'Thu Oct 8',
+					role: 'deadline',
+					data: { key: true }
+				}),
+				row({
+					kind: 'time',
+					natural_key: 'yesterday',
+					value: '2026-10-07',
+					display: 'Wed Oct 7',
+					role: 'deadline',
+					data: { key: true }
+				})
+			]
+		});
+		expect(chips.map((chip) => chip.display)).toEqual(['Thu Oct 8']);
+	});
 });
 
 describe('buildTaskEntityCards', () => {
@@ -552,7 +587,7 @@ describe('buildTaskEntityCards', () => {
 		expect(casey?.contacts.some((contact) => contact.display === '410-555-0152')).toBe(false);
 	});
 
-	it('lists the words to look for, longest first', () => {
+	it('looks for the name first, then the value, then the quote', () => {
 		const place = buildTaskEntityCards([
 			row({
 				kind: 'place',
@@ -563,9 +598,43 @@ describe('buildTaskEntityCards', () => {
 			})
 		])[0];
 		expect(place.mentions).toEqual([
-			'7609 (or 7601) Energy Pkwy, Suite 1001, Curtis Bay',
+			'7609 Energy Pkwy',
 			'7609 Energy Pkwy, Curtis Bay',
-			'7609 Energy Pkwy'
+			'7609 (or 7601) Energy Pkwy, Suite 1001, Curtis Bay'
 		]);
+	});
+});
+
+describe('file names are not links', () => {
+	it('tells a file name from a web address', () => {
+		expect(looksLikeFileName('README.md')).toBe(true);
+		expect(looksLikeFileName('notes/email-griffin.md')).toBe(true);
+		expect(looksLikeFileName('robots.txt')).toBe(true);
+		expect(looksLikeFileName('linktr.ee/krystalballuva')).toBe(false);
+		expect(looksLikeFileName('sam.gov')).toBe(false);
+		expect(looksLikeFileName('https://github.com/x/README.md')).toBe(false);
+	});
+
+	it('drops a file name the model sent as a link, and hides one stored earlier', () => {
+		const text = 'Draft the DM from email-griffin.md, then check robots.txt on sam.gov';
+		const { entities, dropped } = normalizeExtractedTaskEntities(
+			[
+				{ kind: 'link', value: 'email-griffin.md', quote: 'email-griffin.md' },
+				{ kind: 'link', value: 'sam.gov', quote: 'sam.gov' }
+			],
+			text
+		);
+		expect(entities.map((entity) => entity.display)).toEqual(['sam.gov']);
+		expect(dropped).toContain('link: a file name, not a web address');
+
+		const stored = row({
+			kind: 'link',
+			natural_key: 'readme.md',
+			value: 'https://readme.md/',
+			display: 'README.md',
+			quote: 'README.md',
+			data: { key: true }
+		});
+		expect(buildTaskEntityChips({ entities: [stored] })).toEqual([]);
 	});
 });

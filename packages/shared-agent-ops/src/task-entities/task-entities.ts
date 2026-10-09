@@ -158,6 +158,33 @@ export function normalizeUrl(raw: string | null | undefined): URL | null {
 	return url;
 }
 
+// Extensions of files people name in tasks ("README.md", "robots.txt"). A value ending in one,
+// written without a scheme, is a file name: `.md` and the like parse as web addresses but are not.
+const FILE_EXTENSIONS = new Set([
+	'md',
+	'txt',
+	'csv',
+	'json',
+	'ts',
+	'js',
+	'svelte',
+	'py',
+	'sql',
+	'yaml',
+	'yml',
+	'log'
+]);
+
+/** True for a file name written without a scheme ("notes/email-griffin.md"), not a web address. */
+export function looksLikeFileName(raw: string | null | undefined): boolean {
+	if (typeof raw !== 'string') return false;
+	const text = raw.trim();
+	if (!text || /^[a-z][a-z0-9+.-]*:\/\//i.test(text)) return false;
+	const last = text.replace(/[?#].*$/, '').replace(/\/+$/, '').split('/').pop() ?? '';
+	const dot = last.lastIndexOf('.');
+	return dot > 0 && FILE_EXTENSIONS.has(last.slice(dot + 1).toLowerCase());
+}
+
 function urlKey(url: URL): string {
 	const host = url.hostname.toLowerCase().replace(/^www\./, '');
 	const path = url.pathname.replace(/\/+$/, '');
@@ -480,6 +507,10 @@ export function normalizeExtractedTaskEntities(
 			display = email;
 			if (ownerEmails.has(email)) role = 'owner_self';
 		} else if (kind === 'link' || kind === 'meeting_link') {
+			if (looksLikeFileName(quote) || looksLikeFileName(rawValue)) {
+				dropped.push(`${kind}: a file name, not a web address`);
+				continue;
+			}
 			const url = normalizeUrl(quote) ?? normalizeUrl(rawValue);
 			if (!url) {
 				dropped.push(`${kind}: not a web address`);
@@ -806,7 +837,8 @@ export function buildTaskEntityChips(input: {
 		if (
 			row.status === 'dismissed' ||
 			HIDDEN_ROLES.has(row.role) ||
-			HIDDEN_CHIP_KINDS.has(row.kind)
+			HIDDEN_CHIP_KINDS.has(row.kind) ||
+			isFileNameLink(row)
 		)
 			continue;
 		const fixed = FIXED_FORMAT_KINDS.has(row.kind);
@@ -842,16 +874,41 @@ export function buildTaskEntityChips(input: {
 	return typeof input.limit === 'number' ? ranked.slice(0, input.limit) : ranked;
 }
 
+/** True when a time entity has already ended (a date before today, or a clock time before now). */
+export function isPastTaskEntityTime(
+	row: Pick<ChipSource, 'kind' | 'value' | 'data'>,
+	now: Date = new Date()
+): boolean {
+	if (row.kind !== 'time') return false;
+	const end = typeof row.data?.end === 'string' ? row.data.end : row.value;
+	if (ISO_DATE.test(end)) {
+		const today = [
+			now.getFullYear(),
+			String(now.getMonth() + 1).padStart(2, '0'),
+			String(now.getDate()).padStart(2, '0')
+		].join('-');
+		return end < today;
+	}
+	const at = Date.parse(end);
+	return Number.isFinite(at) && at < now.getTime();
+}
+
 /**
  * The details shown above a task's text: at most three things the owner needs at hand (the link
  * to join, when the meeting is, where to go, the one number to call). A model marks them `key`
- * (prompt v5); a meeting link always counts. Everything else lives in the text itself.
+ * (prompt v5); a meeting link always counts. Times already past are left out. Everything else
+ * lives in the text itself.
  */
 export function pickKeyTaskEntityChips(input: {
 	entities?: ChipSource[] | null;
 	detected?: DetectedTaskEntity[] | null;
+	now?: Date;
 }): TaskEntityChip[] {
-	return buildTaskEntityChips(input)
+	const now = input.now ?? new Date();
+	return buildTaskEntityChips({
+		entities: (input.entities ?? []).filter((row) => !isPastTaskEntityTime(row, now)),
+		detected: input.detected
+	})
 		.filter((chip) => chip.isKey && !chip.faded && chip.tone !== 'avoid')
 		.slice(0, MAX_KEY_TASK_ENTITIES);
 }
@@ -888,7 +945,7 @@ export type TaskEntityCard = {
 	contacts: TaskEntityContact[];
 	/** Organization: its people. Person: others at the same organization. */
 	people: Array<{ id: string; name: string; contact: TaskEntityContact | null }>;
-	/** Words to find in the text, longest first (quote, label, value). */
+	/** Words to find in the text, in order: the label, the value, then the model's quote. */
 	mentions: string[];
 };
 
@@ -903,7 +960,12 @@ const CONTACT_ORDER: Record<TaskEntityContact['kind'], number> = {
 };
 
 function visibleRow(row: ChipSource): boolean {
-	return row.status !== 'dismissed' && !HIDDEN_ROLES.has(row.role);
+	return row.status !== 'dismissed' && !HIDDEN_ROLES.has(row.role) && !isFileNameLink(row);
+}
+
+/** A link row read before file names were checked (prompt v5 and earlier). */
+function isFileNameLink(row: ChipSource): boolean {
+	return row.kind === 'link' && looksLikeFileName(row.quote ?? row.display);
 }
 
 /**
@@ -978,13 +1040,15 @@ export function buildTaskEntityCards(entities: ChipSource[] | null | undefined):
 							contactsFor(other).find((contact) => contact.kind !== 'place') ?? null
 					}))
 			: [];
+		// The name itself first ("Angela", not "Angela (associate director)"); the quote is the
+		// fallback when the label is not written that way ("7609 (or 7601) Energy Pkwy").
 		const mentions = [
 			...new Set(
-				[row.quote, row.display, row.value]
+				[row.display, row.value, row.quote]
 					.map((text) => text?.trim() ?? '')
 					.filter((text) => text.length >= 2)
 			)
-		].sort((a, b) => b.length - a.length);
+		];
 		return {
 			id: row.id,
 			kind,
