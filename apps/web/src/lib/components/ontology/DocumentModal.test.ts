@@ -20,6 +20,11 @@ vi.mock('$lib/stores/toast.store', () => ({
 	}
 }));
 
+// The real logger writes to the configured Supabase project: unmocked, the
+// failed-restore case here filed a "document-a" row in the live error log on
+// every local run.
+vi.mock('$lib/utils/ontology-client-logger', () => ({ logOntologyClientError: vi.fn() }));
+
 // Start the heavy dynamic import during collection so this test's behavioral
 // timeout measures dock interaction/rendering instead of loaded-suite transform contention.
 const agentChatModalModule = import('$lib/components/agent/AgentChatModal.svelte');

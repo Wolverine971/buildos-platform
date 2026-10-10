@@ -405,50 +405,10 @@ export async function probeActiveTurnRun(
 	}
 }
 
-const USER_TIMEZONE_SYNC_ENDPOINT = '/api/users/timezone';
-let browserTimezoneSyncStarted = false;
-
-/** The browser's IANA zone, or null when unavailable or plain UTC (nothing to learn). */
-export function resolveBrowserTimezone(): string | null {
-	try {
-		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone?.trim() ?? '';
-		if (!timezone || timezone === 'UTC' || timezone === 'Etc/UTC') return null;
-		return timezone;
-	} catch {
-		return null;
-	}
-}
-
-/**
- * Teach the server the browser's timezone so the agentic prompt clock (which
- * reads `users.timezone`) renders the user's local date. Fire-and-forget: runs
- * at most once per page load, never throws, and never blocks the caller. The
- * server only fills in a null/UTC stored zone, so a deliberately chosen zone
- * is never overwritten.
- */
-export async function syncBrowserTimezone(
-	options: { timezone?: string | null; force?: boolean } = {}
-): Promise<boolean> {
-	if (browserTimezoneSyncStarted && !options.force) return false;
-	browserTimezoneSyncStarted = true;
-	const timezone =
-		options.timezone === undefined ? resolveBrowserTimezone() : (options.timezone ?? null);
-	if (!timezone || timezone === 'UTC' || timezone === 'Etc/UTC') return false;
-	try {
-		const response = await fetch(USER_TIMEZONE_SYNC_ENDPOINT, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ timezone }),
-			keepalive: true
-		});
-		return response.ok;
-	} catch (err) {
-		if (dev) {
-			console.warn('[AgentChat] Browser timezone sync failed:', err);
-		}
-		return false;
-	}
-}
+// The browser timezone sync lives in a small util so the root layout can run it on
+// every signed-in page load without pulling this module into the initial bundle.
+import { resolveBrowserTimezone, syncBrowserTimezone } from '$lib/utils/browser-timezone-sync';
+export { resolveBrowserTimezone, syncBrowserTimezone };
 
 /**
  * Opening the chat warms what the first turn needs before the user sends.

@@ -22779,6 +22779,9 @@ export type Database = {
     Functions: {
       agent_edit_snapshot: {Args:{p_kind:string;p_id:string};Returns:Json};
       agent_permission_credential: {Args:{p_ref:Json;p_write?:boolean};Returns:Json};
+      agent_permission_tree_metadata: {Args:{p_nodes:Json;p_id:string;p_title:string;p_description:string};Returns:Json};
+      apply_agent_permission_edit: {Args:{p_id:string;p_digest:string;p_decision:string};Returns:Json};
+      lock_agent_permission_authority: {Args:{p_caller:string;p_grant:string;p_project:string};Returns:string};
       lookup_agent_permission_request: {Args:{p_ref:Json;p_key:string;p_submission:Json};Returns:Json};
       create_agent_permission_request: {Args:{p_ref:Json;p_key:string;p_submission:Json;p_before:Json;p_mutation:Json;p_reason?:string|null;p_direct?:boolean};Returns:Json};
       decide_agent_permission_request: {Args:{p_id:string;p_digest:string;p_decision:string};Returns:Json};

@@ -6,6 +6,7 @@
 	import { setContext, onMount, onDestroy, untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
+	import { syncBrowserTimezone } from '$lib/utils/browser-timezone-sync';
 	import { goto, onNavigate, afterNavigate, invalidate, invalidateAll } from '$app/navigation';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
@@ -809,6 +810,10 @@
 		// FIXED: Store cleanup functions to prevent memory leaks
 		pwaCleanup = initializePWAEnhancements();
 		installPromptCleanup = setupInstallPrompt();
+
+		// A signed-in browser teaches the server its timezone once per page load, so a
+		// new account has a local morning before its first daily brief is scheduled.
+		if (user) void syncBrowserTimezone();
 
 		// Pre-load authenticated resources if user is already available
 		if (user && !resourcesLoaded && !resourcesLoadPromise) {

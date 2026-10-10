@@ -1,6 +1,24 @@
 // apps/web/src/lib/services/admin/dashboard-analytics.service.test.ts
-import { describe, expect, it } from 'vitest';
-import { buildAgentChatUsage } from './dashboard-analytics.service';
+import { describe, expect, it, vi } from 'vitest';
+import { buildAgentChatUsage, getDashboardAnalyticsDetails } from './dashboard-analytics.service';
+
+describe('getDashboardAnalyticsDetails', () => {
+	it('sends only the top-user list in the overview, so it cannot blank the summary counts', async () => {
+		// Every loader falls back, which is enough to see the payload's shape.
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const unavailable = () => {
+			throw new Error('unavailable');
+		};
+		const client = { rpc: unavailable, from: unavailable } as any;
+
+		const details = await getDashboardAnalyticsDetails(client, '7d');
+		consoleError.mockRestore();
+
+		// The admin page merges the summary scope, then this one. A zeroed
+		// active_users_7d / total_users here used to overwrite the real numbers.
+		expect(details.systemOverview).toEqual({ top_active_users: [] });
+	});
+});
 
 describe('buildAgentChatUsage', () => {
 	it('counts sessions with current message activity even when the session row is outside the window', () => {

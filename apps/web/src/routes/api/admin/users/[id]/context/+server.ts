@@ -1,13 +1,11 @@
 // apps/web/src/routes/api/admin/users/[id]/context/+server.ts
 import type { RequestHandler } from './$types';
 import { EmailGenerationService } from '$lib/services/email-generation-service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
-export const GET: RequestHandler = async ({
-	params,
-	url,
-	locals: { supabase, safeGetSession }
-}) => {
+export const GET: RequestHandler = async ({ params, url, locals: { safeGetSession } }) => {
 	try {
 		const { user } = await safeGetSession();
 
@@ -24,11 +22,18 @@ export const GET: RequestHandler = async ({
 			return ApiResponse.error('User ID is required');
 		}
 
-		// Get user context using the email generation service
+		const isBetaOnlyLookup = isBetaMember && userId === 'beta-only' && !!email;
+		if (!isBetaOnlyLookup && !isValidUUID(userId)) {
+			return ApiResponse.badRequest('Invalid user ID');
+		}
+
+		// Reading another user's context is a privileged admin read: a signed-in
+		// session can only resolve its own actor, so this needs the admin client.
+		const supabase = createAdminSupabaseClient();
 		const emailService = new EmailGenerationService(supabase);
 
 		// If this is a beta member without a user account (userId is 'beta-only')
-		if (isBetaMember && userId === 'beta-only' && email) {
+		if (isBetaOnlyLookup && email) {
 			const normalizedEmail = email.trim().toLowerCase();
 			const { data: matchedUser, error: matchedUserError } = await supabase
 				.from('users')

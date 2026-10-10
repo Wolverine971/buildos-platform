@@ -1921,7 +1921,13 @@ export interface DashboardAnalyticsPayload {
 	systemHealth: Awaited<ReturnType<typeof getSystemHealth>>;
 }
 
-export type DashboardAnalyticsPartialPayload = Partial<DashboardAnalyticsPayload>;
+export type DashboardAnalyticsPartialPayload = Partial<
+	Omit<DashboardAnalyticsPayload, 'systemOverview'>
+> & {
+	// A scope sends only the overview fields it loaded. The page merges scopes
+	// in order, so a field sent as a default would overwrite the real value.
+	systemOverview?: Partial<DashboardAnalyticsPayload['systemOverview']>;
+};
 
 async function safeFetch<T>(label: string, fallback: () => T, fn: () => Promise<T>): Promise<T> {
 	try {
@@ -2071,10 +2077,9 @@ export async function getDashboardAnalyticsDetails(
 	]);
 
 	return {
-		systemOverview: {
-			...clone(DEFAULT_SYSTEM_OVERVIEW),
-			top_active_users: topActiveUsers
-		},
+		// Only the top-user list: the summary scope owns the user and brief
+		// counts, and zeroed defaults here used to blank them on the dashboard.
+		systemOverview: { top_active_users: topActiveUsers },
 		dailyActiveUsers,
 		briefGenerationStats,
 		systemMetrics,

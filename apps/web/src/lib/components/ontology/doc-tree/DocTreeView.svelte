@@ -373,10 +373,33 @@
 		dragDrop.handleKeyDown(e);
 	}
 
+	/**
+	 * An archived document can still sit in the stored tree. It belongs to the
+	 * Archived section below, so it leaves the tree here and its live children
+	 * move up to its place (the same rule chat reads and the project reader use).
+	 * Left in, it rendered as a live row "updated just now".
+	 */
+	function withoutArchivedNodes(
+		nodes: DocStructure['root'],
+		archivedIds: ReadonlySet<string>
+	): DocStructure['root'] {
+		return nodes.flatMap((node) => {
+			const children = node.children
+				? withoutArchivedNodes(node.children, archivedIds)
+				: undefined;
+			if (archivedIds.has(node.id)) return children ?? [];
+			return [children === undefined ? node : { ...node, children }];
+		});
+	}
+
 	// Derived enriched tree
 	const enrichedTree = $derived.by(() => {
 		if (!structure || !structure.root) return [];
-		return enrichTreeNodes(structure.root, documents, 0, []);
+		const root =
+			archived.length > 0
+				? withoutArchivedNodes(structure.root, new Set(archived.map((doc) => doc.id)))
+				: structure.root;
+		return enrichTreeNodes(root, documents, 0, []);
 	});
 
 	/** Row-count pills for table nodes, read from props.table.row_count (no rows loaded). */

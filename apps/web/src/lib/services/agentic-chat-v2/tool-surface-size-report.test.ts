@@ -108,7 +108,11 @@ describe('tool surface size report', () => {
 		// 2026-09-21 (3a407d688, tasker 92 change B, gated): one type_key policy
 		// ("set it only when the user states or clearly implies the work mode")
 		// added 119 chars (3,212 -> 3,331). Same tight margin.
-		expect(createTask?.chars).toBeLessThanOrEqual(3370);
+		// 2026-10-06 (44b4325ba, Tables): the typed `table_row` parameter that
+		// anchors a follow-up task to its table row added 226 chars (3,331 ->
+		// 3,557). Schema for a new capability, not description copy; the full
+		// surface caps still hold. Same 38-char margin.
+		expect(createTask?.chars).toBeLessThanOrEqual(3595);
 	});
 
 	it('retains the reviewed estimate and relationship capabilities behind the size budgets', () => {

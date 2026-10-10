@@ -2,13 +2,13 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "8bdaa2255ed1a33b5bf93eab0200308cf9dda79299f6e55d5a6b5b3d96ea47b6",
+  "catalogSerializedSha256": "8dfa3415c354c88de4b3871a18cd208964a64b287aa2deaca66b504cabdfe80f",
   "contextSurfaces": [
     {
       "contextType": "global",
-      "estimatedTokens": 15022,
+      "estimatedTokens": 14998,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "f8d83ce27d4d931b7a9718a9f353f8ed72c729610d70b17c7dec121269bd44ca",
+      "serializedDefinitionsSha256": "d7f049acd536e48f4f2fea6225116bdaf2f21a9a0e7e795edf07f89459e16d82",
       "toolCount": 54,
       "toolNames": [
         "skill_search",
@@ -66,13 +66,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_table_details",
         "read_table_rows",
       ],
-      "totalChars": 60087,
+      "totalChars": 59991,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 19064,
+      "estimatedTokens": 19040,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "72bb619046d30d1eb4656bb1be3f11d628f627792e821142830c569ab71dc156",
+      "serializedDefinitionsSha256": "de087f97c45711aa278749c16ba67d00b717745ad9e1a12a1ef2aea96314070c",
       "toolCount": 72,
       "toolNames": [
         "skill_search",
@@ -148,7 +148,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_table",
         "update_onto_table_rows",
       ],
-      "totalChars": 76254,
+      "totalChars": 76158,
     },
     {
       "contextType": "project_create",
@@ -166,9 +166,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "calendar",
-      "estimatedTokens": 15022,
+      "estimatedTokens": 14998,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "f8d83ce27d4d931b7a9718a9f353f8ed72c729610d70b17c7dec121269bd44ca",
+      "serializedDefinitionsSha256": "d7f049acd536e48f4f2fea6225116bdaf2f21a9a0e7e795edf07f89459e16d82",
       "toolCount": 54,
       "toolNames": [
         "skill_search",
@@ -226,13 +226,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_table_details",
         "read_table_rows",
       ],
-      "totalChars": 60087,
+      "totalChars": 59991,
     },
     {
       "contextType": "daily_brief",
-      "estimatedTokens": 15022,
+      "estimatedTokens": 14998,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "f8d83ce27d4d931b7a9718a9f353f8ed72c729610d70b17c7dec121269bd44ca",
+      "serializedDefinitionsSha256": "d7f049acd536e48f4f2fea6225116bdaf2f21a9a0e7e795edf07f89459e16d82",
       "toolCount": 54,
       "toolNames": [
         "skill_search",
@@ -290,13 +290,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_table_details",
         "read_table_rows",
       ],
-      "totalChars": 60087,
+      "totalChars": 59991,
     },
     {
       "contextType": "general",
-      "estimatedTokens": 15022,
+      "estimatedTokens": 14998,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "f8d83ce27d4d931b7a9718a9f353f8ed72c729610d70b17c7dec121269bd44ca",
+      "serializedDefinitionsSha256": "d7f049acd536e48f4f2fea6225116bdaf2f21a9a0e7e795edf07f89459e16d82",
       "toolCount": 54,
       "toolNames": [
         "skill_search",
@@ -354,13 +354,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_table_details",
         "read_table_rows",
       ],
-      "totalChars": 60087,
+      "totalChars": 59991,
     },
     {
       "contextType": "ontology",
-      "estimatedTokens": 19064,
+      "estimatedTokens": 19040,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "72bb619046d30d1eb4656bb1be3f11d628f627792e821142830c569ab71dc156",
+      "serializedDefinitionsSha256": "de087f97c45711aa278749c16ba67d00b717745ad9e1a12a1ef2aea96314070c",
       "toolCount": 72,
       "toolNames": [
         "skill_search",
@@ -436,13 +436,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_table",
         "update_onto_table_rows",
       ],
-      "totalChars": 76254,
+      "totalChars": 76158,
     },
     {
       "contextType": "daily_brief_update",
-      "estimatedTokens": 15022,
+      "estimatedTokens": 14998,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "f8d83ce27d4d931b7a9718a9f353f8ed72c729610d70b17c7dec121269bd44ca",
+      "serializedDefinitionsSha256": "d7f049acd536e48f4f2fea6225116bdaf2f21a9a0e7e795edf07f89459e16d82",
       "toolCount": 54,
       "toolNames": [
         "skill_search",
@@ -500,7 +500,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_table_details",
         "read_table_rows",
       ],
-      "totalChars": 60087,
+      "totalChars": 59991,
     },
   ],
   "definitions": [
@@ -788,9 +788,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_onto_task_details",
-      "serialized": "{"type":"function","function":{"name":"get_onto_task_details","description":"Get a known task's missing details, such as assignees, relationships, or the people, places, times, phone numbers, emails and links read from its text (entities) needed for the request.\\nTask lists include statuses, dates, priorities and description previews. Do not reopen every listed task for a status summary; read details only to fill a specific missing fact.","parameters":{"type":"object","properties":{"task_id":{"type":"string","description":"Task ID to retrieve"}},"required":["task_id"]}}}",
-      "serializedChars": 577,
-      "serializedSha256": "d290eb6a59a140a9ecbb70191447b894bd5ce87dcc1c9be6623fc5f1316552c0",
+      "serialized": "{"type":"function","function":{"name":"get_onto_task_details","description":"Get a known task's assignees, relationships, or text entities (people, places, times, phone numbers, emails, links).\\nLists include statuses, dates, priorities and description previews. Read details only for missing facts; do not reopen each task for status summaries.","parameters":{"type":"object","properties":{"task_id":{"type":"string","description":"Task ID to retrieve"}},"required":["task_id"]}}}",
+      "serializedChars": 481,
+      "serializedSha256": "72ba4009988e420ff485f2f8009e01c661748ce366fe3f7a1c03ccc119c8fcd9",
     },
     {
       "name": "get_project_calendar",
@@ -1204,13 +1204,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/99dd8e04",
+  "registryVersion": "tool-registry/bc918933",
   "staticProfiles": [
     {
       "contextType": "global",
-      "estimatedTokens": 15022,
+      "estimatedTokens": 14998,
       "profile": "global",
-      "serializedDefinitionsSha256": "f8d83ce27d4d931b7a9718a9f353f8ed72c729610d70b17c7dec121269bd44ca",
+      "serializedDefinitionsSha256": "d7f049acd536e48f4f2fea6225116bdaf2f21a9a0e7e795edf07f89459e16d82",
       "toolCount": 54,
       "toolNames": [
         "skill_search",
@@ -1268,13 +1268,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "get_onto_table_details",
         "read_table_rows",
       ],
-      "totalChars": 60087,
+      "totalChars": 59991,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 19064,
+      "estimatedTokens": 19040,
       "profile": "project",
-      "serializedDefinitionsSha256": "72bb619046d30d1eb4656bb1be3f11d628f627792e821142830c569ab71dc156",
+      "serializedDefinitionsSha256": "de087f97c45711aa278749c16ba67d00b717745ad9e1a12a1ef2aea96314070c",
       "toolCount": 72,
       "toolNames": [
         "skill_search",
@@ -1350,7 +1350,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_table",
         "update_onto_table_rows",
       ],
-      "totalChars": 76254,
+      "totalChars": 76158,
     },
     {
       "contextType": "project_create",

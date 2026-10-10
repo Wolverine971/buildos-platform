@@ -138,7 +138,9 @@ export function getProseClasses(
 	const sizeClass = size === 'base' ? 'prose' : `prose prose-${size}`;
 	const maxWidth = removeMaxWidth ? 'max-w-none' : '';
 
-	return `${sizeClass} dark:prose-invert ${maxWidth}
+	// break-words: a long unbroken string (a pasted URL) wraps instead of pushing
+	// the reader sideways. It leaves code blocks and table sizing alone.
+	return `${sizeClass} dark:prose-invert ${maxWidth} break-words
 		prose-headings:text-foreground prose-headings:font-semibold
 		prose-h1:text-lg prose-h1:font-bold prose-h1:mb-3 prose-h1:mt-4
 		prose-h2:text-base prose-h2:font-bold prose-h2:mb-2 prose-h2:mt-3

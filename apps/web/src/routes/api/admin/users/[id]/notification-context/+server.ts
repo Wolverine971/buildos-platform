@@ -1,7 +1,9 @@
 // apps/web/src/routes/api/admin/users/[id]/notification-context/+server.ts
 import type { RequestHandler } from './$types';
 import { EmailGenerationService } from '$lib/services/email-generation-service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import type { EventType, NotificationChannel } from '@buildos/shared-types';
 
 export interface NotificationChannelCapability {
@@ -63,7 +65,7 @@ export interface UserNotificationContext {
 	};
 }
 
-export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }) => {
 	try {
 		const { user } = await safeGetSession();
 
@@ -76,6 +78,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		if (!userId) {
 			return ApiResponse.error('User ID is required');
 		}
+
+		if (!isValidUUID(userId)) {
+			return ApiResponse.badRequest('Invalid user ID');
+		}
+
+		// Reading another user's context is a privileged admin read: a signed-in
+		// session can only resolve its own actor, so this needs the admin client.
+		const supabase = createAdminSupabaseClient();
 
 		// Get base user context from email service
 		const emailService = new EmailGenerationService(supabase);

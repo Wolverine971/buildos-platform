@@ -173,4 +173,34 @@ describe('DocTreeView progressive disclosure', () => {
 		expect(toggle).toHaveAttribute('aria-expanded', 'true');
 		expect(screen.getByText('Archived launch plan')).toBeInTheDocument();
 	});
+
+	it('takes an archived document still in the stored tree out of it and keeps its live children', async () => {
+		// The stored tree can keep an archived parent. Left in, it showed as a live
+		// row with a made-up "updated just now"; its child must not vanish with it.
+		renderTree({
+			structure: {
+				version: 1,
+				root: [
+					{
+						id: 'archived-plan',
+						title: 'Archived launch plan',
+						order: 0,
+						children: [{ id: 'child', order: 0 }]
+					},
+					{ id: 'notes', order: 1 }
+				]
+			},
+			documents: {
+				child: document('child', 'Live child note'),
+				notes: document('notes', 'Pricing notes')
+			},
+			archived: [document('archived-plan', 'Archived launch plan', 'archived')]
+		});
+
+		await waitFor(() => expect(screen.getByText('Live child note')).toBeInTheDocument());
+		expect(screen.getByText('Pricing notes')).toBeInTheDocument();
+		// Only reachable through the collapsed Archived section.
+		expect(screen.queryByText('Archived launch plan')).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Archived documents (1)' })).toBeInTheDocument();
+	});
 });

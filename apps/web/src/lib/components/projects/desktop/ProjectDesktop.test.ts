@@ -176,7 +176,9 @@ function snapshot(id: string) {
 				state_key: 'todo',
 				updated_at: NOW,
 				start_at: null,
-				due_at: '2026-10-09T15:00:00.000Z'
+				// Relative, so the task stays upcoming instead of turning overdue
+				// (a fixed date here expired and broke the lock-tooltip assertion).
+				due_at: ago(-8)
 			}
 		]
 	};
@@ -474,7 +476,9 @@ describe('ProjectDesktop', () => {
 		// A task changes state in one tap; the list and tiles catch up.
 		await fireEvent.click(screen.getByRole('tab', { name: /Tasks/ }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Call Ana' }));
-		const markDone = (await screen.findByRole('button', { name: 'Mark done' })) as HTMLButtonElement;
+		const markDone = (await screen.findByRole('button', {
+			name: 'Mark done'
+		})) as HTMLButtonElement;
 		// The reader renders this control before its full task has loaded.
 		await waitFor(() => expect(markDone.disabled).toBe(false));
 		await fireEvent.click(markDone);
