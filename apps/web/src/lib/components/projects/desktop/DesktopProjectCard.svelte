@@ -1,16 +1,19 @@
 <!-- apps/web/src/lib/components/projects/desktop/DesktopProjectCard.svelte -->
 <!--
 	An opened project: it takes the desktop while the rest dock. Tabs show what
-	it holds (nested projects, docs, tasks, goals). Clicking a doc, task or goal
-	opens it in the reader: beside the list (Peek), across the card (Focus), or on
-	its own page; on phones the reader is a sheet over the list. Chat opens beside
-	the reader, about the item or the whole project. Nested projects, docs and
+	it holds (nested projects, docs, tasks, goals) and the chats had about it.
+	Clicking a doc, task or goal opens it in the reader: beside the list (Peek),
+	across the card (Focus), or on its own page; on phones the reader is a sheet
+	over the list. Chat opens beside the reader, about the item or the whole
+	project; a chat picked from the Chats tab opens there too, with its messages,
+	ready to continue. The Chats list is read only when its tab is pointed at or
+	opened, so it never slows the card. Nested projects, docs and
 	undated tasks drag out to the dock; every row also has a Move button for the
 	same thing without a drag. The card itself is a drop target, so a project
 	dragged in from the dock goes inside.
 -->
 <script lang="ts" module>
-	export type CardTab = 'inside' | 'docs' | 'tasks' | 'goals';
+	export type CardTab = 'inside' | 'docs' | 'tasks' | 'goals' | 'chats';
 </script>
 
 <script lang="ts">
@@ -25,6 +28,7 @@
 		FolderOpen,
 		GripVertical,
 		Lock,
+		MessageSquare,
 		Minimize2,
 		RefreshCw,
 		Table2 as Table,
@@ -50,7 +54,8 @@
 	import { SCHEDULED_TASK_MOVES_ENABLED, isDatedTask, type DesktopCard } from './desktop-moves';
 	import type { DesktopItem } from './desktop-rules';
 	import ReaderPanes from './ReaderPanes.svelte';
-	import type { ChatScope, ReaderItem, ReaderKind } from './reader-model';
+	import { createCardChats, type CardChat } from './desktop-chats.svelte';
+	import type { ChatScope, ReaderItem, ReaderKind, ResumedChat } from './reader-model';
 
 	let {
 		project,
@@ -148,17 +153,32 @@
 		return mix;
 	});
 
+	// Read when the Chats tab is first pointed at or opened, never with the card.
+	const chats = createCardChats(() => project.id);
+	$effect(() => {
+		if (tab === 'chats') untrack(() => chats.load());
+	});
+
 	// Nested projects lead when there are some and trail when there are none,
-	// so an empty folder doesn't sit in front of the docs.
+	// so an empty folder doesn't sit in front of the docs. Chats have no count
+	// until their list has been read.
 	const tabs = $derived.by(() => {
-		const list: { key: CardTab; label: string; count: number }[] = [
+		const list: { key: CardTab; label: string; count: number | string | null }[] = [
 			{
 				key: 'docs',
 				label: 'Docs',
 				count: data ? data.project.documents.length : project.document_count
 			},
 			{ key: 'tasks', label: 'Tasks', count: data ? openTasks.length : project.task_count },
-			{ key: 'goals', label: 'Goals', count: data ? data.goals.length : project.goal_count }
+			{ key: 'goals', label: 'Goals', count: data ? data.goals.length : project.goal_count },
+			{
+				key: 'chats',
+				label: 'Chats',
+				count:
+					chats.status === 'ready'
+						? `${chats.rows.length}${chats.hasMore ? '+' : ''}`
+						: null
+			}
 		];
 		if (!canHold) return list;
 		const nested = { key: 'inside' as const, label: 'Nested projects', count: inside.length };
@@ -208,12 +228,44 @@
 	type PanesApi = {
 		open: (item: ReaderItem) => void;
 		openChat: (scope: ChatScope) => void;
+		resumeChat: (chat: ResumedChat) => void;
 		handleKey: (event: KeyboardEvent) => boolean;
 	};
 	let panes = $state<PanesApi | null>(null);
 	let newTableOpen = $state(false);
 	let chatOpen = $state(false);
 	let chatScope = $state<ChatScope>('project');
+	let chatSession = $state<ResumedChat | null>(null);
+
+	// A chat that just closed may be new, or have moved to the top: the list catches up.
+	let chatWasOpen = false;
+	$effect(() => {
+		const open = chatOpen;
+		untrack(() => {
+			if (!open && chatWasOpen) chats.refresh();
+			chatWasOpen = open;
+		});
+	});
+
+	/** A time for today's chats, the day for older ones (last night reads "yesterday"). */
+	function chatWhen(value: string | null): string {
+		const then = new Date(value ?? '');
+		if (Number.isNaN(then.getTime())) return '';
+		if (then.toDateString() === new Date().toDateString())
+			return then.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+		then.setHours(0, 0, 0, 0);
+		return relativeDay(then.toISOString());
+	}
+
+	function chatNote(chat: CardChat): string {
+		const count = chat.message_count;
+		return [
+			count > 0 ? `${count} ${count === 1 ? 'message' : 'messages'}` : '',
+			chat.focus_label ? `about ${chat.focus_label}` : ''
+		]
+			.filter(Boolean)
+			.join(' · ');
+	}
 
 	const docOrder = $derived.by(() => {
 		const ids: string[] = [];
@@ -344,7 +396,7 @@
 					type="button"
 					class="action bolt"
 					onclick={() => panes?.openChat('project')}
-					aria-pressed={chatOpen && chatScope === 'project'}
+					aria-pressed={chatOpen && chatScope === 'project' && !chatSession}
 					title="Chat about this project"
 					aria-label="Chat about {project.name}"
 				>
@@ -400,8 +452,9 @@
 				tabindex={tab === item.key ? 0 : -1}
 				onclick={() => onTab(item.key)}
 				onkeydown={(event) => tabKeydown(event, index)}
+				onpointerenter={item.key === 'chats' ? chats.load : undefined}
 			>
-				{item.label}<span class="count">{item.count}</span>
+				{item.label}{#if item.count !== null}<span class="count">{item.count}</span>{/if}
 			</button>
 		{/each}
 	</div>
@@ -410,6 +463,7 @@
 		bind:this={panes}
 		bind:chatOpen
 		bind:chatScope
+		bind:chatSession
 		projectId={project.id}
 		projectName={project.name}
 		{canWrite}
@@ -478,6 +532,55 @@
 							project.name
 						)}.
 					</div>
+				{:else if tab === 'chats'}
+					{#if chats.status === 'error'}
+						<div class="empty-drop grid justify-items-center gap-2" role="alert">
+							<span>{chats.error}</span>
+							<button type="button" class="action" onclick={chats.retry}>
+								<RefreshCw class="h-3.5 w-3.5" /> Try again
+							</button>
+						</div>
+					{:else if chats.status !== 'ready'}
+						<div
+							class="grid gap-1.5 px-2 py-1"
+							aria-busy="true"
+							aria-label="Loading chats"
+						>
+							{#each [0, 1, 2, 3] as index (index)}
+								<div
+									class="h-14 animate-pulse rounded-lg bg-muted motion-reduce:animate-none"
+								></div>
+							{/each}
+						</div>
+					{:else if chats.rows.length}
+						<p class="hint">Click a chat to pick it up where it left off.</p>
+						{#each chats.rows as chat (chat.id)}
+							{@render chatRow(chat)}
+						{/each}
+						{#if chats.hasMore}
+							<div class="flex justify-start px-2 pt-2">
+								<button
+									type="button"
+									class="action quiet"
+									disabled={chats.loadingMore}
+									onclick={chats.more}
+								>
+									{chats.loadingMore ? 'Loading…' : 'Show earlier chats'}
+								</button>
+							</div>
+						{/if}
+					{:else}
+						<div class="empty-drop grid justify-items-center gap-2">
+							<span>No chats about {shortName(project.name)} yet.</span>
+							<button
+								type="button"
+								class="action"
+								onclick={() => panes?.openChat('project')}
+							>
+								Start one
+							</button>
+						</div>
+					{/if}
 				{:else if !data}
 					{#if error}
 						<div class="empty-drop grid justify-items-center gap-2" role="alert">
@@ -683,6 +786,30 @@
 			{@render docRows(children, depth + 1)}
 		{/if}
 	{/each}
+{/snippet}
+
+{#snippet chatRow(chat: CardChat)}
+	{@const selected = chatOpen && chatSession?.id === chat.id}
+	{@const note = chatNote(chat)}
+	<div class="row talk" class:sel={selected} data-row-id={chat.id}>
+		<span></span>
+		<span class="glyph"><MessageSquare class="h-4 w-4" /></span>
+		<button
+			type="button"
+			class="pick"
+			aria-current={selected ? 'true' : undefined}
+			onclick={() => panes?.resumeChat({ id: chat.id, title: chat.title })}
+		>
+			<span class="name line-clamp-2 text-sm text-foreground">{chat.title}</span>
+			{#if chat.summary}
+				<span class="gist line-clamp-2 text-xs text-muted-foreground">{chat.summary}</span>
+			{/if}
+			{#if note}
+				<span class="note block truncate text-muted-foreground">{note}</span>
+			{/if}
+		</button>
+		<span class="chip">{chatWhen(chat.last_activity_at)}</span>
+	</div>
 {/snippet}
 
 {#snippet taskRow(task: DesktopCard['project']['tasks'][number])}
@@ -935,6 +1062,52 @@
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: 2px;
 		border-radius: 4px;
+	}
+	/* A chat row runs a few lines and opens from anywhere on it. */
+	.row.talk {
+		position: relative;
+		align-items: start;
+		padding-top: 9px;
+		padding-bottom: 9px;
+	}
+	.pick {
+		display: grid;
+		min-width: 0;
+		gap: 2px;
+		text-align: left;
+	}
+	.pick::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: 9px;
+	}
+	.pick:focus-visible {
+		outline: none;
+	}
+	.pick:focus-visible::after {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: -2px;
+	}
+	.row.sel .pick .name {
+		color: hsl(var(--accent));
+		font-weight: 600;
+	}
+	.gist,
+	.note {
+		max-width: 76ch;
+	}
+	/* Phones give the words the column the other lists keep for a fold arrow. */
+	@media (max-width: 767px) {
+		.row.talk {
+			grid-template-columns: auto minmax(0, 1fr) auto;
+		}
+		.row.talk > span:first-child {
+			display: none;
+		}
+	}
+	.note {
+		font-size: 11.5px;
 	}
 	.glyph {
 		display: grid;

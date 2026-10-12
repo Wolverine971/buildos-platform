@@ -8,6 +8,8 @@ export type ReaderKind = 'document' | 'task' | 'goal';
 export type ReaderItem = { kind: ReaderKind; id: string };
 export type ReaderLayout = 'peek' | 'focus';
 export type ChatScope = 'item' | 'project';
+/** An earlier chat picked back up in the chat pane, in place of a new one. */
+export type ResumedChat = { id: string; title: string };
 export type SheetDetent = 'peek' | 'full';
 
 /** The card body's columns, left to right. */

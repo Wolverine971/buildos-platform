@@ -25,6 +25,7 @@
 		type ReaderItem,
 		type ReaderKind,
 		type ReaderLayout,
+		type ResumedChat,
 		type SheetDetent
 	} from './reader-model';
 
@@ -49,7 +50,8 @@
 		showProject = false,
 		onTaskState,
 		chatOpen = $bindable(false),
-		chatScope = $bindable<ChatScope>('project')
+		chatScope = $bindable<ChatScope>('project'),
+		chatSession = $bindable<ResumedChat | null>(null)
 	}: {
 		projectId: string;
 		projectName: string;
@@ -85,6 +87,8 @@
 		onTaskState?: (id: string, state: string, previous: string) => void;
 		chatOpen?: boolean;
 		chatScope?: ChatScope;
+		/** An earlier chat showing in the chat pane, in place of a new one. */
+		chatSession?: ResumedChat | null;
 	} = $props();
 
 	// Phones get sheets over the list; wider screens get panes beside it.
@@ -128,7 +132,7 @@
 			if (reading && !wasReading) detent = openDetent;
 			if (!reading && wasReading) {
 				walk = null;
-				if (chatOpen && chatScope === 'item') chatOpen = false;
+				if (chatOpen && chatScope === 'item' && !chatSession) chatOpen = false;
 			}
 			wasReading = reading;
 		});
@@ -225,11 +229,19 @@
 
 	/** Chat about the open item or the whole project; the same scope again closes it. */
 	export function openChat(scope: ChatScope) {
-		if (chatOpen && chatScope === scope) {
+		if (chatOpen && chatScope === scope && !chatSession) {
 			chatOpen = false;
 			return;
 		}
+		chatSession = null;
 		chatScope = scope;
+		chatOpen = true;
+	}
+
+	/** Pick an earlier chat back up, beside the list it was chosen from. */
+	export function resumeChat(chat: ResumedChat) {
+		if (reader && listShown) listWithChat = true;
+		chatSession = chat;
 		chatOpen = true;
 	}
 
@@ -394,7 +406,7 @@
 			layout={effectiveLayout}
 			{listShown}
 			canShowList={hasList}
-			chatOn={chatOpen && chatScope === 'item'}
+			chatOn={chatOpen && chatScope === 'item' && !chatSession}
 			{phone}
 			{detent}
 			reloadKey={reloadKey + localReload}
@@ -428,8 +440,10 @@
 		item={reader}
 		itemTitle={readerTitle}
 		scope={reader ? chatScope : 'project'}
+		session={chatSession}
 		{phone}
 		onScope={(scope) => (chatScope = scope)}
+		onNewChat={() => (chatSession = null)}
 		onClose={() => (chatOpen = false)}
 		onDocumentChanged={() => (localReload += 1)}
 	/>

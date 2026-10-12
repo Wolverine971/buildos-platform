@@ -208,8 +208,26 @@ function ok(data: unknown) {
 	});
 }
 
+const CHAT = {
+	id: 'chat-1',
+	title: 'Pricing page rewrite',
+	summary: 'Worked through the three tiers and what each one promises.',
+	chat_topics: ['pricing'],
+	context_type: 'project',
+	entity_id: 'ws',
+	message_count: 8,
+	status: 'completed',
+	focus_label: 'Pricing notes',
+	focus_type: 'document',
+	created_at: NOW,
+	updated_at: NOW,
+	last_message_at: NOW,
+	last_activity_at: NOW
+};
+
 const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
 	if (url.endsWith('/card')) return ok({ project: snapshot(url.split('/')[4]!), goals: [] });
+	if (url.includes('/recent-chats?')) return ok({ chats: [CHAT], total: 1, hasMore: false });
 	const full = url.match(/^\/api\/onto\/(documents|tasks)\/([^/]+)\/full/);
 	if (full?.[1] === 'documents')
 		return ok({
@@ -500,6 +518,46 @@ describe('ProjectDesktop', () => {
 		expect(screen.queryByRole('region', { name: 'chat task in ws' })).toBeNull();
 		await fireEvent.keyDown(window, { key: 'Escape' });
 		await waitFor(() => expect(back).toHaveBeenCalledTimes(1));
+	});
+
+	it('reads earlier chats only when their tab is asked for, and picks one back up', async () => {
+		page.state = { desktopCard: 'ws', desktopDepth: 1 };
+		renderDesktop();
+		const chatReads = () =>
+			fetchMock.mock.calls.filter(([url]) => url.includes('/recent-chats?')).length;
+
+		// Opening the card reads the card and nothing about its chats.
+		await fireEvent.click(await screen.findByRole('tab', { name: /Docs/ }));
+		await screen.findByText('Pricing notes');
+		const tab = screen.getByRole('tab', { name: 'Chats' });
+		expect(chatReads()).toBe(0);
+
+		await fireEvent.click(tab);
+		const row = await screen.findByRole('button', { name: /Pricing page rewrite/ });
+		expect(row.textContent).toContain('8 messages · about Pricing notes');
+		// The count shows once the list has been read.
+		expect(within(tab).getByText('1')).toBeTruthy();
+		// Coming back to the tab shows the list already read.
+		await fireEvent.click(screen.getByRole('tab', { name: /Docs/ }));
+		await fireEvent.click(screen.getByRole('tab', { name: /Chats/ }));
+		expect(chatReads()).toBe(1);
+
+		// The chat opens beside the list with its messages, not as a new chat.
+		await fireEvent.click(screen.getByRole('button', { name: /Pricing page rewrite/ }));
+		expect(await screen.findByRole('region', { name: 'earlier chat chat-1' })).toBeTruthy();
+		expect(
+			screen
+				.getByRole('button', { name: /Pricing page rewrite/ })
+				.getAttribute('aria-current')
+		).toBe('true');
+
+		// New chat leaves it for a fresh one about the project.
+		await fireEvent.click(screen.getByRole('button', { name: 'New chat' }));
+		expect(await screen.findByRole('region', { name: 'chat project-wide in ws' })).toBeTruthy();
+
+		// Closing the chat re-reads the list, so a new chat shows up in it.
+		await fireEvent.keyDown(window, { key: 'Escape' });
+		await waitFor(() => expect(chatReads()).toBe(2));
 	});
 
 	it('collapses back past every card it pushed', async () => {

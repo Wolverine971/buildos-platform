@@ -4,13 +4,15 @@
 	let props: Record<string, any> = $props();
 
 	const label = $derived(
-		props.documentId
-			? `document ${props.documentId} in ${props.projectId}`
-			: props.taskId
-				? `task ${props.taskId} in ${props.projectId}`
-				: props.goalId
-					? `goal ${props.goalId} in ${props.projectId}`
-					: `chat ${props.initialProjectFocus?.focusType} in ${props.initialProjectFocus?.projectId}`
+		props.initialChatSessionId
+			? `earlier chat ${props.initialChatSessionId}`
+			: props.documentId
+				? `document ${props.documentId} in ${props.projectId}`
+				: props.taskId
+					? `task ${props.taskId} in ${props.projectId}`
+					: props.goalId
+						? `goal ${props.goalId} in ${props.projectId}`
+						: `chat ${props.initialProjectFocus?.focusType} in ${props.initialProjectFocus?.projectId}`
 	);
 </script>
 
