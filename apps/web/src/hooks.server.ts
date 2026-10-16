@@ -182,8 +182,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 	event.locals.serverTiming = createServerTiming(timingEnabled);
 	const timing = event.locals.serverTiming;
-	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
-		timing ? timing.measure(name, fn) : fn();
+	const measure = <T>(name: string, fn: () => Promise<T> | T) => timing.measure(name, fn);
 
 	timing?.start('request');
 
