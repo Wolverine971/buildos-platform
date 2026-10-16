@@ -1,5 +1,6 @@
 // apps/web/src/app.d.ts
-import type { Session, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { VerifiedSession } from '$lib/types/verified-session';
 import type { Database } from '@buildos/shared-types';
 import type { ServerTiming } from '$lib/server/server-timing';
 
@@ -17,10 +18,10 @@ declare global {
 		interface Locals {
 			supabase: SupabaseClient<Database>;
 			safeGetSession: () => Promise<{
-				session: Session | null;
+				session: VerifiedSession | null;
 				user: User | null;
 			}>;
-			session: Session | null;
+			session: VerifiedSession | null;
 			user: User | null;
 			serverTiming?: ServerTiming;
 			_explicitlyCleared?: boolean;

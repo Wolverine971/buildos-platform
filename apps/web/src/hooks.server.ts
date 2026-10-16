@@ -5,6 +5,7 @@ import type { Handle, HandleServerError, RequestEvent } from '@sveltejs/kit';
 import { createSupabaseServer } from '$lib/supabase';
 import { applyBaselineSecurityHeaders } from '$lib/server/security-headers';
 import { createServerTiming } from '$lib/server/server-timing';
+import { getVerifiedSession, requiresLiveAuthCheck } from '$lib/server/session-verification';
 import { dev } from '$app/environment';
 import type { ErrorSeverity } from '$lib/types/error-logging';
 import {
@@ -229,9 +230,9 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	}
 
 	/**
-	 * Unlike `supabase.auth.getSession()`, which returns the session _without_
-	 * validating the JWT, this function also calls `getUser()` to validate the
-	 * JWT before returning the session.
+	 * Verify the JWT locally for ordinary reads; use a fresh Auth lookup for
+	 * sensitive routes and mutations. Application permissions always come from
+	 * public.users, and the result is cached only for this request.
 	 */
 	event.locals.safeGetSession = async () => {
 		if (sessionCache) {
@@ -251,30 +252,17 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					return { session: null, user: null };
 				}
 
-				// Get session first (doesn't validate JWT)
-				const {
-					data: { session },
-					error: sessionError
-				} = await measure('auth.session', () => supabase.auth.getSession());
-
-				if (sessionError || !session) {
+				const verifiedSession = await getVerifiedSession(supabase.auth, {
+					requireLiveUser: requiresLiveAuthCheck(
+						event.route.id ?? pathname,
+						event.request.method
+					),
+					measure
+				});
+				if (!verifiedSession) {
 					return { session: null, user: null };
 				}
-
-				// Validate JWT by calling getUser
-				const {
-					data: { user: authUser },
-					error: userError
-				} = await measure('auth.user', () => supabase.auth.getUser());
-
-				if (userError || !authUser) {
-					// JWT validation failed
-					return { session: null, user: null };
-				}
-				// Replace the cookie-derived user proxy with the Auth-server-verified
-				// record. Callers that still need session.user now receive authentic
-				// identity data without triggering Supabase's server-side warning.
-				const verifiedSession = { ...session, user: authUser };
+				const authUser = verifiedSession.user;
 
 				// Get user data from public.users table
 				const { data: userData, error: dbError } = await measure('db.user', () =>

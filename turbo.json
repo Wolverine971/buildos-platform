@@ -2,7 +2,13 @@
 	"$schema": "https://turbo.build/schema.json",
 	"ui": "stream",
 	"concurrency": "11",
-	"globalDependencies": ["**/.env.*local", "**/.env", "vitest.coverage.ts", "vitest.workers.ts"],
+	"globalDependencies": [
+		"**/.env.*local",
+		"**/.env",
+		"vitest.coverage.ts",
+		"vitest.workers.ts",
+		"scripts/testing/*.mjs"
+	],
 	"globalEnv": [
 		"NODE_ENV",
 		"PUBLIC_SUPABASE_URL",
