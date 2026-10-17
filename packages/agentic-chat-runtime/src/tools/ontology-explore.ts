@@ -13,8 +13,8 @@ import { inferMaterializedToolsFromEntityResults } from '../loop/entity-result-m
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import {
 	AgenticChatOntologySearchInputError,
-	AgenticChatOntologySearchProjectNotFoundError,
 	AgenticChatOntologySearchQueryError,
+	assertOntologySearchProjectSearchable,
 	normalizeOptionalOntologySearchProjectId
 } from './ontology-search';
 import {
@@ -123,14 +123,7 @@ export async function exploreProject(
 
 	if (projectId) {
 		await context.access.assertProjectAccess(projectId, 'read');
-		const { data: project, error } = await (context.client as any)
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle();
-		if (error) throw new AgenticChatOntologySearchQueryError('project', error);
-		if (!project) throw new AgenticChatOntologySearchProjectNotFoundError();
+		await assertOntologySearchProjectSearchable(context, projectId, actorId);
 	}
 
 	const queryEmbedding = await context.embeddings.embedQuery(theme);

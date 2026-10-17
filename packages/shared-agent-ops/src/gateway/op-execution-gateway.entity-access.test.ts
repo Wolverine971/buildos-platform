@@ -114,4 +114,22 @@ describe('project fallback access fencing', () => {
 		expect(result.project.access_role).toBe('owner');
 		expect(mocks.assertProjectWriteAccess).toHaveBeenCalledOnce();
 	});
+
+	it('never reopens a combined project through the archived-project fallback', async () => {
+		const { context: executionContext } = context([PROJECT_ID]);
+		const admin = (executionContext as unknown as { admin: { from: () => unknown } }).admin;
+		const builder = admin.from() as { maybeSingle: ReturnType<typeof vi.fn> };
+		builder.maybeSingle.mockResolvedValue({
+			data: { ...archivedProject, merged_into_project_id: OTHER_PROJECT_ID },
+			error: null
+		});
+
+		await expect(
+			loadCoreEntityForAccess(executionContext, 'project', PROJECT_ID, 'write', {
+				includeArchived: true
+			})
+		).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+		expect(mocks.assertProjectWriteAccess).not.toHaveBeenCalled();
+	});
 });

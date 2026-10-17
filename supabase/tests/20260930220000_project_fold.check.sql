@@ -79,6 +79,10 @@ LANGUAGE sql AS $$ SELECT ARRAY(SELECT jsonb_array_elements_text(p_preview->'imp
 GRANT EXECUTE ON FUNCTION pg_temp.assert_true(boolean, text), pg_temp.assert_raises(text, text),
 	pg_temp.as_user(uuid) TO authenticated, service_role;
 
+-- A schema-only snapshot of production has no rows. Organize's rollout singleton is
+-- data (20260930170110 inserts it), so seed it here or the flag updates below are no-ops.
+INSERT INTO private.organize_rollout (singleton) SELECT true WHERE NOT EXISTS (SELECT 1 FROM private.organize_rollout);
+
 -- ---------------------------------------------------------------------------
 -- Fixtures. A owns Source (S) and Dest (D) and Hub (H). B is a write member of
 -- S only. C is an admin of D only. X is nobody's member. Q owns Other (O).
@@ -482,7 +486,10 @@ SELECT pg_temp.assert_true((SELECT (pg_temp.fold_apply('a4000000-0000-4000-8000-
 	'a retry with the same fold id replays the receipt');
 SELECT pg_temp.assert_raises($q$SELECT pg_temp.fold_apply('a4000000-0000-4000-8000-000000000001','c4000000-0000-4000-8000-000000000001','c4000000-0000-4000-8000-000000000002','other','f4000000-0000-4000-8000-0000000000f1',ARRAY['b4000000-0000-4000-8000-000000000002']::uuid[])$q$,
 	'project_fold_idempotency_conflict');
-SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM public.queue_jobs WHERE metadata->>'taskId' = 'e4000000-0000-4000-8000-000000000002'),
+-- Only calendar jobs count: since 20261007120100 inserting a task also queues its
+-- extract_task_entities read (same taskId).
+SELECT pg_temp.assert_true((SELECT count(*) = 1 FROM public.queue_jobs WHERE job_type = 'sync_calendar'
+		AND metadata->>'taskId' = 'e4000000-0000-4000-8000-000000000002'),
 	'the replay queued nothing');
 -- A merged source cannot fold again; nothing folds into it.
 SELECT pg_temp.assert_raises($q$SELECT pg_temp.fold_preview('a4000000-0000-4000-8000-000000000001','c4000000-0000-4000-8000-000000000001','c4000000-0000-4000-8000-000000000003')$q$,

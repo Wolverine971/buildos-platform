@@ -5,13 +5,14 @@
  */
 
 import type { RequestHandler } from './$types';
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { buildSearchFilter } from '$lib/utils/api-helpers';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createWebAgenticChatSharedReadContext } from '$lib/services/agentic-chat/tools/core/executors/web-access-adapter';
 import {
 	AgenticChatOntologySearchInputError,
+	AgenticChatOntologySearchProjectMergedError,
 	AgenticChatOntologySearchProjectNotFoundError,
 	AgenticChatOntologySearchQueryError,
 	AgenticChatToolAccessDeniedError,
@@ -206,6 +207,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		if (error instanceof AgenticChatOntologySearchProjectNotFoundError) {
 			return ApiResponse.notFound('Project');
+		}
+		if (error instanceof AgenticChatOntologySearchProjectMergedError) {
+			return ApiResponse.error(error.message, HttpStatus.CONFLICT, 'PROJECT_MERGED');
 		}
 		if (error instanceof AgenticChatOntologySearchQueryError) {
 			console.error(`[Ontology Search API] ${error.stage} query failed:`, error.cause);

@@ -70,6 +70,11 @@ DEFAULT_CHECKS = (
     ROOT / 'supabase' / 'tests' / 'account_deletion_purge.check.sql',
 )
 
+# Small configuration tables whose rows are part of the schema contract. A standing check
+# reads them (project_fold_table_coverage reads the fold policy), and a schema-only copy
+# would leave them empty, so the snapshot also carries their rows.
+REFERENCE_DATA_TABLES = ('private.project_fold_table_policy',)
+
 FINGERPRINT_SQL = r"""
 WITH app_ns AS (
   SELECT oid, nspname FROM pg_namespace
@@ -201,13 +206,18 @@ def read_only_query(ref: str, sql: str) -> object:
     return next(iter(rows[0].values()))
 
 
-def dump_schema(ref: str, target: Path, pg_bin: Path) -> None:
+def dump_env(ref: str) -> dict:
     # Same temporary login the Supabase CLI uses for `db dump --linked`. The read-only
     # login cannot LOCK tables whose SELECT grant was revoked, which pg_dump requires.
+    # The login is short-lived, so each pg_dump asks for its own.
     login = management(f'/v1/projects/{ref}/cli/login-role', {'read_only': False})
-    env = dict(os.environ, PGHOST=f'db.{ref}.supabase.co', PGPORT='5432', PGDATABASE='postgres',
-               PGUSER=login['role'], PGPASSWORD=login['password'], PGSSLMODE='require',
-               PGCONNECT_TIMEOUT='20', PGOPTIONS='-c default_transaction_read_only=on')
+    return dict(os.environ, PGHOST=f'db.{ref}.supabase.co', PGPORT='5432', PGDATABASE='postgres',
+                PGUSER=login['role'], PGPASSWORD=login['password'], PGSSLMODE='require',
+                PGCONNECT_TIMEOUT='20', PGOPTIONS='-c default_transaction_read_only=on')
+
+
+def dump_schema(ref: str, target: Path, pg_bin: Path) -> None:
+    env = dump_env(ref)
     partial = target.with_suffix('.partial')
     args = [str(pg_bin / 'pg_dump'), '--schema-only', '--quote-all-identifiers', '--role', 'postgres',
             *[f'--exclude-schema={schema}' for schema in EXCLUDED_SCHEMAS], '--file', str(partial)]
@@ -215,6 +225,15 @@ def dump_schema(ref: str, target: Path, pg_bin: Path) -> None:
     if result.returncode:
         partial.unlink(missing_ok=True)
         raise RehearsalError(f'pg_dump failed: {result.stderr.strip()[:500]}')
+    if REFERENCE_DATA_TABLES:
+        data = subprocess.run([str(pg_bin / 'pg_dump'), '--data-only', '--quote-all-identifiers',
+                               '--role', 'postgres', *[f'--table={table}' for table in REFERENCE_DATA_TABLES]],
+                              env=dump_env(ref), capture_output=True, text=True)
+        if data.returncode:
+            partial.unlink(missing_ok=True)
+            raise RehearsalError(f'pg_dump of reference data failed: {data.stderr.strip()[:500]}')
+        with partial.open('a') as handle:
+            handle.write('\n-- Reference data (REFERENCE_DATA_TABLES)\n' + data.stdout)
     partial.chmod(0o600)
     partial.replace(target)
 

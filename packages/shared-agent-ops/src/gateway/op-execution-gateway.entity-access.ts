@@ -25,6 +25,26 @@ export type EntityAccessResult = {
 	projectId: string;
 };
 
+/**
+ * A combined project stays archived until unfold brings it back (tasker 122),
+ * so the archived-project fallback never reopens one. The caller then rethrows
+ * the out-of-scope refusal, which `explainMergedProjectRefusal` turns into
+ * "combined into X". Runs only on that rare fallback path.
+ */
+async function isMergedProject(context: ToolExecutionContext, projectId: string): Promise<boolean> {
+	const { data, error } = await context.admin
+		.from('onto_projects')
+		.select('merged_into_project_id')
+		.eq('id', projectId)
+		.maybeSingle();
+	if (error) {
+		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to load project');
+	}
+	return Boolean(
+		(data as { merged_into_project_id?: string | null } | null)?.merged_into_project_id
+	);
+}
+
 async function resolveArchivedProjectAccessContext(
 	context: ToolExecutionContext,
 	entity: Record<string, unknown>
@@ -157,7 +177,8 @@ export async function loadEntityForAccess(
 		if (
 			kind === 'project' &&
 			options.includeArchived &&
-			isProjectInExplicitScope(context, entityId)
+			isProjectInExplicitScope(context, entityId) &&
+			!(await isMergedProject(context, entityId))
 		) {
 			project = await resolveArchivedProjectAccessContext(context, entity);
 		}

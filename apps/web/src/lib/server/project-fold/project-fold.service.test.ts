@@ -11,9 +11,12 @@ import {
 } from './project-fold.service';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const [USER, SOURCE, DEST, ALICE, BOB, FOLD] = Array.from({ length: 6 }, (_, n) =>
-	id(n + 1)
-) as string[];
+const USER = id(1);
+const SOURCE = id(2);
+const DEST = id(3);
+const ALICE = id(4);
+const BOB = id(5);
+const FOLD = id(6);
 
 const PREVIEW = {
 	confirmation_token: 'tok',

@@ -2,7 +2,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import { AgenticChatExploreUnavailableError, exploreProject } from './ontology-explore';
-import { AgenticChatOntologySearchInputError } from './ontology-search';
+import {
+	AgenticChatOntologySearchInputError,
+	AgenticChatOntologySearchProjectMergedError
+} from './ontology-search';
 
 const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
 const USER_ID = '91000000-0000-4000-8000-000000000009';
@@ -146,5 +149,34 @@ describe('exploreProject', () => {
 			expect.arrayContaining(['get_onto_document_details', 'get_onto_task_details'])
 		);
 		expect(payload.search_scope).toBe('workspace');
+	});
+});
+
+describe('exploreProject on a combined project (tasker 122)', () => {
+	it('refuses with where the project went instead of an empty explore', async () => {
+		const rpc = vi.fn(async (fn: string) =>
+			fn === 'get_project_route_redirect'
+				? {
+						data: { status: 'merged', destination_project_id: OTHER_PROJECT_ID },
+						error: null
+					}
+				: { data: [], error: null }
+		);
+		const embedQuery = vi.fn(async () => EMBEDDING);
+		const { context } = contextWith({
+			rpc,
+			embeddings: { embedQuery },
+			tables: {
+				onto_projects: [
+					{ id: PROJECT_ID, merged_into_project_id: OTHER_PROJECT_ID, name: 'Cadre' }
+				]
+			}
+		});
+
+		const explore = exploreProject(context, { theme: 'marketing', project_id: PROJECT_ID });
+		await expect(explore).rejects.toBeInstanceOf(AgenticChatOntologySearchProjectMergedError);
+		await expect(explore).rejects.toThrow(`Use project_id ${OTHER_PROJECT_ID} instead.`);
+		expect(rpc).not.toHaveBeenCalledWith('onto_search_semantic', expect.anything());
+		expect(embedQuery).not.toHaveBeenCalled();
 	});
 });

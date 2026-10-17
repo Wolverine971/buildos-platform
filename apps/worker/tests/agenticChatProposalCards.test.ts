@@ -411,8 +411,9 @@ describe('proposal tools around the turn', () => {
 	});
 
 	it('keeps the proposal ops away from MCP connectors (no external op handler)', () => {
-		expect(EXTERNAL_OP_HANDLERS['onto.project.parent.propose']).toBeUndefined();
-		expect(EXTERNAL_OP_HANDLERS['onto.project.combine.propose']).toBeUndefined();
+		const handlers = EXTERNAL_OP_HANDLERS as Record<string, unknown>;
+		expect(handlers['onto.project.parent.propose']).toBeUndefined();
+		expect(handlers['onto.project.combine.propose']).toBeUndefined();
 	});
 });
 

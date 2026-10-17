@@ -125,6 +125,27 @@ export class AgenticChatOntologySearchProjectNotFoundError extends Error {
 	}
 }
 
+/**
+ * A scoped search aimed at a project that was combined into another. Its
+ * leftovers (past events) must not be served as the project's state; say where
+ * the project went instead, in the gateway's wording (tasker 122).
+ */
+export class AgenticChatOntologySearchProjectMergedError extends Error {
+	readonly name = 'AgenticChatOntologySearchProjectMergedError';
+	readonly projectId: string;
+	readonly destinationProjectId: string | null;
+
+	constructor(projectId: string, destination: { id: string; name: string | null } | null) {
+		super(
+			destination?.name
+				? `This project was combined into "${destination.name}" and is archived. Use project_id ${destination.id} instead.`
+				: 'This project was combined into another project and is archived. Search the project it was combined into instead.'
+		);
+		this.projectId = projectId;
+		this.destinationProjectId = destination?.id ?? null;
+	}
+}
+
 export class AgenticChatOntologySearchQueryError extends Error {
 	readonly name = 'AgenticChatOntologySearchQueryError';
 	readonly stage: 'project' | 'rpc' | 'events';
@@ -299,6 +320,67 @@ async function searchSemanticForQuery(input: {
 }
 
 /** Resolves the actor and, for a project search, proves read access to a live project. */
+/**
+ * Where a combined project went, when the actor can read it. Follows the merge
+ * chain through `get_project_route_redirect`; any failure falls back to the
+ * generic "combined" message rather than failing the search differently.
+ */
+async function loadMergeDestination(
+	context: AgenticChatSharedReadContextV1,
+	projectId: string,
+	actorId: string
+): Promise<{ id: string; name: string | null } | null> {
+	try {
+		const { data } = await (context.client as any).rpc('get_project_route_redirect', {
+			p_project_id: projectId,
+			p_actor_id: actorId
+		});
+		const destinationId =
+			data && typeof data === 'object' && data.status === 'merged'
+				? data.destination_project_id
+				: null;
+		if (typeof destinationId !== 'string') return null;
+		const { data: destination } = await (context.client as any)
+			.from('onto_projects')
+			.select('id, name')
+			.eq('id', destinationId)
+			.is('deleted_at', null)
+			.maybeSingle();
+		return {
+			id: destinationId,
+			name: typeof destination?.name === 'string' ? destination.name : null
+		};
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The scoped project exists and was not combined into another. Shared by
+ * search_project and explore_project so both refuse a combined project with the
+ * same "use project_id <destination>" answer. Call after the access check.
+ */
+export async function assertOntologySearchProjectSearchable(
+	context: AgenticChatSharedReadContextV1,
+	projectId: string,
+	actorId: string
+): Promise<void> {
+	const { data: project, error } = await (context.client as any)
+		.from('onto_projects')
+		.select('id, merged_into_project_id')
+		.eq('id', projectId)
+		.is('deleted_at', null)
+		.maybeSingle();
+	if (error) throw new AgenticChatOntologySearchQueryError('project', error);
+	if (!project) throw new AgenticChatOntologySearchProjectNotFoundError();
+	if (project.merged_into_project_id) {
+		throw new AgenticChatOntologySearchProjectMergedError(
+			projectId,
+			await loadMergeDestination(context, projectId, actorId)
+		);
+	}
+}
+
 async function authorizeOntologySearch(
 	context: AgenticChatSharedReadContextV1,
 	projectId: string | null
@@ -308,14 +390,7 @@ async function authorizeOntologySearch(
 	if (projectId) {
 		await context.access.assertProjectAccess(projectId, 'read');
 		context.signal?.throwIfAborted();
-		const { data: project, error } = await (context.client as any)
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle();
-		if (error) throw new AgenticChatOntologySearchQueryError('project', error);
-		if (!project) throw new AgenticChatOntologySearchProjectNotFoundError();
+		await assertOntologySearchProjectSearchable(context, projectId, actorId);
 	}
 	context.signal?.throwIfAborted();
 	return actorId;

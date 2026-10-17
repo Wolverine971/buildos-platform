@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import {
 	AgenticChatOntologySearchInputError,
+	AgenticChatOntologySearchProjectMergedError,
 	AgenticChatOntologySearchQueryError,
 	normalizeOptionalOntologySearchProjectId,
 	searchAllProjects,
@@ -681,5 +682,53 @@ describe('shared ontology search', () => {
 				p_limit: 50
 			})
 		);
+	});
+});
+
+describe('scoped search on a combined project (tasker 122)', () => {
+	const DESTINATION_ID = '60000000-0000-4000-8000-000000000006';
+
+	it('refuses with where the project went instead of serving its leftovers', async () => {
+		const rpc = vi.fn(async (fn: string) => {
+			if (fn === 'get_project_route_redirect') {
+				return {
+					data: { status: 'merged', destination_project_id: DESTINATION_ID },
+					error: null
+				};
+			}
+			throw new Error(`Unexpected rpc: ${fn}`);
+		});
+		const { context, client } = contextWith({
+			rpc,
+			tables: {
+				onto_projects: [
+					{ id: PROJECT_ID, merged_into_project_id: DESTINATION_ID, name: 'Cadre' }
+				]
+			}
+		});
+
+		const search = searchProject(context, { query: 'roadmap', project_id: PROJECT_ID });
+		await expect(search).rejects.toBeInstanceOf(AgenticChatOntologySearchProjectMergedError);
+		await expect(search).rejects.toThrow(
+			`This project was combined into "Cadre" and is archived. Use project_id ${DESTINATION_ID} instead.`
+		);
+		expect(rpc).toHaveBeenCalledWith('get_project_route_redirect', {
+			p_project_id: PROJECT_ID,
+			p_actor_id: ACTOR_ID
+		});
+		expect(rpc).not.toHaveBeenCalledWith('onto_search_entities', expect.anything());
+		expect(client.from).not.toHaveBeenCalledWith('onto_events');
+	});
+
+	it('still refuses when the destination cannot be resolved', async () => {
+		const rpc = vi.fn(async () => ({ data: null, error: { message: 'denied' } }));
+		const { context } = contextWith({
+			rpc,
+			tables: { onto_projects: [{ id: PROJECT_ID, merged_into_project_id: DESTINATION_ID }] }
+		});
+
+		await expect(
+			searchProject(context, { query: 'roadmap', project_id: PROJECT_ID })
+		).rejects.toThrow('This project was combined into another project and is archived.');
 	});
 });
