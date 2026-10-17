@@ -112,6 +112,7 @@ import {
 	assertProjectWriteAccess,
 	assertVisibleEntityProject,
 	contextActorId,
+	explainMergedProjectRefusal,
 	getProjectIdsForVisibleContext,
 	getProjectIdsOrThrow,
 	loadVisibleProjects,
@@ -2691,7 +2692,11 @@ export async function executeGatewayOp(params: {
 
 		return response;
 	} catch (error) {
-		const normalized = normalizeGatewayError(error);
+		// A call aimed at a combined project says where it went (tasker 122).
+		const normalized = await explainMergedProjectRefusal(
+			{ admin: params.admin, userId: params.userId, scope: params.scope },
+			normalizeGatewayError(error)
+		);
 		if (normalized.code === 'FORBIDDEN') {
 			await logSecurityEvent(
 				{

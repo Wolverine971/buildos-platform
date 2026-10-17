@@ -20,6 +20,7 @@ import {
 	SupabaseAgenticChatBroadcastAdapter,
 	SupabaseAgenticChatPersistenceAdapter
 } from '../src/workers/agentic-chat/stream/supabase-stream-publisher-adapters';
+import { AgenticChatLiveTextPreviewBroadcaster } from '../src/workers/agentic-chat/stream/live-text-preview';
 
 function turn(suffix: string): AgenticChatPublisherTurnV1 {
 	return {
@@ -696,7 +697,7 @@ describe('AgenticChatStreamPublisher', () => {
 		}
 	});
 
-	it('enters reconcile-only mode on replay and never Broadcasts without authority', async () => {
+	it('never Broadcasts a replay without authority and covers it with a reconcile hint', async () => {
 		const context = turn('replay');
 		const base = createPersistence([context]);
 		base.flushTextBatches = async (inputs) => ({
@@ -735,7 +736,54 @@ describe('AgenticChatStreamPublisher', () => {
 			'already_persisted'
 		);
 		expect(broadcast.messages).toHaveLength(1);
-		expect(broadcast.messages[0]?.kind).toBe('reconcile_hint');
+		expect(broadcast.messages[0]).toMatchObject({
+			kind: 'reconcile_hint',
+			payload: { durable_through_sequence: 1 }
+		});
+		// The sent hint covers the replayed event, so later events may go live.
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(false);
+		await publisher.stop();
+	});
+
+	it('stays reconcile-only after a replay whose reconcile hint fails', async () => {
+		const context = turn('replay-hint-failed');
+		const base = createPersistence([context]);
+		base.flushTextBatches = async (inputs) => ({
+			outcome: 'flushed',
+			input_count: 1,
+			persisted_count: 0,
+			rejected_count: 0,
+			results: [
+				{
+					outcome: 'already_persisted',
+					publish_allowed: false,
+					turn_run_id: context.turnRunId,
+					queue_job_id: context.queueJobId,
+					session_id: context.sessionId,
+					user_id: context.userId,
+					stream_run_id: context.streamRunId,
+					client_turn_id: context.clientTurnId,
+					execution_generation: 1,
+					sequence_index: 1,
+					event_id: `${context.turnRunId}:1:1`,
+					phase: 'llm',
+					event_type: 'text_delta',
+					durable: true,
+					batch_id: inputs[0]!.batch_id,
+					assistant_text_bytes: 5,
+					input_index: 0
+				}
+			]
+		});
+		const broadcast = createBroadcast([], ['failed']);
+		const publisher = new AgenticChatStreamPublisher({ persistence: base, broadcast });
+		publisher.start();
+		publisher.registerTurn(context);
+
+		await expect(publisher.appendText(context.turnRunId, 'Hello').delivery).resolves.toBe(
+			'already_persisted'
+		);
+		expect(broadcast.messages.map((message) => message.kind)).toEqual(['reconcile_hint']);
 		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(true);
 		await publisher.stop();
 	});
@@ -786,14 +834,16 @@ describe('AgenticChatStreamPublisher', () => {
 			expect.objectContaining({ transition_id: transitionId })
 		);
 		expect(broadcast.messages.map((message) => message.kind)).toEqual(['reconcile_hint']);
-		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(true);
+		// The sent hint covers the replayed event; later events may go live.
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(false);
 		await publisher.stop();
 	});
 
-	it('suppresses later live events after Broadcast failure and emits only a reconcile hint', async () => {
+	it('returns to live delivery once a sent reconcile hint covers the withheld events', async () => {
 		const context = turn('degraded');
-		const persistence = createPersistence([context]);
-		const broadcast = createBroadcast([], ['failed', 'sent']);
+		const log: string[] = [];
+		const persistence = createPersistence([context], log);
+		const broadcast = createBroadcast(log, ['failed', 'sent']);
 		const publisher = new AgenticChatStreamPublisher(
 			{ persistence, broadcast, now: () => 100 },
 			{ reconcileHintIntervalMs: 1 }
@@ -804,21 +854,118 @@ describe('AgenticChatStreamPublisher', () => {
 		await expect(publisher.appendText(context.turnRunId, 'A').delivery).resolves.toBe(
 			'reconcile_only'
 		);
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(true);
+		// B is withheld from live delivery, but its hint reaches the browser and
+		// asks it to reconcile through B, which also covers A.
 		const later = publisher.appendText(context.turnRunId, 'B');
 		await publisher.flushTurn(context.turnRunId);
-		await later.delivery;
-		await publisher.publishSemantic(context.turnRunId, {
-			transitionId: 'degraded-transition',
-			phase: 'tool',
-			eventType: 'tool_call',
-			projection: { phase: 'tool' },
-			eventPayload: { type: 'tool_call' }
+		await expect(later.delivery).resolves.toBe('reconcile_only');
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(false);
+
+		await expect(
+			publisher.publishSemantic(context.turnRunId, {
+				transitionId: 'degraded-transition',
+				phase: 'tool',
+				eventType: 'tool_call',
+				projection: { phase: 'tool' },
+				eventPayload: { type: 'tool_call' }
+			})
+		).resolves.toBe('broadcast_acknowledged');
+
+		expect(broadcast.messages.map((message) => message.kind)).toEqual([
+			'event',
+			'reconcile_hint',
+			'event'
+		]);
+		expect(broadcast.messages[1]?.payload).toMatchObject({ durable_through_sequence: 2 });
+		expect(broadcast.messages[2]?.payload).toMatchObject({
+			event_type: 'tool_call',
+			sequence_index: 3
 		});
+		expect(log.filter((entry) => entry.startsWith('ack:'))).toEqual([
+			`ack:${context.turnRunId}:3`
+		]);
+		await publisher.stop();
+	});
+
+	it('keeps withholding live events while reconcile hints fail or are rate limited', async () => {
+		const context = turn('still-degraded');
+		const persistence = createPersistence([context]);
+		const broadcast = createBroadcast([], ['failed', 'failed']);
+		let nowMs = 100;
+		const publisher = new AgenticChatStreamPublisher(
+			{ persistence, broadcast, now: () => nowMs },
+			{ reconcileHintIntervalMs: 2_000 }
+		);
+		publisher.start();
+		publisher.registerTurn(context);
+		const send = async (text: string) => {
+			const queued = publisher.appendText(context.turnRunId, text);
+			await publisher.flushTurn(context.turnRunId);
+			return queued.delivery;
+		};
+
+		await expect(send('A')).resolves.toBe('reconcile_only');
+		nowMs += 10;
+		await expect(send('B')).resolves.toBe('reconcile_only'); // hint fails
+		nowMs += 10;
+		await expect(send('C')).resolves.toBe('reconcile_only'); // hint rate limited
 
 		expect(broadcast.messages.map((message) => message.kind)).toEqual([
 			'event',
 			'reconcile_hint'
 		]);
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(true);
+
+		nowMs += 2_000;
+		await expect(send('D')).resolves.toBe('reconcile_only');
+		await expect(send('E')).resolves.toBe('broadcast_acknowledged');
+		expect(broadcast.messages.map((message) => message.kind)).toEqual([
+			'event',
+			'reconcile_hint',
+			'reconcile_hint',
+			'event'
+		]);
+		expect(broadcast.messages[2]?.payload).toMatchObject({ durable_through_sequence: 4 });
+		await publisher.stop();
+	});
+
+	it('does not resume on a hint below a newer snapshot it cannot account for', async () => {
+		const context = turn('ack-unexplained');
+		const persistence = createPersistence([context]);
+		const acknowledge = persistence.acknowledge;
+		persistence.acknowledge = async (input) =>
+			input.acknowledged_sequence === 1
+				? {
+						outcome: 'newer_snapshot',
+						turn_run_id: input.turn_run_id,
+						queue_job_id: input.queue_job_id,
+						execution_generation: input.execution_generation,
+						acknowledged_sequence: 1,
+						current_sequence: 4,
+						reconcile_required: true
+					}
+				: acknowledge(input);
+		const broadcast = createBroadcast();
+		const publisher = new AgenticChatStreamPublisher(
+			{ persistence, broadcast, now: () => 100 },
+			{ reconcileHintIntervalMs: 1 }
+		);
+		publisher.start();
+		publisher.registerTurn(context);
+
+		await expect(publisher.appendText(context.turnRunId, 'A').delivery).resolves.toBe(
+			'broadcast_sent_reconcile_pending'
+		);
+		const later = publisher.appendText(context.turnRunId, 'B');
+		await publisher.flushTurn(context.turnRunId);
+		await expect(later.delivery).resolves.toBe('reconcile_only');
+
+		expect(broadcast.messages.map((message) => message.kind)).toEqual([
+			'event',
+			'reconcile_hint'
+		]);
+		expect(broadcast.messages[1]?.payload).toMatchObject({ durable_through_sequence: 2 });
 		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(true);
 		await publisher.stop();
 	});
@@ -1497,4 +1644,190 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 			consecutiveFailures: 0
 		});
 	});
+
+	it('drops a failed preview frame without evicting the channel durable events use', async () => {
+		const channel = sharedChannel(async (message) =>
+			message.event === 'agentic_chat_preview' ? 'error' : 'ok'
+		);
+		const client = {
+			channel: vi.fn(() => channel),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client);
+
+		await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('sent');
+		await expect(adapter.publish(previewTestMessage)).resolves.toBe('failed');
+		channel.send.mockRejectedValueOnce(new Error('socket closed'));
+		await expect(adapter.publish(previewTestMessage)).resolves.toBe('failed');
+
+		expect(client.removeChannel).not.toHaveBeenCalled();
+		expect(adapter.getHealth()).toMatchObject({
+			healthy: true,
+			status: 'connected',
+			activeChannels: 1,
+			consecutiveFailures: 0
+		});
+		await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('sent');
+		expect(client.channel).toHaveBeenCalledOnce();
+		await adapter.close();
+	});
+
+	it('starts at most one preview subscription per cooldown while Realtime is down', async () => {
+		vi.useFakeTimers();
+		const channel = {
+			send: vi.fn().mockResolvedValue('ok'),
+			subscribe: vi.fn((callback: (status: 'CHANNEL_ERROR', error?: Error) => void) => {
+				callback('CHANNEL_ERROR', new Error('realtime unavailable'));
+				return channel;
+			})
+		};
+		const client = {
+			channel: vi.fn(() => channel),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, 256, 100, 25, 1_000);
+		try {
+			for (let frame = 0; frame < 20; frame += 1) {
+				await expect(adapter.publish(previewTestMessage)).resolves.toBe('skipped');
+			}
+			expect(channel.subscribe).toHaveBeenCalledOnce();
+			expect(channel.send).not.toHaveBeenCalled();
+
+			// Durable delivery is never held back by the preview cooldown.
+			await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('failed');
+			expect(channel.subscribe).toHaveBeenCalledTimes(2);
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			await expect(adapter.publish(previewTestMessage)).resolves.toBe('skipped');
+			expect(channel.subscribe).toHaveBeenCalledTimes(3);
+		} finally {
+			await adapter.close();
+			vi.useRealTimers();
+		}
+	});
+
+	it('restores a missing channel for previews and sends the next frame on it', async () => {
+		const channel = sharedChannel(async () => 'ok');
+		const client = {
+			channel: vi.fn(() => channel),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client);
+
+		await expect(adapter.publish(previewTestMessage)).resolves.toBe('skipped');
+		await vi.waitFor(() => expect(adapter.getHealth().activeChannels).toBe(1));
+		await expect(adapter.publish(previewTestMessage)).resolves.toBe('sent');
+		expect(client.channel).toHaveBeenCalledOnce();
+		await adapter.close();
+	});
+
+	it('skips preview frames beyond a small in-flight backlog per topic', async () => {
+		const pending: Array<(status: string) => void> = [];
+		const channel = sharedChannel((message) =>
+			message.event === 'agentic_chat_preview'
+				? new Promise<string>((resolve) => pending.push(resolve))
+				: Promise.resolve('ok')
+		);
+		const adapter = new SupabaseAgenticChatBroadcastAdapter({
+			channel: () => channel,
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		});
+		await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('sent');
+
+		const inFlight = [1, 2, 3, 4].map(() => adapter.publish(previewTestMessage));
+		await expect(adapter.publish(previewTestMessage)).resolves.toBe('skipped');
+		expect(pending).toHaveLength(4);
+		for (const resolve of pending) resolve('ok');
+		await expect(Promise.all(inFlight)).resolves.toEqual(['sent', 'sent', 'sent', 'sent']);
+		// Settled frames free their slots.
+		const next = adapter.publish(previewTestMessage);
+		pending[4]!('ok');
+		await expect(next).resolves.toBe('sent');
+		await adapter.close();
+	});
+
+	it('keeps durable delivery live while preview frames fail on the shared channel', async () => {
+		const channel = sharedChannel(async (message) =>
+			message.event === 'agentic_chat_preview' ? 'error' : 'ok'
+		);
+		const client = {
+			channel: vi.fn(() => channel),
+			removeChannel: vi.fn().mockResolvedValue(undefined)
+		};
+		const broadcast = new SupabaseAgenticChatBroadcastAdapter(client);
+		const context = turn('preview-shared');
+		const log: string[] = [];
+		const publisher = new AgenticChatStreamPublisher({
+			persistence: createPersistence([context], log),
+			broadcast
+		});
+		const onFirstFailure = vi.fn();
+		const previews = new AgenticChatLiveTextPreviewBroadcaster({
+			publisher,
+			broadcast,
+			onFirstFailure
+		});
+		publisher.start();
+		publisher.registerTurn(context);
+		// The claim-time hint opens the user channel before any pass streams.
+		await publisher.publishReconcileHint(context.turnRunId);
+
+		for (const text of ['He', 'Hell', 'Hello']) {
+			previews.publish({
+				turnRunId: context.turnRunId,
+				executionGeneration: context.executionGeneration,
+				passKey: '1.acting.1.1',
+				text,
+				state: 'streaming'
+			});
+		}
+		await vi.waitFor(() => expect(previews.getStats().failed).toBe(3));
+		expect(onFirstFailure).toHaveBeenCalledOnce();
+		expect(publisher.getSnapshot(context.turnRunId).reconcileOnly).toBe(false);
+
+		await expect(publisher.appendText(context.turnRunId, 'Hello').delivery).resolves.toBe(
+			'broadcast_acknowledged'
+		);
+		expect(channel.send.mock.calls.map(([message]) => message.event)).toEqual([
+			'agent-stream-reconcile',
+			'agentic_chat_preview',
+			'agentic_chat_preview',
+			'agentic_chat_preview',
+			'agent-stream-event'
+		]);
+		expect(log).toContain(`ack:${context.turnRunId}:1`);
+		expect(client.channel).toHaveBeenCalledOnce();
+		expect(client.removeChannel).not.toHaveBeenCalled();
+		await publisher.stop();
+		await broadcast.close();
+	});
 });
+
+const previewTestMessage = {
+	kind: 'live_text_preview',
+	topic: subscriptionTestMessage.topic,
+	event: 'agentic_chat_preview',
+	payload: {
+		contract_version: 'agentic_chat_worker_v1',
+		turn_run_id: 'turn-subscribe',
+		session_id: 'session-subscribe',
+		execution_generation: 1,
+		pass_key: '1.acting.1.1',
+		seq: 1,
+		text: 'Hello',
+		state: 'streaming',
+		durable_sequence_floor: 0
+	}
+} as const;
+
+/** A channel that subscribes at once and answers each send through `send`. */
+function sharedChannel(send: (message: { event: string }) => Promise<string>) {
+	const channel = {
+		send: vi.fn(send),
+		subscribe: vi.fn((callback: (status: 'SUBSCRIBED') => void) => {
+			callback('SUBSCRIBED');
+			return channel;
+		})
+	};
+	return channel;
+}

@@ -6,6 +6,10 @@ import {
 	loadOrganizeSnapshot,
 	OrganizeSnapshotError
 } from '$lib/server/organize/organize-snapshot';
+import {
+	mergedProjectLocation,
+	readMergedProjectDestination
+} from '$lib/server/projects/merged-project-redirect';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { user } = await locals.safeGetSession();
@@ -15,12 +19,23 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const withId = url.searchParams.get('with');
 	if (withId && (!isValidUUID(withId) || withId === params.id))
 		error(400, 'Choose a different project.');
+	// Authorize each independently; the second project is never implicitly granted.
+	const snapshots = Promise.all([
+		loadOrganizeSnapshot(locals.supabase, params.id),
+		withId ? loadOrganizeSnapshot(locals.supabase, withId) : null
+	]);
+	// Awaited in the try below, unless the merge check redirects first.
+	snapshots.catch(() => undefined);
+	// A combined project forwards to its destination (tasker 122); never organize it as
+	// live. Runs alongside the snapshots, so it adds no round trip.
+	const mergedInto = await readMergedProjectDestination(locals.supabase, params.id);
+	if (mergedInto) {
+		const target = new URL(mergedProjectLocation(url, params.id, mergedInto), url);
+		if (target.searchParams.get('with') === mergedInto) target.searchParams.delete('with');
+		redirect(307, `${target.pathname}${target.search}`);
+	}
 	try {
-		// Authorize each independently; the second project is never implicitly granted.
-		const [primary, secondary] = await Promise.all([
-			loadOrganizeSnapshot(locals.supabase, params.id),
-			withId ? loadOrganizeSnapshot(locals.supabase, withId) : null
-		]);
+		const [primary, secondary] = await snapshots;
 		const documentId = url.searchParams.get('document');
 		const taskId = url.searchParams.get('task');
 		if (

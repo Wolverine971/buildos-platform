@@ -431,6 +431,9 @@ function workerReadOpForToolName(toolName: string): string {
 		list_task_documents: 'onto.task.docs.list',
 		get_onto_project_graph: 'onto.project.graph.get',
 		get_project_cleanup: 'onto.project.cleanup.get',
+		// Proposal cards: reads that return a card; never a `.set`/`.move` op.
+		propose_project_parent: 'onto.project.parent.propose',
+		propose_project_combine: 'onto.project.combine.propose',
 		get_field_info: 'util.schema.field_info',
 		get_workspace_overview: 'util.workspace.overview',
 		get_project_overview: 'util.project.overview',

@@ -14,8 +14,7 @@ import {
 	dedupeSearchRows,
 	normalizeSearchResult,
 	rankSearchResult,
-	reciprocalRankFuseSearchRows,
-	taskBucketsForQuery
+	reciprocalRankFuseSearchRows
 } from './ontology-search-ranking';
 
 const ACTOR_ID = '90000000-0000-4000-8000-000000000009';
@@ -109,11 +108,20 @@ describe('ontology search ranking', () => {
 		});
 	});
 
-	it('recognizes legacy task bucket aliases', () => {
-		expect([...taskBucketsForQuery('show backlogged and stuck tasks')]).toEqual([
-			'backlog',
-			'blocked'
-		]);
+	it('still scores a structured bucket_key a row already carries', () => {
+		const ranked = rankSearchResult(
+			normalizeSearchResult({
+				type: 'task',
+				id: 'task-1',
+				project_id: PROJECT_ID,
+				title: 'File taxes',
+				score: 0.5,
+				bucket_key: 'overdue'
+			}),
+			NOW
+		);
+		expect(ranked.ranking_factors).toContainEqual({ key: 'bucket_overdue', weight: 0.2 });
+		expect(ranked.matched_fields).toContain('bucket');
 	});
 
 	it('RRF rewards cross-channel agreement without comparing raw score scales', () => {
@@ -506,92 +514,65 @@ describe('shared ontology search', () => {
 		expect(builders.get('onto_events')?.eq).not.toHaveBeenCalledWith('created_by', ACTOR_ID);
 	});
 
-	it('gates project search before loading active project and task bucket rows', async () => {
-		const rpc = vi.fn(async () => ({ data: [], error: null }));
-		const { context, builders, assertProjectAccess } = contextWith({
-			rpc,
-			tables: {
-				onto_projects: [{ id: PROJECT_ID }],
-				onto_tasks: [
+	// Q2: query words used to pick task buckets ("late", "planned", "todo") and
+	// inject whole buckets at a fixed score, so "late-night ideas" flooded overdue
+	// tasks. Meaning must arrive through a structured argument; none exists yet.
+	it('never turns query words into task buckets: tasks come only from the search RPCs', async () => {
+		const overdueTask = {
+			id: 'overdue-task',
+			project_id: PROJECT_ID,
+			title: 'Pay invoice',
+			description: null,
+			state_key: 'todo',
+			type_key: 'task.execution',
+			start_at: null,
+			due_at: '2026-08-01T00:00:00.000Z',
+			completed_at: null,
+			updated_at: '2026-08-08T00:00:00.000Z',
+			deleted_at: null,
+			archived_at: null,
+			priority: 4
+		};
+		for (const query of [
+			'late-night ideas',
+			'planned features',
+			'todo list',
+			'working notes',
+			'waiting room',
+			'done deal',
+			'archived overdue tasks'
+		]) {
+			const rpc = vi.fn(async () => ({
+				data: [
 					{
-						id: 'backlog-task',
+						type: 'document',
+						id: 'doc-1',
 						project_id: PROJECT_ID,
-						title: 'Write checklist',
-						description: null,
-						state_key: 'todo',
-						type_key: 'task.execution',
-						start_at: null,
-						due_at: null,
-						completed_at: null,
-						updated_at: '2026-08-08T00:00:00.000Z',
-						deleted_at: null,
-						archived_at: null,
-						priority: 4
+						title: query,
+						score: 0.4
 					}
-				]
-			}
-		});
+				],
+				error: null
+			}));
+			const { context, builders, assertProjectAccess } = contextWith({
+				rpc,
+				tables: { onto_projects: [{ id: PROJECT_ID }], onto_tasks: [overdueTask] }
+			});
 
-		await expect(
-			searchOntologyEntities(
+			const payload = await searchOntologyEntities(
 				context,
-				{
-					query: 'backlogged tasks',
-					project_id: PROJECT_ID,
-					types: ['task'],
-					limit: 10
-				},
+				{ query, project_id: PROJECT_ID, limit: 10 },
 				{ now: () => NOW }
-			)
-		).resolves.toMatchObject({
-			search_scope: 'project',
-			results: [
-				{
-					id: 'backlog-task',
-					bucket_key: 'backlog',
-					matched_fields: ['title', 'description', 'props', 'state_key', 'bucket']
-				}
-			]
-		});
-		expect(assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
-		expect(builders.get('onto_tasks')?.eq).toHaveBeenCalledWith('project_id', PROJECT_ID);
-		expect(builders.get('onto_tasks')?.in).toHaveBeenCalledWith('state_key', ['todo']);
-	});
+			);
 
-	// Tasker 113: "archived" in the query text no longer opens the archive.
-	it('never searches archived or deleted tasks, even when the query says archived', async () => {
-		const { context, builders } = contextWith({
-			rpc: vi.fn(async () => ({ data: [], error: null })),
-			tables: { onto_projects: [{ id: PROJECT_ID }], onto_tasks: [] }
-		});
-
-		await searchOntologyEntities(
-			context,
-			{ query: 'archived overdue tasks', project_id: PROJECT_ID, types: ['task'], limit: 10 },
-			{ now: () => NOW }
-		);
-
-		const taskBuilder = builders.get('onto_tasks');
-		expect(taskBuilder?.is).toHaveBeenCalledWith('deleted_at', null);
-		expect(taskBuilder?.is).toHaveBeenCalledWith('archived_at', null);
-		expect(taskBuilder?.not).not.toHaveBeenCalledWith('archived_at', 'is', null);
-	});
-
-	it('keeps archived tasks out of non-archive task buckets', async () => {
-		const { context, builders } = contextWith({
-			rpc: vi.fn(async () => ({ data: [], error: null })),
-			tables: { onto_projects: [{ id: PROJECT_ID }], onto_tasks: [] }
-		});
-
-		await searchOntologyEntities(
-			context,
-			{ query: 'backlogged tasks', project_id: PROJECT_ID, types: ['task'], limit: 10 },
-			{ now: () => NOW }
-		);
-
-		const taskBuilder = builders.get('onto_tasks');
-		expect(taskBuilder?.is).toHaveBeenCalledWith('deleted_at', null);
-		expect(taskBuilder?.is).toHaveBeenCalledWith('archived_at', null);
+			expect(assertProjectAccess, query).toHaveBeenCalledWith(PROJECT_ID, 'read');
+			expect(builders.has('onto_tasks'), query).toBe(false);
+			expect(
+				payload.results.map((result) => result.id),
+				query
+			).toEqual(['doc-1']);
+			expect(payload.results[0]?.bucket_key, query).toBeNull();
+		}
 	});
 
 	it('rejects malformed project ids before actor or database access', async () => {

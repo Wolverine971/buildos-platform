@@ -200,6 +200,7 @@ export type AgenticChatPublisherMetricV1 =
 	| 'persistence_retry'
 	| 'broadcast_degraded'
 	| 'reconcile_hint_sent'
+	| 'live_delivery_resumed'
 	| 'acknowledgement_pending'
 	| 'acknowledgement_coalesced'
 	| 'soft_pressure'
@@ -255,8 +256,14 @@ export type AgenticChatLiveTextPreviewTargetV1 = {
 	durableSequenceFloor: number;
 };
 
+/**
+ * `skipped` is reserved for display-only previews the transport chose not to
+ * send (no ready channel, or too many frames already in flight).
+ */
+export type AgenticChatBroadcastOutcomeV1 = 'sent' | 'failed' | 'skipped';
+
 export type AgenticChatBroadcastPortV1 = {
-	publish(message: AgenticChatBroadcastMessageV1): Promise<'sent' | 'failed'>;
+	publish(message: AgenticChatBroadcastMessageV1): Promise<AgenticChatBroadcastOutcomeV1>;
 };
 
 type Deferred<T> = {
@@ -346,6 +353,11 @@ type TurnState = {
 	retryAtMs: number;
 	persistenceRetryPending: boolean;
 	reconcileOnly: boolean;
+	/**
+	 * Highest sequence withheld from live delivery while reconcile-only. A sent
+	 * hint at or above it covers the backlog and returns the turn to live mode.
+	 */
+	reconcileThroughSequence: number;
 	lastHintAtMs: number;
 	blockedReason: AgenticChatPublisherSnapshotV1['blockedReason'];
 	pressureWaiters: Deferred<void>[];
@@ -463,6 +475,7 @@ export class AgenticChatStreamPublisher {
 			retryAtMs: 0,
 			persistenceRetryPending: false,
 			reconcileOnly: false,
+			reconcileThroughSequence: 0,
 			lastHintAtMs: Number.NEGATIVE_INFINITY,
 			blockedReason: null,
 			pressureWaiters: [],
@@ -766,7 +779,7 @@ export class AgenticChatStreamPublisher {
 			}
 		}
 
-		this.enterReconcileOnly(state);
+		this.enterReconcileOnly(state, receipt.terminal_sequence_index);
 		return 'reconcile_only';
 	}
 
@@ -1138,7 +1151,7 @@ export class AgenticChatStreamPublisher {
 		if (!canPublishAgenticChatStreamWriteV1(receipt)) {
 			if (receipt.outcome === 'already_persisted') {
 				onAccepted?.(this.acceptanceFromReceipt(receipt));
-				this.enterReconcileOnly(state);
+				this.enterReconcileOnly(state, receipt.sequence_index);
 				return receipt;
 			}
 			this.blockTurn(state, receipt.outcome);
@@ -1161,13 +1174,14 @@ export class AgenticChatStreamPublisher {
 			return 'already_persisted';
 		}
 		if (state.reconcileOnly) {
+			this.enterReconcileOnly(state, receipt.sequence_index);
 			await this.maybeHint(state, receipt.sequence_index);
 			return 'reconcile_only';
 		}
 
 		const message = this.eventMessage(state, this.eventFromReceipt(receipt));
 		if ((await this.tryBroadcast(message)) !== 'sent') {
-			this.enterReconcileOnly(state);
+			this.enterReconcileOnly(state, receipt.sequence_index);
 			this.metric('broadcast_degraded', state.context.turnRunId);
 			return 'reconcile_only';
 		}
@@ -1187,7 +1201,8 @@ export class AgenticChatStreamPublisher {
 	 * successful Broadcasts share one exact-sequence acknowledgement for the last
 	 * event: the database acknowledges only its current durable sequence, so an
 	 * older acknowledgement is necessarily refused once later work is accepted.
-	 * Any failed Broadcast or uncertain acknowledgement remains sticky.
+	 * A failed Broadcast or uncertain acknowledgement switches the turn to
+	 * reconcile-only until a sent hint covers everything withheld.
 	 */
 	private async flushDeliveryState(state: TurnState): Promise<void> {
 		const decided: SettledDelivery[] = [];
@@ -1209,12 +1224,14 @@ export class AgenticChatStreamPublisher {
 					sent.push(pending);
 					continue;
 				}
-				this.enterReconcileOnly(state);
+				this.enterReconcileOnly(state, receipt.sequence_index);
 				this.metric('broadcast_degraded', state.context.turnRunId);
 				settleSent('broadcast_sent_reconcile_pending');
 				decided.push({ pending, delivery: 'reconcile_only' });
 				continue;
 			}
+			// Withheld from live delivery: the hint that resumes it must cover this.
+			if (state.reconcileOnly) this.enterReconcileOnly(state, receipt.sequence_index);
 			await this.maybeHint(state, receipt.sequence_index);
 			if (this.deliveryBlocked(state)) return;
 			settleSent('broadcast_sent_reconcile_pending');
@@ -1314,6 +1331,8 @@ export class AgenticChatStreamPublisher {
 		state: TurnState,
 		sequenceIndex: number
 	): Promise<AgenticChatPublisherDeliveryV1> {
+		// A newer snapshot this publisher cannot account for must be covered too.
+		let uncertainThroughSequence = sequenceIndex;
 		try {
 			const result = await this.ports.persistence.acknowledge({
 				turn_run_id: state.context.turnRunId,
@@ -1346,11 +1365,14 @@ export class AgenticChatStreamPublisher {
 				this.metric('acknowledgement_coalesced', state.context.turnRunId);
 				return 'broadcast_sent_reconcile_pending';
 			}
+			if (result.outcome === 'newer_snapshot') {
+				uncertainThroughSequence = Math.max(sequenceIndex, result.current_sequence);
+			}
 		} catch {
 			// A sent event with an uncertain acknowledgement remains durable and
-			// must reconcile; never let a later acknowledgement erase uncertainty.
+			// must reconcile; only a sent hint covering it ends that uncertainty.
 		}
-		this.enterReconcileOnly(state);
+		this.enterReconcileOnly(state, uncertainThroughSequence);
 		this.metric('acknowledgement_pending', state.context.turnRunId);
 		return 'broadcast_sent_reconcile_pending';
 	}
@@ -1410,7 +1432,22 @@ export class AgenticChatStreamPublisher {
 				durable_through_sequence: sequenceIndex
 			}
 		});
-		if (result === 'sent') this.metric('reconcile_hint_sent', state.context.turnRunId);
+		if (result !== 'sent') return;
+		this.metric('reconcile_hint_sent', state.context.turnRunId);
+		this.resumeLiveDelivery(state, sequenceIndex);
+	}
+
+	/**
+	 * A sent hint proves the channel works and asks the browser to reconcile
+	 * through `sequenceIndex`. Once that covers every withheld event, later
+	 * events go out live again; any gap left on the browser's cursor turns the
+	 * next live event into one more reconciliation, never a lost event.
+	 */
+	private resumeLiveDelivery(state: TurnState, sequenceIndex: number): void {
+		if (!state.reconcileOnly || state.abandoned || state.blockedReason) return;
+		if (sequenceIndex < state.reconcileThroughSequence) return;
+		state.reconcileOnly = false;
+		this.metric('live_delivery_resumed', state.context.turnRunId);
 	}
 
 	private moveOperationToDelivery(
@@ -1731,8 +1768,9 @@ export class AgenticChatStreamPublisher {
 		for (const waiter of state.idleWaiters.splice(0)) waiter.resolve();
 	}
 
-	private enterReconcileOnly(state: TurnState): void {
+	private enterReconcileOnly(state: TurnState, withheldSequence: number): void {
 		state.reconcileOnly = true;
+		state.reconcileThroughSequence = Math.max(state.reconcileThroughSequence, withheldSequence);
 	}
 
 	private receiptMatchesTurn(state: TurnState, receipt: DeliveryReceipt): boolean {
@@ -1750,7 +1788,7 @@ export class AgenticChatStreamPublisher {
 
 	private async tryBroadcast(message: AgenticChatBroadcastMessageV1): Promise<'sent' | 'failed'> {
 		try {
-			return await this.ports.broadcast.publish(message);
+			return (await this.ports.broadcast.publish(message)) === 'sent' ? 'sent' : 'failed';
 		} catch {
 			return 'failed';
 		}

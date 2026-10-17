@@ -918,11 +918,14 @@ describe('loadFastChatPromptContext global', () => {
 			}
 		});
 		expect(supabase.rpc).toHaveBeenCalledTimes(1);
-		// The RPC path reads two tables: users.timezone (alongside every context
-		// load) and the one onto_tasks rollup query for every accessible project.
+		// The RPC path reads three tables: users.timezone (alongside every context
+		// load), the one onto_tasks rollup query for every accessible project, and
+		// (tasker 122, 2026-10-17) onto_projects `id, parent_project_id` for the
+		// index's "part of" / "includes" labels, in parallel with the rollups.
 		expect(supabase.from.mock.calls.map(([table]: [string]) => table)).toEqual([
 			'users',
-			'onto_tasks'
+			'onto_tasks',
+			'onto_projects'
 		]);
 		expect(context.timezone).toBe(MOCK_USER_TIMEZONE);
 	});

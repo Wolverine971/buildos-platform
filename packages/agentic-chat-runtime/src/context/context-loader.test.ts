@@ -319,3 +319,109 @@ describe('project family (hierarchy phase 1)', () => {
 		);
 	});
 });
+
+// Tasker 122: the global index carries each project's parent so the prompt can
+// say "part of X" / "includes N". Only parents the viewer can open (index
+// members) are recorded; a failed read leaves the index unlabeled.
+describe('global project index hierarchy', () => {
+	const HUB = '00000000-0000-4000-8000-0000000000b1';
+	const CHILD = '00000000-0000-4000-8000-0000000000b2';
+	const ORPHAN = '00000000-0000-4000-8000-0000000000b3';
+	const HIDDEN_PARENT = '00000000-0000-4000-8000-0000000000b9';
+	const projects = [
+		{
+			id: HUB,
+			name: 'Wayne Strategies',
+			state_key: 'active',
+			updated_at: '2026-10-16T00:00:00Z'
+		},
+		{ id: CHILD, name: 'Cadre', state_key: 'active', updated_at: '2026-10-15T00:00:00Z' },
+		{ id: ORPHAN, name: 'Solo', state_key: 'active', updated_at: '2026-10-14T00:00:00Z' }
+	];
+	const hierarchyRows = [
+		{ id: HUB, parent_project_id: null, start_at: null, end_at: null },
+		{ id: CHILD, parent_project_id: HUB, start_at: null, end_at: null },
+		{ id: ORPHAN, parent_project_id: HIDDEN_PARENT, start_at: null, end_at: null }
+	];
+
+	function globalClient(options: {
+		rpcPayload: unknown;
+		projectsReply?: { data: unknown; error: unknown };
+	}) {
+		const selects: Record<string, string[]> = {};
+		const rpc = vi.fn(async (fn: string) => {
+			if (fn === 'load_fastchat_context') return { data: options.rpcPayload, error: null };
+			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
+			if (fn === 'get_onto_project_summaries_v1') return { data: projects, error: null };
+			throw new Error(`Unexpected rpc: ${fn}`);
+		});
+		const from = vi.fn((table: string) => {
+			const reply =
+				table === 'onto_projects'
+					? (options.projectsReply ?? { data: hierarchyRows, error: null })
+					: { data: [], error: null };
+			const chain: Record<string, any> = {};
+			for (const method of ['in', 'is', 'eq', 'or', 'gte', 'lte', 'order', 'limit']) {
+				chain[method] = () => chain;
+			}
+			chain.select = (columns: string) => {
+				(selects[table] ??= []).push(columns);
+				return chain;
+			};
+			chain.maybeSingle = async () => ({
+				data: { timezone: 'UTC', name: null },
+				error: null
+			});
+			chain.then = (resolve: (value: unknown) => unknown) =>
+				Promise.resolve(reply).then(resolve);
+			return chain;
+		});
+		return { client: { rpc, from } as unknown as SupabaseClient<Database>, selects };
+	}
+
+	async function loadGlobal(client: SupabaseClient<Database>) {
+		const loader = createFastChatContextLoader({ logger: { warn: vi.fn() } });
+		const context = await loader.loadFastChatPromptContext({
+			supabase: client,
+			userId: USER_ID,
+			contextType: 'global'
+		});
+		return context.data as { project_index: Array<Record<string, unknown>> };
+	}
+
+	const parentsOf = (data: { project_index: Array<Record<string, unknown>> }) =>
+		Object.fromEntries(data.project_index.map((entry) => [entry.id, entry.parent_project_id]));
+
+	it('labels the RPC index with a separate parent read', async () => {
+		const { client, selects } = globalClient({
+			rpcPayload: {
+				projects,
+				project_intelligence: { generated_at: '2026-10-17T00:00:00Z', scope: 'global' }
+			}
+		});
+		const data = await loadGlobal(client);
+		expect(selects.onto_projects).toEqual(['id, parent_project_id']);
+		// The orphan's parent is not in the index (the viewer can't open it): not recorded.
+		expect(parentsOf(data)).toEqual({ [HUB]: undefined, [CHILD]: HUB, [ORPHAN]: undefined });
+	});
+
+	it('reads parents in the fallback date query with no extra round trip', async () => {
+		const { client, selects } = globalClient({ rpcPayload: null });
+		const data = await loadGlobal(client);
+		expect(selects.onto_projects).toEqual(['id, start_at, end_at, parent_project_id']);
+		expect(parentsOf(data)).toEqual({ [HUB]: undefined, [CHILD]: HUB, [ORPHAN]: undefined });
+	});
+
+	it('keeps the index, unlabeled, when the parent read fails', async () => {
+		const { client } = globalClient({
+			rpcPayload: {
+				projects,
+				project_intelligence: { generated_at: '2026-10-17T00:00:00Z', scope: 'global' }
+			},
+			projectsReply: { data: null, error: { message: 'boom' } }
+		});
+		const data = await loadGlobal(client);
+		expect(data.project_index).toHaveLength(3);
+		expect(Object.values(parentsOf(data)).every((value) => value === undefined)).toBe(true);
+	});
+});

@@ -12,7 +12,10 @@ import {
 	shouldMemoizeReadResult,
 	stripToolDiscoveryHintsFromPayload
 } from '@buildos/agentic-chat-runtime/loop';
-import { AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1 } from '@buildos/agentic-chat-runtime/tools';
+import {
+	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1,
+	isAgenticChatProposalToolNameV1
+} from '@buildos/agentic-chat-runtime/tools';
 import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
 import type {
 	AgenticChatProviderMutationSynthesisInputV1,
@@ -154,9 +157,13 @@ export function feedbackToChatToolResult(
  * one) silently changed what could be replayed. This is the shared read
  * registry itself: every entry is a side-effect-free ontology read, and a tool
  * that is not on this list is executed every time it is called.
+ *
+ * The proposal tools (tasker 122) are left out: each call is its own card (its
+ * id is the call's ledger row) and starts a duplicate check, so a replay would
+ * point at another call's card.
  */
 export const READ_MEMO_ELIGIBLE_TOOL_NAMES: ReadonlySet<string> = new Set<string>(
-	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1
+	AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1.filter((name) => !isAgenticChatProposalToolNameV1(name))
 );
 
 function isReadMemoEligible(name: string): boolean {

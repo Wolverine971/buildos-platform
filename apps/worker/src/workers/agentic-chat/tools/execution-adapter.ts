@@ -74,6 +74,11 @@ import {
 	type AgentRunWebUrlCapabilityLedger,
 	createAgentRunWebUrlCapabilityLedger
 } from '../../agent-run/webUrlCapabilityLedger';
+import {
+	type ProposalDuplicateCheckRefV1,
+	isProposalCardResult
+} from '@buildos/shared-agent-ops/chat-cards/proposal-card';
+import { startConsolidationCheck } from '../../consolidation/startCheck';
 
 const PROJECT_OVERVIEW_TOOL_NAME = 'get_project_overview';
 // The runtime catalog owns the reviewer control names; re-exported for existing importers.
@@ -111,6 +116,12 @@ function createWorkerEmbeddingsPortFromEnv(): AgenticChatEmbeddingsPortV1 | unde
 }
 
 const MAX_RESULT_BYTES = 480 * 1024;
+/**
+ * A proposal card waits this long for its duplicate check to start, then shows
+ * without the strip. The start reuses a same-set check from the last 15
+ * minutes, so a slow start still lands and the next card picks it up.
+ */
+export const AGENTIC_CHAT_PROPOSAL_DUPLICATE_CHECK_TIMEOUT_MS = 1_500;
 const MAX_TURN_SECURITY_STATES = 1_024;
 const TURN_SECURITY_STATE_TTL_MS = 20 * 60_000;
 export const AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS = 30_000;
@@ -329,6 +340,9 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		targets: ArchiveStateTarget[];
 		signal: AbortSignal;
 	}) => Promise<ArchiveStateVerification>;
+	/** The duplicate-check start a proposal card kicks off (never throws). */
+	private readonly startConsolidationCheck: typeof startConsolidationCheck;
+	private readonly duplicateCheckTimeoutMs: number;
 
 	constructor(
 		private readonly client: SupabaseClient<Database>,
@@ -359,8 +373,14 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			maxTurnSecurityStates?: number;
 			maxTurnSecurityStatesPerUser?: number;
 			turnSecurityStateTtlMs?: number;
+			/** Proposal cards' duplicate-check start; defaults to the consolidation worker's. */
+			startConsolidationCheck?: typeof startConsolidationCheck;
+			duplicateCheckTimeoutMs?: number;
 		} = {}
 	) {
+		this.startConsolidationCheck = options.startConsolidationCheck ?? startConsolidationCheck;
+		this.duplicateCheckTimeoutMs =
+			options.duplicateCheckTimeoutMs ?? AGENTIC_CHAT_PROPOSAL_DUPLICATE_CHECK_TIMEOUT_MS;
 		this.now = options.now ?? Date.now;
 		this.timeoutMs = options.timeoutMs ?? AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS;
 		this.webResearchTimeoutMs =
@@ -550,7 +570,22 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						sessionId: input.executionInput.claim.sessionId
 					}),
 					embeddings: this.embeddings,
-					focusProjectId: focusProjectIdFromRequest(input.executionInput.requestPayload)
+					focusProjectId: focusProjectIdFromRequest(input.executionInput.requestPayload),
+					// The card rail: the row this call persists under is the card's id.
+					...(input.toolExecutionId
+						? {
+								proposal: {
+									toolExecutionId: input.toolExecutionId,
+									sessionId: input.executionInput.claim.sessionId,
+									turnRunId,
+									startDuplicateCheck: (projectIds: readonly string[]) =>
+										this.startProposalDuplicateCheck(
+											input.executionInput.claim.userId,
+											projectIds
+										)
+								}
+							}
+						: {})
 				}
 			: null;
 		const startedAt = this.now();
@@ -820,8 +855,47 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			toolCategory: TOOL_METADATA[input.toolName]?.category ?? null,
 			resultCount: telemetry.result_count,
 			zeroResult: telemetry.zero_result,
-			requiresUserAction: input.toolName === REQUEST_TURN_CLARIFICATION_TOOL_NAME
+			// A clarification, or a proposal card waiting for the user's click.
+			requiresUserAction:
+				input.toolName === REQUEST_TURN_CLARIFICATION_TOOL_NAME ||
+				(sharedReadTool && isProposalCardResult(payload))
 		};
+	}
+
+	/**
+	 * Starts (or reuses) the quick duplicate check a proposal card shows, with
+	 * the first project as the run's root. Bounded so a slow start never holds
+	 * the card: on timeout or failure the card shows without the strip. A start
+	 * that lands after the timeout is reused by the next same-set check.
+	 */
+	private async startProposalDuplicateCheck(
+		userId: string,
+		projectIds: readonly string[]
+	): Promise<ProposalDuplicateCheckRefV1 | null> {
+		const rootProjectId = projectIds[0]?.toLowerCase();
+		if (!rootProjectId) return null;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const timeout = new Promise<null>((resolve) => {
+			timer = setTimeout(() => resolve(null), this.duplicateCheckTimeoutMs);
+		});
+		const start = async () => {
+			// The proposal tool already resolved the actor, so this is the cached value.
+			const actorId = await this.accessAdapterFor(userId)
+				.getActorId()
+				.catch(() => null);
+			return this.startConsolidationCheck({
+				admin: this.client,
+				userId,
+				actorId,
+				projectIds
+			});
+		};
+		try {
+			const started = await Promise.race([start().catch(() => null), timeout]);
+			return started?.ok ? { run_id: started.run_id, root_project_id: rootProjectId } : null;
+		} finally {
+			if (timer) clearTimeout(timer);
+		}
 	}
 
 	/**

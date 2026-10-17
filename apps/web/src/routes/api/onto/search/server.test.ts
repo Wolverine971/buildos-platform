@@ -271,6 +271,30 @@ describe('/api/onto/search', () => {
 		);
 	});
 
+	// A state word is only text: no keyword list reroutes the search (AGENTS.md).
+	it('keeps a task-only project search with a state word on the direct title search', async () => {
+		const event = createEvent({
+			query: 'overdue',
+			project_id: '31021625-1377-4715-9fb4-f93102974628',
+			types: ['task'],
+			limit: 12
+		});
+		event.locals.supabase.taskLookup.then.mockImplementationOnce((resolve: any) =>
+			Promise.resolve({ data: [], error: null }).then(resolve)
+		);
+
+		const response = await POST(event as any);
+
+		expect(response.status).toBe(200);
+		expect(event.locals.supabase.rpc).not.toHaveBeenCalledWith(
+			'onto_search_entities',
+			expect.anything()
+		);
+		expect(event.locals.supabase.taskLookup.or).toHaveBeenCalledWith(
+			expect.stringContaining('title.ilike."%overdue%"')
+		);
+	});
+
 	it('rejects project search before querying entities when membership is denied', async () => {
 		const event = createEvent({
 			query: 'onboarding',
@@ -453,11 +477,15 @@ describe('/api/onto/search', () => {
 		);
 	});
 
-	it('searches task bucket aliases so backlogged tasks find todo backlog rows', async () => {
+	// Q2: the shared search no longer turns query words into task buckets, so a
+	// bucket word returns only what the search RPCs match.
+	it('never injects task buckets for state words in the query', async () => {
+		// Mixed types take the shared search; task-only project searches take the
+		// direct title search below, also with no keyword routing.
 		const event = createEvent({
 			query: 'backlogged tasks',
 			project_id: '31021625-1377-4715-9fb4-f93102974628',
-			types: ['task'],
+			types: ['task', 'document'],
 			limit: 10
 		});
 
@@ -470,8 +498,7 @@ describe('/api/onto/search', () => {
 			}
 			throw new Error(`Unexpected rpc: ${fn}`);
 		});
-
-		event.locals.supabase.taskLookup.then.mockImplementationOnce((resolve: any) =>
+		event.locals.supabase.taskLookup.then.mockImplementation((resolve: any) =>
 			Promise.resolve({
 				data: [
 					{
@@ -481,28 +508,7 @@ describe('/api/onto/search', () => {
 						description: null,
 						state_key: 'todo',
 						type_key: 'task.execution',
-						start_at: null,
-						due_at: null,
-						completed_at: null,
-						updated_at: '2026-05-31T12:00:00Z',
-						deleted_at: null,
-						archived_at: null,
-						priority: 4
-					},
-					{
-						id: 'scheduled-task',
-						project_id: '31021625-1377-4715-9fb4-f93102974628',
-						title: 'Send launch reminder',
-						description: null,
-						state_key: 'todo',
-						type_key: 'task.execution',
-						start_at: null,
-						due_at: '2999-01-01T12:00:00Z',
-						completed_at: null,
-						updated_at: '2026-05-31T12:00:00Z',
-						deleted_at: null,
-						archived_at: null,
-						priority: 3
+						updated_at: '2026-05-31T12:00:00Z'
 					}
 				],
 				error: null
@@ -511,22 +517,9 @@ describe('/api/onto/search', () => {
 
 		const response = await POST(event as any);
 		const payload = await response.json();
-		const orderedIds = payload.data.results.map((result: { id: string }) => result.id);
 
 		expect(response.status).toBe(200);
-		expect(orderedIds).toContain('backlog-task');
-		expect(orderedIds).not.toContain('scheduled-task');
-		expect(event.locals.supabase.taskLookup.in).toHaveBeenCalledWith('state_key', ['todo']);
-		expect(payload.data.results[0]).toEqual(
-			expect.objectContaining({
-				id: 'backlog-task',
-				state_key: 'todo',
-				bucket_key: 'backlog',
-				matched_fields: ['title', 'description', 'props', 'state_key', 'bucket'],
-				ranking_factors: expect.arrayContaining([
-					expect.objectContaining({ key: 'bucket_backlog' })
-				])
-			})
-		);
+		expect(payload.data.results).toEqual([]);
+		expect(event.locals.supabase.taskLookup.in).not.toHaveBeenCalled();
 	});
 });

@@ -13,6 +13,7 @@ import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import {
 	buildFastChatContextCacheKey,
+	FASTCHAT_CONTEXT_CACHE_TTL_MS,
 	isFastChatContextCacheFresh,
 	type FastChatContextCache
 } from '$lib/services/agentic-chat-v2/context-cache';
@@ -71,6 +72,7 @@ export interface PrewarmControllerDeps {
 			entity_id?: string;
 			projectFocus: ProjectFocus | null;
 			ensure_session?: boolean;
+			prepare_prompt?: boolean;
 		},
 		options: { signal?: AbortSignal }
 	): Promise<{
@@ -364,7 +366,20 @@ export class PrewarmController {
 		// mobile keyboard thrash; session binding still happens during send bootstrap.
 		const currentSession = this.#deps.getCurrentSession();
 
+		// Prepared prompts are session-bound: a new chat's first turn can never use
+		// one (admission creates the session inline), so only warm context then.
+		const wantsPreparedPrompt = Boolean(currentSession?.id);
 		const readiness = this.resolveReadiness(key);
+		if (key === this.#lastPrewarmKey && readiness.contextCacheReady && !wantsPreparedPrompt) {
+			// Re-warm when the context cache ages out, not on the prompt retry cadence.
+			const cache = this.matchingFreshContext(key);
+			if (cache) {
+				this.#scheduleRefreshTick(
+					Date.parse(cache.created_at) + FASTCHAT_CONTEXT_CACHE_TTL_MS
+				);
+			}
+			return;
+		}
 		if (
 			key === this.#lastPrewarmKey &&
 			readiness.contextCacheReady &&
@@ -413,7 +428,9 @@ export class PrewarmController {
 						context_type: contextType,
 						entity_id: prewarmEntityId,
 						projectFocus: focus,
-						...(currentSession?.id ? {} : { ensure_session: false })
+						...(wantsPreparedPrompt
+							? {}
+							: { ensure_session: false, prepare_prompt: false })
 					},
 					{ signal: controller.signal }
 				);
@@ -422,17 +439,19 @@ export class PrewarmController {
 				if (warmed?.session) {
 					this.#deps.hydrateSessionFromEvent(warmed.session);
 				}
-				if (
-					warmed?.prewarmedContext &&
-					warmed.prewarmedContext.key === key &&
-					isFastChatContextCacheFresh(warmed.prewarmedContext)
-				) {
-					this.prewarmedContext = warmed.prewarmedContext;
-				}
+				const warmedContext = warmed?.prewarmedContext ?? null;
+				const adoptedContext = Boolean(
+					warmedContext &&
+						warmedContext.key === key &&
+						isFastChatContextCacheFresh(warmedContext)
+				);
+				if (adoptedContext) this.prewarmedContext = warmedContext;
 				const adoptedPreparedPrompt =
+					wantsPreparedPrompt &&
 					warmed?.preparedPrompt?.cache_key === key &&
 					this.adoptPrepared(warmed.preparedPrompt);
-				if (!adoptedPreparedPrompt) {
+				// Back off before asking again for whatever this request did not deliver.
+				if (wantsPreparedPrompt ? !adoptedPreparedPrompt : !adoptedContext) {
 					this.#markPreparedPromptRetry(key);
 				}
 			} catch (err) {

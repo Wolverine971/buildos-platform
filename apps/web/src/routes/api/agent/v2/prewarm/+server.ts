@@ -521,9 +521,10 @@ const handlePrewarmRequest: RequestHandler = async ({
 	}
 
 	// Prepared prompts are a latency optimization — any failure here must
-	// degrade to a normal prewarm response, never fail the request.
+	// degrade to a normal prewarm response, never fail the request. They are
+	// session-bound: admission never consumes a session-less row, so none is built.
 	let preparedPrompt = null;
-	if (shouldPreparePrompt && preparedPromptStore) {
+	if (shouldPreparePrompt && preparedPromptStore && session) {
 		try {
 			preparedPrompt = await buildPreparedPrompt({
 				sourceSupabase: supabase,

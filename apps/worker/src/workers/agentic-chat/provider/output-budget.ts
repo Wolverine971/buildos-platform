@@ -12,15 +12,19 @@ export const ACTING_OUTPUT_TOKENS = 12_000;
 export const MUTATIONS_PER_STAGE = 8;
 export const OUTPUT_RECOVERY_TIMEOUT_MS = 45_000;
 export const OUTPUT_RECOVERY_FIRST_PROGRESS_MS = 15_000;
+/** Turn budget a recovery needs: five seconds for a viable attempt, five for finalization. */
+export const OUTPUT_RECOVERY_MIN_REMAINING_MS = 10_000;
 
 export function buildOutputBudgetRecoveryProgress(
 	request: AgenticChatTurnProviderRequestV1,
 	providerAttempt: number
 ): AgenticChatProviderStepV1 {
+	// Shown on any output-budget recovery (including the runaway-reasoning
+	// cutoff), so it must not assume the turn is a cleanup.
 	const activity =
 		request.toolChoice === 'none'
-			? 'Finishing the cleanup summary...'
-			: 'Splitting this cleanup into smaller batches...';
+			? 'Wrapping up the answer...'
+			: 'Taking a more direct approach...';
 	return {
 		type: 'semantic',
 		phase: 'stream',

@@ -176,14 +176,16 @@ function serviceClientWithTables(tables: Record<string, Array<Record<string, any
 
 		or(filter: string) {
 			expect(filter).toBe(
-				'tool_name.in.(skill_load,request_turn_clarification),and(tool_name.eq.update_onto_document,result->>confirmation_kind.eq.shared_document_edit_v1,result->>status.eq.confirmation_required)'
+				'tool_name.in.(skill_load,request_turn_clarification),and(tool_name.eq.update_onto_document,result->>confirmation_kind.eq.shared_document_edit_v1,result->>status.eq.confirmation_required),and(result->>card_rail.eq.proposal_v1,result->>status.eq.proposal_ready)'
 			);
 			this.filters.push(
 				(row) =>
 					['skill_load', 'request_turn_clarification'].includes(row.tool_name) ||
 					(row.tool_name === 'update_onto_document' &&
 						row.result?.confirmation_kind === 'shared_document_edit_v1' &&
-						row.result?.status === 'confirmation_required')
+						row.result?.status === 'confirmation_required') ||
+					(row.result?.card_rail === 'proposal_v1' &&
+						row.result?.status === 'proposal_ready')
 			);
 			return this;
 		}
@@ -2534,6 +2536,132 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(first.args.p_request_hash).toBe(retry.args.p_request_hash);
 		expect(mocks.inspectPreparedPromptAdmissionLineage).toHaveBeenCalledTimes(2);
 		expect(mocks.inspectPreparedPromptForWorkerAdmission).toHaveBeenCalledTimes(2);
+	});
+
+	it('hashes a lineage-only race retry exactly like a later identical resend, without adopting the prepared content', async () => {
+		const preparedId = 'f1000000-0000-4000-8000-000000000002';
+		const key = 'pp_v1.server-trusted-key';
+		const serviceClient = serviceClientWithTables({
+			chat_sessions: [
+				{
+					id: SESSION_ID,
+					user_id: USER_ID,
+					context_type: 'global',
+					entity_id: null,
+					summary: null,
+					agent_metadata: {}
+				}
+			],
+			chat_messages: [],
+			chat_message_attachments: [],
+			chat_tool_executions: []
+		});
+		mocks.inspectPreparedPromptAdmissionLineage.mockImplementation(
+			async ({ key: requested }: { key: string | null }) =>
+				requested
+					? { id: preparedId, acceptedSurfaceProfile: 'worker_realtime:global' }
+					: null
+		);
+		// The key is still adoptable (e.g. the race was a stale prepared history).
+		mocks.inspectPreparedPromptForWorkerAdmission.mockImplementation(
+			async ({ key: requested }: { key: string | null }) =>
+				requested
+					? {
+							hit: true,
+							ageSeconds: 1,
+							history: {
+								ok: true,
+								history: [],
+								state: {
+									strategy: 'raw_history',
+									compressed: false,
+									rawHistoryCount: 0,
+									historyForModelCount: 0
+								}
+							},
+							row: {
+								id: preparedId,
+								context_payload: { contextType: 'global', data: {} },
+								context_payload_sha256: 'c'.repeat(64),
+								conversation_summary: null,
+								history_for_model: [],
+								history_compressed: false,
+								history_strategy: 'raw_history',
+								raw_history_count: 0,
+								history_for_model_count: 0
+							},
+							surface: {
+								system_prompt: 'Prepared prompt',
+								system_prompt_sha256: 'c'.repeat(64),
+								sections: []
+							},
+							surfaceKey: 'worker_realtime:global'
+						}
+					: { hit: false, reason: 'missing_key' }
+		);
+		const prepare = (
+			options: { preparedPromptKey?: string | null; preparedPromptLineageOnly?: boolean } = {}
+		) =>
+			prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({
+					sessionId: SESSION_ID,
+					preparedPromptKey:
+						options.preparedPromptKey === undefined ? key : options.preparedPromptKey
+				}) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime' as const,
+					contractVersion: 'agentic_chat_worker_v1' as const
+				},
+				preparedPromptLineageOnly: options.preparedPromptLineageOnly,
+				dependencies: dependencies()
+			});
+
+		const retry = await prepare({ preparedPromptLineageOnly: true });
+		expect(mocks.inspectPreparedAdmissionLease).toHaveBeenLastCalledWith(
+			expect.objectContaining({ key: null })
+		);
+		expect(mocks.inspectPreparedPromptForWorkerAdmission).toHaveBeenLastCalledWith(
+			expect.objectContaining({ key: null })
+		);
+		expect(mocks.inspectPreparedPromptAdmissionLineage).toHaveBeenLastCalledWith(
+			expect.objectContaining({ key })
+		);
+		expect(retry.preparedPromptUsed).toBe(false);
+		expect(retry.args.p_prepared_prompt_id).toBeNull();
+		expect(retry.args.p_history_source).toBe('admission_window');
+
+		// The browser's identical resend (same key) adopts the prepared prompt yet
+		// hashes identically, so the RPC answers matching_duplicate.
+		const resend = await prepare();
+		expect(resend.args.p_prepared_prompt_id).toBe(preparedId);
+		expect(resend.args.p_request_hash).toBe(retry.args.p_request_hash);
+
+		// Nulling the key (the old retry) hashed a different request.
+		const nulled = await prepare({ preparedPromptKey: null });
+		expect(nulled.args.p_request_hash).not.toBe(retry.args.p_request_hash);
+	});
+
+	it('records the turn source the route resolved, defaulting to live_ui', async () => {
+		const admit = (source?: 'live_ui' | 'harness') =>
+			prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: {} as never,
+				userId: USER_ID,
+				command: command() as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				source,
+				dependencies: dependencies()
+			});
+		expect((await admit()).args.p_source).toBe('live_ui');
+		expect((await admit('harness')).args.p_source).toBe('harness');
 	});
 
 	it('freezes server-resolved current-turn attachment evidence and the authored message', async () => {

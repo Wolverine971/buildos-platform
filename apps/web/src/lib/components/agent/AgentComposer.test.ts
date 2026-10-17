@@ -59,6 +59,18 @@ describe('AgentComposer', () => {
 		expect(screen.queryAllByRole('button', { name: /Send/ })).toHaveLength(0);
 	});
 
+	it('disables Stop and says so while a stop is in flight', () => {
+		const onStop = vi.fn();
+		render(AgentComposer, {
+			props: createProps({ isStreaming: true, isStopRequested: true, onStop })
+		});
+		const buttons = screen.getAllByRole('button', { name: 'Stopping response' });
+		expect(buttons.length).toBeGreaterThan(0);
+		for (const button of buttons) expect(button).toBeDisabled();
+		expect(screen.queryAllByRole('button', { name: 'Stop response' })).toHaveLength(0);
+		expect(screen.getByText('Stopping the response.')).toBeInTheDocument();
+	});
+
 	it('shows the queued follow-up with an edit affordance', async () => {
 		const onEditQueued = vi.fn();
 		render(AgentComposer, {

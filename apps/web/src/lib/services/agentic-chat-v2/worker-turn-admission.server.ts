@@ -57,11 +57,31 @@ export type AgenticChatWorkerAdmissionGatewayErrorCode = 'database_error' | 'pro
 export class AgenticChatWorkerAdmissionGatewayError extends Error {
 	constructor(
 		readonly code: AgenticChatWorkerAdmissionGatewayErrorCode,
-		message: string
+		message: string,
+		/** True only when the database proved the admission transaction rolled back. */
+		readonly rolledBack = false
 	) {
 		super(message);
 		this.name = 'AgenticChatWorkerAdmissionGatewayError';
 	}
+}
+
+const SQLSTATE_PATTERN = /^[0-9A-Z]{5}$/;
+const POSTGREST_CODE_PATTERN = /^PGRST\d{3}$/;
+// Classes where the link or server can fail around COMMIT, so the turn may exist:
+// 08 connection exception, 57 operator intervention, 58 system error, XX internal.
+const COMMIT_UNKNOWN_SQLSTATE_CLASSES = new Set(['08', '57', '58', 'XX']);
+
+/**
+ * True when PostgREST answered with a Postgres SQLSTATE or its own PGRST code:
+ * the function raised (or never ran), so its transaction rolled back and nothing
+ * was admitted. Fetch failures and gateway errors carry no such code and stay
+ * "unknown"; so does PGRST001, a connection lost mid-request.
+ */
+export function rpcErrorProvesRollback(error: RpcError | null | undefined): boolean {
+	const code = typeof error?.code === 'string' ? error.code : '';
+	if (POSTGREST_CODE_PATTERN.test(code)) return code !== 'PGRST001';
+	return SQLSTATE_PATTERN.test(code) && !COMMIT_UNKNOWN_SQLSTATE_CLASSES.has(code.slice(0, 2));
 }
 
 /**
@@ -83,7 +103,8 @@ export async function admitAgenticChatWorkerTurn(input: {
 			.join(' ');
 		throw new AgenticChatWorkerAdmissionGatewayError(
 			'database_error',
-			detail ? `Worker turn admission failed: ${detail}` : 'Worker turn admission failed'
+			detail ? `Worker turn admission failed: ${detail}` : 'Worker turn admission failed',
+			rpcErrorProvesRollback(error)
 		);
 	}
 	return parseAdmissionReceipt(data, input.args);
@@ -115,6 +136,20 @@ export function getPreparedAdmissionFailureCode(error: unknown): string | null {
 export function isPreparedAdmissionRaceError(error: unknown): boolean {
 	const failureCode = getPreparedAdmissionFailureCode(error);
 	return failureCode !== null && RETRYABLE_PREPARED_ADMISSION_FAILURES.has(failureCode);
+}
+
+/**
+ * True when a message landed in the session between the admission-window history
+ * read and the RPC, pushing a frozen message out of the newest-N window. The RPC
+ * raises before any insert, so a fresh preparation (new window) fixes it.
+ */
+export function isHistoryWindowRaceError(error: unknown): boolean {
+	return (
+		error instanceof AgenticChatWorkerAdmissionGatewayError &&
+		error.code === 'database_error' &&
+		error.rolledBack &&
+		/\bagentic_chat_worker_admission_history_lineage_mismatch\b/.test(error.message)
+	);
 }
 
 function parseAdmissionReceipt(

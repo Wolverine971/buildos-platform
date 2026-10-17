@@ -5,6 +5,7 @@ import type {
 	ConsolidationOp,
 	ConsolidationPlan,
 	ConsolidationQuestion,
+	ConsolidationRunMode,
 	ConsolidationRunStatus,
 	MergeDraftView
 } from '@buildos/shared-agent-ops/consolidation';
@@ -14,6 +15,8 @@ export type ConsolidationRunRow = {
 	user_id: string;
 	root_project_id: string;
 	project_ids: string[];
+	/** check: the quick duplicate check (groups only, read-only, ends `checked`). */
+	mode: ConsolidationRunMode;
 	request: string | null;
 	status: ConsolidationRunStatus;
 	progress: Record<string, unknown>;

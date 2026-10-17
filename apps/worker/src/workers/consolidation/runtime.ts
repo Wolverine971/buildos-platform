@@ -12,6 +12,10 @@ export type RunRow = {
 	plan: unknown;
 	cost_usd: number | string;
 	created_at: string;
+	/** full (default) or check: groups only, ends `checked` (tasker 122). */
+	mode?: string;
+	/** What the owner (or chat, for them) asked the survey to look at. */
+	request?: string | null;
 };
 
 /** A survey of DJ's largest family costs about a cent; this stops a runaway. */
@@ -52,7 +56,9 @@ export async function loggedSpend(run: RunRow, scope: SpendScope = 'all'): Promi
 export async function loadRun(runId: string): Promise<RunRow | null> {
 	const { data, error } = await supabase
 		.from('consolidation_runs')
-		.select('id, user_id, root_project_id, project_ids, status, plan, cost_usd, created_at')
+		.select(
+			'id, user_id, root_project_id, project_ids, status, plan, cost_usd, created_at, mode, request'
+		)
 		.eq('id', runId)
 		.maybeSingle();
 	if (error) throw new Error(`Load consolidation run: ${error.message}`);

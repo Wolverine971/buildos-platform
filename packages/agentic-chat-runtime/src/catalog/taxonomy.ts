@@ -82,7 +82,9 @@ export const TOOL_CATEGORIES = {
 			'get_onto_asset',
 			'get_project_cleanup',
 			'get_onto_table_details',
-			'read_table_rows'
+			'read_table_rows',
+			'propose_project_parent',
+			'propose_project_combine'
 		],
 		averageTokens: 350,
 		costTier: 'medium'

@@ -1,12 +1,14 @@
 // apps/web/src/routes/api/onto/projects/[id]/members/[memberId]/+server.ts
 /**
- * Update member role/access (admin only).
+ * Update member role/access (admin only). DELETE removes a member through
+ * removeProjectMember (shared with the chat combine card).
  */
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { logOntologyApiError } from '../../../../shared/error-logging';
+import { removeProjectMember } from '$lib/server/project-members/remove-member';
 
 const ROLE_ACCESS_MAP = {
 	editor: 'write',
@@ -188,132 +190,48 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const supabase = locals.supabase;
-		const actorId = await ensureActorId(supabase, user.id);
-
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_member_access',
-			{
-				p_project_id: projectId,
-				p_required_access: 'admin'
-			}
-		);
-
-		if (accessError) {
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/projects/${projectId}/members/${memberId}`,
-				method: 'DELETE',
-				userId: user.id,
-				projectId,
-				entityType: 'project',
-				operation: 'project_members_access'
-			});
-			return ApiResponse.internalError(accessError, 'Failed to check project access');
-		}
-
-		if (!hasAccess) {
-			return ApiResponse.forbidden('Access denied');
-		}
-
-		const { data: member, error: memberError } = await supabase
-			.from('onto_project_members')
-			.select('id, actor_id, role_key, access, removed_at')
-			.eq('id', memberId)
-			.eq('project_id', projectId)
-			.maybeSingle();
-
-		if (memberError) {
-			await logOntologyApiError({
-				supabase,
-				error: memberError,
-				endpoint: `/api/onto/projects/${projectId}/members/${memberId}`,
-				method: 'DELETE',
-				userId: user.id,
-				projectId,
-				entityType: 'project',
-				operation: 'project_members_fetch',
-				tableName: 'onto_project_members'
-			});
-			return ApiResponse.databaseError(memberError);
-		}
-
-		if (!member) {
-			return ApiResponse.notFound('Member');
-		}
-
-		if (member.removed_at) {
-			return ApiResponse.badRequest('Member has already been removed');
-		}
-
-		if (member.role_key === 'owner') {
-			return ApiResponse.badRequest('Owner role cannot be removed');
-		}
-
-		const { data: removedMember, error: updateError } = await (supabase as any).rpc(
-			'update_project_membership_guarded',
-			{ p_project: projectId, p_member: memberId, p_action: 'remove' }
-		);
-
-		if (updateError) {
-			await logOntologyApiError({
-				supabase,
-				error: updateError,
-				endpoint: `/api/onto/projects/${projectId}/members/${memberId}`,
-				method: 'DELETE',
-				userId: user.id,
-				projectId,
-				entityType: 'project',
-				operation: 'project_members_remove',
-				tableName: 'onto_project_members'
-			});
-			return ApiResponse.databaseError(updateError);
-		}
-
-		if (!removedMember) {
-			const { data: latestMember } = await supabase
-				.from('onto_project_members')
-				.select('id, role_key, removed_at')
-				.eq('id', memberId)
-				.eq('project_id', projectId)
-				.maybeSingle();
-
-			if (!latestMember) {
-				return ApiResponse.notFound('Member');
-			}
-
-			if (latestMember.removed_at) {
-				return ApiResponse.badRequest('Member has already been removed');
-			}
-
-			if (latestMember.role_key === 'owner') {
-				return ApiResponse.badRequest('Owner role cannot be removed');
-			}
-
-			return ApiResponse.error(
-				'Member was updated by another collaborator. Please retry.',
-				409
-			);
-		}
-
-		await supabase.from('onto_project_logs').insert({
-			project_id: projectId,
-			entity_type: 'project',
-			entity_id: projectId,
-			action: 'updated',
-			changed_by: user.id,
-			changed_by_actor_id: actorId,
-			change_source: 'api',
-			after_data: {
-				event: 'member_removed',
-				member_id: memberId,
-				actor_id: removedMember.actor_id,
-				role_key: removedMember.role_key,
-				access: removedMember.access
-			}
+		const result = await removeProjectMember({
+			supabase,
+			userId: user.id,
+			projectId,
+			memberId,
+			onError: ({ error, operation, tableName }) =>
+				logOntologyApiError({
+					supabase,
+					error,
+					endpoint: `/api/onto/projects/${projectId}/members/${memberId}`,
+					method: 'DELETE',
+					userId: user.id,
+					projectId,
+					entityType: 'project',
+					operation,
+					...(tableName ? { tableName } : {})
+				})
 		});
 
-		return ApiResponse.success({ memberId });
+		if (result.ok) {
+			return ApiResponse.success({ memberId });
+		}
+		switch (result.reason) {
+			case 'access_check_failed':
+				return ApiResponse.internalError(result.error, 'Failed to check project access');
+			case 'forbidden':
+				return ApiResponse.forbidden('Access denied');
+			case 'member_lookup_failed':
+			case 'remove_failed':
+				return ApiResponse.databaseError(result.error);
+			case 'not_found':
+				return ApiResponse.notFound('Member');
+			case 'already_removed':
+				return ApiResponse.badRequest('Member has already been removed');
+			case 'owner':
+				return ApiResponse.badRequest('Owner role cannot be removed');
+			case 'conflict':
+				return ApiResponse.error(
+					'Member was updated by another collaborator. Please retry.',
+					409
+				);
+		}
 	} catch (error) {
 		console.error('[Project Members API] Failed to remove member:', error);
 		return ApiResponse.internalError(error, 'Failed to remove member');

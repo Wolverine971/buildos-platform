@@ -4,7 +4,9 @@ import {
 	admitAgenticChatWorkerTurn,
 	AgenticChatWorkerAdmissionGatewayError,
 	getPreparedAdmissionFailureCode,
+	isHistoryWindowRaceError,
 	isPreparedAdmissionRaceError,
+	rpcErrorProvesRollback,
 	type AgenticChatWorkerAdmissionRpcArgs,
 	type AgenticChatWorkerAdmissionRpcClient
 } from './worker-turn-admission.server';
@@ -270,5 +272,94 @@ describe('Agentic Chat worker admission gateway', () => {
 			)
 		).toBe(false);
 		expect(isPreparedAdmissionRaceError(new Error('prepared'))).toBe(false);
+	});
+
+	it('marks an RPC error rolled back only when it carries a SQLSTATE or PostgREST code', async () => {
+		// Rolled back: the function raised, or PostgREST never ran it.
+		for (const code of [
+			'P0001',
+			'23505',
+			'40001',
+			'42883',
+			'PGRST202',
+			'PGRST000',
+			'PGRST003'
+		]) {
+			expect(rpcErrorProvesRollback({ code }), code).toBe(true);
+		}
+		// Unknown: no response code (fetch failure, gateway body), or a failure
+		// that can strike around COMMIT (connection lost, shutdown, crash, cancel).
+		for (const code of [
+			undefined,
+			'',
+			'20',
+			'ECONNRESET',
+			'pgrst202',
+			'08006',
+			'57P01',
+			'57014',
+			'58030',
+			'XX000',
+			'PGRST001'
+		]) {
+			expect(rpcErrorProvesRollback({ code }), String(code)).toBe(false);
+		}
+		expect(rpcErrorProvesRollback(null)).toBe(false);
+
+		await expect(
+			admitAgenticChatWorkerTurn({
+				client: client({
+					data: null,
+					error: { code: 'P0001', message: 'agentic_chat_session_not_owned' }
+				}).value,
+				args
+			})
+		).rejects.toMatchObject({ code: 'database_error', rolledBack: true });
+		await expect(
+			admitAgenticChatWorkerTurn({
+				client: client({
+					data: null,
+					error: { code: '', message: 'TypeError: fetch failed' }
+				}).value,
+				args
+			})
+		).rejects.toMatchObject({ code: 'database_error', rolledBack: false });
+		// A receipt that fails to parse arrives after the RPC returned: commit unknown.
+		await expect(
+			admitAgenticChatWorkerTurn({
+				client: client({ data: { outcome: 'bogus' }, error: null }).value,
+				args
+			})
+		).rejects.toMatchObject({ code: 'protocol_error', rolledBack: false });
+	});
+
+	it('treats only a rolled-back history-window mismatch as a re-preparable race', () => {
+		const message =
+			'Worker turn admission failed: P0001 agentic_chat_worker_admission_history_lineage_mismatch';
+		expect(
+			isHistoryWindowRaceError(
+				new AgenticChatWorkerAdmissionGatewayError('database_error', message, true)
+			)
+		).toBe(true);
+		expect(
+			isHistoryWindowRaceError(
+				new AgenticChatWorkerAdmissionGatewayError('database_error', message)
+			)
+		).toBe(false);
+		expect(
+			isHistoryWindowRaceError(
+				new AgenticChatWorkerAdmissionGatewayError(
+					'database_error',
+					'Worker turn admission failed: P0001 agentic_chat_worker_admission_invalid_history_lineage',
+					true
+				)
+			)
+		).toBe(false);
+		// It is not a prepared-lease race: those keep their own retry rules.
+		expect(
+			isPreparedAdmissionRaceError(
+				new AgenticChatWorkerAdmissionGatewayError('database_error', message, true)
+			)
+		).toBe(false);
 	});
 });

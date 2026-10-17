@@ -23,9 +23,18 @@ import {
 	type RiskRow,
 	type TaskRow
 } from './overview-helper';
-import { filterReadableProjectSummaries } from './access-port';
+import {
+	PROJECT_HIERARCHY_SUB_PROJECT_LIMIT,
+	projectHierarchyFieldsV1,
+	type ProjectHierarchyIndexV1
+} from '@buildos/shared-types';
+import {
+	filterReadableProjectSummaries,
+	type AgenticChatToolProjectSummaryV1
+} from './access-port';
 import { ENTITY_FIELD_INFO } from './entity-field-info';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
+import { loadProjectHierarchyIndex } from './project-hierarchy-reads';
 
 // ============================================
 // ARG TYPES (mirrors the legacy web executor args)
@@ -92,7 +101,13 @@ async function loadOverviewProjectRows(
 		query?: string;
 		projectId?: string;
 	}
-): Promise<{ projects: ProjectRow[]; maybeMore: boolean; totalProjects: number }> {
+): Promise<{
+	projects: ProjectRow[];
+	maybeMore: boolean;
+	totalProjects: number;
+	/** Every project the viewer can open (unfiltered): the hierarchy's visibility set. */
+	accessible: AgenticChatToolProjectSummaryV1[];
+}> {
 	const projectSummaries = await context.access.resolveProjectSummaries();
 	// Direct project_id lookups bypass the paused filter (legacy behavior);
 	// list/query flows use the single shared paused-project predicate.
@@ -112,7 +127,8 @@ async function loadOverviewProjectRows(
 		return {
 			projects: project ? [project] : [],
 			maybeMore: false,
-			totalProjects: project ? 1 : 0
+			totalProjects: project ? 1 : 0,
+			accessible: projectSummaries
 		};
 	}
 
@@ -127,7 +143,8 @@ async function loadOverviewProjectRows(
 	return {
 		projects: rows.slice(0, params.projectLimit),
 		maybeMore: rows.length > params.projectLimit,
-		totalProjects: rows.length
+		totalProjects: rows.length,
+		accessible: projectSummaries
 	};
 }
 
@@ -305,6 +322,19 @@ async function loadOverviewProjectData(
 	};
 }
 
+/**
+ * Tasker 122: the parent (when the viewer can open it) and readable
+ * sub-projects. A null index (lookup failed) leaves the row unchanged.
+ */
+function withProjectHierarchy(
+	project: ProjectRow,
+	hierarchy: ProjectHierarchyIndexV1 | null,
+	subProjectLimit = 0
+): ProjectRow {
+	const fields = projectHierarchyFieldsV1(hierarchy, String(project.id), { subProjectLimit });
+	return Object.keys(fields).length > 0 ? { ...project, ...fields } : project;
+}
+
 /** Flag a payload whose task-derived counts come from a capped task read. */
 function withTaskTruncation(
 	payload: Record<string, any>,
@@ -353,8 +383,11 @@ export function getFieldInfo(args: SharedGetFieldInfoArgs): {
 	if (field_name) {
 		const field = schema[field_name];
 		if (!field) {
+			// Tasker 122: "Available fields: …" read as proof that a field does not
+			// exist, and on 10-16 chat told the owner projects can't nest because
+			// parent_project_id was missing here. This list is curated, not the schema.
 			throw new Error(
-				`Field "${field_name}" not found for entity "${entity_type}". Available fields: ${Object.keys(schema).join(', ')}`
+				`Field "${field_name}" is not in the curated field guide for "${entity_type}". This does not mean the field doesn't exist. Curated fields: ${Object.keys(schema).join(', ')}`
 			);
 		}
 
@@ -381,9 +414,10 @@ export async function getWorkspaceOverview(
 	args: SharedGetWorkspaceOverviewArgs = {}
 ): Promise<Record<string, any>> {
 	const projectLimit = Math.max(1, Math.min(20, Math.floor(args.project_limit ?? 8)));
-	const { projects, maybeMore, totalProjects } = await loadOverviewProjectRows(context, {
-		projectLimit
-	});
+	const { projects, maybeMore, totalProjects, accessible } = await loadOverviewProjectRows(
+		context,
+		{ projectLimit }
+	);
 	if (projects.length === 0) {
 		return buildWorkspaceOverviewPayload({
 			projects: [],
@@ -401,10 +435,16 @@ export async function getWorkspaceOverview(
 	}
 
 	const projectIds = projects.map((project) => String(project.id));
-	const related = await loadOverviewProjectData(context, projectIds);
+	const [related, hierarchy] = await Promise.all([
+		loadOverviewProjectData(context, projectIds),
+		loadProjectHierarchyIndex(context, accessible)
+	]);
 	const payload = buildWorkspaceOverviewPayload({
 		projects: projects.map((project) =>
-			mergeProjectScheduleDates(project, related.projectSchedules)
+			withProjectHierarchy(
+				mergeProjectScheduleDates(project, related.projectSchedules),
+				hierarchy
+			)
 		),
 		tasks: related.tasks,
 		milestones: related.milestones,
@@ -435,7 +475,7 @@ export async function getProjectOverview(
 		throw new Error('get_project_overview requires project_id or query');
 	}
 
-	const { projects } = await loadOverviewProjectRows(context, {
+	const { projects, accessible } = await loadOverviewProjectRows(context, {
 		projectLimit: directProjectId ? 1 : 6,
 		query: directProjectId ? undefined : query,
 		projectId: directProjectId
@@ -456,10 +496,17 @@ export async function getProjectOverview(
 			};
 		}
 
-		const related = await loadOverviewProjectData(context, [String(project.id)]);
+		const [related, hierarchy] = await Promise.all([
+			loadOverviewProjectData(context, [String(project.id)]),
+			loadProjectHierarchyIndex(context, accessible)
+		]);
 		return withTaskTruncation(
 			buildProjectOverviewPayload({
-				project: mergeProjectScheduleDates(project, related.projectSchedules),
+				project: withProjectHierarchy(
+					mergeProjectScheduleDates(project, related.projectSchedules),
+					hierarchy,
+					PROJECT_HIERARCHY_SUB_PROJECT_LIMIT
+				),
 				tasks: related.tasks,
 				milestones: related.milestones,
 				plans: related.plans,
@@ -499,10 +546,17 @@ export async function getProjectOverview(
 		};
 	}
 
-	const related = await loadOverviewProjectData(context, [match.project.id]);
+	const [related, hierarchy] = await Promise.all([
+		loadOverviewProjectData(context, [match.project.id]),
+		loadProjectHierarchyIndex(context, accessible)
+	]);
 	return withTaskTruncation(
 		buildProjectOverviewPayload({
-			project: mergeProjectScheduleDates(match.project, related.projectSchedules),
+			project: withProjectHierarchy(
+				mergeProjectScheduleDates(match.project, related.projectSchedules),
+				hierarchy,
+				PROJECT_HIERARCHY_SUB_PROJECT_LIMIT
+			),
 			query,
 			tasks: related.tasks,
 			milestones: related.milestones,

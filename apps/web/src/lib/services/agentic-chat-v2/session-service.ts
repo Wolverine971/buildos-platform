@@ -30,6 +30,7 @@ import {
 	isSharedDocumentEditCardRow,
 	sharedDocumentEditCardNotes
 } from './shared-document-edit-card-history';
+import { isProposalCardRow, proposalCardNotes } from './proposal-card-history';
 
 const logger = createLogger('FastChatSession');
 
@@ -395,7 +396,8 @@ export function buildInterruptedToolHistorySummary(
 		.filter(
 			(row) =>
 				!CONTROL_TOOL_NAMES.has(row.tool_name.trim().toLowerCase()) &&
-				!isSharedDocumentEditCardRow(row)
+				!isSharedDocumentEditCardRow(row) &&
+				!isProposalCardRow(row)
 		);
 	const writes = sorted.filter(
 		(row) => row.success && isLikelyWriteToolName(row.tool_name, row.gateway_op)
@@ -550,6 +552,8 @@ function projectHistorySnapshotWithLineage(
 	// Each confirm card's state (the user resolves it between turns) follows the
 	// reply that showed it.
 	const cardNotes = sharedDocumentEditCardNotes(orderedContinuityExecutionRows);
+	// Proposal cards (nest, combine) are decided the same way, between turns.
+	const proposalNotes = proposalCardNotes(orderedContinuityExecutionRows);
 
 	const historyMessages = orderedMessages.flatMap((message) => {
 		const msg = message as RecentChatMessageRow;
@@ -562,7 +566,9 @@ function projectHistorySnapshotWithLineage(
 				attachments: attachments.length > 0 ? attachments : undefined,
 				sourceMessageId: msg.id
 			},
-			...(msg.role === 'assistant' ? (cardNotes.get(msg.id) ?? []) : [])
+			...(msg.role === 'assistant'
+				? [...(cardNotes.get(msg.id) ?? []), ...(proposalNotes.get(msg.id) ?? [])]
+				: [])
 		];
 		if (isInterruptedAssistantMessage(msg)) {
 			const summary = buildInterruptedToolHistorySummary(

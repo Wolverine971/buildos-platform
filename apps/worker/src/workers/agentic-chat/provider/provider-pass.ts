@@ -14,6 +14,7 @@ import { canonicalFinishedReason, providerError } from './protocol';
 import { providerClientRequest } from './request-builders';
 import {
 	ACTING_OUTPUT_TOKENS,
+	OUTPUT_RECOVERY_MIN_REMAINING_MS,
 	isActingOutputPass,
 	outputBudgetInstruction,
 	outputBudgetSignal
@@ -78,7 +79,12 @@ export async function* streamBufferedProviderPass(
 	client: AgenticChatTurnProviderClientPortV1,
 	capacity: Pick<AgenticChatProviderCapacity, 'markTemporarilyUnavailable'>,
 	retryableFailureCooldownMs: number,
-	outputPolicy?: { pressure(): void; claimRecovery(): boolean }
+	outputPolicy?: {
+		pressure(): void;
+		claimRecovery(): boolean;
+		/** Whether `claimRecovery` would succeed, without claiming. Absent means yes. */
+		canClaimRecovery?(): boolean;
+	}
 ): AsyncGenerator<AgenticChatTurnProviderClientEventV1> {
 	const firstAttempt = request.providerAttempt ?? 1;
 	let attemptRequest = request;
@@ -100,10 +106,19 @@ export async function* streamBufferedProviderPass(
 			// the consumer to name; they make the pass unobservable here.
 			const shadowToolCalls = createToolCallAccumulator();
 			let shadowObservable = true;
+			// The client may cut a runaway-reasoning pass short only while the
+			// reasoning-off recovery below can still take it; otherwise the pass
+			// runs to its cap as before.
+			const budgetRecoveryClaimable =
+				isActingOutputPass(request) &&
+				retriesRemain &&
+				!attemptRequest.outputBudgetRecovery &&
+				(outputPolicy?.canClaimRecovery?.() ?? true);
 
 			for await (const received of client.stream({
 				...providerClientRequest({ ...attemptRequest, providerAttempt }),
 				allowSlowStreamRecovery: retriesRemain && !attemptRequest.outputBudgetRecovery,
+				allowRunawayReasoningCutoff: budgetRecoveryClaimable,
 				finalBufferedAttempt: !retriesRemain || attemptRequest.outputBudgetRecovery === true
 			})) {
 				throwIfAborted(request.signal);
@@ -130,9 +145,10 @@ export async function* streamBufferedProviderPass(
 				if (event.type === 'error') {
 					const exhausted = event.cause === 'output_budget_exhausted';
 					if (exhausted) outputPolicy?.pressure();
-					// Leave at least five seconds for a viable attempt and five for finalization.
 					const recoveryTimeAvailable =
-						!request.budget || request.budget.deadlineAtMs - Date.now() >= 10_000;
+						!request.budget ||
+						request.budget.deadlineAtMs - Date.now() >=
+							OUTPUT_RECOVERY_MIN_REMAINING_MS;
 					const budgetRetry =
 						exhausted &&
 						isActingOutputPass(request) &&

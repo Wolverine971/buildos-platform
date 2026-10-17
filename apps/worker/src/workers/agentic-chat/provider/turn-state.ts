@@ -30,6 +30,7 @@ import {
 	doesToolExecutionRequireUserAction,
 	extractReviewedRequestExpectation,
 	isControlToolName,
+	isPendingProposalCardExecution,
 	mergeTurnContracts,
 	mutationBatchSha256,
 	parseDeclaredTurnContract,
@@ -152,6 +153,8 @@ export type ToolRoundStreamState = {
 	prepareOutputBudget(request: ClientRequest): ClientRequest;
 	recordOutputBudgetPressure(): void;
 	claimOutputBudgetRecovery(): boolean;
+	/** Whether the turn's one output-budget recovery is still unclaimed. */
+	canClaimOutputBudgetRecovery(): boolean;
 	/** The turn has spent its whole provider-pass budget; only synthesis remains. */
 	providerPassBudgetExhausted(): boolean;
 	/** Receipt-grounded instruction for the answer that ends a capped turn. */
@@ -591,6 +594,10 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		return true;
 	}
 
+	canClaimOutputBudgetRecovery(): boolean {
+		return !this.outputBudgetRecoveryUsed;
+	}
+
 	providerPassBudgetExhausted(): boolean {
 		return this.providerPassCount >= MAX_PROVIDER_PASSES_PER_TURN;
 	}
@@ -835,6 +842,8 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	 */
 	takeUnsavedCommissionNotice(value: ClientRequest): string | null {
 		if (!dispositionPending(this.phase)) return null;
+		// A card under the reply is the change, waiting for the user's click.
+		if (this.awaitingUserCard()) return null;
 		if (!value.commissionedWriteToolNames?.length) return null;
 		return NO_CHANGES_SAVED_NOTICE;
 	}
@@ -878,7 +887,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	takeRequestCompletionContinuation(value: ClientRequest): ClientRequest | null {
-		if (this.awaitingSharedDocumentConfirmation()) return null;
+		if (this.awaitingUserCard()) return null;
 		const expectation = this.requestExpectation;
 		if (
 			!this.reviewedBatchExecuted ||
@@ -914,7 +923,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	getRequestCompletionFallback(): string | null {
-		if (this.awaitingSharedDocumentConfirmation()) return null;
+		if (this.awaitingUserCard()) return null;
 		if (!this.reviewedBatchExecuted) return null;
 		const expectation = this.requestExpectation;
 		const remaining = this.unfinishedContractOutcomeDescriptions();
@@ -1368,6 +1377,23 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				semanticDispositionToolName
 			);
 		}
+		if (
+			!semanticDispositionToolName &&
+			!roundContainsMutation &&
+			dispositionPending(this.phase) &&
+			roundExecutions.some(isPendingProposalCardExecution)
+		) {
+			// A proposal card is the turn's disposition (tasker 122): the user's
+			// click makes the change, so this turn may not write it or anything
+			// else. Same surface as a read-only declaration; a write asked for
+			// after the card in the same turn is refused.
+			this.advance({ type: 'disposition', decision: 'read_only' });
+			this.currentRequest = buildPostSemanticDispositionRequest(
+				this.currentRequest,
+				this.admittedTools,
+				DECLARE_READ_ONLY_TURN_TOOL_NAME
+			);
+		}
 		const declaredContract = this.turnContract;
 		if (
 			semanticDispositionToolName === DECLARE_TURN_CONTRACT_TOOL_NAME &&
@@ -1529,15 +1555,20 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	/**
-	 * A shared-document confirm card saved nothing and ends the turn on the
-	 * card: the user's click decides, so the edit must not be retried or
-	 * replaced with an unfinished-work fallback. Only that structured receipt
-	 * counts. Other `requires_user_action` results (a calendar reconnect after a
-	 * saved write, an email or task-move confirmation, a clarification) leave
-	 * the rest of the request owed, and the completion checks still apply.
+	 * A shared-document confirm card or a proposal card (tasker 122) saved
+	 * nothing and ends the turn on the card: the user's click decides, so the
+	 * change must not be retried or replaced with an unfinished-work fallback.
+	 * Only those structured receipts count. Other `requires_user_action`
+	 * results (a calendar reconnect after a saved write, an email or task-move
+	 * confirmation, a clarification) leave the rest of the request owed, and
+	 * the completion checks still apply.
 	 */
-	private awaitingSharedDocumentConfirmation(): boolean {
-		return this.turnToolExecutions.some(isPendingSharedDocumentPreview);
+	private awaitingUserCard(): boolean {
+		return this.turnToolExecutions.some(
+			(execution) =>
+				isPendingSharedDocumentPreview(execution) ||
+				isPendingProposalCardExecution(execution)
+		);
 	}
 
 	// After the first mutation round the write carve-out is spent, yet the
@@ -1547,7 +1578,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	// continuation returns the model to the unfinished outcomes.
 	private incompleteApprovedContractResolution() {
 		// A confirm card is a successful preview, not unfinished work to retry.
-		if (this.awaitingSharedDocumentConfirmation()) return null;
+		if (this.awaitingUserCard()) return null;
 		const turnContract = this.turnContract;
 		if (
 			!turnContract ||

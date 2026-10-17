@@ -3,6 +3,10 @@ import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
 import { collectRecordReferences } from './record-references';
 import { instantToZonedIso, isValidIanaTimezone } from '@buildos/shared-agent-ops/dates/civil-date';
+import {
+	PROPOSAL_CARD_RAIL,
+	PROPOSAL_CARD_READY_STATUS
+} from '@buildos/shared-agent-ops/chat-cards/proposal-card';
 
 type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; error?: string };
 
@@ -802,6 +806,9 @@ function compactSkillLinkedResources(value: unknown): Array<Record<string, unkno
 }
 
 function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
+	// A proposal card (tasker 122), keyed on the rail and never on the tool name.
+	const proposalCard = compactProposalCard(payload);
+	if (proposalCard) return proposalCard;
 	const normalizedToolName = toolName.trim().toLowerCase();
 	if (normalizedToolName === 'search_email_messages') {
 		return compactEmailSearchPayload(payload);
@@ -1164,6 +1171,10 @@ function compactOntologyProjectDetailPayload(payload: unknown): unknown {
 		project: {
 			id: project.id,
 			name: project.name,
+			// Tasker 122: where the project sits (already visibility-filtered).
+			parent: project.parent ?? undefined,
+			sub_project_count: project.sub_project_count ?? undefined,
+			sub_projects: Array.isArray(project.sub_projects) ? project.sub_projects : undefined,
 			description: toTextPreview(project.description, 900),
 			type_key: project.type_key,
 			state_key: project.state_key,
@@ -1897,6 +1908,8 @@ function compactWorkspaceOverviewPayload(payload: unknown): unknown {
 		projects: projects.map((project: Record<string, any>) => ({
 			project_id: project?.project_id,
 			name: project?.name,
+			parent: project?.parent ?? undefined,
+			sub_project_count: project?.sub_project_count ?? undefined,
 			state_key: project?.state_key,
 			description: toTextPreview(project?.description, textBudget) ?? undefined,
 			next_step_short: toTextPreview(project?.next_step_short, textBudget) ?? undefined,
@@ -2590,6 +2603,31 @@ function compactDocumentMutationReceipt(payload: unknown): unknown {
 		envelope ? { ...record, result: compactHolder } : compactHolder,
 		TOOL_COMPACT_TARGET_CHARS
 	);
+}
+
+/**
+ * A proposal card (tasker 122) saved nothing. The model gets the kind's
+ * model view (what the card proposes, blockers, who is affected) and the
+ * instruction; never `client_action`, which only the browser renders.
+ * Blocked and no-change results carry no card and pass through unchanged.
+ */
+function compactProposalCard(payload: unknown): Record<string, unknown> | null {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+	const card = payload as Record<string, unknown>;
+	if (card.card_rail !== PROPOSAL_CARD_RAIL || card.status !== PROPOSAL_CARD_READY_STATUS)
+		return null;
+	const modelView =
+		card.model_view && typeof card.model_view === 'object' && !Array.isArray(card.model_view)
+			? (card.model_view as Record<string, unknown>)
+			: {};
+	return {
+		status: card.status,
+		saved: false,
+		card_id: card.card_id,
+		kind: card.kind,
+		...modelView,
+		message: card.message
+	};
 }
 
 /**

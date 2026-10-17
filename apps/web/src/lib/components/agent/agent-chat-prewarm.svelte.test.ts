@@ -341,10 +341,64 @@ describe('PrewarmController — orchestrate', () => {
 			expect.objectContaining({
 				context_type: 'project',
 				entity_id: 'project-1',
-				ensure_session: false
+				ensure_session: false,
+				// A new chat's first turn cannot use a prepared prompt: skip the build.
+				prepare_prompt: false
 			}),
 			expect.anything()
 		);
+	});
+
+	it('warms only context for a new chat and re-warms when that context ages out', async () => {
+		vi.useFakeTimers();
+		try {
+			const h = createHarness({ currentSession: null });
+			const key = h.controller.resolveCurrentKey()!;
+			const cache = makeCache({ key });
+			h.prewarm.mockResolvedValue({
+				session: null,
+				prewarmedContext: cache,
+				// An older server may still build one; a new chat never adopts it.
+				preparedPrompt: makePreparedPrompt({ cacheKey: key })
+			});
+
+			h.controller.orchestrate();
+			await flushMicrotasks();
+			expect(h.controller.preparedPrompt).toBeNull();
+
+			// No 10 s prepared-prompt retry loop: context is all a new chat needs.
+			h.controller.orchestrate();
+			vi.advanceTimersByTime(60_000);
+			h.controller.orchestrate();
+			expect(h.prewarm).toHaveBeenCalledTimes(1);
+
+			const tickBefore = h.controller.refreshTick;
+			vi.advanceTimersByTime(61_000);
+			expect(h.controller.refreshTick).toBeGreaterThan(tickBefore);
+			h.controller.orchestrate();
+			expect(h.prewarm).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('asks for a prepared prompt once the chat has a session', async () => {
+		const h = createHarness({ currentSession: null });
+		const key = h.controller.resolveCurrentKey()!;
+		h.prewarm.mockResolvedValue({
+			session: null,
+			prewarmedContext: makeCache({ key }),
+			preparedPrompt: null
+		});
+		h.controller.orchestrate();
+		await flushMicrotasks();
+
+		h.flags.currentSession = { id: 'session-1' } as ChatSession;
+		h.controller.orchestrate();
+
+		expect(h.prewarm).toHaveBeenCalledTimes(2);
+		expect(h.prewarm.mock.calls[1]?.[0]).toMatchObject({ session_id: 'session-1' });
+		expect(h.prewarm.mock.calls[1]?.[0]).not.toHaveProperty('prepare_prompt');
 	});
 
 	it('materializes global context when global is explicitly selected', () => {
@@ -403,6 +457,7 @@ describe('PrewarmController — orchestrate', () => {
 			entity_id: 'project-1'
 		});
 		expect(h.prewarm.mock.calls[0]?.[0]).not.toHaveProperty('ensure_session');
+		expect(h.prewarm.mock.calls[0]?.[0]).not.toHaveProperty('prepare_prompt');
 	});
 
 	it('never sends a last-turn continuity packet; the server reads it from the session', () => {

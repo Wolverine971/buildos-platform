@@ -13,7 +13,9 @@ import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
 import {
+	CONSOLIDATION_CHECK_LOOKBACK_MS,
 	CONSOLIDATION_LIMITS,
+	CONSOLIDATION_OPEN_STATUSES,
 	answeredOps,
 	answersFingerprint,
 	changeCount,
@@ -21,12 +23,15 @@ import {
 	mergePieceKey,
 	isTaskOp,
 	parseConsolidationQuestion,
+	parseConsolidationScope,
+	reusableCheckRun,
 	planOps,
 	type ConsolidationAnswer,
 	type ConsolidationDraft,
 	type ConsolidationPlan,
 	type ConsolidationQuestion,
 	type ConsolidationReading,
+	type ConsolidationRunMode,
 	type ConsolidationRunStatus,
 	type ConsolidationThreadLine,
 	type ConsolidationOp,
@@ -77,7 +82,9 @@ export { changeCount };
 export class ConsolidationError extends Error {
 	constructor(
 		message: string,
-		readonly status = 400
+		readonly status = 400,
+		/** Extra fields for the client, e.g. the open run that blocks a new one. */
+		readonly details?: Record<string, unknown>
 	) {
 		super(message);
 		this.name = 'ConsolidationError';
@@ -85,12 +92,13 @@ export class ConsolidationError extends Error {
 }
 
 const RUN_COLUMNS =
-	'id, user_id, root_project_id, project_ids, request, status, progress, plan, receipt, cost_usd, error, created_at, updated_at, finished_at';
-const OPEN_STATUSES: ConsolidationRunStatus[] = ['surveying', 'waiting', 'review', 'applying'];
+	'id, user_id, root_project_id, project_ids, mode, request, status, progress, plan, receipt, cost_usd, error, created_at, updated_at, finished_at';
+const OPEN_STATUSES = CONSOLIDATION_OPEN_STATUSES as ConsolidationRunStatus[];
 
 function asRun(row: Record<string, unknown>): ConsolidationRunRow {
 	return {
 		...(row as unknown as ConsolidationRunRow),
+		mode: row.mode === 'check' ? 'check' : 'full',
 		progress: (row.progress as Record<string, unknown>) ?? {},
 		cost_usd: Number(row.cost_usd) || 0
 	};
@@ -366,39 +374,14 @@ async function refreshStatus(admin: Client, runId: string, plan: ConsolidationPl
 
 // ---------- start ----------
 
-export async function startConsolidationRun(params: {
-	session: Client;
-	admin: Client;
-	userId: string;
-	projectId: string;
-	request?: string | null;
-}): Promise<{ run_id: string; existing: boolean }> {
-	const { session, admin, userId, projectId } = params;
-	const { data: open } = await admin
-		.from('consolidation_runs')
-		.select('id')
-		.eq('root_project_id', projectId)
-		.in('status', OPEN_STATUSES)
-		.maybeSingle();
-	if (open?.id) {
-		const mine = await admin
-			.from('consolidation_runs')
-			.select(RUN_COLUMNS)
-			.eq('id', open.id)
-			.eq('user_id', userId)
-			.maybeSingle();
-		if (mine.data) {
-			const recovered = await recoverStale(
-				admin,
-				asRun(mine.data as Record<string, unknown>)
-			);
-			if (OPEN_STATUSES.includes(recovered.status))
-				return { run_id: open.id, existing: true };
-			return startConsolidationRun(params);
-		}
-		throw new ConsolidationError('Someone else is consolidating this project right now.', 409);
-	}
-	// Sub-projects this user can edit: a plan moving docs into a read-only one would fail at Apply.
+export const NEED_EDIT_ACCESS = 'You need edit access to every project in the consolidation.';
+
+function sameProjects(a: readonly string[], b: readonly string[]): boolean {
+	return a.length === b.length && a.every((id) => b.includes(id));
+}
+
+/** The project and the sub-projects this user can edit: a plan moving docs into a read-only one would fail at Apply. */
+async function familyScope(session: Client, projectId: string): Promise<string[]> {
 	const { data: children, error: childError } = await session
 		.from('onto_projects')
 		.select('id')
@@ -416,14 +399,132 @@ export async function startConsolidationRun(params: {
 			return data === true ? child.id : null;
 		})
 	);
-	const projectIds = [projectId, ...editable.filter((id): id is string => id !== null)];
+	return [projectId, ...editable.filter((id): id is string => id !== null)];
+}
+
+/**
+ * An explicit scope (already parsed: 2-20 distinct ids, root first): every
+ * project must be writable by this user. A project that is gone, never shared
+ * or read-only gets the same answer, so nothing leaks about it.
+ */
+async function explicitScope(session: Client, projectIds: string[]): Promise<string[]> {
+	const access = await Promise.all(
+		projectIds.map(async (projectId) => {
+			const { data, error } = await session.rpc('current_actor_has_project_member_access', {
+				p_project_id: projectId,
+				p_required_access: 'write'
+			});
+			if (error) throw new ConsolidationError('Could not check project access.', 500);
+			return data === true;
+		})
+	);
+	if (access.some((ok) => !ok)) throw new ConsolidationError(NEED_EDIT_ACCESS, 403);
+	return projectIds;
+}
+
+/** This user's check of the same projects, still running or just finished (reusableCheckRun). */
+async function recentCheck(
+	admin: Client,
+	userId: string,
+	projectIds: string[]
+): Promise<string | null> {
+	const { data, error } = await admin
+		.from('consolidation_runs')
+		.select('id, project_ids, status, created_at, finished_at, updated_at')
+		.eq('user_id', userId)
+		.eq('mode', 'check')
+		.in('status', ['surveying', 'checked'])
+		.gte('created_at', new Date(Date.now() - CONSOLIDATION_CHECK_LOOKBACK_MS).toISOString())
+		.order('created_at', { ascending: false })
+		.limit(25);
+	// A failed lookup only costs a fresh check.
+	if (error) return null;
+	return reusableCheckRun(data ?? [], projectIds)?.id ?? null;
+}
+
+/**
+ * Starts a run. Scope: `projectIds` (2-20 projects the user can edit, the
+ * first being the root, parsed by parseConsolidationScope), else the project
+ * plus its editable sub-projects. `mode: 'check'` is the quick duplicate check
+ * (tasker 122): groups only, ends `checked`, never takes the open-run slot. A
+ * check of the same projects (any order) still running or finished in the last
+ * 15 minutes is returned instead of paying for another (chat may propose the
+ * same nest several times). A full run returns the project's open one instead,
+ * when it covers the same projects; one on other projects blocks with a 409
+ * naming it. The worker mirrors the check start in
+ * apps/worker/src/workers/consolidation/startCheck.ts.
+ */
+export async function startConsolidationRun(params: {
+	session: Client;
+	admin: Client;
+	userId: string;
+	projectId: string;
+	/** Raw from the request: parsed here, so the rules live in one place. */
+	projectIds?: readonly unknown[] | null;
+	mode?: ConsolidationRunMode;
+	request?: string | null;
+}): Promise<{ run_id: string; existing: boolean }> {
+	const { session, admin, userId, projectId } = params;
+	const mode: ConsolidationRunMode = params.mode ?? 'full';
+	let scope: string[] | null = null;
+	if (params.projectIds) {
+		const parsed = parseConsolidationScope(params.projectIds);
+		if (!parsed.ok) throw new ConsolidationError(parsed.error);
+		if (parsed.project_ids[0] !== projectId.toLowerCase())
+			throw new ConsolidationError('The first project must be the one you start from.');
+		scope = await explicitScope(session, parsed.project_ids);
+	}
+
+	if (mode === 'full') {
+		const { data: open } = await admin
+			.from('consolidation_runs')
+			.select('id')
+			.eq('root_project_id', projectId)
+			.eq('mode', 'full')
+			.in('status', OPEN_STATUSES)
+			.maybeSingle();
+		if (open?.id) {
+			const mine = await admin
+				.from('consolidation_runs')
+				.select(RUN_COLUMNS)
+				.eq('id', open.id)
+				.eq('user_id', userId)
+				.maybeSingle();
+			if (mine.data) {
+				const recovered = await recoverStale(
+					admin,
+					asRun(mine.data as Record<string, unknown>)
+				);
+				if (OPEN_STATUSES.includes(recovered.status)) {
+					if (scope && !sameProjects(scope, recovered.project_ids))
+						throw new ConsolidationError(
+							'This project already has a consolidation open on other projects. Finish or cancel it first.',
+							409,
+							{ open_run_id: open.id }
+						);
+					return { run_id: open.id, existing: true };
+				}
+				return startConsolidationRun(params);
+			}
+			throw new ConsolidationError(
+				'Someone else is consolidating this project right now.',
+				409
+			);
+		}
+	}
+	const projectIds = scope ?? (await familyScope(session, projectId));
+	if (mode === 'check') {
+		const reuse = await recentCheck(admin, userId, projectIds);
+		if (reuse) return { run_id: reuse, existing: true };
+	}
 
 	const { data: run, error } = await admin
 		.from('consolidation_runs')
 		.insert({
 			user_id: userId,
-			root_project_id: projectId,
+			root_project_id: projectIds[0]!,
 			project_ids: projectIds,
+			mode,
 			request: params.request?.trim().slice(0, 2000) || null,
 			progress: { stage: 'queued' } as Json
 		})
@@ -439,14 +540,15 @@ export async function startConsolidationRun(params: {
 			p_user_id: userId,
 			p_job_type: 'consolidation_run',
 			p_metadata: { runId: run.id, userId, action: 'survey' } as Json,
-			p_priority: 5,
+			// A check is interactive (someone is waiting in chat): ahead of full surveys.
+			p_priority: mode === 'check' ? 4 : 5,
 			p_scheduled_for: new Date().toISOString(),
 			p_dedup_key: `consolidation:${run.id}:survey`
 		});
 	} catch (enqueueError) {
 		await patchRun(admin, run.id, {
 			status: 'failed',
-			error: 'Could not queue the survey.',
+			error: mode === 'check' ? 'Could not queue the check.' : 'Could not queue the survey.',
 			finished_at: new Date().toISOString()
 		});
 		throw enqueueError;

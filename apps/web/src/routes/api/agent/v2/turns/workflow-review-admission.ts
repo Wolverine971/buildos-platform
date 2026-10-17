@@ -18,6 +18,12 @@ import {
 } from '$lib/services/agentic-chat-v2/worker-turn-workflow-admission.server';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
+import {
+	workerAdmissionNotAdmittedResponse,
+	workerAdmissionUnavailableResponse,
+	workerIdempotencyConflictResponse,
+	type WorkerAdmissionPhase
+} from './worker-admission-responses';
 
 import {
 	getSpecialistWorkbenchVersion,
@@ -68,6 +74,8 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 	createId?: () => string;
 	/** Set only for a session-less send: returns the session admission created. */
 	loadSession?: (sessionId: string) => Promise<ChatSession | null>;
+	/** Nudges the worker to claim a newly admitted turn; must not block or throw. */
+	wakeWorker?: () => void;
 }): Promise<Response | null> {
 	const eligibility = evaluateAgenticChatWorkflowV4Admission({
 		policy: resolveAgenticChatWorkflowV4AdmissionPolicy(input.environment),
@@ -95,6 +103,7 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 	const startedAt = performance.now();
 	let preparationMs = 0;
 	let admissionMs = 0;
+	let phase: WorkerAdmissionPhase = 'preparation';
 	let result: AgenticChatWorkflowV4AdmissionResultV1;
 	try {
 		// An explicit selection adds one owner-scoped immutable catalog read.
@@ -151,17 +160,21 @@ export async function admitWorkflowReviewTurnIfEligible(input: {
 		});
 		preparationMs = elapsed(startedAt);
 		const admissionStartedAt = performance.now();
+		phase = 'admission';
 		result = await admitAgenticChatWorkflowV4Turn({ client: input.client, args });
 		admissionMs = elapsed(admissionStartedAt);
 	} catch (error) {
 		admissionMs = elapsed(startedAt) - preparationMs;
 		logger.warn('Project review admission failed', {
 			error,
+			phase,
 			userId: input.userId,
 			clientTurnId: input.command.clientTurnId
 		});
-		return timed(errorResponse(error), preparationMs, admissionMs);
+		return timed(errorResponse(error, phase), preparationMs, admissionMs);
 	}
+	// B6: review turns used to wait for the worker's idle poll (up to 5 s).
+	if (result.outcome === 'newly_admitted') input.wakeWorker?.();
 
 	logger.info('Project review admission timing', {
 		event: 'agentic_chat_workflow_admission_timing',
@@ -256,6 +269,7 @@ function outcomeResponse(
 		case 'access_denied':
 			return ApiResponse.forbidden('Worker turn access denied');
 		case 'idempotency_conflict':
+			return workerIdempotencyConflictResponse();
 		case 'active_turn_conflict':
 			return ApiResponse.error(
 				'Worker turn admission conflicts with an existing turn',
@@ -265,7 +279,7 @@ function outcomeResponse(
 	}
 }
 
-function errorResponse(error: unknown): Response {
+function errorResponse(error: unknown, phase: WorkerAdmissionPhase): Response {
 	if (
 		error instanceof SpecialistWorkbenchStoreError ||
 		error instanceof SpecialistRecommendationError
@@ -291,11 +305,14 @@ function errorResponse(error: unknown): Response {
 			);
 		}
 	}
-	return ApiResponse.error(
-		'Worker turn admission is temporarily unavailable',
-		HttpStatus.SERVICE_UNAVAILABLE,
-		'WORKER_ADMISSION_UNAVAILABLE'
-	);
+	// Before the RPC nothing was written; a raised RPC error rolled back.
+	if (
+		phase === 'preparation' ||
+		(error instanceof AgenticChatWorkflowV4AdmissionError && error.rolledBack)
+	) {
+		return workerAdmissionNotAdmittedResponse();
+	}
+	return workerAdmissionUnavailableResponse();
 }
 
 /** Same Server-Timing entries the client already reads; raw admission inspects no lease. */

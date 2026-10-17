@@ -378,12 +378,16 @@ export class AgenticChatTurnExecutor {
 						// re-anchored when the budget timer arms after the start fence.
 						// The speculative abort only fires when the pre-provider
 						// persists fail after the provider request already started.
+						// Every later model request inherits this signal, and
+						// `deadlineSignal` detaches once `prepare` returns, so the turn
+						// signal (Stop, lease loss, turn budget) must ride along too.
 						const prepareInput: AgenticChatProviderInputV1 = {
 							executionInput: executionInput!,
 							processingToken: envelope.processingToken,
 							signal: AbortSignal.any([
 								deadlineSignal,
-								speculativeProviderAbort.signal
+								speculativeProviderAbort.signal,
+								combined.signal
 							]),
 							budget: { deadlineAtMs: providerBudgetDeadlineAtMs }
 						};

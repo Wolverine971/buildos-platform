@@ -1,8 +1,11 @@
 // apps/web/src/routes/api/consolidation/runs/+server.ts
 //
-// POST { project_id, request? } — start consolidating a project and its sub-projects.
-// The worker surveys the docs; the run page follows along. Returns the open run
-// instead when one is already going for this project.
+// POST { project_id?, project_ids?, mode?, request? } — start consolidating.
+// Scope: `project_ids` (2-20 projects you can edit; the first is the root, where
+// things would end up), else `project_id` and its sub-projects. `mode: 'check'`
+// is the quick duplicate check (tasker 122): it only finds groups, ends
+// `checked`, and never blocks a full run. A full run returns the open one
+// instead when one is already going for the same projects.
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
@@ -11,6 +14,7 @@ import {
 	requireCurrentActorProjectAccess,
 	requireOntologyActor
 } from '$lib/server/ontology-api-access';
+import { parseConsolidationRunMode } from '@buildos/shared-agent-ops/consolidation';
 import { startConsolidationRun } from '$lib/server/consolidation/consolidation.service';
 import { consolidationFailure, readJsonBody } from '$lib/server/consolidation/consolidation-http';
 
@@ -18,9 +22,14 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user?.id) return ApiResponse.unauthorized();
 	const body = await readJsonBody(request);
-	const projectId = body.project_id;
+	const projectIds = body.project_ids;
+	if (projectIds !== undefined && !Array.isArray(projectIds))
+		return ApiResponse.badRequest('project_ids must be a list of project ids');
+	const projectId = body.project_id ?? (Array.isArray(projectIds) ? projectIds[0] : undefined);
 	if (typeof projectId !== 'string' || !isValidUUID(projectId))
-		return ApiResponse.badRequest('project_id is required');
+		return ApiResponse.badRequest('project_id or project_ids is required');
+	const mode = body.mode === undefined ? 'full' : parseConsolidationRunMode(body.mode);
+	if (!mode) return ApiResponse.badRequest("mode must be 'full' or 'check'");
 	const audit = {
 		endpoint: '/api/consolidation/runs',
 		method: 'POST',
@@ -35,6 +44,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		operation: 'consolidation_actor'
 	});
 	if (!actor.ok) return actor.response;
+	// The root here; every other project in `project_ids` is checked by the service.
 	const access = await requireCurrentActorProjectAccess({
 		supabase: locals.supabase,
 		actor: actor.actor,
@@ -51,6 +61,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			admin: createAdminSupabaseClient(),
 			userId: user.id,
 			projectId,
+			projectIds: Array.isArray(projectIds) ? projectIds : null,
+			mode,
 			request: typeof body.request === 'string' ? body.request : null
 		});
 		return ApiResponse.success(result);

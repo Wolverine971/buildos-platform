@@ -1178,7 +1178,7 @@ Dated tasks rebuild their calendar events asynchronously. Attached assets keep t
 		function: {
 			name: 'update_onto_project',
 			description:
-				'Update only the provided project fields: name, description, state, dates, or props.',
+				'Update only the provided project fields: name, description, state, dates, or props. Not the parent project.',
 			parameters: {
 				type: 'object',
 				additionalProperties: false,

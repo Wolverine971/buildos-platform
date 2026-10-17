@@ -28,6 +28,10 @@
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 import { tryGetProjectFamily } from '$lib/services/ontology/project-hierarchy.service';
+import {
+	readMergedProjectDestination,
+	redirectIfMerged
+} from '$lib/server/projects/merged-project-redirect';
 import { readProjectEmoji, type ProjectEmoji } from '$lib/components/project/emoji/project-emoji';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import type { Database, ProjectFamilyV1 } from '@buildos/shared-types';
@@ -246,6 +250,11 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch, request
 	// Parent, shared-docs shelf and sub-projects; runs alongside the skeleton RPC so it
 	// adds no round trip. Null when the viewer can't read it or the RPC is unavailable.
 	const familyPromise = measure('db.project_family_v1', () => tryGetProjectFamily(supabase, id));
+	// A project combined into another forwards there (tasker 122). Runs alongside the
+	// skeleton RPC; null on any failure, so it never blocks the page.
+	const mergedDestinationPromise = measure('db.project_route_redirect', () =>
+		readMergedProjectDestination(supabase, id)
+	);
 	// Single round-trip: ensures actor, resolves read access, returns skeleton + access.
 	const { data: bundleRaw, error: bundleError } = await measure(
 		'db.project_skeleton_with_access_v2',
@@ -254,6 +263,8 @@ export const load: PageServerLoad = async ({ params, locals, url, fetch, request
 				p_project_id: id
 			})
 	);
+	// Before any access answer: people removed from the source still reach the destination.
+	redirectIfMerged(await mergedDestinationPromise, url, id);
 
 	if (bundleError) {
 		console.error('[Project Page] Skeleton+access RPC error:', {

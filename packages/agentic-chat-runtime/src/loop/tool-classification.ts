@@ -3,6 +3,10 @@ import type { ChatToolCall } from '@buildos/shared-types';
 import { AGENTIC_CHAT_CONTROL_TOOL_NAMES } from '../catalog/definitions/controls';
 import { TOOL_METADATA } from '../catalog/metadata';
 import { normalizeGatewayOpName } from '@buildos/shared-agent-ops/ops/gateway-op-aliases';
+import {
+	PROPOSAL_CARD_RAIL,
+	PROPOSAL_CARD_READY_STATUS
+} from '@buildos/shared-agent-ops/chat-cards/proposal-card';
 import { getAgenticChatLoopToolCatalog } from './tool-catalog';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution } from './shared';
@@ -253,6 +257,25 @@ export function isWriteLedgerToolExecution(execution: FastToolExecution): boolea
 		toolName.startsWith('update_onto_') ||
 		toolName.startsWith('delete_onto_') ||
 		WRITE_LEDGER_TOOL_NAMES.has(toolName)
+	);
+}
+
+/**
+ * A proposal card (tasker 122) that is waiting for the user's click: a
+ * successful propose_* result on the card rail, read from its structured
+ * envelope fields only (keyed on the rail, never on the tool name). Like the
+ * shared-document confirm card, it saved nothing and ends the turn on the card.
+ */
+export function isPendingProposalCardExecution(execution: FastToolExecution): boolean {
+	if (execution.result.success !== true) return false;
+	const payload = execution.result.result;
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+	const record = payload as Record<string, unknown>;
+	return (
+		record.card_rail === PROPOSAL_CARD_RAIL &&
+		record.status === PROPOSAL_CARD_READY_STATUS &&
+		record.requires_user_action === true &&
+		record.card_resolution === undefined
 	);
 }
 

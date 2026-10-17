@@ -4,14 +4,19 @@
 	four question cards at a time, what was decided without asking (each can be
 	left as it is), and one Apply for everything with one Undo. Unanswered cards
 	never apply: their docs stay as they are.
+	A quick duplicate check (mode 'check', tasker 122) shows what it found,
+	read-only, with "Review and merge" to start the full run on the same projects.
 -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { goto } from '$app/navigation';
 	import {
+		CONSOLIDATION_KIND_LABELS,
 		chosenMerge,
 		describeEdits,
 		describeOps,
 		mergePieceKey,
+		summarizeConsolidationCheck,
 		type ConsolidationCluster,
 		type ConsolidationQuestion
 	} from '@buildos/shared-agent-ops/consolidation';
@@ -23,7 +28,16 @@
 	import ConsolidationQuestionCard from './ConsolidationQuestionCard.svelte';
 	import { ArrowLeft, LoaderCircle, RotateCcw } from '$lib/icons/lucide';
 
-	let { initial, projectName }: { initial: ConsolidationRunView; projectName: string } = $props();
+	let {
+		initial,
+		projectName,
+		scopeIsFamily = true
+	}: {
+		initial: ConsolidationRunView;
+		projectName: string;
+		/** The projects are a parent and its sub-projects (else any projects picked together). */
+		scopeIsFamily?: boolean;
+	} = $props();
 
 	// Polled from the server while the worker is busy; replaced after every action.
 	// svelte-ignore state_referenced_locally
@@ -36,7 +50,15 @@
 
 	const run = $derived(view.run);
 	const plan = $derived(run.plan);
+	const isCheck = $derived(run.mode === 'check');
 	const projectCount = $derived(run.project_ids.length);
+	const otherNoun = $derived(scopeIsFamily ? 'sub-project' : 'other project');
+	// Every group the check found, in the order a chat card would show them.
+	const checkSummary = $derived(
+		isCheck && run.status === 'checked'
+			? summarizeConsolidationCheck(run, { limit: plan?.clusters.length ?? 0 })
+			: null
+	);
 	const docCount = $derived(
 		typeof run.progress.documents === 'number' ? (run.progress.documents as number) : null
 	);
@@ -245,18 +267,39 @@
 		}
 	}
 
-	const KIND_LABEL: Record<ConsolidationCluster['kind'], string> = {
-		misfiled: 'In the wrong project',
-		fragments: 'Scattered notes',
-		versions: 'Versions',
-		superseded: 'Replaced',
-		twins: 'Identical copies',
-		duplicate_tasks: 'Duplicate tasks',
-		task_parts: 'Pieces of a bigger task',
-		task_sequence: 'Steps in order',
-		sibling_tasks: 'Same work across projects',
-		finished_tasks: 'Done or no longer needed'
-	};
+	const KIND_LABEL = CONSOLIDATION_KIND_LABELS;
+
+	/** The full run on the projects this check covered: it asks before anything changes. */
+	let openRunId = $state<string | null>(null);
+	async function reviewAndMerge() {
+		busyId = 'review';
+		actionError = null;
+		openRunId = null;
+		try {
+			const response = await fetch('/api/consolidation/runs', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(
+					run.project_ids.length > 1
+						? { project_ids: run.project_ids, mode: 'full' }
+						: { project_id: run.root_project_id, mode: 'full' }
+				)
+			});
+			const json = await response.json().catch(() => null);
+			if (!response.ok) {
+				openRunId =
+					typeof json?.details?.open_run_id === 'string'
+						? json.details.open_run_id
+						: null;
+				throw new Error(json?.error || 'Could not start the consolidation.');
+			}
+			await goto(`/projects/${run.root_project_id}/consolidate/${json?.data?.run_id}`);
+		} catch (error) {
+			actionError = error instanceof Error ? error.message : 'That did not work.';
+		} finally {
+			busyId = null;
+		}
+	}
 
 	const stageText = $derived.by(() => {
 		const stage = run.progress.stage;
@@ -301,10 +344,12 @@
 		>
 			<ArrowLeft class="h-4 w-4" />{projectName}
 		</a>
-		<h1 class="text-2xl font-semibold text-foreground">Consolidate docs</h1>
+		<h1 class="text-2xl font-semibold text-foreground">
+			{isCheck ? 'Duplicate check' : 'Consolidate docs'}
+		</h1>
 		<p class="text-sm text-muted-foreground">
 			{projectName}{projectCount > 1
-				? ` and ${projectCount - 1} sub-project${projectCount === 2 ? '' : 's'}`
+				? ` and ${projectCount - 1} ${otherNoun}${projectCount === 2 ? '' : 's'}`
 				: ''}{docCount !== null ? ` · ${docCount} docs` : ''}{taskCount
 				? ` · ${taskCount} open task${taskCount === 1 ? '' : 's'}`
 				: ''}
@@ -317,7 +362,9 @@
 			<div>
 				<p class="font-medium text-foreground">{stageText}…</p>
 				<p class="text-sm text-muted-foreground">
-					Nothing changes until you apply. You can leave this page; the work continues.
+					{isCheck
+						? 'A quick check for duplicates. Nothing changes.'
+						: 'Nothing changes until you apply.'} You can leave this page; the work continues.
 				</p>
 			</div>
 			<Button
@@ -332,7 +379,9 @@
 		{#if actionError}<p class="text-sm text-destructive" role="alert">{actionError}</p>{/if}
 	{:else if run.status === 'failed'}
 		<div class="panel" role="alert">
-			<p class="font-medium text-foreground">This survey did not finish.</p>
+			<p class="font-medium text-foreground">
+				{isCheck ? 'This check did not finish.' : 'This survey did not finish.'}
+			</p>
 			<p class="text-sm text-muted-foreground">
 				{run.error ?? 'Something went wrong.'} Nothing in your projects changed.
 			</p>
@@ -340,6 +389,82 @@
 	{:else if run.status === 'cancelled'}
 		<div class="panel">
 			<p class="text-foreground">Cancelled. Nothing in your projects changed.</p>
+		</div>
+	{/if}
+
+	{#if checkSummary}
+		<div class="panel">
+			<p class="font-medium text-foreground">{checkSummary.headline}</p>
+			<p class="text-sm text-muted-foreground">
+				A quick check: nothing in your projects changed.
+			</p>
+		</div>
+		{#if checkSummary.groups.length}
+			<section class="grid gap-2" aria-labelledby="check-found">
+				<h2 id="check-found" class="section-title">Found · {checkSummary.total_groups}</h2>
+				<ul class="list">
+					{#each checkSummary.groups as group (group.key)}
+						<li>
+							<div class="min-w-0">
+								<p class="text-sm font-medium text-foreground">
+									<span class="kind">{group.kind_label}</span>
+									{group.title}
+								</p>
+								{#if group.reason}
+									<p class="text-sm text-muted-foreground">{group.reason}</p>
+								{/if}
+								<ul class="mt-1 grid gap-0.5 text-sm text-muted-foreground">
+									{#each [...group.documents, ...group.tasks] as item (item.id)}
+										<li class="item">
+											<span class="text-foreground">{item.title}</span>
+											· {item.project_name}
+										</li>
+									{/each}
+									{#if group.newer}
+										<li class="item">
+											Newer: <span class="text-foreground"
+												>{group.newer.title}</span
+											>
+											· {group.newer.project_name}
+										</li>
+									{/if}
+									{#if group.belongs_in}
+										<li class="item">Belongs in {group.belongs_in.name}</li>
+									{/if}
+								</ul>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+		<div class="apply-bar">
+			<div class="min-w-0 text-sm">
+				<p class="font-medium text-foreground">Review and merge</p>
+				<p class="text-muted-foreground">
+					Runs the full consolidation on these projects. You decide each group before
+					anything changes, and one Undo puts it back.
+				</p>
+				{#if actionError}
+					<p class="text-destructive" role="alert">
+						{actionError}
+						{#if openRunId}
+							<a
+								class="underline"
+								href="/projects/{run.root_project_id}/consolidate/{openRunId}"
+								>Open it</a
+							>
+						{/if}
+					</p>
+				{/if}
+			</div>
+			<Button
+				variant="primary"
+				size="sm"
+				loading={busyId === 'review'}
+				disabled={busyId !== null}
+				onclick={reviewAndMerge}>Review and merge</Button
+			>
 		</div>
 	{/if}
 
@@ -702,6 +827,11 @@
 	}
 	.list li.vetoed p {
 		opacity: 0.6;
+	}
+	.list li.item {
+		display: block;
+		padding: 0;
+		border-bottom: 0;
 	}
 	.kind {
 		font-size: 11px;

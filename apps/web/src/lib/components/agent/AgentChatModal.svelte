@@ -172,6 +172,7 @@
 		createAgenticChatWorkerRealtimeRuntime,
 		type AgenticChatWorkerRealtimeRuntimeClient
 	} from '$lib/services/agentic-chat-v2/worker-realtime-runtime';
+	import { AgenticChatWorkerRealtimeCoordinator } from '$lib/services/agentic-chat-v2/worker-realtime-coordinator';
 	import {
 		AgenticChatWorkerTurnAdoption,
 		parseAdmissionResponse
@@ -195,6 +196,7 @@
 	} from './agent-chat-attachments.svelte';
 	import type { AgentClientActionCompletion } from './agent-chat-client-actions';
 	import type { SharedDocumentEditResolutionV1 } from '@buildos/shared-agent-ops/ontology/shared-document-edit-card';
+	import type { ProposalCardResolvedEvent } from './proposal-cards';
 	import {
 		createAgentChatShellRouter,
 		type AutoInitProjectConfig,
@@ -408,9 +410,20 @@
 	const supabaseClient = getSupabaseContext();
 	let workerAdoption: AgenticChatWorkerTurnAdoption | null = null;
 	let workerRealtimeUserId: string | null = null;
+	function reportWorkerRealtimeError(error: unknown) {
+		if (dev) console.warn('[AgentChat] Worker Realtime runtime degraded', error);
+	}
 	const workerRealtime = supabaseClient
 		? createAgenticChatWorkerRealtimeRuntime({
 				client: supabaseClient as unknown as AgenticChatWorkerRealtimeRuntimeClient,
+				coordinator: new AgenticChatWorkerRealtimeCoordinator({
+					onError: reportWorkerRealtimeError,
+					// A reconcile 401 usually means an expired access token.
+					refreshAuthSession: async () => {
+						const { data, error } = await supabaseClient.auth.refreshSession();
+						return !error && Boolean(data.session);
+					}
+				}),
 				onUserChange: (userId) => {
 					const changedAuthenticatedUser =
 						workerRealtimeUserId !== null && workerRealtimeUserId !== userId;
@@ -420,9 +433,7 @@
 					// sign-out always invalidate every adopted handle.
 					if (changedAuthenticatedUser) workerAdoption?.clear('auth_changed');
 				},
-				onError: (error) => {
-					if (dev) console.warn('[AgentChat] Worker Realtime runtime degraded', error);
-				}
+				onError: reportWorkerRealtimeError
 			})
 		: null;
 	let chatMessagesChannel: RealtimeChannel | null = null;
@@ -775,6 +786,7 @@
 		waiting_on_user: 'Waiting on your direction…'
 	};
 
+	const RESTORED_TURN_ACTIVITY = 'BuildOS is still finishing the latest response...';
 	const ACTIVE_TURN_PROBE_BASE_MS = 2000;
 	const ACTIVE_TURN_PROBE_MAX_MS = 10_000;
 	let activeTurnProbeAttempt = 0;
@@ -809,6 +821,7 @@
 		getCurrentSession: () => currentSession,
 		getIsLoadingSession: () => isLoadingSession,
 		getActiveRestoredTurnRunId: () => activeRestoredTurnRunId,
+		releaseRestoredTurn: (turnRunId) => releaseRestoredTurn(turnRunId),
 		getPrewarm: () => prewarm,
 		attachments: {
 			buildReadyRefs: (includePreviewUrl) => attachments.buildReadyRefs(includePreviewUrl),
@@ -838,7 +851,11 @@
 			create: (options) => createThinkingBlock(options),
 			updateState: (state, details) => updateThinkingBlockState(state, details),
 			finalize: (status, note) => finalizeThinkingBlock(status, note),
-			discard: () => discardThinkingBlock()
+			discard: () => discardThinkingBlock(),
+			setStopping: (stopping) =>
+				updateThinkingBlock(currentThinkingBlockId, (block) =>
+					block.status === 'active' ? { ...block, stopRequested: stopping } : block
+				)
 		},
 		assistant: {
 			flushText: () => flushAssistantText(),
@@ -1570,13 +1587,30 @@
 		voice.hydrateNotesByGroupId(snapshot.voiceNotesByGroupId);
 		activeRestoredTurnRunId = nextActiveTurnRun?.id ?? null;
 		if (nextActiveTurnRun) {
-			stream.currentActivity = 'BuildOS is still finishing the latest response...';
+			stream.currentActivity = RESTORED_TURN_ACTIVITY;
 			// Fresh snapshot evidence of a running turn — restart probe backoff.
 			activeTurnProbeAttempt = 0;
 			scheduleActiveTurnSessionRefresh(sessionId);
 		} else {
 			clearSessionRefreshTimeout();
 			stream.currentActivity = '';
+		}
+	}
+
+	/**
+	 * The resumed turn finished over the worker path, which already rendered its
+	 * result: end the restore wait now and skip the probe's full reload.
+	 */
+	function releaseRestoredTurn(turnRunId: string) {
+		if (activeRestoredTurnRunId !== turnRunId) return;
+		activeRestoredTurnRunId = null;
+		activeTurnProbeAttempt = 0;
+		clearSessionRefreshTimeout();
+		if (stream.currentActivity === RESTORED_TURN_ACTIVITY) stream.currentActivity = '';
+		// The snapshot's "still finishing" note would otherwise outlive the turn.
+		const noteId = `active-turn-${turnRunId}`;
+		if (messages.some((message) => message.id === noteId)) {
+			messages = messages.filter((message) => message.id !== noteId);
 		}
 	}
 
@@ -2427,6 +2461,12 @@
 								stream.updateWorkerTurnState(workerHandle, status, currentActivity),
 							finishTurn: finishWorkerTurn,
 							setAssistantPreview: setWorkerAssistantPreview,
+							freezeAssistantPreview: freezeWorkerAssistantPreview,
+							isStopRequested: (workerHandle) =>
+								stream.stopRequested &&
+								stream.activeTurnHandle?.turnRunId === workerHandle.turnRunId,
+							setConnectionLost: ({ handle: workerHandle, lost }) =>
+								stream.setWorkerConnectionLost(workerHandle, lost),
 							onError: (error) => {
 								if (dev)
 									console.warn(
@@ -2628,6 +2668,26 @@
 		);
 	}
 
+	/**
+	 * A proposal card (nest, combine) was decided or undone by the user's click.
+	 * Drop the prewarmed prompt (its history predates the click; the next turn
+	 * reads the card's outcome) and, when something may have changed, report a
+	 * project change for every project the card names so open views refresh.
+	 */
+	function handleProposalCardResolved(event: ProposalCardResolvedEvent) {
+		prewarm.clearPreparedPrompt();
+		if (event.outcome === 'cancelled') return;
+		for (const projectId of event.projectIds) {
+			presenter.recordDataMutation(
+				'update_onto_project',
+				{ project_id: projectId },
+				true,
+				{ result: { project: { id: projectId } } },
+				{ turnId: null }
+			);
+		}
+	}
+
 	function beginWorkerGeneration(input: {
 		handle: WorkerTurnHandle;
 		executionGeneration: number;
@@ -2648,6 +2708,10 @@
 			activities: [],
 			status: 'active',
 			agentState: 'thinking',
+			// A Stop pressed before the worker claimed the turn stays visible.
+			stopRequested:
+				stream.stopRequested &&
+				stream.activeTurnHandle?.turnRunId === input.handle.turnRunId,
 			isCollapsed: false,
 			timestamp: new Date(),
 			created_at: new Date().toISOString(),
@@ -2814,6 +2878,35 @@
 		}
 		workerLivePreview = { turnRunId, text: input.text };
 		noteWorkerTextStarted();
+	}
+
+	/**
+	 * Stop ended a turn while preview text was showing: that text stays in the
+	 * bubble with a "Stopped" marker instead of vanishing. Display-only; it is
+	 * not persisted, so a reload shows only what the server saved.
+	 */
+	function freezeWorkerAssistantPreview(input: {
+		handle: WorkerTurnHandle;
+		executionGeneration: number;
+		text: string;
+	}) {
+		const turnRunId = input.handle.turnRunId;
+		const index = messages.findIndex(
+			(message) =>
+				message.role === 'assistant' &&
+				message.type === 'assistant' &&
+				message.metadata?.turn_run_id === turnRunId
+		);
+		if (index < 0 || !input.text) return;
+		const existing = messages[index]!;
+		const nextMessages = [...messages];
+		nextMessages[index] = {
+			...existing,
+			content: existing.content + input.text,
+			metadata: { ...existing.metadata, stopped: true }
+		};
+		messages = nextMessages;
+		if (workerLivePreview?.turnRunId === turnRunId) workerLivePreview = null;
 	}
 
 	/**
@@ -3073,6 +3166,7 @@
 		onDocumentChangeUndone={handleDocumentChangeUndone}
 		onTableChangeUndone={handleTableChangeUndone}
 		onSharedDocumentEditResolved={handleSharedDocumentEditResolved}
+		onProposalCardResolved={handleProposalCardResolved}
 		onReviewDeeper={projectReviewAvailable ? handleReviewDeeper : undefined}
 		{reviewProjectId}
 		{reviewDisabled}
@@ -3239,6 +3333,7 @@
 			bind:voiceNoteGroupId={voice.noteGroupId}
 			isStreaming={stream.isStreaming}
 			isStartingStream={stream.isStartingStream}
+			isStopRequested={stream.stopRequested}
 			contextType={shellRouter.selectedContextType}
 			reviewAvailable={projectReviewAvailable && Boolean(reviewProjectId)}
 			documentOrganizationAvailable={documentOrganizationAvailable &&

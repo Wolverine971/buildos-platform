@@ -1,7 +1,7 @@
 // packages/agentic-chat-runtime/src/tools/ontology-reads.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
-import { listOntoDocuments, listOntoTasks } from './ontology-reads';
+import { getOntoDocumentDetails, listOntoDocuments, listOntoTasks } from './ontology-reads';
 
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
 
@@ -102,5 +102,37 @@ describe('archived reads', () => {
 		const documents = recordingContext([]);
 		await listOntoDocuments(documents.context, { project_id: PROJECT_ID, archived: true });
 		expect(documents.builder.is).toHaveBeenCalledWith('deleted_at', null);
+	});
+});
+
+describe('document detail read', () => {
+	it('fences the body read to the project whose access was checked', async () => {
+		const DOCUMENT_ID = '50000000-0000-4000-8000-000000000005';
+		const queries: Array<{ eq: ReturnType<typeof vi.fn> }> = [];
+		const responses = [
+			{ data: { id: DOCUMENT_ID, project_id: PROJECT_ID }, error: null },
+			// The document moved after the access check: the fenced read finds nothing.
+			{ data: null, error: null }
+		];
+		const client = {
+			from: vi.fn(() => {
+				const index = queries.length;
+				const query: Record<string, any> = {};
+				for (const method of ['select', 'eq', 'is']) query[method] = vi.fn(() => query);
+				query.maybeSingle = vi.fn(async () => responses[index]);
+				queries.push(query as { eq: ReturnType<typeof vi.fn> });
+				return query;
+			})
+		};
+		const context = contextWith([]);
+		(context as any).client = client;
+
+		const result = await getOntoDocumentDetails(context, { document_id: DOCUMENT_ID });
+
+		expect(context.access.assertProjectAccess).toHaveBeenCalledWith(PROJECT_ID, 'read');
+		expect(queries).toHaveLength(2);
+		expect(queries[1]!.eq).toHaveBeenCalledWith('id', DOCUMENT_ID);
+		expect(queries[1]!.eq).toHaveBeenCalledWith('project_id', PROJECT_ID);
+		expect(result).toMatchObject({ status: 'not_found', document: null });
 	});
 });

@@ -29,9 +29,34 @@ export const CONSOLIDATION_RUN_STATUSES = [
 	'applied',
 	'undone',
 	'failed',
-	'cancelled'
+	'cancelled',
+	// A check run's only finish (tasker 122): groups found, nothing to answer or apply.
+	'checked'
 ] as const;
 export type ConsolidationRunStatus = (typeof CONSOLIDATION_RUN_STATUSES)[number];
+
+/** Statuses of a full run that hold its root project's one open-run slot. */
+export const CONSOLIDATION_OPEN_STATUSES: readonly ConsolidationRunStatus[] = [
+	'surveying',
+	'waiting',
+	'review',
+	'applying'
+];
+
+/**
+ * full: survey, question cards, apply and undo. check: the quick duplicate
+ * check chat runs before a nest or a combine. It finds groups (identical
+ * copies for free, then one model call), stores them as a keep-only plan and
+ * ends `checked`. It never asks, never applies and never holds the open-run slot.
+ */
+export const CONSOLIDATION_RUN_MODES = ['full', 'check'] as const;
+export type ConsolidationRunMode = (typeof CONSOLIDATION_RUN_MODES)[number];
+
+export function parseConsolidationRunMode(value: unknown): ConsolidationRunMode | null {
+	return CONSOLIDATION_RUN_MODES.includes(value as ConsolidationRunMode)
+		? (value as ConsolidationRunMode)
+		: null;
+}
 
 export const CONSOLIDATION_CLUSTER_KINDS = [
 	'twins',
@@ -203,6 +228,12 @@ export type ConsolidationCluster = {
 	question_id: string | null;
 	/** True when the user flipped a decided-for-you cluster to "leave it". */
 	vetoed: boolean;
+	/** Check runs: the project a misfiled group belongs in, as the survey found it. */
+	belongs_in?: string | null;
+	/** Check runs: the newer doc that covers a superseded group. */
+	newer_id?: string | null;
+	/** Check runs: the doc that shows a finished-tasks group was done. */
+	evidence_id?: string | null;
 };
 
 export type ConsolidationPlan = {
@@ -240,6 +271,9 @@ export const CONSOLIDATION_LIMITS = {
 	maxTaskNote: 240
 } as const;
 
+/** An explicit scope: the first project is the root (where things would end up). */
+export const CONSOLIDATION_SCOPE_LIMITS = { minProjects: 2, maxProjects: 20 } as const;
+
 // ---------- parsing ----------
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -268,6 +302,85 @@ function uuids(value: unknown): string[] | null {
 		if (!out.includes(id)) out.push(id);
 	}
 	return out;
+}
+
+export type ConsolidationScopeResult =
+	| { ok: true; project_ids: string[] }
+	| { ok: false; error: string };
+
+/**
+ * An explicit list of projects to consolidate or check: 2-20 distinct project
+ * ids, the first being the root. Repeats are dropped (the first one stays), so
+ * the root stays first. Access is checked by the caller, per project.
+ */
+export function parseConsolidationScope(value: unknown): ConsolidationScopeResult {
+	if (!Array.isArray(value))
+		return { ok: false, error: 'project_ids must be a list of project ids.' };
+	const ids: string[] = [];
+	for (const item of value) {
+		const id = uuid(item);
+		if (!id) return { ok: false, error: 'project_ids must be a list of project ids.' };
+		if (!ids.includes(id)) ids.push(id);
+	}
+	const { minProjects, maxProjects } = CONSOLIDATION_SCOPE_LIMITS;
+	if (ids.length < minProjects)
+		return { ok: false, error: `Pick at least ${minProjects} different projects.` };
+	if (ids.length > maxProjects)
+		return { ok: false, error: `Pick at most ${maxProjects} projects.` };
+	return { ok: true, project_ids: ids };
+}
+
+/**
+ * Chat may propose the same nest or combine several times in one conversation,
+ * so a check is not paid for twice: one still running, or finished this
+ * recently, for the same projects (in any order) is handed back instead.
+ */
+export const CONSOLIDATION_CHECK_REUSE_MS = {
+	checked: 15 * 60 * 1000,
+	/** Past this a survey has stalled (the web fails it at 20 minutes). */
+	surveying: 20 * 60 * 1000
+} as const;
+
+/** How far back to look for a check to reuse (by created_at). */
+export const CONSOLIDATION_CHECK_LOOKBACK_MS =
+	CONSOLIDATION_CHECK_REUSE_MS.checked + CONSOLIDATION_CHECK_REUSE_MS.surveying;
+
+export type ReusableCheckRow = {
+	id: string;
+	project_ids: string[];
+	status: string;
+	created_at: string;
+	finished_at?: string | null;
+	updated_at?: string | null;
+};
+
+function projectSetKey(ids: readonly string[]): string {
+	return [...new Set(ids.map((id) => id.toLowerCase()))].sort().join(',');
+}
+
+/**
+ * The newest of `rows` (one user's check runs) that covers exactly
+ * `projectIds`, in any order, and is still surveying or was checked within
+ * CONSOLIDATION_CHECK_REUSE_MS. Null when a new check is needed.
+ */
+export function reusableCheckRun<T extends ReusableCheckRow>(
+	rows: readonly T[],
+	projectIds: readonly string[],
+	now = Date.now()
+): T | null {
+	const want = projectSetKey(projectIds);
+	const fresh = (row: T) => {
+		if (row.status === 'surveying')
+			return now - Date.parse(row.created_at) < CONSOLIDATION_CHECK_REUSE_MS.surveying;
+		if (row.status !== 'checked') return false;
+		const finished = Date.parse(row.finished_at ?? row.updated_at ?? row.created_at);
+		return now - finished < CONSOLIDATION_CHECK_REUSE_MS.checked;
+	};
+	return (
+		rows
+			.filter((row) => projectSetKey(row.project_ids) === want && fresh(row))
+			.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0] ?? null
+	);
 }
 
 export function parseConsolidationOp(value: unknown): ConsolidationOp | null {
@@ -704,3 +817,4 @@ export function questionEdits(question: ConsolidationQuestion): LedgerFate[] {
 }
 
 export * from './ledger';
+export * from './check-summary';

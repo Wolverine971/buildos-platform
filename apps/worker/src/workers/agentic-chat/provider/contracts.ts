@@ -203,6 +203,11 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	providerAttempt?: number;
 	/** Only the atomic pass buffer may opt in, while its single retry remains. */
 	allowSlowStreamRecovery?: boolean;
+	/**
+	 * The atomic buffer can still claim its reasoning-off recovery, so a watched
+	 * pass may be cut off as runaway reasoning instead of running to the cap.
+	 */
+	allowRunawayReasoningCutoff?: boolean;
 	/** The atomic buffer's last existing attempt; no further retry will follow. */
 	finalBufferedAttempt?: boolean;
 	/** Turn-level deadline; absent for fixtures and legacy callers. */

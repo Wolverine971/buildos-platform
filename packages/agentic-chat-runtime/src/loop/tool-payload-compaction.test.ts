@@ -2369,3 +2369,86 @@ describe('list_calendar_events model rows', () => {
 		expect(payload).not.toHaveProperty('calendars');
 	});
 });
+
+// Tasker 122: the compactors pick fields explicitly, so the hierarchy fields the
+// project reads now return must be carried through, or the model still never
+// sees a parent.
+describe('project hierarchy fields survive compaction', () => {
+	const parent = { id: 'hub', name: 'Wayne Strategies' };
+	const subProjects = [
+		{ id: 'cadre', name: 'Cadre Content Ops' },
+		{ id: 'redline', name: 'Redline' }
+	];
+
+	it('keeps parent and sub-projects on get_onto_project_details', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('get_onto_project_details'),
+			toolResult({
+				project: {
+					id: 'cadre',
+					name: 'Cadre Content Ops',
+					state_key: 'active',
+					parent,
+					sub_project_count: 2,
+					sub_projects: subProjects
+				},
+				counts: {},
+				message: 'Compact ontology project details loaded.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.project).toMatchObject({ parent, sub_project_count: 2 });
+		expect(payload.project.sub_projects).toEqual(subProjects);
+	});
+
+	it('keeps parent and sub_project_count per workspace overview project', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('get_workspace_overview'),
+			toolResult({
+				scope: 'workspace',
+				projects: [
+					{ project_id: 'hub', name: 'Wayne Strategies', sub_project_count: 2 },
+					{ project_id: 'cadre', name: 'Cadre Content Ops', parent },
+					{ project_id: 'solo', name: 'Solo Client' }
+				],
+				message: 'Workspace overview prepared.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.projects[0]).toMatchObject({ sub_project_count: 2 });
+		expect(payload.projects[1]).toMatchObject({ parent });
+		// Absent fields serialize away, like the compactor's other optional fields.
+		const solo = JSON.parse(JSON.stringify(payload.projects[2]));
+		expect(solo).not.toHaveProperty('parent');
+		expect(solo).not.toHaveProperty('sub_project_count');
+	});
+
+	it('keeps the hierarchy on an oversized get_project_overview', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('get_project_overview'),
+			toolResult({
+				scope: 'project',
+				match: { status: 'resolved', project_id: 'hub', query: null },
+				project: {
+					id: 'hub',
+					name: 'Wayne Strategies',
+					description: 'Agency hub. '.repeat(400),
+					sub_project_count: 2,
+					sub_projects: subProjects
+				},
+				tasks: Array.from({ length: 40 }, (_, index) => ({
+					id: `task-${index}`,
+					title: `Task ${index} ${'detail '.repeat(30)}`
+				})),
+				message: 'Project overview prepared for Wayne Strategies.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12_000);
+		expect(payload.project).toMatchObject({ sub_project_count: 2 });
+		expect(payload.project.sub_projects).toEqual(subProjects);
+	});
+});

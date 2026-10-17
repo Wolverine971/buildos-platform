@@ -771,6 +771,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		expect(client.stream).toHaveBeenCalledWith({
 			loadedEntityIds: [],
 			allowSlowStreamRecovery: true,
+			allowRunawayReasoningCutoff: true,
 			finalBufferedAttempt: false,
 			messages: [
 				{ role: 'system', content: 'System prompt\n' },
@@ -11780,7 +11781,8 @@ describe('SHA-bound mutation batch approval', () => {
 
 		it('ends a shared-document confirm card turn on the reply, without crediting or retrying the edit', async () => {
 			const args = { document_id: DOCUMENT_ID, title: 'New shared title' };
-			const warning = 'I’d rename the shared copy for all 3 sub-projects. Choose in the card below.';
+			const warning =
+				'I’d rename the shared copy for all 3 sub-projects. Choose in the card below.';
 			const client = clientWithRounds([
 				[
 					{
@@ -13869,7 +13871,7 @@ describe('SHA-bound mutation batch approval', () => {
 		const first = await iterator.next();
 		expect(first.value).toMatchObject({
 			type: 'semantic',
-			currentActivity: 'Splitting this cleanup into smaller batches...',
+			currentActivity: 'Taking a more direct approach...',
 			eventPayload: { output_budget_recovery: { provider_attempt: 2 } }
 		});
 		expect(client.stream).toHaveBeenCalledTimes(1);

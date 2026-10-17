@@ -199,6 +199,8 @@ export interface ThinkingBlockMessage extends UIMessage {
 	status: 'active' | 'completed' | 'interrupted' | 'cancelled' | 'error';
 	agentState?: AgentLoopState;
 	isCollapsed?: boolean;
+	/** Stop was pressed; the active block reads "Stopping…" until the turn ends. */
+	stopRequested?: boolean;
 }
 
 export type ProjectAction = 'workspace';

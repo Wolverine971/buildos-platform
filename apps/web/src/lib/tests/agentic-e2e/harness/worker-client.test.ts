@@ -20,6 +20,23 @@ function harnessClient(fetchImpl: typeof fetch): AgenticE2EWorkerClient {
 	} as never);
 }
 
+/**
+ * A refusal that provably wrote nothing, so the product client never re-POSTs it
+ * and each test sees exactly one admission request.
+ */
+const NOT_ADMITTED_BODY = JSON.stringify({
+	success: false,
+	error: 'admission unavailable',
+	code: 'WORKER_ADMISSION_NOT_ADMITTED'
+});
+
+function notAdmitted(headers: Record<string, string> = {}): Response {
+	return new Response(NOT_ADMITTED_BODY, {
+		status: 503,
+		headers: { 'content-type': 'application/json', ...headers }
+	});
+}
+
 function healthResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -51,9 +68,8 @@ describe('agentic E2E worker client boundaries', () => {
 				);
 			}
 			clock += 110;
-			return new Response('admission unavailable', {
-				status: 503,
-				headers: { 'server-timing': 'worker-preparation;dur=80, worker-admission;dur=20' }
+			return notAdmitted({
+				'server-timing': 'worker-preparation;dur=80, worker-admission;dur=20'
 			});
 		});
 		const result = await harnessClient(fetchImpl).runTurn({
@@ -93,9 +109,7 @@ describe('agentic E2E worker client boundaries', () => {
 
 	it('admits a first turn exactly like the product client: one lease-less request, no pre-created session', async () => {
 		vi.stubEnv('AGENTIC_BATTERY', 'cedar-house');
-		const fetchImpl = vi.fn<typeof fetch>(
-			async () => new Response('admission unavailable', { status: 503 })
-		);
+		const fetchImpl = vi.fn<typeof fetch>(async () => notAdmitted());
 		const result = await harnessClient(fetchImpl).runTurn({
 			message: 'Start a plan for the kitchen remodel',
 			contextType: 'project',
@@ -106,6 +120,8 @@ describe('agentic E2E worker client boundaries', () => {
 		const [url, init] = fetchImpl.mock.calls[0]!;
 		expect(url).toBe('/api/agent/v2/turns');
 		expect(init?.method).toBe('POST');
+		// Scripted turns are tagged so prod metrics can exclude them.
+		expect(new Headers(init?.headers).get('x-buildos-turn-source')).toBe('harness');
 		const body = JSON.parse(String(init?.body));
 		// The same body `requestAgenticChatWorkerAdmission` builds for the chat
 		// controller: no leaseToken, a null session the server creates inline.
@@ -125,15 +141,13 @@ describe('agentic E2E worker client boundaries', () => {
 		expect(parsed.data?.leaseToken).toBeNull();
 		expect(result.sessionId).toBeNull();
 		expect(result.errors).toEqual([
-			{ error: 'worker admission failed (503): admission unavailable' }
+			{ error: `worker admission failed (503): ${NOT_ADMITTED_BODY}` }
 		]);
 	});
 
 	it('skips the prepared prompt for an explicit review follow-up, as the product client does', async () => {
 		vi.stubEnv('AGENTIC_BATTERY', 'cedar-house');
-		const fetchImpl = vi.fn<typeof fetch>(
-			async () => new Response('admission unavailable', { status: 503 })
-		);
+		const fetchImpl = vi.fn<typeof fetch>(async () => notAdmitted());
 		await harnessClient(fetchImpl).runTurn({
 			message: 'Review the project',
 			contextType: 'project',

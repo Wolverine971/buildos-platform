@@ -6,30 +6,76 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-// Additive permission-request schema (migration 20260930185213).
-type PermissionTable<Row, Required extends keyof Row = never> = {
- Row: Row; Insert: Pick<Row, Required> & Partial<Omit<Row, Required>>;
- Update: Partial<Row>; Relationships: [];
-};
-type PermissionRequestRow = {
- id:string;user_id:string;caller_id:string;grant_id:string|null;boundary:string;
- project_id:string;target_id:string;capability:string;epoch:number;idempotency_key:string;
- submission:Json|null;submission_fingerprint:string;reviewed_digest:string;before_snapshot:Json|null;
- mutation:Json|null;reason:string|null;status:string;decision:string|null;receipt:Json|null;
- created_at:string;expires_at:string;decided_at:string|null;
-};
-type PermissionGrantRow = {
- id:string;user_id:string;caller_id:string;grant_id:string|null;boundary:string;project_id:string;
- capability:string;epoch:number;source_request_id:string|null;created_at:string;revoked_at:string|null;
-};
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.3"
   }
   libri: {
     Tables: {
+      activity_events: {
+        Row: {
+          actor_user_id: string
+          book_id: string | null
+          book_slug: string | null
+          book_title: string | null
+          chapter_id: string | null
+          chapter_title: string | null
+          created_at: string
+          domain: string | null
+          event_type: string
+          id: string
+          library_id: string
+          message: string
+          note_id: string | null
+          search_query: string | null
+          source: string
+        }
+        Insert: {
+          actor_user_id: string
+          book_id?: string | null
+          book_slug?: string | null
+          book_title?: string | null
+          chapter_id?: string | null
+          chapter_title?: string | null
+          created_at?: string
+          domain?: string | null
+          event_type: string
+          id?: string
+          library_id: string
+          message: string
+          note_id?: string | null
+          search_query?: string | null
+          source: string
+        }
+        Update: {
+          actor_user_id?: string
+          book_id?: string | null
+          book_slug?: string | null
+          book_title?: string | null
+          chapter_id?: string | null
+          chapter_title?: string | null
+          created_at?: string
+          domain?: string | null
+          event_type?: string
+          id?: string
+          library_id?: string
+          message?: string
+          note_id?: string | null
+          search_query?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_events_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_profiles: {
         Row: {
           book_id: string | null
@@ -197,6 +243,44 @@ export type Database = {
           },
         ]
       }
+      book_research_requests: {
+        Row: {
+          created_at: string
+          id: string
+          library_id: string
+          receipt: Json
+          request_key: string
+          request_payload: Json
+          requested_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          library_id: string
+          receipt: Json
+          request_key: string
+          request_payload: Json
+          requested_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          library_id?: string
+          receipt?: Json
+          request_key?: string
+          request_payload?: Json
+          requested_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_research_requests_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           author_names_search: string | null
@@ -283,6 +367,60 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "libraries"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_research_evidence: {
+        Row: {
+          book_id: string
+          chapter_id: string
+          created_at: string
+          evidence: Json
+          id: string
+          input_fingerprint: string
+          input_snapshot: Json
+          library_id: string
+          run_id: string
+          step_id: string
+        }
+        Insert: {
+          book_id: string
+          chapter_id: string
+          created_at?: string
+          evidence: Json
+          id?: string
+          input_fingerprint: string
+          input_snapshot: Json
+          library_id: string
+          run_id: string
+          step_id: string
+        }
+        Update: {
+          book_id?: string
+          chapter_id?: string
+          created_at?: string
+          evidence?: Json
+          id?: string
+          input_fingerprint?: string
+          input_snapshot?: Json
+          library_id?: string
+          run_id?: string
+          step_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_research_evidence_library_id_book_id_chapter_id_fkey"
+            columns: ["library_id", "book_id", "chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["library_id", "book_id", "id"]
+          },
+          {
+            foreignKeyName: "chapter_research_evidence_library_id_run_id_step_id_fkey"
+            columns: ["library_id", "run_id", "step_id"]
+            isOneToOne: false
+            referencedRelation: "research_steps"
+            referencedColumns: ["library_id", "run_id", "id"]
           },
         ]
       }
@@ -814,6 +952,60 @@ export type Database = {
           },
         ]
       }
+      glossary_terms: {
+        Row: {
+          book_id: string
+          created_at: string
+          definition: string
+          first_seen_page: string | null
+          id: string
+          library_id: string
+          provenance: Json
+          term: string
+          term_normalized: string
+          updated_at: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          definition: string
+          first_seen_page?: string | null
+          id?: string
+          library_id: string
+          provenance?: Json
+          term: string
+          term_normalized: string
+          updated_at?: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          definition?: string
+          first_seen_page?: string | null
+          id?: string
+          library_id?: string
+          provenance?: Json
+          term?: string
+          term_normalized?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "glossary_terms_library_id_book_id_fkey"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "glossary_terms_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       image_upload_cleanup_checks: {
         Row: {
           generation: number
@@ -953,6 +1145,8 @@ export type Database = {
           idempotency_key: string
           library_id: string
           object_path: string
+          pending_slot_released_at: string | null
+          quota_policy_version: number
           requested_by: string
           signing_deadline: string
           status: string
@@ -968,6 +1162,8 @@ export type Database = {
           idempotency_key: string
           library_id: string
           object_path: string
+          pending_slot_released_at?: string | null
+          quota_policy_version?: number
           requested_by: string
           signing_deadline: string
           status?: string
@@ -983,6 +1179,8 @@ export type Database = {
           idempotency_key?: string
           library_id?: string
           object_path?: string
+          pending_slot_released_at?: string | null
+          quota_policy_version?: number
           requested_by?: string
           signing_deadline?: string
           status?: string
@@ -1109,7 +1307,10 @@ export type Database = {
           attempt: number
           book_id: string
           file_metadata: Json
+          followup_admission_id: string | null
+          followup_dispatched_at: string | null
           followup_status: string | null
+          followup_step_id: string | null
           id: string
           image_id: string | null
           lease_token: string
@@ -1127,7 +1328,10 @@ export type Database = {
           attempt: number
           book_id: string
           file_metadata: Json
+          followup_admission_id?: string | null
+          followup_dispatched_at?: string | null
           followup_status?: string | null
+          followup_step_id?: string | null
           id?: string
           image_id?: string | null
           lease_token: string
@@ -1145,7 +1349,10 @@ export type Database = {
           attempt?: number
           book_id?: string
           file_metadata?: Json
+          followup_admission_id?: string | null
+          followup_dispatched_at?: string | null
           followup_status?: string | null
+          followup_step_id?: string | null
           id?: string
           image_id?: string | null
           lease_token?: string
@@ -1166,6 +1373,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "books"
             referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "image_upload_publications_followup_admission_id_fkey"
+            columns: ["followup_admission_id"]
+            isOneToOne: false
+            referencedRelation: "ocr_batch_admissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "image_upload_publications_followup_step_fk"
+            columns: ["followup_step_id"]
+            isOneToOne: false
+            referencedRelation: "research_steps"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "image_upload_publications_image_fk"
@@ -1331,6 +1552,164 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "sources"
             referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      import_history: {
+        Row: {
+          archive_sha256: string
+          book_id: string | null
+          created_at: string
+          id: string
+          imported_at: string
+          kind: string
+          library_id: string
+          original_status: string
+          record: Json
+          source_id: string
+          source_sha256: string
+          video_id: string | null
+        }
+        Insert: {
+          archive_sha256: string
+          book_id?: string | null
+          created_at: string
+          id: string
+          imported_at?: string
+          kind: string
+          library_id: string
+          original_status: string
+          record: Json
+          source_id: string
+          source_sha256: string
+          video_id?: string | null
+        }
+        Update: {
+          archive_sha256?: string
+          book_id?: string | null
+          created_at?: string
+          id?: string
+          imported_at?: string
+          kind?: string
+          library_id?: string
+          original_status?: string
+          record?: Json
+          source_id?: string
+          source_sha256?: string
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_history_library_id_book_id_fkey"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "import_history_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_history_library_id_video_id_fkey"
+            columns: ["library_id", "video_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_videos"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      librarian_history: {
+        Row: {
+          action: string | null
+          archive_sha256: string
+          book_id: string | null
+          created_at: string
+          duty: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          imported_at: string
+          kind: string
+          library_id: string
+          message: string | null
+          original_status: string | null
+          parent_kind: string
+          record: Json
+          run_id: string | null
+          source_id: string
+          source_sha256: string
+          started_at: string | null
+          trigger: string | null
+        }
+        Insert: {
+          action?: string | null
+          archive_sha256: string
+          book_id?: string | null
+          created_at: string
+          duty?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id: string
+          imported_at?: string
+          kind: string
+          library_id: string
+          message?: string | null
+          original_status?: string | null
+          parent_kind?: string
+          record: Json
+          run_id?: string | null
+          source_id: string
+          source_sha256: string
+          started_at?: string | null
+          trigger?: string | null
+        }
+        Update: {
+          action?: string | null
+          archive_sha256?: string
+          book_id?: string | null
+          created_at?: string
+          duty?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          imported_at?: string
+          kind?: string
+          library_id?: string
+          message?: string | null
+          original_status?: string | null
+          parent_kind?: string
+          record?: Json
+          run_id?: string | null
+          source_id?: string
+          source_sha256?: string
+          started_at?: string | null
+          trigger?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "librarian_history_library_id_book_id_fkey"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "librarian_history_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "librarian_history_library_id_parent_kind_run_id_fkey"
+            columns: ["library_id", "parent_kind", "run_id"]
+            isOneToOne: false
+            referencedRelation: "librarian_history"
+            referencedColumns: ["library_id", "kind", "id"]
           },
         ]
       }
@@ -1784,6 +2163,203 @@ export type Database = {
           },
         ]
       }
+      research_history: {
+        Row: {
+          archive_sha256: string
+          book_id: string
+          chapter_id: string | null
+          created_at: string
+          finished_at: string | null
+          id: string
+          imported_at: string
+          library_id: string
+          operation: string
+          original_status: string
+          parent_id: string | null
+          record: Json
+          scope: string
+          source_id: string
+          source_sha256: string
+          updated_at: string
+        }
+        Insert: {
+          archive_sha256: string
+          book_id: string
+          chapter_id?: string | null
+          created_at: string
+          finished_at?: string | null
+          id: string
+          imported_at?: string
+          library_id: string
+          operation: string
+          original_status: string
+          parent_id?: string | null
+          record: Json
+          scope: string
+          source_id: string
+          source_sha256: string
+          updated_at: string
+        }
+        Update: {
+          archive_sha256?: string
+          book_id?: string
+          chapter_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          imported_at?: string
+          library_id?: string
+          operation?: string
+          original_status?: string
+          parent_id?: string | null
+          record?: Json
+          scope?: string
+          source_id?: string
+          source_sha256?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_history_library_id_book_id_chapter_id_fkey"
+            columns: ["library_id", "book_id", "chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["library_id", "book_id", "id"]
+          },
+          {
+            foreignKeyName: "research_history_library_id_book_id_fkey"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "research_history_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_queue_controls: {
+        Row: {
+          daily_budget_microusd: number
+          deadline_minutes: number
+          dispatch_enabled: boolean
+          library_id: string
+          max_batch_tasks: number
+          max_concurrent_steps: number
+          max_steps_per_task: number
+          supported_task_types: string[]
+          task_budget_microusd: number
+          updated_at: string
+        }
+        Insert: {
+          daily_budget_microusd?: number
+          deadline_minutes?: number
+          dispatch_enabled?: boolean
+          library_id: string
+          max_batch_tasks?: number
+          max_concurrent_steps?: number
+          max_steps_per_task?: number
+          supported_task_types?: string[]
+          task_budget_microusd?: number
+          updated_at?: string
+        }
+        Update: {
+          daily_budget_microusd?: number
+          deadline_minutes?: number
+          dispatch_enabled?: boolean
+          library_id?: string
+          max_batch_tasks?: number
+          max_concurrent_steps?: number
+          max_steps_per_task?: number
+          supported_task_types?: string[]
+          task_budget_microusd?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_queue_controls_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: true
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_queue_history: {
+        Row: {
+          archive_sha256: string
+          attempted: number
+          blocked: number
+          error_message: string | null
+          failed: number
+          filters: Json
+          finished_at: string | null
+          id: string
+          imported_at: string
+          library_id: string
+          original_status: string
+          results: Json
+          skipped_manual_only: number
+          source: string
+          source_id: string
+          source_sha256: string
+          started_at: string
+          succeeded: number
+        }
+        Insert: {
+          archive_sha256: string
+          attempted: number
+          blocked: number
+          error_message?: string | null
+          failed: number
+          filters?: Json
+          finished_at?: string | null
+          id: string
+          imported_at?: string
+          library_id: string
+          original_status: string
+          results: Json
+          skipped_manual_only: number
+          source: string
+          source_id: string
+          source_sha256: string
+          started_at: string
+          succeeded: number
+        }
+        Update: {
+          archive_sha256?: string
+          attempted?: number
+          blocked?: number
+          error_message?: string | null
+          failed?: number
+          filters?: Json
+          finished_at?: string | null
+          id?: string
+          imported_at?: string
+          library_id?: string
+          original_status?: string
+          results?: Json
+          skipped_manual_only?: number
+          source?: string
+          source_id?: string
+          source_sha256?: string
+          started_at?: string
+          succeeded?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_queue_history_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       research_runs: {
         Row: {
           cancel_reason: string | null
@@ -1906,6 +2482,42 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "libraries"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_step_dependencies: {
+        Row: {
+          library_id: string
+          prerequisite_step_id: string
+          run_id: string
+          step_id: string
+        }
+        Insert: {
+          library_id: string
+          prerequisite_step_id: string
+          run_id: string
+          step_id: string
+        }
+        Update: {
+          library_id?: string
+          prerequisite_step_id?: string
+          run_id?: string
+          step_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_step_dependencies_library_id_run_id_prerequisite__fkey"
+            columns: ["library_id", "run_id", "prerequisite_step_id"]
+            isOneToOne: false
+            referencedRelation: "research_steps"
+            referencedColumns: ["library_id", "run_id", "id"]
+          },
+          {
+            foreignKeyName: "research_step_dependencies_library_id_run_id_step_id_fkey"
+            columns: ["library_id", "run_id", "step_id"]
+            isOneToOne: false
+            referencedRelation: "research_steps"
+            referencedColumns: ["library_id", "run_id", "id"]
           },
         ]
       }
@@ -2040,6 +2652,215 @@ export type Database = {
             columns: ["library_id", "run_id"]
             isOneToOne: false
             referencedRelation: "research_runs"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      research_task_batch_items: {
+        Row: {
+          batch_id: string
+          library_id: string
+          step_id: string
+          task_id: string
+          task_title: string
+          task_type: string
+          task_version: string
+        }
+        Insert: {
+          batch_id: string
+          library_id: string
+          step_id: string
+          task_id: string
+          task_title: string
+          task_type: string
+          task_version: string
+        }
+        Update: {
+          batch_id?: string
+          library_id?: string
+          step_id?: string
+          task_id?: string
+          task_title?: string
+          task_type?: string
+          task_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_task_batch_items_library_id_batch_id_fkey"
+            columns: ["library_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "research_task_batches"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "research_task_batch_items_library_id_batch_id_step_id_fkey"
+            columns: ["library_id", "batch_id", "step_id"]
+            isOneToOne: true
+            referencedRelation: "research_steps"
+            referencedColumns: ["library_id", "run_id", "id"]
+          },
+        ]
+      }
+      research_task_batches: {
+        Row: {
+          created_at: string
+          dispatched_at: string | null
+          id: string
+          library_id: string
+          request_key: string
+          request_payload: Json
+          requested_by: string | null
+          reserved_budget_microusd: number
+          source: string
+          task_count: number
+        }
+        Insert: {
+          created_at?: string
+          dispatched_at?: string | null
+          id: string
+          library_id: string
+          request_key: string
+          request_payload: Json
+          requested_by?: string | null
+          reserved_budget_microusd: number
+          source: string
+          task_count: number
+        }
+        Update: {
+          created_at?: string
+          dispatched_at?: string | null
+          id?: string
+          library_id?: string
+          request_key?: string
+          request_payload?: Json
+          requested_by?: string | null
+          reserved_budget_microusd?: number
+          source?: string
+          task_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_task_batches_library_id_id_fkey"
+            columns: ["library_id", "id"]
+            isOneToOne: false
+            referencedRelation: "research_runs"
+            referencedColumns: ["library_id", "id"]
+          },
+        ]
+      }
+      research_tasks: {
+        Row: {
+          active_run_id: string | null
+          book_id: string | null
+          chapter_id: string | null
+          completed_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          creation_key: string
+          creation_payload: Json
+          data_added: boolean | null
+          description: string | null
+          id: string
+          library_id: string
+          mode: string
+          priority: string
+          requires_confirmation: boolean
+          result_message: string | null
+          skipped_reason: string | null
+          source: string
+          status: string
+          task_type: string
+          title: string
+          updated_at: string
+          video_id: string | null
+        }
+        Insert: {
+          active_run_id?: string | null
+          book_id?: string | null
+          chapter_id?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          creation_key: string
+          creation_payload: Json
+          data_added?: boolean | null
+          description?: string | null
+          id?: string
+          library_id: string
+          mode?: string
+          priority: string
+          requires_confirmation?: boolean
+          result_message?: string | null
+          skipped_reason?: string | null
+          source?: string
+          status?: string
+          task_type: string
+          title: string
+          updated_at?: string
+          video_id?: string | null
+        }
+        Update: {
+          active_run_id?: string | null
+          book_id?: string | null
+          chapter_id?: string | null
+          completed_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          creation_key?: string
+          creation_payload?: Json
+          data_added?: boolean | null
+          description?: string | null
+          id?: string
+          library_id?: string
+          mode?: string
+          priority?: string
+          requires_confirmation?: boolean
+          result_message?: string | null
+          skipped_reason?: string | null
+          source?: string
+          status?: string
+          task_type?: string
+          title?: string
+          updated_at?: string
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_tasks_library_id_active_run_id_fkey"
+            columns: ["library_id", "active_run_id"]
+            isOneToOne: false
+            referencedRelation: "research_runs"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "research_tasks_library_id_book_id_chapter_id_fkey"
+            columns: ["library_id", "book_id", "chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["library_id", "book_id", "id"]
+          },
+          {
+            foreignKeyName: "research_tasks_library_id_book_id_fkey"
+            columns: ["library_id", "book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["library_id", "id"]
+          },
+          {
+            foreignKeyName: "research_tasks_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_tasks_library_id_video_id_fkey"
+            columns: ["library_id", "video_id"]
+            isOneToOne: false
+            referencedRelation: "youtube_videos"
             referencedColumns: ["library_id", "id"]
           },
         ]
@@ -2547,6 +3368,19 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      acknowledge_research_task_dispatch: {
+        Args: { p_batch_id: string }
+        Returns: boolean
+      }
+      admit_research_task_batch: {
+        Args: {
+          p_filters?: Json
+          p_library_id: string
+          p_request_key: string
+          p_source: string
+        }
+        Returns: Json
+      }
       authorize_image_upload_cleanup: {
         Args: {
           p_generation: number
@@ -2592,6 +3426,27 @@ export type Database = {
         }
         Returns: Json
       }
+      build_book_research_input: {
+        Args: { p_book_id: string; p_library_id: string }
+        Returns: Json
+      }
+      build_chapter_research_input: {
+        Args: {
+          p_book_id: string
+          p_chapter_id: string
+          p_force: boolean
+          p_library_id: string
+        }
+        Returns: Json
+      }
+      chapter_research_fields: {
+        Args: { p_chapter: Database["libri"]["Tables"]["chapters"]["Row"] }
+        Returns: Json
+      }
+      chapter_research_requested_fields: {
+        Args: { p_fields: Json; p_force: boolean }
+        Returns: Json
+      }
       claim_image_upload: {
         Args: {
           p_lease_token: string
@@ -2635,6 +3490,48 @@ export type Database = {
           mime_type: string
           object_path: string
         }[]
+      }
+      edit_application_image: {
+        Args: {
+          p_action: string
+          p_changes?: Json
+          p_expected_book_updated_at: string
+          p_expected_image_updated_at: string
+          p_image_id: string
+          p_library_id: string
+        }
+        Returns: Json
+      }
+      edit_application_record: {
+        Args: {
+          p_changes: Json
+          p_expected_updated_at: string
+          p_id: string
+          p_kind: string
+          p_library_id: string
+        }
+        Returns: Json
+      }
+      enqueue_book_research: {
+        Args: {
+          p_action: string
+          p_book_id: string
+          p_library_id: string
+          p_mode?: string
+          p_priority?: string
+          p_request_key: string
+        }
+        Returns: Json
+      }
+      enqueue_chapter_research: {
+        Args: {
+          p_chapter_id: string
+          p_library_id: string
+          p_mode?: string
+          p_priority?: string
+          p_request_key: string
+        }
+        Returns: Json
       }
       fail_image_upload: {
         Args: {
@@ -2739,6 +3636,8 @@ export type Database = {
           idempotency_key: string
           library_id: string
           object_path: string
+          pending_slot_released_at: string | null
+          quota_policy_version: number
           requested_by: string
           signing_deadline: string
           status: string
@@ -2751,6 +3650,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      log_application_activity: {
+        Args: {
+          p_book_id?: string
+          p_chapter_id?: string
+          p_domain?: string
+          p_event_type: string
+          p_library_id: string
+          p_query?: string
+          p_source?: string
+        }
+        Returns: Json
+      }
+      manage_research_tasks: {
+        Args: { p_action: string; p_library_id: string; p_payload: Json }
+        Returns: Json
+      }
       observe_image_upload_issuance: {
         Args: {
           p_library_id: string
@@ -2759,6 +3674,14 @@ export type Database = {
           p_upload_id: string
         }
         Returns: boolean
+      }
+      pending_research_task_batches: {
+        Args: { p_limit?: number }
+        Returns: {
+          batch_id: string
+          library_id: string
+          step_ids: string[]
+        }[]
       }
       persist_and_settle_ocr_result: {
         Args: {
@@ -2791,6 +3714,74 @@ export type Database = {
           total_spent_microusd: number
         }[]
       }
+      persist_book_agent_result: {
+        Args: {
+          p_completion_tokens: number
+          p_cost: number
+          p_generation: number
+          p_input_fingerprint: string
+          p_knowledge: string
+          p_lease_token: string
+          p_processing_token: string
+          p_profile_revision: Json
+          p_prompt_tokens: number
+          p_queue_row_id: string
+          p_request_id: string
+          p_reservation_id: string
+          p_result: Json
+          p_snapshot: Json
+          p_step_id: string
+        }
+        Returns: Json
+      }
+      persist_book_synthesis_result: {
+        Args: {
+          p_analysis: Json
+          p_completion_tokens: number
+          p_cost: number
+          p_generation: number
+          p_input_fingerprint: string
+          p_lease_token: string
+          p_processing_token: string
+          p_prompt_tokens: number
+          p_queue_row_id: string
+          p_request_id: string
+          p_reservation_id: string
+          p_snapshot: Json
+          p_step_id: string
+        }
+        Returns: Json
+      }
+      persist_chapter_research_result: {
+        Args: {
+          p_completion_tokens: number
+          p_cost: number
+          p_fingerprint: string
+          p_generation: number
+          p_lease: string
+          p_output: Json
+          p_prompt_tokens: number
+          p_request_id: string
+          p_requested_fields: Json
+          p_reservation_id: string
+          p_step_id: string
+        }
+        Returns: Json
+      }
+      persist_chapter_search_result: {
+        Args: {
+          p_cost: number
+          p_evidence: Json
+          p_fingerprint: string
+          p_generation: number
+          p_lease: string
+          p_request_id: string
+          p_reservation_id: string
+          p_snapshot: Json
+          p_step_id: string
+        }
+        Returns: Json
+      }
       plan_explicit_ocr_batch: {
         Args: {
           p_book_id: string
@@ -2815,7 +3806,97 @@ export type Database = {
         }
         Returns: Json
       }
+      prepare_research_workflow: {
+        Args: {
+          p_children: Json
+          p_generation: number
+          p_lease: string
+          p_step_id: string
+        }
+        Returns: Json
+      }
       purge_account_deletion: { Args: { p_user_id: string }; Returns: Json }
+      read_book_agent_input: {
+        Args: { p_generation: number; p_lease_token: string; p_step_id: string }
+        Returns: Json
+      }
+      read_book_completeness: {
+        Args: { p_book_ids: string[]; p_library_id: string }
+        Returns: {
+          book_id: string
+          completeness: Json
+          indexing_enriched: boolean
+        }[]
+      }
+      read_book_research_history: {
+        Args: {
+          p_book_id: string
+          p_chapter_id?: string
+          p_library_id: string
+          p_limit?: number
+        }
+        Returns: Json
+      }
+      read_book_synthesis_input: {
+        Args: { p_generation: number; p_lease_token: string; p_step_id: string }
+        Returns: Json
+      }
+      read_chapter_research_input: {
+        Args: { p_generation: number; p_lease: string; p_step_id: string }
+        Returns: Json
+      }
+      read_chapter_research_plan: {
+        Args: { p_generation: number; p_lease: string; p_step_id: string }
+        Returns: Json
+      }
+      read_image_upload_status: {
+        Args: { p_library_id: string; p_upload_id: string }
+        Returns: Json
+      }
+      read_import_history: {
+        Args: {
+          p_import_id?: string
+          p_kind: string
+          p_library_id: string
+          p_limit?: number
+          p_snapshot?: boolean
+        }
+        Returns: Json
+      }
+      read_missing_book_coverage: {
+        Args: { p_book_ids: string[]; p_library_id: string }
+        Returns: {
+          book_id: string
+          glossary_term_count: number
+          has_cover: boolean
+          has_cover_image: boolean
+          has_glossary: boolean
+          has_glossary_image: boolean
+          has_toc: boolean
+          has_toc_image: boolean
+        }[]
+      }
+      read_research_queue_dashboard: {
+        Args: { p_library_id: string }
+        Returns: Json
+      }
+      read_research_queue_runs: {
+        Args: {
+          p_library_id: string
+          p_limit?: number
+          p_run_id?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
+      read_research_tasks: {
+        Args: { p_filters?: Json; p_library_id: string }
+        Returns: Json
+      }
+      reconcile_pending_research_tasks: {
+        Args: { p_limit?: number }
+        Returns: number
+      }
       release_provider_cost: {
         Args: {
           p_execution_generation: number
@@ -2828,6 +3909,18 @@ export type Database = {
           outcome: string
           remaining_microusd: number
         }[]
+      }
+      release_unissued_image_upload_slot: {
+        Args: { p_library_id: string; p_upload_id: string }
+        Returns: boolean
+      }
+      research_task_execution_allowed: {
+        Args: { p_step_id: string }
+        Returns: boolean
+      }
+      research_workflow_step_ready: {
+        Args: { p_step_id: string }
+        Returns: boolean
       }
       reserve_image_upload: {
         Args: {
@@ -2846,6 +3939,8 @@ export type Database = {
           idempotency_key: string
           library_id: string
           object_path: string
+          pending_slot_released_at: string | null
+          quota_policy_version: number
           requested_by: string
           signing_deadline: string
           status: string
@@ -2921,6 +4016,8 @@ export type Database = {
           idempotency_key: string
           library_id: string
           object_path: string
+          pending_slot_released_at: string | null
+          quota_policy_version: number
           requested_by: string
           signing_deadline: string
           status: string
@@ -2958,12 +4055,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      agent_permission_feature: PermissionTable<{id:boolean;enabled:boolean;epoch:number}>;
-      agent_permission_requests: PermissionTable<PermissionRequestRow,'user_id'|'caller_id'|'project_id'|'target_id'|'capability'|'epoch'|'idempotency_key'|'submission_fingerprint'|'reviewed_digest'>;
-      agent_permission_grants: PermissionTable<PermissionGrantRow,'user_id'|'caller_id'|'project_id'|'capability'|'epoch'>;
-      agent_permission_keys: PermissionTable<{caller_id:string;boundary:string;key:string;fingerprint:string;request_id:string},'caller_id'|'boundary'|'key'|'fingerprint'|'request_id'>;
-      agent_permission_work: PermissionTable<{request_id:string;project_id:string;target_id:string;capability:string;created_at:string;processed_at:string|null},'request_id'|'project_id'|'target_id'|'capability'>;
-
       account_deletion_requests: {
         Row: {
           attempt_count: number
@@ -3459,7 +4550,6 @@ export type Database = {
       }
       agent_oauth_authorization_codes: {
         Row: {
-          policy_snapshot: Json | null
           client_id: string
           code_challenge: string
           code_challenge_method: string
@@ -3469,6 +4559,7 @@ export type Database = {
           external_agent_caller_id: string
           grant_id: string
           id: string
+          policy_snapshot: Json | null
           redirect_uri: string
           resource: string
           scope: string
@@ -3477,7 +4568,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          policy_snapshot?: Json | null
           client_id: string
           code_challenge: string
           code_challenge_method?: string
@@ -3487,6 +4577,7 @@ export type Database = {
           external_agent_caller_id: string
           grant_id: string
           id?: string
+          policy_snapshot?: Json | null
           redirect_uri: string
           resource: string
           scope: string
@@ -3495,7 +4586,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          policy_snapshot?: Json | null
           client_id?: string
           code_challenge?: string
           code_challenge_method?: string
@@ -3505,6 +4595,7 @@ export type Database = {
           external_agent_caller_id?: string
           grant_id?: string
           id?: string
+          policy_snapshot?: Json | null
           redirect_uri?: string
           resource?: string
           scope?: string
@@ -3863,6 +4954,287 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_migration_stats"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      agent_permission_feature: {
+        Row: {
+          enabled: boolean
+          epoch: number
+          id: boolean
+        }
+        Insert: {
+          enabled?: boolean
+          epoch?: number
+          id?: boolean
+        }
+        Update: {
+          enabled?: boolean
+          epoch?: number
+          id?: boolean
+        }
+        Relationships: []
+      }
+      agent_permission_grants: {
+        Row: {
+          boundary: string | null
+          caller_id: string
+          capability: string
+          created_at: string
+          epoch: number
+          grant_id: string | null
+          id: string
+          project_id: string
+          revoked_at: string | null
+          source_request_id: string | null
+          user_id: string
+        }
+        Insert: {
+          boundary?: string | null
+          caller_id: string
+          capability: string
+          created_at?: string
+          epoch: number
+          grant_id?: string | null
+          id?: string
+          project_id: string
+          revoked_at?: string | null
+          source_request_id?: string | null
+          user_id: string
+        }
+        Update: {
+          boundary?: string | null
+          caller_id?: string
+          capability?: string
+          created_at?: string
+          epoch?: number
+          grant_id?: string | null
+          id?: string
+          project_id?: string
+          revoked_at?: string | null
+          source_request_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_permission_grants_caller_id_fkey"
+            columns: ["caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_grants_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_grants_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_grants_source_request_id_fkey"
+            columns: ["source_request_id"]
+            isOneToOne: false
+            referencedRelation: "agent_permission_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      agent_permission_keys: {
+        Row: {
+          boundary: string
+          caller_id: string
+          fingerprint: string
+          key: string
+          request_id: string
+        }
+        Insert: {
+          boundary: string
+          caller_id: string
+          fingerprint: string
+          key: string
+          request_id: string
+        }
+        Update: {
+          boundary?: string
+          caller_id?: string
+          fingerprint?: string
+          key?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_permission_keys_caller_id_fkey"
+            columns: ["caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_keys_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "agent_permission_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_permission_requests: {
+        Row: {
+          before_snapshot: Json | null
+          boundary: string | null
+          caller_id: string
+          capability: string
+          created_at: string
+          decided_at: string | null
+          decision: string | null
+          epoch: number
+          expires_at: string
+          grant_id: string | null
+          id: string
+          idempotency_key: string
+          mutation: Json | null
+          project_id: string
+          reason: string | null
+          receipt: Json | null
+          reviewed_digest: string
+          status: string
+          submission: Json | null
+          submission_fingerprint: string
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          before_snapshot?: Json | null
+          boundary?: string | null
+          caller_id: string
+          capability: string
+          created_at?: string
+          decided_at?: string | null
+          decision?: string | null
+          epoch: number
+          expires_at?: string
+          grant_id?: string | null
+          id?: string
+          idempotency_key: string
+          mutation?: Json | null
+          project_id: string
+          reason?: string | null
+          receipt?: Json | null
+          reviewed_digest: string
+          status?: string
+          submission?: Json | null
+          submission_fingerprint: string
+          target_id: string
+          user_id: string
+        }
+        Update: {
+          before_snapshot?: Json | null
+          boundary?: string | null
+          caller_id?: string
+          capability?: string
+          created_at?: string
+          decided_at?: string | null
+          decision?: string | null
+          epoch?: number
+          expires_at?: string
+          grant_id?: string | null
+          id?: string
+          idempotency_key?: string
+          mutation?: Json | null
+          project_id?: string
+          reason?: string | null
+          receipt?: Json | null
+          reviewed_digest?: string
+          status?: string
+          submission?: Json | null
+          submission_fingerprint?: string
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_permission_requests_caller_id_fkey"
+            columns: ["caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_requests_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      agent_permission_work: {
+        Row: {
+          capability: string
+          created_at: string
+          processed_at: string | null
+          project_id: string
+          request_id: string
+          target_id: string
+        }
+        Insert: {
+          capability: string
+          created_at?: string
+          processed_at?: string | null
+          project_id: string
+          request_id: string
+          target_id: string
+        }
+        Update: {
+          capability?: string
+          created_at?: string
+          processed_at?: string | null
+          project_id?: string
+          request_id?: string
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_permission_work_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_permission_work_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "agent_permission_requests"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -8233,8 +9605,8 @@ export type Database = {
       consolidation_merges: {
         Row: {
           cluster_key: string
-          coverage: Json | null
           cost_usd: number
+          coverage: Json | null
           created_at: string
           created_document_id: string | null
           error: string | null
@@ -8250,8 +9622,8 @@ export type Database = {
         }
         Insert: {
           cluster_key: string
-          coverage?: Json | null
           cost_usd?: number
+          coverage?: Json | null
           created_at?: string
           created_document_id?: string | null
           error?: string | null
@@ -8267,8 +9639,8 @@ export type Database = {
         }
         Update: {
           cluster_key?: string
-          coverage?: Json | null
           cost_usd?: number
+          coverage?: Json | null
           created_at?: string
           created_document_id?: string | null
           error?: string | null
@@ -8371,6 +9743,7 @@ export type Database = {
           error: string | null
           finished_at: string | null
           id: string
+          mode: string
           plan: Json | null
           progress: Json
           project_ids: string[]
@@ -8387,6 +9760,7 @@ export type Database = {
           error?: string | null
           finished_at?: string | null
           id?: string
+          mode?: string
           plan?: Json | null
           progress?: Json
           project_ids: string[]
@@ -8403,6 +9777,7 @@ export type Database = {
           error?: string | null
           finished_at?: string | null
           id?: string
+          mode?: string
           plan?: Json | null
           progress?: Json
           project_ids?: string[]
@@ -11197,12 +12572,12 @@ export type Database = {
       }
       external_agent_callers: {
         Row: {
-          permission_requests_enabled:boolean;
           caller_key: string
           created_at: string
           id: string
           last_used_at: string | null
           metadata: Json
+          permission_requests_enabled: boolean
           policy: Json
           project_scope_mode: string
           provider: string
@@ -11213,12 +12588,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          permission_requests_enabled?:boolean;
           caller_key: string
           created_at?: string
           id?: string
           last_used_at?: string | null
           metadata?: Json
+          permission_requests_enabled?: boolean
           policy?: Json
           project_scope_mode?: string
           provider: string
@@ -11229,12 +12604,12 @@ export type Database = {
           user_id: string
         }
         Update: {
-          permission_requests_enabled?:boolean;
           caller_key?: string
           created_at?: string
           id?: string
           last_used_at?: string | null
           metadata?: Json
+          permission_requests_enabled?: boolean
           policy?: Json
           project_scope_mode?: string
           provider?: string
@@ -14890,6 +16265,73 @@ export type Database = {
           },
         ]
       }
+      onto_project_fold_manifests: {
+        Row: {
+          created_at: string
+          destination_project_id: string
+          folder_document_id: string | null
+          id: string
+          manifest: Json
+          receipt: Json
+          request_hash: string
+          source_project_id: string
+          source_state: Json
+          unfold_receipt: Json | null
+          unfolded_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          destination_project_id: string
+          folder_document_id?: string | null
+          id: string
+          manifest: Json
+          receipt: Json
+          request_hash: string
+          source_project_id: string
+          source_state: Json
+          unfold_receipt?: Json | null
+          unfolded_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          destination_project_id?: string
+          folder_document_id?: string | null
+          id?: string
+          manifest?: Json
+          receipt?: Json
+          request_hash?: string
+          source_project_id?: string
+          source_state?: Json
+          unfold_receipt?: Json | null
+          unfolded_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_project_fold_manifests_destination_project_id_fkey"
+            columns: ["destination_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_fold_manifests_source_project_id_fkey"
+            columns: ["source_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_fold_manifests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_project_icon_candidates: {
         Row: {
           candidate_index: number
@@ -15992,6 +17434,144 @@ export type Database = {
             foreignKeyName: "onto_task_assignees_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "onto_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_task_entities: {
+        Row: {
+          about: string | null
+          confidence: string
+          created_at: string
+          data: Json
+          display: string
+          extractor_version: number | null
+          id: string
+          in_text: boolean
+          kind: string
+          natural_key: string
+          position: number
+          project_id: string
+          quote: string | null
+          role: string
+          source: string
+          source_hash: string | null
+          status: string
+          status_changed_at: string | null
+          task_id: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          about?: string | null
+          confidence?: string
+          created_at?: string
+          data?: Json
+          display: string
+          extractor_version?: number | null
+          id?: string
+          in_text?: boolean
+          kind: string
+          natural_key: string
+          position?: number
+          project_id: string
+          quote?: string | null
+          role?: string
+          source?: string
+          source_hash?: string | null
+          status?: string
+          status_changed_at?: string | null
+          task_id: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          about?: string | null
+          confidence?: string
+          created_at?: string
+          data?: Json
+          display?: string
+          extractor_version?: number | null
+          id?: string
+          in_text?: boolean
+          kind?: string
+          natural_key?: string
+          position?: number
+          project_id?: string
+          quote?: string | null
+          role?: string
+          source?: string
+          source_hash?: string | null
+          status?: string
+          status_changed_at?: string | null
+          task_id?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_task_entities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_task_entities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onto_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_task_entity_state: {
+        Row: {
+          entity_count: number
+          error: string | null
+          extracted_at: string
+          extractor_version: number
+          model: string | null
+          outcome: string
+          project_id: string
+          source_hash: string
+          task_id: string
+        }
+        Insert: {
+          entity_count?: number
+          error?: string | null
+          extracted_at?: string
+          extractor_version: number
+          model?: string | null
+          outcome: string
+          project_id: string
+          source_hash: string
+          task_id: string
+        }
+        Update: {
+          entity_count?: number
+          error?: string | null
+          extracted_at?: string
+          extractor_version?: number
+          model?: string | null
+          outcome?: string
+          project_id?: string
+          source_hash?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_task_entity_state_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_task_entity_state_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
             referencedRelation: "onto_tasks"
             referencedColumns: ["id"]
           },
@@ -22777,38 +24357,6 @@ export type Database = {
       }
     }
     Functions: {
-      agent_edit_snapshot: {Args:{p_kind:string;p_id:string};Returns:Json};
-      agent_permission_credential: {Args:{p_ref:Json;p_write?:boolean};Returns:Json};
-      agent_permission_tree_metadata: {Args:{p_nodes:Json;p_id:string;p_title:string;p_description:string};Returns:Json};
-      apply_agent_permission_edit: {Args:{p_id:string;p_digest:string;p_decision:string};Returns:Json};
-      lock_agent_permission_authority: {Args:{p_caller:string;p_grant:string;p_project:string};Returns:string};
-      lookup_agent_permission_request: {Args:{p_ref:Json;p_key:string;p_submission:Json};Returns:Json};
-      create_agent_permission_request: {Args:{p_ref:Json;p_key:string;p_submission:Json;p_before:Json;p_mutation:Json;p_reason?:string|null;p_direct?:boolean};Returns:Json};
-      decide_agent_permission_request: {Args:{p_id:string;p_digest:string;p_decision:string};Returns:Json};
-      apply_scoped_agent_edit: {Args:{p_ref:Json;p_key:string;p_submission:Json;p_before:Json;p_mutation:Json};Returns:Json};
-      control_agent_permissions: {Args:{p_caller:string;p_action:string;p_grant?:string|null};Returns:undefined};
-      onto_document_table_apply: {
-        Args: {
-          p_actor_id?: string
-          p_document_id: string
-          p_expected_revision?: number
-          p_ops?: Json
-          p_table?: Json
-        }
-        Returns: Json
-      }
-      onto_document_table_render_markdown: {
-        Args: { p_document_id: string; p_table: Json }
-        Returns: string
-      }
-      onto_table_cell_text: { Args: { p_value: Json }; Returns: string }
-      set_agent_permission_feature: {Args:{p_enabled:boolean};Returns:undefined};
-      purge_agent_permission_payloads: {Args:{p_batch_size?:number};Returns:number};
-      maintain_agent_permission_work: {Args:{p_batch_size?:number;p_request?:string|null};Returns:number};
-      update_project_membership_guarded: {Args:{p_project:string;p_member:string;p_action:string;p_role?:string|null};Returns:Json};
-      reauthorize_agent_scoped_writes: {Args:{p_owner:string;p_grant:string;p_expected:Json;p_code:Json};Returns:undefined};
-      exchange_agent_oauth_credential: {Args:{p_kind:string;p_id:string;p_client:string;p_resource:string;p_proof:string|null;p_redirect:string|null;p_requested_scope:string|null;p_access:Json;p_refresh:Json|null};Returns:Json};
-
       accept_agentic_chat_workflow_context_v1: {
         Args: {
           p_context_bytes: number
@@ -23048,6 +24596,23 @@ export type Database = {
       }
       admit_question_tree_proposals: {
         Args: { p_proposal_ids: string[]; p_run_id: string }
+        Returns: Json
+      }
+      agent_edit_snapshot: {
+        Args: { p_id: string; p_kind: string }
+        Returns: Json
+      }
+      agent_permission_credential: {
+        Args: { p_ref: Json; p_write?: boolean }
+        Returns: Json
+      }
+      agent_permission_tree_metadata: {
+        Args: {
+          p_description: string
+          p_id: string
+          p_nodes: Json
+          p_title: string
+        }
         Returns: Json
       }
       agentic_chat_canonical_json_v1: {
@@ -23293,6 +24858,10 @@ export type Database = {
         Args: { p_plan_version: string; p_turn_run_id: string }
         Returns: boolean
       }
+      apply_agent_permission_edit: {
+        Args: { p_decision: string; p_digest: string; p_id: string }
+        Returns: Json
+      }
       apply_agentic_chat_research_capture: {
         Args: {
           p_canonical_argument_hash: string
@@ -23315,6 +24884,16 @@ export type Database = {
           p_inserts: Json
           p_project_id: string
           p_updates: Json
+        }
+        Returns: Json
+      }
+      apply_scoped_agent_edit: {
+        Args: {
+          p_before: Json
+          p_key: string
+          p_mutation: Json
+          p_ref: Json
+          p_submission: Json
         }
         Returns: Json
       }
@@ -23898,6 +25477,10 @@ export type Database = {
         Args: { p_batch_size?: number }
         Returns: Json
       }
+      cleanup_privacy_project_fold_manifests: {
+        Args: { p_batch_size?: number }
+        Returns: Json
+      }
       cleanup_privacy_public_page_views: {
         Args: { p_batch_size?: number }
         Returns: Json
@@ -24079,12 +25662,28 @@ export type Database = {
         Args: { p_surface: string; p_token_hash: string; p_user_id: string }
         Returns: boolean
       }
+      control_agent_permissions: {
+        Args: { p_action: string; p_caller: string; p_grant?: string }
+        Returns: undefined
+      }
       control_email_relevance_scan_run: {
         Args: { p_action: string; p_run_id: string; p_user_id: string }
         Returns: string
       }
       control_question_tree_run: {
         Args: { p_action: string; p_run_id: string }
+        Returns: Json
+      }
+      create_agent_permission_request: {
+        Args: {
+          p_before: Json
+          p_direct?: boolean
+          p_key: string
+          p_mutation: Json
+          p_reason?: string
+          p_ref: Json
+          p_submission: Json
+        }
         Returns: Json
       }
       create_agent_run_with_job: {
@@ -24397,6 +25996,10 @@ export type Database = {
         Args: { p_trigger: Json }
         Returns: boolean
       }
+      decide_agent_permission_request: {
+        Args: { p_decision: string; p_digest: string; p_id: string }
+        Returns: Json
+      }
       decline_project_invite: {
         Args: { p_invite_id: string }
         Returns: {
@@ -24643,6 +26246,20 @@ export type Database = {
           trigger_reason: string
           user_id: string
         }[]
+      }
+      exchange_agent_oauth_credential: {
+        Args: {
+          p_access: Json
+          p_client: string
+          p_id: string
+          p_kind: string
+          p_proof: string
+          p_redirect: string
+          p_refresh: Json
+          p_requested_scope: string
+          p_resource: string
+        }
+        Returns: Json
       }
       exit_email_from_email_sequence: {
         Args: { p_email: string; p_reason?: string; p_sequence_key: string }
@@ -25298,6 +26915,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: string
       }
+      get_project_route_redirect: {
+        Args: { p_actor_id?: string; p_project_id: string }
+        Returns: Json
+      }
       get_project_skeleton: {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
@@ -25747,6 +27368,10 @@ export type Database = {
         Returns: Json
       }
       lock_account_for_deletion: { Args: { p_user_id: string }; Returns: Json }
+      lock_agent_permission_authority: {
+        Args: { p_caller: string; p_grant: string; p_project: string }
+        Returns: string
+      }
       log_client_error: { Args: { p_entry: Json }; Returns: string }
       log_notification_event: {
         Args: {
@@ -25777,6 +27402,14 @@ export type Database = {
           p_project_id: string
         }
         Returns: string
+      }
+      lookup_agent_permission_request: {
+        Args: { p_key: string; p_ref: Json; p_submission: Json }
+        Returns: Json
+      }
+      maintain_agent_permission_work: {
+        Args: { p_batch_size?: number; p_request?: string }
+        Returns: number
       }
       mark_calendar_connection_reconnect_required: {
         Args: { p_connection_id: string; p_user_id: string }
@@ -25880,6 +27513,20 @@ export type Database = {
         }
         Returns: Json
       }
+      onto_document_table_apply: {
+        Args: {
+          p_actor_id?: string
+          p_document_id: string
+          p_expected_revision?: number
+          p_ops?: Json
+          p_table?: Json
+        }
+        Returns: Json
+      }
+      onto_document_table_render_markdown: {
+        Args: { p_document_id: string; p_table: Json }
+        Returns: string
+      }
       onto_edge_link_atomic: {
         Args: {
           p_dst_id: string
@@ -25957,8 +27604,40 @@ export type Database = {
         Args: { p_actor_id?: string; p_project_id: string }
         Returns: Json
       }
+      onto_project_fold_apply: {
+        Args: {
+          p_confirmation_token: string
+          p_destination_project_id: string
+          p_fold_id: string
+          p_member_additions?: string[]
+          p_source_project_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      onto_project_fold_preview: {
+        Args: {
+          p_destination_project_id: string
+          p_member_additions?: string[]
+          p_source_project_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       onto_project_set_parent_atomic: {
         Args: { p_parent_project_id: string; p_project_id: string }
+        Returns: Json
+      }
+      onto_project_unfold_apply: {
+        Args: {
+          p_confirmation_token: string
+          p_fold_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      onto_project_unfold_preview: {
+        Args: { p_fold_id: string; p_user_id: string }
         Returns: Json
       }
       onto_relationship_entity_in_project: {
@@ -26007,6 +27686,7 @@ export type Database = {
           type_key: string
         }[]
       }
+      onto_table_cell_text: { Args: { p_value: Json }; Returns: string }
       onto_task_create_atomic: {
         Args: {
           p_assigned_by_actor_id?: string
@@ -26455,6 +28135,10 @@ export type Database = {
         }
         Returns: Json
       }
+      purge_agent_permission_payloads: {
+        Args: { p_batch_size?: number }
+        Returns: number
+      }
       purge_expired_email_relevance_metadata: {
         Args: { p_limit?: number }
         Returns: {
@@ -26514,6 +28198,15 @@ export type Database = {
       reap_stranded_queued_agentic_chat_turns: {
         Args: { p_batch_size?: number; p_queued_before_seconds?: number }
         Returns: Json
+      }
+      reauthorize_agent_scoped_writes: {
+        Args: {
+          p_code: Json
+          p_expected: Json
+          p_grant: string
+          p_owner: string
+        }
+        Returns: undefined
       }
       reconcile_agent_run_cost: {
         Args: {
@@ -26843,6 +28536,7 @@ export type Database = {
         Args: { p_actor_id: string }
         Returns: string
       }
+      restore_onto_project: { Args: { p_project_id: string }; Returns: Json }
       resume_agentic_chat_workflow_projection_v1: {
         Args: {
           p_event_payload: Json
@@ -26927,10 +28621,6 @@ export type Database = {
               isSetofReturn: false
             }
           }
-      restore_onto_project: {
-        Args: { p_project_id: string }
-        Returns: Json
-      }
       resume_cycle_impl: {
         Args: {
           p_cycle_id: string
@@ -27224,6 +28914,10 @@ export type Database = {
           similarity: number
         }[]
       }
+      set_agent_permission_feature: {
+        Args: { p_enabled: boolean }
+        Returns: undefined
+      }
       set_calendar_source_preferences: {
         Args: {
           p_analysis_enabled?: boolean
@@ -27497,7 +29191,11 @@ export type Database = {
         Returns: undefined
       }
       transfer_onto_project_ownership: {
-        Args: { p_leave?: boolean; p_new_owner_member_id: string; p_project_id: string }
+        Args: {
+          p_leave?: boolean
+          p_new_owner_member_id: string
+          p_project_id: string
+        }
         Returns: Json
       }
       unaccent: { Args: { "": string }; Returns: string }
@@ -27576,6 +29274,15 @@ export type Database = {
       update_llm_usage_summary: {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined
+      }
+      update_project_membership_guarded: {
+        Args: {
+          p_action: string
+          p_member: string
+          p_project: string
+          p_role?: string
+        }
+        Returns: Json
       }
       update_sms_status_atomic: {
         Args: {
@@ -27896,7 +29603,6 @@ export type Database = {
         | "build_project_context_snapshot"
         | "project_activity_batch_flush"
         | "generate_project_icon"
-        | "pick_project_emoji"
         | "extract_onto_asset_ocr"
         | "generate_brief_audio"
         | "buildos_project_loop"
@@ -27912,8 +29618,10 @@ export type Database = {
         | "freshness_radar_scan"
         | "capture_chat_checkpoint"
         | "user_data_export"
+        | "pick_project_emoji"
         | "consolidation_run"
         | "table_ai_fill"
+        | "extract_task_entities"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -28172,7 +29880,6 @@ export const Constants = {
         "build_project_context_snapshot",
         "project_activity_batch_flush",
         "generate_project_icon",
-        "pick_project_emoji",
         "extract_onto_asset_ocr",
         "generate_brief_audio",
         "buildos_project_loop",
@@ -28188,8 +29895,10 @@ export const Constants = {
         "freshness_radar_scan",
         "capture_chat_checkpoint",
         "user_data_export",
+        "pick_project_emoji",
         "consolidation_run",
         "table_ai_fill",
+        "extract_task_entities",
       ],
       recurrence_end_reason: [
         "indefinite",

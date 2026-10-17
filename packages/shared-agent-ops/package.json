@@ -147,6 +147,21 @@
 			"import": "./dist/ontology/shared-document-edit-card.mjs",
 			"require": "./dist/ontology/shared-document-edit-card.js"
 		},
+		"./chat-cards/proposal-card": {
+			"types": "./dist/chat-cards/proposal-card.d.ts",
+			"import": "./dist/chat-cards/proposal-card.mjs",
+			"require": "./dist/chat-cards/proposal-card.js"
+		},
+		"./chat-cards/project-parent-card": {
+			"types": "./dist/chat-cards/project-parent-card.d.ts",
+			"import": "./dist/chat-cards/project-parent-card.mjs",
+			"require": "./dist/chat-cards/project-parent-card.js"
+		},
+		"./chat-cards/project-combine-card": {
+			"types": "./dist/chat-cards/project-combine-card.d.ts",
+			"import": "./dist/chat-cards/project-combine-card.mjs",
+			"require": "./dist/chat-cards/project-combine-card.js"
+		},
 		"./ops/update-value-validation": {
 			"types": "./dist/ops/update-value-validation.d.ts",
 			"import": "./dist/ops/update-value-validation.mjs",

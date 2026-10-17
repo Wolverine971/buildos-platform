@@ -18,6 +18,7 @@ import {
 	type ToolExecutionContext
 } from './op-execution-gateway.core';
 import { normalizeAndValidateGatewayWriteArgs } from './op-execution-gateway.validation';
+import { explainMergedProjectRefusal } from './op-execution-gateway.access';
 
 type GatewaySupabaseClient = SupabaseClient<Database>;
 
@@ -122,7 +123,8 @@ export async function runGatewayReadOp(params: {
 		const result = await handler(context, args);
 		return { ok: true, data: result };
 	} catch (error) {
-		const normalized = normalizeGatewayError(error);
+		// A read aimed at a combined project says where it went (tasker 122).
+		const normalized = await explainMergedProjectRefusal(context, normalizeGatewayError(error));
 		return {
 			ok: false,
 			error: {
@@ -215,7 +217,8 @@ export async function runGatewayWriteOp(params: {
 			entityTitle: meta.entityTitle ?? null
 		};
 	} catch (error) {
-		const normalized = normalizeGatewayError(error);
+		// A write aimed at a combined project is refused, pointing at the destination.
+		const normalized = await explainMergedProjectRefusal(context, normalizeGatewayError(error));
 		return {
 			ok: false,
 			error: {

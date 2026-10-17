@@ -9,6 +9,7 @@
 // archived project (no card) still opens its item, without the list.
 import { error, redirect } from '@sveltejs/kit';
 import type { DesktopCard } from '$lib/components/projects/desktop/desktop-moves';
+import { readMergedProjectDestination, redirectIfMerged } from './merged-project-redirect';
 
 export type ProjectItemKind = 'document' | 'task';
 
@@ -52,13 +53,16 @@ export async function loadProjectItemPage({
 	}
 	const loginRedirect = `/auth/login?redirect=${encodeURIComponent(`${url.pathname}${url.search}`)}`;
 
-	const [cardResponse, itemResponse] = await Promise.all([
+	const [cardResponse, itemResponse, mergedInto] = await Promise.all([
 		fetch(`/api/onto/projects/${projectId}/card`),
 		// A task's read also lists its docs, so the reader opens with them.
 		fetch(
 			`/api/onto/${word.plural}/${itemId}/full?include_linked=false${kind === 'task' ? '&include_task_documents=true' : ''}`
-		)
+		),
+		// A combined project forwards to its destination; items keep their ids there.
+		readMergedProjectDestination(locals.supabase, projectId)
 	]);
+	redirectIfMerged(mergedInto, url, projectId);
 
 	// The item endpoint checks access to its current project. Resolve a moved doc
 	// before the former project's missing/access state.

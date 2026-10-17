@@ -7,6 +7,7 @@ import {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_SECTION_ORDER
 } from './index';
+import { PROJECT_STRUCTURE_CAPABILITY_LINE } from './build-lite-prompt';
 
 afterEach(() => {
 	vi.unstubAllEnvs();
@@ -2210,6 +2211,108 @@ describe('audit 2026-09-02 context rendering', () => {
 		expect(section?.content.match(/project_id: project-1/g)).toHaveLength(1);
 		expect(section?.content).not.toContain('More projects exist than fit in the seed snapshot');
 		expect(section?.content).not.toContain('Actionable loaded context index');
+	});
+
+	// Tasker 122 (2026-10-17): global chat told the owner twice that projects
+	// can't nest, because nothing it saw showed a parent. A global worker turn
+	// now labels hubs and sub-projects from the index and carries the static
+	// project-structure line. The loader records a parent only when the viewer
+	// can open it, and the prompt also ignores a parent id outside the index.
+	it('labels hubs and sub-projects on a global turn and states project structure', () => {
+		const rollup = { open: 1, overdue: 0, in_progress: 0, blocked: 0, truncated: false };
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			now: '2026-04-15T12:00:00Z',
+			tools: [],
+			scaffold: { dynamicSkillTools: false },
+			data: {
+				projects: [
+					{
+						project: {
+							id: 'hub',
+							name: 'Wayne Strategies',
+							state_key: 'active',
+							next_step_short: null,
+							updated_at: '2026-04-14T14:00:00Z'
+						},
+						goals: [],
+						milestones: [],
+						plans: [],
+						task_rollup: rollup
+					}
+				],
+				project_index: [
+					{
+						id: 'hub',
+						name: 'Wayne Strategies',
+						state_key: 'active',
+						task_rollup: rollup
+					},
+					{
+						id: 'cadre',
+						name: 'Cadre',
+						state_key: 'active',
+						task_rollup: rollup,
+						parent_project_id: 'hub'
+					},
+					{
+						id: 'redline',
+						name: 'Redline',
+						state_key: 'active',
+						task_rollup: rollup,
+						parent_project_id: 'hub'
+					},
+					{
+						id: 'solo',
+						name: 'Solo',
+						state_key: 'active',
+						task_rollup: rollup,
+						parent_project_id: 'not-in-index'
+					}
+				],
+				project_intelligence: GLOBAL_PI,
+				context_meta: {
+					generated_at: '2026-04-15T12:00:00Z',
+					source: 'rpc',
+					project_count: 4,
+					active_project_count: 4,
+					projects_returned: 1,
+					project_limit: 8,
+					includes_doc_structure: false,
+					entity_limits_per_project: { goals: 2, milestones: 2, plans: 2 }
+				}
+			}
+		});
+		const section = envelope.sections.find((item) => item.id === 'location_loaded_context');
+		expect(section?.content).toContain(
+			'Wayne Strategies (project_id: hub) · includes 2: active;'
+		);
+		expect(section?.content).toContain(
+			'Cadre (project_id: cadre) · part of Wayne Strategies: active;'
+		);
+		expect(section?.content).toContain(
+			'Redline (project_id: redline) · part of Wayne Strategies: active;'
+		);
+		expect(section?.content).toContain('Solo (project_id: solo): active;');
+		expect(section?.content).not.toContain('not-in-index');
+
+		expect(envelope.systemPrompt).toContain(PROJECT_STRUCTURE_CAPABILITY_LINE);
+		const strategy = envelope.sections.find((item) => item.id === 'operating_strategy');
+		expect(strategy?.content).toContain('one level deep');
+		expect(strategy?.content).toContain(
+			"say chat can't do it yet, never that the product can't"
+		);
+	});
+
+	it('states project structure on the web lane too', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			tools: []
+		});
+		expect(envelope.systemPrompt).toContain(PROJECT_STRUCTURE_CAPABILITY_LINE);
 	});
 
 	it('keeps a daily-brief turn oriented without a dedicated Daily Brief section', () => {

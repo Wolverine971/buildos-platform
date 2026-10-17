@@ -1,4 +1,10 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.ts
+import {
+	buildProjectHierarchyIndexV1,
+	PROJECT_HIERARCHY_SUB_PROJECT_LIMIT,
+	projectHierarchyFieldsV1,
+	type ProjectHierarchyIndexV1
+} from '@buildos/shared-types';
 import type { OntologyProjectSummary } from '../ontology/ontology-projects.service';
 import { logUpdateAsync } from '../ops/async-activity-logger';
 import { TYPE_KEY_PATTERNS } from '../ontology/onto';
@@ -34,10 +40,15 @@ import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
 import { loadProjectStartHereExcerpt } from '../ontology/start-here.service';
 
-function serializeProjectSummary(project: OntologyProjectSummary) {
+function serializeProjectSummary(
+	project: OntologyProjectSummary,
+	hierarchy: ProjectHierarchyIndexV1 | null = null,
+	subProjectLimit = 0
+) {
 	return {
 		id: project.id,
 		name: project.name,
+		...projectHierarchyFieldsV1(hierarchy, project.id, { subProjectLimit }),
 		description: project.description,
 		type_key: project.type_key,
 		state_key: project.state_key,
@@ -49,6 +60,40 @@ function serializeProjectSummary(project: OntologyProjectSummary) {
 		access_role: project.access_role,
 		access_level: project.access_level
 	};
+}
+
+/**
+ * Parent / sub-projects for connector reads (tasker 122: ChatGPT, Codex and
+ * Claude connectors hid the parent too, and a connector agent created a twin
+ * of a project that already existed). The visible set is the connector's
+ * granted projects, so a parent or child outside the grant is never named or
+ * counted, the same rule as connector_scope. One ids-only read; any failure
+ * returns null and the payload is unchanged.
+ */
+async function loadConnectorProjectHierarchy(
+	context: ToolExecutionContext,
+	visible: VisibleProjectContext
+): Promise<ProjectHierarchyIndexV1 | null> {
+	const granted = Array.from(visible.projectMap.values());
+	if (granted.length === 0) return null;
+	try {
+		let query = (context.admin as any)
+			.from('onto_projects')
+			.select('id, parent_project_id')
+			.in(
+				'id',
+				granted.map((project) => project.id)
+			)
+			.is('deleted_at', null);
+		if (context.signal && typeof query.abortSignal === 'function') {
+			query = query.abortSignal(context.signal);
+		}
+		const { data, error } = await query;
+		if (error || !Array.isArray(data)) return null;
+		return buildProjectHierarchyIndexV1(data, granted);
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -77,9 +122,10 @@ export async function listProjects(context: ToolExecutionContext, args: Record<s
 	const filteredProjects = visible.projects
 		.filter((project) => (requestedState ? project.state_key === requestedState : true))
 		.filter((project) => (requestedType ? project.type_key === requestedType : true));
-	const projects = filteredProjects
-		.slice(offset, offset + limit)
-		.map((project) => serializeProjectSummary(project));
+	const page = filteredProjects.slice(offset, offset + limit);
+	const hierarchy =
+		page.length > 0 ? await loadConnectorProjectHierarchy(context, visible) : null;
+	const projects = page.map((project) => serializeProjectSummary(project, hierarchy));
 
 	return {
 		projects,
@@ -108,7 +154,10 @@ export async function searchProjects(context: ToolExecutionContext, args: Record
 		})
 		.filter((project) => (requestedState ? project.state_key === requestedState : true))
 		.filter((project) => (requestedType ? project.type_key === requestedType : true));
-	const results = filteredProjects.slice(offset, offset + limit).map((project) => ({
+	const page = filteredProjects.slice(offset, offset + limit);
+	const hierarchy =
+		page.length > 0 ? await loadConnectorProjectHierarchy(context, visible) : null;
+	const results = page.map((project) => ({
 		type: 'project',
 		id: project.id,
 		project_id: project.id,
@@ -116,6 +165,7 @@ export async function searchProjects(context: ToolExecutionContext, args: Record
 		title: project.name,
 		snippet: project.description ?? null,
 		name: project.name,
+		...projectHierarchyFieldsV1(hierarchy, project.id),
 		description: project.description,
 		type_key: project.type_key,
 		state_key: project.state_key,
@@ -136,11 +186,16 @@ export async function getProject(context: ToolExecutionContext, args: Record<str
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
 
-	const { data, error } = await context.admin.rpc('load_fastchat_context', {
-		p_context_type: 'project',
-		p_user_id: context.userId,
-		p_project_id: project.id
-	});
+	// The snapshot RPC's project columns carry no parent, so the hierarchy is a
+	// separate small read, side by side with it.
+	const [{ data, error }, hierarchy] = await Promise.all([
+		context.admin.rpc('load_fastchat_context', {
+			p_context_type: 'project',
+			p_user_id: context.userId,
+			p_project_id: project.id
+		}),
+		loadConnectorProjectHierarchy(context, visible)
+	]);
 
 	if (error) {
 		throw new ExternalToolGatewayError(
@@ -157,7 +212,7 @@ export async function getProject(context: ToolExecutionContext, args: Record<str
 	});
 
 	return {
-		project: serializeProjectSummary(project),
+		project: serializeProjectSummary(project, hierarchy, PROJECT_HIERARCHY_SUB_PROJECT_LIMIT),
 		start_here: startHere,
 		snapshot: data ?? null
 	};

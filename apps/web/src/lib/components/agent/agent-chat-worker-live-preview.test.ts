@@ -107,9 +107,10 @@ function preview(
 }
 
 /** Renders exactly what the modal would: durable text followed by the preview. */
-function harness() {
+function harness(options: { stopRequested?: () => boolean } = {}) {
 	let durable = '';
 	let previewText: string | null = null;
+	let stopped = false;
 	const port: AgentChatWorkerUiAdapterPort = {
 		beginGeneration: vi.fn(),
 		replaceAssistantSnapshot: vi.fn(({ text }) => {
@@ -124,6 +125,12 @@ function harness() {
 		setAssistantPreview: vi.fn(({ text }) => {
 			previewText = text;
 		}),
+		// Like the modal: the frozen text joins the bubble's own content.
+		freezeAssistantPreview: vi.fn(({ text }) => {
+			durable += text;
+			stopped = true;
+		}),
+		isStopRequested: vi.fn(() => options.stopRequested?.() ?? false),
 		onError: vi.fn()
 	};
 	const adapter = new AgentChatWorkerUiAdapter({ handle, port, onTerminal: vi.fn() });
@@ -132,7 +139,8 @@ function harness() {
 		adapter,
 		port,
 		screen: () => durable + (previewText ?? ''),
-		preview: () => previewText
+		preview: () => previewText,
+		stopped: () => stopped
 	};
 }
 
@@ -182,9 +190,7 @@ describe('AgentChatWorkerUiAdapter live preview', () => {
 		h.adapter.applyPreview(preview({ durable_sequence_floor: 5, text: 'You have 3 tasks.' }));
 		expect(h.screen()).toBe('Let me check.\n\nYou have 3 tasks.');
 
-		h.adapter.applyLiveEvent(
-			event(6, 'text_delta', { text_delta: '\n\nYou have 3 tasks.' })
-		);
+		h.adapter.applyLiveEvent(event(6, 'text_delta', { text_delta: '\n\nYou have 3 tasks.' }));
 		expect(h.screen()).toBe('Let me check.\n\nYou have 3 tasks.');
 		expect(h.preview()).toBeNull();
 	});
@@ -248,5 +254,91 @@ describe('AgentChatWorkerUiAdapter live preview', () => {
 			})
 		);
 		expect(h.preview()).toBeNull();
+	});
+
+	describe('after Stop', () => {
+		it('keeps the text the user was reading when the aborted pass retracts it', () => {
+			let stopRequested = false;
+			const h = harness({ stopRequested: () => stopRequested });
+			h.adapter.applyPreview(preview({ seq: 1, pass_key: 'a', text: 'Halfway through' }));
+			stopRequested = true;
+
+			h.adapter.applyPreview(preview({ seq: 2, pass_key: 'a', state: 'discard', text: '' }));
+			expect(h.screen()).toBe('Halfway through');
+
+			h.adapter.applyLiveEvent(
+				event(4, 'done', { status: 'cancelled', finished_reason: 'cancelled' })
+			);
+			expect(h.port.freezeAssistantPreview).toHaveBeenCalledExactlyOnceWith({
+				handle,
+				executionGeneration: 1,
+				text: 'Halfway through'
+			});
+			// Frozen into the bubble, then the preview itself ends: nothing vanishes.
+			expect(h.preview()).toBeNull();
+			expect(h.screen()).toBe('Halfway through');
+			expect(h.stopped()).toBe(true);
+			expect(
+				vi.mocked(h.port.freezeAssistantPreview!).mock.invocationCallOrder[0]
+			).toBeLessThan(vi.mocked(h.port.finishTurn).mock.invocationCallOrder[0]!);
+		});
+
+		it('freezes only the not-yet-durable remainder after earlier text', () => {
+			const h = harness({ stopRequested: () => true });
+			h.adapter.applyLiveEvent(event(4, 'text_delta', { text_delta: 'Let me check.' }));
+			h.adapter.applyLiveEvent(event(5, 'tool_call', { tool_name: 'list_onto_tasks' }));
+			h.adapter.applyPreview(preview({ durable_sequence_floor: 5, text: 'You have 3' }));
+
+			h.adapter.applyReconciliation(
+				receipt({
+					requested_execution_generation: 1,
+					generation_changed: false,
+					status: 'cancelled',
+					text: 'Let me check.',
+					snapshot_sequence: 6,
+					durable_through_sequence: 6,
+					projection_durable_sequence: 3,
+					response_watermark: 6,
+					durable_events: [event(6, 'done', { status: 'cancelled' })],
+					terminal_event_id: createAgentStreamEventIdV1(TURN_ID, 1, 6),
+					finished_reason: 'cancelled'
+				})
+			);
+
+			expect(h.screen()).toBe('Let me check.\n\nYou have 3');
+			expect(h.port.finishTurn).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'cancelled' })
+			);
+		});
+
+		it('lets newer durable text replace a held preview instead of duplicating it', () => {
+			const h = harness({ stopRequested: () => true });
+			h.adapter.applyPreview(preview({ seq: 1, pass_key: 'a', text: 'Here is' }));
+			h.adapter.applyLiveEvent(event(4, 'text_delta', { text_delta: 'Here is it all.' }));
+			h.adapter.applyLiveEvent(
+				event(5, 'done', { status: 'cancelled', finished_reason: 'cancelled' })
+			);
+			expect(h.port.freezeAssistantPreview).not.toHaveBeenCalled();
+			expect(h.screen()).toBe('Here is it all.');
+		});
+
+		it('still retracts a discarded preview when nobody pressed Stop', () => {
+			const h = harness({ stopRequested: () => false });
+			h.adapter.applyPreview(preview({ seq: 1, pass_key: 'a', text: 'Retrying' }));
+			h.adapter.applyPreview(preview({ seq: 2, pass_key: 'a', state: 'discard', text: '' }));
+			expect(h.preview()).toBeNull();
+			h.adapter.applyLiveEvent(
+				event(4, 'done', { status: 'cancelled', finished_reason: 'cancelled' })
+			);
+			expect(h.port.freezeAssistantPreview).not.toHaveBeenCalled();
+		});
+
+		it('never freezes a preview into a completed or failed turn', () => {
+			const h = harness({ stopRequested: () => true });
+			h.adapter.applyPreview(preview({ text: 'Almost done' }));
+			h.adapter.applyLiveEvent(event(4, 'done', { status: 'failed' }));
+			expect(h.port.freezeAssistantPreview).not.toHaveBeenCalled();
+			expect(h.preview()).toBeNull();
+		});
 	});
 });

@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-transport-client.test.ts
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	captureEvent: vi.fn()
@@ -8,7 +8,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock('$lib/services/posthog', () => ({
 	captureEvent: mocks.captureEvent
 }));
-import { requestAgenticChatWorkerAdmission } from './worker-transport-client';
+import {
+	AgenticChatAdmissionTimeoutError,
+	requestAgenticChatWorkerAdmission,
+	type AgenticChatWorkerCommand
+} from './worker-transport-client';
 import { workerAdmissionRequestSchema } from '../../../routes/api/agent/v2/turns/worker-admission-schema';
 
 const SESSION_ID = 'd2000000-0000-4000-8000-000000000001';
@@ -300,6 +304,7 @@ describe('Agentic Chat worker transport client', () => {
 				prepared_prompt_requested: true,
 				response_status: 202,
 				response_ok: true,
+				admission_attempt: 1,
 				context_type: 'project',
 				has_attachments: false
 			},
@@ -308,5 +313,201 @@ describe('Agentic Chat worker transport client', () => {
 		const properties = mocks.captureEvent.mock.calls[0]?.[1] ?? {};
 		expect(JSON.stringify(properties)).not.toContain('Sensitive prompt');
 		expect(JSON.stringify(properties)).not.toContain(SESSION_ID);
+	});
+});
+
+describe('Agentic Chat worker admission retry', () => {
+	const command: AgenticChatWorkerCommand = {
+		clientTurnId: request.clientTurnId,
+		streamRunId: request.streamRunId,
+		sessionId: null,
+		context: request.context as AgenticChatWorkerCommand['context'],
+		message: 'First message in a new chat',
+		attachments: [],
+		projectFocus: null,
+		voiceNoteGroupId: null,
+		preparedPromptKey: null
+	};
+	const duplicate = {
+		success: true,
+		data: {
+			outcome: 'matching_duplicate',
+			status: 'queued',
+			handle: { turnRunId: 'd4000000-0000-4000-8000-000000000001' }
+		}
+	};
+
+	beforeEach(() => {
+		mocks.captureEvent.mockReset();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	function errorResponse(status: number, code?: string): Response {
+		return code
+			? Response.json({ success: false, error: 'Unavailable', code }, { status })
+			: new Response('<html>Bad gateway</html>', { status });
+	}
+
+	it('re-POSTs the identical body after a lost response and adopts the duplicate', async () => {
+		const fetchImpl = vi
+			.fn<typeof fetch>()
+			.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+			.mockResolvedValueOnce(Response.json(duplicate, { status: 200 }));
+
+		const result = await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command,
+			retryDelayMs: 1
+		});
+
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		const [first, second] = fetchImpl.mock.calls.map((call) => call[1]?.body);
+		expect(second).toBe(first);
+		expect(JSON.parse(String(second))).toMatchObject({
+			clientTurnId: request.clientTurnId,
+			streamRunId: request.streamRunId
+		});
+		expect(result.response.status).toBe(200);
+		expect(result.payload).toEqual(duplicate);
+	});
+
+	it('times out a silent attempt after 30 s, then retries once', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi
+			.fn<typeof fetch>()
+			.mockImplementationOnce(() => new Promise<Response>(() => {}))
+			.mockResolvedValueOnce(Response.json(duplicate, { status: 200 }));
+
+		const pending = requestAgenticChatWorkerAdmission({ fetchImpl, command });
+		await vi.advanceTimersByTimeAsync(29_999);
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(false);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+		await vi.advanceTimersByTimeAsync(750);
+
+		await expect(pending).resolves.toMatchObject({ payload: duplicate });
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+	});
+
+	it('gives up after one retry and reports the timeout', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(() => {}));
+
+		const pending = requestAgenticChatWorkerAdmission({ fetchImpl, command });
+		const outcome = expect(pending).rejects.toBeInstanceOf(AgenticChatAdmissionTimeoutError);
+		await vi.advanceTimersByTimeAsync(30_000 + 750 + 30_000);
+		await outcome;
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+	});
+
+	it.each([
+		['the unknown-outcome code', () => errorResponse(503, 'WORKER_ADMISSION_UNAVAILABLE')],
+		['a bare 502', () => errorResponse(502)],
+		['a bare 503', () => errorResponse(503)],
+		['a bare 504', () => errorResponse(504)]
+	])('retries once on %s', async (_label, firstResponse) => {
+		const fetchImpl = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(firstResponse())
+			.mockResolvedValueOnce(Response.json(duplicate, { status: 200 }));
+
+		const result = await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command,
+			retryDelayMs: 1
+		});
+
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(result.payload).toEqual(duplicate);
+	});
+
+	it.each([
+		['a provable not-admitted 503', 503, 'WORKER_ADMISSION_NOT_ADMITTED'],
+		['a capacity 503', 503, 'WORKER_CAPACITY_EXCEEDED'],
+		['an idempotency conflict', 409, 'WORKER_IDEMPOTENCY_CONFLICT'],
+		['a rate limit', 429, 'AGENTIC_CHAT_RATE_LIMITED'],
+		['an invalid command', 422, 'INVALID_WORKER_COMMAND'],
+		['a bare 500', 500, undefined]
+	])('never retries %s', async (_label, status, code) => {
+		const fetchImpl = vi.fn<typeof fetch>(async () => errorResponse(status, code));
+
+		const result = await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command,
+			retryDelayMs: 1
+		});
+
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(result.response.status).toBe(status);
+		expect(result.payload).toBeNull();
+	});
+
+	it('returns the second unknown outcome with its error body still readable', async () => {
+		const fetchImpl = vi.fn<typeof fetch>(async () =>
+			errorResponse(503, 'WORKER_ADMISSION_UNAVAILABLE')
+		);
+
+		const result = await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command,
+			retryDelayMs: 1
+		});
+
+		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		await expect(result.response.json()).resolves.toMatchObject({
+			code: 'WORKER_ADMISSION_UNAVAILABLE'
+		});
+		expect(mocks.captureEvent.mock.calls.map((call) => call[1].admission_attempt)).toEqual([
+			1, 2
+		]);
+	});
+
+	it('aborts the request and never retries when the user leaves mid-admission', async () => {
+		const controller = new AbortController();
+		const fetchImpl = vi.fn<typeof fetch>(
+			(_input, init) =>
+				new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener('abort', () =>
+						reject(new DOMException('Aborted', 'AbortError'))
+					);
+				})
+		);
+
+		const pending = requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command,
+			signal: controller.signal,
+			retryDelayMs: 1
+		});
+		controller.abort();
+
+		await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+		expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		expect(fetchImpl).toHaveBeenCalledOnce();
+	});
+
+	it('cancels a pending retry when the user leaves during the backoff', async () => {
+		vi.useFakeTimers();
+		const controller = new AbortController();
+		const fetchImpl = vi.fn<typeof fetch>(async () => {
+			throw new TypeError('Failed to fetch');
+		});
+
+		const pending = requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command,
+			signal: controller.signal
+		});
+		const outcome = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+		await vi.advanceTimersByTimeAsync(100);
+		controller.abort();
+		await outcome;
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(fetchImpl).toHaveBeenCalledOnce();
 	});
 });

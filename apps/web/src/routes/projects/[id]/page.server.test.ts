@@ -44,6 +44,8 @@ type HarnessOptions = {
 	access?: BundleAccess;
 	pathname?: string;
 	fullDataResponse?: Response;
+	/** get_project_route_redirect's answer (null: not merged). */
+	routeRedirect?: { data?: unknown; error?: unknown };
 };
 
 function buildDefaultAccess(userId: string | null | undefined): BundleAccess {
@@ -99,6 +101,12 @@ function createHarness(options: HarnessOptions = {}) {
 			return Promise.resolve({
 				data: options.fallbackData ?? null,
 				error: options.fallbackError ?? null
+			});
+		}
+		if (fn === 'get_project_route_redirect') {
+			return Promise.resolve({
+				data: options.routeRedirect?.data ?? null,
+				error: options.routeRedirect?.error ?? null
 			});
 		}
 		throw new Error(`Unexpected RPC requested: ${fn}`);
@@ -313,7 +321,37 @@ describe('projects/[id] +page.server load', () => {
 		expect(tryGetProjectFamilyMock).not.toHaveBeenCalled();
 		finishSession({ user: { id: 'user-1' } });
 		await pendingLoad;
-		expect(rpc).toHaveBeenCalledOnce();
+		expect(
+			rpc.mock.calls.filter(([fn]) => fn === 'get_project_skeleton_with_access_v2')
+		).toHaveLength(1);
+	});
+
+	it('forwards a combined project to its destination before any access answer', async () => {
+		const destination = '33333333-3333-4333-8333-333333333333';
+		const { event, rpc } = createHarness({
+			// People removed from the source before combining get "forbidden" here.
+			bundleData: { route_access_state: 'forbidden' },
+			pathname: `/projects/${PROJECT_ID}?tab=tasks`,
+			routeRedirect: { data: { status: 'merged', destination_project_id: destination } }
+		});
+
+		await expect(load(event)).rejects.toMatchObject({
+			status: 307,
+			location: `/projects/${destination}?tab=tasks`
+		});
+		expect(rpc).toHaveBeenCalledWith('get_project_route_redirect', {
+			p_project_id: PROJECT_ID
+		});
+	});
+
+	it('keeps loading the page when the forwarding check fails', async () => {
+		const { event } = createHarness({
+			routeRedirect: { error: { code: 'PGRST202', message: 'function not found' } }
+		});
+
+		const result = await loadProjectPage(event);
+		expect(result.skeleton).toBe(true);
+		expect(result.project.id).toBe(PROJECT_ID);
 	});
 
 	it('recovers a skeleton transport failure with a single full-data fallback', async () => {

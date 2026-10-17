@@ -38,40 +38,6 @@ type ProjectTaskSearchRow = {
 	updated_at: string | null;
 };
 
-const TASK_BUCKET_SEARCH_TERMS = [
-	'backlog',
-	'backlogged',
-	'todo',
-	'to do',
-	'not started',
-	'scheduled',
-	'upcoming',
-	'planned',
-	'overdue',
-	'late',
-	'past due',
-	'in progress',
-	'working',
-	'doing',
-	'started',
-	'blocked',
-	'stuck',
-	'waiting',
-	'done',
-	'completed',
-	'complete',
-	'finished',
-	'closed',
-	'archived',
-	'archive'
-] as const;
-
-function hasTaskBucketSearchIntent(query: unknown): boolean {
-	if (typeof query !== 'string') return false;
-	const normalized = query.trim().toLocaleLowerCase();
-	return TASK_BUCKET_SEARCH_TERMS.some((term) => normalized.includes(term));
-}
-
 function isProjectTaskSearch(
 	body: SharedOntologySearchRequest
 ): body is SharedOntologySearchRequest & {
@@ -84,7 +50,7 @@ function isProjectTaskSearch(
 			body.types.map((type) => (typeof type === 'string' ? type.trim() : '')).filter(Boolean)
 		)
 	);
-	return types.length === 1 && types[0] === 'task' && !hasTaskBucketSearchIntent(body.query);
+	return types.length === 1 && types[0] === 'task';
 }
 
 function taskSearchScore(row: ProjectTaskSearchRow, query: string): number {

@@ -19,6 +19,16 @@ export type AgenticChatWorkerReconciliationRequest = Parameters<
 	AgenticChatWorkerTurnObserver['requestReconciliation']
 >[0];
 
+export type AgenticChatWorkerReconciliationLoss = {
+	/**
+	 * True when this browser can never reconcile the turn (HTTP 404/409): the
+	 * coordinator has stopped following it. False after repeated failures of
+	 * any kind; reconciliation keeps retrying and a success restores it.
+	 */
+	permanent: boolean;
+	httpStatus: number | null;
+};
+
 export type AgenticChatWorkerApplicationObserver = {
 	applyLiveEvent(event: AgentStreamEventV1): void;
 	applyReconciliation(receipt: AgenticChatWorkerReconciledReceipt): void;
@@ -27,6 +37,10 @@ export type AgenticChatWorkerApplicationObserver = {
 	 * it never advances the durable cursor, buffers, or triggers reconciliation.
 	 */
 	applyPreview?(preview: AgenticChatLiveTextPreviewV1): void;
+	/** Reconciliation cannot follow this turn (see AgenticChatWorkerReconciliationLoss). */
+	reportReconciliationLost?(loss: AgenticChatWorkerReconciliationLoss): void;
+	/** A reconcile succeeded after a non-permanent loss was reported. */
+	reportReconciliationRestored?(): void;
 };
 
 export type AgenticChatWorkerRealtimeCoordinatorOptions = {
@@ -44,7 +58,16 @@ export type AgenticChatWorkerRealtimeCoordinatorOptions = {
 	/** Upper bound on consecutive deferrals: durable truth is re-read at least this often. */
 	maxLiveOnlyMs?: number;
 	retryMs?: number;
+	/** Consecutive failed reconciles before the turn's observer hears it is lost. */
+	maxConsecutiveFailures?: number;
+	/** Retry delay cap once a loss has been reported (the delay doubles up to it). */
+	maxRetryMs?: number;
 	requestTimeoutMs?: number;
+	/**
+	 * Refresh the auth session after a 401; resolves true when a fresh session
+	 * exists. Tried once per failure streak, then the request retries at once.
+	 */
+	refreshAuthSession?: () => Promise<boolean>;
 	random?: () => number;
 	now?: () => number;
 	onError?: (error: unknown) => void;
@@ -66,6 +89,9 @@ type CoordinatedTurn = {
 	throttlingQueuedRequest: boolean;
 	lastLiveEventAt: number | null;
 	lastReconciledAt: number | null;
+	consecutiveFailures: number;
+	authRefreshTried: boolean;
+	lossReported: boolean;
 	/**
 	 * The known generation whose generation_changed follow-up already skipped the
 	 * changed-state throttle. One skip per generation keeps a lagging receipt
@@ -75,6 +101,8 @@ type CoordinatedTurn = {
 };
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
+/** The turn is gone or not a worker turn for this user: retrying cannot help. */
+const PERMANENT_RECONCILE_STATUSES = new Set([404, 409]);
 
 export class AgenticChatReconciliationHttpError extends Error {
 	constructor(readonly status: number) {
@@ -105,7 +133,10 @@ export class AgenticChatWorkerRealtimeCoordinator {
 	readonly #liveHealthyWindowMs: number;
 	readonly #maxLiveOnlyMs: number;
 	readonly #retryMs: number;
+	readonly #maxConsecutiveFailures: number;
+	readonly #maxRetryMs: number;
 	readonly #requestTimeoutMs: number;
+	readonly #refreshAuthSession?: () => Promise<boolean>;
 	readonly #random: () => number;
 	readonly #now: () => number;
 	readonly #onError?: (error: unknown) => void;
@@ -131,10 +162,19 @@ export class AgenticChatWorkerRealtimeCoordinator {
 		);
 		this.#maxLiveOnlyMs = positiveSafeInteger(options.maxLiveOnlyMs ?? 30_000, 'maxLiveOnlyMs');
 		this.#retryMs = positiveSafeInteger(options.retryMs ?? 5_000, 'retryMs');
+		this.#maxConsecutiveFailures = positiveSafeInteger(
+			options.maxConsecutiveFailures ?? 5,
+			'maxConsecutiveFailures'
+		);
+		this.#maxRetryMs = Math.max(
+			this.#retryMs,
+			positiveSafeInteger(options.maxRetryMs ?? 60_000, 'maxRetryMs')
+		);
 		this.#requestTimeoutMs = positiveSafeInteger(
 			options.requestTimeoutMs ?? 15_000,
 			'requestTimeoutMs'
 		);
+		this.#refreshAuthSession = options.refreshAuthSession;
 		this.#random = options.random ?? Math.random;
 		this.#now = options.now ?? Date.now;
 		this.#onError = options.onError;
@@ -218,6 +258,9 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			throttlingQueuedRequest: false,
 			lastLiveEventAt: null,
 			lastReconciledAt: null,
+			consecutiveFailures: 0,
+			authRefreshTried: false,
+			lossReported: false,
 			generationBypassFrom: null
 		};
 		this.#turns.set(input.handle.turnRunId, state);
@@ -364,8 +407,9 @@ export class AgenticChatWorkerRealtimeCoordinator {
 				this.inbox.releaseReconciliationRequest(state.handle.turnRunId);
 				state.backingOff = true;
 				this.#reportError(new AgenticChatReconciliationProtocolError());
-				nextDelay = this.#retryMs;
+				nextDelay = this.#recordFailure(state);
 			} else {
+				this.#recordSuccess(state);
 				const reconciled = receipt as AgenticChatWorkerReconciledReceipt;
 				state.lastReconciledAt = this.#now();
 				const fingerprint = reconciliationFingerprint(reconciled);
@@ -384,7 +428,19 @@ export class AgenticChatWorkerRealtimeCoordinator {
 			this.inbox.releaseReconciliationRequest(state.handle.turnRunId);
 			state.backingOff = true;
 			this.#reportError(error);
-			nextDelay = this.#retryMs;
+			const httpStatus =
+				error instanceof AgenticChatReconciliationHttpError ? error.status : null;
+			if (httpStatus !== null && PERMANENT_RECONCILE_STATUSES.has(httpStatus)) {
+				this.#abandon(state, httpStatus);
+				return;
+			}
+			nextDelay = this.#recordFailure(state, httpStatus);
+			if (httpStatus === 401 && this.#refreshAuthSession && !state.authRefreshTried) {
+				state.authRefreshTried = true;
+				const refreshed = await this.#tryRefreshAuthSession();
+				if (!this.#isCurrent(state, epoch)) return;
+				if (refreshed) nextDelay = 0;
+			}
 		}
 
 		if (
@@ -453,6 +509,60 @@ export class AgenticChatWorkerRealtimeCoordinator {
 		} finally {
 			if (timeout !== null) clearTimeout(timeout);
 			if (abortListener) signal.removeEventListener('abort', abortListener);
+		}
+	}
+
+	/** Counts a failed reconcile and returns the delay before the next try. */
+	#recordFailure(state: CoordinatedTurn, httpStatus: number | null = null): number {
+		state.consecutiveFailures += 1;
+		const overLimit = state.consecutiveFailures - this.#maxConsecutiveFailures;
+		if (overLimit < 0) return this.#retryMs;
+		if (!state.lossReported) {
+			state.lossReported = true;
+			this.#notifyObserver(state, (observer) =>
+				observer.reportReconciliationLost?.({ permanent: false, httpStatus })
+			);
+		}
+		return Math.min(this.#retryMs * 2 ** (overLimit + 1), this.#maxRetryMs);
+	}
+
+	#recordSuccess(state: CoordinatedTurn): void {
+		state.consecutiveFailures = 0;
+		state.authRefreshTried = false;
+		if (!state.lossReported) return;
+		state.lossReported = false;
+		this.#notifyObserver(state, (observer) => observer.reportReconciliationRestored?.());
+	}
+
+	/** The server will never reconcile this turn here: stop and tell the observer. */
+	#abandon(state: CoordinatedTurn, httpStatus: number): void {
+		state.terminal = true;
+		state.queuedRequest = null;
+		state.backingOff = false;
+		this.#clearTimer(state);
+		this.inbox.releaseReconciliationRequest(state.handle.turnRunId);
+		this.#notifyObserver(state, (observer) =>
+			observer.reportReconciliationLost?.({ permanent: true, httpStatus })
+		);
+	}
+
+	async #tryRefreshAuthSession(): Promise<boolean> {
+		try {
+			return (await this.#refreshAuthSession?.()) === true;
+		} catch (error) {
+			this.#reportError(error);
+			return false;
+		}
+	}
+
+	#notifyObserver(
+		state: CoordinatedTurn,
+		notify: (observer: AgenticChatWorkerApplicationObserver) => void
+	): void {
+		try {
+			notify(state.observer);
+		} catch (error) {
+			this.#reportError(error);
 		}
 	}
 

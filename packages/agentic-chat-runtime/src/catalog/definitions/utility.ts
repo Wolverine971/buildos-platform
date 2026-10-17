@@ -13,7 +13,7 @@ export const UTILITY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'get_field_info',
 			description:
-				'Get authoritative entity field types, valid values, and descriptions. Use for questions about statuses, priorities, writable fields, or schemas.',
+				'Curated guide to commonly used entity fields: types, valid values, descriptions. For statuses, priorities, writable fields; not a full schema.',
 			parameters: {
 				type: 'object',
 				properties: {

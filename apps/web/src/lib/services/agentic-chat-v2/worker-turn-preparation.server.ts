@@ -280,6 +280,14 @@ type AgenticChatWorkerPreparationInput = {
 	userId: string;
 	command: AgenticChatWorkerCommandInput;
 	lease: AgenticChatWorkerLeaseAuthority;
+	/** Turn-run `source`; scripted harness traffic is tagged so metrics can exclude it. */
+	source?: 'live_ui' | 'harness';
+	/**
+	 * Prepared-lease race retry: hash the key's lineage exactly as any resend of
+	 * this clientTurnId will, but never adopt the prepared content. Nulling the key
+	 * instead made a later identical resend hash differently (idempotency conflict).
+	 */
+	preparedPromptLineageOnly?: boolean;
 	dependencies?: AgenticChatWorkerPreparationDependencies;
 };
 
@@ -324,6 +332,11 @@ async function prepareWorkerAdmission(
 	const contextType = input.command.context.type as ChatContextType;
 	const entityId = input.command.context.entityId;
 	const projectId = input.command.context.projectId;
+	// The request hash always takes lineage from the browser's key; only this key
+	// may adopt prepared content.
+	const preparedContentKey = input.preparedPromptLineageOnly
+		? null
+		: input.command.preparedPromptKey;
 	const normalizedMessage = normalizeAgenticChatText(input.command.message);
 	if (!normalizedMessage && input.command.attachments.length === 0) {
 		throw invalidCommand('Message or attachment is required');
@@ -350,7 +363,7 @@ async function prepareWorkerAdmission(
 	const preparedAdmissionLeaseStartedAt = Date.now();
 	const preparedAdmissionLease = await inspectPreparedAdmissionLease({
 		client: input.serviceClient,
-		key: input.command.preparedPromptKey,
+		key: preparedContentKey,
 		userId: input.userId,
 		sessionId: input.command.sessionId,
 		contextType,
@@ -484,7 +497,7 @@ async function prepareWorkerAdmission(
 	});
 	const mayAdoptPreparedPrompt =
 		sessionIntent.session !== null &&
-		(preparedAdmissionLease.hit || input.command.preparedPromptKey !== null);
+		(preparedAdmissionLease.hit || preparedContentKey !== null);
 	let admissionWindowReads = mayAdoptPreparedPrompt
 		? null
 		: startAdmissionWindowReads(sessionIntent.session);
@@ -569,7 +582,7 @@ async function prepareWorkerAdmission(
 				})
 			: await inspectPreparedPromptForWorkerAdmission({
 					supabase: input.serviceClient,
-					key: input.command.preparedPromptKey,
+					key: preparedContentKey,
 					userId: input.userId,
 					sessionId: sessionIntent.session.id,
 					cacheKey: turnPreparation.cacheKey,
@@ -970,7 +983,7 @@ async function prepareWorkerAdmission(
 			p_context_type: contextType,
 			p_entity_id: entityId,
 			p_project_id: projectId,
-			p_source: 'live_ui',
+			p_source: input.source ?? 'live_ui',
 			p_gateway_enabled: true,
 			p_request_message: storedUserMessageContent,
 			p_request_payload: requestPayload as Json,

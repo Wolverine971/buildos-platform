@@ -60,11 +60,11 @@ describe('Agentic Chat read-planning telemetry identity', () => {
 
 	it('keeps pagination projections distinct while grouping the same collection resource', () => {
 		const first = deriveAgenticChatReadPlanningIdentityV1({
-			toolName: 'list_project_tasks',
+			toolName: 'list_onto_tasks',
 			arguments: { project_id: 'project-1', cursor: 'page-1', limit: 25 }
 		});
 		const second = deriveAgenticChatReadPlanningIdentityV1({
-			toolName: 'list_project_tasks',
+			toolName: 'list_onto_tasks',
 			arguments: { project_id: 'project-1', cursor: 'page-2', limit: 25 }
 		});
 
@@ -98,5 +98,41 @@ describe('Agentic Chat read-planning telemetry identity', () => {
 				decidedBy: 'contract_reviewer'
 			})
 		).toEqual({ executionClass: 'review', exactReadKey: null, resourceKey: null });
+	});
+
+	it('classifies by the worker catalog: a rejected write or unknown tool is never an evidence read', () => {
+		const rejected = { executionClass: 'rejected', exactReadKey: null, resourceKey: null };
+		// A write proposal reaches a read step only after failing validation.
+		expect(
+			deriveAgenticChatReadPlanningIdentityV1({
+				toolName: 'update_onto_task',
+				arguments: { project_id: 'project-1', task_id: 'task-1', state_key: 'done' }
+			})
+		).toEqual(rejected);
+		expect(
+			deriveAgenticChatReadPlanningIdentityV1({
+				toolName: 'create_calendar_event',
+				arguments: { title: 'Launch review' }
+			})
+		).toEqual(rejected);
+		// The worker's read lane, not the shared op table, decides what runs as a read.
+		expect(
+			deriveAgenticChatReadPlanningIdentityV1({
+				toolName: 'request_email_account_connection',
+				arguments: {}
+			}).executionClass
+		).toBe('evidence_read');
+	});
+
+	it('marks any call that failed validation as rejected when the caller says so', () => {
+		for (const toolName of ['get_onto_task_details', 'update_task_status']) {
+			expect(
+				deriveAgenticChatReadPlanningIdentityV1({
+					toolName,
+					arguments: { project_id: 'project-1' },
+					rejectedBeforeExecution: true
+				})
+			).toEqual({ executionClass: 'rejected', exactReadKey: null, resourceKey: null });
+		}
 	});
 });

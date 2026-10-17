@@ -31,6 +31,9 @@ import type { AgenticChatCalendarReadPortV1, AgenticChatEmailReadPortV1 } from '
 import { pickStartHereDocument } from './start-here-selector';
 import { prepareAgenticChatSearchTerm } from './search-term';
 import { normalizeAgenticChatProjectStateV1 } from '../loop/project-semantics';
+import { projectHierarchyFieldsV1 } from '@buildos/shared-types';
+import { loadProjectFamilyReadFields, loadProjectHierarchyIndex } from './project-hierarchy-reads';
+import type { AgenticChatProposalCardContextV1 } from './proposal-reads';
 
 // ============================================
 // CONTEXT
@@ -75,6 +78,12 @@ export type AgenticChatSharedReadContextV1 = {
 	 * when the model gives no `looking_for`.
 	 */
 	focusProjectId?: string | null;
+	/**
+	 * The proposal-card rail (tasker 122): the card id this call is persisted
+	 * under, plus the duplicate-check starter. Only a host that renders and
+	 * resolves cards sets it; the propose_* tools throw without it.
+	 */
+	proposal?: AgenticChatProposalCardContextV1;
 };
 
 // ============================================
@@ -535,10 +544,14 @@ async function loadAccessibleProjectSummaries(
 	context: AgenticChatSharedReadContextV1
 ): Promise<any[]> {
 	const summaries = await context.access.resolveProjectSummaries();
+	// Tasker 122: `parent` / `sub_project_count`, under the accessible-set rule.
+	// Null on any failure, which leaves the summaries exactly as before.
+	const hierarchy = await loadProjectHierarchyIndex(context, summaries);
 	return summaries
 		.map((project: any) => ({
 			id: project.id,
 			name: project.name,
+			...projectHierarchyFieldsV1(hierarchy, project.id),
 			description: project.description,
 			type_key: project.type_key,
 			state_key: project.state_key,
@@ -583,7 +596,8 @@ async function loadCompactProjectDetails(
 		documentsResult,
 		milestonesResult,
 		risksResult,
-		contextDocResult
+		contextDocResult,
+		familyFields
 	] = await Promise.all([
 		supabase
 			.from('onto_projects')
@@ -673,7 +687,9 @@ async function loadCompactProjectDetails(
 			.eq('type_key', 'document.context.project')
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
-			.limit(20)
+			.limit(20),
+		// Tasker 122: parent and readable sub-projects; never fails the read.
+		loadProjectFamilyReadFields(context, projectId)
 	]);
 
 	throwFirstQueryError([
@@ -699,7 +715,7 @@ async function loadCompactProjectDetails(
 		: contextDocumentRaw;
 
 	return stripInternalPayloadFields({
-		project,
+		project: { ...project, ...familyFields },
 		counts: {
 			goals: getResultCount(goalsResult),
 			requirements: getResultCount(requirementsResult),
@@ -759,6 +775,8 @@ async function loadAgentDocumentDetails(
 			'id, project_id, title, description, type_key, state_key, content, props, children, created_at, updated_at, archived_at'
 		)
 		.eq('id', documentId)
+		// Fenced to the checked project: a move between the two reads finds nothing.
+		.eq('project_id', documentRef.project_id)
 		.is('deleted_at', null)
 		.maybeSingle();
 

@@ -268,6 +268,12 @@ export type GlobalProjectIndexEntry = {
 	next_step_short: string | null;
 	updated_at: string;
 	task_rollup?: ProjectTaskRollup | null;
+	/**
+	 * The project this one sits under (tasker 122). Set only when the parent is
+	 * itself in the index, i.e. the viewer can open it; hubs are derived from
+	 * the children that point at them.
+	 */
+	parent_project_id?: string | null;
 };
 
 export type LinkedEdge = {

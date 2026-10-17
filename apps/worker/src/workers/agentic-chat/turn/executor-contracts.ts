@@ -81,6 +81,12 @@ export type AgenticChatReadToolPortV1 = {
 		processingToken?: string;
 		/** Author of a control-tool decision; undefined for ordinary reads. */
 		decidedBy?: AgenticChatControlDecisionAuthorV1;
+		/**
+		 * The stable chat_tool_executions row id this call is persisted under
+		 * (`createStableAgenticChatToolExecutionIdV1`). A proposal card uses it
+		 * as its card id; tools that mint no card ignore it.
+		 */
+		toolExecutionId?: string;
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		signal: AbortSignal;
 		/**

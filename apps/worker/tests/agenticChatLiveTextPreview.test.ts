@@ -32,6 +32,7 @@ import {
 	AgenticChatPublisherOverloadError,
 	AgenticChatStreamPublisher,
 	type AgenticChatBroadcastMessageV1,
+	type AgenticChatBroadcastOutcomeV1,
 	type AgenticChatPersistencePortV1,
 	type AgenticChatPublisherTurnV1
 } from '../src/workers/agentic-chat/stream/stream-publisher';
@@ -195,7 +196,8 @@ describe('provider pass live text preview', () => {
 		expect(sentAt.length).toBeGreaterThanOrEqual(5);
 		expect(sentAt.length).toBeLessThanOrEqual(7);
 		const streamingGaps = sentAt.slice(1, -1).map((at, index) => at - sentAt[index]!);
-		for (const gap of streamingGaps) expect(gap).toBeGreaterThanOrEqual(LIVE_TEXT_PREVIEW_INTERVAL_MS);
+		for (const gap of streamingGaps)
+			expect(gap).toBeGreaterThanOrEqual(LIVE_TEXT_PREVIEW_INTERVAL_MS);
 	});
 
 	it('discards a retried attempt and previews the retry under a new pass key', async () => {
@@ -409,7 +411,14 @@ describe('provider pass live text preview', () => {
 			}
 		};
 		await expect(
-			drain(streamBufferedProviderPass(request(), { ...client, livePreview: port }, capacity, 2_000))
+			drain(
+				streamBufferedProviderPass(
+					request(),
+					{ ...client, livePreview: port },
+					capacity,
+					2_000
+				)
+			)
 		).resolves.toEqual([
 			{ type: 'text', content: 'Still delivered' },
 			{ type: 'done', finishedReason: 'stop' }
@@ -565,7 +574,9 @@ describe('turn provider with the live preview port', () => {
 	});
 });
 
-function publisherTurn(overrides: Partial<AgenticChatPublisherTurnV1> = {}): AgenticChatPublisherTurnV1 {
+function publisherTurn(
+	overrides: Partial<AgenticChatPublisherTurnV1> = {}
+): AgenticChatPublisherTurnV1 {
 	return {
 		turnRunId: 'turn-p',
 		queueJobId: 'job-p',
@@ -707,7 +718,7 @@ describe('publisher live preview target', () => {
 describe('live text preview broadcaster', () => {
 	function broadcaster(
 		target: ReturnType<AgenticChatStreamPublisher['getLiveTextPreviewTarget']>,
-		publish: (message: AgenticChatBroadcastMessageV1) => Promise<'sent' | 'failed'>,
+		publish: (message: AgenticChatBroadcastMessageV1) => Promise<AgenticChatBroadcastOutcomeV1>,
 		onFirstFailure = vi.fn()
 	) {
 		return {
@@ -804,5 +815,27 @@ describe('live text preview broadcaster', () => {
 		}).not.toThrow();
 		await vi.waitFor(() => expect(instance.getStats().failed).toBe(3));
 		expect(onFirstFailure).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports the first failure of each turn generation and counts transport skips apart', async () => {
+		const results: Array<'failed' | 'skipped'> = ['skipped', 'failed', 'failed', 'failed'];
+		const { instance, onFirstFailure } = broadcaster(
+			{ topic: 't', sessionId: 's', executionGeneration: 2, durableSequenceFloor: 0 },
+			async () => results.shift() ?? 'failed'
+		);
+
+		instance.publish(update);
+		instance.publish(update);
+		instance.publish(update);
+		instance.publish({ ...update, turnRunId: 'turn-other' });
+		await vi.waitFor(() =>
+			expect(instance.getStats()).toEqual({ sent: 0, failed: 3, skipped: 1 })
+		);
+
+		expect(onFirstFailure).toHaveBeenCalledTimes(2);
+		expect(onFirstFailure.mock.calls.map(([, turn]) => turn)).toEqual([
+			{ turnRunId: 'turn-b' },
+			{ turnRunId: 'turn-other' }
+		]);
 	});
 });

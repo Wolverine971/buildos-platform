@@ -71,6 +71,10 @@ export function buildSemanticTurnDispositionGateRequest(
 				// reviewer-register guidance stays in reviewer prompts only.
 				...ACTOR_COMMISSION_GUIDANCE,
 				'A proposal or request for approval is not read-only when the user already commissioned the action.',
+				// Tasker 122: nesting and combining projects have no write tool. The card
+				// the propose_* tool returns is the only path, and the user's click on it
+				// is the consent, so a contract for that change could never execute.
+				'A propose_* card tool, when available, is the only way to make the change it proposes; calling it makes the turn read-only. Never declare a contract for that change.',
 				'Describe semantic outcomes and real cardinality, not implementation steps or tool names. Declare one outcome per distinct change: targets that receive different values belong in separate outcomes.'
 			].join(' ')
 		),

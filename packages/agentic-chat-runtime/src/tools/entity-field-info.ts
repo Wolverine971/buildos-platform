@@ -2,8 +2,12 @@
 /**
  * Entity Field Metadata
  *
- * Curated field information for entities, providing the LLM with authoritative
- * information about field types, valid values, and descriptions.
+ * A curated guide to commonly used entity fields: types, valid values, and
+ * descriptions. It is NOT the full schema, and get_field_info says so: on
+ * 2026-10-16 chat read the absence of parent_project_id here as proof that
+ * projects can't nest (tasker 122). Its only consumer is get_field_info
+ * (overview-reads.ts); nothing derives writability from this map, so a
+ * read-only field documents itself as read-only in its description.
  */
 
 import { ONTO_TASK_PRIORITY_DESCRIPTION } from '@buildos/shared-types';
@@ -95,6 +99,12 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 			description: 'Optional ISO timestamp indicating target completion',
 			required: false,
 			example: '2026-01-15T00:00:00Z'
+		},
+		parent_project_id: {
+			type: 'string',
+			description:
+				"Parent project (one level). Read-only here: update_onto_project can't set it. Global chat proposes it with propose_project_parent (the user's click on the card sets it); otherwise the project's ⋯ → Move under… (needs admin on both projects). A project that has sub-projects can't have a parent.",
+			required: false
 		}
 	},
 	ontology_task: {

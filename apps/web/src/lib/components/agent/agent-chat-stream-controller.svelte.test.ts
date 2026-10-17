@@ -105,9 +105,11 @@ function createHarness(
 		preparedPrompt?: PreparedPromptClient | null;
 		waitForPreparedPrompt?: StreamControllerPrewarmDeps['waitForPreparedPrompt'];
 		voiceNoteGroupId?: string | null;
+		activeRestoredTurnRunId?: string | null;
 	} = {}
 ) {
 	let inputValue = overrides.inputValue ?? 'hello';
+	let activeRestoredTurnRunId = overrides.activeRestoredTurnRunId ?? null;
 	let selectedContextType: ChatContextType | null = 'project';
 	let selectedEntityId: string | undefined = 'project-1';
 	let projectFocus: ProjectFocus | null = {
@@ -182,8 +184,12 @@ function createHarness(
 		create: vi.fn((_options?: { renderKey?: string }) => 'thinking-1'),
 		updateState: vi.fn(),
 		finalize: vi.fn(),
-		discard: vi.fn()
+		discard: vi.fn(),
+		setStopping: vi.fn()
 	};
+	const releaseRestoredTurn = vi.fn(() => {
+		activeRestoredTurnRunId = null;
+	});
 	const assistant = {
 		flushText: vi.fn(),
 		finalizeMessage: vi.fn()
@@ -225,7 +231,8 @@ function createHarness(
 		getResolvedProjectFocus: () => projectFocus,
 		getCurrentSession: () => currentSession,
 		getIsLoadingSession: () => false,
-		getActiveRestoredTurnRunId: () => null,
+		getActiveRestoredTurnRunId: () => activeRestoredTurnRunId,
+		releaseRestoredTurn,
 		getPrewarm: () => prewarm,
 		attachments: {
 			buildReadyRefs: vi.fn((includePreviewUrl = false) =>
@@ -288,6 +295,7 @@ function createHarness(
 		restoreDraft,
 		adoptWorkerAdmissionResponse,
 		discoverWorkerSession,
+		releaseRestoredTurn,
 		get inputValue() {
 			return inputValue;
 		},
@@ -526,6 +534,7 @@ describe('AgentChatStreamController', () => {
 	);
 
 	it('does not offer a duplicate draft when fresh-review admission loses its response', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 		const h = createHarness({
 			currentSession: null,
 			admissionFetchImpl: async () => {
@@ -533,11 +542,13 @@ describe('AgentChatStreamController', () => {
 			}
 		});
 		h.deps.getReviewIntent = () => 'project_review';
-		await h.controller.sendMessage();
+		const sending = h.controller.sendMessage();
+		await vi.advanceTimersByTimeAsync(750);
+		await sending;
 		expect(h.inputValue).toBe('');
 		expect(h.messages).toHaveLength(1);
 		expect(h.controller.error).toContain('Reopen it from chat history');
-		expect(h.admissionCalls).toHaveLength(1);
+		expect(h.admissionCalls).toHaveLength(2);
 	});
 
 	it.each(['project_review', 'document_organization'] as const)(
@@ -831,7 +842,8 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.activeTurnHandle?.executionMode).toBe('worker_realtime');
 	});
 
-	it('keeps the optimistic bubble after worker admission becomes uncertain', async () => {
+	it('keeps the optimistic bubble after worker admission stays uncertain through its retry', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 		const h = createHarness({
 			inputValue: 'Do not duplicate me',
 			currentSession: makeSession({ id: WORKER_SESSION_ID }),
@@ -847,9 +859,13 @@ describe('AgentChatStreamController', () => {
 			) as unknown as typeof fetch
 		});
 
-		await h.controller.sendMessage();
+		const sending = h.controller.sendMessage();
+		await vi.advanceTimersByTimeAsync(750);
+		await sending;
 
-		expect(h.admissionCalls).toHaveLength(1);
+		// One identical re-POST, then the bubble stays and discovery takes over.
+		expect(h.admissionCalls).toHaveLength(2);
+		expect(parseBody(h.admissionCalls[1]!)).toEqual(parseBody(h.admissionCalls[0]!));
 		expect(h.messages).toHaveLength(1);
 		expect(h.inputValue).toBe('');
 		expect(h.discoverWorkerSession).toHaveBeenCalledWith(WORKER_SESSION_ID);
@@ -1127,9 +1143,12 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.lastCancelResult).toEqual({ outcome: 'cancel_requested' });
 		expect(h.controller.activeTurnHandle).toEqual(handle);
 		expect(h.controller.isStreaming).toBe(true);
-		expect(h.controller.currentActivity).toBe('Stopping response...');
+		expect(h.controller.currentActivity).toBe('Stopping…');
+		expect(h.controller.stopRequested).toBe(true);
+		expect(h.thinking.setStopping).toHaveBeenCalledExactlyOnceWith(true);
 
 		h.controller.finishWorkerTurn(handle, 'cancelled');
+		expect(h.controller.stopRequested).toBe(false);
 		expect(h.controller.activeTurnHandle).toBeNull();
 		expect(h.controller.isStreaming).toBe(false);
 		expect(h.controller.currentActivity).toBe('');
@@ -1318,6 +1337,237 @@ describe('AgentChatStreamController', () => {
 			preparedPromptUsed: true,
 			timeToAdmittedMs: expect.any(Number),
 			timeToFirstTextMs: expect.any(Number)
+		});
+	});
+
+	describe('lost admission responses', () => {
+		it('adopts a matching duplicate when the first admission answer is lost', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			let attempt = 0;
+			const h = createHarness({
+				currentSession: makeSession({ id: WORKER_SESSION_ID }),
+				admissionFetchImpl: async (_input, init) => {
+					attempt += 1;
+					if (attempt === 1) throw new TypeError('Failed to fetch');
+					const body = JSON.parse(String(init?.body));
+					const admitted = await admittedResponse(body).json();
+					return Response.json(
+						{ ...admitted, data: { ...admitted.data, outcome: 'matching_duplicate' } },
+						{ status: 200 }
+					);
+				}
+			});
+
+			const sending = h.controller.sendMessage();
+			await vi.advanceTimersByTimeAsync(750);
+			await sending;
+
+			expect(h.admissionCalls).toHaveLength(2);
+			expect(h.adoptWorkerAdmissionResponse).toHaveBeenCalledOnce();
+			expect(h.controller.activeTurnHandle?.turnRunId).toBe(WORKER_TURN_RUN_ID);
+			expect(h.controller.error).toBeNull();
+			expect(h.messages[0]?.delivery).toBe('sent');
+			expect(h.discoverWorkerSession).not.toHaveBeenCalled();
+		});
+
+		it('rolls back the bubble when the server proves the turn was never admitted', async () => {
+			const h = createHarness({
+				inputValue: 'Try again later',
+				currentSession: makeSession({ id: WORKER_SESSION_ID }),
+				admissionFetchImpl: async () =>
+					Response.json(
+						{
+							success: false,
+							error: 'Worker turn admission failed',
+							code: 'WORKER_ADMISSION_NOT_ADMITTED'
+						},
+						{ status: 503 }
+					)
+			});
+
+			await h.controller.sendMessage();
+
+			expect(h.admissionCalls).toHaveLength(1);
+			expect(h.messages).toHaveLength(0);
+			expect(h.inputValue).toBe('Try again later');
+			expect(h.thinking.discard).toHaveBeenCalledOnce();
+			expect(h.discoverWorkerSession).not.toHaveBeenCalled();
+		});
+
+		it('keeps the bubble on an idempotency conflict: the turn may already be running', async () => {
+			const h = createHarness({
+				currentSession: makeSession({ id: WORKER_SESSION_ID }),
+				admissionFetchImpl: async () =>
+					Response.json(
+						{
+							success: false,
+							error: 'A turn with this id already exists',
+							code: 'WORKER_IDEMPOTENCY_CONFLICT'
+						},
+						{ status: 409 }
+					)
+			});
+
+			await h.controller.sendMessage();
+
+			expect(h.admissionCalls).toHaveLength(1);
+			expect(h.messages).toHaveLength(1);
+			expect(h.discoverWorkerSession).toHaveBeenCalledWith(WORKER_SESSION_ID);
+		});
+
+		it('aborts an in-flight admission when the conversation resets', async () => {
+			let admissionSignal: AbortSignal | null | undefined;
+			const h = createHarness({
+				admissionFetchImpl: (_input, init) => {
+					admissionSignal = init?.signal;
+					return new Promise<Response>((_resolve, reject) => {
+						init?.signal?.addEventListener('abort', () =>
+							reject(new DOMException('Aborted', 'AbortError'))
+						);
+					});
+				}
+			});
+
+			const sending = h.controller.sendMessage();
+			await vi.waitFor(() => expect(h.admissionCalls).toHaveLength(1));
+			h.controller.reset();
+			await sending;
+
+			expect(admissionSignal?.aborted).toBe(true);
+			expect(h.admissionCalls).toHaveLength(1);
+			expect(h.adoptWorkerAdmissionResponse).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('resumed turns', () => {
+		it('releases the restore wait the moment the resumed turn finishes', () => {
+			const h = createHarness({ activeRestoredTurnRunId: WORKER_TURN_RUN_ID });
+			const handle = workerHandle();
+			h.controller.adoptWorkerTurn(handle, 'running');
+			expect(h.controller.isTurnBusy).toBe(true);
+
+			h.controller.finishWorkerTurn(handle, 'completed');
+
+			expect(h.releaseRestoredTurn).toHaveBeenCalledExactlyOnceWith(WORKER_TURN_RUN_ID);
+			expect(h.controller.isTurnBusy).toBe(false);
+		});
+
+		it('releases it even when the terminal arrives without an adopted handle', () => {
+			const h = createHarness({ activeRestoredTurnRunId: WORKER_TURN_RUN_ID });
+
+			h.controller.finishWorkerTurn(workerHandle(), 'failed');
+
+			expect(h.releaseRestoredTurn).toHaveBeenCalledOnce();
+			expect(h.controller.isTurnBusy).toBe(false);
+		});
+
+		it('leaves another turn restore wait alone', () => {
+			const h = createHarness({
+				activeRestoredTurnRunId: 'd4000000-0000-4000-8000-000000000099'
+			});
+			const handle = workerHandle();
+			h.controller.adoptWorkerTurn(handle, 'running');
+
+			h.controller.finishWorkerTurn(handle, 'completed');
+
+			expect(h.releaseRestoredTurn).not.toHaveBeenCalled();
+			expect(h.controller.isTurnBusy).toBe(true);
+		});
+
+		it('sends a queued follow-up as soon as the resumed turn finishes', async () => {
+			const h = createHarness({
+				activeRestoredTurnRunId: WORKER_TURN_RUN_ID,
+				currentSession: makeSession({ id: WORKER_SESSION_ID }),
+				inputValue: 'next question'
+			});
+			const handle = workerHandle();
+			h.controller.adoptWorkerTurn(handle, 'running');
+			await h.controller.sendMessage();
+			expect(h.controller.queuedMessage).toBe('next question');
+
+			h.controller.finishWorkerTurn(handle, 'completed');
+			await h.controller.flushQueuedMessage();
+
+			expect(h.admissionCalls).toHaveLength(1);
+			expect(parseBody(h.admissionCalls[0]!).message).toBe('next question');
+		});
+	});
+
+	describe('lost connection to a reply', () => {
+		it('shows the reopen banner when the browser stops following a turn', () => {
+			const h = createHarness();
+			const handle = workerHandle();
+			h.controller.adoptWorkerTurn(handle, 'running');
+
+			h.controller.finishWorkerTurn(handle, 'failed', null, 'client_connection_lost');
+
+			expect(h.controller.error).toBe(
+				'Lost connection to this reply. Reopen the chat to check on it.'
+			);
+			expect(h.controller.isTurnBusy).toBe(false);
+		});
+
+		it('flags and clears a temporary loss without ending the turn', () => {
+			const h = createHarness();
+			const handle = workerHandle();
+			h.controller.adoptWorkerTurn(handle, 'running');
+
+			h.controller.setWorkerConnectionLost(handle, true);
+			expect(h.controller.error).toBe(
+				'Lost connection to this reply. Reopen the chat to check on it.'
+			);
+			expect(h.controller.isStreaming).toBe(true);
+
+			h.controller.setWorkerConnectionLost(handle, false);
+			expect(h.controller.error).toBeNull();
+		});
+
+		it('does not clear an unrelated error on recovery', () => {
+			const h = createHarness();
+			const handle = workerHandle();
+			h.controller.adoptWorkerTurn(handle, 'running');
+			h.controller.error = 'Unable to stop this response right now.';
+
+			h.controller.setWorkerConnectionLost(handle, false);
+
+			expect(h.controller.error).toBe('Unable to stop this response right now.');
+		});
+	});
+
+	describe('Stop feedback', () => {
+		it('sends one cancel even when Stop is pressed again while stopping', async () => {
+			const h = createHarness();
+			h.controller.adoptWorkerTurn(workerHandle(), 'running');
+
+			await h.controller.stopGeneration('user_cancelled');
+			await h.controller.stopGeneration('user_cancelled');
+
+			expect(h.cancelFetchCalls).toHaveLength(1);
+			expect(h.thinking.setStopping).toHaveBeenCalledOnce();
+		});
+
+		it('re-enables Stop when the cancel request fails', async () => {
+			const fetchImpl = vi.fn(async () =>
+				Response.json({ success: false, error: 'Nope' }, { status: 500 })
+			) as unknown as typeof fetch;
+			const h = createHarness({ fetchImpl });
+			h.controller.adoptWorkerTurn(workerHandle(), 'running');
+
+			await h.controller.stopGeneration('user_cancelled');
+
+			expect(h.controller.stopRequested).toBe(false);
+			expect(h.thinking.setStopping.mock.calls).toEqual([[true], [false]]);
+			expect(h.controller.currentActivity).toBe('Thinking…');
+		});
+
+		it('clears the stopping state when the conversation resets', async () => {
+			const h = createHarness();
+			h.controller.adoptWorkerTurn(workerHandle(), 'running');
+			await h.controller.stopGeneration('user_cancelled');
+
+			h.controller.reset();
+
+			expect(h.controller.stopRequested).toBe(false);
 		});
 	});
 });

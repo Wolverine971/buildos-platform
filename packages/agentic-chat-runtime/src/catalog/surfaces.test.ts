@@ -131,8 +131,28 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'update_onto_risk',
 			// 2026-10-04 (Tables tool suite): table reads on both surfaces.
 			'get_onto_table_details',
-			'read_table_rows'
+			'read_table_rows',
+			// 2026-10-17 tasker 122: proposal cards, global only.
+			'propose_project_parent',
+			'propose_project_combine'
 		]);
+	});
+
+	it('mounts the proposal-card tools on the global surface only, as worker-executable reads', () => {
+		const proposalTools = ['propose_project_parent', 'propose_project_combine'];
+		for (const name of proposalTools) {
+			expect(getGatewayDirectToolNamesForProfile('global'), name).toContain(name);
+			expect(getGatewayDirectToolNamesForProfile('project'), name).not.toContain(name);
+			expect(getGatewayDirectToolNamesForProfile('project_create'), name).not.toContain(name);
+			expect(isAgenticChatWorkerExecutableToolNameV1(name), name).toBe(true);
+		}
+		expect(surfaceNames(getGatewaySurfaceForContextType('general'))).toEqual(
+			expect.arrayContaining(proposalTools)
+		);
+		for (const name of proposalTools) {
+			expect(surfaceNames(getGatewaySurfaceForContextType('project'))).not.toContain(name);
+			expect(surfaceNames(getGatewaySurfaceForContextType('ontology'))).not.toContain(name);
+		}
 	});
 
 	it('narrows the project surface to one project and widens it with documents', () => {
@@ -146,7 +166,9 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 					name !== 'search_onto_projects' &&
 					name !== 'search_all_projects' &&
 					name !== 'list_onto_projects' &&
-					name !== 'create_onto_project'
+					name !== 'create_onto_project' &&
+					name !== 'propose_project_parent' &&
+					name !== 'propose_project_combine'
 			),
 			'get_onto_project_details',
 			'search_project',
@@ -176,7 +198,9 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 			'search_onto_projects',
 			'search_all_projects',
 			'create_onto_project',
-			'list_onto_projects'
+			'list_onto_projects',
+			'propose_project_parent',
+			'propose_project_combine'
 		]);
 	});
 

@@ -24,6 +24,10 @@ import {
 	resolveEffectiveEntityId,
 	resolveEffectiveProjectId
 } from '$lib/services/agentic-chat-v2/scope';
+import {
+	AGENTIC_CHAT_TURN_SOURCE_HEADER,
+	type AgenticChatTurnSource
+} from '../../../../routes/api/agent/v2/turns/turn-source';
 import type { AgenticE2EExecutionMode, TurnResult } from './types';
 import {
 	applyTurnEvent,
@@ -156,7 +160,10 @@ export class AgenticE2EWorkerClient {
 		result.timing.intakeRequests = intakeRequests;
 		const intakeFetch: typeof fetch = async (input, init) => {
 			const startedMs = performance.now() - requestStartedMs;
-			const response = await this.#fetch(input, init);
+			// Scripted turns are tagged so prod metrics can exclude them (M1).
+			const headers = new Headers(init?.headers);
+			headers.set(AGENTIC_CHAT_TURN_SOURCE_HEADER, 'harness' satisfies AgenticChatTurnSource);
+			const response = await this.#fetch(input, { ...init, headers });
 			intakeRequests.push({
 				phase: input === '/api/agent/v2/prewarm' ? 'prewarm' : 'admission',
 				startedMs,

@@ -7,6 +7,7 @@
 // validation (validation), and retry classification (retry).
 import type { JsonObject } from '@buildos/shared-types';
 import type {
+	AgenticChatOutputBudgetSignal,
 	AgenticChatTurnProviderClientEventV1,
 	AgenticChatTurnProviderClientPortV1
 } from './contracts';
@@ -67,8 +68,10 @@ import {
 } from './openrouter/usage';
 import { validateRoutes, validateToolSurface } from './openrouter/validation';
 import {
+	RUNAWAY_REASONING_CUTOFF,
 	abortableProviderRead,
 	providerAttemptTimingPayload,
+	runawayReasoningTokens,
 	watchStreamProgress,
 	watchesStreamProgress
 } from './openrouter/watchdog';
@@ -223,6 +226,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			completionChars: 0,
 			generatedBytes: 0,
 			reasoningBytes: 0,
+			reasoningChars: 0,
 			firstProgressAtMs: null,
 			toolCalls: new Map(),
 			toolCallsObservable: true
@@ -463,20 +467,21 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				}, OUTPUT_RECOVERY_FIRST_PROGRESS_MS);
 				firstProgressTimer.unref?.();
 			}
-			if (
+			const watched =
 				attemptedRouteIds.length === 1 &&
 				active.route.kind === 'openrouter' &&
-				watchesStreamProgress(input, passRole, state.modelUsed ?? active.route.model)
-			) {
+				watchesStreamProgress(input, passRole, state.modelUsed ?? active.route.model);
+			if (watched) {
 				stopProgressWatch = watchStreamProgress(active, state, input);
 			}
+			let runawayReasoning: number | null = null;
 			const activeReader = active.response.body!.getReader();
 			reader = activeReader;
 			const decoder = new TextDecoder();
 			let buffer = '';
 			let providerDone = false;
 
-			while (!providerDone) {
+			while (!providerDone && runawayReasoning === null) {
 				// Some fetch implementations resolve once response headers arrive but do
 				// not reliably reject a pending body read when that request signal later
 				// aborts. Race the read ourselves so the configured request deadline
@@ -512,7 +517,73 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 						providerDone = true;
 						break;
 					}
+					// Only a watched pass streams its reasoning, so only it can be cut off.
+					if (watched) {
+						runawayReasoning = runawayReasoningTokens(
+							state,
+							input,
+							state.modelUsed ?? active.route.model
+						);
+						if (runawayReasoning !== null) break;
+					}
 				}
+			}
+
+			if (runawayReasoning !== null) {
+				// Stop the generation now. Surfaced exactly like a capped pass, so
+				// the buffer's reasoning-off recovery takes over unchanged.
+				active.abort(new Error('Agentic Chat provider reasoning cut off as runaway'));
+				const attemptEndedAtMs = Date.now();
+				const outputBudget: AgenticChatOutputBudgetSignal = {
+					kind: 'exhausted',
+					limit: sentMaxTokens(this.routeSettings.maxTokens, input),
+					completionTokens: null,
+					reasoningTokens: runawayReasoning
+				};
+				// A runaway is not evidence of an unhealthy endpoint: keep the pin.
+				this.routeHealth.observeSuccess(
+					input.turnRunId,
+					this.routeHealth.routingModel(state.modelUsed, active.route),
+					active.route.model,
+					state.providerSlug,
+					active.route.kind === 'openrouter'
+				);
+				this.observeProviderAttempt(input, active.route, 'provider_attempt_ended', {
+					round: input.providerRound,
+					logical_provider_round: input.logicalProviderRound,
+					pass_role: passRole,
+					provider_attempt: providerAttempt,
+					attempt_kind: activeAttemptKind ?? 'primary',
+					route_id: active.route.id,
+					model_requested: active.route.model,
+					model_used: state.modelUsed ?? active.route.model,
+					provider: state.provider ?? active.route.id,
+					status: 'failure',
+					duration_ms: boundedDuration(
+						activeAttemptStartedAtMs ?? requestStartedAtMs,
+						attemptEndedAtMs
+					),
+					provider_timing: providerAttemptTimingPayload(
+						active.timing(),
+						attemptEndedAtMs
+					),
+					finish_reason: null,
+					// Distinct from a pass that hit the cap; the estimate rides in output_budget.
+					error_class: RUNAWAY_REASONING_CUTOFF,
+					output_budget: outputBudget,
+					usage: null
+				});
+				activeAttemptEnded = true;
+				const message = `Actor reasoning cut off after ~${runawayReasoning} tokens without output (${RUNAWAY_REASONING_CUTOFF})`;
+				account('failure', message, true);
+				yield {
+					type: 'error',
+					error: message,
+					retryable: true,
+					cause: 'output_budget_exhausted',
+					outputBudget
+				};
+				return;
 			}
 
 			if (!providerDone && buffer.trim()) {

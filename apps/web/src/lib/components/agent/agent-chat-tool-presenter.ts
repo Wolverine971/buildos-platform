@@ -299,7 +299,12 @@ const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
 	Reading: 'Read',
 	Resolving: 'Resolved',
 	Running: 'Ran',
-	Setting: 'Set'
+	Setting: 'Set',
+	// Proposal tools change nothing. A finished one without a card (blocked, or
+	// already in place) only checked, so it must not read "Nested"/"Combined".
+	Nesting: 'Checked nesting',
+	Detaching: 'Checked detaching',
+	Combining: 'Checked combining'
 };
 
 const TOOL_ACTION_BASE_FORM: Record<string, string> = {
@@ -322,7 +327,9 @@ const TOOL_ACTION_BASE_FORM: Record<string, string> = {
 	Reorganizing: 'reorganize',
 	Committing: 'commit',
 	Delegating: 'delegate',
-	Moving: 'move'
+	Moving: 'move',
+	// The generic rule would strip "ing" and leave "combin".
+	Combining: 'combine'
 };
 
 // ---------------------------------------------------------------------------
@@ -1330,6 +1337,21 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Moving task between projects',
 			target: resolveEntityName('task', args?.task_id)
 		}),
+		// Proposal cards (tasker 122): the tool only proposes; the result awaits the
+		// user's click, so the line reads "Needs your choice to …", never "Updated".
+		propose_project_parent: (args) => ({
+			action: args?.parent_project_id ? 'Nesting project' : 'Detaching project',
+			target: resolveEntityName('project', args?.project_id)
+		}),
+		propose_project_combine: (args) => {
+			const source = resolveEntityName('project', args?.source_project_id);
+			const destination = resolveEntityName('project', args?.destination_project_id);
+			return {
+				action: 'Combining projects',
+				target:
+					source && destination ? `${source} → ${destination}` : (source ?? destination)
+			};
+		},
 		delete_onto_task: (args) => ({
 			action: 'Deleting task',
 			target: resolveEntityName('task', args?.task_id)

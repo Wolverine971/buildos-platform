@@ -603,7 +603,14 @@ export function workspaceProjectBrief(input: WorkspaceProjectInputV1): string {
 		.join('\n');
 }
 
-export type WorkspaceZoomEntryV1 = {
+/**
+ * Organization labels carried to the rendered block (tasker 122): before, they
+ * reached only Jev's selection step, so the acting model never saw them.
+ * Already limited to projects the user can open (see load.ts).
+ */
+export type WorkspaceOrganizationV1 = { part_of?: string; includes?: string[] };
+
+export type WorkspaceZoomEntryV1 = WorkspaceOrganizationV1 & {
 	project: WorkspacePickV1;
 	/** ran: evidence below; skipped: no dig; deadline: hop 2 missed its window; failed. */
 	hop2: 'ran' | 'skipped' | 'deadline' | 'failed';
@@ -620,7 +627,7 @@ export type WorkspaceContextV1 = {
 	ranking: WorkspaceRankingV1;
 	selection: WorkspaceSelectionV1;
 	zoom: WorkspaceZoomEntryV1[];
-	pulse: (WorkspacePickV1 & { state: string | null; text: string })[];
+	pulse: (WorkspacePickV1 & WorkspaceOrganizationV1 & { state: string | null; text: string })[];
 	durationMs: number;
 	costUsd: number | null;
 };
@@ -655,6 +662,17 @@ export async function findWorkspaceContext(input: {
 	const now = input.now ?? (() => performance.now());
 	const startedAt = now();
 	const byId = new Map(input.projects.map((project) => [project.project.id, project]));
+	const organization = (projectId: string): WorkspaceOrganizationV1 => {
+		const project = byId.get(projectId)?.project;
+		const partOf = clipContextText(project?.part_of, WORKSPACE_FINDER_LIMITS.titleChars);
+		const includes = (project?.includes ?? [])
+			.map((name) => clipContextText(name, WORKSPACE_FINDER_LIMITS.titleChars))
+			.filter(Boolean);
+		return {
+			...(partOf ? { part_of: partOf } : {}),
+			...(includes.length ? { includes } : {})
+		};
+	};
 	const zoomRank = (projectId: string) =>
 		input.loadProject(projectId, input.signal).then((project) =>
 			rankWorkspaceZoom({
@@ -691,7 +709,14 @@ export async function findWorkspaceContext(input: {
 	const zoom = await Promise.all(
 		selection.zoom.map(async (pick, i): Promise<WorkspaceZoomEntryV1> => {
 			const brief = workspaceProjectBrief(byId.get(pick.id)!);
-			const base = { project: pick, brief, plan: null, evidence: null, error: null };
+			const base = {
+				project: pick,
+				...organization(pick.id),
+				brief,
+				plan: null,
+				evidence: null,
+				error: null
+			};
 			if (!selection.dig) return { ...base, hop2: 'skipped' };
 			try {
 				const work = speculative.get(pick.id) ?? zoomRank(pick.id);
@@ -718,6 +743,7 @@ export async function findWorkspaceContext(input: {
 		const project = byId.get(pick.id)!;
 		return {
 			...pick,
+			...organization(pick.id),
 			state: project.project.state_key ?? null,
 			text: workspacePulseText(project)
 		};
@@ -745,6 +771,21 @@ export async function findWorkspaceContext(input: {
 	};
 }
 
+const ORGANIZATION_INCLUDES_SHOWN = 5;
+
+/** " · part of X" / " · includes A, B, +N more" for a rendered project heading. */
+function organizationLabel(entry: WorkspaceOrganizationV1): string {
+	const parts: string[] = [];
+	if (entry.part_of) parts.push(`part of ${entry.part_of}`);
+	const includes = entry.includes ?? [];
+	if (includes.length) {
+		const shown = includes.slice(0, ORGANIZATION_INCLUDES_SHOWN).join(', ');
+		const more = includes.length - ORGANIZATION_INCLUDES_SHOWN;
+		parts.push(`includes ${shown}${more > 0 ? `, +${more} more` : ''}`);
+	}
+	return parts.length ? ` · ${parts.join(' · ')}` : '';
+}
+
 /** A plain-text block for the global chat prompt; null when nothing should be injected. */
 export function renderWorkspaceContextBlock(context: WorkspaceContextV1): string | null {
 	const { ranking, selection } = context;
@@ -758,7 +799,7 @@ export function renderWorkspaceContextBlock(context: WorkspaceContextV1): string
 		for (const item of context.pulse)
 			lines.push(
 				'',
-				`## ${item.name} (project_id ${item.id}; ${item.state ?? 'no state'})`,
+				`## ${item.name} (project_id ${item.id}; ${item.state ?? 'no state'})${organizationLabel(item)}`,
 				item.text
 			);
 		return lines.join('\n');
@@ -773,7 +814,10 @@ export function renderWorkspaceContextBlock(context: WorkspaceContextV1): string
 		`${checked} This message is most likely about the project${context.zoom.length > 1 ? 's' : ''} below. ${selection.dig ? 'Selected records follow; full items contain only the listed sections or an opening excerpt.' : 'Each has its current state and a record index; open records by id when you need detail.'} Cite record ids. If the needed facts are not here, say what is missing.`
 	];
 	for (const entry of context.zoom) {
-		lines.push('', `# Project: ${entry.project.name} (project_id ${entry.project.id})`);
+		lines.push(
+			'',
+			`# Project: ${entry.project.name} (project_id ${entry.project.id})${organizationLabel(entry)}`
+		);
 		const evidence = entry.evidence;
 		if (entry.hop2 !== 'ran' || !evidence || evidence.status !== 'selected') {
 			if (entry.hop2 === 'ran' && evidence?.status === 'empty')

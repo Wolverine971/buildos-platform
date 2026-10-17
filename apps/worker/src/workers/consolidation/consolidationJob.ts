@@ -6,6 +6,9 @@
 //   and the question cards. Status ends at `waiting` (questions open) or `review`.
 // - replan: the owner answered a card in their own words. Re-decide that one
 //   group with their instruction; the result is either settled or a follow-up card.
+// - survey of a check run (mode 'check', tasker 122): read, find twins, one
+//   grouping call, store the groups as a keep-only plan and finish `checked`.
+//   No decide calls, no question cards, no open-run slot.
 // Nothing here changes a document: applying happens from the run page, on the
 // owner's click, through Organize and archive (web).
 import type { ConsolidationRunJobMetadata, Json } from '@buildos/shared-types';
@@ -35,20 +38,22 @@ import {
 } from './runtime';
 import {
 	type FoundGroup,
-	GROUPS_SYSTEM_PROMPT,
 	type GroupDecision,
 	type Inventory,
 	type InventoryDocument,
 	buildDecision,
 	buildKeys,
+	checkPlan,
 	decideSystemPrompt,
 	decideUserPrompt,
 	emptyPlan,
 	enforceTwinSurvivors,
+	groupsSystemPrompt,
 	groupsUserPrompt,
 	leaveAll,
 	parseGroups,
-	twinMap
+	twinMap,
+	withAllTwins
 } from './survey';
 
 const DECIDE_CONCURRENCY = 4;
@@ -162,7 +167,13 @@ export async function loadInventory(run: RunRow): Promise<Inventory> {
 				? 1
 				: a.name.localeCompare(b.name)
 	);
+	// A parent and its sub-projects, or any projects picked for a nest or combine.
+	const family = live.every(
+		(project) =>
+			project.id === run.root_project_id || project.parent_project_id === run.root_project_id
+	);
 	return {
+		scope: family ? 'family' : 'set',
 		projects: ordered.map((project) => ({
 			id: project.id,
 			name: project.name,
@@ -213,7 +224,7 @@ async function decideGroup(params: {
 	onUsage: (event: JSONUsageEvent) => Promise<void>;
 }): Promise<GroupDecision> {
 	const raw = await params.llm.getJSONResponse<Record<string, unknown>>({
-		systemPrompt: decideSystemPrompt(params.group),
+		systemPrompt: decideSystemPrompt(params.group, params.inventory.scope),
 		userPrompt: decideUserPrompt({
 			group: params.group,
 			inventory: params.inventory,
@@ -315,8 +326,8 @@ async function survey(job: ProcessingJob<ConsolidationRunJobMetadata>, run: RunR
 	await job.updateProgress({ current: 2, total: 3, message: 'Finding groups' });
 	usage.check();
 	const raw = await llm.getJSONResponse<Record<string, unknown>>({
-		systemPrompt: GROUPS_SYSTEM_PROMPT,
-		userPrompt: groupsUserPrompt(inventory, keys),
+		systemPrompt: groupsSystemPrompt(inventory.scope, Boolean(run.request?.trim())),
+		userPrompt: groupsUserPrompt(inventory, keys, run.request),
 		userId: run.user_id,
 		profile: 'balanced',
 		signal: job.signal,
@@ -409,6 +420,68 @@ async function survey(job: ProcessingJob<ConsolidationRunJobMetadata>, run: RunR
 	const spent = await loggedSpend(run).catch(() => usage.total);
 	await updateRun(run.id, { cost_usd: spent }).catch(() => false);
 	return { groups: plan.clusters.length, questions: open, cost_usd: spent };
+}
+
+/**
+ * A quick duplicate check (tasker 122): the free twin pass plus the one
+ * grouping call, stored as a keep-only plan. Ends `checked`; it never decides
+ * a group, writes a question card or touches a document.
+ */
+export async function check(job: ProcessingJob<ConsolidationRunJobMetadata>, run: RunRow) {
+	await job.updateProgress({ current: 1, total: 2, message: 'Reading documents' });
+	const inventory = await loadInventory(run);
+	const keys = buildKeys(inventory);
+	const tasks = inventory.tasks?.length ?? 0;
+	const scanned = {
+		projects: inventory.projects.length,
+		documents: inventory.documents.length,
+		tasks
+	};
+	// Cancelled before it started: no call to pay for.
+	if (!(await updateRun(run.id, { progress: { stage: 'grouping', ...scanned } }, ['surveying'])))
+		return { skipped: 'run was cancelled before the check' };
+
+	const usage = usageTracker(await loggedSpend(run, 'run'));
+	let groups: FoundGroup[] = [];
+	// Fewer than two things to compare: nothing can be a duplicate, and no call is needed.
+	if (inventory.documents.length + tasks >= 2) {
+		await job.updateProgress({ current: 2, total: 2, message: 'Finding duplicates' });
+		usage.check();
+		const llm = new SmartLLMService({ supabase, appName: 'BuildOS Consolidation Worker' });
+		const raw = await llm.getJSONResponse<Record<string, unknown>>({
+			systemPrompt: groupsSystemPrompt(inventory.scope, Boolean(run.request?.trim())),
+			userPrompt: groupsUserPrompt(inventory, keys, run.request),
+			userId: run.user_id,
+			profile: 'balanced',
+			signal: job.signal,
+			validation: { retryOnParseError: true, maxRetries: 2 },
+			operationType: 'consolidation_check_groups',
+			// Same budget as the full survey's grouping call: it is the same call.
+			timeoutMs: 240_000,
+			maxTokens: 24_000,
+			projectId: run.root_project_id,
+			metadata: { consolidation_run_id: run.id, consolidation_mode: 'check' },
+			onUsage: usage.onUsage
+		});
+		groups = parseGroups(raw, inventory, keys);
+	}
+	job.signal.throwIfAborted();
+	const plan = checkPlan(inventory, withAllTwins(groups, inventory));
+	const written = await updateRun(
+		run.id,
+		{
+			plan: plan as unknown as Json,
+			status: 'checked',
+			progress: { stage: 'done', ...scanned, groups: plan.clusters.length },
+			cost_usd: usage.total,
+			finished_at: new Date().toISOString()
+		},
+		['surveying']
+	);
+	if (!written) return { skipped: 'run was cancelled during the check' };
+	const spent = await loggedSpend(run).catch(() => usage.total);
+	await updateRun(run.id, { cost_usd: spent }).catch(() => false);
+	return { groups: plan.clusters.length, cost_usd: spent };
 }
 
 /**
@@ -596,8 +669,10 @@ export async function processConsolidationRun(job: ProcessingJob<ConsolidationRu
 	try {
 		if (action === 'survey') {
 			if (run.status !== 'surveying') return { skipped: `status is ${run.status}` };
-			return await survey(job, run);
+			return run.mode === 'check' ? await check(job, run) : await survey(job, run);
 		}
+		// A check never has cards, merges or answers to act on.
+		if (run.mode === 'check') return { skipped: 'check runs only survey' };
 		if (run.status !== 'waiting' && run.status !== 'review')
 			return { skipped: `status is ${run.status}` };
 		if (action === 'merge' || action === 'merge_write')

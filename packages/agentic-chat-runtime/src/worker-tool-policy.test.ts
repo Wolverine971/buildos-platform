@@ -37,6 +37,26 @@ describe('Agentic Chat worker tool policy', () => {
 		).toEqual(['delete_onto_task', 'future_unclassified_tool']);
 	});
 
+	// 2026-10-17 tasker 122: the proposal tools run on the worker's read lane
+	// (they return a card; the user's click writes), never as mutations.
+	it('executes the proposal-card tools as reads, not mutations', () => {
+		for (const name of ['propose_project_parent', 'propose_project_combine']) {
+			expect(AGENTIC_CHAT_WORKER_EXECUTABLE_TOOL_NAMES_V1, name).toContain(name);
+			expect(AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1, name).not.toContain(
+				name as never
+			);
+			expect(AGENTIC_CHAT_WORKER_UNAVAILABLE_TOOL_NAMES_V1, name).not.toContain(
+				name as never
+			);
+		}
+		expect(
+			findAgenticChatWorkerUnavailableToolNamesV1([
+				'propose_project_parent',
+				'propose_project_combine'
+			])
+		).toEqual([]);
+	});
+
 	it('executes the five email tools, including the browser OAuth handoff', () => {
 		for (const name of [
 			'get_external_account_status',

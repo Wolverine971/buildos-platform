@@ -14,11 +14,24 @@ export class AgenticChatProviderNetworkError extends Error {
 export class AgenticChatSlowStreamError extends AgenticChatProviderNetworkError {
 	constructor(
 		readonly windowMs: number,
-		readonly outputBytes: number
+		readonly outputBytes: number,
+		message = 'Agentic Chat provider stream made insufficient progress; retrying the buffered pass'
 	) {
+		super(message, true);
+	}
+}
+
+/**
+ * No reasoning, text, or tool delta arrived after the response opened. Same
+ * retry and classification as a slow stream; its own message names it in
+ * the usage log.
+ */
+export class AgenticChatFirstProgressStallError extends AgenticChatSlowStreamError {
+	constructor(waitedMs: number, timeoutMs: number) {
 		super(
-			'Agentic Chat provider stream made insufficient progress; retrying the buffered pass',
-			true
+			waitedMs,
+			0,
+			`Agentic Chat provider stream sent no progress within ${timeoutMs}ms of opening; retrying the buffered pass`
 		);
 	}
 }

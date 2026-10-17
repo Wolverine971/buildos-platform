@@ -17,11 +17,16 @@ export type AgenticChatLiveTextPreviewStatsV1 = {
 	skipped: number;
 };
 
+/** Turn generations whose first preview failure was reported; oldest dropped first. */
+const MAX_REPORTED_PREVIEW_FAILURE_TURNS = 256;
+
 /**
  * Broadcasts display-only live previews on the turn's private user channel
  * (AGENTIC_CHAT_LIVE_TEXT_PREVIEW). Every publish is fire-and-forget: nothing is
  * persisted, nothing is awaited by the provider, and a failed or throwing
- * broadcast is counted and logged once, never surfaced to the turn.
+ * broadcast is counted and logged once per turn generation, never surfaced to
+ * the turn. Frames the transport skips (no ready channel, backlog) are counted
+ * as skipped, not failed.
  *
  * `seq` comes from one process-wide counter that never runs behind the wall
  * clock, so it strictly increases across all updates of a turn generation even
@@ -29,7 +34,7 @@ export type AgenticChatLiveTextPreviewStatsV1 = {
  */
 export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTextPreviewPortV1 {
 	private lastSeq = 0;
-	private failureLogged = false;
+	private readonly reportedFailureTurns = new Set<string>();
 	private readonly stats: AgenticChatLiveTextPreviewStatsV1 = { sent: 0, failed: 0, skipped: 0 };
 
 	constructor(
@@ -37,8 +42,8 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 			publisher: Pick<AgenticChatStreamPublisher, 'getLiveTextPreviewTarget'>;
 			broadcast: AgenticChatBroadcastPortV1;
 			now?: () => number;
-			/** Called once, on the first failure; later failures are only counted. */
-			onFirstFailure?: (error: unknown) => void;
+			/** Called on a turn generation's first failure; later ones are only counted. */
+			onFirstFailure?: (error: unknown, turn: { turnRunId: string }) => void;
 		}
 	) {}
 
@@ -69,12 +74,17 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 			void Promise.resolve(delivery).then(
 				(result) => {
 					if (result === 'sent') this.stats.sent += 1;
-					else this.observeFailure(new Error('Live text preview broadcast failed'));
+					else if (result === 'skipped') this.stats.skipped += 1;
+					else
+						this.observeFailure(
+							update,
+							new Error('Live text preview broadcast failed')
+						);
 				},
-				(error: unknown) => this.observeFailure(error)
+				(error: unknown) => this.observeFailure(update, error)
 			);
 		} catch (error) {
-			this.observeFailure(error);
+			this.observeFailure(update, error);
 		}
 	}
 
@@ -88,13 +98,19 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 		return this.lastSeq;
 	}
 
-	private observeFailure(error: unknown): void {
+	private observeFailure(update: AgenticChatLiveTextPreviewUpdateV1, error: unknown): void {
 		this.stats.failed += 1;
-		if (this.failureLogged) return;
-		this.failureLogged = true;
+		const turnKey = `${update.turnRunId}:${update.executionGeneration}`;
+		if (this.reportedFailureTurns.has(turnKey)) return;
+		this.reportedFailureTurns.add(turnKey);
+		if (this.reportedFailureTurns.size > MAX_REPORTED_PREVIEW_FAILURE_TURNS) {
+			const oldest = this.reportedFailureTurns.values().next().value;
+			if (oldest !== undefined) this.reportedFailureTurns.delete(oldest);
+		}
 		try {
-			if (this.ports.onFirstFailure) this.ports.onFirstFailure(error);
-			else console.warn('Agentic Chat live text preview broadcast failed', error);
+			const turn = { turnRunId: update.turnRunId };
+			if (this.ports.onFirstFailure) this.ports.onFirstFailure(error, turn);
+			else console.warn('Agentic Chat live text preview broadcast failed', turn, error);
 		} catch {
 			// Preview diagnostics can never reach the turn.
 		}

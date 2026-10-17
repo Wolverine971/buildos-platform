@@ -186,6 +186,50 @@ describe('POST /api/agent/v2/prewarm', () => {
 		);
 	});
 
+	it('warms context but never builds a prepared prompt without a session', async () => {
+		const insertPreparedPrompt = vi.fn(async () => ({ error: null }));
+		const snapshotQuery = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+			upsert: vi.fn().mockResolvedValue({ error: null })
+		};
+		preparedPromptStoreState.current = {
+			from: vi.fn((table: string) =>
+				table === 'agentic_chat_prepared_prompts'
+					? { insert: insertPreparedPrompt }
+					: snapshotQuery
+			)
+		};
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/prewarm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				// An older client: no session and no prepare_prompt flag.
+				body: JSON.stringify({ context_type: 'global', ensure_session: false })
+			}),
+			locals: {
+				safeGetSession: async () => ({ user: { id: 'user-1' } }),
+				supabase: { rpc: mergeRpcMock }
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.data).toEqual(
+			expect.objectContaining({
+				warmed: true,
+				session: null,
+				prepared_prompt: null,
+				prewarmed_context: expect.objectContaining({ key: 'global:none' })
+			})
+		);
+		expect(loadPromptContextMock).toHaveBeenCalledOnce();
+		expect(resolveSessionMock).not.toHaveBeenCalled();
+		expect(insertPreparedPrompt).not.toHaveBeenCalled();
+	});
+
 	it('denies ontology prewarm before context loading when project membership is missing', async () => {
 		const projectId = '11111111-1111-4111-8111-111111111111';
 		const rpc = vi.fn(async (fn: string) => {

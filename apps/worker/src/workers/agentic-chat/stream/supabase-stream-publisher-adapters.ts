@@ -8,10 +8,23 @@ import type {
 } from '@buildos/shared-types';
 import type {
 	AgenticChatBroadcastMessageV1,
+	AgenticChatBroadcastOutcomeV1,
 	AgenticChatBroadcastPortV1,
 	AgenticChatPersistencePortV1
 } from './stream-publisher';
 import { agenticChatGenerationWriteFenceArgsV1 } from '../turn/write-fence';
+
+type AgenticChatPreviewBroadcastMessageV1 = Extract<
+	AgenticChatBroadcastMessageV1,
+	{ kind: 'live_text_preview' }
+>;
+
+/**
+ * Preview frames are cumulative and arrive up to ten times a second. A healthy
+ * channel acknowledges each well before the next; beyond this many unsettled
+ * sends per topic the channel is struggling and newer frames are skipped.
+ */
+const MAX_PREVIEW_SENDS_IN_FLIGHT_PER_TOPIC = 4;
 
 type RpcError = { code?: string; message: string };
 type RpcResponse = PromiseLike<{ data: unknown; error: RpcError | null }>;
@@ -139,12 +152,15 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	private consecutiveFailures = 0;
 	private closed = false;
 	private readonly closeListeners = new Set<() => void>();
+	private readonly previewSendsInFlight = new Map<string, number>();
+	private readonly previewOpenAttemptAtMs = new Map<string, number>();
 
 	constructor(
 		private readonly client: AgenticChatRealtimeClient,
 		private readonly maxCachedChannels = 256,
 		private readonly subscribeTimeoutMs = 10_000,
-		private readonly sendTimeoutMs = 10_000
+		private readonly sendTimeoutMs = 10_000,
+		private readonly previewReopenCooldownMs = 2_000
 	) {
 		if (!Number.isSafeInteger(maxCachedChannels) || maxCachedChannels < 1) {
 			throw new Error('maxCachedChannels must be a positive safe integer');
@@ -155,10 +171,14 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		if (!Number.isSafeInteger(sendTimeoutMs) || sendTimeoutMs < 1) {
 			throw new Error('sendTimeoutMs must be a positive safe integer');
 		}
+		if (!Number.isSafeInteger(previewReopenCooldownMs) || previewReopenCooldownMs < 1) {
+			throw new Error('previewReopenCooldownMs must be a positive safe integer');
+		}
 	}
 
-	async publish(message: AgenticChatBroadcastMessageV1): Promise<'sent' | 'failed'> {
+	async publish(message: AgenticChatBroadcastMessageV1): Promise<AgenticChatBroadcastOutcomeV1> {
 		if (this.closed) return 'failed';
+		if (message.kind === 'live_text_preview') return this.publishPreview(message);
 		let channel: AgenticChatRealtimeChannel | null = null;
 		try {
 			channel = await this.channelFor(message.topic);
@@ -182,6 +202,62 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 			this.observeFailure();
 			return 'failed';
 		}
+	}
+
+	/**
+	 * Display-only frames ride the channel durable delivery owns and never change
+	 * it: no eviction, no health transition, no wait on a subscription. A frame
+	 * that cannot go out now is skipped; the next one carries the full text.
+	 */
+	private async publishPreview(
+		message: AgenticChatPreviewBroadcastMessageV1
+	): Promise<AgenticChatBroadcastOutcomeV1> {
+		const { topic } = message;
+		const channel = this.channels.get(topic);
+		if (!channel) {
+			this.openChannelForPreview(topic);
+			return 'skipped';
+		}
+		const inFlight = this.previewSendsInFlight.get(topic) ?? 0;
+		if (inFlight >= MAX_PREVIEW_SENDS_IN_FLIGHT_PER_TOPIC) return 'skipped';
+		this.previewSendsInFlight.set(topic, inFlight + 1);
+		try {
+			const result = await this.sendWithDeadline(
+				channel.send({ type: 'broadcast', event: message.event, payload: message.payload })
+			);
+			return result === 'ok' ? 'sent' : 'failed';
+		} catch {
+			return 'failed';
+		} finally {
+			const remaining = (this.previewSendsInFlight.get(topic) ?? 1) - 1;
+			if (remaining > 0) this.previewSendsInFlight.set(topic, remaining);
+			else this.previewSendsInFlight.delete(topic);
+		}
+	}
+
+	/**
+	 * Previews may restore a missing channel (say, one evicted after a socket
+	 * error mid-pass), but start at most one subscription per topic per cooldown
+	 * so an unavailable Realtime service never sees one join per frame.
+	 */
+	private openChannelForPreview(topic: string): void {
+		if (this.openingChannels.has(topic)) return;
+		const nowMs = Date.now();
+		const lastAttemptAtMs = this.previewOpenAttemptAtMs.get(topic);
+		if (
+			lastAttemptAtMs !== undefined &&
+			nowMs - lastAttemptAtMs < this.previewReopenCooldownMs
+		) {
+			return;
+		}
+		// Re-insert so the oldest topic is evicted first once the map is full.
+		this.previewOpenAttemptAtMs.delete(topic);
+		this.previewOpenAttemptAtMs.set(topic, nowMs);
+		if (this.previewOpenAttemptAtMs.size > this.maxCachedChannels) {
+			const oldest = this.previewOpenAttemptAtMs.keys().next().value;
+			if (oldest !== undefined) this.previewOpenAttemptAtMs.delete(oldest);
+		}
+		void this.channelFor(topic).catch(() => undefined);
 	}
 
 	getHealth(): AgenticChatRealtimeHealthV1 {
@@ -212,6 +288,7 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		this.closeListeners.clear();
 		const channels = [...this.channels.values()];
 		this.channels.clear();
+		this.previewOpenAttemptAtMs.clear();
 		try {
 			await Promise.all([
 				...channels.map((channel) => this.client.removeChannel(channel)),

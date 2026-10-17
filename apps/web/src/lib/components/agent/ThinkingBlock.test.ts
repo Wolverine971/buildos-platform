@@ -39,6 +39,20 @@ function thinkingBlock(): ThinkingBlockMessage {
 describe('ThinkingBlock', () => {
 	afterEach(cleanup);
 
+	it('says Stopping… while a stop is pending, with or without an activity log', async () => {
+		const compact = { ...thinkingBlock(), activities: [], stopRequested: true };
+		const view = render(ThinkingBlock, { block: compact, onToggleCollapse: vi.fn() });
+		expect(screen.getByTestId('thinking-live-status').textContent).toContain('Stopping…');
+
+		await view.rerender({ block: { ...thinkingBlock(), stopRequested: true } });
+		expect(screen.getByText('Stopping…')).toBeInTheDocument();
+
+		await view.rerender({
+			block: { ...thinkingBlock(), stopRequested: true, status: 'cancelled' }
+		});
+		expect(screen.queryByText('Stopping…')).toBeNull();
+	});
+
 	it('renders a durable workflow result restored into ordinary chat activities', () => {
 		const workflow = workflowProjectionFixture({
 			phase: 'finished',

@@ -10,7 +10,10 @@ import {
 	type JsonObject,
 	type TurnHandleV1
 } from '@buildos/shared-types';
-import type { AgenticChatWorkerApplicationObserver } from '$lib/services/agentic-chat-v2/worker-realtime-coordinator';
+import type {
+	AgenticChatWorkerApplicationObserver,
+	AgenticChatWorkerReconciliationLoss
+} from '$lib/services/agentic-chat-v2/worker-realtime-coordinator';
 import type { AgenticChatWorkerReconciledReceipt } from '$lib/services/agentic-chat-v2/worker-realtime-inbox';
 import {
 	LIVE_TEXT_PREVIEW_STALE_MS,
@@ -25,6 +28,7 @@ import {
 } from '$lib/services/agentic-chat-v2/worker-realtime-preview';
 import {
 	isWorkerQueueTimeout,
+	WORKER_CONNECTION_LOST_FAILURE_CODE,
 	WORKER_QUEUE_TIMEOUT_FINISHED_REASON,
 	workerActivityForStatus
 } from './agent-chat-worker-status';
@@ -75,6 +79,19 @@ export type AgentChatWorkerUiAdapterPort = {
 		executionGeneration: number;
 		text: string | null;
 	}): void;
+	/**
+	 * A stopped turn ended while preview text was on screen: keep that text in
+	 * the bubble (appended to its durable text) and mark it stopped.
+	 */
+	freezeAssistantPreview?(input: {
+		handle: WorkerTurnHandle;
+		executionGeneration: number;
+		text: string;
+	}): void;
+	/** True while Stop is pending for this turn; the shown preview is then held. */
+	isStopRequested?(handle: WorkerTurnHandle): boolean;
+	/** Reconciliation keeps failing (true) or recovered (false); the turn stays live. */
+	setConnectionLost?(input: { handle: WorkerTurnHandle; lost: boolean }): void;
 	onError?(error: unknown): void;
 };
 
@@ -96,6 +113,9 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 	#durableText = '';
 	#preview: LiveTextPreviewState = createLiveTextPreviewState();
 	#previewShown = '';
+	/** Durable text and generation the shown preview suffix was computed against. */
+	#previewShownAfter = '';
+	#previewShownGeneration: number | null = null;
 	#previewTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(input: {
@@ -275,14 +295,56 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 			: liveTextPreviewSuffix(this.#preview, this.#durableText);
 		if (!suffix) this.#preview = clearLiveTextPreview(this.#preview);
 		this.#schedulePreviewExpiry();
+		// After Stop the aborted pass retracts its preview; keep the text the user
+		// was reading until the terminal freezes it. New durable text still wins.
+		if (!suffix && !this.#terminal && this.#holdsStoppedPreview()) return;
 		if (suffix === this.#previewShown || this.#executionGeneration === null) return;
 		this.#previewShown = suffix;
+		this.#previewShownAfter = this.#durableText;
+		this.#previewShownGeneration = this.#executionGeneration;
 		try {
 			this.#port.setAssistantPreview?.({
 				handle: this.#handle,
 				executionGeneration: this.#executionGeneration,
 				text: suffix || null
 			});
+		} catch (error) {
+			this.#reportError(error);
+		}
+	}
+
+	#holdsStoppedPreview(): boolean {
+		if (!this.#previewStillCurrent()) return false;
+		try {
+			return this.#port.isStopRequested?.(this.#handle) === true;
+		} catch (error) {
+			this.#reportError(error);
+			return false;
+		}
+	}
+
+	/**
+	 * Reconciliation cannot follow this turn. Permanent: end it locally as
+	 * failed (the banner says to reopen the chat). Otherwise only flag it; the
+	 * turn stays live and a later reconcile clears the flag.
+	 */
+	reportReconciliationLost(loss: AgenticChatWorkerReconciliationLoss): void {
+		if (this.#terminal) return;
+		if (loss.permanent) {
+			this.#finish('failed', null, WORKER_CONNECTION_LOST_FAILURE_CODE);
+			return;
+		}
+		this.#setConnectionLost(true);
+	}
+
+	reportReconciliationRestored(): void {
+		if (this.#terminal) return;
+		this.#setConnectionLost(false);
+	}
+
+	#setConnectionLost(lost: boolean): void {
+		try {
+			this.#port.setConnectionLost?.({ handle: this.#handle, lost });
 		} catch (error) {
 			this.#reportError(error);
 		}
@@ -392,6 +454,7 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 	): void {
 		if (this.#terminal) return;
 		this.#terminal = true;
+		this.#freezeStoppedPreview(status);
 		this.#syncPreview();
 		this.#port.finishTurn({
 			handle: this.#handle,
@@ -402,6 +465,30 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		if (!this.#terminalNotified) {
 			this.#terminalNotified = true;
 			this.#onTerminal(status);
+		}
+	}
+
+	/** The shown preview still extends the current durable text of its generation. */
+	#previewStillCurrent(): boolean {
+		return (
+			this.#previewShown.length > 0 &&
+			this.#previewShownGeneration === this.#executionGeneration &&
+			this.#previewShownAfter === this.#durableText
+		);
+	}
+
+	/** A stopped turn keeps the preview text that was still on screen. */
+	#freezeStoppedPreview(status: WorkerTerminalStatus): void {
+		const generation = this.#executionGeneration;
+		if (status !== 'cancelled' || generation === null || !this.#previewStillCurrent()) return;
+		try {
+			this.#port.freezeAssistantPreview?.({
+				handle: this.#handle,
+				executionGeneration: generation,
+				text: this.#previewShown
+			});
+		} catch (error) {
+			this.#reportError(error);
 		}
 	}
 
@@ -554,7 +641,10 @@ function doneOutcomeFields(
 	finishedReason: string | null
 ): { finished_reason: string; completion_status: 'completed' | 'failed' } {
 	if (isWorkerQueueTimeout(status, finishedReason)) {
-		return { finished_reason: WORKER_QUEUE_TIMEOUT_FINISHED_REASON, completion_status: 'failed' };
+		return {
+			finished_reason: WORKER_QUEUE_TIMEOUT_FINISHED_REASON,
+			completion_status: 'failed'
+		};
 	}
 	return {
 		finished_reason:

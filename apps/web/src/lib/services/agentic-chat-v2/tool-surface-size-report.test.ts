@@ -189,7 +189,11 @@ describe('tool surface size report', () => {
 		// RE-BASELINED 2026-10-04 (Tables tool suite): the two table reads
 		// (get_onto_table_details, read_table_rows; 2,461 chars) joined global.
 		// Measured 54 tools / 59,770 chars. Cap at measured + ~1%.
-		expect(global?.totalChars).toBeLessThanOrEqual(60_400);
+		// RE-BASELINED 2026-10-17 tasker 122: proposal tools. propose_project_parent
+		// and propose_project_combine joined global only; each returns a card the
+		// user clicks, and Jev mounts them only on nest/combine turns. Measured 54 →
+		// 56 tools, 60,013 → 61,498 chars (+1,485). Cap at measured + ~1%.
+		expect(global?.totalChars).toBeLessThanOrEqual(62_100);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These

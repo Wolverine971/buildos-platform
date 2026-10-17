@@ -23,6 +23,8 @@
 		inputValue: string;
 		isStreaming: boolean;
 		isStartingStream?: boolean;
+		/** Stop was pressed; the button waits for the response to end. */
+		isStopRequested?: boolean;
 		contextType?: ChatContextType | null;
 		reviewAvailable?: boolean;
 		reviewSelected?: boolean;
@@ -71,6 +73,7 @@
 		inputValue = $bindable(),
 		isStreaming,
 		isStartingStream = false,
+		isStopRequested = false,
 		contextType = null,
 		reviewAvailable = false,
 		reviewSelected = false,
@@ -495,14 +498,22 @@
 				{/if}
 			{/if}
 			{#if isStreaming}
-				<!-- Stop button: destructive semantic for urgency -->
+				<!-- Stop button: destructive semantic for urgency; waits once pressed -->
 				<button
 					type="button"
-					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink touch-manipulation pressable hover:bg-destructive/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-					aria-label="Stop response"
+					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink touch-manipulation pressable hover:bg-destructive/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-destructive sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
+					aria-label={isStopRequested ? 'Stopping response' : 'Stop response'}
+					title={isStopRequested ? 'Stopping…' : undefined}
+					disabled={isStopRequested}
 					onclick={onStop}
 				>
-					<Square class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+					{#if isStopRequested}
+						<LoaderCircle
+							class="h-4 w-4 animate-spin motion-reduce:animate-none sm:h-3.5 sm:w-3.5"
+						/>
+					{:else}
+						<Square class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+					{/if}
 				</button>
 			{/if}
 			{#if !isStreaming || canQueueWhileBusy}
@@ -521,6 +532,10 @@
 		{/snippet}
 	</TextareaWithVoice>
 	<div class="sr-only" role="status">
-		{queuedMessage ? 'Message queued. It sends when BuildOS finishes.' : ''}
+		{isStopRequested
+			? 'Stopping the response.'
+			: queuedMessage
+				? 'Message queued. It sends when BuildOS finishes.'
+				: ''}
 	</div>
 </form>

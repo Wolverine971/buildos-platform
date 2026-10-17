@@ -1,7 +1,8 @@
 // apps/worker/src/workers/agentic-chat/effects/read-planning-telemetry.ts
 import {
 	AGENTIC_CHAT_CONTROL_TOOL_NAMES,
-	AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES
+	AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES,
+	isWriteToolName
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	type JsonObject,
@@ -10,6 +11,7 @@ import {
 } from '@buildos/shared-types';
 import { sha256Hex } from '../shared/identity-hash';
 import { stripSchedulingSidecar } from '../shared/tool-scheduling';
+import { isAgenticChatProductionReadToolNameV1 } from '../tools/execution-adapter';
 import type { AgenticChatControlDecisionAuthorV1 } from '../provider/contracts';
 
 const EXACT_READ_IDENTITY_VERSION = 'agentic_chat_exact_read_identity_v1';
@@ -30,7 +32,7 @@ const RESOURCE_SCOPE_ID_KEYS = new Set([
 	'session_id'
 ]);
 
-export type AgenticChatReadExecutionClassV1 = 'evidence_read' | 'control' | 'review';
+export type AgenticChatReadExecutionClassV1 = 'evidence_read' | 'control' | 'review' | 'rejected';
 
 export type AgenticChatReadPlanningIdentityV1 = {
 	executionClass: AgenticChatReadExecutionClassV1;
@@ -42,9 +44,13 @@ export function deriveAgenticChatReadPlanningIdentityV1(input: {
 	toolName: string;
 	arguments: JsonObject;
 	decidedBy?: AgenticChatControlDecisionAuthorV1;
+	/** The call failed validation and never ran (a read step's `validationFailure`). */
+	rejectedBeforeExecution?: boolean;
 }): AgenticChatReadPlanningIdentityV1 {
 	const toolName = input.toolName.trim().toLowerCase();
-	const executionClass = classifyReadExecution(toolName, input.decidedBy);
+	const executionClass = input.rejectedBeforeExecution
+		? 'rejected'
+		: classifyReadExecution(toolName, input.decidedBy);
 	if (executionClass !== 'evidence_read') {
 		return { executionClass, exactReadKey: null, resourceKey: null };
 	}
@@ -66,7 +72,16 @@ function classifyReadExecution(
 	if ((decidedBy && REVIEW_DECISION_AUTHORS.has(decidedBy)) || REVIEW_TOOL_NAMES.has(toolName)) {
 		return 'review';
 	}
-	return CONTROL_TOOL_NAMES.has(toolName) ? 'control' : 'evidence_read';
+	if (CONTROL_TOOL_NAMES.has(toolName)) return 'control';
+	// The worker's read lane decides what runs as a read; it also runs a few
+	// catalog writes (request_email_account_connection).
+	if (isAgenticChatProductionReadToolNameV1(toolName)) return 'evidence_read';
+	// Any other catalog write reaches a read step only after it was rejected
+	// before running (failed validation), so it is never evidence.
+	if (isWriteToolName(toolName)) return 'rejected';
+	// Outside the catalog: only test fixtures execute under such names. A rejected
+	// unknown call is marked by the caller with `rejectedBeforeExecution`.
+	return 'evidence_read';
 }
 
 function deriveResourceKey(toolName: string, arguments_: JsonObject): string | null {

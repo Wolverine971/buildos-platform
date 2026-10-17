@@ -108,7 +108,13 @@ export class AgenticChatReadToolRunner {
 		const liveRead =
 			step.validationFailure || step.memoServed
 				? null
-				: await this.startLiveReadBehindToolCall(run, step, toolCallEvent, signal);
+				: await this.startLiveReadBehindToolCall(
+						run,
+						step,
+						toolCallEvent,
+						sequenceIndex,
+						signal
+					);
 		if (!liveRead) {
 			await this.services.publishSemantic(executionInput, projection, toolCallEvent, signal);
 		}
@@ -470,6 +476,7 @@ export class AgenticChatReadToolRunner {
 		run: TurnRun,
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
 		toolCallEvent: Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }>,
+		sequenceIndex: number,
 		signal: AbortSignal
 	): Promise<LiveReadAttemptV1> {
 		const { job, executionInput, processingToken, projection } = run;
@@ -543,6 +550,11 @@ export class AgenticChatReadToolRunner {
 						arguments: step.arguments,
 						providerToolCallId: step.providerToolCallId,
 						...(step.decidedBy ? { decidedBy: step.decidedBy } : {}),
+						// The id persistRead writes below: a proposal card's id.
+						toolExecutionId: createStableAgenticChatToolExecutionIdV1({
+							turnRunId: executionInput.claim.turnRunId,
+							sequenceIndex
+						}),
 						executionInput,
 						signal: readScope.signal,
 						onProgress

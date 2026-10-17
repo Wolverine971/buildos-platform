@@ -23,6 +23,19 @@ export const WORKER_QUEUE_TIMEOUT_NOTE = "Couldn't start this reply";
  */
 export const WORKER_QUEUE_TIMEOUT_FINISHED_REASON = 'queue_timeout';
 
+/** Shown when this browser can no longer follow a reply (it may still finish). */
+export const WORKER_CONNECTION_LOST_MESSAGE =
+	'Lost connection to this reply. Reopen the chat to check on it.';
+
+/**
+ * UI-only failure code for a turn this browser stopped following because the
+ * server will never reconcile it here (404/409). Never a server value.
+ */
+export const WORKER_CONNECTION_LOST_FAILURE_CODE = 'client_connection_lost';
+
+/** Thinking-block and button copy while a Stop request is in flight. */
+export const WORKER_STOPPING_STATUS = 'Stopping…';
+
 /**
  * One projection for every worker-backed waiting/processing surface. Calm,
  * plain copy: the user sees what BuildOS is doing, never the infrastructure

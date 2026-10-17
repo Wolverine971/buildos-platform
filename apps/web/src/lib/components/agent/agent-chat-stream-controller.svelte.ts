@@ -31,7 +31,13 @@ import { AgentRequestError, buildAgentRequestError } from './agent-chat-session'
 import type { PreparedPromptClient } from './agent-chat-session';
 import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
-import { isWorkerQueueTimeout, workerActivityForStatus } from './agent-chat-worker-status';
+import {
+	isWorkerQueueTimeout,
+	WORKER_CONNECTION_LOST_FAILURE_CODE,
+	WORKER_CONNECTION_LOST_MESSAGE,
+	WORKER_STOPPING_STATUS,
+	workerActivityForStatus
+} from './agent-chat-worker-status';
 import { parseAdmissionResponse } from '$lib/services/agentic-chat-v2/worker-turn-adoption';
 
 export interface ClientStreamTimingState {
@@ -98,6 +104,11 @@ export interface StreamControllerDeps {
 	getCurrentSession(): ChatSession | null;
 	getIsLoadingSession(): boolean;
 	getActiveRestoredTurnRunId(): string | null;
+	/**
+	 * The resumed (restored) turn reached terminal truth over the worker path:
+	 * drop the restore wait and its polling now instead of at the next probe.
+	 */
+	releaseRestoredTurn?(turnRunId: string): void;
 	getPrewarm(): StreamControllerPrewarmDeps;
 	attachments: StreamControllerAttachmentDeps;
 	voice: StreamControllerVoiceDeps;
@@ -113,6 +124,8 @@ export interface StreamControllerDeps {
 		finalize(status?: 'completed' | 'interrupted' | 'cancelled' | 'error', note?: string): void;
 		/** Remove the current thinking block entirely (turn proven never admitted). */
 		discard?(): void;
+		/** Show (or clear) "Stopping…" on the current thinking block. */
+		setStopping?(stopping: boolean): void;
 	};
 	assistant: {
 		flushText(): void;
@@ -187,7 +200,9 @@ const WORKER_KNOWN_NOT_ADMITTED_CODES = new Set([
 	'WORKFLOW_REVIEW_UNAVAILABLE',
 	'INVALID_FIELD',
 	'FORBIDDEN',
-	'WORKER_SESSION_CONFLICT'
+	'WORKER_SESSION_CONFLICT',
+	// Preparation or the admission RPC failed before anything committed.
+	'WORKER_ADMISSION_NOT_ADMITTED'
 ]);
 
 function diffMs(start: number | null, end: number | null): number | null {
@@ -222,6 +237,8 @@ export class AgentChatStreamController {
 	currentActivity = $state('');
 	error = $state<string | null>(null);
 	hasSentMessage = $state(false);
+	/** Stop was pressed for the active turn and its terminal has not landed yet. */
+	stopRequested = $state(false);
 	/**
 	 * Text the user sent while a turn was still running. It goes out on its own
 	 * as soon as the active turn completes or is stopped; a failed turn hands it
@@ -242,6 +259,8 @@ export class AgentChatStreamController {
 
 	#deps: StreamControllerDeps;
 	#fetch: typeof fetch;
+	/** Aborts the in-flight admission POST (and its retry) when the conversation resets. */
+	#admissionAbort: AbortController | null = null;
 
 	constructor(deps: StreamControllerDeps) {
 		this.#deps = deps;
@@ -290,7 +309,21 @@ export class AgentChatStreamController {
 		finishedReason: string | null = null,
 		failureCode: string | null = null
 	): void {
-		if (!this.#isActiveWorkerHandle(handle)) return;
+		if (this.#isActiveWorkerHandle(handle)) {
+			this.#finishActiveWorkerTurn(status, finishedReason, failureCode);
+		}
+		// A resumed turn's own terminal ends the restore wait at once; otherwise
+		// the chat stays busy until the backing-off probe (up to 10 s) reloads.
+		if (this.#deps.getActiveRestoredTurnRunId() === handle.turnRunId) {
+			this.#deps.releaseRestoredTurn?.(handle.turnRunId);
+		}
+	}
+
+	#finishActiveWorkerTurn(
+		status: Extract<ChatTurnStatusV1, 'completed' | 'failed' | 'cancelled'>,
+		finishedReason: string | null,
+		failureCode: string | null
+	): void {
 		this.finalizeClientStreamTiming(
 			this.activeStreamRunId,
 			status === 'completed' ? 'completed' : status === 'failed' ? 'error' : 'cancelled'
@@ -299,7 +332,12 @@ export class AgentChatStreamController {
 		this.isStreaming = false;
 		this.isStartingStream = false;
 		this.currentActivity = '';
-		if (status !== 'completed' && failureCode === 'uncertain_external_commit') {
+		this.stopRequested = false;
+		if (failureCode === WORKER_CONNECTION_LOST_FAILURE_CODE) {
+			// This browser stopped following the turn; it may still finish.
+			this.error = WORKER_CONNECTION_LOST_MESSAGE;
+			this.returnQueuedMessageToComposer();
+		} else if (status !== 'completed' && failureCode === 'uncertain_external_commit') {
 			// A write had started when the turn ended (failed, or stopped by the
 			// user), so it may have landed; a blind retry could make it twice.
 			this.error =
@@ -316,6 +354,19 @@ export class AgentChatStreamController {
 		} else if (status !== 'cancelled') {
 			this.error = null;
 		}
+	}
+
+	/**
+	 * Reconciliation kept failing for the active turn (or recovered). The turn
+	 * stays live so a late answer still lands; the banner says what to do.
+	 */
+	setWorkerConnectionLost(
+		handle: Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>,
+		lost: boolean
+	): void {
+		if (!this.#isActiveWorkerHandle(handle)) return;
+		if (lost) this.error = WORKER_CONNECTION_LOST_MESSAGE;
+		else if (this.error === WORKER_CONNECTION_LOST_MESSAGE) this.error = null;
 	}
 
 	/** Busy = a send is in flight, a worker turn is running, or a detached turn is restoring. */
@@ -358,6 +409,7 @@ export class AgentChatStreamController {
 		this.isStreaming = false;
 		this.isStartingStream = false;
 		this.currentActivity = '';
+		this.stopRequested = false;
 	}
 
 	recordClientStreamEvent(
@@ -639,6 +691,7 @@ export class AgentChatStreamController {
 		}
 		this.error = null;
 		this.lastCancelResult = null;
+		this.stopRequested = false;
 		this.isStreaming = false;
 		// Client-side turn telemetry runs on the worker lane too: the modal's
 		// realtime projection feeds recordClientStreamEvent/attachServerTiming
@@ -679,8 +732,11 @@ export class AgentChatStreamController {
 			workerAdmissionSessionId = sessionAtSend?.id ?? null;
 			// One request per turn: the server resolves the transport decision
 			// inline, so there is no separate lease round trip.
+			const admissionAbort = new AbortController();
+			this.#admissionAbort = admissionAbort;
 			const admission = await requestAgenticChatWorkerAdmission({
 				fetchImpl: this.#fetch,
+				signal: admissionAbort.signal,
 				command: {
 					clientTurnId,
 					streamRunId: transportStreamRunId,
@@ -707,6 +763,8 @@ export class AgentChatStreamController {
 					publishedSpecialist,
 					requestedSkillId
 				}
+			}).finally(() => {
+				if (this.#admissionAbort === admissionAbort) this.#admissionAbort = null;
 			});
 
 			if (!admission.response.ok) {
@@ -838,16 +896,19 @@ export class AgentChatStreamController {
 	}
 
 	async stopGeneration(reason: StreamStopReason = 'user_cancelled'): Promise<void> {
-		if (!this.isStreaming) return;
+		if (!this.isStreaming || this.stopRequested) return;
 		const handle = this.activeTurnHandle;
 		if (!handle) return;
 		if (reason === 'error') return;
 		if (reason === 'user_cancelled') this.#deps.haptic?.('heavy');
+		// Visible at once, in the thinking block, until the terminal lands.
+		this.stopRequested = true;
+		this.#deps.thinking.setStopping?.(true);
 		try {
-			this.currentActivity = 'Stopping response...';
+			this.currentActivity = WORKER_STOPPING_STATUS;
 			this.lastCancelResult = await this.cancelTurn(handle, reason);
 			// The turn already ended (a queued turn, or one whose worker is gone):
-			// show that terminal now rather than "Stopping response..." until the
+			// show that terminal now rather than "Stopping…" until the
 			// next reconcile tick.
 			if (this.lastCancelResult.outcome !== 'cancel_requested') {
 				this.#deps.requestWorkerReconciliation?.(handle.turnRunId);
@@ -856,11 +917,19 @@ export class AgentChatStreamController {
 			this.#deps.logError?.('[AgentChat] Worker cancellation failed:', error);
 			this.error =
 				error instanceof Error ? error.message : 'Unable to stop this response right now.';
-			this.currentActivity = workerActivityForStatus('running');
+			if (this.#isActiveWorkerHandle(handle)) {
+				this.stopRequested = false;
+				this.#deps.thinking.setStopping?.(false);
+				this.currentActivity = workerActivityForStatus('running');
+			}
 		}
 	}
 
 	reset(): void {
+		// The user left this conversation: drop an admission still in flight.
+		this.#admissionAbort?.abort();
+		this.#admissionAbort = null;
+		this.stopRequested = false;
 		this.activeStreamRunId = this.activeStreamRunId + 1;
 		this.activeTurnHandle = null;
 		this.isStreaming = false;

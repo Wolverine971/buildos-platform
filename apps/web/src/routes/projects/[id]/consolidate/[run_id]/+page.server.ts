@@ -1,5 +1,6 @@
 // apps/web/src/routes/projects/[id]/consolidate/[run_id]/+page.server.ts
-// One consolidation run of this project and its sub-projects.
+// One consolidation run (or quick duplicate check) of this project and its sub-projects,
+// or of projects picked together.
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
@@ -28,10 +29,14 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	}
 	if (view.run.root_project_id !== params.id)
 		redirect(303, `/projects/${view.run.root_project_id}/consolidate/${params.run_id}`);
-	const { data: project } = await locals.supabase
+	const { data: projects } = await locals.supabase
 		.from('onto_projects')
-		.select('name')
-		.eq('id', params.id)
-		.maybeSingle();
-	return { view, projectName: project?.name ?? 'Project' };
+		.select('id, name, parent_project_id')
+		.in('id', view.run.project_ids);
+	const root = (projects ?? []).find((project) => project.id === params.id);
+	// A parent and its sub-projects, or projects picked together (a check before a nest or combine).
+	const scopeIsFamily = (projects ?? []).every(
+		(project) => project.id === params.id || project.parent_project_id === params.id
+	);
+	return { view, projectName: root?.name ?? 'Project', scopeIsFamily };
 };

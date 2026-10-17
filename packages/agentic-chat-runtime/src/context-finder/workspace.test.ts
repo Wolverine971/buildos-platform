@@ -413,6 +413,48 @@ describe('findWorkspaceContext', () => {
 		// The failed project still gets its brief, so the model can open its records directly.
 		expect(renderWorkspaceContextBlock(context)).toContain('Shipping v1.');
 	});
+
+	// Tasker 122: part_of / includes used to reach only Jev's selection step, so
+	// the acting model never saw where a project sits.
+	it('prints organization labels on the project headings it renders', async () => {
+		const hub = project(1, {});
+		hub.project = { ...hub.project, name: 'Wayne Strategies', includes: ['Cadre', 'Redline'] };
+		const child = project(2, {});
+		child.project = { ...child.project, name: 'Cadre', part_of: 'Wayne Strategies' };
+		const labeled = [hub, child, project(3)];
+		const zoom = await findWorkspaceContext({
+			projects: labeled,
+			loadProject: vi.fn(),
+			decider: fakeDecider({
+				scope: 'projects',
+				projectScores: { Cadre: 0.9, 'Wayne Strategies': 0.85 },
+				dig: 0.1
+			}),
+			message: 'where does Cadre stand?'
+		});
+		const block = renderWorkspaceContextBlock(zoom)!;
+		expect(block).toContain(
+			`# Project: Cadre (project_id ${id(2)}) · part of Wayne Strategies`
+		);
+		expect(block).toContain(
+			`# Project: Wayne Strategies (project_id ${id(1)}) · includes Cadre, Redline`
+		);
+
+		const pulse = await findWorkspaceContext({
+			projects: labeled,
+			loadProject: vi.fn(),
+			decider: fakeDecider({
+				scope: 'portfolio',
+				projectScores: { Cadre: 0.8, 'Project 3': 0.6 }
+			}),
+			message: "what's going on everywhere?"
+		});
+		const pulseBlock = renderWorkspaceContextBlock(pulse)!;
+		expect(pulseBlock).toContain(
+			`## Cadre (project_id ${id(2)}; active) · part of Wayne Strategies`
+		);
+		expect(pulseBlock).toContain(`## Project 3 (project_id ${id(3)}; active)\n`);
+	});
 });
 
 describe('loadWorkspaceFinderProjects', () => {

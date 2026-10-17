@@ -1,7 +1,11 @@
 // packages/agentic-chat-runtime/src/context/context-loader.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChatContextType, Database, ProjectFamilyV1 } from '@buildos/shared-types';
-import { Constants, parseProjectFamilyV1 } from '@buildos/shared-types';
+import {
+	buildProjectHierarchyIndexV1,
+	Constants,
+	parseProjectFamilyV1
+} from '@buildos/shared-types';
 import type { ProjectFocus } from '@buildos/shared-types';
 import { buildFocusedDocumentContent } from './focused-document-context';
 import {
@@ -1320,14 +1324,35 @@ function buildGlobalContextMeta(params: {
  * F115). The rollup is attached afterwards, with the bundles', by
  * attachGlobalTaskRollups.
  */
-function buildGlobalProjectIndex(projects: LightProject[]): GlobalProjectIndexEntry[] {
-	return projects.map((project) => ({
+function buildGlobalProjectIndex(
+	projects: LightProject[],
+	hierarchyRows?: unknown
+): GlobalProjectIndexEntry[] {
+	const entries = projects.map((project) => ({
 		id: project.id,
 		name: project.name,
 		state_key: project.state_key,
 		next_step_short: project.next_step_short,
 		updated_at: project.updated_at
 	}));
+	return hierarchyRows === undefined ? entries : withGlobalProjectParents(entries, hierarchyRows);
+}
+
+/**
+ * Tasker 122: mark each index entry with its parent so the prompt can say
+ * "part of X" / "includes N". The index is every project the viewer can open,
+ * so a parent outside it is never recorded (the visibility rule).
+ */
+function withGlobalProjectParents(
+	entries: GlobalProjectIndexEntry[],
+	hierarchyRows: unknown
+): GlobalProjectIndexEntry[] {
+	const index = buildProjectHierarchyIndexV1(hierarchyRows, entries);
+	if (index.parentOf.size === 0) return entries;
+	return entries.map((entry) => {
+		const parent = index.parentOf.get(entry.id);
+		return parent ? { ...entry, parent_project_id: parent.id } : entry;
+	});
 }
 
 type ProjectIntelligenceProject = Pick<
@@ -2005,6 +2030,37 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			nowMs: Date.now(),
 			truncated: rows.length >= GLOBAL_TASK_ROLLUP_ROW_LIMIT
 		});
+	}
+
+	/**
+	 * `id, parent_project_id` for the global index (tasker 122). Organization
+	 * only: any failure means an unlabeled index, never a failed load.
+	 */
+	async function loadGlobalProjectHierarchyRows(
+		supabase: SupabaseClient<Database>,
+		projectIds: string[],
+		onError?: LoadContextParams['onError']
+	): Promise<unknown[] | null> {
+		if (projectIds.length === 0) return null;
+		try {
+			const { data, error } = await supabase
+				.from('onto_projects')
+				.select('id, parent_project_id')
+				.in('id', projectIds)
+				.is('deleted_at', null);
+			if (error) {
+				reportContextLoadError(onError, 'query.global.project_hierarchy', error, {
+					projectCount: projectIds.length
+				});
+				return null;
+			}
+			return Array.isArray(data) ? data : null;
+		} catch (error) {
+			reportContextLoadError(onError, 'query.global.project_hierarchy', error, {
+				projectCount: projectIds.length
+			});
+			return null;
+		}
 	}
 
 	async function attachGlobalTaskRollups(
@@ -2690,10 +2746,12 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			string,
 			{ start_at: string | null; end_at: string | null }
 		>();
+		// Tasker 122: the same read carries parent_project_id for the index labels.
+		let hierarchyRows: unknown[] | undefined;
 		if (summaryProjectIds.length > 0) {
 			const { data: dateRows, error: dateError } = await supabase
 				.from('onto_projects')
-				.select('id, start_at, end_at')
+				.select('id, start_at, end_at, parent_project_id')
 				.in('id', summaryProjectIds)
 				.is('deleted_at', null);
 			if (dateError) {
@@ -2702,6 +2760,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 					projectCount: summaryProjectIds.length
 				});
 			} else {
+				hierarchyRows = dateRows ?? [];
 				for (const row of dateRows ?? []) {
 					projectDatesById.set(row.id, {
 						start_at: row.start_at ?? null,
@@ -2878,7 +2937,7 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 				milestonesByProject,
 				plansByProject
 			}),
-			project_index: buildGlobalProjectIndex(allProjects),
+			project_index: buildGlobalProjectIndex(allProjects, hierarchyRows),
 			project_intelligence: buildProjectIntelligenceSnapshot({
 				scope: 'global',
 				source: 'fallback',
@@ -3579,11 +3638,27 @@ export function createFastChatContextLoader({ logger }: FastChatContextLoaderPor
 			if (rpcPayload) {
 				if (rpcContextType === 'global') {
 					if (normalizeProjectIntelligenceFromPayload(rpcPayload.project_intelligence)) {
-						const data = await attachGlobalTaskRollups(
-							supabase,
-							buildGlobalContextFromRpc(rpcPayload),
-							params.onError
-						);
+						const base = buildGlobalContextFromRpc(rpcPayload);
+						// The RPC's project rows carry no parent column, so it is read here,
+						// beside the rollups (no added round trip).
+						const [withRollups, hierarchyRows] = await Promise.all([
+							attachGlobalTaskRollups(supabase, base, params.onError),
+							loadGlobalProjectHierarchyRows(
+								supabase,
+								base.project_index.map((entry) => entry.id),
+								params.onError
+							)
+						]);
+						const data =
+							hierarchyRows === null
+								? withRollups
+								: {
+										...withRollups,
+										project_index: withGlobalProjectParents(
+											withRollups.project_index,
+											hierarchyRows
+										)
+									};
 						return { ...baseContext, contextLoadSource: 'rpc', data };
 					}
 					reportContextLoadError(

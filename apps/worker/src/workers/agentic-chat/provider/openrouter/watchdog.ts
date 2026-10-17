@@ -3,13 +3,27 @@
 // each attempt, abortable reads, and the slow-stream progress watch.
 import type { JsonObject } from '@buildos/shared-types';
 import type { ActiveResponse, ClientInput, ProviderAttemptTiming, StreamState } from './types';
-import { boundedDuration } from './canonical';
-import { AgenticChatSlowStreamError } from './errors';
+import { boundedDuration, estimateTokens } from './canonical';
+import { AgenticChatFirstProgressStallError, AgenticChatSlowStreamError } from './errors';
+import { OUTPUT_RECOVERY_MIN_REMAINING_MS, reportedReasoningTokens } from '../output-budget';
 
 // A local progress heuristic, not a tokenizer or provider throughput guarantee.
 // Only buffered V4.1 acting passes with an unused retry may abandon a slow stream.
 const SLOW_STREAM_WINDOW_MS = 4_000;
 const SLOW_STREAM_MIN_BYTES_PER_SECOND = 240;
+/**
+ * A watched pass with its retry left must stream its first reasoning, text, or
+ * tool delta this soon after response headers (audit 2026-10-17 S9).
+ */
+export const WATCHED_FIRST_PROGRESS_TIMEOUT_MS = 15_000;
+/**
+ * DeepSeek ignores reasoning.max_tokens. In prod (09-25..10-17) every pass that hit
+ * the 12k cap had >10.7k reasoning tokens, while six passes that reasoned 6.2k–11.5k
+ * still answered well. 9k catches every cap-hitter and spares most long-but-good passes.
+ */
+export const RUNAWAY_REASONING_TOKEN_LIMIT = 9_000;
+/** Attempt-receipt `error_class` and usage-log marker for the cutoff below. */
+export const RUNAWAY_REASONING_CUTOFF = 'runaway_reasoning_cutoff';
 /**
  * Every attempt keeps at least this long, and reserves this much of the turn
  * budget for the executor to finalize after the last provider pass. Below it a
@@ -52,15 +66,48 @@ export function watchesStreamProgress(input: ClientInput, passRole: string, mode
 	);
 }
 
+/**
+ * Reasoning tokens streamed so far: the provider's count when a frame already
+ * carried usage, else streamed reasoning characters / 4.
+ */
+export function streamedReasoningTokens(state: StreamState): number {
+	return reportedReasoningTokens(state.rawUsage) ?? estimateTokens(state.reasoningChars);
+}
+
+/**
+ * The estimated reasoning tokens when a watched pass that may still claim its
+ * reasoning-off recovery has reasoned past the limit without any text or
+ * tool-call delta; otherwise null. Checked as frames arrive, so a runaway pass
+ * ends at the limit instead of at the output cap (audit 2026-10-17 S2).
+ */
+export function runawayReasoningTokens(
+	state: StreamState,
+	input: ClientInput,
+	model: string,
+	limit = RUNAWAY_REASONING_TOKEN_LIMIT
+): number | null {
+	if (input.allowRunawayReasoningCutoff !== true) return null;
+	if (state.finishReason !== null || state.completionChars > 0) return null;
+	if (!isV41FlashModel(model)) return null;
+	// Too little budget left for the recovery: let the pass run as before.
+	if (input.budget && input.budget.deadlineAtMs - Date.now() < OUTPUT_RECOVERY_MIN_REMAINING_MS)
+		return null;
+	const tokens = streamedReasoningTokens(state);
+	return tokens > limit ? tokens : null;
+}
+
 export function watchStreamProgress(
 	active: ActiveResponse,
 	state: StreamState,
 	input: ClientInput
 ): () => void {
-	let startedAtMs = Date.now();
+	const openedAtMs = Date.now();
+	let startedAtMs = openedAtMs;
 	let startedBytes = 0;
+	let dueAtMs = openedAtMs;
 	const progressBytes = () => state.generatedBytes + state.reasoningBytes;
 	const schedule = (delayMs: number) => {
+		dueAtMs = Date.now() + delayMs;
 		timer = setTimeout(check, delayMs);
 		timer.unref?.();
 	};
@@ -75,14 +122,34 @@ export function watchStreamProgress(
 				MIN_ATTEMPT_TIMEOUT_MS + BUDGET_FINALIZATION_RESERVE_MS
 		)
 			return;
-		// Judge throughput only over full windows of generation. Waiting for
-		// the first byte (prompt processing) is bounded by the attempt deadline.
-		// Measuring from stream open killed healthy streams whose first byte
-		// came late: 9 of 9 gate aborts on 2026-09-24 were generating at
-		// 80–200 tok/s, mostly reasoning (tasker 101).
+		// Judge throughput only over full windows of generation. Measuring from
+		// stream open killed healthy streams whose first byte came late: 9 of 9
+		// gate aborts on 2026-09-24 were generating at 80–200 tok/s, mostly
+		// reasoning (tasker 101). Silence before the first delta (reasoning
+		// counts) has its own, longer deadline instead of the 90 s attempt one.
 		if (state.firstProgressAtMs === null) {
+			const waited = now - openedAtMs;
+			// A late timer may mean a suspended host with unread bytes: give the
+			// pending read one turn of the event loop before judging.
+			if (
+				waited >= WATCHED_FIRST_PROGRESS_TIMEOUT_MS &&
+				now - dueAtMs <= SLOW_STREAM_WINDOW_MS
+			) {
+				active.abort(
+					new AgenticChatFirstProgressStallError(
+						waited,
+						WATCHED_FIRST_PROGRESS_TIMEOUT_MS
+					)
+				);
+				return;
+			}
 			startedAtMs = now;
-			schedule(SLOW_STREAM_WINDOW_MS);
+			schedule(
+				Math.max(
+					1,
+					Math.min(SLOW_STREAM_WINDOW_MS, WATCHED_FIRST_PROGRESS_TIMEOUT_MS - waited)
+				)
+			);
 			return;
 		}
 		startedAtMs = Math.max(startedAtMs, state.firstProgressAtMs);

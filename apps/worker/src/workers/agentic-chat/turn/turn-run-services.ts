@@ -214,7 +214,8 @@ export class AgenticChatTurnRunServices {
 				? deriveAgenticChatReadPlanningIdentityV1({
 						toolName: step.toolName,
 						arguments: step.arguments,
-						...(step.decidedBy ? { decidedBy: step.decidedBy } : {})
+						...(step.decidedBy ? { decidedBy: step.decidedBy } : {}),
+						rejectedBeforeExecution: Boolean(step.validationFailure)
 					})
 				: {
 						executionClass: step.type === 'mutating_tool' ? 'mutation' : 'rejected',

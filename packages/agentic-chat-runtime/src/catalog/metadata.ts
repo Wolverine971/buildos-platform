@@ -314,6 +314,31 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project'],
 		category: 'read'
 	},
+	// Tasker 122 (2026-10-17): proposal cards. They change nothing themselves (the
+	// user's click on the card does), so they are reads. Jev picks tools from these
+	// summaries, so they name the asks in the user's words.
+	propose_project_parent: {
+		summary:
+			'Propose nesting a project under another project, or taking it out of its parent; the user clicks the card to make the change.',
+		capabilities: [
+			'For asks to put, file, or move a project inside another project, or to un-nest it',
+			'Checks access and the one-level nesting rule first',
+			'Starts a quick duplicate check of the two projects'
+		],
+		contexts: ['global'],
+		category: 'read'
+	},
+	propose_project_combine: {
+		summary:
+			'Propose combining (merging) a whole project into another; the user clicks the card to run it.',
+		capabilities: [
+			'For asks to merge, combine, or fold two projects into one',
+			'Shows what moves, who loses access, and blockers such as upcoming events',
+			'Starts a quick duplicate check of the two projects'
+		],
+		contexts: ['global'],
+		category: 'read'
+	},
 
 	// ============================================
 	// CALENDAR TOOLS

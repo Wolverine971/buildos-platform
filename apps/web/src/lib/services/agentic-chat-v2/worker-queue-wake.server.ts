@@ -16,8 +16,9 @@ export const AGENTIC_CHAT_QUEUE_WAKE_TOPIC = 'agentic-chat-queue:wake';
 export const AGENTIC_CHAT_QUEUE_WAKE_EVENT = 'wake';
 
 /**
- * How long admission waits for the wake. A slow or lost wake costs nothing but
- * latency: the worker's durable safety poll still claims the turn (normally 5 s).
+ * How long `wakeAgenticChatWorkerQueue` waits before reporting `timed_out`.
+ * Admission no longer awaits it (`startAgenticChatWorkerQueueWake`). A slow or
+ * lost wake costs nothing but latency: the worker's safety poll (5 s) claims it.
  */
 export const AGENTIC_CHAT_QUEUE_WAKE_TIMEOUT_MS = 150;
 
@@ -161,6 +162,15 @@ export async function wakeAgenticChatWorkerQueue(): Promise<void> {
 	} catch (error) {
 		reportWakeFailure('failed', error);
 	}
+}
+
+/**
+ * Start the wake without holding the admission response for it. The turn is
+ * already durable; `runAfterResponse` keeps the wake alive past the response
+ * (Vercel `waitUntil`) and swallows any failure.
+ */
+export function startAgenticChatWorkerQueueWake(): void {
+	runAfterResponse(wakeAgenticChatWorkerQueue(), 'agentic chat queue wake');
 }
 
 function reportWakeFailure(outcome: AgenticChatWorkerQueueWakeOutcome, error?: unknown): void {

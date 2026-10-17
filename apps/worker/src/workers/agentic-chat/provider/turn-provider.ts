@@ -320,7 +320,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			actor
 				? {
 						pressure: () => state.recordOutputBudgetPressure(),
-						claimRecovery: () => state.claimOutputBudgetRecovery()
+						claimRecovery: () => state.claimOutputBudgetRecovery(),
+						canClaimRecovery: () => state.canClaimOutputBudgetRecovery()
 					}
 				: undefined
 		);

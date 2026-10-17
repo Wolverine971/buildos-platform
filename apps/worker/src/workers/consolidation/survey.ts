@@ -82,7 +82,54 @@ export type Inventory = {
 	projects: InventoryProject[];
 	documents: InventoryDocument[];
 	tasks?: InventoryTask[];
+	/**
+	 * family: a parent and its sub-projects (absent means family). set: any
+	 * projects the owner picked, such as two they may nest or combine; the
+	 * root is the one things would end up in.
+	 */
+	scope?: SurveyScope;
 };
+
+export type SurveyScope = 'family' | 'set';
+
+/**
+ * How the prompts name the run's projects. The family wording is the prompt
+ * the survey has always used; the set wording fits any projects (tasker 122).
+ */
+const SCOPE_WORDS = {
+	family: {
+		intro: 'one project family: a parent project and its sub-projects',
+		scopeNoun: 'a project family',
+		oneProject: 'one project of the family',
+		inScope: 'in the family',
+		anotherProject: 'another project of the family',
+		anotherIn: 'another project in the family',
+		others: 'sub-projects',
+		rootRole: 'parent',
+		otherRole: 'sub-project'
+	},
+	set: {
+		intro: 'a set of related projects the owner may nest or combine; the project with role "main" is where things would end up',
+		scopeNoun: 'a set of related projects',
+		oneProject: 'one of these projects',
+		inScope: 'in these projects',
+		anotherProject: 'another of these projects',
+		anotherIn: 'another of these projects',
+		others: 'projects',
+		rootRole: 'main',
+		otherRole: 'other'
+	}
+} as const;
+
+function words(scope: SurveyScope | undefined) {
+	return SCOPE_WORDS[scope ?? 'family'];
+}
+
+/** What the model is told each project is: parent or sub-project, or main or other. */
+function roleOf(project: InventoryProject, inventory: Inventory): string {
+	const w = words(inventory.scope);
+	return project.parent ? w.rootRole : w.otherRole;
+}
 
 export type Keys = {
 	project: Map<string, string>;
@@ -192,36 +239,54 @@ export const RULE_DATA =
 
 // ---------- call 1: find groups ----------
 
-export const GROUPS_SYSTEM_PROMPT = [
-	'You help someone tidy the documents and open tasks of one project family: a parent project and its sub-projects.',
-	'Find groups where something should change. Go through every task as carefully as every document: task groups matter as much as document groups. Kinds of document groups:',
-	'- misfiled: documents mainly about one project of the family (its client, product or work) that live in a different project. Say which project they belong in.',
-	'- fragments: three or more short documents about one subject that belong together.',
-	'- versions: two or more versions of the same document, such as "Outline" and "Outline 2".',
-	'- superseded: older documents whose subject a newer document in the family now covers, for example after a rename. Name the newer document.',
-	'- twins: documents with identical content. These are listed in `twins`; include each as a group of kind twins.',
-	'Open tasks (T keys) can be in a misfiled group: a task about another project of the family, alone or with the documents about the same work. Groups of tasks only:',
-	'- duplicate_tasks: two or more open tasks for the same work.',
-	'- task_parts: one bigger task and the open tasks that are pieces of it, all in one project. List the bigger task first.',
-	'- task_sequence: open tasks in one project that only make sense in order. List them in that order.',
-	'- sibling_tasks: the same kind of task in two or more different sub-projects, such as sending outreach to each client.',
-	'- finished_tasks: open tasks that a document shows were done, or that newer work replaced. Put the one document that shows it in `documents`.',
-	'Rules:',
-	'- Only report a group you would act on. Documents or tasks with similar titles about different work are not a group.',
-	'- Documents marked pinned (START HERE, thinking logs, shared folders) are never in a group.',
-	'- A document or task is in at most one group. At most 15 groups, most useful first.',
-	'- Use only the keys given (P1, D12, T3). Never invent keys. Keys go in `documents`, `tasks`, `belongs_in` and `newer` only: titles and reasons name documents, tasks and projects in plain words.',
-	RULE_DATA,
-	'Answer with JSON: {"groups":[{"kind":"misfiled|fragments|versions|superseded|twins|duplicate_tasks|task_parts|task_sequence|sibling_tasks|finished_tasks","title":"short name, under 40 characters","documents":["D3","D7"],"tasks":["T2"],"belongs_in":"P2 or null","newer":"D9 or null","reason":"one plain sentence"}]}'
-].join('\n');
+/** `request`: the run carries what the owner asked to look at (`owner_request`). */
+export function groupsSystemPrompt(scope: SurveyScope = 'family', request = false): string {
+	const w = words(scope);
+	return [
+		`You help someone tidy the documents and open tasks of ${w.intro}.`,
+		'Find groups where something should change. Go through every task as carefully as every document: task groups matter as much as document groups. Kinds of document groups:',
+		`- misfiled: documents mainly about ${w.oneProject} (its client, product or work) that live in a different project. Say which project they belong in.`,
+		'- fragments: three or more short documents about one subject that belong together.',
+		'- versions: two or more versions of the same document, such as "Outline" and "Outline 2".',
+		`- superseded: older documents whose subject a newer document ${w.inScope} now covers, for example after a rename. Name the newer document.`,
+		'- twins: documents with identical content. These are listed in `twins`; include each as a group of kind twins.',
+		`Open tasks (T keys) can be in a misfiled group: a task about ${w.anotherProject}, alone or with the documents about the same work. Groups of tasks only:`,
+		'- duplicate_tasks: two or more open tasks for the same work.',
+		'- task_parts: one bigger task and the open tasks that are pieces of it, all in one project. List the bigger task first.',
+		'- task_sequence: open tasks in one project that only make sense in order. List them in that order.',
+		`- sibling_tasks: the same kind of task in two or more different ${w.others}, such as sending outreach to each client.`,
+		'- finished_tasks: open tasks that a document shows were done, or that newer work replaced. Put the one document that shows it in `documents`.',
+		'Rules:',
+		'- Only report a group you would act on. Documents or tasks with similar titles about different work are not a group.',
+		'- Documents marked pinned (START HERE, thinking logs, shared folders) are never in a group.',
+		'- A document or task is in at most one group. At most 15 groups, most useful first.',
+		'- Use only the keys given (P1, D12, T3). Never invent keys. Keys go in `documents`, `tasks`, `belongs_in` and `newer` only: titles and reasons name documents, tasks and projects in plain words.',
+		...(request
+			? [
+					'- `owner_request` is what the owner asked you to look at. List groups about it first; still report the other groups you find.'
+				]
+			: []),
+		RULE_DATA,
+		'Answer with JSON: {"groups":[{"kind":"misfiled|fragments|versions|superseded|twins|duplicate_tasks|task_parts|task_sequence|sibling_tasks|finished_tasks","title":"short name, under 40 characters","documents":["D3","D7"],"tasks":["T2"],"belongs_in":"P2 or null","newer":"D9 or null","reason":"one plain sentence"}]}'
+	].join('\n');
+}
 
-export function groupsUserPrompt(inventory: Inventory, keys: Keys): string {
+/** The family prompt, as the survey has always sent it. */
+export const GROUPS_SYSTEM_PROMPT = groupsSystemPrompt('family');
+
+export function groupsUserPrompt(
+	inventory: Inventory,
+	keys: Keys,
+	request?: string | null
+): string {
 	const twins = findTwins(inventory).map((ids) => ids.map((id) => keys.documentKey.get(id)));
+	const ownerRequest = request?.trim() ? clip(request, 2000) : undefined;
 	return JSON.stringify({
+		...(ownerRequest ? { owner_request: ownerRequest } : {}),
 		projects: inventory.projects.map((project) => ({
 			key: keys.projectKey.get(project.id),
 			name: project.name,
-			role: project.parent ? 'parent' : 'sub-project',
+			role: roleOf(project, inventory),
 			about: clip(project.description, 240)
 		})),
 		documents: inventory.documents.map((document) => ({
@@ -351,45 +416,57 @@ export function parseGroups(raw: unknown, inventory: Inventory, keys: Keys): Fou
 
 // ---------- call 2: decide one group ----------
 
-export const DECIDE_SYSTEM_PROMPT = [
-	'You decide what should happen to one group of documents in a project family, and whether the owner needs to be asked.',
-	'Allowed actions:',
-	'- {"move":["D3"],"to":"P2"}: move documents to the top level of another project in the family.',
-	'- {"archive":["D5"],"replaced_by":"D9 or null"}: archive documents (restorable). Use replaced_by when another document now covers them.',
-	'- {"merge":["D2","D3","D4"],"to":"P2","title":"Rod Chamberlin: website"}: write one new document holding every fact from two or more documents that cover one subject in pieces or versions, then archive them (restorable). Offer it for fragments and versions; the owner is always asked first.',
-	'- {"keep":["D1"]}: leave documents as they are.',
-	'Tasks (T keys) can only move: include them in a move, like {"move":["D3","T2"],"to":"P2"}. Never archive or merge a task.',
-	'Give one recommended choice and one or two real alternatives. Each choice is a short label (under 50 characters, starting with a verb), a one-sentence description, and its actions.',
-	'Set needs_owner to true when the documents do not settle it: they conflict, only the owner can know, or the choice would hide work they may still use. Set it to false when the evidence makes the choice clear.',
-	'When you ask, write the question the way a colleague would: one or two plain sentences, no jargon, under 300 characters, plus a header under 20 characters.',
-	'Evidence: up to 3 short quotes copied exactly from the excerpts, each under 200 characters, that a person would need to decide.',
-	'Use only the keys given. Never invent keys.',
-	'Keys are only for actions. In labels, descriptions, the header and the question, name documents by title and projects by name; never write a key like D3 or P2 there.',
-	RULE_DATA,
-	'Answer with JSON: {"recommended":{"label":"Move them to Beyond Exit","description":"","actions":[]},"alternatives":[{"label":"Merge into one doc","description":"","actions":[]}],"confidence":"high|medium|low","needs_owner":true,"header":"","question":"","evidence":[{"doc":"D3","quote":""}]}'
-].join('\n');
+function docDecidePrompt(scope: SurveyScope): string {
+	const w = words(scope);
+	return [
+		`You decide what should happen to one group of documents in ${w.scopeNoun}, and whether the owner needs to be asked.`,
+		'Allowed actions:',
+		`- {"move":["D3"],"to":"P2"}: move documents to the top level of ${w.anotherIn}.`,
+		'- {"archive":["D5"],"replaced_by":"D9 or null"}: archive documents (restorable). Use replaced_by when another document now covers them.',
+		'- {"merge":["D2","D3","D4"],"to":"P2","title":"Rod Chamberlin: website"}: write one new document holding every fact from two or more documents that cover one subject in pieces or versions, then archive them (restorable). Offer it for fragments and versions; the owner is always asked first.',
+		'- {"keep":["D1"]}: leave documents as they are.',
+		'Tasks (T keys) can only move: include them in a move, like {"move":["D3","T2"],"to":"P2"}. Never archive or merge a task.',
+		'Give one recommended choice and one or two real alternatives. Each choice is a short label (under 50 characters, starting with a verb), a one-sentence description, and its actions.',
+		'Set needs_owner to true when the documents do not settle it: they conflict, only the owner can know, or the choice would hide work they may still use. Set it to false when the evidence makes the choice clear.',
+		'When you ask, write the question the way a colleague would: one or two plain sentences, no jargon, under 300 characters, plus a header under 20 characters.',
+		'Evidence: up to 3 short quotes copied exactly from the excerpts, each under 200 characters, that a person would need to decide.',
+		'Use only the keys given. Never invent keys.',
+		'Keys are only for actions. In labels, descriptions, the header and the question, name documents by title and projects by name; never write a key like D3 or P2 there.',
+		RULE_DATA,
+		'Answer with JSON: {"recommended":{"label":"Move them to Beyond Exit","description":"","actions":[]},"alternatives":[{"label":"Merge into one doc","description":"","actions":[]}],"confidence":"high|medium|low","needs_owner":true,"header":"","question":"","evidence":[{"doc":"D3","quote":""}]}'
+	].join('\n');
+}
 
-export const TASK_DECIDE_SYSTEM_PROMPT = [
-	'You decide what should happen to one group of open tasks in a project family, and whether the owner needs to be asked.',
-	'Allowed actions:',
-	'- {"merge_tasks":["T2","T3"],"into":"T1"}: the tasks are duplicates. Keep the most complete one ("into"); the others become checklist lines in it and are archived (restorable). The owner is always asked first.',
-	'- {"plan":["T1","T2","T3"],"name":"User Guide Suite","in_order":false}: a new plan holds these tasks, which must all be in one project, in this order. For a bigger task and its pieces, list the bigger task first and name the plan after it. For steps that only make sense in order, set in_order to true: each task then waits on the one before it.',
-	'- {"rollup":["T4","T5","T6"],"title":"Send creator outreach (3)"}: the same kind of task in different sub-projects. One new task in the parent project gets a checklist linking them; they stay where they are.',
-	'- {"done":["T7"],"evidence":"D12","quote":"","note":""}: the evidence document shows the work happened. Copy a quote of under 200 characters exactly from its excerpt, and write a one-sentence note saying what shows it. The owner is always asked first.',
-	'- {"archive_tasks":["T8"],"note":""}: the tasks were replaced or are no longer needed; the note says by what or why, in one sentence. The owner is always asked first.',
-	'- {"keep":["T1"]}: leave tasks as they are.',
-	'Give one recommended choice and one or two real alternatives. Each choice is a short label (under 50 characters, starting with a verb), a one-sentence description, and its actions.',
-	'Set needs_owner to true when the tasks do not settle it: only the owner can know, or the choice would hide work they may still do. Set it to false when the evidence makes the choice clear.',
-	'When you ask, write the question the way a colleague would: one or two plain sentences, no jargon, under 300 characters, plus a header under 20 characters.',
-	'Use only the keys given. Never invent keys.',
-	'Keys are only for actions. In labels, descriptions, names, titles, notes, the header and the question, name tasks, documents and projects in plain words; never write a key like T3, D3 or P2 there.',
-	RULE_DATA,
-	'Answer with JSON: {"recommended":{"label":"Merge into the brand kit task","description":"","actions":[]},"alternatives":[{"label":"Keep them separate","description":"","actions":[]}],"confidence":"high|medium|low","needs_owner":true,"header":"","question":""}'
-].join('\n');
+export const DECIDE_SYSTEM_PROMPT = docDecidePrompt('family');
+
+function taskDecidePrompt(scope: SurveyScope): string {
+	const w = words(scope);
+	return [
+		`You decide what should happen to one group of open tasks in ${w.scopeNoun}, and whether the owner needs to be asked.`,
+		'Allowed actions:',
+		'- {"merge_tasks":["T2","T3"],"into":"T1"}: the tasks are duplicates. Keep the most complete one ("into"); the others become checklist lines in it and are archived (restorable). The owner is always asked first.',
+		'- {"plan":["T1","T2","T3"],"name":"User Guide Suite","in_order":false}: a new plan holds these tasks, which must all be in one project, in this order. For a bigger task and its pieces, list the bigger task first and name the plan after it. For steps that only make sense in order, set in_order to true: each task then waits on the one before it.',
+		`- {"rollup":["T4","T5","T6"],"title":"Send creator outreach (3)"}: the same kind of task in different ${w.others}. One new task in the ${w.rootRole} project gets a checklist linking them; they stay where they are.`,
+		'- {"done":["T7"],"evidence":"D12","quote":"","note":""}: the evidence document shows the work happened. Copy a quote of under 200 characters exactly from its excerpt, and write a one-sentence note saying what shows it. The owner is always asked first.',
+		'- {"archive_tasks":["T8"],"note":""}: the tasks were replaced or are no longer needed; the note says by what or why, in one sentence. The owner is always asked first.',
+		'- {"keep":["T1"]}: leave tasks as they are.',
+		'Give one recommended choice and one or two real alternatives. Each choice is a short label (under 50 characters, starting with a verb), a one-sentence description, and its actions.',
+		'Set needs_owner to true when the tasks do not settle it: only the owner can know, or the choice would hide work they may still do. Set it to false when the evidence makes the choice clear.',
+		'When you ask, write the question the way a colleague would: one or two plain sentences, no jargon, under 300 characters, plus a header under 20 characters.',
+		'Use only the keys given. Never invent keys.',
+		'Keys are only for actions. In labels, descriptions, names, titles, notes, the header and the question, name tasks, documents and projects in plain words; never write a key like T3, D3 or P2 there.',
+		RULE_DATA,
+		'Answer with JSON: {"recommended":{"label":"Merge into the brand kit task","description":"","actions":[]},"alternatives":[{"label":"Keep them separate","description":"","actions":[]}],"confidence":"high|medium|low","needs_owner":true,"header":"","question":""}'
+	].join('\n');
+}
+
+export const TASK_DECIDE_SYSTEM_PROMPT = taskDecidePrompt('family');
 
 /** The decide prompt for this group: documents (and misfiled tasks), or tasks only. */
-export function decideSystemPrompt(group: FoundGroup): string {
-	return isTaskKind(group.kind) ? TASK_DECIDE_SYSTEM_PROMPT : DECIDE_SYSTEM_PROMPT;
+export function decideSystemPrompt(group: FoundGroup, scope: SurveyScope = 'family'): string {
+	if (scope === 'family')
+		return isTaskKind(group.kind) ? TASK_DECIDE_SYSTEM_PROMPT : DECIDE_SYSTEM_PROMPT;
+	return isTaskKind(group.kind) ? taskDecidePrompt(scope) : docDecidePrompt(scope);
 }
 
 function taskDecideUserPrompt(params: {
@@ -407,7 +484,7 @@ function taskDecideUserPrompt(params: {
 		projects: inventory.projects.map((project) => ({
 			key: keys.projectKey.get(project.id),
 			name: project.name,
-			role: project.parent ? 'parent' : 'sub-project'
+			role: roleOf(project, inventory)
 		})),
 		group: {
 			kind: group.kind,
@@ -459,7 +536,7 @@ export function decideUserPrompt(params: {
 		projects: inventory.projects.map((project) => ({
 			key: keys.projectKey.get(project.id),
 			name: project.name,
-			role: project.parent ? 'parent' : 'sub-project',
+			role: roleOf(project, inventory),
 			about: clip(project.description, 240)
 		})),
 		group: {
@@ -1017,6 +1094,74 @@ export function emptyPlan(inventory: Inventory): ConsolidationPlan {
 				project.id,
 				{ name: project.name, parent: project.parent }
 			])
+		)
+	};
+}
+
+// ---------- quick duplicate check (tasker 122) ----------
+
+/**
+ * Identical copies are certain and cost nothing to find, so a check reports
+ * every set of them even when the model left one out. Docs the model already
+ * put in a group stay there; what is left of a set (two or more) becomes a
+ * twins group of its own.
+ */
+export function withAllTwins(groups: FoundGroup[], inventory: Inventory): FoundGroup[] {
+	const used = new Set(groups.flatMap((group) => group.document_ids));
+	const titles = new Map(inventory.documents.map((document) => [document.id, document.title]));
+	const missed: FoundGroup[] = [];
+	for (const ids of findTwins(inventory)) {
+		const left = ids.filter((id) => !used.has(id));
+		if (left.length < 2) continue;
+		missed.push({
+			kind: 'twins',
+			title: clip(titles.get(left[0]!) ?? 'Identical copies', 60),
+			document_ids: left.slice(0, CONSOLIDATION_LIMITS.maxDocsPerCluster),
+			belongs_in: null,
+			newer_id: null,
+			reason: 'These documents have identical content.'
+		});
+	}
+	return [...groups, ...missed];
+}
+
+/**
+ * A check's plan: every group as found, each left as it is (keep only, no
+ * question), so nothing in it can ever apply. Titles and projects are kept for
+ * the docs and tasks the groups name, not the whole inventory.
+ */
+export function checkPlan(inventory: Inventory, groups: FoundGroup[]): ConsolidationPlan {
+	const base = emptyPlan(inventory);
+	const clusters: ConsolidationCluster[] = groups.map((group, index) => ({
+		key: `c${index + 1}`,
+		kind: group.kind,
+		title: group.title,
+		document_ids: [...group.document_ids],
+		...(group.task_ids?.length ? { task_ids: [...group.task_ids] } : {}),
+		reason: group.reason,
+		ops: [leaveAll(group.document_ids, group.task_ids)],
+		question_id: null,
+		vetoed: false,
+		...(group.belongs_in ? { belongs_in: group.belongs_in } : {}),
+		...(group.newer_id ? { newer_id: group.newer_id } : {}),
+		...(group.evidence_id ? { evidence_id: group.evidence_id } : {})
+	}));
+	const documentIds = new Set(
+		clusters.flatMap((cluster) => [
+			...cluster.document_ids,
+			...(cluster.newer_id ? [cluster.newer_id] : []),
+			...(cluster.evidence_id ? [cluster.evidence_id] : [])
+		])
+	);
+	const taskIds = new Set(clusters.flatMap((cluster) => cluster.task_ids ?? []));
+	return {
+		...base,
+		clusters,
+		documents: Object.fromEntries(
+			Object.entries(base.documents).filter(([id]) => documentIds.has(id))
+		),
+		tasks: Object.fromEntries(
+			Object.entries(base.tasks ?? {}).filter(([id]) => taskIds.has(id))
 		)
 	};
 }

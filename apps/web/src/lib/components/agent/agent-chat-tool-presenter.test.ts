@@ -93,6 +93,42 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		).toBe('Needs your choice to update document: "Rate card"');
 	});
 
+	it('labels proposal cards as needing a choice, and a card-less check as only a check', () => {
+		const h = makeHarness();
+		const presenter = createToolPresenter(h.ctx);
+		presenter.cacheEntityName('project', 'p-child', 'Content Ops');
+		presenter.cacheEntityName('project', 'p-parent', 'Wayne Strategies');
+		presenter.cacheEntityName('project', 'p-dest', 'DJ Internal');
+		const nest = { project_id: 'p-child', parent_project_id: 'p-parent' };
+		const detach = { project_id: 'p-child', parent_project_id: null };
+		const combine = { source_project_id: 'p-child', destination_project_id: 'p-dest' };
+
+		expect(presenter.formatToolMessage('propose_project_parent', nest, 'pending')).toBe(
+			'Nesting project: "Content Ops"'
+		);
+		expect(presenter.formatToolMessage('propose_project_parent', nest, 'awaiting_user')).toBe(
+			'Needs your choice to nest project: "Content Ops"'
+		);
+		expect(presenter.formatToolMessage('propose_project_parent', detach, 'awaiting_user')).toBe(
+			'Needs your choice to detach project: "Content Ops"'
+		);
+		expect(
+			presenter.formatToolMessage('propose_project_combine', combine, 'awaiting_user')
+		).toBe('Needs your choice to combine projects: "Content Ops → DJ Internal"');
+		// Blocked or already in place: no card, nothing changed; never "Nested"/"Combined".
+		expect(presenter.formatToolMessage('propose_project_parent', nest, 'completed')).toBe(
+			'Checked nesting project: "Content Ops"'
+		);
+		expect(presenter.formatToolMessage('propose_project_combine', combine, 'completed')).toBe(
+			'Checked combining projects: "Content Ops → DJ Internal"'
+		);
+		// A proposal never counts as a saved change.
+		presenter.recordDataMutation('propose_project_combine', combine, true, {
+			result: { requires_user_action: true }
+		});
+		expect(presenter.buildMutationSummary({ hasMessagesSent: true }).hasChanges).toBe(false);
+	});
+
 	it('reads requires_user_action at any result wrapping', () => {
 		expect(toolResultAwaitsUser({ requires_user_action: true })).toBe(true);
 		expect(toolResultAwaitsUser({ result: { requires_user_action: true } })).toBe(true);

@@ -39,24 +39,6 @@ export type TaskBucketKey =
 	| 'blocked'
 	| 'done';
 
-export type TaskStateKey = 'todo' | 'in_progress' | 'blocked' | 'done';
-
-export type TaskSearchRow = {
-	id: string;
-	project_id: string;
-	title: string;
-	description: string | null;
-	state_key: string | null;
-	type_key: string | null;
-	start_at: string | null;
-	due_at: string | null;
-	completed_at: string | null;
-	updated_at: string | null;
-	deleted_at: string | null;
-	archived_at: string | null;
-	priority: number | null;
-};
-
 export type SearchRankingFactor = {
 	key: string;
 	weight: number;
@@ -145,6 +127,8 @@ const STATE_PRIORITY_BOOSTS: Readonly<Record<string, Readonly<Record<string, num
 		}
 	});
 
+// Scores a structured `bucket_key` a row already carries. Query words never pick a
+// bucket: that keyword path flooded "late-night ideas" with overdue tasks (Q2).
 const TASK_BUCKET_PRIORITY_BOOSTS: Readonly<Record<TaskBucketKey, number>> = Object.freeze({
 	overdue: 0.2,
 	in_progress: 0.16,
@@ -152,26 +136,6 @@ const TASK_BUCKET_PRIORITY_BOOSTS: Readonly<Record<TaskBucketKey, number>> = Obj
 	scheduled: 0.08,
 	blocked: -0.12,
 	done: -0.28
-});
-
-const TASK_BUCKET_ALIASES: Readonly<Record<TaskBucketKey, string[]>> = Object.freeze({
-	backlog: [
-		'backlog',
-		'backlogged',
-		'todo',
-		'to do',
-		'to-do',
-		'not started',
-		'not-started',
-		'not_started',
-		'pending task',
-		'pending tasks'
-	],
-	scheduled: ['scheduled', 'upcoming', 'planned'],
-	overdue: ['overdue', 'late', 'past due', 'past-due', 'past_due'],
-	in_progress: ['in progress', 'in-progress', 'in_progress', 'working', 'doing', 'started'],
-	blocked: ['blocked', 'stuck', 'waiting'],
-	done: ['done', 'completed', 'complete', 'finished', 'closed']
 });
 
 function buildResultPath(result: OntologySearchRow): string | null {
@@ -284,109 +248,6 @@ export function rankSearchResult(result: NormalizedSearchResult, nowMs = Date.no
 		),
 		ranking_factors: factors
 	};
-}
-
-function normalizeSearchText(value: string): string {
-	return value
-		.toLowerCase()
-		.replace(/['’]/g, '')
-		.replace(/[_-]+/g, ' ')
-		.replace(/[^a-z0-9]+/g, ' ')
-		.trim()
-		.replace(/\s+/g, ' ');
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function normalizedTextContainsAlias(text: string, alias: string): boolean {
-	const normalizedAlias = normalizeSearchText(alias);
-	if (!text || !normalizedAlias) return false;
-	return new RegExp(`(^|\\s)${escapeRegExp(normalizedAlias)}(\\s|$)`).test(text);
-}
-
-export function taskBucketsForQuery(query: string): Set<TaskBucketKey> {
-	const normalizedQuery = normalizeSearchText(query);
-	const buckets = new Set<TaskBucketKey>();
-	for (const [bucket, aliases] of Object.entries(TASK_BUCKET_ALIASES) as [
-		TaskBucketKey,
-		string[]
-	][]) {
-		if (aliases.some((alias) => normalizedTextContainsAlias(normalizedQuery, alias))) {
-			buckets.add(bucket);
-		}
-	}
-	return buckets;
-}
-
-function dateMs(value: string | null): number | null {
-	if (!value) return null;
-	const timestamp = new Date(value).getTime();
-	return Number.isFinite(timestamp) ? timestamp : null;
-}
-
-export function taskBucketFor(
-	task: Pick<TaskSearchRow, 'state_key' | 'due_at' | 'start_at'>,
-	nowMs = Date.now()
-): TaskBucketKey {
-	const stateKey = task.state_key ?? 'todo';
-	if (stateKey === 'done') return 'done';
-
-	const dueMs = dateMs(task.due_at);
-	if (dueMs !== null && dueMs < nowMs) return 'overdue';
-
-	if (stateKey === 'todo') {
-		const startMs = dateMs(task.start_at);
-		const isFuture =
-			(dueMs !== null && dueMs >= nowMs) || (startMs !== null && startMs >= nowMs);
-		return isFuture ? 'scheduled' : 'backlog';
-	}
-
-	if (stateKey === 'in_progress') return 'in_progress';
-	if (stateKey === 'blocked') return 'blocked';
-	return 'backlog';
-}
-
-export function taskStatesForBuckets(buckets: Set<TaskBucketKey>): TaskStateKey[] {
-	const states = new Set<TaskStateKey>();
-	for (const bucket of buckets) {
-		switch (bucket) {
-			case 'backlog':
-			case 'scheduled':
-			case 'overdue':
-				states.add('todo');
-				break;
-			case 'in_progress':
-				states.add('in_progress');
-				break;
-			case 'blocked':
-				states.add('blocked');
-				break;
-			case 'done':
-				states.add('done');
-				break;
-		}
-	}
-	return Array.from(states);
-}
-
-export function taskBucketSearchScore(bucket: TaskBucketKey): number {
-	switch (bucket) {
-		case 'backlog':
-		case 'in_progress':
-		case 'scheduled':
-		case 'overdue':
-			return 0.72;
-		case 'blocked':
-			return 0.66;
-		case 'done':
-			return 0.58;
-	}
-}
-
-export function taskBucketSnippet(task: TaskSearchRow, bucket: TaskBucketKey): string {
-	return task.description?.trim() || `Task bucket: ${bucket.replace(/_/g, ' ')}`;
 }
 
 export function dedupeSearchRows(rows: OntologySearchRow[]): OntologySearchRow[] {

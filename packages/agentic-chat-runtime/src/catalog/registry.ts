@@ -88,6 +88,10 @@ export const TOOL_OPERATIONS: Readonly<Record<string, ToolOperation>> = Object.f
 	get_entity_relationships: { op: 'onto.entity.relationships.get', kind: 'read' },
 	get_linked_entities: { op: 'onto.entity.links.get', kind: 'read' },
 	get_project_cleanup: { op: 'onto.project.cleanup.get', kind: 'read' },
+	// Proposal cards (tasker 122): the user's click writes, never the tool. Chat
+	// only; no external op handler exists for them.
+	propose_project_parent: { op: 'onto.project.parent.propose', kind: 'read' },
+	propose_project_combine: { op: 'onto.project.combine.propose', kind: 'read' },
 	// --- Ontology writes ---
 	create_onto_task: { op: 'onto.task.create', kind: 'write' },
 	create_onto_goal: { op: 'onto.goal.create', kind: 'write' },

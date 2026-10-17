@@ -111,6 +111,18 @@ describe('AgentMessageList', () => {
 		expect(bubble().textContent).not.toContain('Still writing this part');
 	});
 
+	it('marks a reply that Stop froze mid-sentence', () => {
+		const reply: UIMessage = {
+			id: 'a-stopped',
+			type: 'assistant',
+			content: longReply,
+			timestamp: at,
+			metadata: { turn_run_id: 'turn-stopped', stopped: true }
+		};
+		render(AgentMessageList, baseProps([reply]));
+		expect(screen.getByTestId('agent-chat-assistant-message').textContent).toContain('Stopped');
+	});
+
 	it('renders a shared-document confirm card under the reply that proposed it', () => {
 		const card = {
 			status: 'confirmation_required',

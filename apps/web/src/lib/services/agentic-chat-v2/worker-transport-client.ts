@@ -45,35 +45,180 @@ export type AgenticChatWorkerCommand = {
 	requestedSkillId?: string | null;
 };
 
+/** One admission attempt that has not answered by now counts as lost. */
+export const WORKER_ADMISSION_TIMEOUT_MS = 30_000;
+/** Pause before the single re-POST of a lost admission. */
+export const WORKER_ADMISSION_RETRY_DELAY_MS = 750;
+const WORKER_ADMISSION_MAX_ATTEMPTS = 2;
+/** 5xx code meaning "unknown whether the turn committed": safe to re-POST the same body. */
+const WORKER_ADMISSION_UNKNOWN_OUTCOME_CODE = 'WORKER_ADMISSION_UNAVAILABLE';
+
+export class AgenticChatAdmissionTimeoutError extends Error {
+	constructor(readonly timeoutMs: number) {
+		super(`Worker admission did not answer within ${timeoutMs}ms`);
+		this.name = 'AgenticChatAdmissionTimeoutError';
+	}
+}
+
+/**
+ * Admit one turn. A lost answer (network error, timeout, or an
+ * unknown-outcome 5xx) is re-POSTed once with the identical body: admission is
+ * idempotent on `clientTurnId`, so a first attempt that did land comes back as
+ * `matching_duplicate` with the same handle. Aborting `signal` (the user left
+ * the conversation) cancels the request and any retry.
+ */
 export async function requestAgenticChatWorkerAdmission(input: {
 	command: AgenticChatWorkerCommand;
 	fetchImpl?: typeof fetch;
 	nowMs?: () => number;
+	signal?: AbortSignal;
+	timeoutMs?: number;
+	retryDelayMs?: number;
 }): Promise<{ response: Response; payload: unknown | null }> {
 	const nowMs = input.nowMs ?? (() => performance.now());
-	const requestStartedAt = nowMs();
-	const response = await (input.fetchImpl ?? fetch)(WORKER_TURNS_ENDPOINT, {
-		method: 'POST',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json'
-		},
-		credentials: 'same-origin',
-		cache: 'no-store',
-		body: JSON.stringify(buildWorkerAdmissionBody(input.command))
+	const fetchImpl = input.fetchImpl ?? fetch;
+	const timeoutMs = input.timeoutMs ?? WORKER_ADMISSION_TIMEOUT_MS;
+	const retryDelayMs = input.retryDelayMs ?? WORKER_ADMISSION_RETRY_DELAY_MS;
+	// Serialized once so a retry is byte-identical to the first attempt.
+	const body = JSON.stringify(buildWorkerAdmissionBody(input.command));
+
+	for (let attempt = 1; ; attempt += 1) {
+		throwIfAborted(input.signal);
+		const canRetry = attempt < WORKER_ADMISSION_MAX_ATTEMPTS;
+		const requestStartedAt = nowMs();
+		let response: Response;
+		try {
+			response = await postWorkerAdmission({
+				fetchImpl,
+				body,
+				signal: input.signal,
+				timeoutMs
+			});
+		} catch (error) {
+			if (input.signal?.aborted || !canRetry) throw error;
+			await waitForRetry(retryDelayMs, input.signal);
+			continue;
+		}
+		captureWorkerAdmissionTiming({
+			command: input.command,
+			response,
+			attempt,
+			clientRoundTripMs: Math.max(0, nowMs() - requestStartedAt)
+		});
+		if (canRetry && (await isUnknownAdmissionOutcome(response))) {
+			await waitForRetry(retryDelayMs, input.signal);
+			continue;
+		}
+		if (!response.ok) return { response, payload: null };
+		return { response, payload: await response.json() };
+	}
+}
+
+async function postWorkerAdmission(input: {
+	fetchImpl: typeof fetch;
+	body: string;
+	signal: AbortSignal | undefined;
+	timeoutMs: number;
+}): Promise<Response> {
+	const controller = new AbortController();
+	let timer: ReturnType<typeof setTimeout> | null = null;
+	let onAbort: (() => void) | null = null;
+	// Raced as well as aborted, so a fetch that ignores abort cannot hang the send.
+	const deadline = new Promise<never>((_resolve, reject) => {
+		timer = setTimeout(() => {
+			reject(new AgenticChatAdmissionTimeoutError(input.timeoutMs));
+			controller.abort();
+		}, input.timeoutMs);
 	});
-	captureWorkerAdmissionTiming({
-		command: input.command,
-		response,
-		clientRoundTripMs: Math.max(0, nowMs() - requestStartedAt)
+	const cancelled = new Promise<never>((_resolve, reject) => {
+		onAbort = () => {
+			controller.abort();
+			reject(createAbortError());
+		};
+		if (input.signal?.aborted) onAbort();
+		else input.signal?.addEventListener('abort', onAbort, { once: true });
 	});
-	if (!response.ok) return { response, payload: null };
-	return { response, payload: await response.json() };
+	try {
+		return await Promise.race([
+			input.fetchImpl(WORKER_TURNS_ENDPOINT, {
+				method: 'POST',
+				headers: {
+					Accept: 'application/json',
+					'Content-Type': 'application/json'
+				},
+				credentials: 'same-origin',
+				cache: 'no-store',
+				body: input.body,
+				signal: controller.signal
+			}),
+			deadline,
+			cancelled
+		]);
+	} finally {
+		if (timer !== null) clearTimeout(timer);
+		if (onAbort) input.signal?.removeEventListener('abort', onAbort);
+	}
+}
+
+/**
+ * True when the server could not say whether the turn committed: its
+ * unknown-outcome code, or a bare gateway 502/503/504 with no code at all.
+ * Every other answer, including each known not-admitted code, is final.
+ */
+async function isUnknownAdmissionOutcome(response: Response): Promise<boolean> {
+	if (response.status < 500) return false;
+	const code = await readErrorCode(response);
+	if (code !== null) return code === WORKER_ADMISSION_UNKNOWN_OUTCOME_CODE;
+	return response.status === 502 || response.status === 503 || response.status === 504;
+}
+
+async function readErrorCode(response: Response): Promise<string | null> {
+	try {
+		// A clone, so the caller can still read the error body.
+		const body: unknown = await response.clone().json();
+		return isRecord(body) && typeof body.code === 'string' ? body.code : null;
+	} catch {
+		return null;
+	}
+}
+
+function waitForRetry(delayMs: number, signal: AbortSignal | undefined): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (signal?.aborted) {
+			reject(createAbortError());
+			return;
+		}
+		const onAbort = () => {
+			clearTimeout(timer);
+			reject(createAbortError());
+		};
+		const timer = setTimeout(() => {
+			signal?.removeEventListener('abort', onAbort);
+			resolve();
+		}, delayMs);
+		signal?.addEventListener('abort', onAbort, { once: true });
+	});
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+	if (signal?.aborted) throw createAbortError();
+}
+
+function createAbortError(): Error {
+	if (typeof DOMException !== 'undefined') return new DOMException('Aborted', 'AbortError');
+	const error = new Error('Aborted');
+	error.name = 'AbortError';
+	return error;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function captureWorkerAdmissionTiming(input: {
 	command: AgenticChatWorkerCommand;
 	response: Response;
+	attempt: number;
 	clientRoundTripMs: number;
 }): void {
 	const timing = parseWorkerAdmissionServerTiming(input.response.headers.get('server-timing'));
@@ -94,6 +239,7 @@ function captureWorkerAdmissionTiming(input: {
 			prepared_prompt_requested: input.command.preparedPromptKey !== null,
 			response_status: input.response.status,
 			response_ok: input.response.ok,
+			admission_attempt: input.attempt,
 			context_type: input.command.context.type,
 			has_attachments: input.command.attachments.length > 0
 		},

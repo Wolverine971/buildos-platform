@@ -129,6 +129,20 @@ const SUPPORTING_TOOLS: Readonly<Record<string, readonly string[]>> = {
 		'get_onto_task_details',
 		'get_onto_goal_details'
 	],
+	// Proposal cards (tasker 122) take two project ids: find both projects, and
+	// see their structure, before proposing.
+	propose_project_parent: [
+		'list_onto_projects',
+		'search_onto_projects',
+		'search_all_projects',
+		'get_project_overview'
+	],
+	propose_project_combine: [
+		'list_onto_projects',
+		'search_onto_projects',
+		'search_all_projects',
+		'get_project_overview'
+	],
 	// A search's results are start points to read or click through.
 	web_search: ['web_visit', 'web_navigate'],
 	web_visit: ['web_navigate'],

@@ -181,7 +181,16 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// separate link that never reached the row). Global 53,583 B and project
 		// 72,552 B still fit; project_create mounts create_onto_task too and
 		// measured 8,426 B (+206 B), re-baselined.
-		expect(global.openingBytes).toBeLessThanOrEqual(53_620);
+		// 2026-10-17 (tasker 122): update_onto_project says "Not the parent project."
+		// and get_field_info is a "curated guide … not a full schema". Global
+		// 53,600 B and project 72,569 B still fit; global has ~20 B left.
+		// 2026-10-17 tasker 122: proposal tools. propose_project_parent and
+		// propose_project_combine joined the global surface only (project chats
+		// can't look up the other project). Each returns a card the user clicks;
+		// nothing writes in the worker. Measured global 54 tools / 55,085 B
+		// (+1,485 B); project unchanged at 72,569 B. Jev mounts them only on
+		// nest/combine turns. Cap at measured + ~0.1%.
+		expect(global.openingBytes).toBeLessThanOrEqual(55_140);
 		expect(project.openingBytes).toBeLessThanOrEqual(72_690);
 		expect(project.admittedBytes).toBeLessThanOrEqual(72_690);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_470);

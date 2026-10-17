@@ -22,6 +22,7 @@
 		CornerUpLeft
 	} from 'lucide-svelte';
 	import type { ActivityType, ThinkingBlockMessage } from './agent-chat.types';
+	import { WORKER_STOPPING_STATUS } from './agent-chat-worker-status';
 	import AgentClientActionCard from './AgentClientActionCard.svelte';
 	import { readToolProgressSteps, type ToolProgressStep } from './agent-chat-tool-progress';
 	import {
@@ -59,8 +60,17 @@
 		block.status !== 'active' || block.agentState === 'waiting_on_user'
 	);
 
+	// Stop pressed and the turn has not ended yet: say so wherever the status shows.
+	const isStopping = $derived(block.status === 'active' && block.stopRequested === true);
+
 	// Derive header label - changes from "Thinking" to "Thoughts" when complete
-	const headerLabel = $derived(isThinkingComplete ? 'BuildOS Thoughts' : 'BuildOS Thinking');
+	const headerLabel = $derived(
+		isStopping
+			? WORKER_STOPPING_STATUS
+			: isThinkingComplete
+				? 'BuildOS Thoughts'
+				: 'BuildOS Thinking'
+	);
 
 	// Show animated hammer only when actively thinking
 	const showAnimatedHammer = $derived(block.status === 'active' && !isThinkingComplete);
@@ -93,6 +103,7 @@
 			return block.content || 'Waiting on your direction';
 		}
 		if (block.status === 'completed') return 'No tools needed';
+		if (isStopping) return WORKER_STOPPING_STATUS;
 		return block.content || 'Preparing the next response';
 	});
 	const activitySummary = $derived(

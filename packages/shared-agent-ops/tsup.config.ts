@@ -36,6 +36,10 @@ export default defineConfig({
 		'src/ontology/document-patch.ts',
 		'src/ontology/document-edits.ts',
 		'src/ontology/shared-document-edit-card.ts',
+		// Proposal-card rail (tasker 122): client-safe contract shared by worker and web.
+		'src/chat-cards/proposal-card.ts',
+		'src/chat-cards/project-parent-card.ts',
+		'src/chat-cards/project-combine-card.ts',
 		'src/consolidation/consolidation.ts',
 		'src/ops/update-value-validation.ts',
 		'src/ops/async-activity-logger.ts',

@@ -91,7 +91,11 @@ export function parseSseLine(
 		// asks for them (a watched V4.1 pass) and count solely as progress, so
 		// a model thinking after a line of narration is not taken for a stalled
 		// stream (tasker 101). Their tokens are accounted from the usage receipt.
-		state.reasoningBytes += reasoningDeltaBytes(delta);
+		const reasoning = reasoningDeltaText(delta);
+		if (reasoning) {
+			state.reasoningBytes += Buffer.byteLength(reasoning, 'utf8');
+			state.reasoningChars += reasoning.length;
+		}
 		if (delta.content !== undefined && delta.content !== null) {
 			const normalizedContent = normalizeStreamingContent(
 				delta.content,
@@ -126,17 +130,17 @@ export function parseSseLine(
  * (or an encrypted/summary form) in `delta.reasoning_details`. Count one of
  * them, never both.
  */
-function reasoningDeltaBytes(delta: Record<string, unknown>): number {
-	if (typeof delta.reasoning === 'string') return Buffer.byteLength(delta.reasoning, 'utf8');
-	if (!Array.isArray(delta.reasoning_details)) return 0;
-	let bytes = 0;
+function reasoningDeltaText(delta: Record<string, unknown>): string {
+	if (typeof delta.reasoning === 'string') return delta.reasoning;
+	if (!Array.isArray(delta.reasoning_details)) return '';
+	let text = '';
 	for (const detail of delta.reasoning_details) {
 		if (!detail || typeof detail !== 'object') continue;
-		const { text, summary, data } = detail as Record<string, unknown>;
-		const content = [text, summary, data].find((value) => typeof value === 'string');
-		if (typeof content === 'string') bytes += Buffer.byteLength(content, 'utf8');
+		const { text: detailText, summary, data } = detail as Record<string, unknown>;
+		const content = [detailText, summary, data].find((value) => typeof value === 'string');
+		if (typeof content === 'string') text += content;
 	}
-	return bytes;
+	return text;
 }
 
 /**

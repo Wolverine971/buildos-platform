@@ -163,8 +163,26 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	// the document scan→read pair on both surfaces: a search on a global turn can
 	// name a table. Jev drops them on turns that are not about a table.
 	'get_onto_table_details',
-	'read_table_rows'
+	'read_table_rows',
+	// Proposal cards (2026-10-17, tasker 122): nest one project under another,
+	// or combine one into another. Each returns a card and the user's click makes
+	// the change. Global only: project chats cannot look up the other project
+	// (no cross-project list or search there).
+	'propose_project_parent',
+	'propose_project_combine'
 ] as const;
+
+/** Global-only members the project surface drops (see the comment above each). */
+const GLOBAL_ONLY_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'search_onto_projects',
+	'search_all_projects',
+	'list_onto_projects',
+	// A focused project turn stays inside its project; creating another
+	// project is a workspace-level move that belongs to the global surface.
+	'create_onto_project',
+	'propose_project_parent',
+	'propose_project_combine'
+]);
 
 /**
  * The project surface: the global surface narrowed to one project and widened
@@ -174,15 +192,7 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
  * another project would change context, not widen its search.
  */
 const PROJECT_DIRECT_TOOL_NAMES = [
-	...GLOBAL_DIRECT_TOOL_NAMES.filter(
-		(name) =>
-			name !== 'search_onto_projects' &&
-			name !== 'search_all_projects' &&
-			name !== 'list_onto_projects' &&
-			// A focused project turn stays inside its project; creating another
-			// project is a workspace-level move that belongs to the global surface.
-			name !== 'create_onto_project'
-	),
+	...GLOBAL_DIRECT_TOOL_NAMES.filter((name) => !GLOBAL_ONLY_TOOL_NAMES.has(name)),
 	'get_onto_project_details',
 	'search_project',
 	'list_onto_documents',

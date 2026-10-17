@@ -33,6 +33,7 @@ import {
 	normalizeAgenticChatText,
 	parseChatWorkflowPrototypeUsers
 } from '@buildos/shared-types';
+import { rpcErrorProvesRollback } from './worker-turn-admission.server';
 
 /** Server-owned policy reference recorded on every v4 request. Never a browser value. */
 export const AGENTIC_CHAT_WORKFLOW_V4_POLICY_REF = 'internal-project-review:v1';
@@ -343,7 +344,9 @@ export type AgenticChatWorkflowV4AdmissionErrorCodeV1 =
 export class AgenticChatWorkflowV4AdmissionError extends Error {
 	constructor(
 		readonly code: AgenticChatWorkflowV4AdmissionErrorCodeV1,
-		message: string
+		message: string,
+		/** True only when the database proved the admission transaction rolled back. */
+		readonly rolledBack = false
 	) {
 		super(message);
 		this.name = 'AgenticChatWorkflowV4AdmissionError';
@@ -387,7 +390,8 @@ export async function admitAgenticChatWorkflowV4Turn(input: {
 		}
 		throw new AgenticChatWorkflowV4AdmissionError(
 			'database_error',
-			detail ? `Workflow admission failed: ${detail}` : 'Workflow admission failed'
+			detail ? `Workflow admission failed: ${detail}` : 'Workflow admission failed',
+			rpcErrorProvesRollback(error)
 		);
 	}
 	return parseReceipt(data, input.args);

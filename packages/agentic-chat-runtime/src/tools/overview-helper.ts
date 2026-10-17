@@ -1,6 +1,18 @@
 // packages/agentic-chat-runtime/src/tools/overview-helper.ts
+import type { ProjectHierarchyRefV1 } from '@buildos/shared-types';
 import { buildActivityLogSummary } from './activity-log-summary';
-export type ProjectRow = {
+
+/**
+ * Where a project sits in the hierarchy (tasker 122), already filtered to
+ * projects the viewer can open. Absent fields mean "nothing to say".
+ */
+export type ProjectHierarchyFields = {
+	parent?: ProjectHierarchyRefV1;
+	sub_project_count?: number;
+	sub_projects?: ProjectHierarchyRefV1[];
+};
+
+export type ProjectRow = ProjectHierarchyFields & {
 	id: string;
 	name: string;
 	state_key: string | null;
@@ -137,6 +149,8 @@ type OverviewCollaborator = {
 type OverviewProjectSummary = {
 	project_id: string;
 	name: string;
+	parent?: ProjectHierarchyRefV1;
+	sub_project_count?: number;
 	state_key: string | null;
 	description: string | null;
 	next_step_short: string | null;
@@ -180,7 +194,7 @@ type ProjectOverviewPayload = {
 		| { status: 'resolved'; project_id: string; query: string | null }
 		| { status: 'not_found'; query: string; candidates: [] }
 		| { status: 'ambiguous'; query: string; candidates: ProjectMatchCandidate[] };
-	project?: {
+	project?: ProjectHierarchyFields & {
 		id: string;
 		name: string;
 		state_key: string | null;
@@ -626,6 +640,8 @@ export function buildWorkspaceOverviewPayload(
 		return {
 			project_id: project.id,
 			name: project.name,
+			...(project.parent ? { parent: project.parent } : {}),
+			...(project.sub_project_count ? { sub_project_count: project.sub_project_count } : {}),
 			state_key: project.state_key,
 			description: boundText(project.description, MAX_DESCRIPTION_CHARS),
 			next_step_short: boundText(project.next_step_short, MAX_DESCRIPTION_CHARS),
@@ -848,6 +864,13 @@ export function buildProjectOverviewPayload(
 		project: {
 			id: params.project.id,
 			name: params.project.name,
+			...(params.project.parent ? { parent: params.project.parent } : {}),
+			...(params.project.sub_project_count
+				? {
+						sub_project_count: params.project.sub_project_count,
+						sub_projects: params.project.sub_projects ?? []
+					}
+				: {}),
 			state_key: params.project.state_key,
 			description: boundText(params.project.description, MAX_DESCRIPTION_CHARS),
 			start_at: params.project.start_at ?? null,

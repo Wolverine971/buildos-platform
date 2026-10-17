@@ -7,6 +7,7 @@ import {
 	PENDING_CLARIFICATION_LEDGER_PREFIX,
 	projectChatHistorySnapshot
 } from './session-service';
+import { buildProposalCardEnvelopeV1 } from '@buildos/shared-agent-ops/chat-cards/proposal-card';
 
 type TestRow = Record<string, any>;
 
@@ -34,14 +35,16 @@ function createHistorySupabase(tableRows: Record<string, TestRow[]>) {
 
 		or(filter: string) {
 			expect(filter).toBe(
-				'tool_name.in.(skill_load,request_turn_clarification),and(tool_name.eq.update_onto_document,result->>confirmation_kind.eq.shared_document_edit_v1,result->>status.eq.confirmation_required)'
+				'tool_name.in.(skill_load,request_turn_clarification),and(tool_name.eq.update_onto_document,result->>confirmation_kind.eq.shared_document_edit_v1,result->>status.eq.confirmation_required),and(result->>card_rail.eq.proposal_v1,result->>status.eq.proposal_ready)'
 			);
 			this.filters.push(
 				(row) =>
 					['skill_load', 'request_turn_clarification'].includes(row.tool_name) ||
 					(row.tool_name === 'update_onto_document' &&
 						row.result?.confirmation_kind === 'shared_document_edit_v1' &&
-						row.result?.status === 'confirmation_required')
+						row.result?.status === 'confirmation_required') ||
+					(row.result?.card_rail === 'proposal_v1' &&
+						row.result?.status === 'proposal_ready')
 			);
 			return this;
 		}
@@ -589,6 +592,112 @@ describe('fast chat session service helpers', () => {
 			)
 		).toBe(false);
 		expect(projected.some((message) => message.content.includes('skill_load'))).toBe(false);
+	});
+
+	it('projects a proposal card note after the reply that showed it, never as an interrupted write', async () => {
+		const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+		const card = buildProposalCardEnvelopeV1({
+			kind: 'project_parent',
+			cardId: uuid(9),
+			sessionId: uuid(1),
+			proposedAt: '2026-10-17T12:00:00.000Z',
+			payload: {
+				version: 1,
+				action: 'attach',
+				project: { id: uuid(2), name: 'DJ Internal' },
+				from_parent: null,
+				to_parent: { id: uuid(3), name: 'Wayne Strategies' },
+				child_only_members: { names: [], count: 0 },
+				effects: ['nothing_moves', 'no_access_change'],
+				undo_needs_admin_on_both: false,
+				duplicate_check: null,
+				note: null
+			},
+			message: 'Needs your choice'
+		});
+		const resolved = {
+			...card,
+			card_resolution: {
+				version: 1,
+				card_id: card.card_id,
+				kind: 'project_parent',
+				choice: 'apply',
+				outcome: 'applied',
+				resolved_at: '2026-10-17T12:05:00.000Z',
+				reason_code: null,
+				receipt: null
+			}
+		};
+		const messages = [
+			{
+				id: 'message-user',
+				session_id: 'session-1',
+				role: 'user',
+				content: 'Put DJ Internal under Wayne.',
+				metadata: null,
+				created_at: '2026-10-17T11:59:00.000Z'
+			},
+			{
+				id: 'message-assistant',
+				session_id: 'session-1',
+				role: 'assistant',
+				content: 'Here is the card.',
+				metadata: { interrupted: true },
+				created_at: '2026-10-17T12:00:01.000Z'
+			}
+		];
+		const cardRow = {
+			id: card.card_id,
+			message_id: 'message-assistant',
+			tool_name: 'propose_project_parent',
+			gateway_op: null,
+			sequence_index: 1,
+			success: true,
+			error_message: null,
+			arguments: { project_id: uuid(2), parent_project_id: uuid(3) },
+			result: resolved
+		};
+		const unrelatedRead = {
+			...cardRow,
+			id: 'execution-read',
+			tool_name: 'get_project_overview',
+			sequence_index: 2,
+			result: { project: { id: uuid(2), name: 'DJ Internal' } }
+		};
+		const service = createFastChatSessionService(
+			createHistorySupabase({
+				chat_messages: messages,
+				chat_message_attachments: [],
+				chat_tool_executions: [cardRow, unrelatedRead]
+			}) as any,
+			{ errorLogger: { logError: async () => undefined } as any }
+		);
+
+		const history = await service.loadRecentMessages('session-1', 10);
+		expect(history.map((message) => message.role)).toEqual([
+			'user',
+			'assistant',
+			'system',
+			'system'
+		]);
+		const note = history[2]!;
+		expect(note.continuityKind).toBe('proposal_card_v1');
+		expect(note.content).toContain('Proposal card status');
+		expect(note.content).toContain('"state":"applied"');
+		expect(note.content).toContain('Wayne Strategies');
+		// The interrupted-turn summary lists the read, never the card as a saved write.
+		expect(history[3]!.content).toContain('Previous interrupted assistant turn tool results');
+		expect(history[3]!.content).not.toContain('propose_project_parent');
+
+		// The legacy query path and the atomic snapshot projector agree.
+		expect(
+			projectChatHistorySnapshot({
+				messages: messages.map(({ session_id: _sessionId, ...message }) => message),
+				attachments: [],
+				interrupted_tool_executions: [cardRow, unrelatedRead],
+				loaded_skill_executions: [cardRow]
+			} as any)
+		).toEqual(history);
 	});
 
 	it('summarizes completed web visit results from interrupted turns', () => {

@@ -328,7 +328,9 @@ export function createAgenticChatCompositionRoot(options: {
 				if (
 					metric === 'persistence_retry' ||
 					metric === 'soft_pressure' ||
-					metric === 'publisher_overload'
+					metric === 'publisher_overload' ||
+					metric === 'broadcast_degraded' ||
+					metric === 'live_delivery_resumed'
 				) {
 					console.info(
 						JSON.stringify({

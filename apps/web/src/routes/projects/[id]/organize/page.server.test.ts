@@ -38,6 +38,20 @@ describe('Organize single-item entry', () => {
 			initialRef: { kind, id, project_id: projectId }
 		});
 	});
+	it('forwards a combined project to its destination, dropping a with= that now points at itself', async () => {
+		const destination = 'a0000000-0000-4000-8000-000000000002';
+		const rpc = vi.fn(async () => ({
+			data: { status: 'merged', destination_project_id: destination },
+			error: null
+		}));
+		const merged = event(`?with=${destination}&task=${taskId}`);
+		merged.locals.supabase = { rpc };
+		await expect(load(merged)).rejects.toMatchObject({
+			status: 307,
+			location: `/projects/${destination}/organize?task=${taskId}`
+		});
+		expect(rpc).toHaveBeenCalledWith('get_project_route_redirect', { p_project_id: projectId });
+	});
 	it('rejects an item that is no longer in the authorized project', async () => {
 		await expect(
 			load(event('?document=d0000000-0000-4000-8000-000000000099'))

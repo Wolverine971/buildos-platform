@@ -8,6 +8,7 @@ import {
 	POSTHOG_CAPTURE_RECEIPT_DOM_EVENT,
 	type PostHogCaptureReceipt
 } from '../../../services/posthog-capture-receipt';
+import { AGENTIC_CHAT_TURN_SOURCE_HEADER } from '../../../../routes/api/agent/v2/turns/turn-source';
 
 const PROMPT = 'Reply with exactly "MODAL E2E OK" and do not use tools.';
 const CAPTURE_ANALYTICS = process.env.AGENTIC_E2E_CAPTURE_ANALYTICS === 'true';
@@ -138,9 +139,27 @@ async function readPostHogCaptureReceipt(page: Page): Promise<PostHogCaptureRece
 	return readReceipt();
 }
 
+/**
+ * Tags every real turn admission this spec sends so prod metrics can exclude it
+ * (M1). Registered first, so a test's own stub for the same route still wins.
+ */
+async function tagHarnessTurnAdmissions(page: Page): Promise<void> {
+	await page.route('**/api/agent/v2/turns', async (route) => {
+		const request = route.request();
+		if (request.method() !== 'POST') {
+			await route.fallback();
+			return;
+		}
+		await route.fallback({
+			headers: { ...request.headers(), [AGENTIC_CHAT_TURN_SOURCE_HEADER]: 'harness' }
+		});
+	});
+}
+
 async function authenticateHarnessUser(
 	page: Page
 ): Promise<{ admin: SupabaseClient; userId: string; actorId: string }> {
+	await tagHarnessTurnAdmissions(page);
 	if (CAPTURE_ANALYTICS) {
 		await page.addInitScript(() => {
 			// PostHog deliberately suppresses automation UAs. Sanitize Playwright-only markers so
@@ -743,6 +762,8 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 			context_type: 'project',
 			entity_id: projectId,
 			ensure_session: false,
+			// A session-less chat cannot consume a prepared prompt (audit 2026-10-17 S11).
+			prepare_prompt: false,
 			projectFocus: {
 				focusType: 'project-wide',
 				focusEntityId: null,
@@ -756,10 +777,8 @@ test('@prewarm project selection materializes a project-scoped prepared prompt',
 				prepared_prompt?: { key?: string; cache_key?: string } | null;
 			};
 		};
-		expect(payload.data?.prepared_prompt?.key).toMatch(/^pp_v1\./);
-		expect(payload.data?.prepared_prompt?.cache_key).toBe(
-			`v2|project|${projectId}|project-wide|none`
-		);
+		// Context still warms; no prepared prompt is built without a session.
+		expect(payload.data?.prepared_prompt ?? null).toBeNull();
 		await legacyStreamRoute.assertNeverCalled();
 		console.log(
 			`[agentic-modal-e2e] project prewarm ready: cache_source=${payload.data?.cache_source ?? 'unknown'}`
@@ -925,8 +944,9 @@ test('@wiring modal recovers an uncertain worker admission from server truth', a
 	let testFailed = false;
 
 	// The worker equivalent of the deleted "accepted stream closes without done"
-	// test: admission outcome is unknown, so the client must reconcile against
-	// owned-turn discovery instead of guessing or re-sending.
+	// test: admission outcome is unknown, so the client re-sends the identical
+	// body once (idempotent on clientTurnId), then reconciles against owned-turn
+	// discovery instead of guessing.
 	const worker = await stubWorkerAdmission(page, {
 		status: 503,
 		body: {
@@ -955,7 +975,9 @@ test('@wiring modal recovers an uncertain worker admission from server truth', a
 		// worse than a lost one, so the sent message stays put.
 		await expect(dialog.getByTestId('agent-chat-user-message').last()).toContainText(PROMPT);
 		await expect(dialog.getByRole('button', { name: 'Stop response' })).toBeHidden();
-		expect(worker.admissions).toHaveLength(1);
+		// One automatic re-send of the byte-identical request (audit 2026-10-17 B7).
+		expect(worker.admissions).toHaveLength(2);
+		expect(worker.admissions[1]!.body).toEqual(worker.admissions[0]!.body);
 		await legacyStreamRoute.assertNeverCalled();
 	} catch (error) {
 		testFailed = true;

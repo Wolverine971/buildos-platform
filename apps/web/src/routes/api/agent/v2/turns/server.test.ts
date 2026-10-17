@@ -19,7 +19,8 @@ const mocks = vi.hoisted(() => ({
 	admitAgenticChatWorkerTurn: vi.fn(),
 	loggerWarn: vi.fn(),
 	loggerInfo: vi.fn(),
-	wakeAgenticChatWorkerQueue: vi.fn(async () => 'sent' as const)
+	wakeAgenticChatWorkerQueue: vi.fn(async () => 'sent' as const),
+	startAgenticChatWorkerQueueWake: vi.fn()
 }));
 
 vi.mock('$env/dynamic/private', () => ({ env: mocks.env }));
@@ -47,7 +48,8 @@ vi.mock('$lib/services/agentic-chat-v2/worker-turn-admission.server', async (imp
 	return { ...original, admitAgenticChatWorkerTurn: mocks.admitAgenticChatWorkerTurn };
 });
 vi.mock('$lib/services/agentic-chat-v2/worker-queue-wake.server', () => ({
-	wakeAgenticChatWorkerQueue: mocks.wakeAgenticChatWorkerQueue
+	wakeAgenticChatWorkerQueue: mocks.wakeAgenticChatWorkerQueue,
+	startAgenticChatWorkerQueueWake: mocks.startAgenticChatWorkerQueueWake
 }));
 vi.mock('$lib/utils/logger', () => ({
 	createLogger: () => ({ warn: mocks.loggerWarn, info: mocks.loggerInfo })
@@ -55,6 +57,7 @@ vi.mock('$lib/utils/logger', () => ({
 
 import { resetAgenticChatTurnRateLimitForTests } from '$lib/server/agentic-chat-turn-rate-limit';
 import { AgenticChatWorkerAdmissionGatewayError } from '$lib/services/agentic-chat-v2/worker-turn-admission.server';
+import { AgenticChatWorkerPreparationError } from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
 import { GET, POST } from './+server';
 
 function event(options: { userId?: string | null; query?: string } = {}) {
@@ -83,11 +86,13 @@ function admissionBody(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function postEvent(options: { userId?: string | null; body?: unknown } = {}) {
+function postEvent(
+	options: { userId?: string | null; body?: unknown; headers?: Record<string, string> } = {}
+) {
 	return {
 		request: new Request('http://localhost/api/agent/v2/turns', {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
+			headers: { 'Content-Type': 'application/json', ...options.headers },
 			body: JSON.stringify(options.body ?? admissionBody())
 		}),
 		locals: {
@@ -368,12 +373,15 @@ describe('POST /api/agent/v2/turns', () => {
 		expect(response.status).toBe(202);
 		expect(payload.data.outcome).toBe('newly_admitted');
 		// A newly admitted turn wakes the worker instead of waiting for its poll.
-		expect(mocks.wakeAgenticChatWorkerQueue).toHaveBeenCalled();
+		expect(mocks.startAgenticChatWorkerQueueWake).toHaveBeenCalledOnce();
 		expect(response.headers.get('server-timing')).toContain('desc="admission_race_retry"');
 		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(2);
+		// The retry keeps the key, so it hashes the same lineage an identical resend
+		// will, but it may not adopt the prepared content.
 		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenLastCalledWith(
 			expect.objectContaining({
-				command: expect.objectContaining({ preparedPromptKey: null })
+				command: expect.objectContaining({ preparedPromptKey: `pp_v1.${TURN_ID}.nonce` }),
+				preparedPromptLineageOnly: true
 			})
 		);
 		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(2);
@@ -481,26 +489,39 @@ describe('POST /api/agent/v2/turns', () => {
 		expect((await response.json()).code).toBe('WORKER_ADMISSION_CONFLICT');
 	});
 
-	it('hides active, request-hash, and session conflicts behind one boundary', async () => {
-		for (const result of [
-			admitted({ outcome: 'active_turn_conflict', executionMode: 'legacy_sse' }),
-			admitted({
-				outcome: 'idempotency_conflict',
-				conflictReason: 'request_hash_mismatch'
-			}),
-			admitted({
-				outcome: 'idempotency_conflict',
-				conflictReason: 'session_mismatch'
-			})
-		]) {
+	it('separates an existing clientTurnId from an active-turn conflict without leaking either', async () => {
+		for (const [result, code] of [
+			[
+				admitted({ outcome: 'active_turn_conflict', executionMode: 'legacy_sse' }),
+				'WORKER_ADMISSION_CONFLICT'
+			],
+			// A turn with this clientTurnId exists, so the browser must not treat
+			// this as "not admitted".
+			[
+				admitted({
+					outcome: 'idempotency_conflict',
+					conflictReason: 'request_hash_mismatch'
+				}),
+				'WORKER_IDEMPOTENCY_CONFLICT'
+			],
+			[
+				admitted({
+					outcome: 'idempotency_conflict',
+					conflictReason: 'session_mismatch'
+				}),
+				'WORKER_IDEMPOTENCY_CONFLICT'
+			]
+		] as const) {
 			mocks.admitAgenticChatWorkerTurn.mockResolvedValueOnce(result);
 			const response = await POST(postEvent() as never);
 			const payload = await response.json();
 			expect(response.status).toBe(409);
-			expect(payload.code).toBe('WORKER_ADMISSION_CONFLICT');
+			expect(payload.code).toBe(code);
 			expect(JSON.stringify(payload)).not.toContain(TURN_ID);
 			expect(JSON.stringify(payload)).not.toContain('request_hash_mismatch');
+			expect(response.headers.get('cache-control')).toBe('private, no-store');
 		}
+		expect(mocks.startAgenticChatWorkerQueueWake).not.toHaveBeenCalled();
 	});
 
 	it('returns 429 only for the emergency per-user queue safety ceiling', async () => {
@@ -539,6 +560,255 @@ describe('POST /api/agent/v2/turns', () => {
 		expect(payload.code).toBe('WORKER_ADMISSION_UNAVAILABLE');
 		expect(JSON.stringify(payload)).not.toContain('private corrupt database receipt');
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
+	});
+
+	it('reports failures before the admission RPC, and RPC raises, as provably not admitted', async () => {
+		const notAdmitted: Array<[string, () => void]> = [
+			[
+				'unexpected preparation error',
+				() =>
+					mocks.prepareAgenticChatWorkerAdmission.mockRejectedValueOnce(
+						new Error('private context read detail')
+					)
+			],
+			[
+				'preparation database error',
+				() =>
+					mocks.prepareAgenticChatWorkerAdmission.mockRejectedValueOnce(
+						new AgenticChatWorkerPreparationError('database_error', 'private detail')
+					)
+			],
+			[
+				'admission RPC raised (SQLSTATE, rolled back)',
+				() =>
+					mocks.admitAgenticChatWorkerTurn.mockRejectedValueOnce(
+						new AgenticChatWorkerAdmissionGatewayError(
+							'database_error',
+							'Worker turn admission failed: P0001 agentic_chat_worker_admission_invalid_command',
+							true
+						)
+					)
+			]
+		];
+		for (const [label, arrange] of notAdmitted) {
+			resetAgenticChatTurnRateLimitForTests();
+			arrange();
+			const response = await POST(postEvent() as never);
+			const payload = await response.json();
+			expect(response.status, label).toBe(503);
+			expect(payload.code, label).toBe('WORKER_ADMISSION_NOT_ADMITTED');
+			expect(payload.error, label).toBe("Your message wasn't sent. Try again.");
+			expect(JSON.stringify(payload), label).not.toContain('private');
+			expect(response.headers.get('cache-control'), label).toBe('private, no-store');
+		}
+
+		// Commit unknown: a network failure, or a receipt that fails to parse after
+		// the RPC returned, stays "maybe admitted" so only an identical resend follows.
+		for (const error of [
+			new AgenticChatWorkerAdmissionGatewayError(
+				'database_error',
+				'Worker turn admission failed: TypeError: fetch failed'
+			),
+			new AgenticChatWorkerAdmissionGatewayError('protocol_error', 'receipt is invalid')
+		]) {
+			resetAgenticChatTurnRateLimitForTests();
+			mocks.admitAgenticChatWorkerTurn.mockRejectedValueOnce(error);
+			const response = await POST(postEvent() as never);
+			expect(response.status).toBe(503);
+			expect((await response.json()).code).toBe('WORKER_ADMISSION_UNAVAILABLE');
+		}
+		expect(mocks.startAgenticChatWorkerQueueWake).not.toHaveBeenCalled();
+	});
+
+	it('reports a failed retry preparation as not admitted: the first attempt rolled back', async () => {
+		mocks.prepareAgenticChatWorkerAdmission
+			.mockResolvedValueOnce({
+				args: {
+					p_user_id: USER_ID,
+					p_prepared_prompt_id: 'da000000-0000-4000-8000-000000000001',
+					p_request_payload: {}
+				},
+				preparedPromptUsed: true,
+				preparedAdmissionLease: {
+					requested: true,
+					hit: true,
+					missReason: null,
+					inspectionMs: 1
+				}
+			})
+			.mockRejectedValueOnce(new Error('private retry detail'));
+		mocks.admitAgenticChatWorkerTurn.mockRejectedValueOnce(
+			new AgenticChatWorkerAdmissionGatewayError(
+				'database_error',
+				'Worker turn admission failed: P0001 agentic_chat_worker_admission_prepared_expired',
+				true
+			)
+		);
+		const response = await POST(
+			postEvent({
+				body: admissionBody({ preparedPromptKey: `pp_v1.${TURN_ID}.nonce` })
+			}) as never
+		);
+		expect(response.status).toBe(503);
+		expect((await response.json()).code).toBe('WORKER_ADMISSION_NOT_ADMITTED');
+		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(1);
+	});
+
+	it('re-prepares once when a newer message moved the history window before the RPC', async () => {
+		mocks.admitAgenticChatWorkerTurn
+			.mockRejectedValueOnce(
+				new AgenticChatWorkerAdmissionGatewayError(
+					'database_error',
+					'Worker turn admission failed: P0001 agentic_chat_worker_admission_history_lineage_mismatch',
+					true
+				)
+			)
+			.mockResolvedValueOnce(admitted());
+
+		const response = await POST(postEvent() as never);
+
+		expect(response.status).toBe(202);
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(2);
+		// No prepared prompt was involved, so the retry prepares exactly as before.
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenLastCalledWith(
+			expect.objectContaining({ preparedPromptLineageOnly: false })
+		);
+		expect(response.headers.get('server-timing')).not.toContain('admission_race_retry');
+		expect(mocks.startAgenticChatWorkerQueueWake).toHaveBeenCalledOnce();
+
+		// A second consecutive window race is surfaced, not retried again.
+		resetAgenticChatTurnRateLimitForTests();
+		vi.clearAllMocks();
+		const race = () =>
+			new AgenticChatWorkerAdmissionGatewayError(
+				'database_error',
+				'Worker turn admission failed: P0001 agentic_chat_worker_admission_history_lineage_mismatch',
+				true
+			);
+		mocks.admitAgenticChatWorkerTurn
+			.mockRejectedValueOnce(race())
+			.mockRejectedValueOnce(race());
+		const failed = await POST(postEvent() as never);
+		expect(failed.status).toBe(503);
+		expect((await failed.json()).code).toBe('WORKER_ADMISSION_NOT_ADMITTED');
+		expect(mocks.admitAgenticChatWorkerTurn).toHaveBeenCalledTimes(2);
+	});
+
+	it('starts the worker wake for a new turn without awaiting it, and never for a duplicate', async () => {
+		// A wake that never settles must not hold the response.
+		mocks.wakeAgenticChatWorkerQueue.mockImplementation(() => new Promise(() => undefined));
+		const response = await POST(postEvent() as never);
+		expect(response.status).toBe(202);
+		expect(mocks.startAgenticChatWorkerQueueWake).toHaveBeenCalledOnce();
+		expect(mocks.wakeAgenticChatWorkerQueue).not.toHaveBeenCalled();
+		expect(mocks.startAgenticChatWorkerQueueWake.mock.invocationCallOrder[0]).toBeGreaterThan(
+			mocks.admitAgenticChatWorkerTurn.mock.invocationCallOrder[0]!
+		);
+
+		vi.clearAllMocks();
+		resetAgenticChatTurnRateLimitForTests();
+		mocks.admitAgenticChatWorkerTurn.mockResolvedValueOnce(
+			admitted({
+				outcome: 'matching_duplicate',
+				status: 'running',
+				sessionCreated: undefined
+			})
+		);
+		const duplicate = await POST(postEvent() as never);
+		expect(duplicate.status).toBe(200);
+		expect(mocks.startAgenticChatWorkerQueueWake).not.toHaveBeenCalled();
+	});
+
+	it('persists web admission timing in the request payload, covering both preparations on a retry', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			const receivedAt = new Date('2026-10-17T12:00:00.000Z');
+			vi.setSystemTime(receivedAt);
+			const preparedPromptId = 'da000000-0000-4000-8000-000000000001';
+			mocks.prepareAgenticChatWorkerAdmission
+				.mockImplementationOnce(async () => {
+					vi.setSystemTime(Date.now() + 40);
+					return {
+						args: {
+							p_user_id: USER_ID,
+							p_prepared_prompt_id: preparedPromptId,
+							p_request_payload: { message: 'kept' }
+						},
+						preparedPromptUsed: true,
+						preparedAdmissionLease: {
+							requested: true,
+							hit: true,
+							missReason: null,
+							inspectionMs: 3
+						}
+					};
+				})
+				.mockImplementationOnce(async () => {
+					vi.setSystemTime(Date.now() + 25);
+					return {
+						args: {
+							p_user_id: USER_ID,
+							p_prepared_prompt_id: null,
+							p_request_payload: { message: 'kept' }
+						},
+						preparedPromptUsed: false,
+						preparedAdmissionLease: {
+							requested: true,
+							hit: false,
+							missReason: 'ineligible',
+							inspectionMs: 0
+						}
+					};
+				});
+			mocks.admitAgenticChatWorkerTurn
+				.mockImplementationOnce(async () => {
+					vi.setSystemTime(Date.now() + 10);
+					throw new AgenticChatWorkerAdmissionGatewayError(
+						'database_error',
+						'Worker turn admission failed: P0001 agentic_chat_worker_admission_prepared_already_consumed',
+						true
+					);
+				})
+				.mockResolvedValueOnce(admitted());
+
+			const response = await POST(
+				postEvent({
+					body: admissionBody({ preparedPromptKey: `pp_v1.${TURN_ID}.nonce` })
+				}) as never
+			);
+
+			expect(response.status).toBe(202);
+			const [first, retry] = mocks.admitAgenticChatWorkerTurn.mock.calls.map(
+				(call) => call[0].args.p_request_payload
+			);
+			expect(first).toEqual({
+				message: 'kept',
+				preparationMs: 40,
+				requestReceivedAt: receivedAt.toISOString()
+			});
+			// Both preparations count; the failed RPC in between does not.
+			expect(retry).toMatchObject({
+				message: 'kept',
+				preparationMs: 65,
+				requestReceivedAt: receivedAt.toISOString()
+			});
+			expect(response.headers.get('server-timing')).toContain('worker-preparation;dur=65');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('records harness traffic as source harness, and everything else as live_ui', async () => {
+		const sourceFor = async (headers?: Record<string, string>) => {
+			resetAgenticChatTurnRateLimitForTests();
+			mocks.prepareAgenticChatWorkerAdmission.mockClear();
+			const response = await POST(postEvent({ headers }) as never);
+			expect(response.status).toBe(202);
+			return mocks.prepareAgenticChatWorkerAdmission.mock.calls[0]?.[0]?.source;
+		};
+		expect(await sourceFor({ 'x-buildos-turn-source': 'harness' })).toBe('harness');
+		expect(await sourceFor()).toBe('live_ui');
+		expect(await sourceFor({ 'x-buildos-turn-source': 'something-else' })).toBe('live_ui');
 	});
 });
 
@@ -1002,7 +1272,7 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 						execution_may_start: false
 					})),
 				409,
-				'WORKER_ADMISSION_CONFLICT'
+				'WORKER_IDEMPOTENCY_CONFLICT'
 			],
 			[
 				() =>
@@ -1058,6 +1328,17 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 				'WORKER_SESSION_CONFLICT'
 			],
 			[
+				// A raised RPC rolled back: provably not admitted.
+				() =>
+					rpc.mockImplementation(async () => ({
+						data: null,
+						error: { code: 'P0001', message: 'private connection detail' }
+					})),
+				503,
+				'WORKER_ADMISSION_NOT_ADMITTED'
+			],
+			[
+				// No SQLSTATE (network/gateway): commit unknown.
 				() =>
 					rpc.mockImplementation(async () => ({
 						data: null,
@@ -1078,6 +1359,33 @@ describe('POST /api/agent/v2/turns project review (Tasker 86)', () => {
 			expect(response.headers.get('cache-control')).toBe('private, no-store');
 		}
 		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.startAgenticChatWorkerQueueWake).not.toHaveBeenCalled();
+	});
+
+	it('wakes the worker for a newly admitted review, never for a duplicate (B6)', async () => {
+		const response = await POST(postEvent({ body: reviewBody() }) as never);
+		expect(response.status).toBe(202);
+		expect(mocks.startAgenticChatWorkerQueueWake).toHaveBeenCalledOnce();
+		expect(mocks.startAgenticChatWorkerQueueWake.mock.invocationCallOrder[0]).toBeGreaterThan(
+			rpc.mock.invocationCallOrder[0]!
+		);
+
+		resetAgenticChatTurnRateLimitForTests();
+		vi.clearAllMocks();
+		respondWith(() => ({
+			outcome: 'matching_duplicate',
+			conflict_reason: null,
+			execution_may_start: false,
+			turn_run_id: 'd3000000-0000-4000-8000-0000000000aa',
+			session_id: SESSION_ID,
+			stream_run_id: 'stream-run-1',
+			client_turn_id: 'client-turn-1',
+			execution_mode: 'worker_realtime',
+			status: 'queued'
+		}));
+		const duplicate = await POST(postEvent({ body: reviewBody() }) as never);
+		expect(duplicate.status).toBe(200);
+		expect(mocks.startAgenticChatWorkerQueueWake).not.toHaveBeenCalled();
 	});
 
 	it('rejects an explicit review when disabled without starting ordinary chat', async () => {

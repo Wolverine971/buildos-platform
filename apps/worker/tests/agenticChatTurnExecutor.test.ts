@@ -1593,6 +1593,96 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	// Audit 2026-10-17 B1: the prepared provider's signal used to detach from the
+	// turn once `prepare` returned, so a mid-stream model request ran on (billed).
+	it.each(['cancellation', 'lease loss', 'turn budget'] as const)(
+		'aborts the in-flight model request on %s after preparation returned',
+		async (trigger) => {
+			const harness = createHarness([], {
+				promptSnapshot: fixturePromptSnapshot,
+				...(trigger === 'turn budget' ? { providerBudgetMs: 250 } : {}),
+				recovery:
+					trigger === 'cancellation'
+						? [
+								recoveryReceipt('finalize_cancelled'),
+								recoveryReceipt('queue_reconciled', {
+									status: 'cancelled',
+									failure_code: 'cancelled'
+								})
+							]
+						: [
+								recoveryReceipt('finalize_failed', {
+									failure_code: 'timeout_post_start'
+								}),
+								recoveryReceipt('queue_reconciled', {
+									status: 'failed',
+									failure_code: 'timeout_post_start'
+								})
+							]
+			});
+			let providerSignal = null as AbortSignal | null;
+			let abortedWhenPrepareReturned: boolean | null = null;
+			let streamingWhenAborted = false;
+			Object.assign(harness.provider, {
+				prepare: vi.fn(async (input: { signal: AbortSignal }) => {
+					providerSignal = input.signal;
+					abortedWhenPrepareReturned = input.signal.aborted;
+					return {
+						promptSnapshot: fixturePromptSnapshot,
+						stream: () =>
+							(async function* () {
+								yield { type: 'text_delta', text: 'partial answer' } as const;
+								// Past the prelude: the executor is consuming this pass.
+								while (
+									harness.textFlushBatches.length === 0 &&
+									!input.signal.aborted
+								) {
+									await new Promise((resolve) => setTimeout(resolve, 1));
+								}
+								streamingWhenAborted = !input.signal.aborted;
+								if (trigger === 'cancellation') {
+									harness.cancellationController.abort(
+										new AgenticChatCancellationError({
+											turn_run_id: TURN_RUN_ID,
+											execution_generation: EXECUTION_GENERATION,
+											signal_id: 'c0000000-0000-4000-8000-00000000000c',
+											cancel_reason: 'user_cancelled',
+											cancel_source: 'browser',
+											cancel_requested_at: '2026-08-03T12:00:00.000Z',
+											consumed_at: '2026-08-03T12:00:00.100Z'
+										})
+									);
+								} else if (trigger === 'lease loss') {
+									harness.leaseController.abort(
+										new AgenticChatTurnLeaseLostError(
+											TURN_RUN_ID,
+											EXECUTION_GENERATION,
+											{ kind: 'lost', reason: 'lease_expired' }
+										)
+									);
+								}
+								// A real client ends only when its request signal aborts.
+								await new Promise<void>((resolve) => {
+									if (input.signal.aborted) resolve();
+									else input.signal.addEventListener('abort', () => resolve());
+								});
+							})(),
+						release: vi.fn()
+					};
+				})
+			});
+
+			try {
+				await harness.executor.execute(job());
+				expect(abortedWhenPrepareReturned).toBe(false);
+				expect(streamingWhenAborted).toBe(true);
+				expect(providerSignal!.aborted).toBe(true);
+			} finally {
+				await harness.publisher.stop();
+			}
+		}
+	);
+
 	it('persists one exact prompt snapshot after the first durable response only', async () => {
 		const harness = createHarness(
 			[

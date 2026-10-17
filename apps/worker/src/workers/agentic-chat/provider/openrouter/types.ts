@@ -123,6 +123,8 @@ export type StreamState = {
 	 * watch that a thinking model is still generating.
 	 */
 	reasoningBytes: number;
+	/** Streamed reasoning characters; chars / 4 estimates reasoning tokens mid-stream. */
+	reasoningChars: number;
 	/** When the first reasoning, text, or tool-argument byte arrived. */
 	firstProgressAtMs: number | null;
 	toolCalls: Map<number, ObservedToolCall>;

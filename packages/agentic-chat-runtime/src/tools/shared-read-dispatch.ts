@@ -44,6 +44,7 @@ import { getOntoTaskDetails } from './ontology-task-detail';
 import { listTaskDocuments } from './ontology-task-documents';
 import { getFieldInfo, getProjectOverview, getWorkspaceOverview } from './overview-reads';
 import { getProjectCleanup } from './project-cleanup-reads';
+import { proposeProjectCombine, proposeProjectParent } from './proposal-reads';
 import { getOntoTableDetails, readTableRows } from './table-reads';
 import { projectReadResultInstantsToTimezone } from './read-result-timezone';
 
@@ -103,6 +104,11 @@ const AGENTIC_CHAT_SHARED_READ_TOOL_REGISTRY_V1 = Object.freeze({
 	// structured row query. Both call the shared core in @buildos/shared-agent-ops/tables.
 	get_onto_table_details: getOntoTableDetails,
 	read_table_rows: readTableRows,
+	// Proposal cards (tasker 122): check the change and return a card; the user's
+	// click writes. They need the host's card identity (`context.proposal`) and
+	// throw without it.
+	propose_project_parent: proposeProjectParent,
+	propose_project_combine: proposeProjectCombine,
 	// Calendar READS only. The calendar writes execute on the worker through
 	// the reviewed mutation catalog, not through this dispatch table.
 	list_calendar_events: listCalendarEvents,

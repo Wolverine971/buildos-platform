@@ -495,7 +495,10 @@ describe('AgentChatWorkerUiAdapter', () => {
 
 			expect(h.port.updateTurnState).toHaveBeenNthCalledWith(
 				1,
-				expect.objectContaining({ status: 'running', currentActivity: 'Drafting the plan…' })
+				expect.objectContaining({
+					status: 'running',
+					currentActivity: 'Drafting the plan…'
+				})
 			);
 			expect(h.port.updateTurnState).toHaveBeenNthCalledWith(
 				2,
@@ -597,5 +600,41 @@ describe('AgentChatWorkerUiAdapter', () => {
 				})
 			);
 		});
+	});
+});
+
+describe('AgentChatWorkerUiAdapter reconciliation loss', () => {
+	it('ends the turn as a lost connection when the server will never reconcile it', () => {
+		const h = harness();
+		h.adapter.applyReconciliation(receipt({ status: 'running' }));
+
+		h.adapter.reportReconciliationLost({ permanent: true, httpStatus: 404 });
+
+		expect(h.port.finishTurn).toHaveBeenCalledExactlyOnceWith({
+			handle,
+			status: 'failed',
+			finishedReason: null,
+			failureCode: 'client_connection_lost'
+		});
+		expect(h.onTerminal).toHaveBeenCalledExactlyOnceWith('failed');
+		// Later truth for a turn already ended locally changes nothing.
+		h.adapter.reportReconciliationLost({ permanent: true, httpStatus: 409 });
+		expect(h.port.finishTurn).toHaveBeenCalledOnce();
+	});
+
+	it('flags, then clears, a non-permanent loss without ending the turn', () => {
+		const h = harness();
+		const setConnectionLost = vi.fn();
+		h.port.setConnectionLost = setConnectionLost;
+		h.adapter.applyReconciliation(receipt({ status: 'running' }));
+
+		h.adapter.reportReconciliationLost({ permanent: false, httpStatus: 503 });
+		h.adapter.reportReconciliationRestored();
+
+		expect(setConnectionLost.mock.calls).toEqual([
+			[{ handle, lost: true }],
+			[{ handle, lost: false }]
+		]);
+		expect(h.port.finishTurn).not.toHaveBeenCalled();
 	});
 });

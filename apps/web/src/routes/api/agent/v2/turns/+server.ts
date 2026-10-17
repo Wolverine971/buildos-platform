@@ -7,7 +7,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import type { Database, ProjectFocus } from '@buildos/shared-types';
+import type { Database, Json, ProjectFocus } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	loadAdmittedWorkerSession,
@@ -16,7 +16,9 @@ import {
 import {
 	admitAgenticChatWorkerTurn,
 	getPreparedAdmissionFailureCode,
+	isHistoryWindowRaceError,
 	isPreparedAdmissionRaceError,
+	type AgenticChatWorkerAdmissionRpcArgs,
 	type AgenticChatWorkerAdmissionRpcClient
 } from '$lib/services/agentic-chat-v2/worker-turn-admission.server';
 import { prepareAgenticChatWorkerAdmission } from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
@@ -29,15 +31,18 @@ import { createLogger } from '$lib/utils/logger';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { consumeAgenticChatTurnRateLimit } from '$lib/server/agentic-chat-turn-rate-limit';
-import { wakeAgenticChatWorkerQueue } from '$lib/services/agentic-chat-v2/worker-queue-wake.server';
+import { startAgenticChatWorkerQueueWake } from '$lib/services/agentic-chat-v2/worker-queue-wake.server';
 
 const logger = createLogger('API:AgentWorkerTurnsV2');
 import { workerAdmissionRequestSchema } from './worker-admission-schema';
 import {
 	privateResponse,
 	withWorkerAdmissionTiming,
-	workerAdmissionErrorResponse
+	workerAdmissionErrorResponse,
+	workerIdempotencyConflictResponse,
+	type WorkerAdmissionPhase
 } from './worker-admission-responses';
+import { readAgenticChatTurnSource } from './turn-source';
 import {
 	admitWorkflowReviewTurnIfEligible,
 	pickWorkflowReviewEnvironment
@@ -82,6 +87,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 };
 
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
+	const requestReceivedAt = new Date().toISOString();
 	const { user } = await safeGetSession();
 	if (!user?.id) return privateResponse(ApiResponse.unauthorized());
 	const turnRateLimit = consumeAgenticChatTurnRateLimit(user.id);
@@ -128,9 +134,13 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		client: serviceClient as unknown as AgenticChatWorkflowV4AdmissionRpcClient,
 		workbenchClient:
 			serviceClient as unknown as import('$lib/services/agentic-chat-v2/specialist-workbench.server').SpecialistWorkbenchClient,
-		loadSession: loadCreatedSession
+		loadSession: loadCreatedSession,
+		wakeWorker: startAgenticChatWorkerQueueWake
 	});
 	if (workflowReview) return privateResponse(workflowReview);
+	// Everything before the admission RPC writes nothing, so a failure there is
+	// reported as "not sent" instead of "maybe sent".
+	let phase: WorkerAdmissionPhase = 'preparation';
 	try {
 		const command = {
 			clientTurnId: parsed.data.clientTurnId,
@@ -144,72 +154,83 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			preparedPromptKey: parsed.data.preparedPromptKey,
 			requestedSkillId: parsed.data.requestedSkillId
 		};
-		const leaseAuthority = {
-			decisionId: decision.decisionId,
-			mode: 'worker_realtime' as const,
-			contractVersion: 'agentic_chat_worker_v1' as const
+		const prepare = (options: { preparedPromptLineageOnly?: boolean } = {}) =>
+			prepareAgenticChatWorkerAdmission({
+				userClient: supabase as SupabaseClient<Database>,
+				serviceClient,
+				userId: user.id,
+				command,
+				lease: {
+					decisionId: decision.decisionId,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				source: readAgenticChatTurnSource(request.headers),
+				...options
+			});
+		let preparationMs = 0;
+		// Web admission timing rides the durable payload (M2); neither the request
+		// hash nor the artifact hash covers the payload.
+		const admit = (args: AgenticChatWorkerAdmissionRpcArgs) => {
+			phase = 'admission';
+			return admitAgenticChatWorkerTurn({
+				client: serviceClient as unknown as AgenticChatWorkerAdmissionRpcClient,
+				args: {
+					...args,
+					p_request_payload: {
+						...(args.p_request_payload as { [key: string]: Json | undefined }),
+						preparationMs,
+						requestReceivedAt
+					}
+				}
+			});
 		};
 		const preparationStartedAt = Date.now();
-		let preparation = await prepareAgenticChatWorkerAdmission({
-			userClient: supabase as SupabaseClient<Database>,
-			serviceClient,
-			userId: user.id,
-			command,
-			lease: leaseAuthority
-		});
-		let preparationMs = Math.max(0, Date.now() - preparationStartedAt);
+		let preparation = await prepare();
+		preparationMs = Math.max(0, Date.now() - preparationStartedAt);
 		const admissionStartedAt = Date.now();
 		let result;
 		try {
-			result = await admitAgenticChatWorkerTurn({
-				client: serviceClient as unknown as AgenticChatWorkerAdmissionRpcClient,
-				args: preparation.args
-			});
+			result = await admit(preparation.args);
 		} catch (admissionError) {
-			// A context invalidation, key consumption, or newer message can land
-			// between the prepared inspection and durable admission; that must cost
-			// one slow-path retry, never a failed send. Nothing durable exists yet —
-			// the admission transaction rolled back — so re-preparing without the
-			// prepared key and re-admitting is safe and hashes as a fresh request.
-			if (
-				!preparation.args.p_prepared_prompt_id ||
-				!isPreparedAdmissionRaceError(admissionError)
-			) {
-				throw admissionError;
-			}
-			logger.warn('Prepared admission lease changed before claim; retrying without it', {
+			// A key consumption, expiry, or newer message can land between
+			// preparation and durable admission; that must cost one slow-path retry,
+			// never a failed send. These errors are raised inside the RPC, so its
+			// transaction rolled back and re-preparing is safe.
+			const preparedRace =
+				Boolean(preparation.args.p_prepared_prompt_id) &&
+				isPreparedAdmissionRaceError(admissionError);
+			if (!preparedRace && !isHistoryWindowRaceError(admissionError)) throw admissionError;
+			logger.warn('Admission inputs changed before claim; re-preparing once', {
 				error: admissionError,
 				preparedFailureCode: getPreparedAdmissionFailureCode(admissionError),
 				userId: user.id,
 				clientTurnId: parsed.data.clientTurnId,
 				preparedPromptId: preparation.args.p_prepared_prompt_id
 			});
+			phase = 'preparation';
 			const retryStartedAt = Date.now();
-			preparation = await prepareAgenticChatWorkerAdmission({
-				userClient: supabase as SupabaseClient<Database>,
-				serviceClient,
-				userId: user.id,
-				command: { ...command, preparedPromptKey: null },
-				lease: leaseAuthority
-			});
-			// Reflect the race in both the response timing and the durable turn
-			// payload; the retry preparation itself never requested the lease. The
-			// request hash does not cover the payload, so this stays consistent.
-			const raceMetadata = {
-				requested: true,
-				hit: false,
-				missReason: 'admission_race_retry',
-				inspectionMs: preparation.preparedAdmissionLease.inspectionMs
-			};
-			preparation.preparedAdmissionLease = raceMetadata;
-			(preparation.args.p_request_payload as Record<string, unknown>).preparedAdmissionLease =
-				raceMetadata;
+			// A prepared race keeps the key's hash lineage but never adopts its
+			// content, so a later identical resend still matches this turn.
+			preparation = await prepare({ preparedPromptLineageOnly: preparedRace });
+			if (preparedRace) {
+				// Reflect the race in both the response timing and the durable payload.
+				const raceMetadata = {
+					requested: true,
+					hit: false,
+					missReason: 'admission_race_retry',
+					inspectionMs: preparation.preparedAdmissionLease.inspectionMs
+				};
+				preparation.preparedAdmissionLease = raceMetadata;
+				(
+					preparation.args.p_request_payload as Record<string, unknown>
+				).preparedAdmissionLease = raceMetadata;
+			}
 			preparationMs += Math.max(0, Date.now() - retryStartedAt);
-			result = await admitAgenticChatWorkerTurn({
-				client: serviceClient as unknown as AgenticChatWorkerAdmissionRpcClient,
-				args: preparation.args
-			});
+			result = await admit(preparation.args);
 		}
+		// Start the wake now but never wait for it; it outlives the response.
+		if (result.outcome === 'newly_admitted') startAgenticChatWorkerQueueWake();
 		const admissionMs = Math.max(0, Date.now() - admissionStartedAt);
 		const timedResponse = (response: Response) =>
 			withWorkerAdmissionTiming(response, {
@@ -235,9 +256,11 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			response.headers.set('Retry-After', String(result.retryAfterSeconds));
 			return timedResponse(privateResponse(response));
 		}
+		if (result.outcome === 'idempotency_conflict') {
+			return timedResponse(workerIdempotencyConflictResponse());
+		}
 		if (
 			result.outcome === 'active_turn_conflict' ||
-			result.outcome === 'idempotency_conflict' ||
 			(result.outcome === 'matching_duplicate' && result.executionMode !== 'worker_realtime')
 		) {
 			return timedResponse(
@@ -251,11 +274,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			);
 		}
 
-		// Wake the worker (bounded, never throws; durable safety polling is the fallback).
-		const [session] = await Promise.all([
-			loadCreatedSession ? loadCreatedSession(result.sessionId) : null,
-			result.outcome === 'newly_admitted' ? wakeAgenticChatWorkerQueue() : null
-		]);
+		const session = loadCreatedSession ? await loadCreatedSession(result.sessionId) : null;
 		const payload = {
 			outcome: result.outcome,
 			handle: {
@@ -284,9 +303,10 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	} catch (error) {
 		logger.warn('Worker turn admission failed', {
 			error,
+			phase,
 			userId: user.id,
 			clientTurnId: parsed.data.clientTurnId
 		});
-		return workerAdmissionErrorResponse(error);
+		return workerAdmissionErrorResponse(error, phase);
 	}
 };

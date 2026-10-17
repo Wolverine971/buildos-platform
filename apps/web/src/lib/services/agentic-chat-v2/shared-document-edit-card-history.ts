@@ -17,10 +17,13 @@ import type {
 	FastChatHistoryMessageWithLineage,
 	InterruptedToolExecutionSummaryRow
 } from './session-service';
+import { PROPOSAL_CARD_CONTINUITY_FILTER } from './proposal-card-history';
 
-/** Filter before LIMIT so ordinary document saves cannot crowd out continuity. */
-export const CHAT_CONTINUITY_EXECUTION_FILTER =
-	'tool_name.in.(skill_load,request_turn_clarification),and(tool_name.eq.update_onto_document,result->>confirmation_kind.eq.shared_document_edit_v1,result->>status.eq.confirmation_required)';
+/**
+ * Filter before LIMIT so ordinary document saves cannot crowd out continuity.
+ * Proposal cards (nest, combine; keyed on their rail) ride along the same way.
+ */
+export const CHAT_CONTINUITY_EXECUTION_FILTER = `tool_name.in.(skill_load,request_turn_clarification),and(tool_name.eq.update_onto_document,result->>confirmation_kind.eq.shared_document_edit_v1,result->>status.eq.confirmation_required),${PROPOSAL_CARD_CONTINUITY_FILTER}`;
 
 /** Only the latest cards in the window ride along; older ones are settled history. */
 export const SHARED_DOCUMENT_EDIT_CARD_NOTE_LIMIT = 3;
@@ -68,7 +71,9 @@ export function renderSharedDocumentEditCardNote(card: SharedDocumentEditCardRec
 		owner_project_id: action.parent_project_id,
 		shared_with_count: action.shared_with_count,
 		state: resolution?.outcome ?? 'pending',
-		...(resolution ? { resolved_at: resolution.resolved_at } : { expires_at: action.expires_at }),
+		...(resolution
+			? { resolved_at: resolution.resolved_at }
+			: { expires_at: action.expires_at }),
 		...(resolution?.copy
 			? {
 					copy_document_id: resolution.copy.document_id,

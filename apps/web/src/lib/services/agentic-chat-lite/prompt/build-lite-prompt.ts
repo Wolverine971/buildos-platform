@@ -1533,6 +1533,9 @@ function resolveTimelineRenderMode(
 	return hasTimelineSignal || hasProjectDigestSignal ? 'full' : 'frame_only';
 }
 
+export const PROJECT_STRUCTURE_CAPABILITY_LINE =
+	"- Project structure: a project can sit under one parent project, one level deep (its ⋯ → Move under…). Nesting moves nothing and changes no one's access. Docs and tasks move between projects via Organize. Global chat can propose nesting (propose_project_parent) or combining a whole project into another (propose_project_combine); the user's click on the card runs it. Without a tool for something, say chat can't do it yet, never that the product can't.";
+
 function buildOperatingStrategySection(
 	scaffold: Required<LitePromptScaffoldOptions>,
 	toolsSummary: LitePromptToolsSummary
@@ -1583,6 +1586,12 @@ function buildOperatingStrategySection(
 			toolsSummary.discoveryTools.length > 0
 				? `- Use direct tools first when they fit. When the operation you need is not on the surface, reach for ${formatInlineToolNames(toolsSummary.discoveryTools)} — the tools they return are mounted for you.`
 				: '- Use direct tools first when they fit. When the operation you need is not on the surface, say what is missing rather than guessing a tool name.',
+			// Tasker 122 (2026-10-17): global chat twice told the owner projects
+			// can't nest, inferring it from read tools that hid the parent and from
+			// a missing chat tool. Static on both lanes, never keyword-gated: what
+			// the product can do, and that a missing tool is chat's gap, not the
+			// product's.
+			PROJECT_STRUCTURE_CAPABILITY_LINE,
 			// Dedupe pass (tasker/39 stage 2, 2026-07-26): the domain_search bullet
 			// duplicated the capabilities-section routing pointer; outcome-card /
 			// skill_search / gate / ledger / child-depth coaching moved into the
@@ -2813,6 +2822,8 @@ type GlobalProjectIndexView = {
 	state: string | null;
 	nextStep: string | null;
 	rollup: GlobalTaskRollupView | null;
+	/** Tasker 122: the parent, set by the loader only when the viewer can open it. */
+	parentId: string | null;
 };
 
 type ProjectIntelligencePromptOptions = {
@@ -2880,10 +2891,43 @@ function collectGlobalProjectIndex(data: Record<string, unknown> | null): Global
 			name,
 			state: stringValue(entry.state_key),
 			nextStep: truncateText(stringValue(entry.next_step_short), 120),
-			rollup: readTaskRollup(entry.task_rollup)
+			rollup: readTaskRollup(entry.task_rollup),
+			parentId: stringValue(entry.parent_project_id)
 		});
 	}
 	return views;
+}
+
+const HIERARCHY_PARENT_NAME_MAX_CHARS = 60;
+
+/**
+ * Tasker 122: " · part of <Parent>" for a sub-project and " · includes N" for a
+ * hub, keyed by project id. On 10-16 global chat said projects can't nest
+ * because nothing it saw showed a parent. Both ends come from the index, which
+ * is every project the viewer can open, so no other name ever appears.
+ */
+function buildProjectHierarchyLabels(projectIndex: GlobalProjectIndexView[]): Map<string, string> {
+	const names = new Map(projectIndex.map((view) => [view.id, view.name]));
+	const parentOf = new Map<string, string>();
+	const childCounts = new Map<string, number>();
+	for (const view of projectIndex) {
+		if (!view.parentId || view.parentId === view.id || !names.has(view.parentId)) continue;
+		parentOf.set(view.id, view.parentId);
+		childCounts.set(view.parentId, (childCounts.get(view.parentId) ?? 0) + 1);
+	}
+	const labels = new Map<string, string>();
+	for (const view of projectIndex) {
+		const parentId = parentOf.get(view.id);
+		const count = childCounts.get(view.id) ?? 0;
+		const parts = [
+			parentId
+				? `part of ${truncateText(names.get(parentId) ?? null, HIERARCHY_PARENT_NAME_MAX_CHARS)}`
+				: null,
+			count > 0 ? `includes ${count}` : null
+		].filter(Boolean);
+		if (parts.length > 0) labels.set(view.id, ` · ${parts.join(' · ')}`);
+	}
+	return labels;
 }
 
 function formatProjectStateLabel(state: string | null): string {
@@ -2925,19 +2969,21 @@ function formatSignalSummaryParts(
 
 function formatBundleStatusLine(
 	view: GlobalBundleView,
-	summary: FastChatProjectSignalSummary | null
+	summary: FastChatProjectSignalSummary | null,
+	hierarchyLabel = ''
 ): string {
 	const nextStep = view.nextStep ? ` Next step: ${view.nextStep}.` : '';
 	const topGoal = view.topGoal ? ` Top goal: ${view.topGoal}.` : '';
-	return `${view.name} (project_id: ${view.id}): ${formatProjectStateLabel(view.state)}; ${formatTaskRollupText(view.rollup)}${formatSignalSummaryParts(summary, view.rollup)}.${nextStep}${topGoal}`;
+	return `${view.name} (project_id: ${view.id})${hierarchyLabel}: ${formatProjectStateLabel(view.state)}; ${formatTaskRollupText(view.rollup)}${formatSignalSummaryParts(summary, view.rollup)}.${nextStep}${topGoal}`;
 }
 
 function formatProjectIndexLine(
 	view: GlobalProjectIndexView,
-	summary: FastChatProjectSignalSummary | null
+	summary: FastChatProjectSignalSummary | null,
+	hierarchyLabel = ''
 ): string {
 	const nextStep = view.nextStep ? ` Next step: ${view.nextStep}.` : '';
-	return `${view.name} (project_id: ${view.id}): ${formatProjectStateLabel(view.state)}; ${formatTaskRollupText(view.rollup)}${formatSignalSummaryParts(summary, view.rollup)}.${nextStep}`;
+	return `${view.name} (project_id: ${view.id})${hierarchyLabel}: ${formatProjectStateLabel(view.state)}; ${formatTaskRollupText(view.rollup)}${formatSignalSummaryParts(summary, view.rollup)}.${nextStep}`;
 }
 
 function formatSignalSummaryStatusLine(summary: FastChatProjectSignalSummary): string {
@@ -2967,8 +3013,13 @@ function buildGlobalProjectLines(
 	const summariesById = new Map(
 		(intelligence?.project_summaries ?? []).map((summary) => [summary.project_id, summary])
 	);
+	const hierarchyLabels = buildProjectHierarchyLabels(projectIndex);
 	const lines = bundles.map((view) =>
-		formatBundleStatusLine(view, summariesById.get(view.id) ?? null)
+		formatBundleStatusLine(
+			view,
+			summariesById.get(view.id) ?? null,
+			hierarchyLabels.get(view.id)
+		)
 	);
 	const rendered = new Set(bundles.map((view) => view.id));
 	let omitted = 0;
@@ -2979,7 +3030,13 @@ function buildGlobalProjectLines(
 			omitted += 1;
 			continue;
 		}
-		lines.push(formatProjectIndexLine(view, summariesById.get(view.id) ?? null));
+		lines.push(
+			formatProjectIndexLine(
+				view,
+				summariesById.get(view.id) ?? null,
+				hierarchyLabels.get(view.id)
+			)
+		);
 	}
 	if (projectIndex.length === 0) {
 		for (const summary of intelligence?.project_summaries ?? []) {

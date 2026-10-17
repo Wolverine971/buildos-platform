@@ -16,6 +16,12 @@
 		type SharedDocumentEditCardPlacement
 	} from './shared-document-edit-cards';
 	import type { SharedDocumentEditResolutionV1 } from '@buildos/shared-agent-ops/ontology/shared-document-edit-card';
+	import ProposalCard from './ProposalCard.svelte';
+	import {
+		placeProposalCards,
+		type ProposalCardPlacement,
+		type ProposalCardResolvedEvent
+	} from './proposal-cards';
 	import { ArrowDown } from '$lib/icons/lucide';
 	import { getProseClasses } from '$lib/utils/markdown';
 	import {
@@ -78,6 +84,8 @@
 		onTableChangeUndone?: (messageId: string, card: TableChangeCard, complete: boolean) => void;
 		/** A shared-document confirm card was resolved by the user's click. */
 		onSharedDocumentEditResolved?: (resolution: SharedDocumentEditResolutionV1) => void;
+		/** A chat proposal card (nest, combine) was decided or undone by the user's click. */
+		onProposalCardResolved?: (event: ProposalCardResolvedEvent) => void;
 		reviewProjectId?: string | null;
 		reviewDisabled?: boolean;
 		selectedContextType?: ChatContextType | null;
@@ -108,6 +116,7 @@
 		onDocumentChangeUndone,
 		onTableChangeUndone,
 		onSharedDocumentEditResolved,
+		onProposalCardResolved,
 		reviewProjectId = null,
 		reviewDisabled = false,
 		selectedContextType = null,
@@ -125,6 +134,8 @@
 
 	// Shared-document confirm cards render under the reply that showed them.
 	const sharedEditCards = $derived(placeSharedDocumentEditCards(messages));
+	// Proposal cards (nest, combine) follow the same placement rule.
+	const proposalCards = $derived(placeProposalCards(messages));
 
 	// ── Streaming text ──────────────────────────────────────────────────────
 	// Streaming and finalized assistant bubbles share one render branch: a
@@ -764,6 +775,18 @@
 	}
 </script>
 
+{#snippet proposalCardGroup(placement: ProposalCardPlacement)}
+	<div class="flex min-w-0 flex-col gap-2" data-testid="proposal-cards">
+		{#each placement.cards as card (card.card_id)}
+			<ProposalCard
+				{card}
+				turnActive={placement.turnActive}
+				onResolved={onProposalCardResolved}
+			/>
+		{/each}
+	</div>
+{/snippet}
+
 {#snippet sharedEditCardGroup(placement: SharedDocumentEditCardPlacement)}
 	<div class="flex min-w-0 flex-col gap-2" data-testid="shared-document-edit-cards">
 		{#each placement.cards as card (card.action.card_id)}
@@ -945,6 +968,7 @@
 				{:else if message.type === 'assistant'}
 					{@const body = assistantBody(message, message.id === streamingMessageId)}
 					{@const editCards = sharedEditCards.get(message.id)}
+					{@const proposals = proposalCards.get(message.id)}
 					<!-- INKPRINT assistant message with Frame texture -->
 					<div
 						data-testid="agent-chat-assistant-message"
@@ -988,6 +1012,14 @@
 							>
 								Response interrupted
 							</div>
+						{:else if message.metadata?.stopped}
+							<div
+								class="clear-both mt-1 micro-label font-semibold text-muted-foreground"
+								role="status"
+								aria-live="polite"
+							>
+								Stopped
+							</div>
 						{/if}
 						<span
 							class="clear-both mt-1 block text-right text-2xs leading-none tabular-nums text-muted-foreground/70"
@@ -997,6 +1029,9 @@
 					</div>
 					{#if editCards}
 						{@render sharedEditCardGroup(editCards)}
+					{/if}
+					{#if proposals}
+						{@render proposalCardGroup(proposals)}
 					{/if}
 				{:else if message.type === 'agent_peer'}
 					<!-- INKPRINT agent peer: neutral palette + round avatar (amber reserved for warnings) -->
@@ -1031,6 +1066,7 @@
 					</div>
 				{:else if message.type === 'thinking_block'}
 					{@const editCards = sharedEditCards.get(message.id)}
+					{@const proposals = proposalCards.get(message.id)}
 					<ThinkingBlock
 						block={message as ThinkingBlockMessage}
 						onToggleCollapse={onToggleThinkingBlock}
@@ -1038,6 +1074,9 @@
 					/>
 					{#if editCards}
 						{@render sharedEditCardGroup(editCards)}
+					{/if}
+					{#if proposals}
+						{@render proposalCardGroup(proposals)}
 					{/if}
 				{:else if message.type === 'clarification'}
 					<!-- INKPRINT clarification: accent palette ("your turn" kin to user bubble) -->

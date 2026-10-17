@@ -804,4 +804,129 @@ describe('AgenticChatWorkerRealtimeCoordinator', () => {
 		expect(coordinator.inbox.getSnapshot(TURN_ID)).toBeNull();
 		expect(() => unregister()).not.toThrow();
 	});
+
+	describe('failed reconciliation', () => {
+		function httpError(status: number): Response {
+			return { ok: false, status, json: async () => ({ success: false }) } as Response;
+		}
+
+		function lossObserver() {
+			return {
+				...applicationObserver(),
+				reportReconciliationLost: vi.fn(),
+				reportReconciliationRestored: vi.fn()
+			};
+		}
+
+		it.each([404, 409])('stops following a turn the server answers with %i', async (status) => {
+			vi.useFakeTimers();
+			const fetchImpl = vi.fn(async () => httpError(status));
+			const observer = lossObserver();
+			const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+				fetchImpl: fetchImpl as typeof fetch,
+				retryMs: 50
+			});
+			coordinator.start();
+			coordinator.registerTurn({ handle, observer });
+			await settle();
+
+			expect(observer.reportReconciliationLost).toHaveBeenCalledExactlyOnceWith({
+				permanent: true,
+				httpStatus: status
+			});
+			coordinator.requestAll('watchdog');
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(fetchImpl).toHaveBeenCalledOnce();
+			coordinator.stop();
+		});
+
+		it('refreshes the session once after a 401 and retries at once', async () => {
+			vi.useFakeTimers();
+			const fetchImpl = vi
+				.fn()
+				.mockResolvedValueOnce(httpError(401))
+				.mockResolvedValueOnce(apiResponse(receipt()));
+			const refreshAuthSession = vi.fn(async () => true);
+			const observer = lossObserver();
+			const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+				fetchImpl: fetchImpl as typeof fetch,
+				retryMs: 5_000,
+				refreshAuthSession
+			});
+			coordinator.start();
+			coordinator.registerTurn({ handle, observer });
+			await settle();
+			expect(refreshAuthSession).toHaveBeenCalledOnce();
+
+			// No 5 s retry wait: the refreshed request goes out on the next tick.
+			await vi.advanceTimersByTimeAsync(0);
+			await settle();
+			expect(fetchImpl).toHaveBeenCalledTimes(2);
+			expect(observer.applyReconciliation).toHaveBeenCalledOnce();
+			expect(observer.reportReconciliationLost).not.toHaveBeenCalled();
+			coordinator.stop();
+		});
+
+		it('does not refresh again while 401s continue in the same failure streak', async () => {
+			vi.useFakeTimers();
+			const fetchImpl = vi.fn(async () => httpError(401));
+			const refreshAuthSession = vi.fn(async () => true);
+			const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+				fetchImpl: fetchImpl as typeof fetch,
+				retryMs: 50,
+				refreshAuthSession
+			});
+			coordinator.start();
+			coordinator.registerTurn({ handle, observer: lossObserver() });
+			await settle();
+			await vi.advanceTimersByTimeAsync(0);
+			await settle();
+			await vi.advanceTimersByTimeAsync(50);
+			await settle();
+
+			expect(fetchImpl).toHaveBeenCalledTimes(3);
+			expect(refreshAuthSession).toHaveBeenCalledOnce();
+			coordinator.stop();
+		});
+
+		it('reports a lost connection after five straight failures and clears it on recovery', async () => {
+			vi.useFakeTimers();
+			const fetchImpl = vi.fn(async () => httpError(503));
+			const observer = lossObserver();
+			const coordinator = new AgenticChatWorkerRealtimeCoordinator({
+				fetchImpl: fetchImpl as typeof fetch,
+				retryMs: 100,
+				maxRetryMs: 1_000
+			});
+			coordinator.start();
+			coordinator.registerTurn({ handle, observer });
+			await settle();
+			for (let failure = 2; failure <= 4; failure += 1) {
+				await vi.advanceTimersByTimeAsync(100);
+				await settle();
+			}
+			expect(fetchImpl).toHaveBeenCalledTimes(4);
+			expect(observer.reportReconciliationLost).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(100);
+			await settle();
+			expect(fetchImpl).toHaveBeenCalledTimes(5);
+			expect(observer.reportReconciliationLost).toHaveBeenCalledExactlyOnceWith({
+				permanent: false,
+				httpStatus: 503
+			});
+
+			// Still retrying, more slowly: the next try waits 200 ms, not 100 ms.
+			await vi.advanceTimersByTimeAsync(100);
+			expect(fetchImpl).toHaveBeenCalledTimes(5);
+			fetchImpl.mockResolvedValueOnce(apiResponse(receipt()));
+			await vi.advanceTimersByTimeAsync(100);
+			await settle();
+			expect(fetchImpl).toHaveBeenCalledTimes(6);
+			expect(observer.reportReconciliationLost).toHaveBeenCalledOnce();
+			expect(observer.reportReconciliationRestored).toHaveBeenCalledOnce();
+			expect(observer.applyReconciliation).toHaveBeenCalledOnce();
+			coordinator.stop();
+		});
+	});
 });

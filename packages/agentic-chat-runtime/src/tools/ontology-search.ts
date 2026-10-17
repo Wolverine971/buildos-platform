@@ -18,14 +18,8 @@ import {
 	normalizeSearchResult,
 	rankSearchResult,
 	reciprocalRankFuseSearchRows,
-	taskBucketFor,
-	taskBucketsForQuery,
-	taskBucketSearchScore,
-	taskBucketSnippet,
-	taskStatesForBuckets,
 	type EventSearchRow,
-	type OntologySearchRow,
-	type TaskSearchRow
+	type OntologySearchRow
 } from './ontology-search-ranking';
 
 export const ONTOLOGY_SEARCH_ALLOWED_TYPES = new Set([
@@ -125,7 +119,7 @@ export class AgenticChatOntologySearchProjectNotFoundError extends Error {
 
 export class AgenticChatOntologySearchQueryError extends Error {
 	readonly name = 'AgenticChatOntologySearchQueryError';
-	readonly stage: 'project' | 'rpc' | 'task_buckets' | 'events';
+	readonly stage: 'project' | 'rpc' | 'events';
 	readonly cause: unknown;
 	readonly code?: string;
 
@@ -279,58 +273,6 @@ async function searchSemanticForQuery(input: {
 	}
 }
 
-async function searchTaskBucketsForQuery(input: {
-	client: AgenticChatSharedReadContextV1['client'];
-	projectId: string | null;
-	query: string;
-	limit: number;
-	nowMs: number;
-}): Promise<OntologySearchRow[]> {
-	if (!input.projectId) return [];
-
-	const buckets = taskBucketsForQuery(input.query);
-	if (buckets.size === 0) return [];
-
-	const states = taskStatesForBuckets(buckets);
-	let taskQuery = (input.client as any)
-		.from('onto_tasks')
-		.select(
-			'id, project_id, title, description, state_key, type_key, start_at, due_at, completed_at, updated_at, deleted_at, archived_at, priority'
-		)
-		.eq('project_id', input.projectId)
-		.order('priority', { ascending: false, nullsFirst: false })
-		.order('updated_at', { ascending: false })
-		.limit(input.limit);
-
-	if (states.length > 0) taskQuery = taskQuery.in('state_key', states);
-	// Search reads the present. Archived rows reach chat only through its explicit
-	// archive read (tasker 113), never because the query text says "archived".
-	taskQuery = taskQuery.is('deleted_at', null).is('archived_at', null);
-
-	const { data, error } = await taskQuery;
-	if (error) throw new AgenticChatOntologySearchQueryError('task_buckets', error);
-
-	return ((data as TaskSearchRow[] | null) ?? [])
-		.map((task) => ({ task, bucket: taskBucketFor(task, input.nowMs) }))
-		.filter(({ bucket }) => buckets.has(bucket))
-		.map(({ task, bucket }) => ({
-			type: 'task',
-			id: task.id,
-			project_id: task.project_id,
-			project_name: null,
-			title: task.title,
-			snippet: taskBucketSnippet(task, bucket),
-			score: taskBucketSearchScore(bucket),
-			state_key: task.state_key,
-			type_key: task.type_key,
-			start_at: task.start_at,
-			due_at: task.due_at,
-			updated_at: task.updated_at,
-			priority: task.priority,
-			bucket_key: bucket
-		}));
-}
-
 /** Route-compatible ontology search over the injected client and access port. */
 export async function searchOntologyEntities(
 	context: AgenticChatSharedReadContextV1,
@@ -355,7 +297,6 @@ export async function searchOntologyEntities(
 			: [];
 	const requestedTypes = validRequestedTypes.length > 0 ? validRequestedTypes : null;
 	const shouldSearchEvents = requestedTypes === null || requestedTypes.includes('event');
-	const shouldSearchTaskBuckets = requestedTypes === null || requestedTypes.includes('task');
 	const rpcTypes = requestedTypes
 		? requestedTypes.filter((type) => RPC_BACKED_TYPES.has(type))
 		: null;
@@ -392,7 +333,9 @@ export async function searchOntologyEntities(
 	const searchSignal = context.signal
 		? AbortSignal.any([context.signal, searchController.signal])
 		: searchController.signal;
-	const [rpcResults, semantic, taskBucketResults, eventResults] = await Promise.all([
+	// Task state never comes from query words (AGENTS.md no-regex rule): no
+	// structured state/bucket argument exists, so tasks rank like any RPC row.
+	const [rpcResults, semantic, eventResults] = await Promise.all([
 		shouldSearchRpcTypes
 			? (async () => {
 					const { data, error } = await (context.client as any).rpc(
@@ -419,15 +362,6 @@ export async function searchOntologyEntities(
 					limit: candidateLimit
 				})
 			: Promise.resolve<SemanticSearchResult>({ status: 'not_requested', rows: [] }),
-		shouldSearchTaskBuckets
-			? searchTaskBucketsForQuery({
-					client: context.client,
-					projectId,
-					query,
-					limit: candidateLimit,
-					nowMs
-				})
-			: Promise.resolve([]),
 		shouldSearchEvents
 			? searchEventsForQuery({ context, projectId, query, limit: candidateLimit })
 			: Promise.resolve([])
@@ -447,11 +381,7 @@ export async function searchOntologyEntities(
 			? reciprocalRankFuseSearchRows([precisionCalibratedRpcResults, semanticResults])
 			: precisionCalibratedRpcResults;
 
-	const rawResults = dedupeSearchRows([
-		...hybridRpcResults,
-		...taskBucketResults,
-		...eventResults
-	]).filter(Boolean);
+	const rawResults = dedupeSearchRows([...hybridRpcResults, ...eventResults]).filter(Boolean);
 	const results = rawResults
 		.map((result) => normalizeSearchResult(result))
 		.map((result) => rankSearchResult(result, nowMs))
@@ -467,7 +397,6 @@ export async function searchOntologyEntities(
 		rawResults.length > limit ||
 		precisionCalibratedRpcResults.length >= candidateLimit ||
 		(semanticResults?.length ?? 0) >= candidateLimit ||
-		taskBucketResults.length >= candidateLimit ||
 		eventResults.length >= candidateLimit;
 
 	return {

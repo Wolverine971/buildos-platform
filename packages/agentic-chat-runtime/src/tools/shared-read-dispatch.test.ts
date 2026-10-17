@@ -23,8 +23,9 @@ describe('shared read dispatch', () => {
 		// project image reads added 2026-09-22 (search_onto_assets, get_onto_asset) + the
 		// Project cleanup read added 2026-09-29 (get_project_cleanup, tasker 112) +
 		// the two table reads added 2026-10-04 (Tables tool suite:
-		// get_onto_table_details, read_table_rows).
-		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(49);
+		// get_onto_table_details, read_table_rows) + the two proposal-card tools
+		// added 2026-10-17 (tasker 122: propose_project_parent, propose_project_combine).
+		expect(AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1).toHaveLength(51);
 		for (const toolName of AGENTIC_CHAT_SHARED_READ_TOOL_NAMES_V1) {
 			expect(TOOL_METADATA[toolName], `${toolName} is missing TOOL_METADATA`).toBeDefined();
 			expect(isAgenticChatSharedReadToolNameV1(toolName)).toBe(true);

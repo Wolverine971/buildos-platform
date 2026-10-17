@@ -11,6 +11,10 @@ import type {
 import { streamBufferedProviderPass } from '../src/workers/agentic-chat/provider/provider-pass';
 import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/effects/pending-effects';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
+import {
+	RUNAWAY_REASONING_TOKEN_LIMIT,
+	WATCHED_FIRST_PROGRESS_TIMEOUT_MS
+} from '../src/workers/agentic-chat/provider/openrouter/watchdog';
 
 afterEach(() => vi.useRealTimers());
 const V41 = 'deepseek/deepseek-v4.1-flash';
@@ -557,4 +561,338 @@ describe('buffered slow-provider recovery', () => {
 			{ exclude: true }
 		]);
 	});
+});
+
+// Keys the production observation RPC accepts on a provider attempt receipt
+// (persist_agentic_chat_execution_observation allowlist). Any other key makes
+// the database reject the whole receipt.
+const PROVIDER_RECEIPT_KEYS = new Set([
+	'round',
+	'logical_provider_round',
+	'pass_role',
+	'provider_attempt',
+	'attempt_kind',
+	'route_id',
+	'model_requested',
+	'model_used',
+	'provider',
+	'status',
+	'duration_ms',
+	'provider_timing',
+	'finish_reason',
+	'error_class',
+	'usage',
+	'rejected_tool_name',
+	'advertised_tool_count',
+	'max_output_tokens',
+	'reasoning_effort',
+	'output_budget_recovery',
+	'output_budget'
+]);
+const LIMIT_CHARS = RUNAWAY_REASONING_TOKEN_LIMIT * 4;
+function reasoningFrame(response: ReturnType<typeof controllableResponse>, chars: number) {
+	response.frame({ choices: [{ delta: { reasoning: 'r'.repeat(chars) }, finish_reason: null }] });
+}
+function outputPolicy(canClaim = true) {
+	return {
+		pressure: vi.fn(),
+		claimRecovery: vi.fn(() => canClaim),
+		canClaimRecovery: vi.fn(() => canClaim)
+	};
+}
+const listTool = {
+	type: 'function' as const,
+	function: {
+		name: 'list_onto_tasks',
+		description: 'List',
+		parameters: { type: 'object', properties: { project_id: { type: 'string' } } }
+	}
+};
+
+describe('runaway reasoning cutoff (audit 2026-10-17 S2)', () => {
+	it('cuts a watched pass off past the limit with no output and runs the reasoning-off recovery', async () => {
+		vi.useFakeTimers();
+		const runaway = controllableResponse();
+		const recovery = controllableResponse();
+		recovery.text('Recovered answer.');
+		recovery.finish();
+		const test = harness([runaway.response, recovery.response]);
+		const policy = outputPolicy();
+		const collecting = collect(
+			streamBufferedProviderPass(request(), test.client, test.capacity, 2_000, policy)
+		);
+		await vi.advanceTimersByTimeAsync(0);
+		// Exactly at the limit is not past it.
+		for (let index = 0; index < 4; index++) reasoningFrame(runaway, LIMIT_CHARS / 4);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
+		expect(test.requests[0]!.signal.aborted).toBe(false);
+		reasoningFrame(runaway, 4);
+		await vi.advanceTimersByTimeAsync(0);
+		const events = await collecting;
+
+		expect(test.requests[0]!.body.reasoning).toEqual({ exclude: false });
+		expect(test.requests[0]!.signal.aborted).toBe(true);
+		expect(runaway.cancel).toHaveBeenCalledOnce();
+		expect(events).toContainEqual({ type: 'output_budget_recovery', providerAttempt: 2 });
+		expect(events.filter((event) => event.type === 'text')).toEqual([
+			{ type: 'text', content: 'Recovered answer.' }
+		]);
+		expect(events.at(-1)?.type).toBe('done');
+		expect(test.requests).toHaveLength(2);
+		expect(test.requests[1]!.body).toMatchObject({
+			reasoning: { enabled: false },
+			max_tokens: 12_000
+		});
+		// The endpoint was healthy: the recovery is not routed away from it.
+		expect(test.requests[1]!.body.provider.ignore ?? []).not.toContain('novita');
+		expect(policy.claimRecovery).toHaveBeenCalledOnce();
+		expect(policy.pressure).toHaveBeenCalled();
+		expect(test.capacity.markTemporarilyUnavailable).not.toHaveBeenCalled();
+
+		const ended = test.observations.filter((row) => row.eventType === 'provider_attempt_ended');
+		expect(ended[0]!.payload).toMatchObject({
+			status: 'failure',
+			error_class: 'runaway_reasoning_cutoff',
+			finish_reason: null,
+			output_budget: {
+				kind: 'exhausted',
+				limit: 12_000,
+				completionTokens: null,
+				reasoningTokens: RUNAWAY_REASONING_TOKEN_LIMIT + 1
+			}
+		});
+		for (const key of Object.keys(ended[0]!.payload)) {
+			expect(PROVIDER_RECEIPT_KEYS.has(key), key).toBe(true);
+		}
+		expect(ended[1]!.payload).toMatchObject({
+			status: 'success',
+			reasoning_effort: 'none',
+			output_budget_recovery: true
+		});
+		expect(test.usage.map((row) => row.status)).toEqual(['failure', 'success']);
+		expect(test.usage[0]!.error).toContain('runaway_reasoning_cutoff');
+	});
+
+	it('uses a reasoning count the provider reports mid-stream', async () => {
+		vi.useFakeTimers();
+		const runaway = controllableResponse();
+		const recovery = controllableResponse();
+		recovery.text('Recovered.');
+		recovery.finish();
+		const test = harness([runaway.response, recovery.response]);
+		const collecting = collect(
+			streamBufferedProviderPass(request(), test.client, test.capacity, 2_000, outputPolicy())
+		);
+		await vi.advanceTimersByTimeAsync(0);
+		runaway.frame({
+			choices: [{ delta: { reasoning: 'short' }, finish_reason: null }],
+			usage: {
+				prompt_tokens: 100,
+				completion_tokens: RUNAWAY_REASONING_TOKEN_LIMIT + 500,
+				total_tokens: RUNAWAY_REASONING_TOKEN_LIMIT + 600,
+				completion_tokens_details: { reasoning_tokens: RUNAWAY_REASONING_TOKEN_LIMIT + 500 }
+			}
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect((await collecting).at(-1)?.type).toBe('done');
+		expect(test.requests).toHaveLength(2);
+		expect(
+			test.observations.find((row) => row.payload.error_class === 'runaway_reasoning_cutoff')
+				?.payload.output_budget
+		).toMatchObject({ reasoningTokens: RUNAWAY_REASONING_TOKEN_LIMIT + 500 });
+	});
+
+	it.each(['text', 'tool call'] as const)(
+		'never cuts a pass off once a %s delta has appeared',
+		async (first) => {
+			vi.useFakeTimers();
+			const response = controllableResponse();
+			const test = harness([response.response]);
+			const input =
+				first === 'tool call'
+					? request({ tools: [listTool], toolChoice: 'auto' })
+					: request();
+			const collecting = collect(
+				streamBufferedProviderPass(input, test.client, test.capacity, 2_000, outputPolicy())
+			);
+			await vi.advanceTimersByTimeAsync(0);
+			if (first === 'text') response.text('Let me check the project first.');
+			else
+				response.frame({
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										id: 'kept-call',
+										type: 'function',
+										function: { name: 'list_onto_tasks', arguments: '' }
+									}
+								]
+							},
+							finish_reason: null
+						}
+					]
+				});
+			for (let index = 0; index < 8; index++) reasoningFrame(response, LIMIT_CHARS / 4);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(test.requests[0]!.signal.aborted).toBe(false);
+			if (first === 'text') {
+				response.text(' Done.');
+				response.finish();
+			} else {
+				response.frame({
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{ index: 0, function: { arguments: '{"project_id":"qa"}' } }
+								]
+							},
+							finish_reason: null
+						}
+					]
+				});
+				response.finish('tool_calls');
+			}
+			const events = await collecting;
+			expect(events.at(-1)?.type).toBe('done');
+			expect(test.fetchImpl).toHaveBeenCalledOnce();
+			expect(
+				test.observations.some(
+					(row) => row.payload.error_class === 'runaway_reasoning_cutoff'
+				)
+			).toBe(false);
+		}
+	);
+
+	it.each(['review', 'other-model', 'direct', 'recovery-already-claimed', 'low-budget'] as const)(
+		'does not cut off a %s pass',
+		async (kind) => {
+			vi.useFakeTimers();
+			const model = kind === 'other-model' ? V4 : V41;
+			const response = controllableResponse('Novita', model);
+			const test = harness([response.response], { model });
+			const input = request({
+				...(kind === 'review' ? { passRole: 'mutation_review' } : {}),
+				...(kind === 'low-budget' ? { budget: { deadlineAtMs: Date.now() + 9_000 } } : {})
+			});
+			const collecting = collect(
+				kind === 'direct'
+					? test.client.stream(input)
+					: streamBufferedProviderPass(
+							input,
+							test.client,
+							test.capacity,
+							2_000,
+							outputPolicy(kind !== 'recovery-already-claimed')
+						)
+			);
+			await vi.advanceTimersByTimeAsync(0);
+			for (let index = 0; index < 8; index++) reasoningFrame(response, LIMIT_CHARS / 4);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(test.requests[0]!.signal.aborted).toBe(false);
+			response.text('Answer after long thinking.');
+			response.finish();
+			const events = await collecting;
+			expect(events.at(-1)?.type).toBe('done');
+			expect(test.fetchImpl).toHaveBeenCalledOnce();
+		}
+	);
+
+	it('offers the cutoff only while the turn can still claim its recovery', async () => {
+		const seen: Array<boolean | undefined> = [];
+		const client = {
+			async *stream(input: { allowRunawayReasoningCutoff?: boolean }) {
+				seen.push(input.allowRunawayReasoningCutoff);
+				if (seen.length === 1) {
+					yield {
+						type: 'error' as const,
+						error: 'cut off',
+						retryable: true,
+						cause: 'output_budget_exhausted' as const
+					};
+					return;
+				}
+				yield { type: 'text' as const, content: 'ok' };
+				yield { type: 'done' as const, finishedReason: 'stop' };
+			}
+		};
+		const capacity = { markTemporarilyUnavailable: vi.fn() };
+		await collect(
+			streamBufferedProviderPass(request(), client, capacity, 2_000, outputPolicy())
+		);
+		// Recovery attempts are never cut off themselves.
+		expect(seen).toEqual([true, false]);
+		seen.length = 0;
+		await collect(
+			streamBufferedProviderPass(request(), client, capacity, 2_000, outputPolicy(false))
+		);
+		expect(seen[0]).toBe(false);
+	});
+});
+
+describe('watched first-progress deadline (audit 2026-10-17 S9)', () => {
+	it('abandons a watched attempt with no delta 15 s after headers and retries once', async () => {
+		vi.useFakeTimers();
+		const silent = controllableResponse();
+		const fast = controllableResponse('Wafer', V4);
+		fast.text('Recovered.');
+		fast.finish();
+		const test = harness([silent.response, fast.response]);
+		const collecting = collect(test.stream());
+		await vi.advanceTimersByTimeAsync(WATCHED_FIRST_PROGRESS_TIMEOUT_MS - 1);
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
+		expect(test.requests[0]!.signal.aborted).toBe(false);
+		await vi.advanceTimersByTimeAsync(2);
+		const events = await collecting;
+		expect(events).toContainEqual({ type: 'text', content: 'Recovered.' });
+		expect(test.fetchImpl).toHaveBeenCalledTimes(2);
+		expect(test.requests[0]!.signal.aborted).toBe(true);
+		expect(silent.cancel).toHaveBeenCalledOnce();
+		// Same retry path as a slow stream: no capacity cooldown.
+		expect(test.capacity.markTemporarilyUnavailable).not.toHaveBeenCalled();
+		expect(test.usage[0]).toMatchObject({ status: 'failure', retryable: true });
+		expect(test.usage[0]!.error).toContain('no progress within 15000ms');
+	});
+
+	it('counts a reasoning delta as first progress', async () => {
+		vi.useFakeTimers();
+		const thinking = controllableResponse();
+		const test = harness([thinking.response]);
+		const collecting = collect(test.stream());
+		await vi.advanceTimersByTimeAsync(WATCHED_FIRST_PROGRESS_TIMEOUT_MS - 1_000);
+		reasoningFrame(thinking, 2_000);
+		for (let second = 0; second < 4; second++) {
+			await vi.advanceTimersByTimeAsync(1_000);
+			reasoningFrame(thinking, 600);
+		}
+		thinking.text('Thought it through.');
+		thinking.finish();
+		expect((await collecting).at(-1)?.type).toBe('done');
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
+		expect(thinking.cancel).not.toHaveBeenCalled();
+	});
+
+	it.each(['no retry left', 'review', 'other-model'] as const)(
+		'keeps waiting on the attempt deadline for a %s pass',
+		async (kind) => {
+			vi.useFakeTimers();
+			const model = kind === 'other-model' ? V4 : V41;
+			const silent = controllableResponse('Novita', model);
+			const test = harness([silent.response], { model });
+			const input = request(kind === 'review' ? { passRole: 'mutation_review' } : {});
+			const collecting = collect(
+				kind === 'no retry left' ? test.client.stream(input) : test.stream(input)
+			);
+			await vi.advanceTimersByTimeAsync(20_000);
+			expect(test.fetchImpl).toHaveBeenCalledOnce();
+			expect(test.requests[0]!.signal.aborted).toBe(false);
+			silent.text('Late but fine.');
+			silent.finish();
+			expect((await collecting).at(-1)?.type).toBe('done');
+		}
+	);
 });

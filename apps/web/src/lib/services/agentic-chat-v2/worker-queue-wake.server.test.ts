@@ -5,6 +5,8 @@ const dynamicEnv = vi.hoisted(() => ({ env: {} as Record<string, string | undefi
 vi.mock('$env/static/public', () => ({ PUBLIC_SUPABASE_URL: 'https://project.supabase.co' }));
 vi.mock('$env/static/private', () => ({ PRIVATE_SUPABASE_SERVICE_KEY: 'service-role-key' }));
 vi.mock('$env/dynamic/private', () => dynamicEnv);
+const background = vi.hoisted(() => ({ runAfterResponse: vi.fn() }));
+vi.mock('$lib/server/background', () => background);
 
 import {
 	AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS,
@@ -13,6 +15,7 @@ import {
 	AGENTIC_CHAT_QUEUE_WAKE_TOPIC,
 	createAgenticChatWorkerQueueWake,
 	resetAgenticChatWorkerQueueWakeForTests,
+	startAgenticChatWorkerQueueWake,
 	wakeAgenticChatWorkerQueue
 } from './worker-queue-wake.server';
 
@@ -55,6 +58,7 @@ function hangingFetch() {
 beforeEach(() => {
 	resetAgenticChatWorkerQueueWakeForTests();
 	dynamicEnv.env = {};
+	background.runAfterResponse.mockReset();
 });
 
 afterEach(() => {
@@ -298,5 +302,25 @@ describe('Agentic Chat worker queue wake', () => {
 		// Degradation is logged, but throttled so a Realtime outage cannot flood logs.
 		expect(warn).toHaveBeenCalledOnce();
 		expect(String(warn.mock.calls[0]?.[0])).toContain('agentic_chat_queue_wake_degraded');
+	});
+
+	it('starts a wake without blocking and hands it to the post-response keep-alive', async () => {
+		vi.useFakeTimers();
+		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const fetchImpl = hangingFetch();
+		vi.stubGlobal('fetch', fetchImpl);
+
+		// Synchronous: admission returns its response while the wake is in flight.
+		expect(startAgenticChatWorkerQueueWake()).toBeUndefined();
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		expect(background.runAfterResponse).toHaveBeenCalledWith(
+			expect.any(Promise),
+			'agentic chat queue wake'
+		);
+		const started = background.runAfterResponse.mock.calls[0]?.[0] as Promise<unknown>;
+
+		// Even a wake that never answers settles (never rejects) by the safety bound.
+		await vi.advanceTimersByTimeAsync(AGENTIC_CHAT_QUEUE_WAKE_ABORT_MS);
+		await expect(started).resolves.toBeUndefined();
 	});
 });

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-10-17T03:38:38.718Z
+// Generated on: 2026-10-17T17:04:03.371Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -115,7 +115,6 @@ export type DatabaseSchema = {
 		user_id: string;
 	};
 	agent_oauth_authorization_codes: {
-		policy_snapshot: Json | null;
 		client_id: string;
 		code_challenge: string;
 		code_challenge_method: string;
@@ -125,6 +124,7 @@ export type DatabaseSchema = {
 		external_agent_caller_id: string;
 		grant_id: string;
 		id: string;
+		policy_snapshot: Json | null;
 		redirect_uri: string;
 		resource: string;
 		scope: string;
@@ -208,6 +208,63 @@ export type DatabaseSchema = {
 		scope_mode: string;
 		updated_at: string;
 		user_id: string;
+	};
+	agent_permission_feature: {
+		enabled: boolean;
+		epoch: number;
+		id: boolean;
+	};
+	agent_permission_grants: {
+		boundary: string | null;
+		caller_id: string;
+		capability: string;
+		created_at: string;
+		epoch: number;
+		grant_id: string | null;
+		id: string;
+		project_id: string;
+		revoked_at: string | null;
+		source_request_id: string | null;
+		user_id: string;
+	};
+	agent_permission_keys: {
+		boundary: string;
+		caller_id: string;
+		fingerprint: string;
+		key: string;
+		request_id: string;
+	};
+	agent_permission_requests: {
+		before_snapshot: Json | null;
+		boundary: string | null;
+		caller_id: string;
+		capability: string;
+		created_at: string;
+		decided_at: string | null;
+		decision: string | null;
+		epoch: number;
+		expires_at: string;
+		grant_id: string | null;
+		id: string;
+		idempotency_key: string;
+		mutation: Json | null;
+		project_id: string;
+		reason: string | null;
+		receipt: Json | null;
+		reviewed_digest: string;
+		status: string;
+		submission: Json | null;
+		submission_fingerprint: string;
+		target_id: string;
+		user_id: string;
+	};
+	agent_permission_work: {
+		capability: string;
+		created_at: string;
+		processed_at: string | null;
+		project_id: string;
+		request_id: string;
+		target_id: string;
 	};
 	agent_run_cost_entries: {
 		actual_cost_usd: number | null;
@@ -1320,8 +1377,8 @@ export type DatabaseSchema = {
 	};
 	consolidation_merges: {
 		cluster_key: string;
-		coverage: Json | null;
 		cost_usd: number;
+		coverage: Json | null;
 		created_at: string;
 		created_document_id: string | null;
 		error: string | null;
@@ -1359,6 +1416,7 @@ export type DatabaseSchema = {
 		error: string | null;
 		finished_at: string | null;
 		id: string;
+		mode: string;
 		plan: Json | null;
 		progress: Json;
 		project_ids: string[];
@@ -2069,12 +2127,12 @@ export type DatabaseSchema = {
 		user_id: string | null;
 	};
 	external_agent_callers: {
-		permission_requests_enabled: boolean;
 		caller_key: string;
 		created_at: string;
 		id: string;
 		last_used_at: string | null;
 		metadata: Json;
+		permission_requests_enabled: boolean;
 		policy: Json;
 		project_scope_mode: string;
 		provider: string;
@@ -2960,6 +3018,20 @@ export type DatabaseSchema = {
 		type_key: string;
 		updated_at: string;
 	};
+	onto_project_fold_manifests: {
+		created_at: string;
+		destination_project_id: string;
+		folder_document_id: string | null;
+		id: string;
+		manifest: Json;
+		receipt: Json;
+		request_hash: string;
+		source_project_id: string;
+		source_state: Json;
+		unfold_receipt: Json | null;
+		unfolded_at: string | null;
+		user_id: string;
+	};
 	onto_project_icon_candidates: {
 		candidate_index: number;
 		concept: string;
@@ -3203,6 +3275,40 @@ export type DatabaseSchema = {
 		id: string;
 		project_id: string;
 		source: string;
+		task_id: string;
+	};
+	onto_task_entities: {
+		about: string | null;
+		confidence: string;
+		created_at: string;
+		data: Json;
+		display: string;
+		extractor_version: number | null;
+		id: string;
+		in_text: boolean;
+		kind: string;
+		natural_key: string;
+		position: number;
+		project_id: string;
+		quote: string | null;
+		role: string;
+		source: string;
+		source_hash: string | null;
+		status: string;
+		status_changed_at: string | null;
+		task_id: string;
+		updated_at: string;
+		value: string;
+	};
+	onto_task_entity_state: {
+		entity_count: number;
+		error: string | null;
+		extracted_at: string;
+		extractor_version: number;
+		model: string | null;
+		outcome: string;
+		project_id: string;
+		source_hash: string;
 		task_id: string;
 	};
 	onto_tasks: {
@@ -4807,6 +4913,11 @@ export const tableNames = [
 	'agent_oauth_grants',
 	'agent_oauth_refresh_tokens',
 	'agent_operatives',
+	'agent_permission_feature',
+	'agent_permission_grants',
+	'agent_permission_keys',
+	'agent_permission_requests',
+	'agent_permission_work',
 	'agent_run_cost_entries',
 	'agent_run_events',
 	'agent_run_signals',
@@ -4962,6 +5073,7 @@ export const tableNames = [
 	'onto_organize_batches',
 	'onto_permissions',
 	'onto_plans',
+	'onto_project_fold_manifests',
 	'onto_project_icon_candidates',
 	'onto_project_icon_generations',
 	'onto_project_invites',
@@ -4978,6 +5090,8 @@ export const tableNames = [
 	'onto_signals',
 	'onto_sources',
 	'onto_task_assignees',
+	'onto_task_entities',
+	'onto_task_entity_state',
 	'onto_tasks',
 	'ontology_brief_entities',
 	'ontology_daily_briefs',

@@ -335,7 +335,21 @@ describe('total assembled prompt size budget', () => {
 		// owner's own pages (the outline said "the user flagged…"). +410 chars,
 		// 11,439 → 11,849 measured; the four lines were tightened first. Caps at
 		// measured + ~1%.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_000);
+		// RE-BASELINED 2026-10-17 tasker 122: project-structure capability line in
+		// Operating Strategy (290 chars + newline, static on both lanes): a project
+		// can sit under one parent, nesting moves nothing and changes no access, docs
+		// and tasks move via Organize, and a missing chat tool is chat's gap, not the
+		// product's. Global chat told the owner twice on 10-16 that projects can't
+		// nest. Measured 11,946 → 12,237 chars (the 11,849 above had already grown
+		// to 11,946 by 10-17). No other guidance was cut. Cap at measured + ~1%.
+		// RE-BASELINED 2026-10-17 tasker 122: proposal tools. The same static line
+		// now says global chat can propose nesting (propose_project_parent) or
+		// combining a whole project into another (propose_project_combine) and that
+		// the user's click on the card runs it (+164 chars, 12,237 → 12,401). The
+		// project-turn fixture mounts neither tool (global surface only), so its tool
+		// schemas are unchanged; the payload caps below still fit (87,814 chars /
+		// 21,954 est tokens). Cap at measured + ~1%.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_525);
 		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
 		// endpoint references, plus the nested estimate schema. Keep the system
 		// prose cap unchanged; the worker defers the contract from opening passes.
@@ -373,11 +387,16 @@ describe('total assembled prompt size budget', () => {
 		// of the suite. Measured payload 87,116 chars / 21,779 est tokens (+7,077 /
 		// +1,769), tool schemas 18,779 est tokens per pass (+1,770). Jev mounts the
 		// table tools only on turns that need them. Caps at measured + ~0.5%.
-		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(87_550);
-		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(21_890);
+		// RE-BASELINED 2026-10-17 tasker 122: the project-structure line above plus
+		// two description edits (get_field_info now "curated guide … not a full
+		// schema", 2 chars shorter; update_onto_project "Not the parent project.").
+		// Measured payload 87,337 → 87,650 chars / 21,835 → 21,913 est tokens; tool
+		// schemas 18,834 → 18,839 est tokens per pass. Caps at measured + ~0.5%.
+		expect(breakdown.provider_payload_estimate.chars).toBeLessThanOrEqual(88_090);
+		expect(breakdown.provider_payload_estimate.est_tokens).toBeLessThanOrEqual(22_025);
 		// Per-turn multiplier guard: ratchet this down when the pass count drops
 		// instead of hiding pass-count drift.
-		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(65_670);
+		expect(providerPayloadTokensPerTurn).toBeLessThanOrEqual(66_075);
 		expect(toolSchemaTokensPerTurn).toBeLessThanOrEqual(56_620);
 		// A single verbose schema can dominate every pass even while the aggregate
 		// surface remains under budget. Keep that failure attributable by tool.

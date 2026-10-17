@@ -1,4 +1,5 @@
 // apps/web/src/routes/api/agent/v2/turns/worker-admission-responses.ts
+import { AgenticChatWorkerAdmissionGatewayError } from '$lib/services/agentic-chat-v2/worker-turn-admission.server';
 import { AgenticChatWorkerPreparationError } from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 
@@ -33,8 +34,51 @@ export function withWorkerAdmissionTiming(
 	return response;
 }
 
+/**
+ * Where a failed send stopped. Anything thrown during `preparation` ran before the
+ * admission RPC; during `admission` the turn may exist unless the error proves the
+ * transaction rolled back.
+ */
+export type WorkerAdmissionPhase = 'preparation' | 'admission';
+
+/** Provably nothing was written: the browser may keep the draft and offer a resend. */
+export function workerAdmissionNotAdmittedResponse(): Response {
+	return privateResponse(
+		ApiResponse.error(
+			"Your message wasn't sent. Try again.",
+			HttpStatus.SERVICE_UNAVAILABLE,
+			'WORKER_ADMISSION_NOT_ADMITTED'
+		)
+	);
+}
+
+/** Commit is unknown: only an identical resend (same clientTurnId) is safe. */
+export function workerAdmissionUnavailableResponse(): Response {
+	return privateResponse(
+		ApiResponse.error(
+			'Worker turn admission is temporarily unavailable',
+			HttpStatus.SERVICE_UNAVAILABLE,
+			'WORKER_ADMISSION_UNAVAILABLE'
+		)
+	);
+}
+
+/** A turn with this clientTurnId already exists under a different request. */
+export function workerIdempotencyConflictResponse(): Response {
+	return privateResponse(
+		ApiResponse.error(
+			'A turn with this request id already exists',
+			HttpStatus.CONFLICT,
+			'WORKER_IDEMPOTENCY_CONFLICT'
+		)
+	);
+}
+
 /** Maps a failed preparation or admission to the private error response. */
-export function workerAdmissionErrorResponse(error: unknown): Response {
+export function workerAdmissionErrorResponse(
+	error: unknown,
+	phase: WorkerAdmissionPhase
+): Response {
 	if (error instanceof AgenticChatWorkerPreparationError) {
 		if (error.code === 'capability_unavailable') {
 			return privateResponse(
@@ -67,11 +111,11 @@ export function workerAdmissionErrorResponse(error: unknown): Response {
 			);
 		}
 	}
-	return privateResponse(
-		ApiResponse.error(
-			'Worker turn admission is temporarily unavailable',
-			HttpStatus.SERVICE_UNAVAILABLE,
-			'WORKER_ADMISSION_UNAVAILABLE'
-		)
-	);
+	if (
+		phase === 'preparation' ||
+		(error instanceof AgenticChatWorkerAdmissionGatewayError && error.rolledBack)
+	) {
+		return workerAdmissionNotAdmittedResponse();
+	}
+	return workerAdmissionUnavailableResponse();
 }

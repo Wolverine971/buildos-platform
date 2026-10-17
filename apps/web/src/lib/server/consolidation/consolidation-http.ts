@@ -16,7 +16,8 @@ export async function readJsonBody(request: Request): Promise<Record<string, unk
 }
 
 export function consolidationFailure(error: unknown, fallback: string) {
-	if (error instanceof ConsolidationError || error instanceof OrganizeError)
-		return ApiResponse.error(error.message, error.status);
+	if (error instanceof ConsolidationError)
+		return ApiResponse.error(error.message, error.status, undefined, error.details);
+	if (error instanceof OrganizeError) return ApiResponse.error(error.message, error.status);
 	return ApiResponse.internalError(error, fallback);
 }
