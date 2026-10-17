@@ -85,7 +85,7 @@ describe('continuity packet size budget', () => {
 		).toBeNull();
 	});
 
-	it('bounds newly generated research recall including its committed timestamp', () => {
+	it('caps newly generated research recall per kind and records totals', () => {
 		const result = buildLastTurnContext({
 			assistantText: 'Here is the inventory.',
 			userMessage: 'Compare these projects.',
@@ -102,9 +102,59 @@ describe('continuity packet size budget', () => {
 				}
 			]
 		});
-		expect(JSON.stringify(result).length).toBeLessThan(LAST_TURN_CONTEXT_MAX_CHARS);
-		expect(result.entities.tasks).toHaveLength(66);
-		expect(result.entities.documents).toHaveLength(38);
+		// The 2026-10-16 Cadre shape: 150 records read, 35,671 characters before.
+		expect(JSON.stringify(result).length).toBeLessThan(6_000);
+		expect(result.entities.tasks).toHaveLength(8);
+		expect(result.entities.documents).toHaveLength(8);
+		expect(result.entities.goals).toHaveLength(2);
+		expect(result.entity_totals).toEqual({ projects: 36, tasks: 66, documents: 38 });
+		expect(result.entity_references_truncated).toBeUndefined();
+		expect(JSON.stringify(result.entities)).not.toContain('DDDD');
+		expect(result.entities.task_ids).toEqual(result.entities.tasks!.map(({ id }) => id));
+		expect(result.entities.tasks![0]).toEqual({
+			id: packet().entities.tasks[0]!.id,
+			name: packet().entities.tasks[0]!.name
+		});
+
+		const hint = buildLastTurnContinuityHint(result)!;
+		expect(hint).toContain('projects (4 of 36):');
+		expect(hint).toContain('tasks (4 of 66):');
+		expect(hint).toContain('goals:');
+		expect(hint).not.toContain('goals (');
+	});
+
+	it('keeps a context shift target ahead of bulk read results', () => {
+		const shiftedId = 'db000000-0000-4000-8000-000000000001';
+		const result = buildLastTurnContext({
+			assistantText: 'Switched to the project.',
+			userMessage: 'Open that one.',
+			contextType: 'global',
+			timestamp: '2026-10-16T20:46:33.791692+00:00',
+			contextShift: {
+				new_context: 'project',
+				entity_type: 'project',
+				entity_id: shiftedId,
+				entity_name: 'Shifted project',
+				message: 'Moved into the project'
+			} as never,
+			toolExecutions: [
+				{
+					toolCall: {
+						id: 'read',
+						type: 'function',
+						function: { name: 'list_onto_projects', arguments: '{}' }
+					},
+					result: {
+						tool_call_id: 'read',
+						success: true,
+						result: { projects: records(36) }
+					}
+				}
+			]
+		});
+		expect(result.entities.projects![0]).toEqual({ id: shiftedId, name: 'Shifted project' });
+		expect(result.entities.project_id).toBe(shiftedId);
+		expect(result.entity_totals).toEqual({ projects: 37 });
 	});
 
 	it('tells the model when entity recall is incomplete', () => {

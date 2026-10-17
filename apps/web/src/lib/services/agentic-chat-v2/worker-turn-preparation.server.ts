@@ -81,6 +81,7 @@ import {
 import { composeFastChatHistory } from './history-composer';
 import { buildFastContextUsageSnapshot } from './context-usage';
 import { buildLastTurnContinuityHint } from './last-turn-context';
+import { loadSessionLastTurnContext } from './last-turn-context.server';
 import {
 	inspectPreparedPromptAdmissionLineage,
 	inspectPreparedPromptForWorkerAdmission
@@ -217,7 +218,6 @@ export type AgenticChatWorkerCommandInput = {
 	message: string;
 	attachments: ChatAttachmentRef[];
 	projectFocus: ProjectFocus | null;
-	lastTurnContext: LastTurnContext | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
 	/**
@@ -460,6 +460,15 @@ async function prepareWorkerAdmission(
 					})
 				)
 			: Promise.resolve(null),
+		// One indexed read beside the history read, so it adds no wait. It never
+		// throws: continuity is optional recall.
+		lastTurnContext: session
+			? loadSessionLastTurnContext({
+					client: input.serviceClient,
+					userId: input.userId,
+					sessionId: session.id
+				})
+			: Promise.resolve(null),
 		promptContext: observed(
 			resolveTrustedPromptContext({
 				userClient: input.userClient,
@@ -572,8 +581,6 @@ async function prepareWorkerAdmission(
 				})
 		: ({ hit: false, reason: 'missing_key' } as const);
 
-	const requestLastTurnContext = input.command.lastTurnContext;
-	const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
 	const workerPromptToolNames = workerPromptTools
 		.map((tool) => tool.function?.name ?? '')
 		.filter(Boolean);
@@ -626,11 +633,12 @@ async function prepareWorkerAdmission(
 		// started them beside the access check.
 		admissionWindowReads ??= startAdmissionWindowReads(sessionIntent.session);
 		const ownedHistory = await admissionWindowReads.ownedHistory;
+		const lastTurnContext = await admissionWindowReads.lastTurnContext;
 		windowLoadedSkillIds = ownedHistory?.loadedSkillIds ?? [];
 		windowLaunchSkillId = ownedHistory?.launchSkillId ?? null;
 		const historyComposition = composeFastChatHistory({
 			history: ownedHistory?.history ?? [],
-			continuityHint,
+			continuityHint: buildLastTurnContinuityHint(lastTurnContext),
 			sessionSummary: conversationSummary,
 			settings: {
 				compressionThresholdMessages: HISTORY_COMPRESSION_THRESHOLD,
@@ -659,7 +667,7 @@ async function prepareWorkerAdmission(
 		const promptContext = {
 			...trustedPromptContext,
 			conversationSummary,
-			entityResolutionHint: buildEntityResolutionHint(requestLastTurnContext)
+			entityResolutionHint: buildEntityResolutionHint(lastTurnContext)
 		};
 		envelopeForOverlay = buildLitePromptEnvelope({
 			...promptContext,
@@ -928,7 +936,6 @@ async function prepareWorkerAdmission(
 		streamRunId: input.command.streamRunId,
 		context: input.command.context,
 		projectFocus: input.command.projectFocus,
-		lastTurnContext: input.command.lastTurnContext,
 		attachments: normalizedAttachments,
 		voiceNoteGroupId: input.command.voiceNoteGroupId,
 		promptVariant: LITE_PROMPT_VARIANT,
@@ -1076,6 +1083,7 @@ type WorkerSessionIntent = {
 
 type AdmissionWindowReads = {
 	ownedHistory: Promise<Awaited<ReturnType<typeof loadOwnedWorkerHistory>> | null>;
+	lastTurnContext: Promise<LastTurnContext | null>;
 	promptContext: ReturnType<typeof resolveTrustedPromptContext>;
 };
 

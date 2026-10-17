@@ -7,7 +7,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import type { Database, LastTurnContext, ProjectFocus } from '@buildos/shared-types';
+import type { Database, ProjectFocus } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	loadAdmittedWorkerSession,
@@ -140,7 +140,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			message: parsed.data.message,
 			attachments: parsed.data.attachments,
 			projectFocus: parsed.data.projectFocus as ProjectFocus | null,
-			lastTurnContext: parsed.data.lastTurnContext as LastTurnContext | null,
 			voiceNoteGroupId: parsed.data.voiceNoteGroupId,
 			preparedPromptKey: parsed.data.preparedPromptKey,
 			requestedSkillId: parsed.data.requestedSkillId

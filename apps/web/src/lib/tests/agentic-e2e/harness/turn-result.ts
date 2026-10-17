@@ -16,7 +16,7 @@ export interface RunTurnParams {
 	entityId?: string;
 	/** Reuse a session id for multi-turn context; omit on the first turn. */
 	sessionId?: string;
-	/** Continuity context emitted by the preceding turn. */
+	/** Ignored: the server reads continuity from the session's committed events. */
 	lastTurnContext?: LastTurnContext | null;
 	/** Explicit durable review admission; a /workflow prefix only tests the older prototype. */
 	reviewIntent?: 'project_review' | 'document_organization';

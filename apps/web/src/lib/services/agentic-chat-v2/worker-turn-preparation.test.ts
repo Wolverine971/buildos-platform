@@ -138,7 +138,6 @@ function command(overrides: Record<string, unknown> = {}) {
 		message: '  Ship the next slice  ',
 		attachments: [],
 		projectFocus: null,
-		lastTurnContext: null,
 		voiceNoteGroupId: null,
 		preparedPromptKey: null,
 		...overrides
@@ -2920,6 +2919,102 @@ describe('Agentic Chat worker turn preparation', () => {
 			expect(result.args.p_artifact_history).toEqual([
 				expect.objectContaining({ sourceMessageId: assistantMessageId, role: 'assistant' })
 			]);
+		});
+
+		it('reads continuity from the session’s committed turn events, beside the history read', async () => {
+			const contextEvent = (createdAt: string, summary: string) => ({
+				session_id: SESSION_ID,
+				user_id: USER_ID,
+				event_type: 'last_turn_context',
+				created_at: createdAt,
+				payload: {
+					type: 'last_turn_context',
+					context: {
+						summary,
+						entities: {},
+						context_type: 'global',
+						data_accessed: [],
+						timestamp: createdAt
+					}
+				}
+			});
+			const serviceClient = serviceClientWithTables({
+				chat_sessions: [SESSION_ROW],
+				chat_messages: [],
+				chat_message_attachments: [],
+				chat_tool_executions: [],
+				chat_turn_events: [
+					contextEvent('2026-08-03T10:00:00.000Z', 'Older turn summary'),
+					contextEvent('2026-08-03T11:00:00.000Z', 'Newest turn summary'),
+					{
+						...contextEvent('2026-08-03T11:10:00.000Z', 'Another session'),
+						session_id: 'd2000000-0000-4000-8000-000000000099'
+					},
+					{
+						...contextEvent('2026-08-03T11:20:00.000Z', 'Another user'),
+						user_id: 'd1000000-0000-4000-8000-000000000099'
+					},
+					{
+						...contextEvent('2026-08-03T11:30:00.000Z', 'Not a continuity event'),
+						event_type: 'timing'
+					}
+				]
+			});
+			const releaseMessages = gateTable(serviceClient, 'chat_messages');
+
+			const preparation = prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({
+					sessionId: SESSION_ID,
+					context: PROJECT_CONTEXT,
+					// An open tab from before the change still sends its copy.
+					lastTurnContext: { summary: 'Client-carried copy', entities: {} }
+				}) as never,
+				lease: LEASE,
+				dependencies: dependencies()
+			});
+
+			// The continuity read starts while the history read is still held.
+			await vi.waitFor(() =>
+				expect(serviceClient.from).toHaveBeenCalledWith('chat_turn_events')
+			);
+			releaseMessages();
+
+			const result = await preparation;
+			const history = JSON.stringify(result.args.p_artifact_history);
+			expect(history).toContain('Last turn summary: Newest turn summary');
+			for (const absent of [
+				'Older turn summary',
+				'Another session',
+				'Another user',
+				'Not a continuity event'
+			]) {
+				expect(history).not.toContain(absent);
+			}
+			expect(JSON.stringify(result.args)).not.toContain('Client-carried copy');
+		});
+
+		it('admits a session turn with no committed continuity and adds no hint', async () => {
+			const serviceClient = serviceClientWithTables({
+				chat_sessions: [SESSION_ROW],
+				chat_messages: [],
+				chat_message_attachments: [],
+				chat_tool_executions: []
+			});
+			const result = await prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClient as never,
+				userId: USER_ID,
+				command: command({ sessionId: SESSION_ID, context: PROJECT_CONTEXT }) as never,
+				lease: LEASE,
+				dependencies: dependencies()
+			});
+			expect(result.args.p_history_source).toBe('admission_window');
+			expect(JSON.stringify(result.args.p_artifact_history)).not.toContain(
+				'Last turn summary'
+			);
 		});
 
 		it('publishes the context snapshot after access passes without waiting for the write', async () => {

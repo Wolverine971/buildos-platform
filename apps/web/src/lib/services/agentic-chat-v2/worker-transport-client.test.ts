@@ -67,7 +67,6 @@ describe('Agentic Chat worker transport client', () => {
 					projectId: SESSION_ID,
 					projectName: 'Canary Project'
 				},
-				lastTurnContext: null,
 				voiceNoteGroupId: 'd6000000-0000-4000-8000-000000000001',
 				preparedPromptKey: 'prepared-key'
 			}
@@ -114,7 +113,6 @@ describe('Agentic Chat worker transport client', () => {
 				projectId: SESSION_ID,
 				projectName: 'Canary Project'
 			},
-			lastTurnContext: null,
 			voiceNoteGroupId: 'd6000000-0000-4000-8000-000000000001',
 			preparedPromptKey: 'prepared-key'
 		});
@@ -150,7 +148,6 @@ describe('Agentic Chat worker transport client', () => {
 				message: 'Suggest a structure for our project documents.',
 				attachments: [],
 				projectFocus: null,
-				lastTurnContext: null,
 				voiceNoteGroupId: null,
 				preparedPromptKey: null,
 				reviewIntent: 'document_organization',
@@ -187,7 +184,6 @@ describe('Agentic Chat worker transport client', () => {
 				message: 'First message in a new chat',
 				attachments: [],
 				projectFocus: null,
-				lastTurnContext: null,
 				voiceNoteGroupId: null,
 				preparedPromptKey: null
 			}
@@ -218,7 +214,6 @@ describe('Agentic Chat worker transport client', () => {
 			message: 'Use the Going Viral skill on my launch post.',
 			attachments: [],
 			projectFocus: null,
-			lastTurnContext: null,
 			voiceNoteGroupId: null,
 			preparedPromptKey: null
 		};
@@ -253,7 +248,6 @@ describe('Agentic Chat worker transport client', () => {
 				message: 'Worker hello',
 				attachments: [],
 				projectFocus: null,
-				lastTurnContext: null,
 				voiceNoteGroupId: null,
 				preparedPromptKey: null
 			}
@@ -288,7 +282,6 @@ describe('Agentic Chat worker transport client', () => {
 				message: 'Sensitive prompt must not be captured',
 				attachments: [],
 				projectFocus: null,
-				lastTurnContext: null,
 				voiceNoteGroupId: null,
 				preparedPromptKey: 'pp_v1.opaque'
 			}

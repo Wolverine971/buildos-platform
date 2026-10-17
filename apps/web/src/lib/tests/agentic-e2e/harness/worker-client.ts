@@ -193,8 +193,7 @@ export class AgenticE2EWorkerClient {
 					context_type: normalizedContextType,
 					entity_id: params.entityId ?? null,
 					session_id: requestedSessionId,
-					prepare_prompt: true,
-					lastTurnContext: params.lastTurnContext ?? null
+					prepare_prompt: true
 				})
 			});
 			const payload = await prewarm.json();
@@ -218,7 +217,6 @@ export class AgenticE2EWorkerClient {
 				message: params.message,
 				attachments: [],
 				projectFocus: null,
-				lastTurnContext: params.lastTurnContext ?? null,
 				voiceNoteGroupId: null,
 				preparedPromptKey,
 				reviewIntent: params.reviewIntent ?? null,

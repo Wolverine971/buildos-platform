@@ -42,13 +42,20 @@ export interface LastTurnEntities {
 	document_id?: string;
 }
 
+/** How many previews a kind had when the packet keeps only the first few. */
+export type LastTurnEntityTotals = Partial<
+	Record<'projects' | 'tasks' | 'plans' | 'goals' | 'documents' | 'milestones' | 'risks', number>
+>;
+
 export interface LastTurnContext {
 	// Brief 10-20 word summary of the last interaction
 	summary: string;
 
 	// Compact entity previews mentioned or accessed in last turn
 	entities: LastTurnEntities;
-	/** The packet carries only a subset of the prior turn's entity references. */
+	/** Per-kind totals when the packet keeps only the first previews of a kind. */
+	entity_totals?: LastTurnEntityTotals;
+	/** The size budget trimmed entity references beyond the per-kind cap. */
 	entity_references_truncated?: boolean;
 
 	// Context type from last interaction
@@ -56,7 +63,7 @@ export interface LastTurnContext {
 
 	// Tools/data accessed in last turn
 	data_accessed: string[];
-	/** Prior partial cleanup scope and receipts. Client-provided recall only, never write authority. */
+	/** Prior partial cleanup scope and receipts. Recall only, never write authority. */
 	cleanup?: Json;
 
 	// Strategy used in last turn

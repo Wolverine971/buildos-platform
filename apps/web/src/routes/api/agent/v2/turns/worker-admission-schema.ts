@@ -5,10 +5,6 @@
 import { z } from 'zod';
 import type { ChatAttachmentRef } from '@buildos/shared-types';
 import { normalizeFastContextType } from '$lib/services/agentic-chat-v2/scope';
-import {
-	boundLastTurnContext,
-	LAST_TURN_CONTEXT_MAX_CHARS
-} from '$lib/services/agentic-chat-v2/last-turn-context';
 
 const canonicalText = (maximum: number) =>
 	z
@@ -21,15 +17,13 @@ const nullableUuid = z
 	.uuid()
 	.transform((value) => value.toLowerCase())
 	.nullable();
-const lastTurnContextSchema = z
-	.record(z.unknown())
-	// Older workers already issued oversized packets. Repair optional recall
-	// before admission instead of rejecting an otherwise valid user message.
-	.transform(boundLastTurnContext)
-	.refine(
-		(value) => value === null || JSON.stringify(value).length <= LAST_TURN_CONTEXT_MAX_CHARS,
-		'Object is too large'
-	);
+// Continuity is now read server-side from the session's committed turn events.
+// Tabs opened before that change still send their copy; accept and drop it so
+// an optional recall packet can never block a user's message.
+const ignoredClientLastTurnContext = z
+	.unknown()
+	.optional()
+	.transform(() => undefined);
 const projectFocusSchema = z
 	.object({
 		focusType: z.enum([
@@ -154,7 +148,7 @@ export const workerAdmissionRequestSchema = z
 			.optional()
 			.default([]),
 		projectFocus: projectFocusSchema.nullable().optional().default(null),
-		lastTurnContext: lastTurnContextSchema.nullable().optional().default(null),
+		lastTurnContext: ignoredClientLastTurnContext,
 		voiceNoteGroupId: nullableUuid.optional().default(null),
 		preparedPromptKey: canonicalText(2048).nullable().optional().default(null),
 		// Tasker 86: a request only. The server switch, cohort, and shape decide

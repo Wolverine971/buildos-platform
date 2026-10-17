@@ -73,7 +73,7 @@
 		ChatTurnStatusV1,
 		TurnHandleV1
 	} from '@buildos/shared-types';
-	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type {
 		AgenticChatWorkerCommand,
 		PublishedSpecialistSelection
@@ -730,7 +730,6 @@
 	let hasFinalizedSession = false;
 
 	// Ontology integration state
-	let lastTurnContext = $state<LastTurnContext | null>(null);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 	let contextUsageOverheadTokens = $state(0);
 	let prewarm: ReturnType<typeof createPrewarmController>;
@@ -808,7 +807,6 @@
 		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getCurrentSession: () => currentSession,
-		getLastTurnContext: () => lastTurnContext,
 		getIsLoadingSession: () => isLoadingSession,
 		getActiveRestoredTurnRunId: () => activeRestoredTurnRunId,
 		getPrewarm: () => prewarm,
@@ -1017,7 +1015,6 @@
 		getHasDraftInput: () => hasDraftInput,
 		getIsVoiceBusy: () => voice.isBusy,
 		getIsVoicePending: () => voice.pendingSendAfterTranscription,
-		getLastTurnContext: () => lastTurnContext,
 		prewarmAgentContext: (payload, options) => prewarmAgentContext(payload, options),
 		warmStreamTransport: (options) => warmAgentChatStreamTransport(options),
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
@@ -1347,7 +1344,6 @@
 		currentThinkingBlockId = null;
 		stream.reset();
 		// Reset ontology state
-		lastTurnContext = null;
 		contextUsage = null;
 		contextUsageOverheadTokens = 0;
 		pendingToolResults.clear();
@@ -2368,9 +2364,6 @@
 			setContextUsage: (usage, overheadTokens) => {
 				contextUsage = usage;
 				contextUsageOverheadTokens = overheadTokens;
-			},
-			setLastTurnContext: (ctx) => {
-				lastTurnContext = ctx;
 			},
 			setProjectFocus: (focus) => {
 				shellRouter.projectFocus = focus;

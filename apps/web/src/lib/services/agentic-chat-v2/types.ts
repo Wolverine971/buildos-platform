@@ -44,8 +44,6 @@ export type FastAgentPrewarmRequest = {
 	projectFocus?: ProjectFocus | null;
 	ensure_session?: boolean;
 	prepare_prompt?: boolean;
-	/** Continuity hint from the previous turn; rendered identically on prepared hits and misses. */
-	lastTurnContext?: LastTurnContext | null;
 };
 
 export type FastAgentCancelReason = 'user_cancelled' | 'superseded';

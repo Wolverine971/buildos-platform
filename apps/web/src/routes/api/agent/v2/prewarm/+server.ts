@@ -10,13 +10,7 @@ export const config = {
 
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import type {
-	ChatContextType,
-	ChatSession,
-	Json,
-	LastTurnContext,
-	ProjectFocus
-} from '@buildos/shared-types';
+import type { ChatContextType, ChatSession, Json, ProjectFocus } from '@buildos/shared-types';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -63,10 +57,8 @@ import {
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 import { writePreparedPromptContent } from '$lib/services/agentic-chat-v2/prepared-prompt-store.server';
 import { loadWorkerSkillPreloadLedgerMessage } from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
-import {
-	boundLastTurnContext,
-	buildLastTurnContinuityHint
-} from '$lib/services/agentic-chat-v2/last-turn-context';
+import { buildLastTurnContinuityHint } from '$lib/services/agentic-chat-v2/last-turn-context';
+import { loadSessionLastTurnContext } from '$lib/services/agentic-chat-v2/last-turn-context.server';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
 import { agenticChatProjectFocusSchema } from '$lib/services/agentic-chat-v2/stream-request';
@@ -91,10 +83,12 @@ const fastAgentPrewarmRequestSchema = z
 		prepare_prompt: z.boolean().optional(),
 		session_id: z.string().optional(),
 		ensure_session: z.boolean().optional(),
-		// Same loose shape the turns route accepts. The admission-window path
-		// composes history with the last-turn continuity hint; the prepared
-		// history must carry the same hint or a prepared hit silently drops it.
-		lastTurnContext: z.record(z.string(), z.unknown()).transform(boundLastTurnContext).nullish()
+		// Continuity is read server-side from the session (as admission does).
+		// Tabs opened before that change still send a copy; accept and drop it.
+		lastTurnContext: z
+			.unknown()
+			.optional()
+			.transform(() => undefined)
 	})
 	.strict()
 	.superRefine((value, context) => {
@@ -237,7 +231,6 @@ async function buildPreparedPrompt(params: {
 	contextType: ChatContextType;
 	entityId?: string | null;
 	projectFocus?: ProjectFocus | null;
-	lastTurnContext?: LastTurnContext | null;
 	cacheKey: string;
 	prewarmedContext: FastChatContextCache;
 	contextInvalidationToken?: string | null;
@@ -256,6 +249,15 @@ async function buildPreparedPrompt(params: {
 		endpoint: '/api/agent/v2/prewarm',
 		httpMethod: 'POST'
 	});
+	// Same source as worker admission's window path, read beside the history
+	// so a prepared hit and a miss carry the same continuity hint.
+	const lastTurnContextRead = params.session?.id
+		? loadSessionLastTurnContext({
+				client: params.storeSupabase,
+				userId: params.userId,
+				sessionId: params.session.id
+			})
+		: Promise.resolve(null);
 	const loadedHistory = params.session?.id
 		? await sessionService.loadRecentMessages(
 				params.session.id,
@@ -281,7 +283,7 @@ async function buildPreparedPrompt(params: {
 		typeof params.session?.summary === 'string' ? params.session.summary : null;
 	const historyComposition = composeFastChatHistory({
 		history,
-		continuityHint: buildLastTurnContinuityHint(params.lastTurnContext ?? null),
+		continuityHint: buildLastTurnContinuityHint(await lastTurnContextRead),
 		sessionSummary: conversationSummary,
 		settings: {
 			compressionThresholdMessages: FASTCHAT_HISTORY_COMPRESSION_THRESHOLD_MESSAGES,
@@ -531,7 +533,6 @@ const handlePrewarmRequest: RequestHandler = async ({
 				contextType,
 				entityId,
 				projectFocus,
-				lastTurnContext: (parsed.data.lastTurnContext ?? null) as LastTurnContext | null,
 				cacheKey,
 				prewarmedContext,
 				contextInvalidationToken: contextResolution.invalidationToken,

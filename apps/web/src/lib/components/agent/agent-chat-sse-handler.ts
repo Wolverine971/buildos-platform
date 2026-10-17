@@ -28,7 +28,7 @@ import type {
 	ContextUsageSnapshot,
 	SkillActivityEvent
 } from '@buildos/shared-types';
-import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type {
 	ActivityEntry,
 	ActivityType,
@@ -379,7 +379,6 @@ export interface ModalStateDeps {
 
 	// Writes
 	setContextUsage(usage: ContextUsageSnapshot | null, overheadTokens: number): void;
-	setLastTurnContext(ctx: LastTurnContext | null): void;
 	setProjectFocus(focus: ProjectFocus | null): void;
 	setCurrentActivity(label: string): void;
 	setError(message: string | null): void;
@@ -800,10 +799,8 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				return;
 
 			case 'last_turn_context':
-				state.setLastTurnContext(event.context);
-				if (isDev) {
-					console.debug('[AgentChat] Stored last turn context:', event.context);
-				}
+				// The server reads continuity from the session's committed events;
+				// the browser no longer stores or forwards it.
 				return;
 
 			case 'agent_state': {

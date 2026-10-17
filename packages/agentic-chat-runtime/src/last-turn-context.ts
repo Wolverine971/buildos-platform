@@ -8,7 +8,8 @@ import {
 	type ChatToolCall,
 	type ChatToolResult,
 	type ContextShiftPayload,
-	type LastTurnContext
+	type LastTurnContext,
+	type LastTurnEntityTotals
 } from '@buildos/shared-types';
 import { AGENTIC_CHAT_CONTROL_TOOL_NAMES } from './catalog/definitions/controls';
 import {
@@ -25,6 +26,11 @@ export {
 } from './last-turn-context-budget';
 
 const MAX_CLEANUP_RECALL_CHARS = 24_000;
+// The continuity hint names at most HINT_ENTITIES_PER_KIND per kind. The packet
+// keeps a little headroom beyond that, IDs and names only, plus a total per kind,
+// so a turn that read 150 records stores a few KB instead of 35 KB.
+const HINT_ENTITIES_PER_KIND = 4;
+const MAX_ENTITY_PREVIEWS_PER_KIND = 8;
 
 type RecentEntityType = 'project' | 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk';
 
@@ -435,23 +441,61 @@ function collectLastTurnEntitiesFromValue(
 	}
 }
 
-function formatLastTurnEntityReferences(entities: LastTurnContext['entities']): string[] {
+const ENTITY_LIST_KINDS = [
+	'projects',
+	'tasks',
+	'plans',
+	'goals',
+	'documents',
+	'milestones',
+	'risks'
+] as const;
+
+/**
+ * Keep the first few previews of each kind (explicit mentions and the context
+ * shift come first), IDs and names only. Descriptions are never shown to the
+ * model. Totals record how many each kind had, so the hint can say "4 of 36".
+ */
+function capLastTurnEntities(entities: LastTurnContext['entities']): {
+	entities: LastTurnContext['entities'];
+	totals: LastTurnEntityTotals | null;
+} {
+	const capped: LastTurnContext['entities'] = {};
+	const totals: LastTurnEntityTotals = {};
+	for (const key of ENTITY_LIST_KINDS) {
+		const list = entities[key];
+		if (!list?.length) continue;
+		if (list.length > MAX_ENTITY_PREVIEWS_PER_KIND) totals[key] = list.length;
+		capped[key] = list
+			.slice(0, MAX_ENTITY_PREVIEWS_PER_KIND)
+			.map(({ id, name }) => (name ? { id, name } : { id }));
+	}
+	// Legacy singles always name the first preview of their kind, which is kept.
+	if (entities.project_id) capped.project_id = entities.project_id;
+	if (entities.plan_id) capped.plan_id = entities.plan_id;
+	if (entities.document_id) capped.document_id = entities.document_id;
+	if (entities.task_ids) capped.task_ids = (capped.tasks ?? []).map(({ id }) => id);
+	if (entities.goal_ids) capped.goal_ids = (capped.goals ?? []).map(({ id }) => id);
+	return { entities: capped, totals: Object.keys(totals).length > 0 ? totals : null };
+}
+
+function formatLastTurnEntityReferences(
+	entities: LastTurnContext['entities'],
+	totals?: LastTurnEntityTotals | null
+): string[] {
 	const refs: string[] = [];
-	const formatItems = (items: Array<{ id: string; name?: string }>): string =>
-		items
-			.map((item) => ({
-				...item,
-				id: normalizeExactEntityId(item.id)
-			}))
-			.filter((item): item is { id: string; name?: string } => Boolean(item.id))
-			.slice(0, 4)
-			.map((item) => (item.name ? `${item.name} (${item.id})` : item.id))
-			.join(',');
-	if (entities.projects?.length) refs.push(`projects:${formatItems(entities.projects)}`);
-	if (entities.tasks?.length) refs.push(`tasks:${formatItems(entities.tasks)}`);
-	if (entities.plans?.length) refs.push(`plans:${formatItems(entities.plans)}`);
-	if (entities.goals?.length) refs.push(`goals:${formatItems(entities.goals)}`);
-	if (entities.documents?.length) refs.push(`documents:${formatItems(entities.documents)}`);
+	for (const kind of ENTITY_LIST_KINDS) {
+		const items = (entities[kind] ?? [])
+			.map((item) => ({ ...item, id: normalizeExactEntityId(item.id) }))
+			.filter((item): item is { id: string; name?: string } => Boolean(item.id));
+		if (items.length === 0) continue;
+		const shown = items.slice(0, HINT_ENTITIES_PER_KIND);
+		const total = Math.max(totals?.[kind] ?? 0, items.length);
+		const label = total > shown.length ? `${kind} (${shown.length} of ${total})` : kind;
+		refs.push(
+			`${label}:${shown.map((item) => (item.name ? `${item.name} (${item.id})` : item.id)).join(',')}`
+		);
+	}
 
 	// Backward-compat with stored legacy contexts.
 	if (refs.length === 0) {
@@ -487,7 +531,10 @@ export function buildLastTurnContinuityHint(
 		lines.push(`Last turn summary: ${sanitizeContinuityLine(summary)}`);
 	}
 
-	const refs = formatLastTurnEntityReferences(lastTurnContext.entities ?? {});
+	const refs = formatLastTurnEntityReferences(
+		lastTurnContext.entities ?? {},
+		lastTurnContext.entity_totals
+	);
 	if (refs.length > 0) {
 		lines.push(`Entities referenced: ${sanitizeContinuityLine(refs.join('; '))}`);
 	}
@@ -585,21 +632,8 @@ export function buildLastTurnContextDraftV1(
 		);
 	}
 
-	for (const execution of params.toolExecutions) {
-		const toolName = normalizeTextValue(execution.toolCall.function?.name);
-		if (toolName && !isContinuityHiddenToolName(toolName)) {
-			toolsUsed.add(toolName);
-		}
-		if (!shouldCollectExactEntityReferencesFromToolName(toolName)) {
-			continue;
-		}
-		const entitySource =
-			execution.result && typeof execution.result === 'object' && 'result' in execution.result
-				? (execution.result as unknown as Record<string, unknown>).result
-				: execution.result;
-		collectLastTurnEntitiesFromValue(entitySource, entities);
-	}
-
+	// The context shift target is what the next turn is about; it goes ahead of
+	// bulk read results so the per-kind cap never drops it.
 	if (
 		params.contextShift &&
 		params.contextShift.entity_type !== 'workspace' &&
@@ -615,6 +649,21 @@ export function buildLastTurnContextDraftV1(
 				description: params.contextShift.message
 			}
 		);
+	}
+
+	for (const execution of params.toolExecutions) {
+		const toolName = normalizeTextValue(execution.toolCall.function?.name);
+		if (toolName && !isContinuityHiddenToolName(toolName)) {
+			toolsUsed.add(toolName);
+		}
+		if (!shouldCollectExactEntityReferencesFromToolName(toolName)) {
+			continue;
+		}
+		const entitySource =
+			execution.result && typeof execution.result === 'object' && 'result' in execution.result
+				? (execution.result as unknown as Record<string, unknown>).result
+				: execution.result;
+		collectLastTurnEntitiesFromValue(entitySource, entities);
 	}
 
 	const effectiveContextType = params.contextShift?.new_context ?? params.contextType;
@@ -651,9 +700,11 @@ export function buildLastTurnContextDraftV1(
 				}
 			: null;
 
+	const capped = capLastTurnEntities(entities);
 	const draft: LastTurnContextDraftV1 = {
 		summary,
-		entities,
+		entities: capped.entities,
+		...(capped.totals ? { entity_totals: capped.totals } : {}),
 		context_type: effectiveContextType,
 		data_accessed: dataAccessed
 	};

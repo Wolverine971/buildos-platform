@@ -10,7 +10,7 @@
 // See: apps/web/docs/features/agentic-chat/PROPOSAL_2026-04-18_GOD-COMPONENT-DECOMPOSITION.md
 
 import type { ChatSession } from '@buildos/shared-types';
-import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import {
 	buildFastChatContextCacheKey,
 	isFastChatContextCacheFresh,
@@ -58,7 +58,6 @@ export interface PrewarmControllerDeps {
 	 * prompt built without it silently drops the hint on a prepared hit.
 	 * Optional — older/test callers may not wire it up.
 	 */
-	getLastTurnContext?(): LastTurnContext | null;
 
 	/**
 	 * Perform the prewarm POST. In production the modal injects the
@@ -72,8 +71,6 @@ export interface PrewarmControllerDeps {
 			entity_id?: string;
 			projectFocus: ProjectFocus | null;
 			ensure_session?: boolean;
-			/** Continuity hint forwarded to the prewarm route. */
-			lastTurnContext?: LastTurnContext | null;
 		},
 		options: { signal?: AbortSignal }
 	): Promise<{
@@ -416,7 +413,6 @@ export class PrewarmController {
 						context_type: contextType,
 						entity_id: prewarmEntityId,
 						projectFocus: focus,
-						lastTurnContext: this.#deps.getLastTurnContext?.() ?? null,
 						...(currentSession?.id ? {} : { ensure_session: false })
 					},
 					{ signal: controller.signal }

@@ -16,7 +16,7 @@ import type {
 	AgenticChatWorkerTurnDescriptorV1,
 	TurnHandleV1
 } from '@buildos/shared-types';
-import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import {
 	normalizeFastContextType,
 	resolveEffectiveEntityId,
@@ -96,7 +96,6 @@ export interface StreamControllerDeps {
 	getSelectedEntityId(): string | undefined;
 	getResolvedProjectFocus(): ProjectFocus | null;
 	getCurrentSession(): ChatSession | null;
-	getLastTurnContext(): LastTurnContext | null;
 	getIsLoadingSession(): boolean;
 	getActiveRestoredTurnRunId(): string | null;
 	getPrewarm(): StreamControllerPrewarmDeps;
@@ -702,7 +701,6 @@ export class AgentChatStreamController {
 					message: trimmed,
 					attachments: streamAttachmentRefs,
 					projectFocus: requestProjectFocus,
-					lastTurnContext: this.#deps.getLastTurnContext(),
 					voiceNoteGroupId: activeVoiceNoteGroupId,
 					preparedPromptKey: matchingPreparedPrompt?.key ?? null,
 					reviewIntent,

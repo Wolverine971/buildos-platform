@@ -77,7 +77,6 @@ function admissionBody(overrides: Record<string, unknown> = {}) {
 		message: 'Ship the next worker slice',
 		attachments: [],
 		projectFocus: null,
-		lastTurnContext: null,
 		voiceNoteGroupId: null,
 		preparedPromptKey: null,
 		...overrides

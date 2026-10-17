@@ -117,7 +117,6 @@ describe('agentic E2E worker client boundaries', () => {
 			message: 'Start a plan for the kitchen remodel',
 			attachments: [],
 			projectFocus: null,
-			lastTurnContext: null,
 			voiceNoteGroupId: null,
 			preparedPromptKey: null
 		});

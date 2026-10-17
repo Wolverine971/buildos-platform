@@ -119,7 +119,6 @@ function createHarness(
 	};
 	let currentSession: ChatSession | null =
 		overrides.currentSession === undefined ? makeSession() : overrides.currentSession;
-	let lastTurnContext = null;
 	let readyRefs = overrides.readyRefs ?? [];
 	let draftAttachments = overrides.draftAttachments ?? [];
 	let preparedPrompt: PreparedPromptClient | null =
@@ -225,7 +224,6 @@ function createHarness(
 		getSelectedEntityId: () => selectedEntityId,
 		getResolvedProjectFocus: () => projectFocus,
 		getCurrentSession: () => currentSession,
-		getLastTurnContext: () => lastTurnContext,
 		getIsLoadingSession: () => false,
 		getActiveRestoredTurnRunId: () => null,
 		getPrewarm: () => prewarm,
@@ -358,6 +356,8 @@ describe('AgentChatStreamController', () => {
 			message: 'Review the launch documents.',
 			preparedPromptKey: null
 		});
+		// Continuity is read server-side; the browser no longer uploads it.
+		expect(parseBody(h.admissionCalls[0]!)).not.toHaveProperty('lastTurnContext');
 		const firstHandle = h.controller.activeTurnHandle;
 		if (!firstHandle || firstHandle.executionMode !== 'worker_realtime')
 			throw new Error('Expected an admitted worker turn');

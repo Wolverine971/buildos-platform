@@ -3,7 +3,6 @@ import type { ContextPlanV1 } from '@buildos/agentic-chat-runtime/context-finder
 import type {
 	AgentChatTransportContextV1,
 	ChatAttachmentRef,
-	LastTurnContext,
 	ProjectFocus
 } from '@buildos/shared-types';
 import { captureEvent } from '$lib/services/posthog';
@@ -38,7 +37,6 @@ export type AgenticChatWorkerCommand = {
 	message: string;
 	attachments: ChatAttachmentRef[];
 	projectFocus: ProjectFocus | null;
-	lastTurnContext: LastTurnContext | null;
 	voiceNoteGroupId: string | null;
 	preparedPromptKey: string | null;
 	reviewIntent?: 'project_review' | 'document_organization' | null;
@@ -167,7 +165,6 @@ function buildWorkerAdmissionBody(command: AgenticChatWorkerCommand) {
 					projectName: command.projectFocus.projectName
 				}
 			: null,
-		lastTurnContext: command.lastTurnContext,
 		voiceNoteGroupId: command.voiceNoteGroupId,
 		preparedPromptKey: command.preparedPromptKey,
 		...(command.requestedSkillId ? { requestedSkillId: command.requestedSkillId } : {}),

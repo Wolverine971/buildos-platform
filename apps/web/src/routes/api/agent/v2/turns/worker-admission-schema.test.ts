@@ -1,10 +1,5 @@
 // apps/web/src/routes/api/agent/v2/turns/worker-admission-schema.test.ts
 import { describe, expect, it } from 'vitest';
-import {
-	boundLastTurnContext,
-	buildLastTurnContext,
-	LAST_TURN_CONTEXT_MAX_CHARS
-} from '@buildos/agentic-chat-runtime/context';
 import { workerAdmissionRequestSchema } from './worker-admission-schema';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 
@@ -13,28 +8,30 @@ const tasks = Array.from({ length: 200 }, (_, i) => ({
 	name: `Task ${i}`,
 	description: 'D'.repeat(140)
 }));
-const legacyContext = {
+// What an open tab from before server-side continuity may still send: the
+// 2026-10-16 Cadre packet was 35,671 characters and blocked the next message.
+const oversizedClientPacket = {
 	summary: 'Reviewed the inventory.',
 	context_type: 'global',
 	data_accessed: ['list_onto_tasks'],
 	timestamp: '2026-10-16T20:46:33.791692+00:00',
 	entities: { tasks, task_ids: tasks.map(({ id }) => id) }
 };
-const body = (lastTurnContext: unknown) => ({
+const body = (lastTurnContext?: unknown) => ({
 	clientTurnId: 'client',
 	streamRunId: 'stream',
 	message: 'Continue the research.',
 	context: { type: 'global', entityId: null, projectId: null },
-	lastTurnContext
+	...(lastTurnContext === undefined ? {} : { lastTurnContext })
 });
 
-describe('worker admission continuity recovery', () => {
-	it('accepts a previously issued oversized packet without changing the user message', async () => {
-		expect(JSON.stringify(legacyContext).length).toBeGreaterThan(LAST_TURN_CONTEXT_MAX_CHARS);
+describe('worker admission ignores client-carried continuity', () => {
+	it('admits a message carrying an oversized legacy packet and drops the packet', async () => {
+		expect(JSON.stringify(oversizedClientPacket).length).toBeGreaterThan(32 * 1024);
 		const parsed = await parseJsonRequest(
 			new Request('http://localhost/api/agent/v2/turns', {
 				method: 'POST',
-				body: JSON.stringify(body(legacyContext))
+				body: JSON.stringify(body(oversizedClientPacket))
 			}),
 			workerAdmissionRequestSchema,
 			{ invalidBodyMessage: 'Invalid worker turn request' }
@@ -42,46 +39,24 @@ describe('worker admission continuity recovery', () => {
 		expect(parsed.ok).toBe(true);
 		if (!parsed.ok) throw new Error('Expected the follow-up to be admitted');
 		expect(parsed.data.message).toBe('Continue the research.');
-		expect(parsed.data.lastTurnContext).toEqual(boundLastTurnContext(legacyContext));
-		expect(
-			(parsed.data.lastTurnContext?.entities as typeof legacyContext.entities).tasks
-		).toHaveLength(200);
+		expect(parsed.data.lastTurnContext).toBeUndefined();
 	});
 
-	it('round-trips current worker output through the JSON request boundary', () => {
-		const context = buildLastTurnContext({
-			assistantText: 'Reviewed the inventory.',
-			userMessage: 'Research the tasks.',
-			contextType: 'global',
-			timestamp: '2026-10-16T20:46:33.791692+00:00',
-			toolExecutions: [
-				{
-					toolCall: {
-						id: 'read',
-						type: 'function',
-						function: { name: 'list_onto_tasks', arguments: '{}' }
-					},
-					result: { tool_call_id: 'read', success: true, result: { tasks } }
-				}
-			]
-		});
-		const parsed = workerAdmissionRequestSchema.parse(
-			JSON.parse(JSON.stringify(body(context)))
-		);
-		expect(parsed.lastTurnContext).toEqual(context);
+	it('drops any shape of client packet, and admits requests without one', () => {
+		for (const value of [null, [], 'text', { summary: 'x'.repeat(40_000) }]) {
+			const parsed = workerAdmissionRequestSchema.safeParse(body(value));
+			expect(parsed.success).toBe(true);
+			expect(parsed.success && parsed.data.lastTurnContext).toBeUndefined();
+		}
+		expect(workerAdmissionRequestSchema.safeParse(body()).success).toBe(true);
 	});
 
-	it('discards unrepairable optional recall while preserving ordinary validation', () => {
-		expect(
-			workerAdmissionRequestSchema.parse(body({ summary: 'x'.repeat(40_000) }))
-				.lastTurnContext
-		).toBeNull();
+	it('still validates the actual user message', () => {
 		expect(
 			workerAdmissionRequestSchema.safeParse({
-				...body(legacyContext),
+				...body(oversizedClientPacket),
 				message: 'x'.repeat(100_001)
 			}).success
 		).toBe(false);
-		expect(workerAdmissionRequestSchema.safeParse(body([])).success).toBe(false);
 	});
 });

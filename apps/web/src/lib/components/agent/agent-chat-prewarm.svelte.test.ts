@@ -1,7 +1,7 @@
 // apps/web/src/lib/components/agent/agent-chat-prewarm.svelte.test.ts
 import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it, vi } from 'vitest';
-import type { ChatSession, LastTurnContext } from '@buildos/shared-types';
+import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
 import type { PreparedPromptClient } from './agent-chat-session';
@@ -20,7 +20,6 @@ interface Flags {
 	isVoiceBusy: boolean;
 	isVoicePending: boolean;
 	isTurnActive: boolean;
-	lastTurnContext: LastTurnContext | null;
 }
 
 function defaultFlags(): Flags {
@@ -42,8 +41,7 @@ function defaultFlags(): Flags {
 		inputValue: '',
 		isVoiceBusy: false,
 		isVoicePending: false,
-		isTurnActive: false,
-		lastTurnContext: null
+		isTurnActive: false
 	};
 }
 
@@ -102,7 +100,6 @@ function createHarness(opts: Partial<Flags> = {}) {
 		getHasDraftInput: () => flags.inputValue.trim().length > 0,
 		getIsVoiceBusy: () => flags.isVoiceBusy,
 		getIsVoicePending: () => flags.isVoicePending,
-		getLastTurnContext: () => flags.lastTurnContext,
 		prewarmAgentContext: prewarm,
 		warmStreamTransport,
 		hydrateSessionFromEvent: hydrate
@@ -408,25 +405,11 @@ describe('PrewarmController — orchestrate', () => {
 		expect(h.prewarm.mock.calls[0]?.[0]).not.toHaveProperty('ensure_session');
 	});
 
-	it('includes the last-turn continuity hint in the prewarm payload when provided', () => {
-		const hint: LastTurnContext = {
-			summary: 'Reviewed Q3 plan',
-			context_type: 'project',
-			entities: {},
-			data_accessed: [],
-			timestamp: '2026-09-05T12:00:00.000Z'
-		};
-		const h = createHarness({ lastTurnContext: hint });
-		h.controller.orchestrate();
-
-		expect(h.prewarm.mock.calls[0]?.[0]).toMatchObject({ lastTurnContext: hint });
-	});
-
-	it('sends a null last-turn continuity hint when none is available', () => {
+	it('never sends a last-turn continuity packet; the server reads it from the session', () => {
 		const h = createHarness();
 		h.controller.orchestrate();
 
-		expect(h.prewarm.mock.calls[0]?.[0]).toMatchObject({ lastTurnContext: null });
+		expect(h.prewarm.mock.calls[0]?.[0]).not.toHaveProperty('lastTurnContext');
 	});
 
 	it('waits until the active turn completes before rebuilding a prepared prompt', () => {

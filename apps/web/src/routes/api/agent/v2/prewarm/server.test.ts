@@ -347,9 +347,10 @@ describe('POST /api/agent/v2/prewarm', () => {
 	});
 
 	// 2026-09-08 (F69): preload metadata is no longer rendered as a system
-	// ledger. Prepared history retains recent messages and last-turn continuity.
+	// ledger. Prepared history retains recent messages and last-turn continuity,
+	// read from the session's committed turn events (2026-10-17), not the body.
 	it.each([0, 1000])(
-		'preserves continuity and bounds a %i-entity prewarm packet',
+		'reads continuity from the session and bounds a %i-entity stored packet',
 		async (entityCount) => {
 			const cachedContext = {
 				version: 1,
@@ -374,8 +375,37 @@ describe('POST /api/agent/v2/prewarm', () => {
 				summary: null,
 				agent_metadata: { fastchat_context_cache: cachedContext }
 			};
+			const storedContext = {
+				summary: 'Marked the intro call done',
+				context_type: 'global',
+				entities: {
+					tasks: Array.from({ length: entityCount }, (_, i) => ({
+						id: `da000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+						name: `Task ${i} ${'n'.repeat(70)}`,
+						description: 'd'.repeat(140)
+					}))
+				},
+				data_accessed: ['update_onto_task']
+			};
+			const continuityFilters: unknown[][] = [];
 			preparedPromptStoreState.current = {
-				from: vi.fn(() => ({ insert: vi.fn(async () => ({ error: null })) }))
+				from: vi.fn((table: string) => {
+					if (table !== 'chat_turn_events') {
+						return { insert: vi.fn(async () => ({ error: null })) };
+					}
+					const builder: Record<string, unknown> = {};
+					for (const method of ['select', 'eq', 'order', 'limit']) {
+						builder[method] = vi.fn((...args: unknown[]) => {
+							continuityFilters.push([method, ...args]);
+							return builder;
+						});
+					}
+					builder.maybeSingle = vi.fn(async () => ({
+						data: { payload: { type: 'last_turn_context', context: storedContext } },
+						error: null
+					}));
+					return builder;
+				})
 			};
 			resolveSessionMock.mockResolvedValue({ session });
 			loadRecentMessagesMock.mockResolvedValue([
@@ -417,18 +447,8 @@ describe('POST /api/agent/v2/prewarm', () => {
 						context_type: 'global',
 						session_id: 'session-1',
 						prepare_prompt: true,
-						lastTurnContext: {
-							summary: 'Marked the intro call done',
-							context_type: 'global',
-							entities: {
-								tasks: Array.from({ length: entityCount }, (_, i) => ({
-									id: `da000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
-									name: `Task ${i} ${'n'.repeat(70)}`,
-									description: 'd'.repeat(140)
-								}))
-							},
-							data_accessed: ['update_onto_task']
-						}
+						// An open tab from before the change still sends a copy; ignored.
+						lastTurnContext: { summary: 'Client-carried copy', entities: {} }
 					})
 				}),
 				locals: {
@@ -438,6 +458,16 @@ describe('POST /api/agent/v2/prewarm', () => {
 			} as any);
 
 			expect(response.status).toBe(200);
+			expect(continuityFilters).toEqual(
+				expect.arrayContaining([
+					['eq', 'session_id', 'session-1'],
+					['eq', 'user_id', 'user-1'],
+					['eq', 'event_type', 'last_turn_context']
+				])
+			);
+			expect(JSON.stringify(composeHistoryMock.mock.calls)).not.toContain(
+				'Client-carried copy'
+			);
 			expect(composeHistoryMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					continuityHint: expect.stringContaining(

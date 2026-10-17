@@ -537,7 +537,7 @@ test('@live existing modal session consumes its prewarmed lease through the work
 		});
 		expect(body.clientTurnId).toMatch(/^[0-9a-f-]{36}$/i);
 		expect(body.streamRunId).toMatch(/^[0-9a-f-]{36}$/i);
-		expect(body).toHaveProperty('lastTurnContext');
+		expect(body).not.toHaveProperty('lastTurnContext');
 		expect(body).not.toHaveProperty('leaseToken');
 		expect(admissionResponse.ok()).toBe(true);
 		const serverTiming = admissionResponse.headers()['server-timing'] ?? '';

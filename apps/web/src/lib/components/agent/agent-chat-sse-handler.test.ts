@@ -405,7 +405,6 @@ interface HandlerHarness {
 		selectedEntityId: string | undefined;
 		selectedContextLabel: string | null;
 		projectFocus: unknown;
-		lastTurnContext: unknown;
 		contextUsage: unknown;
 		contextUsageOverheadTokens: number;
 		showFocusSelector: boolean;
@@ -431,7 +430,6 @@ function createHarness(
 		selectedEntityId: undefined,
 		selectedContextLabel: null,
 		projectFocus: null,
-		lastTurnContext: null,
 		contextUsage: null,
 		contextUsageOverheadTokens: 0,
 		showFocusSelector: false,
@@ -534,9 +532,6 @@ function createHarness(
 		setContextUsage(usage, overheadTokens) {
 			snapshot.contextUsage = usage;
 			snapshot.contextUsageOverheadTokens = overheadTokens;
-		},
-		setLastTurnContext(ctx) {
-			snapshot.lastTurnContext = ctx;
 		},
 		setProjectFocus(focus) {
 			snapshot.projectFocus = focus;
@@ -679,13 +674,14 @@ describe('createSSEHandler — routing', () => {
 		expect(h.calls.attachServerTiming).toBe(1);
 	});
 
-	it('stores last turn context', () => {
+	it('ignores last turn context; the server reads it from the session', () => {
 		const h = createHarness();
+		const before = JSON.stringify(h.snapshot);
 		h.handler({
 			type: 'last_turn_context',
 			context: { turn_id: 'abc' } as any
 		});
-		expect(h.snapshot.lastTurnContext).toEqual({ turn_id: 'abc' });
+		expect(JSON.stringify(h.snapshot)).toBe(before);
 	});
 
 	it('retains valid workflow snapshots in activities for replay rendering', () => {
