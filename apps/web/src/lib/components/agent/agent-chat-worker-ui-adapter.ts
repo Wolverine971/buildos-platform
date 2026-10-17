@@ -30,7 +30,8 @@ import {
 	isWorkerQueueTimeout,
 	WORKER_CONNECTION_LOST_FAILURE_CODE,
 	WORKER_QUEUE_TIMEOUT_FINISHED_REASON,
-	workerActivityForStatus
+	workerActivityForStatus,
+	workerResumingActivity
 } from './agent-chat-worker-status';
 import { readDurableChatWorkflowProgress } from './agent-chat-workflow';
 
@@ -117,6 +118,18 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 	#previewShownAfter = '';
 	#previewShownGeneration: number | null = null;
 	#previewTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Highest durable sequence seen in the current generation; above 0 = it started. */
+	#generationDurableSequence = 0;
+	/** Status last applied for the current generation. */
+	#generationStatus: ChatTurnStatusV1 | null = null;
+	/** When this browser saw the current generation go back to `queued` after running. */
+	#requeuedObservedAt: number | null = null;
+	/**
+	 * Set while a reply starts over: an attempt that had started was put back in
+	 * line (a deploy drained its worker), its partial output is cleared, and the
+	 * next attempt has produced nothing yet. Ends at that attempt's first event.
+	 */
+	#resume: { fromGeneration: number; sinceMs: number } | null = null;
 
 	constructor(input: {
 		handle: WorkerTurnHandle;
@@ -134,78 +147,125 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		if (this.#terminal) return;
 		this.#assertReceiptIdentity(receipt);
 		const generationChanged = this.#executionGeneration !== receipt.execution_generation;
-		const durableTextBefore = generationChanged ? '' : this.#durableText;
+		const previousGeneration = this.#executionGeneration;
+		const previousAttemptStarted =
+			generationChanged && previousGeneration !== null && this.#generationDurableSequence > 0;
+		const textWasShown = this.#durableText !== '' || this.#previewShown !== '';
+		// A queued turn whose own generation already persisted events is an
+		// attempt that started and was put back in line (only a drained deploy
+		// does that, 20261017181000). Its text and steps belong to an attempt the
+		// next one replaces from the start, so none of it is shown again.
+		const discardedAttempt =
+			receipt.status === 'queued' && receipt.durable_through_sequence > 0;
 		if (generationChanged) {
 			this.#executionGeneration = receipt.execution_generation;
 			this.#appliedSemanticEventIds = new Set();
 			this.#preview = createLiveTextPreviewState();
+			this.#generationDurableSequence = 0;
+			this.#generationStatus = null;
+			this.#requeuedObservedAt = null;
 			this.#port.beginGeneration({
 				handle: this.#handle,
 				executionGeneration: receipt.execution_generation,
 				status: receipt.status
 			});
 		}
+		if (discardedAttempt || previousAttemptStarted) {
+			this.#resume ??= {
+				fromGeneration: discardedAttempt
+					? receipt.execution_generation
+					: (previousGeneration ?? receipt.execution_generation),
+				sinceMs: this.#now()
+			};
+		}
+		if (
+			this.#resume &&
+			receipt.execution_generation > this.#resume.fromGeneration &&
+			receipt.durable_through_sequence > 0
+		) {
+			this.#resume = null;
+		}
+		if (receipt.status === 'queued') {
+			if (
+				this.#requeuedObservedAt === null &&
+				(discardedAttempt ||
+					(this.#generationStatus !== null && this.#generationStatus !== 'queued'))
+			) {
+				this.#requeuedObservedAt = this.#now();
+			}
+		} else {
+			this.#requeuedObservedAt = null;
+		}
+		this.#generationStatus = receipt.status;
+		this.#generationDurableSequence = Math.max(
+			this.#generationDurableSequence,
+			receipt.durable_through_sequence
+		);
 
 		// The complete text snapshot is authoritative. It must land before any
 		// semantic projection or post-projection durable events are applied.
+		const snapshotText = discardedAttempt ? '' : receipt.text;
+		const durableTextBefore = generationChanged || discardedAttempt ? '' : this.#durableText;
 		this.#port.replaceAssistantSnapshot({
 			handle: this.#handle,
 			executionGeneration: receipt.execution_generation,
-			text: receipt.text,
+			text: snapshotText,
 			assistantMessage: receipt.assistant_message,
 			status: receipt.status
 		});
-		this.#durableText = receipt.text;
-		this.#preview = observeDurableReconciliation(this.#preview, {
-			watermark: receipt.response_watermark,
-			eventsAbove: (after) => {
-				let count = 0;
-				let allText = true;
-				for (const event of receipt.durable_events) {
-					if (event.sequence_index <= after) continue;
-					count += 1;
-					if (event.type !== 'text_delta') allText = false;
-				}
-				return { count, allText };
-			},
-			durableTextBefore
-		});
+		this.#durableText = snapshotText;
+		if (discardedAttempt) {
+			this.#preview = createLiveTextPreviewState();
+		} else {
+			this.#preview = observeDurableReconciliation(this.#preview, {
+				watermark: receipt.response_watermark,
+				eventsAbove: (after) => {
+					let count = 0;
+					let allText = true;
+					for (const event of receipt.durable_events) {
+						if (event.sequence_index <= after) continue;
+						count += 1;
+						if (event.type !== 'text_delta') allText = false;
+					}
+					return { count, allText };
+				},
+				durableTextBefore
+			});
+		}
 		this.#syncPreview();
+		// A restart erases the answer the user was reading. Without this the
+		// emptied bubble would stay on screen as a blank card until new text.
+		if (textWasShown && !snapshotText && !receipt.assistant_message) {
+			this.#dropEmptyAssistantBubble();
+		}
 
-		const projection = this.#parseProjection(
-			receipt.projection,
-			receipt.execution_generation,
-			receipt.projection_durable_sequence
-		);
+		const projection = discardedAttempt
+			? { currentActivity: null, semanticEvents: [] }
+			: this.#parseProjection(
+					receipt.projection,
+					receipt.execution_generation,
+					receipt.projection_durable_sequence
+				);
 		for (const event of projection.semanticEvents) this.#applySemanticEvent(event);
-		this.#applyWorkflowSnapshot(
-			receipt.projection.workflow,
-			receipt.execution_generation,
-			receipt.projection_durable_sequence
-		);
-		for (const event of receipt.durable_events) {
-			// Reconciliation text already includes every delta through the response
-			// watermark. Re-appending a retained delta would duplicate output.
-			if (event.type !== 'text_delta' && event.type !== 'text') {
-				this.#applySemanticEvent(event);
+		if (!discardedAttempt) {
+			this.#applyWorkflowSnapshot(
+				receipt.projection.workflow,
+				receipt.execution_generation,
+				receipt.projection_durable_sequence
+			);
+			for (const event of receipt.durable_events) {
+				// Reconciliation text already includes every delta through the response
+				// watermark. Re-appending a retained delta would duplicate output.
+				if (event.type !== 'text_delta' && event.type !== 'text') {
+					this.#applySemanticEvent(event);
+				}
 			}
 		}
 
 		this.#port.updateTurnState({
 			handle: this.#handle,
 			status: receipt.status,
-			// Nothing runs while queued, so any projected activity is a previous
-			// attempt's. The wait itself is the status: calm first, then named once
-			// it runs long (the watchdog re-reconciles a queued turn every ~5s). A
-			// queued snapshot's updated_at is when it entered the queue, so a reload
-			// shows the same text.
-			currentActivity:
-				receipt.status === 'queued'
-					? workerActivityForStatus('queued', {
-							queuedSince: receipt.updated_at,
-							now: this.#now()
-						})
-					: (projection.currentActivity ?? workerActivityForStatus(receipt.status))
+			currentActivity: this.#activityFor(receipt, projection.currentActivity)
 		});
 
 		if (isTerminalStatus(receipt.status)) {
@@ -229,6 +289,14 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		}
 		if (this.#executionGeneration !== event.execution_generation) {
 			throw new Error('Worker live event arrived before generation reconciliation');
+		}
+		this.#generationDurableSequence = Math.max(
+			this.#generationDurableSequence,
+			event.sequence_index
+		);
+		// The new attempt's first event carries its own status; the restart line ends.
+		if (this.#resume && event.execution_generation > this.#resume.fromGeneration) {
+			this.#resume = null;
 		}
 
 		if (event.type === 'text_delta') {
@@ -285,6 +353,61 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 		}
 		this.#preview = receiveLiveTextPreview(this.#preview, preview, this.#now());
 		this.#syncPreview();
+	}
+
+	/**
+	 * The status line for a receipt. While a reply starts over it is the restart
+	 * line, timed from when this browser saw the restart. Otherwise nothing runs
+	 * while queued, so any projected activity is a previous attempt's: the wait
+	 * itself is the status, calm first, then named once it runs long (the
+	 * watchdog re-reconciles a queued turn every ~5 s). A queued snapshot's
+	 * updated_at is when it entered the queue, so a reload shows the same text;
+	 * a turn this browser watched go back in line counts from that moment.
+	 */
+	#activityFor(
+		receipt: AgenticChatWorkerReconciledReceipt,
+		projectedActivity: string | null
+	): string {
+		const now = this.#now();
+		if (this.#resume && (receipt.status === 'queued' || receipt.status === 'running')) {
+			return workerResumingActivity(this.#resume.sinceMs, now);
+		}
+		if (receipt.status !== 'queued') {
+			return projectedActivity ?? workerActivityForStatus(receipt.status);
+		}
+		const queuedSinceMs = Math.max(
+			Date.parse(receipt.updated_at) || Number.NEGATIVE_INFINITY,
+			this.#requeuedObservedAt ?? Number.NEGATIVE_INFINITY
+		);
+		return workerActivityForStatus('queued', {
+			queuedSince: Number.isFinite(queuedSinceMs)
+				? new Date(queuedSinceMs).toISOString()
+				: receipt.updated_at,
+			now
+		});
+	}
+
+	/**
+	 * Remove the streaming bubble after its text was cleared. The port's
+	 * preview-removal path drops a streaming bubble that holds no text, the
+	 * same way it drops one opened only for a preview; a persisted message is
+	 * never touched.
+	 */
+	#dropEmptyAssistantBubble(): void {
+		const generation = this.#executionGeneration;
+		if (generation === null) return;
+		this.#previewShown = '';
+		this.#previewShownAfter = '';
+		this.#previewShownGeneration = generation;
+		try {
+			this.#port.setAssistantPreview?.({
+				handle: this.#handle,
+				executionGeneration: generation,
+				text: null
+			});
+		} catch (error) {
+			this.#reportError(error);
+		}
 	}
 
 	/** Push the preview suffix when it changes; a caught-up or diverged settle ends it. */

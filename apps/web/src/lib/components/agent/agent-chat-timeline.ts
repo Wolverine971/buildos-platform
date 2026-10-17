@@ -84,6 +84,8 @@ export interface TimelineTurnEventRow {
 	phase?: string | null;
 	payload?: unknown;
 	sequence_index?: number | null;
+	/** Which attempt of the turn wrote it. Absent on older sessions' rows. */
+	execution_generation?: number | null;
 	created_at?: string | null;
 }
 
@@ -585,6 +587,31 @@ function buildTurnEventTimelineItem(
 	};
 }
 
+/**
+ * A turn can run more than once: when a deploy interrupts an attempt that had
+ * started, the server reruns the turn from the start as a new execution
+ * generation. Only the latest generation is what happened, so steps from
+ * earlier ones are dropped. A row without a generation (older sessions) is
+ * the turn's single attempt and is always kept.
+ */
+function latestGenerationTurnEvents(events: TimelineTurnEventRow[]): TimelineTurnEventRow[] {
+	const latestByTurn = new Map<string, number>();
+	for (const event of events) {
+		const generation = event.execution_generation;
+		if (!event.turn_run_id || typeof generation !== 'number') continue;
+		const latest = latestByTurn.get(event.turn_run_id);
+		if (latest === undefined || generation > latest) {
+			latestByTurn.set(event.turn_run_id, generation);
+		}
+	}
+	if (latestByTurn.size === 0) return events;
+	return events.filter((event) => {
+		const generation = event.execution_generation;
+		if (!event.turn_run_id || typeof generation !== 'number') return true;
+		return generation === latestByTurn.get(event.turn_run_id);
+	});
+}
+
 function sourceSortPriority(source: AgentTimelineItem['source']): number {
 	switch (source) {
 		case 'turn_run':
@@ -657,7 +684,7 @@ export function buildAgentTimeline(params: BuildAgentTimelineParams): AgentTimel
 		if (item) items.push(item);
 	}
 
-	for (const event of params.turnEvents ?? []) {
+	for (const event of latestGenerationTurnEvents(params.turnEvents ?? [])) {
 		const item = buildTurnEventTimelineItem(params.sessionId, event);
 		if (item) items.push(item);
 	}

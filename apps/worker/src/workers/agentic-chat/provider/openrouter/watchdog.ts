@@ -25,6 +25,72 @@ export const RUNAWAY_REASONING_TOKEN_LIMIT = 9_000;
 /** Attempt-receipt `error_class` and usage-log marker for the cutoff below. */
 export const RUNAWAY_REASONING_CUTOFF = 'runaway_reasoning_cutoff';
 /**
+ * Reviewer first content. Prod 09-25..10-17 (OpenRouter generation latency,
+ * 98 first attempts): max 8.8 s, p99 7.7 s, with reasoning excluded.
+ */
+export const REVIEWER_FIRST_PROGRESS_TIMEOUT_MS = 15_000;
+/**
+ * Reviewer output floor after first content. Same prod window: healthy reviews
+ * streamed >= 49 tok/s; the degraded Azure attempts that ran 19–45 s streamed
+ * 2.8–22.8 tok/s. ~100 B/s is ~25–30 tok/s of tool arguments.
+ */
+const REVIEWER_MIN_BYTES_PER_SECOND = 100;
+const REVIEWER_PASS_ROLES: ReadonlySet<string> = new Set(['mutation_review', 'contract_review']);
+
+/** A reviewer attempt abandoned by its watch; `errorClass` names it on the attempt receipt. */
+export class AgenticChatReviewerStallError extends AgenticChatSlowStreamError {
+	constructor(
+		readonly errorClass: 'reviewer_first_progress_stall' | 'reviewer_slow_stream',
+		windowMs: number,
+		outputBytes: number,
+		message: string
+	) {
+		super(windowMs, outputBytes, message);
+	}
+}
+
+/** How one watched attempt is judged. Only an attempt with its retry left gets one. */
+export type StreamWatchPolicy = {
+	kind: 'acting' | 'reviewer';
+	firstProgressTimeoutMs: number;
+	minBytesPerSecond: number;
+	appliesTo(model: string): boolean;
+	firstProgressStall(waitedMs: number): Error;
+	slowStream(windowMs: number, outputBytes: number): Error;
+};
+
+const ACTING_STREAM_WATCH: StreamWatchPolicy = {
+	kind: 'acting',
+	firstProgressTimeoutMs: WATCHED_FIRST_PROGRESS_TIMEOUT_MS,
+	minBytesPerSecond: SLOW_STREAM_MIN_BYTES_PER_SECOND,
+	appliesTo: (model) => isV41FlashModel(model),
+	firstProgressStall: (waitedMs) =>
+		new AgenticChatFirstProgressStallError(waitedMs, WATCHED_FIRST_PROGRESS_TIMEOUT_MS),
+	slowStream: (windowMs, outputBytes) => new AgenticChatSlowStreamError(windowMs, outputBytes)
+};
+
+// Any reviewer model: the route's in-request fallbacks share the request.
+const REVIEWER_STREAM_WATCH: StreamWatchPolicy = {
+	kind: 'reviewer',
+	firstProgressTimeoutMs: REVIEWER_FIRST_PROGRESS_TIMEOUT_MS,
+	minBytesPerSecond: REVIEWER_MIN_BYTES_PER_SECOND,
+	appliesTo: () => true,
+	firstProgressStall: (waitedMs) =>
+		new AgenticChatReviewerStallError(
+			'reviewer_first_progress_stall',
+			waitedMs,
+			0,
+			`Agentic Chat reviewer sent no output within ${REVIEWER_FIRST_PROGRESS_TIMEOUT_MS}ms of opening; retrying the review`
+		),
+	slowStream: (windowMs, outputBytes) =>
+		new AgenticChatReviewerStallError(
+			'reviewer_slow_stream',
+			windowMs,
+			outputBytes,
+			`Agentic Chat reviewer streamed ${outputBytes} bytes in ${windowMs}ms; retrying the review`
+		)
+};
+/**
  * Every attempt keeps at least this long, and reserves this much of the turn
  * budget for the executor to finalize after the last provider pass. Below it a
  * request cannot realistically open a stream, so a nearly-spent budget fails
@@ -67,6 +133,22 @@ export function watchesStreamProgress(input: ClientInput, passRole: string, mode
 }
 
 /**
+ * The watch for this attempt, or null. Reviewer passes are watched too, but
+ * their request is unchanged: reasoning stays excluded (see the first-content
+ * figures above), so only their tool-call output counts as progress.
+ */
+export function streamWatchPolicy(
+	input: ClientInput,
+	passRole: string,
+	model: string
+): StreamWatchPolicy | null {
+	if (watchesStreamProgress(input, passRole, model)) return ACTING_STREAM_WATCH;
+	if (input.allowSlowStreamRecovery === true && REVIEWER_PASS_ROLES.has(passRole))
+		return REVIEWER_STREAM_WATCH;
+	return null;
+}
+
+/**
  * Reasoning tokens streamed so far: the provider's count when a frame already
  * carried usage, else streamed reasoning characters / 4.
  */
@@ -99,7 +181,8 @@ export function runawayReasoningTokens(
 export function watchStreamProgress(
 	active: ActiveResponse,
 	state: StreamState,
-	input: ClientInput
+	input: ClientInput,
+	policy: StreamWatchPolicy = ACTING_STREAM_WATCH
 ): () => void {
 	const openedAtMs = Date.now();
 	let startedAtMs = openedAtMs;
@@ -113,7 +196,7 @@ export function watchStreamProgress(
 	};
 	const check = () => {
 		if (active.signal.aborted || state.finishReason !== null) return;
-		if (!isV41FlashModel(state.modelUsed ?? active.route.model)) return;
+		if (!policy.appliesTo(state.modelUsed ?? active.route.model)) return;
 		const now = Date.now();
 		// Preserve enough time for the existing retry and terminal settlement.
 		if (
@@ -131,24 +214,13 @@ export function watchStreamProgress(
 			const waited = now - openedAtMs;
 			// A late timer may mean a suspended host with unread bytes: give the
 			// pending read one turn of the event loop before judging.
-			if (
-				waited >= WATCHED_FIRST_PROGRESS_TIMEOUT_MS &&
-				now - dueAtMs <= SLOW_STREAM_WINDOW_MS
-			) {
-				active.abort(
-					new AgenticChatFirstProgressStallError(
-						waited,
-						WATCHED_FIRST_PROGRESS_TIMEOUT_MS
-					)
-				);
+			if (waited >= policy.firstProgressTimeoutMs && now - dueAtMs <= SLOW_STREAM_WINDOW_MS) {
+				active.abort(policy.firstProgressStall(waited));
 				return;
 			}
 			startedAtMs = now;
 			schedule(
-				Math.max(
-					1,
-					Math.min(SLOW_STREAM_WINDOW_MS, WATCHED_FIRST_PROGRESS_TIMEOUT_MS - waited)
-				)
+				Math.max(1, Math.min(SLOW_STREAM_WINDOW_MS, policy.firstProgressTimeoutMs - waited))
 			);
 			return;
 		}
@@ -162,9 +234,9 @@ export function watchStreamProgress(
 		// A suspended host is not evidence of slow provider generation.
 		if (
 			elapsed <= SLOW_STREAM_WINDOW_MS * 2 &&
-			bytes * 1_000 < SLOW_STREAM_MIN_BYTES_PER_SECOND * elapsed
+			bytes * 1_000 < policy.minBytesPerSecond * elapsed
 		) {
-			active.abort(new AgenticChatSlowStreamError(elapsed, bytes));
+			active.abort(policy.slowStream(elapsed, bytes));
 			return;
 		}
 		startedAtMs = now;

@@ -68,12 +68,13 @@ import {
 } from './openrouter/usage';
 import { validateRoutes, validateToolSurface } from './openrouter/validation';
 import {
+	AgenticChatReviewerStallError,
 	RUNAWAY_REASONING_CUTOFF,
 	abortableProviderRead,
 	providerAttemptTimingPayload,
 	runawayReasoningTokens,
-	watchStreamProgress,
-	watchesStreamProgress
+	streamWatchPolicy,
+	watchStreamProgress
 } from './openrouter/watchdog';
 
 export type {
@@ -467,13 +468,15 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				}, OUTPUT_RECOVERY_FIRST_PROGRESS_MS);
 				firstProgressTimer.unref?.();
 			}
-			const watched =
-				attemptedRouteIds.length === 1 &&
-				active.route.kind === 'openrouter' &&
-				watchesStreamProgress(input, passRole, state.modelUsed ?? active.route.model);
-			if (watched) {
-				stopProgressWatch = watchStreamProgress(active, state, input);
+			const watchPolicy =
+				attemptedRouteIds.length === 1 && active.route.kind === 'openrouter'
+					? streamWatchPolicy(input, passRole, state.modelUsed ?? active.route.model)
+					: null;
+			if (watchPolicy) {
+				stopProgressWatch = watchStreamProgress(active, state, input, watchPolicy);
 			}
+			// Only a watched acting pass streams its reasoning.
+			const watched = watchPolicy?.kind === 'acting';
 			let runawayReasoning: number | null = null;
 			const activeReader = active.response.body!.getReader();
 			reader = activeReader;
@@ -517,7 +520,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 						providerDone = true;
 						break;
 					}
-					// Only a watched pass streams its reasoning, so only it can be cut off.
+					// Reasoning that is not streamed cannot be cut off.
 					if (watched) {
 						runawayReasoning = runawayReasoningTokens(
 							state,
@@ -849,12 +852,14 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 						? 'aborted'
 						: active.timedOut()
 							? 'provider_timeout'
-							: error instanceof AgenticChatSlowStreamError
-								? 'provider_slow_stream'
-								: error instanceof AgenticChatProviderNetworkError &&
-									  error.retryable
-									? 'provider_retryable_error'
-									: 'provider_permanent_error',
+							: error instanceof AgenticChatReviewerStallError
+								? error.errorClass
+								: error instanceof AgenticChatSlowStreamError
+									? 'provider_slow_stream'
+									: error instanceof AgenticChatProviderNetworkError &&
+										  error.retryable
+										? 'provider_retryable_error'
+										: 'provider_permanent_error',
 					usage: null,
 					...(error instanceof AgenticChatSlowStreamError
 						? {

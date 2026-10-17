@@ -1202,6 +1202,35 @@ describe('AgentChatStreamController', () => {
 		expect(h.controller.currentActivity).toBe('Thinking…');
 	});
 
+	it('writes the restart line on a running turn until the new attempt has its own progress', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+
+		// Back in line after a deploy: the queued wait line names the restart.
+		h.controller.updateWorkerTurnState(handle, 'queued', 'Picking back up after an update…');
+		// The next attempt starts with a fresh thinking block, so the same line is
+		// written again even though the controller's activity did not change.
+		h.controller.updateWorkerTurnState(handle, 'running', 'Picking back up after an update…');
+		expect(h.thinking.updateState).toHaveBeenNthCalledWith(
+			1,
+			'thinking',
+			'Picking back up after an update…'
+		);
+		expect(h.thinking.updateState).toHaveBeenNthCalledWith(
+			2,
+			'thinking',
+			'Picking back up after an update…'
+		);
+		expect(h.controller.currentActivity).toBe('Picking back up after an update…');
+
+		// The new attempt's own progress owns the block again.
+		h.controller.updateWorkerTurnState(handle, 'running', 'Thinking…');
+		h.controller.updateWorkerTurnState(handle, 'running', 'Reading your project…');
+		expect(h.thinking.updateState).toHaveBeenCalledTimes(2);
+		expect(h.controller.currentActivity).toBe('Reading your project…');
+	});
+
 	it('keeps the timeout failure banner when the timed-out turn finishes as cancelled', () => {
 		const h = createHarness();
 		const handle = workerHandle();

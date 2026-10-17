@@ -12,6 +12,7 @@ import { streamBufferedProviderPass } from '../src/workers/agentic-chat/provider
 import { AgenticChatPendingEffectsRegistry } from '../src/workers/agentic-chat/effects/pending-effects';
 import type { AgenticChatExecutionObservationInputV1 } from '../src/workers/agentic-chat/effects/execution-observation';
 import {
+	REVIEWER_FIRST_PROGRESS_TIMEOUT_MS,
 	RUNAWAY_REASONING_TOKEN_LIMIT,
 	WATCHED_FIRST_PROGRESS_TIMEOUT_MS
 } from '../src/workers/agentic-chat/provider/openrouter/watchdog';
@@ -876,14 +877,14 @@ describe('watched first-progress deadline (audit 2026-10-17 S9)', () => {
 		expect(thinking.cancel).not.toHaveBeenCalled();
 	});
 
-	it.each(['no retry left', 'review', 'other-model'] as const)(
+	it.each(['no retry left', 'other-model'] as const)(
 		'keeps waiting on the attempt deadline for a %s pass',
 		async (kind) => {
 			vi.useFakeTimers();
 			const model = kind === 'other-model' ? V4 : V41;
 			const silent = controllableResponse('Novita', model);
 			const test = harness([silent.response], { model });
-			const input = request(kind === 'review' ? { passRole: 'mutation_review' } : {});
+			const input = request();
 			const collecting = collect(
 				kind === 'no retry left' ? test.client.stream(input) : test.stream(input)
 			);
@@ -895,4 +896,140 @@ describe('watched first-progress deadline (audit 2026-10-17 S9)', () => {
 			expect((await collecting).at(-1)?.type).toBe('done');
 		}
 	);
+});
+
+// Battery 2026-10-17 cedar-02: a gpt-6-luna review on Azure held its attempt for
+// the full 45 s reviewer timeout. OpenRouter generation stats for the degraded
+// Azure attempts: first token at 5–7.6 s, then 2.8–22.8 tok/s.
+describe('reviewer stream watch', () => {
+	const LUNA = 'openai/gpt-6-luna';
+	const review = (overrides: Partial<AgenticChatTurnProviderRequestV1> = {}) =>
+		request({ passRole: 'mutation_review', ...overrides });
+	const receiptKeys = new Set([
+		...PROVIDER_RECEIPT_KEYS,
+		'progress_window_ms',
+		'progress_output_bytes',
+		'tool_call_truncation'
+	]);
+
+	it('abandons a review with no output 15 s after headers and retries the review once', async () => {
+		vi.useFakeTimers();
+		const silent = controllableResponse('Azure', LUNA);
+		const fallback = controllableResponse('InferenceNet', 'z-ai/glm-5.3');
+		fallback.text('Approved.');
+		fallback.finish();
+		const test = harness([silent.response, fallback.response], { model: LUNA });
+		const collecting = collect(test.stream(review()));
+		await vi.advanceTimersByTimeAsync(REVIEWER_FIRST_PROGRESS_TIMEOUT_MS - 1);
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
+		expect(test.requests[0]!.signal.aborted).toBe(false);
+		await vi.advanceTimersByTimeAsync(2);
+		const events = await collecting;
+
+		expect(events).toContainEqual({ type: 'text', content: 'Approved.' });
+		expect(test.fetchImpl).toHaveBeenCalledTimes(2);
+		expect(test.requests[0]!.signal.aborted).toBe(true);
+		expect(silent.cancel).toHaveBeenCalledOnce();
+		// The review request itself is unchanged: reasoning stays excluded.
+		expect(test.requests[0]!.body.reasoning).toEqual({ effort: 'low', exclude: true });
+		// Same retry path as a slow stream: routed around the endpoint, no cooldown.
+		expect(test.requests[1]!.body.provider.ignore).toContain('azure');
+		expect(test.capacity.markTemporarilyUnavailable).not.toHaveBeenCalled();
+		const ended = test.observations.filter((row) => row.eventType === 'provider_attempt_ended');
+		expect(ended[0]!.payload).toMatchObject({
+			pass_role: 'mutation_review',
+			status: 'failure',
+			error_class: 'reviewer_first_progress_stall',
+			progress_window_ms: REVIEWER_FIRST_PROGRESS_TIMEOUT_MS,
+			progress_output_bytes: 0
+		});
+		for (const key of Object.keys(ended[0]!.payload)) {
+			expect(receiptKeys.has(key), key).toBe(true);
+		}
+		expect(ended[1]!.payload).toMatchObject({ status: 'success', provider_attempt: 2 });
+		expect(test.usage[0]!.error).toContain('reviewer sent no output within 15000ms');
+	});
+
+	it('abandons a review that trickles output after its first token and retries once', async () => {
+		vi.useFakeTimers();
+		const trickle = controllableResponse('Azure', LUNA);
+		const fallback = controllableResponse('InferenceNet', 'z-ai/glm-5.3');
+		fallback.text('Approved.');
+		fallback.finish();
+		const test = harness([trickle.response, fallback.response], { model: LUNA });
+		const collecting = collect(test.stream(review()));
+		await vi.advanceTimersByTimeAsync(6_000);
+		// ~3 tok/s: the 21:02 attempt streamed 108 tokens in 39 s.
+		for (let second = 0; second < 6 && test.fetchImpl.mock.calls.length === 1; second++) {
+			trickle.text('x'.repeat(12));
+			await vi.advanceTimersByTimeAsync(1_000);
+		}
+		const events = await collecting;
+
+		expect(events.filter((event) => event.type === 'text')).toEqual([
+			{ type: 'text', content: 'Approved.' }
+		]);
+		expect(test.fetchImpl).toHaveBeenCalledTimes(2);
+		expect(test.requests[0]!.signal.aborted).toBe(true);
+		const stalled = test.observations.find(
+			(row) => row.payload.error_class === 'reviewer_slow_stream'
+		);
+		expect(stalled?.payload).toMatchObject({
+			pass_role: 'mutation_review',
+			progress_window_ms: 4_000
+		});
+		expect(test.usage[0]!.error).toContain('Agentic Chat reviewer streamed');
+	});
+
+	it.each([
+		['first token at the slowest prod first attempt, then 49 tok/s', 8_800, 150],
+		['a buffered provider that sends everything at the end', 9_700, 0]
+	] as const)('spares %s', async (_case, firstContentAtMs, bytesPerSecond) => {
+		vi.useFakeTimers();
+		const healthy = controllableResponse('Azure', LUNA);
+		const test = harness([healthy.response], { model: LUNA });
+		const collecting = collect(test.stream(review()));
+		await vi.advanceTimersByTimeAsync(firstContentAtMs);
+		healthy.text('{"approve":');
+		for (let second = 0; bytesPerSecond > 0 && second < 5; second++) {
+			await vi.advanceTimersByTimeAsync(1_000);
+			healthy.text('x'.repeat(bytesPerSecond));
+		}
+		healthy.text(' true}');
+		healthy.finish();
+		expect((await collecting).at(-1)?.type).toBe('done');
+		expect(test.fetchImpl).toHaveBeenCalledOnce();
+		expect(healthy.cancel).not.toHaveBeenCalled();
+	});
+
+	it('never watches the final review attempt', async () => {
+		vi.useFakeTimers();
+		const unavailable = new Response('busy', { status: 503 });
+		const silent = controllableResponse('Azure', LUNA);
+		const test = harness([unavailable, silent.response], { model: LUNA });
+		const collecting = collect(test.stream(review()));
+		await vi.advanceTimersByTimeAsync(20_000);
+		expect(test.fetchImpl).toHaveBeenCalledTimes(2);
+		expect(test.requests[1]!.signal.aborted).toBe(false);
+		silent.text('Late approval.');
+		silent.finish();
+		expect((await collecting).at(-1)?.type).toBe('done');
+		expect(
+			test.observations.some((row) =>
+				String(row.payload.error_class ?? '').startsWith('reviewer_')
+			)
+		).toBe(false);
+	});
+
+	it('does not watch a review sent without a retry left', async () => {
+		vi.useFakeTimers();
+		const silent = controllableResponse('Azure', LUNA);
+		const test = harness([silent.response], { model: LUNA });
+		const collecting = collect(test.client.stream(review()));
+		await vi.advanceTimersByTimeAsync(20_000);
+		expect(test.requests[0]!.signal.aborted).toBe(false);
+		silent.text('Late approval.');
+		silent.finish();
+		expect((await collecting).at(-1)?.type).toBe('done');
+	});
 });

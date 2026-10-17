@@ -33,6 +33,7 @@ import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
 import type { AgentChatImageAttachment, UIMessage } from './agent-chat.types';
 import {
 	isWorkerQueueTimeout,
+	isWorkerWaitActivity,
 	WORKER_CONNECTION_LOST_FAILURE_CODE,
 	WORKER_CONNECTION_LOST_MESSAGE,
 	WORKER_STOPPING_STATUS,
@@ -296,8 +297,15 @@ export class AgentChatStreamController {
 		// A queued turn has no live phases of its own, so its wait message is also
 		// the thinking block's status line ("Thinking…" → "Taking longer than
 		// usual…"). Only a change is written. A running turn's block belongs to
-		// its live semantic events and keeps its text.
-		if (status === 'queued' && nextActivity && nextActivity !== this.currentActivity) {
+		// its live semantic events and keeps its text, except while a restarted
+		// reply has none yet: then the wait line ("Picking back up after an
+		// update…") is written every time, because a new attempt starts with a
+		// fresh thinking block that does not carry it.
+		const waitLine = nextActivity !== '' && isWorkerWaitActivity(nextActivity);
+		if (
+			(status === 'queued' && nextActivity && nextActivity !== this.currentActivity) ||
+			(status === 'running' && waitLine)
+		) {
 			this.#deps.thinking.updateState('thinking', nextActivity);
 		}
 		this.currentActivity = nextActivity;

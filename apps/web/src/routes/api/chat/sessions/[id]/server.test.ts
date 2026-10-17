@@ -459,6 +459,81 @@ describe('GET /api/chat/sessions/[id]', () => {
 		]);
 	});
 
+	it('restores only the latest attempt of a restarted turn in the timeline', async () => {
+		const session = {
+			id: 'session-1',
+			user_id: 'user-1',
+			context_type: 'global',
+			entity_id: null,
+			agent_metadata: null
+		};
+		const turnEvent = (
+			id: string,
+			message: string,
+			turnRunId: string,
+			createdAt: string,
+			executionGeneration?: number
+		) => ({
+			id,
+			session_id: 'session-1',
+			user_id: 'user-1',
+			turn_run_id: turnRunId,
+			stream_run_id: `stream-${turnRunId}`,
+			event_type: 'turn_phase',
+			phase: 'stream',
+			payload: { message },
+			sequence_index: 1,
+			created_at: createdAt,
+			...(executionGeneration === undefined
+				? {}
+				: { execution_generation: executionGeneration })
+		});
+		// Newest first, as the route reads them.
+		const turnEventsQuery = createQuery({
+			data: [
+				turnEvent('event-3', 'Second attempt step', 'turn-new', '2026-10-17T12:02:00Z', 2),
+				turnEvent(
+					'event-2',
+					'Discarded attempt step',
+					'turn-new',
+					'2026-10-17T12:01:00Z',
+					1
+				),
+				// An older session's row without the field.
+				turnEvent('event-1', 'Legacy step', 'turn-old', '2026-10-01T09:00:00Z')
+			],
+			error: null
+		});
+		const supabase = {
+			from: vi.fn((table: string) => {
+				if (table === 'chat_sessions') return createQuery({ data: session, error: null });
+				if (table === 'chat_turn_events') return turnEventsQuery;
+				return createQuery({ data: [], error: null });
+			})
+		};
+
+		const response = await GET({
+			params: { id: 'session-1' },
+			url: new URL('http://localhost/api/chat/sessions/session-1'),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(turnEventsQuery.select).toHaveBeenCalledExactlyOnceWith(
+			expect.stringContaining('execution_generation')
+		);
+		const payload = await response.json();
+		const steps = payload.data.timelineItems
+			.filter((item: { kind: string }) => item.kind === 'step')
+			.map((item: { title: string }) => item.title);
+		expect(steps).toEqual(['Legacy step', 'Second attempt step']);
+		// The response shape is unchanged: raw turn events are not returned.
+		expect(payload.data).not.toHaveProperty('turnEvents');
+	});
+
 	it('hydrates persisted image attachments when restoring a chat session', async () => {
 		const session = {
 			id: 'session-1',

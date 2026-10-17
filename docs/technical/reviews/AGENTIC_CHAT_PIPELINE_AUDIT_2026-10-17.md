@@ -199,12 +199,46 @@ Follow-ups found while building (not in Lean):
 - `pnpm agentic:prod-battery`: **failed, 50/52** (96.2%), $0.3239 reported ($0.2873 model + $0.0366
   judge; OpenRouter delta $0.351 incl. any concurrent traffic). Evidence:
   `output/agentic-prod-battery/2026-10-17T17-11-47-935Z`. Prior full run (09-25) was 46/52.
-  - Case 4 rep 3 over 30 s: one `mutation_review` pass (GPT-6 Luna, Azure) took 24.8 s; acting
-    passes ~3 s total. Reviewer latency, not a lean change (S5 territory).
-  - Case 14 rep 1 judge 1/5: the judge called the success criteria "invented", but they are in the
-    seed (`cedar-house/fixture.ts:34`). Judge false negative. The answer also notes "semantic
-    search coverage timed out" — S4.
-  - No runaway cutoff, first-byte stall, or recovery fired in any battery turn.
+    - Case 4 rep 3 over 30 s: one `mutation_review` pass (GPT-6 Luna, Azure) took 24.8 s; acting
+      passes ~3 s total. Reviewer latency, not a lean change (S5 territory).
+    - Case 14 rep 1 judge 1/5: the judge called the success criteria "invented", but they are in the
+      seed (`cedar-house/fixture.ts:34`). Judge false negative. The answer also notes "semantic
+      search coverage timed out" — S4.
+    - No runaway cutoff, first-byte stall, or recovery fired in any battery turn.
 - Live UI check (harness account, build-os.com, one General chat turn, ~$0.01): first answer text
   on screen 3.05 s after send, grew over 12 updates (10 preview frames) to 893 chars, turn done at
   4.55 s. Admission round trip 2.05 s (new session, first send after deploy — possibly cold; S12).
+
+## Ambitious wave 1 — shipped (2026-10-17, commit `67c4e71f8`)
+
+- Migrations applied + recorded: `20261017180000_search_rpcs_project_scope` (first attempt failed in prod
+  with `42501 permission denied to set parameter "hnsw.ef_search"` — rehearsal runs as superuser;
+  fixed with in-body `set_config`, dry-run with ROLLBACK in prod, then applied),
+  `20261017181000_agentic_chat_worker_shutdown_requeue`, `20261017182000_agentic_chat_observation_progress_keys`.
+- Railway: `railway.chat.toml` `drainingSeconds = 90` (default was 0: deploys killed running turns
+  instantly); `CHAT_DRAIN_TIMEOUT_MS` 22000 → 67000.
+- Battery on `67c4e71f8`: **failed, 50/52**, $0.3225 reported (OpenRouter delta $0.334). Evidence:
+  `output/agentic-prod-battery/2026-10-17T20-59-39-807Z`.
+    - Case 2 rep 2 over 60 s: `mutation_review` hung 45 s on Azure then failed (retry 8.9 s), second
+      review failed at 5 s then took 23.9 s on Reka — 83 of 91 s of model time was the reviewer.
+    - Case 14 rep 1 judge 1/5 again ("neither is recorded as started or finished" read as a real-world
+      claim). Reps 2–3 scored 4–5 in both of today's runs; rep 1 failed both times — watch it.
+- Next: first-progress deadline for reviewer passes (S9 covers only acting/repair/final); ship the
+  merged-project search/explore refusal (`assertOntologySearchProjectSearchable`, built, uncommitted);
+  requeue UX (empty bubble between attempts).
+
+## Wave 2 (2026-10-17): reviewer stalls + requeue UX
+
+- Reviewer passes (`mutation_review`, `contract_review`) with a retry left are now watched: first
+  output within 15 s of headers, then ≥100 B/s over 4 s windows. Evidence: OpenRouter generation
+  stats for 126 of 136 reviews since 09-25 — first token p50 2.0 s, first-attempt max 8.8 s; 97/102
+  healthy reviews stream ≥49 tok/s; the five slow ones were all GPT-6 Luna on Azure on 10-17
+  (2.8–22.8 tok/s). The cedar-02 45 s hang was a trickle, not silence. Attempt `error_class`:
+  `reviewer_first_progress_stall` / `reviewer_slow_stream`. Not changed: the 5 s headers timeout
+  (8 of 13 reviewer failures on 10-17) and the 45 s reviewer attempt timeout.
+- Requeued turns (deploy restart): the partial answer clears, the thinking block shows "Picking back
+  up after an update…", "Taking longer than usual…" waits 20 s from the restart, and the reloaded
+  Timeline keeps only each turn's latest execution generation. Open: the discarded attempt's step
+  list stays visible for the 1–6 s gap (needs a hook in `AgentChatModal.svelte`).
+- In battery runs, attempt records are deleted with the run's turns; count reviewer stalls from
+  `llm_usage_logs.error_message`.

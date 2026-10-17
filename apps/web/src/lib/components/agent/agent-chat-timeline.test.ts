@@ -477,6 +477,65 @@ describe('agent-chat-timeline restored turn events', () => {
 	});
 });
 
+describe('agent-chat-timeline restarted turns', () => {
+	const step = (
+		id: string,
+		message: string,
+		turnRunId: string | null,
+		executionGeneration?: number | null,
+		createdAt = '2026-10-17T12:00:00Z'
+	) => ({
+		id,
+		turn_run_id: turnRunId,
+		event_type: 'turn_phase',
+		phase: 'stream',
+		payload: { message },
+		...(executionGeneration === undefined ? {} : { execution_generation: executionGeneration }),
+		created_at: createdAt
+	});
+
+	it('shows only the latest attempt of a turn a deploy restarted', () => {
+		const items = buildAgentTimeline({
+			sessionId: 'session-1',
+			turnEvents: [
+				step('a1', 'Searching your tasks', 'turn-a', 1),
+				step('a2', 'Reading the plan', 'turn-a', 1),
+				step('a3', 'Searching your tasks again', 'turn-a', 2, '2026-10-17T12:01:00Z')
+			]
+		});
+
+		expect(items.map((item) => item.title)).toEqual(['Searching your tasks again']);
+	});
+
+	it('keeps rows without a generation as the single attempt alongside newer turns', () => {
+		const items = buildAgentTimeline({
+			sessionId: 'session-1',
+			turnEvents: [
+				// An older session's turn: no generation on any row.
+				step('old-1', 'Legacy step one', 'turn-old', undefined, '2026-10-01T09:00:00Z'),
+				step('old-2', 'Legacy step two', 'turn-old', null, '2026-10-01T09:00:01Z'),
+				// A restarted turn in the same session.
+				step('a1', 'Discarded step', 'turn-a', 1, '2026-10-17T12:00:00Z'),
+				step('a2', 'Kept step', 'turn-a', 2, '2026-10-17T12:01:00Z'),
+				// A row this turn wrote without a generation stays too.
+				step('a3', 'Ungenerationed step', 'turn-a', undefined, '2026-10-17T12:01:30Z'),
+				// A single-attempt turn and a row with no turn at all.
+				step('b1', 'Only attempt', 'turn-b', 1, '2026-10-17T12:02:00Z'),
+				step('x1', 'Session step', null, undefined, '2026-10-17T12:03:00Z')
+			]
+		});
+
+		expect(items.map((item) => item.title)).toEqual([
+			'Legacy step one',
+			'Legacy step two',
+			'Kept step',
+			'Ungenerationed step',
+			'Only attempt',
+			'Session step'
+		]);
+	});
+});
+
 describe('agent-chat-timeline live memo', () => {
 	function assistant(id: string, content: string, at = '2026-06-20T12:00:05.000Z') {
 		return {

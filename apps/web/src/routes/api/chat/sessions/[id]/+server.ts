@@ -639,7 +639,7 @@ export const GET: RequestHandler = async ({
 	const { data: newestTurnEvents, error: turnEventsError } = await supabase
 		.from('chat_turn_events')
 		.select(
-			'id, session_id, user_id, turn_run_id, stream_run_id, event_type, phase, payload, sequence_index, created_at'
+			'id, session_id, user_id, turn_run_id, stream_run_id, execution_generation, event_type, phase, payload, sequence_index, created_at'
 		)
 		.eq('session_id', sessionId)
 		.eq('user_id', user.id)

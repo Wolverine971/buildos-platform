@@ -416,6 +416,245 @@ describe('AgentChatWorkerUiAdapter', () => {
 		expect(h.port.appendAssistantText).not.toHaveBeenCalled();
 	});
 
+	describe('a reply that starts over after a deploy', () => {
+		const LAST_WRITE_AT = '2026-10-17T12:00:00.000Z';
+		const RESUMING = 'Picking back up after an update…';
+		const generationOneProjection = {
+			version: 'agentic_chat_ui_projection_v1',
+			current_activity: 'Searching your tasks…',
+			semantic_events: [
+				event(1, 'turn_phase', {
+					turn_phase: 'acknowledged',
+					message: 'Understanding your request…'
+				})
+			]
+		};
+		const startedAttempt = (
+			overrides: Partial<AgenticChatWorkerReconciledReceipt> = {}
+		): AgenticChatWorkerReconciledReceipt =>
+			receipt({
+				text: 'Here is the start of',
+				snapshot_sequence: 3,
+				durable_through_sequence: 3,
+				projection_durable_sequence: 3,
+				response_watermark: 3,
+				updated_at: LAST_WRITE_AT,
+				...overrides
+			});
+		const restartHarness = (now: () => number) => {
+			const h = harness({ now });
+			const setAssistantPreview = vi.fn((input: { text: string | null }) =>
+				h.order.push(`preview:${input.text ?? 'none'}`)
+			);
+			h.port.setAssistantPreview = setAssistantPreview;
+			return { ...h, setAssistantPreview };
+		};
+
+		it('clears the interrupted attempt and shows the restart line while it waits in line', () => {
+			// Its last write was five minutes ago; the browser sees the requeue now.
+			let now = Date.parse(LAST_WRITE_AT) + 300_000;
+			const h = restartHarness(() => now);
+			h.adapter.applyReconciliation(startedAttempt());
+			h.order.length = 0;
+
+			h.adapter.applyReconciliation(
+				startedAttempt({
+					status: 'queued',
+					requested_execution_generation: 1,
+					projection: generationOneProjection as unknown as JsonObject
+				})
+			);
+
+			expect(h.port.replaceAssistantSnapshot).toHaveBeenLastCalledWith(
+				expect.objectContaining({ executionGeneration: 1, text: '', status: 'queued' })
+			);
+			// The emptied bubble goes too, so no blank card is left behind.
+			expect(h.setAssistantPreview).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ executionGeneration: 1, text: null })
+			);
+			// None of the discarded attempt's steps are replayed into the UI.
+			expect(h.order).toEqual(['snapshot', 'preview:none', 'state']);
+			// Never "Taking longer…" just because the old attempt last wrote long ago.
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith({
+				handle,
+				status: 'queued',
+				currentActivity: RESUMING
+			});
+
+			// The watchdog re-reconciles: still the restart line until ~20s pass.
+			now += 19_000;
+			h.adapter.applyReconciliation(
+				startedAttempt({ status: 'queued', requested_execution_generation: 1 })
+			);
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith(
+				expect.objectContaining({ currentActivity: RESUMING })
+			);
+			now += 2_000;
+			h.adapter.applyReconciliation(
+				startedAttempt({ status: 'queued', requested_execution_generation: 1 })
+			);
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith(
+				expect.objectContaining({ currentActivity: 'Taking longer than usual…' })
+			);
+			expect(h.setAssistantPreview).toHaveBeenCalledOnce();
+		});
+
+		it('starts the next attempt clean and keeps the restart line until its first event', () => {
+			const now = Date.parse(LAST_WRITE_AT) + 300_000;
+			const h = restartHarness(() => now);
+			h.adapter.applyReconciliation(startedAttempt());
+			h.adapter.applyReconciliation(
+				startedAttempt({ status: 'queued', requested_execution_generation: 1 })
+			);
+			h.order.length = 0;
+
+			// Another replica claimed it: generation 2, nothing written yet.
+			h.adapter.applyReconciliation(
+				receipt({
+					execution_generation: 2,
+					requested_execution_generation: 1,
+					generation_changed: true,
+					text: '',
+					updated_at: new Date(now).toISOString()
+				})
+			);
+			expect(h.port.beginGeneration).toHaveBeenLastCalledWith(
+				expect.objectContaining({ executionGeneration: 2, status: 'running' })
+			);
+			expect(h.port.replaceAssistantSnapshot).toHaveBeenLastCalledWith(
+				expect.objectContaining({ executionGeneration: 2, text: '' })
+			);
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith({
+				handle,
+				status: 'running',
+				currentActivity: RESUMING
+			});
+			// The bubble was already removed at the requeue.
+			expect(h.setAssistantPreview).toHaveBeenCalledOnce();
+
+			// The new attempt's first event takes the status line back.
+			h.adapter.applyLiveEvent(event(1, 'text_delta', { content: 'Here is' }, 2));
+			expect(h.port.appendAssistantText).toHaveBeenLastCalledWith(
+				expect.objectContaining({ executionGeneration: 2, text: 'Here is' })
+			);
+			h.adapter.applyReconciliation(
+				receipt({
+					execution_generation: 2,
+					requested_execution_generation: 2,
+					text: 'Here is',
+					snapshot_sequence: 1,
+					durable_through_sequence: 1,
+					response_watermark: 1
+				})
+			);
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith(
+				expect.objectContaining({ status: 'running', currentActivity: 'Thinking…' })
+			);
+		});
+
+		it('erases the old answer when the browser jumps straight to the next attempt', () => {
+			const now = Date.parse(LAST_WRITE_AT) + 300_000;
+			const h = restartHarness(() => now);
+			h.adapter.applyReconciliation(startedAttempt());
+			h.order.length = 0;
+
+			h.adapter.applyReconciliation(
+				receipt({
+					execution_generation: 2,
+					requested_execution_generation: 1,
+					generation_changed: true,
+					text: ''
+				})
+			);
+
+			expect(h.order).toEqual(['begin', 'snapshot', 'preview:none', 'state']);
+			expect(h.port.replaceAssistantSnapshot).toHaveBeenLastCalledWith(
+				expect.objectContaining({ executionGeneration: 2, text: '' })
+			);
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith(
+				expect.objectContaining({ status: 'running', currentActivity: RESUMING })
+			);
+		});
+
+		it('shows the next attempt as is when it is already writing', () => {
+			const h = restartHarness(() => Date.parse(LAST_WRITE_AT) + 300_000);
+			h.adapter.applyReconciliation(startedAttempt());
+
+			h.adapter.applyReconciliation(
+				receipt({
+					execution_generation: 2,
+					requested_execution_generation: 1,
+					generation_changed: true,
+					text: 'Fresh answer',
+					snapshot_sequence: 2,
+					durable_through_sequence: 2,
+					response_watermark: 2
+				})
+			);
+
+			expect(h.port.replaceAssistantSnapshot).toHaveBeenLastCalledWith(
+				expect.objectContaining({ executionGeneration: 2, text: 'Fresh answer' })
+			);
+			expect(h.setAssistantPreview).not.toHaveBeenCalled();
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith(
+				expect.objectContaining({ status: 'running', currentActivity: 'Thinking…' })
+			);
+		});
+
+		it('picks up a restart it finds on first load without showing the old text', () => {
+			const h = restartHarness(() => Date.parse(LAST_WRITE_AT) + 300_000);
+
+			h.adapter.applyReconciliation(
+				startedAttempt({
+					status: 'queued',
+					requested_execution_generation: null,
+					projection: generationOneProjection as unknown as JsonObject
+				})
+			);
+
+			expect(h.port.replaceAssistantSnapshot).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ text: '', status: 'queued' })
+			);
+			expect(h.port.applySemanticEvent).not.toHaveBeenCalled();
+			// No bubble was ever shown here, so there is none to remove.
+			expect(h.setAssistantPreview).not.toHaveBeenCalled();
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith(
+				expect.objectContaining({ status: 'queued', currentActivity: RESUMING })
+			);
+		});
+
+		it('keeps Thinking… for a retry that never started, timed from the requeue', () => {
+			let now = Date.parse(LAST_WRITE_AT) + 300_000;
+			const h = restartHarness(() => now);
+			h.adapter.applyReconciliation(receipt({ text: '', updated_at: LAST_WRITE_AT }));
+
+			h.adapter.applyReconciliation(
+				receipt({
+					status: 'queued',
+					text: '',
+					requested_execution_generation: 1,
+					updated_at: LAST_WRITE_AT
+				})
+			);
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith(
+				expect.objectContaining({ status: 'queued', currentActivity: 'Thinking…' })
+			);
+			now += 20_000;
+			h.adapter.applyReconciliation(
+				receipt({
+					status: 'queued',
+					text: '',
+					requested_execution_generation: 1,
+					updated_at: LAST_WRITE_AT
+				})
+			);
+			expect(h.port.updateTurnState).toHaveBeenLastCalledWith(
+				expect.objectContaining({ currentActivity: 'Taking longer than usual…' })
+			);
+			expect(h.setAssistantPreview).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('a turn no worker has picked up', () => {
 		const QUEUED_AT = '2026-09-23T12:00:00.000Z';
 		const queuedReceipt = (overrides: Partial<AgenticChatWorkerReconciledReceipt> = {}) =>
