@@ -9,7 +9,6 @@ import {
 	AGENTIC_CHAT_INPUT_ARTIFACT_VERSION_V2,
 	createAgentStreamEventIdV1
 } from '@buildos/shared-types';
-import { projectAgenticChatWorkerLifecycleObservationsV1 } from '@buildos/agentic-chat-runtime';
 import {
 	AGENTIC_CHAT_MUTATING_TOOL_FIXTURE_V1,
 	AGENTIC_CHAT_PARTIAL_CANCELLATION_FIXTURE_V1,
@@ -21,6 +20,7 @@ import {
 import { provideAgenticChatLoopToolCatalog } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessingJob } from '../src/lib/supabaseQueue';
+import { QueueShutdownAbortError } from '../src/lib/queueShutdown';
 import { AgenticChatCancellationError } from '../src/workers/agentic-chat/turn/cancellation-observer';
 import { AgenticChatTurnLeaseLostError } from '../src/workers/agentic-chat/turn/turn-lease';
 import {
@@ -33,6 +33,7 @@ import type { AgenticChatRawWorkflowTurnPortV1 } from '../src/workers/agentic-ch
 import { createStableAgenticChatEffectIdentityV1 } from '../src/workers/agentic-chat/effects/effect-identity';
 import {
 	AgenticChatEffectExecutionError,
+	AgenticChatMutationAdapterError,
 	AgenticChatMutationExecutor
 } from '../src/workers/agentic-chat/mutations/mutation-executor';
 import { createStableAgenticChatLifecycleTransitionIdV1 } from '../src/workers/agentic-chat/turn/lifecycle-identity';
@@ -5178,6 +5179,209 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	describe('write deadline with a parallel sibling write', () => {
+		function deadlineHarness(
+			stuckWrite: (input: { writeSignal?: AbortSignal }) => Promise<never>,
+			recovery?: unknown[]
+		) {
+			const harness = createHarness([], { maxToolConcurrency: 2, recovery });
+			const writeSignals = new Map<string, AbortSignal | undefined>();
+			const clockIso = '2026-08-03T12:00:00.000Z';
+			const effectState = (
+				input: { effectId: string },
+				overrides: Record<string, unknown>
+			) => ({
+				effectId: input.effectId,
+				turnRunId: TURN_RUN_ID,
+				executionGeneration: EXECUTION_GENERATION,
+				sessionId: SESSION_ID,
+				userId: USER_ID,
+				downstreamIdempotencySupported: false,
+				downstreamReceipt: null,
+				startedAt: null,
+				finishedAt: null,
+				invokeAdapter: false,
+				...overrides
+			});
+			const effectControl = {
+				reserve: vi.fn(async (input: { effectId: string }) =>
+					effectState(input, { state: 'reserved', outcome: 'reserved' })
+				),
+				begin: vi.fn(async (input: { effectId: string }) =>
+					effectState(input, {
+						state: 'started',
+						outcome: 'started',
+						startedAt: clockIso,
+						invokeAdapter: true
+					})
+				),
+				reconcile: vi.fn(
+					async (input: {
+						effectId: string;
+						targetState: string;
+						downstreamReceipt: unknown;
+					}) =>
+						effectState(input, {
+							state: input.targetState,
+							outcome: 'reconciled',
+							startedAt: clockIso,
+							finishedAt: clockIso,
+							downstreamReceipt: input.downstreamReceipt
+						})
+				)
+			};
+			const realMutation = new AgenticChatMutationExecutor(
+				{
+					control: effectControl as never,
+					mutatingTool: {
+						execute: async (input) => {
+							writeSignals.set(input.providerToolCallId, input.writeSignal);
+							if (input.providerToolCallId === 'parallel-write-a') {
+								return { task: { id: 'task-a' } };
+							}
+							return stuckWrite(input);
+						}
+					}
+				},
+				{ writeDeadlineMs: 50, writeDeadlineSettleMs: 200 }
+			);
+			harness.mutation.execute.mockImplementation((input) => realMutation.execute(input));
+			const continueWithToolResults = vi.fn((_input: AgenticChatProviderToolRoundInputV1) =>
+				(async function* () {
+					yield { type: 'text_delta', text: 'One task was updated.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})()
+			);
+			Object.assign(harness.provider, {
+				prepare: vi.fn(async () => ({
+					stream: () =>
+						(async function* () {
+							yield {
+								type: 'mutating_tool',
+								callTransitionId: CALL_TRANSITION_ID,
+								resultTransitionId: RESULT_TRANSITION_ID,
+								logicalOperationId: LOGICAL_OPERATION_ID,
+								providerToolCallId: 'parallel-write-a',
+								toolName: 'update_onto_task',
+								operationName: 'onto.task.update',
+								arguments: { task_id: 'task-a', state_key: 'done' },
+								downstreamIdempotencySupported: false
+							} as const;
+							yield {
+								type: 'mutating_tool',
+								callTransitionId: SECOND_CALL_TRANSITION_ID,
+								resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+								logicalOperationId: 'c1000000-0000-4000-8000-00000000001c',
+								providerToolCallId: 'parallel-write-b',
+								toolName: 'update_onto_task',
+								operationName: 'onto.task.update',
+								arguments: { task_id: 'task-b', state_key: 'done' },
+								downstreamIdempotencySupported: false
+							} as const;
+						})(),
+					continueWithToolResults,
+					invalidateReadMemo: vi.fn(),
+					release: vi.fn()
+				}))
+			});
+			return { harness, writeSignals, effectControl, continueWithToolResults };
+		}
+
+		it('ends the turn uncertain at the deadline and keeps the committed sibling receipt', async () => {
+			const { harness, writeSignals, effectControl, continueWithToolResults } =
+				deadlineHarness(
+					() => new Promise(() => undefined),
+					[
+						recoveryReceipt('finalize_failed', {
+							failure_code: 'uncertain_external_commit'
+						}),
+						recoveryReceipt('queue_reconciled', {
+							status: 'failed',
+							failure_code: 'uncertain_external_commit'
+						})
+					]
+				);
+
+			try {
+				const startedAt = Date.now();
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'failed',
+					terminalStatus: 'failed'
+				});
+				expect(Date.now() - startedAt).toBeLessThan(5_000);
+				expect(writeSignals.get('parallel-write-b')?.aborted).toBe(true);
+				expect(writeSignals.get('parallel-write-a')?.aborted).toBe(false);
+				// The sibling that committed keeps its durable receipt.
+				expect(harness.toolExecutions.persistMutation).toHaveBeenCalledOnce();
+				expect(harness.toolExecutions.persistMutation.mock.calls[0]?.[0]).toMatchObject({
+					providerToolCallId: 'parallel-write-a',
+					toolName: 'update_onto_task'
+				});
+				expect(effectControl.reconcile).toHaveBeenCalledWith(
+					expect.objectContaining({ targetState: 'succeeded' })
+				);
+				expect(effectControl.reconcile).toHaveBeenCalledWith(
+					expect.objectContaining({
+						targetState: 'uncertain',
+						failureCode: 'mutation_write_timeout'
+					})
+				);
+				expect(continueWithToolResults).not.toHaveBeenCalled();
+				expect(harness.control.recover).toHaveBeenCalledWith(
+					expect.objectContaining({ failureClass: 'uncertain_external_commit' })
+				);
+				expect(harness.control.finalize).toHaveBeenCalledWith(
+					expect.objectContaining({
+						status: 'failed',
+						failureCode: 'uncertain_external_commit'
+					})
+				);
+			} finally {
+				await harness.publisher.stop();
+			}
+		});
+
+		it('lets the turn answer when the timed-out write provably sent nothing', async () => {
+			const { harness, writeSignals, continueWithToolResults } = deadlineHarness(
+				async (input) => {
+					await new Promise<void>((resolve) =>
+						input.writeSignal?.addEventListener('abort', () => resolve(), {
+							once: true
+						})
+					);
+					throw new AgenticChatMutationAdapterError(
+						'known_failed',
+						'update_onto_task_write_timeout_not_sent',
+						'update_onto_task timed out before it sent any change, so nothing was saved.',
+						{ provenNotDispatched: true }
+					);
+				}
+			);
+
+			try {
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'completed'
+				});
+				expect(writeSignals.get('parallel-write-b')?.aborted).toBe(true);
+				expect(harness.toolExecutions.persistMutation).toHaveBeenCalledOnce();
+				expect(continueWithToolResults).toHaveBeenCalledOnce();
+				const round = continueWithToolResults.mock.calls[0]?.[0];
+				expect(round?.results.map((result) => result.providerToolCallId)).toEqual([
+					'parallel-write-a',
+					'parallel-write-b'
+				]);
+				expect(round?.results[1]).toMatchObject({
+					failure: {
+						kind: 'known_execution_failure',
+						error: expect.stringContaining('nothing was saved')
+					}
+				});
+			} finally {
+				await harness.publisher.stop();
+			}
+		});
+	});
+
 	it('requeues a transient immutable-input load failure before provider start', async () => {
 		const harness = createHarness([], {
 			recovery: [recoveryReceipt('retry_scheduled')]
@@ -5341,6 +5545,7 @@ describe('AgenticChatTurnExecutor', () => {
 			]
 		});
 		harness.provider.stream.mockImplementation(() =>
+			// eslint-disable-next-line require-yield -- a stream that never yields
 			(async function* () {
 				await new Promise<never>(() => undefined);
 			})()
@@ -5458,6 +5663,85 @@ describe('AgenticChatTurnExecutor', () => {
 			})
 		);
 		expect(harness.leaseRelease).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('requeues a streaming turn the draining queue aborted, reporting worker_shutdown', async () => {
+		const harness = createHarness([], {
+			recovery: [recoveryReceipt('retry_scheduled', { failure_code: 'worker_shutdown' })]
+		});
+		const queueAbort = new AbortController();
+		harness.provider.stream.mockImplementation(() =>
+			(async function* () {
+				yield { type: 'text_delta', text: 'partial answer' } as const;
+				while (harness.textFlushBatches.length === 0) {
+					await new Promise((resolve) => setTimeout(resolve, 1));
+				}
+				// The deploy's drain window ended while the model was still writing.
+				queueAbort.abort(new QueueShutdownAbortError());
+				await new Promise<never>(() => undefined);
+			})()
+		);
+		const processingJob = job(queueAbort.signal);
+
+		await expect(harness.executor.execute(processingJob)).resolves.toMatchObject({
+			outcome: 'requeued',
+			terminalStatus: null
+		});
+		expect(harness.control.begin).toHaveBeenCalledOnce();
+		expect(harness.control.recover).toHaveBeenCalledOnce();
+		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+			failureClass: 'worker_shutdown'
+		});
+		// The database requeued it: no terminal write from this generation.
+		expect(harness.control.finalize).not.toHaveBeenCalled();
+		expect(typedExecutionFailureLog(processingJob)).toMatchObject({
+			failure_class: 'worker_shutdown',
+			retry_classification: 'transient_safe',
+			execution_started: true,
+			execution_error_code: 'queue_shutdown'
+		});
+		expect(harness.leaseRelease).toHaveBeenCalledOnce();
+		await harness.publisher.stop();
+	});
+
+	it('finalizes a shutdown turn the database will not replay with the generic failure', async () => {
+		const harness = createHarness([], {
+			recovery: [
+				// What recovery answers for worker_shutdown once the turn has effects.
+				recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' }),
+				recoveryReceipt('queue_reconciled', {
+					status: 'failed',
+					failure_code: 'timeout_post_start'
+				})
+			]
+		});
+		const queueAbort = new AbortController();
+		harness.provider.stream.mockImplementation(() =>
+			(async function* () {
+				yield { type: 'text_delta', text: 'partial answer' } as const;
+				while (harness.textFlushBatches.length === 0) {
+					await new Promise((resolve) => setTimeout(resolve, 1));
+				}
+				queueAbort.abort(new QueueShutdownAbortError());
+				await new Promise<never>(() => undefined);
+			})()
+		);
+
+		await expect(harness.executor.execute(job(queueAbort.signal))).resolves.toMatchObject({
+			outcome: 'failed',
+			terminalStatus: 'failed'
+		});
+		expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+			failureClass: 'worker_shutdown'
+		});
+		expect(harness.control.finalize).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: 'failed',
+				failureCode: 'timeout_post_start',
+				assistantText: 'partial answer'
+			})
+		);
 		await harness.publisher.stop();
 	});
 

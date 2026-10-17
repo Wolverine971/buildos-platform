@@ -53,6 +53,7 @@ import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
 	assertMutationReceiptSize,
+	bindMutationClient,
 	canonicalGatewayError,
 	canonicalMutationReceipt,
 	canonicalUuid,
@@ -62,7 +63,8 @@ import {
 	requestProjectId,
 	requiredUuid,
 	throwGatewayResultFailure,
-	uncertainFailure
+	uncertainFailure,
+	writeDeadlineFailure
 } from './adapter-boundary';
 import {
 	AGENTIC_CHAT_TABLE_MUTATION_TOOL_NAMES_V1,
@@ -83,6 +85,20 @@ type TaskMoveRunner = (input: AtomicTaskMoveInput) => Promise<TaskMoveResult>;
 type EntityPingRunner = (input: EntityMentionPingInput) => Promise<EntityMentionPingResult>;
 
 type TableExecutionSpec = Extract<AgenticChatMutationExecutionSpecV1, { executor: 'table' }>;
+type WorkerClient = SupabaseClient<Database>;
+
+/**
+ * Runners whose every side effect goes through the deadline-bound database
+ * client, or starts only after a write request through it (task calendar sync
+ * follows the task row write). For these, "no write request was built" proves a
+ * timed-out attempt saved nothing. Calendar writes reach Google directly, so a
+ * timed-out calendar write always stays uncertain.
+ */
+const JOURNAL_PROVABLE_RUNNERS = new Set<TableExecutionSpec['runner']>([
+	'gateway',
+	'task_move_service',
+	'entity_ping_service'
+]);
 
 const KNOWN_TASK_MOVE_FAILURES = new Set([
 	'access_denied',
@@ -164,7 +180,20 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 			AGENTIC_CHAT_MUTATION_ARGUMENT_NORMALIZERS_V1[normalizerId](context);
 		}
 
-		const data = await this.dispatch(execution, spec.operationName, context);
+		// The attempt's write deadline cancels every database request of the
+		// write; past it, the outcome comes from the request journal alone.
+		const bound = bindMutationClient(this.client, input);
+		const journal = JOURNAL_PROVABLE_RUNNERS.has(execution.runner) ? bound.journal : null;
+		let data: Record<string, unknown> | undefined;
+		try {
+			data = await this.dispatch(execution, spec.operationName, context, bound.client);
+		} catch (error) {
+			throw writeDeadlineFailure(input, input.toolName, journal) ?? error;
+		}
+		// A "success" after the deadline that sent no write request is a cancelled
+		// read the downstream did not notice, so nothing was saved.
+		const lateOutcome = writeDeadlineFailure(input, input.toolName, journal);
+		if (lateOutcome?.provenNotDispatched) throw lateOutcome;
 		// A confirm card saved nothing; its receipt is already canonical.
 		if (input.toolName === 'update_onto_document' && isSharedDocumentEditCard(data)) {
 			const receipt = canonicalMutationReceipt(data, input.toolName);
@@ -185,15 +214,16 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 	private dispatch(
 		execution: TableExecutionSpec,
 		operationName: string,
-		context: AgenticChatMutationExecutionContextV1
+		context: AgenticChatMutationExecutionContextV1,
+		client: WorkerClient
 	): Promise<Record<string, unknown> | undefined> {
 		switch (execution.runner) {
 			case 'gateway':
-				return this.runGatewayOp(execution, operationName, context);
+				return this.runGatewayOp(execution, operationName, context, client);
 			case 'task_move_service':
-				return this.runTaskMove(context);
+				return this.runTaskMove(context, client);
 			case 'entity_ping_service':
-				return this.runEntityPing(context);
+				return this.runEntityPing(context, client);
 			case 'calendar_service':
 				return this.runCalendarWrite(context);
 		}
@@ -237,7 +267,8 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 	private async runGatewayOp(
 		execution: TableExecutionSpec,
 		operationName: string,
-		context: AgenticChatMutationExecutionContextV1
+		context: AgenticChatMutationExecutionContextV1,
+		client: WorkerClient
 	): Promise<Record<string, unknown> | undefined> {
 		const { input, toolName, projectId } = context;
 		// Only rows whose runner is the shared gateway reach here, and the catalog
@@ -251,7 +282,7 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 					? this.archiveDocument
 					: this.runGateway;
 			result = await runner({
-				admin: this.client,
+				admin: client,
 				userId: input.executionInput.claim.userId,
 				scope: {
 					mode: 'read_write',
@@ -267,7 +298,8 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 				...(execution.taskSync ? { taskSync: this.taskSync() } : {}),
 				...(execution.forwardIdempotencyKey
 					? { downstreamIdempotencyKey: input.downstreamIdempotencyKey }
-					: {})
+					: {}),
+				...(input.writeSignal ? { signal: input.writeSignal } : {})
 			});
 		} catch (error) {
 			throw uncertainFailure(
@@ -287,14 +319,14 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 				!isDocumentArchiveState(context.args.state_key)
 			) {
 				const target = await loadSharedDocumentTarget(
-					this.client,
+					client,
 					input.executionInput.claim.userId,
 					projectId,
 					String(context.args.document_id)
 				);
 				if (target)
 					return sharedDocumentEditCard({
-						client: this.client,
+						client,
 						input,
 						target,
 						args: context.args,
@@ -318,12 +350,13 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 	}
 
 	private async runTaskMove(
-		context: AgenticChatMutationExecutionContextV1
+		context: AgenticChatMutationExecutionContextV1,
+		client: WorkerClient
 	): Promise<Record<string, unknown>> {
 		const { input, toolName, args } = context;
 		try {
 			return (await this.moveTask({
-				client: this.client,
+				client,
 				taskId: String(args.task_id),
 				expectedSourceProjectId: String(args.expected_source_project_id),
 				destinationProjectId: String(args.destination_project_id),
@@ -347,12 +380,13 @@ export class AgenticChatTableMutationAdapter implements AgenticChatMutatingToolP
 	}
 
 	private async runEntityPing(
-		context: AgenticChatMutationExecutionContextV1
+		context: AgenticChatMutationExecutionContextV1,
+		client: WorkerClient
 	): Promise<Record<string, unknown>> {
 		const { input, toolName, expected, projectId } = context;
 		try {
 			return (await this.pingEntity({
-				client: this.client,
+				client,
 				projectId: String(projectId),
 				entityType: expected.entityType as 'task' | 'goal' | 'document',
 				entityId: expected.entityId as string,

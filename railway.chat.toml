@@ -24,6 +24,13 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 healthcheckPath = "/health"
 healthcheckTimeout = 300
+# SIGTERM -> SIGKILL window for the replaced deploy (Railway's default is 0).
+# The worker stops claiming at once, lets running chat turns finish, requeues or
+# fails the rest, then exits ~3 s early. Must equal
+# AGENTIC_CHAT_RAILWAY_DRAINING_SECONDS (apps/worker/.../host/shutdown-budget.ts);
+# a test pins the two. No overlapSeconds: an overlapping old deploy would keep
+# claiming turns it then has to drain.
+drainingSeconds = 90
 
 [variables]
 NODE_ENV = "production"

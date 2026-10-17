@@ -18,6 +18,7 @@ import {
 	rolledBackWriteDetails
 } from './op-execution-gateway.responses';
 import { serializeExternalEntity } from './op-execution-gateway.serializers';
+import { bindGatewayClientSignal } from './op-execution-gateway.signal';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
 import type { GatewayWriteOpResult } from './op-execution-gateway.worker';
 
@@ -78,6 +79,8 @@ export function isDocumentArchiveReviewSnapshot(
 
 type Params = Pick<ToolExecutionContext, 'admin' | 'userId' | 'scope' | 'chatSessionId'> & {
 	args: Record<string, unknown>;
+	/** The caller's write deadline; cancels every database request of the archive. */
+	signal?: AbortSignal;
 };
 
 async function loadArchiveTarget(params: Params) {
@@ -196,7 +199,13 @@ export async function previewGatewayDocumentArchive(
 	}
 }
 
-export async function runReviewedDocumentArchive(params: Params): Promise<GatewayWriteOpResult> {
+export async function runReviewedDocumentArchive(
+	unboundParams: Params
+): Promise<GatewayWriteOpResult> {
+	const params: Params = {
+		...unboundParams,
+		admin: bindGatewayClientSignal(unboundParams.admin, unboundParams.signal)
+	};
 	try {
 		const snapshot = params.args._archive_review;
 		if (

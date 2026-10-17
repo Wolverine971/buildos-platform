@@ -389,8 +389,12 @@ export class AgenticChatBootstrap {
 		}
 		this.state = 'stopping';
 		try {
-			await this.stopQueueWake();
+			// Leave the wake channel first, but do not wait on its socket before the
+			// runtime stops claiming: a claim in that gap would start a turn this
+			// worker then has to drain instead of the live replacement deploy.
+			const wakeStopped = this.stopQueueWake();
 			await this.composition.runtime.stop();
+			await wakeStopped;
 			this.state = 'stopped';
 		} catch (error) {
 			this.lastError = canonicalError(error);

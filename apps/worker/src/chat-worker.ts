@@ -6,8 +6,12 @@ import { type ChatWorkerService, createChatWorkerService } from './lib/chatWorke
 import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { createAgenticChatBootstrap } from './workers/agentic-chat/host/bootstrap';
 import { requireDedicatedChatWorkerProductionProfile } from './config/chatWorkerProfile';
+import { AGENTIC_CHAT_SHUTDOWN_BUDGET_V1 } from './workers/agentic-chat/host/shutdown-budget';
 
-const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;
+// Exit on our own just before Railway's SIGKILL (railway.chat.toml drainingSeconds).
+// The drain inside spends the window: natural finish, then abort + recovery
+// handoff, then publisher shutdown (host/shutdown-budget.ts).
+const PROCESS_SHUTDOWN_TIMEOUT_MS = AGENTIC_CHAT_SHUTDOWN_BUDGET_V1.processHardStopMs;
 
 requireDedicatedChatWorkerProductionProfile(process.env);
 

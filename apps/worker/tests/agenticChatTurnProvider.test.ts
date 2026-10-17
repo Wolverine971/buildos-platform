@@ -21,8 +21,7 @@ import {
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
 	NO_CHANGES_SAVED_NOTICE,
-	parseDeclaredTurnContract,
-	serializeTurnContractForDeclaration
+	parseDeclaredTurnContract
 } from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
@@ -42,7 +41,6 @@ import {
 import { createStableAgenticChatMutationLogicalOperationIdV1 } from '../src/workers/agentic-chat/effects/effect-identity';
 import type { AgenticChatLiveVisionResolverPortV1 } from '../src/workers/agentic-chat/tools/live-vision';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
-import { createStableAgenticChatReadToolTransitionIdV1 } from '../src/workers/agentic-chat/tools/read-tool-identity';
 import {
 	EVIDENCE_COVERAGE_INSTRUCTION_PREFIX,
 	WEB_RESEARCH_RULES_INSTRUCTION
@@ -5940,7 +5938,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			{ type: 'text_delta', text: 'The cached evidence is enough.' },
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
-		const repeatedToolMessage = [...client.stream.mock.calls[2]?.[0].messages]
+		const repeatedToolMessage = [...(client.stream.mock.calls[2]?.[0].messages ?? [])]
 			.reverse()
 			.find((message) => message.role === 'tool');
 		const repeatedModelPayload = JSON.parse(
@@ -6444,7 +6442,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			};
 			const corrected = { ...invalid, minimum_successful_effects: 1 };
 			const requests: Record<string, unknown>[] = [];
-			const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+			const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: Parameters<typeof fetch>[1]) => {
 				requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 				const attempt = requests.length;
 				if (attempt >= 4) {
@@ -7158,7 +7156,7 @@ describe('AgenticChatTurnProviderAdapter', () => {
 		async (exhausted) => {
 			const projectId = '40000000-0000-4000-8000-000000000004';
 			const requests: Record<string, unknown>[] = [];
-			const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+			const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: Parameters<typeof fetch>[1]) => {
 				requests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
 				const opening = requests.length === 1;
 				const invalid = !opening && (requests.length === 2 || exhausted);

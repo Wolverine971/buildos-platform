@@ -7,6 +7,9 @@
 -- Archive forms: a task archived on the board (deleted_at + archived_at), a record archived
 -- through the connector before tasker 113 (archived_at only), and a document archived from
 -- the tree (state_key 'archived', archived_at NULL).
+-- The second block covers archived and merged (Combined) projects in both search RPCs
+-- (20261017180000_search_rpcs_project_scope.sql): workspace search skips them and their
+-- records, a chosen archived project still searches, a merged source never does.
 DO $$
 DECLARE
   v_user uuid := 'a1130000-0000-4000-8000-000000000001';
@@ -139,3 +142,94 @@ BEGIN
   ASSERT position(v_goal_archived::text IN coalesce(v_out, '')) > 0, 'an archived focus record no longer loads';
   ASSERT (v_out::jsonb ->> 'archived_at') IS NOT NULL, 'an archived focus record lost its archived_at';
 END $$;
+
+-- Archived and merged projects in both search RPCs. Each project holds one live task, and
+-- every row matches the query (keyword "Quokka", embedding similarity 1). Rolled back.
+BEGIN;
+DO $$
+DECLARE
+  v_user uuid := 'a1130000-0000-4000-8000-000000000101';
+  v_actor uuid := 'a1130000-0000-4000-8000-000000000102';
+  v_live uuid := 'a1130000-0000-4000-8000-000000000110';      -- live; the merge destination
+  v_archived uuid := 'a1130000-0000-4000-8000-000000000111';  -- archived, never merged
+  v_merged uuid := 'a1130000-0000-4000-8000-000000000112';    -- merged into v_live
+  v_task_live uuid := 'a1130000-0000-4000-8000-000000000120';
+  v_task_archived uuid := 'a1130000-0000-4000-8000-000000000121';
+  v_task_merged uuid := 'a1130000-0000-4000-8000-000000000122';
+  v_vec vector := array_fill(0.1::real, ARRAY[1536])::vector;
+  v_failures text[] := ARRAY[]::text[];
+  v_out text;
+  v_mode text;
+BEGIN
+  INSERT INTO auth.users (id, email) VALUES (v_user, 'archived-project-guard@example.com');
+  INSERT INTO public.users (id, email) VALUES (v_user, 'archived-project-guard@example.com')
+    ON CONFLICT (id) DO NOTHING;
+  INSERT INTO public.onto_actors (id, kind, name, user_id)
+    VALUES (v_actor, 'human', 'Project guard', v_user)
+    ON CONFLICT DO NOTHING;
+  SELECT id INTO v_actor FROM public.onto_actors WHERE user_id = v_user;
+
+  INSERT INTO public.onto_projects (id, name, type_key, created_by, state_key, archived_at) VALUES
+    (v_live, 'Quokka live project', 'project.default', v_actor, 'active', NULL),
+    (v_archived, 'Quokka archived project', 'project.default', v_actor, 'active', now() - interval '5 days');
+  -- Only the fold writes merged_into_project_id; open its write gate for this insert.
+  PERFORM set_config('buildos.project_hierarchy_write', 'on', true);
+  INSERT INTO public.onto_projects (id, name, type_key, created_by, state_key, archived_at, merged_into_project_id)
+    VALUES (v_merged, 'Quokka merged project', 'project.default', v_actor, 'active', now() - interval '1 day', v_live);
+  PERFORM set_config('buildos.project_hierarchy_write', '', true);
+  INSERT INTO public.onto_project_members (project_id, actor_id, role_key, access) VALUES
+    (v_live, v_actor, 'owner', 'admin'), (v_archived, v_actor, 'owner', 'admin'), (v_merged, v_actor, 'owner', 'admin')
+    ON CONFLICT DO NOTHING;
+
+  INSERT INTO public.onto_tasks (id, project_id, title, state_key, created_by) VALUES
+    (v_task_live, v_live, 'Quokka live project task', 'todo', v_actor),
+    (v_task_archived, v_archived, 'Quokka archived project task', 'todo', v_actor),
+    (v_task_merged, v_merged, 'Quokka merged project task', 'todo', v_actor);
+  INSERT INTO public.onto_embeddings (project_id, entity_type, entity_id, content_text, content_hash, embedding)
+  SELECT project_id, kind, id, 'Quokka ' || kind, md5(id::text), v_vec
+  FROM (VALUES
+    (v_live, 'project', v_live), (v_archived, 'project', v_archived), (v_merged, 'project', v_merged),
+    (v_live, 'task', v_task_live), (v_archived, 'task', v_task_archived), (v_merged, 'task', v_task_merged)
+  ) AS seeded(project_id, kind, id);
+
+  PERFORM set_config('request.jwt.claims', '{"role":"service_role"}', true);
+
+  -- Workspace search: the live project's task, never the archived or merged project or its task.
+  FOR v_mode, v_out IN
+    SELECT 'keyword:workspace', (SELECT jsonb_agg(to_jsonb(r))::text FROM public.onto_search_entities(v_actor, 'Quokka', NULL, NULL, 50) r)
+    UNION ALL
+    SELECT 'semantic:workspace', (SELECT jsonb_agg(to_jsonb(r))::text FROM public.onto_search_semantic(v_actor, v_vec, NULL, NULL, 50, 0.1) r)
+  LOOP
+    IF position(v_task_live::text IN coalesce(v_out, '')) = 0 THEN
+      v_failures := v_failures || (v_mode || ' lost the live project''s task, so the guard proves nothing');
+    END IF;
+    IF position(v_archived::text IN coalesce(v_out, '')) > 0 OR position(v_task_archived::text IN coalesce(v_out, '')) > 0 THEN
+      v_failures := v_failures || (v_mode || ' returned the archived project or its task');
+    END IF;
+    IF position(v_merged::text IN coalesce(v_out, '')) > 0 OR position(v_task_merged::text IN coalesce(v_out, '')) > 0 THEN
+      v_failures := v_failures || (v_mode || ' returned the merged project or its task');
+    END IF;
+  END LOOP;
+
+  -- A search scoped to the archived, never-merged project still reads it: the user chose it.
+  FOR v_mode, v_out IN
+    SELECT 'keyword:archived-scoped', (SELECT jsonb_agg(to_jsonb(r))::text FROM public.onto_search_entities(v_actor, 'Quokka', v_archived, NULL, 50) r)
+    UNION ALL
+    SELECT 'semantic:archived-scoped', (SELECT jsonb_agg(to_jsonb(r))::text FROM public.onto_search_semantic(v_actor, v_vec, v_archived, NULL, 50, 0.1) r)
+  LOOP
+    IF position(v_task_archived::text IN coalesce(v_out, '')) = 0 THEN
+      v_failures := v_failures || (v_mode || ' no longer reads the archived project the user chose');
+    END IF;
+  END LOOP;
+
+  -- A search scoped to the merged source returns nothing: its content lives in the destination.
+  IF EXISTS (SELECT 1 FROM public.onto_search_entities(v_actor, 'Quokka', v_merged, NULL, 50)) THEN
+    v_failures := v_failures || 'keyword:merged-scoped returned rows from a merged project'::text;
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.onto_search_semantic(v_actor, v_vec, v_merged, NULL, 50, 0.1)) THEN
+    v_failures := v_failures || 'semantic:merged-scoped returned rows from a merged project'::text;
+  END IF;
+
+  ASSERT cardinality(v_failures) = 0, array_to_string(v_failures, '; ');
+END $$;
+ROLLBACK;

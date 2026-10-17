@@ -1043,7 +1043,7 @@ describe('AgenticChatStreamPublisher', () => {
 				firstFlush = false;
 				await gate.promise;
 			}
-			return await originalFlush(inputs);
+			return originalFlush(inputs);
 		};
 		const overloaded = vi.fn();
 		context.onOverload = overloaded;
@@ -1075,7 +1075,7 @@ describe('AgenticChatStreamPublisher', () => {
 		const held = deferred<void>();
 		base.flushTextBatches = async (inputs) => {
 			await held.promise;
-			return await originalFlush(inputs);
+			return originalFlush(inputs);
 		};
 		const pending = publisher.appendText(context.turnRunId, '89');
 		const pendingRejections = Promise.all([

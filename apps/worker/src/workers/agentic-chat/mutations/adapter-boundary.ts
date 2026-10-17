@@ -5,6 +5,7 @@ import {
 	canonicalizeAgenticChatJson,
 	decodeAgenticChatToolSurfaceV1
 } from '@buildos/shared-types';
+import { bindGatewayClientSignal } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import {
 	type AgenticChatMutatingToolPortV1,
 	AgenticChatMutationAdapterError
@@ -87,6 +88,61 @@ export function assertMutationAdapterBoundary(
 			'Mutation cancelled before dispatch'
 		);
 	}
+}
+
+/**
+ * Requests one write attempt built through its deadline-bound client that can
+ * change data (insert, upsert, update, delete, or any RPC).
+ */
+export type MutationRequestJournal = { mutatingRequests: number };
+
+/**
+ * Bind `client` to the attempt's write deadline and count the requests it
+ * builds that can change data. Without a write deadline (an adapter called
+ * directly) the client comes back unchanged and there is no journal.
+ */
+export function bindMutationClient<C>(
+	client: C,
+	input: MutationInput
+): { client: C; journal: MutationRequestJournal | null } {
+	if (!input.writeSignal) return { client, journal: null };
+	const journal: MutationRequestJournal = { mutatingRequests: 0 };
+	return {
+		client: bindGatewayClientSignal(client, input.writeSignal, {
+			onMutatingRequest: () => {
+				journal.mutatingRequests += 1;
+			}
+		}),
+		journal
+	};
+}
+
+/**
+ * The outcome of an attempt whose write deadline fired, or null while it has
+ * not. What the downstream reported is not trusted then: a cancelled read can
+ * come back as NOT_FOUND, INTERNAL, or an empty success. Only a journal that
+ * saw no request able to change data proves nothing was saved. Pass a journal
+ * only when every side effect of the runner goes through the bound client, or
+ * starts after such a request (task calendar sync runs after the task write).
+ */
+export function writeDeadlineFailure(
+	input: MutationInput,
+	toolName: string,
+	journal: MutationRequestJournal | null
+): AgenticChatMutationAdapterError | null {
+	if (!input.writeSignal?.aborted) return null;
+	if (journal && journal.mutatingRequests === 0) {
+		return new AgenticChatMutationAdapterError(
+			'known_failed',
+			`${toolName}_write_timeout_not_sent`,
+			`${toolName} timed out before it sent any change, so nothing was saved.`,
+			{ provenNotDispatched: true }
+		);
+	}
+	return uncertainFailure(
+		`${toolName}_write_timeout`,
+		`${toolName} timed out after it may have sent a change, so it may or may not have been saved.`
+	);
 }
 
 export function requestProjectId(input: MutationInput): string | null {

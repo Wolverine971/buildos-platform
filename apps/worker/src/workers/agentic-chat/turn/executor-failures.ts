@@ -12,6 +12,7 @@ import {
 	isWriteLedgerToolExecution
 } from '@buildos/agentic-chat-runtime/loop';
 import type { ProcessingJob } from '../../../lib/supabaseQueue';
+import { isQueueShutdownAbort } from '../../../lib/queueShutdown';
 import { AgenticChatCancellationError } from './cancellation-observer';
 import { AgenticChatTurnLeaseLostError } from './turn-lease';
 import {
@@ -72,6 +73,12 @@ export function classifyFailure(
 		return classifyFailure(error.cause, executionStarted, signal);
 	}
 	if (error instanceof AgenticChatEffectExecutionError) return error.failureClass;
+	// A deploy drained this worker past its window. Whatever error the aborted
+	// step raised (provider stream, read tool, publisher), the cause is the
+	// shutdown. The database decides whether the turn may run again at once:
+	// only when nothing it did is durable (no effects, no reservation, no
+	// finalized text); otherwise it keeps the timeout handling used before.
+	if (isQueueShutdownAbort(signal)) return 'worker_shutdown';
 	if (error instanceof AgenticChatToolExecutionFenceError) return error.failureClass;
 	if (error instanceof AgenticChatToolExecutionTimeoutError) return error.failureClass;
 	if (error instanceof AgenticChatReadToolFenceTimeoutError) return error.failureClass;

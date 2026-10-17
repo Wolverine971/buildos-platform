@@ -1,5 +1,6 @@
 -- packages/shared-types/src/functions/onto_search_entities.sql
 -- Source of truth for the ontology cross-entity search RPC used by agentic chat.
+-- Mirrors the latest migration that replaces it (20261017180000_search_rpcs_project_scope.sql) — update both together.
 
 CREATE OR REPLACE FUNCTION public.onto_search_entities(p_actor_id uuid, p_query text, p_project_id uuid DEFAULT NULL::uuid, p_types text[] DEFAULT NULL::text[], p_limit integer DEFAULT 50)
  RETURNS TABLE(type text, id uuid, project_id uuid, project_name text, title text, snippet text, score double precision, state_key text, type_key text)
@@ -54,6 +55,10 @@ begin
 		from onto_projects p
 		where p.deleted_at is null
 			and (p_project_id is null or p.id = p_project_id)
+			-- Workspace search skips archived projects (the chat's visible set); an explicit
+			-- project search may read an archived project, never a merged (Combined) source.
+			and (p.archived_at is null
+				or (p_project_id is not null and p.merged_into_project_id is null))
 			and (
 				p.created_by = p_actor_id
 				or exists (

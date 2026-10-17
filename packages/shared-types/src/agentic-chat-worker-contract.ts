@@ -505,7 +505,14 @@ export const AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1 = [
 	'timeout_post_start',
 	'cancelled',
 	'uncertain_external_commit',
-	'unknown'
+	'unknown',
+	/**
+	 * A deploy drained the worker past its window (20261017181000). Recovery
+	 * requeues the turn at once, even after the provider started, when nothing
+	 * it did is durable; otherwise it is handled as timeout_pre_start or
+	 * timeout_post_start.
+	 */
+	'worker_shutdown'
 ] as const;
 
 export type AgenticChatRecoveryFailureClassV1 =
@@ -527,7 +534,11 @@ export function classifyAgenticChatRetryV1(
 	failureClass: AgenticChatRecoveryFailureClassV1
 ): AgenticChatRetryClassificationV1 {
 	if (failureClass === 'timeout_pre_start') return 'safe_before_start';
-	if (failureClass === 'transient_infra' || failureClass === 'provider_throttle') {
+	if (
+		failureClass === 'transient_infra' ||
+		failureClass === 'provider_throttle' ||
+		failureClass === 'worker_shutdown'
+	) {
 		return 'transient_safe';
 	}
 	if (failureClass === 'cancelled') return 'cancelled';
@@ -1884,6 +1895,12 @@ export function decideAgenticChatRecoveryV1(input: {
 	queueAttempts: number;
 	queueMaxAttempts: number;
 	queueResidenceExpired: boolean;
+	/**
+	 * worker_shutdown only: the turn left durable output besides effects
+	 * (finalized assistant text, a workflow run, a checkpoint, a session
+	 * handoff, or a ledger row tied to an effect or message).
+	 */
+	shutdownReplayBlocked?: boolean;
 }): AgenticChatRecoveryDecisionV1 {
 	if (isTerminalChatTurnStatusV1(input.currentStatus)) {
 		return { decision: 'reconcile_terminal_queue' };
@@ -1910,6 +1927,21 @@ export function decideAgenticChatRecoveryV1(input: {
 			failureCode: 'uncertain_external_commit',
 			retryExhausted: false
 		};
+	}
+
+	if (input.failureClass === 'worker_shutdown') {
+		const replaySafe =
+			!input.mutationReserved &&
+			!input.irreversibleBoundaryCrossed &&
+			input.effectCount === 0 &&
+			!(input.shutdownReplayBlocked ?? false) &&
+			!input.queueResidenceExpired &&
+			input.queueAttempts + 1 < input.queueMaxAttempts;
+		if (replaySafe) return { decision: 'retry', failureCode: 'worker_shutdown' };
+		return decideAgenticChatRecoveryV1({
+			...input,
+			failureClass: input.executionStarted ? 'timeout_post_start' : 'timeout_pre_start'
+		});
 	}
 
 	const retryClassification = classifyAgenticChatRetryV1(input.failureClass);

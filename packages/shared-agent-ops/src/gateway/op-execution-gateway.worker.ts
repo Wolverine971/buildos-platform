@@ -19,6 +19,7 @@ import {
 } from './op-execution-gateway.core';
 import { normalizeAndValidateGatewayWriteArgs } from './op-execution-gateway.validation';
 import { explainMergedProjectRefusal } from './op-execution-gateway.access';
+import { bindGatewayClientSignal } from './op-execution-gateway.signal';
 
 type GatewaySupabaseClient = SupabaseClient<Database>;
 
@@ -166,6 +167,12 @@ export async function runGatewayWriteOp(params: {
 	documentWriteGuard?: ToolExecutionContext['documentWriteGuard'];
 	/** Lookups shared across the writes of one chat turn. */
 	memo?: GatewayLookupMemo;
+	/**
+	 * The caller's write deadline. Every database request the handler makes,
+	 * including those of shared services it hands the client to, is cancelled
+	 * when it aborts. Omit it to keep the request unbounded (web, MCP).
+	 */
+	signal?: AbortSignal;
 }): Promise<GatewayWriteOpResult> {
 	const canonicalOp = normalizeGatewayOpName(
 		typeof params.op === 'string' ? params.op.trim() : ''
@@ -188,7 +195,7 @@ export async function runGatewayWriteOp(params: {
 	const args = preparedArgs.args;
 
 	const context: ToolExecutionContext = {
-		admin: params.admin,
+		admin: bindGatewayClientSignal(params.admin, params.signal),
 		userId: params.userId,
 		callerId: undefined,
 		callSessionId: params.callSessionId,
@@ -198,7 +205,8 @@ export async function runGatewayWriteOp(params: {
 		taskSync: params.taskSync,
 		downstreamIdempotencyKey: params.downstreamIdempotencyKey,
 		documentWriteGuard: params.documentWriteGuard,
-		memo: params.memo
+		memo: params.memo,
+		signal: params.signal
 	};
 
 	try {

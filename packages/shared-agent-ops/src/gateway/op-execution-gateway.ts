@@ -10,6 +10,7 @@ export * from './op-execution-gateway.worker';
 export * from './op-execution-gateway.staging';
 export * from './op-execution-gateway.document-archive';
 export * from './op-execution-gateway.archive-state';
+export * from './op-execution-gateway.signal';
 export {
 	previewGatewayTableRowsUpdate,
 	previewTableRowsUpdate,

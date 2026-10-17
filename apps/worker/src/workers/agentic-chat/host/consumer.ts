@@ -6,6 +6,7 @@ import {
 } from '@buildos/shared-types';
 import { type ProcessingJob, SupabaseQueue } from '../../../lib/supabaseQueue';
 import { MAX_QUEUE_DRAIN_TIMEOUT_MS } from '../../../config/shutdownBudget';
+import { AGENTIC_CHAT_SHUTDOWN_BUDGET_V1 } from './shutdown-budget';
 import { MAX_AGENTIC_CHAT_CONCURRENCY } from '../shared/concurrency-bounds';
 import { validateAgenticChatTurnLeaseTimingV1 } from '../turn/turn-lease';
 
@@ -24,6 +25,11 @@ export const DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG = {
 	idlePollIntervalMs: 5_000,
 	/** Hard cap on one turn, unchanged by leases. */
 	workerTimeoutMs: 360_000,
+	/**
+	 * Natural drain before unfinished turns are aborted as a worker shutdown.
+	 * Production sets CHAT_DRAIN_TIMEOUT_MS; the ceiling is the chat shutdown
+	 * budget (host/shutdown-budget.ts), not the general worker's.
+	 */
 	drainTimeoutMs: MAX_QUEUE_DRAIN_TIMEOUT_MS,
 	leaseRenewIntervalMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.renewIntervalMs,
 	leaseSelfFenceAfterMs: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.selfFenceAfterMs,
@@ -77,6 +83,9 @@ export function createAgenticChatConsumer(
 		// heartbeat solely for rows without a lease; generic recovery stays off.
 		stalledTimeout: AGENTIC_CHAT_TURN_LEASE_POLICY_V1.unleasedExpiredAfterMs,
 		drainTimeout: resolved.drainTimeoutMs,
+		// Aborted turns run their recovery handoff (requeue or terminal failure)
+		// before stop() resolves, so the runtime stops the publisher only after it.
+		abortGraceMs: AGENTIC_CHAT_SHUTDOWN_BUDGET_V1.abortCleanupGraceMs,
 		genericStalledRecovery: false
 	});
 	queue.process<AgenticChatTurnJobV1>('agentic_chat_turn', (job) => executor.execute(job), {
@@ -138,9 +147,8 @@ export function validateAgenticChatLeaseTiming(
 }
 
 export function validateAgenticChatDrainTimeout(drainTimeoutMs: number): void {
-	if (drainTimeoutMs > MAX_QUEUE_DRAIN_TIMEOUT_MS) {
-		throw new Error(
-			`Agentic Chat drain timeout cannot exceed ${MAX_QUEUE_DRAIN_TIMEOUT_MS}ms process budget`
-		);
+	const maximum = AGENTIC_CHAT_SHUTDOWN_BUDGET_V1.maxQueueDrainTimeoutMs;
+	if (drainTimeoutMs > maximum) {
+		throw new Error(`Agentic Chat drain timeout cannot exceed ${maximum}ms process budget`);
 	}
 }

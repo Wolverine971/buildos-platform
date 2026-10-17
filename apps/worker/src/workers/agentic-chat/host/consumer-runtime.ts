@@ -175,11 +175,17 @@ export class AgenticChatConsumerRuntime {
 		}
 		this.state = 'stopping';
 
-		// Stop recovery from acquiring new ownership first. Cancellation and the
-		// publisher stay alive while the queue drains its current executor.
+		// Both stops take effect synchronously: recovery acquires no new ownership
+		// and the queue claims no new turn (the replacement deploy is already
+		// claiming). They then settle concurrently so an in-flight sweep cannot
+		// spend the drain window. queue.stop() resolves only after each turn it
+		// had to abort finished its recovery handoff (abortGraceMs), so
+		// cancellation and the publisher stay alive until that handoff landed.
 		const errors: unknown[] = [];
-		await this.captureStopError(() => this.services.recovery.stop(), errors);
-		await this.captureStopError(() => this.queue.stop(), errors);
+		await Promise.all([
+			this.captureStopError(() => this.services.recovery.stop(), errors),
+			this.captureStopError(() => this.queue.stop(), errors)
+		]);
 		await this.captureStopError(() => this.services.cancellation.stop(), errors);
 		await this.captureStopError(() => this.services.publisher.stop(), errors);
 		this.state = 'stopped';

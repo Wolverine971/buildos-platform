@@ -16,6 +16,7 @@ import {
 	type MutationInput,
 	assertMutationAdapterBoundary,
 	assertMutationReceiptSize,
+	bindMutationClient,
 	canonicalGatewayError,
 	canonicalMutationReceipt,
 	canonicalUuid,
@@ -23,7 +24,8 @@ import {
 	knownFailure,
 	requestProjectId,
 	throwGatewayResultFailure,
-	uncertainFailure
+	uncertainFailure,
+	writeDeadlineFailure
 } from './adapter-boundary';
 import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from './tool-catalog';
 import { gatewayMemoForTurn } from './gateway-turn-memo';
@@ -100,13 +102,28 @@ export class AgenticChatCreateOntoProjectMutationAdapter implements AgenticChatM
 			reviewedArgumentNames: REVIEWED_ARGUMENT_NAMES
 		});
 		assertProjectCreateContext(input);
+		// Every database request below is cancelled by the attempt's write
+		// deadline. Project creation writes only through this client, so a
+		// journal with no write request proves a timed-out create saved nothing.
+		const { client, journal } = bindMutationClient(this.client, input);
+		let receipt: JsonObject;
+		try {
+			receipt = await this.create(input, client);
+		} catch (error) {
+			throw writeDeadlineFailure(input, TOOL_NAME, journal) ?? error;
+		}
+		const lateOutcome = writeDeadlineFailure(input, TOOL_NAME, journal);
+		if (lateOutcome?.provenNotDispatched) throw lateOutcome;
+		return receipt;
+	}
 
+	private async create(
+		input: MutationInput,
+		client: SupabaseClient<Database>
+	): Promise<JsonObject> {
 		// A bare YYYY-MM-DD is the user's civil day, never midnight UTC. Resolve
 		// the timezone once per execution rather than per date field.
-		const timezone = await resolveUserCivilTimezone(
-			this.client,
-			input.executionInput.claim.userId
-		);
+		const timezone = await resolveUserCivilTimezone(client, input.executionInput.claim.userId);
 		const project = normalizeProjectShell(input.arguments, timezone);
 		const contextDocument = buildContextDocument(project, this.now());
 		const gatewayArguments = {
@@ -119,7 +136,7 @@ export class AgenticChatCreateOntoProjectMutationAdapter implements AgenticChatM
 		let result: Awaited<ReturnType<GatewayRunner>>;
 		try {
 			result = await this.runGateway({
-				admin: this.client,
+				admin: client,
 				userId: input.executionInput.claim.userId,
 				scope: {
 					mode: 'read_write',
@@ -132,7 +149,8 @@ export class AgenticChatCreateOntoProjectMutationAdapter implements AgenticChatM
 				chatSessionId: input.executionInput.claim.sessionId,
 				// Shared so this create clears project summaries the turn's later
 				// writes would otherwise reuse.
-				memo: gatewayMemoForTurn(input.executionInput.claim)
+				memo: gatewayMemoForTurn(input.executionInput.claim),
+				...(input.writeSignal ? { signal: input.writeSignal } : {})
 			});
 		} catch (error) {
 			throw uncertainFailure(

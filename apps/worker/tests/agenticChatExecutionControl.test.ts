@@ -859,6 +859,43 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 		).resolves.toMatchObject({ outcome: 'already_started', invoke_provider: false });
 	});
 
+	it('reports a worker shutdown and accepts its immediate requeue receipt', async () => {
+		const { adapter, rpc } = adapterFor([
+			executionReceipt({
+				outcome: 'retry_scheduled',
+				status: 'queued',
+				execution_may_retry: true,
+				failure_code: 'worker_shutdown',
+				queue_status: 'pending',
+				queue_attempts: 1,
+				scheduled_for: '2026-10-17T12:00:00.000Z',
+				replayed_after_start: true,
+				cleared_tool_executions: 2
+			})
+		]);
+
+		await expect(
+			adapter.recover({
+				...identity,
+				executionGeneration: EXECUTION_GENERATION,
+				failureClass: 'worker_shutdown',
+				errorMessage: 'Queue shutdown: drain timeout reached'
+			})
+		).resolves.toMatchObject({
+			outcome: 'retry_scheduled',
+			execution_may_retry: true,
+			failure_code: 'worker_shutdown'
+		});
+		expect(rpc).toHaveBeenCalledWith('recover_agentic_chat_turn', {
+			p_turn_run_id: TURN_RUN_ID,
+			p_queue_job_id: QUEUE_JOB_ID,
+			p_processing_token: PROCESSING_TOKEN,
+			p_execution_generation: EXECUTION_GENERATION,
+			p_failure_class: 'worker_shutdown',
+			p_error_message: 'Queue shutdown: drain timeout reached'
+		});
+	});
+
 	it('rejects recovery receipts whose retry authority contradicts the outcome', async () => {
 		const { adapter } = adapterFor([
 			executionReceipt({

@@ -341,7 +341,8 @@ describe('shared ontology search', () => {
 			query: 'construction inspection',
 			types: ['document']
 		});
-		await vi.advanceTimersByTimeAsync(4_999);
+		// Project scope: 2.5 s budget (workspace keeps 5 s; see the PostgREST test).
+		await vi.advanceTimersByTimeAsync(2_499);
 		expect(embeddingSignal?.aborted).toBe(false);
 		await vi.advanceTimersByTimeAsync(1);
 		await expect(result).resolves.toMatchObject({
@@ -451,8 +452,45 @@ describe('shared ontology search', () => {
 		expect(signal?.aborted).toBe(true);
 	});
 
-	it('never starts semantic work before project authorization', async () => {
-		const embedQuery = vi.fn();
+	it('starts the query embedding while access checks run, but reads nothing until they pass', async () => {
+		let grantAccess!: () => void;
+		const embedQuery = vi.fn(async () => [0.1, 0.2]);
+		const { context, client, assertProjectAccess } = contextWith({
+			rpc: vi.fn(async () => ({ data: [], error: null })),
+			tables: { onto_projects: [{ id: PROJECT_ID }] },
+			embeddings: { embedQuery }
+		});
+		assertProjectAccess.mockImplementation(
+			() => new Promise<void>((resolve) => (grantAccess = resolve))
+		);
+		const result = searchProject(context, {
+			project_id: PROJECT_ID,
+			query: 'inspection',
+			types: ['document']
+		});
+		await vi.waitFor(() => expect(assertProjectAccess).toHaveBeenCalled());
+		expect(embedQuery).toHaveBeenCalledWith('inspection', {
+			signal: expect.any(AbortSignal)
+		});
+		expect(client.rpc).not.toHaveBeenCalled();
+		expect(client.from).not.toHaveBeenCalled();
+
+		grantAccess();
+		await expect(result).resolves.toMatchObject({
+			search_coverage: { lexical: 'complete', semantic: 'complete' }
+		});
+		expect(client.rpc).toHaveBeenCalledWith(
+			'onto_search_semantic',
+			expect.objectContaining({ p_actor_id: ACTOR_ID, p_project_id: PROJECT_ID })
+		);
+	});
+
+	it('never dispatches a vector read before project authorization and cancels the overlapping embedding', async () => {
+		let embeddingSignal: AbortSignal | undefined;
+		const embedQuery = vi.fn((_text: string, options: { signal: AbortSignal }) => {
+			embeddingSignal = options.signal;
+			return new Promise<number[]>(() => {});
+		});
 		const { context, client, assertProjectAccess } = contextWith({
 			embeddings: { embedQuery }
 		});
@@ -460,8 +498,38 @@ describe('shared ontology search', () => {
 		await expect(
 			searchProject(context, { project_id: PROJECT_ID, query: 'inspection' })
 		).rejects.toThrow('Access denied');
-		expect(embedQuery).not.toHaveBeenCalled();
+		expect(embeddingSignal?.aborted).toBe(true);
 		expect(client.rpc).not.toHaveBeenCalled();
+	});
+
+	it('rejects with the turn cancellation, not an unhandled rejection, when cancelled during access checks', async () => {
+		const unhandled = vi.fn();
+		process.on('unhandledRejection', unhandled);
+		try {
+			const controller = new AbortController();
+			const reason = new Error('Turn ownership lost');
+			const { context, client, getActorId } = contextWith({
+				embeddings: { embedQuery: vi.fn(() => new Promise<number[]>(() => {})) }
+			});
+			let finishActor!: (actorId: string) => void;
+			getActorId.mockImplementation(
+				() => new Promise<string>((resolve) => (finishActor = resolve))
+			);
+			context.signal = controller.signal;
+			const result = searchAllProjects(context, { query: 'inspection', types: ['document'] });
+			const rejected = expect(result).rejects.toBe(reason);
+			await vi.waitFor(() => expect(getActorId).toHaveBeenCalled());
+			controller.abort(reason);
+			// Let the semantic channel settle before the access check returns.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			finishActor(ACTOR_ID);
+			await rejected;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(unhandled).not.toHaveBeenCalled();
+			expect(client.rpc).not.toHaveBeenCalled();
+		} finally {
+			process.off('unhandledRejection', unhandled);
+		}
 	});
 
 	it('reports a failed semantic RPC as unavailable instead of complete empty coverage', async () => {

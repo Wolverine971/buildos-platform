@@ -868,7 +868,8 @@ describe('agentic chat worker v1 contract fixtures', () => {
 			timeout_post_start: 'permanent',
 			cancelled: 'cancelled',
 			uncertain_external_commit: 'uncertain_external_commit',
-			unknown: 'permanent'
+			unknown: 'permanent',
+			worker_shutdown: 'transient_safe'
 		} as const;
 
 		expect(AGENTIC_CHAT_RECOVERY_FAILURE_CLASSES_V1).toEqual(Object.keys(expected));
@@ -928,6 +929,75 @@ describe('agentic chat worker v1 contract fixtures', () => {
 				effectCount: 1
 			})
 		).toMatchObject({ decision: 'finalize_failed', retryExhausted: false });
+	});
+
+	it('replays a worker_shutdown turn at once only while nothing it did is durable', () => {
+		const startedNoEffects = {
+			currentStatus: 'running' as const,
+			currentGeneration: 1,
+			requestedGeneration: 1,
+			failureClass: 'worker_shutdown' as const,
+			cancelRequested: false,
+			executionStarted: true,
+			mutationReserved: false,
+			irreversibleBoundaryCrossed: false,
+			effectCount: 0,
+			blockingEffectCount: 0,
+			queueAttempts: 0,
+			queueMaxAttempts: 3,
+			queueResidenceExpired: false
+		};
+
+		// Unlike every other class, a started turn may replay.
+		expect(decideAgenticChatRecoveryV1(startedNoEffects)).toEqual({
+			decision: 'retry',
+			failureCode: 'worker_shutdown'
+		});
+		expect(
+			decideAgenticChatRecoveryV1({ ...startedNoEffects, executionStarted: false })
+		).toEqual({ decision: 'retry', failureCode: 'worker_shutdown' });
+		// Durable output keeps the timeout handling used before.
+		for (const blocked of [
+			{ effectCount: 1 },
+			{ mutationReserved: true },
+			{ irreversibleBoundaryCrossed: true },
+			{ shutdownReplayBlocked: true },
+			{ queueAttempts: 2 }
+		]) {
+			expect(decideAgenticChatRecoveryV1({ ...startedNoEffects, ...blocked })).toMatchObject({
+				decision: 'finalize_failed',
+				failureCode: 'timeout_post_start'
+			});
+		}
+		expect(
+			decideAgenticChatRecoveryV1({
+				...startedNoEffects,
+				effectCount: 1,
+				blockingEffectCount: 1
+			})
+		).toEqual({
+			decision: 'finalize_failed',
+			failureCode: 'uncertain_external_commit',
+			retryExhausted: false
+		});
+		expect(
+			decideAgenticChatRecoveryV1({ ...startedNoEffects, queueResidenceExpired: true })
+		).toMatchObject({ decision: 'finalize_failed', failureCode: 'stale_context' });
+		expect(decideAgenticChatRecoveryV1({ ...startedNoEffects, cancelRequested: true })).toEqual(
+			{ decision: 'finalize_cancelled', failureCode: 'cancelled' }
+		);
+		// Pre-start and blocked by attempts: the existing pre-start timeout rules.
+		expect(
+			decideAgenticChatRecoveryV1({
+				...startedNoEffects,
+				executionStarted: false,
+				queueAttempts: 2
+			})
+		).toEqual({
+			decision: 'finalize_failed',
+			failureCode: 'timeout_pre_start',
+			retryExhausted: true
+		});
 	});
 
 	it('limits pre-start timeout retry and fails closed for stale, unknown, and exhausted work', () => {

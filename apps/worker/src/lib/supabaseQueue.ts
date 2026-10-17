@@ -7,6 +7,7 @@ import { ensureQueueCorrelationMetadata, getQueueCorrelationId } from './queueCo
 import { classifyQueueError } from './queueErrors';
 import { supabase } from './supabase';
 import { resolveDefaultQueueDrainTimeout } from '../config/shutdownBudget';
+import { QueueShutdownAbortError, isQueueShutdownAbort } from './queueShutdown';
 
 type QueueJob = Database['public']['Tables']['queue_jobs']['Row'];
 type ClaimedQueueJob = QueueJob & { processing_token?: string | null };
@@ -82,6 +83,8 @@ export type QueueCapacitySnapshot = {
 	draining: boolean;
 };
 
+export { QueueShutdownAbortError, isQueueShutdownAbort };
+
 export function resolveQueueHeartbeatInterval(stalledTimeoutMs: number): number {
 	const finiteTimeout = Number.isFinite(stalledTimeoutMs) ? stalledTimeoutMs : 300_000;
 	return Math.max(5_000, Math.min(60_000, Math.floor(finiteTimeout / 3)));
@@ -124,6 +127,8 @@ export class SupabaseQueue {
 	private inFlightBatch: Promise<void> | null = null;
 	private inFlightJobTypes: string[] = [];
 	private drainTimeout: number;
+	/** After the drain window aborts survivors, how long their cleanup may still run. */
+	private readonly abortGraceMs: number;
 	private stopping: Promise<void> | null = null;
 
 	// One AbortController per in-flight job so timeout/shutdown can actually
@@ -137,6 +142,13 @@ export class SupabaseQueue {
 		batchSize?: number;
 		stalledTimeout?: number;
 		drainTimeout?: number;
+		/**
+		 * Opt-in: after the drain window ends and survivors are aborted, keep
+		 * awaiting them this long so their abort handling (a recovery RPC, a
+		 * requeue) lands before `stop()` resolves and the caller tears down the
+		 * services that handling needs. 0 (default) returns at the abort.
+		 */
+		abortGraceMs?: number;
 		/** Disable when a processor owns a stricter domain-specific recovery loop. */
 		genericStalledRecovery?: boolean;
 	}) {
@@ -161,6 +173,11 @@ export class SupabaseQueue {
 		this.drainTimeout =
 			options?.drainTimeout ??
 			resolveDefaultQueueDrainTimeout(process.env.QUEUE_DRAIN_TIMEOUT_MS);
+		const abortGraceMs = options?.abortGraceMs ?? 0;
+		if (!Number.isSafeInteger(abortGraceMs) || abortGraceMs < 0) {
+			throw new Error('abortGraceMs must be a nonnegative safe integer');
+		}
+		this.abortGraceMs = abortGraceMs;
 	}
 
 	/**
@@ -392,41 +409,56 @@ export class SupabaseQueue {
 			console.log(
 				`🛑 Queue stopping — draining in-flight jobs (timeout ${this.drainTimeout}ms)`
 			);
-			const inFlight = this.waitForInFlightWork();
+			const drained = await this.settleInFlightWithin(this.drainTimeout);
 
-			let timer: NodeJS.Timeout | null = null;
-			const timedOut = Symbol('drain-timeout');
-			const timeoutPromise = new Promise<typeof timedOut>((resolve) => {
-				timer = setTimeout(() => resolve(timedOut), this.drainTimeout);
-			});
-
-			try {
-				const outcome = await Promise.race([
-					inFlight.then(() => 'drained' as const),
-					timeoutPromise
-				]);
-
-				if (outcome === timedOut) {
-					const stillRunning = this.inFlightJobTypes.join(', ') || 'unknown';
-					console.warn(
-						`⚠️ Queue drain timed out after ${this.drainTimeout}ms; still running: ${stillRunning}. Aborting in-flight jobs.`
-					);
-					// Signal survivors to stop before SIGKILL lands — gives
-					// processors a chance to skip further domain writes.
-					for (const controller of this.activeJobControllers) {
-						controller.abort(new Error('Queue shutdown: drain timeout reached'));
+			if (!drained) {
+				const stillRunning = this.inFlightJobTypes.join(', ') || 'unknown';
+				console.warn(
+					`⚠️ Queue drain timed out after ${this.drainTimeout}ms; still running: ${stillRunning}. Aborting in-flight jobs.`
+				);
+				// Signal survivors to stop before SIGKILL lands — gives
+				// processors a chance to skip further domain writes.
+				for (const controller of this.activeJobControllers) {
+					controller.abort(new QueueShutdownAbortError());
+				}
+				if (this.abortGraceMs > 0) {
+					// The abort only starts each survivor's handoff. Wait for it, so
+					// the caller cannot tear down what that handoff still needs.
+					const cleanedUp = await this.settleInFlightWithin(this.abortGraceMs);
+					if (cleanedUp) {
+						console.log('✅ Queue aborted jobs finished their shutdown handoff');
+					} else {
+						console.warn(
+							`⚠️ Queue aborted jobs still running after ${this.abortGraceMs}ms grace: ${this.inFlightJobTypes.join(', ') || 'unknown'}`
+						);
 					}
-				} else {
-					console.log('✅ Queue drained in-flight jobs');
 				}
-			} finally {
-				if (timer) {
-					clearTimeout(timer);
-				}
+			} else {
+				console.log('✅ Queue drained in-flight jobs');
 			}
 		}
 
 		console.log('🛑 Queue processor stopped');
+	}
+
+	/** True when every claimed job settled within `timeoutMs`. */
+	private async settleInFlightWithin(timeoutMs: number): Promise<boolean> {
+		let timer: NodeJS.Timeout | null = null;
+		const timedOut = Symbol('drain-timeout');
+		const timeoutPromise = new Promise<typeof timedOut>((resolve) => {
+			timer = setTimeout(() => resolve(timedOut), timeoutMs);
+		});
+		try {
+			const outcome = await Promise.race([
+				this.waitForInFlightWork().then(() => 'drained' as const),
+				timeoutPromise
+			]);
+			return outcome !== timedOut;
+		} finally {
+			if (timer) {
+				clearTimeout(timer);
+			}
+		}
 	}
 
 	private async waitForInFlightWork(): Promise<void> {

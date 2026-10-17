@@ -4,7 +4,11 @@
 // and reclaimability boundary.
 import { deferred } from './helpers/deferred';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
+import {
+	QueueShutdownAbortError,
+	SupabaseQueue,
+	type ProcessingJob
+} from '../src/lib/supabaseQueue';
 import { supabase } from '../src/lib/supabase';
 
 const { rpcMock } = vi.hoisted(() => ({
@@ -140,6 +144,7 @@ describe('SupabaseQueue.stop() drain', () => {
 		await expect(aborted.promise).resolves.toMatchObject({
 			message: 'Queue shutdown: drain timeout reached'
 		});
+		await expect(aborted.promise).resolves.toBeInstanceOf(QueueShutdownAbortError);
 		expect(queue.getHealth()).toMatchObject({
 			healthy: true,
 			reason: 'draining',
@@ -157,6 +162,68 @@ describe('SupabaseQueue.stop() drain', () => {
 
 		release.resolve();
 		await vi.waitFor(() => expect(queue.getHealth().processingBatch).toBe(false));
+	});
+
+	it("awaits an aborted job's shutdown handoff within abortGraceMs before resolving", async () => {
+		const job = claimedChatJob();
+		rpcMock.mockImplementation(async (name) => {
+			if (name === 'claim_pending_jobs') {
+				const first = !rpcMock.mock.calls.slice(0, -1).some(([n]) => n === name);
+				return { data: first ? [job] : [], error: null } as never;
+			}
+			return { data: true, error: null } as never;
+		});
+		const started = deferred<void>();
+		const order: string[] = [];
+		const queue = new SupabaseQueue({
+			batchSize: 1,
+			pollInterval: 60_000,
+			drainTimeout: 20,
+			abortGraceMs: 5_000,
+			genericStalledRecovery: false
+		});
+		queue.process<Record<string, never>>(
+			'agentic_chat_turn',
+			async (processingJob: ProcessingJob<Record<string, never>>) => {
+				started.resolve();
+				await new Promise<void>((resolve) =>
+					processingJob.signal.addEventListener('abort', () => resolve(), { once: true })
+				);
+				expect(processingJob.signal.reason).toBeInstanceOf(QueueShutdownAbortError);
+				// The recovery RPC the handoff makes.
+				await new Promise((resolve) => setTimeout(resolve, 40));
+				order.push('handoff');
+			},
+			{ queueLifecycle: 'processor_managed', workerTimeoutMs: 60_000 }
+		);
+
+		await queue.start();
+		await started.promise;
+		await queue.stop();
+		order.push('stopped');
+
+		expect(order).toEqual(['handoff', 'stopped']);
+		expect(queue.getHealth().processingBatch).toBe(false);
+	});
+
+	it('bounds the post-abort wait by abortGraceMs', async () => {
+		const queue = new SupabaseQueue({ drainTimeout: 20, abortGraceMs: 40 });
+		const internals = asInternals(queue);
+		internals.inFlightJobTypes = ['agentic_chat_turn'];
+		internals.inFlightBatch = new Promise<void>(() => {});
+
+		const start = Date.now();
+		await queue.stop();
+		const elapsed = Date.now() - start;
+
+		expect(elapsed).toBeGreaterThanOrEqual(55);
+		expect(elapsed).toBeLessThan(1000);
+	});
+
+	it('rejects a negative abort grace', () => {
+		expect(() => new SupabaseQueue({ abortGraceMs: -1 })).toThrow(
+			'abortGraceMs must be a nonnegative safe integer'
+		);
 	});
 });
 

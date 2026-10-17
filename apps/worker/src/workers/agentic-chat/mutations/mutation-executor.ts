@@ -31,9 +31,38 @@ export type AgenticChatMutatingToolPortV1 = {
 		providerToolCallId: string;
 		downstreamIdempotencySupported: boolean;
 		executionInput: AgenticChatWorkerExecutionInputV1;
+		/**
+		 * Turn cancellation. Adapters check it only before dispatch: a write that
+		 * has been sent is never abandoned because the user pressed Stop.
+		 */
 		signal: AbortSignal;
+		/**
+		 * Aborts when this attempt's write deadline passes. Adapters pass it to the
+		 * network calls of the write so a stuck request is cancelled, and treat any
+		 * outcome they see after it fired as uncertain unless they can prove that
+		 * nothing was sent. Absent only when an adapter is called directly.
+		 */
+		writeSignal?: AbortSignal;
 	}): Promise<JsonObject>;
 };
+
+/**
+ * Deadline for one adapter attempt. Across the 238 chat writes that finished in
+ * production through 2026-10-17, the slowest success took 2.1 s (p99 about
+ * 1.9 s); the one outlier, an update_onto_document in turn a5d3e7a2, hung 125 s
+ * and left the user on "Thinking..." for 3 m 20 s. 20 s is roughly ten times
+ * the slowest real write, so it fires only on a stuck request. Reads get 30 s
+ * (`AGENTIC_CHAT_READ_TOOL_TIMEOUT_MS`) because they include web and search
+ * work; a write is a few single-row database calls.
+ */
+export const AGENTIC_CHAT_WRITE_DEADLINE_MS = 20_000;
+
+/**
+ * After the deadline fires, the adapter's database requests are cancelled, so a
+ * deadline-aware adapter settles within milliseconds. This window lets it
+ * report a receipt that raced the deadline, or proof that nothing was sent.
+ */
+export const AGENTIC_CHAT_WRITE_DEADLINE_SETTLE_MS = 2_000;
 
 /**
  * One critical-path span inside the irreversible effect lifecycle. Identifiers
@@ -72,16 +101,24 @@ export class AgenticChatMutationAdapterError extends Error {
 	 * uncertain outcome.
 	 */
 	readonly retryable: boolean;
+	/**
+	 * A known failure the adapter proved sent no write request, even though its
+	 * write deadline had already fired. Only these known failures survive the
+	 * deadline; any other outcome seen after it stays uncertain.
+	 */
+	readonly provenNotDispatched: boolean;
 
 	constructor(
 		readonly disposition: 'known_failed' | 'outcome_uncertain',
 		readonly failureCode: string,
 		message: string,
-		options: { retryable?: boolean } = {}
+		options: { retryable?: boolean; provenNotDispatched?: boolean } = {}
 	) {
 		super(message);
 		this.name = 'AgenticChatMutationAdapterError';
 		this.retryable = disposition === 'known_failed' && options.retryable === true;
+		this.provenNotDispatched =
+			disposition === 'known_failed' && options.provenNotDispatched === true;
 	}
 }
 
@@ -110,6 +147,8 @@ export class AgenticChatEffectExecutionError extends Error {
 export class AgenticChatMutationExecutor {
 	private readonly maximumAdapterAttempts: number;
 	private readonly rolledBackRetryDelayMs: (retry: number) => number;
+	private readonly writeDeadlineMs: number;
+	private readonly writeDeadlineSettleMs: number;
 
 	constructor(
 		private readonly ports: {
@@ -123,6 +162,8 @@ export class AgenticChatMutationExecutor {
 			maximumAdapterAttempts?: number;
 			/** Wait before retry N (1-based) of a rolled-back write. */
 			rolledBackRetryDelayMs?: (retry: number) => number;
+			writeDeadlineMs?: number;
+			writeDeadlineSettleMs?: number;
 		} = {}
 	) {
 		this.rolledBackRetryDelayMs =
@@ -134,6 +175,17 @@ export class AgenticChatMutationExecutor {
 			this.maximumAdapterAttempts > 8
 		) {
 			throw new Error('maximumAdapterAttempts must be between 1 and 8');
+		}
+		this.writeDeadlineMs = options.writeDeadlineMs ?? AGENTIC_CHAT_WRITE_DEADLINE_MS;
+		this.writeDeadlineSettleMs =
+			options.writeDeadlineSettleMs ?? AGENTIC_CHAT_WRITE_DEADLINE_SETTLE_MS;
+		for (const [name, value] of [
+			['writeDeadlineMs', this.writeDeadlineMs],
+			['writeDeadlineSettleMs', this.writeDeadlineSettleMs]
+		] as const) {
+			if (!Number.isSafeInteger(value) || value < 1) {
+				throw new Error(`${name} must be a positive integer`);
+			}
 		}
 	}
 
@@ -281,20 +333,24 @@ export class AgenticChatMutationExecutor {
 				throw preserveAmbiguousOutcome(firstAmbiguousError, stale);
 			}
 			try {
-				return await this.ports.mutatingTool.execute({
-					effectId: input.effectId,
-					downstreamIdempotencyKey: input.downstreamIdempotencyKey,
-					toolName: input.step.toolName,
-					operationName: input.step.operationName,
-					arguments: input.step.arguments,
-					providerToolCallId: input.step.providerToolCallId,
-					downstreamIdempotencySupported: input.step.downstreamIdempotencySupported,
-					executionInput: input.executionInput,
-					// Once an attempt may have committed, cancellation can no longer
-					// prove that no write happened. Recovery must query/replay with the
-					// stable key and independently own its bounded completion.
-					signal: sawAmbiguousAttempt ? recoverySignal : input.signal
-				});
+				// Every attempt, recovery included, gets its own write deadline.
+				return await this.withWriteDeadline(input.step.toolName, (writeSignal) =>
+					this.ports.mutatingTool.execute({
+						effectId: input.effectId,
+						downstreamIdempotencyKey: input.downstreamIdempotencyKey,
+						toolName: input.step.toolName,
+						operationName: input.step.operationName,
+						arguments: input.step.arguments,
+						providerToolCallId: input.step.providerToolCallId,
+						downstreamIdempotencySupported: input.step.downstreamIdempotencySupported,
+						executionInput: input.executionInput,
+						// Once an attempt may have committed, cancellation can no longer
+						// prove that no write happened. Recovery must query/replay with the
+						// stable key and independently own its bounded completion.
+						signal: sawAmbiguousAttempt ? recoverySignal : input.signal,
+						writeSignal
+					})
+				);
 			} catch (error) {
 				lastError = error;
 				if (
@@ -327,6 +383,52 @@ export class AgenticChatMutationExecutor {
 			}
 		}
 		throw lastError ?? new Error('Mutating adapter did not produce a receipt');
+	}
+
+	/**
+	 * Run one adapter attempt under the write deadline. Before it fires, the
+	 * adapter's outcome stands as before. Once it fires, the attempt's requests
+	 * are cancelled through `writeSignal` and the adapter gets a short window to
+	 * settle: a receipt is kept (the write landed), an uncertain failure is kept,
+	 * and a known failure is kept only when the adapter proved nothing was sent.
+	 * Anything else, including silence, is an uncertain timeout: a request that
+	 * was sent may still commit after the client stops waiting for it.
+	 */
+	private async withWriteDeadline(
+		toolName: string,
+		run: (writeSignal: AbortSignal) => Promise<JsonObject>
+	): Promise<JsonObject> {
+		const deadline = new AbortController();
+		const attempt = settle(Promise.resolve().then(() => run(deadline.signal)));
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const expired = new Promise<null>((resolve) => {
+			timer = setTimeout(() => resolve(null), this.writeDeadlineMs);
+		});
+		let early: PromiseSettledResult<JsonObject> | null;
+		try {
+			early = await Promise.race([attempt, expired]);
+		} finally {
+			clearTimeout(timer);
+		}
+		if (early) return unwrapSettled(early);
+
+		const timeout = new AgenticChatMutationAdapterError(
+			'outcome_uncertain',
+			'mutation_write_timeout',
+			`${toolName} did not finish within its ${this.writeDeadlineMs} ms write deadline, so it may or may not have been saved`
+		);
+		deadline.abort(timeout);
+		const late = await settledWithin(attempt, this.writeDeadlineSettleMs);
+		if (!late) throw timeout;
+		if (late.status === 'fulfilled') return late.value;
+		const error = late.reason;
+		if (
+			error instanceof AgenticChatMutationAdapterError &&
+			(error.disposition === 'outcome_uncertain' || error.provenNotDispatched)
+		) {
+			throw error;
+		}
+		throw timeout;
 	}
 
 	private async span<T>(
@@ -423,6 +525,36 @@ function mutationFailure(error: unknown): {
 		message: error instanceof Error ? error.message : String(error),
 		retryable: false
 	};
+}
+
+function settle<T>(promise: Promise<T>): Promise<PromiseSettledResult<T>> {
+	return promise.then(
+		(value): PromiseSettledResult<T> => ({ status: 'fulfilled', value }),
+		(reason: unknown): PromiseSettledResult<T> => ({ status: 'rejected', reason })
+	);
+}
+
+function unwrapSettled<T>(result: PromiseSettledResult<T>): T {
+	if (result.status === 'fulfilled') return result.value;
+	throw result.reason;
+}
+
+/** The settled attempt, or null when it is still running after `ms`. */
+async function settledWithin<T>(
+	attempt: Promise<PromiseSettledResult<T>>,
+	ms: number
+): Promise<PromiseSettledResult<T> | null> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			attempt,
+			new Promise<null>((resolve) => {
+				timer = setTimeout(() => resolve(null), ms);
+			})
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
 }
 
 /** Two retries: a deadlock victim already waited deadlock_timeout (1 s) per attempt. */

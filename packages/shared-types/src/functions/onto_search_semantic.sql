@@ -1,6 +1,49 @@
 -- packages/shared-types/src/functions/onto_search_semantic.sql
 -- Source of truth for the semantic (pgvector) discovery search RPC used by explore_project.
--- Mirrors the latest migration that replaces it (20260929150000_chat_reads_exclude_archived.sql) — update both together.
+-- Mirrors the latest migration that replaces it (20261017180000_search_rpcs_project_scope.sql) — update both together.
+-- That migration also creates the server-only large-scope helper it calls, mirrored first here.
+
+CREATE OR REPLACE FUNCTION private.onto_search_semantic_index_candidates(
+	p_query_embedding vector,
+	p_project_ids uuid[],
+	p_types text[],
+	p_limit integer
+)
+ RETURNS TABLE(embedding_id uuid, distance double precision)
+ LANGUAGE plpgsql
+ VOLATILE
+ SET search_path TO 'public', 'extensions', 'pg_temp'
+ -- The only sort-free plan for this ORDER BY is the HNSW walk. Without this, a generic
+ -- plan's row estimate for ANY(p_project_ids) picks "detoast every in-scope vector, then
+ -- sort", which is the cost this path exists to avoid.
+ SET enable_sort TO 'off'
+AS $function$
+DECLARE
+	v_prev_ef_search text := coalesce(current_setting('hnsw.ef_search', true), '40');
+	v_prev_iterative_scan text := coalesce(current_setting('hnsw.iterative_scan', true), 'off');
+	v_prev_max_scan_tuples text := coalesce(current_setting('hnsw.max_scan_tuples', true), '20000');
+BEGIN
+	-- Iterative scan (pgvector >= 0.8): when the project/type filter rejects chunks, keep
+	-- walking the graph instead of returning fewer than p_limit; max_scan_tuples bounds it.
+	-- relaxed_order may return candidates slightly out of distance order; the caller
+	-- re-ranks by similarity. Set at run time, not as function SET clauses: hosted roles
+	-- may not attach extension (placeholder) parameters to a function definition.
+	PERFORM set_config('hnsw.ef_search', '200', true);
+	PERFORM set_config('hnsw.iterative_scan', 'relaxed_order', true);
+	PERFORM set_config('hnsw.max_scan_tuples', '20000', true);
+	RETURN QUERY
+	SELECT e.id, e.embedding <=> p_query_embedding
+	FROM public.onto_embeddings e
+	WHERE e.project_id = ANY (p_project_ids)
+		AND (p_types IS NULL OR e.entity_type = ANY (p_types))
+	ORDER BY e.embedding <=> p_query_embedding
+	LIMIT p_limit;
+	-- Restore so the rest of the caller's transaction keeps its own settings.
+	PERFORM set_config('hnsw.ef_search', v_prev_ef_search, true);
+	PERFORM set_config('hnsw.iterative_scan', v_prev_iterative_scan, true);
+	PERFORM set_config('hnsw.max_scan_tuples', v_prev_max_scan_tuples, true);
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.onto_search_semantic(p_actor_id uuid, p_query_embedding vector, p_project_id uuid DEFAULT NULL::uuid, p_types text[] DEFAULT NULL::text[], p_limit integer DEFAULT 20, p_min_similarity double precision DEFAULT 0.15)
  RETURNS TABLE(type text, id uuid, project_id uuid, project_name text, title text, snippet text, score double precision, state_key text, type_key text, chunk_anchor text)
@@ -12,6 +55,17 @@ DECLARE
 	v_limit integer := least(greatest(coalesce(p_limit, 20), 1), 50);
 	v_claims_text text;
 	v_jwt_role text;
+	-- Ranked chunks handed to the live-record joins and similarity floor below. Same depth
+	-- as before; it now counts only chunks the caller can read.
+	v_candidate_limit constant integer := 400;
+	-- Exact ranking reads every in-scope vector (~3.5 buffers each); the HNSW walk reads
+	-- graph nodes until 400 in-scope chunks pass, ~3.1k buffers / selectivity on prod's
+	-- 2026-10-17 data, and its 35 MB index is rarely cache-warm. Exact wins up to here.
+	v_exact_scope_max_rows constant integer := 5000;
+	v_project_ids uuid[];
+	v_scope_rows integer;
+	v_candidate_ids uuid[];
+	v_candidate_distances double precision[];
 BEGIN
 	IF p_actor_id IS NULL OR p_query_embedding IS NULL THEN
 		RETURN;
@@ -44,28 +98,86 @@ BEGIN
 			USING ERRCODE = '42501';
 	END IF;
 
-	-- The HNSW index scan returns candidates in distance order; widen its
-	-- horizon so membership/type filters applied after the scan cannot starve
-	-- results.
-	PERFORM set_config('hnsw.ef_search', '200', true);
+	-- 1. Readable projects first: the accessible CTE's owner/member rule, plus the
+	--    archived/merged project rule.
+	SELECT coalesce(array_agg(p.id), ARRAY[]::uuid[])
+	INTO v_project_ids
+	FROM public.onto_projects p
+	WHERE p.deleted_at IS NULL
+		AND (p_project_id IS NULL OR p.id = p_project_id)
+		-- Same archived/merged rule as onto_search_entities' accessible CTE.
+		AND (p.archived_at IS NULL
+			OR (p_project_id IS NOT NULL AND p.merged_into_project_id IS NULL))
+		AND (
+			p.created_by = p_actor_id
+			OR EXISTS (
+				SELECT 1
+				FROM public.onto_project_members m
+				WHERE m.project_id = p.id
+					AND m.actor_id = p_actor_id
+					AND m.removed_at IS NULL
+					AND m.access IN ('read', 'write', 'admin')
+			)
+		);
 
+	IF cardinality(v_project_ids) = 0 THEN
+		RETURN;
+	END IF;
+
+	-- 2. Size the scope (index-only, stops counting past the exact-ranking limit).
+	SELECT count(*)::integer
+	INTO v_scope_rows
+	FROM (
+		SELECT 1
+		FROM public.onto_embeddings e
+		WHERE e.project_id = ANY (v_project_ids)
+			AND (p_types IS NULL OR e.entity_type = ANY (p_types))
+		LIMIT v_exact_scope_max_rows + 1
+	) AS scope_rows;
+
+	IF v_scope_rows = 0 THEN
+		RETURN;
+	END IF;
+
+	-- 3. Nearest in-scope chunks.
+	IF v_scope_rows <= v_exact_scope_max_rows THEN
+		-- Exact: distance for every in-scope chunk, ordered outside the MATERIALIZED CTE so
+		-- the planner cannot substitute the global HNSW index (whose ef_search horizon
+		-- truncated filtered results, B12).
+		WITH scoped AS MATERIALIZED (
+			SELECT e.id AS embedding_id, e.embedding <=> p_query_embedding AS distance
+			FROM public.onto_embeddings e
+			WHERE e.project_id = ANY (v_project_ids)
+				AND (p_types IS NULL OR e.entity_type = ANY (p_types))
+		),
+		nearest AS (
+			SELECT s.embedding_id, s.distance
+			FROM scoped s
+			ORDER BY s.distance
+			LIMIT v_candidate_limit
+		)
+		SELECT array_agg(n.embedding_id), array_agg(n.distance)
+		INTO v_candidate_ids, v_candidate_distances
+		FROM nearest n;
+	ELSE
+		SELECT array_agg(c.embedding_id), array_agg(c.distance)
+		INTO v_candidate_ids, v_candidate_distances
+		FROM private.onto_search_semantic_index_candidates(
+			p_query_embedding, v_project_ids, p_types, v_candidate_limit
+		) AS c;
+	END IF;
+
+	IF v_candidate_ids IS NULL THEN
+		RETURN;
+	END IF;
+
+	-- 4. Unchanged from the live definition below the candidates CTE.
 	RETURN QUERY
 	WITH accessible AS (
 		SELECT p.id AS accessible_project_id, p.name AS accessible_project_name
 		FROM public.onto_projects p
-		WHERE p.deleted_at IS NULL
-			AND (p_project_id IS NULL OR p.id = p_project_id)
-			AND (
-				p.created_by = p_actor_id
-				OR EXISTS (
-					SELECT 1
-					FROM public.onto_project_members m
-					WHERE m.project_id = p.id
-						AND m.actor_id = p_actor_id
-						AND m.removed_at IS NULL
-						AND m.access IN ('read', 'write', 'admin')
-				)
-			)
+		WHERE p.id = ANY (v_project_ids)
+			AND p.deleted_at IS NULL
 	),
 	candidates AS (
 		SELECT
@@ -74,10 +186,9 @@ BEGIN
 			e.project_id AS candidate_project_id,
 			e.chunk_anchor,
 			e.content_text,
-			1 - (e.embedding <=> p_query_embedding) AS similarity
-		FROM public.onto_embeddings e
-		ORDER BY e.embedding <=> p_query_embedding
-		LIMIT 400
+			1 - c.distance AS similarity
+		FROM unnest(v_candidate_ids, v_candidate_distances) AS c(embedding_id, distance)
+		JOIN public.onto_embeddings e ON e.id = c.embedding_id
 	),
 	matches AS (
 		SELECT DISTINCT ON (c.entity_type, c.entity_id)

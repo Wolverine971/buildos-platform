@@ -412,18 +412,20 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 		expect(() =>
 			loadAgenticChatConfig(configuredEnvironment({ CHAT_CONCURRENCY: '3' }))
 		).toThrow('cannot exceed the reviewed bound of 2');
+		// The dedicated chat worker spends Railway's drainingSeconds window
+		// (host/shutdown-budget.ts), not the general worker's 22 s budget.
+		expect(
+			loadAgenticChatConfig({
+				...DEDICATED_PROVIDER_ENV,
+				CHAT_DRAIN_TIMEOUT_MS: '67000'
+			}).consumer.drainTimeoutMs
+		).toBe(67_000);
 		expect(() =>
 			loadAgenticChatConfig({
 				...DEDICATED_PROVIDER_ENV,
-				CHAT_DRAIN_TIMEOUT_MS: '25000'
+				CHAT_DRAIN_TIMEOUT_MS: '67001'
 			})
-		).toThrow('cannot exceed 22000ms process budget');
-		expect(() =>
-			loadAgenticChatConfig({
-				...DEDICATED_PROVIDER_ENV,
-				CHAT_DRAIN_TIMEOUT_MS: '22001'
-			})
-		).toThrow('cannot exceed 22000ms process budget');
+		).toThrow('cannot exceed 67000ms process budget');
 		expect(() => loadAgenticChatConfig({})).toThrow('PRIVATE_OPENROUTER_API_KEY');
 		expect(() =>
 			loadAgenticChatConfig({

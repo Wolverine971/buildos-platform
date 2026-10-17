@@ -54,8 +54,16 @@ const WORKSPACE_TARGETED_SEMANTIC_MIN_SIMILARITY = 0.3;
 // observed production false-positive score (0.046) without weakening project recall.
 const WORKSPACE_TARGETED_LEXICAL_MIN_SCORE = 0.05;
 // Semantic recall is optional. Bound embedding + vector lookup together so a
-// degraded provider cannot consume the entire 30s read-tool deadline.
-const SEMANTIC_SEARCH_TIMEOUT_MS = 5_000;
+// degraded provider cannot consume the entire 30s read-tool deadline. The clock
+// starts with the embedding, which overlaps the access checks.
+// Project scope: since 20261017180000 the vector read ranks only that project's
+// chunks; on prod data (2026-10-17) it took 0.57 s with a cold cache and 9 ms warm,
+// and a warm end-to-end search, embedding included, took 0.4-0.6 s. 2.5 s keeps
+// 2x headroom over the cold path.
+const PROJECT_SEMANTIC_SEARCH_TIMEOUT_MS = 2_500;
+// Workspace scope reads every readable chunk; the largest workspace reads ~4x a
+// project's pages, so its cold read is not yet proven to fit a shorter budget.
+const WORKSPACE_SEMANTIC_SEARCH_TIMEOUT_MS = 5_000;
 
 type SemanticSearchResult = {
 	status: 'complete' | 'timed_out' | 'unavailable' | 'not_configured' | 'not_requested';
@@ -210,7 +218,11 @@ async function searchEventsForQuery(input: {
 
 async function searchSemanticForQuery(input: {
 	context: AgenticChatSharedReadContextV1;
-	actorId: string;
+	/**
+	 * Settles when the caller's access checks do. The embedding needs only the
+	 * query text, so it starts at once; the vector read waits for this.
+	 */
+	authorizedActorId: Promise<string>;
 	projectId: string | null;
 	query: string;
 	types: string[] | null;
@@ -219,13 +231,19 @@ async function searchSemanticForQuery(input: {
 	const parentSignal = input.context.signal;
 	parentSignal?.throwIfAborted();
 	if (!input.context.embeddings) return { status: 'not_configured', rows: [] };
+	const budgetMs = input.projectId
+		? PROJECT_SEMANTIC_SEARCH_TIMEOUT_MS
+		: WORKSPACE_SEMANTIC_SEARCH_TIMEOUT_MS;
 	const controller = new AbortController();
-	const timeoutError = new Error('Semantic search exceeded its 5000ms budget');
+	const timeoutError = new Error(`Semantic search exceeded its ${budgetMs}ms budget`);
 	const onParentAbort = () => controller.abort(parentSignal!.reason);
 	parentSignal?.addEventListener('abort', onParentAbort, { once: true });
-	const timer = setTimeout(() => controller.abort(timeoutError), SEMANTIC_SEARCH_TIMEOUT_MS);
+	const timer = setTimeout(() => controller.abort(timeoutError), budgetMs);
 	const signal = controller.signal;
 	let onAbort: () => void = () => {};
+	// Access failure belongs to the caller, which rethrows it; this channel only
+	// cancels its embedding and settles quietly.
+	let accessDenied = false;
 	try {
 		const aborted = new Promise<never>((_resolve, reject) => {
 			onAbort = () => reject(signal.reason);
@@ -234,14 +252,20 @@ async function searchSemanticForQuery(input: {
 		const rows = await Promise.race([
 			aborted,
 			(async () => {
-				const queryEmbedding = await input.context.embeddings!.embedQuery(input.query, {
-					signal
+				const embedding = input.context.embeddings!.embedQuery(input.query, { signal });
+				// Awaited below unless access fails first; never an unhandled rejection.
+				embedding.catch(() => undefined);
+				const actorId = await input.authorizedActorId.catch((error: unknown) => {
+					accessDenied = true;
+					controller.abort(error);
+					throw error;
 				});
+				const queryEmbedding = await embedding;
 				// A custom port may ignore cancellation. Never dispatch a late database read.
 				signal.throwIfAborted();
 				const { data, error } = await (input.context.client as any)
 					.rpc('onto_search_semantic', {
-						p_actor_id: input.actorId,
+						p_actor_id: actorId,
 						p_query_embedding: formatPgVectorLiteral(queryEmbedding),
 						p_project_id: input.projectId ?? undefined,
 						p_types: input.types && input.types.length > 0 ? input.types : undefined,
@@ -258,6 +282,7 @@ async function searchSemanticForQuery(input: {
 		]);
 		return { status: 'complete', rows };
 	} catch (error) {
+		if (accessDenied) return { status: 'not_requested', rows: [] };
 		// Host cancellation (including the overall read deadline) remains fatal.
 		parentSignal?.throwIfAborted();
 		const status = signal.reason === timeoutError ? 'timed_out' : 'unavailable';
@@ -271,6 +296,29 @@ async function searchSemanticForQuery(input: {
 		signal.removeEventListener('abort', onAbort);
 		parentSignal?.removeEventListener('abort', onParentAbort);
 	}
+}
+
+/** Resolves the actor and, for a project search, proves read access to a live project. */
+async function authorizeOntologySearch(
+	context: AgenticChatSharedReadContextV1,
+	projectId: string | null
+): Promise<string> {
+	const actorId = await context.access.getActorId();
+	context.signal?.throwIfAborted();
+	if (projectId) {
+		await context.access.assertProjectAccess(projectId, 'read');
+		context.signal?.throwIfAborted();
+		const { data: project, error } = await (context.client as any)
+			.from('onto_projects')
+			.select('id')
+			.eq('id', projectId)
+			.is('deleted_at', null)
+			.maybeSingle();
+		if (error) throw new AgenticChatOntologySearchQueryError('project', error);
+		if (!project) throw new AgenticChatOntologySearchProjectNotFoundError();
+	}
+	context.signal?.throwIfAborted();
+	return actorId;
 }
 
 /** Route-compatible ontology search over the injected client and access port. */
@@ -310,29 +358,33 @@ export async function searchOntologyEntities(
 	const limit = rawLimit && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 50) : 50;
 	const candidateLimit = Math.min(50, Math.max(limit, limit * 3));
 	const nowMs = options.now?.() ?? Date.now();
-	const actorId = await context.access.getActorId();
-	context.signal?.throwIfAborted();
-
-	if (projectId) {
-		await context.access.assertProjectAccess(projectId, 'read');
-		context.signal?.throwIfAborted();
-		const { data: project, error } = await (context.client as any)
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle();
-		if (error) throw new AgenticChatOntologySearchQueryError('project', error);
-		if (!project) throw new AgenticChatOntologySearchProjectNotFoundError();
-	}
-	context.signal?.throwIfAborted();
-
 	const shouldSearchRpcTypes = rpcTypes === null || rpcTypes.length > 0;
 	// Also stop the optional channel when a required search branch fails first.
 	const searchController = new AbortController();
 	const searchSignal = context.signal
 		? AbortSignal.any([context.signal, searchController.signal])
 		: searchController.signal;
+
+	// Every database read waits for the access checks. The query embedding needs
+	// only the query text, so the semantic channel starts it now and overlaps
+	// those round trips (audit 2026-10-17 S4).
+	const authorizedActorId = authorizeOntologySearch(context, projectId);
+	const semanticSearch = shouldSearchRpcTypes
+		? searchSemanticForQuery({
+				context: { ...context, signal: searchSignal },
+				authorizedActorId,
+				projectId,
+				query,
+				types: rpcTypes,
+				limit: candidateLimit
+			})
+		: Promise.resolve<SemanticSearchResult>({ status: 'not_requested', rows: [] });
+	// A cancelled turn can reject this channel while the access checks are still
+	// pending; mark it handled now. Promise.all below still observes the outcome,
+	// and on access failure the channel cancels its embedding without a read.
+	semanticSearch.catch(() => undefined);
+	const actorId = await authorizedActorId;
+
 	// Task state never comes from query words (AGENTS.md no-regex rule): no
 	// structured state/bucket argument exists, so tasks rank like any RPC row.
 	const [rpcResults, semantic, eventResults] = await Promise.all([
@@ -352,16 +404,7 @@ export async function searchOntologyEntities(
 					return ((data as OntologySearchRow[] | null) ?? []).filter(Boolean);
 				})()
 			: Promise.resolve([]),
-		shouldSearchRpcTypes
-			? searchSemanticForQuery({
-					context: { ...context, signal: searchSignal },
-					actorId,
-					projectId,
-					query,
-					types: rpcTypes,
-					limit: candidateLimit
-				})
-			: Promise.resolve<SemanticSearchResult>({ status: 'not_requested', rows: [] }),
+		semanticSearch,
 		shouldSearchEvents
 			? searchEventsForQuery({ context, projectId, query, limit: candidateLimit })
 			: Promise.resolve([])
