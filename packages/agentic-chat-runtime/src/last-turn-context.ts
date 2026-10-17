@@ -17,11 +17,14 @@ import {
 } from './loop/request-expectation';
 import { buildCleanupManifest } from './loop/cleanup-manifest';
 import { serializeTurnContractForDeclaration } from './loop/turn-contract';
+import { boundLastTurnContext } from './last-turn-context-budget';
+export {
+	boundLastTurnContext,
+	LAST_TURN_CONTEXT_MAX_CHARS,
+	LAST_TURN_CONTEXT_BUDGET_CHARS
+} from './last-turn-context-budget';
 
 const MAX_CLEANUP_RECALL_CHARS = 24_000;
-// Admission permits a 32 KiB object. Leave room for the database timestamp
-// and keep oversized recall whole in the completion receipt, never clipped.
-const MAX_CONTEXT_WITH_CLEANUP_CHARS = 30_000;
 
 type RecentEntityType = 'project' | 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk';
 
@@ -488,6 +491,11 @@ export function buildLastTurnContinuityHint(
 	if (refs.length > 0) {
 		lines.push(`Entities referenced: ${sanitizeContinuityLine(refs.join('; '))}`);
 	}
+	if (lastTurnContext.entity_references_truncated) {
+		lines.push(
+			'Some prior entity references were omitted for size; retrieve records before assuming this is the complete scope.'
+		);
+	}
 
 	const dataAccessed = Array.isArray(lastTurnContext.data_accessed)
 		? lastTurnContext.data_accessed
@@ -652,12 +660,18 @@ export function buildLastTurnContextDraftV1(
 	if (
 		cleanup &&
 		cleanup.manifest.items.length <= 100 &&
-		JSON.stringify(cleanup).length <= MAX_CLEANUP_RECALL_CHARS &&
-		JSON.stringify({ ...draft, cleanup }).length <= MAX_CONTEXT_WITH_CLEANUP_CHARS
+		JSON.stringify(cleanup).length <= MAX_CLEANUP_RECALL_CHARS
 	) {
 		draft.cleanup = cleanup as unknown as LastTurnContext['cleanup'];
 	}
-	return draft;
+	return (
+		boundLastTurnContext(draft) ?? {
+			summary,
+			entities: {},
+			context_type: effectiveContextType,
+			data_accessed: []
+		}
+	);
 }
 
 /** Legacy-compatible helper for callers that already own a committed timestamp. */

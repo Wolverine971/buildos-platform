@@ -63,7 +63,10 @@ import {
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 import { writePreparedPromptContent } from '$lib/services/agentic-chat-v2/prepared-prompt-store.server';
 import { loadWorkerSkillPreloadLedgerMessage } from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
-import { buildLastTurnContinuityHint } from '$lib/services/agentic-chat-v2/last-turn-context';
+import {
+	boundLastTurnContext,
+	buildLastTurnContinuityHint
+} from '$lib/services/agentic-chat-v2/last-turn-context';
 import { parseJsonRequest } from '$lib/utils/request-validation';
 import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
 import { agenticChatProjectFocusSchema } from '$lib/services/agentic-chat-v2/stream-request';
@@ -91,7 +94,7 @@ const fastAgentPrewarmRequestSchema = z
 		// Same loose shape the turns route accepts. The admission-window path
 		// composes history with the last-turn continuity hint; the prepared
 		// history must carry the same hint or a prepared hit silently drops it.
-		lastTurnContext: z.record(z.string(), z.unknown()).nullish()
+		lastTurnContext: z.record(z.string(), z.unknown()).transform(boundLastTurnContext).nullish()
 	})
 	.strict()
 	.superRefine((value, context) => {

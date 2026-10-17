@@ -348,98 +348,120 @@ describe('POST /api/agent/v2/prewarm', () => {
 
 	// 2026-09-08 (F69): preload metadata is no longer rendered as a system
 	// ledger. Prepared history retains recent messages and last-turn continuity.
-	it('preserves last-turn continuity without appending the retired preload ledger', async () => {
-		const cachedContext = {
-			version: 1,
-			key: 'global:none',
-			invalidation_token: 'global:v1:test',
-			warmed_at: '2026-03-12T00:00:00.000Z',
-			context: {
-				contextType: 'global',
-				entityId: null,
-				projectId: null,
-				projectName: null,
-				focusEntityType: null,
-				focusEntityId: null,
-				focusEntityName: null,
-				data: { summary: 'cached' }
-			}
-		};
-		const session = {
-			id: 'session-1',
-			user_id: 'user-1',
-			context_type: 'global',
-			summary: null,
-			agent_metadata: { fastchat_context_cache: cachedContext }
-		};
-		preparedPromptStoreState.current = {
-			from: vi.fn(() => ({ insert: vi.fn(async () => ({ error: null })) }))
-		};
-		resolveSessionMock.mockResolvedValue({ session });
-		loadRecentMessagesMock.mockResolvedValue([
-			{ role: 'user', content: 'mark the intro call done' }
-		]);
-		const chatMessagesQuery = vi.fn((table: string) => {
-			const rows =
-				table === 'chat_messages'
-					? [
-							{
-								id: 'm1',
-								role: 'user',
-								metadata: {
-									skill_preloaded_id: 'task_management',
-									skill_preload_source: 'operational_intent'
+	it.each([0, 1000])(
+		'preserves continuity and bounds a %i-entity prewarm packet',
+		async (entityCount) => {
+			const cachedContext = {
+				version: 1,
+				key: 'global:none',
+				invalidation_token: 'global:v1:test',
+				warmed_at: '2026-03-12T00:00:00.000Z',
+				context: {
+					contextType: 'global',
+					entityId: null,
+					projectId: null,
+					projectName: null,
+					focusEntityType: null,
+					focusEntityId: null,
+					focusEntityName: null,
+					data: { summary: 'cached' }
+				}
+			};
+			const session = {
+				id: 'session-1',
+				user_id: 'user-1',
+				context_type: 'global',
+				summary: null,
+				agent_metadata: { fastchat_context_cache: cachedContext }
+			};
+			preparedPromptStoreState.current = {
+				from: vi.fn(() => ({ insert: vi.fn(async () => ({ error: null })) }))
+			};
+			resolveSessionMock.mockResolvedValue({ session });
+			loadRecentMessagesMock.mockResolvedValue([
+				{ role: 'user', content: 'mark the intro call done' }
+			]);
+			const chatMessagesQuery = vi.fn((table: string) => {
+				const rows =
+					table === 'chat_messages'
+						? [
+								{
+									id: 'm1',
+									role: 'user',
+									metadata: {
+										skill_preloaded_id: 'task_management',
+										skill_preload_source: 'operational_intent'
+									}
 								}
-							}
-						]
-					: [];
-			const builder: Record<string, unknown> = {};
-			for (const method of ['select', 'eq', 'order', 'limit']) {
-				builder[method] = vi.fn(() => builder);
-			}
-			builder.maybeSingle = vi.fn(async () => ({
-				data: table === 'chat_sessions' ? session : null,
-				error: null
-			}));
-			builder.then = (onFulfilled: (value: { data: unknown[]; error: null }) => unknown) =>
-				Promise.resolve({ data: rows, error: null }).then(onFulfilled);
-			return builder;
-		});
+							]
+						: [];
+				const builder: Record<string, unknown> = {};
+				for (const method of ['select', 'eq', 'order', 'limit']) {
+					builder[method] = vi.fn(() => builder);
+				}
+				builder.maybeSingle = vi.fn(async () => ({
+					data: table === 'chat_sessions' ? session : null,
+					error: null
+				}));
+				builder.then = (
+					onFulfilled: (value: { data: unknown[]; error: null }) => unknown
+				) => Promise.resolve({ data: rows, error: null }).then(onFulfilled);
+				return builder;
+			});
 
-		const response = await POST({
-			request: new Request('http://localhost/api/agent/v2/prewarm', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					context_type: 'global',
-					session_id: 'session-1',
-					prepare_prompt: true,
-					lastTurnContext: {
-						summary: 'Marked the intro call done',
+			const response = await POST({
+				request: new Request('http://localhost/api/agent/v2/prewarm', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
 						context_type: 'global',
-						entities: {},
-						data_accessed: ['update_onto_task']
-					}
-				})
-			}),
-			locals: {
-				safeGetSession: async () => ({ user: { id: 'user-1' } }),
-				supabase: { rpc: mergeRpcMock, from: chatMessagesQuery }
-			}
-		} as any);
+						session_id: 'session-1',
+						prepare_prompt: true,
+						lastTurnContext: {
+							summary: 'Marked the intro call done',
+							context_type: 'global',
+							entities: {
+								tasks: Array.from({ length: entityCount }, (_, i) => ({
+									id: `da000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+									name: `Task ${i} ${'n'.repeat(70)}`,
+									description: 'd'.repeat(140)
+								}))
+							},
+							data_accessed: ['update_onto_task']
+						}
+					})
+				}),
+				locals: {
+					safeGetSession: async () => ({ user: { id: 'user-1' } }),
+					supabase: { rpc: mergeRpcMock, from: chatMessagesQuery }
+				}
+			} as any);
 
-		expect(response.status).toBe(200);
-		expect(composeHistoryMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				continuityHint: expect.stringContaining(
-					'Last turn summary: Marked the intro call done'
-				),
-				history: [
-					expect.objectContaining({ role: 'user', content: 'mark the intro call done' })
-				]
-			})
-		);
-	});
+			expect(response.status).toBe(200);
+			expect(composeHistoryMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					continuityHint: expect.stringContaining(
+						'Last turn summary: Marked the intro call done'
+					),
+					history: [
+						expect.objectContaining({
+							role: 'user',
+							content: 'mark the intro call done'
+						})
+					]
+				})
+			);
+			if (entityCount > 0) {
+				expect(composeHistoryMock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						continuityHint: expect.stringContaining(
+							'Some prior entity references were omitted'
+						)
+					})
+				);
+			}
+		}
+	);
 
 	it('stores bounded project prepared prompt rows with compact focus and section metadata', async () => {
 		const projectId = '11111111-1111-4111-8111-111111111111';

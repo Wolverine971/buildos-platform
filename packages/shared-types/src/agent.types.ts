@@ -48,6 +48,8 @@ export interface LastTurnContext {
 
 	// Compact entity previews mentioned or accessed in last turn
 	entities: LastTurnEntities;
+	/** The packet carries only a subset of the prior turn's entity references. */
+	entity_references_truncated?: boolean;
 
 	// Context type from last interaction
 	context_type: ChatContextType;
