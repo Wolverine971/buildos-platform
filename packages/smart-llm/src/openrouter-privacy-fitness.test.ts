@@ -42,6 +42,10 @@ const OPENROUTER_ALLOWLIST: Record<string, AllowlistEntry> = {
 		policy: 'buildOpenRouterChatCompletionBody',
 		reason: 'Builds every web OpenRouterV2 chat body with the enforcing builder.'
 	},
+	'apps/web/src/lib/services/admin/model-incidents/packet.ts': {
+		policy: null,
+		reason: 'Export text only: curl lines for an engineer to re-send a stored request, whose body already carries the private provider policy. No code calls them.'
+	},
 	'apps/web/src/lib/services/openrouter-v2-service.ts': {
 		policy: null,
 		reason: 'Default base URL only; every request goes through openrouter-v2/client.ts.'

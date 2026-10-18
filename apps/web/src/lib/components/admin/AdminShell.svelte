@@ -29,7 +29,8 @@
 		Activity,
 		Database,
 		Globe,
-		Network
+		Network,
+		Timer
 	} from '$lib/icons/lucide';
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
@@ -236,6 +237,12 @@
 					href: '/admin/errors',
 					icon: AlertTriangle,
 					description: 'Incidents & triage'
+				},
+				{
+					title: 'Model Incidents',
+					href: '/admin/model-incidents',
+					icon: Timer,
+					description: 'Stalled & failed model calls'
 				},
 				{
 					title: 'Security Center',

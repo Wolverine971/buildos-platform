@@ -24,6 +24,8 @@ if (!isHttpUrl(process.env.PUBLIC_SUPABASE_URL)) {
 	process.env.PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
 }
 process.env.PRIVATE_SUPABASE_SERVICE_KEY ||= 'test-service-role-key';
+// Model-call incident capture writes to Supabase; unit tests never should.
+process.env.SMART_LLM_INCIDENTS ||= 'off';
 
 // Worker modules call dotenv at import, which would load apps/worker/.env and
 // hand unit tests real paid/messaging credentials. dotenv never overwrites a key

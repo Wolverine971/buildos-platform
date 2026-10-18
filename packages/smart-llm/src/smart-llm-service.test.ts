@@ -1368,7 +1368,8 @@ describe('SmartLLMService JSON model recovery', () => {
 		const timedOutResponse = {
 			ok: true,
 			headers: new Headers({ 'x-generation-id': 'gen-accepted-timeout' }),
-			json: vi.fn().mockRejectedValue(cause)
+			json: vi.fn().mockRejectedValue(cause),
+			text: vi.fn().mockRejectedValue(cause)
 		} as unknown as Response;
 		const fetchMock = vi.fn().mockResolvedValue(timedOutResponse);
 		const llm = new SmartLLMService({
@@ -1472,7 +1473,8 @@ describe('SmartLLMService JSON model recovery', () => {
 		const timedOutResponse = {
 			ok: true,
 			headers: new Headers({ 'x-generation-id': 'gen-repair-timeout' }),
-			json: vi.fn().mockRejectedValue(cause)
+			json: vi.fn().mockRejectedValue(cause),
+			text: vi.fn().mockRejectedValue(cause)
 		} as unknown as Response;
 		const fetchMock = vi
 			.fn()
@@ -1968,7 +1970,8 @@ describe('SmartLLMService text generation timeout classification', () => {
 		const timedOutResponse = {
 			ok: true,
 			headers: new Headers({ 'x-generation-id': 'gen-text-timeout' }),
-			json: vi.fn().mockRejectedValue(cause)
+			json: vi.fn().mockRejectedValue(cause),
+			text: vi.fn().mockRejectedValue(cause)
 		} as unknown as Response;
 		const fetchMock = vi.fn().mockResolvedValue(timedOutResponse);
 		const llm = new SmartLLMService({

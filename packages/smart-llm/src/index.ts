@@ -15,3 +15,4 @@ export * from './response-parsing';
 export * from './transcription-utils';
 export * from './usage-logger';
 export * from './jev-client';
+export * from './llm-call-incidents';

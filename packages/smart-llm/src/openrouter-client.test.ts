@@ -44,7 +44,8 @@ describe('OpenRouterClient.callOpenRouter', () => {
 		const response = {
 			ok: true,
 			headers: new Headers({ 'x-generation-id': 'gen-timed-out-body' }),
-			json: vi.fn().mockRejectedValue(cause)
+			json: vi.fn().mockRejectedValue(cause),
+			text: vi.fn().mockRejectedValue(cause)
 		} as unknown as Response;
 		const client = createClient(vi.fn().mockResolvedValue(response) as unknown as typeof fetch);
 

@@ -58,6 +58,12 @@ import {
 } from './model-selection';
 import { OpenRouterClient } from './openrouter-client';
 import {
+	SmartLlmIncidentRecorder,
+	smartLlmIncidentsDisabled,
+	type IncidentWriteClient,
+	type SmartLlmIncidentContext
+} from './llm-call-incidents';
+import {
 	buildOpenRouterChatCompletionBody,
 	OPENROUTER_NO_DATA_COLLECTION_PROVIDER,
 	type OpenRouterPrivacyMode
@@ -118,6 +124,14 @@ export type SmartLLMConfig = {
 		 */
 		evaluationOnlyAllowNonZdr?: boolean;
 	};
+	/**
+	 * Record calls that time out, fail, or come back empty in `llm_call_incidents`.
+	 * Off unless set, and `supabase` must be a service-role client (the table has
+	 * no user grants); the worker turns it on. `drain` leaves a timed-out request
+	 * running up to 2 minutes to record how it ended: long-lived processes only.
+	 * SMART_LLM_INCIDENTS=off turns capture off for the process.
+	 */
+	incidents?: false | { drain?: boolean };
 };
 
 // Every model call goes through OpenRouter under the private provider policy.
@@ -183,6 +197,7 @@ export class SmartLLMService {
 	private baseTransforms: string[];
 	private defaultTimeoutMs?: number;
 	private openRouterPrivacy: OpenRouterPrivacyMode;
+	private incidentRecorder: SmartLlmIncidentRecorder | null;
 
 	// Optional: For logging and metrics
 	private supabase?: SupabaseClient<Database>;
@@ -217,6 +232,15 @@ export class SmartLLMService {
 			appName: this.appName,
 			fetchImpl: this.fetchImpl
 		});
+
+		this.incidentRecorder =
+			!config.incidents || !this.supabase || smartLlmIncidentsDisabled()
+				? null
+				: new SmartLlmIncidentRecorder({
+						// The table is not in the generated database types yet.
+						client: this.supabase as unknown as IncidentWriteClient,
+						drain: config.incidents?.drain === true
+					});
 
 		this.usageLogger =
 			config.usageLogger ||
@@ -386,6 +410,8 @@ export class SmartLLMService {
 		transforms?: string[];
 		providerMaxPrice?: { prompt: number; completion: number; request: 0 };
 		providerRouting?: JSONRequestOptions['providerRouting'];
+		/** Who and what the call is for, so a failure can be recorded as an incident. */
+		incident?: Omit<SmartLlmIncidentContext, 'modelRequested' | 'modelsRouted'>;
 	}): Promise<{
 		response: OpenRouterResponse;
 		route: ProviderRoute;
@@ -425,10 +451,37 @@ export class SmartLLMService {
 			stream: params.stream,
 			transforms: params.transforms,
 			provider,
-			privacy: this.openRouterPrivacy
+			privacy: this.openRouterPrivacy,
+			observe:
+				this.incidentRecorder && params.incident
+					? this.incidentRecorder.observerFor({
+							...params.incident,
+							modelRequested: route.requestModel,
+							modelsRouted: params.models
+						})
+					: undefined
 		});
 		response.model = response.model ? this.canonicalizeModelId(response.model) : params.model;
 		return { response, route };
+	}
+
+	private incidentContext(
+		options: Pick<
+			JSONRequestOptions,
+			'operationType' | 'userId' | 'projectId' | 'chatSessionId' | 'turnRunId'
+		>,
+		role: SmartLlmIncidentContext['role'],
+		attempt: number
+	): Omit<SmartLlmIncidentContext, 'modelRequested' | 'modelsRouted'> {
+		return {
+			operationType: options.operationType || 'other',
+			userId: options.userId ?? null,
+			projectId: options.projectId ?? null,
+			chatSessionId: options.chatSessionId ?? null,
+			turnRunId: options.turnRunId ?? null,
+			role,
+			attempt
+		};
 	}
 
 	private isLikelyTruncatedJSONError(error: unknown, cleaned: string): boolean {
@@ -625,7 +678,8 @@ export class SmartLLMService {
 						signal: options.signal,
 						transforms,
 						providerMaxPrice: spendPlan?.providerMaxPrice,
-						providerRouting: options.providerRouting
+						providerRouting: options.providerRouting,
+						incident: this.incidentContext(options, 'attempt', attempt + 1)
 					});
 					const response = completion.response;
 					lastRequestApiUrl = completion.route.apiUrl;
@@ -732,7 +786,12 @@ export class SmartLLMService {
 									timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 									signal: options.signal,
 									transforms,
-									providerRouting: options.providerRouting
+									providerRouting: options.providerRouting,
+									incident: this.incidentContext(
+										options,
+										'json_repair',
+										attempt + 1
+									)
 								});
 								const retryResponse = retryCompletion.response;
 								lastResponse = retryResponse;
@@ -1307,7 +1366,8 @@ export class SmartLLMService {
 						// This path parses one JSON completion body. Requesting SSE here
 						// would make the client call response.json() on an event stream.
 						stream: false,
-						transforms
+						transforms,
+						incident: this.incidentContext(options, 'attempt', attempt + 1)
 					});
 					attemptResponse = attemptCompletion.response;
 					lastRequestApiUrl = attemptCompletion.route.apiUrl;

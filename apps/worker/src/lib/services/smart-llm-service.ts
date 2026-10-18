@@ -36,6 +36,7 @@ export type WorkerSmartLLMConfig = {
 	enforceUserId?: boolean;
 	errorLogger?: SmartLLMConfig['errorLogger'];
 	openrouter?: SmartLLMConfig['openrouter'];
+	incidents?: SmartLLMConfig['incidents'];
 };
 
 function metadataString(
@@ -119,7 +120,12 @@ export class SmartLLMService extends SharedSmartLLMService {
 			supabase: supabase as SmartLLMConfig['supabase'],
 			errorLogger,
 			enforceUserId: config?.enforceUserId ?? true,
-			openrouter: config?.openrouter
+			openrouter: config?.openrouter,
+			// The worker is long-lived, so a timed-out call may be left running to
+			// record how it ended (SMART_LLM_INCIDENT_DRAIN=off to stop).
+			incidents: config?.incidents ?? {
+				drain: process.env.SMART_LLM_INCIDENT_DRAIN?.trim().toLowerCase() !== 'off'
+			}
 		});
 	}
 }

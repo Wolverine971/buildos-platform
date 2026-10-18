@@ -113,19 +113,19 @@ test('renders a drained stall end to end', () => {
 			cancelled: false
 		}
 	});
-	assert.ok(page.includes('# Stall: hedge_slow_stream'), '# Stall: hedge_slow_stream');
 	assert.ok(
-		page.includes('Longest silence: 3.20 s (from 0.90 s to 4.10 s)'),
-		'Longest silence: 3.20 s (from 0.90 s to 4.10 s)'
+		page.includes('# Model-call incident: The reply stalled, so a backup request started'),
+		'headline'
 	);
+	assert.ok(page.includes('Chat · main step'), 'source');
 	assert.ok(
-		page.includes('ended by **stream_end** after 31.00 s'),
-		'ended by **stream_end** after 31.00 s'
+		page.includes('Longest silence: 3.2 s (from 0.9 s to 4.1 s)'),
+		'Longest silence: 3.2 s (from 0.9 s to 4.1 s)'
 	);
-	assert.ok(
-		page.includes('first token 880 ms · generation 30100 ms'),
-		'first token 880 ms · generation 30100 ms'
-	);
+	assert.ok(page.includes('finished on its own 31 s after it was sent'), 'eventual');
+	assert.ok(page.includes('first token after 0.9 s, generation time 30 s'), 'stats');
+	assert.ok(page.includes('slow, not broken'), 'finding');
+	assert.ok(page.includes('PAID, ask DJ first'), 'paid replay note');
 	assert.ok(page.includes('Looks good.'), 'Looks good.');
 	assert.ok(page.includes('#### 2. user'), '#### 2. user');
 	assert.ok(page.includes('Does everything look good?'), 'Does everything look good?');

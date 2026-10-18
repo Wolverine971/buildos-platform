@@ -115,7 +115,12 @@ export type AdminChatContentAccessInput = {
 	adminUserId: string;
 	action: 'read' | 'export';
 	route: string;
-	targetType: 'chat_session' | 'user' | 'chat_export';
+	targetType:
+		| 'chat_session'
+		| 'user'
+		| 'chat_export'
+		| 'llm_call_incident'
+		| 'llm_call_incident_export';
 	targetId: string | null;
 	targetUserIds: Array<string | null | undefined>;
 	rowCounts: Record<string, number>;
