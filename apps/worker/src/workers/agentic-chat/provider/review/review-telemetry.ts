@@ -18,7 +18,6 @@
 
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
@@ -48,13 +47,12 @@ export type ReviewOutcome =
 	| 'clarification'
 	| 'invalid';
 
-export type ReviewLane = 'mutation_batch' | 'turn_contract';
+export type ReviewLane = 'mutation_batch';
 
 /** The decision a reviewer control call stands for, by its structured tool name. */
 export function reviewOutcomeOf(toolName: string | null | undefined): ReviewOutcome {
 	switch (toolName) {
 		case APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME:
-		case APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME:
 			return 'approved';
 		case REQUEST_PROPOSAL_REVISION_TOOL_NAME:
 			return 'revision_requested';

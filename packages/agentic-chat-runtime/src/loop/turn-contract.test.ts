@@ -13,7 +13,6 @@ import {
 	executeDeclareTurnContract,
 	executeRequestTurnClarification,
 	extractDeclaredTurnContract,
-	isPendingTurnContractSystemMessage,
 	mergeTurnContracts,
 	describeDeclaredTurnContractIssues,
 	parseDeclaredTurnContract,
@@ -2500,7 +2499,7 @@ describe('turn contract symbolic references (label / parent_label)', () => {
 		expect(readFastChatPendingTurnContract(pending)).not.toBeNull();
 	});
 
-	it('recognizes its own pending-contract system message and nothing else', () => {
+	it('renders the pending contract as batch-lane guidance', () => {
 		const contract = organizeContract();
 		const resolution = resolveTurnContractOutcome({ contract, toolExecutions: [] });
 		const pending = buildFastChatPendingTurnContract({
@@ -2509,21 +2508,10 @@ describe('turn contract symbolic references (label / parent_label)', () => {
 			projectId: 'p'
 		});
 		const message = buildPendingTurnContractSystemMessage(pending);
-		const batchMessage = buildPendingTurnContractSystemMessage(pending, {
-			mutationBatchLaneEnabled: true
-		});
-		expect(batchMessage).toContain('propose concrete mutation tool calls');
-		expect(batchMessage).not.toContain('Re-declare');
-		expect(batchMessage).not.toContain('cancel_turn_contract');
-		expect(message).not.toBeNull();
-		expect(isPendingTurnContractSystemMessage(message!)).toBe(true);
-		expect(isPendingTurnContractSystemMessage(`\n${message!}`)).toBe(true);
-		expect(isPendingTurnContractSystemMessage('Worker write routing: classify')).toBe(false);
-		expect(
-			isPendingTurnContractSystemMessage(
-				'If the user cancels, call cancel_turn_contract. <pending_turn_contract>'
-			)
-		).toBe(false);
+		expect(message?.startsWith('<pending_turn_contract>')).toBe(true);
+		expect(message).toContain('propose concrete mutation tool calls');
+		expect(message).not.toContain('Re-declare');
+		expect(message).not.toContain('cancel_turn_contract');
 		expect(buildPendingTurnContractSystemMessage(null)).toBeNull();
 	});
 });

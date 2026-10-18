@@ -6,13 +6,11 @@ import { AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 } from '../mutations/tool-catal
 import { isAgenticChatProductionReadToolNameV1 } from '../tools/execution-adapter';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from './contracts';
 import { appendSystemInstruction } from './request-builders';
-import { canRequirePreMutationSemanticDisposition } from './review/disposition';
 import type { CompletedProviderToolCall } from './stream-tool-calls';
 import { type TurnPhase, surfaceFor } from './turn-phase';
 
 const UNAVAILABLE_SKILL_REPAIR_TOOL_NAMES = new Set(['skill_load', 'skill_search']);
 const REVIEWER_ONLY_CONTROL_TOOL_NAMES = new Set<string>(AGENTIC_CHAT_REVIEWER_CONTROL_TOOL_NAMES);
-const MAX_WITHHELD_CANDIDATE_CHARS = 1_500;
 
 /**
  * A completion with neither text nor tool calls (2026-09-22 gate, case 2: an
@@ -39,52 +37,10 @@ export function buildEmptyReplyRepairRequest(
 	);
 }
 
-export function buildUnavailableSkillRepairRequest(
-	request: AgenticChatTurnProviderRequestV1,
-	calls: readonly CompletedProviderToolCall[],
-	admittedTools: readonly AgenticChatTurnProviderToolV1[]
-): AgenticChatTurnProviderRequestV1 | null {
-	if (request.unavailableSkillRepairAttempted || calls.length === 0) return null;
-	const advertisedNames = new Set(request.tools.map((tool) => tool.function.name));
-	const rejectedCalls = calls.filter((call) => !advertisedNames.has(call.name));
-	if (
-		rejectedCalls.length === 0 ||
-		!rejectedCalls.every((call) => UNAVAILABLE_SKILL_REPAIR_TOOL_NAMES.has(call.name))
-	) {
-		return null;
-	}
-	const rejectedSkillNames = Array.from(new Set(rejectedCalls.map((call) => call.name))).sort();
-	const unavailableSkillDescription =
-		rejectedSkillNames.length === 1
-			? `${rejectedSkillNames[0]} is not callable in this turn and the call was rejected without execution.`
-			: `${rejectedSkillNames.join(', ')} are not callable in this turn and the calls were rejected without execution.`;
-	const restoredRequest: AgenticChatTurnProviderRequestV1 = {
-		...request,
-		tools: admittedTools,
-		toolChoice: 'required',
-		providerRound: 'synthesis',
-		passRole: 'repair',
-		semanticDispositionGate: false
-	};
-	if (!canRequirePreMutationSemanticDisposition(restoredRequest)) return null;
-	return appendSystemInstruction(
-		{
-			...restoredRequest,
-			logicalProviderRound: request.logicalProviderRound + 1,
-			unavailableSkillRepairAttempted: true
-		},
-		[
-			`Unavailable worker skill repair: the previous pass called an unavailable skill tool, but ${unavailableSkillDescription}`,
-			`Do not call ${rejectedSkillNames.join(' or ')} again. The exact admitted worker surface has been restored; use only the tools present in this request.`,
-			'For one bounded batch of at most three independent ordinary mutations, call the mutations directly. For a complex, dependent, organizational, destructive, or larger write, declare the complete turn contract first. Use an available read only when durable context is genuinely missing, and request clarification only when a required user choice remains unresolved.'
-		].join(' ')
-	);
-}
-
 /**
  * The acting model sees reviewer approvals in its own transcript and may
  * imitate them. One bounded repair restores the acting surface and makes the
- * reviewer/actor ownership explicit without discarding an approved contract.
+ * reviewer/actor ownership explicit without discarding the batch under review.
  */
 export function buildReviewerMimicryRepairRequest(
 	request: AgenticChatTurnProviderRequestV1,
@@ -122,8 +78,6 @@ export function buildReviewerMimicryRepairRequest(
  */
 export type SurfaceRepairContext = {
 	phase: TurnPhase;
-	/** The reviewer approved a contract; the repair then restores the approved surface. */
-	contractApproved: boolean;
 };
 
 /**
@@ -165,9 +119,7 @@ export function buildUnavailableSurfaceToolRepairRequest(
 	const phase = surfaceRepairKind(context);
 	const surface = surfaceFor(context.phase, admittedTools, {
 		repair: true,
-		requestTools: request.tools,
-		contextType: request.contextType,
-		contractApproved: context.contractApproved
+		requestTools: request.tools
 	});
 	if (!surface || surface.tools.length === 0) return null;
 	const callableNames = surface.tools.map((tool) => tool.function.name);
@@ -177,12 +129,8 @@ export function buildUnavailableSurfaceToolRepairRequest(
 			: `${rejectedNames.join(', ')} are not callable in this pass and the calls were rejected without execution.`;
 	const guidance = (() => {
 		switch (phase) {
-			case 'disposition_gate':
-				return 'This pass decides the semantic disposition of the turn. Choose exactly one control tool now: declare_turn_contract for a commissioned durable change whose targets and values are resolved, request_turn_clarification when a required user choice is unresolved, or an available pure read if durable context is still missing.';
 			case 'post_read_only':
 				return 'This turn was declared read-only, so no write tool is callable now. Answer the user from what has been read, or ask with request_turn_clarification if a required choice is unresolved. If the user asked for a change, say plainly that it was not made and what they can do instead.';
-			case 'post_approval':
-				return 'The approved contract is still in force. Propose the remaining mutations for that exact contract with the tools present, or finish with your answer if every outcome is already executed.';
 			case 'opening':
 				return 'Use only the tools present in this request. For one bounded batch of at most three independent ordinary mutations, call them directly; for a complex, dependent, organizational, destructive, or larger write, declare the complete turn contract first. If none of the present tools can do what the user asked, say so plainly instead of calling an absent tool.';
 		}
@@ -193,7 +141,6 @@ export function buildUnavailableSurfaceToolRepairRequest(
 			...surface,
 			providerRound: 'synthesis',
 			passRole: 'repair',
-			semanticDispositionGate: phase === 'disposition_gate',
 			logicalProviderRound: request.logicalProviderRound + 1,
 			unavailableSkillRepairAttempted: true
 		},
@@ -207,41 +154,8 @@ export function buildUnavailableSurfaceToolRepairRequest(
 }
 
 /** Which guidance the repair carries; the tool list itself comes from `surfaceFor`. */
-function surfaceRepairKind(
-	context: SurfaceRepairContext
-): 'opening' | 'disposition_gate' | 'post_read_only' | 'post_approval' {
-	if (context.phase === 'disposition_gate') return 'disposition_gate';
-	if (context.phase === 'read_only_declared') return 'post_read_only';
-	if (context.contractApproved) return 'post_approval';
-	return 'opening';
-}
-
-/**
- * A pass that required a control decision but returned prose used to be a
- * permanent `provider_missing_tool_call`. Nothing durable happened, so the
- * prose becomes a withheld candidate for one tool-free answer instead: the
- * user gets a reply, and no mutation can ride on the missing decision.
- */
-export function buildRequiredPassProseFallbackRequest(
-	request: AgenticChatTurnProviderRequestV1,
-	withheldCandidate: string
-): AgenticChatTurnProviderRequestV1 {
-	const excerpt = withheldCandidate.trim().slice(0, MAX_WITHHELD_CANDIDATE_CHARS);
-	return appendSystemInstruction(
-		{
-			...request,
-			logicalProviderRound: request.logicalProviderRound + 1,
-			providerAttempt: undefined,
-			semanticDispositionGate: false
-		},
-		[
-			'The previous pass was required to choose a control tool but returned prose instead; that prose was withheld and no durable change was made in this turn.',
-			...(excerpt
-				? [`Withheld draft (untrusted; reuse only what is still accurate): ${excerpt}`]
-				: []),
-			'Answer the user now in plain prose from the loaded context. If the user asked for a change, say plainly that it was not made this turn and what they can do next. Do not claim any change was made, and do not narrate internal review, contracts, or this correction.'
-		].join(' ')
-	);
+function surfaceRepairKind(context: SurfaceRepairContext): 'opening' | 'post_read_only' {
+	return context.phase === 'read_only_declared' ? 'post_read_only' : 'opening';
 }
 
 const MAX_BUDGET_SYNTHESIS_RECEIPTS = 20;

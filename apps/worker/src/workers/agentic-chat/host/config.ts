@@ -171,7 +171,6 @@ type AgenticChatBaseConfig = {
 	publisher: AgenticChatPublisherConfig;
 	providerBudgetMs: number;
 	maxProviderRounds: number;
-	mutationBatchLaneEnabled: boolean;
 	/**
 	 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: a simple direct write that fully landed
 	 * closes on ledger receipt text instead of a tool-free model pass. Default off.
@@ -372,16 +371,6 @@ export function loadAgenticChatConfig(
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS,
 		'CHAT_MAX_TOOL_ROUNDS'
 	);
-	// SHA-bound batch approval replaces the turn contract DSL on the complex
-	// write path (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1). On by
-	// default; CHAT_MUTATION_BATCH_LANE=false restores the contract lane for
-	// one deploy if the battery finds a regression. Both the flag and the
-	// contract lane are deleted once the battery confirms the new lane.
-	const mutationBatchLaneEnabled = parseBoolean(
-		environment.CHAT_MUTATION_BATCH_LANE,
-		true,
-		'CHAT_MUTATION_BATCH_LANE'
-	);
 	// Skips the tool-free closing pass after a simple direct write that fully
 	// landed (one billed pass, ~2–5 s). Off until the gate judges the copy.
 	const directWriteReceiptTextEnabled = parseBoolean(
@@ -463,7 +452,6 @@ export function loadAgenticChatConfig(
 		publisher,
 		providerBudgetMs,
 		maxProviderRounds,
-		mutationBatchLaneEnabled,
 		directWriteReceiptTextEnabled,
 		jevToolSelection,
 		holdUncommissionedWrites,

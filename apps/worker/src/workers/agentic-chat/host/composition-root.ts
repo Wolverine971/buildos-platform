@@ -195,9 +195,10 @@ export function assertAgenticChatMutationAdapterCoverageV1(
 }
 
 /**
- * Compose the hosted Agentic Chat worker without starting it. The caller
- * must still explicitly start `runtime`; this module is intentionally absent
- * from production entrypoints and cannot open web routing by itself.
+ * Compose the hosted Agentic Chat worker without starting it. This is the
+ * production path (chat-worker.ts → host/bootstrap.ts → here); the caller must
+ * still explicitly start `runtime`, and this module cannot open web routing
+ * by itself.
  */
 export function createAgenticChatCompositionRoot(options: {
 	client: SupabaseClient<Database>;
@@ -219,8 +220,6 @@ export function createAgenticChatCompositionRoot(options: {
 	providerCooldownMs?: number;
 	providerBudgetMs?: number;
 	maxProviderRounds?: number;
-	/** SHA-bound batch approval instead of the turn contract DSL (Decision 1). */
-	mutationBatchLaneEnabled?: boolean;
 	/** AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: ledger receipt instead of the closing pass. Default off. */
 	directWriteReceiptTextEnabled?: boolean;
 	/** AGENTIC_CHAT_LIVE_TEXT_PREVIEW: display-only live answer preview. Default off. */
@@ -403,7 +402,6 @@ export function createAgenticChatCompositionRoot(options: {
 		options.providerCooldownMs,
 		options.maxProviderRounds,
 		mutationCapabilities,
-		options.mutationBatchLaneEnabled ?? true,
 		options.directWriteReceiptTextEnabled ?? false
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {

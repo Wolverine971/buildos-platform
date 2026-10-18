@@ -2,10 +2,7 @@
 
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-	CANCEL_TURN_CONTRACT_TOOL_NAME,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
-	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME,
 	REQUEST_TURN_CLARIFICATION_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
@@ -18,12 +15,9 @@ import {
 	NO_CHANGES_SAVED_NOTICE,
 	type ToolValidationIssue,
 	type TurnContract,
-	type TurnContractOutcome,
 	agenticChatReadIngestsExternalContentV1,
-	bindTurnContractLabels,
 	buildCleanupManifest,
 	buildMutationBatch,
-	buildOrganizeCommissionRepairInstruction,
 	buildRoundToolPattern,
 	buildWriteLedger,
 	describePendingCleanupItems,
@@ -31,16 +25,12 @@ import {
 	extractReviewedRequestExpectation,
 	isControlToolName,
 	isPendingProposalCardExecution,
-	mergeTurnContracts,
 	mutationBatchSha256,
-	parseDeclaredTurnContract,
 	parseRequestExpectation,
 	renderAlreadySatisfiedCleanupItems,
 	requestExpectationsMatch,
-	resolveTurnContractOutcome,
 	serializeMutationBatchForReview,
-	serializeTurnContractForDeclaration,
-	turnContractCreatesProject
+	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import {
 	AgenticChatProviderExecutionError,
@@ -56,19 +46,13 @@ import type { AgenticChatReadToolExecutionV1 } from '../tools/tool-execution';
 import { reviewedAgenticChatMutationSpecV1 } from '../mutations/tool-catalog';
 import { isSharedDocumentEditCard } from '../mutations/shared-document-edit';
 import {
-	buildContractCompletionRequest,
-	buildTurnContractWriteCarveOutRequest
-} from './review/contract-execution';
-import {
 	type ClarificationRender,
 	type PendingProposalRevision,
-	buildContractRevisionRequest,
 	readClarificationRender,
 	readProposalRevision
 } from './review/decision-handling';
 import {
 	buildPostSemanticDispositionRequest,
-	buildSemanticTurnDispositionGateRequest,
 	isSemanticDispositionToolName
 } from './review/disposition';
 import { buildMutationBatchRevisionRequest } from './review/mutation-batch';
@@ -107,17 +91,15 @@ import type { CompletedProviderToolCall } from './stream-tool-calls';
 import {
 	type TurnPhase,
 	type TurnPhaseEvent,
-	contractPending,
 	dispositionPending,
 	nextTurnPhase
 } from './turn-phase';
-import { contractSha256, validateApprovedTurnContractMutations } from './validation';
+import { rejectUnapprovedMutations } from './validation';
 import {
 	type DirectWriteRouteContext,
 	assessDirectWriteBatch,
 	collectAttachedProjectAssetIds,
 	collectReadResultEntityRefs,
-	directWriteContractInstruction,
 	normalizeId,
 	selectSingleHitEntityIds
 } from './write-routing';
@@ -148,7 +130,6 @@ export type ToolRoundStreamState = {
 	release(): void;
 	getAdmittedTools(): readonly AgenticChatTurnProviderToolV1[];
 	setPendingToolRound(value: PendingToolRound): void;
-	getContractRevisionCount(): number;
 	/** Count one model call at the single provider-pass entry. */
 	recordProviderPass(): void;
 	prepareOutputBudget(request: ClientRequest): ClientRequest;
@@ -168,15 +149,14 @@ export type ToolRoundStreamState = {
 	markToolRoundCompleted(): void;
 	setCurrentRequest(value: ClientRequest): void;
 	resolveMemoServed(call: CompletedProviderToolCall): AgenticChatReadToolExecutionV1 | null;
-	/** The phase the acting model is in and whether its contract is approved, for the one-shot surface repair. */
+	/** The phase the acting model is in, for the one-shot surface repair. */
 	getSurfaceRepairContext(): SurfaceRepairContext;
 	/** Record an executed event in the turn state machine. */
 	advance(event: TurnPhaseEvent): void;
-	hasPendingTurnContractWrite(): boolean;
 	/**
 	 * Hold a complex write batch for SHA-bound review. Returns the held batch
-	 * and its digest, or null when the batch takes the direct lane, the lane is
-	 * off, or no reviewer exists.
+	 * and its digest, or null when the batch takes the direct lane or no
+	 * reviewer exists.
 	 */
 	takeWithheldMutationBatch(
 		request: ClientRequest,
@@ -209,21 +189,12 @@ export type ToolRoundStreamState = {
 	holdWriteTools(toolNames: readonly string[]): void;
 	/** The turn's write-commission shadow log (S5); content-free. */
 	readonly writeCommission: TurnWriteCommissionLedger;
-	takePreMutationSemanticDispositionGate(
-		request: ClientRequest,
-		calls: readonly CompletedProviderToolCall[]
-	): ClientRequest | null;
 	/**
 	 * Host receipt for a prose finish on a turn the schema selector judged to
 	 * need a write, when no write ran and no disposition was taken. Structure
 	 * only: the prose is never read.
 	 */
 	takeUnsavedCommissionNotice(request: ClientRequest): string | null;
-	takeTurnContractWriteCarveOut(request: ClientRequest): ClientRequest | null;
-	/** An approved contract still has unfulfilled outcomes after a mutation round. */
-	hasIncompleteApprovedContract(): boolean;
-	/** One bounded pass that sends the model back to finish the approved contract. */
-	takeContractCompletionContinuation(request: ClientRequest): ClientRequest | null;
 	getRequestExpectation(): TurnContract | null;
 	takeRequestCompletionContinuation(request: ClientRequest): ClientRequest | null;
 	getRequestCompletionFallback(): string | null;
@@ -265,15 +236,6 @@ export type ToolRoundContinuation =
 			findings?: MutationReviewFinding[];
 	  }
 	| {
-			lane: 'turn_contract_review';
-			request: ClientRequest;
-			availableTools: readonly AgenticChatTurnProviderToolV1[];
-			contract: TurnContract;
-			contractReviewSha256: string;
-			allowDispositionCorrection: boolean;
-			usage: AgenticChatProviderUsageV1 | null;
-	  }
-	| {
 			lane: 'approved_batch_execution';
 			request: ClientRequest;
 			calls: readonly CompletedProviderToolCall[];
@@ -289,17 +251,17 @@ export type ToolRoundContinuation =
 	| { lane: 'direct_write_receipt'; text: string; usage: AgenticChatProviderUsageV1 | null };
 
 export type ProviderTurnStateInit = {
-	/** The base request built at preparation (turn identity and surface context). */
+	/**
+	 * The base request built at preparation (turn identity and surface context).
+	 * The opening pass sends it; it is the continuation base until it changes.
+	 */
 	baseRequest: ClientRequest;
-	/** The request the opening pass sends; the continuation base until it changes. */
-	initialRequest: ClientRequest;
 	admittedTools: readonly AgenticChatTurnProviderToolV1[];
 	executionInput: AgenticChatProviderInputV1['executionInput'];
 	/** The capacity reservation this invocation holds until release. */
 	lease: AgenticChatProviderCapacityLeaseV1;
 	/** A distinct reviewer lane exists for this turn. */
 	semanticReviewRequired: boolean;
-	mutationBatchLaneEnabled: boolean;
 	maxProviderRounds: number;
 	/**
 	 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: a simple direct write that fully
@@ -316,7 +278,7 @@ type HeldMutationBatch = {
 
 /**
  * Everything one prepared provider invocation knows about its turn: the phase
- * machine, contract and batch review bindings, read evidence, the write
+ * machine, batch review bindings, read evidence, the write
  * ledger, and the round and pass counters. The coordinator creates one per
  * invocation and hands it to every stream as `ToolRoundStreamState`; tool-round
  * completion (`completeToolRound`) returns the next lane to stream.
@@ -334,7 +296,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	readonly writeCommission = new TurnWriteCommissionLedger();
 	private readonly lease: AgenticChatProviderCapacityLeaseV1;
 	private readonly semanticReviewRequired: boolean;
-	private readonly mutationBatchLaneEnabled: boolean;
 	private readonly maxProviderRounds: number;
 	private readonly directWriteReceiptTextEnabled: boolean;
 
@@ -351,16 +312,9 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	private emittedTextOwesSeparator = false;
 	private emittedText = false;
 	// Where the acting model is in the turn. Every precondition below is a
-	// phase check; the contract lane keeps only the SHA-bound data next to it.
-	// A project-create turn opens on the required gate rather than the surface.
-	private phase: TurnPhase;
-	// The reviewer may downgrade a declared contract to read-only once per turn.
-	private semanticDispositionCorrectionUsed = false;
-	private turnContract: TurnContract | null = null;
-	private pendingContractReviewSha256: string | null = null;
-	private approvedContractSha256: string | null = null;
+	// phase check; the batch lane keeps only the SHA-bound data next to it.
+	private phase: TurnPhase = 'opening';
 	private pendingProposalRevision: PendingProposalRevision | null = null;
-	private contractRevisionCount = 0;
 	// SHA-bound batch approval (Decision 1). The exact calls the acting model
 	// proposed are held here while the reviewer judges them, and the SAME
 	// call objects execute on approval — nothing is re-proposed, so the
@@ -380,16 +334,9 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	private batchRevisionCount = 0;
 	private outputBudgetPressure = false;
 	private outputBudgetRecoveryUsed = false;
-	// Every completed tool round this turn, so contract labels can bind to the
-	// entities created in earlier rounds before later writes are authorized.
+	// Every completed tool round this turn: the write ledger, the reviewer's
+	// request expectation, and the create-replay guard all read it.
 	private readonly turnToolExecutions: FastToolExecution[] = [];
-	private labelBindings: ReadonlyMap<string, string> = new Map();
-	// A surface with no reviewed mutation tool cannot honour a contract. The
-	// control tools stay mounted (every web surface ships them and the signed
-	// description tells the model to call declare_turn_contract early), but a
-	// declaration on such a surface is answered with a read-only continuation
-	// instead of two reviewer passes and a doomed write.
-	private readonly preparedSurfaceCanWrite: boolean;
 	// Ids that a read this turn returned as the only entity of their kind
 	// (id → kind). Together with the focus entity and the ids the user typed,
 	// these are the targets the direct lane may update without a reviewer.
@@ -426,15 +373,9 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.preparedAdmittedTools = init.admittedTools;
 		this.lease = init.lease;
 		this.semanticReviewRequired = init.semanticReviewRequired;
-		this.mutationBatchLaneEnabled = init.mutationBatchLaneEnabled;
 		this.maxProviderRounds = init.maxProviderRounds;
 		this.directWriteReceiptTextEnabled = init.directWriteReceiptTextEnabled === true;
-		this.currentRequest = init.initialRequest;
-		this.phase =
-			init.initialRequest.semanticDispositionGate === true ? 'disposition_gate' : 'opening';
-		this.preparedSurfaceCanWrite = init.admittedTools.some((tool) =>
-			reviewedAgenticChatMutationSpecV1(tool.function.name)
-		);
+		this.currentRequest = init.baseRequest;
 		this.currentUserMessage = init.executionInput.requestPayload.message;
 		this.attachedAssetIds = collectAttachedProjectAssetIds(
 			init.executionInput.requestPayload.attachments
@@ -478,15 +419,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		);
 	}
 
-	// A held turn answers a contract declaration as read-only, exactly like a
-	// surface that never had write tools.
-	private get surfaceCanWrite(): boolean {
-		return (
-			this.preparedSurfaceCanWrite &&
-			this.admittedTools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
-		);
-	}
-
 	holdWriteTools(toolNames: readonly string[]): void {
 		// Same gate as every card-aware rule: a turn whose card is out is never
 		// reshaped or retried. The hold only ever runs on the opening pass,
@@ -516,79 +448,34 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.pendingToolRound = value;
 		for (const call of value.calls) {
 			if (call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME) {
-				const revision = readProposalRevision(call.arguments);
-				if (this.heldMutationBatch) {
-					// The held calls are void. The actor proposes new ones
-					// with the reviewer's reason in hand and they are
-					// reviewed again; the reviewer never authors calls, so
-					// it cannot corrupt the arguments it rejected (F04).
-					this.rejectedMutationBatch = this.heldMutationBatch.batch;
-					this.heldMutationBatch = null;
-					this.pendingBatchReviewSha256 = null;
-					this.approvedMutationBatch = null;
-					this.batchRevisionCount += 1;
-					this.pendingProposalRevision = revision;
-					this.advance({ type: 'review', decision: 'revise_batch' });
-					continue;
-				}
-				// The declared contract is void; the acting model must re-declare
-				// through the disposition gate, then pass review again. A typed
-				// correction is re-recorded as the declaration when its round
-				// returns, so it keeps the contract phase.
-				this.turnContract = null;
-				this.pendingContractReviewSha256 = null;
-				this.approvedContractSha256 = null;
-				this.contractRevisionCount += 1;
-				this.pendingProposalRevision = revision;
-				this.advance({
-					type: 'review',
-					decision:
-						revision.correctedContract && this.semanticReviewRequired
-							? 'correct_contract'
-							: 'revise_contract'
-				});
+				// Only the batch reviewer can return a proposal, and only while a
+				// batch is held. Without one, completeToolRound fails closed on the
+				// missing rejected batch.
+				this.pendingProposalRevision = readProposalRevision(call.arguments);
+				if (!this.heldMutationBatch) continue;
+				// The held calls are void. The actor proposes new ones with the
+				// reviewer's reason in hand and they are reviewed again; the
+				// reviewer never authors calls, so it cannot corrupt the
+				// arguments it rejected (F04).
+				this.rejectedMutationBatch = this.heldMutationBatch.batch;
+				this.heldMutationBatch = null;
+				this.pendingBatchReviewSha256 = null;
+				this.approvedMutationBatch = null;
+				this.batchRevisionCount += 1;
+				this.advance({ type: 'review', decision: 'revise_batch' });
 				continue;
 			}
 			if (call.name === REQUEST_TURN_CLARIFICATION_TOOL_NAME) {
-				this.turnContract = null;
-				this.pendingContractReviewSha256 = null;
-				this.approvedContractSha256 = null;
 				this.heldMutationBatch = null;
 				this.pendingBatchReviewSha256 = null;
 				this.approvedMutationBatch = null;
 				this.advance({ type: 'disposition', decision: 'clarification' });
 				continue;
 			}
-			if (call.name === CANCEL_TURN_CONTRACT_TOOL_NAME) {
-				this.turnContract = null;
-				this.pendingContractReviewSha256 = null;
-				this.approvedContractSha256 = null;
-				this.advance({ type: 'disposition', decision: 'cancel' });
-				continue;
-			}
 			if (call.name === DECLARE_READ_ONLY_TURN_TOOL_NAME) {
 				this.advance({ type: 'review', decision: 'read_only' });
-				continue;
 			}
-			if (call.name !== DECLARE_TURN_CONTRACT_TOOL_NAME) continue;
-			// A voluntary complex-write declaration satisfies the gate just as
-			// surely as one requested after a withheld contract-only proposal.
-			// A surface with no write tool answers it as a read-only turn.
-			if (!this.surfaceCanWrite) {
-				this.advance({ type: 'disposition', decision: 'read_only' });
-				continue;
-			}
-			this.turnContract = mergeTurnContracts(
-				this.turnContract,
-				parseDeclaredTurnContract(call.arguments)
-			);
-			this.approvedContractSha256 = null;
-			this.advance({ type: 'disposition', decision: 'contract' });
 		}
-	}
-
-	getContractRevisionCount(): number {
-		return this.contractRevisionCount;
 	}
 
 	getLoadedTaskSchedules(): ReadonlyMap<string, LoadedTaskSchedule> {
@@ -720,22 +607,13 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	getSurfaceRepairContext(): SurfaceRepairContext {
-		return { phase: this.phase, contractApproved: this.approvedContractSha256 !== null };
-	}
-
-	hasPendingTurnContractWrite(): boolean {
-		return this.turnContract !== null && contractPending(this.phase);
+		return { phase: this.phase };
 	}
 
 	/**
-	 * Hold a complex write for SHA-bound review instead of asking the
-	 * acting model to translate it into a contract DSL first.
-	 *
-	 * The contract lane spent a whole pass here making the model
-	 * re-express calls it had already written, in a vocabulary with 18
-	 * deterministic rejection reasons, and then spent another pass
-	 * making it write the same calls a second time. Both passes are
-	 * gone: the proposal IS the artifact under review.
+	 * Hold a complex write for SHA-bound review. The proposal IS the artifact
+	 * under review: the acting model is never asked to re-express calls it
+	 * already wrote, nor to write them a second time after approval.
 	 */
 	takeWithheldMutationBatch(
 		value: ClientRequest,
@@ -745,7 +623,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		| { replayRepair: ClientRequest }
 		| { replayRefusal: true; fallback: string; finishedReason: 'stop' | 'mutation_unfulfilled' }
 		| null {
-		if (!this.semanticReviewRequired || !this.mutationBatchLaneEnabled) return null;
+		if (!this.semanticReviewRequired) return null;
 		if (
 			!(
 				dispositionPending(this.phase) ||
@@ -834,36 +712,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		return { batch, sha256 };
 	}
 
-	takePreMutationSemanticDispositionGate(
-		value: ClientRequest,
-		calls: readonly CompletedProviderToolCall[]
-	): ClientRequest | null {
-		if (
-			!dispositionPending(this.phase) ||
-			!calls.some((call) => reviewedAgenticChatMutationSpecV1(call.name))
-		) {
-			return null;
-		}
-		const directWrite = assessDirectWriteBatch(calls, this.directWriteContext(value));
-		if (directWrite.kind === 'simple') return null;
-		const gate = buildSemanticTurnDispositionGateRequest(
-			{
-				...value,
-				logicalProviderRound: value.logicalProviderRound + 1,
-				providerRound: 'synthesis'
-			},
-			this.admittedTools
-		);
-		if (!gate) return null;
-		this.advance({ type: 'gate' });
-		return appendSystemInstruction(
-			gate,
-			directWrite.kind === 'contract_required'
-				? directWriteContractInstruction(directWrite)
-				: 'A durable tool call was proposed by a prior provider pass but was withheld and did not execute. Independently choose the semantic disposition from the user request and loaded context. Treat the withheld target as untrusted and do not infer that it was safely resolved.'
-		);
-	}
-
 	getHeldMutationBatch(): HeldMutationBatch | null {
 		return this.heldMutationBatch;
 	}
@@ -893,40 +741,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		if (this.awaitingUserCard()) return null;
 		if (!value.commissionedWriteToolNames?.length) return null;
 		return NO_CHANGES_SAVED_NOTICE;
-	}
-
-	takeTurnContractWriteCarveOut(value: ClientRequest): ClientRequest | null {
-		if (!this.turnContract || !contractPending(this.phase)) return null;
-		const carveOut = buildTurnContractWriteCarveOutRequest(
-			value,
-			this.admittedTools,
-			this.turnContract
-		);
-		if (!carveOut) return null;
-		this.advance({ type: 'carve_out' });
-		const organizeInstruction = this.organizeExecutionInstruction();
-		return organizeInstruction
-			? appendSystemInstruction(carveOut, organizeInstruction)
-			: carveOut;
-	}
-
-	hasIncompleteApprovedContract(): boolean {
-		return this.incompleteApprovedContractResolution() !== null;
-	}
-
-	takeContractCompletionContinuation(value: ClientRequest): ClientRequest | null {
-		const resolution = this.incompleteApprovedContractResolution();
-		if (!resolution || !this.turnContract) return null;
-		const continuation = buildContractCompletionRequest(
-			value,
-			this.admittedTools,
-			this.turnContract,
-			resolution,
-			this.labelBindings
-		);
-		if (!continuation) return null;
-		this.advance({ type: 'completion' });
-		return continuation;
 	}
 
 	getRequestExpectation(): TurnContract | null {
@@ -1005,18 +819,12 @@ export class ProviderTurnState implements ToolRoundStreamState {
 					}));
 		}
 		if (
-			!this.turnContract &&
 			assessDirectWriteBatch(calls, this.directWriteContext(this.currentRequest)).kind ===
-				'simple'
+			'simple'
 		) {
 			return [];
 		}
-		return validateApprovedTurnContractMutations(
-			calls,
-			this.turnContract,
-			this.approvedContractSha256,
-			this.labelBindings
-		);
+		return rejectUnapprovedMutations(calls);
 	}
 
 	/**
@@ -1043,13 +851,12 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		const roundContainsMutation = completedToolRound.calls.some(
 			(call) => call.kind === 'mutation'
 		);
-		// A contract-free mutation round is the one bounded direct-write lane.
+		// An unreviewed mutation round is the one bounded direct-write lane.
 		// Its continuation is tool-free so the model cannot split a complex
 		// request into several individually small batches.
 		const reviewedMutationCompleted =
 			roundContainsMutation && this.approvedMutationBatch !== null;
 		const directSimpleMutationCompleted =
-			!this.turnContract &&
 			!reviewedMutationCompleted &&
 			completedToolRound.calls.some(
 				(call, index) =>
@@ -1071,9 +878,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		const semanticDispositionToolName = completedToolRound.calls.find((call) =>
 			isSemanticDispositionToolName(call.name)
 		)?.name;
-		const contractReviewApproval = completedToolRound.calls.find(
-			(call) => call.name === APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME
-		);
 		const batchReviewApproval = completedToolRound.calls.find(
 			(call) => call.name === APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME
 		);
@@ -1139,7 +943,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.turnToolExecutions.push(...roundExecutions);
 		this.requestExpectation = extractReviewedRequestExpectation(this.turnToolExecutions);
 		this.createReplayGuard.record(roundExecutions);
-		if (roundContainsMutation) this.refreshLabelBindings();
 		if (reviewedMutationCompleted) {
 			if (this.approvedMutationBatch) {
 				this.executedMutationBatchShas.add(mutationBatchSha256(this.approvedMutationBatch));
@@ -1153,8 +956,8 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		if (roundContainsMutation) {
 			// A mutation round is progress. The read-loop ladder restarts, as
 			// its own contract promises ("reset to 0 on any write round"), so
-			// reads that preceded the contract cannot force the turn tool-free
-			// right after its first write. Control-only rounds (declarations,
+			// reads that preceded the write cannot force the turn tool-free
+			// right after its first write. Control-only rounds (dispositions,
 			// reviewer decisions) are neither reads nor writes and leave the
 			// counters alone.
 			this.readOnlyRoundCount = 0;
@@ -1170,38 +973,9 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			completedToolRound.calls,
 			input.results
 		);
-		if (
-			roundContainsMutation &&
-			(this.baseRequest.contextType === 'project_create' ||
-				turnContractCreatesProject(this.turnContract))
-		) {
-			// The shell receipt carries the new project id. Switch surfaces before
-			// asking the acting model for another pass so the shell cannot be
-			// duplicated and child calls can use that durable id immediately.
-			const completionRequest = this.takeContractCompletionContinuation(this.currentRequest);
-			if (completionRequest) {
-				this.currentRequest = completionRequest;
-			} else if (
-				this.turnContract &&
-				this.unfinishedContractOutcomeDescriptions().length === 0 &&
-				buildWriteLedger(this.turnToolExecutions).some(
-					(entry) =>
-						entry.status === 'success' && entry.toolName === 'create_onto_project'
-				)
-			) {
-				// The shell is durable and every declared outcome is fulfilled:
-				// answer tool-free so create_onto_project cannot be called twice
-				// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F39). A null completion
-				// continuation alone is not proof: it is also null for touched-but-
-				// unfulfilled child outcomes, which must keep their write surface.
-				this.currentRequest = forceToolFreeRequest(this.currentRequest);
-			}
-		}
 		const proposalRevision = this.pendingProposalRevision;
 		if (
 			proposalRevision &&
-			this.phase === 'reading' &&
-			!this.turnContract &&
 			completedToolRound.calls.some(
 				(call) => call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME
 			)
@@ -1230,51 +1004,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 					findings: proposalRevision.findings
 				};
 			}
-			return {
-				lane: 'acting_pass',
-				request: this.currentRequest,
-				usage: completedToolRound.usage
-			};
-		}
-		if (
-			proposalRevision &&
-			completedToolRound.calls.some(
-				(call) => call.name === REQUEST_PROPOSAL_REVISION_TOOL_NAME
-			)
-		) {
-			// A contract reviewer can return a complete typed correction. Record
-			// that exact contract and independently review its SHA again without
-			// paying the acting model to regenerate the same JSON from prose.
-			// A prose-only revision still returns to the acting model through the
-			// bounded repair path.
-			this.pendingProposalRevision = null;
-			if (proposalRevision.correctedContract && this.semanticReviewRequired) {
-				const correctedContract = proposalRevision.correctedContract;
-				this.turnContract = correctedContract;
-				this.approvedContractSha256 = null;
-				const correctedContractSha256 = contractSha256(correctedContract);
-				this.pendingContractReviewSha256 = correctedContractSha256;
-				this.pendingToolRound = null;
-				this.toolRoundCompleted = false;
-				this.nextProviderRound += 1;
-				return {
-					lane: 'turn_contract_review',
-					request: this.currentRequest,
-					availableTools: this.admittedTools,
-					contract: correctedContract,
-					contractReviewSha256: correctedContractSha256,
-					allowDispositionCorrection: false,
-					usage: completedToolRound.usage
-				};
-			}
-			this.currentRequest = buildContractRevisionRequest(
-				this.currentRequest,
-				this.admittedTools,
-				proposalRevision
-			);
-			this.pendingToolRound = null;
-			this.toolRoundCompleted = false;
-			this.nextProviderRound += 1;
 			return {
 				lane: 'acting_pass',
 				request: this.currentRequest,
@@ -1328,9 +1057,8 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			this.toolRoundCompleted = false;
 			this.nextProviderRound += 1;
 			// No acting pass between approval and execution: the reviewed
-			// calls run exactly as reviewed. This is the property the
-			// contract lane could not have, because it asked the model to
-			// write the executing calls after the review (F08).
+			// calls run exactly as reviewed, so the executed arguments are the
+			// approved arguments by construction (F08).
 			return {
 				lane: 'approved_batch_execution',
 				request: this.currentRequest,
@@ -1338,86 +1066,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				usage: completedToolRound.usage
 			};
 		}
-		if (contractReviewApproval) {
-			const approvalIndex = completedToolRound.calls.indexOf(contractReviewApproval);
-			const approvalFeedback = input.results[approvalIndex];
-			const approvalResult =
-				approvalFeedback &&
-				!isFailedToolFeedback(approvalFeedback) &&
-				!isMutationFeedback(approvalFeedback)
-					? approvalFeedback.execution.result
-					: null;
-			const turnContract = this.turnContract;
-			if (
-				!this.pendingContractReviewSha256 ||
-				contractReviewApproval.arguments.contract_sha256 !==
-					this.pendingContractReviewSha256 ||
-				approvalResult?.status !== 'turn_contract_review_approved' ||
-				approvalResult.contract_sha256 !== this.pendingContractReviewSha256 ||
-				!turnContract
-			) {
-				throw providerError('provider_turn_contract_review_identity_mismatch', 'permanent');
-			}
-			this.pendingContractReviewSha256 = null;
-			this.approvedContractSha256 = approvalResult.contract_sha256;
-			this.advance({ type: 'review', decision: 'approve_contract' });
-			const approvedExecutionRequest = buildPostSemanticDispositionRequest(
-				this.currentRequest,
-				this.admittedTools,
-				DECLARE_TURN_CONTRACT_TOOL_NAME
-			);
-			// Shell-first execution belongs to the contract, not the surface:
-			// a project created from the global surface needs the same narrow
-			// create_onto_project pass before any child record can use its id.
-			const projectCreateShellRequest =
-				approvedExecutionRequest.contextType === 'project_create' ||
-				turnContractCreatesProject(turnContract)
-					? buildTurnContractWriteCarveOutRequest(
-							approvedExecutionRequest,
-							this.admittedTools,
-							turnContract
-						)
-					: null;
-			if (projectCreateShellRequest) this.advance({ type: 'carve_out' });
-			this.currentRequest = appendSystemInstruction(
-				projectCreateShellRequest ?? approvedExecutionRequest,
-				'Independent semantic review approved the exact declared contract. Execute only that contract; do not broaden or substitute its targets or values.'
-			);
-			const organizeInstruction = this.organizeExecutionInstruction();
-			if (organizeInstruction) {
-				this.currentRequest = appendSystemInstruction(
-					this.currentRequest,
-					organizeInstruction
-				);
-			}
-		} else if (
-			semanticDispositionToolName === DECLARE_TURN_CONTRACT_TOOL_NAME &&
-			!this.surfaceCanWrite
-		) {
-			this.currentRequest = appendSystemInstruction(
-				buildPostSemanticDispositionRequest(
-					this.currentRequest,
-					this.admittedTools,
-					DECLARE_READ_ONLY_TURN_TOOL_NAME
-				),
-				'This surface cannot change project data: no write tool is available in this turn. Answer from the loaded reads, and if the user asked for a change, say plainly that it was not made and what they can do instead. Do not call or mention any write tool.'
-			);
-		} else if (semanticDispositionToolName) {
-			if (
-				semanticDispositionToolName === DECLARE_READ_ONLY_TURN_TOOL_NAME &&
-				this.pendingContractReviewSha256
-			) {
-				// A contract reviewer may discover that the acting model mistook
-				// future context (for example, research that will inform a later
-				// change) for a mutation commissioned in this turn. Void the false
-				// contract before independently reviewing the safer read-only
-				// disposition; otherwise the stale contract would keep finalization
-				// on the mutation path even after the reviewer corrected it.
-				this.turnContract = null;
-				this.pendingContractReviewSha256 = null;
-				this.approvedContractSha256 = null;
-				this.semanticDispositionCorrectionUsed = true;
-			}
+		if (semanticDispositionToolName) {
 			this.currentRequest = buildPostSemanticDispositionRequest(
 				this.currentRequest,
 				this.admittedTools,
@@ -1441,32 +1090,14 @@ export class ProviderTurnState implements ToolRoundStreamState {
 				DECLARE_READ_ONLY_TURN_TOOL_NAME
 			);
 		}
-		const declaredContract = this.turnContract;
-		if (
-			semanticDispositionToolName === DECLARE_TURN_CONTRACT_TOOL_NAME &&
-			this.semanticReviewRequired &&
-			declaredContract
-		) {
-			this.pendingToolRound = null;
-			this.toolRoundCompleted = false;
-			this.nextProviderRound += 1;
-			const declaredContractSha256 = contractSha256(declaredContract);
-			this.pendingContractReviewSha256 = declaredContractSha256;
-			return {
-				lane: 'turn_contract_review',
-				request: this.currentRequest,
-				availableTools: this.admittedTools,
-				contract: declaredContract,
-				contractReviewSha256: declaredContractSha256,
-				allowDispositionCorrection: !this.semanticDispositionCorrectionUsed,
-				usage: completedToolRound.usage
-			};
-		}
 		const ledgerObservation = this.contextGatheringLedger.observeToolRound({
 			roundExecutions,
 			roundPattern: pattern,
 			toolRounds: this.readOnlyRoundCount,
-			maxToolRounds: this.maxProviderRounds,
+			// The pass ceiling ends every turn first, so count against whichever
+			// budget is smaller; the configured CHAT_MAX_TOOL_ROUNDS (16) is only
+			// the executor's backstop.
+			maxToolRounds: Math.min(this.maxProviderRounds, MAX_PROVIDER_PASSES_PER_TURN),
 			modelPayloadChars: latestToolPayloadChars(this.currentRequest),
 			liveContextUsage: this.admissionContextUsage
 		});
@@ -1497,23 +1128,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 					)?.arguments ?? {}
 				)
 			: null;
-		const contractWriteCarveOut = forceNoToolSynthesis
-			? this.takeTurnContractWriteCarveOut(this.currentRequest)
-			: null;
-		// Read-loop escalation is monotonic, so a turn that read a lot before
-		// its contract is forced tool-free after its first mutation round —
-		// exactly where the organize folders were created and the moves never
-		// proposed. An approved contract with untouched outcomes gets its one
-		// write-only completion pass instead of a tool-free answer.
-		const contractCompletion =
-			forceNoToolSynthesis && !contractWriteCarveOut
-				? this.takeContractCompletionContinuation(this.currentRequest)
-				: null;
-		if (contractWriteCarveOut) {
-			this.currentRequest = contractWriteCarveOut;
-		} else if (contractCompletion) {
-			this.currentRequest = contractCompletion;
-		} else if (forceNoToolSynthesis) {
+		if (forceNoToolSynthesis) {
 			this.currentRequest = forceToolFreeRequest(this.currentRequest);
 			// A batch that only half landed ends here: the failed call is
 			// never re-proposed, so the closing answer is bound to the exact
@@ -1532,10 +1147,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.pendingToolRound = null;
 		this.toolRoundCompleted = false;
 		this.nextProviderRound += 1;
-		if (
-			clarificationRequiresToolFreeSynthesis ||
-			(forceNoToolSynthesis && !contractWriteCarveOut && !contractCompletion)
-		) {
+		if (clarificationRequiresToolFreeSynthesis || forceNoToolSynthesis) {
 			if (!clarificationRequiresToolFreeSynthesis) {
 				this.advance({ type: 'budget', limit: 'force_synthesis' });
 			}
@@ -1577,8 +1189,8 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		roundExecutions: readonly FastToolExecution[]
 	): string | null {
 		if (!this.directWriteReceiptTextEnabled) return null;
-		// No contract, reviewer checklist, or reviewed stage governs the turn.
-		if (this.turnContract || this.requestExpectation || this.reviewedBatchExecuted) return null;
+		// No reviewer checklist or reviewed stage governs the turn.
+		if (this.requestExpectation || this.reviewedBatchExecuted) return null;
 		// The write round is the turn's only tool round: no read result the model
 		// has not yet reported on, and no earlier attempt that failed.
 		if (this.turnToolExecutions.length !== roundExecutions.length) return null;
@@ -1593,12 +1205,6 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		// One receipt per call: a skipped duplicate or an unledgered tool keeps the pass.
 		if (ledger.length !== calls.length) return null;
 		return renderDirectWriteReceipt(ledger);
-	}
-
-	private refreshLabelBindings(): void {
-		this.labelBindings = this.turnContract
-			? bindTurnContractLabels(this.turnContract, buildWriteLedger(this.turnToolExecutions))
-			: new Map();
 	}
 
 	/**
@@ -1618,88 +1224,16 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		);
 	}
 
-	// After the first mutation round the write carve-out is spent, yet the
-	// approved contract may still have outcomes left (create folders, then
-	// move documents into them). The live organize failures all ended here:
-	// folders created, moves never proposed, prose accepted. One bounded
-	// continuation returns the model to the unfinished outcomes.
-	private incompleteApprovedContractResolution() {
-		// A confirm card is a successful preview, not unfinished work to retry.
-		if (this.awaitingUserCard()) return null;
-		const turnContract = this.turnContract;
-		if (
-			!turnContract ||
-			!this.approvedContractSha256 ||
-			this.phase !== 'mutating' ||
-			contractSha256(turnContract) !== this.approvedContractSha256
-		) {
-			return null;
-		}
-		const resolution = resolveTurnContractOutcome({
-			contract: turnContract,
-			toolExecutions: this.turnToolExecutions
-		});
-		if (resolution.fulfilled) return null;
-		// Only outcomes no successful write has touched at all are sent back.
-		// A partially or unverifiably executed outcome must never be re-run
-		// from here: that is how duplicate writes would be born.
-		const ledger = buildWriteLedger(this.turnToolExecutions);
-		const touched = (outcome: TurnContractOutcome): boolean =>
-			ledger.some(
-				(entry) =>
-					entry.status === 'success' &&
-					Boolean(entry.entityKind) &&
-					(outcome.entityKind === 'entity' || entry.entityKind === outcome.entityKind) &&
-					(outcome.targetIds.length === 0
-						? entry.action === 'create'
-						: Boolean(entry.entityId && outcome.targetIds.includes(entry.entityId)))
-			);
-		const untouched = turnContract.outcomes.some(
-			(outcome, index) => resolution.outcomes[index]?.fulfilled === false && !touched(outcome)
-		);
-		return untouched ? resolution : null;
-	}
-
-	// What the turn still owes the user when a budget ends it. Declared
-	// outcomes no successful write fulfilled, in the contract's own words.
+	// What the turn still owes the user when a budget ends it: the reviewer's
+	// request-expectation outcomes no successful write fulfilled.
 	private unfinishedContractOutcomeDescriptions(): string[] {
-		const expectation = this.requestExpectation ?? this.turnContract;
-		if (!expectation) return [];
-		if (this.requestExpectation)
-			return describePendingCleanupItems(
-				buildCleanupManifest({
-					contract: this.requestExpectation,
-					toolExecutions: this.turnToolExecutions
-				})
-			);
-		const resolution = resolveTurnContractOutcome({
-			contract: expectation,
-			toolExecutions: this.turnToolExecutions
-		});
-		if (resolution.fulfilled) return [];
-		return expectation.outcomes
-			.filter((_, index) => resolution.outcomes[index]?.fulfilled === false)
-			.map((outcome) =>
-				[
-					outcome.action,
-					outcome.entityKind,
-					outcome.description ?? outcome.label ?? outcome.targetIds.join(', ')
-				]
-					.filter((part) => typeof part === 'string' && part.length > 0)
-					.join(' ')
-			);
-	}
-
-	private organizeExecutionInstruction(): string | null {
-		if (!this.turnContract) return null;
-		const organizesDocuments = this.turnContract.outcomes.some(
-			(outcome) =>
-				outcome.entityKind === 'document' &&
-				(outcome.action === 'move' || outcome.action === 'organize')
+		if (!this.requestExpectation) return [];
+		return describePendingCleanupItems(
+			buildCleanupManifest({
+				contract: this.requestExpectation,
+				toolExecutions: this.turnToolExecutions
+			})
 		);
-		return organizesDocuments
-			? buildOrganizeCommissionRepairInstruction(this.turnToolExecutions)
-			: null;
 	}
 
 	private directWriteContext(value: ClientRequest): DirectWriteRouteContext {

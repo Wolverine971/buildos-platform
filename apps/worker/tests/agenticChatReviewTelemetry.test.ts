@@ -95,12 +95,12 @@ describe('review decision receipt', () => {
 		});
 		expect(revision.review_defective_calls).toEqual([4, 1]);
 		const approval = buildReviewDecisionPayload({
-			lane: 'turn_contract',
+			lane: 'mutation_batch',
 			logicalProviderRound: 1,
 			attempt: 7,
-			outcome: reviewOutcomeOf('approve_turn_contract_review'),
+			outcome: reviewOutcomeOf('approve_mutation_batch_review'),
 			rejectionCode: 'Not A Code',
-			decisionToolName: 'approve_turn_contract_review',
+			decisionToolName: 'approve_mutation_batch_review',
 			decisionArguments: { defective_calls: [1], findings: [] },
 			stageToolNames: [],
 			priorRevisions: 0,

@@ -45,7 +45,6 @@ import { buildWorkerSemanticMutationOrdering } from './review/turn-contract';
 import type { CompletedProviderToolCall } from './stream-tool-calls';
 import {
 	buildWorkerToolSurfaceOverride,
-	deferComplexWriteContractForInitialPass,
 	hasSchedulingSidecar,
 	productionToolsFor
 } from './tool-surface';
@@ -251,8 +250,7 @@ export function buildBaseProviderRequest(
 	mutationCapabilities: Readonly<Partial<AgenticChatProviderMutationCapabilitiesV1>>,
 	liveVisionEnabled: boolean,
 	semanticReviewEnabled: boolean,
-	budget?: AgenticChatProviderBudgetV1,
-	mutationBatchLaneEnabled = false
+	budget?: AgenticChatProviderBudgetV1
 ): {
 	request: AgenticChatTurnProviderRequestV1;
 	admittedTools: readonly AgenticChatTurnProviderToolV1[];
@@ -329,25 +327,12 @@ export function buildBaseProviderRequest(
 
 	const context = requireRecord(input.requestPayload.context, 'request context');
 	const contextType = canonicalRequiredText(context.type, 'context type');
-	const admittedTools = productionToolsFor(
-		input,
-		mutationCapabilities,
-		semanticReviewEnabled
-	).filter(
-		(tool) =>
-			!mutationBatchLaneEnabled ||
-			!['declare_turn_contract', 'cancel_turn_contract'].includes(tool.function.name)
-	);
-	const tools = deferComplexWriteContractForInitialPass(
-		input,
-		admittedTools,
-		semanticReviewEnabled && contextType !== 'project_create'
-	);
+	const tools = productionToolsFor(input, mutationCapabilities, semanticReviewEnabled);
 	const workerToolSurfaceOverride = buildWorkerToolSurfaceOverride(input, tools);
 	if (workerToolSurfaceOverride) {
 		messages.push({ role: 'system', content: workerToolSurfaceOverride });
 	}
-	const semanticMutationOrdering = buildWorkerSemanticMutationOrdering(tools, contextType);
+	const semanticMutationOrdering = buildWorkerSemanticMutationOrdering(tools);
 	if (semanticMutationOrdering) {
 		messages.push({ role: 'system', content: semanticMutationOrdering });
 	}
@@ -378,7 +363,7 @@ export function buildBaseProviderRequest(
 		...(focusedTableId ? FOCUSED_TABLE_TOOL_PINS : [])
 	];
 	return {
-		admittedTools,
+		admittedTools: tools,
 		request: {
 			loadedEntityIds: collectLoadedEntityIds(input.artifact.prepared.contextPayload),
 			messages,
@@ -565,12 +550,7 @@ export function buildValidationRepairRequest(
 				...toolMessages
 			],
 			tools: request.tools,
-			toolChoice:
-				request.toolChoice === 'required'
-					? 'required'
-					: request.tools.length > 0
-						? 'auto'
-						: 'none'
+			toolChoice: request.tools.length > 0 ? 'auto' : 'none'
 		},
 		[
 			buildToolValidationRepairInstruction(issues, false),
@@ -637,7 +617,6 @@ export function providerClientRequest(
 	const {
 		liveVisionRequest: _liveVisionRequest,
 		toolSelectionPins: _toolSelectionPins,
-		semanticDispositionGate: _semanticDispositionGate,
 		unavailableSkillRepairAttempted: _unavailableSkillRepairAttempted,
 		...clientRequest
 	} = request;

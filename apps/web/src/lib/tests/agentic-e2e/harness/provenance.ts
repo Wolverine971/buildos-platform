@@ -64,12 +64,6 @@ export async function verifyBatteryServices(
 		record.web = web.provenance ?? null;
 		assertSourceProvenance(record.expected, record.worker, 'Worker');
 		assertSourceProvenance(record.expected, record.web, 'Web');
-		const batch = process.env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false';
-		if (
-			worker.mutationBatchLaneEnabled !== batch ||
-			(!deployed && web.mutationBatchLaneEnabled !== batch)
-		)
-			throw new Error('Web, worker and battery mutation-lane flags differ');
 		if (!deployed)
 			assertSourceProvenance(record.expected, readSourceProvenance(), 'Current checkout');
 		record.verified = true;

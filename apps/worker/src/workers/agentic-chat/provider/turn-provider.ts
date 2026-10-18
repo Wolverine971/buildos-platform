@@ -20,15 +20,11 @@ import {
 import { AgenticChatProviderCapacity, AgenticChatProviderCapacityError } from './provider-capacity';
 import type { AgenticChatLiveVisionResolverPortV1 } from '../tools/live-vision';
 import { type AgenticChatProviderMutationCapabilitiesV1 } from '../mutations/tool-catalog';
-import {
-	buildProjectCreateInitialContractGateRequest,
-	reconcileSemanticDispositionCalls
-} from './review/disposition';
+import { reconcileSemanticDispositionCalls } from './review/disposition';
 import {
 	type ReviewLaneContext,
 	streamMutationBatchReview,
-	streamReviewExhaustion,
-	streamTurnContractReview
+	streamReviewExhaustion
 } from './review/lanes';
 import {
 	type ProviderPass,
@@ -52,9 +48,7 @@ import { streamBufferedProviderPass } from './provider-pass';
 import { buildOutputBudgetRecoveryProgress, isActingOutputPass } from './output-budget';
 import {
 	buildEmptyReplyRepairRequest,
-	buildRequiredPassProseFallbackRequest,
 	buildReviewerMimicryRepairRequest,
-	buildUnavailableSkillRepairRequest,
 	buildUnavailableSurfaceToolRepairRequest
 } from './repair-policy';
 import {
@@ -80,6 +74,7 @@ import {
 	normalizeCompletedProviderCalls
 } from './steps';
 import {
+	MAX_PROVIDER_PASSES_PER_TURN,
 	ProviderTurnState,
 	type ToolRoundContinuation,
 	type ToolRoundStreamState
@@ -92,9 +87,6 @@ import {
 
 export { describeUnappliedWrites } from './review/lanes';
 
-// Matches MAX_PROVIDER_PASSES_PER_TURN (turn-state.ts): a round budget above
-// the pass ceiling can never be reached.
-const DEFAULT_MAX_PROVIDER_ROUNDS = 12;
 const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 
 type ActingPassOptions = {
@@ -131,7 +123,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 	constructor(
 		private readonly ports: {
 			client: AgenticChatTurnProviderClientPortV1;
-			/** Distinct model lane that adjudicates proposed write contracts. */
+			/** Distinct model lane that adjudicates held mutation batches. */
 			semanticReviewer?: AgenticChatTurnProviderClientPortV1;
 			capacity: AgenticChatProviderCapacity;
 			liveVision?: AgenticChatLiveVisionResolverPortV1;
@@ -166,18 +158,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			executionObservations?: AgenticChatExecutionObservationPortV1;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
-		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
+		private readonly maxProviderRounds = MAX_PROVIDER_PASSES_PER_TURN,
 		private readonly mutationCapabilities: Readonly<
 			Partial<AgenticChatProviderMutationCapabilitiesV1>
 		> = {},
-		/**
-		 * Migration seam for SHA-bound batch approval (Decision 1). Production
-		 * assembly turns it on; the contract-lane fixtures still run the old
-		 * ladder so the two can be compared on one battery. DELETE THIS FLAG
-		 * and the contract lane with it once the battery confirms the new lane
-		 * — it exists to make the cutover reviewable, not to be configurable.
-		 */
-		private readonly mutationBatchLaneEnabled = false,
 		/**
 		 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: close a simple direct write that
 		 * fully landed on ledger receipt text instead of a tool-free model pass.
@@ -217,14 +201,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			this.mutationCapabilities,
 			Boolean(this.ports.liveVision),
 			Boolean(this.ports.semanticReviewer),
-			input.budget,
-			this.mutationBatchLaneEnabled
+			input.budget
 		);
-		const initialRequest =
-			this.ports.semanticReviewer && !this.mutationBatchLaneEnabled
-				? (buildProjectCreateInitialContractGateRequest(request) ?? request)
-				: request;
-		const promptSnapshot = buildPromptSnapshot(initialRequest.messages, initialRequest.tools);
+		const promptSnapshot = buildPromptSnapshot(request.messages, request.tools);
 		let lease;
 		try {
 			lease = this.ports.capacity.acquire(request.turnRunId);
@@ -241,12 +220,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 
 		const state = new ProviderTurnState({
 			baseRequest: request,
-			initialRequest,
 			admittedTools,
 			executionInput,
 			lease,
 			semanticReviewRequired: Boolean(this.ports.semanticReviewer),
-			mutationBatchLaneEnabled: this.mutationBatchLaneEnabled,
 			maxProviderRounds: this.maxProviderRounds,
 			directWriteReceiptTextEnabled: this.directWriteReceiptTextEnabled
 		});
@@ -255,7 +232,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			stream: () => {
 				state.claimOpeningStream();
 				return this.observeWriteCommission(
-					this.streamActingPass(initialRequest, null, state, { phase: 'initial' }),
+					this.streamActingPass(request, null, state, { phase: 'initial' }),
 					request,
 					state
 				);
@@ -330,17 +307,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					next.reason,
 					next.findings
 				);
-			case 'turn_contract_review':
-				return streamTurnContractReview(
-					this.laneContext,
-					next.request,
-					next.availableTools,
-					next.contract,
-					next.contractReviewSha256,
-					next.allowDispositionCorrection,
-					next.usage,
-					state
-				);
 			case 'approved_batch_execution':
 				return this.streamApprovedBatchExecution(
 					next.request,
@@ -387,9 +353,8 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 	/**
 	 * One acting-model pass. The opening pass and every continuation share this
 	 * loop; `options.phase` selects the handful of behaviours that differ:
-	 * live-vision resolution and the pre-mutation prose hold belong to the
-	 * opening pass, while reviewer-mimicry repair, the required-pass prose
-	 * fallback, and contract-driven prose holding belong to continuations.
+	 * live-vision resolution belongs to the opening pass, while reviewer-mimicry
+	 * repair belongs to continuations.
 	 */
 	private async *streamActingPass(
 		request: ClientRequest,
@@ -425,13 +390,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		// tool call ("Let me check the outline…") is working narration: saving
 		// it opened nearly every prod reply with 1-4 such lines (tasker 100,
 		// book loop p01-p08), and the continuation pass never sees it anyway.
-		// Contract state can additionally withhold a final pass's prose while a
-		// contract continuation may still own the answer.
-		const holdAssistantTextForTurnContract =
-			!initial &&
-			(state.hasPendingTurnContractWrite() ||
-				state.hasIncompleteApprovedContract() ||
-				request.semanticDispositionGate === true);
 		const toolCalls = createToolCallAccumulator();
 		try {
 			// The turn has spent its whole model budget. Everything already
@@ -526,7 +484,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				// and reporting that as malformed JSON hides a recoverable condition
 				// behind a permanent protocol error. Reject calls only when tools are
 				// actually disabled; both `auto` and `required` are valid tool-enabled
-				// policies (a project-create opening pass starts in a required gate).
+				// policies.
 				assertToolCallFinishReason(toolCalls, finishedReason, request.toolChoice, 'none');
 				let calls: readonly CompletedProviderToolCall[] = completeToolCalls(
 					toolCalls,
@@ -545,22 +503,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				const usage = initial ? passUsage : combineUsage(priorUsage, passUsage);
 				finished = true;
 				if (calls.length > 0) {
-					const unavailableSkillRepair = buildUnavailableSkillRepairRequest(
-						request,
-						calls,
-						state.getAdmittedTools()
-					);
-					if (unavailableSkillRepair) {
-						state.setCurrentRequest(unavailableSkillRepair);
-						keepLease = true;
-						yield* this.streamActingPass(
-							unavailableSkillRepair,
-							usage,
-							state,
-							continuationOptions
-						);
-						return;
-					}
 					const reviewerMimicryRepair = initial
 						? null
 						: buildReviewerMimicryRepairRequest(request, calls);
@@ -593,10 +535,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						return;
 					}
 					for (const call of calls) assertAllowlistedCall(call, request.tools);
-					const disposition = reconcileSemanticDispositionCalls(
-						calls,
-						request.semanticDispositionGate === true
-					);
+					const disposition = reconcileSemanticDispositionCalls(calls);
 					if (disposition.notice) {
 						request = appendSystemInstruction(request, disposition.notice);
 						state.setCurrentRequest(request);
@@ -608,14 +547,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					const validationIssues = validateCompletedProviderCalls(
 						calls,
 						request,
-						state.getAdmittedTools(),
 						state.getLoadedTaskSchedules()
 					);
 					if (validationIssues.length === 0) {
 						const archivePreview = await previewDocumentArchiveCalls(
-							this.mutationBatchLaneEnabled
-								? this.ports.documentArchivePreview
-								: undefined,
+							this.ports.documentArchivePreview,
 							calls,
 							request
 						);
@@ -644,10 +580,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						state.recordTableEditPreviews(previewedTables.previews);
 					}
 					if (validationIssues.length === 0) {
-						// SHA-bound batch approval takes precedence over the contract
-						// gate: the calls the model just wrote are the artifact the
-						// reviewer judges, so there is nothing to ask the model for
-						// before review and nothing to ask it for after approval.
+						// SHA-bound batch approval: the calls the model just wrote are
+						// the artifact the reviewer judges, so there is nothing to ask
+						// the model for before review and nothing to ask it for after
+						// approval.
 						const withheldBatch = state.takeWithheldMutationBatch(request, calls);
 						if (!withheldBatch && calls.some(isDocumentArchiveCall)) {
 							throw providerError(
@@ -690,25 +626,12 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 							);
 							return;
 						}
-						const preMutationSemanticDispositionGate =
-							state.takePreMutationSemanticDispositionGate(request, calls);
-						if (preMutationSemanticDispositionGate) {
-							state.setCurrentRequest(preMutationSemanticDispositionGate);
-							keepLease = true;
-							yield* this.streamActingPass(
-								preMutationSemanticDispositionGate,
-								usage,
-								state,
-								continuationOptions
-							);
-							return;
-						}
 					}
 					// Schema/preview failures withhold the whole proposal before
 					// independent review. Execution authorization does not apply yet:
-					// adding legacy contract errors here falsely rejects every valid
-					// sibling call and asks for a control absent from the batch lane.
-					if (validationIssues.length === 0 || !this.mutationBatchLaneEnabled) {
+					// adding authorization errors here would falsely reject every
+					// valid sibling call.
+					if (validationIssues.length === 0) {
 						validationIssues.push(...state.validateApprovedMutations(calls));
 					}
 					if (validationIssues.length > 0) {
@@ -768,7 +691,7 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 							request,
 							invalidCalls,
 							validationIssues,
-							this.mutationBatchLaneEnabled ? proposedCalls : undefined
+							proposedCalls
 						);
 						state.setCurrentRequest(repairRequest);
 						keepLease = true;
@@ -801,21 +724,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						request.toolChoice === 'none' ? 'permanent' : 'unknown'
 					);
 				}
-				if (!initial && request.toolChoice === 'required') {
-					// A required control pass answered in prose. Nothing durable
-					// happened, so the prose becomes a withheld candidate for one
-					// tool-free answer instead of a permanent turn failure.
-					state.setCurrentRequest(request);
-					keepLease = true;
-					state.advance({ type: 'budget', limit: 'force_synthesis' });
-					yield* streamForcedSynthesis(
-						this.laneContext,
-						buildRequiredPassProseFallbackRequest(request, assistantCandidate),
-						usage,
-						state
-					);
-					return;
-				}
 				const requestCompletion = state.takeRequestCompletionContinuation(request);
 				if (requestCompletion) {
 					state.setCurrentRequest(requestCompletion);
@@ -835,34 +743,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 					state.advance({ type: 'finish' });
 					yield { type: 'finish', finishedReason: 'mutation_unfulfilled', usage };
 					return;
-				}
-				if (holdAssistantTextForTurnContract) {
-					const carveOutRequest = state.takeTurnContractWriteCarveOut(request);
-					if (carveOutRequest) {
-						state.setCurrentRequest(carveOutRequest);
-						keepLease = true;
-						yield* this.streamActingPass(
-							carveOutRequest,
-							usage,
-							state,
-							continuationOptions
-						);
-						return;
-					}
-					const completionRequest = state.takeContractCompletionContinuation(request);
-					if (completionRequest) {
-						state.setCurrentRequest(completionRequest);
-						keepLease = true;
-						yield* this.streamActingPass(
-							completionRequest,
-							usage,
-							state,
-							continuationOptions
-						);
-						return;
-					}
-					// Nothing more to execute: release the withheld prose so the user
-					// still gets the answer exactly once.
 				}
 				const answered = assistantCandidate.trim().length > 0;
 				if (answered) yield textDelta(assistantCandidate);
@@ -956,7 +836,6 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				...validateCompletedProviderCalls(
 					calls,
 					executionRequest,
-					state.getAdmittedTools(),
 					state.getLoadedTaskSchedules()
 				),
 				...state.validateApprovedMutations(calls)

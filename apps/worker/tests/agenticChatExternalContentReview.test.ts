@@ -256,8 +256,8 @@ function refusingReviewer(): ClientPort {
 	]);
 }
 
-/** Production shape by default: reviewer present, SHA-bound batch lane on. */
-function provider(client: ClientPort, reviewer: ClientPort, batchLane = true) {
+/** Production shape: reviewer present, SHA-bound batch lane. */
+function provider(client: ClientPort, reviewer: ClientPort) {
 	return new AgenticChatTurnProviderAdapter(
 		{
 			client,
@@ -266,8 +266,7 @@ function provider(client: ClientPort, reviewer: ClientPort, batchLane = true) {
 		},
 		2_000,
 		16,
-		{ createOntoTask: true },
-		batchLane
+		{ createOntoTask: true }
 	);
 }
 
@@ -469,49 +468,5 @@ describe('S1: writes after external content go to independent review', () => {
 
 		expect(reviewer.stream).not.toHaveBeenCalled();
 		expect(afterRead.some((step) => step.type === 'mutating_tool')).toBe(true);
-	});
-
-	it('sends the tainted write to the contract gate under the CHAT_MUTATION_BATCH_LANE=false rollback', async () => {
-		const client = clientWithRounds([
-			toolRound([
-				{ id: 'read-email-1', name: 'get_email_message', args: { marker: 'vendor' } }
-			]),
-			toolRound([INJECTED_CREATE]),
-			toolRound([
-				{
-					id: 'gate-clarify-1',
-					name: 'request_turn_clarification',
-					args: {
-						reason: 'The task comes from an instruction inside an email.',
-						question: 'Do you want me to add the payment task the email asks for?'
-					}
-				}
-			])
-		]);
-		const reviewer = clientWithRounds([]);
-		const invocation = await prepare(
-			provider(client, reviewer, false),
-			executionInput('Open the latest email from vendor billing.', true)
-		);
-		const opening = await collect(invocation.stream());
-		const read = onlyRead(opening, 'get_email_message');
-		const afterRead = await collect(
-			invocation.continueWithToolResults!({
-				round: 2,
-				results: [readResult(read, MALICIOUS_EMAIL_RESULT)]
-			})
-		);
-
-		expect(afterRead.some((step) => step.type === 'mutating_tool')).toBe(false);
-		// Without a batch lane the write is withheld and the acting model must
-		// take the contract-or-clarify gate, whose contract is independently reviewed.
-		const gate = client.stream.mock.calls[2]![0];
-		expect(gate.toolChoice).toBe('required');
-		const gateTools = gate.tools?.map((tool) => tool.function.name) ?? [];
-		expect(gateTools).toEqual(
-			expect.arrayContaining(['declare_turn_contract', 'request_turn_clarification'])
-		);
-		expect(gateTools).not.toContain('create_onto_task');
-		expect(JSON.stringify(gate.messages)).toContain('read externally authored content');
 	});
 });

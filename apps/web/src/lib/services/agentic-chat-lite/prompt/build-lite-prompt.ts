@@ -169,15 +169,11 @@ const SAVED_NEXT_STEP_LABEL = 'Saved next step (may predate recent work)';
 
 // S7 cut (2026-09-04): "answer from loaded context when it already has a
 // summary" was Operating Strategy's first bullet said a second time.
-function buildOverviewGuidanceLite(turnContractToolAvailable: boolean): string {
-	return [
-		'Workflow hints for workspace-level chat:',
-		'- For routine status questions, call get_workspace_overview (workspace-wide) or get_project_overview (one named project) before generic ontology discovery.',
-		turnContractToolAvailable
-			? '- A request to start a new project is handled here with create_onto_project, declared through declare_turn_contract as one create/project outcome; do not send the user somewhere else to create it.'
-			: '- A request to start a new project is handled here with create_onto_project; do not send the user somewhere else to create it.'
-	].join('\n');
-}
+const OVERVIEW_GUIDANCE_LITE = [
+	'Workflow hints for workspace-level chat:',
+	'- For routine status questions, call get_workspace_overview (workspace-wide) or get_project_overview (one named project) before generic ontology discovery.',
+	'- A request to start a new project is handled here with create_onto_project; do not send the user somewhere else to create it.'
+].join('\n');
 
 const PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE = [
 	'Workflow hints for project chat:',
@@ -209,17 +205,13 @@ const PROJECT_CREATE_COMPOUND_WORKFLOW_LITE = [
 // shell-first order, the empty arrays, and the child-tool list; state_key vs
 // props.facets.stage is enum-enforced by the schema; the clarification rule is
 // already in this fork's Operating Strategy.
-function buildProjectCreateReviewedShellWorkflowLite(turnContractToolAvailable: boolean): string {
-	return [
-		'Project creation workflow:',
-		turnContractToolAvailable
-			? '- Call declare_turn_contract with one project outcome plus one outcome per requested goal and task, then create_onto_project with entities: [] and relationships: []. Its START HERE context document is generated automatically; do not create another.'
-			: '- Call create_onto_project with entities: [] and relationships: [] to create the project. Its START HERE context document is generated automatically; do not create another.',
-		'- Preserve the user’s project name exactly; infer type_key, description, and props from the request.',
-		'- After create_onto_project returns, use its exact project_id with create_onto_goal for each requested outcome and create_onto_task for each requested action. Do not ask the user to reconfirm work they already requested.',
-		'- The available creation tools do not create plans, documents, milestones, risks, or relationships; do not promise those records.'
-	].join('\n');
-}
+const PROJECT_CREATE_REVIEWED_SHELL_WORKFLOW_LITE = [
+	'Project creation workflow:',
+	'- Call create_onto_project with entities: [] and relationships: [] to create the project. Its START HERE context document is generated automatically; do not create another.',
+	'- Preserve the user’s project name exactly; infer type_key, description, and props from the request.',
+	'- After create_onto_project returns, use its exact project_id with create_onto_goal for each requested outcome and create_onto_task for each requested action. Do not ask the user to reconfirm work they already requested.',
+	'- The available creation tools do not create plans, documents, milestones, risks, or relationships; do not promise those records.'
+].join('\n');
 
 const DAILY_BRIEF_GUARDRAILS_LITE = [
 	'Workflow hints when daily-brief context is loaded:',
@@ -261,7 +253,6 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 	const timeline = buildTimelineSummary(input, focus, dataSummary, projectDigest, clock);
 	const retrievalMap = buildRetrievalMap(input.retrievalMap ?? null, focus, dataSummary);
 	const toolsSummary = buildToolsSummary(input.contextType, input.tools ?? null);
-	const turnContractToolAvailable = toolsSummary.directTools.includes('declare_turn_contract');
 	// project_create has no skill_load/domain tools, so a preloaded playbook here
 	// would reference a surface the lane cannot satisfy (WP-3).
 	const situationalRulesSection =
@@ -359,8 +350,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 					buildIdentityMissionSection(input.userDisplayName),
 					buildProjectCreateStrategySection(
 						scaffold,
-						input.projectCreateWorkflow ?? 'web_compound',
-						turnContractToolAvailable
+						input.projectCreateWorkflow ?? 'web_compound'
 					),
 					buildProjectCreateSafetySection(
 						scaffold,
@@ -372,8 +362,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 						input.data ?? null,
 						clock,
 						scaffold,
-						input.projectCreateWorkflow ?? 'web_compound',
-						turnContractToolAvailable
+						input.projectCreateWorkflow ?? 'web_compound'
 					),
 					buildLocationLoadedContextSection(focus, input.data)
 				]
@@ -400,7 +389,6 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 						clock,
 						scaffold,
 						input.projectCreateWorkflow ?? 'web_compound',
-						turnContractToolAvailable,
 						Boolean(steward)
 					),
 					buildLocationLoadedContextSection(focus, input.data, loadedContextOptions, {
@@ -603,16 +591,15 @@ function buildFocusPurposeSection(
 	clock: PromptClock,
 	scaffold: Required<LitePromptScaffoldOptions>,
 	projectCreateWorkflow: LiteProjectCreateWorkflow,
-	turnContractToolAvailable: boolean,
 	steward = false
 ): LitePromptSection {
 	const workflowBlock =
 		focus.contextType === 'project_create'
 			? projectCreateWorkflow === 'reviewed_shell'
-				? buildProjectCreateReviewedShellWorkflowLite(turnContractToolAvailable)
+				? PROJECT_CREATE_REVIEWED_SHELL_WORKFLOW_LITE
 				: PROJECT_CREATE_COMPOUND_WORKFLOW_LITE
 			: focus.contextType === 'global' || focus.contextType === 'general'
-				? buildOverviewGuidanceLite(turnContractToolAvailable)
+				? OVERVIEW_GUIDANCE_LITE
 				: (!scaffold.dynamicSkillTools || !scaffold.skillRoutingCoaching) &&
 					  (focus.contextType === 'project' || focus.contextType === 'ontology')
 					? null
@@ -1762,8 +1749,7 @@ function buildDatesTimeSection(): LitePromptSection {
 // workflow block inside focus_purpose; these carry only behavior.
 function buildProjectCreateStrategySection(
 	scaffold: Required<LitePromptScaffoldOptions>,
-	projectCreateWorkflow: LiteProjectCreateWorkflow,
-	turnContractToolAvailable: boolean
+	projectCreateWorkflow: LiteProjectCreateWorkflow
 ): LitePromptSection {
 	return makeSection({
 		id: 'operating_strategy',
@@ -1775,18 +1761,14 @@ function buildProjectCreateStrategySection(
 			'- The user message is the source of truth. Build the smallest valid project from it.',
 			...(scaffold.retiredModelCoaching && scaffold.dynamicSkillTools
 				? [
-						projectCreateWorkflow === 'reviewed_shell' && turnContractToolAvailable
-							? '- Open with a 1-2 sentence lead-in, then call declare_turn_contract for the requested project, goals, and tasks before creating them in the order below.'
-							: projectCreateWorkflow === 'reviewed_shell'
-								? '- Open with a 1-2 sentence lead-in, then create the project and its requested goals and tasks in the order below.'
-								: '- Open with a 1-2 sentence lead-in saying what you are about to create, then call create_onto_project directly; this prompt already carries the complete creation guidance.'
+						projectCreateWorkflow === 'reviewed_shell'
+							? '- Open with a 1-2 sentence lead-in, then create the project and its requested goals and tasks in the order below.'
+							: '- Open with a 1-2 sentence lead-in saying what you are about to create, then call create_onto_project directly; this prompt already carries the complete creation guidance.'
 					]
 				: [
-						projectCreateWorkflow === 'reviewed_shell' && turnContractToolAvailable
-							? '- Call declare_turn_contract for the requested project, goals, and tasks, then create them in the order below.'
-							: projectCreateWorkflow === 'reviewed_shell'
-								? '- Create the project and its requested goals and tasks in the order below.'
-								: '- Call create_onto_project directly once the smallest valid payload is ready.'
+						projectCreateWorkflow === 'reviewed_shell'
+							? '- Create the project and its requested goals and tasks in the order below.'
+							: '- Call create_onto_project directly once the smallest valid payload is ready.'
 					]),
 			'- Ask one concise clarification only when a required detail blocks a safe create payload; otherwise infer sensible defaults and create.',
 			projectCreateWorkflow === 'reviewed_shell'

@@ -1788,25 +1788,6 @@ describe('buildLitePromptEnvelope', () => {
 		expect(overlaid).toBe(envelope);
 	});
 
-	it('retains the declared-contract instructions on the rollback project-create surface', () => {
-		const envelope = buildLitePromptEnvelope({
-			contextType: 'project_create',
-			entityId: null,
-			projectId: null,
-			projectCreateWorkflow: 'reviewed_shell',
-			tools: getGatewaySurfaceForContextType('project_create', {
-				mutationBatchLaneEnabled: false
-			})
-		});
-
-		expect(envelope.systemPrompt).toContain(
-			'Call declare_turn_contract with one project outcome plus one outcome per requested goal and task'
-		);
-		expect(envelope.toolsSummary.directTools).toEqual(
-			expect.arrayContaining(['declare_turn_contract', 'cancel_turn_contract'])
-		);
-	});
-
 	it('keeps the final response contract in the contiguous static prefix', () => {
 		const envelope = buildLitePromptEnvelope({
 			contextType: 'global',

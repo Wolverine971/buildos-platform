@@ -1,9 +1,4 @@
 // apps/worker/tests/agenticChatWriteRouting.test.ts
-import { parseDeclaredTurnContract } from '@buildos/agentic-chat-runtime/loop';
-import {
-	contractSha256,
-	validateApprovedTurnContractMutations
-} from '../src/workers/agentic-chat/provider/validation';
 import { describe, expect, it } from 'vitest';
 import type { JsonObject } from '@buildos/shared-types';
 import type { CompletedProviderToolCall } from '../src/workers/agentic-chat/provider/stream-tool-calls';
@@ -14,7 +9,6 @@ import {
 	collectAttachedProjectAssetIds,
 	collectReadResultEntityRefs,
 	collectSingleHitEntityIds,
-	directWriteContractInstruction,
 	summarizeReadResultEntityRefs
 } from '../src/workers/agentic-chat/provider/write-routing';
 
@@ -38,38 +32,6 @@ function call(
 }
 
 describe('direct write routing', () => {
-	it.each(['task', 'goal'])(
-		'authorizes only archive effects under an approved %s archive contract',
-		(kind) => {
-			const id = 'a0000000-0000-4000-8000-000000000001';
-			const contract = parseDeclaredTurnContract({
-				outcomes: [
-					{
-						id: 'archive',
-						action: 'archive',
-						entity_kind: kind,
-						target_ids: [id],
-						minimum_successful_effects: 1
-					}
-				]
-			})!;
-			const sha = contractSha256(contract);
-			expect(
-				validateApprovedTurnContractMutations(
-					[call(`update_onto_${kind}`, { [`${kind}_id`]: id, archived: true })],
-					contract,
-					sha
-				)
-			).toEqual([]);
-			expect(
-				validateApprovedTurnContractMutations(
-					[call(`update_onto_${kind}`, { [`${kind}_id`]: id, state_key: 'done' })],
-					contract,
-					sha
-				)
-			).toHaveLength(1);
-		}
-	);
 	it.each(['task', 'goal'])('reviews archiving even a focused %s', (kind) => {
 		expect(
 			assessDirectWriteBatch(
@@ -149,10 +111,6 @@ describe('direct write routing', () => {
 			reason: 'external_content_requires_review',
 			mutationCount: 1
 		});
-		if (tainted.kind !== 'contract_required') throw new Error('Expected review');
-		expect(directWriteContractInstruction(tainted)).toContain(
-			'read externally authored content'
-		);
 		// The focused entity and a single-hit read still prove the target, but
 		// not that the user, rather than the email, asked for the change.
 		expect(
@@ -243,10 +201,6 @@ describe('direct write routing', () => {
 			reason: 'mutation_count_exceeded',
 			mutationCount: 4
 		});
-		if (assessment.kind !== 'contract_required') throw new Error('Expected contract route');
-		expect(directWriteContractInstruction(assessment)).toContain(
-			'direct lane permits at most 3'
-		);
 	});
 
 	it.each(['move_document_in_tree', 'unlink_onto_edge', 'move_onto_task', 'create_onto_project'])(

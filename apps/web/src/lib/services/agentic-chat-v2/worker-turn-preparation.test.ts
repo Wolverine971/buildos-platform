@@ -914,7 +914,7 @@ describe('Agentic Chat worker turn preparation', () => {
 		);
 	});
 
-	it('keeps the complex contract on a mutation-capable worker artifact', async () => {
+	it('omits the retired contract controls from a mutation-capable worker artifact', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
 			selectedSurfaceProfile: 'project',
@@ -948,11 +948,7 @@ describe('Agentic Chat worker turn preparation', () => {
 
 		expect(result.args.p_artifact_prepared).toMatchObject({
 			toolSurface: {
-				toolNames: [
-					'declare_turn_contract',
-					'request_turn_clarification',
-					'create_onto_task'
-				]
+				toolNames: ['request_turn_clarification', 'create_onto_task']
 			}
 		});
 	});
@@ -2213,8 +2209,7 @@ describe('Agentic Chat worker turn preparation', () => {
 			expect(result.args.p_artifact_history).toHaveLength(2);
 			if (kind === 'contract') {
 				expect(mocks.buildPendingTurnContractSystemMessage).toHaveBeenCalledWith(
-					expect.objectContaining({ finishedReason: 'mutation_unfulfilled' }),
-					{ mutationBatchLaneEnabled: true }
+					expect.objectContaining({ finishedReason: 'mutation_unfulfilled' })
 				);
 				expect(JSON.stringify(result.args.p_artifact_history)).toContain(
 					'propose concrete mutation tool calls'

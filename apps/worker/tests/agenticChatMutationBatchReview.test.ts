@@ -136,8 +136,7 @@ describe('mutation batch review presentation', () => {
 			tools,
 			{
 				reason: 'Check the direction.',
-				requiredCorrection: 'Compare both endpoint IDs with the request.',
-				correctedContract: null
+				requiredCorrection: 'Compare both endpoint IDs with the request.'
 			},
 			batch
 		);

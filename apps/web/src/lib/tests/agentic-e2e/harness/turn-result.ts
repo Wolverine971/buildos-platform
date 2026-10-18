@@ -85,7 +85,6 @@ export function createEmptyTurnResult(
 		assistantText: '',
 		toolCalls: [],
 		toolResults: [],
-		skillActivity: [],
 		errors: [],
 		finishedReason: null,
 		usage: null,
@@ -122,10 +121,6 @@ export function applyTurnEvent(result: TurnResult, ev: Record<string, unknown>):
 		}
 		case 'tool_result': {
 			if (ev.result) result.toolResults.push(ev.result as Record<string, unknown>);
-			break;
-		}
-		case 'skill_activity': {
-			result.skillActivity.push(ev);
 			break;
 		}
 		case 'timing': {

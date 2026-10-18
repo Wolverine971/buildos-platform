@@ -72,7 +72,6 @@ describe('restraint assertion helpers', () => {
 			assistantText: '',
 			toolCalls: [],
 			toolResults: [],
-			skillActivity: [],
 			errors: [],
 			finishedReason: 'stop',
 			usage: null,

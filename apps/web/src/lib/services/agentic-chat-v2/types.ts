@@ -4,7 +4,6 @@ import type {
 	ChatContextType,
 	ChatSession,
 	ChatAttachmentRef,
-	SkillActivityEvent,
 	ChatToolCall,
 	ChatToolResult,
 	ContextShiftPayload,
@@ -62,7 +61,6 @@ export type FastAgentStreamUsage = {
 };
 
 export type FastAgentStreamEvent =
-	| SkillActivityEvent
 	| { type: 'context_usage'; usage: ContextUsageSnapshot }
 	| { type: 'session'; session: ChatSession }
 	| { type: 'last_turn_context'; context: LastTurnContext }

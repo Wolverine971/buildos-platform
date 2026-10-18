@@ -2,7 +2,6 @@
 import type { JsonObject } from '@buildos/shared-types';
 import {
 	APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME,
-	APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
 	REQUEST_PROPOSAL_REVISION_TOOL_NAME,
 	TURN_CONTRACT_TOOL_DEFINITION
 } from '@buildos/agentic-chat-runtime/catalog';
@@ -10,10 +9,9 @@ import type { AgenticChatTurnProviderToolV1 } from '../contracts';
 import { MUTATION_REVIEW_FINDINGS_SCHEMA } from '@buildos/agentic-chat-runtime/loop';
 
 /**
- * Reviewer-register commission guidance. Mounted only in the two reviewer
- * prompts (contract review, mutation-batch review) and the acting-side
- * semantic disposition gate; the per-pass actor routing message carries the
- * short ACTOR_COMMISSION_GUIDANCE instead (audit 2026-09-02, Finding 9).
+ * Reviewer-register commission guidance. Mounted only in the mutation-batch
+ * reviewer prompt; the per-pass actor routing message carries the short
+ * ACTOR_COMMISSION_GUIDANCE instead (audit 2026-09-02, Finding 9).
  */
 export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
 	'When the user explicitly delegates judgment (for example, asks for a sensible organization), reasonable implementation choices within that commission are resolved; do not ask the user to make the delegated choice again.',
@@ -37,8 +35,8 @@ export const SEMANTIC_COMMISSION_GUIDANCE = Object.freeze([
  * Actor-register commission guidance: the five rules the acting model needs
  * on every project pass, in its own register. The reviewer keeps the full
  * SEMANTIC_COMMISSION_GUIDANCE; this must stay at most five lines. The first
- * line rides the deferred opening pass and the gate alike, so it names no
- * tool (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02).
+ * line rides every acting pass, so it names no tool
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F02).
  */
 export const ACTOR_COMMISSION_GUIDANCE = Object.freeze([
 	'Commission rules: make every commissioned change by calling the mutation tools yourself, simple or complex. The system holds a complex batch of your calls for independent review and runs it on approval; a change you only describe is never staged, reviewed, or saved. Never say a change is done or underway unless its tool result in this turn confirms it. Submit a large commission in independently reviewed stages of at most 8 mutations per pass, fewer for large document bodies. Reuse prior reads and durable receipts; do not repeat saved writes. Archiving preserves workflow state and is never completing a task.',
@@ -49,8 +47,8 @@ export const ACTOR_COMMISSION_GUIDANCE = Object.freeze([
 ]);
 
 /**
- * Shared reviewer evidence shape for descriptive entity references. Contract
- * review uses this deterministic ambiguity floor on top of reviewer judgment.
+ * Shared reviewer evidence shape for descriptive entity references: the
+ * reviewer enumerates candidates before judging.
  */
 export const REFERENCE_CANDIDATES_PROPERTY = Object.freeze({
 	type: 'array',
@@ -78,41 +76,6 @@ export const REFERENCE_CANDIDATES_PROPERTY = Object.freeze({
 						id: { type: 'string' },
 						title: { type: 'string', maxLength: 160 }
 					}
-				}
-			}
-		}
-	}
-});
-
-/**
- * Approval tools are static on purpose: a per-review `const` SHA in the schema
- * changed the tools array on every call and defeated provider prefix caching
- * (0% cache over 350 reviewer calls). The SHA binding is enforced in code by
- * decision-completion.ts, which fails closed to an internal review fault on a mismatch.
- */
-export const TURN_CONTRACT_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
-	type: 'function',
-	function: {
-		name: APPROVE_TURN_CONTRACT_REVIEW_TOOL_NAME,
-		description:
-			'Approve the exact proposed turn contract only when the current user request and loaded evidence resolve every commissioned outcome, target, and required value without guessing. Enumerate reference_candidates before judging.',
-		parameters: {
-			type: 'object',
-			additionalProperties: false,
-			required: ['reason', 'contract_sha256', 'reference_candidates'],
-			properties: {
-				reason: {
-					type: 'string',
-					description:
-						'Concise semantic evidence that the exact contract is safe to execute.'
-				},
-				contract_sha256: {
-					type: 'string',
-					description:
-						'The exact SHA-256 quoted in this request. The harness rejects an approval whose value differs from it.'
-				},
-				reference_candidates: {
-					...REFERENCE_CANDIDATES_PROPERTY
 				}
 			}
 		}
@@ -148,43 +111,16 @@ export const PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Object.free
 	}
 });
 
-export const CONTRACT_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
-	...PROPOSAL_REVISION_TOOL,
-	function: {
-		...PROPOSAL_REVISION_TOOL.function,
-		description:
-			"Return the acting model's contract for an exact machine-readable correction when the user's commission is clear but the proposal misstates it. Enumerate reference_candidates before judging. Use due_at—not a generic date field—for a task due-date, deadline, or push/reschedule correction; use start_at only for an explicit task-start request. Set label only on a create outcome and parent_label only on move/organize; omit both everywhere else. The corrected contract is durably recorded and independently re-reviewed; it never reaches execution merely because this tool supplied it. Do not use this when a choice genuinely belongs to the user.",
-		parameters: {
-			...PROPOSAL_REVISION_TOOL.function.parameters,
-			required: [
-				'reason',
-				'required_correction',
-				'corrected_contract',
-				'reference_candidates'
-			],
-			properties: {
-				...(PROPOSAL_REVISION_TOOL.function.parameters.properties as JsonObject),
-				reference_candidates: {
-					...REFERENCE_CANDIDATES_PROPERTY
-				},
-				corrected_contract: {
-					...(TURN_CONTRACT_TOOL_DEFINITION.function.parameters as unknown as JsonObject),
-					description:
-						'The complete corrected turn contract. It must contain only outcomes already commissioned and values resolved by the turn evidence.'
-				}
-			}
-		}
-	}
-});
-
 /**
  * Approve the exact proposed batch of tool calls.
  *
- * The contract lane's approval bound a SHA over a *description* of the intended
- * change, and the acting model then re-proposed the calls that actually ran —
- * so the executed arguments were never the reviewed arguments (F08). This
- * approval binds the digest of the calls themselves, and the harness executes
- * the held calls rather than asking for them again.
+ * The approval binds the digest of the calls themselves, and the harness
+ * executes the held calls rather than asking for them again, so the executed
+ * arguments are the reviewed arguments (F08). The tool is static on purpose: a
+ * per-review `const` SHA in the schema changed the tools array on every call
+ * and defeated provider prefix caching (0% cache over 350 reviewer calls). The
+ * SHA binding is enforced in code by decision-completion.ts, which fails
+ * closed to an internal review fault on a mismatch.
  */
 export const MUTATION_BATCH_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 = Object.freeze({
 	type: 'function',
@@ -239,9 +175,9 @@ export const DEFECTIVE_CALLS_PROPERTY = Object.freeze({
 });
 
 /**
- * Reject the batch back to the acting model with a reason. Unlike the contract
- * lane's revision tool, the reviewer never authors a replacement: it says what
- * is wrong and the acting model proposes new calls, which are reviewed again.
+ * Reject the batch back to the acting model with a reason. The reviewer never
+ * authors a replacement: it says what is wrong and the acting model proposes
+ * new calls, which are reviewed again.
  * A reviewer that cannot write content cannot pad a capped field with `##2` or
  * zero-width characters, which is how six corrupted writes happened (F04).
  */

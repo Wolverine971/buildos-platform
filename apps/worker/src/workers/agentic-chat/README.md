@@ -92,19 +92,18 @@ prompt for a later acting or reviewer call.
 - `validation.ts` owns deterministic tool validation and approved-contract authorization.
 - `protocol.ts` owns provider protocol parsing and canonical error construction.
 - `provider-pass.ts` owns atomic provider-pass buffering, retry identity, cooldown marking, and response-size enforcement.
-- `repair-policy.ts` owns bounded unavailable-skill, reviewer-mimicry, and surface repair policy. A work tool called from a reduced surface is repaired onto the surface its phase owns (`surfaceFor(phase, admitted, { repair: true })`), never killed. Read saturation has one ladder, the runtime `ContextGatheringLedger`.
+- `repair-policy.ts` owns bounded reviewer-mimicry, empty-reply, and surface repair policy. A work tool called from a reduced surface is repaired onto the surface its phase owns (`surfaceFor(phase, admitted, { repair: true })`), never killed. Read saturation has one ladder, the runtime `ContextGatheringLedger`.
 - `request-builders.ts` owns base provider requests, admission-context projection, continuation, validation repair, snapshots, usage, and client-request construction.
-- `turn-phase.ts` owns the turn state machine: the `TurnPhase` union, the pure `nextTurnPhase` reducer over tool-round, disposition, reviewer, carve-out/completion, and budget events, and `surfaceFor`, the single place that decides which tools (and which `toolChoice`) a phase or reviewer lane may call. Every other surface builder draws its tool list from it.
-- `review/lanes.ts` owns the reviewer lanes (mutation-batch review, contract review, review exhaustion) and the unapplied-write wording.
+- `turn-phase.ts` owns the turn state machine: the `TurnPhase` union, the pure `nextTurnPhase` reducer over tool-round, batch-withholding, disposition, reviewer, and budget events, and `surfaceFor`, the single place that decides which tools (and which `toolChoice`) a phase or reviewer lane may call. Every other surface builder draws its tool list from it.
+- `review/lanes.ts` owns the mutation-batch reviewer lane, review exhaustion, and the unapplied-write wording.
 - `review/controls.ts` owns worker-only reviewer tool definitions and immutable guidance.
-- `review/decision-completion.ts` owns deterministic reviewer call completion, identity binding, candidate-ambiguity enforcement, and lane-specific fallback decisions.
-- `review/contract-execution.ts` owns approved-contract completion and write-only carve-out request surfaces.
-- `review/decision-handling.ts` owns reviewer fallback clarification, candidate ambiguity restraint, and bounded proposal-correction requests.
-- `review/disposition.ts` owns complex-write contract/clarification gates, post-disposition surfaces, and disposition call-shape enforcement. Answer-only turns no longer declare or independently review a read-only disposition.
-- `review/turn-contract.ts` owns contract-review requests, schema-derived field semantics, and project-create contract guidance.
-- `write-routing.ts` owns the direct-write floor: one batch, at most three independent operations classified as ordinary in the mutation catalog. Direct calls are the acting model's simple-route declaration; contract-only, dependent, mixed, or larger batches are withheld for `declare_turn_contract`.
+- `review/decision-completion.ts` owns deterministic batch-review call completion, SHA binding, and fallback decisions.
+- `review/decision-handling.ts` owns reviewer fallback clarification and bounded proposal-correction requests.
+- `review/disposition.ts` owns post-disposition surfaces (read-only and clarification) and disposition call-shape enforcement. Answer-only turns no longer declare or independently review a read-only disposition.
+- `review/turn-contract.ts` owns reviewer evidence rendering and the deferred-route ordering message. (The turn-contract lane itself, with its `declare_turn_contract` gate, contract review, carve-out and completion passes, was deleted on 2026-10-18 together with `CHAT_MUTATION_BATCH_LANE`.)
+- `write-routing.ts` owns the direct-write floor: one batch, at most three independent operations classified as ordinary in the mutation catalog. Direct calls execute on the simple route; contract-only, dependent, mixed, or larger batches are withheld for SHA-bound mutation batch review.
 
-The provider runs one acting-pass loop (`streamActingPass`) for the opening pass and every continuation; `options.phase` selects the few behaviours that differ (live-vision resolution and the pre-gate prose hold on the opening pass; reviewer-mimicry repair, the required-pass prose fallback, and contract-driven prose holding on continuations). There is no single-read `synthesize` bridge and no turn supervisor: the context-gathering ledger, validation repair, the reviewer, and `request_turn_clarification` cover every job the supervisor had.
+The provider runs one acting-pass loop (`streamActingPass`) for the opening pass and every continuation; `options.phase` selects the few behaviours that differ (live-vision resolution on the opening pass; reviewer-mimicry repair on continuations). There is no single-read `synthesize` bridge and no turn supervisor: the context-gathering ledger, validation repair, the reviewer, and `request_turn_clarification` cover every job the supervisor had.
 
 These modules are worker-private implementation details unless exported through the agentic-chat root. They must not import the turn coordinator back, and structural moves must preserve provider request JSON, prompt text, tool ordering, hashes, usage accounting, and terminal behavior.
 
@@ -115,9 +114,9 @@ These modules are worker-private implementation details unless exported through 
 ## Tool execution batches
 
 One multi-result provider response is one execution batch. Optional `call_ref`/`after` fields express
-same-response dependencies; since 2026-09-02 they are mounted only on the contract carve-out and
-completion write surfaces (`withSchedulingSidecar` in `provider/tool-surface.ts`), never on reads or
-controls, and the batching system message is sent only when a mounted tool carries them. They are
+same-response dependencies; since 2026-09-02 they were mounted only on the contract carve-out and
+completion write surfaces; since those were deleted (2026-10-18) the worker no longer attaches them,
+and the batching system message is sent only when a mounted tool carries them. They are
 preserved in provider history and removed before domain validation or adapter dispatch. `tools/execution-graph.ts` validates and layers the batch, while
 `tools/execution-policy.ts` adds worker-owned resource conflicts and keeps unknown-scope mutations
 serial.

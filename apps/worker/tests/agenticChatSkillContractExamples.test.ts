@@ -1,7 +1,7 @@
 // apps/worker/tests/agenticChatSkillContractExamples.test.ts
 /**
  * The operational playbooks (task, document, calendar, plan, project creation)
- * show the acting model literal turn-contract shapes. A shape that drifts from
+ * show the acting model literal turn-contract (outcome-format) shapes. A shape that drifts from
  * the validator teaches the model to fail: every validator rejection costs a
  * repair round and a malformed contract can end the turn. This test pulls each
  * `{"outcomes":…}` example out of the shipped SKILL.md files and runs it through
@@ -30,11 +30,7 @@ import type {
 // Importing the worker tool surface installs the worker's own loop catalog.
 import { reviewedWorkerProviderToolDefinitionV1 } from '../src/workers/agentic-chat/provider/tool-surface';
 import { reviewedAgenticChatMutationSpecV1 } from '../src/workers/agentic-chat/mutations/tool-catalog';
-import {
-	contractSha256,
-	validateApprovedTurnContractMutations,
-	validateCompletedProviderCalls
-} from '../src/workers/agentic-chat/provider/validation';
+import { validateCompletedProviderCalls } from '../src/workers/agentic-chat/provider/validation';
 
 const DEFINITIONS_DIR = fileURLToPath(
 	new URL('../../web/src/lib/services/agentic-chat/tools/skills/definitions/', import.meta.url)
@@ -84,7 +80,8 @@ function surfaceTools(profile: GatewaySurfaceProfileName): AgenticChatTurnProvid
 			reviewedWorkerProviderToolDefinitionV1(tool as unknown as AgenticChatTurnProviderToolV1)
 		)
 		.filter((tool): tool is AgenticChatTurnProviderToolV1 => tool !== null);
-	// The complex-write redirect re-mounts the contract schema for the contract pass.
+	// The contract schema is the outcome format the examples (and the batch
+	// reviewer's request_expectation) use; mount it so the examples validate.
 	if (!tools.some((tool) => tool.function.name === TURN_CONTRACT_TOOL_DEFINITION.function.name)) {
 		tools.push(TURN_CONTRACT_TOOL_DEFINITION as unknown as AgenticChatTurnProviderToolV1);
 	}
@@ -199,8 +196,7 @@ describe('skill turn-contract examples', () => {
 		const tools = surfaceTools(profile);
 		const validation = validateCompletedProviderCalls(
 			[call('declare_turn_contract', declaration)],
-			providerRequest(profile, tools),
-			tools
+			providerRequest(profile, tools)
 		);
 		expect(validation.flatMap((issue) => issue.errors)).toEqual([]);
 
@@ -292,7 +288,9 @@ describe('tool calls shown in the playbooks', () => {
 			toolCallsIn(
 				'`create_onto_plan({ project_id: "p", milestone_id: "m", plan: "## Risks: scope", props: { facets: {} } })`'
 			)
-		).toEqual([{ tool: 'create_onto_plan', keys: ['project_id', 'milestone_id', 'plan', 'props'] }]);
+		).toEqual([
+			{ tool: 'create_onto_plan', keys: ['project_id', 'milestone_id', 'plan', 'props'] }
+		]);
 	});
 
 	it.each(toolCalls)(
@@ -303,91 +301,4 @@ describe('tool calls shown in the playbooks', () => {
 			expect(keys.filter((key) => !admitted.has(key))).toEqual([]);
 		}
 	);
-});
-
-/**
- * The writes each example promises must be the writes the approved contract
- * authorizes; anything else is rejected as outside the approved contract.
- */
-describe('writes authorized by the example contracts', () => {
-	function approved(skillId: string, index: number) {
-		const example = EXAMPLES.find(
-			(candidate) => candidate.skillId === skillId && candidate.index === index
-		)!;
-		const contract = parseDeclaredTurnContract(bindPlaceholders(example.raw))!;
-		return { contract, sha: contractSha256(contract) };
-	}
-	const FIRST = 'a0100000-0000-4000-8000-000000000001';
-	const SECOND = 'a0200000-0000-4000-8000-000000000002';
-
-	it('authorizes the document text edit on the declared document only', () => {
-		const { contract, sha } = approved('document_workspace', 0);
-		const edit = (documentId: string) =>
-			call('update_onto_document', {
-				document_id: documentId,
-				edits: [{ old_text: 'old line', new_text: 'new line' }]
-			});
-		expect(validateApprovedTurnContractMutations([edit(FIRST)], contract, sha)).toEqual([]);
-		const outside = validateApprovedTurnContractMutations([edit(SECOND)], contract, sha);
-		expect(outside[0]?.errors.join(' ')).toContain('outside the independently approved');
-	});
-
-	it('authorizes the folder moves by the declared parent title', () => {
-		const { contract, sha } = approved('document_workspace', 1);
-		const moves = [FIRST, SECOND].map((documentId, index) =>
-			call(
-				'move_document_in_tree',
-				{ project_id: PROJECT_ID, document_id: documentId, new_parent_title: 'Research' },
-				`move-${index}`
-			)
-		);
-		expect(validateApprovedTurnContractMutations(moves, contract, sha)).toEqual([]);
-	});
-
-	it('authorizes the task state update and reschedule', () => {
-		const { contract, sha } = approved('task_management', 0);
-		expect(
-			validateApprovedTurnContractMutations(
-				[
-					call('update_onto_task', { task_id: FIRST, state_key: 'done' }, 'state'),
-					call('update_onto_task', { task_id: SECOND, due_at: '2026-10-09' }, 'due')
-				],
-				contract,
-				sha
-			)
-		).toEqual([]);
-	});
-
-	it('authorizes the ontology event reschedule addressed by onto_event_id', () => {
-		const { contract, sha } = approved('calendar_management', 1);
-		expect(
-			validateApprovedTurnContractMutations(
-				[
-					call('update_calendar_event', {
-						onto_event_id: FIRST,
-						start_at: '2026-10-07T15:00:00-04:00'
-					})
-				],
-				contract,
-				sha
-			)
-		).toEqual([]);
-		const otherEvent = validateApprovedTurnContractMutations(
-			[call('update_calendar_event', { onto_event_id: SECOND, start_at: '2026-10-07' })],
-			contract,
-			sha
-		);
-		expect(otherEvent[0]?.errors.join(' ')).toContain('outside the independently approved');
-	});
-
-	it('authorizes the goal date update', () => {
-		const { contract, sha } = approved('plan_management', 1);
-		expect(
-			validateApprovedTurnContractMutations(
-				[call('update_onto_goal', { goal_id: FIRST, target_date: '2026-12-01' })],
-				contract,
-				sha
-			)
-		).toEqual([]);
-	});
 });

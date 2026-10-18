@@ -1,16 +1,12 @@
 // apps/worker/tests/agenticChatRepairPolicy.test.ts
 //
 // Direct unit cover for the bounded repairs in `provider/repair-policy.ts`.
-// The turn-provider suite drives these through whole turns, which only ever
+// The turn-provider suite drives these through whole turns, which mostly
 // reaches the `opening` guidance. The phase machine can also land a surface
-// repair on the disposition gate, on a declared read-only turn, and after a
-// reviewer approval; those three guidance texts are reachable and are pinned
-// here so the repair cannot silently hand a phase the wrong instruction.
+// repair on a declared read-only turn; that guidance is pinned here so the
+// repair cannot silently hand a phase the wrong instruction.
 import { describe, expect, it } from 'vitest';
-import {
-	DECLARE_TURN_CONTRACT_TOOL_NAME,
-	REQUEST_TURN_CLARIFICATION_TOOL_NAME
-} from '@buildos/agentic-chat-runtime/catalog';
+import { REQUEST_TURN_CLARIFICATION_TOOL_NAME } from '@buildos/agentic-chat-runtime/catalog';
 import type { WriteLedgerEntry } from '@buildos/agentic-chat-runtime/loop';
 import type {
 	AgenticChatTurnProviderRequestV1,
@@ -20,9 +16,7 @@ import {
 	buildEmptyReplyRepairRequest,
 	renderOutputBudgetFailure,
 	buildProviderPassBudgetSynthesisInstruction,
-	buildRequiredPassProseFallbackRequest,
 	buildReviewerMimicryRepairRequest,
-	buildUnavailableSkillRepairRequest,
 	buildUnavailableSurfaceToolRepairRequest
 } from '../src/workers/agentic-chat/provider/repair-policy';
 import type { CompletedProviderToolCall } from '../src/workers/agentic-chat/provider/stream-tool-calls';
@@ -95,29 +89,6 @@ function lastInstruction(result: AgenticChatTurnProviderRequestV1 | null): strin
 }
 
 describe('agentic chat surface repair guidance', () => {
-	it('sends a mutation called from the disposition gate back to the gate controls', () => {
-		const gateTools = [
-			tool(DECLARE_TURN_CONTRACT_TOOL_NAME),
-			tool(REQUEST_TURN_CLARIFICATION_TOOL_NAME)
-		];
-		const repair = buildUnavailableSurfaceToolRepairRequest(
-			request(gateTools, { semanticDispositionGate: true, toolChoice: 'required' }),
-			[call(MUTATION_TOOL_NAME)],
-			[...gateTools, tool(MUTATION_TOOL_NAME)],
-			{ phase: 'disposition_gate', contractApproved: false }
-		);
-		const instruction = lastInstruction(repair);
-		expect(instruction).toContain('This pass decides the semantic disposition of the turn');
-		expect(instruction).toContain(
-			`${MUTATION_TOOL_NAME} is not callable in this pass and the call was rejected without execution.`
-		);
-		expect(repair?.semanticDispositionGate).toBe(true);
-		expect(repair?.tools.map((entry) => entry.function.name)).toEqual([
-			DECLARE_TURN_CONTRACT_TOOL_NAME,
-			REQUEST_TURN_CLARIFICATION_TOOL_NAME
-		]);
-	});
-
 	it('tells a declared read-only turn plainly that no write tool is callable', () => {
 		const admitted = [
 			tool(READ_TOOL_NAME),
@@ -128,18 +99,17 @@ describe('agentic chat surface repair guidance', () => {
 			request([tool(READ_TOOL_NAME)]),
 			[call(MUTATION_TOOL_NAME)],
 			admitted,
-			{ phase: 'read_only_declared', contractApproved: false }
+			{ phase: 'read_only_declared' }
 		);
 		const instruction = lastInstruction(repair);
 		expect(instruction).toContain('This turn was declared read-only');
-		expect(repair?.semanticDispositionGate).toBe(false);
 		expect(repair?.tools.map((entry) => entry.function.name)).toEqual([
 			READ_TOOL_NAME,
 			REQUEST_TURN_CLARIFICATION_TOOL_NAME
 		]);
 	});
 
-	it('keeps an approved contract in force and names every rejected tool once', () => {
+	it('restores the admitted surface after a write and names every rejected tool once', () => {
 		const admitted = [
 			tool(READ_TOOL_NAME),
 			tool(MUTATION_TOOL_NAME),
@@ -149,10 +119,15 @@ describe('agentic chat surface repair guidance', () => {
 			request([tool(READ_TOOL_NAME)]),
 			[call(MUTATION_TOOL_NAME), call(SECOND_MUTATION_TOOL_NAME), call(MUTATION_TOOL_NAME)],
 			admitted,
-			{ phase: 'mutating', contractApproved: true }
+			{ phase: 'mutating' }
 		);
 		const instruction = lastInstruction(repair);
-		expect(instruction).toContain('The approved contract is still in force');
+		expect(instruction).toContain('Use only the tools present in this request.');
+		expect(repair?.tools.map((entry) => entry.function.name)).toEqual([
+			READ_TOOL_NAME,
+			MUTATION_TOOL_NAME,
+			SECOND_MUTATION_TOOL_NAME
+		]);
 		// Plural rejection phrasing, de-duplicated and sorted.
 		expect(instruction).toContain(
 			`${MUTATION_TOOL_NAME}, ${SECOND_MUTATION_TOOL_NAME} are not callable in this pass and the calls were rejected without execution.`
@@ -165,35 +140,8 @@ describe('agentic chat surface repair guidance', () => {
 				request([tool(READ_TOOL_NAME)]),
 				[call(MUTATION_TOOL_NAME)],
 				[tool(MUTATION_TOOL_NAME)],
-				{ phase: 'read_only_declared', contractApproved: false }
+				{ phase: 'read_only_declared' }
 			)
-		).toBeNull();
-	});
-});
-
-describe('agentic chat unavailable skill repair', () => {
-	it('names both unavailable skill tools when the pass called each of them', () => {
-		const admitted = [
-			tool(DECLARE_TURN_CONTRACT_TOOL_NAME),
-			tool(REQUEST_TURN_CLARIFICATION_TOOL_NAME),
-			tool(MUTATION_TOOL_NAME)
-		];
-		const repair = buildUnavailableSkillRepairRequest(
-			request(admitted),
-			[call('skill_load'), call('skill_search')],
-			admitted
-		);
-		const instruction = lastInstruction(repair);
-		expect(instruction).toContain(
-			'skill_load, skill_search are not callable in this turn and the calls were rejected without execution.'
-		);
-		expect(repair?.unavailableSkillRepairAttempted).toBe(true);
-	});
-
-	it('declines the repair when the restored surface cannot carry a disposition', () => {
-		const admitted = [tool(MUTATION_TOOL_NAME)];
-		expect(
-			buildUnavailableSkillRepairRequest(request(admitted), [call('skill_load')], admitted)
 		).toBeNull();
 	});
 });
@@ -244,16 +192,6 @@ describe('agentic chat receipt-grounded closing passes', () => {
 			'Durable effects actually recorded this turn: succeeded: create_onto_task (Draft the brief); failed: update_onto_task (task_9); succeeded: create_onto_goal (goal); failed: tag_onto_entity.'
 		);
 		expect(instruction).not.toContain('Commissioned outcomes with no successful effect');
-	});
-});
-
-describe('agentic chat required-pass prose fallback', () => {
-	it('omits the withheld draft when the pass returned no reusable prose', () => {
-		const instruction = lastInstruction(
-			buildRequiredPassProseFallbackRequest(request([tool(READ_TOOL_NAME)]), '   ')
-		);
-		expect(instruction).not.toContain('Withheld draft');
-		expect(instruction).toContain('no durable change was made in this turn');
 	});
 });
 

@@ -4,7 +4,6 @@ import type { JsonObject } from '@buildos/shared-types';
 import {
 	type MutationBatch,
 	type MutationReviewFinding,
-	type TurnContract,
 	renderMutationReviewFindings
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatExecutionObservationPortV1 } from '../../effects/execution-observation';
@@ -33,21 +32,14 @@ import {
 } from '../protocol';
 import { throwIfAborted } from '../../shared/abortable-deadline';
 import { appendSystemInstruction, combineUsage } from '../request-builders';
-import {
-	buildPlanningStep,
-	buildProviderToolStep,
-	normalizeCompletedProviderCalls
-} from '../steps';
+import { buildProviderToolStep, normalizeCompletedProviderCalls } from '../steps';
 import {
 	type CompletedProviderToolCall,
 	appendToolCallDelta,
 	createToolCallAccumulator
 } from '../stream-tool-calls';
-import { MAX_REVISIONS_PER_TURN, type ToolRoundStreamState } from '../turn-state';
-import {
-	completeMutationBatchReviewDecision,
-	completeTurnContractReviewDecision
-} from './decision-completion';
+import type { ToolRoundStreamState } from '../turn-state';
+import { completeMutationBatchReviewDecision } from './decision-completion';
 import {
 	buildMutationBatchReviewRequest,
 	constrainMutationBatchApprovalShaForRepair
@@ -58,7 +50,6 @@ import {
 	enqueueReviewTelemetryObservation,
 	reviewOutcomeOf
 } from './review-telemetry';
-import { buildTurnContractReviewRequest } from './turn-contract';
 
 /** Review lanes add the distinct reviewer model to the shared lane context. */
 export type ReviewLaneContext = ProviderLaneContext & {
@@ -155,10 +146,10 @@ function attemptedDecision(
 /**
  * Independent review of a held batch of tool calls.
  *
- * Structurally the same ladder as contract review — one reviewer pass, one
- * bounded format repair, the decision executed as a durable control round —
- * but the artifact is the calls themselves, and approval leads straight to
- * executing those held calls rather than to another acting pass.
+ * One reviewer pass, one bounded format repair, the decision executed as a
+ * durable control round. The artifact is the calls themselves, and approval
+ * leads straight to executing those held calls rather than to another acting
+ * pass.
  */
 export async function* streamMutationBatchReview(
 	context: ReviewLaneContext,
@@ -488,255 +479,6 @@ export async function* streamReviewExhaustion(
 		yield { type: 'finish', finishedReason: 'semantic_review_failed', usage };
 	} finally {
 		state.release();
-	}
-}
-
-/**
- * A proposed write contract is an untrusted model output. A distinct model
- * lane reviews the exact contract against the original turn record before
- * any write tool is restored. Its approve/clarify decision crosses the same
- * durable tool-result fence as every other control call.
- */
-export async function* streamTurnContractReview(
-	context: ReviewLaneContext,
-	request: ClientRequest,
-	availableTools: readonly AgenticChatTurnProviderToolV1[],
-	contract: TurnContract,
-	contractReviewSha256: string,
-	allowDispositionCorrection: boolean,
-	priorUsage: AgenticChatProviderUsageV1 | null,
-	state: ToolRoundStreamState
-): AsyncGenerator<AgenticChatProviderStepV1> {
-	const reviewer = context.ports.semanticReviewer;
-	if (!reviewer) throw providerError('provider_semantic_reviewer_unavailable', 'permanent');
-	if (state.providerPassBudgetExhausted()) {
-		// No budget left to review, so no budget to execute what a review would
-		// authorize. End the turn on what is already durable.
-		state.advance({ type: 'budget', limit: 'force_synthesis' });
-		yield* streamForcedSynthesis(
-			context,
-			appendSystemInstruction(request, state.buildProviderPassBudgetInstruction()),
-			priorUsage,
-			state
-		);
-		return;
-	}
-	const allowRevision = state.getContractRevisionCount() < MAX_REVISIONS_PER_TURN;
-	const allowReadOnlyCorrection =
-		allowDispositionCorrection && state.getContractRevisionCount() === 0;
-	let reviewRequest = buildTurnContractReviewRequest(
-		request,
-		availableTools,
-		contract,
-		contractReviewSha256,
-		allowReadOnlyCorrection,
-		allowRevision
-	);
-	let accumulatedReviewUsage = priorUsage;
-	let pendingReviewTool = false;
-	try {
-		// The first review request goes out while the executor persists the
-		// review status; the status still reaches it before any review event.
-		let primedReview: ReturnType<ProviderPass> | null = startProviderPass(
-			context.providerPass(reviewRequest, state, reviewer)
-		);
-		yield {
-			type: 'semantic',
-			transitionId: createStableAgenticChatReadToolTransitionIdV1({
-				turnRunId: request.turnRunId,
-				// Keyed by attempt as well as content: the acting model may re-declare
-				// an identical contract after a revision, and the second review's
-				// durable transition must not collide with the first.
-				providerToolCallId: `contract-review:${contractReviewSha256}:${request.logicalProviderRound}`,
-				stage: 'planning'
-			}),
-			phase: 'stream',
-			eventType: 'agent_state',
-			currentActivity: 'Checking the requested change...',
-			eventPayload: {
-				type: 'agent_state',
-				state: 'thinking',
-				contextType: request.contextType,
-				details: 'Checking the requested change...',
-				activity_visibility: 'activity_log',
-				semantic_review: { contract_sha256: contractReviewSha256 }
-			}
-		};
-		for (let reviewAttempt = 0; reviewAttempt <= 1; reviewAttempt += 1) {
-			const toolCalls = createToolCallAccumulator();
-			let finished = false;
-			let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
-			let fallbackReason: string | null = null;
-			let reviewFinishedReason: string | null = null;
-			const attemptStartedAt = Date.now();
-			const decisionRecord = (
-				fields: Pick<
-					ReviewDecisionRecord,
-					'outcome' | 'rejectionCode' | 'decisionToolName' | 'decisionArguments'
-				>
-			): ReviewDecisionRecord => ({
-				lane: 'turn_contract',
-				logicalProviderRound: reviewRequest.logicalProviderRound,
-				attempt: reviewAttempt + 1,
-				stageToolNames: [],
-				priorRevisions: state.getContractRevisionCount(),
-				readOnlyOffered: allowReadOnlyCorrection,
-				durationMs: Date.now() - attemptStartedAt,
-				...fields
-			});
-			try {
-				const reviewPass =
-					primedReview ?? context.providerPass(reviewRequest, state, reviewer);
-				primedReview = null;
-				for await (const event of reviewPass) {
-					throwIfAborted(request.signal);
-					if (event.type === 'output_budget_recovery')
-						throw providerError(
-							'provider_semantic_reviewer_unexpected_recovery',
-							'permanent'
-						);
-					if (finished) throw providerError('provider_event_after_done', 'unknown');
-					if (event.type === 'text') continue;
-					if (event.type === 'tool_call') {
-						appendToolCallDelta(toolCalls, event.toolCall);
-						continue;
-					}
-					if (event.type === 'error') {
-						fallbackReason = `Independent semantic review was unavailable: ${canonicalError(event.error)}`;
-						break;
-					}
-
-					finished = true;
-					reviewerUsage = normalizeUsage(event.usage);
-					const finishedReason = canonicalFinishedReason(event.finishedReason);
-					reviewFinishedReason = finishedReason;
-					if (finishedReason !== 'tool_calls' && finishedReason !== 'function_call') {
-						fallbackReason =
-							'Independent semantic review did not return a control decision.';
-					}
-				}
-			} catch (error) {
-				throwIfAborted(request.signal);
-				if (!(error instanceof AgenticChatProviderExecutionError)) throw error;
-				fallbackReason = error.code;
-			}
-
-			accumulatedReviewUsage = combineUsage(accumulatedReviewUsage, reviewerUsage);
-			let calls: CompletedProviderToolCall[];
-			try {
-				calls = completeTurnContractReviewDecision({
-					actingRequest: request,
-					admittedTools: availableTools,
-					reviewRequest,
-					toolCalls,
-					finished,
-					finishedReason: reviewFinishedReason,
-					fallbackReason,
-					contract,
-					contractReviewSha256,
-					allowRevision
-				});
-			} catch (error) {
-				if (
-					!(error instanceof AgenticChatProviderExecutionError) ||
-					error.diagnostic?.kind !== 'rejected_contract_review'
-				)
-					throw error;
-				const diagnostic = error.diagnostic;
-				observeReviewDecision(
-					context,
-					request,
-					state,
-					decisionRecord({
-						outcome: 'invalid',
-						rejectionCode: diagnostic.code,
-						...attemptedDecision(toolCalls, reviewRequest.tools)
-					})
-				);
-				yield {
-					type: 'semantic',
-					transitionId: createStableAgenticChatReadToolTransitionIdV1({
-						turnRunId: request.turnRunId,
-						providerToolCallId: `contract-review-rejection:${contractReviewSha256}:${reviewRequest.logicalProviderRound}:${reviewAttempt}`,
-						stage: 'planning'
-					}),
-					phase: 'stream',
-					eventType: 'agent_state',
-					currentActivity: 'Checking the requested change...',
-					eventPayload: {
-						type: 'agent_state',
-						state: 'thinking',
-						activity_visibility: 'activity_log',
-						semantic_review: {
-							contract_sha256: contractReviewSha256,
-							attempt: reviewAttempt + 1,
-							rejection: diagnostic
-						}
-					}
-				};
-				if (
-					reviewAttempt === 0 &&
-					!state.providerPassBudgetExhausted() &&
-					![
-						'decision_truncated',
-						'provider_failure',
-						'missing_done',
-						'unexpected_finish_reason'
-					].includes(diagnostic.code)
-				) {
-					reviewRequest = appendSystemInstruction(
-						{
-							...reviewRequest,
-							// The atomic transport pass reserves attempts 1–2.
-							// Keep the logical round and use fresh physical identities.
-							providerAttempt: (reviewRequest.providerAttempt ?? 1) + 2
-						},
-						`Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposal. Copy its exact SHA for approval. For corrections use only applicable fields, omit unused labels, and preserve the complete user commission. This is an internal format repair, not evidence of user ambiguity.`
-					);
-					continue;
-				}
-				yield state.textDelta(
-					state.renderWriteReceiptFallback() ?? describeUnappliedWrites([]),
-					false
-				);
-				state.advance({ type: 'finish' });
-				yield {
-					type: 'finish',
-					finishedReason: 'semantic_review_failed',
-					usage: accumulatedReviewUsage
-				};
-				return;
-			}
-			observeReviewDecision(
-				context,
-				request,
-				state,
-				decisionRecord({
-					outcome: reviewOutcomeOf(calls[0]?.name),
-					rejectionCode: null,
-					decisionToolName: calls[0]?.name ?? null,
-					decisionArguments: calls[0]?.arguments ?? null
-				})
-			);
-			const normalizedCalls = normalizeCompletedProviderCalls(reviewRequest, calls);
-			state.setPendingToolRound({
-				calls: normalizedCalls,
-				usage: accumulatedReviewUsage
-			});
-			// Keep the main agent's request as the continuation base. The durable
-			// reviewer call/result is appended by continueWithToolResults, while the
-			// reviewer's private system prompt never contaminates the acting model.
-			state.setCurrentRequest(request);
-			yield buildPlanningStep(reviewRequest, normalizedCalls[0]!.id);
-			for (const call of normalizedCalls) {
-				yield buildProviderToolStep(reviewRequest, call, state);
-			}
-			state.markToolRoundCompleted();
-			pendingReviewTool = true;
-			return;
-		}
-	} finally {
-		if (!pendingReviewTool) state.release();
 	}
 }
 

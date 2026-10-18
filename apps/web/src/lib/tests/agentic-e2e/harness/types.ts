@@ -52,8 +52,6 @@ export interface TurnResult {
 	toolCalls: ChatToolCall[];
 	/** Raw `tool_result` payloads in order. */
 	toolResults: Array<Record<string, unknown>>;
-	/** Skill load/request activity (`skill_activity` events). */
-	skillActivity: Array<Record<string, unknown>>;
 	/** Any `error` event payloads seen on the stream. */
 	errors: Array<{ error: string; turn_rejected?: boolean }>;
 	/** finished_reason from the terminal `done` event. */

@@ -318,8 +318,6 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			publisher: DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG,
 			providerBudgetMs: 1200,
 			maxProviderRounds: 4,
-			// SHA-bound batch approval is the default write lane (Decision 1).
-			mutationBatchLaneEnabled: true,
 			// Jev opening-pass tool narrowing is on by default; `off` is the kill switch.
 			jevToolSelection: 'on',
 			// Continuation reasoning A/B arm; `default` keeps today's request shape.

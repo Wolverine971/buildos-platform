@@ -325,7 +325,6 @@ function batchLaneProvider(
 		2_000,
 		16,
 		{ createOntoTask: true, createOntoGoal: true, linkOntoEntities: true },
-		true,
 		receiptText
 	);
 }

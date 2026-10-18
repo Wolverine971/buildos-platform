@@ -1,13 +1,13 @@
 // apps/worker/tests/agenticChatTurnPhase.test.ts
 import { describe, expect, it } from 'vitest';
-import type { TurnContract } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatTurnProviderToolV1 } from '../src/workers/agentic-chat/provider/contracts';
+// Importing the worker tool surface installs the worker's own loop catalog,
+// which classifies pure reads (production composition imports it first).
+import '../src/workers/agentic-chat/provider/tool-surface';
 import {
 	type TurnPhase,
 	type TurnPhaseEvent,
-	contractPending,
 	dispositionPending,
-	mutationReached,
 	nextTurnPhase,
 	surfaceFor
 } from '../src/workers/agentic-chat/provider/turn-phase';
@@ -21,30 +21,15 @@ function run(events: readonly TurnPhaseEvent[], start: TurnPhase = 'opening'): T
 const read: TurnPhaseEvent = { type: 'tool_round', kind: 'read' };
 const control: TurnPhaseEvent = { type: 'tool_round', kind: 'control' };
 const mutation: TurnPhaseEvent = { type: 'tool_round', kind: 'mutation' };
+const withhold: TurnPhaseEvent = { type: 'withhold_batch' };
 const finish: TurnPhaseEvent = { type: 'finish' };
 
-describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
+describe('nextTurnPhase (batch-lane pass ladders)', () => {
 	it('(a) pure read / answer: A1 → [X reads → A2]* → finish never leaves the read phases', () => {
 		expect(run([read, read, finish])).toEqual(['opening', 'reading', 'reading', 'terminal']);
 		expect(run([finish])).toEqual(['opening', 'terminal']);
-	});
-
-	it('(a) receipt-grounded final gate still counts as disposition pending', () => {
-		const phases = run([
-			read,
-			{ type: 'gate' },
-			read,
-			{ type: 'disposition', decision: 'read_only' }
-		]);
-		expect(phases).toEqual([
-			'opening',
-			'reading',
-			'disposition_gate',
-			'disposition_gate',
-			'read_only_declared'
-		]);
-		expect(dispositionPending('disposition_gate')).toBe(true);
-		expect(dispositionPending('read_only_declared')).toBe(false);
+		expect(dispositionPending('opening')).toBe(true);
+		expect(dispositionPending('reading')).toBe(true);
 	});
 
 	it('(b) simple direct write ≤3 ops: A1 → X execute → forced synthesis', () => {
@@ -54,94 +39,51 @@ describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
 			'synthesis',
 			'terminal'
 		]);
-		expect(mutationReached('mutating')).toBe(true);
-		expect(contractPending('mutating')).toBe(false);
+		expect(dispositionPending('mutating')).toBe(false);
 	});
 
-	it('(c) complex write: withheld batch → gate → declare → review → propose → execute → answer', () => {
-		const phases = run([
-			{ type: 'gate' },
-			{ type: 'disposition', decision: 'contract' },
-			{ type: 'review', decision: 'approve_contract' },
-			read,
-			mutation,
-			finish
-		]);
-		expect(phases).toEqual([
+	it('(c) complex write: withheld batch → reviewer approval → held calls execute → answer', () => {
+		expect(
+			run([read, withhold, { type: 'review', decision: 'approve_batch' }, mutation, finish])
+		).toEqual([
 			'opening',
-			'disposition_gate',
-			'contract_declared',
-			'contract_reviewed',
-			'contract_reviewed',
+			'reading',
+			'batch_withheld',
+			'batch_approved',
 			'mutating',
 			'terminal'
 		]);
-		expect(contractPending('contract_declared')).toBe(true);
-		expect(contractPending('contract_reviewed')).toBe(true);
-		expect(contractPending('contract_carve_out')).toBe(false);
+		expect(dispositionPending('batch_withheld')).toBe(false);
 	});
 
-	it('(c) a prose revision voids the contract back to the gate; a typed correction re-declares it', () => {
+	it('(c) a revision voids the held batch and the next proposal is withheld again', () => {
 		expect(
-			run([
-				{ type: 'disposition', decision: 'contract' },
-				{ type: 'review', decision: 'revise_contract' }
-			])
-		).toEqual(['opening', 'contract_declared', 'reading']);
-		expect(
-			run([
-				{ type: 'disposition', decision: 'contract' },
-				{ type: 'review', decision: 'correct_contract' },
-				{ type: 'review', decision: 'approve_contract' }
-			])
-		).toEqual(['opening', 'contract_declared', 'contract_declared', 'contract_reviewed']);
+			run([withhold, { type: 'review', decision: 'revise_batch' }, withhold, control])
+		).toEqual(['opening', 'batch_withheld', 'reading', 'batch_withheld', 'batch_withheld']);
 	});
 
-	it('(c) the reviewer can downgrade a declared contract to read-only or send the turn to the user', () => {
+	it('(c) a later stage after a reviewed write is withheld for its own review', () => {
 		expect(
-			run([
-				{ type: 'disposition', decision: 'contract' },
-				{ type: 'review', decision: 'read_only' }
-			])
-		).toEqual(['opening', 'contract_declared', 'read_only_declared']);
-		expect(
-			run([
-				{ type: 'disposition', decision: 'contract' },
-				{ type: 'review', decision: 'clarify' }
-			])
-		).toEqual(['opening', 'contract_declared', 'clarification']);
-	});
-
-	it('(c) the write carve-out is one pass and the completion continuation is one pass after a write', () => {
-		const phases = run([
-			read,
-			read,
-			{ type: 'disposition', decision: 'contract' },
-			{ type: 'review', decision: 'approve_contract' },
-			{ type: 'carve_out' },
-			mutation,
-			{ type: 'completion' },
-			mutation,
-			{ type: 'completion' },
-			finish
-		]);
-		expect(phases).toEqual([
-			'opening',
-			'reading',
-			'reading',
-			'contract_declared',
-			'contract_reviewed',
-			'contract_carve_out',
-			'mutating',
-			'completion',
-			'completion',
-			'completion',
-			'terminal'
-		]);
-		expect(nextTurnPhase('contract_carve_out', { type: 'carve_out' })).toBe(
-			'contract_carve_out'
+			run([withhold, { type: 'review', decision: 'approve_batch' }, mutation, withhold])
+		).toEqual(['opening', 'batch_withheld', 'batch_approved', 'mutating', 'batch_withheld']);
+		// Approval binds only to a held batch.
+		expect(nextTurnPhase('reading', { type: 'review', decision: 'approve_batch' })).toBe(
+			'reading'
 		);
-		expect(nextTurnPhase('reading', { type: 'carve_out' })).toBe('reading');
+		expect(nextTurnPhase('synthesis', withhold)).toBe('synthesis');
+	});
+
+	it('(c) the reviewer can downgrade a held batch to read-only or send the turn to the user', () => {
+		expect(run([withhold, { type: 'review', decision: 'read_only' }])).toEqual([
+			'opening',
+			'batch_withheld',
+			'read_only_declared'
+		]);
+		expect(run([withhold, { type: 'review', decision: 'clarify' }])).toEqual([
+			'opening',
+			'batch_withheld',
+			'clarification'
+		]);
 	});
 
 	it('(d) clarification: A1 request_turn_clarification → tool-free question', () => {
@@ -153,36 +95,20 @@ describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
 		expect(surfaceFor('clarification', [])).toEqual({ tools: [], toolChoice: 'none' });
 	});
 
-	it('(e) project create: opening gate → declare → review → shell carve-out → execute → completion → execute', () => {
-		const phases = run(
-			[
-				{ type: 'disposition', decision: 'contract' },
-				{ type: 'review', decision: 'approve_contract' },
-				{ type: 'carve_out' },
-				mutation,
-				{ type: 'completion' },
-				mutation,
-				finish
-			],
-			'disposition_gate'
-		);
-		expect(phases).toEqual([
-			'disposition_gate',
-			'contract_declared',
-			'contract_reviewed',
-			'contract_carve_out',
-			'mutating',
-			'completion',
-			'completion',
-			'terminal'
+	it('(e) a proposal card makes the turn read-only', () => {
+		expect(run([read, { type: 'disposition', decision: 'read_only' }])).toEqual([
+			'opening',
+			'reading',
+			'read_only_declared'
 		]);
+		expect(dispositionPending('read_only_declared')).toBe(false);
 	});
 
 	it('budget exhaustion forces synthesis from any live phase and terminal is absorbing', () => {
 		for (const phase of [
 			'opening',
 			'reading',
-			'contract_reviewed',
+			'batch_withheld',
 			'mutating',
 			'read_only_declared'
 		] as const) {
@@ -191,22 +117,13 @@ describe('nextTurnPhase (lane-E §1.2 pass ladders)', () => {
 			);
 		}
 		expect(nextTurnPhase('terminal', read)).toBe('terminal');
-		expect(nextTurnPhase('terminal', { type: 'disposition', decision: 'contract' })).toBe(
-			'terminal'
-		);
+		expect(nextTurnPhase('terminal', withhold)).toBe('terminal');
 	});
 
-	it('control rounds never move the phase and a cancelled contract keeps the gate spent', () => {
+	it('control rounds never move the phase', () => {
 		expect(nextTurnPhase('reading', control)).toBe('reading');
-		expect(nextTurnPhase('contract_reviewed', control)).toBe('contract_reviewed');
-		expect(
-			run([
-				{ type: 'disposition', decision: 'contract' },
-				{ type: 'disposition', decision: 'cancel' },
-				read
-			])
-		).toEqual(['opening', 'contract_declared', 'contract_cancelled', 'contract_cancelled']);
-		expect(dispositionPending('contract_cancelled')).toBe(false);
+		expect(nextTurnPhase('mutating', control)).toBe('mutating');
+		expect(nextTurnPhase('batch_withheld', control)).toBe('batch_withheld');
 	});
 });
 
@@ -220,9 +137,7 @@ function tool(name: string): AgenticChatTurnProviderToolV1 {
 const ADMITTED = [
 	tool('get_project_overview'),
 	tool('search_project'),
-	tool('declare_turn_contract'),
 	tool('request_turn_clarification'),
-	tool('cancel_turn_contract'),
 	tool('create_onto_task'),
 	tool('move_document_in_tree')
 ];
@@ -232,33 +147,17 @@ function names(surface: ReturnType<typeof surfaceFor>): string[] | null {
 }
 
 describe('surfaceFor', () => {
-	it('re-mounts the admitted surface on the opening phases and once a contract is declared', () => {
-		// The opening pass proper is assembled by request-builders (contract
-		// schema deferred); the reducer mounts the admitted surface on a repair
-		// or after a cancellation (audit 2026-09-08 F36 removed the unused
-		// openingTools context).
-		for (const phase of ['opening', 'reading', 'contract_cancelled'] as const) {
+	it('re-mounts the admitted surface on the opening, reading and mutating phases', () => {
+		// The opening pass proper is assembled by request-builders; the reducer
+		// mounts the admitted surface on a repair.
+		for (const phase of ['opening', 'reading', 'mutating'] as const) {
 			expect(surfaceFor(phase, ADMITTED)).toEqual({ tools: ADMITTED, toolChoice: 'auto' });
+			expect(surfaceFor(phase, ADMITTED, { repair: true })).toEqual({
+				tools: ADMITTED,
+				toolChoice: 'auto'
+			});
 		}
-		expect(names(surfaceFor('contract_declared', ADMITTED))).toEqual(
-			ADMITTED.map((entry) => entry.function.name)
-		);
 		expect(surfaceFor('opening', [])).toEqual({ tools: [], toolChoice: 'none' });
-	});
-
-	it('mounts only the two gate controls plus pure reads on the disposition gate', () => {
-		expect(names(surfaceFor('disposition_gate', ADMITTED))).toEqual([
-			'get_project_overview',
-			'search_project',
-			'declare_turn_contract',
-			'request_turn_clarification'
-		]);
-		expect(surfaceFor('disposition_gate', ADMITTED)?.toolChoice).toBe('required');
-		expect(names(surfaceFor('disposition_gate', ADMITTED, { allowReads: false }))).toEqual([
-			'declare_turn_contract',
-			'request_turn_clarification'
-		]);
-		expect(surfaceFor('disposition_gate', [tool('get_project_overview')])).toBeNull();
 	});
 
 	it('keeps a read-only turn on pure reads, and restores reads plus clarify for its repair', () => {
@@ -273,117 +172,38 @@ describe('surfaceFor', () => {
 		]);
 	});
 
-	it('scopes the carve-out and completion passes to the contract write tools with scheduling sidecars', () => {
-		const contract: TurnContract = {
-			version: 1,
-			source: 'declared',
-			outcomes: [
-				{
-					id: 'move-1',
-					action: 'move',
-					entityKind: 'document',
-					targetIds: ['d1000000-0000-4000-8000-000000000001'],
-					requiredFields: [],
-					minimumSuccessfulEffects: 1
-				}
-			]
-		};
-		const carveOut = surfaceFor('contract_carve_out', ADMITTED, {
-			contract,
-			contextType: 'project'
-		});
-		expect(names(carveOut)).toEqual(['move_document_in_tree']);
-		expect(carveOut?.toolChoice).toBe('auto');
+	it('mounts no acting surface while a batch is held or approved', () => {
+		expect(surfaceFor('batch_withheld', ADMITTED)).toEqual({ tools: [], toolChoice: 'none' });
+		expect(surfaceFor('batch_approved', ADMITTED)).toEqual({ tools: [], toolChoice: 'none' });
+		const interrupted = [tool('create_onto_task')];
 		expect(
-			Object.keys(
-				(carveOut?.tools[0]?.function.parameters as { properties: Record<string, unknown> })
-					.properties
+			names(
+				surfaceFor('batch_withheld', ADMITTED, { repair: true, requestTools: interrupted })
 			)
-		).toEqual(expect.arrayContaining(['call_ref', 'after']));
-		expect(names(surfaceFor('completion', ADMITTED, { contract }))).toEqual([
-			'move_document_in_tree'
-		]);
-		expect(surfaceFor('contract_carve_out', ADMITTED, { contract: null })).toBeNull();
+		).toEqual(['create_onto_task']);
+		for (const phase of ['synthesis', 'terminal'] as const) {
+			expect(surfaceFor(phase, ADMITTED)).toEqual({ tools: [], toolChoice: 'none' });
+		}
 	});
 
-	it('narrows the project-create shell carve-out to create_onto_project only', () => {
-		const admitted = [...ADMITTED, tool('create_onto_project')];
-		const contract: TurnContract = {
-			version: 1,
-			source: 'declared',
-			outcomes: [
-				{
-					id: 'shell',
-					action: 'create',
-					entityKind: 'project',
-					targetIds: [],
-					requiredFields: [],
-					minimumSuccessfulEffects: 1
-				},
-				{
-					id: 'tasks',
-					action: 'create',
-					entityKind: 'task',
-					targetIds: [],
-					requiredFields: [],
-					minimumSuccessfulEffects: 1
-				}
-			]
-		};
+	it('builds the batch reviewer lane from the stable admitted surface', () => {
 		expect(
 			names(
-				surfaceFor('contract_carve_out', admitted, {
-					contract,
-					contextType: 'project_create'
-				})
-			)
-		).toEqual(['create_onto_project']);
-	});
-
-	it('restores the approved surface on repair, keeping the project-create shell narrow', () => {
-		const shell = [tool('create_onto_project')];
-		expect(
-			names(
-				surfaceFor('contract_reviewed', ADMITTED, {
-					repair: true,
-					contractApproved: true,
-					contextType: 'project_create',
-					requestTools: shell
-				})
-			)
-		).toEqual(['create_onto_project']);
-		expect(
-			names(
-				surfaceFor('mutating', ADMITTED, {
-					repair: true,
-					contractApproved: true,
-					contextType: 'project'
-				})
-			)
-		).toEqual(ADMITTED.map((entry) => entry.function.name));
-		expect(
-			names(surfaceFor('disposition_gate', ADMITTED, { repair: true, requestTools: shell }))
-		).toEqual(['create_onto_project']);
-	});
-
-	it('builds the reviewer lanes from the stable admitted surface', () => {
-		expect(
-			names(
-				surfaceFor('contract_review', ADMITTED, {
+				surfaceFor('mutation_batch_review', ADMITTED, {
 					allowRevision: true,
 					allowReadOnlyCorrection: true
 				})
 			)
 		).toEqual([
-			'approve_turn_contract_review',
+			'approve_mutation_batch_review',
 			'declare_read_only_turn',
 			'request_proposal_revision',
 			'request_turn_clarification'
 		]);
-		expect(names(surfaceFor('contract_review', ADMITTED, { allowRevision: false }))).toEqual([
-			'approve_turn_contract_review',
-			'request_turn_clarification'
-		]);
-		expect(surfaceFor('contract_review', [tool('create_onto_task')])).toBeNull();
+		expect(
+			names(surfaceFor('mutation_batch_review', ADMITTED, { allowRevision: false }))
+		).toEqual(['approve_mutation_batch_review', 'request_turn_clarification']);
+		expect(surfaceFor('mutation_batch_review', ADMITTED)?.toolChoice).toBe('required');
+		expect(surfaceFor('mutation_batch_review', [tool('create_onto_task')])).toBeNull();
 	});
 });

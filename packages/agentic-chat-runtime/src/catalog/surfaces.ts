@@ -1,11 +1,9 @@
 // packages/agentic-chat-runtime/src/catalog/surfaces.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
 import {
-	CANCEL_TURN_CONTRACT_TOOL_DEFINITION,
 	DECLARE_READ_ONLY_TURN_TOOL_DEFINITION,
 	GATEWAY_TOOL_DEFINITIONS,
-	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
-	TURN_CONTRACT_TOOL_DEFINITION
+	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION
 } from './definitions';
 import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
 import { extractToolNamesFromDefinitions, extractTools } from './indexes';
@@ -89,9 +87,7 @@ export type GatewayToolMaterialization = {
  * from the definition (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F28).
  */
 const GLOBAL_DIRECT_TOOL_NAMES = [
-	'declare_turn_contract',
 	'request_turn_clarification',
-	'cancel_turn_contract',
 	// Overview + cross-project search: the entry points for "what is going on".
 	'get_workspace_overview',
 	'get_project_overview',
@@ -115,7 +111,7 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 	// New-project creation. "Create a project for X" is a workspace-level ask;
 	// before 2026-09-04 only the Project Setup surface mounted the tool and a
 	// General Chat turn asking for one was a dead turn. The tool is
-	// reviewed by the held mutation batch lane (or the rollback contract lane); the adapter shifts the session into the new
+	// reviewed by the held mutation batch lane; the adapter shifts the session into the new
 	// project afterwards.
 	'create_onto_project',
 	// Live web research. The background handoff (`delegate_task`) is a
@@ -234,9 +230,7 @@ const PROJECT_DIRECT_TOOL_NAMES = [
  * tools remain outside this immutable surface.
  */
 const PROJECT_CREATE_DIRECT_TOOL_NAMES = [
-	'declare_turn_contract',
 	'request_turn_clarification',
-	'cancel_turn_contract',
 	'create_onto_project',
 	'create_onto_goal',
 	'create_onto_task'
@@ -292,10 +286,8 @@ const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 
 const GATEWAY_TOOL_DEFINITION_MAP = new Map(
 	[
-		TURN_CONTRACT_TOOL_DEFINITION,
 		DECLARE_READ_ONLY_TURN_TOOL_DEFINITION,
 		REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
-		CANCEL_TURN_CONTRACT_TOOL_DEFINITION,
 		...GATEWAY_TOOL_DEFINITIONS
 	]
 		.map((tool) => [tool.function?.name, tool])
@@ -344,29 +336,14 @@ export function resolveGatewaySurfaceProfileForContextType(
 	}
 }
 
-function resolveGatewayDirectToolNamesForProfile(
-	profileName: GatewaySurfaceProfileName,
-	options: GatewaySurfaceOptions = {}
-): readonly string[] {
-	const names = GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE[profileName];
-	return options.mutationBatchLaneEnabled === false
-		? names
-		: names.filter(
-				(name) => name !== 'declare_turn_contract' && name !== 'cancel_turn_contract'
-			);
-}
-
 export function getGatewayDirectToolNamesForProfile(
-	profileName: GatewaySurfaceProfileName,
-	options: GatewaySurfaceOptions = {}
+	profileName: GatewaySurfaceProfileName
 ): string[] {
-	return [...resolveGatewayDirectToolNamesForProfile(profileName, options)];
+	return [...GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE[profileName]];
 }
 
 type GatewaySurfaceOptions = {
 	leanDiscovery?: boolean;
-	/** Rollback seam. Batch actors propose concrete writes, never the contract DSL. */
-	mutationBatchLaneEnabled?: boolean;
 };
 
 export type GatewayToolMaterializationOptions = {
@@ -405,13 +382,13 @@ export function getGatewaySurfaceForProfile(
 	if (profileName === 'project_create') {
 		return materializeGatewayTools(
 			[],
-			[...resolveGatewayDirectToolNamesForProfile(profileName, options)]
+			[...GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE[profileName]]
 		).tools;
 	}
 
 	const names = [
 		...extractToolNamesFromDefinitions(getGatewayDiscoveryTools(options)),
-		...resolveGatewayDirectToolNamesForProfile(profileName, options)
+		...GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE[profileName]
 	].filter(isGatewayToolEnabled);
 	return materializeGatewayTools([], names).tools;
 }

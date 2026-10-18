@@ -9,10 +9,7 @@
 // provider. If a cap fails, decide whether the growth is worth it, then bump it
 // WITH a dated comment.
 import { describe, expect, it } from 'vitest';
-import {
-	AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1,
-	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1
-} from '@buildos/agentic-chat-runtime';
+import { AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1 } from '@buildos/agentic-chat-runtime';
 import {
 	AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY,
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
@@ -21,21 +18,15 @@ import {
 	getGatewaySurfaceForProfile
 } from '@buildos/agentic-chat-runtime/catalog';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
-import {
-	ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
-	reviewedAgenticChatMutationSpecV1
-} from '../src/workers/agentic-chat/mutations/tool-catalog';
+import { ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1 } from '../src/workers/agentic-chat/mutations/tool-catalog';
 import {
 	buildWorkerToolSurfaceOverride,
-	deferComplexWriteContractForInitialPass,
 	hasSchedulingSidecar,
-	productionToolsFor,
-	withSchedulingSidecar
+	productionToolsFor
 } from '../src/workers/agentic-chat/provider/tool-surface';
 
 const WORKER_OMITTED = new Set<string>(AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1);
-const WORKER_MUTATIONS = new Set<string>(AGENTIC_CHAT_WORKER_EXECUTABLE_MUTATION_TOOL_NAMES_V1);
-const BATCH_WITHHELD_CONTRACT_TOOL_NAMES = new Set([
+const RETIRED_CONTRACT_TOOL_NAMES = new Set([
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	CANCEL_TURN_CONTRACT_TOOL_NAME
 ]);
@@ -43,20 +34,14 @@ const SIDECAR_PROPERTY_NAMES = ['call_ref', 'after'];
 
 /**
  * Mirror web admission (`resolveWorkerPromptTools`): omitted discovery and the
- * retired read-only control never reach the artifact, and the contract schema
- * is dropped when no worker mutation is mounted.
+ * retired read-only control never reach the artifact.
  */
 function admittedExecutionInputFor(
-	profile: GatewaySurfaceProfileName,
-	mutationBatchLaneEnabled = true
+	profile: GatewaySurfaceProfileName
 ): AgenticChatWorkerExecutionInputV1 {
-	const candidates = getGatewaySurfaceForProfile(profile, { mutationBatchLaneEnabled }).filter(
+	const definitions = getGatewaySurfaceForProfile(profile).filter(
 		(tool) => !WORKER_OMITTED.has(tool.function.name)
 	);
-	const hasMutation = candidates.some((tool) => WORKER_MUTATIONS.has(tool.function.name));
-	const definitions = hasMutation
-		? candidates
-		: candidates.filter((tool) => tool.function.name !== DECLARE_TURN_CONTRACT_TOOL_NAME);
 	return {
 		artifact: {
 			prepared: {
@@ -75,13 +60,11 @@ function bytesOf(tools: readonly unknown[]): number {
 	return Buffer.byteLength(JSON.stringify(tools), 'utf8');
 }
 
-function measure(profile: GatewaySurfaceProfileName, mutationBatchLaneEnabled = true) {
-	const input = admittedExecutionInputFor(profile, mutationBatchLaneEnabled);
-	const projected = productionToolsFor(input, ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1, true);
-	const admitted = mutationBatchLaneEnabled
-		? projected.filter((tool) => !BATCH_WITHHELD_CONTRACT_TOOL_NAMES.has(tool.function.name))
-		: projected;
-	const opening = deferComplexWriteContractForInitialPass(input, admitted, true);
+function measure(profile: GatewaySurfaceProfileName) {
+	const input = admittedExecutionInputFor(profile);
+	const admitted = productionToolsFor(input, ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1, true);
+	// The opening pass sends the whole admitted surface (Jev narrows it at runtime).
+	const opening = admitted;
 	return {
 		input,
 		admitted,
@@ -214,10 +197,10 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		);
 		expect(names).not.toContain('change_chat_context');
 	});
-	it('omits contract controls from batch surfaces while admitting project dependencies', () => {
-		for (const profile of ['global', 'project'] as const) {
+	it('never mounts the retired contract controls while admitting project dependencies', () => {
+		for (const profile of ['global', 'project', 'project_create'] as const) {
 			const surface = measure(profile);
-			for (const name of BATCH_WITHHELD_CONTRACT_TOOL_NAMES) {
+			for (const name of RETIRED_CONTRACT_TOOL_NAMES) {
 				expect(surface.opening.map((tool) => tool.function.name)).not.toContain(name);
 				expect(surface.admitted.map((tool) => tool.function.name)).not.toContain(name);
 			}
@@ -230,50 +213,9 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		);
 	});
 
-	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F36: the cancel control only acts on
-	// a contract carried forward from a prior turn, so it rides the opening pass
-	// only when admission rendered that pending-contract message.
-	it('withholds cancel_turn_contract from rollback openings unless a contract is pending', () => {
-		for (const profile of ['global', 'project'] as const) {
-			const surface = measure(profile, false);
-			expect(surface.opening.map((tool) => tool.function.name)).not.toContain(
-				'cancel_turn_contract'
-			);
-			expect(surface.admitted.map((tool) => tool.function.name)).toContain(
-				'cancel_turn_contract'
-			);
-			expect(buildWorkerToolSurfaceOverride(surface.input, surface.opening)).toBeNull();
-			const withPending = {
-				...surface.input,
-				artifact: {
-					...surface.input.artifact,
-					history: [
-						{
-							role: 'system',
-							content:
-								'<pending_turn_contract>\n{"outcomes":[]}\n</pending_turn_contract>',
-							sourceMessageId: null,
-							attachments: [],
-							toolCalls: [],
-							toolCallId: null
-						}
-					]
-				}
-			} as unknown as AgenticChatWorkerExecutionInputV1;
-			const pendingOpening = deferComplexWriteContractForInitialPass(
-				withPending,
-				surface.admitted,
-				true
-			);
-			expect(pendingOpening.map((tool) => tool.function.name)).toContain(
-				'cancel_turn_contract'
-			);
-			expect(pendingOpening.map((tool) => tool.function.name)).not.toContain(
-				'declare_turn_contract'
-			);
-		}
+	it('force-mounts only the clarification control on a shell-only Project Setup artifact', () => {
 		// A legacy Project Setup artifact admitted with only create_onto_project
-		// gets the gate pair force-mounted, never the cancel control.
+		// gets the clarification control force-mounted, never a contract control.
 		const shellDefinitions = getGatewaySurfaceForProfile('project_create').filter(
 			(tool) => tool.function.name === 'create_onto_project'
 		);
@@ -294,11 +236,7 @@ describe('Agentic Chat worker-projected surface budget', () => {
 			ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
 			true
 		).map((tool) => tool.function.name);
-		expect(legacyNames).toEqual([
-			'create_onto_project',
-			'declare_turn_contract',
-			'request_turn_clarification'
-		]);
+		expect(legacyNames).toEqual(['create_onto_project', 'request_turn_clarification']);
 	});
 
 	// A calendar or daily-brief turn is a global turn now, and every capability
@@ -327,49 +265,17 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		);
 	});
 
-	it('attaches scheduling sidecars only to mutation tools of an explicit write pass', () => {
-		const { admitted } = measure('project', false);
+	it('never attaches scheduling sidecars to the admitted surface', () => {
+		const { admitted } = measure('project');
 		for (const tool of admitted) {
 			expect(propertyNames(tool), tool.function.name).not.toEqual(
 				expect.arrayContaining(SIDECAR_PROPERTY_NAMES)
 			);
 		}
 		expect(hasSchedulingSidecar(admitted)).toBe(false);
-
-		const writePass = withSchedulingSidecar(admitted);
-		expect(hasSchedulingSidecar(writePass)).toBe(true);
-		for (const tool of writePass) {
-			const expectsSidecar = reviewedAgenticChatMutationSpecV1(tool.function.name) !== null;
-			const carriesSidecar = SIDECAR_PROPERTY_NAMES.every((name) =>
-				propertyNames(tool).includes(name)
-			);
-			expect(carriesSidecar, tool.function.name).toBe(expectsSidecar);
-		}
-		// Controls and reads are never schedulable.
-		for (const name of [
-			'request_turn_clarification',
-			'declare_turn_contract',
-			'cancel_turn_contract',
-			'search_project'
-		]) {
-			expect(
-				propertyNames(writePass.find((tool) => tool.function.name === name)!)
-			).not.toEqual(expect.arrayContaining(SIDECAR_PROPERTY_NAMES));
-		}
-		// Sidecar cost (~349 B per tool) is now paid only per mutation tool on a
-		// write pass; every tool on every pass used to carry it.
-		const mutationToolCount = admitted.filter(
-			(tool) => reviewedAgenticChatMutationSpecV1(tool.function.name) !== null
-		).length;
-		const sidecarBytes = bytesOf(writePass) - bytesOf(admitted);
-		expect(mutationToolCount).toBeGreaterThanOrEqual(5);
-		expect(sidecarBytes).toBeGreaterThanOrEqual(mutationToolCount * 300);
-		expect(sidecarBytes).toBeLessThanOrEqual(mutationToolCount * 400);
 	});
-
 	it('renders the surface override only for a genuine capability gap', () => {
-		// The artifact lists the deferred declare_turn_contract; that is a known
-		// deferral, not a gap, so the happy-path opening pass has no override.
+		// The happy-path opening pass carries every artifact tool, so it has no override.
 		const project = measure('project');
 		expect(buildWorkerToolSurfaceOverride(project.input, project.opening)).toBeNull();
 		const projectCreate = measure('project_create');

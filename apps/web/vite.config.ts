@@ -82,14 +82,7 @@ export default defineConfig(({ mode }) => {
 					}
 					server.middlewares.use('/__agentic/provenance', (_req, res) => {
 						res.setHeader('Content-Type', 'application/json');
-						res.end(
-							JSON.stringify({
-								provenance,
-								mutationBatchLaneEnabled:
-									process.env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !==
-									'false'
-							})
-						);
+						res.end(JSON.stringify({ provenance }));
 					});
 				}
 			},

@@ -62,17 +62,13 @@ describe('three stable surfaces (one-engine stage S6, 2026-09-04)', () => {
 	});
 
 	it.each(GATEWAY_SURFACE_PROFILE_NAMES)(
-		'keeps batch and rollback controls consistent on %s',
+		'mounts clarification but never the retired contract controls on %s',
 		(profile) => {
-			const batch = surfaceNames(getGatewaySurfaceForProfile(profile));
-			const rollback = surfaceNames(
-				getGatewaySurfaceForProfile(profile, { mutationBatchLaneEnabled: false })
-			);
+			const names = surfaceNames(getGatewaySurfaceForProfile(profile));
 			for (const name of ['declare_turn_contract', 'cancel_turn_contract']) {
-				expect(batch).not.toContain(name);
-				expect(rollback).toContain(name);
+				expect(names).not.toContain(name);
 			}
-			expect(batch).toContain('request_turn_clarification');
+			expect(names).toContain('request_turn_clarification');
 		}
 	);
 

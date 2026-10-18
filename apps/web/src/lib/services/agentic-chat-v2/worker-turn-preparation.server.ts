@@ -441,7 +441,6 @@ async function prepareWorkerAdmission(
 		typeof sessionIntent.session?.summary === 'string' ? sessionIntent.session.summary : null;
 	const agentMetadata = sessionIntent.session?.agent_metadata ?? sessionIntent.inlineMetadata;
 	const turnPreparation = resolveFastChatTurnPreparation({
-		mutationBatchLaneEnabled: env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false',
 		contextType,
 		entityId,
 		projectId,
@@ -786,8 +785,7 @@ async function prepareWorkerAdmission(
 	// silently lose an unfinished semantic contract during worker adoption.
 	const historyBeforeSessionState = JSON.stringify(modelHistory);
 	const pendingContractMessage = buildPendingTurnContractSystemMessage(
-		turnPreparation.pendingTurnContract,
-		{ mutationBatchLaneEnabled: env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false' }
+		turnPreparation.pendingTurnContract
 	);
 	if (pendingContractMessage) {
 		modelHistory.push({
@@ -1342,21 +1340,6 @@ function collectWindowLoadedSkillIds(params: {
 		if (id) ids.add(id);
 	}
 	return [...ids];
-}
-
-/**
- * Prewarm hook. The worker prompt carries no loaded-skills ledger any more
- * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69), so there is nothing to append
- * to a prepared history; the export stays until the prewarm route drops the
- * call.
- */
-export async function loadWorkerSkillPreloadLedgerMessage(_params: {
-	supabase: FastChatSupabaseClient;
-	userId: string;
-	sessionId: string;
-	limit: number;
-}): Promise<string | null> {
-	return null;
 }
 
 /**

@@ -6,7 +6,6 @@ import {
 	DECLARE_TURN_CONTRACT_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
-	isPendingTurnContractSystemMessage,
 	provideAgenticChatLoopToolCatalog,
 	provideAgenticChatToolPayloadHostPolicy
 } from '@buildos/agentic-chat-runtime/loop';
@@ -58,24 +57,6 @@ const WORKER_LOOP_CATALOG = Object.freeze({
 	)
 });
 
-// These are versioned production launch surfaces. Write-capable surfaces can
-// propose a concrete batch first; the deterministic direct-write classifier
-// opens the larger contract route only when that batch is complex. Read-only
-// surfaces omit the schema because no admitted mutation could ever honor it.
-// Legacy/custom profiles keep their historical eager contract surface during
-// the artifact retention window, and project creation remains contract-first.
-const LAZY_COMPLEX_WRITE_CONTRACT_SURFACE_PROFILES = new Set([
-	'global',
-	'project',
-	'global_basic',
-	'global_write',
-	'project_basic',
-	'project_write',
-	'project_document',
-	'project_write_document',
-	'project_calendar'
-]);
-
 // Worker and web are separate hosts. Web installs its full registry; the
 // worker installs reviewed reads plus capability-gated mutation identities.
 provideAgenticChatLoopToolCatalog(() => WORKER_LOOP_CATALOG);
@@ -87,14 +68,13 @@ provideAgenticChatLoopToolCatalog(() => WORKER_LOOP_CATALOG);
 provideAgenticChatToolPayloadHostPolicy(() => ({ advertiseMaterializedTools: false }));
 
 /**
- * Names the artifact may list that the worker removes by design rather than
- * by incapacity: the retired read-only control is never mounted, the contract
- * schema is deferred off the opening pass of the lazy profiles and re-mounted
- * by the deterministic complex-write redirect, and the cancel control is
- * withheld from the opening pass of a turn with no pending contract. None is
- * a gap.
+ * Controls the worker never mounts on an acting surface, even when an
+ * artifact lists them: the read-only control belongs to the reviewer lane,
+ * and the retired turn-contract controls (`declare_turn_contract`,
+ * `cancel_turn_contract`) were replaced by SHA-bound batch review
+ * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1). None is a gap.
  */
-const WORKER_KNOWN_ARTIFACT_ONLY_TOOL_NAMES = new Set<string>([
+const WORKER_UNMOUNTED_CONTROL_TOOL_NAMES = new Set<string>([
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME,
 	CANCEL_TURN_CONTRACT_TOOL_NAME
@@ -116,7 +96,7 @@ export function buildWorkerToolSurfaceOverride(
 	const callableNames = tools.map((tool) => tool.function.name);
 	const callableNameSet = new Set(callableNames);
 	const missingNames = decoded.surface.toolNames.filter(
-		(name) => !WORKER_KNOWN_ARTIFACT_ONLY_TOOL_NAMES.has(name) && !callableNameSet.has(name)
+		(name) => !WORKER_UNMOUNTED_CONTROL_TOOL_NAMES.has(name) && !callableNameSet.has(name)
 	);
 	if (missingNames.length === 0) return null;
 	return [
@@ -125,47 +105,6 @@ export function buildWorkerToolSurfaceOverride(
 		'Any earlier routing or tool-surface instruction that names an absent tool is inactive for this pass unless a later worker routing instruction explicitly expands the surface.',
 		'Do not delay a safe direct action merely because an absent discovery, skill, or context tool was suggested; use the callable tools that are present.'
 	].join(' ');
-}
-
-/**
- * Keep the large durable-outcome schema out of common production opening
- * passes. On a write-capable surface the full immutable/admitted surface stays
- * available to the worker and is mounted by the deterministic complex-write
- * redirect. On a read-only surface it remains unreachable by construction.
- *
- * `cancel_turn_contract` acts only on a contract carried forward from a prior
- * turn, which admission renders as a pending-contract system message. With no
- * such message the control is dead weight on the opening pass and is withheld
- * the same way (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F36).
- */
-export function deferComplexWriteContractForInitialPass(
-	input: AgenticChatWorkerExecutionInputV1,
-	tools: readonly AgenticChatTurnProviderToolV1[],
-	enabled: boolean
-): readonly AgenticChatTurnProviderToolV1[] {
-	if (!enabled) return tools;
-	const decoded = decodeAgenticChatToolSurfaceV1(input.artifact.prepared.toolSurface);
-	if (!decoded.ok) return tools;
-	const withheldNames = new Set<string>();
-	if (LAZY_COMPLEX_WRITE_CONTRACT_SURFACE_PROFILES.has(decoded.surface.surfaceProfile)) {
-		withheldNames.add(DECLARE_TURN_CONTRACT_TOOL_NAME);
-	}
-	if (!carriesPendingTurnContract(input)) withheldNames.add(CANCEL_TURN_CONTRACT_TOOL_NAME);
-	if (!tools.some((tool) => withheldNames.has(tool.function.name))) return tools;
-	return tools.filter((tool) => !withheldNames.has(tool.function.name));
-}
-
-function carriesPendingTurnContract(input: AgenticChatWorkerExecutionInputV1): boolean {
-	const history = input.artifact.history;
-	return (
-		Array.isArray(history) &&
-		history.some(
-			(message) =>
-				message.role === 'system' &&
-				typeof message.content === 'string' &&
-				isPendingTurnContractSystemMessage(message.content)
-		)
-	);
 }
 
 export function productionToolsFor(
@@ -183,7 +122,7 @@ export function productionToolsFor(
 		const tool = readArtifactToolDefinition(definition);
 		if (
 			!tool ||
-			tool.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME ||
+			WORKER_UNMOUNTED_CONTROL_TOOL_NAMES.has(tool.function.name) ||
 			!selectedNames.has(tool.function.name) ||
 			(!isAgenticChatProductionReadToolNameV1(tool.function.name) &&
 				!isEnabledMutationTool(tool.function.name, mutationCapabilities)) ||
@@ -197,24 +136,16 @@ export function productionToolsFor(
 		tools.push(reviewedTool);
 	}
 
-	// Standard controls carry no data-mutation capability. Mutation-capable
-	// artifacts normally include them, but the legacy project-create surface was
-	// admitted with only create_onto_project. Mounting the shared deterministic
-	// control schemas closes that orchestration gap while the immutable artifact
-	// remains the authority for every mutation tool and its arguments. That gap
-	// needs only the gate pair: the cancel control is meaningful solely on a
-	// turn whose artifact already lists it because a contract is pending.
+	// Standard controls carry no data-mutation capability. A mutation-capable
+	// surface always gets the clarification control, even when its artifact
+	// omits it, while the immutable artifact remains the authority for every
+	// mutation tool and its arguments.
 	if (
 		mountStandardControls &&
 		tools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
 	) {
 		for (const definition of AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1) {
-			if (
-				definition.function.name === DECLARE_READ_ONLY_TURN_TOOL_NAME ||
-				definition.function.name === CANCEL_TURN_CONTRACT_TOOL_NAME
-			) {
-				continue;
-			}
+			if (WORKER_UNMOUNTED_CONTROL_TOOL_NAMES.has(definition.function.name)) continue;
 			if (seen.has(definition.function.name)) continue;
 			const control = readArtifactToolDefinition(definition);
 			if (!control || !isAgenticChatProductionReadToolNameV1(control.function.name)) continue;
@@ -223,24 +154,6 @@ export function productionToolsFor(
 		}
 	}
 	return tools;
-}
-
-/**
- * Attach the `call_ref`/`after` scheduling sidecar to the mutation tools of a
- * multi-write pass. Until 2026-09-02 every tool on every pass carried it
- * (349 bytes each, ~1.5k tokens on project_write_document) although reads do
- * not need ordering, controls cannot be scheduled, and the direct-write lane
- * reclassifies any call that uses it as contract-required (Finding 9, P1-2).
- * Only the contract carve-out and completion passes call this.
- */
-export function withSchedulingSidecar(
-	tools: readonly AgenticChatTurnProviderToolV1[]
-): AgenticChatTurnProviderToolV1[] {
-	return tools.map((tool) =>
-		reviewedAgenticChatMutationSpecV1(tool.function.name)
-			? withToolSchedulingSidecars(tool)
-			: tool
-	);
 }
 
 /** True when any tool in the pass carries the scheduling sidecar. */
@@ -254,45 +167,6 @@ export function hasSchedulingSidecar(tools: readonly AgenticChatTurnProviderTool
 			SCHEDULING_SIDECAR_KEYS.every((name) => Object.hasOwn(properties as JsonObject, name))
 		);
 	});
-}
-
-function withToolSchedulingSidecars(
-	tool: AgenticChatTurnProviderToolV1
-): AgenticChatTurnProviderToolV1 {
-	const parameters = tool.function.parameters as Record<string, JsonValue>;
-	const properties =
-		parameters.properties &&
-		typeof parameters.properties === 'object' &&
-		!Array.isArray(parameters.properties)
-			? (parameters.properties as JsonObject)
-			: {};
-	return {
-		...tool,
-		function: {
-			...tool.function,
-			parameters: {
-				...tool.function.parameters,
-				properties: {
-					...properties,
-					call_ref: {
-						type: 'string',
-						minLength: 1,
-						maxLength: 128,
-						description:
-							'Optional stable name for this call within the current tool-call response.'
-					},
-					after: {
-						type: 'array',
-						maxItems: 40,
-						uniqueItems: true,
-						items: { type: 'string', minLength: 1, maxLength: 128 },
-						description:
-							'Optional same-response call_ref dependencies that must finish first.'
-					}
-				}
-			}
-		}
-	};
 }
 
 export function reviewedWorkerProviderToolDefinitionV1(

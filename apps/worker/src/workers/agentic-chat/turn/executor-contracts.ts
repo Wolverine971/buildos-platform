@@ -40,8 +40,11 @@ import type { AgenticChatRawWorkflowTurnPortV1 } from '../workflow/raw-turn-prep
 // 360-second worker timeout without adding deployment configuration.
 export const DEFAULT_AGENTIC_CHAT_PROVIDER_BUDGET_MS = 300_000;
 export const DEFAULT_AGENTIC_CHAT_EXECUTOR_OVERHEAD_TIMEOUT_MS = 10_000;
-// Keep aligned with the legacy web loop defaults
-// (apps/web/src/lib/services/agentic-chat-v2/limits.ts FASTCHAT_LIMITS).
+// Runaway backstop, not the turn budget. The provider's 12-call ceiling
+// (MAX_PROVIDER_PASSES_PER_TURN, provider/turn-state.ts) ends real turns first
+// with an honest partial answer. This stops only a provider that keeps
+// returning tool rounds without spending model calls; approved batches run
+// without a fresh call, so it stays above the ceiling.
 export const DEFAULT_AGENTIC_CHAT_MAX_TOOL_ROUNDS = 16;
 export const DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS = 40;
 export const DEFAULT_AGENTIC_CHAT_MAX_TOOL_CONCURRENCY = 4;

@@ -376,35 +376,6 @@ function isDeterministicallyResolvedId(
 	return resolvedKindMatches(context.turnSeenEntityIds?.get(normalized), kind);
 }
 
-export function directWriteContractInstruction(
-	assessment: Extract<DirectWriteBatchAssessment, { kind: 'contract_required' }>
-): string {
-	const reason = (() => {
-		switch (assessment.reason) {
-			case 'mixed_tool_batch':
-				return 'The proposal mixed durable mutations with other calls.';
-			case 'mutation_count_exceeded':
-				return `The proposal contains ${assessment.mutationCount} mutations; the direct lane permits at most ${MAX_DIRECT_SIMPLE_MUTATIONS_PER_TURN}.`;
-			case 'operation_requires_contract':
-				return 'At least one proposed operation is destructive, organizational, high-impact, or otherwise contract-only.';
-			case 'ordered_or_dependent_batch':
-				return 'The proposal contains explicit ordering or dependencies.';
-			case 'external_content_requires_review':
-				return 'This turn read externally authored content (email, web, or calendar events others can write), so every change requires independent review against the user message.';
-			case 'source_fidelity_requires_review':
-				return 'The user requested source preservation; the document content must be independently compared with the original user message before execution.';
-			case 'target_resolution_requires_review':
-				return 'At least one proposed mutation selects an existing entity or parent project from broader context, so its target resolution requires semantic review.';
-		}
-	})();
-	return [
-		'A prior mutation proposal was withheld and no mutation executed.',
-		reason,
-		'This is a complex write request. Declare the complete outcome set with declare_turn_contract before proposing any mutation.',
-		'Request clarification instead only when a required user choice is genuinely unresolved. Do not narrate this routing correction to the user.'
-	].join(' ');
-}
-
 // ---------------------------------------------------------------------------
 // Entity evidence extracted from read results. Two consumers: the direct
 // lane above (which ids did a read resolve deterministically?) and the

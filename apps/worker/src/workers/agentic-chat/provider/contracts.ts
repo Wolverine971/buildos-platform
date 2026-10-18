@@ -327,7 +327,6 @@ export type AgenticChatTurnProviderRequestV1 = AgenticChatTurnProviderClientRequ
 	 * The turn state keeps them off every later surface.
 	 */
 	heldWriteToolNames?: readonly string[];
-	semanticDispositionGate?: boolean;
 	unavailableSkillRepairAttempted?: boolean;
 	/** One bounded re-ask after a completion that carried neither text nor tool calls. */
 	emptyReplyRepairAttempted?: boolean;

@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-surface-size-report.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+	TURN_CONTRACT_TOOL_DEFINITION,
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile
 } from '@buildos/agentic-chat-runtime/catalog';
@@ -131,18 +132,24 @@ describe('tool surface size report', () => {
 				enum: ['auto', 'none']
 			});
 		}
-		const contract = getGatewaySurfaceForProfile('project', {
-			mutationBatchLaneEnabled: false
-		}).find((tool) => tool.function?.name === 'declare_turn_contract');
-		expect(contract?.function?.parameters.properties.outcomes).toMatchObject({
-			type: 'array',
-			items: {
-				properties: {
-					src_label: { type: ['string', 'null'], pattern: '^[a-z0-9][a-z0-9_-]{0,39}$' },
-					dst_label: { type: ['string', 'null'], pattern: '^[a-z0-9][a-z0-9_-]{0,39}$' }
+		// The batch reviewer's request_expectation reuses the contract outcome schema.
+		expect(TURN_CONTRACT_TOOL_DEFINITION.function.parameters.properties.outcomes).toMatchObject(
+			{
+				type: 'array',
+				items: {
+					properties: {
+						src_label: {
+							type: ['string', 'null'],
+							pattern: '^[a-z0-9][a-z0-9_-]{0,39}$'
+						},
+						dst_label: {
+							type: ['string', 'null'],
+							pattern: '^[a-z0-9][a-z0-9_-]{0,39}$'
+						}
+					}
 				}
 			}
-		});
+		);
 	});
 
 	it('keeps deterministic preloaded profiles below target payload sizes', () => {

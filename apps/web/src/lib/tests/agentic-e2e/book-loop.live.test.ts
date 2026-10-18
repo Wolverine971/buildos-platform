@@ -133,7 +133,6 @@ describe.runIf(process.env.BOOK_LOOP === 'true')('book dogfood loop', () => {
 					assistantText: result.assistantText,
 					toolCalls: result.toolCalls,
 					toolResults: result.toolResults,
-					skillActivity: result.skillActivity,
 					usage: result.usage,
 					totalDurationMs: result.timing.totalDurationMs,
 					projectChanges: projectDiff,

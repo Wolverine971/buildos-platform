@@ -679,7 +679,6 @@ function createDefaultComposition(
 		publisherConfig: input.config.publisher,
 		providerBudgetMs: input.config.providerBudgetMs,
 		maxProviderRounds: input.config.maxProviderRounds,
-		mutationBatchLaneEnabled: input.config.mutationBatchLaneEnabled,
 		directWriteReceiptTextEnabled: input.config.directWriteReceiptTextEnabled,
 		liveTextPreviewEnabled: input.config.liveTextPreviewEnabled,
 		maxToolCalls: input.config.maxToolCalls,

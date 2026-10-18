@@ -151,8 +151,6 @@ export class ChatWorkerService {
 				service: health.service,
 				release: health.release,
 				provenance: health.provenance,
-				mutationBatchLaneEnabled:
-					process.env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false',
 				runtimeState: health.state,
 				...(health.reason ? { reason: health.reason } : {}),
 				checks: health.checks,

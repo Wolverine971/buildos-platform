@@ -415,6 +415,10 @@ export interface ContextUsageSnapshot {
 	} | null;
 }
 
+/**
+ * A thinking-block row the browser builds from `skill_load` tool calls. The
+ * worker never streams this event; it is not part of AgentSSEMessage.
+ */
 export type SkillActivityEvent = {
 	type: 'skill_activity';
 	action: 'requested' | 'loaded';
@@ -548,7 +552,6 @@ export type AgentSSEMessage = AgentStreamEventMeta &
 				message: string;
 				data?: Record<string, unknown>;
 		  }
-		| SkillActivityEvent
 		| { type: 'context_shift'; context_shift: ContextShiftPayload }
 		/** "Working from" chips for a project turn (context finder). */
 		| import('./context-selection').ContextSelectionEventV1

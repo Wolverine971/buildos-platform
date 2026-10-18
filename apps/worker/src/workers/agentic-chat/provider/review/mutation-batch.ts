@@ -196,8 +196,7 @@ export function buildMutationBatchReviewRequest(
 				: tool
 		),
 		providerRound: 'synthesis',
-		passRole: 'mutation_review',
-		semanticDispositionGate: false
+		passRole: 'mutation_review'
 	};
 }
 

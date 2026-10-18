@@ -212,9 +212,7 @@ async function runLevel(args: Args, concurrency: number): Promise<Record<string,
 	]);
 
 	// ----- Shared prompt material (built once, like a warm prepared context) -----
-	const toolDefinitions = getGatewaySurfaceForContextType('project', {
-		mutationBatchLaneEnabled: false
-	});
+	const toolDefinitions = getGatewaySurfaceForContextType('project');
 	const systemPrompt = `You are BuildOS. ${prose(30_000)}\n`;
 	const contextPayload = {
 		project: { id: 'context-project', name: 'Cedar House', summary: prose(2_500) },

@@ -23,18 +23,16 @@ function record(): BatteryProvenance {
 	return { expected, worker: null, web: null, verified: false, error: null };
 }
 describe('battery provenance fence', () => {
-	it('accepts identical web, worker and checkout with the same lane flag', async () => {
+	it('accepts identical web, worker and checkout', async () => {
 		vi.stubGlobal(
 			'fetch',
-			vi.fn(async () =>
-				Response.json({ provenance: expected, mutationBatchLaneEnabled: true })
-			)
+			vi.fn(async () => Response.json({ provenance: expected }))
 		);
 		const result = record();
 		await verifyBatteryServices(result, 'http://web', 'http://worker');
 		expect(result.verified).toBe(true);
 	});
-	it.each(['missing', 'old-sha', 'old-dirty-tree', 'wrong-lane'])(
+	it.each(['missing', 'old-sha', 'old-dirty-tree'])(
 		'refuses %s before any battery turns',
 		async (kind) => {
 			const provenance =
@@ -49,9 +47,7 @@ describe('battery provenance fence', () => {
 						};
 			vi.stubGlobal(
 				'fetch',
-				vi.fn(async () =>
-					Response.json({ provenance, mutationBatchLaneEnabled: kind !== 'wrong-lane' })
-				)
+				vi.fn(async () => Response.json({ provenance }))
 			);
 			const result = record();
 			await expect(
@@ -102,9 +98,7 @@ describe('deployed-stack battery provenance', () => {
 
 	it('verifies the live worker and the Vercel web receipt without a web provenance route', async () => {
 		stubDeployedEnv();
-		const fetch = vi.fn(async (_url: string) =>
-			Response.json({ provenance: deployed, mutationBatchLaneEnabled: true })
-		);
+		const fetch = vi.fn(async (_url: string) => Response.json({ provenance: deployed }));
 		vi.stubGlobal('fetch', fetch);
 		const result = { ...record(), expected: deployed };
 		await verifyBatteryServices(result, 'https://build-os.com', 'https://worker');
@@ -116,9 +110,7 @@ describe('deployed-stack battery provenance', () => {
 		stubDeployedEnv({ ...deployed, gitSha: 'f'.repeat(40) });
 		vi.stubGlobal(
 			'fetch',
-			vi.fn(async () =>
-				Response.json({ provenance: deployed, mutationBatchLaneEnabled: true })
-			)
+			vi.fn(async () => Response.json({ provenance: deployed }))
 		);
 		const result = { ...record(), expected: deployed };
 		await expect(

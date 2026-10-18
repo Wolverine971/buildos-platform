@@ -183,7 +183,7 @@ function reportWakeFailure(outcome: AgenticChatWorkerQueueWakeOutcome, error?: u
 				event: 'agentic_chat_queue_wake_degraded',
 				outcome,
 				error: error instanceof Error ? error.message.slice(0, 200) : undefined,
-				impact: 'The worker claims this turn on its next durable poll (about 1s).'
+				impact: 'The worker claims this turn on its next durable poll: every 5s while its wake channel is healthy, every 1s while it is not.'
 			})
 		);
 	} catch {

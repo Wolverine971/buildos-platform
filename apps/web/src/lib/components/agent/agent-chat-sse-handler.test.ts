@@ -1526,19 +1526,6 @@ describe('createSSEHandler — table change cards', () => {
 	});
 });
 
-describe('createSSEHandler — skill_activity', () => {
-	it('forwards skill_activity to thinking.upsertSkillActivity', () => {
-		const h = createHarness();
-		h.handler({
-			type: 'skill_activity',
-			action: 'loaded',
-			path: 'calendar.schedule_event',
-			via: 'skill_load'
-		} as any);
-		expect(h.calls.upsertSkillActivity).toBe(1);
-	});
-});
-
 describe('createSSEHandler — context_selection', () => {
 	it('is a silent receipt: nothing renders and assistant text is flushed as for any event', () => {
 		const h = createHarness();

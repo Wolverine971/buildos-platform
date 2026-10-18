@@ -58,7 +58,6 @@ type ResolveFastChatTurnPreparationParams = {
 	nowMs?: number;
 	measureNow?: () => number;
 	scaffold?: FastChatScaffoldConfig;
-	mutationBatchLaneEnabled?: boolean;
 };
 
 function readMetadataRecord(value: unknown): Record<string, unknown> {
@@ -104,8 +103,7 @@ export function resolveFastChatTurnPreparation({
 	contextShiftHintTtlMs,
 	nowMs = Date.now(),
 	measureNow = Date.now,
-	scaffold,
-	mutationBatchLaneEnabled = true
+	scaffold
 }: ResolveFastChatTurnPreparationParams): FastChatTurnPreparation {
 	const sessionMetadata = readMetadataRecord(agentMetadata);
 	const parsedPendingTurnContract = readFastChatPendingTurnContract(
@@ -157,7 +155,6 @@ export function resolveFastChatTurnPreparation({
 	const toolSelectionStartedAtMs = measureNow();
 	const selectedSurfaceProfile = resolveGatewaySurfaceProfileForContextType(contextType);
 	const tools = getGatewaySurfaceForProfile(selectedSurfaceProfile, {
-		mutationBatchLaneEnabled,
 		leanDiscovery: scaffold?.routing.leanDiscovery
 	});
 	const toolSelectionMs = Math.max(0, measureNow() - toolSelectionStartedAtMs);

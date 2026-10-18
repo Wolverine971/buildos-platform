@@ -944,10 +944,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				}
 				return;
 
-			case 'skill_activity':
-				thinking.upsertSkillActivity(event);
-				return;
-
 			// The worker's context-finder receipt. It is not rendered (the "Working from" chips
 			// were removed 2026-09-25); it stays in chat_turn_events for measurement.
 			case 'context_selection':

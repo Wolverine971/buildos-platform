@@ -56,7 +56,6 @@ import {
 	type PreparedPromptSurface
 } from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 import { writePreparedPromptContent } from '$lib/services/agentic-chat-v2/prepared-prompt-store.server';
-import { loadWorkerSkillPreloadLedgerMessage } from '$lib/services/agentic-chat-v2/worker-turn-preparation.server';
 import { buildLastTurnContinuityHint } from '$lib/services/agentic-chat-v2/last-turn-context';
 import { loadSessionLastTurnContext } from '$lib/services/agentic-chat-v2/last-turn-context.server';
 import { parseJsonRequest } from '$lib/utils/request-validation';
@@ -258,27 +257,15 @@ async function buildPreparedPrompt(params: {
 				sessionId: params.session.id
 			})
 		: Promise.resolve(null);
-	const loadedHistory = params.session?.id
+	// No loaded-skills ledger rides on the history: the worker prompt dropped it
+	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69), so a prepared hit and a miss
+	// see the same history.
+	const history = params.session?.id
 		? await sessionService.loadRecentMessages(
 				params.session.id,
 				FASTCHAT_HISTORY_LOOKBACK_MESSAGES
 			)
 		: [];
-	// Worker-lane skill preloads leave no skill_load execution; the admission
-	// path projects them from user-message metadata into the loaded-skills
-	// ledger. The prepared history must carry the same ledger, or a prepared
-	// hit and a miss would dedupe differently (turn executor audit, P0-2).
-	const skillPreloadLedger = params.session?.id
-		? await loadWorkerSkillPreloadLedgerMessage({
-				supabase: params.sourceSupabase,
-				userId: params.userId,
-				sessionId: params.session.id,
-				limit: FASTCHAT_HISTORY_LOOKBACK_MESSAGES
-			})
-		: null;
-	const history = skillPreloadLedger
-		? [...loadedHistory, { role: 'system' as const, content: skillPreloadLedger }]
-		: loadedHistory;
 	const conversationSummary =
 		typeof params.session?.summary === 'string' ? params.session.summary : null;
 	const historyComposition = composeFastChatHistory({
@@ -308,8 +295,6 @@ async function buildPreparedPrompt(params: {
 	for (const surfaceProfile of resolvePreparedSurfaceProfiles(params.contextType)) {
 		const selectedTools = applyEmailSurfaceMount(
 			getGatewaySurfaceForProfile(surfaceProfile, {
-				mutationBatchLaneEnabled:
-					env.CHAT_MUTATION_BATCH_LANE?.trim().toLowerCase() !== 'false',
 				leanDiscovery: FASTCHAT_SCAFFOLD.routing.leanDiscovery
 			}),
 			params.emailToolsMounted
