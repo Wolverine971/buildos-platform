@@ -55,6 +55,260 @@ export function livePreviewPortFor(
 	return LIVE_TEXT_PREVIEW_PASS_ROLES.has(request.passRole ?? 'acting') ? port : null;
 }
 
+type ProviderPassEvent = AgenticChatTurnProviderClientEventV1;
+type ProviderOutputPolicy = {
+	pressure(): void;
+	claimRecovery(): boolean;
+	/** Whether `claimRecovery` would succeed, without claiming. Absent means yes. */
+	canClaimRecovery?(): boolean;
+};
+
+/** What one physical attempt produced. Nothing reaches the executor from here. */
+type ProviderAttemptOutcome =
+	| { kind: 'retry'; budgetRecovery: AgenticChatTurnProviderRequestV1 | null }
+	| {
+			kind: 'terminal';
+			buffered: ProviderPassEvent[];
+			terminalError: boolean;
+			/** Truncated calls on an attempt with no retry left; the consumer names it. */
+			truncated: boolean;
+	  }
+	| { kind: 'incomplete'; toolCall: ProviderPassEvent };
+
+type SettledProviderAttempt =
+	| { ok: true; outcome: ProviderAttemptOutcome }
+	| { ok: false; error: unknown };
+
+const settleProviderAttempt = (
+	attempt: Promise<ProviderAttemptOutcome>
+): Promise<SettledProviderAttempt> =>
+	attempt.then(
+		(outcome) => ({ ok: true as const, outcome }),
+		(error: unknown) => ({ ok: false as const, error })
+	);
+
+/** A clean, complete pass the executor can take as is. */
+const usableProviderAttempt = (settled: SettledProviderAttempt): boolean =>
+	settled.ok &&
+	settled.outcome.kind === 'terminal' &&
+	!settled.outcome.terminalError &&
+	!settled.outcome.truncated;
+
+/** Abort reason for the request that lost a hedge; it lands on that request's usage row. */
+const HEDGE_LOST_REASON = 'Agentic Chat provider hedge: the other request finished first';
+
+function linkAttemptSignal(parent: AbortSignal): {
+	signal: AbortSignal;
+	abort(reason: Error): void;
+	release(): void;
+} {
+	const controller = new AbortController();
+	const forward = () => controller.abort(parent.reason);
+	if (parent.aborted) controller.abort(parent.reason);
+	else parent.addEventListener('abort', forward, { once: true });
+	return {
+		signal: controller.signal,
+		abort: (reason) => {
+			if (!controller.signal.aborted) controller.abort(reason);
+		},
+		release: () => parent.removeEventListener('abort', forward)
+	};
+}
+
+/**
+ * Streams one physical attempt into a buffer and decides its outcome. `mayRetry`
+ * is asked at the moment of each decision, so an attempt that a backup request
+ * has already replaced cannot claim the pass's single retry.
+ */
+async function consumeProviderAttempt(input: {
+	request: AgenticChatTurnProviderRequestV1;
+	attemptRequest: AgenticChatTurnProviderRequestV1;
+	client: AgenticChatTurnProviderClientPortV1;
+	clientInput: Parameters<AgenticChatTurnProviderClientPortV1['stream']>[0];
+	preview: LiveTextPreviewEmitter | null;
+	capacity: Pick<AgenticChatProviderCapacity, 'markTemporarilyUnavailable'>;
+	retryableFailureCooldownMs: number;
+	outputPolicy?: ProviderOutputPolicy;
+	mayRetry(): boolean;
+	/** Called synchronously once the outcome is fixed, before the stream is closed. */
+	onDecided?(): void;
+}): Promise<ProviderAttemptOutcome> {
+	const { request, attemptRequest, preview, outputPolicy } = input;
+	const buffered: ProviderPassEvent[] = [];
+	let bufferedBytes = 0;
+	let outcome: ProviderAttemptOutcome | null = null;
+	// Shadow of the consumer's accumulator, used only to recognise a
+	// truncated pass before it is released. Protocol violations are left for
+	// the consumer to name; they make the pass unobservable here.
+	const shadowToolCalls = createToolCallAccumulator();
+	let shadowObservable = true;
+	try {
+		for await (const received of input.client.stream(input.clientInput)) {
+			throwIfAborted(request.signal);
+			let event = received;
+			// Also cover compatible clients/fixtures which return length as done.
+			if (event.type === 'done' && isActingOutputPass(request)) {
+				const signal =
+					event.outputBudget ??
+					outputBudgetSignal(
+						request.maxOutputTokens ?? ACTING_OUTPUT_TOKENS,
+						canonicalFinishedReason(event.finishedReason),
+						null
+					);
+				if (signal?.kind === 'exhausted')
+					event = {
+						type: 'error',
+						error: 'Actor output budget exhausted',
+						retryable: true,
+						cause: 'output_budget_exhausted',
+						outputBudget: signal
+					};
+				else if (signal) outputPolicy?.pressure();
+			}
+			if (event.type === 'error') {
+				const exhausted = event.cause === 'output_budget_exhausted';
+				if (exhausted) outputPolicy?.pressure();
+				const recoveryTimeAvailable =
+					!request.budget ||
+					request.budget.deadlineAtMs - Date.now() >= OUTPUT_RECOVERY_MIN_REMAINING_MS;
+				const budgetRetry =
+					exhausted &&
+					isActingOutputPass(request) &&
+					recoveryTimeAvailable &&
+					input.mayRetry() &&
+					!attemptRequest.outputBudgetRecovery &&
+					(outputPolicy?.claimRecovery() ?? true);
+				if (budgetRetry) {
+					outcome = {
+						kind: 'retry',
+						budgetRecovery: {
+							...request,
+							reasoningEffort: 'none',
+							outputBudgetRecovery: true,
+							messages: [
+								...request.messages,
+								{
+									role: 'system',
+									content: `The previous pass exhausted its output budget and none of its calls executed. Emit only the next correct stage from existing evidence. Never repeat successful writes. ${outputBudgetInstruction(event.outputBudget?.limit ?? ACTING_OUTPUT_TOKENS)}`
+								}
+							]
+						}
+					};
+					input.onDecided?.();
+					break;
+				}
+				if (
+					!exhausted &&
+					!attemptRequest.outputBudgetRecovery &&
+					event.retryable &&
+					input.mayRetry()
+				) {
+					if (!event.cause) {
+						input.capacity.markTemporarilyUnavailable(
+							request.turnRunId,
+							input.retryableFailureCooldownMs
+						);
+					}
+					outcome = { kind: 'retry', budgetRecovery: null };
+					input.onDecided?.();
+					break;
+				}
+				// A tool-free pass has nothing half-executed to retract: it can
+				// emit no tool call, and no later round replays it. Its prose is
+				// the honest partial answer the user is owed when the last attempt
+				// dies, so it is released ahead of the error and the consumer
+				// decides whether it is usable (people-synthesis timeout,
+				// 2026-07-22). Every tool-enabled pass keeps the atomic boundary.
+				const recoverablePartial =
+					request.toolChoice === 'none' &&
+					!exhausted &&
+					!attemptRequest.outputBudgetRecovery
+						? buffered.filter((candidate) => candidate.type === 'text')
+						: [];
+				buffered.length = 0;
+				buffered.push(
+					...recoverablePartial,
+					exhausted || attemptRequest.outputBudgetRecovery
+						? { ...event, cause: 'output_budget_exhausted', retryable: false }
+						: event
+				);
+				outcome = { kind: 'terminal', buffered, terminalError: true, truncated: false };
+				input.onDecided?.();
+				break;
+			}
+
+			if (event.type === 'text') preview?.append(event.content);
+			bufferedBytes += Buffer.byteLength(JSON.stringify(event), 'utf8');
+			if (bufferedBytes > MAX_BUFFERED_PROVIDER_PASS_BYTES) {
+				throw providerError('provider_pass_buffer_exceeded', 'permanent');
+			}
+			buffered.push(event);
+			if (event.type === 'tool_call' && shadowObservable) {
+				try {
+					appendToolCallDelta(shadowToolCalls, event.toolCall);
+				} catch {
+					shadowObservable = false;
+				}
+			}
+			if (event.type === 'done') {
+				let terminalError = false;
+				let truncated = false;
+				if (
+					attemptRequest.outputBudgetRecovery &&
+					!buffered.some(
+						(candidate) =>
+							candidate.type === 'tool_call' ||
+							(candidate.type === 'text' && candidate.content.trim())
+					)
+				) {
+					buffered.length = 0;
+					buffered.push({
+						type: 'error',
+						error: 'Output budget recovery returned no output',
+						retryable: false,
+						cause: 'output_budget_exhausted'
+					});
+					terminalError = true;
+				}
+				if (
+					shadowObservable &&
+					detectToolCallPassTruncation(
+						shadowToolCalls,
+						canonicalFinishedReason(event.finishedReason),
+						request.toolChoice
+					)
+				) {
+					if (attemptRequest.outputBudgetRecovery) {
+						buffered.length = 0;
+						buffered.push({
+							type: 'error',
+							error: 'Output budget recovery returned incomplete calls',
+							retryable: false,
+							cause: 'output_budget_exhausted'
+						});
+						terminalError = true;
+					} else if (input.mayRetry()) {
+						outcome = { kind: 'retry', budgetRecovery: null };
+						input.onDecided?.();
+						break;
+					} else truncated = true;
+				}
+				outcome = { kind: 'terminal', buffered, terminalError, truncated };
+				input.onDecided?.();
+				break;
+			}
+		}
+	} finally {
+		input.onDecided?.();
+	}
+	if (outcome) return outcome;
+	const incompleteToolCall = buffered.find((event) => event.type === 'tool_call');
+	if (incompleteToolCall && !attemptRequest.outputBudgetRecovery) {
+		return { kind: 'incomplete', toolCall: incompleteToolCall };
+	}
+	throw providerError('provider_missing_done', 'unknown');
+}
+
 /**
  * Holds one complete provider pass behind an atomic boundary. Once a stream
  * opens, partial assistant output cannot be retracted, so a retryable failure
@@ -68,224 +322,177 @@ export function livePreviewPortFor(
  * output-budget exhaustion is separate: one reasoning-off recovery on the
  * healthy endpoint, with no partial text or calls released.
  *
+ * Hedge: while its single retry remains, an attempt carries `slowStreamHedge`.
+ * When the client sees the stream stall it calls it, and the retry starts at
+ * once as a backup request on another endpoint, with the first one still
+ * running. The first clean, complete pass wins and the other is aborted; the
+ * backup is the pass's last attempt, so if neither finishes cleanly the
+ * backup's outcome stands. A pass makes at most two requests either way.
+ *
  * When the client carries a live-preview port, a user-facing pass also
  * forwards its visible text to that port as it arrives, before buffering.
  * The preview is display-only: it never changes what this generator yields,
  * a retried or failed attempt sends `discard`, and a completed attempt
- * flushes its final text before any buffered event is released.
+ * flushes its final text before any buffered event is released. A backup
+ * holds its preview until it wins or the first request has failed.
  */
 export async function* streamBufferedProviderPass(
 	request: AgenticChatTurnProviderRequestV1,
 	client: AgenticChatTurnProviderClientPortV1,
 	capacity: Pick<AgenticChatProviderCapacity, 'markTemporarilyUnavailable'>,
 	retryableFailureCooldownMs: number,
-	outputPolicy?: {
-		pressure(): void;
-		claimRecovery(): boolean;
-		/** Whether `claimRecovery` would succeed, without claiming. Absent means yes. */
-		canClaimRecovery?(): boolean;
-	}
+	outputPolicy?: ProviderOutputPolicy
 ): AsyncGenerator<AgenticChatTurnProviderClientEventV1> {
 	const firstAttempt = request.providerAttempt ?? 1;
 	let attemptRequest = request;
 	const previewPort = livePreviewPortFor(request, client);
 	for (let retryCount = 0; retryCount <= MAX_RETRYABLE_PROVIDER_PASS_RETRIES; retryCount += 1) {
 		const providerAttempt = firstAttempt + retryCount;
+		const retriesRemain = retryCount < MAX_RETRYABLE_PROVIDER_PASS_RETRIES;
 		const preview = previewPort
 			? new LiveTextPreviewEmitter(previewPort, request, providerAttempt)
 			: null;
+		// The backup takes the place of the single retry, so only an attempt that
+		// still has it may start one.
+		const hedgeable = retriesRemain && !attemptRequest.outputBudgetRecovery;
+		const primaryLink = hedgeable ? linkAttemptSignal(request.signal) : null;
+		const backup: {
+			current: {
+				link: ReturnType<typeof linkAttemptSignal>;
+				preview: LiveTextPreviewEmitter | null;
+				run: Promise<SettledProviderAttempt>;
+			} | null;
+		} = { current: null };
+		let primaryDecided = false;
+		let announceBackup: () => void = () => undefined;
+		const backupStarted = new Promise<null>((resolve) => {
+			announceBackup = () => resolve(null);
+		});
 		try {
-			const buffered: AgenticChatTurnProviderClientEventV1[] = [];
-			let bufferedBytes = 0;
-			let retry = false;
-			let terminal = false;
-			let terminalError = false;
-			const retriesRemain = retryCount < MAX_RETRYABLE_PROVIDER_PASS_RETRIES;
-			// Shadow of the consumer's accumulator, used only to recognise a
-			// truncated pass before it is released. Protocol violations are left for
-			// the consumer to name; they make the pass unobservable here.
-			const shadowToolCalls = createToolCallAccumulator();
-			let shadowObservable = true;
-			// The client may cut a runaway-reasoning pass short only while the
-			// reasoning-off recovery below can still take it; otherwise the pass
-			// runs to its cap as before.
 			const budgetRecoveryClaimable =
 				isActingOutputPass(request) &&
 				retriesRemain &&
 				!attemptRequest.outputBudgetRecovery &&
 				(outputPolicy?.canClaimRecovery?.() ?? true);
+			const hedgedRequest = attemptRequest;
+			const startBackup = () => {
+				if (backup.current || primaryDecided || request.signal.aborted) return;
+				const backupAttempt = providerAttempt + 1;
+				const link = linkAttemptSignal(request.signal);
+				const backupPreview = previewPort
+					? new LiveTextPreviewEmitter(previewPort, request, backupAttempt, {
+							deferred: true
+						})
+					: null;
+				backup.current = {
+					link,
+					preview: backupPreview,
+					run: settleProviderAttempt(
+						consumeProviderAttempt({
+							request,
+							attemptRequest: hedgedRequest,
+							client,
+							clientInput: {
+								...providerClientRequest({
+									...hedgedRequest,
+									providerAttempt: backupAttempt
+								}),
+								allowSlowStreamRecovery: false,
+								allowRunawayReasoningCutoff: false,
+								finalBufferedAttempt: true,
+								signal: link.signal
+							},
+							preview: backupPreview,
+							capacity,
+							retryableFailureCooldownMs,
+							outputPolicy,
+							mayRetry: () => false
+						})
+					)
+				};
+				announceBackup();
+			};
+			const primaryRun = settleProviderAttempt(
+				consumeProviderAttempt({
+					request,
+					attemptRequest,
+					client,
+					clientInput: {
+						...providerClientRequest({ ...attemptRequest, providerAttempt }),
+						allowSlowStreamRecovery:
+							retriesRemain && !attemptRequest.outputBudgetRecovery,
+						allowRunawayReasoningCutoff: budgetRecoveryClaimable,
+						finalBufferedAttempt:
+							!retriesRemain || attemptRequest.outputBudgetRecovery === true,
+						...(primaryLink
+							? { signal: primaryLink.signal, slowStreamHedge: startBackup }
+							: {})
+					},
+					preview,
+					capacity,
+					retryableFailureCooldownMs,
+					outputPolicy,
+					mayRetry: () => retriesRemain && backup.current === null,
+					onDecided: () => {
+						primaryDecided = true;
+					}
+				})
+			);
 
-			for await (const received of client.stream({
-				...providerClientRequest({ ...attemptRequest, providerAttempt }),
-				allowSlowStreamRecovery: retriesRemain && !attemptRequest.outputBudgetRecovery,
-				allowRunawayReasoningCutoff: budgetRecoveryClaimable,
-				finalBufferedAttempt: !retriesRemain || attemptRequest.outputBudgetRecovery === true
-			})) {
-				throwIfAborted(request.signal);
-				let event = received;
-				// Also cover compatible clients/fixtures which return length as done.
-				if (event.type === 'done' && isActingOutputPass(request)) {
-					const signal =
-						event.outputBudget ??
-						outputBudgetSignal(
-							request.maxOutputTokens ?? ACTING_OUTPUT_TOKENS,
-							canonicalFinishedReason(event.finishedReason),
-							null
-						);
-					if (signal?.kind === 'exhausted')
-						event = {
-							type: 'error',
-							error: 'Actor output budget exhausted',
-							retryable: true,
-							cause: 'output_budget_exhausted',
-							outputBudget: signal
-						};
-					else if (signal) outputPolicy?.pressure();
-				}
-				if (event.type === 'error') {
-					const exhausted = event.cause === 'output_budget_exhausted';
-					if (exhausted) outputPolicy?.pressure();
-					const recoveryTimeAvailable =
-						!request.budget ||
-						request.budget.deadlineAtMs - Date.now() >=
-							OUTPUT_RECOVERY_MIN_REMAINING_MS;
-					const budgetRetry =
-						exhausted &&
-						isActingOutputPass(request) &&
-						recoveryTimeAvailable &&
-						retriesRemain &&
-						!attemptRequest.outputBudgetRecovery &&
-						(outputPolicy?.claimRecovery() ?? true);
-					if (budgetRetry) {
-						attemptRequest = {
-							...request,
-							reasoningEffort: 'none',
-							outputBudgetRecovery: true,
-							messages: [
-								...request.messages,
-								{
-									role: 'system',
-									content: `The previous pass exhausted its output budget and none of its calls executed. Emit only the next correct stage from existing evidence. Never repeat successful writes. ${outputBudgetInstruction(event.outputBudget?.limit ?? ACTING_OUTPUT_TOKENS)}`
-								}
-							]
-						};
-						retry = true;
-						break;
+			const firstSettled = await Promise.race([primaryRun, backupStarted]);
+			const running = backup.current;
+			let settled: SettledProviderAttempt;
+			let chosenPreview: LiveTextPreviewEmitter | null = preview;
+			if (!running) {
+				settled = firstSettled ?? (await primaryRun);
+			} else {
+				const tagged = [
+					primaryRun.then((result) => ({ fromBackup: false, result })),
+					running.run.then((result) => ({ fromBackup: true, result }))
+				] as const;
+				const first = await Promise.race(tagged);
+				let winner = first;
+				if (!usableProviderAttempt(first.result)) {
+					// The first request failed while the backup runs: show the backup live.
+					if (!first.fromBackup) {
+						preview?.discard();
+						running.preview?.goLive();
 					}
-					if (
-						!exhausted &&
-						!attemptRequest.outputBudgetRecovery &&
-						event.retryable &&
-						retriesRemain
-					) {
-						if (!event.cause) {
-							capacity.markTemporarilyUnavailable(
-								request.turnRunId,
-								retryableFailureCooldownMs
-							);
-						}
-						retry = true;
-						break;
-					}
-					// A tool-free pass has nothing half-executed to retract: it can
-					// emit no tool call, and no later round replays it. Its prose is
-					// the honest partial answer the user is owed when the last attempt
-					// dies, so it is released ahead of the error and the consumer
-					// decides whether it is usable (people-synthesis timeout,
-					// 2026-07-22). Every tool-enabled pass keeps the atomic boundary.
-					const recoverablePartial =
-						request.toolChoice === 'none' &&
-						!exhausted &&
-						!attemptRequest.outputBudgetRecovery
-							? buffered.filter((candidate) => candidate.type === 'text')
-							: [];
-					buffered.length = 0;
-					buffered.push(
-						...recoverablePartial,
-						exhausted || attemptRequest.outputBudgetRecovery
-							? { ...event, cause: 'output_budget_exhausted', retryable: false }
-							: event
-					);
-					terminal = true;
-					terminalError = true;
-					break;
+					const second = await tagged[first.fromBackup ? 0 : 1];
+					// Neither finished cleanly: the backup was the last attempt, so it stands.
+					winner =
+						usableProviderAttempt(second.result) || second.fromBackup ? second : first;
 				}
-
-				if (event.type === 'text') preview?.append(event.content);
-				bufferedBytes += Buffer.byteLength(JSON.stringify(event), 'utf8');
-				if (bufferedBytes > MAX_BUFFERED_PROVIDER_PASS_BYTES) {
-					throw providerError('provider_pass_buffer_exceeded', 'permanent');
+				if (winner.fromBackup) {
+					primaryLink?.abort(new Error(HEDGE_LOST_REASON));
+					preview?.discard();
+					chosenPreview = running.preview;
+				} else {
+					running.link.abort(new Error(HEDGE_LOST_REASON));
+					running.preview?.discard();
 				}
-				buffered.push(event);
-				if (event.type === 'tool_call' && shadowObservable) {
-					try {
-						appendToolCallDelta(shadowToolCalls, event.toolCall);
-					} catch {
-						shadowObservable = false;
-					}
-				}
-				if (event.type === 'done') {
-					if (
-						attemptRequest.outputBudgetRecovery &&
-						!buffered.some(
-							(candidate) =>
-								candidate.type === 'tool_call' ||
-								(candidate.type === 'text' && candidate.content.trim())
-						)
-					) {
-						buffered.length = 0;
-						buffered.push({
-							type: 'error',
-							error: 'Output budget recovery returned no output',
-							retryable: false,
-							cause: 'output_budget_exhausted'
-						});
-						terminalError = true;
-					}
-					terminal = true;
-					if (
-						shadowObservable &&
-						detectToolCallPassTruncation(
-							shadowToolCalls,
-							canonicalFinishedReason(event.finishedReason),
-							request.toolChoice
-						)
-					) {
-						if (attemptRequest.outputBudgetRecovery) {
-							buffered.length = 0;
-							buffered.push({
-								type: 'error',
-								error: 'Output budget recovery returned incomplete calls',
-								retryable: false,
-								cause: 'output_budget_exhausted'
-							});
-							terminalError = true;
-						} else if (retriesRemain) retry = true;
-					}
-					break;
-				}
+				settled = winner.result;
 			}
 
-			if (retry) {
+			if (!settled.ok) throw settled.error;
+			const outcome = settled.outcome;
+			if (outcome.kind === 'retry') {
 				preview?.discard();
+				if (outcome.budgetRecovery) attemptRequest = outcome.budgetRecovery;
 				if (attemptRequest.outputBudgetRecovery && isActingOutputPass(request))
 					yield { type: 'output_budget_recovery', providerAttempt: providerAttempt + 1 };
 				continue;
 			}
-			if (!terminal) {
-				const incompleteToolCall = buffered.find((event) => event.type === 'tool_call');
-				if (incompleteToolCall && !attemptRequest.outputBudgetRecovery) {
-					preview?.discard();
-					yield incompleteToolCall;
-					return;
-				}
-				throw providerError('provider_missing_done', 'unknown');
+			if (outcome.kind === 'incomplete') {
+				chosenPreview?.discard();
+				yield outcome.toolCall;
+				return;
 			}
 			// The final flush is sent before any buffered event is released, so its
 			// durable floor predates this pass's own durable text.
-			if (terminalError) preview?.discard();
-			else preview?.finish();
-			for (const event of buffered) yield event;
+			if (outcome.terminalError) chosenPreview?.discard();
+			else chosenPreview?.finish();
+			for (const event of outcome.buffered) yield event;
 			return;
 		} catch (error) {
 			throwIfAborted(request.signal);
@@ -302,6 +509,9 @@ export async function* streamBufferedProviderPass(
 			// Retried, thrown, aborted, or abandoned: the attempt's preview is void.
 			// A no-op once the attempt already flushed or discarded.
 			preview?.discard();
+			backup.current?.preview?.discard();
+			primaryLink?.release();
+			backup.current?.link.release();
 		}
 	}
 }
@@ -322,12 +532,16 @@ class LiveTextPreviewEmitter {
 	private lastSentAtMs: number | null = null;
 	private timer: NodeJS.Timeout | null = null;
 	private closed = false;
+	/** A backup request's preview: held until `goLive` or `finish`. */
+	private deferred: boolean;
 
 	constructor(
 		private readonly port: AgenticChatLiveTextPreviewPortV1,
 		private readonly request: AgenticChatTurnProviderRequestV1,
-		providerAttempt: number
+		providerAttempt: number,
+		options: { deferred?: boolean } = {}
 	) {
+		this.deferred = options.deferred === true;
 		livePreviewPassCounter += 1;
 		this.passKey = [
 			request.logicalProviderRound,
@@ -350,7 +564,14 @@ class LiveTextPreviewEmitter {
 			this.text += delta;
 			this.textBytes += deltaBytes;
 		}
-		this.schedule();
+		if (!this.deferred) this.schedule();
+	}
+
+	/** Start showing a held preview (the request it races has failed). */
+	goLive(): void {
+		if (this.closed || !this.deferred) return;
+		this.deferred = false;
+		if (this.text) this.schedule();
 	}
 
 	/** Pass completed: send the final text now and close. */

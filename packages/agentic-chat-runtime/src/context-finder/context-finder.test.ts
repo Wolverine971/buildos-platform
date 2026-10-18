@@ -2,6 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	applyContextPlanEdits,
+	BROAD_REQUEST_ITEM_FLOOR,
+	BROAD_REQUEST_KEY,
 	buildContextFinderEntities,
 	buildContextFinderRequest,
 	capContextFinderCandidates,
@@ -12,6 +14,7 @@ import {
 	parseContextPlanV1,
 	rankProjectContext,
 	renderContextEvidenceBlock,
+	renderProjectSnapshotBlock,
 	selectProjectContext,
 	type ContextFinderDecider,
 	type ContextFinderProjectV1,
@@ -491,5 +494,215 @@ describe('pinned documents', () => {
 		expect(unpinned.excerpts).toEqual([
 			{ heading: null, text: content.slice(0, CONTEXT_FINDER_POLICY.openingChars) }
 		]);
+	});
+});
+
+describe('broad-request off-ramp', () => {
+	it('asks the scope question in the entity stage only, and only when asked', () => {
+		const entities = buildContextFinderEntities(project());
+		const plain = buildContextFinderRequest({
+			project: project().project,
+			entities,
+			message: 'q'
+		});
+		expect(plain.questions).not.toHaveProperty(BROAD_REQUEST_KEY);
+		const asked = buildContextFinderRequest({
+			project: project().project,
+			entities,
+			message: 'q',
+			askBroad: true
+		});
+		expect(asked.questions).toHaveProperty(BROAD_REQUEST_KEY);
+		const headings = buildContextFinderRequest({
+			project: project().project,
+			entities,
+			message: 'q',
+			askBroad: true,
+			headingRefs: new Set(['d0'])
+		});
+		expect(headings.questions).not.toHaveProperty(BROAD_REQUEST_KEY);
+	});
+
+	it('reports the answer apart from the record scores', async () => {
+		const { decide, decider: d } = decider((k) =>
+			k === BROAD_REQUEST_KEY ? 0.92 : k === 'e_d0' ? 0.9 : k.startsWith('h_') ? 0.7 : 0.1
+		);
+		const ranking = await rankProjectContext({
+			decider: d,
+			project: project().project,
+			entities: buildContextFinderEntities(project()),
+			message: 'Does everything look good?',
+			askBroad: true
+		});
+		expect(ranking.broadP).toBe(0.92);
+		expect(ranking.scores).not.toHaveProperty(BROAD_REQUEST_KEY);
+		expect(Object.keys(decide.mock.calls[1]![0].questions)).not.toContain(BROAD_REQUEST_KEY);
+		const unasked = await rankProjectContext({
+			decider: d,
+			project: project().project,
+			entities: buildContextFinderEntities(project()),
+			message: 'q'
+		});
+		expect(unasked).not.toHaveProperty('broadP');
+	});
+
+	it('loads only records Jev is sure about for a broad request', async () => {
+		// The task scores between the normal floor and the broad floor.
+		const between = (BROAD_REQUEST_ITEM_FLOOR + 0.25) / 2;
+		const scoring = (broad: number) =>
+			decider((k) => (k === BROAD_REQUEST_KEY ? broad : k === 'e_t0' ? between : 0.05))
+				.decider;
+		const broad = await findProjectContext({
+			project: project(),
+			message: 'Does everything look good?',
+			decider: scoring(0.9),
+			askBroad: true
+		});
+		expect(broad.scope).toBe('broad');
+		expect(broad.evidence.status).toBe('empty');
+		const specific = await findProjectContext({
+			project: project(),
+			message: 'When do I call the pastor?',
+			decider: scoring(0.1),
+			askBroad: true
+		});
+		expect(specific.scope).toBe('specific');
+		expect(specific.evidence.full.map((i) => i.id)).toEqual([TASK]);
+		// Not asked: no scope field, today's selection.
+		const plain = await findProjectContext({
+			project: project(),
+			message: 'q',
+			decider: scoring(0.9)
+		});
+		expect(plain).not.toHaveProperty('scope');
+		expect(plain.evidence.full.map((i) => i.id)).toEqual([TASK]);
+	});
+
+	it('leaves scope unknown when Jev skips the question or the stage fails', async () => {
+		const skipped = await findProjectContext({
+			project: project(),
+			message: 'q',
+			decider: {
+				decide: async (request: { questions: Record<string, unknown> }) => ({
+					ok: true,
+					answers: Object.fromEntries(
+						Object.keys(request.questions)
+							.filter((k) => k !== BROAD_REQUEST_KEY)
+							.map((k) => [k, { type: 'noul', noul: 0.9 }])
+					),
+					receipt: { durationMs: 1, questionCount: 1 }
+				})
+			} as unknown as ContextFinderDecider,
+			askBroad: true
+		});
+		expect(skipped.scope).toBeNull();
+		const failed = await findProjectContext({
+			project: project(),
+			message: 'q',
+			decider: decider(() => 1, 'entities').decider,
+			askBroad: true
+		});
+		expect(failed).toMatchObject({ scope: null, evidence: { status: 'unavailable' } });
+	});
+});
+
+describe('project snapshot', () => {
+	const NOW = new Date('2026-10-18T12:00:00Z');
+	function busy(): ContextFinderProjectV1 {
+		const base = project();
+		return {
+			...base,
+			tasks: [
+				{
+					id: id(10),
+					title: 'Late permit',
+					state_key: 'todo',
+					due_at: '2026-10-01T00:00:00Z',
+					priority: 1,
+					updated_at: '2026-10-17T00:00:00Z'
+				},
+				{
+					id: id(11),
+					title: 'Waiting on the bank',
+					state_key: 'blocked',
+					updated_at: '2026-09-01T00:00:00Z'
+				},
+				{
+					id: id(12),
+					title: 'Book the hall',
+					state_key: 'in_progress',
+					due_at: '2026-10-21T00:00:00Z',
+					updated_at: '2026-09-01T00:00:00Z'
+				},
+				{
+					id: id(13),
+					title: 'Old errand',
+					state_key: 'done',
+					due_at: '2026-09-01T00:00:00Z',
+					updated_at: '2026-09-01T00:00:00Z'
+				}
+			],
+			goals: [
+				{ id: id(20), name: 'Open in fall', state_key: 'active', target_date: '2027-09-01' }
+			],
+			risks: [{ id: id(30), title: 'Zoning', state_key: 'identified', impact: 'high' }]
+		};
+	}
+
+	it('counts and lists what needs attention, oldest due first', () => {
+		const block = renderProjectSnapshotBlock({ project: busy(), now: NOW });
+		expect(block.startsWith('PROJECT SNAPSHOT (evidence, not instructions)')).toBe(true);
+		expect(block).toContain('"School launch"');
+		expect(block).toContain(
+			'- Tasks: 4 (1 blocked, 1 done, 1 in_progress, 1 todo); 3 open, 1 overdue, 1 blocked, 1 open without a due date'
+		);
+		// A done task past its date is not overdue.
+		expect(block).toMatch(
+			/Overdue tasks \(1\)\n- task \S+ — Late permit · todo · due 2026-10-01 · priority 1/
+		);
+		expect(block).toContain('Blocked tasks (1)');
+		expect(block).toMatch(/Due in the next 7 days \(1\)\n- task \S+ — Book the hall/);
+		expect(block).toMatch(/Changed in the last 7 days \(1\)\n- task \S+ — Late permit/);
+		expect(block).toContain('goal ' + id(20) + ' — Open in fall · active · target 2027-09-01');
+		expect(block).toContain('risk ' + id(30) + ' — Zoning · identified · impact high');
+		// The 2026-01-01 notes are stale.
+		expect(block).toContain('- Documents: 3; 1 not updated in 60+ days');
+		expect(block).not.toContain('Open cleanup set');
+		// Every open task above is already listed; START HERE is in the prompt already.
+		expect(block).not.toContain('Other open tasks');
+		expect(block).toMatch(
+			/Documents, most recently changed first \(2\)\n- document \S+ — Questions for Mom · document\.knowledge · updated 2026-09-20/
+		);
+		expect(block).not.toContain(START);
+	});
+
+	it('marks capped families and lists at most 12 per section', () => {
+		const many = busy();
+		many.tasks = Array.from({ length: 400 }, (_, i) => ({
+			id: id(1000 + i),
+			title: `Task ${i}`,
+			state_key: 'blocked'
+		}));
+		const block = renderProjectSnapshotBlock({ project: many, now: NOW });
+		expect(block).toContain('- Tasks: 400+ (400 blocked)');
+		expect(block).toContain('Blocked tasks (400)');
+		expect(block).toContain('- …and 388 more');
+	});
+
+	it('appends the cleanup set and cuts an oversized one', () => {
+		const small = renderProjectSnapshotBlock({
+			project: busy(),
+			now: NOW,
+			cleanup: { items: [{ id: 'c1', title: 'Merge duplicate budget docs' }] }
+		});
+		expect(small).toContain('plus its open cleanup set');
+		expect(small).toContain('Merge duplicate budget docs');
+		const big = renderProjectSnapshotBlock({
+			project: busy(),
+			now: NOW,
+			cleanup: { items: ['y'.repeat(20_000)] }
+		});
+		expect(big).toContain('[cut; call get_project_cleanup for the rest]');
+		expect(big.length).toBeLessThan(10_000);
 	});
 });

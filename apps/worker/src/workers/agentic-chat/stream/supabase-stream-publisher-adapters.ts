@@ -84,14 +84,26 @@ export type AgenticChatRealtimeClient = {
 	realtime?: AgenticChatRealtimeSocketV1;
 };
 
+export type AgenticChatRealtimeStatusV1 = 'idle' | 'connected' | 'degraded' | 'closed';
+
 export type AgenticChatRealtimeHealthV1 = {
 	healthy: boolean;
-	status: 'idle' | 'connected' | 'degraded' | 'closed';
+	status: AgenticChatRealtimeStatusV1;
 	activeChannels: number;
 	lastTransitionAt: string | null;
 	consecutiveFailures: number;
 };
 
+// Inputs come from the port so the adapter cannot drift from what the
+// publisher sends.
+type PersistSemanticInputV1 = Parameters<AgenticChatPersistencePortV1['persistSemantic']>[0];
+type AcknowledgeInputV1 = Parameters<NonNullable<AgenticChatPersistencePortV1['acknowledge']>>[0];
+
+/**
+ * Maps the publisher's persistence port onto its Postgres RPCs. Every write
+ * except the text flush (which fences each batch row itself) carries the
+ * generation write fence. Each call returns the RPC's receipt or throws.
+ */
 export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersistencePortV1 {
 	constructor(private readonly client: AgenticChatSupabaseRpcClient) {}
 
@@ -103,18 +115,7 @@ export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersist
 		});
 	}
 
-	persistSemantic(input: {
-		turn_run_id: string;
-		queue_job_id: string;
-		processing_token: string;
-		execution_generation: number;
-		transition_id: string;
-		assistant_text: string;
-		phase: string;
-		event_type: string;
-		projection: Record<string, unknown>;
-		event_payload: Record<string, unknown>;
-	}): Promise<AgenticChatSemanticEventRpcResultV1> {
+	persistSemantic(input: PersistSemanticInputV1): Promise<AgenticChatSemanticEventRpcResultV1> {
 		return this.call<AgenticChatSemanticEventRpcResultV1>(
 			'persist_agentic_chat_semantic_event',
 			{
@@ -162,13 +163,7 @@ export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersist
 		}
 	}
 
-	acknowledge(input: {
-		turn_run_id: string;
-		queue_job_id: string;
-		processing_token: string;
-		execution_generation: number;
-		acknowledged_sequence: number;
-	}): Promise<AgenticChatStreamDeliveryAckRpcResultV1> {
+	acknowledge(input: AcknowledgeInputV1): Promise<AgenticChatStreamDeliveryAckRpcResultV1> {
 		return this.call<AgenticChatStreamDeliveryAckRpcResultV1>(
 			'acknowledge_agentic_chat_stream_delivery',
 			{
@@ -193,28 +188,66 @@ export class SupabaseAgenticChatPersistenceAdapter implements AgenticChatPersist
 	}
 }
 
+/** Production defaults for every numeric adapter setting. */
+const BROADCAST_ADAPTER_DEFAULTS = {
+	maxCachedChannels: 256,
+	subscribeTimeoutMs: 10_000,
+	sendTimeoutMs: 10_000,
+	previewReopenCooldownMs: 2_000,
+	selfHealAfterMs: 60_000,
+	selfHealCooldownMs: 5 * 60_000,
+	failureLogEvery: 25
+} as const;
+
+type BroadcastAdapterLimitsV1 = Readonly<Record<keyof typeof BROADCAST_ADAPTER_DEFAULTS, number>>;
+
 /**
- * Diagnostics and self-heal settings for the broadcast adapter (Realtime
- * health incident 2026-10-17). Every field has a production default.
+ * Settings for the broadcast adapter. Every field is optional and has a
+ * production default; each number must be a positive safe integer.
  */
 export type AgenticChatBroadcastAdapterOptionsV1 = {
-	/** Structured diagnostics; defaults to one JSON line on stderr. */
-	log?: (record: Record<string, unknown>) => void;
-	now?: () => number;
+	/** Most topic channels kept subscribed; the least recently used goes first. */
+	maxCachedChannels?: number;
+	/** Longest wait for a channel to reach SUBSCRIBED. */
+	subscribeTimeoutMs?: number;
+	/** Longest wait for one acknowledged broadcast. */
+	sendTimeoutMs?: number;
+	/** Least time between preview-started subscriptions for one topic. */
+	previewReopenCooldownMs?: number;
 	/** Subscriptions failing this long with no success restart the socket. */
 	selfHealAfterMs?: number;
 	/** At most one socket restart per this window. */
 	selfHealCooldownMs?: number;
 	/** Log the first failure of a streak and every Nth one after it. */
 	failureLogEvery?: number;
+	/** Structured diagnostics; defaults to one JSON line on stderr. */
+	log?: (record: Record<string, unknown>) => void;
+	now?: () => number;
 };
 
-const DEFAULT_SELF_HEAL_AFTER_MS = 60_000;
-const DEFAULT_SELF_HEAL_COOLDOWN_MS = 5 * 60_000;
 /** A restart needs a streak, not two isolated failures inside the window. */
 const MIN_SUBSCRIBE_FAILURES_FOR_SELF_HEAL = 3;
-const DEFAULT_FAILURE_LOG_EVERY = 25;
+/** supabase-js settles a last-channel disconnect in about 100 ms. */
+const SOCKET_SETTLE_POLL_MS = 25;
+const SOCKET_SETTLE_MAX_WAIT_MS = 500;
 const CHANNEL_OPTIONS = { config: { private: true, broadcast: { ack: true } } } as const;
+
+function resolveBroadcastAdapterLimits(
+	options: AgenticChatBroadcastAdapterOptionsV1
+): BroadcastAdapterLimitsV1 {
+	const limits = { ...BROADCAST_ADAPTER_DEFAULTS } as Record<
+		keyof typeof BROADCAST_ADAPTER_DEFAULTS,
+		number
+	>;
+	for (const name of Object.keys(limits) as Array<keyof typeof limits>) {
+		const value = options[name] ?? limits[name];
+		if (!Number.isSafeInteger(value) || value < 1) {
+			throw new Error(`${name} must be a positive safe integer`);
+		}
+		limits[name] = value;
+	}
+	return limits;
+}
 
 /** A subscription that did not reach SUBSCRIBED, with the SDK's status. */
 class AgenticChatRealtimeSubscribeError extends Error {
@@ -260,9 +293,11 @@ function realtimeDiagnosticText(value: unknown): string | undefined {
 			text = String(value);
 		}
 	}
+	// Redact before truncating, so a cut-off credential cannot slip past a pattern.
 	return text
 		.replace(/eyJ[\w-]+\.[\w-]+\.[\w-]*/g, '[jwt]')
-		.replace(/((?:apikey|access_token|token)["=:\s]+)[^&\s",}]+/gi, '$1[redacted]')
+		.replace(/(bearer\s+)[^\s",}]+/gi, '$1[redacted]')
+		.replace(/((?:api[_-]?key|access_token|token)["=:\s]+)[^&\s",}]+/gi, '$1[redacted]')
 		.slice(0, 200);
 }
 
@@ -278,6 +313,21 @@ function topicKind(topic: string): string {
 	return separator === -1 ? topic : topic.slice(0, separator);
 }
 
+/**
+ * Sends the publisher's broadcasts over Supabase Realtime: one private, acked
+ * channel per topic, cached in least-recently-used order.
+ *
+ * - Durable events and reconcile hints subscribe on demand; a failed send or
+ *   subscription counts against health and evicts the channel.
+ * - Live text previews never wait. With no ready channel the frame is skipped
+ *   (and at most one subscription per cooldown is started); a failed preview
+ *   send neither evicts nor counts against health (see `publishPreview`).
+ * - Subscriptions failing for a sustained window restart the shared socket
+ *   (see `maybeResetConnection`).
+ *
+ * Broadcast is best effort: events are persisted before they are sent, and
+ * clients recover anything lost through reconcile.
+ */
 export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcastPortV1 {
 	private readonly channels = new Map<string, AgenticChatRealtimeChannel>();
 	private readonly openingChannels = new Map<string, Promise<AgenticChatRealtimeChannel>>();
@@ -287,20 +337,17 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		AgenticChatRealtimeChannel,
 		SubscriptionToken
 	>();
-	private status: AgenticChatRealtimeHealthV1['status'] = 'idle';
+	private status: AgenticChatRealtimeStatusV1 = 'idle';
 	private lastTransitionAt: string | null = null;
+	/** Failed publish/subscribe attempts since the last success. */
 	private consecutiveFailures = 0;
 	private closed = false;
 	private readonly closeListeners = new Set<() => void>();
 	private readonly previewSendsInFlight = new Map<string, number>();
 	private readonly previewOpenAttemptAtMs = new Map<string, number>();
+	private readonly limits: BroadcastAdapterLimitsV1;
 	private readonly log: (record: Record<string, unknown>) => void;
 	private readonly now: () => number;
-	private readonly selfHealAfterMs: number;
-	private readonly selfHealCooldownMs: number;
-	private readonly failureLogEvery: number;
-	/** Failed publish/subscribe attempts since the last success. */
-	private attemptFailureStreak = 0;
 	/** Cached channels lost since the last success. */
 	private channelLossStreak = 0;
 	/** When subscriptions started failing with no success since. */
@@ -312,38 +359,11 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 
 	constructor(
 		private readonly client: AgenticChatRealtimeClient,
-		private readonly maxCachedChannels = 256,
-		private readonly subscribeTimeoutMs = 10_000,
-		private readonly sendTimeoutMs = 10_000,
-		private readonly previewReopenCooldownMs = 2_000,
 		options: AgenticChatBroadcastAdapterOptionsV1 = {}
 	) {
-		if (!Number.isSafeInteger(maxCachedChannels) || maxCachedChannels < 1) {
-			throw new Error('maxCachedChannels must be a positive safe integer');
-		}
-		if (!Number.isSafeInteger(subscribeTimeoutMs) || subscribeTimeoutMs < 1) {
-			throw new Error('subscribeTimeoutMs must be a positive safe integer');
-		}
-		if (!Number.isSafeInteger(sendTimeoutMs) || sendTimeoutMs < 1) {
-			throw new Error('sendTimeoutMs must be a positive safe integer');
-		}
-		if (!Number.isSafeInteger(previewReopenCooldownMs) || previewReopenCooldownMs < 1) {
-			throw new Error('previewReopenCooldownMs must be a positive safe integer');
-		}
+		this.limits = resolveBroadcastAdapterLimits(options);
 		this.log = options.log ?? defaultRealtimeLog;
 		this.now = options.now ?? (() => Date.now());
-		this.selfHealAfterMs = options.selfHealAfterMs ?? DEFAULT_SELF_HEAL_AFTER_MS;
-		this.selfHealCooldownMs = options.selfHealCooldownMs ?? DEFAULT_SELF_HEAL_COOLDOWN_MS;
-		this.failureLogEvery = options.failureLogEvery ?? DEFAULT_FAILURE_LOG_EVERY;
-		for (const [name, value] of [
-			['selfHealAfterMs', this.selfHealAfterMs],
-			['selfHealCooldownMs', this.selfHealCooldownMs],
-			['failureLogEvery', this.failureLogEvery]
-		] as const) {
-			if (!Number.isSafeInteger(value) || value < 1) {
-				throw new Error(`${name} must be a positive safe integer`);
-			}
-		}
 	}
 
 	async publish(message: AgenticChatBroadcastMessageV1): Promise<AgenticChatBroadcastOutcomeV1> {
@@ -356,6 +376,8 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 			// The subscription attempt counted and logged its own failure.
 			return 'failed';
 		}
+		let status: string;
+		let error: unknown;
 		try {
 			const result = await this.sendWithDeadline(
 				channel.send({
@@ -364,18 +386,20 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 					payload: message.payload
 				})
 			);
-			if (result !== 'ok') {
-				await this.evictChannel(message.topic, channel);
-				this.observeAttemptFailure('send', result, undefined);
-				return 'failed';
+			if (result === 'ok') {
+				this.observeConnected();
+				return 'sent';
 			}
-			this.observeConnected();
-			return 'sent';
-		} catch (error) {
-			if (!this.closed) await this.evictChannel(message.topic, channel);
-			this.observeAttemptFailure('send', 'SEND_FAILED', error);
-			return 'failed';
+			status = result;
+		} catch (sendError) {
+			status = 'SEND_FAILED';
+			error = sendError;
 		}
+		// Record the failure with the socket as it found it, then drop the
+		// channel so the next durable event subscribes afresh.
+		this.observeAttemptFailure('send', status, error);
+		if (!this.closed) await this.evictChannel(message.topic, channel);
+		return 'failed';
 	}
 
 	/**
@@ -420,14 +444,14 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		const lastAttemptAtMs = this.previewOpenAttemptAtMs.get(topic);
 		if (
 			lastAttemptAtMs !== undefined &&
-			nowMs - lastAttemptAtMs < this.previewReopenCooldownMs
+			nowMs - lastAttemptAtMs < this.limits.previewReopenCooldownMs
 		) {
 			return;
 		}
 		// Re-insert so the oldest topic is evicted first once the map is full.
 		this.previewOpenAttemptAtMs.delete(topic);
 		this.previewOpenAttemptAtMs.set(topic, nowMs);
-		if (this.previewOpenAttemptAtMs.size > this.maxCachedChannels) {
+		if (this.previewOpenAttemptAtMs.size > this.limits.maxCachedChannels) {
 			const oldest = this.previewOpenAttemptAtMs.keys().next().value;
 			if (oldest !== undefined) this.previewOpenAttemptAtMs.delete(oldest);
 		}
@@ -444,19 +468,11 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		};
 	}
 
-	async releaseTopic(topic: string): Promise<void> {
-		try {
-			await this.openingChannels.get(topic);
-		} catch {
-			// Failed subscriptions clean up their own channel.
-		}
-		const channel = this.channels.get(topic);
-		if (!channel) return;
-		this.channels.delete(topic);
-		this.retireSubscription(channel);
-		await this.client.removeChannel(channel);
-	}
-
+	/**
+	 * Stops every pending wait, removes every channel, and never throws: it
+	 * runs in the shutdown path's `finally`, where a cleanup error would
+	 * replace the publisher's own stop result.
+	 */
 	async close(): Promise<void> {
 		this.closed = true;
 		for (const listener of [...this.closeListeners]) listener();
@@ -464,15 +480,13 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		const channels = [...this.channels.values()];
 		this.channels.clear();
 		this.previewOpenAttemptAtMs.clear();
-		for (const channel of channels) this.retireSubscription(channel);
-		try {
-			await Promise.all([
-				...channels.map((channel) => this.client.removeChannel(channel)),
-				...Array.from(this.openingChannels.values(), (opening) => opening.catch(() => {}))
-			]);
-		} finally {
-			this.transitionTo('closed');
-		}
+		await Promise.all([
+			...channels.map((channel) => this.removeChannelQuietly(channel)),
+			...Array.from(this.openingChannels.values(), (opening) =>
+				opening.catch(() => undefined)
+			)
+		]);
+		this.transitionTo('closed');
 	}
 
 	private async channelFor(topic: string): Promise<AgenticChatRealtimeChannel> {
@@ -498,7 +512,7 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	}
 
 	private async openChannel(topic: string): Promise<AgenticChatRealtimeChannel> {
-		if (this.channels.size >= this.maxCachedChannels) {
+		if (this.channels.size >= this.limits.maxCachedChannels) {
 			const oldest = this.channels.entries().next().value as
 				| [string, AgenticChatRealtimeChannel]
 				| undefined;
@@ -548,8 +562,12 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	 * deadline, so wait the window out first (bounded).
 	 */
 	private async waitForSocketToSettle(): Promise<void> {
-		for (let waitedMs = 0; waitedMs < 500; waitedMs += 25) {
-			await new Promise((resolve) => setTimeout(resolve, 25));
+		for (
+			let waitedMs = 0;
+			waitedMs < SOCKET_SETTLE_MAX_WAIT_MS;
+			waitedMs += SOCKET_SETTLE_POLL_MS
+		) {
+			await new Promise((resolve) => setTimeout(resolve, SOCKET_SETTLE_POLL_MS));
 			if (this.closed || !this.client.realtime?.isDisconnecting?.()) return;
 		}
 	}
@@ -584,7 +602,7 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 						'Realtime subscription deadline exceeded'
 					)
 				);
-			}, this.subscribeTimeoutMs);
+			}, this.limits.subscribeTimeoutMs);
 			removeCloseListener = this.onClose(() => {
 				if (settled) return;
 				settled = true;
@@ -628,7 +646,7 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 					settled = true;
 					clearTimeout(timer);
 					reject(new AgenticChatRealtimeSubscribeError(status, error));
-				}, this.subscribeTimeoutMs);
+				}, this.limits.subscribeTimeoutMs);
 			} catch (error) {
 				settled = true;
 				clearTimeout(timer);
@@ -646,7 +664,7 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 				new Promise<string>((_resolve, reject) => {
 					timer = setTimeout(
 						() => reject(new Error('Realtime broadcast deadline exceeded')),
-						this.sendTimeoutMs
+						this.limits.sendTimeoutMs
 					);
 					removeCloseListener = this.onClose(() =>
 						reject(new Error('Realtime adapter closed during broadcast'))
@@ -684,19 +702,23 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	/**
 	 * The SDK hands back the same channel object for a topic until its leave
 	 * settles, and subscribe() on a leaving channel does nothing, so a reopen
-	 * before then would wait out the whole subscribe deadline. Bounded by it.
+	 * before then would wait out the whole subscribe deadline. Bounded by it,
+	 * and cut short by close() so shutdown does not wait on a dead socket.
 	 */
 	private async waitForRemoval(removal: Promise<void>): Promise<void> {
 		let timer: NodeJS.Timeout | null = null;
+		let removeCloseListener = () => {};
 		try {
 			await Promise.race([
 				removal,
 				new Promise<void>((resolve) => {
-					timer = setTimeout(resolve, this.subscribeTimeoutMs);
+					timer = setTimeout(resolve, this.limits.subscribeTimeoutMs);
+					removeCloseListener = this.onClose(resolve);
 				})
 			]);
 		} finally {
 			if (timer) clearTimeout(timer);
+			removeCloseListener();
 		}
 	}
 
@@ -729,7 +751,6 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 	private observeConnected(): void {
 		if (this.closed) return;
 		this.consecutiveFailures = 0;
-		this.attemptFailureStreak = 0;
 		this.channelLossStreak = 0;
 		this.subscribeFailingSinceMs = null;
 		this.lastSubscribeFailureAtMs = null;
@@ -747,15 +768,14 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		if (this.closed) return;
 		this.consecutiveFailures += 1;
 		this.transitionTo('degraded');
-		this.attemptFailureStreak += 1;
-		if (this.shouldLog(this.attemptFailureStreak)) {
+		if (this.shouldLog(this.consecutiveFailures)) {
 			this.safeLog({
 				event: 'agentic_chat_realtime_attempt_failed',
 				phase,
 				status,
 				error: realtimeDiagnosticText(error),
 				errorCode: realtimeErrorCode(error),
-				failuresInStreak: this.attemptFailureStreak,
+				failuresInStreak: this.consecutiveFailures,
 				activeChannels: this.channels.size,
 				socketState
 			});
@@ -794,7 +814,8 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		this.lastSubscribeFailureAtMs = nowMs;
 		if (
 			this.subscribeFailingSinceMs === null ||
-			(previousFailureAtMs !== null && nowMs - previousFailureAtMs > this.selfHealAfterMs)
+			(previousFailureAtMs !== null &&
+				nowMs - previousFailureAtMs > this.limits.selfHealAfterMs)
 		) {
 			// A failure after a quiet gap starts a new window: two isolated
 			// failures minutes apart on an idle replica are not a failing socket.
@@ -805,14 +826,14 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		this.subscribeFailuresInWindow += 1;
 		const failingForMs = nowMs - this.subscribeFailingSinceMs;
 		if (
-			failingForMs < this.selfHealAfterMs ||
+			failingForMs < this.limits.selfHealAfterMs ||
 			this.subscribeFailuresInWindow < MIN_SUBSCRIBE_FAILURES_FOR_SELF_HEAL
 		) {
 			return;
 		}
 		if (
 			this.lastConnectionResetAtMs !== null &&
-			nowMs - this.lastConnectionResetAtMs < this.selfHealCooldownMs
+			nowMs - this.lastConnectionResetAtMs < this.limits.selfHealCooldownMs
 		) {
 			return;
 		}
@@ -839,14 +860,14 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 			event: 'agentic_chat_realtime_connection_reset',
 			outcome,
 			failingForMs,
-			failuresInStreak: this.attemptFailureStreak,
+			failuresInStreak: this.consecutiveFailures,
 			socketState,
 			connectionResets: this.connectionResets
 		});
 	}
 
 	private shouldLog(streak: number): boolean {
-		return streak === 1 || streak % this.failureLogEvery === 0;
+		return streak === 1 || streak % this.limits.failureLogEvery === 0;
 	}
 
 	private socketState(): string | undefined {
@@ -865,9 +886,9 @@ export class SupabaseAgenticChatBroadcastAdapter implements AgenticChatBroadcast
 		}
 	}
 
-	private transitionTo(status: AgenticChatRealtimeHealthV1['status']): void {
+	private transitionTo(status: AgenticChatRealtimeStatusV1): void {
 		if (this.status === status) return;
 		this.status = status;
-		this.lastTransitionAt = new Date().toISOString();
+		this.lastTransitionAt = new Date(this.now()).toISOString();
 	}
 }

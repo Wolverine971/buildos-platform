@@ -75,6 +75,34 @@ function setCached<T>(
 	});
 }
 
+/**
+ * The Email suggestions page only makes sense once Gmail is connected. A
+ * connection that needs reconnecting still counts: the page explains how to fix it.
+ */
+async function hasConnectedGmail(
+	supabase: Parameters<LayoutServerLoad>[0]['locals']['supabase'],
+	userId: string
+): Promise<boolean> {
+	try {
+		const { count, error } = await supabase
+			.from('user_email_connections')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', userId)
+			.eq('provider', 'google_gmail')
+			.eq('read_enabled', true)
+			.in('status', ['active', 'reconnect_required'])
+			.is('deleted_at', null);
+		if (error) {
+			console.warn('[Layout] Failed to load Gmail connection status:', error);
+			return false;
+		}
+		return (count ?? 0) > 0;
+	} catch (error) {
+		console.warn('[Layout] Failed to load Gmail connection status:', error);
+		return false;
+	}
+}
+
 async function hasConnectedAgents(
 	supabase: Parameters<LayoutServerLoad>[0]['locals']['supabase'],
 	userId: string
@@ -148,86 +176,89 @@ export const load: LayoutServerLoad = async ({
 	const routePath = url.pathname;
 	const shouldLoadBillingContext = stripeEnabled && !routePath.startsWith('/auth');
 
+	// Email suggestions is an allowlisted admin experiment: everyone else skips the lookup.
+	const emailSuggestionsAllowed =
+		Boolean(user.is_admin) && isGmailRelevancePhaseAReviewUserAllowed(user.id, privateEnv);
+
 	// Run all remaining queries in parallel instead of sequentially/streamed.
 	// Awaiting here prevents layout shifts from TrialBanner/PaymentWarning
 	// appearing late on the client when streamed promises resolve.
-	const [pendingInvitesResult, onboardingProgress, billingContext, agentConnectionStatus] =
-		await Promise.all([
-			measure('db.pending_invites', async () => {
-				const cacheKey = user.id;
-				const cached = getCached(pendingInvitesCache, cacheKey, nowMs);
-				if (cached) return cached;
+	const [
+		pendingInvitesResult,
+		onboardingProgress,
+		billingContext,
+		agentConnectionStatus,
+		emailSuggestionsEnabled
+	] = await Promise.all([
+		measure('db.pending_invites', async () => {
+			const cacheKey = user.id;
+			const cached = getCached(pendingInvitesCache, cacheKey, nowMs);
+			if (cached) return cached;
 
-				try {
-					const { data, error } = await supabase.rpc('list_pending_project_invites');
-					if (error) {
-						console.warn('[Layout] Failed to load pending invites:', error);
-						return [] as PendingProjectInvite[];
-					}
-					const invites = Array.isArray(data)
-						? (data as PendingProjectInvite[])
-						: ([] as PendingProjectInvite[]);
-					setCached(
-						pendingInvitesCache,
-						cacheKey,
-						invites,
-						PENDING_INVITES_TTL_MS,
-						nowMs
-					);
-					return invites;
-				} catch (error) {
+			try {
+				const { data, error } = await supabase.rpc('list_pending_project_invites');
+				if (error) {
 					console.warn('[Layout] Failed to load pending invites:', error);
 					return [] as PendingProjectInvite[];
 				}
-			}),
+				const invites = Array.isArray(data)
+					? (data as PendingProjectInvite[])
+					: ([] as PendingProjectInvite[]);
+				setCached(pendingInvitesCache, cacheKey, invites, PENDING_INVITES_TTL_MS, nowMs);
+				return invites;
+			} catch (error) {
+				console.warn('[Layout] Failed to load pending invites:', error);
+				return [] as PendingProjectInvite[];
+			}
+		}),
 
-			// safeGetSession already loaded this profile. No duplicate query or stale TTL.
-			getOnboardingProgress(
-				onboardingStep(
-					user.onboarding_step,
-					user.onboarding_intent,
-					user.onboarding_stakes
-				),
-				completedOnboarding
-			),
+		// safeGetSession already loaded this profile. No duplicate query or stale TTL.
+		getOnboardingProgress(
+			onboardingStep(user.onboarding_step, user.onboarding_intent, user.onboarding_stakes),
+			completedOnboarding
+		),
 
-			shouldLoadBillingContext
-				? measure('db.billing_context', async () => {
-						const cached = getCachedBillingContext(user.id, nowMs);
-						if (cached) return cached;
+		shouldLoadBillingContext
+			? measure('db.billing_context', async () => {
+					const cached = getCachedBillingContext(user.id, nowMs);
+					if (cached) return cached;
 
-						try {
-							const context = await fetchBillingContext(
-								supabase,
-								user.id,
-								stripeEnabled,
-								{
-									consumptionGateMode: 'snapshot'
-								}
-							);
-							const normalizedContext: BillingContext = {
-								subscription: context?.subscription ?? null,
-								trialStatus: context?.trialStatus ?? null,
-								paymentWarnings: context?.paymentWarnings ?? [],
-								isReadOnly: Boolean(context?.isReadOnly),
-								consumptionGate: context?.consumptionGate ?? null,
-								loading: false
-							};
-							setCachedBillingContext(user.id, normalizedContext, nowMs);
-							return normalizedContext;
-						} catch (error) {
-							console.error('Failed to load billing context:', error);
-							return createEmptyBillingContext(false);
-						}
-					})
-				: createEmptyBillingContext(false),
+					try {
+						const context = await fetchBillingContext(
+							supabase,
+							user.id,
+							stripeEnabled,
+							{
+								consumptionGateMode: 'snapshot'
+							}
+						);
+						const normalizedContext: BillingContext = {
+							subscription: context?.subscription ?? null,
+							trialStatus: context?.trialStatus ?? null,
+							paymentWarnings: context?.paymentWarnings ?? [],
+							isReadOnly: Boolean(context?.isReadOnly),
+							consumptionGate: context?.consumptionGate ?? null,
+							loading: false
+						};
+						setCachedBillingContext(user.id, normalizedContext, nowMs);
+						return normalizedContext;
+					} catch (error) {
+						console.error('Failed to load billing context:', error);
+						return createEmptyBillingContext(false);
+					}
+				})
+			: createEmptyBillingContext(false),
 
-			measure('db.agent_connections', () => hasConnectedAgents(supabase, user.id)),
+		measure('db.agent_connections', () => hasConnectedAgents(supabase, user.id)),
 
-			measure('db.authenticated_activity', () =>
-				recordAuthenticatedUserActivity(supabase, user.id)
-			)
-		]);
+		emailSuggestionsAllowed
+			? measure('db.gmail_connection', () => hasConnectedGmail(supabase, user.id))
+			: false,
+
+		measure('db.authenticated_activity', () =>
+			recordAuthenticatedUserActivity(supabase, user.id)
+		)
+	]);
 
 	return {
 		...baseData,
@@ -237,7 +268,7 @@ export const load: LayoutServerLoad = async ({
 		billingContext,
 		pendingInvites: pendingInvitesResult,
 		hasConnectedAgents: agentConnectionStatus,
-		emailSuggestionsEnabled: isGmailRelevancePhaseAReviewUserAllowed(user.id, privateEnv),
+		emailSuggestionsEnabled,
 		workflowLabNavEnabled: dev || user.email?.trim().toLowerCase() === WORKFLOW_LAB_NAV_EMAIL
 	};
 };

@@ -36,7 +36,13 @@ export async function runWithAbortableDeadline<T>(input: AbortableDeadlineInput<
  * cancellation value.
  */
 export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-	throwIfAborted(signal);
+	if (signal.aborted) {
+		// Callers write `abortable(start(), signal)`, so the work has already
+		// started and nothing else holds it. Its later rejection must not become
+		// an unhandled rejection, which exits the worker with every turn on it.
+		void Promise.resolve(promise).catch(() => undefined);
+		throwIfAborted(signal);
+	}
 	return new Promise<T>((resolve, reject) => {
 		const cleanup = () => signal.removeEventListener('abort', onAbort);
 		const onAbort = () => {

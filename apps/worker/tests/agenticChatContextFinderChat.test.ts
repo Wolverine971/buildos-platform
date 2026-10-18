@@ -1,5 +1,8 @@
 // apps/worker/tests/agenticChatContextFinderChat.test.ts
-import type { ContextFinderDecider } from '@buildos/agentic-chat-runtime/context-finder';
+import {
+	BROAD_REQUEST_KEY,
+	type ContextFinderDecider
+} from '@buildos/agentic-chat-runtime/context-finder';
 import type {
 	AgenticChatTurnClaimResultV1,
 	ChatToolDefinition,
@@ -8,6 +11,7 @@ import type {
 import { describe, expect, it, vi } from 'vitest';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import {
+	CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS,
 	ChatContextFinder,
 	contextSelectionTransitionId
 } from '../src/workers/agentic-chat/provider/chat-context-finder';
@@ -123,7 +127,14 @@ function request(
 	} as AgenticChatTurnProviderRequestV1;
 }
 
-const scores = (key: string) => (key.includes('h_') ? 0.7 : key.startsWith('e_d') ? 0.9 : 0.6);
+// Ordinary specific requests: the off-ramp question answers "no".
+const scores = (key: string) =>
+	key === BROAD_REQUEST_KEY ? 0.1 : key.includes('h_') ? 0.7 : key.startsWith('e_d') ? 0.9 : 0.6;
+const broad =
+	(records: (key: string) => number = () => 0.6) =>
+	(key: string) =>
+		key === BROAD_REQUEST_KEY ? 0.95 : records(key);
+const CLEANUP = { items: [{ id: 'cleanup-1', title: 'Merge the two budget drafts' }] };
 
 describe('ChatContextFinder', () => {
 	it('skips users outside the allowlist and turns without a project', async () => {
@@ -250,6 +261,109 @@ describe('ChatContextFinder', () => {
 		expect(contextSelectionTransitionId(TURN_RUN_ID, { a: 1 })).toMatch(
 			/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 		);
+	});
+});
+
+describe('ChatContextFinder broad-request off-ramp', () => {
+	const finder = (
+		recordScores: (key: string) => number,
+		mode: 'on' | 'chips' = 'on',
+		loadCleanup: (projectId: string) => Promise<unknown> = vi.fn(async () => CLEANUP)
+	) => {
+		const jev = fakeDecider(recordScores);
+		return {
+			...jev,
+			loadCleanup,
+			finder: new ChatContextFinder({
+				mode,
+				userIds: [USER_ID],
+				client: fakeClient(),
+				decider: jev.decider,
+				loadCleanup
+			})
+		};
+	};
+	const ask = (content: string) =>
+		request({
+			messages: [
+				{ role: 'system', content: 'system prompt' },
+				{ role: 'user', content }
+			]
+		});
+
+	it('asks Jev once per turn whether the request is about the whole project', async () => {
+		const { decide, finder: f } = finder(scores);
+		const found = (await f.find(request()))!;
+		expect(Object.keys(decide.mock.calls[0]![0].questions)).toContain(BROAD_REQUEST_KEY);
+		for (const call of decide.mock.calls.slice(1))
+			expect(Object.keys(call[0].questions)).not.toContain(BROAD_REQUEST_KEY);
+		expect(found.step.eventPayload).toMatchObject({
+			scope: 'specific',
+			broad_p: 0.1,
+			snapshot: null
+		});
+		// A specific request keeps today's evidence; the cleanup read started early is dropped.
+		expect(found.injection).toContain('WORKING CONTEXT');
+		expect(found.injection).not.toContain('PROJECT SNAPSHOT');
+		expect(found.injection).not.toContain('Merge the two budget drafts');
+	});
+
+	it('injects the whole-project snapshot with the cleanup set instead of loose matches', async () => {
+		const { finder: f, loadCleanup } = finder(broad());
+		const found = (await f.find(ask('Does everything look good in here?')))!;
+		expect(loadCleanup).toHaveBeenCalledWith(PROJECT_ID);
+		expect(found.injection).toMatch(/^PROJECT SNAPSHOT \(evidence, not instructions\)/);
+		expect(found.injection).toContain('task ' + TASK + ' — Develop initial budget · todo');
+		expect(found.injection).toContain('Merge the two budget drafts');
+		// Records at 0.6 would load for a specific request; a broad one keeps only sure ones.
+		expect(found.injection).not.toContain('WORKING CONTEXT');
+		expect(found.step.eventPayload).toMatchObject({
+			scope: 'broad',
+			broad_p: 0.95,
+			injected: true,
+			status: 'empty',
+			snapshot: { cleanup: true }
+		});
+	});
+
+	it('keeps records Jev is sure about beside the snapshot', async () => {
+		const { finder: f } = finder(broad((key) => (key === 'e_d0' ? 0.95 : 0.3)));
+		const found = (await f.find(
+			ask('How is the budget side of the project looking overall?')
+		))!;
+		expect(found.injection).toMatch(/^PROJECT SNAPSHOT/);
+		expect(found.injection).toContain('WORKING CONTEXT');
+		expect(found.injection).toContain('$300,000');
+	});
+
+	it('sends the snapshot without cleanup when that read fails or is slow', async () => {
+		const failing = finder(
+			broad(),
+			'on',
+			vi.fn(async () => Promise.reject(new Error('boom')))
+		);
+		const failed = (await failing.finder.find(ask('Anything I should worry about?')))!;
+		expect(failed.injection).toMatch(/^PROJECT SNAPSHOT/);
+		expect(failed.step.eventPayload).toMatchObject({ snapshot: { cleanup: false } });
+
+		const slow = finder(
+			broad(),
+			'on',
+			vi.fn(() => new Promise(() => undefined))
+		);
+		const started = Date.now();
+		const late = (await slow.finder.find(ask('Anything I should worry about?')))!;
+		expect(Date.now() - started).toBeLessThan(CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS + 400);
+		expect(late.injection).toMatch(/^PROJECT SNAPSHOT/);
+		expect(late.injection).not.toContain('Open cleanup set');
+	});
+
+	it('records the answer but injects and loads nothing outside on mode', async () => {
+		const { finder: f, loadCleanup } = finder(broad(), 'chips');
+		const found = (await f.find(ask('Does everything look good?')))!;
+		expect(found.injection).toBeNull();
+		expect(loadCleanup).not.toHaveBeenCalled();
+		expect(found.step.eventPayload).toMatchObject({ scope: 'broad', injected: false });
 	});
 });
 

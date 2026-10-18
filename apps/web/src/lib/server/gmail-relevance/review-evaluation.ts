@@ -153,6 +153,8 @@ export type EmailRelevanceReviewQueueItem = {
 	sample_order: number;
 	quick_review_order: number | null;
 	state: 'pending' | 'reviewed' | 'expired';
+	/** The saved answer, so the page can show a scorecard without another request. */
+	decision: ReviewDecision | null;
 };
 export type EmailRelevanceReviewContext = {
 	sample_id: string;
@@ -919,6 +921,9 @@ export class EmailRelevanceReviewService {
 		const pendingQuickSamples = samples.filter(
 			(sample) => sample.state === 'pending' && quickReviewOrder.has(sample.id)
 		);
+		const decisionBySample = new Map(
+			adjudications.map((adjudication) => [adjudication.sample_id, adjudication.decision])
+		);
 		return {
 			runs: labeledRuns,
 			selected_run_id: selected.id,
@@ -929,7 +934,8 @@ export class EmailRelevanceReviewService {
 				project_label: projectLabel.get(sample.project_id) ?? 'Project',
 				sample_order: sample.sample_order,
 				quick_review_order: quickReviewOrder.get(sample.id) ?? null,
-				state: sample.state
+				state: sample.state,
+				decision: decisionBySample.get(sample.id) ?? null
 			})),
 			metrics: computeEmailRelevanceReviewMetrics({
 				samples,

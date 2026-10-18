@@ -160,8 +160,14 @@ export function selectProjectContext(input: {
 	/** A smaller share of the budget when several projects split one prompt (workspace.ts). */
 	budgetChars?: number;
 	maxSummaries?: number;
+	/**
+	 * Raise the absolute floor (never lower it). A whole-project request keeps only records
+	 * Jev is sure about; the project snapshot carries the rest (finder.ts).
+	 */
+	floor?: number;
 }): ContextPlanV1 {
 	const policy = CONTEXT_FINDER_POLICY;
+	const floor = Math.max(policy.floor, input.floor ?? policy.floor);
 	const budgetChars = Math.min(input.budgetChars ?? policy.budgetChars, policy.budgetChars);
 	const maxSummaries = Math.min(input.maxSummaries ?? policy.maxSummaries, policy.maxSummaries);
 	const skip = input.skipIds ?? new Set<string>();
@@ -173,7 +179,7 @@ export function selectProjectContext(input: {
 		.map((entity) => ({ entity, p: input.scores[entityScoreKey(entity)] ?? 0 }))
 		.sort((a, b) => b.p - a.p);
 	const top = scored[0]?.p ?? 0;
-	const bar = Math.max(policy.floor, policy.relative * top);
+	const bar = Math.max(floor, policy.relative * top);
 	const pinned = scored.filter((x) => pins.has(x.entity.id)).slice(0, policy.maxPins);
 	const candidates = [
 		...pinned,
@@ -203,7 +209,7 @@ export function selectProjectContext(input: {
 	}
 	const fullIds = new Set(full.map((item) => item.id));
 	const summaries: ContextPlanItemV1[] = scored
-		.filter((x) => x.p >= policy.floor)
+		.filter((x) => x.p >= floor)
 		.slice(0, policy.summaryCandidates)
 		.filter((x) => !fullIds.has(x.entity.id))
 		.slice(0, maxSummaries)

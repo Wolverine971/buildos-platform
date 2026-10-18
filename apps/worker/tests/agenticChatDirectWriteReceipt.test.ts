@@ -274,7 +274,9 @@ function mutatingSteps(steps: AgenticChatProviderStepV1[]): MutatingStep[] {
 
 /** A request as sent, minus its per-run abort signal. */
 function withoutSignal(request: object) {
-	return { ...request, signal: null };
+	// The per-attempt signal and hedge callback are fresh objects on every pass.
+	const { slowStreamHedge, ...rest } = request as { slowStreamHedge?: unknown };
+	return { ...rest, signal: null, hedgeOffered: typeof slowStreamHedge === 'function' };
 }
 
 async function collect(stream: AsyncIterable<AgenticChatProviderStepV1>) {

@@ -52,10 +52,11 @@ describe('Slice 3 metadata content boundary', () => {
 
 	it('keeps the manual invocation path one-operation, form-action-only, and queue/model free', async () => {
 		const manualPilot = await source('manual-pilot.ts');
+		// The review page now hosts the scan: the browser asks for one step at a time.
 		const actionRoute = await readFile(
 			fileURLToPath(
 				new URL(
-					'../../../routes/admin/gmail-relevance/pilot/+page.server.ts',
+					'../../../routes/admin/gmail-relevance/review/+page.server.ts',
 					import.meta.url
 				)
 			),
@@ -65,7 +66,7 @@ describe('Slice 3 metadata content boundary', () => {
 		expect(manualPilot).not.toMatch(
 			/queue_jobs|add_queue_job|setInterval|setTimeout|users\.watch|pubsub|smart-llm|openrouter|openai|embedding/i
 		);
-		expect(actionRoute).toContain('runOne: async');
+		expect(actionRoute).toContain('scanStep: async');
 		expect(actionRoute).not.toContain('while (');
 		expect(actionRoute).not.toContain('for (;;)');
 		for (const forbiddenField of [

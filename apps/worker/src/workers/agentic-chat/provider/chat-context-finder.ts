@@ -7,14 +7,20 @@
 //
 // Modes: shadow publishes a hidden receipt; chips publishes visible chips; on also injects the
 // evidence into the opening request. Every failure is fail-open: the turn runs as it does today.
+//
+// The off-ramp (rank.ts): Jev also answers whether the request is about the project as a whole.
+// A broad request loads only records Jev is sure about plus a whole-project snapshot (snapshot.ts),
+// so "does everything look good?" no longer spends rounds fetching overview, cleanup and lists.
 import {
 	type ContextEvidenceV1,
 	type ContextFinderDecider,
 	type ContextFinderReadClient,
+	type ContextFinderResultV1,
 	type ContextPlanV1,
 	findProjectContext,
 	loadContextFinderProject,
 	renderContextEvidenceBlock,
+	renderProjectSnapshotBlock,
 	unavailableContextEvidence
 } from '@buildos/agentic-chat-runtime/context-finder';
 import { runWithAbortableDeadline, throwIfAborted } from '../shared/abortable-deadline';
@@ -50,16 +56,27 @@ export const CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS = 1_500;
 /** Send a duplicate Jev request when the first has not answered by then (JevClient hedge). */
 export const CHAT_CONTEXT_FINDER_HEDGE_MS = 700;
 const MAX_CHIPS = 30;
+/**
+ * The cleanup set loads beside the project and ranking; a broad turn waits at most this much
+ * longer for it, then goes out with the snapshot alone.
+ */
+export const CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS = 300;
+/** Leave this much of the deadline unused so a slow cleanup read never costs the snapshot. */
+const CLEANUP_DEADLINE_MARGIN_MS = 150;
+
+/** The project's open cleanup set as get_project_cleanup returns it (bootstrap wires it). */
+export type ChatContextFinderCleanupLoader = (projectId: string) => Promise<unknown>;
 
 export class ChatContextFinder implements AgenticChatContextFinderPort {
 	constructor(
 		private readonly options: {
 			mode: Exclude<ChatContextFinderMode, 'off'>;
-			/** Only these users are ranked; an empty list ranks nobody. */
 			/** Allowlisted ids, or 'all'. An empty list ranks nobody. */
 			userIds: readonly string[] | 'all';
 			client: ContextFinderReadClient;
 			decider: ContextFinderDecider;
+			/** Adds the open cleanup set to a broad request's snapshot (`on` only). */
+			loadCleanup?: ChatContextFinderCleanupLoader;
 			deadlineMs?: number;
 			jevTimeoutMs?: number;
 			now?: () => number;
@@ -75,48 +92,86 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 
 		const now = this.options.now ?? Date.now;
 		const started = now();
+		const deadlineMs = this.options.deadlineMs ?? CHAT_CONTEXT_FINDER_DEADLINE_MS;
+		const injecting = this.options.mode === 'on';
 		let evidence: ContextEvidenceV1;
 		let plan: ContextPlanV1 | null = null;
-		const outcome = await withFinderDeadline(
-			request,
-			this.options.deadlineMs ?? CHAT_CONTEXT_FINDER_DEADLINE_MS,
-			async (signal) => {
-				const project = await loadContextFinderProject(
-					this.options.client,
+		let result: ContextFinderResultV1 | null = null;
+		let snapshot: { block: string; cleanup: boolean } | null = null;
+		const outcome = await withFinderDeadline(request, deadlineMs, async (signal) => {
+			// Started beside the project load so a broad request rarely waits for it; the
+			// result is simply dropped when the request turns out to be specific.
+			const cleanup =
+				injecting && this.options.loadCleanup
+					? this.options.loadCleanup(projectId).then(
+							(value) => value ?? null,
+							() => null
+						)
+					: null;
+			const project = await loadContextFinderProject(this.options.client, projectId, signal);
+			const found = await findProjectContext({
+				project,
+				message: turn.message,
+				decider: this.options.decider,
+				recentConversation: turn.recent,
+				signal,
+				timeoutMs: this.options.jevTimeoutMs ?? CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
+				askBroad: true,
+				usage: {
+					operationType: 'agentic_chat_context_finder_chat',
+					userId: request.userId,
 					projectId,
-					signal
-				);
-				return findProjectContext({
-					project,
-					message: turn.message,
-					decider: this.options.decider,
-					recentConversation: turn.recent,
-					signal,
-					timeoutMs: this.options.jevTimeoutMs ?? CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
-					usage: {
-						operationType: 'agentic_chat_context_finder_chat',
-						userId: request.userId,
-						projectId,
-						chatSessionId: request.sessionId
-					}
-				});
-			}
-		);
+					chatSessionId: request.sessionId
+				}
+			});
+			if (!injecting || found.scope !== 'broad') return { found, snapshot: null };
+			const graceMs = Math.min(
+				CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS,
+				deadlineMs - (now() - started) - CLEANUP_DEADLINE_MARGIN_MS
+			);
+			const cleanupSet = cleanup ? await settleWithin(cleanup, graceMs, signal) : null;
+			return {
+				found,
+				snapshot: {
+					block: renderProjectSnapshotBlock({
+						project,
+						now: new Date(now()),
+						cleanup: cleanupSet
+					}),
+					cleanup: cleanupSet !== null
+				}
+			};
+		});
 		const failure = outcome.ok ? null : outcome.failure;
 		if (outcome.ok) {
-			evidence = outcome.value.evidence;
-			plan = outcome.value.plan;
+			result = outcome.value.found;
+			evidence = result.evidence;
+			plan = result.plan;
+			snapshot = outcome.value.snapshot;
 		} else evidence = unavailableContextEvidence(null);
 
-		const injected = this.options.mode === 'on' && evidence.status === 'selected';
+		const selected = evidence.status === 'selected';
+		const injection = !injecting
+			? null
+			: snapshot
+				? [
+						snapshot.block,
+						...(selected ? [renderContextEvidenceBlock(evidence)] : [])
+					].join('\n\n')
+				: selected
+					? renderContextEvidenceBlock(evidence)
+					: null;
 		const payload = buildContextSelectionPayload({
 			request,
 			mode: this.options.mode,
 			evidence,
 			plan,
-			injected,
+			injected: injection !== null,
 			failure,
-			elapsedMs: now() - started
+			elapsedMs: now() - started,
+			scope: result?.scope ?? null,
+			broadP: result?.ranking?.broadP ?? null,
+			snapshot: snapshot ? { chars: snapshot.block.length, cleanup: snapshot.cleanup } : null
 		});
 		return {
 			step: {
@@ -127,8 +182,38 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 				currentActivity: 'Finding relevant project context...',
 				eventPayload: payload
 			},
-			injection: injected ? renderContextEvidenceBlock(evidence) : null
+			injection
 		};
+	}
+}
+
+/**
+ * The value, or null once `ms` passes or the turn's finder work is aborted. Never rejects:
+ * a missing cleanup set only leaves it out of the snapshot.
+ */
+async function settleWithin<T>(
+	work: Promise<T | null>,
+	ms: number,
+	signal: AbortSignal
+): Promise<T | null> {
+	if (ms <= 0 || signal.aborted) {
+		// Already settled values still count; anything pending is dropped.
+		return Promise.race([work, Promise.resolve(null)]);
+	}
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	let onAbort: (() => void) | undefined;
+	try {
+		return await Promise.race([
+			work,
+			new Promise<null>((resolve) => {
+				timer = setTimeout(() => resolve(null), ms);
+				onAbort = () => resolve(null);
+				signal.addEventListener('abort', onAbort, { once: true });
+			})
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+		if (onAbort) signal.removeEventListener('abort', onAbort);
 	}
 }
 
@@ -193,6 +278,11 @@ export function buildContextSelectionPayload(input: {
 	injected: boolean;
 	failure: string | null;
 	elapsedMs: number;
+	/** The off-ramp's answer (rank.ts); null when Jev did not answer it. */
+	scope?: 'broad' | 'specific' | null;
+	broadP?: number | null;
+	/** Size of the injected whole-project snapshot, when one went out. */
+	snapshot?: { chars: number; cleanup: boolean } | null;
 }): Extract<AgenticChatProviderStepV1, { type: 'semantic' }>['eventPayload'] {
 	const { request, evidence, plan } = input;
 	const loaded = new Set(evidence.full.map((item) => item.id));
@@ -231,7 +321,10 @@ export function buildContextSelectionPayload(input: {
 					model: evidence.ranker.model
 				}
 			: null,
-		elapsed_ms: input.elapsedMs
+		elapsed_ms: input.elapsedMs,
+		scope: input.scope ?? null,
+		broad_p: input.broadP ?? null,
+		snapshot: input.snapshot ?? null
 	};
 }
 

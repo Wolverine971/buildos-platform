@@ -1,9 +1,20 @@
 // apps/web/src/routes/admin/gmail-relevance/review/page.svelte.test.ts
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from '@testing-library/svelte';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render, screen, waitFor } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageData } from './$types';
+
+const app = vi.hoisted(() => ({
+	invalidateAll: vi.fn(),
+	deserialize: vi.fn()
+}));
+vi.mock('$app/navigation', () => ({ invalidateAll: app.invalidateAll }));
+vi.mock('$app/forms', () => ({
+	enhance: () => ({ destroy() {} }),
+	deserialize: app.deserialize
+}));
+
 import ReviewPage from './+page.svelte';
 
 const RUN_ID = '20000000-0000-4000-8000-000000000001';
@@ -12,19 +23,81 @@ const PROJECT_ID = '40000000-0000-4000-8000-000000000001';
 
 type QueueState = 'pending' | 'reviewed' | 'expired';
 
-function queueItem(index: number, state: QueueState) {
+function queueItem(
+	index: number,
+	state: QueueState,
+	decision: string | null = state === 'reviewed' ? 'correct_project' : null,
+	projectLabel = 'Synthetic Project'
+) {
 	return {
 		id: index === 1 ? SAMPLE_ID : `30000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
 		account_label: 'Account 1',
-		project_label: 'Synthetic Project',
+		project_label: projectLabel,
 		sample_order: index,
 		quick_review_order: index,
-		state
+		state,
+		decision
 	};
 }
 
+const SCOPE_ID = '70000000-0000-4000-8000-000000000001';
+
+function progress(state: string, scopeState: string, processed: number) {
+	return {
+		run_id: RUN_ID,
+		state,
+		terminal_reason_code: null,
+		created_at: '2026-08-30T12:00:00.000Z',
+		expires_at: '2026-08-31T12:00:00.000Z',
+		scopes: [
+			{
+				id: SCOPE_ID,
+				account_label: 'person@synthetic.invalid',
+				state: scopeState,
+				terminal_reason_code: null,
+				message_cap: 1000,
+				observations_discovered: processed,
+				observations_processed: processed
+			}
+		]
+	};
+}
+
+function scanSection(overrides: Record<string, unknown> = {}) {
+	return {
+		enabled: true,
+		unavailable: false,
+		start_key: '80000000-0000-4000-8000-000000000001',
+		max_projects: 25,
+		accounts: [
+			{ id: '90000000-0000-4000-8000-000000000001', label: 'person@synthetic.invalid' }
+		],
+		projects: [{ id: PROJECT_ID, name: 'Synthetic Project' }],
+		latest_run: null,
+		...overrides
+	};
+}
+
+function emptyPageData(scan = scanSection()): PageData {
+	return {
+		runs: [],
+		selected_run_id: null,
+		projects: [],
+		queue: [],
+		metrics: null,
+		source_retention_expires_at: null,
+		scan
+	} as unknown as PageData;
+}
+
+beforeEach(() => {
+	app.invalidateAll.mockReset().mockResolvedValue(undefined);
+	app.deserialize.mockReset();
+});
+
 function pageData(queue: ReturnType<typeof queueItem>[]): PageData {
 	return {
+		scan: scanSection(),
 		runs: [
 			{
 				id: RUN_ID,
@@ -42,7 +115,113 @@ function pageData(queue: ReturnType<typeof queueItem>[]): PageData {
 	} as unknown as PageData;
 }
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.unstubAllGlobals();
+});
+
+describe('email relevance scan step', () => {
+	it('offers a scan of every connected account against the most recent projects', () => {
+		render(ReviewPage, { props: { data: emptyPageData() } });
+		const button = screen.getByRole('button', { name: 'Scan last 30 days' });
+		expect(button.closest('form')).toHaveAttribute('action', '?/startScan');
+		expect(screen.getByText('person@synthetic.invalid')).toBeInTheDocument();
+		expect(screen.getByRole('checkbox', { name: 'Synthetic Project' })).toBeChecked();
+		expect(
+			screen.queryByRole('button', { name: 'Prepare suggestions' })
+		).not.toBeInTheDocument();
+	});
+
+	it('sends people to Profile → Email when no Gmail account is ready', () => {
+		render(ReviewPage, { props: { data: emptyPageData(scanSection({ accounts: [] })) } });
+		expect(screen.getByRole('link', { name: /Connect or reconnect Gmail/ })).toHaveAttribute(
+			'href',
+			'/profile?tab=email'
+		);
+		expect(screen.queryByRole('button', { name: 'Scan last 30 days' })).not.toBeInTheDocument();
+	});
+
+	it('says plainly when scanning is switched off', () => {
+		render(ReviewPage, { props: { data: emptyPageData(scanSection({ enabled: false })) } });
+		expect(screen.getByText(/Scanning is switched off on this server/)).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Scan last 30 days' })).not.toBeInTheDocument();
+	});
+
+	it('resumes an unfinished scan one step at a time, then reloads when every account is done', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({ text: async () => 'serialized' });
+		vi.stubGlobal('fetch', fetchMock);
+		app.deserialize.mockReturnValue({
+			type: 'success',
+			status: 200,
+			data: {
+				kind: 'scan_step',
+				status: 'committed',
+				step_error_code: null,
+				progress: progress('completed', 'completed', 640)
+			}
+		});
+
+		render(ReviewPage, {
+			props: {
+				data: emptyPageData(
+					scanSection({ latest_run: progress('running', 'pending', 200) })
+				)
+			}
+		});
+
+		await waitFor(() => expect(app.invalidateAll).toHaveBeenCalledTimes(1));
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const [url, init] = fetchMock.mock.calls[0]!;
+		expect(url).toBe('?/scanStep');
+		expect([...(init.body as FormData).entries()]).toEqual([
+			['run_id', RUN_ID],
+			['connection_scope_id', SCOPE_ID]
+		]);
+	});
+
+	it('stops and explains when a step fails, offering to continue', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ text: async () => 'serialized' }));
+		app.deserialize.mockReturnValue({
+			type: 'failure',
+			status: 404,
+			data: { kind: 'error', error_code: 'connection_unavailable' }
+		});
+
+		render(ReviewPage, {
+			props: {
+				data: emptyPageData(
+					scanSection({ latest_run: progress('running', 'pending', 200) })
+				)
+			}
+		});
+
+		expect(
+			await screen.findByText('Gmail needs to be reconnected before it can be scanned.')
+		).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Continue scan' })).toBeInTheDocument();
+		expect(screen.getByText('200 emails read')).toBeInTheDocument();
+		expect(app.invalidateAll).not.toHaveBeenCalled();
+	});
+});
+
+describe('email relevance scorecard', () => {
+	it('tallies answers overall and by project', () => {
+		render(ReviewPage, {
+			props: {
+				data: pageData([
+					queueItem(1, 'reviewed', 'correct_project', 'Cadre'),
+					queueItem(2, 'reviewed', 'not_project_relevant', 'Cadre'),
+					queueItem(3, 'reviewed', 'correct_project', '9takes'),
+					queueItem(4, 'pending')
+				])
+			}
+		});
+		expect(screen.getByRole('heading', { name: 'Results so far' })).toBeInTheDocument();
+		expect(screen.getByText('Right 2 of 3')).toBeInTheDocument();
+		expect(screen.getByText('1 / 2 right')).toBeInTheDocument();
+		expect(screen.getByText('1 / 1 right')).toBeInTheDocument();
+	});
+});
 
 describe('email relevance review page state', () => {
 	it('keeps the selected scan in every action URL', () => {

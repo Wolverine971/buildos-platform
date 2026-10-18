@@ -22,10 +22,37 @@ const ENABLED_ENV = {
 	GMAIL_RELEVANCE_PHASE_A_USER_IDS: USER_ID
 };
 
+const SCAN_PROGRESS = {
+	run_id: RUN_ID,
+	state: 'running' as const,
+	terminal_reason_code: null,
+	created_at: '2026-07-23T18:42:31.000Z',
+	expires_at: '2026-07-24T18:42:00.000Z',
+	scopes: [
+		{
+			id: SCOPE_ID,
+			account_label: 'person@synthetic.invalid',
+			state: 'pending',
+			terminal_reason_code: null,
+			message_cap: 1000,
+			observations_discovered: 100,
+			observations_processed: 50
+		}
+	]
+};
+
 function repository(overrides: Partial<GmailRelevancePilotRepository> = {}) {
 	return {
 		listEligibleConnectionIds: vi.fn().mockResolvedValue([CONNECTION_ID]),
-		listOwnedProjectIds: vi.fn().mockResolvedValue([PROJECT_ID]),
+		listOwnedProjects: vi
+			.fn()
+			.mockResolvedValue([{ id: PROJECT_ID, name: 'Synthetic Project' }]),
+		loadConnectionLabels: vi
+			.fn()
+			.mockImplementation(async (_userId: string, ids: string[]) =>
+				ids.map((id) => ({ id, label: `${id.slice(0, 4)}@synthetic.invalid` }))
+			),
+		loadScanProgress: vi.fn().mockResolvedValue(SCAN_PROGRESS),
 		loadExistingRun: vi.fn().mockResolvedValue(null),
 		loadConnectionScopeIds: vi.fn().mockResolvedValue([SCOPE_ID]),
 		...overrides
@@ -239,7 +266,7 @@ describe('GmailRelevancePilotService', () => {
 			driver: deps.driver,
 			environment: {}
 		});
-		await expect(disabled.listOptions(USER_ID)).rejects.toEqual(
+		await expect(disabled.scanSetup(USER_ID)).rejects.toEqual(
 			expect.objectContaining({ code: 'phase_a_disabled' })
 		);
 
@@ -250,9 +277,111 @@ describe('GmailRelevancePilotService', () => {
 			driver: deps.driver,
 			environment: ENABLED_ENV
 		});
-		await expect(denied.listOptions(OTHER_USER_ID)).rejects.toEqual(
+		await expect(denied.scanSetup(OTHER_USER_ID)).rejects.toEqual(
+			expect.objectContaining({ code: 'user_not_allowed' })
+		);
+		await expect(
+			denied.startScan({
+				user_id: OTHER_USER_ID,
+				idempotency_key: IDEMPOTENCY_KEY,
+				project_ids: [PROJECT_ID]
+			})
+		).rejects.toEqual(expect.objectContaining({ code: 'user_not_allowed' }));
+		await expect(denied.scanProgress(OTHER_USER_ID, RUN_ID)).rejects.toEqual(
 			expect.objectContaining({ code: 'user_not_allowed' })
 		);
 		expect(deps.repo.listEligibleConnectionIds).not.toHaveBeenCalled();
+		expect(deps.repo.loadScanProgress).not.toHaveBeenCalled();
+	});
+
+	it('loads scan choices: labelled accounts (max 3), owned projects, and the latest unexpired run', async () => {
+		const ids = [
+			CONNECTION_ID,
+			'20000000-0000-4000-8000-000000000003',
+			'20000000-0000-4000-8000-000000000004',
+			'20000000-0000-4000-8000-000000000005'
+		];
+		const deps = dependencies({
+			repository: repository({
+				listEligibleConnectionIds: vi.fn().mockResolvedValue(ids)
+			})
+		});
+		const setup = await service(deps).scanSetup(USER_ID);
+
+		expect(setup.accounts.map((account) => account.id)).toEqual(ids.slice(0, 3));
+		expect(setup.projects).toEqual([{ id: PROJECT_ID, name: 'Synthetic Project' }]);
+		expect(setup.latest_run).toEqual(SCAN_PROGRESS);
+		expect(deps.repo.loadScanProgress).toHaveBeenCalledWith({
+			user_id: USER_ID,
+			now: '2026-07-23T18:42:31.000Z'
+		});
+	});
+
+	it('starts a scan of every eligible account without taking accounts from the caller', async () => {
+		const second = '20000000-0000-4000-8000-000000000003';
+		const deps = dependencies({
+			repository: repository({
+				listEligibleConnectionIds: vi.fn().mockResolvedValue([CONNECTION_ID, second])
+			})
+		});
+		await expect(
+			service(deps).startScan({
+				user_id: USER_ID,
+				idempotency_key: IDEMPOTENCY_KEY,
+				project_ids: [PROJECT_ID]
+			})
+		).resolves.toEqual({ run_id: RUN_ID, created: true, connection_scope_ids: [SCOPE_ID] });
+		expect(deps.controlPlane.createRun).toHaveBeenCalledWith(
+			expect.objectContaining({ connection_ids: [CONNECTION_ID, second] })
+		);
+
+		await expect(
+			service(deps).startScan({
+				user_id: USER_ID,
+				idempotency_key: IDEMPOTENCY_KEY,
+				project_ids: [PROJECT_ID],
+				connection_ids: [FOREIGN_CONNECTION_ID]
+			} as never)
+		).rejects.toEqual(expect.objectContaining({ code: 'invalid_input' }));
+	});
+
+	it('refuses to start without a connected account or with too many projects', async () => {
+		const none = dependencies({
+			repository: repository({ listEligibleConnectionIds: vi.fn().mockResolvedValue([]) })
+		});
+		await expect(
+			service(none).startScan({
+				user_id: USER_ID,
+				idempotency_key: IDEMPOTENCY_KEY,
+				project_ids: [PROJECT_ID]
+			})
+		).rejects.toEqual(expect.objectContaining({ code: 'connection_unavailable' }));
+		expect(none.controlPlane.createRun).not.toHaveBeenCalled();
+
+		const tooMany = dependencies();
+		await expect(
+			service(tooMany).startScan({
+				user_id: USER_ID,
+				idempotency_key: IDEMPOTENCY_KEY,
+				project_ids: Array.from(
+					{ length: 26 },
+					(_, index) => `30000000-0000-4000-8000-${String(index + 10).padStart(12, '0')}`
+				)
+			})
+		).rejects.toEqual(expect.objectContaining({ code: 'invalid_input' }));
+	});
+
+	it('reports progress only for a run the user owns', async () => {
+		const missing = dependencies({
+			repository: repository({ loadScanProgress: vi.fn().mockResolvedValue(null) })
+		});
+		await expect(service(missing).scanProgress(USER_ID, RUN_ID)).rejects.toEqual(
+			expect.objectContaining({ code: 'scope_unavailable' })
+		);
+		expect(missing.repo.loadScanProgress).toHaveBeenCalledWith({
+			user_id: USER_ID,
+			run_id: RUN_ID,
+			now: '2026-07-23T18:42:31.000Z'
+		});
 	});
 });

@@ -84,6 +84,7 @@ import {
 	providerAttemptTimingPayload,
 	runawayReasoningTokens,
 	streamWatchPolicy,
+	watchForSlowStreamHedge,
 	watchStreamProgress
 } from './openrouter/watchdog';
 
@@ -136,6 +137,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 	private readonly maxSseBufferBytes: number;
 	private readonly routeHealth: TurnRouteHealthTracker;
 	private readonly pendingEffects: Pick<AgenticChatPendingEffectsRegistry, 'forTurn'>;
+	private readonly slowStreamHedging: boolean;
 
 	constructor(
 		private readonly ports: OpenRouterClientPorts,
@@ -154,9 +156,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			 * acting client takes it; absent or `default` sends today's requests.
 			 */
 			continuationReasoning?: AgenticChatContinuationReasoningMode;
+			/**
+			 * AGENTIC_CHAT_PROVIDER_HEDGING: when the atomic buffer offers it, ask for
+			 * a backup request as soon as a watched acting stream looks stalled
+			 * (watchForSlowStreamHedge). Default on; off restores the 4 s window abort only.
+			 */
+			slowStreamHedging?: boolean;
 		}
 	) {
 		this.routes = validateRoutes(options.routes);
+		this.slowStreamHedging = options.slowStreamHedging ?? true;
 		this.routeHealth = new TurnRouteHealthTracker(
 			new Set(this.routes.flatMap((route) => [route.model, ...(route.fallbackModels ?? [])]))
 		);
@@ -508,6 +517,25 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					: null;
 			if (watchPolicy) {
 				stopProgressWatch = watchStreamProgress(active, state, input, watchPolicy);
+			}
+			const requestHedge = input.slowStreamHedge;
+			if (watchPolicy?.kind === 'acting' && requestHedge && this.slowStreamHedging) {
+				const hedged = active;
+				const stopAbortWatch = stopProgressWatch;
+				const stopHedgeWatch = watchForSlowStreamHedge(active, state, input, (signal) => {
+					// Route the backup around this endpoint only. The model stays
+					// eligible: the stall is the host's, as the 10-18 retry showed.
+					this.routeHealth.observeFailure(
+						input.turnRunId,
+						null,
+						state.providerSlug ?? normalizeProviderSlug(state.provider) ?? null
+					);
+					if (!hedged.signal.aborted) requestHedge(signal);
+				});
+				stopProgressWatch = () => {
+					stopAbortWatch?.();
+					stopHedgeWatch();
+				};
 			}
 			// Only a watched acting pass streams its reasoning.
 			const watched = watchPolicy?.kind === 'acting';

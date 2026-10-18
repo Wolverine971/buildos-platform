@@ -210,6 +210,12 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	allowRunawayReasoningCutoff?: boolean;
 	/** The atomic buffer's last existing attempt; no further retry will follow. */
 	finalBufferedAttempt?: boolean;
+	/**
+	 * The atomic buffer can start a backup request while this one still runs.
+	 * A client that watches stream progress calls this at most once, when the
+	 * stream looks stalled, without ending it. Clients may ignore it.
+	 */
+	slowStreamHedge?: (signal: AgenticChatSlowStreamHedgeSignalV1) => void;
 	/** Turn-level deadline; absent for fixtures and legacy callers. */
 	budget?: AgenticChatProviderBudgetV1;
 	/** Durable per-request reservation (workflow v1 only). Absent on the ordinary path. */
@@ -217,6 +223,14 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	/** Host-authorized document specialist surface; requires durable dispatch metering. */
 	workflowToolPolicy?: 'bounded_document_read_v1';
 	signal: AbortSignal;
+};
+
+/** Why a watched stream asked for a backup request. */
+export type AgenticChatSlowStreamHedgeSignalV1 = {
+	reason: 'slow_stream' | 'no_first_progress';
+	/** The window judged: recent generation for `slow_stream`, time since open otherwise. */
+	elapsedMs: number;
+	outputBytes: number;
 };
 
 export type AgenticChatTurnProviderClientPortV1 = {

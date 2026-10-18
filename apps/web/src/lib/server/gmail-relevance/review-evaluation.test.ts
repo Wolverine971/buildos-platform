@@ -177,7 +177,8 @@ describe('EmailRelevanceReviewService', () => {
 				project_label: 'Synthetic Project',
 				sample_order: 1,
 				quick_review_order: 1,
-				state: 'pending'
+				state: 'pending',
+				decision: null
 			}
 		]);
 		expect(dashboard.metrics).toMatchObject({
@@ -186,6 +187,27 @@ describe('EmailRelevanceReviewService', () => {
 			candidate_yield_per_100_observations: { a: 2, b: 0 }
 		});
 		expect(JSON.stringify(dashboard)).not.toContain('synthetic_ciphertext');
+	});
+
+	it('carries each saved answer on its queue row for the scorecard', async () => {
+		const input = service();
+		input.repository.loadSamples.mockResolvedValue([sample({ state: 'reviewed' })]);
+		input.repository.loadAdjudications.mockResolvedValue([
+			{
+				id: '70000000-0000-4000-8000-000000000001',
+				sample_id: SAMPLE_ID,
+				decision: 'correct_project',
+				correction_reason: null,
+				corrected_project_id: null,
+				rule_proposal: null,
+				created_at: '2026-07-24T12:00:00.000Z'
+			}
+		]);
+		const dashboard = await input.service.dashboard(USER_ID, RUN_ID);
+		expect(dashboard.queue[0]).toMatchObject({
+			state: 'reviewed',
+			decision: 'correct_project'
+		});
 	});
 
 	it('marks a fixed maximum of 20 candidate-positive rows for the quick review', async () => {

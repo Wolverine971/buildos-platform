@@ -25,10 +25,13 @@ import {
 	type AgenticChatProviderMutationCapabilitiesV1
 } from '../mutations/tool-catalog';
 import { createAgenticChatCompositionRoot } from './composition-root';
-import type {
-	ContextFinderReadClient,
-	WorkspaceFinderReadClient
+import {
+	type ContextFinderReadClient,
+	PROJECT_SNAPSHOT_LIMITS,
+	type WorkspaceFinderReadClient
 } from '@buildos/agentic-chat-runtime/context-finder';
+import { projectProjectCleanupViewForChat } from '@buildos/agentic-chat-runtime/tools';
+import { loadProjectCleanupView } from '@buildos/shared-agent-ops/project-cleanup';
 import {
 	CHAT_CONTEXT_FINDER_HEDGE_MS,
 	CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
@@ -482,7 +485,9 @@ function createDefaultComposition(
 			? { responseHeadersTimeoutMs: input.config.provider.responseHeadersTimeoutMs }
 			: {}),
 		// Acting client only; the reviewer client below never replays or drops reasoning.
-		continuationReasoning: input.config.continuationReasoning ?? 'default'
+		continuationReasoning: input.config.continuationReasoning ?? 'default',
+		// Acting client only; reviewer stalls keep their own watch and retry.
+		slowStreamHedging: input.config.providerHedgingEnabled ?? true
 	});
 	const semanticReviewerClient = new AgenticChatOpenRouterClient(clientPorts, {
 		...clientOptions,
@@ -540,7 +545,16 @@ function createDefaultComposition(
 							userIds: contextFinderUserIds,
 							// Service client; the turn's project access was checked at admission.
 							client: input.client as unknown as ContextFinderReadClient,
-							decider: contextFinderJev
+							decider: contextFinderJev,
+							// A broad request's snapshot carries the open cleanup set, sized to
+							// fit it (get_project_cleanup's projection, at the snapshot budget).
+							loadCleanup: async (projectId) =>
+								projectProjectCleanupViewForChat(
+									await loadProjectCleanupView(input.client as never, projectId, {
+										verify: false
+									}),
+									PROJECT_SNAPSHOT_LIMITS.cleanupChars
+								)
 						}),
 				contextFinderGlobalMode === 'off'
 					? undefined

@@ -1502,7 +1502,10 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 			channel: vi.fn(() => channel),
 			removeChannel: vi.fn().mockResolvedValue(undefined)
 		};
-		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, 256, 100, 25);
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, {
+			subscribeTimeoutMs: 100,
+			sendTimeoutMs: 25
+		});
 		try {
 			const publication = adapter.publish(subscriptionTestMessage);
 			await vi.advanceTimersByTimeAsync(25);
@@ -1531,7 +1534,10 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 			channel: vi.fn(() => channel),
 			removeChannel: vi.fn().mockResolvedValue(undefined)
 		};
-		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, 256, 100, 25);
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, {
+			subscribeTimeoutMs: 100,
+			sendTimeoutMs: 25
+		});
 		for (let index = 0; index < 5; index += 1) {
 			await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('sent');
 		}
@@ -1555,7 +1561,7 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 			channel: vi.fn().mockReturnValue(channel),
 			removeChannel: vi.fn().mockResolvedValue(undefined)
 		};
-		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, 256, 25);
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, { subscribeTimeoutMs: 25 });
 		try {
 			const first = adapter.publish(subscriptionTestMessage);
 			const second = adapter.publish(subscriptionTestMessage);
@@ -1600,6 +1606,62 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		expect(channel.send).not.toHaveBeenCalled();
 		expect(removeChannel).toHaveBeenCalledOnce();
 		expect(adapter.getHealth()).toMatchObject({ status: 'closed', activeChannels: 0 });
+	});
+
+	it('closes cleanly when removing a channel fails', async () => {
+		const channel = {
+			send: vi.fn().mockResolvedValue('ok'),
+			subscribe: vi.fn((callback: (status: 'SUBSCRIBED') => void) => {
+				callback('SUBSCRIBED');
+				return channel;
+			})
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter({
+			channel: () => channel,
+			removeChannel: vi.fn().mockRejectedValue(new Error('socket gone'))
+		});
+		await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('sent');
+		// Shutdown calls close() in a finally; a cleanup error must not escape it.
+		await expect(adapter.close()).resolves.toBeUndefined();
+		expect(adapter.getHealth()).toMatchObject({ status: 'closed', activeChannels: 0 });
+	});
+
+	it('rejects an invalid setting by name', () => {
+		const client = { channel: vi.fn(), removeChannel: vi.fn() };
+		expect(() => new SupabaseAgenticChatBroadcastAdapter(client, { sendTimeoutMs: 0 })).toThrow(
+			'sendTimeoutMs must be a positive safe integer'
+		);
+		expect(
+			() => new SupabaseAgenticChatBroadcastAdapter(client, { maxCachedChannels: 1.5 })
+		).toThrow('maxCachedChannels must be a positive safe integer');
+	});
+
+	it('stamps health with the injected clock and redacts credentials in failure logs', async () => {
+		const log = vi.fn();
+		const channel = {
+			send: vi.fn(),
+			subscribe: vi.fn((callback: (status: 'CHANNEL_ERROR', error?: Error) => void) => {
+				callback('CHANNEL_ERROR', new Error('rejected Bearer sk-live-123 and apikey=abc'));
+				return channel;
+			})
+		};
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(
+			{ channel: () => channel, removeChannel: vi.fn().mockResolvedValue(undefined) },
+			{ log, now: () => Date.parse('2026-10-17T22:16:00.000Z') }
+		);
+		await expect(adapter.publish(subscriptionTestMessage)).resolves.toBe('failed');
+		expect(adapter.getHealth()).toMatchObject({
+			status: 'degraded',
+			lastTransitionAt: '2026-10-17T22:16:00.000Z',
+			consecutiveFailures: 1
+		});
+		expect(log).toHaveBeenCalledWith(
+			expect.objectContaining({
+				event: 'agentic_chat_realtime_attempt_failed',
+				error: 'rejected Bearer [redacted] and apikey=[redacted]'
+			})
+		);
+		await adapter.close();
 	});
 
 	it('clears the adapter deadline when subscribe throws synchronously', async () => {
@@ -1719,7 +1781,11 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 			channel: vi.fn(() => channel),
 			removeChannel: vi.fn().mockResolvedValue(undefined)
 		};
-		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, 256, 100, 25, 1_000);
+		const adapter = new SupabaseAgenticChatBroadcastAdapter(client, {
+			subscribeTimeoutMs: 100,
+			sendTimeoutMs: 25,
+			previewReopenCooldownMs: 1_000
+		});
 		try {
 			for (let frame = 0; frame < 20; frame += 1) {
 				await expect(adapter.publish(previewTestMessage)).resolves.toBe('skipped');

@@ -2968,14 +2968,21 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
-	it('does not advance the provider when memo-result publication fails after ledger acknowledgement', async () => {
+	it('releases no answer when a deferred memo-result publication fails after ledger acknowledgement', async () => {
 		const harness = createHarness([], {
 			failSemanticType: 'tool_result',
 			providerBudgetMs: 50,
 			publisherConfig: { retryDelayMs: 1 },
 			recovery: [recoveryReceipt('finalize_failed', { failure_code: 'timeout_post_start' })]
 		});
-		const continueWithToolResults = vi.fn();
+		// The model may continue while the receipt is written (read-only batch),
+		// but its answer waits for every earlier receipt to be durable.
+		const continueWithToolResults = vi.fn(() =>
+			(async function* () {
+				yield { type: 'text_delta', text: 'Answer after the memo read.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})()
+		);
 		Object.assign(harness.provider, {
 			prepare: vi.fn(async () => ({
 				stream: () =>
@@ -3014,7 +3021,7 @@ describe('AgenticChatTurnExecutor', () => {
 			});
 			expect(harness.readTool.execute).not.toHaveBeenCalled();
 			expect(harness.toolExecutions.persistRead).toHaveBeenCalledOnce();
-			expect(continueWithToolResults).not.toHaveBeenCalled();
+			expect(harness.textFlushBatches.flat()).toEqual([]);
 			expect(harness.control.finalize).toHaveBeenCalledWith(
 				expect.objectContaining({
 					assistantMetadata: expect.objectContaining({
@@ -3152,11 +3159,16 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
-	it('does not advance the provider when a memo-served execution is not durable', async () => {
+	it('fails with the ledger error and releases no answer when a memo-served execution is not durable', async () => {
 		const harness = createHarness([], {
 			recovery: [recoveryReceipt('retry_scheduled')]
 		});
-		const continueWithToolResults = vi.fn();
+		const continueWithToolResults = vi.fn(() =>
+			(async function* () {
+				yield { type: 'text_delta', text: 'Answer after the memo read.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})()
+		);
 		Object.assign(harness.provider, {
 			prepare: vi.fn(async () => ({
 				stream: () =>
@@ -3198,10 +3210,13 @@ describe('AgenticChatTurnExecutor', () => {
 			});
 			expect(harness.readTool.execute).not.toHaveBeenCalled();
 			expect(harness.toolExecutions.persistRead).toHaveBeenCalledOnce();
-			expect(continueWithToolResults).not.toHaveBeenCalled();
 			expect(harness.semanticInputs).not.toEqual(
 				expect.arrayContaining([expect.objectContaining({ event_type: 'tool_result' })])
 			);
+			expect(harness.textFlushBatches.flat()).toEqual([]);
+			expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+				errorMessage: expect.stringContaining('ledger exceeded its 10ms deadline')
+			});
 		} finally {
 			await harness.publisher.stop();
 		}
@@ -3701,7 +3716,7 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
-	it('holds the durable-then-public fence inside every continueWithToolResults round', async () => {
+	it("writes every round's read receipts in order before the turn finalizes", async () => {
 		const harness = createHarness([]);
 		const continueWithToolResults = vi.fn(({ round }: { round: number }) => {
 			if (round === 2) {
@@ -3751,24 +3766,31 @@ describe('AgenticChatTurnExecutor', () => {
 			});
 			// One admission claim plus one fence reclaim per read round.
 			expect(harness.control.claim).toHaveBeenCalledTimes(3);
+			const boundaries = executionBoundaryLogs(processingJob);
+			// Each read's receipts keep their order (ledger row, then public result);
+			// the next round no longer waits for them.
+			for (const providerToolCallId of ['provider-round-read-1', 'provider-round-read-2']) {
+				expect(
+					boundaries
+						.filter((boundary) => boundary.provider_tool_call_id === providerToolCallId)
+						.filter((boundary) => boundary.stage !== 'tool_round')
+						.map(({ stage, state }) => `${stage}:${state}`)
+				).toEqual([
+					'read_op:started',
+					'read_op:finished',
+					'ledger_persist:started',
+					'ledger_persist:finished',
+					'tool_result_publish:started',
+					'tool_result_publish:finished'
+				]);
+			}
+			expect(boundaries.filter(({ stage }) => stage === 'tool_round')).toHaveLength(2);
+			// Round 1's public result lands before round 2's tool call.
 			expect(
-				executionBoundaryLogs(processingJob).map(({ stage, state }) => `${stage}:${state}`)
-			).toEqual([
-				'read_op:started',
-				'read_op:finished',
-				'ledger_persist:started',
-				'ledger_persist:finished',
-				'tool_result_publish:started',
-				'tool_result_publish:finished',
-				'tool_round:started',
-				'read_op:started',
-				'read_op:finished',
-				'ledger_persist:started',
-				'ledger_persist:finished',
-				'tool_result_publish:started',
-				'tool_result_publish:finished',
-				'tool_round:started'
-			]);
+				harness.semanticInputs
+					.map((input) => input.event_type)
+					.filter((type) => type === 'tool_call' || type === 'tool_result')
+			).toEqual(['tool_call', 'tool_result', 'tool_call', 'tool_result']);
 			expect(
 				harness.toolExecutions.persistRead.mock.calls.map(([input]) => input.sequenceIndex)
 			).toEqual([1, 2]);
@@ -4220,8 +4242,12 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
-	it('persists parallel provider reads sequentially before replaying the ordered round', async () => {
-		const harness = createHarness([]);
+	it('persists parallel provider reads in order and publishes both results before the answer', async () => {
+		const harness: ReturnType<typeof createHarness> = createHarness([], {
+			beforeFlushTextBatches: async () => {
+				harness.log.push('text_flush');
+			}
+		});
 		const continueWithToolResults = vi.fn(
 			({ results }: { results: ReadonlyArray<{ providerToolCallId: string }> }) => {
 				harness.log.push('continuation');
@@ -4289,7 +4315,7 @@ describe('AgenticChatTurnExecutor', () => {
 				.filter(({ entry }) => entry === 'semantic:tool_result:')
 				.map(({ index }) => index);
 			expect(publicResultIndexes).toHaveLength(2);
-			expect(publicResultIndexes[1]).toBeLessThan(harness.log.indexOf('continuation'));
+			expect(publicResultIndexes[1]).toBeLessThan(harness.log.indexOf('text_flush'));
 			expect(harness.control.finalize).toHaveBeenCalledWith(
 				expect.objectContaining({
 					assistantMetadata: expect.objectContaining({
@@ -4301,6 +4327,249 @@ describe('AgenticChatTurnExecutor', () => {
 		} finally {
 			await harness.publisher.stop();
 		}
+	});
+
+	describe('deferred read receipts (read-only batches)', () => {
+		function gate() {
+			let release!: () => void;
+			const opened = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			return { opened, release };
+		}
+
+		function readOnlyFirstRound() {
+			return () =>
+				(async function* () {
+					yield {
+						type: 'read_tool',
+						callTransitionId: CALL_TRANSITION_ID,
+						resultTransitionId: RESULT_TRANSITION_ID,
+						providerToolCallId: 'provider-deferred-read',
+						toolName: 'fixture_project_read',
+						arguments: { projectId: 'da000000-0000-4000-8000-000000000001' }
+					} as const;
+				})();
+		}
+
+		it('hands the result to the next model round before its receipt is durable', async () => {
+			const harness: ReturnType<typeof createHarness> = createHarness([], {
+				beforeFlushTextBatches: async () => {
+					harness.log.push('text_flush');
+				}
+			});
+			const ledger = gate();
+			harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+				harness.log.push('ledger_started');
+				await ledger.opened;
+				harness.log.push('ledger_done');
+			});
+			const continueWithToolResults = vi.fn(() => {
+				harness.log.push('continuation');
+				return (async function* () {
+					// The model's next pass ends while the receipt is still in flight.
+					setTimeout(ledger.release, 5);
+					yield { type: 'text_delta', text: 'Answer from the deferred read.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			});
+			Object.assign(harness.provider, {
+				prepare: vi.fn(async () => ({
+					stream: readOnlyFirstRound(),
+					continueWithToolResults,
+					release: vi.fn()
+				}))
+			});
+
+			try {
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'completed',
+					terminalStatus: 'completed'
+				});
+				const at = (entry: string) => harness.log.indexOf(entry);
+				expect(at('ledger_started')).toBeGreaterThanOrEqual(0);
+				expect(at('ledger_started')).toBeLessThan(at('continuation'));
+				expect(at('continuation')).toBeLessThan(at('ledger_done'));
+				// The answer is released only after the receipt and its public result.
+				expect(at('ledger_done')).toBeLessThan(at('semantic:tool_result:'));
+				expect(at('semantic:tool_result:')).toBeLessThan(at('text_flush'));
+				expect(harness.control.finalize).toHaveBeenCalledWith(
+					expect.objectContaining({
+						status: 'completed',
+						assistantMetadata: expect.objectContaining({
+							tool_round_count: 1,
+							tool_call_count: 1
+						})
+					})
+				);
+			} finally {
+				await harness.publisher.stop();
+			}
+		});
+
+		it('fails the turn with the ledger error when a deferred receipt fails after the model moved on', async () => {
+			const harness = createHarness([], { recovery: [recoveryReceipt('retry_scheduled')] });
+			const ledger = gate();
+			harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+				await ledger.opened;
+				throw new AgenticChatToolExecutionTimeoutError(10);
+			});
+			const continueWithToolResults = vi.fn(() =>
+				(async function* () {
+					setTimeout(ledger.release, 5);
+					yield {
+						type: 'text_delta',
+						text: 'This answer must not be released.'
+					} as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})()
+			);
+			Object.assign(harness.provider, {
+				prepare: vi.fn(async () => ({
+					stream: readOnlyFirstRound(),
+					continueWithToolResults,
+					release: vi.fn()
+				}))
+			});
+
+			try {
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'requeued',
+					terminalStatus: null
+				});
+				expect(continueWithToolResults).toHaveBeenCalledOnce();
+				expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+					failureClass: 'transient_infra',
+					errorMessage: expect.stringContaining('ledger exceeded its 10ms deadline')
+				});
+				expect(harness.semanticInputs).not.toEqual(
+					expect.arrayContaining([expect.objectContaining({ event_type: 'tool_result' })])
+				);
+				expect(harness.textFlushBatches.flat()).toEqual([]);
+			} finally {
+				await harness.publisher.stop();
+			}
+		});
+
+		it('joins earlier read receipts before a batch that may write', async () => {
+			const harness = createHarness([]);
+			const ledger = gate();
+			harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+				await ledger.opened;
+				harness.log.push('read_ledger_done');
+			});
+			harness.mutation.execute.mockImplementationOnce(async () => {
+				harness.log.push('mutation_adapter');
+				return {
+					effectId: EFFECT_ID,
+					canonicalArgumentHash: 'a'.repeat(64),
+					downstreamIdempotencyKey: `chat-effect:${EFFECT_ID}`,
+					downstreamReceipt: { mutationId: 'fixture-mutation-1' },
+					replayed: false
+				};
+			});
+			const continueWithToolResults = vi.fn(({ round }: { round: number }) => {
+				if (round === 2) {
+					return (async function* () {
+						setTimeout(ledger.release, 5);
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: SECOND_CALL_TRANSITION_ID,
+							resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-write-after-deferred-read',
+							toolName: 'update_onto_task',
+							operationName: 'onto.task.update',
+							arguments: {
+								task_id: 'db000000-0000-4000-8000-000000000002',
+								state_key: 'in_progress'
+							},
+							downstreamIdempotencySupported: false
+						} as const;
+					})();
+				}
+				return (async function* () {
+					yield { type: 'text_delta', text: 'The write landed.' } as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			});
+			Object.assign(harness.provider, {
+				prepare: vi.fn(async () => ({
+					stream: readOnlyFirstRound(),
+					continueWithToolResults,
+					invalidateReadMemo: vi.fn(),
+					release: vi.fn()
+				}))
+			});
+
+			try {
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'completed',
+					terminalStatus: 'completed'
+				});
+				expect(harness.log.indexOf('read_ledger_done')).toBeGreaterThanOrEqual(0);
+				expect(harness.log.indexOf('read_ledger_done')).toBeLessThan(
+					harness.log.indexOf('mutation_adapter')
+				);
+				expect(harness.control.finalize).toHaveBeenCalledWith(
+					expect.objectContaining({
+						assistantMetadata: expect.objectContaining({ tool_call_count: 2 })
+					})
+				);
+			} finally {
+				await harness.publisher.stop();
+			}
+		});
+
+		it('lets an in-flight receipt land before recovery when the next round fails', async () => {
+			const harness = createHarness([], {
+				recovery: [recoveryReceipt('finalize_failed', { failure_code: 'provider_failed' })]
+			});
+			const ledger = gate();
+			harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+				await ledger.opened;
+				harness.log.push('read_ledger_done');
+			});
+			const recover = harness.control.recover.getMockImplementation()!;
+			harness.control.recover.mockImplementationOnce(async (input) => {
+				harness.log.push('recover');
+				return recover(input);
+			});
+			const continueWithToolResults = vi.fn(() =>
+				(async function* () {
+					setTimeout(ledger.release, 5);
+					yield* [];
+					throw new AgenticChatProviderExecutionError(
+						'provider_stream_failed',
+						'permanent',
+						'fixture continuation failed'
+					);
+				})()
+			);
+			Object.assign(harness.provider, {
+				prepare: vi.fn(async () => ({
+					stream: readOnlyFirstRound(),
+					continueWithToolResults,
+					release: vi.fn()
+				}))
+			});
+
+			try {
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'failed'
+				});
+				expect(harness.log.indexOf('read_ledger_done')).toBeGreaterThanOrEqual(0);
+				expect(harness.log.indexOf('read_ledger_done')).toBeLessThan(
+					harness.log.indexOf('recover')
+				);
+				// The successful receipt is described, and the turn keeps its own error.
+				expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+					errorMessage: expect.stringContaining('fixture continuation failed')
+				});
+			} finally {
+				await harness.publisher.stop();
+			}
+		});
 	});
 
 	it('executes independent same-response reads concurrently by default', async () => {

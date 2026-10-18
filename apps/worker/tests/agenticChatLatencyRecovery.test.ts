@@ -85,7 +85,12 @@ function controllableResponse(provider = 'Novita', model = V41) {
 }
 function harness(
 	responses: Array<Response | (() => Promise<Response>)>,
-	options: { holdUsage?: boolean; model?: string; timeoutMs?: number } = {}
+	/**
+	 * These cases pin the 4 s slow-stream abort and the 15 s first-progress abort,
+	 * which stay as the backstop under hedging; the hedge itself (a backup request
+	 * 2 s into a stall) is covered in agenticChatProviderHedge.test.ts.
+	 */
+	options: { holdUsage?: boolean; model?: string; timeoutMs?: number; hedging?: boolean } = {}
 ) {
 	const requests: Array<{ body: Record<string, any>; signal: AbortSignal }> = [];
 	const usage: AgenticChatProviderUsageObservationV1[] = [];
@@ -133,7 +138,8 @@ function harness(
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS test',
 			fetchImpl,
-			requestTimeoutMs: options.timeoutMs ?? 30_000
+			requestTimeoutMs: options.timeoutMs ?? 30_000,
+			slowStreamHedging: options.hedging ?? false
 		}
 	);
 	const capacity = { markTemporarilyUnavailable: vi.fn() };

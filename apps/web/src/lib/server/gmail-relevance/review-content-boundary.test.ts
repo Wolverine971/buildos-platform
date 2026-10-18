@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/gmail-relevance/review-content-boundary.test.ts
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -7,7 +8,7 @@ async function read(relativeUrl: string): Promise<string> {
 }
 
 describe('Slice 4 review content boundary', () => {
-	it('keeps review request-lifetime, model-free, mutation-free, and scan-control-free', async () => {
+	it('keeps review request-lifetime, model-free, and mutation-free', async () => {
 		const service = await read('./review-evaluation.ts');
 		const route = await read('../../../routes/admin/gmail-relevance/review/+page.server.ts');
 		for (const source of [service, route]) {
@@ -17,7 +18,13 @@ describe('Slice 4 review content boundary', () => {
 		}
 		expect(service).toContain('getMetadataBatch');
 		expect(service).not.toMatch(/\.from\(['"](?:emails|gmail_messages|message_bodies)['"]\)/i);
-		expect(route).not.toMatch(/createOrResumeRun|runOneOperation|controlRun/);
+		// Scan controls live on this page, but only through the scan service, which checks
+		// its own Phase A switch, and only one bounded step per request.
+		expect(route).not.toMatch(
+			/createOrResumeRun|EmailRelevanceMetadataDriver|ScanControlPlane/
+		);
+		expect(route).toContain('createGmailRelevancePilotService()');
+		expect(route).not.toMatch(/while \(|for \(;;\)/);
 	});
 
 	it('accepts no mailbox content or user identity in review form fields', async () => {

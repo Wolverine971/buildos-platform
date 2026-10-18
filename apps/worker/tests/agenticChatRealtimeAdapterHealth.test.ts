@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import {
 	SupabaseAgenticChatBroadcastAdapter,
+	type AgenticChatBroadcastAdapterOptionsV1,
 	type AgenticChatRealtimeClient
 } from '../src/workers/agentic-chat/stream/supabase-stream-publisher-adapters';
 
@@ -97,17 +98,13 @@ type SupabaseTestClient = ReturnType<typeof supabaseClient>;
 
 function adapterFor(
 	client: SupabaseTestClient,
-	options: ConstructorParameters<typeof SupabaseAgenticChatBroadcastAdapter>[5] = {},
-	subscribeTimeoutMs = 1_000
+	options: AgenticChatBroadcastAdapterOptionsV1 = {}
 ) {
-	return new SupabaseAgenticChatBroadcastAdapter(
-		client as unknown as AgenticChatRealtimeClient,
-		256,
-		subscribeTimeoutMs,
-		1_000,
-		2_000,
-		options
-	);
+	return new SupabaseAgenticChatBroadcastAdapter(client as unknown as AgenticChatRealtimeClient, {
+		subscribeTimeoutMs: 1_000,
+		sendTimeoutMs: 1_000,
+		...options
+	});
 }
 
 async function settle(): Promise<void> {

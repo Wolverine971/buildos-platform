@@ -9,3 +9,4 @@ export * from './finder';
 export * from './load';
 export * from './edit';
 export * from './workspace';
+export * from './snapshot';

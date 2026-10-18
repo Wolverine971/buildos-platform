@@ -2,6 +2,7 @@
 // Per-attempt deadlines: the header/body abort signal, the turn-budget bound on
 // each attempt, abortable reads, and the slow-stream progress watch.
 import type { JsonObject } from '@buildos/shared-types';
+import type { AgenticChatSlowStreamHedgeSignalV1 } from '../contracts';
 import type { ActiveResponse, ClientInput, ProviderAttemptTiming, StreamState } from './types';
 import { boundedDuration, estimateTokens } from './canonical';
 import { AgenticChatFirstProgressStallError, AgenticChatSlowStreamError } from './errors';
@@ -246,6 +247,98 @@ export function watchStreamProgress(
 	let timer: ReturnType<typeof setTimeout>;
 	schedule(SLOW_STREAM_WINDOW_MS);
 	return () => clearTimeout(timer);
+}
+
+/**
+ * Backup-request trigger (hedge). The slow-stream watch above ends a stream only
+ * after a full 4 s window below the floor; the hedge asks for a backup sooner and
+ * leaves the stream running, so the faster of the two wins. Prod 10-18: one
+ * Together stream fell to ~18 tok/s mid-pass and was ended at 8.45 s. OpenRouter
+ * generation stats for 267 successful V4.1 acting passes (10-04..10-18): p50
+ * 265 tok/s, p10 160, slowest 29 (a 14 s Together pass this would have hedged);
+ * the 240 B/s floor is ~60 tok/s.
+ */
+export const HEDGE_SLOW_WINDOW_MS = 2_000;
+/**
+ * Silence after response headers before a backup is requested (the stall abort
+ * waits 15 s). Same 300 passes: time to first token p50 314 ms, p99 3.1 s, max 4.9 s.
+ */
+export const HEDGE_FIRST_PROGRESS_MS = 6_000;
+const HEDGE_SAMPLE_MS = 500;
+
+/**
+ * Calls `onHedge` at most once: when output over the last 2 s of generation
+ * falls below the acting floor, or when nothing has streamed 8 s after the
+ * response opened. Never aborts. Stops when the stream ends or the turn has
+ * too little budget left for a second request.
+ */
+export function watchForSlowStreamHedge(
+	active: ActiveResponse,
+	state: StreamState,
+	input: ClientInput,
+	onHedge: (signal: AgenticChatSlowStreamHedgeSignalV1) => void
+): () => void {
+	const openedAtMs = Date.now();
+	const progressBytes = () => state.generatedBytes + state.reasoningBytes;
+	let samples: { atMs: number; bytes: number }[] = [];
+	let stopped = false;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const fire = (signal: AgenticChatSlowStreamHedgeSignalV1) => {
+		stopped = true;
+		try {
+			onHedge(signal);
+		} catch {
+			// A backup that cannot start leaves this stream exactly as it was.
+		}
+	};
+	const tick = () => {
+		if (stopped || active.signal.aborted || state.finishReason !== null) return;
+		const now = Date.now();
+		if (
+			input.budget &&
+			input.budget.deadlineAtMs - now <
+				MIN_ATTEMPT_TIMEOUT_MS + BUDGET_FINALIZATION_RESERVE_MS
+		)
+			return;
+		if (state.firstProgressAtMs === null) {
+			const waited = now - openedAtMs;
+			if (waited >= HEDGE_FIRST_PROGRESS_MS) {
+				fire({ reason: 'no_first_progress', elapsedMs: waited, outputBytes: 0 });
+				return;
+			}
+		} else {
+			const bytes = progressBytes();
+			samples.push({ atMs: now, bytes });
+			// Keep the newest sample that is at least a window old as the baseline.
+			while (samples.length > 1 && now - samples[1]!.atMs >= HEDGE_SLOW_WINDOW_MS) {
+				samples.shift();
+			}
+			const baseline = samples[0]!;
+			const span = now - baseline.atMs;
+			if (span > HEDGE_SLOW_WINDOW_MS * 2) {
+				// Late timers mean a suspended host, not a slow provider: start over.
+				samples = [{ atMs: now, bytes }];
+			} else if (
+				span >= HEDGE_SLOW_WINDOW_MS &&
+				(bytes - baseline.bytes) * 1_000 < SLOW_STREAM_MIN_BYTES_PER_SECOND * span
+			) {
+				fire({
+					reason: 'slow_stream',
+					elapsedMs: span,
+					outputBytes: bytes - baseline.bytes
+				});
+				return;
+			}
+		}
+		timer = setTimeout(tick, HEDGE_SAMPLE_MS);
+		timer.unref?.();
+	};
+	timer = setTimeout(tick, HEDGE_SAMPLE_MS);
+	timer.unref?.();
+	return () => {
+		stopped = true;
+		if (timer) clearTimeout(timer);
+	};
 }
 
 export function createAttemptSignal(

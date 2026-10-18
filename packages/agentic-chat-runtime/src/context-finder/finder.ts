@@ -15,6 +15,7 @@ import {
 	type ContextFinderProjectV1
 } from './packets';
 import {
+	BROAD_REQUEST_THRESHOLD,
 	entityScoreKey,
 	rankProjectContext,
 	type ContextFinderDecider,
@@ -45,7 +46,15 @@ export type ContextFinderResultV1 = {
 	plan: ContextPlanV1 | null;
 	ranking: ContextFinderRankingV1 | null;
 	entities: ContextFinderEntity[];
+	/**
+	 * The off-ramp's answer when the caller asked it: `broad` is a whole-project request
+	 * (only records Jev is sure about load; the caller adds the project snapshot).
+	 */
+	scope?: 'broad' | 'specific' | null;
 };
+
+/** A whole-project request keeps only records at least this likely to matter. */
+export const BROAD_REQUEST_ITEM_FLOOR = 0.8;
 
 /**
  * With a plan (curated in Workflow Lab), only materialize: no Jev call. Without one, rank and
@@ -64,6 +73,8 @@ export async function findProjectContext(input: {
 	signal?: AbortSignal;
 	timeoutMs?: number;
 	usage?: { operationType: string; userId?: string; projectId?: string; chatSessionId?: string };
+	/** Also ask Jev whether the request is about the project as a whole (rank.ts). */
+	askBroad?: boolean;
 }): Promise<ContextFinderResultV1> {
 	const entities = buildContextFinderEntities(input.project);
 	if (input.plan)
@@ -84,11 +95,25 @@ export async function findProjectContext(input: {
 		recentConversation: input.recentConversation,
 		signal: input.signal,
 		timeoutMs: input.timeoutMs,
-		usage: input.usage
+		usage: input.usage,
+		...(input.askBroad ? { askBroad: true } : {})
 	});
 	const ranker = rankerSummary(ranking);
+	const broadP = ranking.broadP;
+	const scope =
+		typeof broadP === 'number'
+			? broadP >= BROAD_REQUEST_THRESHOLD
+				? ('broad' as const)
+				: ('specific' as const)
+			: null;
 	if (ranking.status === 'unavailable')
-		return { evidence: unavailableContextEvidence(ranker), plan: null, ranking, entities };
+		return {
+			evidence: unavailableContextEvidence(ranker),
+			plan: null,
+			ranking,
+			entities,
+			...(input.askBroad ? { scope: null } : {})
+		};
 	const plan = selectProjectContext({
 		entities,
 		scores: ranking.scores,
@@ -96,13 +121,15 @@ export async function findProjectContext(input: {
 		unchecked: ranking.unchecked,
 		skipIds: skip,
 		budgetChars: input.budgetChars,
-		maxSummaries: input.maxSummaries
+		maxSummaries: input.maxSummaries,
+		...(scope === 'broad' ? { floor: BROAD_REQUEST_ITEM_FLOOR } : {})
 	});
 	return {
 		evidence: materializeContextPlan({ plan, entities, ranker }),
 		plan,
 		ranking,
-		entities
+		entities,
+		...(input.askBroad ? { scope } : {})
 	};
 }
 

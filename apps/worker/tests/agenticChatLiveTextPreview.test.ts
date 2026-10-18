@@ -394,7 +394,18 @@ describe('provider pass live text preview', () => {
 		);
 
 		expect(previewEvents).toEqual(plainEvents);
-		expect(withPort.stream.mock.calls).toEqual(plain.stream.mock.calls);
+		// The first attempt carries its own abort signal and hedge callback (fresh
+		// per pass); everything else about the requests must match.
+		const comparable = (calls: unknown[][]) =>
+			calls.map(([input]) => {
+				const {
+					signal: _signal,
+					slowStreamHedge,
+					...rest
+				} = input as Record<string, unknown>;
+				return { ...rest, hedgeOffered: typeof slowStreamHedge === 'function' };
+			});
+		expect(comparable(withPort.stream.mock.calls)).toEqual(comparable(plain.stream.mock.calls));
 		expect(JSON.stringify(withPort.stream.mock.calls[0]![0])).not.toContain('livePreview');
 	});
 

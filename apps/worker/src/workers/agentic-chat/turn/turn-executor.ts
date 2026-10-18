@@ -35,6 +35,7 @@ import { agenticChatResearchCaptureMayQualifyV1 } from '../effects/research-capt
 import { abortable, throwIfAborted } from '../shared/abortable-deadline';
 import { AgenticChatExecutorEffects } from '../effects/executor-effects';
 import { enforceAgenticChatTerminalTextIntegrityV1 } from './terminal-text-integrity';
+import { AgenticChatPendingReadSaves } from './pending-read-saves';
 import {
 	compileAgenticChatToolExecutionGraphV1,
 	executeAgenticChatToolExecutionGraphV1
@@ -120,9 +121,9 @@ export type {
 } from './executor-contracts';
 
 /**
- * Fenced production Agentic Chat execution kernel.
- * Provider and tool ports remain injected, and no production worker entrypoint
- * imports or starts this executor.
+ * Fenced production Agentic Chat execution kernel: runs every chat turn the
+ * dedicated chat worker claims (`src/chat-worker.ts` → host/bootstrap →
+ * host/composition-root). Provider and tool ports are injected there.
  */
 export class AgenticChatTurnExecutor {
 	private readonly providerBudgetMs: number;
@@ -312,6 +313,10 @@ export class AgenticChatTurnExecutor {
 			toolRoundCount: 0,
 			permanentMutationFailures: { byTool: new Map(), byCall: new Map() }
 		};
+		// Receipts of reads whose results already went back to the model
+		// (read-only batches). Joined before writes, at the end of the provider
+		// loop, and before recovery reads `terminalContext`.
+		const readSaves = new AgenticChatPendingReadSaves();
 
 		try {
 			throwIfAborted(combined.signal);
@@ -367,7 +372,7 @@ export class AgenticChatTurnExecutor {
 			// Do not add Realtime subscription latency to the provider path. The hint
 			// asks the browser to reconcile queued -> running; durable watchdog
 			// reconciliation remains authoritative if Broadcast is unavailable.
-			void this.ports.publisher.publishReconcileHint(claim.turnRunId);
+			void this.ports.publisher.publishReconcileHint(claim.turnRunId).catch(() => undefined);
 
 			if (this.ports.provider.prepare) {
 				preparedProvider = await this.deadline.awaitOverhead(
@@ -528,6 +533,9 @@ export class AgenticChatTurnExecutor {
 					if (finished) throw new Error('Fixture provider emitted a step after finish');
 					if (step.type === 'text_delta') {
 						if (!step.text) throw new Error('Fixture text delta must be nonempty');
+						// No answer text before every earlier read receipt is durable
+						// (text bypasses the semantic FIFO, and a receipt may still fail).
+						await abortable(readSaves.join(), combined.signal);
 						await enqueueAssistantText(
 							this.ports.publisher,
 							claim.turnRunId,
@@ -608,6 +616,7 @@ export class AgenticChatTurnExecutor {
 						}
 						const sequenceIndex = reserveToolSequenceIndex(terminalContext, step);
 						if (!preparedProvider?.continueWithToolResults) {
+							await abortable(readSaves.join(), combined.signal);
 							preparedProvider?.invalidateReadMemo?.();
 							pendingToolResults.push(
 								await this.mutationTools.execute(
@@ -649,6 +658,7 @@ export class AgenticChatTurnExecutor {
 						pendingToolExecutions.splice(0, pendingToolExecutions.length),
 						continuationRounds + 1,
 						preparedProvider,
+						readSaves,
 						combined.signal
 					);
 					pendingToolResults.push(...batchResults);
@@ -658,6 +668,8 @@ export class AgenticChatTurnExecutor {
 						throw new Error('Fixture provider ended without a finish step');
 					}
 					throwIfAborted(combined.signal);
+					// A save that already failed ends the turn before another model call.
+					readSaves.throwIfFailed();
 					continuationRounds += 1;
 					if (continuationRounds > this.maxProviderRounds) {
 						throw new AgenticChatProviderExecutionError(
@@ -693,6 +705,8 @@ export class AgenticChatTurnExecutor {
 				}
 				throw new Error('Fixture provider ended without a finish step');
 			}
+			// Every read receipt is durable before the terminal guards read the ledger.
+			await abortable(readSaves.join(), combined.signal);
 			throwIfAborted(combined.signal);
 			const requestContext = executionInput.requestPayload.context as JsonObject;
 			const terminalTextIntegrity = enforceAgenticChatTerminalTextIntegrityV1({
@@ -753,7 +767,12 @@ export class AgenticChatTurnExecutor {
 				reevaluateConsumptionBilling: true,
 				terminalEventContext: { executionInput, terminalContext, runtimeTiming }
 			});
-		} catch (error) {
+		} catch (caught) {
+			// Recovery describes durable ledger rows: let in-flight read receipts
+			// land (or fail) first; an aborted turn's saves reject at once. A
+			// failed receipt is the turn's error, as it was when saves blocked.
+			await readSaves.settle();
+			const error = readSaves.turnError(caught);
 			const failureClass = classifyFailure(error, executionStarted, combined.signal);
 			logAgenticChatTypedExecutionFailure(
 				job,
@@ -986,9 +1005,15 @@ export class AgenticChatTurnExecutor {
 		pending: readonly AgenticChatPendingToolExecutionV1[],
 		providerRound: number,
 		preparedProvider: AgenticChatPreparedProviderInvocationV1 | null,
+		readSaves: AgenticChatPendingReadSaves,
 		signal: AbortSignal
 	): Promise<AgenticChatProviderToolSynthesisInputV1[]> {
 		const { job, executionInput, readInvalidationEpoch } = turnRun;
+		// A batch that may write keeps every receipt synchronous and starts only
+		// once earlier reads' receipts are durable. A read-only batch hands its
+		// results to the next model pass while their receipts are written.
+		const batchMayWrite = pending.some(({ step }) => step.type === 'mutating_tool');
+		if (batchMayWrite) await abortable(readSaves.join(), signal);
 		const pendingByCallId = new Map(
 			pending.map((entry) => [entry.step.providerToolCallId, entry] as const)
 		);
@@ -1080,7 +1105,8 @@ export class AgenticChatTurnExecutor {
 							step,
 							entry.sequenceIndex,
 							planning,
-							callSignal
+							callSignal,
+							batchMayWrite ? undefined : readSaves
 						) as Promise<AgenticChatProviderToolSynthesisInputV1>;
 					}
 					return this.mutationTools.execute(

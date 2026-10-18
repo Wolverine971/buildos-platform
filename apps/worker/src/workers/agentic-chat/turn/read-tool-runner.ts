@@ -6,6 +6,7 @@
 // back so the model can recover.
 import { extractContextShiftPayload } from '@buildos/agentic-chat-runtime/loop';
 import {
+	isAgenticChatProposalToolNameV1,
 	projectAgenticChatToolProgressForStorageV1,
 	projectAgenticChatToolResultForStorageV1
 } from '@buildos/agentic-chat-runtime/tools';
@@ -17,6 +18,7 @@ import {
 } from '../provider/contracts';
 import {
 	type AgenticChatReadToolExecutionV1,
+	type AgenticChatToolExecutionPersistInputV1,
 	createStableAgenticChatToolExecutionIdV1
 } from '../tools/tool-execution';
 import { abortable, throwIfAborted } from '../shared/abortable-deadline';
@@ -40,7 +42,11 @@ import {
 	providerToolCall,
 	recordTerminalToolExecution
 } from './turn-run';
-import type { AgenticChatTurnRunServices } from './turn-run-services';
+import type {
+	AgenticChatSemanticPublicationV1,
+	AgenticChatTurnRunServices
+} from './turn-run-services';
+import type { AgenticChatPendingReadSaves } from './pending-read-saves';
 
 type LiveReadOutcomeV1 =
 	| { ok: true; value: AgenticChatReadToolExecutionV1 }
@@ -63,7 +69,13 @@ export class AgenticChatReadToolRunner {
 		step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
 		sequenceIndex: number,
 		planning: AgenticChatReadPlanningContextV1,
-		signal: AbortSignal
+		signal: AbortSignal,
+		/**
+		 * Read-only batches only: hand a successful result back before its ledger
+		 * row and tool_result event are written, tracking those saves here. The
+		 * executor joins them before anything that relies on them.
+		 */
+		deferredSaves?: AgenticChatPendingReadSaves
 	): Promise<
 		| AgenticChatProviderReadSynthesisInputV1
 		| AgenticChatProviderFailedToolSynthesisInputV1
@@ -257,6 +269,58 @@ export class AgenticChatReadToolRunner {
 			storedResult === toolResult.result
 				? toolResult
 				: { ...toolResult, result: storedResult as typeof toolResult.result };
+		const chatToolResult: ChatToolResult = {
+			tool_call_id: step.providerToolCallId,
+			result: storedExecution.result,
+			success: true,
+			...(toolResult.executionTimeMs !== null
+				? { duration_ms: toolResult.executionTimeMs }
+				: {}),
+			...(toolResult.tokensConsumed !== null
+				? { tokens_consumed: toolResult.tokensConsumed }
+				: {})
+		};
+		const contextShift = extractContextShiftPayload(chatToolResult);
+		const ledgerInput: AgenticChatToolExecutionPersistInputV1 = {
+			turnRunId: executionInput.claim.turnRunId,
+			queueJobId: executionInput.claim.queueJobId,
+			processingToken,
+			userId: executionInput.claim.userId,
+			executionGeneration: executionInput.claim.executionGeneration,
+			toolExecutionId: createStableAgenticChatToolExecutionIdV1({
+				turnRunId: executionInput.claim.turnRunId,
+				sequenceIndex
+			}),
+			sequenceIndex,
+			providerToolCallId: step.providerToolCallId,
+			toolName: step.toolName,
+			arguments: step.arguments,
+			execution: storedExecution
+		};
+		const toolResultEvent = readToolResultEvent(step, chatToolResult, toolResult);
+		// A context shift persists the session handoff before its event, and a
+		// proposal card's id is its ledger row: both keep the synchronous path.
+		if (deferredSaves && !contextShift && !isAgenticChatProposalToolNameV1(step.toolName)) {
+			markToolExecution();
+			this.startDeferredSaves(
+				run,
+				step,
+				sequenceIndex,
+				planning,
+				readStartedAt,
+				ledgerInput,
+				chatToolResult,
+				toolResultEvent,
+				deferredSaves,
+				signal
+			);
+			return {
+				providerToolCallId: step.providerToolCallId,
+				toolName: step.toolName,
+				arguments: step.arguments,
+				execution: toolResult
+			};
+		}
 		const ledgerStartedAt = Date.now();
 		await logAgenticChatExecutionBoundary(job, executionInput, {
 			stage: 'ledger_persist',
@@ -265,28 +329,7 @@ export class AgenticChatReadToolRunner {
 			toolName: step.toolName
 		});
 		try {
-			await abortable(
-				this.ports.toolExecutions.persistRead(
-					{
-						turnRunId: executionInput.claim.turnRunId,
-						queueJobId: executionInput.claim.queueJobId,
-						processingToken,
-						userId: executionInput.claim.userId,
-						executionGeneration: executionInput.claim.executionGeneration,
-						toolExecutionId: createStableAgenticChatToolExecutionIdV1({
-							turnRunId: executionInput.claim.turnRunId,
-							sequenceIndex
-						}),
-						sequenceIndex,
-						providerToolCallId: step.providerToolCallId,
-						toolName: step.toolName,
-						arguments: step.arguments,
-						execution: storedExecution
-					},
-					signal
-				),
-				signal
-			);
+			await abortable(this.ports.toolExecutions.persistRead(ledgerInput, signal), signal);
 		} catch (error) {
 			await logAgenticChatExecutionBoundary(job, executionInput, {
 				stage: 'ledger_persist',
@@ -322,17 +365,6 @@ export class AgenticChatReadToolRunner {
 			toolName: step.toolName,
 			durationMs: elapsedMs(ledgerStartedAt)
 		});
-		const chatToolResult: ChatToolResult = {
-			tool_call_id: step.providerToolCallId,
-			result: storedExecution.result,
-			success: true,
-			...(toolResult.executionTimeMs !== null
-				? { duration_ms: toolResult.executionTimeMs }
-				: {}),
-			...(toolResult.tokensConsumed !== null
-				? { tokens_consumed: toolResult.tokensConsumed }
-				: {})
-		};
 		// Once the ledger RPC acknowledges persistence, terminal recovery must
 		// describe that durable row even if observation or public publication
 		// fails afterward.
@@ -343,7 +375,6 @@ export class AgenticChatReadToolRunner {
 			chatToolResult
 		);
 		markToolExecution();
-		const contextShift = extractContextShiftPayload(chatToolResult);
 		if (contextShift) {
 			await this.services.persistSessionHandoff(
 				executionInput,
@@ -379,33 +410,7 @@ export class AgenticChatReadToolRunner {
 			await this.services.publishSemantic(
 				executionInput,
 				projection,
-				{
-					type: 'semantic',
-					transitionId: step.resultTransitionId,
-					phase: 'tool',
-					eventType: 'tool_result',
-					currentActivity: DEFAULT_RUNNING_ACTIVITY,
-					eventPayload: {
-						type: 'tool_result',
-						result: {
-							...chatToolResult,
-							affected_entities: toolResult.affectedEntities,
-							...(toolResult.toolCategory !== null
-								? { tool_category: toolResult.toolCategory }
-								: {}),
-							...(toolResult.resultCount !== null
-								? {
-										result_count: toolResult.resultCount,
-										zero_result: toolResult.zeroResult
-									}
-								: {}),
-							...(toolResult.requiresUserAction !== null
-								? { requires_user_action: toolResult.requiresUserAction }
-								: {}),
-							tool_name: step.toolName
-						}
-					}
-				},
+				toolResultEvent,
 				signal
 			);
 			if (contextShift) {
@@ -455,6 +460,146 @@ export class AgenticChatReadToolRunner {
 			arguments: step.arguments,
 			execution: toolResult
 		};
+	}
+
+	/**
+	 * The receipts of a read whose result already went back to the model: the
+	 * same writes, order, diagnostics, and errors as the synchronous path, off
+	 * the critical path. The ledger row is written first; the tool_result event
+	 * takes its place in the publisher FIFO now (so nothing published later can
+	 * land ahead of it) but is admitted only after the ledger row is durable, so
+	 * a failed ledger write publishes no tool_result, exactly as before. The
+	 * executor joins `saves` before anything that relies on these receipts.
+	 */
+	private startDeferredSaves(
+		run: TurnRun,
+		step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
+		sequenceIndex: number,
+		planning: AgenticChatReadPlanningContextV1,
+		readStartedAt: number,
+		ledgerInput: AgenticChatToolExecutionPersistInputV1,
+		chatToolResult: ChatToolResult,
+		toolResultEvent: Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }>,
+		saves: AgenticChatPendingReadSaves,
+		signal: AbortSignal
+	): void {
+		const { job, executionInput, processingToken, projection, terminalContext } = run;
+		const boundary = {
+			providerToolCallId: step.providerToolCallId,
+			toolName: step.toolName
+		};
+		const ledger = (async () => {
+			const ledgerStartedAt = Date.now();
+			await logAgenticChatExecutionBoundary(job, executionInput, {
+				stage: 'ledger_persist',
+				state: 'started',
+				...boundary
+			});
+			try {
+				await abortable(this.ports.toolExecutions.persistRead(ledgerInput, signal), signal);
+			} catch (error) {
+				await logAgenticChatExecutionBoundary(job, executionInput, {
+					stage: 'ledger_persist',
+					state: 'failed',
+					...boundary,
+					durationMs: elapsedMs(ledgerStartedAt),
+					error
+				});
+				this.services.observeToolExecution(
+					executionInput,
+					processingToken,
+					step,
+					sequenceIndex,
+					planning,
+					'tool_execution_ended',
+					{
+						tool_name: step.toolName,
+						provider_tool_call_id: step.providerToolCallId,
+						sequence_index: sequenceIndex,
+						status: signal.aborted ? 'aborted' : 'failure',
+						duration_ms: elapsedMs(readStartedAt),
+						error_code: executionErrorCode(error, signal)
+					},
+					signal
+				);
+				throw error;
+			}
+			await logAgenticChatExecutionBoundary(job, executionInput, {
+				stage: 'ledger_persist',
+				state: 'finished',
+				...boundary,
+				durationMs: elapsedMs(ledgerStartedAt)
+			});
+			// Terminal recovery describes only durable ledger rows.
+			recordTerminalToolExecution(
+				terminalContext,
+				sequenceIndex,
+				providerToolCall(step),
+				chatToolResult
+			);
+			this.services.observeToolExecution(
+				executionInput,
+				processingToken,
+				step,
+				sequenceIndex,
+				planning,
+				'tool_execution_ended',
+				{
+					tool_name: step.toolName,
+					provider_tool_call_id: step.providerToolCallId,
+					sequence_index: sequenceIndex,
+					status: 'success',
+					duration_ms: step.memoServed ? 0 : elapsedMs(readStartedAt),
+					error_code: null
+				},
+				signal
+			);
+		})();
+		// Admission waits on the ledger: a rejected ledger rejects this
+		// publication (nothing enqueued) and the admission chain moves on.
+		const priorTail = projection.semanticAdmissionTail;
+		projection.semanticAdmissionTail = priorTail.then(() => ledger);
+		let publication: AgenticChatSemanticPublicationV1;
+		try {
+			publication = this.services.startSemantic(
+				executionInput,
+				projection,
+				toolResultEvent,
+				signal
+			);
+		} catch (error) {
+			projection.semanticAdmissionTail = priorTail;
+			saves.track(sequenceIndex, ledger);
+			throw error;
+		}
+		const save = (async () => {
+			await ledger;
+			const resultPublishStartedAt = Date.now();
+			await logAgenticChatExecutionBoundary(job, executionInput, {
+				stage: 'tool_result_publish',
+				state: 'started',
+				...boundary
+			});
+			try {
+				await publication.accepted;
+			} catch (error) {
+				await logAgenticChatExecutionBoundary(job, executionInput, {
+					stage: 'tool_result_publish',
+					state: 'failed',
+					...boundary,
+					durationMs: elapsedMs(resultPublishStartedAt),
+					error
+				});
+				throw error;
+			}
+			await logAgenticChatExecutionBoundary(job, executionInput, {
+				stage: 'tool_result_publish',
+				state: 'finished',
+				...boundary,
+				durationMs: elapsedMs(resultPublishStartedAt)
+			});
+		})();
+		saves.track(sequenceIndex, save);
 	}
 
 	/**
@@ -786,6 +931,41 @@ export class AgenticChatReadToolRunner {
 		);
 		return null;
 	}
+}
+
+/** The public tool_result event for one successful read. */
+function readToolResultEvent(
+	step: Extract<AgenticChatTurnProviderStepV1, { type: 'read_tool' }>,
+	chatToolResult: ChatToolResult,
+	toolResult: AgenticChatReadToolExecutionV1
+): Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }> {
+	return {
+		type: 'semantic',
+		transitionId: step.resultTransitionId,
+		phase: 'tool',
+		eventType: 'tool_result',
+		currentActivity: DEFAULT_RUNNING_ACTIVITY,
+		eventPayload: {
+			type: 'tool_result',
+			result: {
+				...chatToolResult,
+				affected_entities: toolResult.affectedEntities,
+				...(toolResult.toolCategory !== null
+					? { tool_category: toolResult.toolCategory }
+					: {}),
+				...(toolResult.resultCount !== null
+					? {
+							result_count: toolResult.resultCount,
+							zero_result: toolResult.zeroResult
+						}
+					: {}),
+				...(toolResult.requiresUserAction !== null
+					? { requires_user_action: toolResult.requiresUserAction }
+					: {}),
+				tool_name: step.toolName
+			}
+		}
+	};
 }
 
 function validateReadToolExecution(execution: AgenticChatReadToolExecutionV1): void {

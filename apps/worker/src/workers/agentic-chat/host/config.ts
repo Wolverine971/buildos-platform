@@ -194,6 +194,12 @@ type AgenticChatBaseConfig = {
 	 */
 	liveTextPreviewEnabled?: boolean;
 	/**
+	 * AGENTIC_CHAT_PROVIDER_HEDGING: start a backup request on another endpoint
+	 * as soon as an acting stream stalls, instead of waiting out the 4 s window
+	 * and retrying. Default on; `false` turns it off.
+	 */
+	providerHedgingEnabled?: boolean;
+	/**
 	 * AGENTIC_CHAT_CONTINUATION_REASONING (audit 2026-10-17 S3 experiment), acting
 	 * client only: `default` (today), `replay` (send the turn's earlier reasoning
 	 * back on continuations), or `off_after_reads` (reasoning off on continuations
@@ -393,6 +399,11 @@ export function loadAgenticChatConfig(
 	const continuationReasoning = parseContinuationReasoning(
 		environment.AGENTIC_CHAT_CONTINUATION_REASONING
 	);
+	const providerHedgingEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_PROVIDER_HEDGING,
+		true,
+		'AGENTIC_CHAT_PROVIDER_HEDGING'
+	);
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
 	return {
@@ -427,6 +438,7 @@ export function loadAgenticChatConfig(
 		maxToolConcurrency,
 		liveTextPreviewEnabled,
 		continuationReasoning,
+		providerHedgingEnabled,
 		provider: loadProviderConfig(environment)
 	};
 }

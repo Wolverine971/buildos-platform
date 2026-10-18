@@ -22,12 +22,22 @@ import { hashEmailRelevanceScanIdempotencyKey } from './scan-manifest';
 import type { EmailRelevanceScanRunState } from './scan-state';
 
 const UUID_SCHEMA = z.string().uuid();
+/** The run manifest accepts at most three connections and 25 projects. */
+const MAX_SCAN_CONNECTIONS = 3;
+export const MAX_SCAN_PROJECTS = 25;
 const CREATE_INPUT_SCHEMA = z
 	.object({
 		user_id: UUID_SCHEMA,
 		idempotency_key: z.string().min(16).max(200),
-		connection_ids: z.array(UUID_SCHEMA).min(1).max(3),
-		project_ids: z.array(UUID_SCHEMA).min(1).max(25)
+		connection_ids: z.array(UUID_SCHEMA).min(1).max(MAX_SCAN_CONNECTIONS),
+		project_ids: z.array(UUID_SCHEMA).min(1).max(MAX_SCAN_PROJECTS)
+	})
+	.strict();
+const START_INPUT_SCHEMA = z
+	.object({
+		user_id: UUID_SCHEMA,
+		idempotency_key: z.string().min(16).max(200),
+		project_ids: z.array(UUID_SCHEMA).min(1).max(MAX_SCAN_PROJECTS)
 	})
 	.strict();
 const RUN_ONE_INPUT_SCHEMA = z
@@ -50,9 +60,49 @@ type ExistingRun = {
 	configuration: Json;
 };
 
+export type GmailRelevanceScanAccount = { id: string; label: string };
+export type GmailRelevanceScanProjectChoice = { id: string; name: string };
+
+export type GmailRelevanceScanScopeProgress = {
+	id: string;
+	account_label: string;
+	state: string;
+	terminal_reason_code: string | null;
+	message_cap: number;
+	observations_discovered: number;
+	observations_processed: number;
+};
+
+export type GmailRelevanceScanProgress = {
+	run_id: string;
+	state: EmailRelevanceScanRunState;
+	terminal_reason_code: string | null;
+	created_at: string;
+	expires_at: string;
+	scopes: GmailRelevanceScanScopeProgress[];
+};
+
+export type GmailRelevanceScanSetup = {
+	/** Connected Gmail accounts a scan would read, in scan order (max 3). */
+	accounts: GmailRelevanceScanAccount[];
+	/** Owned, live projects, most recently updated first. */
+	projects: GmailRelevanceScanProjectChoice[];
+	/** The newest scan that has not expired yet, finished or not. */
+	latest_run: GmailRelevanceScanProgress | null;
+};
+
 export type GmailRelevancePilotRepository = {
 	listEligibleConnectionIds(userId: string): Promise<string[]>;
-	listOwnedProjectIds(userId: string): Promise<string[]>;
+	listOwnedProjects(userId: string): Promise<GmailRelevanceScanProjectChoice[]>;
+	loadConnectionLabels(
+		userId: string,
+		connectionIds: string[]
+	): Promise<GmailRelevanceScanAccount[]>;
+	loadScanProgress(input: {
+		user_id: string;
+		run_id?: string;
+		now: string;
+	}): Promise<GmailRelevanceScanProgress | null>;
 	loadExistingRun(input: {
 		user_id: string;
 		idempotency_key_hash: string;
@@ -149,7 +199,7 @@ class SupabaseGmailRelevancePilotRepository implements GmailRelevancePilotReposi
 		return eligible.sort(compareAscii);
 	}
 
-	async listOwnedProjectIds(userId: string): Promise<string[]> {
+	async listOwnedProjects(userId: string): Promise<GmailRelevanceScanProjectChoice[]> {
 		const { data: actor, error: actorError } = await this.client
 			.from('onto_actors')
 			.select('id')
@@ -169,16 +219,92 @@ class SupabaseGmailRelevancePilotRepository implements GmailRelevancePilotReposi
 				.is('removed_at', null),
 			this.client
 				.from('onto_projects')
-				.select('id, created_by')
+				.select('id, name, created_by, updated_at')
 				.is('deleted_at', null)
+				.is('archived_at', null)
+				.order('updated_at', { ascending: false })
 				.limit(1000)
 		]);
 		if (membershipError || projectError) storageFailure();
 		const memberIds = new Set((memberships ?? []).map((row) => row.project_id));
 		return (projects ?? [])
 			.filter((project) => project.created_by === actor.id || memberIds.has(project.id))
-			.map((project) => project.id)
-			.sort(compareAscii);
+			.map((project) => ({ id: project.id, name: project.name }));
+	}
+
+	async loadConnectionLabels(
+		userId: string,
+		connectionIds: string[]
+	): Promise<GmailRelevanceScanAccount[]> {
+		if (connectionIds.length === 0) return [];
+		const { data, error } = await this.client
+			.from('user_email_connections')
+			.select('id, email_address, account_label')
+			.eq('user_id', userId)
+			.in('id', connectionIds);
+		if (error) storageFailure();
+		const labelById = new Map(
+			(data ?? []).map((row) => [row.id, row.email_address || row.account_label])
+		);
+		return connectionIds.map((id, index) => ({
+			id,
+			label: labelById.get(id) ?? `Account ${index + 1}`
+		}));
+	}
+
+	async loadScanProgress(input: {
+		user_id: string;
+		run_id?: string;
+		now: string;
+	}): Promise<GmailRelevanceScanProgress | null> {
+		let runQuery = this.client
+			.from('email_relevance_scan_runs')
+			.select('id, state, terminal_reason_code, created_at, expires_at')
+			.eq('user_id', input.user_id);
+		runQuery = input.run_id
+			? runQuery.eq('id', input.run_id)
+			: runQuery.gt('expires_at', input.now);
+		const { data: run, error: runError } = await runQuery
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		if (runError) storageFailure();
+		if (!run) return null;
+		const { data: scopes, error: scopeError } = await this.client
+			.from('email_relevance_scan_connections')
+			.select(
+				'id, connection_id, state, terminal_reason_code, message_cap, observations_discovered, observations_processed'
+			)
+			.eq('run_id', run.id)
+			.order('id', { ascending: true });
+		if (scopeError) storageFailure();
+		const connectionIds = (scopes ?? [])
+			.map((scope) => scope.connection_id)
+			.filter((id): id is string => typeof id === 'string');
+		const labels = new Map(
+			(await this.loadConnectionLabels(input.user_id, connectionIds)).map((account) => [
+				account.id,
+				account.label
+			])
+		);
+		return {
+			run_id: run.id,
+			state: run.state as EmailRelevanceScanRunState,
+			terminal_reason_code: run.terminal_reason_code,
+			created_at: run.created_at,
+			expires_at: run.expires_at,
+			scopes: (scopes ?? []).map((scope, index) => ({
+				id: scope.id,
+				account_label:
+					(scope.connection_id && labels.get(scope.connection_id)) ||
+					`Account ${index + 1}`,
+				state: scope.state,
+				terminal_reason_code: scope.terminal_reason_code,
+				message_cap: scope.message_cap,
+				observations_discovered: scope.observations_discovered,
+				observations_processed: scope.observations_processed
+			}))
+		};
 	}
 
 	async loadExistingRun(input: {
@@ -276,19 +402,65 @@ export class GmailRelevancePilotService {
 		}
 	}
 
-	async listOptions(userId: string): Promise<{
-		connection_ids: string[];
-		project_ids: string[];
-	}> {
+	async scanSetup(userId: string): Promise<GmailRelevanceScanSetup> {
 		this.assertAllowed(userId);
 		if (!UUID_SCHEMA.safeParse(userId).success) {
 			throw new GmailRelevancePilotServiceError('invalid_input');
 		}
-		const [connectionIds, projectIds] = await Promise.all([
+		const [connectionIds, projects, latestRun] = await Promise.all([
 			this.repository.listEligibleConnectionIds(userId),
-			this.repository.listOwnedProjectIds(userId)
+			this.repository.listOwnedProjects(userId),
+			this.repository.loadScanProgress({ user_id: userId, now: this.now().toISOString() })
 		]);
-		return { connection_ids: connectionIds, project_ids: projectIds };
+		return {
+			accounts: await this.repository.loadConnectionLabels(
+				userId,
+				connectionIds.slice(0, MAX_SCAN_CONNECTIONS)
+			),
+			projects,
+			latest_run: latestRun
+		};
+	}
+
+	async scanProgress(userId: string, runId: string): Promise<GmailRelevanceScanProgress> {
+		this.assertAllowed(userId);
+		if (!UUID_SCHEMA.safeParse(userId).success || !UUID_SCHEMA.safeParse(runId).success) {
+			throw new GmailRelevancePilotServiceError('invalid_input');
+		}
+		const progress = await this.repository.loadScanProgress({
+			user_id: userId,
+			run_id: runId,
+			now: this.now().toISOString()
+		});
+		if (!progress) throw new GmailRelevancePilotServiceError('scope_unavailable');
+		return progress;
+	}
+
+	/**
+	 * Starts (or resumes, for a repeated idempotency key) a scan of every connected
+	 * Gmail account. Accounts are never taken from the form, so a request can only
+	 * name projects; ownership is checked when their profiles are captured.
+	 */
+	async startScan(input: {
+		user_id: string;
+		idempotency_key: string;
+		project_ids: string[];
+	}): Promise<{ run_id: string; created: boolean; connection_scope_ids: string[] }> {
+		this.assertAllowed(input.user_id);
+		const parsed = START_INPUT_SCHEMA.safeParse(input);
+		if (!parsed.success) throw new GmailRelevancePilotServiceError('invalid_input');
+		const connectionIds = (
+			await this.repository.listEligibleConnectionIds(parsed.data.user_id)
+		).slice(0, MAX_SCAN_CONNECTIONS);
+		if (connectionIds.length === 0) {
+			throw new GmailRelevancePilotServiceError('connection_unavailable');
+		}
+		return this.createOrResumeRun({
+			user_id: parsed.data.user_id,
+			idempotency_key: parsed.data.idempotency_key,
+			connection_ids: connectionIds,
+			project_ids: parsed.data.project_ids
+		});
 	}
 
 	private async existingResult(input: {
