@@ -325,6 +325,7 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			// Continuation reasoning A/B arm; `default` keeps today's request shape.
 			continuationReasoning: 'default',
 			providerHedgingEnabled: true,
+			contextFinderBroadEnabled: true,
 			// Shadow-only until review-decision data justifies holding writes.
 			holdUncommissionedWrites: false,
 			maxToolCalls: 9,

@@ -15,6 +15,7 @@ import {
 	type ContextFinderProjectV1
 } from './packets';
 import {
+	BROAD_REQUEST_FULL_FLOOR,
 	BROAD_REQUEST_THRESHOLD,
 	entityScoreKey,
 	rankProjectContext,
@@ -53,8 +54,13 @@ export type ContextFinderResultV1 = {
 	scope?: 'broad' | 'specific' | null;
 };
 
-/** A whole-project request keeps only records at least this likely to matter. */
-export const BROAD_REQUEST_ITEM_FLOOR = 0.8;
+/** A whole-project request loads in full only records at least this likely to matter. */
+export const BROAD_REQUEST_ITEM_FLOOR = BROAD_REQUEST_FULL_FLOOR;
+/**
+ * And names at most this many more as one-line summaries: the safety net when Jev
+ * misreads a specific request as broad (6 prod receipts since 10-01 topped at 0.57-0.92).
+ */
+export const BROAD_REQUEST_MAX_SUMMARIES = 5;
 
 /**
  * With a plan (curated in Workflow Lab), only materialize: no Jev call. Without one, rank and
@@ -122,7 +128,15 @@ export async function findProjectContext(input: {
 		skipIds: skip,
 		budgetChars: input.budgetChars,
 		maxSummaries: input.maxSummaries,
-		...(scope === 'broad' ? { floor: BROAD_REQUEST_ITEM_FLOOR } : {})
+		...(scope === 'broad'
+			? {
+					fullFloor: BROAD_REQUEST_ITEM_FLOOR,
+					maxSummaries: Math.min(
+						input.maxSummaries ?? BROAD_REQUEST_MAX_SUMMARIES,
+						BROAD_REQUEST_MAX_SUMMARIES
+					)
+				}
+			: {})
 	});
 	return {
 		evidence: materializeContextPlan({ plan, entities, ranker }),

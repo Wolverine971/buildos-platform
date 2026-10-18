@@ -57,15 +57,17 @@ export const CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS = 1_500;
 export const CHAT_CONTEXT_FINDER_HEDGE_MS = 700;
 const MAX_CHIPS = 30;
 /**
- * The cleanup set loads beside the project and ranking; a broad turn waits at most this much
- * longer for it, then goes out with the snapshot alone.
+ * The cleanup set and the user's timezone load beside the ranking; a broad turn waits at
+ * most this much longer for them, then goes out with what it has.
  */
 export const CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS = 300;
-/** Leave this much of the deadline unused so a slow cleanup read never costs the snapshot. */
+/** Leave this much of the deadline unused so a slow extra read never costs the snapshot. */
 const CLEANUP_DEADLINE_MARGIN_MS = 150;
 
 /** The project's open cleanup set as get_project_cleanup returns it (bootstrap wires it). */
 export type ChatContextFinderCleanupLoader = (projectId: string) => Promise<unknown>;
+/** The user's IANA timezone (`users.timezone`), or null. */
+export type ChatContextFinderTimezoneLoader = (userId: string) => Promise<string | null>;
 
 export class ChatContextFinder implements AgenticChatContextFinderPort {
 	constructor(
@@ -75,8 +77,12 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 			userIds: readonly string[] | 'all';
 			client: ContextFinderReadClient;
 			decider: ContextFinderDecider;
+			/** The off-ramp (rank.ts); false asks Jev only about records, as before 10-18. */
+			askBroad?: boolean;
 			/** Adds the open cleanup set to a broad request's snapshot (`on` only). */
 			loadCleanup?: ChatContextFinderCleanupLoader;
+			/** Shows the snapshot's dates in the user's zone (`on` only). */
+			loadTimezone?: ChatContextFinderTimezoneLoader;
 			deadlineMs?: number;
 			jevTimeoutMs?: number;
 			now?: () => number;
@@ -94,21 +100,30 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 		const started = now();
 		const deadlineMs = this.options.deadlineMs ?? CHAT_CONTEXT_FINDER_DEADLINE_MS;
 		const injecting = this.options.mode === 'on';
+		const askBroad = this.options.askBroad !== false;
 		let evidence: ContextEvidenceV1;
 		let plan: ContextPlanV1 | null = null;
 		let result: ContextFinderResultV1 | null = null;
 		let snapshot: { block: string; cleanup: boolean } | null = null;
 		const outcome = await withFinderDeadline(request, deadlineMs, async (signal) => {
-			// Started beside the project load so a broad request rarely waits for it; the
-			// result is simply dropped when the request turns out to be specific.
+			const project = await loadContextFinderProject(this.options.client, projectId, signal);
+			// Started once the project is in, beside the ranking, so a broad request rarely
+			// waits for them; both are dropped when the request turns out to be specific.
+			const extras = injecting && askBroad;
 			const cleanup =
-				injecting && this.options.loadCleanup
+				extras && this.options.loadCleanup
 					? this.options.loadCleanup(projectId).then(
 							(value) => value ?? null,
 							() => null
 						)
 					: null;
-			const project = await loadContextFinderProject(this.options.client, projectId, signal);
+			const timeZone =
+				extras && this.options.loadTimezone
+					? this.options.loadTimezone(request.userId).then(
+							(value) => value ?? null,
+							() => null
+						)
+					: null;
 			const found = await findProjectContext({
 				project,
 				message: turn.message,
@@ -116,7 +131,7 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 				recentConversation: turn.recent,
 				signal,
 				timeoutMs: this.options.jevTimeoutMs ?? CHAT_CONTEXT_FINDER_JEV_TIMEOUT_MS,
-				askBroad: true,
+				askBroad,
 				usage: {
 					operationType: 'agentic_chat_context_finder_chat',
 					userId: request.userId,
@@ -129,14 +144,18 @@ export class ChatContextFinder implements AgenticChatContextFinderPort {
 				CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS,
 				deadlineMs - (now() - started) - CLEANUP_DEADLINE_MARGIN_MS
 			);
-			const cleanupSet = cleanup ? await settleWithin(cleanup, graceMs, signal) : null;
+			const [cleanupSet, userTimeZone] = await Promise.all([
+				cleanup ? settleWithin(cleanup, graceMs, signal) : null,
+				timeZone ? settleWithin(timeZone, graceMs, signal) : null
+			]);
 			return {
 				found,
 				snapshot: {
 					block: renderProjectSnapshotBlock({
 						project,
 						now: new Date(now()),
-						cleanup: cleanupSet
+						cleanup: cleanupSet,
+						timeZone: userTimeZone
 					}),
 					cleanup: cleanupSet !== null
 				}

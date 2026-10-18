@@ -546,7 +546,7 @@ describe('broad-request off-ramp', () => {
 		expect(unasked).not.toHaveProperty('broadP');
 	});
 
-	it('loads only records Jev is sure about for a broad request', async () => {
+	it('loads in full only records Jev is sure about for a broad request, and names the rest', async () => {
 		// The task scores between the normal floor and the broad floor.
 		const between = (BROAD_REQUEST_ITEM_FLOOR + 0.25) / 2;
 		const scoring = (broad: number) =>
@@ -559,7 +559,9 @@ describe('broad-request off-ramp', () => {
 			askBroad: true
 		});
 		expect(broad.scope).toBe('broad');
-		expect(broad.evidence.status).toBe('empty');
+		// Not loaded in full, but still named: the safety net when "broad" is a misread.
+		expect(broad.evidence.full).toEqual([]);
+		expect(broad.evidence.summaries.map((i) => i.id)).toEqual([TASK]);
 		const specific = await findProjectContext({
 			project: project(),
 			message: 'When do I call the pastor?',
@@ -576,6 +578,28 @@ describe('broad-request off-ramp', () => {
 		});
 		expect(plain).not.toHaveProperty('scope');
 		expect(plain.evidence.full.map((i) => i.id)).toEqual([TASK]);
+	});
+
+	it('caps the broad safety net at five summaries and skips headings of unsure documents', async () => {
+		const many = project();
+		many.tasks = Array.from({ length: 12 }, (_, i) => ({
+			id: id(200 + i),
+			title: `Task ${i}`,
+			state_key: 'todo'
+		}));
+		const { decide, decider: d } = decider((k) =>
+			k === BROAD_REQUEST_KEY ? 0.9 : k.startsWith('e_t') ? 0.5 : k === 'e_d0' ? 0.6 : 0.05
+		);
+		const result = await findProjectContext({
+			project: many,
+			message: 'What needs my attention?',
+			decider: d,
+			askBroad: true
+		});
+		expect(result.evidence.full).toEqual([]);
+		expect(result.evidence.summaries).toHaveLength(5);
+		// Questions for Mom scored 0.6: below the broad full-load bar, so no heading stage.
+		expect(decide).toHaveBeenCalledTimes(1);
 	});
 
 	it('leaves scope unknown when Jev skips the question or the stage fails', async () => {
@@ -689,6 +713,33 @@ describe('project snapshot', () => {
 		expect(block).toContain('- …and 388 more');
 	});
 
+	it("shows dates in the user's zone and keeps calendar dates as they are", () => {
+		const late = busy();
+		late.tasks = [
+			{
+				id: id(40),
+				title: 'Evening deadline',
+				state_key: 'todo',
+				due_at: '2026-10-20T03:00:00Z'
+			}
+		];
+		const eastern = renderProjectSnapshotBlock({
+			project: late,
+			now: NOW,
+			timeZone: 'America/New_York'
+		});
+		expect(eastern).toContain('Evening deadline · todo · due 2026-10-19');
+		expect(eastern).toContain('target 2027-09-01');
+		expect(eastern).toContain('Dates are in America/New_York.');
+		const fallback = renderProjectSnapshotBlock({
+			project: late,
+			now: NOW,
+			timeZone: 'Mars/Base'
+		});
+		expect(fallback).toContain('due 2026-10-20');
+		expect(fallback).toContain('Dates are in UTC.');
+	});
+
 	it('appends the cleanup set and cuts an oversized one', () => {
 		const small = renderProjectSnapshotBlock({
 			project: busy(),
@@ -696,6 +747,7 @@ describe('project snapshot', () => {
 			cleanup: { items: [{ id: 'c1', title: 'Merge duplicate budget docs' }] }
 		});
 		expect(small).toContain('plus its open cleanup set');
+		expect(small).toContain('stands in for get_project_overview and get_project_cleanup');
 		expect(small).toContain('Merge duplicate budget docs');
 		const big = renderProjectSnapshotBlock({
 			project: busy(),

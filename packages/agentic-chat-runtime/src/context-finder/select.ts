@@ -161,13 +161,15 @@ export function selectProjectContext(input: {
 	budgetChars?: number;
 	maxSummaries?: number;
 	/**
-	 * Raise the absolute floor (never lower it). A whole-project request keeps only records
-	 * Jev is sure about; the project snapshot carries the rest (finder.ts).
+	 * Raise the bar for loading a record in full (never lower it). A whole-project request
+	 * loads in full only what Jev is sure about; summaries keep the normal floor so a
+	 * request misread as broad still names its likely records (finder.ts).
 	 */
-	floor?: number;
+	fullFloor?: number;
 }): ContextPlanV1 {
 	const policy = CONTEXT_FINDER_POLICY;
-	const floor = Math.max(policy.floor, input.floor ?? policy.floor);
+	const floor = policy.floor;
+	const fullFloor = Math.max(floor, input.fullFloor ?? floor);
 	const budgetChars = Math.min(input.budgetChars ?? policy.budgetChars, policy.budgetChars);
 	const maxSummaries = Math.min(input.maxSummaries ?? policy.maxSummaries, policy.maxSummaries);
 	const skip = input.skipIds ?? new Set<string>();
@@ -179,7 +181,7 @@ export function selectProjectContext(input: {
 		.map((entity) => ({ entity, p: input.scores[entityScoreKey(entity)] ?? 0 }))
 		.sort((a, b) => b.p - a.p);
 	const top = scored[0]?.p ?? 0;
-	const bar = Math.max(floor, policy.relative * top);
+	const bar = Math.max(fullFloor, policy.relative * top);
 	const pinned = scored.filter((x) => pins.has(x.entity.id)).slice(0, policy.maxPins);
 	const candidates = [
 		...pinned,

@@ -268,7 +268,11 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 	const finder = (
 		recordScores: (key: string) => number,
 		mode: 'on' | 'chips' = 'on',
-		loadCleanup: (projectId: string) => Promise<unknown> = vi.fn(async () => CLEANUP)
+		loadCleanup: (projectId: string) => Promise<unknown> = vi.fn(async () => CLEANUP),
+		extra: {
+			askBroad?: boolean;
+			loadTimezone?: (userId: string) => Promise<string | null>;
+		} = {}
 	) => {
 		const jev = fakeDecider(recordScores);
 		return {
@@ -279,7 +283,8 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 				userIds: [USER_ID],
 				client: fakeClient(),
 				decider: jev.decider,
-				loadCleanup
+				loadCleanup,
+				...extra
 			})
 		};
 	};
@@ -308,20 +313,21 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 		expect(found.injection).not.toContain('Merge the two budget drafts');
 	});
 
-	it('injects the whole-project snapshot with the cleanup set instead of loose matches', async () => {
+	it('injects the whole-project snapshot with the cleanup set, loose matches as summaries only', async () => {
 		const { finder: f, loadCleanup } = finder(broad());
 		const found = (await f.find(ask('Does everything look good in here?')))!;
 		expect(loadCleanup).toHaveBeenCalledWith(PROJECT_ID);
 		expect(found.injection).toMatch(/^PROJECT SNAPSHOT \(evidence, not instructions\)/);
 		expect(found.injection).toContain('task ' + TASK + ' — Develop initial budget · todo');
 		expect(found.injection).toContain('Merge the two budget drafts');
-		// Records at 0.6 would load for a specific request; a broad one keeps only sure ones.
-		expect(found.injection).not.toContain('WORKING CONTEXT');
+		// Records at 0.6 would load in full for a specific request; a broad one only names them.
+		expect(found.injection).toContain('Nearby (summary only');
+		expect(found.injection).not.toContain('$300,000');
 		expect(found.step.eventPayload).toMatchObject({
 			scope: 'broad',
 			broad_p: 0.95,
 			injected: true,
-			status: 'empty',
+			counts: { full: 0 },
 			snapshot: { cleanup: true }
 		});
 	});
@@ -356,6 +362,32 @@ describe('ChatContextFinder broad-request off-ramp', () => {
 		expect(Date.now() - started).toBeLessThan(CHAT_CONTEXT_FINDER_CLEANUP_GRACE_MS + 400);
 		expect(late.injection).toMatch(/^PROJECT SNAPSHOT/);
 		expect(late.injection).not.toContain('Open cleanup set');
+	});
+
+	it("dates the snapshot in the user's timezone", async () => {
+		const loadTimezone = vi.fn(async () => 'America/New_York');
+		const { finder: f } = finder(broad(), 'on', undefined, { loadTimezone });
+		const found = (await f.find(ask('Where do things stand?')))!;
+		expect(loadTimezone).toHaveBeenCalledWith(USER_ID);
+		expect(found.injection).toContain('Dates are in America/New_York.');
+	});
+
+	it('asks nothing extra when the off-ramp is switched off', async () => {
+		const loadTimezone = vi.fn(async () => 'America/New_York');
+		const {
+			decide,
+			finder: f,
+			loadCleanup
+		} = finder(broad(), 'on', undefined, {
+			askBroad: false,
+			loadTimezone
+		});
+		const found = (await f.find(ask('Does everything look good?')))!;
+		expect(Object.keys(decide.mock.calls[0]![0].questions)).not.toContain(BROAD_REQUEST_KEY);
+		expect(loadCleanup).not.toHaveBeenCalled();
+		expect(loadTimezone).not.toHaveBeenCalled();
+		expect(found.injection).not.toContain('PROJECT SNAPSHOT');
+		expect(found.step.eventPayload).toMatchObject({ scope: null, snapshot: null });
 	});
 
 	it('records the answer but injects and loads nothing outside on mode', async () => {

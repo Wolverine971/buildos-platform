@@ -31,6 +31,7 @@ import {
 	type WorkspaceFinderReadClient
 } from '@buildos/agentic-chat-runtime/context-finder';
 import { projectProjectCleanupViewForChat } from '@buildos/agentic-chat-runtime/tools';
+import { resolveUserCivilTimezone } from '@buildos/shared-agent-ops';
 import { loadProjectCleanupView } from '@buildos/shared-agent-ops/project-cleanup';
 import {
 	CHAT_CONTEXT_FINDER_HEDGE_MS,
@@ -546,6 +547,9 @@ function createDefaultComposition(
 							// Service client; the turn's project access was checked at admission.
 							client: input.client as unknown as ContextFinderReadClient,
 							decider: contextFinderJev,
+							askBroad: input.config.contextFinderBroadEnabled ?? true,
+							loadTimezone: (userId) =>
+								resolveUserCivilTimezone(input.client, userId),
 							// A broad request's snapshot carries the open cleanup set, sized to
 							// fit it (get_project_cleanup's projection, at the snapshot budget).
 							loadCleanup: async (projectId) =>

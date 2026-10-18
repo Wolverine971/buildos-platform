@@ -200,6 +200,12 @@ type AgenticChatBaseConfig = {
 	 */
 	providerHedgingEnabled?: boolean;
 	/**
+	 * AGENTIC_CHAT_CONTEXT_FINDER_BROAD: project chat also asks Jev whether a message is
+	 * about the whole project, and answers those with the project snapshot. Default on;
+	 * `false` keeps per-record ranking only.
+	 */
+	contextFinderBroadEnabled?: boolean;
+	/**
 	 * AGENTIC_CHAT_CONTINUATION_REASONING (audit 2026-10-17 S3 experiment), acting
 	 * client only: `default` (today), `replay` (send the turn's earlier reasoning
 	 * back on continuations), or `off_after_reads` (reasoning off on continuations
@@ -404,6 +410,11 @@ export function loadAgenticChatConfig(
 		true,
 		'AGENTIC_CHAT_PROVIDER_HEDGING'
 	);
+	const contextFinderBroadEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_CONTEXT_FINDER_BROAD,
+		true,
+		'AGENTIC_CHAT_CONTEXT_FINDER_BROAD'
+	);
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
 	return {
@@ -439,6 +450,7 @@ export function loadAgenticChatConfig(
 		liveTextPreviewEnabled,
 		continuationReasoning,
 		providerHedgingEnabled,
+		contextFinderBroadEnabled,
 		provider: loadProviderConfig(environment)
 	};
 }
