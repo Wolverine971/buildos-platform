@@ -97,7 +97,7 @@ describe('general worker HTTP composition', () => {
 	});
 });
 
-async function request(path: string, init?: RequestInit): Promise<Response> {
+async function request(path: string, init?: Parameters<typeof fetch>[1]): Promise<Response> {
 	const app = createTestApp();
 	const server = app.listen(0, '127.0.0.1');
 

@@ -67,7 +67,7 @@ function database(
 				})
 				.slice(0, cap);
 			const data = structuredClone(single ? (rows[0] ?? null) : rows);
-			if (single && data && table === 'chat_sessions') {
+			if (single && data && !Array.isArray(data) && table === 'chat_sessions') {
 				data.focus = data.agent_metadata?.focus;
 				data.pending_turn_contract = data.agent_metadata?.fastchat_pending_turn_contract;
 			}

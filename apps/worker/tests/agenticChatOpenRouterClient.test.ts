@@ -347,6 +347,44 @@ describe('AgenticChatOpenRouterClient', () => {
 		).not.toBe(first);
 	});
 
+	describe.each([true, false])('inline reasoning with explicit DONE=%s', (explicitDone) => {
+		it.each([
+			{
+				name: 'split leading reasoning',
+				chunks: [' \n<thi', 'nk>private</thi', 'nk> \n', ' Hi'],
+				expected: 'Hi'
+			},
+			{
+				name: 'mid-answer literal tags',
+				chunks: ['Explain ', '<think>literal</think>', ' and <analysis>', ' more.'],
+				expected: 'Explain <think>literal</think> and <analysis> more.'
+			},
+			{ name: 'partial prefix at end', chunks: ['<thi'], expected: '<thi' },
+			{ name: 'unclosed leading reasoning', chunks: ['<think>private'], expected: '' }
+		])('$name', async ({ chunks, expected }) => {
+			const test = harness(
+				vi.fn(async () =>
+					sseResponse([
+						...chunks.map((content) =>
+							JSON.stringify({ choices: [{ delta: { content } }] })
+						),
+						JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+						...(explicitDone ? ['[DONE]'] : [])
+					])
+				) as unknown as typeof fetch
+			);
+			const events = await collect(test.client.stream(input()));
+			expect(
+				events
+					.filter((event) => event.type === 'text')
+					.map((event) => event.content)
+					.join('')
+			).toBe(expected);
+			expect(events.some((event) => event.type === 'error')).toBe(false);
+			expect(events.at(-1)?.type).toBe('done');
+		});
+	});
+
 	it('drops private reasoning deltas, sends no tools, and accounts exact provider usage', async () => {
 		const fetchImpl = vi.fn(async () =>
 			sseResponse(

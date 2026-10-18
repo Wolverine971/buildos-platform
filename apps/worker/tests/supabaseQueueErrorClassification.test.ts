@@ -22,7 +22,10 @@ const { rpcMock } = vi.hoisted(() => ({
 
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		rpc: rpcMock,
+		rpc: vi.fn((name: string, args?: Record<string, unknown>) => {
+			const result = rpcMock(name, args);
+			return Object.assign(result, { abortSignal: () => result });
+		}),
 		from: vi.fn()
 	}
 }));

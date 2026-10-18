@@ -58,6 +58,8 @@ export interface ProcessingJob<T = unknown> {
 	correlationId: string | null;
 	userId: string;
 	data: T;
+	/** Queue-row priority; present on claimed jobs, optional for legacy adapters. */
+	priority?: number | null;
 	attempts: number;
 	/** Attempt budget the queue retries within; the last attempt is `attempts + 1 === maxAttempts`. */
 	maxAttempts?: number;
@@ -504,10 +506,12 @@ export class SupabaseQueue {
 			// Claim jobs atomically using the database function
 			const jobTypes = Array.from(this.processors.keys());
 
-			const { data: jobs, error } = await supabase.rpc('claim_pending_jobs', {
-				p_job_types: jobTypes,
-				p_batch_size: availableSlots
-			});
+			const { data: jobs, error } = await supabase
+				.rpc('claim_pending_jobs', {
+					p_job_types: jobTypes,
+					p_batch_size: availableSlots
+				})
+				.abortSignal(AbortSignal.timeout(30_000));
 
 			if (error) {
 				this.consecutiveClaimFailures++;
@@ -661,6 +665,7 @@ export class SupabaseQueue {
 				correlationId,
 				userId: job.user_id!,
 				data: job.metadata,
+				priority: job.priority,
 				attempts: job.attempts || 0,
 				maxAttempts: job.max_attempts || queueConfig.maxRetries,
 				signal: abortController.signal,
@@ -722,7 +727,9 @@ export class SupabaseQueue {
 				if (attempt > 0) {
 					await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
 				}
-				const { data, error } = await supabase.rpc('complete_queue_job', completeArgs);
+				const { data, error } = await supabase
+					.rpc('complete_queue_job', completeArgs)
+					.abortSignal(AbortSignal.timeout(30_000));
 				completed = data;
 				completeError = error;
 				if (!error) break;
@@ -824,7 +831,8 @@ export class SupabaseQueue {
 					.update({ updated_at: new Date().toISOString() })
 					.eq('id', job.id)
 					.eq('status', 'processing')
-					.eq('processing_token', job.processing_token!);
+					.eq('processing_token', job.processing_token!)
+					.abortSignal(AbortSignal.timeout(30_000));
 				if (error) {
 					console.warn(
 						`⚠️ Queue heartbeat failed for job ${job.queue_job_id} ${trace}: ${error.message}`
@@ -858,24 +866,33 @@ export class SupabaseQueue {
 	): Promise<T> {
 		const timeoutMs = timeoutOverrideMs ?? resolveWorkerTimeout(jobType);
 		let timeout: NodeJS.Timeout | null = null;
+		let timeoutError: Error | null = null;
 		const timeoutPromise = new Promise<T>((_, reject) => {
 			timeout = setTimeout(() => {
-				// Abort FIRST so the processor's in-flight I/O is cancelled — the
-				// queue row is about to be retried and a second executor may
-				// claim it; the old one must stop doing domain work.
+				timeoutError = new Error(
+					`Worker timed out after ${timeoutMs}ms for ${jobType} job ${queueJobId}`
+				);
+				// Settle the timeout first: an abort listener may resolve the
+				// processor synchronously, but this attempt still timed out.
+				reject(timeoutError);
 				abortController.abort(
 					new Error(`Worker timeout after ${timeoutMs}ms for ${jobType}`)
-				);
-				reject(
-					new Error(
-						`Worker timed out after ${timeoutMs}ms for ${jobType} job ${queueJobId}`
-					)
 				);
 			}, timeoutMs);
 		});
 
 		try {
 			return await Promise.race([promise, timeoutPromise]);
+		} catch (error) {
+			if (timeoutError) {
+				// Abort is cooperative. Retain the slot AND claim heartbeat until
+				// the original work settles, including late rejection, so neither
+				// refill nor stalled recovery starts a concurrent retry. Shutdown
+				// still has its own bounded drain if a processor never settles.
+				await promise.catch(() => undefined);
+				throw timeoutError;
+			}
+			throw error;
 		} finally {
 			if (timeout) {
 				clearTimeout(timeout);

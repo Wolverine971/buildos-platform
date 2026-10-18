@@ -321,8 +321,8 @@ export function repairTruncatedJSONResponse(raw: string): string | null {
 
 export function normalizeStreamingContent(
 	content: unknown,
-	inThinkingBlock: boolean
-): { text: string; inThinkingBlock: boolean } {
+	state: ThinkingTokenState
+): { text: string } {
 	const textParts: string[] = [];
 
 	const pushText = (value?: string) => {
@@ -364,7 +364,7 @@ export function normalizeStreamingContent(
 	}
 
 	if (textParts.length === 0) {
-		return { text: '', inThinkingBlock: false };
+		return { text: '' };
 	}
 
 	let combined = textParts.join('');
@@ -374,22 +374,77 @@ export function normalizeStreamingContent(
 	combined = combined.replace(/\u00A0/g, ' ');
 	combined = combined.replace(/\r\n?/g, '\n');
 
-	const { text, inThinkingBlock: thinkingState } = filterThinkingTokens(
-		combined,
-		inThinkingBlock
-	);
-
-	return { text, inThinkingBlock: thinkingState };
+	return filterThinkingTokens(combined, state);
 }
 
+export type ThinkingTokenState = {
+	phase: 'start' | 'in_block' | 'visible';
+	pending: string;
+	closingTag: string;
+	trimLeadingWhitespace: boolean;
+};
+
+export function createThinkingTokenState(): ThinkingTokenState {
+	return { phase: 'start', pending: '', closingTag: '', trimLeadingWhitespace: false };
+}
+
+const LEADING_REASONING_TAGS = ['think', 'thinking', 'reasoning', 'analysis'].map((tag) => ({
+	open: `<${tag}>`,
+	close: `</${tag}>`
+}));
+
 /**
- * Kept for streaming caller compatibility. Visibility comes from structured
- * content-part types and provider reasoning fields; literal tags in visible
- * prose must never suppress this chunk or any later chunk.
+ * Decode the provider's inline reasoning wire format at content offset 0 only,
+ * allowing leading whitespace. This does not classify what prose means. It can
+ * misfire when an answer literally opens with one of these four tags; once any
+ * visible content starts, later tags are always passed through unchanged.
+ * The caller owns one mutable state per stream and flushes it at end of stream.
  */
-export function filterThinkingTokens(
-	text: string,
-	_inThinkingBlock: boolean
-): { text: string; inThinkingBlock: boolean } {
-	return { text, inThinkingBlock: false };
+export function filterThinkingTokens(text: string, state: ThinkingTokenState): { text: string } {
+	if (state.phase === 'start') {
+		state.pending += text;
+		const candidate = state.pending.trimStart();
+		const opening = LEADING_REASONING_TAGS.find(({ open }) => candidate.startsWith(open));
+		if (opening) {
+			state.phase = 'in_block';
+			state.closingTag = opening.close;
+			text = candidate.slice(opening.open.length);
+			state.pending = '';
+		} else if (LEADING_REASONING_TAGS.some(({ open }) => open.startsWith(candidate))) {
+			return { text: '' };
+		} else {
+			state.phase = 'visible';
+			text = state.pending;
+			state.pending = '';
+		}
+	}
+
+	if (state.phase === 'in_block') {
+		const combined = state.pending + text;
+		const closeAt = combined.indexOf(state.closingTag);
+		if (closeAt === -1) {
+			// Retain only enough to recognize a closing tag split across chunks.
+			state.pending = combined.slice(-(state.closingTag.length - 1));
+			return { text: '' };
+		}
+		text = combined.slice(closeAt + state.closingTag.length);
+		state.pending = '';
+		state.phase = 'visible';
+		state.trimLeadingWhitespace = true;
+	}
+
+	if (state.trimLeadingWhitespace) {
+		text = text.trimStart();
+		if (text) state.trimLeadingWhitespace = false;
+	}
+	return { text };
+}
+
+/** Emit an undecided literal prefix, but never an unclosed reasoning block. */
+export function flushThinkingTokens(state: ThinkingTokenState): string {
+	const text = state.phase === 'start' ? state.pending : '';
+	state.pending = '';
+	state.phase = 'visible';
+	state.trimLeadingWhitespace = false;
+	return text;
 }

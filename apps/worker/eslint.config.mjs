@@ -180,7 +180,7 @@ export default [
 	// them tsconfig.tests.json as a second type-aware project doubled lint memory
 	// and OOMed CI. They lint syntactically; typecheck:tests owns their types.
 	{
-		files: ['**/*.test.ts', '**/*.spec.ts'],
+		files: ['**/*.test.ts', '**/*.spec.ts', 'tests/setup.ts'],
 		languageOptions: {
 			parserOptions: { project: null }
 		},

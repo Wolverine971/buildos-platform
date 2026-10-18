@@ -26,7 +26,9 @@ import {
 import {
 	cleanJSONResponse,
 	extractVisibleText,
-	normalizeStreamingContent
+	normalizeStreamingContent,
+	createThinkingTokenState,
+	flushThinkingTokens
 } from '$lib/services/smart-llm/response-parsing';
 import { OpenRouterV2Client } from '$lib/services/openrouter-v2/client';
 import { resolveLaneModels, resolveLaneReasoning } from '$lib/services/openrouter-v2/model-lanes';
@@ -1387,7 +1389,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const decoder = new TextDecoder();
 		const assembler = new ToolCallAssembler();
 		let buffer = '';
-		let inThinkingBlock = false;
+		const thinkingState = createThinkingTokenState();
 		let usage: OpenRouterUsage | undefined;
 		let terminalFinishReason: string | undefined;
 		let streamRequestId = requestId;
@@ -1538,6 +1540,11 @@ export class OpenRouterV2Service extends SmartLLMService {
 						if (terminalFinishReason === 'error') {
 							throw new Error('OpenRouter stream ended with finish_reason=error');
 						}
+						const trailingText = flushThinkingTokens(thinkingState);
+						if (trailingText) {
+							emittedTextChars += trailingText.length;
+							yield { type: 'text', content: trailingText };
+						}
 						for (const pending of assembler.drain()) {
 							if (!pending.function.name) continue;
 							if (!isValidJsonObject(pending.function.arguments)) {
@@ -1656,9 +1663,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 					if (delta?.content !== undefined) {
 						const normalizedChunk = normalizeStreamingContent(
 							delta.content,
-							inThinkingBlock
+							thinkingState
 						);
-						inThinkingBlock = normalizedChunk.inThinkingBlock;
 						const text = normalizedChunk.text;
 						if (text.length > 0) {
 							emittedTextChars += text.length;
@@ -1690,6 +1696,11 @@ export class OpenRouterV2Service extends SmartLLMService {
 				throw new Error('OpenRouter stream ended with finish_reason=error');
 			}
 
+			const trailingText = flushThinkingTokens(thinkingState);
+			if (trailingText) {
+				emittedTextChars += trailingText.length;
+				yield { type: 'text', content: trailingText };
+			}
 			for (const pending of assembler.drain()) {
 				if (!pending.function.name) continue;
 				if (!isValidJsonObject(pending.function.arguments)) {

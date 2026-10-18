@@ -3368,6 +3368,13 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 
 		it('publishes the context snapshot after access passes without waiting for the write', async () => {
+			mocks.loadFastChatPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				contextLoadSource: 'rpc',
+				entityId: PROJECT_ID,
+				projectId: PROJECT_ID,
+				data: { source: 'server' }
+			});
 			const recheck = deferred<string>();
 			const userClient = tokenUserClient('project:v1:1', recheck.promise);
 			const serviceClient = serviceClientWithTables({});

@@ -83,6 +83,7 @@ export function isMissedRunSchedulable(
 
 // Initialize backoff calculator
 const backoffCalculator = new BriefBackoffCalculator();
+let briefSchedulingInFlight: Promise<void> | null = null;
 let agentRunCostReconciliationInFlight: Promise<void> | null = null;
 let agentRunStrandedSweepInFlight: Promise<void> | null = null;
 let cycleCoordinatorInFlight: Promise<void> | null = null;
@@ -271,21 +272,12 @@ async function queueBriefGeneration(
 	// Create dedup key for this specific brief
 	const dedupKey = `brief-${userId}-${briefDate}`;
 
-	if (isImmediate) {
-		console.log(`⚡ Immediate brief requested for ${briefDate}`);
-
-		// Atomically cancel any existing jobs for this date
-		const { count } = await queue.cancelBriefJobsForDate(userId, briefDate);
-		if (count > 0) {
-			console.log(`🚫 Cancelled ${count} existing brief job(s) for ${briefDate}`);
-		}
-	}
-
-	// Add job to Supabase queue
+	// All automatic briefs, including backfills and near-hour schedules, share
+	// the date key so concurrent replicas deduplicate at database admission.
 	const job = await queue.add('generate_daily_brief', userId, jobData, {
 		priority,
 		scheduledFor,
-		dedupKey: isImmediate ? `${dedupKey}-${Date.now()}` : dedupKey
+		dedupKey
 	});
 
 	const jobType = isImmediate ? 'immediate' : 'scheduled';
@@ -586,7 +578,16 @@ export async function loadSchedulingUserProfiles(userIds: string[]): Promise<{
 	return { timezoneByUserId, deletionPendingUserIds };
 }
 
-async function checkAndScheduleBriefs() {
+function checkAndScheduleBriefs(): Promise<void> {
+	if (!briefSchedulingInFlight) {
+		briefSchedulingInFlight = scheduleBriefs().finally(() => {
+			briefSchedulingInFlight = null;
+		});
+	}
+	return briefSchedulingInFlight;
+}
+
+async function scheduleBriefs() {
 	try {
 		const now = new Date();
 		const oneHourFromNow = addHours(now, 1);

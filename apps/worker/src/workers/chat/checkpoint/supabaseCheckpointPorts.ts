@@ -204,6 +204,7 @@ async function supersedeRuns(userId: string, runIds: string[], supersededBy: str
 
 export function createSupabaseCheckpointPorts(options?: {
 	completeJson?: CheckpointCapturePorts['completeJson'];
+	signal?: AbortSignal;
 }): CheckpointCapturePorts {
 	const watermarks = new Map<string, { at: string | null }>();
 	return {
@@ -419,7 +420,8 @@ export function createSupabaseCheckpointPorts(options?: {
 			};
 		},
 
-		completeJson: options?.completeJson ?? createCheckpointCompleteJson(),
+		completeJson:
+			options?.completeJson ?? createCheckpointCompleteJson({ signal: options?.signal }),
 
 		async saveThinkingLog({ session, document, content }) {
 			if (document) await assertUnchanged(document);

@@ -1,4 +1,5 @@
 // apps/worker/src/workers/agentic-chat/provider/openrouter/types.ts
+import type { ThinkingTokenState } from '@buildos/smart-llm';
 import type {
 	AgenticChatProviderDispatchPermitV1,
 	AgenticChatProviderPassRoleV1,
@@ -125,7 +126,7 @@ export type StreamState = {
 	provider: string | null;
 	providerSlug: string | null;
 	requestId: string | null;
-	inThinkingBlock: boolean;
+	thinkingState: ThinkingTokenState;
 	completionChars: number;
 	/** Actual output bytes, excluding SSE/tool-delta envelopes and repeated IDs. */
 	generatedBytes: number;

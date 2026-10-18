@@ -7,6 +7,7 @@ import type { CheckpointCapturePorts } from './checkpointCapture';
 export function createCheckpointCompleteJson(options?: {
 	sessionId?: string;
 	projectId?: string;
+	signal?: AbortSignal;
 	onUsage?: (event: JSONUsageEvent & { operation: string }) => void;
 }): CheckpointCapturePorts['completeJson'] {
 	const llm = new SmartLLMService({
@@ -27,6 +28,7 @@ export function createCheckpointCompleteJson(options?: {
 			operationType: `chat_checkpoint_${operation}`,
 			chatSessionId: options?.sessionId,
 			projectId: options?.projectId,
+			signal: options?.signal,
 			onUsage: options?.onUsage
 				? (event) => options.onUsage?.({ ...event, operation })
 				: undefined

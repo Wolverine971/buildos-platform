@@ -1129,6 +1129,50 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(insertMock.mock.calls[0]?.[0]?.total_cost_usd).toBeCloseTo(0.00295);
 	});
 
+	describe.each([true, false])('inline reasoning with explicit DONE=%s', (explicitDone) => {
+		it.each([
+			{
+				name: 'split leading reasoning',
+				chunks: [' \n<thi', 'nk>private</thi', 'nk> \n', ' Hi'],
+				expected: 'Hi'
+			},
+			{
+				name: 'mid-answer literal tags',
+				chunks: ['Explain ', '<think>literal</think>', ' and <analysis>', ' more.'],
+				expected: 'Explain <think>literal</think> and <analysis> more.'
+			},
+			{ name: 'partial prefix at end', chunks: ['<thi'], expected: '<thi' },
+			{ name: 'unclosed leading reasoning', chunks: ['<think>private'], expected: '' }
+		])('$name', async ({ chunks, expected }) => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () =>
+					createSseResponse([
+						...chunks.map((content) =>
+							JSON.stringify({ choices: [{ delta: { content } }] })
+						),
+						JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+						...(explicitDone ? ['[DONE]'] : [])
+					])
+				)
+			);
+			const events = [];
+			for await (const event of createService().streamText({
+				messages: [{ role: 'user', content: 'hello' }],
+				userId: 'user_1'
+			}))
+				events.push(event);
+			expect(
+				events
+					.filter((event) => event.type === 'text')
+					.map((event) => event.content)
+					.join('')
+			).toBe(expected);
+			expect(events.some((event) => event.type === 'error')).toBe(false);
+			expect(events.at(-1)?.type).toBe('done');
+		});
+	});
+
 	it('suppresses streamed reasoning text while preserving reasoning token metadata', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -1146,7 +1190,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 									reasoning: 'native hidden reasoning',
 									content: [
 										{ type: 'reasoning', text: 'hidden reasoning' },
-										{ type: 'text', text: 'Visible start' }
+										{ type: 'text', text: '<thi' }
 									]
 								}
 							}
@@ -1156,7 +1200,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 						choices: [
 							{
 								delta: {
-									content: '<think>hidden'
+									content: 'nk>hidden'
 								}
 							}
 						]
@@ -1165,7 +1209,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 						choices: [
 							{
 								delta: {
-									content: ' still hidden</think> Visible end'
+									content: ' still hidden</think> Visible start Visible end'
 								}
 							}
 						],

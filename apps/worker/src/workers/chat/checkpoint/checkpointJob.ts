@@ -202,11 +202,10 @@ export async function processCaptureChatCheckpointJob(
 		return { success: true, status: 'disabled' };
 	}
 	try {
-		const outcome = await runChatCheckpointCapture(createSupabaseCheckpointPorts(), {
-			sessionId,
-			userId,
-			trigger
-		});
+		const outcome = await runChatCheckpointCapture(
+			createSupabaseCheckpointPorts({ signal: job.signal }),
+			{ sessionId, userId, trigger }
+		);
 		if (outcome.status === 'skipped') {
 			await job.log(`Checkpoint skipped: ${outcome.reason}`);
 			return { success: true, status: outcome.status, reason: outcome.reason };

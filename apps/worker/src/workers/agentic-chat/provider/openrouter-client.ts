@@ -5,6 +5,7 @@
 // (route-health), SSE decoding (sse), usage normalization (usage), durable
 // side writes (telemetry), attempt deadlines (watchdog), route/tool-surface
 // validation (validation), and retry classification (retry).
+import { createThinkingTokenState, flushThinkingTokens } from '@buildos/smart-llm';
 import type { JsonObject } from '@buildos/shared-types';
 import type {
 	AgenticChatOutputBudgetSignal,
@@ -283,7 +284,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			provider: null,
 			providerSlug: null,
 			requestId: null,
-			inThinkingBlock: false,
+			thinkingState: createThinkingTokenState(),
 			completionChars: 0,
 			generatedBytes: 0,
 			reasoningBytes: 0,
@@ -773,6 +774,18 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					'Agentic Chat provider stream ended with finish_reason=error',
 					false
 				);
+			}
+
+			throwIfAborted(active.signal);
+			const trailingText = flushThinkingTokens(state.thinkingState);
+			if (trailingText) {
+				state.completionChars += trailingText.length;
+				state.generatedBytes += Buffer.byteLength(trailingText, 'utf8');
+				state.firstProgressAtMs ??= Date.now();
+				const event = { type: 'text' as const, content: trailingText };
+				active.promptDump?.recordEvent(event);
+				yield event;
+				throwIfAborted(active.signal);
 			}
 
 			const exactUsage = normalizeProviderUsage(state.rawUsage);

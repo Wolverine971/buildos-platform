@@ -70,6 +70,8 @@ import {
 } from './openrouter-request';
 import {
 	cleanJSONResponse,
+	createThinkingTokenState,
+	flushThinkingTokens,
 	enhanceSystemPromptForJSON,
 	extractTextFromChoice,
 	normalizeStreamingContent,
@@ -2686,7 +2688,7 @@ export class SmartLLMService {
 				isCompleteJSON: (value) => this.isCompleteJSON(value)
 			});
 			let usage: any = null;
-			let inThinkingBlock = false;
+			const thinkingState = createThinkingTokenState();
 			let linesSinceYield = 0;
 			let lastYieldAt = Date.now();
 			let streamRequestId: string | undefined = responseRequestId;
@@ -2738,6 +2740,8 @@ export class SmartLLMService {
 
 					const data = line.slice(5).trimStart(); // Remove 'data:' prefix
 					if (data === '[DONE]') {
+						const trailingText = flushThinkingTokens(thinkingState);
+						if (trailingText) yield { type: 'text', content: trailingText };
 						// Stream completed
 						const duration = performance.now() - startTime;
 						const requestCompletedAt = new Date();
@@ -2957,12 +2961,10 @@ export class SmartLLMService {
 							}
 
 							if (delta.content) {
-								const {
-									text: filteredContent,
-									inThinkingBlock: nextThinkingState
-								} = normalizeStreamingContent(delta.content, inThinkingBlock);
-
-								inThinkingBlock = nextThinkingState;
+								const { text: filteredContent } = normalizeStreamingContent(
+									delta.content,
+									thinkingState
+								);
 
 								if (streamDebugEnabled) {
 									streamDebugStats.contentChunks++;
@@ -3067,6 +3069,8 @@ export class SmartLLMService {
 					}
 				}
 			}
+			const trailingText = flushThinkingTokens(thinkingState);
+			if (trailingText) yield { type: 'text', content: trailingText };
 		} catch (error) {
 			if (this.isAbortError(error)) {
 				return;

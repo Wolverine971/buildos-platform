@@ -100,11 +100,7 @@ export function parseSseLine(
 		// Replay variant only: keep this attempt's reasoning for the rest of the turn.
 		if (state.reasoningCapture) captureReasoningDelta(state.reasoningCapture, delta);
 		if (delta.content !== undefined && delta.content !== null) {
-			const normalizedContent = normalizeStreamingContent(
-				delta.content,
-				state.inThinkingBlock
-			);
-			state.inThinkingBlock = normalizedContent.inThinkingBlock;
+			const normalizedContent = normalizeStreamingContent(delta.content, state.thinkingState);
 			if (normalizedContent.text) {
 				state.completionChars += normalizedContent.text.length;
 				state.generatedBytes += Buffer.byteLength(normalizedContent.text, 'utf8');

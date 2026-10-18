@@ -5,6 +5,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import { supabase } from '../src/lib/supabase';
+import { processCaptureChatCheckpointJob } from '../src/workers/chat/checkpoint/checkpointJob';
+import type { CheckpointCapturePorts } from '../src/workers/chat/checkpoint/checkpointCapture';
 
 const { rpcMock } = vi.hoisted(() => ({
 	rpcMock:
@@ -16,12 +18,65 @@ const { rpcMock } = vi.hoisted(() => ({
 		>()
 }));
 
+const { captureMock, jsonMock } = vi.hoisted(() => ({
+	captureMock: vi.fn(),
+	jsonMock: vi.fn().mockResolvedValue({})
+}));
+vi.mock('../src/workers/chat/checkpoint/checkpointCapture', () => ({
+	runChatCheckpointCapture: captureMock
+}));
+vi.mock('../src/lib/services/smart-llm-service', () => ({
+	SmartLLMService: class {
+		getJSONResponse = jsonMock;
+	}
+}));
+
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		rpc: rpcMock,
+		rpc: vi.fn((name: string, args?: Record<string, unknown>) => request(rpcMock(name, args))),
 		from: vi.fn()
 	}
 }));
+
+vi.mock('../src/lib/errorLogger', () => ({ logWorkerError: vi.fn() }));
+
+type Response = { data: unknown; error: unknown };
+
+// Model PostgREST's thenable builder, including abort-as-error responses.
+function request(result: Promise<Response>) {
+	return Object.assign(result, {
+		abortSignal(signal: AbortSignal) {
+			return new Promise<Response>((resolve, reject) => {
+				const abort = () =>
+					resolve({ data: null, error: { message: 'Request timed out' } });
+				if (signal.aborted) return abort();
+				signal.addEventListener('abort', abort, { once: true });
+				void result
+					.then(resolve, reject)
+					.finally(() => signal.removeEventListener('abort', abort));
+			});
+		}
+	});
+}
+
+function deferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (error: Error) => void;
+	const promise = new Promise<T>((done, fail) => {
+		resolve = done;
+		reject = fail;
+	});
+	return { promise, resolve, reject };
+}
+
+function fakeRequestDeadlines() {
+	vi.useFakeTimers();
+	return vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms) => {
+		const controller = new AbortController();
+		setTimeout(() => controller.abort(), ms);
+		return controller.signal;
+	});
+}
 
 type TestMetadata = { label: 'slow' | 'fast-1' | 'fast-2' };
 
@@ -53,10 +108,202 @@ function claimedJob(sequence: number, label: TestMetadata['label']) {
 describe('SupabaseQueue per-slot refill', () => {
 	beforeEach(() => {
 		rpcMock.mockReset();
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
+		vi.clearAllTimers();
+		vi.useRealTimers();
 		vi.restoreAllMocks();
+	});
+
+	it('aborts a hung claim after 30 seconds and resumes claiming', async () => {
+		const deadlines = fakeRequestDeadlines();
+		const hungClaim = deferred<Response>();
+		let claims = 0;
+		rpcMock.mockImplementation(async (name) => {
+			if (name === 'claim_pending_jobs' && ++claims === 1) return hungClaim.promise;
+			return { data: [], error: null };
+		});
+		const queue = new SupabaseQueue({ pollInterval: 1_000, genericStalledRecovery: false });
+		const start = queue.start();
+		try {
+			await vi.advanceTimersByTimeAsync(29_999);
+			expect(claims).toBe(1);
+			await vi.advanceTimersByTimeAsync(1_001);
+			expect(claims).toBe(2);
+			expect(deadlines).toHaveBeenCalledWith(30_000);
+			expect(queue.getHealth().healthy).toBe(true);
+		} finally {
+			hungClaim.resolve({ data: [], error: null });
+			await start;
+			await queue.stop();
+		}
+	});
+
+	it('retries a hung heartbeat with a fresh 30 second deadline', async () => {
+		fakeRequestDeadlines();
+		const heartbeat = deferred<Response>();
+		const work = deferred<void>();
+		let claims = 0;
+		rpcMock.mockImplementation(async (name) => ({
+			data:
+				name === 'claim_pending_jobs'
+					? ++claims === 1
+						? [{ ...claimedJob(1, 'slow'), processing_token: 'token-1' }]
+						: []
+					: true,
+			error: null
+		}));
+		const update = vi.fn(() => {
+			const builder = Object.assign(request(heartbeat.promise), { eq: vi.fn() });
+			builder.eq.mockReturnValue(builder);
+			return builder;
+		});
+		vi.mocked(supabase.from).mockReturnValue({ update } as never);
+		const queue = new SupabaseQueue({
+			batchSize: 1,
+			stalledTimeout: 15_000,
+			genericStalledRecovery: false
+		});
+		queue.process('send_notification', () => work.promise);
+		await queue.start();
+		try {
+			await vi.advanceTimersByTimeAsync(34_999);
+			expect(update).toHaveBeenCalledTimes(1);
+			await vi.advanceTimersByTimeAsync(5_001);
+			expect(update.mock.calls.length).toBeGreaterThanOrEqual(2);
+		} finally {
+			heartbeat.resolve({ data: null, error: null });
+			work.resolve();
+			await queue.stop();
+		}
+	});
+
+	it('bounds every completion attempt without requeueing successful work', async () => {
+		fakeRequestDeadlines();
+		const completion = deferred<Response>();
+		let claims = 0;
+		let completions = 0;
+		rpcMock.mockImplementation(async (name) => {
+			if (name === 'claim_pending_jobs')
+				return { data: ++claims === 1 ? [claimedJob(1, 'fast-1')] : [], error: null };
+			if (name === 'complete_queue_job') {
+				completions++;
+				return completion.promise;
+			}
+			return { data: true, error: null };
+		});
+		const processor = vi.fn(async () => undefined);
+		const queue = new SupabaseQueue({ batchSize: 1, genericStalledRecovery: false });
+		queue.process('send_notification', processor);
+		await queue.start();
+		try {
+			await vi.advanceTimersByTimeAsync(93_001);
+			expect(completions).toBe(3);
+			expect(queue.getCapacitySnapshot().activeJobs).toBe(0);
+			expect(processor).toHaveBeenCalledTimes(1);
+			expect(rpcMock.mock.calls.some(([name]) => name === 'fail_queue_job')).toBe(false);
+		} finally {
+			completion.resolve({ data: true, error: null });
+			await queue.stop();
+		}
+	});
+
+	it.each(['resolve', 'reject'] as const)(
+		'keeps a timed-out processor heartbeating and occupying its slot until it %ss',
+		async (settlement) => {
+			fakeRequestDeadlines();
+			const work = deferred<void>();
+			const pending = [{ ...claimedJob(1, 'slow'), processing_token: 'token-1' }];
+			let running = 0;
+			let maxRunning = 0;
+			let attempts = 0;
+			let signal: AbortSignal | undefined;
+			rpcMock.mockImplementation(async (name) => {
+				if (name === 'claim_pending_jobs') return { data: pending.splice(0), error: null };
+				if (name === 'fail_queue_job')
+					pending.push({ ...claimedJob(1, 'slow'), processing_token: 'token-2' });
+				return { data: true, error: null };
+			});
+			const builder = {
+				eq: vi.fn(),
+				abortSignal: vi.fn().mockResolvedValue({ error: null })
+			};
+			builder.eq.mockReturnValue(builder);
+			const update = vi.fn(() => builder);
+			vi.mocked(supabase.from).mockReturnValue({ update } as never);
+			const queue = new SupabaseQueue({ batchSize: 1, genericStalledRecovery: false });
+			queue.process(
+				'send_notification',
+				async (job) => {
+					running++;
+					maxRunning = Math.max(maxRunning, running);
+					try {
+						if (++attempts === 1) {
+							signal = job.signal;
+							await work.promise;
+						}
+					} finally {
+						running--;
+					}
+				},
+				{ workerTimeoutMs: 25 }
+			);
+			await queue.start();
+			try {
+				await vi.advanceTimersByTimeAsync(60_001);
+				expect(signal?.aborted).toBe(true);
+				expect(queue.getCapacitySnapshot().activeJobs).toBe(1);
+				expect(rpcMock.mock.calls.some(([name]) => name === 'fail_queue_job')).toBe(false);
+				expect(update).toHaveBeenCalledTimes(1);
+				if (settlement === 'reject') work.reject(new Error('Late provider failure'));
+				else work.resolve();
+				await vi.advanceTimersByTimeAsync(0);
+				expect(rpcMock).toHaveBeenCalledWith(
+					'fail_queue_job',
+					expect.objectContaining({
+						p_retry: true,
+						p_processing_token: 'token-1',
+						p_error_message: expect.stringContaining('Worker timed out')
+					})
+				);
+				expect(attempts).toBe(2);
+				expect(maxRunning).toBe(1);
+			} finally {
+				work.resolve();
+				await queue.stop();
+			}
+		}
+	);
+
+	it('passes the checkpoint job signal to both capture LLM operations', async () => {
+		const controller = new AbortController();
+		captureMock.mockImplementation(async (ports: CheckpointCapturePorts) => {
+			for (const operation of ['thinking_log', 'start_here_synthesis'] as const) {
+				await ports.completeJson({
+					systemPrompt: 'system',
+					userPrompt: 'user',
+					userId: 'user-1',
+					operation
+				});
+			}
+			return { status: 'skipped', reason: 'no_changes' };
+		});
+		await processCaptureChatCheckpointJob({
+			id: 'job-1',
+			userId: 'user-1',
+			correlationId: null,
+			attempts: 0,
+			data: { sessionId: 'session-1', userId: 'user-1', trigger: 'idle' },
+			signal: controller.signal,
+			log: vi.fn(),
+			updateProgress: vi.fn()
+		});
+		expect(jsonMock).toHaveBeenCalledTimes(2);
+		for (const [params] of jsonMock.mock.calls) expect(params.signal).toBe(controller.signal);
 	});
 
 	it('claims one replacement as soon as a fast job frees its slot', async () => {
@@ -210,6 +457,7 @@ describe('SupabaseQueue per-slot refill', () => {
 
 		expect(received.job?.id).toBe(chatJob.queue_job_id);
 		expect(received.job?.queueRowId).toBe(chatJob.id);
+		expect(received.job?.priority).toBe(chatJob.priority);
 		expect(
 			vi
 				.mocked(supabase.rpc)

@@ -83,8 +83,7 @@ function getErrorMessage(error: unknown): string {
  */
 async function processBrief(job: ProcessingJob<BriefJobData>) {
 	const startTime = Date.now();
-	const jobType =
-		(job.data as { priority?: number })?.priority === 1 ? '⚡ IMMEDIATE' : '📅 SCHEDULED';
+	const jobType = job.priority === 1 ? '⚡ IMMEDIATE' : '📅 SCHEDULED';
 
 	await job.log(`${jobType} brief started for user ${job.userId}`);
 	await job.log(`Brief date: ${job.data.briefDate}`);

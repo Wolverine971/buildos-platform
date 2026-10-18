@@ -330,6 +330,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 			invalidation_token: 'global:v1:test',
 			warmed_at: '2026-03-12T00:00:00.000Z',
 			context: {
+				contextLoadSource: 'rpc',
 				contextType: 'global',
 				entityId: null,
 				projectId: null,
@@ -592,6 +593,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 			invalidation_token: `project:v1:${projectId}:1`,
 			warmed_at: '2026-03-12T00:00:00.000Z',
 			context: {
+				contextLoadSource: 'rpc',
 				contextType: 'project',
 				entityId: projectId,
 				projectId,

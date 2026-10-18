@@ -114,7 +114,7 @@ async function seedSnapshot(launch: any, takenAt: number) {
 
 /** Every inline script the worker writes must at least parse. */
 function expectScriptsParse(html: string) {
-	const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+	const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1] ?? '');
 	expect(scripts.length).toBeGreaterThan(0);
 	for (const script of scripts) expect(() => new Function(script)).not.toThrow();
 }

@@ -13,7 +13,10 @@ import {
 
 vi.mock('../src/lib/supabase', () => ({
 	supabase: {
-		rpc: vi.fn(async () => ({ data: [], error: null })),
+		rpc: vi.fn(() => {
+			const result = Promise.resolve({ data: [], error: null });
+			return Object.assign(result, { abortSignal: () => result });
+		}),
 		from: vi.fn()
 	}
 }));
@@ -55,11 +58,13 @@ describe('SupabaseQueue.getHealth', () => {
 
 	it('reports unhealthy after repeated claim failures', async () => {
 		const { supabase } = await import('../src/lib/supabase');
-		(supabase.rpc as any).mockImplementation(async (fn: string) => {
-			if (fn === 'claim_pending_jobs') {
-				return { data: null, error: { message: 'permission denied' } };
-			}
-			return { data: [], error: null };
+		(supabase.rpc as any).mockImplementation((fn: string) => {
+			const result = Promise.resolve(
+				fn === 'claim_pending_jobs'
+					? { data: null, error: { message: 'permission denied' } }
+					: { data: [], error: null }
+			);
+			return Object.assign(result, { abortSignal: () => result });
 		});
 
 		const queue = new SupabaseQueue({ pollInterval: 5000 });

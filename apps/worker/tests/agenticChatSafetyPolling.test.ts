@@ -9,7 +9,15 @@ import {
 import { AgenticChatConsumerRuntime } from '../src/workers/agentic-chat/host/consumer-runtime';
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
-vi.mock('../src/lib/supabase', () => ({ supabase: { rpc, from: vi.fn() } }));
+vi.mock('../src/lib/supabase', () => ({
+	supabase: {
+		rpc: vi.fn((...args: unknown[]) => {
+			const result = rpc(...args);
+			return Object.assign(result, { abortSignal: () => result });
+		}),
+		from: vi.fn()
+	}
+}));
 
 const queues: SupabaseQueue[] = [];
 const empty = { data: [], error: null };

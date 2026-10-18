@@ -343,6 +343,51 @@ describe('LLM stream debug logging privacy', () => {
 });
 
 describe('SmartLLMService streamText tool handling', () => {
+	describe.each([true, false])('inline reasoning with explicit DONE=%s', (explicitDone) => {
+		it.each([
+			{
+				name: 'split leading reasoning',
+				chunks: [' \n<thi', 'nk>private</thi', 'nk> \n', ' Hi'],
+				expected: 'Hi'
+			},
+			{
+				name: 'mid-answer literal tags',
+				chunks: ['Explain ', '<think>literal</think>', ' and <analysis>', ' more.'],
+				expected: 'Explain <think>literal</think> and <analysis> more.'
+			},
+			{ name: 'partial prefix at end', chunks: ['<thi'], expected: '<thi' },
+			{ name: 'unclosed leading reasoning', chunks: ['<think>private'], expected: '' }
+		])('$name', async ({ chunks, expected }) => {
+			const llm = new SmartLLMService({
+				apiKey: 'openrouter-test-key',
+				fetch: vi.fn(async () =>
+					buildSSE([
+						...chunks.map((content) =>
+							JSON.stringify({ choices: [{ delta: { content } }] })
+						),
+						JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+						...(explicitDone ? ['[DONE]'] : [])
+					])
+				) as unknown as typeof fetch
+			});
+			const events = [];
+			for await (const event of llm.streamText({
+				messages: [{ role: 'user', content: 'hello' }],
+				userId: 'user-test',
+				operationType: 'test_stream'
+			}))
+				events.push(event);
+			expect(
+				events
+					.filter((event) => event.type === 'text')
+					.map((event) => event.content)
+					.join('')
+			).toBe(expected);
+			expect(events.some((event) => event.type === 'error')).toBe(false);
+			if (explicitDone) expect(events.at(-1)?.type).toBe('done');
+		});
+	});
+
 	it('captures include_usage chunks that arrive with empty choices', async () => {
 		const usageLogger = {
 			logUsageToDatabase: vi.fn(async () => undefined)
