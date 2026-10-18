@@ -49,9 +49,17 @@ export type AgenticChatWorkerCommand = {
 export const WORKER_ADMISSION_TIMEOUT_MS = 30_000;
 /** Pause before the single re-POST of a lost admission. */
 export const WORKER_ADMISSION_RETRY_DELAY_MS = 750;
+/** A new chat has no session to discover; recover its handle with one final replay. */
+export const WORKER_ADMISSION_RECOVERY_DELAY_MS = 2_000;
 const WORKER_ADMISSION_MAX_ATTEMPTS = 2;
 /** 5xx code meaning "unknown whether the turn committed": safe to re-POST the same body. */
 const WORKER_ADMISSION_UNKNOWN_OUTCOME_CODE = 'WORKER_ADMISSION_UNAVAILABLE';
+
+type WorkerAdmissionAttempt = {
+	response: Response;
+	payload: unknown | null;
+	unknownOutcome: boolean;
+};
 
 export class AgenticChatAdmissionTimeoutError extends Error {
 	constructor(readonly timeoutMs: number) {
@@ -64,7 +72,10 @@ export class AgenticChatAdmissionTimeoutError extends Error {
  * Admit one turn. A lost answer (network error, timeout, or an
  * unknown-outcome 5xx) is re-POSTed once with the identical body: admission is
  * idempotent on `clientTurnId`, so a first attempt that did land comes back as
- * `matching_duplicate` with the same handle. Aborting `signal` (the user left
+ * `matching_duplicate` with the same handle. A sessionless send gets one more
+ * delayed replay if both attempts remain uncertain: there is no session id for
+ * discovery yet. The caller stays busy until this bounded recovery completes.
+ * Aborting `signal` (the user left
  * the conversation) cancels the request and any retry.
  */
 export async function requestAgenticChatWorkerAdmission(input: {
@@ -81,14 +92,19 @@ export async function requestAgenticChatWorkerAdmission(input: {
 	const retryDelayMs = input.retryDelayMs ?? WORKER_ADMISSION_RETRY_DELAY_MS;
 	// Serialized once so a retry is byte-identical to the first attempt.
 	const body = JSON.stringify(buildWorkerAdmissionBody(input.command));
+	const maxAttempts = WORKER_ADMISSION_MAX_ATTEMPTS + (input.command.sessionId === null ? 1 : 0);
 
 	for (let attempt = 1; ; attempt += 1) {
 		throwIfAborted(input.signal);
-		const canRetry = attempt < WORKER_ADMISSION_MAX_ATTEMPTS;
+		const canRetry = attempt < maxAttempts;
+		const delayMs =
+			attempt < WORKER_ADMISSION_MAX_ATTEMPTS
+				? retryDelayMs
+				: WORKER_ADMISSION_RECOVERY_DELAY_MS;
 		const requestStartedAt = nowMs();
-		let response: Response;
+		let result: WorkerAdmissionAttempt;
 		try {
-			response = await postWorkerAdmission({
+			result = await postWorkerAdmission({
 				fetchImpl,
 				body,
 				signal: input.signal,
@@ -96,21 +112,21 @@ export async function requestAgenticChatWorkerAdmission(input: {
 			});
 		} catch (error) {
 			if (input.signal?.aborted || !canRetry) throw error;
-			await waitForRetry(retryDelayMs, input.signal);
+			await waitForRetry(delayMs, input.signal);
 			continue;
 		}
+		const { response, payload, unknownOutcome } = result;
 		captureWorkerAdmissionTiming({
 			command: input.command,
 			response,
 			attempt,
 			clientRoundTripMs: Math.max(0, nowMs() - requestStartedAt)
 		});
-		if (canRetry && (await isUnknownAdmissionOutcome(response))) {
-			await waitForRetry(retryDelayMs, input.signal);
+		if (canRetry && unknownOutcome) {
+			await waitForRetry(delayMs, input.signal);
 			continue;
 		}
-		if (!response.ok) return { response, payload: null };
-		return { response, payload: await response.json() };
+		return { response, payload };
 	}
 }
 
@@ -119,7 +135,7 @@ async function postWorkerAdmission(input: {
 	body: string;
 	signal: AbortSignal | undefined;
 	timeoutMs: number;
-}): Promise<Response> {
+}): Promise<WorkerAdmissionAttempt> {
 	const controller = new AbortController();
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let onAbort: (() => void) | null = null;
@@ -140,17 +156,25 @@ async function postWorkerAdmission(input: {
 	});
 	try {
 		return await Promise.race([
-			input.fetchImpl(WORKER_TURNS_ENDPOINT, {
-				method: 'POST',
-				headers: {
-					Accept: 'application/json',
-					'Content-Type': 'application/json'
-				},
-				credentials: 'same-origin',
-				cache: 'no-store',
-				body: input.body,
-				signal: controller.signal
-			}),
+			input
+				.fetchImpl(WORKER_TURNS_ENDPOINT, {
+					method: 'POST',
+					headers: {
+						Accept: 'application/json',
+						'Content-Type': 'application/json'
+					},
+					credentials: 'same-origin',
+					cache: 'no-store',
+					body: input.body,
+					signal: controller.signal
+				})
+				.then(async (response) => ({
+					response,
+					// Headers alone cannot identify an admitted turn. Keep both
+					// body reads inside the deadline and cancellation boundary.
+					payload: response.ok ? await response.json() : null,
+					unknownOutcome: await isUnknownAdmissionOutcome(response)
+				})),
 			deadline,
 			cancelled
 		]);

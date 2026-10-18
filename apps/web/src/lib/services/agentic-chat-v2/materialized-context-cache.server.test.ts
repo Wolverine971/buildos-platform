@@ -1,7 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/materialized-context-cache.server.test.ts
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { FASTCHAT_CONTEXT_CACHE_VERSION, buildFastChatContextCacheEntry } from './context-cache';
+import {
+	FASTCHAT_CONTEXT_CACHE_VERSION,
+	buildFastChatContextCacheEntry,
+	type FastChatPromptContextSnapshot
+} from './context-cache';
 import { resolveMaterializedFastChatContext } from './materialized-context-cache.server';
 
 const NOW_MS = Date.parse('2026-08-30T16:00:00.000Z');
@@ -53,6 +57,7 @@ function storeClient(
 function freshContext(label = 'fresh') {
 	return {
 		contextType: 'project' as const,
+		contextLoadSource: 'rpc' as const,
 		entityId: PROJECT_ID,
 		projectId: PROJECT_ID,
 		projectName: 'Materialized cache project',
@@ -63,7 +68,7 @@ function freshContext(label = 'fresh') {
 function baseParams(params: {
 	source: any;
 	store: any;
-	loadFresh: () => Promise<ReturnType<typeof freshContext>>;
+	loadFresh: () => Promise<FastChatPromptContextSnapshot>;
 }) {
 	return {
 		sourceSupabase: params.source,
@@ -79,6 +84,99 @@ function baseParams(params: {
 }
 
 describe('materialized fast-chat context cache', () => {
+	describe.each([false, true])('degraded snapshots (deferred=%s)', (deferSnapshotWrite) => {
+		it.each([
+			'rpc_error_fallback',
+			'rpc_null_fallback',
+			'fallback',
+			'none',
+			'unknown_cached',
+			undefined
+		] as const)(
+			'never caches a %s load and retries on the next turn',
+			async (contextLoadSource) => {
+				const source = sourceClient(Array(6).fill('project:v1:1'));
+				const store = storeClient();
+				const loadFresh = vi
+					.fn()
+					.mockResolvedValueOnce({ ...freshContext('degraded'), contextLoadSource })
+					.mockResolvedValueOnce(freshContext('recovered'));
+				const params = {
+					...baseParams({ source, store: store.client, loadFresh }),
+					deferSnapshotWrite
+				};
+				const degraded = await resolveMaterializedFastChatContext(params);
+				expect(degraded.invalidationToken).toBeNull();
+				expect(degraded.cache.invalidation_token).toBeNull();
+				expect(degraded.publishSnapshot).toBeUndefined();
+				expect(store.upsert).not.toHaveBeenCalled();
+				const recovered = await resolveMaterializedFastChatContext({
+					...params,
+					sessionCache: degraded.cache
+				});
+				expect(recovered.cacheSource).toBe('fresh_load');
+				expect(recovered.cache.context.data).toEqual({ label: 'recovered' });
+				expect(loadFresh).toHaveBeenCalledTimes(2);
+			}
+		);
+	});
+
+	it.each(['session', 'materialized'])(
+		'rejects an already cached degraded %s snapshot',
+		async (kind) => {
+			const payload = {
+				...freshContext('degraded'),
+				contextLoadSource: 'rpc_error_fallback' as const
+			};
+			const source = sourceClient(['project:v1:1', 'project:v1:1']);
+			const store = storeClient(
+				kind === 'materialized'
+					? {
+							context_cache_version: FASTCHAT_CONTEXT_CACHE_VERSION,
+							invalidation_token: 'project:v1:1',
+							context_payload: payload,
+							context_payload_sha256: sha256Json(payload),
+							expires_at: new Date(NOW_MS + 60_000).toISOString(),
+							created_at: new Date(NOW_MS - 30_000).toISOString()
+						}
+					: null
+			);
+			const loadFresh = vi.fn(async () => freshContext('recovered'));
+			const result = await resolveMaterializedFastChatContext({
+				...baseParams({ source, store: store.client, loadFresh }),
+				sessionCache:
+					kind === 'session'
+						? buildFastChatContextCacheEntry({
+								cacheKey: CACHE_KEY,
+								context: payload,
+								createdAt: new Date(NOW_MS).toISOString(),
+								invalidationToken: 'project:v1:1'
+							})
+						: null
+			});
+			expect(result.cacheSource).toBe('fresh_load');
+			expect(result.cache.context.data).toEqual({ label: 'recovered' });
+		}
+	);
+
+	it('does not cache a degraded reload after a generation change', async () => {
+		const source = sourceClient(['project:v1:1', 'project:v1:2']);
+		const store = storeClient();
+		const loadFresh = vi
+			.fn()
+			.mockResolvedValueOnce(freshContext())
+			.mockResolvedValueOnce({
+				...freshContext('degraded'),
+				contextLoadSource: 'rpc_error_fallback'
+			});
+		const result = await resolveMaterializedFastChatContext(
+			baseParams({ source, store: store.client, loadFresh })
+		);
+		expect(loadFresh).toHaveBeenCalledTimes(2);
+		expect(result.invalidationToken).toBeNull();
+		expect(store.upsert).not.toHaveBeenCalled();
+	});
+
 	it('reuses a fresh session snapshot only when its invalidation token matches', async () => {
 		const source = sourceClient(['project:v1:1']);
 		const store = storeClient();
@@ -103,6 +201,7 @@ describe('materialized fast-chat context cache', () => {
 
 	it('reads a durable snapshot without recomputing and accepts reordered JSON keys', async () => {
 		const payload = {
+			contextLoadSource: 'rpc',
 			projectName: 'Materialized cache project',
 			data: { z: 1, a: 2 },
 			projectId: PROJECT_ID,

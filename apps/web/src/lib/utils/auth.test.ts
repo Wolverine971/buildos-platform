@@ -93,4 +93,18 @@ describe('logout push cleanup', () => {
 		expect(mocks.eq).not.toHaveBeenCalled();
 		expect(mocks.signOut).toHaveBeenCalledTimes(1);
 	});
+
+	it("forgets the installed app's saved Today screen", async () => {
+		vi.stubGlobal('navigator', {});
+		const cacheDelete = vi.fn().mockResolvedValue(true);
+		vi.stubGlobal('caches', {
+			has: vi.fn().mockResolvedValue(true),
+			open: vi.fn().mockResolvedValue({ delete: cacheDelete })
+		});
+
+		await logout();
+
+		expect(cacheDelete).toHaveBeenCalledWith('/__buildos/launch/today-snapshot');
+		expect(mocks.signOut).toHaveBeenCalledTimes(1);
+	});
 });

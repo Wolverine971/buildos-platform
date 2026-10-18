@@ -55,6 +55,60 @@ function execution(
 }
 
 describe('semantic turn contracts', () => {
+	it('fulfills an implicit create after a failed attempt and successful retry', () => {
+		const args = { project_id: 'project-1', title: 'Send proofs' };
+		const failed = execution(
+			'create_onto_task',
+			args,
+			{ success: false, error: 'Write failed' },
+			'attempt'
+		);
+		const saved = execution(
+			'create_onto_task',
+			args,
+			{
+				result: { task: { id: 'task-1', title: args.title } }
+			},
+			'retry'
+		);
+		const toolExecutions = [failed, saved];
+		const ledger = buildWriteLedger(toolExecutions);
+		expect(ledger[0]?.entityId).toBeUndefined();
+		expect(ledger[1]?.entityId).toBe('task-1');
+		const contract = deriveImplicitTurnContract(toolExecutions);
+		expect(contract?.outcomes).toHaveLength(1);
+		expect(contract?.outcomes[0]?.targetIds).toEqual([]);
+		expect(resolveTurnContractOutcome({ contract, toolExecutions }).fulfilled).toBe(true);
+		expect(
+			resolveTurnContractOutcome({
+				contract: deriveImplicitTurnContract([failed]),
+				toolExecutions: [failed]
+			}).fulfilled
+		).toBe(false);
+	});
+
+	it('does not invent create identities from any argument, including an entity id', () => {
+		const writes = [
+			execution('create_onto_task', {
+				task_id: 'claimed-id',
+				project_id: 'project-1',
+				title: 'Task'
+			}),
+			execution('create_task_document', { task_id: 'parent-task', title: 'Notes' })
+		];
+		for (const entry of buildWriteLedger(writes)) expect(entry.entityId).toBeUndefined();
+	});
+
+	it.each([
+		['update_onto_task', { project_id: 'project-1', document_id: 'doc-1' }, undefined],
+		['update_onto_task', { task_id: 'task-1', project_id: 'project-1' }, 'task-1'],
+		['update_onto_table_rows', { table_id: 'table-1', project_id: 'project-1' }, 'table-1'],
+		['unlink_onto_edge', { edge_id: 'edge-1', project_id: 'project-1' }, 'edge-1']
+	])('takes only the entity identity for %s', (name, args, expected) => {
+		const [entry] = buildWriteLedger([execution(name, args)]);
+		expect(entry?.entityId).toBe(expected);
+	});
+
 	it('does not credit a shared-document confirmation preview as a saved edit', () => {
 		const args = { document_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', title: 'New title' };
 		const preview = execution('update_onto_document', args, {

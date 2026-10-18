@@ -124,7 +124,7 @@ describe('processChatClassificationJob Libri extraction', () => {
 		const sessionSelect = chain({
 			eq: vi.fn(() => sessionSelect),
 			maybeSingle: vi.fn().mockImplementation(async () => ({
-				data: sessionData,
+				data: structuredClone(sessionData),
 				error: null
 			}))
 		});
@@ -148,10 +148,29 @@ describe('processChatClassificationJob Libri extraction', () => {
 		});
 
 		const sessionUpdate = vi.fn((payload: Record<string, unknown>) => {
-			capturedSessionUpdate = payload;
-			return {
-				eq: vi.fn().mockResolvedValue({ error: null })
+			const filters: Array<[string, unknown]> = [];
+			const query = {
+				eq(key: string, value: unknown) {
+					filters.push([key, value]);
+					return query;
+				},
+				is(key: string, value: unknown) {
+					filters.push([key, value]);
+					return query;
+				},
+				then(resolve: (value: unknown) => unknown) {
+					if (
+						filters.every(
+							([key, value]) => key === 'user_id' || sessionData[key] === value
+						)
+					) {
+						capturedSessionUpdate = { ...capturedSessionUpdate, ...payload };
+						Object.assign(sessionData, payload);
+					}
+					return Promise.resolve({ error: null }).then(resolve);
+				}
 			};
+			return query;
 		});
 
 		mockSupabaseFrom.mockImplementation((table: string) => {
@@ -236,33 +255,50 @@ describe('processChatClassificationJob Libri extraction', () => {
 		});
 	});
 
-	// Session-route audit, 2026-10-18: remove `.fails` when promotion compares
-	// the current stored title with the title read before classification began.
-	it.fails(
-		'preserves a manual rename made while classification is awaiting the model',
-		async () => {
-			mockGetJSONResponse.mockImplementationOnce(async () => {
-				// A successful PATCH /api/chat/sessions/[id] commits during the model call.
-				sessionData.title = 'My manually renamed conversation';
-				return {
-					title: 'Automatic classification title',
-					topics: ['planning'],
-					summary: 'A planning conversation.',
-					extracted_entities: { libri_candidates: [] }
-				};
-			});
+	// Regression: promotion compares the current title with the initial read.
+	it.each([null, 'Agent Session'])('promotes an unchanged placeholder %s', async (title) => {
+		sessionData.title = title;
+		const result = await processChatClassificationJob({
+			id: 'job-promotion',
+			data: { sessionId: 'session-1', userId: 'user-1' }
+		} as any);
+		expect(result.success).toBe(true);
+		expect(sessionData.title).toBe('Libri Resource Planning');
+	});
+	it('preserves a manual title in the no-message fallback', async () => {
+		sessionData.title = 'My title';
+		messageData = [];
+		const result = await processChatClassificationJob({
+			id: 'job-empty',
+			data: { sessionId: 'session-1', userId: 'user-1' }
+		} as any);
+		expect(result.success).toBe(true);
+		expect(sessionData.title).toBe('My title');
+		expect(sessionData.auto_title).toBeTruthy();
+		expect(mockGetJSONResponse).not.toHaveBeenCalled();
+	});
+	it('preserves a manual rename made while classification is awaiting the model', async () => {
+		mockGetJSONResponse.mockImplementationOnce(async () => {
+			// A successful PATCH /api/chat/sessions/[id] commits during the model call.
+			sessionData.title = 'My manually renamed conversation';
+			return {
+				title: 'Automatic classification title',
+				topics: ['planning'],
+				summary: 'A planning conversation.',
+				extracted_entities: { libri_candidates: [] }
+			};
+		});
 
-			const result = await processChatClassificationJob({
-				id: 'job-rename-race',
-				data: { sessionId: 'session-1', userId: 'user-1' }
-			} as any);
+		const result = await processChatClassificationJob({
+			id: 'job-rename-race',
+			data: { sessionId: 'session-1', userId: 'user-1' }
+		} as any);
 
-			expect(result.success).toBe(true);
-			expect({ ...sessionData, ...capturedSessionUpdate }.title).toBe(
-				'My manually renamed conversation'
-			);
-		}
-	);
+		expect(result.success).toBe(true);
+		expect({ ...sessionData, ...capturedSessionUpdate }.title).toBe(
+			'My manually renamed conversation'
+		);
+	});
 
 	it('saves extracted_entities before recording disabled Libri handoff status', async () => {
 		const result = await processChatClassificationJob({

@@ -1,4 +1,5 @@
 // apps/web/src/lib/components/agent/agent-chat-session.ts
+import type { RestoreHistoryWindow } from '$lib/types/chat-session-restore';
 import { buildWebNavigateTrailFromResult } from './agent-chat-tool-progress';
 import type { PendingChangeViewV1 } from '$lib/services/agentic-chat-v2/pending-change';
 import {
@@ -48,7 +49,7 @@ import {
 import { describeToolOutcome } from './agent-chat-tool-outcome';
 import { isInternalAgenticControlToolName } from './agent-chat.constants';
 import { formatElapsedDuration } from './agent-chat-formatters';
-import { timelineItemsFromMessages } from './agent-chat-timeline';
+import { timelineItemsFromMessages, restoreTimelineToolDetails } from './agent-chat-timeline';
 import { buildFreshnessCardUIMessage, isFreshnessCardMetadata } from './freshness-radar-card';
 import {
 	buildDocumentChangeCards,
@@ -110,6 +111,7 @@ type LoadedChatSessionPayload = {
 	turnRuns?: LoadedChatTurnRun[];
 	timelineItems?: AgentTimelineItem[];
 	truncated?: boolean;
+	historyWindow?: Partial<Pick<RestoreHistoryWindow, 'toolsTruncated' | 'eventsTruncated'>>;
 	voiceNotes?: VoiceNote[];
 	pendingChange?: PendingChangeViewV1 | null;
 };
@@ -1183,6 +1185,7 @@ export function buildAgentChatSessionSnapshot(
 		turnRuns: loadedTurnRuns = [],
 		timelineItems: loadedTimelineItems,
 		truncated,
+		historyWindow,
 		voiceNotes = [],
 		pendingChange = null
 	} = payload;
@@ -1207,16 +1210,25 @@ export function buildAgentChatSessionSnapshot(
 
 	let messages = mapLoadedMessagesToUI(loadedMessages, toolExecutions, turnRuns);
 	const timelineItems = Array.isArray(loadedTimelineItems)
-		? loadedTimelineItems
+		? restoreTimelineToolDetails(loadedTimelineItems, toolExecutions ?? [])
 		: timelineItemsFromMessages(session.id, messages);
-	const activeTurnRun = turnRuns.find((run) => run.status === 'running') ?? null;
+	const activeTurnRun =
+		turnRuns.find((run) => run.status === 'queued' || run.status === 'running') ?? null;
 
-	if (truncated) {
+	const activityTruncated = historyWindow?.toolsTruncated || historyWindow?.eventsTruncated;
+	if (truncated || activityTruncated) {
 		const truncationNote: UIMessage = {
 			id: crypto.randomUUID(),
 			type: 'activity',
 			role: 'system' as ChatRole,
-			content: 'Note: This conversation has been truncated to show the most recent messages.',
+			content: [
+				truncated
+					? 'Note: This conversation has been truncated to show the most recent messages.'
+					: null,
+				activityTruncated ? 'Some older activity details are omitted from this view.' : null
+			]
+				.filter(Boolean)
+				.join(' '),
 			timestamp: new Date(),
 			created_at: new Date().toISOString()
 		};

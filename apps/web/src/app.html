@@ -58,6 +58,18 @@
 		<meta name="apple-touch-fullscreen" content="yes" />
 
 		<!--
+			Installed app only: full page loads crossfade, so the launch screen served by
+			static/sw.js (Brain Bolt or saved Today) fades into the live page instead of cutting.
+		-->
+		<style>
+			@media (display-mode: standalone) {
+				@view-transition {
+					navigation: auto;
+				}
+			}
+		</style>
+
+		<!--
 			Recover before the application hooks load. Keep Vite's preload event
 			uncanceled so the original import failure reaches SvelteKit; canceling it
 			turns the missing route module into an unhelpful `undefined.universal` error.

@@ -257,11 +257,18 @@ function resolveSearchTerm(args: { query?: string; search?: string }): string {
 	return prepareAgenticChatSearchTerm(args.query ?? args.search);
 }
 
+// These are explicit operators in the model-authored query syntax, not English conjunctions.
+const SEARCH_OR_OPERATOR = /\s+OR\s+|\s*\|\s*/;
+
+function hasExplicitSearchOr(term: string): boolean {
+	return SEARCH_OR_OPERATOR.test(term);
+}
+
 function expandBooleanSearchTerms(term: string): string[] {
 	const normalized = term.trim();
 	if (!normalized) return [];
 
-	const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
+	const hasExplicitOr = hasExplicitSearchOr(normalized);
 	if (!hasExplicitOr) {
 		return [normalized];
 	}
@@ -269,7 +276,7 @@ function expandBooleanSearchTerms(term: string): string[] {
 	return Array.from(
 		new Set(
 			normalized
-				.split(/\s+\bOR\b\s+|\s*\|\s*/i)
+				.split(SEARCH_OR_OPERATOR)
 				.map((part) => prepareAgenticChatSearchTerm(part))
 				.filter(Boolean)
 		)
@@ -340,7 +347,7 @@ export function applyKeywordSearch<Q>(query: Q, term: string, fields: string[]):
 	const normalized = term.trim();
 	if (!normalized) return query;
 
-	const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
+	const hasExplicitOr = hasExplicitSearchOr(normalized);
 	if (hasExplicitOr) {
 		const filter = buildMultiTermSearchFilter(normalized, fields);
 		return filter ? (query as any).or(filter) : query;
@@ -376,7 +383,7 @@ function matchesKeywordSearch(
 	if (!haystack.trim()) return false;
 
 	const normalized = term.trim();
-	const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
+	const hasExplicitOr = hasExplicitSearchOr(normalized);
 	if (hasExplicitOr) {
 		const alternatives = expandBooleanSearchTerms(normalized).map((part) => part.toLowerCase());
 		return alternatives.some((alt) => alt && haystack.includes(alt));
@@ -392,7 +399,7 @@ function matchesKeywordSearch(
 function isPlainSearchTermTooBroad(term: string): boolean {
 	const normalized = term.trim();
 	if (!normalized) return true;
-	const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
+	const hasExplicitOr = hasExplicitSearchOr(normalized);
 	if (hasExplicitOr) return false;
 	return tokenizeForKeywordSearch(normalized).length === 0;
 }
@@ -630,6 +637,7 @@ async function loadCompactProjectDetails(
 			)
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(8),
 		supabase
@@ -649,6 +657,7 @@ async function loadCompactProjectDetails(
 			})
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(8),
 		supabase
@@ -681,6 +690,7 @@ async function loadCompactProjectDetails(
 			)
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('due_at', { ascending: true, nullsFirst: false })
 			.limit(8),
 		supabase
@@ -701,6 +711,7 @@ async function loadCompactProjectDetails(
 			.eq('project_id', projectId)
 			.eq('type_key', 'document.context.project')
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(20),
 		// Tasker 122: parent and readable sub-projects; never fails the read.

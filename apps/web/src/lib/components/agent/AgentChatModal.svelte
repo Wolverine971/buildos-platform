@@ -70,7 +70,6 @@
 	import type {
 		ChatSession,
 		ChatContextType,
-		ChatRole,
 		AgentSSEMessage,
 		AgenticChatReconcileAssistantMessageV1,
 		ContextUsageSnapshot,
@@ -292,6 +291,7 @@
 		resetConversation: (options) => resetConversation(options),
 		clearMessages: () => {
 			messages = [];
+			currentThinkingBlockId = null;
 		},
 		stopVoice: () => voice.stop(),
 		isStreaming: () => stream.isStreaming,
@@ -545,7 +545,9 @@
 		captureReceipts = [];
 		if (!browser || !supabaseClient || !sid) return;
 		const client = supabaseClient;
+		let disposed = false;
 		const apply = (row: unknown) => {
+			if (disposed || currentSessionId !== sid) return;
 			const record = row as Partial<CaptureReceiptRow> | null;
 			if (record?.session_id !== sid) return;
 			const receipt = buildCaptureReceiptUIMessage(record);
@@ -574,6 +576,7 @@
 				for (const row of data ?? []) apply(row);
 			});
 		return () => {
+			disposed = true;
 			void client.removeChannel(channel);
 		};
 	});
@@ -744,11 +747,8 @@
 	let showExistingImagePicker = $state(false);
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
-	let currentAssistantMessageIndex = $state<number | null>(null);
 	/** Display-only live answer preview for the streaming worker turn; never stored on a message. */
 	let workerLivePreview = $state<{ turnRunId: string; text: string } | null>(null);
-	let pendingAssistantText = '';
-	let pendingAssistantTextFlushHandle: number | null = null;
 	let currentThinkingBlockId = $state<string | null>(null);
 	const pendingToolResults = new Map<string, PendingToolStatus>(); // Tool results that arrive before tool_call
 	const processedToolCallIds = new Set<string>();
@@ -883,7 +883,6 @@
 				)
 		},
 		assistant: {
-			flushText: () => flushAssistantText(),
 			finalizeMessage: () => finalizeAssistantMessage()
 		},
 		clearPendingToolState: () => {
@@ -905,10 +904,15 @@
 				// inside admission. The response carries the row; older servers
 				// don't, so fall back to one snapshot read.
 				const projectId = reviewProjectId;
+				const runId = stream.activeStreamRunId;
 				const session =
 					admittedSessionFromResponse(value, descriptor.handle.sessionId) ??
 					(await loadAgentChatSessionSnapshot(descriptor.handle.sessionId)).session;
-				if (currentSession || projectId !== reviewProjectId) {
+				if (
+					currentSession ||
+					projectId !== reviewProjectId ||
+					runId !== stream.activeStreamRunId
+				) {
 					throw new Error('Chat focus changed while the turn was starting');
 				}
 				hydrateSessionFromEvent(session);
@@ -1412,7 +1416,6 @@
 		stream.error = null;
 		userHasScrolled = false;
 		currentAssistantMessageId = null;
-		currentAssistantMessageIndex = null;
 		currentThinkingBlockId = null;
 		stream.reset();
 		// Reset ontology state
@@ -1610,6 +1613,7 @@
 		try {
 			const response = await fetch(`/api/onto/braindumps/${braindumpId}`);
 			const result = await response.json().catch(() => null);
+			if (currentSession?.id !== session.id) return;
 			if (response.ok && result?.success && result?.data?.braindump) {
 				brainDumpContext = result.data.braindump as AgentBrainDumpContext;
 			}
@@ -2195,6 +2199,8 @@
 		clearSessionRefreshTimeout();
 		activeRestoredTurnRunId = null;
 		invalidateSessionLoads();
+		// A first send may still be awaiting admission with no session to release.
+		stream.reset();
 		workerAdoption?.clear('teardown');
 		void workerRealtime?.stop();
 		voice.cleanup();
@@ -2495,9 +2501,6 @@
 		},
 		hydrateSessionFromEvent,
 		attachServerTiming: (runId, timing) => stream.attachServerTiming(runId, timing),
-		bufferAssistantText,
-		flushAssistantText,
-		markAssistantCompletion,
 		finalizeAssistantMessage,
 		pendingToolResults,
 		processedToolCallIds,
@@ -2562,6 +2565,7 @@
 	}
 
 	function logFocusActivity(action: string, focus: ProjectFocus | null) {
+		if (!stream.isTurnBusy || !currentThinkingBlockId) return;
 		const details = focus ? describeFocus(focus) : 'project workspace';
 		addActivityToThinkingBlock(`${action}: ${details}`, 'context_shift', {
 			focus
@@ -2758,7 +2762,6 @@
 		executionGeneration: number;
 		status: ChatTurnStatusV1;
 	}) {
-		flushAssistantText();
 		pendingToolResults.clear();
 		processedToolCallIds.clear();
 		processedToolResultIds.clear();
@@ -2799,7 +2802,6 @@
 		assistantMessage: AgenticChatReconcileAssistantMessageV1 | null;
 		status: ChatTurnStatusV1;
 	}) {
-		flushAssistantText();
 		const existingIndex = messages.findIndex(
 			(message) =>
 				message.role === 'assistant' &&
@@ -2808,7 +2810,6 @@
 		);
 		if (existingIndex < 0 && !input.text && !input.assistantMessage) {
 			currentAssistantMessageId = `worker-assistant:${input.handle.turnRunId}`;
-			currentAssistantMessageIndex = null;
 			return;
 		}
 
@@ -2844,16 +2845,13 @@
 			const nextMessages = [...messages];
 			nextMessages[existingIndex] = nextMessage;
 			messages = nextMessages;
-			currentAssistantMessageIndex = existingIndex;
 		} else {
-			currentAssistantMessageIndex = messages.length;
 			messages = [...messages, nextMessage];
 		}
 		if (input.text) noteWorkerTextStarted();
 		currentAssistantMessageId = messageId;
 		if (input.status !== 'queued' && input.status !== 'running') {
 			currentAssistantMessageId = null;
-			currentAssistantMessageIndex = null;
 		}
 	}
 
@@ -2874,7 +2872,6 @@
 			nextMessages[existingIndex] = { ...existing, content: existing.content + input.text };
 			messages = nextMessages;
 			currentAssistantMessageId = existing.id;
-			currentAssistantMessageIndex = existingIndex;
 			if (input.text) noteWorkerTextStarted();
 			return;
 		}
@@ -2909,16 +2906,13 @@
 			const existing = existingIndex >= 0 ? messages[existingIndex] : null;
 			if (existing && existing.id === placeholderId && !existing.content) {
 				messages = messages.filter((_, index) => index !== existingIndex);
-				currentAssistantMessageIndex = null;
 			}
 			return;
 		}
 		if (existingIndex >= 0) {
 			currentAssistantMessageId = messages[existingIndex]!.id;
-			currentAssistantMessageIndex = existingIndex;
 		} else {
 			const createdAt = new Date().toISOString();
-			currentAssistantMessageIndex = messages.length;
 			messages = [
 				...messages,
 				{
@@ -3014,7 +3008,6 @@
 		failureCode: string | null;
 	}) {
 		currentAssistantMessageId = null;
-		currentAssistantMessageIndex = null;
 		const finalizedThinking = finalizeWorkerThinkingBlock(
 			messages,
 			input.handle.turnRunId,
@@ -3042,121 +3035,6 @@
 		);
 	}
 
-	function normalizeMessageContent(value: unknown): string {
-		if (typeof value === 'string') {
-			return value;
-		}
-
-		if (value == null) {
-			return '';
-		}
-
-		if (Array.isArray(value)) {
-			return value.map((segment) => normalizeMessageContent(segment)).join('');
-		}
-
-		if (typeof value === 'object') {
-			const maybeText = (value as { text?: unknown }).text;
-			if (typeof maybeText === 'string') {
-				return maybeText;
-			}
-
-			const maybeContent = (value as { content?: unknown }).content;
-			if (typeof maybeContent === 'string') {
-				return maybeContent;
-			}
-
-			try {
-				return JSON.stringify(value, null, 2);
-			} catch {
-				return String(value);
-			}
-		}
-
-		return String(value);
-	}
-
-	function scheduleAssistantTextFlush() {
-		if (pendingAssistantTextFlushHandle !== null) return;
-		if (!browser) {
-			flushAssistantText();
-			return;
-		}
-
-		const raf =
-			typeof requestAnimationFrame === 'function'
-				? requestAnimationFrame
-				: (cb: FrameRequestCallback) => setTimeout(cb, 16);
-
-		pendingAssistantTextFlushHandle = raf(() => {
-			pendingAssistantTextFlushHandle = null;
-			flushAssistantText();
-		});
-	}
-
-	function bufferAssistantText(content: unknown) {
-		const normalized = normalizeMessageContent(content);
-		if (!normalized) return;
-		pendingAssistantText += normalized;
-		scheduleAssistantTextFlush();
-	}
-
-	function flushAssistantText() {
-		if (
-			pendingAssistantTextFlushHandle !== null &&
-			typeof cancelAnimationFrame === 'function'
-		) {
-			cancelAnimationFrame(pendingAssistantTextFlushHandle);
-			pendingAssistantTextFlushHandle = null;
-		}
-		if (!pendingAssistantText) return;
-		const payload = pendingAssistantText;
-		pendingAssistantText = '';
-		addOrUpdateAssistantMessage(payload);
-	}
-
-	function addOrUpdateAssistantMessage(content: unknown) {
-		const normalizedContent = normalizeMessageContent(content);
-
-		if (currentAssistantMessageId && currentAssistantMessageIndex !== null) {
-			const existing = messages[currentAssistantMessageIndex];
-			if (existing?.id === currentAssistantMessageId) {
-				const nextMessages = [...messages];
-				nextMessages[currentAssistantMessageIndex] = {
-					...existing,
-					content: existing.content + normalizedContent
-				};
-				messages = nextMessages;
-				return;
-			}
-		}
-
-		if (currentAssistantMessageId) {
-			let updatedIndex: number | null = null;
-			messages = messages.map((m, idx) => {
-				if (m.id === currentAssistantMessageId) {
-					updatedIndex = idx;
-					return { ...m, content: m.content + normalizedContent };
-				}
-				return m;
-			});
-			currentAssistantMessageIndex = updatedIndex;
-		} else {
-			// Create new assistant message
-			currentAssistantMessageId = crypto.randomUUID();
-			const assistantMessage: UIMessage = {
-				id: currentAssistantMessageId,
-				type: 'assistant',
-				role: 'assistant' as ChatRole,
-				content: normalizedContent,
-				timestamp: new Date(),
-				created_at: new Date().toISOString()
-			};
-			currentAssistantMessageIndex = messages.length;
-			messages = [...messages, assistantMessage];
-		}
-	}
-
 	// Screen-reader announcement for completed replies. The streaming bubble
 	// itself is deliberately NOT a live region (per-token announcements are
 	// unusable); instead a single polite note fires when a reply finishes.
@@ -3175,47 +3053,12 @@
 			announceForScreenReader('BuildOS replied');
 		}
 		currentAssistantMessageId = null;
-		currentAssistantMessageIndex = null;
-	}
-
-	function markAssistantCompletion(
-		completionStatus?: 'completed' | 'completed_degraded' | 'failed',
-		answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
-	) {
-		if (!currentAssistantMessageId || completionStatus !== 'completed_degraded') return;
-		messages = messages.map((msg) =>
-			msg.id === currentAssistantMessageId
-				? {
-						...msg,
-						metadata: {
-							...msg.metadata,
-							completion_status: completionStatus,
-							answer_source: answerSource ?? 'deterministic_evidence',
-							...(answerSource === 'partial_model'
-								? {
-										interrupted: true,
-										interrupted_reason: 'synthesis_recovered'
-									}
-								: {})
-						}
-					}
-				: msg
-		);
 	}
 
 	onDestroy(() => {
 		// Clear all pending timeouts to prevent memory leaks
 		pendingTimeouts.forEach((id) => clearTimeout(id));
 		pendingTimeouts.clear();
-
-		if (
-			pendingAssistantTextFlushHandle !== null &&
-			typeof cancelAnimationFrame === 'function'
-		) {
-			cancelAnimationFrame(pendingAssistantTextFlushHandle);
-			pendingAssistantTextFlushHandle = null;
-		}
-		pendingAssistantText = '';
 
 		releaseSessionResources('destroy');
 	});

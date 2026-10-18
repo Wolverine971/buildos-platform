@@ -26516,6 +26516,14 @@ export type Database = {
         }[]
       }
       generate_short_code: { Args: { length?: number }; Returns: string }
+      get_chat_restore_attachments_v1: {
+        Args: { p_session_id: string; p_message_ids: string[] }
+        Returns: Json
+      }
+      get_chat_session_restore_v1: {
+        Args: { p_session_id: string; p_user_id: string }
+        Returns: Json
+      }
       get_admin_dashboard_chat_usage: {
         Args: { end_ts: string; start_ts: string }
         Returns: {

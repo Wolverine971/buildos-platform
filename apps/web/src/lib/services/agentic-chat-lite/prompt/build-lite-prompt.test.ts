@@ -2777,6 +2777,131 @@ describe('AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 context rendering', () => {
 
 	// F117: every date the prompt renders is the user's civil date, and the
 	// relative day is computed in the same zone, not from UTC day arithmetic.
+	it.each(['digest', 'loaded work', 'intelligence'])(
+		'renders UTC-midnight instants and all-day events correctly in %s',
+		(mode) => {
+			const events = [
+				{
+					id: 'timed',
+					title: 'Evening call',
+					start_at: '2026-04-15T00:00:00Z',
+					all_day: false
+				},
+				{
+					id: 'all-day',
+					title: 'Launch day',
+					start_at: '2026-04-15T00:00:00Z',
+					all_day: true,
+					timezone: 'UTC'
+				}
+			];
+			const intelligence = {
+				generated_at: '2026-04-14T23:30:00Z',
+				counts: {
+					overdue_total: 0,
+					due_soon_total: 0,
+					upcoming_total: 2,
+					recent_change_total: 0
+				},
+				overdue_or_due_soon: [],
+				upcoming_work:
+					mode === 'intelligence'
+						? events.map((event) => ({
+								kind: 'event',
+								id: event.id,
+								title: event.title,
+								date_kind: 'start_at',
+								date: event.start_at,
+								days_delta: 1,
+								bucket: 'upcoming'
+							}))
+						: [],
+				recent_changes: [],
+				project_summaries: [],
+				maybe_more: {}
+			};
+			const content = loadedContext(
+				buildProjectEnvelope({
+					events,
+					...(mode === 'digest' ? {} : { project_intelligence: intelligence })
+				})
+			);
+			if (mode === 'loaded work') {
+				expect(content).toContain('"Evening call", starts 2026-04-14 (today)');
+				expect(content).toContain('"Launch day", starts 2026-04-15 (tomorrow)');
+			} else {
+				expect(content).toContain(
+					'2026-04-14: event (event_id: timed) "Evening call", today'
+				);
+				expect(content).toContain(
+					'2026-04-15: event (event_id: all-day) "Launch day", tomorrow'
+				);
+			}
+		}
+	);
+
+	it('treats the current clock and recent-change timestamps as instants even at UTC midnight', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			timezone: 'America/New_York',
+			now: '2026-04-15T00:00:00Z',
+			data: {
+				project: { id: 'project-1', name: 'Launch' },
+				events: [
+					{
+						id: 'later',
+						title: 'Later tonight',
+						start_at: '2026-04-15T01:00:00Z',
+						all_day: false
+					}
+				],
+				documents: [{ id: 'changed', title: 'Notes', updated_at: '2026-04-15T00:00:00Z' }]
+			}
+		});
+		const content = loadedContext(envelope);
+		expect(content).toContain('2026-04-14: event (event_id: later) "Later tonight", today');
+		expect(content).toContain('2026-04-14: document (document_id: changed) "Notes", today');
+	});
+
+	it.each([false, true])('uses all_day=%s for the focused event date', (all_day) => {
+		const envelope = buildProjectEnvelope({
+			focus_entity_full: {
+				id: 'focus-event',
+				title: 'Focus event',
+				start_at: '2026-04-15T00:00:00Z',
+				all_day,
+				timezone: 'UTC'
+			}
+		});
+		expect(envelope.systemPrompt).toContain(
+			`Focus entity date: ${all_day ? '2026-04-15' : '2026-04-14'}`
+		);
+	});
+
+	it.each([undefined, 'Asia/Tokyo'])(
+		'keeps all-day dates in a positive-offset zone (event zone=%s)',
+		(timezone) => {
+			const content = loadedContext(
+				buildProjectEnvelope(
+					{
+						events: [
+							{
+								id: 'tokyo',
+								title: 'Tokyo day',
+								all_day: true,
+								timezone,
+								start_at: '2026-04-14T15:00:00Z'
+							}
+						]
+					},
+					'Asia/Tokyo'
+				)
+			);
+			expect(content).toContain('2026-04-15: event (event_id: tokyo) "Tokyo day", today');
+		}
+	);
+
 	it('renders loaded-context dates and relative days in the user timezone', () => {
 		const data = {
 			tasks: [

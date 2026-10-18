@@ -598,3 +598,39 @@ describe('agent-chat-timeline live memo', () => {
 		expect(items.map((item) => item.messageId)).toEqual(['early', 'mid', 'late']);
 	});
 });
+
+describe('restore transport projection', () => {
+	it('rebuilds expandable JSON from the single tool payload with identical redaction', async () => {
+		const { restoreTimelineToolDetails } = await import('./agent-chat-timeline');
+		const executions = [
+			{
+				id: 'small',
+				created_at: '2026-10-18T00:00:00Z',
+				tool_name: 'list_onto_tasks',
+				arguments: { project_id: 'p' },
+				result: { tasks: [{ id: 't', title: 'Plan' }] },
+				affected_entities: [{ kind: 'task', id: 't', operation: 'created', title: 'Plan' }],
+				success: true
+			},
+			{
+				id: 'sensitive',
+				created_at: '2026-10-18T00:00:00Z',
+				tool_name: 'tool',
+				arguments: { api_key: 'secret' },
+				result: { access_token: 'secret' },
+				success: true
+			}
+		];
+		const full = buildAgentTimeline({ sessionId: 's', toolExecutions: executions });
+		const compact = buildAgentTimeline({
+			sessionId: 's',
+			toolExecutions: executions,
+			includeToolDetails: false
+		});
+		expect(
+			compact.every((item) => !item.tool?.argsFullJson && !item.tool?.resultFullJson)
+		).toBe(true);
+		expect(JSON.stringify(compact).length).toBeLessThan(JSON.stringify(full).length);
+		expect(restoreTimelineToolDetails(compact, executions)).toEqual(full);
+	});
+});

@@ -248,7 +248,14 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 	const focus = buildFocus(input);
 	const dataSummary = summarizeData(input.data);
 	const nowIso = normalizeTime(input.now);
-	const clock: PromptClock = { nowIso, timezone: input.timezone ?? DEFAULT_TIMEZONE };
+	const clock: PromptClock = {
+		nowIso,
+		timezone: input.timezone ?? DEFAULT_TIMEZONE,
+		allDayEventTimezones: collectAllDayEventTimezones(
+			input.data,
+			input.timezone ?? DEFAULT_TIMEZONE
+		)
+	};
 	const projectDigest = buildProjectDigest(input.data, focus, clock);
 	const timeline = buildTimelineSummary(input, focus, dataSummary, projectDigest, clock);
 	const retrievalMap = buildRetrievalMap(input.retrievalMap ?? null, focus, dataSummary);
@@ -1021,8 +1028,13 @@ function describeFocusEntityDetail(
 			`- Focus entity status: ${[state, typeKey ? `type ${typeKey}` : null].filter(Boolean).join(', ')}`
 		);
 	}
-	const date = parseDate(entity.due_at ?? entity.target_date ?? entity.start_at);
-	if (date) lines.push(`- Focus entity date: ${formatLocalDate(date, timezone)}`);
+	const dateKey = ['due_at', 'target_date', 'start_at'].find((key) => entity[key] != null);
+	const date = dateKey ? parseDate(entity[dateKey]) : null;
+	if (date) {
+		lines.push(
+			`- Focus entity date: ${formatLocalDate(date, timezone, dateOnlyEventTimezone(entity, dateKey, timezone))}`
+		);
+	}
 	const description = truncateText(
 		stringValue(entity.description),
 		FOCUS_ENTITY_DESCRIPTION_MAX_CHARS
@@ -2091,7 +2103,7 @@ function buildProjectDigest(
 	const dueSoonItems = futureItems.filter((item) => {
 		const date = item.date ? parseDate(item.date) : null;
 		if (!date) return false;
-		return civilDayDelta(clock, date) <= 14;
+		return civilDayDelta(clock, date, item.dateOnlyTimezone) <= 14;
 	});
 	// Due-soon items render under "Overdue or due soon"; the upcoming list holds
 	// the rest so each id renders once on the digest path too.
@@ -2292,9 +2304,9 @@ function formatLoadedWorkLine(
 	const title = truncateText(titleForRecord(record, spec.kind), 160) ?? spec.kind;
 	const state = stringValue(record.state_key);
 	const priority = numberValue(record.priority);
-	const date = parseDate(
-		spec.dateKeys.map((key) => record[key]).find((value) => parseDate(value))
-	);
+	const dateKey = spec.dateKeys.find((key) => parseDate(record[key]));
+	const date = dateKey ? parseDate(record[dateKey]) : null;
+	const dateOnlyTimezone = dateOnlyEventTimezone(record, dateKey, clock.timezone);
 	const description = truncateText(
 		stringValue(record.description),
 		PROMPT_WORK_ITEM_DESCRIPTION_MAX_CHARS
@@ -2303,7 +2315,7 @@ function formatLoadedWorkLine(
 		state,
 		priority !== null ? `priority ${priority}` : null,
 		date
-			? `${spec.dateLabel} ${formatLocalDate(date, clock.timezone)} (${describeRelativeDay(clock, date)})`
+			? `${spec.dateLabel} ${formatLocalDate(date, clock.timezone, dateOnlyTimezone)} (${describeRelativeDay(clock, date, dateOnlyTimezone)})`
 			: null
 	].filter(Boolean);
 	return `${spec.kind}${id ? ` (${spec.kind}_id: ${id})` : ''} "${title}"${
@@ -3328,7 +3340,19 @@ function dedupeRecentChanges(changes: FastChatRecentChange[]): FastChatRecentCha
  */
 function signalDayDelta(signal: FastChatWorkSignal, clock: PromptClock): number {
 	const date = parseDate(signal.date);
-	return date ? civilDayDelta(clock, date) : signal.days_delta;
+	return date
+		? civilDayDelta(clock, date, dateOnlySignalTimezone(signal, clock))
+		: signal.days_delta;
+}
+
+function dateOnlySignalTimezone(
+	signal: FastChatWorkSignal,
+	clock: PromptClock
+): string | undefined {
+	return signal.kind === 'event' &&
+		(signal.date_kind === 'start_at' || signal.date_kind === 'end_at')
+		? clock.allDayEventTimezones?.get(signal.id)
+		: undefined;
 }
 
 function formatSignalRelative(daysDelta: number): string {
@@ -3347,7 +3371,9 @@ function formatWorkSignalLines(
 	const includeBucket = options.includeBucket ?? true;
 	return signals.map((signal) => {
 		const date = parseDate(signal.date);
-		const dateText = date ? formatLocalDate(date, clock.timezone) : signal.date;
+		const dateText = date
+			? formatLocalDate(date, clock.timezone, dateOnlySignalTimezone(signal, clock))
+			: signal.date;
 		const bucketLabel =
 			signal.bucket === 'overdue'
 				? 'Overdue'
@@ -3506,10 +3532,13 @@ function formatDigestEntity(
 ): string {
 	const title = truncateText(titleForRecord(record, kind), 140) ?? kind;
 	const state = stringValue(record.state_key);
-	const dueDate = parseDate(
-		record.due_at ?? record.target_date ?? record.end_at ?? record.start_at
+	const dateKey = ['due_at', 'target_date', 'end_at', 'start_at'].find(
+		(key) => record[key] != null
 	);
-	const due = dueDate ? `, dated ${formatLocalDate(dueDate, timezone)}` : '';
+	const dueDate = dateKey ? parseDate(record[dateKey]) : null;
+	const due = dueDate
+		? `, dated ${formatLocalDate(dueDate, timezone, dateOnlyEventTimezone(record, dateKey, timezone))}`
+		: '';
 	const priority = numberValue(record.priority);
 	const priorityText = priority !== null ? `, priority ${priority}` : '';
 	const details = state
@@ -3519,10 +3548,12 @@ function formatDigestEntity(
 	return `"${title}"${detailText ? ` (${detailText})` : ''}`;
 }
 
+type DatedTimelineItem = LitePromptTimelineItem & { dateOnlyTimezone?: string };
+
 function collectDatedWorkItems(
 	data: Record<string, unknown>,
 	clock: PromptClock
-): LitePromptTimelineItem[] {
+): DatedTimelineItem[] {
 	const specs: Array<[string, string, string[]]> = [
 		['goal', 'goals', ['target_date']],
 		['milestone', 'milestones', ['due_at']],
@@ -3530,7 +3561,7 @@ function collectDatedWorkItems(
 		['event', 'events', ['start_at', 'end_at']],
 		['project', 'project', ['end_at', 'start_at']]
 	];
-	const items: LitePromptTimelineItem[] = [];
+	const items: DatedTimelineItem[] = [];
 	const loadedTaskTitleKeys = collectLoadedTaskTitleKeys(data);
 
 	for (const [kind, key, dateKeys] of specs) {
@@ -3539,18 +3570,18 @@ function collectDatedWorkItems(
 		for (const record of records) {
 			if (!isOpenRecord(record)) continue;
 			if (kind === 'event' && isShadowDueEventRecord(record, loadedTaskTitleKeys)) continue;
-			const dateValue = dateKeys
-				.map((dateKey) => record[dateKey])
-				.find((value) => parseDate(value));
-			const date = parseDate(dateValue);
+			const dateKey = dateKeys.find((key) => parseDate(record[key]));
+			const date = dateKey ? parseDate(record[dateKey]) : null;
 			if (!date) continue;
+			const dateOnlyTimezone = dateOnlyEventTimezone(record, dateKey, clock.timezone);
 			items.push({
 				kind,
 				id: stringValue(record.id),
 				title: truncateText(titleForRecord(record, kind), 160) ?? kind,
 				state: stringValue(record.state_key),
 				date: date.toISOString(),
-				relative: describeRelativeDay(clock, date)
+				dateOnlyTimezone,
+				relative: describeRelativeDay(clock, date, dateOnlyTimezone)
 			});
 		}
 	}
@@ -3638,9 +3669,9 @@ function formatTimelineItems(items: LitePromptTimelineItem[], timezone: string):
 
 // Digest-path lines carry the id like the intelligence lines do (F114), so the
 // loaded-work block and the JSON index can skip what is already here.
-function formatTimelineItem(item: LitePromptTimelineItem, timezone: string): string {
+function formatTimelineItem(item: DatedTimelineItem, timezone: string): string {
 	const date = item.date ? parseDate(item.date) : null;
-	const dateText = date ? formatLocalDate(date, timezone) : 'no date';
+	const dateText = date ? formatLocalDate(date, timezone, item.dateOnlyTimezone) : 'no date';
 	const idText = item.id ? ` (${item.kind}_id: ${item.id})` : '';
 	const state = item.state ? `, ${item.state}` : '';
 	const relative = item.relative ? `, ${item.relative}` : '';
@@ -3655,7 +3686,40 @@ function formatTimelineItem(item: LitePromptTimelineItem, timezone: string): str
  * ~20:00 US time) and not from the SQL days_delta (UTC day arithmetic).
  * Invalid zones fall back to UTC the way describeLocalClock does.
  */
-type PromptClock = { nowIso: string; timezone: string };
+type PromptClock = {
+	nowIso: string;
+	timezone: string;
+	/** Signals omit event metadata; recover its civil-date zone from loaded records. */
+	allDayEventTimezones?: ReadonlyMap<string, string>;
+};
+
+function dateOnlyEventTimezone(
+	record: Record<string, unknown>,
+	field: string | undefined,
+	fallbackTimezone: string
+): string | undefined {
+	return record.all_day === true && (field === 'start_at' || field === 'end_at')
+		? (stringValue(record.timezone) ?? fallbackTimezone)
+		: undefined;
+}
+
+function collectAllDayEventTimezones(
+	data: LitePromptInput['data'],
+	fallbackTimezone: string
+): ReadonlyMap<string, string> {
+	const timezones = new Map<string, string>();
+	if (!isRecord(data)) return timezones;
+	for (const bundle of [data, ...recordsForKey(data, 'projects')]) {
+		const records = recordsForKey(bundle, 'events');
+		if (isRecord(bundle.focus_entity_full)) records.push(bundle.focus_entity_full);
+		for (const record of records) {
+			const id = stringValue(record.id);
+			const timezone = dateOnlyEventTimezone(record, 'start_at', fallbackTimezone);
+			if (id && timezone) timezones.set(id, timezone);
+		}
+	}
+	return timezones;
+}
 
 const civilDateFormatters = new Map<string, Intl.DateTimeFormat>();
 
@@ -3685,38 +3749,32 @@ function resolveCivilDateFormatter(timezone: string): Intl.DateTimeFormat {
 	return formatter;
 }
 
-function formatLocalDate(date: Date, timezone: string): string {
-	// A value at exactly UTC midnight is a date-only store (milestone due dates,
-	// task start_at from the editor), not an instant; rendering it in a western
-	// zone would show the previous day. Keep the stored civil date for those and
-	// use the user's zone for real instants (review of
-	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F117).
-	if (
-		date.getUTCHours() === 0 &&
-		date.getUTCMinutes() === 0 &&
-		date.getUTCSeconds() === 0 &&
-		date.getUTCMilliseconds() === 0
-	) {
-		return date.toISOString().slice(0, 10);
-	}
-	const parts = resolveCivilDateFormatter(timezone).formatToParts(date);
+function formatLocalDate(date: Date, timezone: string, dateOnlyTimezone?: string): string {
+	// Stored all-day events are instants at the start of a day in their own
+	// timezone. Their metadata selects that civil date; all other timestamps
+	// use the viewer's zone, including instants exactly at UTC midnight.
+	const parts = resolveCivilDateFormatter(dateOnlyTimezone ?? timezone).formatToParts(date);
 	const value = (type: Intl.DateTimeFormatPartTypes) =>
 		parts.find((part) => part.type === type)?.value ?? '';
 	return `${value('year').padStart(4, '0')}-${value('month')}-${value('day')}`;
 }
 
-function civilDayNumber(date: Date, timezone: string): number {
-	const [year, month, day] = formatLocalDate(date, timezone).split('-').map(Number);
+function civilDayNumber(date: Date, timezone: string, dateOnlyTimezone?: string): number {
+	const [year, month, day] = formatLocalDate(date, timezone, dateOnlyTimezone)
+		.split('-')
+		.map(Number);
 	return Math.floor(Date.UTC(year ?? 1970, (month ?? 1) - 1, day ?? 1) / DAY_MS);
 }
 
-function civilDayDelta(clock: PromptClock, date: Date): number {
+function civilDayDelta(clock: PromptClock, date: Date, dateOnlyTimezone?: string): number {
 	const now = parseDate(clock.nowIso) ?? new Date();
-	return civilDayNumber(date, clock.timezone) - civilDayNumber(now, clock.timezone);
+	return (
+		civilDayNumber(date, clock.timezone, dateOnlyTimezone) - civilDayNumber(now, clock.timezone)
+	);
 }
 
-function describeRelativeDay(clock: PromptClock, date: Date): string {
-	return formatSignalRelative(civilDayDelta(clock, date));
+function describeRelativeDay(clock: PromptClock, date: Date, dateOnlyTimezone?: string): string {
+	return formatSignalRelative(civilDayDelta(clock, date, dateOnlyTimezone));
 }
 
 function truncateText(value: string | null, maxChars = 240): string | null {

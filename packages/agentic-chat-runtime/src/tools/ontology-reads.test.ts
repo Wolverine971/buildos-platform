@@ -2,14 +2,50 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
 import {
+	applyKeywordSearch,
 	getDocumentOutline,
 	getOntoDocumentDetails,
 	listOntoDocuments,
 	listOntoTasks,
-	readDocumentSection
+	readDocumentSection,
+	searchOntoProjects
 } from './ontology-reads';
 
 const PROJECT_ID = '40000000-0000-4000-8000-000000000004';
+
+describe('explicit search operators', () => {
+	it.each(['or', 'Or', 'oR'])('keeps %s in a plain keyword query', (operator) => {
+		const query = { or: vi.fn().mockReturnThis() };
+		applyKeywordSearch(query, `notes from Sam ${operator} Alex meeting`, ['title']);
+		expect(query.or.mock.calls).toEqual([
+			['title.ilike."%notes%"'],
+			['title.ilike."%Sam%"'],
+			['title.ilike."%Alex%"'],
+			['title.ilike."%meeting%"']
+		]);
+	});
+
+	it.each(['Sam OR Alex', 'Sam|Alex'])('preserves explicit alternatives: %s', (term) => {
+		const query = { or: vi.fn().mockReturnThis() };
+		applyKeywordSearch(query, term, ['title']);
+		expect(query.or.mock.calls).toEqual([['title.ilike."%Sam%",title.ilike."%Alex%"']]);
+	});
+
+	it('uses the same case-sensitive operators for in-memory project matching', async () => {
+		const context = contextWith([]);
+		vi.mocked(context.access.resolveProjectSummaries).mockResolvedValue([
+			{ id: 'both', name: 'Sam Alex' },
+			{ id: 'sam', name: 'Sam' },
+			{ id: 'alex', name: 'Alex' }
+		] as never);
+		const plain = await searchOntoProjects(context, { query: 'Sam or Alex' });
+		expect(plain.projects.map((project: any) => project.id)).toEqual(['both']);
+		const explicit = await searchOntoProjects(context, { query: 'Sam OR Alex' });
+		expect(explicit.projects).toHaveLength(3);
+		const broad = await searchOntoProjects(context, { query: 'a or an' });
+		expect(broad.projects).toEqual([]);
+	});
+});
 
 function makeBuilder(rows: unknown[]) {
 	const builder: Record<string, any> = {};

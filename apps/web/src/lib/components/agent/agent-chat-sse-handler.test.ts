@@ -273,7 +273,7 @@ describe('resolveDoneFinalization', () => {
 	});
 
 	it('maps a queued-turn timeout to a failure with its own copy, not a Stop', () => {
-		expect(resolveDoneFinalization('queue_timeout', 'failed')).toEqual({
+		expect(resolveDoneFinalization('queue_timeout')).toEqual({
 			status: 'error',
 			note: "Couldn't start this reply",
 			error: "BuildOS couldn't start this reply because the chat service was unavailable. Please send it again."
@@ -292,25 +292,6 @@ describe('resolveDoneFinalization', () => {
 		expect(resolveDoneFinalization('synthesis_empty')).toEqual({});
 		expect(resolveDoneFinalization('supervisor_question')).toEqual({});
 		expect(resolveDoneFinalization(undefined)).toEqual({});
-	});
-
-	it('marks degraded partial and no-evidence completions as interrupted', () => {
-		expect(
-			resolveDoneFinalization('synthesis_recovered', 'completed_degraded', 'partial_model')
-		).toEqual({ status: 'interrupted', note: 'Recovered partial response' });
-		expect(
-			resolveDoneFinalization('synthesis_empty', 'completed_degraded', 'precise_no_evidence')
-		).toEqual({ status: 'interrupted', note: 'No safe evidence summary available' });
-	});
-
-	it('treats deterministic degraded recovery as a completed answer', () => {
-		expect(
-			resolveDoneFinalization(
-				'synthesis_recovered',
-				'completed_degraded',
-				'deterministic_evidence'
-			)
-		).toEqual({ status: 'completed', note: 'Recovered from collected evidence' });
 	});
 });
 
@@ -366,25 +347,23 @@ describe('turn phase activity', () => {
 		});
 	});
 
-	it('finalizes the phase activity with degraded completion details', () => {
+	it('finalizes the phase activity when the worker finishes', () => {
 		const activities = upsertTurnPhaseActivity([], {
 			type: 'turn_phase',
-			turn_phase: 'recovering',
-			message: 'Recovering.'
+			turn_phase: 'planning',
+			message: 'Planning.'
 		});
 		const finalized = finalizeTurnPhaseActivity(activities, {
 			type: 'done',
-			completion_status: 'completed_degraded',
-			answer_source: 'partial_model'
+			completion_status: 'completed'
 		});
 
 		expect(finalized).toHaveLength(1);
 		expect(finalized[0]).toMatchObject({
-			content: 'Recovered a partial response after synthesis stalled',
+			content: 'Response ready',
 			status: 'completed',
 			metadata: {
-				completionStatus: 'completed_degraded',
-				answerSource: 'partial_model'
+				completionStatus: 'completed'
 			}
 		});
 	});
@@ -417,13 +396,7 @@ interface HandlerHarness {
 		finalize: Array<{ status?: string; note?: string }>;
 		hydrateSessionFromEvent: number;
 		attachServerTiming: number;
-		flushAssistantText: number;
-		bufferAssistantText: string[];
 		finalizeAssistantMessage: number;
-		markAssistantCompletion: Array<{
-			completionStatus?: string;
-			answerSource?: string;
-		}>;
 		addCreatedEntitiesMessage: CreatedEntityRef[][];
 		addDocumentChangesMessage: DocumentChangeReceipt[][];
 		addTableChangesMessage: TableChangeReceipt[][];
@@ -477,10 +450,7 @@ function createHarness(
 		finalize: [],
 		hydrateSessionFromEvent: 0,
 		attachServerTiming: 0,
-		flushAssistantText: 0,
-		bufferAssistantText: [],
 		finalizeAssistantMessage: 0,
-		markAssistantCompletion: [],
 		addCreatedEntitiesMessage: [],
 		addDocumentChangesMessage: [],
 		addTableChangesMessage: [],
@@ -603,15 +573,6 @@ function createHarness(
 		attachServerTiming: () => {
 			calls.attachServerTiming += 1;
 		},
-		bufferAssistantText: (content) => {
-			calls.bufferAssistantText.push(String(content));
-		},
-		flushAssistantText: () => {
-			calls.flushAssistantText += 1;
-		},
-		markAssistantCompletion: (completionStatus, answerSource) => {
-			calls.markAssistantCompletion.push({ completionStatus, answerSource });
-		},
 		finalizeAssistantMessage: () => {
 			calls.finalizeAssistantMessage += 1;
 		},
@@ -644,20 +605,6 @@ function createHarness(
 }
 
 describe('createSSEHandler — routing', () => {
-	it('flushes buffered text before any non-text event', () => {
-		const h = createHarness();
-		h.handler({ type: 'timing', timing: { total_ms: 5 } as any });
-		expect(h.calls.flushAssistantText).toBe(1);
-	});
-
-	it('does NOT flush buffered text for text_delta', () => {
-		const h = createHarness();
-		h.handler({ type: 'text_delta', content: 'hi' });
-		h.handler({ type: 'text_delta', content: 'there' });
-		expect(h.calls.flushAssistantText).toBe(0);
-		expect(h.calls.bufferAssistantText).toEqual(['hi', 'there']);
-	});
-
 	it('hydrates a session when event.session is present', () => {
 		const h = createHarness();
 		h.handler({ type: 'session', session: { id: 'sess-1' } as ChatSession });
@@ -1216,24 +1163,6 @@ describe('createSSEHandler — done + error', () => {
 		expect(h.snapshot.error ?? null).toBeNull();
 	});
 
-	it('marks a degraded partial assistant response and thinking block as interrupted', () => {
-		const h = createHarness();
-		h.handler({
-			type: 'done',
-			finished_reason: 'synthesis_recovered',
-			completion_status: 'completed_degraded',
-			answer_source: 'partial_model'
-		});
-
-		expect(h.calls.markAssistantCompletion).toEqual([
-			{ completionStatus: 'completed_degraded', answerSource: 'partial_model' }
-		]);
-		expect(h.calls.finalize[0]).toEqual({
-			status: 'interrupted',
-			note: 'Recovered partial response'
-		});
-	});
-
 	it('flushes created entity chips on normal done', () => {
 		const h = createHarness();
 		h.nextActivityUpdateResult({
@@ -1527,9 +1456,8 @@ describe('createSSEHandler — table change cards', () => {
 });
 
 describe('createSSEHandler — context_selection', () => {
-	it('is a silent receipt: nothing renders and assistant text is flushed as for any event', () => {
+	it('is a silent receipt: nothing renders', () => {
 		const h = createHarness();
-		h.handler({ type: 'text_delta', content: 'partial' });
 		h.handler({
 			type: 'context_selection',
 			version: 1,
@@ -1537,7 +1465,6 @@ describe('createSSEHandler — context_selection', () => {
 			visible: true,
 			items: []
 		} as any);
-		expect(h.calls.flushAssistantText).toBe(1);
 		expect(h.calls.addCreatedEntitiesMessage).toHaveLength(0);
 		expect(h.snapshot.error).toBeNull();
 	});

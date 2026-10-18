@@ -374,6 +374,36 @@ describe('Agentic Chat worker admission retry', () => {
 		expect(result.payload).toEqual(duplicate);
 	});
 
+	it('uses one delayed sessionless recovery replay with the original serialized body', async () => {
+		const mutableCommand = { ...command };
+		const fetchImpl = vi
+			.fn<typeof fetch>()
+			.mockRejectedValueOnce(new TypeError('lost response'))
+			.mockImplementationOnce(async () => {
+				mutableCommand.message = 'a newer draft';
+				return errorResponse(503, 'WORKER_ADMISSION_UNAVAILABLE');
+			})
+			.mockResolvedValueOnce(Response.json(duplicate));
+		const result = await requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command: mutableCommand,
+			retryDelayMs: 1
+		});
+		expect(fetchImpl).toHaveBeenCalledTimes(3);
+		expect(new Set(fetchImpl.mock.calls.map((call) => call[1]?.body)).size).toBe(1);
+		expect(result.payload).toEqual(duplicate);
+	});
+
+	it('bounds sessionless recovery to three attempts when all requests time out', async () => {
+		vi.useFakeTimers();
+		const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(() => {}));
+		const pending = requestAgenticChatWorkerAdmission({ fetchImpl, command });
+		const outcome = expect(pending).rejects.toBeInstanceOf(AgenticChatAdmissionTimeoutError);
+		await vi.advanceTimersByTimeAsync(30_000 + 750 + 30_000 + 2_000 + 30_000);
+		await outcome;
+		expect(fetchImpl).toHaveBeenCalledTimes(3);
+	});
+
 	it('times out a silent attempt after 30 s, then retries once', async () => {
 		vi.useFakeTimers();
 		const fetchImpl = vi
@@ -393,15 +423,80 @@ describe('Agentic Chat worker admission retry', () => {
 		expect(fetchImpl).toHaveBeenCalledTimes(2);
 	});
 
-	it('gives up after one retry and reports the timeout', async () => {
+	it('gives up after one retry for a known session and reports the timeout', async () => {
 		vi.useFakeTimers();
 		const fetchImpl = vi.fn<typeof fetch>(() => new Promise<Response>(() => {}));
 
-		const pending = requestAgenticChatWorkerAdmission({ fetchImpl, command });
+		const pending = requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command: { ...command, sessionId: SESSION_ID }
+		});
 		const outcome = expect(pending).rejects.toBeInstanceOf(AgenticChatAdmissionTimeoutError);
 		await vi.advanceTimersByTimeAsync(30_000 + 750 + 30_000);
 		await outcome;
 		expect(fetchImpl).toHaveBeenCalledTimes(2);
+	});
+
+	it.each([202, 503])(
+		'times out a stalled %s admission body after headers arrive',
+		async (status) => {
+			vi.useFakeTimers();
+			let releaseBody!: (value: unknown) => void;
+			const response = new Response(null, { status });
+			vi.spyOn(response, 'json').mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						releaseBody = resolve;
+					})
+			);
+			vi.spyOn(response, 'clone').mockReturnValue(response);
+			const fetchImpl = vi
+				.fn<typeof fetch>()
+				.mockResolvedValueOnce(response)
+				.mockResolvedValueOnce(Response.json(duplicate));
+			const pending = requestAgenticChatWorkerAdmission({ fetchImpl, command });
+			await vi.advanceTimersByTimeAsync(30_750);
+			try {
+				expect(fetchImpl).toHaveBeenCalledTimes(2);
+				await expect(pending).resolves.toMatchObject({ payload: duplicate });
+				expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+			} finally {
+				releaseBody(duplicate);
+				await vi.runAllTimersAsync();
+				await pending;
+			}
+		}
+	);
+
+	it('aborts while a successful admission body is still loading', async () => {
+		vi.useFakeTimers();
+		let releaseBody!: (value: unknown) => void;
+		const response = new Response(null, { status: 202 });
+		vi.spyOn(response, 'json').mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					releaseBody = resolve;
+				})
+		);
+		const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response);
+		const controller = new AbortController();
+		const pending = requestAgenticChatWorkerAdmission({
+			fetchImpl,
+			command,
+			signal: controller.signal
+		});
+		const settled = vi.fn();
+		const outcome = pending.then(settled, settled);
+		await vi.advanceTimersByTimeAsync(1);
+		controller.abort();
+		await vi.advanceTimersByTimeAsync(1);
+		try {
+			expect(settled).toHaveBeenCalledWith(expect.objectContaining({ name: 'AbortError' }));
+			expect(fetchImpl).toHaveBeenCalledOnce();
+		} finally {
+			releaseBody(duplicate);
+			await outcome;
+		}
 	});
 
 	it.each([
@@ -453,7 +548,7 @@ describe('Agentic Chat worker admission retry', () => {
 
 		const result = await requestAgenticChatWorkerAdmission({
 			fetchImpl,
-			command,
+			command: { ...command, sessionId: SESSION_ID },
 			retryDelayMs: 1
 		});
 

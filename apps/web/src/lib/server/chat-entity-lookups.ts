@@ -98,35 +98,53 @@ export async function fetchEntityLookups(params: {
 	const lookups = new Map<string, EntityLookupValue>();
 	const supabase = params.supabase as any;
 
+	const jobs: Array<() => Promise<void>> = [];
 	for (const [kind, ids] of params.idsByKind) {
 		const config = ENTITY_LOOKUP_CONFIG[kind];
 		const idList = Array.from(ids).filter(Boolean);
 		if (!config || idList.length === 0) continue;
 
-		const { data, error } = await supabase
-			.from(config.table)
-			.select(config.select)
-			.in('id', idList)
-			.limit(idList.length);
+		// Keep PostgREST URLs bounded, even for a full 400-message window.
+		for (let offset = 0; offset < idList.length; offset += 100) {
+			const batch = idList.slice(offset, offset + 100);
+			jobs.push(async () => {
+				const { data, error } = await supabase
+					.from(config.table)
+					.select(config.select)
+					.in('id', batch)
+					.limit(batch.length);
 
-		if (error) {
-			console.warn(`Failed to enrich ${kind} timeline refs`, error);
-			continue;
-		}
+				if (error) {
+					console.warn(`Failed to enrich ${kind} timeline refs`, error);
+					return;
+				}
 
-		for (const row of (data ?? []) as Record<string, unknown>[]) {
-			const id = readString(row.id);
-			if (!id) continue;
-			const projectId =
-				kind === 'project' ? id : config.hasProjectId ? readString(row.project_id) : null;
-			lookups.set(entityLookupKey(kind, id), {
-				kind,
-				id,
-				title: displayTitleFromRow(row, config.titleFields),
-				projectId
+				for (const row of (data ?? []) as Record<string, unknown>[]) {
+					const id = readString(row.id);
+					if (!id) continue;
+					const projectId =
+						kind === 'project'
+							? id
+							: config.hasProjectId
+								? readString(row.project_id)
+								: null;
+					lookups.set(entityLookupKey(kind, id), {
+						kind,
+						id,
+						title: displayTitleFromRow(row, config.titleFields),
+						projectId
+					});
+				}
 			});
 		}
 	}
+	// At most three title queries at once, independent of the number of kinds.
+	let next = 0;
+	await Promise.all(
+		Array.from({ length: Math.min(3, jobs.length) }, async () => {
+			while (next < jobs.length) await jobs[next++]!();
+		})
+	);
 
 	return lookups;
 }

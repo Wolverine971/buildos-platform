@@ -75,6 +75,7 @@ export async function resolveMaterializedFastChatContext(params: {
 	const sessionCacheCandidate =
 		params.sessionCache?.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
 		params.sessionCache.key === params.cacheKey &&
+		params.sessionCache.context.contextLoadSource === 'rpc' &&
 		isFastChatContextCacheFresh(params.sessionCache, nowMs)
 			? params.sessionCache
 			: null;
@@ -112,7 +113,7 @@ export async function resolveMaterializedFastChatContext(params: {
 			materialized.context_payload_sha256 === sha256Json(materialized.context_payload)
 		) {
 			const normalized = normalizeFastChatContextSnapshot(materialized.context_payload);
-			if (normalized) {
+			if (normalized?.contextLoadSource === 'rpc') {
 				return {
 					cache: buildFastChatContextCacheEntry({
 						cacheKey: params.cacheKey,
@@ -129,6 +130,16 @@ export async function resolveMaterializedFastChatContext(params: {
 	}
 
 	let context = await params.loadFresh();
+	if (context.contextLoadSource !== 'rpc') {
+		// A fallback can be incomplete or empty. Use it for this turn, but give
+		// neither cache a reusable generation so the next turn retries the load.
+		return resolveFreshLoadWithDeferredPublish({
+			...params,
+			context,
+			initialToken: null,
+			nowMs
+		});
+	}
 	if (params.deferSnapshotWrite) {
 		return resolveFreshLoadWithDeferredPublish({ ...params, context, initialToken, nowMs });
 	}
@@ -145,6 +156,8 @@ export async function resolveMaterializedFastChatContext(params: {
 		}
 		finalToken = tokenAfterLoad;
 	}
+	// The generation-change reload above can itself degrade.
+	if (context.contextLoadSource !== 'rpc') finalToken = null;
 
 	const materializedAt = new Date(nowMs).toISOString();
 	const cache = buildFastChatContextCacheEntry({

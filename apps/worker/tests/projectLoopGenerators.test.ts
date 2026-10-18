@@ -74,6 +74,18 @@ const PAIR_1_2 = [
 ];
 
 describe('project loop generators', () => {
+	it('caps output tokens on detector requests', async () => {
+		const { llm, getJSONResponse } = makeTrackedLlm({ suggestions: [] });
+		await generateTaskConflicts({
+			candidatePairs: PAIR_1_2,
+			llm,
+			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+		expect(getJSONResponse).toHaveBeenCalledWith(expect.objectContaining({ maxTokens: 4096 }));
+	});
+
 	it('passes project loop attribution to suggestion LLM calls', async () => {
 		const { llm, getJSONResponse } = makeTrackedLlm({ suggestions: [] });
 		const controller = new AbortController();

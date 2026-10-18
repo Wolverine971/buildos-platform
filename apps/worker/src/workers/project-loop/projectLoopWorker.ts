@@ -36,7 +36,7 @@ import {
 } from '../../config/projectLoops';
 import { logWorkerError } from '../../lib/errorLogger';
 import { PermanentQueueError, classifyQueueError } from '../../lib/queueErrors';
-import { queueConfig } from '../../config/queueConfig';
+import { queueConfig, resolveWorkerTimeout } from '../../config/queueConfig';
 import { captureWorkerEvent } from '../../lib/posthog';
 import {
 	type LoopContext,
@@ -651,19 +651,6 @@ async function failRun(
 	if (error) {
 		console.error(
 			`[ProjectLoops] Failed to persist failed status for run ${runId}: ${error.message}`
-		);
-	}
-}
-
-async function failQueuedRun(runId: string, message: string): Promise<void> {
-	const { error } = await supabase
-		.from('project_loop_runs')
-		.update({ status: 'failed', error_message: message, finished_at: nowIso() })
-		.eq('id', runId)
-		.eq('status', 'queued');
-	if (error) {
-		console.error(
-			`[ProjectLoops] Failed to persist failed status for queued run ${runId}: ${error.message}`
 		);
 	}
 }
@@ -2264,6 +2251,7 @@ async function synthesizeCompleteAuditPacket(params: {
 	chatSessionId?: string | null;
 	runId: string;
 	auditId: string;
+	signal?: AbortSignal;
 	onUsage: (event: UsageEvent) => Promise<void>;
 }): Promise<AuditSynthesisResult> {
 	let costUsd = 0;
@@ -2355,14 +2343,17 @@ async function synthesizeCompleteAuditPacket(params: {
 				project_loop_generator: 'project_audit_synthesis',
 				onto_project_id: params.ctx.projectId
 			},
+			signal: params.signal,
 			onUsage
 		});
+		params.signal?.throwIfAborted();
 		return {
 			packet: applyCompleteAuditSynthesis(params.packet, raw?.audit, evidenceCatalog),
 			modelUsed: COMPLETE_AUDIT_SYNTHESIS_MODEL_USED,
 			costUsd
 		};
 	} catch (error) {
+		if (params.signal?.aborted) throw params.signal.reason;
 		return {
 			packet: params.packet,
 			modelUsed: COMPLETE_AUDIT_DETERMINISTIC_MODEL_USED,
@@ -2705,6 +2696,43 @@ async function supersedeOlderReadyAudits(params: {
 	return { supersededAuditCount: oldAuditIds.length, supersededSuggestionCount };
 }
 
+// A retry may inherit a running row after SIGKILL or a failed abort cleanup.
+// Never take a live claim or a run assigned to a different queue job.
+async function claimLoopRun(runId: string, queueJobId: string, startedAt: string) {
+	const payload = { status: 'running' as const, started_at: startedAt, queue_job_id: queueJobId };
+	const queued = await supabase
+		.from('project_loop_runs')
+		.update(payload)
+		.eq('id', runId)
+		.eq('status', 'queued')
+		.select('*')
+		.maybeSingle();
+	if (queued.error || queued.data) return queued;
+	return supabase
+		.from('project_loop_runs')
+		.update(payload)
+		.eq('id', runId)
+		.eq('status', 'running')
+		.eq('queue_job_id', queueJobId)
+		.lt(
+			'started_at',
+			new Date(Date.now() - resolveWorkerTimeout('buildos_project_loop')).toISOString()
+		)
+		.select('*')
+		.maybeSingle();
+}
+
+async function requeueInterruptedLoopRun(runId: string, queueJobId: string, startedAt: string) {
+	const { error } = await supabase
+		.from('project_loop_runs')
+		.update({ status: 'queued', started_at: null, finished_at: null })
+		.eq('id', runId)
+		.eq('status', 'running')
+		.eq('queue_job_id', queueJobId)
+		.eq('started_at', startedAt);
+	if (error) throw new Error(`Failed to requeue interrupted loop run: ${error.message}`);
+}
+
 async function processCompleteProjectAuditJob(
 	job: ProcessingJob<ProjectLoopJobMetadata>
 ): Promise<{ success: boolean; runId?: string; auditId?: string; skipped?: boolean }> {
@@ -2715,9 +2743,13 @@ async function processCompleteProjectAuditJob(
 
 	await job.log(`Complete project audit started for project ${projectId} (audit ${auditId})`);
 
+	const claimStartedAt = nowIso();
+	let ownsAudit = false;
+	let ownsRun = false;
+	let completingReadyAudit = false;
 	try {
-		const claimStartedAt = nowIso();
-		const { data: claimedAudit, error: claimAuditError } = await supabase
+		job.signal.throwIfAborted();
+		let { data: claimedAudit, error: claimAuditError } = await supabase
 			.from('project_audits')
 			.update({ status: 'running', started_at: claimStartedAt })
 			.eq('id', auditId)
@@ -2725,23 +2757,100 @@ async function processCompleteProjectAuditJob(
 			.eq('status', 'queued')
 			.select('id')
 			.maybeSingle();
+		if (!claimAuditError && !claimedAudit) {
+			// Audits link to the queue through their run; no audit schema change is needed.
+			const { data: pairedRun, error: pairedError } = await supabase
+				.from('project_loop_runs')
+				.select('id, status, started_at')
+				.eq('id', runId)
+				.eq('queue_job_id', job.id)
+				.in('status', ['queued', 'running'])
+				.maybeSingle();
+			if (pairedError)
+				throw new Error(`Failed to load audit retry owner: ${pairedError.message}`);
+			if (pairedRun) {
+				const { data: readyAudit, error: readyError } = await supabase
+					.from('project_audits')
+					.select('summary, generated_suggestion_count, cost_usd, finished_at')
+					.eq('id', auditId)
+					.eq('loop_run_id', runId)
+					.eq('status', 'ready')
+					.maybeSingle();
+				if (readyError)
+					throw new Error(`Failed to load persisted audit: ${readyError.message}`);
+				if (readyAudit) {
+					completingReadyAudit = true;
+					// The packet survived, but shutdown may have interrupted the paired run update.
+					job.signal.throwIfAborted();
+					const { error: finishError } = await supabase
+						.from('project_loop_runs')
+						.update({
+							status: 'completed',
+							summary: readyAudit.summary,
+							suggestion_count: readyAudit.generated_suggestion_count,
+							cost_usd: readyAudit.cost_usd,
+							finished_at: readyAudit.finished_at ?? nowIso()
+						})
+						.eq('id', runId)
+						.eq('queue_job_id', job.id)
+						.in('status', ['queued', 'running']);
+					if (finishError)
+						throw new Error(
+							`Failed to complete persisted audit run: ${finishError.message}`
+						);
+					try {
+						await syncInboxItemForProjectAudit({ supabase, auditId });
+					} catch (syncError) {
+						console.warn(
+							`[ProjectAudits] Failed to sync recovered audit ${auditId}:`,
+							syncError
+						);
+					}
+					return { success: true, runId, auditId };
+				}
+				const retryBefore = Date.now() - resolveWorkerTimeout('buildos_project_loop');
+				if (
+					pairedRun.status === 'running' &&
+					!(pairedRun.started_at && Date.parse(pairedRun.started_at) < retryBefore)
+				) {
+					return { success: true, runId, auditId, skipped: true };
+				}
+				const retry = await supabase
+					.from('project_audits')
+					.update({ status: 'running', started_at: claimStartedAt })
+					.eq('id', auditId)
+					.eq('loop_run_id', runId)
+					.eq('status', 'running')
+					.lt(
+						'started_at',
+						new Date(
+							Date.now() - resolveWorkerTimeout('buildos_project_loop')
+						).toISOString()
+					)
+					.select('id')
+					.maybeSingle();
+				claimedAudit = retry.data;
+				claimAuditError = retry.error;
+			}
+		}
+
 		if (claimAuditError) {
 			throw new Error(`Failed to claim project audit: ${claimAuditError.message}`);
 		}
 		if (!claimedAudit) {
 			const message = `Project audit ${auditId} was not queued for run ${runId}; skipping duplicate execution.`;
 			await job.log(message);
-			await failQueuedRun(runId, message);
 			return { success: true, runId, auditId, skipped: true };
 		}
 
-		const { data: claimedRun, error: claimRunError } = await supabase
-			.from('project_loop_runs')
-			.update({ status: 'running', started_at: claimStartedAt })
-			.eq('id', runId)
-			.eq('status', 'queued')
-			.select('*')
-			.maybeSingle();
+		ownsAudit = true;
+		job.signal.throwIfAborted();
+		const { data: claimedRun, error: claimRunError } = await claimLoopRun(
+			runId,
+			job.id,
+			claimStartedAt
+		);
+
 		if (claimRunError) {
 			throw new Error(`Failed to claim audit loop run: ${claimRunError.message}`);
 		}
@@ -2757,12 +2866,15 @@ async function processCompleteProjectAuditJob(
 			});
 			return { success: true, runId, auditId, skipped: true };
 		}
+		ownsRun = true;
+		job.signal.throwIfAborted();
 		const auditRun = claimedRun as Record<string, unknown>;
 		const auditUserId = asString(auditRun.user_id) ?? asString(job.data.userId);
 		const auditChatSessionId = asString(auditRun.chat_session_id);
 
 		await job.updateProgress({ current: 1, total: 6, message: 'Loading audit context' });
 		const ctx = await loadLoopContext(projectId);
+		job.signal.throwIfAborted();
 		if (!ctx) {
 			const message = 'Project inactive or archived; complete audit skipped.';
 			const now = nowIso();
@@ -2784,6 +2896,7 @@ async function processCompleteProjectAuditJob(
 			loadAuditMemory(projectId)
 		]);
 
+		job.signal.throwIfAborted();
 		await job.updateProgress({ current: 3, total: 6, message: 'Building audit packet' });
 		const deterministicPacket = buildCompleteAuditPacket({
 			ctx,
@@ -2798,6 +2911,7 @@ async function processCompleteProjectAuditJob(
 		};
 		if (auditUserId) {
 			await job.updateProgress({ current: 4, total: 6, message: 'Synthesizing audit' });
+			job.signal.throwIfAborted();
 			const llm = new SmartLLMService({
 				supabase,
 				appName: 'BuildOS Complete Project Audit Worker'
@@ -2811,6 +2925,7 @@ async function processCompleteProjectAuditJob(
 				chatSessionId: auditChatSessionId,
 				runId,
 				auditId,
+				signal: job.signal,
 				onUsage: () => Promise.resolve()
 			});
 			if (synthesisResult.warning) {
@@ -2830,6 +2945,7 @@ async function processCompleteProjectAuditJob(
 		} else {
 			await job.log('Complete audit synthesis skipped: missing audit user id.');
 		}
+		job.signal.throwIfAborted();
 		const packet = synthesisResult.packet;
 
 		await job.updateProgress({ current: 5, total: 6, message: 'Creating audit follow-ups' });
@@ -2838,6 +2954,7 @@ async function processCompleteProjectAuditJob(
 			unresolvedCount: 0
 		};
 		try {
+			job.signal.throwIfAborted();
 			childSuggestions = await createAuditChildSuggestions({
 				auditId,
 				runId,
@@ -2858,6 +2975,7 @@ async function processCompleteProjectAuditJob(
 		}
 
 		await job.updateProgress({ current: 6, total: 6, message: 'Persisting audit packet' });
+		job.signal.throwIfAborted();
 		const now = nowIso();
 		const changeSummary = {
 			...packet.changeSummary,
@@ -2892,6 +3010,7 @@ async function processCompleteProjectAuditJob(
 			throw new Error(`Failed to persist project audit: ${auditUpdateError.message}`);
 		}
 
+		job.signal.throwIfAborted();
 		try {
 			// A complete audit is the project's primary manager packet. Retire any
 			// unresolved light-review brief before admitting the audit so the user
@@ -2950,6 +3069,7 @@ async function processCompleteProjectAuditJob(
 			);
 		}
 
+		job.signal.throwIfAborted();
 		const { error: runUpdateError } = await supabase
 			.from('project_loop_runs')
 			.update({
@@ -2989,6 +3109,25 @@ async function processCompleteProjectAuditJob(
 		await job.log(`Complete project audit ${auditId} is ready.`);
 		return { success: true, runId, auditId };
 	} catch (error) {
+		if (job.signal.aborted) {
+			// Fence cleanup by this invocation's start time, never another retry's claim.
+			// Reset the audit first: if that fails, leave the paired run recoverable together.
+			if (ownsAudit) {
+				const { error: resetError } = await supabase
+					.from('project_audits')
+					.update({ status: 'queued', started_at: null, finished_at: null })
+					.eq('id', auditId)
+					.eq('loop_run_id', runId)
+					.eq('status', 'running')
+					.eq('started_at', claimStartedAt);
+				if (resetError)
+					throw new Error(`Failed to requeue interrupted audit: ${resetError.message}`);
+			}
+			if (ownsRun) await requeueInterruptedLoopRun(runId, job.id, claimStartedAt);
+			throw error;
+		}
+		// A stored ready packet must survive transient failures finishing its paired run.
+		if (completingReadyAudit) throw error;
 		const message = error instanceof Error ? error.message : 'Complete project audit failed';
 		await failCompleteAuditState({ runId, auditId, message });
 		await supersedePendingSuggestionsForFailedRun({ runId, message });
@@ -3106,20 +3245,12 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 
 	await job.log(`Project loop started for project ${projectId} (run ${runId})`);
 
-	// Status-fenced claim: atomically move the run from `queued` → `running`.
-	// The stall sweeper (reset_stalled_jobs) can requeue a slow `processing`
-	// queue job and start a SECOND concurrent execution of this same runId. Only
-	// the execution that flips the row out of `queued` owns the work; any other
-	// execution updates 0 rows here and returns without side effects, preventing
-	// duplicate project_suggestions / inbox items. Mirrors agentRunWorker's
-	// conditional-status claim.
-	const { data: claimedRun, error: claimError } = await supabase
-		.from('project_loop_runs')
-		.update({ status: 'running', started_at: nowIso() })
-		.eq('id', runId)
-		.eq('status', 'queued')
-		.select('*')
-		.maybeSingle();
+	const claimStartedAt = nowIso();
+	const { data: claimedRun, error: claimError } = await claimLoopRun(
+		runId,
+		job.id,
+		claimStartedAt
+	);
 
 	if (claimError) throw new Error(`Failed to claim loop run: ${claimError.message}`);
 	if (!claimedRun) {
@@ -3167,6 +3298,10 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 
 	await heartbeat('Loading project context');
 
+	// Usage arrives as calls settle. Cancel peers (and provider retries) immediately;
+	// bounded output tokens also limit the work already in flight before usage arrives.
+	const budgetController = new AbortController();
+	const generationSignal = AbortSignal.any([job.signal, budgetController.signal]);
 	let totalCost = 0;
 	let totalPromptTokens = 0;
 	let totalCompletionTokens = 0;
@@ -3175,6 +3310,9 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 	let rollupPersisted = false;
 	const onUsage = (event: UsageEvent): Promise<void> => {
 		totalCost += event.totalCost ?? 0;
+		if (totalCost >= PROJECT_LOOP_COST_CAP_USD && !budgetController.signal.aborted) {
+			budgetController.abort(new Error('Project loop cost cap reached'));
+		}
 		totalPromptTokens += event.promptTokens ?? 0;
 		totalCompletionTokens += event.completionTokens ?? 0;
 		totalTokens += event.totalTokens ?? 0;
@@ -3233,14 +3371,18 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			await heartbeat(`Generating ${label}`);
 			throwIfOwnershipLost();
 			try {
+				generationSignal.throwIfAborted();
 				const suggestions = await generator();
 				throwIfOwnershipLost();
+				generationSignal.throwIfAborted();
 				return suggestions;
 			} catch (error) {
 				// Once queue ownership is lost, no subsequent detector or durable write
 				// is safe, even when the abort reason happens to contain "timeout".
 				if (job.signal.aborted) throw error;
-				const reason = classifyDetectorFailure(error);
+				const reason = budgetController.signal.aborted
+					? 'cost_cap'
+					: classifyDetectorFailure(error);
 				if (!reason) throw error;
 
 				const detail = getErrorMessage(error);
@@ -3292,7 +3434,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 							userId: run.user_id,
 							chatSessionId: run.chat_session_id ?? undefined,
 							runId,
-							signal: job.signal,
+							signal: generationSignal,
 							onUsage
 						})
 					),
@@ -3303,7 +3445,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 					userId: run.user_id,
 					chatSessionId: run.chat_session_id ?? undefined,
 					runId,
-					signal: job.signal,
+					signal: generationSignal,
 					onUsage
 				})
 			),
@@ -3311,10 +3453,10 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				const evidence = await loadDriftEvidenceForRun({
 					projectId,
 					userId: run.user_id,
-					signal: job.signal,
+					signal: generationSignal,
 					log: (message) => job.log(message)
 				});
-				throwIfOwnershipLost();
+				generationSignal.throwIfAborted();
 				return generateDrift({
 					llm,
 					ctx,
@@ -3323,7 +3465,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 					runId,
 					evidence,
 					radarConcerns,
-					signal: job.signal,
+					signal: generationSignal,
 					onUsage
 				});
 			}),
@@ -3334,10 +3476,10 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 					decider: getProjectLoopJev(),
 					project: { name: ctx.projectName, description: ctx.projectDescription },
 					tasks: ctx.tasks,
-					signal: job.signal,
+					signal: generationSignal,
 					usage: { userId: run.user_id, projectId }
 				});
-				throwIfOwnershipLost();
+				generationSignal.throwIfAborted();
 				if (!candidatePairs) throw new DetectorFinderUnavailableError('task conflicts');
 				return generateTaskConflicts({
 					llm,
@@ -3346,7 +3488,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 					chatSessionId: run.chat_session_id ?? undefined,
 					runId,
 					candidatePairs,
-					signal: job.signal,
+					signal: generationSignal,
 					onUsage
 				});
 			})
@@ -3624,19 +3766,29 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			);
 			synthesis = buildHeuristicCleanupSynthesis({ items, generatedAt: rollupAt });
 		} else {
-			synthesis = await generateProjectCleanupSynthesis({
-				llm,
-				ctx,
-				items,
-				closedThisPass: codeCloses.map((closed) => `"${closed.title}": ${closed.detail}`),
-				userId: run.user_id,
-				chatSessionId: run.chat_session_id ?? undefined,
-				runId,
-				uncheckedLenses,
-				generatedAt: rollupAt,
-				signal: job.signal,
-				onUsage
-			});
+			try {
+				synthesis = await generateProjectCleanupSynthesis({
+					llm,
+					ctx,
+					items,
+					closedThisPass: codeCloses.map(
+						(closed) => `"${closed.title}": ${closed.detail}`
+					),
+					userId: run.user_id,
+					chatSessionId: run.chat_session_id ?? undefined,
+					runId,
+					uncheckedLenses,
+					generatedAt: rollupAt,
+					signal: generationSignal,
+					onUsage
+				});
+				generationSignal.throwIfAborted();
+			} catch (error) {
+				throwIfOwnershipLost();
+				if (!budgetController.signal.aborted) throw error;
+				skippedLenses.push({ label: 'cleanup roll-up', kind: null, reason: 'cost_cap' });
+				synthesis = buildHeuristicCleanupSynthesis({ items, generatedAt: rollupAt });
+			}
 		}
 		throwIfOwnershipLost();
 		const notCheckedThisPass = afterIntegrity.items
@@ -3790,7 +3942,8 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : 'Unknown error';
 		if (job.signal.aborted) {
-			await job.log(`Project loop lost ownership: ${message}`);
+			await requeueInterruptedLoopRun(runId, job.id, claimStartedAt);
+			await job.log(`Project loop interrupted; queued for retry: ${message}`);
 			throw error;
 		}
 		const usageForError = lastUsage as UsageEvent | null;

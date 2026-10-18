@@ -1,6 +1,7 @@
 // apps/web/src/lib/utils/auth.ts
 import { browser } from '$app/environment';
 import { clearOnboardingDrafts } from '$lib/utils/onboarding-state';
+import { clearLaunchSnapshot } from '$lib/utils/pwa-launch';
 
 export const LOGOUT_REDIRECT_STORAGE_KEY = 'buildos:auth:logout-redirect';
 /** Where an explicit sign-out lands: the login screen in its "you're signed out" state. */
@@ -39,6 +40,8 @@ async function deactivateThisDevicePush(supabase: BrowserSupabase): Promise<void
 export async function logout(redirectTo: string = SIGNED_OUT_LOGIN_PATH): Promise<void> {
 	if (!browser) return;
 	clearOnboardingDrafts();
+	// The saved Today screen is this account's data; the next launch must not show it.
+	await clearLaunchSnapshot();
 
 	const { createSupabaseBrowser } = await import('$lib/supabase');
 	const supabase = createSupabaseBrowser();

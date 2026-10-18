@@ -16,291 +16,21 @@ import {
 } from '$lib/components/agent/agent-chat-workflow';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
-	ENTITY_LOOKUP_CONFIG,
-	type EntityLookupValue,
-	entityLookupKey,
-	fetchEntityLookups
-} from '$lib/server/chat-entity-lookups';
-import { loadPendingChangeView } from '$lib/server/chat-pending-change';
-import type {
-	AgentTimelineEntityRef,
-	AgentTimelineItem
-} from '$lib/components/agent/agent-chat.types';
+	loadPendingChangeView,
+	readInScopePendingTurnContract
+} from '$lib/server/chat-pending-change';
+import { loadChatSessionRestore } from '$lib/server/chat-session-restore';
+import {
+	enrichSessionEntities,
+	loadRestoreAttachments,
+	loadRestoreVoiceNotes
+} from '$lib/server/chat-session-enrichment';
 
 const chatSessionTitleUpdateSchema = z
 	.object({
 		title: z.string()
 	})
 	.strict();
-
-type ChatMessageAttachmentRow = {
-	message_id?: string | null;
-	asset_id?: string | null;
-	project_id?: string | null;
-	attachment_kind?: string | null;
-	media_type?: string | null;
-	role?: string | null;
-	display_order?: number | null;
-	metadata?: Record<string, unknown> | null;
-	asset?: Record<string, unknown> | Record<string, unknown>[] | null;
-};
-
-function firstAsset(value: ChatMessageAttachmentRow['asset']): Record<string, unknown> | null {
-	if (!value) return null;
-	return Array.isArray(value) ? (value[0] ?? null) : value;
-}
-
-function readString(value: unknown): string | null {
-	return typeof value === 'string' && value.trim().length > 0 ? value : null;
-}
-
-function readNumber(value: unknown): number | null {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string' && value.trim()) {
-		const parsed = Number(value);
-		return Number.isFinite(parsed) ? parsed : null;
-	}
-	return null;
-}
-
-function compactText(value: unknown, maxChars: number): string | null {
-	if (typeof value !== 'string') return null;
-	const normalized = value.replace(/\s+/g, ' ').trim();
-	if (!normalized) return null;
-	return normalized.length <= maxChars
-		? normalized
-		: `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
-}
-
-function buildAttachmentRef(row: ChatMessageAttachmentRow): Record<string, unknown> | null {
-	if (row.media_type !== 'image') return null;
-	const metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
-
-	if (row.attachment_kind === 'temporary_file') {
-		const temporaryAttachmentId = readString(metadata.temporary_attachment_id);
-		if (!temporaryAttachmentId) return null;
-		return {
-			attachment_kind: 'temporary_file',
-			media_type: 'image',
-			temporary_attachment_id: temporaryAttachmentId,
-			project_id: null,
-			file_name: readString(metadata.file_name),
-			content_type: readString(metadata.content_type),
-			file_size_bytes: readNumber(metadata.file_size_bytes),
-			width: readNumber(metadata.width),
-			height: readNumber(metadata.height),
-			checksum_sha256: readString(metadata.checksum_sha256),
-			ocr_status: readString(metadata.ocr_status) ?? 'skipped',
-			role: row.role ?? 'analysis_target',
-			display_order: row.display_order ?? 0,
-			expires_at: readString(metadata.expires_at),
-			metadata: null
-		};
-	}
-
-	if (row.attachment_kind !== 'onto_asset' || !row.asset_id) return null;
-	const asset = firstAsset(row.asset);
-	const assetId = readString(asset?.id) ?? row.asset_id;
-	return {
-		attachment_kind: 'onto_asset',
-		media_type: 'image',
-		asset_id: assetId,
-		project_id: readString(asset?.project_id) ?? row.project_id ?? null,
-		file_name: readString(asset?.original_filename) ?? readString(metadata.file_name),
-		content_type: readString(asset?.content_type) ?? readString(metadata.content_type),
-		file_size_bytes: readNumber(asset?.file_size_bytes) ?? readNumber(metadata.file_size_bytes),
-		width: readNumber(asset?.width) ?? readNumber(metadata.width),
-		height: readNumber(asset?.height) ?? readNumber(metadata.height),
-		checksum_sha256: readString(asset?.checksum_sha256) ?? readString(metadata.checksum_sha256),
-		ocr_status: readString(asset?.ocr_status) ?? readString(metadata.ocr_status) ?? 'pending',
-		extraction_summary:
-			compactText(asset?.extraction_summary, 700) ??
-			compactText(metadata.extraction_summary, 700),
-		extracted_text_preview:
-			compactText(asset?.extracted_text, 1600) ??
-			compactText(metadata.extracted_text_preview, 1600),
-		role: row.role ?? 'analysis_target',
-		display_order: row.display_order ?? 0,
-		metadata: {
-			preview_url: `/api/onto/assets/${assetId}/render?width=160`
-		}
-	};
-}
-
-function resolveRefProjectId(
-	ref: AgentTimelineEntityRef,
-	lookup: EntityLookupValue | undefined
-): string | null {
-	return ref.projectId ?? lookup?.projectId ?? (ref.kind === 'project' ? ref.id : null);
-}
-
-function buildEntityUrl(ref: AgentTimelineEntityRef): string | null {
-	if (!ref.id) return null;
-	if (ref.kind === 'project') return `/projects/${ref.id}`;
-	if (!ref.projectId) return null;
-	if (ref.kind === 'document') return `/projects/${ref.projectId}?doc=${ref.id}`;
-	return `/projects/${ref.projectId}?entity=${encodeURIComponent(ref.kind)}&entity_id=${ref.id}`;
-}
-
-function collectTimelineRefs(items: AgentTimelineItem[]): AgentTimelineEntityRef[] {
-	const refs: AgentTimelineEntityRef[] = [];
-	for (const item of items) {
-		if (item.projectRef) refs.push(item.projectRef);
-		for (const ref of item.entityRefs) refs.push(ref);
-	}
-	return refs;
-}
-
-function addLookupId(idsByKind: Map<string, Set<string>>, kind: string | null, id: string | null) {
-	if (!kind || !id || !ENTITY_LOOKUP_CONFIG[kind]) return;
-	const existing = idsByKind.get(kind) ?? new Set<string>();
-	existing.add(id);
-	idsByKind.set(kind, existing);
-}
-
-function enrichRef(
-	ref: AgentTimelineEntityRef,
-	lookups: Map<string, EntityLookupValue>,
-	projectLookups: Map<string, EntityLookupValue>
-): AgentTimelineEntityRef {
-	const lookup = lookups.get(entityLookupKey(ref.kind, ref.id));
-	const projectId = resolveRefProjectId(ref, lookup);
-	const title = ref.title ?? lookup?.title ?? null;
-	const enriched: AgentTimelineEntityRef = {
-		...ref,
-		title,
-		projectId
-	};
-	enriched.url = ref.url ?? buildEntityUrl(enriched);
-
-	if (enriched.kind === 'project') {
-		const projectLookup = projectLookups.get(enriched.id);
-		enriched.title = enriched.title ?? projectLookup?.title ?? null;
-		enriched.url = enriched.url ?? `/projects/${enriched.id}`;
-	}
-
-	return enriched;
-}
-
-function primaryChangeRef(item: AgentTimelineItem): AgentTimelineEntityRef | null {
-	return (
-		item.entityRefs.find((ref) =>
-			['created', 'updated', 'deleted', 'linked'].includes(String(ref.operation))
-		) ?? null
-	);
-}
-
-function updateTimelineItemAfterEnrichment(item: AgentTimelineItem): AgentTimelineItem {
-	const primaryRef = primaryChangeRef(item);
-	if (!primaryRef?.title) return item;
-	if (item.kind === 'change') {
-		return {
-			...item,
-			summary: primaryRef.title
-		};
-	}
-	if (item.kind === 'tool' && item.summary?.includes(primaryRef.id)) {
-		return {
-			...item,
-			summary: item.summary.replace(primaryRef.id, primaryRef.title)
-		};
-	}
-	return item;
-}
-
-async function enrichSessionEntities(params: {
-	supabase: unknown;
-	items: AgentTimelineItem[];
-	projectFocus: ProjectFocus | null;
-}): Promise<{ timelineItems: AgentTimelineItem[]; projectFocus: ProjectFocus | null }> {
-	const refs = collectTimelineRefs(params.items);
-	const idsByKind = new Map<string, Set<string>>();
-	for (const ref of refs) {
-		addLookupId(idsByKind, ref.kind, ref.id);
-		if (ref.projectId) addLookupId(idsByKind, 'project', ref.projectId);
-	}
-
-	// Resolve the saved focus even when the chat has no tool activity. Share the
-	// timeline lookup batch so reopening doesn't fetch the same entities twice.
-	const focus = params.projectFocus;
-	if (focus) {
-		addLookupId(idsByKind, 'project', focus.projectId);
-		addLookupId(idsByKind, focus.focusType, focus.focusEntityId);
-	}
-
-	if (idsByKind.size === 0) return { timelineItems: params.items, projectFocus: focus };
-
-	const lookups = await fetchEntityLookups({ supabase: params.supabase, idsByKind });
-	const projectIds = new Set<string>();
-	for (const ref of refs) {
-		const lookup = lookups.get(entityLookupKey(ref.kind, ref.id));
-		const projectId = resolveRefProjectId(ref, lookup);
-		if (projectId) projectIds.add(projectId);
-	}
-
-	const missingProjectIds = Array.from(projectIds).filter(
-		(id) => !lookups.has(entityLookupKey('project', id))
-	);
-	if (missingProjectIds.length > 0) {
-		const projectIdsByKind = new Map<string, Set<string>>([
-			['project', new Set(missingProjectIds)]
-		]);
-		const projectLookups = await fetchEntityLookups({
-			supabase: params.supabase,
-			idsByKind: projectIdsByKind
-		});
-		for (const [key, value] of projectLookups) {
-			lookups.set(key, value);
-		}
-	}
-
-	const projectLookups = new Map<string, EntityLookupValue>();
-	for (const [key, value] of lookups) {
-		if (value.kind === 'project') projectLookups.set(value.id, value);
-		if (key.startsWith('project:')) projectLookups.set(value.id, value);
-	}
-
-	const timelineItems = params.items.map((item) => {
-		const entityRefs = item.entityRefs.map((ref) => enrichRef(ref, lookups, projectLookups));
-		const projectRef = item.projectRef
-			? enrichRef(item.projectRef, lookups, projectLookups)
-			: (() => {
-					const primaryRef = entityRefs[0];
-					if (!primaryRef?.projectId) return null;
-					const projectLookup = projectLookups.get(primaryRef.projectId);
-					return {
-						kind: 'project',
-						id: primaryRef.projectId,
-						title: projectLookup?.title ?? null,
-						projectId: primaryRef.projectId,
-						url: `/projects/${primaryRef.projectId}`,
-						operation: 'linked'
-					};
-				})();
-
-		return updateTimelineItemAfterEnrichment({
-			...item,
-			projectRef,
-			entityRefs
-		});
-	});
-	const focusedEntity = focus?.focusEntityId
-		? lookups.get(entityLookupKey(focus.focusType, focus.focusEntityId))
-		: null;
-	return {
-		timelineItems,
-		projectFocus: focus
-			? {
-					...focus,
-					projectName: projectLookups.get(focus.projectId)?.title ?? focus.projectName,
-					focusEntityName:
-						focusedEntity?.projectId === focus.projectId
-							? (focusedEntity.title ?? focus.focusEntityName)
-							: focus.focusEntityName
-				}
-			: null
-	};
-}
 
 /**
  * GET /api/chat/sessions/[id]
@@ -323,13 +53,13 @@ export const GET: RequestHandler = async ({
 	if (!sessionId) {
 		return ApiResponse.badRequest('Session id is required');
 	}
+	if (!z.string().uuid().safeParse(sessionId).success) return ApiResponse.notFound('Session');
 
 	// Lightweight probe used by the client while a restored turn is running:
-	// one turn-runs query instead of the full snapshot (~8 queries incl.
-	// 1000-row tool-execution/turn-event scans + timeline build). The
+	// one turn-runs query instead of the snapshot and its enrichment. The
 	// user_id filter scopes ownership, so the session row isn't fetched.
 	if (url.searchParams.get('probe') === 'active-turn') {
-		const { data: probeRuns, error: probeError } = await supabase
+		const { data: probeRuns, error: probeError } = await createAdminSupabaseClient()
 			.from('chat_turn_runs')
 			.select(
 				'id, session_id, status, stream_run_id, client_turn_id, finished_reason, updated_at'
@@ -352,178 +82,78 @@ export const GET: RequestHandler = async ({
 	if (url.searchParams.get('probe') === 'pending-change') {
 		const { data: probeSession, error: probeSessionError } = await supabase
 			.from('chat_sessions')
-			.select('context_type, entity_id, agent_metadata')
+			.select(
+				'context_type, entity_id, focus:agent_metadata->focus, pending_turn_contract:agent_metadata->fastchat_pending_turn_contract'
+			)
 			.eq('id', sessionId)
 			.eq('user_id', user.id)
-			.single();
-		if (probeSessionError || !probeSession) {
+			.maybeSingle();
+		if (probeSessionError) return ApiResponse.databaseError(probeSessionError);
+		if (!probeSession) {
 			return ApiResponse.notFound('Chat session not found');
 		}
 		return ApiResponse.success({
-			pendingChange: await loadPendingChangeView(supabase, probeSession)
+			pendingChange: await loadPendingChangeView(supabase, {
+				...probeSession,
+				agent_metadata: {
+					focus: probeSession.focus,
+					fastchat_pending_turn_contract: probeSession.pending_turn_contract
+				}
+			})
 		});
 	}
 
 	// Fetch the session
-	const { data: session, error: sessionError } = await supabase
+	const { data: sessionRow, error: sessionError } = await supabase
 		.from('chat_sessions')
-		.select('*')
+		.select(
+			'id, user_id, title, auto_title, context_type, entity_id, summary, status, created_at, updated_at, focus:agent_metadata->focus, pending_turn_contract:agent_metadata->fastchat_pending_turn_contract'
+		)
 		.eq('id', sessionId)
 		.eq('user_id', user.id)
-		.single();
+		.maybeSingle();
 
-	if (sessionError || !session) {
+	if (sessionError) return ApiResponse.databaseError(sessionError);
+	if (!sessionRow) {
 		return ApiResponse.notFound('Chat session not found');
 	}
+
+	// Runtime cache/history inside agent_metadata is not a UI transport field.
+	const { focus, pending_turn_contract, ...sessionFields } = sessionRow;
+	const session = {
+		...sessionFields,
+		agent_metadata: { focus, fastchat_pending_turn_contract: pending_turn_contract }
+	};
 
 	const includeVoiceNotes =
 		url.searchParams.get('includeVoiceNotes') === '1' ||
 		url.searchParams.get('includeVoiceNotes') === 'true';
 
-	// Fetch the newest messages for the session (limit to avoid loading too much
-	// data). Read newest-first so a long session keeps its latest turns, then
-	// flip back to chronological order for the UI.
-	const MESSAGE_LIMIT = 400;
-	const { data: newestMessages, error: messagesError } = await supabase
-		.from('chat_messages')
-		.select(
-			'id, session_id, user_id, role, content, tool_calls, tool_call_id, created_at, metadata'
-		)
-		.eq('session_id', sessionId)
-		.in('role', ['user', 'assistant']) // Only return user-facing messages to avoid tool/system noise
-		.order('created_at', { ascending: false })
-		.limit(MESSAGE_LIMIT);
+	// One statement owns the message/lifecycle window; never independently read
+	// terminal status after reading messages (a concurrent completion can be missed).
+	const { data: restore, error: restoreError } = await loadChatSessionRestore(sessionId, user.id);
+	if (restoreError) return ApiResponse.databaseError(restoreError);
+	if (!restore) return ApiResponse.notFound('Chat session not found');
+	const {
+		messages,
+		toolExecutions,
+		turnRuns,
+		turnEvents,
+		workflows: workflowSnapshots,
+		truncated,
+		historyWindow
+	} = restore;
 
-	if (messagesError) {
-		return ApiResponse.databaseError(messagesError);
-	}
-	const messages = newestMessages ? [...newestMessages].reverse() : newestMessages;
+	let workflowMessages = messages;
 
-	let messagesWithAttachments = messages || [];
-	if (messages && messages.length > 0) {
-		const messageIds = messages
-			.map((message: any) => message.id)
-			.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0);
-		if (messageIds.length > 0) {
-			const { data: attachmentRows, error: attachmentError } = await (supabase as any)
-				.from('chat_message_attachments')
-				.select(
-					'message_id, asset_id, project_id, attachment_kind, media_type, role, display_order, metadata, asset:onto_assets(id, project_id, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, ocr_status, extraction_summary, extracted_text)'
-				)
-				.in('message_id', messageIds)
-				.eq('session_id', sessionId)
-				.eq('user_id', user.id)
-				.order('display_order', { ascending: true })
-				.limit(MESSAGE_LIMIT * 8);
-
-			if (!attachmentError) {
-				const attachmentsByMessageId = new Map<string, Record<string, unknown>[]>();
-				for (const row of (attachmentRows ?? []) as ChatMessageAttachmentRow[]) {
-					const messageId = readString(row.message_id);
-					if (!messageId) continue;
-					const attachment = buildAttachmentRef(row);
-					if (!attachment) continue;
-					const existing = attachmentsByMessageId.get(messageId) ?? [];
-					existing.push(attachment);
-					attachmentsByMessageId.set(messageId, existing);
-				}
-
-				messagesWithAttachments = messages.map((message: any) => {
-					const attachments = attachmentsByMessageId.get(message.id);
-					return attachments?.length ? { ...message, attachments } : message;
-				});
-			} else {
-				console.warn('Failed to load chat message attachments', attachmentError);
-			}
-		}
-	}
-
-	const { data: newestToolExecutions, error: toolExecutionsError } = await supabase
-		.from('chat_tool_executions')
-		.select(
-			`
-			id,
-			session_id,
-			message_id,
-			turn_run_id,
-			stream_run_id,
-			client_turn_id,
-			provider_tool_call_id,
-			tool_name,
-			tool_category,
-			gateway_op,
-			help_path,
-			sequence_index,
-			arguments,
-			result,
-			result_count,
-			zero_result,
-			execution_time_ms,
-			tokens_consumed,
-			success,
-			error_message,
-			requires_user_action,
-			affected_entities,
-			created_at
-		`
-		)
-		.eq('session_id', sessionId)
-		.order('created_at', { ascending: false })
-		.limit(1000);
-
-	if (toolExecutionsError) {
-		return ApiResponse.databaseError(toolExecutionsError);
-	}
-	const toolExecutions = newestToolExecutions
-		? [...newestToolExecutions].reverse()
-		: newestToolExecutions;
-
-	const { data: turnRuns, error: turnRunsError } = await supabase
-		.from('chat_turn_runs')
-		.select(
-			'id, session_id, user_id, stream_run_id, client_turn_id, status, finished_reason, request_message, assistant_message_id, started_at, finished_at, created_at, updated_at'
-		)
-		.eq('session_id', sessionId)
-		.eq('user_id', user.id)
-		.order('started_at', { ascending: false })
-		.limit(5);
-
-	if (turnRunsError) {
-		return ApiResponse.databaseError(turnRunsError);
-	}
-
-	// Workflow snapshots are server-only. Read just the UI projection for turn ids
-	// present in this owned session's bounded message window; never load raw context.
-	const workflowTurnIds = [
-		...new Set(
-			messagesWithAttachments.flatMap((message) => {
-				const metadata = message.metadata as Record<string, unknown> | null;
-				if (
-					metadata?.review_intent !== 'project_review' &&
-					!readDurableChatWorkflowProgress(metadata?.chat_workflow_v1)
-				)
-					return [];
-				const id = workflowMessageTurnId(message.metadata);
-				return id ? [id] : [];
-			})
-		)
-	];
-	if (workflowTurnIds.length > 0) {
-		const { data: workflowSnapshots, error: workflowError } = await createAdminSupabaseClient()
-			.from('chat_turn_stream_state')
-			.select('turn_run_id, workflow:projection->workflow')
-			.eq('session_id', sessionId)
-			.eq('user_id', user.id)
-			.in('turn_run_id', workflowTurnIds)
-			.limit(MESSAGE_LIMIT);
-		if (workflowError) return ApiResponse.databaseError(workflowError);
+	if (workflowSnapshots.length > 0) {
 		const workflows = new Map(
 			(workflowSnapshots ?? []).flatMap((snapshot) => {
 				const workflow = readDurableChatWorkflowProgress(snapshot.workflow);
 				return workflow ? [[snapshot.turn_run_id, workflow] as const] : [];
 			})
 		);
-		messagesWithAttachments = messagesWithAttachments.map((message) => {
+		workflowMessages = workflowMessages.map((message) => {
 			const turnId = workflowMessageTurnId(message.metadata);
 			const workflow = turnId ? workflows.get(turnId) : null;
 			return workflow
@@ -538,96 +168,43 @@ export const GET: RequestHandler = async ({
 		});
 	}
 
-	const { data: newestTurnEvents, error: turnEventsError } = await supabase
-		.from('chat_turn_events')
-		.select(
-			'id, session_id, user_id, turn_run_id, stream_run_id, execution_generation, event_type, phase, payload, sequence_index, created_at'
-		)
-		.eq('session_id', sessionId)
-		.eq('user_id', user.id)
-		.order('created_at', { ascending: false })
-		.limit(1000);
-
-	if (turnEventsError) {
-		return ApiResponse.databaseError(turnEventsError);
-	}
-	const turnEvents = newestTurnEvents ? [...newestTurnEvents].reverse() : newestTurnEvents;
-
-	let voiceNotes: any[] = [];
-	let voiceNoteGroups: any[] = [];
-
-	if (includeVoiceNotes && messages && messages.length > 0) {
-		const groupIds = Array.from(
-			new Set(
-				messages
-					.map((message: any) => message.metadata?.voice_note_group_id)
-					.filter(Boolean)
-			)
-		);
-
-		if (groupIds.length > 0) {
-			const { data: groups, error: groupsError } = await supabase
-				.from('voice_note_groups')
-				.select('*')
-				.in('id', groupIds)
-				.eq('user_id', user.id)
-				.is('deleted_at', null);
-
-			if (groupsError) {
-				return ApiResponse.databaseError(groupsError);
-			}
-
-			voiceNoteGroups = groups || [];
-
-			const { data: notes, error: notesError } = await supabase
-				.from('voice_notes')
-				.select('*')
-				.in('group_id', groupIds)
-				.eq('user_id', user.id)
-				.is('deleted_at', null)
-				.order('segment_index', { ascending: true })
-				.order('created_at', { ascending: true });
-
-			if (notesError) {
-				return ApiResponse.databaseError(notesError);
-			}
-
-			voiceNotes = notes || [];
-		}
-	}
-
-	// Check if there are more messages than we fetched (truncation indicator)
-	const truncated = (messages?.length || 0) >= MESSAGE_LIMIT;
 	const metadata = (session.agent_metadata ?? {}) as Record<string, unknown>;
 	const savedFocus = isProjectScopedContext(session.context_type)
 		? (normalizeProjectFocus(metadata.focus as ProjectFocus | null) ??
 			(session.entity_id ? buildProjectWideFocus(session.entity_id) : null))
 		: null;
-	const { timelineItems, projectFocus } = await enrichSessionEntities({
-		supabase,
-		projectFocus: savedFocus,
-		items: buildAgentTimeline({
-			sessionId,
-			messages: messagesWithAttachments,
-			toolExecutions: toolExecutions || [],
-			turnRuns: turnRuns || [],
-			turnEvents: turnEvents || []
-		})
-	});
-
-	const pendingChange = await loadPendingChangeView(supabase, session);
+	const [messagesWithAttachments, voice, { timelineItems, projectFocus, pendingChange }] =
+		await Promise.all([
+			loadRestoreAttachments(supabase, sessionId, workflowMessages),
+			loadRestoreVoiceNotes(supabase, user.id, workflowMessages, includeVoiceNotes),
+			enrichSessionEntities({
+				pending: readInScopePendingTurnContract(session),
+				supabase,
+				projectFocus: savedFocus,
+				items: buildAgentTimeline({
+					includeToolDetails: false,
+					sessionId,
+					messages: workflowMessages,
+					toolExecutions: toolExecutions || [],
+					turnRuns: turnRuns || [],
+					turnEvents: turnEvents || []
+				})
+			})
+		]);
+	if (voice.error) return ApiResponse.databaseError(voice.error);
 
 	return ApiResponse.success({
 		session: projectFocus
-			? { ...session, agent_metadata: { ...metadata, focus: projectFocus } }
-			: session,
+			? { ...session, agent_metadata: { focus: projectFocus } }
+			: { ...session, agent_metadata: null },
 		messages: messagesWithAttachments,
 		toolExecutions: toolExecutions || [],
 		turnRuns: turnRuns || [],
 		timelineItems,
-		voiceNoteGroups,
-		voiceNotes,
+		voiceNoteGroups: voice.voiceNoteGroups,
+		voiceNotes: voice.voiceNotes,
 		truncated,
+		historyWindow,
 		pendingChange
 	});
 };
@@ -647,6 +224,7 @@ export const PATCH: RequestHandler = async ({
 	if (!sessionId) {
 		return ApiResponse.badRequest('Session id is required');
 	}
+	if (!z.string().uuid().safeParse(sessionId).success) return ApiResponse.notFound('Session');
 
 	const parsed = await parseJsonRequest(request, chatSessionTitleUpdateSchema);
 	if (!parsed.ok) return parsed.response;
@@ -661,17 +239,6 @@ export const PATCH: RequestHandler = async ({
 		return ApiResponse.validationError('title', 'Title must be 120 characters or fewer');
 	}
 
-	const { data: existingSession, error: sessionError } = await supabase
-		.from('chat_sessions')
-		.select('*')
-		.eq('id', sessionId)
-		.eq('user_id', user.id)
-		.single();
-
-	if (sessionError || !existingSession) {
-		return ApiResponse.notFound('Session');
-	}
-
 	const { data: updatedSession, error: updateError } = await supabase
 		.from('chat_sessions')
 		.update({
@@ -681,11 +248,10 @@ export const PATCH: RequestHandler = async ({
 		.eq('id', sessionId)
 		.eq('user_id', user.id)
 		.select('*')
-		.single();
+		.maybeSingle();
 
-	if (updateError || !updatedSession) {
-		return ApiResponse.internalError(updateError, 'Failed to rename chat session');
-	}
+	if (updateError) return ApiResponse.databaseError(updateError);
+	if (!updatedSession) return ApiResponse.notFound('Session');
 
 	return ApiResponse.success({ session: updatedSession });
 };

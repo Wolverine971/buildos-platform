@@ -499,7 +499,13 @@ export class AgentChatWorkerUiAdapter implements AgenticChatWorkerApplicationObs
 			);
 		}
 		const normalized = toAgentSSEMessage(event);
-		if (!normalized) throw new Error(`Unsupported worker UI event: ${event.type}`);
+		if (!normalized) {
+			// A newer worker can publish UI detail this client cannot decode. It
+			// must not poison every replay and hide the authoritative terminal.
+			this.#appliedSemanticEventIds.add(event.event_id);
+			this.#reportError(new Error(`Unsupported worker UI event: ${event.type}`));
+			return;
+		}
 		this.#port.applySemanticEvent(normalized);
 		this.#appliedSemanticEventIds.add(event.event_id);
 	}
@@ -733,12 +739,6 @@ function toAgentSSEMessage(event: AgentStreamEventV1): AgentSSEMessage | null {
 			'workflow' in event ? event.workflow : undefined
 		);
 		return workflow ? { ...common, type: 'workflow_progress', workflow } : null;
-	}
-	if (event.type === 'text_delta') {
-		const text = readTextDelta(event);
-		return text
-			? ({ ...event, ...common, type: 'text_delta', content: text } as AgentSSEMessage)
-			: null;
 	}
 	if (event.type === 'done') {
 		return {

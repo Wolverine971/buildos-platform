@@ -95,6 +95,8 @@ export interface BuildAgentTimelineParams {
 	toolExecutions?: TimelineToolExecutionRow[];
 	turnRuns?: TimelineTurnRunRow[];
 	turnEvents?: TimelineTurnEventRow[];
+	/** The restore transport carries tool data once; the browser rebuilds expandable details. */
+	includeToolDetails?: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, any> {
@@ -216,7 +218,10 @@ function safePrettyJson(value: unknown): string | null {
 	}
 }
 
-function redactedJsonPreview(value: unknown): {
+function redactedJsonPreview(
+	value: unknown,
+	includeFullJson = true
+): {
 	preview: string | null;
 	fullJson: string | null;
 	redacted: boolean;
@@ -238,7 +243,7 @@ function redactedJsonPreview(value: unknown): {
 			}
 			return {
 				preview: truncate(JSON.stringify(parsed)),
-				fullJson: safePrettyJson(parsed),
+				fullJson: includeFullJson ? safePrettyJson(parsed) : null,
 				redacted: false
 			};
 		} catch {
@@ -253,7 +258,7 @@ function redactedJsonPreview(value: unknown): {
 	try {
 		return {
 			preview: truncate(JSON.stringify(value)),
-			fullJson: safePrettyJson(value),
+			fullJson: includeFullJson ? safePrettyJson(value) : null,
 			redacted: false
 		};
 	} catch {
@@ -319,11 +324,12 @@ function toolSummaryText(
 
 function buildToolTimelineItem(
 	sessionId: string,
-	execution: TimelineToolExecutionRow
+	execution: TimelineToolExecutionRow,
+	includeFullJson = true
 ): AgentTimelineItem | null {
 	if (!execution.id || !execution.tool_name) return null;
-	const argsPreview = redactedJsonPreview(execution.arguments);
-	const resultPreview = redactedJsonPreview(execution.result);
+	const argsPreview = redactedJsonPreview(execution.arguments, includeFullJson);
+	const resultPreview = redactedJsonPreview(execution.result, includeFullJson);
 	const entityRefs = extractAffectedEntitiesFromToolExecution(execution);
 	const entityRef = entityRefs[0] ?? null;
 	const timestamp = fallbackTimestamp(execution.created_at);
@@ -690,7 +696,11 @@ export function buildAgentTimeline(params: BuildAgentTimelineParams): AgentTimel
 	}
 
 	for (const execution of params.toolExecutions ?? []) {
-		const item = buildToolTimelineItem(params.sessionId, execution);
+		const item = buildToolTimelineItem(
+			params.sessionId,
+			execution,
+			params.includeToolDetails ?? true
+		);
 		if (!item) continue;
 		items.push(item);
 		const change = buildChangeTimelineItem(item);
@@ -999,4 +1009,33 @@ export function timelineItemsFromMessages(
 	const result = sortAndDedupeTimelineItems(parts.flat());
 	lastLiveTimeline = { sessionId, parts, partsByMessageId, result };
 	return result;
+}
+
+/** Restore expandable details without duplicating JSON in the HTTP payload. */
+export function restoreTimelineToolDetails(
+	items: AgentTimelineItem[],
+	executions: TimelineToolExecutionRow[]
+): AgentTimelineItem[] {
+	const byId = new Map(executions.map((execution) => [execution.id, execution]));
+	const details = new Map<
+		string,
+		{ argsFullJson: string | null; resultFullJson: string | null }
+	>();
+	return items.map((item) => {
+		// Both ids are structured: tool_execution:<uuid> and
+		// entity_change:<uuid>:<kind>:<entity-id>. A change shares its tool details.
+		if (!item.tool || !['tool_execution', 'entity_change'].includes(item.source)) return item;
+		const executionId = item.id.split(':')[1];
+		const execution = executionId ? byId.get(executionId) : undefined;
+		if (!execution) return item;
+		let full = details.get(execution.id);
+		if (!full) {
+			full = {
+				argsFullJson: redactedJsonPreview(execution.arguments).fullJson,
+				resultFullJson: redactedJsonPreview(execution.result).fullJson
+			};
+			details.set(execution.id, full);
+		}
+		return { ...item, tool: { ...item.tool, ...full } };
+	});
 }

@@ -1,5 +1,5 @@
 // apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
 	ChatAttachmentRef,
 	ChatContextType,
@@ -191,7 +191,6 @@ function createHarness(
 		activeRestoredTurnRunId = null;
 	});
 	const assistant = {
-		flushText: vi.fn(),
 		finalizeMessage: vi.fn()
 	};
 	const haptic = vi.fn();
@@ -543,12 +542,12 @@ describe('AgentChatStreamController', () => {
 		});
 		h.deps.getReviewIntent = () => 'project_review';
 		const sending = h.controller.sendMessage();
-		await vi.advanceTimersByTimeAsync(750);
+		await vi.advanceTimersByTimeAsync(2_750);
 		await sending;
 		expect(h.inputValue).toBe('');
 		expect(h.messages).toHaveLength(1);
 		expect(h.controller.error).toContain('Reopen it from chat history');
-		expect(h.admissionCalls).toHaveLength(2);
+		expect(h.admissionCalls).toHaveLength(3);
 	});
 
 	it.each(['project_review', 'document_organization'] as const)(
@@ -621,6 +620,7 @@ describe('AgentChatStreamController', () => {
 	beforeEach(() => {
 		vi.useRealTimers();
 	});
+	afterEach(() => vi.useRealTimers());
 
 	it('sends a message with a prepared prompt key and adopts the admitted worker turn', async () => {
 		const h = createHarness({ inputValue: 'Build the plan' });
@@ -1141,6 +1141,26 @@ describe('AgentChatStreamController', () => {
 		);
 	});
 
+	it('preserves the worker public error when its failed terminal arrives', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+		h.controller.error = 'Nothing was changed. Try again.';
+		h.controller.finishWorkerTurn(handle, 'failed', null, 'provider_failure');
+		expect(h.controller.error).toBe('Nothing was changed. Try again.');
+	});
+
+	it('replaces a connection warning with a confirmed terminal failure', () => {
+		const h = createHarness();
+		const handle = workerHandle();
+		h.controller.adoptWorkerTurn(handle, 'running');
+		h.controller.setWorkerConnectionLost(handle, true);
+		h.controller.finishWorkerTurn(handle, 'failed', null, 'provider_failure');
+		expect(h.controller.error).toBe(
+			'BuildOS could not finish this response. Please try again.'
+		);
+	});
+
 	it('does not clobber a newer draft when restoring a failed send', async () => {
 		let resolveAdmission!: (response: Response) => void;
 		const h = createHarness({
@@ -1415,6 +1435,131 @@ describe('AgentChatStreamController', () => {
 	});
 
 	describe('lost admission responses', () => {
+		it('does not send a departed chat after its prepared prompt resolves', async () => {
+			let resolvePrepared!: (value: null) => void;
+			const h = createHarness({
+				preparedPrompt: null,
+				waitForPreparedPrompt: () =>
+					new Promise((resolve) => {
+						resolvePrepared = resolve;
+					})
+			});
+			const pending = h.controller.sendMessage();
+			h.controller.reset();
+			resolvePrepared(null);
+			await pending;
+			expect(h.admissionCalls).toHaveLength(0);
+			expect(h.prewarm.clearPreparedPrompt).not.toHaveBeenCalled();
+			expect(h.adoptWorkerAdmissionResponse).not.toHaveBeenCalled();
+		});
+
+		it('keeps the next send busy while a cancelled recovery unwinds', async () => {
+			vi.useFakeTimers();
+			const h = createHarness({
+				currentSession: null,
+				admissionFetchImpl: async () => new Promise<Response>(() => {})
+			});
+			const previous = h.controller.sendMessage();
+			await vi.advanceTimersByTimeAsync(60_750);
+			h.controller.reset();
+			const next = h.controller.sendMessage('Next chat');
+			await previous;
+			try {
+				expect(h.controller.isStartingStream).toBe(true);
+				expect(h.controller.isTurnBusy).toBe(true);
+			} finally {
+				h.controller.reset();
+				await next;
+			}
+		});
+
+		it.each(['success', 'failure'] as const)(
+			'ignores a late admission body %s after a new send starts',
+			async (outcome) => {
+				let settleBody!: () => void;
+				const json = vi.fn();
+				let attempts = 0;
+				const h = createHarness({
+					currentSession: null,
+					admissionFetchImpl: async (_input, init) => {
+						if (++attempts > 1) return new Promise<Response>(() => {});
+						const payload = await admittedResponse(
+							JSON.parse(String(init?.body))
+						).json();
+						json.mockImplementation(
+							() =>
+								new Promise((resolve, reject) => {
+									settleBody = () =>
+										outcome === 'success'
+											? resolve(payload)
+											: reject(new TypeError('Response body interrupted'));
+								})
+						);
+						const response = new Response(null, { status: 202 });
+						response.json = json;
+						return response;
+					}
+				});
+				const previous = h.controller.sendMessage();
+				await vi.waitFor(() => expect(json).toHaveBeenCalled());
+				h.controller.reset();
+				const next = h.controller.sendMessage('Next chat');
+				settleBody();
+				await previous;
+				try {
+					expect(h.adoptWorkerAdmissionResponse).not.toHaveBeenCalled();
+					expect(h.controller.error).toBeNull();
+					expect(h.controller.isTurnBusy).toBe(true);
+					expect(h.messages[1]?.delivery).toBe('sending');
+				} finally {
+					h.controller.reset();
+					await next;
+				}
+			}
+		);
+
+		it('recovers a sessionless turn with one delayed identical replay after two timeouts', async () => {
+			vi.useFakeTimers();
+			let attempts = 0;
+			const h = createHarness({
+				currentSession: null,
+				admissionFetchImpl: async (_input, init) => {
+					if (++attempts <= 2) return new Promise<Response>(() => {});
+					const response = await admittedResponse(JSON.parse(String(init?.body))).json();
+					response.data.outcome = 'matching_duplicate';
+					return Response.json(response);
+				}
+			});
+			const pending = h.controller.sendMessage();
+			await vi.advanceTimersByTimeAsync(60_750);
+			expect(h.admissionCalls).toHaveLength(2);
+			expect(h.controller.isTurnBusy).toBe(true);
+			await vi.advanceTimersByTimeAsync(2_000);
+			await pending;
+			expect(h.admissionCalls).toHaveLength(3);
+			expect(new Set(h.admissionCalls.map((call) => call.init?.body)).size).toBe(1);
+			expect(h.controller.activeTurnHandle?.sessionId).toBe(WORKER_SESSION_ID);
+			expect(h.controller.error).toBeNull();
+			expect(h.messages).toHaveLength(1);
+			expect(h.adoptWorkerAdmissionResponse).toHaveBeenCalledOnce();
+		});
+
+		it('cancels the sessionless recovery replay when the conversation resets', async () => {
+			vi.useFakeTimers();
+			const h = createHarness({
+				currentSession: null,
+				admissionFetchImpl: async () => new Promise<Response>(() => {})
+			});
+			const pending = h.controller.sendMessage();
+			await vi.advanceTimersByTimeAsync(60_750);
+			h.controller.reset();
+			await vi.advanceTimersByTimeAsync(40_000);
+			await pending;
+			expect(h.admissionCalls).toHaveLength(2);
+			expect(h.adoptWorkerAdmissionResponse).not.toHaveBeenCalled();
+			expect(h.controller.activeTurnHandle).toBeNull();
+		});
+
 		it('adopts a matching duplicate when the first admission answer is lost', async () => {
 			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 			let attempt = 0;

@@ -8,6 +8,9 @@ import {
 import type { AgenticChatWorkerApplicationObserver } from './worker-realtime-coordinator';
 
 type WorkerTurnHandle = Extract<TurnHandleV1, { executionMode: 'worker_realtime' }>;
+type ReconciliationInbox = {
+	requestReconciliation(turnRunId: string, reason: 'reconcile_hint'): void;
+};
 
 export type AgenticChatWorkerTurnRegistrationRuntime = {
 	registerTurn(input: {
@@ -16,7 +19,7 @@ export type AgenticChatWorkerTurnRegistrationRuntime = {
 		executionGeneration?: number;
 		lastAppliedSequence?: number;
 	}): () => void;
-};
+} & ({ coordinator: { inbox: ReconciliationInbox } } | { inbox: ReconciliationInbox });
 
 export type AgenticChatWorkerTurnAdoptionSource =
 	| 'admission'
@@ -130,7 +133,14 @@ export class AgenticChatWorkerTurnAdoption {
 				registration.descriptor.handle.sessionId === sessionId &&
 				!activeIds.has(turnRunId)
 			) {
-				this.#release(turnRunId, 'not_active');
+				// Discovery lists only active turns. Absence can mean this turn
+				// finished while discovery was in flight, so keep its observer until
+				// reconciliation delivers the final text, receipts and terminal.
+				const inbox =
+					'coordinator' in this.#runtime
+						? this.#runtime.coordinator.inbox
+						: this.#runtime.inbox;
+				inbox.requestReconciliation(turnRunId, 'reconcile_hint');
 			}
 		}
 		return descriptors;

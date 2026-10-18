@@ -25,6 +25,7 @@
 	} from '$lib/constants/seo';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 	import { initializePWAEnhancements, setupInstallPrompt } from '$lib/utils/pwa-enhancements';
+	import { clearLaunchSnapshot, registerAppServiceWorker } from '$lib/utils/pwa-launch';
 	import type { LayoutData } from './$types';
 	// Static import: TrialBanner must be in the SSR pass to prevent layout shift
 	import TrialBannerStatic from '$lib/components/trial/TrialBanner.svelte';
@@ -88,6 +89,15 @@
 
 	$effect(() => {
 		syncPostHogUser(user);
+	});
+
+	// Signed-in devices get the service worker that opens the installed app instantly
+	// (saved Today screen or Brain Bolt instead of a black screen). Waits for an idle
+	// moment so it never competes with the first render.
+	$effect(() => {
+		if (!browser || !user?.id) return;
+		const schedule = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 2000));
+		schedule(() => void registerAppServiceWorker());
 	});
 	let hasConnectedAgents = $derived(Boolean(data.hasConnectedAgents));
 	let emailSuggestionsEnabled = $derived(Boolean(data.emailSuggestionsEnabled));
@@ -645,6 +655,10 @@
 		toastService?.clear();
 
 		if (!browser) return;
+
+		// Sign-outs that skip logout() (another tab, session expiry) must also drop the
+		// saved Today screen the installed app opens with.
+		void clearLaunchSnapshot();
 
 		// An explicit sign-out goes straight to its destination in one navigation. Invalidating
 		// first would re-run the current page's load, and a protected page answers that with its

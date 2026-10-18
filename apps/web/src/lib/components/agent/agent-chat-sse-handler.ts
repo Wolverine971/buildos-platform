@@ -249,11 +249,7 @@ export function sanitizeToolResultForActivityMetadata(
 	return sanitized;
 }
 
-export function resolveDoneFinalization(
-	finishedReason: string | null | undefined,
-	completionStatus?: 'completed' | 'completed_degraded' | 'failed',
-	answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
-): {
+export function resolveDoneFinalization(finishedReason: string | null | undefined): {
 	status?: 'completed' | 'interrupted' | 'cancelled' | 'error';
 	note?: string;
 	/** Turn-level failure copy for the chat's error banner. */
@@ -278,15 +274,6 @@ export function resolveDoneFinalization(
 			return { status: 'interrupted', note: 'Response truncated' };
 		case 'error':
 			return { status: 'error' };
-	}
-	if (completionStatus === 'completed_degraded') {
-		if (answerSource === 'partial_model') {
-			return { status: 'interrupted', note: 'Recovered partial response' };
-		}
-		if (answerSource === 'precise_no_evidence') {
-			return { status: 'interrupted', note: 'No safe evidence summary available' };
-		}
-		return { status: 'completed', note: 'Recovered from collected evidence' };
 	}
 	return {};
 }
@@ -335,24 +322,15 @@ export function finalizeTurnPhaseActivity(
 	if (existingIndex < 0) return activities;
 	const existing = activities[existingIndex];
 	if (!existing) return activities;
-	const degraded = event.completion_status === 'completed_degraded';
-	const content = !degraded
-		? 'Response ready'
-		: event.answer_source === 'partial_model'
-			? 'Recovered a partial response after synthesis stalled'
-			: event.answer_source === 'precise_no_evidence'
-				? 'Synthesis stalled; no safe evidence summary was available'
-				: 'Recovered an answer from the collected evidence';
 	const nextActivities = [...activities];
 	nextActivities[existingIndex] = {
 		...existing,
-		content,
-		status: event.answer_source === 'precise_no_evidence' ? 'failed' : 'completed',
+		content: 'Response ready',
+		status: 'completed',
 		metadata: {
 			...existing.metadata,
 			turnPhase: 'finalizing',
-			completionStatus: event.completion_status ?? 'completed',
-			answerSource: event.answer_source ?? 'model'
+			completionStatus: event.completion_status ?? 'completed'
 		}
 	};
 	return nextActivities;
@@ -437,13 +415,7 @@ export interface SSEHandlerDeps {
 	hydrateSessionFromEvent(session: ChatSession): void;
 	attachServerTiming(runId: number, timing: AgentTimingSummary): void;
 
-	// Assistant text streaming
-	bufferAssistantText(content: unknown): void;
-	flushAssistantText(): void;
-	markAssistantCompletion(
-		completionStatus?: 'completed' | 'completed_degraded' | 'failed',
-		answerSource?: 'model' | 'partial_model' | 'deterministic_evidence' | 'precise_no_evidence'
-	): void;
+	// Announce the completed reply and clear its active UI identity.
 	finalizeAssistantMessage(): void;
 
 	// Pending tool state (mutable, owned by caller)
@@ -753,11 +725,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	}
 
 	function handleDone(event: Extract<AgentSSEMessage, { type: 'done' }>): void {
-		const finalization = resolveDoneFinalization(
-			event.finished_reason,
-			event.completion_status,
-			event.answer_source
-		);
+		const finalization = resolveDoneFinalization(event.finished_reason);
 		state.setCurrentActivity('');
 		if (finalization.error) state.setError(finalization.error);
 		const blockId = thinking.getCurrentBlockId();
@@ -765,7 +733,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 			...block,
 			activities: finalizeTurnPhaseActivity(block.activities, event)
 		}));
-		deps.markAssistantCompletion(event.completion_status, event.answer_source);
 		deps.finalizeAssistantMessage();
 		thinking.finalize(finalization.status, finalization.note);
 		// Surface any entities created this turn as inline chips, then reset.
@@ -819,10 +786,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 	}
 
 	const handleSSEMessage = function handleSSEMessage(event: AgentSSEMessage): void {
-		if (event.type !== 'text_delta') {
-			deps.flushAssistantText();
-		}
-
 		switch (event.type) {
 			case 'session':
 				if (event.session) {
@@ -914,17 +877,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				return;
 			}
 
-			// Production transports normalize incremental text to text_delta before this handler.
-			// Keep the snapshot spelling explicit so adding a new union member cannot hide in default.
-			case 'text':
-				return;
-
-			case 'text_delta':
-				if (event.content) {
-					deps.bufferAssistantText(event.content);
-				}
-				return;
-
 			case 'tool_call':
 				handleToolCall(event);
 				return;
@@ -963,19 +915,9 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				handleError(event);
 				return;
 
-			// Template creation events remain part of the shared extension contract but are not
-			// rendered by the agent-chat modal. They keep their existing no-op behavior explicitly.
-			case 'template_creation_request':
-			case 'template_creation_status':
-			case 'template_created':
-			case 'template_creation_failed':
+			default:
+				// The shared event union also includes extensions this UI does not render.
 				return;
-
-			default: {
-				const exhaustiveEvent: never = event;
-				void exhaustiveEvent;
-				return;
-			}
 		}
 	} as AgentSSEMessageHandler;
 

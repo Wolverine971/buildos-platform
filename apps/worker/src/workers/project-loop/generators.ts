@@ -520,6 +520,7 @@ async function callGenerator(params: {
 				userPrompt: params.userPrompt,
 				userId: params.userId,
 				profile: 'balanced',
+				maxTokens: 4096,
 				signal: params.signal,
 				providerRouting: providerOrder.length
 					? { order: providerOrder, allow_fallbacks: true }
@@ -566,6 +567,7 @@ async function callBriefGenerator(params: {
 				userPrompt: params.userPrompt,
 				userId: params.userId,
 				profile: 'balanced',
+				maxTokens: 4096,
 				signal: params.signal,
 				providerRouting: providerOrder.length
 					? { order: providerOrder, allow_fallbacks: true }

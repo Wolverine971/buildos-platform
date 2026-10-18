@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => {
 	const state = {
 		queries: [] as QueryRecord[],
 		updates: [] as QueryRecord[],
-		inserts: [] as QueryRecord[]
+		inserts: [] as QueryRecord[],
+		run: {} as Record<string, any>
 	};
 
 	const claimedRun = {
@@ -28,12 +29,15 @@ const mocks = vi.hoisted(() => {
 	};
 
 	function resultFor(query: QueryRecord): { data: unknown; error: null } {
-		if (
-			query.table === 'project_loop_runs' &&
-			query.operation === 'update' &&
-			(query.payload as { status?: string } | undefined)?.status === 'running'
-		) {
-			return { data: claimedRun, error: null };
+		if (query.table === 'project_loop_runs' && query.operation === 'update') {
+			const matches = query.filters.every(({ method, args: [column, value] }) => {
+				if (method === 'eq') return state.run[String(column)] === value;
+				if (method === 'lt') return state.run[String(column)] < String(value);
+				return true;
+			});
+			if (!matches) return { data: null, error: null };
+			Object.assign(state.run, query.payload);
+			return { data: { ...state.run }, error: null };
 		}
 		if (query.table === 'onto_projects') {
 			return {
@@ -95,7 +99,7 @@ const mocks = vi.hoisted(() => {
 			state.inserts.push(query);
 			return builder;
 		});
-		for (const method of ['eq', 'neq', 'in', 'gte', 'lte', 'order', 'limit']) {
+		for (const method of ['eq', 'neq', 'in', 'gte', 'lte', 'lt', 'order', 'limit']) {
 			builder[method] = vi.fn((...args: unknown[]) => {
 				query.filters.push({ method, args });
 				return builder;
@@ -112,6 +116,7 @@ const mocks = vi.hoisted(() => {
 
 	return {
 		state,
+		claimedRun,
 		from: vi.fn((table: string) => createQuery(table)),
 		rpc: vi.fn(async (name: string) => {
 			if (name !== 'load_project_graph_context') return { data: null, error: null };
@@ -188,10 +193,10 @@ const mocks = vi.hoisted(() => {
 			};
 		}),
 		loadUnchangedLensInputs: vi.fn(),
-		generateDocOrganization: vi.fn(async () => []),
-		generateOutdatedDocs: vi.fn(async () => []),
+		generateDocOrganization: vi.fn(async (_params: any) => []),
+		generateOutdatedDocs: vi.fn(async (_params: any) => []),
 		generateDrift: vi.fn(),
-		generateTaskConflicts: vi.fn(async () => [
+		generateTaskConflicts: vi.fn(async (_params: any) => [
 			{
 				kind: 'task_conflict',
 				risk_tier: 1,
@@ -324,6 +329,8 @@ describe('processProjectLoopJob detector degradation', () => {
 		mocks.state.queries.length = 0;
 		mocks.state.updates.length = 0;
 		mocks.state.inserts.length = 0;
+		mocks.state.run = { ...mocks.claimedRun, status: 'queued', queue_job_id: 'queue-1' };
+		mocks.generateDrift.mockResolvedValue([]);
 		mocks.loadUnchangedLensInputs.mockResolvedValue({ documents: false, tasks: false });
 		mocks.generateDocOrganization.mockResolvedValue([]);
 		mocks.generateOutdatedDocs.mockResolvedValue([]);
@@ -344,6 +351,115 @@ describe('processProjectLoopJob detector degradation', () => {
 		mocks.generateProjectCleanupSynthesis.mockResolvedValue(mocks.emptySynthesis());
 	});
 
+	it('requeues an interrupted run so the same queue job can retry', async () => {
+		const controller = new AbortController();
+		const cancellation = new Error('Worker timeout');
+		mocks.generateDrift.mockImplementationOnce(async () => {
+			controller.abort(cancellation);
+			throw cancellation;
+		});
+		await expect(processProjectLoopJob(createJob(controller))).rejects.toBe(cancellation);
+		expect(mocks.state.run).toMatchObject({ status: 'queued', started_at: null });
+		const reset = mocks.state.updates.find((q) => (q.payload as any)?.status === 'queued');
+		expect(reset?.filters).toEqual(
+			expect.arrayContaining([
+				{ method: 'eq', args: ['queue_job_id', 'queue-1'] },
+				{ method: 'eq', args: ['started_at', expect.any(String)] }
+			])
+		);
+		await expect(processProjectLoopJob(createJob())).resolves.toMatchObject({ success: true });
+		expect(mocks.generateDrift).toHaveBeenCalledTimes(2);
+	});
+
+	it('reclaims an old running run only for the same queue job', async () => {
+		Object.assign(mocks.state.run, {
+			status: 'running',
+			started_at: '2020-01-01T00:00:00.000Z'
+		});
+		await expect(processProjectLoopJob(createJob())).resolves.toMatchObject({ success: true });
+		expect(mocks.generateDrift).toHaveBeenCalledOnce();
+	});
+
+	it.each(['fresh', 'different_queue', 'completed'])('does not reclaim %s runs', async (kind) => {
+		Object.assign(mocks.state.run, {
+			status: kind === 'completed' ? 'completed' : 'running',
+			started_at: kind === 'fresh' ? new Date().toISOString() : '2020-01-01T00:00:00.000Z',
+			queue_job_id: kind === 'different_queue' ? 'queue-2' : 'queue-1'
+		});
+		await expect(processProjectLoopJob(createJob())).resolves.toMatchObject({ skipped: true });
+		expect(mocks.generateDrift).not.toHaveBeenCalled();
+	});
+
+	it('does not reset a newer claim after the old invocation aborts', async () => {
+		const controller = new AbortController();
+		mocks.generateDrift.mockImplementationOnce(async () => {
+			mocks.state.run.started_at = '2099-01-01T00:00:00.000Z';
+			controller.abort(new Error('Old invocation stopped'));
+			throw controller.signal.reason;
+		});
+		await expect(processProjectLoopJob(createJob(controller))).rejects.toThrow(
+			'Old invocation'
+		);
+		expect(mocks.state.run.status).toBe('running');
+	});
+
+	it('aborts all parallel detectors as reported usage crosses the cost cap', async () => {
+		const signals: AbortSignal[] = [];
+		let release!: () => void;
+		const allStarted = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let releaseUsage!: () => void;
+		const usageReported = new Promise<void>((resolve) => {
+			releaseUsage = resolve;
+		});
+		const detector = (reportsCost: boolean) => async (params: any) => {
+			signals.push(params.signal);
+			if (signals.length === 4) release();
+			await allStarted;
+			if (reportsCost) {
+				await params.onUsage({ totalCost: 0.36 });
+				releaseUsage();
+			}
+			await usageReported;
+			return [];
+		};
+		mocks.generateDocOrganization.mockImplementationOnce(detector(true));
+		mocks.generateOutdatedDocs.mockImplementationOnce(detector(false));
+		mocks.generateDrift.mockImplementationOnce(detector(false));
+		mocks.generateTaskConflicts.mockImplementationOnce(detector(false));
+		const job = createJob();
+		await expect(processProjectLoopJob(job)).resolves.toMatchObject({ success: true });
+		expect(signals).toHaveLength(4);
+		expect(signals.every((signal) => signal.aborted)).toBe(true);
+		expect(job.signal.aborted).toBe(false);
+		expect(mocks.generateProjectCleanupSynthesis).not.toHaveBeenCalled();
+		expect(mocks.state.run).toMatchObject({ status: 'completed', cost_usd: 0.36 });
+		expect(mocks.captureWorkerEvent).toHaveBeenCalledWith(
+			'user-1',
+			'project_suggestion_generated',
+			expect.objectContaining({
+				skipped_lenses: expect.arrayContaining(
+					['doc organization', 'outdated docs', 'drift', 'task conflicts'].map((label) =>
+						expect.objectContaining({ label, reason: 'cost_cap' })
+					)
+				)
+			})
+		);
+	});
+
+	it('uses the heuristic roll-up if its own usage exhausts the remaining budget', async () => {
+		mocks.generateProjectCleanupSynthesis.mockImplementationOnce(async (params: any) => {
+			await params.onUsage({ totalCost: 0.35 });
+			params.signal.throwIfAborted();
+			return mocks.emptySynthesis();
+		});
+		await expect(processProjectLoopJob(createJob())).resolves.toMatchObject({ success: true });
+		const signal = (mocks.generateProjectCleanupSynthesis.mock.calls[0]?.[0] as any).signal;
+		expect(signal.aborted).toBe(true);
+		expect(mocks.state.run).toMatchObject({ status: 'completed', cost_usd: 0.35 });
+	});
+
 	it('completes after a typed drift timeout and keeps the open drift finding', async () => {
 		mocks.generateDrift.mockRejectedValue(
 			new LLMRequestTimeoutError(120_000, 'deepseek/deepseek-v4-flash', {
@@ -358,7 +474,7 @@ describe('processProjectLoopJob detector degradation', () => {
 		expect(mocks.generateTaskConflicts).toHaveBeenCalledOnce();
 		expect(mocks.state.inserts).toHaveLength(1);
 		expect(mocks.generateProjectCleanupSynthesis).toHaveBeenCalledWith(
-			expect.objectContaining({ uncheckedLenses: ['drift'], signal: job.signal })
+			expect.objectContaining({ uncheckedLenses: ['drift'], signal: expect.any(AbortSignal) })
 		);
 		// The unchecked drift finding stays on the list, and the cleanup card is synced.
 		const synthesisInput = mocks.generateProjectCleanupSynthesis.mock.calls[0]?.[0] as {

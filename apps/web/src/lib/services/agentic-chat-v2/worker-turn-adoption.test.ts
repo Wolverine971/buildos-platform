@@ -71,11 +71,12 @@ function harness(fetchImpl: typeof fetch = vi.fn()) {
 		}
 	>();
 	const registerTurn = vi.fn(() => unregister);
+	const requestReconciliation = vi.fn();
 	const adopted = vi.fn();
 	const released = vi.fn();
 	const errors: unknown[] = [];
 	const manager = new AgenticChatWorkerTurnAdoption({
-		runtime: { registerTurn },
+		runtime: { registerTurn, coordinator: { inbox: { requestReconciliation } } },
 		fetchImpl,
 		createObserver: ({ handle, onTerminal }) => {
 			const observer: AgenticChatWorkerApplicationObserver = {
@@ -89,7 +90,16 @@ function harness(fetchImpl: typeof fetch = vi.fn()) {
 		onReleased: released,
 		onError: (error) => errors.push(error)
 	});
-	return { manager, registerTurn, unregister, observers, adopted, released, errors };
+	return {
+		manager,
+		registerTurn,
+		unregister,
+		requestReconciliation,
+		observers,
+		adopted,
+		released,
+		errors
+	};
 }
 
 describe('AgenticChatWorkerTurnAdoption', () => {
@@ -116,7 +126,7 @@ describe('AgenticChatWorkerTurnAdoption', () => {
 		]);
 	});
 
-	it('discovers exact owned session descriptors and prunes only that session', async () => {
+	it('discovers owned turns and reconciles missing turns only in that session', async () => {
 		const fetchImpl = vi
 			.fn<typeof fetch>()
 			.mockResolvedValueOnce(discovery([descriptor()]))
@@ -159,7 +169,7 @@ describe('AgenticChatWorkerTurnAdoption', () => {
 				.getTrackedHandles()
 				.map((handle) => handle.turnRunId)
 				.sort()
-		).toEqual([TURN_2, 'd4000000-0000-4000-8000-000000000003']);
+		).toEqual([TURN_1, TURN_2, 'd4000000-0000-4000-8000-000000000003']);
 		expect(fetchImpl).toHaveBeenCalledWith(
 			`/api/agent/v2/turns?session_id=${SESSION_1}`,
 			expect.objectContaining({
@@ -168,9 +178,26 @@ describe('AgenticChatWorkerTurnAdoption', () => {
 				cache: 'no-store'
 			})
 		);
-		expect(h.released).toHaveBeenCalledWith(
-			expect.objectContaining({ reason: 'not_active', handle: workerHandle() })
-		);
+		expect(h.released).not.toHaveBeenCalled();
+		expect(h.requestReconciliation).toHaveBeenCalledExactlyOnceWith(TURN_1, 'reconcile_hint');
+	});
+
+	it('keeps a stopped turn registered after empty discovery until its observer delivers terminal truth', async () => {
+		const h = harness(vi.fn<typeof fetch>().mockResolvedValue(discovery([])));
+		h.manager.adoptAdmissionResponse(admission('newly_admitted'));
+		await h.manager.discoverSession(SESSION_1);
+		expect(h.requestReconciliation).toHaveBeenCalledExactlyOnceWith(TURN_1, 'reconcile_hint');
+		expect(h.manager.trackedTurnCount).toBe(1);
+		expect(h.unregister).not.toHaveBeenCalled();
+		expect(h.released).not.toHaveBeenCalled();
+		h.observers.get(TURN_1)!.onTerminal('cancelled');
+		await Promise.resolve();
+		expect(h.manager.trackedTurnCount).toBe(0);
+		expect(h.released).toHaveBeenCalledWith({
+			handle: workerHandle(),
+			reason: 'terminal',
+			status: 'cancelled'
+		});
 	});
 
 	it('does not let a pre-admission empty discovery prune the newly admitted turn', async () => {

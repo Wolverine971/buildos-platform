@@ -1280,7 +1280,7 @@ function implicitOutcomeFromLedgerEntry(
 		...(relationshipChanges.length ? { changes: relationshipChanges } : {}),
 		action,
 		entityKind,
-		targetIds: entry.entityId ? [entry.entityId] : [],
+		targetIds: action !== 'create' && entry.entityId ? [entry.entityId] : [],
 		requiredFields: entry.changedFields ?? [],
 		minimumSuccessfulEffects: 1
 	};

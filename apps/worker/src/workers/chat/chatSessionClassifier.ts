@@ -30,6 +30,35 @@ import {
 	serializeLibriEntityHandoffStatus
 } from './libriEntityHandoffClient';
 
+/** Classification and title promotion have different concurrency semantics.
+ * Always retain the classification; only promote a title if nobody renamed it
+ * since the initial read. Never hold a database lock across the model call.
+ */
+async function saveClassification(
+	sessionId: string,
+	userId: string,
+	originalTitle: string | null,
+	payload: Database['public']['Tables']['chat_sessions']['Update']
+) {
+	const { error } = await supabase
+		.from('chat_sessions')
+		.update(payload)
+		.eq('id', sessionId)
+		.eq('user_id', userId);
+	if (error) throw new Error(`Failed to update session classification: ${error.message}`);
+	if (!isPlaceholderTitle(originalTitle)) return;
+	let promotion = supabase
+		.from('chat_sessions')
+		.update({ title: payload.auto_title })
+		.eq('id', sessionId)
+		.eq('user_id', userId);
+	promotion =
+		originalTitle === null ? promotion.is('title', null) : promotion.eq('title', originalTitle);
+	const { error: promotionError } = await promotion;
+	if (promotionError)
+		throw new Error(`Failed to promote session title: ${promotionError.message}`);
+}
+
 /**
  * Response structure from LLM classification
  */
@@ -272,7 +301,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		}
 		const messages = recentMessages ? [...recentMessages].reverse() : recentMessages;
 
-		const hasPlaceholderTitle = isPlaceholderTitle(session.title);
+		const originalTitle = session.title;
 		const hasClassification =
 			!!session.auto_title &&
 			!!session.chat_topics &&
@@ -350,19 +379,12 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 				updated_at: new Date().toISOString()
 			};
 
-			// Promote the auto title if the existing title is just a placeholder
-			if (hasPlaceholderTitle) {
-				updatePayload.title = title;
-			}
-
-			const { error: updateError } = await supabase
-				.from('chat_sessions')
-				.update(updatePayload)
-				.eq('id', validatedData.sessionId);
-
-			if (updateError) {
-				throw new Error(`Failed to update session: ${updateError.message}`);
-			}
+			await saveClassification(
+				validatedData.sessionId,
+				validatedData.userId,
+				originalTitle,
+				updatePayload
+			);
 
 			await updateJobStatus(
 				job.id,
@@ -446,19 +468,12 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			updated_at: new Date().toISOString()
 		};
 
-		// If the stored title is just a placeholder, promote the classified title
-		if (hasPlaceholderTitle) {
-			updatePayload.title = title;
-		}
-
-		const { error: updateError } = await supabase
-			.from('chat_sessions')
-			.update(updatePayload)
-			.eq('id', validatedData.sessionId);
-
-		if (updateError) {
-			throw new Error(`Failed to update session with classification: ${updateError.message}`);
-		}
+		await saveClassification(
+			validatedData.sessionId,
+			validatedData.userId,
+			originalTitle,
+			updatePayload
+		);
 
 		const libriHandoffStatus = await processLibriEntityHandoff({
 			sessionId: validatedData.sessionId,

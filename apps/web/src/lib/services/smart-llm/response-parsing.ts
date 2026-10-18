@@ -215,7 +215,7 @@ export function normalizeStreamingContent(
 	}
 
 	if (textParts.length === 0) {
-		return { text: '', inThinkingBlock };
+		return { text: '', inThinkingBlock: false };
 	}
 
 	const { text, inThinkingBlock: thinkingState } = sanitizeVisibleText(
@@ -223,58 +223,17 @@ export function normalizeStreamingContent(
 		inThinkingBlock
 	);
 
-	const trimmed = text.trim();
-	// Skip obvious filler punctuation bursts often used for "thinking" animations
-	if (trimmed && /^[.,;·•…]+$/.test(trimmed) && trimmed.length >= 6) {
-		return { text: '', inThinkingBlock: thinkingState };
-	}
-
 	return { text, inThinkingBlock: thinkingState };
 }
 
+/**
+ * Kept for streaming caller compatibility. Visibility comes from structured
+ * content-part types and provider reasoning fields; literal tags in visible
+ * prose must never suppress this chunk or any later chunk.
+ */
 export function filterThinkingTokens(
 	text: string,
-	inThinkingBlock: boolean
+	_inThinkingBlock: boolean
 ): { text: string; inThinkingBlock: boolean } {
-	let output = text;
-	let thinking = inThinkingBlock;
-
-	const startRegex = /<\s*(think|thinking|analysis|reasoning)\s*>/i;
-	const endRegex = /<\s*\/\s*(think|thinking|analysis|reasoning)\s*>/i;
-
-	// If already inside a thinking block, drop content until a closing tag appears
-	if (thinking) {
-		const endMatch = output.match(endRegex);
-		if (endMatch?.index !== undefined) {
-			output = output.slice(endMatch.index + endMatch[0].length);
-			thinking = false;
-		} else {
-			return { text: '', inThinkingBlock: true };
-		}
-	}
-
-	// Remove any complete thinking blocks inside this chunk
-	while (true) {
-		const startMatch = output.match(startRegex);
-		if (!startMatch || startMatch.index === undefined) break;
-
-		const afterStart = output.slice(startMatch.index + startMatch[0].length);
-		const endMatch = afterStart.match(endRegex);
-
-		if (endMatch?.index !== undefined) {
-			output =
-				output.slice(0, startMatch.index) +
-				afterStart.slice(endMatch.index + endMatch[0].length);
-		} else {
-			// Start marker without an end - drop trailing content and keep state
-			output = output.slice(0, startMatch.index);
-			thinking = true;
-			break;
-		}
-	}
-
-	// Remove bracket-based markers that can leak thinking output
-	output = output.replace(/【\s*(thinking|reasoning|analysis)\s*】/gi, '');
-
-	return { text: output, inThinkingBlock: thinking };
+	return { text, inThinkingBlock: false };
 }

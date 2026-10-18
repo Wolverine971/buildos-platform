@@ -134,7 +134,6 @@ export interface StreamControllerDeps {
 		setStopping?(stopping: boolean): void;
 	};
 	assistant: {
-		flushText(): void;
 		finalizeMessage(): void;
 	};
 	clearPendingToolState(): void;
@@ -362,7 +361,9 @@ export class AgentChatStreamController {
 				'BuildOS stopped partway through a change, so it may already be saved. Check before trying again.';
 			this.returnQueuedMessageToComposer();
 		} else if (status === 'failed') {
-			this.error = 'BuildOS could not finish this response. Please try again.';
+			if (!this.error || this.error === WORKER_CONNECTION_LOST_MESSAGE) {
+				this.error = 'BuildOS could not finish this response. Please try again.';
+			}
 			// Don't fire a queued follow-up into a turn that just failed.
 			this.returnQueuedMessageToComposer();
 		} else if (isWorkerQueueTimeout(status, finishedReason)) {
@@ -741,6 +742,8 @@ export class AgentChatStreamController {
 							prewarm,
 							prewarm.resolveCurrentKey()
 						);
+			// Reset invalidates the send even before admission has an abort signal.
+			if (runId !== this.activeStreamRunId) return;
 			prewarm.clearPreparedPrompt();
 			if (this.activeStreamTiming?.runId === runId) {
 				this.activeStreamTiming.preparedPromptUsed = matchingPreparedPrompt !== null;
@@ -785,6 +788,7 @@ export class AgentChatStreamController {
 			}).finally(() => {
 				if (this.#admissionAbort === admissionAbort) this.#admissionAbort = null;
 			});
+			if (runId !== this.activeStreamRunId) return;
 
 			if (!admission.response.ok) {
 				const admissionError = await buildAgentRequestError(
@@ -818,8 +822,10 @@ export class AgentChatStreamController {
 			});
 			if (requestedSkillId) this.#deps.clearRequestedSkillId?.();
 			await this.#deps.adoptWorkerAdmissionResponse(admission.payload);
+			if (runId !== this.activeStreamRunId) return;
 			if (reviewIntent) this.#deps.onReviewAdmitted?.();
 		} catch (err) {
+			if (runId !== this.activeStreamRunId) return;
 			if ((err as DOMException)?.name === 'AbortError') return;
 
 			this.#deps.logError?.('Failed to send message:', err);
@@ -834,7 +840,6 @@ export class AgentChatStreamController {
 			this.isStreaming = false;
 			this.currentActivity = '';
 			this.activeTurnHandle = null;
-			this.#deps.assistant.flushText();
 			this.#deps.assistant.finalizeMessage();
 			this.finalizeClientStreamTiming(runId, 'error');
 
@@ -895,7 +900,7 @@ export class AgentChatStreamController {
 				}
 			}
 		} finally {
-			this.isStartingStream = false;
+			if (runId === this.activeStreamRunId) this.isStartingStream = false;
 		}
 	}
 

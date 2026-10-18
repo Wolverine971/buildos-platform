@@ -1,6 +1,7 @@
 // packages/agentic-chat-runtime/src/tools/ontology-detail-reads.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
+import { getOntoProjectDetails } from './ontology-reads';
 import {
 	getOntoGoalDetails,
 	getOntoMilestoneDetails,
@@ -50,6 +51,43 @@ function createContext(responses: Record<string, QueryResponse[]>) {
 }
 
 describe('shared ontology detail reads', () => {
+	it('excludes archived project children from rows, counts, and START HERE candidates', async () => {
+		const active = { id: 'active', archived_at: null, deleted_at: null };
+		const archived = { id: 'archived', archived_at: '2026-10-01', deleted_at: null };
+		const queries: Array<{ table: string; query: Record<string, any> }> = [];
+		const { context } = createContext({});
+		(context.client as any).from = vi.fn((table: string) => {
+			const query: Record<string, any> = {};
+			for (const method of ['select', 'eq', 'is', 'order', 'limit']) {
+				query[method] = vi.fn(() => query);
+			}
+			query.maybeSingle = vi.fn(async () => ({ data: { id: PROJECT_ID }, error: null }));
+			query.then = (resolve: (value: unknown) => unknown) => {
+				const data = [archived, active].filter((row) =>
+					query.is.mock.calls.every(
+						([key, value]: [keyof typeof active, unknown]) => row[key] === value
+					)
+				);
+				return Promise.resolve({ data, count: data.length, error: null }).then(resolve);
+			};
+			queries.push({ table, query });
+			return query;
+		});
+
+		const result = await getOntoProjectDetails(context, { project_id: PROJECT_ID });
+
+		for (const key of ['goals', 'plans', 'milestones']) {
+			expect(result[key], key).toEqual([active]);
+			expect(result.counts[key], key).toBe(1);
+		}
+		expect(result.context_document?.id).toBe('active');
+		for (const { table, query } of queries.filter(({ table }) =>
+			['onto_goals', 'onto_plans', 'onto_milestones', 'onto_documents'].includes(table)
+		)) {
+			expect(query.is, table).toHaveBeenCalledWith('archived_at', null);
+		}
+	});
+
 	it('gates on a minimal project ref before loading and sanitizing the full goal', async () => {
 		const { context, access, builders, events } = createContext({
 			onto_goals: [

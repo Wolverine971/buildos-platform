@@ -102,6 +102,35 @@ function harness(options: { now?: () => number } = {}) {
 }
 
 describe('AgentChatWorkerUiAdapter', () => {
+	it.each(['live', 'reconciled'] as const)(
+		'skips an unsupported workflow event once and reaches the %s terminal',
+		(lane) => {
+			const h = harness();
+			const unknown = event(1, 'workflow_progress', { workflow: { version: 999 } });
+			h.adapter.applyReconciliation(receipt());
+			if (lane === 'live') {
+				expect(() => h.adapter.applyLiveEvent(unknown)).not.toThrow();
+				h.adapter.applyLiveEvent(unknown);
+				h.adapter.applyLiveEvent(event(2, 'done', { status: 'completed' }));
+			} else {
+				const progress = receipt({ durable_events: [unknown], response_watermark: 1 });
+				expect(() => h.adapter.applyReconciliation(progress)).not.toThrow();
+				h.adapter.applyReconciliation(progress);
+				h.adapter.applyReconciliation(
+					receipt({
+						status: 'completed',
+						durable_events: [unknown],
+						response_watermark: 2,
+						terminal_event_id: event(2, 'done').event_id
+					})
+				);
+			}
+			expect(h.port.onError).toHaveBeenCalledOnce();
+			expect(h.onTerminal).toHaveBeenCalledExactlyOnceWith('completed');
+			expect(h.port.finishTurn).toHaveBeenCalledOnce();
+		}
+	);
+
 	it('restores a workflow projection before finalizing a partial turn at the same sequence', () => {
 		const h = harness();
 		const workflow = workflowProjectionFixture({

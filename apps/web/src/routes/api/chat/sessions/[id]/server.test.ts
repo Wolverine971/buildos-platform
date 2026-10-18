@@ -1,14 +1,59 @@
 // apps/web/src/routes/api/chat/sessions/[id]/server.test.ts
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { workflowProjectionFixture } from '$lib/components/agent/agent-chat-workflow.fixture';
 
 const adminMocks = vi.hoisted(() => ({ createAdmin: vi.fn() }));
 vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: adminMocks.createAdmin }));
 
-import { DELETE, GET } from './+server';
+const restoreMocks = vi.hoisted(() => ({ load: vi.fn() }));
+vi.mock('$lib/server/chat-session-restore', () => ({ loadChatSessionRestore: restoreMocks.load }));
+import { DELETE, GET as routeGET } from './+server';
+const SESSION = 'a1000000-0000-4000-8000-000000000001';
+beforeEach(() => {
+	vi.clearAllMocks();
+	adminMocks.createAdmin.mockReset();
+});
+
+// The SQL reader has its own role-aware, real-Postgres checks. These fixtures
+// exercise route enrichment and the existing presentation contracts after RPC.
+async function GET(event: any) {
+	const db = event.locals.supabase;
+	restoreMocks.load.mockImplementation(async () => {
+		const rows = (table: string) => db.from(table)._result?.data ?? [];
+		const admin = adminMocks.createAdmin.getMockImplementation()?.();
+		return {
+			data: {
+				messages: [...rows('chat_messages')].reverse(),
+				toolExecutions: [...rows('chat_tool_executions')].reverse(),
+				turnRuns: rows('chat_turn_runs'),
+				turnEvents: [...rows('chat_turn_events')].reverse(),
+				workflows: admin?.from('chat_turn_stream_state')._result?.data ?? [],
+				truncated: false,
+				historyWindow: { toolsTruncated: false, eventsTruncated: false }
+			},
+			error: null
+		};
+	});
+	db.rpc = vi.fn(async () => db.from('chat_message_attachments')._result);
+	return routeGET(event);
+}
 
 function createQuery(result: unknown) {
 	return {
+		_result: result as any,
+		maybeSingle: vi.fn().mockResolvedValue(
+			(result as any)?.data && !Array.isArray((result as any).data)
+				? {
+						...(result as any),
+						data: {
+							...(result as any).data,
+							focus: (result as any).data.agent_metadata?.focus,
+							pending_turn_contract: (result as any).data.agent_metadata
+								?.fastchat_pending_turn_contract
+						}
+					}
+				: result
+		),
 		select: vi.fn().mockReturnThis(),
 		eq: vi.fn().mockReturnThis(),
 		in: vi.fn().mockReturnThis(),
@@ -47,7 +92,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 					if (table === 'chat_sessions')
 						return createQuery({
 							data: {
-								id: 'session-1',
+								id: SESSION,
 								user_id: 'user-1',
 								context_type: 'global',
 								entity_id: null,
@@ -61,7 +106,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 				})
 			};
 			const response = await GET({
-				params: { id: 'session-1' },
+				params: { id: SESSION },
 				url: new URL('http://localhost/api/chat/sessions/session-1'),
 				locals: {
 					supabase,
@@ -71,13 +116,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 			expect(response.status).toBe(200);
 			const payload = await response.json();
 			expect(payload.data.messages[0].metadata.chat_workflow_v1).toEqual(workflow);
-			expect(admin.from).toHaveBeenCalledExactlyOnceWith('chat_turn_stream_state');
-			expect(streamQuery.select).toHaveBeenCalledExactlyOnceWith(
-				'turn_run_id, workflow:projection->workflow'
-			);
-			expect(streamQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
-			expect(streamQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
-			expect(streamQuery.in).toHaveBeenCalledExactlyOnceWith('turn_run_id', [turnId]);
+			expect(restoreMocks.load).toHaveBeenCalledExactlyOnceWith(SESSION, 'user-1');
 			expect(JSON.stringify(payload)).not.toContain('assistant_text');
 		}
 	);
@@ -85,7 +124,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 	it('does not read private workflow snapshots before session ownership is established', async () => {
 		adminMocks.createAdmin.mockClear();
 		const response = await GET({
-			params: { id: 'session-1' },
+			params: { id: SESSION },
 			url: new URL('http://localhost/api/chat/sessions/session-1'),
 			locals: {
 				supabase: { from: vi.fn(() => createQuery({ data: null, error: null })) },
@@ -93,7 +132,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 			}
 		} as any);
 		expect(response.status).toBe(404);
-		expect(adminMocks.createAdmin).not.toHaveBeenCalled();
+		expect(restoreMocks.load).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -115,7 +154,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 				projectName: 'Project'
 			};
 			const session = {
-				id: 'session-1',
+				id: SESSION,
 				user_id: 'user-1',
 				context_type: 'project',
 				entity_id: 'project-1',
@@ -139,7 +178,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 				})
 			};
 			const request = {
-				params: { id: 'session-1' },
+				params: { id: SESSION },
 				url: new URL('http://localhost/api/chat/sessions/session-1'),
 				locals: {
 					supabase,
@@ -149,7 +188,6 @@ describe('GET /api/chat/sessions/[id]', () => {
 			const response = await GET(request as any);
 			expect(response.status).toBe(200);
 			expect((await response.json()).data.session.agent_metadata).toEqual({
-				source: 'entity-modal',
 				focus: {
 					...focus,
 					focusEntityName: 'Updated title',
@@ -173,7 +211,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 
 	it('returns persisted tool executions when restoring a chat session', async () => {
 		const session = {
-			id: 'session-1',
+			id: SESSION,
 			user_id: 'user-1',
 			context_type: 'global',
 			entity_id: null,
@@ -184,7 +222,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 		const messages = [
 			{
 				id: 'assistant-1',
-				session_id: 'session-1',
+				session_id: SESSION,
 				user_id: 'user-1',
 				role: 'assistant',
 				content: 'Created the task.',
@@ -197,7 +235,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 		const toolExecutions = [
 			{
 				id: 'exec-1',
-				session_id: 'session-1',
+				session_id: SESSION,
 				message_id: 'assistant-1',
 				tool_name: 'create_onto_task',
 				gateway_op: null,
@@ -211,7 +249,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 			},
 			{
 				id: 'exec-2',
-				session_id: 'session-1',
+				session_id: SESSION,
 				message_id: 'assistant-1',
 				tool_name: 'update_onto_document',
 				gateway_op: 'onto.document.update',
@@ -228,7 +266,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 		const turnRuns = [
 			{
 				id: 'turn-run-1',
-				session_id: 'session-1',
+				session_id: SESSION,
 				user_id: 'user-1',
 				stream_run_id: 'stream-1',
 				client_turn_id: 'turn-1',
@@ -285,7 +323,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 			data: [
 				{
 					id: 'event-1',
-					session_id: 'session-1',
+					session_id: SESSION,
 					user_id: 'user-1',
 					turn_run_id: 'turn-run-1',
 					stream_run_id: 'stream-1',
@@ -314,7 +352,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 		};
 
 		const response = await GET({
-			params: { id: 'session-1' },
+			params: { id: SESSION },
 			url: new URL('http://localhost/api/chat/sessions/session-1'),
 			locals: {
 				supabase,
@@ -396,11 +434,6 @@ describe('GET /api/chat/sessions/[id]', () => {
 		expect(supabase.from).toHaveBeenCalledWith('onto_tasks');
 		expect(supabase.from).toHaveBeenCalledWith('onto_documents');
 		expect(supabase.from).toHaveBeenCalledWith('onto_projects');
-		expect(toolExecutionsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
-		expect(turnRunsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
-		expect(turnRunsQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
-		expect(turnEventsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
-		expect(turnEventsQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
 		expect(tasksQuery.in).toHaveBeenCalledWith('id', ['task-1']);
 		expect(documentsQuery.in).toHaveBeenCalledWith('id', ['doc-1']);
 		expect(projectsQuery.in).toHaveBeenCalledWith('id', ['project-1']);
@@ -408,7 +441,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 
 	it('loads the newest message window and returns it in chronological order', async () => {
 		const session = {
-			id: 'session-1',
+			id: SESSION,
 			user_id: 'user-1',
 			context_type: 'global',
 			entity_id: null,
@@ -439,7 +472,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 		};
 
 		const response = await GET({
-			params: { id: 'session-1' },
+			params: { id: SESSION },
 			url: new URL('http://localhost/api/chat/sessions/session-1'),
 			locals: {
 				supabase,
@@ -449,9 +482,6 @@ describe('GET /api/chat/sessions/[id]', () => {
 
 		expect(response.status).toBe(200);
 		const payload = await response.json();
-		expect(messagesQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
-		expect(toolExecutionsQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
-		expect(turnEventsQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
 		expect(payload.data.messages.map((message: { id: string }) => message.id)).toEqual([
 			'message-1',
 			'message-2',
@@ -461,7 +491,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 
 	it('restores only the latest attempt of a restarted turn in the timeline', async () => {
 		const session = {
-			id: 'session-1',
+			id: SESSION,
 			user_id: 'user-1',
 			context_type: 'global',
 			entity_id: null,
@@ -475,7 +505,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 			executionGeneration?: number
 		) => ({
 			id,
-			session_id: 'session-1',
+			session_id: SESSION,
 			user_id: 'user-1',
 			turn_run_id: turnRunId,
 			stream_run_id: `stream-${turnRunId}`,
@@ -513,7 +543,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 		};
 
 		const response = await GET({
-			params: { id: 'session-1' },
+			params: { id: SESSION },
 			url: new URL('http://localhost/api/chat/sessions/session-1'),
 			locals: {
 				supabase,
@@ -522,9 +552,6 @@ describe('GET /api/chat/sessions/[id]', () => {
 		} as any);
 
 		expect(response.status).toBe(200);
-		expect(turnEventsQuery.select).toHaveBeenCalledExactlyOnceWith(
-			expect.stringContaining('execution_generation')
-		);
 		const payload = await response.json();
 		const steps = payload.data.timelineItems
 			.filter((item: { kind: string }) => item.kind === 'step')
@@ -536,7 +563,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 
 	it('hydrates persisted image attachments when restoring a chat session', async () => {
 		const session = {
-			id: 'session-1',
+			id: SESSION,
 			user_id: 'user-1',
 			context_type: 'project',
 			entity_id: 'project-1',
@@ -547,7 +574,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 		const messages = [
 			{
 				id: 'message-1',
-				session_id: 'session-1',
+				session_id: SESSION,
 				user_id: 'user-1',
 				role: 'user',
 				content: 'Attached 1 image',
@@ -599,7 +626,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 		};
 
 		const response = await GET({
-			params: { id: 'session-1' },
+			params: { id: SESSION },
 			url: new URL('http://localhost/api/chat/sessions/session-1'),
 			locals: {
 				supabase,
@@ -672,7 +699,7 @@ describe('GET /api/chat/sessions/[id]?probe=pending-change', () => {
 			})
 		};
 		const response = await GET({
-			params: { id: 'session-1' },
+			params: { id: SESSION },
 			url: new URL('http://localhost/api/chat/sessions/session-1?probe=pending-change'),
 			locals: {
 				supabase,
@@ -704,7 +731,7 @@ describe('DELETE /api/chat/sessions/[id]', () => {
 			rpc,
 			from,
 			event: {
-				params: { id: 'session-1' },
+				params: { id: SESSION },
 				locals: {
 					supabase: { rpc, from },
 					safeGetSession: vi
@@ -726,7 +753,7 @@ describe('DELETE /api/chat/sessions/[id]', () => {
 		expect(response.status).toBe(200);
 		expect((await response.json()).data).toEqual({ deleted: true });
 		expect(rpc).toHaveBeenCalledExactlyOnceWith('delete_my_chat_session', {
-			p_session_id: 'session-1'
+			p_session_id: SESSION
 		});
 		expect(from).not.toHaveBeenCalled();
 	});

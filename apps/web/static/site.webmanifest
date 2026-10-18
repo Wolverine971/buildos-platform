@@ -3,7 +3,7 @@
 	"short_name": "BuildOS",
 	"description": "Brain dump into BuildOS and let the Brain Bolt organize scattered thoughts into action.",
 	"id": "/",
-	"start_url": "/",
+	"start_url": "/today?source=pwa",
 	"scope": "/",
 	"icons": [
 		{
@@ -49,8 +49,8 @@
 			"purpose": "any maskable"
 		}
 	],
-	"theme_color": "#0f172a",
-	"background_color": "#0f172a",
+	"theme_color": "#1d1c1b",
+	"background_color": "#1d1c1b",
 	"display": "standalone",
 	"orientation": "portrait-primary",
 	"categories": ["productivity", "business"],
@@ -62,13 +62,13 @@
 	},
 	"theme_color_variants": [
 		{
-			"color": "#f9fafb",
+			"color": "#fbfaf9",
 			"media": "(prefers-color-scheme: light)"
 		}
 	],
 	"background_color_variants": [
 		{
-			"color": "#f9fafb",
+			"color": "#fbfaf9",
 			"media": "(prefers-color-scheme: light)"
 		}
 	],

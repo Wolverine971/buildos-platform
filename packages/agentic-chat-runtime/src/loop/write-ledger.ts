@@ -360,26 +360,7 @@ function extractIdFromArgs(entityKind: string | null, args: ParsedArgs): string 
 	// A table write names its document as table_id.
 	const tableId = entityKind === 'document' ? readString(args.table_id) : undefined;
 	if (tableId) return tableId;
-	if (entityKind) {
-		const direct = readString(args[`${entityKind}_id`]);
-		if (direct) return direct;
-	}
-	for (const key of [
-		'document_id',
-		'task_id',
-		'project_id',
-		'event_id',
-		'goal_id',
-		'plan_id',
-		'milestone_id',
-		'risk_id',
-		'entity_id',
-		'edge_id'
-	]) {
-		const id = readString(args[key]);
-		if (id) return id;
-	}
-	return undefined;
+	return entityKind ? readString(args[`${entityKind}_id`]) : undefined;
 }
 
 function extractIdFromResult(
@@ -495,7 +476,11 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	if (changedFields.length > 0) entry.changedFields = changedFields;
 	const changedValues = extractChangedValues(toolName, args, succeeded ? result : null);
 	if (Object.keys(changedValues).length > 0) entry.changedValues = changedValues;
-	const entityId = extractIdFromResult(entityKind, result) ?? extractIdFromArgs(entityKind, args);
+	// A create has no durable target until the result supplies it; argument IDs
+	// name its project/parent (or an untrusted proposed ID), never the saved entity.
+	const entityId =
+		extractIdFromResult(entityKind, result) ??
+		(action === 'create' ? undefined : extractIdFromArgs(entityKind, args));
 	if (entityId) entry.entityId = entityId;
 	// Lifecycle semantics describe the attempted durable effect as well as a
 	// successful one. Preserve the requested/result state on failures so a

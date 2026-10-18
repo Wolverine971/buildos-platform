@@ -11,6 +11,9 @@ const logger = createLogger('ProjectLoops');
 // Automated triggers (end_of_day, burst) won't re-run a project more often than
 // this. Manual runs bypass the cooldown (but still can't stack on an active run).
 const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+// Match the worker enqueue/reclaim windows; queued jobs may wait in a nightly backlog.
+const STALE_RUNNING_RUN_MS = 60 * 60 * 1000;
+const STALE_QUEUED_RUN_MS = 6 * 60 * 60 * 1000;
 
 export interface QueueProjectLoopResult {
 	queued: boolean;
@@ -89,25 +92,55 @@ export async function queueProjectLoop(params: {
 
 	const supabase = createAdminSupabaseClient();
 
+	let reclaimedRunId: string | null = null;
 	// Avoid stacking runs: if one is already queued/running, return it.
 	const { data: active } = await supabase
 		.from('project_loop_runs')
-		.select('id')
+		.select('id, status, started_at, created_at')
 		.eq('project_id', params.projectId)
 		.in('status', ['queued', 'running'])
 		.limit(1)
 		.maybeSingle();
 	if (active?.id) {
-		return { queued: false, runId: active.id, reason: 'already_running' };
+		const referenceIso =
+			active.status === 'running'
+				? (active.started_at ?? active.created_at)
+				: active.created_at;
+		const referenceMs = referenceIso ? Date.parse(referenceIso) : NaN;
+		const staleAfterMs =
+			active.status === 'running' ? STALE_RUNNING_RUN_MS : STALE_QUEUED_RUN_MS;
+		if (!Number.isFinite(referenceMs) || Date.now() - referenceMs <= staleAfterMs) {
+			return { queued: false, runId: active.id, reason: 'already_running' };
+		}
+		let reclaim = supabase
+			.from('project_loop_runs')
+			.update({
+				status: 'failed',
+				error_message: `Marked stale by enqueue: stuck in '${active.status}' since ${referenceIso}`,
+				finished_at: new Date().toISOString()
+			})
+			.eq('id', active.id)
+			.eq('status', active.status);
+		// A retry can renew a running claim between the read and this write.
+		reclaim =
+			active.started_at === null
+				? reclaim.is('started_at', null)
+				: reclaim.eq('started_at', active.started_at);
+		const { data: reclaimed, error } = await reclaim.select('id').maybeSingle();
+		if (error || !reclaimed)
+			return { queued: false, runId: active.id, reason: 'already_running' };
+		reclaimedRunId = reclaimed.id;
 	}
 
 	// Cooldown for automated triggers so bursts/schedules don't spam loops.
 	if (params.triggerReason !== 'manual') {
-		const { data: lastRun } = await supabase
+		let cooldownQuery = supabase
 			.from('project_loop_runs')
 			.select('finished_at')
 			.eq('project_id', params.projectId)
-			.not('finished_at', 'is', null)
+			.not('finished_at', 'is', null);
+		if (reclaimedRunId) cooldownQuery = cooldownQuery.neq('id', reclaimedRunId);
+		const { data: lastRun } = await cooldownQuery
 			.order('finished_at', { ascending: false })
 			.limit(1)
 			.maybeSingle();
@@ -171,21 +204,26 @@ export async function queueProjectLoop(params: {
 			const message = queueMetadata.runId
 				? `Deduplicated onto active project loop job ${queueJobId} for run ${queueMetadata.runId}`
 				: `Queue job ${queueJobId} metadata did not include the new loop run ${runRow.id}`;
-			await Promise.all([
+			logger.info(message, { discardedRunId: runRow.id });
+			// A losing row never ran; deleting it keeps failure counts honest.
+			const [discarded] = await Promise.all([
 				supabase
 					.from('project_loop_runs')
-					.update({
-						status: 'failed',
-						error_message: message,
-						finished_at: new Date().toISOString()
-					})
+					.delete()
 					.eq('id', runRow.id)
-					.eq('status', 'queued'),
+					.eq('status', 'queued')
+					.is('queue_job_id', null),
 				archiveChatSession(supabase, chatSessionId)
 			]);
+			if (discarded.error) {
+				logger.warn('Discard duplicate loop run failed', {
+					runId: runRow.id,
+					error: discarded.error.message
+				});
+			}
 			return {
 				queued: false,
-				runId: queueMetadata.runId ?? runRow.id,
+				runId: queueMetadata.runId ?? undefined,
 				jobId: queueJobId,
 				reason: queueMetadata.runId ? 'already_running' : 'queue_metadata_mismatch'
 			};
