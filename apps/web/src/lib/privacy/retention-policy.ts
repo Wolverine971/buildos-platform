@@ -41,6 +41,16 @@ export const RETENTION_WINDOWS = {
 			param: 'p_prompt_snapshot_retention_days'
 		}
 	},
+	/** llm_call_incidents: a stalled or failed model call's request and timing, also "saved AI prompts". */
+	llmCallIncidents: {
+		days: 14,
+		label: '14 days',
+		source: {
+			kind: 'function_interval',
+			migration: '20261018150000_llm_call_incidents.sql',
+			fn: 'cleanup_privacy_llm_call_incidents'
+		}
+	},
 	/** Soft-deleted projects, docs, tasks, voice notes, contacts: erased this long after deletion. */
 	deletedItems: {
 		days: 30,

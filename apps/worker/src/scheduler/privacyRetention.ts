@@ -152,6 +152,8 @@ export const PRIVACY_RETENTION_TASKS: PrivacyRetentionTask[] = [
 	]),
 	rpcTask('cleanup_expired_agent_call_bootstrap_links'),
 	rpcTask('cleanup_agentic_chat_workflow_dispatches_v1', ['dispatches_deleted']),
+	// Stalled and failed model calls, captured in full: 14 days (20261018150000).
+	rpcTask('cleanup_privacy_llm_call_incidents'),
 	rpcTask('cleanup_privacy_chat_turn_effects'),
 	rpcTask('cleanup_privacy_chat_turn_requests'),
 	rpcTask('cleanup_privacy_chat_turn_checkpoints'),

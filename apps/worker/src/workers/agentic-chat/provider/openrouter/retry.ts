@@ -18,12 +18,14 @@ import { AgenticChatProviderNetworkError } from './errors';
  */
 export async function responseError(
 	response: Response
-): Promise<{ message: string; providerSlug: string | null }> {
-	const text = (await readBoundedResponseText(response, 16 * 1024)).trim().slice(0, 2_000);
+): Promise<{ message: string; providerSlug: string | null; body: string }> {
+	const body = await readBoundedResponseText(response, 16 * 1024);
+	const text = body.trim().slice(0, 2_000);
 	if (!text) {
 		return {
 			message: response.statusText || 'provider request failed',
-			providerSlug: null
+			providerSlug: null,
+			body
 		};
 	}
 	try {
@@ -45,14 +47,14 @@ export async function responseError(
 				normalizeProviderSlug(canonicalOptionalText(root.provider_slug)) ??
 				normalizeProviderSlug(canonicalOptionalText(root.provider));
 			if (typeof error.message === 'string' && error.message.trim()) {
-				return { message: error.message.trim().slice(0, 2_000), providerSlug };
+				return { message: error.message.trim().slice(0, 2_000), providerSlug, body };
 			}
-			return { message: text, providerSlug };
+			return { message: text, providerSlug, body };
 		}
 	} catch {
 		// Plain-text provider errors are returned below.
 	}
-	return { message: text, providerSlug: null };
+	return { message: text, providerSlug: null, body };
 }
 
 /**
@@ -82,7 +84,10 @@ export function orderedProviderSlug(route: AgenticChatOpenAiCompatibleRouteV1): 
 	return order?.length === 1 ? normalizeProviderSlug(order[0]) : null;
 }
 
-async function readBoundedResponseText(response: Response, maximumBytes: number): Promise<string> {
+export async function readBoundedResponseText(
+	response: Response,
+	maximumBytes: number
+): Promise<string> {
 	const reader = response.body?.getReader();
 	if (!reader) return '';
 	const decoder = new TextDecoder();

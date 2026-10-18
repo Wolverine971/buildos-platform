@@ -6,6 +6,7 @@ import type {
 } from '../contracts';
 import type { LocalPromptDump } from '../../effects/prompt-dump';
 import type { ReasoningCapture } from './reasoning-replay';
+import type { ProviderCallCapture } from './call-capture';
 
 export type AgenticChatOpenRouterProviderRoutingV1 = {
 	allow_fallbacks?: boolean;
@@ -94,6 +95,8 @@ export type RouteFailure = {
 
 export type ActiveResponse = {
 	promptDump: LocalPromptDump | null;
+	/** Stall and error capture of this request; null or absent when capture is off. */
+	capture?: ProviderCallCapture | null;
 	route: AgenticChatOpenAiCompatibleRouteV1;
 	response: Response;
 	requestId: string | null;

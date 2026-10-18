@@ -17,7 +17,17 @@ import {
 	throwAbort
 } from './canonical';
 import { AgenticChatProviderNetworkError } from './errors';
-import { isRetryableStatus, orderedProviderSlug, responseError } from './retry';
+import {
+	isRetryableStatus,
+	orderedProviderSlug,
+	readBoundedResponseText,
+	responseError
+} from './retry';
+import {
+	type CallCaptureSettings,
+	ProviderCallCapture,
+	capturedRequestHeaders
+} from './call-capture';
 import { createStableAgenticChatProviderUsageLogIdV1 } from './usage';
 import {
 	OUTPUT_RECOVERY_TIMEOUT_MS,
@@ -56,6 +66,8 @@ export type OpenRouteSettings = {
 	continuationReasoning?: AgenticChatContinuationReasoningMode;
 	/** The replay variant's per-turn reasoning; present only in `replay` mode. */
 	reasoningReplay?: TurnReasoningReplayStore;
+	/** Stall and error capture (`llm_call_incidents`); absent sends exactly as before. */
+	capture?: CallCaptureSettings;
 };
 
 /** The `max_tokens` value this request sends. */
@@ -67,7 +79,8 @@ export async function openProviderRoute(
 	settings: OpenRouteSettings,
 	route: AgenticChatOpenAiCompatibleRouteV1,
 	input: ClientInput,
-	onPromptDump: (dump: LocalPromptDump | null) => void
+	onPromptDump: (dump: LocalPromptDump | null) => void,
+	onCapture?: (capture: ProviderCallCapture | null) => void
 ): Promise<ActiveResponse> {
 	const body = JSON.stringify(buildProviderRequestBody(settings, route, input));
 	// Workflow requests reserve budget for this exact body before any network I/O.
@@ -130,39 +143,111 @@ export async function openProviderRoute(
 		timeoutMs,
 		Math.min(timeoutMs, headersTimeoutMs)
 	);
+	const requestHeaders: Record<string, string> = {
+		Authorization: `Bearer ${route.apiKey}`,
+		'Content-Type': 'application/json',
+		Accept: 'text/event-stream',
+		'HTTP-Referer': settings.httpReferer,
+		'X-Title': settings.appName,
+		...(route.kind === 'openrouter' ? { 'X-OpenRouter-Metadata': 'enabled' } : {}),
+		...(route.headers ?? {})
+	};
+	const capture = settings.capture
+		? new ProviderCallCapture(
+				settings.capture,
+				{
+					userId: input.userId,
+					sessionId: input.sessionId,
+					turnRunId: input.turnRunId,
+					projectId: input.projectId,
+					usageLogId: createStableAgenticChatProviderUsageLogIdV1({
+						turnRunId: input.turnRunId,
+						executionGeneration: input.executionGeneration,
+						logicalProviderRound: input.logicalProviderRound,
+						passRole,
+						providerAttempt,
+						routeId: route.id
+					}),
+					passRole,
+					logicalProviderRound: input.logicalProviderRound,
+					providerAttempt,
+					routeId: route.id,
+					routeKind: route.kind,
+					baseUrl: route.baseUrl,
+					modelRequested: route.model,
+					drainAllowed: !input.dispatchGate,
+					context: {
+						provider_round: input.providerRound,
+						execution_generation: input.executionGeneration,
+						context_type: input.contextType,
+						tool_choice: input.toolChoice,
+						tool_count: input.tools.length,
+						timeout_ms: timeoutMs,
+						headers_timeout_ms: Math.min(timeoutMs, headersTimeoutMs),
+						output_budget_recovery: input.outputBudgetRecovery === true,
+						final_buffered_attempt: input.finalBufferedAttempt === true,
+						...(input.hedge
+							? {
+									hedge_backup: {
+										reason: input.hedge.trigger.reason,
+										elapsed_ms: input.hedge.trigger.elapsedMs,
+										avoided_providers: [...input.hedge.avoidProviderSlugs]
+									}
+								}
+							: {})
+					}
+				},
+				route.apiKey,
+				body,
+				capturedRequestHeaders(requestHeaders)
+			)
+		: null;
+	onCapture?.(capture);
+	if (capture) {
+		// The fetch runs on the capture's signal so a stall can be left running
+		// to its end; every other abort still ends the request at once.
+		const onAttemptAbort = () =>
+			capture.onAttemptAbort(
+				attempt.signal.reason,
+				attempt.timedOut(),
+				attempt.timing().responseOpenedAtMs !== null
+			);
+		if (attempt.signal.aborted) onAttemptAbort();
+		else attempt.signal.addEventListener('abort', onAttemptAbort, { once: true });
+	}
 	let httpStatus: number | null = null;
 	let requestId: string | null = null;
 	try {
 		const pendingResponse = settings.fetchImpl(`${route.baseUrl}/chat/completions`, {
 			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${route.apiKey}`,
-				'Content-Type': 'application/json',
-				Accept: 'text/event-stream',
-				'HTTP-Referer': settings.httpReferer,
-				'X-Title': settings.appName,
-				...(route.kind === 'openrouter' ? { 'X-OpenRouter-Metadata': 'enabled' } : {}),
-				...(route.headers ?? {})
-			},
+			headers: requestHeaders,
 			body,
-			signal: attempt.signal
+			signal: capture?.signal ?? attempt.signal
 		});
 		// Some fetch adapters ignore abort. Bound the await and dispose a late
 		// response without accepting any text or tools from an expired attempt.
 		void pendingResponse.then(
 			(response) => {
-				if (attempt.signal.aborted) void response.body?.cancel().catch(() => undefined);
+				if (!attempt.signal.aborted || capture?.adoptLateResponse(response)) return;
+				void response.body?.cancel().catch(() => undefined);
 			},
-			() => undefined
+			(error: unknown) => capture?.adoptLateFailure(error)
 		);
 		const response = await abortableProviderRead(() => pendingResponse, attempt.signal);
 		attempt.markResponseOpened();
+		capture?.observeResponse(response);
 		httpStatus = response.status;
 		requestId =
 			canonicalOptionalHeader(response.headers.get('x-request-id')) ??
 			canonicalOptionalHeader(response.headers.get('x-openrouter-request-id'));
 		if (!response.ok) {
-			const { message, providerSlug } = await responseError(response);
+			// Raced: an error body that stalls cannot outlive the attempt.
+			const {
+				message,
+				providerSlug,
+				body: errorBody
+			} = await abortableProviderRead(() => responseError(response), attempt.signal);
+			capture?.recordErrorBody(errorBody);
 			throw new AgenticChatProviderNetworkError(
 				`Agentic Chat provider start failed (${response.status}): ${message}`,
 				isRetryableStatus(response.status),
@@ -178,6 +263,13 @@ export async function openProviderRoute(
 		const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
 		const mediaType = contentType.split(';', 1)[0]?.trim();
 		if (mediaType !== 'text/event-stream') {
+			if (capture) {
+				const unexpected = await abortableProviderRead(
+					() => readBoundedResponseText(response, 16 * 1024),
+					attempt.signal
+				).catch(() => '');
+				capture.recordErrorBody(unexpected);
+			}
 			await response.body.cancel().catch(() => undefined);
 			throw new AgenticChatProviderNetworkError(
 				'Agentic Chat provider returned a non-SSE success response',
@@ -186,8 +278,10 @@ export async function openProviderRoute(
 		}
 		return {
 			promptDump,
+			capture,
 			route,
-			response,
+			// The turn reads one branch; the capture records the other.
+			response: capture ? capture.tee(response) : response,
 			requestId,
 			signal: attempt.signal,
 			timeoutMs,

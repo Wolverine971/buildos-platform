@@ -1,5 +1,9 @@
 // apps/worker/src/workers/agentic-chat/host/bootstrap.ts
 import { logAgenticChatPersistenceTrace } from '../effects/persistence-trace';
+import {
+	type LlmCallIncidentClient,
+	SupabaseLlmCallIncidentSink
+} from '../effects/llm-call-incidents';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
@@ -472,12 +476,21 @@ function createDefaultComposition(
 		onPersistenceTrace: logAgenticChatPersistenceTrace,
 		executionObservations: withAgenticChatTurnActivityV1(executionObservations, turnActivity),
 		onUsageError: input.onUsageError,
-		onExecutionObservationError: input.onUsageError
+		onExecutionObservationError: input.onUsageError,
+		// Stalled and failed model requests, captured in full off the turn's path.
+		...(input.config.providerIncidentsEnabled !== false
+			? {
+					incidents: new SupabaseLlmCallIncidentSink(
+						input.client as unknown as LlmCallIncidentClient
+					)
+				}
+			: {})
 	};
 	const clientOptions = {
 		httpReferer: OPENROUTER_HTTP_REFERER,
 		appName: OPENROUTER_APP_NAME,
-		fetchImpl: input.fetchImpl
+		fetchImpl: input.fetchImpl,
+		incidentDrain: input.config.providerIncidentDrainEnabled ?? true
 	};
 	const providerClient = new AgenticChatOpenRouterClient(clientPorts, {
 		...clientOptions,

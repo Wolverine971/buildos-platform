@@ -43,6 +43,7 @@
 		"label-paths": "node --import tsx scripts/labelFilePaths.ts",
 		"label-paths:changed": "node --import tsx scripts/labelFilePaths.ts --changed",
 		"agentic:prod-battery": "node --import tsx scripts/agentic/prod-battery.ts",
+		"agentic:incidents": "node --import tsx scripts/agentic/llm-incidents.ts",
 		"db:rehearse": "python3 scripts/migration-rehearsal/rehearse.py",
 		"test:agentic:gate": "node --import tsx --test scripts/agentic/*.test.ts"
 	},

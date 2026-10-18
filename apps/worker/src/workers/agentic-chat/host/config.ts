@@ -206,6 +206,18 @@ type AgenticChatBaseConfig = {
 	 */
 	contextFinderBroadEnabled?: boolean;
 	/**
+	 * AGENTIC_CHAT_PROVIDER_INCIDENTS: a model request that stalls or fails is
+	 * written in full to `llm_call_incidents` (request, response bytes, timing).
+	 * Default on; `false` captures nothing.
+	 */
+	providerIncidentsEnabled?: boolean;
+	/**
+	 * AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN: a stalled request is left running in
+	 * the background (at most 120 s, 3 at once, 30 an hour) so its incident shows
+	 * how and when it would have finished. Default on; `false` ends it at once.
+	 */
+	providerIncidentDrainEnabled?: boolean;
+	/**
 	 * AGENTIC_CHAT_CONTINUATION_REASONING (audit 2026-10-17 S3 experiment), acting
 	 * client only: `default` (today), `replay` (send the turn's earlier reasoning
 	 * back on continuations), or `off_after_reads` (reasoning off on continuations
@@ -415,6 +427,16 @@ export function loadAgenticChatConfig(
 		true,
 		'AGENTIC_CHAT_CONTEXT_FINDER_BROAD'
 	);
+	const providerIncidentsEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_PROVIDER_INCIDENTS,
+		true,
+		'AGENTIC_CHAT_PROVIDER_INCIDENTS'
+	);
+	const providerIncidentDrainEnabled = parseBoolean(
+		environment.AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN,
+		true,
+		'AGENTIC_CHAT_PROVIDER_INCIDENT_DRAIN'
+	);
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
 	return {
@@ -451,6 +473,8 @@ export function loadAgenticChatConfig(
 		continuationReasoning,
 		providerHedgingEnabled,
 		contextFinderBroadEnabled,
+		providerIncidentsEnabled,
+		providerIncidentDrainEnabled,
 		provider: loadProviderConfig(environment)
 	};
 }

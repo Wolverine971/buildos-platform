@@ -22,6 +22,7 @@ import type {
 	ClientInput
 } from './types';
 import { canonicalProviderAttempt, canonicalProviderPassRole } from './canonical';
+import type { LlmCallIncidentSinkV1 } from './call-capture';
 
 const PROVIDER_TELEMETRY_TIMEOUT_MS = 5_000;
 
@@ -33,6 +34,8 @@ export type OpenRouterClientPorts = {
 	onUsageError?: (error: unknown) => void;
 	onPersistenceTrace?: AgenticChatPersistenceTraceSinkV1;
 	onExecutionObservationError?: (error: unknown) => void;
+	/** Stalled and failed requests, captured in full (`llm_call_incidents`). */
+	incidents?: LlmCallIncidentSinkV1;
 };
 
 export type ProviderAttemptEventType = 'provider_attempt_started' | 'provider_attempt_ended';

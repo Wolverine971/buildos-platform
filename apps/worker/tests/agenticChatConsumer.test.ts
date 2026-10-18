@@ -326,6 +326,8 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			continuationReasoning: 'default',
 			providerHedgingEnabled: true,
 			contextFinderBroadEnabled: true,
+			providerIncidentsEnabled: true,
+			providerIncidentDrainEnabled: true,
 			// Shadow-only until review-decision data justifies holding writes.
 			holdUncommissionedWrites: false,
 			maxToolCalls: 9,
