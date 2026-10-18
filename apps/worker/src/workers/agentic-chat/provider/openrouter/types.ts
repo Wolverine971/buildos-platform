@@ -33,6 +33,13 @@ export type AgenticChatProviderUsageObservationV1 = {
 	localPromptDump?: { jsonFile: string; markdownFile: string };
 	usageLogId: string;
 	status: 'success' | 'failure' | 'aborted';
+	/** A hedge backup: why it started and the endpoint it avoided. */
+	hedge?: {
+		reason: 'slow_stream' | 'no_first_progress';
+		elapsedMs: number;
+		outputBytes: number;
+		avoidedProviders: readonly string[];
+	};
 	requestStartedAtMs: number;
 	observedAtMs: number;
 	userId: string;

@@ -97,9 +97,11 @@ export async function persistProviderAttemptObservation(
 ): Promise<void> {
 	try {
 		const providerAttempt = canonicalProviderAttempt(input.providerAttempt);
-		const observationSignal = input.signal.aborted
+		// A hedged attempt's own signal ends when it loses; its receipts still land.
+		const parentSignal = input.observationSignal ?? input.signal;
+		const observationSignal = parentSignal.aborted
 			? new AbortController().signal
-			: input.signal;
+			: parentSignal;
 		await runWithAbortableDeadline({
 			parentSignal: observationSignal,
 			timeoutMs: PROVIDER_TELEMETRY_TIMEOUT_MS,
@@ -196,7 +198,8 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 					estimatedUsage: observation.estimated,
 					costSource: observation.costSource,
 					retryable: observation.retryable,
-					providerStatus: observation.status
+					providerStatus: observation.status,
+					...(observation.hedge ? { hedge: observation.hedge } : {})
 				}
 			},
 			signal

@@ -4451,6 +4451,50 @@ describe('AgenticChatTurnExecutor', () => {
 			}
 		});
 
+		it('runs no further reads once a deferred receipt has failed', async () => {
+			const harness = createHarness([], { recovery: [recoveryReceipt('retry_scheduled')] });
+			const ledger = gate();
+			harness.toolExecutions.persistRead.mockImplementationOnce(async () => {
+				await ledger.opened;
+				throw new AgenticChatToolExecutionTimeoutError(10);
+			});
+			const continueWithToolResults = vi.fn(() =>
+				(async function* () {
+					// The receipt fails while the model writes its next read.
+					ledger.release();
+					await new Promise((resolve) => setTimeout(resolve, 5));
+					yield {
+						type: 'read_tool',
+						callTransitionId: SECOND_CALL_TRANSITION_ID,
+						resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+						providerToolCallId: 'provider-read-after-failed-receipt',
+						toolName: 'fixture_task_read',
+						arguments: { taskId: 'dc000000-0000-4000-8000-000000000003' }
+					} as const;
+					yield { type: 'finish', finishedReason: 'tool_calls', usage: null } as const;
+				})()
+			);
+			Object.assign(harness.provider, {
+				prepare: vi.fn(async () => ({
+					stream: readOnlyFirstRound(),
+					continueWithToolResults,
+					release: vi.fn()
+				}))
+			});
+
+			try {
+				await expect(harness.executor.execute(job())).resolves.toMatchObject({
+					outcome: 'requeued'
+				});
+				expect(harness.readTool.execute).toHaveBeenCalledTimes(1);
+				expect(harness.control.recover.mock.calls[0]?.[0]).toMatchObject({
+					errorMessage: expect.stringContaining('ledger exceeded its 10ms deadline')
+				});
+			} finally {
+				await harness.publisher.stop();
+			}
+		});
+
 		it('joins earlier read receipts before a batch that may write', async () => {
 			const harness = createHarness([]);
 			const ledger = gate();

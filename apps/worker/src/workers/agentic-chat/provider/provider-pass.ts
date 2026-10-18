@@ -5,11 +5,13 @@ import type { AgenticChatProviderCapacity } from './provider-capacity';
 import type {
 	AgenticChatLiveTextPreviewPortV1,
 	AgenticChatProviderPassRoleV1,
+	AgenticChatSlowStreamHedgeSignalV1,
 	AgenticChatTurnProviderClientEventV1,
 	AgenticChatTurnProviderClientPortV1,
 	AgenticChatTurnProviderRequestV1
 } from './contracts';
 import { throwIfAborted } from '../shared/abortable-deadline';
+import { AgenticChatProviderHedgeLostError } from './openrouter/errors';
 import { canonicalFinishedReason, providerError } from './protocol';
 import { providerClientRequest } from './request-builders';
 import {
@@ -94,8 +96,22 @@ const usableProviderAttempt = (settled: SettledProviderAttempt): boolean =>
 	!settled.outcome.terminalError &&
 	!settled.outcome.truncated;
 
-/** Abort reason for the request that lost a hedge; it lands on that request's usage row. */
-const HEDGE_LOST_REASON = 'Agentic Chat provider hedge: the other request finished first';
+/**
+ * How long a finished pass waits for the losing request to record its receipts,
+ * so they land before the turn's effects drain. An abort settles in microtasks.
+ */
+const HEDGE_LOSER_SETTLE_MS = 1_000;
+
+function settleBriefly(work: Promise<unknown>, ms: number): Promise<void> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	return Promise.race([
+		work.then(() => undefined),
+		new Promise<void>((resolve) => {
+			timer = setTimeout(resolve, ms);
+			timer.unref?.();
+		})
+	]).finally(() => clearTimeout(timer));
+}
 
 function linkAttemptSignal(parent: AbortSignal): {
 	signal: AbortSignal;
@@ -364,6 +380,9 @@ export async function* streamBufferedProviderPass(
 			} | null;
 		} = { current: null };
 		let primaryDecided = false;
+		// Once the backup has failed, the first request is the pass's last chance.
+		let backupFailed = false;
+		let loser: Promise<SettledProviderAttempt> | null = null;
 		let announceBackup: () => void = () => undefined;
 		const backupStarted = new Promise<null>((resolve) => {
 			announceBackup = () => resolve(null);
@@ -375,7 +394,7 @@ export async function* streamBufferedProviderPass(
 				!attemptRequest.outputBudgetRecovery &&
 				(outputPolicy?.canClaimRecovery?.() ?? true);
 			const hedgedRequest = attemptRequest;
-			const startBackup = () => {
+			const startBackup = (trigger: AgenticChatSlowStreamHedgeSignalV1) => {
 				if (backup.current || primaryDecided || request.signal.aborted) return;
 				const backupAttempt = providerAttempt + 1;
 				const link = linkAttemptSignal(request.signal);
@@ -400,7 +419,14 @@ export async function* streamBufferedProviderPass(
 								allowSlowStreamRecovery: false,
 								allowRunawayReasoningCutoff: false,
 								finalBufferedAttempt: true,
-								signal: link.signal
+								hedge: {
+									avoidProviderSlugs: trigger.providerSlug
+										? [trigger.providerSlug]
+										: [],
+									trigger
+								},
+								signal: link.signal,
+								observationSignal: request.signal
 							},
 							preview: backupPreview,
 							capacity,
@@ -408,7 +434,10 @@ export async function* streamBufferedProviderPass(
 							outputPolicy,
 							mayRetry: () => false
 						})
-					)
+					).then((settled) => {
+						if (!usableProviderAttempt(settled)) backupFailed = true;
+						return settled;
+					})
 				};
 				announceBackup();
 			};
@@ -425,7 +454,12 @@ export async function* streamBufferedProviderPass(
 						finalBufferedAttempt:
 							!retriesRemain || attemptRequest.outputBudgetRecovery === true,
 						...(primaryLink
-							? { signal: primaryLink.signal, slowStreamHedge: startBackup }
+							? {
+									signal: primaryLink.signal,
+									observationSignal: request.signal,
+									slowStreamHedge: startBackup,
+									mayAbandon: () => !backupFailed
+								}
 							: {})
 					},
 					preview,
@@ -456,7 +490,7 @@ export async function* streamBufferedProviderPass(
 					// The first request failed while the backup runs: show the backup live.
 					if (!first.fromBackup) {
 						preview?.discard();
-						running.preview?.goLive();
+						if (!request.signal.aborted) running.preview?.goLive();
 					}
 					const second = await tagged[first.fromBackup ? 0 : 1];
 					// Neither finished cleanly: the backup was the last attempt, so it stands.
@@ -464,12 +498,14 @@ export async function* streamBufferedProviderPass(
 						usableProviderAttempt(second.result) || second.fromBackup ? second : first;
 				}
 				if (winner.fromBackup) {
-					primaryLink?.abort(new Error(HEDGE_LOST_REASON));
+					primaryLink?.abort(new AgenticChatProviderHedgeLostError());
 					preview?.discard();
 					chosenPreview = running.preview;
+					loser = primaryRun;
 				} else {
-					running.link.abort(new Error(HEDGE_LOST_REASON));
+					running.link.abort(new AgenticChatProviderHedgeLostError());
 					running.preview?.discard();
+					loser = running.run;
 				}
 				settled = winner.result;
 			}
@@ -512,6 +548,7 @@ export async function* streamBufferedProviderPass(
 			backup.current?.preview?.discard();
 			primaryLink?.release();
 			backup.current?.link.release();
+			if (loser) await settleBriefly(loser, HEDGE_LOSER_SETTLE_MS);
 		}
 	}
 }

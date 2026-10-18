@@ -798,7 +798,9 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			// The first attempt gets its own signal so a backup request can end it
 			// alone; it still follows the turn's signal (asserted below).
 			signal: expect.any(AbortSignal),
-			slowStreamHedge: expect.any(Function)
+			observationSignal: signal,
+			slowStreamHedge: expect.any(Function),
+			mayAbandon: expect.any(Function)
 		});
 		const attemptSignal = (client.stream.mock.calls[0]![0] as { signal: AbortSignal }).signal;
 		expect(attemptSignal).not.toBe(signal);

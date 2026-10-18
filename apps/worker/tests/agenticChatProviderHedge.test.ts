@@ -102,6 +102,7 @@ function harness(
 ) {
 	const requests: Array<{ body: Record<string, any>; signal: AbortSignal }> = [];
 	const usage: AgenticChatProviderUsageObservationV1[] = [];
+	const receipts: Array<{ eventType: string; payload: Record<string, any> }> = [];
 	const fetchImpl = vi.fn<typeof fetch>(async (_url, init) => {
 		requests.push({
 			body: JSON.parse(String(init!.body)),
@@ -119,7 +120,15 @@ function harness(
 					usage.push(observation);
 					return undefined;
 				}
-			}
+			},
+			executionObservations: {
+				async observe(observation: { eventType: string; payload: Record<string, any> }) {
+					receipts.push({
+						eventType: observation.eventType,
+						payload: observation.payload
+					});
+				}
+			} as never
 		},
 		{
 			routes: [
@@ -153,6 +162,7 @@ function harness(
 	return {
 		requests,
 		usage,
+		receipts,
 		previews,
 		stream(input = request()) {
 			return streamBufferedProviderPass(input, client, capacity, 2_000);
@@ -192,11 +202,99 @@ describe('provider hedging for stalled acting streams', () => {
 		expect(events.at(-1)).toMatchObject({ type: 'done' });
 		expect(test.requests[0]!.signal.aborted).toBe(true);
 		expect(test.requests).toHaveLength(2);
-		// The loser's usage row names the hedge.
+		// The loser's usage row and receipt name the hedge; the backup's says why it ran.
 		await vi.advanceTimersByTimeAsync(0);
 		expect(test.usage.find((row) => row.providerAttempt === 1)).toMatchObject({
 			status: 'aborted',
 			error: expect.stringContaining('hedge')
+		});
+		expect(test.usage.find((row) => row.providerAttempt === 2)).toMatchObject({
+			status: 'success',
+			hedge: { reason: 'slow_stream', avoidedProviders: ['together'] }
+		});
+		expect(
+			test.receipts.find(
+				(r) => r.eventType === 'provider_attempt_ended' && r.payload.provider_attempt === 1
+			)?.payload
+		).toMatchObject({ status: 'aborted', error_class: 'hedge_lost' });
+	});
+
+	it('remembers the stalled endpoint for later passes only when its request loses', async () => {
+		vi.useFakeTimers();
+		const run = async (primaryWins: boolean) => {
+			const slow = controllableResponse('Together');
+			const backup = controllableResponse('BaseTen');
+			const next = controllableResponse('BaseTen');
+			const test = harness([slow.response, backup.response, next.response]);
+			const first = collect(test.stream());
+			await vi.advanceTimersByTimeAsync(0);
+			slow.text('x');
+			await vi.advanceTimersByTimeAsync(HEDGE_SLOW_WINDOW_MS + 500);
+			expect(test.requests).toHaveLength(2);
+			if (primaryWins) slow.finish();
+			else {
+				backup.text('Backup.');
+				backup.finish();
+			}
+			await first;
+			const second = collect(test.stream(request({ logicalProviderRound: 4 })));
+			await vi.advanceTimersByTimeAsync(0);
+			next.text('Next pass.');
+			next.finish();
+			await second;
+			return test.requests[2]!.body.provider.ignore as string[];
+		};
+		expect(await run(false)).toContain('together');
+		expect(await run(true)).not.toContain('together');
+	});
+
+	it('lets the first request finish slowly once its backup has failed', async () => {
+		vi.useFakeTimers();
+		const slow = controllableResponse('Together');
+		const backup = controllableResponse('BaseTen');
+		const test = harness([slow.response, backup.response]);
+		const collecting = collect(test.stream());
+		await vi.advanceTimersByTimeAsync(0);
+		slow.text('Slow ');
+		await vi.advanceTimersByTimeAsync(HEDGE_SLOW_WINDOW_MS + 500);
+		expect(test.requests).toHaveLength(2);
+		backup.fail();
+		// Past both the 4 s stall window and the 15 s first-progress abort.
+		await vi.advanceTimersByTimeAsync(16_000);
+		expect(test.requests[0]!.signal.aborted).toBe(false);
+		slow.text('but finished.');
+		slow.finish();
+		expect(texts(await collecting)).toEqual(['Slow ', 'but finished.']);
+		expect(test.requests).toHaveLength(2);
+	});
+
+	it('closes the receipt of a backup that loses before its response opens', async () => {
+		vi.useFakeTimers();
+		const slow = controllableResponse('Together');
+		let test!: ReturnType<typeof harness>;
+		const neverOpens = () =>
+			new Promise<Response>((_resolve, reject) => {
+				const signal = test.requests.at(-1)!.signal;
+				signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+			});
+		test = harness([slow.response, neverOpens]);
+		const collecting = collect(test.stream());
+		await vi.advanceTimersByTimeAsync(0);
+		slow.text('x');
+		await vi.advanceTimersByTimeAsync(HEDGE_SLOW_WINDOW_MS + 500);
+		expect(test.requests).toHaveLength(2);
+		slow.text(' recovered.');
+		slow.finish();
+		expect(texts(await collecting)).toEqual(['x', ' recovered.']);
+		await vi.advanceTimersByTimeAsync(0);
+		const backupReceipts = test.receipts.filter((r) => r.payload.provider_attempt === 2);
+		expect(backupReceipts.map((r) => r.eventType)).toEqual([
+			'provider_attempt_started',
+			'provider_attempt_ended'
+		]);
+		expect(backupReceipts[1]!.payload).toMatchObject({
+			status: 'aborted',
+			error_class: 'hedge_lost'
 		});
 	});
 
@@ -232,7 +330,7 @@ describe('provider hedging for stalled acting streams', () => {
 		expect(test.requests).toHaveLength(1);
 	});
 
-	it('starts a backup after 8 s of silence instead of waiting for the 15 s stall abort', async () => {
+	it('starts a backup after 6 s of silence instead of waiting for the 15 s stall abort', async () => {
 		vi.useFakeTimers();
 		const silent = controllableResponse('Together');
 		const backup = controllableResponse('BaseTen');

@@ -394,12 +394,14 @@ describe('provider pass live text preview', () => {
 		);
 
 		expect(previewEvents).toEqual(plainEvents);
-		// The first attempt carries its own abort signal and hedge callback (fresh
+		// The first attempt carries its own abort signal and hedge callbacks (fresh
 		// per pass); everything else about the requests must match.
 		const comparable = (calls: unknown[][]) =>
 			calls.map(([input]) => {
 				const {
 					signal: _signal,
+					observationSignal: _observationSignal,
+					mayAbandon: _mayAbandon,
 					slowStreamHedge,
 					...rest
 				} = input as Record<string, unknown>;

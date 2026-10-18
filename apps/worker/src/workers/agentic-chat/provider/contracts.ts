@@ -216,6 +216,23 @@ export type AgenticChatTurnProviderClientRequestV1 = {
 	 * stream looks stalled, without ending it. Clients may ignore it.
 	 */
 	slowStreamHedge?: (signal: AgenticChatSlowStreamHedgeSignalV1) => void;
+	/**
+	 * Set on a backup request: the endpoint it must avoid (the stalled one) and why
+	 * it started. Applies to this request only; the turn's routing memory marks the
+	 * stalled endpoint failed only if its request then loses.
+	 */
+	hedge?: {
+		avoidProviderSlugs: readonly string[];
+		trigger: AgenticChatSlowStreamHedgeSignalV1;
+	};
+	/**
+	 * Read at every check. False once this attempt is the pass's last chance (its
+	 * backup already failed): it must not be abandoned as slow or cut off as
+	 * runaway reasoning, because no retry would follow.
+	 */
+	mayAbandon?: () => boolean;
+	/** Parent for receipt writes when `signal` ends with this attempt alone (hedging). */
+	observationSignal?: AbortSignal;
 	/** Turn-level deadline; absent for fixtures and legacy callers. */
 	budget?: AgenticChatProviderBudgetV1;
 	/** Durable per-request reservation (workflow v1 only). Absent on the ordinary path. */
@@ -231,6 +248,8 @@ export type AgenticChatSlowStreamHedgeSignalV1 = {
 	/** The window judged: recent generation for `slow_stream`, time since open otherwise. */
 	elapsedMs: number;
 	outputBytes: number;
+	/** The endpoint serving the stalled stream, when the response named it. */
+	providerSlug: string | null;
 };
 
 export type AgenticChatTurnProviderClientPortV1 = {

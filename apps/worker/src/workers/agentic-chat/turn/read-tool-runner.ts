@@ -558,7 +558,11 @@ export class AgenticChatReadToolRunner {
 		// Admission waits on the ledger: a rejected ledger rejects this
 		// publication (nothing enqueued) and the admission chain moves on.
 		const priorTail = projection.semanticAdmissionTail;
-		projection.semanticAdmissionTail = priorTail.then(() => ledger);
+		const tail = priorTail.then(() => ledger);
+		// Observed here too: if startSemantic throws below, this chain is
+		// dropped, and its rejection must not exit the worker.
+		void tail.catch(() => undefined);
+		projection.semanticAdmissionTail = tail;
 		let publication: AgenticChatSemanticPublicationV1;
 		try {
 			publication = this.services.startSemantic(

@@ -170,6 +170,7 @@ export function runawayReasoningTokens(
 	limit = RUNAWAY_REASONING_TOKEN_LIMIT
 ): number | null {
 	if (input.allowRunawayReasoningCutoff !== true) return null;
+	if (input.mayAbandon?.() === false) return null;
 	if (state.finishReason !== null || state.completionChars > 0) return null;
 	if (!isV41FlashModel(model)) return null;
 	// Too little budget left for the recovery: let the pass run as before.
@@ -198,6 +199,8 @@ export function watchStreamProgress(
 	const check = () => {
 		if (active.signal.aborted || state.finishReason !== null) return;
 		if (!policy.appliesTo(state.modelUsed ?? active.route.model)) return;
+		// The pass's last chance (its backup failed): slow beats nothing.
+		if (input.mayAbandon?.() === false) return;
 		const now = Date.now();
 		// Preserve enough time for the existing retry and terminal settlement.
 		if (
@@ -268,22 +271,24 @@ const HEDGE_SAMPLE_MS = 500;
 
 /**
  * Calls `onHedge` at most once: when output over the last 2 s of generation
- * falls below the acting floor, or when nothing has streamed 8 s after the
+ * falls below the acting floor, or when nothing has streamed 6 s after the
  * response opened. Never aborts. Stops when the stream ends or the turn has
- * too little budget left for a second request.
+ * too little budget left for a second request. A late timer (a suspended or
+ * busy host) restarts the judgment instead of counting as provider silence.
  */
 export function watchForSlowStreamHedge(
 	active: ActiveResponse,
 	state: StreamState,
 	input: ClientInput,
-	onHedge: (signal: AgenticChatSlowStreamHedgeSignalV1) => void
+	onHedge: (signal: Omit<AgenticChatSlowStreamHedgeSignalV1, 'providerSlug'>) => void
 ): () => void {
-	const openedAtMs = Date.now();
+	let openedAtMs = Date.now();
+	let dueAtMs = openedAtMs + HEDGE_SAMPLE_MS;
 	const progressBytes = () => state.generatedBytes + state.reasoningBytes;
 	let samples: { atMs: number; bytes: number }[] = [];
 	let stopped = false;
 	let timer: ReturnType<typeof setTimeout> | undefined;
-	const fire = (signal: AgenticChatSlowStreamHedgeSignalV1) => {
+	const fire = (signal: Omit<AgenticChatSlowStreamHedgeSignalV1, 'providerSlug'>) => {
 		stopped = true;
 		try {
 			onHedge(signal);
@@ -300,7 +305,10 @@ export function watchForSlowStreamHedge(
 				MIN_ATTEMPT_TIMEOUT_MS + BUDGET_FINALIZATION_RESERVE_MS
 		)
 			return;
+		const late = now - dueAtMs > HEDGE_SLOW_WINDOW_MS;
 		if (state.firstProgressAtMs === null) {
+			// Silence measured across a suspended host is not the provider's.
+			if (late) openedAtMs = now - HEDGE_SAMPLE_MS;
 			const waited = now - openedAtMs;
 			if (waited >= HEDGE_FIRST_PROGRESS_MS) {
 				fire({ reason: 'no_first_progress', elapsedMs: waited, outputBytes: 0 });
@@ -315,7 +323,7 @@ export function watchForSlowStreamHedge(
 			}
 			const baseline = samples[0]!;
 			const span = now - baseline.atMs;
-			if (span > HEDGE_SLOW_WINDOW_MS * 2) {
+			if (late || span > HEDGE_SLOW_WINDOW_MS * 2) {
 				// Late timers mean a suspended host, not a slow provider: start over.
 				samples = [{ atMs: now, bytes }];
 			} else if (
@@ -330,6 +338,7 @@ export function watchForSlowStreamHedge(
 				return;
 			}
 		}
+		dueAtMs = Date.now() + HEDGE_SAMPLE_MS;
 		timer = setTimeout(tick, HEDGE_SAMPLE_MS);
 		timer.unref?.();
 	};

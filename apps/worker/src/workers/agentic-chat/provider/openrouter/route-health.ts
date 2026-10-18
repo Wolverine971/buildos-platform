@@ -29,12 +29,23 @@ export class TurnRouteHealthTracker {
 		private readonly configuredModels: ReadonlySet<string>
 	) {}
 
+	/** `avoidProviderSlugs`: this request only (a hedge backup); the turn's memory is unchanged. */
 	apply(
 		route: AgenticChatOpenAiCompatibleRouteV1,
-		turnRunId: string
+		turnRunId: string,
+		avoidProviderSlugs: readonly string[] = []
 	): AgenticChatOpenAiCompatibleRouteV1 {
-		const health = this.get(turnRunId, false);
-		if (!health || route.kind !== 'openrouter') return route;
+		const known = this.get(turnRunId, false);
+		if (route.kind !== 'openrouter' || (!known && avoidProviderSlugs.length === 0))
+			return route;
+		const health: TurnRouteHealth = known ?? {
+			failedModels: new Set(),
+			failedProviderSlugs: new Set(),
+			preferredModels: [],
+			pin: null,
+			lastResponse: null,
+			updatedAtMs: 0
+		};
 		const models = [route.model, ...(route.fallbackModels ?? [])];
 		const preferred = models.filter((model) => health.preferredModels.includes(model));
 		const healthy = models.filter(
@@ -44,7 +55,9 @@ export class TurnRouteHealthTracker {
 		const reordered = [...preferred, ...healthy, ...failed];
 		const configuredIgnore = route.providerRouting?.ignore ?? [];
 		const orderedPool = route.providerRouting?.order ?? [];
-		const failedSlugs = Array.from(health.failedProviderSlugs);
+		const failedSlugs = Array.from(
+			new Set([...health.failedProviderSlugs, ...avoidProviderSlugs])
+		);
 		const inPool = (slug: string) =>
 			orderedPool.some((member) => slug === member || slug.startsWith(`${member}/`));
 		// Remembered failures must never exclude the whole configured pool. For a

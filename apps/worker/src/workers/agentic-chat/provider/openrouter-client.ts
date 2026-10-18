@@ -46,7 +46,12 @@ import {
 	outputBudgetSignal,
 	reportedReasoningTokens
 } from './output-budget';
-import { AgenticChatProviderNetworkError, AgenticChatSlowStreamError } from './openrouter/errors';
+import {
+	AgenticChatProviderHedgeLostError,
+	AgenticChatProviderNetworkError,
+	AgenticChatSlowStreamError,
+	abortedErrorClass
+} from './openrouter/errors';
 import { type OpenRouteSettings, openProviderRoute, sentMaxTokens } from './openrouter/open-route';
 import { attributedProviderSlug, isRetryableUnknownError, routeFailure } from './openrouter/retry';
 import { TurnRouteHealthTracker, responseIdentity } from './openrouter/route-health';
@@ -350,6 +355,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 						routeId
 					}),
 					status,
+					...(input.hedge
+						? {
+								hedge: {
+									reason: input.hedge.trigger.reason,
+									elapsedMs: input.hedge.trigger.elapsedMs,
+									outputBytes: input.hedge.trigger.outputBytes,
+									avoidedProviders: [...input.hedge.avoidProviderSlugs]
+								}
+							}
+						: {}),
 					requestStartedAtMs,
 					observedAtMs: Date.now(),
 					userId: input.userId,
@@ -403,7 +418,11 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 
 		try {
 			for (const configuredRoute of this.routes) {
-				const route = this.routeHealth.apply(configuredRoute, input.turnRunId);
+				const route = this.routeHealth.apply(
+					configuredRoute,
+					input.turnRunId,
+					input.hedge?.avoidProviderSlugs
+				);
 				lastAttemptedRoute = route;
 				attemptedRouteIds.push(route.id);
 				const attemptKind: 'primary' | 'retry' =
@@ -426,7 +445,25 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					activeAttemptKind = attemptKind;
 					break;
 				} catch (error) {
-					if (input.signal.aborted) throwAbort(input.signal);
+					if (input.signal.aborted) {
+						// Ended before the stream opened (a cancel, or a hedge that lost
+						// first): the started receipt still needs its end.
+						this.observeProviderAttempt(input, route, 'provider_attempt_ended', {
+							round: input.providerRound,
+							logical_provider_round: input.logicalProviderRound,
+							pass_role: passRole,
+							provider_attempt: providerAttempt,
+							attempt_kind: attemptKind,
+							route_id: route.id,
+							model_requested: route.model,
+							status: 'aborted',
+							duration_ms: boundedDuration(attemptStartedAtMs, Date.now()),
+							finish_reason: null,
+							error_class: abortedErrorClass(input.signal),
+							usage: null
+						});
+						throwAbort(input.signal);
+					}
 					// A dispatch gate refused this request before any network I/O. It
 					// says nothing about the route, and no further route may be tried.
 					const denied = error instanceof AgenticChatProviderDispatchDeniedError;
@@ -522,15 +559,16 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 			if (watchPolicy?.kind === 'acting' && requestHedge && this.slowStreamHedging) {
 				const hedged = active;
 				const stopAbortWatch = stopProgressWatch;
-				const stopHedgeWatch = watchForSlowStreamHedge(active, state, input, (signal) => {
-					// Route the backup around this endpoint only. The model stays
-					// eligible: the stall is the host's, as the 10-18 retry showed.
-					this.routeHealth.observeFailure(
-						input.turnRunId,
-						null,
-						state.providerSlug ?? normalizeProviderSlug(state.provider) ?? null
-					);
-					if (!hedged.signal.aborted) requestHedge(signal);
+				const stopHedgeWatch = watchForSlowStreamHedge(active, state, input, (trigger) => {
+					// The backup avoids this endpoint; the model stays eligible (the
+					// stall is the host's, as the 10-18 retry showed). The turn's
+					// routing memory changes only if this request then loses (below).
+					if (!hedged.signal.aborted)
+						requestHedge({
+							...trigger,
+							providerSlug:
+								state.providerSlug ?? normalizeProviderSlug(state.provider) ?? null
+						});
 				});
 				stopProgressWatch = () => {
 					stopAbortWatch?.();
@@ -887,6 +925,17 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					this.routeHealth.routingModel(state.modelUsed, active.route),
 					state.providerSlug ?? normalizeProviderSlug(state.provider)
 				);
+			} else if (
+				active &&
+				input.slowStreamHedge &&
+				input.signal.reason instanceof AgenticChatProviderHedgeLostError
+			) {
+				// This stalled request lost to its backup: later passes avoid the host.
+				this.routeHealth.observeFailure(
+					input.turnRunId,
+					null,
+					state.providerSlug ?? normalizeProviderSlug(state.provider) ?? null
+				);
 			}
 			if (active && !activeAttemptEnded) {
 				const aborted = input.signal.aborted;
@@ -912,7 +961,7 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					),
 					finish_reason: state.finishReason,
 					error_class: aborted
-						? 'aborted'
+						? abortedErrorClass(input.signal)
 						: active.timedOut()
 							? 'provider_timeout'
 							: error instanceof AgenticChatReviewerStallError
@@ -968,7 +1017,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 					model_requested: active.route.model,
 					provider: state.provider ?? active.route.id,
 					status: input.signal.aborted ? 'aborted' : 'failure',
-					error_class: input.signal.aborted ? 'aborted' : 'provider_consumer_closed',
+					error_class: input.signal.aborted
+						? abortedErrorClass(input.signal)
+						: 'provider_consumer_closed',
 					finish_reason: state.finishReason,
 					duration_ms: boundedDuration(
 						activeAttemptStartedAtMs ?? requestStartedAtMs,

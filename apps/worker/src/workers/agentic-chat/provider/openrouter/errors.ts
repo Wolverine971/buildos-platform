@@ -35,3 +35,20 @@ export class AgenticChatFirstProgressStallError extends AgenticChatSlowStreamErr
 		);
 	}
 }
+
+/**
+ * Abort reason for the request that lost a hedge (provider-pass.ts). Receipts name it
+ * `hedge_lost`, apart from a user cancel.
+ */
+export class AgenticChatProviderHedgeLostError extends Error {
+	readonly errorClass = 'hedge_lost';
+	constructor() {
+		super('Agentic Chat provider hedge: the other request finished first');
+		this.name = 'AgenticChatProviderHedgeLostError';
+	}
+}
+
+/** `error_class` for a request ended by its own signal. */
+export function abortedErrorClass(signal: AbortSignal): 'hedge_lost' | 'aborted' {
+	return signal.reason instanceof AgenticChatProviderHedgeLostError ? 'hedge_lost' : 'aborted';
+}

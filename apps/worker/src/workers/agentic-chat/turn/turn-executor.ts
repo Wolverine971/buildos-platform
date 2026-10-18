@@ -545,6 +545,8 @@ export class AgenticChatTurnExecutor {
 						continue;
 					}
 					if (step.type === 'semantic') {
+						// Nothing more is published once a read receipt has failed.
+						readSaves.throwIfFailed();
 						const contextShift = extractContextShift(step.eventPayload);
 						if (contextShift) {
 							await this.services.persistSessionHandoff(
@@ -1013,6 +1015,8 @@ export class AgenticChatTurnExecutor {
 		// once earlier reads' receipts are durable. A read-only batch hands its
 		// results to the next model pass while their receipts are written.
 		const batchMayWrite = pending.some(({ step }) => step.type === 'mutating_tool');
+		// A receipt that already failed ends the turn: run no further tools for it.
+		readSaves.throwIfFailed();
 		if (batchMayWrite) await abortable(readSaves.join(), signal);
 		const pendingByCallId = new Map(
 			pending.map((entry) => [entry.step.providerToolCallId, entry] as const)
