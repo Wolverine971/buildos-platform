@@ -316,3 +316,38 @@ or every turn loses its playbooks until the worker catches up. So two commits:
    scripts, runtime-only web tests) → wait for the Railway deploy.
 2. Push commit B (web) → wait for Vercel → apply `20261017201000` (the web must understand
    `rate_limited` first).
+
+### Wave 3 — shipped and validated (2026-10-17 late)
+
+- DJ pushed all wave 3 code as `1ecc01f1c` (web and worker in one push). Migrations
+  `20261017200000` + `20261017202000` applied and recorded before the deploys finished;
+  `20261017201000` (rate limit) applied after Vercel was live; grants unchanged (postgres,
+  service_role). Railway `CHAT_CONCURRENCY` 2 → 4. All replicas healthy on the new commit, Realtime
+  0 failures (the degraded replica cleared on redeploy).
+- Battery on `1ecc01f1c` (deepseek-v4.1-flash): 50/52, $0.3424, evidence
+  `output/agentic-prod-battery/2026-10-18T03-29-15-602Z`. The only failures are case 14 reps 2–3
+  (judge 1/5). All three reps wrote nearly the same marketing-brief line; the judge scored "no
+  revision after that initial draft is recorded" 4/5, "no later revision recorded" 1/5, and "no
+  revision after that" 1/5. Rep 3 is a real (small) overclaim; rep 2 is a judge false negative. Same
+  case, same judge noise as both earlier runs today.
+- Latency vs the `67c4e71f8` run (waves 2 + 3 together): turn p50 9.6 → 9.2 s, p90 30.1 → 21.0 s,
+  max 94.5 → 38.4 s. Write cases: project create 30.9 → 23.3 s, task batch 32.8 → 26.1 s, document
+  create 13.8 → 9.0 s.
+
+### S3 continuation-reasoning A/B (2026-10-18, prod, deepseek-v4.1-flash, one full battery per arm)
+
+| Arm               | Score                                                                           | Battery $ | Cost/turn | Continuation reasoning | Turn wall p50 · p90 |
+| ----------------- | ------------------------------------------------------------------------------- | --------- | --------- | ---------------------- | ------------------- |
+| `default`         | 50/52 (case 14 judge)                                                           | $0.342    | —         | —                      | 9.2 s · 21.0 s      |
+| `replay`          | 52/52                                                                           | $0.300    | −19%      | −32%                   | +8% · +12%          |
+| `off_after_reads` | 47/52 (case 9 verbatim store failed once — a real behavior miss; case 14 judge) | $0.351    | +2%       | −66%                   | +5% · +5%           |
+
+Evidence: `output/agentic-prod-battery/2026-10-18T03-29-15-602Z` (default),
+`…T03-49-01-744Z` (replay; smoke `…T03-47-05-582Z` case 14 3/3), `…T04-05-50-628Z`
+(off_after_reads); numbers in `output/agentic-prod-battery/continuation-reasoning-2026-10-18.json`.
+Total spend $1.02.
+
+Decision: keep `default` (variable removed from Railway, worker redeployed 00:19). Neither arm made
+turns faster, which was the point of S3; `off_after_reads` cost quality for nothing. `replay` is a
+modest cost win with a small latency cost — worth a second look only if model spend starts to
+matter at volume. Continuation re-thinking is not the remaining speed lever.
