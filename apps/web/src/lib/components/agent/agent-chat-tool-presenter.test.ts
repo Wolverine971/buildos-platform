@@ -104,10 +104,10 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		const combine = { source_project_id: 'p-child', destination_project_id: 'p-dest' };
 
 		expect(presenter.formatToolMessage('propose_project_parent', nest, 'pending')).toBe(
-			'Nesting project: "Content Ops"'
+			'Nesting project: "Content Ops → Wayne Strategies"'
 		);
 		expect(presenter.formatToolMessage('propose_project_parent', nest, 'awaiting_user')).toBe(
-			'Needs your choice to nest project: "Content Ops"'
+			'Needs your choice to nest project: "Content Ops → Wayne Strategies"'
 		);
 		expect(presenter.formatToolMessage('propose_project_parent', detach, 'awaiting_user')).toBe(
 			'Needs your choice to detach project: "Content Ops"'
@@ -117,7 +117,7 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		).toBe('Needs your choice to combine projects: "Content Ops → DJ Internal"');
 		// Blocked or already in place: no card, nothing changed; never "Nested"/"Combined".
 		expect(presenter.formatToolMessage('propose_project_parent', nest, 'completed')).toBe(
-			'Checked nesting project: "Content Ops"'
+			'Checked nesting project: "Content Ops → Wayne Strategies"'
 		);
 		expect(presenter.formatToolMessage('propose_project_combine', combine, 'completed')).toBe(
 			'Checked combining projects: "Content Ops → DJ Internal"'
@@ -262,6 +262,29 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		).toBe('Reading document section: "section: daily-readings"');
 	});
 
+	// Pipeline audit 2026-10-17 S8: one call reads several anchors.
+	it('names several sections read in one call', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		presenter.cacheEntityName('document', 'doc-1', 'Basil Grow Log');
+
+		expect(
+			presenter.formatToolMessage(
+				'read_document_section',
+				{ document_id: 'doc-1', anchors: ['setup', 'daily-readings', 'harvest', 'notes'] },
+				'pending'
+			)
+		).toBe(
+			'Reading document section: "Basil Grow Log · sections: setup, daily-readings, harvest +1"'
+		);
+		expect(
+			presenter.formatToolMessage(
+				'read_document_section',
+				{ document_id: 'doc-1', anchors: ['harvest'] },
+				'completed'
+			)
+		).toBe('Read document section: "Basil Grow Log · section: harvest"');
+	});
+
 	it('formats discovery, connector, and orchestration tools with readable targets', () => {
 		const presenter = createToolPresenter(makeHarness().ctx);
 
@@ -380,6 +403,67 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		expect(presenter.formatToolMessage('create_onto_task', '{not json', 'pending')).toBe(
 			'Using tool: create_onto_task'
 		);
+	});
+});
+
+describe('agent-chat-tool-presenter — formatToolLine', () => {
+	it('splits the line into verb and target, and its text matches formatToolMessage', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		presenter.cacheEntityName('project', 'p-1', 'Cadre Internal');
+		const args = { project_id: 'p-1' };
+		for (const status of ['pending', 'completed', 'awaiting_user', 'failed'] as const) {
+			const line = presenter.formatToolLine('list_onto_goals', args, status, 'Timed out');
+			expect(line.text).toBe(
+				presenter.formatToolMessage('list_onto_goals', args, status, 'Timed out')
+			);
+			expect(line.target).toBe('Cadre Internal');
+		}
+		expect(presenter.formatToolLine('list_onto_goals', args, 'pending')).toMatchObject({
+			verb: 'Listing goals',
+			tone: 'pending'
+		});
+		expect(presenter.formatToolLine('list_onto_goals', args, 'completed')).toMatchObject({
+			verb: 'Listed goals',
+			tone: 'done'
+		});
+		expect(
+			presenter.formatToolLine('list_onto_goals', args, 'failed', 'Timed out')
+		).toMatchObject({ verb: 'Failed to list goals', tone: 'failed', error: 'Timed out' });
+	});
+
+	it('quotes what was searched for, never an entity name', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		expect(
+			presenter.formatToolLine('search_onto_projects', { query: 'Cadre' }, 'completed')
+		).toMatchObject({ verb: 'Searched projects', target: 'Cadre', quoted: true });
+		expect(
+			presenter.formatToolLine('create_onto_task', { title: 'Call Phil' }, 'completed')
+		).not.toHaveProperty('quoted');
+	});
+
+	it('names the new parent once a nest proposal result reports it', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		presenter.cacheEntityName('project', 'p-child', 'Cadre Internal');
+		presenter.indexEntitiesFromToolResult({
+			result: {
+				kind: 'project_parent',
+				model_view: {
+					project: { id: 'p-child', name: 'Cadre Internal' },
+					to_parent: { id: 'p-parent', name: 'Wayne Strategies' }
+				}
+			}
+		});
+		expect(
+			presenter.formatToolLine(
+				'propose_project_parent',
+				{ project_id: 'p-child', parent_project_id: 'p-parent' },
+				'awaiting_user'
+			)
+		).toMatchObject({
+			verb: 'Needs your choice to nest project',
+			target: 'Cadre Internal → Wayne Strategies',
+			tone: 'awaiting'
+		});
 	});
 });
 

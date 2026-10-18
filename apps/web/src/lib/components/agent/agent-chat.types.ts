@@ -201,6 +201,8 @@ export interface ThinkingBlockMessage extends UIMessage {
 	isCollapsed?: boolean;
 	/** Stop was pressed; the active block reads "Stopping…" until the turn ends. */
 	stopRequested?: boolean;
+	/** When the turn ended in this browser; with `timestamp` it gives "Worked for 55s". */
+	completedAt?: Date;
 }
 
 export type ProjectAction = 'workspace';

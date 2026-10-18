@@ -206,11 +206,15 @@ export class AgenticChatReadToolRunner {
 				// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F55). Keyed on the adapter's
 				// catch-all code, not the failure class, so allowlist and context
 				// violations, ownership fences, timeouts of private reads, and
-				// cancellation still terminate through recovery.
+				// cancellation still terminate through recovery. A result over the
+				// adapter's size bound is recoverable for every read: one large read
+				// must never fail the turn (pipeline audit B4); the model is told to
+				// ask for less.
 				if (
 					!signal.aborted &&
 					error instanceof AgenticChatProviderExecutionError &&
 					(error.code === 'read_tool_execution_failed' ||
+						error.code === 'read_tool_result_too_large' ||
 						error.code === 'read_tool_egress_blocked_private_content' ||
 						error.code === 'read_tool_egress_provenance_required' ||
 						(['web_search', 'web_visit', 'web_navigate'].includes(step.toolName) &&
@@ -616,7 +620,9 @@ export class AgenticChatReadToolRunner {
 							: 'External lookup did not run: the query or URL was not authorized for this research request.'
 					: webResearch
 						? 'Live research did not return usable evidence. The lookup service was unavailable, timed out, or could not complete its checks.'
-						: privateReadFailureMessage(readFailure);
+						: code === 'read_tool_result_too_large'
+							? 'The result was too large to return in one read. Ask for less: a narrower filter, one section, or fewer items.'
+							: privateReadFailureMessage(readFailure);
 		await abortable(
 			this.ports.toolExecutions.persistFailure(
 				{

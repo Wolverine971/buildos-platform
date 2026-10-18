@@ -838,4 +838,37 @@ describe('live text preview broadcaster', () => {
 			{ turnRunId: 'turn-other' }
 		]);
 	});
+
+	it('reports first visible text only for a sent frame that carries text (audit M3)', async () => {
+		const outcomes: AgenticChatBroadcastOutcomeV1[] = ['skipped', 'failed', 'sent', 'sent'];
+		const noteVisibleText = vi.fn(() => {
+			throw new Error('measurement must not reach the turn');
+		});
+		const target = {
+			topic: 'chat-user:user-b',
+			sessionId: 'session-b',
+			executionGeneration: 2,
+			durableSequenceFloor: 0
+		};
+		const instance = new AgenticChatLiveTextPreviewBroadcaster({
+			publisher: { getLiveTextPreviewTarget: () => target, noteVisibleText },
+			broadcast: { publish: async () => outcomes.shift() ?? 'sent' },
+			now: () => Date.parse('2026-10-17T20:00:05.000Z')
+		});
+
+		instance.publish(update);
+		instance.publish(update);
+		instance.publish({ ...update, text: '', state: 'discard' });
+		instance.publish({ ...update, text: 'Here is more' });
+		await vi.waitFor(() =>
+			expect(instance.getStats()).toMatchObject({ sent: 2, skipped: 1, failed: 1 })
+		);
+
+		expect(noteVisibleText).toHaveBeenCalledExactlyOnceWith(
+			'turn-b',
+			2,
+			'2026-10-17T20:00:05.000Z',
+			'preview'
+		);
+	});
 });

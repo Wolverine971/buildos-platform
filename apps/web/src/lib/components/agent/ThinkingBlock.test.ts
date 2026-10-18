@@ -121,7 +121,7 @@ describe('ThinkingBlock', () => {
 		);
 	});
 
-	it('shows the live status beside the dots while compact and crossfades changes', async () => {
+	it('shows the live status as the only header text and crossfades changes', async () => {
 		const block: ThinkingBlockMessage = {
 			...thinkingBlock(),
 			activities: [],
@@ -142,6 +142,162 @@ describe('ThinkingBlock', () => {
 		expect(incoming).toHaveTextContent('Writing the response…');
 		expect(outgoing).toHaveTextContent('Thinking…');
 		expect(outgoing).toHaveAttribute('aria-hidden', 'true');
+	});
+
+	it('never says "thinking" twice while a reply starts', () => {
+		const { container } = render(ThinkingBlock, {
+			props: {
+				block: { ...thinkingBlock(), activities: [], content: 'Thinking…' },
+				onToggleCollapse: vi.fn()
+			}
+		});
+		const header = container.querySelector('.thinking-header')?.textContent ?? '';
+		expect(header.match(/thinking/gi)).toHaveLength(1);
+		expect(header).not.toContain('BuildOS');
+	});
+
+	it('prints one ellipsis style for server status copy', () => {
+		render(ThinkingBlock, {
+			props: {
+				block: { ...thinkingBlock(), activities: [], content: 'Working...' },
+				onToggleCollapse: vi.fn()
+			}
+		});
+		expect(screen.getByTestId('thinking-live-status')).toHaveTextContent('Working…');
+	});
+
+	it('renders tool steps as verb, target, and what they found, and heads with the running one', () => {
+		const block: ThinkingBlockMessage = {
+			...thinkingBlock(),
+			activities: [
+				{
+					id: 'goals',
+					content: 'Listed goals: "Cadre Internal"',
+					timestamp: new Date(),
+					activityType: 'tool_call',
+					status: 'completed',
+					metadata: {
+						line: { verb: 'Listed goals', target: 'Cadre Internal', tone: 'done' },
+						outcome: '3 goals'
+					}
+				},
+				{
+					id: 'search',
+					content: 'Searching projects: "Cadre"',
+					timestamp: new Date(),
+					activityType: 'tool_call',
+					status: 'pending',
+					metadata: {
+						line: {
+							verb: 'Searching projects',
+							target: 'Cadre',
+							quoted: true,
+							tone: 'pending'
+						}
+					}
+				},
+				{
+					id: 'choice',
+					content:
+						'Needs your choice to nest project: "Cadre Internal → Wayne Strategies"',
+					timestamp: new Date(),
+					activityType: 'tool_call',
+					status: 'completed',
+					metadata: {
+						line: {
+							verb: 'Needs your choice to nest project',
+							target: 'Cadre Internal → Wayne Strategies',
+							tone: 'awaiting'
+						}
+					}
+				}
+			]
+		};
+		const { container } = render(ThinkingBlock, {
+			props: { block, onToggleCollapse: vi.fn() }
+		});
+
+		expect(screen.getByTestId('thinking-live-status')).toHaveTextContent('Searching projects…');
+		expect(screen.getByText('3 steps')).toBeInTheDocument();
+		const rows = [...container.querySelectorAll('[data-step-tone]')];
+		expect(rows.map((row) => row.getAttribute('data-step-tone'))).toEqual([
+			'done',
+			'pending',
+			'awaiting'
+		]);
+		expect(rows[0]).toHaveTextContent('Listed goals · Cadre Internal');
+		expect(rows[0]).toHaveTextContent('3 goals');
+		expect(rows[1]).toHaveTextContent('Searching projects · “Cadre”');
+		expect(rows[2]).toHaveTextContent('Needs your choice to nest project');
+		expect(rows[2]?.textContent?.match(/Needs your choice/g)).toHaveLength(1);
+	});
+
+	it('stops repeating a status row in the header once a later step finished it', () => {
+		const block: ThinkingBlockMessage = {
+			...thinkingBlock(),
+			content: 'Checking the requested change...',
+			activities: [
+				{
+					id: 'review',
+					content: 'Checking the requested change...',
+					timestamp: new Date(),
+					activityType: 'state_change',
+					metadata: { activityVisibility: 'activity_log' }
+				},
+				{
+					id: 'combine',
+					content: 'Checked combining projects',
+					timestamp: new Date(),
+					activityType: 'tool_call',
+					status: 'completed',
+					metadata: { line: { verb: 'Checked combining projects', tone: 'done' } }
+				}
+			]
+		};
+		const { container } = render(ThinkingBlock, {
+			props: { block, onToggleCollapse: vi.fn() }
+		});
+		expect(screen.getByTestId('thinking-live-status')).toHaveTextContent('Working…');
+		const rows = [...container.querySelectorAll('[data-step-tone]')];
+		expect(rows[0]).toHaveAttribute('data-step-tone', 'done');
+		expect(rows[0]).toHaveTextContent('Checking the requested change');
+		expect(rows[0]?.textContent).not.toContain('…');
+	});
+
+	it('sums up a finished turn by its time and step count', () => {
+		const started = new Date('2026-10-17T22:08:02.000Z');
+		render(ThinkingBlock, {
+			props: {
+				block: {
+					...thinkingBlock(),
+					status: 'completed',
+					timestamp: started,
+					completedAt: new Date(started.getTime() + 55_000)
+				},
+				onToggleCollapse: vi.fn()
+			}
+		});
+		expect(screen.getByText('Worked for 55s')).toBeInTheDocument();
+		expect(screen.getByText('4 steps')).toBeInTheDocument();
+		expect(screen.queryByTestId('thinking-live-status')).toBeNull();
+	});
+
+	it('labels a finished turn without tools by its time, with no filler detail', () => {
+		const started = new Date('2026-10-17T22:08:02.000Z');
+		const { container } = render(ThinkingBlock, {
+			props: {
+				block: {
+					...thinkingBlock(),
+					activities: [],
+					status: 'completed',
+					content: 'Complete',
+					timestamp: started,
+					completedAt: new Date(started.getTime() + 4_200)
+				},
+				onToggleCollapse: vi.fn()
+			}
+		});
+		expect(container.querySelector('.thinking-header')).toHaveTextContent(/^Thought for 4s$/);
 	});
 
 	it('pulses the hammer with compositor-only properties and no radius transition', () => {

@@ -1,11 +1,13 @@
 // apps/worker/src/workers/agentic-chat/provider/review/lanes.ts
 
+import type { JsonObject } from '@buildos/shared-types';
 import {
 	type MutationBatch,
 	type MutationReviewFinding,
 	type TurnContract,
 	renderMutationReviewFindings
 } from '@buildos/agentic-chat-runtime/loop';
+import type { AgenticChatExecutionObservationPortV1 } from '../../effects/execution-observation';
 import {
 	AgenticChatProviderExecutionError,
 	type AgenticChatProviderStepV1,
@@ -50,12 +52,105 @@ import {
 	buildMutationBatchReviewRequest,
 	constrainMutationBatchApprovalShaForRepair
 } from './mutation-batch';
+import {
+	type ReviewDecisionRecord,
+	buildReviewDecisionPayload,
+	enqueueReviewTelemetryObservation,
+	reviewOutcomeOf
+} from './review-telemetry';
 import { buildTurnContractReviewRequest } from './turn-contract';
 
 /** Review lanes add the distinct reviewer model to the shared lane context. */
 export type ReviewLaneContext = ProviderLaneContext & {
-	readonly ports: { readonly semanticReviewer?: AgenticChatTurnProviderClientPortV1 };
+	readonly ports: {
+		readonly semanticReviewer?: AgenticChatTurnProviderClientPortV1;
+		/** Durable, content-free receipt per review decision (M5); absent in fixtures. */
+		readonly executionObservations?: AgenticChatExecutionObservationPortV1;
+	};
 };
+
+/**
+ * The one reviewer re-ask the stage rule earns (S5): the first decision was a
+ * revision that named no wrong held call. The retry decision is accepted as
+ * the reviewer gives it, and a retry that fails falls back to the first
+ * revision, so this can cost one reviewer pass but never a turn.
+ */
+export const STAGE_RULE_RECHECK_INSTRUCTION =
+	"Your previous revision named no held call as wrong. Revise a stage only for a defect in a held call. Commissioned work this stage leaves out is never a defect: the acting model proposes it in a later stage, and the request expectation keeps it owed. A missing prerequisite that makes a held call unsafe, or a held call that needs the user's informed authorization they have not given, is a defect in that held call: list it in defective_calls. Re-check each held call against the user request, the turn evidence, and your previous reason. If none is wrong, approve this exact batch; otherwise return a revision whose defective_calls lists the held calls that are wrong. No call has executed; this is an internal check, not user ambiguity.";
+
+const MAX_RECHECK_QUOTE_CHARS = 600;
+
+/**
+ * The re-ask carries the reviewer's own first reason and correction back to it,
+ * quoted, so the second look weighs what it objected to instead of starting
+ * blind. Nothing reads the text; it only travels back to its author.
+ */
+export function buildStageRuleRecheckInstruction(previousDecision: JsonObject | null): string {
+	const quote = (value: unknown): string | null =>
+		typeof value === 'string' && value.trim()
+			? JSON.stringify(value.trim().slice(0, MAX_RECHECK_QUOTE_CHARS))
+			: null;
+	const reason = quote(previousDecision?.reason);
+	const correction = quote(previousDecision?.required_correction);
+	if (!reason && !correction) return STAGE_RULE_RECHECK_INSTRUCTION;
+	return [
+		STAGE_RULE_RECHECK_INSTRUCTION,
+		'Your previous revision said:',
+		reason ? `reason: ${reason}` : null,
+		correction ? `required_correction: ${correction}` : null
+	]
+		.filter((line): line is string => line !== null)
+		.join('\n');
+}
+
+/** Record one review decision in the turn's commission ledger and as a durable receipt. */
+function observeReviewDecision(
+	context: ReviewLaneContext,
+	request: ClientRequest,
+	state: ToolRoundStreamState,
+	record: ReviewDecisionRecord
+): void {
+	try {
+		state.writeCommission.recordReviewOutcome(record.outcome);
+		enqueueReviewTelemetryObservation(
+			context.ports.executionObservations,
+			request,
+			'provider_review_decided',
+			`review:${record.lane}:${record.logicalProviderRound}:${record.attempt}`,
+			buildReviewDecisionPayload(record)
+		);
+	} catch {
+		// Review telemetry can never alter the review.
+	}
+}
+
+/**
+ * The control tool a refused decision attempted, with its structured
+ * arguments when they parse. Only advertised names are kept; the payload
+ * builder reads codes and numbers from the arguments, never prose.
+ */
+function attemptedDecision(
+	toolCalls: ReturnType<typeof createToolCallAccumulator>,
+	advertised: readonly AgenticChatTurnProviderToolV1[]
+): { decisionToolName: string | null; decisionArguments: JsonObject | null } {
+	const [first] = [...toolCalls.values()];
+	if (!first) return { decisionToolName: null, decisionArguments: null };
+	const decisionToolName = advertised.some((tool) => tool.function.name === first.name)
+		? first.name
+		: null;
+	try {
+		const parsed: unknown = JSON.parse(first.argumentsText || '{}');
+		return {
+			decisionToolName,
+			decisionArguments:
+				parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+					? (parsed as JsonObject)
+					: null
+		};
+	} catch {
+		return { decisionToolName, decisionArguments: null };
+	}
+}
 
 /**
  * Independent review of a held batch of tool calls.
@@ -134,12 +229,36 @@ export async function* streamMutationBatchReview(
 				semantic_review: { contract_sha256: batchSha256 }
 			}
 		};
+		const stageToolNames = batch.calls.map((call) => call.name);
+		// A first revision the stage rule sent back for a second look. It passed
+		// every check the old ladder applied, so if the second look fails the
+		// turn goes on with it (an actor repair) instead of ending.
+		let firstRevision: {
+			calls: CompletedProviderToolCall[];
+			request: ClientRequest;
+		} | null = null;
 		for (let reviewAttempt = 0; reviewAttempt <= 1; reviewAttempt += 1) {
 			const toolCalls = createToolCallAccumulator();
 			let finished = false;
 			let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
 			let fallbackReason: string | null = null;
 			let reviewFinishedReason: string | null = null;
+			const attemptStartedAt = Date.now();
+			const decisionRecord = (
+				fields: Pick<
+					ReviewDecisionRecord,
+					'outcome' | 'rejectionCode' | 'decisionToolName' | 'decisionArguments'
+				>
+			): ReviewDecisionRecord => ({
+				lane: 'mutation_batch',
+				logicalProviderRound: reviewRequest.logicalProviderRound,
+				attempt: reviewAttempt + 1,
+				stageToolNames,
+				priorRevisions: state.getBatchRevisionCount(),
+				readOnlyOffered: allowReadOnlyCorrection,
+				durationMs: Date.now() - attemptStartedAt,
+				...fields
+			});
 			try {
 				const reviewPass =
 					primedReview ?? context.providerPass(reviewRequest, state, reviewer);
@@ -176,11 +295,11 @@ export async function* streamMutationBatchReview(
 				fallbackReason = error.code;
 			}
 			accumulatedReviewUsage = combineUsage(accumulatedReviewUsage, reviewerUsage);
-			let calls: CompletedProviderToolCall[];
-			try {
-				calls = completeMutationBatchReviewDecision({
+			const attemptRequest = reviewRequest;
+			const completeDecision = (recheckRevision: boolean) =>
+				completeMutationBatchReviewDecision({
 					actingRequest: request,
-					reviewRequest,
+					reviewRequest: attemptRequest,
 					toolCalls,
 					finished,
 					finishedReason: reviewFinishedReason,
@@ -188,8 +307,18 @@ export async function* streamMutationBatchReview(
 					batchSha256,
 					batch,
 					allowRevision,
-					requestExpectation: state.getRequestExpectation()
+					requestExpectation: state.getRequestExpectation(),
+					recheckRevision
 				});
+			let calls: CompletedProviderToolCall[];
+			let decisionRequest = reviewRequest;
+			let fellBackToFirstRevision = false;
+			try {
+				// Only when a re-ask can actually run: with the pass budget spent,
+				// the revision is accepted as before rather than ending the turn.
+				calls = completeDecision(
+					reviewAttempt === 0 && !state.providerPassBudgetExhausted()
+				);
 			} catch (error) {
 				if (
 					!(error instanceof AgenticChatProviderExecutionError) ||
@@ -197,6 +326,16 @@ export async function* streamMutationBatchReview(
 				)
 					throw error;
 				const diagnostic = error.diagnostic;
+				observeReviewDecision(
+					context,
+					request,
+					state,
+					decisionRecord({
+						outcome: 'invalid',
+						rejectionCode: diagnostic.code,
+						...attemptedDecision(toolCalls, reviewRequest.tools)
+					})
+				);
 				yield {
 					type: 'semantic',
 					transitionId: createStableAgenticChatReadToolTransitionIdV1({
@@ -218,6 +357,16 @@ export async function* streamMutationBatchReview(
 						}
 					}
 				};
+				if (reviewAttempt === 0 && diagnostic.code === 'revision_without_defective_call') {
+					try {
+						// The same decision without the stage check: what the old ladder accepted.
+						firstRevision = { calls: completeDecision(false), request: attemptRequest };
+					} catch (fallbackError) {
+						if (!(fallbackError instanceof AgenticChatProviderExecutionError))
+							throw fallbackError;
+						firstRevision = null;
+					}
+				}
 				if (
 					reviewAttempt === 0 &&
 					!state.providerPassBudgetExhausted() &&
@@ -228,8 +377,10 @@ export async function* streamMutationBatchReview(
 						'unexpected_finish_reason'
 					].includes(diagnostic.code)
 				) {
+					// A stage recheck usually ends in an approval; pin its digest too.
 					const repairBaseRequest =
-						diagnostic.code === 'approval_sha_mismatch'
+						diagnostic.code === 'approval_sha_mismatch' ||
+						diagnostic.code === 'revision_without_defective_call'
 							? constrainMutationBatchApprovalShaForRepair(reviewRequest, batchSha256)
 							: reviewRequest;
 					reviewRequest = appendSystemInstruction(
@@ -241,24 +392,56 @@ export async function* streamMutationBatchReview(
 							? 'Your previous decision invented or mistyped a reference ID. Copy candidate IDs exactly from loaded records and server archive facts. Finding target IDs must come from loaded records or the exact affected calls you are rejecting. A proposed argument or assistant claim does not prove a candidate exists. Return one grounded decision for the same batch. No call has executed; this is an internal format repair, not user ambiguity.'
 							: diagnostic.code === 'revision_value_unchanged'
 								? 'Your previous revision asked to change an argument to the exact value already held in the proposal. Recheck the same calls against user intent and the schemas. Return a fresh approval only if every call is correct; otherwise return a supported revision, read-only decision, or clarification. No call has executed. A contradictory revision is not authorization.'
-								: `Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposed calls. Copy the exact batch SHA for approval. This is an internal format repair, not evidence of user ambiguity.`
+								: diagnostic.code === 'revision_without_defective_call'
+									? buildStageRuleRecheckInstruction(
+											attemptedDecision(toolCalls, attemptRequest.tools)
+												.decisionArguments
+										)
+									: `Your previous decision could not be accepted (${diagnostic.code}). Return exactly one valid decision for the same proposed calls. Copy the exact batch SHA for approval. This is an internal format repair, not evidence of user ambiguity.`
 					);
 					continue;
 				}
-				yield state.textDelta(
-					state.renderWriteReceiptFallback() ??
-						describeUnappliedWrites(batch.calls.map((call) => call.name)),
-					false
-				);
-				state.advance({ type: 'finish' });
-				yield {
-					type: 'finish',
-					finishedReason: 'semantic_review_failed',
-					usage: accumulatedReviewUsage
-				};
-				return;
+				if (!firstRevision) {
+					yield state.textDelta(
+						state.renderWriteReceiptFallback() ??
+							describeUnappliedWrites(batch.calls.map((call) => call.name)),
+						false
+					);
+					state.advance({ type: 'finish' });
+					yield {
+						type: 'finish',
+						finishedReason: 'semantic_review_failed',
+						usage: accumulatedReviewUsage
+					};
+					return;
+				}
+				// The second look failed (provider error, stall, bad SHA, invalid
+				// revision): the first revision goes to the acting model, as before S5.
+				calls = firstRevision.calls;
+				decisionRequest = firstRevision.request;
+				fellBackToFirstRevision = true;
 			}
-			const normalizedCalls = normalizeCompletedProviderCalls(reviewRequest, calls);
+			if (fellBackToFirstRevision) {
+				// Both attempts already have durable receipts; count the adopted one.
+				try {
+					state.writeCommission.recordReviewOutcome(reviewOutcomeOf(calls[0]?.name));
+				} catch {
+					// Review telemetry can never alter the review.
+				}
+			} else {
+				observeReviewDecision(
+					context,
+					request,
+					state,
+					decisionRecord({
+						outcome: reviewOutcomeOf(calls[0]?.name),
+						rejectionCode: null,
+						decisionToolName: calls[0]?.name ?? null,
+						decisionArguments: calls[0]?.arguments ?? null
+					})
+				);
+			}
+			const normalizedCalls = normalizeCompletedProviderCalls(decisionRequest, calls);
 			state.setPendingToolRound({
 				calls: normalizedCalls,
 				usage: accumulatedReviewUsage
@@ -266,7 +449,7 @@ export async function* streamMutationBatchReview(
 			state.setCurrentRequest(request);
 			// Review-start remains visible; tool_call is the next durable boundary.
 			for (const call of normalizedCalls) {
-				yield buildProviderToolStep(reviewRequest, call, state);
+				yield buildProviderToolStep(decisionRequest, call, state);
 			}
 			state.markToolRoundCompleted();
 			pendingReviewTool = true;
@@ -385,6 +568,22 @@ export async function* streamTurnContractReview(
 			let reviewerUsage: AgenticChatProviderUsageV1 | null = null;
 			let fallbackReason: string | null = null;
 			let reviewFinishedReason: string | null = null;
+			const attemptStartedAt = Date.now();
+			const decisionRecord = (
+				fields: Pick<
+					ReviewDecisionRecord,
+					'outcome' | 'rejectionCode' | 'decisionToolName' | 'decisionArguments'
+				>
+			): ReviewDecisionRecord => ({
+				lane: 'turn_contract',
+				logicalProviderRound: reviewRequest.logicalProviderRound,
+				attempt: reviewAttempt + 1,
+				stageToolNames: [],
+				priorRevisions: state.getContractRevisionCount(),
+				readOnlyOffered: allowReadOnlyCorrection,
+				durationMs: Date.now() - attemptStartedAt,
+				...fields
+			});
 			try {
 				const reviewPass =
 					primedReview ?? context.providerPass(reviewRequest, state, reviewer);
@@ -444,6 +643,16 @@ export async function* streamTurnContractReview(
 				)
 					throw error;
 				const diagnostic = error.diagnostic;
+				observeReviewDecision(
+					context,
+					request,
+					state,
+					decisionRecord({
+						outcome: 'invalid',
+						rejectionCode: diagnostic.code,
+						...attemptedDecision(toolCalls, reviewRequest.tools)
+					})
+				);
 				yield {
 					type: 'semantic',
 					transitionId: createStableAgenticChatReadToolTransitionIdV1({
@@ -498,6 +707,17 @@ export async function* streamTurnContractReview(
 				};
 				return;
 			}
+			observeReviewDecision(
+				context,
+				request,
+				state,
+				decisionRecord({
+					outcome: reviewOutcomeOf(calls[0]?.name),
+					rejectionCode: null,
+					decisionToolName: calls[0]?.name ?? null,
+					decisionArguments: calls[0]?.arguments ?? null
+				})
+			);
 			const normalizedCalls = normalizeCompletedProviderCalls(reviewRequest, calls);
 			state.setPendingToolRound({
 				calls: normalizedCalls,

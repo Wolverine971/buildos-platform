@@ -4,6 +4,7 @@ import {
 	AgenticChatProviderCapacity,
 	AgenticChatProviderCapacityError
 } from '../src/workers/agentic-chat/provider/provider-capacity';
+import { MAX_AGENTIC_CHAT_CONCURRENCY } from '../src/workers/agentic-chat/shared/concurrency-bounds';
 
 describe('AgenticChatProviderCapacity', () => {
 	it('reserves the only provider slot and releases it idempotently', () => {
@@ -75,9 +76,13 @@ describe('AgenticChatProviderCapacity', () => {
 		expect(() => bounded.acquire()).toThrow(AgenticChatProviderCapacityError);
 		first.release();
 		second.release();
-		expect(() => new AgenticChatProviderCapacity({ configured: true, concurrency: 3 })).toThrow(
-			'must be between 1 and 2'
-		);
+		expect(
+			() =>
+				new AgenticChatProviderCapacity({
+					configured: true,
+					concurrency: MAX_AGENTIC_CHAT_CONCURRENCY + 1
+				})
+		).toThrow(`must be between 1 and ${MAX_AGENTIC_CHAT_CONCURRENCY}`);
 		expect(
 			() =>
 				new AgenticChatProviderCapacity({

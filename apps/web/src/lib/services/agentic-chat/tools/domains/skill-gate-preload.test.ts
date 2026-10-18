@@ -12,7 +12,7 @@ import {
 	resolveFocusedTableSkillPreload,
 	isFocusedTableContextPayload,
 	renderWorkerPreloadedSkillPromptContent,
-	resolveOperationalSkillPreload,
+	resolveOperationalPlaybookCandidates,
 	resolveSkillGatePreload,
 	resolveSkillGatePreloadDecision,
 	resolveUserLaunchSkillPreload,
@@ -23,6 +23,7 @@ import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-us
 import { getSkillById, listAllSkills } from '../skills/registry';
 import { loadSkill } from '../skills/skill-load';
 import { isSkillHelpPayload } from '../skills/types';
+import type { OperationalExampleHint } from './operational-skill-intent';
 import {
 	AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1,
 	findAgenticChatWorkerUnavailableToolNamesV1
@@ -55,6 +56,37 @@ function senseFictionAskTurn() {
 		currentUserMessage:
 			'Help me plan what happens to this character next in the novel. Give me three options.'
 	});
+}
+
+/**
+ * The operational playbook block exactly as the worker renders it once Jev's
+ * commission picks it (apps/worker/src/workers/agentic-chat/provider/
+ * turn-rules.ts renderOperationalPlaybook): candidate content, then the
+ * hinted worked example, falling back to update. Since 2026-10-17 admission
+ * ships candidates and never reads the message (audit Q1).
+ */
+function renderOperationalPlaybook(
+	skillId: string,
+	toolNames: readonly string[],
+	hint: OperationalExampleHint = 'update'
+): string | null {
+	const candidate = resolveOperationalPlaybookCandidates({ toolNames }).find(
+		(entry) => entry.skillId === skillId
+	);
+	if (!candidate) return null;
+	const example =
+		candidate.examples[hint] ??
+		candidate.examples.update ??
+		candidate.examples.create ??
+		candidate.examples.organize ??
+		null;
+	return example ? `${candidate.content}\n\nWorked example:\n${example}` : candidate.content;
+}
+
+function candidateSkillIds(toolNames: readonly string[], excludeSkillIds?: string[]): string[] {
+	return resolveOperationalPlaybookCandidates({ toolNames, excludeSkillIds }).map(
+		(candidate) => candidate.skillId
+	);
 }
 
 /**
@@ -144,17 +176,13 @@ describe('resolveSkillGatePreload', () => {
 	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71: the worker block is a plain
 	// playbook — no gate wording and no note about references it cannot load.
 	it('adds the update-first worked example and no unavailable-references note on the worker lane', () => {
-		const preload = resolveOperationalSkillPreload({
-			message: 'mark the intro call done',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
-		expect(preload?.skillId).toBe('task_management');
-		expect(preload?.promptContent).toContain('Worked example:');
-		expect(preload?.promptContent).toContain('Update an existing task by its exact id');
-		expect(preload?.promptContent).not.toContain('not loadable on this surface');
-		expect(preload?.promptContent).not.toContain('Reference modules');
-		expect(preload?.promptContent).not.toContain('Linked child skills');
-		expect(preload?.promptContent).not.toContain('skill_load');
+		const block = renderOperationalPlaybook('task_management', PROJECT_WRITE_DOCUMENT_TOOLS);
+		expect(block).toContain('Worked example:');
+		expect(block).toContain('Update an existing task by its exact id');
+		expect(block).not.toContain('not loadable on this surface');
+		expect(block).not.toContain('Reference modules');
+		expect(block).not.toContain('Linked child skills');
+		expect(block).not.toContain('skill_load');
 	});
 
 	it('inlines the Judgment block only for an explicit recommended_load_format: full', () => {
@@ -167,12 +195,9 @@ describe('resolveSkillGatePreload', () => {
 		expect(fiction?.promptContent).toContain('Canon ledger');
 		expect(fiction!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
 		// preserve_markdown alone derives `full`; it must not earn the block.
-		const tasks = resolveOperationalSkillPreload({
-			message: 'mark the intro call done',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
-		expect(tasks?.skillId).toBe('task_management');
-		expect(tasks?.promptContent).not.toContain('Judgment:');
+		expect(
+			renderOperationalPlaybook('task_management', PROJECT_WRITE_DOCUMENT_TOOLS)
+		).not.toContain('Judgment:');
 		// Web lane keeps the short block untouched.
 		const webFiction = resolveSkillGatePreload(senseFictionAskTurn());
 		expect(webFiction?.skillId).toBe('fiction_story_craft');
@@ -258,14 +283,10 @@ describe('productivity preload allowlist', () => {
 		expect(decision.gate_suppressed_by).toBeUndefined();
 	});
 
-	it('preloads a task-management ask automatically through operational intent', () => {
-		const preload = resolveOperationalSkillPreload({
-			message: 'add a task to call the roofer back on Tuesday',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
-
-		expect(preload?.skillId).toBe('task_management');
-		expect(preload?.reason).toBe('productivity_allowlist');
+	it('ships allowlisted operational playbooks as worker candidates off the mounted tools', () => {
+		const ids = candidateSkillIds(PROJECT_WRITE_DOCUMENT_TOOLS);
+		expect(ids).toEqual(['task_management', 'document_workspace']);
+		for (const id of ids) expect(isProductivityPreloadSkill(id), id).toBe(true);
 	});
 
 	it('preloads a marketing skill on an explicit campaign ask', () => {
@@ -331,97 +352,84 @@ describe('productivity preload allowlist', () => {
 });
 
 // 2026-09-02 turn executor audit, Finding 4 / Decision 4: the operational
-// skills live in no domain, so the worker reaches them through a
-// deterministic intent map keyed off the mounted tools.
-describe('resolveOperationalSkillPreload', () => {
-	it('preloads task_management for a task write on a project write surface', () => {
-		const preload = resolveOperationalSkillPreload({
-			message: 'mark the intro call done',
+// skills live in no domain, so admission ships them to the worker. Since
+// 2026-10-17 (audit Q1) admission ships every playbook the mounted tools can
+// honor and the worker picks one from Jev's write commission; the message is
+// never read here.
+describe('resolveOperationalPlaybookCandidates', () => {
+	it('renders the task_management candidate as a bare worker playbook', () => {
+		const [candidate] = resolveOperationalPlaybookCandidates({
 			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
 		});
-
-		expect(preload).not.toBeNull();
-		expect(preload?.skillId).toBe('task_management');
-		expect(preload?.source).toBe('operational_intent');
-		expect(preload?.promptContent).toMatch(/^Playbook for task writes this turn:\n/);
-		expect(preload?.promptContent).toContain('update_onto_task');
-		expect(preload?.promptContent).toContain('Worked example:');
-		expect(preload?.promptContent).not.toContain('skill_load');
-		expect(preload?.promptContent).not.toContain('update_strategy');
-		expect(preload?.promptContent).toContain('full replacement');
-		expect(preload!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
-		expect(estimateTokensFromText(preload!.promptContent)).toBeLessThanOrEqual(1_500);
+		expect(candidate).toMatchObject({ skillId: 'task_management', entityKind: 'task' });
+		expect(candidate!.content).toMatch(/^Playbook for task writes this turn:\n/);
+		expect(candidate!.content).toContain('update_onto_task');
+		expect(candidate!.content).not.toContain('Worked example:');
+		expect(candidate!.content).not.toContain('skill_load');
+		expect(candidate!.content).not.toContain('update_strategy');
+		expect(candidate!.content).toContain('full replacement');
+		const block = renderOperationalPlaybook('task_management', PROJECT_WRITE_DOCUMENT_TOOLS)!;
+		expect(block).toContain('Worked example:');
+		expect(block.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
+		expect(estimateTokensFromText(block)).toBeLessThanOrEqual(1_500);
 		// Reported in the audit remediation receipt.
 		process.stdout.write(
-			`[preload-size] task_management worker block: ${preload!.promptContent.length} chars, ~${estimateTokensFromText(preload!.promptContent)} tokens\n`
+			`[preload-size] task_management worker block: ${block.length} chars, ~${estimateTokensFromText(block)} tokens\n`
 		);
 	});
 
-	it('preloads document_workspace for organize intent', () => {
-		const preload = resolveOperationalSkillPreload({
-			message: "This project's documents are a mess, please organize them",
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
-		expect(preload?.skillId).toBe('document_workspace');
-		expect(preload?.promptContent).toContain('move_document_in_tree');
+	it('keeps content plus every worked example within the worker cap', () => {
+		for (const profile of ['project', 'global'] as const) {
+			for (const candidate of resolveOperationalPlaybookCandidates({
+				toolNames: workerSurfaceToolNames(profile)
+			})) {
+				expect(Object.keys(candidate.examples).length, candidate.skillId).toBeGreaterThan(
+					0
+				);
+				for (const example of Object.values(candidate.examples)) {
+					const block = `${candidate.content}\n\nWorked example:\n${example}`;
+					expect(block.length, candidate.skillId).toBeLessThanOrEqual(
+						WORKER_PRELOAD_MAX_CHARS
+					);
+				}
+			}
+		}
 	});
 
-	it('preloads a complete calendar bundle before the first model pass', () => {
-		const preload = resolveOperationalSkillPreload({
-			message: 'Can you schedule a call with Ana tomorrow?',
-			toolNames: ['create_calendar_event', 'update_calendar_event']
-		});
+	it('ships document_workspace with its organize example where the tree tools are mounted', () => {
+		const block = renderOperationalPlaybook(
+			'document_workspace',
+			PROJECT_WRITE_DOCUMENT_TOOLS,
+			'organize'
+		);
+		expect(block).toContain('move_document_in_tree');
+		expect(block).toContain('- Organize unlinked project documents');
+	});
 
-		expect(preload?.skillId).toBe('calendar_management');
-		expect(preload?.materializedToolNames).toEqual([
-			'create_calendar_event',
-			'delete_calendar_event',
-			'get_calendar_event_details',
-			'get_project_calendar',
-			'list_calendar_events',
-			'set_project_calendar',
-			'update_calendar_event'
+	it('ships calendar_management when the calendar write tools are mounted', () => {
+		expect(candidateSkillIds(['create_calendar_event', 'update_calendar_event'])).toEqual([
+			'calendar_management'
 		]);
-		expect(preload?.payload.destructive_ops).toContain('cal.event.delete');
-	});
-
-	it('names the craft candidate as an alternate when both fire', () => {
-		const preload = resolveOperationalSkillPreload({
-			message: 'add a task to draft the cold email sequence for the newsletter creators',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
-			craftAlternateSkillIds: ['cold_email_engagement_first_outreach']
-		});
-		expect(preload?.skillId).toBe('task_management');
-		expect(preload?.promptContent).toContain(
-			'Alternate skill candidates if this one does not fit: cold_email_engagement_first_outreach.'
-		);
-	});
-
-	it('stays null for reads and read-only surfaces', () => {
 		expect(
-			resolveOperationalSkillPreload({
-				message: 'what tasks are due this week?',
-				toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-			})
-		).toBeNull();
-		expect(
-			resolveOperationalSkillPreload({
-				message: 'mark the intro call done',
-				toolNames: ['get_workspace_overview']
-			})
-		).toBeNull();
+			renderOperationalPlaybook('calendar_management', workerSurfaceToolNames('global'))
+		).toContain('create_calendar_event');
 	});
 
-	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69: an operational playbook is this
-	// turn's write rules and takes no already-loaded dedupe; the craft route
-	// keeps its one-shot dedupe.
-	it('has no already-loaded dedupe, unlike the craft route', () => {
-		const params: Parameters<typeof resolveOperationalSkillPreload>[0] = {
-			message: 'mark the intro call done',
+	it('ships nothing on a read-only surface', () => {
+		expect(
+			resolveOperationalPlaybookCandidates({ toolNames: ['get_workspace_overview'] })
+		).toEqual([]);
+	});
+
+	it('takes no message and no already-loaded dedupe; only the turn rules skill is excluded', () => {
+		const params: Parameters<typeof resolveOperationalPlaybookCandidates>[0] = {
 			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
 		};
+		expect(params).not.toHaveProperty('message');
 		expect(params).not.toHaveProperty('alreadyLoadedSkillIds');
-		expect(resolveOperationalSkillPreload(params)?.skillId).toBe('task_management');
+		expect(candidateSkillIds(PROJECT_WRITE_DOCUMENT_TOOLS, ['task_management'])).toEqual([
+			'document_workspace'
+		]);
 		const auditSensing = senseDomains({
 			currentUserMessage: 'audit this project for blockers and stale work',
 			limit: 3
@@ -437,32 +445,23 @@ describe('resolveOperationalSkillPreload', () => {
 		).toBeNull();
 	});
 
-	it('shows the worked example that matches the turn verb, update by default', () => {
-		const update = resolveOperationalSkillPreload({
-			message: 'mark the intro call done',
+	it('carries one worked example per hint, update first by default', () => {
+		const [tasks, docs] = resolveOperationalPlaybookCandidates({
 			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
 		});
-		expect(update?.promptContent).toContain('- Update an existing task by its exact id');
-		expect(update?.promptContent).not.toContain('- Create a task for a real follow-up');
-
-		const create = resolveOperationalSkillPreload({
-			message: 'add a task to call the roofer back on Tuesday',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
-		expect(create?.promptContent).toContain('- Create a task for a real follow-up');
-		expect(create?.promptContent).not.toContain('- Update an existing task by its exact id');
-
-		const organize = resolveOperationalSkillPreload({
-			message: "This project's documents are a mess, please organize them",
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
-		expect(organize?.promptContent).toContain('- Organize unlinked project documents');
-
-		const append = resolveOperationalSkillPreload({
-			message: 'append these notes to the research doc',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
-		expect(append?.promptContent).toContain('- Update an existing document by its exact id');
+		expect(tasks!.examples.update).toContain('- Update an existing task by its exact id');
+		expect(tasks!.examples.create).toContain('- Create a task for a real follow-up');
+		expect(tasks!.examples.create).not.toContain('- Update an existing task by its exact id');
+		expect(docs!.examples.update).toContain('- Update an existing document by its exact id');
+		expect(docs!.examples.organize).toContain('- Organize unlinked project documents');
+		// The rendered block shows the hinted example only.
+		const create = renderOperationalPlaybook(
+			'task_management',
+			PROJECT_WRITE_DOCUMENT_TOOLS,
+			'create'
+		);
+		expect(create).toContain('- Create a task for a real follow-up');
+		expect(create).not.toContain('- Update an existing task by its exact id');
 	});
 });
 
@@ -480,72 +479,42 @@ describe('worker playbook crosscheck against the mounted surface', () => {
 		expect(findAgenticChatWorkerUnavailableToolNamesV1(names)).toEqual([]);
 		return names;
 	}
-	const cases: Array<{ message: string; profile: GatewaySurfaceProfileName; skillId: string }> = [
-		{ message: 'mark the intro call done', profile: 'project', skillId: 'task_management' },
-		{
-			message: 'add a task to call the roofer back',
-			profile: 'project',
-			skillId: 'task_management'
-		},
-		{ message: 'mark the intro call done', profile: 'global', skillId: 'task_management' },
-		{
-			message: "This project's documents are a mess, please organize them",
-			profile: 'project',
-			skillId: 'document_workspace'
-		},
-		{
-			message: 'save this as a note in the project',
-			profile: 'project',
-			skillId: 'document_workspace'
-		},
-		{
-			message: 'append these notes to the research doc',
-			profile: 'project',
-			skillId: 'document_workspace'
-		},
-		{
-			message: 'Can you schedule a call with Ana tomorrow?',
-			profile: 'global',
-			skillId: 'calendar_management'
-		},
-		{
-			message: 'move the standup to 3pm',
-			profile: 'project',
-			skillId: 'calendar_management'
-		},
-		{
-			message: 'create a plan for the beta launch',
-			profile: 'project',
-			skillId: 'plan_management'
-		},
-		{
-			message: 'create a plan for the beta launch',
-			profile: 'global',
-			skillId: 'plan_management'
-		}
+	const cases: Array<{ profile: GatewaySurfaceProfileName; skillId: string }> = [
+		{ profile: 'project', skillId: 'task_management' },
+		{ profile: 'global', skillId: 'task_management' },
+		{ profile: 'project', skillId: 'document_workspace' },
+		{ profile: 'project', skillId: 'calendar_management' },
+		{ profile: 'global', skillId: 'calendar_management' },
+		{ profile: 'project', skillId: 'plan_management' },
+		{ profile: 'global', skillId: 'plan_management' }
 	];
 
-	it.each(cases)('$skillId on $profile for "$message"', ({ message, profile, skillId }) => {
+	it.each(cases)('$skillId on $profile, every worked example', ({ profile, skillId }) => {
 		const mounted = new Set(workerSurface(profile));
-		const preload = resolveOperationalSkillPreload({ message, toolNames: [...mounted] });
-		expect(preload?.skillId).toBe(skillId);
-		const block = preload!.promptContent;
-		const lines = block.split('\n');
-		expect(lines.length, block).toBeLessThanOrEqual(40);
-		expect(block).not.toMatch(/\b(?:onto|cal|util)\.[a-z_]+(?:\.[a-z_]+)*/);
-		expect(block).not.toContain('declare_turn_contract');
-		// The turn-contract shapes render whole inside the character cap
-		// (apps/worker/tests/agenticChatSkillContractExamples.test.ts validates them).
-		expect(block).toContain('{"outcomes":');
-		expect(block).not.toContain('[Playbook truncated');
-		const namedTools = [...new Set(block.match(/\b[a-z]+(?:_[a-z]+)+\b/g) ?? [])].filter(
-			(token) => registeredToolNames.has(token)
+		const candidate = resolveOperationalPlaybookCandidates({ toolNames: [...mounted] }).find(
+			(entry) => entry.skillId === skillId
 		);
-		expect(namedTools.length).toBeGreaterThan(0);
-		for (const tool of namedTools) {
-			expect(mounted.has(tool), `${skillId} names ${tool}, not mounted on ${profile}`).toBe(
-				true
+		expect(candidate, skillId).toBeDefined();
+		for (const hint of Object.keys(candidate!.examples) as OperationalExampleHint[]) {
+			const block = renderOperationalPlaybook(skillId, [...mounted], hint)!;
+			const lines = block.split('\n');
+			expect(lines.length, `${hint}: ${block}`).toBeLessThanOrEqual(40);
+			expect(block).not.toMatch(/\b(?:onto|cal|util)\.[a-z_]+(?:\.[a-z_]+)*/);
+			expect(block).not.toContain('declare_turn_contract');
+			// The turn-contract shapes render whole inside the character cap
+			// (apps/worker/tests/agenticChatSkillContractExamples.test.ts validates them).
+			expect(block, hint).toContain('{"outcomes":');
+			expect(block).not.toContain('[Playbook truncated');
+			const namedTools = [...new Set(block.match(/\b[a-z]+(?:_[a-z]+)+\b/g) ?? [])].filter(
+				(token) => registeredToolNames.has(token)
 			);
+			expect(namedTools.length).toBeGreaterThan(0);
+			for (const tool of namedTools) {
+				expect(
+					mounted.has(tool),
+					`${skillId} names ${tool}, not mounted on ${profile}`
+				).toBe(true);
+			}
 		}
 	});
 });
@@ -553,9 +522,9 @@ describe('worker playbook crosscheck against the mounted surface', () => {
 describe('renderDomainSensingPromptContent with a preload', () => {
 	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71: a preload renders as the bare
 	// playbook. The Source / Skill-load gate / Next step wrapper is gone.
-	it('renders an operational preload as the bare playbook', () => {
-		const preload = resolveOperationalSkillPreload({
-			message: 'mark the intro call done',
+	it('renders a user-launched preload as the bare playbook', () => {
+		const { preload } = resolveUserLaunchSkillPreload({
+			skillId: 'task_management',
 			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
 		});
 		const content = renderDomainSensingPromptContent(null, {
@@ -563,7 +532,7 @@ describe('renderDomainSensingPromptContent with a preload', () => {
 			preloadSource: preload!.source
 		});
 		expect(content).toBe(preload!.promptContent);
-		expect(content).toMatch(/^Playbook for task writes this turn:\n/);
+		expect(content).toMatch(/^Playbook the user chose for this chat \(/);
 		expect(content).not.toContain('Source:');
 		expect(content).not.toContain('Skill-load gate');
 		expect(content).not.toContain('Next step');
@@ -628,15 +597,12 @@ describe('plan-layer operational playbook', () => {
 	it.each(['project', 'global'] as const)(
 		'preloads plan_management on the %s surface',
 		(profile) => {
-			const preload = resolveOperationalSkillPreload({
-				message: 'create a plan for the beta launch',
-				toolNames: workerSurfaceToolNames(profile)
-			});
-			expect(preload?.skillId).toBe('plan_management');
-			expect(preload?.reason).toBe('productivity_allowlist');
-			expect(preload?.promptContent).toMatch(/^Playbook for plan writes this turn:\n/);
-			expect(preload?.promptContent).toContain('create_onto_plan');
-			expect(preload!.promptContent.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
+			const toolNames = workerSurfaceToolNames(profile);
+			expect(candidateSkillIds(toolNames)).toContain('plan_management');
+			const block = renderOperationalPlaybook('plan_management', toolNames, 'create')!;
+			expect(block).toMatch(/^Playbook for plan writes this turn:\n/);
+			expect(block).toContain('create_onto_plan');
+			expect(block.length).toBeLessThanOrEqual(WORKER_PRELOAD_MAX_CHARS);
 		}
 	);
 });
@@ -696,7 +662,6 @@ describe('user-launched skill preload', () => {
 		expect(preload).toMatchObject({ skillId, source: 'user_launch', reason: 'user_launch' });
 		expect(preload!.promptContent).toMatch(/^Playbook the user chose for this chat \(/);
 		expect(preload!.promptContent).not.toContain('skill_load');
-		expect(preload!.companionSkillIds).toBeUndefined();
 	});
 
 	it.each([
@@ -712,45 +677,23 @@ describe('user-launched skill preload', () => {
 		});
 	});
 
-	it("keeps this turn's operational write playbook after a different launched skill", () => {
-		const operational = resolveOperationalSkillPreload({
-			message: 'add a task to draft the cold email sequence for the newsletter creators',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
-		expect(operational?.skillId).toBe('task_management');
-		const { preload } = resolveUserLaunchSkillPreload({
-			skillId: 'cold_email_engagement_first_outreach',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
-			operationalPreload: operational
-		});
-		expect(preload?.skillId).toBe('cold_email_engagement_first_outreach');
-		expect(preload?.source).toBe('user_launch');
-		expect(preload?.companionSkillIds).toEqual(['task_management']);
-		const content = preload!.promptContent;
-		expect(content.indexOf('Playbook the user chose for this chat')).toBe(0);
-		expect(content).toContain(operational!.promptContent);
-		expect(preload!.materializedToolNames).toEqual(
-			expect.arrayContaining(operational!.materializedToolNames)
-		);
-	});
-
-	it('relabels the operational playbook when the user launched that same skill', () => {
-		const operational = resolveOperationalSkillPreload({
-			message: 'add a task to call the roofer back on Tuesday',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
-		});
+	// The worker appends the operational playbook Jev's commission picks after
+	// the launched skill (provider/turn-rules.ts), so admission ships every
+	// candidate except the launched skill itself.
+	it('leaves the operational playbook to the worker and never ships the launched skill twice', () => {
 		const { preload } = resolveUserLaunchSkillPreload({
 			skillId: 'task_management',
-			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS,
-			operationalPreload: operational
+			toolNames: PROJECT_WRITE_DOCUMENT_TOOLS
 		});
 		expect(preload).toMatchObject({
 			skillId: 'task_management',
 			source: 'user_launch',
-			reason: 'user_launch',
-			promptContent: operational!.promptContent
+			reason: 'user_launch'
 		});
-		expect(preload?.companionSkillIds).toBeUndefined();
+		expect(preload!.promptContent).toMatch(/^Playbook the user chose for this chat \(/);
+		expect(candidateSkillIds(PROJECT_WRITE_DOCUMENT_TOOLS, [preload!.skillId])).toEqual([
+			'document_workspace'
+		]);
 	});
 
 	it('renders project_creation with its contract shape where the create tool is mounted', () => {
@@ -839,20 +782,13 @@ describe('focused table playbook', () => {
 		).toBeNull();
 	});
 
-	it("keeps this turn's task playbook after the table playbook", () => {
-		const operational = resolveOperationalSkillPreload({
-			message: 'add a task to call the roofer back on Tuesday',
-			toolNames: projectTools
-		});
-		expect(operational?.skillId).toBe('task_management');
+	it('stands alone; the task playbook stays a worker candidate', () => {
 		const preload = resolveFocusedTableSkillPreload({
 			focusedTable: true,
-			toolNames: projectTools,
-			operationalPreload: operational
+			toolNames: projectTools
 		});
 		expect(preload?.skillId).toBe('table_workspace');
-		expect(preload?.companionSkillIds).toEqual(['task_management']);
-		expect(preload!.promptContent.indexOf('Playbook for the table in focus:')).toBe(0);
-		expect(preload!.promptContent).toContain(operational!.promptContent);
+		expect(preload!.promptContent).not.toContain('Playbook for task writes this turn:');
+		expect(candidateSkillIds(projectTools, [preload!.skillId])).toContain('task_management');
 	});
 });

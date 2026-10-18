@@ -57,6 +57,23 @@ export interface ToolDisplayDescriptor {
 	target?: string;
 }
 
+export type ToolActivityTone = 'pending' | 'done' | 'failed' | 'awaiting';
+
+/**
+ * One tool activity line, split so the thinking block can style the verb, the
+ * thing it touched, and the error apart. `text` is the same line as plain text
+ * (what `formatToolMessage` returns) for exports and the Tools tab.
+ */
+export interface ToolActivityLine {
+	verb: string;
+	target?: string;
+	/** The target is what was searched for, not an entity name. */
+	quoted?: boolean;
+	tone: ToolActivityTone;
+	error?: string;
+	text: string;
+}
+
 export interface ToolPresenterContext {
 	getContextType: () => ChatContextType | null;
 	getEntityId: () => string | undefined;
@@ -81,6 +98,13 @@ export interface ToolPresenter {
 		status: 'pending' | 'completed' | 'awaiting_user' | 'failed',
 		errorMessage?: string
 	): string;
+	/** `formatToolMessage` split into styled parts; `.text` is the same string. */
+	formatToolLine(
+		toolName: string,
+		args: string | Record<string, any>,
+		status: 'pending' | 'completed' | 'awaiting_user' | 'failed',
+		errorMessage?: string
+	): ToolActivityLine;
 	/**
 	 * Single source of tool-display truth. Returns the present-tense action + optional
 	 * target for a tool. `formatToolMessage` (live path) calls this with no opts; the
@@ -167,6 +191,36 @@ const SCAN_WINDOW_LABELS: Record<string, string> = {
 	last_7_days: 'last 7 days',
 	last_14_days: 'last 14 days'
 };
+
+// Tools whose display target is the text that was searched for. The line
+// quotes it ("Cadre") so it never reads as the name of a project or task.
+const QUERY_TARGET_TOOLS: ReadonlySet<string> = new Set([
+	'search_ontology',
+	'search_all_projects',
+	'search_buildos',
+	'search_project',
+	'list_onto_projects',
+	'search_onto_projects',
+	'search_onto_tasks',
+	'search_onto_documents',
+	'search_onto_goals',
+	'search_onto_plans',
+	'search_onto_milestones',
+	'search_onto_risks',
+	'search_onto_assets',
+	'search_tasks',
+	'domain_search',
+	'outcome_card_search',
+	'work_capability_search',
+	'skill_search',
+	'resource_search',
+	'tool_search',
+	'web_search'
+]);
+
+export function isQueryTargetTool(toolName: string): boolean {
+	return QUERY_TARGET_TOOLS.has(toolName);
+}
 
 const TOOL_CATALOG: Record<string, ToolCatalogEntry> = {
 	// Ontology writes — both toast + track
@@ -276,6 +330,14 @@ const ENTITY_PLURAL_KEYS: Record<string, OntologyEntityKind> = {
 	risks: 'risk',
 	events: 'event'
 };
+
+const PROPOSAL_PROJECT_KEYS = [
+	'project',
+	'to_parent',
+	'from_parent',
+	'source',
+	'destination'
+] as const;
 
 // create_onto_* tool name → the entity kind it produces.
 const CREATE_TOOL_KINDS: Record<string, OntologyEntityKind> = {
@@ -429,9 +491,14 @@ export function toolResultAwaitsUser(toolResult: unknown): boolean {
 	);
 }
 
+/** Verb for a held change: nothing was saved, the user chooses next. */
+export function toAwaitingChoiceVerb(action: string): string {
+	return `Needs your choice to ${toFailureAction(action)}`;
+}
+
 /** Activity line for a held change: nothing was saved, the user chooses next. */
 export function toAwaitingChoiceAction(action: string, target?: string): string {
-	const label = `Needs your choice to ${toFailureAction(action)}`;
+	const label = toAwaitingChoiceVerb(action);
 	return target ? `${label}: "${target}"` : label;
 }
 
@@ -790,6 +857,29 @@ function documentTitleFromRecords(
 }
 
 /** Document title + section, across args-then-result records. */
+/**
+ * "section: X" or "sections: X, Y +2" for read_document_section, which reads
+ * several anchors per call (pipeline audit 2026-10-17 S8). Accepts anchor
+ * strings (args) or `{ heading }` entries (the result's `sections`).
+ */
+function documentSectionListLabel(values: unknown): string | undefined {
+	if (!Array.isArray(values)) return undefined;
+	const labels = values
+		.map((value) =>
+			suppressRawLabel(
+				value && typeof value === 'object'
+					? (value as Record<string, unknown>).heading
+					: value,
+				40
+			)
+		)
+		.filter((label): label is string => Boolean(label));
+	if (labels.length === 0) return undefined;
+	if (labels.length === 1) return `section: ${labels[0]}`;
+	const shown = labels.slice(0, 3).join(', ');
+	return `sections: ${shown}${labels.length > 3 ? ` +${labels.length - 3}` : ''}`;
+}
+
 function documentSectionFromRecords(
 	...records: Array<Record<string, any> | null | undefined>
 ): string | undefined {
@@ -797,15 +887,19 @@ function documentSectionFromRecords(
 	let section: string | undefined;
 	for (const record of records) {
 		if (!record) continue;
-		section =
+		const single =
 			suppressRawLabel(record.heading) ??
 			suppressRawLabel(record.section_title) ??
 			suppressRawLabel(record.sectionTitle) ??
 			suppressRawLabel(record.anchor);
+		section = single
+			? `section: ${single}`
+			: (documentSectionListLabel(record.sections) ??
+				documentSectionListLabel(record.anchors));
 		if (section) break;
 	}
-	if (documentTitle && section) return `${documentTitle} · section: ${section}`;
-	return documentTitle ?? (section ? `section: ${section}` : undefined);
+	if (documentTitle && section) return `${documentTitle} · ${section}`;
+	return documentTitle ?? section;
 }
 
 /** Best-guess entity noun for an unknown tool, from its name + gateway op. */
@@ -1024,6 +1118,22 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			indexEntityResults(payload.results);
 		}
 
+		// Project proposal cards name every project they would touch (the new
+		// parent, the merge destination) in `model_view`.
+		const modelView = payload.model_view;
+		if (
+			(payload.kind === 'project_parent' || payload.kind === 'project_combine') &&
+			modelView &&
+			typeof modelView === 'object'
+		) {
+			for (const key of PROPOSAL_PROJECT_KEYS) {
+				const entity = (modelView as Record<string, any>)[key];
+				if (entity && typeof entity === 'object') {
+					indexEntityRecord('project', entity as Record<string, any>);
+				}
+			}
+		}
+
 		const nestedResult = payload.result;
 		if (nestedResult && typeof nestedResult === 'object' && nestedResult !== payload) {
 			indexEntitiesFromPayload(nestedResult as Record<string, any>);
@@ -1209,16 +1319,16 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 	function documentSectionTarget(args: Record<string, any> | undefined): string | undefined {
 		if (!args || typeof args !== 'object') return undefined;
 		const documentName = resolveDocumentNameFromArgs(args);
-		const section = firstDisplayLabel(
+		const single = firstDisplayLabel(
 			args.heading,
 			args.section_title,
 			args.sectionTitle,
 			args.anchor
 		);
-		if (documentName && section) return `${documentName} · section: ${section}`;
+		const section = single ? `section: ${single}` : documentSectionListLabel(args.anchors);
+		if (documentName && section) return `${documentName} · ${section}`;
 		if (documentName) return documentName;
-		if (section) return `section: ${section}`;
-		return undefined;
+		return section;
 	}
 
 	function resolveProjectTarget(args: Record<string, any> | undefined): string | undefined {
@@ -1339,10 +1449,16 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		// Proposal cards (tasker 122): the tool only proposes; the result awaits the
 		// user's click, so the line reads "Needs your choice to …", never "Updated".
-		propose_project_parent: (args) => ({
-			action: args?.parent_project_id ? 'Nesting project' : 'Detaching project',
-			target: resolveEntityName('project', args?.project_id)
-		}),
+		propose_project_parent: (args) => {
+			const child = resolveEntityName('project', args?.project_id);
+			const parent = args?.parent_project_id
+				? resolveEntityName('project', args.parent_project_id)
+				: undefined;
+			return {
+				action: args?.parent_project_id ? 'Nesting project' : 'Detaching project',
+				target: child && parent ? `${child} → ${parent}` : child
+			};
+		},
 		propose_project_combine: (args) => {
 			const source = resolveEntityName('project', args?.source_project_id);
 			const destination = resolveEntityName('project', args?.destination_project_id);
@@ -1860,84 +1976,123 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		return null;
 	}
 
+	function plainLine(text: string, tone: ToolActivityTone, error?: string): ToolActivityLine {
+		return { verb: text, tone, text, ...(error ? { error } : {}) };
+	}
+
+	function formatToolLine(
+		toolName: string,
+		argsJson: string | Record<string, any>,
+		status: 'pending' | 'completed' | 'awaiting_user' | 'failed',
+		errorMessage?: string
+	): ToolActivityLine {
+		const errorSuffix = status === 'failed' ? formatErrorSuffix(errorMessage) : '';
+		const error = status === 'failed' ? errorMessage || undefined : undefined;
+		const tone: ToolActivityTone =
+			status === 'pending'
+				? 'pending'
+				: status === 'failed'
+					? 'failed'
+					: status === 'awaiting_user'
+						? 'awaiting'
+						: 'done';
+		if (toolName === 'skill_load') {
+			const skillPath = extractSkillPathFromSkillLoadArgs(argsJson);
+			if (status === 'pending') {
+				return plainLine(
+					skillPath
+						? formatSkillActivityContent({
+								type: 'skill_activity',
+								action: 'requested',
+								path: skillPath,
+								via: 'skill_load'
+							})
+						: 'Loading skill',
+					tone
+				);
+			}
+			if (status === 'completed') {
+				return plainLine(
+					skillPath
+						? formatSkillActivityContent({
+								type: 'skill_activity',
+								action: 'loaded',
+								path: skillPath,
+								via: 'skill_load'
+							})
+						: 'Skill loaded',
+					tone
+				);
+			}
+			return {
+				verb: 'Failed to load skill',
+				...(skillPath ? { target: skillPath } : {}),
+				tone,
+				...(error ? { error } : {}),
+				text: skillPath
+					? `Failed to load skill ${skillPath}${errorSuffix}`
+					: `Failed to load skill${errorSuffix}`
+			};
+		}
+
+		const unknownToolLine = (): ToolActivityLine => {
+			if (status === 'pending') return plainLine(`Using tool: ${toolName}`, tone);
+			if (status === 'completed') return plainLine(`Tool ${toolName} completed`, tone);
+			if (status === 'awaiting_user')
+				return plainLine(`Tool ${toolName} needs your choice`, tone);
+			return {
+				...plainLine(`Tool ${toolName} failed`, tone, error),
+				text: `Tool ${toolName} failed${errorSuffix}`
+			};
+		};
+
+		if (!TOOL_DISPLAY_FORMATTERS[toolName]) return unknownToolLine();
+
+		let descriptor: ToolDisplayDescriptor | null;
+		try {
+			const args = typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson;
+			descriptor = describeToolDisplay(toolName, args);
+		} catch (e) {
+			if (ctx.isDev) {
+				console.error('[AgentChat] Error parsing tool arguments:', e);
+			}
+			return plainLine(`Using tool: ${toolName}`, tone);
+		}
+		// Unreachable while the formatter exists; preserves the unknown-tool contract.
+		if (!descriptor) return unknownToolLine();
+
+		const { action, target } = descriptor;
+		const verb =
+			status === 'pending'
+				? action
+				: status === 'completed'
+					? toPastTenseAction(action)
+					: status === 'awaiting_user'
+						? toAwaitingChoiceVerb(action)
+						: `Failed to ${toFailureAction(action)}`;
+		let text: string;
+		if (!target) {
+			text = status === 'pending' ? `${verb}...` : `${verb}${errorSuffix}`;
+		} else {
+			text = `${verb}: "${target}"${errorSuffix}`;
+		}
+		return {
+			verb,
+			...(target ? { target } : {}),
+			...(target && QUERY_TARGET_TOOLS.has(toolName) ? { quoted: true } : {}),
+			tone,
+			...(error ? { error } : {}),
+			text
+		};
+	}
+
 	function formatToolMessage(
 		toolName: string,
 		argsJson: string | Record<string, any>,
 		status: 'pending' | 'completed' | 'awaiting_user' | 'failed',
 		errorMessage?: string
 	): string {
-		const errorSuffix = status === 'failed' ? formatErrorSuffix(errorMessage) : '';
-		if (toolName === 'skill_load') {
-			const skillPath = extractSkillPathFromSkillLoadArgs(argsJson);
-			if (status === 'pending') {
-				return skillPath
-					? formatSkillActivityContent({
-							type: 'skill_activity',
-							action: 'requested',
-							path: skillPath,
-							via: 'skill_load'
-						})
-					: 'Loading skill';
-			}
-			if (status === 'completed') {
-				return skillPath
-					? formatSkillActivityContent({
-							type: 'skill_activity',
-							action: 'loaded',
-							path: skillPath,
-							via: 'skill_load'
-						})
-					: 'Skill loaded';
-			}
-			return skillPath
-				? `Failed to load skill ${skillPath}${errorSuffix}`
-				: `Failed to load skill${errorSuffix}`;
-		}
-		const formatter = TOOL_DISPLAY_FORMATTERS[toolName];
-
-		if (!formatter) {
-			if (status === 'pending') return `Using tool: ${toolName}`;
-			if (status === 'completed') return `Tool ${toolName} completed`;
-			if (status === 'awaiting_user') return `Tool ${toolName} needs your choice`;
-			return `Tool ${toolName} failed${errorSuffix}`;
-		}
-
-		try {
-			const args = typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson;
-			const descriptor = describeToolDisplay(toolName, args);
-			if (!descriptor) {
-				// Unreachable while `formatter` exists above; preserves the unknown-tool contract.
-				if (status === 'pending') return `Using tool: ${toolName}`;
-				if (status === 'completed') return `Tool ${toolName} completed`;
-				return `Tool ${toolName} failed${errorSuffix}`;
-			}
-			const { action, target } = descriptor;
-			if (status === 'awaiting_user') return toAwaitingChoiceAction(action, target);
-
-			if (!target) {
-				if (status === 'pending') {
-					return `${action}...`;
-				} else if (status === 'completed') {
-					return toPastTenseAction(action);
-				} else {
-					return `Failed to ${toFailureAction(action)}${errorSuffix}`;
-				}
-			}
-
-			if (status === 'pending') {
-				return `${action}: "${target}"`;
-			} else if (status === 'completed') {
-				const pastTense = toPastTenseAction(action);
-				return `${pastTense}: "${target}"`;
-			} else {
-				return `Failed to ${toFailureAction(action)}: "${target}"${errorSuffix}`;
-			}
-		} catch (e) {
-			if (ctx.isDev) {
-				console.error('[AgentChat] Error parsing tool arguments:', e);
-			}
-			return `Using tool: ${toolName}`;
-		}
+		return formatToolLine(toolName, argsJson, status, errorMessage).text;
 	}
 
 	// -------------------------------------------------------------------------
@@ -2214,6 +2369,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 
 	return {
 		formatToolMessage,
+		formatToolLine,
 		describeToolDisplay,
 		formatErrorMessage,
 		normalizeToolDisplayPayload,

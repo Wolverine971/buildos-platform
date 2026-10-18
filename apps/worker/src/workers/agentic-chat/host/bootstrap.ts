@@ -480,7 +480,9 @@ function createDefaultComposition(
 		routes: input.config.provider.routes,
 		...(input.config.provider.responseHeadersTimeoutMs
 			? { responseHeadersTimeoutMs: input.config.provider.responseHeadersTimeoutMs }
-			: {})
+			: {}),
+		// Acting client only; the reviewer client below never replays or drops reasoning.
+		continuationReasoning: input.config.continuationReasoning ?? 'default'
 	});
 	const semanticReviewerClient = new AgenticChatOpenRouterClient(clientPorts, {
 		...clientOptions,
@@ -500,6 +502,7 @@ function createDefaultComposition(
 					// Same validated OpenRouter credential as the acting route.
 					apiKey: input.config.provider.routes[0]!.apiKey,
 					mode: jevMode,
+					holdUncommissionedWrites: input.config.holdUncommissionedWrites === true,
 					fetchImpl: input.fetchImpl,
 					usage: usageLogger,
 					onUsageError: input.onUsageError

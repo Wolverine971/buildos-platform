@@ -1679,7 +1679,9 @@ describe('buildToolPayloadForModel', () => {
 			expect(payload.tasks.items[0]).toMatchObject({ id: uuid(1), title: 'Task 1' });
 		});
 
-		it('trims a long document section instead of replacing it with a JSON string', () => {
+		// Audit 2026-10-17 S8: a section read carries up to 12k chars in one call,
+		// so a 7k section is no longer cut with "..." at the 6k tool budget.
+		it('keeps a long document section whole within the document budget', () => {
 			const content = Array.from(
 				{ length: 120 },
 				(_, index) => `Line ${index + 1}: "quoted" text with detail about the section.`
@@ -1700,13 +1702,10 @@ describe('buildToolPayloadForModel', () => {
 				parseArgs
 			) as Record<string, any>;
 
-			expectStructured(payload);
-			expect(payload.payload_truncated).toBe(true);
-			expect(payload.payload_original_length).toBeGreaterThan(MODEL_BUDGET);
+			expect(payload).not.toHaveProperty('payload_truncated');
 			expect(payload.heading).toBe('Scope');
-			expect(payload.content).toMatch(/^Line 1: "quoted" text/);
-			expect(payload.content.endsWith('...')).toBe(true);
-			expect(payload.content.length).toBeGreaterThan(3000);
+			expect(payload.content).toBe(content);
+			expect(serialized(payload).length).toBeLessThanOrEqual(16_000);
 		});
 
 		it('drops trailing items from the largest array of an unknown payload and says how many', () => {
@@ -2450,5 +2449,153 @@ describe('project hierarchy fields survive compaction', () => {
 		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(12_000);
 		expect(payload.project).toMatchObject({ sub_project_count: 2 });
 		expect(payload.project.sub_projects).toEqual(subProjects);
+	});
+});
+
+// Audit 2026-10-17 S8: document reads finish in one call where they can.
+describe('document reads', () => {
+	const DOCUMENT_BUDGET = 16_000;
+	const docId = '1d651834-5dee-4e08-9f62-3072c2e61f4d';
+	const lines = (count: number, text = 'Plain body line with some detail.') =>
+		Array.from({ length: count }, (_, index) => `${text} ${index + 1}`).join('\n');
+	const detail = (content: string, extra: Record<string, unknown> = {}) =>
+		buildToolPayloadForModel(
+			toolCall('get_onto_document_details'),
+			toolResult({
+				message: 'Complete ontology document details loaded.',
+				document: { id: docId, project_id: 'project-1', title: 'Plan', content },
+				...extra
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+	it('returns a body at or under 6000 chars whole, with no preview', () => {
+		const content = lines(400).slice(0, 6_000);
+		expect(content.length).toBe(6_000);
+		const payload = detail(content);
+
+		expect(payload.document.content).toBe(content);
+		expect(payload.document.content_truncated).toBe(false);
+		expect(payload.document).not.toHaveProperty('content_preview');
+		expect(payload.document).not.toHaveProperty('next_offset');
+		expect(payload.message).toBe('Complete ontology document details loaded.');
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(DOCUMENT_BUDGET);
+	});
+
+	it('previews a longer body as an exact prefix and points at one section read', () => {
+		const content = lines(300);
+		const sections = [
+			{ anchor: 'scope', heading: 'Scope', level: 2, chars: 4_000 },
+			{ anchor: 'budget', heading: 'Budget', level: 2, chars: 5_000 }
+		];
+		const payload = detail(content, { sections });
+		const preview = payload.document.content_preview as string;
+
+		expect(content.length).toBeGreaterThan(6_000);
+		expect(content.startsWith(preview)).toBe(true);
+		expect(preview.length).toBeLessThanOrEqual(3_500);
+		expect(preview.endsWith('\n')).toBe(true);
+		expect(payload.document).toMatchObject({
+			content_truncated: true,
+			content_length: content.length,
+			next_offset: preview.length,
+			sections
+		});
+		expect(payload.document).not.toHaveProperty('content');
+		expect(payload.message).toContain('one read_document_section call');
+		expect(payload.message).toContain(`offset ${preview.length}`);
+	});
+
+	it('offers offset continuation for a long body with no headings', () => {
+		const payload = detail(lines(300), { sections: [] });
+
+		expect(payload.document.next_offset).toBe(payload.document.content_preview.length);
+		expect(payload.document).not.toHaveProperty('sections');
+		expect(payload.message).toContain('no headings');
+	});
+
+	it('keeps the plain preview for a long body the read did not index (tables)', () => {
+		const payload = detail(lines(300));
+
+		expect(payload.document.content_truncated).toBe(true);
+		expect(payload.document).not.toHaveProperty('next_offset');
+		expect(payload.message).toBe('Complete ontology document details loaded.');
+	});
+
+	it('drops the continuation sentence where read_document_section is not callable', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('get_onto_document_details'),
+			toolResult({
+				message: 'Complete ontology document details loaded.',
+				document: { id: docId, content: lines(300) },
+				sections: [{ anchor: 'scope', heading: 'Scope', level: 2, chars: 100 }]
+			}),
+			parseArgs,
+			{
+				hostPolicy: { advertiseMaterializedTools: false },
+				callableToolNames: ['get_onto_document_details']
+			}
+		) as Record<string, any>;
+
+		expect(payload.message).toMatch(/^Long document \(\d+ chars\): content_preview holds/);
+		expect(payload.message).not.toContain('read_document_section');
+	});
+
+	it('keeps a short body whole beside a large outline', () => {
+		const content = lines(150).slice(0, 5_500);
+		const outline = Array.from({ length: 120 }, (_, index) => ({
+			level: 2,
+			text: `Heading ${index}`,
+			anchor: `heading-${index}`,
+			char_start: index * 40,
+			char_end: index * 40 + 40,
+			word_count: 6
+		}));
+		const payload = buildToolPayloadForModel(
+			toolCall('get_document_outline'),
+			toolResult({
+				document_id: docId,
+				title: 'Plan',
+				content_length: content.length,
+				outline,
+				content,
+				message:
+					'Outline loaded: 120 headings. Short document: its full body is in content.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.content).toBe(content);
+		expect(payload.outline.length).toBeLessThan(120);
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(DOCUMENT_BUDGET);
+	});
+
+	it('re-cuts an over-budget section read at an exact offset', () => {
+		// Quote- and backslash-dense text serializes to ~2x its length.
+		const content = lines(800, '"q" \\ "q" \\ "q"').slice(0, 12_000);
+		const payload = buildToolPayloadForModel(
+			toolCall('read_document_section'),
+			toolResult({
+				document_id: docId,
+				found: true,
+				sections: [{ anchor: 'a', heading: 'A', level: 2, chars: 30_000 }],
+				content,
+				offset: 2_000,
+				total_chars: 30_000,
+				truncated: true,
+				next_offset: 14_000,
+				message: '1 sections: returned chars 2000 to 14000 of 30000.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+		const kept = payload.content as string;
+
+		expect(JSON.stringify(payload).length).toBeLessThanOrEqual(DOCUMENT_BUDGET);
+		expect(kept.length).toBeGreaterThan(4_000);
+		expect(kept.length).toBeLessThan(content.length);
+		expect(content.startsWith(kept)).toBe(true);
+		expect(payload).toMatchObject({ truncated: true, next_offset: 2_000 + kept.length });
+		expect(payload.message).toContain(`offset ${2_000 + kept.length}`);
+		expect(payload).not.toHaveProperty('payload_truncated');
 	});
 });

@@ -349,7 +349,16 @@ describe('total assembled prompt size budget', () => {
 		// project-turn fixture mounts neither tool (global surface only), so its tool
 		// schemas are unchanged; the payload caps below still fit (87,814 chars /
 		// 21,954 est tokens). Cap at measured + ~1%.
-		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_525);
+		// RE-BASELINED 2026-10-17 (pipeline audit Q1 + document reads): Rules for
+		// This Turn now ride after the user message on the worker lane, so the
+		// Operating Strategy line says where they can appear (+43 chars), and the
+		// Knowledge Map read hint now teaches read-the-document-first, then one
+		// read_document_section call with anchors or next_offset (+43 chars;
+		// get_document_outline is no longer the first hop). Measured 12,401 →
+		// 12,487. The per-turn rules this fixture never rendered also leave the
+		// system prompt in production, so it is the same bytes every turn. Cap at
+		// measured + ~1%.
+		expect(breakdown.system_prompt.chars).toBeLessThanOrEqual(12_610);
 		// Postdeploy 2026-09-04: add the executable relationship tool and explicit
 		// endpoint references, plus the nested estimate schema. Keep the system
 		// prose cap unchanged; the worker defers the contract from opening passes.

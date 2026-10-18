@@ -504,6 +504,74 @@ describe('agent-chat-session helpers', () => {
 		]);
 	});
 
+	it('restored tool lines borrow names from the chat, carry counts, and start folded', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Look at both Cadre projects.',
+					created_at: '2026-10-17T22:08:00.000Z'
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Here is what I found.',
+					created_at: '2026-10-17T22:09:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-goals',
+					message_id: 'assistant-1',
+					tool_name: 'list_onto_goals',
+					sequence_index: 1,
+					arguments: { project_id: 'p-1' },
+					result: { goals: [{ id: 'g-1', name: 'Open rates' }], total: 1 },
+					success: true,
+					created_at: '2026-10-17T22:08:22.000Z'
+				},
+				{
+					id: 'exec-overview',
+					message_id: 'assistant-1',
+					tool_name: 'get_project_overview',
+					sequence_index: 2,
+					arguments: { project_id: 'p-1' },
+					result: {
+						project: { id: 'p-1', name: 'Cadre Internal' },
+						counts: { active_tasks: 77 }
+					},
+					success: true,
+					created_at: '2026-10-17T22:08:23.000Z'
+				},
+				{
+					id: 'exec-search',
+					message_id: 'assistant-1',
+					tool_name: 'search_onto_projects',
+					sequence_index: 3,
+					arguments: { query: 'Cadre' },
+					result: { projects: [], total: 0 },
+					success: true,
+					created_at: '2026-10-17T22:08:31.000Z'
+				}
+			] as any
+		});
+
+		const block = snapshot.messages.find((message) => message.type === 'thinking_block') as any;
+		expect(block.isCollapsed).toBe(true);
+		expect(block.activities.map((activity: any) => activity.metadata.line)).toEqual([
+			{ verb: 'Listed goals', target: 'Cadre Internal', tone: 'done' },
+			{ verb: 'Loaded project overview', target: 'Cadre Internal', tone: 'done' },
+			{ verb: 'Searched projects', target: 'Cadre', quoted: true, tone: 'done' }
+		]);
+		expect(block.activities.map((activity: any) => activity.metadata.outcome)).toEqual([
+			'1 goal',
+			'77 active tasks',
+			'no projects'
+		]);
+	});
+
 	it('stamps restored tool blocks with their turn run', () => {
 		const turnOne = '8d7c6b5a-4f3e-4d2c-9b1a-0f9e8d7c6b5a';
 		const turnTwo = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';

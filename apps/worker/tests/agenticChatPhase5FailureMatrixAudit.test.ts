@@ -140,7 +140,7 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 		id: 'broadcast_missed',
 		requirement: 'Broadcast failure switches to reconciliation without losing persistence.',
 		file: 'apps/worker/tests/agenticChatStreamPublisher.test.ts',
-		anchor: 'suppresses later live events after Broadcast failure and emits only a reconcile hint'
+		anchor: 'returns to live delivery once a sent reconcile hint covers the withheld events'
 	},
 	{
 		id: 'broadcast_duplicated',
@@ -200,7 +200,7 @@ const PHASE_5_FAILURE_EVIDENCE: readonly FailureEvidence[] = Object.freeze([
 		id: 'transport_lost_admission_response',
 		requirement: 'Uncertain worker admission keeps the bubble and recovers from server truth.',
 		file: 'apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.test.ts',
-		anchor: 'keeps the optimistic bubble after worker admission becomes uncertain'
+		anchor: 'keeps the optimistic bubble after worker admission stays uncertain through its retry'
 	},
 	{
 		id: 'first_turn_concurrent_session',

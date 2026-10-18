@@ -7,6 +7,8 @@ import type {
 } from '@buildos/shared-types';
 import type { UsageLogger } from '@buildos/smart-llm';
 import { describe, expect, it, vi } from 'vitest';
+import { ONTOLOGY_WRITE_TOOLS } from '@buildos/agentic-chat-runtime/catalog';
+import type { AgenticChatExecutionObservationPortV1 } from '../src/workers/agentic-chat/effects/execution-observation';
 import { loadAgenticChatConfig } from '../src/workers/agentic-chat/host/config';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import type {
@@ -17,6 +19,7 @@ import type {
 	AgenticChatTurnProviderToolV1
 } from '../src/workers/agentic-chat/provider/contracts';
 import {
+	HELD_WRITES_INSTRUCTION,
 	JEV_TOOL_SELECTION_ENDPOINT,
 	JEV_WRITE_COMMISSION_THRESHOLD,
 	JevToolSelector,
@@ -96,6 +99,23 @@ const OVERVIEW_ONLY = {
 	web_search: 0.04,
 	list_calendar_events: 0.02
 };
+
+/**
+ * A skipped or failed selection keeps the request exactly as it was, plus the
+ * structured outcome the turn's write-commission log reads.
+ */
+function expectUnchangedSurface(
+	selected: AgenticChatTurnProviderRequestV1,
+	original: AgenticChatTurnProviderRequestV1,
+	status: 'skipped' | 'fallback'
+) {
+	expect(selected).toEqual({
+		...original,
+		toolSelectionOutcome: { status, writeCommission: null, holdEnabled: false }
+	});
+	expect(selected.tools).toBe(original.tools);
+	expect(selected.messages).toBe(original.messages);
+}
 
 function selector(
 	fetchImpl: typeof fetch,
@@ -293,7 +313,7 @@ describe('JevToolSelector', () => {
 		const { instance, receipts } = selector(fetchImpl as unknown as typeof fetch);
 		const original = request({ toolChoice: 'required' });
 
-		await expect(instance.select(original)).resolves.toBe(original);
+		expectUnchangedSurface(await instance.select(original), original, 'skipped');
 		expect(fetchImpl).not.toHaveBeenCalled();
 		expect(receipts[0]).toMatchObject({ status: 'skipped', reason: 'ineligible_surface' });
 	});
@@ -314,13 +334,13 @@ describe('JevToolSelector', () => {
 		const { instance, receipts } = selector(vi.fn(respond) as unknown as typeof fetch);
 		const original = request();
 
-		await expect(instance.select(original)).resolves.toBe(original);
+		expectUnchangedSurface(await instance.select(original), original, 'fallback');
 		expect(receipts[0]).toMatchObject({ status: 'fallback', reason });
 	});
 
 	it('keeps the full surface when Jev is slower than its deadline', async () => {
 		const fetchImpl = vi.fn(
-			(_url: string, init: RequestInit) =>
+			(_url: string, init: NonNullable<Parameters<typeof fetch>[1]>) =>
 				new Promise<Response>((_, reject) =>
 					init.signal!.addEventListener('abort', () => reject(init.signal!.reason))
 				)
@@ -330,7 +350,7 @@ describe('JevToolSelector', () => {
 		});
 		const original = request();
 
-		await expect(instance.select(original)).resolves.toBe(original);
+		expectUnchangedSurface(await instance.select(original), original, 'fallback');
 		expect(receipts[0]).toMatchObject({ status: 'fallback', reason: 'jev_selection_timeout' });
 	});
 
@@ -404,12 +424,37 @@ describe('AGENTIC_CHAT_JEV_TOOL_SELECTION', () => {
 	});
 });
 
+describe('AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES', () => {
+	const env = {
+		PRIVATE_OPENROUTER_API_KEY: 'provider-secret',
+		AGENTIC_CHAT_OPENROUTER_MODEL: 'deepseek/deepseek-v4-flash'
+	};
+
+	it('defaults off and accepts exactly true or false', () => {
+		expect(loadAgenticChatConfig(env).holdUncommissionedWrites).toBe(false);
+		expect(
+			loadAgenticChatConfig({ ...env, AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES: 'true' })
+				.holdUncommissionedWrites
+		).toBe(true);
+		expect(
+			loadAgenticChatConfig({ ...env, AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES: 'false' })
+				.holdUncommissionedWrites
+		).toBe(false);
+		expect(() =>
+			loadAgenticChatConfig({ ...env, AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES: 'on' })
+		).toThrow('AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES must be exactly true or false');
+	});
+});
+
 describe('Jev selection inside a turn', () => {
 	function readDefinition(name: string): ChatToolDefinition {
 		return tool(name) as unknown as ChatToolDefinition;
 	}
 
-	function executionInput(): AgenticChatWorkerExecutionInputV1 {
+	function executionInput(
+		definitions: ChatToolDefinition[] = SURFACE.map(readDefinition),
+		promptSections: JsonObject[] = []
+	): AgenticChatWorkerExecutionInputV1 {
 		const claim = {
 			outcome: 'claimed',
 			executionMayStart: true,
@@ -426,7 +471,6 @@ describe('Jev selection inside a turn', () => {
 			AgenticChatTurnClaimResultV1,
 			{ outcome: 'claimed' | 'matching_current_claim' }
 		>;
-		const definitions = SURFACE.map(readDefinition);
 		const artifact = {
 			artifactVersion: 'agentic_chat_input_v2',
 			historySource: 'admission_window',
@@ -437,8 +481,12 @@ describe('Jev selection inside a turn', () => {
 				conversationSummary: null,
 				surfaceProfile: 'project_default',
 				systemPrompt: 'System prompt\n',
-				promptSections: [],
-				toolSurface: { surfaceProfile: 'project_default', toolNames: SURFACE, definitions }
+				promptSections,
+				toolSurface: {
+					surfaceProfile: 'project_default',
+					toolNames: definitions.map((definition) => definition.function.name),
+					definitions
+				}
 			},
 			createdAt: '2026-08-03T12:00:00.000Z',
 			retainUntil: '2026-08-10T12:00:00.000Z',
@@ -615,5 +663,268 @@ describe('Jev selection inside a turn', () => {
 		await collect(invocation.stream());
 
 		expect(names(client.stream.mock.calls[0])).toEqual(SURFACE);
+	});
+	// Pipeline audit 2026-10-17 (S5 cause a + Q1): the write hold, the
+	// commission shadow log, and the Rules for This Turn playbook pick all read
+	// Jev's structured answers. No message text is classified anywhere here.
+	describe('write commission on the worker lane', () => {
+		const TASK_ID = '41000000-0000-4000-8000-000000000041';
+		const WRITE_NAMES = ['update_onto_task', 'create_onto_task'];
+
+		function writeDefinition(name: string): ChatToolDefinition {
+			return ONTOLOGY_WRITE_TOOLS.find(
+				(definition) => definition.function.name === name
+			)! as unknown as ChatToolDefinition;
+		}
+
+		function writeInput(promptSections: JsonObject[] = []) {
+			return executionInput(
+				[...SURFACE.map(readDefinition), ...WRITE_NAMES.map(writeDefinition)],
+				promptSections
+			);
+		}
+
+		const READ_TURN = {
+			current_turn_write_commission: 0.1,
+			...OVERVIEW_ONLY,
+			// Relevance is not a commission: the task tools look relevant to a
+			// status question, but nothing was asked to change.
+			update_onto_task: 0.9,
+			create_onto_task: 0.05
+		};
+		const CREATE_TURN = {
+			...READ_TURN,
+			current_turn_write_commission: 0.86,
+			update_onto_task: 0.1,
+			create_onto_task: 0.92
+		};
+
+		function observations() {
+			return {
+				observe: vi.fn<AgenticChatExecutionObservationPortV1['observe']>(
+					async () => undefined
+				)
+			};
+		}
+
+		function commissionReceipt(port: ReturnType<typeof observations>) {
+			const receipts = port.observe.mock.calls
+				.map(([input]) => input)
+				.filter((input) => input.eventType === 'provider_commission_observed');
+			expect(receipts).toHaveLength(1);
+			expect(receipts[0]!.phase).toBe('provider');
+			return receipts[0]!.payload;
+		}
+
+		function writeAdapter(
+			client: AgenticChatTurnProviderClientPortV1,
+			scores: Record<string, number> | 'unavailable',
+			options: {
+				hold?: boolean;
+				port?: ReturnType<typeof observations>;
+			} = {}
+		) {
+			return new AgenticChatTurnProviderAdapter(
+				{
+					client,
+					capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+					toolSelector: new JevToolSelector({
+						apiKey: 'provider-secret',
+						mode: 'on',
+						holdUncommissionedWrites: options.hold,
+						fetchImpl: vi.fn(async () => {
+							if (scores === 'unavailable') throw new TypeError('fetch failed');
+							return jevResponse(scores);
+						}) as unknown as typeof fetch
+					}),
+					executionObservations: options.port
+				},
+				2_000,
+				16,
+				{ updateOntoTask: true, createOntoTask: true }
+			);
+		}
+
+		function answer(text: string): AgenticChatTurnProviderClientEventV1[] {
+			return [
+				{ type: 'text', content: text },
+				{ type: 'done', finishedReason: 'stop' }
+			];
+		}
+
+		async function run(
+			scores: Record<string, number> | 'unavailable',
+			rounds: AgenticChatTurnProviderClientEventV1[][],
+			options: { hold?: boolean; promptSections?: JsonObject[] } = {}
+		) {
+			const client = clientWithRounds(rounds);
+			const port = observations();
+			const invocation = await writeAdapter(client, scores, {
+				hold: options.hold,
+				port
+			}).prepare({
+				executionInput: writeInput(options.promptSections),
+				processingToken: PROCESSING_TOKEN,
+				signal: new AbortController().signal
+			});
+			const steps = await collect(invocation.stream());
+			return { client, port, steps };
+		}
+
+		it('with the hold on, offers no write schema on a turn Jev scores as uncommissioned, on any pass', async () => {
+			const { client, port, steps } = await run(
+				READ_TURN,
+				[
+					// The model reaches for the held write anyway.
+					readRound('write-1', 'update_onto_task', {
+						task_id: TASK_ID,
+						state_key: 'done'
+					}),
+					answer('Nothing has changed yet. Want me to mark it done?')
+				],
+				{ hold: true }
+			);
+
+			expect(names(client.stream.mock.calls[0])).toEqual(['get_project_overview']);
+			const opening = client.stream.mock.calls[0]![0];
+			expect(opening.messages.at(-1)?.content).toContain(HELD_WRITES_INSTRUCTION);
+			// The one surface repair restores the admitted surface minus the held writes.
+			expect(names(client.stream.mock.calls[1])).toEqual(SURFACE);
+			expect(steps.some((step) => step.type === 'mutating_tool')).toBe(false);
+			expect(commissionReceipt(port)).toMatchObject({
+				jev_status: 'selected',
+				jev_write_commission: 0.1,
+				jev_commissioned_write_tools: [],
+				// The model reached for a held write: exactly the miss the log measures.
+				proposed_write_tools: ['update_onto_task'],
+				proposed_write_call_count: 1,
+				writes_held: true,
+				hold_enabled: true,
+				awaiting_user_card: false,
+				review_outcomes: [],
+				turn_rules_playbook: null,
+				finished_reason: 'stop'
+			});
+		});
+
+		it('keeps the writes Jev commissions when the hold is on', async () => {
+			const { client, port } = await run(
+				CREATE_TURN,
+				[answer('Which title?'), answer('Which title?'), answer('Which title?')],
+				{ hold: true }
+			);
+			expect(names(client.stream.mock.calls[0])).toContain('create_onto_task');
+			expect(
+				client.stream.mock.calls[0]![0].messages.map((message) => message.content).join(
+					'\n'
+				)
+			).not.toContain(HELD_WRITES_INSTRUCTION);
+			expect(commissionReceipt(port)).toMatchObject({
+				jev_write_commission: 0.86,
+				jev_commissioned_write_tools: ['create_onto_task'],
+				writes_held: false,
+				hold_enabled: true
+			});
+		});
+
+		it('is off by default and still writes the shadow receipt', async () => {
+			const { client, port } = await run(READ_TURN, [answer('Two tasks are open.')]);
+			// Today's behavior: a relevant write schema rides along unheld.
+			expect(names(client.stream.mock.calls[0])).toEqual([
+				'get_project_overview',
+				'list_onto_tasks',
+				'update_onto_task'
+			]);
+			expect(commissionReceipt(port)).toMatchObject({
+				jev_status: 'selected',
+				jev_write_commission: 0.1,
+				proposed_write_tools: [],
+				proposed_write_call_count: 0,
+				writes_held: false,
+				hold_enabled: false
+			});
+		});
+
+		it('fails open when Jev is unavailable: the full surface, nothing held', async () => {
+			const { client, port } = await run('unavailable', [answer('Answer.')], { hold: true });
+			expect(names(client.stream.mock.calls[0])).toEqual([...SURFACE, ...WRITE_NAMES]);
+			expect(commissionReceipt(port)).toMatchObject({
+				jev_status: 'fallback',
+				jev_write_commission: null,
+				writes_held: false,
+				hold_enabled: true
+			});
+		});
+
+		it('writes the receipt once, when the turn finishes, never mid-turn', async () => {
+			const { port } = await run(READ_TURN, [
+				readRound('write-1', 'update_onto_task', { task_id: TASK_ID, state_key: 'done' })
+			]);
+			// The stream stops at the proposed write, which the executor runs (or
+			// review holds) before the next pass; no receipt exists yet.
+			expect(
+				port.observe.mock.calls.filter(
+					([input]) => input.eventType === 'provider_commission_observed'
+				)
+			).toHaveLength(0);
+		});
+
+		const RULES_SECTION: JsonObject = {
+			id: 'situational_rules',
+			title: 'Rules for This Turn',
+			content: 'Playbook the user chose for this chat (Cold email):\n- Keep it short.',
+			slots: { placement: 'after_user_message', preloadedSkillId: 'cold_email' }
+		};
+		const TASK_CANDIDATE: JsonObject = {
+			id: 'operational_playbook_candidate',
+			title: 'Rules for This Turn',
+			content: 'Playbook for task writes this turn:\n\nWorkflow:\n- Read before you write.',
+			slots: {
+				skillId: 'task_management',
+				entityKind: 'task',
+				examples: {
+					update: '- Update an existing task by its exact id',
+					create: '- Create a task for a real follow-up'
+				}
+			}
+		};
+
+		it("appends the admission rules and the playbook Jev's commission picks after the user message", async () => {
+			const { client, port } = await run(
+				CREATE_TURN,
+				[answer('Which title?'), answer('Which title?'), answer('Which title?')],
+				{ promptSections: [RULES_SECTION, TASK_CANDIDATE] }
+			);
+			const { messages } = client.stream.mock.calls[0]![0];
+			expect(messages[0]).toEqual({ role: 'system', content: 'System prompt\n' });
+			const userIndex = messages.findIndex((message) => message.role === 'user');
+			const rulesIndex = messages.findIndex(
+				(message) =>
+					typeof message.content === 'string' &&
+					message.content.startsWith('## Rules for This Turn')
+			);
+			expect(rulesIndex).toBeGreaterThan(userIndex);
+			const rules = String(messages[rulesIndex]!.content);
+			expect(rules.indexOf('Playbook the user chose for this chat')).toBeLessThan(
+				rules.indexOf('Playbook for task writes this turn:')
+			);
+			expect(rules).toContain('Worked example:\n- Create a task for a real follow-up');
+			expect(rules).not.toContain('- Update an existing task by its exact id');
+			expect(commissionReceipt(port)).toMatchObject({
+				turn_rules_playbook: 'task_management'
+			});
+		});
+
+		it('appends no write playbook when Jev scores no commission', async () => {
+			const { client, port } = await run(READ_TURN, [answer('Two tasks are open.')], {
+				promptSections: [RULES_SECTION, TASK_CANDIDATE]
+			});
+			const rules = client.stream.mock.calls[0]![0].messages.map((message) =>
+				String(message.content)
+			).find((content) => content.startsWith('## Rules for This Turn'));
+			expect(rules).toContain('Playbook the user chose for this chat');
+			expect(rules).not.toContain('Playbook for task writes this turn:');
+			expect(commissionReceipt(port)).toMatchObject({ turn_rules_playbook: null });
+		});
 	});
 });

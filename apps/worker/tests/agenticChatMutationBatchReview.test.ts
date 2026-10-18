@@ -461,3 +461,336 @@ describe('table checklist vocabulary reaches the reviewer only for table writes'
 		expect(tableChecklistNotice(batchWith(LINK_ARGUMENTS))).toBeNull();
 	});
 });
+
+/**
+ * Stage rule (pipeline audit 2026-10-17, S5 cause b). A batch revision is for
+ * a defect IN a held call. Prod bounced correct partial stages twice: 09-26 and
+ * 09-29 revisions whose only correction was "add the omitted, already
+ * executable creates", and the 10-17 battery's cedar-02 revision whose reason
+ * and correction both said the held links were right. Each cost an actor
+ * repair and a second review. The rule now reaches the reviewer in its prompt
+ * and in a structured `defective_calls` field, and a first revision that names
+ * no held call is rechecked once. Nothing here reads the reviewer's prose.
+ */
+describe('stage rule: a revision must name a defective held call', () => {
+	const PROJECT_ID = '3f6d8f10-3f0f-4c7e-9a8e-6a2d9b9d0c11';
+	const TITLES = ['Permit', 'Cabinets', 'Rough-in', 'Inspection'];
+
+	function stage() {
+		return buildMutationBatch(
+			TITLES.map((title, index) => ({
+				id: `create-${index + 1}`,
+				name: 'create_onto_task',
+				canonicalProviderArguments: canonicalizeAgenticChatJson({
+					project_id: PROJECT_ID,
+					title
+				})
+			}))
+		);
+	}
+
+	function actingRequest(): AgenticChatTurnProviderRequestV1 {
+		return {
+			messages: [
+				{
+					role: 'user',
+					content:
+						'Create seven tasks: Permit, Cabinets, Rough-in, Inspection, Drywall, Paint, Punch list.'
+				}
+			],
+			tools: [
+				REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
+				...ONTOLOGY_WRITE_TOOLS.filter((tool) => tool.function.name === 'create_onto_task')
+			],
+			toolChoice: 'auto',
+			userId: 'qa-user',
+			sessionId: 'qa-session',
+			turnRunId: 'qa-turn',
+			streamRunId: 'qa-stream',
+			clientTurnId: 'qa-client-turn',
+			contextType: 'project',
+			entityId: PROJECT_ID,
+			projectId: PROJECT_ID,
+			queueJobId: 'qa-job',
+			processingToken: 'qa-processing-token',
+			executionGeneration: 1,
+			providerRound: 'initial',
+			logicalProviderRound: 1,
+			signal: new AbortController().signal
+		};
+	}
+
+	function decide(revision: JsonObject, recheckRevision = true) {
+		const request = actingRequest();
+		const batch = stage();
+		const sha = mutationBatchSha256(batch);
+		const toolCalls = createToolCallAccumulator();
+		appendToolCallDelta(toolCalls, [
+			{
+				index: 0,
+				id: 'reviewer-revision',
+				type: 'function',
+				function: { name: 'request_proposal_revision', arguments: JSON.stringify(revision) }
+			}
+		]);
+		try {
+			const [call] = completeMutationBatchReviewDecision({
+				actingRequest: request,
+				reviewRequest: buildMutationBatchReviewRequest(
+					request,
+					request.tools,
+					batch,
+					sha,
+					true,
+					true
+				),
+				batch,
+				batchSha256: sha,
+				toolCalls,
+				finished: true,
+				finishedReason: 'tool_calls',
+				fallbackReason: null,
+				allowRevision: true,
+				recheckRevision
+			});
+			return { accepted: call!.name, code: null };
+		} catch (error) {
+			return {
+				accepted: null,
+				code: (error as { diagnostic?: { code?: string } }).diagnostic?.code ?? 'unknown'
+			};
+		}
+	}
+
+	// 2026-09-26 / 09-29 shape: the stage was right; the "defect" was omitted work.
+	const OMISSION_REVISION: JsonObject = {
+		reason: 'The batch creates four of the seven commissioned tasks; Drywall, Paint, and Punch list are missing although they are already executable.',
+		required_correction: 'Add create_onto_task calls for Drywall, Paint, and Punch list.',
+		findings: [
+			{
+				code: 'other',
+				target_ids: [],
+				message: 'Drywall, Paint, and Punch list are not in this batch.',
+				required_correction: 'Add the three missing creates.'
+			}
+		],
+		defective_calls: [],
+		reference_candidates: []
+	};
+	// 2026-10-17 battery cedar-02 shape: the revision itself says the held calls are right.
+	const CONTRADICTORY_REVISION: JsonObject = {
+		reason: 'The four held creates are correct, but the stage leaves out the remaining tasks.',
+		required_correction: 'Keep the four creates unchanged and add the remaining three tasks.',
+		defective_calls: [],
+		reference_candidates: []
+	};
+
+	it('rechecks an omission-only revision once instead of bouncing a correct stage', () => {
+		expect(decide(OMISSION_REVISION)).toEqual({
+			accepted: null,
+			code: 'revision_without_defective_call'
+		});
+		expect(decide(CONTRADICTORY_REVISION)).toEqual({
+			accepted: null,
+			code: 'revision_without_defective_call'
+		});
+	});
+
+	it('sends a revision whose finding names a specific defect straight to the acting model', () => {
+		for (const code of ['missing_prerequisite', 'publication_effect', 'wrong_value'] as const) {
+			expect(
+				decide({
+					...CONTRADICTORY_REVISION,
+					findings: [
+						{
+							code,
+							target_ids: [],
+							message: 'Inspection needs the permit first.',
+							required_correction: 'Create the permit task first.'
+						}
+					]
+				})
+			).toEqual({ accepted: 'request_proposal_revision', code: null });
+		}
+	});
+
+	it('accepts the recheck answer as given, so the rule can cost a review pass but never a turn', () => {
+		expect(decide(OMISSION_REVISION, false)).toEqual({
+			accepted: 'request_proposal_revision',
+			code: null
+		});
+	});
+
+	it('sends a revision that names a wrong held call straight to the acting model', () => {
+		expect(
+			decide({
+				reason: 'The fourth task is not one the user named.',
+				required_correction: 'Replace the Inspection create with Punch list.',
+				defective_calls: [4],
+				reference_candidates: []
+			})
+		).toEqual({ accepted: 'request_proposal_revision', code: null });
+	});
+
+	it('refuses a defective call outside the held stage, and unreadable findings', () => {
+		expect(decide({ ...CONTRADICTORY_REVISION, defective_calls: [5] }).code).toBe(
+			'revision_without_defective_call'
+		);
+		expect(decide({ ...CONTRADICTORY_REVISION, defective_calls: ['4'] }).code).toBe(
+			'revision_without_defective_call'
+		);
+		expect(
+			decide({
+				...CONTRADICTORY_REVISION,
+				defective_calls: [4],
+				findings: [
+					{ code: 'missing_work', target_ids: [], message: 'x', required_correction: 'y' }
+				]
+			}).code
+		).toBe('revision_findings_invalid');
+	});
+
+	it('leaves a reviewer that predates defective_calls unchecked', () => {
+		const { defective_calls: _omitted, ...legacy } = OMISSION_REVISION;
+		expect(decide(legacy)).toEqual({ accepted: 'request_proposal_revision', code: null });
+	});
+
+	it('puts the rule in the reviewer prompt and the revision schema', () => {
+		const request = actingRequest();
+		const batch = stage();
+		const review = buildMutationBatchReviewRequest(
+			request,
+			request.tools,
+			batch,
+			mutationBatchSha256(batch),
+			true,
+			true
+		);
+		const system = String(review.messages[0]?.content);
+		expect(system).toContain('stages of at most 8 mutations');
+		expect(system).toContain('Never request a revision whose correction only adds calls.');
+		expect(system).toContain(
+			'If you cannot name a held call that is wrong, the stage is correct'
+		);
+		const revisionTool = review.tools.find(
+			(tool) => tool.function.name === 'request_proposal_revision'
+		)!;
+		expect(revisionTool.function.parameters.required).toContain('defective_calls');
+		expect(revisionTool.function.description).toContain(
+			'Never use this to add omitted commissioned work'
+		);
+	});
+});
+
+describe('actor repair after a batch revision', () => {
+	const PROJECT_ID = '3f6d8f10-3f0f-4c7e-9a8e-6a2d9b9d0c11';
+	const createTask = ONTOLOGY_WRITE_TOOLS.find(
+		(tool) => tool.function.name === 'create_onto_task'
+	)!;
+	const updateTask = ONTOLOGY_WRITE_TOOLS.find(
+		(tool) => tool.function.name === 'update_onto_task'
+	)!;
+	const batch = buildMutationBatch(
+		['Permit', 'Inspection'].map((title, index) => ({
+			id: `create-${index + 1}`,
+			name: 'create_onto_task',
+			canonicalProviderArguments: canonicalizeAgenticChatJson({
+				project_id: PROJECT_ID,
+				title
+			})
+		}))
+	);
+
+	function request(
+		tools: AgenticChatTurnProviderRequestV1['tools'],
+		overrides: Partial<AgenticChatTurnProviderRequestV1> = {}
+	): AgenticChatTurnProviderRequestV1 {
+		return {
+			messages: [{ role: 'user', content: 'Add Permit and Punch list tasks.' }],
+			tools,
+			toolChoice: 'auto',
+			userId: 'qa-user',
+			sessionId: 'qa-session',
+			turnRunId: 'qa-turn',
+			streamRunId: 'qa-stream',
+			clientTurnId: 'qa-client-turn',
+			contextType: 'project',
+			entityId: PROJECT_ID,
+			projectId: PROJECT_ID,
+			queueJobId: 'qa-job',
+			processingToken: 'qa-processing-token',
+			executionGeneration: 1,
+			providerRound: 'synthesis',
+			logicalProviderRound: 2,
+			signal: new AbortController().signal,
+			...overrides
+		};
+	}
+
+	const revision = {
+		reason: 'The second task is not one the user named.',
+		requiredCorrection: 'Create Punch list instead of Inspection.',
+		correctedContract: null,
+		defectiveCalls: [2],
+		findings: [
+			{
+				code: 'wrong_value' as const,
+				target_ids: [],
+				message: 'Inspection is not one of the requested tasks.',
+				required_correction: 'Use the title Punch list.'
+			}
+		]
+	};
+	const admitted = [REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION, createTask, updateTask];
+
+	it('keeps the narrower acting surface when it carries every held tool (prompt cache)', () => {
+		const narrowed = [REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION, createTask];
+		const repair = buildMutationBatchRevisionRequest(
+			request(narrowed),
+			admitted,
+			revision,
+			batch
+		);
+		expect(repair.tools.map((tool) => tool.function.name)).toEqual([
+			'request_turn_clarification',
+			'create_onto_task'
+		]);
+		const instruction = String(repair.messages.at(-1)?.content);
+		expect(instruction).toContain('Held calls the review found wrong: 2 (create_onto_task).');
+		expect(instruction).toContain('"code":"wrong_value"');
+		expect(instruction).toContain('make no tool call and answer the request');
+	});
+
+	it('falls back to the admitted surface when the pass lacked a held tool or the surface repair is spent', () => {
+		const withoutCreate = buildMutationBatchRevisionRequest(
+			request([REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION, updateTask]),
+			admitted,
+			revision,
+			batch
+		);
+		expect(withoutCreate.tools).toBe(admitted);
+		const spent = buildMutationBatchRevisionRequest(
+			request([REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION, createTask], {
+				unavailableSkillRepairAttempted: true
+			}),
+			admitted,
+			revision,
+			batch
+		);
+		expect(spent.tools).toBe(admitted);
+	});
+
+	it('never widens past the admitted surface', () => {
+		const repair = buildMutationBatchRevisionRequest(
+			request([createTask, updateTask]),
+			[REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION, createTask],
+			{ ...revision, defectiveCalls: undefined, findings: undefined },
+			batch
+		);
+		expect(repair.tools.map((tool) => tool.function.name)).toEqual([
+			'request_turn_clarification',
+			'create_onto_task'
+		]);
+		expect(String(repair.messages.at(-1)?.content)).not.toContain('Held calls the review');
+	});
+});

@@ -2,6 +2,14 @@
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
 import { collectRecordReferences } from './record-references';
+import {
+	DOCUMENT_INLINE_BODY_MAX_CHARS,
+	DOCUMENT_PREVIEW_CHARS,
+	DOCUMENT_SECTION_INDEX_MAX_ENTRIES,
+	DOCUMENT_SECTION_READ_BUDGET_CHARS,
+	documentBodyText,
+	documentSliceEnd
+} from './document-read-budget';
 import { instantToZonedIso, isValidIanaTimezone } from '@buildos/shared-agent-ops/dates/civil-date';
 import {
 	PROPOSAL_CARD_RAIL,
@@ -23,6 +31,19 @@ const MAX_MODEL_WEB_PAYLOAD_CHARS = 12000;
 const TOOL_PAYLOAD_NOTICE_MARGIN_CHARS = 400;
 const TOOL_COMPACT_TARGET_CHARS = MAX_MODEL_TOOL_PAYLOAD_CHARS - TOOL_PAYLOAD_NOTICE_MARGIN_CHARS;
 const WEB_COMPACT_TARGET_CHARS = MAX_MODEL_WEB_PAYLOAD_CHARS - TOOL_PAYLOAD_NOTICE_MARGIN_CHARS;
+// Document reads (audit 2026-10-17 S8): a body up to DOCUMENT_INLINE_BODY_MAX_CHARS
+// comes back whole and a section read returns up to
+// DOCUMENT_SECTION_READ_BUDGET_CHARS (12k) in one call, so they get room for
+// that text plus JSON escaping and metadata. Their compactors cut text only at
+// exact offsets, never with a trailing "...", so a continuation stays correct.
+const MAX_MODEL_DOCUMENT_PAYLOAD_CHARS = 16000;
+const DOCUMENT_COMPACT_TARGET_CHARS =
+	MAX_MODEL_DOCUMENT_PAYLOAD_CHARS - TOOL_PAYLOAD_NOTICE_MARGIN_CHARS;
+const DOCUMENT_READ_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'get_onto_document_details',
+	'get_document_outline',
+	'read_document_section'
+]);
 const MAX_WEB_VISIT_CONTENT_CHARS = 8000;
 const MIN_WEB_VISIT_CONTENT_CHARS = 1500;
 const MAX_WEB_SEARCH_SNIPPET_CHARS = 1600;
@@ -259,6 +280,9 @@ function isWebPayloadTool(toolName: string | undefined): boolean {
 function resolvePayloadBudget(toolName: string | undefined): number {
 	if (isSkillPayloadTool(toolName ?? '')) return MAX_MODEL_SKILL_PAYLOAD_CHARS;
 	if (isWebPayloadTool(toolName)) return MAX_MODEL_WEB_PAYLOAD_CHARS;
+	// Their compactors bound the body text themselves (see the constant).
+	if (DOCUMENT_READ_TOOL_NAMES.has(toolName?.trim().toLowerCase() ?? ''))
+		return MAX_MODEL_DOCUMENT_PAYLOAD_CHARS;
 	if (EMAIL_CONTENT_PAYLOAD_TOOLS.has(toolName?.trim().toLowerCase() ?? ''))
 		return MAX_MODEL_WEB_PAYLOAD_CHARS;
 	// A busy two weeks (~60 compact event rows) fits in one call at this size;
@@ -840,6 +864,12 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	if (normalizedToolName === 'get_onto_document_details') {
 		return compactOntologyDocumentDetailPayload(payload);
 	}
+	if (normalizedToolName === 'get_document_outline') {
+		return compactDocumentOutlinePayload(payload);
+	}
+	if (normalizedToolName === 'read_document_section') {
+		return compactDocumentSectionReadPayload(payload);
+	}
 	if (normalizedToolName === 'get_onto_project_details') {
 		return compactOntologyProjectDetailPayload(payload);
 	}
@@ -1115,38 +1145,179 @@ function compactOntologyDocumentDetailPayload(payload: unknown): unknown {
 		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
 	}
 
-	const content =
-		typeof document.content === 'string'
-			? document.content
-			: typeof document.props?.body_markdown === 'string'
-				? document.props.body_markdown
-				: '';
-	const contentPreview = toTextPreview(content, 3500);
+	const content = documentBodyText(document);
+	const metadata = {
+		id: document.id,
+		project_id: document.project_id,
+		project_name: document.project_name,
+		title: document.title,
+		description: toTextPreview(document.description, 700),
+		type_key: document.type_key,
+		state_key: document.state_key,
+		created_at: document.created_at,
+		updated_at: document.updated_at,
+		archived_at: document.archived_at,
+		content_length: content.length,
+		children_count: Array.isArray(document.children?.children)
+			? document.children.children.length
+			: undefined
+	};
+
+	// A short body comes back whole: the model reads it directly instead of an
+	// outline round and a section round (S8: 13 of 18 truncated reads did that).
+	if (content.length <= DOCUMENT_INLINE_BODY_MAX_CHARS) {
+		const inline = {
+			message: record.message,
+			document: { ...metadata, content, content_truncated: false }
+		};
+		if ((serializedLength(inline) ?? Infinity) <= DOCUMENT_COMPACT_TARGET_CHARS) {
+			return inline;
+		}
+	}
+
+	// A longer body: an exact prefix (cut at a line end) plus the section index
+	// the read attached, so the follow-up is one read_document_section call by
+	// anchors or by offset. Only a read that attached `sections` (never a
+	// table, which its own tools read) gets that continuation.
+	const previewEnd = documentSliceEnd(content, 0, DOCUMENT_PREVIEW_CHARS);
+	const truncated = previewEnd < content.length;
+	const sectionIndex = Array.isArray(record.sections)
+		? compactDocumentSectionIndex(record.sections)
+		: null;
+	const continuable = truncated && sectionIndex !== null;
+	const sectionsOmitted =
+		(typeof record.sections_omitted === 'number' ? record.sections_omitted : 0) +
+		(sectionIndex?.omitted ?? 0);
+	const message = continuable
+		? sectionIndex && sectionIndex.sections.length > 0
+			? `Long document (${content.length} chars): content_preview holds chars 0 to ${previewEnd}. Read the rest in one read_document_section call with the anchors you need from sections (up to ${DOCUMENT_SECTION_READ_BUDGET_CHARS} chars per call), or with offset ${previewEnd}.`
+			: `Long document (${content.length} chars) with no headings: content_preview holds chars 0 to ${previewEnd}. Read the rest with read_document_section and offset ${previewEnd} (up to ${DOCUMENT_SECTION_READ_BUDGET_CHARS} chars per call).`
+		: record.message;
 
 	return applyToolPayloadSizeGuard(
 		{
-			message: record.message,
+			message,
 			document: {
-				id: document.id,
-				project_id: document.project_id,
-				project_name: document.project_name,
-				title: document.title,
-				description: toTextPreview(document.description, 700),
-				type_key: document.type_key,
-				state_key: document.state_key,
-				created_at: document.created_at,
-				updated_at: document.updated_at,
-				archived_at: document.archived_at,
-				content_length: content.length,
-				content_preview: contentPreview,
-				content_truncated: content.length > (contentPreview?.length ?? 0),
-				children_count: Array.isArray(document.children?.children)
-					? document.children.children.length
-					: undefined
+				...metadata,
+				content_preview: content.slice(0, previewEnd),
+				content_truncated: truncated,
+				...(continuable ? { next_offset: previewEnd } : {}),
+				...(sectionIndex && sectionIndex.sections.length > 0
+					? { sections: sectionIndex.sections }
+					: {}),
+				...(sectionsOmitted > 0 ? { sections_omitted: sectionsOmitted } : {})
 			}
 		},
-		TOOL_COMPACT_TARGET_CHARS
+		DOCUMENT_COMPACT_TARGET_CHARS
 	);
+}
+
+function compactDocumentSectionIndex(value: unknown[]): {
+	sections: Array<Record<string, unknown>>;
+	omitted: number;
+} {
+	const entries = value
+		.filter(
+			(entry): entry is Record<string, unknown> =>
+				Boolean(entry) &&
+				typeof entry === 'object' &&
+				typeof (entry as Record<string, unknown>).anchor === 'string'
+		)
+		.map((entry) => ({
+			anchor: entry.anchor,
+			heading: toTextPreview(entry.heading, 80) ?? undefined,
+			level: typeof entry.level === 'number' ? entry.level : undefined,
+			chars: typeof entry.chars === 'number' ? entry.chars : undefined
+		}));
+	const sections = entries.slice(0, DOCUMENT_SECTION_INDEX_MAX_ENTRIES);
+	return { sections, omitted: entries.length - sections.length };
+}
+
+/**
+ * The outline as before; a short document's inline body rides beside it whole.
+ * The body is never trimmed (an edit copies old_text from it): when it cannot
+ * fit, it is dropped and the message says how to read it.
+ */
+function compactDocumentOutlinePayload(payload: unknown): unknown {
+	if (
+		!payload ||
+		typeof payload !== 'object' ||
+		Array.isArray(payload) ||
+		typeof (payload as Record<string, unknown>).content !== 'string'
+	) {
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
+	}
+	const { content, ...rest } = payload as Record<string, unknown>;
+	const fitted = applyToolPayloadSizeGuard(rest, TOOL_COMPACT_TARGET_CHARS) as Record<
+		string,
+		unknown
+	>;
+	const withBody = { ...fitted, content };
+	if ((serializedLength(withBody) ?? Infinity) <= DOCUMENT_COMPACT_TARGET_CHARS) {
+		return withBody;
+	}
+	return {
+		...fitted,
+		message:
+			'Outline loaded. The body did not fit in this result; read it with read_document_section and offset 0.'
+	};
+}
+
+/**
+ * A section/body slice from read_document_section. It already holds at most
+ * DOCUMENT_SECTION_READ_BUDGET_CHARS; if escaping still pushes it past the
+ * budget, the text is re-cut at a line end and `next_offset` moved to match.
+ * The generic guard would shorten it with "..." and leave `next_offset`
+ * pointing past text the model never saw.
+ */
+function compactDocumentSectionReadPayload(payload: unknown): unknown {
+	if (
+		!payload ||
+		typeof payload !== 'object' ||
+		Array.isArray(payload) ||
+		typeof (payload as Record<string, unknown>).content !== 'string'
+	) {
+		return applyToolPayloadSizeGuard(payload, TOOL_COMPACT_TARGET_CHARS);
+	}
+	const record = payload as Record<string, unknown>;
+	if ((serializedLength(record) ?? Infinity) <= DOCUMENT_COMPACT_TARGET_CHARS) {
+		return record;
+	}
+	const content = record.content as string;
+	const offset =
+		typeof record.offset === 'number' && Number.isFinite(record.offset) && record.offset > 0
+			? record.offset
+			: 0;
+	const total =
+		typeof record.total_chars === 'number' && record.total_chars >= offset + content.length
+			? record.total_chars
+			: offset + content.length;
+	// Everything but the text first (a long available_anchors list), then the
+	// text gets whatever room is left.
+	const shell = applyToolPayloadSizeGuard(
+		{ ...record, content: '' },
+		TOOL_COMPACT_TARGET_CHARS
+	) as Record<string, unknown>;
+	let kept = content;
+	for (let attempt = 0; attempt < 4; attempt += 1) {
+		// 200 chars of room for the rewritten continuation message below.
+		const overage =
+			(serializedLength({ ...shell, content: kept }) ?? 0) +
+			200 -
+			DOCUMENT_COMPACT_TARGET_CHARS;
+		if (overage <= 0 || kept.length === 0) break;
+		// Each raw character removed removes at least one serialized character.
+		kept = kept.slice(0, documentSliceEnd(kept, 0, Math.max(1, kept.length - overage)));
+	}
+	const end = offset + kept.length;
+	const truncated = end < total;
+	const fitted: Record<string, unknown> = { ...shell, content: kept, truncated };
+	delete fitted.next_offset;
+	if (truncated) {
+		fitted.next_offset = end;
+		fitted.message = `Returned chars ${offset} to ${end} of ${total}. To read on, call read_document_section again with the same arguments and offset ${end}.`;
+	}
+	return fitted;
 }
 
 function compactOntologyProjectDetailPayload(payload: unknown): unknown {

@@ -19,13 +19,14 @@
  * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F71).
  *
  * Operational skills (task_management, document_workspace, plan_management,
- * calendar_management) are in no domain or outcome card, so they arrive via the
- * deterministic intent map in operational-skill-intent.ts rather than sensing,
- * and they render on
- * every turn their intent fires: the system prompt is rebuilt per turn, so a
- * per-window dedupe just removed the playbook from the next write turn (F69).
- * Craft preloads (sensing, explicit ask) are one-shot and still dedupe against
- * the skills the history window already showed.
+ * calendar_management) are in no domain or outcome card. Since 2026-10-17
+ * (audit Q1) admission no longer picks one from the message: it ships every
+ * playbook whose write tools are mounted as a structured candidate
+ * (resolveOperationalPlaybookCandidates), and the worker appends at most one
+ * after the user message, chosen from Jev's write commission
+ * (apps/worker/.../provider/turn-rules.ts). Craft preloads (sensing, explicit
+ * ask) are one-shot and still dedupe against the skills the history window
+ * already showed.
  *
  * Productivity allowlist (founder decision 2026-09-03): marketing, sales, and
  * writing-craft skills left the default chat runtime. Automatic preload is
@@ -66,7 +67,10 @@ import {
 	type SkillGateSuppressionReason
 } from './domain-sensing';
 import {
-	resolveOperationalSkillForTurn,
+	OPERATIONAL_EXAMPLE_HINTS,
+	OPERATIONAL_SKILL_BY_ENTITY,
+	operationalEntityKindsForTools,
+	type OperationalEntityKind,
 	type OperationalExampleHint,
 	type OperationalSkillId
 } from './operational-skill-intent';
@@ -124,11 +128,6 @@ export type SkillGatePreload = {
 	payload: SkillHelpPayload;
 	promptContent: string;
 	materializedToolNames: string[];
-	/**
-	 * Other playbooks rendered in the same block. A user-launched skill keeps
-	 * this turn's operational write playbook beside it instead of dropping it.
-	 */
-	companionSkillIds?: string[];
 };
 
 /**
@@ -226,46 +225,59 @@ export function isExplicitSkillAskTurn(sensing: DomainSensingResult | null | und
 }
 
 /**
- * Deterministic operational preload for the reviewed worker lane: the message's
- * mutation intent picks the skill, the mounted tools decide eligibility. When a
- * craft (domain-sensing) candidate also fired, it rides along as an alternate
- * so the model can still see the other route without a second block. There is
- * deliberately no already-loaded dedupe here: an operational playbook is this
- * turn's write rules, and the prompt that carried it last turn is gone.
+ * One operational write playbook, rendered for the worker but not chosen
+ * here: `content` is the heading plus the core blocks, and `examples` holds
+ * the worked example for each hint that has its own (the worker falls back to
+ * `update`). Sized so content plus any one example stays within
+ * WORKER_PRELOAD_MAX_CHARS.
  */
-export function resolveOperationalSkillPreload(params: {
-	message: string | null | undefined;
+export type OperationalPlaybookCandidate = {
+	skillId: OperationalSkillId;
+	entityKind: OperationalEntityKind;
+	content: string;
+	examples: Partial<Record<OperationalExampleHint, string>>;
+};
+
+const WORKED_EXAMPLE_LABEL = '\n\nWorked example:\n';
+
+/**
+ * Every operational playbook this turn's surface can honor (allowlisted, its
+ * tools mounted), for the worker to choose from with Jev's structured write
+ * commission. Capability only: the message is never read (audit 2026-10-17
+ * Q1). A skill already preloaded into this turn's rules (a user launch or a
+ * focused table) is excluded so it never renders twice.
+ */
+export function resolveOperationalPlaybookCandidates(params: {
 	toolNames: readonly string[];
-	craftAlternateSkillIds?: string[];
-}): (SkillGatePreload & { skillId: OperationalSkillId }) | null {
-	// An entity whose playbook this turn cannot preload (off the allowlist, or
-	// its tools unmounted) falls through to the next sensed entity instead of
-	// ending the route with no playbook at all.
-	const resolution = resolveOperationalSkillForTurn({
-		message: params.message,
-		toolNames: params.toolNames,
-		isSkillEligible: (skillId) =>
-			isProductivityPreloadSkill(skillId) &&
-			isSkillPreloadableOnTools(skillId, params.toolNames)
-	});
-	if (!resolution) return null;
-	const alternates = uniqueIds([
-		...resolution.alternateSkillIds,
-		...(params.craftAlternateSkillIds ?? [])
-	]).filter((id) => id !== resolution.skillId);
-	const preload = resolveSkillPreload(
-		resolution.skillId,
-		alternates,
-		'operational_intent',
-		{
-			allowFollowupSkillLoad: false,
-			workerHeading: `Playbook for ${resolution.entityKind} writes this turn:`,
-			workerExampleHint: resolution.exampleHint,
-			mountedToolNames: params.toolNames
-		},
-		{ explicitAsk: false }
-	).preload;
-	return preload ? { ...preload, skillId: resolution.skillId } : null;
+	excludeSkillIds?: readonly string[];
+}): OperationalPlaybookCandidate[] {
+	const excluded = new Set(params.excludeSkillIds ?? []);
+	const candidates: OperationalPlaybookCandidate[] = [];
+	for (const entityKind of operationalEntityKindsForTools(params.toolNames)) {
+		const skillId = OPERATIONAL_SKILL_BY_ENTITY[entityKind];
+		if (excluded.has(skillId) || !isProductivityPreloadSkill(skillId)) continue;
+		const payload = loadSkill(skillId, { format: 'short', surface: 'chat_internal' });
+		if (!isSkillHelpPayload(payload) || !skillToolsAreMounted(payload, params.toolNames)) {
+			continue;
+		}
+		const examples: OperationalPlaybookCandidate['examples'] = {};
+		const seen = new Set<string>();
+		for (const hint of OPERATIONAL_EXAMPLE_HINTS) {
+			const example = selectWorkerExample(payload.examples, hint);
+			if (!example) continue;
+			const rendered = renderExampleLines(example).join('\n');
+			if (!rendered || seen.has(rendered)) continue;
+			seen.add(rendered);
+			examples[hint] = rendered;
+		}
+		const longestExample = Math.max(0, ...Object.values(examples).map((text) => text.length));
+		const content = renderWorkerPreloadedSkillCore(payload, {
+			heading: `Playbook for ${entityKind} writes this turn:`,
+			maxChars: WORKER_PRELOAD_MAX_CHARS - longestExample - WORKED_EXAMPLE_LABEL.length
+		});
+		candidates.push({ skillId, entityKind, content, examples });
+	}
+	return candidates;
 }
 
 /**
@@ -273,24 +285,19 @@ export function resolveOperationalSkillPreload(params: {
  * link), carried as the structured `requestedSkillId` on the launch's first
  * turn. The client value is only a request: it must resolve in the registry,
  * and the skill's tools must be mounted. It skips the productivity allowlist —
- * a deliberate pick is the most explicit ask there is. When this turn's
- * operational write playbook fired for a different skill, both render, the
- * chosen skill first: dropping either would silently lose the user's pick or
- * the write rules this turn's mutations depend on.
+ * a deliberate pick is the most explicit ask there is. The worker appends
+ * this turn's operational write playbook, if Jev's commission picks one, right
+ * after it in the same Rules for This Turn block (provider/turn-rules.ts);
+ * the launched skill is never shipped as an operational candidate too.
  */
 export function resolveUserLaunchSkillPreload(params: {
 	skillId: string | null | undefined;
 	toolNames: readonly string[];
-	operationalPreload?: SkillGatePreload | null;
 }): SkillGatePreloadDecision {
 	const requestedId = (params.skillId ?? '').trim().toLowerCase();
 	const skill = requestedId ? getSkillById(requestedId) : undefined;
 	if (!skill) return { preload: null };
-	const operational = params.operationalPreload ?? null;
-	if (operational?.skillId === skill.id) {
-		return { preload: { ...operational, source: 'user_launch', reason: 'user_launch' } };
-	}
-	const decision = resolveSkillPreload(
+	return resolveSkillPreload(
 		skill.id,
 		[],
 		'user_launch',
@@ -301,18 +308,6 @@ export function resolveUserLaunchSkillPreload(params: {
 		},
 		{ explicitAsk: false, userLaunch: true }
 	);
-	if (!decision.preload || !operational) return decision;
-	return {
-		preload: {
-			...decision.preload,
-			promptContent: `${decision.preload.promptContent}\n\n${operational.promptContent}`,
-			materializedToolNames: uniqueIds([
-				...decision.preload.materializedToolNames,
-				...operational.materializedToolNames
-			]),
-			companionSkillIds: [operational.skillId]
-		}
-	};
 }
 
 export const TABLE_WORKSPACE_SKILL_ID = 'table_workspace';
@@ -338,19 +333,17 @@ export function isFocusedTableContextPayload(contextPayload: unknown): boolean {
 /**
  * The table playbook for a turn whose focused entity is a table (structured:
  * the caller reads the prepared context's focus entity type_key). It leads the
- * block; an operational playbook for a different skill renders right after it,
- * because "make follow-up tasks for anything in Interview" needs both the table
- * read rules and the task write rules.
+ * Rules for This Turn block; the worker appends an operational write playbook
+ * right after it when Jev's commission picks one, because "make follow-up
+ * tasks for anything in Interview" needs both the table read rules and the
+ * task write rules.
  */
 export function resolveFocusedTableSkillPreload(params: {
 	focusedTable: boolean;
 	toolNames: readonly string[];
-	operationalPreload?: SkillGatePreload | null;
 }): SkillGatePreload | null {
 	if (!params.focusedTable) return null;
-	const operational = params.operationalPreload ?? null;
-	if (operational?.skillId === TABLE_WORKSPACE_SKILL_ID) return operational;
-	const preload = resolveSkillPreload(
+	return resolveSkillPreload(
 		TABLE_WORKSPACE_SKILL_ID,
 		[],
 		'focused_entity',
@@ -361,17 +354,6 @@ export function resolveFocusedTableSkillPreload(params: {
 		},
 		{ explicitAsk: false }
 	).preload;
-	if (!preload) return operational;
-	if (!operational) return preload;
-	return {
-		...preload,
-		promptContent: `${preload.promptContent}\n\n${operational.promptContent}`,
-		materializedToolNames: uniqueIds([
-			...preload.materializedToolNames,
-			...operational.materializedToolNames
-		]),
-		companionSkillIds: [operational.skillId]
-	};
 }
 
 /**
@@ -387,11 +369,6 @@ export function skillToolsAreMounted(
 	if (declared.length === 0) return true;
 	const mounted = new Set(mountedToolNames);
 	return declared.some((name) => mounted.has(name));
-}
-
-function isSkillPreloadableOnTools(skillId: string, mountedToolNames: readonly string[]): boolean {
-	const payload = loadSkill(skillId, { format: 'short', surface: 'chat_internal' });
-	return isSkillHelpPayload(payload) && skillToolsAreMounted(payload, mountedToolNames);
 }
 
 /**
@@ -503,6 +480,20 @@ function renderPreloadedSkillPromptContent(
  * is capped by characters. Exported only so tests can render skills no
  * admission route reaches; production callers go through resolveSkillPreload.
  */
+/** Heading, explicit Judgment, and core blocks of a worker playbook, capped; no example. */
+function renderWorkerPreloadedSkillCore(
+	payload: SkillHelpPayload,
+	options: { heading: string; maxChars: number }
+): string {
+	const lines: string[] = [options.heading];
+	const judgment = resolveExplicitFullJudgmentBlock(payload.id);
+	if (judgment) {
+		lines.push('', 'Judgment:', judgment);
+	}
+	pushCoreBlocks(lines, payload);
+	return capPreloadContent(lines.join('\n'), options.maxChars);
+}
+
 export function renderWorkerPreloadedSkillPromptContent(
 	payload: SkillHelpPayload,
 	remainingCandidates: string[],
@@ -606,8 +597,4 @@ function capPreloadContent(content: string, maxChars: number): string {
 
 function clip(items: string[]): string[] {
 	return items.slice(0, PRELOAD_LIST_LIMIT);
-}
-
-function uniqueIds(ids: string[]): string[] {
-	return Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
 }

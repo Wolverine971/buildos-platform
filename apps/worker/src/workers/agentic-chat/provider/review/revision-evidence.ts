@@ -1,6 +1,48 @@
 // apps/worker/src/workers/agentic-chat/provider/review/revision-evidence.ts
-import type { MutationBatch } from '@buildos/agentic-chat-runtime/loop';
+import {
+	type MutationBatch,
+	parseMutationReviewFindings
+} from '@buildos/agentic-chat-runtime/loop';
 import type { JsonObject } from '@buildos/shared-types';
+import { readDefectiveCalls } from './decision-handling';
+
+/**
+ * The stage rule as a check on the reviewer's own structured output (S5,
+ * audit 2026-10-17). A batch revision is for a defect IN a held call; one
+ * that names no held call is a correct partial stage being sent back for the
+ * work it leaves out, which the reviewer prompt already forbids. Prod showed
+ * both shapes: 09-26 and 09-29 revisions whose only correction was "add the
+ * omitted, already-executable creates", and the 10-17 battery's cedar-02
+ * revision whose reason and required_correction both said the held links
+ * were correct. Each cost an actor repair and a second review (~14 s).
+ *
+ * Absent `defective_calls` is a reviewer that predates the field: no check.
+ * A finding with a specific defect code (a missing prerequisite, a publication
+ * effect, a wrong value, ...) is defect evidence in its own right, so that
+ * revision goes to the acting model as before. Code `other` is what the
+ * omission bounces carried (09-26, 09-29), so it still gets the recheck.
+ * Unreadable findings would fail the control tool at execution, so they get
+ * the same one recheck. Nothing here reads prose, and nothing here can
+ * approve: the lane asks the reviewer for a fresh decision once.
+ */
+export function checkMutationBatchRevisionStage(
+	argumentsValue: JsonObject,
+	batch: MutationBatch
+): 'revision_without_defective_call' | 'revision_findings_invalid' | null {
+	const findings = parseMutationReviewFindings(argumentsValue.findings);
+	if (findings === null) return 'revision_findings_invalid';
+	if (findings.some((finding) => finding.code !== 'other')) return null;
+	if (!Object.hasOwn(argumentsValue, 'defective_calls')) return null;
+	const defectiveCalls = readDefectiveCalls(argumentsValue.defective_calls);
+	if (
+		!defectiveCalls ||
+		defectiveCalls.length === 0 ||
+		defectiveCalls.some((call) => call > batch.calls.length)
+	) {
+		return 'revision_without_defective_call';
+	}
+	return null;
+}
 
 /** Comparison evidence may invalidate a revision; it can never authorize a mutation. */
 export function checkMutationBatchRevisionEvidence(

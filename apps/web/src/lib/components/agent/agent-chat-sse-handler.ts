@@ -104,11 +104,8 @@ export function buildToolCallActivity(
 		return { activity: null, toolCallId };
 	}
 
-	const displayMessage = presenter.formatToolMessage(
-		displayPayload.toolName,
-		displayPayload.args,
-		'pending'
-	);
+	const line = presenter.formatToolLine(displayPayload.toolName, displayPayload.args, 'pending');
+	const displayMessage = line.text;
 	const skillActivity =
 		displayPayload.toolName === 'skill_load'
 			? buildSkillLoadActivityEvent('requested', displayPayload.args)
@@ -122,6 +119,7 @@ export function buildToolCallActivity(
 		status: 'pending',
 		toolCallId,
 		metadata: {
+			line,
 			toolName: displayPayload.toolName,
 			originalToolName: displayPayload.originalToolName,
 			gatewayOp: displayPayload.gatewayOp,
@@ -147,6 +145,44 @@ export function buildToolCallActivity(
 	};
 
 	return { activity, toolCallId };
+}
+
+/** Log line shown when the reviewer sends the model's change back for a fix. */
+export const REVIEW_REVISION_ACTIVITY = 'Revising after the check';
+
+/**
+ * Re-render tool lines whose names were unknown when they finished. Parallel
+ * reads often complete before the call that names their project ("Listed
+ * goals" before "Loaded project overview: …"); once a later result teaches
+ * the presenter the name, the earlier line picks it up. Returns the same
+ * array when nothing changed.
+ */
+export function refreshToolActivityLines(
+	activities: ActivityEntry[],
+	presenter: ToolPresenter
+): ActivityEntry[] {
+	let changed = false;
+	const next = activities.map((activity) => {
+		const toolName = activity.metadata?.toolName;
+		if (activity.activityType !== 'tool_call' || typeof toolName !== 'string') {
+			return activity;
+		}
+		const displayStatus =
+			activity.metadata?.displayStatus ??
+			(activity.status === 'completed' || activity.status === 'failed'
+				? activity.status
+				: 'pending');
+		const line = presenter.formatToolLine(
+			toolName,
+			activity.metadata?.arguments ?? '',
+			displayStatus,
+			activity.metadata?.error
+		);
+		if (line.text === activity.content) return activity;
+		changed = true;
+		return { ...activity, content: line.text, metadata: { ...activity.metadata, line } };
+	});
+	return changed ? next : activities;
 }
 
 export interface ToolResultInfo {
@@ -572,6 +608,14 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 				internalControlToolCallIds.add(result.toolCallId);
 				deps.pendingToolResults.delete(result.toolCallId);
 			}
+			// The reviewer's own controls stay hidden, but a sent-back change is
+			// worth one line: it explains the extra pass before the answer.
+			if (event.tool_call?.function?.name === 'request_proposal_revision') {
+				thinking.addActivity(REVIEW_REVISION_ACTIVITY, 'state_change', {
+					activityVisibility: 'activity_log',
+					reviewRevision: true
+				});
+			}
 			return;
 		}
 
@@ -657,6 +701,13 @@ export function createSSEHandler(deps: SSEHandlerDeps): AgentSSEMessageHandler {
 		}
 
 		presenter.indexEntitiesFromToolResult(toolResult);
+		const refreshBlockId = thinking.getCurrentBlockId();
+		if (refreshBlockId) {
+			thinking.update(refreshBlockId, (block) => {
+				const activities = refreshToolActivityLines(block.activities, presenter);
+				return activities === block.activities ? block : { ...block, activities };
+			});
+		}
 
 		let resolvedToolName: string | undefined;
 		let resolvedArgs: string | Record<string, unknown> | undefined;

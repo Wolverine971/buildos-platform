@@ -222,6 +222,23 @@ export const MUTATION_BATCH_REVIEW_APPROVAL_TOOL: AgenticChatTurnProviderToolV1 
 });
 
 /**
+ * The held calls a batch revision says are wrong. Structured on purpose: a
+ * stage is revisable only for a defect IN a held call, so a revision that can
+ * name none (it only wants omitted commissioned work added) is the reviewer
+ * rejecting a correct partial stage, and the lane asks once for a fresh
+ * decision instead of paying an actor repair and a second review (S5, audit
+ * 2026-10-17). Comparison evidence only; it never edits or authorizes a call.
+ */
+export const DEFECTIVE_CALLS_PROPERTY = Object.freeze({
+	type: 'array',
+	maxItems: 40,
+	uniqueItems: true,
+	description:
+		'One-based numbers of the held calls that are themselves wrong: uncommissioned, wrong target, wrong value, or unsafe without a missing prerequisite. A held call is never defective because other commissioned work is absent from this stage; later stages propose that work. If no held call is wrong, approve the stage instead of revising.',
+	items: { type: 'integer', minimum: 1, maximum: 40 }
+});
+
+/**
  * Reject the batch back to the acting model with a reason. Unlike the contract
  * lane's revision tool, the reviewer never authors a replacement: it says what
  * is wrong and the acting model proposes new calls, which are reviewed again.
@@ -233,12 +250,13 @@ export const MUTATION_BATCH_PROPOSAL_REVISION_TOOL: AgenticChatTurnProviderToolV
 	function: {
 		...PROPOSAL_REVISION_TOOL.function,
 		description:
-			"Return the acting model's proposed calls for correction when the user's commission is clear but the calls misstate it: a call the user did not commission, a missing prerequisite required for a held call to be safe, a wrong target, or a value the turn evidence resolves differently. Do not reject a correct bounded stage for omitting other independent changes. Give one concise, complete sentence per defect, naming the affected target and correction. Say what is wrong; the acting model proposes the corrected calls and they are reviewed again. Do not use this when a choice genuinely belongs to the user.",
+			"Return the acting model's proposed calls for correction when the user's commission is clear but held calls misstate it: a call the user did not commission, a missing prerequisite required for a held call to be safe, a wrong target, or a value the turn evidence resolves differently. Name those held calls in defective_calls. Never use this to add omitted commissioned work: a correct bounded stage is approved, and later stages propose the rest. Give one concise, complete sentence per defect, naming the affected target and correction. Say what is wrong; the acting model proposes the corrected calls and they are reviewed again. Do not use this when a choice genuinely belongs to the user.",
 		parameters: {
 			...PROPOSAL_REVISION_TOOL.function.parameters,
-			required: ['reason', 'required_correction', 'reference_candidates'],
+			required: ['reason', 'required_correction', 'defective_calls', 'reference_candidates'],
 			properties: {
 				...(PROPOSAL_REVISION_TOOL.function.parameters.properties as JsonObject),
+				defective_calls: { ...DEFECTIVE_CALLS_PROPERTY },
 				argument_checks: {
 					type: 'array',
 					maxItems: 20,

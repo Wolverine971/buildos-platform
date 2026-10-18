@@ -52,6 +52,8 @@
 	import AgentMessageList from './AgentMessageList.svelte';
 	import AgentChatActivityTabs from './AgentChatActivityTabs.svelte';
 	import BrainDumpContextPanel from './BrainDumpContextPanel.svelte';
+	import ChatConsolidationPanel from './ChatConsolidationPanel.svelte';
+	import { provideChatReviewPanel } from './chat-review-panel';
 	import AgentRunDock from './AgentRunDock.svelte';
 	import { agentRunsStore, type AgentRunRow } from '$lib/services/agentRunsRealtime.service';
 	import { notificationStore } from '$lib/stores/notification.store';
@@ -143,6 +145,7 @@
 		type OntologyEntityKind,
 		type ToolPresenter
 	} from './agent-chat-tool-presenter';
+	import { describeToolOutcome } from './agent-chat-tool-outcome';
 	import {
 		createSSEHandler,
 		sanitizeToolResultForActivityMetadata,
@@ -353,6 +356,22 @@
 		initialBrainDumpContext?.id ? initialBrainDumpContext : null
 	);
 	let currentSession = $state<ChatSession | null>(null);
+	// A duplicate check or review a card opened beside the chat (tasker 122):
+	// the person stays in the conversation instead of navigating to its page.
+	let reviewRunId = $state<string | null>(null);
+	provideChatReviewPanel({
+		open: (runId) => {
+			reviewRunId = runId;
+		}
+	});
+	// A different conversation closes the review that belonged to the last one.
+	// (A derived only notifies when the id itself changes, not on every refresh
+	// of the session object.)
+	const reviewSessionId = $derived(currentSession?.id ?? null);
+	$effect(() => {
+		void reviewSessionId;
+		reviewRunId = null;
+	});
 	// Worker reconciliation can replay a fresh session object on every receipt.
 	// Effects that own session-scoped resources must depend on the stable scalar
 	// identity, not the object assignment, or the replay tears down and re-adopts
@@ -786,7 +805,7 @@
 		waiting_on_user: 'Waiting on your direction…'
 	};
 
-	const RESTORED_TURN_ACTIVITY = 'BuildOS is still finishing the latest response...';
+	const RESTORED_TURN_ACTIVITY = 'Still finishing the latest reply…';
 	const ACTIVE_TURN_PROBE_BASE_MS = 2000;
 	const ACTIVE_TURN_PROBE_MAX_MS = 10_000;
 	let activeTurnProbeAttempt = 0;
@@ -1870,6 +1889,10 @@
 		updateThinkingBlock(currentThinkingBlockId, (block) => ({
 			...block,
 			status,
+			completedAt: new Date(),
+			// A finished turn folds its step log to one line; a stopped or failed
+			// one stays open so the steps explain what happened.
+			isCollapsed: status === 'completed' ? true : block.isCollapsed,
 			content:
 				note ??
 				(status === 'interrupted'
@@ -1949,12 +1972,12 @@
 				status === 'completed' && toolResultAwaitsUser(toolResult)
 					? 'awaiting_user'
 					: status;
-			const newContent = presenter.formatToolMessage(
-				toolName,
-				args,
-				displayStatus,
-				errorMessage
-			);
+			const line = presenter.formatToolLine(toolName, args, displayStatus, errorMessage);
+			const newContent = line.text;
+			const outcome =
+				status === 'completed' && displayStatus === 'completed'
+					? describeToolOutcome(toolName, toolResult)
+					: undefined;
 			const skillActivity =
 				toolName === 'skill_load' && status === 'completed'
 					? buildSkillLoadActivityEvent('loaded', args)
@@ -2006,6 +2029,9 @@
 				metadata: {
 					...activity.metadata,
 					status,
+					displayStatus,
+					line,
+					...(outcome ? { outcome } : {}),
 					...(errorMessage ? { error: errorMessage } : {}),
 					...(toolResult !== undefined
 						? {
@@ -3221,7 +3247,9 @@
 			</div>
 		</div>
 	{:else}
-		<div class={`flex min-h-0 flex-1 flex-col ${brainDumpContext ? 'lg:flex-row' : ''}`}>
+		<div
+			class={`relative flex min-h-0 flex-1 flex-col ${brainDumpContext || reviewRunId ? 'lg:flex-row' : ''}`}
+		>
 			<div class="flex min-h-0 flex-1 flex-col">
 				{#if !conversationOnly}
 					<AgentChatActivityTabs
@@ -3258,6 +3286,13 @@
 				<BrainDumpContextPanel
 					context={brainDumpContext}
 					timelineItems={agentTimelineItems}
+				/>
+			{/if}
+			{#if reviewRunId}
+				<ChatConsolidationPanel
+					runId={reviewRunId}
+					onClose={() => (reviewRunId = null)}
+					onOpenRun={(runId) => (reviewRunId = runId)}
 				/>
 			{/if}
 		</div>

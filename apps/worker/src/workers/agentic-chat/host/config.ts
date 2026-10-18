@@ -14,9 +14,11 @@ import {
 	validateAgenticChatDrainTimeout
 } from './consumer';
 import {
+	type AgenticChatContinuationReasoningMode,
 	type AgenticChatOpenAiCompatibleRouteV1,
 	type AgenticChatOpenRouterProviderRoutingV1,
-	DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS
+	DEFAULT_AGENTIC_CHAT_RESPONSE_HEADERS_TIMEOUT_MS,
+	isAgenticChatContinuationReasoningMode
 } from '../provider/openrouter-client';
 import type { ChatContextFinderMode } from '../provider/chat-context-finder';
 import type { JevToolSelectionMode } from '../provider/jev-tool-selector';
@@ -177,6 +179,13 @@ type AgenticChatBaseConfig = {
 	directWriteReceiptTextEnabled?: boolean;
 	/** Jev opening-pass tool narrowing: on (default), shadow (log only), or off. */
 	jevToolSelection: 'off' | JevToolSelectionMode;
+	/**
+	 * AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES (default off): when Jev (on mode)
+	 * scores the message below the write-commission threshold, the turn offers
+	 * the acting model no mutation schema. Off until the commission shadow log
+	 * (provider_commission_observed) justifies it.
+	 */
+	holdUncommissionedWrites?: boolean;
 	maxToolCalls: number;
 	maxToolConcurrency: number;
 	/**
@@ -184,6 +193,13 @@ type AgenticChatBaseConfig = {
 	 * while a user-facing pass streams. Default off; off is byte-identical to before.
 	 */
 	liveTextPreviewEnabled?: boolean;
+	/**
+	 * AGENTIC_CHAT_CONTINUATION_REASONING (audit 2026-10-17 S3 experiment), acting
+	 * client only: `default` (today), `replay` (send the turn's earlier reasoning
+	 * back on continuations), or `off_after_reads` (reasoning off on continuations
+	 * after a read-only round). Default is byte-identical to before.
+	 */
+	continuationReasoning?: AgenticChatContinuationReasoningMode;
 };
 
 export type AgenticChatConfig = AgenticChatBaseConfig & {
@@ -354,6 +370,11 @@ export function loadAgenticChatConfig(
 	// surface repair restores omitted tools. `shadow` logs the selection without
 	// changing the turn; `off` is the kill switch.
 	const jevToolSelection = parseJevToolSelection(environment.AGENTIC_CHAT_JEV_TOOL_SELECTION);
+	const holdUncommissionedWrites = parseBoolean(
+		environment.AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES,
+		false,
+		'AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES'
+	);
 	const maxToolCalls = parsePositiveInteger(
 		environment.CHAT_MAX_TOOL_CALLS,
 		DEFAULT_AGENTIC_CHAT_MAX_TOOL_CALLS,
@@ -368,6 +389,9 @@ export function loadAgenticChatConfig(
 		environment.AGENTIC_CHAT_LIVE_TEXT_PREVIEW,
 		false,
 		'AGENTIC_CHAT_LIVE_TEXT_PREVIEW'
+	);
+	const continuationReasoning = parseContinuationReasoning(
+		environment.AGENTIC_CHAT_CONTINUATION_REASONING
 	);
 	validateAgenticChatDrainTimeout(consumer.drainTimeoutMs);
 
@@ -398,9 +422,11 @@ export function loadAgenticChatConfig(
 		mutationBatchLaneEnabled,
 		directWriteReceiptTextEnabled,
 		jevToolSelection,
+		holdUncommissionedWrites,
 		maxToolCalls,
 		maxToolConcurrency,
 		liveTextPreviewEnabled,
+		continuationReasoning,
 		provider: loadProviderConfig(environment)
 	};
 }
@@ -516,6 +542,16 @@ function parseContextFinderChat(value: string | undefined, name: string): ChatCo
 	const mode = value?.trim() || 'off';
 	if (mode === 'off' || mode === 'shadow' || mode === 'chips' || mode === 'on') return mode;
 	throw new Error(`${name} must be exactly off, shadow, chips, or on`);
+}
+
+function parseContinuationReasoning(
+	value: string | undefined
+): AgenticChatContinuationReasoningMode {
+	const mode = value?.trim() || 'default';
+	if (isAgenticChatContinuationReasoningMode(mode)) return mode;
+	throw new Error(
+		'AGENTIC_CHAT_CONTINUATION_REASONING must be exactly default, replay, or off_after_reads'
+	);
 }
 
 function parseJevToolSelection(value: string | undefined): 'off' | JevToolSelectionMode {

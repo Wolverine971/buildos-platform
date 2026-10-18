@@ -63,6 +63,27 @@ export function workerAdmissionUnavailableResponse(): Response {
 	);
 }
 
+/**
+ * Too many turns for this user right now. Decided before any durable write (the
+ * per-instance limiter) or by the admission RPC writing nothing (its per-user
+ * limit), so the browser treats it as not sent and restores the draft.
+ */
+export function turnRateLimitedResponse(
+	retryAfterSeconds: number,
+	headers: Record<string, string> = {}
+): Response {
+	const response = ApiResponse.error(
+		'Too many chat turns. Try again shortly.',
+		HttpStatus.TOO_MANY_REQUESTS,
+		'AGENTIC_CHAT_RATE_LIMITED'
+	);
+	for (const [name, value] of Object.entries(headers)) {
+		response.headers.set(name, value);
+	}
+	response.headers.set('Retry-After', String(Math.max(1, Math.ceil(retryAfterSeconds))));
+	return privateResponse(response);
+}
+
 /** A turn with this clientTurnId already exists under a different request. */
 export function workerIdempotencyConflictResponse(): Response {
 	return privateResponse(

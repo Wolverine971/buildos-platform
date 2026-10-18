@@ -40,7 +40,7 @@ describe('buildLitePromptEnvelope', () => {
 			envelope.sections.some((section) => section.id === 'capabilities_skills_tools')
 		).toBe(false);
 		expect(envelope.systemPrompt).toContain(
-			'Rules for This Turn, when present, carry a preloaded playbook'
+			'Rules for This Turn, when present (in this prompt or after the user message), carry a preloaded playbook'
 		);
 	});
 
@@ -500,11 +500,11 @@ describe('buildLitePromptEnvelope', () => {
 	});
 
 	it('replaces a stale per-turn overlay section instead of stacking one', async () => {
-		const { resolveOperationalSkillPreload } = await import(
+		const { resolveUserLaunchSkillPreload } = await import(
 			'$lib/services/agentic-chat/tools/domains/skill-gate-preload'
 		);
-		const preload = resolveOperationalSkillPreload({
-			message: 'mark the intro call done',
+		const { preload } = resolveUserLaunchSkillPreload({
+			skillId: 'task_management',
 			toolNames: ['create_onto_task', 'update_onto_task']
 		});
 		expect(preload?.skillId).toBe('task_management');
@@ -517,7 +517,7 @@ describe('buildLitePromptEnvelope', () => {
 			}),
 			{ domainSensingResult: null, skillGatePreload: preload }
 		);
-		expect(stale.systemPrompt).toContain('Playbook for task writes this turn:');
+		expect(stale.systemPrompt).toContain('Playbook the user chose for this chat');
 
 		const overlaid = applyActiveDomainSignalsOverlay(stale, {
 			domainSensingResult: null,
@@ -528,8 +528,50 @@ describe('buildLitePromptEnvelope', () => {
 		);
 
 		expect(overlaySections).toHaveLength(1);
-		expect(overlaid.systemPrompt).not.toContain('Playbook for task writes this turn:');
+		expect(overlaid.systemPrompt).not.toContain('Playbook the user chose for this chat');
 		expect(overlaid.systemPrompt).toContain('This turn can write to project data:');
+	});
+
+	// Audit 2026-10-17 Q1: on the worker lane the rules ride the artifact as a
+	// marked section the worker appends after the user message, so the system
+	// prompt is identical with or without them (prepared-prompt reuse).
+	it('moves the turn rules out of the system prompt when placed after the user message', async () => {
+		const { resolveUserLaunchSkillPreload } = await import(
+			'$lib/services/agentic-chat/tools/domains/skill-gate-preload'
+		);
+		const { preload } = resolveUserLaunchSkillPreload({
+			skillId: 'task_management',
+			toolNames: ['create_onto_task', 'update_onto_task']
+		});
+		const base = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			domainSensingResult: null
+		});
+		const placed = applyActiveDomainSignalsOverlay(base, {
+			domainSensingResult: null,
+			skillGatePreload: preload,
+			turnSituation: { writeIntent: true, webResearch: false },
+			turnRulesPlacement: 'after_user_message'
+		});
+		const bare = applyActiveDomainSignalsOverlay(base, {
+			domainSensingResult: null,
+			turnRulesPlacement: 'after_user_message'
+		});
+
+		expect(placed.systemPrompt).toBe(bare.systemPrompt);
+		expect(placed.systemPrompt).not.toContain('## Rules for This Turn');
+		const rules = placed.sections.filter((section) => section.id === 'situational_rules');
+		expect(rules).toHaveLength(1);
+		expect(rules[0]!.slots).toMatchObject({
+			placement: 'after_user_message',
+			preloadedSkillId: 'task_management'
+		});
+		expect(rules[0]!.content).toContain('Playbook the user chose for this chat');
+		expect(rules[0]!.content).toContain('This turn can write to project data:');
+		expect(placed.sections.at(-1)?.id).toBe('situational_rules');
+		expect(bare.sections.some((section) => section.id === 'situational_rules')).toBe(false);
 	});
 
 	it('removes a stale per-turn overlay when the current turn has none', () => {
@@ -1046,11 +1088,14 @@ describe('buildLitePromptEnvelope', () => {
 		expect(mapSection?.content).toContain('Project Knowledge Map');
 		expect(mapSection?.content).toContain('Marketing');
 		expect(mapSection?.content).toContain('Channels');
-		// carries the document id so the agent can call get_document_outline
+		// carries the document id so the agent can read the document
 		expect(mapSection?.content).toContain('[id: doc-channels]');
-		// points the agent at the L2 zoom-in tools
-		expect(mapSection?.content).toContain('get_document_outline');
+		// points the agent at the read path: whole document first, then one
+		// section read when the body comes back cut short (2026-10-17)
+		expect(mapSection?.content).toContain('get_onto_document_details');
 		expect(mapSection?.content).toContain('read_document_section');
+		expect(mapSection?.content).toContain('next_offset');
+		expect(mapSection?.content).not.toContain('get_document_outline');
 		expect(envelope.systemPrompt).toContain('## Project Knowledge Map');
 	});
 
@@ -2984,7 +3029,7 @@ describe('AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 context rendering', () => {
 			omittedHeadings: ['## Decisions', '## Current state', '## Open questions']
 		});
 		expect(section?.content).toContain(
-			'- Excerpt cut at a section boundary; omitted sections: ## Decisions; ## Current state; ## Open questions. Use get_document_outline and read_document_section for them before non-obvious writes.'
+			'- Excerpt cut at a section boundary; omitted sections: ## Decisions; ## Current state; ## Open questions. Before non-obvious writes, read them in one read_document_section call with their anchors.'
 		);
 		// The body ends on the section boundary, never mid-sentence.
 		expect(section?.content).toContain(

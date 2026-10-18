@@ -2,13 +2,13 @@
 
 exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry version, and ordered static surfaces 1`] = `
 {
-  "catalogSerializedSha256": "7f029e75df6d89ba1702dd25252a0a78620ec181cd65317c03697e2e2413b6ce",
+  "catalogSerializedSha256": "66a67649ffb2c2f65ab16b31fe802d68967b6ed9c84eacee0a837ba763d21fcc",
   "contextSurfaces": [
     {
       "contextType": "global",
-      "estimatedTokens": 15375,
+      "estimatedTokens": 15352,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "962ac653de2bfb5120835b05122c847ab4121e47abd75b0572a8fc39a59697d1",
+      "serializedDefinitionsSha256": "b759ec3c62b8c1f9e128d518b6fd10eccd6a0720699d1fee65a12d1c0acd03a5",
       "toolCount": 56,
       "toolNames": [
         "skill_search",
@@ -68,13 +68,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "propose_project_parent",
         "propose_project_combine",
       ],
-      "totalChars": 61498,
+      "totalChars": 61408,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 19045,
+      "estimatedTokens": 18999,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "3d44f3dd9d48180e6d976db3ee652d508abd09ae5024bda57c3375df0b060f9f",
+      "serializedDefinitionsSha256": "eb3f44509dc689a7a516f28297f87f037fb1e50a41a360f03b52d19deb00b2df",
       "toolCount": 72,
       "toolNames": [
         "skill_search",
@@ -150,7 +150,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_table",
         "update_onto_table_rows",
       ],
-      "totalChars": 76180,
+      "totalChars": 75996,
     },
     {
       "contextType": "project_create",
@@ -168,9 +168,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "contextType": "calendar",
-      "estimatedTokens": 15375,
+      "estimatedTokens": 15352,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "962ac653de2bfb5120835b05122c847ab4121e47abd75b0572a8fc39a59697d1",
+      "serializedDefinitionsSha256": "b759ec3c62b8c1f9e128d518b6fd10eccd6a0720699d1fee65a12d1c0acd03a5",
       "toolCount": 56,
       "toolNames": [
         "skill_search",
@@ -230,13 +230,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "propose_project_parent",
         "propose_project_combine",
       ],
-      "totalChars": 61498,
+      "totalChars": 61408,
     },
     {
       "contextType": "daily_brief",
-      "estimatedTokens": 15375,
+      "estimatedTokens": 15352,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "962ac653de2bfb5120835b05122c847ab4121e47abd75b0572a8fc39a59697d1",
+      "serializedDefinitionsSha256": "b759ec3c62b8c1f9e128d518b6fd10eccd6a0720699d1fee65a12d1c0acd03a5",
       "toolCount": 56,
       "toolNames": [
         "skill_search",
@@ -296,13 +296,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "propose_project_parent",
         "propose_project_combine",
       ],
-      "totalChars": 61498,
+      "totalChars": 61408,
     },
     {
       "contextType": "general",
-      "estimatedTokens": 15375,
+      "estimatedTokens": 15352,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "962ac653de2bfb5120835b05122c847ab4121e47abd75b0572a8fc39a59697d1",
+      "serializedDefinitionsSha256": "b759ec3c62b8c1f9e128d518b6fd10eccd6a0720699d1fee65a12d1c0acd03a5",
       "toolCount": 56,
       "toolNames": [
         "skill_search",
@@ -362,13 +362,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "propose_project_parent",
         "propose_project_combine",
       ],
-      "totalChars": 61498,
+      "totalChars": 61408,
     },
     {
       "contextType": "ontology",
-      "estimatedTokens": 19045,
+      "estimatedTokens": 18999,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "3d44f3dd9d48180e6d976db3ee652d508abd09ae5024bda57c3375df0b060f9f",
+      "serializedDefinitionsSha256": "eb3f44509dc689a7a516f28297f87f037fb1e50a41a360f03b52d19deb00b2df",
       "toolCount": 72,
       "toolNames": [
         "skill_search",
@@ -444,13 +444,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_table",
         "update_onto_table_rows",
       ],
-      "totalChars": 76180,
+      "totalChars": 75996,
     },
     {
       "contextType": "daily_brief_update",
-      "estimatedTokens": 15375,
+      "estimatedTokens": 15352,
       "profile": "canonical_gateway",
-      "serializedDefinitionsSha256": "962ac653de2bfb5120835b05122c847ab4121e47abd75b0572a8fc39a59697d1",
+      "serializedDefinitionsSha256": "b759ec3c62b8c1f9e128d518b6fd10eccd6a0720699d1fee65a12d1c0acd03a5",
       "toolCount": 56,
       "toolNames": [
         "skill_search",
@@ -510,7 +510,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "propose_project_parent",
         "propose_project_combine",
       ],
-      "totalChars": 61498,
+      "totalChars": 61408,
     },
   ],
   "definitions": [
@@ -696,9 +696,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_document_outline",
-      "serialized": "{"type":"function","function":{"name":"get_document_outline","description":"Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. Pass find to also get exact matching lines, ready to copy as an edit's old_text. For a short document or a whole-document summary, use get_onto_document_details directly instead.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to outline (required)"},"find":{"type":"string","description":"Optional text to find; matching lines come back verbatim."}},"required":["document_id"]}}}",
-      "serializedChars": 752,
-      "serializedSha256": "12a6e17a064626084b608d04dfcf62ad085941de9c1d973cf51913ff33d9499c",
+      "serialized": "{"type":"function","function":{"name":"get_document_outline","description":"Get a document's heading outline; each heading has an anchor for read_document_section. A body up to 6000 chars comes back whole too. Use it to choose sections of a long document; to read a document, use get_onto_document_details. Pass find to also get exact matching lines, ready to copy as an edit's old_text.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to outline (required)"},"find":{"type":"string","description":"Optional text to find; matching lines come back verbatim."}},"required":["document_id"]}}}",
+      "serializedChars": 644,
+      "serializedSha256": "547d52db214566c0af9ca5602c8cc00ba984a775a350c342929cc807fa2d55ad",
     },
     {
       "name": "get_document_path",
@@ -750,9 +750,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "get_onto_document_details",
-      "serialized": "{"type":"function","function":{"name":"get_onto_document_details","description":"Get complete details for a specific ontology document including content, description, and metadata.\\nUse directly for a short document, a summary of its body, or an exact edit. No outline read is required first. If content_truncated is false, the returned content_preview is the complete body; do not read its sections again. For a long document with truncated content, read only the missing sections.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to retrieve"}},"required":["document_id"]}}}",
-      "serializedChars": 630,
-      "serializedSha256": "7229c69e02d2550c7328b63c0c60110f6b77d096c65549c53f20f4e5b38f8254",
+      "serialized": "{"type":"function","function":{"name":"get_onto_document_details","description":"Read a document: metadata and body. A body up to 6000 chars comes back whole in content; use it directly, with no outline or section read. A longer body returns content_preview, next_offset and its sections; read the rest in one read_document_section call with the anchors you need, or that offset.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to retrieve"}},"required":["document_id"]}}}",
+      "serializedChars": 527,
+      "serializedSha256": "e65f18833b295c6d74cb89da1373446f963e4904b61fbc724443795719ad5440",
     },
     {
       "name": "get_onto_goal_details",
@@ -864,9 +864,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "list_onto_documents",
-      "serialized": "{"type":"function","function":{"name":"list_onto_documents","description":"List document metadata, not body content. For a short document or a summary needing its whole body, use get_onto_document_details directly. For a specific section in a long document, use get_document_outline then read_document_section. Choose one path; do not routinely load both.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Filter documents by project ID"},"type_key":{"type":"string","description":"Filter by document type key (e.g., document.context.project, document.knowledge.research)"},"state_key":{"type":"string","enum":["draft","in_review","ready","published","archived"]},"archived":{"type":"boolean","default":false,"description":"When true, return archived records only. Omitted or false returns active records only."},"limit":{"type":"integer","default":20,"minimum":1,"maximum":50,"description":"Maximum number of documents to return"}}}}}",
-      "serializedChars": 975,
-      "serializedSha256": "ba3cc01c7251cb80d6d93435c3af1b7bad8fa91c3c830730d53ea24960c336ab",
+      "serialized": "{"type":"function","function":{"name":"list_onto_documents","description":"List document metadata, not body content. To read a document, use get_onto_document_details: a short body comes back whole, a long one with the sections to pass to read_document_section.","parameters":{"type":"object","properties":{"project_id":{"type":"string","description":"Filter documents by project ID"},"type_key":{"type":"string","description":"Filter by document type key (e.g., document.context.project, document.knowledge.research)"},"state_key":{"type":"string","enum":["draft","in_review","ready","published","archived"]},"archived":{"type":"boolean","default":false,"description":"When true, return archived records only. Omitted or false returns active records only."},"limit":{"type":"integer","default":20,"minimum":1,"maximum":50,"description":"Maximum number of documents to return"}}}}}",
+      "serializedChars": 881,
+      "serializedSha256": "ba69dbc3844ecef0218b9992b8f9fe81623b7b3aa4bbe1ab5e7e39cb7b16bbe3",
     },
     {
       "name": "list_onto_goals",
@@ -954,9 +954,9 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
     },
     {
       "name": "read_document_section",
-      "serialized": "{"type":"function","function":{"name":"read_document_section","description":"Read one section of a document by heading anchor, not the whole body. Returns that section plus nested subsections — pull in only the relevant context. The anchor is required and cannot be guessed: call get_document_outline first, which lists every anchor in the document, then read each section you need. Lists available anchors if the anchor is unknown.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to read from (required)"},"anchor":{"type":"string","description":"Heading anchor (slug) of the section to read, e.g. \\"channels\\" (required)"}},"required":["document_id","anchor"]}}}",
-      "serializedChars": 719,
-      "serializedSha256": "e14da3809c223cdd3208ed41f558fa3f612bc856b2d89a4fa108947ac0bebfcc",
+      "serialized": "{"type":"function","function":{"name":"read_document_section","description":"Read document sections by heading anchor, up to 12000 chars per call. Put every section you need in anchors, in one call; each includes its subsections. Copy anchors from get_onto_document_details sections or get_document_outline; never guess. Omit anchors to read the body from offset. If truncated, call again with the same arguments and offset = next_offset.","parameters":{"type":"object","properties":{"document_id":{"type":"string","description":"Document ID to read from (required)"},"anchors":{"type":"array","items":{"type":"string"},"description":"Heading anchors to read, e.g. [\\"channels\\", \\"pricing\\"]"},"offset":{"type":"integer","minimum":0,"description":"Character offset to continue from (a previous next_offset)"}},"required":["document_id"]}}}",
+      "serializedChars": 840,
+      "serializedSha256": "1db4bd03ec2b4db57131e9b4d947e7db802eb2dd22e201a07acc32aebf1eb03c",
     },
     {
       "name": "read_table_rows",
@@ -1226,13 +1226,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
   "metadataOnlyToolNames": [
     "search_buildos",
   ],
-  "registryVersion": "tool-registry/a7294d3c",
+  "registryVersion": "tool-registry/3bafe224",
   "staticProfiles": [
     {
       "contextType": "global",
-      "estimatedTokens": 15375,
+      "estimatedTokens": 15352,
       "profile": "global",
-      "serializedDefinitionsSha256": "962ac653de2bfb5120835b05122c847ab4121e47abd75b0572a8fc39a59697d1",
+      "serializedDefinitionsSha256": "b759ec3c62b8c1f9e128d518b6fd10eccd6a0720699d1fee65a12d1c0acd03a5",
       "toolCount": 56,
       "toolNames": [
         "skill_search",
@@ -1292,13 +1292,13 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "propose_project_parent",
         "propose_project_combine",
       ],
-      "totalChars": 61498,
+      "totalChars": 61408,
     },
     {
       "contextType": "project",
-      "estimatedTokens": 19045,
+      "estimatedTokens": 18999,
       "profile": "project",
-      "serializedDefinitionsSha256": "3d44f3dd9d48180e6d976db3ee652d508abd09ae5024bda57c3375df0b060f9f",
+      "serializedDefinitionsSha256": "eb3f44509dc689a7a516f28297f87f037fb1e50a41a360f03b52d19deb00b2df",
       "toolCount": 72,
       "toolNames": [
         "skill_search",
@@ -1374,7 +1374,7 @@ exports[`agentic chat catalog fitness > pins the pre-move vocabulary, registry v
         "update_onto_table",
         "update_onto_table_rows",
       ],
-      "totalChars": 76180,
+      "totalChars": 75996,
     },
     {
       "contextType": "project_create",

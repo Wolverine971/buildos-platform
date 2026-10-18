@@ -435,6 +435,7 @@ export function applyActiveDomainSignalsOverlay(
 		| 'domainSensingResult'
 		| 'skillGatePreload'
 		| 'turnSituation'
+		| 'turnRulesPlacement'
 		| 'scaffold'
 		| 'projectCreateWorkflow'
 	>
@@ -452,6 +453,29 @@ export function applyActiveDomainSignalsOverlay(
 	const sectionsWithoutOverlays = envelope.sections.filter(
 		(section) => section.id !== 'situational_rules'
 	);
+	// Worker lane (Q1, audit 2026-10-17): the rules ride the artifact as a
+	// marked section and the worker appends them after the user message. The
+	// system prompt is rendered without them, so it is the same bytes on every
+	// turn and a prepared prompt is reused unchanged.
+	if (input.turnRulesPlacement === 'after_user_message') {
+		const systemSections = sectionsWithoutOverlays;
+		return {
+			...envelope,
+			sections: situationalRulesSection
+				? [
+						...systemSections,
+						{
+							...situationalRulesSection,
+							slots: {
+								...situationalRulesSection.slots,
+								placement: 'after_user_message'
+							}
+						}
+					]
+				: systemSections,
+			systemPrompt: renderSystemPrompt(systemSections)
+		};
+	}
 	// Anchor on the last static section: the tool-surface one-liner renders only
 	// when a skill-capable runtime has no discovery hop mounted; otherwise the
 	// Final Response Contract closes the static prefix (2026-09-21).
@@ -767,9 +791,9 @@ function buildProjectStartHereSection(
 			? `- Changed after this START HERE: ${newerDocuments.join('; ')}. Its summary may not reflect them yet; where they differ, the newer document wins.`
 			: null,
 		excerpt.truncated
-			? `- Excerpt cut at a section boundary; omitted sections: ${excerpt.omittedHeadings.join('; ')}. Use get_document_outline and read_document_section for them before non-obvious writes.`
+			? `- Excerpt cut at a section boundary; omitted sections: ${excerpt.omittedHeadings.join('; ')}. Before non-obvious writes, read them in one read_document_section call with their anchors.`
 			: loaderTruncated
-				? '- The loader bounded this document; use get_document_outline and read_document_section for the rest before non-obvious writes.'
+				? '- The loader bounded this document; before non-obvious writes, read the rest with get_onto_document_details.'
 				: null,
 		'',
 		fenceSourceBlock(excerpt.content, 'markdown')
@@ -1294,7 +1318,8 @@ function describeLoadedCompleteness(data: LitePromptInput['data']): string | nul
 // Project Knowledge Layer (L1): the always-on, document-level "table of contents"
 // for the project — folder/doc hierarchy with titles + descriptions, drawn from the
 // doc_structure summary already in context. It is the scan surface: the agent reads
-// it to judge relevance, then zooms in with get_document_outline + read_document_section.
+// it to judge relevance, then reads a document with get_onto_document_details (one
+// read_document_section call when the body comes back cut short).
 const KNOWLEDGE_MAP_MAX_NODES = 60;
 const KNOWLEDGE_MAP_MAX_CHARS = 2200;
 const KNOWLEDGE_MAP_DESCRIPTION_MAX_CHARS = 100;
@@ -1405,7 +1430,7 @@ function buildProjectKnowledgeMapSection(
 	const content = [
 		'Project Knowledge Map (documents in this project, indented by folder):',
 		'- Scan this to judge which documents are relevant before you answer or act on a topic.',
-		'- To pull in specifics: get_document_outline({ document_id }) for a doc’s sections, then read_document_section({ document_id, anchor }) for the part you need.',
+		'- To pull in specifics, read the document with get_onto_document_details. If it comes back cut short, call read_document_section once, with anchors: [...] from its sections or with offset: next_offset.',
 		'- Prefer existing project documents over re-deriving context. This is an index of titles and descriptions, not the full content.',
 		...(tables.size > 0
 			? [
@@ -1629,7 +1654,7 @@ function buildOperatingStrategySection(
 			// The retired Capabilities section's one worker-relevant sentence
 			// (2026-09-21): how a server-preloaded playbook arrives and what it
 			// outranks. Web runtimes get the same rule; the section is the same.
-			'- Rules for This Turn, when present, carry a preloaded playbook or turn-specific rules. Apply them directly; they take precedence over these defaults.'
+			'- Rules for This Turn, when present (in this prompt or after the user message), carry a preloaded playbook or turn-specific rules. Apply them directly; they take precedence over these defaults.'
 		].join('\n')
 	});
 }

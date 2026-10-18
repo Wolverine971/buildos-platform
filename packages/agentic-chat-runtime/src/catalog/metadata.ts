@@ -200,7 +200,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'read'
 	},
 	get_onto_document_details: {
-		summary: 'Load full document details including body markdown/props.',
+		summary:
+			'Read a document: a body up to 6000 chars comes back whole; a longer one as a preview plus its sections.',
 		capabilities: ['Validates ownership', 'Use before edits or linking'],
 		contexts: ['project'],
 		category: 'read'
@@ -282,7 +283,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'read'
 	},
 	get_document_outline: {
-		summary: 'Get a document’s heading outline (table of contents) without the full body.',
+		summary:
+			'Get a document’s heading outline (table of contents); a short body comes back whole.',
 		capabilities: [
 			'Cheap relevance scan: see what a document covers',
 			'Returns heading anchors for read_document_section',
@@ -292,11 +294,12 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'read'
 	},
 	read_document_section: {
-		summary: 'Read one section of a document by heading anchor, not the whole body.',
+		summary:
+			'Read several document sections by anchor in one call, or the body from an offset (12000 chars per call).',
 		capabilities: [
-			'Pulls in only the relevant section (with nested subsections)',
+			'Pulls in only the relevant sections (with nested subsections)',
 			'Re-parses live content so the slice is always current',
-			'Lists available anchors when the anchor is unknown'
+			'Continues a truncated read with offset = next_offset'
 		],
 		contexts: ['project'],
 		category: 'read'

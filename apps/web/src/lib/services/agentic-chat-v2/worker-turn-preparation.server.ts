@@ -55,18 +55,16 @@ import {
 	mergeDomainSessionState,
 	type DomainSessionState
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
-import {
-	getSkillGateCandidateSkillIds,
-	type DomainSensingResult
-} from '$lib/services/agentic-chat/tools/domains/domain-sensing';
+import { type DomainSensingResult } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import { getDomainIdsForSkillReference } from '$lib/services/agentic-chat/tools/domains/domain-used-signals';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import {
 	isFocusedTableContextPayload,
 	resolveFocusedTableSkillPreload,
-	resolveOperationalSkillPreload,
+	resolveOperationalPlaybookCandidates,
 	resolveSkillGatePreload,
 	resolveUserLaunchSkillPreload,
+	type OperationalPlaybookCandidate,
 	type SkillGatePreload
 } from '$lib/services/agentic-chat/tools/domains/skill-gate-preload';
 import { buildEntityResolutionHint } from './entity-resolution';
@@ -720,7 +718,6 @@ async function prepareWorkerAdmission(
 	// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69).
 	const workerSkillPreload = resolveWorkerSkillPreload({
 		surfaceProfile: turnPreparation.selectedSurfaceProfile,
-		message: messageForModel,
 		toolNames: workerPromptToolNames,
 		turnDomainSensing: turnPreparation.turnDomainSensing,
 		alreadyLoadedCraftSkillIds: windowLoadedSkillIds,
@@ -754,23 +751,33 @@ async function prepareWorkerAdmission(
 		domainSensingResult: workerPromptDomainSensing,
 		skillGatePreload: workerSkillPreload,
 		turnSituation,
+		// Rules for This Turn ride the artifact; the worker appends them after
+		// the user message, so the system prompt is the same bytes every turn.
+		turnRulesPlacement: 'after_user_message' as const,
 		scaffold: WORKER_PROMPT_SCAFFOLD
 	};
+	const playbookCandidateSections = resolveWorkerPlaybookCandidates({
+		surfaceProfile: turnPreparation.selectedSurfaceProfile,
+		toolNames: workerPromptToolNames,
+		preloadedSkillId: workerSkillPreload?.skillId ?? null
+	}).map(playbookCandidateSection);
 	if (envelopeForOverlay) {
 		const envelope = applyActiveDomainSignalsOverlay(envelopeForOverlay, overlayInput);
 		preparedArtifact = {
 			...preparedArtifact,
 			systemPrompt: envelope.systemPrompt,
-			promptSections: toJsonObjectArray(envelope.sections)
+			promptSections: [...toJsonObjectArray(envelope.sections), ...playbookCandidateSections]
 		};
 	} else if (preparedSurfaceForOverlay) {
+		const overlaid = applyWorkerPromptOverlayToPreparedSurface({
+			surface: preparedSurfaceForOverlay,
+			contextType,
+			overlayInput
+		});
 		preparedArtifact = {
 			...preparedArtifact,
-			...applyWorkerPromptOverlayToPreparedSurface({
-				surface: preparedSurfaceForOverlay,
-				contextType,
-				overlayInput
-			})
+			systemPrompt: overlaid.systemPrompt,
+			promptSections: [...overlaid.promptSections, ...playbookCandidateSections]
 		};
 	}
 
@@ -959,10 +966,7 @@ async function prepareWorkerAdmission(
 		skillPreload: workerSkillPreload
 			? {
 					skillId: workerSkillPreload.skillId,
-					source: workerSkillPreload.source,
-					...(workerSkillPreload.companionSkillIds?.length
-						? { companionSkillIds: workerSkillPreload.companionSkillIds }
-						: {})
+					source: workerSkillPreload.source
 				}
 			: null
 	});
@@ -1355,9 +1359,44 @@ export async function loadWorkerSkillPreloadLedgerMessage(_params: {
 	return null;
 }
 
+/**
+ * Operational write playbooks this surface can honor, as artifact sections
+ * the worker picks from (provider/turn-rules.ts). Capability only; a skill
+ * already in this turn's rules is excluded.
+ */
+function resolveWorkerPlaybookCandidates(params: {
+	surfaceProfile: string;
+	toolNames: string[];
+	preloadedSkillId: string | null;
+}): OperationalPlaybookCandidate[] {
+	if (!SCAFFOLD.routing.skillPreload) return [];
+	if (params.surfaceProfile === 'project_create') return [];
+	return resolveOperationalPlaybookCandidates({
+		toolNames: params.toolNames,
+		excludeSkillIds: params.preloadedSkillId ? [params.preloadedSkillId] : []
+	});
+}
+
+/** The candidate as an appended artifact section (append-only past the prepared copy fence). */
+function playbookCandidateSection(candidate: OperationalPlaybookCandidate): JsonObject {
+	return toJsonObject({
+		id: 'operational_playbook_candidate',
+		title: 'Rules for This Turn',
+		kind: 'dynamic',
+		source: 'lite.operational_playbook_candidate',
+		content: candidate.content,
+		slots: {
+			skillId: candidate.skillId,
+			entityKind: candidate.entityKind,
+			examples: candidate.examples
+		},
+		chars: candidate.content.length,
+		estimatedTokens: Math.ceil(candidate.content.length / 4)
+	});
+}
+
 function resolveWorkerSkillPreload(params: {
 	surfaceProfile: string;
-	message: string;
 	toolNames: string[];
 	turnDomainSensing: DomainSensingResult | null;
 	alreadyLoadedCraftSkillIds: string[];
@@ -1369,37 +1408,24 @@ function resolveWorkerSkillPreload(params: {
 	// Project creation is a bounded shell-first surface with its own prompt; a task or plan
 	// playbook would describe update/move/link tools it does not mount.
 	if (params.surfaceProfile === 'project_create') return null;
-	// Operational skills first (Decision 4): they carry the tool packaging and
-	// stop conditions the reviewed lane depends on, and their intent map cannot
-	// misfire on prose. A craft candidate from sensing rides along as the
-	// alternate so the model still sees the other route.
-	const craftCandidateSkillIds =
-		params.turnDomainSensing?.skill_load_required === true
-			? getSkillGateCandidateSkillIds(params.turnDomainSensing).slice(0, 1)
-			: [];
-	const operational = resolveOperationalSkillPreload({
-		message: params.message,
-		toolNames: params.toolNames,
-		craftAlternateSkillIds: craftCandidateSkillIds
-	});
-	// A skill the user picked at launch leads; an operational playbook for a
-	// different skill renders right after it in the same block. An unknown id,
-	// or a skill whose tools are not mounted, is ignored and routing continues.
+	// Operational write playbooks are no longer chosen here: admission ships
+	// them as candidates (resolveWorkerPlaybookCandidates) and the worker picks
+	// one from Jev's structured write commission, after the user message
+	// (audit 2026-10-17 Q1). The message never selects a playbook.
+	// A skill the user picked at launch leads; the worker's operational
+	// playbook, if any, follows it in the same Rules for This Turn block. An
+	// unknown id, or a skill whose tools are not mounted, is ignored.
 	const launched = resolveUserLaunchSkillPreload({
 		skillId: params.requestedSkillId,
-		toolNames: params.toolNames,
-		operationalPreload: operational
+		toolNames: params.toolNames
 	}).preload;
 	if (launched) return launched;
-	// A table in focus brings its own playbook; this turn's operational write
-	// playbook (task follow-ups from rows, say) renders right after it.
+	// A table in focus brings its own playbook (structured focus, not text).
 	const focusedTable = resolveFocusedTableSkillPreload({
 		focusedTable: params.focusedTable === true,
-		toolNames: params.toolNames,
-		operationalPreload: operational
+		toolNames: params.toolNames
 	});
 	if (focusedTable) return focusedTable;
-	if (operational) return operational;
 	return resolveSkillGatePreload(params.turnDomainSensing, {
 		allowFollowupSkillLoad: false,
 		alreadyLoadedSkillIds: params.alreadyLoadedCraftSkillIds,
@@ -1452,11 +1478,17 @@ function applyWorkerPromptOverlayToPreparedSurface(params: {
 			promptSections: toJsonObjectArray(baseSections)
 		};
 	}
-	const rendered = overlaySections
+	// Sections the worker appends after the user message stay out of the
+	// prompt: the prepared prompt is then reused byte-for-byte (the copy fence
+	// accepts an identical prompt with appended sections).
+	const promptOverlaySections = overlaySections.filter(
+		(section) => section.slots?.placement !== 'after_user_message'
+	);
+	const rendered = promptOverlaySections
 		.map((section) => [`## ${section.title}`, '', section.content].join('\n'))
 		.join('\n\n');
 	return {
-		systemPrompt: `${surface.system_prompt}\n\n${rendered}`,
+		systemPrompt: rendered ? `${surface.system_prompt}\n\n${rendered}` : surface.system_prompt,
 		promptSections: toJsonObjectArray([...baseSections, ...overlaySections])
 	};
 }

@@ -17,6 +17,8 @@ export type AgenticChatPersistenceTraceV1 = {
 	operationId?: string;
 	eventType?: string;
 	rpc?: string;
+	/** Events written by the same semantic batch RPC as this one. */
+	batchSize?: number;
 	attempt?: number;
 	sequence?: number;
 	pendingEvents?: number;

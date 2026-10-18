@@ -1,6 +1,10 @@
 // apps/worker/tests/agenticChatWorkerAccessAdapter.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { WorkerAgenticChatToolAccessAdapter } from '../src/workers/agentic-chat/tools/worker-access-adapter';
+import {
+	WorkerAgenticChatToolAccessAdapter,
+	WorkerTurnAgenticChatToolAccess
+} from '../src/workers/agentic-chat/tools/worker-access-adapter';
+import { deferred } from './helpers/deferred';
 
 const ensureActorIdMock = vi.hoisted(() => vi.fn());
 const fetchProjectSummariesMock = vi.hoisted(() => vi.fn());
@@ -186,5 +190,142 @@ describe('WorkerAgenticChatToolAccessAdapter', () => {
 			'onto_requirements'
 		]);
 		expect(client.rpc).not.toHaveBeenCalled();
+	});
+});
+
+describe('WorkerTurnAgenticChatToolAccess (per-turn membership cache, audit S7)', () => {
+	const OTHER_PROJECT_ID = '40000000-0000-4000-8000-0000000000aa';
+
+	function membershipCalls(rpc: ReturnType<typeof vi.fn>) {
+		return rpc.mock.calls.filter(([name]) => name === 'actor_has_project_member_access');
+	}
+
+	it('runs one membership RPC per project for the reads of a turn', async () => {
+		const client = fakeClient({});
+		const access = new WorkerTurnAgenticChatToolAccess(adapterFor(client));
+
+		for (let read = 0; read < 5; read += 1) {
+			await access.assertProjectAccess(PROJECT_ID, 'read');
+		}
+		// Project ids compare case-insensitively.
+		await access.assertProjectAccess(PROJECT_ID.toUpperCase(), 'read');
+		await access.assertProjectAccess(OTHER_PROJECT_ID, 'read');
+		expect(membershipCalls(client.rpc)).toHaveLength(2);
+	});
+
+	it('lets a higher grant cover lower levels, never the reverse', async () => {
+		const client = fakeClient({});
+		const access = new WorkerTurnAgenticChatToolAccess(adapterFor(client));
+
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		await access.assertProjectAccess(PROJECT_ID, 'write');
+		expect(membershipCalls(client.rpc).map(([, args]) => args.p_required_access)).toEqual([
+			'read',
+			'write'
+		]);
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		await access.assertProjectAccess(PROJECT_ID, 'write');
+		await access.assertProjectAccess(PROJECT_ID, 'admin');
+		expect(membershipCalls(client.rpc).map(([, args]) => args.p_required_access)).toEqual([
+			'read',
+			'write',
+			'admin'
+		]);
+	});
+
+	it('never caches a denial or an error', async () => {
+		const rpc = vi
+			.fn()
+			.mockResolvedValueOnce({ data: false, error: null })
+			.mockResolvedValueOnce({ data: null, error: { message: 'connection reset' } })
+			.mockResolvedValueOnce({ data: true, error: null });
+		const client = fakeClient({ rpc });
+		const access = new WorkerTurnAgenticChatToolAccess(adapterFor(client));
+
+		await expect(access.assertProjectAccess(PROJECT_ID, 'read')).rejects.toThrow(
+			'Project not found or access denied'
+		);
+		await expect(access.assertProjectAccess(PROJECT_ID, 'read')).rejects.toMatchObject({
+			message: 'connection reset'
+		});
+		await expect(access.assertProjectAccess(PROJECT_ID, 'read')).resolves.toBeUndefined();
+		await expect(access.assertProjectAccess(PROJECT_ID, 'read')).resolves.toBeUndefined();
+		expect(membershipCalls(rpc)).toHaveLength(3);
+	});
+
+	it('shares one RPC between concurrent checks of the same project and level', async () => {
+		const answer = deferred<{ data: boolean; error: null }>();
+		const rpc = vi.fn(() => answer.promise);
+		const client = fakeClient({ rpc });
+		const access = new WorkerTurnAgenticChatToolAccess(adapterFor(client));
+
+		const checks = [1, 2, 3].map(() => access.assertProjectAccess(PROJECT_ID, 'read'));
+		await vi.waitFor(() => expect(membershipCalls(rpc)).toHaveLength(1));
+		answer.resolve({ data: true, error: null });
+		await expect(Promise.all(checks)).resolves.toEqual([undefined, undefined, undefined]);
+		expect(membershipCalls(rpc)).toHaveLength(1);
+	});
+
+	it('asks the database for every check while a batch that may write runs, and starts clean after', async () => {
+		const client = fakeClient({});
+		const access = new WorkerTurnAgenticChatToolAccess(adapterFor(client));
+
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		access.beginToolBatch(true);
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		expect(membershipCalls(client.rpc)).toHaveLength(3);
+
+		// The next read-only batch re-checks once, then caches again.
+		access.beginToolBatch(false);
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		expect(membershipCalls(client.rpc)).toHaveLength(4);
+
+		// Consecutive read-only batches keep the cache.
+		access.beginToolBatch(false);
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		expect(membershipCalls(client.rpc)).toHaveLength(4);
+	});
+
+	it('does not let a check that started before an invalidation populate the cache', async () => {
+		const answer = deferred<{ data: boolean; error: null }>();
+		const rpc = vi
+			.fn()
+			.mockImplementationOnce(() => answer.promise)
+			.mockResolvedValue({ data: true, error: null });
+		const client = fakeClient({ rpc });
+		const access = new WorkerTurnAgenticChatToolAccess(adapterFor(client));
+
+		const early = access.assertProjectAccess(PROJECT_ID, 'read');
+		await vi.waitFor(() => expect(membershipCalls(rpc)).toHaveLength(1));
+		access.invalidate();
+		answer.resolve({ data: true, error: null });
+		await early;
+		await access.assertProjectAccess(PROJECT_ID, 'read');
+		expect(membershipCalls(rpc)).toHaveLength(2);
+	});
+
+	it('resolves an entity every time but reuses the cached project check behind it', async () => {
+		const client = fakeClient({
+			tables: { onto_tasks: { data: { project_id: PROJECT_ID } } }
+		});
+		const access = new WorkerTurnAgenticChatToolAccess(adapterFor(client));
+
+		await access.assertEntityAccess(ENTITY_ID, 'read');
+		await access.assertEntityAccess(ENTITY_ID, 'read');
+		expect(client.queriedTables.filter((table) => table === 'onto_tasks')).toHaveLength(2);
+		expect(membershipCalls(client.rpc)).toHaveLength(1);
+	});
+
+	it('still denies a project-less entity through the cache', async () => {
+		const client = fakeClient({
+			tables: { onto_tasks: { data: { project_id: null } } }
+		});
+		const access = new WorkerTurnAgenticChatToolAccess(adapterFor(client));
+		await expect(access.assertEntityAccess(ENTITY_ID, 'read')).rejects.toThrow(
+			'Entity not found or access denied'
+		);
+		expect(membershipCalls(client.rpc)).toHaveLength(0);
 	});
 });

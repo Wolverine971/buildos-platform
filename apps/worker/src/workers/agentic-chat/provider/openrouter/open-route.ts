@@ -25,6 +25,14 @@ import {
 	outputBudgetInstruction
 } from '../output-budget';
 import {
+	type AgenticChatContinuationReasoningMode,
+	type TurnReasoningReplayStore,
+	attachReplayedReasoning,
+	capturesReasoning,
+	effectiveReasoningEffort,
+	replaysReasoning
+} from './reasoning-replay';
+import {
 	abortableProviderRead,
 	attemptTimeoutMs,
 	createAttemptSignal,
@@ -44,6 +52,10 @@ export type OpenRouteSettings = {
 	responseHeadersTimeoutMs: number;
 	maxTokens: number;
 	temperature: number;
+	/** AGENTIC_CHAT_CONTINUATION_REASONING; absent means `default` (today's requests). */
+	continuationReasoning?: AgenticChatContinuationReasoningMode;
+	/** The replay variant's per-turn reasoning; present only in `replay` mode. */
+	reasoningReplay?: TurnReasoningReplayStore;
 };
 
 /** The `max_tokens` value this request sends. */
@@ -223,11 +235,23 @@ export async function openProviderRoute(
 }
 
 function buildProviderRequestBody(
-	settings: Pick<OpenRouteSettings, 'maxTokens' | 'temperature'>,
+	settings: Pick<
+		OpenRouteSettings,
+		'maxTokens' | 'temperature' | 'continuationReasoning' | 'reasoningReplay'
+	>,
 	route: AgenticChatOpenAiCompatibleRouteV1,
 	input: ClientInput
 ): Record<string, unknown> {
-	const messages = input.messages.map(copyMessage);
+	const messages: Record<string, unknown>[] = input.messages.map(copyMessage);
+	const mode = settings.continuationReasoning;
+	const replayStore = settings.reasoningReplay;
+	if (replayStore && replaysReasoning(mode, input, route)) {
+		// Same turn only: the store is keyed by this turn and its own tool-call ids.
+		attachReplayedReasoning(messages, input.messages, (ids) =>
+			replayStore.lookup(input.turnRunId, ids)
+		);
+	}
+	const reasoningEffort = effectiveReasoningEffort(mode, input, route.model);
 	if (isActingOutputPass(input)) {
 		messages.push({
 			role: 'system',
@@ -265,17 +289,22 @@ function buildProviderRequestBody(
 			// passes keep the provider default
 			// (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F80).
 			// A watched pass streams its reasoning so the slow-stream watch can
-			// tell thinking from stalling; the parser never surfaces it.
+			// tell thinking from stalling; the parser never surfaces it. The
+			// replay variant streams it on every tool-capable acting attempt so
+			// the turn's later passes can be sent it back.
 			reasoning:
-				input.reasoningEffort === 'none'
+				reasoningEffort === 'none'
 					? { enabled: false }
-					: contractReview || input.reasoningEffort === 'low'
+					: contractReview || reasoningEffort === 'low'
 						? { effort: 'low', exclude: true }
 						: {
-								exclude: !watchesStreamProgress(
-									input,
-									canonicalProviderPassRole(input.passRole),
-									route.model
+								exclude: !(
+									capturesReasoning(mode, input, route) ||
+									watchesStreamProgress(
+										input,
+										canonicalProviderPassRole(input.passRole),
+										route.model
+									)
 								)
 							},
 			// The privacy policy follows the routing spread so no route

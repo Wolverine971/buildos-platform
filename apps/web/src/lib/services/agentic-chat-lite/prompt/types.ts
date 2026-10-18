@@ -46,7 +46,22 @@ export type LitePromptSectionId =
 	| 'project_family'
 	| 'current_time'
 	| 'tool_surface_dynamic'
-	| 'final_response_contract';
+	| 'final_response_contract'
+	// Worker lane (Q1, audit 2026-10-17): an operational write playbook shipped
+	// as a candidate in the turn artifact, never rendered into the system
+	// prompt. The worker appends at most one, picked from Jev's structured
+	// write commission (provider/turn-rules.ts).
+	| 'operational_playbook_candidate';
+
+/**
+ * Where "Rules for This Turn" goes. `system_prompt` (web lane, default) renders
+ * it after the static prefix. `after_user_message` (worker lane) keeps it out
+ * of the system prompt and marks the section for the worker, which appends it
+ * as a system message after the user message (provider/turn-rules.ts): the
+ * system prompt stays byte-stable across turns, so prepared prompts and the
+ * provider's prefix cache are reused.
+ */
+export type LiteTurnRulesPlacement = 'system_prompt' | 'after_user_message';
 
 export type LitePromptSection = {
 	id: LitePromptSectionId;
@@ -194,6 +209,7 @@ export type LitePromptInput = MasterPromptContext & {
 	domainSensingResult?: DomainSensingResult | null;
 	skillGatePreload?: SkillGatePreload | null;
 	turnSituation?: LitePromptTurnSituation | null;
+	turnRulesPlacement?: LiteTurnRulesPlacement;
 	retrievalMap?: LitePromptRetrievalMapInput | null;
 	tools?: ChatToolDefinition[] | null;
 	scaffold?: LitePromptScaffoldOptions | null;

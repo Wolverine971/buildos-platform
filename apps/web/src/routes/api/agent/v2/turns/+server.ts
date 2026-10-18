@@ -37,6 +37,7 @@ const logger = createLogger('API:AgentWorkerTurnsV2');
 import { workerAdmissionRequestSchema } from './worker-admission-schema';
 import {
 	privateResponse,
+	turnRateLimitedResponse,
 	withWorkerAdmissionTiming,
 	workerAdmissionErrorResponse,
 	workerIdempotencyConflictResponse,
@@ -52,6 +53,11 @@ import type { AgenticChatWorkflowV4AdmissionRpcClient } from '$lib/services/agen
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user?.id) return privateResponse(ApiResponse.unauthorized());
+	// Chat-open warm-up (S12). This route is its own Vercel function (its config
+	// differs from prewarm's), so warming prewarm never boots it; a cold boot cost
+	// ~1.3 s on the first send. Answered after the hooks' usual session check and
+	// before any route work: no query, no log.
+	if (isTurnsWarmupRequest(url)) return privateResponse(new Response(null, { status: 204 }));
 	if (
 		url.searchParams.getAll('session_id').length !== 1 ||
 		Array.from(url.searchParams.keys()).some((key) => key !== 'session_id')
@@ -86,22 +92,21 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 	}
 };
 
+/** Exactly `?warm=1` and nothing else; any other query keeps the active-turn lookup contract. */
+function isTurnsWarmupRequest(url: URL): boolean {
+	const keys = Array.from(url.searchParams.keys());
+	return keys.length === 1 && keys[0] === 'warm' && url.searchParams.get('warm') === '1';
+}
+
 export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const requestReceivedAt = new Date().toISOString();
 	const { user } = await safeGetSession();
 	if (!user?.id) return privateResponse(ApiResponse.unauthorized());
+	// Cheap per-instance flood guard ahead of preparation; the durable per-user limit
+	// is the admission RPC's `rate_limited` outcome below.
 	const turnRateLimit = consumeAgenticChatTurnRateLimit(user.id);
 	if (!turnRateLimit.allowed) {
-		const response = ApiResponse.error(
-			'Too many chat turns. Try again shortly.',
-			HttpStatus.TOO_MANY_REQUESTS,
-			'AGENTIC_CHAT_RATE_LIMITED'
-		);
-		for (const [name, value] of Object.entries(turnRateLimit.headers)) {
-			response.headers.set(name, value);
-		}
-		response.headers.set('Retry-After', String(turnRateLimit.retryAfterSeconds ?? 1));
-		return privateResponse(response);
+		return turnRateLimitedResponse(turnRateLimit.retryAfterSeconds ?? 1, turnRateLimit.headers);
 	}
 
 	const parsed = await parseJsonRequest(request, workerAdmissionRequestSchema, {
@@ -255,6 +260,25 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			);
 			response.headers.set('Retry-After', String(result.retryAfterSeconds));
 			return timedResponse(privateResponse(response));
+		}
+		if (result.outcome === 'rate_limited') {
+			logger.warn('Worker turn per-user rate limit reached', {
+				userId: user.id,
+				clientTurnId: parsed.data.clientTurnId,
+				recentCount: result.recentCount,
+				limit: result.limit,
+				windowSeconds: result.windowSeconds,
+				retryAfterSeconds: result.retryAfterSeconds
+			});
+			return timedResponse(
+				turnRateLimitedResponse(result.retryAfterSeconds, {
+					'X-RateLimit-Limit': String(result.limit),
+					'X-RateLimit-Remaining': '0',
+					'X-RateLimit-Reset': String(
+						Math.ceil(Date.now() / 1000) + result.retryAfterSeconds
+					)
+				})
+			);
 		}
 		if (result.outcome === 'idempotency_conflict') {
 			return timedResponse(workerIdempotencyConflictResponse());

@@ -17,8 +17,16 @@ import {
 	collectOutlineAnchors,
 	countOutlineNodes,
 	extractOutline,
-	getSectionByAnchor
+	type DocOutlineNode
 } from '@buildos/shared-agent-ops/utils/document-outline';
+import {
+	DOCUMENT_INLINE_BODY_MAX_CHARS,
+	DOCUMENT_SECTION_READ_BUDGET_CHARS,
+	buildDocumentSectionIndex,
+	documentBodyText,
+	documentSliceEnd,
+	flattenOutlineNodes
+} from '../loop/document-read-budget';
 import { findInDocument } from '@buildos/shared-agent-ops/ontology/document-edits';
 import { isTableTypeKey } from '@buildos/shared-agent-ops/tables';
 import {
@@ -225,8 +233,15 @@ export interface SharedGetDocumentOutlineArgs {
 
 export interface SharedReadDocumentSectionArgs {
 	document_id: string;
-	/** Heading anchor (slug) of the section to read, e.g. from get_document_outline. */
-	anchor: string;
+	/**
+	 * Heading anchors (slugs) to read in one call, in order. Omitted or empty
+	 * reads the whole body from `offset`.
+	 */
+	anchors?: string[];
+	/** @deprecated Single-anchor form, kept for older calls; same as `anchors: [anchor]`. */
+	anchor?: string;
+	/** Character offset into the requested text, to continue a truncated read. */
+	offset?: number;
 }
 
 // ============================================
@@ -1453,6 +1468,20 @@ export async function getOntoDocumentDetails(
 		};
 	}
 
+	// A body over the inline cap reaches the model as a preview (the compactor
+	// owns that cut); its section index rides along so the next call can be one
+	// read_document_section with the anchors it needs, not an outline read first.
+	const body = documentBodyText(details.document as Record<string, any>);
+	if (body.length > DOCUMENT_INLINE_BODY_MAX_CHARS) {
+		const index = buildDocumentSectionIndex(extractOutline(body).nodes);
+		return {
+			...details,
+			sections: index.sections,
+			...(index.omitted > 0 ? { sections_omitted: index.omitted } : {}),
+			message: 'Complete ontology document details loaded.'
+		};
+	}
+
 	return {
 		...details,
 		message: 'Complete ontology document details loaded.'
@@ -1463,6 +1492,8 @@ export async function getOntoDocumentDetails(
  * Project Knowledge Layer (L2): return just the heading outline of a document.
  * Cheap "what is this doc about" scan — lets the agent decide relevance and pick
  * a section to read without pulling the full body. Computed live from content.
+ * A short body (≤ DOCUMENT_INLINE_BODY_MAX_CHARS) comes back whole as well, so
+ * an outline-first turn on a short document needs no section reads.
  */
 export async function getDocumentOutline(
 	context: AgenticChatSharedReadContextV1,
@@ -1485,16 +1516,20 @@ export async function getDocumentOutline(
 	const headingCount = countOutlineNodes(outline.nodes);
 	const find = typeof args.find === 'string' && args.find.trim() ? args.find : null;
 	const found = find ? findInDocument(content, find) : null;
-	const outlineMessage =
-		headingCount > 0
-			? `Outline loaded: ${headingCount} headings. Use read_document_section with an anchor to read a specific section.`
-			: 'This document has no markdown headings. Use get_onto_document_details to read the full body.';
+	const inlineBody = content.length <= DOCUMENT_INLINE_BODY_MAX_CHARS;
+	const outlineMessage = inlineBody
+		? `${headingCount > 0 ? `Outline loaded: ${headingCount} headings.` : 'This document has no markdown headings.'} Short document: its full body is in content, so no section reads are needed.`
+		: headingCount > 0
+			? `Outline loaded: ${headingCount} headings. Read every section you need in one read_document_section call with anchors.`
+			: 'This document has no markdown headings. Read its body with read_document_section and offset 0.';
 
 	return {
 		document_id: document.id,
 		project_id: document.project_id,
 		title: document.title ?? null,
+		content_length: content.length,
 		outline: outline.nodes,
+		...(inlineBody ? { content } : {}),
 		...(found ? { find: found } : {}),
 		message: found
 			? `${outlineMessage} Found ${found.total_matches} line${found.total_matches === 1 ? '' : 's'} matching "${find}"; each text is exact, so copy it into update_onto_document edits old_text.`
@@ -1503,9 +1538,59 @@ export async function getDocumentOutline(
 }
 
 /**
- * Project Knowledge Layer (L2): return the body of one section by heading anchor.
- * Re-parses live content, so the slice is always correct even after edits. Lets
- * the agent zoom into the relevant part instead of loading the whole document.
+ * Requested anchors in order: `anchors` (array, or a JSON-array string some
+ * models send) after the legacy single `anchor`, trimmed and de-duplicated.
+ */
+function requestedSectionAnchors(args: SharedReadDocumentSectionArgs): string[] {
+	const raw: unknown[] = [];
+	if (typeof args.anchor === 'string') raw.push(args.anchor);
+	const anchors: unknown = args.anchors;
+	if (Array.isArray(anchors)) {
+		raw.push(...anchors);
+	} else if (typeof anchors === 'string') {
+		const trimmed = anchors.trim();
+		let parsed: unknown = null;
+		if (trimmed.startsWith('[')) {
+			try {
+				parsed = JSON.parse(trimmed);
+			} catch {
+				parsed = null;
+			}
+		}
+		if (Array.isArray(parsed)) raw.push(...parsed);
+		else raw.push(trimmed);
+	}
+	const out: string[] = [];
+	for (const value of raw) {
+		if (typeof value !== 'string') continue;
+		const anchor = value.trim();
+		if (anchor && !out.includes(anchor)) out.push(anchor);
+	}
+	return out;
+}
+
+function normalizeReadOffset(value: unknown): number {
+	const numeric = typeof value === 'string' ? Number(value) : value;
+	return typeof numeric === 'number' && Number.isFinite(numeric)
+		? Math.max(0, Math.floor(numeric))
+		: 0;
+}
+
+function quoteAnchors(anchors: readonly string[]): string {
+	return anchors.map((anchor) => `"${anchor}"`).join(', ');
+}
+
+/**
+ * Project Knowledge Layer (L2): return document sections by heading anchor, or
+ * the body itself, up to DOCUMENT_SECTION_READ_BUDGET_CHARS per call.
+ *
+ * Several anchors come back in one call (audit 2026-10-17 S8: doc-heavy turns
+ * spent a round per section batch); each section includes its subsections, so
+ * a requested anchor nested inside another requested one is read once. Without
+ * anchors the call reads the body, which continues a detail preview and is the
+ * only way to read a long document that has no headings. `offset` continues a
+ * truncated read; `next_offset` says where. Re-parses live content, so slices
+ * are always correct even after edits.
  */
 export async function readDocumentSection(
 	context: AgenticChatSharedReadContextV1,
@@ -1524,33 +1609,107 @@ export async function readDocumentSection(
 	}
 
 	const content = typeof document.content === 'string' ? document.content : '';
-	const anchor = typeof args.anchor === 'string' ? args.anchor.trim() : '';
-	const section = getSectionByAnchor(content, anchor);
+	const requested = requestedSectionAnchors(args);
+	const base = {
+		document_id: document.id,
+		project_id: document.project_id,
+		title: document.title ?? null
+	};
 
-	if (!section.found) {
+	let text = content;
+	let sections: Array<{ anchor: string; heading: string; level: number; chars: number }> = [];
+	const notFound: string[] = [];
+	let available: string[] = [];
+	if (requested.length > 0) {
 		const outline = extractOutline(content);
-		const available = collectOutlineAnchors(outline.nodes);
-		return {
-			document_id: document.id,
-			project_id: document.project_id,
-			anchor,
-			found: false,
-			available_anchors: available,
-			message:
-				available.length > 0
-					? `No section with anchor "${anchor}". Available anchors: ${available.join(', ')}. Call get_document_outline for the full structure.`
-					: `No section with anchor "${anchor}". This document has no headings; use get_onto_document_details for the full body.`
-		};
+		const byAnchor = new Map<string, DocOutlineNode>();
+		for (const node of flattenOutlineNodes(outline.nodes)) {
+			if (!byAnchor.has(node.anchor)) byAnchor.set(node.anchor, node);
+		}
+		const matched: DocOutlineNode[] = [];
+		for (const anchor of requested) {
+			const node = byAnchor.get(anchor);
+			if (node) matched.push(node);
+			else notFound.push(anchor);
+		}
+		if (notFound.length > 0) available = collectOutlineAnchors(outline.nodes);
+		if (matched.length === 0) {
+			return {
+				...base,
+				...(requested.length === 1 ? { anchor: requested[0] } : { anchors: requested }),
+				found: false,
+				available_anchors: available,
+				message:
+					available.length > 0
+						? `No section with anchor ${quoteAnchors(requested)}. Available anchors: ${available.join(', ')}.`
+						: `No section with anchor ${quoteAnchors(requested)}. This document has no headings; omit anchors to read its body from offset 0.`
+			};
+		}
+		// A section already includes its subsections: drop a requested node that
+		// sits inside another requested node's span so nothing is read twice.
+		const selected = matched.filter(
+			(node) =>
+				!matched.some(
+					(other) =>
+						other !== node &&
+						other.char_start < node.char_start &&
+						node.char_end <= other.char_end
+				)
+		);
+		const parts = selected.map((node) => ({
+			node,
+			text: content.slice(node.char_start, node.char_end).trim()
+		}));
+		text = parts.map((part) => part.text).join('\n\n');
+		sections = parts.map((part) => ({
+			anchor: part.node.anchor,
+			heading: part.node.text,
+			level: part.node.level,
+			chars: part.text.length
+		}));
+	}
+
+	const start = Math.min(normalizeReadOffset(args.offset), text.length);
+	const end = documentSliceEnd(text, start, DOCUMENT_SECTION_READ_BUDGET_CHARS);
+	const truncated = end < text.length;
+	const single = requested.length > 0 && sections.length === 1 ? sections[0]! : null;
+	const subject =
+		requested.length === 0
+			? 'Document body'
+			: single
+				? `Section "${single.heading}"`
+				: `${sections.length} sections`;
+	let message: string;
+	if (text.length > 0 && start >= text.length) {
+		message = `Offset ${start} is at the end of the text (${text.length} chars); nothing is left to read.`;
+	} else if (truncated) {
+		message = `${subject}: returned chars ${start} to ${end} of ${text.length}. To read on, call read_document_section again with the same arguments and offset ${end}.`;
+	} else if (start > 0) {
+		message = `${subject}: returned chars ${start} to ${end} of ${text.length}, the end.`;
+	} else if (requested.length === 0) {
+		message = `Document body loaded (${text.length} chars).`;
+	} else {
+		message = single
+			? `Section "${single.heading}" loaded.`
+			: `${sections.length} sections loaded (${text.length} chars).`;
+	}
+	if (notFound.length > 0) {
+		message += ` Not found: ${quoteAnchors(notFound)}. Available anchors: ${available.join(', ')}.`;
 	}
 
 	return {
-		document_id: document.id,
-		project_id: document.project_id,
-		title: document.title ?? null,
-		anchor: section.anchor,
-		heading: section.heading,
-		level: section.level,
-		content: section.content,
-		message: `Section "${section.heading}" loaded.`
+		...base,
+		found: true,
+		...(single ? { anchor: single.anchor, heading: single.heading, level: single.level } : {}),
+		...(requested.length > 0 && !single ? { sections } : {}),
+		...(notFound.length > 0
+			? { not_found_anchors: notFound, available_anchors: available }
+			: {}),
+		content: text.slice(start, end),
+		offset: start,
+		total_chars: text.length,
+		truncated,
+		...(truncated ? { next_offset: end } : {}),
+		message
 	};
 }

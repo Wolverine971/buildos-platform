@@ -3,6 +3,10 @@
 // One turn's run state: the UI projection, the terminal tool ledger, the
 // read-planning context, and the `TurnRun` object the read and mutation
 // runners share. Everything here is plain data and pure bookkeeping.
+//
+// The UI projection is what a reconnecting browser replays mid-turn. It holds
+// compact copies of the durable events, bounded by count and by bytes (audit
+// S7/B4): bulky tool output is trimmed to a summary in the projection only.
 import type {
 	AgentStreamEventV1,
 	ChatToolCall,
@@ -14,9 +18,22 @@ import type { ProcessingJob } from '../../../lib/supabaseQueue';
 import type { AgenticChatWorkerExecutionInputV1 } from './execution-input';
 import type { AgenticChatTurnProviderStepV1 } from './executor-contracts';
 import type { AgenticChatTurnLeaseHandleV1 } from './turn-lease';
+import {
+	AGENTIC_CHAT_UI_PROJECTION_BUDGET_BYTES,
+	agenticChatProjectionEntryBudgetV1,
+	estimateStreamJsonBytes,
+	fitAgenticChatStreamPayloadV1
+} from '../stream/stream-payload-budget';
 
+/**
+ * Browsers parse exactly this version (agent-chat-worker-ui-adapter.ts) and
+ * ignore unknown top-level keys, so the omission markers below are additive.
+ */
 const UI_PROJECTION_VERSION = 'agentic_chat_ui_projection_v1';
+/** The browser rejects a projection with more events than this. */
 export const MAX_UI_PROJECTION_EVENTS = 128;
+/** Fixed keys around `semantic_events`: version, activity, omission markers. */
+const UI_PROJECTION_OVERHEAD_BYTES = 1_200;
 /**
  * User-visible status while the worker waits. Calm, plain, and true for the
  * moment it is shown: the prepared context is already loaded when the turn is
@@ -29,11 +46,32 @@ export const FINALIZING_ACTIVITY = 'Wrapping up…';
 export const READ_TOOL_ACTIVITY = 'Looking things up…';
 export const MUTATING_TOOL_ACTIVITY = 'Making changes…';
 
+/**
+ * The turn's UI projection: what a reconnecting browser replays. Entries are
+ * compact copies of the durable events (bulky tool output trimmed to a summary;
+ * the full result stays in the event row and the tool-execution ledger), the
+ * newest last, bounded by count and by estimated bytes.
+ */
 export type ProjectionState = {
 	currentActivity: string;
 	semanticEvents: AgentStreamEventV1[];
-	/** Tool adapters may run concurrently; projection persistence must remain one-at-a-time. */
-	semanticPublishTail: Promise<void>;
+	/** Estimated stored bytes of each entry, parallel to `semanticEvents`. */
+	semanticEventBytes: number[];
+	/** Sum of `semanticEventBytes`. */
+	semanticBytes: number;
+	/** Oldest entries dropped to stay inside the bounds, and the newest of their sequences. */
+	omittedEventCount: number;
+	omittedThroughSequence: number;
+	/** The transition whose event last set `currentActivity` (for rollback). */
+	activityTransitionId: string | null;
+	/**
+	 * Admission order into the publisher's per-turn FIFO, not durability: the
+	 * next publication enqueues once the previous one holds its place and the
+	 * publisher is below its soft limit. Concurrent tool calls therefore
+	 * enqueue (and their reads start) without waiting for earlier writes to
+	 * commit, while sequences and projection order still follow call order.
+	 */
+	semanticAdmissionTail: Promise<void>;
 };
 
 /**
@@ -113,16 +151,138 @@ export function emptyProjection(): ProjectionState {
 	return {
 		currentActivity: DEFAULT_RUNNING_ACTIVITY,
 		semanticEvents: [],
-		semanticPublishTail: Promise.resolve()
+		semanticEventBytes: [],
+		semanticBytes: 0,
+		omittedEventCount: 0,
+		omittedThroughSequence: 0,
+		activityTransitionId: null,
+		semanticAdmissionTail: Promise.resolve()
 	};
 }
 
+/**
+ * Snapshot for persistence. Entries are shared with the live state (a shallow
+ * copy of the list), so pending snapshots cost references, not bytes.
+ */
 export function toProjectionJson(projection: ProjectionState): JsonObject {
 	return {
 		version: UI_PROJECTION_VERSION,
 		current_activity: projection.currentActivity,
-		semantic_events: projection.semanticEvents.slice() as unknown as JsonObject[]
+		semantic_events: projection.semanticEvents.slice() as unknown as JsonObject[],
+		...(projection.omittedEventCount > 0
+			? {
+					omitted_event_count: projection.omittedEventCount,
+					omitted_through_sequence: projection.omittedThroughSequence
+				}
+			: {})
 	};
+}
+
+/** Estimated stored bytes of `toProjectionJson(projection)`. */
+export function projectionEstimatedBytes(projection: ProjectionState): number {
+	return (
+		UI_PROJECTION_OVERHEAD_BYTES +
+		estimateStreamJsonBytes(projection.currentActivity) +
+		projection.semanticBytes
+	);
+}
+
+/**
+ * The compact projection copy of one durable event: same identity fields, its
+ * payload fitted to the per-entry budget for its type.
+ */
+export function projectionEntryForEvent(event: AgentStreamEventV1): {
+	entry: AgentStreamEventV1;
+	bytes: number;
+} {
+	const {
+		contract_version,
+		event_id,
+		stream_run_id,
+		client_turn_id,
+		session_id,
+		turn_run_id,
+		execution_generation,
+		sequence_index,
+		phase,
+		event_type,
+		durable,
+		...payload
+	} = event;
+	const envelope = {
+		contract_version,
+		event_id,
+		stream_run_id,
+		client_turn_id,
+		session_id,
+		turn_run_id,
+		execution_generation,
+		sequence_index,
+		phase,
+		event_type,
+		durable
+	};
+	const fitted = fitAgenticChatStreamPayloadV1(
+		payload as JsonObject,
+		agenticChatProjectionEntryBudgetV1(event_type, payload as JsonObject)
+	);
+	const entry = (
+		fitted.compacted ? { ...fitted.value, ...envelope } : event
+	) as AgentStreamEventV1;
+	return { entry, bytes: estimateStreamJsonBytes(entry) };
+}
+
+/**
+ * Appends one event's compact entry, then drops the oldest entries until the
+ * projection is inside both bounds. The newest entry always stays.
+ */
+export function appendProjectionEvent(
+	projection: ProjectionState,
+	event: AgentStreamEventV1,
+	currentActivity: string,
+	transitionId: string
+): void {
+	const { entry, bytes } = projectionEntryForEvent(event);
+	projection.semanticEvents.push(entry);
+	projection.semanticEventBytes.push(bytes);
+	projection.semanticBytes += bytes;
+	projection.currentActivity = currentActivity;
+	projection.activityTransitionId = transitionId;
+	while (
+		projection.semanticEvents.length > 1 &&
+		(projection.semanticEvents.length > MAX_UI_PROJECTION_EVENTS ||
+			projectionEstimatedBytes(projection) > AGENTIC_CHAT_UI_PROJECTION_BUDGET_BYTES)
+	) {
+		const dropped = projection.semanticEvents.shift()!;
+		projection.semanticBytes -= projection.semanticEventBytes.shift() ?? 0;
+		projection.omittedEventCount += 1;
+		projection.omittedThroughSequence = Math.max(
+			projection.omittedThroughSequence,
+			dropped.sequence_index
+		);
+	}
+}
+
+/**
+ * Removes an event that never became durable. Entries it displaced stay
+ * omitted: the projection is a bounded replay window, and nothing after a
+ * failed write is persisted except the terminal projection.
+ */
+export function removeProjectionEvent(
+	projection: ProjectionState,
+	eventId: string,
+	transitionId: string,
+	priorActivity: string
+): void {
+	const index = projection.semanticEvents.findIndex((entry) => entry.event_id === eventId);
+	if (index !== -1) {
+		projection.semanticEvents.splice(index, 1);
+		projection.semanticBytes -= projection.semanticEventBytes.splice(index, 1)[0] ?? 0;
+	}
+	if (projection.activityTransitionId === transitionId) {
+		projection.currentActivity = priorActivity;
+		projection.activityTransitionId = null;
+	}
 }
 
 export function providerToolCall(

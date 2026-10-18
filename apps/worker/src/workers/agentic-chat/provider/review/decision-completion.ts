@@ -41,7 +41,10 @@ import {
 	findAmbiguousReferenceCandidates,
 	recentUserMessageTexts
 } from './decision-handling';
-import { checkMutationBatchRevisionEvidence } from './revision-evidence';
+import {
+	checkMutationBatchRevisionEvidence,
+	checkMutationBatchRevisionStage
+} from './revision-evidence';
 
 type ReviewDecisionCompletionInput = {
 	actingRequest: AgenticChatTurnProviderRequestV1;
@@ -74,6 +77,14 @@ export function completeMutationBatchReviewDecision(
 		batch?: MutationBatch;
 		allowRevision: boolean;
 		requestExpectation?: TurnContract | null;
+		/**
+		 * The first decision of a review: a revision that names no wrong held
+		 * call, or carries unreadable findings, gets one fresh reviewer decision
+		 * instead of an actor repair plus a second review. The retry decision
+		 * is accepted as-is, so these checks can cost one reviewer pass but can
+		 * never end a turn that the old ladder would have finished.
+		 */
+		recheckRevision?: boolean;
 	}
 ): CompletedProviderToolCall[] {
 	const { calls, fallbackReason, rejectionCode } = completeSingleReviewDecision(
@@ -98,7 +109,10 @@ export function completeMutationBatchReviewDecision(
 						  !approvalShaMatches(call.arguments.batch_sha256, input.batchSha256)
 						? 'approval_sha_mismatch'
 						: revision && input.batch
-							? checkMutationBatchRevisionEvidence(call.arguments, input.batch)
+							? (checkMutationBatchRevisionEvidence(call.arguments, input.batch) ??
+								(input.recheckRevision
+									? checkMutationBatchRevisionStage(call.arguments, input.batch)
+									: null))
 							: null;
 		if (resolvedCode) {
 			resolvedFallback =

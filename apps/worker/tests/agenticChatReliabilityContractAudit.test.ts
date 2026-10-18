@@ -19,7 +19,8 @@ const FENCED_WRITE_MODULE_USAGE_COUNTS = Object.freeze({
 	'effects/execution-observation': 1,
 	'effects/prompt-snapshot': 1,
 	'effects/research-capture': 2,
-	'stream/supabase-stream-publisher-adapters': 2,
+	// Batched semantic writes (20261017200000) are fenced like single writes.
+	'stream/supabase-stream-publisher-adapters': 3,
 	'tools/tool-execution': 3
 });
 

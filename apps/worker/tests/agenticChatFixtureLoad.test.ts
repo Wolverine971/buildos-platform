@@ -101,13 +101,15 @@ describe('Agentic Chat 100-turn fixture load', () => {
 		expect(peak.pendingEvents).toBeLessThan(peak.softEventLimit);
 
 		releaseFirstFlush();
+		// Delivery no longer pays a per-event ACK statement (audit S7): every
+		// event is persisted, then sent; nothing else touches the database.
 		await expect(Promise.all(deliveries)).resolves.toEqual(
-			Array(ACTIVE_TURNS).fill('broadcast_acknowledged')
+			Array(ACTIVE_TURNS).fill('broadcast_sent_reconcile_pending')
 		);
 		expect(database.metrics).toMatchObject({
 			textFlushStatements: 2,
 			affectedRows: ACTIVE_TURNS,
-			acknowledgementStatements: ACTIVE_TURNS,
+			acknowledgementStatements: 0,
 			maxFlushBatchItems: ACTIVE_TURNS - 1
 		});
 		expect(database.metrics.requestPayloadBytes).toBeGreaterThan(

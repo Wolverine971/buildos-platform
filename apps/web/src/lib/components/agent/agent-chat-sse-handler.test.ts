@@ -11,6 +11,7 @@ import {
 	createSSEHandler,
 	finalizeTurnPhaseActivity,
 	normalizeContextShiftContext,
+	refreshToolActivityLines,
 	resolveDoneFinalization,
 	sanitizeToolResultForActivityMetadata,
 	upsertTurnPhaseActivity,
@@ -310,6 +311,36 @@ describe('resolveDoneFinalization', () => {
 				'deterministic_evidence'
 			)
 		).toEqual({ status: 'completed', note: 'Recovered from collected evidence' });
+	});
+});
+
+describe('refreshToolActivityLines', () => {
+	it('names a project a line could not name when it finished', () => {
+		const presenter = makePresenter();
+		const args = { project_id: 'p-1' };
+		const finishedEarly = {
+			id: 'a-1',
+			content: presenter.formatToolMessage('list_onto_goals', args, 'completed'),
+			timestamp: new Date(),
+			activityType: 'tool_call' as const,
+			status: 'completed' as const,
+			metadata: { toolName: 'list_onto_goals', arguments: args, displayStatus: 'completed' }
+		};
+		expect(finishedEarly.content).toBe('Listed goals');
+		const unchanged = [finishedEarly];
+		expect(refreshToolActivityLines(unchanged, presenter)).toBe(unchanged);
+
+		// A later get_project_overview result teaches the presenter the name.
+		presenter.indexEntitiesFromToolResult({
+			result: { project: { id: 'p-1', name: 'Cadre Internal' } }
+		});
+		const [refreshed] = refreshToolActivityLines([finishedEarly], presenter);
+		expect(refreshed?.content).toBe('Listed goals: "Cadre Internal"');
+		expect(refreshed?.metadata?.line).toMatchObject({
+			verb: 'Listed goals',
+			target: 'Cadre Internal',
+			tone: 'done'
+		});
 	});
 });
 

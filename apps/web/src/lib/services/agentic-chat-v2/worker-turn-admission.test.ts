@@ -180,6 +180,52 @@ describe('Agentic Chat worker admission gateway', () => {
 		});
 	});
 
+	it('maps the per-user rate limit (B14) without a turn handle', async () => {
+		const database = client({
+			data: {
+				outcome: 'rate_limited',
+				execution_may_start: false,
+				retry_after_seconds: 12,
+				limit: 20,
+				window_seconds: 60,
+				recent_count: 20
+			},
+			error: null
+		});
+		expect(await admitAgenticChatWorkerTurn({ client: database.value, args })).toEqual({
+			outcome: 'rate_limited',
+			executionMayStart: false,
+			retryAfterSeconds: 12,
+			limit: 20,
+			windowSeconds: 60,
+			recentCount: 20
+		});
+	});
+
+	it('rejects a malformed or execution-authorizing rate-limit receipt', async () => {
+		const valid = {
+			outcome: 'rate_limited',
+			execution_may_start: false,
+			retry_after_seconds: 12,
+			limit: 20,
+			window_seconds: 60,
+			recent_count: 20
+		};
+		for (const data of [
+			{ ...valid, execution_may_start: true },
+			{ ...valid, retry_after_seconds: 0 },
+			{ ...valid, retry_after_seconds: 1.5 },
+			{ ...valid, retry_after_seconds: '12' },
+			{ ...valid, limit: 0 },
+			{ ...valid, window_seconds: null },
+			{ ...valid, recent_count: -1 }
+		]) {
+			await expect(
+				admitAgenticChatWorkerTurn({ client: client({ data, error: null }).value, args })
+			).rejects.toMatchObject({ code: 'protocol_error' });
+		}
+	});
+
 	it('rejects contradictory identities, execution authority, and malformed bounds', async () => {
 		for (const data of [
 			handle({ turn_run_id: 'd3000000-0000-4000-8000-000000000099' }),

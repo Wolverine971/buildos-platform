@@ -2,9 +2,11 @@
 <!--
 	The quick duplicate check a nest or combine card starts (tasker 122, WP3):
 	"Checking for duplicates…" while the survey runs, then the headline, the top
-	groups and "Review and merge". Polls GET /api/consolidation/runs/[id] every
-	3 s, pauses while the tab is hidden, and stops after 40 polls. A failed check
-	stays quiet: it never blocks the card's choice.
+	groups and "Review duplicates". Polls GET /api/consolidation/runs/[id] until
+	the check finishes (3 s, then 10 s; up to ~15 minutes), pauses while the tab
+	is hidden. A failed check stays quiet: it never blocks the card's choice.
+	Inside the chat modal the review opens in the modal's side panel, so the
+	person never leaves the conversation; elsewhere it falls back to a link.
 	INKPRINT: inset sub-surface inside the card (no texture of its own).
 -->
 <script lang="ts">
@@ -17,10 +19,13 @@
 	import {
 		DUPLICATE_CHECK_GROUP_LIMIT,
 		DUPLICATE_CHECK_MAX_POLLS,
-		DUPLICATE_CHECK_POLL_MS
+		duplicateCheckPollDelay
 	} from './duplicate-check-strip';
+	import { useChatReviewPanel } from './chat-review-panel';
 
 	let { check }: { check: ProposalDuplicateCheckRefV1 } = $props();
+
+	const panel = useChatReviewPanel();
 
 	type Phase = 'loading' | 'running' | 'done' | 'failed' | 'slow';
 	let phase = $state<Phase>('loading');
@@ -29,6 +34,10 @@
 	const reviewPath = $derived(
 		summary?.review_path ?? `/projects/${check.root_project_id}/consolidate/${check.run_id}`
 	);
+
+	function openReview() {
+		panel?.open(check.run_id);
+	}
 
 	async function loadCheck(
 		runId: string,
@@ -98,7 +107,7 @@
 				waitingForVisible = true;
 				return;
 			}
-			timer = setTimeout(tick, DUPLICATE_CHECK_POLL_MS);
+			timer = setTimeout(tick, duplicateCheckPollDelay(polls));
 		}
 
 		function onVisibilityChange() {
@@ -127,7 +136,24 @@
 			parts.push(`${group.tasks.length} ${group.tasks.length === 1 ? 'task' : 'tasks'}`);
 		return parts.join(', ');
 	}
+
+	const actionClass =
+		'inline-flex min-h-11 items-center gap-1 rounded-sm font-semibold text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0';
 </script>
+
+{#snippet reviewAction(label: string, arrow: boolean)}
+	{#if panel}
+		<button type="button" class={actionClass} onclick={openReview}>
+			{label}
+			{#if arrow}<ArrowRight class="h-3 w-3" aria-hidden="true" />{/if}
+		</button>
+	{:else}
+		<a href={reviewPath} class={actionClass}>
+			{label}
+			{#if arrow}<ArrowRight class="h-3 w-3" aria-hidden="true" />{/if}
+		</a>
+	{/if}
+{/snippet}
 
 <div
 	class="mx-3 mt-2 rounded-md border border-border bg-background px-3 py-2 text-xs shadow-ink-inner"
@@ -140,19 +166,20 @@
 				class="mt-px h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none"
 				aria-hidden="true"
 			/>
-			<span class="text-muted-foreground">Checking for duplicates…</span>
+			<span class="min-w-0 text-muted-foreground">
+				Checking for duplicates… (a few minutes)
+				{#if panel && phase === 'running'}
+					{@render reviewAction('See progress', false)}
+				{/if}
+			</span>
 		{:else if phase === 'failed'}
 			<Layers class="mt-px h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
 			<span class="text-muted-foreground">Couldn’t check for duplicates.</span>
 		{:else if phase === 'slow'}
 			<Layers class="mt-px h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-			<span class="text-muted-foreground">
+			<span class="min-w-0 text-muted-foreground">
 				Still checking for duplicates.
-				<a
-					href={reviewPath}
-					class="font-semibold text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					>Open the check</a
-				>
+				{@render reviewAction('See progress', false)}
 			</span>
 		{:else if summary}
 			<Layers class="mt-px h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
@@ -177,12 +204,8 @@
 				<li class="text-2xs">+{summary.more_groups} more</li>
 			{/if}
 		</ul>
-		<a
-			href={reviewPath}
-			class="mt-1.5 ml-5 inline-flex min-h-11 items-center gap-1 rounded-sm font-semibold text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0"
-		>
-			Review and merge
-			<ArrowRight class="h-3 w-3" aria-hidden="true" />
-		</a>
+		<div class="mt-1.5 ml-5">
+			{@render reviewAction('Review duplicates', true)}
+		</div>
 	{/if}
 </div>

@@ -193,7 +193,12 @@ describe('tool surface size report', () => {
 		// and propose_project_combine joined global only; each returns a card the
 		// user clicks, and Jev mounts them only on nest/combine turns. Measured 54 →
 		// 56 tools, 60,013 → 61,498 chars (+1,485). Cap at measured + ~1%.
-		expect(global?.totalChars).toBeLessThanOrEqual(62_100);
+		// RE-BASELINED 2026-10-17 (pipeline audit S8, one-call document reads):
+		// read_document_section gained anchors[] + offset (+121); the
+		// get_onto_document_details (-103) and get_document_outline (-108)
+		// descriptions now point at the one-call path. Measured 56 tools, 61,498 →
+		// 61,408 chars (-90). Cap at measured + ~0.2%.
+		expect(global?.totalChars).toBeLessThanOrEqual(61_530);
 		// Reviewed 2026-09-05 against the previous signed snapshot: +838 for
 		// contract reference/null handling, +321 for typed task estimates, +396
 		// for get_onto_document_details, +1,190 for link_onto_entities. These
@@ -205,7 +210,10 @@ describe('tool surface size report', () => {
 		// chars: two reads, create_onto_table, update_onto_table,
 		// update_onto_table_rows) joined. Measured 72 tools / 75,937 chars. Cap at
 		// measured + ~1%.
-		expect(project?.totalChars).toBeLessThanOrEqual(76_700);
+		// RE-BASELINED 2026-10-17 (pipeline audit S8): the same document-read
+		// schema changes plus list_onto_documents (-94). Measured 72 tools, 76,180
+		// → 75,996 chars (-184). Cap at measured + ~0.2%.
+		expect(project?.totalChars).toBeLessThanOrEqual(76_150);
 		// Bumped 2026-09-04: 15,250 → 15,700. Measured 15,458 — +426 from the
 		// create_onto_task description work noted above, and +516 already present
 		// on this branch from the control-tool descriptions (declare_turn_contract).

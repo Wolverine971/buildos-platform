@@ -6,6 +6,7 @@ import { supabase } from '../src/lib/supabase';
 import { SupabaseQueue, type ProcessingJob } from '../src/lib/supabaseQueue';
 import {
 	DEFAULT_AGENTIC_CHAT_CONSUMER_CONFIG,
+	MAX_AGENTIC_CHAT_CONCURRENCY,
 	createAgenticChatConsumer
 } from '../src/workers/agentic-chat/host/consumer';
 import { AgenticChatConsumerRuntime } from '../src/workers/agentic-chat/host/consumer-runtime';
@@ -63,14 +64,20 @@ describe('Agentic Chat queue consumer', () => {
 		expect(execute).not.toHaveBeenCalled();
 	});
 
-	it('accepts the reviewed two-slot bound and preserves the one-second fallback', () => {
+	it('accepts the reviewed slot bound and preserves the one-second fallback', () => {
 		const executor = testExecutor();
 		expect(
-			createAgenticChatConsumer(executor, consumerOptions({ concurrency: 2 })).config
-		).toMatchObject({ concurrency: 2 });
+			createAgenticChatConsumer(
+				executor,
+				consumerOptions({ concurrency: MAX_AGENTIC_CHAT_CONCURRENCY })
+			).config
+		).toMatchObject({ concurrency: MAX_AGENTIC_CHAT_CONCURRENCY });
 		expect(() =>
-			createAgenticChatConsumer(executor, consumerOptions({ concurrency: 3 }))
-		).toThrow('cannot exceed the reviewed bound of 2');
+			createAgenticChatConsumer(
+				executor,
+				consumerOptions({ concurrency: MAX_AGENTIC_CHAT_CONCURRENCY + 1 })
+			)
+		).toThrow(`cannot exceed the reviewed bound of ${MAX_AGENTIC_CHAT_CONCURRENCY}`);
 		expect(() =>
 			createAgenticChatConsumer(executor, consumerOptions({ pollIntervalMs: 999 }))
 		).toThrow('polling cannot be below 1000ms');
@@ -315,6 +322,10 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 			mutationBatchLaneEnabled: true,
 			// Jev opening-pass tool narrowing is on by default; `off` is the kill switch.
 			jevToolSelection: 'on',
+			// Continuation reasoning A/B arm; `default` keeps today's request shape.
+			continuationReasoning: 'default',
+			// Shadow-only until review-decision data justifies holding writes.
+			holdUncommissionedWrites: false,
 			maxToolCalls: 9,
 			maxToolConcurrency: 3,
 			provider: {
@@ -410,8 +421,12 @@ describe('Dedicated Agentic Chat startup configuration', () => {
 
 	it('fails closed on incomplete or out-of-envelope dedicated-service values', () => {
 		expect(() =>
-			loadAgenticChatConfig(configuredEnvironment({ CHAT_CONCURRENCY: '3' }))
-		).toThrow('cannot exceed the reviewed bound of 2');
+			loadAgenticChatConfig(
+				configuredEnvironment({
+					CHAT_CONCURRENCY: String(MAX_AGENTIC_CHAT_CONCURRENCY + 1)
+				})
+			)
+		).toThrow(`cannot exceed the reviewed bound of ${MAX_AGENTIC_CHAT_CONCURRENCY}`);
 		// The dedicated chat worker spends Railway's drainingSeconds window
 		// (host/shutdown-budget.ts), not the general worker's 22 s budget.
 		expect(

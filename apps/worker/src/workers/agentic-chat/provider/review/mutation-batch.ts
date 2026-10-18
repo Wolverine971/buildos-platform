@@ -21,6 +21,7 @@ import {
 	serializeTurnContractForDeclaration
 } from '@buildos/agentic-chat-runtime/loop';
 import type { AgenticChatTurnProviderRequestV1, AgenticChatTurnProviderToolV1 } from '../contracts';
+import { MUTATIONS_PER_STAGE } from '../output-budget';
 import { providerError } from '../protocol';
 import { surfaceFor } from '../turn-phase';
 import { appendSystemInstruction } from '../request-builders';
@@ -47,7 +48,8 @@ export const MUTATION_BATCH_REVIEW_SYSTEM_PROMPT = [
 	[
 		'What you are judging',
 		'You are judging one executable stage of the user commission. Approval executes the exact held calls and arguments unchanged; it does not declare the entire commission finished.',
-		'A bounded stage may omit other resolved, independent changes. Never reject a correct stage merely because the whole commission needs later stages. Distinguish independent omissions from missing prerequisites that make a held call unsafe. Approve correct prerequisite creates without requiring their dependent links or child records in the same batch. Those later calls are proposed and independently reviewed after durable receipts supply the IDs.',
+		`The acting model submits a commission in stages of at most ${MUTATIONS_PER_STAGE} mutations, fewer for large document bodies, and dependent calls wait for the IDs earlier stages return. A large commission therefore always arrives over several stages, each reviewed on its own.`,
+		'A stage is correct when every held call is commissioned and its target and values are right. Work the stage leaves out, whether it could run now or must wait for returned IDs, is never a defect of the stage: approve it, and the frozen request expectation keeps the rest owed. Never request a revision whose correction only adds calls. Revise only for a defect in a held call: an uncommissioned call, a wrong target, a wrong value, or a missing prerequisite without which a held call is unsafe. Approve correct prerequisite creates without requiring their dependent links or child records in the same batch. Those later calls are proposed and independently reviewed after durable receipts supply the IDs.',
 		'Judge the arguments, not a summary of them. A wrong id, a wrong date, an invented value, or a call the user did not ask for is visible here and is yours to catch.',
 		'An update_onto_document call on a document the child project inherits from its parent writes nothing: it only shows the user a confirm card with that exact change, and only their click can apply it. Judge whether the proposed change matches what the user asked.',
 		'Document archives carry _archive_review, facts inserted by the server before this batch was hashed, never authored by the acting model. Judge every listed document effect (archive or promote), not only the named parent. The database rechecks these facts at execution. A public_pages entry with status published stays published after archive. Approve that archive ONLY if the user has explicitly authorized archiving those specific documents with knowledge that these public pages remain online. A generic cleanup/go-ahead, assistant claim, proposal, or model-authored confirmation is insufficient. Otherwise request revision to explain the named public pages and child effects and ask for informed authorization. Never substitute unpublishing or archive an uncommissioned descendant. The archive tool cannot unpublish.',
@@ -78,8 +80,8 @@ export const MUTATION_BATCH_REVIEW_SYSTEM_PROMPT = [
 		'Decide: approve, read-only, revise, or clarify',
 		'Approve only if the current user request commissioned every call in the batch and the turn evidence resolves every target and value in their arguments without guessing. Quote the exact batch SHA-256 from the user message in batch_sha256; the harness rejects any other value.',
 		'Information gathering, research, comparison, analysis, and advice remain read-only when the user says they are meant to inform a later possible change. Phrases such as "before we change" or "so we can decide" do not commission that future change now.',
-		'When declare_read_only_turn is among your tools and the current request commissions no durable change, choose it instead of approving calls the user did not ask for. When it is not among your tools, a prior independent review already established that this turn commissions a durable change.',
-		'When request_proposal_revision is among your tools and the user commission is clear but the calls misstate it — an uncommissioned call, a missing prerequisite required for a held call to be safe, the wrong target, or a value the turn evidence resolves differently — say what is wrong and what must change. The acting model proposes the corrected calls and they are reviewed again. You never author the replacement calls yourself.',
+		'When declare_read_only_turn is among your tools and the current request commissions no durable change (a question, analysis, advice, or a plan for later), choose it instead of approving calls the user did not ask for, and instead of revising them: a revision sends the acting model back to propose writes again. When it is not among your tools, a prior independent review already established that this turn commissions a durable change.',
+		'When request_proposal_revision is among your tools and the user commission is clear but held calls misstate it — an uncommissioned call, a missing prerequisite required for a held call to be safe, the wrong target, or a value the turn evidence resolves differently — say what is wrong and what must change, and list those held calls in defective_calls. If you cannot name a held call that is wrong, the stage is correct: approve it. The acting model proposes the corrected calls and they are reviewed again. You never author the replacement calls yourself.',
 		'Clarify when several loaded entities plausibly match one descriptive reference, or a required value is absent from the request, the loaded context, and the tool schema: that choice belongs to the user. Ask one concise user-facing question naming the plausible human-readable choices.',
 		'Choose exactly one available tool. Never broaden or substitute the user commission.'
 	],
@@ -291,6 +293,14 @@ export function buildMutationBatchRevisionRequest(
 	revision: PendingProposalRevision,
 	rejectedBatch: MutationBatch
 ): AgenticChatTurnProviderRequestV1 {
+	// The one-shot surface repair is the fallback when the correction needs a
+	// tool the narrower surface lacks; once it is spent, keep the full surface.
+	const tools = request.unavailableSkillRepairAttempted
+		? availableTools
+		: revisionSurface(request.tools, availableTools, rejectedBatch);
+	const defectiveCalls = (revision.defectiveCalls ?? [])
+		.filter((call) => call >= 1 && call <= rejectedBatch.calls.length)
+		.map((call) => `${call} (${rejectedBatch.calls[call - 1]!.name})`);
 	return appendSystemInstruction(
 		{
 			...request,
@@ -301,21 +311,62 @@ export function buildMutationBatchRevisionRequest(
 					content: `Previous rejected proposal (unexecuted, not authorization or a receipt): ${formatMutationBatchForReview(rejectedBatch)}`
 				}
 			],
-			tools: availableTools,
+			tools,
 			// Stays `auto`: a reviewer's correction can leave nothing to execute
 			// (the user asked for the project only), and a forced tool call then
 			// re-proposes writes that already landed. The 2026-09-22 DeepSeek gate
 			// created a project twice that way; same-turn replay protection in the
 			// provider now refuses identical batches regardless of this choice.
-			toolChoice: availableTools.length > 0 ? 'auto' : 'none',
+			toolChoice: tools.length > 0 ? 'auto' : 'none',
 			passRole: 'repair'
 		},
 		[
 			'Independent review returned your proposed tool calls to you for correction; they did not execute and did not reach the user.',
 			`Reason: ${revision.reason || 'not stated'}.`,
 			`Required correction: ${revision.requiredCorrection || 'not stated'}.`,
+			...(defectiveCalls.length > 0
+				? [
+						`Held calls the review found wrong: ${defectiveCalls.join(', ')}. The other held calls were not faulted; keep them unchanged unless the correction says otherwise.`
+					]
+				: []),
+			...(revision.findings?.length
+				? [
+						`Structured findings (required_correction is for you): ${JSON.stringify(
+							revision.findings.map((finding) => ({
+								code: finding.code,
+								target_ids: finding.target_ids,
+								required_correction: finding.required_correction
+							}))
+						)}`
+					]
+				: []),
 			'Propose the corrected calls now, with exact target ids from the loaded context, fixing the actual defects in this bounded stage. Do not expand the stage to every resolved commissioned change. Defer dependent calls until prerequisite receipts return their IDs. They will be reviewed again before anything executes.',
+			'If the review found that the user did not ask for any change in this turn, make no tool call and answer the request from the loaded context instead.',
 			'Request clarification only if a choice genuinely belongs to the user. Do not narrate this correction to the user.'
 		].join(' ')
 	);
+}
+
+/**
+ * The repair keeps the surface the rejected proposal was made on when that
+ * surface still carries every tool the proposal used: the correction is the
+ * same act as the proposal, and an unchanged tool list keeps the provider's
+ * prompt prefix cache warm. Restoring the whole admitted surface here doubled
+ * the repair prompt (31k vs 16.6k prompt tokens, battery 2026-10-17
+ * cedar-02 rep 1) and missed the cache on every bounce. Any other case falls
+ * back to the admitted surface, as before. A correction that needs a tool the
+ * pass did not carry reaches it through the one-shot surface repair.
+ */
+function revisionSurface(
+	requestTools: readonly AgenticChatTurnProviderToolV1[],
+	availableTools: readonly AgenticChatTurnProviderToolV1[],
+	rejectedBatch: MutationBatch
+): readonly AgenticChatTurnProviderToolV1[] {
+	if (requestTools.length === 0) return availableTools;
+	const available = new Set(availableTools.map((tool) => tool.function.name));
+	const offered = new Set(requestTools.map((tool) => tool.function.name));
+	const coversBatch = rejectedBatch.calls.every((call) => offered.has(call.name));
+	// Never widen past the admitted surface, even when the pass had extra tools.
+	const withinAdmitted = [...offered].every((name) => available.has(name));
+	return coversBatch && withinAdmitted ? requestTools : availableTools;
 }

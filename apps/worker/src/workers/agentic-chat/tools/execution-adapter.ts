@@ -56,7 +56,10 @@ import {
 import { runWithAbortableDeadline, throwIfAborted } from '../shared/abortable-deadline';
 import type { AgenticChatReadToolPortV1 } from '../turn/executor-contracts';
 import { AgenticChatProviderExecutionError } from '../provider/contracts';
-import { WorkerAgenticChatToolAccessAdapter } from './worker-access-adapter';
+import {
+	WorkerAgenticChatToolAccessAdapter,
+	WorkerTurnAgenticChatToolAccess
+} from './worker-access-adapter';
 import { createWorkerAgenticChatCalendarReadPort } from './calendar-read-port';
 import { createWorkerAgenticChatEmailReadPort } from './email-read-port';
 import { loadEmailScanProjectBrief } from './email-scan';
@@ -329,6 +332,15 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		string,
 		{ expiresAt: number; timezone: Promise<string | null> }
 	>();
+	/**
+	 * Per-turn project-access memo (pipeline audit S7), keyed like the security
+	 * state: a membership check that passed is not re-run for the rest of the
+	 * turn. Denials are never cached; a batch that may write drops it.
+	 */
+	private readonly turnAccess = new Map<
+		string,
+		{ expiresAt: number; access: WorkerTurnAgenticChatToolAccess }
+	>();
 	private readonly securityNow: () => number;
 	private readonly maxTurnSecurityStates: number;
 	private readonly maxTurnSecurityStatesPerUser: number;
@@ -560,7 +572,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						input.executionInput.claim.userId,
 						turnRunId
 					),
-					access: this.accessAdapterFor(input.executionInput.claim.userId),
+					access: this.turnAccessFor(input.executionInput.claim.userId, turnRunId),
 					calendar: this.turnCalendarPortFor(
 						input.executionInput.claim.userId,
 						turnRunId
@@ -954,6 +966,12 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 		turnRunId: string;
 		toolNames: readonly string[];
 	}): void {
+		// A batch that may write (anything that is not an allowlisted read) can
+		// change membership or delete a project: its reads re-check access, and
+		// nothing they learn is remembered past it.
+		this.turnAccessFor(input.userId, input.turnRunId).beginToolBatch(
+			input.toolNames.some((toolName) => !isAgenticChatProductionReadToolNameV1(toolName))
+		);
 		// An egress tool never pre-taints on its own behalf; otherwise
 		// `search_email_messages` would block itself the moment it was scheduled.
 		// Its own result still taints once it completes.
@@ -972,10 +990,31 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 	completeTurnSecurityState(userId: string, turnRunId: string): void {
 		this.turnSecurityStates.delete(this.turnSecurityStateKey(userId, turnRunId));
 		this.turnTimezones.delete(this.turnSecurityStateKey(userId, turnRunId));
+		this.turnAccess.delete(this.turnSecurityStateKey(userId, turnRunId));
 		this.turnCalendarPorts.delete(this.turnSecurityStateKey(userId, turnRunId));
 		// Dropping the email port also drops the turn's email call cap, character
 		// budget, and the set of message ids search authorized this turn.
 		this.turnEmailPorts.delete(this.turnSecurityStateKey(userId, turnRunId));
+	}
+
+	/** One project-access memo per (user, turn), memoized like the calendar port. */
+	private turnAccessFor(userId: string, turnRunId: string): WorkerTurnAgenticChatToolAccess {
+		const now = this.securityNow();
+		for (const [candidateId, entry] of this.turnAccess) {
+			if (entry.expiresAt <= now) this.turnAccess.delete(candidateId);
+		}
+		const stateKey = this.turnSecurityStateKey(userId, turnRunId);
+		const existing = this.turnAccess.get(stateKey);
+		if (existing) {
+			existing.expiresAt = now + this.turnSecurityStateTtlMs;
+			return existing.access;
+		}
+		const access = new WorkerTurnAgenticChatToolAccess(this.accessAdapterFor(userId));
+		// A saturated worker stops caching rather than growing the map.
+		if (this.turnAccess.size < this.maxTurnSecurityStates) {
+			this.turnAccess.set(stateKey, { expiresAt: now + this.turnSecurityStateTtlMs, access });
+		}
+		return access;
 	}
 
 	/**

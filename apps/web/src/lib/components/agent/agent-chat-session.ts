@@ -36,11 +36,15 @@ import type {
 import {
 	createToolPresenter,
 	extractCreatedEntityFromResult,
+	isQueryTargetTool,
 	toAwaitingChoiceAction,
+	toAwaitingChoiceVerb,
 	toFailureAction,
 	toolResultAwaitsUser,
-	toPastTenseAction
+	toPastTenseAction,
+	type ToolActivityLine
 } from './agent-chat-tool-presenter';
+import { describeToolOutcome } from './agent-chat-tool-outcome';
 import { isInternalAgenticControlToolName } from './agent-chat.constants';
 import { formatElapsedDuration } from './agent-chat-formatters';
 import { timelineItemsFromMessages } from './agent-chat-timeline';
@@ -410,16 +414,57 @@ export async function probeActiveTurnRun(
 import { resolveBrowserTimezone, syncBrowserTimezone } from '$lib/utils/browser-timezone-sync';
 export { resolveBrowserTimezone, syncBrowserTimezone };
 
+const AGENT_TURNS_WARMUP_URL = '/api/agent/v2/turns?warm=1';
+/** A booted function instance stays warm for minutes; reopening inside this window skips the GET. */
+const AGENT_TURNS_WARMUP_REUSE_MS = 60_000;
+let lastTurnsWarmupAtMs: number | null = null;
+
 /**
- * Opening the chat warms what the first turn needs before the user sends.
- * The legacy stream route's warmup GET went with that engine (one-engine
- * stage S8); storing the browser timezone is the work that remains, and the
- * worker turn route is warmed by the prepared-prompt prewarm POST.
+ * Boots the turn-admission function before the first send (S12). It is a
+ * separate Vercel function from prewarm, and its cold start cost ~1.3 s on the
+ * first send after idle. Fire-and-forget: never awaited, never throws. Returns
+ * whether a request was started.
+ */
+export function warmAgentChatTurnRoute(
+	options: { signal?: AbortSignal; nowMs?: number } = {}
+): boolean {
+	const nowMs = options.nowMs ?? Date.now();
+	if (options.signal?.aborted) return false;
+	if (lastTurnsWarmupAtMs !== null && nowMs - lastTurnsWarmupAtMs < AGENT_TURNS_WARMUP_REUSE_MS) {
+		return false;
+	}
+	lastTurnsWarmupAtMs = nowMs;
+	try {
+		void fetch(AGENT_TURNS_WARMUP_URL, {
+			method: 'GET',
+			cache: 'no-store',
+			credentials: 'same-origin',
+			signal: options.signal
+		}).catch(() => {
+			// Closed before it landed, or offline: let the next open try again.
+			lastTurnsWarmupAtMs = null;
+		});
+	} catch {
+		lastTurnsWarmupAtMs = null;
+		return false;
+	}
+	return true;
+}
+
+export function resetAgentChatTurnRouteWarmupForTests(): void {
+	lastTurnsWarmupAtMs = null;
+}
+
+/**
+ * Opening the chat warms what the first turn needs before the user sends: the
+ * browser timezone, and the turn-admission function (prewarm's POST runs in a
+ * different function, so it never warmed this one).
  */
 export async function warmAgentChatStreamTransport(
 	options: { signal?: AbortSignal } = {}
 ): Promise<boolean> {
 	if (options.signal?.aborted) return false;
+	warmAgentChatTurnRoute({ signal: options.signal });
 	try {
 		return await syncBrowserTimezone();
 	} catch (err) {
@@ -496,14 +541,42 @@ function getRestoredToolPresenter(): ReturnType<typeof createToolPresenter> {
 	return restoredToolPresenter;
 }
 
-function formatRestoredToolActivity(source: RestoredToolActivitySource): string {
+/**
+ * Presenter for one restored chat: it learns entity names from every stored
+ * tool result first, so a line whose args hold only an id ("Listed goals")
+ * still names its project when another call in the chat loaded it.
+ */
+function createRestoredNamePresenter(
+	sources: RestoredToolActivitySource[]
+): ReturnType<typeof createToolPresenter> {
+	const presenter = createToolPresenter({
+		getContextType: () => null,
+		getEntityId: () => undefined,
+		getContextLabel: () => null,
+		getProjectFocus: () => null,
+		getResolvedProjectFocus: () => null,
+		isDev: false
+	});
+	for (const source of sources) {
+		if (!source.success) continue;
+		const record = parseRecord(source.result) ?? parseRecord(source.resultPreview);
+		if (record) presenter.indexEntitiesFromPayload(record);
+	}
+	return presenter;
+}
+
+function formatRestoredToolActivity(
+	source: RestoredToolActivitySource,
+	presenter: ReturnType<typeof createToolPresenter> = getRestoredToolPresenter()
+): { content: string; line: Omit<ToolActivityLine, 'text'>; outcome?: string } {
 	const args = parseRecord(source.arguments) ?? parseRecord(source.argumentPreview) ?? {};
 	const resultRecord = parseRecord(source.result) ?? parseRecord(source.resultPreview);
 	const formattedDuration = formatElapsedDuration(source.durationMs);
 	const durationSuffix = formattedDuration ? ` (${formattedDuration})` : '';
-	const errorSuffix = source.errorMessage ? ` - ${compactLabel(source.errorMessage, 120)}` : '';
+	const error = source.errorMessage ? compactLabel(source.errorMessage, 120) : undefined;
+	const errorSuffix = error ? ` - ${error}` : '';
 
-	const descriptor = getRestoredToolPresenter().describeToolDisplay(source.toolName, args, {
+	const descriptor = presenter.describeToolDisplay(source.toolName, args, {
 		resultRecord,
 		genericPrefix: true,
 		gatewayOp: source.gatewayOp ?? null
@@ -512,21 +585,49 @@ function formatRestoredToolActivity(source: RestoredToolActivitySource): string 
 	if (!descriptor) {
 		// Tool has no formatter and no CRUD prefix: keep a readable last-resort label.
 		const readable = source.toolName.replace(/_/g, ' ');
-		if (source.success) return `Used ${readable}${durationSuffix}`;
-		return `Failed to run ${readable}${errorSuffix}`;
+		if (source.success) {
+			const verb = `Used ${readable}`;
+			return { content: `${verb}${durationSuffix}`, line: { verb, tone: 'done' } };
+		}
+		const verb = `Failed to run ${readable}`;
+		return {
+			content: `${verb}${errorSuffix}`,
+			line: { verb, tone: 'failed', ...(error ? { error } : {}) }
+		};
 	}
 
-	const targetSuffix = descriptor.target ? `: "${descriptor.target}"` : '';
+	const target = descriptor.target;
+	const targetParts = target
+		? { target, ...(isQueryTargetTool(source.toolName) ? { quoted: true } : {}) }
+		: {};
+	const targetSuffix = target ? `: "${target}"` : '';
 	if (
 		source.success &&
 		(source.requiresUserAction === true || toolResultAwaitsUser(resultRecord))
 	) {
-		return `${toAwaitingChoiceAction(descriptor.action, descriptor.target)}${durationSuffix}`;
+		return {
+			content: `${toAwaitingChoiceAction(descriptor.action, target)}${durationSuffix}`,
+			line: {
+				verb: toAwaitingChoiceVerb(descriptor.action),
+				tone: 'awaiting',
+				...targetParts
+			}
+		};
 	}
 	if (source.success) {
-		return `${toPastTenseAction(descriptor.action)}${targetSuffix}${durationSuffix}`;
+		const verb = toPastTenseAction(descriptor.action);
+		const outcome = describeToolOutcome(source.toolName, resultRecord);
+		return {
+			content: `${verb}${targetSuffix}${durationSuffix}`,
+			line: { verb, tone: 'done', ...targetParts },
+			...(outcome ? { outcome } : {})
+		};
 	}
-	return `Failed to ${toFailureAction(descriptor.action)}${targetSuffix}${errorSuffix}`;
+	const verb = `Failed to ${toFailureAction(descriptor.action)}`;
+	return {
+		content: `${verb}${targetSuffix}${errorSuffix}`,
+		line: { verb, tone: 'failed', ...targetParts, ...(error ? { error } : {}) }
+	};
 }
 
 function sortRestoredToolSources(
@@ -638,41 +739,48 @@ function buildRestoredToolBlock(params: {
 	sources: RestoredToolActivitySource[];
 	/** The turn these tool calls ran in; "Working from" chips key their read ticks on it. */
 	turnRunId?: string | null;
+	/** Name-aware presenter for the whole chat (see createRestoredNamePresenter). */
+	presenter?: ReturnType<typeof createToolPresenter>;
 }): ThinkingBlockMessage | null {
 	const sortedSources = uniqueToolSources(params.sources).sort(sortRestoredToolSources);
 	if (sortedSources.length === 0) return null;
 
-	const activities: ActivityEntry[] = sortedSources.map((source) => ({
-		id: `restored-tool-${source.source}-${source.id}`,
-		content: formatRestoredToolActivity(source),
-		timestamp: new Date(source.createdAt ?? params.timestamp ?? Date.now()),
-		activityType: 'tool_call',
-		status: source.success ? 'completed' : 'failed',
-		toolCallId: source.id,
-		metadata: {
-			restored: true,
-			source: source.source,
-			toolName: source.toolName,
-			toolCategory: source.toolCategory ?? undefined,
-			gatewayOp: source.gatewayOp ?? undefined,
-			helpPath: source.helpPath ?? undefined,
-			toolExecutionId: source.source === 'tool_execution' ? source.id : undefined,
-			toolCallId: source.source === 'metadata_trace' ? source.id : undefined,
-			arguments: source.arguments ?? source.argumentPreview,
-			result: source.result ?? source.resultPreview,
-			resultCount: source.resultCount ?? undefined,
-			zeroResult: source.zeroResult ?? undefined,
-			requiresUserAction: source.requiresUserAction ?? undefined,
-			affectedEntities: source.affectedEntities ?? undefined,
-			error: source.errorMessage ?? undefined,
+	const activities: ActivityEntry[] = sortedSources.map((source) => {
+		const formatted = formatRestoredToolActivity(source, params.presenter);
+		return {
+			id: `restored-tool-${source.source}-${source.id}`,
+			content: formatted.content,
+			timestamp: new Date(source.createdAt ?? params.timestamp ?? Date.now()),
+			activityType: 'tool_call',
 			status: source.success ? 'completed' : 'failed',
-			durationMs: source.durationMs ?? undefined,
-			tokensConsumed: source.tokensConsumed ?? undefined,
-			...(source.toolName === 'web_navigate'
-				? { progressSteps: buildWebNavigateTrailFromResult(source.result) }
-				: {})
-		}
-	}));
+			toolCallId: source.id,
+			metadata: {
+				restored: true,
+				line: formatted.line,
+				...(formatted.outcome ? { outcome: formatted.outcome } : {}),
+				source: source.source,
+				toolName: source.toolName,
+				toolCategory: source.toolCategory ?? undefined,
+				gatewayOp: source.gatewayOp ?? undefined,
+				helpPath: source.helpPath ?? undefined,
+				toolExecutionId: source.source === 'tool_execution' ? source.id : undefined,
+				toolCallId: source.source === 'metadata_trace' ? source.id : undefined,
+				arguments: source.arguments ?? source.argumentPreview,
+				result: source.result ?? source.resultPreview,
+				resultCount: source.resultCount ?? undefined,
+				zeroResult: source.zeroResult ?? undefined,
+				requiresUserAction: source.requiresUserAction ?? undefined,
+				affectedEntities: source.affectedEntities ?? undefined,
+				error: source.errorMessage ?? undefined,
+				status: source.success ? 'completed' : 'failed',
+				durationMs: source.durationMs ?? undefined,
+				tokensConsumed: source.tokensConsumed ?? undefined,
+				...(source.toolName === 'web_navigate'
+					? { progressSteps: buildWebNavigateTrailFromResult(source.result) }
+					: {})
+			}
+		};
+	});
 	const timestamp = params.timestamp ?? sortedSources[0]?.createdAt ?? new Date().toISOString();
 	const failedCount = activities.filter((activity) => activity.status === 'failed').length;
 
@@ -689,7 +797,7 @@ function buildRestoredToolBlock(params: {
 		...(params.turnRunId ? { metadata: { turn_run_id: params.turnRunId } } : {}),
 		activities,
 		status: 'completed',
-		isCollapsed: false
+		isCollapsed: true
 	};
 }
 
@@ -796,6 +904,7 @@ function mapLoadedMessagesToUI(
 	const toolSources = mapToolExecutionsToSources(toolExecutions).filter(
 		(source) => !source.messageId || loadedMessageIds.has(source.messageId)
 	);
+	const toolLinePresenter = createRestoredNamePresenter(toolSources);
 	const sourcesByMessageId = new Map<string, RestoredToolActivitySource[]>();
 	const sourcesByClientTurnId = new Map<string, RestoredToolActivitySource[]>();
 	for (const source of toolSources) {
@@ -852,7 +961,8 @@ function mapLoadedMessagesToUI(
 					idSuffix: msg.id,
 					timestamp: msg.created_at,
 					sources: blockSources,
-					turnRunId: restoredTurnRunId(msg, blockSources)
+					turnRunId: restoredTurnRunId(msg, blockSources),
+					presenter: toolLinePresenter
 				});
 				if (restoredBlock) {
 					uiMessages.push(restoredBlock);
@@ -901,7 +1011,8 @@ function mapLoadedMessagesToUI(
 	const unlinkedBlock = buildRestoredToolBlock({
 		idSuffix: 'unlinked',
 		timestamp: unlinkedSources[0]?.createdAt,
-		sources: unlinkedSources
+		sources: unlinkedSources,
+		presenter: toolLinePresenter
 	});
 	if (unlinkedBlock) {
 		uiMessages.push(unlinkedBlock);

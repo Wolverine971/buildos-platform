@@ -13,6 +13,7 @@ import {
 	requireRecord
 } from './canonical';
 import { AgenticChatProviderNetworkError } from './errors';
+import { captureReasoningDelta, captureToolCallIds } from './reasoning-replay';
 import { providerFrameError } from './retry';
 
 const REJECTED_TOOL_NAME_PATTERN = /^[A-Za-z0-9_.:-]{1,256}$/;
@@ -96,6 +97,8 @@ export function parseSseLine(
 			state.reasoningBytes += Buffer.byteLength(reasoning, 'utf8');
 			state.reasoningChars += reasoning.length;
 		}
+		// Replay variant only: keep this attempt's reasoning for the rest of the turn.
+		if (state.reasoningCapture) captureReasoningDelta(state.reasoningCapture, delta);
 		if (delta.content !== undefined && delta.content !== null) {
 			const normalizedContent = normalizeStreamingContent(
 				delta.content,
@@ -116,6 +119,9 @@ export function parseSseLine(
 				}
 			}
 			observeToolCallDelta(state, delta.tool_calls);
+			if (state.reasoningCapture) {
+				captureToolCallIds(state.reasoningCapture, delta.tool_calls);
+			}
 			events.push({ type: 'tool_call', toolCall: delta.tool_calls });
 		}
 		if (state.firstProgressAtMs === null && state.generatedBytes + state.reasoningBytes > 0) {

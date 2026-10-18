@@ -42,7 +42,7 @@ describe('bindGatewayClientSignal', () => {
 				.from('onto_documents')
 				.update({ title: 'New title' })
 				.eq('id', DOCUMENT_ID)
-				.select('*')
+				.select('id, title')
 				.single()
 		);
 		await vi.waitFor(() => expect(sent).toHaveLength(1));

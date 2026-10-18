@@ -72,6 +72,7 @@ import {
 	isSemanticDispositionToolName
 } from './review/disposition';
 import { buildMutationBatchRevisionRequest } from './review/mutation-batch';
+import { TurnWriteCommissionLedger } from './review/review-telemetry';
 import {
 	type AgenticChatFeedbackToolCall as NormalizedProviderToolCall,
 	completedProviderCallToChatToolCall,
@@ -193,6 +194,21 @@ export type ToolRoundStreamState = {
 	getBatchRevisionCount(): number;
 	/** Tools that read externally authored content earlier in this turn (S1). */
 	getExternalContentSources(): ReadonlySet<string>;
+	/**
+	 * A shared-document confirm card or a proposal card (tasker 122) is out
+	 * and waiting for the user's click. The one definition every card-aware
+	 * rule reads: completion checks, the unsaved-change notice, the write
+	 * hold, and the commission shadow log.
+	 */
+	awaitingUserCard(): boolean;
+	/**
+	 * AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES: keep these mutation schemas off
+	 * every acting surface for the rest of the turn. Never applied once a card
+	 * is out.
+	 */
+	holdWriteTools(toolNames: readonly string[]): void;
+	/** The turn's write-commission shadow log (S5); content-free. */
+	readonly writeCommission: TurnWriteCommissionLedger;
 	takePreMutationSemanticDispositionGate(
 		request: ClientRequest,
 		calls: readonly CompletedProviderToolCall[]
@@ -310,7 +326,12 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	readonly executionInput: AgenticChatProviderInputV1['executionInput'];
 
 	private readonly baseRequest: ClientRequest;
-	private readonly admittedTools: readonly AgenticChatTurnProviderToolV1[];
+	// The admitted surface as prepared. Every acting surface reads it through
+	// `admittedTools`, which drops schemas the uncommissioned-write hold took
+	// off this turn, so no later pass, repair, or gate can re-offer them.
+	private readonly preparedAdmittedTools: readonly AgenticChatTurnProviderToolV1[];
+	private heldWriteToolNames: ReadonlySet<string> = new Set();
+	readonly writeCommission = new TurnWriteCommissionLedger();
 	private readonly lease: AgenticChatProviderCapacityLeaseV1;
 	private readonly semanticReviewRequired: boolean;
 	private readonly mutationBatchLaneEnabled: boolean;
@@ -368,7 +389,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	// description tells the model to call declare_turn_contract early), but a
 	// declaration on such a surface is answered with a read-only continuation
 	// instead of two reviewer passes and a doomed write.
-	private readonly surfaceCanWrite: boolean;
+	private readonly preparedSurfaceCanWrite: boolean;
 	// Ids that a read this turn returned as the only entity of their kind
 	// (id → kind). Together with the focus entity and the ids the user typed,
 	// these are the targets the direct lane may update without a reviewer.
@@ -402,7 +423,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.baseRequest = init.baseRequest;
 		this.turnRunId = init.baseRequest.turnRunId;
 		this.executionInput = init.executionInput;
-		this.admittedTools = init.admittedTools;
+		this.preparedAdmittedTools = init.admittedTools;
 		this.lease = init.lease;
 		this.semanticReviewRequired = init.semanticReviewRequired;
 		this.mutationBatchLaneEnabled = init.mutationBatchLaneEnabled;
@@ -411,7 +432,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.currentRequest = init.initialRequest;
 		this.phase =
 			init.initialRequest.semanticDispositionGate === true ? 'disposition_gate' : 'opening';
-		this.surfaceCanWrite = init.admittedTools.some((tool) =>
+		this.preparedSurfaceCanWrite = init.admittedTools.some((tool) =>
 			reviewedAgenticChatMutationSpecV1(tool.function.name)
 		);
 		this.currentUserMessage = init.executionInput.requestPayload.message;
@@ -448,6 +469,32 @@ export class ProviderTurnState implements ToolRoundStreamState {
 
 	getAdmittedTools(): readonly AgenticChatTurnProviderToolV1[] {
 		return this.admittedTools;
+	}
+
+	private get admittedTools(): readonly AgenticChatTurnProviderToolV1[] {
+		if (this.heldWriteToolNames.size === 0) return this.preparedAdmittedTools;
+		return this.preparedAdmittedTools.filter(
+			(tool) => !this.heldWriteToolNames.has(tool.function.name)
+		);
+	}
+
+	// A held turn answers a contract declaration as read-only, exactly like a
+	// surface that never had write tools.
+	private get surfaceCanWrite(): boolean {
+		return (
+			this.preparedSurfaceCanWrite &&
+			this.admittedTools.some((tool) => reviewedAgenticChatMutationSpecV1(tool.function.name))
+		);
+	}
+
+	holdWriteTools(toolNames: readonly string[]): void {
+		// Same gate as every card-aware rule: a turn whose card is out is never
+		// reshaped or retried. The hold only ever runs on the opening pass,
+		// before any card exists; this keeps that true by construction.
+		if (this.awaitingUserCard()) return;
+		const held = toolNames.filter((name) => reviewedAgenticChatMutationSpecV1(name) !== null);
+		if (held.length === 0) return;
+		this.heldWriteToolNames = new Set([...this.heldWriteToolNames, ...held]);
 	}
 
 	advance(event: TurnPhaseEvent): void {
@@ -1563,7 +1610,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	 * confirmation, a clarification) leave the rest of the request owed, and
 	 * the completion checks still apply.
 	 */
-	private awaitingUserCard(): boolean {
+	awaitingUserCard(): boolean {
 		return this.turnToolExecutions.some(
 			(execution) =>
 				isPendingSharedDocumentPreview(execution) ||

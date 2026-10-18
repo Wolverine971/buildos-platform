@@ -5,6 +5,7 @@ import type {
 	AgenticChatTurnProviderClientPortV1
 } from '../contracts';
 import type { LocalPromptDump } from '../../effects/prompt-dump';
+import type { ReasoningCapture } from './reasoning-replay';
 
 export type AgenticChatOpenRouterProviderRoutingV1 = {
 	allow_fallbacks?: boolean;
@@ -129,6 +130,12 @@ export type StreamState = {
 	firstProgressAtMs: number | null;
 	toolCalls: Map<number, ObservedToolCall>;
 	toolCallsObservable: boolean;
+	/**
+	 * AGENTIC_CHAT_CONTINUATION_REASONING=replay only: this attempt's reasoning
+	 * text and tool-call ids, held in memory for the rest of the turn. Absent
+	 * otherwise, and then nothing below reads or keeps reasoning text.
+	 */
+	reasoningCapture?: ReasoningCapture;
 };
 
 /**

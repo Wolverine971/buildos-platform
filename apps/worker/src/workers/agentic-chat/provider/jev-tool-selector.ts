@@ -51,7 +51,24 @@ export type JevToolSelectionReceipt = {
 	costUsd?: number;
 	probabilities?: Record<string, number>;
 	commissionedWriteToolNames?: string[];
+	/** AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES: write schemas withheld from this turn. */
+	heldWriteToolNames?: string[];
 };
+
+/**
+ * Shown when AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES withholds the write
+ * schemas from a turn Jev judged not to commission a change. A false negative
+ * must end honestly: nothing claimed as done, and the user can confirm.
+ */
+export const HELD_WRITES_INSTRUCTION =
+	'No write tool is callable in this turn: the request reads as a question, analysis, or advice rather than a change to make now. Answer from reads. If the user did ask you to change something, say plainly that nothing was changed yet and ask them to confirm the change; never describe a change as made.';
+
+/** Every admitted mutation schema on the request (structured: the reviewed mutation catalog). */
+export function writeToolNamesOn(tools: readonly AgenticChatTurnProviderToolV1[]): string[] {
+	return tools
+		.map((tool) => tool.function.name)
+		.filter((name) => reviewedAgenticChatMutationSpecV1(name) !== null);
+}
 
 const REQUIRED_CONTROLS = new Set([
 	'declare_turn_contract',
@@ -260,6 +277,14 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 			apiKey: string;
 			/** `shadow` classifies in the background and never changes the turn. */
 			mode: JevToolSelectionMode;
+			/**
+			 * AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES (default off): when Jev scores
+			 * the current message below JEV_WRITE_COMMISSION_THRESHOLD, the opening
+			 * pass carries no mutation schema and the request names the withheld
+			 * tools so the turn state keeps them off every later surface. `on` mode
+			 * only; reads, controls, and proposal cards stay selectable.
+			 */
+			holdUncommissionedWrites?: boolean;
 			fetchImpl?: typeof fetch;
 			timeoutMs?: number;
 			usage?: UsageLogger;
@@ -312,7 +337,12 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 			request.tools.length <= 3
 		) {
 			emit();
-			return request;
+			return withSelectionOutcome(
+				request,
+				receipt,
+				null,
+				this.options.holdUncommissionedWrites
+			);
 		}
 		const body = buildJevToolSelectionBody(request);
 		const serialized = body && JSON.stringify(body);
@@ -324,7 +354,12 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 		) {
 			receipt.reason = 'input_limit';
 			emit();
-			return request;
+			return withSelectionOutcome(
+				request,
+				receipt,
+				null,
+				this.options.holdUncommissionedWrites
+			);
 		}
 		const remaining = request.budget
 			? request.budget.deadlineAtMs - Date.now() - 5_000
@@ -333,7 +368,12 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 		if (timeoutMs < 100) {
 			receipt.reason = 'turn_budget';
 			emit();
-			return request;
+			return withSelectionOutcome(
+				request,
+				receipt,
+				null,
+				this.options.holdUncommissionedWrites
+			);
 		}
 		const usageLogId = randomUUID();
 		const dump = startLocalPromptDump(
@@ -348,6 +388,7 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 		);
 		let responseBody: Record<string, unknown> | null = null;
 		let selectedRequest = request;
+		let writeCommission: number | null = null;
 		try {
 			responseBody = await runWithAbortableDeadline({
 				parentSignal: request.signal,
@@ -398,8 +439,22 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 			}
 			// Tool names and scores only: enough to re-tune the threshold offline.
 			receipt.probabilities = probabilities;
+			writeCommission = probabilities[JEV_CURRENT_WRITE_COMMISSION_QUESTION] ?? null;
+			// The hold reads the same structured answer as the unsaved-change
+			// notice, and only the reviewed mutation catalog decides what a write
+			// is. Proposal cards (propose_project_*) are reads and stay selectable.
+			const heldWriteToolNames =
+				this.options.holdUncommissionedWrites &&
+				(writeCommission ?? 0) < JEV_WRITE_COMMISSION_THRESHOLD
+					? writeToolNamesOn(request.tools)
+					: [];
+			const held = new Set(heldWriteToolNames);
+			// Select from the unheld surface, so a held write pulls in no
+			// supporting reads either.
 			const tools = selectJevToolDefinitions(
-				request.tools,
+				held.size > 0
+					? request.tools.filter((t) => !held.has(t.function.name))
+					: request.tools,
 				probabilities,
 				JEV_TOOL_INCLUSION_THRESHOLD,
 				request.toolSelectionPins ?? []
@@ -412,6 +467,13 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 				selectedRequest = appendSystemInstruction(
 					{ ...request, tools, toolChoice: tools.length ? 'auto' : 'none' },
 					`Tool relevance selection: the callable schemas for this pass are ${receipt.selectedToolNames.join(', ') || 'none'}. Earlier generic tool or skill menus do not describe this pass. Use the supplied schemas; their selection is not permission to act. Follow the existing user-intent and execution rules.`
+				);
+			}
+			if (heldWriteToolNames.length > 0) {
+				receipt.heldWriteToolNames = heldWriteToolNames;
+				selectedRequest = appendSystemInstruction(
+					{ ...selectedRequest, heldWriteToolNames },
+					HELD_WRITES_INSTRUCTION
 				);
 			}
 			const commissionedWriteToolNames = commissionedWriteToolNamesFrom(
@@ -438,7 +500,12 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 				this.logUsage(request, receipt, responseBody, usageLogId, started, dump);
 		}
 		request.signal.throwIfAborted();
-		return selectedRequest;
+		return withSelectionOutcome(
+			selectedRequest,
+			receipt,
+			writeCommission,
+			this.options.holdUncommissionedWrites
+		);
 	}
 
 	private logUsage(
@@ -510,6 +577,27 @@ export class JevToolSelector implements AgenticChatToolSelectorPort {
 			reportError(error);
 		}
 	}
+}
+
+/**
+ * Jev's structured verdict rides the request for the turn's own bookkeeping
+ * (the write-commission shadow log, the turn-rules playbook pick). Status and
+ * a probability only; never message text.
+ */
+function withSelectionOutcome(
+	request: AgenticChatTurnProviderRequestV1,
+	receipt: JevToolSelectionReceipt,
+	writeCommission: number | null,
+	holdEnabled: boolean | undefined
+): AgenticChatTurnProviderRequestV1 {
+	return {
+		...request,
+		toolSelectionOutcome: {
+			status: receipt.status,
+			writeCommission: receipt.status === 'selected' ? writeCommission : null,
+			holdEnabled: holdEnabled === true
+		}
+	};
 }
 
 function record(value: unknown): Record<string, unknown> {

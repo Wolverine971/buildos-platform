@@ -47,7 +47,11 @@ import {
 	memoizeCompletedRead,
 	resolveMemoServedExecution
 } from '../src/workers/agentic-chat/provider/feedback';
-import { selectJevToolDefinitions } from '../src/workers/agentic-chat/provider/jev-tool-selector';
+import {
+	JevToolSelector,
+	selectJevToolDefinitions
+} from '../src/workers/agentic-chat/provider/jev-tool-selector';
+import type { AgenticChatExecutionObservationPortV1 } from '../src/workers/agentic-chat/effects/execution-observation';
 import { AgenticChatProviderCapacity } from '../src/workers/agentic-chat/provider/provider-capacity';
 import { AgenticChatTurnProviderAdapter } from '../src/workers/agentic-chat/provider/turn-provider';
 // Installs the worker's loop catalog (reviewed reads + mutation identities).
@@ -539,5 +543,113 @@ describe('a proposal card ends the turn as a read-only answer', () => {
 		);
 		expect(closingTools).not.toContain('update_onto_task');
 		expect(closingTools).toContain('get_project_overview');
+	});
+	// AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES (audit 2026-10-17): proposal tools
+	// are reads, so the hold never takes them, and a card turn is never
+	// reshaped, bounced, or retried. The shadow log counts it as a card turn.
+	it('keeps the proposal tools selectable under the write hold and never retries the card turn', async () => {
+		const reply = 'I put a card below: click it to nest DJ Internal under Wayne Strategies.';
+		const client = clientWithRounds([
+			[
+				{
+					type: 'tool_call',
+					toolCall: [
+						{
+							index: 0,
+							id: 'propose-1',
+							type: 'function',
+							function: {
+								name: 'propose_project_parent',
+								arguments: JSON.stringify(NEST_ARGS)
+							}
+						}
+					]
+				},
+				{ type: 'done', finishedReason: 'tool_calls' }
+			],
+			[
+				{ type: 'text', content: reply },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		]);
+		const scores: Record<string, number> = {
+			current_turn_write_commission: 0.2,
+			propose_project_parent: 0.95,
+			get_project_overview: 0.6,
+			update_onto_task: 0.6
+		};
+		const fetchImpl = vi.fn(async (_url: string, init: Parameters<typeof fetch>[1]) => {
+			const body = JSON.parse(String(init?.body)) as { questions: Record<string, unknown> };
+			return new Response(
+				JSON.stringify({
+					id: 'gen-hold-1',
+					model: 'typesafe/jev-1.13-20260917',
+					answers: Object.fromEntries(
+						Object.keys(body.questions).map((name) => [
+							name,
+							{ type: 'noul', noul: scores[name] ?? 0.01 }
+						])
+					),
+					usage: { input_tokens: 10, output_tokens: 2, cost: 0 }
+				}),
+				{ status: 200, headers: { 'Content-Type': 'application/json' } }
+			);
+		});
+		const observe = vi.fn<AgenticChatExecutionObservationPortV1['observe']>(
+			async () => undefined
+		);
+		const invocation = await new AgenticChatTurnProviderAdapter(
+			{
+				client,
+				capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
+				toolSelector: new JevToolSelector({
+					apiKey: 'provider-secret',
+					mode: 'on',
+					holdUncommissionedWrites: true,
+					fetchImpl: fetchImpl as unknown as typeof fetch
+				}),
+				executionObservations: { observe }
+			},
+			2_000,
+			16,
+			{ updateOntoTask: true }
+		).prepare({
+			executionInput: globalSurfaceInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const opening = await collect(invocation.stream());
+		const openingTools = client.stream.mock.calls[0]![0].tools.map(
+			(tool) => tool.function.name
+		);
+		expect(openingTools).toContain('propose_project_parent');
+		expect(openingTools).not.toContain('update_onto_task');
+		expect(opening.find((step) => step.type === 'read_tool')).toMatchObject({
+			toolName: 'propose_project_parent'
+		});
+
+		const closing = await collect(
+			invocation.continueWithToolResults!({ round: 2, results: [cardFeedback('propose-1')] })
+		);
+		expect(
+			closing
+				.filter((step) => step.type === 'text_delta')
+				.map((step) => (step as { text: string }).text)
+				.join('')
+		).toBe(reply);
+		expect(closing.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+		expect(client.stream).toHaveBeenCalledTimes(2);
+		const receipts = observe.mock.calls
+			.map(([input]) => input)
+			.filter((input) => input.eventType === 'provider_commission_observed');
+		expect(receipts).toHaveLength(1);
+		expect(receipts[0]!.payload).toMatchObject({
+			awaiting_user_card: true,
+			writes_held: true,
+			hold_enabled: true,
+			proposed_write_tools: [],
+			jev_write_commission: 0.2
+		});
 	});
 });

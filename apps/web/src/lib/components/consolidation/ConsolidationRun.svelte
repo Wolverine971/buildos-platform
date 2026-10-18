@@ -31,12 +31,18 @@
 	let {
 		initial,
 		projectName,
-		scopeIsFamily = true
+		scopeIsFamily = true,
+		embedded = false,
+		onOpenRun
 	}: {
 		initial: ConsolidationRunView;
 		projectName: string;
 		/** The projects are a parent and its sub-projects (else any projects picked together). */
 		scopeIsFamily?: boolean;
+		/** Shown inside the chat modal's side panel: no page header or back link (the panel has its own). */
+		embedded?: boolean;
+		/** Opens another run in place (the chat panel) instead of navigating to its page. */
+		onOpenRun?: (runId: string) => void;
 	} = $props();
 
 	// Polled from the server while the worker is busy; replaced after every action.
@@ -293,7 +299,9 @@
 						: null;
 				throw new Error(json?.error || 'Could not start the consolidation.');
 			}
-			await goto(`/projects/${run.root_project_id}/consolidate/${json?.data?.run_id}`);
+			const nextRunId = String(json?.data?.run_id ?? '');
+			if (onOpenRun) onOpenRun(nextRunId);
+			else await goto(`/projects/${run.root_project_id}/consolidate/${nextRunId}`);
 		} catch (error) {
 			actionError = error instanceof Error ? error.message : 'That did not work.';
 		} finally {
@@ -338,15 +346,17 @@
 
 <div class="grid gap-6">
 	<header class="grid gap-2">
-		<a
-			href="/projects/{run.root_project_id}"
-			class="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-		>
-			<ArrowLeft class="h-4 w-4" />{projectName}
-		</a>
-		<h1 class="text-2xl font-semibold text-foreground">
-			{isCheck ? 'Duplicate check' : 'Consolidate docs'}
-		</h1>
+		{#if !embedded}
+			<a
+				href="/projects/{run.root_project_id}"
+				class="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+			>
+				<ArrowLeft class="h-4 w-4" />{projectName}
+			</a>
+			<h1 class="text-2xl font-semibold text-foreground">
+				{isCheck ? 'Duplicate check' : 'Consolidate docs'}
+			</h1>
+		{/if}
 		<p class="text-sm text-muted-foreground">
 			{projectName}{projectCount > 1
 				? ` and ${projectCount - 1} ${otherNoun}${projectCount === 2 ? '' : 's'}`
@@ -364,7 +374,10 @@
 				<p class="text-sm text-muted-foreground">
 					{isCheck
 						? 'A quick check for duplicates. Nothing changes.'
-						: 'Nothing changes until you apply.'} You can leave this page; the work continues.
+						: 'Nothing changes until you apply.'}
+					{embedded
+						? 'You can keep chatting; the work continues.'
+						: 'You can leave this page; the work continues.'}
 				</p>
 			</div>
 			<Button
@@ -448,7 +461,13 @@
 				{#if actionError}
 					<p class="text-destructive" role="alert">
 						{actionError}
-						{#if openRunId}
+						{#if openRunId && onOpenRun}
+							<button
+								type="button"
+								class="underline"
+								onclick={() => openRunId && onOpenRun(openRunId)}>Open it</button
+							>
+						{:else if openRunId}
 							<a
 								class="underline"
 								href="/projects/{run.root_project_id}/consolidate/{openRunId}"

@@ -203,6 +203,25 @@ describe('ContextGatheringLedger', () => {
 		expect(fourth.forceSynthesis).toBe(true);
 	});
 
+	// Audit 2026-10-17 S8: read_document_section takes several anchors per call.
+	it('counts a section read with new anchors as new evidence', () => {
+		const turn = driver();
+		const sectionRead = (anchors: string[]) => [
+			readExecution(
+				'read_document_section',
+				{ document_id: 'doc-1', anchors },
+				{ document_id: 'doc-1', content: 'text' }
+			)
+		];
+		expect(turn.observe(READ_PATTERN, sectionRead(['scope'])).status.status).toBe('open');
+		expect(turn.observe(READ_PATTERN, sectionRead(['budget', 'risks'])).status.status).toBe(
+			'open'
+		);
+		expect(turn.observe(READ_PATTERN, sectionRead(['budget', 'risks'])).status.status).toBe(
+			'narrowing'
+		);
+	});
+
 	it('never steps the status down between write rounds', () => {
 		const turn = driver();
 		turn.observe(READ_PATTERN, freshRead(1));

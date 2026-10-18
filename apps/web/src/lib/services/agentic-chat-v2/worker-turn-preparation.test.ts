@@ -47,6 +47,24 @@ function toolDefinitions(names: string[]) {
 	}));
 }
 
+type PlaybookCandidateSection = {
+	id: string;
+	title: string;
+	content: string;
+	slots: { skillId: string; entityKind: string; examples: Record<string, string> };
+};
+
+/** The operational playbook candidates admission appended to the artifact. */
+function playbookCandidates(result: {
+	args: { p_artifact_prepared: unknown };
+}): PlaybookCandidateSection[] {
+	const prepared = result.args.p_artifact_prepared as { promptSections?: unknown[] };
+	return (prepared.promptSections ?? []).filter(
+		(section): section is PlaybookCandidateSection =>
+			(section as { id?: unknown })?.id === 'operational_playbook_candidate'
+	);
+}
+
 function buildWhitespaceBoundaryMessage(targetLength: number, suffix: string): string {
 	const prefix = 'I want to write the book that is my life.';
 	const trailingFillerLength = targetLength - 1_200 - suffix.length;
@@ -1057,11 +1075,12 @@ describe('Agentic Chat worker turn preparation', () => {
 		);
 	});
 
-	// 2026-09-02 turn executor audit, Finding 4 / Decision 4: operational
-	// skills reach the worker through a deterministic intent map keyed off the
-	// mounted tools, the preload is recorded for telemetry and continuity, and
-	// the write rules key off intent rather than tool presence.
-	it('preloads task_management from mutation intent on a project write surface and records it', async () => {
+	// Audit 2026-10-17 Q1: admission no longer picks an operational playbook
+	// from the message (the regex lexicon is gone). It ships every playbook the
+	// mounted tools can honor as an appended artifact section, and the worker
+	// picks one from Jev's structured write commission after the user message
+	// (apps/worker/src/workers/agentic-chat/provider/turn-rules.ts).
+	it('ships operational playbook candidates off the mounted tools and picks none from the message', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
 			...mocks.resolveFastChatTurnPreparation(),
 			selectedSurfaceProfile: 'project',
@@ -1094,24 +1113,68 @@ describe('Agentic Chat worker turn preparation', () => {
 		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({
-				skillGatePreload: expect.objectContaining({
-					skillId: 'task_management',
-					source: 'operational_intent',
-					promptContent: expect.stringContaining('update_onto_task')
-				}),
-				// The skill preload is a separate router; the situation no longer
-				// reads the message, so a fresh write turn has no write situation.
+				skillGatePreload: null,
+				// The situation never reads the message, so a fresh write turn has
+				// no write situation.
 				turnSituation: expect.objectContaining({ writeIntent: false, workerBound: true }),
+				turnRulesPlacement: 'after_user_message',
 				scaffold: expect.objectContaining({ dynamicSkillTools: false })
 			})
 		);
-		expect(result.args.p_user_message_metadata).toMatchObject({
-			skill_preloaded_id: 'task_management',
-			skill_preload_source: 'operational_intent'
+		const candidates = playbookCandidates(result);
+		expect(candidates.map((section) => section.slots.skillId)).toEqual([
+			'task_management',
+			'document_workspace'
+		]);
+		expect(candidates[0]).toMatchObject({
+			title: 'Rules for This Turn',
+			content: expect.stringMatching(/^Playbook for task writes this turn:\n/),
+			slots: {
+				entityKind: 'task',
+				examples: expect.objectContaining({
+					update: expect.stringContaining('- Update an existing task by its exact id'),
+					create: expect.stringContaining('- Create a task for a real follow-up')
+				})
+			}
 		});
-		expect(result.args.p_request_payload).toMatchObject({
-			skillPreload: { skillId: 'task_management', source: 'operational_intent' }
-		});
+		expect(candidates[0]!.content).toContain('update_onto_task');
+		expect(candidates[0]!.content).not.toContain('skill_load');
+		expect(result.args.p_user_message_metadata).not.toHaveProperty('skill_preloaded_id');
+		expect(result.args.p_request_payload).toMatchObject({ skillPreload: null });
+	});
+
+	it('ships the same candidates whatever the message says', async () => {
+		const admit = async (message: string) => {
+			mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+				...mocks.resolveFastChatTurnPreparation(),
+				selectedSurfaceProfile: 'project',
+				tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
+			});
+			mocks.loadFastChatPromptContext.mockResolvedValueOnce({
+				contextType: 'project',
+				entityId: PROJECT_ID,
+				projectId: PROJECT_ID,
+				data: { source: 'server' }
+			});
+			return prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: {} as never,
+				userId: USER_ID,
+				command: command({
+					context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
+					message
+				}) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: dependencies()
+			});
+		};
+		const write = playbookCandidates(await admit('mark the intro call done'));
+		const read = playbookCandidates(await admit('what tasks are due this week?'));
+		expect(read).toEqual(write);
 	});
 
 	// "Try in BuildOS": the launch's chosen skill arrives as a structured field
@@ -1176,36 +1239,54 @@ describe('Agentic Chat worker turn preparation', () => {
 			});
 		});
 
-		it('leads with the launched skill and keeps the operational write playbook', async () => {
+		it('leads with the launched skill and leaves the write playbook to the worker', async () => {
 			const result = await admitProjectTurn(
 				'add a task to draft the cold email sequence for the newsletter creators',
 				'cold_email_engagement_first_outreach'
 			);
 
 			const overlay = mocks.applyActiveDomainSignalsOverlay.mock.calls[0]?.[1];
-			expect(overlay?.skillGatePreload?.promptContent).toContain(
+			expect(overlay?.skillGatePreload?.promptContent).toMatch(
+				/^Playbook the user chose for this chat \(/
+			);
+			expect(overlay?.skillGatePreload?.promptContent).not.toContain(
 				'Playbook for task writes this turn:'
 			);
+			expect(playbookCandidates(result).map((section) => section.slots.skillId)).toEqual([
+				'task_management',
+				'document_workspace'
+			]);
 			expect(result.args.p_request_payload).toMatchObject({
 				skillPreload: {
 					skillId: 'cold_email_engagement_first_outreach',
-					source: 'user_launch',
-					companionSkillIds: ['task_management']
+					source: 'user_launch'
 				}
 			});
+		});
+
+		it('never ships the launched skill as a candidate too', async () => {
+			const result = await admitProjectTurn('mark the intro call done', 'task_management');
+			expect(result.args.p_user_message_metadata).toMatchObject({
+				skill_preloaded_id: 'task_management',
+				skill_preload_source: 'user_launch'
+			});
+			expect(playbookCandidates(result).map((section) => section.slots.skillId)).toEqual([
+				'document_workspace'
+			]);
 		});
 
 		it('ignores an unregistered id and routes the turn as usual', async () => {
 			const result = await admitProjectTurn('mark the intro call done', 'not_a_real_skill');
 
-			expect(result.args.p_user_message_metadata).toMatchObject({
-				skill_preloaded_id: 'task_management',
-				skill_preload_source: 'operational_intent'
-			});
+			expect(result.args.p_user_message_metadata).not.toHaveProperty('skill_preloaded_id');
 			expect(result.args.p_request_payload).toMatchObject({
 				requestedSkillId: 'not_a_real_skill',
-				skillPreload: { skillId: 'task_management', source: 'operational_intent' }
+				skillPreload: null
 			});
+			expect(playbookCandidates(result).map((section) => section.slots.skillId)).toEqual([
+				'task_management',
+				'document_workspace'
+			]);
 		});
 
 		it('stores the launched skill on the session it creates', async () => {
@@ -1371,6 +1452,8 @@ describe('Agentic Chat worker turn preparation', () => {
 	});
 
 	it('applies the skill preload and situational overlay on a prepared-prompt hit', async () => {
+		// The launched skill keeps a preload on this prepared hit; operational
+		// playbooks ride after it as candidates (audit 2026-10-17 Q1).
 		const preparedId = 'd8000000-0000-4000-8000-000000000001';
 		const serviceClient = serviceClientWithTables({
 			chat_sessions: [
@@ -1453,7 +1536,8 @@ describe('Agentic Chat worker turn preparation', () => {
 				sessionId: SESSION_ID,
 				preparedPromptKey: 'pp_v1.server-trusted-key',
 				context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
-				message: 'mark the intro call done'
+				message: 'mark the intro call done',
+				requestedSkillId: 'task_management'
 			}) as never,
 			lease: {
 				decisionId: DECISION_ID,
@@ -1472,12 +1556,13 @@ describe('Agentic Chat worker turn preparation', () => {
 			expect.objectContaining({
 				skillGatePreload: expect.objectContaining({
 					skillId: 'task_management',
-					source: 'operational_intent'
+					source: 'user_launch'
 				}),
 				turnSituation: expect.objectContaining({ writeIntent: false, workerBound: true })
 			})
 		);
-		// ...and its sections are appended after the prewarmed bytes.
+		// ...and its sections, then the playbook candidates, are appended after
+		// the prewarmed bytes.
 		expect(result.args.p_artifact_prepared).toMatchObject({
 			sourcePreparedPromptId: preparedId,
 			sourcePreparedSurface: {
@@ -1488,7 +1573,11 @@ describe('Agentic Chat worker turn preparation', () => {
 				'Prepared system prompt\n\n## Active Domain Signals\n\nPreloaded skill: task_management',
 			promptSections: [
 				{ id: 'prepared', content_sha256: 'b'.repeat(64) },
-				expect.objectContaining({ id: 'active_domain_signals' })
+				expect.objectContaining({ id: 'active_domain_signals' }),
+				expect.objectContaining({
+					id: 'operational_playbook_candidate',
+					slots: expect.objectContaining({ skillId: 'document_workspace' })
+				})
 			]
 		});
 		expect(result.args.p_user_message_metadata).toMatchObject({
@@ -1496,11 +1585,155 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 	});
 
-	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69: the system prompt is rebuilt
-	// every turn and earlier prompts are not in the history, so turn 2 of a
-	// task-editing session gets the task playbook again — and no ledger
-	// message naming skill_load, a tool the worker cannot call.
-	it('renders the operational playbook again on the next write turn and carries no loaded-skills ledger', async () => {
+	// Audit 2026-10-17 Q1: on the worker lane the turn rules are a marked
+	// section the worker appends after the user message, so a prepared hit keeps
+	// the prewarmed prompt byte-for-byte (the copy fence accepts an identical
+	// prompt plus appended sections) and every turn of a session shares it.
+	it('reuses the prepared prompt byte-for-byte when the turn rules ride after the user message', async () => {
+		const preparedId = 'd8000000-0000-4000-8000-000000000001';
+		const serviceClient = serviceClientWithTables({
+			chat_sessions: [
+				{
+					id: SESSION_ID,
+					user_id: USER_ID,
+					context_type: 'project',
+					entity_id: PROJECT_ID,
+					summary: null,
+					agent_metadata: {}
+				}
+			],
+			chat_messages: [],
+			chat_message_attachments: [],
+			chat_tool_executions: []
+		});
+		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
+			...mocks.resolveFastChatTurnPreparation(),
+			cacheKey: `v2|project|${PROJECT_ID}|none|none`,
+			selectedSurfaceProfile: 'project',
+			tools: toolDefinitions(PROJECT_SURFACE_TOOL_NAMES)
+		});
+		mocks.inspectPreparedPromptAdmissionLineage.mockResolvedValue({
+			id: preparedId,
+			acceptedSurfaceProfile: 'worker_realtime:project'
+		});
+		mocks.inspectPreparedPromptForWorkerAdmission.mockResolvedValue({
+			hit: true,
+			ageSeconds: 3,
+			history: {
+				ok: true,
+				history: [{ role: 'assistant', content: 'Earlier answer' }],
+				state: {
+					strategy: 'raw_history',
+					compressed: false,
+					rawHistoryCount: 1,
+					historyForModelCount: 1
+				}
+			},
+			row: {
+				id: preparedId,
+				context_payload: { contextType: 'project', data: { source: 'prepared' } },
+				context_payload_sha256: 'a'.repeat(64),
+				conversation_summary: null,
+				history_for_model: [{ role: 'assistant', content: 'Earlier answer' }],
+				history_compressed: false,
+				history_strategy: 'raw_history',
+				raw_history_count: 1,
+				history_for_model_count: 1
+			},
+			surface: {
+				system_prompt: 'Prepared system prompt',
+				system_prompt_sha256: 'c'.repeat(64),
+				sections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
+			},
+			surfaceKey: 'worker_realtime:project'
+		});
+		mocks.applyActiveDomainSignalsOverlay.mockImplementationOnce((envelope, input) => ({
+			...envelope,
+			systemPrompt: 'rendered-only-from-overlay-sections',
+			sections: [
+				...envelope.sections,
+				{
+					id: 'situational_rules',
+					title: 'Rules for This Turn',
+					kind: 'dynamic',
+					source: 'lite.situational_rules',
+					content: `Preloaded skill: ${input.skillGatePreload?.skillId ?? 'none'}`,
+					slots: { placement: input.turnRulesPlacement },
+					chars: 1,
+					estimatedTokens: 1
+				}
+			]
+		}));
+
+		const result = await prepareAgenticChatWorkerAdmission({
+			userClient: {} as never,
+			serviceClient: serviceClient as never,
+			userId: USER_ID,
+			command: command({
+				sessionId: SESSION_ID,
+				preparedPromptKey: 'pp_v1.server-trusted-key',
+				context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
+				message: 'mark the intro call done',
+				requestedSkillId: 'task_management'
+			}) as never,
+			lease: {
+				decisionId: DECISION_ID,
+				mode: 'worker_realtime',
+				contractVersion: 'agentic_chat_worker_v1'
+			},
+			dependencies: dependencies()
+		});
+
+		expect(result.preparedPromptUsed).toBe(true);
+		expect(mocks.buildLitePromptEnvelope).not.toHaveBeenCalled();
+		expect(mocks.loadFastChatPromptContext).not.toHaveBeenCalled();
+		// The overlay sees the byte-bound prompt with no sections to re-render...
+		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
+			expect.objectContaining({ systemPrompt: 'Prepared system prompt', sections: [] }),
+			expect.objectContaining({
+				skillGatePreload: expect.objectContaining({
+					skillId: 'task_management',
+					source: 'user_launch'
+				}),
+				turnSituation: expect.objectContaining({ writeIntent: false, workerBound: true })
+			})
+		);
+		expect(mocks.applyActiveDomainSignalsOverlay.mock.calls[0]?.[1]).toMatchObject({
+			turnRulesPlacement: 'after_user_message'
+		});
+		// The prompt is the prewarmed bytes; the rules and candidates are appended
+		// sections only.
+		expect(result.args.p_artifact_prepared).toMatchObject({
+			sourcePreparedPromptId: preparedId,
+			sourcePreparedSurface: {
+				systemPromptSha256: 'c'.repeat(64),
+				promptSections: [{ id: 'prepared', content_sha256: 'b'.repeat(64) }]
+			},
+			systemPrompt: 'Prepared system prompt',
+			promptSections: [
+				{ id: 'prepared', content_sha256: 'b'.repeat(64) },
+				expect.objectContaining({
+					id: 'situational_rules',
+					content: 'Preloaded skill: task_management',
+					slots: { placement: 'after_user_message' }
+				}),
+				expect.objectContaining({
+					id: 'operational_playbook_candidate',
+					slots: expect.objectContaining({ skillId: 'document_workspace' })
+				})
+			]
+		});
+		expect(result.args.p_user_message_metadata).toMatchObject({
+			skill_preloaded_id: 'task_management'
+		});
+	});
+
+	// AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 F69: earlier prompts are not in the
+	// history, so turn 2 of a task-editing session gets the task playbook
+	// candidate again — and no ledger message naming skill_load, a tool the
+	// worker cannot call. A historical operational_intent preload in the
+	// window (before 2026-10-17) changes nothing.
+	it('ships the operational playbook candidates again on the next turn and carries no loaded-skills ledger', async () => {
 		const userMessageId = 'e1000000-0000-4000-8000-000000000001';
 		const assistantMessageId = 'e2000000-0000-4000-8000-000000000001';
 		const serviceClient = serviceClientWithTables({
@@ -1582,21 +1815,15 @@ describe('Agentic Chat worker turn preparation', () => {
 		).toBe(false);
 		expect(mocks.applyActiveDomainSignalsOverlay).toHaveBeenCalledWith(
 			expect.anything(),
-			expect.objectContaining({
-				skillGatePreload: expect.objectContaining({
-					skillId: 'task_management',
-					source: 'operational_intent',
-					promptContent: expect.stringMatching(/^Playbook for task writes this turn:\n/)
-				})
-			})
+			expect.objectContaining({ skillGatePreload: null })
 		);
-		expect(result.args.p_user_message_metadata).toMatchObject({
-			skill_preloaded_id: 'task_management',
-			skill_preload_source: 'operational_intent'
+		const [taskCandidate] = playbookCandidates(result);
+		expect(taskCandidate).toMatchObject({
+			content: expect.stringMatching(/^Playbook for task writes this turn:\n/),
+			slots: expect.objectContaining({ skillId: 'task_management' })
 		});
-		expect(result.args.p_request_payload).toMatchObject({
-			skillPreload: { skillId: 'task_management', source: 'operational_intent' }
-		});
+		expect(result.args.p_user_message_metadata).not.toHaveProperty('skill_preloaded_id');
+		expect(result.args.p_request_payload).toMatchObject({ skillPreload: null });
 	});
 
 	it('still dedupes a one-shot craft preload against the skills the window already showed', async () => {

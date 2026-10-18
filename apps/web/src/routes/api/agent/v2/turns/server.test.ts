@@ -226,6 +226,24 @@ describe('GET /api/agent/v2/turns', () => {
 		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
 	});
 
+	it('answers the chat-open warm-up with an empty private 204 and no lookup', async () => {
+		const response = await GET(event({ query: '?warm=1' }) as never);
+		expect(response.status).toBe(204);
+		expect(await response.text()).toBe('');
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(mocks.createAdminSupabaseClient).not.toHaveBeenCalled();
+		expect(mocks.listOwnedActiveAgenticChatWorkerTurns).not.toHaveBeenCalled();
+		expect(mocks.loggerWarn).not.toHaveBeenCalled();
+	});
+
+	it('keeps the warm-up behind auth and exact', async () => {
+		expect((await GET(event({ userId: null, query: '?warm=1' }) as never)).status).toBe(401);
+		for (const query of ['?warm=0', '?warm=1&warm=1', `?warm=1&session_id=${SESSION_ID}`]) {
+			expect((await GET(event({ query }) as never)).status).toBe(400);
+		}
+		expect(mocks.listOwnedActiveAgenticChatWorkerTurns).not.toHaveBeenCalled();
+	});
+
 	it('returns a private, ownership-scoped active list', async () => {
 		const response = await GET(event({ query: `?session_id=${SESSION_ID}` }) as never);
 		const body = await response.json();
@@ -522,6 +540,56 @@ describe('POST /api/agent/v2/turns', () => {
 			expect(response.headers.get('cache-control')).toBe('private, no-store');
 		}
 		expect(mocks.startAgenticChatWorkerQueueWake).not.toHaveBeenCalled();
+	});
+
+	it('maps the admission RPC per-user rate limit to the not-admitted 429 (B14)', async () => {
+		const admin = fakeAdminClient({ session: sessionRow() });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		mocks.admitAgenticChatWorkerTurn.mockResolvedValueOnce({
+			outcome: 'rate_limited',
+			executionMayStart: false,
+			retryAfterSeconds: 12,
+			limit: 20,
+			windowSeconds: 60,
+			recentCount: 20
+		});
+		// Session-less: a refused send must not try to load a session it never created.
+		const response = await POST(
+			postEvent({ body: admissionBody({ sessionId: null }) }) as never
+		);
+		const payload = await response.json();
+		expect(response.status).toBe(429);
+		expect(payload.code).toBe('AGENTIC_CHAT_RATE_LIMITED');
+		expect(response.headers.get('retry-after')).toBe('12');
+		expect(response.headers.get('x-ratelimit-limit')).toBe('20');
+		expect(response.headers.get('x-ratelimit-remaining')).toBe('0');
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(response.headers.get('server-timing')).toContain('worker-admission');
+		expect(admin.sessionLookups).toEqual([]);
+		expect(mocks.startAgenticChatWorkerQueueWake).not.toHaveBeenCalled();
+		expect(mocks.loggerWarn).toHaveBeenCalledWith('Worker turn per-user rate limit reached', {
+			userId: USER_ID,
+			clientTurnId: 'client-turn-1',
+			recentCount: 20,
+			limit: 20,
+			windowSeconds: 60,
+			retryAfterSeconds: 12
+		});
+	});
+
+	it('keeps the per-instance limiter as a first line before any preparation', async () => {
+		for (let index = 0; index < 30; index += 1) {
+			expect((await POST(postEvent() as never)).status).toBe(202);
+		}
+		const prepareCalls = mocks.prepareAgenticChatWorkerAdmission.mock.calls.length;
+		const response = await POST(postEvent() as never);
+		const payload = await response.json();
+		expect(response.status).toBe(429);
+		expect(payload.code).toBe('AGENTIC_CHAT_RATE_LIMITED');
+		expect(Number(response.headers.get('retry-after'))).toBeGreaterThanOrEqual(1);
+		expect(response.headers.get('x-ratelimit-limit')).toBe('30');
+		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(prepareCalls);
 	});
 
 	it('returns 429 only for the emergency per-user queue safety ceiling', async () => {

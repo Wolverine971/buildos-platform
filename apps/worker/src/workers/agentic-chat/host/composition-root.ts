@@ -386,6 +386,8 @@ export function createAgenticChatCompositionRoot(options: {
 			semanticReviewer: options.semanticReviewerClient,
 			capacity: providerCapacity,
 			liveVision,
+			// Review-decision and write-commission receipts (audit 2026-10-17 M5/S5).
+			executionObservations: observedExecutionObservations,
 			...(options.toolSelector ? { toolSelector: options.toolSelector } : {}),
 			...(options.contextFinder ? { contextFinder: options.contextFinder } : {}),
 			...(mutationCapabilities.updateOntoDocument

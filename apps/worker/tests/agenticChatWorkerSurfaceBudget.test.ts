@@ -190,9 +190,16 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		// nothing writes in the worker. Measured global 54 tools / 55,085 B
 		// (+1,485 B); project unchanged at 72,569 B. Jev mounts them only on
 		// nest/combine turns. Cap at measured + ~0.1%.
-		expect(global.openingBytes).toBeLessThanOrEqual(55_140);
-		expect(project.openingBytes).toBeLessThanOrEqual(72_690);
-		expect(project.admittedBytes).toBeLessThanOrEqual(72_690);
+		// RE-BASELINED 2026-10-17 (pipeline audit S8, one-call document reads):
+		// read_document_section gained anchors[] + offset (+121 B); the
+		// get_onto_document_details (-103 B), get_document_outline (-108 B) and
+		// list_onto_documents (-94 B, project only) descriptions now point at the
+		// one-call path instead of outline-then-section. Measured global 54 tools /
+		// 54,993 B (-92), project 70 tools / 72,383 B (-186). Caps at measured +
+		// ~0.1%; the space given back is not banked for later additions.
+		expect(global.openingBytes).toBeLessThanOrEqual(55_050);
+		expect(project.openingBytes).toBeLessThanOrEqual(72_460);
+		expect(project.admittedBytes).toBeLessThanOrEqual(72_460);
 		expect(projectCreate.admittedBytes).toBeLessThanOrEqual(8_470);
 	});
 

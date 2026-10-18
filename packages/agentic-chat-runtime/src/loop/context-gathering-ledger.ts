@@ -507,6 +507,8 @@ function extractDetailReadEvidenceKey(toolCall: ChatToolCall): string | null {
 	}
 	const locationKeys = [
 		'anchor',
+		// read_document_section reads several sections per call (audit 2026-10-17 S8).
+		'anchors',
 		'section',
 		'path',
 		'cursor',
@@ -518,6 +520,10 @@ function extractDetailReadEvidenceKey(toolCall: ChatToolCall): string | null {
 	];
 	const location = locationKeys.flatMap((key) => {
 		const value = args[key];
+		if (Array.isArray(value)) {
+			const parts = value.filter((part): part is string => typeof part === 'string');
+			return parts.length > 0 ? [[key, parts.join('|')] as const] : [];
+		}
 		return typeof value === 'string' || typeof value === 'number'
 			? [[key, value] as const]
 			: [];

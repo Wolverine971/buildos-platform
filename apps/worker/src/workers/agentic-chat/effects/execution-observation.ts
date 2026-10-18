@@ -23,6 +23,10 @@ export type AgenticChatExecutionObservationEventTypeV1 =
 	| 'provider_attempt_started'
 	| 'provider_attempt_ended'
 	| 'provider_media_resolved'
+	/** One independent-review decision: outcome and finding codes (M5, audit 2026-10-17). */
+	| 'provider_review_decided'
+	/** One per turn execution: Jev's write commission vs proposed writes and review outcomes. */
+	| 'provider_commission_observed'
 	| 'tool_execution_started'
 	| 'tool_execution_ended';
 

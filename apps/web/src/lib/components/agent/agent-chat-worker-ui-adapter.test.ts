@@ -293,6 +293,52 @@ describe('AgentChatWorkerUiAdapter', () => {
 		);
 	});
 
+	it('renders a byte-capped worker projection: omission markers and compacted entries (audit S7)', () => {
+		const h = harness();
+		const compacted = event(42, 'tool_result', {
+			result: {
+				tool_call_id: 'tool-call-41',
+				tool_name: 'get_onto_document_details',
+				success: true,
+				result: { document: { id: 'doc-1', title: 'Plan', body: 'First lines…' } }
+			},
+			stream_compaction: { version: 1, fields: ['result.result'], original_bytes: 491_520 }
+		});
+		const projection = {
+			version: 'agentic_chat_ui_projection_v1',
+			current_activity: 'Looking things up…',
+			omitted_event_count: 40,
+			omitted_through_sequence: 40,
+			semantic_events: [
+				event(41, 'tool_call', {
+					tool_call_id: 'tool-call-41',
+					tool_name: 'get_onto_document_details',
+					arguments: {}
+				}),
+				compacted
+			]
+		} as unknown as JsonObject;
+
+		h.adapter.applyReconciliation(
+			receipt({
+				projection,
+				snapshot_sequence: 42,
+				durable_through_sequence: 42,
+				projection_durable_sequence: 42,
+				response_watermark: 42
+			})
+		);
+
+		expect(h.port.onError).not.toHaveBeenCalled();
+		expect(h.port.applySemanticEvent).toHaveBeenCalledTimes(2);
+		expect(h.port.applySemanticEvent).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				type: 'tool_result',
+				result: expect.objectContaining({ tool_call_id: 'tool-call-41', success: true })
+			})
+		);
+	});
+
 	it('resets generation-scoped semantic identities after authoritative recovery', () => {
 		const h = harness();
 		h.adapter.applyReconciliation(receipt());

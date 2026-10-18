@@ -81,7 +81,7 @@ export const ONTOLOGY_READ_TOOLS: ChatToolDefinition[] = [
 		function: {
 			name: 'list_onto_documents',
 			description:
-				'List document metadata, not body content. For a short document or a summary needing its whole body, use get_onto_document_details directly. For a specific section in a long document, use get_document_outline then read_document_section. Choose one path; do not routinely load both.',
+				'List document metadata, not body content. To read a document, use get_onto_document_details: a short body comes back whole, a long one with the sections to pass to read_document_section.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -791,8 +791,7 @@ Use after listing plans to retrieve the full record for editing or auditing.`,
 		type: 'function',
 		function: {
 			name: 'get_onto_document_details',
-			description: `Get complete details for a specific ontology document including content, description, and metadata.
-Use directly for a short document, a summary of its body, or an exact edit. No outline read is required first. If content_truncated is false, the returned content_preview is the complete body; do not read its sections again. For a long document with truncated content, read only the missing sections.`,
+			description: `Read a document: metadata and body. A body up to 6000 chars comes back whole in content; use it directly, with no outline or section read. A longer body returns content_preview, next_offset and its sections; read the rest in one read_document_section call with the anchors you need, or that offset.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -948,7 +947,7 @@ Useful for showing where a document lives in the hierarchy.`,
 		type: 'function',
 		function: {
 			name: 'get_document_outline',
-			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Use for a targeted section lookup in a long document. Pass find to also get exact matching lines, ready to copy as an edit's old_text. For a short document or a whole-document summary, use get_onto_document_details directly instead.`,
+			description: `Get a document's heading outline; each heading has an anchor for read_document_section. A body up to 6000 chars comes back whole too. Use it to choose sections of a long document; to read a document, use get_onto_document_details. Pass find to also get exact matching lines, ready to copy as an edit's old_text.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -970,7 +969,7 @@ Useful for showing where a document lives in the hierarchy.`,
 		type: 'function',
 		function: {
 			name: 'read_document_section',
-			description: `Read one section of a document by heading anchor, not the whole body. Returns that section plus nested subsections — pull in only the relevant context. The anchor is required and cannot be guessed: call get_document_outline first, which lists every anchor in the document, then read each section you need. Lists available anchors if the anchor is unknown.`,
+			description: `Read document sections by heading anchor, up to 12000 chars per call. Put every section you need in anchors, in one call; each includes its subsections. Copy anchors from get_onto_document_details sections or get_document_outline; never guess. Omit anchors to read the body from offset. If truncated, call again with the same arguments and offset = next_offset.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -978,13 +977,18 @@ Useful for showing where a document lives in the hierarchy.`,
 						type: 'string',
 						description: 'Document ID to read from (required)'
 					},
-					anchor: {
-						type: 'string',
-						description:
-							'Heading anchor (slug) of the section to read, e.g. "channels" (required)'
+					anchors: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'Heading anchors to read, e.g. ["channels", "pricing"]'
+					},
+					offset: {
+						type: 'integer',
+						minimum: 0,
+						description: 'Character offset to continue from (a previous next_offset)'
 					}
 				},
-				required: ['document_id', 'anchor']
+				required: ['document_id']
 			}
 		}
 	},

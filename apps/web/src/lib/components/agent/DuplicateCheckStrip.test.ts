@@ -4,7 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import DuplicateCheckStrip from './DuplicateCheckStrip.svelte';
-import { DUPLICATE_CHECK_MAX_POLLS, DUPLICATE_CHECK_POLL_MS } from './duplicate-check-strip';
+import {
+	DUPLICATE_CHECK_FAST_POLLS,
+	DUPLICATE_CHECK_MAX_POLLS,
+	DUPLICATE_CHECK_POLL_MS,
+	DUPLICATE_CHECK_SLOW_POLL_MS
+} from './duplicate-check-strip';
+import { CHAT_REVIEW_PANEL_KEY, type ChatReviewPanel } from './chat-review-panel';
+
+/** Fake time for every poll up to and including poll number `polls`. */
+function pollTime(polls: number): number {
+	const fast = Math.min(polls, DUPLICATE_CHECK_FAST_POLLS);
+	return (
+		fast * DUPLICATE_CHECK_POLL_MS + Math.max(0, polls - fast) * DUPLICATE_CHECK_SLOW_POLL_MS
+	);
+}
 import { DEST, RUN, SOURCE, fixtureId, jsonResponse } from './proposal-cards.fixture';
 
 const DOC_A = fixtureId(30);
@@ -84,7 +98,7 @@ describe('DuplicateCheckStrip', () => {
 		await settle();
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(fetchMock.mock.calls[0]?.[0]).toBe(`/api/consolidation/runs/${RUN}`);
-		expect(screen.getByText('Checking for duplicates…')).toBeTruthy();
+		expect(screen.getByText(/Checking for duplicates…/)).toBeTruthy();
 
 		await vi.advanceTimersByTimeAsync(DUPLICATE_CHECK_POLL_MS);
 		await tick();
@@ -95,7 +109,8 @@ describe('DuplicateCheckStrip', () => {
 		expect(screen.getByRole('list', { name: 'Top duplicate groups' }).textContent).toContain(
 			'Rate card'
 		);
-		expect(screen.getByRole('link', { name: /Review and merge/ }).getAttribute('href')).toBe(
+		// Outside the chat modal there is no panel, so the review is a link.
+		expect(screen.getByRole('link', { name: /Review duplicates/ }).getAttribute('href')).toBe(
 			`/projects/${DEST}/consolidate/${RUN}`
 		);
 
@@ -117,20 +132,53 @@ describe('DuplicateCheckStrip', () => {
 		expect(screen.queryByRole('link')).toBeNull();
 	});
 
-	it(`stops after ${DUPLICATE_CHECK_MAX_POLLS} polls and links to the run instead`, async () => {
+	it('keeps polling past two minutes and shows a slow check when it finishes', async () => {
+		// Measured 2026-10-17: a check over two busy projects took 2.5–3.5 minutes,
+		// and the old 2-minute cap left the card on "Still checking" for good.
+		const slowPolls = DUPLICATE_CHECK_FAST_POLLS + 12; // ≈ 3 minutes in
+		let calls = 0;
+		const fetchMock = vi.fn(async () =>
+			jsonResponse(200, runView(++calls < slowPolls ? 'surveying' : 'checked'))
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		render(DuplicateCheckStrip, { check: { run_id: RUN, root_project_id: DEST } });
+		await settle();
+		await vi.advanceTimersByTimeAsync(pollTime(slowPolls));
+		await tick();
+		expect(fetchMock).toHaveBeenCalledTimes(slowPolls);
+		expect(
+			screen.getByText('Found 2 identical docs across DJ Internal and Content Ops.')
+		).toBeTruthy();
+	});
+
+	it(`gives up after ${DUPLICATE_CHECK_MAX_POLLS} polls and offers the run instead`, async () => {
 		const fetchMock = vi.fn(async () => jsonResponse(200, runView('surveying')));
 		vi.stubGlobal('fetch', fetchMock);
 		render(DuplicateCheckStrip, { check: { run_id: RUN, root_project_id: DEST } });
 		await settle();
-		await vi.advanceTimersByTimeAsync(
-			DUPLICATE_CHECK_POLL_MS * (DUPLICATE_CHECK_MAX_POLLS + 5)
-		);
+		await vi.advanceTimersByTimeAsync(pollTime(DUPLICATE_CHECK_MAX_POLLS + 5));
 		await tick();
 		expect(fetchMock).toHaveBeenCalledTimes(DUPLICATE_CHECK_MAX_POLLS);
 		expect(screen.getByText(/Still checking for duplicates\./)).toBeTruthy();
-		expect(screen.getByRole('link', { name: 'Open the check' }).getAttribute('href')).toBe(
+		expect(screen.getByRole('link', { name: 'See progress' }).getAttribute('href')).toBe(
 			`/projects/${DEST}/consolidate/${RUN}`
 		);
+	});
+
+	it('opens the review in the chat panel instead of navigating when the modal provides one', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => jsonResponse(200, runView('checked')))
+		);
+		const open = vi.fn<ChatReviewPanel['open']>();
+		render(DuplicateCheckStrip, {
+			props: { check: { run_id: RUN, root_project_id: DEST } },
+			context: new Map([[CHAT_REVIEW_PANEL_KEY, { open }]])
+		});
+		await settle();
+		expect(screen.queryByRole('link')).toBeNull();
+		screen.getByRole('button', { name: /Review duplicates/ }).click();
+		expect(open).toHaveBeenCalledWith(RUN);
 	});
 
 	it('pauses while the tab is hidden and resumes when it is shown', async () => {

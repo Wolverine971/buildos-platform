@@ -23,7 +23,24 @@ export type PendingProposalRevision = {
 	requiredCorrection: string;
 	correctedContract: TurnContract | null;
 	findings?: MutationReviewFinding[];
+	/** One-based held calls a batch revision names as wrong (structured, never parsed prose). */
+	defectiveCalls?: number[];
 };
+
+/**
+ * The structured `defective_calls` of a batch revision: distinct one-based
+ * call numbers, or null when the field is absent or not an integer array.
+ * Range against the held batch is the caller's check.
+ */
+export function readDefectiveCalls(value: unknown): number[] | null {
+	if (!Array.isArray(value) || value.length > 40) return null;
+	const calls: number[] = [];
+	for (const item of value) {
+		if (typeof item !== 'number' || !Number.isSafeInteger(item) || item < 1) return null;
+		if (!calls.includes(item)) calls.push(item);
+	}
+	return calls;
+}
 
 export type ReferenceCandidateGroup = {
 	reference: string;
@@ -40,11 +57,13 @@ export function readProposalRevision(argumentsValue: JsonObject): PendingProposa
 			? argumentsValue.required_correction.trim().slice(0, 2000)
 			: '';
 	const findings = parseMutationReviewFindings(argumentsValue.findings) ?? [];
+	const defectiveCalls = readDefectiveCalls(argumentsValue.defective_calls) ?? [];
 	return {
 		reason,
 		requiredCorrection,
 		correctedContract: parseDeclaredTurnContract(argumentsValue.corrected_contract),
-		...(findings.length ? { findings } : {})
+		...(findings.length ? { findings } : {}),
+		...(defectiveCalls.length ? { defectiveCalls } : {})
 	};
 }
 

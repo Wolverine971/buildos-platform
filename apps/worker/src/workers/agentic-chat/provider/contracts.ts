@@ -276,6 +276,24 @@ export type AgenticChatTurnProviderRequestV1 = AgenticChatTurnProviderClientRequ
 	 * selector did not classify (shadow, off, fallback, ineligible pass).
 	 */
 	commissionedWriteToolNames?: readonly string[];
+	/**
+	 * The selector's structured verdict for the current message (Jev `on` mode
+	 * only; absent in shadow/off). `writeCommission` is the
+	 * current_turn_write_commission probability when Jev classified, else null.
+	 * Read by the write-commission shadow log and the turn-rules playbook pick.
+	 */
+	toolSelectionOutcome?: {
+		status: 'selected' | 'fallback' | 'skipped';
+		writeCommission: number | null;
+		/** AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES was on for this selection. */
+		holdEnabled: boolean;
+	};
+	/**
+	 * AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES: mutation schemas withheld from
+	 * this turn because Jev scored the message as not commissioning a change.
+	 * The turn state keeps them off every later surface.
+	 */
+	heldWriteToolNames?: readonly string[];
 	semanticDispositionGate?: boolean;
 	unavailableSkillRepairAttempted?: boolean;
 	/** One bounded re-ask after a completion that carried neither text nor tool calls. */
@@ -493,6 +511,10 @@ export type ContractReviewRejectionCode =
 	| 'revision_disallowed'
 	| 'revision_value_unchanged'
 	| 'revision_evidence_invalid'
+	/** Soft (first decision only): a batch revision that names no wrong held call. */
+	| 'revision_without_defective_call'
+	/** Soft (first decision only): batch revision findings the executor would reject. */
+	| 'revision_findings_invalid'
 	| 'corrected_contract_invalid'
 	| 'approval_sha_mismatch'
 	| 'decision_schema_invalid'

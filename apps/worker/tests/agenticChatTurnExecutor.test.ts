@@ -288,15 +288,49 @@ function createHarness(
 		beforePersistSemantic?: (input: Record<string, unknown>) => Promise<void>;
 		beforeBroadcast?: (message: Record<string, unknown>) => Promise<void>;
 		rawWorkflow?: AgenticChatRawWorkflowTurnPortV1;
+		/** Offer persist_agentic_chat_semantic_event_batch (audit S7); events still land in semanticInputs. */
+		batchSemantic?: boolean;
 	} = {}
 ) {
 	let sequence = 0;
 	const semanticInputs: Array<Record<string, unknown>> = [];
+	const semanticBatches: Array<Record<string, unknown>> = [];
+	let directSemanticCalls = 0;
 	const broadcastMessages: Array<Record<string, unknown>> = [];
 	const textFlushBatches: Array<Array<Record<string, unknown>>> = [];
 	const timingSnapshots: AgenticChatRuntimeTimingSnapshotV1[] = [];
 	const log: string[] = [];
 	const timingClockValues = options.timingClockValues ? [...options.timingClockValues] : null;
+	async function persistSemanticEvent(input: Record<string, unknown>) {
+		await options.beforePersistSemantic?.(input);
+		semanticInputs.push(input);
+		const payload = input.event_payload as Record<string, unknown>;
+		log.push(`semantic:${String(payload.type)}:${String(payload.turn_phase ?? '')}`);
+		if (payload.type === options.failSemanticType) {
+			throw new Error(`fixture semantic persistence failed: ${String(payload.type)}`);
+		}
+		sequence += 1;
+		return {
+			outcome: 'persisted',
+			publish_allowed: true,
+			turn_run_id: TURN_RUN_ID,
+			queue_job_id: QUEUE_JOB_ID,
+			session_id: SESSION_ID,
+			user_id: USER_ID,
+			stream_run_id: executionInput.streamRunId,
+			client_turn_id: executionInput.clientTurnId,
+			execution_generation: EXECUTION_GENERATION,
+			sequence_index: sequence,
+			event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, sequence),
+			phase: input.phase,
+			event_type: input.event_type,
+			durable: true,
+			transition_id: input.transition_id,
+			event_payload: input.event_payload,
+			reconcile_required: true,
+			persisted_at: '2026-08-03T12:00:00.000Z'
+		};
+	}
 	const persistence = {
 		async flushTextBatches(inputs: Array<Record<string, unknown>>) {
 			textFlushBatches.push(inputs);
@@ -338,35 +372,39 @@ function createHarness(
 			};
 		},
 		async persistSemantic(input: Record<string, unknown>) {
-			await options.beforePersistSemantic?.(input);
-			semanticInputs.push(input);
-			const payload = input.event_payload as Record<string, unknown>;
-			log.push(`semantic:${String(payload.type)}:${String(payload.turn_phase ?? '')}`);
-			if (payload.type === options.failSemanticType) {
-				throw new Error(`fixture semantic persistence failed: ${String(payload.type)}`);
-			}
-			sequence += 1;
-			return {
-				outcome: 'persisted',
-				publish_allowed: true,
-				turn_run_id: TURN_RUN_ID,
-				queue_job_id: QUEUE_JOB_ID,
-				session_id: SESSION_ID,
-				user_id: USER_ID,
-				stream_run_id: executionInput.streamRunId,
-				client_turn_id: executionInput.clientTurnId,
-				execution_generation: EXECUTION_GENERATION,
-				sequence_index: sequence,
-				event_id: createAgentStreamEventIdV1(TURN_RUN_ID, EXECUTION_GENERATION, sequence),
-				phase: input.phase,
-				event_type: input.event_type,
-				durable: true,
-				transition_id: input.transition_id,
-				event_payload: input.event_payload,
-				reconcile_required: true,
-				persisted_at: '2026-08-03T12:00:00.000Z'
-			};
+			directSemanticCalls += 1;
+			return persistSemanticEvent(input);
 		},
+		...(options.batchSemantic
+			? {
+					async persistSemanticBatch(batch: Record<string, unknown>) {
+						semanticBatches.push(batch);
+						const results = [];
+						for (const event of batch.events as Array<Record<string, unknown>>) {
+							results.push(
+								await persistSemanticEvent({
+									...event,
+									turn_run_id: batch.turn_run_id,
+									queue_job_id: batch.queue_job_id,
+									processing_token: batch.processing_token,
+									execution_generation: batch.execution_generation,
+									assistant_text: batch.assistant_text,
+									projection: batch.projection
+								})
+							);
+						}
+						return {
+							outcome: 'batch_persisted',
+							turn_run_id: TURN_RUN_ID,
+							queue_job_id: QUEUE_JOB_ID,
+							execution_generation: EXECUTION_GENERATION,
+							persisted_count: results.length,
+							replayed_count: 0,
+							results
+						};
+					}
+				}
+			: {}),
 		async acknowledge(input: Record<string, unknown>) {
 			// Mirror the exact-current-sequence SQL contract. Terminal receipts are
 			// committed one sequence past this stream counter by the finalize fixture.
@@ -855,6 +893,8 @@ function createHarness(
 		leaseIsFresh,
 		leaseRelease,
 		semanticInputs,
+		semanticBatches,
+		getDirectSemanticCalls: () => directSemanticCalls,
 		broadcastMessages,
 		textFlushBatches,
 		timingSnapshots,
@@ -1298,6 +1338,89 @@ describe('AgenticChatTurnExecutor', () => {
 			}
 		}
 	);
+
+	it('feeds a read over the size bound back to the model instead of failing the turn (audit B4)', async () => {
+		const harness = createHarness([]);
+		harness.readTool.execute.mockRejectedValueOnce(
+			new AgenticChatProviderExecutionError(
+				'read_tool_result_too_large',
+				'permanent',
+				'read_tool_result_too_large'
+			)
+		);
+		const tooLarge =
+			'The result was too large to return in one read. Ask for less: a narrower filter, one section, or fewer items.';
+		const continueWithToolResults = vi.fn(
+			({ results }: AgenticChatProviderToolRoundInputV1) => {
+				expect(results).toEqual([
+					expect.objectContaining({
+						toolName: 'get_onto_document_details',
+						failure: expect.objectContaining({
+							kind: 'known_execution_failure',
+							error: tooLarge,
+							modelPayload: expect.objectContaining({
+								error_code: 'read_tool_result_too_large'
+							})
+						})
+					})
+				]);
+				return (async function* () {
+					yield {
+						type: 'text_delta',
+						text: 'That document is long; here is one section.'
+					} as const;
+					yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+				})();
+			}
+		);
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'read_tool',
+							logicalProviderRound: 1,
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							providerToolCallId: 'provider-huge-document',
+							toolName: 'get_onto_document_details',
+							arguments: { document_id: 'da000000-0000-4000-8000-0000000000ab' }
+						} as const;
+					})(),
+				continueWithToolResults,
+				release: vi.fn()
+			}))
+		});
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+			expect(harness.control.recover).not.toHaveBeenCalled();
+			expect(harness.toolExecutions.persistFailure.mock.calls[0]?.[0]).toMatchObject({
+				failureKind: 'read_failure',
+				toolName: 'get_onto_document_details',
+				error: `read_tool_result_too_large: ${tooLarge}`
+			});
+			expect(
+				harness.semanticInputs.filter((event) => event.event_type === 'tool_result')
+			).toEqual([
+				expect.objectContaining({
+					event_payload: {
+						type: 'tool_result',
+						result: expect.objectContaining({
+							success: false,
+							error: tooLarge,
+							error_code: 'read_tool_result_too_large'
+						})
+					}
+				})
+			]);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
 
 	it.each(['read_tool_not_allowlisted', 'read_tool_context_invalid'])(
 		'still fails the turn when a private read is rejected with %s',
@@ -8072,6 +8195,129 @@ describe('AgenticChatTurnExecutor live reads overlap their own tool_call write',
 			}
 			expect(types.filter((type) => type === 'tool_call')).toHaveLength(3);
 			expect(types.filter((type) => type === 'tool_result')).toHaveLength(3);
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('starts every read in a burst before any tool_call of the burst is durable (audit S7)', async () => {
+		// Admission no longer waits for the previous event's commit: every
+		// tool_call takes its FIFO place at once, so no read waits on another
+		// read's tool_call write. All tool_call writes are held until the three
+		// reads have started (250 ms safety, so a serial order fails, not hangs).
+		const events: string[] = [];
+		let readsStarted = 0;
+		let releaseWrites!: () => void;
+		const allReadsStarted = new Promise<void>((resolve) => (releaseWrites = resolve));
+		const harness = createHarness([], {
+			maxToolConcurrency: 3,
+			beforePersistSemantic: async (input: Record<string, unknown>) => {
+				const id = toolCallId(input);
+				if (!id) return;
+				await Promise.race([
+					allReadsStarted,
+					new Promise<void>((resolve) => setTimeout(resolve, 250))
+				]);
+				events.push(`tool_call_persisted:${id}`);
+			}
+		});
+		harness.readTool.execute.mockImplementation(async (input) => {
+			events.push(`read_started:${input.providerToolCallId}`);
+			readsStarted += 1;
+			if (readsStarted === 3) releaseWrites();
+			return readExecution;
+		});
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 3, continueWithToolResults);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			const firstDurable = events.findIndex((event) =>
+				event.startsWith('tool_call_persisted:')
+			);
+			expect(firstDurable).toBeGreaterThan(-1);
+			expect(
+				events.slice(0, firstDurable).filter((event) => event.startsWith('read_started:'))
+			).toHaveLength(3);
+			// Durable order is still call order, each result after its call.
+			const callIds = harness.semanticInputs.map(toolCallId).filter(Boolean);
+			expect(callIds).toEqual(readBurstSteps(3).map((step) => step.providerToolCallId));
+			expect(continueWithToolResults).toHaveBeenCalledOnce();
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('writes a burst through the batch RPC: queued events share one write, in order, durable before broadcast', async () => {
+		let releaseFirstCall!: () => void;
+		const firstCallHeld = new Promise<void>((resolve) => (releaseFirstCall = resolve));
+		let heldOnce = false;
+		let readsStarted = 0;
+		const broadcastBeforeDurable: number[] = [];
+		const harness = createHarness([], {
+			maxToolConcurrency: 3,
+			batchSemantic: true,
+			beforePersistSemantic: async (input: Record<string, unknown>) => {
+				if (!toolCallId(input) || heldOnce) return;
+				heldOnce = true;
+				await Promise.race([
+					firstCallHeld,
+					new Promise<void>((resolve) => setTimeout(resolve, 250))
+				]);
+			},
+			beforeBroadcast: async (message) => {
+				const payload = message.payload as { sequence_index?: number; type?: string };
+				if (message.kind !== 'event') return;
+				if (payload.type !== 'tool_call' && payload.type !== 'tool_result') return;
+				// Durable before broadcast: the batch holding this event has committed.
+				if (payload.sequence_index! > harness.getSequence()) {
+					broadcastBeforeDurable.push(payload.sequence_index!);
+				}
+			}
+		});
+		harness.readTool.execute.mockImplementation(async () => {
+			readsStarted += 1;
+			if (readsStarted === 3) releaseFirstCall();
+			return readExecution;
+		});
+		const continueWithToolResults = finishAfterReads();
+		prepareReadBurst(harness, 3, continueWithToolResults);
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'completed',
+				terminalStatus: 'completed'
+			});
+			expect(harness.getDirectSemanticCalls()).toBe(0);
+			expect(broadcastBeforeDurable).toEqual([]);
+			const batchSizes = harness.semanticBatches.map(
+				(batch) => (batch.events as unknown[]).length
+			);
+			expect(Math.max(...batchSizes)).toBeGreaterThan(1);
+			expect(batchSizes.reduce((sum, size) => sum + size, 0)).toBe(
+				harness.semanticInputs.length
+			);
+			// Each batch carries one projection, ending at the batch's last event.
+			let written = 0;
+			for (const batch of harness.semanticBatches) {
+				written += (batch.events as unknown[]).length;
+				const projected = (
+					batch.projection as { semantic_events: Array<{ event_type: string }> }
+				).semantic_events;
+				const lastEvent = (batch.events as Array<{ event_type: string }>).at(-1)!;
+				expect(projected.at(-1)!.event_type).toBe(lastEvent.event_type);
+			}
+			expect(written).toBe(harness.semanticInputs.length);
+			const callIds = harness.semanticInputs.map(toolCallId).filter(Boolean);
+			expect(callIds).toEqual(readBurstSteps(3).map((step) => step.providerToolCallId));
+			const sequences = streamBroadcastMessages(harness.broadcastMessages).map(
+				(message) => (message.payload as Record<string, unknown>).sequence_index as number
+			);
+			expect(sequences).toEqual(sequences.map((_, index) => sequences[0]! + index));
 			expect(continueWithToolResults).toHaveBeenCalledOnce();
 		} finally {
 			await harness.publisher.stop();

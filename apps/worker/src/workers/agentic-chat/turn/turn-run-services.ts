@@ -33,10 +33,17 @@ import { type AgenticChatOverheadDeadline, canonicalText, canonicalUuid } from '
 import {
 	type AgenticChatExecutableToolStepV1,
 	type AgenticChatReadPlanningContextV1,
-	MAX_UI_PROJECTION_EVENTS,
 	type ProjectionState,
+	appendProjectionEvent,
+	projectionEstimatedBytes,
+	removeProjectionEvent,
 	toProjectionJson
 } from './turn-run';
+import {
+	AGENTIC_CHAT_STREAM_EVENT_PAYLOAD_BUDGET_BYTES,
+	fitAgenticChatStreamPayloadV1
+} from '../stream/stream-payload-budget';
+import type { AgenticChatSemanticEnqueueResultV1 } from '../stream/stream-publisher';
 
 /**
  * One semantic publication, split at the point the event entered the
@@ -45,6 +52,15 @@ import {
  * error. `enqueued` resolves once the event holds its place in the publisher's
  * FIFO, so everything enqueued later persists after it; if the publication fails
  * before that point, `enqueued` rejects with that same error.
+ *
+ * Ordering contract (pipeline audit S7):
+ * - Publications enter the FIFO in call order (the admission tail), and each
+ *   enters as soon as the previous one has, unless the publisher is under soft
+ *   pressure. They do NOT wait for earlier events to commit, so concurrent
+ *   reads start in parallel and the publisher batches their writes.
+ * - Sequence numbers, the persisted order, and the projection follow FIFO
+ *   order, and the publisher broadcasts nothing before its receipt (durable
+ *   before broadcast is unchanged).
  */
 export type AgenticChatSemanticPublicationV1 = {
 	enqueued: Promise<void>;
@@ -94,75 +110,116 @@ export class AgenticChatTurnRunServices {
 		if (step.eventPayload.type !== step.eventType) {
 			throw new Error('Fixture semantic payload type mismatch');
 		}
-		let markEnqueued!: () => void;
-		let failBeforeEnqueue!: (error: unknown) => void;
-		const enqueued = new Promise<void>((resolve, reject) => {
-			markEnqueued = resolve;
-			failBeforeEnqueue = reject;
-		});
-		const publication = projection.semanticPublishTail.then(async () => {
-			throwIfAborted(signal);
-			const claim = executionInput.claim;
-			const snapshot = this.ports.publisher.getSnapshot(claim.turnRunId);
-			// Queued text batches precede this semantic event and each consume a
-			// durable sequence. Reserve past that prefix before enqueueing below;
-			// delivery-only backlog has already consumed its durable sequences.
-			const sequence = snapshot.durableSequence + snapshot.pendingPersistenceEvents + 1;
-			const event = {
-				...step.eventPayload,
-				contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
-				event_id: createAgentStreamEventIdV1(
-					claim.turnRunId,
-					claim.executionGeneration,
-					sequence
-				),
-				stream_run_id: executionInput.streamRunId,
-				client_turn_id: executionInput.clientTurnId,
-				session_id: claim.sessionId,
-				turn_run_id: claim.turnRunId,
-				execution_generation: claim.executionGeneration,
-				sequence_index: sequence,
-				phase: step.phase,
-				event_type: step.eventType,
-				durable: true
-			} as AgentStreamEventV1;
-			const priorActivity = projection.currentActivity;
-			const priorEvents = projection.semanticEvents.slice();
-			projection.currentActivity = step.currentActivity;
-			projection.semanticEvents.push(event);
-			if (projection.semanticEvents.length > MAX_UI_PROJECTION_EVENTS) {
-				projection.semanticEvents.shift();
-			}
-
-			let durablyAccepted = false;
-			try {
-				const queued = this.ports.publisher.enqueueSemantic(claim.turnRunId, {
-					transitionId: step.transitionId,
+		// One large read must never fail the turn (audit B4): the durable event
+		// row keeps as much of the payload as its bound allows, with a marker,
+		// and the full result stays in the tool-execution ledger row.
+		const eventPayload = fitAgenticChatStreamPayloadV1(
+			step.eventPayload,
+			AGENTIC_CHAT_STREAM_EVENT_PAYLOAD_BUDGET_BYTES
+		).value;
+		const claim = executionInput.claim;
+		// Waiting for admission is abortable: a cancelled caller enqueues nothing,
+		// so skipping its place cannot reorder the publications that do enqueue.
+		const tail = projection.semanticAdmissionTail;
+		const admitted = Promise.resolve()
+			.then(() => abortable(tail, signal))
+			.then(() => {
+				throwIfAborted(signal);
+				const snapshot = this.ports.publisher.getSnapshot(claim.turnRunId);
+				// Queued text batches and semantic events precede this one and each
+				// consume a durable sequence. Reserve past that prefix before
+				// enqueueing below; delivery-only backlog already holds its sequences.
+				const sequence = snapshot.durableSequence + snapshot.pendingPersistenceEvents + 1;
+				const event = {
+					...eventPayload,
+					contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+					event_id: createAgentStreamEventIdV1(
+						claim.turnRunId,
+						claim.executionGeneration,
+						sequence
+					),
+					stream_run_id: executionInput.streamRunId,
+					client_turn_id: executionInput.clientTurnId,
+					session_id: claim.sessionId,
+					turn_run_id: claim.turnRunId,
+					execution_generation: claim.executionGeneration,
+					sequence_index: sequence,
 					phase: step.phase,
-					eventType: step.eventType,
-					projection: toProjectionJson(projection),
-					eventPayload: step.eventPayload
-				});
-				markEnqueued();
-				void queued.delivery.catch(() => undefined);
-				await abortable(queued.accepted, signal);
-				durablyAccepted = true;
-				if (queued.pressureRelieved) {
-					await abortable(queued.pressureRelieved, signal);
+					event_type: step.eventType,
+					durable: true
+				} as AgentStreamEventV1;
+				const rollback = {
+					eventId: event.event_id,
+					priorActivity: projection.currentActivity
+				};
+				appendProjectionEvent(projection, event, step.currentActivity, step.transitionId);
+				try {
+					const queued = this.ports.publisher.enqueueSemantic(claim.turnRunId, {
+						transitionId: step.transitionId,
+						phase: step.phase,
+						eventType: step.eventType,
+						projection: toProjectionJson(projection),
+						projectionBytes: projectionEstimatedBytes(projection),
+						eventPayload
+					});
+					void queued.delivery.catch(() => undefined);
+					return { queued, rollback };
+				} catch (error) {
+					removeProjectionEvent(
+						projection,
+						rollback.eventId,
+						step.transitionId,
+						rollback.priorActivity
+					);
+					throw error;
 				}
-			} catch (error) {
-				if (!durablyAccepted) {
-					projection.semanticEvents = priorEvents;
-					projection.currentActivity = priorActivity;
-				}
-				throw error;
-			}
-		});
-		projection.semanticPublishTail = publication.catch(() => undefined);
-		// A no-op once `enqueued` has resolved: only a pre-enqueue failure reaches it.
-		void publication.catch(failBeforeEnqueue);
+			});
+		// The next publication may enqueue once this one holds its FIFO place and
+		// the publisher has room; a failure here never blocks later callers.
+		projection.semanticAdmissionTail = admitted.then(
+			({ queued }) => queued.pressureRelieved ?? undefined,
+			() => undefined
+		);
+		const enqueued = admitted.then(() => undefined);
+		const accepted = admitted.then(({ queued, rollback }) =>
+			this.awaitSemanticAcceptance(projection, step, queued, rollback, signal)
+		);
+		// Callers that await these still see the error. A caller can stop after
+		// `enqueued` rejects without ever awaiting `accepted` (the live read runner
+		// does), and an unhandled rejection exits the worker process with every
+		// turn on it (review 2026-10-17, P0).
 		void enqueued.catch(() => undefined);
-		return { enqueued, accepted: publication };
+		void accepted.catch(() => undefined);
+		return { enqueued, accepted };
+	}
+
+	private async awaitSemanticAcceptance(
+		projection: ProjectionState,
+		step: Extract<AgenticChatTurnProviderStepV1, { type: 'semantic' }>,
+		queued: AgenticChatSemanticEnqueueResultV1,
+		rollback: { eventId: string; priorActivity: string },
+		signal: AbortSignal
+	): Promise<void> {
+		let durablyAccepted = false;
+		try {
+			await abortable(queued.accepted, signal);
+			durablyAccepted = true;
+			if (queued.pressureRelieved) {
+				await abortable(queued.pressureRelieved, signal);
+			}
+		} catch (error) {
+			// An event that is not durable must not reach a later projection: a
+			// terminal projection carrying it would reuse its sequence number.
+			if (!durablyAccepted) {
+				removeProjectionEvent(
+					projection,
+					rollback.eventId,
+					step.transitionId,
+					rollback.priorActivity
+				);
+			}
+			throw error;
+		}
 	}
 
 	async persistSessionHandoff(

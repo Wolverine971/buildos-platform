@@ -24,6 +24,7 @@ import {
 	type AgenticChatRealtimePreviewBroadcastV1,
 	type AgenticChatSemanticEventRpcResultV1,
 	type AgenticChatStreamDeliveryAckRpcResultV1,
+	type AgenticChatStreamWriteBlockedRpcResultV1,
 	type AgenticChatTerminalReceiptV1,
 	type AgenticChatTextBatchFlushRpcResultV1,
 	type AgenticChatTextBatchInputV1,
@@ -47,6 +48,12 @@ export const DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG = {
 	maxConcurrentSemanticWrites: 16,
 	batchMaxItems: AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_ITEMS,
 	batchMaxBytes: AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_BYTES,
+	/** Consecutive semantic events of one turn written by one batch RPC. */
+	semanticBatchMaxItems: 32,
+	/** Event payload bytes per semantic batch (each payload is ≤ 256 KiB). */
+	semanticBatchMaxBytes: 4 * 1024 * 1024,
+	/** After the batch RPC is missing (migration not applied), retry it this much later. */
+	semanticBatchUnavailableRetryMs: 5 * 60_000,
 	retryDelayMs: 250,
 	reconcileHintIntervalMs: 2_000,
 	terminalBroadcastAttempts: 3,
@@ -104,8 +111,81 @@ export type AgenticChatSemanticPublishInputV1 = {
 	transitionId: string;
 	phase: AgentStreamEventPhaseV1;
 	eventType: string;
+	/** The UI projection as of this event (it includes the event). */
 	projection: JsonObject;
 	eventPayload: JsonObject;
+	/**
+	 * Estimated stored bytes of `projection`, from a caller that keeps a
+	 * byte-capped projection. Its entries are shared with that turn's other
+	 * pending snapshots, so then only the payload counts toward pending bytes
+	 * and the projection is not re-serialized per event.
+	 */
+	projectionBytes?: number;
+};
+
+/** One event of a semantic batch, in persistence order. */
+export type AgenticChatSemanticBatchEventInputV1 = {
+	transition_id: string;
+	phase: AgentStreamEventPhaseV1;
+	event_type: string;
+	event_payload: JsonObject;
+};
+
+export type AgenticChatFirstVisibleTextSourceV1 = 'preview' | 'durable_text';
+
+export type AgenticChatSemanticBatchInputV1 = {
+	turn_run_id: string;
+	queue_job_id: string;
+	processing_token: string;
+	execution_generation: number;
+	assistant_text: string;
+	events: AgenticChatSemanticBatchEventInputV1[];
+	/** The projection as of the batch's last event; written once per batch. */
+	projection: JsonObject;
+	/** Earliest moment answer text was visible to the user (audit M3). */
+	first_visible_text_at: string | null;
+	first_visible_text_source: AgenticChatFirstVisibleTextSourceV1 | null;
+};
+
+/**
+ * `persist_agentic_chat_semantic_event_batch`: one receipt per input event, in
+ * input order, each exactly what `persist_agentic_chat_semantic_event` returns
+ * for that event. A blocked turn (stale generation, cancel, terminal) answers
+ * for the whole batch.
+ */
+export type AgenticChatSemanticBatchRpcResultV1 =
+	| {
+			outcome: 'batch_persisted';
+			turn_run_id: string;
+			queue_job_id: string;
+			execution_generation: number;
+			persisted_count: number;
+			replayed_count: number;
+			results: AgenticChatSemanticEventRpcResultV1[];
+	  }
+	| AgenticChatStreamWriteBlockedRpcResultV1;
+
+/**
+ * The batch RPC does not exist in this database (its migration is not applied
+ * yet). Nothing was written; the publisher falls back to one RPC per event.
+ */
+export class AgenticChatSemanticBatchUnavailableError extends Error {
+	constructor(readonly code: string) {
+		super(`Agentic Chat semantic batch RPC is unavailable (${code})`);
+		this.name = 'AgenticChatSemanticBatchUnavailableError';
+	}
+}
+
+export type AgenticChatStreamPublisherOptionsV1 = {
+	/**
+	 * Call `acknowledge_agentic_chat_stream_delivery` after live delivery. Off by
+	 * default (pipeline audit S7): the ACK only cleared `reconcile_required`,
+	 * which no reader acts on (the browser applies a live event only when it is
+	 * exactly the next sequence and reconciles every gap itself), yet it cost
+	 * one RPC and the same three row locks as a write for every delivered event.
+	 * Kept as a one-line rollback switch and for the exact-ACK tests.
+	 */
+	acknowledgeDeliveries?: boolean;
 };
 
 export type AgenticChatPublisherPressureV1 = 'normal' | 'soft_limit';
@@ -222,7 +302,17 @@ export type AgenticChatPersistencePortV1 = {
 		projection: JsonObject;
 		event_payload: JsonObject;
 	}): Promise<AgenticChatSemanticEventRpcResultV1>;
-	acknowledge(input: {
+	/**
+	 * Writes consecutive semantic events in one transaction, in order, with
+	 * one projection. Optional: without it (or while it is unavailable) every
+	 * event uses `persistSemantic`. Throws
+	 * `AgenticChatSemanticBatchUnavailableError` when the RPC does not exist.
+	 */
+	persistSemanticBatch?(
+		input: AgenticChatSemanticBatchInputV1
+	): Promise<AgenticChatSemanticBatchRpcResultV1>;
+	/** Required only with `acknowledgeDeliveries`. */
+	acknowledge?(input: {
 		turn_run_id: string;
 		queue_job_id: string;
 		processing_token: string;
@@ -293,7 +383,10 @@ type SemanticOperation = {
 	kind: 'semantic';
 	input: AgenticChatSemanticPublishInputV1;
 	assistantText: string;
+	/** Bytes this operation adds to pending accounting. */
 	bytes: number;
+	/** UTF-8 bytes of the event payload alone (batch sizing). */
+	payloadBytes: number;
 	inFlight: boolean;
 	enqueuedAtMs: number;
 	attempt: number;
@@ -367,6 +460,20 @@ type TurnState = {
 	lastDurableEventType: string | null;
 	lastDelivery: AgenticChatPublisherDeliveryV1 | null;
 	lastDeliveryAtMs: number | null;
+	/** Earliest observed visible answer text (preview frame sent or text persisted). */
+	firstVisibleText: {
+		at: string;
+		atMs: number;
+		source: AgenticChatFirstVisibleTextSourceV1;
+	} | null;
+	/** The first-visible time a committed batch already carried to the database. */
+	firstVisibleTextPersistedAtMs: number | null;
+	/**
+	 * Item cap after a batch failed transiently (a statement timeout resent as
+	 * the same batch would time out again): halved per failure, cleared by the
+	 * next committed batch. Null means the configured maximum.
+	 */
+	semanticBatchItemCap: number | null;
 };
 
 export class AgenticChatPublisherOverloadError extends Error {
@@ -409,6 +516,9 @@ export class AgenticChatStreamPublisher {
 	private stopping = false;
 	private pendingBytes = 0;
 	private pendingEvents = 0;
+	private readonly acknowledgeDeliveries: boolean;
+	/** The batch RPC is skipped until then after it was found missing. */
+	private semanticBatchUnavailableUntilMs = Number.NEGATIVE_INFINITY;
 
 	constructor(
 		private readonly ports: {
@@ -420,10 +530,15 @@ export class AgenticChatStreamPublisher {
 			onMetric?: (metric: AgenticChatPublisherMetricV1, turnRunId: string) => void;
 			onTrace?: AgenticChatPersistenceTraceSinkV1;
 		},
-		config: Partial<AgenticChatPublisherConfig> = {}
+		config: Partial<AgenticChatPublisherConfig> = {},
+		options: AgenticChatStreamPublisherOptionsV1 = {}
 	) {
 		this.config = { ...DEFAULT_AGENTIC_CHAT_PUBLISHER_CONFIG, ...config };
 		validateAgenticChatPublisherConfig(this.config);
+		this.acknowledgeDeliveries = options.acknowledgeDeliveries === true;
+		if (this.acknowledgeDeliveries && !ports.persistence.acknowledge) {
+			throw new Error('acknowledgeDeliveries requires a persistence acknowledge port');
+		}
 	}
 
 	start(): void {
@@ -484,8 +599,37 @@ export class AgenticChatStreamPublisher {
 			lastDurableProgressAt: null,
 			lastDurableEventType: null,
 			lastDelivery: null,
-			lastDeliveryAtMs: null
+			lastDeliveryAtMs: null,
+			firstVisibleText: null,
+			firstVisibleTextPersistedAtMs: null,
+			semanticBatchItemCap: null
 		});
+	}
+
+	/**
+	 * Records that answer text became visible to the user: a live preview frame
+	 * the channel accepted, or durable text. Only the earliest moment is kept;
+	 * the next semantic batch carries it to `chat_turn_runs` (audit M3). Never
+	 * throws: measurement cannot affect delivery.
+	 */
+	noteVisibleText(
+		turnRunId: string,
+		executionGeneration: number,
+		at: string,
+		source: AgenticChatFirstVisibleTextSourceV1
+	): void {
+		const state = this.turns.get(turnRunId);
+		if (
+			!state ||
+			state.abandoned ||
+			state.context.executionGeneration !== executionGeneration
+		) {
+			return;
+		}
+		const atMs = Date.parse(at);
+		if (!Number.isFinite(atMs)) return;
+		if (state.firstVisibleText && state.firstVisibleText.atMs <= atMs) return;
+		state.firstVisibleText = { at: new Date(atMs).toISOString(), atMs, source };
 	}
 
 	/**
@@ -626,10 +770,14 @@ export class AgenticChatStreamPublisher {
 		input: AgenticChatSemanticPublishInputV1
 	): AgenticChatSemanticEnqueueResultV1 {
 		const state = this.requireWritableTurn(turnRunId);
-		validateSemanticInput(input);
+		const measured = validateSemanticInput(input);
+		// A tracked projection shares its entries with the turn's other pending
+		// snapshots: count only this event's payload so concurrent tool events do
+		// not each charge the whole projection against the pending-byte bounds.
 		const bytes =
-			utf8Bytes(JSON.stringify(input.projection)) +
-			utf8Bytes(JSON.stringify(input.eventPayload));
+			input.projectionBytes === undefined
+				? measured.projectionBytes + measured.payloadBytes
+				: measured.payloadBytes;
 		if (
 			state.pendingBytes + bytes > this.config.turnPendingHardBytes ||
 			this.pendingBytes + bytes > this.config.workerPendingHardBytes
@@ -654,6 +802,7 @@ export class AgenticChatStreamPublisher {
 			input,
 			assistantText: state.assistantText,
 			bytes,
+			payloadBytes: measured.payloadBytes,
 			inFlight: false,
 			enqueuedAtMs: this.now(),
 			attempt: 0,
@@ -963,12 +1112,199 @@ export class AgenticChatStreamPublisher {
 				)
 				.slice(0, this.config.maxConcurrentSemanticWrites);
 			if (semanticStates.length) {
-				await Promise.all(semanticStates.map((state) => this.flushSemanticState(state)));
+				await Promise.all(
+					semanticStates.map((state) =>
+						this.semanticBatchAvailable()
+							? this.flushSemanticBatch(state, this.collectSemanticBatch(state))
+							: this.flushSemanticState(state)
+					)
+				);
 				continue;
 			}
 			break;
 		}
 		this.scheduleAvailableDeliveries();
+	}
+
+	private semanticBatchAvailable(): boolean {
+		return (
+			this.ports.persistence.persistSemanticBatch !== undefined &&
+			this.now() >= this.semanticBatchUnavailableUntilMs
+		);
+	}
+
+	/**
+	 * The longest run of consecutive semantic events at the head of this turn's
+	 * queue that one transaction can write: no text batch between them (each
+	 * text batch consumes its own sequence through the text RPC), the same
+	 * assistant-text prefix, and within the item and byte bounds.
+	 */
+	private collectSemanticBatch(state: TurnState): SemanticOperation[] {
+		const batch: SemanticOperation[] = [];
+		let bytes = 0;
+		const maxItems = Math.min(
+			this.config.semanticBatchMaxItems,
+			state.semanticBatchItemCap ?? Number.POSITIVE_INFINITY
+		);
+		for (const operation of state.operations) {
+			if (operation.kind !== 'semantic') break;
+			if (batch.length >= maxItems) break;
+			if (batch.length && operation.assistantText !== batch[0]!.assistantText) break;
+			if (
+				batch.length &&
+				bytes + operation.payloadBytes > this.config.semanticBatchMaxBytes
+			) {
+				break;
+			}
+			bytes += operation.payloadBytes;
+			batch.push(operation);
+		}
+		return batch;
+	}
+
+	/**
+	 * Persists `operations` (this turn's queue head, in order) with one RPC.
+	 * Each receipt is accepted exactly as a single-event receipt would be, in
+	 * order, so sequence continuity, replay handling, and durable-before-
+	 * broadcast are unchanged; only the round trips and the projection writes
+	 * are shared. The projection written is the last event's.
+	 */
+	private async flushSemanticBatch(
+		state: TurnState,
+		operations: SemanticOperation[]
+	): Promise<void> {
+		const last = operations.at(-1);
+		if (!last || state.operations[0] !== operations[0]) return;
+		state.busy = true;
+		for (const operation of operations) {
+			operation.inFlight = true;
+			this.startAttempt(state, operation, operations.length);
+		}
+		const visible = this.pendingFirstVisibleText(state);
+		let response: AgenticChatSemanticBatchRpcResultV1;
+		try {
+			response = await this.ports.persistence.persistSemanticBatch!({
+				turn_run_id: state.context.turnRunId,
+				queue_job_id: state.context.queueJobId,
+				processing_token: state.context.processingToken,
+				execution_generation: state.context.executionGeneration,
+				assistant_text: last.assistantText,
+				events: operations.map((operation) => ({
+					transition_id: operation.input.transitionId,
+					phase: operation.input.phase,
+					event_type: operation.input.eventType,
+					event_payload: operation.input.eventPayload
+				})),
+				projection: last.input.projection,
+				first_visible_text_at: visible?.at ?? null,
+				first_visible_text_source: visible?.source ?? null
+			});
+		} catch (error) {
+			for (const operation of operations) operation.inFlight = false;
+			if (error instanceof AgenticChatSemanticBatchUnavailableError) {
+				// Nothing was written: the function does not exist yet. Requeue at
+				// once on the per-event RPC and probe the batch RPC again later.
+				for (const operation of operations) {
+					this.finishAttempt(
+						state,
+						operation,
+						'batch_unavailable',
+						error.code,
+						operations.length
+					);
+				}
+				this.semanticBatchUnavailableUntilMs =
+					this.now() + this.config.semanticBatchUnavailableRetryMs;
+				state.busy = false;
+				return;
+			}
+			for (const operation of operations.slice(1)) {
+				this.finishAttempt(
+					state,
+					operation,
+					'failed',
+					persistenceErrorCode(error),
+					operations.length
+				);
+			}
+			// The retry (transient failures only) sends half a multi-event batch.
+			// A lone event cannot shrink, and its retry may take new events along.
+			if (operations.length > 1) {
+				state.semanticBatchItemCap = Math.floor(operations.length / 2);
+			}
+			this.handlePersistenceFailure(state, error, operations.length);
+			return;
+		}
+
+		if (response.outcome !== 'batch_persisted') {
+			for (const operation of operations) {
+				this.finishAttempt(state, operation, response.outcome, null, operations.length);
+			}
+			// Stale generation, cancellation, or a terminal turn: the same handling
+			// a single-event receipt gets, which blocks every queued write.
+			this.acceptPersisted(state, response);
+			if (!state.blockedReason && !state.abandoned) this.blockTurn(state, response.outcome);
+			return;
+		}
+		const results = Array.isArray(response.results) ? response.results : [];
+		if (
+			response.turn_run_id !== state.context.turnRunId ||
+			response.queue_job_id !== state.context.queueJobId ||
+			results.length !== operations.length
+		) {
+			for (const operation of operations) {
+				this.finishAttempt(
+					state,
+					operation,
+					'invalid_batch_receipt',
+					null,
+					operations.length
+				);
+			}
+			this.blockTurn(state, 'batch_receipt_invalid');
+			return;
+		}
+		let persistedAny = false;
+		for (const [index, operation] of operations.entries()) {
+			const result = results[index]!;
+			this.finishAttempt(state, operation, result.outcome, null, operations.length);
+			if (
+				(result.outcome === 'persisted' || result.outcome === 'already_persisted') &&
+				result.transition_id !== operation.input.transitionId
+			) {
+				this.blockTurn(state, 'batch_receipt_order_mismatch');
+				return;
+			}
+			const persistenceObservedAtMs = this.now();
+			const acceptedReceipt = this.acceptPersisted(state, result, (acceptance) =>
+				this.acceptOperation(state, operation, acceptance)
+			);
+			// A rejected receipt blocks the turn, which rejects every operation
+			// still queued, including the rest of this batch. A turn blocked or
+			// abandoned while the RPC was in flight has already dropped its queue.
+			if (!acceptedReceipt || state.operations[0] !== operation) return;
+			if (result.outcome === 'persisted') persistedAny = true;
+			this.moveOperationToDelivery(
+				state,
+				operation,
+				acceptedReceipt,
+				persistenceObservedAtMs
+			);
+		}
+		state.busy = false;
+		state.semanticBatchItemCap = null;
+		if (persistedAny && visible) {
+			state.firstVisibleTextPersistedAtMs = visible.atMs;
+		}
+	}
+
+	private pendingFirstVisibleText(
+		state: TurnState
+	): { at: string; atMs: number; source: AgenticChatFirstVisibleTextSourceV1 } | null {
+		const visible = state.firstVisibleText;
+		if (!visible) return null;
+		const persisted = state.firstVisibleTextPersistedAtMs;
+		return persisted === null || visible.atMs < persisted ? visible : null;
 	}
 
 	private scheduleAvailableDeliveries(): void {
@@ -1072,6 +1408,14 @@ export class AgenticChatStreamPublisher {
 			const acceptedReceipt = this.acceptPersisted(state, result, (acceptance) =>
 				this.acceptOperation(state, operation, acceptance)
 			);
+			if (acceptedReceipt?.outcome === 'persisted') {
+				this.noteVisibleText(
+					state.context.turnRunId,
+					state.context.executionGeneration,
+					acceptedReceipt.persisted_at,
+					'durable_text'
+				);
+			}
 			if (acceptedReceipt && state.operations[0] === operation) {
 				this.moveOperationToDelivery(
 					state,
@@ -1197,10 +1541,11 @@ export class AgenticChatStreamPublisher {
 	}
 
 	/**
-	 * Deliver this turn's accepted events strictly in sequence order. Consecutive
-	 * successful Broadcasts share one exact-sequence acknowledgement for the last
-	 * event: the database acknowledges only its current durable sequence, so an
-	 * older acknowledgement is necessarily refused once later work is accepted.
+	 * Deliver this turn's accepted events strictly in sequence order. With
+	 * `acknowledgeDeliveries`, consecutive successful Broadcasts share one
+	 * exact-sequence acknowledgement for the last event: the database
+	 * acknowledges only its current durable sequence, so an older
+	 * acknowledgement is necessarily refused once later work is accepted.
 	 * A failed Broadcast or uncertain acknowledgement switches the turn to
 	 * reconcile-only until a sent hint covers everything withheld.
 	 */
@@ -1244,7 +1589,7 @@ export class AgenticChatStreamPublisher {
 		if (this.deliveryBlocked(state)) return;
 		const lastSent = sent.at(-1);
 		if (lastSent) {
-			if (state.reconcileOnly) {
+			if (state.reconcileOnly || !this.acknowledgeDeliveries) {
 				settleSent('broadcast_sent_reconcile_pending');
 			} else if (state.durableSequence > lastSent.receipt.sequence_index) {
 				// The next ordered run carries this turn's exact acknowledgement.
@@ -1331,10 +1676,13 @@ export class AgenticChatStreamPublisher {
 		state: TurnState,
 		sequenceIndex: number
 	): Promise<AgenticChatPublisherDeliveryV1> {
+		// Without the exact ACK the event is sent and durable; the database keeps
+		// `reconcile_required`, which only a reconnecting browser reads.
+		if (!this.acknowledgeDeliveries) return 'broadcast_sent_reconcile_pending';
 		// A newer snapshot this publisher cannot account for must be covered too.
 		let uncertainThroughSequence = sequenceIndex;
 		try {
-			const result = await this.ports.persistence.acknowledge({
+			const result = await this.ports.persistence.acknowledge!({
 				turn_run_id: state.context.turnRunId,
 				queue_job_id: state.context.queueJobId,
 				processing_token: state.context.processingToken,
@@ -1574,7 +1922,14 @@ export class AgenticChatStreamPublisher {
 		});
 	}
 
-	private startAttempt(state: TurnState, operation: Operation): void {
+	/** Trace fields of an attempt that rode a semantic batch RPC. */
+	private batchTrace(batchSize: number | undefined): Partial<AgenticChatPersistenceTraceV1> {
+		return batchSize === undefined
+			? {}
+			: { rpc: 'persist_agentic_chat_semantic_event_batch', batchSize };
+	}
+
+	private startAttempt(state: TurnState, operation: Operation, batchSize?: number): void {
 		const now = this.now();
 		operation.attempt += 1;
 		operation.attemptStartedAtMs = now;
@@ -1586,7 +1941,8 @@ export class AgenticChatStreamPublisher {
 			retryWaitMs:
 				operation.retryScheduledAtMs === null
 					? 0
-					: nonnegativeElapsed(operation.retryScheduledAtMs, now)
+					: nonnegativeElapsed(operation.retryScheduledAtMs, now),
+			...this.batchTrace(batchSize)
 		});
 	}
 
@@ -1594,7 +1950,8 @@ export class AgenticChatStreamPublisher {
 		state: TurnState,
 		operation: Operation,
 		outcome: string,
-		errorCode: string | null = null
+		errorCode: string | null = null,
+		batchSize?: number
 	): void {
 		this.trace(state, operation, 'attempt_finished', {
 			durationMs:
@@ -1602,7 +1959,8 @@ export class AgenticChatStreamPublisher {
 					? 0
 					: nonnegativeElapsed(operation.attemptStartedAtMs, this.now()),
 			outcome,
-			errorCode
+			errorCode,
+			...this.batchTrace(batchSize)
 		});
 	}
 
@@ -1622,9 +1980,11 @@ export class AgenticChatStreamPublisher {
 		this.metric('persistence_retry', state.context.turnRunId);
 	}
 
-	private handlePersistenceFailure(state: TurnState, error: unknown): void {
+	private handlePersistenceFailure(state: TurnState, error: unknown, batchSize?: number): void {
 		const operation = state.operations[0];
-		if (operation) this.finishAttempt(state, operation, 'failed', persistenceErrorCode(error));
+		if (operation) {
+			this.finishAttempt(state, operation, 'failed', persistenceErrorCode(error), batchSize);
+		}
 		const code =
 			typeof error === 'object' && error !== null && 'code' in error
 				? String((error as { code?: unknown }).code ?? '')
@@ -1925,9 +2285,22 @@ export function validateAgenticChatPublisherConfig(config: AgenticChatPublisherC
 	if (config.batchMaxBytes > AGENTIC_CHAT_TEXT_BATCH_FLUSH_MAX_BYTES) {
 		throw new Error('batchMaxBytes exceeds the database flush bound');
 	}
+	if (config.semanticBatchMaxItems > AGENTIC_CHAT_SEMANTIC_BATCH_MAX_ITEMS) {
+		throw new Error('semanticBatchMaxItems exceeds the database batch bound');
+	}
+	if (config.semanticBatchMaxBytes > AGENTIC_CHAT_SEMANTIC_BATCH_MAX_BYTES) {
+		throw new Error('semanticBatchMaxBytes exceeds the database batch bound');
+	}
 }
 
-function validateSemanticInput(input: AgenticChatSemanticPublishInputV1): void {
+/** Mirrors `persist_agentic_chat_semantic_event_batch` (20261017200000). */
+export const AGENTIC_CHAT_SEMANTIC_BATCH_MAX_ITEMS = 64;
+export const AGENTIC_CHAT_SEMANTIC_BATCH_MAX_BYTES = 16 * 1024 * 1024;
+
+function validateSemanticInput(input: AgenticChatSemanticPublishInputV1): {
+	projectionBytes: number;
+	payloadBytes: number;
+} {
 	if (!input.transitionId) throw new Error('transitionId is required');
 	if (!/^[a-z][a-z0-9_]{0,127}$/.test(input.eventType)) throw new Error('Invalid eventType');
 	if (
@@ -1939,14 +2312,23 @@ function validateSemanticInput(input: AgenticChatSemanticPublishInputV1): void {
 	}
 	if (input.eventPayload.type !== input.eventType)
 		throw new Error('eventPayload.type must match eventType');
-	if (utf8Bytes(JSON.stringify(input.projection)) > AGENTIC_CHAT_STREAM_PROJECTION_MAX_BYTES) {
+	if (
+		input.projectionBytes !== undefined &&
+		(!Number.isSafeInteger(input.projectionBytes) || input.projectionBytes < 0)
+	) {
+		throw new Error('projectionBytes must be a nonnegative safe integer');
+	}
+	// A caller-tracked estimate is an upper bound of the stored size, so the
+	// projection is not serialized again for every event.
+	const projectionBytes = input.projectionBytes ?? utf8Bytes(JSON.stringify(input.projection));
+	if (projectionBytes > AGENTIC_CHAT_STREAM_PROJECTION_MAX_BYTES) {
 		throw new Error('Semantic projection exceeds the database bound');
 	}
-	if (
-		utf8Bytes(JSON.stringify(input.eventPayload)) > AGENTIC_CHAT_STREAM_EVENT_PAYLOAD_MAX_BYTES
-	) {
+	const payloadBytes = utf8Bytes(JSON.stringify(input.eventPayload));
+	if (payloadBytes > AGENTIC_CHAT_STREAM_EVENT_PAYLOAD_MAX_BYTES) {
 		throw new Error('Semantic payload exceeds the database bound');
 	}
+	return { projectionBytes, payloadBytes };
 }
 
 function deferred<T>(): Deferred<T> {

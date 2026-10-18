@@ -847,7 +847,12 @@ export function getSkillGateCandidateSkillLoadFormats(
 	);
 }
 
-/** `user_launch`: a registry-resolved skill the user picked before the chat opened. */
+/**
+ * `user_launch`: a registry-resolved skill the user picked before the chat opened.
+ * `operational_intent` survives only in historical turn metadata: since
+ * 2026-10-17 the worker picks operational playbooks from Jev's write
+ * commission (provider/turn-rules.ts), never admission.
+ */
 export type DomainSensingPreloadSource =
 	| 'domain_sensing'
 	| 'operational_intent'

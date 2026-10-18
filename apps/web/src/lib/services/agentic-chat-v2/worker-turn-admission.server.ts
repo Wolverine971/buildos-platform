@@ -52,6 +52,24 @@ export type AgenticChatWorkerAdmissionRpcClient = {
 	): PromiseLike<RpcResult>;
 };
 
+/**
+ * The RPC's per-user rate limit (audit B14): too many admitted turns in its rolling
+ * window. Nothing was written; duplicates are resolved before the count, so this
+ * never answers a resend of an admitted turn.
+ */
+export type AgenticChatWorkerRateLimitedAdmissionV1 = {
+	outcome: 'rate_limited';
+	executionMayStart: false;
+	retryAfterSeconds: number;
+	limit: number;
+	windowSeconds: number;
+	recentCount: number;
+};
+
+export type AgenticChatWorkerAdmissionResult =
+	| AgenticChatWorkerAdmissionResultV1
+	| AgenticChatWorkerRateLimitedAdmissionV1;
+
 export type AgenticChatWorkerAdmissionGatewayErrorCode = 'database_error' | 'protocol_error';
 
 export class AgenticChatWorkerAdmissionGatewayError extends Error {
@@ -92,7 +110,7 @@ export function rpcErrorProvesRollback(error: RpcError | null | undefined): bool
 export async function admitAgenticChatWorkerTurn(input: {
 	client: AgenticChatWorkerAdmissionRpcClient;
 	args: AgenticChatWorkerAdmissionRpcArgs;
-}): Promise<AgenticChatWorkerAdmissionResultV1> {
+}): Promise<AgenticChatWorkerAdmissionResult> {
 	const { data, error } = await input.client.rpc('create_agentic_chat_turn_with_job', input.args);
 	if (error) {
 		// The Postgres exception name (e.g. agentic_chat_worker_admission_prepared_*)
@@ -155,11 +173,12 @@ export function isHistoryWindowRaceError(error: unknown): boolean {
 function parseAdmissionReceipt(
 	value: unknown,
 	args: AgenticChatWorkerAdmissionRpcArgs
-): AgenticChatWorkerAdmissionResultV1 {
+): AgenticChatWorkerAdmissionResult {
 	if (!isRecord(value) || value.execution_may_start !== false) {
 		throw protocolError('Worker admission receipt is invalid');
 	}
 	if (value.outcome === 'capacity_exceeded') return parseCapacityReceipt(value);
+	if (value.outcome === 'rate_limited') return parseRateLimitedReceipt(value);
 
 	const handle = parseHandle(value);
 	if (value.outcome === 'newly_admitted') {
@@ -305,6 +324,27 @@ function parseCapacityReceipt(
 		retryAfterSeconds: value.retry_after_seconds,
 		runningCount: value.running_count,
 		queuedCount: value.queued_count
+	};
+}
+
+function parseRateLimitedReceipt(
+	value: Record<string, unknown>
+): AgenticChatWorkerRateLimitedAdmissionV1 {
+	if (
+		!positiveBoundedInteger(value.retry_after_seconds, 3_600) ||
+		!positiveBoundedInteger(value.limit, 10_000) ||
+		!positiveBoundedInteger(value.window_seconds, 86_400) ||
+		!nonnegativeSafeInteger(value.recent_count)
+	) {
+		throw protocolError('Worker admission rate-limit receipt is invalid');
+	}
+	return {
+		outcome: 'rate_limited',
+		executionMayStart: false,
+		retryAfterSeconds: value.retry_after_seconds,
+		limit: value.limit,
+		windowSeconds: value.window_seconds,
+		recentCount: value.recent_count
 	};
 }
 

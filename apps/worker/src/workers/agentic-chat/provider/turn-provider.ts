@@ -45,6 +45,9 @@ import {
 } from './document-edit-preview';
 import { type AgenticChatTableEditPreviewPort, previewTableEditCalls } from './table-edit-preview';
 import type { AgenticChatToolSelectorPort } from './jev-tool-selector';
+import type { AgenticChatExecutionObservationPortV1 } from '../effects/execution-observation';
+import { enqueueReviewTelemetryObservation } from './review/review-telemetry';
+import { appendTurnRules } from './turn-rules';
 import { streamBufferedProviderPass } from './provider-pass';
 import { buildOutputBudgetRecoveryProgress, isActingOutputPass } from './output-budget';
 import {
@@ -156,6 +159,11 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			 * reviewer as counts plus sample cell diffs. Fail-open.
 			 */
 			tableEditPreview?: AgenticChatTableEditPreviewPort;
+			/**
+			 * Durable, content-free review-decision and write-commission receipts
+			 * (M5/S5, audit 2026-10-17). Absent in fixtures; never on the model path.
+			 */
+			executionObservations?: AgenticChatExecutionObservationPortV1;
 		},
 		private readonly retryableFailureCooldownMs = 2_000,
 		private readonly maxProviderRounds = DEFAULT_MAX_PROVIDER_ROUNDS,
@@ -246,13 +254,62 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			promptSnapshot,
 			stream: () => {
 				state.claimOpeningStream();
-				return this.streamActingPass(initialRequest, null, state, { phase: 'initial' });
+				return this.observeWriteCommission(
+					this.streamActingPass(initialRequest, null, state, { phase: 'initial' }),
+					request,
+					state
+				);
 			},
 			continueWithToolResults: (input) =>
-				this.streamToolRoundContinuation(state.completeToolRound(input), state),
+				this.observeWriteCommission(
+					this.streamToolRoundContinuation(state.completeToolRound(input), state),
+					request,
+					state
+				),
 			invalidateReadMemo: () => state.clearTurnReadEvidence(),
 			release: () => state.release()
 		};
+	}
+
+	/**
+	 * Pass every step through unchanged and write the turn's single
+	 * write-commission receipt when the provider finishes (or fails). The
+	 * write is detached into the turn's pending effects, which the executor
+	 * drains before the terminal fence.
+	 */
+	private async *observeWriteCommission(
+		stream: AsyncGenerator<AgenticChatProviderStepV1>,
+		identity: ClientRequest,
+		state: ToolRoundStreamState
+	): AsyncGenerator<AgenticChatProviderStepV1> {
+		const flush = (finishedReason: string | null) => {
+			try {
+				const payload = state.writeCommission.takePayload({
+					awaitingUserCard: state.awaitingUserCard(),
+					finishedReason
+				});
+				if (payload) {
+					enqueueReviewTelemetryObservation(
+						this.ports.executionObservations,
+						identity,
+						'provider_commission_observed',
+						'commission:turn',
+						payload
+					);
+				}
+			} catch {
+				// The shadow log can never alter the turn.
+			}
+		};
+		try {
+			for await (const step of stream) {
+				if (step.type === 'finish') flush(step.finishedReason);
+				yield step;
+			}
+		} catch (error) {
+			flush('provider_error');
+			throw error;
+		}
 	}
 
 	/** Stream the lane a completed tool round chose. */
@@ -400,6 +457,14 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				request = await this.resolveLiveVision(request);
 				if (this.ports.toolSelector)
 					request = await this.ports.toolSelector.select(request);
+				state.writeCommission.recordSelection(request);
+				if (request.heldWriteToolNames?.length)
+					state.holdWriteTools(request.heldWriteToolNames);
+				// Rules for This Turn: the admission-chosen block plus the write
+				// playbook Jev's structured commission selects, after the user message.
+				const turnRules = appendTurnRules(request, state.executionInput);
+				request = turnRules.request;
+				state.writeCommission.recordTurnRulesPlaybook(turnRules.playbookSkillId);
 				request = appendWebResearchRules(request);
 				const found = finding ? await finding : null;
 				if (found?.injection) request = appendSystemInstruction(request, found.injection);
@@ -471,6 +536,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 						completionBudgetExhausted: finishedReason === 'length'
 					}
 				);
+				// Shadow log (S5): every write the acting model proposed, whatever
+				// happens to it next (direct, withheld for review, or refused).
+				state.writeCommission.recordProposedCalls(calls);
 				const passUsage = normalizeUsage(event.usage);
 				// The opening pass has no prior usage to fold in; combining with
 				// null would erase the pass usage instead of carrying it.

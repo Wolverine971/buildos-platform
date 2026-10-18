@@ -22,6 +22,12 @@ import {
 } from '../src/workers/agentic-chat/stream/supabase-stream-publisher-adapters';
 import { AgenticChatLiveTextPreviewBroadcaster } from '../src/workers/agentic-chat/stream/live-text-preview';
 
+/**
+ * The exact-ACK delivery mode (`acknowledgeDeliveries`). Off by default since
+ * audit S7; these tests keep that mode, the one-line rollback, covered.
+ */
+const EXACT_ACK = { acknowledgeDeliveries: true } as const;
+
 function turn(suffix: string): AgenticChatPublisherTurnV1 {
 	return {
 		turnRunId: `turn-${suffix}`,
@@ -51,7 +57,10 @@ const subscriptionTestMessage = {
 function createPersistence(
 	turns: AgenticChatPublisherTurnV1[],
 	log: string[] = []
-): AgenticChatPersistencePortV1 & { textCalls: AgenticChatTextBatchInputV1[][] } {
+): AgenticChatPersistencePortV1 & {
+	textCalls: AgenticChatTextBatchInputV1[][];
+	acknowledge: NonNullable<AgenticChatPersistencePortV1['acknowledge']>;
+} {
 	const contexts = new Map(turns.map((context) => [context.turnRunId, context]));
 	const sequences = new Map<string, number>();
 	const textCalls: AgenticChatTextBatchInputV1[][] = [];
@@ -287,7 +296,7 @@ describe('AgenticChatStreamPublisher', () => {
 		} satisfies AgenticChatPublisherTurnV1;
 		const persistence = createPersistence([context], log);
 		const broadcast = createBroadcast(log);
-		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
+		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast }, {}, EXACT_ACK);
 		publisher.start();
 		publisher.registerTurn(context);
 
@@ -342,7 +351,7 @@ describe('AgenticChatStreamPublisher', () => {
 		const broadcast = {
 			publish: vi.fn(async (_message: AgenticChatBroadcastMessageV1) => broadcastGate.promise)
 		};
-		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
+		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast }, {}, EXACT_ACK);
 		publisher.start();
 		publisher.registerTurn(context);
 
@@ -429,7 +438,7 @@ describe('AgenticChatStreamPublisher', () => {
 			return exactAcknowledge(input);
 		});
 		const broadcast = createBroadcast();
-		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast });
+		const publisher = new AgenticChatStreamPublisher({ persistence, broadcast }, {}, EXACT_ACK);
 		publisher.start();
 		publisher.registerTurn(context);
 
@@ -624,10 +633,14 @@ describe('AgenticChatStreamPublisher', () => {
 		const context = turn('ordered');
 		const log: string[] = [];
 		const persistence = createPersistence([context], log);
-		const publisher = new AgenticChatStreamPublisher({
-			persistence,
-			broadcast: createBroadcast(log)
-		});
+		const publisher = new AgenticChatStreamPublisher(
+			{
+				persistence,
+				broadcast: createBroadcast(log)
+			},
+			{},
+			EXACT_ACK
+		);
 		publisher.start();
 		publisher.registerTurn(context);
 		await publisher.appendText(context.turnRunId, 'A').delivery;
@@ -846,7 +859,8 @@ describe('AgenticChatStreamPublisher', () => {
 		const broadcast = createBroadcast(log, ['failed', 'sent']);
 		const publisher = new AgenticChatStreamPublisher(
 			{ persistence, broadcast, now: () => 100 },
-			{ reconcileHintIntervalMs: 1 }
+			{ reconcileHintIntervalMs: 1 },
+			EXACT_ACK
 		);
 		publisher.start();
 		publisher.registerTurn(context);
@@ -895,7 +909,8 @@ describe('AgenticChatStreamPublisher', () => {
 		let nowMs = 100;
 		const publisher = new AgenticChatStreamPublisher(
 			{ persistence, broadcast, now: () => nowMs },
-			{ reconcileHintIntervalMs: 2_000 }
+			{ reconcileHintIntervalMs: 2_000 },
+			EXACT_ACK
 		);
 		publisher.start();
 		publisher.registerTurn(context);
@@ -949,7 +964,8 @@ describe('AgenticChatStreamPublisher', () => {
 		const broadcast = createBroadcast();
 		const publisher = new AgenticChatStreamPublisher(
 			{ persistence, broadcast, now: () => 100 },
-			{ reconcileHintIntervalMs: 1 }
+			{ reconcileHintIntervalMs: 1 },
+			EXACT_ACK
 		);
 		publisher.start();
 		publisher.registerTurn(context);
@@ -982,10 +998,14 @@ describe('AgenticChatStreamPublisher', () => {
 			current_sequence: input.acknowledged_sequence + 1,
 			reconcile_required: true
 		});
-		const publisher = new AgenticChatStreamPublisher({
-			persistence,
-			broadcast: createBroadcast()
-		});
+		const publisher = new AgenticChatStreamPublisher(
+			{
+				persistence,
+				broadcast: createBroadcast()
+			},
+			{},
+			EXACT_ACK
+		);
 		publisher.start();
 		publisher.registerTurn(context);
 
@@ -1152,11 +1172,15 @@ describe('AgenticChatStreamPublisher', () => {
 			removeChannel: vi.fn().mockResolvedValue(undefined)
 		};
 		const broadcast = new SupabaseAgenticChatBroadcastAdapter(client);
-		const publisher = new AgenticChatStreamPublisher({
-			persistence: createPersistence([context]),
-			broadcast,
-			sleep: async () => undefined
-		});
+		const publisher = new AgenticChatStreamPublisher(
+			{
+				persistence: createPersistence([context]),
+				broadcast,
+				sleep: async () => undefined
+			},
+			{},
+			EXACT_ACK
+		);
 		publisher.start();
 		publisher.registerTurn(context);
 
@@ -1199,10 +1223,14 @@ describe('AgenticChatStreamPublisher', () => {
 		const context = turn('committed-context');
 		const log: string[] = [];
 		const broadcast = createBroadcast(log);
-		const publisher = new AgenticChatStreamPublisher({
-			persistence: createPersistence([context], log),
-			broadcast
-		});
+		const publisher = new AgenticChatStreamPublisher(
+			{
+				persistence: createPersistence([context], log),
+				broadcast
+			},
+			{},
+			EXACT_ACK
+		);
 		publisher.start();
 		publisher.registerTurn(context);
 
@@ -1595,7 +1623,7 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		}
 	});
 
-	it('evicts a channel that degrades after subscribing and reconnects on the next event', async () => {
+	it('evicts a channel that fails after subscribing, without a health failure, and reconnects on the next event', async () => {
 		let observeStatus!: (
 			status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR'
 		) => void;
@@ -1628,12 +1656,18 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		await expect(adapter.publish(message)).resolves.toBe('sent');
 		observeStatus('CHANNEL_ERROR');
 		await Promise.resolve();
+		// No publish or subscribe attempt failed (Realtime incident 2026-10-17):
+		// health counts attempts, and the lost channel is simply evicted.
 		expect(adapter.getHealth()).toMatchObject({
-			healthy: false,
-			status: 'degraded',
-			activeChannels: 0
+			healthy: true,
+			status: 'connected',
+			activeChannels: 0,
+			consecutiveFailures: 0
 		});
 		expect(client.removeChannel).toHaveBeenCalledWith(channel);
+		// The SDK's late CLOSED for the removed channel is ignored.
+		observeStatus('CLOSED');
+		expect(client.removeChannel).toHaveBeenCalledOnce();
 
 		await expect(adapter.publish(message)).resolves.toBe('sent');
 		expect(client.channel).toHaveBeenCalledTimes(2);
@@ -1757,10 +1791,14 @@ describe('Supabase Agentic Chat publisher adapters', () => {
 		const broadcast = new SupabaseAgenticChatBroadcastAdapter(client);
 		const context = turn('preview-shared');
 		const log: string[] = [];
-		const publisher = new AgenticChatStreamPublisher({
-			persistence: createPersistence([context], log),
-			broadcast
-		});
+		const publisher = new AgenticChatStreamPublisher(
+			{
+				persistence: createPersistence([context], log),
+				broadcast
+			},
+			{},
+			EXACT_ACK
+		);
 		const onFirstFailure = vi.fn();
 		const previews = new AgenticChatLiveTextPreviewBroadcaster({
 			publisher,

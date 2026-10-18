@@ -9,19 +9,15 @@
 		Loader,
 		Check,
 		X,
-		Wrench,
 		CircleDot,
 		RefreshCw,
-		Zap,
-		BookOpen,
-		HelpCircle,
-		Info,
 		Globe,
 		Sparkles,
 		Ban,
 		CornerUpLeft
 	} from 'lucide-svelte';
-	import type { ActivityType, ThinkingBlockMessage } from './agent-chat.types';
+	import type { ActivityEntry, ThinkingBlockMessage } from './agent-chat.types';
+	import type { ToolActivityLine } from './agent-chat-tool-presenter';
 	import { WORKER_STOPPING_STATUS } from './agent-chat-worker-status';
 	import AgentClientActionCard from './AgentClientActionCard.svelte';
 	import { readToolProgressSteps, type ToolProgressStep } from './agent-chat-tool-progress';
@@ -38,6 +34,32 @@
 
 	let { block, onToggleCollapse, onClientActionComplete }: Props = $props();
 
+	type StepTone = 'pending' | 'done' | 'failed' | 'awaiting' | 'stopped';
+
+	interface StepRow {
+		activity: ActivityEntry;
+		tone: StepTone;
+		verb: string;
+		target?: string;
+		quoted: boolean;
+		outcome?: string;
+		error?: string;
+	}
+
+	// Screen-reader prefix for each row's status icon. Awaiting rows already
+	// start with "Needs your choice", so they get none.
+	const STEP_TONE_LABELS: Record<StepTone, string> = {
+		pending: 'In progress',
+		done: 'Done',
+		failed: 'Failed',
+		awaiting: '',
+		stopped: 'Stopped'
+	};
+
+	// Notes `finalizeThinkingBlock` writes when it has nothing more specific.
+	// The headline already says them, so they are never repeated as a detail.
+	const GENERIC_FINAL_NOTES = new Set(['Complete', 'Error', 'Interrupted', 'Cancelled']);
+
 	const workflow = $derived.by(() => {
 		for (let i = block.activities.length - 1; i >= 0; i--) {
 			const value = readAgentChatWorkflowProgress(block.activities[i]?.metadata?.workflow);
@@ -53,27 +75,22 @@
 		isExpanded = !isExpanded;
 	}
 
+	// Status copy arrives from several sources ("Working...", "Thinking…").
+	// Print one ellipsis style, and drop it once a step is no longer running.
+	function withEllipsis(text: string): string {
+		return text.replace(/\s*(?:\.\.\.|…)\s*$/, '…');
+	}
+
+	function withoutEllipsis(text: string): string {
+		return text.replace(/\s*(?:\.\.\.|…)\s*$/, '');
+	}
+
 	// Driven by the explicit loop signals only — never by sniffing copy in
-	// `block.content` (a status detail containing "complete" used to flip the
-	// header early, and copy edits silently broke the heuristic).
-	const isThinkingComplete = $derived(
-		block.status !== 'active' || block.agentState === 'waiting_on_user'
-	);
+	// `block.content`.
+	const isRunning = $derived(block.status === 'active' && block.agentState !== 'waiting_on_user');
 
 	// Stop pressed and the turn has not ended yet: say so wherever the status shows.
 	const isStopping = $derived(block.status === 'active' && block.stopRequested === true);
-
-	// Derive header label - changes from "Thinking" to "Thoughts" when complete
-	const headerLabel = $derived(
-		isStopping
-			? WORKER_STOPPING_STATUS
-			: isThinkingComplete
-				? 'BuildOS Thoughts'
-				: 'BuildOS Thinking'
-	);
-
-	// Show animated hammer only when actively thinking
-	const showAnimatedHammer = $derived(block.status === 'active' && !isThinkingComplete);
 
 	const displayedActivities = $derived(
 		block.activities.filter(
@@ -83,71 +100,156 @@
 				activity.metadata?.activityVisibility === 'activity_log'
 		)
 	);
-	const displayedActivityCount = $derived(displayedActivities.length);
-	const hasDisplayedActivities = $derived(displayedActivityCount > 0);
-	const clientActions = $derived(collectGmailConnectionClientActions(block.activities));
-	const compactLabel = $derived.by(() => {
-		if (block.status === 'error') return 'BuildOS hit an issue';
-		if (block.status === 'interrupted' || block.status === 'cancelled')
-			return 'BuildOS stopped';
-		if (block.agentState === 'waiting_on_user') return 'Waiting on your direction';
-		if (block.status === 'completed') return 'BuildOS thought';
-		return 'BuildOS is thinking';
-	});
-	const compactDetail = $derived.by(() => {
-		if (block.status === 'error') return block.content || 'Try again when you are ready';
-		if (block.status === 'interrupted' || block.status === 'cancelled') {
-			return block.content || 'Stopped';
-		}
-		if (block.agentState === 'waiting_on_user') {
-			return block.content || 'Waiting on your direction';
-		}
-		if (block.status === 'completed') return 'No tools needed';
-		if (isStopping) return WORKER_STOPPING_STATUS;
-		return block.content || 'Preparing the next response';
-	});
-	const activitySummary = $derived(
-		`${displayedActivityCount} ${displayedActivityCount === 1 ? 'action' : 'actions'}`
-	);
 
-	// Live status crossfade for the compact active header. The modal rewrites
-	// `block.content` as the turn moves ("Thinking…", "Writing the response…",
-	// tool phases); the outgoing line stays stacked under the incoming one just
-	// long enough to fade out, so the swap reads as one soft change. Plain
-	// closure state: it only records the value this derived already saw.
+	function readLine(activity: ActivityEntry): Partial<ToolActivityLine> | null {
+		const line = activity.metadata?.line;
+		return line && typeof line === 'object' && typeof line.verb === 'string' ? line : null;
+	}
+
+	function stepTone(
+		activity: ActivityEntry,
+		line: Partial<ToolActivityLine> | null,
+		isLatest: boolean
+	): StepTone {
+		if (activity.status === 'failed') return 'failed';
+		if (line?.tone === 'awaiting') return 'awaiting';
+		if (activity.status === 'completed') return 'done';
+		if (activity.status === 'pending') return block.status === 'active' ? 'pending' : 'stopped';
+		// Status rows (a review step) carry no status of their own: the newest one
+		// is what is running now; anything after it means it finished.
+		return isLatest && isRunning ? 'pending' : 'done';
+	}
+
+	const steps = $derived.by((): StepRow[] => {
+		const lastIndex = displayedActivities.length - 1;
+		return displayedActivities.map((activity, index) => {
+			const line = readLine(activity);
+			const tone = stepTone(activity, line, index === lastIndex);
+			const fallback = activity.content ?? '';
+			const verb =
+				line?.verb ??
+				(tone === 'pending' ? withEllipsis(fallback) : withoutEllipsis(fallback));
+			const outcome =
+				tone === 'done' && typeof activity.metadata?.outcome === 'string'
+					? activity.metadata.outcome
+					: undefined;
+			return {
+				activity,
+				tone,
+				verb,
+				...(line?.target ? { target: line.target } : {}),
+				quoted: line?.quoted === true,
+				...(outcome ? { outcome } : {}),
+				...(tone === 'failed' && line?.error ? { error: line.error } : {})
+			};
+		});
+	});
+	const stepCount = $derived(steps.length);
+	const hasSteps = $derived(stepCount > 0);
+	const stepSummary = $derived(`${stepCount} ${stepCount === 1 ? 'step' : 'steps'}`);
+	const clientActions = $derived(collectGmailConnectionClientActions(block.activities));
+
+	// ---------------------------------------------------------------------
+	// Time: a ticking counter while the turn runs, the total once it ends.
+	// ---------------------------------------------------------------------
+	function toMs(value: unknown): number | null {
+		if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.getTime() : null;
+		if (typeof value === 'string' || typeof value === 'number') {
+			const ms = new Date(value).getTime();
+			return Number.isFinite(ms) ? ms : null;
+		}
+		return null;
+	}
+
+	function formatSeconds(ms: number): string {
+		const total = Math.max(0, Math.round(ms / 1000));
+		if (total < 60) return `${total}s`;
+		return `${Math.floor(total / 60)}m ${total % 60}s`;
+	}
+
+	let now = $state(Date.now());
+	$effect(() => {
+		if (!isRunning) return;
+		now = Date.now();
+		const timer = setInterval(() => {
+			now = Date.now();
+		}, 1000);
+		return () => clearInterval(timer);
+	});
+
+	const startedAtMs = $derived(toMs(block.timestamp));
+	// Hidden for the first two seconds so quick replies never flash a "0s".
+	const elapsedLabel = $derived(
+		isRunning && startedAtMs !== null && now - startedAtMs >= 2000
+			? formatSeconds(now - startedAtMs)
+			: null
+	);
+	const durationLabel = $derived.by(() => {
+		const endedAtMs = toMs(block.completedAt);
+		if (startedAtMs === null || endedAtMs === null || endedAtMs < startedAtMs) return null;
+		return formatSeconds(endedAtMs - startedAtMs);
+	});
+
+	// ---------------------------------------------------------------------
+	// Header copy. While running, the header IS the live status ("Thinking…",
+	// "Listing goals…", "Wrapping up…") — one line, no second "thinking".
+	// ---------------------------------------------------------------------
+	const liveDetail = $derived.by(() => {
+		if (isStopping) return WORKER_STOPPING_STATUS;
+		for (let i = steps.length - 1; i >= 0; i--) {
+			const step = steps[i]!;
+			if (step.tone === 'pending') return `${withoutEllipsis(step.verb)}…`;
+		}
+		const content = (block.content ?? '').trim();
+		// A status row ("Checking the requested change…") writes the same text
+		// into `block.content`; once a later step finished it, the header must not
+		// keep saying it while the model works on the next move.
+		const finishedRow = steps.some(
+			(step) =>
+				step.tone === 'done' &&
+				step.activity.activityType !== 'tool_call' &&
+				step.activity.content === content
+		);
+		if (finishedRow) return 'Working…';
+		return withEllipsis(content) || 'Thinking…';
+	});
+
+	const headline = $derived.by(() => {
+		if (block.status === 'error') return 'Hit an issue';
+		if (block.status === 'interrupted' || block.status === 'cancelled') return 'Stopped';
+		if (block.agentState === 'waiting_on_user') return 'Waiting on your direction';
+		if (hasSteps) return durationLabel ? `Worked for ${durationLabel}` : 'Work log';
+		return durationLabel ? `Thought for ${durationLabel}` : 'Done';
+	});
+
+	const headlineDetail = $derived.by(() => {
+		if (block.status === 'completed' && block.agentState !== 'waiting_on_user') return null;
+		const content = withoutEllipsis((block.content ?? '').trim());
+		if (!content || GENERIC_FINAL_NOTES.has(content)) {
+			return block.status === 'error' ? 'Try again when you are ready' : null;
+		}
+		if (content === headline) return null;
+		return content;
+	});
+
+	// Live status crossfade: the outgoing line stays stacked under the incoming
+	// one just long enough to fade out, so the swap reads as one soft change.
+	// Plain closure state: it only records the value this derived already saw.
 	let statusHistory: { current: string; previous: string | null } = {
 		current: '',
 		previous: null
 	};
 	const liveStatus = $derived.by(() => {
-		const next = compactDetail;
+		const next = liveDetail;
 		if (next !== statusHistory.current) {
 			statusHistory = { current: next, previous: statusHistory.current || null };
 		}
 		return statusHistory;
 	});
 
-	// INKPRINT activity styles. Lucide icons (not emoji) so they theme with the
-	// Inkprint color tokens and render identically across platforms, matching
-	// the icon language of the sibling tabs/header surfaces.
-	const ACTIVITY_STYLES: Record<ActivityType, { icon: typeof Info; color: string }> = {
-		tool_call: { icon: Wrench, color: 'text-info' },
-		tool_result: { icon: Check, color: 'text-success' },
-		state_change: { icon: CircleDot, color: 'text-success' },
-		context_shift: { icon: RefreshCw, color: 'text-warning' },
-		operation: { icon: Zap, color: 'text-info' },
-		ontology_loaded: { icon: BookOpen, color: 'text-info' },
-		clarification: { icon: HelpCircle, color: 'text-info' },
-		general: { icon: Info, color: 'text-muted-foreground' }
-	};
-
-	function getActivityStyle(type: ActivityType) {
-		return ACTIVITY_STYLES[type] || ACTIVITY_STYLES.general;
-	}
-
 	// Sub-steps inside a running tool (web_navigate's live trail): one quiet
 	// line per page opened, Jev decision, retry, or backtrack.
-	const TRAIL_STYLES: Record<string, { icon: typeof Info; color: string }> = {
+	const TRAIL_STYLES: Record<string, { icon: typeof Check; color: string }> = {
 		opened: { icon: Globe, color: 'text-muted-foreground' },
 		decided: { icon: Sparkles, color: 'text-info' },
 		escalating: { icon: RefreshCw, color: 'text-warning' },
@@ -166,7 +268,7 @@
 	}
 
 	// Auto-follow: keep the newest log entry in view while the turn is active —
-	// the log is a short scroll box and tool #5 onward otherwise appends below
+	// the log is a short scroll box and step #5 onward otherwise appends below
 	// the fold. Manual scrolling up pauses following (same rule as the message
 	// list); scrolling back to the bottom resumes it.
 	let logContainer = $state<HTMLElement | undefined>(undefined);
@@ -180,7 +282,7 @@
 	}
 
 	$effect(() => {
-		if (displayedActivityCount === 0) return;
+		if (stepCount === 0) return;
 		if (block.status !== 'active') return;
 		if (logUserScrolled || !logContainer) return;
 		logContainer.scrollTop = logContainer.scrollHeight;
@@ -194,10 +296,10 @@
 	{:else}
 		<div
 			class="thinking-block overflow-hidden border border-border bg-card shadow-ink tx tx-thread tx-weak"
-			class:thinking-block-compact={!hasDisplayedActivities}
-			class:thinking-block-with-activity={hasDisplayedActivities}
-			class:thinking-block-active={showAnimatedHammer}
-			class:thinking-block-complete={block.status === 'completed' && !hasDisplayedActivities}
+			class:thinking-block-compact={!hasSteps}
+			class:thinking-block-with-activity={hasSteps}
+			class:thinking-block-active={isRunning}
+			class:thinking-block-complete={block.status === 'completed' && !hasSteps}
 			class:thinking-block-error={block.status === 'error'}
 		>
 			<!-- No live region on the container: role="status" is implicitly atomic,
@@ -206,19 +308,19 @@
 			<button
 				type="button"
 				onclick={() => {
-					if (hasDisplayedActivities) onToggleCollapse(block.id);
+					if (hasSteps) onToggleCollapse(block.id);
 				}}
-				disabled={!hasDisplayedActivities}
+				disabled={!hasSteps}
 				class="thinking-header"
-				aria-expanded={hasDisplayedActivities ? !block.isCollapsed : undefined}
-				aria-label={hasDisplayedActivities
+				aria-expanded={hasSteps ? !block.isCollapsed : undefined}
+				aria-label={hasSteps
 					? block.isCollapsed
 						? 'Expand BuildOS thinking log'
 						: 'Collapse BuildOS thinking log'
 					: undefined}
 			>
-				<div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
-					{#if hasDisplayedActivities}
+				<div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+					{#if hasSteps}
 						{#if block.isCollapsed}
 							<ChevronRight
 								class="h-3 w-3 shrink-0 text-muted-foreground"
@@ -230,74 +332,62 @@
 								aria-hidden="true"
 							/>
 						{/if}
+						{#if isRunning}
+							<span class="thinking-hammer shrink-0" aria-hidden="true">⚒</span>
+						{/if}
 					{:else}
 						<span class="thinking-compact-icon" aria-hidden="true">
-							{#if showAnimatedHammer}
+							{#if isRunning}
 								<span class="thinking-hammer">⚒</span>
-							{:else if block.status === 'completed'}
+							{:else if block.status === 'completed' && block.agentState !== 'waiting_on_user'}
 								<Check class="h-3.5 w-3.5 text-success" />
 							{:else if block.status === 'error'}
 								<X class="h-3.5 w-3.5 text-destructive" />
+							{:else if block.agentState === 'waiting_on_user'}
+								<CircleDot class="h-3.5 w-3.5 text-accent" />
 							{:else}
-								<Loader class="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+								<CircleDot class="h-3.5 w-3.5 text-muted-foreground" />
 							{/if}
 						</span>
 					{/if}
-					{#if showAnimatedHammer && hasDisplayedActivities}
-						<span class="thinking-hammer shrink-0" aria-hidden="true">⚒</span>
-					{/if}
 
-					<span
-						class="min-w-0 truncate font-mono text-2xs font-semibold tracking-normal text-foreground {hasDisplayedActivities
-							? 'uppercase sm:text-xs'
-							: ''}"
-					>
-						{hasDisplayedActivities ? headerLabel : compactLabel}
-					</span>
-
-					{#if showAnimatedHammer}
-						<span
-							class="thinking-dots"
-							class:thinking-dots-hidden={hasDisplayedActivities}
-							aria-hidden="true"
-						>
-							<span></span>
-							<span></span>
-							<span></span>
-						</span>
-						{#if !hasDisplayedActivities}
-							<span class="thinking-status" data-testid="thinking-live-status">
-								{#key liveStatus.current}
-									<span class="thinking-status-text thinking-status-in"
-										>{liveStatus.current}</span
+					{#if isRunning}
+						<span class="thinking-status" data-testid="thinking-live-status">
+							{#key liveStatus.current}
+								<span class="thinking-status-text thinking-status-in"
+									>{liveStatus.current}</span
+								>
+							{/key}
+							{#if liveStatus.previous !== null}
+								{#key liveStatus.previous}
+									<span
+										class="thinking-status-text thinking-status-out"
+										aria-hidden="true">{liveStatus.previous}</span
 									>
 								{/key}
-								{#if liveStatus.previous !== null}
-									{#key liveStatus.previous}
-										<span
-											class="thinking-status-text thinking-status-out"
-											aria-hidden="true">{liveStatus.previous}</span
-										>
-									{/key}
-								{/if}
-							</span>
+							{/if}
+						</span>
+					{:else}
+						<span class="thinking-headline">{headline}</span>
+						{#if headlineDetail}
+							<span class="thinking-compact-detail truncate">{headlineDetail}</span>
 						{/if}
-					{:else if !hasDisplayedActivities}
-						<span class="thinking-compact-detail truncate">{compactDetail}</span>
 					{/if}
 				</div>
-				{#if hasDisplayedActivities}
-					<span class="activity-count-badge">
-						{activitySummary}
-					</span>
+				{#if elapsedLabel || hasSteps}
+					<div class="flex shrink-0 items-center gap-1.5">
+						{#if elapsedLabel}
+							<span class="thinking-elapsed" aria-hidden="true">{elapsedLabel}</span>
+						{/if}
+						{#if hasSteps}
+							<span class="activity-count-badge">{stepSummary}</span>
+						{/if}
+					</div>
 				{/if}
 			</button>
 
 			<!-- INKPRINT activity log panel -->
-			<div
-				class="thinking-body"
-				class:thinking-body-open={hasDisplayedActivities && !block.isCollapsed}
-			>
+			<div class="thinking-body" class:thinking-body-open={hasSteps && !block.isCollapsed}>
 				<div class="thinking-body-inner">
 					<div class="p-2 sm:p-2.5">
 						<div
@@ -308,51 +398,68 @@
 							role="log"
 							aria-label="BuildOS thinking log"
 						>
-							{#each displayedActivities as activity (activity.id)}
-								{@const style = getActivityStyle(activity.activityType)}
-								{@const ActivityIcon = style.icon}
+							{#each steps as step (step.activity.id)}
 								{@const trail = readToolProgressSteps(
-									activity.metadata?.progressSteps
+									step.activity.metadata?.progressSteps
 								)}
-								<div class="py-0.5">
-									<div class="flex items-center gap-1.5 leading-snug">
-										<!-- Icon -->
-										<span class="shrink-0 {style.color}" aria-hidden="true">
-											<ActivityIcon class="h-3 w-3" />
+								<div class="py-0.5" data-step-tone={step.tone}>
+									<div class="flex items-start gap-1.5 leading-snug">
+										<span class="thinking-step-icon" aria-hidden="true">
+											{#if step.tone === 'pending'}
+												<Loader
+													class="h-3 w-3 animate-spin text-muted-foreground"
+												/>
+											{:else if step.tone === 'failed'}
+												<X class="h-3 w-3 text-destructive" />
+											{:else if step.tone === 'awaiting'}
+												<CircleDot class="h-3 w-3 text-accent" />
+											{:else if step.tone === 'stopped'}
+												<CircleDot class="h-3 w-3 text-muted-foreground" />
+											{:else}
+												<Check class="h-3 w-3 text-success" />
+											{/if}
+										</span>
+										{#if STEP_TONE_LABELS[step.tone]}
+											<span class="sr-only"
+												>{STEP_TONE_LABELS[step.tone]}:</span
+											>
+										{/if}
+
+										<span
+											class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
+										>
+											<span
+												class={step.tone === 'failed'
+													? 'text-destructive'
+													: step.tone === 'stopped'
+														? 'text-muted-foreground'
+														: 'text-foreground'}>{step.verb}</span
+											>{#if step.target}<span
+													class="thinking-step-sep"
+													aria-hidden="true">{' · '}</span
+												><span class="thinking-step-target"
+													>{step.quoted
+														? `“${step.target}”`
+														: step.target}</span
+												>{/if}
 										</span>
 
-										<!-- Content -->
-										<span
-											class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
-											>{activity.content}</span
-										>
-
-										<!-- Status indicator (for tool calls) -->
-										{#if activity.status === 'pending'}
-											<Loader
-												class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
-												aria-label="Loading"
-											/>
-										{:else if activity.status === 'completed'}
-											<Check
-												class="h-2.5 w-2.5 shrink-0 text-success"
-												aria-label="Completed"
-											/>
-										{:else if activity.status === 'failed'}
-											<X
-												class="h-2.5 w-2.5 shrink-0 text-destructive"
-												aria-label="Failed"
-											/>
+										{#if step.outcome}
+											<span class="thinking-step-outcome">{step.outcome}</span
+											>
 										{/if}
 									</div>
+									{#if step.error}
+										<p class="thinking-step-error">{step.error}</p>
+									{/if}
 									{#if trail.length > 0}
 										<ol class="tool-trail" aria-label="Steps for this action">
-											{#each trail as step, stepIndex (step.index)}
-												{@const trailStyle = getTrailStyle(step)}
+											{#each trail as trailStep, trailIndex (trailStep.index)}
+												{@const trailStyle = getTrailStyle(trailStep)}
 												{@const TrailIcon = trailStyle.icon}
 												{@const live =
-													activity.status === 'pending' &&
-													stepIndex === trail.length - 1}
+													step.tone === 'pending' &&
+													trailIndex === trail.length - 1}
 												<li
 													class="tool-trail-step"
 													class:tool-trail-step-live={live}
@@ -363,7 +470,7 @@
 													/>
 													<span
 														class="min-w-0 flex-1 break-words [overflow-wrap:anywhere]"
-														>{step.message}</span
+														>{trailStep.message}</span
 													>
 													{#if live}
 														<Loader
@@ -379,7 +486,7 @@
 							{/each}
 						</div>
 						<!-- Expand/collapse toggle for the log height -->
-						{#if displayedActivityCount > 3}
+						{#if stepCount > 3}
 							<button
 								type="button"
 								onclick={toggleExpand}
@@ -389,12 +496,15 @@
 									: 'Show more activity'}
 								aria-expanded={isExpanded}
 							>
-								<ChevronDown
-									class="thinking-log-chevron h-3 w-3 {isExpanded
-										? 'thinking-log-chevron-expanded'
-										: ''}"
+								<!-- Scoped styles can't reach inside the icon component, so the
+								     rotating chevron sits in a span this file can style. -->
+								<span
+									class="thinking-log-chevron"
+									class:thinking-log-chevron-expanded={isExpanded}
 									aria-hidden="true"
-								/>
+								>
+									<ChevronDown class="h-3 w-3" />
+								</span>
 								{isExpanded ? 'Show less' : 'Show more'}
 							</button>
 						{/if}
@@ -582,14 +692,60 @@
 		min-width: 0;
 	}
 
-	.thinking-status-text {
-		grid-area: 1 / 1;
+	.thinking-status-text,
+	.thinking-headline {
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: hsl(var(--muted-foreground));
+		color: hsl(var(--foreground));
+		font-family:
+			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+			monospace;
 		font-size: 0.68rem;
+		font-weight: 600;
+	}
+
+	.thinking-status-text {
+		grid-area: 1 / 1;
+	}
+
+	.thinking-headline {
+		flex: 0 1 auto;
+	}
+
+	.thinking-elapsed {
+		font-family:
+			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+			monospace;
+		font-size: 0.62rem;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.thinking-step-icon {
+		display: inline-flex;
+		flex: 0 0 auto;
+		height: 1.1em;
+		align-items: center;
+	}
+
+	.thinking-step-sep,
+	.thinking-step-target {
+		color: hsl(var(--muted-foreground));
+	}
+
+	.thinking-step-outcome {
+		flex: 0 0 auto;
+		white-space: nowrap;
+		font-variant-numeric: tabular-nums;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.thinking-step-error {
+		margin: 0.0625rem 0 0.125rem 1.125rem;
+		color: hsl(var(--destructive) / 0.85);
+		overflow-wrap: anywhere;
 	}
 
 	.thinking-status-in {
@@ -616,49 +772,6 @@
 		}
 		to {
 			opacity: 0;
-		}
-	}
-
-	.thinking-dots {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.16rem;
-		padding-right: 0.1rem;
-	}
-
-	.thinking-dots span {
-		width: 0.2rem;
-		height: 0.2rem;
-		border-radius: 999px;
-		background: hsl(var(--accent));
-		animation: thinking-dot 1.15s ease-in-out infinite;
-		opacity: 0.35;
-	}
-
-	.thinking-dots span:nth-child(2) {
-		animation-delay: 0.16s;
-	}
-
-	.thinking-dots span:nth-child(3) {
-		animation-delay: 0.32s;
-	}
-
-	.thinking-dots-hidden {
-		max-width: 0;
-		overflow: hidden;
-		opacity: 0;
-	}
-
-	@keyframes thinking-dot {
-		0%,
-		80%,
-		100% {
-			transform: translateY(0);
-			opacity: 0.35;
-		}
-		40% {
-			transform: translateY(-0.12rem);
-			opacity: 0.95;
 		}
 	}
 
@@ -698,6 +811,7 @@
 	}
 
 	.thinking-log-chevron {
+		display: inline-flex;
 		transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 
@@ -707,6 +821,8 @@
 
 	/* INKPRINT Scrollbar Styling - Terminal aesthetic */
 	.thinking-log {
+		/* Keeps the right-aligned counts ("7 tasks") clear of the scrollbar. */
+		scrollbar-gutter: stable;
 		scrollbar-width: thin;
 		scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
 	}
@@ -771,7 +887,6 @@
 		}
 
 		.thinking-hammer,
-		.thinking-dots span,
 		.thinking-status-in {
 			animation: none;
 		}

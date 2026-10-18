@@ -39,7 +39,8 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 
 	constructor(
 		private readonly ports: {
-			publisher: Pick<AgenticChatStreamPublisher, 'getLiveTextPreviewTarget'>;
+			publisher: Pick<AgenticChatStreamPublisher, 'getLiveTextPreviewTarget'> &
+				Partial<Pick<AgenticChatStreamPublisher, 'noteVisibleText'>>;
 			broadcast: AgenticChatBroadcastPortV1;
 			now?: () => number;
 			/** Called on a turn generation's first failure; later ones are only counted. */
@@ -73,8 +74,10 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 			});
 			void Promise.resolve(delivery).then(
 				(result) => {
-					if (result === 'sent') this.stats.sent += 1;
-					else if (result === 'skipped') this.stats.skipped += 1;
+					if (result === 'sent') {
+						this.stats.sent += 1;
+						if (update.text) this.noteVisible(update);
+					} else if (result === 'skipped') this.stats.skipped += 1;
 					else
 						this.observeFailure(
 							update,
@@ -90,6 +93,21 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 
 	getStats(): AgenticChatLiveTextPreviewStatsV1 {
 		return { ...this.stats };
+	}
+
+	/** First-visible-text evidence for audit M3: the channel accepted a frame with text. */
+	private noteVisible(update: AgenticChatLiveTextPreviewUpdateV1): void {
+		try {
+			const now = this.ports.now?.() ?? Date.now();
+			this.ports.publisher.noteVisibleText?.(
+				update.turnRunId,
+				update.executionGeneration,
+				new Date(now).toISOString(),
+				'preview'
+			);
+		} catch {
+			// Measurement can never reach the turn.
+		}
 	}
 
 	private nextSeq(): number {

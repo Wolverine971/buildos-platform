@@ -77,6 +77,17 @@ function positiveInteger(value: string | undefined, fallback: number): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+/**
+ * Per-instance first line only. Vercel runs many instances, so this map limits
+ * nothing across them; the durable per-user limit (20 admitted turns per rolling
+ * 60 s) is counted inside create_agentic_chat_turn_with_job under its advisory
+ * lock. This bucket stays because it refuses a flood before the route pays for
+ * preparation (context load and prompt build), which runs before the RPC. Its
+ * default (30/60 s) sits well above the durable limit on purpose: it counts every
+ * POST, including identical resends and refused sends, and the headroom keeps it
+ * from refusing ordinary traffic (or a resend the RPC would return as a duplicate)
+ * that the durable limit admits.
+ */
 const turnBucket = new AgenticChatTurnTokenBucket(
 	positiveInteger(process.env.AGENTIC_CHAT_TURN_RATE_LIMIT_MAX, 30),
 	positiveInteger(process.env.AGENTIC_CHAT_TURN_RATE_LIMIT_WINDOW_MS, 60_000)
