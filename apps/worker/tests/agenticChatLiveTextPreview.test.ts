@@ -37,6 +37,7 @@ import {
 	type AgenticChatPublisherTurnV1
 } from '../src/workers/agentic-chat/stream/stream-publisher';
 import { deferred } from './helpers/deferred';
+import { withStoppedPreviewText } from '../src/workers/agentic-chat/turn/executor-helpers';
 
 afterEach(() => {
 	vi.useRealTimers();
@@ -666,7 +667,8 @@ describe('publisher live preview target', () => {
 			topic: 'chat-user:user-p',
 			sessionId: 'session-p',
 			executionGeneration: 1,
-			durableSequenceFloor: 4
+			durableSequenceFloor: 4,
+			marker: { enqueuedSequence: 4, assistantTextLength: 0 }
 		});
 
 		// A pending text batch can still absorb later text: not below the floor yet.
@@ -760,7 +762,8 @@ describe('live text preview broadcaster', () => {
 				topic: 'chat-user:user-b',
 				sessionId: 'session-b',
 				executionGeneration: 2,
-				durableSequenceFloor: 7
+				durableSequenceFloor: 7,
+				marker: { enqueuedSequence: 7, assistantTextLength: 0 }
 			},
 			async (message) => {
 				sent.push(message);
@@ -799,7 +802,13 @@ describe('live text preview broadcaster', () => {
 		const unregistered = broadcaster(null, publish).instance;
 		unregistered.publish(update);
 		const stale = broadcaster(
-			{ topic: 't', sessionId: 's', executionGeneration: 3, durableSequenceFloor: 0 },
+			{
+				topic: 't',
+				sessionId: 's',
+				executionGeneration: 3,
+				durableSequenceFloor: 0,
+				marker: { enqueuedSequence: 0, assistantTextLength: 0 }
+			},
 			publish
 		).instance;
 		stale.publish(update);
@@ -812,7 +821,13 @@ describe('live text preview broadcaster', () => {
 	it('counts every failed broadcast, reports only the first, and never throws', async () => {
 		let call = 0;
 		const { instance, onFirstFailure } = broadcaster(
-			{ topic: 't', sessionId: 's', executionGeneration: 2, durableSequenceFloor: 0 },
+			{
+				topic: 't',
+				sessionId: 's',
+				executionGeneration: 2,
+				durableSequenceFloor: 0,
+				marker: { enqueuedSequence: 0, assistantTextLength: 0 }
+			},
 			(() => {
 				call += 1;
 				if (call === 1) return Promise.resolve('failed');
@@ -833,7 +848,13 @@ describe('live text preview broadcaster', () => {
 	it('reports the first failure of each turn generation and counts transport skips apart', async () => {
 		const results: Array<'failed' | 'skipped'> = ['skipped', 'failed', 'failed', 'failed'];
 		const { instance, onFirstFailure } = broadcaster(
-			{ topic: 't', sessionId: 's', executionGeneration: 2, durableSequenceFloor: 0 },
+			{
+				topic: 't',
+				sessionId: 's',
+				executionGeneration: 2,
+				durableSequenceFloor: 0,
+				marker: { enqueuedSequence: 0, assistantTextLength: 0 }
+			},
 			async () => results.shift() ?? 'failed'
 		);
 
@@ -861,7 +882,8 @@ describe('live text preview broadcaster', () => {
 			topic: 'chat-user:user-b',
 			sessionId: 'session-b',
 			executionGeneration: 2,
-			durableSequenceFloor: 0
+			durableSequenceFloor: 0,
+			marker: { enqueuedSequence: 0, assistantTextLength: 0 }
 		};
 		const instance = new AgenticChatLiveTextPreviewBroadcaster({
 			publisher: { getLiveTextPreviewTarget: () => target, noteVisibleText },
@@ -883,5 +905,129 @@ describe('live text preview broadcaster', () => {
 			'2026-10-17T20:00:05.000Z',
 			'preview'
 		);
+	});
+});
+
+describe('a stopped reply keeps the preview the user was reading', () => {
+	const STOP_AT = Date.parse('2026-10-18T12:00:10.000Z');
+
+	function idlePublisher() {
+		const publisher = new AgenticChatStreamPublisher({
+			persistence: {
+				flushTextBatches: () => new Promise(() => undefined),
+				persistSemantic: () => new Promise(() => undefined),
+				acknowledge: () => new Promise(() => undefined)
+			},
+			broadcast: { publish: async () => 'sent' }
+		});
+		publisher.start();
+		publisher.registerTurn(publisherTurn({ initialSequence: 3 }));
+		return publisher;
+	}
+
+	function deliver(
+		publisher: AgenticChatStreamPublisher,
+		frame: { passKey?: string; text: string; state?: 'streaming' | 'discard'; atMs: number }
+	) {
+		const target = publisher.getLiveTextPreviewTarget('turn-p')!;
+		publisher.noteDeliveredLiveTextPreview({
+			turnRunId: 'turn-p',
+			executionGeneration: 1,
+			passKey: frame.passKey ?? '2.acting.1.7',
+			text: frame.text,
+			state: frame.state ?? 'streaming',
+			marker: target.marker,
+			atMs: frame.atMs
+		});
+	}
+
+	it('returns the last delivered frame of the pass that was streaming at Stop', () => {
+		const publisher = idlePublisher();
+		deliver(publisher, { text: 'The plan has three', atMs: STOP_AT - 2_000 });
+		deliver(publisher, { text: 'The plan has three parts: scope,', atMs: STOP_AT - 500 });
+		// The abort retracts the pass after the Stop; the browser keeps showing it.
+		deliver(publisher, { text: '', state: 'discard', atMs: STOP_AT + 1_200 });
+
+		expect(publisher.getStoppedPreviewText('turn-p', STOP_AT)).toBe(
+			'The plan has three parts: scope,'
+		);
+	});
+
+	it('drops a frame that later writes superseded', () => {
+		const released = idlePublisher();
+		deliver(released, { text: 'Released prose', atMs: STOP_AT - 1_000 });
+		released.appendText('turn-p', 'Released prose');
+		expect(released.getStoppedPreviewText('turn-p', STOP_AT)).toBeNull();
+
+		const toolRound = idlePublisher();
+		deliver(toolRound, { text: 'Let me check the outline.', atMs: STOP_AT - 1_000 });
+		toolRound.enqueueSemantic('turn-p', {
+			transitionId: 'transition-1',
+			phase: 'tool',
+			eventType: 'tool_call',
+			projection: {},
+			eventPayload: { type: 'tool_call' }
+		});
+		expect(toolRound.getStoppedPreviewText('turn-p', STOP_AT)).toBeNull();
+	});
+
+	it('drops a pass retracted before the Stop, a stale frame, and an emptied preview', () => {
+		const retracted = idlePublisher();
+		deliver(retracted, { text: 'First attempt', atMs: STOP_AT - 3_000 });
+		deliver(retracted, { text: '', state: 'discard', atMs: STOP_AT - 2_000 });
+		expect(retracted.getStoppedPreviewText('turn-p', STOP_AT)).toBeNull();
+
+		const stale = idlePublisher();
+		deliver(stale, { text: 'Old frame', atMs: STOP_AT - 15_000 });
+		expect(stale.getStoppedPreviewText('turn-p', STOP_AT)).toBeNull();
+
+		const emptied = idlePublisher();
+		deliver(emptied, { text: 'Shown', atMs: STOP_AT - 1_000 });
+		deliver(emptied, { text: '', atMs: STOP_AT - 500 });
+		expect(emptied.getStoppedPreviewText('turn-p', STOP_AT)).toBeNull();
+
+		// A newer pass replaces the frame; a discard of the old pass leaves it alone.
+		const newer = idlePublisher();
+		deliver(newer, { passKey: 'a', text: 'Old pass', atMs: STOP_AT - 3_000 });
+		deliver(newer, { passKey: 'b', text: 'New pass', atMs: STOP_AT - 1_000 });
+		deliver(newer, { passKey: 'a', text: '', state: 'discard', atMs: STOP_AT - 900 });
+		expect(newer.getStoppedPreviewText('turn-p', STOP_AT)).toBe('New pass');
+	});
+
+	it('learns delivered frames from the broadcaster', async () => {
+		const publisher = idlePublisher();
+		const instance = new AgenticChatLiveTextPreviewBroadcaster({
+			publisher,
+			broadcast: { publish: async () => 'sent' },
+			now: () => STOP_AT - 400
+		});
+		instance.publish({
+			turnRunId: 'turn-p',
+			executionGeneration: 1,
+			passKey: '2.acting.1.7',
+			text: 'Partway through the answer',
+			state: 'streaming'
+		});
+		await vi.waitFor(() => expect(instance.getStats().sent).toBe(1));
+		expect(publisher.getStoppedPreviewText('turn-p', STOP_AT)).toBe(
+			'Partway through the answer'
+		);
+	});
+
+	it('joins the preview to the saved text the way the browser shows it', () => {
+		const port = (text: string | null) => ({ getStoppedPreviewText: () => text });
+		const stoppedAt = '2026-10-18T12:00:10.000Z';
+		expect(
+			withStoppedPreviewText(port('Next part'), 't', true, 'Earlier pass.', stoppedAt)
+		).toBe('Earlier pass.\n\nNext part');
+		expect(
+			withStoppedPreviewText(port('Next part'), 't', true, 'Earlier pass.\n', stoppedAt)
+		).toBe('Earlier pass.\nNext part');
+		expect(withStoppedPreviewText(port('\n\nOnly the preview'), 't', true, '', stoppedAt)).toBe(
+			'Only the preview'
+		);
+		expect(withStoppedPreviewText(port(null), 't', true, 'Saved', stoppedAt)).toBe('Saved');
+		expect(withStoppedPreviewText(port('Shown'), 't', true, 'Saved', null)).toBe('Saved');
+		expect(withStoppedPreviewText(port('Shown'), 't', false, 'Saved', stoppedAt)).toBe('Saved');
 	});
 });

@@ -21,6 +21,7 @@ import {
 	DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL,
 	createAgenticChatBootstrap,
 	summarizeAgenticChatCalendarCredentialsV1,
+	summarizeAgenticChatEffectiveSettingsV1,
 	summarizeAgenticChatMutationCapabilitiesV1,
 	type AgenticChatBootstrapCompositionPort
 } from '../src/workers/agentic-chat/host/bootstrap';
@@ -619,6 +620,79 @@ describe('Agentic Chat operational bootstrap', () => {
 		await stopping;
 		expect(hosted.runtime.stop).toHaveBeenCalledOnce();
 		expect(bootstrap.getHealth()).toMatchObject({ state: 'stopped', healthy: true });
+	});
+});
+
+describe('summarizeAgenticChatEffectiveSettingsV1', () => {
+	it('reports the models and switches the worker runs with, never secrets or user ids', () => {
+		const config = loadAgenticChatConfig({
+			...environment(),
+			AGENTIC_CHAT_LIVE_TEXT_PREVIEW: 'true',
+			AGENTIC_CHAT_CONTEXT_FINDER_CHAT: 'on',
+			AGENTIC_CHAT_CONTEXT_FINDER_CHAT_USER_IDS:
+				'11111111-1111-4111-8111-111111111111,22222222-2222-4222-8222-222222222222'
+		});
+		const settings = summarizeAgenticChatEffectiveSettingsV1(config);
+		const reviewerRoute = buildAgenticChatSemanticReviewerRoutes(config.provider.routes)[0]!;
+
+		expect(settings).toMatchObject({
+			version: 1,
+			actingModel: 'provider/primary',
+			actingFallbackModels: ['provider/fallback'],
+			reviewer: {
+				source: 'code_default',
+				model: DEFAULT_AGENTIC_CHAT_SEMANTIC_REVIEWER_MODEL,
+				fallbackModels: [...reviewerRoute.fallbackModels!]
+			},
+			switches: {
+				liveTextPreview: true,
+				directWriteReceiptText: false,
+				providerHedging: true,
+				contextFinderBroad: true,
+				contextFinderChat: 'on',
+				contextFinderChatUsers: 2
+			},
+			limits: { maxToolRounds: 16, maxToolCalls: 40 }
+		});
+		const serialized = JSON.stringify(settings);
+		expect(serialized).not.toContain('provider-secret');
+		expect(serialized).not.toContain('11111111-1111-4111-8111-111111111111');
+		expect(serialized).not.toContain('https://');
+	});
+
+	it('says when the reviewer comes from AGENTIC_CHAT_REVIEWER_MODEL', () => {
+		const config = loadAgenticChatConfig({
+			...environment(),
+			AGENTIC_CHAT_REVIEWER_MODEL: GPT_56_LUNA_MODEL
+		});
+		expect(summarizeAgenticChatEffectiveSettingsV1(config).reviewer).toEqual({
+			source: 'env',
+			model: GPT_56_LUNA_MODEL,
+			fallbackModels: []
+		});
+	});
+
+	it('is on the bootstrap health the /health endpoint serves', () => {
+		const bootstrap = createAgenticChatBootstrap({
+			client: {} as never,
+			environment: environment(),
+			createComposition: () =>
+				({
+					runtime: {
+						start: vi.fn(async () => undefined),
+						stop: vi.fn(async () => undefined),
+						wake: vi.fn(async () => undefined),
+						getHealth: vi.fn(() => ({ healthy: false })),
+						setWakeChannelHealthy: vi.fn()
+					},
+					capacity: { collect: vi.fn(async () => null) }
+				}) as unknown as AgenticChatBootstrapCompositionPort,
+			queueWake: null
+		});
+		expect(bootstrap.getHealth().settings).toMatchObject({
+			version: 1,
+			actingModel: 'provider/primary'
+		});
 	});
 });
 

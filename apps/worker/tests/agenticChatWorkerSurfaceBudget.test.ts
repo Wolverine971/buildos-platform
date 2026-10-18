@@ -10,6 +10,7 @@
 // WITH a dated comment.
 import { describe, expect, it } from 'vitest';
 import { AGENTIC_CHAT_WORKER_OMITTED_TOOL_NAMES_V1 } from '@buildos/agentic-chat-runtime';
+import { buildPendingTurnContractSystemMessage } from '@buildos/agentic-chat-runtime/loop';
 import {
 	AGENTIC_CHAT_TOTAL_TOOL_VOCABULARY,
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
@@ -197,7 +198,7 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		);
 		expect(names).not.toContain('change_chat_context');
 	});
-	it('never mounts the retired contract controls while admitting project dependencies', () => {
+	it('never mounts the contract controls on an ordinary turn while admitting project dependencies', () => {
 		for (const profile of ['global', 'project', 'project_create'] as const) {
 			const surface = measure(profile);
 			for (const name of RETIRED_CONTRACT_TOOL_NAMES) {
@@ -211,6 +212,59 @@ describe('Agentic Chat worker-projected surface budget', () => {
 		expect(measure('global').opening.map((tool) => tool.function.name)).not.toContain(
 			'link_onto_entities'
 		);
+	});
+
+	it('mounts the cancel control only on a turn that carries a pending commission', () => {
+		// A failed write leaves a commission the terminal trigger clears only on a
+		// successful cancel_turn_contract, so the note's turns must offer it.
+		const pendingNote = buildPendingTurnContractSystemMessage({
+			version: 1,
+			contract: {
+				version: 1,
+				source: 'declared',
+				outcomes: [
+					{
+						id: 'implicit_8',
+						action: 'update',
+						entityKind: 'document',
+						targetIds: ['1cad2618-3188-43ac-98ff-e715a8a8013d'],
+						requiredFields: ['edits'],
+						minimumSuccessfulEffects: 1
+					}
+				]
+			},
+			contextType: 'project',
+			projectId: '445dd429-db93-4878-90a9-b3ab1627a9f2',
+			originatingTurnRunId: null,
+			createdAt: '2026-09-23T19:41:33.910Z',
+			finishedReason: 'stop'
+		})!;
+		const withHistory = (history: unknown[]) => {
+			const input = admittedExecutionInputFor('project');
+			return {
+				...input,
+				artifact: { ...input.artifact, history }
+			} as unknown as AgenticChatWorkerExecutionInputV1;
+		};
+		const namesFor = (history: unknown[]) =>
+			productionToolsFor(
+				withHistory(history),
+				ALL_AGENTIC_CHAT_MUTATION_CAPABILITIES_V1,
+				true
+			).map((tool) => tool.function.name);
+
+		const carried = namesFor([
+			{ role: 'user', content: 'Edit the outline', toolCalls: [], toolCallId: null },
+			{ role: 'system', content: pendingNote, toolCalls: [], toolCallId: null }
+		]);
+		expect(carried.filter((name) => name === CANCEL_TURN_CONTRACT_TOOL_NAME)).toHaveLength(1);
+		expect(carried).not.toContain(DECLARE_TURN_CONTRACT_TOOL_NAME);
+
+		expect(namesFor([])).not.toContain(CANCEL_TURN_CONTRACT_TOOL_NAME);
+		// Only the note itself counts: a user quoting its tag mounts nothing.
+		expect(
+			namesFor([{ role: 'user', content: pendingNote, toolCalls: [], toolCallId: null }])
+		).not.toContain(CANCEL_TURN_CONTRACT_TOOL_NAME);
 	});
 
 	it('force-mounts only the clarification control on a shell-only Project Setup artifact', () => {

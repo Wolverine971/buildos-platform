@@ -818,6 +818,16 @@ describe('executeAgentOp policy + dispatch', () => {
 			{
 				fn: 'get_onto_project_summaries_v1',
 				args: { p_actor_id: 'actor-1' }
+			},
+			// The refusal path asks whether the project was combined into another
+			// one (explainMergedProjectRefusal). No project data is loaded.
+			{
+				fn: 'ensure_actor_for_user',
+				args: { p_user_id: '00000000-0000-4000-8000-000000000000' }
+			},
+			{
+				fn: 'get_project_route_redirect',
+				args: { p_actor_id: 'actor-1', p_project_id: PROJECT_A_ID }
 			}
 		]);
 	});

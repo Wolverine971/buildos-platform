@@ -33,7 +33,11 @@ import {
 	ONTO_RISK_SELECT,
 	ONTO_TASK_SELECT
 } from './op-execution-gateway.config';
-import { START_HERE_DOCUMENT_TYPE_KEY, stripStartHereManagedRegions } from '../ontology/start-here';
+import {
+	START_HERE_DOCUMENT_TYPE_KEY,
+	rebaseStartHereReviewedContent,
+	stripStartHereManagedRegions
+} from '../ontology/start-here';
 import { syncInboxItemForAgentRun } from '../inbox-index';
 
 export interface CommitChangeSetResult {
@@ -180,10 +184,102 @@ function omitVolatileSnapshotFields(snapshot: Record<string, unknown>): Record<s
 	return stableSnapshot;
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+// Op arguments that rewrite a document's `content` column under another name.
+const CONTENT_WRITE_ARGS = ['content', 'edits', 'section_edits'] as const;
+
+/**
+ * The before/current snapshots narrowed to what an update actually writes: the
+ * argument keys that are columns of the row, `content` for any content edit, and
+ * only the `props` keys the update sets. Drift elsewhere on the row (another
+ * props key, the `children` column, a managed START HERE region) cannot be lost
+ * by applying this change, so it must not block the approval. Returns null when
+ * no written field can be identified (deletes, moves); the caller then compares
+ * the whole reviewed snapshot as before.
+ */
+function stagedWriteSetSnapshots(
+	change: ProposedChange,
+	before: Record<string, unknown>,
+	current: Record<string, unknown>
+): [Record<string, unknown>, Record<string, unknown>] | null {
+	if (change.action !== 'update' || !isPlainRecord(change.after)) return null;
+	const after = change.after;
+	const keys = new Set<string>();
+	for (const key of Object.keys(after)) {
+		if (key === 'id' || key === 'props') continue;
+		if (Object.prototype.hasOwnProperty.call(before, key)) keys.add(key);
+	}
+	if (
+		CONTENT_WRITE_ARGS.some((key) => after[key] !== undefined) &&
+		Object.prototype.hasOwnProperty.call(before, 'content')
+	) {
+		keys.add('content');
+	}
+	const scopedBefore: Record<string, unknown> = {};
+	const scopedCurrent: Record<string, unknown> = {};
+	for (const key of keys) {
+		scopedBefore[key] = before[key];
+		scopedCurrent[key] = current[key];
+	}
+	if (isPlainRecord(after.props) && Object.prototype.hasOwnProperty.call(before, 'props')) {
+		const beforeProps = isPlainRecord(before.props) ? before.props : {};
+		const currentProps = isPlainRecord(current.props) ? current.props : {};
+		const propsBefore: Record<string, unknown> = {};
+		const propsCurrent: Record<string, unknown> = {};
+		for (const key of Object.keys(after.props)) {
+			propsBefore[key] = beforeProps[key];
+			propsCurrent[key] = currentProps[key];
+		}
+		scopedBefore.props = propsBefore;
+		scopedCurrent.props = propsCurrent;
+	}
+	return Object.keys(scopedBefore).length > 0 ? [scopedBefore, scopedCurrent] : null;
+}
+
+/**
+ * A staged START HERE rewrite whose document has moved on (later checkpoints
+ * append lines): re-apply the reviewed sections on top of the current document
+ * when no reviewed section was touched since staging. Every other written field
+ * must still be fresh. Returns the rebased op arguments, or null on a conflict.
+ */
+function rebaseStaleStartHereChange(params: {
+	change: ProposedChange;
+	before: Record<string, unknown>;
+	current: Record<string, unknown>;
+	isStartHereDoc: boolean;
+}): Record<string, unknown> | null {
+	const { change, before, current } = params;
+	const after = change.after;
+	if (!params.isStartHereDoc || change.action !== 'update' || !isPlainRecord(after)) return null;
+	if (typeof after.content !== 'string') return null;
+	if (after.update_strategy !== undefined && after.update_strategy !== 'replace') return null;
+	if (CONTENT_WRITE_ARGS.some((key) => key !== 'content' && after[key] !== undefined))
+		return null;
+	if (typeof before.content !== 'string' || typeof current.content !== 'string') return null;
+
+	const scoped = stagedWriteSetSnapshots(change, before, current);
+	if (scoped) {
+		const [scopedBefore, scopedCurrent] = scoped;
+		delete scopedBefore.content;
+		delete scopedCurrent.content;
+		if (!sameSnapshot(scopedCurrent, scopedBefore)) return null;
+	}
+
+	const rebased = rebaseStartHereReviewedContent({
+		base: before.content,
+		reviewed: after.content,
+		current: current.content
+	});
+	return rebased === null ? null : { ...after, content: rebased };
+}
+
 async function verifyStagedChangeFreshness(params: {
 	admin: SupabaseClient<Database>;
 	change: ProposedChange;
-}): Promise<{ ok: true } | { ok: false; message: string }> {
+}): Promise<{ ok: true; rebasedArgs?: Record<string, unknown> } | { ok: false; message: string }> {
 	const { admin, change } = params;
 	if (change.action === 'create') {
 		return { ok: true };
@@ -220,38 +316,47 @@ async function verifyStagedChangeFreshness(params: {
 		};
 	}
 
-	const currentSubset = subsetToSnapshotKeys(data as Record<string, unknown>, before);
+	const current = data as Record<string, unknown>;
+	const isStartHereDoc =
+		change.entity_type === 'document' && before.type_key === START_HERE_DOCUMENT_TYPE_KEY;
+	// Compare what this change writes; fall back to the whole reviewed snapshot
+	// when the written fields can't be identified.
+	const [scopedBefore, scopedCurrent] = stagedWriteSetSnapshots(change, before, current) ?? [
+		before,
+		subsetToSnapshotKeys(current, before)
+	];
 	// Start Here documents have machine-owned managed regions (status/map) that the
 	// snapshot worker refreshes independently of authored edits. Drift inside those
 	// fences must not block an authored-section proposal, so compare only the
 	// authored body for `document.context.project` docs.
 	const [beforeForCompare, currentForCompare] = normalizeStartHereDriftSnapshots(
-		change.entity_type,
-		before,
-		currentSubset
+		isStartHereDoc,
+		scopedBefore,
+		scopedCurrent
 	);
 	if (
-		!sameSnapshot(
+		sameSnapshot(
 			omitVolatileSnapshotFields(currentForCompare),
 			omitVolatileSnapshotFields(beforeForCompare)
 		)
 	) {
-		return {
-			ok: false,
-			message: `Staged ${change.entity_type} change is stale: current data no longer matches the reviewed before snapshot`
-		};
+		return { ok: true };
 	}
 
-	return { ok: true };
+	const rebasedArgs = rebaseStaleStartHereChange({ change, before, current, isStartHereDoc });
+	if (rebasedArgs) return { ok: true, rebasedArgs };
+
+	return {
+		ok: false,
+		message: `Staged ${change.entity_type} change is stale: current data no longer matches the reviewed before snapshot`
+	};
 }
 
 function normalizeStartHereDriftSnapshots(
-	entityType: string,
+	isStartHereDoc: boolean,
 	before: Record<string, unknown>,
 	current: Record<string, unknown>
 ): [Record<string, unknown>, Record<string, unknown>] {
-	const isStartHereDoc =
-		entityType === 'document' && before.type_key === START_HERE_DOCUMENT_TYPE_KEY;
 	if (!isStartHereDoc) {
 		return [before, current];
 	}
@@ -550,10 +655,13 @@ export async function commitChangeSet(params: {
 			continue;
 		}
 
+		// A START HERE review whose document gained lines since staging applies the
+		// reviewed sections on top of the current document (see rebaseStaleStartHereChange).
 		const args =
-			change.after && typeof change.after === 'object' && !Array.isArray(change.after)
+			freshness.rebasedArgs ??
+			(change.after && typeof change.after === 'object' && !Array.isArray(change.after)
 				? (change.after as Record<string, unknown>)
-				: {};
+				: {});
 
 		const result = await runGatewayWriteOp({
 			admin,

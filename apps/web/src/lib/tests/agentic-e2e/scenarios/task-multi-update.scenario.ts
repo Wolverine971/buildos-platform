@@ -15,6 +15,7 @@
 // failure it catches is partial application — the agent handles the first clause,
 // declares success, and silently drops the rest. That reads as a clean turn
 // unless something checks all three.
+import { APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME } from '@buildos/agentic-chat-runtime/catalog';
 import type { ProjectSpec } from '$lib/types/onto';
 import type { Scenario, SeedResult } from '../harness/types';
 import { harnessProjectName, seedProject } from '../harness/seed';
@@ -23,7 +24,7 @@ import {
 	assertNumericPriorityAtMost,
 	assertOnlyAllowedRowFieldsChanged,
 	assertTaskState,
-	assertAnyToolCalled,
+	assertToolCalled,
 	assertTurnRunCompleted,
 	assertTurnSucceeded,
 	buildTranscript,
@@ -229,11 +230,15 @@ export const taskMultiUpdateScenario: Scenario = {
 					check: (turn) => assertTurnSucceeded(turn)
 				},
 				{
-					name: 'worker-contract-approved',
+					// Three tasks picked out by description ("the resume update") are not
+					// deterministically resolved ids, so write-routing.ts sends the batch
+					// to independent review rather than the direct lane. Diagnostic only:
+					// a single-hit search per task would legitimately take the direct lane.
+					name: 'worker-batch-review-approved',
 					category: 'contract',
 					applies: (ctx) => ctx.executionMode === 'worker_realtime',
 					check: (turn) => {
-						assertAnyToolCalled(turn, ['approve_turn_contract_review']);
+						assertToolCalled(turn, APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME);
 					}
 				},
 				{

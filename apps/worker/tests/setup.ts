@@ -31,11 +31,7 @@ process.env.SMART_LLM_INCIDENTS ||= 'off';
 // hand unit tests real paid/messaging credentials. dotenv never overwrites a key
 // that already exists, so pre-setting each to '' keeps the real value out. Live
 // suites opt back in with their own switches (or WORKER_TEST_LIVE_SECRETS=true).
-const LIVE_SECRET_OPT_INS = [
-	'WORKER_TEST_LIVE_SECRETS',
-	'AGENTIC_PHASE_A_WORKFLOW',
-	'OPENROUTER_TOOL_GRAPH_MODEL'
-];
+const LIVE_SECRET_OPT_INS = ['WORKER_TEST_LIVE_SECRETS', 'OPENROUTER_TOOL_GRAPH_MODEL'];
 const TEST_BLANKED_SECRETS = [
 	'PRIVATE_OPENROUTER_API_KEY',
 	'OPENROUTER_API_KEY',

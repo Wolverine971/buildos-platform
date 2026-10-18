@@ -49,6 +49,9 @@
 	import ProjectActionSelector from './ProjectActionSelector.svelte';
 	import AgentChatHeader from './AgentChatHeader.svelte';
 	import AgentComposer from './AgentComposer.svelte';
+	import PendingChangeStrip from './PendingChangeStrip.svelte';
+	import { PendingChangeController, turnHadFailedStep } from './agent-chat-pending-change.svelte';
+	import { PENDING_CHANGE_FINISH_MESSAGE } from '$lib/services/agentic-chat-v2/pending-change';
 	import AgentMessageList from './AgentMessageList.svelte';
 	import AgentChatActivityTabs from './AgentChatActivityTabs.svelte';
 	import BrainDumpContextPanel from './BrainDumpContextPanel.svelte';
@@ -632,7 +635,7 @@
 			// give up — the realtime INSERT or the close-time refresh will
 			// surface the message. (Uncapped, a long streamed turn kept this
 			// timer respawning every 2.5s for its whole duration.)
-			if (stream.isStreaming) {
+			if (stream.isTurnBusy) {
 				if (attempt + 1 < AGENT_RUN_FALLBACK_MAX_ATTEMPTS) {
 					scheduleAgentRunMessageFallback(sid, runId, attempt + 1);
 				}
@@ -839,6 +842,9 @@
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getCurrentSession: () => currentSession,
 		getIsLoadingSession: () => isLoadingSession,
+		// Foreground loads block Send, so anything in flight here is a background
+		// reload read before this turn; landing it would wipe the new bubble.
+		cancelBackgroundSessionLoad: () => invalidateSessionLoads(),
 		getActiveRestoredTurnRunId: () => activeRestoredTurnRunId,
 		releaseRestoredTurn: (turnRunId) => releaseRestoredTurn(turnRunId),
 		getPrewarm: () => prewarm,
@@ -931,6 +937,12 @@
 				console.debug(message, data);
 			}
 		}
+	});
+
+	// "Didn't finish from earlier" strip: changes a failed write left owed.
+	const pendingChange = new PendingChangeController({
+		onDismissed: () => toastService.success("Dismissed. The chat won't bring these up again."),
+		onError: (message) => toastService.error(message)
 	});
 
 	// Session resumption state
@@ -1364,8 +1376,23 @@
 		}
 	}
 
+	/**
+	 * Make any session load in flight stale so its snapshot never lands over a
+	 * newer action (a send, a chat switch, a close). Loads only apply when their
+	 * request id is still current.
+	 */
+	function invalidateSessionLoads(): void {
+		sessionLoadRequestId += 1;
+		if (sessionLoadController) {
+			sessionLoadController.abort();
+			sessionLoadController = null;
+		}
+		isLoadingSession = false;
+	}
+
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
 		const { preserveContext = true } = options;
+		invalidateSessionLoads();
 		reviewSelection = null;
 		launchSkillId = null;
 
@@ -1374,6 +1401,7 @@
 		if (currentSession?.id) workerAdoption?.releaseSession(currentSession.id);
 		messages = [];
 		persistedTimelineItems = [];
+		pendingChange.reset();
 		activeChatTab = 'chat';
 		brainDumpContext = null;
 		currentSession = null;
@@ -1472,6 +1500,11 @@
 			wasOpen = true;
 			hasFinalizedSession = false;
 			stream.hasSentMessage = false;
+			// The close teardown stopped the worker channel. Embedded hosts keep
+			// this component mounted, so isSurfaceActive never flips and the start
+			// effect never re-runs: without this, a reopened document chat sends
+			// into a dead channel (thinking spins, Stop hangs). start() is idempotent.
+			void workerRealtime?.start();
 			// Reopening a still-mounted modal with the same session: the
 			// subscribe effect keys on currentSession.id (unchanged), so
 			// resubscribe the realtime channel released by the close teardown.
@@ -1606,6 +1639,7 @@
 		// on-screen identity so the thread updates in place instead of remounting.
 		messages = carryRenderKeys(messages, snapshot.messages);
 		persistedTimelineItems = snapshot.timelineItems;
+		pendingChange.hydrate(sessionId, snapshot.pendingChange);
 		if (initialBrainDumpContext?.id) {
 			brainDumpContext = initialBrainDumpContext;
 		} else {
@@ -1646,6 +1680,14 @@
 		options: { backgroundRefresh?: boolean } = {}
 	) {
 		const backgroundRefresh = options.backgroundRefresh === true;
+		if (!backgroundRefresh) {
+			// Immediately hide context selection when loading a session to prevent flash
+			shellRouter.showContextSelection = false;
+			shellRouter.showProjectActionSelector = false;
+			// Clear any prior session state to avoid bleed-through while loading.
+			// Runs before this load takes its request id: the reset invalidates loads.
+			resetConversation({ preserveContext: false });
+		}
 		sessionLoadRequestId += 1;
 		const requestId = sessionLoadRequestId;
 		if (sessionLoadController) {
@@ -1659,13 +1701,6 @@
 			clearSessionRefreshTimeout();
 		}
 		sessionLoadError = null;
-		if (!backgroundRefresh) {
-			// Immediately hide context selection when loading a session to prevent flash
-			shellRouter.showContextSelection = false;
-			shellRouter.showProjectActionSelector = false;
-			// Clear any prior session state to avoid bleed-through while loading
-			resetConversation({ preserveContext: false });
-		}
 
 		try {
 			const snapshot = await loadAgentChatSessionSnapshot(sessionId, {
@@ -2159,11 +2194,7 @@
 		voice.stop();
 		clearSessionRefreshTimeout();
 		activeRestoredTurnRunId = null;
-		if (sessionLoadController) {
-			sessionLoadController.abort();
-			sessionLoadController = null;
-		}
-		isLoadingSession = false;
+		invalidateSessionLoads();
 		workerAdoption?.clear('teardown');
 		void workerRealtime?.stop();
 		voice.cleanup();
@@ -2993,6 +3024,16 @@
 		if (currentThinkingBlockId === finalizedThinking.blockId) {
 			currentThinkingBlockId = null;
 		}
+		// Only a completed turn can add or clear an owed change (the terminal
+		// trigger runs then), and only one that failed a step or carried one.
+		if (input.status === 'completed' && currentSession?.id === input.handle.sessionId) {
+			const block = messages.find((message) => message.id === finalizedThinking.blockId) as
+				| ThinkingBlockMessage
+				| undefined;
+			void pendingChange.refreshAfterTurn(input.handle.sessionId, {
+				hadFailedStep: turnHadFailedStep(block?.activities)
+			});
+		}
 		stream.finishWorkerTurn(
 			input.handle,
 			input.status,
@@ -3362,6 +3403,19 @@
 				>. Choose Organize documents for each document review. Other messages use project
 				chat.
 			</p>
+		{/if}
+		{#if pendingChange.current && !isLoadingSession}
+			<PendingChangeStrip
+				view={pendingChange.current}
+				busy={pendingChange.busy}
+				disabled={stream.isStreaming || stream.isStartingStream}
+				finishDisabled={attachments.imageAttachments.length > 0}
+				onDismiss={() => void pendingChange.dismiss()}
+				onFinish={() =>
+					void stream.sendMessage(PENDING_CHANGE_FINISH_MESSAGE, {
+						suppressInputClear: true
+					})}
+			/>
 		{/if}
 		<AgentComposer
 			bind:voiceInputRef={voice.ref}

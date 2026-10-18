@@ -53,13 +53,11 @@ Registered in `src/worker.ts`:
 | -------------------------------- | -------------------------------------------------- |
 | `generate_daily_brief`           | `workers/brief/briefWorker`                        |
 | `generate_brief_audio`           | `workers/briefAudio/briefAudioWorker`              |
-| `onboarding_analysis`            | `workers/onboarding/onboardingWorker`              |
 | `send_notification`              | `workers/notification/notificationWorker`          |
 | `project_activity_batch_flush`   | `workers/notification/projectActivityBatchWorker`  |
 | `schedule_daily_sms`             | `workers/dailySmsWorker`                           |
 | `send_sms`                       | `workers/smsWorker`                                |
 | `classify_chat_session`          | `workers/chat/chatSessionClassifier`               |
-| `process_onto_braindump`         | `workers/braindump/braindumpProcessor`             |
 | `transcribe_voice_note`          | `workers/voice-notes/voiceNoteTranscriptionWorker` |
 | `extract_onto_asset_ocr`         | `workers/assets/assetOcrWorker`                    |
 | `agent_run`                      | `workers/agent-run/agentRunWorker`                 |
@@ -67,7 +65,6 @@ Registered in `src/worker.ts`:
 | `buildos_project_loop`           | `workers/project-loop/projectLoopWorker`           |
 | `generate_project_icon`          | `workers/project-icon/projectIconWorker`           |
 | `sync_calendar`                  | `workers/calendar/calendarSyncWorker`              |
-| `admin_question_tree`            | `workers/question-tree/questionTreeWorker`         |
 
 Adding a new job type is documented in [`src/workers/README.md`](./src/workers/README.md).
 
@@ -75,21 +72,19 @@ Adding a new job type is documented in [`src/workers/README.md`](./src/workers/R
 
 Base URL (prod): set via `PUBLIC_RAILWAY_WORKER_URL`. Requests from the web app are authenticated with `PRIVATE_RAILWAY_WORKER_TOKEN`.
 
-| Method | Path                       | Purpose                                   |
-| ------ | -------------------------- | ----------------------------------------- |
-| GET    | `/health`                  | Healthcheck                               |
-| POST   | `/classify/ontology`       | Sync ontology classification (non-queued) |
-| POST   | `/queue/brief`             | Enqueue a daily brief job                 |
-| POST   | `/queue/onboarding`        | Enqueue an onboarding analysis job        |
-| POST   | `/queue/chat/classify`     | Enqueue chat-session classification       |
-| POST   | `/queue/braindump/process` | Enqueue ontology braindump processing     |
-| GET    | `/jobs/:jobId`             | Inspect a job                             |
-| GET    | `/users/:userId/jobs`      | List a user's jobs                        |
-| GET    | `/queue/stats`             | Queue depth + status counts               |
-| GET    | `/queue/stale-stats`       | Stalled-job statistics                    |
-| POST   | `/queue/cleanup`           | Run stale-job cleanup                     |
-| GET    | `/api/email-tracking/:id`  | Public email open-tracking pixel          |
-| —      | `/sms/scheduled/*`         | Scheduled-SMS management endpoints        |
+| Method | Path                      | Purpose                                   |
+| ------ | ------------------------- | ----------------------------------------- |
+| GET    | `/health`                 | Healthcheck                               |
+| POST   | `/classify/ontology`      | Sync ontology classification (non-queued) |
+| POST   | `/queue/brief`            | Enqueue a daily brief job                 |
+| POST   | `/queue/chat/classify`    | Enqueue chat-session classification       |
+| GET    | `/jobs/:jobId`            | Inspect a job                             |
+| GET    | `/users/:userId/jobs`     | List a user's jobs                        |
+| GET    | `/queue/stats`            | Queue depth + status counts               |
+| GET    | `/queue/stale-stats`      | Stalled-job statistics                    |
+| POST   | `/queue/cleanup`          | Run stale-job cleanup                     |
+| GET    | `/api/email-tracking/:id` | Public email open-tracking pixel          |
+| —      | `/sms/scheduled/*`        | Scheduled-SMS management endpoints        |
 
 ## Quick Start
 

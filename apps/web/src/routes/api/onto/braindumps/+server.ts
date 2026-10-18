@@ -1,112 +1,15 @@
 // apps/web/src/routes/api/onto/braindumps/+server.ts
 /**
- * Ontology capture API endpoint for agent chat.
+ * Ontology capture history API endpoint.
  *
- * This endpoint stores raw captured context for ontology/history processing.
- *
- * POST: Create a new captured context record
- * - Saves the raw content to onto_braindumps
- * - Queues async processing to generate title, topics, and summary
- *
- * GET: List user's captured context records
+ * GET: List user's captured context records (legacy onto_braindumps rows)
  * - Returns paginated list of captures
  * - Supports filtering by status
  */
 import type { RequestHandler } from './$types';
 import type { Database } from '@buildos/shared-types';
-import { z } from 'zod';
 import { ApiResponse } from '$lib/utils/api-response';
 import { validatePaginationCustom } from '$lib/utils/api-helpers';
-import { queueBraindumpProcessing } from '$lib/server/braindump-processing.service';
-import { runAfterResponse } from '$lib/server/background';
-import { captureServerEvent } from '$lib/server/posthog';
-import { parseJsonRequest } from '$lib/utils/request-validation';
-
-const createBraindumpSchema = z
-	.object({
-		content: z.string().trim().min(1).max(50000),
-		metadata: z.record(z.unknown()).optional().default({}),
-		chat_session_id: z.string().nullable().optional()
-	})
-	.strict();
-
-export const POST: RequestHandler = async ({ request, locals }) => {
-	// Check authentication
-	const { user } = await locals.safeGetSession();
-	if (!user) {
-		return ApiResponse.unauthorized('Authentication required');
-	}
-
-	const supabase = locals.supabase;
-
-	try {
-		// Parse request body
-		const parsed = await parseJsonRequest(request, createBraindumpSchema);
-		if (!parsed.ok) return parsed.response;
-		const { content, metadata, chat_session_id } = parsed.data;
-
-		// Validate required fields
-		if (!content || typeof content !== 'string' || content.trim().length === 0) {
-			return ApiResponse.badRequest('Content is required');
-		}
-
-		// Validate content length (reasonable limits)
-		const trimmedContent = content.trim();
-		if (trimmedContent.length > 50000) {
-			return ApiResponse.badRequest('Content exceeds maximum length of 50,000 characters');
-		}
-
-		// Create the captured context record.
-		const braindumpData = {
-			user_id: user.id,
-			content: trimmedContent,
-			status: 'pending' as const,
-			metadata: {
-				...metadata,
-				source: 'agent_chat',
-				content_length: trimmedContent.length,
-				created_via: 'agent_chat'
-			},
-			chat_session_id: chat_session_id || null
-		};
-
-		const { data: braindump, error: createError } = await supabase
-			.from('onto_braindumps')
-			.insert(braindumpData)
-			.select('id, content, status, created_at, metadata')
-			.single();
-
-		if (createError) {
-			console.error('Error creating captured context:', createError);
-			return ApiResponse.databaseError(createError);
-		}
-
-		// Queue async processing after the response (title, topics, summary).
-		// Processing is an optional enhancement, so a failure is only logged.
-		runAfterResponse(
-			queueBraindumpProcessing({ braindumpId: braindump.id, userId: user.id }),
-			'captured context processing queue'
-		);
-
-		await captureServerEvent(user.id, 'brain_dump_created', {
-			braindump_id: braindump.id,
-			content_length: trimmedContent.length,
-			source: braindumpData.metadata.source
-		});
-
-		return ApiResponse.created({
-			braindump: {
-				id: braindump.id,
-				status: braindump.status,
-				created_at: braindump.created_at
-			},
-			message: 'Captured context saved successfully'
-		});
-	} catch (error) {
-		console.error('Error in captured context create endpoint:', error);
-		return ApiResponse.internalError(error);
-	}
-};
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	// Check authentication

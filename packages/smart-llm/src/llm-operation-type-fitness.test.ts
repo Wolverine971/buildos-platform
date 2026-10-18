@@ -21,12 +21,7 @@ const SCANNED_ROOTS = ['apps/worker/src', 'apps/web/src', 'packages'];
 const SMART_LLM_METHODS = new Set(['getJSONResponse', 'generateText', 'generateTextDetailed']);
 
 /** Files whose same-named methods belong to another interface. */
-const EXEMPT_FILES: Record<string, string> = {
-	'packages/agent-orchestrator/src/agents/researcher/researcher.ts':
-		'ResearchModelPort.generateText, metered by the port adapter',
-	'packages/agent-orchestrator/src/application/workflow-engine/workflow-engine.ts':
-		'SynthesisModelPort.generateText, metered by the port adapter'
-};
+const EXEMPT_FILES: Record<string, string> = {};
 
 function listSourceFiles(directory: string): string[] {
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

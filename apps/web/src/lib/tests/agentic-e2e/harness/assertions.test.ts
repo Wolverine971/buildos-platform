@@ -112,12 +112,12 @@ describe('restraint assertion helpers', () => {
 
 	it('requires implementation-specific tools only on their owning execution mode', () => {
 		const withoutApproval = turn();
-		const withApproval = turn({ toolCalls: [call('approve_turn_contract_review')] });
+		const withApproval = turn({ toolCalls: [call('approve_mutation_batch_review')] });
 
 		expect(() =>
 			assertToolCalledForExecutionMode(
 				withoutApproval,
-				'approve_turn_contract_review',
+				'approve_mutation_batch_review',
 				'legacy_sse',
 				'worker_realtime'
 			)
@@ -125,15 +125,15 @@ describe('restraint assertion helpers', () => {
 		expect(() =>
 			assertToolCalledForExecutionMode(
 				withoutApproval,
-				'approve_turn_contract_review',
+				'approve_mutation_batch_review',
 				'worker_realtime',
 				'worker_realtime'
 			)
-		).toThrow('approve_turn_contract_review');
+		).toThrow('approve_mutation_batch_review');
 		expect(() =>
 			assertToolCalledForExecutionMode(
 				withApproval,
-				'approve_turn_contract_review',
+				'approve_mutation_batch_review',
 				'worker_realtime',
 				'worker_realtime'
 			)

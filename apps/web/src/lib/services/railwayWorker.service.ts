@@ -5,36 +5,12 @@ import type { QueueJob, DailyBriefQueueJob, QueueJobType } from '@buildos/shared
 
 // Legacy type aliases for backward compatibility
 export type BriefGenerationJob = DailyBriefQueueJob;
-export type OnboardingAnalysisJob = QueueJob<'onboarding_analysis'>;
 
 export interface QueueBriefResponse {
 	success: boolean;
 	jobId: string;
 	scheduledFor: string;
 	message: string;
-}
-
-export interface QueueOnboardingResponse {
-	success: boolean;
-	jobId: string;
-	message: string;
-	analyzingFields: string[];
-}
-
-export interface UserQuestion {
-	id: string;
-	user_id: string;
-	project_id?: string;
-	question: string;
-	context: string;
-	expected_outcome: string;
-	category: string;
-	priority: string;
-	status: string;
-	source: string;
-	source_field?: string;
-	triggers?: any;
-	created_at: string;
 }
 
 export class RailwayWorkerService {
@@ -127,50 +103,6 @@ export class RailwayWorkerService {
 			...result,
 			message: result.message || 'Brief generation queued successfully'
 		};
-	}
-
-	/**
-	 * Queue an onboarding analysis job
-	 */
-	static async queueOnboardingAnalysis(
-		userId: string,
-		userContext?: {
-			input_projects?: string | null;
-			input_work_style?: string | null;
-			input_challenges?: string | null;
-			input_help_focus?: string | null;
-		},
-		options?: {
-			forceRegenerate?: boolean;
-			maxQuestions?: number;
-		}
-	): Promise<QueueOnboardingResponse> {
-		const response = await fetch(`${this.WORKER_URL}/queue/onboarding`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				userId,
-				userContext,
-				options
-			}),
-			signal: AbortSignal.timeout(this.TIMEOUT)
-		});
-
-		if (!response.ok) {
-			const error = await response.json();
-			throw new Error(
-				error?.error || `Failed to queue onboarding analysis (${response.status})`
-			);
-		}
-
-		const result = await response.json();
-		if (!result?.success || !result?.jobId) {
-			throw new Error('Invalid response format from worker');
-		}
-
-		return result;
 	}
 
 	/**
@@ -292,30 +224,6 @@ export class RailwayWorkerService {
 	}
 
 	/**
-	 * Check if onboarding analysis is currently being processed
-	 */
-	static async isOnboardingAnalysisGenerating(userId: string): Promise<{
-		isGenerating: boolean;
-		job?: OnboardingAnalysisJob;
-	}> {
-		try {
-			const pendingJobs = await this.getUserPendingJobs(userId, 'onboarding_analysis');
-
-			const activeJob = pendingJobs.find((job) => {
-				return job.job_type === 'onboarding_analysis' && job.status === 'processing';
-			}) as OnboardingAnalysisJob | undefined;
-
-			return {
-				isGenerating: !!activeJob,
-				job: activeJob
-			};
-		} catch (error) {
-			console.error('Error checking if onboarding analysis is generating:', error);
-			return { isGenerating: false };
-		}
-	}
-
-	/**
 	 * Cancel/remove jobs for a specific date (when manually generating)
 	 */
 	static async cancelScheduledJobs(userId: string, briefDate: string): Promise<void> {
@@ -389,58 +297,6 @@ export class RailwayWorkerService {
 		} catch (error) {
 			// Silently fail for chat classification - it's a background task
 			console.error('Chat classification queue error:', error);
-			return { success: false, error: 'Network error' };
-		}
-	}
-
-	/**
-	 * Queue an ontology capture processing job.
-	 * This is a fire-and-forget operation that processes captured context
-	 * by generating a title, extracting topics, and creating a summary
-	 */
-	static async queueBraindumpProcessing(
-		braindumpId: string,
-		userId: string
-	): Promise<{ success: boolean; jobId?: string; error?: string }> {
-		// Skip if worker URL is not configured
-		if (!this.WORKER_URL) {
-			console.log('Ontology capture processing skipped: Worker URL not configured');
-			return { success: false, error: 'Worker not configured' };
-		}
-
-		try {
-			const response = await fetch(`${this.WORKER_URL}/queue/braindump/process`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					braindumpId,
-					userId
-				}),
-				signal: AbortSignal.timeout(this.TIMEOUT)
-			});
-
-			// Handle conflict (already in progress) gracefully
-			if (response.status === 409) {
-				const data = await response.json();
-				console.log(
-					`Ontology capture processing already in progress: ${data.existingJobId}`
-				);
-				return { success: true, jobId: data.existingJobId };
-			}
-
-			if (!response.ok) {
-				const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-				console.error('Ontology capture processing queue failed:', error);
-				return { success: false, error: error?.error || `HTTP ${response.status}` };
-			}
-
-			const result = await response.json();
-			return { success: true, jobId: result.jobId };
-		} catch (error) {
-			// Silently fail for ontology capture processing - it's a background task
-			console.error('Ontology capture processing queue error:', error);
 			return { success: false, error: 'Network error' };
 		}
 	}

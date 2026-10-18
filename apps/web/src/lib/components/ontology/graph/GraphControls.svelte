@@ -18,13 +18,10 @@
 		type GraphScopeFilters
 	} from './lib/graph.filters';
 
-	type GraphLibrary = 'cytoscape' | 'svelteflow' | 'g6';
-
 	let {
 		viewMode = $bindable<ViewMode>(),
 		scopeFilters = $bindable<GraphScopeFilters>(DEFAULT_GRAPH_SCOPE_FILTERS),
 		graphInstance,
-		graphLibrary = 'cytoscape' as GraphLibrary,
 		stats,
 		scopeCounts,
 		showScopeControls = true,
@@ -33,30 +30,11 @@
 		viewMode: ViewMode;
 		scopeFilters?: GraphScopeFilters;
 		graphInstance: OntologyGraphInstance | null;
-		graphLibrary?: GraphLibrary;
 		stats: GraphStats;
 		scopeCounts?: GraphScopeCounts;
 		showScopeControls?: boolean;
 		showStats?: boolean;
 	} = $props();
-
-	// Feature support by library
-	const libraryFeatures: Record<
-		GraphLibrary,
-		{ layout: boolean; search: boolean; filter: boolean; fitToView: boolean; export: boolean }
-	> = {
-		cytoscape: { layout: true, search: true, filter: true, fitToView: true, export: true },
-		svelteflow: {
-			layout: false,
-			search: false,
-			filter: false,
-			fitToView: false,
-			export: false
-		},
-		g6: { layout: false, search: false, filter: false, fitToView: false, export: false }
-	};
-
-	let features = $derived(libraryFeatures[graphLibrary]);
 
 	let searchQuery = $state('');
 	let selectedLayout = $state('cose-bilkent'); // Default to spring layout
@@ -456,25 +434,23 @@
 					<option value="full">Complete (all edges)</option>
 				</select>
 			</div>
-			{#if features.layout}
-				<div class="flex-1">
-					<span
-						class="block text-2xs uppercase tracking-wider font-bold text-muted-foreground mb-1"
-						id="layout-label"
-					>
-						Layout
-					</span>
-					<select
-						bind:value={selectedLayout}
-						aria-labelledby="layout-label"
-						class="w-full h-10 sm:h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition"
-					>
-						{#each layouts as layout}
-							<option value={layout.value}>{layout.label}</option>
-						{/each}
-					</select>
-				</div>
-			{/if}
+			<div class="flex-1">
+				<span
+					class="block text-2xs uppercase tracking-wider font-bold text-muted-foreground mb-1"
+					id="layout-label"
+				>
+					Layout
+				</span>
+				<select
+					bind:value={selectedLayout}
+					aria-labelledby="layout-label"
+					class="w-full h-10 sm:h-8 px-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition"
+				>
+					{#each layouts as layout}
+						<option value={layout.value}>{layout.label}</option>
+					{/each}
+				</select>
+			</div>
 		</div>
 
 		<!-- Scope Filters -->
@@ -605,68 +581,56 @@
 		{/if}
 
 		<!-- Search & Filter Row -->
-		{#if features.search || features.filter}
-			<div class="flex gap-2">
-				{#if features.search}
-					<div class="flex-1 relative">
-						<Search
-							class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"
-						/>
-						<input
-							type="text"
-							bind:value={searchQuery}
-							oninput={handleSearch}
-							placeholder="Search nodes..."
-							class="w-full h-10 sm:h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition"
-						/>
-					</div>
-				{/if}
-				{#if features.filter}
-					<div class="w-28">
-						<div class="relative">
-							<SlidersHorizontal
-								class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"
-							/>
-							<select
-								bind:value={selectedFilter}
-								aria-label="Filter node type"
-								class="w-full h-10 sm:h-8 pl-8 pr-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition appearance-none"
-							>
-								{#each filters as filter}
-									<option value={filter.value}>{filter.label}</option>
-								{/each}
-							</select>
-						</div>
-					</div>
-				{/if}
+		<div class="flex gap-2">
+			<div class="flex-1 relative">
+				<Search
+					class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"
+				/>
+				<input
+					type="text"
+					bind:value={searchQuery}
+					oninput={handleSearch}
+					placeholder="Search nodes..."
+					class="w-full h-10 sm:h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition"
+				/>
 			</div>
-		{/if}
+			<div class="w-28">
+				<div class="relative">
+					<SlidersHorizontal
+						class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none"
+					/>
+					<select
+						bind:value={selectedFilter}
+						aria-label="Filter node type"
+						class="w-full h-10 sm:h-8 pl-8 pr-2 text-xs font-bold rounded-lg border border-border bg-card text-foreground shadow-ink-inner focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition appearance-none"
+					>
+						{#each filters as filter}
+							<option value={filter.value}>{filter.label}</option>
+						{/each}
+					</select>
+				</div>
+			</div>
+		</div>
 
 		<!-- Action Buttons -->
-		{#if features.fitToView || features.export}
-			<div class="flex gap-2">
-				{#if features.fitToView}
-					<button
-						type="button"
-						onclick={handleFitToView}
-						class="flex-1 flex items-center justify-center gap-1.5 h-10 sm:h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					>
-						<Maximize2 class="w-3.5 h-3.5 shrink-0" />
-						<span>Fit</span>
-					</button>
-				{/if}
-				{#if features.export}
-					<button
-						type="button"
-						onclick={handleExport}
-						class="flex-1 flex items-center justify-center gap-1.5 h-10 sm:h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					>
-						<Download class="w-3.5 h-3.5 shrink-0" />
-						<span>Export</span>
-					</button>
-				{/if}
-			</div>
-		{/if}
+		<div class="flex gap-2">
+			<button
+				type="button"
+				onclick={handleFitToView}
+				class="flex-1 flex items-center justify-center gap-1.5 h-10 sm:h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			>
+				<Maximize2 class="w-3.5 h-3.5 shrink-0" />
+				<span>Fit</span>
+			</button>
+			<button
+				type="button"
+				onclick={handleExport}
+				class="flex-1 flex items-center justify-center gap-1.5 h-10 sm:h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			>
+				<Download class="w-3.5 h-3.5 shrink-0" />
+				<span>Export</span>
+			</button>
+		</div>
 
 		<!-- Combined Legend -->
 		<div class="border-t border-border pt-3">
@@ -833,14 +797,5 @@
 				</div>
 			{/if}
 		</div>
-
-		<!-- Library Notice -->
-		{#if !features.search && !features.filter}
-			<div
-				class="text-2xs text-muted-foreground bg-muted border border-border rounded-lg px-2 py-1.5"
-			>
-				<span class="font-bold text-foreground">Note:</span> Full controls require Cytoscape.
-			</div>
-		{/if}
 	</div>
 </div>

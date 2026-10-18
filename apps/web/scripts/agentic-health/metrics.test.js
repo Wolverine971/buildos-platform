@@ -1,3 +1,4 @@
+// apps/web/scripts/agentic-health/metrics.test.js
 import { describe, expect, it } from 'vitest';
 import { buildHealthReport } from './metrics.mjs';
 
@@ -75,8 +76,7 @@ describe('agentic health metrics', () => {
 					updated_at: '2026-09-02T00:00:00.000Z',
 					scheduled_for: '2026-09-02T00:00:30.000Z'
 				}
-			],
-			sanitize: (text) => text
+			]
 		});
 
 		expect(find(report, 'provider_finish_reason_invalid_kills').details.kills).toBe(1);
@@ -103,7 +103,7 @@ describe('agentic health metrics', () => {
 		expect(JSON.stringify(report)).not.toContain("email one's done");
 	});
 
-	it('flags sanitizer edits and missing partial-write disclosure', () => {
+	it('flags missing partial-write disclosure', () => {
 		const report = buildHealthReport({
 			window: {
 				since: '2026-09-01T00:00:00.000Z',
@@ -117,11 +117,9 @@ describe('agentic health metrics', () => {
 					assistant_message_id: 'a1'
 				})
 			],
-			messages: [message('a1', 'assistant', 'leak this')],
-			sanitize: (text) => text.replace('leak', '')
+			messages: [message('a1', 'assistant', 'leak this')]
 		});
 
-		expect(find(report, 'sanitizer_edits').details.altered).toBe(1);
 		expect(find(report, 'mutation_unfulfilled_disclosure').status).toBe('fail');
 		expect(report.notes).toContain(
 			'Acceptance remains provisional until the window contains seven full post-deploy days.'

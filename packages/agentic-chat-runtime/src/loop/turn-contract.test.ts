@@ -6,6 +6,7 @@ import {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
 	buildFastChatPendingTurnContract,
 	buildPendingTurnContractSystemMessage,
+	isPendingTurnContractSystemMessage,
 	deriveImplicitTurnContract,
 	executeCancelTurnContract,
 	executeAgenticChatStandardControlToolV1,
@@ -2511,7 +2512,13 @@ describe('turn contract symbolic references (label / parent_label)', () => {
 		expect(message?.startsWith('<pending_turn_contract>')).toBe(true);
 		expect(message).toContain('propose concrete mutation tool calls');
 		expect(message).not.toContain('Re-declare');
-		expect(message).not.toContain('cancel_turn_contract');
+		// The host mounts the cancel control on exactly these turns, so the note
+		// names it: without it a "never mind" can never clear the commission.
+		expect(message).toContain('call cancel_turn_contract with the reason');
+		expect(isPendingTurnContractSystemMessage(message!)).toBe(true);
+		expect(
+			isPendingTurnContractSystemMessage('Earlier you asked about <pending_turn_contract>')
+		).toBe(false);
 		expect(buildPendingTurnContractSystemMessage(null)).toBeNull();
 	});
 });

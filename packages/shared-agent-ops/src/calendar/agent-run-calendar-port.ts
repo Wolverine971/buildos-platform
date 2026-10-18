@@ -723,6 +723,15 @@ class AgentRunCalendarPort implements CalendarPort {
 			} else if (typeof args?.start_at === 'string') {
 				patch.start_at = parseAgentCalendarDateTime(args.start_at, 'start_at', timezone);
 				patch.all_day = false;
+				// A new start with no end moves the event and keeps its length.
+				if (!hasEndAt) {
+					const movedEnd = endForStartOnlyMove(
+						existing.start_at,
+						existing.end_at,
+						String(patch.start_at)
+					);
+					if (movedEnd) patch.end_at = movedEnd;
+				}
 			}
 			if (hasEndAt && !allDayTiming) {
 				if (typeof args?.end_at === 'string' && isDateOnlyAgentCalendarInput(args.end_at)) {
@@ -2030,8 +2039,18 @@ export function createLegacyGoogleCalendarClient(
 				const requestBody: calendar_v3.Schema$Event = { ...existing.data };
 				if (input.start_time)
 					requestBody.start = legacyEventTime(input.start_time, input.timeZone);
-				if (input.end_time)
-					requestBody.end = legacyEventTime(input.end_time, input.timeZone);
+				// A new start with no end moves the event and keeps its length.
+				const movedEnd = input.end_time
+					? null
+					: input.start_time
+						? endForStartOnlyMove(
+								existing.data.start?.dateTime,
+								existing.data.end?.dateTime,
+								input.start_time
+							)
+						: null;
+				const endTime = input.end_time ?? movedEnd;
+				if (endTime) requestBody.end = legacyEventTime(endTime, input.timeZone);
 				if (input.summary !== undefined) requestBody.summary = input.summary;
 				if (input.description !== undefined) requestBody.description = input.description;
 				if (input.location !== undefined) requestBody.location = input.location;
@@ -2152,6 +2171,23 @@ export function createLegacyGoogleCalendarClient(
 }
 
 /** The web client's wall-clock form: local `dateTime` plus the IANA `timeZone`. */
+/**
+ * "Move my 2-3pm to 4pm": the caller sends only the new start. Keep the event's
+ * length instead of stretching it to the old end (or failing when the new start
+ * passes the old end). Returns null when there is no usable timed range.
+ */
+export function endForStartOnlyMove(
+	previousStart: string | null | undefined,
+	previousEnd: string | null | undefined,
+	nextStart: string
+): string | null {
+	if (!previousStart || !previousEnd) return null;
+	const duration = Date.parse(previousEnd) - Date.parse(previousStart);
+	const next = Date.parse(nextStart);
+	if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(next)) return null;
+	return new Date(next + duration).toISOString();
+}
+
 function legacyEventTime(iso: string, timeZone?: string): calendar_v3.Schema$EventDateTime {
 	const date = new Date(iso);
 	if (timeZone && !Number.isNaN(date.getTime())) {

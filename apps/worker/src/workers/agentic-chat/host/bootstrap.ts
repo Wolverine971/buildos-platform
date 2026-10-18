@@ -110,7 +110,96 @@ export type AgenticChatBootstrapHealth = {
 	calendarCredentials?: string;
 	/** Admission wake transport; informational, never a health failure. */
 	queueWake?: AgenticChatQueueWakeListenerHealthV1 | null;
+	/** What this worker actually runs with (models, switches, limits); no secrets. */
+	settings?: AgenticChatEffectiveSettingsV1 | null;
 };
+
+/**
+ * The settings this worker is running with, read from its parsed config so the
+ * answer is what the code does, not what an env file says. Model names, on/off
+ * switches and limits only: never keys, URLs or user ids (allowlists are
+ * reported as a count). Reported on /health and logged once at startup
+ * (agentic chat teardown 2026-10-18: production values the code can't confirm).
+ */
+export type AgenticChatEffectiveSettingsV1 = {
+	version: 1;
+	actingModel: string;
+	actingFallbackModels: string[];
+	reviewer: {
+		/** `env` = AGENTIC_CHAT_REVIEWER_MODEL is set; `code_default` = the built-in chain. */
+		source: 'env' | 'code_default';
+		model: string;
+		fallbackModels: string[];
+	};
+	switches: {
+		liveTextPreview: boolean;
+		directWriteReceiptText: boolean;
+		providerHedging: boolean;
+		contextFinderBroad: boolean;
+		jevToolSelection: string;
+		holdUncommissionedWrites: boolean;
+		continuationReasoning: string;
+		providerIncidents: boolean;
+		providerIncidentDrain: boolean;
+		liveVision: boolean;
+		consumptionBilling: boolean;
+		contextFinderChat: string;
+		contextFinderGlobal: string;
+		/** 'all', or how many users are on the allowlist. */
+		contextFinderChatUsers: 'all' | number;
+	};
+	limits: {
+		concurrency: number;
+		providerBudgetMs: number;
+		maxToolRounds: number;
+		maxToolCalls: number;
+		maxToolConcurrency: number;
+	};
+};
+
+export function summarizeAgenticChatEffectiveSettingsV1(
+	config: AgenticChatConfig
+): AgenticChatEffectiveSettingsV1 {
+	const acting = config.provider.routes[0]!;
+	const reviewer = buildAgenticChatSemanticReviewerRoutes(
+		config.provider.routes,
+		config.provider.reviewer
+	)[0]!;
+	const chatUsers = config.contextFinderChatUserIds ?? [];
+	return {
+		version: 1,
+		actingModel: acting.model,
+		actingFallbackModels: [...(acting.fallbackModels ?? [])],
+		reviewer: {
+			source: config.provider.reviewer ? 'env' : 'code_default',
+			model: reviewer.model,
+			fallbackModels: [...(reviewer.fallbackModels ?? [])]
+		},
+		switches: {
+			liveTextPreview: config.liveTextPreviewEnabled === true,
+			directWriteReceiptText: config.directWriteReceiptTextEnabled === true,
+			providerHedging: config.providerHedgingEnabled ?? true,
+			contextFinderBroad: config.contextFinderBroadEnabled ?? true,
+			jevToolSelection: config.jevToolSelection,
+			holdUncommissionedWrites: config.holdUncommissionedWrites === true,
+			continuationReasoning: config.continuationReasoning ?? 'default',
+			providerIncidents: config.providerIncidentsEnabled !== false,
+			providerIncidentDrain: config.providerIncidentDrainEnabled ?? true,
+			liveVision: config.liveVisionEnabled,
+			consumptionBilling: config.consumptionBillingEnabled,
+			contextFinderChat: config.contextFinderChat ?? 'off',
+			contextFinderGlobal: config.contextFinderGlobal ?? 'off',
+			contextFinderChatUsers: chatUsers === 'all' ? 'all' : chatUsers.length
+		},
+		limits: {
+			concurrency: config.consumer.concurrency,
+			providerBudgetMs: config.providerBudgetMs,
+			maxToolRounds: config.maxProviderRounds,
+			maxToolCalls: config.maxToolCalls,
+			maxToolConcurrency: config.maxToolConcurrency
+		}
+	};
+}
 
 /**
  * Calendar reads and writes run on this service now, so the credentials must be
@@ -247,6 +336,9 @@ export function createAgenticChatBootstrap(
 		})
 	);
 
+	const settings = summarizeAgenticChatEffectiveSettingsV1(config);
+	console.log(JSON.stringify({ event: 'agentic_chat_effective_settings', ...settings }));
+
 	const createComposition = options.createComposition ?? createDefaultComposition;
 	const composition = createComposition({
 		client: options.client,
@@ -268,7 +360,8 @@ export function createAgenticChatBootstrap(
 		composition,
 		mutationCapabilities,
 		calendarCredentials.status,
-		queueWake
+		queueWake,
+		settings
 	);
 }
 
@@ -282,7 +375,8 @@ export class AgenticChatBootstrap {
 		private readonly composition: AgenticChatBootstrapCompositionPort,
 		private readonly mutationCapabilities: AgenticChatMutationCapabilitiesSummaryV1 | null = null,
 		private readonly calendarCredentials: string = 'configured',
-		private readonly queueWake: AgenticChatQueueWakeListenerPort | null = null
+		private readonly queueWake: AgenticChatQueueWakeListenerPort | null = null,
+		private readonly settings: AgenticChatEffectiveSettingsV1 | null = null
 	) {
 		this.state = 'ready';
 	}
@@ -329,6 +423,7 @@ export class AgenticChatBootstrap {
 		const mutationCapabilities = this.mutationCapabilities;
 		const calendarCredentials = this.calendarCredentials;
 		const queueWake = this.safeQueueWakeHealth();
+		const settings = this.settings;
 		if (this.state === 'running') {
 			return runtime?.healthy
 				? {
@@ -338,7 +433,8 @@ export class AgenticChatBootstrap {
 						runtime,
 						mutationCapabilities,
 						calendarCredentials,
-						queueWake
+						queueWake,
+						settings
 					}
 				: {
 						enabled: true,
@@ -348,7 +444,8 @@ export class AgenticChatBootstrap {
 						runtime,
 						mutationCapabilities,
 						calendarCredentials,
-						queueWake
+						queueWake,
+						settings
 					};
 		}
 		if (this.state === 'stopping' || this.state === 'stopped') {
@@ -360,7 +457,8 @@ export class AgenticChatBootstrap {
 				runtime,
 				mutationCapabilities,
 				calendarCredentials,
-				queueWake
+				queueWake,
+				settings
 			};
 		}
 		return {
@@ -371,7 +469,8 @@ export class AgenticChatBootstrap {
 			runtime,
 			mutationCapabilities,
 			calendarCredentials,
-			queueWake
+			queueWake,
+			settings
 		};
 	}
 

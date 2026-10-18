@@ -142,9 +142,6 @@ export default defineConfig({
 			// broken oracle could only be discovered by paying for a live
 			// battery (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 J7).
 			'**/lib/tests/agentic-e2e/__tests__/**',
-			'**/lib/tests/agentic-e2e/phase-a/phase-a-control.test.ts',
-			'**/lib/tests/agentic-e2e/phase-a/route-mode-eval.test.ts',
-			'**/lib/tests/agentic-e2e/open-brief/open-brief-control.test.ts',
 			// Playwright specs, not vitest.
 			'**/lib/tests/agentic-e2e/browser/**'
 		],

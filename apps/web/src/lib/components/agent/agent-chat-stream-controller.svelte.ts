@@ -104,6 +104,11 @@ export interface StreamControllerDeps {
 	getResolvedProjectFocus(): ProjectFocus | null;
 	getCurrentSession(): ChatSession | null;
 	getIsLoadingSession(): boolean;
+	/**
+	 * A turn is starting: drop any background session reload in flight. Its
+	 * snapshot predates this turn and would replace the optimistic bubble.
+	 */
+	cancelBackgroundSessionLoad?(): void;
 	getActiveRestoredTurnRunId(): string | null;
 	/**
 	 * The resumed (restored) turn reached terminal truth over the worker path:
@@ -647,6 +652,7 @@ export class AgentChatStreamController {
 		// block starts. Admission then runs behind it; a turn the server proves it
 		// never accepted is rolled back below (bubble removed, draft restored).
 		this.isStartingStream = true;
+		this.#deps.cancelBackgroundSessionLoad?.();
 		const requestContextType = selectedContextType;
 		const requestEntityId = this.#deps.getSelectedEntityId();
 		const requestProjectFocus = this.#deps.getResolvedProjectFocus();

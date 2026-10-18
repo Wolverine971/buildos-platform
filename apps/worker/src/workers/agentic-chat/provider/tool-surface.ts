@@ -1,11 +1,13 @@
 // apps/worker/src/workers/agentic-chat/provider/tool-surface.ts
 import {
 	AGENTIC_CHAT_STANDARD_CONTROL_TOOL_DEFINITIONS_V1,
+	CANCEL_TURN_CONTRACT_TOOL_DEFINITION,
 	CANCEL_TURN_CONTRACT_TOOL_NAME,
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
 	DECLARE_TURN_CONTRACT_TOOL_NAME
 } from '@buildos/agentic-chat-runtime/catalog';
 import {
+	isPendingTurnContractSystemMessage,
 	provideAgenticChatLoopToolCatalog,
 	provideAgenticChatToolPayloadHostPolicy
 } from '@buildos/agentic-chat-runtime/loop';
@@ -68,11 +70,11 @@ provideAgenticChatLoopToolCatalog(() => WORKER_LOOP_CATALOG);
 provideAgenticChatToolPayloadHostPolicy(() => ({ advertiseMaterializedTools: false }));
 
 /**
- * Controls the worker never mounts on an acting surface, even when an
- * artifact lists them: the read-only control belongs to the reviewer lane,
- * and the retired turn-contract controls (`declare_turn_contract`,
- * `cancel_turn_contract`) were replaced by SHA-bound batch review
- * (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1). None is a gap.
+ * Controls the worker never mounts from the artifact: the read-only control
+ * belongs to the reviewer lane, and `declare_turn_contract` was replaced by
+ * SHA-bound batch review (AGENTIC_CHAT_HARNESS_AUDIT_2026-09-08 Decision 1).
+ * `cancel_turn_contract` is mounted separately by productionToolsFor, only on a
+ * turn that carries a pending commission. None is a gap.
  */
 const WORKER_UNMOUNTED_CONTROL_TOOL_NAMES = new Set<string>([
 	DECLARE_READ_ONLY_TURN_TOOL_NAME,
@@ -153,7 +155,33 @@ export function productionToolsFor(
 			tools.push(control);
 		}
 	}
+
+	// A failed write leaves a commission on the session, and admission replays it
+	// as the pending note on every later turn. The terminal trigger clears it only
+	// on a successful cancel_turn_contract, so a turn carrying the note gets that
+	// control; without it a "never mind" could never clear the commission.
+	if (carriesPendingTurnContract(input) && !seen.has(CANCEL_TURN_CONTRACT_TOOL_NAME)) {
+		const control = readArtifactToolDefinition(CANCEL_TURN_CONTRACT_TOOL_DEFINITION);
+		if (control && isAgenticChatProductionReadToolNameV1(control.function.name)) {
+			seen.add(control.function.name);
+			tools.push(control);
+		}
+	}
 	return tools;
+}
+
+/** Whether admission replayed a pending commission note into this turn's history. */
+export function carriesPendingTurnContract(input: AgenticChatWorkerExecutionInputV1): boolean {
+	const history = input.artifact.history;
+	return (
+		Array.isArray(history) &&
+		history.some(
+			(message) =>
+				message.role === 'system' &&
+				typeof message.content === 'string' &&
+				isPendingTurnContractSystemMessage(message.content)
+		)
+	);
 }
 
 /** True when any tool in the pass carries the scheduling sidecar. */

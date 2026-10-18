@@ -1020,6 +1020,61 @@ export function applyStartHereSectionBodies(
 	return finalBody === content ? content : finalBody;
 }
 
+/**
+ * Re-apply a reviewed START HERE rewrite on top of a document that changed after
+ * the review was staged (later checkpoints keep appending lines). A section-level
+ * three-way merge of authored content; managed regions always come from the
+ * current document:
+ * - a section only the review changed takes the reviewed body;
+ * - a section only the current document changed keeps the current body;
+ * - a section both sides changed, a heading the review added or removed, an
+ *   emptied section, or a review edit outside the `##` sections returns null.
+ *   That is a real conflict, and the caller reports the review as stale.
+ */
+export function rebaseStartHereReviewedContent(params: {
+	base: string;
+	reviewed: string;
+	current: string;
+}): string | null {
+	const authored = (value: string) =>
+		normalizeMarkdownLineEndings(stripStartHereManagedRegions(value));
+	const base = authored(params.base);
+	const reviewed = authored(params.reviewed);
+	const current = authored(params.current);
+	const preamble = (body: string) =>
+		body.slice(0, findAllHeadingOccurrences(body)[0]?.headingStart ?? body.length).trim();
+	if (preamble(base) !== preamble(reviewed)) return null;
+
+	const byKey = (body: string) =>
+		new Map(
+			readStartHereDocumentSections(body).map((section) => [
+				headingKey(section.heading),
+				section
+			])
+		);
+	const baseSections = byKey(base);
+	const reviewedSections = byKey(reviewed);
+	const currentSections = byKey(current);
+	if (
+		baseSections.size !== reviewedSections.size ||
+		[...baseSections.keys()].some((key) => !reviewedSections.has(key))
+	) {
+		return null;
+	}
+
+	const updates: StartHereSectionBody[] = [];
+	for (const [key, baseSection] of baseSections) {
+		const reviewedSection = reviewedSections.get(key)!;
+		if (reviewedSection.body === baseSection.body) continue;
+		const currentSection = currentSections.get(key);
+		if (!currentSection || currentSection.body !== baseSection.body) return null;
+		if (!reviewedSection.body.trim()) return null;
+		updates.push({ heading: currentSection.heading, markdown: reviewedSection.body });
+	}
+	if (updates.length === 0) return null;
+	return applyStartHereSectionBodies(params.current, updates);
+}
+
 /** A section body as top-level blocks: each bullet with its continuation lines, or a paragraph. */
 export function splitStartHereSectionBlocks(body: string): string[] {
 	return parseMarkdownBlocks(body).map((block) => block.lines.join('\n'));

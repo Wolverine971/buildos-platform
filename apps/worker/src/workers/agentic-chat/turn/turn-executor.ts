@@ -66,6 +66,7 @@ import {
 	providerSchedulingArguments,
 	result,
 	safeAssistantText,
+	withStoppedPreviewText,
 	validateClaimEnvelope,
 	validateFinish,
 	validateJobEnvelope
@@ -74,6 +75,7 @@ import {
 	AgenticChatCommittedEffectPersistError,
 	PARTIAL_COMPLETION_FAILURE_CLASSES,
 	cancellationInterruptionReason,
+	cancellationRequestedAt,
 	classifyFailure,
 	errorMessage,
 	failurePublicError,
@@ -817,12 +819,22 @@ export class AgenticChatTurnExecutor {
 				});
 				if (completed) return completed;
 			}
-			const assistantText = safeAssistantText(
+			const durableAssistantText = safeAssistantText(
 				this.ports.publisher,
 				claim.turnRunId,
 				publisherRegistered,
 				error
 			);
+			const assistantText =
+				failureClass === 'cancelled'
+					? withStoppedPreviewText(
+							this.ports.publisher,
+							claim.turnRunId,
+							publisherRegistered,
+							durableAssistantText,
+							cancellationRequestedAt(error, combined.signal)
+						)
+					: durableAssistantText;
 			const terminalEventContext =
 				executionStarted &&
 				executionInput !== null &&

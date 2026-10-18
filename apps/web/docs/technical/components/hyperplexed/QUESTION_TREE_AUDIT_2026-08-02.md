@@ -1,5 +1,10 @@
 <!-- apps/web/docs/technical/components/hyperplexed/QUESTION_TREE_AUDIT_2026-08-02.md -->
 
+<!-- doc-status: point-in-time -->
+
+> **Point-in-time document.** Written 2026-08-02. Most of the files it cites no longer exist, so it describes a system that has since changed.
+> It is not a current reference. Verify against code before acting on anything here.
+
 # Question Tree Hyperplexed Audit - 2026-08-02
 
 Target: `/admin/experiments/question-tree` and its run viewer at

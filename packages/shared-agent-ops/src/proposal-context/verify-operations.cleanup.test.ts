@@ -354,14 +354,19 @@ describe('archive_onto_document', () => {
 		expect(badMode).toMatchObject({ ok: false, diagnostic: { code: 'INVALID_OPERATION' } });
 	});
 
-	it('quarantines a label that names a different document', async () => {
-		const result = await verify(cleanupTables(), [
+	it('verifies by ID and shows the resolved title whatever the label says (triage 2026-10-18)', async () => {
+		// The old word-overlap check quarantined valid suggestions; the card the
+		// user approves shows only server-resolved titles.
+		const tables = cleanupTables();
+		const title = tables.onto_documents.find(
+			(doc: { id: string }) => doc.id === 'doc-political'
+		)!.title;
+		const result = await verify(tables, [
 			archiveDoc('doc-political', 'Archive the Book Research document')
 		]);
-		expect(result).toMatchObject({
-			ok: false,
-			diagnostic: { code: 'MODEL_ENTITY_MISMATCH', entity_id: 'doc-political' }
-		});
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.summary.operations[0]?.target).toBe(title);
 	});
 
 	it('adds a caution for each archived document with a live public page', async () => {
@@ -475,7 +480,7 @@ describe('archive_onto_task', () => {
 		});
 	});
 
-	it('rejects deleted, cross-project and mislabeled tasks and extra arguments', async () => {
+	it('rejects deleted and cross-project tasks and extra arguments; a mislabeled task verifies by ID', async () => {
 		expect(
 			await verify(cleanupTables(), [archiveTask('task-deleted', 'Archive Old draft')])
 		).toMatchObject({ ok: false, diagnostic: { code: 'ENTITY_INACTIVE' } });
@@ -486,7 +491,7 @@ describe('archive_onto_task', () => {
 			await verify(cleanupTables(), [
 				archiveTask('task-referral', 'Archive Book Biz Expo booth')
 			])
-		).toMatchObject({ ok: false, diagnostic: { code: 'MODEL_ENTITY_MISMATCH' } });
+		).toMatchObject({ ok: true });
 		expect(
 			await verify(cleanupTables(), [
 				{

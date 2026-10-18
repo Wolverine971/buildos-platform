@@ -10,6 +10,7 @@ import { AgenticChatToolAccessDeniedError } from '@buildos/agentic-chat-runtime/
 import { describe, expect, it, vi } from 'vitest';
 import { createWorkerGoogleCalendarServices } from '../src/workers/agentic-chat/tools/calendar-services';
 import {
+	calendarRequestRejection,
 	calendarWriteFailureCode,
 	createWorkerAgenticChatCalendarWritePort,
 	normalizeCalendarDateTime
@@ -476,6 +477,136 @@ describe('worker calendar write port', () => {
 		]);
 	});
 
+	it('keeps the event length when only start_at moves (triage 2026-10-18)', async () => {
+		// "Push my 3-4pm to 5pm": the model sends only the new start.
+		const updateEvent = vi.fn(async (_userId: string, _payload: Record<string, unknown>) => ({
+			id: EVENT_ID
+		}));
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({
+				onto_events: [
+					{
+						data: {
+							id: EVENT_ID,
+							project_id: PROJECT_ID,
+							owner_entity_type: 'project',
+							owner_entity_id: PROJECT_ID,
+							created_by: ACTOR_ID,
+							timezone: 'UTC',
+							start_at: '2026-09-10T15:00:00Z',
+							end_at: '2026-09-10T16:00:00Z'
+						},
+						error: null
+					},
+					syncedEventRow()
+				]
+			}),
+			options: {
+				services: fakeServices(),
+				createAccess: () => fakeAccess(),
+				createEventSync: () => ({ updateEvent }) as never
+			}
+		});
+
+		await expect(
+			port.execute(
+				request({
+					toolName: 'update_calendar_event',
+					projectId: PROJECT_ID,
+					arguments: { onto_event_id: EVENT_ID, start_at: '2026-09-10T17:00:00Z' }
+				})
+			)
+		).resolves.toMatchObject({ ok: true, event_id: EVENT_ID });
+		const [, payload] = updateEvent.mock.calls[0];
+		expect(Date.parse(String(payload.startAt))).toBe(Date.parse('2026-09-10T17:00:00Z'));
+		expect(payload.endAt).toBe('2026-09-10T18:00:00.000Z');
+	});
+
+	it('keeps a Google-only event length on a start-only move', async () => {
+		const getEvent = vi.fn(async () => ({
+			providerEventId: 'g-1',
+			providerCalendarId: 'primary',
+			event: {
+				start: { dateTime: '2026-09-10T15:00:00Z' },
+				end: { dateTime: '2026-09-10T15:45:00Z' }
+			}
+		}));
+		const updateEvent = vi.fn(async (_input: Record<string, unknown>) => ({
+			providerEventId: 'g-1',
+			providerCalendarId: 'primary',
+			event: { htmlLink: null }
+		}));
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({ users: [{ data: { timezone: 'UTC' }, error: null }] }),
+			options: {
+				services: fakeServices({ getEvent, updateEvent }),
+				createAccess: () => fakeAccess()
+			}
+		});
+
+		await expect(
+			port.execute(
+				request({
+					toolName: 'update_calendar_event',
+					arguments: { event_id: 'g-1', start_at: '2026-09-10T17:00:00Z' }
+				})
+			)
+		).resolves.toMatchObject({ ok: true, google_event_id: 'g-1' });
+		const [input] = updateEvent.mock.calls[0];
+		const body = input.requestBody as { end?: { dateTime?: string } };
+		expect(body.end?.dateTime).toBe('2026-09-10T17:45:00.000Z');
+	});
+
+	it('reports refused calendar writes as known failures, not "may have been saved"', async () => {
+		const portThatThrows = (error: unknown) =>
+			createWorkerAgenticChatCalendarWritePort({
+				client: fakeClient({ users: [{ data: { timezone: 'UTC' }, error: null }] }),
+				options: {
+					services: fakeServices({
+						updateEvent: vi.fn(async () => {
+							throw error;
+						})
+					}),
+					createAccess: () => fakeAccess()
+				}
+			});
+		const rename = () =>
+			request({
+				toolName: 'update_calendar_event',
+				arguments: { event_id: 'g-1', title: 'Renamed' }
+			});
+
+		// No source chosen for a Google-native event: nothing was sent.
+		await expect(
+			portThatThrows(
+				Object.assign(new Error('Choose the Google Calendar source'), {
+					name: 'GoogleCalendarTargetError'
+				})
+			).execute(rename())
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'update_calendar_event_target_unresolved'
+		});
+		// Google refused the request.
+		await expect(
+			portThatThrows(
+				Object.assign(new Error('Bad Request'), { response: { status: 400 } })
+			).execute(rename())
+		).rejects.toMatchObject({
+			disposition: 'known_failed',
+			failureCode: 'update_calendar_event_rejected'
+		});
+		// A server error may have landed: still uncertain.
+		await expect(
+			portThatThrows(Object.assign(new Error('Backend Error'), { status: 503 })).execute(
+				rename()
+			)
+		).rejects.toMatchObject({
+			disposition: 'outcome_uncertain',
+			failureCode: 'update_calendar_event_outcome_uncertain'
+		});
+	});
+
 	it('refuses an end before its start', async () => {
 		const port = createWorkerAgenticChatCalendarWritePort({
 			client: fakeClient({ users: [{ data: { timezone: 'UTC' }, error: null }] }),
@@ -820,6 +951,25 @@ describe('calendar write failure classification', () => {
 		expect(
 			calendarWriteFailureCode(new GoogleCalendarConnectionError('provider_error', 'busy'))
 		).toBeNull();
+	});
+});
+
+describe('calendar request rejection', () => {
+	it('treats target errors and Google 4xx as nothing written, everything else as uncertain', () => {
+		expect(
+			calendarRequestRejection(
+				Object.assign(new Error('x'), { name: 'GoogleCalendarTargetError' })
+			)
+		).toBe('target_unresolved');
+		expect(calendarRequestRejection({ response: { status: 404 } })).toBe('rejected');
+		expect(calendarRequestRejection({ code: '403' })).toBe('rejected');
+		expect(calendarRequestRejection({ status: 409 })).toBe('rejected');
+		// 401 is a dead grant (reconnect), 408 a timeout: not proof of "nothing written".
+		expect(calendarRequestRejection({ status: 401 })).toBeNull();
+		expect(calendarRequestRejection({ status: 408 })).toBeNull();
+		expect(calendarRequestRejection({ status: 503 })).toBeNull();
+		expect(calendarRequestRejection({ code: 'ECONNRESET' })).toBeNull();
+		expect(calendarRequestRejection(new Error('socket hang up'))).toBeNull();
 	});
 });
 

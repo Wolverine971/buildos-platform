@@ -6625,6 +6625,62 @@ describe('AgenticChatTurnExecutor', () => {
 		}
 	});
 
+	it('saves the live preview the user was reading when they pressed Stop', async () => {
+		const stoppedAt = '2026-10-18T12:05:00.000Z';
+		const harness = createHarness([], {
+			recovery: [
+				recoveryReceipt('finalize_cancelled'),
+				recoveryReceipt('queue_reconciled', {
+					status: 'cancelled',
+					failure_code: 'cancelled'
+				})
+			],
+			promptSnapshot: fixturePromptSnapshot
+		});
+		(harness.provider.prepare as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => ({
+			promptSnapshot: fixturePromptSnapshot,
+			stream: () =>
+				(async function* () {
+					yield { type: 'text_delta', text: 'Earlier pass.' } as const;
+					// The next pass streams a preview the browser shows, then Stop lands.
+					const target = harness.publisher.getLiveTextPreviewTarget(TURN_RUN_ID)!;
+					harness.publisher.noteDeliveredLiveTextPreview({
+						turnRunId: TURN_RUN_ID,
+						executionGeneration: EXECUTION_GENERATION,
+						passKey: '2.acting.1.1',
+						text: 'The second part covers',
+						state: 'streaming',
+						marker: target.marker,
+						atMs: Date.parse(stoppedAt) - 800
+					});
+					harness.cancellationController.abort(
+						new AgenticChatCancellationError({
+							turn_run_id: TURN_RUN_ID,
+							execution_generation: EXECUTION_GENERATION,
+							signal_id: 'c0000000-0000-4000-8000-00000000000d',
+							cancel_reason: 'user_cancelled',
+							cancel_source: 'browser',
+							cancel_requested_at: stoppedAt,
+							consumed_at: '2026-10-18T12:05:01.000Z'
+						})
+					);
+					yield { type: 'text_delta', text: ' must-not-persist' } as const;
+				})(),
+			release: vi.fn()
+		}));
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'cancelled',
+				terminalStatus: 'cancelled'
+			});
+			const terminalInput = harness.control.finalize.mock.calls[0]?.[0];
+			expect(terminalInput?.assistantText).toBe('Earlier pass.\n\nThe second part covers');
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('matches provider-error structure while retaining only reconnect-safe failed text', async () => {
 		const harness = createHarness([], {
 			recovery: [

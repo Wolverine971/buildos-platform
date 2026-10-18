@@ -70,7 +70,13 @@ export function writeToolNamesOn(tools: readonly AgenticChatTurnProviderToolV1[]
 		.filter((name) => reviewedAgenticChatMutationSpecV1(name) !== null);
 }
 
-const REQUIRED_CONTROLS = new Set(['declare_read_only_turn', 'request_turn_clarification']);
+// Controls are never Jev's call: each is admitted only when it applies (the
+// cancel control only on a turn carrying a pending commission).
+const REQUIRED_CONTROLS = new Set([
+	'declare_read_only_turn',
+	'request_turn_clarification',
+	'cancel_turn_contract'
+]);
 const LOOKUPS = ['search_all_projects', 'search_project', 'search_onto_projects'];
 const TASK_READS = ['list_onto_tasks', 'get_onto_task_details', 'search_onto_tasks', ...LOOKUPS];
 const DOCUMENT_READS = [

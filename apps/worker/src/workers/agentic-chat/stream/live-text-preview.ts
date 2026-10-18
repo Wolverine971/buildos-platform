@@ -9,7 +9,11 @@ import type {
 	AgenticChatLiveTextPreviewUpdateV1,
 	AgenticChatTurnProviderClientPortV1
 } from '../provider/contracts';
-import type { AgenticChatBroadcastPortV1, AgenticChatStreamPublisher } from './stream-publisher';
+import type {
+	AgenticChatBroadcastPortV1,
+	AgenticChatLiveTextPreviewTargetV1,
+	AgenticChatStreamPublisher
+} from './stream-publisher';
 
 export type AgenticChatLiveTextPreviewStatsV1 = {
 	sent: number;
@@ -40,7 +44,12 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 	constructor(
 		private readonly ports: {
 			publisher: Pick<AgenticChatStreamPublisher, 'getLiveTextPreviewTarget'> &
-				Partial<Pick<AgenticChatStreamPublisher, 'noteVisibleText'>>;
+				Partial<
+					Pick<
+						AgenticChatStreamPublisher,
+						'noteVisibleText' | 'noteDeliveredLiveTextPreview'
+					>
+				>;
 			broadcast: AgenticChatBroadcastPortV1;
 			now?: () => number;
 			/** Called on a turn generation's first failure; later ones are only counted. */
@@ -56,6 +65,7 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 				return;
 			}
 			const seq = this.nextSeq();
+			const builtAtMs = this.ports.now?.() ?? Date.now();
 			const delivery = this.ports.broadcast.publish({
 				kind: 'live_text_preview',
 				topic: target.topic,
@@ -77,6 +87,7 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 					if (result === 'sent') {
 						this.stats.sent += 1;
 						if (update.text) this.noteVisible(update);
+						this.noteDelivered(update, target.marker, builtAtMs);
 					} else if (result === 'skipped') this.stats.skipped += 1;
 					else
 						this.observeFailure(
@@ -93,6 +104,28 @@ export class AgenticChatLiveTextPreviewBroadcaster implements AgenticChatLiveTex
 
 	getStats(): AgenticChatLiveTextPreviewStatsV1 {
 		return { ...this.stats };
+	}
+
+	/** What the browser now shows, so a Stop can save the same text. */
+	private noteDelivered(
+		update: AgenticChatLiveTextPreviewUpdateV1,
+		marker: AgenticChatLiveTextPreviewTargetV1['marker'],
+		atMs: number
+	): void {
+		if (!marker) return;
+		try {
+			this.ports.publisher.noteDeliveredLiveTextPreview?.({
+				turnRunId: update.turnRunId,
+				executionGeneration: update.executionGeneration,
+				passKey: update.passKey,
+				text: update.text,
+				state: update.state,
+				marker,
+				atMs
+			});
+		} catch {
+			// Display-only: never reaches the turn.
+		}
 	}
 
 	/** First-visible-text evidence for audit M3: the channel accepted a frame with text. */

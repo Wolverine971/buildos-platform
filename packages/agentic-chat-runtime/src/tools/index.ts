@@ -16,7 +16,6 @@ export * from './embeddings-port';
 export * from './external-ports';
 export * from './ontology-detail-reads';
 export * from './ontology-explore';
-export * from './ontology-relationship-reads';
 export * from './ontology-reads';
 export * from './ontology-search';
 export * from './ontology-search-ranking';

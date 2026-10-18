@@ -39,20 +39,6 @@ export interface BriefJobData extends Omit<DailyBriefJobMetadata, 'briefDate' | 
 	};
 }
 
-export interface OnboardingAnalysisJobData {
-	userId: string;
-	userContext: {
-		input_projects?: string | null;
-		input_work_style?: string | null;
-		input_challenges?: string | null;
-		input_help_focus?: string | null;
-	};
-	options?: {
-		forceRegenerate?: boolean;
-		maxQuestions?: number;
-	};
-}
-
 export interface SMSJobData {
 	message_id: string; // ID from sms_messages table
 	phone_number: string; // E.164 formatted phone number
@@ -67,24 +53,17 @@ export interface ChatClassificationJobData {
 	userId: string; // User ID who owns the session
 }
 
-export interface BraindumpProcessingJobData {
-	braindumpId: string; // ID of the onto_braindumps record to process
-	userId: string; // User ID who owns the captured context
-}
-
 // Update job status in database
 export async function updateJobStatus(
 	queueJobId: string,
 	status: QueueJobStatus,
 	jobType:
 		| 'brief'
-		| 'onboarding'
 		| 'send_sms'
 		| 'email'
 		| 'email_cancelled'
 		| 'email_sent'
-		| 'chat_classification'
-		| 'process_onto_braindump',
+		| 'chat_classification',
 	errorMessage?: string,
 	processingToken?: string | null
 ) {
@@ -343,53 +322,4 @@ export function validateChatClassificationJobData(data: unknown): ChatClassifica
 	}
 
 	return data as ChatClassificationJobData;
-}
-
-/**
- * Validate BraindumpProcessingJobData and throw if invalid
- * Ensures data integrity before ontology capture processing job processing
- */
-export function validateBraindumpProcessingJobData(data: unknown): BraindumpProcessingJobData {
-	if (!data || typeof data !== 'object') {
-		throw new PermanentQueueError(
-			'invalid_job_payload',
-			'Invalid braindump processing job data: expected object'
-		);
-	}
-	const d = data as Record<string, unknown>;
-
-	// Check braindumpId
-	if (!d.braindumpId || typeof d.braindumpId !== 'string') {
-		throw new PermanentQueueError(
-			'invalid_job_payload',
-			'Invalid braindump processing job data: braindumpId is required and must be string'
-		);
-	}
-
-	// Validate UUID format for braindumpId
-	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-	if (!uuidRegex.test(d.braindumpId)) {
-		throw new PermanentQueueError(
-			'invalid_job_payload',
-			`Invalid braindump processing job data: braindumpId must be a valid UUID, got "${d.braindumpId}"`
-		);
-	}
-
-	// Check userId
-	if (!d.userId || typeof d.userId !== 'string') {
-		throw new PermanentQueueError(
-			'invalid_job_payload',
-			'Invalid braindump processing job data: userId is required and must be string'
-		);
-	}
-
-	// Validate UUID format for userId
-	if (!uuidRegex.test(d.userId)) {
-		throw new PermanentQueueError(
-			'invalid_job_payload',
-			`Invalid braindump processing job data: userId must be a valid UUID, got "${d.userId}"`
-		);
-	}
-
-	return data as BraindumpProcessingJobData;
 }

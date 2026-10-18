@@ -21,7 +21,6 @@ buildos-platform/
 │   ├── supabase-client/      # Shared Supabase client configuration
 │   ├── twilio-service/       # SMS / Twilio integration
 │   ├── agentic-chat-runtime/ # Transport-neutral agentic chat contracts, loop + supervisor
-│   ├── agent-orchestrator/   # Agent-first orchestration core (not yet wired into apps)
 │   └── buildos-mcp-server/   # Local stdio MCP bridge to the remote BuildOS connector
 ├── docs/                     # Cross-cutting docs (architecture, marketing, ops)
 ├── scripts/                  # Type generation, schema extraction, tooling

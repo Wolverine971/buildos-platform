@@ -2,11 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import {
-	transformEventPayload,
-	validateAgentRunMetadata,
-	validateJobMetadata
-} from '@buildos/shared-types';
+import { transformEventPayload, validateAgentRunMetadata } from '@buildos/shared-types';
 
 const repoRoot = resolve(__dirname, '../../..');
 
@@ -418,15 +414,5 @@ describe('agent_run job metadata contract', () => {
 				continuation_from: 'completed'
 			})
 		).toThrow();
-	});
-
-	it('routes through the generic validateJobMetadata dispatcher', () => {
-		const meta = validateJobMetadata('agent_run', {
-			run_id: RUN_ID,
-			trigger: 'manual',
-			context_type: 'global',
-			scope_mode: 'read_only'
-		});
-		expect(meta.run_id).toBe(RUN_ID);
 	});
 });

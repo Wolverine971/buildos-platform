@@ -1,7 +1,7 @@
 // packages/shared-types/src/queue-types.ts
 import type { Database } from './database.types';
 import type { NotificationJobMetadata } from './notification.types';
-import { CYCLE_KINDS, type CycleQueueJobMetadata, type CycleRunOutcome } from './cycle.types';
+import type { CycleQueueJobMetadata, CycleRunOutcome } from './cycle.types';
 import type { FreshnessScanJobMetadata } from './freshness-radar.types';
 
 // Re-export database enums as the single source of truth, minus retired legacy jobs.
@@ -80,13 +80,6 @@ export interface BriefGenerationProgress {
 	timestamp: string; // ISO timestamp
 }
 
-export interface PhaseGenerationJobMetadata {
-	projectId: string;
-	regenerate?: boolean;
-	template?: string;
-	includeExistingTasks?: boolean;
-}
-
 export interface OnboardingAnalysisJobMetadata {
 	userId: string;
 	userContext?: {
@@ -151,26 +144,6 @@ export type CalendarSyncJobMetadata =
 	| LegacyCalendarSyncJobMetadata
 	| OntoProjectEventSyncJobMetadata;
 
-export interface EmailJobMetadata {
-	recipientUserId: string;
-	emailType: 'daily_brief' | 'welcome' | 'trial_ending' | 'payment_failed' | 'weekly_summary';
-	templateId?: string;
-	variables?: Record<string, string | number | boolean>;
-	briefId?: string; // For daily_brief emails
-}
-
-export interface RecurringTaskJobMetadata {
-	taskIds?: string[];
-	dryRun?: boolean;
-	updatedCount?: number;
-}
-
-export interface CleanupJobMetadata {
-	targetDate?: string; // Clean data older than this date
-	deletedCount?: number;
-	entities?: string[]; // Which entities to clean
-}
-
 export interface SendSMSJobMetadata {
 	message_id: string;
 	phone_number: string;
@@ -180,10 +153,6 @@ export interface SendSMSJobMetadata {
 	template_key?: string;
 	variables?: Record<string, string | number | boolean>;
 	scheduled_for?: string;
-}
-
-export interface GenerateBriefEmailJobMetadata {
-	emailId: string; // ID from emails table
 }
 
 export interface ScheduleDailySMSJobMetadata {
@@ -375,14 +344,9 @@ export interface JobMetadataMap {
 	// pipelines whose enum values remain in the DB, like buildos_homework/buildos_tree_agent).
 	[key: string]: unknown;
 	generate_daily_brief: DailyBriefJobMetadata;
-	generate_phases: PhaseGenerationJobMetadata;
 	onboarding_analysis: OnboardingAnalysisJobMetadata;
 	sync_calendar: CalendarSyncJobMetadata;
-	send_email: EmailJobMetadata;
-	update_recurring_tasks: RecurringTaskJobMetadata;
-	cleanup_old_data: CleanupJobMetadata;
 	send_sms: SendSMSJobMetadata;
-	generate_brief_email: GenerateBriefEmailJobMetadata;
 	send_notification: NotificationJobMetadata;
 	schedule_daily_sms: ScheduleDailySMSJobMetadata;
 	classify_chat_session: ClassifyChatSessionJobMetadata;
@@ -510,14 +474,9 @@ export interface JobResultMap {
 	// Allow indexing by queue job types that are not explicitly listed yet.
 	[key: string]: unknown;
 	generate_daily_brief: DailyBriefResult;
-	generate_phases: PhaseGenerationResult;
 	onboarding_analysis: OnboardingAnalysisResult;
 	sync_calendar: CalendarSyncResult;
-	send_email: EmailSendResult;
-	update_recurring_tasks: RecurringTaskResult;
-	cleanup_old_data: CleanupResult;
 	send_sms: SendSMSResult;
-	generate_brief_email: GenerateBriefEmailResult;
 	send_notification: NotificationSendResult;
 	schedule_daily_sms: ScheduleDailySMSResult;
 	classify_chat_session: ClassifyChatSessionResult;
@@ -550,13 +509,6 @@ export interface DailyBriefResult {
 	errorMessages?: string[];
 }
 
-export interface PhaseGenerationResult {
-	projectId: string;
-	phasesCreated: string[];
-	tasksAssigned: number;
-	errors?: string[];
-}
-
 export interface OnboardingAnalysisResult {
 	analysisComplete: boolean;
 	suggestedProjects?: string[];
@@ -572,40 +524,12 @@ export interface CalendarSyncResult {
 	lastSyncedAt: string;
 }
 
-export interface EmailSendResult {
-	sent: boolean;
-	messageId?: string;
-	error?: string;
-	provider?: 'resend' | 'sendgrid' | 'smtp';
-}
-
-export interface RecurringTaskResult {
-	updated: number;
-	failed: number;
-	taskIds: string[];
-}
-
-export interface CleanupResult {
-	deleted: number;
-	entities: Record<string, number>;
-	errors?: string[];
-}
-
 export interface SendSMSResult {
 	success: boolean;
 	twilio_sid?: string;
 	delivered_at?: string;
 	error?: string;
 	attempt?: number;
-}
-
-export interface GenerateBriefEmailResult {
-	emailId: string;
-	sent: boolean;
-	sentAt?: string;
-	recipientEmail: string;
-	trackingId?: string;
-	error?: string;
 }
 
 export interface NotificationSendResult {
@@ -637,356 +561,5 @@ export interface QueueJob<T extends QueueJobType = QueueJobType> {
 	result: JobResultMap[T] | null;
 }
 
-// Helper types for specific job types
+// Helper type for the daily brief job
 export type DailyBriefQueueJob = QueueJob<'generate_daily_brief'>;
-export type PhaseQueueJob = QueueJob<'generate_phases'>;
-export type EmailQueueJob = QueueJob<'send_email'>;
-export type SendSMSQueueJob = QueueJob<'send_sms'>;
-
-// Type guards
-export function isValidJobMetadata<T extends QueueJobType>(
-	jobType: T,
-	metadata: unknown
-): metadata is JobMetadataMap[T] {
-	switch (jobType) {
-		case 'generate_daily_brief':
-			return isDailyBriefMetadata(metadata);
-		case 'generate_phases':
-			return isPhaseGenerationMetadata(metadata);
-		case 'onboarding_analysis':
-			return isOnboardingAnalysisMetadata(metadata);
-		case 'sync_calendar':
-			return isCalendarSyncMetadata(metadata);
-		case 'send_email':
-			return isEmailJobMetadata(metadata);
-		case 'update_recurring_tasks':
-			return isRecurringTaskMetadata(metadata);
-		case 'cleanup_old_data':
-			return isCleanupMetadata(metadata);
-		case 'send_sms':
-			return isSendSMSMetadata(metadata);
-		case 'generate_brief_email':
-			return isGenerateBriefEmailMetadata(metadata);
-		case 'send_notification':
-			return isNotificationMetadata(metadata);
-		case 'schedule_daily_sms':
-			return isScheduleDailySMSMetadata(metadata);
-		case 'classify_chat_session':
-			return isClassifyChatSessionMetadata(metadata);
-		case 'process_onto_braindump':
-			return isOntoBraindumpProcessingMetadata(metadata);
-		case 'transcribe_voice_note':
-			return isVoiceNoteTranscriptionMetadata(metadata);
-		case 'generate_brief_audio':
-			return isGenerateBriefAudioMetadata(metadata);
-		case 'build_project_context_snapshot':
-			return isProjectContextSnapshotMetadata(metadata);
-		case 'extract_onto_asset_ocr':
-			return isAssetOcrMetadata(metadata);
-		case 'embed_onto_entity':
-			return isEmbedOntoEntityMetadata(metadata);
-		case 'pick_project_emoji':
-			return isPickProjectEmojiMetadata(metadata);
-		case 'generate_project_icon':
-			return isProjectIconGenerationMetadata(metadata);
-		case 'project_activity_batch_flush':
-			return isProjectActivityBatchFlushMetadata(metadata);
-		case 'run_cycle':
-			return isCycleQueueJobMetadata(metadata);
-		case 'freshness_radar_scan':
-			return isFreshnessScanJobMetadata(metadata);
-		case 'capture_chat_checkpoint':
-			return isCaptureChatCheckpointMetadata(metadata);
-		case 'user_data_export':
-			return isUserDataExportMetadata(metadata);
-		case 'consolidation_run':
-			return isConsolidationRunMetadata(metadata);
-		case 'other':
-			return true;
-		default:
-			return true;
-	}
-}
-
-const CAPTURE_CHAT_CHECKPOINT_TRIGGERS = new Set([
-	'threshold',
-	'idle',
-	'close',
-	'backfill',
-	'manual'
-]);
-
-function isCaptureChatCheckpointMetadata(obj: unknown): obj is CaptureChatCheckpointJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.sessionId === 'string' &&
-		meta.sessionId.length > 0 &&
-		typeof meta.userId === 'string' &&
-		meta.userId.length > 0 &&
-		typeof meta.trigger === 'string' &&
-		CAPTURE_CHAT_CHECKPOINT_TRIGGERS.has(meta.trigger)
-	);
-}
-
-function isConsolidationRunMetadata(obj: unknown): obj is ConsolidationRunJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.runId === 'string' &&
-		meta.runId.length > 0 &&
-		typeof meta.userId === 'string' &&
-		meta.userId.length > 0 &&
-		(meta.action === 'survey' ||
-			(meta.action === 'replan' &&
-				typeof meta.questionId === 'string' &&
-				meta.questionId.length > 0) ||
-			((meta.action === 'merge' || meta.action === 'merge_write') &&
-				typeof meta.clusterKey === 'string' &&
-				meta.clusterKey.length > 0))
-	);
-}
-
-function isUserDataExportMetadata(obj: unknown): obj is UserDataExportJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.exportId === 'string' &&
-		meta.exportId.length > 0 &&
-		typeof meta.userId === 'string' &&
-		meta.userId.length > 0
-	);
-}
-
-function isFreshnessScanJobMetadata(obj: unknown): obj is FreshnessScanJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.signalId === 'string' &&
-		meta.signalId.length > 0 &&
-		typeof meta.sessionId === 'string' &&
-		meta.sessionId.length > 0 &&
-		typeof meta.userId === 'string' &&
-		meta.userId.length > 0 &&
-		(meta.correlationId === undefined || typeof meta.correlationId === 'string')
-	);
-}
-
-function isCycleQueueJobMetadata(obj: unknown): obj is CycleQueueJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.cycle_id === 'string' &&
-		typeof meta.cycle_run_id === 'string' &&
-		typeof meta.kind === 'string' &&
-		CYCLE_KINDS.includes(meta.kind as (typeof CYCLE_KINDS)[number])
-	);
-}
-
-function isDailyBriefMetadata(obj: unknown): obj is DailyBriefJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.briefDate === 'string' &&
-		typeof meta.timezone === 'string' &&
-		/^\d{4}-\d{2}-\d{2}$/.test(meta.briefDate as string)
-	);
-}
-
-function isPhaseGenerationMetadata(obj: unknown): obj is PhaseGenerationJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.projectId === 'string';
-}
-
-function isOnboardingAnalysisMetadata(obj: unknown): obj is OnboardingAnalysisJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.userId === 'string';
-}
-
-function isCalendarSyncMetadata(obj: unknown): obj is CalendarSyncJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	if (meta.kind === 'onto_project_event_sync') {
-		return (
-			(meta.action === 'upsert' || meta.action === 'delete') &&
-			typeof meta.eventId === 'string' &&
-			typeof meta.projectId === 'string' &&
-			typeof meta.targetUserId === 'string' &&
-			(meta.deletionSnapshot === undefined ||
-				(meta.action === 'delete' &&
-					isProjectCalendarDeletionSnapshot(meta.deletionSnapshot)))
-		);
-	}
-	return (
-		typeof meta.calendarId === 'string' &&
-		(!meta.syncDirection ||
-			['to_google', 'from_google', 'bidirectional'].includes(meta.syncDirection as string))
-	);
-}
-
-function isEmailJobMetadata(obj: unknown): obj is EmailJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.recipientUserId === 'string' && typeof meta.emailType === 'string';
-}
-
-function isRecurringTaskMetadata(obj: unknown): obj is RecurringTaskJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	return true; // All fields are optional
-}
-
-function isCleanupMetadata(obj: unknown): obj is CleanupJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	return true; // All fields are optional
-}
-
-function isSendSMSMetadata(obj: unknown): obj is SendSMSJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.message_id === 'string' &&
-		typeof meta.phone_number === 'string' &&
-		typeof meta.message === 'string' &&
-		typeof meta.user_id === 'string'
-	);
-}
-
-function isGenerateBriefEmailMetadata(obj: unknown): obj is GenerateBriefEmailJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.emailId === 'string';
-}
-
-function isNotificationMetadata(obj: unknown): obj is NotificationJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.event_id === 'string' &&
-		typeof meta.delivery_id === 'string' &&
-		typeof meta.channel === 'string' &&
-		typeof meta.event_type === 'string'
-	);
-}
-
-function isScheduleDailySMSMetadata(obj: unknown): obj is ScheduleDailySMSJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.userId === 'string' &&
-		typeof meta.date === 'string' &&
-		typeof meta.timezone === 'string' &&
-		typeof meta.leadTimeMinutes === 'number'
-	);
-}
-
-function isClassifyChatSessionMetadata(obj: unknown): obj is ClassifyChatSessionJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.sessionId === 'string' && typeof meta.userId === 'string';
-}
-
-function isOntoBraindumpProcessingMetadata(
-	obj: unknown
-): obj is OntoBraindumpProcessingJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.braindumpId === 'string' && typeof meta.userId === 'string';
-}
-
-function isProjectActivityBatchFlushMetadata(
-	obj: unknown
-): obj is ProjectActivityBatchFlushJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	const snake = meta.batch_id;
-	const camel = meta.batchId;
-	return typeof snake === 'string' || typeof camel === 'string';
-}
-
-function isVoiceNoteTranscriptionMetadata(obj: unknown): obj is VoiceNoteTranscriptionJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.voiceNoteId === 'string' && typeof meta.userId === 'string';
-}
-
-function isGenerateBriefAudioMetadata(obj: unknown): obj is GenerateBriefAudioJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.briefId === 'string';
-}
-
-function isProjectContextSnapshotMetadata(obj: unknown): obj is ProjectContextSnapshotJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.projectId === 'string';
-}
-
-function isAssetOcrMetadata(obj: unknown): obj is AssetOcrJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.assetId === 'string' &&
-		typeof meta.projectId === 'string' &&
-		typeof meta.userId === 'string'
-	);
-}
-
-function isEmbedOntoEntityMetadata(obj: unknown): obj is EmbedOntoEntityJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.entityType === 'string' &&
-		typeof meta.entityId === 'string' &&
-		typeof meta.projectId === 'string' &&
-		typeof meta.userId === 'string'
-	);
-}
-
-function isPickProjectEmojiMetadata(obj: unknown): obj is PickProjectEmojiJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return typeof meta.projectId === 'string' && typeof meta.userId === 'string';
-}
-
-function isProjectIconGenerationMetadata(obj: unknown): obj is ProjectIconGenerationJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	const triggerSource = meta.triggerSource;
-	return (
-		typeof meta.generationId === 'string' &&
-		typeof meta.projectId === 'string' &&
-		typeof meta.requestedByUserId === 'string' &&
-		(triggerSource === 'auto' ||
-			triggerSource === 'manual' ||
-			triggerSource === 'regenerate') &&
-		typeof meta.candidateCount === 'number' &&
-		Number.isInteger(meta.candidateCount) &&
-		meta.candidateCount >= 1 &&
-		meta.candidateCount <= 8 &&
-		typeof meta.autoSelect === 'boolean' &&
-		(meta.steeringPrompt === undefined || typeof meta.steeringPrompt === 'string')
-	);
-}
-
-// Helper function to create a typed queue job
-export function createQueueJob<T extends QueueJobType>(
-	jobType: T,
-	data: Omit<QueueJob<T>, 'job_type'>
-): QueueJob<T> {
-	return {
-		...data,
-		job_type: jobType
-	};
-}
-
-// Helper to extract metadata with type safety
-export function getJobMetadata<T extends QueueJobType>(job: QueueJob<T>): JobMetadataMap[T] | null {
-	return job.metadata;
-}
-
-// Helper to extract result with type safety
-export function getJobResult<T extends QueueJobType>(job: QueueJob<T>): JobResultMap[T] | null {
-	return job.result;
-}

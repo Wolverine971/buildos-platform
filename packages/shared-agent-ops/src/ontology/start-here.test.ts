@@ -15,6 +15,7 @@ import {
 	planStartHereCheckpointRewrites,
 	readStartHereAuthoredSections,
 	readStartHereDocumentSections,
+	rebaseStartHereReviewedContent,
 	reconcileStartHereAuthoredSections,
 	renderStartHereManagedRegion,
 	renderStartHereStatusContent,
@@ -614,5 +615,66 @@ describe('checkpoint capture over real sections (tasker/95)', () => {
 		expect(
 			sanitizeStartHereSectionMarkdown('### Phase 1\n## Split\n# Title\n<!-- x -->text')
 		).toBe('### Phase 1\n**Split**\n**Title**\ntext');
+	});
+});
+
+describe('rebaseStartHereReviewedContent (triage 2026-10-18)', () => {
+	// A review is staged, then a later checkpoint appends lines to START HERE.
+	// Approving must apply the reviewed rewording without losing the new lines.
+	const status = (text: string) =>
+		renderStartHereManagedRegion({ name: 'status', content: text });
+	const doc = (parts: {
+		status?: string;
+		current?: string;
+		decisions?: string;
+		title?: string;
+	}) =>
+		[
+			parts.title ?? '# START HERE - Cadre',
+			'',
+			status(parts.status ?? 'Status: 3 open tasks'),
+			'',
+			'## What this is',
+			'',
+			'A coaching program for builders.',
+			'',
+			'## Current state',
+			'',
+			parts.current ?? '- Beta with 5 users',
+			'',
+			'## Decisions',
+			'',
+			parts.decisions ?? '- Use Stripe\n- Weekly pods',
+			''
+		].join('\n');
+	const base = doc({});
+	const reviewed = doc({ decisions: '- Use Stripe for billing\n- Weekly pods' });
+
+	it('applies reviewed sections on top of lines added to other sections', () => {
+		const current = doc({
+			current: '- Beta with 5 users\n- Onboarding email shipped',
+			status: 'Status: 4 open tasks'
+		});
+		const rebased = rebaseStartHereReviewedContent({ base, reviewed, current });
+		expect(rebased).not.toBeNull();
+		expect(rebased).toContain('- Use Stripe for billing');
+		expect(rebased).toContain('- Onboarding email shipped');
+		// Managed regions always come from the current document.
+		expect(rebased).toContain('Status: 4 open tasks');
+		expect(rebased).not.toContain('Status: 3 open tasks');
+	});
+
+	it('refuses when the reviewed section itself changed since staging', () => {
+		const current = doc({ decisions: '- Use Stripe\n- Weekly pods\n- Price at $99' });
+		expect(rebaseStartHereReviewedContent({ base, reviewed, current })).toBeNull();
+	});
+
+	it('refuses a review that edits text outside the sections', () => {
+		const retitled = doc({
+			title: '# START HERE - Cadre Pods',
+			decisions: '- Use Stripe for billing\n- Weekly pods'
+		});
+		const current = doc({ current: '- Beta with 5 users\n- New line' });
+		expect(rebaseStartHereReviewedContent({ base, reviewed: retitled, current })).toBeNull();
 	});
 });

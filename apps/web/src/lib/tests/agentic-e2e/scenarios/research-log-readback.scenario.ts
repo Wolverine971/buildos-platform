@@ -6,10 +6,12 @@
 // COLD session — no threaded session id, no continuity context — and must find that research
 // again. If it can only do so by re-searching the web, the log is write-only and useless.
 //
-// This guards a failure that has already shipped once: `ontology-context-loader.ts` filters any
+// This guards a failure that has already shipped once: the old web context loader filtered any
 // type_key containing 'scratch' or 'workspace' out of project context, so the pre-existing
-// task scratch pad can be written but never read back. The Research Log deliberately uses
-// `document.knowledge.research` to stay visible. Nothing but this test enforces that.
+// task scratch pad could be written but never read back. The same filter still drops linked
+// documents in packages/agentic-chat-runtime/src/tools/ontology-task-detail.ts and the
+// /api/onto edge routes. The Research Log deliberately uses `document.knowledge.research` to
+// stay visible. Nothing but this test enforces that.
 import type { ProjectSpec } from '$lib/types/onto';
 import type { Scenario } from '../harness/types';
 import { harnessProjectName, seedScenarioProject } from '../harness/seed';

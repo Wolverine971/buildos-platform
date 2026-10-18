@@ -19,7 +19,10 @@ import {
 	REQUEST_TURN_CLARIFICATION_TOOL_DEFINITION,
 	TURN_CONTRACT_TOOL_DEFINITION
 } from '@buildos/agentic-chat-runtime/catalog';
-import { NO_CHANGES_SAVED_NOTICE } from '@buildos/agentic-chat-runtime/loop';
+import {
+	NO_CHANGES_SAVED_NOTICE,
+	buildPendingTurnContractSystemMessage
+} from '@buildos/agentic-chat-runtime/loop';
 import { describe, expect, it, vi } from 'vitest';
 import type { AgenticChatWorkerExecutionInputV1 } from '../src/workers/agentic-chat/turn/execution-input';
 import { buildMutationBatch, mutationBatchSha256 } from '@buildos/agentic-chat-runtime/loop';
@@ -1514,6 +1517,100 @@ describe('AgenticChatTurnProviderAdapter', () => {
 			{ type: 'finish', finishedReason: 'stop', usage: null }
 		]);
 		expect(client.stream.mock.calls[1]?.[0]).toMatchObject({ toolChoice: 'auto' });
+	});
+
+	it('offers the cancel control on a turn carrying a pending commission and runs it like a read', async () => {
+		// A failed write left a commission the terminal trigger clears only on a
+		// successful cancel_turn_contract execution row; this is that path.
+		const pendingNote = buildPendingTurnContractSystemMessage({
+			version: 1,
+			contract: {
+				version: 1,
+				source: 'declared',
+				outcomes: [
+					{
+						id: 'implicit_8',
+						action: 'update',
+						entityKind: 'document',
+						targetIds: ['1cad2618-3188-43ac-98ff-e715a8a8013d'],
+						requiredFields: ['edits'],
+						minimumSuccessfulEffects: 1
+					}
+				]
+			},
+			contextType: 'project',
+			projectId: '445dd429-db93-4878-90a9-b3ab1627a9f2',
+			originatingTurnRunId: null,
+			createdAt: '2026-09-23T19:41:33.910Z',
+			finishedReason: 'stop'
+		})!;
+		const reason = 'The user dropped the outline edits in the current message.';
+		const streams: AgenticChatTurnProviderClientEventV1[][] = [
+			providerReadRound('provider-cancel-1', { reason }, 'cancel_turn_contract'),
+			[
+				{ type: 'text', content: 'Dropped those outline edits.' },
+				{ type: 'done', finishedReason: 'stop' }
+			]
+		];
+		const client = {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>(() => {
+				const events = streams.shift() ?? [];
+				return (async function* () {
+					for (const event of events) yield event;
+				})();
+			})
+		};
+		const base = executionInputWithReadSurface();
+		const invocation = await new AgenticChatTurnProviderAdapter({
+			client,
+			capacity: new AgenticChatProviderCapacity({ configured: true, concurrency: 1 })
+		}).prepare({
+			executionInput: {
+				...base,
+				artifact: {
+					...base.artifact,
+					history: [
+						...base.artifact.history,
+						{
+							sourceMessageId: null,
+							role: 'system',
+							content: pendingNote,
+							attachments: [],
+							toolCalls: [],
+							toolCallId: null
+						}
+					]
+				}
+			} as AgenticChatWorkerExecutionInputV1,
+			processingToken: PROCESSING_TOKEN,
+			signal: new AbortController().signal
+		});
+
+		const opening = await collect(invocation.stream());
+		const sentTools = client.stream.mock.calls[0]?.[0].tools ?? [];
+		expect(sentTools.map((tool) => tool.function.name)).toEqual([
+			'get_project_overview',
+			'cancel_turn_contract'
+		]);
+		expect(JSON.stringify(opening)).toContain('cancel_turn_contract');
+		await expect(
+			collect(
+				invocation.continueWithToolResults!({
+					round: 2,
+					results: [
+						durableReadFeedbackFor(
+							'provider-cancel-1',
+							'cancel_turn_contract',
+							{ reason },
+							{ status: 'cancelled', reason }
+						)
+					]
+				})
+			)
+		).resolves.toEqual([
+			{ type: 'text_delta', text: 'Dropped those outline edits.' },
+			{ type: 'finish', finishedReason: 'stop', usage: null }
+		]);
 	});
 
 	it('reconstructs the shared untrusted context from immutable current-turn evidence', async () => {

@@ -146,6 +146,12 @@ export type ProjectSuggestionIntegrityInput = {
 	operations: LoopOperation[];
 	title?: string | null;
 	preview?: ProjectSuggestionPreview | Record<string, unknown> | null;
+	/**
+	 * Ignored. Project Review used to word-match the model's labels against the
+	 * resolved titles; that lexical check quarantined valid suggestions (9 of 11
+	 * blocked in prod, 2026-10-18) and broke the no-regex rule. IDs resolve
+	 * server-side and the card shows only verified, server-resolved titles.
+	 */
 	checkModelAlignment?: boolean;
 	expectedStructuralFingerprint?: string | null;
 	/**
@@ -326,19 +332,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function asString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function previewText(preview: ProjectSuggestionIntegrityInput['preview']): string {
-	const record = asRecord(preview);
-	if (!record) return '';
-	return [
-		record.summary,
-		record.impact,
-		...(Array.isArray(record.before) ? record.before : []),
-		...(Array.isArray(record.after) ? record.after : [])
-	]
-		.filter((value): value is string => typeof value === 'string')
-		.join(' ');
 }
 
 function normalizedTokens(value: string): string[] {
@@ -547,31 +540,6 @@ function cleanupArgsDiagnostic(
 
 function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? '' : 's'}`;
-}
-
-function modelTextForOperation(
-	operation: LoopOperation,
-	input: ProjectSuggestionIntegrityInput
-): string {
-	return [operation.label, input.title, previewText(input.preview)]
-		.filter((value): value is string => typeof value === 'string')
-		.join(' ');
-}
-
-function targetTextForOperation(
-	operation: LoopOperation,
-	input: ProjectSuggestionIntegrityInput
-): string {
-	const args = asRecord(operation.args);
-	const operationSpecificText = [operation.label, args?.title, args?.name]
-		.filter((value): value is string => typeof value === 'string')
-		.join(' ');
-	// A multi-operation proposal must identify each operation's own target. Using
-	// the aggregate preview here would let swapped IDs pass whenever both entity
-	// names happened to appear somewhere in the proposal.
-	return input.operations.length > 1
-		? operationSpecificText
-		: modelTextForOperation(operation, input);
 }
 
 function updateChanges(args: Record<string, unknown>): DecodedLoopOperationFieldChange[] {
@@ -1080,8 +1048,6 @@ export async function verifyProjectSuggestionIntegrity(
 		const cautions: string[] = [];
 		for (const [index, operation] of input.operations.entries()) {
 			const args = asRecord(operation.args) ?? {};
-			const modelText = modelTextForOperation(operation, input);
-			const targetText = targetTextForOperation(operation, input);
 
 			if (operation.tool === 'archive_onto_document') {
 				const argsError = cleanupArgsDiagnostic(operation.tool, args, index);
@@ -1114,24 +1080,6 @@ export async function verifyProjectSuggestionIntegrity(
 				if (doneError) return { ok: false, diagnostic: doneError };
 				const targetError = entityDiagnostic(targetParams);
 				if (targetError) return { ok: false, diagnostic: targetError };
-				if (
-					input.checkModelAlignment !== false &&
-					!projectSuggestionTextNamesEntity(targetText, target!.title)
-				) {
-					return {
-						ok: false,
-						diagnostic: {
-							code: 'MODEL_ENTITY_MISMATCH',
-							message:
-								'Model-authored proposal text does not name the resolved archive target',
-							operation_index: index,
-							tool: operation.tool,
-							entity_kind: 'document',
-							entity_id: documentId,
-							resolved_entity_title: target!.title
-						}
-					};
-				}
 
 				const childIds = archiveChildIds(tree, documentId, mode);
 				if (mode === 'archive_children') {
@@ -1258,24 +1206,6 @@ export async function verifyProjectSuggestionIntegrity(
 				if (doneError) return { ok: false, diagnostic: doneError };
 				const targetError = entityDiagnostic(targetParams);
 				if (targetError) return { ok: false, diagnostic: targetError };
-				if (
-					input.checkModelAlignment !== false &&
-					!projectSuggestionTextNamesEntity(targetText, target!.title)
-				) {
-					return {
-						ok: false,
-						diagnostic: {
-							code: 'MODEL_ENTITY_MISMATCH',
-							message:
-								'Model-authored proposal text does not name the resolved archive target',
-							operation_index: index,
-							tool: operation.tool,
-							entity_kind: 'task',
-							entity_id: taskId,
-							resolved_entity_title: target!.title
-						}
-					};
-				}
 				archiveCounts.set(decoded.length, { documents: 0, tasks: 1 });
 				decoded.push({
 					key: `${operation.tool}:${taskId}:${index}`,
@@ -1507,27 +1437,6 @@ export async function verifyProjectSuggestionIntegrity(
 					};
 				}
 
-				if (
-					input.checkModelAlignment !== false &&
-					(!projectSuggestionTextNamesEntity(targetText, target!.title) ||
-						(destination &&
-							!projectSuggestionTextNamesEntity(modelText, destination.title)))
-				) {
-					return {
-						ok: false,
-						diagnostic: {
-							code: 'MODEL_ENTITY_MISMATCH',
-							message: `Model-authored proposal text does not name the resolved move target or destination`,
-							operation_index: index,
-							tool: operation.tool,
-							entity_kind: 'document',
-							entity_id: documentId,
-							resolved_entity_title: target!.title,
-							resolved_destination_title: destination?.title
-						}
-					};
-				}
-
 				const currentParent = currentParentId ? documents.get(currentParentId) : undefined;
 				const destinationName = destination?.title ?? 'Top level';
 				const changes: DecodedLoopOperationFieldChange[] = [
@@ -1597,27 +1506,6 @@ export async function verifyProjectSuggestionIntegrity(
 					tool: operation.tool
 				});
 				if (conflictError) return { ok: false, diagnostic: conflictError };
-			}
-
-			if (
-				input.checkModelAlignment !== false &&
-				(!projectSuggestionTextNamesEntity(targetText, entity!.title) ||
-					(conflictTask &&
-						!projectSuggestionTextNamesEntity(modelText, conflictTask.title)))
-			) {
-				return {
-					ok: false,
-					diagnostic: {
-						code: 'MODEL_ENTITY_MISMATCH',
-						message: `Model-authored proposal text does not name the resolved ${entityKind} target`,
-						operation_index: index,
-						tool: operation.tool,
-						entity_kind: entityKind,
-						entity_id: entityId,
-						resolved_entity_title: entity!.title,
-						resolved_destination_title: conflictTask?.title
-					}
-				};
 			}
 
 			// Document text edits: resolve every anchor against the live body now, so

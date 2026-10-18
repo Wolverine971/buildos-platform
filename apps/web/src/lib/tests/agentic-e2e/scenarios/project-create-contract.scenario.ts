@@ -1,16 +1,23 @@
 // apps/web/src/lib/tests/agentic-e2e/scenarios/project-create-contract.scenario.ts
-// Worker regression for contract-first project creation.
+// Worker regression for reviewed-batch project creation.
 //
 // This reproduces PC1 with an isolated, sweepable project name. It verifies the
-// semantic contract, bounded shell adapter, durable context shift, requested
-// goal/tasks, and a follow-up mutation in the newly created project.
+// independent batch review, bounded shell adapter, durable context shift,
+// requested goal/tasks, and a follow-up mutation in the newly created project.
+//
+// The scenario id keeps its historical "contract" name; the write lane it now
+// proves is the mutation batch lane. `create_onto_project` is contract_required
+// in the worker's mutation catalog, so the acting model's proposed call is held,
+// the independent reviewer approves the exact batch with
+// `approve_mutation_batch_review`, and only then does the worker execute it. The
+// goal and tasks follow in later reviewed stages using the returned project id.
+import { APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME } from '@buildos/agentic-chat-runtime/catalog';
 import type { ToolExecutionRow } from '../harness/telemetry';
 import type { Scenario, SeedResult, TurnResult } from '../harness/types';
 import { harnessProjectName, teardownProject } from '../harness/seed';
 import {
 	assertCleanText,
 	assertToolCalled,
-	assertToolCalledForExecutionMode,
 	assertToolNotCalled,
 	assertTurnRunCompleted,
 	assertTurnSucceeded
@@ -55,6 +62,35 @@ function requireSuccessfulExecutions(
 			`[assert] ${failed.length} ${toolName} execution(s) failed: ${failed
 				.map((execution) => JSON.stringify(execution.result))
 				.join(' | ')}`
+		);
+	}
+}
+
+/**
+ * The first successful `toolName` execution ran after a successful batch
+ * approval in the same turn. Durable sequence order proves the write went
+ * through independent review instead of the direct lane.
+ */
+function requireApprovedBeforeExecution(executions: ToolExecutionRow[], toolName: string): void {
+	const executed = executions.find(
+		(execution) => execution.tool_name === toolName && execution.success
+	);
+	if (!executed || executed.sequence_index === null) {
+		throw new Error(`[assert] no sequenced successful ${toolName} execution was persisted`);
+	}
+	const approvedBefore = executions.some(
+		(execution) =>
+			execution.tool_name === APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME &&
+			execution.success &&
+			execution.sequence_index !== null &&
+			execution.sequence_index < executed.sequence_index!
+	);
+	if (!approvedBefore) {
+		throw new Error(
+			`[assert] ${toolName} executed without a prior ${APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME}; ` +
+				`executions: [${executions
+					.map((execution) => `${execution.sequence_index}:${execution.tool_name}`)
+					.join(', ')}]`
 		);
 	}
 }
@@ -166,7 +202,7 @@ async function assertRequestedProjectStructure(
 
 export const projectCreateContractScenario: Scenario = {
 	id: 'project-create-contract',
-	title: 'Create a fully specified project through an approved contract',
+	title: 'Create a fully specified project through an independently reviewed batch',
 	category: 'project',
 	timeoutMs: 720_000,
 	requiredMutationTools: ['create_onto_project', 'create_onto_goal', 'create_onto_task'],
@@ -191,19 +227,14 @@ export const projectCreateContractScenario: Scenario = {
 				assertTurnSucceeded(turn);
 				assertCleanText(turn);
 				assertNoRedundantConfirmation(turn);
-				assertToolCalled(turn, 'declare_turn_contract');
-				assertToolCalledForExecutionMode(
-					turn,
-					'approve_turn_contract_review',
-					ctx.executionMode,
-					'worker_realtime'
-				);
+				assertToolCalled(turn, APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME);
 				assertToolCalled(turn, 'create_onto_project');
 
 				const streamRunId = requireStreamRunId(turn);
 				assertTurnRunCompleted(await waitForTurnRun(ctx.db.admin, streamRunId));
 				const executions = await getToolExecutions(ctx.db.admin, streamRunId);
 				requireSuccessfulExecutions(executions, 'create_onto_project', 1);
+				requireApprovedBeforeExecution(executions, 'create_onto_project');
 				requireSuccessfulExecutions(executions, 'create_onto_goal', 1);
 				requireSuccessfulExecutions(executions, 'create_onto_task', 3);
 
@@ -239,15 +270,13 @@ export const projectCreateContractScenario: Scenario = {
 					check: (turn) => assertTurnSucceeded(turn)
 				},
 				{
-					name: 'contract-declared-and-reviewed',
+					name: 'batch-approved-before-project-create',
 					category: 'contract',
-					check: (turn, ctx) => {
-						assertToolCalled(turn, 'declare_turn_contract');
-						assertToolCalledForExecutionMode(
-							turn,
-							'approve_turn_contract_review',
-							ctx.executionMode,
-							'worker_realtime'
+					check: async (turn, ctx) => {
+						assertToolCalled(turn, APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME);
+						requireApprovedBeforeExecution(
+							await getToolExecutions(ctx.db.admin, requireStreamRunId(turn)),
+							'create_onto_project'
 						);
 					}
 				},
@@ -295,11 +324,11 @@ export const projectCreateContractScenario: Scenario = {
 				assertTurnSucceeded(turn);
 				assertCleanText(turn);
 				assertToolNotCalled(turn, 'create_onto_project');
-				// One explicitly named task inside the durable focused project is the
-				// bounded direct-write lane. Requiring a fresh contract here would test
-				// against the worker's routing contract and add avoidable latency.
-				assertToolNotCalled(turn, 'declare_turn_contract');
-				assertToolNotCalled(turn, 'approve_turn_contract_review');
+				// One explicitly named new task inside the durable focused project is
+				// the bounded direct-write lane (write-routing.ts: a new_entity create
+				// scoped to the focused project). Requiring review here would test
+				// against the worker's routing and add avoidable reviewer latency.
+				assertToolNotCalled(turn, APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME);
 				assertToolCalled(turn, 'create_onto_task');
 
 				const streamRunId = requireStreamRunId(turn);
@@ -334,8 +363,7 @@ export const projectCreateContractScenario: Scenario = {
 					name: 'follow-up-used-focused-project-direct-lane',
 					category: 'contract',
 					check: (turn) => {
-						assertToolNotCalled(turn, 'declare_turn_contract');
-						assertToolNotCalled(turn, 'approve_turn_contract_review');
+						assertToolNotCalled(turn, APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME);
 					}
 				},
 				{

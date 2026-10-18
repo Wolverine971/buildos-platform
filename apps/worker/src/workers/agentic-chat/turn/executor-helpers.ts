@@ -206,6 +206,37 @@ export function safeAssistantText(
 	}
 }
 
+/**
+ * A stopped turn keeps what the user was reading. The browser freezes the
+ * aborted pass's live preview on screen at Stop; without this the saved reply
+ * held only the durable text and could shrink after a reload (agentic chat
+ * teardown 2026-10-18). The join matches how the worker and the browser join
+ * passes: a blank line when neither side has whitespace at the seam.
+ */
+export function withStoppedPreviewText(
+	publisher: Pick<PublisherPort, 'getStoppedPreviewText'>,
+	turnRunId: string,
+	publisherRegistered: boolean,
+	durableText: string | null,
+	stoppedAt: string | null
+): string | null {
+	if (!publisherRegistered || !stoppedAt || !publisher.getStoppedPreviewText) {
+		return durableText;
+	}
+	let preview: string | null;
+	try {
+		preview = publisher.getStoppedPreviewText(turnRunId, Date.parse(stoppedAt));
+	} catch {
+		return durableText;
+	}
+	if (!preview?.trim()) return durableText;
+	const durable = durableText ?? '';
+	if (!durable) return preview.replace(/^\s+/, '');
+	return /\s$/.test(durable) || /^\s/.test(preview)
+		? `${durable}${preview}`
+		: `${durable}\n\n${preview}`;
+}
+
 export function captureRuntimeTiming(
 	tracker: AgenticChatRuntimeTimingTracker | null,
 	capture: (tracker: AgenticChatRuntimeTimingTracker) => void

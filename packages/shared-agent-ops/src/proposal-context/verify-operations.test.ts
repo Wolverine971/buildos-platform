@@ -132,7 +132,7 @@ describe('verifyProjectSuggestionIntegrity', () => {
 		});
 	});
 
-	it('quarantines a label/ID mismatch', async () => {
+	it('verifies a label/ID mismatch by ID and shows the resolved title (triage 2026-10-18)', async () => {
 		const tables = baseTables({
 			target: { title: '03 — Quality Contract & Failure Recovery' }
 		});
@@ -143,13 +143,14 @@ describe('verifyProjectSuggestionIntegrity', () => {
 			preview: { summary: 'Move The Mirror Moment under Mood Board Carousel Strategy.' }
 		});
 
-		expect(result).toMatchObject({
-			ok: false,
-			diagnostic: { code: 'MODEL_ENTITY_MISMATCH', entity_id: targetId }
-		});
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.summary.operations[0]?.target).toBe(
+			'03 — Quality Contract & Failure Recovery'
+		);
 	});
 
-	it('does not let an aggregate preview hide swapped IDs in a multi-operation proposal', async () => {
+	it('shows each swapped ID under its real title in a multi-operation proposal', async () => {
 		const otherId = 'document-other';
 		const tables = baseTables();
 		tables.onto_projects[0].doc_structure = {
@@ -197,10 +198,14 @@ describe('verifyProjectSuggestionIntegrity', () => {
 			}
 		});
 
-		expect(result).toMatchObject({
-			ok: false,
-			diagnostic: { code: 'MODEL_ENTITY_MISMATCH', entity_id: otherId }
-		});
+		// The approval card is built from resolved titles, so the swap is visible
+		// to the user instead of hidden behind the model's wording.
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.summary.operations.map((operation) => operation.target)).toEqual([
+			'Instagram Saves Engine — Architecture',
+			tables.onto_documents.find((doc: { id: string }) => doc.id === targetId)!.title
+		]);
 	});
 
 	it('uses a post-generation renamed entity as current display truth after initial verification', async () => {
@@ -981,10 +986,10 @@ describe('scalar operations', () => {
 				]
 			}
 		);
-		expect(misaligned).toMatchObject({
-			ok: false,
-			diagnostic: { code: 'MODEL_ENTITY_MISMATCH', entity_kind: 'goal' }
-		});
+		// Verified by ID; the card names the real goal, not the label.
+		expect(misaligned.ok).toBe(true);
+		if (!misaligned.ok) return;
+		expect(misaligned.summary.operations[0]?.target).toBe('Launch the paid beta');
 	});
 });
 

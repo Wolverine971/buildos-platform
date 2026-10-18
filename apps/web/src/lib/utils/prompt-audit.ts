@@ -53,11 +53,6 @@ export async function savePromptForAudit({
 			// Preparatory analysis
 			'preparatory-analysis': 'existing-project/preparatory-analysis/prep-analysis-prompt.md',
 
-			// Chat compression service
-			'chat-compression-title-generation': 'chat/compression/title-generation-prompt.md',
-			'chat-compression-conversation': 'chat/compression/conversation-compression-prompt.md',
-			'chat-compression-segment': 'chat/compression/segment-compression-prompt.md',
-
 			// Agent conversation service
 			'agent-conversation-executor-turn': 'agent/conversation/executor-turn-prompt.md',
 			'agent-conversation-planner-response': 'agent/conversation/planner-response-prompt.md',

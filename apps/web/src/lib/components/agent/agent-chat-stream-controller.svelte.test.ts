@@ -764,6 +764,23 @@ describe('AgentChatStreamController', () => {
 		expect(h.messages[0]?.delivery).toBe('sent');
 	});
 
+	it('cancels a background session reload before the new bubble lands (triage 2026-10-18)', async () => {
+		// A reload read before this turn would replace the optimistic bubble and
+		// thinking block when it resolves.
+		const h = createHarness({ inputValue: 'Newer turn' });
+		const messagesAtCancel: number[] = [];
+		h.deps.cancelBackgroundSessionLoad = vi.fn(() => {
+			messagesAtCancel.push(h.messages.length);
+		});
+
+		const send = h.controller.sendMessage();
+
+		expect(h.deps.cancelBackgroundSessionLoad).toHaveBeenCalledOnce();
+		expect(messagesAtCancel).toEqual([0]);
+		expect(h.messages).toHaveLength(1);
+		await send;
+	});
+
 	it('waits briefly for an in-flight prepared prompt when the session exists', async () => {
 		const prepared: PreparedPromptClient = {
 			id: 'prepared-late',

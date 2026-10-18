@@ -160,6 +160,25 @@ describe('selectJevToolDefinitions', () => {
 		]);
 	});
 
+	// The cancel control is admitted only on a turn carrying a pending
+	// commission; once admitted, Jev never scores it away.
+	it('keeps an admitted cancel control whatever Jev scored the writes', () => {
+		const tools = ['cancel_turn_contract', 'update_onto_document', 'web_search'].map(tool);
+		const selected = selectJevToolDefinitions(tools, {
+			update_onto_document: 0.01,
+			web_search: 0.01
+		});
+		expect(selected.map((t) => t.function.name)).toEqual(['cancel_turn_contract']);
+		const body = buildJevToolSelectionBody({
+			messages: [{ role: 'user', content: 'Never mind those edits' }],
+			tools
+		} as never);
+		expect(body?.state.catalog.map((entry) => entry.name)).toEqual([
+			'update_onto_document',
+			'web_search'
+		]);
+	});
+
 	// A project image attached to this message may need naming or filing. The
 	// pin is a structured turn fact (attachment kind), never message text.
 	it('keeps a pinned image tool and its document reads whatever Jev scored them', () => {

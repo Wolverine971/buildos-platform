@@ -2,7 +2,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { queueOnboardingAnalysis } from '$lib/server/onboarding-analysis.service';
 import {
 	seedProfileFromOnboarding,
 	type OnboardingV3SeedData
@@ -163,44 +162,6 @@ export class OnboardingServerService {
 			console.error('Error completing onboarding:', error);
 			throw new Error(`Failed to complete onboarding: ${error.message}`);
 		}
-
-		// Queue onboarding analysis for question generation
-		try {
-			// Get the user's context to pass to the analysis
-			const { data: context } = await this.supabase
-				.from('user_context')
-				.select('input_projects, input_work_style, input_challenges, input_help_focus')
-				.eq('user_id', user.id)
-				.single();
-
-			if (context) {
-				// Queue the analysis job
-				const result = await queueOnboardingAnalysis({
-					userId: user.id,
-					userContext: {
-						input_projects: context.input_projects,
-						input_work_style: context.input_work_style,
-						input_challenges: context.input_challenges,
-						input_help_focus: context.input_help_focus
-					},
-					options: {
-						maxQuestions: 5 // Generate up to 5 initial questions
-					}
-				});
-
-				if (!result.queued) {
-					console.warn(
-						`Failed to queue onboarding analysis for user ${user.id}:`,
-						result.reason
-					);
-				} else {
-					console.log(`Queued onboarding analysis for user ${user.id}:`, result.jobId);
-				}
-			}
-		} catch (queueError) {
-			// Log the error but don't fail the onboarding completion
-			console.error('Failed to queue onboarding analysis:', queueError);
-		}
 	}
 
 	/**
@@ -231,7 +192,7 @@ export class OnboardingServerService {
 	}
 
 	/**
-	 * V3: Complete onboarding, seed behavioral profile, and queue analysis
+	 * V3: Complete onboarding and seed the behavioral profile
 	 */
 	async completeOnboardingV3(
 		userId: string,
@@ -312,21 +273,6 @@ export class OnboardingServerService {
 			});
 		} catch (seedError) {
 			console.error('Failed to seed behavioral profile (non-fatal):', seedError);
-		}
-
-		// 4. Queue onboarding analysis (non-fatal)
-		try {
-			const result = await queueOnboardingAnalysis({
-				userId,
-				userContext: {},
-				options: { maxQuestions: 5 }
-			});
-
-			if (!result.queued) {
-				console.warn(`Failed to queue analysis for ${userId}:`, result.reason);
-			}
-		} catch (queueError) {
-			console.error('Failed to queue onboarding analysis (non-fatal):', queueError);
 		}
 	}
 

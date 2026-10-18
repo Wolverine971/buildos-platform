@@ -69,6 +69,10 @@ function createFakeAdmin(state: FakeState) {
 	return {
 		from(table: string) {
 			return new FakeQuery(table, state);
+		},
+		// The write itself is out of scope here; only the freshness verdict matters.
+		async rpc() {
+			return { data: null, error: { message: 'rpc not faked in this test' } };
 		}
 	} as any;
 }
@@ -150,5 +154,75 @@ describe('commitChangeSet drift detection', () => {
 			}
 		});
 		expect(state.finalRunUpdate?.status).toBe('partial');
+	});
+
+	it('does not call a change stale when only fields it never writes drifted (triage 2026-10-18)', async () => {
+		const beforeTask = {
+			id: 'task-1',
+			project_id: 'project-1',
+			title: 'Reviewed title',
+			description: null,
+			type_key: null,
+			state_key: null,
+			priority: null,
+			start_at: null,
+			due_at: null,
+			completed_at: null,
+			props: { origin: 'chat' },
+			created_at: '2026-06-01T00:00:00Z',
+			updated_at: '2026-06-01T00:00:00Z',
+			archived_at: null,
+			deleted_at: null
+		};
+		const changeSet: ChangeSet = {
+			run_id: RUN_ID,
+			status: 'pending',
+			created_at: '2026-06-19T00:00:00Z',
+			changes: [
+				{
+					id: 'change-1',
+					op: 'onto.task.update',
+					entity_type: 'task',
+					entity_id: 'task-1',
+					action: 'update',
+					before: beforeTask,
+					after: { task_id: 'task-1', title: 'Agent title' },
+					rationale: 'Update the task title',
+					decision: 'pending'
+				}
+			]
+		};
+		const state: FakeState = {
+			run: {
+				id: RUN_ID,
+				user_id: USER_ID,
+				status: 'proposal_ready',
+				change_set: changeSet,
+				allowed_ops: ['onto.task.update'],
+				context_type: 'global',
+				project_id: null,
+				result: {}
+			},
+			// Someone edited the description and a props key after staging; the
+			// title this change writes is untouched.
+			currentTask: {
+				...beforeTask,
+				description: 'User added a description',
+				props: { origin: 'web', note: 'unrelated' },
+				updated_at: '2026-06-02T00:00:00Z'
+			},
+			inserts: [],
+			finalRunUpdate: null
+		};
+
+		const outcome = await commitChangeSet({
+			admin: createFakeAdmin(state),
+			runId: RUN_ID,
+			userId: USER_ID
+		});
+
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) return;
+		expect(outcome.result.change_set.changes[0].error ?? '').not.toContain('stale');
 	});
 });

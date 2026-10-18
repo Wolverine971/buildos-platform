@@ -24,8 +24,7 @@
 		XCircle,
 		Bell,
 		Workflow,
-		GitBranch,
-		TestTube
+		GitBranch
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
@@ -382,12 +381,6 @@
 				description: 'AI chat analytics',
 				href: '/admin/chat',
 				icon: MessageSquare
-			},
-			{
-				title: 'Question Tree',
-				description: 'Adaptive model research',
-				href: '/admin/experiments/question-tree',
-				icon: TestTube
 			},
 			{
 				title: 'Beta Program',

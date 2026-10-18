@@ -70,10 +70,6 @@ const OPENROUTER_ALLOWLIST: Record<string, AllowlistEntry> = {
 		policy: 'OPENROUTER_PRIVATE_PROVIDER',
 		reason: 'Libri OCR body carries the private provider policy.'
 	},
-	'apps/worker/src/workers/question-tree/questionTreeModelAdapter.ts': {
-		policy: 'OpenRouterClient',
-		reason: 'Calls OpenRouterClient.callOpenRouter, whose body comes from the enforcing builder.'
-	},
 	'apps/worker/src/workers/agent-run/agentRunCostReconciler.ts': {
 		policy: null,
 		reason: 'GET /generation by id for cost reconciliation; sends no user content.'

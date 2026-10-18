@@ -1,5 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-session.ts
 import { buildWebNavigateTrailFromResult } from './agent-chat-tool-progress';
+import type { PendingChangeViewV1 } from '$lib/services/agentic-chat-v2/pending-change';
 import {
 	readAgentChatWorkflowProgress,
 	workflowMessageTurnId,
@@ -110,6 +111,7 @@ type LoadedChatSessionPayload = {
 	timelineItems?: AgentTimelineItem[];
 	truncated?: boolean;
 	voiceNotes?: VoiceNote[];
+	pendingChange?: PendingChangeViewV1 | null;
 };
 
 type LoadedChatToolExecution = Pick<
@@ -171,6 +173,8 @@ export interface AgentChatSessionSnapshot {
 	voiceNotesByGroupId: Record<string, VoiceNote[]>;
 	turnRuns: LoadedChatTurnRun[];
 	activeTurnRun: LoadedChatTurnRun | null;
+	/** Changes a failed write left owed, in this chat's scope ("didn't finish" strip). */
+	pendingChange: PendingChangeViewV1 | null;
 }
 
 const DEFAULT_CHAT_SESSION_TITLES = [
@@ -1179,7 +1183,8 @@ export function buildAgentChatSessionSnapshot(
 		turnRuns: loadedTurnRuns = [],
 		timelineItems: loadedTimelineItems,
 		truncated,
-		voiceNotes = []
+		voiceNotes = [],
+		pendingChange = null
 	} = payload;
 	const turnRuns = Array.isArray(loadedTurnRuns) ? loadedTurnRuns : [];
 	const contextType = normalizeSessionContextType(session.context_type);
@@ -1255,7 +1260,8 @@ export function buildAgentChatSessionSnapshot(
 		timelineItems,
 		voiceNotesByGroupId: groupVoiceNotesByGroupId(voiceNotes),
 		turnRuns,
-		activeTurnRun
+		activeTurnRun,
+		pendingChange
 	};
 }
 

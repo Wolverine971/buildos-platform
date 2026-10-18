@@ -67,9 +67,7 @@ require `Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN`.
 | GET    | `/health`                         | Service health                                   |
 | POST   | `/classify/ontology`              | Synchronous create-modal ontology classification |
 | POST   | `/queue/brief`                    | Enqueue `generate_daily_brief`                   |
-| POST   | `/queue/onboarding`               | Enqueue `onboarding_analysis`                    |
 | POST   | `/queue/chat/classify`            | Enqueue `classify_chat_session`                  |
-| POST   | `/queue/braindump/process`        | Enqueue `process_onto_braindump`                 |
 | GET    | `/jobs/:jobId`                    | Fetch one queue job                              |
 | GET    | `/users/:userId/jobs`             | List user jobs with optional filters             |
 | GET    | `/queue/stats`                    | Queue stats view                                 |
@@ -87,14 +85,12 @@ require `Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN`.
 | -------------------------------- | --------------------------------------------------- |
 | `generate_daily_brief`           | Scheduler or `POST /queue/brief`                    |
 | `generate_brief_audio`           | Brief worker or web audio request                   |
-| `onboarding_analysis`            | `POST /queue/onboarding`                            |
 | `send_notification`              | `emit_notification_event` fanout                    |
 | `project_activity_batch_flush`   | Project activity batching                           |
 | `schedule_daily_sms`             | Scheduler                                           |
 | `send_sms`                       | SMS scheduler and notification SMS adapter          |
 | `classify_chat_session`          | `POST /queue/chat/classify`                         |
 | `capture_chat_checkpoint`        | Checkpoint sweep and chat close                     |
-| `process_onto_braindump`         | `POST /queue/braindump/process`                     |
 | `transcribe_voice_note`          | Voice note upload flow                              |
 | `extract_onto_asset_ocr`         | Ontology asset flow                                 |
 | `embed_onto_entity`              | DB triggers on ontology writes (semantic discovery) |

@@ -1,3 +1,4 @@
+// apps/web/scripts/agentic-health/metrics.mjs
 const REVIEWER_ROUTE_ID = 'openrouter_semantic_reviewer';
 
 export const CONTROL_TOOL_NAMES = new Set([
@@ -26,8 +27,7 @@ export function buildHealthReport({
 	events = [],
 	observations = [],
 	messages = [],
-	queueJobs = [],
-	sanitize
+	queueJobs = []
 }) {
 	const generatedAt = new Date().toISOString();
 	const durationDays =
@@ -103,16 +103,6 @@ export function buildHealthReport({
 	const disclosedPartialTurns = partialTurns.filter((turn) => {
 		const content = messageById.get(turn.assistant_message_id)?.content ?? '';
 		return /\bDone:\s*\d+\s+of\s+\d+\b/i.test(content);
-	}).length;
-
-	const assistantReplies = turns
-		.map((turn) => messageById.get(turn.assistant_message_id))
-		.filter((message) => message?.role === 'assistant' && message.content?.trim())
-		.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
-		.slice(0, 76);
-	const sanitizerAltered = assistantReplies.filter((message) => {
-		const cleaned = sanitize(message.content);
-		return cleaned !== message.content;
 	}).length;
 
 	const workerWriteTurns = workerTurns.filter((turn) => writeTurnIds.has(turn.id));
@@ -303,22 +293,6 @@ export function buildHealthReport({
 				disclosed_turns: disclosedPartialTurns,
 				missing_disclosure: partialTurns.length - disclosedPartialTurns
 			}
-		}),
-		metric({
-			id: 'sanitizer_edits',
-			label: 'Sanitizer-altered replies',
-			baseline: '38/76',
-			target: '<=6/76',
-			status:
-				assistantReplies.length === 0
-					? 'no_data'
-					: sanitizerAltered > 6
-						? 'fail'
-						: assistantReplies.length < 76
-							? 'watch'
-							: 'pass',
-			value: `${sanitizerAltered}/${assistantReplies.length} altered`,
-			details: { sample_size: assistantReplies.length, altered: sanitizerAltered }
 		}),
 		metric({
 			id: 'worker_skill_preloads',

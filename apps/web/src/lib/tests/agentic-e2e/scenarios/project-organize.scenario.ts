@@ -4,12 +4,16 @@
 // and ask the chat to "get organized". Deterministic check: it took a real
 // organizing action in the canonical doc_structure tree without losing source
 // documents or content. Quality check: an LLM judge scores the resulting map.
+//
+// `move_document_in_tree` is contract_required in the worker's mutation catalog,
+// so every stage of moves is held for independent batch review and executes only
+// after the reviewer's `approve_mutation_batch_review` decision.
+import { APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME } from '@buildos/agentic-chat-runtime/catalog';
 import type { ProjectSpec } from '$lib/types/onto';
 import type { Scenario, SeedResult } from '../harness/types';
 import { harnessProjectName, seedProject } from '../harness/seed';
 import {
-	assertAnyToolCalled,
-	assertToolCalledForExecutionMode,
+	assertToolCalled,
 	assertTurnRunCompleted,
 	assertTurnSucceeded,
 	buildTranscript,
@@ -126,16 +130,10 @@ export const projectOrganizeScenario: Scenario = {
 				'piled at the top level. Help me get it organized into something sensible.',
 			assert: async (turn, ctx, seed) => {
 				assertTurnSucceeded(turn);
-				assertAnyToolCalled(turn, ['declare_turn_contract']);
-				// The worker publishes its semantic review as a durable control-tool call.
-				// Legacy has no equivalent tool, so parity is graded on the shared outcome below.
-				assertToolCalledForExecutionMode(
-					turn,
-					'approve_turn_contract_review',
-					ctx.executionMode,
-					'worker_realtime'
-				);
-				assertAnyToolCalled(turn, ['move_document_in_tree', 'tool_exec']);
+				// The worker publishes the reviewer's approval of a held batch as a
+				// durable control-tool call; the approved moves execute after it.
+				assertToolCalled(turn, APPROVE_MUTATION_BATCH_REVIEW_TOOL_NAME);
+				assertToolCalled(turn, 'move_document_in_tree');
 				assertTurnRunCompleted(await waitForTurnRun(ctx.db.admin, turn.streamRunId!));
 
 				const docsBefore = seed.notes.docsBefore as Array<{

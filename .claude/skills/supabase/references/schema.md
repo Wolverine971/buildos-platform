@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 273 tables, grouped by domain.
+Complete column listing for all 281 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-17T03:38:38.718Z
+**Schema generated:** 2026-10-18T18:53:51.437Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -15,9 +15,9 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 
 - [Users & Auth](#users--auth) (6 tables)
 - [People & Contacts](#people--contacts) (6 tables)
-- [Ontology System](#ontology-system) (43 tables)
+- [Ontology System](#ontology-system) (46 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
-- [Chat & Agents](#chat--agents) (41 tables)
+- [Chat & Agents](#chat--agents) (46 tables)
 - [Calendar](#calendar) (13 tables)
 - [Notifications](#notifications) (7 tables)
 - [SMS & Twilio](#sms--twilio) (7 tables)
@@ -194,6 +194,10 @@ access `string` · actor_id `string?` · created_at `string` · id `string` · o
 
 archived_at `string?` · created_at `string` · created_by `string` · deleted_at `string?` · description `string?` · facet_context `string?` · facet_scale `string?` · facet_stage `string?` · id `string` · name `string` · plan `string?` · project_id `string` · props `Json` · search_vector `unknown` · state_key `string` · type_key `string` · updated_at `string`
 
+### onto_project_fold_manifests
+
+created_at `string` · destination_project_id `string` · folder_document_id `string?` · id `string` · manifest `Json` · receipt `Json` · request_hash `string` · source_project_id `string` · source_state `Json` · unfold_receipt `Json?` · unfolded_at `string?` · user_id `string`
+
 ### onto_project_icon_candidates
 
 candidate_index `number` · concept `string` · created_at `string` · generation_id `string` · id `string` · llm_model `string?` · project_id `string` · selected_at `string?` · svg_byte_size `number` · svg_raw `string` · svg_sanitized `string`
@@ -257,6 +261,14 @@ captured_at `string?` · created_at `string` · created_by `string` · id `strin
 ### onto_task_assignees
 
 assigned_by_actor_id `string` · assignee_actor_id `string` · created_at `string` · id `string` · project_id `string` · source `string` · task_id `string`
+
+### onto_task_entities
+
+about `string?` · confidence `string` · created_at `string` · data `Json` · display `string` · extractor_version `number?` · id `string` · in_text `boolean` · kind `string` · natural_key `string` · position `number` · project_id `string` · quote `string?` · role `string` · source `string` · source_hash `string?` · status `string` · status_changed_at `string?` · task_id `string` · updated_at `string` · value `string`
+
+### onto_task_entity_state
+
+entity_count `number` · error `string?` · extracted_at `string` · extractor_version `number` · model `string?` · outcome `string` · project_id `string` · source_hash `string` · task_id `string`
 
 ### onto_tasks
 
@@ -376,7 +388,7 @@ client_id `string` · created_at `string` · expires_at `string` · external_age
 
 ### agent_oauth_authorization_codes
 
-policy_snapshot `Json?` · client_id `string` · code_challenge `string` · code_challenge_method `string` · code_hash `string` · created_at `string` · expires_at `string` · external_agent_caller_id `string` · grant_id `string` · id `string` · redirect_uri `string` · resource `string` · scope `string` · updated_at `string` · used_at `string?` · user_id `string`
+client_id `string` · code_challenge `string` · code_challenge_method `string` · code_hash `string` · created_at `string` · expires_at `string` · external_agent_caller_id `string` · grant_id `string` · id `string` · policy_snapshot `Json?` · redirect_uri `string` · resource `string` · scope `string` · updated_at `string` · used_at `string?` · user_id `string`
 
 ### agent_oauth_clients
 
@@ -393,6 +405,26 @@ client_id `string` · created_at `string` · expires_at `string` · external_age
 ### agent_operatives
 
 allowed_ops `string[]?` · budgets `Json` · context_type `string` · created_at `string` · expected_output `string?` · goal `string` · id `string` · instructions `string?` · label `string` · last_run_at `string?` · last_run_id `string?` · next_run_at `string?` · project_id `string?` · review_required `boolean` · schedule_day_of_week `number?` · schedule_enabled `boolean` · schedule_error `string?` · schedule_frequency `string?` · schedule_locked_at `string?` · schedule_time_of_day `string?` · schedule_timezone `string` · scope_mode `string` · updated_at `string` · user_id `string`
+
+### agent_permission_feature
+
+enabled `boolean` · epoch `number` · id `boolean`
+
+### agent_permission_grants
+
+boundary `string?` · caller_id `string` · capability `string` · created_at `string` · epoch `number` · grant_id `string?` · id `string` · project_id `string` · revoked_at `string?` · source_request_id `string?` · user_id `string`
+
+### agent_permission_keys
+
+boundary `string` · caller_id `string` · fingerprint `string` · key `string` · request_id `string`
+
+### agent_permission_requests
+
+before_snapshot `Json?` · boundary `string?` · caller_id `string` · capability `string` · created_at `string` · decided_at `string?` · decision `string?` · epoch `number` · expires_at `string` · grant_id `string?` · id `string` · idempotency_key `string` · mutation `Json?` · project_id `string` · reason `string?` · receipt `Json?` · reviewed_digest `string` · status `string` · submission `Json?` · submission_fingerprint `string` · target_id `string` · user_id `string`
+
+### agent_permission_work
+
+capability `string` · created_at `string` · processed_at `string?` · project_id `string` · request_id `string` · target_id `string`
 
 ### agent_run_cost_entries
 
@@ -988,7 +1020,7 @@ created_at `string` · draft_id `string` · draft_revision `number` · name `str
 
 ### consolidation_merges
 
-cluster_key `string` · coverage `Json?` · cost_usd `number` · created_at `string` · created_document_id `string?` · error `string?` · id `string` · ledger `Json?` · markdown `string?` · run_id `string` · source_ids `string[]` · status `string` · target_project_id `string` · title `string` · updated_at `string`
+cluster_key `string` · cost_usd `number` · coverage `Json?` · created_at `string` · created_document_id `string?` · error `string?` · id `string` · ledger `Json?` · markdown `string?` · run_id `string` · source_ids `string[]` · status `string` · target_project_id `string` · title `string` · updated_at `string`
 
 ### consolidation_questions
 
@@ -996,7 +1028,7 @@ answer `Json?` · answered_at `string?` · created_at `string` · draft `Json?` 
 
 ### consolidation_runs
 
-cost_usd `number` · created_at `string` · error `string?` · finished_at `string?` · id `string` · plan `Json?` · progress `Json` · project_ids `string[]` · receipt `Json?` · request `string?` · root_project_id `string` · status `string` · updated_at `string` · user_id `string`
+cost_usd `number` · created_at `string` · error `string?` · finished_at `string?` · id `string` · mode `string` · plan `Json?` · progress `Json` · project_ids `string[]` · receipt `Json?` · request `string?` · root_project_id `string` · status `string` · updated_at `string` · user_id `string`
 
 ### cycle_runs
 
@@ -1020,7 +1052,7 @@ completed_at `string?` · created_at `string?` · deleted_at `string?` · depend
 
 ### external_agent_callers
 
-caller_key `string` · created_at `string` · id `string` · last_used_at `string?` · metadata `Json` · policy `Json` · project_scope_mode `string` · provider `string` · status `string` · token_hash `string` · token_prefix `string` · updated_at `string` · user_id `string`
+caller_key `string` · created_at `string` · id `string` · last_used_at `string?` · metadata `Json` · permission_requests_enabled `boolean` · policy `Json` · project_scope_mode `string` · provider `string` · status `string` · token_hash `string` · token_prefix `string` · updated_at `string` · user_id `string`
 
 ### external_agent_project_permissions
 

@@ -32,11 +32,9 @@ describe('general worker HTTP composition', () => {
 			'GET /queue/stats',
 			'GET /users/:userId/jobs',
 			'POST /classify/ontology',
-			'POST /queue/braindump/process',
 			'POST /queue/brief',
 			'POST /queue/chat/classify',
-			'POST /queue/cleanup',
-			'POST /queue/onboarding'
+			'POST /queue/cleanup'
 		]);
 		expect(smsRoutes).toEqual(['GET /user/:userId', 'POST /:id/cancel']);
 	});
@@ -88,7 +86,7 @@ describe('general worker HTTP composition', () => {
 	});
 
 	it('preserves the malformed JSON response contract before route admission', async () => {
-		const response = await request('/queue/onboarding', {
+		const response = await request('/queue/chat/classify', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: '{'

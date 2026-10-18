@@ -22,6 +22,19 @@ import type { AggregatedGoogleCalendarEvent } from '$lib/server/google-calendar-
 import { GoogleCalendarWriteService } from '$lib/server/google-calendar-write.service';
 import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
 
+/** A new start with no end keeps the event's length (same rule as the worker port). */
+function endForStartOnlyMove(
+	previousStart: string | null | undefined,
+	previousEnd: string | null | undefined,
+	nextStart: string
+): string | null {
+	if (!previousStart || !previousEnd) return null;
+	const duration = Date.parse(previousEnd) - Date.parse(previousStart);
+	const next = Date.parse(nextStart);
+	if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(next)) return null;
+	return new Date(next + duration).toISOString();
+}
+
 const logger = createLogger('CalendarExecutor');
 
 /** Zero calendar coverage and one-missing-calendar must not read the same to the model. */
@@ -1254,6 +1267,13 @@ export class CalendarExecutor extends BaseExecutor {
 						? null
 						: undefined;
 
+			// "Move my 2-3pm to 4pm" sends only start_at: keep the event's length
+			// rather than stretching it to the old end or saving an end before the start.
+			const movedEnd =
+				normalizedStart && normalizedEnd === undefined
+					? endForStartOnlyMove(existing.start_at, existing.end_at, normalizedStart.iso)
+					: null;
+
 			const startForValidation = normalizedStart?.iso ?? existing.start_at;
 			if (normalizedEnd && typeof normalizedEnd === 'object') {
 				const startMs = Date.parse(startForValidation);
@@ -1310,7 +1330,7 @@ export class CalendarExecutor extends BaseExecutor {
 				endAt:
 					normalizedEnd && typeof normalizedEnd === 'object'
 						? normalizedEnd.iso
-						: normalizedEnd,
+						: (normalizedEnd ?? movedEnd ?? undefined),
 				timezone: timezoneForUpdate,
 				props: nextProps as any,
 				syncToCalendar: args.sync_to_calendar,

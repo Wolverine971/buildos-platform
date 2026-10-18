@@ -1,6 +1,6 @@
 // packages/shared-agent-ops/src/project-loops.ts
 import { createHash } from 'node:crypto';
-import type { LoopOperation, ProjectLoopBrief } from '@buildos/shared-types';
+import type { LoopOperation } from '@buildos/shared-types';
 
 type AnySupabase = any;
 
@@ -436,43 +436,4 @@ export function summarizeProjectLoopDocTree(
 	};
 	visit(root, 0);
 	return lines.length ? lines.join('\n') : '(flat - no hierarchy yet)';
-}
-
-export function buildHeuristicProjectLoopBrief(
-	ctx: ProjectLoopFingerprintContext,
-	now = new Date()
-): ProjectLoopBrief {
-	const activeTasks = ctx.tasks.filter((task) => task.state_key !== 'done');
-	const staleDocs = ctx.documents
-		.filter((doc) => {
-			if (!doc.updated_at) return false;
-			const updatedAt = Date.parse(doc.updated_at);
-			if (!Number.isFinite(updatedAt)) return false;
-			return now.getTime() - updatedAt > 45 * 24 * 60 * 60 * 1000;
-		})
-		.slice(0, 3);
-	const currentGoal =
-		ctx.goals.find((goal) => goal.name.trim())?.name ??
-		ctx.projectDescription ??
-		`Keep ${ctx.projectName} moving`;
-
-	// Without a model there is no judgment about what comes next. Recency is not one: a bulk
-	// edit made "Finalize manuscript lock" the next action of an unwritten book (tasker 107).
-	// Name only work already under way, and never present task titles as decisions.
-	const inProgress = activeTasks.find((task) => task.state_key === 'in_progress');
-	return {
-		current_goal: currentGoal,
-		recent_changes: [
-			`${ctx.documents.length} document${ctx.documents.length === 1 ? '' : 's'} in scope`,
-			`${activeTasks.length} open task${activeTasks.length === 1 ? '' : 's'} tracked`
-		],
-		open_decisions: [],
-		stale_assumptions: staleDocs.map((doc) => doc.title),
-		contradictions_or_drift: [],
-		next_best_action: activeTasks.length
-			? (inProgress?.title ?? null)
-			: 'Add the next concrete task',
-		generated_at: now.toISOString(),
-		source: 'heuristic'
-	};
 }

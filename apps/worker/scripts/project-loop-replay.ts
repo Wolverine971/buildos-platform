@@ -4,14 +4,14 @@
 // (tasker 107). It never inserts, updates, deletes or calls a write RPC: the Supabase client is
 // wrapped in a proxy that throws on any of those.
 //
-//   Free (default): recent section changes, fallback evidence, and the exact drift and
-//                   manager-brief prompts, captured from a stub model.
+//   Free (default): recent section changes, fallback evidence, and the exact drift prompt,
+//                   captured from a stub model.
 //     NODE_OPTIONS=--conditions=development pnpm --filter @buildos/worker exec tsx \
 //       scripts/project-loop-replay.ts --project <id> --out <dir>
 //
 //   --jev   (paid, about $0.001): Jev ranks the related sections, as the worker does.
-//   --live  (paid, about $0.01):  also runs the four detectors and the manager brief on the
-//           real model and prints the brief. Model usage is logged like any worker call.
+//   --live  (paid, about $0.01):  also runs the four detectors on the real model and prints
+//           their findings. Model usage is logged like any worker call.
 //   Paid modes also need PROJECT_LOOP_REPLAY_PAID=yes.
 //
 // Output holds private project content; keep --out outside the repo (for example a scratchpad).
@@ -35,10 +35,8 @@ import {
 	generateDocOrganization,
 	generateDrift,
 	generateOutdatedDocs,
-	generateProjectManagerBrief,
 	generateTaskConflicts,
 	type LoopContext,
-	type ProjectReviewSynthesisCandidate,
 	type RadarConcernSubject,
 	withoutRadarOwnedFindings
 } from '../src/workers/project-loop/generators';
@@ -246,15 +244,12 @@ async function main() {
 				system: options.systemPrompt,
 				user: options.userPrompt
 			};
-			return options.operationType === 'project_loop_brief'
-				? { brief: null }
-				: { suggestions: [] };
+			return { suggestions: [] };
 		}
 	} as unknown as SmartLLMService;
 	const onUsage = async () => undefined;
 	const userId = 'project-loop-replay';
 	await generateDrift({ llm: stub as never, ctx, userId, evidence, radarConcerns, onUsage });
-	await generateProjectManagerBrief({ llm: stub as never, ctx, candidates: [], userId, onUsage });
 	for (const [name, prompt] of Object.entries(prompts))
 		writeFileSync(
 			join(out, `${name}.prompt.txt`),
@@ -308,28 +303,11 @@ async function main() {
 			`  gate ${verification.ok ? 'PASS' : `FAIL ${verification.diagnostic.code}`}: ${suggestion.title}${verification.ok ? ` — ${verification.summary.headline}` : ` — ${verification.diagnostic.message}`}`
 		);
 	}
-	const candidates: ProjectReviewSynthesisCandidate[] = suggestions.map((s, i) => ({
-		id: `replay-${i + 1}`,
-		kind: s.kind,
-		risk_tier: s.risk_tier,
-		title: s.title,
-		rationale: s.rationale ?? null,
-		why_now: s.why_now ?? null,
-		evidence_refs: s.evidence_refs ?? [],
-		operations: s.operations,
-		reversible: s.reversible ?? null
-	}));
-	const brief = await generateProjectManagerBrief({ ...common, candidates });
 	writeFileSync(join(out, 'live-suggestions.json'), JSON.stringify(suggestions, null, 2));
-	writeFileSync(join(out, 'live-brief.json'), JSON.stringify(brief, null, 2));
 	console.log(
 		`Live: ${suggestions.length} suggestions in ${Date.now() - liveStarted} ms, ~$${cost.toFixed(4)}`
 	);
 	for (const s of suggestions) console.log(`  ${s.kind}: ${s.title}`);
-	console.log(`Brief bottom line: ${brief.bottom_line}`);
-	console.log(`Next best action: ${brief.next_best_action}`);
-	console.log(`Open decisions: ${JSON.stringify(brief.open_decisions)}`);
-	console.log(`Contradictions/drift: ${JSON.stringify(brief.contradictions_or_drift)}`);
 }
 
 main().catch((error) => {

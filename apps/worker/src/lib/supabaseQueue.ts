@@ -1063,67 +1063,6 @@ export class SupabaseQueue {
 	}
 
 	/**
-	 * Cancel a single job (legacy method - prefer atomic methods below)
-	 */
-	async cancelJob(jobId: string): Promise<boolean> {
-		const { error } = await supabase
-			.from('queue_jobs')
-			.update({
-				status: 'cancelled',
-				updated_at: new Date().toISOString()
-			})
-			.eq('queue_job_id', jobId)
-			.in('status', ['pending', 'processing']);
-
-		if (error) {
-			console.error(`❌ Error cancelling job ${jobId}:`, error);
-			return false;
-		}
-
-		console.log(`🚫 Cancelled job ${jobId}`);
-		return true;
-	}
-
-	/**
-	 * Atomically cancel jobs matching specific criteria
-	 */
-	async cancelJobsAtomic(
-		userId: string,
-		jobType: JobType,
-		metadataFilter?: Record<string, unknown>,
-		allowedStatuses: string[] = ['pending', 'processing']
-	): Promise<{ count: number; cancelledJobs: unknown[] }> {
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated Supabase types
-			const { data: cancelledJobs, error } = await (supabase as any).rpc(
-				'cancel_jobs_atomic',
-				{
-					p_user_id: userId,
-					p_job_type: jobType,
-					p_metadata_filter: metadataFilter || null,
-					p_allowed_statuses: allowedStatuses
-				}
-			);
-
-			if (error) {
-				console.error('❌ Error in atomic job cancellation:', error);
-				return { count: 0, cancelledJobs: [] };
-			}
-
-			const jobs = Array.isArray(cancelledJobs) ? cancelledJobs : [];
-			const count = jobs.length;
-			if (count > 0) {
-				console.log(`🚫 Atomically cancelled ${count} job(s) for user ${userId}`);
-			}
-
-			return { count, cancelledJobs: jobs };
-		} catch (error) {
-			console.error('❌ Error in cancelJobsAtomic:', error);
-			return { count: 0, cancelledJobs: [] };
-		}
-	}
-
-	/**
 	 * Cancel brief generation jobs for a specific date (atomic operation)
 	 */
 	async cancelBriefJobsForDate(
@@ -1157,39 +1096,6 @@ export class SupabaseQueue {
 		} catch (error) {
 			console.error('❌ Error in cancelBriefJobsForDate:', error);
 			return { count: 0, cancelledJobIds: [] };
-		}
-	}
-
-	/**
-	 * Cancel a job with a specific reason
-	 */
-	async cancelJobWithReason(
-		jobId: string,
-		reason: string,
-		allowProcessing: boolean = false
-	): Promise<boolean> {
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated Supabase types
-			const { data: success, error } = await (supabase as any).rpc('cancel_job_with_reason', {
-				p_job_id: jobId,
-				p_reason: reason,
-				p_allow_processing: allowProcessing
-			});
-
-			if (error) {
-				console.error(`❌ Error cancelling job ${jobId}:`, error);
-				return false;
-			}
-
-			const result = success as boolean;
-			if (result) {
-				console.log(`🚫 Cancelled job ${jobId}: ${reason}`);
-			}
-
-			return result || false;
-		} catch (error) {
-			console.error('❌ Error in cancelJobWithReason:', error);
-			return false;
 		}
 	}
 

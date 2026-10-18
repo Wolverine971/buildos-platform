@@ -959,9 +959,18 @@ export function buildPendingTurnContractSystemMessage(
 		PENDING_TURN_CONTRACT_MESSAGE_OPEN_TAG,
 		'The prior turn ended before these user-commissioned durable outcomes were fulfilled.',
 		JSON.stringify(pending.contract),
-		'Follow the current user request. For still-commissioned unfinished outcomes, propose concrete mutation tool calls on the ordinary surface; the worker handles review. Respect any cancellation or superseding request, and report completion only from durable write receipts.',
+		'Follow the current user request. For still-commissioned unfinished outcomes, propose concrete mutation tool calls on the ordinary surface; the worker handles review. When the current user message drops or supersedes these outcomes, call cancel_turn_contract with the reason and do not perform them; otherwise this note returns on every later turn. Report completion only from durable write receipts.',
 		'</pending_turn_contract>'
 	].join('\n');
+}
+
+/**
+ * Whether a history message is the pending-commission note above. Hosts mount
+ * `cancel_turn_contract` only on turns that carry it. Matches the note's own
+ * opening tag (a structured marker this module writes), never message prose.
+ */
+export function isPendingTurnContractSystemMessage(content: string): boolean {
+	return content.startsWith(PENDING_TURN_CONTRACT_MESSAGE_OPEN_TAG);
 }
 
 export function isPendingTurnContractInScope(

@@ -1,3 +1,5 @@
+<!-- apps/web/scripts/agentic-health/README.md -->
+
 # Agentic chat production health
 
 Run the WP-1 production telemetry report from the repository root:
@@ -14,8 +16,7 @@ turn identifiers.
 
 The first acceptance report must use at least seven full days after the production deployment.
 Until then, `window.mature_seven_day_window` is false and the report is provisional. Use DJ's user
-UUID for the Tracker 80 acceptance run so the sanitizer's last-76-replies metric matches the audit
-baseline exactly.
+UUID for the Tracker 80 acceptance run so the report's user scope matches the audit baseline.
 
 Metric definitions intentionally preserve the audit's comparability choices:
 

@@ -146,63 +146,6 @@ describe('fast chat session service helpers', () => {
 		} as any);
 		expect(completed.some((m) => m.continuityKind === 'failed_cleanup_v1')).toBe(false);
 	});
-	it('reports the canonical lookup error after a 23505 winner cannot be resolved', async () => {
-		const insertError = { code: '23505', message: 'duplicate idempotency key' };
-		const winnerError = { code: '57014', message: 'canonical lookup timed out' };
-		const logError = vi.fn(async () => undefined);
-		let queryNumber = 0;
-
-		class MessageQuery {
-			private readonly number = ++queryNumber;
-
-			select() {
-				return this;
-			}
-			eq() {
-				return this;
-			}
-			contains() {
-				return this;
-			}
-			order() {
-				return this;
-			}
-			limit() {
-				return this;
-			}
-			insert() {
-				return this;
-			}
-			async maybeSingle() {
-				return this.number === 1
-					? { data: null, error: null }
-					: { data: null, error: winnerError };
-			}
-			async single() {
-				return { data: null, error: insertError };
-			}
-		}
-
-		const service = createFastChatSessionService({ from: () => new MessageQuery() } as any, {
-			errorLogger: { logError } as any
-		});
-		const result = await service.persistMessage({
-			sessionId: 'session-1',
-			userId: 'user-1',
-			role: 'assistant',
-			content: 'response',
-			idempotencyKey: 'turn:client-1:assistant'
-		});
-
-		expect(result).toBeNull();
-		expect(logError).toHaveBeenLastCalledWith(
-			winnerError,
-			expect.objectContaining({
-				operationType: 'fastchat_message_persist',
-				metadata: expect.objectContaining({ insertErrorCode: '23505' })
-			})
-		);
-	});
 
 	it('never rewrites an existing chat scope; reports the mismatch and leaves the row alone', async () => {
 		const stored = {

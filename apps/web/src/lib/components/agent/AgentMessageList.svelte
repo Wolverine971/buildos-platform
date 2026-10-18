@@ -989,7 +989,7 @@
 					     position, so a finished turn only re-renders a changed tail. -->
 						{#if body.blocks}
 							<div
-								class="agent-markdown {proseClasses} min-w-0 overflow-x-auto break-words"
+								class="agent-markdown {proseClasses} min-w-0 break-words"
 								class:agent-live-preview={hasLivePreview(message)}
 							>
 								{#each body.blocks as blockHtml, blockIndex (blockIndex)}
@@ -1451,6 +1451,22 @@
 	.agent-markdown :global(li) {
 		margin-top: 0.18rem;
 		margin-bottom: 0.18rem;
+	}
+
+	/* The Brain Bolt avatar floats top-left so paragraphs wrap under it. A list,
+	   quote or rule that starts beside it sits next to it as one aligned column
+	   (otherwise bullets land on the avatar); tables and code blocks drop below
+	   it to keep their full width. */
+	.agent-markdown :global(ul),
+	.agent-markdown :global(ol),
+	.agent-markdown :global(blockquote),
+	.agent-markdown :global(hr) {
+		display: flow-root;
+	}
+
+	.agent-markdown :global(pre),
+	.agent-markdown :global(.agent-markdown-table-shell) {
+		clear: left;
 	}
 
 	/* prose-sm gives <hr> ~40px of margin on each side, which reads as a

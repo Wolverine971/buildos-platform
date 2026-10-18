@@ -214,6 +214,14 @@ export function cancellationInterruptionReason(
 		: undefined;
 }
 
+/** When the user pressed Stop (database time), for a turn ended by a cancel signal. */
+export function cancellationRequestedAt(error: unknown, signal: AbortSignal): string | null {
+	const reason = signal.aborted ? signal.reason : error;
+	return reason instanceof AgenticChatCancellationError && reason.cancelRequestedAt
+		? reason.cancelRequestedAt
+		: null;
+}
+
 export function canonicalErrorMessage(message: string): string {
 	const normalized = message.trim().slice(0, 2_000);
 	return normalized || 'Agentic Chat fixture execution failed';

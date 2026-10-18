@@ -1,14 +1,10 @@
 // apps/worker/tests/projectLoopGenerators.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
-	buildHeuristicProjectManagerBrief,
 	generateDocOrganization,
 	generateDrift,
-	generateProjectBrief,
-	generateProjectManagerBrief,
 	generateTaskConflicts,
 	type LoopContext,
-	type ProjectReviewSynthesisCandidate,
 	withoutRadarOwnedFindings
 } from '../src/workers/project-loop/generators';
 import type { SmartLLMService } from '../src/lib/services/smart-llm-service';
@@ -76,54 +72,6 @@ const onUsage = vi.fn(async () => undefined);
 const PAIR_1_2 = [
 	{ taskAId: 'task-1', taskBId: 'task-2', score: 0.9, reasons: ['review relevance 0.90'] }
 ];
-
-function makeReviewCandidates(): ProjectReviewSynthesisCandidate[] {
-	return [
-		{
-			id: 'suggestion-1',
-			kind: 'doc_org',
-			risk_tier: 2,
-			title: 'Choose canonical project documents, then consolidate or expand them',
-			rationale: 'The launch plan and launch notes cover the same work.',
-			why_now: 'Complete audit follow-up for documentation_quality.',
-			evidence_refs: [
-				{
-					entity_type: 'document',
-					entity_id: 'doc-1',
-					title: 'Launch plan',
-					reason: 'Contains the current launch milestones.'
-				}
-			],
-			operations: [
-				{
-					tool: 'update_onto_document',
-					args: { document_id: 'doc-1', props: { title: 'Launch plan' } },
-					label: 'Update document'
-				}
-			],
-			reversible: true,
-			verified_change_headline: 'Keep Launch plan as the main launch document'
-		},
-		{
-			id: 'suggestion-2',
-			kind: 'doc_org',
-			risk_tier: 1,
-			title: 'Old launch notes may be stale',
-			rationale: 'The notes predate the current launch plan.',
-			why_now: null,
-			evidence_refs: [
-				{
-					entity_type: 'document',
-					entity_id: 'doc-2',
-					title: 'Old launch notes',
-					reason: 'Predates the current plan.'
-				}
-			],
-			operations: [],
-			reversible: null
-		}
-	];
-}
 
 describe('project loop generators', () => {
 	it('passes project loop attribution to suggestion LLM calls', async () => {
@@ -203,72 +151,6 @@ describe('project loop generators', () => {
 		expect(getJSONResponse).not.toHaveBeenCalled();
 	});
 
-	it('passes project loop attribution to brief LLM calls', async () => {
-		const { llm, getJSONResponse } = makeTrackedLlm({
-			brief: {
-				current_goal: 'Ship v1',
-				recent_changes: ['Launch plan updated'],
-				open_decisions: [],
-				stale_assumptions: [],
-				contradictions_or_drift: [],
-				next_best_action: 'Publish the announcement'
-			}
-		});
-
-		await generateProjectBrief({
-			llm,
-			ctx: makeContext(),
-			userId: 'user-1',
-			chatSessionId: 'chat-1',
-			runId: 'run-1',
-			onUsage
-		});
-
-		expect(getJSONResponse).toHaveBeenCalledWith(
-			expect.objectContaining({
-				userId: 'user-1',
-				operationType: 'project_loop_brief',
-				projectId: 'project-1',
-				chatSessionId: 'chat-1',
-				metadata: expect.objectContaining({
-					project_loop: true,
-					project_loop_brief: true,
-					project_loop_run_id: 'run-1',
-					project_loop_generator: 'project_loop_brief',
-					onto_project_id: 'project-1'
-				})
-			})
-		);
-	});
-
-	it('produces a decision-first manager brief with reversible candidate clusters', () => {
-		const brief = buildHeuristicProjectManagerBrief({
-			ctx: makeContext(),
-			candidates: makeReviewCandidates(),
-			now: new Date('2026-08-14T12:00:00.000Z')
-		});
-
-		expect(brief).toMatchObject({
-			version: 2,
-			attention_level: 'decision',
-			decision: {
-				recommended_suggestion_id: 'suggestion-1',
-				candidate_ids: ['suggestion-1']
-			},
-			candidate_ids: ['suggestion-1', 'suggestion-2'],
-			cluster_members: [
-				{
-					label: expect.any(String),
-					member_candidate_ids: ['suggestion-1', 'suggestion-2']
-				}
-			]
-		});
-		expect(brief.bottom_line).toContain('Launch plan');
-		expect(brief.issues?.[0]?.evidence_refs).toEqual([
-			expect.objectContaining({ entity_id: 'doc-1', title: 'Launch plan' })
-		]);
-	});
-
 	it('retries Chinese detector prose once without losing attribution or usage tracking', async () => {
 		const english = {
 			title: 'Missing installation tasks',
@@ -321,70 +203,6 @@ describe('project loop generators', () => {
 		expect(getJSONResponse).toHaveBeenCalledTimes(2);
 	});
 
-	it('falls back to English when synthesis and legacy detector evidence both contain Chinese', async () => {
-		const candidates = makeReviewCandidates();
-		candidates[0]!.rationale = '项目当前缺少厨房和浴室安装任务以及预算跟踪任务';
-		candidates[0]!.evidence_refs[0]!.title = '模型翻译的标题';
-		candidates[0]!.evidence_refs[0]!.reason = '需要补充任务';
-		const { llm, getJSONResponse } = makeTrackedLlm({
-			brief: {
-				bottom_line: 'The project needs attention.',
-				decision: { question: '是否同意补充缺失的任务？' }
-			}
-		});
-		const brief = await generateProjectManagerBrief({
-			llm,
-			ctx: makeContext(),
-			candidates,
-			userId: 'user-1',
-			onUsage
-		});
-		expect(brief.source).toBe('heuristic');
-		expect(brief.attention_level).toBe('decision');
-		expect(brief.decision?.recommended_suggestion_id).toBe('suggestion-1');
-		expect(JSON.stringify(brief)).not.toMatch(/\p{Script=Han}/u);
-		expect(getJSONResponse).toHaveBeenCalledTimes(2);
-	});
-
-	it('cleans legacy evidence even when the new manager summary is in English', async () => {
-		const candidates = makeReviewCandidates();
-		candidates[0]!.evidence_refs[0]!.reason = '需要补充任务';
-		const brief = await generateProjectManagerBrief({
-			llm: makeLlm({
-				brief: {
-					bottom_line: 'The launch documents need a clearer home.',
-					issues: [{ summary: 'The plans overlap.', candidate_ids: ['suggestion-1'] }]
-				}
-			}),
-			ctx: makeContext(),
-			candidates,
-			userId: 'user-1',
-			onUsage
-		});
-		expect(brief.source).toBe('llm');
-		expect(JSON.stringify(brief)).not.toMatch(/\p{Script=Han}/u);
-		expect(brief.issues?.[0]?.evidence_refs[0]?.entity_id).toBe('doc-1');
-	});
-
-	it('preserves source names in other scripts and accented English prose without retrying', async () => {
-		const ctx = makeContext();
-		ctx.documents[0]!.title = '发布计划';
-		const { llm, getJSONResponse } = makeTrackedLlm({
-			brief: {
-				bottom_line: 'Review 发布计划 with José before the café launch. ✅'
-			}
-		});
-		const brief = await generateProjectManagerBrief({
-			llm,
-			ctx,
-			candidates: [],
-			userId: 'user-1',
-			onUsage
-		});
-		expect(brief.bottom_line).toBe('Review 发布计划 with José before the café launch. ✅');
-		expect(getJSONResponse).toHaveBeenCalledTimes(1);
-	});
-
 	it('does not start a language retry after cancellation', async () => {
 		const controller = new AbortController();
 		const cancellation = new Error('worker ownership lost');
@@ -403,159 +221,6 @@ describe('project loop generators', () => {
 			})
 		).rejects.toBe(cancellation);
 		expect(getJSONResponse).toHaveBeenCalledTimes(1);
-	});
-
-	it('does not admit a review that contains only minor notes', () => {
-		const candidate = makeReviewCandidates()[1];
-		const brief = buildHeuristicProjectManagerBrief({
-			ctx: makeContext(),
-			candidates: candidate ? [candidate] : []
-		});
-
-		expect(brief.attention_level).toBe('minor');
-		expect(brief.decision).toBeNull();
-		expect(brief.no_attention_reason).toContain('minor');
-	});
-
-	it('makes incomplete detector coverage explicit in heuristic and LLM manager briefs', async () => {
-		const heuristic = buildHeuristicProjectManagerBrief({
-			ctx: makeContext(),
-			candidates: [],
-			uncheckedLenses: ['drift']
-		});
-		expect(heuristic.attention_level).toBe('none');
-		expect(heuristic.no_attention_reason).toContain("drift check didn't finish this pass");
-
-		const { llm, getJSONResponse } = makeTrackedLlm({
-			brief: {
-				attention_level: 'none',
-				no_attention_reason: 'Everything looks clean.'
-			}
-		});
-		const brief = await generateProjectManagerBrief({
-			llm,
-			ctx: makeContext(),
-			candidates: [],
-			uncheckedLenses: ['drift'],
-			userId: 'user-1',
-			onUsage
-		});
-
-		expect(getJSONResponse.mock.calls[0]?.[0]?.userPrompt).toContain(
-			'Lenses NOT checked this pass'
-		);
-		expect(getJSONResponse.mock.calls[0]?.[0]?.userPrompt).toContain('drift');
-		expect(brief.no_attention_reason).toContain("drift check didn't finish this pass");
-		expect(brief.no_attention_reason).not.toContain('Everything looks clean');
-	});
-
-	it('does not convert caller cancellation into a heuristic manager brief', async () => {
-		const controller = new AbortController();
-		const cancellation = new Error('worker ownership lost');
-		const llm = {
-			getJSONResponse: vi.fn(async () => {
-				controller.abort(cancellation);
-				throw cancellation;
-			})
-		} as unknown as SmartLLMService;
-
-		await expect(
-			generateProjectManagerBrief({
-				llm,
-				ctx: makeContext(),
-				candidates: [],
-				uncheckedLenses: [],
-				userId: 'user-1',
-				signal: controller.signal,
-				onUsage
-			})
-		).rejects.toBe(cancellation);
-	});
-
-	it('rejects academic audit copy, unknown ids, and model attempts to hide a decision', async () => {
-		const candidates = makeReviewCandidates();
-		const brief = await generateProjectManagerBrief({
-			llm: makeLlm({
-				brief: {
-					attention_level: 'minor',
-					bottom_line: 'Complete audit follow-up for documentation_quality.',
-					recommendation:
-						'Choose the canonical project documents, then consolidate or expand them.',
-					decision: {
-						question: 'What do you want to do?',
-						recommendation: 'Choose the canonical documents.',
-						why_user_needed: 'Complete audit follow-up.',
-						options: [],
-						recommended_option_id: null,
-						recommended_suggestion_id: 'invented-suggestion',
-						candidate_ids: ['invented-suggestion']
-					},
-					issues: [],
-					decision_item_ids: ['invented-suggestion'],
-					safe_cleanup_item_ids: [],
-					no_attention_reason: 'Nothing important.'
-				}
-			}),
-			ctx: makeContext(),
-			candidates,
-			userId: 'user-1',
-			onUsage
-		});
-
-		expect(brief.attention_level).toBe('decision');
-		expect(brief.bottom_line).not.toContain('audit follow-up');
-		expect(brief.recommendation).not.toContain('canonical');
-		expect(brief.decision?.recommended_suggestion_id).toBe('suggestion-1');
-		expect(brief.candidate_ids).toEqual(['suggestion-1', 'suggestion-2']);
-		expect(brief.decision_item_ids).toEqual([]);
-	});
-
-	it('keeps decision option and suggestion ids that are snake_case keys', async () => {
-		// Ids are machine keys, not prose. The prose filter used to null a
-		// snake_case recommended_suggestion_id, which then silently fell back to
-		// the heuristic pick ("suggestion-1") instead of the model's choice.
-		const candidates = makeReviewCandidates();
-		candidates.push({
-			...candidates[0]!,
-			id: 'merge_announcement_tasks',
-			title: 'Merge the announcement tasks',
-			verified_change_headline: 'Merge the announcement tasks'
-		});
-		const brief = await generateProjectManagerBrief({
-			llm: makeLlm({
-				brief: {
-					attention_level: 'decision',
-					decision: {
-						question: 'Which announcement task should stay?',
-						recommendation: 'Merge the draft into the launch announcement task.',
-						why_user_needed: 'Only you know which task the team is working from.',
-						options: [
-							{ id: 'keep_both', label: 'Keep both tasks', description: null },
-							{
-								id: 'merge_tasks',
-								label: 'Merge the two tasks',
-								description: 'Fold the draft task into the announcement task.'
-							}
-						],
-						recommended_option_id: 'merge_tasks',
-						recommended_suggestion_id: 'merge_announcement_tasks',
-						candidate_ids: ['suggestion-1', 'merge_announcement_tasks']
-					}
-				}
-			}),
-			ctx: makeContext(),
-			candidates,
-			userId: 'user-1',
-			onUsage
-		});
-
-		expect(brief.decision?.options.map((option) => option.id)).toEqual([
-			'keep_both',
-			'merge_tasks'
-		]);
-		expect(brief.decision?.options[0]?.label).toBe('Keep both tasks');
-		expect(brief.decision?.recommended_option_id).toBe('merge_tasks');
-		expect(brief.decision?.recommended_suggestion_id).toBe('merge_announcement_tasks');
 	});
 
 	it('turns task conflicts into reversible non-destructive task flags', async () => {
@@ -967,76 +632,6 @@ describe('project loop generators', () => {
 		expect(call.userPrompt).toContain(`- Write the book: ${goal}`);
 		expect(call.userPrompt).toMatch(/ word…/);
 		expect(call.systemPrompt).toContain('Text ending in "…" was shortened for this review');
-	});
-
-	it('gives the manager brief the current state, phases, and tasks, and keeps its next action', async () => {
-		const ctx: LoopContext = {
-			...makeContext(),
-			plans: [
-				{ name: 'Phase 1: Contract', state_key: 'done' },
-				{ name: 'Phase 2: Blueprint', state_key: 'active' },
-				{ name: 'Phase 7: Proof & Production', state_key: 'draft' }
-			],
-			startHere: {
-				currentState: '- Blueprint: first-pass outline drafted.\n- Draft: not started.',
-				decisions: null,
-				openQuestions: null
-			}
-		};
-		const { llm, getJSONResponse } = makeTrackedLlm({
-			brief: {
-				attention_level: 'decision',
-				next_best_action: 'Fill the Part IV evidence gaps in the blueprint',
-				bottom_line: 'The AI working doc is out of date.',
-				decision: {
-					question: 'Update the AI working doc to match the outline?',
-					recommendation: 'Yes.',
-					why_user_needed: 'It is your doc.',
-					options: [],
-					recommended_option_id: null,
-					recommended_suggestion_id: null,
-					candidate_ids: ['suggestion-1']
-				},
-				tensions_or_contradictions: [
-					{
-						summary: 'The working doc lists a decided question as open.',
-						candidate_ids: ['suggestion-1']
-					}
-				],
-				issues: []
-			}
-		});
-
-		const brief = await generateProjectManagerBrief({
-			llm,
-			ctx,
-			candidates: makeReviewCandidates(),
-			userId: 'user-1',
-			onUsage
-		});
-
-		const prompt = getJSONResponse.mock.calls[0]![0];
-		expect(prompt.systemPrompt).toContain('"next_best_action": string|null');
-		expect(prompt.userPrompt).toContain('Draft: not started.');
-		expect(prompt.userPrompt).toContain('- Phase 2: Blueprint (state=active)');
-		expect(prompt.userPrompt).toContain('Publish launch announcement');
-		expect(brief.next_best_action).toBe('Fill the Part IV evidence gaps in the blueprint');
-		// Legacy fields follow the brief's own judgment, never task titles.
-		expect(brief.open_decisions).toEqual(['Update the AI working doc to match the outline?']);
-		expect(brief.contradictions_or_drift).toEqual([
-			'The working doc lists a decided question as open.'
-		]);
-		expect(brief.open_decisions).not.toContain('Publish launch announcement');
-	});
-
-	it('never promotes a recently touched task to next action or decision without a model', () => {
-		const brief = buildHeuristicProjectManagerBrief({
-			ctx: makeContext(),
-			candidates: makeReviewCandidates()
-		});
-		expect(brief.next_best_action).toBeNull();
-		expect(brief.open_decisions).not.toContain('Publish announcement draft');
-		expect(brief.open_decisions).not.toContain('Publish launch announcement');
 	});
 
 	it('shows drift both sides and accepts citations of evidence outside the recent-document window', async () => {

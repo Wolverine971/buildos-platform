@@ -3478,9 +3478,11 @@ function selectActivePlan(plans: Record<string, unknown>[]): Record<string, unkn
 
 function comparePriorityWork(now: Date) {
 	return (left: Record<string, unknown>, right: Record<string, unknown>): number => {
-		const leftPriority = numberValue(left.priority) ?? -1;
-		const rightPriority = numberValue(right.priority) ?? -1;
-		if (leftPriority !== rightPriority) return rightPriority - leftPriority;
+		// onto_tasks.priority: 1 = Critical ... 5 = Nice to have (ONTO_TASK_PRIORITY_LABELS).
+		// Most urgent first; tasks without a priority sort after every prioritized task.
+		const leftPriority = numberValue(left.priority) ?? 99;
+		const rightPriority = numberValue(right.priority) ?? 99;
+		if (leftPriority !== rightPriority) return leftPriority - rightPriority;
 		const leftDue = parseDate(left.due_at);
 		const rightDue = parseDate(right.due_at);
 		if (leftDue && rightDue && leftDue.getTime() !== rightDue.getTime()) {

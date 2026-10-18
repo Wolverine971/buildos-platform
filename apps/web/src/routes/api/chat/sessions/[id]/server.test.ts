@@ -625,6 +625,74 @@ describe('GET /api/chat/sessions/[id]', () => {
 	});
 });
 
+describe('GET /api/chat/sessions/[id]?probe=pending-change', () => {
+	const project = '445dd429-db93-4878-90a9-b3ab1627a9f2';
+	const pending = {
+		version: 1,
+		contract: {
+			version: 1,
+			source: 'declared',
+			outcomes: [
+				{
+					id: 'implicit_8',
+					action: 'update',
+					entityKind: 'document',
+					targetIds: ['doc-1'],
+					requiredFields: ['edits'],
+					minimumSuccessfulEffects: 1
+				}
+			]
+		},
+		contextType: 'project',
+		projectId: project,
+		originatingTurnRunId: 'turn-1',
+		createdAt: '2026-09-23T19:41:33.910Z',
+		finishedReason: 'stop'
+	};
+
+	it('reads only the session row and the target titles', async () => {
+		const tables: string[] = [];
+		const supabase = {
+			from: vi.fn((table: string) => {
+				tables.push(table);
+				if (table === 'chat_sessions') {
+					return createQuery({
+						data: {
+							context_type: 'project',
+							entity_id: project,
+							agent_metadata: { fastchat_pending_turn_contract: pending }
+						},
+						error: null
+					});
+				}
+				return createQuery({
+					data: [{ id: 'doc-1', title: 'Chapter 3 outline', project_id: project }],
+					error: null
+				});
+			})
+		};
+		const response = await GET({
+			params: { id: 'session-1' },
+			url: new URL('http://localhost/api/chat/sessions/session-1?probe=pending-change'),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toMatchObject({
+			data: {
+				pendingChange: {
+					key: 'turn-1@2026-09-23T19:41:33.910Z',
+					items: ['Update doc "Chapter 3 outline"']
+				}
+			}
+		});
+		expect(tables).toEqual(['chat_sessions', 'onto_documents']);
+	});
+});
+
 describe('DELETE /api/chat/sessions/[id]', () => {
 	function deleteEvent(
 		rpcResult: { data: unknown; error: unknown },

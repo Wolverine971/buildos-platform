@@ -119,7 +119,8 @@ export type PublisherPort = Pick<
 	| 'getSnapshot'
 	| 'unregisterTurn'
 	| 'abandonTurn'
->;
+> &
+	Partial<Pick<AgenticChatStreamPublisher, 'getStoppedPreviewText'>>;
 
 export type CancellationPort = Pick<
 	AgenticChatCancellationObserver,

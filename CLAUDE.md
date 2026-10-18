@@ -43,8 +43,8 @@ pnpm gen:all
 - `apps/worker` — Express queue worker and scheduler on Railway.
 - `packages/shared-types` — generated database and API types.
 - `packages/smart-llm` — model routing through OpenRouter with provider fallbacks.
-- `packages/shared-agent-ops`, `packages/agentic-chat-runtime`, and
-  `packages/agent-orchestrator` — shared agent operations, runtime contracts, and orchestration.
+- `packages/shared-agent-ops` and `packages/agentic-chat-runtime` — shared agent operations and
+  runtime contracts.
 - `packages/buildos-mcp-server` — local bridge to the remote BuildOS MCP connector.
 - `supabase/migrations` — PostgreSQL schema changes; Supabase Auth and RLS protect user data.
 

@@ -61,8 +61,7 @@
 		'/admin/chat/timing',
 		'/admin/chat/domains',
 		'/admin/ontology/graph',
-		'/admin/ontology/public-pages',
-		'/admin/experiments/question-tree'
+		'/admin/ontology/public-pages'
 	];
 
 	let mobileOpen = $state(false);
@@ -136,17 +135,6 @@
 					href: '/admin/beta',
 					icon: Sparkles,
 					description: 'VIP onboarding'
-				}
-			]
-		},
-		{
-			title: 'Experiments',
-			items: [
-				{
-					title: 'Question Tree',
-					href: '/admin/experiments/question-tree',
-					icon: TestTube,
-					description: 'Adaptive model research'
 				}
 			]
 		},

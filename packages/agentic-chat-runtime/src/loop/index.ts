@@ -7,7 +7,6 @@
 // referee. Web's original paths re-export from this subpath; the worker
 // composes them behind its provider port (S4).
 
-export * from './assistant-text-sanitization';
 export * from './context-gathering-ledger';
 export * from './context-shift';
 export * from './definition-types';

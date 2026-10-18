@@ -236,6 +236,34 @@ describe('processChatClassificationJob Libri extraction', () => {
 		});
 	});
 
+	// Session-route audit, 2026-10-18: remove `.fails` when promotion compares
+	// the current stored title with the title read before classification began.
+	it.fails(
+		'preserves a manual rename made while classification is awaiting the model',
+		async () => {
+			mockGetJSONResponse.mockImplementationOnce(async () => {
+				// A successful PATCH /api/chat/sessions/[id] commits during the model call.
+				sessionData.title = 'My manually renamed conversation';
+				return {
+					title: 'Automatic classification title',
+					topics: ['planning'],
+					summary: 'A planning conversation.',
+					extracted_entities: { libri_candidates: [] }
+				};
+			});
+
+			const result = await processChatClassificationJob({
+				id: 'job-rename-race',
+				data: { sessionId: 'session-1', userId: 'user-1' }
+			} as any);
+
+			expect(result.success).toBe(true);
+			expect({ ...sessionData, ...capturedSessionUpdate }.title).toBe(
+				'My manually renamed conversation'
+			);
+		}
+	);
+
 	it('saves extracted_entities before recording disabled Libri handoff status', async () => {
 		const result = await processChatClassificationJob({
 			id: 'job-1',

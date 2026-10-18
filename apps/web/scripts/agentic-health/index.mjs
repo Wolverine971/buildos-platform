@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// apps/web/scripts/agentic-health/index.mjs
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,12 +17,10 @@ try {
 		process.exit(0);
 	}
 
-	const sanitizeAssistantFinalText = await loadSanitizer();
 	const data = await loadHealthData(options);
 	const report = buildHealthReport({
 		window: options,
-		...data,
-		sanitize: sanitizeAssistantFinalText
+		...data
 	});
 	const outputPath = options.output ?? defaultOutputPath(options);
 	fs.mkdirSync(path.dirname(outputPath), { recursive: true });
@@ -80,19 +79,6 @@ function canonicalIso(value, flag) {
 	const timestamp = new Date(value);
 	if (!Number.isFinite(timestamp.getTime())) throw new Error(`${flag} must be an ISO timestamp.`);
 	return timestamp.toISOString();
-}
-
-async function loadSanitizer() {
-	try {
-		const runtime = await import('@buildos/agentic-chat-runtime/loop');
-		if (typeof runtime.sanitizeAssistantFinalText !== 'function')
-			throw new Error('export missing');
-		return runtime.sanitizeAssistantFinalText;
-	} catch (error) {
-		throw new Error(
-			`Could not load the deployed runtime sanitizer. Run "pnpm --filter @buildos/agentic-chat-runtime build" first. (${error instanceof Error ? error.message : String(error)})`
-		);
-	}
 }
 
 function defaultOutputPath(options) {

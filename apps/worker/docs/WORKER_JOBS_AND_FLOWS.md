@@ -14,14 +14,12 @@ legacy compatibility values, not active processors.
 | -------------------------------- | ----------------------------------------------------- | --------------------------------------------- |
 | `generate_daily_brief`           | `workers/brief/briefWorker.ts`                        | Scheduler, `POST /queue/brief`                |
 | `generate_brief_audio`           | `workers/briefAudio/briefAudioWorker.ts`              | Brief worker, web audio request               |
-| `onboarding_analysis`            | `workers/onboarding/onboardingWorker.ts`              | `POST /queue/onboarding`                      |
 | `send_notification`              | `workers/notification/notificationWorker.ts`          | Notification fanout RPC                       |
 | `project_activity_batch_flush`   | `workers/notification/projectActivityBatchWorker.ts`  | Project activity batching                     |
 | `schedule_daily_sms`             | `workers/dailySmsWorker.ts`                           | Scheduler                                     |
 | `send_sms`                       | `workers/smsWorker.ts`                                | Daily SMS scheduler, SMS notification adapter |
 | `classify_chat_session`          | `workers/chat/chatSessionClassifier.ts`               | `POST /queue/chat/classify`                   |
 | `capture_chat_checkpoint`        | `workers/chat/checkpoint/checkpointJob.ts`            | Scheduler sweep, `classify_chat_session`      |
-| `process_onto_braindump`         | `workers/braindump/braindumpProcessor.ts`             | `POST /queue/braindump/process`               |
 | `transcribe_voice_note`          | `workers/voice-notes/voiceNoteTranscriptionWorker.ts` | Voice note flow                               |
 | `extract_onto_asset_ocr`         | `workers/assets/assetOcrWorker.ts`                    | Ontology asset flow                           |
 | `embed_onto_entity`              | `workers/embeddings/embedEntityWorker.ts`             | DB triggers on ontology writes                |
@@ -167,24 +165,6 @@ Content-Type: application/json
 }
 ```
 
-### Queue Onboarding Analysis
-
-```http
-POST /queue/onboarding
-Authorization: Bearer <PRIVATE_RAILWAY_WORKER_TOKEN>
-Content-Type: application/json
-```
-
-```json
-{
-	"userId": "user-uuid",
-	"userContext": {},
-	"options": {
-		"forceRegenerate": false
-	}
-}
-```
-
 ### Queue Chat Classification
 
 ```http
@@ -196,21 +176,6 @@ Content-Type: application/json
 ```json
 {
 	"sessionId": "session-uuid",
-	"userId": "user-uuid"
-}
-```
-
-### Queue Braindump Processing
-
-```http
-POST /queue/braindump/process
-Authorization: Bearer <PRIVATE_RAILWAY_WORKER_TOKEN>
-Content-Type: application/json
-```
-
-```json
-{
-	"braindumpId": "braindump-uuid",
 	"userId": "user-uuid"
 }
 ```

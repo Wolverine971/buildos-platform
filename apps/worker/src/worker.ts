@@ -14,8 +14,7 @@ import type {
 } from '@buildos/shared-types';
 import type { ProcessingJob } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
-import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
-import type { BriefJobData, OnboardingAnalysisJobData } from './workers/shared/queueUtils';
+import type { BriefJobData } from './workers/shared/queueUtils';
 import { processSMSJob } from './workers/smsWorker';
 import { processNotification } from './workers/notification/notificationWorker';
 import { processProjectActivityBatchFlushJob } from './workers/notification/projectActivityBatchWorker';
@@ -26,11 +25,7 @@ import type {
 } from '@buildos/shared-types';
 import { type DailySMSJobData, processDailySMS } from './workers/dailySmsWorker';
 import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
-import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
-import type {
-	BraindumpProcessingJobData,
-	ChatClassificationJobData
-} from './workers/shared/queueUtils';
+import type { ChatClassificationJobData } from './workers/shared/queueUtils';
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
 import { processAssetOcrJob } from './workers/assets/assetOcrWorker';
 import { processEmbedOntoEntity } from './workers/embeddings/embedEntityWorker';
@@ -44,7 +39,6 @@ import { processCaptureChatCheckpointJob } from './workers/chat/checkpoint/check
 import { processConsolidationRun } from './workers/consolidation/consolidationJob';
 import { processUserDataExportJob } from './workers/export/userDataExportWorker';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
-import { processQuestionTreeJob } from './workers/question-tree/questionTreeWorker';
 import {
 	TABLE_AI_FILL_JOB_TYPE,
 	TABLE_AI_FILL_WORKER_TIMEOUT_MS,
@@ -54,7 +48,6 @@ import {
 	EXTRACT_TASK_ENTITIES_JOB_TYPE,
 	processExtractTaskEntitiesJob
 } from './workers/task-entities/extractTaskEntitiesWorker';
-import type { QuestionTreeJobMetadata } from './workers/question-tree/questionTreeContracts';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { processCycleRun } from './workers/cycle/cycleWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
@@ -109,26 +102,6 @@ async function processBrief(job: ProcessingJob<BriefJobData>) {
 		return { success: true, duration };
 	} catch (error) {
 		await job.log(`❌ ${jobType} brief failed: ${getErrorMessage(error)}`);
-		throw error;
-	}
-}
-
-/**
- * Onboarding analysis processor
- */
-async function processOnboarding(job: ProcessingJob<OnboardingAnalysisJobData>) {
-	await job.log('Starting onboarding analysis');
-
-	try {
-		// Convert ProcessingJob to type-safe legacy format
-		const legacyJob = createLegacyJob(job);
-
-		await processOnboardingAnalysisJob(legacyJob);
-		await job.log('✅ Onboarding analysis completed');
-
-		return { success: true };
-	} catch (error) {
-		await job.log(`❌ Onboarding analysis failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -244,33 +217,6 @@ async function processChatClassification(job: ProcessingJob<ChatClassificationJo
 		return result;
 	} catch (error) {
 		await job.log(`❌ Chat classification failed: ${getErrorMessage(error)}`);
-		throw error;
-	}
-}
-
-/**
- * Braindump processing processor
- * Generates titles, topics, and summaries from captured context
- */
-async function processBraindumpProcessing(job: ProcessingJob<BraindumpProcessingJobData>) {
-	const { braindumpId } = job.data;
-	const startTime = Date.now();
-
-	await job.log(`🧠 Captured context processing started for ${braindumpId}`);
-
-	try {
-		// Convert ProcessingJob to type-safe legacy format
-		const legacyJob = createLegacyJob(job);
-
-		// Process captured context
-		const result = await processBraindumpProcessingJob(legacyJob);
-
-		const duration = Date.now() - startTime;
-		await job.log(`✅ Braindump processing completed in ${duration}ms`);
-
-		return result;
-	} catch (error) {
-		await job.log(`❌ Braindump processing failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -470,22 +416,6 @@ async function processCalendarSync(job: ProcessingJob) {
 }
 
 /**
- * Admin Question Tree experiment processor
- */
-async function processQuestionTree(job: ProcessingJob<QuestionTreeJobMetadata>) {
-	await job.log('Question Tree advance received');
-
-	try {
-		const result = await processQuestionTreeJob(job);
-		await job.log(`Question Tree advance finished (${result.status}/${result.phase})`);
-		return result;
-	} catch (error) {
-		await job.log(`Question Tree advance failed: ${getErrorMessage(error)}`);
-		throw error;
-	}
-}
-
-/**
  * Start the Supabase-based worker. `scheduledWork` (config/scheduledWork.ts)
  * gates the startup queue purge and the queue alert monitor; queue consumers
  * always start.
@@ -497,7 +427,6 @@ export async function startWorker({ scheduledWork }: { scheduledWork: boolean })
 	// Register processors
 	queue.process('generate_daily_brief', processBrief);
 	queue.process('run_cycle', (job: ProcessingJob<CycleQueueJobMetadata>) => processCycleRun(job));
-	queue.process('onboarding_analysis', processOnboarding);
 
 	// Register notification processor (multi-channel: push, email, in-app, SMS)
 	queue.process('send_notification', processNotificationWrapper);
@@ -509,9 +438,6 @@ export async function startWorker({ scheduledWork }: { scheduledWork: boolean })
 
 	// Register chat session classification processor
 	queue.process('classify_chat_session', processChatClassification);
-
-	// Register ontology capture processing processor
-	queue.process('process_onto_braindump', processBraindumpProcessing);
 
 	// Register voice note transcription processor
 	queue.process('transcribe_voice_note', processVoiceNoteTranscription);
@@ -566,9 +492,6 @@ export async function startWorker({ scheduledWork }: { scheduledWork: boolean })
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);
-
-	// Register admin Question Tree experiment processor.
-	queue.process('admin_question_tree', processQuestionTree);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(

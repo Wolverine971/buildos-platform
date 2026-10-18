@@ -12,9 +12,7 @@ This directory contains worker processors for queue job types handled by `apps/w
 - `ontology/` - Ontology jobs, including `build_project_context_snapshot`
 - `project-icon/` - Project icon generation (`generate_project_icon`)
 - `assets/` - Ontology asset OCR (`extract_onto_asset_ocr`)
-- `onboarding/` - Onboarding analysis jobs
 - `chat/` - Chat session classification jobs
-- `braindump/` - Ontology braindump processing jobs
 - `voice-notes/` - Voice note transcription jobs
 - `calendar/` - Calendar projection sync (`sync_calendar`)
 - `sms/`, `dailySmsWorker.ts`, `smsWorker.ts` - SMS prompts, scheduling, and sends

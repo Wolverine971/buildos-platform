@@ -1,0 +1,448 @@
+{
+	"date_eastern": "2026-10-04",
+	"provider": "OpenRouter",
+	"model": "google/gemini-3-pro-image",
+	"app": "9takes blog image gen",
+	"api_key_label": "9takes",
+	"workflow": "publish-four-posts-and-promote-gentle",
+	"claude_session_id": "1080218b-e3c4-4191-9d0e-ed12532b9fdb",
+	"workflow_transcript": "/Users/djwayne/.claude/projects/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb.jsonl",
+	"workflow_transcript_line": 592,
+	"requests": 49,
+	"cost_usd": 6.845132,
+	"selected_image_count": 4,
+	"selected_image_cost_usd": 0.557266,
+	"unselected_image_count": 45,
+	"unselected_image_cost_usd": 6.287866,
+	"openrouter_verified": {
+		"requests": 49,
+		"displayed_cost_usd": 6.85,
+		"url": "https://openrouter.ai/activity?from=2026-10-04T22%3A16%3A14.630Z&to=2026-10-05T01%3A16%3A14.630Z&model_slug=google%2Fgemini-3-pro-image-20260528"
+	},
+	"posts": [
+		{
+			"post": "Which Enneagram type is most likely to be a narcissist?",
+			"requests": 14,
+			"cost_usd": 1.952454,
+			"selected_asset": "/Users/djwayne/9takes/source-assets/blogs/greek-statue-proud-pose-ashamed-shadow.png",
+			"receipts": [
+				{
+					"candidate": "B5",
+					"cost_usd": 0.13897,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_B5.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/B5 2752x1536 5093KB cost=0.13897",
+					"file_modified_at_utc": "2026-10-05T00:33:58.199187+00:00"
+				},
+				{
+					"candidate": "C1",
+					"cost_usd": 0.139528,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_C1.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/C1 2752x1536 6158KB cost=0.139528",
+					"file_modified_at_utc": "2026-10-05T00:31:41.242738+00:00"
+				},
+				{
+					"candidate": "B4",
+					"cost_usd": 0.139918,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_B4.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/B4 2752x1536 5428KB cost=0.139918",
+					"file_modified_at_utc": "2026-10-05T00:34:00.473687+00:00"
+				},
+				{
+					"candidate": "C2",
+					"cost_usd": 0.139312,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_C2.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/C2 2752x1536 5021KB cost=0.139312",
+					"file_modified_at_utc": "2026-10-05T00:31:36.980774+00:00"
+				},
+				{
+					"candidate": "B6",
+					"cost_usd": 0.139936,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_B6.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/B6 2752x1536 5188KB cost=0.139936",
+					"file_modified_at_utc": "2026-10-05T00:36:14.730116+00:00"
+				},
+				{
+					"candidate": "B3",
+					"cost_usd": 0.140458,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_B3.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/B3 2752x1536 5109KB cost=0.140458",
+					"file_modified_at_utc": "2026-10-05T00:34:10.017374+00:00"
+				},
+				{
+					"candidate": "B2",
+					"cost_usd": 0.139826,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_B2.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/B2 2752x1536 5131KB cost=0.139826",
+					"file_modified_at_utc": "2026-10-05T00:31:49.454314+00:00"
+				},
+				{
+					"candidate": "B1",
+					"cost_usd": 0.139226,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_B1.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/B1 2752x1536 5231KB cost=0.139226",
+					"file_modified_at_utc": "2026-10-05T00:31:49.818220+00:00"
+				},
+				{
+					"candidate": "A1",
+					"cost_usd": 0.139068,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_A1.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/A1 2752x1536 5395KB cost=0.139068",
+					"file_modified_at_utc": "2026-10-05T00:31:42.869633+00:00"
+				},
+				{
+					"candidate": "A3",
+					"cost_usd": 0.139182,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_A3.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/A3 2752x1536 5786KB cost=0.139182",
+					"file_modified_at_utc": "2026-10-05T00:33:32.995300+00:00"
+				},
+				{
+					"candidate": "A2",
+					"cost_usd": 0.139332,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_A2.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/A2 2752x1536 5062KB cost=0.139332",
+					"file_modified_at_utc": "2026-10-05T00:31:48.872557+00:00"
+				},
+				{
+					"candidate": "A6",
+					"cost_usd": 0.139516,
+					"selected": true,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_A6.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/A6 2752x1536 7300KB cost=0.139516",
+					"file_modified_at_utc": "2026-10-05T00:36:15.683788+00:00"
+				},
+				{
+					"candidate": "A5",
+					"cost_usd": 0.139516,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_A5.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/A5 2752x1536 5545KB cost=0.139516",
+					"file_modified_at_utc": "2026-10-05T00:36:12.425485+00:00"
+				},
+				{
+					"candidate": "A4",
+					"cost_usd": 0.138666,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/log_A4.txt",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/narc-hero/A4 2752x1536 6227KB cost=0.138666",
+					"file_modified_at_utc": "2026-10-05T00:33:52.927855+00:00"
+				}
+			]
+		},
+		{
+			"post": "What is a love language?",
+			"requests": 12,
+			"cost_usd": 1.679016,
+			"selected_asset": "/Users/djwayne/9takes/source-assets/blogs/greek-statues-fixing-the-lamp-while-she-waits.png",
+			"receipts": [
+				{
+					"candidate": "C1",
+					"cost_usd": 0.139534,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/C1.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/C1.png 2752x1536 5743KB in 47s cost=0.139534",
+					"file_modified_at_utc": "2026-10-05T00:31:54.212628+00:00"
+				},
+				{
+					"candidate": "C2",
+					"cost_usd": 0.139786,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/C2.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/C2.png 2752x1536 5097KB in 47s cost=0.139786",
+					"file_modified_at_utc": "2026-10-05T00:31:54.281997+00:00"
+				},
+				{
+					"candidate": "C3",
+					"cost_usd": 0.140526,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/C3.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/C3.png 2752x1536 5043KB in 56s cost=0.140526",
+					"file_modified_at_utc": "2026-10-05T00:34:07.060270+00:00"
+				},
+				{
+					"candidate": "B2",
+					"cost_usd": 0.140162,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/B2.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/B2.png 2752x1536 5069KB in 45s cost=0.140162",
+					"file_modified_at_utc": "2026-10-05T00:31:52.268779+00:00"
+				},
+				{
+					"candidate": "C4",
+					"cost_usd": 0.140766,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/C4.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/C4.png 2752x1536 5483KB in 35s cost=0.140766",
+					"file_modified_at_utc": "2026-10-05T00:33:46.691276+00:00"
+				},
+				{
+					"candidate": "B1",
+					"cost_usd": 0.139646,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/B1.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/B1.png 2752x1536 4707KB in 45s cost=0.139646",
+					"file_modified_at_utc": "2026-10-05T00:31:52.456496+00:00"
+				},
+				{
+					"candidate": "D1",
+					"cost_usd": 0.13986,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/D1.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/D1.png 2752x1536 5070KB in 33s cost=0.13986",
+					"file_modified_at_utc": "2026-10-05T00:33:44.732337+00:00"
+				},
+				{
+					"candidate": "D2",
+					"cost_usd": 0.139212,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/D2.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/D2.png 2752x1536 4794KB in 32s cost=0.139212",
+					"file_modified_at_utc": "2026-10-05T00:33:43.155805+00:00"
+				},
+				{
+					"candidate": "A1",
+					"cost_usd": 0.13972,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/A1.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/A1.png 2752x1536 4917KB in 36s cost=0.13972",
+					"file_modified_at_utc": "2026-10-05T00:31:43.353672+00:00"
+				},
+				{
+					"candidate": "A3",
+					"cost_usd": 0.139388,
+					"selected": true,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/A3.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/A3.png 2752x1536 4838KB in 59s cost=0.139388",
+					"file_modified_at_utc": "2026-10-05T00:34:10.455822+00:00"
+				},
+				{
+					"candidate": "A2",
+					"cost_usd": 0.140416,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/A2.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/A2.png 2752x1536 5229KB in 44s cost=0.140416",
+					"file_modified_at_utc": "2026-10-05T00:31:51.218657+00:00"
+				},
+				{
+					"candidate": "A4",
+					"cost_usd": 0.14,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/A4.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/love-hero/A4.png 2752x1536 4791KB in 48s cost=0.14",
+					"file_modified_at_utc": "2026-10-05T00:33:59.796460+00:00"
+				}
+			]
+		},
+		{
+			"post": "How common is each Enneagram type?",
+			"requests": 12,
+			"cost_usd": 1.675088,
+			"selected_asset": "/Users/djwayne/9takes/source-assets/blogs/greek-statue-two-doors-two-crowds.png",
+			"receipts": [
+				{
+					"candidate": "C1",
+					"cost_usd": 0.138796,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/C1.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/C1.png 2752x1536 4831KB usage=0.138796",
+					"file_modified_at_utc": "2026-10-05T00:31:47.573931+00:00"
+				},
+				{
+					"candidate": "B5",
+					"cost_usd": 0.14055,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B5.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B5.png 2752x1536 5461KB usage=0.14055",
+					"file_modified_at_utc": "2026-10-05T00:35:16.555460+00:00"
+				},
+				{
+					"candidate": "B4",
+					"cost_usd": 0.13902,
+					"selected": true,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B4.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B4.png 2752x1536 6607KB usage=0.13902",
+					"file_modified_at_utc": "2026-10-05T00:34:03.839634+00:00"
+				},
+				{
+					"candidate": "B6",
+					"cost_usd": 0.139626,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B6.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B6.png 2752x1536 5201KB usage=0.139626",
+					"file_modified_at_utc": "2026-10-05T00:35:16.091133+00:00"
+				},
+				{
+					"candidate": "C2",
+					"cost_usd": 0.139276,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/C2.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/C2.png 2752x1536 5661KB usage=0.139276",
+					"file_modified_at_utc": "2026-10-05T00:31:45.970856+00:00"
+				},
+				{
+					"candidate": "B3",
+					"cost_usd": 0.13926,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B3.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B3.png 2752x1536 5340KB usage=0.13926",
+					"file_modified_at_utc": "2026-10-05T00:33:44.876256+00:00"
+				},
+				{
+					"candidate": "B2",
+					"cost_usd": 0.138616,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B2.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B2.png 2752x1536 5860KB usage=0.138616",
+					"file_modified_at_utc": "2026-10-05T00:31:31.840947+00:00"
+				},
+				{
+					"candidate": "B1",
+					"cost_usd": 0.139768,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B1.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/B1.png 2752x1536 5107KB usage=0.139768",
+					"file_modified_at_utc": "2026-10-05T00:31:37.766082+00:00"
+				},
+				{
+					"candidate": "A1",
+					"cost_usd": 0.139094,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/A1.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/A1.png 2752x1536 5290KB usage=0.139094",
+					"file_modified_at_utc": "2026-10-05T00:31:44.905143+00:00"
+				},
+				{
+					"candidate": "A3",
+					"cost_usd": 0.140586,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/A3.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/A3.png 2752x1536 5728KB usage=0.140586",
+					"file_modified_at_utc": "2026-10-05T00:33:51.361750+00:00"
+				},
+				{
+					"candidate": "A2",
+					"cost_usd": 0.14033,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/A2.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/A2.png 2752x1536 5197KB usage=0.14033",
+					"file_modified_at_utc": "2026-10-05T00:31:57.413975+00:00"
+				},
+				{
+					"candidate": "A4",
+					"cost_usd": 0.140166,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/A4.log",
+					"receipt_text": "wrote /private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/howcommon/A4.png 2752x1536 6777KB usage=0.140166",
+					"file_modified_at_utc": "2026-10-05T00:34:08.768517+00:00"
+				}
+			]
+		},
+		{
+			"post": "Enneagram community",
+			"requests": 11,
+			"cost_usd": 1.538574,
+			"selected_asset": "/Users/djwayne/9takes/source-assets/blogs/greek-statue-being-measured-instead-of-heard.png",
+			"receipts": [
+				{
+					"candidate": "C1",
+					"cost_usd": 0.1403,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/C1.log",
+					"receipt_text": "C1 google/gemini-3-pro-image 2752x1536 36s cost=0.1403",
+					"file_modified_at_utc": "2026-10-05T00:31:59.160856+00:00"
+				},
+				{
+					"candidate": "B5",
+					"cost_usd": 0.139202,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/B5.log",
+					"receipt_text": "B5 google/gemini-3-pro-image 2752x1536 34s cost=0.139202",
+					"file_modified_at_utc": "2026-10-05T00:35:44.748560+00:00"
+				},
+				{
+					"candidate": "B4",
+					"cost_usd": 0.140502,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/B4.log",
+					"receipt_text": "B4 google/gemini-3-pro-image 2752x1536 34s cost=0.140502",
+					"file_modified_at_utc": "2026-10-05T00:34:25.201514+00:00"
+				},
+				{
+					"candidate": "B6",
+					"cost_usd": 0.139254,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/B6.log",
+					"receipt_text": "B6 google/gemini-3-pro-image 2752x1536 37s cost=0.139254",
+					"file_modified_at_utc": "2026-10-05T00:35:47.840854+00:00"
+				},
+				{
+					"candidate": "C2",
+					"cost_usd": 0.14182,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/C2.log",
+					"receipt_text": "C2 google/gemini-3-pro-image 2752x1536 46s cost=0.14182",
+					"file_modified_at_utc": "2026-10-05T00:32:08.867789+00:00"
+				},
+				{
+					"candidate": "B3",
+					"cost_usd": 0.140042,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/B3.log",
+					"receipt_text": "B3 google/gemini-3-pro-image 2752x1536 38s cost=0.140042",
+					"file_modified_at_utc": "2026-10-05T00:34:29.584529+00:00"
+				},
+				{
+					"candidate": "B2",
+					"cost_usd": 0.139276,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/B2.log",
+					"receipt_text": "B2 google/gemini-3-pro-image 2752x1536 75s cost=0.139276",
+					"file_modified_at_utc": "2026-10-05T00:32:37.992203+00:00"
+				},
+				{
+					"candidate": "B1",
+					"cost_usd": 0.139342,
+					"selected": true,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/B1.log",
+					"receipt_text": "B1 google/gemini-3-pro-image 2752x1536 40s cost=0.139342",
+					"file_modified_at_utc": "2026-10-05T00:32:03.061827+00:00"
+				},
+				{
+					"candidate": "A1",
+					"cost_usd": 0.139752,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/A1.log",
+					"receipt_text": "A1 google/gemini-3-pro-image 2752x1536 49s cost=0.139752",
+					"file_modified_at_utc": "2026-10-05T00:32:12.240930+00:00"
+				},
+				{
+					"candidate": "A3",
+					"cost_usd": 0.13971,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/A3.log",
+					"receipt_text": "A3 google/gemini-3-pro-image 2752x1536 36s cost=0.13971",
+					"file_modified_at_utc": "2026-10-05T00:34:27.008038+00:00"
+				},
+				{
+					"candidate": "A2",
+					"cost_usd": 0.139374,
+					"selected": false,
+					"receipt_path": "/private/tmp/claude-501/-Users-djwayne-9takes/1080218b-e3c4-4191-9d0e-ed12532b9fdb/scratchpad/ec-hero/A2.log",
+					"receipt_text": "A2 google/gemini-3-pro-image 2752x1536 38s cost=0.139374",
+					"file_modified_at_utc": "2026-10-05T00:32:01.385664+00:00"
+				}
+			]
+		}
+	]
+}

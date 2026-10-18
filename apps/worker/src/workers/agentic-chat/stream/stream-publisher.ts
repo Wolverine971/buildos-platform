@@ -344,7 +344,37 @@ export type AgenticChatLiveTextPreviewTargetV1 = {
 	sessionId: string;
 	executionGeneration: number;
 	durableSequenceFloor: number;
+	/**
+	 * Where the turn's writes stood when this frame was built. Anything enqueued
+	 * or any text appended after it supersedes the frame, exactly as newer
+	 * durable events supersede a preview in the browser.
+	 */
+	marker: AgenticChatLiveTextPreviewMarkerV1;
 };
+
+export type AgenticChatLiveTextPreviewMarkerV1 = {
+	/** durableSequence + pending operations: the enqueued high-water mark. */
+	enqueuedSequence: number;
+	assistantTextLength: number;
+};
+
+/** A preview frame the channel accepted, reported back by the broadcaster. */
+export type AgenticChatDeliveredLiveTextPreviewV1 = {
+	turnRunId: string;
+	executionGeneration: number;
+	passKey: string;
+	text: string;
+	state: 'streaming' | 'discard';
+	marker: AgenticChatLiveTextPreviewMarkerV1;
+	/** Worker clock when the frame was built. */
+	atMs: number;
+};
+
+/**
+ * The browser drops a preview that has gone this long without an update
+ * (LIVE_TEXT_PREVIEW_STALE_MS in apps/web worker-realtime-preview.ts).
+ */
+const LIVE_TEXT_PREVIEW_BROWSER_STALE_MS = 15_000;
 
 /**
  * `skipped` is reserved for display-only previews the transport chose not to
@@ -468,6 +498,19 @@ type TurnState = {
 	} | null;
 	/** The first-visible time a committed batch already carried to the database. */
 	firstVisibleTextPersistedAtMs: number | null;
+	/**
+	 * The last live preview frame the user's channel accepted. On Stop the
+	 * browser freezes this text on screen; the cancelled turn saves it too, so a
+	 * reload never shows less than the user saw (teardown 2026-10-18).
+	 */
+	deliveredPreview: {
+		executionGeneration: number;
+		passKey: string;
+		text: string;
+		marker: AgenticChatLiveTextPreviewMarkerV1;
+		sentAtMs: number;
+		discardedAtMs: number | null;
+	} | null;
 	/**
 	 * Item cap after a batch failed transiently (a statement timeout resent as
 	 * the same batch would time out again): halved per failure, cleared by the
@@ -602,8 +645,67 @@ export class AgenticChatStreamPublisher {
 			lastDeliveryAtMs: null,
 			firstVisibleText: null,
 			firstVisibleTextPersistedAtMs: null,
-			semanticBatchItemCap: null
+			semanticBatchItemCap: null,
+			deliveredPreview: null
 		});
+	}
+
+	/**
+	 * A live preview frame reached the user's channel. Only what the browser
+	 * would still show matters here: a newer frame replaces it, an empty frame
+	 * clears it, and a discard of the same pass is remembered with its time.
+	 * Never throws: previews are display-only.
+	 */
+	noteDeliveredLiveTextPreview(frame: AgenticChatDeliveredLiveTextPreviewV1): void {
+		const state = this.turns.get(frame.turnRunId);
+		if (
+			!state ||
+			state.abandoned ||
+			state.context.executionGeneration !== frame.executionGeneration
+		) {
+			return;
+		}
+		const current = state.deliveredPreview;
+		if (frame.state === 'discard') {
+			if (current?.passKey === frame.passKey && current.discardedAtMs === null) {
+				current.discardedAtMs = frame.atMs;
+			}
+			return;
+		}
+		if (current && frame.atMs < current.sentAtMs) return;
+		state.deliveredPreview = frame.text
+			? {
+					executionGeneration: frame.executionGeneration,
+					passKey: frame.passKey,
+					text: frame.text,
+					marker: frame.marker,
+					sentAtMs: frame.atMs,
+					discardedAtMs: null
+				}
+			: null;
+	}
+
+	/**
+	 * The preview text the browser was showing when Stop was pressed, or null.
+	 * Null when nothing was shown, when later writes superseded the frame (its
+	 * pass was released as durable text, or a tool round followed), when the
+	 * pass was retracted before the Stop, or when the browser had already
+	 * dropped it as stale.
+	 */
+	getStoppedPreviewText(turnRunId: string, stoppedAtMs: number): string | null {
+		const state = this.turns.get(turnRunId);
+		const preview = state?.deliveredPreview;
+		if (!state || !preview || !Number.isFinite(stoppedAtMs)) return null;
+		if (preview.executionGeneration !== state.context.executionGeneration) return null;
+		if (
+			state.assistantText.length > preview.marker.assistantTextLength ||
+			state.durableSequence + state.operations.length > preview.marker.enqueuedSequence
+		) {
+			return null;
+		}
+		if (preview.discardedAtMs !== null && preview.discardedAtMs < stoppedAtMs) return null;
+		if (stoppedAtMs - preview.sentAtMs >= LIVE_TEXT_PREVIEW_BROWSER_STALE_MS) return null;
+		return preview.text;
 	}
 
 	/**
@@ -966,7 +1068,11 @@ export class AgenticChatStreamPublisher {
 			topic: `chat-user:${state.context.userId}`,
 			sessionId: state.context.sessionId,
 			executionGeneration: state.context.executionGeneration,
-			durableSequenceFloor: state.durableSequence + state.operations.length - mergeableTail
+			durableSequenceFloor: state.durableSequence + state.operations.length - mergeableTail,
+			marker: {
+				enqueuedSequence: state.durableSequence + state.operations.length,
+				assistantTextLength: state.assistantText.length
+			}
 		};
 	}
 

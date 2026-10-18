@@ -40,7 +40,8 @@
 
 import {
 	type LegacyGoogleCalendarClient,
-	createLegacyGoogleCalendarClient
+	createLegacyGoogleCalendarClient,
+	endForStartOnlyMove
 } from '@buildos/shared-agent-ops/calendar/agent-run-calendar-port';
 import { isMultiCalendarUserAllowed } from '@buildos/shared-agent-ops/calendar/google-calendar-feature';
 import { GoogleCalendarConnectionError } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
@@ -148,6 +149,33 @@ export function calendarWriteFailureCode(
 	}
 	if (message.includes('invalid_grant') || message.includes('expired or revoked')) {
 		return 'reconnect_required';
+	}
+	return null;
+}
+
+/**
+ * Failures that prove no write happened, classified from structured fields only
+ * (error name, HTTP status). A target-resolution error is thrown before any
+ * provider call; a Google 4xx (other than 401, handled as reconnect, and 408, a
+ * timeout) means the request was refused. 5xx, network errors and timeouts stay
+ * uncertain because the write may have landed.
+ */
+export function calendarRequestRejection(error: unknown): 'target_unresolved' | 'rejected' | null {
+	const candidate = error as
+		| { name?: unknown; status?: unknown; code?: unknown; response?: { status?: unknown } }
+		| null
+		| undefined;
+	if (candidate?.name === 'GoogleCalendarTargetError') return 'target_unresolved';
+	for (const value of [candidate?.status, candidate?.response?.status, candidate?.code]) {
+		const status =
+			typeof value === 'number'
+				? value
+				: typeof value === 'string' && /^[0-9]{3}$/.test(value)
+					? Number(value)
+					: null;
+		if (status !== null && status >= 400 && status < 500 && status !== 401 && status !== 408) {
+			return 'rejected';
+		}
 	}
 	return null;
 }
@@ -533,6 +561,12 @@ class CalendarWriteExecution {
 		const end = endText
 			? this.normalizeDateTime(endText, timezone, { field: 'end_at', boundary: 'end' })
 			: null;
+		// "Move my 2-3pm to 4pm" sends only start_at: keep the event's length rather
+		// than stretching it to the old end or saving an end before the start.
+		const movedEnd =
+			start && !end && !clearsEnd
+				? endForStartOnlyMove(existing.startAt, existing.endAt, start.iso)
+				: null;
 		const startForValidation = start?.iso ?? existing.startAt;
 		if (end && Date.parse(end.iso) <= Date.parse(startForValidation)) {
 			throw knownFailure(
@@ -555,7 +589,13 @@ class CalendarWriteExecution {
 					? { location: optionalText(args.location, 'location') ?? null }
 					: {}),
 				...(start ? { startAt: start.iso } : {}),
-				...(end ? { endAt: end.iso } : clearsEnd ? { endAt: null } : {}),
+				...(end
+					? { endAt: end.iso }
+					: clearsEnd
+						? { endAt: null }
+						: movedEnd
+							? { endAt: movedEnd }
+							: {}),
 				...(args.timezone !== undefined || inferredTimezone ? { timezone } : {}),
 				syncToCalendar: optionalBoolean(args.sync_to_calendar, 'sync_to_calendar'),
 				activityLog: {
@@ -633,6 +673,25 @@ class CalendarWriteExecution {
 			};
 		}
 
+		// A start-only move keeps the Google event's length (Google would otherwise
+		// keep the old end, or reject an end before the new start).
+		let movedEnd: string | null = null;
+		if (start && !end && !Object.hasOwn(args, 'end_at')) {
+			const current = await this.runProvider('update_calendar_event', () =>
+				this.requireServices().write.getEvent({
+					userId: this.request.userId,
+					providerEventId,
+					selector: this.providerSelector()
+				})
+			);
+			if (this.capturedProviderOutcome()) return this.capturedProviderOutcome()!;
+			movedEnd = endForStartOnlyMove(
+				current?.event.start?.dateTime,
+				current?.event.end?.dateTime,
+				start.iso
+			);
+		}
+
 		const updated = await this.runProvider('update_calendar_event', () =>
 			this.requireServices().write.updateEvent({
 				userId: this.request.userId,
@@ -649,7 +708,11 @@ class CalendarWriteExecution {
 						? { location: optionalText(args.location, 'location') ?? '' }
 						: {}),
 					...(start ? { start: { dateTime: start.iso, timeZone: zone } } : {}),
-					...(end ? { end: { dateTime: end.iso, timeZone: zone } } : {})
+					...(end
+						? { end: { dateTime: end.iso, timeZone: zone } }
+						: movedEnd
+							? { end: { dateTime: movedEnd, timeZone: zone } }
+							: {})
 				},
 				sendUpdates: 'none'
 			})
@@ -843,6 +906,15 @@ class CalendarWriteExecution {
 			if ((error as { name?: unknown })?.name === 'AgenticChatMutationAdapterError') {
 				throw error;
 			}
+			// Nothing was written: the target never resolved, or Google rejected the
+			// request outright. Say so plainly instead of "may have been saved".
+			const rejection = calendarRequestRejection(error);
+			if (rejection) {
+				throw knownFailure(
+					`${toolName}_${rejection}`,
+					error instanceof Error ? error.message : `${toolName} failed`
+				);
+			}
 			throw uncertainFailure(
 				`${toolName}_outcome_uncertain`,
 				error instanceof Error ? error.message : `${toolName} failed`
@@ -1008,11 +1080,12 @@ class CalendarWriteExecution {
 		scope: AgenticChatCalendarScopeV1;
 		timezone: string | null;
 		startAt: string;
+		endAt: string | null;
 	}> {
 		const { data, error } = await this.client
 			.from('onto_events')
 			.select(
-				'id, project_id, owner_entity_type, owner_entity_id, created_by, timezone, start_at'
+				'id, project_id, owner_entity_type, owner_entity_id, created_by, timezone, start_at, end_at'
 			)
 			.eq('id', eventId)
 			.is('deleted_at', null)
@@ -1028,7 +1101,12 @@ class CalendarWriteExecution {
 		}
 		if (data.project_id) {
 			await this.assertProjectWriteAccess(data.project_id);
-			return { scope: 'project', timezone: data.timezone, startAt: data.start_at };
+			return {
+				scope: 'project',
+				timezone: data.timezone,
+				startAt: data.start_at,
+				endAt: data.end_at ?? null
+			};
 		}
 		const actorId = await this.requireAccess().getActorId();
 		const ownedByActor =
@@ -1037,7 +1115,12 @@ class CalendarWriteExecution {
 		if (!ownedByActor) {
 			throw knownFailure(`${toolName}_access_denied`, 'Event not found or access denied');
 		}
-		return { scope: 'user', timezone: data.timezone, startAt: data.start_at };
+		return {
+			scope: 'user',
+			timezone: data.timezone,
+			startAt: data.start_at,
+			endAt: data.end_at ?? null
+		};
 	}
 
 	/**

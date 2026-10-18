@@ -170,12 +170,12 @@ omit model/provider/role, resolved scaffold configuration, or fingerprint. Set
 
 ## Scenarios (v1)
 
-| id                      | what it proves                                                                  |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| `document-create`       | requires all requested sections and bullet counts in the stored doc             |
-| `document-edit-context` | changes only the requested section, then retargets it from context              |
-| `project-organize`      | verifies a declared contract, canonical tree grouping, and source preservation† |
-| `task-create`           | requires high priority and the exact requested Friday due date                  |
+| id                      | what it proves                                                               |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `document-create`       | requires all requested sections and bullet counts in the stored doc          |
+| `document-edit-context` | changes only the requested section, then retargets it from context           |
+| `project-organize`      | verifies a reviewed batch, canonical tree grouping, and source preservation† |
+| `task-create`           | requires high priority and the exact requested Friday due date               |
 
 ## Scenarios (Tier 1 breadth, 2026-07-25)
 
@@ -204,12 +204,13 @@ New assertion helpers backing them (`harness/assertions.ts`, unit-tested in
 Scenarios may also declare an optional `teardown` hook for fixtures beyond the
 single `seed.projectId` the runner deletes automatically.
 
-† The shared assertion surface requires a declared contract, real tree moves,
-canonical grouping, and source preservation. Worker runs additionally require their
-observable `approve_turn_contract_review` safety-control call; legacy has no such tool.
-Results captured before this path condition (and older results that inspected obsolete
-`onto_edges` instead of `onto_projects.doc_structure`) are not comparable. Rerun the paid
-scenario before drawing a current model-quality conclusion from this case.
+† The assertion surface requires the reviewer's observable `approve_mutation_batch_review`
+call (moves are contract_required, so every move stage is held for independent batch
+review), real `move_document_in_tree` moves, canonical grouping, and source preservation.
+Results captured under the retired turn-contract lane (`declare_turn_contract` +
+`approve_turn_contract_review`, deleted 2026-10-18) and older results that inspected
+obsolete `onto_edges` instead of `onto_projects.doc_structure` are not comparable. Rerun
+the paid scenario before drawing a current model-quality conclusion from this case.
 
 ## Book-writing journey
 
