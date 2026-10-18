@@ -242,3 +242,77 @@ Follow-ups found while building (not in Lean):
   list stays visible for the 1–6 s gap (needs a hook in `AgentChatModal.svelte`).
 - In battery runs, attempt records are deleted with the run's turns; count reviewer stalls from
   `llm_usage_logs.error_message`.
+
+## Wave 3 (2026-10-17): the ambitious list — built, not yet shipped
+
+Five packages, built in parallel and integrated together.
+
+| Package                            | What changed                                                                                                                                                                                                                                                                                                                                                           | Default                                                                                  |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Save progress (B3/B4/M3/S2)        | One batched, fenced write per queued run of events (`persist_agentic_chat_semantic_event_batch`); events no longer wait on the previous commit; size caps compact oversized payloads instead of failing the turn; delivery-ack RPC dropped; project access passes cached per turn (cleared while a write may run); `first_visible_text_at/_source` recorded            | On once migration `20261017200000` is applied; falls back to per-event writes without it |
+| Realtime self-heal (live incident) | The degraded replica's 331 failures were one recursion burst: removing a failed channel fired `CLOSED` back into its own callback. Removed channels' callbacks are now ignored, health counts one failure per attempt, and 60 s of failed subscribes closes the socket once (5-min cooldown) so every owner, including the queue-wake listener, resubscribes           | On                                                                                       |
+| Document reads (S7)                | Documents over 6,000 chars return an outline; sections are read by heading within a 12,000-char budget. Tool-surface budgets lowered (worker 55,050 / 72,460, web 61,530 / 76,150)                                                                                                                                                                                     | On                                                                                       |
+| Reasoning experiment (S3)          | `AGENTIC_CHAT_CONTINUATION_REASONING=default\|replay\|off_after_reads` (acting client only) + free report `scripts/agentic/continuation-reasoning-report.ts`                                                                                                                                                                                                           | `default` (byte-identical)                                                               |
+| Admission (S12/B14/S10)            | `GET /api/agent/v2/turns?warm=1` boots the admission function when chat opens; per-user durable limit of 20 admitted turns per 60 s inside `create_agentic_chat_turn_with_job` (→ 429); worker concurrency cap 2 → 8 (Railway `CHAT_CONCURRENCY` still 2)                                                                                                              | On; the limit needs migration `20261017201000`                                           |
+| Reviewer rejections (M5/Q1/S5)     | Each review decision is recorded with its finding codes; a rejection that names no defective call gets one quick second look (~5 s) instead of a full repair + re-review (~14 s); the regex playbook picker is gone (the worker picks the playbook from Jev's write commission, rules after the user message); `AGENTIC_CHAT_HOLD_UNCOMMISSIONED_WRITES` (shadow only) | On; hold flag off                                                                        |
+
+Integration (local, free): worker typecheck + test types 0 errors; worker agentic suite 129 files /
+2,067 tests; runtime package 75 / 910; web chat directories 286 / 2,297; web svelte-check 0 errors;
+web test types 0 (16 strict-null errors in new tests fixed); script tests 17 / 17; SQL contracts
+76 / 76. Merge fixes: the consumer config expectation lacked both new settings; two failure-matrix
+anchors pointed at tests renamed in the lean commit; the reliability audit now counts the batch
+write's fence.
+
+CI on main had been red since before today: web lint stops at the route-size guard
+(`recent-chats/+server.ts`, 426 lines, from `fa99249fb`) and the select guard (`select('*')` in the
+wave 1 gateway signal test), so the test step never ran. Both fixed (display rules moved to
+`$lib/server/project-recent-chats.ts`).
+
+Migrations rehearsed together (0 security findings; role probe unchanged) and dry-run in prod
+inside a transaction with in-transaction assertions, then rolled back; prod function hashes
+unchanged afterwards. `20261017201000` is production's live admission function plus the rate-limit
+block (diffed against `pg_get_functiondef`); `20261017202000` splices into the live observation
+function, keeping 182000's progress keys.
+
+Adversarial review of the reviewer change (deep-reasoner) found no path that executes a call the
+reviewer flagged, and approval still binds to the exact batch. Fixed before shipping:
+
+- The second look had no retry of its own, so a reviewer error, stall or bad SHA on it ended the
+  turn ("Nothing was saved") where the old ladder sent the first revision to the actor. Now the
+  first revision (which passed every pre-S5 check) goes to the actor when the second look fails.
+- The second look was blind and leaned toward approval. It now carries the reviewer's own first
+  `reason` and `required_correction` (quoted, capped at 600 chars), says a missing prerequisite or
+  missing user authorization is a defect in the held call, and is skipped when a finding carries a
+  specific defect code (anything but `other`; the 09-26/09-29 omission bounces used `other`).
+- The worked example followed every commissioned tool; it now follows the selected family's.
+
+Open after review: turns where Jev does not classify (fallback, timeout, small surfaces) get no
+operational playbook (the regex picker used to supply one); watch `turn_rules_playbook`. Craft-skill
+preloads still use lexical patterns in `domain-sensing.ts` and the cold-outreach check in
+`skill-gate-preload.ts` (pre-existing).
+
+Adversarial review of the save-path rework (deep-reasoner) found the batch SQL, durable-before-
+broadcast order, replay, fallback, access cache, ack removal, and deploy order sound, and one
+process-killer. Fixed before shipping:
+
+- **P0:** `startSemantic` left `accepted` without a rejection handler; the live read runner stops at
+  a rejected `enqueued` (Stop, budget timeout, or a blocked turn while waiting behind soft
+  pressure), so the rejection went unhandled and `crashExit(1)` took every turn on the replica.
+  Reproduced against the real modules; fixed with a handler; regression test fails without it.
+- Self-heal no longer fires on isolated failures: a failure after a gap longer than the window
+  starts a new window, and a restart needs at least 3 subscribe failures in it.
+- A restart closes the socket before evicting channels (realtime-js then settles each leave at
+  once), and reopening a topic waits for that topic's pending removal (bounded by the subscribe
+  deadline). Not reproducible with the fake socket; from the SDK source.
+- A tool result carrying a ready proposal card keeps the 64 KiB projection entry budget, so a
+  browser that reconciles mid-turn renders the whole card (a clipped card vanished or had Apply
+  refused as changed).
+- After a transient failure, a multi-event batch retries at half size; a commit restores it.
+
+Deploy order: the worker must be live before the web build that moves Rules for This Turn,
+or every turn loses its playbooks until the worker catches up. So two commits:
+
+1. `20261017200000` + `20261017202000` applied → push commit A (worker, runtime, migrations,
+   scripts, runtime-only web tests) → wait for the Railway deploy.
+2. Push commit B (web) → wait for Vercel → apply `20261017201000` (the web must understand
+   `rate_limited` first).
