@@ -7358,7 +7358,8 @@ describe('AgenticChatTurnExecutor', () => {
 			new AgenticChatEffectExecutionError(
 				'permanent',
 				EFFECT_ID,
-				'Background delegation is unavailable: the server-side dispatch function does not match this worker. The arguments were valid and retrying with different arguments will not help.'
+				'Background delegation is unavailable: the server-side dispatch function does not match this worker. The arguments were valid and retrying with different arguments will not help.',
+				'delegate_task_backend_contract_mismatch'
 			)
 		);
 		const rounds: AgenticChatProviderToolRoundInputV1[] = [];
@@ -7444,6 +7445,73 @@ describe('AgenticChatTurnExecutor', () => {
 					})
 				])
 			);
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
+	it('never caps a tool from the wording of its failure message alone', async () => {
+		const harness = createHarness([]);
+		harness.mutation.execute.mockRejectedValueOnce(
+			new AgenticChatEffectExecutionError(
+				'permanent',
+				EFFECT_ID,
+				'Background delegation is unavailable: the server-side dispatch function does not match this worker. The arguments were valid and retrying with different arguments will not help.'
+			)
+		);
+		const rounds: AgenticChatProviderToolRoundInputV1[] = [];
+		const continueWithToolResults = vi.fn((input: AgenticChatProviderToolRoundInputV1) => {
+			rounds.push(input);
+			return (async function* () {
+				if (input.round === 2) {
+					yield {
+						type: 'mutating_tool',
+						callTransitionId: SECOND_CALL_TRANSITION_ID,
+						resultTransitionId: SECOND_RESULT_TRANSITION_ID,
+						logicalOperationId: SECOND_LOGICAL_OPERATION_ID,
+						providerToolCallId: 'provider-delegate-retry',
+						toolName: 'delegate_task',
+						operationName: 'agent.run.dispatch',
+						arguments: { task_id: 'db000000-0000-4000-8000-000000000003' },
+						downstreamIdempotencySupported: false
+					} as const;
+					return;
+				}
+				yield { type: 'text_delta', text: 'Delegation is unavailable right now.' } as const;
+				yield { type: 'finish', finishedReason: 'stop', usage: null } as const;
+			})();
+		});
+		Object.assign(harness.provider, {
+			prepare: vi.fn(async () => ({
+				stream: () =>
+					(async function* () {
+						yield {
+							type: 'mutating_tool',
+							callTransitionId: CALL_TRANSITION_ID,
+							resultTransitionId: RESULT_TRANSITION_ID,
+							logicalOperationId: LOGICAL_OPERATION_ID,
+							providerToolCallId: 'provider-delegate-first',
+							toolName: 'delegate_task',
+							operationName: 'agent.run.dispatch',
+							arguments: { task_id: 'db000000-0000-4000-8000-000000000002' },
+							downstreamIdempotencySupported: false
+						} as const;
+					})(),
+				continueWithToolResults,
+				invalidateReadMemo: vi.fn(),
+				release: vi.fn()
+			}))
+		});
+
+		try {
+			await harness.executor.execute(job());
+			// No structured failure code: the different-argument retry reaches the adapter.
+			expect(harness.mutation.execute).toHaveBeenCalledTimes(2);
+			for (const [failure] of harness.toolExecutions.persistFailure.mock.calls) {
+				expect(String((failure as { error?: unknown }).error ?? '')).not.toContain(
+					'already failed permanently this turn'
+				);
+			}
 		} finally {
 			await harness.publisher.stop();
 		}

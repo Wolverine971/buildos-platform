@@ -204,6 +204,80 @@ describe('fast chat session service helpers', () => {
 		);
 	});
 
+	it('never rewrites an existing chat scope; reports the mismatch and leaves the row alone', async () => {
+		const stored = {
+			id: 'session-1',
+			user_id: 'user-1',
+			context_type: 'project',
+			entity_id: 'project-p',
+			agent_metadata: { focus: { projectId: 'project-p', focusType: 'project-wide' } },
+			status: 'active'
+		};
+		const update = vi.fn();
+		const rpc = vi.fn(async () => ({ data: {}, error: null }));
+		const supabase = {
+			from: () => ({
+				select() {
+					return this;
+				},
+				eq() {
+					return this;
+				},
+				update(...args: unknown[]) {
+					update(...args);
+					return this;
+				},
+				async maybeSingle() {
+					return { data: stored, error: null };
+				}
+			}),
+			rpc
+		};
+		const service = createFastChatSessionService(supabase as any);
+
+		// A stale tab still showing the chat as global.
+		await expect(
+			service.resolveSession({
+				sessionId: 'session-1',
+				userId: 'user-1',
+				contextType: 'global'
+			})
+		).resolves.toEqual({ session: stored, created: false, scopeMismatch: true });
+		// A stale tab pointing at a different project, with a focus to merge.
+		await expect(
+			service.resolveSession({
+				sessionId: 'session-1',
+				userId: 'user-1',
+				contextType: 'project',
+				entityId: 'project-q',
+				projectFocus: { projectId: 'project-q', focusType: 'project-wide' } as any
+			})
+		).resolves.toEqual({ session: stored, created: false, scopeMismatch: true });
+		expect(update).not.toHaveBeenCalled();
+		expect(rpc).not.toHaveBeenCalled();
+
+		// Same scope: a focus change inside the project still merges.
+		const sameScope = await service.resolveSession({
+			sessionId: 'session-1',
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: 'project-p',
+			projectFocus: {
+				projectId: 'project-p',
+				focusType: 'task',
+				focusEntityId: 'task-1'
+			} as any
+		});
+		expect(sameScope.scopeMismatch).toBeUndefined();
+		expect(update).not.toHaveBeenCalled();
+		expect(rpc).toHaveBeenCalledWith('merge_chat_session_agent_metadata', {
+			p_session_id: 'session-1',
+			p_patch: {
+				focus: { projectId: 'project-p', focusType: 'task', focusEntityId: 'task-1' }
+			}
+		});
+	});
+
 	it('adopts the canonical daily-brief session after a concurrent unique-key winner', async () => {
 		const canonicalSession = {
 			id: 'brief-session-winner',

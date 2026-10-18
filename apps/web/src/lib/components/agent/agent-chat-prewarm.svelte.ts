@@ -79,6 +79,8 @@ export interface PrewarmControllerDeps {
 		session: ChatSession | null;
 		prewarmedContext: FastChatContextCache | null;
 		preparedPrompt: PreparedPromptClient | null;
+		/** Why nothing was warmed, e.g. 'session_scope_mismatch'. */
+		reason?: string | null;
 	} | null>;
 
 	/**
@@ -89,6 +91,13 @@ export interface PrewarmControllerDeps {
 
 	/** Called when a prewarm response returns a session payload. */
 	hydrateSessionFromEvent(session: ChatSession): void;
+
+	/**
+	 * The chat's stored scope moved elsewhere (another device created a project
+	 * from it); the controller already adopted the row's scope. Refresh the
+	 * conversation so turns sent from elsewhere show up too.
+	 */
+	onSessionScopeMismatch?(sessionId: string): void;
 
 	/** Optional dev logger. */
 	logWarn?: (message: string, err: unknown) => void;
@@ -438,6 +447,9 @@ export class PrewarmController {
 				if (controller.signal.aborted) return;
 				if (warmed?.session) {
 					this.#deps.hydrateSessionFromEvent(warmed.session);
+					if (warmed.reason === 'session_scope_mismatch') {
+						this.#deps.onSessionScopeMismatch?.(warmed.session.id);
+					}
 				}
 				const warmedContext = warmed?.prewarmedContext ?? null;
 				const adoptedContext = Boolean(

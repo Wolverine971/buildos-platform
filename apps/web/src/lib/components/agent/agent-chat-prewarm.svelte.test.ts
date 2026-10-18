@@ -328,6 +328,47 @@ describe('PrewarmController — orchestrate', () => {
 		expect(h.prewarm).not.toHaveBeenCalled();
 	});
 
+	it('adopts the stored chat and asks for a refresh when its scope moved elsewhere', async () => {
+		const h = createHarness();
+		const onSessionScopeMismatch = vi.fn();
+		h.deps.onSessionScopeMismatch = onSessionScopeMismatch;
+		const stored = {
+			id: 'session-1',
+			context_type: 'project',
+			entity_id: 'project-2'
+		} as ChatSession;
+		h.prewarm.mockResolvedValueOnce({
+			session: stored,
+			prewarmedContext: null,
+			preparedPrompt: null,
+			reason: 'session_scope_mismatch'
+		});
+
+		h.controller.orchestrate();
+		await flushMicrotasks(8);
+
+		expect(h.hydrate).toHaveBeenCalledWith(stored);
+		expect(onSessionScopeMismatch).toHaveBeenCalledWith('session-1');
+	});
+
+	it('does not ask for a refresh on an ordinary warm', async () => {
+		const h = createHarness();
+		const onSessionScopeMismatch = vi.fn();
+		h.deps.onSessionScopeMismatch = onSessionScopeMismatch;
+		h.prewarm.mockResolvedValueOnce({
+			session: { id: 'session-1' } as ChatSession,
+			prewarmedContext: null,
+			preparedPrompt: null,
+			reason: null
+		});
+
+		h.controller.orchestrate();
+		await flushMicrotasks(8);
+
+		expect(h.hydrate).toHaveBeenCalledTimes(1);
+		expect(onSessionScopeMismatch).not.toHaveBeenCalled();
+	});
+
 	it('skips a project context with no entity id', () => {
 		const h = createHarness({ selectedEntityId: undefined, resolvedProjectFocus: null });
 		h.controller.orchestrate();

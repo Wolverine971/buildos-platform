@@ -186,6 +186,53 @@ describe('POST /api/agent/v2/prewarm', () => {
 		);
 	});
 
+	it('hands back a chat whose stored scope moved, without rewriting it or warming the stale scope', async () => {
+		const storedSession = {
+			id: 'session-1',
+			user_id: 'user-1',
+			context_type: 'project',
+			entity_id: 'project-p',
+			agent_metadata: null
+		};
+		resolveSessionMock.mockResolvedValueOnce({
+			session: storedSession,
+			created: false,
+			scopeMismatch: true
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/prewarm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ session_id: 'session-1', context_type: 'global' })
+			}),
+			locals: {
+				safeGetSession: async () => ({ user: { id: 'user-1' } }),
+				supabase: {
+					rpc: mergeRpcMock,
+					from: vi.fn(() => ({
+						select: vi.fn().mockReturnThis(),
+						eq: vi.fn().mockReturnThis(),
+						maybeSingle: vi.fn().mockResolvedValue({ data: storedSession, error: null })
+					}))
+				}
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = await response.json();
+		expect(payload.data).toEqual({
+			warmed: false,
+			reason: 'session_scope_mismatch',
+			session: storedSession
+		});
+		expect(loadPromptContextMock).not.toHaveBeenCalled();
+		expect(mergeRpcMock).not.toHaveBeenCalledWith(
+			'merge_chat_session_agent_metadata',
+			expect.anything()
+		);
+	});
+
 	it('warms context but never builds a prepared prompt without a session', async () => {
 		const insertPreparedPrompt = vi.fn(async () => ({ error: null }));
 		const snapshotQuery = {

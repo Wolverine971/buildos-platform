@@ -489,8 +489,9 @@ function parseAgenticChatReconcileHint(value: unknown): AgenticChatRealtimeRecon
 		value.contract_version !== AGENTIC_CHAT_WORKER_CONTRACT_VERSION ||
 		!nonemptyString(value.turn_run_id) ||
 		!nonemptyString(value.session_id) ||
+		// Generation 0 is a turn that ended before any worker claimed it
+		// (queued Stop, stranded timeout); the database sends its hint.
 		generation === null ||
-		generation < 1 ||
 		durableSequence === null
 	) {
 		return null;

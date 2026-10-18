@@ -314,6 +314,7 @@ export async function prewarmAgentContext(
 	session: ChatSession | null;
 	prewarmedContext: FastChatContextCache | null;
 	preparedPrompt: PreparedPromptClient | null;
+	reason: string | null;
 } | null> {
 	try {
 		const response = await fetch('/api/agent/v2/prewarm', {
@@ -342,10 +343,12 @@ export async function prewarmAgentContext(
 		const session = result?.data?.session ?? null;
 		const prewarmedContext = result?.data?.prewarmed_context ?? null;
 		const preparedPrompt = result?.data?.prepared_prompt ?? null;
+		const reason = typeof result?.data?.reason === 'string' ? result.data.reason : null;
 		return {
 			session: session as ChatSession | null,
 			prewarmedContext: prewarmedContext as FastChatContextCache | null,
-			preparedPrompt: preparedPrompt as PreparedPromptClient | null
+			preparedPrompt: preparedPrompt as PreparedPromptClient | null,
+			reason
 		};
 	} catch (err) {
 		if ((err as DOMException)?.name === 'AbortError' || err instanceof AgentRequestError) {

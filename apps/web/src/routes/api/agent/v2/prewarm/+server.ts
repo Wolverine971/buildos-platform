@@ -457,6 +457,17 @@ const handlePrewarmRequest: RequestHandler = async ({
 			entityId: entityId ?? undefined,
 			projectFocus
 		});
+		if (resolved.scopeMismatch) {
+			// The chat moved scope elsewhere (e.g. another device created a
+			// project from it). Hand back the stored row so the browser adopts
+			// its scope; warming the stale scope would only build a prompt the
+			// next send can't use.
+			return ApiResponse.success({
+				warmed: false,
+				reason: 'session_scope_mismatch',
+				session: resolved.session
+			});
+		}
 		session = resolved.session;
 	}
 

@@ -510,6 +510,48 @@ describe('AgenticChatWorkerRealtimeInbox', () => {
 		});
 	});
 
+	it('reconciles on a generation-zero hint for a turn that ended before any claim', () => {
+		const sink = observer();
+		const inbox = new AgenticChatWorkerRealtimeInbox();
+		inbox.registerTurn({ handle, observer: sink.value });
+		inbox.applyReconciliation(
+			TURN_ID,
+			receipt(0, 0, { requested_execution_generation: 0, status: 'queued' })
+		);
+		expect(sink.reasons).toEqual(['initial']);
+
+		// Database hint after a queued Stop or the stranded timeout wrote `done`.
+		inbox.receiveReconcileHint({
+			contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+			turn_run_id: TURN_ID,
+			session_id: SESSION_ID,
+			execution_generation: 0,
+			durable_through_sequence: 1
+		});
+		expect(sink.reasons).toEqual(['initial', 'reconcile_hint']);
+
+		// A repeat that adds nothing new asks for nothing.
+		expect(
+			inbox.applyReconciliation(
+				TURN_ID,
+				receipt(0, 1, {
+					status: 'cancelled',
+					finished_reason: 'user_cancelled',
+					terminal_event_id: `${TURN_ID}:0:1`,
+					terminalized_at: '2026-10-18T12:10:00.000Z'
+				})
+			)
+		).toBe(true);
+		inbox.receiveReconcileHint({
+			contract_version: AGENTIC_CHAT_WORKER_CONTRACT_VERSION,
+			turn_run_id: TURN_ID,
+			session_id: SESSION_ID,
+			execution_generation: 0,
+			durable_through_sequence: 1
+		});
+		expect(sink.reasons).toEqual(['initial', 'reconcile_hint']);
+	});
+
 	it('ignores unregistered turns and unregisters idempotently', () => {
 		const sink = observer();
 		const inbox = new AgenticChatWorkerRealtimeInbox();

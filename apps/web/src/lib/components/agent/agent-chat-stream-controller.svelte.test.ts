@@ -814,6 +814,34 @@ describe('AgentChatStreamController', () => {
 		}
 	);
 
+	it('refreshes the stored chat and keeps the draft when its scope moved on another device', async () => {
+		const resyncSession = vi.fn(async () => undefined);
+		const h = createHarness({
+			currentSession: makeSession({ id: WORKER_SESSION_ID }),
+			inputValue: 'Keep this draft',
+			admissionFetchImpl: async () =>
+				Response.json(
+					{
+						success: false,
+						error: 'Worker turn session conflicts with the request',
+						code: 'WORKER_SESSION_CONFLICT'
+					},
+					{ status: 409 }
+				)
+		});
+		h.deps.resyncSession = resyncSession;
+
+		await h.controller.sendMessage();
+
+		expect(h.messages).toHaveLength(0);
+		expect(h.inputValue).toBe('Keep this draft');
+		expect(resyncSession).toHaveBeenCalledWith(WORKER_SESSION_ID);
+		expect(h.controller.error).toBe(
+			'This chat changed on another device, so it has been refreshed here. Your message is back in the box — send it again.'
+		);
+		expect(h.discoverWorkerSession).not.toHaveBeenCalled();
+	});
+
 	it('admits attachments and voice-note context through the worker transport', async () => {
 		const ref = makeAttachmentRef();
 		const draft = makeDraftAttachment();

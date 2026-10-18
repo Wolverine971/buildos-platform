@@ -635,6 +635,8 @@ export function createFastChatSessionService(
 	async function resolveSession(params: ResolveSessionParams): Promise<{
 		session: ChatSession;
 		created: boolean;
+		/** The stored session's scope differs from the request; it was left as is. */
+		scopeMismatch?: true;
 	}> {
 		const { sessionId, userId, contextType, entityId, projectFocus } = params;
 		let session: ChatSession | null = null;
@@ -668,50 +670,27 @@ export function createFastChatSessionService(
 		}
 
 		if (session) {
-			const updates: ChatSessionUpdate = {};
-			if (contextType && session.context_type !== contextType) {
-				updates.context_type = contextType;
-			}
-			if (entityId !== undefined && session.entity_id !== entityId) {
-				updates.entity_id = entityId ?? null;
+			// Scope (context_type / entity_id) is never rewritten here. Admission
+			// treats the row as the source of truth and a worker context shift is
+			// the only thing that moves it; a stale tab that rewrote it on prewarm
+			// could undo a project handoff another device just made, and the
+			// other device's next send then failed with WORKER_SESSION_CONFLICT
+			// (agentic chat teardown 2026-10-18). On a mismatch the caller gets
+			// the row back unchanged so the browser can adopt its scope.
+			const scopeMismatch =
+				session.context_type !== contextType ||
+				(session.entity_id ?? null) !== (entityId ?? null);
+			if (scopeMismatch) {
+				return { session, created: false, scopeMismatch: true };
 			}
 
 			// Only merge `focus` when it actually changed. This path fires on nearly
-			// every project-context turn and prewarm; writing the whole agent_metadata
-			// column here (as it did previously) clobbers cancel hints or other keys
-			// merged concurrently by the stream/cancel writers.
+			// every project-context prewarm; writing the whole agent_metadata column
+			// here (as it did previously) clobbers cancel hints or other keys merged
+			// concurrently by the stream/cancel writers.
 			const currentFocus = ((session.agent_metadata ?? {}) as Record<string, unknown>).focus;
 			const focusChanged =
 				!!projectFocus && JSON.stringify(currentFocus) !== JSON.stringify(projectFocus);
-
-			if (Object.keys(updates).length > 0) {
-				const { data, error } = await supabase
-					.from('chat_sessions')
-					.update({ ...updates, updated_at: new Date().toISOString() })
-					.eq('id', session.id)
-					.select('*')
-					.maybeSingle();
-
-				if (error) {
-					logger.warn('Failed to update chat session context', { error, sessionId });
-					logFastChatSessionError({
-						error,
-						operationType: 'fastchat_session_update_context',
-						userId,
-						projectId: projectFocus?.projectId ?? undefined,
-						tableName: 'chat_sessions',
-						recordId: session.id,
-						metadata: {
-							sessionId: session.id,
-							contextType,
-							entityId,
-							updates
-						}
-					});
-				} else if (data) {
-					session = data;
-				}
-			}
 
 			if (focusChanged) {
 				const { data, error } = await supabase.rpc('merge_chat_session_agent_metadata', {

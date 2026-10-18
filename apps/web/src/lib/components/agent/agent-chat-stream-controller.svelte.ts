@@ -137,6 +137,11 @@ export interface StreamControllerDeps {
 		value: unknown
 	): AgenticChatWorkerTurnDescriptorV1 | Promise<AgenticChatWorkerTurnDescriptorV1>;
 	discoverWorkerSession?(sessionId: string): Promise<unknown>;
+	/**
+	 * Re-read the stored chat (scope and messages) without touching the draft.
+	 * Used when admission says the chat's scope moved elsewhere.
+	 */
+	resyncSession?(sessionId: string): Promise<unknown>;
 	setUserHasScrolled(value: boolean): void;
 	setExistingImagePickerOpen(value: boolean): void;
 	haptic?(style: 'light' | 'medium' | 'heavy'): void;
@@ -850,6 +855,19 @@ export class AgentChatStreamController {
 				if (err instanceof AgentRequestError && (err.status === 429 || err.status >= 500)) {
 					this.error =
 						"Couldn't send that just now. Your message is back in the box — try again in a moment.";
+				}
+				// The stored chat moved to a different scope (another device created
+				// a project from it). Adopt the stored chat, keep the draft.
+				if (
+					err instanceof AgentRequestError &&
+					err.code === 'WORKER_SESSION_CONFLICT' &&
+					sessionAtSend?.id
+				) {
+					this.error =
+						'This chat changed on another device, so it has been refreshed here. Your message is back in the box — send it again.';
+					void this.#deps.resyncSession?.(sessionAtSend.id).catch((resyncError) => {
+						this.#deps.logDebug?.('[AgentChat] Session resync failed', resyncError);
+					});
 				}
 				if (this.#deps.thinking.discard) this.#deps.thinking.discard();
 				else this.#deps.thinking.finalize('error');

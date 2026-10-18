@@ -636,20 +636,12 @@ const MAX_CAPPED_RETRY_PRIOR_MESSAGE_CHARS = 600;
 
 /**
  * A backend contract mismatch (adapter code `*_contract_mismatch`) fails every
- * call of the tool regardless of arguments. The effect executor does not yet
- * surface the adapter's failure code on `AgenticChatEffectExecutionError`, so
- * the code is read structurally when present and the adapter's own "retrying
- * with different arguments will not help" instruction is honoured until then.
+ * call of the tool regardless of arguments, so the whole tool is capped for the
+ * turn. Decided from the adapter's structured failure code only, never from the
+ * wording of its message.
  */
 function isToolLevelPermanentMutationFailure(error: AgenticChatEffectExecutionError): boolean {
-	const failureCode = (error as { failureCode?: unknown }).failureCode;
-	if (typeof failureCode === 'string' && failureCode.trim().endsWith('_contract_mismatch')) {
-		return true;
-	}
-	return (
-		/\bwith different arguments will not help\b/i.test(error.message) ||
-		/\bdo not (?:call|retry) [a-z0-9_]+ again this turn\b/i.test(error.message)
-	);
+	return error.failureCode?.trim().endsWith('_contract_mismatch') === true;
 }
 
 function findPermanentMutationFailureCap(

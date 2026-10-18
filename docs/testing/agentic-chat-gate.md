@@ -90,6 +90,6 @@ approval.
 The worker health response includes immutable startup `provenance`. Production
 builds write `dist/source-provenance.json`; Railway source archives use the exact
 provided deployment SHA. Missing provenance is exposed as null and cannot pass.
-The legacy contract rollback remains available by setting
-`CHAT_MUTATION_BATCH_LANE=false` on both web and worker. Delete that lane only after
-retaining a clean live battery result for the cutover.
+The legacy turn-contract lane and its `CHAT_MUTATION_BATCH_LANE` rollback flag were
+deleted on 2026-10-18. The SHA-bound mutation batch lane is the only write path; the
+variable is ignored if it is still set on web or worker.

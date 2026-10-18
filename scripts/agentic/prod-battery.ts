@@ -418,7 +418,6 @@ async function main() {
 			AGENTIC_BATTERY_TARGET: 'deployed',
 			AGENTIC_BATTERY_EXPECTED_PROVENANCE: JSON.stringify(before.expected),
 			AGENTIC_BATTERY_WEB_PROVENANCE: JSON.stringify(before.web),
-			CHAT_MUTATION_BATCH_LANE: 'true',
 			AGENTIC_BATTERY: 'cedar-house',
 			AGENTIC_SCENARIOS: selectedCases
 				? selectedCases.map((value) => CEDAR_SCENARIO_IDS[value]).join(',')

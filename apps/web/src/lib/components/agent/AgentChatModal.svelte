@@ -913,6 +913,10 @@
 			if (!workerAdoption) return [];
 			return workerAdoption.discoverSession(sessionId);
 		},
+		resyncSession: async (sessionId) => {
+			if (currentSession?.id !== sessionId) return;
+			await loadChatSession(sessionId, { backgroundRefresh: true });
+		},
 		setUserHasScrolled: (value) => {
 			userHasScrolled = value;
 		},
@@ -1054,6 +1058,10 @@
 		prewarmAgentContext: (payload, options) => prewarmAgentContext(payload, options),
 		warmStreamTransport: (options) => warmAgentChatStreamTransport(options),
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
+		onSessionScopeMismatch: (sessionId) => {
+			if (currentSession?.id !== sessionId) return;
+			void loadChatSession(sessionId, { backgroundRefresh: true });
+		},
 		logWarn: (msg, err) => {
 			if (dev) {
 				console.warn(msg, err);

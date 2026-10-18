@@ -1157,7 +1157,8 @@ describe('agent-chat-session helpers', () => {
 		expect(result).toEqual({
 			session: { id: 'session-2' },
 			prewarmedContext: { key: 'global:none' },
-			preparedPrompt: null
+			preparedPrompt: null,
+			reason: null
 		});
 	});
 
