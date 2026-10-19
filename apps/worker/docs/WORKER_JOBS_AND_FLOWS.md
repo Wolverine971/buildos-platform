@@ -25,7 +25,6 @@ legacy compatibility values, not active processors.
 | `embed_onto_entity`              | `workers/embeddings/embedEntityWorker.ts`             | DB triggers on ontology writes                |
 | `agent_run`                      | `workers/agent-run/agentRunWorker.ts`                 | Chat, manual agent runs, scheduled Operatives |
 | `build_project_context_snapshot` | `workers/ontology/projectContextSnapshotWorker.ts`    | Web project context snapshot service          |
-| `generate_project_icon`          | `workers/project-icon/projectIconWorker.ts`           | Web project icon service, snapshot worker     |
 | `buildos_project_loop`           | `workers/project-loop/projectLoopWorker.ts`           | Web project-loop services, scheduler          |
 | `sync_calendar`                  | `workers/calendar/calendarSyncWorker.ts`              | Calendar projection services                  |
 
@@ -106,8 +105,6 @@ Scheduled SMS management routes live under `/sms/scheduled/*`.
   changes and makes one roll-up call (`cleanupSynthesis.ts`). It finishes by
   syncing the project's one `project_cleanup` inbox item. See
   `docs/product/PROJECT_CLEANUP_CHANGE_SET.md` (tasker 112, 2026-09-29).
-- `build_project_context_snapshot` can enqueue `generate_project_icon` when
-  snapshot work requires icon generation.
 - `sync_calendar` sends calendar projection jobs back to the web webhook using
   `PRIVATE_BUILDOS_WEBHOOK_SECRET`.
 

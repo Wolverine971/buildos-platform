@@ -82,6 +82,45 @@ function client(result: { data: unknown; error: null | { code?: string; message?
 }
 
 describe('Agentic Chat worker admission gateway', () => {
+	it('preserves the owned inline session returned by a newer admission RPC', async () => {
+		const session = {
+			id: SESSION_ID,
+			user_id: USER_ID,
+			context_type: 'global',
+			status: 'active'
+		};
+		const database = client({ data: handle({ session_created: true, session }), error: null });
+		expect(
+			await admitAgenticChatWorkerTurn({
+				client: database.value,
+				args: { ...args, p_session_id: null }
+			})
+		).toMatchObject({ outcome: 'newly_admitted', session });
+	});
+
+	it.each([
+		undefined,
+		null,
+		[],
+		{},
+		{ id: SESSION_ID, user_id: DECISION_ID, context_type: 'global', status: 'active' },
+		{ id: DECISION_ID, user_id: USER_ID, context_type: 'global', status: 'active' }
+	])(
+		'ignores an absent or unbound optional session (%j) without failing durable admission',
+		async (session) => {
+			const database = client({
+				data: handle({ session_created: true, session }),
+				error: null
+			});
+			const result = await admitAgenticChatWorkerTurn({
+				client: database.value,
+				args: { ...args, p_session_id: null }
+			});
+			expect(result.outcome).toBe('newly_admitted');
+			expect(result).not.toHaveProperty('session');
+		}
+	);
+
 	it('invokes the exact hosted RPC and validates a new admission identity', async () => {
 		const database = client({ data: handle(), error: null });
 		const result = await admitAgenticChatWorkerTurn({ client: database.value, args });

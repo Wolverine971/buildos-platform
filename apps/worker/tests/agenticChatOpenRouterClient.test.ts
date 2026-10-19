@@ -347,6 +347,66 @@ describe('AgenticChatOpenRouterClient', () => {
 		).not.toBe(first);
 	});
 
+	it('counts twenty seconds of inline reasoning as progress without a hedge or visible leakage', async () => {
+		vi.useFakeTimers();
+		let send!: (content: string, done?: boolean) => void;
+		const fetchImpl = vi.fn(
+			async (_url, init) =>
+				new Response(
+					new ReadableStream<Uint8Array>({
+						start(controller) {
+							send = (content, done = false) => {
+								if (init?.signal?.aborted) return;
+								controller.enqueue(
+									new TextEncoder().encode(
+										'data: ' +
+											JSON.stringify({
+												choices: [
+													{
+														delta: { content },
+														...(done ? { finish_reason: 'stop' } : {})
+													}
+												]
+											}) +
+											'\n\n'
+									)
+								);
+								if (done) controller.close();
+							};
+							init?.signal?.addEventListener(
+								'abort',
+								() => controller.error(init.signal?.reason),
+								{ once: true }
+							);
+						}
+					}),
+					{ headers: { 'Content-Type': 'text/event-stream' } }
+				)
+		) as typeof fetch;
+		const slowStreamHedge = vi.fn();
+		const { client } = harness(fetchImpl, [route({ model: 'deepseek/deepseek-v4.1-flash' })], {
+			requestTimeoutMs: 90_000
+		});
+		const pending = collect(
+			client.stream({ ...input(), allowSlowStreamRecovery: true, slowStreamHedge })
+		);
+		await vi.advanceTimersByTimeAsync(0);
+		send('<thi');
+		send('nk>' + 'private'.repeat(100));
+		for (let second = 0; second < 20; second++) {
+			await vi.advanceTimersByTimeAsync(1000);
+			send('private'.repeat(100));
+		}
+		expect(slowStreamHedge).not.toHaveBeenCalled();
+		send('</think>Answer.', true);
+		const events = await pending;
+		expect(events.filter((event) => event.type === 'text')).toEqual([
+			{ type: 'text', content: 'Answer.' }
+		]);
+		expect(events.some((event) => event.type === 'error')).toBe(false);
+		expect(fetchImpl).toHaveBeenCalledOnce();
+	});
+
 	describe.each([true, false])('inline reasoning with explicit DONE=%s', (explicitDone) => {
 		it.each([
 			{
@@ -3455,10 +3515,14 @@ describe('acting output budget recovery', () => {
 			retryable: false
 		});
 	});
-	it.each([false, true])(
+	it.each([false, true, 'inline'] as const)(
 		'bounds recovery after headers, counting reasoning as progress (%s)',
 		async (reasoningProgress) => {
 			vi.useFakeTimers();
+			const progressDelta =
+				reasoningProgress === 'inline'
+					? { content: '<think>' + 'private'.repeat(1000) }
+					: { reasoning: 'private reasoning' };
 			const fetchImpl = vi.fn(
 				async (_url, init) =>
 					new Response(
@@ -3471,9 +3535,7 @@ describe('acting output budget recovery', () => {
 												JSON.stringify({
 													choices: [
 														{
-															delta: {
-																reasoning: 'private reasoning'
-															}
+															delta: progressDelta
 														}
 													]
 												}) +

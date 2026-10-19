@@ -675,7 +675,7 @@ async function generateOntologyProjectBrief(
 				},
 				onUsage: (usage) => {
 					llmModelUsed = usage.model;
-					llmCost = usage.totalCost;
+					llmCost = (llmCost ?? 0) + usage.totalCost;
 				}
 			});
 			throwIfAborted(signal);

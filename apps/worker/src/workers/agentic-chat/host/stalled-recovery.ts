@@ -177,6 +177,8 @@ export type AgenticChatStalledRecoveryHealthV1 = {
 	lastParkedCount: number;
 };
 
+class RecoveryDeadlineError extends Error {}
+
 export class AgenticChatStalledRecoverySweep {
 	private readonly options: {
 		intervalMs: number;
@@ -376,7 +378,7 @@ export class AgenticChatStalledRecoverySweep {
 		const results: AgenticChatStalledRecoveryResultV1[] = [];
 		let candidateCount = 0;
 		let parkedCount = 0;
-		for (let call = 0; call < this.options.maxBatchesPerSweep; call += 1) {
+		batches: for (let call = 0; call < this.options.maxBatchesPerSweep; call += 1) {
 			const batch = await this.recoverBatch();
 			candidateCount += batch.candidateCount;
 			parkedCount = batch.parkedCount;
@@ -395,7 +397,15 @@ export class AgenticChatStalledRecoverySweep {
 			// A handed-off workflow turn is held by this sweep until the database
 			// sees it again; if rendering fails here it is handed off again later.
 			for (const handoff of batch.handoffs) {
-				results.push(await this.recoverHandoff(handoff));
+				try {
+					results.push(await this.recoverHandoff(handoff));
+				} catch (error) {
+					if (!(error instanceof RecoveryDeadlineError)) throw error;
+					results.push(recoveryResult(handoff, 'failed', errorMessage(error)));
+					// One hung dependency is enough for this sweep. The database can
+					// hand off the remaining turns again on the next sweep.
+					break batches;
+				}
 			}
 			const elapsedMs = this.options.now().getTime() - started.getTime();
 			if (!batch.hasMore || this.stopping || elapsedMs >= this.options.intervalMs) break;
@@ -411,27 +421,36 @@ export class AgenticChatStalledRecoverySweep {
 
 	/** One bounded RPC: a hung socket fails this sweep, never the next one. */
 	private async recoverBatch(): Promise<AgenticChatDeadTurnRecoveryBatchV1> {
+		return this.withRpcDeadline('recover_dead_agentic_chat_turns', (signal) =>
+			this.ports.recovery.recover({
+				batchSize: this.options.batchSize,
+				workflowHandoff: Boolean(this.ports.workflowRuns),
+				signal
+			})
+		);
+	}
+
+	/** Abort supported clients and stop waiting even when a client ignores abort. */
+	private async withRpcDeadline<T>(
+		operation: string,
+		run: (signal: AbortSignal) => PromiseLike<T>
+	): Promise<T> {
 		const call = new AbortController();
 		let timer: NodeJS.Timeout | null = null;
 		const timeout = new Promise<never>((_resolve, reject) => {
 			timer = setTimeout(() => {
-				const error = new Error(
-					`recover_dead_agentic_chat_turns did not settle within ${this.options.rpcTimeoutMs}ms`
+				const error = new RecoveryDeadlineError(
+					`${operation} did not settle within ${this.options.rpcTimeoutMs}ms`
 				);
-				call.abort(error);
+				// Settle our deadline first: a client can reject synchronously on
+				// abort with a wrapped error that would hide the timeout type.
 				reject(error);
+				call.abort(error);
 			}, this.options.rpcTimeoutMs);
 			timer.unref?.();
 		});
 		try {
-			return await Promise.race([
-				this.ports.recovery.recover({
-					batchSize: this.options.batchSize,
-					workflowHandoff: Boolean(this.ports.workflowRuns),
-					signal: call.signal
-				}),
-				timeout
-			]);
+			return await Promise.race([run(call.signal), timeout]);
 		} finally {
 			if (timer) clearTimeout(timer);
 		}
@@ -481,6 +500,7 @@ export class AgenticChatStalledRecoverySweep {
 		try {
 			return await this.converge(handoff, terminal);
 		} catch (error) {
+			if (error instanceof RecoveryDeadlineError) throw error;
 			return recoveryResult(
 				handoff,
 				isOwnershipLoss(error) ? 'stale_owner' : 'failed',
@@ -496,14 +516,19 @@ export class AgenticChatStalledRecoverySweep {
 		let failureClass: AgenticChatRecoveryFailureClassV1 = terminal.failureClass;
 		let lastConvergenceError: string | null = null;
 		for (let attempt = 0; attempt < MAX_CONVERGENCE_STEPS; attempt += 1) {
-			const recovery = await this.ports.control.recover({
-				turnRunId: handoff.turnRunId,
-				queueJobId: handoff.queueJobId,
-				processingToken: handoff.processingToken,
-				executionGeneration: handoff.executionGeneration,
-				failureClass,
-				errorMessage: 'Agentic Chat worker lease expired'
-			});
+			const recovery = await this.withRpcDeadline('recover_agentic_chat_turn', (signal) =>
+				this.ports.control.recover(
+					{
+						turnRunId: handoff.turnRunId,
+						queueJobId: handoff.queueJobId,
+						processingToken: handoff.processingToken,
+						executionGeneration: handoff.executionGeneration,
+						failureClass,
+						errorMessage: 'Agentic Chat worker lease expired'
+					},
+					signal
+				)
+			);
 			const settled = settledRecoveryResult(handoff, recovery);
 			if (settled) return settled;
 
@@ -526,12 +551,16 @@ export class AgenticChatStalledRecoverySweep {
 			// prefix. The finalize below stays fenced by token and generation, and answers
 			// `already_terminal` or `stale_generation` if the turn moved on meanwhile.
 			try {
-				request = await this.workflowTerminalInput(
-					handoff,
-					status,
-					terminal.reason ?? 'finalize_failed'
+				request = await this.withRpcDeadline('workflow terminal read', (signal) =>
+					this.workflowTerminalInput(
+						handoff,
+						status,
+						terminal.reason ?? 'finalize_failed',
+						signal
+					)
 				);
 			} catch (error) {
+				if (error instanceof RecoveryDeadlineError) throw error;
 				// A partial answer needs durable workflow truth. Re-run the fenced recovery
 				// within the bounded window rather than failing a turn that may have content.
 				lastConvergenceError = `Workflow truth read failed: ${errorMessage(error)}`;
@@ -539,8 +568,11 @@ export class AgenticChatStalledRecoverySweep {
 			}
 			let finalized: AgenticChatTerminalFinalizeRpcResultV1;
 			try {
-				finalized = await this.ports.control.finalize(request);
+				finalized = await this.withRpcDeadline('finalize_agentic_chat_turn', (signal) =>
+					this.ports.control.finalize(request, signal)
+				);
 			} catch (error) {
+				if (error instanceof RecoveryDeadlineError) throw error;
 				// A lost finalize response is resolved by the next recovery call.
 				lastConvergenceError = `Recovery finalization failed: ${errorMessage(error)}`;
 				continue;
@@ -568,9 +600,10 @@ export class AgenticChatStalledRecoverySweep {
 	private async workflowTerminalInput(
 		handoff: AgenticChatDeadTurnHandoffV1,
 		status: 'failed' | 'cancelled',
-		reason: string
+		reason: string,
+		signal: AbortSignal
 	): Promise<AgenticChatTerminalFinalizeInputV1> {
-		const loaded = await this.ports.workflowRuns!.loadRun(handoff.turnRunId);
+		const loaded = await this.ports.workflowRuns!.loadRun(handoff.turnRunId, signal);
 		// Truth that names another turn or owner cannot authorize showing any content.
 		const state =
 			loaded && loaded.turnRunId === handoff.turnRunId && loaded.userId === handoff.userId

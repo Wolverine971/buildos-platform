@@ -149,6 +149,25 @@ describe('legacy Google Calendar reader', () => {
 			.listEvents({ calendarId: 'primary' })
 			.catch((error: unknown) => error);
 
+	it('retains the page token as truncation even when Google returns a short page', async () => {
+		const list = vi
+			.fn()
+			.mockResolvedValue({ data: { items: [{ id: 'g-1' }], nextPageToken: 'more' } });
+		const prototype = Object.getPrototypeOf(
+			createAgentRunCalendarPort({ admin: {}, userId: USER_ID, credentials })
+		);
+		const authorize = vi
+			.spyOn(prototype, 'authorizeLegacyRead')
+			.mockResolvedValue({ events: { list } });
+		try {
+			const result = await read({});
+			expect(list).toHaveBeenCalledOnce();
+			expect(result).toMatchObject({ events: [{ id: 'g-1' }], truncated: true });
+		} finally {
+			authorize.mockRestore();
+		}
+	});
+
 	it('reports not_connected when the user has no singleton grant', async () => {
 		const error = await read(tokenAdmin(null));
 		expect(error).toBeInstanceOf(LegacyCalendarReadError);
@@ -327,5 +346,114 @@ describe('legacy Google Calendar client (writes)', () => {
 			.createProjectCalendar(USER_ID, { name: 'Launch' })
 			.catch((caught: unknown) => caught);
 		expect((error as LegacyCalendarReadError).code).toBe('not_connected');
+	});
+});
+
+describe('Agent Run personal event sync', () => {
+	const eventId = '33333333-3333-4333-8333-333333333331';
+	function setup(syncRows: unknown[] = []) {
+		let row: Record<string, any> = {
+			...ontoEvent(1),
+			id: eventId,
+			project_id: null,
+			timezone: 'UTC',
+			props: {
+				external_event_id: 'personal-google',
+				external_calendar_id: 'personal@example.com'
+			},
+			onto_event_sync: syncRows
+		};
+		const port = createAgentRunCalendarPort({ admin: {}, userId: USER_ID }) as any;
+		port.getOntologyEvent = vi.fn(async () => row);
+		port.resolveInputTimezone = vi.fn(async () => 'UTC');
+		port.patchEvent = vi.fn(async (_id, patch) => (row = { ...row, ...patch }));
+		port.resolveGoogleCalendarIdForSyncRow = vi.fn(async () => 'project@example.com');
+		port.upsertEventSync = vi.fn(async () => ({}));
+		const api = {
+			events: { patch: vi.fn(async () => ({ data: {} })), delete: vi.fn(async () => ({})) }
+		};
+		port.googleCalendar = vi.fn(async () => api);
+		return { port, api };
+	}
+	it('updates the Google copy mapped only in props', async () => {
+		const { port, api } = setup();
+		await port.updateCalendarEvent({ onto_event_id: eventId, title: 'Renamed' });
+		expect(api.events.patch).toHaveBeenCalledWith(
+			expect.objectContaining({
+				calendarId: 'personal@example.com',
+				eventId: 'personal-google',
+				requestBody: expect.objectContaining({ summary: 'Renamed' })
+			})
+		);
+		expect(port.upsertEventSync).not.toHaveBeenCalled();
+	});
+	it('deletes the Google copy mapped only in props', async () => {
+		const { port, api } = setup();
+		await port.deleteCalendarEvent({ onto_event_id: eventId });
+		expect(api.events.delete).toHaveBeenCalledWith({
+			calendarId: 'personal@example.com',
+			eventId: 'personal-google',
+			sendUpdates: 'none'
+		});
+	});
+	it.each([404, 410])(
+		'finishes deleting a BuildOS row after Google returns %s',
+		async (status) => {
+			const { port, api } = setup([
+				{
+					user_id: USER_ID,
+					external_event_id: 'project-google',
+					project_calendar_id: 'mapping-1'
+				}
+			]);
+			api.events.delete.mockRejectedValue({ response: { status } });
+			await expect(
+				port.deleteCalendarEvent({ onto_event_id: eventId })
+			).resolves.toMatchObject({ event: { sync_status: 'deleted' } });
+		}
+	);
+	it('uses a valid sync row once instead of also writing its props mapping', async () => {
+		const { port, api } = setup([
+			{
+				user_id: USER_ID,
+				external_event_id: 'project-google',
+				project_calendar_id: 'mapping-1'
+			}
+		]);
+		await port.updateCalendarEvent({ onto_event_id: eventId, title: 'Renamed' });
+		expect(api.events.patch).toHaveBeenCalledTimes(1);
+		expect(api.events.patch).toHaveBeenCalledWith(
+			expect.objectContaining({
+				calendarId: 'project@example.com',
+				eventId: 'project-google'
+			})
+		);
+	});
+	it('falls back when an owned sync row has no usable calendar mapping', async () => {
+		const { port, api } = setup([
+			{ user_id: USER_ID, external_event_id: 'stale', project_calendar_id: 'missing' }
+		]);
+		port.resolveGoogleCalendarIdForSyncRow.mockResolvedValue(null);
+		await port.updateCalendarEvent({ onto_event_id: eventId, title: 'Renamed' });
+		expect(api.events.patch).toHaveBeenCalledWith(
+			expect.objectContaining({ eventId: 'personal-google' })
+		);
+	});
+	it('honors sync opt-out and propagates genuine Google delete failures', async () => {
+		const { port, api } = setup();
+		await port.updateCalendarEvent({
+			onto_event_id: eventId,
+			title: 'Local',
+			sync_to_calendar: false
+		});
+		expect(api.events.patch).not.toHaveBeenCalled();
+		api.events.delete.mockRejectedValue({ response: { status: 500 } });
+		await expect(port.deleteCalendarEvent({ onto_event_id: eventId })).rejects.toMatchObject({
+			response: { status: 500 }
+		});
+		expect(port.patchEvent).not.toHaveBeenCalledWith(
+			eventId,
+			expect.objectContaining({ deleted_at: expect.anything() })
+		);
 	});
 });

@@ -1,8 +1,8 @@
 // packages/agentic-chat-runtime/src/context-finder/packets.ts
 //
 // One condensed packet per project entity, plus the section index of every document.
-// Ported from the 2026-09-22 jev-context-eval.ts harness so
-// production ranks exactly what the eval measured; refs (d0, t3, …) keep its question keys.
+// Production packet shape validated in the 2026-09-22 context evaluation.
+// Stable refs (d0, t3, …) identify entities in context-finder questions.
 
 export type ContextFinderKind = 'document' | 'task' | 'goal' | 'plan' | 'milestone' | 'risk';
 

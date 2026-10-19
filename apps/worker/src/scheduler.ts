@@ -320,17 +320,19 @@ export function startScheduler() {
 		await checkAndScheduleBriefs();
 	});
 
-	// Run at midnight to schedule daily SMS reminders
-	cron.schedule('0 0 * * *', async () => {
-		console.log('📱 Checking for daily SMS reminders...');
-		await checkAndScheduleDailySMS();
-	});
+	if (SMS_SENDING_ENABLED) {
+		// Run at midnight to schedule daily SMS reminders
+		cron.schedule('0 0 * * *', async () => {
+			console.log('📱 Checking for daily SMS reminders...');
+			await checkAndScheduleDailySMS();
+		});
 
-	// Run hourly to check SMS alert thresholds and refresh metrics view
-	cron.schedule('0 * * * *', async () => {
-		console.log('🚨 Checking SMS alert thresholds...');
-		await checkSMSAlerts();
-	});
+		// Run hourly to check SMS alert thresholds and refresh metrics view
+		cron.schedule('0 * * * *', async () => {
+			console.log('🚨 Checking SMS alert thresholds...');
+			await checkSMSAlerts();
+		});
+	}
 
 	// Nightly refresh of the 30-day rolling view counts on public pages.
 	cron.schedule('17 3 * * *', async () => {
@@ -500,7 +502,7 @@ export function startScheduler() {
 	}
 
 	console.log(
-		'⏰ Scheduler started - checking every hour (briefs, SMS alerts), every 5 minutes (Operatives), and midnight (SMS scheduling)'
+		`⏰ Scheduler started - checking every hour (briefs), every 5 minutes (Operatives)${SMS_SENDING_ENABLED ? ', every hour (SMS alerts), and midnight (SMS scheduling)' : '; SMS crons disabled'}`
 	);
 }
 

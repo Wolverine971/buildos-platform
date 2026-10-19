@@ -94,13 +94,15 @@ export interface AgenticChatCalendarListEventsInputV1 {
 }
 
 export interface AgenticChatCalendarListEventsResultV1 {
+	/** More provider pages or merged events exist beyond this bounded read. */
+	truncated?: boolean;
 	events: AgenticChatCalendarEventV1[];
 	mode: AgenticChatCalendarReadModeV1;
 	coverage: AgenticChatCalendarReadCoverageV1;
 	sourceCount: number;
 	successfulSourceCount: number;
 	failedSourceCount: number;
-	/** True when at least one source failed but some data still came back. */
+	/** True when sources failed or the provider result was truncated. */
 	partial: boolean;
 	sourceFailures: AgenticChatCalendarSourceFailureV1[];
 }

@@ -214,8 +214,7 @@ describe('verifyProjectSuggestionIntegrity', () => {
 			projectId,
 			operations: [moveOperation()],
 			title: 'Old title that no longer matches',
-			preview: { summary: 'Old title that no longer matches' },
-			checkModelAlignment: false
+			preview: { summary: 'Old title that no longer matches' }
 		});
 
 		expect(result).toMatchObject({
@@ -287,7 +286,6 @@ describe('verifyProjectSuggestionIntegrity', () => {
 		const changed = await verifyProjectSuggestionIntegrity(createSupabaseMock(tables), {
 			projectId,
 			operations: [moveOperation()],
-			checkModelAlignment: false,
 			expectedStructuralFingerprint: original.summary.structural_fingerprint
 		});
 
@@ -332,7 +330,6 @@ describe('verifyProjectSuggestionIntegrity', () => {
 					args: { ...originalOperation.args, props: { loop_flagged_conflict: false } }
 				}
 			],
-			checkModelAlignment: false,
 			expectedStructuralFingerprint: original.summary.structural_fingerprint
 		});
 
@@ -488,8 +485,7 @@ describe('golden structural fingerprints for existing op shapes', () => {
 				createSupabaseMock(goldenTables()),
 				{
 					projectId,
-					operations,
-					checkModelAlignment: false
+					operations
 				}
 			);
 			if (!result.ok)
@@ -506,7 +502,6 @@ describe('golden structural fingerprints for existing op shapes', () => {
 				{
 					projectId,
 					operations,
-					checkModelAlignment: false,
 					expectedStructuralFingerprint: GOLDEN_FINGERPRINTS[name]
 				}
 			);
@@ -703,8 +698,7 @@ describe('scalar operations', () => {
 	])('fails closed on %s riding along with a displayed change', async (_label, extra) => {
 		const result = await verifyProjectSuggestionIntegrity(createSupabaseMock(scalarTables()), {
 			projectId,
-			operations: [taskOp({ props: { loop_flagged_conflict: true }, ...extra })],
-			checkModelAlignment: false
+			operations: [taskOp({ props: { loop_flagged_conflict: true }, ...extra })]
 		});
 		expect(result).toMatchObject({
 			ok: false,
@@ -853,7 +847,6 @@ describe('scalar operations', () => {
 		const changed = await verifyProjectSuggestionIntegrity(createSupabaseMock(moved), {
 			projectId,
 			operations,
-			checkModelAlignment: false,
 			expectedStructuralFingerprint: original.summary.structural_fingerprint
 		});
 		expect(changed).toMatchObject({
@@ -866,7 +859,6 @@ describe('scalar operations', () => {
 			{
 				projectId,
 				operations,
-				checkModelAlignment: false,
 				expectedStructuralFingerprint: original.summary.structural_fingerprint
 			}
 		);
@@ -894,7 +886,6 @@ describe('scalar operations', () => {
 		const changed = await verifyProjectSuggestionIntegrity(createSupabaseMock(tables), {
 			projectId,
 			operations,
-			checkModelAlignment: false,
 			expectedStructuralFingerprint: original.summary.structural_fingerprint
 		});
 		expect(changed).toMatchObject({
@@ -908,8 +899,7 @@ describe('scalar operations', () => {
 			createSupabaseMock(scalarTables()),
 			{
 				projectId,
-				operations: goldenCases.find((c) => c.name === 'task_conflict_flag')!.operations,
-				checkModelAlignment: false
+				operations: goldenCases.find((c) => c.name === 'task_conflict_flag')!.operations
 			}
 		);
 		const withScalar = await verifyProjectSuggestionIntegrity(
@@ -925,8 +915,7 @@ describe('scalar operations', () => {
 							state_key: 'blocked'
 						}
 					}
-				],
-				checkModelAlignment: false
+				]
 			}
 		);
 		if (!propsOnly.ok || !withScalar.ok) throw new Error('Fixtures should verify');
@@ -1029,8 +1018,7 @@ describe('document text edits', () => {
 		verifyProjectSuggestionIntegrity(createSupabaseMock(tables(content)), {
 			projectId,
 			operations: [operation],
-			title: 'AI Pillar — Working Doc still lists decided questions as open',
-			checkModelAlignment: true
+			title: 'AI Pillar — Working Doc still lists decided questions as open'
 		});
 
 	it('shows each edit as before and after, resolved against the live body', async () => {

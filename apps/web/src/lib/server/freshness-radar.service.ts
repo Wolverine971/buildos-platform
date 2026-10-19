@@ -926,8 +926,7 @@ async function rebuildBundleWithout(params: {
 			projectId: params.projectId,
 			operations: nextOperations,
 			title,
-			preview,
-			checkModelAlignment: true
+			preview
 		});
 		if (!verification.ok) {
 			throw new Error(`Rebuilt bundle failed verification (${verification.diagnostic.code})`);

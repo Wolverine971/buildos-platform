@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EXTERNAL_OP_HANDLERS } from './op-execution-gateway.core';
 import { previewGatewayTableRowsUpdate } from './op-execution-gateway.tables';
 import { extractWriteEntityMeta } from './op-execution-gateway.responses';
+import { applyColumnChanges } from '../tables/table-schema';
 import { TableServiceError } from '../tables/table-errors';
 import type { LoadedTable, TableApplyResult, TableRow, TableSchema } from '../tables/table-types';
 
@@ -659,6 +660,117 @@ describe('onto.table.update', () => {
 		expect(result.table.title).toBe('Applications');
 		expect(result.table_change.columns_changed).toEqual(['Contact', 'Status']);
 		expect(result.table_change.inverse_schema).toEqual(schema);
+	});
+
+	it.each(['delete', 'retype'] as const)(
+		'resumes a 1,500-row %s from the original schema and only unfinished rows',
+		async (action) => {
+			const initial = loaded();
+			initial.rows = Array.from({ length: 1500 }, (_, i) =>
+				row(i + 1, { c_company: 'Co', c_salary: 100 + i })
+			);
+			const changes =
+				action === 'delete'
+					? [{ action, column: 'Salary' }]
+					: [{ action, column: 'Salary', type: 'text' as const }];
+			const planned = applyColumnChanges(initial.schema, initial.rows, changes);
+			const current = structuredClone(initial);
+			current.schema = { ...planned.schema, revision: 8 };
+			current.rows[1000]!.version = 4;
+			current.rows[1000]!.cells.c_salary = 9999;
+			const firstReceipt = applyResult([
+				{
+					op: 'update',
+					row_id: 'row-1',
+					row_number: 1,
+					version: 4,
+					before: { cells: { c_salary: 100 } },
+					after: { cells: { c_salary: action === 'delete' ? null : '100' } }
+				}
+			]);
+			mocks.loadTable.mockResolvedValueOnce(initial).mockResolvedValueOnce(current);
+			mocks.applyTableChanges
+				.mockRejectedValueOnce(
+					new TableServiceError('ROW_CONFLICT', 'stale row', {
+						applied_batches: 1,
+						applied_ops: 1000,
+						total_batches: 2,
+						partial_result: firstReceipt
+					})
+				)
+				.mockResolvedValueOnce(applyResult([], 9));
+			const result = (await EXTERNAL_OP_HANDLERS['onto.table.update'](context(), {
+				table_id: TABLE_ID,
+				column_changes: changes
+			})) as any;
+			expect(mocks.applyTableChanges.mock.calls[0]![1].expectedRevision).toBe(7);
+			const resume = mocks.applyTableChanges.mock.calls[1]![1];
+			expect(resume.schema).toBeNull();
+			expect(resume.expectedRevision).toBe(8);
+			expect(resume.ops).toHaveLength(500);
+			expect(resume.ops[0]).toMatchObject({
+				row_id: 'row-1001',
+				expected_version: 4,
+				cells: { c_salary: action === 'delete' ? null : '9,999' }
+			});
+			expect(result.table_change.inverse_schema).toEqual(schema);
+			expect(JSON.stringify(result.table_change)).toContain('row-1');
+		}
+	);
+
+	it('preserves partial progress and refuses to resume over a concurrent schema change', async () => {
+		const initial = loaded();
+		initial.rows = Array.from({ length: 1500 }, (_, i) => row(i + 1, { c_salary: i }));
+		const current = structuredClone(initial);
+		current.schema.columns[2]!.name = 'Human rename';
+		const details = { applied_batches: 1, applied_ops: 1000, partial_result: applyResult([]) };
+		mocks.loadTable.mockResolvedValueOnce(initial).mockResolvedValueOnce(current);
+		mocks.applyTableChanges.mockRejectedValueOnce(
+			new TableServiceError('ROW_CONFLICT', 'stale row', details)
+		);
+		await expect(
+			EXTERNAL_OP_HANDLERS['onto.table.update'](context(), {
+				table_id: TABLE_ID,
+				column_changes: [{ action: 'delete', column: 'Salary' }]
+			})
+		).rejects.toMatchObject({
+			code: 'CONFLICT',
+			details: { applied_batches: 1, applied_ops: 1000 }
+		});
+		expect(mocks.applyTableChanges).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps cumulative receipts when a resumed third batch rolls back', async () => {
+		const initial = loaded();
+		initial.rows = Array.from({ length: 2500 }, (_, i) => row(i + 1, { c_salary: i + 1 }));
+		const planned = applyColumnChanges(initial.schema, initial.rows, [
+			{ action: 'delete', column: 'Salary' }
+		]);
+		const current = { ...initial, schema: { ...planned.schema, revision: 8 } };
+		mocks.loadTable.mockResolvedValueOnce(initial).mockResolvedValueOnce(current);
+		mocks.applyTableChanges
+			.mockRejectedValueOnce(
+				new TableServiceError('ROW_CONFLICT', 'stale row', {
+					applied_batches: 1,
+					applied_ops: 1000,
+					total_batches: 3,
+					partial_result: applyResult([])
+				})
+			)
+			.mockResolvedValueOnce(applyResult([], 9))
+			.mockRejectedValueOnce(Object.assign(new Error('deadlock'), { code: '40P01' }));
+		const error = await EXTERNAL_OP_HANDLERS['onto.table.update'](context(), {
+			table_id: TABLE_ID,
+			column_changes: [{ action: 'delete', column: 'Salary' }]
+		}).catch((error) => error);
+		expect(error).toMatchObject({
+			code: 'INTERNAL',
+			details: { applied_batches: 2, applied_ops: 2000, partial_result: { revision: 9 } }
+		});
+		expect(error.details).not.toHaveProperty('write_rolled_back');
+		expect(mocks.applyTableChanges.mock.calls.map((call) => call[1].ops.length)).toEqual([
+			2500, 1000, 500
+		]);
 	});
 
 	it('starts question-column fills and refuses columns without a question', async () => {

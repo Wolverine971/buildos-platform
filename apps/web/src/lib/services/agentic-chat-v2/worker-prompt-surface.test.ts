@@ -6,12 +6,27 @@
 // (resolveFastChatTurnPreparation -> applyEmailSurfaceMount ->
 // resolveWorkerPromptTools) for a project turn that carries an attached image,
 // and proves the project image tools are mounted and admitted.
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatToolDefinition } from '@buildos/shared-types';
+import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
+import {
+	buildGlobalTestEnvelope,
+	buildProjectCreateTestEnvelope,
+	runLiteTurn
+} from '$lib/tests/llm/helpers/lite-turn-runner';
 import { applyEmailSurfaceMount } from './email-surface-mount.server';
 import { appendAttachmentContextToMessage } from './attachments';
 import { resolveFastChatTurnPreparation } from './turn-preparation';
 import { resolveWorkerPromptTools } from './worker-prompt-surface';
+
+const { streamText } = vi.hoisted(() => ({ streamText: vi.fn() }));
+// The runner normally makes a paid call. This parity suite cannot construct a
+// real client: every request stops at this fully mocked streaming boundary.
+vi.mock('$lib/services/smart-llm-service', () => ({
+	SmartLLMService: class {
+		streamText = streamText;
+	}
+}));
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const ASSET_ID = '22222222-2222-4222-8222-222222222222';
@@ -93,5 +108,123 @@ describe('worker admission of the project image tools', () => {
 		expect(resolveWorkerPromptTools(withDelete).unavailableToolNames).toEqual([
 			'delete_onto_task'
 		]);
+	});
+});
+
+function productionFixtureTools(contextType: 'global' | 'project_create') {
+	const preparation = resolveFastChatTurnPreparation({
+		contextType,
+		entityId: null,
+		projectId: null,
+		latestUserMessage: 'Fixture.',
+		conversationSummary: null,
+		agentMetadata: null,
+		contextShiftHintTtlMs: 120_000
+	});
+	// The same preparation → email mount → worker admission path used in production.
+	// These evaluation fixtures have no connected email account.
+	const admitted = resolveWorkerPromptTools(applyEmailSurfaceMount(preparation.tools, false));
+	expect(admitted.unavailableToolNames).toEqual([]);
+	return admitted.tools;
+}
+
+describe('live evaluation worker prompt parity (offline)', () => {
+	beforeEach(() => {
+		streamText.mockReset();
+		streamText.mockImplementation(async function* () {
+			yield { type: 'text', content: 'Fixture answer.' };
+			yield { type: 'done', finished_reason: 'stop', model: 'fixture-model' };
+		});
+	});
+
+	it('builds the global fixture with worker instructions and the admitted tool summary', () => {
+		const envelope = buildGlobalTestEnvelope();
+		expect(envelope.sections.map((section) => section.id)).not.toContain(
+			'capabilities_skills_tools'
+		);
+		expect(envelope.systemPrompt).not.toContain('skill_search');
+		expect(envelope.toolsSummary.totalTools).toBe(productionFixtureTools('global').length);
+	});
+
+	it('builds the project-create fixture with the worker shell creation contract', () => {
+		const envelope = buildProjectCreateTestEnvelope();
+		expect(envelope.systemPrompt).toContain('entities: [] and relationships: []');
+		expect(envelope.systemPrompt).toContain(
+			'After create_onto_project succeeds, use its project_id'
+		);
+		expect(envelope.toolsSummary.totalTools).toBe(
+			productionFixtureTools('project_create').length
+		);
+	});
+
+	it.each(['global', 'project_create'] as const)(
+		'sends the worker %s tool surface to the model',
+		async (contextType) => {
+			const envelope =
+				contextType === 'global'
+					? buildGlobalTestEnvelope()
+					: buildProjectCreateTestEnvelope();
+			const result = await runLiteTurn({
+				systemPrompt: envelope.systemPrompt,
+				userMessage: 'Fixture.',
+				contextType
+			});
+			expect(result.assistantText).toBe('Fixture answer.');
+			expect(streamText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					tools: productionFixtureTools(contextType),
+					messages: [
+						{ role: 'system', content: envelope.systemPrompt },
+						{ role: 'user', content: 'Fixture.' }
+					]
+				})
+			);
+		}
+	);
+
+	it('filters retired tools even when an evaluation supplies its own tool list', async () => {
+		const tools = getGatewaySurfaceForContextType('global');
+		await runLiteTurn({
+			systemPrompt: 'Fixture.',
+			userMessage: 'Fixture.',
+			contextType: 'global',
+			tools
+		});
+		expect(streamText).toHaveBeenCalledWith(
+			expect.objectContaining({ tools: resolveWorkerPromptTools(tools).tools })
+		);
+	});
+
+	it('rejects a custom tool the worker cannot execute before calling the model', async () => {
+		await expect(
+			runLiteTurn({
+				systemPrompt: 'Fixture.',
+				userMessage: 'Fixture.',
+				contextType: 'global',
+				tools: [
+					{
+						type: 'function',
+						function: {
+							name: 'delete_onto_task',
+							description: 'Unavailable.',
+							parameters: { type: 'object', properties: {} }
+						}
+					}
+				]
+			})
+		).rejects.toThrow('delete_onto_task');
+		expect(streamText).not.toHaveBeenCalled();
+	});
+
+	it('preserves an explicitly empty tool surface for text-only fixtures', async () => {
+		await runLiteTurn({
+			systemPrompt: 'Fixture.',
+			userMessage: 'Fixture.',
+			contextType: 'global',
+			tools: []
+		});
+		expect(streamText).toHaveBeenCalledWith(
+			expect.objectContaining({ tools: undefined, tool_choice: undefined })
+		);
 	});
 });

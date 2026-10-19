@@ -64,6 +64,54 @@ function readService(input: {
 }
 
 describe('GoogleCalendarReadService failure classification', () => {
+	it('reports truncation when a source cap leaves a Google page token', async () => {
+		const { service, listEvents } = readService({});
+		listEvents.mockResolvedValue({
+			data: {
+				items: [{ id: 'event-1', start: { dateTime: '2026-09-04T12:00:00Z' } }],
+				nextPageToken: 'more'
+			}
+		} as any);
+		const response = await service.listEvents({ userId: 'user-1', maxResults: 1 });
+		expect(response).toMatchObject({ truncated: true, partial: true });
+		expect(response.events).toHaveLength(1);
+		expect(response.warnings).toContainEqual(
+			expect.objectContaining({
+				code: 'CALENDAR_PARTIAL_RESULT',
+				message: expect.stringContaining('truncated')
+			})
+		);
+		expect(listEvents).toHaveBeenCalledOnce();
+	});
+
+	it('reports a sliced merge even when every source page is complete', async () => {
+		const { service, listEvents } = readService({
+			targets: [
+				target(),
+				target({
+					calendarSourceId: 'source-2',
+					providerCalendarId: 'other@example.com'
+				})
+			]
+		});
+		listEvents.mockImplementation(async (input: any) => ({
+			data: {
+				items: [{ id: input.calendarId, start: { dateTime: '2026-09-04T12:00:00Z' } }],
+				nextPageToken: null
+			}
+		}));
+		const response = await service.listEvents({ userId: 'user-1', maxResults: 1 });
+		expect(response).toMatchObject({ truncated: true, partial: true });
+		expect(response.events).toHaveLength(1);
+	});
+
+	it('keeps an exact-cap complete page complete when there is no page token', async () => {
+		const { service } = readService({ events: [{ id: 'event-1' }] });
+		expect(await service.listEvents({ userId: 'user-1', maxResults: 1 })).toMatchObject({
+			truncated: false,
+			partial: false
+		});
+	});
 	it.each([
 		['not_configured', 'credentials_not_configured'],
 		['database_error', 'credentials_unreadable'],

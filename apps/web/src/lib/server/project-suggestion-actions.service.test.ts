@@ -1148,8 +1148,7 @@ describe('decideProjectSuggestion with the fingerprint the user was shown', () =
 		expect(mocks.verifyProjectSuggestionIntegrity).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({
-				expectedStructuralFingerprint: 'shown-fingerprint',
-				checkModelAlignment: false
+				expectedStructuralFingerprint: 'shown-fingerprint'
 			})
 		);
 		// The inbox row's stored fingerprint is not consulted.
@@ -1251,8 +1250,7 @@ describe('decideProjectSuggestion with the fingerprint the user was shown', () =
 		expect(mocks.verifyProjectSuggestionIntegrity).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({
-				expectedStructuralFingerprint: null,
-				checkModelAlignment: true
+				expectedStructuralFingerprint: null
 			})
 		);
 		expect(mocks.isProjectSuggestionFresh).toHaveBeenCalled();

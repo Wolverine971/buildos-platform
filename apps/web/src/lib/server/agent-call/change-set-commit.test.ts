@@ -5,6 +5,7 @@ import {
 	recoverStalledCommit
 } from '../../../../../../packages/shared-agent-ops/src/gateway/change-set';
 import type { ChangeSet, ProposedChange } from '@buildos/shared-types';
+import { insertGatewayEntity } from '../../../../../../packages/shared-agent-ops/src/gateway/op-execution-gateway.create-idempotency';
 
 const gatewayMocks = vi.hoisted(() => ({
 	runGatewayWriteOp: vi.fn()
@@ -36,7 +37,8 @@ function createSupabaseMock(
 	// e.g. the D9b re-entry load of prior applied executions and the per-change
 	// heartbeat / final update. Reads chain.data / chain.error, matching how the
 	// production code destructures `await admin.from(...)...`.
-	directData: Record<string, QueryResult> = {}
+	directData: Record<string, QueryResult> = {},
+	insertResults: QueryResult[] = []
 ) {
 	const updates: Array<{ table: string; payload: Record<string, unknown> }> = [];
 	const inserts: Array<{ table: string; payload: Record<string, unknown> }> = [];
@@ -61,7 +63,7 @@ function createSupabaseMock(
 					}),
 					insert: vi.fn(async (payload: Record<string, unknown>) => {
 						inserts.push({ table, payload });
-						return { data: null, error: null };
+						return insertResults.shift() ?? { data: null, error: null };
 					}),
 					eq: vi.fn(() => chain),
 					is: vi.fn(() => chain),
@@ -529,5 +531,474 @@ describe('commitChangeSet', () => {
 		expect(outcome.ok).toBe(false);
 		expect((outcome as any).error.code).toBe('CONFLICT');
 		expect(gatewayMocks.runGatewayWriteOp).not.toHaveBeenCalled();
+	});
+});
+
+describe('approval crash safety', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		inboxMocks.syncInboxItemForAgentRun.mockResolvedValue(null);
+		gatewayMocks.runGatewayWriteOp.mockResolvedValue({
+			ok: true,
+			entityId: 'doc-1',
+			entityKind: 'document',
+			data: { document: { id: 'doc-1' } }
+		});
+	});
+	function run() {
+		return {
+			id: 'run-1',
+			user_id: 'user-1',
+			status: 'proposal_ready',
+			allowed_ops: ['onto.document.create'],
+			context_type: 'project',
+			project_id: 'project-1',
+			change_set: {
+				run_id: 'run-1',
+				status: 'pending',
+				created_at: '2026-10-18',
+				changes: [1, 2].map((i) => ({
+					id: `change-${i}`,
+					action: 'create',
+					entity_type: 'document',
+					op: 'onto.document.create',
+					after: { project_id: 'project-1', title: `Doc ${i}` },
+					decision: 'pending'
+				}))
+			}
+		};
+	}
+	it('passes stable downstream keys on first apply and crash re-entry', async () => {
+		const staged = run();
+		const crashed = {
+			...run(),
+			status: 'running',
+			commit_started_at: new Date(Date.now() - 600_000).toISOString()
+		};
+		const db = createSupabaseMock({
+			agent_runs: [
+				{ data: staged, error: null },
+				{ data: { id: 'run-1' }, error: null },
+				{ data: crashed, error: null },
+				{ data: { id: 'run-1' }, error: null }
+			]
+		});
+		await commitChangeSet({ admin: db.client as any, userId: 'user-1', runId: 'run-1' });
+		await commitChangeSet({ admin: db.client as any, userId: 'user-1', runId: 'run-1' });
+		expect(
+			gatewayMocks.runGatewayWriteOp.mock.calls.map(([args]) => args.downstreamIdempotencyKey)
+		).toEqual([
+			'agent-run:run-1:change-1',
+			'agent-run:run-1:change-2',
+			'agent-run:run-1:change-1',
+			'agent-run:run-1:change-2'
+		]);
+	});
+	it.each([true, false])(
+		'stops and leaves the run for recovery when receipt insert fails (write success=%s)',
+		async (success) => {
+			gatewayMocks.runGatewayWriteOp.mockResolvedValue(
+				success
+					? { ok: true, entityId: 'doc-1', entityKind: 'document' }
+					: { ok: false, error: { message: 'Write failed' } }
+			);
+			const db = createSupabaseMock(
+				{
+					agent_runs: [
+						{ data: run(), error: null },
+						{ data: { id: 'run-1' }, error: null }
+					]
+				},
+				{},
+				[{ data: null, error: { message: 'Receipt unavailable' } }]
+			);
+			const outcome = await commitChangeSet({
+				admin: db.client as any,
+				userId: 'user-1',
+				runId: 'run-1'
+			});
+			expect(outcome).toMatchObject({
+				ok: false,
+				error: { code: 'INTERNAL', message: expect.stringContaining('Receipt unavailable') }
+			});
+			expect(gatewayMocks.runGatewayWriteOp).toHaveBeenCalledTimes(1);
+			expect(
+				db.updates.some(
+					({ payload }) => payload.status === 'completed' || payload.status === 'partial'
+				)
+			).toBe(false);
+		}
+	);
+
+	it.each([
+		['document', 'onto_documents', 'onto.document.create'],
+		['goal', 'onto_goals', 'onto.goal.create'],
+		['plan', 'onto_plans', 'onto.plan.create'],
+		['milestone', 'onto_milestones', 'onto.milestone.create'],
+		['risk', 'onto_risks', 'onto.risk.create'],
+		['document', 'onto_documents', 'onto.task.docs.create_or_attach']
+	] as const)(
+		'recovers a landed %s in %s (%s) after its receipt fails, so only unrun work is re-proposed',
+		async (kind, table, op) => {
+			const staged = run();
+			staged.allowed_ops = [op];
+			for (const change of staged.change_set.changes) {
+				change.op = op;
+				change.entity_type = kind;
+			}
+			const landed: Array<Record<string, unknown>> = [];
+			// Use the real insert path to generate durable IDs, rather than reproducing
+			// the hash in this test. Recovery must find precisely those saved rows.
+			gatewayMocks.runGatewayWriteOp.mockImplementation(async (args) => {
+				const created = await insertGatewayEntity(
+					{
+						userId: args.userId,
+						downstreamIdempotencyKey: args.downstreamIdempotencyKey,
+						admin: {
+							from: () => ({
+								insert: (row: Record<string, unknown>) => ({
+									select: () => ({
+										single: async () => {
+											landed.push(row);
+											return { data: row, error: null };
+										}
+									})
+								})
+							})
+						}
+					} as any,
+					table,
+					{ ...args.args, created_by: 'actor-1' },
+					'*'
+				);
+				return { ok: true, entityId: created.data!.id, entityKind: kind };
+			});
+			const crashed = {
+				...structuredClone(staged),
+				status: 'running',
+				commit_started_at: '2026-10-18T12:00:00Z'
+			};
+			const db = createSupabaseMock(
+				{
+					agent_runs: [
+						{ data: staged, error: null },
+						{ data: { id: 'run-1' }, error: null },
+						{ data: crashed, error: null },
+						{ data: { id: 'run-1' }, error: null }
+					]
+				},
+				{
+					agent_tool_executions: { data: [], error: null },
+					[table]: { data: landed, error: null }
+				},
+				[{ data: null, error: { message: 'Receipt unavailable once' } }]
+			);
+			const first = await commitChangeSet({
+				admin: db.client as any,
+				userId: 'user-1',
+				runId: 'run-1'
+			});
+			expect(first).toMatchObject({ ok: false, error: { code: 'INTERNAL' } });
+			expect(landed).toHaveLength(1);
+			// Later human edits must survive recovery unchanged.
+			landed[0]!.description = 'Human edit after the create';
+			const recovered = await recoverStalledCommit({
+				admin: db.client as any,
+				runId: 'run-1',
+				now: new Date('2026-10-18T12:10:00Z')
+			});
+			expect(recovered).toEqual({
+				outcome: 'finalized',
+				runStatus: 'partial',
+				applied: 1,
+				notApplied: 1
+			});
+			const final = db.updates.at(-1)!.payload;
+			const changes = (final.change_set as ChangeSet).changes;
+			expect(changes[0]).toMatchObject({
+				decision: 'approved',
+				applied_entity_id: landed[0]!.id
+			});
+			expect(changes[0]!.error).toBeUndefined();
+			expect(changes[1]!.error).toMatch(/^Not applied:/);
+			const completedDb = createSupabaseMock({
+				agent_runs: [{ data: { ...crashed, ...final }, error: null }]
+			});
+			await commitChangeSet({
+				admin: completedDb.client as any,
+				userId: 'user-1',
+				runId: 'run-1'
+			});
+			expect(gatewayMocks.runGatewayWriteOp).toHaveBeenCalledTimes(1);
+			// A fresh proposal contains only the work recovery says did not run.
+			const retry = run();
+			retry.id = 'run-2';
+			retry.allowed_ops = staged.allowed_ops;
+			retry.change_set = {
+				...retry.change_set,
+				run_id: 'run-2',
+				changes: changes
+					.filter((c) => c.error)
+					.map((c) => ({
+						...c,
+						id: 'retry-change',
+						decision: 'pending',
+						error: undefined
+					})) as any
+			};
+			const retryDb = createSupabaseMock({
+				agent_runs: [
+					{ data: retry, error: null },
+					{ data: { id: 'run-2' }, error: null }
+				]
+			});
+			expect(
+				await commitChangeSet({
+					admin: retryDb.client as any,
+					userId: 'user-1',
+					runId: 'run-2'
+				})
+			).toMatchObject({ ok: true });
+			expect(landed.map((row) => row.title)).toEqual(['Doc 1', 'Doc 2']);
+			expect(landed[0]!.description).toBe('Human edit after the create');
+		}
+	);
+
+	it('does not finalize recovery when the durable create lookup fails', async () => {
+		const db = createSupabaseMock(
+			{
+				agent_runs: [
+					{
+						data: {
+							...run(),
+							status: 'running',
+							commit_started_at: '2026-10-18T12:00:00Z'
+						},
+						error: null
+					},
+					{ data: { id: 'run-1' }, error: null }
+				]
+			},
+			{
+				agent_tool_executions: { data: [], error: null },
+				onto_documents: { data: null, error: { message: 'Read unavailable' } }
+			}
+		);
+		await expect(
+			recoverStalledCommit({
+				admin: db.client as any,
+				runId: 'run-1',
+				now: new Date('2026-10-18T12:10:00Z')
+			})
+		).rejects.toThrow('Read unavailable');
+		expect(db.updates).toEqual([]);
+	});
+
+	it('recovers a task by its persisted key alongside a successful receipt', async () => {
+		const staged = run();
+		staged.change_set.changes[0]!.op = 'onto.task.create';
+		staged.change_set.changes[0]!.entity_type = 'task';
+		const db = createSupabaseMock(
+			{
+				agent_runs: [
+					{
+						data: {
+							...staged,
+							status: 'running',
+							commit_started_at: '2026-10-18T12:00:00Z'
+						},
+						error: null
+					},
+					{ data: { id: 'run-1' }, error: null }
+				]
+			},
+			{
+				agent_tool_executions: {
+					data: [
+						{
+							proposed_change_id: 'change-2',
+							entity_id: 'doc-2',
+							entity_kind: 'document'
+						}
+					],
+					error: null
+				},
+				onto_tasks: {
+					data: [{ id: 'task-1', idempotency_key: 'agent-run:run-1:change-1' }],
+					error: null
+				}
+			}
+		);
+		expect(
+			await recoverStalledCommit({
+				admin: db.client as any,
+				runId: 'run-1',
+				now: new Date('2026-10-18T12:10:00Z')
+			})
+		).toEqual({ outcome: 'finalized', runStatus: 'completed', applied: 2, notApplied: 0 });
+		expect((db.updates[0]!.payload.change_set as ChangeSet).changes[0]).toMatchObject({
+			decision: 'approved',
+			applied_entity_id: 'task-1'
+		});
+	});
+});
+
+describe('sequential approved updates', () => {
+	const before = {
+		id: 'task-1',
+		project_id: 'project-1',
+		title: 'Original',
+		state_key: 'todo',
+		props: { agent: 'old', human: 'old' },
+		updated_at: 'old',
+		archived_at: null
+	};
+	function change(id: string, after: Record<string, unknown>): ProposedChange {
+		return {
+			id,
+			op: 'onto.task.update',
+			entity_type: 'task',
+			entity_id: 'task-1',
+			action: 'update',
+			before: { ...before },
+			after: { task_id: 'task-1', ...after },
+			rationale: 'Review',
+			decision: 'pending'
+		};
+	}
+	function fixture(
+		changes: ProposedChange[],
+		rows: Record<string, unknown>[],
+		prior?: Record<string, unknown>
+	) {
+		const run = {
+			id: 'run-1',
+			user_id: 'user-1',
+			status: prior ? 'running' : 'proposal_ready',
+			commit_started_at: new Date(Date.now() - 600_000).toISOString(),
+			allowed_ops: ['onto.task.update'],
+			context_type: 'project',
+			project_id: 'project-1',
+			change_set: { run_id: 'run-1', status: 'pending', created_at: '2026-10-18', changes }
+		};
+		return createSupabaseMock(
+			{
+				agent_runs: [
+					{ data: run, error: null },
+					{ data: { id: 'run-1' }, error: null }
+				],
+				onto_tasks: rows.map((data) => ({ data, error: null }))
+			},
+			prior ? { agent_tool_executions: { data: [prior], error: null } } : {}
+		);
+	}
+	beforeEach(() => {
+		vi.clearAllMocks();
+		inboxMocks.syncInboxItemForAgentRun.mockResolvedValue(null);
+	});
+	it('uses the saved row for a later edit to the same field', async () => {
+		const changes = [
+			change('first', { title: 'First' }),
+			change('second', { title: 'Second' })
+		];
+		const post = { ...before, title: 'First', updated_at: 'new' };
+		gatewayMocks.runGatewayWriteOp.mockResolvedValue({
+			ok: true,
+			entityId: 'task-1',
+			entityKind: 'task',
+			data: { task: post }
+		});
+		const db = fixture(changes, [before, post]);
+		const result = await commitChangeSet({
+			admin: db.client as any,
+			userId: 'user-1',
+			runId: 'run-1'
+		});
+		expect(result).toMatchObject({ ok: true, result: { applied: 2, failed: 0 } });
+	});
+	it('tracks only the written props keys and still rejects unrelated scalar drift', async () => {
+		const changes = [
+			change('first', { props: { agent: 'first' } }),
+			change('second', { props: { agent: 'second' } }),
+			change('third', { state_key: 'done' })
+		];
+		const post = {
+			...before,
+			state_key: 'blocked',
+			props: { agent: 'first', human: 'concurrent' }
+		};
+		gatewayMocks.runGatewayWriteOp.mockResolvedValue({
+			ok: true,
+			entityId: 'task-1',
+			entityKind: 'task',
+			data: { task: post }
+		});
+		const db = fixture(changes, [before, post, post]);
+		const result = await commitChangeSet({
+			admin: db.client as any,
+			userId: 'user-1',
+			runId: 'run-1'
+		});
+		expect(result).toMatchObject({ ok: true, result: { applied: 2, failed: 1 } });
+		expect(gatewayMocks.runGatewayWriteOp).toHaveBeenCalledTimes(2);
+	});
+	it.each([{ goal_id: 'goal-1' }, { archived: true }])(
+		'treats an update without row-column writes as an empty compare: %j',
+		async (after) => {
+			const db = fixture(
+				[change('first', after)],
+				[{ ...before, title: 'Human edit', props: { human: 'changed' } }]
+			);
+			gatewayMocks.runGatewayWriteOp.mockResolvedValue({
+				ok: true,
+				entityId: 'task-1',
+				entityKind: 'task',
+				data: { task: before }
+			});
+			expect(
+				await commitChangeSet({ admin: db.client as any, userId: 'user-1', runId: 'run-1' })
+			).toMatchObject({ ok: true, result: { applied: 1, failed: 0 } });
+		}
+	);
+	it('counts a prior applied change as approved even if re-entry rejects it', async () => {
+		const db = fixture([change('first', { title: 'First' })], [], {
+			proposed_change_id: 'first',
+			entity_id: 'task-1',
+			entity_kind: 'task',
+			result: { task: { ...before, title: 'First' } }
+		});
+		const result = await commitChangeSet({
+			admin: db.client as any,
+			userId: 'user-1',
+			runId: 'run-1',
+			decisions: [{ change_id: 'first', decision: 'rejected' }]
+		});
+		expect(result).toMatchObject({
+			ok: true,
+			result: { applied: 1, rejected: 0, change_set: { changes: [{ decision: 'approved' }] } }
+		});
+		expect(gatewayMocks.runGatewayWriteOp).not.toHaveBeenCalled();
+	});
+	it('restores the post-apply baseline from receipts on re-entry', async () => {
+		const post = { ...before, title: 'First' };
+		const db = fixture(
+			[change('first', { title: 'First' }), change('second', { title: 'Second' })],
+			[post],
+			{
+				proposed_change_id: 'first',
+				entity_id: 'task-1',
+				entity_kind: 'task',
+				result: { task: post }
+			}
+		);
+		gatewayMocks.runGatewayWriteOp.mockResolvedValue({
+			ok: true,
+			entityId: 'task-1',
+			entityKind: 'task',
+			data: { task: { ...post, title: 'Second' } }
+		});
+		expect(
+			await commitChangeSet({ admin: db.client as any, userId: 'user-1', runId: 'run-1' })
+		).toMatchObject({ ok: true, result: { applied: 2, failed: 0 } });
 	});
 });

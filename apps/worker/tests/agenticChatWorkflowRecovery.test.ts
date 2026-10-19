@@ -286,7 +286,8 @@ describe('a handed-off workflow turn is rendered from durable workflow truth', (
 						failure_code: `workflow_${outcome}`,
 						recovered_from_stall: true
 					})
-				})
+				}),
+				expect.any(AbortSignal)
 			);
 		}
 	);
@@ -540,7 +541,8 @@ describe('a handed-off workflow turn is rendered from durable workflow truth', (
 			failureClass: 'cancelled'
 		});
 		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({ status: 'cancelled', failureCode: 'cancelled' })
+			expect.objectContaining({ status: 'cancelled', failureCode: 'cancelled' }),
+			expect.any(AbortSignal)
 		);
 	});
 });

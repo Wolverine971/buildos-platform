@@ -228,6 +228,11 @@ export function normalizeGatewayOpArgs(
 		const state = normalizeTaskStateInput(normalized.state_key);
 		if (state) normalized.state_key = state;
 	}
+	if (op === 'onto.document.update') {
+		// Cached clients may still send the retired spelling and unused guidance.
+		if (normalized.update_strategy === 'merge_llm') normalized.update_strategy = 'append';
+		delete normalized.merge_instructions;
+	}
 	return normalized;
 }
 

@@ -204,31 +204,10 @@ Allows project admins to update another active member's role-profile fields.
 
 ---
 
-## 🖼️ Project Icon Generation
+## Project Icons
 
-### Create Icon Generation
-
-```http
-POST /api/onto/projects/[id]/icon/generations
-```
-
-Creates generation record and queues `generate_project_icon` worker job.
-
-### Get Generation Status + Candidates
-
-```http
-GET /api/onto/projects/[id]/icon/generations/[generationId]
-```
-
-Returns generation status, selection state, and candidate rows.
-
-### Select Candidate
-
-```http
-POST /api/onto/projects/[id]/icon/generations/[generationId]/select
-```
-
-Applies selected sanitized candidate SVG to project icon fields.
+The SVG generation endpoints and worker were retired in October 2026. Projects use
+emoji icons through `pick_project_emoji`.
 
 ---
 

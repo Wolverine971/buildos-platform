@@ -1,4 +1,5 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.core-entities.ts
+import { insertGatewayEntity } from './op-execution-gateway.create-idempotency';
 import {
 	GOAL_STATES,
 	MILESTONE_STATES,
@@ -226,29 +227,34 @@ export async function createGoal(context: ToolExecutionContext, args: Record<str
 		}
 	};
 
-	const { data, error } = await context.admin
-		.from('onto_goals')
-		.insert(insertPayload)
-		.select(CORE_ENTITY_CONFIG.goal.select)
-		.single();
+	const { data, error, replayed } = await insertGatewayEntity(
+		context,
+		'onto_goals',
+		insertPayload,
+		CORE_ENTITY_CONFIG.goal.select
+	);
 
 	if (error || !data) {
 		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create goal');
 	}
 
-	await syncGoalMentionSideEffects(context, project, data as Record<string, unknown>);
+	if (!replayed) {
+		await syncGoalMentionSideEffects(context, project, data as Record<string, unknown>);
+	}
 
-	await logCreateAsync(
-		context.admin,
-		project.id,
-		'goal',
-		String(data.id),
-		{ name: data.name, type_key: data.type_key, state_key: data.state_key },
-		context.userId,
-		'agent_call',
-		context.chatSessionId,
-		getExternalAgentActivityContext(context)
-	);
+	if (!replayed) {
+		await logCreateAsync(
+			context.admin,
+			project.id,
+			'goal',
+			String(data.id),
+			{ name: data.name, type_key: data.type_key, state_key: data.state_key },
+			context.userId,
+			'agent_call',
+			context.chatSessionId,
+			getExternalAgentActivityContext(context)
+		);
+	}
 
 	return {
 		goal: serializeExternalEntity('goal', data as Record<string, unknown>, project.name),
@@ -364,11 +370,12 @@ export async function createPlan(context: ToolExecutionContext, args: Record<str
 		}
 	};
 
-	const { data, error } = await context.admin
-		.from('onto_plans')
-		.insert(insertPayload)
-		.select(CORE_ENTITY_CONFIG.plan.select)
-		.single();
+	const { data, error, replayed } = await insertGatewayEntity(
+		context,
+		'onto_plans',
+		insertPayload,
+		CORE_ENTITY_CONFIG.plan.select
+	);
 
 	if (error || !data) {
 		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create plan');
@@ -382,17 +389,19 @@ export async function createPlan(context: ToolExecutionContext, args: Record<str
 			? [{ kind: 'milestone', id: args.milestone_id, rel: 'has_plan' }]
 			: [])
 	]);
-	await logCreateAsync(
-		context.admin,
-		project.id,
-		'plan',
-		String(data.id),
-		{ name: data.name, type_key: data.type_key, state_key: data.state_key },
-		context.userId,
-		'agent_call',
-		context.chatSessionId,
-		getExternalAgentActivityContext(context)
-	);
+	if (!replayed) {
+		await logCreateAsync(
+			context.admin,
+			project.id,
+			'plan',
+			String(data.id),
+			{ name: data.name, type_key: data.type_key, state_key: data.state_key },
+			context.userId,
+			'agent_call',
+			context.chatSessionId,
+			getExternalAgentActivityContext(context)
+		);
+	}
 
 	return {
 		plan: serializeExternalEntity('plan', data as Record<string, unknown>, project.name),
@@ -485,9 +494,10 @@ export async function createMilestone(
 	const milestone =
 		normalizeOptionalText(args.milestone, 'milestone', { allowNull: true }) || null;
 	const props = normalizeProps(args.props, 'props') ?? {};
-	const { data, error } = await context.admin
-		.from('onto_milestones')
-		.insert({
+	const { data, error, replayed } = await insertGatewayEntity(
+		context,
+		'onto_milestones',
+		{
 			project_id: project.id,
 			title,
 			milestone: milestone ?? null,
@@ -501,9 +511,9 @@ export async function createMilestone(
 				state_key: stateKey
 			},
 			created_by: actorId
-		})
-		.select(CORE_ENTITY_CONFIG.milestone.select)
-		.single();
+		},
+		CORE_ENTITY_CONFIG.milestone.select
+	);
 
 	if (error || !data) {
 		throw new ExternalToolGatewayError(
@@ -515,17 +525,19 @@ export async function createMilestone(
 	await createOptionalParentEdges(context, project, 'milestone', String(data.id), [
 		{ kind: 'goal', id: goalId, rel: 'has_milestone' }
 	]);
-	await logCreateAsync(
-		context.admin,
-		project.id,
-		'milestone',
-		String(data.id),
-		{ title: data.title, state_key: data.state_key },
-		context.userId,
-		'agent_call',
-		context.chatSessionId,
-		getExternalAgentActivityContext(context)
-	);
+	if (!replayed) {
+		await logCreateAsync(
+			context.admin,
+			project.id,
+			'milestone',
+			String(data.id),
+			{ title: data.title, state_key: data.state_key },
+			context.userId,
+			'agent_call',
+			context.chatSessionId,
+			getExternalAgentActivityContext(context)
+		);
+	}
 
 	return {
 		milestone: serializeExternalEntity(
@@ -618,9 +630,10 @@ export async function createRisk(context: ToolExecutionContext, args: Record<str
 			allowNull: true
 		}) || null;
 	const props = normalizeProps(args.props, 'props') ?? {};
-	const { data, error } = await context.admin
-		.from('onto_risks')
-		.insert({
+	const { data, error, replayed } = await insertGatewayEntity(
+		context,
+		'onto_risks',
+		{
 			project_id: project.id,
 			title,
 			impact,
@@ -635,25 +648,27 @@ export async function createRisk(context: ToolExecutionContext, args: Record<str
 			},
 			...(stateKey === 'mitigated' ? { mitigated_at: new Date().toISOString() } : {}),
 			created_by: actorId
-		})
-		.select(CORE_ENTITY_CONFIG.risk.select)
-		.single();
+		},
+		CORE_ENTITY_CONFIG.risk.select
+	);
 
 	if (error || !data) {
 		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create risk');
 	}
 
-	await logCreateAsync(
-		context.admin,
-		project.id,
-		'risk',
-		String(data.id),
-		{ title: data.title, impact: data.impact, state_key: data.state_key },
-		context.userId,
-		'agent_call',
-		context.chatSessionId,
-		getExternalAgentActivityContext(context)
-	);
+	if (!replayed) {
+		await logCreateAsync(
+			context.admin,
+			project.id,
+			'risk',
+			String(data.id),
+			{ title: data.title, impact: data.impact, state_key: data.state_key },
+			context.userId,
+			'agent_call',
+			context.chatSessionId,
+			getExternalAgentActivityContext(context)
+		);
+	}
 
 	return {
 		risk: serializeExternalEntity('risk', data as Record<string, unknown>, project.name),
@@ -749,8 +764,9 @@ async function updateCoreEntity(
 		existing: Record<string, unknown>;
 		updated: Record<string, unknown>;
 		project: Awaited<ReturnType<typeof loadCoreEntityForAccess>>['project'];
-	}) => Promise<void>
-) {
+	}) => Promise<void>,
+	canRetry = true
+): Promise<Record<string, unknown>> {
 	const config = CORE_ENTITY_CONFIG[kind];
 	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
 	const access = await loadCoreEntityForAccess(context, kind, args[config.idArg], 'write', {
@@ -769,12 +785,21 @@ async function updateCoreEntity(
 	}
 
 	updateData.updated_at = new Date().toISOString();
-	const { data, error } = await context.admin
+	let updateQuery = context.admin
 		.from(config.table)
 		.update(updateData)
-		.eq('id', String(access.entity.id))
-		.select(config.select)
-		.single();
+		.eq('id', String(access.entity.id));
+	const guardsProps = updateData.props !== undefined;
+	if (guardsProps) updateQuery = updateQuery.eq('updated_at', String(access.entity.updated_at));
+	const { data, error } = await updateQuery.select(config.select).single();
+	if (guardsProps && (!error || error.code === 'PGRST116') && !data) {
+		if (canRetry)
+			return updateCoreEntity(context, args, kind, buildUpdateData, afterUpdate, false);
+		throw new ExternalToolGatewayError(
+			'CONFLICT',
+			`The ${kind} changed while saving props. Read it again and retry.`
+		);
+	}
 
 	if (error || !data) {
 		throw new ExternalToolGatewayError(

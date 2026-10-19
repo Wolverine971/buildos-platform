@@ -611,7 +611,7 @@ export class SmartLLMService {
 		// Billed responses already written as their own intermediate usage row.
 		const loggedBilledResponses = new Set<OpenRouterResponse>();
 		const maxTokens = spendPlan?.maxTokens ?? options.maxTokens ?? 8192;
-		const logSupersededResponse = (
+		const logSupersededResponse = async (
 			supersededResponse: OpenRouterResponse | null,
 			error: unknown,
 			attempt: number
@@ -636,6 +636,37 @@ export class SmartLLMService {
 				profile,
 				attempt: attempt + 1
 			});
+			const actualModel = supersededResponse.model || lastRequestedModel;
+			const cost = this.resolveResponseCost(
+				actualModel,
+				[lastRequestedModel, baseModel],
+				supersededResponse.usage
+			);
+			const reportedCost = supersededResponse.usage?.cost;
+			const hasReportedCost =
+				typeof reportedCost === 'number' &&
+				Number.isFinite(reportedCost) &&
+				reportedCost >= 0;
+			const hasTokenUsage =
+				typeof supersededResponse.usage?.prompt_tokens === 'number' &&
+				typeof supersededResponse.usage?.completion_tokens === 'number';
+			// Report before dispatching another paid attempt so cumulative budgets
+			// can cancel the request. The response set also prevents double counting
+			// when a repair fails before it produces its own response.
+			await options.onUsage?.({
+				model: actualModel,
+				billingProvider: lastBillingProvider,
+				provider: supersededResponse.provider || lastProvider,
+				providerRequestId: supersededResponse.id,
+				promptTokens: supersededResponse.usage?.prompt_tokens || 0,
+				completionTokens: supersededResponse.usage?.completion_tokens || 0,
+				totalTokens: supersededResponse.usage?.total_tokens || 0,
+				inputCost: cost.inputCost,
+				outputCost: cost.outputCost,
+				totalCost: cost.totalCost,
+				costSource: hasReportedCost ? 'provider_reported' : 'catalog_estimate',
+				billingDisposition: hasReportedCost || hasTokenUsage ? 'settled' : 'uncertain'
+			});
 		};
 
 		// Make the OpenRouter API call with model routing + local fallbacks
@@ -650,10 +681,13 @@ export class SmartLLMService {
 							: 'caller cancelled'
 					);
 				}
-				const remainingModels = preferredModels.filter(
-					(model) => !attemptedModels.has(model)
-				);
-				const requestedModel = remainingModels[0] || baseModel;
+				const remainingModels = (
+					preferredModels.length > 0 ? preferredModels : [baseModel]
+				).filter((model) => !attemptedModels.has(model));
+				// Repair and provider routing may already have consumed the rest of
+				// the route. Never fall back to dispatching the failed base model again.
+				if (remainingModels.length === 0) break;
+				const requestedModel = remainingModels[0]!;
 				lastRequestedModel = requestedModel;
 
 				const routingCandidates = [
@@ -668,6 +702,7 @@ export class SmartLLMService {
 					routingModels.length > 0 ? routingModels : [requestedModel];
 
 				try {
+					attemptedModels.add(requestedModel);
 					const completion = await this.callChatCompletions({
 						model: requestedModel, // Primary model with fallback
 						models: modelsForRequest, // Filtered models for fallback routing
@@ -689,10 +724,16 @@ export class SmartLLMService {
 					lastBillingProvider = completion.route.provider;
 
 					lastResponse = response;
+					if (response.model) attemptedModels.add(response.model);
 
 					// Guard against malformed response
 					if (!response.choices || response.choices.length === 0) {
-						throw new Error('OpenRouter returned empty choices array');
+						throw buildOpenRouterEmptyContentError({
+							operation: 'getJSONResponse',
+							requestedModel,
+							response,
+							extractedText: null
+						});
 					}
 
 					const choice = response.choices[0];
@@ -742,11 +783,20 @@ export class SmartLLMService {
 								: {})
 						});
 
-						// If validation is enabled and parse failed, we can retry with a more powerful model
+						// Preserve the free-only route and skip every model already tried,
+						// including the actual model selected by provider-side routing.
+						const repairModels =
+							baseModel === QWEN_38_27B_FREE_MODEL
+								? [baseModel]
+								: JSON_PROFILE_MODELS.powerful;
+						const retryModel = repairModels.find(
+							(model) => !attemptedModels.has(model)
+						);
 						if (
 							!spendPlan &&
 							options.validation?.retryOnParseError &&
-							retryCount < maxRetries
+							retryCount < maxRetries &&
+							retryModel
 						) {
 							retryCount++;
 							console.log(
@@ -754,13 +804,9 @@ export class SmartLLMService {
 							);
 							// The malformed response was billed and is now superseded by the
 							// repair call (or by cancellation); record it before moving on.
-							logSupersededResponse(response, parseError, attempt);
+							await logSupersededResponse(response, parseError, attempt);
 
 							let cleanedRetry = ''; // Declare outside try block for error logging
-							const retryModel =
-								baseModel === QWEN_38_27B_FREE_MODEL
-									? baseModel
-									: (JSON_PROFILE_MODELS.powerful[0] ?? LAST_RESORT_MODEL);
 							const retryModels = [retryModel];
 							try {
 								// Try again with powerful profile
@@ -797,6 +843,7 @@ export class SmartLLMService {
 								});
 								const retryResponse = retryCompletion.response;
 								lastResponse = retryResponse;
+								if (retryResponse.model) attemptedModels.add(retryResponse.model);
 								lastRequestApiUrl = retryCompletion.route.apiUrl;
 								lastProvider =
 									retryResponse.provider || retryCompletion.route.provider;
@@ -804,9 +851,12 @@ export class SmartLLMService {
 
 								// Guard against malformed retry response
 								if (!retryResponse.choices || retryResponse.choices.length === 0) {
-									throw new Error(
-										'Retry: OpenRouter returned empty choices array'
-									);
+									throw buildOpenRouterEmptyContentError({
+										operation: 'getJSONResponse_retry',
+										requestedModel: retryModel,
+										response: retryResponse,
+										extractedText: null
+									});
 								}
 
 								const retryChoice = retryResponse.choices[0];
@@ -1034,8 +1084,12 @@ export class SmartLLMService {
 							error instanceof SyntaxError ||
 							shouldFailoverToNextOpenRouterModel(error));
 
-					if (attempt < maxAttempts - 1 && shouldRetry) {
-						logSupersededResponse(lastResponse, error, attempt);
+					if (
+						attempt < maxAttempts - 1 &&
+						preferredModels.some((model) => !attemptedModels.has(model)) &&
+						shouldRetry
+					) {
+						await logSupersededResponse(lastResponse, error, attempt);
 						console.warn('OpenRouter JSON response retrying after failure', {
 							attempt: attempt + 1,
 							maxAttempts,
@@ -1120,9 +1174,10 @@ export class SmartLLMService {
 					: null;
 			const failureTotalCost = definitivePreGenerationRejection
 				? 0
-				: hasFailureTokenUsage && failurePricing
-					? (failureReportedCost ?? failureInputCost + failureOutputCost)
-					: (spendPlan?.reservedCostUsd ?? 0);
+				: (failureReportedCost ??
+					(hasFailureTokenUsage && failurePricing
+						? failureInputCost + failureOutputCost
+						: (spendPlan?.reservedCostUsd ?? 0)));
 			const failureCostSource: JSONUsageEvent['costSource'] =
 				failureReportedCost !== null
 					? 'provider_reported'
@@ -1153,7 +1208,12 @@ export class SmartLLMService {
 					: failureReportedCost !== null || hasFailureTokenUsage
 						? 'settled'
 						: 'uncertain';
-			if (spendPlan && !usageReported && typeof options.onUsage === 'function') {
+			if (
+				(spendPlan || this.isBilledResponse(failureResponse)) &&
+				!usageReported &&
+				typeof options.onUsage === 'function'
+			) {
+				// Non-budgeted calls also report terminal billed responses, once.
 				// A strict-budget call has no unreserved retry. If the provider
 				// returned usage, settle to it; otherwise charge the full reservation
 				// because a lost/timeout response may still have been accepted.
@@ -1379,7 +1439,12 @@ export class SmartLLMService {
 
 					// Guard against malformed response
 					if (!attemptResponse.choices || attemptResponse.choices.length === 0) {
-						throw new Error('OpenRouter returned empty choices array');
+						throw buildOpenRouterEmptyContentError({
+							operation: 'generateText',
+							requestedModel,
+							response: attemptResponse,
+							extractedText: null
+						});
 					}
 
 					const choice = attemptResponse.choices[0];

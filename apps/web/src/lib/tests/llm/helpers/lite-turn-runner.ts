@@ -6,7 +6,28 @@ import {
 	buildLitePromptEnvelope,
 	type LitePromptEnvelope
 } from '$lib/services/agentic-chat-lite/prompt';
-import { getDefaultToolsForContextType } from '@buildos/agentic-chat-runtime/catalog';
+import { getGatewaySurfaceForContextType } from '@buildos/agentic-chat-runtime/catalog';
+import {
+	buildWorkerPromptScaffold,
+	resolveWorkerPromptTools
+} from '$lib/services/agentic-chat-v2/worker-prompt-surface';
+import { resolveFastChatScaffoldConfigFromEnv } from '$lib/services/agentic-chat-v2/scaffold-variant';
+
+const WORKER_PROMPT_SCAFFOLD = buildWorkerPromptScaffold(
+	resolveFastChatScaffoldConfigFromEnv(process.env).prompt
+);
+
+function workerTools(contextType: ChatContextType, tools?: ChatToolDefinition[]) {
+	const admitted = resolveWorkerPromptTools(
+		tools ?? getGatewaySurfaceForContextType(contextType)
+	);
+	if (admitted.unavailableToolNames.length > 0) {
+		throw new Error(
+			`Worker-unavailable evaluation tools: ${admitted.unavailableToolNames.join(', ')}`
+		);
+	}
+	return admitted.tools;
+}
 
 export type LiteTurnResult = {
 	assistantText: string;
@@ -26,6 +47,9 @@ export type LiteTurnResult = {
 export function buildGlobalTestEnvelope(): LitePromptEnvelope {
 	return buildLitePromptEnvelope({
 		contextType: 'global',
+		tools: workerTools('global'),
+		scaffold: WORKER_PROMPT_SCAFFOLD,
+		projectCreateWorkflow: 'reviewed_shell',
 		entityId: null,
 		projectId: null,
 		now: new Date().toISOString(),
@@ -96,12 +120,15 @@ export function buildGlobalTestEnvelope(): LitePromptEnvelope {
 }
 
 /**
- * The project_create fork: one-tool context rendered before a project exists
- * (prompt audit WP-3, 2026-07-10).
+ * The worker project_create surface before a project exists: create the shell,
+ * then its goals and tasks through the reviewed tool surface.
  */
 export function buildProjectCreateTestEnvelope(): LitePromptEnvelope {
 	return buildLitePromptEnvelope({
 		contextType: 'project_create',
+		tools: workerTools('project_create'),
+		scaffold: WORKER_PROMPT_SCAFFOLD,
+		projectCreateWorkflow: 'reviewed_shell',
 		entityId: null,
 		projectId: null,
 		now: new Date().toISOString(),
@@ -111,8 +138,8 @@ export function buildProjectCreateTestEnvelope(): LitePromptEnvelope {
 }
 
 /**
- * Run a single live LLM pass the same way the agentic-chat v2 stream does on
- * pass 1: system prompt + user message, the context's default tool surface,
+ * Run a single live LLM pass using the worker prompt and tool surface:
+ * system prompt + user message, the context's worker-admitted tools,
  * tool_choice auto, temperature 0.2, profile balanced.
  *
  * Makes a REAL OpenRouter API call — costs money.
@@ -125,8 +152,8 @@ export async function runLiteTurn(params: {
 	/** Exact model pin for opt-in live model evaluations. */
 	model?: string;
 }): Promise<LiteTurnResult> {
+	const tools = workerTools(params.contextType, params.tools);
 	const llm = new SmartLLMService();
-	const tools = params.tools ?? getDefaultToolsForContextType(params.contextType);
 	const hasTools = tools.length > 0;
 	const startedAt = performance.now();
 

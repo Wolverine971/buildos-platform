@@ -528,6 +528,121 @@ function providerReadRound(
 }
 
 describe('AgenticChatTurnProviderAdapter', () => {
+	it('aborts the opening request when the consumer abandons the context-selection step', async () => {
+		const parent = new AbortController();
+		const closed = vi.fn();
+		const client = {
+			stream: vi.fn<AgenticChatTurnProviderClientPortV1['stream']>((request) =>
+				(async function* () {
+					try {
+						await new Promise<void>((_resolve, reject) => {
+							request.signal.addEventListener(
+								'abort',
+								() => reject(request.signal.reason),
+								{
+									once: true
+								}
+							);
+						});
+						yield { type: 'text', content: 'Unreachable' } as const;
+					} finally {
+						closed();
+					}
+				})()
+			)
+		};
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const adapter = new AgenticChatTurnProviderAdapter({
+			client,
+			capacity,
+			contextFinder: {
+				find: async () => ({
+					injection: null,
+					step: {
+						type: 'semantic',
+						transitionId: 'context-selection',
+						phase: 'stream',
+						eventType: 'context_selection',
+						currentActivity: 'Working from project context',
+						eventPayload: { type: 'context_selection' }
+					}
+				})
+			}
+		});
+		const invocation = await adapter.prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: parent.signal
+		});
+
+		try {
+			await expect(
+				(async () => {
+					for await (const step of invocation.stream()) {
+						expect(step).toMatchObject({
+							type: 'semantic',
+							eventType: 'context_selection'
+						});
+						expect(client.stream).toHaveBeenCalledOnce();
+						throw new Error('Context-selection publication failed');
+					}
+				})()
+			).rejects.toThrow('Context-selection publication failed');
+			expect(client.stream.mock.calls[0]?.[0].signal.aborted).toBe(true);
+			expect(parent.signal.aborted).toBe(false);
+			await vi.waitFor(() => expect(closed).toHaveBeenCalledOnce());
+			expect(capacity.getSnapshot().activeRequests).toBe(0);
+		} finally {
+			parent.abort();
+			invocation.release();
+		}
+	});
+
+	it('consumes the eager opening request normally after context selection', async () => {
+		const client = clientWith([
+			{ type: 'text', content: 'Visible answer' },
+			{ type: 'done', finishedReason: 'stop' }
+		]);
+		const capacity = new AgenticChatProviderCapacity({ configured: true, concurrency: 1 });
+		const parent = new AbortController();
+		const adapter = new AgenticChatTurnProviderAdapter({
+			client,
+			capacity,
+			contextFinder: {
+				find: async () => ({
+					injection: 'Selected project evidence',
+					step: {
+						type: 'semantic',
+						transitionId: 'context-selection',
+						phase: 'stream',
+						eventType: 'context_selection',
+						currentActivity: 'Working from project context',
+						eventPayload: { type: 'context_selection' }
+					}
+				})
+			}
+		});
+		const invocation = await adapter.prepare({
+			executionInput: executionInput(),
+			processingToken: PROCESSING_TOKEN,
+			signal: parent.signal
+		});
+
+		try {
+			await expect(collect(invocation.stream())).resolves.toEqual([
+				expect.objectContaining({ type: 'semantic', eventType: 'context_selection' }),
+				{ type: 'text_delta', text: 'Visible answer' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			]);
+			expect(client.stream).toHaveBeenCalledOnce();
+			expect(client.stream.mock.calls[0]?.[0].signal.aborted).toBe(false);
+			expect(parent.signal.aborted).toBe(false);
+			expect(capacity.getSnapshot().activeRequests).toBe(0);
+		} finally {
+			invocation.release();
+		}
+	});
+
 	it('reserves before start and defers the first client call until stream', async () => {
 		const client = clientWith([
 			{ type: 'text', content: 'Visible answer' },

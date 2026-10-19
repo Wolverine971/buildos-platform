@@ -92,6 +92,10 @@ export function resolveQueueHeartbeatInterval(stalledTimeoutMs: number): number 
 	return Math.max(5_000, Math.min(60_000, Math.floor(finiteTimeout / 3)));
 }
 
+const WORKER_TIMEOUT_SETTLE_GRACE_MS = 3 * 60_000;
+
+class WorkerTimeoutGraceExpiredError extends Error {}
+
 export class SupabaseQueue {
 	private processors: Map<
 		JobType,
@@ -755,6 +759,12 @@ export class SupabaseQueue {
 				`✅ Completed ${job.job_type} job ${job.queue_job_id} in ${duration}ms ${trace}`
 			);
 		} catch (error: unknown) {
+			if (error instanceof WorkerTimeoutGraceExpiredError) {
+				// The processor is still running. Stop renewing ownership in finally and
+				// let fenced stalled recovery reclaim it; do not enqueue an immediate retry.
+				console.error(`❌ ${error.message}; releasing slot and heartbeat ${trace}`);
+				return;
+			}
 			const failure = classifyQueueError(error);
 			console.error(
 				`❌ Job ${job.queue_job_id} failed (${failure.kind}:${failure.code}) [correlation=${correlationId ?? 'missing'}]:`,
@@ -885,11 +895,30 @@ export class SupabaseQueue {
 			return await Promise.race([promise, timeoutPromise]);
 		} catch (error) {
 			if (timeoutError) {
-				// Abort is cooperative. Retain the slot AND claim heartbeat until
-				// the original work settles, including late rejection, so neither
-				// refill nor stalled recovery starts a concurrent retry. Shutdown
-				// still has its own bounded drain if a processor never settles.
-				await promise.catch(() => undefined);
+				// Give cooperative cleanup time to finish, but never let an ignored
+				// abort keep a queue slot and heartbeat alive indefinitely.
+				let graceTimer: NodeJS.Timeout | null = null;
+				try {
+					const settled = await Promise.race([
+						promise.then(
+							() => true,
+							() => true
+						),
+						new Promise<false>((resolve) => {
+							graceTimer = setTimeout(
+								() => resolve(false),
+								WORKER_TIMEOUT_SETTLE_GRACE_MS
+							);
+						})
+					]);
+					if (!settled) {
+						throw new WorkerTimeoutGraceExpiredError(
+							`Timed-out ${jobType} job ${queueJobId} ignored abort for ${WORKER_TIMEOUT_SETTLE_GRACE_MS}ms`
+						);
+					}
+				} finally {
+					if (graceTimer) clearTimeout(graceTimer);
+				}
 				throw timeoutError;
 			}
 			throw error;

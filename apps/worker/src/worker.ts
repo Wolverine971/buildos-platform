@@ -7,7 +7,6 @@ import type {
 	GenerateBriefAudioJobMetadata,
 	PickProjectEmojiJobMetadata,
 	ProjectContextSnapshotJobMetadata,
-	ProjectIconGenerationJobMetadata,
 	ProjectLoopJobMetadata,
 	QueueJobType,
 	VoiceNoteTranscriptionJobMetadata
@@ -31,7 +30,6 @@ import { processAssetOcrJob } from './workers/assets/assetOcrWorker';
 import { processEmbedOntoEntity } from './workers/embeddings/embedEntityWorker';
 import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
-import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
 import { processPickProjectEmojiJob } from './workers/project-emoji/projectEmojiWorker';
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processFreshnessRadarScanJob } from './workers/freshness-radar/signalJob';
@@ -318,22 +316,6 @@ async function processProjectContextSnapshot(
 }
 
 /**
- * Project icon generation processor
- */
-async function processProjectIcon(job: ProcessingJob<ProjectIconGenerationJobMetadata>) {
-	await job.log('Project icon generation job received');
-
-	try {
-		const result = await processProjectIconJob(job);
-		await job.log('Project icon generation job completed');
-		return result;
-	} catch (error) {
-		await job.log(`Project icon generation job failed: ${getErrorMessage(error)}`);
-		throw error;
-	}
-}
-
-/**
  * Project tile emoji processor (pick_project_emoji, queued on project insert)
  */
 async function processPickProjectEmoji(job: ProcessingJob<PickProjectEmojiJobMetadata>) {
@@ -456,8 +438,7 @@ export async function startWorker({ scheduledWork }: { scheduledWork: boolean })
 	// Register project context snapshot processor
 	queue.process('build_project_context_snapshot', processProjectContextSnapshot);
 
-	// Register project icon generation processor
-	queue.process('generate_project_icon', processProjectIcon);
+	// Register project tile emoji processor
 	queue.process('pick_project_emoji', processPickProjectEmoji);
 
 	// Register project loop (reconciliation suggestions) processor

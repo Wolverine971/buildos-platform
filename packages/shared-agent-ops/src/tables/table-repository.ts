@@ -477,10 +477,11 @@ function normalizeApplyResult(raw: unknown, documentId: string): TableApplyResul
 /**
  * Applies row ops (and optionally a full replacement schema) through the
  * onto_document_table_apply RPC. More than TABLE_LIMITS.maxOpsPerApply ops are
- * split into sequential batches only when no expectedRevision is given (a
- * guarded save must be one atomic batch); the schema rides with the first
- * batch. If a later batch fails, earlier batches stay applied and the error's
- * details say how many did.
+ * split into sequential batches for schema changes or unguarded row saves.
+ * The schema rides with the first batch; guarded schema batches carry the
+ * previous batch revision forward. Guarded row-only saves remain atomic. If a
+ * later batch fails, earlier batches stay applied and its details include the
+ * completed count and receipts.
  */
 export async function applyTableChanges(
 	client: TableDataClient,
@@ -498,7 +499,7 @@ export async function applyTableChanges(
 			? args.expectedRevision
 			: null;
 	const max = TABLE_LIMITS.maxOpsPerApply;
-	if (ops.length > max && expectedRevision !== null) {
+	if (ops.length > max && expectedRevision !== null && !args.schema) {
 		throw new TableServiceError(
 			'LIMIT_EXCEEDED',
 			`A guarded save can change at most ${max} rows at once (got ${ops.length}).`
@@ -516,17 +517,28 @@ export async function applyTableChanges(
 			p_document_id: args.documentId,
 			p_ops: batches[index],
 			p_table: index === 0 ? schemaPayload : null,
-			p_expected_revision: index === 0 ? expectedRevision : null,
+			p_expected_revision:
+				index === 0
+					? expectedRevision
+					: schemaPayload && expectedRevision !== null
+						? merged!.revision
+						: null,
 			p_actor_id: args.actorId ?? null
 		});
 		if (error) {
 			const mapped = tableErrorFromDatabase(error, 'Failed to apply table changes');
-			if (index > 0 && mapped instanceof TableServiceError) {
-				throw new TableServiceError(mapped.code, mapped.message, {
-					...(isRecord(mapped.details) ? mapped.details : {}),
+			if (index > 0) {
+				const priorDetails = (mapped as Error & { details?: unknown }).details;
+				const details = {
+					...(isRecord(priorDetails) ? priorDetails : {}),
 					applied_batches: index,
-					total_batches: batches.length
-				});
+					applied_ops: index * max,
+					total_batches: batches.length,
+					partial_result: merged
+				};
+				if (mapped instanceof TableServiceError)
+					throw new TableServiceError(mapped.code, mapped.message, details);
+				throw Object.assign(mapped, { details });
 			}
 			throw mapped;
 		}

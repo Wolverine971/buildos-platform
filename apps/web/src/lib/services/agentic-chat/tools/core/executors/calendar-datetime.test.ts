@@ -64,4 +64,21 @@ describe('calendar datetime normalization', () => {
 			})
 		).toThrow('start_at');
 	});
+
+	it('keeps exclusive all-day bounds as civil dates', () => {
+		expect(
+			normalizeCalendarDateTimeInput('2026-11-04', 'America/New_York', {
+				dateBoundary: 'end',
+				allDay: true
+			} as any).iso
+		).toBe('2026-11-04');
+	});
+
+	it.each(['2026-02-30', '2026-11-03T10:00:00Z'])('rejects invalid all-day date %s', (value) => {
+		expect(() =>
+			normalizeCalendarDateTimeInput(value, 'America/New_York', {
+				allDay: true
+			} as any)
+		).toThrow('YYYY-MM-DD');
+	});
 });

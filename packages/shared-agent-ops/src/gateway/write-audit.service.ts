@@ -76,6 +76,13 @@ export async function reserveWriteExecution(params: {
 	idempotencyKey?: string;
 	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<{ executionId: string | null }> {
+	return reserveWriteExecutionAttempt(params, true);
+}
+
+async function reserveWriteExecutionAttempt(
+	params: Parameters<typeof reserveWriteExecution>[0],
+	canReclaim: boolean
+): Promise<{ executionId: string | null }> {
 	if (!params.idempotencyKey) {
 		return { executionId: null };
 	}
@@ -153,6 +160,39 @@ export async function reserveWriteExecution(params: {
 			securityEventOptions: params.securityEventOptions
 		});
 		throw new AgentCallWriteReplayError(existing.response_payload);
+	}
+
+	// A dead process cannot finalize its reservation. Fence reclamation on the
+	// exact pending version we read so a concurrent completion/refresh wins.
+	const lastActivity = existing ? Date.parse(existing.updated_at) : NaN;
+	if (
+		canReclaim &&
+		existing?.status === 'pending' &&
+		Number.isFinite(lastActivity) &&
+		Date.now() - lastActivity > 5 * 60 * 1000
+	) {
+		const { error: reclaimError } = await params.admin
+			.from('agent_call_tool_executions')
+			.update({
+				status: 'failed',
+				error_payload: {
+					code: 'STALE_RESERVATION',
+					message: 'Pending write reservation expired'
+				},
+				completed_at: now,
+				updated_at: now
+			})
+			.eq('id', existing.id)
+			.eq('status', 'pending')
+			.eq('updated_at', existing.updated_at)
+			.select('id')
+			.maybeSingle();
+		if (reclaimError) {
+			throw new Error(reclaimError.message || 'Failed to reclaim stale write reservation');
+		}
+		// Retry once even if the CAS lost: normal conflict handling will replay
+		// a concurrent success or report the new owner as still pending.
+		return reserveWriteExecutionAttempt(params, false);
 	}
 
 	await logAgentWriteSecurityEvent(params.admin, {

@@ -263,16 +263,6 @@ export interface ConsolidationRunJobMetadata {
 	clusterKey?: string;
 }
 
-export interface ProjectIconGenerationJobMetadata {
-	generationId: string;
-	projectId: string;
-	requestedByUserId: string;
-	triggerSource: 'auto' | 'manual' | 'regenerate';
-	steeringPrompt?: string;
-	candidateCount: number; // auto: 1, manual default: 4
-	autoSelect: boolean; // true for auto flow
-}
-
 export interface ProjectActivityBatchFlushJobMetadata {
 	batch_id?: string;
 	batchId?: string;
@@ -356,7 +346,6 @@ export interface JobMetadataMap {
 	agent_run: AgentRunJobMetadata;
 	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
 	buildos_project_loop: ProjectLoopJobMetadata;
-	generate_project_icon: ProjectIconGenerationJobMetadata;
 	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
 	extract_onto_asset_ocr: AssetOcrJobMetadata;
 	embed_onto_entity: EmbedOntoEntityJobMetadata;
@@ -426,17 +415,6 @@ export interface ProjectContextSnapshotResult {
 	error?: string;
 }
 
-export interface ProjectIconGenerationResult {
-	success: boolean;
-	projectId: string;
-	generationId: string;
-	candidatesCreated?: number;
-	selectedCandidateId?: string;
-	skipped?: boolean;
-	reason?: string;
-	error?: string;
-}
-
 export interface ProjectActivityBatchFlushResult {
 	batch_id: string | null;
 	status: 'flushed' | 'already_flushed' | 'missing' | 'failed' | 'invalid';
@@ -485,7 +463,6 @@ export interface JobResultMap {
 	generate_brief_audio: GenerateBriefAudioResult;
 	agent_run: AgentRunJobResult;
 	build_project_context_snapshot: ProjectContextSnapshotResult;
-	generate_project_icon: ProjectIconGenerationResult;
 	project_activity_batch_flush: ProjectActivityBatchFlushResult;
 	extract_onto_asset_ocr: AssetOcrResult;
 	embed_onto_entity: EmbedOntoEntityResult;

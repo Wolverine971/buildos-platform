@@ -1064,7 +1064,6 @@ export async function decideProjectSuggestion(params: {
 			!Array.isArray(current.preview)
 				? (current.preview as Record<string, unknown>)
 				: null,
-		checkModelAlignment: !expectedStructuralFingerprint,
 		expectedStructuralFingerprint
 	});
 	if (!integrity.ok) {

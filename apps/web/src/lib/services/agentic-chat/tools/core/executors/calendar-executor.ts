@@ -11,6 +11,7 @@ import type { CalendarEvent } from '$lib/services/calendar-service';
 import { logUpdateAsync } from '$lib/services/async-activity-logger';
 import {
 	normalizeCalendarDateTimeInput,
+	isCalendarDateOnly,
 	isValidIanaTimezone,
 	type NormalizedCalendarDateTime
 } from './calendar-datetime';
@@ -21,6 +22,12 @@ import { GoogleCalendarReadService } from '$lib/server/google-calendar-read.serv
 import type { AggregatedGoogleCalendarEvent } from '$lib/server/google-calendar-read.service';
 import { GoogleCalendarWriteService } from '$lib/server/google-calendar-write.service';
 import { isMultiCalendarUserAllowed } from '$lib/server/google-calendar-feature';
+import { googleAllDayDates } from '@buildos/shared-agent-ops/calendar/onto-event-sync.service';
+import {
+	createLegacyGoogleCalendarReader,
+	type LegacyGoogleCalendarReader
+} from '@buildos/shared-agent-ops/calendar/agent-run-calendar-port';
+import { google } from 'googleapis';
 
 /** A new start with no end keeps the event's length (same rule as the worker port). */
 function endForStartOnlyMove(
@@ -49,10 +56,11 @@ type CalendarSourceFailure = {
 
 function resolveCalendarReadCoverage(
 	sourceCount: number,
-	successfulSourceCount: number
+	successfulSourceCount: number,
+	truncated = false
 ): CalendarReadCoverage {
 	// Zero sources means nothing failed, so coverage is vacuously complete.
-	if (sourceCount - successfulSourceCount === 0) return 'complete';
+	if (sourceCount - successfulSourceCount === 0) return truncated ? 'degraded' : 'complete';
 	return successfulSourceCount === 0 ? 'unavailable' : 'degraded';
 }
 
@@ -61,12 +69,17 @@ function resolveCalendarReadCoverage(
  * single missing calendar. Say plainly which one happened, and what to do about it.
  */
 function describeCalendarCoverage(read: {
+	truncated?: boolean;
 	coverage: CalendarReadCoverage;
 	source_count: number;
 	failed_source_count: number;
 	source_failures: CalendarSourceFailure[];
 }): string | null {
 	if (read.coverage === 'complete') return null;
+	const truncationWarning = read.truncated
+		? 'Calendar results are truncated. More events may be missing; do not infer availability from this list. Narrow the time range to read the remaining events.'
+		: '';
+	if (read.truncated && read.failed_source_count === 0) return truncationWarning;
 
 	const reasons = Array.from(new Set(read.source_failures.map((f) => f.reason_code))).join(', ');
 	const reconnect = read.source_failures.filter((f) => f.reason_code === 'reconnect_required');
@@ -87,7 +100,7 @@ function describeCalendarCoverage(read: {
 	return (
 		`Calendar coverage is degraded: ${read.failed_source_count} of ${read.source_count} calendar ` +
 		`source(s) failed${reasons ? ` (${reasons})` : ''}. Events on those calendars are missing from ` +
-		`this result, so availability may be wrong.${reconnectSentence}`
+		`this result, so availability may be wrong.${reconnectSentence}${truncationWarning ? ` ${truncationWarning}` : ''}`
 	);
 }
 
@@ -138,6 +151,7 @@ interface GetCalendarEventDetailsArgs {
 
 interface CreateCalendarEventArgs {
 	title: string;
+	all_day?: boolean;
 	start_at: string;
 	end_at?: string | null;
 	timezone?: string;
@@ -152,6 +166,7 @@ interface CreateCalendarEventArgs {
 }
 
 interface UpdateCalendarEventArgs {
+	all_day?: boolean;
 	onto_event_id?: string;
 	event_id?: string;
 	external_event_id?: string;
@@ -215,6 +230,7 @@ const MAX_LIST_OFFSET = MAX_LIST_FETCH - 1;
 
 export interface CalendarExecutorDependencies {
 	googleCalendarWriteService?: GoogleCalendarWriteService;
+	legacyCalendarReader?: LegacyGoogleCalendarReader;
 }
 
 export class CalendarExecutor extends BaseExecutor {
@@ -223,6 +239,7 @@ export class CalendarExecutor extends BaseExecutor {
 	private readonly projectCalendarService: ProjectCalendarService;
 	private readonly googleOAuthService: GoogleOAuthService;
 	private readonly googleCalendarWriteService: GoogleCalendarWriteService;
+	private readonly legacyCalendarReader: LegacyGoogleCalendarReader;
 	private cachedUserTimezone: string | null = null;
 
 	constructor(
@@ -234,6 +251,20 @@ export class CalendarExecutor extends BaseExecutor {
 		this.eventSyncService = new OntoEventSyncService(this.supabase as any);
 		this.projectCalendarService = new ProjectCalendarService(this.supabase as any);
 		this.googleOAuthService = new GoogleOAuthService(this.supabase as any);
+		// Keep web's existing OAuth client while retaining the provider page token
+		// that CalendarService's list response omits.
+		this.legacyCalendarReader =
+			dependencies.legacyCalendarReader ??
+			createLegacyGoogleCalendarReader(
+				{ admin: this.getAdminSupabase(), userId: this.userId },
+				{
+					calendar: async () =>
+						google.calendar({
+							version: 'v3',
+							auth: await this.googleOAuthService.getAuthenticatedClient(this.userId)
+						})
+				}
+			);
 		this.googleCalendarWriteService =
 			dependencies.googleCalendarWriteService ??
 			new GoogleCalendarWriteService(this.getAdminSupabase());
@@ -241,8 +272,38 @@ export class CalendarExecutor extends BaseExecutor {
 
 	private async resolveSourceAwareEventRoute(
 		calendarSourceId: string | undefined,
-		capability: 'read' | 'write'
+		capability: 'read' | 'write',
+		args: GetCalendarEventDetailsArgs | UpdateCalendarEventArgs | DeleteCalendarEventArgs
 	): Promise<{ sourceAware: boolean; selector: { calendarSourceId?: string } }> {
+		const scope = this.normalizeListCalendarScope(
+			this.getStringArg(args.calendar_scope, args.calendarScope),
+			'user'
+		);
+		if (scope === 'project') {
+			const projectId = this.getUuidArg(
+				'project_id',
+				this.getStringArg(args.project_id, args.projectId)
+			);
+			if (!projectId)
+				throw new Error('project_id is required when calendar_scope is project');
+			await this.assertProjectAccess(projectId, capability);
+			const { data: projectCalendar, error } = await this.supabase
+				.from('project_calendars')
+				.select('calendar_source_id')
+				.eq('project_id', projectId)
+				.eq('user_id', this.userId)
+				.maybeSingle();
+			if (error) throw new Error('Failed to resolve project calendar');
+			if (!projectCalendar?.calendar_source_id)
+				throw new Error('Project calendar source not found');
+			if (calendarSourceId && calendarSourceId !== projectCalendar.calendar_source_id) {
+				throw new Error('calendar_source_id does not match the project calendar');
+			}
+			return {
+				sourceAware: true,
+				selector: { calendarSourceId: projectCalendar.calendar_source_id }
+			};
+		}
 		if (calendarSourceId) {
 			return { sourceAware: true, selector: { calendarSourceId } };
 		}
@@ -330,11 +391,13 @@ export class CalendarExecutor extends BaseExecutor {
 		value: string,
 		timezone: string,
 		fieldName: string,
-		dateBoundary: 'start' | 'end'
+		dateBoundary: 'start' | 'end',
+		allDay = false
 	): NormalizedCalendarDateTime {
 		return normalizeCalendarDateTimeInput(value, timezone, {
 			fieldName,
-			dateBoundary
+			dateBoundary,
+			allDay
 		});
 	}
 
@@ -579,6 +642,7 @@ export class CalendarExecutor extends BaseExecutor {
 		let googleCalendarId: string | null = null;
 		let googleCalendarSourceId: string | null = null;
 		let googleRead = {
+			truncated: false,
 			mode: 'none' as 'none' | 'legacy_single_account' | 'source_aware',
 			source_count: 0,
 			successful_source_count: 0,
@@ -664,13 +728,15 @@ export class CalendarExecutor extends BaseExecutor {
 							}));
 						googleRead = {
 							mode: 'source_aware',
+							truncated: Boolean(response.truncated),
 							source_count: sourceCount,
 							successful_source_count: successfulSourceCount,
 							failed_source_count: failedSourceCount,
-							partial: response.partial,
+							partial: Boolean(response.partial || response.truncated),
 							coverage: resolveCalendarReadCoverage(
 								sourceCount,
-								successfulSourceCount
+								successfulSourceCount,
+								response.truncated
 							),
 							source_failures: sourceFailures
 						};
@@ -686,15 +752,26 @@ export class CalendarExecutor extends BaseExecutor {
 				}
 
 				if (!usedSourceAwareRead) {
-					googleRead = { ...googleRead, mode: 'legacy_single_account' };
-					const response = await this.calendarService.getCalendarEvents(this.userId, {
+					const response = await this.legacyCalendarReader.listEvents({
 						calendarId: googleCalendarId,
 						timeMin,
 						timeMax,
 						maxResults: fetchLimit,
-						q: textQuery
+						q: textQuery,
+						timeZone: timezone
 					});
-					googleEvents = response.events ?? [];
+					googleEvents = (response.events ?? []) as unknown as CalendarEvent[];
+					googleRead = {
+						...googleRead,
+						mode: 'legacy_single_account',
+						source_count: 1,
+						successful_source_count: 1,
+						failed_source_count: 0,
+						truncated: response.truncated,
+						partial: response.truncated,
+						coverage: resolveCalendarReadCoverage(1, 1, response.truncated)
+					};
+					googleError = describeCalendarCoverage(googleRead);
 				}
 			} catch (error) {
 				// The Google read produced nothing at all, so the model must not treat
@@ -947,6 +1024,7 @@ export class CalendarExecutor extends BaseExecutor {
 
 		const totalAvailable = merged.length;
 		const pagedEvents = merged.slice(offset, offset + limit);
+		const hasMore = googleRead.truncated || offset + limit < totalAvailable;
 		const warnings: string[] = [];
 		if (googleError) {
 			warnings.push(googleError);
@@ -967,8 +1045,8 @@ export class CalendarExecutor extends BaseExecutor {
 				limit,
 				returned: pagedEvents.length,
 				total_available: totalAvailable,
-				has_more: offset + limit < totalAvailable,
-				next_offset: offset + limit < totalAvailable ? offset + limit : null
+				has_more: hasMore,
+				next_offset: hasMore && offset + limit < MAX_LIST_FETCH ? offset + limit : null
 			},
 			queried_range: {
 				time_min: timeMin,
@@ -1010,7 +1088,8 @@ export class CalendarExecutor extends BaseExecutor {
 
 		const route = await this.resolveSourceAwareEventRoute(
 			this.getStringArg(args.calendar_source_id),
-			'read'
+			'read',
+			args
 		);
 		if (route.sourceAware) {
 			const result = await this.googleCalendarWriteService.getEvent({
@@ -1051,16 +1130,23 @@ export class CalendarExecutor extends BaseExecutor {
 		}
 
 		const resolvedTimezone = await this.resolveInputTimezone(args.timezone);
+		const allDay = args.all_day ?? isCalendarDateOnly(args.start_at);
 		const normalizedStart = this.parseCalendarDateTime(
 			args.start_at,
 			resolvedTimezone,
 			'start_at',
-			'start'
+			'start',
+			allDay
 		);
-		const normalizedEnd =
+		let normalizedEnd =
 			typeof args.end_at === 'string' && args.end_at.trim().length > 0
-				? this.parseCalendarDateTime(args.end_at, resolvedTimezone, 'end_at', 'end')
+				? this.parseCalendarDateTime(args.end_at, resolvedTimezone, 'end_at', 'end', allDay)
 				: null;
+		if (allDay && (!normalizedEnd || normalizedEnd.iso === normalizedStart.iso)) {
+			const nextDay = new Date(`${normalizedStart.iso}T00:00:00Z`);
+			nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+			normalizedEnd = { ...normalizedStart, iso: nextDay.toISOString().slice(0, 10) };
+		}
 
 		if (normalizedEnd) {
 			const startMs = Date.parse(normalizedStart.iso);
@@ -1143,6 +1229,7 @@ export class CalendarExecutor extends BaseExecutor {
 			location: args.location ?? null,
 			startAt: normalizedStart.iso,
 			endAt: normalizedEnd?.iso ?? null,
+			allDay,
 			timezone: timezoneForEvent,
 			createdBy: actorId,
 			props,
@@ -1251,30 +1338,44 @@ export class CalendarExecutor extends BaseExecutor {
 			const resolvedTimezone = await this.resolveInputTimezone(
 				args.timezone ?? existing.timezone
 			);
+			const allDay = args.all_day ?? existing.all_day;
 			const normalizedStart =
 				typeof args.start_at === 'string'
 					? this.parseCalendarDateTime(
 							args.start_at,
 							resolvedTimezone,
 							'start_at',
-							'start'
+							'start',
+							allDay
 						)
 					: undefined;
 			const normalizedEnd =
 				typeof args.end_at === 'string'
-					? this.parseCalendarDateTime(args.end_at, resolvedTimezone, 'end_at', 'end')
+					? this.parseCalendarDateTime(
+							args.end_at,
+							resolvedTimezone,
+							'end_at',
+							'end',
+							allDay
+						)
 					: args.end_at === null
 						? null
 						: undefined;
+			if (allDay !== existing.all_day && (!normalizedStart || !normalizedEnd)) {
+				throw new Error('Changing all_day requires both start_at and end_at');
+			}
 
 			// "Move my 2-3pm to 4pm" sends only start_at: keep the event's length
 			// rather than stretching it to the old end or saving an end before the start.
 			const movedEnd =
-				normalizedStart && normalizedEnd === undefined
+				!allDay && normalizedStart && normalizedEnd === undefined
 					? endForStartOnlyMove(existing.start_at, existing.end_at, normalizedStart.iso)
 					: null;
 
-			const startForValidation = normalizedStart?.iso ?? existing.start_at;
+			const startForValidation =
+				normalizedStart?.iso ??
+				(allDay ? googleAllDayDates(existing)?.start : null) ??
+				existing.start_at;
 			if (normalizedEnd && typeof normalizedEnd === 'object') {
 				const startMs = Date.parse(startForValidation);
 				const endMs = Date.parse(normalizedEnd.iso);
@@ -1327,6 +1428,7 @@ export class CalendarExecutor extends BaseExecutor {
 					? (args.location ?? null)
 					: undefined,
 				startAt: normalizedStart?.iso,
+				allDay,
 				endAt:
 					normalizedEnd && typeof normalizedEnd === 'object'
 						? normalizedEnd.iso
@@ -1348,6 +1450,9 @@ export class CalendarExecutor extends BaseExecutor {
 		}
 
 		const googleEventId = this.getStringArg(args.event_id, args.external_event_id);
+		if (args.all_day !== undefined) {
+			throw new Error('all_day updates require onto_event_id for a BuildOS event');
+		}
 		if (!googleEventId) {
 			throw new Error('event_id is required for Google event update');
 		}
@@ -1402,7 +1507,8 @@ export class CalendarExecutor extends BaseExecutor {
 			: undefined;
 		const route = await this.resolveSourceAwareEventRoute(
 			this.getStringArg(args.calendar_source_id),
-			'write'
+			'write',
+			args
 		);
 		if (route.sourceAware) {
 			const updated = await this.googleCalendarWriteService.updateEvent({
@@ -1489,7 +1595,8 @@ export class CalendarExecutor extends BaseExecutor {
 
 		const route = await this.resolveSourceAwareEventRoute(
 			this.getStringArg(args.calendar_source_id),
-			'write'
+			'write',
+			args
 		);
 		if (route.sourceAware) {
 			const result = await this.googleCalendarWriteService.deleteEvent({

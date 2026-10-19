@@ -2483,6 +2483,49 @@ describe('AgenticChatTurnExecutor', () => {
 		await harness.publisher.stop();
 	});
 
+	it('finalizes a failed turn without the error pair when its timing clock is unhealthy', async () => {
+		const harness = createHarness([], {
+			promptSnapshot: fixturePromptSnapshot,
+			timingClockValues: [100, 99],
+			recovery: [
+				recoveryReceipt('finalize_failed', { failure_code: 'permanent' }),
+				recoveryReceipt('queue_reconciled', { status: 'failed' })
+			]
+		});
+		(harness.provider.prepare as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+			stream: () =>
+				(async function* () {
+					yield { type: 'text_delta', text: 'Partial response.' } as const;
+					throw new AgenticChatProviderExecutionError(
+						'provider_stream_failed',
+						'permanent',
+						'Fixture provider failure'
+					);
+				})(),
+			release: vi.fn()
+		});
+
+		try {
+			await expect(harness.executor.execute(job())).resolves.toMatchObject({
+				outcome: 'failed',
+				terminalStatus: 'failed',
+				queueReconciled: true
+			});
+			expect(harness.control.finalize).toHaveBeenCalledOnce();
+			expect(harness.control.finalize.mock.calls[0]?.[0]).toMatchObject({
+				status: 'failed',
+				assistantText: 'Partial response.',
+				timingDraft: null,
+				timingTransitionId: null,
+				publicError: null,
+				errorTransitionId: null
+			});
+			expect(normalizedBroadcastEventTypes(harness.broadcastMessages)).toContain('done');
+		} finally {
+			await harness.publisher.stop();
+		}
+	});
+
 	it('keeps projection identity aligned with live receipts when text is still awaiting persistence', async () => {
 		let releaseText!: () => void;
 		const heldText = new Promise<void>((resolve) => (releaseText = resolve));

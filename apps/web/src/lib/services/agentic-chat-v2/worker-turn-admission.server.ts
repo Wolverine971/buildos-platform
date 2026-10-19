@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/worker-turn-admission.server.ts
 import type {
 	AgenticChatWorkerAdmissionResultV1,
+	ChatSession,
 	ChatTurnStatusV1,
 	Json
 } from '@buildos/shared-types';
@@ -67,7 +68,7 @@ export type AgenticChatWorkerRateLimitedAdmissionV1 = {
 };
 
 export type AgenticChatWorkerAdmissionResult =
-	| AgenticChatWorkerAdmissionResultV1
+	| (AgenticChatWorkerAdmissionResultV1 & { session?: ChatSession })
 	| AgenticChatWorkerRateLimitedAdmissionV1;
 
 export type AgenticChatWorkerAdmissionGatewayErrorCode = 'database_error' | 'protocol_error';
@@ -208,7 +209,8 @@ function parseAdmissionReceipt(
 			userMessageId: handle.userMessageId,
 			inputArtifactId: handle.inputArtifactId,
 			queueJobId: handle.queueJobId,
-			sessionCreated: value.session_created
+			sessionCreated: value.session_created,
+			...parseInlineSession(value.session, handle.sessionId, args)
 		};
 	}
 
@@ -253,6 +255,27 @@ function parseAdmissionReceipt(
 	}
 
 	throw protocolError('Worker admission outcome is invalid');
+}
+
+/** Optional optimization: an old RPC or unusable row keeps the owned-read fallback. */
+function parseInlineSession(
+	value: unknown,
+	sessionId: string,
+	args: AgenticChatWorkerAdmissionRpcArgs
+): { session?: ChatSession } {
+	if (
+		args.p_session_id !== null ||
+		!isRecord(value) ||
+		value.id !== sessionId ||
+		value.user_id !== args.p_user_id.toLowerCase() ||
+		typeof value.context_type !== 'string' ||
+		typeof value.status !== 'string'
+	) {
+		return {};
+	}
+	// The server-only RPC returns the database row; check its ownership before
+	// forwarding it, without turning a missing optional field into a failed send.
+	return { session: value as ChatSession };
 }
 
 type ParsedHandle = {

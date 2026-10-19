@@ -192,6 +192,26 @@ describe('worker calendar read port', () => {
 		});
 	});
 
+	it('carries source truncation through the worker to the shared tool', async () => {
+		const services = fakeServices();
+		services.read.listEvents = vi.fn(async () => ({
+			events: [],
+			partial: true,
+			truncated: true,
+			warnings: [],
+			sourceStatuses: [sourceStatus(1, 'success')]
+		}));
+		const { context, calendar } = createContext({ services: () => services });
+		expect(await calendar.listEvents({ userId: USER_ID })).toMatchObject({
+			truncated: true,
+			coverage: 'degraded'
+		});
+		const result = await listCalendarEvents(context, RANGE);
+		expect(result.pagination.has_more).toBe(true);
+		expect(result.google_read.coverage).toBe('degraded');
+		expect(result.warnings).toContainEqual(expect.stringContaining('truncated'));
+	});
+
 	it('reports degraded coverage and names the failing calendar', async () => {
 		const services = fakeServices();
 		services.read.listEvents = vi.fn(async () => ({
@@ -508,7 +528,7 @@ describe('worker calendar read port: singleton Google grant (not multi-calendar 
 
 	function fakeLegacyReader(overrides: Partial<FakeLegacyReader> = {}): FakeLegacyReader {
 		return {
-			listEvents: vi.fn(() => Promise.resolve([LEGACY_EVENT])),
+			listEvents: vi.fn(() => Promise.resolve({ events: [LEGACY_EVENT], truncated: false })),
 			getEvent: vi.fn(() => Promise.resolve(LEGACY_EVENT)),
 			...overrides
 		};
@@ -523,6 +543,27 @@ describe('worker calendar read port: singleton Google grant (not multi-calendar 
 		);
 		return services;
 	}
+
+	it('preserves legacy page-token truncation through the shared tool', async () => {
+		const { context } = createContext({
+			services: () => noSources(),
+			multiCalendar: false,
+			legacyReader: fakeLegacyReader({
+				listEvents: vi.fn(async () => ({
+					events: [LEGACY_EVENT],
+					truncated: true
+				}))
+			})
+		});
+		const result = await listCalendarEvents(context, RANGE);
+		expect(result.google_read).toMatchObject({
+			coverage: 'degraded',
+			partial: true,
+			truncated: true
+		});
+		expect(result.pagination.has_more).toBe(true);
+		expect(result.warnings).toContainEqual(expect.stringContaining('truncated'));
+	});
 
 	// Prod battery case 10 (2026-09-25): the harness account, like nearly every
 	// production user, has only `user_calendar_tokens`; chat said not_connected.

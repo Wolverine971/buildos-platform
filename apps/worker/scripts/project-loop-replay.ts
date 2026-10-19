@@ -296,8 +296,7 @@ async function main() {
 			projectId: projectId!,
 			operations: suggestion.operations,
 			title: suggestion.title,
-			preview: suggestion.preview ?? null,
-			checkModelAlignment: true
+			preview: suggestion.preview ?? null
 		});
 		console.log(
 			`  gate ${verification.ok ? 'PASS' : `FAIL ${verification.diagnostic.code}`}: ${suggestion.title}${verification.ok ? ` — ${verification.summary.headline}` : ` — ${verification.diagnostic.message}`}`

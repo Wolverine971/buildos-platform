@@ -763,10 +763,11 @@ class AgentRunCalendarPort implements CalendarPort {
 
 			let updated = await this.patchEvent(ontoEventId, patch);
 			if (args?.sync_to_calendar !== false) {
-				const syncRows = this.eventSyncRows(existing);
-				for (const sync of syncRows) {
-					if (sync.user_id !== this.userId || !sync.external_event_id) continue;
-					const googleCalendarId = await this.resolveGoogleCalendarIdForSyncRow(sync);
+				for (const {
+					sync,
+					calendarId: googleCalendarId,
+					externalEventId
+				} of await this.eventSyncTargets(existing)) {
 					if (!googleCalendarId) {
 						updated = await this.patchEvent(updated.id, {
 							sync_status: 'error',
@@ -775,7 +776,7 @@ class AgentRunCalendarPort implements CalendarPort {
 						continue;
 					}
 					try {
-						await this.patchGoogleEvent(googleCalendarId, sync.external_event_id, {
+						await this.patchGoogleEvent(googleCalendarId, externalEventId, {
 							title: typeof patch.title === 'string' ? patch.title : undefined,
 							description:
 								Object.prototype.hasOwnProperty.call(patch, 'description') &&
@@ -800,13 +801,14 @@ class AgentRunCalendarPort implements CalendarPort {
 							providerStartDate: allDayTiming?.providerStartDate ?? undefined,
 							providerEndDate: allDayTiming?.providerEndDate ?? undefined
 						});
-						await this.upsertEventSync({
-							eventId: updated.id,
-							projectCalendarId: sync.project_calendar_id,
-							externalEventId: sync.external_event_id,
-							status: 'synced',
-							error: null
-						});
+						if (sync)
+							await this.upsertEventSync({
+								eventId: updated.id,
+								projectCalendarId: sync.project_calendar_id,
+								externalEventId: sync.external_event_id,
+								status: 'synced',
+								error: null
+							});
 						updated = await this.patchEvent(updated.id, {
 							sync_status: 'synced',
 							sync_error: null,
@@ -896,18 +898,21 @@ class AgentRunCalendarPort implements CalendarPort {
 				throw new Error('Event not found');
 			}
 			if (args?.sync_to_calendar !== false) {
-				for (const sync of this.eventSyncRows(existing)) {
-					if (sync.user_id !== this.userId || !sync.external_event_id) continue;
-					const googleCalendarId = await this.resolveGoogleCalendarIdForSyncRow(sync);
+				for (const {
+					sync,
+					calendarId: googleCalendarId,
+					externalEventId
+				} of await this.eventSyncTargets(existing)) {
 					if (!googleCalendarId) continue;
-					await this.deleteGoogleEvent(googleCalendarId, sync.external_event_id);
-					await this.upsertEventSync({
-						eventId: existing.id,
-						projectCalendarId: sync.project_calendar_id,
-						externalEventId: sync.external_event_id,
-						status: 'deleted',
-						error: null
-					});
+					await this.deleteGoogleEvent(googleCalendarId, externalEventId);
+					if (sync)
+						await this.upsertEventSync({
+							eventId: existing.id,
+							projectCalendarId: sync.project_calendar_id,
+							externalEventId: sync.external_event_id,
+							status: 'deleted',
+							error: null
+						});
 				}
 			}
 			const deleted = await this.patchEvent(ontoEventId, {
@@ -1297,6 +1302,35 @@ class AgentRunCalendarPort implements CalendarPort {
 		return { googleCalendarId: requestedCalendarId ?? 'primary', projectCalendarId: null };
 	}
 
+	private async eventSyncTargets(event: OntoEventRow & { onto_event_sync?: unknown }): Promise<
+		Array<{
+			calendarId: string | null;
+			externalEventId: string;
+			sync?: OntoEventSyncRow;
+		}>
+	> {
+		const targets: Array<{
+			calendarId: string | null;
+			externalEventId: string;
+			sync?: OntoEventSyncRow;
+		}> = [];
+		for (const sync of this.eventSyncRows(event)) {
+			if (sync.user_id !== this.userId || !sync.external_event_id) continue;
+			targets.push({
+				calendarId: await this.resolveGoogleCalendarIdForSyncRow(sync),
+				externalEventId: sync.external_event_id,
+				sync
+			});
+		}
+		if (!targets.some((target) => target.calendarId)) {
+			const props = (event.props ?? {}) as Record<string, unknown>;
+			const calendarId = getStringArg(props.external_calendar_id);
+			const externalEventId = getStringArg(props.external_event_id);
+			if (calendarId && externalEventId) return [{ calendarId, externalEventId }];
+		}
+		return targets;
+	}
+
 	private async resolveGoogleCalendarIdForSyncRow(
 		sync: Pick<OntoEventSyncRow, 'project_calendar_id'>
 	): Promise<string | null> {
@@ -1581,11 +1615,11 @@ class AgentRunCalendarPort implements CalendarPort {
 
 	private async deleteGoogleEvent(calendarId: string, eventId: string): Promise<void> {
 		const calendar = await this.googleCalendar();
-		await calendar.events.delete({
-			calendarId,
-			eventId,
-			sendUpdates: 'none'
-		});
+		try {
+			await calendar.events.delete({ calendarId, eventId, sendUpdates: 'none' });
+		} catch (error) {
+			if (!isMissingEventError(error)) throw error;
+		}
 	}
 
 	private async patchEvent(
@@ -1897,7 +1931,7 @@ export interface LegacyGoogleCalendarReader {
 		maxResults?: number;
 		q?: string;
 		timeZone?: string;
-	}): Promise<calendar_v3.Schema$Event[]>;
+	}): Promise<{ events: calendar_v3.Schema$Event[]; truncated: boolean }>;
 	getEvent(params: { calendarId: string; eventId: string }): Promise<calendar_v3.Schema$Event>;
 }
 
@@ -1918,11 +1952,15 @@ function isRevokedGrantError(error: unknown): boolean {
  * decision (source-aware vs legacy); this only reads.
  */
 export function createLegacyGoogleCalendarReader(
-	params: CreateAgentRunCalendarPortParams
+	params: CreateAgentRunCalendarPortParams,
+	deps: {
+		/** Hosts may supply their existing authenticated Google client. */
+		calendar?: () => Promise<calendar_v3.Calendar>;
+	} = {}
 ): LegacyGoogleCalendarReader {
-	const port = new AgentRunCalendarPort(params);
+	const port = deps.calendar ? null : new AgentRunCalendarPort(params);
 	const call = async <T>(run: (calendar: calendar_v3.Calendar) => Promise<T>): Promise<T> => {
-		const calendar = await port.authorizeLegacyRead();
+		const calendar = deps.calendar ? await deps.calendar() : await port!.authorizeLegacyRead();
 		try {
 			return await run(calendar);
 		} catch (error) {
@@ -1943,7 +1981,10 @@ export function createLegacyGoogleCalendarReader(
 					singleEvents: true,
 					orderBy: 'startTime'
 				});
-				return response.data.items ?? [];
+				return {
+					events: response.data.items ?? [],
+					truncated: Boolean(response.data.nextPageToken)
+				};
 			}),
 		getEvent: (input) =>
 			call(async (calendar) => {

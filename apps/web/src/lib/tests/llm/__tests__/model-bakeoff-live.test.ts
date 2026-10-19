@@ -113,14 +113,12 @@ describe.runIf(Boolean(candidateModel))('opt-in live model bakeoff', () => {
 			systemPrompt: envelope.systemPrompt,
 			userMessage: USER_MESSAGE,
 			contextType: 'global',
-			tools: [],
 			model: candidateModel
 		});
 		const baseline = await runLiteTurn({
 			systemPrompt: envelope.systemPrompt,
 			userMessage: USER_MESSAGE,
 			contextType: 'global',
-			tools: [],
 			model: baselineModel
 		});
 

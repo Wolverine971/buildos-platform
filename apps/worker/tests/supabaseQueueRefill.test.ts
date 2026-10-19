@@ -279,6 +279,60 @@ describe('SupabaseQueue per-slot refill', () => {
 		}
 	);
 
+	it.each(['resolve', 'reject'] as const)(
+		'releases an uncooperative timed-out job after three minutes and ignores late %s',
+		async (settlement) => {
+			vi.useFakeTimers();
+			const work = deferred<void>();
+			const pending = [{ ...claimedJob(1, 'slow'), processing_token: 'token-1' }];
+			let signal: AbortSignal | undefined;
+			rpcMock.mockImplementation(async (name) => ({
+				data: name === 'claim_pending_jobs' ? pending.splice(0) : true,
+				error: null
+			}));
+			const builder = {
+				eq: vi.fn(),
+				abortSignal: vi.fn().mockResolvedValue({ error: null })
+			};
+			builder.eq.mockReturnValue(builder);
+			const update = vi.fn(() => builder);
+			vi.mocked(supabase.from).mockReturnValue({ update } as never);
+			const queue = new SupabaseQueue({ batchSize: 1, genericStalledRecovery: false });
+			queue.process(
+				'send_notification',
+				async (job) => {
+					signal = job.signal;
+					await work.promise;
+				},
+				{ workerTimeoutMs: 25 }
+			);
+			await queue.start();
+			try {
+				await vi.advanceTimersByTimeAsync(180_024);
+				expect(signal?.aborted).toBe(true);
+				expect(queue.getCapacitySnapshot().activeJobs).toBe(1);
+				expect(update).toHaveBeenCalled();
+				await vi.advanceTimersByTimeAsync(1);
+				expect(queue.getCapacitySnapshot().activeJobs).toBe(0);
+				const heartbeatCount = update.mock.calls.length;
+				await vi.advanceTimersByTimeAsync(120_000);
+				expect(update).toHaveBeenCalledTimes(heartbeatCount);
+				if (settlement === 'reject') work.reject(new Error('Late failure'));
+				else work.resolve();
+				await vi.advanceTimersByTimeAsync(0);
+				expect(
+					rpcMock.mock.calls.some(
+						([name]) => name === 'complete_queue_job' || name === 'fail_queue_job'
+					)
+				).toBe(false);
+			} finally {
+				work.resolve();
+				await vi.advanceTimersByTimeAsync(0);
+				await queue.stop();
+			}
+		}
+	);
+
 	it('passes the checkpoint job signal to both capture LLM operations', async () => {
 		const controller = new AbortController();
 		captureMock.mockImplementation(async (ports: CheckpointCapturePorts) => {

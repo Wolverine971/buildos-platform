@@ -41,6 +41,8 @@ export async function resolveAgenticChatWorkerTransportDecision(input: {
 	client: SupabaseClient<Database>;
 	userId: string;
 	binding: AgenticChatWorkerTransportBinding;
+	/** Server-minted candidate shared with preparation; a persisted decision wins. */
+	newDecisionId?: string;
 }): Promise<AgenticChatWorkerTransportDecision> {
 	try {
 		const existing = await resolveExistingAgenticChatTransportDecision({
@@ -57,7 +59,10 @@ export async function resolveAgenticChatWorkerTransportDecision(input: {
 			}
 		});
 		// An owned persisted turn keeps its id; otherwise the server mints one.
-		return { ok: true, decisionId: existing?.decisionId ?? randomUUID() };
+		return {
+			ok: true,
+			decisionId: existing?.decisionId ?? input.newDecisionId ?? randomUUID()
+		};
 	} catch (error) {
 		logger.warn('Agentic Chat transport decision failed', {
 			error,

@@ -106,6 +106,7 @@ export type ProjectSuggestionIntegrityCode =
 	| 'ENTITY_INACTIVE'
 	| 'INVALID_DESTINATION'
 	| 'NO_OP_OPERATION'
+	// Retained for stored diagnostics; the verifier no longer produces this code.
 	| 'MODEL_ENTITY_MISMATCH'
 	| 'EXPECTED_STATE_CHANGED'
 	| 'DOCUMENT_EDIT_UNRESOLVED'
@@ -146,13 +147,6 @@ export type ProjectSuggestionIntegrityInput = {
 	operations: LoopOperation[];
 	title?: string | null;
 	preview?: ProjectSuggestionPreview | Record<string, unknown> | null;
-	/**
-	 * Ignored. Project Review used to word-match the model's labels against the
-	 * resolved titles; that lexical check quarantined valid suggestions (9 of 11
-	 * blocked in prod, 2026-10-18) and broke the no-regex rule. IDs resolve
-	 * server-side and the card shows only verified, server-resolved titles.
-	 */
-	checkModelAlignment?: boolean;
 	expectedStructuralFingerprint?: string | null;
 	/**
 	 * IANA timezone used only to detect a civil-date (YYYY-MM-DD) proposal that

@@ -136,6 +136,28 @@ const RANGE = {
 };
 
 describe('resolveCalendarReadCoverage', () => {
+	it.each([0, 299])(
+		'never treats a truncated Google list as complete at offset %s',
+		async (offset) => {
+			const { context } = createContext({
+				calendar: {
+					listEvents: vi.fn(async () => listResult({ truncated: true } as any))
+				}
+			});
+			const result = await listCalendarEvents(context, { ...RANGE, offset, limit: 1 });
+			expect(result.google_read).toMatchObject({
+				coverage: 'degraded',
+				partial: true,
+				truncated: true
+			});
+			expect(result.pagination).toMatchObject({
+				has_more: true,
+				next_offset: offset === 299 ? null : 1
+			});
+			expect(result.warnings).toContainEqual(expect.stringContaining('truncated'));
+			expect(result.warnings).toContainEqual(expect.stringContaining('availability'));
+		}
+	);
 	it('separates a vacuous read, a partial read, and a total outage', () => {
 		expect(resolveCalendarReadCoverage(0, 0)).toBe('complete');
 		expect(resolveCalendarReadCoverage(2, 2)).toBe('complete');
@@ -972,6 +994,7 @@ describe('shared list_calendar_events read overlap', () => {
 			},
 			google_read: {
 				mode: 'source_aware',
+				truncated: false,
 				source_count: 2,
 				successful_source_count: 2,
 				failed_source_count: 0,

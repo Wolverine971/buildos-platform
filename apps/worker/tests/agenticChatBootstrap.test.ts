@@ -1,5 +1,6 @@
 // apps/worker/tests/agenticChatBootstrap.test.ts
 import { describe, expect, it, vi } from 'vitest';
+import { createAgenticChatCompositionRoot } from '../src/workers/agentic-chat/host/composition-root';
 import type { AgenticChatWorkerCapacityEvidenceV1 } from '../src/workers/agentic-chat/host/capacity';
 import type { AgenticChatConsumerRuntimeHealth } from '../src/workers/agentic-chat/host/consumer-runtime';
 import {
@@ -646,7 +647,7 @@ describe('summarizeAgenticChatEffectiveSettingsV1', () => {
 			},
 			switches: {
 				liveTextPreview: true,
-				directWriteReceiptText: false,
+				directWriteReceiptText: true,
 				providerHedging: true,
 				contextFinderBroad: true,
 				contextFinderChat: 'on',
@@ -806,5 +807,17 @@ describe('summarizeAgenticChatCalendarCredentialsV1', () => {
 		} finally {
 			warn.mockRestore();
 		}
+	});
+});
+
+describe('composition receipt defaults', () => {
+	it.each([undefined, false, true])('uses the production default with option %s', (enabled) => {
+		const assembly = createAgenticChatCompositionRoot({
+			client: client() as never,
+			providerClient: { stream: vi.fn() } as never,
+			providerConfigured: true,
+			directWriteReceiptTextEnabled: enabled
+		});
+		expect(assembly.provider).toMatchObject({ directWriteReceiptTextEnabled: enabled ?? true });
 	});
 });

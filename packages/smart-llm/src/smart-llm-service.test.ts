@@ -13,6 +13,7 @@ import {
 	GPT_6_LUNA_MODEL,
 	GROK_47_MODEL,
 	KIMI_K3_MODEL,
+	JSON_PROFILE_MODELS,
 	QWEN_38_27B_FREE_MODEL,
 	XIAOMI_MIMO_V25_MODEL
 } from './model-config';
@@ -916,7 +917,7 @@ describe('SmartLLMService streamText tool handling', () => {
 });
 
 describe('SmartLLMService OpenRouter data policy', () => {
-	it('keeps JSON parse repair on the explicitly selected free model', async () => {
+	it('stops after the free model fails instead of repeating it or repairing on a paid model', async () => {
 		const bodies: Record<string, unknown>[] = [];
 		const llm = new SmartLLMService({
 			apiKey: 'test-key',
@@ -937,8 +938,8 @@ describe('SmartLLMService OpenRouter data policy', () => {
 				userPrompt: 'Summarize the fixture.',
 				validation: { retryOnParseError: true, maxRetries: 1 }
 			})
-		).resolves.toEqual({ ok: true });
-		expect(bodies).toHaveLength(2);
+		).rejects.toThrow();
+		expect(bodies).toHaveLength(1);
 		for (const body of bodies) {
 			expect(body.model).toBe(QWEN_38_27B_FREE_MODEL);
 			expect(body).not.toHaveProperty('models');
@@ -2218,6 +2219,246 @@ describe('SmartLLMService text truncation', () => {
 			})
 		).rejects.toThrow('Failed to generate text');
 		expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+	});
+});
+
+describe('SmartLLMService retry spend accounting', () => {
+	it('retains the last-resort attempt when a custom profile has no model route', async () => {
+		const fetchMock = vi.fn(async () =>
+			buildJSONCompletion({ model: GLM_53_MODEL, content: '{"ok":true}' })
+		);
+		const llm = new SmartLLMService({ apiKey: 'test-key', fetch: fetchMock as typeof fetch });
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Empty route.',
+				userId: 'test',
+				operationType: 'test_retry_accounting',
+				profile: 'custom'
+			})
+		).resolves.toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledOnce();
+	});
+
+	it.each(['json', 'text'] as const)(
+		'fails over after empty choices on the %s path',
+		async (path) => {
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							id: 'empty-choices',
+							model: GLM_53_MODEL,
+							choices: [],
+							usage: {
+								prompt_tokens: 10,
+								completion_tokens: 5,
+								total_tokens: 15,
+								cost: 0.002
+							}
+						}),
+						{ status: 200 }
+					)
+				)
+				.mockResolvedValueOnce(
+					buildJSONCompletion({ model: DEEPSEEK_V4_FLASH_MODEL, content: '{"ok":true}' })
+				);
+			const llm = new SmartLLMService({
+				apiKey: 'test-key',
+				fetch: fetchMock as typeof fetch
+			});
+			if (path === 'json') {
+				await expect(
+					llm.getJSONResponse({
+						systemPrompt: 'Return JSON.',
+						userPrompt: 'Recover.',
+						userId: 'test',
+						model: GLM_53_MODEL
+					})
+				).resolves.toEqual({ ok: true });
+			} else {
+				await expect(
+					llm.generateText({
+						prompt: 'Recover.',
+						userId: 'test',
+						models: [GLM_53_MODEL, DEEPSEEK_V4_FLASH_MODEL]
+					})
+				).resolves.toBe('{"ok":true}');
+			}
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+		}
+	);
+
+	it.each([false, true])(
+		'never repairs with an already tried model (prior failure: %s)',
+		async (priorFailure) => {
+			const bodies: Array<{ model: string; models?: string[] }> = [];
+			const fetchMock = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+				const body = JSON.parse(String(init?.body));
+				bodies.push(body);
+				return buildJSONCompletion({
+					model: body.model,
+					content:
+						priorFailure && bodies.length === 1
+							? null
+							: bodies.length === (priorFailure ? 2 : 1)
+								? 'invalid JSON'
+								: '{"ok":true}'
+				});
+			});
+			const llm = new SmartLLMService({
+				apiKey: 'test-key',
+				fetch: fetchMock as typeof fetch
+			});
+			await expect(
+				llm.getJSONResponse({
+					systemPrompt: 'Return JSON.',
+					userPrompt: 'Recover.',
+					userId: 'test',
+					profile: 'custom',
+					models: [GPT_6_LUNA_MODEL, DEEPSEEK_V4_FLASH_MODEL],
+					validation: { retryOnParseError: true, maxRetries: 2 }
+				})
+			).resolves.toEqual({ ok: true });
+			const models = bodies.map((body) => body.model);
+			expect(new Set(models).size).toBe(models.length);
+			expect(models.at(-1)).toBe(JSON_PROFILE_MODELS.powerful[1]);
+			for (const [index, body] of bodies.entries()) {
+				for (const previous of models.slice(0, index)) {
+					expect(body.models ?? [body.model]).not.toContain(previous);
+				}
+			}
+		}
+	);
+
+	it('stops when repairs have consumed the entire model route', async () => {
+		const models: string[] = [];
+		const llm = new SmartLLMService({
+			apiKey: 'test-key',
+			fetch: vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+				const model = JSON.parse(String(init?.body)).model;
+				models.push(model);
+				return buildJSONCompletion({ model, content: 'invalid JSON' });
+			}) as typeof fetch
+		});
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Exhaust route.',
+				userId: 'test',
+				profile: 'powerful',
+				validation: { retryOnParseError: true, maxRetries: 10 }
+			})
+		).rejects.toThrow();
+		expect(models).toEqual(JSON_PROFILE_MODELS.powerful);
+	});
+
+	it.each(['repair', 'failover', 'failed_repair', 'terminal', 'cost_only'] as const)(
+		'reports every billed JSON attempt exactly once through onUsage: %s',
+		async (scenario) => {
+			const onUsage = vi.fn(async (_event: import('./types').JSONUsageEvent) => undefined);
+			const usageLogger = {
+				logUsageToDatabase: vi.fn(
+					async (_row: import('./usage-logger').UsageLogParams) => undefined
+				)
+			};
+			const calls: string[] = [];
+			const fetchMock = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+				const model = JSON.parse(String(init?.body)).model;
+				calls.push(model);
+				if (scenario === 'cost_only')
+					return new Response(
+						JSON.stringify({
+							id: 'cost-only',
+							model,
+							choices: [],
+							usage: { cost: 0.002 }
+						}),
+						{ status: 200 }
+					);
+				return buildJSONCompletion({
+					model,
+					content:
+						calls.length === 1
+							? scenario === 'failover'
+								? null
+								: 'invalid JSON'
+							: scenario === 'failed_repair' && calls.length === 2
+								? 'still invalid'
+								: '{"ok":true}',
+					cost: calls.length * 0.002,
+					provider: 'TestProvider'
+				});
+			});
+			const llm = new SmartLLMService({
+				apiKey: 'test-key',
+				fetch: fetchMock as typeof fetch,
+				usageLogger
+			});
+			const result = llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Count all spend.',
+				userId: 'test',
+				profile: 'custom',
+				models: [
+					'custom/first',
+					...(scenario === 'terminal' || scenario === 'cost_only'
+						? []
+						: ['custom/second'])
+				],
+				validation: {
+					retryOnParseError: scenario === 'repair' || scenario === 'failed_repair',
+					maxRetries: 1
+				},
+				onUsage
+			});
+			if (scenario === 'terminal' || scenario === 'cost_only')
+				await expect(result).rejects.toThrow();
+			else await expect(result).resolves.toEqual({ ok: true });
+			expect(onUsage).toHaveBeenCalledTimes(calls.length);
+			expect(onUsage.mock.calls.map(([event]) => event.totalCost)).toEqual(
+				calls.map((_, index) => (index + 1) * 0.002)
+			);
+			expect(new Set(onUsage.mock.calls.map(([event]) => event.providerRequestId)).size).toBe(
+				calls.length
+			);
+			for (const [event] of onUsage.mock.calls) {
+				expect(event).toMatchObject({
+					billingProvider: 'openrouter',
+					costSource: 'provider_reported',
+					billingDisposition: 'settled'
+				});
+			}
+			expect(
+				usageLogger.logUsageToDatabase.mock.calls.reduce(
+					(sum, [row]) => sum + (row.totalCost ?? 0),
+					0
+				)
+			).toBeCloseTo(onUsage.mock.calls.reduce((sum, [event]) => sum + event.totalCost, 0));
+		}
+	);
+
+	it('accounts the malformed attempt before a usage callback cancels the repair', async () => {
+		const controller = new AbortController();
+		const onUsage = vi.fn(() => controller.abort(new Error('Budget exhausted')));
+		const fetchMock = vi.fn(async () =>
+			buildJSONCompletion({ model: GLM_53_MODEL, content: 'invalid JSON', cost: 0.002 })
+		);
+		const llm = new SmartLLMService({ apiKey: 'test-key', fetch: fetchMock as typeof fetch });
+		await expect(
+			llm.getJSONResponse({
+				systemPrompt: 'Return JSON.',
+				userPrompt: 'Stop at budget.',
+				userId: 'test',
+				model: GLM_53_MODEL,
+				signal: controller.signal,
+				onUsage,
+				validation: { retryOnParseError: true }
+			})
+		).rejects.toBeInstanceOf(LLMRequestCancelledError);
+		expect(fetchMock).toHaveBeenCalledOnce();
+		expect(onUsage).toHaveBeenCalledOnce();
 	});
 });
 

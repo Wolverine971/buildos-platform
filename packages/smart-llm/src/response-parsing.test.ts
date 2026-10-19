@@ -78,6 +78,42 @@ describe('visible content and structured reasoning', () => {
 });
 
 describe('leading inline reasoning', () => {
+	it('reports discarded characters and UTF-8 bytes without double-counting split tags', () => {
+		const hidden = '<think>' + 'é'.repeat(100) + '</think>';
+		for (let split = 0; split <= hidden.length; split++) {
+			const state = createThinkingTokenState();
+			const results = [hidden.slice(0, split), hidden.slice(split), 'Answer.'].map((chunk) =>
+				normalizeStreamingContent(chunk, state)
+			);
+			expect(results.map((result) => result.text).join('')).toBe('Answer.');
+			expect(results.reduce((sum, result) => sum + result.droppedChars, 0)).toBe(
+				hidden.length
+			);
+			expect(results.reduce((sum, result) => sum + result.droppedBytes, 0)).toBe(
+				new TextEncoder().encode(hidden).length
+			);
+		}
+	});
+
+	it('reports progress during a long unclosed block without retaining its body', () => {
+		const state = createThinkingTokenState();
+		const first = normalizeStreamingContent('<think>' + 'private'.repeat(1000), state);
+		expect(first).toMatchObject({ text: '', droppedChars: 7000, droppedBytes: 7000 });
+		const next = normalizeStreamingContent('more private'.repeat(1000), state);
+		expect(next).toMatchObject({ text: '', droppedChars: 12000, droppedBytes: 12000 });
+		expect(state.pending.length).toBeLessThan('</think>'.length);
+	});
+
+	it('does not count literal or undecided prefixes as discarded reasoning', () => {
+		const state = createThinkingTokenState();
+		for (const chunk of ['<thi', 'nker>literal ', '<think>visible</think>']) {
+			expect(normalizeStreamingContent(chunk, state)).toMatchObject({
+				droppedChars: 0,
+				droppedBytes: 0
+			});
+		}
+	});
+
 	it.each([
 		['complete block', ['<think>private</think>Hi']],
 		['split opening tag', ['<thi', 'nk>private</think>Hi']],

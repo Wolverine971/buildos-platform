@@ -632,14 +632,17 @@ describe('direct write receipt text (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT)', (
 			return { client, closing };
 		};
 
+		// Defaults on (tracker 129): the ledger receipt replaces the closing pass.
 		const byDefault = await run();
-		expect(byDefault.client.stream).toHaveBeenCalledTimes(2);
+		expect(byDefault.client.stream).toHaveBeenCalledTimes(1);
 		const enabled = await run(true);
 		expect(enabled.client.stream).toHaveBeenCalledTimes(1);
 		expect(enabled.closing[0]).toEqual({
 			type: 'text_delta',
 			text: 'Done — created task “Draft Q3 plan”.'
 		});
+		const disabled = await run(false);
+		expect(disabled.client.stream).toHaveBeenCalledTimes(2);
 	});
 });
 

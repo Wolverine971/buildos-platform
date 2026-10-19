@@ -63,7 +63,6 @@ Registered in `src/worker.ts`:
 | `agent_run`                      | `workers/agent-run/agentRunWorker`                 |
 | `build_project_context_snapshot` | `workers/ontology/projectContextSnapshotWorker`    |
 | `buildos_project_loop`           | `workers/project-loop/projectLoopWorker`           |
-| `generate_project_icon`          | `workers/project-icon/projectIconWorker`           |
 | `sync_calendar`                  | `workers/calendar/calendarSyncWorker`              |
 
 Adding a new job type is documented in [`src/workers/README.md`](./src/workers/README.md).

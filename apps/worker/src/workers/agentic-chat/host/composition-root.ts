@@ -220,9 +220,9 @@ export function createAgenticChatCompositionRoot(options: {
 	providerCooldownMs?: number;
 	providerBudgetMs?: number;
 	maxProviderRounds?: number;
-	/** AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: ledger receipt instead of the closing pass. Default off. */
+	/** AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: ledger receipt instead of the closing pass. Defaults on. */
 	directWriteReceiptTextEnabled?: boolean;
-	/** AGENTIC_CHAT_LIVE_TEXT_PREVIEW: display-only live answer preview. Default off. */
+	/** AGENTIC_CHAT_LIVE_TEXT_PREVIEW: display-only live answer preview. Bootstrap defaults on. */
 	liveTextPreviewEnabled?: boolean;
 	/** Optional opening-pass schema narrowing (Jev); absent means the full admitted surface. */
 	toolSelector?: AgenticChatToolSelectorPort;
@@ -402,7 +402,7 @@ export function createAgenticChatCompositionRoot(options: {
 		options.providerCooldownMs,
 		options.maxProviderRounds,
 		mutationCapabilities,
-		options.directWriteReceiptTextEnabled ?? false
+		options.directWriteReceiptTextEnabled ?? true
 	);
 	const readTool = new AgenticChatToolExecutionAdapter(options.client, {
 		webResearch: options.webResearch ?? createAgentRunWebResearchPort(),

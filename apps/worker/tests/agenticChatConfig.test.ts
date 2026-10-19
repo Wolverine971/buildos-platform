@@ -242,14 +242,14 @@ it('keeps shared document evidence off until explicitly enabled', () => {
 	).toBe(true);
 });
 
-it('keeps direct-write receipt text off until explicitly enabled', () => {
+it('defaults direct-write receipt text on and allows an explicit opt-out', () => {
 	const load = (value?: string) =>
 		loadAgenticChatConfig({
 			...DEDICATED_PROVIDER_ENV,
 			...(value === undefined ? {} : { AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: value })
 		}).directWriteReceiptTextEnabled;
-	expect(load()).toBe(false);
-	expect(load('')).toBe(false);
+	expect(load()).toBe(true);
+	expect(load('')).toBe(true);
 	expect(load('false')).toBe(false);
 	expect(load('true')).toBe(true);
 	expect(() => load('yes')).toThrow(
@@ -257,13 +257,14 @@ it('keeps direct-write receipt text off until explicitly enabled', () => {
 	);
 });
 
-it('keeps the live text preview off until explicitly enabled', () => {
+it('defaults the live text preview on and allows an explicit opt-out', () => {
 	const load = (value?: string) =>
 		loadAgenticChatConfig({
 			...DEDICATED_PROVIDER_ENV,
 			...(value === undefined ? {} : { AGENTIC_CHAT_LIVE_TEXT_PREVIEW: value })
 		}).liveTextPreviewEnabled;
-	expect(load()).toBe(false);
+	expect(load()).toBe(true);
+	expect(load('')).toBe(true);
 	expect(load('false')).toBe(false);
 	expect(load('true')).toBe(true);
 	expect(() => load('on')).toThrow(/exactly true or false/);

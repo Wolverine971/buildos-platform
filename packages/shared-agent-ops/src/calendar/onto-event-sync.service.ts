@@ -33,10 +33,11 @@ import {
 	type ActivityLogActorContext
 } from '../ops/async-activity-logger';
 import type { calendar_v3 } from 'googleapis';
-import { instantToZonedIso } from '../dates/civil-date';
+import { civilDateBoundaryInstant, isDateOnlyValue, instantToZonedIso } from '../dates/civil-date';
 import type { GoogleCalendarMutationSelector } from './google-calendar-write.service';
 import type { GoogleCalendarWriteService } from './google-calendar-write.service';
 import type { LegacyOntoEventCalendarClient } from './legacy-google-calendar.port';
+import { endForStartOnlyMove } from './agent-run-calendar-port';
 import { OntoEventReadService } from './onto-event-read.service';
 import { OntoEventService, type OntoEventOwner } from './onto-event.service';
 import {
@@ -56,9 +57,19 @@ export type ProjectEventSyncAction = 'upsert' | 'delete';
 
 type AllDayEventFields = Pick<OntoEventRow, 'all_day' | 'start_at' | 'end_at' | 'timezone'>;
 
-function nextCalendarDate(date: string): string {
+function allDayBound<T extends string | null | undefined>(
+	value: T,
+	allDay: boolean,
+	timezone?: string | null
+): T | string {
+	return allDay && typeof value === 'string' && isDateOnlyValue(value)
+		? civilDateBoundaryInstant(value, 'start', timezone)
+		: value;
+}
+
+function nextCalendarDate(date: string, days = 1): string {
 	const parsed = new Date(`${date}T00:00:00.000Z`);
-	parsed.setUTCDate(parsed.getUTCDate() + 1);
+	parsed.setUTCDate(parsed.getUTCDate() + days);
 	return parsed.toISOString().slice(0, 10);
 }
 
@@ -508,8 +519,12 @@ export class OntoEventSyncService extends OntoEventReadService {
 			title: request.title,
 			description: request.description ?? null,
 			location: request.location ?? null,
-			startAt: request.startAt,
-			endAt: request.endAt ?? resolvedEnd.toISOString(),
+			startAt: allDayBound(request.startAt, request.allDay === true, request.timezone),
+			endAt: allDayBound(
+				request.endAt ?? resolvedEnd.toISOString(),
+				request.allDay === true,
+				request.timezone
+			),
 			allDay: request.allDay ?? false,
 			timezone: request.timezone ?? null,
 			recurrence: request.recurrence ?? {},
@@ -582,13 +597,36 @@ export class OntoEventSyncService extends OntoEventReadService {
 			throw new Error('Event not found');
 		}
 
+		const allDay = request.allDay ?? existing.all_day;
+		const timezone = request.timezone ?? existing.timezone;
+		const startAt = allDayBound(request.startAt, allDay, timezone);
+		let endAt = allDayBound(request.endAt, allDay, timezone);
+		// The calendar editor sends only changed fields. An omitted end moves
+		// with the start; an explicit end (including null) is authoritative.
+		if (startAt && request.endAt === undefined) {
+			const previousDates = googleAllDayDates(existing);
+			const nextDate = allDay ? instantToZonedIso(startAt, timezone)?.slice(0, 10) : null;
+			if (allDay && previousDates && nextDate) {
+				const days =
+					(Date.parse(previousDates.end) - Date.parse(previousDates.start)) / 86400000;
+				endAt = civilDateBoundaryInstant(
+					nextCalendarDate(nextDate, days),
+					'start',
+					timezone
+				);
+			} else if (!allDay) {
+				endAt =
+					endForStartOnlyMove(existing.start_at, existing.end_at, startAt) ?? undefined;
+			}
+		}
+
 		const updated = await OntoEventService.updateEvent(this.supabase as any, {
 			id: request.eventId,
 			title: request.title,
 			description: request.description,
 			location: request.location,
-			startAt: request.startAt,
-			endAt: request.endAt,
+			startAt,
+			endAt,
 			allDay: request.allDay,
 			timezone: request.timezone,
 			stateKey: request.stateKey,
@@ -1670,6 +1708,33 @@ export class OntoEventSyncService extends OntoEventReadService {
 			this.isStaleEventVersion(input.expectedEventUpdatedAt, eventVersion) &&
 			!isDeletedEvent
 		) {
+			// add_queue_job atomically reuses pending/processing jobs with this key.
+			// Preserve the target and creation policy. A live event may have been
+			// restored since an older delete job, so reconcile its current contents.
+			const { error } = await this.supabase.rpc('add_queue_job', {
+				p_user_id: input.targetUserId,
+				p_job_type: 'sync_calendar',
+				p_priority: 5,
+				p_scheduled_for: new Date().toISOString(),
+				p_dedup_key: [
+					'onto-project-event-sync',
+					'upsert',
+					event.id,
+					input.targetUserId,
+					eventVersion
+				].join(':'),
+				p_metadata: {
+					kind: 'onto_project_event_sync',
+					action: 'upsert',
+					eventId: event.id,
+					projectId: input.projectId,
+					targetUserId: input.targetUserId,
+					triggeredByUserId: input.targetUserId,
+					createCalendarIfMissing: input.createCalendarIfMissing ?? false,
+					eventUpdatedAt: eventVersion
+				}
+			});
+			if (error) throw new Error(error.message);
 			return {
 				outcome: 'skipped',
 				reason: 'stale_event_version'
@@ -1681,6 +1746,13 @@ export class OntoEventSyncService extends OntoEventReadService {
 		if (shouldDelete) {
 			const mapping = await this.resolveExternalMapping(input.targetUserId, event, syncRows);
 			if (!mapping) {
+				await this.markEventSynced(
+					event.id,
+					new Date().toISOString(),
+					undefined,
+					'cancelled',
+					eventVersion
+				);
 				return {
 					outcome: 'skipped',
 					reason: 'no_external_mapping'
@@ -1786,6 +1858,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 			if (!this.usesSourceRouting(input.targetUserId)) {
 				const isConnected = await this.hasStoredCalendarCredential(input.targetUserId);
 				if (!isConnected) {
+					await this.markEventSyncSkipped(event.id, eventVersion);
 					return {
 						outcome: 'skipped',
 						reason: 'calendar_not_connected'
@@ -1799,6 +1872,7 @@ export class OntoEventSyncService extends OntoEventReadService {
 				input.createCalendarIfMissing ?? false
 			);
 			if (!projectCalendar || projectCalendar.sync_enabled === false) {
+				await this.markEventSyncSkipped(event.id, eventVersion);
 				return {
 					outcome: 'skipped',
 					reason: 'project_calendar_unavailable'
@@ -1900,6 +1974,22 @@ export class OntoEventSyncService extends OntoEventReadService {
 	// Sync bookkeeping
 	// ---------------------------------------------------------------------
 
+	protected async markEventSyncSkipped(
+		eventId: string,
+		expectedEventVersion?: string
+	): Promise<void> {
+		// A member without Google (or with sync off) is not a sync failure. The
+		// row is shared: protect another member's success, including a racing write.
+		let query = this.supabase
+			.from('onto_events')
+			.update({ sync_status: 'skipped', sync_error: null })
+			.eq('id', eventId)
+			.neq('sync_status', 'synced');
+		if (expectedEventVersion) query = query.eq('updated_at', expectedEventVersion);
+		const { error } = await query;
+		if (error) throw new Error(error.message);
+	}
+
 	protected async markEventSynced(
 		eventId: string,
 		timestamp: string,
@@ -1951,16 +2041,18 @@ export class OntoEventSyncService extends OntoEventReadService {
 		if (expectedEventVersion) {
 			eventUpdateQuery = eventUpdateQuery.eq('updated_at', expectedEventVersion);
 		}
-		await eventUpdateQuery;
+		const { error: eventError } = await eventUpdateQuery;
+		if (eventError) throw new Error(eventError.message);
 
 		if (syncRowId) {
-			await this.supabase
+			const { error: mappingError } = await this.supabase
 				.from('onto_event_sync')
 				.update({
 					sync_status: 'failed',
 					sync_error: trimmed
 				})
 				.eq('id', syncRowId);
+			if (mappingError) throw new Error(mappingError.message);
 		}
 	}
 

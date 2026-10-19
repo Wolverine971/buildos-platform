@@ -702,7 +702,6 @@ async function loadSourcePayloads(params: {
 						operations: row.operations as LoopOperation[],
 						title: asString(row.title),
 						preview: (row.preview ?? null) as ProjectSuggestionPreview | null,
-						checkModelAlignment: !expectedStructuralFingerprint,
 						expectedStructuralFingerprint
 					});
 					if (verification.ok) {

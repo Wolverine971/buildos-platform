@@ -579,14 +579,8 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			update_strategy: {
 				type: 'string',
-				enum: ['replace', 'append', 'merge_llm'],
-				description:
-					'How to apply content: replace (default), append, or merge_llm. External merge_llm falls back to append if no merge worker is available.'
-			},
-			merge_instructions: {
-				type: 'string',
-				description:
-					'Optional guidance for merge_llm. Ignored for replace and append strategies.'
+				enum: ['replace', 'append'],
+				description: 'How to apply content: replace (default) or append.'
 			},
 			props: {
 				type: 'object',

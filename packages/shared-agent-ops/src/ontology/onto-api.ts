@@ -12,8 +12,6 @@
  * `Database['public']['Tables']['onto_<table>']['Row']` from `@buildos/shared-types`.
  */
 
-import type { Template, Facets } from './onto';
-
 // ============================================
 // RPC RESPONSE TYPES
 // ============================================
@@ -22,19 +20,6 @@ import type { Template, Facets } from './onto';
  * Response from ensure_actor_for_user RPC call
  */
 export type EnsureActorResponse = string;
-
-/**
- * Response from get_allowed_transitions RPC call
- * @deprecated FSM transitions are no longer used. Use state enums from onto.ts instead.
- */
-export interface AllowedTransitionResponse {
-	event: string;
-	to_state: string;
-	guards?: any[];
-	actions?: any[];
-	failed_guards?: any[];
-	can_run?: boolean;
-}
 
 /**
  * Response from instantiate_project_from_template RPC call
@@ -48,13 +33,6 @@ export interface InstantiateProjectResponse {
 		tasks_created?: number;
 		plans_created?: number;
 	};
-}
-
-/**
- * Response from get_template_catalog RPC call
- */
-export interface TemplateCatalogResponse extends Template {
-	// Inherits all Template properties
 }
 
 // ============================================
@@ -438,46 +416,10 @@ export interface MoveDocumentRequest {
 // ============================================
 
 /**
- * Project detail response with all related entities
- */
-export interface ProjectDetailResponse {
-	project: OntoProject;
-	goals: OntoGoal[];
-	requirements: OntoRequirement[];
-	plans: OntoPlan[];
-	tasks: OntoTask[];
-	documents: OntoDocument[];
-	sources: OntoSource[];
-	milestones: OntoMilestone[];
-	risks: OntoRisk[];
-	metrics: OntoMetric[];
-	template: Template | null;
-	/**
-	 * @deprecated FSM transitions are no longer used. Use state enums from onto.ts instead.
-	 */
-	allowed_transitions: Array<{
-		event: string;
-		to: string;
-		label: string;
-		guards: any[];
-		actions: any[];
-	}>;
-}
-
-/**
  * Project summary with counts
  */
 export interface ProjectSummary extends OntoProject {
 	task_count: number;
-}
-
-/**
- * Template response with grouped data
- */
-export interface TemplateListResponse {
-	templates: Template[];
-	grouped: Record<string, Template[]>;
-	count: number;
 }
 
 // ============================================

@@ -245,9 +245,9 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 				listInput.calendarId ?? (listInput.calendarSourceId ? null : 'primary');
 			const readLegacy = async (): Promise<AgenticChatCalendarListEventsResultV1> => {
 				if (!legacyCalendarId) return unavailableListResult('not_connected');
-				let events: calendar_v3.Schema$Event[];
+				let response: Awaited<ReturnType<LegacyGoogleCalendarReader['listEvents']>>;
 				try {
-					events = await requireLegacyReader().listEvents({
+					response = await requireLegacyReader().listEvents({
 						calendarId: legacyCalendarId,
 						timeMin: listInput.timeMin,
 						timeMax: listInput.timeMax,
@@ -261,13 +261,16 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 					throw error;
 				}
 				return {
-					events: events.map((event) => toLegacyPortEvent(event, legacyCalendarId)),
+					events: response.events.map((event) =>
+						toLegacyPortEvent(event, legacyCalendarId)
+					),
 					mode: 'legacy_single_account',
-					coverage: 'complete',
+					truncated: response.truncated,
+					coverage: resolveCalendarReadCoverage(1, 1, response.truncated),
 					sourceCount: 1,
 					successfulSourceCount: 1,
 					failedSourceCount: 0,
-					partial: false,
+					partial: response.truncated,
 					sourceFailures: []
 				};
 			};
@@ -310,11 +313,16 @@ export function createWorkerAgenticChatCalendarReadPort(input: {
 			return {
 				events: (response.events ?? []).map(toPortEvent),
 				mode: 'source_aware',
-				coverage: resolveCalendarReadCoverage(sourceCount, successfulSourceCount),
+				truncated: Boolean(response.truncated),
+				coverage: resolveCalendarReadCoverage(
+					sourceCount,
+					successfulSourceCount,
+					response.truncated
+				),
 				sourceCount,
 				successfulSourceCount,
 				failedSourceCount: sourceCount - successfulSourceCount,
-				partial: Boolean(response.partial),
+				partial: Boolean(response.partial || response.truncated),
 				sourceFailures: sourceStatuses
 					.filter((status) => status.status !== 'success')
 					.map((status) => ({

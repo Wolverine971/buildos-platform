@@ -3,6 +3,7 @@
 // its session inline and a prepared-prompt miss builds context and prompt here.
 export const config = { maxDuration: 60 };
 
+import { randomUUID } from 'node:crypto';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
@@ -117,12 +118,13 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	const serviceClient = createAdminSupabaseClient();
 	// The transport decision is resolved here, bound to this authenticated user
 	// and the exact clientTurnId, streamRunId, session, and context admitted.
-	const decision = await resolveAgenticChatWorkerTransportDecision({
+	let decisionId: string = randomUUID();
+	const decisionPromise = resolveAgenticChatWorkerTransportDecision({
 		client: serviceClient,
 		userId: user.id,
-		binding: parsed.data
+		binding: parsed.data,
+		newDecisionId: decisionId
 	});
-	if (!decision.ok) return privateResponse(decision.response);
 	// A session-less send gets its session inside the admission RPC; the row is
 	// returned so the client needs no separate session bootstrap round trip.
 	const loadCreatedSession = parsed.data.sessionId
@@ -131,18 +133,24 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				loadAdmittedWorkerSession({ client: serviceClient, userId: user.id, sessionId });
 	// Tasker 86: an eligible explicit project review is saved raw in one RPC;
 	// null keeps every other turn on the unchanged ordinary path below.
-	const workflowReview = await admitWorkflowReviewTurnIfEligible({
-		environment: pickWorkflowReviewEnvironment(env),
-		userId: user.id,
-		command: parsed.data,
-		transportDecisionId: decision.decisionId,
-		client: serviceClient as unknown as AgenticChatWorkflowV4AdmissionRpcClient,
-		workbenchClient:
-			serviceClient as unknown as import('$lib/services/agentic-chat-v2/specialist-workbench.server').SpecialistWorkbenchClient,
-		loadSession: loadCreatedSession,
-		wakeWorker: startAgenticChatWorkerQueueWake
-	});
-	if (workflowReview) return privateResponse(workflowReview);
+	if (parsed.data.reviewIntent !== null) {
+		// Explicit reviews have their own atomic admission; never start ordinary
+		// preparation for them, including disabled or unsupported review requests.
+		const decision = await decisionPromise;
+		if (!decision.ok) return privateResponse(decision.response);
+		const workflowReview = await admitWorkflowReviewTurnIfEligible({
+			environment: pickWorkflowReviewEnvironment(env),
+			userId: user.id,
+			command: parsed.data,
+			transportDecisionId: decision.decisionId,
+			client: serviceClient as unknown as AgenticChatWorkflowV4AdmissionRpcClient,
+			workbenchClient:
+				serviceClient as unknown as import('$lib/services/agentic-chat-v2/specialist-workbench.server').SpecialistWorkbenchClient,
+			loadSession: loadCreatedSession,
+			wakeWorker: startAgenticChatWorkerQueueWake
+		});
+		if (workflowReview) return privateResponse(workflowReview);
+	}
 	// Everything before the admission RPC writes nothing, so a failure there is
 	// reported as "not sent" instead of "maybe sent".
 	let phase: WorkerAdmissionPhase = 'preparation';
@@ -166,7 +174,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				userId: user.id,
 				command,
 				lease: {
-					decisionId: decision.decisionId,
+					decisionId,
 					mode: 'worker_realtime',
 					contractVersion: 'agentic_chat_worker_v1'
 				},
@@ -182,6 +190,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				client: serviceClient as unknown as AgenticChatWorkerAdmissionRpcClient,
 				args: {
 					...args,
+					// Preparation only copies this id into args; it is not hashed or
+					// used to load context. Bind the resolved id here on every attempt.
+					p_transport_decision_id: decisionId,
 					p_request_payload: {
 						...(args.p_request_payload as { [key: string]: Json | undefined }),
 						preparationMs,
@@ -191,8 +202,22 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			});
 		};
 		const preparationStartedAt = Date.now();
-		let preparation = await prepare();
-		preparationMs = Math.max(0, Date.now() - preparationStartedAt);
+		// Observe preparation failures immediately, even if the lookup is still
+		// pending or returns a conflict first. No work may reach admission until
+		// the owned decision resolves; transport errors keep their old precedence.
+		const preparationPromise = prepare().then(
+			(value) => {
+				preparationMs = Math.max(0, Date.now() - preparationStartedAt);
+				return { ok: true as const, value };
+			},
+			(error: unknown) => ({ ok: false as const, error })
+		);
+		const decision = await decisionPromise;
+		if (!decision.ok) return privateResponse(decision.response);
+		decisionId = decision.decisionId;
+		const prepared = await preparationPromise;
+		if (!prepared.ok) throw prepared.error;
+		let preparation = prepared.value;
 		const admissionStartedAt = Date.now();
 		let result;
 		try {
@@ -298,7 +323,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			);
 		}
 
-		const session = loadCreatedSession ? await loadCreatedSession(result.sessionId) : null;
+		const session = loadCreatedSession
+			? (result.session ?? (await loadCreatedSession(result.sessionId)))
+			: null;
 		const payload = {
 			outcome: result.outcome,
 			handle: {

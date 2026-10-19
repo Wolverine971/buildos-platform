@@ -625,6 +625,14 @@ export async function createTask(context: ToolExecutionContext, args: Record<str
 }
 
 export async function updateTask(context: ToolExecutionContext, args: Record<string, unknown>) {
+	return updateTaskAttempt(context, args, true);
+}
+
+async function updateTaskAttempt(
+	context: ToolExecutionContext,
+	args: Record<string, unknown>,
+	canRetry: boolean
+): Promise<Record<string, unknown>> {
 	const taskId = args.task_id;
 	if (typeof taskId !== 'string' || !isValidUUID(taskId)) {
 		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'task_id must be a valid UUID');
@@ -886,7 +894,12 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 			'onto_task_update_with_relationships_atomic',
 			{
 				p_task_id: taskId,
-				p_updates: updateData as Json,
+				p_updates: {
+					...updateData,
+					...(updateData.props !== undefined
+						? { _expected_updated_at: existingTask.updated_at }
+						: {})
+				} as Json,
 				p_sync_assignees: assignees.hasInput,
 				p_assignee_actor_ids: assignees.hasInput ? assignees.assigneeActorIds : null,
 				p_assigned_by_actor_id: assignees.hasInput ? actorId : null,
@@ -894,6 +907,16 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 				p_source: 'manual'
 			}
 		);
+		if (
+			atomicError?.code === '40001' &&
+			atomicError.message === 'task_props_version_conflict'
+		) {
+			if (canRetry) return updateTaskAttempt(context, args, false);
+			throw new ExternalToolGatewayError(
+				'CONFLICT',
+				'The task changed while saving props. Read it again and retry.'
+			);
+		}
 		if (atomicError || !atomicResult) atomicTaskUpdateError(atomicError);
 		const result = atomicResult as AtomicTaskUpdateResult;
 		if (!result.task) atomicTaskUpdateError(null);
@@ -902,14 +925,23 @@ export async function updateTask(context: ToolExecutionContext, args: Record<str
 			? result.added_actor_ids.filter((id): id is string => typeof id === 'string')
 			: [];
 	} else {
-		const { data: updatedTask, error } = await context.admin
-			.from('onto_tasks')
-			.update(updateData)
-			.eq('id', taskId)
+		let updateQuery = context.admin.from('onto_tasks').update(updateData).eq('id', taskId);
+		// Full props replacements must be derived from the version we save over.
+		const guardsProps = updateData.props !== undefined;
+		if (guardsProps) updateQuery = updateQuery.eq('updated_at', existingTask.updated_at);
+		const { data: updatedTask, error } = await updateQuery
 			.select(
 				'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at'
 			)
 			.single();
+
+		if (guardsProps && (!error || error.code === 'PGRST116') && !updatedTask) {
+			if (canRetry) return updateTaskAttempt(context, args, false);
+			throw new ExternalToolGatewayError(
+				'CONFLICT',
+				'The task changed while saving props. Read it again and retry.'
+			);
+		}
 
 		if (error || !updatedTask) {
 			// This single update is the op's only write.

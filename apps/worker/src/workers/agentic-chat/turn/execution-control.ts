@@ -91,10 +91,12 @@ export type AgenticChatExecutionControlPortV1 = {
 			executionGeneration: number;
 			failureClass: AgenticChatRecoveryFailureClassV1;
 			errorMessage: string | null;
-		}
+		},
+		signal?: AbortSignal
 	): Promise<AgenticChatRecoveryRpcResultV1>;
 	finalize(
-		input: AgenticChatTerminalFinalizeInputV1
+		input: AgenticChatTerminalFinalizeInputV1,
+		signal?: AbortSignal
 	): Promise<AgenticChatTerminalFinalizeRpcResultV1>;
 	completeQueueJob(input: {
 		queueJobId: string;
@@ -226,7 +228,8 @@ export class SupabaseAgenticChatExecutionControlAdapter
 			executionGeneration: number;
 			failureClass: AgenticChatRecoveryFailureClassV1;
 			errorMessage: string | null;
-		}
+		},
+		signal?: AbortSignal
 	): Promise<AgenticChatRecoveryRpcResultV1> {
 		validateExecutionIdentity(input);
 		positiveInteger(input.executionGeneration, 'executionGeneration');
@@ -234,11 +237,15 @@ export class SupabaseAgenticChatExecutionControlAdapter
 		if (input.errorMessage !== null && !canonicalText(input.errorMessage, 2_000)) {
 			throw protocolError('recovery error message is invalid');
 		}
-		const value = await this.call('recover_agentic_chat_turn', {
-			...agenticChatGenerationWriteFenceArgsV1(input),
-			p_failure_class: input.failureClass,
-			p_error_message: input.errorMessage
-		});
+		const value = await this.call(
+			'recover_agentic_chat_turn',
+			{
+				...agenticChatGenerationWriteFenceArgsV1(input),
+				p_failure_class: input.failureClass,
+				p_error_message: input.errorMessage
+			},
+			signal
+		);
 		return parseRecoveryReceipt(value, input);
 	}
 
@@ -268,7 +275,8 @@ export class SupabaseAgenticChatExecutionControlAdapter
 	}
 
 	async finalize(
-		input: AgenticChatTerminalFinalizeInputV1
+		input: AgenticChatTerminalFinalizeInputV1,
+		signal?: AbortSignal
 	): Promise<AgenticChatTerminalFinalizeRpcResultV1> {
 		validateExecutionIdentity(input);
 		positiveInteger(input.executionGeneration, 'executionGeneration');
@@ -404,7 +412,7 @@ export class SupabaseAgenticChatExecutionControlAdapter
 			args.p_timing_draft = timingDraft;
 			args.p_timing_transition_id = timingTransitionId;
 		}
-		const value = await this.call(rpcName, args);
+		const value = await this.call(rpcName, args, signal);
 		return parseFinalizeReceipt(value, input);
 	}
 

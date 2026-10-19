@@ -5,7 +5,6 @@ import {
 	validateProjectSpec as validateProjectSpecStruct,
 	type FacetDefaults,
 	type Facets,
-	type FSMDef,
 	type GoalState,
 	type MilestoneState,
 	type TaskState,

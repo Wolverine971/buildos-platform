@@ -276,6 +276,38 @@ describe('applyTableChanges', () => {
 		).rejects.toMatchObject({ code: 'LIMIT_EXCEEDED' });
 	});
 
+	it('guards the schema in a large save and preserves the completed batch receipt on failure', async () => {
+		const ops: TableRowOp[] = Array.from({ length: 1500 }, (_, i) => ({
+			op: 'update',
+			row_id: `row-${i}`,
+			cells: {}
+		}));
+		const { client, rpcCalls } = mockClient({
+			rpc: [
+				{ data: result(4, ['a']) },
+				{ data: null, error: { code: '40001', message: 'ROW_CONFLICT: stale row' } }
+			]
+		});
+		await expect(
+			applyTableChanges(client, {
+				documentId: DOC_ID,
+				ops,
+				schema: { format: 1, columns: [], revision: 3, row_count: 1500 },
+				expectedRevision: 3
+			})
+		).rejects.toMatchObject({
+			code: 'ROW_CONFLICT',
+			details: {
+				applied_batches: 1,
+				applied_ops: 1000,
+				total_batches: 2,
+				partial_result: { revision: 4, results: [{ row_id: 'a' }] }
+			}
+		});
+		expect(rpcCalls.map((call) => call.args.p_expected_revision)).toEqual([3, 4]);
+		expect(rpcCalls[1]?.args.p_table).toBeNull();
+	});
+
 	it('maps RPC error prefixes to TableServiceError codes', async () => {
 		const { client } = mockClient({
 			rpc: [

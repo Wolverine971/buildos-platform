@@ -66,6 +66,8 @@ export type AggregatedGoogleCalendarEvent = calendar_v3.Schema$Event & {
 };
 
 export type AggregatedGoogleCalendarEventsResponse = {
+	/** More provider pages or merged events exist beyond this bounded read. */
+	truncated?: boolean;
 	event_count: number;
 	time_range: {
 		start: string;
@@ -578,7 +580,7 @@ export class GoogleCalendarReadService {
 		fields?: string;
 		deadline: number;
 		clientCache: Map<string, Promise<unknown>>;
-	}): Promise<calendar_v3.Schema$Event[]> {
+	}): Promise<{ events: calendar_v3.Schema$Event[]; truncated: boolean }> {
 		const auth = await this.withinBudget(
 			this.clientForConnection(params.userId, params.target.connectionId, params.clientCache),
 			params.deadline
@@ -609,7 +611,10 @@ export class GoogleCalendarReadService {
 			pageToken = response.data.nextPageToken ?? undefined;
 		} while (pageToken);
 
-		return events;
+		return {
+			events: events.slice(0, params.maxResults),
+			truncated: Boolean(pageToken) || events.length > params.maxResults
+		};
 	}
 
 	async listEvents(params: {
@@ -663,7 +668,7 @@ export class GoogleCalendarReadService {
 		const orderedTargets = interleaveTargetsByConnection(targets);
 		const targetResults = await this.mapBounded(orderedTargets, async (target) => {
 			try {
-				const events = await this.listTargetEvents({
+				const page = await this.listTargetEvents({
 					...params,
 					target,
 					timeMin,
@@ -676,7 +681,7 @@ export class GoogleCalendarReadService {
 				return {
 					target,
 					status: 'success' as const,
-					events,
+					...page,
 					failure: null as CalendarReadFailure | null
 				};
 			} catch (error) {
@@ -686,6 +691,7 @@ export class GoogleCalendarReadService {
 					target,
 					status: failure.status,
 					events: [] as calendar_v3.Schema$Event[],
+					truncated: false,
 					failure: failure as CalendarReadFailure | null
 				};
 			}
@@ -835,7 +841,18 @@ export class GoogleCalendarReadService {
 			.map(({ event }) => event)
 			.sort((left, right) => eventStart(left).localeCompare(eventStart(right)))
 			.slice(0, maxResults);
+		const truncated =
+			targetResults.some((result) => result.truncated) || collapsed.size > maxResults;
+		if (truncated)
+			warnings.push({
+				code: 'CALENDAR_PARTIAL_RESULT',
+				message:
+					'Calendar results were truncated by the event limit. Narrow the time range before asserting availability.',
+				calendarSourceId: '',
+				connectionId: ''
+			});
 		return {
+			truncated,
 			event_count: events.length,
 			time_range: { start: timeMin, end: timeMax, timeZone: params.timeZone },
 			events,

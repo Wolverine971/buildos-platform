@@ -1,4 +1,13 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.ts
+import { loadProjectGraphData } from '../ontology/project-graph-loader';
+import {
+	instantiateProject,
+	OntologyInstantiationError,
+	type InstantiateProjectResult,
+	validateProjectSpec
+} from '../ontology/instantiation.service';
+import { CORE_ENTITY_CONFIG } from './op-execution-gateway.config';
+import { serializeProjectGraphData } from './op-execution-gateway.serializers';
 import {
 	buildProjectHierarchyIndexV1,
 	PROJECT_HIERARCHY_SUB_PROJECT_LIMIT,
@@ -323,5 +332,231 @@ export async function updateProject(context: ToolExecutionContext, args: Record<
 	return {
 		project,
 		message: `Updated ontology project "${project.name ?? access.project.id}".`
+	};
+}
+
+export async function createProject(context: ToolExecutionContext, args: Record<string, unknown>) {
+	// Project creation is gated only by the `onto.project.create` write op being in
+	// the caller's whitelist (enforced by registry inclusion) plus read_write mode.
+	// It is intentionally NOT tied to all-project scope: a project-scoped key may
+	// create new projects, and the created project is auto-added to the key's scope
+	// below so the same caller can immediately read and write it.
+
+	if (Array.isArray(args.clarifications) && args.clarifications.length > 0) {
+		return {
+			project_id: '',
+			counts: {},
+			clarifications: args.clarifications,
+			message: 'Additional information is required before creating the project.'
+		};
+	}
+
+	const contextDocument =
+		args.context_document &&
+		typeof args.context_document === 'object' &&
+		!Array.isArray(args.context_document)
+			? {
+					...(args.context_document as Record<string, unknown>),
+					body_markdown:
+						typeof (args.context_document as Record<string, unknown>).body_markdown ===
+						'string'
+							? (args.context_document as Record<string, unknown>).body_markdown
+							: (args.context_document as Record<string, unknown>).content
+				}
+			: undefined;
+	const spec = {
+		project: sanitizeProjectCreateInput(args.project),
+		entities: Array.isArray(args.entities) ? args.entities : [],
+		relationships: Array.isArray(args.relationships) ? args.relationships : [],
+		...(contextDocument ? { context_document: contextDocument } : {})
+	};
+	const validation = validateProjectSpec(spec);
+	if (!validation.valid) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			validation.errors[0] ?? 'Invalid ProjectSpec'
+		);
+	}
+
+	let result: InstantiateProjectResult;
+	try {
+		result = await instantiateProject(context.admin, spec as any, context.userId, {
+			activityLog: {
+				changeSource: 'agent_call',
+				actorContext: getExternalAgentActivityContext(context)
+			}
+		});
+	} catch (error) {
+		if (error instanceof OntologyInstantiationError) {
+			throw new ExternalToolGatewayError('VALIDATION_ERROR', error.message);
+		}
+		throw error;
+	}
+
+	await grantCallerProjectAccess(context, result.project_id);
+	await queueCreatedProjectContextSnapshot(context, result.project_id);
+
+	const { data: project } = await context.admin
+		.from('onto_projects')
+		.select(CORE_ENTITY_CONFIG.project.select)
+		.eq('id', result.project_id)
+		.maybeSingle();
+
+	return {
+		project_id: result.project_id,
+		project: project ?? { id: result.project_id },
+		counts: result.counts,
+		created_entities: result.created_entities,
+		message: `Created project "${(project as { name?: string } | null)?.name ?? result.project_id}".`
+	};
+}
+
+function sanitizeProjectCreateInput(value: unknown): unknown {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+	const project = { ...(value as Record<string, unknown>) };
+	if (!Object.prototype.hasOwnProperty.call(project, 'props')) return project;
+	const props = sanitizeProjectPropsPatchInput(project.props);
+	if (props && Object.keys(props).length > 0) {
+		project.props = props;
+	} else {
+		delete project.props;
+	}
+	return project;
+}
+
+/** Legacy project creation queues this best-effort snapshot before responding. */
+async function queueCreatedProjectContextSnapshot(
+	context: ToolExecutionContext,
+	projectId: string
+): Promise<void> {
+	try {
+		const { error } = await context.admin.rpc('add_queue_job', {
+			p_user_id: context.userId,
+			p_job_type: 'build_project_context_snapshot',
+			p_metadata: {
+				projectId,
+				reason: 'project_created',
+				force: true
+			},
+			p_priority: 7,
+			p_scheduled_for: new Date().toISOString(),
+			p_dedup_key: `project-context-snapshot-${projectId}`
+		});
+		if (error) throw error;
+	} catch (error) {
+		console.warn('[External Tool Gateway] Failed to queue created-project snapshot:', {
+			projectId,
+			error
+		});
+	}
+}
+
+/**
+ * Add a connector-created project to the active authorization boundary.
+ * Dynamic connectors inherit it automatically; selected connectors receive an
+ * explicit grant and keep the legacy allowlist mirror in sync.
+ */
+async function grantCallerProjectAccess(
+	context: ToolExecutionContext,
+	projectId: string
+): Promise<void> {
+	if (!context.callerId) return;
+	if (!Array.isArray(context.scope.project_ids)) return;
+	if (context.scope.project_ids.includes(projectId)) return;
+
+	// Update the in-session scope immediately.
+	context.scope.project_ids = [...context.scope.project_ids, projectId];
+	if (context.scope.mode === 'read_write' && Array.isArray(context.scope.write_project_ids)) {
+		context.scope.write_project_ids = [...context.scope.write_project_ids, projectId];
+	}
+	// Older in-process callers do not yet pass projectScopeMode. Their explicit
+	// project array keeps the legacy selected-scope behavior during rollout.
+	if (context.projectScopeMode === 'all_unrestricted') return;
+
+	try {
+		if (context.oauthGrantId) {
+			const { data: grant, error: grantLoadError } = await context.admin
+				.from('agent_oauth_grants')
+				.select('allowed_project_ids')
+				.eq('id', context.oauthGrantId)
+				.maybeSingle();
+			if (grantLoadError) throw grantLoadError;
+			const grantProjectIds = Array.isArray(grant?.allowed_project_ids)
+				? grant.allowed_project_ids.filter(
+						(id: unknown): id is string => typeof id === 'string'
+					)
+				: [];
+			if (!grantProjectIds.includes(projectId)) {
+				const { error } = await context.admin
+					.from('agent_oauth_grants')
+					.update({ allowed_project_ids: [...grantProjectIds, projectId] })
+					.eq('id', context.oauthGrantId);
+				if (error) throw error;
+			}
+		}
+
+		const { error: permissionError } = await context.admin
+			.from('external_agent_project_permissions')
+			.insert({
+				user_id: context.userId,
+				external_agent_caller_id: context.callerId,
+				agent_oauth_grant_id: context.oauthGrantId ?? null,
+				project_id: projectId,
+				access_mode: context.scope.mode,
+				source: 'connector_created',
+				granted_by: context.userId
+			});
+		if (permissionError) throw permissionError;
+
+		// Keep the legacy caller-policy mirror in sync only after the authoritative
+		// OAuth grant / explicit permission has been persisted.
+		const { data: caller } = await context.admin
+			.from('external_agent_callers')
+			.select('policy')
+			.eq('id', context.callerId)
+			.maybeSingle();
+		const policy = ((caller?.policy as Record<string, unknown> | null) ?? {}) as Record<
+			string,
+			unknown
+		>;
+		const existing = Array.isArray(policy.allowed_project_ids)
+			? (policy.allowed_project_ids as unknown[]).filter(
+					(id): id is string => typeof id === 'string'
+				)
+			: null;
+		if (existing && !existing.includes(projectId)) {
+			const { error } = await context.admin
+				.from('external_agent_callers')
+				.update({ policy: { ...policy, allowed_project_ids: [...existing, projectId] } })
+				.eq('id', context.callerId);
+			if (error) throw error;
+		}
+	} catch (error) {
+		console.error('[External Tool Gateway] Failed to persist created-project access:', {
+			callerId: context.callerId,
+			oauthGrantId: context.oauthGrantId,
+			projectId,
+			error
+		});
+	}
+}
+
+export async function getProjectGraph(
+	context: ToolExecutionContext,
+	args: Record<string, unknown>
+) {
+	const visible = await loadVisibleProjects(context);
+	const project = assertAccessibleProject(visible.projectMap, args.project_id);
+	const graph = await loadProjectGraphData(context.admin, project.id, {
+		excludeCompletedTasks: true
+	});
+
+	return {
+		graph: serializeProjectGraphData(graph as unknown as Record<string, unknown>),
+		metadata: {
+			projectId: project.id,
+			queryPattern: 'project-graph-loader',
+			generatedAt: new Date().toISOString()
+		}
 	};
 }

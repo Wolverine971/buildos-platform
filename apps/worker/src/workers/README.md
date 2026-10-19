@@ -10,7 +10,6 @@ This directory contains worker processors for queue job types handled by `apps/w
 - `briefAudio/` - Daily brief narration generation
 - `notification/` - Notification sends and project activity batch flush
 - `ontology/` - Ontology jobs, including `build_project_context_snapshot`
-- `project-icon/` - Project icon generation (`generate_project_icon`)
 - `assets/` - Ontology asset OCR (`extract_onto_asset_ocr`)
 - `chat/` - Chat session classification jobs
 - `voice-notes/` - Voice note transcription jobs

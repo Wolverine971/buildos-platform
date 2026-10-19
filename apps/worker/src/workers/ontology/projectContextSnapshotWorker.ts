@@ -17,7 +17,6 @@ import { refreshProjectStartHereManagedRegions } from '@buildos/shared-agent-ops
 
 const SNAPSHOT_VERSION = 1;
 const SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes
-const AUTO_ICON_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Keep in sync with COMPLETED_STATE_KEYS in
 // apps/web/src/lib/services/agentic-chat-v2/context-loader.ts so the Start Here
 // status counts ("N open tasks") match what project chat reports.
@@ -30,8 +29,6 @@ const COMPLETE_STATE_KEYS = new Set([
 	'canceled',
 	'abandoned'
 ]);
-const PROJECT_ICON_GENERATION_ENABLED =
-	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
 
 function serializeJson(value: unknown, path = 'value'): Json {
 	if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
@@ -50,117 +47,6 @@ function serializeJson(value: unknown, path = 'value'): Json {
 		return result;
 	}
 	throw new TypeError(`${path} is not JSON serializable`);
-}
-
-function isReadyForAutoIcon(project: {
-	taskCount: number;
-	goalCount: number;
-	documentCount: number;
-	description?: string | null;
-	iconSvg?: string | null;
-}): boolean {
-	const totalEntities = project.taskCount + project.goalCount + project.documentCount;
-	return totalEntities >= 3 && Boolean(project.description?.trim()) && !project.iconSvg;
-}
-
-async function queueAutoProjectIconGeneration(params: {
-	projectId: string;
-	userId: string;
-	taskCount: number;
-	goalCount: number;
-	documentCount: number;
-	description?: string | null;
-	iconSvg?: string | null;
-}) {
-	if (!PROJECT_ICON_GENERATION_ENABLED) {
-		return { queued: false, reason: 'feature_disabled' as const };
-	}
-
-	const ready = isReadyForAutoIcon({
-		taskCount: params.taskCount,
-		goalCount: params.goalCount,
-		documentCount: params.documentCount,
-		description: params.description,
-		iconSvg: params.iconSvg
-	});
-
-	if (!ready) {
-		return { queued: false, reason: 'readiness_not_met' as const };
-	}
-
-	const { data: latestAutoGeneration, error: latestAutoGenerationError } = await supabase
-		.from('onto_project_icon_generations')
-		.select('id, created_at')
-		.eq('project_id', params.projectId)
-		.eq('trigger_source', 'auto')
-		.order('created_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
-
-	if (latestAutoGenerationError) {
-		throw new Error(
-			`Failed checking icon generation cooldown: ${latestAutoGenerationError.message}`
-		);
-	}
-
-	if (latestAutoGeneration?.created_at) {
-		const createdAtMs = Date.parse(latestAutoGeneration.created_at);
-		if (!Number.isNaN(createdAtMs) && Date.now() - createdAtMs < AUTO_ICON_COOLDOWN_MS) {
-			return { queued: false, reason: 'cooldown_active' as const };
-		}
-	}
-
-	const { data: generationRow, error: generationCreateError } = await supabase
-		.from('onto_project_icon_generations')
-		.insert({
-			project_id: params.projectId,
-			requested_by: params.userId,
-			trigger_source: 'auto',
-			steering_prompt: null,
-			candidate_count: 1,
-			status: 'queued'
-		})
-		.select('id')
-		.single();
-
-	if (generationCreateError || !generationRow?.id) {
-		throw new Error(
-			`Failed creating auto icon generation row: ${generationCreateError?.message}`
-		);
-	}
-
-	const generationId = generationRow.id as string;
-	const { error: queueError } = await supabase.rpc('add_queue_job', {
-		p_user_id: params.userId,
-		p_job_type: 'generate_project_icon',
-		p_metadata: serializeJson({
-			generationId,
-			projectId: params.projectId,
-			requestedByUserId: params.userId,
-			triggerSource: 'auto',
-			candidateCount: 1,
-			autoSelect: true
-		}),
-		p_priority: 9,
-		p_scheduled_for: new Date().toISOString(),
-		p_dedup_key: `project-icon:auto:${params.projectId}`
-	});
-
-	if (queueError) {
-		await supabase
-			.from('onto_project_icon_generations')
-			.update({
-				status: 'failed',
-				error_message: queueError.message,
-				completed_at: new Date().toISOString()
-			})
-			.eq('id', generationId)
-			.eq('project_id', params.projectId);
-
-		throw new Error(`Failed queueing auto icon generation: ${queueError.message}`);
-	}
-
-	return { queued: true, reason: 'queued' as const, generationId };
 }
 
 /**
@@ -603,9 +489,7 @@ export async function processProjectContextSnapshotJob(
 
 		const { data: projectRow, error: projectError } = await supabase
 			.from('onto_projects')
-			.select(
-				'doc_structure, updated_at, description, icon_svg, state_key, deleted_at, archived_at'
-			)
+			.select('doc_structure, updated_at, state_key, deleted_at, archived_at')
 			.eq('id', projectId)
 			.maybeSingle();
 
@@ -727,27 +611,6 @@ export async function processProjectContextSnapshotJob(
 			computed_at: new Date().toISOString(),
 			queue_job_id: job.id
 		});
-
-		try {
-			const autoResult = await queueAutoProjectIconGeneration({
-				projectId,
-				userId: job.userId,
-				taskCount: graph.tasks.length,
-				goalCount: graph.goals.length,
-				documentCount: graph.documents.length,
-				description: projectRow.description ?? graph.project.description,
-				iconSvg: projectRow.icon_svg
-			});
-			if (autoResult.queued) {
-				await job.log(`Auto icon generation queued (${autoResult.generationId})`);
-			} else {
-				await job.log(`Auto icon generation skipped (${autoResult.reason})`);
-			}
-		} catch (autoQueueError: unknown) {
-			const message =
-				autoQueueError instanceof Error ? autoQueueError.message : 'Unknown error';
-			await job.log(`Auto icon generation trigger failed: ${message}`);
-		}
 
 		await job.log(`Snapshot build completed in ${duration}ms`);
 		return { success: true, projectId, duration_ms: duration };

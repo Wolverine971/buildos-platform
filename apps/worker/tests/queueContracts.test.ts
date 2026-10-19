@@ -1,6 +1,6 @@
 // apps/worker/tests/queueContracts.test.ts
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { transformEventPayload, validateAgentRunMetadata } from '@buildos/shared-types';
 
@@ -9,6 +9,59 @@ const repoRoot = resolve(__dirname, '../../..');
 function readRepoFile(path: string): string {
 	return readFileSync(resolve(repoRoot, path), 'utf8');
 }
+
+describe('worker deployment inputs', () => {
+	it.each(['railway.toml', 'apps/worker/railway.toml'])(
+		'%s watches exactly the transitive workspace dependencies and build inputs',
+		(path) => {
+			type Manifest = { name: string } & Record<string, unknown>;
+			const packages = new Map<string, { directory: string; manifest: Manifest }>();
+			for (const directory of readdirSync(resolve(repoRoot, 'packages'))) {
+				const manifest = JSON.parse(readRepoFile(`packages/${directory}/package.json`));
+				packages.set(manifest.name, { directory, manifest });
+			}
+			const visited = new Set<string>();
+			const patterns: string[] = [];
+			function visit(manifest: Manifest) {
+				for (const section of [
+					'dependencies',
+					'devDependencies',
+					'optionalDependencies',
+					'peerDependencies'
+				]) {
+					for (const [name, version] of Object.entries(
+						(manifest[section] ?? {}) as Record<string, string>
+					)) {
+						if (!version.startsWith('workspace:') || visited.has(name)) continue;
+						visited.add(name);
+						const dependency = packages.get(name);
+						if (!dependency) throw new Error(`Missing workspace manifest: ${name}`);
+						patterns.push(`packages/${dependency.directory}/**`);
+						visit(dependency.manifest);
+					}
+				}
+			}
+			visit(JSON.parse(readRepoFile('apps/worker/package.json')));
+			// Parse only this TOML array of string literals; no application prose is inspected.
+			const match = readRepoFile(path).match(/watchPatterns\s*=\s*(\[[\s\S]*?\])/);
+			expect(match).not.toBeNull();
+			const actual = JSON.parse(match![1]!) as string[];
+			expect(actual.sort()).toEqual(
+				[
+					'apps/worker/**',
+					...patterns,
+					'patches/**',
+					'turbo.json',
+					'package.json',
+					'pnpm-lock.yaml',
+					'pnpm-workspace.yaml',
+					'railway.toml',
+					'nixpacks.toml'
+				].sort()
+			);
+		}
+	);
+});
 
 describe('queue SQL contracts', () => {
 	it('guarantees a correlation ID in every newly inserted job metadata object', () => {

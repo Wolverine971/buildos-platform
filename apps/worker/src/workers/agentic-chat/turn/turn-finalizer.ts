@@ -516,15 +516,17 @@ export class AgenticChatTurnFinalizer {
 							stage: 'timing'
 						})
 					: null,
-			publicError: includesFailureEventPair
-				? (publicError ?? AGENTIC_CHAT_GENERIC_FAILURE_COPY)
-				: null,
-			errorTransitionId: includesFailureEventPair
-				? createStableAgenticChatLifecycleTransitionIdV1({
-						turnRunId: claim.turnRunId,
-						stage: 'error'
-					})
-				: null
+			publicError:
+				includesFailureEventPair && timingDraft !== null
+					? (publicError ?? AGENTIC_CHAT_GENERIC_FAILURE_COPY)
+					: null,
+			errorTransitionId:
+				includesFailureEventPair && timingDraft !== null
+					? createStableAgenticChatLifecycleTransitionIdV1({
+							turnRunId: claim.turnRunId,
+							stage: 'error'
+						})
+					: null
 		};
 
 		let terminal: AgenticChatTerminalFinalizeRpcResultV1;

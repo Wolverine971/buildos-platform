@@ -501,8 +501,7 @@ export async function loadProjectCleanupView(
 						projectId,
 						operations: row.operations,
 						title: row.title,
-						preview: row.preview,
-						checkModelAlignment: true
+						preview: row.preview
 					});
 					verification!.set(
 						row.id,

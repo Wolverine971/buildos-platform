@@ -35,7 +35,6 @@ export type DraftBundleDeps = {
 			operations: LoopOperation[];
 			title?: string | null;
 			preview?: ProjectSuggestionPreview | null;
-			checkModelAlignment?: boolean;
 		}
 	) => Promise<
 		| { ok: true; summary: { operation_count: number } }
@@ -352,8 +351,7 @@ export async function buildDraftBundle(params: {
 			projectId: params.projectId,
 			operations,
 			title,
-			preview,
-			checkModelAlignment: true
+			preview
 		});
 		if (!verification.ok) {
 			return {

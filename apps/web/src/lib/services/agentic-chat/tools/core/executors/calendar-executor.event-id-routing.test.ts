@@ -122,3 +122,93 @@ describe('CalendarExecutor event-id routing', () => {
 		).rejects.toThrow(/looks like a Google Calendar event id.*pass it as event_id/);
 	});
 });
+
+describe('CalendarExecutor project-scoped Google event fence', () => {
+	const projectId = '11111111-1111-4111-8111-111111111111';
+	const sourceId = '22222222-2222-4222-8222-222222222222';
+	const operations = [
+		['getCalendarEventDetails', 'getEvent', 'read'],
+		['updateCalendarEvent', 'updateEvent', 'write'],
+		['deleteCalendarEvent', 'deleteEvent', 'write']
+	] as const;
+
+	function setup(mapping: { calendar_source_id: string | null } | null) {
+		const query = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			maybeSingle: vi.fn().mockResolvedValue({ data: mapping, error: null })
+		};
+		const supabase = { from: vi.fn().mockReturnValue(query) } as any;
+		const provider = {
+			hasActiveTarget: vi.fn().mockResolvedValue(true),
+			getEvent: vi.fn().mockResolvedValue({}),
+			updateEvent: vi.fn().mockResolvedValue({}),
+			deleteEvent: vi.fn().mockResolvedValue({})
+		};
+		const executor = new CalendarExecutor(
+			{
+				supabase,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				getAdminSupabase: () => supabase
+			} as any,
+			{ googleCalendarWriteService: provider as any }
+		);
+		const access = vi.fn().mockResolvedValue(undefined);
+		(executor as any).assertProjectAccess = access;
+		(executor as any).resolveInputTimezone = async () => 'UTC';
+		return { executor, provider, query, supabase, access };
+	}
+
+	it.each(operations)(
+		'%s refuses a source outside the project',
+		async (method, providerMethod) => {
+			const { executor, provider } = setup({ calendar_source_id: sourceId });
+			await expect(
+				executor[method]({
+					event_id: GOOGLE_EVENT_ID,
+					calendar_scope: 'project',
+					project_id: projectId,
+					calendar_source_id: '44444444-4444-4444-8444-444444444444'
+				})
+			).rejects.toThrow(/project calendar/i);
+			expect(provider[providerMethod]).not.toHaveBeenCalled();
+		}
+	);
+
+	it.each(operations)(
+		'%s pins omitted sources to the user project mapping',
+		async (method, providerMethod, capability) => {
+			const { executor, provider, query, supabase, access } = setup({
+				calendar_source_id: sourceId
+			});
+			await executor[method]({
+				event_id: GOOGLE_EVENT_ID,
+				calendar_scope: 'project',
+				project_id: projectId
+			});
+			expect(access).toHaveBeenCalledWith(projectId, capability);
+			expect(supabase.from).toHaveBeenCalledWith('project_calendars');
+			expect(query.eq).toHaveBeenCalledWith('project_id', projectId);
+			expect(query.eq).toHaveBeenCalledWith('user_id', 'user-1');
+			expect(provider[providerMethod]).toHaveBeenCalledWith(
+				expect.objectContaining({ selector: { calendarSourceId: sourceId } })
+			);
+		}
+	);
+
+	it.each(operations)(
+		'%s refuses a project without a source mapping',
+		async (method, providerMethod) => {
+			const { executor, provider } = setup({ calendar_source_id: null });
+			await expect(
+				executor[method]({
+					event_id: GOOGLE_EVENT_ID,
+					calendar_scope: 'project',
+					project_id: projectId
+				})
+			).rejects.toThrow(/project calendar/i);
+			expect(provider[providerMethod]).not.toHaveBeenCalled();
+		}
+	);
+});

@@ -121,7 +121,6 @@ The live source of truth is `queue.process(...)` registrations in
 | `embed_onto_entity`              | `workers/embeddings/embedEntityWorker.ts`             |
 | `agent_run`                      | `workers/agent-run/agentRunWorker.ts`                 |
 | `build_project_context_snapshot` | `workers/ontology/projectContextSnapshotWorker.ts`    |
-| `generate_project_icon`          | `workers/project-icon/projectIconWorker.ts`           |
 | `buildos_project_loop`           | `workers/project-loop/projectLoopWorker.ts`           |
 | `sync_calendar`                  | `workers/calendar/calendarSyncWorker.ts`              |
 

@@ -2579,7 +2579,8 @@ describe('audit 2026-09-02 context rendering', () => {
 		const safety = worker.sections.find((section) => section.id === 'safety_data_rules');
 		expect(strategy?.content).not.toContain('1-2 sentence lead-in');
 		expect(safety?.content).not.toContain('See the document_workspace skill');
-		expect(safety?.content).toContain('append/merge writes require non-empty content');
+		expect(safety?.content).toContain('append writes require non-empty content');
+		expect(safety?.content).not.toContain('merge_instructions');
 		expect(worker.sections.some((section) => section.id === 'tool_surface_dynamic')).toBe(
 			false
 		);

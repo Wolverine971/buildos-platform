@@ -834,7 +834,6 @@ describe('golden goal fingerprints', () => {
 	])('%s', async (_label, extra, expected) => {
 		const result = await verifyProjectSuggestionIntegrity(createSupabaseMock(goldenTables()), {
 			projectId,
-			checkModelAlignment: false,
 			operations: [
 				{
 					tool: 'update_onto_goal',

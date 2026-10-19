@@ -99,19 +99,19 @@ function createAdmin() {
 			},
 			update: (payload: Record<string, unknown>) => {
 				mocks.updatePayloads.push({ table, payload });
-				return {
-					eq: () => ({
-						select: () => ({
-							single: async () => ({
-								data: {
-									...(mocks.existingByKind.get(tableKind(table)) ?? {}),
-									...payload
-								},
-								error: null
-							})
+				const query = {
+					eq: () => query,
+					select: () => ({
+						single: async () => ({
+							data: {
+								...(mocks.existingByKind.get(tableKind(table)) ?? {}),
+								...payload
+							},
+							error: null
 						})
 					})
 				};
+				return query;
 			}
 		}))
 	};
@@ -397,4 +397,62 @@ describe('core entity gateway legacy row parity', () => {
 			}
 		});
 	});
+});
+
+describe('core entity props concurrency', () => {
+	it.each([
+		['goal', updateGoal, 'goal_id'],
+		['plan', updatePlan, 'plan_id'],
+		['milestone', updateMilestone, 'milestone_id'],
+		['risk', updateRisk, 'risk_id']
+	] as const)(
+		'preserves concurrent %s props when retrying a stale save',
+		async (kind, update, idArg) => {
+			let row: Record<string, any> = {
+				id: ENTITY_ID,
+				project_id: PROJECT_ID,
+				name: 'Entity',
+				title: 'Entity',
+				props: { human: 'old' },
+				updated_at: 'v1'
+			};
+			mocks.existingByKind.set(kind, row);
+			let writes = 0;
+			const admin = {
+				from: () => {
+					let patch: Record<string, unknown> = {};
+					const filters: Array<[string, unknown]> = [];
+					const query: any = {
+						update: (value: Record<string, unknown>) => {
+							patch = value;
+							return query;
+						},
+						select: () => query,
+						eq: (key: string, value: unknown) => {
+							filters.push([key, value]);
+							return query;
+						},
+						single: async () => {
+							writes++;
+							if (writes === 1) {
+								row = { ...row, props: { human: 'new' }, updated_at: 'v2' };
+								mocks.existingByKind.set(kind, row);
+							}
+							if (!filters.every(([key, value]) => row[key] === value))
+								return { data: null, error: { code: 'PGRST116' } };
+							row = { ...row, ...patch };
+							return { data: row, error: null };
+						}
+					};
+					return query;
+				}
+			};
+			await update(
+				{ ...(context() as any), admin },
+				{ [idArg]: ENTITY_ID, props: { agent: true } }
+			);
+			expect(row.props).toEqual({ human: 'new', agent: true });
+			expect(writes).toBe(2);
+		}
+	);
 });

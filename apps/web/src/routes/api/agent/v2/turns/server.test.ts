@@ -138,6 +138,7 @@ function fakeAdminClient(
 	options: {
 		turnRows?: unknown[];
 		turnError?: { message: string } | null;
+		turnResult?: Promise<{ data: unknown[]; error: { message: string } | null }>;
 		session?: unknown;
 		sessionError?: { message: string } | null;
 		sessionThrows?: boolean;
@@ -156,6 +157,7 @@ function fakeAdminClient(
 			}),
 			limit: vi.fn(async () => {
 				turnLookups.push(filters);
+				if (options.turnResult) return options.turnResult;
 				return { data: options.turnRows ?? [], error: options.turnError ?? null };
 			}),
 			maybeSingle: vi.fn(async () => {
@@ -905,6 +907,37 @@ describe('POST /api/agent/v2/turns inline transport decision', () => {
 		return mocks.prepareAgenticChatWorkerAdmission.mock.calls[0]?.[0]?.lease?.decisionId;
 	}
 
+	it.each([false, true])(
+		'prepares while the decision lookup is pending, then admits with the resolved id (duplicate=%s)',
+		async (duplicate) => {
+			let resolveLookup!: (value: { data: unknown[]; error: null }) => void;
+			const turnResult = new Promise<{ data: unknown[]; error: null }>((resolve) => {
+				resolveLookup = resolve;
+			});
+			const admin = fakeAdminClient({ turnResult });
+			mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+			// Freeze the preparation's provisional id, as the real preparer does.
+			const prepared = mocks.prepareAgenticChatWorkerAdmission.getMockImplementation()!;
+			mocks.prepareAgenticChatWorkerAdmission.mockImplementationOnce(async (input) => ({
+				...(await prepared(input)),
+				args: { p_user_id: USER_ID, p_transport_decision_id: input.lease.decisionId }
+			}));
+			const response = POST(postEvent() as never);
+			try {
+				await vi.waitFor(() => expect(admin.turnLookups).toHaveLength(1));
+				expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(1);
+				expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
+			} finally {
+				resolveLookup({ data: duplicate ? [ownedTurnRow()] : [], error: null });
+				await response;
+			}
+			expect((await response).status).toBe(202);
+			expect(
+				mocks.admitAgenticChatWorkerTurn.mock.calls[0]?.[0]?.args.p_transport_decision_id
+			).toBe(duplicate ? DECISION_ID : preparedDecisionId());
+		}
+	);
+
 	it('admits a new turn under a server-minted decision bound to the authenticated owner', async () => {
 		const admin = fakeAdminClient();
 		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
@@ -961,7 +994,9 @@ describe('POST /api/agent/v2/turns inline transport decision', () => {
 
 		expect(response.status).toBe(200);
 		expect((await response.json()).data.outcome).toBe('matching_duplicate');
-		expect(preparedDecisionId()).toBe(DECISION_ID);
+		expect(
+			mocks.admitAgenticChatWorkerTurn.mock.calls[0]?.[0]?.args.p_transport_decision_id
+		).toBe(DECISION_ID);
 	});
 
 	it('ignores a null retired lease field but rejects any lease token', async () => {
@@ -983,7 +1018,7 @@ describe('POST /api/agent/v2/turns inline transport decision', () => {
 		}
 	});
 
-	it('refuses a binding that conflicts with an existing owned turn before preparation', async () => {
+	it('refuses a binding that conflicts with an existing owned turn before admission', async () => {
 		for (const turnRows of [
 			[ownedTurnRow({ stream_run_id: 'other-stream' })],
 			[ownedTurnRow({ context_type: 'calendar' })],
@@ -999,7 +1034,7 @@ describe('POST /api/agent/v2/turns inline transport decision', () => {
 			expect(payload.code).toBe('TRANSPORT_CONFLICT');
 			expect(response.headers.get('cache-control')).toBe('private, no-store');
 		}
-		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(5);
 		expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
 	});
 
@@ -1013,7 +1048,100 @@ describe('POST /api/agent/v2/turns inline transport decision', () => {
 		expect(response.headers.get('retry-after')).toBe('2');
 		expect(payload.code).toBe('WORKER_UNAVAILABLE');
 		expect(JSON.stringify(payload)).not.toContain('private database detail');
-		expect(mocks.prepareAgenticChatWorkerAdmission).not.toHaveBeenCalled();
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(1);
+		expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
+	});
+
+	it('handles a late preparation rejection after returning a transport conflict', async () => {
+		let rejectPreparation!: (error: Error) => void;
+		mocks.prepareAgenticChatWorkerAdmission.mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectPreparation = reject;
+				})
+		);
+		mocks.createAdminSupabaseClient.mockReturnValue(
+			fakeAdminClient({ turnRows: [ownedTurnRow({ stream_run_id: 'other-stream' })] }).client
+		);
+		const response = await POST(postEvent() as never);
+		expect(response.status).toBe(409);
+		expect((await response.json()).code).toBe('TRANSPORT_CONFLICT');
+		rejectPreparation(new Error('late preparation failure'));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
+	});
+
+	it('observes an early preparation rejection while the transport lookup is pending', async () => {
+		let resolveLookup!: (value: { data: unknown[]; error: null }) => void;
+		const turnResult = new Promise<{ data: unknown[]; error: null }>((resolve) => {
+			resolveLookup = resolve;
+		});
+		const admin = fakeAdminClient({ turnResult });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		mocks.prepareAgenticChatWorkerAdmission.mockRejectedValueOnce(
+			new Error('private preparation failure')
+		);
+		const pending = POST(postEvent() as never);
+		await vi.waitFor(() =>
+			expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenCalledTimes(1)
+		);
+		resolveLookup({ data: [], error: null });
+		const response = await pending;
+		expect(response.status).toBe(503);
+		expect((await response.json()).code).toBe('WORKER_ADMISSION_NOT_ADMITTED');
+		expect(mocks.admitAgenticChatWorkerTurn).not.toHaveBeenCalled();
+	});
+
+	it('keeps the resolved decision across a prepared-claim race retry without another lookup', async () => {
+		const admin = fakeAdminClient({ turnRows: [ownedTurnRow()] });
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		mocks.prepareAgenticChatWorkerAdmission.mockResolvedValue({
+			args: { p_user_id: USER_ID, p_prepared_prompt_id: TURN_ID, p_request_payload: {} },
+			preparedAdmissionLease: {
+				requested: true,
+				hit: true,
+				missReason: null,
+				inspectionMs: 0
+			}
+		});
+		mocks.admitAgenticChatWorkerTurn.mockRejectedValueOnce(
+			new AgenticChatWorkerAdmissionGatewayError(
+				'database_error',
+				'agentic_chat_worker_admission_prepared_already_consumed',
+				true
+			)
+		);
+		expect((await POST(postEvent() as never)).status).toBe(202);
+		expect(admin.turnLookups).toHaveLength(1);
+		expect(
+			mocks.admitAgenticChatWorkerTurn.mock.calls.map(
+				([input]) => input.args.p_transport_decision_id
+			)
+		).toEqual([DECISION_ID, DECISION_ID]);
+		expect(mocks.prepareAgenticChatWorkerAdmission).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				lease: expect.objectContaining({ decisionId: DECISION_ID }),
+				preparedPromptLineageOnly: true
+			})
+		);
+	});
+
+	it('uses the session returned by the RPC without a follow-up read on a first send', async () => {
+		const session = sessionRow();
+		const admin = fakeAdminClient();
+		mocks.createAdminSupabaseClient.mockReturnValue(admin.client);
+		mocks.admitAgenticChatWorkerTurn.mockResolvedValue(
+			admitted({ sessionCreated: true, session })
+		);
+		const response = await POST(
+			postEvent({ body: admissionBody({ sessionId: null }) }) as never
+		);
+		expect(response.status).toBe(202);
+		expect((await response.json()).data.session).toEqual(session);
+		expect(admin.from).not.toHaveBeenCalledWith('chat_sessions');
+
+		const existing = await POST(postEvent() as never);
+		expect((await existing.json()).data).not.toHaveProperty('session');
 	});
 
 	it('returns the admitted session row only when the send had no session', async () => {

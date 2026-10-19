@@ -1053,3 +1053,139 @@ describe('createTask table_row anchor', () => {
 		expect(badHandle.capture.task).toBeUndefined();
 	});
 });
+
+describe('task props concurrency', () => {
+	function fixture(alwaysConflict = false, writeError = false) {
+		let row: Record<string, any> = {
+			id: TASK_ID,
+			project_id: PROJECT_ID,
+			title: 'Task',
+			description: 'Original',
+			type_key: 'task.default',
+			state_key: 'todo',
+			props: { human: 'old', description: 'Original' },
+			updated_at: 'v1',
+			archived_at: null,
+			deleted_at: null
+		};
+		let writes = 0;
+		const admin = {
+			rpc: vi.fn(async (name: string, args: any) => {
+				if (name === 'onto_task_update_with_relationships_atomic') {
+					writes++;
+					if (writes === 1 || alwaysConflict)
+						row = {
+							...row,
+							props: { ...row.props, human: 'new' },
+							updated_at: `v${writes + 1}`
+						};
+					const { _expected_updated_at, ...patch } = args.p_updates;
+					if (
+						_expected_updated_at !== undefined &&
+						_expected_updated_at !== row.updated_at
+					)
+						return {
+							data: null,
+							error: { code: '40001', message: 'task_props_version_conflict' }
+						};
+					row = { ...row, ...patch };
+					return { data: { task: row, added_actor_ids: [] }, error: null };
+				}
+				return {
+					data: name === 'ensure_actor_for_user' ? OWNER_ACTOR_ID : [projectSummary()],
+					error: null
+				};
+			}),
+			from: vi.fn(() => {
+				let patch: Record<string, unknown> = {};
+				const filters: Array<[string, unknown]> = [];
+				const query: any = {
+					select: () => query,
+					in: () => query,
+					is: () => query,
+					eq: (key: string, value: unknown) => {
+						filters.push([key, value]);
+						return query;
+					},
+					update: (value: Record<string, unknown>) => {
+						patch = value;
+						return query;
+					},
+					maybeSingle: async () => ({ data: structuredClone(row), error: null }),
+					single: async () => {
+						writes++;
+						if (writeError)
+							return {
+								data: null,
+								error: { message: 'Database unavailable', code: 'XX000' }
+							};
+						if (writes === 1 || alwaysConflict)
+							row = {
+								...row,
+								props: { ...row.props, human: 'new' },
+								updated_at: `v${writes + 1}`
+							};
+						if (!filters.every(([key, value]) => row[key] === value))
+							return { data: null, error: { code: 'PGRST116', message: 'No row' } };
+						row = { ...row, ...patch };
+						return { data: row, error: null };
+					}
+				};
+				return query;
+			})
+		};
+		return {
+			context: {
+				admin,
+				userId: USER_ID,
+				scope: { mode: 'read_write', project_ids: [PROJECT_ID] }
+			} as any,
+			writes: () => writes,
+			row: () => row
+		};
+	}
+	it('reloads and re-merges props and the description mirror once after a racing UI save', async () => {
+		const f = fixture();
+		await updateTask(f.context, {
+			task_id: TASK_ID,
+			description: 'Agent edit',
+			props: { agent: true }
+		});
+		expect(f.row().props).toEqual({ human: 'new', description: 'Agent edit', agent: true });
+		expect(f.writes()).toBe(2);
+	});
+	it('returns conflict after the one retry without clobbering the competing edit', async () => {
+		const f = fixture(true);
+		await expect(
+			updateTask(f.context, { task_id: TASK_ID, props: { agent: true } })
+		).rejects.toMatchObject({ code: 'CONFLICT' });
+		expect(f.writes()).toBe(2);
+		expect(f.row().props).not.toHaveProperty('agent');
+	});
+	it.each([false, true])(
+		'guards atomic props updates and bounds retries (persistent contention: %s)',
+		async (persistent) => {
+			const f = fixture(persistent);
+			const run = updateTask(f.context, {
+				task_id: TASK_ID,
+				goal_id: null,
+				props: { agent: true }
+			});
+			if (persistent) {
+				await expect(run).rejects.toMatchObject({ code: 'CONFLICT' });
+				expect(f.row().props).not.toHaveProperty('agent');
+			} else {
+				await run;
+				expect(f.row().props).toMatchObject({ human: 'new', agent: true, goal_id: null });
+			}
+			expect(f.writes()).toBe(2);
+		}
+	);
+	it('does not retry unrelated database failures', async () => {
+		const f = fixture(false, true);
+		await expect(
+			updateTask(f.context, { task_id: TASK_ID, props: { agent: true } })
+		).rejects.toMatchObject({ code: 'INTERNAL' });
+		expect(f.writes()).toBe(1);
+	});
+});

@@ -3374,11 +3374,11 @@ describe('external tool gateway', () => {
 		expect(updateDocumentTool?.inputSchema).toMatchObject({
 			properties: {
 				content: expect.any(Object),
-				update_strategy: expect.any(Object),
-				merge_instructions: expect.any(Object)
+				update_strategy: expect.objectContaining({ enum: ['replace', 'append'] })
 			}
 		});
 		expect(updateDocumentTool?.inputSchema.properties).not.toHaveProperty('body_markdown');
+		expect(updateDocumentTool?.inputSchema.properties).not.toHaveProperty('merge_instructions');
 	});
 
 	it('creates a document through a direct tool and places it in the doc tree', async () => {
@@ -3916,7 +3916,7 @@ describe('external tool gateway', () => {
 					started_at: '2026-04-28T00:00:00.000Z',
 					completed_at: null,
 					created_at: '2026-04-28T00:00:00.000Z',
-					updated_at: '2026-04-28T00:00:00.000Z'
+					updated_at: new Date().toISOString()
 				}
 			],
 			nextTaskId: 1,

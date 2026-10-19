@@ -34,6 +34,7 @@ import {
 } from './forced-synthesis';
 import { canonicalError, canonicalFinishedReason, normalizeUsage, providerError } from './protocol';
 import { throwIfAborted } from '../shared/abortable-deadline';
+import { combineAbortSignals } from '../turn/executor-helpers';
 import type { AgenticChatContextFinderPort } from './chat-context-finder';
 import {
 	type AgenticChatDocumentEditPreviewPort,
@@ -376,6 +377,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		};
 		let finished = false;
 		let keepLease = false;
+		let openingAbort: AbortController | null = null;
+		let openingScope: ReturnType<typeof combineAbortSignals> | null = null;
+		let openingConsumed = false;
 		let passEmittedText = false;
 		let assistantCandidate = '';
 		const textDelta = (text: string): AgenticChatProviderStepV1 => {
@@ -430,10 +434,15 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 				if (found) {
 					// The opening request goes out while the executor persists the
 					// "Working from" status; the status still reaches it first.
-					openingPass = startProviderPass(this.providerPass(request, state));
+					openingAbort = new AbortController();
+					openingScope = combineAbortSignals([request.signal, openingAbort.signal]);
+					openingPass = startProviderPass(
+						this.providerPass({ ...request, signal: openingScope.signal }, state)
+					);
 					yield found.step;
 				}
 			}
+			openingConsumed = true;
 			for await (const event of openingPass ?? this.providerPass(request, state)) {
 				if (event.type === 'output_budget_recovery') {
 					yield buildOutputBudgetRecoveryProgress(request, event.providerAttempt);
@@ -775,6 +784,10 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 			}
 			if (!finished) throw providerError('provider_missing_done', 'unknown');
 		} finally {
+			// The wrapper has not started while context selection is yielded, so
+			// closing it cannot run its finally. Stop its eager network request here.
+			if (!openingConsumed) openingAbort?.abort(new Error('Opening provider pass abandoned'));
+			openingScope?.dispose();
 			if (!keepLease) state.release();
 		}
 	}

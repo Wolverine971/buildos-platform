@@ -230,7 +230,7 @@ describe('worker calendar write port', () => {
 		});
 
 		await expect(port.execute(request())).resolves.toEqual({
-			ok: false,
+			ok: true,
 			error_code: 'reconnect_required',
 			event_id: EVENT_ID,
 			google_event_id: null,
@@ -796,7 +796,7 @@ describe('legacy single-grant users', () => {
 		});
 
 		await expect(port.execute(request())).resolves.toMatchObject({
-			ok: false,
+			ok: true,
 			error_code: 'reconnect_required',
 			event_id: EVENT_ID,
 			synced: false
@@ -989,5 +989,168 @@ describe('calendar datetime normalization', () => {
 		expect(normalizeCalendarDateTime('2026-03-04', 'America/New_York', 'end').iso).toBe(
 			'2026-03-05T04:59:59.000Z'
 		);
+	});
+});
+
+describe('all-day calendar writes', () => {
+	it.each([true, undefined])('creates date-only bounds with all_day=%s', async (allDay) => {
+		const createEvent = vi.fn(async (_userId: string, _payload: Record<string, unknown>) => ({
+			event: { id: EVENT_ID }
+		}));
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({ onto_events: [syncedEventRow()] }),
+			options: {
+				services: fakeServices(),
+				createAccess: () => fakeAccess(),
+				createEventSync: () => ({ createEvent }) as never
+			}
+		});
+		await port.execute(
+			request({
+				arguments: {
+					title: 'Birthday',
+					start_at: '2026-11-03',
+					timezone: 'Pacific/Auckland',
+					...(allDay === undefined ? {} : { all_day: allDay })
+				}
+			})
+		);
+		expect(createEvent.mock.calls[0]![1]).toMatchObject({
+			allDay: true,
+			startAt: '2026-11-03',
+			endAt: '2026-11-04'
+		});
+	});
+
+	it('preserves an all-day span on a start-only move across a month boundary', async () => {
+		const updateEvent = vi.fn(async (_userId: string, _payload: Record<string, unknown>) => ({
+			id: EVENT_ID
+		}));
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({
+				onto_events: [
+					{
+						data: {
+							id: EVENT_ID,
+							project_id: PROJECT_ID,
+							timezone: 'America/New_York',
+							all_day: true,
+							start_at: '2026-10-30T04:00:00Z',
+							end_at: '2026-11-01T04:00:00Z'
+						}
+					},
+					syncedEventRow()
+				]
+			}),
+			options: {
+				services: fakeServices(),
+				createAccess: () => fakeAccess(),
+				createEventSync: () => ({ updateEvent }) as never
+			}
+		});
+		await port.execute(
+			request({
+				toolName: 'update_calendar_event',
+				projectId: PROJECT_ID,
+				arguments: { onto_event_id: EVENT_ID, start_at: '2026-11-03' }
+			})
+		);
+		expect(updateEvent.mock.calls[0]![1]).toMatchObject({
+			allDay: true,
+			startAt: '2026-11-03',
+			endAt: '2026-11-05'
+		});
+	});
+
+	it('rejects timestamps when all_day is explicitly true', async () => {
+		const createEvent = vi.fn();
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({}),
+			options: {
+				services: fakeServices(),
+				createAccess: () => fakeAccess(),
+				createEventSync: () => ({ createEvent }) as never
+			}
+		});
+		await expect(
+			port.execute(
+				request({
+					arguments: {
+						title: 'Birthday',
+						start_at: '2026-11-03T12:00:00Z',
+						all_day: true
+					}
+				})
+			)
+		).rejects.toMatchObject({ disposition: 'known_failed' });
+		expect(createEvent).not.toHaveBeenCalled();
+	});
+});
+
+describe('calendar write edge cases', () => {
+	it('honors an explicit timed event on a date-only input', async () => {
+		const createEvent = vi.fn(async (_userId: string, _payload: Record<string, unknown>) => ({
+			event: { id: EVENT_ID }
+		}));
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({ onto_events: [syncedEventRow()] }),
+			options: {
+				services: fakeServices(),
+				createAccess: () => fakeAccess(),
+				createEventSync: () => ({ createEvent }) as never
+			}
+		});
+		await port.execute(
+			request({
+				arguments: {
+					title: 'Midnight',
+					start_at: '2026-11-03',
+					timezone: 'UTC',
+					all_day: false
+				}
+			})
+		);
+		expect(createEvent.mock.calls[0]![1]).toMatchObject({
+			allDay: false,
+			startAt: '2026-11-03T00:00:00.000Z'
+		});
+	});
+	it('keeps a missing receipt uncertain instead of claiming nothing was saved', async () => {
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({}),
+			options: {
+				services: fakeServices(),
+				createAccess: () => fakeAccess(),
+				createEventSync: () =>
+					({ createEvent: async () => ({ event: { id: EVENT_ID } }) }) as never
+			}
+		});
+		await expect(port.execute(request())).rejects.toMatchObject({
+			disposition: 'outcome_uncertain',
+			failureCode: 'calendar_event_receipt_unavailable'
+		});
+	});
+	it('refuses an all_day flag on a Google-only update instead of silently ignoring it', async () => {
+		const updateEvent = vi
+			.fn()
+			.mockResolvedValue({ event: {}, providerEventId: 'google-only' });
+		const port = createWorkerAgenticChatCalendarWritePort({
+			client: fakeClient({}),
+			options: { services: fakeServices({ updateEvent }), createAccess: () => fakeAccess() }
+		});
+		await expect(
+			port.execute(
+				request({
+					toolName: 'update_calendar_event',
+					arguments: {
+						event_id: 'google-only',
+						all_day: true,
+						start_at: '2026-11-03',
+						end_at: '2026-11-04'
+					}
+				})
+			)
+		).rejects.toMatchObject({ disposition: 'known_failed' });
+		expect(updateEvent).not.toHaveBeenCalled();
 	});
 });

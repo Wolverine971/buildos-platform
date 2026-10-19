@@ -49,21 +49,86 @@ describe('CalendarExecutor multi-account reads', () => {
 		vi.clearAllMocks();
 		mocks.hasActiveTarget.mockResolvedValue(false);
 	});
-	function createExecutor() {
+	function createExecutor(legacyCalendarReader?: any) {
 		const query = emptyQuery();
 		const supabase = {
 			from: vi.fn(() => query)
 		} as unknown as SupabaseClient<Database>;
-		return new CalendarExecutor({
-			supabase,
-			userId: 'user-1',
-			sessionId: 'session-1',
-			fetchFn: vi.fn() as unknown as typeof fetch,
-			getActorId: async () => 'actor-1',
-			getAdminSupabase: () => supabase as any,
-			getAuthHeaders: async () => ({})
-		});
+		return new CalendarExecutor(
+			{
+				supabase,
+				userId: 'user-1',
+				sessionId: 'session-1',
+				fetchFn: vi.fn() as unknown as typeof fetch,
+				getActorId: async () => 'actor-1',
+				getAdminSupabase: () => supabase as any,
+				getAuthHeaders: async () => ({})
+			},
+			{ legacyCalendarReader } as any
+		);
 	}
+
+	it('keeps legacy page-token truncation visible to external callers', async () => {
+		mocks.multiCalendarAllowed.mockReturnValue(false);
+		mocks.listEvents.mockResolvedValue({
+			events: [],
+			partial: false,
+			warnings: [],
+			sourceStatuses: []
+		});
+		const legacy = {
+			listEvents: vi.fn(async () => ({ events: [], truncated: true })),
+			getEvent: vi.fn()
+		};
+		const executor = createExecutor(legacy);
+		(executor as any).calendarService = {
+			getCalendarEvents: vi.fn(async () => ({ events: [] }))
+		};
+		const result = await executor.listCalendarEvents({
+			time_min: '2026-09-03T10:00:00Z',
+			time_max: '2026-09-03T18:00:00Z',
+			timezone: 'UTC'
+		});
+		expect(result.google_read).toMatchObject({
+			mode: 'legacy_single_account',
+			coverage: 'degraded',
+			truncated: true
+		});
+		expect(result.pagination.has_more).toBe(true);
+		expect(result.warnings).toContainEqual(expect.stringContaining('truncated'));
+	});
+
+	it('marks a capped source-aware result incomplete even when every source succeeded', async () => {
+		mocks.multiCalendarAllowed.mockReturnValue(true);
+		mocks.listEvents.mockResolvedValue({
+			events: [],
+			partial: true,
+			truncated: true,
+			warnings: [],
+			sourceStatuses: [
+				{
+					status: 'success',
+					calendarSourceId: 'source-1',
+					connectionId: 'connection-1',
+					providerCalendarId: 'primary',
+					itemCount: 0
+				}
+			]
+		});
+		const result = await createExecutor().listCalendarEvents({
+			time_min: '2026-09-03T10:00:00Z',
+			time_max: '2026-09-03T18:00:00Z',
+			timezone: 'UTC'
+		});
+		expect(result.google_read).toMatchObject({
+			coverage: 'degraded',
+			truncated: true,
+			partial: true
+		});
+		expect(result.pagination.has_more).toBe(true);
+		expect(result.warnings).toContainEqual(expect.stringContaining('truncated'));
+		expect(result.warnings).toContainEqual(expect.stringContaining('availability'));
+	});
 
 	it('rejects an empty explicit range with the canonical argument names', async () => {
 		const query = emptyQuery();
@@ -179,6 +244,7 @@ describe('CalendarExecutor multi-account reads', () => {
 			expect(result.google_event_count).toBe(1);
 			expect(result.google_read).toEqual({
 				mode: 'source_aware',
+				truncated: false,
 				source_count: 1,
 				successful_source_count: 1,
 				failed_source_count: 0,

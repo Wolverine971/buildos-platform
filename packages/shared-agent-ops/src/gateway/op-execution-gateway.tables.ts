@@ -12,6 +12,7 @@
 // Agents address rows by handle ("r12") and columns by name. Reads return
 // model-ready text that fits itself by dropping whole rows; writes return a
 // `table_change` receipt with inverse ops for the chat card's Undo.
+import { isDeepStrictEqual } from 'node:util';
 import type { AgentCallScope, BuildosAgentAllowedOp } from '@buildos/shared-types';
 import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
 import { updateDocNodeMetadata } from '../ontology/doc-structure.service';
@@ -122,10 +123,11 @@ export function tableErrorToGatewayError(error: unknown): ExternalToolGatewayErr
 				return new ExternalToolGatewayError(
 					'CONFLICT',
 					`The table changed while the agent was editing it. Read it again and retry. (${error.message})`,
-					{ reason: error.code }
+					{ ...(isRecord(error.details) ? error.details : {}), reason: error.code }
 				);
 			default:
 				return new ExternalToolGatewayError('VALIDATION_ERROR', error.message, {
+					...(isRecord(error.details) ? error.details : {}),
 					reason: error.code
 				});
 		}
@@ -138,6 +140,14 @@ export function tableErrorToGatewayError(error: unknown): ExternalToolGatewayErr
 			error.message,
 			{ reason: error.code }
 		);
+	}
+	const partialDetails =
+		error && typeof error === 'object' && 'details' in error && isRecord(error.details)
+			? error.details
+			: null;
+	if (partialDetails && Number(partialDetails.applied_batches) > 0) {
+		const normalized = normalizeGatewayError(error);
+		return new ExternalToolGatewayError(normalized.code, normalized.message, partialDetails);
 	}
 	const normalized = normalizeGatewayError(error);
 	const rolledBack = rolledBackWriteDetails(error as { code?: string | null } | null);
@@ -679,6 +689,96 @@ function readArchived(value: unknown): boolean | undefined {
 	return value;
 }
 
+function schemaDefinition({
+	revision: _revision,
+	row_count: _rowCount,
+	...definition
+}: TableSchema) {
+	return definition;
+}
+
+/** Resume only unfinished rows, deriving their patches from fresh cells and the original schema.
+ * Never re-save the already applied schema or overwrite a schema changed by another writer.
+ */
+async function resumeColumnRows(
+	context: ToolExecutionContext,
+	original: LoadedTable,
+	columnPlan: ReturnType<typeof applyColumnChanges>,
+	changes: TableColumnChange[],
+	details: Record<string, unknown>,
+	actorId: string,
+	warnings: string[]
+): Promise<TableApplyResult> {
+	let appliedBatches = Number(details.applied_batches);
+	let appliedOps = Number(details.applied_ops);
+	let partial = details.partial_result as TableApplyResult;
+	try {
+		const fresh = await loadTableForAccess(context, original.document.id, 'write');
+		assertNotArchivedForWrite(fresh);
+		if (
+			!isDeepStrictEqual(
+				schemaDefinition(fresh.table.schema),
+				schemaDefinition(columnPlan.schema)
+			)
+		)
+			throw new TableServiceError(
+				'TABLE_CONFLICT',
+				'The schema changed after a partial column update.'
+			);
+		const remainingIds = new Set(
+			columnPlan.rowOps.slice(appliedOps).flatMap((op) => ('row_id' in op ? [op.row_id] : []))
+		);
+		const remaining = applyColumnChanges(
+			original.schema,
+			fresh.table.rows.filter((row) => remainingIds.has(row.id)),
+			changes
+		);
+		// Retyping a newly edited value can require new select choices. Do not
+		// silently install another schema while completing the previous one.
+		if (
+			!isDeepStrictEqual(
+				schemaDefinition(remaining.schema),
+				schemaDefinition(columnPlan.schema)
+			)
+		)
+			throw new TableServiceError(
+				'TABLE_CONFLICT',
+				'Remaining rows now require a different schema.'
+			);
+		warnings.push(...remaining.warnings);
+		let revision = fresh.table.schema.revision;
+		for (
+			let offset = 0;
+			offset < remaining.rowOps.length;
+			offset += TABLE_LIMITS.maxOpsPerApply
+		) {
+			const ops = remaining.rowOps.slice(offset, offset + TABLE_LIMITS.maxOpsPerApply);
+			const result = await applyTableChanges(context.admin, {
+				documentId: original.document.id,
+				ops,
+				schema: null,
+				expectedRevision: revision,
+				actorId
+			});
+			partial = { ...result, results: [...partial.results, ...result.results] };
+			revision = result.revision;
+			appliedBatches++;
+			appliedOps += ops.length;
+		}
+		return partial;
+	} catch (error) {
+		const mapped = tableErrorToGatewayError(error);
+		const { write_rolled_back: _rolledBack, ...failureDetails } = mapped.details ?? {};
+		throw new ExternalToolGatewayError(mapped.code, mapped.message, {
+			...failureDetails,
+			...details,
+			applied_batches: appliedBatches,
+			applied_ops: appliedOps,
+			partial_result: partial
+		});
+	}
+}
+
 export async function updateTable(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const access = await loadTableForAccess(context, args.table_id, 'write');
 	const { project } = access;
@@ -753,10 +853,7 @@ export async function updateTable(context: ToolExecutionContext, args: Record<st
 					documentId: table.document.id,
 					ops: columnPlan.rowOps,
 					schema: columnPlan.schema,
-					expectedRevision:
-						columnPlan.rowOps.length <= TABLE_LIMITS.maxOpsPerApply
-							? table.schema.revision
-							: null,
+					expectedRevision: table.schema.revision,
 					actorId
 				});
 				break;
@@ -766,6 +863,19 @@ export async function updateTable(context: ToolExecutionContext, args: Record<st
 					error instanceof TableServiceError &&
 					(error.code === 'TABLE_CONFLICT' || error.code === 'ROW_CONFLICT');
 				if (!retry) throw tableErrorToGatewayError(error);
+				const details = isRecord(error.details) ? error.details : {};
+				if (Number(details.applied_batches) > 0) {
+					apply = await resumeColumnRows(
+						context,
+						table,
+						columnPlan,
+						columnChanges!,
+						details,
+						actorId,
+						warnings
+					);
+					break;
+				}
 				table = (await loadTableForAccess(context, table.document.id, 'write')).table;
 				columnPlan = plan(table)!;
 			}

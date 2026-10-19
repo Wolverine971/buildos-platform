@@ -17,6 +17,10 @@ import type {
 } from '@buildos/shared-types';
 import { defaultAllowedOpsForMode } from '../policy';
 import {
+	gatewayCreateId,
+	type GatewayCreateTable
+} from './op-execution-gateway.create-idempotency';
+import {
 	buildGatewayEntityUrl,
 	buildGatewayProjectUrl,
 	entityActionFromProposedChangeAction,
@@ -59,6 +63,20 @@ export type CommitChangeSetOutcome =
 				message: string;
 			};
 	  };
+
+// Receipts are the durable recovery log, not best-effort telemetry. Leave a
+// claimed run running on any recording failure so recovery can safely retry.
+async function recordCommitReceipt(
+	admin: SupabaseClient<Database>,
+	payload: Record<string, unknown>
+): Promise<string | null> {
+	try {
+		const { error } = await admin.from('agent_tool_executions').insert(payload as never);
+		return error ? `Failed to record change-set receipt: ${error.message}` : null;
+	} catch (error) {
+		return `Failed to record change-set receipt: ${error instanceof Error ? error.message : String(error)}`;
+	}
+}
 
 function summarizeCommittedChangeSet(params: {
 	changeSet: ChangeSet;
@@ -196,9 +214,9 @@ const CONTENT_WRITE_ARGS = ['content', 'edits', 'section_edits'] as const;
  * argument keys that are columns of the row, `content` for any content edit, and
  * only the `props` keys the update sets. Drift elsewhere on the row (another
  * props key, the `children` column, a managed START HERE region) cannot be lost
- * by applying this change, so it must not block the approval. Returns null when
- * no written field can be identified (deletes, moves); the caller then compares
- * the whole reviewed snapshot as before.
+ * by applying this change, so it must not block the approval. Updates with no
+ * row-column writes (relationships/archive flags) have an empty write set.
+ * Other actions (deletes, moves) still compare the whole reviewed snapshot.
  */
 function stagedWriteSetSnapshots(
 	change: ProposedChange,
@@ -236,7 +254,7 @@ function stagedWriteSetSnapshots(
 		scopedBefore.props = propsBefore;
 		scopedCurrent.props = propsCurrent;
 	}
-	return Object.keys(scopedBefore).length > 0 ? [scopedBefore, scopedCurrent] : null;
+	return [scopedBefore, scopedCurrent];
 }
 
 /**
@@ -279,6 +297,7 @@ function rebaseStaleStartHereChange(params: {
 async function verifyStagedChangeFreshness(params: {
 	admin: SupabaseClient<Database>;
 	change: ProposedChange;
+	expectedSnapshot?: Record<string, unknown>;
 }): Promise<{ ok: true; rebasedArgs?: Record<string, unknown> } | { ok: false; message: string }> {
 	const { admin, change } = params;
 	if (change.action === 'create') {
@@ -296,7 +315,7 @@ async function verifyStagedChangeFreshness(params: {
 		return { ok: true };
 	}
 
-	const before = change.before as Record<string, unknown>;
+	const before = params.expectedSnapshot ?? (change.before as Record<string, unknown>);
 	const { data, error } = await (admin as any)
 		.from(config.table)
 		.select(config.select)
@@ -548,12 +567,12 @@ export async function commitChangeSet(params: {
 	// signal.
 	const alreadyAppliedByChangeId = new Map<
 		string,
-		{ entityId: string | null; entityKind: string | null }
+		{ entityId: string | null; entityKind: string | null; result: unknown }
 	>();
 	if (isStalledCommitReentry) {
 		const { data: priorExecs, error: priorExecsError } = await admin
 			.from('agent_tool_executions')
-			.select('proposed_change_id, entity_id, entity_kind, success')
+			.select('proposed_change_id, entity_id, entity_kind, success, result')
 			.eq('agent_run_id', runId)
 			.eq('user_id', userId)
 			.eq('mutation_mode', 'commit')
@@ -566,7 +585,8 @@ export async function commitChangeSet(params: {
 			if (typeof changeId === 'string') {
 				alreadyAppliedByChangeId.set(changeId, {
 					entityId: (row as { entity_id?: string | null }).entity_id ?? null,
-					entityKind: (row as { entity_kind?: string | null }).entity_kind ?? null
+					entityKind: (row as { entity_kind?: string | null }).entity_kind ?? null,
+					result: row.result
 				});
 			}
 		}
@@ -594,24 +614,39 @@ export async function commitChangeSet(params: {
 	let failed = 0;
 
 	const committedAt = new Date().toISOString();
+	// Keep the actual saved values, but authorize drift only in fields this set
+	// wrote. Adopting the entire saved row would bless unrelated human edits.
+	const appliedWrites = new Map<string, Record<string, unknown>>();
+	const entityKey = (change: ProposedChange) =>
+		`${change.entity_type}:${change.entity_id ?? change.applied_entity_id}`;
+	const mergeSnapshot = (base: Record<string, unknown>, patch: Record<string, unknown>) => ({
+		...base,
+		...patch,
+		...(isPlainRecord(patch.props)
+			? { props: { ...(isPlainRecord(base.props) ? base.props : {}), ...patch.props } }
+			: {})
+	});
+	const rememberAppliedWrite = (change: ProposedChange, result: unknown) => {
+		const row = isPlainRecord(result) ? result[change.entity_type] : null;
+		if (!isPlainRecord(row)) return;
+		const written =
+			change.action === 'create' ? row : stagedWriteSetSnapshots(change, row, row)?.[1];
+		if (!written) return;
+		const key = entityKey(change);
+		appliedWrites.set(key, mergeSnapshot(appliedWrites.get(key) ?? {}, written));
+	};
 
 	for (const change of changeSet.changes) {
-		const decision = decisionById.get(change.id) ?? defaultDecision;
-		change.decision = decision;
-
-		if (decision === 'rejected') {
-			rejected += 1;
-			continue;
-		}
-
 		// D9b: a prior crashed commit already applied this change — count it, rebuild
 		// its EntityTouch, and skip re-running the (non-idempotent) write.
 		const priorApplied = alreadyAppliedByChangeId.get(change.id);
 		if (priorApplied) {
+			change.decision = 'approved';
 			applied += 1;
 			const appliedId = priorApplied.entityId ?? change.entity_id ?? undefined;
 			change.applied_entity_id = appliedId;
 			change.error = undefined;
+			rememberAppliedWrite(change, priorApplied.result);
 			if (appliedId) {
 				entitiesTouched.push(
 					entityTouchFromAppliedChange(
@@ -625,6 +660,14 @@ export async function commitChangeSet(params: {
 			continue;
 		}
 
+		const decision = decisionById.get(change.id) ?? defaultDecision;
+		change.decision = decision;
+
+		if (decision === 'rejected') {
+			rejected += 1;
+			continue;
+		}
+
 		// The op must still be within the run's granted scope (the change set is
 		// worker-written, so this only fires on a genuine scope mismatch).
 		if (!allowedOps.includes(change.op)) {
@@ -633,11 +676,19 @@ export async function commitChangeSet(params: {
 			continue;
 		}
 
-		const freshness = await verifyStagedChangeFreshness({ admin, change });
+		const priorWrites = appliedWrites.get(entityKey(change));
+		const freshness = await verifyStagedChangeFreshness({
+			admin,
+			change,
+			expectedSnapshot:
+				priorWrites && isPlainRecord(change.before)
+					? mergeSnapshot(change.before, priorWrites)
+					: undefined
+		});
 		if (!freshness.ok) {
 			failed += 1;
 			change.error = freshness.message;
-			await admin.from('agent_tool_executions').insert({
+			const receiptError = await recordCommitReceipt(admin, {
 				agent_run_id: runId,
 				user_id: userId,
 				tool_name: change.op,
@@ -652,6 +703,8 @@ export async function commitChangeSet(params: {
 				entity_kind: change.entity_type,
 				entity_id: change.entity_id ?? null
 			});
+			if (receiptError)
+				return { ok: false, error: { code: 'INTERNAL', message: receiptError } };
 			continue;
 		}
 
@@ -668,7 +721,8 @@ export async function commitChangeSet(params: {
 			userId,
 			scope,
 			op: change.op,
-			args
+			args,
+			downstreamIdempotencyKey: `agent-run:${runId}:${change.id}`
 		});
 
 		if (result.ok) {
@@ -695,8 +749,9 @@ export async function commitChangeSet(params: {
 					project_url: buildGatewayProjectUrl(projectId)
 				});
 			}
+			rememberAppliedWrite(change, result.data);
 			// Telemetry: record the actual commit, keyed to the proposed change.
-			await admin.from('agent_tool_executions').insert({
+			const receiptError = await recordCommitReceipt(admin, {
 				agent_run_id: runId,
 				user_id: userId,
 				tool_name: change.op,
@@ -710,10 +765,12 @@ export async function commitChangeSet(params: {
 				entity_kind: result.entityKind ?? change.entity_type,
 				entity_id: appliedId ?? null
 			});
+			if (receiptError)
+				return { ok: false, error: { code: 'INTERNAL', message: receiptError } };
 		} else {
 			failed += 1;
 			change.error = result.error?.message ?? 'Failed to apply change';
-			await admin.from('agent_tool_executions').insert({
+			const receiptError = await recordCommitReceipt(admin, {
 				agent_run_id: runId,
 				user_id: userId,
 				tool_name: change.op,
@@ -727,6 +784,8 @@ export async function commitChangeSet(params: {
 				proposed_change_id: change.id,
 				entity_kind: change.entity_type
 			});
+			if (receiptError)
+				return { ok: false, error: { code: 'INTERNAL', message: receiptError } };
 		}
 
 		// D9b: heartbeat progress after each applied change so a concurrent commit
@@ -821,6 +880,17 @@ export async function commitChangeSet(params: {
 const INTERRUPTED_COMMIT_CHANGE_ERROR =
 	'Not applied: the approval was interrupted before this change ran, so nothing changed for it. Propose it again if you still want it.';
 
+const RECOVERABLE_CREATE_OPS: Partial<
+	Record<string, { table: GatewayCreateTable; entityKind: string }>
+> = {
+	'onto.document.create': { table: 'onto_documents', entityKind: 'document' },
+	'onto.task.docs.create_or_attach': { table: 'onto_documents', entityKind: 'document' },
+	'onto.goal.create': { table: 'onto_goals', entityKind: 'goal' },
+	'onto.plan.create': { table: 'onto_plans', entityKind: 'plan' },
+	'onto.milestone.create': { table: 'onto_milestones', entityKind: 'milestone' },
+	'onto.risk.create': { table: 'onto_risks', entityKind: 'risk' }
+};
+
 export type StalledCommitRecovery =
 	| { outcome: 'returned_to_review' }
 	| {
@@ -841,15 +911,15 @@ export type StalledCommitRecovery =
  * This cannot finish the commit for the user. Per-change decisions live only in
  * the commit request and are saved with the terminal write, so a replay could
  * apply a change the user dismissed. Instead:
- * - Nothing applied (no successful commit telemetry row): hand the proposal back
+ * - Nothing applied (no success telemetry or durable create row): hand the proposal back
  *   to review (running -> proposal_ready) so the user can approve it again.
  * - Some changes applied: finalize with what landed, and mark the rest not
  *   applied. Returning it to review would re-run writes that already happened.
  *
  * Both transitions compare-and-swap on the stale commit_started_at, so a D9b
- * re-entry that re-claimed the run wins and this becomes a no-op. The D9b caveat
- * applies here too: a write that landed without its telemetry row counts as not
- * applied.
+ * re-entry that re-claimed the run wins and this becomes a no-op. Creates can be
+ * reconciled from their durable identity even when the success receipt was lost;
+ * other operations still require success telemetry.
  */
 export async function recoverStalledCommit(params: {
 	admin: SupabaseClient<Database>;
@@ -903,6 +973,67 @@ export async function recoverStalledCommit(params: {
 			entityId: (row as { entity_id?: string | null }).entity_id ?? null,
 			entityKind: (row as { entity_kind?: string | null }).entity_kind ?? null
 		});
+	}
+
+	// A create's primary row can outlive a failed telemetry insert. Look up only
+	// identities bound to this run/change (and user for UUID creates), never titles
+	// or other mutable fields. Batch by table so recovery needs at most one read
+	// per entity kind. Archived/moved rows still prove that the create landed.
+	const missingCreates = new Map<
+		GatewayCreateTable,
+		Map<string, { changeId: string; entityKind: string }>
+	>();
+	const missingTasks = new Map<string, string>();
+	for (const change of changeSet.changes) {
+		if (appliedByChangeId.has(change.id) || change.action !== 'create') continue;
+		const key = `agent-run:${runId}:${change.id}`;
+		if (change.op === 'onto.task.create') {
+			missingTasks.set(key, change.id);
+			continue;
+		}
+		const create = RECOVERABLE_CREATE_OPS[change.op];
+		if (!create) continue;
+		// An existing document alone says nothing about whether its attachment ran.
+		if (
+			change.op === 'onto.task.docs.create_or_attach' &&
+			change.after?.document_id !== undefined
+		)
+			continue;
+		const expected = missingCreates.get(create.table) ?? new Map();
+		expected.set(gatewayCreateId(run.user_id, create.table, key), {
+			changeId: change.id,
+			entityKind: create.entityKind
+		});
+		missingCreates.set(create.table, expected);
+	}
+	for (const [table, expected] of missingCreates) {
+		const { data: rows, error } = await admin
+			.from(table)
+			.select('id')
+			.in('id', [...expected.keys()]);
+		if (error) throw new Error(`Failed to reconcile creates for ${runId}: ${error.message}`);
+		for (const row of rows ?? []) {
+			const create = expected.get(row.id);
+			if (create)
+				appliedByChangeId.set(create.changeId, {
+					entityId: row.id,
+					entityKind: create.entityKind
+				});
+		}
+	}
+	if (missingTasks.size > 0) {
+		const { data: rows, error } = await admin
+			.from('onto_tasks')
+			.select('id, idempotency_key')
+			.in('idempotency_key', [...missingTasks.keys()]);
+		if (error)
+			throw new Error(`Failed to reconcile task creates for ${runId}: ${error.message}`);
+		for (const row of rows ?? []) {
+			const changeId = row.idempotency_key
+				? missingTasks.get(row.idempotency_key)
+				: undefined;
+			if (changeId) appliedByChangeId.set(changeId, { entityId: row.id, entityKind: 'task' });
+		}
 	}
 
 	if (appliedByChangeId.size === 0) {

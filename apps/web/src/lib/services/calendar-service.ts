@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/calendar-service.ts
 import { calendar_v3, google } from 'googleapis';
+import { endForStartOnlyMove } from '@buildos/shared-agent-ops/calendar/agent-run-calendar-port';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { ActivityLogger } from '$lib/utils/activityLogger';
@@ -954,7 +955,7 @@ export class CalendarService {
 				event_id,
 				calendar_id = 'primary',
 				start_time,
-				end_time,
+				end_time: requestedEndTime,
 				summary,
 				description,
 				location,
@@ -990,6 +991,15 @@ export class CalendarService {
 			if (!existingEvent.data) {
 				throw new Error('Event not found');
 			}
+
+			const end_time =
+				requestedEndTime === undefined && start_time
+					? (endForStartOnlyMove(
+							existingEvent.data.start?.dateTime,
+							existingEvent.data.end?.dateTime,
+							start_time
+						) ?? undefined)
+					: requestedEndTime;
 
 			// Build update payload
 			const updatePayload: calendar_v3.Schema$Event = {

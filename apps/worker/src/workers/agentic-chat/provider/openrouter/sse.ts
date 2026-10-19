@@ -101,6 +101,8 @@ export function parseSseLine(
 		if (state.reasoningCapture) captureReasoningDelta(state.reasoningCapture, delta);
 		if (delta.content !== undefined && delta.content !== null) {
 			const normalizedContent = normalizeStreamingContent(delta.content, state.thinkingState);
+			state.reasoningBytes += normalizedContent.droppedBytes;
+			state.reasoningChars += normalizedContent.droppedChars;
 			if (normalizedContent.text) {
 				state.completionChars += normalizedContent.text.length;
 				state.generatedBytes += Buffer.byteLength(normalizedContent.text, 'utf8');

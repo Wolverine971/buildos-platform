@@ -1952,7 +1952,7 @@ function buildSafetyDataRulesSection(
 		'- Documents are the owner\'s own pages: write their decisions and open questions as plain statements ("Undecided: the big reveal"), never about "the user"; replies address them as you.',
 		'- When the user supplies exact or verbatim document text, copy it into the tool argument byte-for-byte. JSON escaping is transport syntax only: do not HTML-encode &, <, >, quotes, or apostrophes. If the user literally wrote an entity such as &amp;, retain those characters exactly.',
 		'- Treat permissions and access as hard constraints.',
-		`- Document placement happens on create via \`parent_id\` and optional \`position\`; append/merge writes require non-empty content (merge_instructions alone is not enough).${
+		`- Document placement happens on create via \`parent_id\` and optional \`position\`; append writes require non-empty content.${
 			scaffold.dynamicSkillTools
 				? ' See the document_workspace skill for placement, hierarchy, reorganization, and append rules.'
 				: ''

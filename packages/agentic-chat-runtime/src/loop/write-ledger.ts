@@ -456,9 +456,18 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	const result = extractResultObject(execution.result.result);
 	const entityKind = resolveEntityKind(toolName);
 	const action = resolveAction(toolName);
-	// A transport-level success can still carry a gateway `ok: false` payload
-	// (e.g. calendar reconnect_required). That write did not happen.
-	const succeeded = didGatewayExecSucceed(execution);
+	// Older calendar receipts marked a saved BuildOS row failed when only the
+	// Google copy needed reconnection. Credit that durable write, never an ID
+	// supplied in the arguments or an unsettled transport outcome.
+	const savedCalendarDuringReconnect =
+		(toolName === 'create_calendar_event' ||
+			toolName === 'update_calendar_event' ||
+			toolName === 'delete_calendar_event') &&
+		execution.result.success === true &&
+		result?.effect_outcome !== 'uncertain' &&
+		result?.error_code === 'reconnect_required' &&
+		Boolean(readString(result.event_id));
+	const succeeded = didGatewayExecSucceed(execution) || savedCalendarDuringReconnect;
 
 	const entry: WriteLedgerEntry = {
 		toolName,

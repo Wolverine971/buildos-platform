@@ -27,8 +27,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					timezone: {
 						type: 'string',
-						description:
-							'Optional IANA timezone for date-only/naive datetime values (example: America/New_York).'
+						description: 'IANA timezone for dates/naive times, e.g. America/New_York.'
 					},
 					query: {
 						type: 'string',
@@ -47,14 +46,12 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						default: 0,
 						minimum: 0,
 						maximum: 299,
-						description:
-							'Zero-based pagination offset for the bounded merged result window (0-299).'
+						description: 'Zero-based offset in the bounded result window (0-299).'
 					},
 					calendar_scope: {
 						type: 'string',
 						enum: ['user', 'project', 'calendar_id'],
-						description:
-							'Which calendar to query: user primary, project calendar, or a specific calendar id'
+						description: 'User calendars, project calendar, or explicit calendar id.'
 					},
 					project_id: {
 						type: 'string',
@@ -62,8 +59,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					calendar_id: {
 						type: 'string',
-						description:
-							'Google calendar id to query (used when calendar_scope=user or calendar_id)'
+						description: 'Google calendar id for user/calendar_id scope.'
 					}
 				}
 			}
@@ -74,14 +70,13 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'get_calendar_event_details',
 			description:
-				'Get one event. Pass onto_event_id for an ontology event. For a Google event, pass event_id and calendar_source_id exactly as returned by list_calendar_events.',
+				'Get one event by onto_event_id, or Google event_id + calendar_source_id from list_calendar_events.',
 			parameters: {
 				type: 'object',
 				properties: {
 					onto_event_id: {
 						type: 'string',
-						description:
-							'Ontology event UUID (onto_event_id from list results; not the Google id)'
+						description: 'BuildOS UUID: onto_event_id from list results.'
 					},
 					event_id: {
 						type: 'string',
@@ -103,7 +98,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					calendar_source_id: {
 						type: 'string',
 						description:
-							'Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events.'
+							'Source UUID from list_calendar_events; required if source-aware.'
 					}
 				}
 			}
@@ -122,20 +117,24 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						type: 'string',
 						description: 'Event title'
 					},
+					all_day: {
+						type: 'boolean',
+						description:
+							'YYYY-MM-DD bounds; end is exclusive. Date-only starts default true; false makes a timed event.'
+					},
 					start_at: {
 						type: 'string',
 						description:
-							'Start time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
+							'ISO datetime (offset/Z or timezone), or YYYY-MM-DD if all-day.'
 					},
 					end_at: {
 						type: ['string', 'null'],
 						description:
-							'End time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
+							'ISO datetime using start_at timezone rules; exclusive YYYY-MM-DD if all-day.'
 					},
 					timezone: {
 						type: 'string',
-						description:
-							'Optional IANA timezone (e.g., America/New_York). Used when start_at/end_at omit timezone.'
+						description: 'IANA timezone for dates/naive times, e.g. America/New_York.'
 					},
 					description: {
 						type: 'string',
@@ -165,8 +164,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					calendar_source_id: {
 						type: 'string',
-						description:
-							'Opaque Google calendar source UUID. Prefer this over calendar_id when targeting a connected account.'
+						description: 'Source UUID; prefer over calendar_id for a connected account.'
 					},
 					sync_to_calendar: {
 						type: 'boolean',
@@ -188,8 +186,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 				properties: {
 					onto_event_id: {
 						type: 'string',
-						description:
-							'Ontology event UUID (onto_event_id from list results; not the Google id)'
+						description: 'BuildOS UUID: onto_event_id from list results.'
 					},
 					event_id: {
 						type: 'string',
@@ -211,26 +208,30 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					calendar_source_id: {
 						type: 'string',
 						description:
-							'Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events.'
+							'Source UUID from list_calendar_events; required if source-aware.'
 					},
 					title: {
 						type: 'string',
 						description: 'New title'
 					},
+					all_day: {
+						type: 'boolean',
+						description:
+							'BuildOS only: onto_event_id. YYYY-MM-DD bounds; end is exclusive. Changing all_day needs both bounds.'
+					},
 					start_at: {
 						type: 'string',
 						description:
-							'New start time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
+							'ISO datetime (offset/Z or timezone), or YYYY-MM-DD if all-day.'
 					},
 					end_at: {
 						type: ['string', 'null'],
 						description:
-							'New end time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
+							'ISO datetime using start_at timezone rules; exclusive YYYY-MM-DD if all-day.'
 					},
 					timezone: {
 						type: 'string',
-						description:
-							'Optional IANA timezone (e.g., America/New_York). Used when start_at/end_at omit timezone.'
+						description: 'IANA timezone for dates/naive times, e.g. America/New_York.'
 					},
 					description: {
 						type: ['string', 'null'],
@@ -258,8 +259,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 				properties: {
 					onto_event_id: {
 						type: 'string',
-						description:
-							'Ontology event UUID (onto_event_id from list results; not the Google id)'
+						description: 'BuildOS UUID: onto_event_id from list results.'
 					},
 					event_id: {
 						type: 'string',
@@ -281,7 +281,7 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					calendar_source_id: {
 						type: 'string',
 						description:
-							'Opaque Google calendar source UUID from list_calendar_events. Required for source-aware Google events.'
+							'Source UUID from list_calendar_events; required if source-aware.'
 					},
 					sync_to_calendar: {
 						type: 'boolean',

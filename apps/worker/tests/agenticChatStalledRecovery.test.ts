@@ -116,18 +116,20 @@ function createSweep(options: {
 			batches.shift() ?? batch()
 	);
 	const control = {
-		recover: vi.fn(async (_input: Record<string, unknown>) => {
+		recover: vi.fn(async (_input: Record<string, unknown>, _signal?: AbortSignal) => {
 			const value = recoveries.shift();
 			if (!value) throw new Error('Unexpected recovery call');
 			return value;
 		}),
-		finalize: vi.fn(async (_input: Record<string, unknown>) => {
+		finalize: vi.fn(async (_input: Record<string, unknown>, _signal?: AbortSignal) => {
 			const value = finalizations.shift();
 			if (!value) throw new Error('Unexpected finalization call');
 			return value;
 		})
 	};
-	const workflowRuns = { loadRun: vi.fn(async (_turnRunId: string) => null) };
+	const workflowRuns = {
+		loadRun: vi.fn(async (_turnRunId: string, _signal?: AbortSignal) => null)
+	};
 	const sweep = new AgenticChatStalledRecoverySweep(
 		{
 			recovery: { recover },
@@ -421,6 +423,102 @@ describe('AgenticChatStalledRecoverySweep', () => {
 		expect(recover).toHaveBeenCalledTimes(2);
 	});
 
+	it.each(['recover', 'loadRun', 'finalize'] as const)(
+		'bounds a hung workflow handoff %s so the next sweep can run',
+		async (stage) => {
+			vi.useFakeTimers();
+			const harness = createSweep({
+				batches: [
+					batch({ handoffs: [handoff] }),
+					batch({ results: [row('finalized', TURN_RUN_ID)] })
+				],
+				recoveries: [
+					recovery('finalize_failed'),
+					recovery('queue_reconciled', { status: 'failed' })
+				],
+				sweepOptions: { rpcTimeoutMs: 20 }
+			});
+			const signals: Array<AbortSignal | undefined> = [];
+			const hang = (_input: unknown, signal?: AbortSignal): Promise<never> => {
+				signals.push(signal);
+				// Deliberately ignore abort: the caller must bound its own wait too.
+				return new Promise(() => undefined);
+			};
+			if (stage === 'loadRun') harness.workflowRuns.loadRun.mockImplementationOnce(hang);
+			else harness.control[stage].mockImplementationOnce(hang);
+			const settled = vi.fn();
+			const first = harness.sweep.runOnce().then(settled);
+			await vi.advanceTimersByTimeAsync(21);
+
+			expect(settled).toHaveBeenCalledOnce();
+			expect(settled.mock.calls[0]?.[0]).toMatchObject({
+				results: [{ outcome: 'failed' }]
+			});
+			expect(signals[0]?.aborted).toBe(true);
+			expect(signals[0]?.reason.message).toContain('did not settle within 20ms');
+			expect(harness.control.recover).toHaveBeenCalledOnce();
+			await first;
+			await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+				results: [{ outcome: 'finalized' }]
+			});
+			expect(harness.recover).toHaveBeenCalledTimes(2);
+			expect(vi.getTimerCount()).toBe(0);
+		}
+	);
+
+	it.each([
+		['recover', false],
+		['loadRun', false],
+		['finalize', false],
+		['recover', true],
+		['loadRun', true],
+		['finalize', true]
+	] as const)(
+		'stops all handoff convergence at the first hung %s deadline (reject on abort: %s)',
+		async (stage, rejectOnAbort) => {
+			vi.useFakeTimers();
+			const harness = createSweep({
+				batches: [
+					batch({
+						handoffs: Array.from({ length: 16 }, () => ({ ...handoff })),
+						hasMore: true
+					}),
+					batch({ results: [row('finalized', TURN_RUN_ID)] })
+				],
+				sweepOptions: { rpcTimeoutMs: 10_000 }
+			});
+			harness.control.recover.mockResolvedValue(recovery('finalize_failed'));
+			const hang = (_input: unknown, signal?: AbortSignal) =>
+				new Promise<never>((_resolve, reject) => {
+					if (rejectOnAbort)
+						signal?.addEventListener(
+							'abort',
+							() => reject(new Error('client wrapped abort')),
+							{ once: true }
+						);
+				});
+			if (stage === 'loadRun') harness.workflowRuns.loadRun.mockImplementation(hang);
+			else harness.control[stage].mockImplementation(hang);
+			const settled = vi.fn();
+			const pending = harness.sweep.runOnce().then(settled);
+			await vi.advanceTimersByTimeAsync(9_999);
+			expect(settled).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(1);
+			expect(settled).toHaveBeenCalledOnce();
+			expect(settled.mock.calls[0]?.[0]).toMatchObject({
+				candidateCount: 16,
+				results: [{ outcome: 'failed', error: expect.stringContaining('did not settle') }]
+			});
+			expect(harness.control.recover).toHaveBeenCalledOnce();
+			expect(harness.recover).toHaveBeenCalledOnce();
+			await pending;
+			await expect(harness.sweep.runOnce()).resolves.toMatchObject({
+				results: [{ outcome: 'finalized' }]
+			});
+			expect(vi.getTimerCount()).toBe(0);
+		}
+	);
+
 	it('reports a sweep stuck past three intervals as overdue', async () => {
 		let clock = NOW.getTime();
 		const pending = deferred<AgenticChatDeadTurnRecoveryBatchV1>();
@@ -582,7 +680,10 @@ describe('AgenticChatStalledRecoverySweep', () => {
 			failureClass: 'permanent',
 			errorMessage: 'Agentic Chat worker lease expired'
 		});
-		expect(harness.workflowRuns.loadRun).toHaveBeenCalledWith(TURN_RUN_ID);
+		expect(harness.workflowRuns.loadRun).toHaveBeenCalledWith(
+			TURN_RUN_ID,
+			expect.any(AbortSignal)
+		);
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({
 				processingToken: PROCESSING_TOKEN,
@@ -590,7 +691,8 @@ describe('AgenticChatStalledRecoverySweep', () => {
 				failureCode: 'workflow_deadline_expired',
 				assistantText: '',
 				assistantMetadata: expect.objectContaining({ recovered_from_stall: true })
-			})
+			}),
+			expect.any(AbortSignal)
 		);
 		// Only the two ports the sweep is allowed to use exist on the control double.
 		expect(Object.keys(harness.control).sort()).toEqual(['finalize', 'recover']);
@@ -612,7 +714,8 @@ describe('AgenticChatStalledRecoverySweep', () => {
 			failureClass: 'cancelled'
 		});
 		expect(harness.control.finalize).toHaveBeenCalledWith(
-			expect.objectContaining({ status: 'cancelled', failureCode: 'cancelled' })
+			expect.objectContaining({ status: 'cancelled', failureCode: 'cancelled' }),
+			expect.any(AbortSignal)
 		);
 	});
 

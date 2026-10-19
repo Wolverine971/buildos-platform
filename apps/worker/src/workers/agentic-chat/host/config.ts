@@ -173,7 +173,7 @@ type AgenticChatBaseConfig = {
 	maxProviderRounds: number;
 	/**
 	 * AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT: a simple direct write that fully landed
-	 * closes on ledger receipt text instead of a tool-free model pass. Default off.
+	 * closes on ledger receipt text instead of a tool-free model pass. Default on.
 	 */
 	directWriteReceiptTextEnabled?: boolean;
 	/** Jev opening-pass tool narrowing: on (default), shadow (log only), or off. */
@@ -189,7 +189,7 @@ type AgenticChatBaseConfig = {
 	maxToolConcurrency: number;
 	/**
 	 * AGENTIC_CHAT_LIVE_TEXT_PREVIEW: broadcast a display-only preview of the answer
-	 * while a user-facing pass streams. Default off; off is byte-identical to before.
+	 * while a user-facing pass streams. Default on; `false` disables the preview.
 	 */
 	liveTextPreviewEnabled?: boolean;
 	/**
@@ -372,10 +372,10 @@ export function loadAgenticChatConfig(
 		'CHAT_MAX_TOOL_ROUNDS'
 	);
 	// Skips the tool-free closing pass after a simple direct write that fully
-	// landed (one billed pass, ~2–5 s). Off until the gate judges the copy.
+	// landed (one billed pass, ~2–5 s). Default on, matching production.
 	const directWriteReceiptTextEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT,
-		false,
+		true,
 		'AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT'
 	);
 	// Jev opening-pass tool narrowing (docs/research/jev-tool-selection-2026-09-18).
@@ -400,7 +400,7 @@ export function loadAgenticChatConfig(
 	);
 	const liveTextPreviewEnabled = parseBoolean(
 		environment.AGENTIC_CHAT_LIVE_TEXT_PREVIEW,
-		false,
+		true,
 		'AGENTIC_CHAT_LIVE_TEXT_PREVIEW'
 	);
 	const continuationReasoning = parseContinuationReasoning(

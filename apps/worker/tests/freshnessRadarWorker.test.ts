@@ -1847,8 +1847,7 @@ describe('bundle verification against the shared verifier', () => {
 			projectId: PROJECT,
 			operations: bundle!.operations,
 			title: bundle!.title,
-			preview: bundle!.preview,
-			checkModelAlignment: true
+			preview: bundle!.preview
 		});
 		expect(verified.ok).toBe(true);
 	});

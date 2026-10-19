@@ -46,13 +46,15 @@ import type { AgenticChatSharedReadContextV1 } from './ontology-reads';
  */
 export function resolveCalendarReadCoverage(
 	sourceCount: number,
-	successfulSourceCount: number
+	successfulSourceCount: number,
+	truncated = false
 ): AgenticChatCalendarReadCoverageV1 {
-	if (sourceCount - successfulSourceCount === 0) return 'complete';
+	if (sourceCount - successfulSourceCount === 0) return truncated ? 'degraded' : 'complete';
 	return successfulSourceCount === 0 ? 'unavailable' : 'degraded';
 }
 
 export type AgenticChatCalendarReadSummaryV1 = {
+	truncated?: boolean;
 	mode: 'none' | 'legacy_single_account' | 'source_aware';
 	source_count: number;
 	successful_source_count: number;
@@ -102,12 +104,17 @@ export function describeCalendarFailureReasons(reasonCodes: Iterable<string>): s
  * about it.
  */
 export function describeCalendarCoverage(read: {
+	truncated?: boolean;
 	coverage: AgenticChatCalendarReadCoverageV1;
 	source_count: number;
 	failed_source_count: number;
 	source_failures: AgenticChatCalendarSourceFailureV1[];
 }): string | null {
 	if (read.coverage === 'complete') return null;
+	const truncationWarning = read.truncated
+		? 'Calendar results are truncated. More events may be missing; do not infer availability from this list. Narrow the time range to read the remaining events.'
+		: '';
+	if (read.truncated && read.failed_source_count === 0) return truncationWarning;
 
 	const reasonCodes = Array.from(new Set(read.source_failures.map((f) => f.reason_code)));
 	const reasons = reasonCodes.join(', ');
@@ -140,7 +147,7 @@ export function describeCalendarCoverage(read: {
 	return (
 		`Calendar coverage is degraded: ${read.failed_source_count} of ${read.source_count} calendar ` +
 		`source(s) failed${reasons ? ` (${reasons})` : ''}. Events on those calendars are missing from ` +
-		`this result, so availability may be wrong.${guidance}${reconnectSentence}`
+		`this result, so availability may be wrong.${guidance}${reconnectSentence}${truncationWarning ? ` ${truncationWarning}` : ''}`
 	);
 }
 
@@ -758,11 +765,15 @@ export async function listCalendarEvents(
 				googleEvents = response.events ?? [];
 				googleRead = {
 					mode: response.mode,
+					truncated: Boolean(response.truncated),
 					source_count: response.sourceCount,
 					successful_source_count: response.successfulSourceCount,
 					failed_source_count: response.failedSourceCount,
-					partial: response.partial,
-					coverage: response.coverage,
+					partial: response.partial || Boolean(response.truncated),
+					coverage:
+						response.truncated && response.coverage === 'complete'
+							? 'degraded'
+							: response.coverage,
 					source_failures: response.sourceFailures ?? []
 				};
 				const coverageWarning = describeCalendarCoverage(googleRead);
@@ -940,6 +951,7 @@ export async function listCalendarEvents(
 
 	const totalAvailable = merged.length;
 	const pagedEvents = merged.slice(offset, offset + limit);
+	const hasMore = Boolean(googleRead.truncated) || offset + limit < totalAvailable;
 	const warnings: string[] = [];
 	if (googleError) warnings.push(googleError);
 	if (defaultsApplied.timeMin || defaultsApplied.timeMax) {
@@ -969,8 +981,8 @@ export async function listCalendarEvents(
 			limit,
 			returned: pagedEvents.length,
 			total_available: totalAvailable,
-			has_more: offset + limit < totalAvailable,
-			next_offset: offset + limit < totalAvailable ? offset + limit : null
+			has_more: hasMore,
+			next_offset: hasMore && offset + limit < MAX_LIST_FETCH ? offset + limit : null
 		},
 		queried_range: {
 			time_min: timeMin,

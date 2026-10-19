@@ -591,6 +591,57 @@ describe('AgenticChatToolExecutionAdapter', () => {
 		expect(email.searchMessages).toHaveBeenCalledTimes(2);
 	});
 
+	it.each(['no verdict', 'rejection'] as const)(
+		'retries Gmail provenance after %s in the same turn',
+		async (failure) => {
+			const email = emailPortStub();
+			const authorize = vi.fn<EmailSearchProvenanceJudge['authorize']>();
+			if (failure === 'no verdict')
+				authorize.mockResolvedValueOnce({ allowed: false, probability: null });
+			else authorize.mockRejectedValueOnce(new Error('Provenance request aborted'));
+			authorize.mockResolvedValue({ allowed: true, probability: 0.9 });
+			const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+				createEmailPort: () => email,
+				emailSearchProvenance: { authorize }
+			});
+			const search = () =>
+				adapter.execute(
+					requestFor('search_email_messages', {
+						connection_ids: [EMAIL_CONNECTION_ID],
+						query: 'contract'
+					})
+				);
+
+			await expect(search()).rejects.toBeInstanceOf(Error);
+			expect(email.searchMessages).not.toHaveBeenCalled();
+			await expect(search()).resolves.toMatchObject({ result: { message_count: 1 } });
+			await expect(search()).resolves.toMatchObject({ result: { message_count: 1 } });
+			expect(authorize).toHaveBeenCalledTimes(2);
+			expect(email.searchMessages).toHaveBeenCalledTimes(2);
+		}
+	);
+
+	it('keeps a real Gmail provenance denial cached in the same turn', async () => {
+		const email = emailPortStub();
+		const judge = provenanceJudge(false);
+		const adapter = adapterWith(fakeSharedClient(), accessStub(), {
+			createEmailPort: () => email,
+			emailSearchProvenance: judge
+		});
+		for (let attempt = 0; attempt < 2; attempt++) {
+			await expect(
+				adapter.execute(
+					requestFor('search_email_messages', {
+						connection_ids: [EMAIL_CONNECTION_ID],
+						query: 'contract'
+					})
+				)
+			).rejects.toMatchObject({ code: 'read_tool_egress_provenance_required' });
+		}
+		expect(judge.authorize).toHaveBeenCalledOnce();
+		expect(email.searchMessages).not.toHaveBeenCalled();
+	});
+
 	it('refuses a Gmail query Jev says the user never asked for', async () => {
 		const email = emailPortStub();
 		const adapter = adapterWith(fakeSharedClient(), accessStub(), {

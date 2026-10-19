@@ -71,7 +71,6 @@ export async function ensureProjectSuggestionReviewIntegrity(params: {
 		operations,
 		title: typeof params.suggestion.title === 'string' ? params.suggestion.title : null,
 		preview,
-		checkModelAlignment: !expectedStructuralFingerprint,
 		expectedStructuralFingerprint
 	});
 

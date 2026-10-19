@@ -111,11 +111,18 @@ INSERT INTO public.user_contacts (id, user_id, display_name) VALUES
 INSERT INTO public.user_contact_merge_candidates (id, user_id, primary_contact_id, secondary_contact_id, reason, score) VALUES
 	('d9000000-0000-4000-8000-00000000013a', 'd9000000-0000-4000-8000-000000000001', 'd9000000-0000-4000-8000-000000000138', 'd9000000-0000-4000-8000-000000000139', 'similar name', 0.8);
 
--- Question tree: U's run, its root node, and the run's root pointer.
-INSERT INTO public.question_tree_runs (id, created_by, root_question, explorer_model_requested, synthesis_model_requested) VALUES
-	('d9000000-0000-4000-8000-00000000013b', 'd9000000-0000-4000-8000-000000000001', 'What matters most here?', 'test/explorer', 'test/synthesis');
-INSERT INTO public.question_tree_nodes (id, run_id, node_kind, node_number, depth, question, normalized_question) VALUES
-	('d9000000-0000-4000-8000-00000000013c', 'd9000000-0000-4000-8000-00000000013b', 'root', 0, 0, 'What matters most here?', 'what matters most here');
+-- Question tree: U's run and its root node. Seeded only while the tables
+-- exist; 20261018212708_drop_question_tree_experiment drops them.
+DO $seed_question_tree$
+BEGIN
+	IF to_regclass('public.question_tree_runs') IS NOT NULL THEN
+		INSERT INTO public.question_tree_runs (id, created_by, root_question, explorer_model_requested, synthesis_model_requested) VALUES
+			('d9000000-0000-4000-8000-00000000013b', 'd9000000-0000-4000-8000-000000000001', 'What matters most here?', 'test/explorer', 'test/synthesis');
+		INSERT INTO public.question_tree_nodes (id, run_id, node_kind, node_number, depth, question, normalized_question) VALUES
+			('d9000000-0000-4000-8000-00000000013c', 'd9000000-0000-4000-8000-00000000013b', 'root', 0, 0, 'What matters most here?', 'what matters most here');
+	END IF;
+END;
+$seed_question_tree$;
 
 -- A page U's agent visited: version 1 and the visit row pointing at it.
 INSERT INTO public.web_page_visits (id, url, final_url, normalized_url, status_code, user_id) VALUES

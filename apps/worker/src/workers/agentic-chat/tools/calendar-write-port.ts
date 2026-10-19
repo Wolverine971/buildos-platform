@@ -31,11 +31,11 @@
 //     never builds either field.
 //  5. A missing, unreadable, or revoked singleton grant is data, not a thrown
 //     tool error: `not_connected`, `credentials_unreadable`,
-//     `reconnect_required`, or `not_configured`, never a success receipt.
+//     `reconnect_required`, or `not_configured`. A saved BuildOS row remains ok:true.
 //
 // A 401 / `invalid_grant` from the provider is not a thrown tool error. It comes
-// back as `{ ok: false, error_code: 'reconnect_required', connection_id }` with
-// the same `client_action` envelope the Gmail connection handoff uses, and the
+// back with `error_code: 'reconnect_required'` and `ok: true` if the BuildOS row
+// was saved. The receipt builder adds the `client_action` reconnect envelope; the
 // ontology row survives with `synced: false` and `sync_error` recorded.
 
 import {
@@ -47,6 +47,7 @@ import { isMultiCalendarUserAllowed } from '@buildos/shared-agent-ops/calendar/g
 import { GoogleCalendarConnectionError } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
 import {
 	type OntoEventCalendarWriter,
+	googleAllDayDates,
 	OntoEventSyncService
 } from '@buildos/shared-agent-ops/calendar/onto-event-sync.service';
 import { ProjectCalendarService } from '@buildos/shared-agent-ops/calendar/project-calendar.service';
@@ -426,14 +427,20 @@ class CalendarWriteExecution {
 		const args = this.request.arguments;
 		const title = requireText(args.title, 'title');
 		const timezone = await this.resolveTimezone(optionalText(args.timezone, 'timezone'));
-		const start = this.normalizeDateTime(requireText(args.start_at, 'start_at'), timezone, {
+		const startText = requireText(args.start_at, 'start_at');
+		const allDay =
+			optionalBoolean(args.all_day, 'all_day') ?? DATE_ONLY_PATTERN.test(startText);
+		const start = this.normalizeDateTime(startText, timezone, {
 			field: 'start_at',
-			boundary: 'start'
+			boundary: 'start',
+			allDay
 		});
 		const rawEnd = optionalText(args.end_at, 'end_at');
 		const end = rawEnd
-			? this.normalizeDateTime(rawEnd, timezone, { field: 'end_at', boundary: 'end' })
-			: null;
+			? this.normalizeDateTime(rawEnd, timezone, { field: 'end_at', boundary: 'end', allDay })
+			: allDay
+				? { ...start, iso: addCalendarDays(start.iso, 1) }
+				: null;
 		if (end && Date.parse(end.iso) <= Date.parse(start.iso)) {
 			throw knownFailure(
 				'create_calendar_event_invalid_arguments',
@@ -486,6 +493,7 @@ class CalendarWriteExecution {
 				description: optionalText(args.description, 'description') ?? null,
 				location: optionalText(args.location, 'location') ?? null,
 				startAt: start.iso,
+				allDay,
 				endAt: end?.iso ?? null,
 				timezone:
 					optionalText(args.timezone, 'timezone') || inferredTimezone
@@ -552,22 +560,50 @@ class CalendarWriteExecution {
 		const timezone = await this.resolveTimezone(
 			optionalText(args.timezone, 'timezone') ?? existing.timezone
 		);
+		const allDay = optionalBoolean(args.all_day, 'all_day') ?? existing.allDay;
 		const startText = optionalText(args.start_at, 'start_at');
 		const start = startText
-			? this.normalizeDateTime(startText, timezone, { field: 'start_at', boundary: 'start' })
+			? this.normalizeDateTime(startText, timezone, {
+					field: 'start_at',
+					boundary: 'start',
+					allDay
+				})
 			: null;
 		const clearsEnd = args.end_at === null;
 		const endText = optionalText(args.end_at, 'end_at');
 		const end = endText
-			? this.normalizeDateTime(endText, timezone, { field: 'end_at', boundary: 'end' })
+			? this.normalizeDateTime(endText, timezone, {
+					field: 'end_at',
+					boundary: 'end',
+					allDay
+				})
 			: null;
+		if (allDay !== existing.allDay && (!start || !end)) {
+			throw knownFailure(
+				'update_calendar_event_invalid_arguments',
+				'Changing all_day requires both start_at and end_at'
+			);
+		}
+		const existingDates = googleAllDayDates({
+			all_day: existing.allDay,
+			start_at: existing.startAt,
+			end_at: existing.endAt,
+			timezone: existing.timezone
+		});
 		// "Move my 2-3pm to 4pm" sends only start_at: keep the event's length rather
 		// than stretching it to the old end or saving an end before the start.
 		const movedEnd =
 			start && !end && !clearsEnd
-				? endForStartOnlyMove(existing.startAt, existing.endAt, start.iso)
+				? allDay && existingDates
+					? addCalendarDays(
+							start.iso,
+							(Date.parse(existingDates.end) - Date.parse(existingDates.start)) /
+								86400000
+						)
+					: endForStartOnlyMove(existing.startAt, existing.endAt, start.iso)
 				: null;
-		const startForValidation = start?.iso ?? existing.startAt;
+		const startForValidation =
+			start?.iso ?? (allDay ? existingDates?.start : existing.startAt) ?? existing.startAt;
 		if (end && Date.parse(end.iso) <= Date.parse(startForValidation)) {
 			throw knownFailure(
 				'update_calendar_event_invalid_arguments',
@@ -581,6 +617,7 @@ class CalendarWriteExecution {
 		await this.runProvider('update_calendar_event', async () =>
 			(await this.requireEventSync()).updateEvent(this.request.userId, {
 				eventId: ontoEventId,
+				allDay,
 				...(args.title !== undefined ? { title: requireText(args.title, 'title') } : {}),
 				...(Object.hasOwn(args, 'description')
 					? { description: optionalText(args.description, 'description') ?? null }
@@ -616,6 +653,12 @@ class CalendarWriteExecution {
 	 */
 	private async updateProviderEvent(): Promise<Record<string, unknown>> {
 		const args = this.request.arguments;
+		if (args.all_day !== undefined) {
+			throw knownFailure(
+				'update_calendar_event_invalid_arguments',
+				'all_day updates require onto_event_id for a BuildOS event'
+			);
+		}
 		const providerEventId = requireText(args.event_id, 'event_id');
 		const timezone = await this.resolveTimezone(optionalText(args.timezone, 'timezone'));
 		const startText = optionalText(args.start_at, 'start_at');
@@ -935,15 +978,21 @@ class CalendarWriteExecution {
 		eventId: string,
 		scope: AgenticChatCalendarScopeV1
 	): Promise<Record<string, unknown>> {
-		const { data } = await this.client
+		const { data, error } = await this.client
 			.from('onto_events')
 			.select('id, external_link, props, sync_status, sync_error')
 			.eq('id', eventId)
 			.maybeSingle();
+		if (error || !data?.id) {
+			throw uncertainFailure(
+				'calendar_event_receipt_unavailable',
+				'Could not confirm the saved BuildOS event; do not retry creating it blindly'
+			);
+		}
 		const props = (data?.props ?? {}) as Record<string, unknown>;
 		const synced = data?.sync_status === 'synced' || data?.sync_status === 'cancelled';
 		return {
-			ok: this.capturedFailure === null,
+			ok: true,
 			event_id: eventId,
 			google_event_id:
 				typeof props.external_event_id === 'string' ? props.external_event_id : null,
@@ -1081,11 +1130,12 @@ class CalendarWriteExecution {
 		timezone: string | null;
 		startAt: string;
 		endAt: string | null;
+		allDay: boolean;
 	}> {
 		const { data, error } = await this.client
 			.from('onto_events')
 			.select(
-				'id, project_id, owner_entity_type, owner_entity_id, created_by, timezone, start_at, end_at'
+				'id, project_id, owner_entity_type, owner_entity_id, created_by, timezone, start_at, end_at, all_day'
 			)
 			.eq('id', eventId)
 			.is('deleted_at', null)
@@ -1105,7 +1155,8 @@ class CalendarWriteExecution {
 				scope: 'project',
 				timezone: data.timezone,
 				startAt: data.start_at,
-				endAt: data.end_at ?? null
+				endAt: data.end_at ?? null,
+				allDay: data.all_day === true
 			};
 		}
 		const actorId = await this.requireAccess().getActorId();
@@ -1119,7 +1170,8 @@ class CalendarWriteExecution {
 			scope: 'user',
 			timezone: data.timezone,
 			startAt: data.start_at,
-			endAt: data.end_at ?? null
+			endAt: data.end_at ?? null,
+			allDay: data.all_day === true
 		};
 	}
 
@@ -1190,14 +1242,24 @@ class CalendarWriteExecution {
 	private normalizeDateTime(
 		raw: string,
 		timezone: string,
-		options: { field: string; boundary: 'start' | 'end' }
+		options: { field: string; boundary: 'start' | 'end'; allDay?: boolean }
 	): { iso: string; hadExplicitTimezone: boolean; assumedTimezone: string | null } {
 		try {
+			if (options.allDay) {
+				if (
+					!DATE_ONLY_PATTERN.test(raw) ||
+					new Date(raw).toISOString().slice(0, 10) !== raw
+				)
+					throw new Error('Invalid date');
+				return { iso: raw, hadExplicitTimezone: false, assumedTimezone: timezone };
+			}
 			return normalizeCalendarDateTime(raw, timezone, options.boundary);
 		} catch {
 			throw knownFailure(
 				`${this.request.toolName}_invalid_arguments`,
-				`${options.field} must be a valid ISO 8601 datetime`
+				options.allDay
+					? `${options.field} must be a valid YYYY-MM-DD date for an all-day event`
+					: `${options.field} must be a valid ISO 8601 datetime`
 			);
 		}
 	}
@@ -1206,6 +1268,12 @@ class CalendarWriteExecution {
 // ---------------------------------------------------------------------------
 // Pure helpers
 // ---------------------------------------------------------------------------
+
+function addCalendarDays(date: string, days: number): string {
+	const value = new Date(`${date}T00:00:00Z`);
+	value.setUTCDate(value.getUTCDate() + days);
+	return value.toISOString().slice(0, 10);
+}
 
 export function isValidIanaTimezone(value: unknown): value is string {
 	if (typeof value !== 'string' || !value.trim()) return false;

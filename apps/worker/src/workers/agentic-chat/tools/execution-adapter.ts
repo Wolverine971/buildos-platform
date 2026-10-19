@@ -931,7 +931,7 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 			if (state.searchReviews.size >= 32)
 				throw providerError('read_tool_egress_security_capacity_exceeded', 'permanent');
 			const claim = input.executionInput.claim;
-			review = this.emailSearchProvenance
+			const started = this.emailSearchProvenance
 				.authorize({
 					userMessage: String(input.executionInput.requestPayload.message ?? ''),
 					query,
@@ -943,8 +943,18 @@ export class AgenticChatToolExecutionAdapter implements AgenticChatReadToolPortV
 						metadata: { turnRunId: claim.turnRunId }
 					}
 				})
-				.then((decision) => decision.allowed);
-			state.searchReviews.set(key, review);
+				.then((decision) => {
+					// A fail-closed timeout/abort has no verdict to reuse. Keep real
+					// approvals and denials, but let the next attempt retry a failure.
+					if (decision.probability === null && state.searchReviews.get(key) === started)
+						state.searchReviews.delete(key);
+					return decision.allowed;
+				});
+			review = started;
+			state.searchReviews.set(key, started);
+			void started.catch(() => {
+				if (state.searchReviews.get(key) === started) state.searchReviews.delete(key);
+			});
 		}
 		if (!(await review))
 			throw providerError('read_tool_egress_provenance_required', 'permanent');

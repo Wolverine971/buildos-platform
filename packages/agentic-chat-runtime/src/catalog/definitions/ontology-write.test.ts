@@ -93,7 +93,7 @@ describe('ontology write tool definitions', () => {
 		);
 	});
 
-	it('exposes document merge strategy only on document updates', () => {
+	it('exposes replace and append strategies only on document updates', () => {
 		for (const toolName of [
 			'update_onto_task',
 			'update_onto_project',
@@ -106,8 +106,8 @@ describe('ontology write tool definitions', () => {
 		}
 
 		const documentProperties = getToolProperties('update_onto_document');
-		expect(documentProperties).toHaveProperty('update_strategy');
-		expect(documentProperties).toHaveProperty('merge_instructions');
+		expect(documentProperties.update_strategy).toMatchObject({ enum: ['replace', 'append'] });
+		expect(documentProperties).not.toHaveProperty('merge_instructions');
 	});
 
 	it('gives the model no way to confirm a shared-document edit itself', () => {

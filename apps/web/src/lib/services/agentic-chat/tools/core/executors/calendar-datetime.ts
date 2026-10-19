@@ -12,6 +12,10 @@ export interface NormalizedCalendarDateTime {
 	assumedTimezone: string | null;
 }
 
+export function isCalendarDateOnly(value: string): boolean {
+	return DATE_ONLY_PATTERN.test(value.trim());
+}
+
 function normalizeOffset(value: string): string {
 	return value.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
 }
@@ -39,6 +43,7 @@ export function normalizeCalendarDateTimeInput(
 	options: {
 		fieldName?: string;
 		dateBoundary?: DateBoundary;
+		allDay?: boolean;
 	} = {}
 ): NormalizedCalendarDateTime {
 	const value = rawValue.trim();
@@ -50,6 +55,17 @@ export function normalizeCalendarDateTimeInput(
 	}
 
 	try {
+		if (options.allDay) {
+			if (
+				!isCalendarDateOnly(value) ||
+				new Date(value).toISOString().slice(0, 10) !== value
+			) {
+				throw new Error(
+					`${fieldName} must be a valid YYYY-MM-DD date for an all-day event`
+				);
+			}
+			return { iso: value, hadExplicitTimezone: false, assumedTimezone: timezone };
+		}
 		const normalizedValue = normalizeOffset(value);
 
 		if (hasExplicitTimezone(normalizedValue)) {

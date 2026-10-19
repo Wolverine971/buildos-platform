@@ -1,4 +1,8 @@
 // packages/shared-agent-ops/src/gateway/op-execution-gateway.documents.test.ts
+import { EXTERNAL_WRITE_OP_SCHEMAS } from './op-execution-gateway.config';
+import { normalizeAndValidateGatewayArgs } from './op-execution-gateway.validation';
+import { ONTOLOGY_WRITE_TOOLS } from '../../../agentic-chat-runtime/src/catalog/definitions/ontology-write';
+// packages/shared-agent-ops/src/gateway/op-execution-gateway.documents.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EXTERNAL_OP_HANDLERS, previewDocumentUpdate } from './op-execution-gateway.core';
 
@@ -466,5 +470,56 @@ describe('agent gateway document update preview', () => {
 		await expect(
 			previewDocumentUpdate(buildContext(createAdmin([doc])), args)
 		).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+	});
+});
+
+describe('document merge compatibility contract', () => {
+	it('advertises only replace/append and no unused merge instructions in either schema', () => {
+		const catalog = ONTOLOGY_WRITE_TOOLS.find(
+			(tool) => tool.function.name === 'update_onto_document'
+		)!;
+		for (const schema of [
+			EXTERNAL_WRITE_OP_SCHEMAS['onto.document.update'],
+			catalog.function.parameters
+		]) {
+			expect(schema?.properties?.update_strategy?.enum).toEqual(['replace', 'append']);
+			expect(schema?.properties).not.toHaveProperty('merge_instructions');
+		}
+	});
+	it('normalizes a cached merge_llm request to append before strict schema validation', () => {
+		const args = {
+			document_id: staleDocument.id,
+			content: 'Note',
+			update_strategy: 'merge_llm',
+			merge_instructions: 'Legacy guidance'
+		};
+		expect(
+			normalizeAndValidateGatewayArgs({
+				op: 'onto.document.update',
+				args,
+				schema: EXTERNAL_WRITE_OP_SCHEMAS['onto.document.update'],
+				allowLegacyAliases: false
+			})
+		).toMatchObject({
+			ok: true,
+			args: { document_id: staleDocument.id, content: 'Note', update_strategy: 'append' }
+		});
+		expect(args.update_strategy).toBe('merge_llm');
+	});
+	it('continues accepting merge_llm as literal append in the handler', async () => {
+		writeDocumentHeadAndVersionMock.mockResolvedValue({
+			status: 'updated',
+			document: { ...staleDocument, content: 'Old head\n\nNote' },
+			versionWarning: null
+		});
+		await EXTERNAL_OP_HANDLERS['onto.document.update'](
+			buildContext(createAdmin([staleDocument])),
+			{ document_id: staleDocument.id, content: 'Note', update_strategy: 'merge_llm' }
+		);
+		expect(writeDocumentHeadAndVersionMock).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				update: expect.objectContaining({ content: 'Old head\n\nNote' })
+			})
+		);
 	});
 });

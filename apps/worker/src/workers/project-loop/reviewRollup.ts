@@ -9,8 +9,7 @@
 // or the long age-out backstop ends a finding.
 //
 // Pure and synchronous. The worker persists the events it returns
-// (reviewRollupStore.ts); the offline replay (scripts/project-review-rollup-replay.ts) drives
-// it against the stored prod ledger.
+// through reviewRollupStore.ts.
 
 import type { LoopOperation, ProjectSuggestionEvidenceRef } from '@buildos/shared-types';
 

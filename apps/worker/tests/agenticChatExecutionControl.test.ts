@@ -374,6 +374,38 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 		});
 	});
 
+	it.each(['recover', 'finalize'] as const)(
+		'forwards the handoff deadline signal to the %s RPC',
+		async (operation) => {
+			const data =
+				operation === 'finalize'
+					? terminalReceipt()
+					: executionReceipt({
+							outcome: 'finalize_failed',
+							execution_may_retry: false,
+							failure_code: 'permanent'
+						});
+			const response = Promise.resolve({ data, error: null });
+			const abortSignal = vi.fn(() => response);
+			const rpc = vi.fn(() => Object.assign(response, { abortSignal }));
+			const adapter = new SupabaseAgenticChatExecutionControlAdapter({ rpc });
+			const signal = new AbortController().signal;
+
+			if (operation === 'finalize') await adapter.finalize(finalizeInput(), signal);
+			else
+				await adapter.recover(
+					{
+						...identity,
+						executionGeneration: EXECUTION_GENERATION,
+						failureClass: 'permanent',
+						errorMessage: 'Worker lease expired'
+					},
+					signal
+				);
+			expect(abortSignal).toHaveBeenCalledExactlyOnceWith(signal);
+		}
+	);
+
 	it('checks the read fence without locks and falls back to claim once the check is missing', async () => {
 		const receipt = executionReceipt({
 			outcome: 'matching_current_claim',

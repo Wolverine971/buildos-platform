@@ -322,7 +322,7 @@ export function repairTruncatedJSONResponse(raw: string): string | null {
 export function normalizeStreamingContent(
 	content: unknown,
 	state: ThinkingTokenState
-): { text: string } {
+): { text: string; droppedChars: number; droppedBytes: number } {
 	const textParts: string[] = [];
 
 	const pushText = (value?: string) => {
@@ -364,7 +364,7 @@ export function normalizeStreamingContent(
 	}
 
 	if (textParts.length === 0) {
-		return { text: '' };
+		return { text: '', droppedChars: 0, droppedBytes: 0 };
 	}
 
 	let combined = textParts.join('');
@@ -374,7 +374,18 @@ export function normalizeStreamingContent(
 	combined = combined.replace(/\u00A0/g, ' ');
 	combined = combined.replace(/\r\n?/g, '\n');
 
-	return filterThinkingTokens(combined, state);
+	const pendingBefore = state.pending;
+	const filtered = filterThinkingTokens(combined, state);
+	// The wire-format decoder removes a prefix and may retain an undecided
+	// suffix. Count only discarded characters, so split tags are never counted
+	// twice and literal prefixes still awaiting a decision are not progress.
+	const droppedChars =
+		pendingBefore.length + combined.length - filtered.text.length - state.pending.length;
+	const droppedBytes =
+		droppedChars > 0
+			? new TextEncoder().encode((pendingBefore + combined).slice(0, droppedChars)).length
+			: 0;
+	return { text: filtered.text, droppedChars, droppedBytes };
 }
 
 export type ThinkingTokenState = {

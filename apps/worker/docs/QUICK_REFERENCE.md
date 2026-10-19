@@ -96,7 +96,6 @@ require `Authorization: Bearer $PRIVATE_RAILWAY_WORKER_TOKEN`.
 | `embed_onto_entity`              | DB triggers on ontology writes (semantic discovery) |
 | `agent_run`                      | Chat/manual/scheduled Operatives                    |
 | `build_project_context_snapshot` | Web project context snapshot service                |
-| `generate_project_icon`          | Project icon generation service and snapshot worker |
 | `buildos_project_loop`           | Project loop services and scheduler                 |
 | `sync_calendar`                  | Calendar projection services                        |
 

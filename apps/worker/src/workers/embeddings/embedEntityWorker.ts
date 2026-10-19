@@ -141,6 +141,23 @@ export async function processEmbedOntoEntity(
 			throw new Error(`Failed to upsert embeddings: ${upsertError.message}`);
 		}
 		result.chunksWritten = upserts.length;
+
+		// Deletion may have run its inline chunk cleanup while embedding was in
+		// flight. Recheck after writing so those late chunks cannot survive it.
+		const { data: current, error: recheckError } = await supabase
+			.from(source.table)
+			.select('deleted_at')
+			.eq('id', entityId)
+			.maybeSingle();
+		if (recheckError) {
+			throw new Error(
+				`Failed to recheck ${source.table} ${entityId}: ${recheckError.message}`
+			);
+		}
+		if (!current || current.deleted_at) {
+			result.chunksDeleted = await deleteEntityEmbeddings(entityType, entityId);
+			return result;
+		}
 	}
 
 	if (staleIndexes.length > 0) {

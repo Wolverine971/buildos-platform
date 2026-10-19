@@ -920,9 +920,11 @@ describe('markFreshnessFlagNotStale', () => {
 			expect.objectContaining({
 				projectId: PROJECT,
 				operations: [milestoneOp('ms-1')],
-				title: '1 thing looks out of date',
-				checkModelAlignment: true
+				title: '1 thing looks out of date'
 			})
+		);
+		expect(mocks.verifyProjectSuggestionIntegrity.mock.calls[0]?.[1]).not.toHaveProperty(
+			'checkModelAlignment'
 		);
 		expect(db.find('freshness_flags', 'f-ms')?.suggestion_id).toBe(outcome.suggestionId);
 		expect(mocks.syncInboxItemForProjectSuggestion).toHaveBeenCalledTimes(2);

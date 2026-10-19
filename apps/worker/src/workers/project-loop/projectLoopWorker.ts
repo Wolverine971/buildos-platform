@@ -3708,8 +3708,7 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 					projectId,
 					operations: row.operations,
 					title: row.title,
-					preview: row.preview,
-					checkModelAlignment: true
+					preview: row.preview
 				});
 				if (result.ok) {
 					verification.set(row.id, {

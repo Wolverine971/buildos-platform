@@ -6,6 +6,7 @@ import {
 	isDocumentSpecialistPolicyRef
 } from '@buildos/agentic-chat-runtime/specialists';
 import { loadSpecialistSnapshotV2 } from './specialist-snapshot-store';
+import { throwIfAborted } from '../shared/abortable-deadline';
 import {
 	type AgenticChatWorkflowRecoveryReceiptV1,
 	parseAgenticChatWorkflowRecoveryReceiptV1
@@ -201,7 +202,7 @@ export type AgenticChatWorkflowStorePortV1 = {
 	): Promise<{ outcome: string; result?: JsonObject }>;
 
 	/** Service-role read of durable truth; null when the turn has no workflow row. */
-	loadRun(turnRunId: string): Promise<AgenticChatWorkflowRunStateV1 | null>;
+	loadRun(turnRunId: string, signal?: AbortSignal): Promise<AgenticChatWorkflowRunStateV1 | null>;
 	/** First fenced write of every generation: republish truth and reseed answer text. */
 	resume(
 		fence: AgenticChatWorkflowFenceV1,
@@ -340,6 +341,8 @@ type StoreResponse = PromiseLike<{ data: unknown; error: StoreError | null }>;
 export type AgenticChatWorkflowStoreReadQuery = StoreResponse & {
 	eq(column: string, value: unknown): AgenticChatWorkflowStoreReadQuery;
 	maybeSingle(): StoreResponse;
+	/** Production PostgREST builders support abort; local database shims may omit it. */
+	abortSignal?(signal: AbortSignal): AgenticChatWorkflowStoreReadQuery;
 };
 export type AgenticChatWorkflowStoreClient = {
 	rpc(name: string, args: Record<string, unknown>): StoreResponse;
@@ -418,16 +421,34 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 	private readonly documentReads = new Map<string, JsonObject>();
 	constructor(private readonly client: AgenticChatWorkflowStoreClient) {}
 
-	async loadRun(turnRunId: string): Promise<AgenticChatWorkflowRunStateV1 | null> {
-		const runResponse = await this.client
+	async loadRun(
+		turnRunId: string,
+		signal?: AbortSignal
+	): Promise<AgenticChatWorkflowRunStateV1 | null> {
+		// Scope every read, including nested snapshot reads, to this load's deadline.
+		// Check before each query so a late response cannot start more work after abort.
+		const client: AgenticChatWorkflowStoreClient = signal
+			? {
+					rpc: (name, args) => this.client.rpc(name, args),
+					from: (table) => ({
+						select: (columns) => {
+							throwIfAborted(signal);
+							const query = this.client.from(table).select(columns);
+							return query.abortSignal?.(signal) ?? query;
+						}
+					})
+				}
+			: this.client;
+		const runResponse = await client
 			.from('chat_turn_workflow_runs')
 			.select(RUN_COLUMNS)
 			.eq('turn_run_id', turnRunId)
 			.maybeSingle();
+		if (signal) throwIfAborted(signal);
 		if (runResponse.error) throw storeError('load_run', runResponse.error);
 		if (runResponse.data === null || runResponse.data === undefined) return null;
 		const [stepResponse, dispatchResponse] = await Promise.all([
-			this.client
+			client
 				.from('chat_turn_workflow_steps')
 				.select(
 					STEP_COLUMNS +
@@ -437,11 +458,12 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 							: '')
 				)
 				.eq('turn_run_id', turnRunId),
-			this.client
+			client
 				.from('chat_turn_workflow_dispatches')
 				.select(DISPATCH_COLUMNS)
 				.eq('turn_run_id', turnRunId)
 		]);
+		if (signal) throwIfAborted(signal);
 		if (stepResponse.error) throw storeError('load_steps', stepResponse.error);
 		if (dispatchResponse.error) throw storeError('load_dispatches', dispatchResponse.error);
 		const state = parseRunState(runResponse.data, stepResponse.data, dispatchResponse.data);
@@ -449,7 +471,8 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 		if (isDocumentSpecialistPolicyRef(policyRef)) {
 			let snapshot = this.snapshots.get(turnRunId);
 			if (!snapshot) {
-				snapshot = await loadSpecialistSnapshotV2(this.client, state);
+				snapshot = await loadSpecialistSnapshotV2(client, state);
+				if (signal) throwIfAborted(signal);
 				if (this.snapshots.size >= 128) this.snapshots.clear();
 				this.snapshots.set(turnRunId, snapshot);
 			}
@@ -459,11 +482,12 @@ export class SupabaseAgenticChatWorkflowStore implements AgenticChatWorkflowStor
 			if (snapshot.profileVersion >= 2) {
 				let result = this.documentReads.get(turnRunId);
 				if (!result) {
-					const response = await this.client
+					const response = await client
 						.from('chat_turn_document_read_batches')
 						.select('request_hash,result,result_hash')
 						.eq('turn_run_id', turnRunId)
 						.maybeSingle();
+					if (signal) throwIfAborted(signal);
 					if (response.error) throw storeError('load_document_reads', response.error);
 					if (response.data) {
 						const row = response.data as Record<string, unknown>;

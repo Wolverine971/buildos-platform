@@ -300,7 +300,9 @@ describe('OntoEventSyncService project event fan-out', () => {
 
 describe('OntoEventSyncService project sync job version guards', () => {
 	it('skips stale project sync jobs when event has newer update timestamp', async () => {
-		const { service, legacyCalendar } = createLegacyService();
+		const { service, legacyCalendar } = createLegacyService({
+			rpc: vi.fn().mockResolvedValue({ data: 'current-job', error: null })
+		});
 		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
 			id: 'event-1',
 			project_id: 'project-1',
@@ -420,6 +422,9 @@ describe('OntoEventSyncService project sync job version guards', () => {
 		});
 		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue(null);
 		vi.spyOn(service as any, 'hasStoredCalendarCredential').mockResolvedValue(false);
+		const markSkip = vi
+			.spyOn(service as any, 'markEventSyncSkipped')
+			.mockResolvedValue(undefined);
 		const resolveProjectCalendarSpy = vi.spyOn(service as any, 'resolveProjectCalendar');
 		const syncEventToCalendarSpy = vi.spyOn(service as any, 'syncEventToCalendar');
 
@@ -435,6 +440,7 @@ describe('OntoEventSyncService project sync job version guards', () => {
 			outcome: 'skipped',
 			reason: 'calendar_not_connected'
 		});
+		expect(markSkip).toHaveBeenCalledWith('event-no-google', '2026-03-01T12:00:00.000Z');
 		expect(resolveProjectCalendarSpy).not.toHaveBeenCalled();
 		expect(syncEventToCalendarSpy).not.toHaveBeenCalled();
 	});
@@ -1150,5 +1156,218 @@ describe('calendar cleanup failure boundaries', () => {
 		await expect(
 			(service as any).markEventSynced('event-1', 'now', 'sync-1', 'cancelled')
 		).rejects.toThrow('database unavailable');
+	});
+});
+
+describe('all-day civil bounds', () => {
+	it('stores date-only create bounds at local midnight, including the exclusive end', async () => {
+		const { service } = createLegacyService();
+		const create = vi
+			.spyOn(OntoEventService, 'createEvent')
+			.mockResolvedValue({ id: 'event1' } as any);
+		await service.createEvent('user1', {
+			title: 'Birthday',
+			startAt: '2026-11-03',
+			endAt: '2026-11-04',
+			allDay: true,
+			timezone: 'America/New_York',
+			syncToCalendar: false,
+			createdBy: 'actor1'
+		});
+		expect(create).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				startAt: '2026-11-03T05:00:00.000Z',
+				endAt: '2026-11-04T05:00:00.000Z',
+				allDay: true
+			})
+		);
+	});
+
+	it('stores date-only update bounds using the existing all-day timezone', async () => {
+		const { service } = createLegacyService();
+		vi.spyOn(service, 'getEvent').mockResolvedValue({
+			id: 'event1',
+			all_day: true,
+			timezone: 'Pacific/Auckland'
+		} as any);
+		const update = vi
+			.spyOn(OntoEventService, 'updateEvent')
+			.mockResolvedValue({ id: 'event1' } as any);
+		await service.updateEvent('user1', {
+			eventId: 'event1',
+			startAt: '2026-11-03',
+			endAt: '2026-11-04',
+			syncToCalendar: false
+		});
+		expect(update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				startAt: '2026-11-02T11:00:00.000Z',
+				endAt: '2026-11-03T11:00:00.000Z'
+			})
+		);
+	});
+});
+
+describe('terminal sync skips', () => {
+	const version = '2026-10-18T12:00:00.000Z';
+	function setup(writeError: { message: string } | null = null) {
+		const saved = { sync_status: 'pending', sync_error: null as string | null };
+		let pendingPatch: Record<string, unknown> = {};
+		const excluded: string[] = [];
+		const query = {
+			update: vi.fn(function (patch: Record<string, unknown>) {
+				pendingPatch = patch;
+				return query;
+			}),
+			eq: vi.fn().mockReturnThis(),
+			neq: vi.fn((_column: string, value: string) => {
+				excluded.push(value);
+				return query;
+			}),
+			then: (resolve: (value: unknown) => unknown) => {
+				if (!writeError && !excluded.includes(saved.sync_status))
+					Object.assign(saved, pendingPatch);
+				return Promise.resolve({ error: writeError }).then(resolve);
+			}
+		};
+		const rpc = vi.fn().mockResolvedValue({ data: 'job-current', error: null });
+		const { service } = createLegacyService({ from: vi.fn(() => query), rpc });
+		vi.spyOn(service, 'getEvent').mockResolvedValue({
+			id: 'event1',
+			project_id: 'project1',
+			updated_at: version,
+			created_at: version,
+			deleted_at: null,
+			props: {},
+			onto_event_sync: []
+		} as any);
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue(null);
+		vi.spyOn(service as any, 'hasStoredCalendarCredential').mockResolvedValue(true);
+		vi.spyOn(service as any, 'resolveProjectCalendar').mockResolvedValue(null);
+		return { service, query, rpc, saved };
+	}
+	const input = {
+		action: 'upsert' as const,
+		eventId: 'event1',
+		projectId: 'project1',
+		targetUserId: 'user1',
+		expectedEventUpdatedAt: version
+	};
+	it.each([
+		['no_external_mapping', 'delete', 'cancelled'],
+		['calendar_not_connected', 'upsert', 'skipped'],
+		['project_calendar_unavailable', 'upsert', 'skipped']
+	] as const)('finishes %s with a version-guarded %s status', async (reason, action, status) => {
+		const { service, query } = setup();
+		if (reason === 'calendar_not_connected')
+			vi.mocked((service as any).hasStoredCalendarCredential).mockResolvedValue(false);
+		await expect(service.processProjectEventSyncJob({ ...input, action })).resolves.toEqual({
+			outcome: 'skipped',
+			reason
+		});
+		expect(query.update).toHaveBeenCalledWith(expect.objectContaining({ sync_status: status }));
+		expect(query.eq).toHaveBeenCalledWith('updated_at', version);
+		expect(query.update).toHaveBeenCalledWith(expect.objectContaining({ sync_error: null }));
+	});
+	it.each(['calendar_not_connected', 'project_calendar_unavailable'])(
+		"does not let %s overwrite another member's synced state",
+		async (reason) => {
+			const { service, saved } = setup();
+			saved.sync_status = 'synced';
+			if (reason === 'calendar_not_connected')
+				vi.mocked((service as any).hasStoredCalendarCredential).mockResolvedValue(false);
+			await service.processProjectEventSyncJob(input);
+			expect(saved).toEqual({ sync_status: 'synced', sync_error: null });
+		}
+	);
+	it('requeues the current version with the existing atomic queue dedup key', async () => {
+		const { service, rpc, query } = setup();
+		await service.processProjectEventSyncJob({
+			...input,
+			expectedEventUpdatedAt: '2026-10-18T11:00:00.000Z'
+		});
+		expect(rpc).toHaveBeenCalledWith(
+			'add_queue_job',
+			expect.objectContaining({
+				p_user_id: 'user1',
+				p_job_type: 'sync_calendar',
+				p_dedup_key: `onto-project-event-sync:upsert:event1:user1:${version}`,
+				p_metadata: expect.objectContaining({
+					eventUpdatedAt: version,
+					targetUserId: 'user1',
+					action: 'upsert'
+				})
+			})
+		);
+		expect(query.update).not.toHaveBeenCalled();
+	});
+	it('retries instead of completing a terminal skip when its status write fails', async () => {
+		const { service } = setup({ message: 'database unavailable' });
+		await expect(service.processProjectEventSyncJob(input)).rejects.toThrow(
+			'database unavailable'
+		);
+	});
+	it('does not replay a stale delete onto a restored live event', async () => {
+		const { service, rpc } = setup();
+		await service.processProjectEventSyncJob({
+			...input,
+			action: 'delete',
+			expectedEventUpdatedAt: '2026-10-18T11:00:00.000Z'
+		});
+		expect(rpc).toHaveBeenCalledWith(
+			'add_queue_job',
+			expect.objectContaining({ p_metadata: expect.objectContaining({ action: 'upsert' }) })
+		);
+	});
+});
+
+describe('calendar UI start-only patches', () => {
+	it('preserves the duration when the changed-fields UI omits end_at', async () => {
+		const { service } = createLegacyService();
+		vi.spyOn(service, 'getEvent').mockResolvedValue({
+			id: 'event1',
+			all_day: false,
+			start_at: '2026-11-03T14:00:00Z',
+			end_at: '2026-11-03T15:00:00Z'
+		} as any);
+		const update = vi
+			.spyOn(OntoEventService, 'updateEvent')
+			.mockResolvedValue({ id: 'event1' } as any);
+		await service.updateEvent('user1', {
+			eventId: 'event1',
+			startAt: '2026-11-03T14:30:00Z',
+			syncToCalendar: false
+		});
+		expect(update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ endAt: '2026-11-03T15:30:00.000Z' })
+		);
+	});
+	it('preserves calendar-day duration over a daylight-saving boundary', async () => {
+		const { service } = createLegacyService();
+		vi.spyOn(service, 'getEvent').mockResolvedValue({
+			id: 'event1',
+			all_day: true,
+			timezone: 'America/New_York',
+			start_at: '2026-10-30T04:00:00Z',
+			end_at: '2026-11-01T04:00:00Z'
+		} as any);
+		const update = vi
+			.spyOn(OntoEventService, 'updateEvent')
+			.mockResolvedValue({ id: 'event1' } as any);
+		await service.updateEvent('user1', {
+			eventId: 'event1',
+			startAt: '2026-11-01',
+			syncToCalendar: false
+		});
+		expect(update).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				startAt: '2026-11-01T04:00:00.000Z',
+				endAt: '2026-11-03T05:00:00.000Z'
+			})
+		);
 	});
 });

@@ -1251,7 +1251,6 @@ export async function syncInboxItemForProjectSuggestion(params: {
 			operations,
 			title: asString(suggestion.title),
 			preview: (suggestion.preview ?? null) as ProjectSuggestionPreview | null,
-			checkModelAlignment: !expectedStructuralFingerprint,
 			expectedStructuralFingerprint
 		});
 		if (!verification.ok) {
