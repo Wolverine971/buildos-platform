@@ -44,7 +44,7 @@ export interface SMSJobData {
 	phone_number: string; // E.164 formatted phone number
 	message: string; // SMS message body
 	user_id: string; // User ID for tracking and preferences
-	priority?: 'normal' | 'urgent'; // Priority level for queue processing
+	priority?: 'low' | 'normal' | 'high' | 'urgent'; // Same values as queue_sms_message
 	scheduled_sms_id?: string; // Optional ID from scheduled_sms_messages table
 }
 
@@ -265,10 +265,14 @@ export function validateSMSJobData(data: unknown, queueUserId?: string): SMSJobD
 	}
 
 	// Validate priority if provided
-	if (d.priority !== undefined && d.priority !== 'normal' && d.priority !== 'urgent') {
+	if (
+		d.priority !== undefined &&
+		(typeof d.priority !== 'string' ||
+			!['low', 'normal', 'high', 'urgent'].includes(d.priority))
+	) {
 		throw new PermanentQueueError(
 			'invalid_job_payload',
-			`Invalid SMS job data: priority must be "normal" or "urgent", got "${String(d.priority)}"`
+			`Invalid SMS job data: priority must be "low", "normal", "high", or "urgent", got "${String(d.priority)}"`
 		);
 	}
 

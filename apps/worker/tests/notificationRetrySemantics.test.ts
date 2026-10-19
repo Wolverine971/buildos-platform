@@ -12,8 +12,16 @@ const mocks = vi.hoisted(() => {
 	process.env.PRIVATE_SMS_SENDING_ENABLED = 'true';
 
 	const state = {
-		delivery: {} as Record<string, any>
+		delivery: {} as Record<string, any>,
+		smsEnabled: true,
+		updateError: null as { message: string } | null,
+		queueError: null as { message: string } | null
 	};
+	const rpc = vi.fn(async (name: string, _args?: unknown) =>
+		name === 'get_notification_sms_sending_enabled'
+			? { data: state.smsEnabled, error: null }
+			: { data: state.queueError ? null : 'queue-record-1', error: state.queueError }
+	);
 	const updates: Array<{
 		table: string;
 		payload: Record<string, any>;
@@ -23,6 +31,7 @@ const mocks = vi.hoisted(() => {
 
 	function createFakeClient() {
 		return {
+			rpc,
 			from(table: string) {
 				const filters: Array<[string, unknown]> = [];
 				const builder: any = {
@@ -73,6 +82,8 @@ const mocks = vi.hoisted(() => {
 								opts: builder._opts,
 								filters
 							});
+							if (state.updateError)
+								return resolve({ error: state.updateError, count: null });
 							if (matches) {
 								Object.assign(state.delivery, builder._payload);
 							}
@@ -105,6 +116,7 @@ const mocks = vi.hoisted(() => {
 	return {
 		originalSmsSendingEnabled,
 		state,
+		rpc,
 		updates,
 		createFakeClient,
 		sendEmailNotification,
@@ -190,11 +202,211 @@ function makeJob(): any {
 
 beforeEach(() => {
 	resetDelivery();
+	mocks.state.smsEnabled = true;
+	mocks.state.updateError = null;
+	mocks.state.queueError = null;
+	mocks.rpc.mockClear();
 	mocks.sendEmailNotification.mockReset();
 	mocks.sendSMSNotification.mockReset();
 });
 
 describe('notification retry semantics', () => {
+	function smsJob(payload: Record<string, unknown> = {}, attempts = 0) {
+		resetDelivery({
+			channel: 'sms',
+			channel_identifier: '+12125550123',
+			attempts,
+			payload: { title: 'Test', body: 'Body', event_type: 'user.signup', ...payload }
+		});
+		const job = makeJob();
+		job.data.channel = 'sms';
+		return job;
+	}
+
+	it('defers quiet-hour SMS to the exact end without spending an attempt', async () => {
+		const job = smsJob({}, 1);
+		const until = new Date(Date.now() + 3_600_000).toISOString();
+		mocks.sendSMSNotification.mockResolvedValueOnce({
+			success: false,
+			outcome: 'deferred',
+			deferred_until: until
+		});
+		await expect(processNotification(job)).resolves.toBeUndefined();
+		expect(mocks.state.delivery).toMatchObject({ status: 'pending', attempts: 1 });
+		expect(mocks.rpc).toHaveBeenCalledWith(
+			'add_queue_job',
+			expect.objectContaining({
+				p_job_type: 'send_notification',
+				p_scheduled_for: until,
+				p_metadata: expect.objectContaining({ delivery_id: DELIVERY_ID, channel: 'sms' }),
+				p_dedup_key: `notification-deferred:${DELIVERY_ID}:${until}`
+			})
+		);
+	});
+
+	it('retries a failed deferral enqueue without consuming a delivery attempt', async () => {
+		const job = smsJob({}, 1);
+		mocks.state.queueError = { message: 'queue unavailable' };
+		mocks.sendSMSNotification.mockResolvedValueOnce({
+			success: false,
+			outcome: 'deferred',
+			deferred_until: new Date(Date.now() + 3_600_000).toISOString()
+		});
+		await expect(processNotification(job)).rejects.toThrow('queue unavailable');
+		expect(mocks.state.delivery).toMatchObject({ status: 'pending', attempts: 1 });
+	});
+
+	it('reuses the same deferral key when the original job is replayed', async () => {
+		const job = smsJob({}, 1);
+		const until = new Date(Date.now() + 3_600_000).toISOString();
+		mocks.sendSMSNotification.mockResolvedValue({
+			success: false,
+			outcome: 'deferred',
+			deferred_until: until
+		});
+		await processNotification(job);
+		await processNotification(job);
+		const enqueues = mocks.rpc.mock.calls.filter(([name]) => name === 'add_queue_job');
+		expect(enqueues).toHaveLength(2);
+		expect(enqueues[0]?.[1]).toEqual(enqueues[1]?.[1]);
+		expect(mocks.state.delivery).toMatchObject({ status: 'pending', attempts: 1 });
+	});
+
+	it('does not consume a delivery attempt when the database switch cannot be read', async () => {
+		const job = smsJob({}, 1);
+		mocks.rpc.mockRejectedValueOnce(new Error('settings unavailable'));
+		await expect(processNotification(job)).rejects.toThrow('settings unavailable');
+		expect(mocks.state.delivery).toMatchObject({ status: 'pending', attempts: 1 });
+		expect(mocks.updates).toHaveLength(0);
+		expect(mocks.sendSMSNotification).not.toHaveBeenCalled();
+	});
+
+	it.each([undefined, 'not-a-date', '2020-01-01T00:00:00Z'])(
+		'rejects an invalid deferral time without consuming a delivery attempt: %s',
+		async (deferred_until) => {
+			const job = smsJob({}, 1);
+			mocks.sendSMSNotification.mockResolvedValueOnce({
+				success: false,
+				outcome: 'deferred',
+				deferred_until
+			});
+			await expect(processNotification(job)).rejects.toThrow('future quiet-hours end');
+			expect(mocks.state.delivery).toMatchObject({ status: 'pending', attempts: 1 });
+			expect(mocks.rpc).not.toHaveBeenCalledWith('add_queue_job', expect.anything());
+		}
+	);
+
+	it('cancels a text that expires before quiet hours end, without a send attempt', async () => {
+		const job = smsJob({ expires_at: new Date(Date.now() + 1_800_000).toISOString() }, 1);
+		mocks.sendSMSNotification.mockResolvedValueOnce({
+			success: false,
+			outcome: 'deferred',
+			deferred_until: new Date(Date.now() + 3_600_000).toISOString()
+		});
+		await expect(processNotification(job)).resolves.toBeUndefined();
+		expect(mocks.state.delivery).toMatchObject({ status: 'cancelled', attempts: 1 });
+		expect(mocks.rpc).not.toHaveBeenCalledWith('add_queue_job', expect.anything());
+	});
+
+	it('does not send an expired text when its deferred queue job wakes late', async () => {
+		const job = smsJob({ expires_at: new Date(Date.now() - 60_000).toISOString() }, 1);
+		mocks.sendSMSNotification.mockResolvedValueOnce({ success: true });
+		await processNotification(job);
+		expect(mocks.state.delivery).toMatchObject({ status: 'cancelled', attempts: 1 });
+		expect(mocks.sendSMSNotification).not.toHaveBeenCalled();
+	});
+
+	it('preserves expiry when a raw notification needs fallback content after an event lookup failure', async () => {
+		const job = smsJob({}, 1);
+		mocks.state.delivery.payload = {
+			expires_at: new Date(Date.now() - 60_000).toISOString()
+		};
+		mocks.sendSMSNotification.mockResolvedValueOnce({ success: true });
+		await processNotification(job);
+		expect(mocks.state.delivery).toMatchObject({ status: 'cancelled', attempts: 1 });
+		expect(mocks.sendSMSNotification).not.toHaveBeenCalled();
+	});
+
+	it('preserves the raw brief date and timezone when deferring fallback content', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-10-20T03:00:00Z'));
+		try {
+			const job = smsJob({}, 1);
+			job.data.event_type = 'brief.completed';
+			mocks.state.delivery.payload = {
+				brief_date: '2026-10-19',
+				timezone: 'America/New_York'
+			};
+			mocks.sendSMSNotification.mockResolvedValueOnce({
+				success: false,
+				outcome: 'deferred',
+				deferred_until: '2026-10-20T12:00:00Z'
+			});
+			await processNotification(job);
+			expect(mocks.sendSMSNotification).toHaveBeenCalledOnce();
+			expect(mocks.state.delivery).toMatchObject({
+				status: 'cancelled',
+				attempts: 1,
+				last_error: 'cancelled: stale_after_quiet_hours'
+			});
+			expect(mocks.rpc).not.toHaveBeenCalledWith('add_queue_job', expect.anything());
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('cancels a daily brief that would be stale after quiet hours in its timezone', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-10-19T23:00:00Z'));
+		try {
+			const job = smsJob(
+				{ event_type: 'brief.completed', brief_date: '2026-10-19', timezone: 'UTC' },
+				1
+			);
+			mocks.sendSMSNotification.mockResolvedValueOnce({
+				success: false,
+				outcome: 'deferred',
+				deferred_until: '2026-10-20T08:00:00Z'
+			});
+			await expect(processNotification(job)).resolves.toBeUndefined();
+			expect(mocks.state.delivery).toMatchObject({ status: 'cancelled', attempts: 1 });
+			expect(mocks.rpc).not.toHaveBeenCalledWith('add_queue_job', expect.anything());
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('cancels SMS when the database sending switch is off even if the environment permits it', async () => {
+		const job = smsJob({}, 1);
+		mocks.state.smsEnabled = false;
+		mocks.sendSMSNotification.mockResolvedValueOnce({ success: true });
+		await expect(processNotification(job)).resolves.toBeUndefined();
+		expect(mocks.state.delivery).toMatchObject({ status: 'cancelled', attempts: 1 });
+		expect(mocks.sendSMSNotification).not.toHaveBeenCalled();
+	});
+
+	it('does not revive a cancelled delivery when its deferred job wakes after re-enabling SMS', async () => {
+		const job = smsJob({}, 1);
+		mocks.state.delivery.status = 'cancelled';
+		await processNotification(job);
+		expect(mocks.state.delivery).toMatchObject({ status: 'cancelled', attempts: 1 });
+		expect(mocks.rpc).not.toHaveBeenCalled();
+		expect(mocks.sendSMSNotification).not.toHaveBeenCalled();
+	});
+
+	it('does not report success when persisting cancellation fails', async () => {
+		vi.mocked(checkUserPreferences).mockResolvedValueOnce({
+			allowed: false,
+			reason: 'user disabled notifications'
+		});
+		mocks.state.updateError = {
+			message: 'notification_deliveries_status_check rejects cancelled'
+		};
+		await expect(processNotification(makeJob())).rejects.toThrow('rejects cancelled');
+		expect(mocks.state.delivery).toMatchObject({ status: 'pending', attempts: 0 });
+		expect(mocks.sendEmailNotification).not.toHaveBeenCalled();
+	});
+
 	it('transient provider failure returns delivery to pending with ONE attempt and throws for queue retry', async () => {
 		mocks.sendEmailNotification.mockResolvedValueOnce({
 			success: false,

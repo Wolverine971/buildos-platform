@@ -3422,8 +3422,12 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 			return [];
 		};
 
-		// The four detectors are independent, so they run together: a run takes as long as
-		// the slowest one (drift, ~55 s on the book) instead of their sum (~80 s).
+		// Scheduled light reviews leave drift for user-started reviews. This is policy,
+		// not detector failure: preserve existing drift lineages without degrading the run.
+		const skipDrift = run.trigger_reason === 'scheduled' || run.trigger_reason === 'end_of_day';
+		if (skipDrift)
+			await job.log('Skipping drift on a scheduled light review; available on manual runs.');
+		// Independent detectors still run concurrently.
 		const [docOrg, outdated, drift, taskConflicts] = await Promise.all([
 			unchangedInputs.documents
 				? skipUnchangedLens('doc organization')
@@ -3449,26 +3453,28 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 					onUsage
 				})
 			),
-			runGenerator('drift', async () => {
-				const evidence = await loadDriftEvidenceForRun({
-					projectId,
-					userId: run.user_id,
-					signal: generationSignal,
-					log: (message) => job.log(message)
-				});
-				generationSignal.throwIfAborted();
-				return generateDrift({
-					llm,
-					ctx,
-					userId: run.user_id,
-					chatSessionId: run.chat_session_id ?? undefined,
-					runId,
-					evidence,
-					radarConcerns,
-					signal: generationSignal,
-					onUsage
-				});
-			}),
+			skipDrift
+				? Promise.resolve([])
+				: runGenerator('drift', async () => {
+						const evidence = await loadDriftEvidenceForRun({
+							projectId,
+							userId: run.user_id,
+							signal: generationSignal,
+							log: (message) => job.log(message)
+						});
+						generationSignal.throwIfAborted();
+						return generateDrift({
+							llm,
+							ctx,
+							userId: run.user_id,
+							chatSessionId: run.chat_session_id ?? undefined,
+							runId,
+							evidence,
+							radarConcerns,
+							signal: generationSignal,
+							onUsage
+						});
+					}),
 			runGenerator('task conflicts', async () => {
 				if (ctx.tasks.length < 2) return [];
 				if (unchangedInputs.tasks) return skipUnchangedLens('task conflicts');
@@ -3553,9 +3559,11 @@ export async function processProjectLoopJob(job: ProcessingJob<ProjectLoopJobMet
 				skippedKinds.add(kind);
 		}
 		skippedKinds.add('audit_recommendation');
+		if (skipDrift) skippedKinds.add('drift');
 		const uncheckedLenses = skippedLenses
 			.filter((lens) => Boolean(lens.kind))
 			.map((lens) => GENERATOR_LABEL_TO_USER_FACING_LENS[lens.label] ?? lens.label);
+		if (skipDrift) uncheckedLenses.push('drift');
 
 		// ── Roll-up (tasker 112): carry every open finding forward as a lineage. ──
 		await heartbeat('Carrying forward open findings');

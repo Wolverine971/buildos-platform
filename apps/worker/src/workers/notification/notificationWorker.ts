@@ -32,7 +32,7 @@ import { getErrorMessage, getErrorStatusCode } from '../../lib/utils/errors.js';
 import webpush from 'web-push';
 import { sendEmailNotification } from './emailAdapter.js';
 import { sendSMSNotification } from './smsAdapter.js';
-import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from '../../config/sms.js';
+import { isNotificationSmsSendingEnabled } from '../../config/sms.js';
 import { type Logger, createLogger, generateCorrelationId } from '@buildos/shared-utils';
 import { checkUserPreferences } from './preferenceChecker.js';
 import { getStaleBriefJobDecision } from '../brief/briefDateGuard.js';
@@ -266,6 +266,9 @@ async function enrichDeliveryPayload(
 		return {
 			...delivery,
 			payload: {
+				// Keep lifecycle metadata (expiry, brief date/timezone) even when
+				// the source event is unavailable. Fallback supplies display text.
+				...delivery.payload,
 				...fallbackPayload,
 				event_type: eventType // Explicitly preserve event_type in fallback
 			}
@@ -324,7 +327,8 @@ interface DeliveryResult {
 	success: boolean;
 	external_id?: string;
 	error?: string;
-	outcome?: 'sent' | 'queued';
+	outcome?: 'sent' | 'queued' | 'deferred';
+	deferred_until?: string;
 }
 
 async function getUnreadPushCount(
@@ -675,6 +679,7 @@ export async function processNotification(
 	// True once this run has written the delivery outcome (attempt count + status).
 	// The catch-path cleanup must not write a second time or attempts double-count.
 	let deliveryOutcomeRecorded = false;
+	let preserveDeliveryAttempts = false;
 
 	try {
 		// Get delivery record
@@ -712,29 +717,35 @@ export async function processNotification(
 			return;
 		}
 
-		if (delivery.channel === 'sms' && !SMS_SENDING_ENABLED) {
-			jobLogger.info('SMS notification cancelled by global sending switch', {
-				reason: SMS_SENDING_DISABLED_REASON
-			});
-
-			const { error: cancelError } = await supabase
+		const cancelDelivery = async (reason: string): Promise<void> => {
+			// A policy cancellation is not a provider attempt. Failed persistence
+			// must fail the queue job, otherwise it leaves a permanently pending row.
+			preserveDeliveryAttempts = true;
+			const { error, count } = await supabase
 				.from('notification_deliveries')
-				.update({
-					status: 'cancelled',
-					failed_at: null,
-					last_error: `Cancelled: ${SMS_SENDING_DISABLED_REASON}`,
-					attempts: (delivery.attempts || 0) + 1,
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', delivery_id);
+				.update(
+					{
+						status: 'cancelled',
+						failed_at: null,
+						last_error: reason,
+						updated_at: new Date().toISOString()
+					},
+					{ count: 'exact' }
+				)
+				.eq('id', delivery_id)
+				.eq('status', delivery.status);
+			if (error) throw new Error(`Failed to cancel notification: ${error.message}`);
+			if (count === 0) throw new Error('Delivery changed before cancellation; retrying');
+			deliveryOutcomeRecorded = true;
+		};
 
-			if (cancelError) {
-				jobLogger.error('Failed to mark disabled SMS delivery as cancelled', cancelError, {
-					notificationDeliveryId: delivery_id
-				});
+		if (delivery.channel === 'sms') {
+			preserveDeliveryAttempts = true;
+			if (!(await isNotificationSmsSendingEnabled(supabase))) {
+				await cancelDelivery('cancelled: sms_disabled');
+				return;
 			}
-
-			return;
+			preserveDeliveryAttempts = false;
 		}
 
 		// Skip if max attempts exceeded
@@ -835,6 +846,11 @@ export async function processNotification(
 		const totalAttempts = delivery.max_attempts || 3;
 
 		const eventType = typedDelivery.payload.event_type || 'unknown';
+		const expiresAt = getNotificationString(typedDelivery.payload, 'expires_at');
+		if (delivery.channel === 'sms' && expiresAt && Date.parse(expiresAt) <= Date.now()) {
+			await cancelDelivery('cancelled: expired');
+			return;
+		}
 
 		// Suppress missed daily brief notifications from downtime instead of backfilling them.
 		if (eventType === 'brief.completed' || eventType === 'brief.failed') {
@@ -860,28 +876,7 @@ export async function processNotification(
 						eventType
 					});
 
-					const { error: staleCancelError } = await supabase
-						.from('notification_deliveries')
-						.update({
-							status: 'cancelled',
-							failed_at: null,
-							last_error: `Cancelled: ${staleBriefDecision.reason}`,
-							attempts: (delivery.attempts || 0) + 1,
-							updated_at: new Date().toISOString()
-						})
-						.eq('id', delivery_id);
-
-					if (staleCancelError) {
-						jobLogger.error(
-							'Failed to mark stale brief delivery as cancelled',
-							staleCancelError,
-							{
-								notificationDeliveryId: delivery_id,
-								briefDate,
-								timezone
-							}
-						);
-					}
+					await cancelDelivery(`Cancelled: ${staleBriefDecision.reason}`);
 
 					return;
 				}
@@ -913,31 +908,8 @@ export async function processNotification(
 				eventType
 			});
 
-			// Mark delivery as cancelled (not failed)
-			const { error: cancelError } = await supabase
-				.from('notification_deliveries')
-				.update({
-					status: 'cancelled',
-					failed_at: null,
-					last_error: `Cancelled: ${prefCheck.reason}`,
-					attempts: (delivery.attempts || 0) + 1,
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', delivery_id);
-
-			if (cancelError) {
-				jobLogger.error('Failed to mark delivery as cancelled', cancelError, {
-					notificationDeliveryId: delivery_id,
-					reason: prefCheck.reason
-				});
-				// Still return - preferences block sending even if status update fails
-			}
-
-			// Job completes successfully (don't retry)
-			jobLogger.debug('Marked delivery as cancelled', {
-				notificationDeliveryId: delivery_id
-			});
-			return; // Exit successfully - job will be marked as completed
+			await cancelDelivery(`Cancelled: ${prefCheck.reason}`);
+			return;
 		}
 
 		// Push quiet hours enforcement (skip sending during quiet hours)
@@ -950,30 +922,7 @@ export async function processNotification(
 				jobLogger
 			))
 		) {
-			const { error: quietHoursError } = await supabase
-				.from('notification_deliveries')
-				.update({
-					status: 'cancelled',
-					failed_at: null,
-					last_error: 'Cancelled: push quiet hours',
-					attempts: (delivery.attempts || 0) + 1,
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', delivery_id);
-
-			if (quietHoursError) {
-				jobLogger.error(
-					'Failed to mark delivery as quiet-hours cancelled',
-					quietHoursError,
-					{
-						notificationDeliveryId: delivery_id
-					}
-				);
-			}
-
-			jobLogger.debug('Marked delivery as quiet-hours cancelled', {
-				notificationDeliveryId: delivery_id
-			});
+			await cancelDelivery('Cancelled: push quiet hours');
 			return;
 		}
 
@@ -986,6 +935,50 @@ export async function processNotification(
 		const startTime = Date.now();
 		const result = await sendNotification(channel, typedDelivery, jobLogger);
 		const durationMs = Date.now() - startTime;
+
+		if (result.outcome === 'deferred') {
+			preserveDeliveryAttempts = true;
+			const deferredMs = Date.parse(result.deferred_until ?? '');
+			if (!Number.isFinite(deferredMs) || deferredMs <= Date.now()) {
+				throw new Error('SMS deferral requires a future quiet-hours end');
+			}
+			const deferredUntil = new Date(deferredMs).toISOString();
+			const expiresAt = getNotificationString(typedDelivery.payload, 'expires_at');
+			const briefDate = getNotificationString(typedDelivery.payload, 'brief_date');
+			let staleAtResume = false;
+			if ((eventType === 'brief.completed' || eventType === 'brief.failed') && briefDate) {
+				const timezone = await getBriefPayloadTimezone(
+					typedDelivery.payload,
+					typedDelivery.recipient_user_id,
+					jobLogger
+				);
+				staleAtResume = getStaleBriefJobDecision({
+					briefDate,
+					timezone,
+					now: new Date(deferredMs)
+				}).shouldSkip;
+			}
+			if ((expiresAt && Date.parse(expiresAt) <= deferredMs) || staleAtResume) {
+				await cancelDelivery('cancelled: stale_after_quiet_hours');
+				return;
+			}
+			// The delivery stays pending; the queue owns its scheduled time. Creating
+			// one deduplicated future job avoids a two-write delivery/queue transaction.
+			// An enqueue failure retries this job without consuming a delivery attempt.
+			const { data: deferredJobId, error: deferError } = await supabase.rpc('add_queue_job', {
+				p_user_id: delivery.recipient_user_id,
+				p_job_type: 'send_notification',
+				p_metadata: { ...job.data, delivery_id, channel: delivery.channel, correlationId },
+				p_scheduled_for: deferredUntil,
+				p_dedup_key: `notification-deferred:${delivery_id}:${deferredUntil}`
+			});
+			if (deferError || !deferredJobId)
+				throw new Error(
+					`Failed to defer notification: ${deferError?.message ?? 'no queue job returned'}`
+				);
+			jobLogger.info('SMS deferred until quiet hours end', { deferredUntil, deferredJobId });
+			return;
+		}
 
 		// Update delivery record with the outcome of this attempt.
 		// Retry policy: the QUEUE owns retry scheduling. A retryable failure puts
@@ -1097,7 +1090,7 @@ export async function processNotification(
 		// delivery outcome (e.g. the adapter threw before the main update ran).
 		// The main path already counted the attempt for provider failures —
 		// writing again here is what used to double-increment `attempts`.
-		if (!deliveryOutcomeRecorded) {
+		if (!deliveryOutcomeRecorded && !preserveDeliveryAttempts) {
 			try {
 				const { data: currentDelivery } = await supabase
 					.from('notification_deliveries')

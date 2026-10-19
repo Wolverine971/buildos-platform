@@ -16,7 +16,8 @@ const mocks = vi.hoisted(() => {
 		queries: [] as QueryRecord[],
 		updates: [] as QueryRecord[],
 		inserts: [] as QueryRecord[],
-		run: {} as Record<string, any>
+		run: {} as Record<string, any>,
+		driftPassesSinceConfirmed: 0
 	};
 
 	const claimedRun = {
@@ -24,7 +25,7 @@ const mocks = vi.hoisted(() => {
 		project_id: 'project-1',
 		user_id: 'user-1',
 		chat_session_id: 'chat-1',
-		trigger_reason: 'scheduled',
+		trigger_reason: 'manual',
 		status: 'running'
 	};
 
@@ -68,12 +69,20 @@ const mocks = vi.hoisted(() => {
 						operations: [],
 						evidence_refs: [],
 						title: 'Existing drift finding',
+						rollup: { passes_since_confirmed: state.driftPassesSinceConfirmed },
 						created_at: '2026-08-18T00:00:00.000Z',
 						updated_at: '2026-08-18T00:00:00.000Z'
 					}
 				],
 				error: null
 			};
+		}
+		if (
+			query.table === 'project_suggestions' &&
+			query.selection === 'id, rollup' &&
+			state.driftPassesSinceConfirmed
+		) {
+			return { data: [{ id: 'old-drift', rollup: {} }], error: null };
 		}
 		return { data: [], error: null };
 	}
@@ -196,6 +205,7 @@ const mocks = vi.hoisted(() => {
 		generateDocOrganization: vi.fn(async (_params: any) => []),
 		generateOutdatedDocs: vi.fn(async (_params: any) => []),
 		generateDrift: vi.fn(),
+		loadProjectDriftEvidence: vi.fn(async () => null),
 		generateTaskConflicts: vi.fn(async (_params: any) => [
 			{
 				kind: 'task_conflict',
@@ -250,6 +260,10 @@ vi.mock('../src/lib/services/smart-llm-service', () => ({
 
 vi.mock('../src/workers/project-loop/taskPairs', () => ({
 	rankTaskConflictPairs: mocks.rankTaskConflictPairs
+}));
+
+vi.mock('../src/workers/project-loop/driftEvidence', () => ({
+	loadProjectDriftEvidence: mocks.loadProjectDriftEvidence
 }));
 
 vi.mock('../src/lib/posthog', () => ({
@@ -329,6 +343,7 @@ describe('processProjectLoopJob detector degradation', () => {
 		mocks.state.queries.length = 0;
 		mocks.state.updates.length = 0;
 		mocks.state.inserts.length = 0;
+		mocks.state.driftPassesSinceConfirmed = 0;
 		mocks.state.run = { ...mocks.claimedRun, status: 'queued', queue_job_id: 'queue-1' };
 		mocks.generateDrift.mockResolvedValue([]);
 		mocks.loadUnchangedLensInputs.mockResolvedValue({ documents: false, tasks: false });
@@ -349,6 +364,56 @@ describe('processProjectLoopJob detector degradation', () => {
 			}
 		]);
 		mocks.generateProjectCleanupSynthesis.mockResolvedValue(mocks.emptySynthesis());
+	});
+
+	it.each(['scheduled', 'end_of_day'])(
+		'finishes the other lenses on a %s light pass without drift or losing existing findings',
+		async (triggerReason) => {
+			mocks.state.run.trigger_reason = triggerReason;
+			mocks.state.driftPassesSinceConfirmed = 2;
+			const job = createJob();
+			await expect(processProjectLoopJob(job)).resolves.toMatchObject({ success: true });
+			expect(mocks.loadProjectDriftEvidence).not.toHaveBeenCalled();
+			expect(mocks.generateDrift).not.toHaveBeenCalled();
+			expect(mocks.generateDocOrganization).toHaveBeenCalledOnce();
+			expect(mocks.generateOutdatedDocs).toHaveBeenCalledOnce();
+			expect(mocks.generateTaskConflicts).toHaveBeenCalledOnce();
+			expect(mocks.generateProjectCleanupSynthesis).toHaveBeenCalledWith(
+				expect.objectContaining({
+					items: expect.arrayContaining([
+						expect.objectContaining({ lineageId: 'old-drift' })
+					]),
+					uncheckedLenses: ['drift']
+				})
+			);
+			expect(
+				mocks.state.updates.some(
+					(query) =>
+						query.table === 'project_suggestions' &&
+						(query.payload as { status?: string })?.status === 'superseded'
+				)
+			).toBe(false);
+			expect(mocks.state.run.summary).not.toContain("didn't finish");
+			expect(mocks.state.updates).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						payload: expect.objectContaining({
+							lineage_id: 'old-drift',
+							rollup: expect.objectContaining({
+								passes_since_confirmed: 2,
+								last_confirmed_at: '2026-08-18T00:00:00.000Z'
+							})
+						})
+					})
+				])
+			);
+		}
+	);
+
+	it('still loads drift evidence and runs drift on a manual review', async () => {
+		await expect(processProjectLoopJob(createJob())).resolves.toMatchObject({ success: true });
+		expect(mocks.loadProjectDriftEvidence).toHaveBeenCalledOnce();
+		expect(mocks.generateDrift).toHaveBeenCalledOnce();
 	});
 
 	it('requeues an interrupted run so the same queue job can retry', async () => {

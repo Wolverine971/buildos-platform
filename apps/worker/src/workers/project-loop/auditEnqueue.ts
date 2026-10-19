@@ -44,6 +44,41 @@ type ScheduledAuditEnqueueResult = {
 // pages comfortably below common proxy URL limits while still scanning all rows.
 const SCHEDULED_AUDIT_PAGE_SIZE = 75;
 
+// These are user actions in the review UI. Automatic superseding and generation
+// failures must not unlock another scheduled audit.
+const ANSWERED_AUDIT_SUGGESTION_STATUSES = new Set([
+	'approved',
+	'delegated',
+	'applied',
+	'addressed',
+	'rejected'
+]);
+
+async function hasUnansweredAuditRecommendations(auditId: string): Promise<boolean> {
+	const { data, error } = await supabase
+		.from('project_audit_suggestions')
+		.select('project_suggestions(status, decided_at)')
+		.eq('audit_id', auditId);
+	if (error) throw new Error(`Failed to read audit recommendations: ${error.message}`);
+	const suggestions = (data ?? []).flatMap((link) => {
+		const suggestions = link.project_suggestions;
+		return (Array.isArray(suggestions) ? suggestions : [suggestions]).filter(
+			(suggestion) => suggestion !== null
+		);
+	});
+	// No recommendations, or only retired ones, leaves nothing the user can answer.
+	return (
+		suggestions.some(({ status }) => status === 'pending' || status === 'failed') &&
+		!suggestions.some(
+			({ status, decided_at }) =>
+				ANSWERED_AUDIT_SUGGESTION_STATUSES.has(status) ||
+				// Approval records decided_at before applying; application failure
+				// must not erase that engagement. Generation failures have no decision.
+				(status === 'failed' && Boolean(decided_at))
+		)
+	);
+}
+
 function projectAuditTriggerEvaluationDedupKey(params: {
 	projectId: string;
 	triggerReason: ProjectAuditTriggerReason;
@@ -252,6 +287,30 @@ export async function queueProjectAuditFromWorker(params: {
 			decision: evaluated.evaluation.decision,
 			reason: evaluated.evaluation.reason_summary
 		};
+	}
+
+	// Reuse the latest completed audit already read by the eligibility evaluator.
+	// Only otherwise-due scheduled audits need this extra query. Manual and event
+	// triggers keep their existing behavior; normal cadence/cooldowns still apply.
+	if (
+		params.triggerReason === 'scheduled' &&
+		evaluated.lastAudit &&
+		(await hasUnansweredAuditRecommendations(evaluated.lastAudit.id))
+	) {
+		const decision = 'skipped_unanswered_audit';
+		const reason = 'The latest audit still has unanswered recommendations.';
+		captureAuditTriggerMetric({
+			userId: params.userId,
+			event: 'project_audit_skipped',
+			projectId: params.projectId,
+			triggerReason: params.triggerReason,
+			auditDepth,
+			decision,
+			reason,
+			auditId: evaluated.lastAudit.id,
+			projectSizeClass: evaluated.evaluation.project_size_class
+		});
+		return { queued: false, decision, reason };
 	}
 
 	let chatSessionId: string;

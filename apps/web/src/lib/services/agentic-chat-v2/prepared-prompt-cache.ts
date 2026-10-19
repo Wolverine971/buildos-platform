@@ -186,7 +186,11 @@ function compactPreparedPromptFocusEntity(value: unknown): Record<string, unknow
 		'updated_at',
 		'content_length',
 		'content_preview',
-		'content_truncated'
+		'content_truncated',
+		'table_summary',
+		'table_row_count',
+		'table_rows_shown',
+		'table_columns'
 	]);
 	const output: Record<string, unknown> = {};
 	for (const key of allowedKeys) {
@@ -194,11 +198,15 @@ function compactPreparedPromptFocusEntity(value: unknown): Record<string, unknow
 		const field = value[key];
 		if (typeof field === 'string') {
 			output[key] =
-				key === 'content_preview'
-					? field.slice(0, FOCUSED_DOCUMENT_CONTENT_MAX_CHARS)
-					: truncatePreparedPromptString(field);
+				key === 'table_summary'
+					? field // Already bounded by the table context loader; preserve row/schema parity.
+					: key === 'content_preview'
+						? field.slice(0, FOCUSED_DOCUMENT_CONTENT_MAX_CHARS)
+						: truncatePreparedPromptString(field);
 		} else if (field === null || typeof field === 'number' || typeof field === 'boolean') {
 			output[key] = field;
+		} else if (key === 'table_columns' && Array.isArray(field)) {
+			output[key] = field.filter((column): column is string => typeof column === 'string');
 		}
 	}
 	if (

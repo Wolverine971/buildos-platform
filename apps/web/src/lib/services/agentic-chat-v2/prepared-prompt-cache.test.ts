@@ -46,6 +46,45 @@ describe('isPreparedPromptPrewarmEnabled', () => {
 });
 
 describe('prepared-prompt-cache', () => {
+	it.each([15, 42])('preserves the fresh focused-table section with %s rows shown', (shown) => {
+		const summary =
+			'Table "Applications" · 42 rows\nColumns: Company, Status\n' +
+			Array.from(
+				{ length: 15 },
+				(_, index) => `r${index + 1} | ${'Company '.repeat(14)} | Applied`
+			).join('\n');
+		expect(summary.length).toBeGreaterThan(1_500);
+		const context = {
+			contextType: 'project' as const,
+			projectId: 'project-1',
+			projectName: 'Applications',
+			focusEntityType: 'document' as const,
+			focusEntityId: 'table-1',
+			data: {
+				focus_entity_type: 'document',
+				focus_entity_id: 'table-1',
+				focus_entity_full: {
+					id: 'table-1',
+					title: 'Applications',
+					type_key: 'document.table',
+					table_summary: summary,
+					table_row_count: 42,
+					table_rows_shown: shown,
+					table_columns: ['Company', 'Status'],
+					props: { private: 'must not persist' }
+				}
+			}
+		};
+		const compacted = compactPreparedPromptContextPayload(context);
+		const fresh = buildLitePromptEnvelope({ ...context, now: '2026-10-19T12:00:00Z' });
+		const prepared = buildLitePromptEnvelope({ ...compacted, now: '2026-10-19T12:00:00Z' });
+		expect(fresh.systemPrompt).toContain(summary);
+		expect(prepared.systemPrompt).toBe(fresh.systemPrompt);
+		expect(compacted.data.focus_entity_full.table_columns).toEqual(['Company', 'Status']);
+		expect(compacted.data.focus_entity_full.table_summary).toBe(summary);
+		expect(compacted.data.focus_entity_full).not.toHaveProperty('props');
+	});
+
 	it('rejects old prepared history even when its prompt and tool schemas still match', () => {
 		const contextPayload = { contextType: 'global' };
 		const envelope = buildLitePromptEnvelope({

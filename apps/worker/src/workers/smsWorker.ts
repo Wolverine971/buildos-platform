@@ -20,6 +20,7 @@ import { smsMetricsService } from '@buildos/shared-utils';
 import { checkQuietHours } from '../lib/utils/smsPreferenceChecks';
 import { PermanentQueueError } from '../lib/queueErrors';
 import { SMS_SENDING_DISABLED_REASON, SMS_SENDING_ENABLED } from '../config/sms';
+import { checkNotificationSmsDispatch } from './notification/smsDispatchPolicy';
 
 /** Twilio: the recipient replied STOP, so every send to them fails until they reply START. */
 const TWILIO_RECIPIENT_UNSUBSCRIBED = 21610;
@@ -97,6 +98,99 @@ if (
 }
 
 export async function processSMSJob(job: LegacyJob<SMSJobData>) {
+	// These checks and policy writes are outside the provider failure handler:
+	// no provider attempt has happened, so an outage must not spend one.
+	const validatedData = validateSMSJobData(job.data, job.data.userId);
+	const { message_id, phone_number, message, priority, scheduled_sms_id, user_id } =
+		validatedData;
+	const { data: smsMessage, error: messageError } = await supabase
+		.from('sms_messages')
+		.select('*')
+		.eq('id', message_id)
+		.single();
+	if (messageError || !smsMessage)
+		throw new Error(`SMS message not found: ${messageError?.message ?? message_id}`);
+	// A queued provider receipt is already an accepted send. Replaying the job
+	// must not submit it again or rewrite its delivery history as cancelled.
+	if (
+		smsMessage.twilio_sid ||
+		['sent', 'delivered', 'undelivered', 'cancelled'].includes(smsMessage.status)
+	) {
+		await updateJobStatus(job.id, 'completed', 'send_sms', undefined, job.processingToken);
+		return { success: false, reason: 'already_processed' };
+	}
+	if (smsMessage.status === 'sending') {
+		throw new PermanentQueueError(
+			'sms_dispatch_outcome_unknown',
+			`SMS ${message_id} has an interrupted or active provider send; reconcile before resending`
+		);
+	}
+	const decision = await checkNotificationSmsDispatch(
+		supabase,
+		smsMessage,
+		user_id,
+		phone_number
+	);
+	if (decision.kind === 'cancel') {
+		if (decision.cancelDelivery) {
+			const { error } = await supabase
+				.from('notification_deliveries')
+				.update({
+					status: 'cancelled',
+					last_error: decision.reason,
+					failed_at: null,
+					updated_at: new Date().toISOString()
+				})
+				.eq('id', decision.deliveryId)
+				.eq('status', 'pending');
+			if (error) throw new Error(`Failed to cancel SMS notification: ${error.message}`);
+		}
+		const { error, count } = await supabase
+			.from('sms_messages')
+			.update(
+				{
+					status: 'cancelled',
+					twilio_error_message: decision.reason,
+					updated_at: new Date().toISOString()
+				},
+				{ count: 'exact' }
+			)
+			.eq('id', message_id)
+			.eq('status', smsMessage.status)
+			.is('twilio_sid', null);
+		if (error || count === 0)
+			throw new Error(
+				`Failed to cancel SMS: ${error?.message ?? 'message changed; retrying'}`
+			);
+		await updateJobStatus(
+			job.id,
+			'completed',
+			'send_sms',
+			decision.reason,
+			job.processingToken
+		);
+		return { success: false, reason: decision.reason };
+	}
+	if (decision.kind === 'defer') {
+		const { data, error } = await supabase.rpc('add_queue_job', {
+			p_user_id: user_id,
+			p_job_type: 'send_sms',
+			p_metadata: validatedData as unknown as Json,
+			p_scheduled_for: decision.until,
+			p_priority: { urgent: 1, high: 5, normal: 10, low: 20 }[priority ?? 'normal'],
+			p_dedup_key: `notification-sms-deferred:${message_id}:${decision.until}`
+		});
+		if (error || !data)
+			throw new Error(`Failed to defer SMS: ${error?.message ?? 'no queue job returned'}`);
+		await updateJobStatus(
+			job.id,
+			'completed',
+			'send_sms',
+			'Deferred for quiet hours',
+			job.processingToken
+		);
+		return { success: false, reason: 'quiet_hours', deferred_until: decision.until };
+	}
 	if (!SMS_SENDING_ENABLED) {
 		const disabledAt = new Date().toISOString();
 		const { message_id, scheduled_sms_id } = job.data;
@@ -134,9 +228,6 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		return { success: false, reason: 'disabled' };
 	}
 
-	// Validate job data immediately to catch errors early
-	const validatedData = validateSMSJobData(job.data, job.data.userId);
-
 	// Check if SMS service is available
 	if (!twilioClient || !smsService) {
 		const errorMessage = 'SMS service not available - Twilio credentials not configured';
@@ -145,9 +236,27 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		throw new Error(errorMessage);
 	}
 
-	const { message_id, phone_number, message, priority, scheduled_sms_id, user_id } =
-		validatedData;
-
+	if (decision.notificationDeliveryId) {
+		// Claim the existing message before dispatch. Duplicate queue jobs cannot
+		// both send; a process crash leaves 'sending' for reconciliation, not replay.
+		const { error, count } = await supabase
+			.from('sms_messages')
+			.update(
+				{
+					status: 'sending',
+					updated_at: new Date().toISOString()
+				},
+				{ count: 'exact' }
+			)
+			.eq('id', message_id)
+			.eq('status', smsMessage.status)
+			.is('twilio_sid', null);
+		if (error || count === 0)
+			throw new Error(
+				`Failed to claim SMS dispatch: ${error?.message ?? 'message changed; retrying'}`
+			);
+	}
+	let acceptedProviderSid: string | null = null;
 	try {
 		await updateJobStatus(job.id, 'processing', 'send_sms', undefined, job.processingToken);
 
@@ -338,17 +447,6 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			});
 		}
 
-		// Get message details from database
-		const { data: smsMessage } = await supabase
-			.from('sms_messages')
-			.select('*')
-			.eq('id', message_id)
-			.single();
-
-		if (!smsMessage) {
-			throw new Error('SMS message not found');
-		}
-
 		// Send via Twilio
 		const twilioMessage = await twilioClient.sendSMS({
 			to: phone_number,
@@ -359,6 +457,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				scheduled_sms_id: scheduled_sms_id || undefined
 			}
 		});
+		acceptedProviderSid = twilioMessage.sid;
 		const providerStatus = String(twilioMessage.status || 'queued');
 		const providerAcceptedAt = new Date().toISOString();
 		const initialMessageStatus =
@@ -368,14 +467,8 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 					? 'sent'
 					: 'queued';
 
-		await job.updateProgress({
-			current: scheduled_sms_id ? 3 : 2,
-			total: scheduled_sms_id ? 5 : 3,
-			message: 'Updating status...'
-		});
-
-		// Update message status
-		await supabase
+		// Persist provider acceptance before progress/metrics/broadcast side effects.
+		const { error: receiptError } = await supabase
 			.from('sms_messages')
 			.update({
 				status: initialMessageStatus,
@@ -385,6 +478,13 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				delivered_at: initialMessageStatus === 'delivered' ? providerAcceptedAt : null
 			})
 			.eq('id', message_id);
+		if (receiptError)
+			throw new Error(`Failed to persist SMS provider receipt: ${receiptError.message}`);
+		await job.updateProgress({
+			current: scheduled_sms_id ? 3 : 2,
+			total: scheduled_sms_id ? 5 : 3,
+			message: 'Updating status...'
+		});
 
 		// Phase 4: Link scheduled_sms_messages to sms_messages after successful send
 		if (scheduled_sms_id) {
@@ -450,6 +550,14 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			scheduled_sms_id
 		};
 	} catch (error: unknown) {
+		if (acceptedProviderSid) {
+			// The provider accepted the send. Retrying it after a persistence or
+			// bookkeeping failure risks a duplicate; retain receipt/status for reconciliation.
+			throw new PermanentQueueError(
+				'sms_accepted_followup_failed',
+				`SMS ${message_id} accepted as ${acceptedProviderSid}; follow-up persistence needs reconciliation`
+			);
+		}
 		const errorMessage = redactRecipient(
 			error instanceof Error ? error.message : 'Unknown error',
 			phone_number

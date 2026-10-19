@@ -29,7 +29,8 @@ export interface DeliveryResult {
 	external_id?: string;
 	error?: string;
 	/** The adapter completed, but provider delivery is still asynchronous. */
-	outcome?: 'sent' | 'queued';
+	outcome?: 'sent' | 'queued' | 'deferred';
+	deferred_until?: string;
 }
 
 type SMSPriority = 'low' | 'normal' | 'high' | 'urgent';
@@ -696,13 +697,15 @@ export async function sendSMSNotification(
 		if (!safetyCheck.allowed) {
 			// Handle different failure reasons
 			if (safetyCheck.checks.quietHours.inQuietHours) {
-				smsLogger.info('SMS in quiet hours - cancelling send', {
+				smsLogger.info('SMS in quiet hours - deferring send', {
 					notificationDeliveryId: delivery.id,
 					reason: safetyCheck.reason
 				});
 				return {
 					success: false,
-					error: `Cancelled: ${safetyCheck.reason}`
+					outcome: 'deferred',
+					deferred_until: safetyCheck.rescheduleTime?.toISOString(),
+					error: safetyCheck.reason
 				};
 			}
 
