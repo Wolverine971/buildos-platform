@@ -1,4 +1,5 @@
 // apps/web/src/routes/admin/ontology/graph/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -160,11 +161,11 @@ function rowsAs<T>(rows: unknown): T[] {
 	return Array.isArray(rows) ? (rows as T[]) : [];
 }
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase }, url }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	const { data: dbUser, error: dbUserError } = await supabase

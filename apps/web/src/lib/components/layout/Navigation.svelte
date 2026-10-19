@@ -2,6 +2,14 @@
 <script lang="ts">
 	import { BRAND_TAGLINE, START_PROJECT_CTA } from '$lib/constants/brand';
 	import { page } from '$app/stores';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { createChatResumeLinkHandler } from './agent-chat-resume-link';
+	import {
+		getChatUrlSessionId,
+		suspendChatUrlSync
+	} from '$lib/components/agent/agent-chat-url.svelte';
+	import { waitForChatHistorySettled } from '$lib/components/agent/agent-chat-history.svelte';
+	import { captureEvent } from '$lib/services/posthog';
 	import { consumeOneTimeUrlParams } from '$lib/utils/one-time-url-params';
 	import {
 		AGENT_CHAT_LAUNCH_PARAMS,
@@ -499,6 +507,7 @@
 		showChatModal = false;
 		parkedChatSessionId = null;
 		await tick();
+		await waitForChatHistorySettled();
 	}
 
 	function handleChatParked(sessionId: string) {
@@ -584,7 +593,7 @@
 				: null;
 		// Already showing the requested session — nothing to do.
 		if (showChatModal && requestedSessionId && requestedSessionId === activeChatSessionId) {
-			return;
+			return true;
 		}
 		// The requested session is parked keep-alive: seamless resume — just
 		// unhide the still-live instance (stream, tool calls, and all).
@@ -592,7 +601,7 @@
 			closeAllMenus();
 			parkedChatSessionId = null;
 			showChatModal = true;
-			return;
+			return true;
 		}
 		// A different chat is open (visible or parked): park it as a stack card
 		// and let the instance actually unmount so the new session gets a clean
@@ -616,6 +625,7 @@
 					: undefined;
 		chatOpenedWithContext = chatOverrideContextType ?? chatContextType;
 		showChatModal = true;
+		return false;
 	}
 
 	async function openAgentChatLaunch(draft: string, skillId: string | null) {
@@ -631,6 +641,48 @@
 		chatOpenedWithContext = 'global';
 		showChatModal = true;
 	}
+
+	const resumeLinks = createChatResumeLinkHandler({
+		isSignedIn: () => Boolean(user),
+		visibleSession: getChatUrlSessionId,
+		suspendUrl: suspendChatUrlSync,
+		cleanUrl: async (url) => {
+			const { agentChat, agentChatPushed, ...state } = $page.state;
+			await goto(`${url.pathname}${url.search}${url.hash}`, {
+				replaceState: true,
+				keepFocus: true,
+				noScroll: true,
+				state
+			});
+		},
+		open: (sessionId) =>
+			handleOpenAgentChatEvent(
+				new CustomEvent('buildos:open-agent-chat', { detail: { sessionId } })
+			),
+		close: () => handleChatClose(),
+		notFound: () => toastService.error("Couldn't open that chat."),
+		restoreHistoryUrl: () => {
+			const url = new URL(window.location.href);
+			const sessionId = getChatUrlSessionId();
+			if (sessionId) url.searchParams.set('chat', sessionId);
+			else url.searchParams.delete('chat');
+			const { agentChat, agentChatPushed, ...rest } = $page.state;
+			replaceState(url, sessionId ? { ...$page.state } : rest);
+		},
+		record: (result, cameThroughLogin) =>
+			captureEvent('chat_link_opened', {
+				result,
+				came_through_login: cameThroughLogin
+			})
+	});
+
+	afterNavigate(({ to, from, type }) => {
+		if (!to?.url) return;
+		// The router starts just after the first hydration callback. Cleanup must finish
+		// before the modal pushes its own entry, so Back stays on the linked page.
+		const isChatHistoryEntry = type === 'popstate' && Boolean($page.state.agentChat);
+		queueMicrotask(() => void resumeLinks.handle(to.url, from?.url, isChatHistoryEntry));
+	});
 
 	// `?open=agent-chat&skill=&prompt=` (the public "Try in BuildOS" link) opens chat
 	// with the draft, once. Email-confirm and Google OAuth returns land here as full page
@@ -677,6 +729,7 @@
 	});
 
 	function handleChatClose(summary?: DataMutationSummary) {
+		resumeLinks.cancel(activeChatSessionId ?? chatInitialSessionId);
 		const wasProjectCreate = chatOpenedWithContext === 'project_create';
 		showChatModal = false;
 		parkedChatSessionId = null;
@@ -1643,6 +1696,8 @@
 			onClose={handleChatClose}
 			onParked={handleChatParked}
 			onSessionChange={(sessionId) => (activeChatSessionId = sessionId)}
+			onSessionLoaded={(sessionId) => resumeLinks.complete(sessionId, 'ok')}
+			onSessionLoadFailed={(sessionId, reason) => resumeLinks.complete(sessionId, reason)}
 		/>
 	{/await}
 {/if}

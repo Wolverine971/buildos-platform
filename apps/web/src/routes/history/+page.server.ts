@@ -1,4 +1,5 @@
 // apps/web/src/routes/history/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 /**
  * History Page - Server Load
  *
@@ -11,7 +12,7 @@
  *   requested page and aggregate stats.
  */
 
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import {
 	needsChatClassification,
@@ -135,7 +136,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		redirect(302, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	// Parse query parameters

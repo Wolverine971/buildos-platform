@@ -1,4 +1,5 @@
 // apps/web/src/routes/onboarding/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { onboardingStep } from '$lib/utils/onboarding-state';
@@ -45,12 +46,12 @@ export const load: PageServerLoad = async ({
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	// safeGetSession returns the freshly loaded public profile, including saved milestones.
 	if (user.onboarding_completed_at) {
-		throw redirect(303, '/today');
+		throw redirect(303, `/today${url.search}`);
 	}
 
 	// Load any existing projects so the capture step can preview them.

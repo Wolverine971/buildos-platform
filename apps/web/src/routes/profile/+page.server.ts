@@ -1,4 +1,5 @@
 // apps/web/src/routes/profile/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { redirect, fail, type Actions, type RequestEvent } from '@sveltejs/kit';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
@@ -56,7 +57,7 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	const stripeEnabled = StripeService.isEnabled();

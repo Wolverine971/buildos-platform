@@ -19,7 +19,6 @@
 	import { deserialize } from '$app/forms';
 	import { goto, invalidate, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { browser } from '$app/environment';
 	import {
 		Lightbulb,
 		Search,
@@ -47,6 +46,7 @@
 	} from '$lib/components/agent/agent-chat.types';
 	import type { HistoryItem } from './+page.server';
 	import { compactHistoryCount } from './history-display';
+	import { legacyHistoryChatResumeUrl } from './history-chat-links';
 
 	/** Streamed history data structure */
 	interface HistoryDataResult {
@@ -209,21 +209,37 @@
 	let pendingDeleteItem = $state<HistoryItem | null>(null);
 	let deletingBraindumpId = $state<string | null>(null);
 	let lastAutoOpenedSelection = $state<string | null>(null);
+	let historyLinksReady = $state(false);
+	onMount(() => {
+		// Router shallow/history writes are available just after hydration completes.
+		queueMicrotask(() => (historyLinksReady = true));
+	});
 	const MIN_SEARCH_LENGTH = 3;
 	const MAX_SEARCH_LENGTH = 120;
 
-	// Open modal if we have a selectedItem from streamed data
+	// Older History links still work, but ordinary chats share Navigation's host.
 	$effect(() => {
-		if (resolvedData?.selectedItem && browser) {
+		if (resolvedData?.selectedItem && historyLinksReady) {
 			const selectionKey = `${resolvedData.selectedItem.type}:${resolvedData.selectedItem.id}`;
 			if (selectionKey === lastAutoOpenedSelection) return;
 			lastAutoOpenedSelection = selectionKey;
 			if (resolvedData.selectedItem.type === 'braindump') {
 				openBraindumpChat(resolvedData.selectedItem);
 			} else if (resolvedData.selectedItem.type === 'chat_session') {
-				selectedBrainDumpContext = null;
-				selectedChatSessionId = resolvedData.selectedItem.id;
-				isAgentModalOpen = true;
+				const url = legacyHistoryChatResumeUrl(
+					new URL(window.location.href),
+					resolvedData.selectedItem.id,
+					$page.state
+				);
+				if (url) {
+					// Navigation awaits its own cleanup before opening/pushing the chat.
+					void goto(`${url.pathname}${url.search}${url.hash}`, {
+						replaceState: true,
+						keepFocus: true,
+						noScroll: true,
+						state: $page.state
+					});
+				}
 			}
 		}
 	});
@@ -451,11 +467,14 @@
 		if (item.type === 'braindump') {
 			void openBraindumpChat(item);
 		} else {
-			selectedBrainDumpContext = null;
-			selectedChatSessionId = item.id;
-			isAgentModalOpen = true;
+			window.dispatchEvent(
+				new CustomEvent('buildos:open-agent-chat', {
+					detail: { sessionId: item.id }
+				})
+			);
+			return;
 		}
-		// Update URL to reflect selection
+		// Brain Dump selection retains its dedicated context and local host.
 		const params = new URLSearchParams($page.url.searchParams);
 		params.set('id', item.id);
 		params.set('itemType', item.type);
@@ -467,11 +486,10 @@
 		selectedChatSessionId = null;
 		selectedBrainDumpContext = null;
 		// Remove selection from URL
-		const params = new URLSearchParams($page.url.searchParams);
-		params.delete('id');
-		params.delete('itemType');
-		const newUrl = params.toString() ? `/history?${params.toString()}` : '/history';
-		replaceState(newUrl, {});
+		const url = new URL(window.location.href);
+		url.searchParams.delete('id');
+		url.searchParams.delete('itemType');
+		replaceState(url, { ...$page.state });
 		if (summary?.hasMessagesSent) {
 			void invalidate('history:data');
 			if (activeSearch) void runSearch(searchOffset);
@@ -1017,7 +1035,7 @@
 	{/snippet}
 </ConfirmationModal>
 
-<!-- Agent Chat Modal for chat sessions -->
+<!-- Brain Dump chats retain their capture-specific context and local host. -->
 {#if isAgentModalOpen && selectedChatSessionId}
 	{#await loadAgentChatModal() then { default: AgentChatModal }}
 		<AgentChatModal

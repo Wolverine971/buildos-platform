@@ -1,6 +1,7 @@
 // apps/web/src/routes/admin/migration/users/[userId]/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 // User detail view - data loader
-import { redirect, error } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { MigrationErrorService } from '$lib/services/ontology/migration-error.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -40,10 +41,10 @@ interface UserMigrationSummary {
 	lastMigrationAt: string | null;
 }
 
-export const load: PageServerLoad = async ({ params, locals: { safeGetSession } }) => {
+export const load: PageServerLoad = async ({ params, locals: { safeGetSession }, url }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	if (!user.is_admin) {

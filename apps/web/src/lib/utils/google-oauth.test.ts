@@ -265,6 +265,17 @@ describe('GoogleOAuthHandler Try in BuildOS launch', () => {
 		);
 	});
 
+	it('preserves a chat resume destination through OAuth', async () => {
+		const { handler } = newGoogleSignup();
+		const destination = await runRegisterCallback(
+			handler,
+			encodeState('/projects/project-1?tab=tasks&chat=12345678-1234-4321-9876-123456789abc')
+		);
+		expect(destination.pathname).toBe('/projects/project-1');
+		expect(destination.searchParams.get('chat')).toBe('12345678-1234-4321-9876-123456789abc');
+		expect(destination.searchParams.get('tab')).toBe('tasks');
+	});
+
 	it('keeps the launch but records nothing when the skill is not a structured id', async () => {
 		const { handler, update } = newGoogleSignup();
 

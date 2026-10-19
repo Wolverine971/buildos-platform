@@ -1,5 +1,6 @@
 // apps/web/src/routes/profile/agent-keys/[callerId]/+page.server.ts
-import { error as kitError, redirect } from '@sveltejs/kit';
+import { redirectToLogin } from '$lib/server/auth-redirects';
+import { error as kitError } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import {
 	CallerProvisioningError,
@@ -9,7 +10,7 @@ import {
 export const load: PageServerLoad = async ({ locals: { safeGetSession }, params, url }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	try {

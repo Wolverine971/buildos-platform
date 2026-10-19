@@ -1,5 +1,6 @@
 // apps/web/src/routes/time-blocks/+page.server.ts
-import { error, redirect } from '@sveltejs/kit';
+import { redirectToLogin } from '$lib/server/auth-redirects';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
@@ -7,11 +8,11 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { GoogleCalendarTargetService } from '$lib/server/google-calendar-target.service';
 import { hasUsableGoogleCalendarConnection } from '$lib/server/google-calendar-connection-status';
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase }, url }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	const actorId = await ensureActorId(supabase, user.id);

@@ -1,6 +1,7 @@
 // apps/web/src/routes/admin/migration/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 // Global migration dashboard data loader
-import { redirect, error } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { MigrationStatsService } from '$lib/services/ontology/migration-stats.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -28,7 +29,7 @@ type RunRow = {
 export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	if (!user.is_admin) {

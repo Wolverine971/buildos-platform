@@ -236,12 +236,16 @@ describe('Authenticated Pages', () => {
 						safeGetSession: vi.fn().mockResolvedValue({ user: null }),
 						supabase: {}
 					},
-					url: {
-						searchParams: { get: vi.fn(() => null) }
-					},
+					url: new URL(
+						'https://build-os.com/history?chat=12345678-1234-4321-9876-123456789abc'
+					),
 					depends
 				} as any)
-			).rejects.toBeDefined();
+			).rejects.toMatchObject({
+				status: 303,
+				location:
+					'/auth/login?redirect=%2Fhistory%3Fchat%3D12345678-1234-4321-9876-123456789abc'
+			});
 
 			expect(depends).toHaveBeenCalledWith('history:data');
 		});

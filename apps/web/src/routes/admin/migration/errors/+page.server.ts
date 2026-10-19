@@ -1,6 +1,7 @@
 // apps/web/src/routes/admin/migration/errors/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 // Error browser page - data loader
-import { redirect, error } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import {
 	MigrationErrorService,
@@ -11,7 +12,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 export const load: PageServerLoad = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	if (!user.is_admin) {

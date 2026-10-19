@@ -72,6 +72,9 @@ function createDatabase(deliveries: Row[], beforePatch?: () => void) {
 		global: { fetch }
 	});
 	const event = {
+		url: new URL(
+			'https://build-os.com/notifications?chat=12345678-1234-4321-9876-123456789abc'
+		),
 		locals: {
 			supabase,
 			safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
@@ -129,7 +132,10 @@ describe('notifications page read state', () => {
 		const { event, fetch } = createDatabase([delivery(1)]);
 		vi.mocked(event.locals.safeGetSession).mockResolvedValue({ session: null, user: null });
 
-		await expect(load(event)).rejects.toMatchObject({ status: 303, location: '/auth/login' });
+		await expect(load(event)).rejects.toMatchObject({
+			status: 303,
+			location: `/auth/login?redirect=${encodeURIComponent(event.url.pathname + event.url.search)}`
+		});
 		expect(fetch).not.toHaveBeenCalled();
 	});
 });

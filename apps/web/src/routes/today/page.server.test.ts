@@ -117,6 +117,32 @@ describe('Today onboarding gate', () => {
 		expect(needsOnboarding).not.toHaveBeenCalled();
 	});
 
+	it('keeps a resumed chat through onboarding and URL cleanup', async () => {
+		needsOnboarding.mockResolvedValue(true);
+		const user = { id: 'user-1', onboarding_completed_at: null, timezone: 'UTC' };
+		const cookies = fakeCookies();
+		await loadToday(
+			user,
+			'https://example.test/today?chat=12345678-1234-4321-9876-123456789abc',
+			cookies
+		);
+		const result = await loadToday(user, 'https://example.test/today', cookies);
+		expect(result).toMatchObject({ feed: { projects: [] } });
+		expect(needsOnboarding).not.toHaveBeenCalled();
+	});
+
+	it('preserves the full Today link when sign-in is required', async () => {
+		await expect(
+			loadToday(
+				null as any,
+				'https://example.test/today?chat=12345678-1234-4321-9876-123456789abc'
+			)
+		).rejects.toMatchObject({
+			status: 303,
+			location: '/auth/login?redirect=%2Ftoday%3Fchat%3D12345678-1234-4321-9876-123456789abc'
+		});
+	});
+
 	it('still sends a new user to onboarding when the launch has nothing to open', async () => {
 		needsOnboarding.mockResolvedValue(true);
 

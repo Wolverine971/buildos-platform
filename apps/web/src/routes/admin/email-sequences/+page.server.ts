@@ -1,4 +1,5 @@
 // apps/web/src/routes/admin/email-sequences/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { fail, redirect } from '@sveltejs/kit';
@@ -699,7 +700,7 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 	const admin = await requireAdmin(safeGetSession, supabase);
 	if (!admin.ok) {
 		if (admin.status === 401) {
-			throw redirect(303, '/auth/login');
+			redirectToLogin(url);
 		}
 		throw redirect(303, '/today');
 	}

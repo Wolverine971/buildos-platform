@@ -1,4 +1,5 @@
 // apps/web/src/hooks.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { json, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle, HandleServerError, RequestEvent } from '@sveltejs/kit';
@@ -430,7 +431,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	// that uses the service-role client answers anyone. Gate the whole tree here, where every
 	// page, data, and form-action request passes. (/api/admin handlers check for themselves.)
 	if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-		if (!event.locals.user) throw redirect(303, '/auth/login');
+		if (!event.locals.user) redirectToLogin(event.url);
 		if (!event.locals.user.is_admin) throw redirect(303, '/today');
 	}
 

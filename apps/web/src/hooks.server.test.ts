@@ -205,7 +205,7 @@ describe('server hook session verification', () => {
 		f.auth.getUser.mockResolvedValue({ data: { user: null }, error: new Error('Revoked') });
 		await expect(handle({ event: f.event, resolve: vi.fn() })).rejects.toMatchObject({
 			status: 303,
-			location: '/auth/login'
+			location: '/auth/login?redirect=%2Fadmin%2Fusers%2F__data.json'
 		});
 		expect(f.auth.getClaims).not.toHaveBeenCalled();
 		expect(f.from).not.toHaveBeenCalled();

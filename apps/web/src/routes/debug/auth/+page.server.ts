@@ -1,14 +1,15 @@
 // apps/web/src/routes/debug/auth/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { dev } from '$app/environment';
-import { error, redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
+export const load: PageServerLoad = async ({ locals: { safeGetSession }, url }) => {
 	const sessionData = await safeGetSession();
 
 	if (!dev) {
 		if (!sessionData.user) {
-			throw redirect(303, '/auth/login');
+			redirectToLogin(url);
 		}
 
 		if (!sessionData.user.is_admin) {

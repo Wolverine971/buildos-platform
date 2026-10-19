@@ -1,11 +1,12 @@
 // apps/web/src/routes/profile/agent-keys/[callerId]/requests/[requestId]/+page.server.ts
-import { error, fail, redirect } from '@sveltejs/kit';
+import { redirectToLogin } from '$lib/server/auth-redirects';
+import { error, fail } from '@sveltejs/kit';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { AgentPermissionRequest } from '@buildos/shared-types';
 import type { Actions, PageServerLoad } from './$types';
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const { user } = await locals.safeGetSession();
-	if (!user) redirect(303, '/auth/login');
+	if (!user) redirectToLogin(url);
 	const admin: any = createAdminSupabaseClient();
 	const { data: row } = await admin
 		.from('agent_permission_requests')
@@ -42,7 +43,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 export const actions: Actions = {
 	default: async ({ locals, params, request, url }) => {
 		const { user } = await locals.safeGetSession();
-		if (!user) redirect(303, '/auth/login');
+		if (!user) redirectToLogin(url);
 		if (request.headers.get('origin') !== url.origin)
 			return fail(403, { error: 'Invalid origin' });
 		const form = await request.formData();

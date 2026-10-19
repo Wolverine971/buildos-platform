@@ -1,8 +1,10 @@
 // apps/web/src/routes/today/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getTodayFeed } from '$lib/server/today-feed.service';
 import { needsOnboarding } from '$lib/server/project-visibility';
+import { readChatResumeSessionId } from '$lib/utils/agent-chat-resume';
 import { isAgentChatLaunch } from '$lib/utils/agent-chat-launch';
 
 // Set when a new user arrives with a chat launch. Navigation strips the launch params with a real
@@ -23,7 +25,7 @@ export const load: PageServerLoad = async ({
 
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login?redirect=%2Ftoday');
+		redirectToLogin(url);
 	}
 
 	// Don't strand a new user on an empty /today (bare-domain, logo, or bookmark). Route them
@@ -33,10 +35,12 @@ export const load: PageServerLoad = async ({
 	// sign-in lands on /today, so they'd otherwise get onboarding on every sign-in.
 	// Exception: a chat launch (`open=agent-chat` with a skill or drafted prompt, e.g. a public
 	// "Try in BuildOS" link) means they came to try one specific thing. They stay here with the
-	// launch params intact so Navigation opens chat with their draft; onboarding waits for the
+	// launch params intact so Navigation opens chat with their draft (or resumes a linked chat); onboarding waits for the
 	// next visit to /today. Read untracked: the launch params are one-time, so removing them must
 	// not re-run this load on its own.
-	const arrivedWithLaunch = untrack(() => isAgentChatLaunch(url.searchParams));
+	const arrivedWithLaunch = untrack(
+		() => isAgentChatLaunch(url.searchParams) || readChatResumeSessionId(url) !== null
+	);
 	if (arrivedWithLaunch) {
 		cookies.set(_CHAT_LAUNCH_GRACE_COOKIE, '1', {
 			path: '/today',

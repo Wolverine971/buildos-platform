@@ -20,6 +20,7 @@
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
 	import StewardChip from './StewardChip.svelte';
 	import ChatSessionAuditActions from './ChatSessionAuditActions.svelte';
+	import ChatResumeLink from './ChatResumeLink.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { AgentChatHeaderAction } from './agent-chat.types';
@@ -437,6 +438,9 @@
 
 	<!-- Right side: Status pills, Project link, Close button -->
 	<div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
+		{#if sessionId}
+			<ChatResumeLink {sessionId} />
+		{/if}
 		<!-- INKPRINT status pills with micro-label styling -->
 		<!-- On mobile: show only spinner (when loading) and activity dot to prevent overflow -->
 		<!-- On sm+: show full text-based pills -->

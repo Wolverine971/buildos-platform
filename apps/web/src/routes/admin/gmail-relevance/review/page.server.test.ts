@@ -159,7 +159,7 @@ describe('/admin/gmail-relevance/review', () => {
 	it('rejects unauthenticated, disabled, and non-allowlisted requests before service-role work', async () => {
 		await expect((load as never as Function)(event({ userId: null }))).rejects.toMatchObject({
 			status: 303,
-			location: '/auth/login'
+			location: '/auth/login?redirect=%2Fadmin%2Fgmail-relevance%2Freview'
 		});
 		state.env.GMAIL_RELEVANCE_PHASE_A_REVIEW_ENABLED = 'false';
 		await expect((load as never as Function)(event())).rejects.toMatchObject({ status: 404 });

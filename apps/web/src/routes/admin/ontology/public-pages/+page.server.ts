@@ -1,4 +1,5 @@
 // apps/web/src/routes/admin/ontology/public-pages/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -102,10 +103,10 @@ function toStringOrNull(value: unknown): string | null {
 	return trimmed.length > 0 ? trimmed : null;
 }
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase }, url }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	const { data: dbUser, error: dbUserError } = await supabase

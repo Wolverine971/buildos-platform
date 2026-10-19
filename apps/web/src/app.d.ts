@@ -29,6 +29,10 @@ declare global {
 			csrfToken?: string;
 		}
 		interface PageState {
+			/** The visible pop-up chat owns this shallow history entry. */
+			agentChat?: string;
+			/** Closing this chat can pop the entry it pushed. */
+			agentChatPushed?: boolean;
 			/** Projects desktop: the open project card (shallow history, so Back closes it). */
 			desktopCard?: string;
 			/** How many card entries the desktop pushed, so Collapse can return past all of them. */

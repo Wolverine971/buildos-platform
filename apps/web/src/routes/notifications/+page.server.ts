@@ -1,11 +1,11 @@
 // apps/web/src/routes/notifications/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 //
 // Renders page 1 of the activity timeline. Subsequent pages are fetched from
 // /api/activity as the user scrolls. Visiting this page also clears the unread
 // badge, which is why the delivery mark-as-opened pass lives here rather than in
 // the timeline service (the service is read-only and used by the API too).
 
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { loadActivityTimeline } from '$lib/server/activity-timeline.service';
 
@@ -84,10 +84,10 @@ async function markInAppDeliveriesOpened(
 	}
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	try {

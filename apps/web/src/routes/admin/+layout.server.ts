@@ -1,12 +1,13 @@
 // apps/web/src/routes/admin/+layout.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
+export const load: LayoutServerLoad = async ({ locals: { safeGetSession, supabase }, url }) => {
 	const { user } = await safeGetSession();
 	// Check if user is authenticated
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	const { data: dbUser, error } = await supabase

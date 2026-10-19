@@ -48,6 +48,9 @@
 	import ProjectFocusSelector from './ProjectFocusSelector.svelte';
 	import ProjectActionSelector from './ProjectActionSelector.svelte';
 	import AgentChatHeader from './AgentChatHeader.svelte';
+	import ChatResumeLink from './ChatResumeLink.svelte';
+	import { createChatHistory } from './agent-chat-history.svelte';
+	import { ChatSessionLoadError, loadChatSessionWithStatus } from './agent-chat-session-load';
 	import AgentComposer from './AgentComposer.svelte';
 	import PendingChangeStrip from './PendingChangeStrip.svelte';
 	import { PendingChangeController, turnHadFailedStep } from './agent-chat-pending-change.svelte';
@@ -259,6 +262,8 @@
 		/** Reports the active chat session id so embedding surfaces can render
 		 * session-level chrome (e.g. ChatSessionAuditActions) in their own header. */
 		onSessionChange?: (sessionId: string | null) => void;
+		onSessionLoaded?: (sessionId: string) => void;
+		onSessionLoadFailed?: (sessionId: string, reason: 'not_found' | 'error') => void;
 	}
 
 	let {
@@ -284,7 +289,9 @@
 		composerPlaceholder,
 		publishedSpecialist = null,
 		inboxResolutionActions = [],
-		onSessionChange
+		onSessionChange,
+		onSessionLoaded,
+		onSessionLoadFailed
 	}: Props = $props();
 
 	const shellRouter = createAgentChatShellRouter({
@@ -380,6 +387,13 @@
 	// identity, not the object assignment, or the replay tears down and re-adopts
 	// the same worker observer between reconcile ticks.
 	const currentSessionId = $derived(currentSession?.id ?? null);
+	const chatHistory = createChatHistory({
+		instanceId: crypto.randomUUID(),
+		isVisible: () => isSurfaceActive && !hidden,
+		isEmbedded: () => embedded,
+		sessionId: () => (messages.length > 0 ? currentSessionId : null),
+		onBack: () => handleClose()
+	});
 	// Checkpoint capture receipts (tasker/95) live beside the conversation, not in
 	// it: they come from chat_capture_checkpoints, render as chips in the list,
 	// and never enter the timeline, exports or model history.
@@ -1707,7 +1721,7 @@
 		sessionLoadError = null;
 
 		try {
-			const snapshot = await loadAgentChatSessionSnapshot(sessionId, {
+			const snapshot = await loadChatSessionWithStatus(sessionId, {
 				signal: controller.signal
 			});
 
@@ -1716,6 +1730,7 @@
 			}
 
 			applyChatSessionSnapshot(sessionId, snapshot);
+			if (!backgroundRefresh) onSessionLoaded?.(sessionId);
 		} catch (err: any) {
 			if (controller.signal.aborted || requestId !== sessionLoadRequestId) {
 				return;
@@ -1727,6 +1742,13 @@
 			if (!backgroundRefresh) {
 				sessionLoadError = err.message || 'Failed to load chat session';
 				stream.error = sessionLoadError;
+				onSessionLoadFailed?.(
+					sessionId,
+					err instanceof ChatSessionLoadError &&
+						(err.status === 404 || err.status === 403)
+						? 'not_found'
+						: 'error'
+				);
 			}
 		} finally {
 			if (requestId === sessionLoadRequestId) {
@@ -2233,6 +2255,7 @@
 	}
 
 	function closeChat() {
+		chatHistory.close();
 		const summary = releaseSessionResources('close');
 		if (onClose) onClose(summary);
 	}
@@ -2261,6 +2284,7 @@
 	 * to a hard park (card + full teardown; resume rebuilds from the DB).
 	 */
 	export function minimizeToStack() {
+		chatHistory.close();
 		const session = currentSession;
 		if (!session?.id) {
 			// No session yet (context selection screen) — nothing to park.
@@ -3318,6 +3342,11 @@
 	     The host surface owns the header chrome; session actions are exposed
 	     to it via onSessionChange + ChatSessionAuditActions. -->
 	<div class="flex h-full flex-col overflow-hidden bg-card">
+		{#if currentSessionId && messages.length > 0}
+			<div class="flex shrink-0 justify-end border-b border-border px-2 py-1">
+				<ChatResumeLink sessionId={currentSessionId} surface="embedded" />
+			</div>
+		{/if}
 		<!-- Embedded chat content area -->
 		<div class="relative z-10 flex flex-1 flex-col overflow-hidden bg-card">
 			<div class="flex h-full min-h-0 flex-col">

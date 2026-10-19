@@ -1,6 +1,7 @@
 // apps/web/src/routes/admin/gmail-relevance/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { env as privateEnv } from '$env/dynamic/private';
-import { error, redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { isGmailRelevancePhaseAUserAllowed } from '$lib/server/gmail-relevance/config';
 import { compileProjectEmailProfile } from '$lib/server/gmail-relevance/project-email-profile';
@@ -21,7 +22,7 @@ type OwnedProjectRow = ProjectEmailProfileProjectRow & { created_by: string };
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase }, url }) => {
 	const { user } = await safeGetSession();
-	if (!user) throw redirect(303, '/auth/login');
+	if (!user) redirectToLogin(url);
 	if (!isGmailRelevancePhaseAUserAllowed(user.id, privateEnv)) {
 		throw error(404, 'Not found');
 	}

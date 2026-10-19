@@ -1,11 +1,11 @@
 // apps/web/src/routes/voice-notes/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession } }) => {
+export const load: PageServerLoad = async ({ locals: { safeGetSession }, url }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	return {};

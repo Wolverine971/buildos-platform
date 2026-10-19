@@ -1,7 +1,8 @@
 // apps/web/src/routes/admin/gmail-relevance/review/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { randomUUID } from 'node:crypto';
 import { env as privateEnv } from '$env/dynamic/private';
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import {
 	isGmailRelevancePhaseAReviewUserAllowed,
@@ -47,9 +48,9 @@ const SCAN_ERROR_CODES = new Set([
 
 type SafeSession = () => Promise<{ user: { id: string } | null }>;
 
-async function requireReviewUser(safeGetSession: SafeSession): Promise<string> {
+async function requireReviewUser(safeGetSession: SafeSession, url: URL): Promise<string> {
 	const { user } = await safeGetSession();
-	if (!user) throw redirect(303, '/auth/login');
+	if (!user) redirectToLogin(url);
 	if (!isGmailRelevancePhaseAReviewUserAllowed(user.id, privateEnv)) {
 		throw error(404, 'Not found');
 	}
@@ -148,7 +149,7 @@ async function loadScanSection(userId: string): Promise<ScanSection> {
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession }, url, setHeaders }) => {
 	noStore(setHeaders);
-	const userId = await requireReviewUser(safeGetSession);
+	const userId = await requireReviewUser(safeGetSession, url);
 	const [dashboard, scan] = await Promise.all([
 		createEmailRelevanceReviewService()
 			.dashboard(userId, url.searchParams.get('run_id'))
@@ -168,8 +169,8 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession }, url, se
 
 export const actions: Actions = {
 	/** Starts a scan of every connected Gmail account against the chosen projects. */
-	startScan: async ({ request, locals: { safeGetSession } }) => {
-		const userId = await requireReviewUser(safeGetSession);
+	startScan: async ({ request, locals: { safeGetSession }, url }) => {
+		const userId = await requireReviewUser(safeGetSession, url);
 		const form = await request.formData();
 		if (!hasExactFields(form, ['idempotency_key', 'project_id'])) {
 			return fail(400, { kind: 'error', error_code: 'invalid_input' });
@@ -202,8 +203,8 @@ export const actions: Actions = {
 	 * for one account. The page calls this repeatedly while it is open; the
 	 * server never loops.
 	 */
-	scanStep: async ({ request, locals: { safeGetSession } }) => {
-		const userId = await requireReviewUser(safeGetSession);
+	scanStep: async ({ request, locals: { safeGetSession }, url }) => {
+		const userId = await requireReviewUser(safeGetSession, url);
 		const form = await request.formData();
 		if (!hasExactFields(form, ['run_id', 'connection_scope_id'])) {
 			return fail(400, { kind: 'error', error_code: 'invalid_input' });
@@ -231,8 +232,8 @@ export const actions: Actions = {
 		}
 	},
 
-	cancelScan: async ({ request, locals: { safeGetSession } }) => {
-		const userId = await requireReviewUser(safeGetSession);
+	cancelScan: async ({ request, locals: { safeGetSession }, url }) => {
+		const userId = await requireReviewUser(safeGetSession, url);
 		const form = await request.formData();
 		if (!hasExactFields(form, ['run_id'])) {
 			return fail(400, { kind: 'error', error_code: 'invalid_input' });
@@ -251,8 +252,8 @@ export const actions: Actions = {
 		}
 	},
 
-	prepare: async ({ request, locals: { safeGetSession } }) => {
-		const userId = await requireReviewUser(safeGetSession);
+	prepare: async ({ request, locals: { safeGetSession }, url }) => {
+		const userId = await requireReviewUser(safeGetSession, url);
 		const form = await request.formData();
 		if (!hasExactFields(form, ['run_id'])) {
 			return fail(400, { kind: 'error', error_code: 'invalid_input' });
@@ -267,8 +268,8 @@ export const actions: Actions = {
 		}
 	},
 
-	open: async ({ request, locals: { safeGetSession } }) => {
-		const userId = await requireReviewUser(safeGetSession);
+	open: async ({ request, locals: { safeGetSession }, url }) => {
+		const userId = await requireReviewUser(safeGetSession, url);
 		const form = await request.formData();
 		if (!hasExactFields(form, ['run_id', 'sample_id'])) {
 			return fail(400, { kind: 'error', error_code: 'invalid_input' });
@@ -290,8 +291,8 @@ export const actions: Actions = {
 		}
 	},
 
-	adjudicate: async ({ request, locals: { safeGetSession } }) => {
-		const userId = await requireReviewUser(safeGetSession);
+	adjudicate: async ({ request, locals: { safeGetSession }, url }) => {
+		const userId = await requireReviewUser(safeGetSession, url);
 		const form = await request.formData();
 		if (
 			!hasExactFields(form, [

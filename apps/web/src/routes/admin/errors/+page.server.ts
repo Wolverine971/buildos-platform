@@ -1,14 +1,15 @@
 // apps/web/src/routes/admin/errors/+page.server.ts
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession } }) => {
+export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession }, url }) => {
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 
 	// Check if user is admin

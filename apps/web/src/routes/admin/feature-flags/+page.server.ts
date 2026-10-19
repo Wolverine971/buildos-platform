@@ -1,5 +1,6 @@
 // apps/web/src/routes/admin/feature-flags/+page.server.ts
-import { error, fail, redirect } from '@sveltejs/kit';
+import { redirectToLogin } from '$lib/server/auth-redirects';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { enableFeature, disableFeature, FEATURE_KEYS } from '$lib/utils/feature-flags';
 import type { FeatureName } from '@buildos/shared-types';
@@ -19,12 +20,12 @@ type UserFeatureRow = {
 	}>;
 };
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	const { safeGetSession, supabase } = locals;
 	const { user } = await safeGetSession();
 
 	if (!user) {
-		throw redirect(303, '/auth/login');
+		redirectToLogin(url);
 	}
 	// Checked here too: a __data.json request can skip the admin layout's load.
 	if (!locals.user?.is_admin) throw error(403, 'Admin access required');
