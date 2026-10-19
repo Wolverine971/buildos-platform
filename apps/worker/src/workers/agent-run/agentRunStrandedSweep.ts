@@ -3,15 +3,12 @@
 // SAFETY-CRITICAL liveness recovery for durable Agent Runs (Wave 4).
 //
 // A run can strand when the worker that owned it dies without finalizing it, or
-// when a deep-research coordinator parks itself waiting for a wake that never
-// arrives. Such a run holds a user's active capacity slot forever (and, for a
-// deep-research root, all three slots). This bounded sweep detects those states
-// and recovers them.
+// leaves a jobless run holding the user's active capacity. This bounded sweep
+// recovers execution while leaving user approvals to change-set recovery.
 //
 // Every action here is IDEMPOTENT and BOUNDED:
 //   - re-enqueue uses the run's stable dedup key, so add_queue_job dedups against
 //     any concurrently-created live job (pending/processing only);
-//   - synthesis is re-driven through the DB guard RPC, which re-checks liveness;
 //   - every finalize/cancel is a conditional UPDATE keyed on the still-non-terminal
 //     status AND the scanned updated_at, so two overlapping sweeps — or a sweep
 //     racing a live worker — cannot double-act.
@@ -30,11 +27,7 @@ import { validateAgentRunMetadata } from '@buildos/shared-types';
 import { type StalledCommitRecovery, recoverStalledCommit } from '@buildos/shared-agent-ops';
 import { supabase } from '../../lib/supabase';
 import { queueConfig } from '../../config/queueConfig';
-import {
-	DEEP_RESEARCH_CHILD_COUNT,
-	isRetryableDeepResearchState,
-	parseDeepResearchState
-} from './deepResearchOrchestrator';
+import { isRetiredResearchRun } from './agentRunRetirement';
 
 type AgentRunRow = Database['public']['Tables']['agent_runs']['Row'];
 type AgentRunStatus = AgentRunRow['status'];
@@ -64,10 +57,9 @@ export function agentRunStrandedSweepEnabled(): boolean {
 export interface AgentRunStrandedSweepSummary {
 	scanned: number;
 	requeuedContinuations: number;
-	synthesisWoken: number;
+	retiredCancelled: number;
 	childrenCancelled: number;
 	finalizedFailed: number;
-	finalizedPartial: number;
 	commitsReturnedToReview: number;
 	commitsFinalized: number;
 	errors: number;
@@ -100,11 +92,6 @@ export interface StrandedParentRow {
 	completed_at: string | null;
 }
 
-export interface StrandedChildRow {
-	id: string;
-	status: AgentRunStatus;
-}
-
 // A narrow data-access port so the bounded control flow can run against a real
 // database in integration tests (a psql-backed adapter) and against a fake in
 // unit tests, while production uses the worker admin client.
@@ -118,13 +105,11 @@ export interface StrandedSweepStore {
 	}): Promise<StrandedRunRow[]>;
 	listActiveDedupKeys(userId: string, dedupKeys: string[]): Promise<string[]>;
 	loadParent(parentRunId: string): Promise<StrandedParentRow | null>;
-	loadChildren(parentRunId: string): Promise<StrandedChildRow[]>;
 	enqueueContinuation(
 		userId: string,
 		metadata: Record<string, unknown>,
 		dedupKey: string
 	): Promise<{ errorMessage?: string }>;
-	wakeSynthesis(parentRunId: string): Promise<{ jobId: string | null; errorMessage?: string }>;
 	// Conditional terminal transition. Only writes when the row is still in one of
 	// `expectedStatuses` AND its updated_at still equals `expectedUpdatedAt`.
 	finalizeRun(params: {
@@ -189,14 +174,6 @@ export function createStrandedSweepStore(): StrandedSweepStore {
 			if (error) throw new Error(`Failed to load parent run: ${error.message}`);
 			return data ? { status: data.status, completed_at: data.completed_at } : null;
 		},
-		async loadChildren(parentRunId) {
-			const { data, error } = await supabase
-				.from('agent_runs')
-				.select('id, status')
-				.eq('parent_run_id', parentRunId);
-			if (error) throw new Error(`Failed to load children: ${error.message}`);
-			return (data ?? []) as StrandedChildRow[];
-		},
 		async enqueueContinuation(userId, metadata, dedupKey) {
 			const { error } = await supabase.rpc('add_queue_job', {
 				p_user_id: userId,
@@ -207,13 +184,6 @@ export function createStrandedSweepStore(): StrandedSweepStore {
 				p_dedup_key: dedupKey
 			});
 			return error ? { errorMessage: error.message } : {};
-		},
-		async wakeSynthesis(parentRunId) {
-			const { data, error } = await supabase.rpc('queue_deep_research_synthesis', {
-				p_parent_run_id: parentRunId
-			});
-			if (error) return { jobId: null, errorMessage: error.message };
-			return { jobId: typeof data === 'string' ? data : null };
 		},
 		async finalizeRun({ runId, expectedStatuses, expectedUpdatedAt, status, error }) {
 			const { data, error: updateError } = await supabase
@@ -276,10 +246,6 @@ function isWithinDeadline(run: StrandedRunRow, now: Date): boolean {
 	return now.getTime() - startedAtMs < wallClockMs(run.budgets);
 }
 
-function isDeepResearchRoot(run: StrandedRunRow): boolean {
-	return run.run_template === 'deep_research' && run.depth === 0;
-}
-
 function continuationDedupKeys(runId: string): string[] {
 	return [
 		`agent-run:${runId}`,
@@ -306,27 +272,6 @@ function buildOriginalMetadata(run: StrandedRunRow): Record<string, unknown> {
 	};
 }
 
-function buildDeepRootMetadata(
-	run: StrandedRunRow,
-	continuationFrom?: 'children'
-): Record<string, unknown> {
-	return {
-		run_id: run.id,
-		trigger: run.trigger,
-		context_type: run.context_type,
-		project_id: run.project_id,
-		parent_run_id: null,
-		depth: 0,
-		...(continuationFrom ? { continuation_from: continuationFrom } : {}),
-		scope_mode: 'read_only',
-		effort: 'deep',
-		run_template: 'deep_research',
-		allowed_ops: null,
-		review_required: false,
-		budgets: run.budgets
-	};
-}
-
 /**
  * Re-enqueue a continuation. Validation failures throw (counted as errors by the
  * caller); a queue error is surfaced but non-fatal. Returns whether a job was
@@ -347,89 +292,6 @@ async function reenqueue(
 		return false;
 	}
 	return true;
-}
-
-async function handleDeepResearchRoot(
-	store: StrandedSweepStore,
-	run: StrandedRunRow,
-	now: Date,
-	summary: AgentRunStrandedSweepSummary
-): Promise<void> {
-	const withinDeadline = isWithinDeadline(run, now);
-	const stage = parseDeepResearchState(run.orchestration_state)?.stage;
-
-	if (stage === 'researching') {
-		// Case 2: children all settled but no synthesis wake landed. The DB guard
-		// re-checks liveness and only enqueues once (idempotent).
-		const children = await store.loadChildren(run.id);
-		const allChildrenTerminal =
-			children.length >= DEEP_RESEARCH_CHILD_COUNT &&
-			children.every((child) => TERMINAL_STATUSES.has(child.status));
-		if (allChildrenTerminal) {
-			const woke = await store.wakeSynthesis(run.id);
-			if (woke.errorMessage) {
-				throw new Error(`wake synthesis failed: ${woke.errorMessage}`);
-			}
-			if (woke.jobId) summary.synthesisWoken += 1;
-		}
-		// Otherwise the root is legitimately waiting on children; each stranded
-		// child is recovered as its own candidate and will wake the root when it
-		// settles. Nothing to do here.
-		return;
-	}
-
-	if (isRetryableDeepResearchState(run.orchestration_state)) {
-		// planning / dispatching / empty checkpoint — dispatch is idempotent
-		// (stable child IDs + upsert ignoreDuplicates), so re-driving the root is
-		// safe. Case 3 (dispatching with <2 children) is subsumed here.
-		if (withinDeadline) {
-			if (await reenqueue(store, run, buildDeepRootMetadata(run), `agent-run:${run.id}`)) {
-				summary.requeuedContinuations += 1;
-			}
-		} else if (
-			await store.finalizeRun({
-				runId: run.id,
-				expectedStatuses: ['running'],
-				expectedUpdatedAt: run.updated_at,
-				status: 'failed',
-				error: 'stranded: wall-clock exceeded before dispatch, no active worker'
-			})
-		) {
-			summary.finalizedFailed += 1;
-		}
-		return;
-	}
-
-	// synthesis_queued / synthesizing: a dead synthesis job. Re-running synthesis
-	// re-reads the (terminal) children and finalizes; it is bounded by remaining
-	// budget and money-honest (a retried job reserves fresh — see attempt ordinals).
-	if (withinDeadline) {
-		if (
-			await reenqueue(
-				store,
-				run,
-				buildDeepRootMetadata(run, 'children'),
-				`agent-run:${run.id}:synthesis`
-			)
-		) {
-			summary.requeuedContinuations += 1;
-		}
-		return;
-	}
-	// Past deadline: children hold their evidence packets (linked below), but
-	// synthesis will not run. Finalize partial honestly rather than re-spending.
-	const children = await store.loadChildren(run.id);
-	const finalizedPartial = await store.finalizeRun({
-		runId: run.id,
-		expectedStatuses: ['running'],
-		expectedUpdatedAt: run.updated_at,
-		status: 'partial',
-		error: 'stranded: wall-clock exceeded during synthesis, no active worker'
-	});
-	if (finalizedPartial) {
-		summary.finalizedPartial += 1;
-	}
-	void children;
 }
 
 async function handleCandidate(
@@ -486,8 +348,17 @@ async function handleCandidate(
 	// parked on the user and legitimately have no queue job.
 	if (!RECOVERABLE_STATUSES.has(run.status)) return;
 
-	if (isDeepResearchRoot(run)) {
-		await handleDeepResearchRoot(store, run, now, summary);
+	if (isRetiredResearchRun(run)) {
+		if (
+			await store.finalizeRun({
+				runId: run.id,
+				expectedStatuses: ['queued', 'running'],
+				expectedUpdatedAt: run.updated_at,
+				status: 'cancelled',
+				error: 'deep_research_retired'
+			})
+		)
+			summary.retiredCancelled += 1;
 		return;
 	}
 
@@ -524,10 +395,9 @@ export async function runAgentRunStrandedSweep(
 	const summary: AgentRunStrandedSweepSummary = {
 		scanned: 0,
 		requeuedContinuations: 0,
-		synthesisWoken: 0,
+		retiredCancelled: 0,
 		childrenCancelled: 0,
 		finalizedFailed: 0,
-		finalizedPartial: 0,
 		commitsReturnedToReview: 0,
 		commitsFinalized: 0,
 		errors: 0

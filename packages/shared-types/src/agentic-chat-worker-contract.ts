@@ -961,11 +961,14 @@ export type AgenticChatTerminalReceiptV1 = {
 	terminalized_at: string;
 	/** Legacy one-event terminal wrapper receipt. */
 	preterminal_event?: AgenticChatCommittedSemanticEventReceiptV1;
-	/** Ordered context/timing receipts from the three-event terminal wrapper. */
-	preterminal_events?: [
-		AgenticChatCommittedSemanticEventReceiptV1,
-		AgenticChatCommittedSemanticEventReceiptV1
-	];
+	/** Ordered terminal prefix: context/timing, optionally preceded by finalizing. */
+	preterminal_events?:
+		| [AgenticChatCommittedSemanticEventReceiptV1, AgenticChatCommittedSemanticEventReceiptV1]
+		| [
+				AgenticChatCommittedSemanticEventReceiptV1,
+				AgenticChatCommittedSemanticEventReceiptV1,
+				AgenticChatCommittedSemanticEventReceiptV1
+		  ];
 };
 
 /** Service-to-database result for the single worker terminal CAS boundary. */

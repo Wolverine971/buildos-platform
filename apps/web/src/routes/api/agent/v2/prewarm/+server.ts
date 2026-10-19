@@ -40,6 +40,7 @@ import {
 import {
 	FASTCHAT_CONTEXT_CACHE_VERSION,
 	buildFastChatContextCacheKey,
+	withoutFastChatContextCache,
 	type FastChatContextCache
 } from '$lib/services/agentic-chat-v2/context-cache';
 import {
@@ -203,23 +204,10 @@ async function checkDailyBriefAccess(
 	return Boolean(data?.id);
 }
 
-async function mergeFastChatContextCache(params: {
-	supabase: any;
-	sessionId: string;
-	cache: FastChatContextCache;
-}): Promise<void> {
-	const { error } = await params.supabase.rpc('merge_chat_session_agent_metadata', {
-		p_session_id: params.sessionId,
-		p_patch: {
-			fastchat_context_cache: params.cache
-		} as Json
-	});
-	if (error) {
-		logger.warn('Failed to merge fastchat context cache during v2 prewarm', {
-			error,
-			sessionId: params.sessionId
-		});
-	}
+function sessionForBrowser(session: ChatSession | null): ChatSession | null {
+	return session
+		? { ...session, agent_metadata: withoutFastChatContextCache(session.agent_metadata) }
+		: null;
 }
 
 async function buildPreparedPrompt(params: {
@@ -435,29 +423,43 @@ const handlePrewarmRequest: RequestHandler = async ({
 	let session: ChatSession | null = null;
 	if (sessionId || ensureSession) {
 		if (sessionId) {
-			const { data } = await supabase
+			const { data, error } = await supabase
 				.from('chat_sessions')
 				.select('*')
 				.eq('id', sessionId)
 				.eq('user_id', user.id)
 				.maybeSingle();
+			if (error) {
+				logger.warn('Session lookup failed during prewarm', { error, sessionId });
+				return ApiResponse.success({ warmed: false, reason: 'session_unavailable' });
+			}
 			if (!data && !ensureSession) {
 				return ApiResponse.success({ warmed: false, reason: 'session_not_found' });
 			}
+			session = data;
 		}
 
-		const sessionService = createFastChatSessionService(supabase, {
-			endpoint: '/api/agent/v2/prewarm',
-			httpMethod: 'POST'
-		});
-		const resolved = await sessionService.resolveSession({
-			sessionId,
-			userId: user.id,
-			contextType,
-			entityId: entityId ?? undefined,
-			projectFocus
-		});
-		if (resolved.scopeMismatch) {
+		// Existing sessions are read once and never written by speculative warming.
+		// Keep explicit session creation for older bootstrap callers.
+		if (!session && ensureSession) {
+			const sessionService = createFastChatSessionService(supabase, {
+				endpoint: '/api/agent/v2/prewarm',
+				httpMethod: 'POST'
+			});
+			const resolved = await sessionService.resolveSession({
+				sessionId,
+				userId: user.id,
+				contextType,
+				entityId: entityId ?? undefined,
+				projectFocus
+			});
+			session = resolved.session;
+		}
+		if (
+			session &&
+			(session.context_type !== contextType ||
+				(session.entity_id ?? null) !== (entityId ?? null))
+		) {
 			// The chat moved scope elsewhere (e.g. another device created a
 			// project from it). Hand back the stored row so the browser adopts
 			// its scope; warming the stale scope would only build a prompt the
@@ -465,10 +467,9 @@ const handlePrewarmRequest: RequestHandler = async ({
 			return ApiResponse.success({
 				warmed: false,
 				reason: 'session_scope_mismatch',
-				session: resolved.session
+				session: sessionForBrowser(session)
 			});
 		}
-		session = resolved.session;
 	}
 
 	const cacheKey = buildFastChatContextCacheKey({
@@ -508,14 +509,6 @@ const handlePrewarmRequest: RequestHandler = async ({
 	});
 	const prewarmedContext = contextResolution.cache;
 
-	if (session) {
-		await mergeFastChatContextCache({
-			supabase,
-			sessionId: session.id,
-			cache: prewarmedContext
-		});
-	}
-
 	// Prepared prompts are a latency optimization — any failure here must
 	// degrade to a normal prewarm response, never fail the request. They are
 	// session-bound: admission never consumes a session-less row, so none is built.
@@ -552,8 +545,15 @@ const handlePrewarmRequest: RequestHandler = async ({
 	return ApiResponse.success({
 		warmed: true,
 		cache_source: contextResolution.cacheSource,
-		session,
-		prewarmed_context: prewarmedContext,
+		// The browser needs the session only to reconcile a changed scope (above)
+		// or adopt an explicitly bootstrapped session. Avoid rehydrating stale focus.
+		session: ensureSession ? sessionForBrowser(session) : null,
+		prewarmed_context: {
+			version: prewarmedContext.version,
+			key: prewarmedContext.key,
+			created_at: prewarmedContext.created_at
+		},
+		prepared_prompts_enabled: isPreparedPromptPrewarmEnabled(),
 		prepared_prompt: preparedPrompt
 	});
 };

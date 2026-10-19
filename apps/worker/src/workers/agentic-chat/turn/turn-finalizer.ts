@@ -6,6 +6,7 @@
 // the billing and timing work that must settle before the terminal fence.
 import { buildFailedPartialText, collectUncertainEffects } from './failed-partial-receipt';
 import { randomUUID } from 'node:crypto';
+import { workerSourceProvenance } from '../../../lib/sourceProvenance';
 import {
 	buildFailedCleanupContinuation,
 	buildLastTurnContextDraftV1
@@ -55,7 +56,12 @@ import {
 	canonicalErrorMessage,
 	reportTerminalControlError
 } from './executor-failures';
-import { type ProjectionState, type TerminalContextState, toProjectionJson } from './turn-run';
+import {
+	FINALIZING_ACTIVITY,
+	type ProjectionState,
+	type TerminalContextState,
+	toProjectionJson
+} from './turn-run';
 
 export type FinalizeTurnInput = {
 	envelope: AgenticChatExecutionIdentityV1;
@@ -70,6 +76,8 @@ export type FinalizeTurnInput = {
 	interruptedReason?: string;
 	publicError?: string;
 	reevaluateConsumptionBilling?: boolean;
+	/** Normal completion only; committed atomically with context and done. */
+	includeFinalizingLifecycle?: boolean;
 	terminalEventContext?: {
 		executionInput: AgenticChatWorkerExecutionInputV1;
 		terminalContext: TerminalContextState;
@@ -300,6 +308,7 @@ export class AgenticChatTurnFinalizer {
 		interruptedReason,
 		publicError,
 		reevaluateConsumptionBilling = false,
+		includeFinalizingLifecycle = false,
 		terminalEventContext,
 		partialFailure,
 		failedPartialDisclosure = false
@@ -501,6 +510,22 @@ export class AgenticChatTurnFinalizer {
 				...terminalEventDetails
 			},
 			lastTurnContext,
+			...(includeFinalizingLifecycle && status === 'completed' && lastTurnContext
+				? {
+						finalizingEvent: {
+							type: 'turn_phase',
+							turn_phase: 'finalizing',
+							workerProvenance: workerSourceProvenance
+								? { ...workerSourceProvenance }
+								: null,
+							message: FINALIZING_ACTIVITY
+						},
+						finalizingTransitionId: createStableAgenticChatLifecycleTransitionIdV1({
+							turnRunId: claim.turnRunId,
+							stage: 'finalizing'
+						})
+					}
+				: {}),
 			lastTurnContextTransitionId:
 				lastTurnContext !== null
 					? createStableAgenticChatLifecycleTransitionIdV1({

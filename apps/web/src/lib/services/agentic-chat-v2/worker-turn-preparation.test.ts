@@ -556,8 +556,7 @@ describe('Agentic Chat worker turn preparation', () => {
 				historyForModelCount: 0
 			},
 			sessionSnapshot: {
-				summary: null,
-				agent_metadata: { trusted: true }
+				agent_metadata: {}
 			},
 			contextUsageSnapshot: {
 				estimatedTokens: 11,
@@ -583,6 +582,91 @@ describe('Agentic Chat worker turn preparation', () => {
 			historyBytes: result.args.p_artifact_history_bytes
 		});
 	});
+
+	it.each([SESSION_ID, null])(
+		'freezes only session presentation fields without losing execution state (session: %s)',
+		async (sessionId) => {
+			const focus = {
+				focusType: 'project-wide',
+				focusEntityId: PROJECT_ID,
+				focusEntityName: 'Launch',
+				projectId: PROJECT_ID,
+				projectName: 'Launch'
+			};
+			const domainState = {
+				version: 1,
+				updated_at: new Date(NOW).toISOString(),
+				active_domains: [],
+				active_outcome_cards: [],
+				coverage_gaps: [],
+				research_backlog: [],
+				used_domains: [],
+				unknown_domain_interests: [],
+				workflow_gap_candidates: [],
+				recent_observations: []
+			};
+			const metadata = {
+				focus,
+				fastchat_context_cache: { data: 'x'.repeat(40_000) },
+				fastchat_domain_state: domainState,
+				future_internal_metadata: 'Must not be copied to the public event'
+			};
+			const session = {
+				id: SESSION_ID,
+				user_id: USER_ID,
+				title: 'Chat session',
+				auto_title: 'Launch planning',
+				context_type: 'project',
+				entity_id: PROJECT_ID,
+				summary: 'Trusted conversation summary',
+				extracted_entities: { internal: true },
+				agent_metadata: metadata
+			};
+			const originalSession = structuredClone(session);
+			mocks.resolveFastChatTurnPreparation.mockReturnValue({
+				...mocks.resolveFastChatTurnPreparation(),
+				sessionMetadata: metadata,
+				previousDomainState: domainState,
+				selectedSurfaceProfile: 'project'
+			});
+			const result = await prepareAgenticChatWorkerAdmission({
+				userClient: {} as never,
+				serviceClient: serviceClientWithTables({ chat_sessions: [session] }) as never,
+				userId: USER_ID,
+				command: command({
+					sessionId,
+					context: { type: 'project', entityId: PROJECT_ID, projectId: PROJECT_ID },
+					projectFocus: focus
+				}) as never,
+				lease: {
+					decisionId: DECISION_ID,
+					mode: 'worker_realtime',
+					contractVersion: 'agentic_chat_worker_v1'
+				},
+				dependencies: dependencies()
+			});
+
+			const prepared = result.args.p_artifact_prepared as Record<string, any>;
+			expect(prepared.sessionSnapshot).toEqual({
+				...(sessionId
+					? {
+							title: session.title,
+							auto_title: session.auto_title,
+							context_type: session.context_type,
+							entity_id: session.entity_id
+						}
+					: {}),
+				agent_metadata: { focus }
+			});
+			expect(JSON.stringify(prepared.sessionSnapshot).length).toBeLessThan(500);
+			expect(prepared.conversationSummary).toBe(sessionId ? session.summary : null);
+			expect(prepared.domainMetadata.state).toEqual(domainState);
+			expect(session).toEqual(originalSession);
+			expect(result.args.p_session_agent_metadata).toEqual(
+				sessionId ? {} : originalSession.agent_metadata
+			);
+		}
+	);
 
 	it('rejects an unavailable resolved tool surface before durable admission', async () => {
 		mocks.resolveFastChatTurnPreparation.mockReturnValueOnce({
@@ -1967,7 +2051,10 @@ describe('Agentic Chat worker turn preparation', () => {
 					context_type: 'global',
 					entity_id: null,
 					summary: 'Trusted conversation summary',
-					agent_metadata: { trusted: true }
+					agent_metadata: {
+						trusted: true,
+						fastchat_context_cache: { data: 'legacy context' }
+					}
 				}
 			],
 			chat_messages: [],
@@ -2047,11 +2134,9 @@ describe('Agentic Chat worker turn preparation', () => {
 				historyForModelCount: 1
 			},
 			sessionSnapshot: {
-				user_id: USER_ID,
 				context_type: 'global',
 				entity_id: null,
-				summary: 'Trusted conversation summary',
-				agent_metadata: { trusted: true }
+				agent_metadata: {}
 			},
 			contextUsageSnapshot: {
 				estimatedTokens: expect.any(Number),
@@ -2061,6 +2146,9 @@ describe('Agentic Chat worker turn preparation', () => {
 		});
 		expect(mocks.buildLitePromptEnvelope).not.toHaveBeenCalled();
 		expect(mocks.loadFastChatPromptContext).not.toHaveBeenCalled();
+		expect(JSON.stringify(result.args.p_artifact_prepared)).not.toContain(
+			'fastchat_context_cache'
+		);
 		expect(mocks.inspectPreparedPromptAdmissionLineage).toHaveBeenCalledWith(
 			expect.objectContaining({ surfaceProfile: 'worker_realtime:global' })
 		);

@@ -484,6 +484,49 @@ function createHarness(
 		}),
 		finalize: vi.fn(async (input: AgenticChatTerminalFinalizeInputV1) => {
 			const lastTurnContext = input.lastTurnContext ?? null;
+			const lifecycleSequence = input.finalizingEvent ? ++sequence : null;
+			const makeTerminalReceipt = (...args: Parameters<typeof terminalReceipt>) => {
+				const receipt = terminalReceipt(...args);
+				if (lifecycleSequence === null) return receipt;
+				const { preterminal_event, preterminal_events, ...terminal } = receipt as Record<
+					string,
+					unknown
+				>;
+				return {
+					...terminal,
+					preterminal_events: [
+						{
+							outcome: 'persisted',
+							publish_allowed: true,
+							turn_run_id: TURN_RUN_ID,
+							queue_job_id: QUEUE_JOB_ID,
+							session_id: SESSION_ID,
+							user_id: USER_ID,
+							stream_run_id: executionInput.streamRunId,
+							client_turn_id: executionInput.clientTurnId,
+							execution_generation: EXECUTION_GENERATION,
+							sequence_index: lifecycleSequence,
+							event_id: createAgentStreamEventIdV1(
+								TURN_RUN_ID,
+								EXECUTION_GENERATION,
+								lifecycleSequence
+							),
+							phase: 'stream',
+							event_type: 'turn_phase',
+							durable: true,
+							transition_id: input.finalizingTransitionId,
+							event_payload: input.finalizingEvent,
+							reconcile_required: true,
+							persisted_at: '2026-08-03T12:00:00.000Z'
+						},
+						...(Array.isArray(preterminal_events)
+							? preterminal_events
+							: preterminal_event
+								? [preterminal_event]
+								: [])
+					]
+				};
+			};
 			if (
 				input.status === 'failed' &&
 				input.publicError &&
@@ -498,7 +541,7 @@ function createHarness(
 				const terminalSequence = sequence + 3;
 				const terminalCommittedAt = AGENTIC_CHAT_PROVIDER_ERROR_FIXTURE_V1.clockIso;
 				sequence = timingSequence;
-				return terminalReceipt('failed', terminalSequence, {
+				return makeTerminalReceipt('failed', terminalSequence, {
 					finished_reason: input.finishedReason,
 					failure_code: input.failureCode,
 					assistant_message_id: input.assistantMessageId,
@@ -578,7 +621,7 @@ function createHarness(
 					const timingSequence = sequence + 2;
 					const terminalSequence = sequence + 3;
 					sequence = timingSequence;
-					return terminalReceipt(input.status, terminalSequence, {
+					return makeTerminalReceipt(input.status, terminalSequence, {
 						failure_code: input.failureCode,
 						assistant_message_id: input.assistantMessageId,
 						preterminal_events: [
@@ -649,7 +692,7 @@ function createHarness(
 					});
 				}
 				sequence += 1;
-				return terminalReceipt(input.status, sequence + 1, {
+				return makeTerminalReceipt(input.status, sequence + 1, {
 					failure_code: input.failureCode,
 					assistant_message_id: input.assistantMessageId,
 					preterminal_event: {
@@ -684,7 +727,7 @@ function createHarness(
 					}
 				});
 			}
-			return terminalReceipt(input.status, sequence + 1, {
+			return makeTerminalReceipt(input.status, sequence + 1, {
 				failure_code: input.failureCode,
 				assistant_message_id: input.assistantMessageId
 			});
@@ -2305,6 +2348,29 @@ describe('AgenticChatTurnExecutor', () => {
 			.map((message) => (message.payload as Record<string, unknown>).type)
 			.filter((type) => type === 'last_turn_context' || type === 'timing' || type === 'done');
 		expect(terminalTypes).toEqual(['last_turn_context', 'timing', 'done']);
+		expect(
+			harness.semanticInputs.some(
+				(input) =>
+					(input.event_payload as Record<string, unknown>).turn_phase === 'finalizing'
+			)
+		).toBe(false);
+		expect(
+			streamBroadcastMessages(harness.broadcastMessages)
+				.slice(-4)
+				.map((message) => (message.payload as Record<string, unknown>).type)
+		).toEqual(['turn_phase', 'last_turn_context', 'timing', 'done']);
+		expect(harness.control.finalize.mock.calls[0][0]).toMatchObject({
+			finalizingEvent: {
+				type: 'turn_phase',
+				turn_phase: 'finalizing',
+				message: 'Wrapping up…',
+				workerProvenance: workerSourceProvenance
+			},
+			finalizingTransitionId: createStableAgenticChatLifecycleTransitionIdV1({
+				turnRunId: TURN_RUN_ID,
+				stage: 'finalizing'
+			})
+		});
 		expect(harness.control.finalize).toHaveBeenCalledWith(
 			expect.objectContaining({
 				timingDraft: expect.objectContaining({
@@ -2347,6 +2413,14 @@ describe('AgenticChatTurnExecutor', () => {
 		expect(retryInput.timingDraft).toBeNull();
 		expect(retryInput.timingTransitionId).toBeNull();
 		expect(retryInput.lastTurnContext).not.toBeNull();
+		expect(retryInput.finalizingEvent).toEqual(firstInput.finalizingEvent);
+		expect(retryInput.finalizingTransitionId).toBe(firstInput.finalizingTransitionId);
+		expect(
+			streamBroadcastMessages(harness.broadcastMessages).filter(
+				(message) =>
+					(message.payload as Record<string, unknown>).turn_phase === 'finalizing'
+			)
+		).toHaveLength(1);
 		expect(retryInput.assistantText).toBe(firstInput.assistantText);
 		expect(harness.terminalControlErrors).toEqual([
 			expect.objectContaining({
@@ -2355,6 +2429,56 @@ describe('AgenticChatTurnExecutor', () => {
 				executionGeneration: EXECUTION_GENERATION
 			})
 		]);
+		await harness.publisher.stop();
+	});
+
+	it('honors cancellation winning the atomic lifecycle finalize without publishing finalizing', async () => {
+		const harness = createHarness(
+			[
+				{ type: 'text_delta', text: 'finished answer' },
+				{ type: 'finish', finishedReason: 'stop', usage: null }
+			],
+			{
+				recovery: [
+					recoveryReceipt('finalize_cancelled'),
+					recoveryReceipt('queue_reconciled', {
+						status: 'cancelled',
+						failure_code: 'cancelled'
+					})
+				]
+			}
+		);
+		harness.control.finalize.mockResolvedValueOnce({
+			outcome: 'cancel_requested',
+			turn_run_id: TURN_RUN_ID,
+			queue_job_id: QUEUE_JOB_ID,
+			session_id: SESSION_ID,
+			user_id: USER_ID,
+			execution_generation: EXECUTION_GENERATION,
+			status: 'running',
+			cancel_requested_at: '2026-08-03T12:00:00.000Z',
+			cancel_reason: 'user_cancelled'
+		} as never);
+		await expect(harness.executor.execute(job())).resolves.toMatchObject({
+			outcome: 'cancelled',
+			terminalStatus: 'cancelled',
+			queueReconciled: true
+		});
+		expect(harness.control.finalize).toHaveBeenCalledTimes(2);
+		expect(harness.control.finalize.mock.calls[0][0].finalizingEvent).toBeDefined();
+		const cancelledInput = harness.control.finalize.mock.calls[1][0];
+		expect(cancelledInput).toMatchObject({
+			status: 'cancelled',
+			assistantText: 'finished answer'
+		});
+		expect(cancelledInput.finalizingEvent).toBeUndefined();
+		expect(cancelledInput.finalizingTransitionId).toBeUndefined();
+		expect(
+			streamBroadcastMessages(harness.broadcastMessages).some(
+				(message) =>
+					(message.payload as Record<string, unknown>).turn_phase === 'finalizing'
+			)
+		).toBe(false);
 		await harness.publisher.stop();
 	});
 
@@ -2794,18 +2918,6 @@ describe('AgenticChatTurnExecutor', () => {
 					turn_phase: 'acknowledged',
 					workerProvenance: workerSourceProvenance,
 					message: 'Thinking…'
-				}
-			},
-			{
-				transition_id: createStableAgenticChatLifecycleTransitionIdV1({
-					turnRunId: TURN_RUN_ID,
-					stage: 'finalizing'
-				}),
-				event_payload: {
-					type: 'turn_phase',
-					turn_phase: 'finalizing',
-					workerProvenance: workerSourceProvenance,
-					message: 'Wrapping up…'
 				}
 			}
 		]);
@@ -6280,7 +6392,6 @@ describe('AgenticChatTurnExecutor', () => {
 			'semantic:turn_phase:acknowledged',
 			'semantic:session:',
 			'semantic:context_usage:',
-			'semantic:turn_phase:finalizing',
 			'release'
 		]);
 		expect(prepare).toHaveBeenCalledWith({
@@ -8602,14 +8713,13 @@ describe('AgenticChatTurnExecutor live reads overlap their own tool_call write',
 				'tool_call_persisted:provider-overlap-read',
 				'ledger_row'
 			]);
-			// Durable stream order and sequence numbers are unchanged.
+			// Finalizing now belongs to the terminal RPC; public sequence order stays contiguous.
 			expect(harness.semanticInputs.map((input) => input.event_type)).toEqual([
 				'turn_phase',
 				'session',
 				'context_usage',
 				'tool_call',
-				'tool_result',
-				'turn_phase'
+				'tool_result'
 			]);
 			const sequences = streamBroadcastMessages(harness.broadcastMessages).map(
 				(message) => (message.payload as Record<string, unknown>).sequence_index as number

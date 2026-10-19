@@ -22,7 +22,6 @@ import {
 	type AgenticChatProviderToolSynthesisInputV1
 } from '../provider/contracts';
 import {
-	type AgenticChatExecutorLifecycleStageV1,
 	type AgenticChatExecutorSnapshotStageV1,
 	createStableAgenticChatLifecycleTransitionIdV1
 } from './lifecycle-identity';
@@ -89,7 +88,6 @@ import {
 	ACKNOWLEDGED_ACTIVITY,
 	type AgenticChatPendingToolExecutionV1,
 	type AgenticChatReadInvalidationEpochStateV1,
-	FINALIZING_ACTIVITY,
 	type ProjectionState,
 	type TerminalContextState,
 	type TurnRun,
@@ -751,12 +749,6 @@ export class AgenticChatTurnExecutor {
 					combined.signal
 				);
 			}
-			await this.publishExecutorLifecycle(
-				executionInput,
-				projection,
-				'finalizing',
-				combined.signal
-			);
 			throwIfAborted(combined.signal);
 			return await this.finalizer.finalize({
 				envelope,
@@ -769,6 +761,7 @@ export class AgenticChatTurnExecutor {
 				publisherRegistered,
 				assistantTextOverride: terminalTextIntegrity.assistantText,
 				reevaluateConsumptionBilling: true,
+				includeFinalizingLifecycle: true,
 				terminalEventContext: { executionInput, terminalContext, runtimeTiming }
 			});
 		} catch (caught) {
@@ -927,10 +920,10 @@ export class AgenticChatTurnExecutor {
 	private async publishExecutorLifecycle(
 		executionInput: AgenticChatWorkerExecutionInputV1,
 		projection: ProjectionState,
-		stage: AgenticChatExecutorLifecycleStageV1,
+		stage: 'acknowledged',
 		signal: AbortSignal
 	): Promise<void> {
-		const message = stage === 'acknowledged' ? ACKNOWLEDGED_ACTIVITY : FINALIZING_ACTIVITY;
+		const message = ACKNOWLEDGED_ACTIVITY;
 		await this.services.publishSemantic(
 			executionInput,
 			projection,

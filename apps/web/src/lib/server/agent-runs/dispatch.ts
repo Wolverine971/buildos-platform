@@ -3,25 +3,11 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { withQueueCorrelationMetadata } from '$lib/server/queue-job-id';
 import { HttpStatus } from '$lib/utils/api-response';
 import { validateAgentRunMetadata, type AgentRunStatus, type Json } from '@buildos/shared-types';
-import {
-	DEEP_RESEARCH_DISABLED_CODE,
-	DEEP_RESEARCH_DISABLED_MESSAGE,
-	isDeepResearchEnabled
-} from './deep-research-flag';
-
 export { normalizeAgentRunAllowedOps } from './normalization';
 
 export const MAX_CONCURRENT_AGENT_RUNS = 3;
 export const DEFAULT_DEEP_AGENT_RUN_COST_USD = 0.5;
 export const MAX_DEEP_AGENT_RUN_COST_USD = 1;
-export const MIN_DEEP_RESEARCH_COST_USD = 0.25;
-export const DEFAULT_DEEP_RESEARCH_TOOL_CALLS = 10;
-export const MIN_DEEP_RESEARCH_TOOL_CALLS = 4;
-export const MAX_DEEP_RESEARCH_TOOL_CALLS = 40;
-export const DEFAULT_DEEP_RESEARCH_TOKENS = 60_000;
-export const MIN_DEEP_RESEARCH_TOKENS = 12_000;
-export const MAX_DEEP_RESEARCH_TOKENS = 100_000;
-export const MAX_DEEP_RESEARCH_WALL_CLOCK_MS = 20 * 60 * 1000;
 export const MAX_AGENT_RUN_COST_USD = 10;
 
 // Global budget ceilings applied to every run, so the raw dispatch API cannot
@@ -141,8 +127,7 @@ export function normalizeAgentRunBudgets(input: unknown): {
 
 export function resolveAgentRunEffortBudgets(
 	effort: 'standard' | 'deep',
-	input: Record<string, number> | undefined,
-	runTemplate: 'agent' | 'deep_research' = 'agent'
+	input: Record<string, number> | undefined
 ): { budgets: Record<string, number>; error?: string } {
 	const budgets = { ...(input ?? {}) };
 	if (effort !== 'deep') {
@@ -163,56 +148,7 @@ export function resolveAgentRunEffortBudgets(
 			error: `Deep agent runs cannot exceed a $${MAX_DEEP_AGENT_RUN_COST_USD} cost budget`
 		};
 	}
-	if (
-		runTemplate === 'deep_research' &&
-		(budgets.max_cost_usd ?? 0) < MIN_DEEP_RESEARCH_COST_USD
-	) {
-		return {
-			budgets,
-			error: `Deep research requires at least a $${MIN_DEEP_RESEARCH_COST_USD} cost budget`
-		};
-	}
-	if (runTemplate === 'deep_research') {
-		budgets.wall_clock_ms ??= 10 * 60 * 1000;
-		budgets.max_tokens ??= DEFAULT_DEEP_RESEARCH_TOKENS;
-		budgets.max_tool_calls ??= DEFAULT_DEEP_RESEARCH_TOOL_CALLS;
-		if (budgets.max_tool_calls < MIN_DEEP_RESEARCH_TOOL_CALLS) {
-			return {
-				budgets,
-				error: `Deep research requires at least ${MIN_DEEP_RESEARCH_TOOL_CALLS} tool calls`
-			};
-		}
-		if (budgets.max_tool_calls > MAX_DEEP_RESEARCH_TOOL_CALLS) {
-			return {
-				budgets,
-				error: `Deep research cannot exceed ${MAX_DEEP_RESEARCH_TOOL_CALLS} tool calls`
-			};
-		}
-		if (budgets.max_tokens < MIN_DEEP_RESEARCH_TOKENS) {
-			return {
-				budgets,
-				error: `Deep research requires at least ${MIN_DEEP_RESEARCH_TOKENS} tokens`
-			};
-		}
-		if (budgets.max_tokens > MAX_DEEP_RESEARCH_TOKENS) {
-			return {
-				budgets,
-				error: `Deep research cannot exceed ${MAX_DEEP_RESEARCH_TOKENS} tokens`
-			};
-		}
-		if (budgets.wall_clock_ms < 1) {
-			return {
-				budgets,
-				error: 'Deep research requires a positive wall-clock budget'
-			};
-		}
-		if (budgets.wall_clock_ms > MAX_DEEP_RESEARCH_WALL_CLOCK_MS) {
-			return {
-				budgets,
-				error: `Deep research cannot exceed ${MAX_DEEP_RESEARCH_WALL_CLOCK_MS}ms`
-			};
-		}
-	}
+
 	return { budgets };
 }
 
@@ -295,23 +231,21 @@ export async function dispatchAgentRun(
 	const contextType = params.contextType === 'project' ? 'project' : 'global';
 	const scopeMode = params.scopeMode === 'read_write' ? 'read_write' : 'read_only';
 	const runTemplate = params.runTemplate === 'deep_research' ? 'deep_research' : 'agent';
-	// Kill switch: refuse before any DB read or write, so a disabled deep
-	// research request never creates a run, a queue job, or a cost reservation.
-	if (runTemplate === 'deep_research' && !isDeepResearchEnabled()) {
+	// Refuse the retired template before creating a run, job, or cost reservation.
+	if (runTemplate === 'deep_research') {
 		return {
 			ok: false,
 			status: HttpStatus.FORBIDDEN,
-			code: DEEP_RESEARCH_DISABLED_CODE,
-			message: DEEP_RESEARCH_DISABLED_MESSAGE
+			code: 'DEEP_RESEARCH_RETIRED',
+			message: 'Deep research has been retired; nothing was started or charged.'
 		};
 	}
-	const effort =
-		runTemplate === 'deep_research' || params.effort === 'deep' ? 'deep' : 'standard';
+	const effort = params.effort === 'deep' ? 'deep' : 'standard';
 	const reviewRequired = params.reviewRequired === true;
 	const projectId = params.projectId?.trim() || null;
 	const trigger = params.trigger ?? 'manual';
 	const admin = params.admin ?? createAdminSupabaseClient();
-	const effortBudgets = resolveAgentRunEffortBudgets(effort, params.budgets, runTemplate);
+	const effortBudgets = resolveAgentRunEffortBudgets(effort, params.budgets);
 	if (effortBudgets.error) {
 		return {
 			ok: false,
@@ -322,22 +256,6 @@ export async function dispatchAgentRun(
 	}
 	const budgets = effortBudgets.budgets;
 
-	if (runTemplate === 'deep_research' && scopeMode !== 'read_only') {
-		return {
-			ok: false,
-			status: HttpStatus.BAD_REQUEST,
-			code: 'INVALID_REQUEST',
-			message: 'Deep research runs must use read-only scope'
-		};
-	}
-	if (runTemplate === 'deep_research' && (params.depth ?? 0) !== 0) {
-		return {
-			ok: false,
-			status: HttpStatus.BAD_REQUEST,
-			code: 'INVALID_REQUEST',
-			message: 'Deep research can only be dispatched as a top-level run'
-		};
-	}
 	if (contextType === 'project' && !projectId) {
 		return {
 			ok: false,
@@ -369,15 +287,6 @@ export async function dispatchAgentRun(
 
 	const active = await countActiveAgentRuns({ admin, userId: params.userId });
 	if (!active.ok) return active;
-	if (runTemplate === 'deep_research' && active.count > 0) {
-		return {
-			ok: false,
-			status: HttpStatus.TOO_MANY_REQUESTS,
-			code: 'RATE_LIMITED',
-			message:
-				'Deep research needs the three Agent Run slots free for its coordinator and researchers.'
-		};
-	}
 	if (active.count >= MAX_CONCURRENT_AGENT_RUNS) {
 		return {
 			ok: false,
@@ -467,11 +376,7 @@ export async function dispatchAgentRun(
 		const message = createError?.message ?? 'Unknown error';
 		// Capacity raises from the trigger surface as generic Postgres errors —
 		// map them to the same 429s the fast-path pre-check produces.
-		if (
-			message.includes('agent_run_limit_exceeded') ||
-			message.includes('Deep research requires') ||
-			message.includes('Agent Run slots are reserved')
-		) {
+		if (message.includes('agent_run_limit_exceeded')) {
 			return {
 				ok: false,
 				status: HttpStatus.TOO_MANY_REQUESTS,

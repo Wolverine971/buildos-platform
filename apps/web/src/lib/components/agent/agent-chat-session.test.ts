@@ -1158,6 +1158,7 @@ describe('agent-chat-session helpers', () => {
 			session: { id: 'session-2' },
 			prewarmedContext: { key: 'global:none' },
 			preparedPrompt: null,
+			preparedPromptsEnabled: true,
 			reason: null
 		});
 	});

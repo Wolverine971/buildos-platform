@@ -13,7 +13,6 @@ import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { runAgentRunStrandedSweep } from '../../src/workers/agent-run/agentRunStrandedSweep';
 import type {
-	StrandedChildRow,
 	StrandedParentRow,
 	StrandedRunRow,
 	StrandedSweepStore
@@ -140,14 +139,6 @@ describePostgres('agent run stranded sweep (integration)', () => {
 			`);
 			return rows[0] ?? null;
 		},
-		async loadChildren(parentRunId) {
-			return psqlJson<StrandedChildRow[]>(`
-				SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json)::text
-				FROM (
-					SELECT id, status FROM public.agent_runs WHERE parent_run_id = '${parentRunId}'
-				) t
-			`);
-		},
 		async enqueueContinuation(userId, metadata, dedupKey) {
 			try {
 				psql(`
@@ -159,19 +150,6 @@ describePostgres('agent run stranded sweep (integration)', () => {
 				return {};
 			} catch (error) {
 				return { errorMessage: error instanceof Error ? error.message : String(error) };
-			}
-		},
-		async wakeSynthesis(parentRunId) {
-			try {
-				const jobId = psql(
-					`SELECT COALESCE(public.queue_deep_research_synthesis('${parentRunId}')::text, '')`
-				);
-				return { jobId: jobId ? jobId : null };
-			} catch (error) {
-				return {
-					jobId: null,
-					errorMessage: error instanceof Error ? error.message : String(error)
-				};
 			}
 		},
 		async finalizeRun({ runId, expectedStatuses, expectedUpdatedAt, status, error }) {
@@ -439,38 +417,6 @@ describePostgres('agent run stranded sweep (integration)', () => {
 		);
 	});
 
-	it('wakes synthesis for a researching root whose children have all settled', async () => {
-		const rootId = '10000000-0000-4000-8000-000000000001';
-		const childOne = '20000000-0000-4000-8000-000000000001';
-		const childTwo = '20000000-0000-4000-8000-000000000002';
-		insertRoot(rootId, 'researching', [childOne, childTwo]);
-		insertChild(childOne, rootId);
-		insertChild(childTwo, rootId);
-		settleChild(childOne, 'completed');
-		settleChild(childTwo, 'partial');
-
-		// Precondition: stranded — settled children, still 'researching', no job.
-		expect(
-			psql(`SELECT orchestration_state->>'stage' FROM public.agent_runs WHERE id='${rootId}'`)
-		).toBe('researching');
-		expect(psql('SELECT COUNT(*) FROM public.queue_jobs')).toBe('0');
-
-		const summary = await sweep();
-
-		expect(summary.synthesisWoken).toBe(1);
-		expect(summary.errors).toBe(0);
-		expect(
-			psql(`SELECT orchestration_state->>'stage' FROM public.agent_runs WHERE id='${rootId}'`)
-		).toBe('synthesis_queued');
-		expect(psql('SELECT COUNT(*) FROM public.queue_jobs')).toBe('1');
-		expect(psql(`SELECT dedup_key FROM public.queue_jobs LIMIT 1`)).toBe(
-			`agent-run:${rootId}:synthesis`
-		);
-		expect(psql(`SELECT metadata->>'continuation_from' FROM public.queue_jobs LIMIT 1`)).toBe(
-			'children'
-		);
-	});
-
 	it('re-enqueues a jobless within-deadline run exactly once even when called twice', async () => {
 		const runId = '10000000-0000-4000-8000-000000000010';
 		psql(`
@@ -545,7 +491,6 @@ describePostgres('agent run stranded sweep (integration)', () => {
 			scanned: 1,
 			requeuedContinuations: 0,
 			finalizedFailed: 0,
-			finalizedPartial: 0,
 			errors: 0
 		});
 		expect(psql(`SELECT status FROM public.agent_runs WHERE id='${runId}'`)).toBe('running');

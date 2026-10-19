@@ -224,22 +224,24 @@ describe('agent_run worker budget behavior', () => {
 	it('allows a final submit_result turn after the tool-call budget is reached', () => {
 		const source = readRepoFile('apps/worker/src/workers/agent-run/agentRunWorker.ts');
 
-		expect(source).toContain('TOOL CALL BUDGET EXHAUSTED');
+		expect(readRepoFile('apps/worker/src/workers/agent-run/agentRunPrompt.ts')).toContain(
+			'TOOL CALL BUDGET EXHAUSTED'
+		);
 		expect(source).toContain('toolCallBudgetReached: toolCallBudgetReached()');
 		expect(source).toContain('userPrompt: turnTokenPlan.forceSubmitResult');
 		expect(source).toContain("return finalizeBudgetExhausted('tool-call budget exhausted')");
 	});
 
-	it('uses a finalization turn before the deep-research token hard ceiling', () => {
+	it('uses a finalization turn before the deep-effort token hard ceiling', () => {
 		const source = readRepoFile('apps/worker/src/workers/agent-run/agentRunWorker.ts');
 
 		expect(source).toContain('resolveAgentRunTokenPlan({');
 		expect(source).toContain("note: 'finalizing before token hard ceiling'");
 		expect(source).toContain('maxTokens: turnTokenPlan.maxOutputTokens');
-		expect(source).toContain('renderDeepResearchFinalizationContext(researchObservations)');
+		expect(source).toContain('renderWebResearchFinalizationContext(researchObservations)');
 	});
 
-	it('gives one deep-research provider fallback a separate reservation', () => {
+	it('gives one deep-effort provider fallback a separate reservation', () => {
 		const source = readRepoFile('apps/worker/src/workers/agent-run/agentRunWorker.ts');
 
 		expect(source).toContain('turnAttemptKey(job.id, jobAttempts, iteration, providerAttempt)');
@@ -258,28 +260,6 @@ describe('agent_run worker steering boundary', () => {
 		expect(source).toContain('const postTurnSignalDrain = await drainControlSignals();');
 		expect(source).toContain("if (postTurnSignalDrain.kind === 'return')");
 		expect(source).toContain("if (postTurnSignalDrain.kind === 'steered')");
-	});
-});
-
-describe('agent_run worker Tavily cost-ledger bridge', () => {
-	// The module imports a live Supabase client at load time
-	// (`const paidToolUsageLogger = new LLMUsageLogger({ supabase })`), so this
-	// settlement site is exercised as a source contract rather than invoked
-	// directly — see agentRunWebResearch.test.ts for the paid-tool port itself.
-	it('logs settled Tavily web-search charges into llm_usage_logs alongside the cost ledger', () => {
-		const source = readRepoFile('apps/worker/src/workers/agent-run/agentRunWorker.ts');
-
-		expect(source).toContain('const paidToolUsageLogger = new LLMUsageLogger({ supabase });');
-		expect(source).toContain('await paidToolUsageLogger.logUsageToDatabase({');
-		expect(source).toContain("operationType: 'agent_run_web_search'");
-		expect(source).toContain("provider: 'tavily'");
-		expect(source).toContain('promptTokens: 0,');
-		expect(source).toContain('completionTokens: 0,');
-		expect(source).toContain('totalTokens: 0,');
-		expect(source).toContain('totalCost: settlement.charge.cost_usd,');
-		expect(source).toContain('agent_run_id: runId,');
-		expect(source).toContain('attempt_key: dispatchedPaidTool.attemptKey,');
-		expect(source).toContain('tavily_credits: settlement.charge.credits,');
 	});
 });
 
@@ -392,16 +372,17 @@ describe('agent_run job metadata contract', () => {
 		expect(meta.budgets?.max_cost_usd).toBe(0.5);
 		expect(meta.effort).toBe('deep');
 
-		const researchContinuation = validateAgentRunMetadata({
-			run_id: RUN_ID,
-			trigger: 'chat',
-			context_type: 'global',
-			scope_mode: 'read_only',
-			effort: 'deep',
-			run_template: 'deep_research',
-			continuation_from: 'children'
-		});
-		expect(researchContinuation.continuation_from).toBe('children');
+		expect(() =>
+			validateAgentRunMetadata({
+				run_id: RUN_ID,
+				trigger: 'chat',
+				context_type: 'global',
+				scope_mode: 'read_only',
+				effort: 'deep',
+				run_template: 'deep_research',
+				continuation_from: 'children'
+			})
+		).toThrow();
 
 		expect(() =>
 			validateAgentRunMetadata({

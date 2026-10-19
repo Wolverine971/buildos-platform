@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/context-cache.ts
-import type { ChatContextType } from '@buildos/shared-types';
+import type { ChatContextType, ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { buildAgenticChatContextCacheKeyInput, normalizeAgenticChatContextType } from './scope';
 
@@ -62,6 +62,21 @@ export type FastChatContextCache = {
 	context: FastChatPromptContextSnapshot;
 };
 
+/** Browser readiness only; reusable context stays in the server-side snapshot store. */
+export type FastChatContextWarmReceipt = Pick<
+	FastChatContextCache,
+	'version' | 'key' | 'created_at'
+>;
+
+/** Legacy session caches must not ride browser responses or worker session events. */
+export function withoutFastChatContextCache(
+	metadata: ChatSession['agent_metadata']
+): ChatSession['agent_metadata'] {
+	if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return metadata;
+	const { fastchat_context_cache: _cache, ...rest } = metadata;
+	return rest;
+}
+
 export function buildFastChatContextCacheKey(params: {
 	contextType: ChatContextType;
 	entityId?: string | null;
@@ -81,7 +96,7 @@ export function buildFastChatContextCacheKey(params: {
 }
 
 export function isFastChatContextCacheFresh(
-	cache: FastChatContextCache | null | undefined,
+	cache: FastChatContextWarmReceipt | null | undefined,
 	nowMs: number = Date.now()
 ): boolean {
 	if (!cache?.created_at) return false;

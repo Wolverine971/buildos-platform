@@ -1,6 +1,8 @@
 // apps/web/src/lib/components/agent/agent-chat-prewarm.svelte.test.ts
+// @vitest-environment jsdom
 import { requireTestValue } from '$lib/test-helpers/require-test-value';
 import { describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
 import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
@@ -302,14 +304,15 @@ describe('PrewarmController — orchestrate', () => {
 	});
 
 	it('pauses in a hidden tab and re-runs when the tab becomes visible again', () => {
-		// This suite runs without a DOM; give the controller a minimal document.
+		// Control visibility without depending on jsdom's document defaults.
 		const documentStub = Object.assign(new EventTarget(), {
 			visibilityState: 'hidden' as DocumentVisibilityState
 		});
-		(globalThis as Record<string, unknown>).document = documentStub;
+		vi.stubGlobal('document', documentStub);
 		try {
 			const h = createHarness();
-			const cleanup = h.controller.orchestrate();
+			const cleanup = h.controller.orchestrateTransportWarmup();
+			h.controller.orchestrate();
 			expect(h.prewarm).not.toHaveBeenCalled();
 
 			const tickBefore = h.controller.refreshTick;
@@ -318,7 +321,7 @@ describe('PrewarmController — orchestrate', () => {
 			expect(h.controller.refreshTick).toBe(tickBefore + 1);
 			cleanup?.();
 		} finally {
-			delete (globalThis as Record<string, unknown>).document;
+			vi.unstubAllGlobals();
 		}
 	});
 
@@ -390,7 +393,7 @@ describe('PrewarmController — orchestrate', () => {
 		);
 	});
 
-	it('warms only context for a new chat and re-warms when that context ages out', async () => {
+	it('warms new-chat context again only after activity, not expiry alone', async () => {
 		vi.useFakeTimers();
 		try {
 			const h = createHarness({ currentSession: null });
@@ -415,6 +418,9 @@ describe('PrewarmController — orchestrate', () => {
 
 			const tickBefore = h.controller.refreshTick;
 			vi.advanceTimersByTime(61_000);
+			expect(h.controller.refreshTick).toBe(tickBefore);
+			expect(h.prewarm).toHaveBeenCalledTimes(1);
+			h.controller.noteActivity();
 			expect(h.controller.refreshTick).toBeGreaterThan(tickBefore);
 			h.controller.orchestrate();
 			expect(h.prewarm).toHaveBeenCalledTimes(2);
@@ -543,9 +549,7 @@ describe('PrewarmController — orchestrate', () => {
 		expect(h.prewarm).toHaveBeenCalledTimes(1);
 	});
 
-	it('re-fires after the prepared-prompt retry window expires', async () => {
-		// Regression: nothing else re-runs the orchestrator effect when the
-		// 10s retry window lapses — the refresh timer must bump refreshTick.
+	it('retries an empty prepared prompt only on activity after the backoff', async () => {
 		vi.useFakeTimers();
 		try {
 			const h = createHarness();
@@ -562,17 +566,85 @@ describe('PrewarmController — orchestrate', () => {
 			await flushMicrotasks();
 			expect(h.prewarm).toHaveBeenCalledTimes(1);
 
-			// Retry window active: the rerun skips but arms the wake-up timer.
+			// Retry window active: neither an effect rerun nor typing retries it.
 			h.controller.orchestrate();
 			expect(h.prewarm).toHaveBeenCalledTimes(1);
 			const tickBefore = h.controller.refreshTick;
+			h.controller.noteActivity();
+			expect(h.controller.refreshTick).toBe(tickBefore);
 
 			vi.advanceTimersByTime(11_000);
+			expect(h.controller.refreshTick).toBe(tickBefore);
+			h.controller.noteActivity();
 			expect(h.controller.refreshTick).toBeGreaterThan(tickBefore);
 
 			// The effect rerun (simulated) now issues a fresh prewarm.
 			h.controller.orchestrate();
 			expect(h.prewarm).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps an idle chat quiet and prepares a usable prompt when typing resumes', async () => {
+		vi.useFakeTimers();
+		const h = createHarness();
+		const key = h.controller.resolveCurrentKey()!;
+		h.prewarm.mockImplementation(async () => ({
+			session: null,
+			prewarmedContext: makeCache({ key }),
+			preparedPrompt: makePreparedPrompt({ cacheKey: key })
+		}));
+		const dispose = $effect.root(() => {
+			$effect(() => h.controller.orchestrate());
+		});
+		try {
+			flushSync();
+			await flushMicrotasks(8);
+			flushSync();
+			expect(h.prewarm).toHaveBeenCalledTimes(1);
+			await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+			flushSync();
+			expect(h.prewarm).toHaveBeenCalledTimes(1);
+			expect(h.controller.matchingFreshPreparedPrompt(key)).toBeNull();
+
+			h.controller.noteActivity();
+			flushSync();
+			await flushMicrotasks(8);
+			flushSync();
+			expect(h.prewarm).toHaveBeenCalledTimes(2);
+			expect(await h.controller.waitForPreparedPrompt(key)).not.toBeNull();
+			for (let i = 0; i < 20; i += 1) h.controller.noteActivity();
+			flushSync();
+			expect(h.prewarm).toHaveBeenCalledTimes(2);
+		} finally {
+			dispose();
+			h.controller.reset();
+			vi.useRealTimers();
+		}
+	});
+
+	it('honors disabled prepared prompts without retrying while context is fresh', async () => {
+		vi.useFakeTimers();
+		try {
+			const h = createHarness();
+			const key = h.controller.resolveCurrentKey()!;
+			h.prewarm.mockResolvedValue({
+				session: null,
+				prewarmedContext: makeCache({ key }),
+				preparedPrompt: null,
+				preparedPromptsEnabled: false
+			});
+			h.controller.orchestrate();
+			await flushMicrotasks(8);
+			vi.advanceTimersByTime(11_000);
+			h.controller.noteActivity();
+			h.controller.orchestrate();
+			expect(h.prewarm).toHaveBeenCalledTimes(1);
+			vi.advanceTimersByTime(120_000);
+			h.controller.noteActivity();
+			h.controller.orchestrate();
+			expect(h.prewarm.mock.calls[1]?.[0]).toMatchObject({ prepare_prompt: false });
 		} finally {
 			vi.useRealTimers();
 		}

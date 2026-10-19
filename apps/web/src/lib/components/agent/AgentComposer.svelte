@@ -59,6 +59,8 @@
 		onVoiceNoteSegmentError?: (error: string) => void;
 		onVoiceStopRequested?: () => void;
 		onKeyDownHandler?: (event: KeyboardEvent) => void;
+		/** Refresh speculative preparation only when the user engages with the composer. */
+		onActivity?: () => void;
 		onSend?: () => void;
 		onStop?: () => void;
 		imageAttachments?: AgentChatImageAttachment[];
@@ -104,6 +106,7 @@
 		onVoiceNoteSegmentError,
 		onVoiceStopRequested,
 		onKeyDownHandler,
+		onActivity,
 		onSend,
 		onStop,
 		imageAttachments = [],
@@ -461,6 +464,8 @@
 		showLiveTranscriptPreview={true}
 		{vocabularyTerms}
 		onkeydown={onKeyDownHandler}
+		onfocus={onActivity}
+		oninput={onActivity}
 	>
 		{#snippet actions()}
 			<!-- INKPRINT action buttons: inline with status row hints -->

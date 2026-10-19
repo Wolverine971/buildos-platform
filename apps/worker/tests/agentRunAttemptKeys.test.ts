@@ -8,7 +8,6 @@ import { describe, expect, it } from 'vitest';
 import { OpenRouterEmptyContentError } from '@buildos/smart-llm';
 import {
 	buildForcedFinalSystemPrompt,
-	deepResearchAttemptKey,
 	isAgentRunQueueRetryResume,
 	shouldRetryAgentRunLlmTurn,
 	shouldUseDurableResearchContext,
@@ -21,9 +20,6 @@ const JOB = 'agent_run_abc';
 describe('agent run attempt keys', () => {
 	it('embeds the job retry ordinal in every key shape', () => {
 		expect(turnAttemptKey(JOB, 0, 3)).toBe(`llm:${JOB}:a0:turn:3`);
-		expect(deepResearchAttemptKey(JOB, 0, 'synthesis')).toBe(
-			`llm:${JOB}:a0:deep-research:synthesis`
-		);
 		expect(toolAttemptKey(JOB, 0, 2, 'util.web.search')).toBe(
 			`tool:${JOB}:a0:2:util.web.search`
 		);
@@ -31,9 +27,6 @@ describe('agent run attempt keys', () => {
 
 	it('changes the key across a retry of the same job (fresh reservation)', () => {
 		expect(turnAttemptKey(JOB, 0, 3)).not.toBe(turnAttemptKey(JOB, 1, 3));
-		expect(deepResearchAttemptKey(JOB, 0, 'plan')).not.toBe(
-			deepResearchAttemptKey(JOB, 1, 'plan')
-		);
 		expect(toolAttemptKey(JOB, 0, 2, 'util.web.search')).not.toBe(
 			toolAttemptKey(JOB, 1, 2, 'util.web.search')
 		);
@@ -49,9 +42,6 @@ describe('agent run attempt keys', () => {
 	it('is stable within a single job run per iteration / stage / tool call', () => {
 		expect(turnAttemptKey(JOB, 2, 5)).toBe(turnAttemptKey(JOB, 2, 5));
 		expect(turnAttemptKey(JOB, 2, 5)).not.toBe(turnAttemptKey(JOB, 2, 6));
-		expect(deepResearchAttemptKey(JOB, 2, 'plan')).not.toBe(
-			deepResearchAttemptKey(JOB, 2, 'synthesis')
-		);
 		expect(toolAttemptKey(JOB, 2, 3, 'util.web.search')).not.toBe(
 			toolAttemptKey(JOB, 2, 4, 'util.web.search')
 		);
@@ -106,7 +96,6 @@ describe('agent run attempt keys', () => {
 	it('uses compact durable state only for research-scoped web runs', () => {
 		expect(
 			shouldUseDurableResearchContext({
-				isResearchEvidenceChild: false,
 				effort: 'deep',
 				scopeMode: 'read_only',
 				allowedOps: ['util.web.search', 'util.web.visit']
@@ -114,7 +103,6 @@ describe('agent run attempt keys', () => {
 		).toBe(true);
 		expect(
 			shouldUseDurableResearchContext({
-				isResearchEvidenceChild: false,
 				effort: 'deep',
 				scopeMode: 'read_only',
 				allowedOps: ['util.web.search', 'onto.project.get']

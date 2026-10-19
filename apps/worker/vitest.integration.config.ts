@@ -9,7 +9,8 @@ export default defineConfig({
 		// This runner owns a disposable local PostgreSQL cluster and intentionally
 		// excludes older integration suites that depend on external credentials.
 		include: [
-			'tests/integration/deepResearchMigration.test.ts',
+			'tests/integration/agentRunAdmission.test.ts',
+			'tests/integration/agentRunCostMigrations.test.ts',
 			'tests/integration/agentRunStrandedSweep.test.ts',
 			'tests/integration/agentRunCostWiring.test.ts'
 		],

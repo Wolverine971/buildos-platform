@@ -40,7 +40,8 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	composeFastChatHistory: composeHistoryMock
 }));
 
-vi.mock('$lib/services/agentic-chat-v2/context-cache', () => ({
+vi.mock('$lib/services/agentic-chat-v2/context-cache', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/services/agentic-chat-v2/context-cache')>()),
 	FASTCHAT_CONTEXT_CACHE_VERSION: 1,
 	buildFastChatContextCacheKey: ({
 		contextType,
@@ -58,7 +59,7 @@ vi.mock('$lib/services/agentic-chat-v2/context-cache', () => ({
 	}) => ({
 		version: 1,
 		key: cacheKey,
-		warmed_at: '2026-03-12T00:00:00.000Z',
+		created_at: '2026-03-12T00:00:00.000Z',
 		context
 	}),
 	isFastChatContextCacheFresh: () => true
@@ -178,7 +179,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 		);
 		expect(payload.data.session.id).toBe('session-1');
 		expect(payload.data.prewarmed_context.key).toBe('global:none');
-		expect(mergeRpcMock).toHaveBeenCalledWith(
+		expect(mergeRpcMock).not.toHaveBeenCalledWith(
 			'merge_chat_session_agent_metadata',
 			expect.objectContaining({
 				p_session_id: 'session-1'
@@ -277,6 +278,78 @@ describe('POST /api/agent/v2/prewarm', () => {
 		expect(insertPreparedPrompt).not.toHaveBeenCalled();
 	});
 
+	it('reads an existing session once without touching activity, focus, or cache metadata', async () => {
+		const projectId = '11111111-1111-4111-8111-111111111111';
+		const session = {
+			id: 'session-1',
+			user_id: 'user-1',
+			context_type: 'project',
+			entity_id: projectId,
+			updated_at: '2026-01-01T00:00:00.000Z',
+			agent_metadata: {
+				focus: { focusType: 'project-wide' },
+				fastchat_context_cache: { data: 'legacy'.repeat(8_000) }
+			}
+		};
+		const original = structuredClone(session);
+		const query = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			maybeSingle: vi.fn().mockResolvedValue({ data: session, error: null })
+		};
+		const from = vi.fn(() => query);
+		const rpc = vi.fn(async (name: string) => ({
+			data:
+				name === 'ensure_actor_for_user'
+					? 'actor-1'
+					: name === 'current_actor_has_project_member_access'
+						? true
+						: null,
+			error: null
+		}));
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/prewarm', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					session_id: session.id,
+					context_type: 'project',
+					entity_id: projectId,
+					projectFocus: {
+						projectId,
+						projectName: 'Project',
+						focusType: 'task',
+						focusEntityId: '22222222-2222-4222-8222-222222222222',
+						focusEntityName: 'Focused task'
+					},
+					prepare_prompt: false
+				})
+			}),
+			locals: {
+				safeGetSession: async () => ({ user: { id: 'user-1' } }),
+				supabase: { from, rpc }
+			}
+		} as any);
+		const payload = await response.json();
+		expect(response.status).toBe(200);
+		expect(payload.data.warmed).toBe(true);
+		expect(query.maybeSingle).toHaveBeenCalledOnce();
+		expect(query.eq).toHaveBeenCalledWith('user_id', 'user-1');
+		expect(resolveSessionMock).not.toHaveBeenCalled();
+		expect(rpc).not.toHaveBeenCalledWith(
+			'merge_chat_session_agent_metadata',
+			expect.anything()
+		);
+		expect(session).toEqual(original);
+		expect(payload.data.session).toBeNull();
+		expect(payload.data.prewarmed_context).toEqual({
+			version: 1,
+			key: `project:${projectId}`,
+			created_at: expect.any(String)
+		});
+		expect(JSON.stringify(payload).length).toBeLessThan(1_000);
+	});
+
 	it('denies ontology prewarm before context loading when project membership is missing', async () => {
 		const projectId = '11111111-1111-4111-8111-111111111111';
 		const rpc = vi.fn(async (fn: string) => {
@@ -328,7 +401,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 			version: 1,
 			key: 'global:none',
 			invalidation_token: 'global:v1:test',
-			warmed_at: '2026-03-12T00:00:00.000Z',
+			created_at: '2026-03-12T00:00:00.000Z',
 			context: {
 				contextLoadSource: 'rpc',
 				contextType: 'global',
@@ -429,7 +502,11 @@ describe('POST /api/agent/v2/prewarm', () => {
 			expect.objectContaining({
 				warmed: true,
 				cache_source: 'session_cache',
-				prewarmed_context: cachedContext,
+				prewarmed_context: {
+					version: cachedContext.version,
+					key: cachedContext.key,
+					created_at: cachedContext.created_at
+				},
 				prepared_prompt: expect.objectContaining({
 					key: expect.any(String),
 					cache_key: 'global:none'
@@ -620,6 +697,7 @@ describe('POST /api/agent/v2/prewarm', () => {
 			id: 'session-1',
 			user_id: 'user-1',
 			context_type: 'project',
+			entity_id: projectId,
 			summary: null,
 			agent_metadata: {
 				fastchat_context_cache: cachedContext

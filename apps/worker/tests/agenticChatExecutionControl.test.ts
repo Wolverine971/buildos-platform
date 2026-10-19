@@ -602,6 +602,146 @@ describe('SupabaseAgenticChatExecutionControlAdapter', () => {
 		);
 	});
 
+	it.each([true, false])(
+		'folds finalizing into the terminal RPC (timing=%s)',
+		async (withTiming) => {
+			const lastTurnContext = {
+				summary: 'Done',
+				entities: {},
+				context_type: 'global',
+				data_accessed: []
+			};
+			const finalizingEvent = {
+				type: 'turn_phase',
+				turn_phase: 'finalizing',
+				message: 'Wrapping up…'
+			};
+			const finalizingTransitionId = 'd0000000-0000-5000-8000-00000000000d';
+			const lifecycle = {
+				...committedContextReceipt({}, TERMINAL_SEQUENCE - (withTiming ? 3 : 2)),
+				phase: 'stream',
+				event_type: 'turn_phase',
+				transition_id: finalizingTransitionId,
+				event_payload: finalizingEvent
+			};
+			const prefix: Record<string, unknown>[] = [
+				lifecycle,
+				committedContextReceipt(lastTurnContext, TERMINAL_SEQUENCE - (withTiming ? 2 : 1))
+			];
+			if (withTiming) prefix.push(committedTimingReceipt(asyncTimingDraft()));
+			const { adapter, rpc } = adapterFor([terminalReceipt({ preterminal_events: prefix })]);
+			await expect(
+				adapter.finalize(
+					finalizeInput({
+						lastTurnContext,
+						lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID,
+						finalizingEvent,
+						finalizingTransitionId,
+						...(withTiming
+							? {
+									timingDraft: asyncTimingDraft(),
+									timingTransitionId: TIMING_TRANSITION_ID
+								}
+							: {})
+					})
+				)
+			).resolves.toMatchObject({ preterminal_events: prefix });
+			expect(rpc).toHaveBeenCalledOnce();
+			expect(rpc).toHaveBeenCalledWith(
+				'finalize_agentic_chat_turn_with_lifecycle',
+				expect.objectContaining({
+					p_finalizing_event: finalizingEvent,
+					p_finalizing_transition_id: finalizingTransitionId
+				})
+			);
+		}
+	);
+
+	it.each([
+		{ sequence_index: TERMINAL_SEQUENCE },
+		{ execution_generation: EXECUTION_GENERATION + 1 },
+		{ turn_run_id: USER_ID },
+		{ user_id: TURN_RUN_ID },
+		{ transition_id: TIMING_TRANSITION_ID },
+		{ phase: 'finalize' },
+		{ event_payload: { type: 'turn_phase', turn_phase: 'acknowledged', message: 'Thinking…' } },
+		{ outcome: 'already_persisted', publish_allowed: false }
+	])('rejects inconsistent finalizing receipt %j', async (overrides) => {
+		const lastTurnContext = {
+			summary: 'Done',
+			entities: {},
+			context_type: 'global',
+			data_accessed: []
+		};
+		const finalizingEvent = {
+			type: 'turn_phase',
+			turn_phase: 'finalizing',
+			message: 'Wrapping up…'
+		};
+		const finalizingTransitionId = 'd0000000-0000-5000-8000-00000000000d';
+		const { adapter } = adapterFor([
+			terminalReceipt({
+				preterminal_events: [
+					{
+						...committedContextReceipt({}, TERMINAL_SEQUENCE - 2),
+						phase: 'stream',
+						event_type: 'turn_phase',
+						transition_id: finalizingTransitionId,
+						event_payload: finalizingEvent,
+						...overrides
+					},
+					committedContextReceipt(lastTurnContext, TERMINAL_SEQUENCE - 1)
+				]
+			})
+		]);
+		await expect(
+			adapter.finalize(
+				finalizeInput({
+					lastTurnContext,
+					lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID,
+					finalizingEvent,
+					finalizingTransitionId
+				})
+			)
+		).rejects.toBeInstanceOf(AgenticChatExecutionControlProtocolError);
+	});
+
+	it.each(['cancel_requested', 'already_terminal'])(
+		'accepts %s without creating a finalizing prefix',
+		async (outcome) => {
+			const receipt =
+				outcome === 'already_terminal'
+					? terminalReceipt({ outcome })
+					: {
+							...terminalReceipt(),
+							outcome,
+							status: 'running',
+							cancel_requested_at: '2026-08-03T12:00:00.000Z',
+							cancel_reason: 'user_cancelled'
+						};
+			const { adapter } = adapterFor([receipt]);
+			await expect(
+				adapter.finalize(
+					finalizeInput({
+						lastTurnContext: {
+							summary: 'Done',
+							entities: {},
+							context_type: 'global',
+							data_accessed: []
+						},
+						lastTurnContextTransitionId: LAST_CONTEXT_TRANSITION_ID,
+						finalizingEvent: {
+							type: 'turn_phase',
+							turn_phase: 'finalizing',
+							message: 'Wrapping up…'
+						},
+						finalizingTransitionId: 'd0000000-0000-5000-8000-00000000000d'
+					})
+				)
+			).resolves.toMatchObject({ outcome });
+		}
+	);
+
 	it('uses the ordered terminal-event RPC for a cancelled partial response', async () => {
 		const lastTurnContext = {
 			summary: 'Partial answer.',

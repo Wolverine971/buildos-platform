@@ -5,7 +5,6 @@ import {
 	runAgentRunStrandedSweep
 } from '../src/workers/agent-run/agentRunStrandedSweep';
 import type {
-	StrandedChildRow,
 	StrandedParentRow,
 	StrandedRunRow,
 	StrandedSweepStore
@@ -47,34 +46,6 @@ function candidate(overrides: Partial<StrandedRunRow> = {}): StrandedRunRow {
 	};
 }
 
-function deepRoot(
-	stage: 'planning' | 'dispatching' | 'researching' | 'synthesis_queued' | 'synthesizing',
-	overrides: Partial<StrandedRunRow> = {}
-): StrandedRunRow {
-	return candidate({
-		run_template: 'deep_research',
-		depth: 0,
-		scope_mode: 'read_only',
-		effort: 'deep',
-		orchestration_state: {
-			version: 1,
-			stage,
-			child_run_ids: [...CHILD_IDS]
-		},
-		budgets: {
-			max_cost_usd: 0.5,
-			max_tool_calls: 10,
-			max_tokens: 60_000,
-			wall_clock_ms: 600_000
-		},
-		...overrides
-	});
-}
-
-function child(id: string, status: StrandedChildRow['status']): StrandedChildRow {
-	return { id, status };
-}
-
 function makeStore(overrides: Partial<StrandedSweepStore> = {}): {
 	store: StrandedSweepStore;
 	mocks: {
@@ -87,9 +58,7 @@ function makeStore(overrides: Partial<StrandedSweepStore> = {}): {
 		loadParent: vi.fn<StrandedSweepStore['loadParent']>(
 			async () => null as StrandedParentRow | null
 		),
-		loadChildren: vi.fn(async () => [] as StrandedChildRow[]),
 		enqueueContinuation: vi.fn(async () => ({}) as { errorMessage?: string }),
-		wakeSynthesis: vi.fn(async () => ({ jobId: 'agent-run-job-1' })),
 		finalizeRun: vi.fn(async () => true),
 		ensureCancelSignal: vi.fn(async () => undefined),
 		recoverStalledCommit: vi.fn(
@@ -121,59 +90,21 @@ describe('agentRunStrandedSweepEnabled', () => {
 });
 
 describe('runAgentRunStrandedSweep', () => {
+	it('cancels retired research instead of waking or re-enqueueing it', async () => {
+		const { store, mocks } = makeStore({
+			listStrandedCandidates: vi.fn(async () => [
+				candidate({ run_template: 'deep_research', status: 'queued' })
+			])
+		});
+		const result = await runAgentRunStrandedSweep({ store, now: () => NOW, graceMs: GRACE_MS });
+		expect(mocks.enqueueContinuation).not.toHaveBeenCalled();
+		expect(mocks.finalizeRun).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'cancelled', error: 'deep_research_retired' })
+		);
+		expect(result.retiredCancelled).toBeGreaterThan(0);
+	});
 	const run = (store: StrandedSweepStore) =>
 		runAgentRunStrandedSweep({ store, now: () => NOW, graceMs: GRACE_MS });
-
-	it('wakes synthesis for a researching root whose children have all settled', async () => {
-		const { store, mocks } = makeStore({
-			listStrandedCandidates: vi.fn(async () => [deepRoot('researching')]),
-			loadChildren: vi.fn(async () => [
-				child(CHILD_IDS[0], 'completed'),
-				child(CHILD_IDS[1], 'partial')
-			])
-		});
-
-		const summary = await run(store);
-
-		expect(mocks.wakeSynthesis).toHaveBeenCalledWith(ROOT_ID);
-		expect(summary.synthesisWoken).toBe(1);
-		expect(mocks.enqueueContinuation).not.toHaveBeenCalled();
-		expect(mocks.finalizeRun).not.toHaveBeenCalled();
-		expect(summary.errors).toBe(0);
-	});
-
-	it('does not wake synthesis while a researching root still has a non-terminal child', async () => {
-		const { store, mocks } = makeStore({
-			listStrandedCandidates: vi.fn(async () => [deepRoot('researching')]),
-			loadChildren: vi.fn(async () => [
-				child(CHILD_IDS[0], 'completed'),
-				child(CHILD_IDS[1], 'running')
-			])
-		});
-
-		const summary = await run(store);
-
-		expect(mocks.wakeSynthesis).not.toHaveBeenCalled();
-		expect(summary.synthesisWoken).toBe(0);
-		expect(summary.finalizedFailed).toBe(0);
-	});
-
-	it('does not count a synthesis wake the DB guard declined (jobId null)', async () => {
-		const { store, mocks } = makeStore({
-			listStrandedCandidates: vi.fn(async () => [deepRoot('researching')]),
-			loadChildren: vi.fn(async () => [
-				child(CHILD_IDS[0], 'completed'),
-				child(CHILD_IDS[1], 'completed')
-			]),
-			wakeSynthesis: vi.fn(async () => ({ jobId: null }))
-		});
-
-		const summary = await run(store);
-
-		expect(mocks.wakeSynthesis).toHaveBeenCalledOnce();
-		expect(summary.synthesisWoken).toBe(0);
-		expect(summary.errors).toBe(0);
-	});
 
 	it('re-enqueues a jobless within-deadline queued run with its original dedup key', async () => {
 		const queued = candidate({
@@ -234,7 +165,6 @@ describe('runAgentRunStrandedSweep', () => {
 
 		expect(mocks.enqueueContinuation).not.toHaveBeenCalled();
 		expect(mocks.finalizeRun).not.toHaveBeenCalled();
-		expect(mocks.wakeSynthesis).not.toHaveBeenCalled();
 		expect(summary).toMatchObject({
 			scanned: 1,
 			requeuedContinuations: 0,
@@ -358,70 +288,6 @@ describe('runAgentRunStrandedSweep', () => {
 		// The parked child of a terminal parent is still found and cancelled.
 		expect(summary.childrenCancelled).toBe(1);
 		expect(summary.scanned).toBe(2);
-	});
-
-	it('re-enqueues a jobless dispatching deep root within deadline (retryable stage)', async () => {
-		const root = deepRoot('dispatching', { started_at: minutesAgo(5) });
-		const { store, mocks } = makeStore({
-			listStrandedCandidates: vi.fn(async () => [root])
-		});
-
-		const summary = await run(store);
-
-		expect(mocks.enqueueContinuation).toHaveBeenCalledOnce();
-		const [, metadata, dedupKey] = mocks.enqueueContinuation.mock.calls[0];
-		expect(dedupKey).toBe(`agent-run:${ROOT_ID}`);
-		expect(metadata).toMatchObject({ run_template: 'deep_research', effort: 'deep', depth: 0 });
-		expect(summary.requeuedContinuations).toBe(1);
-	});
-
-	it('re-enqueues a jobless synthesizing deep root within deadline as a synthesis continuation', async () => {
-		const root = deepRoot('synthesizing', { started_at: minutesAgo(5) });
-		const { store, mocks } = makeStore({
-			listStrandedCandidates: vi.fn(async () => [root])
-		});
-
-		const summary = await run(store);
-
-		const [, metadata, dedupKey] = mocks.enqueueContinuation.mock.calls[0];
-		expect(dedupKey).toBe(`agent-run:${ROOT_ID}:synthesis`);
-		expect(metadata).toMatchObject({
-			continuation_from: 'children',
-			run_template: 'deep_research'
-		});
-		expect(summary.requeuedContinuations).toBe(1);
-	});
-
-	it('finalizes a past-deadline dispatching deep root as failed', async () => {
-		const root = deepRoot('dispatching', {
-			started_at: minutesAgo(30),
-			budgets: { max_cost_usd: 0.5, wall_clock_ms: 600_000 }
-		});
-		const { store, mocks } = makeStore({
-			listStrandedCandidates: vi.fn(async () => [root])
-		});
-
-		const summary = await run(store);
-
-		expect(mocks.enqueueContinuation).not.toHaveBeenCalled();
-		expect(mocks.finalizeRun).toHaveBeenCalledWith(
-			expect.objectContaining({ runId: ROOT_ID, status: 'failed' })
-		);
-		expect(summary.finalizedFailed).toBe(1);
-	});
-
-	it('finalizes a past-deadline synthesizing deep root as partial', async () => {
-		const root = deepRoot('synthesizing', { started_at: minutesAgo(30) });
-		const { store, mocks } = makeStore({
-			listStrandedCandidates: vi.fn(async () => [root])
-		});
-
-		const summary = await run(store);
-
-		expect(mocks.finalizeRun).toHaveBeenCalledWith(
-			expect.objectContaining({ runId: ROOT_ID, status: 'partial' })
-		);
-		expect(summary.finalizedPartial).toBe(1);
 	});
 
 	it('finalizes a stranded running ordinary run as failed rather than re-enqueueing', async () => {

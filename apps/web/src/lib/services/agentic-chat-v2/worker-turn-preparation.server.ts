@@ -1118,14 +1118,17 @@ function buildWorkerSessionEventSnapshot(input: {
 	session: ChatSession | null;
 	inlineAgentMetadata: unknown;
 }): AgenticChatSessionEventSnapshotV1 {
-	const source = toJsonObject(
-		input.session ?? {
-			summary: null,
-			agent_metadata: input.inlineAgentMetadata
-		}
-	);
-	const { id: _databaseScopedId, ...snapshot } = source;
-	return snapshot as AgenticChatSessionEventSnapshotV1;
+	const metadata = input.session ? input.session.agent_metadata : input.inlineAgentMetadata;
+	// This snapshot only hydrates the chat UI. Summary and domain state have
+	// separate execution snapshots; copying the row duplicates them (and caches)
+	// into every immutable artifact and public session event. Pick before cloning.
+	return toJsonObject({
+		title: input.session?.title,
+		auto_title: input.session?.auto_title,
+		context_type: input.session?.context_type,
+		entity_id: input.session?.entity_id,
+		agent_metadata: isRecord(metadata) ? { focus: metadata.focus } : {}
+	}) as AgenticChatSessionEventSnapshotV1;
 }
 
 async function resolveWorkerSessionIntent(params: {

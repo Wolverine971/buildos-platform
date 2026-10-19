@@ -3286,6 +3286,7 @@
 			/>
 		{/if}
 		<AgentComposer
+			onActivity={() => prewarm.noteActivity()}
 			bind:voiceInputRef={voice.ref}
 			bind:inputValue
 			bind:isVoiceRecording={voice.isRecording}

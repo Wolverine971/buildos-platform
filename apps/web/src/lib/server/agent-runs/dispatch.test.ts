@@ -58,62 +58,6 @@ describe('agent run effort and cost budgets', () => {
 		);
 	});
 
-	it('reserves durable defaults and enforces a minimum for deep research', () => {
-		expect(resolveAgentRunEffortBudgets('deep', undefined, 'deep_research')).toEqual({
-			budgets: {
-				max_cost_usd: 0.5,
-				wall_clock_ms: 600_000,
-				max_tokens: 60_000,
-				max_tool_calls: 10
-			}
-		});
-		expect(
-			resolveAgentRunEffortBudgets('deep', { max_cost_usd: 0.24 }, 'deep_research').error
-		).toContain('at least');
-		expect(
-			resolveAgentRunEffortBudgets(
-				'deep',
-				{ max_cost_usd: 0.5, max_tool_calls: 3 },
-				'deep_research'
-			).error
-		).toContain('at least 4 tool calls');
-		expect(
-			resolveAgentRunEffortBudgets(
-				'deep',
-				{ max_cost_usd: 0.5, max_tokens: 11_999 },
-				'deep_research'
-			).error
-		).toContain('at least 12000 tokens');
-		expect(
-			resolveAgentRunEffortBudgets(
-				'deep',
-				{ max_cost_usd: 0.5, max_tool_calls: 41 },
-				'deep_research'
-			).error
-		).toContain('cannot exceed 40 tool calls');
-		expect(
-			resolveAgentRunEffortBudgets(
-				'deep',
-				{ max_cost_usd: 0.5, max_tokens: 100_001 },
-				'deep_research'
-			).error
-		).toContain('cannot exceed 100000 tokens');
-		expect(
-			resolveAgentRunEffortBudgets(
-				'deep',
-				{ max_cost_usd: 0.5, wall_clock_ms: 1_200_001 },
-				'deep_research'
-			).error
-		).toContain('cannot exceed 1200000ms');
-		expect(
-			resolveAgentRunEffortBudgets(
-				'deep',
-				{ max_cost_usd: 0.5, wall_clock_ms: 0 },
-				'deep_research'
-			).error
-		).toContain('positive wall-clock budget');
-	});
-
 	it('validates the platform-wide manual budget ceiling', () => {
 		expect(normalizeAgentRunBudgets({ max_cost_usd: MAX_AGENT_RUN_COST_USD })).toEqual({
 			budgets: { max_cost_usd: MAX_AGENT_RUN_COST_USD }
@@ -225,7 +169,7 @@ describe('dispatchAgentRun atomic admission', () => {
 	});
 });
 
-describe('dispatchAgentRun deep research kill switch', () => {
+describe('dispatchAgentRun deep research retirement', () => {
 	const USER_ID = '00000000-0000-4000-8000-000000000001';
 
 	afterEach(() => {
@@ -244,9 +188,9 @@ describe('dispatchAgentRun deep research kill switch', () => {
 		expect(outcome.ok).toBe(false);
 		if (!outcome.ok) {
 			expect(outcome.status).toBe(403);
-			expect(outcome.code).toBe('DEEP_RESEARCH_DISABLED');
-			expect(outcome.message).toContain('Deep research is turned off');
-			expect(outcome.message).toContain('nothing was charged');
+			expect(outcome.code).toBe('DEEP_RESEARCH_RETIRED');
+			expect(outcome.message).toContain('Deep research has been retired');
+			expect(outcome.message).toContain('nothing was started or charged');
 		}
 		expect(fromCalls).toEqual([]);
 		expect(rpcCalls).toEqual([]);
@@ -281,7 +225,7 @@ describe('dispatchAgentRun deep research kill switch', () => {
 		expect((createCall?.args.p_run as Record<string, unknown>).run_template).toBe('agent');
 	});
 
-	it('admits deep_research only when explicitly enabled', async () => {
+	it('refuses retired deep research even with the old flag enabled', async () => {
 		privateEnv.PRIVATE_DEEP_RESEARCH_ENABLED = 'true';
 		const { admin, rpcCalls } = fakeAdmin({});
 		const outcome = await dispatchAgentRun({
@@ -291,10 +235,7 @@ describe('dispatchAgentRun deep research kill switch', () => {
 			admin
 		});
 
-		expect(outcome.ok).toBe(true);
-		const createCall = rpcCalls.find((call) => call.fn === 'create_agent_run_with_job');
-		expect((createCall?.args.p_run as Record<string, unknown>).run_template).toBe(
-			'deep_research'
-		);
+		expect(outcome.ok).toBe(false);
+		expect(rpcCalls).toEqual([]);
 	});
 });

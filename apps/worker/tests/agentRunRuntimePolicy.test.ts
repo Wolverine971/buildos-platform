@@ -3,15 +3,15 @@ import { describe, expect, it } from 'vitest';
 import {
 	classifyAgentRunTokenUsage,
 	estimateAgentRunPromptTokens,
-	renderDeepResearchFinalizationContext,
-	renderDeepResearchInterruptedAnswer,
-	renderDeepResearchWorkingContext,
+	renderWebResearchFinalizationContext,
+	renderWebResearchInterruptedAnswer,
+	renderWebResearchWorkingContext,
 	resolveAgentRunHardTokenLimit,
 	resolveAgentRunTokenPlan,
 	sanitizeAgentRunTelemetryJson
 } from '../src/workers/agent-run/agentRunRuntimePolicy';
 
-describe('deep-research token policy', () => {
+describe('deep-effort token policy', () => {
 	it('treats 20k as a soft target with a modest 22k hard ceiling', () => {
 		expect(resolveAgentRunHardTokenLimit(20_000, true)).toBe(22_000);
 		expect(resolveAgentRunHardTokenLimit(20_000, false)).toBe(20_000);
@@ -22,7 +22,7 @@ describe('deep-research token policy', () => {
 		const early = resolveAgentRunTokenPlan({
 			maxTokens: 20_000,
 			tokensUsed: 0,
-			isResearchEvidenceChild: true,
+			isDeepRun: true,
 			toolCallBudgetReached: false,
 			systemPrompt: 'system '.repeat(200),
 			normalUserPrompt: 'research next',
@@ -34,7 +34,7 @@ describe('deep-research token policy', () => {
 		const nearLimit = resolveAgentRunTokenPlan({
 			maxTokens: 20_000,
 			tokensUsed: 9_000,
-			isResearchEvidenceChild: true,
+			isDeepRun: true,
 			toolCallBudgetReached: false,
 			systemPrompt: 'system '.repeat(200),
 			normalUserPrompt: 'source material '.repeat(1_200),
@@ -50,7 +50,7 @@ describe('deep-research token policy', () => {
 		const usefulHeadroom = resolveAgentRunTokenPlan({
 			maxTokens: 20_000,
 			tokensUsed: 6_000,
-			isResearchEvidenceChild: true,
+			isDeepRun: true,
 			toolCallBudgetReached: false,
 			systemPrompt: 'system '.repeat(430),
 			normalUserPrompt: 'research context '.repeat(940),
@@ -65,7 +65,7 @@ describe('deep-research token policy', () => {
 		const plan = resolveAgentRunTokenPlan({
 			maxTokens: 20_000,
 			tokensUsed: 8_000,
-			isResearchEvidenceChild: true,
+			isDeepRun: true,
 			toolCallBudgetReached: false,
 			systemPrompt: 's',
 			normalUserPrompt: 'n'.repeat(14_000),
@@ -80,7 +80,6 @@ describe('deep-research token policy', () => {
 		const plan = resolveAgentRunTokenPlan({
 			maxTokens: 60_000,
 			tokensUsed: 48_000,
-			isResearchEvidenceChild: false,
 			isDeepRun: true,
 			toolCallBudgetReached: false,
 			systemPrompt: 'system '.repeat(300),
@@ -100,7 +99,7 @@ describe('deep-research token policy', () => {
 		const plan = resolveAgentRunTokenPlan({
 			maxTokens: 20_000,
 			tokensUsed: 2_000,
-			isResearchEvidenceChild: true,
+			isDeepRun: true,
 			toolCallBudgetReached: true,
 			systemPrompt: 'system',
 			normalUserPrompt: 'normal',
@@ -114,7 +113,7 @@ describe('deep-research token policy', () => {
 		const plan = resolveAgentRunTokenPlan({
 			maxTokens: 20_000,
 			tokensUsed: 21_500,
-			isResearchEvidenceChild: true,
+			isDeepRun: true,
 			toolCallBudgetReached: false,
 			systemPrompt: 'system',
 			normalUserPrompt: 'normal',
@@ -183,10 +182,10 @@ describe('agent-run telemetry JSON sanitation', () => {
 	});
 });
 
-describe('deep-research finalization context', () => {
+describe('deep-effort finalization context', () => {
 	it('renders only durable source URLs when interrupted instead of a raw tool transcript', () => {
 		expect(
-			renderDeepResearchInterruptedAnswer({
+			renderWebResearchInterruptedAnswer({
 				searchQueries: ['query'],
 				searchResults: [],
 				visitedSources: [
@@ -208,7 +207,7 @@ describe('deep-research finalization context', () => {
 			'Research stopped before final synthesis. Verified sources collected:\n\n- https://example.com/final'
 		);
 		expect(
-			renderDeepResearchInterruptedAnswer({
+			renderWebResearchInterruptedAnswer({
 				searchQueries: [],
 				searchResults: [],
 				visitedSources: []
@@ -217,7 +216,7 @@ describe('deep-research finalization context', () => {
 	});
 
 	it('keeps verified URLs and bounded source text for the evidence packet turn', () => {
-		const rendered = renderDeepResearchFinalizationContext({
+		const rendered = renderWebResearchFinalizationContext({
 			searchQueries: ['test query'],
 			searchResults: [],
 			visitedSources: [
@@ -259,7 +258,7 @@ describe('deep-research finalization context', () => {
 	});
 
 	it('keeps candidate URLs while bounding the normal research-turn context', () => {
-		const rendered = renderDeepResearchWorkingContext({
+		const rendered = renderWebResearchWorkingContext({
 			searchQueries: ['test query'],
 			searchResults: Array.from({ length: 15 }, (_, index) => ({
 				query: 'test query',

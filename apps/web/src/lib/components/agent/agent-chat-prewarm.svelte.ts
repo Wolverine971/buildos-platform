@@ -13,9 +13,8 @@ import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import {
 	buildFastChatContextCacheKey,
-	FASTCHAT_CONTEXT_CACHE_TTL_MS,
 	isFastChatContextCacheFresh,
-	type FastChatContextCache
+	type FastChatContextWarmReceipt
 } from '$lib/services/agentic-chat-v2/context-cache';
 import { isProjectContext, type PreparedPromptClient } from './agent-chat-session';
 import { PREPARED_PROMPT_SEND_WAIT_MS } from './agent-chat.constants';
@@ -53,14 +52,6 @@ export interface PrewarmControllerDeps {
 	getIsVoicePending(): boolean;
 
 	/**
-	 * Continuity hint from the previous turn, same shape the stream
-	 * controller reads (see agent-chat-stream-controller.svelte.ts). The
-	 * admission-window path composes history with this hint, so a prepared
-	 * prompt built without it silently drops the hint on a prepared hit.
-	 * Optional — older/test callers may not wire it up.
-	 */
-
-	/**
 	 * Perform the prewarm POST. In production the modal injects the
 	 * thin `prewarmAgentContext` wrapper from agent-chat-session.ts.
 	 * Tests can inject a mock.
@@ -77,8 +68,9 @@ export interface PrewarmControllerDeps {
 		options: { signal?: AbortSignal }
 	): Promise<{
 		session: ChatSession | null;
-		prewarmedContext: FastChatContextCache | null;
+		prewarmedContext: FastChatContextWarmReceipt | null;
 		preparedPrompt: PreparedPromptClient | null;
+		preparedPromptsEnabled?: boolean;
 		/** Why nothing was warmed, e.g. 'session_scope_mismatch'. */
 		reason?: string | null;
 	} | null>;
@@ -149,18 +141,14 @@ async function waitForPromiseWithTimeout(
 }
 
 export class PrewarmController {
-	prewarmedContext = $state<FastChatContextCache | null>(null);
+	prewarmedContext = $state.raw<FastChatContextWarmReceipt | null>(null);
 	preparedPrompt = $state<PreparedPromptClient | null>(null);
 	/**
-	 * Bumped by internal timers when a retry window or prepared-prompt TTL
-	 * expires. The orchestrator `$effect` reads it, so expiry re-runs the
-	 * effect — wall-clock passage is not otherwise reactive, and without this
-	 * a failed/expired prepared prompt would stall until an unrelated
-	 * dependency happened to flip.
+	 * Composer activity wakes an expired warm-up. Time passing alone must never
+	 * repeatedly load history and insert prompts for an idle chat.
 	 */
 	refreshTick = $state(0);
-	#refreshTimer: ReturnType<typeof setTimeout> | null = null;
-	#refreshTimerAtMs = 0;
+	#preparedPromptsEnabled = true;
 	#lastPrewarmKey: string | null = null;
 	#preparedPromptRetryKey: string | null = null;
 	#preparedPromptRetryAfterMs = 0;
@@ -171,29 +159,29 @@ export class PrewarmController {
 		this.#deps = deps;
 	}
 
-	#scheduleRefreshTick(atMs: number): void {
-		if (!Number.isFinite(atMs) || atMs <= 0) return;
-		// Keep the earliest pending wake-up.
-		if (this.#refreshTimer && this.#refreshTimerAtMs <= atMs) return;
-		if (this.#refreshTimer) clearTimeout(this.#refreshTimer);
-		this.#refreshTimerAtMs = atMs;
-		// +50ms so the rerun lands strictly after the deadline it waits on.
-		this.#refreshTimer = setTimeout(
-			() => {
-				this.#refreshTimer = null;
-				this.#refreshTimerAtMs = 0;
-				this.refreshTick += 1;
-			},
-			Math.max(50, atMs - Date.now() + 50)
-		);
-	}
-
-	#clearRefreshTimer(): void {
-		if (this.#refreshTimer) {
-			clearTimeout(this.#refreshTimer);
-			this.#refreshTimer = null;
+	/** Called by composer focus/input and return-to-tab, not a polling timer. */
+	noteActivity(): void {
+		if (!this.#deps.getIsBrowser() || !this.#deps.getIsOpen()) return;
+		if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+		if (this.#deps.getIsTurnActive() || this.#deps.getIsProjectReview?.()) return;
+		const key = this.resolveCurrentKey();
+		if (!key || this.#isPreparedPromptRetryBlocked(key)) return;
+		if (
+			this.#inflightPrewarm?.key === key &&
+			!this.#inflightPrewarm.controller.signal.aborted
+		) {
+			return;
 		}
-		this.#refreshTimerAtMs = 0;
+		const wantsPreparedPrompt =
+			this.#preparedPromptsEnabled && Boolean(this.#deps.getCurrentSession()?.id);
+		if (
+			wantsPreparedPrompt
+				? this.matchingFreshPreparedPrompt(key)
+				: this.matchingFreshContext(key)
+		) {
+			return;
+		}
+		this.refreshTick += 1;
 	}
 
 	/**
@@ -219,7 +207,7 @@ export class PrewarmController {
 	 * stream requests use nonce-protected prepared prompts instead of
 	 * client-carried context payloads.
 	 */
-	matchingFreshContext(key: string | null | undefined): FastChatContextCache | null {
+	matchingFreshContext(key: string | null | undefined): FastChatContextWarmReceipt | null {
 		if (!key) return null;
 		const cache = this.prewarmedContext;
 		if (!cache || cache.key !== key) return null;
@@ -288,7 +276,7 @@ export class PrewarmController {
 	 * it is still fresh. Also updates `lastPrewarmKey` so the next
 	 * orchestrator tick won't refetch.
 	 */
-	adopt(cache: FastChatContextCache | null | undefined): void {
+	adopt(cache: FastChatContextWarmReceipt | null | undefined): void {
 		if (!cache || !isFastChatContextCacheFresh(cache)) return;
 		this.prewarmedContext = cache;
 		this.#lastPrewarmKey = cache.key;
@@ -326,16 +314,26 @@ export class PrewarmController {
 	 */
 	orchestrateTransportWarmup(): (() => void) | undefined {
 		if (!this.#deps.getIsBrowser() || !this.#deps.getIsOpen()) return;
-		if (!this.#deps.warmStreamTransport) return;
 
 		const controller = new AbortController();
-		void this.#deps.warmStreamTransport({ signal: controller.signal }).catch((err) => {
+		void this.#deps.warmStreamTransport?.({ signal: controller.signal }).catch((err) => {
 			if ((err as DOMException)?.name !== 'AbortError') {
 				this.#deps.logWarn?.('[AgentChat] Stream transport warmup failed', err);
 			}
 		});
 
-		return () => controller.abort();
+		const onVisibilityChange = () => {
+			if (document.visibilityState === 'visible') this.noteActivity();
+		};
+		if (typeof document !== 'undefined') {
+			document.addEventListener('visibilitychange', onVisibilityChange);
+		}
+		return () => {
+			controller.abort();
+			if (typeof document !== 'undefined') {
+				document.removeEventListener('visibilitychange', onVisibilityChange);
+			}
+		};
 	}
 
 	/**
@@ -344,24 +342,17 @@ export class PrewarmController {
 	 * no request is started on this tick.
 	 */
 	orchestrate(): (() => void) | undefined {
-		// Tracked read: expiry timers bump this so the effect re-runs when a
-		// retry window or prepared-prompt TTL lapses (see #scheduleRefreshTick).
+		// Tracked read: real activity refreshes expired prompts before Send.
 		void this.refreshTick;
 		if (!this.#deps.getIsBrowser() || !this.#deps.getIsOpen()) return;
-		// Don't burn a prewarm cycle in a hidden tab — the TTL timer would
-		// otherwise re-POST every ~90s for as long as the modal stays open in
-		// the background. Visibility isn't reactive, so re-run on return.
-		if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-			const onVisibilityChange = () => {
-				if (document.visibilityState === 'visible') this.refreshTick += 1;
-			};
-			document.addEventListener('visibilitychange', onVisibilityChange);
-			return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-		}
+		if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
 		const contextType = this.#deps.getSelectedContextType();
 		if (!contextType) return;
 		if (this.#deps.getIsPreparingSession?.()) return;
 		if (this.#deps.getIsTurnActive() || this.#deps.getIsProjectReview?.()) return;
+		// Starting a draft or voice recording can prepare the next turn as well.
+		void this.#deps.getHasDraftInput();
+		void this.#deps.getIsVoiceBusy();
 
 		const focus = this.#deps.getResolvedProjectFocus();
 		const prewarmEntityId = this.#deps.getSelectedEntityId() ?? focus?.projectId;
@@ -370,23 +361,15 @@ export class PrewarmController {
 		const key = this.resolveCurrentKey();
 		if (!key) return;
 
-		// A selected scope is enough to start materializing context. Keep the request
-		// sessionless so opening/selecting chat never disables the composer or causes
-		// mobile keyboard thrash; session binding still happens during send bootstrap.
+		// A selected scope can warm context before a new chat has a session;
+		// existing chats also prepare their history and prompt ahead of Send.
 		const currentSession = this.#deps.getCurrentSession();
 
 		// Prepared prompts are session-bound: a new chat's first turn can never use
 		// one (admission creates the session inline), so only warm context then.
-		const wantsPreparedPrompt = Boolean(currentSession?.id);
+		const wantsPreparedPrompt = this.#preparedPromptsEnabled && Boolean(currentSession?.id);
 		const readiness = this.resolveReadiness(key);
 		if (key === this.#lastPrewarmKey && readiness.contextCacheReady && !wantsPreparedPrompt) {
-			// Re-warm when the context cache ages out, not on the prompt retry cadence.
-			const cache = this.matchingFreshContext(key);
-			if (cache) {
-				this.#scheduleRefreshTick(
-					Date.parse(cache.created_at) + FASTCHAT_CONTEXT_CACHE_TTL_MS
-				);
-			}
 			return;
 		}
 		if (
@@ -394,14 +377,6 @@ export class PrewarmController {
 			readiness.contextCacheReady &&
 			(readiness.preparedPromptReady || readiness.preparedPromptRetryBlocked)
 		) {
-			if (readiness.preparedPromptReady) {
-				// Wake up when the prepared prompt expires so it re-warms
-				// instead of silently falling back to the slow path on send.
-				const prepared = this.matchingFreshPreparedPrompt(key);
-				if (prepared) this.#scheduleRefreshTick(Date.parse(prepared.expires_at));
-			} else {
-				this.#scheduleRefreshTick(this.#preparedPromptRetryAfterMs);
-			}
 			return;
 		}
 		// A recent hard failure (e.g. 402-frozen account) marked the retry
@@ -412,7 +387,6 @@ export class PrewarmController {
 			!readiness.contextCacheReady &&
 			readiness.preparedPromptRetryBlocked
 		) {
-			this.#scheduleRefreshTick(this.#preparedPromptRetryAfterMs);
 			return;
 		}
 
@@ -445,6 +419,7 @@ export class PrewarmController {
 				);
 
 				if (controller.signal.aborted) return;
+				this.#preparedPromptsEnabled = warmed?.preparedPromptsEnabled ?? true;
 				if (warmed?.session) {
 					this.#deps.hydrateSessionFromEvent(warmed.session);
 					if (warmed.reason === 'session_scope_mismatch') {
@@ -463,7 +438,11 @@ export class PrewarmController {
 					warmed?.preparedPrompt?.cache_key === key &&
 					this.adoptPrepared(warmed.preparedPrompt);
 				// Back off before asking again for whatever this request did not deliver.
-				if (wantsPreparedPrompt ? !adoptedPreparedPrompt : !adoptedContext) {
+				if (
+					wantsPreparedPrompt && this.#preparedPromptsEnabled
+						? !adoptedPreparedPrompt
+						: !adoptedContext
+				) {
 					this.#markPreparedPromptRetry(key);
 				}
 			} catch (err) {
@@ -548,7 +527,7 @@ export class PrewarmController {
 		this.preparedPrompt = null;
 		this.#lastPrewarmKey = null;
 		this.#clearPreparedPromptRetry();
-		this.#clearRefreshTimer();
+		this.#preparedPromptsEnabled = true;
 		// Drop any in-flight request so the next orchestrate starts fresh
 		// instead of re-claiming a request issued before the reset.
 		const inflight = this.#inflightPrewarm;

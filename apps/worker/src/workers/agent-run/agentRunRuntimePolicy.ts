@@ -1,14 +1,14 @@
 // apps/worker/src/workers/agent-run/agentRunRuntimePolicy.ts
 import type { Json } from '@buildos/shared-types';
-import type { DeepResearchObservations } from './deepResearchEvidence';
+import type { WebResearchObservations } from './webResearchEvidence';
 
-const DEEP_RESEARCH_TOKEN_OVERRUN_FRACTION = 0.1;
-const DEEP_RESEARCH_MIN_TOKEN_OVERRUN = 1_000;
-const DEEP_RESEARCH_MAX_TOKEN_OVERRUN = 2_500;
-const DEEP_RESEARCH_RESEARCH_TURN_MAX_OUTPUT = 2_048;
-const DEEP_RESEARCH_RESEARCH_TURN_MIN_OUTPUT = 512;
-const DEEP_RESEARCH_FINAL_TURN_MAX_OUTPUT = 4_096;
-const DEEP_RESEARCH_FINAL_TURN_MIN_OUTPUT = 512;
+const DEEP_RUN_TOKEN_OVERRUN_FRACTION = 0.1;
+const DEEP_RUN_MIN_TOKEN_OVERRUN = 1_000;
+const DEEP_RUN_MAX_TOKEN_OVERRUN = 2_500;
+const DEEP_RUN_RESEARCH_TURN_MAX_OUTPUT = 2_048;
+const DEEP_RUN_RESEARCH_TURN_MIN_OUTPUT = 512;
+const DEEP_RUN_FINAL_TURN_MAX_OUTPUT = 4_096;
+const DEEP_RUN_FINAL_TURN_MIN_OUTPUT = 512;
 const PROMPT_ESTIMATE_FIXED_TOKENS = 512;
 const PROMPT_ESTIMATE_BYTES_PER_TOKEN = 3;
 const FINAL_CONTEXT_MAX_CHARS = 20_000;
@@ -64,10 +64,10 @@ export function resolveAgentRunHardTokenLimit(
 	const softTarget = finitePositiveInteger(maxTokens);
 	if (softTarget === undefined || !allowsSoftOverrun) return softTarget;
 	const overrunAllowance = Math.min(
-		DEEP_RESEARCH_MAX_TOKEN_OVERRUN,
+		DEEP_RUN_MAX_TOKEN_OVERRUN,
 		Math.max(
-			DEEP_RESEARCH_MIN_TOKEN_OVERRUN,
-			Math.ceil(softTarget * DEEP_RESEARCH_TOKEN_OVERRUN_FRACTION)
+			DEEP_RUN_MIN_TOKEN_OVERRUN,
+			Math.ceil(softTarget * DEEP_RUN_TOKEN_OVERRUN_FRACTION)
 		)
 	);
 	return softTarget + overrunAllowance;
@@ -93,7 +93,6 @@ export function estimateAgentRunPromptTokens(...parts: string[]): number {
 export function resolveAgentRunTokenPlan(params: {
 	maxTokens?: number;
 	tokensUsed: number;
-	isResearchEvidenceChild: boolean;
 	isDeepRun?: boolean;
 	toolCallBudgetReached: boolean;
 	systemPrompt: string;
@@ -102,7 +101,7 @@ export function resolveAgentRunTokenPlan(params: {
 	finalUserPrompt?: string;
 }): AgentRunTokenPlan {
 	const softTarget = finitePositiveInteger(params.maxTokens);
-	const preservesFinalTurn = params.isResearchEvidenceChild || params.isDeepRun === true;
+	const preservesFinalTurn = params.isDeepRun === true;
 	if (!preservesFinalTurn || softTarget === undefined) {
 		return {
 			softTarget,
@@ -122,16 +121,15 @@ export function resolveAgentRunTokenPlan(params: {
 		params.finalSystemPrompt ?? params.systemPrompt,
 		finalUserPrompt
 	);
-	// Reserve a guaranteed terminal packet, not the terminal turn's full maximum.
-	// Reserving all 4,096 possible output tokens forced live children to stop near
-	// 6k observed tokens even though their 20k target still had useful headroom.
+	// Preserve enough output for a final answer. Reserving all 4,096 possible
+	// output tokens would stop research before its token target is exhausted.
 	// The final plan below may use up to 4,096 when that headroom actually remains.
 	const projectedResearchThenFinal =
 		params.tokensUsed +
 		estimatedNormalPromptTokens +
-		DEEP_RESEARCH_RESEARCH_TURN_MIN_OUTPUT +
+		DEEP_RUN_RESEARCH_TURN_MIN_OUTPUT +
 		estimatedFinalPromptTokens +
-		DEEP_RESEARCH_FINAL_TURN_MIN_OUTPUT;
+		DEEP_RUN_FINAL_TURN_MIN_OUTPUT;
 	const forceForHeadroom = projectedResearchThenFinal >= hardLimit;
 	const forceSubmitResult = params.toolCallBudgetReached || forceForHeadroom;
 
@@ -144,8 +142,8 @@ export function resolveAgentRunTokenPlan(params: {
 			hardLimit,
 			forceSubmitResult: false,
 			maxOutputTokens: Math.max(
-				DEEP_RESEARCH_FINAL_TURN_MIN_OUTPUT,
-				Math.min(DEEP_RESEARCH_RESEARCH_TURN_MAX_OUTPUT, remainingAfterPrompt)
+				DEEP_RUN_FINAL_TURN_MIN_OUTPUT,
+				Math.min(DEEP_RUN_RESEARCH_TURN_MAX_OUTPUT, remainingAfterPrompt)
 			),
 			estimatedPromptTokens: estimatedNormalPromptTokens
 		};
@@ -159,12 +157,12 @@ export function resolveAgentRunTokenPlan(params: {
 		hardLimit,
 		forceSubmitResult: true,
 		maxOutputTokens: Math.max(
-			DEEP_RESEARCH_FINAL_TURN_MIN_OUTPUT,
-			Math.min(DEEP_RESEARCH_FINAL_TURN_MAX_OUTPUT, remainingAfterFinalPrompt)
+			DEEP_RUN_FINAL_TURN_MIN_OUTPUT,
+			Math.min(DEEP_RUN_FINAL_TURN_MAX_OUTPUT, remainingAfterFinalPrompt)
 		),
 		estimatedPromptTokens: estimatedFinalPromptTokens,
 		reason: params.toolCallBudgetReached ? 'tool_budget' : 'token_headroom',
-		cannotFitFinalTurn: remainingAfterFinalPrompt < DEEP_RESEARCH_FINAL_TURN_MIN_OUTPUT
+		cannotFitFinalTurn: remainingAfterFinalPrompt < DEEP_RUN_FINAL_TURN_MIN_OUTPUT
 	};
 }
 
@@ -234,8 +232,8 @@ export function sanitizeAgentRunTelemetryJson(value: unknown): Json {
  * large tool response. This lowers repeated prompt cost while retaining exact
  * excerpts and URLs required by the evidence validator.
  */
-export function renderDeepResearchFinalizationContext(
-	observations: DeepResearchObservations
+export function renderWebResearchFinalizationContext(
+	observations: WebResearchObservations
 ): string {
 	let remainingChars = FINAL_CONTEXT_MAX_CHARS;
 	const sources = observations.visitedSources.flatMap((source) => {
@@ -272,7 +270,7 @@ export function renderDeepResearchFinalizationContext(
  * next operation, not an ever-growing replay of every raw tool result. The
  * final evidence turn receives the larger context above.
  */
-export function renderDeepResearchWorkingContext(observations: DeepResearchObservations): string {
+export function renderWebResearchWorkingContext(observations: WebResearchObservations): string {
 	let remainingSourceChars = WORKING_CONTEXT_TOTAL_SOURCE_CHARS;
 	const visitedSources = observations.visitedSources.flatMap((source) => {
 		if (remainingSourceChars <= 0) return [];
@@ -316,9 +314,7 @@ export function renderDeepResearchWorkingContext(observations: DeepResearchObser
  * the user-facing answer. For research-scoped runs, retain a small useful list
  * of only the URLs that were both visited and durably recorded.
  */
-export function renderDeepResearchInterruptedAnswer(
-	observations: DeepResearchObservations
-): string {
+export function renderWebResearchInterruptedAnswer(observations: WebResearchObservations): string {
 	const urls = Array.from(
 		new Set(
 			observations.visitedSources

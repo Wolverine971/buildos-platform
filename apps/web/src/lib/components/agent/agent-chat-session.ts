@@ -20,7 +20,7 @@ import type {
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { compareVoiceNotesInGroup, type VoiceNote } from '$lib/types/voice-notes';
 import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
-import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
+import type { FastChatContextWarmReceipt } from '$lib/services/agentic-chat-v2/context-cache';
 import {
 	buildProjectWideFocus as buildScopeProjectWideFocus,
 	isAgenticChatContextType,
@@ -318,8 +318,9 @@ export async function prewarmAgentContext(
 	options: { signal?: AbortSignal } = {}
 ): Promise<{
 	session: ChatSession | null;
-	prewarmedContext: FastChatContextCache | null;
+	prewarmedContext: FastChatContextWarmReceipt | null;
 	preparedPrompt: PreparedPromptClient | null;
+	preparedPromptsEnabled: boolean;
 	reason: string | null;
 } | null> {
 	try {
@@ -352,8 +353,9 @@ export async function prewarmAgentContext(
 		const reason = typeof result?.data?.reason === 'string' ? result.data.reason : null;
 		return {
 			session: session as ChatSession | null,
-			prewarmedContext: prewarmedContext as FastChatContextCache | null,
+			prewarmedContext: prewarmedContext as FastChatContextWarmReceipt | null,
 			preparedPrompt: preparedPrompt as PreparedPromptClient | null,
+			preparedPromptsEnabled: result?.data?.prepared_prompts_enabled !== false,
 			reason
 		};
 	} catch (err) {
