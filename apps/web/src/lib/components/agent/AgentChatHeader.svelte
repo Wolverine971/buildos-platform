@@ -21,6 +21,7 @@
 	import StewardChip from './StewardChip.svelte';
 	import ChatSessionAuditActions from './ChatSessionAuditActions.svelte';
 	import ChatResumeLink from './ChatResumeLink.svelte';
+	import ChatShareButton from './ChatShareButton.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { AgentChatHeaderAction } from './agent-chat.types';
@@ -47,6 +48,7 @@
 		sessionStatusLabel?: string | null;
 		contextUsage?: ContextUsageSnapshot | null;
 		sessionId?: string | null;
+		shareActive?: boolean;
 		onExportSteps?: () => void;
 		canExportSteps?: boolean;
 		exportableStepCount?: number;
@@ -76,6 +78,7 @@
 		sessionStatusLabel = null,
 		contextUsage = null,
 		sessionId = null,
+		shareActive = true,
 		onExportSteps,
 		canExportSteps = false,
 		exportableStepCount = 0,
@@ -303,7 +306,6 @@
 
 		return {
 			label: `${estimatedLabel} / ${budgetLabel} tok`,
-			mobileLabel: `${estimatedLabel}/${budgetLabel}`,
 			title:
 				contextUsage.status === 'over_budget'
 					? `${contextUsage.estimatedTokens.toLocaleString()} estimated tokens of ${contextUsage.tokenBudget.toLocaleString()} budget (${tokensOverBudget.toLocaleString()} over budget)`
@@ -440,12 +442,20 @@
 	<div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
 		{#if sessionId}
 			<ChatResumeLink {sessionId} />
+			<ChatShareButton {sessionId} active={shareActive} />
 		{/if}
 		<!-- INKPRINT status pills with micro-label styling -->
 		<!-- On mobile: show only spinner (when loading) and activity dot to prevent overflow -->
 		<!-- On sm+: show full text-based pills -->
 		{#if sessionStatusLabel || contextUsageCounter || (currentActivity && !hasActiveThinkingBlock)}
-			<div class="flex items-center gap-1.5 sm:gap-2">
+			<div
+				class={[
+					'items-center gap-1.5 sm:flex sm:gap-2',
+					sessionStatusLabel || (currentActivity && !hasActiveThinkingBlock)
+						? 'flex'
+						: 'hidden'
+				]}
+			>
 				{#if sessionStatusLabel}
 					<!-- Mobile: spinner only. sm+: spinner + text -->
 					<span
@@ -459,14 +469,13 @@
 
 				{#if contextUsageCounter}
 					<span
-						class={`inline-flex h-7 items-center gap-1 rounded-lg border px-1.5 sm:px-2.5 text-2xs font-semibold ${contextUsageCounter.className}`}
+						class={`hidden h-7 items-center gap-1 rounded-lg border px-2.5 text-2xs font-semibold sm:inline-flex ${contextUsageCounter.className}`}
 						title={contextUsageCounter.title}
 					>
 						{#if contextUsageCounter.showWarningIcon}
 							<AlertTriangle class="h-3 w-3" />
 						{/if}
-						<span class="font-mono sm:hidden">{contextUsageCounter.mobileLabel}</span>
-						<span class="hidden font-mono sm:inline">{contextUsageCounter.label}</span>
+						<span class="font-mono">{contextUsageCounter.label}</span>
 					</span>
 				{/if}
 

@@ -8157,6 +8157,78 @@ export type Database = {
           },
         ]
       }
+      chat_session_shares: {
+        Row: {
+          author_name: string
+          created_at: string
+          id: string
+          included_message_ids: string[]
+          last_viewed_at: string | null
+          policy_version: string
+          review: Json | null
+          revoked_at: string | null
+          session_id: string
+          show_author: boolean
+          snapshot: Json
+          title: string
+          token: string
+          updated_at: string
+          user_id: string
+          view_count: number
+        }
+        Insert: {
+          author_name?: string
+          created_at?: string
+          id?: string
+          included_message_ids: string[]
+          last_viewed_at?: string | null
+          policy_version: string
+          review?: Json | null
+          revoked_at?: string | null
+          session_id: string
+          show_author?: boolean
+          snapshot: Json
+          title: string
+          token: string
+          updated_at?: string
+          user_id: string
+          view_count?: number
+        }
+        Update: {
+          author_name?: string
+          created_at?: string
+          id?: string
+          included_message_ids?: string[]
+          last_viewed_at?: string | null
+          policy_version?: string
+          review?: Json | null
+          revoked_at?: string | null
+          session_id?: string
+          show_author?: boolean
+          snapshot?: Json
+          title?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_session_shares_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_session_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_sessions: {
         Row: {
           agent_metadata: Json | null

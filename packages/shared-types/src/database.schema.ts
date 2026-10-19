@@ -993,6 +993,24 @@ export type DatabaseSchema = {
 		turn_run_id: string;
 		user_id: string;
 	};
+	chat_session_shares: {
+		author_name: string;
+		created_at: string;
+		id: string;
+		included_message_ids: string[];
+		last_viewed_at: string | null;
+		policy_version: string;
+		review: Json | null;
+		revoked_at: string | null;
+		session_id: string;
+		show_author: boolean;
+		snapshot: Json;
+		title: string;
+		token: string;
+		updated_at: string;
+		user_id: string;
+		view_count: number;
+	};
 	chat_sessions: {
 		agent_metadata: Json | null;
 		archived_at: string | null;
@@ -4961,6 +4979,7 @@ export const tableNames = [
 	'chat_prompt_eval_assertions',
 	'chat_prompt_eval_runs',
 	'chat_prompt_snapshots',
+	'chat_session_shares',
 	'chat_sessions',
 	'chat_sessions_projects',
 	'chat_tool_executions',

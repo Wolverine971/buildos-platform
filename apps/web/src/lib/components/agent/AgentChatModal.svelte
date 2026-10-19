@@ -49,6 +49,7 @@
 	import ProjectActionSelector from './ProjectActionSelector.svelte';
 	import AgentChatHeader from './AgentChatHeader.svelte';
 	import ChatResumeLink from './ChatResumeLink.svelte';
+	import ChatShareButton from './ChatShareButton.svelte';
 	import { createChatHistory } from './agent-chat-history.svelte';
 	import { ChatSessionLoadError, loadChatSessionWithStatus } from './agent-chat-session-load';
 	import AgentComposer from './AgentComposer.svelte';
@@ -3343,8 +3344,9 @@
 	     to it via onSessionChange + ChatSessionAuditActions. -->
 	<div class="flex h-full flex-col overflow-hidden bg-card">
 		{#if currentSessionId && messages.length > 0}
-			<div class="flex shrink-0 justify-end border-b border-border px-2 py-1">
+			<div class="flex shrink-0 justify-end gap-1.5 border-b border-border px-2 py-1">
 				<ChatResumeLink sessionId={currentSessionId} surface="embedded" />
+				<ChatShareButton sessionId={currentSessionId} active={isSurfaceActive && !hidden} />
 			</div>
 		{/if}
 		<!-- Embedded chat content area -->
@@ -3403,6 +3405,7 @@
 					{sessionStatusLabel}
 					contextUsage={displayContextUsage}
 					sessionId={currentSession?.id ?? null}
+					shareActive={isOpen && !hidden}
 					{contextShiftPulse}
 					onExportSteps={handleExportAgentSteps}
 					canExportSteps={canExportAgentSteps}
