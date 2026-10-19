@@ -47,7 +47,8 @@ describe('direct write routing', () => {
 					call('create_onto_document', {
 						project_id: '2',
 						title: 'Source',
-						description: 'Empty proposal'
+						description: 'Empty proposal',
+						content_source: 'user_verbatim'
 					})
 				],
 				{
@@ -66,18 +67,42 @@ describe('direct write routing', () => {
 		'Copy the passage word-for-word into a document.',
 		'Preserve the original wording unchanged in the note.',
 		'Save this quoted source material for review.'
-	])('reviews document source fidelity for %s', (userMessage) => {
+	])('does not route on preservation words without the structured signal: %s', (userMessage) => {
 		for (const name of ['create_onto_document', 'update_onto_document']) {
 			const assessment = assessDirectWriteBatch(
 				[call(name, { project_id: '2', document_id: '3', content: 'Omitted source.' })],
 				{ contextType: 'document', entityId: '3', projectId: '2', userMessage }
 			);
-			expect(assessment).toMatchObject({
+			expect(assessment).toEqual({ kind: 'simple', mutationCount: 1 });
+		}
+	});
+
+	it.each(['create_onto_document', 'update_onto_document'])(
+		'reviews %s source fidelity from its structured argument even without message keywords',
+		(name) => {
+			expect(
+				assessDirectWriteBatch(
+					[
+						call(name, {
+							project_id: '2',
+							document_id: '3',
+							content: 'Supplied body',
+							content_source: 'user_verbatim'
+						})
+					],
+					{
+						contextType: 'document',
+						entityId: '3',
+						projectId: '2',
+						userMessage: 'Save it.'
+					}
+				)
+			).toMatchObject({
 				kind: 'contract_required',
 				reason: 'source_fidelity_requires_review'
 			});
 		}
-	});
+	);
 
 	it.each([
 		'Draft a document with a concise summary of these notes.',

@@ -8631,7 +8631,8 @@ describe('SHA-bound mutation batch approval', () => {
 		const shared = {
 			project_id: PROJECT_ID,
 			title: 'Supplier note',
-			description: 'Quoted source'
+			description: 'Quoted source',
+			content_source: 'user_verbatim'
 		};
 		const corrected = { ...shared, content: source };
 		const client = clientWithRounds([

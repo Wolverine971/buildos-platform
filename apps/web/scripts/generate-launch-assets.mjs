@@ -1,6 +1,6 @@
 // apps/web/scripts/generate-launch-assets.mjs
 // Generate the installed app's launch artwork from the approved Brain Bolt master:
-//   - static/launch/brain-bolt.webp: the breathing Brain Bolt the service worker shows
+//   - static/launch/brain-bolt.webp: the Brain Bolt the service worker's launch screen shows
 //   - static/splash/*.png: iOS splash images (light + dark) for every current iPhone/iPad
 // The splash bolt is drawn at exactly the launch screen's size (120pt) and centered on
 // the screen, so tap → splash → launch screen reads as one continuous image.

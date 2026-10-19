@@ -358,6 +358,9 @@ export class AgenticChatOpenRouterClient implements AgenticChatTurnProviderClien
 				: { inputCost: 0, outputCost: 0, source: 'unknown' as const };
 			this.enqueueUsage(
 				{
+					...(passRole === 'mutation_review' && input.writeRoute
+						? { writeRoute: input.writeRoute }
+						: {}),
 					...(lastPromptDump
 						? {
 								localPromptDump: {

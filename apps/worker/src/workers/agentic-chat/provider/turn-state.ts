@@ -16,6 +16,7 @@ import {
 	type ToolValidationIssue,
 	type TurnContract,
 	agenticChatReadIngestsExternalContentV1,
+	buildAgenticChatCompletionReceiptV1,
 	buildCleanupManifest,
 	buildMutationBatch,
 	buildRoundToolPattern,
@@ -24,6 +25,7 @@ import {
 	doesToolExecutionRequireUserAction,
 	extractReviewedRequestExpectation,
 	isControlToolName,
+	isAgenticChatRequestFulfilledV1,
 	isPendingProposalCardExecution,
 	mutationBatchSha256,
 	parseRequestExpectation,
@@ -172,6 +174,7 @@ export type ToolRoundStreamState = {
 		sha256: string;
 	} | null;
 	getBatchRevisionCount(): number;
+	getWriteRoute(): ClientRequest['writeRoute'];
 	/** Tools that read externally authored content earlier in this turn (S1). */
 	getExternalContentSources(): ReadonlySet<string>;
 	/**
@@ -329,6 +332,10 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	private createReplayRepairUsed = false;
 	private rejectedMutationBatch: MutationBatch | null = null;
 	private reviewedBatchExecuted = false;
+	// Mixed proposals drop their non-mutations before review. Their missing
+	// results cannot appear in the ledger, but the actor may still owe them.
+	private withheldNonMutationCalls = false;
+	private writeRoute: ClientRequest['writeRoute'];
 	private requestCompletionContinuationUsed = false;
 	private requestExpectation: TurnContract | null = null;
 	private batchRevisionCount = 0;
@@ -634,10 +641,8 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		) {
 			return null;
 		}
-		if (
-			!this.reviewedBatchExecuted &&
-			assessDirectWriteBatch(calls, this.directWriteContext(value)).kind === 'simple'
-		) {
+		const assessment = assessDirectWriteBatch(calls, this.directWriteContext(value));
+		if (!this.reviewedBatchExecuted && assessment.kind === 'simple') {
 			return null;
 		}
 		// Only reviewed mutations are held. A batch that mixes reads with
@@ -707,6 +712,16 @@ export class ProviderTurnState implements ToolRoundStreamState {
 			};
 		}
 		this.heldMutationBatch = { batch, calls: mutationCalls, sha256 };
+		this.withheldNonMutationCalls ||= mutationCalls.length !== calls.length;
+		this.writeRoute = {
+			reason:
+				assessment.kind === 'contract_required'
+					? assessment.reason
+					: 'reviewed_turn_continuation',
+			tools: [...new Set(mutationCalls.map((call) => call.name))].sort(),
+			count: mutationCalls.length,
+			batchSha256: sha256
+		};
 		this.pendingBatchReviewSha256 = sha256;
 		this.advance({ type: 'withhold_batch' });
 		return { batch, sha256 };
@@ -718,6 +733,10 @@ export class ProviderTurnState implements ToolRoundStreamState {
 
 	getBatchRevisionCount(): number {
 		return this.batchRevisionCount;
+	}
+
+	getWriteRoute(): ClientRequest['writeRoute'] {
+		return this.writeRoute;
 	}
 
 	getExternalContentSources(): ReadonlySet<string> {
@@ -1147,22 +1166,25 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		this.pendingToolRound = null;
 		this.toolRoundCompleted = false;
 		this.nextProviderRound += 1;
+		// Approval controls are not unreported reads. A reviewed batch can end
+		// immediately once the frozen whole-request checklist and receipts agree.
+		const writeReceipt =
+			(directSimpleMutationCompleted || reviewedMutationCompleted) &&
+			!partialMutationBatch &&
+			!clarificationRequiresToolFreeSynthesis
+				? this.directWriteReceiptText(completedToolRound.calls, roundExecutions)
+				: null;
+		if (writeReceipt) {
+			this.advance({ type: 'budget', limit: 'force_synthesis' });
+			return {
+				lane: 'direct_write_receipt',
+				text: writeReceipt,
+				usage: completedToolRound.usage
+			};
+		}
 		if (clarificationRequiresToolFreeSynthesis || forceNoToolSynthesis) {
 			if (!clarificationRequiresToolFreeSynthesis) {
 				this.advance({ type: 'budget', limit: 'force_synthesis' });
-			}
-			const directWriteReceipt =
-				directSimpleMutationCompleted &&
-				!partialMutationBatch &&
-				!clarificationRequiresToolFreeSynthesis
-					? this.directWriteReceiptText(completedToolRound.calls, roundExecutions)
-					: null;
-			if (directWriteReceipt) {
-				return {
-					lane: 'direct_write_receipt',
-					text: directWriteReceipt,
-					usage: completedToolRound.usage
-				};
 			}
 			return {
 				lane: 'forced_synthesis',
@@ -1179,7 +1201,7 @@ export class ProviderTurnState implements ToolRoundStreamState {
 	}
 
 	/**
-	 * The receipt that replaces the closing model pass after a simple direct
+	 * The receipt that replaces the closing model pass after a completed
 	 * write, or null when the model may still owe the user an answer. Decided
 	 * from structured turn state only; neither the user's nor the model's words
 	 * are read here, so anything prose would have to settle keeps the pass.
@@ -1189,22 +1211,62 @@ export class ProviderTurnState implements ToolRoundStreamState {
 		roundExecutions: readonly FastToolExecution[]
 	): string | null {
 		if (!this.directWriteReceiptTextEnabled) return null;
-		// No reviewer checklist or reviewed stage governs the turn.
-		if (this.requestExpectation || this.reviewedBatchExecuted) return null;
-		// The write round is the turn's only tool round: no read result the model
-		// has not yet reported on, and no earlier attempt that failed.
-		if (this.turnToolExecutions.length !== roundExecutions.length) return null;
+		if (this.withheldNonMutationCalls) return null;
 		// The model saw the user's images this turn and may owe a description.
 		if (this.baseRequest.liveVisionRequest) return null;
 		if (calls.some((call) => call.kind !== 'mutation')) return null;
 		// A result that asks the user something reaches them through the model.
-		if (roundExecutions.some((execution) => doesToolExecutionRequireUserAction(execution))) {
+		if (
+			this.turnToolExecutions.some((execution) =>
+				doesToolExecutionRequireUserAction(execution)
+			)
+		) {
 			return null;
 		}
 		const ledger = buildWriteLedger(this.turnToolExecutions);
-		// One receipt per call: a skipped duplicate or an unledgered tool keeps the pass.
-		if (ledger.length !== calls.length) return null;
-		return renderDirectWriteReceipt(ledger);
+		let alreadySatisfied: string | null = null;
+		if (this.reviewedBatchExecuted) {
+			if (!this.requestExpectation) return null;
+			// Conservatively keep synthesis after ANY domain read; the write
+			// checklist cannot prove a requested prose answer was delivered.
+			if (
+				this.turnToolExecutions.some(
+					({ toolCall, result }) =>
+						!result.success ||
+						(!isControlToolName(toolCall.function.name) &&
+							!reviewedAgenticChatMutationSpecV1(toolCall.function.name))
+				)
+			)
+				return null;
+			const receipt = buildAgenticChatCompletionReceiptV1({
+				contract: null,
+				contractSha256: null,
+				toolExecutions: this.turnToolExecutions,
+				finishedReason: 'stop'
+			});
+			if (!isAgenticChatRequestFulfilledV1(receipt)) return null;
+			const writes = this.turnToolExecutions.filter(({ toolCall }) =>
+				reviewedAgenticChatMutationSpecV1(toolCall.function.name)
+			);
+			// The ledger can credit a count-only outcome from success + proposed
+			// fields even when a create returned no saved identity. That is not
+			// enough evidence to replace the model's closing pass with "Done".
+			if (ledger.length !== writes.length || ledger.some((entry) => !entry.entityId))
+				return null;
+			alreadySatisfied = receipt.cleanupManifest
+				? renderAlreadySatisfiedCleanupItems(receipt.cleanupManifest)
+				: null;
+		} else {
+			if (
+				this.requestExpectation ||
+				this.turnToolExecutions.length !== roundExecutions.length
+			)
+				return null;
+			// One receipt per call: skipped duplicates and unledgered tools keep the pass.
+			if (ledger.length !== calls.length) return null;
+		}
+		const text = renderDirectWriteReceipt(ledger);
+		return text ? [text, alreadySatisfied].filter(Boolean).join('\n\n') : null;
 	}
 
 	/**

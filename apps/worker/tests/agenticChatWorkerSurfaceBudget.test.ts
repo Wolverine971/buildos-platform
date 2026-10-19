@@ -92,6 +92,15 @@ function collectDescriptionText(value: unknown, key?: string): string[] {
 }
 
 describe('Agentic Chat worker-projected surface budget', () => {
+	it('keeps the structured source-preservation signal on both document write tools', () => {
+		for (const name of ['create_onto_document', 'update_onto_document']) {
+			const tool = measure('project').admitted.find((tool) => tool.function.name === name);
+			expect(tool?.function.parameters.properties).toMatchObject({
+				content_source: { type: 'string', enum: ['user_verbatim'] }
+			});
+			expect(tool?.function.parameters.required).not.toContain('content_source');
+		}
+	});
 	it('keeps the production opening-pass surfaces under budget', () => {
 		const global = measure('global');
 		const project = measure('project');

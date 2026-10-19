@@ -1,9 +1,9 @@
 # BuildOS Database Schema Reference
 
-Complete column listing for all 281 tables, grouped by domain.
+Complete column listing for all 282 tables, grouped by domain.
 
 **Source:** `packages/shared-types/src/database.schema.ts`
-**Schema generated:** 2026-10-19T01:22:39.977Z
+**Schema generated:** 2026-10-19T16:20:30.808Z
 
 GENERATED FILE — do not edit by hand. Regenerate with `pnpm gen:schema`
 (script: `scripts/generate-supabase-skill-schema.ts`).
@@ -17,7 +17,7 @@ For enum values, constraints, and RLS, check migrations in `supabase/migrations/
 - [People & Contacts](#people--contacts) (6 tables)
 - [Ontology System](#ontology-system) (46 tables)
 - [Projects & Tasks (Legacy)](#projects--tasks-legacy) (21 tables)
-- [Chat & Agents](#chat--agents) (46 tables)
+- [Chat & Agents](#chat--agents) (47 tables)
 - [Calendar](#calendar) (13 tables)
 - [Notifications](#notifications) (7 tables)
 - [SMS & Twilio](#sms--twilio) (7 tables)
@@ -481,6 +481,10 @@ completed_at `string?` · created_at `string` · created_by `string?` · id `str
 ### chat_prompt_snapshots
 
 approx_prompt_tokens `number?` · context_payload `Json?` · created_at `string` · id `string` · message_chars `number` · messages_sha256 `string` · model_messages `Json` · prompt_sections `Json?` · prompt_variant `string` · rendered_dump_text `string?` · request_payload `Json?` · session_id `string` · snapshot_version `string` · system_prompt `string` · system_prompt_chars `number` · system_prompt_sha256 `string` · tool_definitions `Json?` · tools_sha256 `string?` · turn_run_id `string` · user_id `string`
+
+### chat_session_shares
+
+author_name `string` · created_at `string` · id `string` · included_message_ids `string[]` · last_viewed_at `string?` · policy_version `string` · review `Json?` · revoked_at `string?` · session_id `string` · show_author `boolean` · snapshot `Json` · title `string` · token `string` · updated_at `string` · user_id `string` · view_count `number`
 
 ### chat_sessions
 

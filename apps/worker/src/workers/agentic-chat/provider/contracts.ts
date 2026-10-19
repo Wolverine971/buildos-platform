@@ -170,7 +170,21 @@ export type AgenticChatProviderPassRoleV1 =
 	| 'repair'
 	| 'final_response';
 
+/** Content-free host telemetry; never part of the model request body. */
+export type AgenticChatWriteRouteV1 = {
+	reason:
+		| Extract<
+				import('./write-routing').DirectWriteBatchAssessment,
+				{ kind: 'contract_required' }
+		  >['reason']
+		| 'reviewed_turn_continuation';
+	tools: string[];
+	count: number;
+	batchSha256?: string;
+};
+
 export type AgenticChatTurnProviderClientRequestV1 = {
+	writeRoute?: AgenticChatWriteRouteV1;
 	/** Host-only identities observed in admitted context and successful tool results. */
 	loadedEntityIds?: readonly string[];
 	messages: readonly AgenticChatTurnProviderMessageV1[];

@@ -2,7 +2,7 @@
 /**
  * Page side of the instant app launch (see static/sw.js).
  *
- * The service worker shows the saved Today screen, or a breathing Brain Bolt, the
+ * The service worker shows the saved Today screen, or a softly fading Brain Bolt, the
  * moment the installed app opens. It only exists after registration, which used to
  * happen only when someone turned on push notifications.
  */

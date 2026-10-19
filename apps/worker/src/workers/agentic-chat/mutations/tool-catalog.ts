@@ -245,6 +245,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'type_key',
 			'state_key',
 			'content',
+			'content_source',
 			'parent_id',
 			'position'
 		]
@@ -298,6 +299,7 @@ export const AGENTIC_CHAT_REVIEWED_MUTATION_SPECS_V1 = {
 			'type_key',
 			'state_key',
 			'content',
+			'content_source',
 			'edits',
 			'section_edits',
 			'allow_large_deletion',

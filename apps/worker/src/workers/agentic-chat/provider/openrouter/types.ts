@@ -32,6 +32,7 @@ export type AgenticChatOpenAiCompatibleRouteV1 = {
 };
 
 export type AgenticChatProviderUsageObservationV1 = {
+	writeRoute?: ClientInput['writeRoute'];
 	localPromptDump?: { jsonFile: string; markdownFile: string };
 	usageLogId: string;
 	status: 'success' | 'failure' | 'aborted';

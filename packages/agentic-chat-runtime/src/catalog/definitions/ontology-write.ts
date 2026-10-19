@@ -317,6 +317,11 @@ Examples: document.knowledge.research, document.spec.technical, document.notes.m
 						description: 'Document state.',
 						default: 'draft'
 					},
+					content_source: {
+						type: 'string',
+						enum: ['user_verbatim'],
+						description: 'Set when the user asks to preserve supplied text exactly.'
+					},
 					content: {
 						type: 'string',
 						description:
@@ -1379,6 +1384,11 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 						enum: ['archive_children', 'promote_children'],
 						description:
 							'Required for chat archive (state_key archived). archive_children archives the target and descendants; promote_children archives only the target and moves children up a level. Public pages stay published. Archive separately from content or metadata edits.'
+					},
+					content_source: {
+						type: 'string',
+						enum: ['user_verbatim'],
+						description: 'Set when the user asks to preserve supplied text exactly.'
 					},
 					content: {
 						type: 'string',

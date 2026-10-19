@@ -188,6 +188,16 @@ export class AgenticChatLlmUsageObserver implements AgenticChatProviderUsageObse
 				cachedPromptTokens: observation.cachedPromptTokens,
 				cacheWriteTokens: observation.cacheWriteTokens,
 				metadata: {
+					...(observation.passRole === 'mutation_review' && observation.writeRoute
+						? {
+								writeRouteReason: observation.writeRoute.reason,
+								writeRouteTools: observation.writeRoute.tools,
+								writeRouteCount: observation.writeRoute.count,
+								...(observation.writeRoute.batchSha256
+									? { writeRouteBatchSha256: observation.writeRoute.batchSha256 }
+									: {})
+							}
+						: {}),
 					...(observation.localPromptDump
 						? { localPromptDump: observation.localPromptDump }
 						: {}),

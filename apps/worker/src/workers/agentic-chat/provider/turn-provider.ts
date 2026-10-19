@@ -335,6 +335,9 @@ export class AgenticChatTurnProviderAdapter implements AgenticChatProviderPortV1
 		client: AgenticChatTurnProviderClientPortV1 = this.ports.client
 	) {
 		state.recordProviderPass();
+		if (request.passRole === 'mutation_review') {
+			request = { ...request, writeRoute: state.getWriteRoute() };
+		}
 		const actor = client === this.ports.client && isActingOutputPass(request);
 		return streamBufferedProviderPass(
 			actor ? state.prepareOutputBudget(request) : request,

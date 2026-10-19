@@ -135,9 +135,10 @@ export function assessDirectWriteBatch(
 		};
 	}
 	if (
-		requestsSourcePreservationReview(context?.userMessage) &&
-		mutationCalls.some((call) =>
-			['create_onto_document', 'update_onto_document'].includes(call.name)
+		mutationCalls.some(
+			(call) =>
+				['create_onto_document', 'update_onto_document'].includes(call.name) &&
+				call.arguments.content_source === 'user_verbatim'
 		)
 	) {
 		return {
@@ -233,34 +234,6 @@ function deletesTableRows(call: CompletedProviderToolCall): boolean {
 		call.name === 'update_onto_table_rows' &&
 		Array.isArray(call.arguments.delete) &&
 		call.arguments.delete.length > 0
-	);
-}
-
-/**
- * INTENTIONAL LEXICAL CHECK (AGENTS.md "Never classify language with regex"
- * allows one only when small and harmless on a misfire). It reads the user's
- * message for explicit verbatim-storage wording and, on a hit, sends a
- * document create/update through the existing independent batch review
- * instead of the direct lane. A false positive costs one reviewer pass on a
- * document write; a false negative leaves the direct lane as before. It never
- * blocks, rewrites, or extracts content. It guards a measured failure: Case 9
- * r2 of the 2026-09-14 gate saved a "store this exactly" note with a block
- * silently omitted, and the review caught the omission before saving.
- * Structured replacement (not built): a model-set flag on the document write
- * schemas, e.g. `preserve_user_text`, routed to review the same way.
- */
-function requestsSourcePreservationReview(message?: string | null): boolean {
-	if (!message) return false;
-	return (
-		/\b(?:verbatim|byte[- ]for[- ]byte|word[- ]for[- ]word|quoted\s+(?:source|text|material))\b/i.test(
-			message
-		) ||
-		/\b(?:exact(?:ly)?|unchanged|unmodified)\b[^\n.!?:]{0,100}\b(?:text|wording|content|source|passage|note|transcript|body)\b/i.test(
-			message
-		) ||
-		/\b(?:text|wording|content|source|passage|note|transcript|body)\b[^\n.!?:]{0,100}\b(?:unchanged|unmodified)\b/i.test(
-			message
-		)
 	);
 }
 

@@ -6,6 +6,8 @@
 // persisted (context finder and reviewer lanes).
 import { ONTOLOGY_WRITE_TOOLS } from '@buildos/agentic-chat-runtime/catalog';
 import type { FastToolExecution, WriteLedgerEntry } from '@buildos/agentic-chat-runtime/loop';
+import { buildMutationBatch, mutationBatchSha256 } from '@buildos/agentic-chat-runtime/loop';
+import { canonicalizeAgenticChatJson } from '@buildos/shared-types';
 import type {
 	AgenticChatTurnClaimResultV1,
 	ChatToolDefinition,
@@ -301,6 +303,49 @@ function prepare(
 	});
 }
 
+function executionInputWithImage(): AgenticChatWorkerExecutionInputV1 {
+	const input = executionInput();
+	const attachment = {
+		attachment_kind: 'onto_asset' as const,
+		media_type: 'image' as const,
+		asset_id: 'a1000000-0000-4000-8000-000000000001',
+		temporary_attachment_id: null,
+		project_id: 'a2000000-0000-4000-8000-000000000002',
+		role: 'analysis_target' as const,
+		display_order: 0,
+		file_name: 'diagram.png',
+		content_type: 'image/png',
+		file_size_bytes: 2048,
+		width: 1200,
+		height: 800,
+		checksum_sha256: 'a'.repeat(64),
+		ocr_status: 'complete' as const,
+		extraction_summary: null,
+		extracted_text_preview: null
+	};
+	input.requestPayload.attachments = [attachment];
+	input.artifact.prepared.currentTurn = {
+		message: String(input.requestPayload.message),
+		attachmentContextMaxChars: 7000,
+		attachments: [
+			{
+				...attachment,
+				storage_bucket: 'onto-assets',
+				storage_path: 'projects/test/diagram.png',
+				expires_at: null
+			}
+		],
+		liveVision: {
+			requested: true,
+			maxImages: 2,
+			maxImageBytes: 8 * 1024 * 1024,
+			renderWidth: 1600,
+			signedUrlTtlSeconds: 900
+		}
+	};
+	return input;
+}
+
 /** Production shape: reviewer present, SHA-bound batch lane on. */
 function batchLaneProvider(
 	client: ClientPort,
@@ -308,6 +353,7 @@ function batchLaneProvider(
 	options: {
 		reviewer?: ClientPort;
 		capacity?: AgenticChatProviderCapacity;
+		liveVision?: ConstructorParameters<typeof AgenticChatTurnProviderAdapter>[0]['liveVision'];
 		contextFinder?: ConstructorParameters<
 			typeof AgenticChatTurnProviderAdapter
 		>[0]['contextFinder'];
@@ -317,6 +363,7 @@ function batchLaneProvider(
 		{
 			client,
 			semanticReviewer: options.reviewer ?? clientWithRounds([]),
+			...(options.liveVision ? { liveVision: options.liveVision } : {}),
 			capacity:
 				options.capacity ??
 				new AgenticChatProviderCapacity({ configured: true, concurrency: 1 }),
@@ -352,6 +399,182 @@ async function runDirectWrite(
 	);
 	return { client, reviewer, capacity, opening, closing };
 }
+
+async function runReviewedWrite(
+	options: {
+		remaining?: boolean;
+		partial?: boolean;
+		readFirst?: boolean;
+		mixedRead?: boolean;
+		userAction?: boolean;
+		image?: boolean;
+		missingReceipt?: boolean;
+		flag?: boolean;
+	} = {}
+) {
+	const calls = ['Permit', 'Cabinets', 'Rough-in', 'Inspection'].map((title, i) =>
+		createTask(`create-${i}`, title)
+	);
+	const batch = buildMutationBatch(
+		calls.map((call) => ({
+			...call,
+			canonicalProviderArguments: canonicalizeAgenticChatJson(call.args)
+		}))
+	);
+	const request_expectation = {
+		outcomes: [
+			{
+				action: 'create',
+				entity_kind: 'task',
+				minimum_successful_effects: options.remaining ? 5 : 4,
+				required_fields: ['title']
+			}
+		]
+	};
+	const args = {
+		reason: 'Requested tasks',
+		batch_sha256: mutationBatchSha256(batch),
+		reference_candidates: [],
+		request_expectation
+	};
+	const reviewer = clientWithRounds([
+		toolRound([{ id: 'approval', name: 'approve_mutation_batch_review', args }])
+	]);
+	const client = clientWithRounds([
+		...(options.readFirst
+			? [
+					toolRound([
+						{
+							id: 'read',
+							name: 'get_project_overview',
+							args: { project_id: PROJECT_ID }
+						}
+					])
+				]
+			: []),
+		toolRound([
+			...calls,
+			...(options.mixedRead
+				? [
+						{
+							id: 'dropped-read',
+							name: 'get_project_overview',
+							args: { project_id: PROJECT_ID }
+						}
+					]
+				: [])
+		]),
+		synthesisRound('Model closing answer.'),
+		synthesisRound('One task remains.')
+	]);
+	const liveVision = options.image
+		? {
+				resolve: vi.fn(async () => ({
+					images: [
+						{
+							attachmentKey: 'asset:a1000000-0000-4000-8000-000000000001',
+							signedUrl: 'https://signed.example/image',
+							detail: 'auto' as const
+						}
+					],
+					failed: [],
+					skippedByLimit: 0
+				}))
+			}
+		: undefined;
+	const invocation = await prepare(
+		batchLaneProvider(client, options.flag ?? true, { reviewer, liveVision }),
+		options.image ? executionInputWithImage() : executionInput()
+	);
+	let round = 2;
+	let reviewed = await collect(invocation.stream());
+	if (options.readFirst) {
+		const read = reviewed.find((step): step is ReadStep => step.type === 'read_tool')!;
+		reviewed = await collect(
+			invocation.continueWithToolResults!({
+				round: round++,
+				results: [readResult(read, { risks: 2 })]
+			})
+		);
+	}
+	const approval = reviewed.find(
+		(step): step is ReadStep =>
+			step.type === 'read_tool' && step.toolName === 'approve_mutation_batch_review'
+	);
+	expect(approval).toBeDefined();
+	const writes = await collect(
+		invocation.continueWithToolResults!({
+			round: round++,
+			results: [
+				readResult(approval!, {
+					status: 'mutation_batch_review_approved',
+					batch_sha256: args.batch_sha256,
+					request_expectation
+				})
+			]
+		})
+	);
+	expect(mutatingSteps(writes)).toHaveLength(4);
+	const results = taskResults(writes);
+	if (options.userAction) results[0]!.execution.requiresUserAction = true;
+	if (options.missingReceipt) results[0]!.execution.result = {};
+	const closing = await collect(
+		invocation.continueWithToolResults!({
+			round,
+			results: options.partial
+				? [failed(mutatingSteps(writes)[0]!, 'not saved'), ...results.slice(1)]
+				: results
+		})
+	);
+	return { client, reviewer, closing, liveVision };
+}
+
+describe('reviewed write receipt text', () => {
+	it('closes a fulfilled reviewed batch with its receipt and one fewer acting pass', async () => {
+		const { client, reviewer, closing } = await runReviewedWrite();
+		expect(client.stream).toHaveBeenCalledTimes(1);
+		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+		const text = closing
+			.filter((step) => step.type === 'text_delta')
+			.map((step) => step.text)
+			.join('');
+		expect(text).toContain('Permit');
+		expect(text).toContain('Inspection');
+		expect(text).not.toContain('Model closing answer');
+		expect(closing.at(-1)).toMatchObject({ type: 'finish', finishedReason: 'stop' });
+	});
+	it.each([
+		{ remaining: true },
+		{ readFirst: true },
+		{ mixedRead: true },
+		{ userAction: true },
+		{ image: true },
+		{ missingReceipt: true },
+		{ flag: false }
+	])('keeps the closing pass for %j', async (options) => {
+		const { client, liveVision } = await runReviewedWrite(options);
+		expect(client.stream.mock.calls.length).toBeGreaterThan(options.readFirst ? 2 : 1);
+		if (options.image) {
+			expect(liveVision?.resolve).toHaveBeenCalledOnce();
+			expect(client.stream.mock.calls[0]![0].messages.at(-1)?.content).toEqual(
+				expect.arrayContaining([expect.objectContaining({ type: 'image_url' })])
+			);
+		}
+	});
+	it('preserves the existing unfinished-work fallback for a partial reviewed batch', async () => {
+		const { closing } = await runReviewedWrite({ partial: true });
+		expect(closing.at(-1)).toMatchObject({
+			type: 'finish',
+			finishedReason: 'mutation_unfulfilled'
+		});
+		const text = closing
+			.filter((step) => step.type === 'text_delta')
+			.map((step) => step.text)
+			.join('');
+		expect(text).toContain('unfinished');
+		expect(text).not.toContain('Done:');
+	});
+});
 
 describe('direct write receipt text (AGENTIC_CHAT_DIRECT_WRITE_RECEIPT_TEXT)', () => {
 	it('keeps the tool-free synthesis pass when the flag is off', async () => {
@@ -780,6 +1003,13 @@ describe('provider pass started before its status step', () => {
 		}
 		expect(status).toBeDefined();
 		expect(reviewer.stream).toHaveBeenCalledTimes(1);
+		expect(reviewer.stream.mock.calls[0]?.[0]).toMatchObject({
+			writeRoute: {
+				reason: 'mutation_count_exceeded',
+				tools: ['create_onto_task'],
+				count: 4
+			}
+		});
 		const rest: AgenticChatProviderStepV1[] = [];
 		for (let next = await iterator.next(); !next.done; next = await iterator.next()) {
 			rest.push(next.value);

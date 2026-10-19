@@ -2266,6 +2266,45 @@ describe('AgenticChatOpenRouterClient', () => {
 		});
 	});
 
+	it.each(['mutation_review', 'acting'] as const)(
+		'persists routing metadata only on %s usage without sending it to the model',
+		async (passRole) => {
+			const fetchImpl = vi.fn(async () =>
+				sseResponse([
+					JSON.stringify({
+						choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }]
+					}),
+					'[DONE]'
+				])
+			);
+			const test = harness(fetchImpl);
+			const writeRoute = {
+				reason: 'mixed_tool_batch' as const,
+				tools: ['create_onto_task'],
+				count: 1
+			};
+			await collect(test.client.stream({ ...input(), passRole, writeRoute }));
+			const logger = { logUsageToDatabase: vi.fn(async () => undefined) };
+			await new AgenticChatLlmUsageObserver(logger).observe(test.observations[0]!);
+			const logged = logger.logUsageToDatabase.mock.calls[0] as unknown as [
+				{ metadata: Record<string, unknown> }
+			];
+			if (passRole === 'mutation_review') {
+				expect(logged[0].metadata).toMatchObject({
+					writeRouteReason: 'mixed_tool_batch',
+					writeRouteTools: ['create_onto_task'],
+					writeRouteCount: 1
+				});
+			} else {
+				expect(logged[0].metadata).not.toHaveProperty('writeRouteReason');
+			}
+			const wire = JSON.parse(
+				(fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body as string
+			);
+			expect(wire).not.toHaveProperty('writeRoute');
+		}
+	);
+
 	it('maps observations into the durable shared usage logger contract', async () => {
 		const logger = { logUsageToDatabase: vi.fn(async () => undefined) };
 		const observer = new AgenticChatLlmUsageObserver(logger);

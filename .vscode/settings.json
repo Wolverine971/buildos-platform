@@ -1,0 +1,11 @@
+{
+	// Keep generated caches and video render intermediates out of the editor watcher.
+	"files.watcherExclude": {
+		"**/.turbo/**": true,
+		"**/.pnpm-store/**": true,
+		"**/.vercel/**": true,
+		"**/.svelte-kit/output/**": true,
+		"**/coverage/**": true,
+		"**/video-projects/**/renders/work-*/**": true
+	}
+}
