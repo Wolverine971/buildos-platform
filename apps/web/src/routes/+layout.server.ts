@@ -6,7 +6,7 @@ import {
 	onboardingProgress as getOnboardingProgress,
 	onboardingStep
 } from '$lib/utils/onboarding-state';
-import { StripeService } from '$lib/services/stripe-service';
+import { isStripeEnabled } from '$lib/server/stripe-config';
 import { fetchBillingContext } from '$lib/server/billing-context';
 import {
 	getCachedBillingContext,
@@ -147,7 +147,7 @@ export const load: LayoutServerLoad = async ({
 
 	const { user } = await safeGetSession();
 
-	const stripeEnabled = StripeService.isEnabled();
+	const stripeEnabled = isStripeEnabled();
 
 	const baseData = {
 		url: url.origin,

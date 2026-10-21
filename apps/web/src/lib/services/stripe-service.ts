@@ -7,9 +7,9 @@ import { INVOICE_CONFIG } from '$lib/config/stripe-invoice';
 import { CONSUMPTION_BILLING_LIMITS } from '$lib/server/consumption-billing';
 import { invalidateBillingContextCache } from '$lib/server/billing-context-cache';
 import { ErrorLoggerService } from './errorLogger.service';
+import { isStripeEnabled } from '$lib/server/stripe-config';
 
 // Support legacy and PRIVATE_ env names without breaking existing deploys.
-const stripeEnabledFlag = (env.PRIVATE_ENABLE_STRIPE ?? env.ENABLE_STRIPE ?? 'false') === 'true';
 const stripeSecretKey = env.PRIVATE_STRIPE_SECRET_KEY ?? env.STRIPE_SECRET_KEY ?? '';
 const proPriceIdFromEnv = (env.PRIVATE_STRIPE_PRO_PRICE_ID ?? env.STRIPE_PRO_PRICE_ID ?? '').trim();
 const powerPriceIdFromEnv = (
@@ -22,12 +22,11 @@ const PRO_MONTHLY_PRICE_CENTS = 2000;
 const POWER_MONTHLY_PRICE_CENTS = 5000;
 
 // Initialize Stripe only if enabled
-const stripeClient =
-	stripeEnabledFlag && stripeSecretKey
-		? new Stripe(stripeSecretKey, {
-				typescript: true
-			})
-		: null;
+const stripeClient = isStripeEnabled()
+	? new Stripe(stripeSecretKey, {
+			typescript: true
+		})
+	: null;
 
 export interface CreateCheckoutSessionOptions {
 	userId: string;
@@ -152,7 +151,7 @@ export class StripeService {
 	 * Check if Stripe is enabled
 	 */
 	static isEnabled(): boolean {
-		return stripeEnabledFlag && !!stripeClient;
+		return isStripeEnabled() && !!stripeClient;
 	}
 
 	/**

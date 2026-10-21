@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({ admin: vi.fn(), restore: vi.fn(), review: vi.fn() }));
 vi.mock('$env/static/private', () => ({ PRIVATE_SUPABASE_SERVICE_KEY: 'test-only-key' }));
 vi.mock('$lib/supabase/admin', () => ({ createAdminSupabaseClient: mock.admin }));
@@ -183,6 +183,7 @@ describe('chat sharing endpoints', () => {
 		expect(result.status).toBe(200);
 		expect(mock.review).toHaveBeenCalledOnce();
 		expect(rows).toHaveLength(1);
+		assert.isDefined(rows[0]);
 		expect(rows[0].snapshot.messages).toHaveLength(1);
 		expect(JSON.stringify(rows[0].snapshot)).not.toContain(mid);
 		expect(rows[0].author_name).toBe('DJ');
@@ -219,6 +220,7 @@ describe('chat sharing endpoints', () => {
 	});
 	it('updates the existing token, revokes it, then uses a new token on re-share', async () => {
 		await publish(await prepare());
+		assert.isDefined(rows[0]);
 		const first = rows[0].token;
 		await publish(await prepare(), [second], false);
 		expect(rows).toHaveLength(1);
@@ -229,10 +231,12 @@ describe('chat sharing endpoints', () => {
 		expect(await getPublicChatShare(first)).toBeNull();
 		await publish(await prepare());
 		expect(rows).toHaveLength(2);
+		assert.isDefined(rows[1]);
 		expect(rows[1].token).not.toBe(first);
 	});
 	it('public read contains only public fields and hides the byline when disabled', async () => {
 		await publish(await prepare(), [mid], false);
+		assert.isDefined(rows[0]);
 		rows[0].snapshot.private = 'PRIVATE';
 		rows[0].snapshot.messages[0].metadata = { private: 'PRIVATE' };
 		rows[0].snapshot.messages[0].id = mid;
@@ -256,8 +260,9 @@ describe('chat sharing endpoints', () => {
 	});
 	it('counts a view once per cookie, skips author and DNT, and never changes snapshot timestamp', async () => {
 		await publish(await prepare());
-		const row = rows[0],
-			updated = row.updated_at;
+		const [row] = rows;
+		assert.isDefined(row);
+		const updated = row.updated_at;
 		expect(
 			(await recordChatShareView(event(undefined, { token: row.token, user: true }))).status
 		).toBe(200);

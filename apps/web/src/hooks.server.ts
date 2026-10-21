@@ -24,7 +24,7 @@ import {
 	getUserAgentFromHeaders,
 	logServerError
 } from '$lib/server/error-tracking';
-import { StripeService } from '$lib/services/stripe-service';
+import { isStripeEnabled } from '$lib/server/stripe-config';
 import {
 	getErrorStatus,
 	isPrivateConfigProbePath,
@@ -573,7 +573,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		mutationGuardUserId &&
 		response.ok &&
 		CONSUMPTION_AUTO_POWER_UPGRADE_ENABLED &&
-		StripeService.isEnabled()
+		isStripeEnabled()
 	) {
 		const stillFrozen = Boolean(postMutationGateRow?.is_frozen);
 		const billingTier =
@@ -592,6 +592,8 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 		if (shouldCheckAutoUpgrade) {
 			try {
+				// Ordinary page reads do not need to initialize the payment SDK.
+				const { StripeService } = await import('$lib/services/stripe-service');
 				const adminSupabase = createAdminSupabaseClient();
 				const stripeService = new StripeService(adminSupabase as any);
 				const upgradeResult = await measure('billing.auto_upgrade_power', () =>

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { assert, describe, expect, it, vi } from 'vitest';
 import { createChatResumeLinkHandler } from './agent-chat-resume-link';
 import { readChatResumeSessionId } from '$lib/utils/agent-chat-resume';
 
@@ -43,12 +43,14 @@ describe('chat resume links', () => {
 		const opening = handler.handle(url);
 		await Promise.resolve();
 		expect(deps.open).not.toHaveBeenCalled();
+		assert.isDefined(deps.cleanUrl.mock.calls[0]);
 		expect(deps.cleanUrl.mock.calls[0][0].href).toBe(
 			'https://build-os.com/today?view=all#work'
 		);
 		cleaned();
 		await opening;
 		expect(deps.open).toHaveBeenCalledExactlyOnceWith(id);
+		assert.isDefined(deps.suspendUrl.mock.results[0]);
 		expect(deps.suspendUrl.mock.results[0].value).toHaveBeenCalledOnce();
 		expect(deps.record).not.toHaveBeenCalled();
 		handler.complete(id, 'ok');
@@ -143,6 +145,7 @@ describe('chat resume links', () => {
 				`https://build-os.com/history?filter=all&id=${id}&itemType=chat_session&chat=${id}#recent`
 			)
 		);
+		assert.isDefined(deps.cleanUrl.mock.calls[0]);
 		expect(deps.cleanUrl.mock.calls[0][0].href).toBe(
 			'https://build-os.com/history?filter=all#recent'
 		);

@@ -86,16 +86,13 @@ function scheduleOperationalMeasurement(): void {
 	operationalMeasurementScheduled = true;
 
 	runWhenIdle(() => {
-		void Promise.all([
-			import('@vercel/analytics/sveltekit').then(({ injectAnalytics }) => {
+		void import('@vercel/analytics/sveltekit')
+			.then(({ injectAnalytics }) => {
 				injectAnalytics({ mode: 'production' });
-			}),
-			import('@vercel/speed-insights/sveltekit').then(({ injectSpeedInsights }) => {
-				injectSpeedInsights();
 			})
-		]).catch((error) => {
-			console.warn('Operational measurement failed to initialize:', error);
-		});
+			.catch((error) => {
+				console.warn('Operational measurement failed to initialize:', error);
+			});
 	}, 3500);
 }
 

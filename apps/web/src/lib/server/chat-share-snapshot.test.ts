@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import {
 	buildChatShareCandidates,
 	buildSharedChatSnapshot,
@@ -56,6 +56,7 @@ describe('shared chat privacy', () => {
 			]
 		});
 		const output = buildSharedChatSnapshot(input, [id]);
+		assert.isDefined(output.messages[0]);
 		expect(output.messages[0].made).toEqual([{ kind: 'task', label: 'Draft pitch deck' }]);
 		expect(JSON.stringify(output)).not.toContain(other);
 		expect(JSON.stringify(output)).not.toContain('PRIVATE');
@@ -83,6 +84,7 @@ describe('shared chat privacy', () => {
 		expect(JSON.stringify(output)).not.toContain(id);
 		expect(JSON.stringify(output)).not.toContain(other);
 		expect(JSON.stringify(output)).not.toContain('PRIVATE');
+		assert.isDefined(output.messages[0]);
 		expect(Object.keys(output.messages[0])).toEqual(['role', 'markdown', 'at']);
 	});
 	it('unlinks workspace and unsafe links while retaining external HTTPS', () => {
@@ -122,6 +124,7 @@ describe('shared chat privacy', () => {
 			]
 		});
 		const output = buildSharedChatSnapshot(input, [id]);
+		assert.isDefined(output.messages[0]);
 		expect(output.messages[0].withheld).toEqual({ images: 2, files: 1, voice: 1 });
 		expect(JSON.stringify(output)).not.toContain('private.example');
 		expect(JSON.stringify(output)).not.toContain('PRIVATE');
@@ -187,6 +190,7 @@ describe('shared chat privacy', () => {
 			]
 		});
 		const output = buildSharedChatSnapshot(input, [id]);
+		assert.isDefined(output.messages[0]);
 		expect(output.messages[0].work).toEqual({ seconds: 54, steps: 1 });
 		expect(JSON.stringify(output)).not.toContain('PRIVATE');
 	});

@@ -288,7 +288,6 @@ Sentry.init({
 Enable in Vercel dashboard:
 
 - Web Analytics for page views
-- Speed Insights for performance
 - Function logs for debugging
 
 ## 🔒 Security Checklist

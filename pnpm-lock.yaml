@@ -193,9 +193,6 @@ importers:
       '@vercel/functions':
         specifier: 3.9.5
         version: 3.9.5(@aws-sdk/credential-provider-web-identity@3.896.0)(ws@8.21.0)
-      '@vercel/speed-insights':
-        specifier: ^2.0.0
-        version: 2.0.0(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.57.1)(vite@8.3.0(@types/node@20.19.17)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.57.1)(typescript@5.9.2)(vite@8.3.0(@types/node@20.19.17)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.57.1)
       cytoscape:
         specifier: ^3.33.1
         version: 3.33.1
@@ -3173,32 +3170,6 @@ packages:
   '@vercel/oidc@3.8.5':
     resolution: {integrity: sha512-RwXYtnt6za+5UO4IaLywN/6B95AlLqynPRUWRJxeJ/qufwkcLUbZNUxYtzT0uMpuraWhlNcGqPNGkTnZr4BGBw==}
     engines: {node: '>= 20'}
-
-  '@vercel/speed-insights@2.0.0':
-    resolution: {integrity: sha512-jwkNcrTeafWxjmWq4AHBaptSqZiJkYU5adLC9QBSqeim0GcqDMgN5Ievh8OG1rJ6W3A4l1oiP7qr9CWxGuzu3w==}
-    peerDependencies:
-      '@sveltejs/kit': 2.70.2
-      next: '>= 13'
-      nuxt: '>= 3'
-      react: ^18 || ^19 || ^19.0.0-rc
-      svelte: 5.55.7
-      vue: ^3
-      vue-router: ^4
-    peerDependenciesMeta:
-      '@sveltejs/kit':
-        optional: true
-      next:
-        optional: true
-      nuxt:
-        optional: true
-      react:
-        optional: true
-      svelte:
-        optional: true
-      vue:
-        optional: true
-      vue-router:
-        optional: true
 
   '@vitest/coverage-v8@4.1.11':
     resolution: {integrity: sha512-8MVGEFnJIcdGjcbfKmeq8z0pZHH0JlVtoVZH9Q/qwUp6wyFnEJUBMrw9DCaj+ra3vShGmhavjalMIhPNxZAUcw==}
@@ -8665,12 +8636,6 @@ snapshots:
       '@vercel/cli-config': 0.2.4
       '@vercel/cli-exec': 1.0.1
       jose: 5.10.0
-
-  '@vercel/speed-insights@2.0.0(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.57.1)(vite@8.3.0(@types/node@20.19.17)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.57.1)(typescript@5.9.2)(vite@8.3.0(@types/node@20.19.17)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.57.1)':
-    optionalDependencies:
-      '@sveltejs/kit': 2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.57.1)(vite@8.3.0(@types/node@20.19.17)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.57.1)(typescript@5.9.2)(vite@8.3.0(@types/node@20.19.17)(esbuild@0.28.2)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3))
-      react: 19.2.3
-      svelte: 5.57.1
 
   '@vitest/coverage-v8@4.1.11(vitest@4.1.11)':
     dependencies:

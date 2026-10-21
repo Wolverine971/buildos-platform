@@ -1,6 +1,5 @@
 // apps/web/src/lib/utils/auth-client-logger.ts
-import { ErrorLoggerService } from '$lib/services/errorLogger.service';
-import { supabase } from '$lib/supabase';
+import { browser } from '$app/environment';
 
 type AuthClientErrorContext = {
 	endpoint: string;
@@ -13,9 +12,17 @@ export async function logAuthClientError(
 	error: unknown,
 	context: AuthClientErrorContext
 ): Promise<void> {
-	if (!supabase) return;
+	if (!browser) return;
 
 	try {
+		// Error reporting must not pull the database SDK into the auth page's
+		// initial bundle. Keep loading failures inside this best-effort logger.
+		const [{ ErrorLoggerService }, { supabase }] = await Promise.all([
+			import('$lib/services/errorLogger.service'),
+			import('$lib/supabase')
+		]);
+		if (!supabase) return;
+
 		const logger = ErrorLoggerService.getInstance(supabase);
 		let userId: string | undefined;
 

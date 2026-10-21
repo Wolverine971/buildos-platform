@@ -1,6 +1,6 @@
 // apps/web/src/lib/utils/subscription.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { StripeService } from '$lib/services/stripe-service';
+import { isStripeEnabled } from '$lib/server/stripe-config';
 
 export interface SubscriptionStatus {
 	hasActiveSubscription: boolean;
@@ -25,7 +25,7 @@ export async function checkUserSubscription(
 	userId: string
 ): Promise<SubscriptionStatus> {
 	// If Stripe is not enabled, everyone has access
-	if (!StripeService.isEnabled()) {
+	if (!isStripeEnabled()) {
 		return {
 			hasActiveSubscription: true,
 			subscriptionStatus: 'free_access',

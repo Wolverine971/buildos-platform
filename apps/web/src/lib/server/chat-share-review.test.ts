@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ call: vi.fn() }));
 vi.mock('$env/static/private', () => ({ PRIVATE_SUPABASE_SERVICE_KEY: 'test-only-key' }));
 vi.mock('$lib/services/smart-llm-service', () => ({
@@ -41,11 +41,13 @@ describe('chat share review', () => {
 				])
 			}
 		]);
-		const prompt = mocks.call.mock.calls[0][0].userPrompt;
+		const [reviewCall] = mocks.call.mock.calls;
+		assert.isDefined(reviewCall);
+		const prompt = reviewCall[0].userPrompt;
 		expect(prompt).not.toContain('abcdefghijklmnopqrstuvwxyz123456');
 		expect(prompt).not.toContain('123-45-6789');
 		expect(prompt).not.toContain('4111 1111');
-		expect(mocks.call.mock.calls[0][0].profile).toBe('balanced');
+		expect(reviewCall[0].profile).toBe('balanced');
 	});
 	it('maps structured message numbers, never excerpts, to re-checkable flags', async () => {
 		mocks.call.mockResolvedValue({
@@ -65,9 +67,9 @@ describe('chat share review', () => {
 				status: 'flagged',
 				findings: [{ message: 1, category, reason: 'Sensitive identifier.' }]
 			});
-			expect((await reviewChatShare(input(), { supabase: {}, userId: uid }))[0].locked).toBe(
-				true
-			);
+			const [flag] = await reviewChatShare(input(), { supabase: {}, userId: uid });
+			assert.isDefined(flag);
+			expect(flag.locked).toBe(true);
 		}
 	);
 	it.each([
