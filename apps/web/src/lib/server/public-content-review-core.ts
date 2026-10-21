@@ -79,8 +79,24 @@ const POLICY_RULES: RegexRule[] = [
 // only for redaction so key material never reaches the LLM.
 const PRIVATE_KEY_BLOCK_REGEX =
 	/-----BEGIN(?: [A-Z0-9]+)? PRIVATE KEY-----(?:[\s\S]{0,12000}?-----END(?: [A-Z0-9]+)? PRIVATE KEY-----|(?:[ \t]*\r?\n[ \t]*[A-Za-z0-9+/=]{40,})*)/gi;
-// Lookahead checks overlapping structured number groups (e.g. a card after an SSN).
-const CARD_CANDIDATE_REGEX = /(?=(\b(?:\d[ -]*?){13,19}\b))/g;
+// Document review (PUBLIC_PAGE_CONTENT_POLICY_VERSION public_page_policy_v3) uses
+// this detector byte for byte. Changing it changes which documents pass, so it
+// needs a policy version bump (and the paid re-reviews that triggers).
+const DOCUMENT_CARD_CANDIDATE_REGEX = /(?:\b\d[ -]*?){13,19}\b/g;
+// Chat shares: the lookahead checks overlapping structured number groups (e.g. a
+// card after an SSN) and plain 13–19 digit runs.
+const OVERLAPPING_CARD_CANDIDATE_REGEX = /(?=(\b(?:\d[ -]*?){13,19}\b))/g;
+
+/** Which card-number detector a caller's policy uses. Documents keep the default. */
+export type FixedFormatDetectorOptions = { cardDetector?: 'document' | 'overlapping' };
+
+function cardCandidateRegex(options: FixedFormatDetectorOptions | undefined): RegExp {
+	return new RegExp(
+		options?.cardDetector === 'overlapping'
+			? OVERLAPPING_CARD_CANDIDATE_REGEX
+			: DOCUMENT_CARD_CANDIDATE_REGEX
+	);
+}
 const EXCERPT_LONG_TOKEN_REGEX = /[A-Za-z0-9+/=_-]{32,}/g;
 
 /** Characters per LLM review call. */
@@ -124,7 +140,7 @@ type SensitiveRange = { start: number; end: number; placeholder: string };
  * Every fixed-format detector match (private key blocks, API tokens, SSNs,
  * Luhn-valid card numbers) in `text`, sorted and merged.
  */
-function findSensitiveRanges(text: string): SensitiveRange[] {
+function findSensitiveRanges(text: string, options?: FixedFormatDetectorOptions): SensitiveRange[] {
 	const ranges: SensitiveRange[] = [];
 	const collect = (
 		expression: RegExp,
@@ -142,7 +158,7 @@ function findSensitiveRanges(text: string): SensitiveRange[] {
 	for (const rule of POLICY_RULES) {
 		for (const pattern of rule.patterns) collect(globalRegex(pattern), rule.redaction);
 	}
-	collect(new RegExp(CARD_CANDIDATE_REGEX), '[redacted-card-number]', isLikelyCreditCard);
+	collect(cardCandidateRegex(options), '[redacted-card-number]', isLikelyCreditCard);
 
 	ranges.sort((a, b) => a.start - b.start || b.end - a.end);
 	const merged: SensitiveRange[] = [];
@@ -178,8 +194,11 @@ function applyRedactions(
  * Replaces every fixed-format detector match with a placeholder. The LLM only
  * ever sees redacted text, so a detected secret is never sent to the model.
  */
-export function redactFixedFormatMatches(value: string): string {
-	return applyRedactions(value, findSensitiveRanges(value));
+export function redactFixedFormatMatches(
+	value: string,
+	options?: FixedFormatDetectorOptions
+): string {
+	return applyRedactions(value, findSensitiveRanges(value, options));
 }
 
 function excerptAround(
@@ -242,10 +261,11 @@ function scanCreditCards(
 	text: string,
 	ranges: SensitiveRange[],
 	source: PublicPageReviewFindingSource,
-	asset: AssetLike | null
+	asset: AssetLike | null,
+	options?: FixedFormatDetectorOptions
 ): PublicPageReviewFinding[] {
 	const findings: PublicPageReviewFinding[] = [];
-	for (const match of text.matchAll(new RegExp(CARD_CANDIDATE_REGEX))) {
+	for (const match of text.matchAll(cardCandidateRegex(options))) {
 		const candidate = match[1] ?? match[0] ?? '';
 		if (!isLikelyCreditCard(candidate)) continue;
 		const index = match.index ?? 0;
@@ -267,13 +287,14 @@ function scanCreditCards(
 export function scanTextForFindings(
 	text: string,
 	source: PublicPageReviewFindingSource,
-	asset: AssetLike | null
+	asset: AssetLike | null,
+	options?: FixedFormatDetectorOptions
 ): PublicPageReviewFinding[] {
 	if (!text.trim()) return [];
-	const ranges = findSensitiveRanges(text);
+	const ranges = findSensitiveRanges(text, options);
 	return [
 		...scanRegexRules(text, ranges, source, asset),
-		...scanCreditCards(text, ranges, source, asset)
+		...scanCreditCards(text, ranges, source, asset, options)
 	];
 }
 
@@ -339,6 +360,8 @@ export async function requestPublicTextReview(
 		userId: string;
 		operationType: string;
 		projectId?: string;
+		/** Caller-owned deadline/cancellation; omitted by the document path. */
+		signal?: AbortSignal;
 	}
 ): Promise<Record<string, unknown>> {
 	return (await service.getJSONResponse({

@@ -3,7 +3,6 @@ import { redirect } from '@sveltejs/kit';
 import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/static/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 import {
 	authErrorCodeForGoogleError,
 	authErrorPath,
@@ -18,6 +17,7 @@ import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/secu
 import { captureServerEvent } from '$lib/server/posthog';
 import { consumeLegalAcceptanceIntent } from '$lib/server/legal-acceptance';
 import { launchSkillIdFromRedirect, skillSignupSource } from '$lib/utils/agent-chat-launch';
+import { decodeOAuthStateRedirect, withPostLoginRedirect } from '$lib/server/auth-redirects';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -62,22 +62,6 @@ function authErrorCodeFor(error: unknown, fallback: AuthErrorCode): AuthErrorCod
 		return 'session_failed';
 	}
 	return fallback;
-}
-
-function decodeOAuthRedirect(state: string | null): string | null {
-	if (!state) return null;
-
-	try {
-		const decoded = Buffer.from(state, 'base64url').toString('utf-8');
-		const parsed = JSON.parse(decoded);
-		if (parsed && typeof parsed.redirect === 'string') {
-			return normalizeRedirectPath(parsed.redirect);
-		}
-	} catch {
-		return null;
-	}
-
-	return null;
 }
 
 export class GoogleOAuthHandler {
@@ -412,9 +396,12 @@ export class GoogleOAuthHandler {
 		const code = url.searchParams.get('code');
 		const error = url.searchParams.get('error');
 		const state = url.searchParams.get('state');
-		const stateRedirect = decodeOAuthRedirect(state);
+		const stateRedirect = decodeOAuthStateRedirect(state);
 		const launchSkillId = launchSkillIdFromRedirect(stateRedirect);
 		const flow = config.isRegistration ? 'register' : 'login';
+		// A failed attempt goes back to the sign-in screen with the link it started from, so a
+		// retry still lands on that page (and its `?chat=`), not on /today.
+		const retryPath = (path: string) => withPostLoginRedirect(path, stateRedirect);
 
 		console.log(`Google ${flow} callback received:`, {
 			hasCode: !!code,
@@ -445,7 +432,7 @@ export class GoogleOAuthHandler {
 			);
 			throw redirect(
 				303,
-				authErrorPath(config.redirectPath, authErrorCodeForGoogleError(error))
+				retryPath(authErrorPath(config.redirectPath, authErrorCodeForGoogleError(error)))
 			);
 		}
 
@@ -468,7 +455,7 @@ export class GoogleOAuthHandler {
 				},
 				this.securityEventOptions
 			);
-			throw redirect(303, authErrorPath(config.redirectPath, 'google_failed'));
+			throw redirect(303, retryPath(authErrorPath(config.redirectPath, 'google_failed')));
 		}
 
 		// Process authentication
@@ -505,7 +492,9 @@ export class GoogleOAuthHandler {
 			);
 			throw redirect(
 				303,
-				authErrorPath(config.redirectPath, authErrorCodeFor(error, 'google_failed'))
+				retryPath(
+					authErrorPath(config.redirectPath, authErrorCodeFor(error, 'google_failed'))
+				)
 			);
 		}
 
@@ -543,7 +532,9 @@ export class GoogleOAuthHandler {
 			);
 			throw redirect(
 				303,
-				authErrorPath(config.redirectPath, authErrorCodeFor(error, 'session_failed'))
+				retryPath(
+					authErrorPath(config.redirectPath, authErrorCodeFor(error, 'session_failed'))
+				)
 			);
 		}
 
@@ -567,7 +558,7 @@ export class GoogleOAuthHandler {
 				},
 				this.securityEventOptions
 			);
-			throw redirect(303, authNoticePath('/auth/login', 'account_exists'));
+			throw redirect(303, retryPath(authNoticePath('/auth/login', 'account_exists')));
 		}
 
 		// A Google account that has never signed in is created on the sign-in path as well as
@@ -608,7 +599,10 @@ export class GoogleOAuthHandler {
 					);
 				}
 				await this.clearAuthSession();
-				throw redirect(303, authErrorPath('/auth/register', 'policy_unverified'));
+				throw redirect(
+					303,
+					retryPath(authErrorPath('/auth/register', 'policy_unverified'))
+				);
 			}
 
 			// UTM attribution can't ride the OAuth redirect; the client-side

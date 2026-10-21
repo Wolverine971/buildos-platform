@@ -9,30 +9,58 @@ import {
 	syncChatUrl
 } from './agent-chat-url.svelte';
 
+// SvelteKit's per-entry history index. A push gets a new value; a replace keeps it.
+// It is the only reliable way to tell "Back moved us to another entry" from "a page
+// rewrote this entry's URL/state" (both change page.state the same way).
+const HISTORY_INDEX_KEY = 'sveltekit:history';
+// If a popstate never arrives (unload, browser quirk), stop waiting after this long.
+const POP_SETTLE_FALLBACK_MS = 1000;
+
 let pendingPop: Promise<void> | null = null;
+
+function currentHistoryIndex(): unknown {
+	try {
+		return (history.state as Record<string, unknown> | null)?.[HISTORY_INDEX_KEY];
+	} catch {
+		return undefined;
+	}
+}
 
 /** A replacement modal must not push until the previous modal's Back has landed. */
 export function waitForChatHistorySettled(): Promise<void> {
 	return pendingPop ?? Promise.resolve();
 }
 
-function popChatEntry(): void {
-	if (pendingPop) return;
-	pendingPop = new Promise<void>((resolve) => {
-		window.addEventListener(
-			'popstate',
-			() => {
-				// SvelteKit registered its popstate listener first. Let its state update land.
-				queueMicrotask(() => {
-					pendingPop = null;
-					syncChatUrl();
-					resolve();
-				});
-			},
-			{ once: true }
-		);
+/**
+ * Go Back one entry and resolve once SvelteKit has applied it. `beforeResolve` runs
+ * before anyone awaiting waitForChatHistorySettled() continues, so a host's onClose
+ * (which may start goto/invalidate) runs after the popstate that would otherwise
+ * cancel that work.
+ */
+function popChatEntry(beforeResolve: () => void): Promise<void> {
+	const pop = new Promise<void>((resolve) => {
+		let settled = false;
+		const settle = () => {
+			if (settled) return;
+			settled = true;
+			window.removeEventListener('popstate', onPop);
+			clearTimeout(fallback);
+			if (pendingPop === pop) pendingPop = null;
+			syncChatUrl();
+			try {
+				beforeResolve();
+			} finally {
+				resolve();
+			}
+		};
+		// SvelteKit registered its popstate listener first. Let its state update land.
+		const onPop = () => queueMicrotask(settle);
+		const fallback = setTimeout(settle, POP_SETTLE_FALLBACK_MS);
+		window.addEventListener('popstate', onPop);
 	});
+	pendingPop = pop;
 	history.back();
+	return pop;
 }
 
 type ChatHistoryOptions = {
@@ -54,29 +82,55 @@ export function createChatHistory(options: ChatHistoryOptions) {
 	let navigationVersion = 0;
 	let selfPopping = false;
 	let claimedSession: string | null = null;
+	// The history entry this chat currently lives on, and whether the chat pushed it.
+	let ownEntry: unknown = undefined;
+	let ownEntryPushed = false;
 
 	function release() {
 		releaseChatUrl(instanceId);
 		claimedSession = null;
 	}
 
-	function close() {
-		if (!visible) return;
+	function rememberOwnEntry(pushed: boolean) {
+		ownEntry = currentHistoryIndex();
+		ownEntryPushed = pushed;
+	}
+
+	/**
+	 * Leave history the way the chat found it. Resolves once any Back it started has been
+	 * applied; `afterClose` runs at that point (or immediately when nothing was popped).
+	 */
+	function close(afterClose: () => void = () => {}): Promise<void> {
+		if (!visible) {
+			afterClose();
+			return Promise.resolve();
+		}
 		visible = false;
 		closed = true;
 		release();
-		if (options.isEmbedded() || navigatingRoute || navigating.to) return;
-		if (page.state.agentChat !== instanceId) return;
-		if (page.state.agentChatPushed) {
-			selfPopping = true;
-			popChatEntry();
-		} else {
+		if (options.isEmbedded() || navigatingRoute || navigating.to) {
+			afterClose();
+			return Promise.resolve();
+		}
+		const leaveEntry = (): Promise<void> => {
+			if (page.state.agentChat !== instanceId) {
+				afterClose();
+				return Promise.resolve();
+			}
+			if (page.state.agentChatPushed) {
+				selfPopping = true;
+				return popChatEntry(afterClose);
+			}
 			replaceState('', {
 				...page.state,
 				agentChat: undefined,
 				agentChatPushed: undefined
 			});
-		}
+			afterClose();
+			return Promise.resolve();
+		};
+		// Another chat's Back is still landing: pop ours only once that one is applied.
+		return pendingPop ? pendingPop.then(leaveEntry) : leaveEntry();
 	}
 
 	onMount(() => {
@@ -99,8 +153,6 @@ export function createChatHistory(options: ChatHistoryOptions) {
 	afterNavigate((navigation) => {
 		queueMicrotask(() => {
 			if (disposed) return;
-			// Preserve the original pushed flag when walking Back through pages.
-			// A fresh page entry belongs to the chat but was not pushed by it.
 			if (
 				visible &&
 				!closed &&
@@ -110,11 +162,16 @@ export function createChatHistory(options: ChatHistoryOptions) {
 				navigation.type !== 'enter' &&
 				!isChatUrlSyncSuspended()
 			) {
+				// A page change while open: the chat now lives on this entry. A replacing
+				// navigation keeps the entry the chat pushed, so it still owns a Back step.
+				const sameEntry = ownEntry !== undefined && currentHistoryIndex() === ownEntry;
+				const pushed = sameEntry && ownEntryPushed;
 				replaceState('', {
 					...page.state,
 					agentChat: instanceId,
-					agentChatPushed: undefined
+					agentChatPushed: pushed || undefined
 				});
+				rememberOwnEntry(pushed);
 			}
 			navigatingRoute = false;
 			if (visible && !closed && !isChatUrlSyncSuspended()) syncChatUrl();
@@ -132,7 +189,7 @@ export function createChatHistory(options: ChatHistoryOptions) {
 		untrack(() => {
 			if (selfPopping && owner !== instanceId) selfPopping = false;
 			if (!onScreen) {
-				close();
+				void close();
 				closed = false;
 				return;
 			}
@@ -149,22 +206,36 @@ export function createChatHistory(options: ChatHistoryOptions) {
 				visible = true;
 				if (!embedded) {
 					pushState('', { ...page.state, agentChat: instanceId, agentChatPushed: true });
+					rememberOwnEntry(true);
 				}
+			} else if (!embedded && owner === instanceId) {
+				// Walking Back through pages keeps the chat open; track the entry it is on.
+				rememberOwnEntry(page.state.agentChatPushed === true);
 			} else if (
 				!embedded &&
-				owner !== instanceId &&
 				!inFlight &&
 				!routeInFlight &&
 				!selfPopping &&
 				!isChatUrlSyncSuspended()
 			) {
-				// Back already removed our entry. Close through the normal X path without
-				// popping again (which would also dismiss the underlying desktop card).
-				visible = false;
-				closed = true;
-				release();
-				options.onBack();
-				return;
+				if (ownEntry !== undefined && currentHistoryIndex() === ownEntry) {
+					// Same entry, new state: a page rewrote its URL without carrying our
+					// marker (e.g. replaceState(url, {})). That is not Back; put it back.
+					replaceState('', {
+						...page.state,
+						agentChat: instanceId,
+						agentChatPushed: ownEntryPushed || undefined
+					});
+					syncChatUrl();
+				} else {
+					// Back already removed our entry. Close through the normal X path without
+					// popping again (which would also dismiss the underlying desktop card).
+					visible = false;
+					closed = true;
+					release();
+					options.onBack();
+					return;
+				}
 			}
 			if (sessionId !== claimedSession) {
 				if (sessionId) claimChatUrl(instanceId, sessionId);
@@ -177,7 +248,7 @@ export function createChatHistory(options: ChatHistoryOptions) {
 	onDestroy(() => {
 		disposed = true;
 		if (!ready) return;
-		close();
+		void close();
 		release();
 	});
 

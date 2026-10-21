@@ -95,6 +95,10 @@ const sanitizeOptions = {
 // let model-authored markdown trigger a request to an arbitrary remote host.
 const agentSanitizeOptions = {
 	...sanitizeOptions,
+	// Unlinked record links become attribute-less spans (transformTags.a below). The span
+	// must be an allowed tag: transforming into a discarded tag trips a sanitize-html 2.17
+	// bug where the next real link closes with </span> and swallows the rest of the text.
+	allowedTags: [...sanitizeOptions.allowedTags, 'span'],
 	allowedSchemes: ['http', 'https', 'mailto', 'tel'],
 	allowedSchemesByTag: {
 		img: ['data']

@@ -129,7 +129,8 @@
 	}
 
 	function handleSignIn() {
-		const currentPath = page.url.pathname;
+		// Path + query, so a `?chat=` resume link survives sign-in.
+		const currentPath = page.url.pathname + page.url.search;
 		goto(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
 	}
 

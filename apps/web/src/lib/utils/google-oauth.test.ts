@@ -177,6 +177,97 @@ describe('GoogleOAuthHandler error redirects', () => {
 			)
 		).rejects.toMatchObject({ status: 303, location: '/auth/login?error=session_failed' });
 	});
+
+	describe('keeps the link the attempt started from', () => {
+		const LINK = '/projects/p-1?tab=tasks&chat=12345678-1234-4321-9876-123456789abc';
+		const withLink = (path: string) => `${path}&redirect=${encodeURIComponent(LINK)}`;
+		const stateFor = (redirect: string) =>
+			Buffer.from(JSON.stringify({ nonce: 'n', redirect })).toString('base64url');
+		const callback = (params: Record<string, string>, redirect = LINK) => {
+			const url = new URL('https://build-os.com/auth/google/login-callback');
+			for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+			url.searchParams.set('state', stateFor(redirect));
+			return url;
+		};
+		const signIn = { redirectPath: '/auth/login' as const, successPath: '/today' };
+
+		it('when Google returns an error', async () => {
+			const handler = new GoogleOAuthHandler({ auth: {} } as any);
+			await expect(
+				handler.handleCallback(callback({ error: 'access_denied' }), signIn)
+			).rejects.toMatchObject({
+				status: 303,
+				location: withLink('/auth/login?error=google_cancelled')
+			});
+		});
+
+		it('when no code comes back', async () => {
+			const handler = new GoogleOAuthHandler({ auth: {} } as any);
+			await expect(handler.handleCallback(callback({}), signIn)).rejects.toMatchObject({
+				status: 303,
+				location: withLink('/auth/login?error=google_failed')
+			});
+		});
+
+		it('when the token exchange fails', async () => {
+			const handler = new GoogleOAuthHandler({ auth: {} } as any);
+			vi.spyOn(handler, 'exchangeCodeForTokens').mockRejectedValue(new Error('boom'));
+			await expect(
+				handler.handleCallback(callback({ code: 'abc' }), signIn)
+			).rejects.toMatchObject({
+				status: 303,
+				location: withLink('/auth/login?error=google_failed')
+			});
+		});
+
+		it('when session setup fails', async () => {
+			const handler = new GoogleOAuthHandler({ auth: { signOut: vi.fn() } } as any);
+			vi.spyOn(handler, 'exchangeCodeForTokens').mockResolvedValue({ access_token: 'a' });
+			vi.spyOn(handler, 'authenticateWithSupabase').mockRejectedValue(new Error('x'));
+			await expect(
+				handler.handleCallback(callback({ code: 'abc' }), signIn)
+			).rejects.toMatchObject({
+				status: 303,
+				location: withLink('/auth/login?error=session_failed')
+			});
+		});
+
+		it('when sign-up finds an existing account', async () => {
+			const handler = new GoogleOAuthHandler(
+				{ auth: { signOut: vi.fn() } } as any,
+				{} as any
+			);
+			vi.spyOn(handler, 'exchangeCodeForTokens').mockResolvedValue({ access_token: 'a' });
+			vi.spyOn(handler, 'authenticateWithSupabase').mockResolvedValue({
+				session: {},
+				user: { id: 'u' },
+				isNewUser: false
+			});
+			await expect(
+				handler.handleCallback(callback({ code: 'abc' }), {
+					redirectPath: '/auth/register',
+					successPath: '/today',
+					isRegistration: true
+				})
+			).rejects.toMatchObject({
+				status: 303,
+				location: withLink('/auth/login?notice=account_exists')
+			});
+		});
+
+		it.each(['https://evil.example/x', '/auth/login?redirect=/today'])(
+			'but never an off-site or sign-in target (%s)',
+			async (redirect) => {
+				const handler = new GoogleOAuthHandler({ auth: {} } as any);
+				await expect(
+					handler.handleCallback(callback({ error: 'access_denied' }, redirect), signIn)
+				).rejects.toMatchObject({
+					status: 303,
+					location: '/auth/login?error=google_cancelled'
+				});
+			}
+		);
+	});
 });
 
 describe('GoogleOAuthHandler Try in BuildOS launch', () => {

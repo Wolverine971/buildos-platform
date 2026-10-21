@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/agent-chat-history.svelte.test.ts
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
@@ -7,6 +8,9 @@ const hooks = vi.hoisted(() => ({
 	before: [] as Array<(navigation: { complete: Promise<void> }) => void>,
 	after: [] as Array<(navigation: { type: string }) => void>
 }));
+// Mirrors SvelteKit: every entry carries `sveltekit:history`; a push gets a new value,
+// a replace keeps the current one.
+const entry = vi.hoisted(() => ({ index: 1 }));
 vi.mock('$app/environment', () => ({ browser: true }));
 vi.mock('$app/state', async () => await import('./__fixtures__/chat-history-state.svelte'));
 vi.mock('$app/navigation', async () => {
@@ -18,11 +22,20 @@ vi.mock('$app/navigation', async () => {
 			hooks.after.push(callback),
 		pushState: vi.fn((url: string | URL, state: App.PageState) => {
 			page.state = state;
-			if (url) window.history.replaceState({}, '', url);
+			entry.index += 1;
+			window.history.replaceState(
+				{ 'sveltekit:history': entry.index },
+				'',
+				url || window.location.href
+			);
 		}),
 		replaceState: vi.fn((url: string | URL, state: App.PageState) => {
 			page.state = state;
-			if (url) window.history.replaceState({}, '', url);
+			window.history.replaceState(
+				{ 'sveltekit:history': entry.index },
+				'',
+				url || window.location.href
+			);
 		})
 	};
 });
@@ -39,7 +52,8 @@ async function flush() {
 	await tick();
 }
 function pop(state: App.PageState = {}, url = '/today') {
-	window.history.replaceState({}, '', url);
+	entry.index -= 1;
+	window.history.replaceState({ 'sveltekit:history': entry.index }, '', url);
 	page.state = state;
 	window.dispatchEvent(new PopStateEvent('popstate'));
 }
@@ -52,7 +66,8 @@ describe('chat shallow history', () => {
 		base = {};
 		page.state = {};
 		navigating.to = null;
-		window.history.replaceState({}, '', '/today');
+		entry.index = 1;
+		window.history.replaceState({ 'sveltekit:history': entry.index }, '', '/today');
 		vi.clearAllMocks();
 		vi.spyOn(history, 'back').mockImplementation(() => {
 			queueMicrotask(() => pop(base));
@@ -195,6 +210,67 @@ describe('chat shallow history', () => {
 		resume();
 		await flush();
 		expect(history.back).not.toHaveBeenCalled();
+	});
+
+	it('X runs the host close only after its Back step lands', async () => {
+		// Hold the Back until the test releases it, as a real browser does.
+		let land: () => void = () => {};
+		vi.spyOn(history, 'back').mockImplementation(() => {
+			land = () => pop(base);
+		});
+		const onClosed = vi.fn();
+		render(ChatHistoryHarness, { sessionId: 'session-1', onClosed });
+		await flush();
+		await fireEvent.click(screen.getByText('Close chat'));
+		await flush();
+		// A host goto/invalidate started now would be cancelled by the coming popstate.
+		expect(onClosed).not.toHaveBeenCalled();
+		land();
+		await flush();
+		expect(onClosed).toHaveBeenCalledOnce();
+		await waitForChatHistorySettled();
+	});
+
+	it('runs the host close right away when there is no Back step to wait for', async () => {
+		const onClosed = vi.fn();
+		render(ChatHistoryHarness, { embedded: true, sessionId: 'session-1', onClosed });
+		await flush();
+		await fireEvent.click(screen.getByText('Close chat'));
+		expect(onClosed).toHaveBeenCalledOnce();
+		expect(history.back).not.toHaveBeenCalled();
+	});
+
+	it('a page rewriting its URL without the chat marker is not Back', async () => {
+		const onBack = vi.fn();
+		render(ChatHistoryHarness, { sessionId: 'session-1', onBack });
+		await flush();
+		// e.g. /briefs: replaceState(url, {}) on the same entry after a data refresh.
+		replaceState('/today?date=2026-10-20', {});
+		await flush();
+		expect(onBack).not.toHaveBeenCalled();
+		expect(page.state.agentChat).toBe('chat');
+		expect(page.state.agentChatPushed).toBe(true);
+		expect(window.location.search).toBe('?date=2026-10-20&chat=session-1');
+		// Real Back still closes.
+		pop();
+		await flush();
+		expect(onBack).toHaveBeenCalledOnce();
+	});
+
+	it('a replacing navigation keeps the Back step the chat pushed', async () => {
+		render(ChatHistoryHarness, { sessionId: 'session-1' });
+		await flush();
+		hooks.before.forEach((callback) => callback({ complete: new Promise(() => {}) }));
+		// goto(..., { replaceState: true }): same entry, new URL and state.
+		window.history.replaceState({ 'sveltekit:history': entry.index }, '', '/today?tab=2');
+		page.state = {};
+		await flush();
+		hooks.after.forEach((callback) => callback({ type: 'goto' }));
+		await flush();
+		expect(page.state.agentChatPushed).toBe(true);
+		await fireEvent.click(screen.getByText('Close chat'));
+		await flush();
+		expect(history.back).toHaveBeenCalledOnce();
 	});
 
 	it('embedded surfaces claim/release the URL without adding history', async () => {

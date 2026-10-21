@@ -48,6 +48,8 @@
 		sessionStatusLabel?: string | null;
 		contextUsage?: ContextUsageSnapshot | null;
 		sessionId?: string | null;
+		/** Session to link/share; null until the chat has a message (an empty chat has no link). */
+		linkSessionId?: string | null;
 		shareActive?: boolean;
 		onExportSteps?: () => void;
 		canExportSteps?: boolean;
@@ -78,6 +80,7 @@
 		sessionStatusLabel = null,
 		contextUsage = null,
 		sessionId = null,
+		linkSessionId = null,
 		shareActive = true,
 		onExportSteps,
 		canExportSteps = false,
@@ -440,9 +443,9 @@
 
 	<!-- Right side: Status pills, Project link, Close button -->
 	<div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
-		{#if sessionId}
-			<ChatResumeLink {sessionId} />
-			<ChatShareButton {sessionId} active={shareActive} />
+		{#if linkSessionId}
+			<ChatResumeLink sessionId={linkSessionId} />
+			<ChatShareButton sessionId={linkSessionId} active={shareActive} />
 		{/if}
 		<!-- INKPRINT status pills with micro-label styling -->
 		<!-- On mobile: show only spinner (when loading) and activity dot to prevent overflow -->

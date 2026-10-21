@@ -1,7 +1,15 @@
 <!-- apps/web/src/lib/components/agent/ChatShareSheet.svelte -->
 <script lang="ts">
 	import { getAbortSignal } from 'svelte';
-	import { AlertTriangle, Check, Copy, LoaderCircle, Lock, Share2 } from '$lib/icons/lucide';
+	import {
+		AlertTriangle,
+		Check,
+		Clock,
+		Copy,
+		LoaderCircle,
+		Lock,
+		Share2
+	} from '$lib/icons/lucide';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -15,6 +23,8 @@
 	let selectedIds = $state<string[]>([]);
 	let showAuthor = $state(true);
 	let fingerprint = $state<string | null>(null);
+	/** The byline choice the current review covered; toggling it needs a new review. */
+	let reviewedShowAuthor = $state<boolean | null>(null);
 	let action = $state<'loading' | 'reviewing' | 'publishing' | 'revoking' | null>('loading');
 	let errorMessage = $state<string | null>(null);
 	let notice = $state<string | null>(null);
@@ -25,7 +35,22 @@
 	const flags = $derived(new Map(preview?.flags?.map((flag) => [flag.messageId, flag]) ?? []));
 	const flaggedCount = $derived(preview?.flags?.length ?? 0);
 	const selectedCount = $derived(selectedIds.length);
-	const canPublish = $derived(Boolean(preview && fingerprint && selectedCount && !busy));
+	// Messages the safety check can't cover with the rest ("Too long to check in one share").
+	const outsideReview = $derived(new Set(preview?.outsideReview ?? []));
+	const addedOutsideReview = $derived(selectedIds.some((id) => outsideReview.has(id)));
+	const authorChanged = $derived(Boolean(fingerprint) && reviewedShowAuthor !== showAuthor);
+	// The signed review must cover every selected message and the byline choice.
+	const reviewCurrent = $derived(Boolean(fingerprint) && !authorChanged && !addedOutsideReview);
+	const staleReason = $derived(
+		!fingerprint
+			? null
+			: authorChanged
+				? 'You changed the byline. Review again before sharing.'
+				: addedOutsideReview
+					? 'Review again to include the messages you added.'
+					: null
+	);
+	const canPublish = $derived(Boolean(preview && reviewCurrent && selectedCount && !busy));
 
 	type ApiResult<T> = {
 		success: boolean;
@@ -48,6 +73,7 @@
 		const signal = requestSignal;
 		preview = null;
 		fingerprint = null;
+		reviewedShowAuthor = null;
 		action = 'loading';
 		errorMessage = null;
 		notice = null;
@@ -69,14 +95,22 @@
 		})();
 	});
 
-	function applyReview(next: ChatSharePreview) {
+	/** Returns how many selected messages the review couldn't cover (left unchecked). */
+	function applyReview(next: ChatSharePreview, reviewedWithAuthor: boolean): number {
 		if (!next.fingerprint) throw new Error('Review missing');
+		const outside = new Set(next.outsideReview ?? []);
+		const dropped = selectedIds.filter((id) => outside.has(id)).length;
 		selectedIds = preview
 			? reviewedChatShareSelection(next, preview.messages, selectedIds)
 			: defaultChatShareSelection(next);
 		preview = next;
 		fingerprint = next.fingerprint;
+		reviewedShowAuthor = reviewedWithAuthor;
+		return dropped;
 	}
+
+	const tooLongNotice = (count: number) =>
+		`Too long to check in one share. ${count} older ${count === 1 ? 'message was' : 'messages were'} left unchecked.`;
 
 	function setSelected(id: string, selected: boolean) {
 		if (busy || flags.get(id)?.locked) return;
@@ -88,12 +122,19 @@
 	async function review() {
 		if (busy || !preview) return;
 		const signal = requestSignal;
+		const reviewedWithAuthor = showAuthor;
 		action = 'reviewing';
 		fingerprint = null;
 		errorMessage = null;
 		notice = null;
 		try {
-			const response = await fetch(`${endpoint}/prepare`, { method: 'POST', signal });
+			const response = await fetch(`${endpoint}/prepare`, {
+				method: 'POST',
+				signal,
+				headers: { 'Content-Type': 'application/json' },
+				// The review covers the selection (newest first) and the byline only when shown.
+				body: JSON.stringify({ showAuthor: reviewedWithAuthor, messageIds: selectedIds })
+			});
 			const result: ApiResult<ChatSharePreview> = await response.json();
 			if (signal.aborted) return;
 			if (!response.ok || !result.success || !result.data) {
@@ -103,7 +144,8 @@
 						: "Safety check couldn't run. Try again.";
 				return;
 			}
-			applyReview(result.data);
+			const dropped = applyReview(result.data, reviewedWithAuthor);
+			if (dropped) notice = tooLongNotice(dropped);
 		} catch {
 			if (!signal.aborted) errorMessage = "Safety check couldn't run. Try again.";
 		} finally {
@@ -138,9 +180,8 @@
 			if (signal.aborted) return;
 			if (response.status === 409 && result.details?.preview) {
 				fingerprint = null;
-				applyReview(result.details.preview);
-				notice =
-					'This conversation changed. Check the refreshed preview, then publish again.';
+				const dropped = applyReview(result.details.preview, showAuthor);
+				notice = `This conversation changed. Check the refreshed preview, then publish again.${dropped ? ` ${tooLongNotice(dropped)}` : ''}`;
 				return;
 			}
 			if (!response.ok || !result.success || !result.data) {
@@ -148,8 +189,10 @@
 					result.code === 'REVIEW_REQUIRED' ||
 					result.code === 'REVIEW_UNAVAILABLE' ||
 					result.code === 'REVIEW_BLOCKED'
-				)
+				) {
 					fingerprint = null;
+					reviewedShowAuthor = null;
+				}
 				throw new Error(
 					result.code === 'REVIEW_UNAVAILABLE'
 						? "Safety check couldn't run. Try again."
@@ -203,6 +246,7 @@
 			});
 			preview = { ...preview, existing: null };
 			fingerprint = null;
+			reviewedShowAuthor = null;
 			notice = 'Sharing stopped. The old link no longer opens this chat.';
 			toastService.success('Sharing stopped');
 		} catch {
@@ -294,10 +338,24 @@
 						: 'messages are'} left out.
 				</p>
 			{/if}
+			{#if outsideReview.size}
+				<p
+					class="flex gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-foreground"
+				>
+					<Clock class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+					<span>
+						This chat is too long to check in one share. The most recent messages that
+						fit are selected; {outsideReview.size} older {outsideReview.size === 1
+							? 'message is'
+							: 'messages are'} unchecked. To share an older part, uncheck newer messages,
+						check the ones you want, then review again.
+					</span>
+				</p>
+			{/if}
 			<div class="rounded-lg border border-border bg-muted/30 p-3">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<p class="flex items-center gap-2 text-sm font-medium text-foreground">
-						{#if fingerprint}<Check class="h-4 w-4 text-success" /> Preview reviewed{:else}<Lock
+						{#if reviewCurrent}<Check class="h-4 w-4 text-success" /> Preview reviewed{:else}<Lock
 								class="h-4 w-4 text-muted-foreground"
 							/> Review before sharing{/if}
 					</p>
@@ -309,6 +367,11 @@
 						onclick={() => void review()}>Review for sharing</Button
 					>
 				</div>
+				{#if staleReason}
+					<p class="mt-2 text-sm font-medium text-foreground" role="status">
+						{staleReason}
+					</p>
+				{/if}
 				<p class="mt-2 text-xs leading-relaxed text-muted-foreground">
 					The check flags messages that may be sensitive. Credentials, card numbers and
 					Social Security numbers cannot be shared. Other flagged messages start unchecked
@@ -324,6 +387,7 @@
 				<div class="space-y-3">
 					{#each preview.messages as message, index (message.id)}
 						{@const flag = flags.get(message.id)}
+						{@const tooLong = !flag?.locked && outsideReview.has(message.id)}
 						<article
 							class={`rounded-lg border p-3 sm:p-4 ${selectedIds.includes(message.id) ? 'border-border bg-card' : 'border-border bg-muted/30'}`}
 						>
@@ -345,6 +409,11 @@
 									/><span
 										class="ml-auto text-xs font-normal text-muted-foreground"
 										>Cannot be shared</span
+									>{:else if tooLong}<Clock
+										class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+									/><span
+										class="ml-auto text-right text-xs font-normal text-muted-foreground"
+										>Too long to check in one share</span
 									>{/if}
 							</label>
 							{#if flag}

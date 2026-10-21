@@ -1,5 +1,5 @@
 // apps/web/src/lib/server/chat-share.service.ts
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { RequestEvent } from '@sveltejs/kit';
 import { ApiResponse } from '$lib/utils/api-response';
@@ -17,11 +17,16 @@ import {
 } from './chat-share-snapshot';
 import {
 	CHAT_SHARE_POLICY_VERSION,
+	CHAT_SHARE_REVIEW_MAX_CHARS,
+	CHAT_SHARE_TOO_LONG,
 	ChatShareReviewError,
 	chatShareFingerprint,
+	chatShareReviewChars,
+	chatShareReviewWindow,
 	reviewChatShare,
 	signChatShareReview,
-	verifyChatShareReview
+	verifyChatShareReview,
+	type ReviewInput
 } from './chat-share-review';
 import type { ChatSharePreview } from '$lib/types/chat-share';
 
@@ -33,6 +38,14 @@ const shareBody = z
 		fingerprint: z.string().min(1).max(100000)
 	})
 	.strict();
+/** Optional: older clients send no body (byline shown, default review window). */
+const prepareBody = z
+	.object({
+		showAuthor: z.boolean().optional(),
+		messageIds: z.array(uuid).max(100).optional()
+	})
+	.strict();
+const HIDDEN_AUTHOR_NAME = 'BuildOS user';
 const SHARE_COLUMNS = 'id, token, included_message_ids, show_author, updated_at, review';
 export const validShareToken = (token: string) => /^[A-Za-z0-9]{22}$/.test(token);
 export function newChatShareToken(): string {
@@ -46,6 +59,9 @@ export function newChatShareToken(): string {
 	return result.padStart(22, '0');
 }
 const shareUrl = (origin: string, token: string) => new URL(`/share/${token}`, origin).href;
+/** Non-reversible analytics handle for a share; the token itself never goes to analytics. */
+export const chatShareAnalyticsRef = (token: string) =>
+	createHash('sha256').update('chat-share-ref\n').update(token).digest('hex').slice(0, 12);
 
 async function ownedSession(event: RequestEvent) {
 	const { user } = await event.locals.safeGetSession();
@@ -63,6 +79,28 @@ async function ownedSession(event: RequestEvent) {
 	return { user, session };
 }
 
+type Originals = NonNullable<ReviewInput['originals']>;
+type LoadedPreview = { source: ChatShareSource; preview: ChatSharePreview; originals: Originals };
+
+function reviewInput(
+	{ preview, originals }: LoadedPreview,
+	showAuthor: boolean,
+	messageIds?: ReadonlySet<string>
+): ReviewInput {
+	return {
+		title: preview.title,
+		authorName: preview.authorName,
+		showAuthor,
+		messages: messageIds
+			? preview.messages.filter((message) => messageIds.has(message.id))
+			: preview.messages,
+		originals
+	};
+}
+
+const outsideOf = (preview: ChatSharePreview, covered: ReadonlySet<string>) =>
+	preview.messages.filter((message) => !covered.has(message.id)).map((message) => message.id);
+
 async function loadPreview(
 	event: RequestEvent,
 	access: {
@@ -70,7 +108,7 @@ async function loadPreview(
 		session: { id: string; title: string | null; auto_title: string | null };
 	},
 	existing: any
-) {
+): Promise<LoadedPreview> {
 	const { data: restore, error } = await loadChatSessionRestore(
 		access.session.id,
 		access.user.id
@@ -94,16 +132,17 @@ async function loadPreview(
 		if (counted.error) throw counted.error;
 		totalMessages = counted.count ?? undefined;
 	}
-	const source: ChatShareSource = {
-		...restore,
-		messages,
-		title: access.session.title || access.session.auto_title || 'Shared chat',
-		totalMessages
-	};
+	const rawTitle = access.session.title || access.session.auto_title || 'Shared chat';
+	const source: ChatShareSource = { ...restore, messages, title: rawTitle, totalMessages };
 	const candidates = buildChatShareCandidates(source);
 	const preview: ChatSharePreview = {
 		...candidates,
-		authorName: cleanSharedLabel(access.user.name ?? 'BuildOS user', 'BuildOS user', 200),
+		authorName: cleanSharedLabel(
+			access.user.name ?? HIDDEN_AUTHOR_NAME,
+			HIDDEN_AUTHOR_NAME,
+			200
+		),
+		outsideReview: [],
 		existing: existing
 			? {
 					url: shareUrl(event.url.origin, existing.token),
@@ -113,18 +152,40 @@ async function loadPreview(
 				}
 			: null
 	};
-	return { source, preview };
+	// Scan-only originals: secrets hidden by markdown escaping are caught before cleaning.
+	const originals: Originals = {
+		title: rawTitle,
+		messages: new Map<string, string>(
+			messages.map((message) => [message.id, message.content ?? ''])
+		)
+	};
+	const loaded = { source, preview, originals };
+	// Free and deterministic: the most recent messages one review can cover.
+	preview.outsideReview = outsideOf(
+		preview,
+		new Set(chatShareReviewWindow(reviewInput(loaded, existing?.show_author ?? true)))
+	);
+	return loaded;
 }
 
 async function prepare(
 	event: RequestEvent,
 	sessionId: string,
 	userId: string,
-	preview: ChatSharePreview
+	loaded: LoadedPreview,
+	showAuthor: boolean,
+	preferredIds?: readonly string[]
 ) {
+	const { preview } = loaded;
 	if (!preview.messages.length)
 		throw new ChatShareReviewError(
 			'No messages fit in this share. Try a shorter conversation.',
+			'REVIEW_BLOCKED'
+		);
+	const covered = new Set(chatShareReviewWindow(reviewInput(loaded, showAuthor), preferredIds));
+	if (!covered.size)
+		throw new ChatShareReviewError(
+			`${CHAT_SHARE_TOO_LONG} Try sharing a shorter conversation.`,
 			'REVIEW_BLOCKED'
 		);
 	const limit = rateLimiter.check(`chat-share-review:${userId}`, {
@@ -133,17 +194,32 @@ async function prepare(
 	});
 	if (!limit.allowed)
 		throw new ChatShareReviewError('Too many review requests. Try again in a few minutes.');
-	const flags = await reviewChatShare(preview, { supabase: event.locals.supabase, userId });
+	const input = reviewInput(loaded, showAuthor, covered);
+	const flags = await reviewChatShare(input, { supabase: event.locals.supabase, userId });
 	return {
 		...preview,
+		outsideReview: outsideOf(preview, covered),
 		flags,
 		fingerprint: signChatShareReview({
 			sessionId,
 			userId,
-			hash: chatShareFingerprint(preview),
+			hash: chatShareFingerprint(input),
+			reviewedMessageIds: input.messages.map((message) => message.id),
 			flags
 		})
 	};
+}
+
+async function readPrepareBody(request: Request) {
+	const text = await request.text();
+	if (!text.trim()) return { ok: true as const, data: {} };
+	try {
+		const parsed = prepareBody.safeParse(JSON.parse(text));
+		if (parsed.success) return { ok: true as const, data: parsed.data };
+	} catch {
+		// Fall through to the structured error below.
+	}
+	return { ok: false as const, response: ApiResponse.badRequest('Invalid request body') };
 }
 
 /** All writes use the admin client only after the user-scoped ownership check. */
@@ -183,6 +259,7 @@ export async function handleChatShare(
 			});
 		}
 		let body: z.infer<typeof shareBody> | undefined;
+		let prepareOptions: z.infer<typeof prepareBody> = {};
 		let receipt: ReturnType<typeof verifyChatShareReview> = null;
 		if (action === 'publish') {
 			const parsed = await parseJsonRequest(event.request, shareBody);
@@ -195,14 +272,42 @@ export async function handleChatShare(
 					409,
 					'REVIEW_REQUIRED'
 				);
+		} else if (action === 'prepare') {
+			const parsed = await readPrepareBody(event.request);
+			if (!parsed.ok) return parsed.response;
+			prepareOptions = parsed.data;
 		}
-		const { source, preview } = await loadPreview(event, access, existing);
+		const loaded = await loadPreview(event, access, existing);
+		const { source, preview } = loaded;
 		if (action === 'get') return ApiResponse.success(preview);
 		if (action === 'prepare')
-			return ApiResponse.success(await prepare(event, session.id, user.id, preview));
+			return ApiResponse.success(
+				await prepare(
+					event,
+					session.id,
+					user.id,
+					loaded,
+					prepareOptions.showAuthor ?? true,
+					prepareOptions.messageIds
+				)
+			);
 		if (!body || !receipt) return ApiResponse.badRequest();
-		if (receipt.hash !== chatShareFingerprint(preview)) {
-			const refreshed = await prepare(event, session.id, user.id, preview);
+		// The receipt covers exactly these messages with this byline choice; anything else
+		// (edited text, a removed message, a toggled byline) gets a fresh review.
+		const reviewed = new Set(receipt.reviewedMessageIds);
+		const reviewedInput = reviewInput(loaded, body.showAuthor, reviewed);
+		if (
+			reviewedInput.messages.length !== reviewed.size ||
+			receipt.hash !== chatShareFingerprint(reviewedInput)
+		) {
+			const refreshed = await prepare(
+				event,
+				session.id,
+				user.id,
+				loaded,
+				body.showAuthor,
+				body.includedMessageIds
+			);
 			return ApiResponse.error(
 				'The conversation changed. Check the updated preview before sharing.',
 				409,
@@ -217,6 +322,23 @@ export async function handleChatShare(
 			[...selected].some((id) => !known.has(id))
 		)
 			return ApiResponse.badRequest('Choose messages from the reviewed preview.');
+		// Never publish text the review didn't read.
+		if ([...selected].some((id) => !reviewed.has(id)))
+			return ApiResponse.error(
+				'Review the selected messages before sharing.',
+				409,
+				'REVIEW_REQUIRED'
+			);
+		// Same budget as prepare: a share is never bigger than one review covers.
+		if (
+			chatShareReviewChars(reviewInput(loaded, body.showAuthor, selected)) >
+			CHAT_SHARE_REVIEW_MAX_CHARS
+		)
+			return ApiResponse.error(
+				`${CHAT_SHARE_TOO_LONG} Uncheck some messages, then review again.`,
+				422,
+				'REVIEW_BLOCKED'
+			);
 		if (receipt.flags.some((flag) => flag.locked && selected.has(flag.messageId)))
 			return ApiResponse.error(
 				'Messages containing credentials or sensitive identifiers cannot be shared.',
@@ -228,7 +350,8 @@ export async function handleChatShare(
 			session_id: session.id,
 			user_id: user.id,
 			title: snapshot.title,
-			author_name: preview.authorName,
+			// A hidden byline was never reviewed, so it is never stored either.
+			author_name: body.showAuthor ? preview.authorName : HIDDEN_AUTHOR_NAME,
 			show_author: body.showAuthor,
 			included_message_ids: body.includedMessageIds,
 			snapshot: JSON.parse(JSON.stringify(snapshot)),
@@ -292,6 +415,7 @@ export async function getPublicChatShare(token: string) {
 	if (!snapshot) return null;
 	return {
 		id: token,
+		ref: chatShareAnalyticsRef(token),
 		title: data.title,
 		snapshot,
 		showAuthor: data.show_author,

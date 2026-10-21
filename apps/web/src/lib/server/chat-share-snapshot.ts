@@ -1,11 +1,12 @@
 // apps/web/src/lib/server/chat-share-snapshot.ts
-import { Marked } from 'marked';
+import { Lexer, Marked, type Token, type Tokens } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 import TurndownService from 'turndown';
 import { z } from 'zod';
 import type { ChatSessionRestore } from '$lib/types/chat-session-restore';
 import type { ChatSharePreviewMessage, SharedChatSnapshotV1 } from '$lib/types/chat-share';
 import { buildAgentTimeline } from '$lib/components/agent/agent-chat-timeline';
+import { isPublicExternalLink } from '$lib/components/agent/shared-chat-markdown';
 
 // Production sizing, 2026-10-19: 1,603 sessions; p99 = 14 messages / 17,004 bytes;
 // maxima = 22 messages / 127,481 bytes. Both caps exceed p99; never cut a message.
@@ -42,39 +43,86 @@ export function parseSharedChatSnapshot(value: unknown): SharedChatSnapshotV1 | 
 	return result.success ? result.data : null;
 }
 // Structural identifier redaction, never classification of natural language.
-const UUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
-export const removeShareIds = (value: string) => value.replace(UUID, '[identifier removed]');
+// No word boundaries: `task_<uuid>`, `task\_<uuid>` and `id<uuid>` must not slip through.
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+// Hyphenless UUIDs and longer hex IDs. A run with no hex letter is an ordinary number.
+const HEX_ID = /[0-9a-f]{32,}/gi;
+const ID_PLACEHOLDER = '[identifier removed]';
+export const removeShareIds = (value: string) =>
+	value
+		.replace(UUID, ID_PLACEHOLDER)
+		.replace(HEX_ID, (match) => (/[a-f]/i.test(match) ? ID_PLACEHOLDER : match));
 const escapeHtml = (s: string) =>
 	s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-export function isPublicExternalLink(value: string): boolean {
+export { isPublicExternalLink };
+
+/** Relative paths and BuildOS/local hosts: links that point into someone's workspace. */
+function isWorkspaceLink(href: string): boolean {
 	try {
-		const url = new URL(value);
-		const host = url.hostname.toLowerCase().replace(/\.$/, '');
+		const host = new URL(href).hostname.toLowerCase().replace(/\.$/, '');
 		return (
-			url.protocol === 'https:' &&
-			!url.username &&
-			!url.password &&
-			host !== 'build-os.com' &&
-			!host.endsWith('.build-os.com') &&
-			host !== 'localhost' &&
-			host !== '127.0.0.1' &&
-			host !== '[::1]'
+			host === 'build-os.com' ||
+			host.endsWith('.build-os.com') ||
+			host === 'localhost' ||
+			host.endsWith('.localhost') ||
+			host === '127.0.0.1' ||
+			host === '[::1]'
 		);
 	} catch {
-		return false;
+		return true;
 	}
 }
+
+/**
+ * Visible text for a link that will not stay a link. A bare workspace URL
+ * (`https://build-os.com/projects/x`, GFM's `www.build-os.com/...`) becomes
+ * "Workspace link"; any other link keeps its label as plain text.
+ */
+function unlinkedLabel(token: Tokens.Link, label: string): string {
+	const bare = token.text === token.href || token.raw === token.text;
+	return bare && isWorkspaceLink(token.href) ? 'Workspace link' : label;
+}
+
+const SHARED_HTML_TAGS = [
+	'p',
+	'br',
+	'strong',
+	'em',
+	'del',
+	'blockquote',
+	'ul',
+	'ol',
+	'li',
+	'pre',
+	'code',
+	'h1',
+	'h2',
+	'h3',
+	'h4',
+	'h5',
+	'h6',
+	'hr',
+	'a',
+	'table',
+	'thead',
+	'tbody',
+	'tr',
+	'th',
+	'td'
+];
 
 /** Parse links structurally; a second HTML allowlist prevents re-embedding media. */
 export function cleanSharedMarkdown(content: string): { markdown: string; images: number } {
 	let images = 0;
 	const marked = new Marked({
+		// Match the chat transcript: a single newline is a line break.
+		breaks: true,
 		renderer: {
-			link({ href, tokens, text }) {
-				const label = this.parser.parseInline(tokens);
-				if (!isPublicExternalLink(href)) return text === href ? 'Workspace link' : label;
-				return `<a href="${escapeHtml(href)}">${label}</a>`;
+			link(token) {
+				const label = this.parser.parseInline(token.tokens);
+				if (!isPublicExternalLink(token.href)) return unlinkedLabel(token, label);
+				return `<a href="${escapeHtml(token.href)}">${label}</a>`;
 			},
 			image() {
 				images += 1;
@@ -97,38 +145,18 @@ export function cleanSharedMarkdown(content: string): { markdown: string; images
 	});
 	const html = marked.parse(removeShareIds(content), { async: false });
 	const safe = sanitizeHtml(html, {
-		allowedTags: [
-			'p',
-			'br',
-			'strong',
-			'em',
-			'del',
-			'blockquote',
-			'ul',
-			'ol',
-			'li',
-			'pre',
-			'code',
-			'h1',
-			'h2',
-			'h3',
-			'h4',
-			'h5',
-			'h6',
-			'hr',
-			'a',
-			'table',
-			'thead',
-			'tbody',
-			'tr',
-			'th',
-			'td'
-		],
+		allowedTags: SHARED_HTML_TAGS,
 		allowedAttributes: { a: ['href'] },
 		allowedSchemes: ['https'],
 		allowProtocolRelative: false
 	});
 	const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+	// Text nodes are already HTML-decoded, so entity-encoded markup (`&lt;img src=…&gt;`)
+	// arrives here as literal `<img …>`. Re-encode angle brackets so the stored markdown can
+	// never contain raw HTML. Code spans and fences bypass escape() and stay literal code.
+	const escapeMarkdown = turndown.escape.bind(turndown);
+	turndown.escape = (text: string) =>
+		escapeMarkdown(text.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 	// Retain GFM table structure so the existing transcript renderer can scroll wide tables.
 	turndown.addRule('table-row', {
 		filter: 'tr',
@@ -157,12 +185,98 @@ export function cleanSharedMarkdown(content: string): { markdown: string; images
 	return { markdown: removeShareIds(turndown.turndown(safe)).trim(), images };
 }
 
+const BLOCK_TOKENS = new Set([
+	'paragraph',
+	'heading',
+	'code',
+	'blockquote',
+	'list',
+	'list_item',
+	'table',
+	'hr'
+]);
+
+/** What a reader sees, as plain text: markup, media and raw HTML removed; link targets optional. */
+function tokensToText(tokens: Token[] | undefined, withHrefs: boolean): string {
+	let out = '';
+	for (const token of tokens ?? []) {
+		switch (token.type) {
+			case 'image':
+			case 'html':
+			case 'def':
+				break;
+			case 'space':
+			case 'br':
+			case 'hr':
+				out += '\n';
+				break;
+			case 'link': {
+				const link = token as Tokens.Link;
+				const label = tokensToText(link.tokens, withHrefs);
+				out += isPublicExternalLink(link.href) ? label : unlinkedLabel(link, label);
+				if (withHrefs) out += ` ${link.href}`;
+				break;
+			}
+			case 'codespan':
+			case 'code':
+			case 'escape':
+				out += (token as Tokens.Codespan).text;
+				break;
+			case 'list':
+				for (const item of (token as Tokens.List).items)
+					out += `${tokensToText(item.tokens, withHrefs)}\n`;
+				break;
+			case 'table': {
+				const table = token as Tokens.Table;
+				for (const row of [table.header, ...table.rows])
+					out += `${row.map((cell) => tokensToText(cell.tokens, withHrefs)).join(' ')}\n`;
+				break;
+			}
+			default:
+				if ('tokens' in token && Array.isArray(token.tokens))
+					out += tokensToText(token.tokens as Token[], withHrefs);
+				else if ('text' in token && typeof token.text === 'string') out += token.text;
+		}
+		if (BLOCK_TOKENS.has(token.type) && !out.endsWith('\n')) out += '\n';
+	}
+	return out;
+}
+
+const blockLexer = () => new Lexer({ gfm: true, breaks: true });
+
+/**
+ * Plain-text views of cleaned share markdown for the fixed-format secret scan:
+ * `unescaped` is the markdown with backslash escapes and the cleaner's angle
+ * bracket entities undone (so `sk\_live\_…` reads `sk_live_…`); `plain` is
+ * the rendered text plus link targets (so markup can't split a secret).
+ */
+export function sharedMarkdownScanViews(markdown: string): { unescaped: string; plain: string } {
+	// CommonMark backslash escapes and HTML entities are structured syntax, not prose.
+	const unescaped = markdown
+		.replace(/\\([!-/:-@[-`{-~])/g, '$1')
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&quot;/g, '"')
+		.replace(/&#0*39;/g, "'")
+		.replace(/&amp;/g, '&');
+	let plain = '';
+	try {
+		plain = tokensToText(blockLexer().lex(markdown), true);
+	} catch {
+		plain = unescaped;
+	}
+	return { unescaped, plain };
+}
+
+/** A decoded, unescaped plain-text label (title, byline, created-item label), IDs removed. */
 export function cleanSharedLabel(value: string, fallback = 'Shared chat', limit = 500): string {
-	const text = sanitizeHtml(cleanSharedMarkdown(value).markdown, {
-		allowedTags: [],
-		allowedAttributes: {}
-	});
-	return text.trim().slice(0, limit) || fallback;
+	let text: string;
+	try {
+		text = tokensToText(Lexer.lexInline(removeShareIds(value), { gfm: true }), false);
+	} catch {
+		text = value;
+	}
+	return removeShareIds(text).replace(/\s+/g, ' ').trim().slice(0, limit).trim() || fallback;
 }
 
 type ShareMessage = ChatSessionRestore['messages'][number] & {

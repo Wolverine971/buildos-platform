@@ -189,8 +189,16 @@ describe('server hook session verification', () => {
 		expect(f.auth.getClaims).not.toHaveBeenCalled();
 	});
 
+	// SvelteKit strips `/__data.json` (and its `x-sveltekit-invalidated` param) before the
+	// hook runs, so a client-side admin data load arrives as the page URL plus `isDataRequest`.
+	function adminDataRequest() {
+		const f = fixture('/admin/users?x=1');
+		Object.assign(f.event, { isDataRequest: true, route: { id: '/admin/users' } });
+		return f;
+	}
+
 	it('checks live Auth and database admin status on SvelteKit admin data requests', async () => {
-		const f = fixture('/admin/users/__data.json');
+		const f = adminDataRequest();
 		const resolve = vi.fn();
 		await expect(handle({ event: f.event, resolve })).rejects.toMatchObject({
 			status: 303,
@@ -201,11 +209,11 @@ describe('server hook session verification', () => {
 	});
 
 	it('does not fall back to claims after live Auth rejects a sensitive request', async () => {
-		const f = fixture('/admin/users/__data.json');
+		const f = adminDataRequest();
 		f.auth.getUser.mockResolvedValue({ data: { user: null }, error: new Error('Revoked') });
 		await expect(handle({ event: f.event, resolve: vi.fn() })).rejects.toMatchObject({
 			status: 303,
-			location: '/auth/login?redirect=%2Fadmin%2Fusers%2F__data.json'
+			location: '/auth/login?redirect=%2Fadmin%2Fusers%3Fx%3D1'
 		});
 		expect(f.auth.getClaims).not.toHaveBeenCalled();
 		expect(f.from).not.toHaveBeenCalled();

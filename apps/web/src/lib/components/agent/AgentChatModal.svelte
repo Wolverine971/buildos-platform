@@ -389,8 +389,13 @@
 	// the same worker observer between reconcile ticks.
 	const currentSessionId = $derived(currentSession?.id ?? null);
 	const chatHistory = createChatHistory({
-		instanceId: crypto.randomUUID(),
-		isVisible: () => isSurfaceActive && !hidden,
+		// randomUUID is missing outside secure contexts (http on a LAN IP during phone testing).
+		instanceId:
+			typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+				? crypto.randomUUID()
+				: `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+		// Embedded hosts (document dock, brief chat) toggle isOpen while staying mounted.
+		isVisible: () => isOpen && !hidden,
 		isEmbedded: () => embedded,
 		sessionId: () => (messages.length > 0 ? currentSessionId : null),
 		onBack: () => handleClose()
@@ -2216,7 +2221,10 @@
 	 * idempotent, so overlapping close paths re-enter harmlessly (the summary
 	 * drains on first build).
 	 */
-	function releaseSessionResources(reason: 'close' | 'destroy'): DataMutationSummary {
+	function releaseSessionResources(
+		reason: 'close' | 'destroy',
+		options: { deferBroadcast?: boolean } = {}
+	): DataMutationSummary {
 		finalizeSession(reason);
 		voice.stop();
 		clearSessionRefreshTimeout();
@@ -2247,7 +2255,7 @@
 		// dashboard, embedded edit modals, …) can refetch itself. This works regardless
 		// of launch surface or chat context — unlike the old per-project `invalidate()`
 		// path, which was inert because the pages refresh via their own client refetch.
-		if (summary.hasChanges) {
+		if (summary.hasChanges && !options.deferBroadcast) {
 			notifyDataMutation(summary);
 		}
 
@@ -2255,10 +2263,22 @@
 		return summary;
 	}
 
+	// A second close (X then Esc) while the first is waiting on its Back step is a no-op.
+	let closeInFlight = false;
+
 	function closeChat() {
-		chatHistory.close();
-		const summary = releaseSessionResources('close');
-		if (onClose) onClose(summary);
+		// Tear down now, but announce changes and hand control back to the host only
+		// once the chat's own Back step has landed. SvelteKit's popstate cancels any
+		// goto/invalidate already in flight, so a host refresh started earlier (new
+		// project list, /projects/create → /projects) would be silently dropped.
+		if (closeInFlight) return;
+		closeInFlight = true;
+		const summary = releaseSessionResources('close', { deferBroadcast: true });
+		void chatHistory.close(() => {
+			closeInFlight = false;
+			if (summary.hasChanges) notifyDataMutation(summary);
+			onClose?.(summary);
+		});
 	}
 
 	function buildParkPayload(session: ChatSession) {
@@ -2285,7 +2305,7 @@
 	 * to a hard park (card + full teardown; resume rebuilds from the DB).
 	 */
 	export function minimizeToStack() {
-		chatHistory.close();
+		void chatHistory.close();
 		const session = currentSession;
 		if (!session?.id) {
 			// No session yet (context selection screen) — nothing to park.
@@ -3406,6 +3426,7 @@
 					{sessionStatusLabel}
 					contextUsage={displayContextUsage}
 					sessionId={currentSession?.id ?? null}
+					linkSessionId={messages.length > 0 ? currentSessionId : null}
 					shareActive={isOpen && !hidden}
 					{contextShiftPulse}
 					onExportSteps={handleExportAgentSteps}

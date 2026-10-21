@@ -30,6 +30,15 @@ describe('agent chat markdown tables', () => {
 		);
 	});
 
+	it('closes a real link that follows an unlinked record link', () => {
+		const html = renderAgentMarkdown(
+			'See [the task](1d6c2b1e-1111-4222-8333-444455556666) then [docs](https://example.com) and after.'
+		);
+		expect(html).toContain('<span>the task</span>');
+		expect(html).toMatch(/<a [^>]*href="https:\/\/example\.com"[^>]*>docs<\/a> and after\./);
+		expect(html).not.toContain('docs</span>');
+	});
+
 	it('wraps sanitized tables in a dedicated scroll region with a visual cue', () => {
 		const html = renderAgentMarkdown(`| Metric | Count |
 | --- | ---: |

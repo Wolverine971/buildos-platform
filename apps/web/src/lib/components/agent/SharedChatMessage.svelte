@@ -2,11 +2,13 @@
 <script lang="ts">
 	import type { SharedChatSnapshotV1 } from '$lib/types/chat-share';
 	import { getProseClasses } from '$lib/utils/markdown';
-	import { observeAgentMarkdownTables, renderAgentMarkdown } from './agent-chat-markdown';
+	import { observeAgentMarkdownTables } from './agent-chat-markdown';
+	import { renderSharedChatMarkdown } from './shared-chat-markdown';
 
 	let { message }: { message: SharedChatSnapshotV1['messages'][number] } = $props();
-	const html = $derived(renderAgentMarkdown(message.markdown));
-	// renderAgentMarkdown sanitizes the HTML before the only raw-HTML insertion below.
+	const html = $derived(renderSharedChatMarkdown(message.markdown));
+	// The strict share sanitizer (no media, https-only external links) runs before
+	// the only raw-HTML insertion below.
 	const withheld = $derived(
 		[
 			{ count: message.withheld?.images ?? 0, label: 'image' },

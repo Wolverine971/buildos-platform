@@ -13,6 +13,21 @@ import { isAgentChatLaunch } from '$lib/utils/agent-chat-launch';
 export const _CHAT_LAUNCH_GRACE_COOKIE = 'buildos_chat_launch_grace';
 const CHAT_LAUNCH_GRACE_SECONDS = 60 * 60;
 
+async function ownsChatSession(
+	supabase: App.Locals['supabase'],
+	userId: string,
+	chatId: string
+): Promise<boolean> {
+	const { data, error } = await supabase
+		.from('chat_sessions')
+		.select('id')
+		.eq('id', chatId)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) console.error('[Today] Failed to check the resumed chat:', error);
+	return Boolean(data);
+}
+
 export const load: PageServerLoad = async ({
 	locals: { safeGetSession, supabase, serverTiming },
 	depends,
@@ -38,9 +53,18 @@ export const load: PageServerLoad = async ({
 	// launch params intact so Navigation opens chat with their draft (or resumes a linked chat); onboarding waits for the
 	// next visit to /today. Read untracked: the launch params are one-time, so removing them must
 	// not re-run this load on its own.
-	const arrivedWithLaunch = untrack(
-		() => isAgentChatLaunch(url.searchParams) || readChatResumeSessionId(url) !== null
-	);
+	const launch = untrack(() => ({
+		isLaunch: isAgentChatLaunch(url.searchParams),
+		resumeChatId: readChatResumeSessionId(url)
+	}));
+	const hadLaunchGrace = cookies.get(_CHAT_LAUNCH_GRACE_COOKIE) === '1';
+	// A `?chat=` link only earns the grace when the chat is the visitor's own; any well-formed
+	// UUID would otherwise skip onboarding. Skipped when the grace is already running.
+	const arrivedWithLaunch =
+		launch.isLaunch ||
+		(!hadLaunchGrace &&
+			launch.resumeChatId !== null &&
+			(await ownsChatSession(supabase, user.id, launch.resumeChatId)));
 	if (arrivedWithLaunch) {
 		cookies.set(_CHAT_LAUNCH_GRACE_COOKIE, '1', {
 			path: '/today',
@@ -49,7 +73,7 @@ export const load: PageServerLoad = async ({
 			maxAge: CHAT_LAUNCH_GRACE_SECONDS
 		});
 	}
-	const inLaunchGrace = arrivedWithLaunch || cookies.get(_CHAT_LAUNCH_GRACE_COOKIE) === '1';
+	const inLaunchGrace = arrivedWithLaunch || hadLaunchGrace;
 	if (!inLaunchGrace && (await needsOnboarding(supabase, user))) {
 		throw redirect(303, '/onboarding');
 	}

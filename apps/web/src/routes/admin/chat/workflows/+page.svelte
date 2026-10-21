@@ -174,7 +174,7 @@
 		else url.searchParams.delete(NODE_PARAM);
 		if (url.href !== window.location.href) {
 			try {
-				replaceState(url, {});
+				replaceState(url, { ...$page.state });
 			} catch {
 				// Router not ready yet; the next state change retries.
 			}
@@ -235,7 +235,7 @@
 		url.searchParams.set(SESSION_PARAM, id);
 		url.searchParams.delete(RUN_PARAM);
 		url.searchParams.delete(NODE_PARAM);
-		replaceState(url, {});
+		replaceState(url, { ...$page.state });
 		sessionId = id;
 		payload = null;
 		selectedRunId = null;

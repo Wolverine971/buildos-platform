@@ -17,16 +17,39 @@ function fakeCookies(initial: Record<string, string> = {}) {
 	};
 }
 
+const CHAT_ID = '12345678-1234-4321-9876-123456789abc';
+
+/** A user-scoped client whose `chat_sessions` lookup finds `ownedChatId` only. */
+function fakeSupabase(ownedChatId: string | null = null) {
+	const filters: Record<string, unknown> = {};
+	const query = {
+		select: vi.fn(() => query),
+		eq: vi.fn((column: string, value: unknown) => {
+			filters[column] = value;
+			return query;
+		}),
+		maybeSingle: vi.fn(async () => ({
+			data:
+				ownedChatId && filters.id === ownedChatId && filters.user_id === 'user-1'
+					? { id: ownedChatId }
+					: null,
+			error: null
+		}))
+	};
+	return { from: vi.fn(() => query), query };
+}
+
 function loadToday(
 	user: Record<string, unknown>,
 	url = 'https://example.test/today',
-	cookies = fakeCookies()
+	cookies = fakeCookies(),
+	supabase: unknown = {}
 ) {
 	const untrack = vi.fn(<T>(fn: () => T) => fn());
 	return load({
 		locals: {
 			safeGetSession: async () => ({ user }),
-			supabase: {}
+			supabase
 		},
 		depends: vi.fn(),
 		url: new URL(url),
@@ -121,14 +144,48 @@ describe('Today onboarding gate', () => {
 		needsOnboarding.mockResolvedValue(true);
 		const user = { id: 'user-1', onboarding_completed_at: null, timezone: 'UTC' };
 		const cookies = fakeCookies();
-		await loadToday(
-			user,
-			'https://example.test/today?chat=12345678-1234-4321-9876-123456789abc',
-			cookies
+		const supabase = fakeSupabase(CHAT_ID);
+		await loadToday(user, `https://example.test/today?chat=${CHAT_ID}`, cookies, supabase);
+		expect(supabase.from).toHaveBeenCalledWith('chat_sessions');
+		expect(supabase.query.eq).toHaveBeenCalledWith('id', CHAT_ID);
+		expect(supabase.query.eq).toHaveBeenCalledWith('user_id', 'user-1');
+		expect(cookies.set).toHaveBeenCalledWith(
+			_CHAT_LAUNCH_GRACE_COOKIE,
+			'1',
+			expect.objectContaining({ maxAge: 3600 })
 		);
-		const result = await loadToday(user, 'https://example.test/today', cookies);
+
+		const result = await loadToday(user, 'https://example.test/today', cookies, supabase);
 		expect(result).toMatchObject({ feed: { projects: [] } });
 		expect(needsOnboarding).not.toHaveBeenCalled();
+	});
+
+	it('does not skip onboarding for a chat link that is not the visitor’s', async () => {
+		needsOnboarding.mockResolvedValue(true);
+		const user = { id: 'user-1', onboarding_completed_at: null, timezone: 'UTC' };
+		const cookies = fakeCookies();
+		const supabase = fakeSupabase('someone-elses-chat');
+
+		await expect(
+			loadToday(user, `https://example.test/today?chat=${CHAT_ID}`, cookies, supabase)
+		).rejects.toMatchObject({ status: 303, location: '/onboarding' });
+		expect(supabase.query.maybeSingle).toHaveBeenCalledOnce();
+		expect(cookies.set).not.toHaveBeenCalled();
+	});
+
+	it('only looks up the chat when a `?chat=` link is present and no grace is running', async () => {
+		needsOnboarding.mockResolvedValue(false);
+		const user = { id: 'user-1', onboarding_completed_at: null, timezone: 'UTC' };
+		const supabase = fakeSupabase(CHAT_ID);
+
+		await loadToday(user, 'https://example.test/today', fakeCookies(), supabase);
+		await loadToday(
+			user,
+			`https://example.test/today?chat=${CHAT_ID}`,
+			fakeCookies({ [_CHAT_LAUNCH_GRACE_COOKIE]: '1' }),
+			supabase
+		);
+		expect(supabase.from).not.toHaveBeenCalled();
 	});
 
 	it('preserves the full Today link when sign-in is required', async () => {

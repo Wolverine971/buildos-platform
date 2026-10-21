@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { GoogleOAuthHandler } from '$lib/utils/google-oauth';
 import { authErrorPath } from '$lib/utils/auth-status';
+import { decodeOAuthStateRedirect, withPostLoginRedirect } from '$lib/server/auth-redirects';
 import {
 	getSecurityEventLogOptions,
 	getSecurityRequestContext,
@@ -38,7 +39,16 @@ export const load: PageServerLoad = async ({ url, request, platform, locals, coo
 			},
 			securityEventOptions
 		);
-		throw redirect(303, authErrorPath('/auth/login', 'state_mismatch'));
+		// The state no longer proves this attempt, but its link is only a same-origin path
+		// (validated again, sign-in screens refused), no more than any `?redirect=` link carries.
+		// Without a decodable state there is nothing to keep.
+		throw redirect(
+			303,
+			withPostLoginRedirect(
+				authErrorPath('/auth/login', 'state_mismatch'),
+				decodeOAuthStateRedirect(state)
+			)
+		);
 	}
 
 	// Pass locals to the handler so it can update server-side auth state

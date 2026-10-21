@@ -12,11 +12,12 @@ vi.mock('$lib/supabase', () => ({ createSupabaseBrowser: mocks.createBrowser }))
 import { load } from './+layout';
 
 function loadLayout(path: string, user: { id: string } | null) {
+	// This fixture supplies only the load-event fields used by the root layout.
 	return load({
 		data: { user, stripeEnabled: false },
 		depends: vi.fn(),
 		url: new URL(path, 'https://buildos.test')
-	} as Parameters<typeof load>[0]);
+	} as unknown as Parameters<typeof load>[0]);
 }
 
 describe('root browser client loading', () => {

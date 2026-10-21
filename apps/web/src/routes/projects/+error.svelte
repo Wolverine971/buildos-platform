@@ -51,6 +51,12 @@
 	function handleGoToToday() {
 		window.location.href = '/today';
 	}
+
+	function handleLogIn() {
+		// Return to this exact page (and its `?chat=` link) after sign-in.
+		const currentPath = $page.url.pathname + $page.url.search;
+		goto(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
+	}
 </script>
 
 <svelte:head>
@@ -95,9 +101,7 @@
 				<!-- Action Buttons -->
 				<div class="flex flex-col sm:flex-row gap-3 justify-center">
 					{#if status === 401}
-						<Button variant="primary" size="md" onclick={() => goto('/auth/login')}>
-							Log In
-						</Button>
+						<Button variant="primary" size="md" onclick={handleLogIn}>Log In</Button>
 					{:else if status === 403}
 						<Button variant="primary" size="md" onclick={handleGoHome}>
 							<Home class="w-4 h-4" />

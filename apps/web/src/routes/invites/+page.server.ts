@@ -1,12 +1,12 @@
 // apps/web/src/routes/invites/+page.server.ts
 import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
+import { redirectToLogin } from '$lib/server/auth-redirects';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
-		throw redirect(303, `/auth/login?redirect=${encodeURIComponent(url.pathname)}`);
+		redirectToLogin(url);
 	}
 
 	const supabase = locals.supabase;

@@ -21,8 +21,8 @@ const context = {
 describe.each(['auth', 'ontology'] as const)('%s error logger deferred dependencies', (kind) => {
 	let getUser: ReturnType<typeof vi.fn>;
 	let logError: ReturnType<typeof vi.fn>;
-	let loadClient: ReturnType<typeof vi.fn>;
-	let loadLogger: ReturnType<typeof vi.fn>;
+	let loadClient: ReturnType<typeof vi.fn<() => Record<string, unknown>>>;
+	let loadLogger: ReturnType<typeof vi.fn<() => Record<string, unknown>>>;
 
 	async function loadHelper() {
 		return kind === 'auth'

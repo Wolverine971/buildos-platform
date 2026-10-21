@@ -269,6 +269,40 @@ describe('PostHog before_send privacy filter', () => {
 		expect(JSON.stringify(scrubbed)).not.toMatch(/search=x|acme|person|Launch plan/i);
 	});
 
+	it('masks share-link tokens in URL and path properties', async () => {
+		const { scrubPostHogEvent } = await import('./posthog');
+		const token = 'Ab3dEf6hIj9lMn2pQr5tUv';
+		const scrubbed = scrubPostHogEvent({
+			uuid: '019f0000-0000-7000-8000-000000000003',
+			event: '$pageview',
+			properties: {
+				$current_url: `https://build-os.com/share/${token}?utm_source=x`,
+				$pathname: `/share/${token}`,
+				$prev_pageview_pathname: `/share/${token}`,
+				$referrer: `https://build-os.com/share/${token}`,
+				share_id: 'a1b2c3d4e5f6',
+				$host: 'build-os.com'
+			},
+			$set_once: {
+				landing_page: `/share/${token}`,
+				$initial_current_url: `https://build-os.com/share/${token}/`
+			}
+		});
+		expect(scrubbed?.properties).toEqual({
+			$current_url: 'https://build-os.com/share/[token]',
+			$pathname: '/share/[token]',
+			$prev_pageview_pathname: '/share/[token]',
+			$referrer: 'https://build-os.com/share/[token]',
+			share_id: 'a1b2c3d4e5f6',
+			$host: 'build-os.com'
+		});
+		expect(scrubbed?.$set_once).toEqual({
+			landing_page: '/share/[token]',
+			$initial_current_url: 'https://build-os.com/share/[token]/'
+		});
+		expect(JSON.stringify(scrubbed)).not.toContain(token);
+	});
+
 	it('passes a dropped event through', async () => {
 		const { scrubPostHogEvent } = await import('./posthog');
 		expect(scrubPostHogEvent(null)).toBeNull();

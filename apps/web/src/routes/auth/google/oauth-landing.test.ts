@@ -72,4 +72,37 @@ describe('Google OAuth sign-in landing', () => {
 			})
 		);
 	});
+
+	describe('an expired or replayed attempt (state mismatch)', () => {
+		const LINK = '/today?chat=12345678-1234-4321-9876-123456789abc';
+		const stateFor = (redirect: string) =>
+			Buffer.from(JSON.stringify({ nonce: 'n', redirect })).toString('base64url');
+		function mismatchEvent(path: string, state: string | null) {
+			const event = callbackEvent(path);
+			event.url = new URL(`https://build-os.com${path}?code=abc`);
+			if (state) event.url.searchParams.set('state', state);
+			return event;
+		}
+
+		it.each([
+			['/auth/google/login-callback', loginCallback, '/auth/login'],
+			['/auth/google/register-callback', registerCallback, '/auth/register']
+		] as const)('%s keeps the validated link for the retry', async (path, load, screen) => {
+			await expect(load(mismatchEvent(path, stateFor(LINK)))).rejects.toMatchObject({
+				status: 303,
+				location: `${screen}?error=state_mismatch&redirect=${encodeURIComponent(LINK)}`
+			});
+			expect(handleCallbackMock).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['no state', null],
+			['an off-site link', stateFor('https://evil.example/x')],
+			['garbage', 'not-a-state']
+		])('omits the link when the state has %s', async (_label, state) => {
+			await expect(
+				loginCallback(mismatchEvent('/auth/google/login-callback', state))
+			).rejects.toMatchObject({ status: 303, location: '/auth/login?error=state_mismatch' });
+		});
+	});
 });

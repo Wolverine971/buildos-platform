@@ -1,3 +1,4 @@
+// apps/web/src/lib/types/chat-share.ts
 // Public snapshots are a whitelist. IDs exist only in the authenticated selection preview.
 export type SharedChatMessageV1 = {
 	role: 'user' | 'assistant';
@@ -21,6 +22,13 @@ export type ChatSharePreview = {
 	authorName: string;
 	messages: ChatSharePreviewMessage[];
 	truncated: { omittedMessages: number } | null;
+	/**
+	 * Messages the safety check can't cover alongside the rest ("Too long to check in one
+	 * share"). Before a review: the oldest messages past the review budget. After a review:
+	 * every message the review didn't cover. None of them can be published until a review
+	 * covers them.
+	 */
+	outsideReview: string[];
 	existing: {
 		url: string;
 		showAuthor: boolean;

@@ -666,8 +666,10 @@
 			const sessionId = getChatUrlSessionId();
 			if (sessionId) url.searchParams.set('chat', sessionId);
 			else url.searchParams.delete('chat');
-			const { agentChat, agentChatPushed, ...rest } = $page.state;
-			replaceState(url, sessionId ? { ...$page.state } : rest);
+			// Only fix the link. The entry's chat marker stays: an open chat with no message
+			// yet has no link but still owns this entry, and stripping the marker would read
+			// as Back and close it. A marker left by a closed chat is inert.
+			replaceState(url, { ...$page.state });
 		},
 		record: (result, cameThroughLogin) =>
 			captureEvent('chat_link_opened', {

@@ -245,8 +245,9 @@
 					null;
 				isToday = result.data.isToday;
 
-				// Update URL if needed
-				const url = new URL($page.url);
+				// Update URL if needed. Start from the address bar (shallow writes such as
+				// an open chat's ?chat= never reach $page.url) and keep page state.
+				const url = new URL(browser ? window.location.href : $page.url);
 				if (currentDate && currentDate !== url.searchParams.get('date')) {
 					url.searchParams.set('date', currentDate);
 				}
@@ -261,7 +262,7 @@
 
 				// Use replaceState to update URL without navigation
 				if (browser) {
-					replaceState(url.toString(), {});
+					replaceState(url.toString(), { ...$page.state });
 				}
 			} else {
 				throw new Error(result.error || 'Failed to load brief data');

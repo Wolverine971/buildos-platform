@@ -1,11 +1,16 @@
+// apps/web/src/lib/server/chat-share-snapshot.test.ts
 import { assert, describe, expect, it } from 'vitest';
 import {
 	buildChatShareCandidates,
 	buildSharedChatSnapshot,
 	CHAT_SHARE_MAX_BYTES,
+	cleanSharedLabel,
 	cleanSharedMarkdown,
+	removeShareIds,
+	sharedMarkdownScanViews,
 	type ChatShareSource
 } from './chat-share-snapshot';
+import { renderSharedChatMarkdown } from '$lib/components/agent/shared-chat-markdown';
 const id = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
 const source = (overrides: Record<string, unknown> = {}): ChatShareSource =>
@@ -193,5 +198,113 @@ describe('shared chat privacy', () => {
 		assert.isDefined(output.messages[0]);
 		expect(output.messages[0].work).toEqual({ seconds: 54, steps: 1 });
 		expect(JSON.stringify(output)).not.toContain('PRIVATE');
+	});
+	it.each([
+		'hello &lt;img src="/auth/logout"&gt; world',
+		'&lt;a href="/projects/x"&gt;open&lt;/a&gt;',
+		'&lt;iframe src="https://evil.example"&gt;&lt;/iframe&gt;',
+		'&lt;script&gt;alert(1)&lt;/script&gt;',
+		'&#60;img src=/auth/logout&#62;',
+		'> &lt;img src="/auth/logout"&gt; in a quote'
+	])('never stores raw HTML from entity-encoded markup: %s', (content) => {
+		const { markdown } = cleanSharedMarkdown(content);
+		expect(markdown).not.toMatch(/<\s*(img|a|iframe|script)\b/i);
+		const html = renderSharedChatMarkdown(markdown);
+		expect(html).not.toMatch(/<(img|iframe|script)\b/i);
+		expect(html).not.toContain('<a ');
+		// The reader still sees the text the author typed.
+		expect(html).toMatch(/&lt;(img|a|iframe|script)/);
+	});
+	it('keeps code spans and fences literal while escaping prose', () => {
+		const { markdown } = cleanSharedMarkdown('Use `<b>` and 1 < 2\n\n```\n<img src=x>\n```');
+		expect(markdown).toContain('`<b>`');
+		expect(markdown).toContain('```\n<img src=x>\n```');
+		expect(markdown).toContain('1 &lt; 2');
+		const html = renderSharedChatMarkdown(markdown);
+		expect(html).not.toMatch(/<img/i);
+		expect(html).toContain('&lt;img src=x&gt;');
+	});
+	it('turns bare workspace URLs into plain labels so they can never autolink', () => {
+		const { markdown } = cleanSharedMarkdown(
+			'See www.build-os.com/projects/x and http://build-os.com/a and [rel](/projects/y) and http://example.com/plain'
+		);
+		expect(markdown).not.toContain('build-os.com');
+		expect(markdown).toContain('Workspace link');
+		expect(markdown).toContain('rel');
+		expect(markdown).not.toContain('/projects/y');
+		const html = renderSharedChatMarkdown(markdown);
+		expect(html).not.toContain('<a ');
+	});
+	it('keeps bare public https URLs clickable after cleaning', () => {
+		const { markdown } = cleanSharedMarkdown('Read https://example.com/a today');
+		expect(renderSharedChatMarkdown(markdown)).toContain('<a href="https://example.com/a"');
+	});
+	it("keeps the author's line breaks", () => {
+		expect(cleanSharedMarkdown('line one\nline two').markdown).toMatch(
+			/line one\s*\n\s*line two/
+		);
+	});
+	it('labels are decoded plain text with markup and IDs removed', () => {
+		expect(cleanSharedLabel('Q&A plan')).toBe('Q&A plan');
+		expect(cleanSharedLabel('my_project_plan')).toBe('my_project_plan');
+		expect(cleanSharedLabel('Launch *v2*')).toBe('Launch v2');
+		expect(cleanSharedLabel('Ship <b>it</b> ![x](https://e.com/i.png)')).toBe('Ship it');
+		expect(cleanSharedLabel(`Task task_${id}`)).toBe('Task task_[identifier removed]');
+		expect(cleanSharedLabel('   ')).toBe('Shared chat');
+		const output = buildChatShareCandidates(
+			source({
+				title: 'Q&A for my_project *v2*',
+				messages: [
+					{ id, role: 'assistant', content: 'Done', created_at: '2026-10-18T00:00:54Z' }
+				],
+				toolExecutions: [
+					{
+						id: other,
+						message_id: id,
+						created_at: '2026-10-18T00:00:53Z',
+						tool_name: 'create_onto_task',
+						success: true,
+						affected_entities: [
+							{ kind: 'task', id: other, operation: 'created', title: 'R&D my_task' }
+						]
+					}
+				]
+			})
+		);
+		expect(output.title).toBe('Q&A for my_project v2');
+		expect(output.messages[0]?.made).toEqual([{ kind: 'task', label: 'R&D my_task' }]);
+	});
+	it('removes IDs next to underscores, escapes, letters, and hyphenless or uppercase forms', () => {
+		const real = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+		const real2 = '9b2e4c1a-7d3f-4e8b-a1c2-3d4e5f6a7b8c';
+		const hyphenless = real.replace(/-/g, '');
+		const text = [
+			`task_${real}`,
+			`task\\_${real2}`,
+			`x${real}y`,
+			`doc_${hyphenless}`,
+			real.toUpperCase(),
+			hyphenless.toUpperCase()
+		].join(' ');
+		const cleaned = removeShareIds(text);
+		expect(cleaned).not.toMatch(/[0-9a-f]{8}-?[0-9a-f]{4}/i);
+		expect(cleaned.match(/\[identifier removed\]/g)).toHaveLength(6);
+		const { markdown } = cleanSharedMarkdown(text);
+		expect(markdown).not.toContain(hyphenless);
+		expect(markdown).not.toContain(real);
+		// Long plain numbers are not identifiers.
+		expect(removeShareIds('12345678901234567890123456789012345')).toBe(
+			'12345678901234567890123456789012345'
+		);
+	});
+	it('exposes unescaped and plain-text views of cleaned markdown for the secret scan', () => {
+		const { markdown } = cleanSharedMarkdown(
+			'a sk_live_**abcd**efgh\n[x](https://e.com/?k=v_1)'
+		);
+		const views = sharedMarkdownScanViews(markdown);
+		expect(views.unescaped).toContain('sk_live_');
+		expect(views.unescaped).not.toContain('\\_');
+		expect(views.plain).toContain('sk_live_abcdefgh');
+		expect(views.plain).toContain('https://e.com/?k=v_1');
 	});
 });

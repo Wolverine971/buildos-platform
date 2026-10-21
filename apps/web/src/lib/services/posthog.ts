@@ -170,6 +170,19 @@ function stripQueryAndHash(value: unknown): unknown {
 	}
 }
 
+/** `$pathname`, `$prev_pageview_pathname`, first-touch `landing_page`, ... */
+function isPathProperty(key: string): boolean {
+	const name = key.toLowerCase();
+	return name.endsWith('pathname') || name === 'landing_page';
+}
+
+// A `/share/<token>` link is a bearer credential: anyone holding it can read the chat.
+const SHARE_TOKEN_PATH = /\/share\/[A-Za-z0-9]{16,}(?=$|[/?#])/g;
+
+function maskShareTokens(value: unknown): unknown {
+	return typeof value === 'string' ? value.replace(SHARE_TOKEN_PATH, '/share/[token]') : value;
+}
+
 function scrubProperties(properties: EventProperties | undefined): EventProperties | undefined {
 	if (!properties) return properties;
 	const scrubbed: EventProperties = {};
@@ -177,7 +190,11 @@ function scrubProperties(properties: EventProperties | undefined): EventProperti
 		// posthog-js adds `title: document.title` to every $pageview; BuildOS titles carry
 		// project, task, and document names.
 		if (key === 'title') continue;
-		scrubbed[key] = isUrlProperty(key) ? stripQueryAndHash(value) : value;
+		scrubbed[key] = isUrlProperty(key)
+			? maskShareTokens(stripQueryAndHash(value))
+			: isPathProperty(key)
+				? maskShareTokens(value)
+				: value;
 	}
 	return scrubbed;
 }
@@ -185,7 +202,7 @@ function scrubProperties(properties: EventProperties | undefined): EventProperti
 /**
  * PostHog `before_send`: runs on every browser event, including $pageview, $pageleave, and
  * $identify. Removes the page title and cuts query strings and hashes from URL properties,
- * keeping the pathname.
+ * keeping the pathname, and masks share-link tokens in URLs and paths.
  */
 export function scrubPostHogEvent(event: CaptureResult | null): CaptureResult | null {
 	if (!event) return event;

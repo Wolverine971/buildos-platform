@@ -12,6 +12,8 @@
 		data: {
 			share: {
 				id: string;
+				/** Non-reversible analytics handle; the token never goes to analytics. */
+				ref: string;
 				title: string;
 				snapshot: SharedChatSnapshotV1;
 				showAuthor: boolean;
@@ -39,11 +41,12 @@
 
 	$effect(() => {
 		const token = share.id;
+		const ref = share.ref;
 		const signedIn = data.viewerSignedIn;
 		if (token === lastViewed) return;
 		lastViewed = token;
 		if (navigator.doNotTrack === '1') return;
-		captureEvent('shared_chat_viewed', { share_id: token, viewer_signed_in: signedIn });
+		captureEvent('shared_chat_viewed', { share_id: ref, viewer_signed_in: signedIn });
 		void fetch(`/api/share/${encodeURIComponent(token)}/view`, {
 			method: 'POST',
 			credentials: 'same-origin',
@@ -79,7 +82,7 @@
 				</p>
 				<a
 					href={signupHref}
-					onclick={() => captureEvent('shared_chat_cta_clicked', { share_id: share.id })}
+					onclick={() => captureEvent('shared_chat_cta_clicked', { share_id: share.ref })}
 					class="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>Try BuildOS <ArrowUpRight class="h-4 w-4" /></a
 				>

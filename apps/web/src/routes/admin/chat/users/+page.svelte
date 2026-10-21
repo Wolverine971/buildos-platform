@@ -203,7 +203,7 @@
 			DEFAULT_SLOW_THRESHOLD_MS
 		);
 		if (url.toString() !== window.location.href) {
-			replaceState(url.toString(), {});
+			replaceState(url.toString(), { ...$pageStore.state });
 		}
 	}
 

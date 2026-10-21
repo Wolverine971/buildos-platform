@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/SharedChatTranscript.test.ts
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/svelte';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -40,7 +41,7 @@ describe('shared chat transcript', () => {
 		expect(screen.queryByRole('button')).not.toBeInTheDocument();
 		expect(screen.queryByRole('img')).not.toBeInTheDocument();
 	});
-	it('uses the existing sanitizer before inserting rendered markdown', () => {
+	it('uses the strict share sanitizer before inserting rendered markdown', () => {
 		const { container } = render(SharedChatTranscript, {
 			snapshot: {
 				version: 1,
@@ -58,5 +59,36 @@ describe('shared chat transcript', () => {
 		expect(container.querySelector('script')).toBeNull();
 		expect(container.querySelector('[href^="javascript:"]')).toBeNull();
 		expect(screen.getByText('Safe text.')).toBeInTheDocument();
+	});
+	it('renders no media and no workspace links, even from hostile stored markdown', () => {
+		const { container } = render(SharedChatTranscript, {
+			snapshot: {
+				version: 1,
+				title: 'A plan',
+				messages: [
+					{
+						role: 'assistant',
+						markdown: [
+							'<img src="/auth/logout">',
+							'![pixel](https://tracker.example/p.png)',
+							'<iframe src="https://evil.example"></iframe>',
+							'[Workspace](/projects/x) [App](https://build-os.com/projects/x)',
+							'www.build-os.com/projects/x',
+							'[Insecure](http://example.com/a)',
+							'[External](https://example.com/read)'
+						].join('\n\n'),
+						at: '2026-10-18T12:00:00Z'
+					}
+				]
+			}
+		});
+		expect(container.querySelector('img, iframe, video, svg, script')).toBeNull();
+		const links = screen.getAllByRole('link');
+		expect(links).toHaveLength(1);
+		expect(links[0]).toHaveAttribute('href', 'https://example.com/read');
+		expect(links[0]).toHaveAttribute('rel', 'noopener noreferrer nofollow ugc');
+		expect(links[0]).toHaveAttribute('target', '_blank');
+		expect(screen.getByText(/www\.build-os\.com\/projects\/x/)).toBeInTheDocument();
+		expect(container.innerHTML).not.toContain('/auth/logout');
 	});
 });

@@ -1,3 +1,4 @@
+// apps/web/src/routes/(public)/share/[token]/page.test.ts
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +18,7 @@ const snapshot: SharedChatSnapshotV1 = {
 const data = {
 	share: {
 		id: 'opaque-token',
+		ref: 'a1b2c3d4e5f6',
 		title: snapshot.title,
 		snapshot,
 		showAuthor: true,
@@ -87,8 +89,9 @@ describe('public shared chat page', () => {
 			'/api/share/opaque-token/view',
 			expect.objectContaining({ method: 'POST' })
 		);
+		// Analytics get a non-reversible ref, never the bearer token.
 		expect(captureEvent).toHaveBeenCalledWith('shared_chat_viewed', {
-			share_id: 'opaque-token',
+			share_id: 'a1b2c3d4e5f6',
 			viewer_signed_in: false
 		});
 		await component.rerender({ data: { ...data } });
@@ -101,7 +104,8 @@ describe('public shared chat page', () => {
 		cta.addEventListener('click', (event) => event.preventDefault());
 		await fireEvent.click(cta);
 		expect(captureEvent).toHaveBeenCalledWith('shared_chat_cta_clicked', {
-			share_id: 'opaque-token'
+			share_id: 'a1b2c3d4e5f6'
 		});
+		expect(JSON.stringify(vi.mocked(captureEvent).mock.calls)).not.toContain('opaque-token');
 	});
 });

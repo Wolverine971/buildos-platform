@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/ChatShareSheet.test.ts
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +18,7 @@ const BASE: ChatSharePreview = {
 	title: 'Plan the launch',
 	authorName: 'DJ',
 	truncated: null,
+	outsideReview: [],
 	existing: null,
 	messages: [
 		{ id: 'm1', role: 'user', markdown: 'A public question', at: '2026-10-18T12:00:00Z' },
@@ -83,7 +85,24 @@ describe('chat sharing sheet', () => {
 		expect(locked).not.toBeChecked();
 		expect(locked).toBeDisabled();
 		await fireEvent.click(personal);
+		// Hiding the byline changes what will be published, so the review must run again.
 		await fireEvent.click(screen.getByRole('switch', { name: 'Shared by DJ' }));
+		await screen.findByText('You changed the byline. Review again before sharing.');
+		expect(screen.getByRole('button', { name: 'Create link' })).toBeDisabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Review for sharing' }));
+		await screen.findByText('Preview reviewed');
+		const prepares = fetchMock.mock.calls.filter(([url]) => url.endsWith('/prepare'));
+		expect(JSON.parse(prepares[0]![1]!.body as string)).toEqual({
+			showAuthor: true,
+			messageIds: ['m1', 'm2', 'm3']
+		});
+		expect(JSON.parse(prepares[1]![1]!.body as string)).toEqual({
+			showAuthor: false,
+			messageIds: ['m1', 'm2']
+		});
+		await fireEvent.click(
+			screen.getByRole('checkbox', { name: 'Include message 2 from BuildOS' })
+		);
 		await fireEvent.click(screen.getByRole('button', { name: 'Create link' }));
 		await waitFor(() => expect(writeText).toHaveBeenCalledWith(URL));
 		const publish = fetchMock.mock.calls.find(
@@ -220,5 +239,44 @@ describe('chat sharing sheet', () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Review for sharing' }));
 		await screen.findByText('Edit the chat title or display name before sharing.');
 		expect(screen.getByRole('button', { name: 'Create link' })).toBeDisabled();
+	});
+
+	it('selects the most recent messages that fit and labels older ones too long to check', async () => {
+		const LONG: ChatSharePreview = { ...BASE, outsideReview: ['m1'] };
+		fetchMock.mockImplementation(async (url: string, options?: RequestInit) => {
+			if (url.endsWith('/prepare')) {
+				const body = JSON.parse(options!.body as string);
+				// The server keeps the newest selected messages that fit; m1 is left out.
+				return success({
+					...LONG,
+					fingerprint: body.messageIds.includes('m1') ? 'review-older' : 'review-recent',
+					outsideReview: ['m1'],
+					flags: []
+				});
+			}
+			return success(LONG);
+		});
+		render(ChatShareSheet, { sessionId: 'session', onClose: vi.fn() });
+		await screen.findByText('Plan the launch');
+		expect(screen.getByText(/This chat is too long to check in one share/)).toBeInTheDocument();
+		expect(screen.getByText('Too long to check in one share')).toBeInTheDocument();
+		const older = screen.getByRole('checkbox', { name: 'Include message 1 from you' });
+		expect(older).not.toBeChecked();
+		expect(older).toBeEnabled();
+		expect(
+			screen.getByRole('checkbox', { name: 'Include message 2 from BuildOS' })
+		).toBeChecked();
+		await fireEvent.click(screen.getByRole('button', { name: 'Review for sharing' }));
+		await screen.findByText('Preview reviewed');
+		// Checking a message the review didn't cover needs another review before publishing.
+		await fireEvent.click(older);
+		await screen.findByText('Review again to include the messages you added.');
+		expect(screen.getByRole('button', { name: 'Create link' })).toBeDisabled();
+		await fireEvent.click(screen.getByRole('button', { name: 'Review for sharing' }));
+		await screen.findByText(
+			'Too long to check in one share. 1 older message was left unchecked.'
+		);
+		expect(older).not.toBeChecked();
+		expect(screen.getByRole('button', { name: 'Create link' })).toBeEnabled();
 	});
 });

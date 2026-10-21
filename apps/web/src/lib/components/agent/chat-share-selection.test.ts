@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/chat-share-selection.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatSharePreview } from '$lib/types/chat-share';
 import { defaultChatShareSelection, reviewedChatShareSelection } from './chat-share-selection';
@@ -7,6 +8,7 @@ function preview(): ChatSharePreview {
 		title: 'A plan',
 		authorName: 'DJ',
 		truncated: null,
+		outsideReview: [],
 		messages: [
 			{ id: 'included', role: 'user', markdown: 'Hello', at: '2026-10-18T12:00:00Z' },
 			{ id: 'excluded', role: 'assistant', markdown: 'Private', at: '2026-10-18T12:01:00Z' },
@@ -42,5 +44,12 @@ describe('chat share selection', () => {
 		expect(
 			reviewedChatShareSelection(after, before.messages.slice(0, 2), ['included'])
 		).toEqual(['new']);
+	});
+	it('leaves messages outside the review budget unchecked, before and after a review', () => {
+		const value = { ...preview(), existing: null, outsideReview: ['included'] };
+		expect(defaultChatShareSelection(value)).toEqual(['excluded', 'new']);
+		expect(
+			reviewedChatShareSelection(value, value.messages, ['included', 'excluded', 'new'])
+		).toEqual(['excluded', 'new']);
 	});
 });
