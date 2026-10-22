@@ -701,7 +701,13 @@ export class BuildosAgentCallService {
 			projectScopeMode,
 			scope: liveScope
 		});
-		const liveProjects = extractAllowedProjectIds(caller.policy, 'caller.policy');
+		// The legacy allowlist only narrows "selected" keys. Under "all projects" it
+		// holds just the shared/restricted exceptions (often []), and dial ignores
+		// it too; applying it here hid every project from tool calls.
+		const liveProjects =
+			projectScopeMode === 'all_unrestricted'
+				? null
+				: extractAllowedProjectIds(caller.policy, 'caller.policy');
 		resolvedScope.project_ids = intersectProjectIds(resolvedScope.project_ids, liveProjects);
 		resolvedScope.write_project_ids = intersectProjectIds(
 			resolvedScope.write_project_ids,

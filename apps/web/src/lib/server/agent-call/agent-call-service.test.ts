@@ -644,6 +644,39 @@ describe('BuildosAgentCallService', () => {
 		]);
 	});
 
+	it('ignores an empty legacy allowlist on an all-projects key', async () => {
+		authenticateExternalAgentCallerMock.mockResolvedValue(
+			createCaller({
+				project_scope_mode: 'all_unrestricted',
+				policy: { scope_mode: 'read_only', allowed_project_ids: [] }
+			})
+		);
+		const { resolveEffectiveAgentProjectScope } = await import('./project-access.service');
+		vi.mocked(resolveEffectiveAgentProjectScope).mockResolvedValueOnce({
+			mode: 'read_only',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS],
+			project_ids: ['44444444-4444-4444-4444-444444444444'],
+			write_project_ids: []
+		});
+		const state: SessionState = {
+			sessions: {
+				'33333333-3333-3333-3333-333333333333': createSessionRow({ status: 'active' })
+			},
+			nextId: 1
+		};
+		const { BuildosAgentCallService } = await import('./agent-call-service');
+		const service = new BuildosAgentCallService(createAdminMock(state));
+
+		await service.callTool(
+			new Request('https://example.com', { headers: { authorization: 'Bearer token' } }),
+			{ call_id: '33333333-3333-3333-3333-333333333333', name: 'list_onto_projects' }
+		);
+
+		expect(executeBuildosAgentGatewayToolMock.mock.calls[0]?.[0].scope.project_ids).toEqual([
+			'44444444-4444-4444-4444-444444444444'
+		]);
+	});
+
 	it('keeps the dial-time fence when the agent asked for specific projects', async () => {
 		const { resolveEffectiveAgentProjectScope } = await import('./project-access.service');
 		vi.mocked(resolveEffectiveAgentProjectScope).mockResolvedValueOnce({
