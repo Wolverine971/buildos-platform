@@ -420,7 +420,7 @@ export class AgenticChatStalledRecoverySweep {
 	}
 
 	/** One bounded RPC: a hung socket fails this sweep, never the next one. */
-	private async recoverBatch(): Promise<AgenticChatDeadTurnRecoveryBatchV1> {
+	private recoverBatch(): Promise<AgenticChatDeadTurnRecoveryBatchV1> {
 		return this.withRpcDeadline('recover_dead_agentic_chat_turns', (signal) =>
 			this.ports.recovery.recover({
 				batchSize: this.options.batchSize,

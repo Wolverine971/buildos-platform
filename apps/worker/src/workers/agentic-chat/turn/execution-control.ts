@@ -664,7 +664,11 @@ function parseFinalizeReceipt(
 		const expectedTimingTransitionId = expected.timingTransitionId ?? null;
 		let preterminal = receipt.preterminal_event;
 		let preterminals = receipt.preterminal_events;
-		if (receipt.outcome === 'finalized' && expected.finalizingEvent != null) {
+		if (
+			receipt.outcome === 'finalized' &&
+			expected.finalizingEvent !== null &&
+			expected.finalizingEvent !== undefined
+		) {
 			const prefixLength = expectedTimingDraft === null ? 2 : 3;
 			if (
 				preterminal !== undefined ||

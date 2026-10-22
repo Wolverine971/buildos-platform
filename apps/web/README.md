@@ -30,7 +30,7 @@ pnpm install
 pnpm dev --filter=web     # http://localhost:5173
 ```
 
-Requires Node ≥ 20.19 and pnpm ≥ 11 (the root package pins `pnpm@11.7.0`). Copy the root `.env.example` to `.env` first.
+Requires Node 22.23.4+ (22.x; Vercel builds and runs 22.x) or 24.22.1+, and pnpm ≥ 11 (the root package pins `pnpm@11.7.0`). Copy the root `.env.example` to `.env` first.
 
 ## Directory Layout
 

@@ -2,66 +2,77 @@
 
 # Railway deployment — worker services
 
-Last verified against repo-root config and production process ownership on 2026-08-25.
+Last verified against Railway production deployments on 2026-10-22.
 
-Both worker services deploy from the monorepo root. Do not set either Railway
+All three worker services deploy from the monorepo root. Do not set any Railway
 root directory to `apps/worker`.
 
 ## Railway service settings
 
-Use the same build for two physically isolated services:
+Each service selects its own repo-root config file, and every file uses the
+Railpack builder:
 
-| Setting             | General background worker                    | Agentic Chat worker                    |
-| ------------------- | -------------------------------------------- | -------------------------------------- |
-| Root directory      | `/`                                          | `/`                                    |
-| Build config        | repo-root `railway.toml` and `nixpacks.toml` | same                                   |
-| Start command       | `node apps/worker/dist/index.js`             | `node apps/worker/dist/chat-worker.js` |
-| Healthcheck path    | `/health`                                    | `/health`                              |
-| Healthcheck timeout | `30`                                         | `30`                                   |
-| Restart policy      | `ON_FAILURE`, max retries `3`                | `ON_FAILURE`, max retries `3`          |
+| Setting             | Daily brief (general queue)      | Agentic Chat                           | Libri                                   |
+| ------------------- | -------------------------------- | -------------------------------------- | --------------------------------------- |
+| Railway service     | `daily-brief-worker`             | `agentic-chat-worker`                  | `libri-worker`                          |
+| Root directory      | `/`                              | `/`                                    | `/`                                     |
+| Config file         | `/railway.toml`                  | `/railway.chat.toml`                   | `/railway.libri.toml`                   |
+| Start command       | `node apps/worker/dist/index.js` | `node apps/worker/dist/chat-worker.js` | `node apps/worker/dist/libri-worker.js` |
+| Healthcheck path    | `/health`                        | `/health`                              | `/health`                               |
+| Healthcheck timeout | `30`                             | `300`                                  | `300`                                   |
+| Draining seconds    | default                          | `90`                                   | `30`                                    |
+| Restart policy      | `ON_FAILURE`, max retries `3`    | `ON_FAILURE`, max retries `3`          | `ON_FAILURE`, max retries `3`           |
 
-The repo-root start command is the general-worker default. Configure the
-Agentic Chat service's start-command override explicitly. The general process
-does not start the chat consumer and does not serve `/agentic-chat/capacity`.
+The general process does not start the chat consumer and does not serve
+`/agentic-chat/capacity`. The Libri process never imports the general worker.
 
-Current repo-root config:
+Build command (all three):
 
 ```bash
-npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile
-npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker
-node apps/worker/dist/index.js
+NODE_OPTIONS=--max-old-space-size=2048 npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker
 ```
 
-`nixpacks.toml` currently provisions `nodejs_22`, then runs pinned
-`pnpm@11.7.0` via `npx` for dependency installation and the worker build. Keep
-this in sync with the root `packageManager` and `engines.pnpm` values.
+Railpack installs dependencies with the root `packageManager` pnpm (11.7.0) and
+passes Railway variables to build steps as BuildKit secrets. Nixpacks baked
+secret-bearing `ARG`/`ENV` lines into its generated Dockerfile and pinned an
+October 2025 nixpkgs whose `nodejs_22` was 22.19.0. The root `nixpacks.toml`
+remains only until `libri-worker` selects `/railway.libri.toml`. A service with
+no config file selected still builds with Nixpacks from that file.
+
+### Node version
+
+Railpack picks Node in this order: the `RAILPACK_NODE_VERSION` service variable,
+then root `package.json` `engines.node`, then `.nvmrc`. For an engines range it
+keeps only the major of the first `>=` bound and installs that line's latest
+release. The root range starts at `>=22.23.4`, so builds get the newest 22.x.
+The old `>=20.19.0` would have meant Node 20 (end of life).
+
+- Do not set `RAILPACK_NODE_VERSION` to an exact older patch. A service
+  variable beats the repo, so an old pin silently keeps a vulnerable Node.
+- Each process logs one `[runtime]` line at startup with its exact Node,
+  Brotli, Undici and OpenSSL versions and Railway replica ID. Check every
+  replica after a deploy:
+  `railway logs --deployment --service <service> --lines 1000 <deployment-id> | grep '\[runtime\]'`.
+- The Railway deployment metadata `railpackInfo.resolvedPackages.node` shows the
+  requested and resolved version for each build.
 
 The worker build uses native TypeScript 7 from the worker's `@typescript/native`
-development dependency. Keep `--prod=false` in the install command so Railway
-installs the compiler and Turbo before the build. The native package locks Linux
-x64 and arm64 binaries; the compiled runtime does not depend on either tool.
+development dependency. Railpack installs development dependencies before the
+build. The native package locks Linux x64 and arm64 binaries; the compiled
+runtime does not depend on either tool.
 
 Turborepo must remain at 2.9.7 or newer for pnpm 11 flat patched-dependency
 lockfiles. The repository currently pins Turbo `^2.10.5`.
 
 ## Watch Paths
 
-Use the root `railway.toml` watch patterns:
-
-```text
-apps/worker/**
-packages/**
-patches/**
-turbo.json
-package.json
-pnpm-lock.yaml
-pnpm-workspace.yaml
-railway.toml
-nixpacks.toml
-```
-
-The app-level `apps/worker/railway.toml` and `apps/worker/nixpacks.toml` are
-kept synchronized as fallbacks, but the repo-root files are authoritative.
+`railway.toml` watches the worker, its transitive workspace packages, and the
+shared build inputs (`apps/worker/**`, the worker's workspace dependencies,
+`patches/**`, `turbo.json`, `package.json`, `pnpm-lock.yaml`,
+`pnpm-workspace.yaml`, `railway.toml`). `railway.chat.toml` and
+`railway.libri.toml` watch all of `packages/**` plus their own config file.
+`apps/worker/tests/queueContracts.test.ts` pins the daily-brief list and the
+Railpack/Node floor.
 
 ## Required variables
 

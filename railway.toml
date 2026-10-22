@@ -1,8 +1,12 @@
-# Railway configuration for worker service deployment
+# Railway configuration for the daily-brief (general queue) worker service.
 # This file must be at the repository root for Railway to find it
 # when the root directory is set to /
 [build]
-builder = "NIXPACKS"
+# Railpack, like railway.chat.toml: it resolves Node from the root package.json
+# engines (latest patched 22.x) and passes Railway variables to build steps as
+# BuildKit secrets. Nixpacks pinned an old nixpkgs whose nodejs_22 was 22.19.0
+# and baked secret-bearing ARG/ENV lines into its generated Dockerfile.
+builder = "RAILPACK"
 buildCommand = "NODE_OPTIONS=--max-old-space-size=2048 npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker"
 watchPatterns = [
   "apps/worker/**",
@@ -18,8 +22,7 @@ watchPatterns = [
   "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
-  "railway.toml",
-  "nixpacks.toml"
+  "railway.toml"
 ]
 
 [deploy]

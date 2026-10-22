@@ -1,3 +1,4 @@
+// apps/worker/src/chat-worker.ts
 // Load environment variables before constructing the Supabase client or chat
 // bootstrap. This entrypoint intentionally owns no scheduler or general queue.
 import 'dotenv/config';
@@ -7,6 +8,9 @@ import { WorkerEventLoopLagMonitor } from './lib/workerOperationalHealth';
 import { createAgenticChatBootstrap } from './workers/agentic-chat/host/bootstrap';
 import { requireDedicatedChatWorkerProductionProfile } from './config/chatWorkerProfile';
 import { AGENTIC_CHAT_SHUTDOWN_BUDGET_V1 } from './workers/agentic-chat/host/shutdown-budget';
+import { logRuntimeVersions } from './lib/runtimeVersions';
+
+logRuntimeVersions('agentic-chat-worker');
 
 // Exit on our own just before Railway's SIGKILL (railway.chat.toml drainingSeconds).
 // The drain inside spends the window: natural finish, then abort + recovery

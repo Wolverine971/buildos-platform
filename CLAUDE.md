@@ -75,5 +75,6 @@ support, accessibility conventions, and centralized Lucide exports.
 ## Deployment
 
 - Web: Vercel, configured by `vercel.json`.
-- Worker: Railway, configured by `railway.toml` and `nixpacks.toml`.
+- Worker: Railway, three Railpack services configured by `railway.toml`, `railway.chat.toml`, and
+  `railway.libri.toml` (see `apps/worker/docs/deployment/RAILWAY_DEPLOYMENT.md`).
 - CI: `.github/workflows/ci.yml` runs typecheck, lint, and tests.

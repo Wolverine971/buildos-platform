@@ -16,8 +16,8 @@ import {
 	mergeEntityTouches,
 	normalizeEntityTouches,
 	reconcileSourceProjectSuggestion,
-	recordToolExecution,
 	reconstructPriorState,
+	recordToolExecution,
 	transcriptResultCharsForOp
 } from './agentRunJournal';
 import {

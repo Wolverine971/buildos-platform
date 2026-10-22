@@ -208,14 +208,15 @@ It also validates:
 
 ## Deployment Files
 
-The Railway service should use repo-root config:
+Each Railway service selects a repo-root config file (all Railpack):
 
-- `railway.toml`
-- `nixpacks.toml`
+- `railway.toml` — daily brief (general queue)
+- `railway.chat.toml` — Agentic Chat
+- `railway.libri.toml` — Libri
 
-The app-level `apps/worker/railway.toml` and `apps/worker/nixpacks.toml` are
-kept synchronized with the root files as fallbacks. They are not the documented
-deployment source when Railway root directory is `/`.
+See `docs/deployment/RAILWAY_DEPLOYMENT.md`. The old app-level fallbacks
+(`apps/worker/railway.toml`, `apps/worker/nixpacks.toml`) were removed on
+2026-10-22; no service used them.
 
 ## Tests
 

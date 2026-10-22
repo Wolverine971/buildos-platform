@@ -35,7 +35,8 @@ The queue is PostgreSQL/Supabase based. Redis, BullMQ, `generate_phases`, and
 - SMS: `@buildos/twilio-service`
 - Push: `web-push` with VAPID keys
 - Analytics: `posthog-node`
-- Deployment: Railway using the repo-root `railway.toml` and `nixpacks.toml`
+- Deployment: Railway (Railpack) using repo-root `railway.toml`, `railway.chat.toml`, and
+  `railway.libri.toml`
 
 ## Start Here
 

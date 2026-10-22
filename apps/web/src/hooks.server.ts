@@ -38,6 +38,9 @@ import {
 import { createCrossSiteFormPostResponse } from '$lib/server/csrf';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 import { getLegacyRedirectPath } from '$lib/utils/legacy-redirects';
+import { describeServerRuntimeVersions } from '$lib/server/runtime-versions';
+
+console.info(describeServerRuntimeVersions());
 
 function getRequestSearch(event: RequestEvent): string {
 	const queryStart = event.request.url.indexOf('?');

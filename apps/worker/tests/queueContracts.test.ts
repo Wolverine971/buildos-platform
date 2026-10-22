@@ -11,7 +11,19 @@ function readRepoFile(path: string): string {
 }
 
 describe('worker deployment inputs', () => {
-	it.each(['railway.toml', 'apps/worker/railway.toml'])(
+	it('builds every worker service with Railpack on patched Node 22', () => {
+		for (const path of ['railway.toml', 'railway.chat.toml', 'railway.libri.toml']) {
+			expect(readRepoFile(path)).toMatch(/^builder = "RAILPACK"$/m);
+		}
+		// Railpack keeps only the major of the first ">=" bound in engines.node and
+		// installs that line's latest release, so this bound picks the worker Node line.
+		// 22.23.4 is the CVE-2026-111497 (Brotli) floor for Node 22.
+		const engine = JSON.parse(readRepoFile('package.json')).engines.node as string;
+		expect(engine.split(' ')[0]).toBe('>=22.23.4');
+		expect(readRepoFile('.nvmrc').trim()).toBe('22.23.4');
+	});
+
+	it.each(['railway.toml'])(
 		'%s watches exactly the transitive workspace dependencies and build inputs',
 		(path) => {
 			type Manifest = { name: string } & Record<string, unknown>;
@@ -55,8 +67,7 @@ describe('worker deployment inputs', () => {
 					'package.json',
 					'pnpm-lock.yaml',
 					'pnpm-workspace.yaml',
-					'railway.toml',
-					'nixpacks.toml'
+					'railway.toml'
 				].sort()
 			);
 		}

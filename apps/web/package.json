@@ -124,7 +124,7 @@
 		"yaml": "^2.3.4"
 	},
 	"engines": {
-		"node": ">=20.19.0",
+		"node": "22.x",
 		"pnpm": ">=9.0.0"
 	},
 	"dependencies": {

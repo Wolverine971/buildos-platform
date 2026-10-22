@@ -130,8 +130,9 @@ Always use `pnpm`. Never `npm` or `yarn`.
 ## Deployment
 
 - **Web** → Vercel. Config in `vercel.json`, including ~10 cron jobs (billing/trial lifecycle, welcome/reactivation sequences, Gmail maintenance, webhook renewal, account deletions, retention cleanup — see `vercel.json` for the current list).
-- **Worker** → Railway. Deploys from repository root `/` using `railway.toml` +
-  `nixpacks.toml` on Node 22. Healthcheck at `/health`.
+- **Worker** → Railway. Three services deploy from repository root `/` with
+  Railpack on patched Node 22: `railway.toml` (daily brief), `railway.chat.toml`
+  (Agentic Chat), `railway.libri.toml` (Libri). Healthcheck at `/health`.
 
 See `docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` for the full topology.
 

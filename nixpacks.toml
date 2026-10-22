@@ -1,6 +1,9 @@
-# Nixpacks configuration for worker service deployment on Railway
-# This file must be at the repository root for Railway to find it
-# when the root directory is set to /
+# Legacy Nixpacks plan. No service should build from this file:
+# daily-brief uses railway.toml and chat uses railway.chat.toml (both Railpack).
+# It remains only because libri-worker, which has no config file selected,
+# still picks it up. Delete it once libri-worker selects /railway.libri.toml.
+# nodejs_22 here resolves to 22.19.0 (nixpkgs 23f9169c), below the
+# CVE-2026-111497 floor of 22.23.4.
 [phases.setup]
 nixPkgs = ["nodejs_22"]
 

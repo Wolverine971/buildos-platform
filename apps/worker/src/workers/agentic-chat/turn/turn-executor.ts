@@ -65,10 +65,10 @@ import {
 	providerSchedulingArguments,
 	result,
 	safeAssistantText,
-	withStoppedPreviewText,
 	validateClaimEnvelope,
 	validateFinish,
-	validateJobEnvelope
+	validateJobEnvelope,
+	withStoppedPreviewText
 } from './executor-helpers';
 import {
 	AgenticChatCommittedEffectPersistError,

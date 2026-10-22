@@ -16,7 +16,7 @@ composes the HTTP surface.
 
 ## Tech Stack
 
-- **Runtime** — Node.js >= 20.19 (Railway root Nixpacks currently uses `nodejs_22`)
+- **Runtime** — Node.js 22 (>= 22.23.4, the CVE-2026-111497 floor); Railway builds with Railpack
 - **Compiler** — Native TypeScript 7 for production builds and typechecks; TypeScript 5.9 remains
   installed for the surrounding workspace toolchain
 - **Web** — Express 4
@@ -132,18 +132,19 @@ pnpm test:integration
 
 ## Deployment (Railway)
 
-Configured at the repo root via `railway.toml` and `nixpacks.toml`:
+Three services deploy from the repo root with the Railpack builder on patched Node 22. See
+[`docs/deployment/RAILWAY_DEPLOYMENT.md`](docs/deployment/RAILWAY_DEPLOYMENT.md) for the full
+settings and Node version policy.
 
-- Builder: Nixpacks on `nodejs_22`; the build runs pinned `pnpm@11.7.0` via `npx`.
-- Install: `npx --yes pnpm@11.7.0 install --prod=false --frozen-lockfile`.
-- Build: `npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker`.
-- Start: `node apps/worker/dist/index.js`.
-- Healthcheck: `GET /health` with a 30s timeout.
-- Restart policy: `ON_FAILURE`, up to 3 retries.
+- Daily brief (general queue): `railway.toml`, start `node apps/worker/dist/index.js`.
+- Agentic Chat: `railway.chat.toml`, start `node apps/worker/dist/chat-worker.js`.
+- Libri: `railway.libri.toml`, start `node apps/worker/dist/libri-worker.js`.
+- Build (all three): `npx --yes pnpm@11.7.0 exec turbo build --filter=@buildos/worker`.
+- Healthcheck: `GET /health`. Restart policy: `ON_FAILURE`, up to 3 retries.
+- Each process logs one `[runtime]` line with its exact Node version at startup.
 
-Keep `--prod=false` in the Railway install phase. The native TypeScript 7 compiler and Turbo are
-development dependencies required during the image build; the compiled worker does not load the
-compiler at runtime.
+The native TypeScript 7 compiler and Turbo are development dependencies required during the image
+build; the compiled worker does not load the compiler at runtime.
 
 Set the required env vars in the Railway service dashboard — at minimum, Supabase credentials, LLM API keys, `PRIVATE_RAILWAY_WORKER_TOKEN`, and (if using SMS) Twilio credentials.
 

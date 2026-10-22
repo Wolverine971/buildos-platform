@@ -1,3 +1,4 @@
+// apps/worker/src/libri-worker.ts
 import { createLibriUploadQueueRuntime } from './workers/libri/uploadQueueRuntime';
 // apps/worker/src/libri-worker.ts
 // Dedicated Libri Railway process. This entrypoint must never import the
@@ -26,6 +27,9 @@ import { LibriUploadMaintenanceConsumer } from './workers/libri/uploadMaintenanc
 import { createLibriUploadMaintenanceTransport } from './workers/libri/uploadMaintenanceTransport';
 import { createLibriOcrProcessor } from './workers/libri/ocrProcessor';
 import { createOpenRouterLibriOcrProvider } from './workers/libri/ocrProvider';
+import { logRuntimeVersions } from './lib/runtimeVersions';
+
+logRuntimeVersions('libri-worker');
 
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 28_000;
 

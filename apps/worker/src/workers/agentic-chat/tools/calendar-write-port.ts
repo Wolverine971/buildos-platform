@@ -47,8 +47,8 @@ import { isMultiCalendarUserAllowed } from '@buildos/shared-agent-ops/calendar/g
 import { GoogleCalendarConnectionError } from '@buildos/shared-agent-ops/calendar/google-calendar-runtime';
 import {
 	type OntoEventCalendarWriter,
-	googleAllDayDates,
-	OntoEventSyncService
+	OntoEventSyncService,
+	googleAllDayDates
 } from '@buildos/shared-agent-ops/calendar/onto-event-sync.service';
 import { ProjectCalendarService } from '@buildos/shared-agent-ops/calendar/project-calendar.service';
 import type { Database } from '@buildos/shared-types';
